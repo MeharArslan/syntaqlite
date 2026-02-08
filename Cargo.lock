@@ -267,6 +267,9 @@ version = "0.1.0"
 [[package]]
 name = "syntaqlite-parser"
 version = "0.1.0"
+dependencies = [
+ "cc",
+]
 
 [[package]]
 name = "tempfile"

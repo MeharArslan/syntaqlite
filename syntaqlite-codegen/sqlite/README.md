@@ -1,7 +1,7 @@
 # SQLite Vendored Sources
 
-This directory contains vendored SQLite tool sources and grammar files needed
-to build syntaqlite-codegen. These files are copied from the main SQLite
+This directory contains vendored SQLite tool sources needed to build the
+syntaqlite-codegen library. These files are copied from the main SQLite
 source tree to make the crate self-contained for publishing to crates.io.
 
 ## Files
@@ -9,7 +9,6 @@ source tree to make the crate self-contained for publishing to crates.io.
 - `lemon.c` - Lemon parser generator (from SQLite's tool/lemon.c)
 - `lempar.c` - Lemon parser template (from SQLite's tool/lempar.c)
 - `mkkeywordhash.c` - Keyword hash generator (from SQLite's tool/mkkeywordhash.c)
-- `parse.y` - SQLite grammar file (from SQLite's src/parse.y)
 
 ## Updating
 
