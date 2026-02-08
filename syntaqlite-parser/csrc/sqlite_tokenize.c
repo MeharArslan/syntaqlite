@@ -1,4 +1,4 @@
-#include "src/common/sqlite_compat.h"
+#include "csrc/sqlite_compat.h"
 
 #define CC_X          0    /* The letter 'x', or start of BLOB literal */
 #define CC_KYWD0      1    /* First letter of a keyword */

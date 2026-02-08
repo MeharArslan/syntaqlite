@@ -1,8 +1,0 @@
-# Default target
-group("default") {
-  deps = [
-    "src/tokenizer",
-    "third_party:lemon",
-  ]
-  testonly = true
-}

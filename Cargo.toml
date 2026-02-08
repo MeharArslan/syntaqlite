@@ -1,8 +1,9 @@
 # Cargo.toml
 [workspace]
 members = [
-    "crates/syntaqlite-tokenizer",
-    "crates/syntaqlite-codegen",
+    "syntaqlite-parser",
+    "syntaqlite-codegen",
+    "syntaqlite-codegen-utils",
 ]
 resolver = "3"
 

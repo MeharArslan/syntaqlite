@@ -151,3 +151,99 @@ pub fn extract_tokenizer(tokenize_c_path: &str, output_path: &str) -> Result<(),
 
     Ok(())
 }
+
+/// Generate parser by processing SQLite grammar and running lemon
+///
+/// This function:
+/// 1. Writes the provided grammar bytes to a temporary directory
+/// 2. Extracts grammar tokens/rules using extract_grammar
+/// 3. Writes the lempar.c template
+/// 4. Runs lemon via subprocess to generate parse.c and parse.h
+/// 5. Returns the path to the directory containing the outputs
+///
+/// # Arguments
+/// * `grammar_bytes` - The parse.y grammar file content
+/// * `template_bytes` - The lempar.c template file content
+/// * `output_dir` - Optional output directory (uses tempdir if not specified)
+///
+/// # Returns
+/// Path to the directory containing parse.c and parse.h
+///
+/// # Errors
+/// Returns error if file operations or lemon execution fails
+pub fn generate_parser(
+    grammar_bytes: &[u8],
+    template_bytes: &[u8],
+    output_dir: Option<&str>,
+) -> Result<PathBuf, String> {
+    // Create or use provided output directory
+    let temp_dir: Option<tempfile::TempDir>;
+    let work_dir = if let Some(dir) = output_dir {
+        let path = Path::new(dir);
+        fs::create_dir_all(path)
+            .map_err(|e| format!("Failed to create output directory: {}", e))?;
+        path
+    } else {
+        temp_dir = Some(tempfile::TempDir::new()
+            .map_err(|e| format!("Failed to create temp directory: {}", e))?);
+        temp_dir.as_ref().unwrap().path()
+    };
+
+    // Step 1: Write raw grammar to working directory
+    let raw_parse_y_path = work_dir.join("parse_raw.y");
+    fs::write(&raw_parse_y_path, grammar_bytes)
+        .map_err(|e| format!("Failed to write parse_raw.y: {}", e))?;
+
+    // Step 2: Extract grammar using extract_grammar
+    let extracted_grammar_path = work_dir.join("parse_extracted.h");
+    let raw_parse_y_str = raw_parse_y_path.to_str()
+        .ok_or_else(|| "Invalid raw parse.y path".to_string())?;
+    let extracted_grammar_str = extracted_grammar_path.to_str()
+        .ok_or_else(|| "Invalid extracted grammar path".to_string())?;
+
+    extract_grammar(raw_parse_y_str, Some(extracted_grammar_str))?;
+
+    // Step 3: Write lempar.c template to working directory
+    let lempar_path = work_dir.join("lempar.c");
+    fs::write(&lempar_path, template_bytes)
+        .map_err(|e| format!("Failed to write lempar.c: {}", e))?;
+
+    // Step 4: Write the original grammar for lemon processing
+    // (lemon needs the full .y file with rules, not just the extracted tokens)
+    let parse_y_path = work_dir.join("parse.y");
+    fs::write(&parse_y_path, grammar_bytes)
+        .map_err(|e| format!("Failed to write parse.y: {}", e))?;
+
+    // Step 5: Run lemon with -T option pointing to our template
+    // Spawn ourselves as a subprocess with the lemon subcommand
+    let parse_y_str = parse_y_path.to_str()
+        .ok_or_else(|| "Invalid parse.y path".to_string())?;
+    let lempar_str = lempar_path.to_str()
+        .ok_or_else(|| "Invalid lempar.c path".to_string())?;
+
+    let status = std::process::Command::new(std::env::current_exe()
+            .map_err(|e| format!("Failed to get current executable: {}", e))?)
+        .arg("lemon")
+        .arg("-T")
+        .arg(lempar_str)
+        .arg(parse_y_str)
+        .status()
+        .map_err(|e| format!("Failed to spawn lemon subprocess: {}", e))?;
+
+    if !status.success() {
+        return Err(format!("Lemon failed with exit code: {}", status));
+    }
+
+    // Verify outputs were generated
+    let parse_c = work_dir.join("parse.c");
+    let parse_h = work_dir.join("parse.h");
+
+    if !parse_c.exists() {
+        return Err("Lemon did not generate parse.c".to_string());
+    }
+    if !parse_h.exists() {
+        return Err("Lemon did not generate parse.h".to_string());
+    }
+
+    Ok(work_dir.to_path_buf())
+}

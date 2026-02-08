@@ -11,14 +11,6 @@ source tree to make the crate self-contained for publishing to crates.io.
 - `mkkeywordhash.c` - Keyword hash generator (from SQLite's tool/mkkeywordhash.c)
 - `parse.y` - SQLite grammar file (from SQLite's src/parse.y)
 
-## Build Integration
-
-The C sources (lemon.c, mkkeywordhash.c) are compiled into the syntaqlite-codegen
-binary via build.rs and exposed through FFI as `lemon_main()` and
-`mkkeywordhash_main()`.
-
-The parse.y grammar file is used as the base for generating the syntaqlite parser.
-
 ## Updating
 
 To update these files after upgrading SQLite:

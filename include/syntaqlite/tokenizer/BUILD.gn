@@ -1,6 +1,0 @@
-# Public API headers for syntaqlite.
-source_set("tokenizer") {
-  sources = [
-    "tokenizer.h",
-  ]
-}

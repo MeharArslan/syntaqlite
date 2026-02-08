@@ -1,7 +1,0 @@
-# Public API headers for syntaqlite.
-source_set("parser") {
-  sources = [
-    "ast.h",
-    "parser.h",
-  ]
-}
