@@ -1,0 +1,10 @@
+# Cargo.toml
+[workspace]
+members = [
+    "crates/syntaqlite-tokenizer",
+    "crates/syntaqlite-codegen",
+]
+resolver = "3"
+
+[profile.dev]
+opt-level = 1

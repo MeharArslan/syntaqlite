@@ -6,8 +6,7 @@ A fast, portable C library for tokenizing, parsing, and formatting SQLite SQL â€
 
 ```bash
 tools/dev/install-build-deps
-tools/dev/setup-all-configs --config mac_debug
-tools/dev/ninja -C out/mac_debug
+tools/dev/cargo build
 ```
 
 ## Testing

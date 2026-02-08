@@ -3,6 +3,7 @@
 
 """Installs build dependencies to third_party/bin/ and third_party/src/."""
 
+import argparse
 import hashlib
 import os
 import platform
@@ -14,6 +15,16 @@ import tempfile
 import zipfile
 from dataclasses import dataclass
 
+# Global verbosity level
+VERBOSITY = 0
+
+
+def vprint(level, *args, **kwargs):
+    """Print only if verbosity level is high enough."""
+    if VERBOSITY >= level:
+        print(*args, **kwargs)
+
+
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 THIRD_PARTY_DIR = os.path.join(ROOT_DIR, "third_party")
 THIRD_PARTY_BIN_DIR = os.path.join(THIRD_PARTY_DIR, "bin")
@@ -23,7 +34,7 @@ GN_VERSION = "5550ba0f4053c3cbb0bff3d60ded9d867b6fa371"
 NINJA_VERSION = "1.13.2"
 SQLITE_VERSION = "3510200"  # 3.51.2
 SQLITE_YEAR = "2026"
-ZIG_VERSION = "0.14.0"
+RUST_VERSION = "1.93.0"  # Latest stable
 
 
 @dataclass
@@ -68,19 +79,17 @@ BINARY_DEPS = [
     BinaryDep("clang-format", "7d46d237", "https://storage.googleapis.com/chromium-clang-format/7d46d237f9664f41ef46b10c1392dcb559250f25", "0c3c13febeb0495ef0086509c24605ecae9e3d968ff9669d12514b8a55c7824e", "darwin", "x64", "raw"),
     BinaryDep("clang-format", "79a7b4e5", "https://storage.googleapis.com/chromium-clang-format/79a7b4e5336339c17b828de10d80611ff0f85961", "889266a51681d55bd4b9e02c9a104fa6ee22ecdfa7e8253532e5ea47e2e4cb4a", "linux", "x64", "raw"),
     BinaryDep("clang-format", "565cab9c", "https://storage.googleapis.com/chromium-clang-format/565cab9c66d61360c27c7d4df5defe1a78ab56d3", "5557943a174e3b67cdc389c10b0ceea2195f318c5c665dd77a427ed01a094557", "windows", "x64", "raw"),
-    # Zig compiler: tar.xz on macOS/Linux, zip on Windows.
-    BinaryDep("zig", ZIG_VERSION, f"https://ziglang.org/download/{ZIG_VERSION}/zig-macos-aarch64-{ZIG_VERSION}.tar.xz", "b71e4b7c4b4be9953657877f7f9e6f7ee89114c716da7c070f4a238220e95d7e", "darwin", "arm64", "tar.xz", f"zig-macos-aarch64-{ZIG_VERSION}"),
-    BinaryDep("zig", ZIG_VERSION, f"https://ziglang.org/download/{ZIG_VERSION}/zig-macos-x86_64-{ZIG_VERSION}.tar.xz", "685816166f21f0b8d6fc7aa6a36e91396dcd82ca6556dfbe3e329deffc01fec3", "darwin", "x64", "tar.xz", f"zig-macos-x86_64-{ZIG_VERSION}"),
-    BinaryDep("zig", ZIG_VERSION, f"https://ziglang.org/download/{ZIG_VERSION}/zig-linux-x86_64-{ZIG_VERSION}.tar.xz", "473ec26806133cf4d1918caf1a410f8403a13d979726a9045b421b685031a982", "linux", "x64", "tar.xz", f"zig-linux-x86_64-{ZIG_VERSION}"),
-    BinaryDep("zig", ZIG_VERSION, f"https://ziglang.org/download/{ZIG_VERSION}/zig-linux-aarch64-{ZIG_VERSION}.tar.xz", "ab64e3ea277f6fc5f3d723dcd95d9ce1ab282c8ed0f431b4de880d30df891e4f", "linux", "arm64", "tar.xz", f"zig-linux-aarch64-{ZIG_VERSION}"),
-    BinaryDep("zig", ZIG_VERSION, f"https://ziglang.org/download/{ZIG_VERSION}/zig-windows-x86_64-{ZIG_VERSION}.zip", "f53e5f9011ba20bbc3e0e6d0a9441b31eb227a97bac0e7d24172f1b8b27b4371", "windows", "x64", "zip", f"zig-windows-x86_64-{ZIG_VERSION}"),
+    # Rust toolchain: tar.gz on all platforms.
+    # SHA256 hashes from https://static.rust-lang.org/dist/channel-rust-1.93.0.toml
+    BinaryDep("rust", RUST_VERSION, f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-aarch64-apple-darwin.tar.gz", "e33cf237cfff8af75581fedece9f3c348e976bb8246078786f1888c3b251d380", "darwin", "arm64", "tar.gz", f"rust-{RUST_VERSION}-aarch64-apple-darwin"),
+    BinaryDep("rust", RUST_VERSION, f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-apple-darwin.tar.gz", "0297504189bdee029bacb61245cb131e3a2cc4bfd50c9e11281ea8957706e675", "darwin", "x64", "tar.gz", f"rust-{RUST_VERSION}-x86_64-apple-darwin"),
+    BinaryDep("rust", RUST_VERSION, f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-unknown-linux-gnu.tar.gz", "ca55df589f7cd68eec883086c5ff63ece04a1820e6d23e514fbb412cc8bf77a4", "linux", "x64", "tar.gz", f"rust-{RUST_VERSION}-x86_64-unknown-linux-gnu"),
+    BinaryDep("rust", RUST_VERSION, f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-aarch64-unknown-linux-gnu.tar.gz", "091f981b95cbc6713ce6d6c23817286d4c10fd35fc76a990a3af430421751cfc", "linux", "arm64", "tar.gz", f"rust-{RUST_VERSION}-aarch64-unknown-linux-gnu"),
+    BinaryDep("rust", RUST_VERSION, f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-pc-windows-msvc.tar.gz", "4d171c1a5a0e4b2450b6426be70faa9bf31848362262d4dc8e9b29072e268e43", "windows", "x64", "tar.gz", f"rust-{RUST_VERSION}-x86_64-pc-windows-msvc"),
 ]
-
-GOOGLETEST_VERSION = "1.17.0"
 
 SOURCE_DEPS = [
     SourceDep("sqlite", SQLITE_VERSION, f"https://sqlite.org/{SQLITE_YEAR}/sqlite-src-{SQLITE_VERSION}.zip", "e436bb919850445ce5168fb033d2d0d5c53a9d8c9602c7fa62b3e0025541d481", f"sqlite-src-{SQLITE_VERSION}"),
-    SourceDep("googletest", GOOGLETEST_VERSION, f"https://github.com/google/googletest/releases/download/v{GOOGLETEST_VERSION}/googletest-{GOOGLETEST_VERSION}.tar.gz", "65fab701d9829d38cb77c14acdc431d2108bfdbf8979e40eb8ae567edf10b27c", f"googletest-{GOOGLETEST_VERSION}", "tar.gz", "sha256"),
 ]
 # fmt: on
 
@@ -135,8 +144,9 @@ def extract(archive_path, dest_dir, fmt):
         sys.exit(f"Unsupported format: {fmt}")
 
 
-def install_binary_dep(dep, target_dir):
-    """Install a binary dependency. Returns True on success."""
+def install_rust(dep, target_dir):
+    """Install Rust toolchain with proper directory structure."""
+    rust_dir = os.path.join(target_dir, "rust")
     stamp_path = os.path.join(target_dir, f".{dep.name}.stamp")
 
     if os.path.exists(stamp_path):
@@ -144,7 +154,131 @@ def install_binary_dep(dep, target_dir):
             if f.read().strip() == dep.version:
                 return True
 
-    print(f"Downloading {dep.name}...")
+    vprint(1, f"Downloading Rust {dep.version}...")
+    os.makedirs(target_dir, exist_ok=True)
+
+    with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+        tmp_path = tmp.name
+
+    try:
+        # Show progress bar only if not verbose (verbose mode shows curl output)
+        curl_args = ["curl", "-fL", "-o", tmp_path, dep.url]
+        if VERBOSITY == 0:
+            curl_args.insert(2, "--progress-bar")
+        result = subprocess.run(curl_args)
+        if result.returncode != 0:
+            print(f"Download failed", file=sys.stderr)
+            return False
+
+        vprint(1, "Verifying checksum...")
+        actual_sha256 = sha256_file(tmp_path)
+        if actual_sha256 != dep.sha256:
+            print(f"SHA256 mismatch for Rust: expected {dep.sha256}, got {actual_sha256}", file=sys.stderr)
+            return False
+
+        # Extract and install Rust components
+        vprint(1, "Extracting Rust tarball (this may take a minute)...")
+        with tempfile.TemporaryDirectory() as extract_dir:
+            extract(tmp_path, extract_dir, dep.format)
+            src_dir = os.path.join(extract_dir, dep.strip_prefix)
+
+            # Remove old installation
+            if os.path.exists(rust_dir):
+                vprint(1, "Removing old Rust installation...")
+                shutil.rmtree(rust_dir)
+            os.makedirs(rust_dir)
+
+            # Copy rustc, cargo, and rust-std components
+            vprint(1, "Installing rustc...")
+            for component in ["rustc", "cargo"]:
+                comp_dir = os.path.join(src_dir, component)
+                if os.path.exists(comp_dir):
+                    if component == "cargo":
+                        vprint(1, "Installing cargo...")
+                    dest_comp = os.path.join(rust_dir, component)
+                    shutil.copytree(comp_dir, dest_comp)
+
+            # Copy rust-std into rustc's lib/rustlib structure
+            vprint(1, "Installing standard library...")
+
+            # Find the rust-std directory
+            std_dirs = [d for d in os.listdir(src_dir) if d.startswith("rust-std-")]
+            if not std_dirs:
+                print("Warning: rust-std component not found", file=sys.stderr)
+                return False
+
+            src_std_rustlib = os.path.join(src_dir, std_dirs[0], "lib", "rustlib")
+            if not os.path.exists(src_std_rustlib):
+                print("Warning: rust-std rustlib not found", file=sys.stderr)
+                return False
+
+            dest_rustlib = os.path.join(rust_dir, "rustc", "lib", "rustlib")
+
+            # Merge each item from rust-std's rustlib into rustc's rustlib
+            for item_name in os.listdir(src_std_rustlib):
+                src_path = os.path.join(src_std_rustlib, item_name)
+                dest_path = os.path.join(dest_rustlib, item_name)
+
+                # If it's a file, just copy it
+                if not os.path.isdir(src_path):
+                    shutil.copy2(src_path, dest_path)
+                    continue
+
+                # If destination doesn't exist, just copy the whole directory
+                if not os.path.exists(dest_path):
+                    shutil.copytree(src_path, dest_path)
+                    continue
+
+                # Both exist - merge subdirectories (rustc has bin/, std has lib/)
+                for sub_name in os.listdir(src_path):
+                    src_sub = os.path.join(src_path, sub_name)
+                    dest_sub = os.path.join(dest_path, sub_name)
+
+                    # Remove existing destination
+                    if os.path.exists(dest_sub):
+                        if os.path.isdir(dest_sub):
+                            shutil.rmtree(dest_sub)
+                        else:
+                            os.unlink(dest_sub)
+
+                    # Move the item
+                    shutil.move(src_sub, dest_sub)
+
+            # Make binaries executable
+            vprint(1, "Setting permissions...")
+            for bindir in ["cargo/bin", "rustc/bin"]:
+                bin_path = os.path.join(rust_dir, bindir)
+                if os.path.exists(bin_path):
+                    for exe in os.listdir(bin_path):
+                        exe_path = os.path.join(bin_path, exe)
+                        if os.path.isfile(exe_path):
+                            os.chmod(exe_path, 0o755)
+
+            vprint(1, "Cleaning up temporary files...")
+
+        with open(stamp_path, "w") as f:
+            f.write(dep.version)
+
+        return True
+    finally:
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+def install_binary_dep(dep, target_dir):
+    """Install a binary dependency. Returns True on success."""
+    # Special handling for Rust
+    if dep.name == "rust":
+        return install_rust(dep, target_dir)
+
+    stamp_path = os.path.join(target_dir, f".{dep.name}.stamp")
+
+    if os.path.exists(stamp_path):
+        with open(stamp_path) as f:
+            if f.read().strip() == dep.version:
+                return True
+
+    vprint(1, f"Downloading {dep.name}...")
     os.makedirs(target_dir, exist_ok=True)
 
     suffix = {"tar.gz": ".tar.gz", "zip": ".zip", "raw": ""}.get(dep.format, ".zip")
@@ -152,9 +286,12 @@ def install_binary_dep(dep, target_dir):
         tmp_path = tmp.name
 
     try:
-        result = subprocess.run(["curl", "-fsSL", "-o", tmp_path, dep.url], capture_output=True)
+        curl_args = ["curl", "-fL", "-o", tmp_path, dep.url]
+        if VERBOSITY == 0:
+            curl_args.insert(2, "--progress-bar")
+        result = subprocess.run(curl_args)
         if result.returncode != 0:
-            print(f"Download failed: {result.stderr.decode()}", file=sys.stderr)
+            print(f"Download failed", file=sys.stderr)
             return False
 
         actual_sha256 = sha256_file(tmp_path)
@@ -167,8 +304,7 @@ def install_binary_dep(dep, target_dir):
             shutil.copy2(tmp_path, exe_path)
             os.chmod(exe_path, 0o755)
         elif dep.strip_prefix:
-            # Directory-structured dep (e.g. Zig): extract, strip prefix, move
-            # contents flat into target_dir.
+            # Directory-structured dep: extract, strip prefix, move contents flat into target_dir
             with tempfile.TemporaryDirectory() as extract_dir:
                 extract(tmp_path, extract_dir, dep.format)
                 src_dir = os.path.join(extract_dir, dep.strip_prefix)
@@ -207,7 +343,7 @@ def install_source_dep(dep, target_dir):
             if f.read().strip() == dep.version:
                 return True
 
-    print(f"Downloading {dep.name} source...")
+    vprint(1, f"Downloading {dep.name} source...")
     os.makedirs(target_dir, exist_ok=True)
 
     suffix = ".tar.gz" if dep.format == "tar.gz" else ".zip"
@@ -215,9 +351,12 @@ def install_source_dep(dep, target_dir):
         tmp_path = tmp.name
 
     try:
-        result = subprocess.run(["curl", "-fsSL", "-o", tmp_path, dep.url], capture_output=True)
+        curl_args = ["curl", "-fL", "-o", tmp_path, dep.url]
+        if VERBOSITY == 0:
+            curl_args.insert(2, "--progress-bar")
+        result = subprocess.run(curl_args)
         if result.returncode != 0:
-            print(f"Download failed: {result.stderr.decode()}", file=sys.stderr)
+            print(f"Download failed", file=sys.stderr)
             return False
 
         if dep.hash_type == "sha256":
@@ -243,7 +382,7 @@ def install_source_dep(dep, target_dir):
         with open(stamp_path, "w") as f:
             f.write(dep.version)
 
-        print(f"Installed {dep.name} to {dest_dir}")
+        vprint(1, f"Installed {dep.name} to {dest_dir}")
         return True
     finally:
         if os.path.exists(tmp_path):
@@ -251,6 +390,23 @@ def install_source_dep(dep, target_dir):
 
 
 def main():
+    global VERBOSITY
+
+    parser = argparse.ArgumentParser(description="Install build dependencies to third_party/")
+    parser.add_argument(
+        "-v", "--verbose",
+        action="count",
+        default=0,
+        help="Increase verbosity (can be repeated: -v, -vv, -vvv)"
+    )
+    parser.add_argument(
+        "--rust",
+        action="store_true",
+        help="Install Rust toolchain (optional, for Rust rewrite)"
+    )
+    args = parser.parse_args()
+    VERBOSITY = args.verbose
+
     host_os, host_arch, platform_dir = get_platform()
     bin_target_dir = os.path.join(THIRD_PARTY_BIN_DIR, platform_dir)
 
@@ -258,6 +414,10 @@ def main():
 
     # Install binary dependencies
     for dep in BINARY_DEPS:
+        # Skip Rust unless --rust flag is provided
+        if dep.name == "rust" and not args.rust:
+            continue
+
         os_match = dep.target_os == "all" or dep.target_os == host_os
         arch_match = dep.target_arch == "all" or dep.target_arch == host_arch
         if os_match and arch_match:
