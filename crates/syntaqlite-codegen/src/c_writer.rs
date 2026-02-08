@@ -13,6 +13,8 @@ pub struct CWriter {
 }
 
 impl CWriter {
+    // ========== Public API ==========
+
     pub fn new() -> Self {
         Self {
             buffer: String::new(),
@@ -21,47 +23,75 @@ impl CWriter {
         }
     }
 
-    fn write_indent(&mut self) {
-        if self.at_line_start && self.indent > 0 {
-            for _ in 0..self.indent {
-                self.buffer.push_str("    ");
-            }
-        }
-        self.at_line_start = false;
+    pub fn finish(self) -> String {
+        self.buffer
     }
 
-    /// Add a blank line
-    pub fn blank(&mut self) {
-        self.newline();
+    pub fn len(&self) -> usize {
+        self.buffer.len()
     }
 
-    /// Add a line with current indentation
-    pub fn line(&mut self, text: &str) {
+    pub fn is_empty(&self) -> bool {
+        self.buffer.is_empty()
+    }
+
+    // Basic output
+
+    pub fn newline(&mut self) -> &mut Self {
+        self.buffer.push('\n');
+        self.at_line_start = true;
+        self
+    }
+
+    pub fn line(&mut self, text: &str) -> &mut Self {
         self.write_indent();
         self.buffer.push_str(text);
-        self.newline();
+        self.newline()
     }
 
     /// Add a raw line without indentation
-    pub fn raw(&mut self, text: &str) {
+    pub fn raw(&mut self, text: &str) -> &mut Self {
         self.buffer.push_str(text);
-        self.newline();
+        self.newline()
+    }
+
+    /// Write a fragment (anything that implements Display)
+    pub fn fragment(&mut self, fragment: &impl std::fmt::Display) -> &mut Self {
+        write!(self.buffer, "{}", fragment).unwrap();
+        self.newline()
     }
 
     /// Write text without newline (will be indented if at line start)
-    pub fn write(&mut self, text: &str) {
+    pub fn write(&mut self, text: &str) -> &mut Self {
         self.write_indent();
         self.buffer.push_str(text);
+        self
     }
 
     /// Start a block (increase indentation)
-    pub fn indent(&mut self) {
+    pub fn indent(&mut self) -> &mut Self {
         self.indent += 1;
+        self
     }
 
     /// End a block (decrease indentation)
-    pub fn dedent(&mut self) {
+    pub fn dedent(&mut self) -> &mut Self {
         self.indent = self.indent.saturating_sub(1);
+        self
+    }
+
+    // Preprocessor directives
+
+    pub fn include_system(&mut self, header: &str) -> &mut Self {
+        write!(self.buffer, "#include <{}>\n", header).unwrap();
+        self.at_line_start = true;
+        self
+    }
+
+    pub fn include_local(&mut self, header: &str) -> &mut Self {
+        write!(self.buffer, "#include \"{}\"\n", header).unwrap();
+        self.at_line_start = true;
+        self
     }
 
     /// Emit header guard start
@@ -84,17 +114,6 @@ impl CWriter {
             source, generator
         )
         .unwrap();
-        self.at_line_start = true;
-    }
-
-    /// Emit include directive
-    pub fn include_system(&mut self, header: &str) {
-        write!(self.buffer, "#include <{}>\n", header).unwrap();
-        self.at_line_start = true;
-    }
-
-    pub fn include_local(&mut self, header: &str) {
-        write!(self.buffer, "#include \"{}\"\n", header).unwrap();
         self.at_line_start = true;
     }
 
@@ -277,37 +296,30 @@ impl CWriter {
     }
 
     /// Emit a comment line
-    pub fn comment(&mut self, text: &str) {
+    pub fn comment(&mut self, text: &str) -> &mut Self {
         self.write_indent();
         write!(self.buffer, "// {}\n", text).unwrap();
         self.at_line_start = true;
+        self
     }
 
     /// Emit a section header comment
-    pub fn section(&mut self, title: &str) {
+    pub fn section(&mut self, title: &str) -> &mut Self {
         self.write_indent();
         write!(self.buffer, "// ============ {} ============\n\n", title).unwrap();
         self.at_line_start = true;
+        self
     }
 
-    /// Get the final output
-    pub fn finish(self) -> String {
-        self.buffer
-    }
+    // ========== Private helpers ==========
 
-    /// Get current buffer length (useful for capacity planning)
-    pub fn len(&self) -> usize {
-        self.buffer.len()
-    }
-
-    fn newline(&mut self) {
-        self.buffer.push('\n');
-        self.at_line_start = true;
-    }
-
-    /// Check if buffer is empty
-    pub fn is_empty(&self) -> bool {
-        self.buffer.is_empty()
+    fn write_indent(&mut self) {
+        if self.at_line_start && self.indent > 0 {
+            for _ in 0..self.indent {
+                self.buffer.push_str("    ");
+            }
+        }
+        self.at_line_start = false;
     }
 }
 

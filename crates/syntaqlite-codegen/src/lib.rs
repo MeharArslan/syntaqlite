@@ -1,5 +1,7 @@
 pub mod grammar_parser;
 pub mod c_writer;
+pub mod c_extractor;
+pub mod c_transform;
 
 use std::fs;
 
@@ -38,7 +40,7 @@ fn generate_header(grammar: &grammar_parser::LemonGrammar, source: &str) -> Resu
 
     // Includes
     w.include_system("stdint.h");
-    w.blank();
+    w.newline();
 
     w.extern_c_start();
 
@@ -49,17 +51,51 @@ fn generate_header(grammar: &grammar_parser::LemonGrammar, source: &str) -> Resu
         token_variants.push((token.name, Some((i + 1) as i32)));
     }
     w.typedef_enum("TokenType", &token_variants);
-    w.blank();
+    w.newline();
 
     // Token count constant
     w.comment(&format!("Total number of tokens: {}", grammar.tokens.len()));
     w.line(&format!("#define TOKEN_COUNT {}", grammar.tokens.len() + 1));
-    w.blank();
+    w.newline();
 
     w.extern_c_end();
-    w.blank();
+    w.newline();
 
     w.header_guard_end(guard);
 
     Ok(w.finish())
+}
+
+pub fn extract_tokenizer(
+    tokenize_c_path: &str,
+    output_path: &str,
+) -> Result<(), String> {
+    use c_transform::ChangeNameTransform;
+
+    let content = fs::read_to_string(tokenize_c_path)
+        .map_err(|e| format!("Failed to read {}: {}", tokenize_c_path, e))?;
+
+    let extractor = c_extractor::CExtractor::new(&content);
+
+    let cc_defines = extractor.extract_defines_with_prefix("CC_")?;
+    let array = extractor.extract_static_array("aiClass")?;
+    let function = extractor.extract_function("sqlite3GetToken")?;
+    let renamed = function.change_name("syntaqlite_get_token");
+
+    let output = {
+        let mut w = c_writer::CWriter::new();
+        w.include_local("src/common/sqlite_compat.h")
+            .newline()
+            .fragment(&cc_defines)
+            .newline()
+            .fragment(&array)
+            .newline()
+            .fragment(&renamed);
+        w.finish()
+    };
+
+    fs::write(output_path, output)
+        .map_err(|e| format!("Failed to write {}: {}", output_path, e))?;
+
+    Ok(())
 }

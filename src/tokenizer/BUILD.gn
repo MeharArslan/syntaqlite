@@ -1,0 +1,4 @@
+source_set("tokenizer") {
+  sources = [ "sqlite_tokenize.c" ]
+  deps = [ "../common:sqlite_compat" ]
+}

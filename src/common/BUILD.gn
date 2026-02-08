@@ -1,0 +1,3 @@
+source_set("sqlite_compat") {
+  sources = [ "sqlite_compat.h" ]
+}
