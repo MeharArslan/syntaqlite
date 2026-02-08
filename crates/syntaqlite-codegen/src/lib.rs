@@ -1,9 +1,6 @@
-pub mod grammar_parser;
-pub mod c_writer;
-pub mod c_extractor;
-pub mod c_transform;
-
 use std::fs;
+use syntaqlite_codegen_utils::{grammar_parser, c_writer, c_extractor, c_transform};
+use c_transform::{AddStaticTransform, ChangeNameTransform};
 
 pub fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<(), String> {
     // Read input file
@@ -70,8 +67,6 @@ pub fn extract_tokenizer(
     tokenize_c_path: &str,
     output_path: &str,
 ) -> Result<(), String> {
-    use c_transform::{AddStaticTransform, ChangeNameTransform};
-
     let tokenize_content = fs::read_to_string(tokenize_c_path)
         .map_err(|e| format!("Failed to read {}: {}", tokenize_c_path, e))?;
     let tokenize_extractor = c_extractor::CExtractor::new(&tokenize_content);

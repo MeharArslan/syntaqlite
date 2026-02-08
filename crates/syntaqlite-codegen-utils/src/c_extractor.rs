@@ -7,24 +7,31 @@ use std::fmt;
 
 #[derive(Debug, Clone)]
 pub struct CFunction {
-    pub(crate) text: String,
-    pub(crate) name: String,
+    pub text: String,
+    pub name: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct CStaticArray {
-    pub(crate) text: String,
+    pub text: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct CDefines {
-    pub(crate) text: String,
+    pub text: String,
 }
 
 impl CFunction {
     pub(crate) fn new(text: String, name: String) -> Self {
         Self { text, name }
     }
+}
+
+/// Result of splitting source code by a function
+pub struct SplitByFunction {
+    pub before: String,
+    pub function: CFunction,
+    pub after: String,
 }
 
 impl CStaticArray {
@@ -69,6 +76,31 @@ impl CExtractor {
     }
 
     pub fn extract_function(&self, name: &str) -> Result<CFunction, String> {
+        // Reuse split_by_function and just return the function
+        self.split_by_function(name).map(|split| split.function)
+    }
+
+    /// Split source code into: before function, function, after function
+    pub fn split_by_function(&self, name: &str) -> Result<SplitByFunction, String> {
+        let (start, end) = self.find_function_bounds(name)?;
+
+        let before = self.lines[..start].join("\n");
+        let text = self.lines[start..=end].join("\n");
+        let after = if end + 1 < self.lines.len() {
+            self.lines[end + 1..].join("\n")
+        } else {
+            String::new()
+        };
+
+        Ok(SplitByFunction {
+            before,
+            function: CFunction::new(text, name.to_string()),
+            after,
+        })
+    }
+
+    /// Find the start and end line indices of a function
+    fn find_function_bounds(&self, name: &str) -> Result<(usize, usize), String> {
         let pattern = format!("{}(", name);
 
         for (i, line) in self.lines.iter().enumerate() {
@@ -78,8 +110,7 @@ impl CExtractor {
 
             if self.is_function_definition(i) {
                 let end = self.find_closing_brace(i)?;
-                let text = self.lines[i..=end].join("\n");
-                return Ok(CFunction::new(text, name.to_string()));
+                return Ok((i, end));
             }
         }
         Err(format!("Could not find function definition for '{}'", name))

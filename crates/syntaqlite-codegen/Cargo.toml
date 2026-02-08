@@ -5,3 +5,8 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
+syntaqlite-codegen-utils = { path = "../syntaqlite-codegen-utils" }
+
+[build-dependencies]
+cc = "1.0"
+syntaqlite-codegen-utils = { path = "../syntaqlite-codegen-utils" }
