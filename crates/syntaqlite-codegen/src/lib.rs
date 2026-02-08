@@ -2,6 +2,7 @@ pub mod grammar_parser;
 pub mod lemon;
 
 use std::fs;
+use std::path::{Path, PathBuf};
 use syntaqlite_codegen_utils::{c_extractor, c_transformer, c_writer};
 
 pub fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<(), String> {

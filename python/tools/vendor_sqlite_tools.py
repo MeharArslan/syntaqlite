@@ -3,7 +3,7 @@
 
 """Vendor SQLite tool sources into syntaqlite-codegen crate.
 
-This script copies SQLite's lemon and mkkeywordhash source files from
+This script copies SQLite's tool sources and grammar files from
 third_party/src/sqlite/ into the syntaqlite-codegen crate directory,
 making the crate self-contained for publishing to crates.io.
 
@@ -27,6 +27,7 @@ SQLITE_TOOLS = [
     ("tool/lemon.c", "lemon.c"),
     ("tool/lempar.c", "lempar.c"),
     ("tool/mkkeywordhash.c", "mkkeywordhash.c"),
+    ("src/parse.y", "parse.y"),
 ]
 
 
@@ -57,39 +58,7 @@ def vendor_files(verbose=False):
         if verbose:
             print(f"Copied: {src_rel} -> {dest_path.relative_to(ROOT_DIR)}")
 
-    # Write a README to explain the vendored files
-    readme_path = VENDOR_DIR / "README.md"
-    with open(readme_path, "w") as f:
-        f.write("""# SQLite Vendored Sources
-
-This directory contains vendored SQLite tool sources needed to build
-syntaqlite-codegen. These files are copied from the main SQLite source
-tree to make the crate self-contained for publishing to crates.io.
-
-## Files
-
-- `lemon.c` - Lemon parser generator (from SQLite's tool/lemon.c)
-- `lempar.c` - Lemon parser template (from SQLite's tool/lempar.c)
-- `mkkeywordhash.c` - Keyword hash generator (from SQLite's tool/mkkeywordhash.c)
-
-## Updating
-
-To update these files after upgrading SQLite:
-
-```bash
-python3 python/tools/vendor_sqlite_tools.py
-```
-
-## License
-
-These files are part of SQLite and are in the public domain.
-See https://www.sqlite.org/copyright.html
-""")
-
-    if verbose:
-        print(f"Wrote: {readme_path.relative_to(ROOT_DIR)}")
-
-    print(f"Successfully vendored {len(SQLITE_TOOLS)} SQLite tool files")
+    print(f"Successfully vendored {len(SQLITE_TOOLS)} SQLite files")
     return True
 
 
