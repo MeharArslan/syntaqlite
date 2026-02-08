@@ -44,7 +44,10 @@ fn transform_mkkeywordhash(input: &PathBuf, output: &PathBuf) -> Result<(), Stri
         .map_err(|e| format!("Failed to read {}: {}", input.display(), e))?;
 
     let transformed = CTransformer::new(&content)
-        .remove_array_static("aKeywordTable")
+        .remove_static("aKeywordTable")
+        .add_const("Keyword aKeywordTable")
+        .remove_static("nKeyword")
+        .add_const("int nKeyword")
         .add_function_parameters("findById", "Keyword *aKeywordTable, int nKeyword")
         .add_function_parameters("reorder", "Keyword *aKeywordTable, int nKeyword")
         .add_function_parameters("main", "Keyword *aKeywordTable, int nKeyword")

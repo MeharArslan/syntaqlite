@@ -1,9 +1,16 @@
 pub mod grammar_parser;
 pub mod lemon;
+pub mod mkkeyword;
+mod run;
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use syntaqlite_codegen_utils::{c_extractor, c_transformer, c_writer};
+
+pub struct TokenizerExtractResult {
+    pub char_map: String,
+    pub upper_to_lower: String,
+}
 
 // Embed lempar.c template (needed by the library)
 const LEMPAR_C: &[u8] = include_bytes!("../sqlite/lempar.c");
@@ -68,7 +75,7 @@ fn generate_header(grammar: &grammar_parser::LemonGrammar, source: &str) -> Resu
     Ok(w.finish())
 }
 
-pub fn extract_tokenizer(tokenize_c_path: &str, output_path: &str) -> Result<(), String> {
+pub fn extract_tokenizer(tokenize_c_path: &str, output_path: &str) -> Result<TokenizerExtractResult, String> {
     let tokenize_content = fs::read_to_string(tokenize_c_path)
         .map_err(|e| format!("Failed to read {}: {}", tokenize_c_path, e))?;
     let tokenize_extractor = c_extractor::CExtractor::new(&tokenize_content);
@@ -119,23 +126,30 @@ pub fn extract_tokenizer(tokenize_c_path: &str, output_path: &str) -> Result<(),
     ])?;
     let ai_class = tokenize_extractor.extract_static_array("aiClass")?;
     let ctype_map = global_extractor.extract_static_array("sqlite3CtypeMap")?;
+    let upper_to_lower = global_extractor.extract_static_array("sqlite3UpperToLower")?;
     let is_macros = sqliteint_extractor.extract_specific_defines(&[
         "sqlite3Isspace",
         "sqlite3Isdigit",
         "sqlite3Isxdigit",
     ])?;
+    let id_char = tokenize_extractor.extract_defines_with_ifdef_context(&["IdChar"])?;
+    let char_map = tokenize_extractor.extract_defines_with_ifdef_context(&["charMap"])?;
     let function = tokenize_extractor.extract_function("sqlite3GetToken")?;
 
     // Combine extracted pieces
     let combined = {
         let mut w = c_writer::CWriter::new();
         w.include_local("csrc/sqlite_compat.h")
+            .include_local("csrc/sqlite_tokens.h")
+            .include_local("csrc/sqlite_keyword.h")
             .newline()
             .fragment(&cc_defines)
             .newline()
             .fragment(&ctype_map)
             .newline()
             .fragment(&is_macros)
+            .newline()
+            .fragment(&id_char)
             .newline()
             .fragment(&ai_class)
             .newline()
@@ -146,16 +160,18 @@ pub fn extract_tokenizer(tokenize_c_path: &str, output_path: &str) -> Result<(),
     // Transform the combined result
     let output = c_transformer::CTransformer::new(&combined)
         .add_array_static("sqlite3CtypeMap")
+        .replace_in_function("sqlite3GetToken", "keywordCode", "synq_sqlite3_keywordCode")
         .rename_function("sqlite3GetToken", "synq_sqlite3GetToken")
+        .replace_all("TK_", "SYNTAQLITE_TK_")
         .finish();
-
-    // Rename TK_ token prefix to SYNTAQLITE_TK_
-    let output = output.replace("TK_", "SYNTAQLITE_TK_");
 
     fs::write(output_path, output)
         .map_err(|e| format!("Failed to write {}: {}", output_path, e))?;
 
-    Ok(())
+    Ok(TokenizerExtractResult {
+        char_map: char_map.text,
+        upper_to_lower: upper_to_lower.text,
+    })
 }
 
 /// Generate parser by processing SQLite grammar and running lemon
@@ -268,4 +284,104 @@ pub fn generate_parser(
     }
 
     Ok(())
+}
+
+/// Generate keyword hash lookup table
+///
+/// This function runs mkkeywordhash to generate optimized C code for keyword
+/// recognition. The generated code is split into two files:
+/// - sqlite_keyword_tables.h: Static keyword tables and hash data
+/// - sqlite_keyword.c: The lookup function and character mapping arrays
+///
+/// # Arguments
+/// * `output_path` - Path where the generated keyword hash C code will be written
+///
+/// # Errors
+/// Returns error if mkkeywordhash execution fails or file writing fails
+pub fn generate_keyword_hash(output_path: &str, extract_result: &TokenizerExtractResult) -> Result<(), String> {
+    // Run mkkeywordhash as a subprocess and capture its output
+    let output = std::process::Command::new(
+        std::env::current_exe().map_err(|e| format!("Failed to get current executable: {}", e))?,
+    )
+    .arg("mkkeyword")
+    .output()
+    .map_err(|e| format!("Failed to spawn mkkeyword subprocess: {}", e))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "mkkeyword failed with exit code: {}",
+            output.status
+        ));
+    }
+
+    // Convert output to string for processing
+    let generated_code = String::from_utf8(output.stdout)
+        .map_err(|e| format!("Invalid UTF-8 in mkkeyword output: {}", e))?;
+
+    // Remove unwanted SQLite-specific wrapper functions using CTransformer
+    let processed_code = c_transformer::CTransformer::new(&generated_code)
+        .remove_function("sqlite3KeywordCode")
+        .remove_function("sqlite3_keyword_name")
+        .remove_function("sqlite3_keyword_count")
+        .remove_function("sqlite3_keyword_check")
+        .remove_lines_matching("#define SQLITE_N_KEYWORD")
+        .rename_function("keywordCode", "synq_sqlite3_keywordCode")
+        .remove_static("synq_sqlite3_keywordCode")
+        .replace_all("TK_", "SYNTAQLITE_TK_")
+        .finish();
+
+    // Split the processed code into tables and function
+    let (tables_content, function_content) = split_keyword_code(&processed_code, extract_result)?;
+
+    // Write the tables header file
+    let tables_path = "syntaqlite-parser/csrc/sqlite_keyword_tables.h";
+    fs::write(tables_path, tables_content)
+        .map_err(|e| format!("Failed to write {}: {}", tables_path, e))?;
+
+    // Write the function C file
+    fs::write(output_path, function_content)
+        .map_err(|e| format!("Failed to write {}: {}", output_path, e))?;
+
+    Ok(())
+}
+
+/// Split keyword code into tables header and function implementation
+fn split_keyword_code(code: &str, extract_result: &TokenizerExtractResult) -> Result<(String, String), String> {
+    // Use CExtractor to split by the function
+    let extractor = c_extractor::CExtractor::new(code);
+    let split = extractor.split_by_function("synq_sqlite3_keywordCode")?;
+
+    let mut tables = c_writer::CWriter::new();
+    tables.line("#ifndef SQLITE_KEYWORD_TABLES_H");
+    tables.line("#define SQLITE_KEYWORD_TABLES_H");
+    tables.newline();
+    tables.include_local("csrc/sqlite_tokens.h");
+    tables.newline();
+    tables.fragment(&split.before);
+    tables.newline();
+    tables.line("#endif /* SQLITE_KEYWORD_TABLES_H */");
+
+    // Build the function C file
+    let mut func = c_writer::CWriter::new();
+    func.include_local("csrc/sqlite_compat.h");
+    func.include_local("csrc/sqlite_keyword_tables.h");
+    func.newline();
+
+    // Add char mapping arrays (upper_to_lower and char_map)
+    func.fragment(&extract_result.upper_to_lower);
+    func.newline();
+    func.fragment(&extract_result.char_map);
+    func.newline();
+
+    // Add the function
+    func.fragment(&split.function.text);
+    func.newline();
+
+    // Add anything after the function (if any)
+    if !split.after.trim().is_empty() {
+        func.fragment(&split.after);
+        func.newline();
+    }
+
+    Ok((tables.finish(), func.finish()))
 }

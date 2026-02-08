@@ -36,4 +36,9 @@ typedef uint32_t u32;
 #define testcase(X)
 #endif
 
+// No-op for assert macro if not defined
+#ifndef assert
+#define assert(X)
+#endif
+
 #endif // SYNQ_SRC_COMMON_SQLITE_COMPAT_H

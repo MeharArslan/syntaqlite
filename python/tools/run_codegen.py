@@ -38,7 +38,6 @@ def main():
         return 1
 
     # Build codegen
-    print("=== Building syntaqlite-codegen ===")
     result = subprocess.run(
         ["cargo", "build", "--release"],
         cwd=codegen_crate,
@@ -48,7 +47,6 @@ def main():
         return result.returncode
 
     # Run codegen with auto-detected paths
-    print("\n=== Running codegen ===")
     codegen_bin = project_root / "target" / "release" / "syntaqlite-codegen"
     result = subprocess.run(
         [
@@ -57,7 +55,6 @@ def main():
             "--parse-y", str(parse_y),
             "--tokenize-c", str(tokenize_c),
             "--tokenize-output", str(tokenize_output),
-            "--verbose",
         ],
     )
 
@@ -65,7 +62,6 @@ def main():
         print("Codegen failed", file=sys.stderr)
         return result.returncode
 
-    print("\n=== Code generation complete ===")
     return 0
 
 

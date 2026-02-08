@@ -25,6 +25,10 @@ enum Command {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
+    Mkkeyword {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
 }
 
 fn main() {
@@ -34,28 +38,24 @@ fn main() {
         match args.command {
             Command::Codegen { parse_y, tokenize_c, tokenize_output } => {
                 if args.verbose {
-                    eprintln!("=== Starting Code Generation ===");
-                }
-
-                if args.verbose {
-                    eprintln!("\n=== Generating Parser ===");
+                    eprintln!("Generating parser...");
                 }
                 let tokens_output = "syntaqlite-parser/csrc/sqlite_tokens.h";
                 syntaqlite_codegen::generate_parser(&parse_y, None, Some(tokens_output))?;
-                if args.verbose {
-                    eprintln!("Generated parser and copied tokens to {}", tokens_output);
-                }
 
                 if args.verbose {
-                    eprintln!("\n=== Extracting Tokenizer ===");
+                    eprintln!("Extracting tokenizer...");
                 }
-                syntaqlite_codegen::extract_tokenizer(&tokenize_c, &tokenize_output)?;
-                if args.verbose {
-                    eprintln!("Extracted tokenizer to {}", tokenize_output);
-                }
+                let extract_result = syntaqlite_codegen::extract_tokenizer(&tokenize_c, &tokenize_output)?;
 
                 if args.verbose {
-                    eprintln!("\n=== Code Generation Complete ===");
+                    eprintln!("Generating keyword hash...");
+                }
+                let keyword_output = "syntaqlite-parser/csrc/sqlite_keyword.c";
+                syntaqlite_codegen::generate_keyword_hash(keyword_output, &extract_result)?;
+
+                if args.verbose {
+                    eprintln!("Code generation complete");
                 }
 
                 Ok(())
@@ -66,6 +66,13 @@ fn main() {
                 }
 
                 syntaqlite_codegen::lemon::run_lemon(&lemon_args);
+            }
+            Command::Mkkeyword { args: mkkeyword_args } => {
+                if args.verbose {
+                    eprintln!("Running mkkeyword with args: {:?}", mkkeyword_args);
+                }
+
+                syntaqlite_codegen::mkkeyword::run_mkkeyword(&mkkeyword_args);
             }
         }
     })();

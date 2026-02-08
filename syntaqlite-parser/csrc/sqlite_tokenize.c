@@ -1,4 +1,6 @@
 #include "csrc/sqlite_compat.h"
+#include "csrc/sqlite_tokens.h"
+#include "csrc/sqlite_keyword.h"
 
 #define CC_X          0    /* The letter 'x', or start of BLOB literal */
 #define CC_KYWD0      1    /* First letter of a keyword */
@@ -73,6 +75,28 @@ const unsigned char static sqlite3CtypeMap[256] = {
 # define sqlite3Isspace(x)   (sqlite3CtypeMap[(unsigned char)(x)]&0x01)
 # define sqlite3Isdigit(x)   (sqlite3CtypeMap[(unsigned char)(x)]&0x04)
 # define sqlite3Isxdigit(x)  (sqlite3CtypeMap[(unsigned char)(x)]&0x08)
+
+#ifdef SQLITE_ASCII
+#define IdChar(C)  ((sqlite3CtypeMap[(unsigned char)C]&0x46)!=0)
+#endif
+#ifdef SQLITE_EBCDIC
+const char sqlite3IsEbcdicIdChar[] = {
+/* x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 xA xB xC xD xE xF */
+    0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,  /* 4x */
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0,  /* 5x */
+    0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0,  /* 6x */
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0,  /* 7x */
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0,  /* 8x */
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0,  /* 9x */
+    1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0,  /* Ax */
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* Bx */
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,  /* Cx */
+    0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,  /* Dx */
+    0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1,  /* Ex */
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0,  /* Fx */
+};
+#define IdChar(C)  (((c=C)>=0x42 && sqlite3IsEbcdicIdChar[c-0x40]))
+#endif
 
 static const unsigned char aiClass[] = {
 #ifdef SQLITE_ASCII
@@ -392,7 +416,7 @@ i64 synq_sqlite3GetToken(const unsigned char *z, int *tokenType){
         break;
       }
       *tokenType = SYNTAQLITE_TK_ID;
-      return keywordCode((char*)z, i, tokenType);
+      return synq_sqlite3_keywordCode((char*)z, i, tokenType);
     }
     case CC_X: {
 #ifndef SQLITE_OMIT_BLOB_LITERAL
