@@ -23,12 +23,12 @@ enum Command {
 
     /// Run lemon parser generator on a grammar file
     Lemon {
-        /// Grammar file to process (e.g., parse.y)
-        grammar: String,
+        /// Input grammar file (e.g., parse.y)
+        input: String,
 
-        /// Additional arguments to pass to lemon
-        #[arg(last = true)]
-        args: Vec<String>,
+        /// Output file path (base name without extension)
+        #[arg(short, long)]
+        output: Option<String>,
     },
 }
 
@@ -68,9 +68,10 @@ fn main() {
 
                 let res = syntaqlite_codegen::extract_grammar(&input, output.as_deref());
 
-                if args.verbose && output.is_some() {
-                    eprintln!("Wrote output to: {}", output.unwrap());
-                }
+                if args.verbose
+                    && let Some(ref out) = output {
+                        eprintln!("Wrote output to: {}", out);
+                    }
 
                 res
             }
@@ -90,15 +91,14 @@ fn main() {
             }
         },
 
-        Command::Lemon { grammar, args: lemon_args } => {
+        Command::Lemon { input, output } => {
             if args.verbose {
-                eprintln!("Running lemon on: {}", grammar);
+                eprintln!("Running lemon on: {}", input);
             }
 
-            let arg_refs: Vec<&str> = lemon_args.iter().map(|s| s.as_str()).collect();
-            let res = syntaqlite_codegen::call::run_lemon(&grammar, &arg_refs);
+            let res = syntaqlite_codegen::lemon::run_lemon_on_file(&input, output.as_deref());
 
-            if args.verbose {
+            if args.verbose && res.is_ok() {
                 eprintln!("Lemon completed successfully");
             }
 

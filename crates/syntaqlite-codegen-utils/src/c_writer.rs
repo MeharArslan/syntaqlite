@@ -83,26 +83,31 @@ impl CWriter {
     // Preprocessor directives
 
     pub fn include_system(&mut self, header: &str) -> &mut Self {
-        write!(self.buffer, "#include <{}>\n", header).unwrap();
+        writeln!(self.buffer, "#include <{}>", header).unwrap();
         self.at_line_start = true;
         self
     }
 
     pub fn include_local(&mut self, header: &str) -> &mut Self {
-        write!(self.buffer, "#include \"{}\"\n", header).unwrap();
+        writeln!(self.buffer, "#include \"{}\"", header).unwrap();
         self.at_line_start = true;
         self
     }
 
     /// Emit header guard start
     pub fn header_guard_start(&mut self, guard_name: &str) {
-        write!(self.buffer, "#ifndef {}\n#define {}\n\n", guard_name, guard_name).unwrap();
+        write!(
+            self.buffer,
+            "#ifndef {}\n#define {}\n\n",
+            guard_name, guard_name
+        )
+        .unwrap();
         self.at_line_start = true;
     }
 
     /// Emit header guard end
     pub fn header_guard_end(&mut self, guard_name: &str) {
-        write!(self.buffer, "#endif  // {}\n", guard_name).unwrap();
+        writeln!(self.buffer, "#endif  // {}", guard_name).unwrap();
         self.at_line_start = true;
     }
 
@@ -119,7 +124,8 @@ impl CWriter {
 
     /// Start extern "C" block
     pub fn extern_c_start(&mut self) {
-        self.buffer.push_str("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n");
+        self.buffer
+            .push_str("#ifdef __cplusplus\nextern \"C\" {\n#endif\n\n");
         self.at_line_start = true;
     }
 
@@ -132,7 +138,7 @@ impl CWriter {
     /// Emit a typedef enum
     pub fn typedef_enum(&mut self, name: &str, variants: &[(&str, Option<i32>)]) {
         self.write_indent();
-        write!(self.buffer, "typedef enum {} {{\n", name).unwrap();
+        writeln!(self.buffer, "typedef enum {} {{", name).unwrap();
         self.indent();
 
         for (i, (variant, value)) in variants.iter().enumerate() {
@@ -149,14 +155,14 @@ impl CWriter {
 
         self.dedent();
         self.write_indent();
-        write!(self.buffer, "}} {};\n", name).unwrap();
+        writeln!(self.buffer, "}} {};", name).unwrap();
         self.at_line_start = true;
     }
 
     /// Start a typedef struct
     pub fn typedef_struct_start(&mut self, name: &str) {
         self.write_indent();
-        write!(self.buffer, "typedef struct {} {{\n", name).unwrap();
+        writeln!(self.buffer, "typedef struct {} {{", name).unwrap();
         self.indent();
         self.at_line_start = true;
     }
@@ -175,14 +181,14 @@ impl CWriter {
     pub fn typedef_struct_end(&mut self, name: &str) {
         self.dedent();
         self.write_indent();
-        write!(self.buffer, "}} {};\n", name).unwrap();
+        writeln!(self.buffer, "}} {};", name).unwrap();
         self.at_line_start = true;
     }
 
     /// Emit a typedef union for flags
     pub fn typedef_flags_union(&mut self, name: &str, flags: &[(&str, u8)]) {
         self.write_indent();
-        write!(self.buffer, "typedef union {} {{\n", name).unwrap();
+        writeln!(self.buffer, "typedef union {} {{", name).unwrap();
         self.indent();
 
         self.write_indent();
@@ -201,11 +207,11 @@ impl CWriter {
 
             if bit_pos > next_bit {
                 self.write_indent();
-                write!(self.buffer, "uint8_t : {};\n", bit_pos - next_bit).unwrap();
+                writeln!(self.buffer, "uint8_t : {};", bit_pos - next_bit).unwrap();
             }
 
             self.write_indent();
-            write!(self.buffer, "uint8_t {} : 1;\n", flag_name.to_lowercase()).unwrap();
+            writeln!(self.buffer, "uint8_t {} : 1;", flag_name.to_lowercase()).unwrap();
             next_bit = bit_pos + 1;
         }
 
@@ -215,7 +221,7 @@ impl CWriter {
 
         self.dedent();
         self.write_indent();
-        write!(self.buffer, "}} {};\n", name).unwrap();
+        writeln!(self.buffer, "}} {};", name).unwrap();
         self.at_line_start = true;
     }
 
@@ -291,14 +297,14 @@ impl CWriter {
     /// Emit a return statement
     pub fn return_stmt(&mut self, expr: &str) {
         self.write_indent();
-        write!(self.buffer, "return {};\n", expr).unwrap();
+        writeln!(self.buffer, "return {};", expr).unwrap();
         self.at_line_start = true;
     }
 
     /// Emit a comment line
     pub fn comment(&mut self, text: &str) -> &mut Self {
         self.write_indent();
-        write!(self.buffer, "// {}\n", text).unwrap();
+        writeln!(self.buffer, "// {}", text).unwrap();
         self.at_line_start = true;
         self
     }
@@ -336,11 +342,10 @@ mod tests {
     #[test]
     fn test_basic_enum() {
         let mut w = CWriter::new();
-        w.typedef_enum("Color", &[
-            ("RED", Some(0)),
-            ("GREEN", Some(1)),
-            ("BLUE", Some(2)),
-        ]);
+        w.typedef_enum(
+            "Color",
+            &[("RED", Some(0)), ("GREEN", Some(1)), ("BLUE", Some(2))],
+        );
 
         let output = w.finish();
         assert!(output.contains("typedef enum Color {"));
@@ -366,11 +371,7 @@ mod tests {
     #[test]
     fn test_flags_union() {
         let mut w = CWriter::new();
-        w.typedef_flags_union("MyFlags", &[
-            ("FOO", 0x01),
-            ("BAR", 0x02),
-            ("BAZ", 0x04),
-        ]);
+        w.typedef_flags_union("MyFlags", &[("FOO", 0x01), ("BAR", 0x02), ("BAZ", 0x04)]);
 
         let output = w.finish();
         assert!(output.contains("typedef union MyFlags {"));

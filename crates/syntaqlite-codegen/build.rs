@@ -1,26 +1,15 @@
 use std::env;
-use std::path::PathBuf;
 use std::fs;
+use std::path::PathBuf;
 use syntaqlite_codegen_utils::c_transformer::CTransformer;
 
 fn main() {
-    // Get the path to SQLite tools relative to the workspace root
+    // Get the path to vendored SQLite tools in this crate
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let workspace_root = PathBuf::from(&manifest_dir)
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_path_buf();
+    let sqlite_dir = PathBuf::from(&manifest_dir).join("sqlite");
 
-    let tools_dir = workspace_root
-        .join("third_party")
-        .join("src")
-        .join("sqlite")
-        .join("tool");
-
-    let lemon_path = tools_dir.join("lemon.c");
-    let mkkeywordhash_path = tools_dir.join("mkkeywordhash.c");
+    let lemon_path = sqlite_dir.join("lemon.c");
+    let mkkeywordhash_path = sqlite_dir.join("mkkeywordhash.c");
 
     println!("cargo:rerun-if-changed={}", lemon_path.display());
     println!("cargo:rerun-if-changed={}", mkkeywordhash_path.display());
@@ -41,7 +30,6 @@ fn main() {
     // Compile the modified mkkeywordhash.c
     cc::Build::new()
         .file(&modified_mkkeywordhash)
-        .define("main", "mkkeywordhash_main")
         .flag_if_supported("-Wno-missing-field-initializers")
         .flag_if_supported("-Wno-unused-parameter")
         .flag_if_supported("-Wno-unused-variable")
@@ -61,11 +49,28 @@ fn transform_mkkeywordhash(input: &PathBuf, output: &PathBuf) -> Result<(), Stri
         .add_function_parameters("reorder", "Keyword *aKeywordTable, int nKeyword")
         .add_function_parameters("main", "Keyword *aKeywordTable, int nKeyword")
         // Fix call sites: append keyword args after existing args
-        .replace_in_function("main", "findById(p->id)", "findById(p->id, aKeywordTable, nKeyword)")
-        .replace_in_function("main", "findById(p->substrId)", "findById(p->substrId, aKeywordTable, nKeyword)")
-        .replace_in_function("main", "reorder(&aKWHash[h])", "reorder(&aKWHash[h], aKeywordTable, nKeyword)")
+        .replace_in_function(
+            "main",
+            "findById(p->id)",
+            "findById(p->id, aKeywordTable, nKeyword)",
+        )
+        .replace_in_function(
+            "main",
+            "findById(p->substrId)",
+            "findById(p->substrId, aKeywordTable, nKeyword)",
+        )
+        .replace_in_function(
+            "main",
+            "reorder(&aKWHash[h])",
+            "reorder(&aKWHash[h], aKeywordTable, nKeyword)",
+        )
         // Fix recursive call in reorder function itself
-        .replace_in_function("reorder", "reorder(&aKeywordTable[i].iNext)", "reorder(&aKeywordTable[i].iNext, aKeywordTable, nKeyword)")
+        .replace_in_function(
+            "reorder",
+            "reorder(&aKeywordTable[i].iNext)",
+            "reorder(&aKeywordTable[i].iNext, aKeywordTable, nKeyword)",
+        )
+        .rename_function("main", "mkkeyword_main")
         .finish();
 
     fs::write(output, transformed)

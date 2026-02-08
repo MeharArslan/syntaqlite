@@ -1,7 +1,8 @@
-pub mod call;
+pub mod grammar_parser;
+pub mod lemon;
 
 use std::fs;
-use syntaqlite_codegen_utils::{grammar_parser, c_writer, c_extractor, c_transformer};
+use syntaqlite_codegen_utils::{c_extractor, c_transformer, c_writer};
 
 pub fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<(), String> {
     // Read input file
@@ -17,8 +18,7 @@ pub fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<()
 
     // Write output
     if let Some(output) = output_path {
-        fs::write(output, c_code)
-            .map_err(|e| format!("Failed to write {}: {}", output, e))?;
+        fs::write(output, c_code).map_err(|e| format!("Failed to write {}: {}", output, e))?;
     } else {
         print!("{}", c_code);
     }
@@ -64,17 +64,14 @@ fn generate_header(grammar: &grammar_parser::LemonGrammar, source: &str) -> Resu
     Ok(w.finish())
 }
 
-pub fn extract_tokenizer(
-    tokenize_c_path: &str,
-    output_path: &str,
-) -> Result<(), String> {
+pub fn extract_tokenizer(tokenize_c_path: &str, output_path: &str) -> Result<(), String> {
     let tokenize_content = fs::read_to_string(tokenize_c_path)
         .map_err(|e| format!("Failed to read {}: {}", tokenize_c_path, e))?;
     let tokenize_extractor = c_extractor::CExtractor::new(&tokenize_content);
 
     let global_c = "third_party/src/sqlite/src/global.c";
-    let global_content = fs::read_to_string(global_c)
-        .map_err(|e| format!("Failed to read {}: {}", global_c, e))?;
+    let global_content =
+        fs::read_to_string(global_c).map_err(|e| format!("Failed to read {}: {}", global_c, e))?;
     let global_extractor = c_extractor::CExtractor::new(&global_content);
 
     let sqliteint_h = "third_party/src/sqlite/src/sqliteInt.h";

@@ -150,11 +150,11 @@ impl CExtractor {
 
         for name in names {
             for line in &self.lines {
-                if let Some(define_name) = Self::parse_define_name(line) {
-                    if define_name == *name {
-                        lines.push(line.clone());
-                        break;
-                    }
+                if let Some(define_name) = Self::parse_define_name(line)
+                    && define_name == *name
+                {
+                    lines.push(line.clone());
+                    break;
                 }
             }
         }

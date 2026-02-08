@@ -19,11 +19,11 @@ impl CTransformer {
     /// Remove `static` keyword from an array declaration
     pub fn remove_array_static(mut self, name: &str) -> Self {
         let extractor = CExtractor::new(&self.content);
-        if let Ok(array) = extractor.extract_static_array(name) {
-            if array.text.trim_start().starts_with("static ") {
-                let transformed = array.text.replacen("static ", "", 1);
-                self.content = self.content.replace(&array.text, &transformed);
-            }
+        if let Ok(array) = extractor.extract_static_array(name)
+            && array.text.trim_start().starts_with("static ")
+        {
+            let transformed = array.text.replacen("static ", "", 1);
+            self.content = self.content.replace(&array.text, &transformed);
         }
         self
     }
@@ -31,16 +31,15 @@ impl CTransformer {
     /// Add `static` keyword to an array declaration
     pub fn add_array_static(mut self, name: &str) -> Self {
         let extractor = CExtractor::new(&self.content);
-        if let Ok(array) = extractor.extract_static_array(name) {
-            if !array.text.trim_start().starts_with("static ") {
-                // Find the declaration and add static
-                let transformed = array.text.replacen(
-                    &format!("{}[", name),
-                    &format!("static {}[", name),
-                    1
-                );
-                self.content = self.content.replace(&array.text, &transformed);
-            }
+        if let Ok(array) = extractor.extract_static_array(name)
+            && !array.text.trim_start().starts_with("static ")
+        {
+            // Find the declaration and add static
+            let transformed =
+                array
+                    .text
+                    .replacen(&format!("{}[", name), &format!("static {}[", name), 1);
+            self.content = self.content.replace(&array.text, &transformed);
         }
         self
     }
