@@ -70,17 +70,64 @@ pub fn extract_tokenizer(
     tokenize_c_path: &str,
     output_path: &str,
 ) -> Result<(), String> {
-    use c_transform::ChangeNameTransform;
+    use c_transform::{AddStaticTransform, ChangeNameTransform};
 
-    let content = fs::read_to_string(tokenize_c_path)
+    let tokenize_content = fs::read_to_string(tokenize_c_path)
         .map_err(|e| format!("Failed to read {}: {}", tokenize_c_path, e))?;
+    let tokenize_extractor = c_extractor::CExtractor::new(&tokenize_content);
 
-    let extractor = c_extractor::CExtractor::new(&content);
+    let global_c = "third_party/src/sqlite/src/global.c";
+    let global_content = fs::read_to_string(global_c)
+        .map_err(|e| format!("Failed to read {}: {}", global_c, e))?;
+    let global_extractor = c_extractor::CExtractor::new(&global_content);
 
-    let cc_defines = extractor.extract_defines_with_prefix("CC_")?;
-    let array = extractor.extract_static_array("aiClass")?;
-    let function = extractor.extract_function("sqlite3GetToken")?;
-    let renamed = function.change_name("syntaqlite_get_token");
+    let sqliteint_h = "third_party/src/sqlite/src/sqliteInt.h";
+    let sqliteint_content = fs::read_to_string(sqliteint_h)
+        .map_err(|e| format!("Failed to read {}: {}", sqliteint_h, e))?;
+    let sqliteint_extractor = c_extractor::CExtractor::new(&sqliteint_content);
+
+    let cc_defines = tokenize_extractor.extract_specific_defines(&[
+        "CC_X",
+        "CC_KYWD0",
+        "CC_KYWD",
+        "CC_DIGIT",
+        "CC_DOLLAR",
+        "CC_VARALPHA",
+        "CC_VARNUM",
+        "CC_SPACE",
+        "CC_QUOTE",
+        "CC_QUOTE2",
+        "CC_PIPE",
+        "CC_MINUS",
+        "CC_LT",
+        "CC_GT",
+        "CC_EQ",
+        "CC_BANG",
+        "CC_SLASH",
+        "CC_LP",
+        "CC_RP",
+        "CC_SEMI",
+        "CC_PLUS",
+        "CC_STAR",
+        "CC_PERCENT",
+        "CC_COMMA",
+        "CC_AND",
+        "CC_TILDA",
+        "CC_DOT",
+        "CC_ID",
+        "CC_ILLEGAL",
+        "CC_NUL",
+        "CC_BOM",
+    ])?;
+    let ai_class = tokenize_extractor.extract_static_array("aiClass")?;
+    let ctype_map = global_extractor.extract_static_array("sqlite3CtypeMap")?.add_static();
+    let is_macros = sqliteint_extractor.extract_specific_defines(&[
+        "sqlite3Isspace",
+        "sqlite3Isdigit",
+        "sqlite3Isxdigit",
+    ])?;
+    let function = tokenize_extractor.extract_function("sqlite3GetToken")?;
+    let renamed = function.change_name("synq_sqlite3GetToken");
 
     let output = {
         let mut w = c_writer::CWriter::new();
@@ -88,7 +135,11 @@ pub fn extract_tokenizer(
             .newline()
             .fragment(&cc_defines)
             .newline()
-            .fragment(&array)
+            .fragment(&ctype_map)
+            .newline()
+            .fragment(&is_macros)
+            .newline()
+            .fragment(&ai_class)
             .newline()
             .fragment(&renamed);
         w.finish()
