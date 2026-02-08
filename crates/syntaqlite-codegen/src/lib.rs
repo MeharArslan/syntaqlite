@@ -1,6 +1,7 @@
+pub mod call;
+
 use std::fs;
-use syntaqlite_codegen_utils::{grammar_parser, c_writer, c_extractor, c_transform};
-use c_transform::{AddStaticTransform, ChangeNameTransform};
+use syntaqlite_codegen_utils::{grammar_parser, c_writer, c_extractor, c_transformer};
 
 pub fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<(), String> {
     // Read input file
@@ -81,6 +82,7 @@ pub fn extract_tokenizer(
         .map_err(|e| format!("Failed to read {}: {}", sqliteint_h, e))?;
     let sqliteint_extractor = c_extractor::CExtractor::new(&sqliteint_content);
 
+    // Extract pieces
     let cc_defines = tokenize_extractor.extract_specific_defines(&[
         "CC_X",
         "CC_KYWD0",
@@ -115,16 +117,16 @@ pub fn extract_tokenizer(
         "CC_BOM",
     ])?;
     let ai_class = tokenize_extractor.extract_static_array("aiClass")?;
-    let ctype_map = global_extractor.extract_static_array("sqlite3CtypeMap")?.add_static();
+    let ctype_map = global_extractor.extract_static_array("sqlite3CtypeMap")?;
     let is_macros = sqliteint_extractor.extract_specific_defines(&[
         "sqlite3Isspace",
         "sqlite3Isdigit",
         "sqlite3Isxdigit",
     ])?;
     let function = tokenize_extractor.extract_function("sqlite3GetToken")?;
-    let renamed = function.change_name("synq_sqlite3GetToken");
 
-    let output = {
+    // Combine extracted pieces
+    let combined = {
         let mut w = c_writer::CWriter::new();
         w.include_local("src/common/sqlite_compat.h")
             .newline()
@@ -136,9 +138,15 @@ pub fn extract_tokenizer(
             .newline()
             .fragment(&ai_class)
             .newline()
-            .fragment(&renamed);
+            .fragment(&function);
         w.finish()
     };
+
+    // Transform the combined result
+    let output = c_transformer::CTransformer::new(&combined)
+        .add_array_static("sqlite3CtypeMap")
+        .rename_function("sqlite3GetToken", "synq_sqlite3GetToken")
+        .finish();
 
     fs::write(output_path, output)
         .map_err(|e| format!("Failed to write {}: {}", output_path, e))?;

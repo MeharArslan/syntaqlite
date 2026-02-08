@@ -1,9 +1,7 @@
 use std::env;
 use std::path::PathBuf;
 use std::fs;
-use syntaqlite_codegen_utils::c_extractor::CExtractor;
-use syntaqlite_codegen_utils::c_transform::{ChangeNameTransform, AddParametersTransform};
-use syntaqlite_codegen_utils::c_writer::CWriter;
+use syntaqlite_codegen_utils::c_transformer::CTransformer;
 
 fn main() {
     // Get the path to SQLite tools relative to the workspace root
@@ -44,6 +42,10 @@ fn main() {
     cc::Build::new()
         .file(&modified_mkkeywordhash)
         .define("main", "mkkeywordhash_main")
+        .flag_if_supported("-Wno-missing-field-initializers")
+        .flag_if_supported("-Wno-unused-parameter")
+        .flag_if_supported("-Wno-unused-variable")
+        .flag_if_supported("-Wno-sign-compare")
         .compile("mkkeywordhash");
 
     println!("cargo:rerun-if-changed=build.rs");
@@ -53,22 +55,21 @@ fn transform_mkkeywordhash(input: &PathBuf, output: &PathBuf) -> Result<(), Stri
     let content = fs::read_to_string(input)
         .map_err(|e| format!("Failed to read {}: {}", input.display(), e))?;
 
-    // Split source by main function
-    let extractor = CExtractor::new(&content);
-    let split = extractor.split_by_function("main")?;
+    let transformed = CTransformer::new(&content)
+        .remove_array_static("aKeywordTable")
+        .add_function_parameters("findById", "Keyword *aKeywordTable, int nKeyword")
+        .add_function_parameters("reorder", "Keyword *aKeywordTable, int nKeyword")
+        .add_function_parameters("main", "Keyword *aKeywordTable, int nKeyword")
+        // Fix call sites: append keyword args after existing args
+        .replace_in_function("main", "findById(p->id)", "findById(p->id, aKeywordTable, nKeyword)")
+        .replace_in_function("main", "findById(p->substrId)", "findById(p->substrId, aKeywordTable, nKeyword)")
+        .replace_in_function("main", "reorder(&aKWHash[h])", "reorder(&aKWHash[h], aKeywordTable, nKeyword)")
+        // Fix recursive call in reorder function itself
+        .replace_in_function("reorder", "reorder(&aKeywordTable[i].iNext)", "reorder(&aKeywordTable[i].iNext, aKeywordTable, nKeyword)")
+        .finish();
 
-    // Transform: add parameters with names that shadow the globals
-    let transformed = split.function
-        .add_parameters("Keyword *aKeywordTable, int nKeyword");
-
-    // Write the transformed file (finish() takes ownership so we can't chain perfectly)
-    fs::write(output, {
-        let mut w = CWriter::new();
-        w.raw(&split.before)
-         .raw(&transformed.text)
-         .raw(&split.after);
-        w.finish()
-    }).map_err(|e| format!("Failed to write {}: {}", output.display(), e))?;
+    fs::write(output, transformed)
+        .map_err(|e| format!("Failed to write {}: {}", output.display(), e))?;
 
     Ok(())
 }

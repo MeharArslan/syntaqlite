@@ -15,6 +15,25 @@ struct Args {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Code generation and extraction utilities
+    Codegen {
+        #[command(subcommand)]
+        subcommand: CodegenCommand,
+    },
+
+    /// Run lemon parser generator on a grammar file
+    Lemon {
+        /// Grammar file to process (e.g., parse.y)
+        grammar: String,
+
+        /// Additional arguments to pass to lemon
+        #[arg(last = true)]
+        args: Vec<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum CodegenCommand {
     /// Extract grammar tokens from a Lemon grammar file
     ExtractGrammar {
         /// Input grammar file (e.g., parse.y)
@@ -41,29 +60,46 @@ fn main() {
     let args = Args::parse();
 
     let result = match args.command {
-        Command::ExtractGrammar { input, output } => {
-            if args.verbose {
-                eprintln!("Reading grammar from: {}", input);
+        Command::Codegen { subcommand } => match subcommand {
+            CodegenCommand::ExtractGrammar { input, output } => {
+                if args.verbose {
+                    eprintln!("Reading grammar from: {}", input);
+                }
+
+                let res = syntaqlite_codegen::extract_grammar(&input, output.as_deref());
+
+                if args.verbose && output.is_some() {
+                    eprintln!("Wrote output to: {}", output.unwrap());
+                }
+
+                res
             }
 
-            let res = syntaqlite_codegen::extract_grammar(&input, output.as_deref());
+            CodegenCommand::ExtractTokenizer { input, output } => {
+                if args.verbose {
+                    eprintln!("Extracting tokenizer from: {}", input);
+                }
 
-            if args.verbose && output.is_some() {
-                eprintln!("Wrote output to: {}", output.unwrap());
+                let res = syntaqlite_codegen::extract_tokenizer(&input, &output);
+
+                if args.verbose {
+                    eprintln!("Wrote tokenizer to: {}", output);
+                }
+
+                res
+            }
+        },
+
+        Command::Lemon { grammar, args: lemon_args } => {
+            if args.verbose {
+                eprintln!("Running lemon on: {}", grammar);
             }
 
-            res
-        }
-
-        Command::ExtractTokenizer { input, output } => {
-            if args.verbose {
-                eprintln!("Extracting tokenizer from: {}", input);
-            }
-
-            let res = syntaqlite_codegen::extract_tokenizer(&input, &output);
+            let arg_refs: Vec<&str> = lemon_args.iter().map(|s| s.as_str()).collect();
+            let res = syntaqlite_codegen::call::run_lemon(&grammar, &arg_refs);
 
             if args.verbose {
-                eprintln!("Wrote output to: {}", output);
+                eprintln!("Lemon completed successfully");
             }
 
             res
