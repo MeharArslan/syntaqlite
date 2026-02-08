@@ -35,8 +35,8 @@ impl CTransformer {
                 // - Variable: contains "name " or " name "
                 // - Function: contains "name("
                 let is_array = line.contains(&format!("{}[", name));
-                let is_variable = line.contains(&format!("{} ", name))
-                    || line.contains(&format!(" {} ", name));
+                let is_variable =
+                    line.contains(&format!("{} ", name)) || line.contains(&format!(" {} ", name));
                 let is_function = line.contains(&format!("{}(", name));
 
                 if is_array || is_variable || is_function {
@@ -88,11 +88,12 @@ impl CTransformer {
 
     /// Insert content after all include directives
     pub fn insert_after_includes(mut self, content: &str) -> Self {
-        if let Some(pos) = self.content.rfind("#include") {
-            if let Some(newline_pos) = self.content[pos..].find('\n') {
-                let insert_pos = pos + newline_pos + 1;
-                self.content.insert_str(insert_pos, &format!("\n{}\n", content));
-            }
+        if let Some(pos) = self.content.rfind("#include")
+            && let Some(newline_pos) = self.content[pos..].find('\n')
+        {
+            let insert_pos = pos + newline_pos + 1;
+            self.content
+                .insert_str(insert_pos, &format!("\n{}\n", content));
         }
         self
     }

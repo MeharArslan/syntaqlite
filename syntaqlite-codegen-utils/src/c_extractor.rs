@@ -147,10 +147,7 @@ impl CExtractor {
     /// Extract `#define`(s) by name, including their enclosing `#ifdef`/`#endif`
     /// guards. When a macro has multiple conditional variants, adjacent blocks
     /// are merged into one contiguous region.
-    pub fn extract_defines_with_ifdef_context(
-        &self,
-        names: &[&str],
-    ) -> Result<CDefines, String> {
+    pub fn extract_defines_with_ifdef_context(&self, names: &[&str]) -> Result<CDefines, String> {
         let mut ranges: Vec<(usize, usize)> = Vec::new();
 
         for name in names {

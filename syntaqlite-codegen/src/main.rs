@@ -36,7 +36,11 @@ fn main() {
 
     let result = (|| -> Result<(), String> {
         match args.command {
-            Command::Codegen { parse_y, tokenize_c, tokenize_output } => {
+            Command::Codegen {
+                parse_y,
+                tokenize_c,
+                tokenize_output,
+            } => {
                 if args.verbose {
                     eprintln!("Generating parser...");
                 }
@@ -46,7 +50,8 @@ fn main() {
                 if args.verbose {
                     eprintln!("Extracting tokenizer...");
                 }
-                let extract_result = syntaqlite_codegen::extract_tokenizer(&tokenize_c, &tokenize_output)?;
+                let extract_result =
+                    syntaqlite_codegen::extract_tokenizer(&tokenize_c, &tokenize_output)?;
 
                 if args.verbose {
                     eprintln!("Generating keyword hash...");
@@ -67,7 +72,9 @@ fn main() {
 
                 syntaqlite_codegen::lemon::run_lemon(&lemon_args);
             }
-            Command::Mkkeyword { args: mkkeyword_args } => {
+            Command::Mkkeyword {
+                args: mkkeyword_args,
+            } => {
                 if args.verbose {
                     eprintln!("Running mkkeyword with args: {:?}", mkkeyword_args);
                 }

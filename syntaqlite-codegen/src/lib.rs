@@ -75,7 +75,10 @@ fn generate_header(grammar: &grammar_parser::LemonGrammar, source: &str) -> Resu
     Ok(w.finish())
 }
 
-pub fn extract_tokenizer(tokenize_c_path: &str, output_path: &str) -> Result<TokenizerExtractResult, String> {
+pub fn extract_tokenizer(
+    tokenize_c_path: &str,
+    output_path: &str,
+) -> Result<TokenizerExtractResult, String> {
     let tokenize_content = fs::read_to_string(tokenize_c_path)
         .map_err(|e| format!("Failed to read {}: {}", tokenize_c_path, e))?;
     let tokenize_extractor = c_extractor::CExtractor::new(&tokenize_content);
@@ -195,8 +198,8 @@ pub fn generate_parser(
     output_dir: Option<&str>,
     tokens_output: Option<&str>,
 ) -> Result<(), String> {
-    let grammar_bytes = fs::read(grammar_path)
-        .map_err(|e| format!("Failed to read {}: {}", grammar_path, e))?;
+    let grammar_bytes =
+        fs::read(grammar_path).map_err(|e| format!("Failed to read {}: {}", grammar_path, e))?;
     // Create or use provided output directory
     let temp_dir: Option<tempfile::TempDir>;
     let work_dir = if let Some(dir) = output_dir {
@@ -205,8 +208,10 @@ pub fn generate_parser(
             .map_err(|e| format!("Failed to create output directory: {}", e))?;
         path
     } else {
-        temp_dir = Some(tempfile::TempDir::new()
-            .map_err(|e| format!("Failed to create temp directory: {}", e))?);
+        temp_dir = Some(
+            tempfile::TempDir::new()
+                .map_err(|e| format!("Failed to create temp directory: {}", e))?,
+        );
         temp_dir.as_ref().unwrap().path()
     };
 
@@ -217,17 +222,18 @@ pub fn generate_parser(
 
     // Step 2: Extract grammar using extract_grammar
     let extracted_grammar_path = work_dir.join("parse_extracted.h");
-    let raw_parse_y_str = raw_parse_y_path.to_str()
+    let raw_parse_y_str = raw_parse_y_path
+        .to_str()
         .ok_or_else(|| "Invalid raw parse.y path".to_string())?;
-    let extracted_grammar_str = extracted_grammar_path.to_str()
+    let extracted_grammar_str = extracted_grammar_path
+        .to_str()
         .ok_or_else(|| "Invalid extracted grammar path".to_string())?;
 
     extract_grammar(raw_parse_y_str, Some(extracted_grammar_str))?;
 
     // Step 3: Write lempar.c template to working directory
     let lempar_path = work_dir.join("lempar.c");
-    fs::write(&lempar_path, LEMPAR_C)
-        .map_err(|e| format!("Failed to write lempar.c: {}", e))?;
+    fs::write(&lempar_path, LEMPAR_C).map_err(|e| format!("Failed to write lempar.c: {}", e))?;
 
     // Step 4: Write the original grammar for lemon processing
     // (lemon needs the full .y file with rules, not just the extracted tokens)
@@ -238,19 +244,22 @@ pub fn generate_parser(
     // Step 5: Run lemon with -T option pointing to our template
     // Spawn ourselves as a subprocess with the lemon subcommand
     // Note: lemon expects -T and the path combined as a single argument: -T/path/to/template.c
-    let parse_y_str = parse_y_path.to_str()
+    let parse_y_str = parse_y_path
+        .to_str()
         .ok_or_else(|| "Invalid parse.y path".to_string())?;
-    let lempar_str = lempar_path.to_str()
+    let lempar_str = lempar_path
+        .to_str()
         .ok_or_else(|| "Invalid lempar.c path".to_string())?;
     let template_arg = format!("-T{}", lempar_str);
 
-    let status = std::process::Command::new(std::env::current_exe()
-            .map_err(|e| format!("Failed to get current executable: {}", e))?)
-        .arg("lemon")
-        .arg(&template_arg)
-        .arg(parse_y_str)
-        .status()
-        .map_err(|e| format!("Failed to spawn lemon subprocess: {}", e))?;
+    let status = std::process::Command::new(
+        std::env::current_exe().map_err(|e| format!("Failed to get current executable: {}", e))?,
+    )
+    .arg("lemon")
+    .arg(&template_arg)
+    .arg(parse_y_str)
+    .status()
+    .map_err(|e| format!("Failed to spawn lemon subprocess: {}", e))?;
 
     if !status.success() {
         return Err(format!("Lemon failed with exit code: {}", status));
@@ -275,8 +284,8 @@ pub fn generate_parser(
         }
 
         // Read parse.h and rename TK_ to SYNTAQLITE_TK_
-        let parse_h_content = fs::read_to_string(&parse_h)
-            .map_err(|e| format!("Failed to read parse.h: {}", e))?;
+        let parse_h_content =
+            fs::read_to_string(&parse_h).map_err(|e| format!("Failed to read parse.h: {}", e))?;
         let renamed_content = parse_h_content.replace("TK_", "SYNTAQLITE_TK_");
 
         fs::write(tokens_out, renamed_content)
@@ -298,7 +307,10 @@ pub fn generate_parser(
 ///
 /// # Errors
 /// Returns error if mkkeywordhash execution fails or file writing fails
-pub fn generate_keyword_hash(output_path: &str, extract_result: &TokenizerExtractResult) -> Result<(), String> {
+pub fn generate_keyword_hash(
+    output_path: &str,
+    extract_result: &TokenizerExtractResult,
+) -> Result<(), String> {
     // Run mkkeywordhash as a subprocess and capture its output
     let output = std::process::Command::new(
         std::env::current_exe().map_err(|e| format!("Failed to get current executable: {}", e))?,
@@ -346,7 +358,10 @@ pub fn generate_keyword_hash(output_path: &str, extract_result: &TokenizerExtrac
 }
 
 /// Split keyword code into tables header and function implementation
-fn split_keyword_code(code: &str, extract_result: &TokenizerExtractResult) -> Result<(String, String), String> {
+fn split_keyword_code(
+    code: &str,
+    extract_result: &TokenizerExtractResult,
+) -> Result<(String, String), String> {
     // Use CExtractor to split by the function
     let extractor = c_extractor::CExtractor::new(code);
     let split = extractor.split_by_function("synq_sqlite3_keywordCode")?;
