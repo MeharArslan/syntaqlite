@@ -29,8 +29,7 @@
 
 #include <stdint.h>
 
-// AST node types (public, self-contained).
-#include "syntaqlite/ast_nodes_gen.h"
+#include "syntaqlite/ast_nodes.h"
 
 #ifdef __cplusplus
 extern "C" {

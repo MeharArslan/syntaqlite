@@ -1,7 +1,9 @@
-mod c_writer;
+pub mod ast_codegen;
+pub mod c_writer;
 pub mod grammar_parser;
 pub mod lemon;
 pub mod mkkeyword;
+pub mod node_parser;
 mod run;
 
 use std::fs;
@@ -26,7 +28,7 @@ pub fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<()
         .map_err(|e| format!("Parse error at {}:{}: {}", e.line, e.column, e.message))?;
 
     // Generate C header
-    let c_code = generate_header(&grammar, input_path)?;
+    let c_code = generate_header(&grammar)?;
 
     // Write output
     if let Some(output) = output_path {
@@ -38,11 +40,11 @@ pub fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<()
     Ok(())
 }
 
-fn generate_header(grammar: &grammar_parser::LemonGrammar, source: &str) -> Result<String, String> {
+fn generate_header(grammar: &grammar_parser::LemonGrammar) -> Result<String, String> {
     let mut w = c_writer::CWriter::new();
 
     // File header
-    w.file_header(source, "syntaqlite-codegen");
+    w.file_header();
 
     // Header guard
     let guard = "GRAMMAR_TOKENS_H";

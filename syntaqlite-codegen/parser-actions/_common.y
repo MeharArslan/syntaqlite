@@ -16,8 +16,8 @@
 %start_symbol input
 
 %include {
-#include "syntaqlite/tokens.h"
 #include "csrc/sqlite_parse_data.h"
+#include "syntaqlite/tokens.h"
 
 #define YYNOERRORRECOVERY 1
 #define YYPARSEFREENEVERNULL 1

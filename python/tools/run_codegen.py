@@ -23,6 +23,7 @@ def main():
     codegen_crate = project_root / "syntaqlite-codegen"
     sqlite_src = project_root / "third_party" / "src" / "sqlite" / "src"
     actions_dir = codegen_crate / "parser-actions"
+    nodes_dir = codegen_crate / "parser-nodes"
     tokenize_c = sqlite_src / "tokenize.c"
     output_dir = project_root / "syntaqlite-parser" / "csrc"
 
@@ -52,6 +53,7 @@ def main():
             str(codegen_bin),
             "codegen",
             "--actions-dir", str(actions_dir),
+            "--nodes-dir", str(nodes_dir),
             "--tokenize-c", str(tokenize_c),
             "--output-dir", str(output_dir),
         ],
