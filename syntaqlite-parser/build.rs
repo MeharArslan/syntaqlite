@@ -9,6 +9,7 @@ fn main() {
         .file(csrc.join("sqlite_tokenize.c"))
         .file(csrc.join("sqlite_keyword.c"))
         .file(csrc.join("ast.c"))
+        .file(csrc.join("arena.c"))
         .include(&manifest_dir)
         .include(manifest_dir.join("include"))
         .compile("syntaqlite_parser");
