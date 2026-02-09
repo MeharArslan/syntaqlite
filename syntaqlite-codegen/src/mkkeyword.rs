@@ -38,7 +38,7 @@ unsafe extern "C" {
     fn mkkeyword_main(
         argc: c_int,
         argv: *const *const c_char,
-        keywords: *mut Keyword,
+        keywords: *const Keyword,
         n_keywords: c_int,
     ) -> c_int;
 }
@@ -75,12 +75,12 @@ pub fn run_mkkeyword(args: &[String]) -> ! {
     };
 
     // Create a mutable copy for C to modify
-    let mut keywords_copy = keywords_array.to_vec();
+    let keywords_copy = keywords_array.to_vec();
 
     // Prepare arguments for C function call
     let argc = c_args.argc;
     let argv = c_args.argv();
-    let keywords_ptr = keywords_copy.as_mut_ptr();
+    let keywords_ptr = keywords_copy.as_ptr();
 
     // Call the C function with the mutable copy
     // SAFETY:

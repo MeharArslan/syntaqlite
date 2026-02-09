@@ -6,8 +6,6 @@
 //! extracts the information we need while skipping everything else.
 
 use std::fmt;
-use std::iter::Peekable;
-use std::str::CharIndices;
 
 // ============================================================================
 // Core Types
@@ -105,7 +103,6 @@ impl<'a> LemonGrammar<'a> {
 
 struct Parser<'a> {
     input: &'a str,
-    chars: Peekable<CharIndices<'a>>,
     pos: usize, // Current byte position
     line: usize,
     column: usize,
@@ -115,7 +112,6 @@ impl<'a> Parser<'a> {
     fn parse_grammar(input: &'a str) -> Result<LemonGrammar<'a>> {
         let mut parser = Self {
             input,
-            chars: input.char_indices().peekable(),
             pos: 0,
             line: 1,
             column: 1,
@@ -380,8 +376,6 @@ impl<'a> Parser<'a> {
         }
 
         self.pos = end_pos;
-        self.chars = self.input[self.pos..].char_indices().peekable();
-
         found
     }
 
@@ -423,7 +417,8 @@ impl<'a> Parser<'a> {
     }
 
     fn skip_line_comment(&mut self) {
-        self.expect_multi(&['/', '/']).expect("caller should have verified //");
+        self.expect_multi(&['/', '/'])
+            .expect("caller should have verified //");
         while let Some(ch) = self.next() {
             if ch == '\n' {
                 break;
@@ -432,7 +427,8 @@ impl<'a> Parser<'a> {
     }
 
     fn skip_block_comment(&mut self) {
-        self.expect_multi(&['/', '*']).expect("caller should have verified /*");
+        self.expect_multi(&['/', '*'])
+            .expect("caller should have verified /*");
         while let Some(ch) = self.next() {
             if ch == '*' && self.pos < self.input.len() && self.input[self.pos..].starts_with('/') {
                 self.next();
@@ -441,21 +437,20 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn peek(&mut self) -> Option<char> {
-        self.chars.peek().map(|(_, ch)| *ch)
+    fn peek(&self) -> Option<char> {
+        self.input[self.pos..].chars().next()
     }
 
     fn next(&mut self) -> Option<char> {
-        self.chars.next().map(|(pos, ch)| {
-            self.pos = pos + ch.len_utf8();
-            if ch == '\n' {
-                self.line += 1;
-                self.column = 1;
-            } else {
-                self.column += 1;
-            }
-            ch
-        })
+        let ch = self.input[self.pos..].chars().next()?;
+        self.pos += ch.len_utf8();
+        if ch == '\n' {
+            self.line += 1;
+            self.column = 1;
+        } else {
+            self.column += 1;
+        }
+        Some(ch)
     }
 
     fn expect(&mut self, expected: char) -> Result<()> {

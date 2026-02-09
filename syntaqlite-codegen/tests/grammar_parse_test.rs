@@ -31,7 +31,12 @@ fn test_grammar_integration() {
     // Parse base SQLite grammar
     let base_content = fs::read_to_string(&sqlite_parse_y).expect("Failed to read parse.y");
     let base_grammar = LemonGrammar::parse(&base_content)
-        .map_err(|e| format!("Base grammar parse error at {}:{}: {}", e.line, e.column, e.message))
+        .map_err(|e| {
+            format!(
+                "Base grammar parse error at {}:{}: {}",
+                e.line, e.column, e.message
+            )
+        })
         .expect("Base grammar should parse");
 
     println!(
@@ -73,8 +78,12 @@ fn test_grammar_integration() {
     let action_grammars: Vec<_> = action_contents
         .iter()
         .map(|(filename, content)| {
-            let grammar = LemonGrammar::parse(content)
-                .unwrap_or_else(|e| panic!("Failed to parse {} at {}:{}: {}", filename, e.line, e.column, e.message));
+            let grammar = LemonGrammar::parse(content).unwrap_or_else(|e| {
+                panic!(
+                    "Failed to parse {} at {}:{}: {}",
+                    filename, e.line, e.column, e.message
+                )
+            });
             (filename.as_str(), grammar)
         })
         .collect();
@@ -82,9 +91,7 @@ fn test_grammar_integration() {
     // Collect all rules
     let all_action_rules: Vec<_> = action_grammars
         .iter()
-        .flat_map(|(filename, grammar)| {
-            grammar.rules.iter().map(move |r| (r, *filename))
-        })
+        .flat_map(|(filename, grammar)| grammar.rules.iter().map(move |r| (r, *filename)))
         .collect();
 
     // Combine all contents
@@ -94,12 +101,17 @@ fn test_grammar_integration() {
         .collect::<Vec<_>>()
         .join("\n");
 
-    println!("Action files: {} files, {} total rules", action_files.len(), all_action_rules.len());
+    println!(
+        "Action files: {} files, {} total rules",
+        action_files.len(),
+        all_action_rules.len()
+    );
 
     // Verify token classes match
     if common_y.exists() {
         let common_content = fs::read_to_string(&common_y).expect("Failed to read _common.y");
-        let common_grammar = LemonGrammar::parse(&common_content).expect("Failed to parse _common.y");
+        let common_grammar =
+            LemonGrammar::parse(&common_content).expect("Failed to parse _common.y");
 
         let base_classes: HashMap<_, _> = base_grammar
             .token_classes
@@ -150,7 +162,10 @@ fn test_grammar_integration() {
                 mismatches.push(format!("{}: rule not in base: {}", filename, sig));
             }
         } else {
-            mismatches.push(format!("{}: non-terminal '{}' not in base", filename, rule.lhs));
+            mismatches.push(format!(
+                "{}: non-terminal '{}' not in base",
+                filename, rule.lhs
+            ));
         }
     }
 
@@ -165,11 +180,14 @@ fn test_grammar_integration() {
         panic!("{} action rules don't match base grammar", mismatches.len());
     }
 
-    println!("Action rules: all {} match base grammar", all_action_rules.len());
+    println!(
+        "Action rules: all {} match base grammar",
+        all_action_rules.len()
+    );
 
     // Verify combined grammar parses
-    let combined_grammar = LemonGrammar::parse(&combined_actions)
-        .expect("Combined action files should parse");
+    let combined_grammar =
+        LemonGrammar::parse(&combined_actions).expect("Combined action files should parse");
 
     println!("Combined actions: {} rules", combined_grammar.rules.len());
 
@@ -178,8 +196,7 @@ fn test_grammar_integration() {
     full.push_str("\n\n");
     full.push_str(&combined_actions);
 
-    let full_grammar = LemonGrammar::parse(&full)
-        .expect("Full combined grammar should parse");
+    let full_grammar = LemonGrammar::parse(&full).expect("Full combined grammar should parse");
 
     println!("Full grammar: {} rules", full_grammar.rules.len());
     println!("All checks passed");
