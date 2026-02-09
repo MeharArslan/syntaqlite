@@ -22,7 +22,6 @@ fn main() {
     println!("cargo:rerun-if-changed=csrc/ast.h");
     println!("cargo:rerun-if-changed=csrc/ast.c");
     println!("cargo:rerun-if-changed=csrc/ast_builder.h");
-    println!("cargo:rerun-if-changed=csrc/ast_range_meta.h");
     println!("cargo:rerun-if-changed=include/syntaqlite/ast.h");
     println!("cargo:rerun-if-changed=include/syntaqlite/ast_nodes.h");
 }

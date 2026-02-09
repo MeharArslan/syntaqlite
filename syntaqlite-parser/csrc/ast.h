@@ -36,6 +36,7 @@ uint32_t synq_arena_alloc(SynqArena *arena, uint8_t tag, size_t size);
 uint32_t synq_ast_list_empty(SynqAstContext *ctx, uint8_t tag, size_t size);
 uint32_t synq_ast_list_start(SynqAstContext *ctx, uint8_t tag, uint32_t first_child);
 uint32_t synq_ast_list_append(SynqAstContext *ctx, uint32_t list_id, uint32_t child, uint8_t tag);
+void synq_ast_list_flush(SynqAstContext *ctx);
 void synq_ast_ranges_sync(SynqAstContext *ctx);
 void synq_ast_range_union(SynqAstContext *ctx, SynqSourceRange *r, uint32_t child_id);
 void synq_ast_range_union_span(SynqSourceRange *r, SyntaqliteSourceSpan span);

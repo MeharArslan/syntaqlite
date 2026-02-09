@@ -328,21 +328,27 @@ pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
     .join("\n");
 
     // Build header from extracted sections
-    let header = [
-        control_defines,
-        yytestcase,
-        parser_structs,
-        parsing_tables,
-        yyfallback,
-        token_names,
-        rule_names,
-        rule_info_lhs.text,
-        rule_info_nrhs.text,
-        reduce_actions_fn,
-    ]
-    .join("\n\n");
+    let mut w = c_writer::CWriter::new();
+    w.file_header();
+    w.include_local("csrc/ast_builder.h");
+    w.newline();
+    for section in [
+        &control_defines,
+        &yytestcase,
+        &parser_structs,
+        &parsing_tables,
+        &yyfallback,
+        &token_names,
+        &rule_names,
+        &rule_info_lhs.text,
+        &rule_info_nrhs.text,
+        &reduce_actions_fn,
+    ] {
+        w.fragment(section);
+        w.newline();
+    }
 
-    Ok((main, header))
+    Ok((main, w.finish()))
 }
 
 /// Generate keyword hash lookup table
