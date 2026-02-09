@@ -5,6 +5,7 @@
 //! Lemon parser and makes no attempt to validate grammar correctness. It simply
 //! extracts the information we need while skipping everything else.
 
+use std::fmt;
 use std::iter::Peekable;
 use std::str::CharIndices;
 
@@ -16,11 +17,18 @@ use std::str::CharIndices;
 pub struct LemonGrammar<'a> {
     pub tokens: Vec<TokenDecl<'a>>,
     pub rules: Vec<GrammarRule<'a>>,
+    pub token_classes: Vec<TokenClass<'a>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TokenDecl<'a> {
     pub name: &'a str,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TokenClass<'a> {
+    pub name: &'a str,
+    pub tokens: &'a str, // Raw token list like "ID|STRING"
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,6 +42,38 @@ pub struct GrammarRule<'a> {
 pub struct RhsSymbol<'a> {
     pub name: &'a str,
     pub alias: Option<&'a str>,
+}
+
+// ============================================================================
+// Display Implementations
+// ============================================================================
+
+impl<'a> fmt::Display for GrammarRule<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let rhs = self
+            .rhs
+            .iter()
+            .map(|sym| sym.name)
+            .collect::<Vec<_>>()
+            .join(" ");
+
+        match self.precedence_override {
+            Some(prec) => write!(f, "{} ::= {} [{}]", self.lhs, rhs, prec),
+            None => write!(f, "{} ::= {}", self.lhs, rhs),
+        }
+    }
+}
+
+impl<'a> fmt::Display for TokenClass<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "%token_class {}  {}", self.name, self.tokens)
+    }
+}
+
+impl<'a> fmt::Display for TokenDecl<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
 }
 
 // ============================================================================
@@ -82,28 +122,62 @@ impl<'a> Parser<'a> {
         };
         let mut tokens = Vec::new();
         let mut rules = Vec::new();
+        let mut token_classes = Vec::new();
         while parser.peek().is_some() {
             parser.skip_ws();
             match parser.peek() {
                 Some('%') => {
                     parser.next();
-                    if parser.parse_identifier()? == "token" {
-                        parser.collect_tokens(&mut tokens)?;
-                    } else {
-                        parser.skip_to_next_item();
+                    let directive = parser.parse_identifier()?;
+                    match directive {
+                        "token" => {
+                            parser.collect_tokens(&mut tokens)?;
+                        }
+                        "token_class" => {
+                            parser.parse_token_class(&mut token_classes)?;
+                        }
+                        "ifdef" => {
+                            // Skip entire ifdef block (EXCLUDE these rules)
+                            parser.skip_ifdef_block()?;
+                        }
+                        "ifndef" => {
+                            // Keep contents, just skip the directive line (INCLUDE these rules)
+                            parser.skip_to_eol();
+                        }
+                        "endif" => {
+                            // Skip endif directive (already handled by skip_ifdef_block or matching ifndef)
+                            parser.skip_to_eol();
+                        }
+                        _ => {
+                            parser.skip_to_eol();
+                        }
                     }
                 }
                 Some(ch) if ch.is_alphabetic() || ch == '_' => {
-                    rules.push(parser.parse_rule()?);
-                    parser.skip_ws();
-                    parser.skip_block();
+                    // Check if current line contains ::= (is a rule) or not (bare tokens)
+                    let rest = &parser.input[parser.pos..];
+                    let line_end = rest.find('\n').unwrap_or(rest.len());
+                    let current_line = &rest[..line_end];
+
+                    if current_line.contains("::=") {
+                        rules.push(parser.parse_rule()?);
+                        parser.skip_ws();
+                        parser.skip_block();
+                    } else {
+                        // Bare token list, skip the line
+                        parser.skip_to_eol();
+                    }
                 }
                 _ => {
                     parser.next();
                 }
             }
         }
-        Ok(LemonGrammar { tokens, rules })
+        Ok(LemonGrammar {
+            tokens,
+            rules,
+            token_classes,
+        })
     }
 
     fn parse_rule(&mut self) -> Result<GrammarRule<'a>> {
@@ -244,6 +318,33 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
+    fn parse_token_class(&mut self, token_classes: &mut Vec<TokenClass<'a>>) -> Result<()> {
+        // Format: %token_class name  TOKENS.
+        self.skip_ws();
+        let name = self.parse_identifier()?;
+        self.skip_ws();
+
+        // Capture the token list (e.g., "ID|STRING")
+        let start = self.pos;
+        while let Some(ch) = self.peek() {
+            if ch == '.' {
+                let tokens = &self.input[start..self.pos].trim();
+                self.next(); // consume '.'
+                token_classes.push(TokenClass { name, tokens });
+                return Ok(());
+            }
+            if ch == '\n' {
+                break;
+            }
+            self.next();
+        }
+
+        // If no '.' found, treat rest of line as tokens
+        let tokens = &self.input[start..self.pos].trim();
+        token_classes.push(TokenClass { name, tokens });
+        Ok(())
+    }
+
     fn skip_block(&mut self) {
         if self.peek() != Some('{') {
             return;
@@ -284,6 +385,33 @@ impl<'a> Parser<'a> {
             }
             self.next();
         }
+    }
+
+    fn skip_to_eol(&mut self) {
+        while let Some(ch) = self.peek() {
+            if ch == '\n' {
+                self.next(); // consume the newline
+                break;
+            }
+            self.next();
+        }
+    }
+
+    fn skip_ifdef_block(&mut self) -> Result<()> {
+        // Skip until %endif
+        self.skip_to_eol();
+
+        while self.peek().is_some() {
+            if self.peek() == Some('%') {
+                self.next();
+                if self.parse_identifier().ok() == Some("endif") {
+                    self.skip_to_eol();
+                    return Ok(());
+                }
+            }
+            self.next();
+        }
+        Ok(())
     }
 
     fn skip_ws(&mut self) {

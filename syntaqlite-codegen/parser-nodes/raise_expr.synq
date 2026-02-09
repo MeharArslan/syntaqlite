@@ -1,0 +1,18 @@
+enum RaiseType { IGNORE ROLLBACK ABORT FAIL }
+
+node RaiseExpr {
+  raise_type: inline RaiseType
+  error_message: index Expr
+
+  fmt {
+    "RAISE("
+    switch(raise_type) {
+      IGNORE   { "IGNORE" }
+      ROLLBACK { "ROLLBACK" }
+      ABORT    { "ABORT" }
+      FAIL     { "FAIL" }
+    }
+    if_set(error_message) { ", " child(error_message) }
+    ")"
+  }
+}

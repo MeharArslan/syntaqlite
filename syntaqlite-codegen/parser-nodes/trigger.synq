@@ -1,0 +1,75 @@
+enum TriggerTiming { BEFORE AFTER INSTEAD_OF }
+enum TriggerEventType { DELETE INSERT UPDATE }
+
+node TriggerEvent {
+  event_type: inline TriggerEventType
+  columns: index ExprList
+
+  fmt {
+    switch(event_type) {
+      DELETE { "DELETE" }
+      INSERT { "INSERT" }
+      UPDATE {
+        "UPDATE"
+        if_set(columns) { " OF " child(columns) }
+      }
+    }
+  }
+}
+
+list TriggerCmdList {
+  Stmt
+  fmt {
+    for_each(sep: hardline) { child(_item) ";" }
+  }
+}
+
+node CreateTriggerStmt {
+  trigger_name: inline SyntaqliteSourceSpan
+  schema: inline SyntaqliteSourceSpan
+  is_temp: inline Bool
+  if_not_exists: inline Bool
+  timing: inline TriggerTiming
+  event: index TriggerEvent
+  table: index Expr
+  when_expr: index Expr
+  body: index TriggerCmdList
+
+  fmt {
+    "CREATE"
+    if_flag(is_temp) { " TEMP" }
+    " TRIGGER"
+    if_flag(if_not_exists) { " IF NOT EXISTS" }
+    " "
+    if_span(schema) { span(schema) "." }
+    span(trigger_name) " "
+    switch(timing) {
+      BEFORE     { "BEFORE" }
+      AFTER      { "AFTER" }
+      INSTEAD_OF { "INSTEAD OF" }
+    }
+    " " child(event) " ON " child(table)
+    if_set(when_expr) { hardline "WHEN " child(when_expr) }
+    hardline "BEGIN"
+    if_set(body) { nest { hardline child(body) } }
+    hardline "END"
+  }
+}
+
+node CreateVirtualTableStmt {
+  table_name: inline SyntaqliteSourceSpan
+  schema: inline SyntaqliteSourceSpan
+  module_name: inline SyntaqliteSourceSpan
+  if_not_exists: inline Bool
+  module_args: inline SyntaqliteSourceSpan
+
+  fmt {
+    "CREATE VIRTUAL TABLE"
+    if_flag(if_not_exists) { " IF NOT EXISTS" }
+    " "
+    if_span(schema) { span(schema) "." }
+    span(table_name)
+    " USING " span(module_name)
+    if_span(module_args) { "(" span(module_args) ")" }
+  }
+}

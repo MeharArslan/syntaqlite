@@ -1,0 +1,23 @@
+flags FunctionCallFlags { DISTINCT = 1 STAR = 2 }
+
+node FunctionCall {
+  func_name: inline SyntaqliteSourceSpan
+  flags: inline FunctionCallFlags
+  args: index ExprList
+  filter_clause: index Expr
+  over_clause: index WindowDef
+
+  fmt {
+    span(func_name)
+    group {
+      "("
+      if_flag(flags.distinct) { "DISTINCT " }
+      if_flag(flags.star) { "*" } else {
+        if_set(args) { nest { softline child(args) } }
+      }
+      softline ")"
+    }
+    if_set(filter_clause) { " FILTER (WHERE " child(filter_clause) ")" }
+    if_set(over_clause) { " OVER " child(over_clause) }
+  }
+}

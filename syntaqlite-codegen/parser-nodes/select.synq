@@ -1,0 +1,73 @@
+enum SortOrder { ASC DESC }
+enum NullsOrder { NONE FIRST LAST }
+
+flags ResultColumnFlags { STAR = 1 }
+flags SelectStmtFlags { DISTINCT = 1 }
+
+node ResultColumn {
+  flags: inline ResultColumnFlags
+  alias: inline SyntaqliteSourceSpan
+  expr: index Expr
+
+  fmt {
+    if_flag(flags.star) {
+      if_set(expr) { child(expr) ".*" } else { "*" }
+    } else {
+      child(expr)
+    }
+    if_span(alias) { " AS " span(alias) }
+  }
+}
+
+list ResultColumnList { ResultColumn }
+
+node SelectStmt {
+  flags: inline SelectStmtFlags
+  columns: index ResultColumnList
+  from_clause: index Expr
+  where: index Expr
+  groupby: index ExprList
+  having: index Expr
+  orderby: index OrderByList
+  limit_clause: index LimitClause
+  window_clause: index NamedWindowDefList
+
+  fmt {
+    group {
+      if_flag(flags.distinct) { "SELECT DISTINCT" } else { "SELECT" }
+      if_set(columns) { group { nest { line child(columns) } } }
+      clause("FROM", from_clause)
+      clause("WHERE", where)
+      clause("GROUP BY", groupby)
+      clause("HAVING", having)
+      clause("ORDER BY", orderby)
+      clause("LIMIT", limit_clause)
+      clause("WINDOW", window_clause)
+    }
+  }
+}
+
+node OrderingTerm {
+  expr: index Expr
+  sort_order: inline SortOrder
+  nulls_order: inline NullsOrder
+
+  fmt {
+    child(expr)
+    if_enum(sort_order, DESC) { " DESC" }
+    if_enum(nulls_order, FIRST) { " NULLS FIRST" }
+    if_enum(nulls_order, LAST) { " NULLS LAST" }
+  }
+}
+
+list OrderByList { OrderingTerm }
+
+node LimitClause {
+  limit: index Expr
+  offset: index Expr
+
+  fmt {
+    child(limit)
+    if_set(offset) { " OFFSET " child(offset) }
+  }
+}

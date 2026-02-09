@@ -80,6 +80,13 @@ impl CTransformer {
         self
     }
 
+    /// Add a system include directive (angle brackets) at the top of the file
+    pub fn add_system_include(mut self, header: &str) -> Self {
+        let include = format!("#include <{}>\n", header);
+        self.content = include + &self.content;
+        self
+    }
+
     /// Replace all occurrences of a string throughout the content
     pub fn replace_all(mut self, from: &str, to: &str) -> Self {
         self.content = self.content.replace(from, to);
@@ -166,6 +173,12 @@ impl CTransformer {
             let transformed = f(&function.text);
             self.content = self.content.replace(&function.text, &transformed);
         }
+    }
+
+    /// Append content at the end of the file
+    pub fn append(mut self, content: &str) -> Self {
+        self.content.push_str(content);
+        self
     }
 
     /// Finish transformation and return the result

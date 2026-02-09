@@ -1,0 +1,40 @@
+enum CompoundOp { UNION UNION_ALL INTERSECT EXCEPT }
+
+node CompoundSelect {
+  op: inline CompoundOp
+  left: index Stmt
+  right: index Stmt
+
+  fmt {
+    child(left) hardline
+    enum_display(op, {
+      UNION="UNION" UNION_ALL="UNION ALL"
+      INTERSECT="INTERSECT" EXCEPT="EXCEPT"
+    })
+    hardline child(right)
+  }
+}
+
+node SubqueryExpr {
+  select: index Stmt
+
+  fmt { "(" child(select) ")" }
+}
+
+node ExistsExpr {
+  select: index Stmt
+
+  fmt { "EXISTS (" child(select) ")" }
+}
+
+node InExpr {
+  negated: inline Bool
+  operand: index Expr
+  source: index Expr
+
+  fmt {
+    child(operand)
+    if_flag(negated) { " NOT IN " } else { " IN " }
+    "(" child(source) ")"
+  }
+}

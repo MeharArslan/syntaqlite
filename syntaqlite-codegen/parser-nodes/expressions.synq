@@ -1,0 +1,45 @@
+node BinaryExpr {
+  op: inline BinaryOp
+  left: index Expr
+  right: index Expr
+
+  fmt {
+    switch(op) {
+      AND { child(left) line "AND " child(right) }
+      OR  { child(left) line "OR "  child(right) }
+      default {
+        group {
+          child(left) line
+          enum_display(op, {
+            PLUS="+" MINUS="-" STAR="*" SLASH="/" REM="%"
+            LT="<" GT=">" LE="<=" GE=">=" EQ="=" NE="!="
+            AND="AND" OR="OR" BITAND="&" BITOR="|"
+            LSHIFT="<<" RSHIFT=">>" CONCAT="||" PTR="->"
+          })
+          " " child(right)
+        }
+      }
+    }
+  }
+}
+
+node UnaryExpr {
+  op: inline UnaryOp
+  operand: index Expr
+
+  fmt {
+    enum_display(op, {
+      MINUS="-" PLUS="+" BITNOT="~" NOT="NOT "
+    })
+    child(operand)
+  }
+}
+
+node Literal {
+  literal_type: inline LiteralType
+  source: inline SyntaqliteSourceSpan
+
+  fmt { span(source) }
+}
+
+list ExprList { Expr }

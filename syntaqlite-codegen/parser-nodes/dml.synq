@@ -1,0 +1,76 @@
+enum ConflictAction { DEFAULT ROLLBACK ABORT FAIL IGNORE REPLACE }
+
+node DeleteStmt {
+  table: index Expr
+  where: index Expr
+
+  fmt {
+    group {
+      "DELETE"
+      clause("FROM", table)
+      clause("WHERE", where)
+    }
+  }
+}
+
+node SetClause {
+  column: inline SyntaqliteSourceSpan
+  columns: index ExprList
+  value: index Expr
+
+  fmt {
+    if_span(column) { span(column) } else {
+      if_set(columns) { "(" child(columns) ")" }
+    }
+    " = " child(value)
+  }
+}
+
+list SetClauseList { SetClause }
+
+node UpdateStmt {
+  conflict_action: inline ConflictAction
+  table: index Expr
+  setlist: index SetClauseList
+  from_clause: index Expr
+  where: index Expr
+
+  fmt {
+    group {
+      "UPDATE"
+      switch(conflict_action) {
+        ROLLBACK { " OR ROLLBACK" }
+        ABORT    { " OR ABORT" }
+        FAIL     { " OR FAIL" }
+        IGNORE   { " OR IGNORE" }
+        REPLACE  { " OR REPLACE" }
+      }
+      " " child(table)
+      clause("SET", setlist)
+      clause("FROM", from_clause)
+      clause("WHERE", where)
+    }
+  }
+}
+
+node InsertStmt {
+  conflict_action: inline ConflictAction
+  table: index Expr
+  columns: index ExprList
+  source: index Stmt
+
+  fmt {
+    if_enum(conflict_action, REPLACE) { "REPLACE" } else {
+      "INSERT"
+      switch(conflict_action) {
+        ROLLBACK { " OR ROLLBACK" }
+        ABORT    { " OR ABORT" }
+        FAIL     { " OR FAIL" }
+        IGNORE   { " OR IGNORE" }
+      }
+    }
+    " INTO " child(table)
+    if_set(columns) { " (" child(columns) ")" }
+    if_set(source) { hardline child(source) }
+  }
+}

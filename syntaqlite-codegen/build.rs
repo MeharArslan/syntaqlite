@@ -37,6 +37,43 @@ fn main() {
         .compile("mkkeywordhash");
 
     println!("cargo:rerun-if-changed=build.rs");
+
+    // Track grammar files for test rebuilds
+    register_grammar_files();
+}
+
+fn register_grammar_files() {
+    use std::path::PathBuf;
+
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let base_dir = PathBuf::from(&manifest_dir);
+
+    // Track the base SQLite grammar
+    let sqlite_parse_y = base_dir.join("../third_party/src/sqlite/src/parse.y");
+    if sqlite_parse_y.exists() {
+        println!("cargo:rerun-if-changed={}", sqlite_parse_y.display());
+    }
+
+    // Track all parser action files
+    let parser_actions_dir = base_dir.join("parser-actions");
+    if parser_actions_dir.exists() {
+        println!("cargo:rerun-if-changed={}", parser_actions_dir.display());
+
+        if let Ok(entries) = fs::read_dir(&parser_actions_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("y") {
+                    println!("cargo:rerun-if-changed={}", path.display());
+                }
+            }
+        }
+    }
+
+    // Track parser nodes directory too
+    let parser_nodes_dir = base_dir.join("parser-nodes");
+    if parser_nodes_dir.exists() {
+        println!("cargo:rerun-if-changed={}", parser_nodes_dir.display());
+    }
 }
 
 fn transform_mkkeywordhash(input: &PathBuf, output: &PathBuf) -> Result<(), String> {
@@ -74,6 +111,25 @@ fn transform_mkkeywordhash(input: &PathBuf, output: &PathBuf) -> Result<(), Stri
             "reorder(&aKeywordTable[i].iNext, aKeywordTable, nKeyword)",
         )
         .rename_function("main", "mkkeyword_main")
+        // Expose struct layout so Rust tests can verify the Keyword struct matches.
+        .add_system_include("stddef.h")
+        .append(concat!(
+            "const size_t keyword_sizeof = sizeof(struct Keyword);\n",
+            "const size_t keyword_offsetof_zName = offsetof(struct Keyword, zName);\n",
+            "const size_t keyword_offsetof_zTokenType = offsetof(struct Keyword, zTokenType);\n",
+            "const size_t keyword_offsetof_mask = offsetof(struct Keyword, mask);\n",
+            "const size_t keyword_offsetof_priority = offsetof(struct Keyword, priority);\n",
+            "const size_t keyword_offsetof_id = offsetof(struct Keyword, id);\n",
+            "const size_t keyword_offsetof_hash = offsetof(struct Keyword, hash);\n",
+            "const size_t keyword_offsetof_offset = offsetof(struct Keyword, offset);\n",
+            "const size_t keyword_offsetof_len = offsetof(struct Keyword, len);\n",
+            "const size_t keyword_offsetof_prefix = offsetof(struct Keyword, prefix);\n",
+            "const size_t keyword_offsetof_longestSuffix = offsetof(struct Keyword, longestSuffix);\n",
+            "const size_t keyword_offsetof_iNext = offsetof(struct Keyword, iNext);\n",
+            "const size_t keyword_offsetof_substrId = offsetof(struct Keyword, substrId);\n",
+            "const size_t keyword_offsetof_substrOffset = offsetof(struct Keyword, substrOffset);\n",
+            "const size_t keyword_offsetof_zOrigName = offsetof(struct Keyword, zOrigName);\n",
+        ))
         .finish();
 
     fs::write(output, transformed)

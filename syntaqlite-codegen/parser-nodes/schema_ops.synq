@@ -1,0 +1,79 @@
+enum DropObjectType { TABLE INDEX VIEW TRIGGER }
+enum AlterOp { RENAME_TABLE RENAME_COLUMN DROP_COLUMN ADD_COLUMN }
+enum TransactionType { DEFERRED IMMEDIATE EXCLUSIVE }
+enum TransactionOp { BEGIN COMMIT ROLLBACK }
+enum SavepointOp { SAVEPOINT RELEASE ROLLBACK_TO }
+
+node QualifiedName {
+  object_name: inline SyntaqliteSourceSpan
+  schema: inline SyntaqliteSourceSpan
+
+  fmt {
+    if_span(schema) { span(schema) "." }
+    span(object_name)
+  }
+}
+
+node DropStmt {
+  object_type: inline DropObjectType
+  if_exists: inline Bool
+  target: index Expr
+
+  fmt {
+    "DROP "
+    enum_display(object_type, {
+      TABLE="TABLE" INDEX="INDEX" VIEW="VIEW" TRIGGER="TRIGGER"
+    })
+    if_flag(if_exists) { " IF EXISTS" }
+    " " child(target)
+  }
+}
+
+node AlterTableStmt {
+  op: inline AlterOp
+  target: index Expr
+  new_name: inline SyntaqliteSourceSpan
+  old_name: inline SyntaqliteSourceSpan
+
+  fmt {
+    "ALTER TABLE "
+    if_set(target) { child(target) " " }
+    switch(op) {
+      RENAME_TABLE  { "RENAME TO " span(new_name) }
+      RENAME_COLUMN { "RENAME COLUMN " span(old_name) " TO " span(new_name) }
+      DROP_COLUMN   { "DROP COLUMN " span(old_name) }
+      ADD_COLUMN    { "ADD COLUMN " span(old_name) }
+    }
+  }
+}
+
+node TransactionStmt {
+  op: inline TransactionOp
+  trans_type: inline TransactionType
+
+  fmt {
+    switch(op) {
+      BEGIN {
+        "BEGIN"
+        enum_display(trans_type, {
+          IMMEDIATE=" IMMEDIATE" EXCLUSIVE=" EXCLUSIVE"
+        })
+      }
+      COMMIT   { "COMMIT" }
+      ROLLBACK { "ROLLBACK" }
+    }
+  }
+}
+
+node SavepointStmt {
+  op: inline SavepointOp
+  savepoint_name: inline SyntaqliteSourceSpan
+
+  fmt {
+    switch(op) {
+      SAVEPOINT   { "SAVEPOINT " span(savepoint_name) }
+      RELEASE     { "RELEASE SAVEPOINT " span(savepoint_name) }
+      ROLLBACK_TO { "ROLLBACK TO SAVEPOINT " span(savepoint_name) }
+    }
+  }
+}

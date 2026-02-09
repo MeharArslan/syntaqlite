@@ -1,0 +1,31 @@
+enum Materialized { DEFAULT MATERIALIZED NOT_MATERIALIZED }
+
+node CteDefinition {
+  cte_name: inline SyntaqliteSourceSpan
+  materialized: inline Materialized
+  columns: index ExprList
+  select: index Stmt
+
+  fmt {
+    span(cte_name)
+    if_set(columns) { "(" child(columns) ")" }
+    " AS "
+    if_enum(materialized, MATERIALIZED) { "MATERIALIZED " }
+    if_enum(materialized, NOT_MATERIALIZED) { "NOT MATERIALIZED " }
+    "(" child(select) ")"
+  }
+}
+
+list CteList { CteDefinition }
+
+node WithClause {
+  recursive: inline Bool
+  ctes: index CteList
+  select: index Stmt
+
+  fmt {
+    if_flag(recursive) { "WITH RECURSIVE " } else { "WITH " }
+    if_set(ctes) { child(ctes) }
+    hardline child(select)
+  }
+}

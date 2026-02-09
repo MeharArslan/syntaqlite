@@ -1,0 +1,71 @@
+enum IsOp { IS IS_NOT ISNULL NOTNULL IS_NOT_DISTINCT IS_DISTINCT }
+
+node IsExpr {
+  op: inline IsOp
+  left: index Expr
+  right: index Expr
+
+  fmt {
+    switch(op) {
+      ISNULL          { child(left) " ISNULL" }
+      NOTNULL         { child(left) " NOTNULL" }
+      IS              { child(left) " IS " child(right) }
+      IS_NOT          { child(left) " IS NOT " child(right) }
+      IS_NOT_DISTINCT { child(left) " IS NOT DISTINCT FROM " child(right) }
+      IS_DISTINCT     { child(left) " IS DISTINCT FROM " child(right) }
+    }
+  }
+}
+
+node BetweenExpr {
+  negated: inline Bool
+  operand: index Expr
+  low: index Expr
+  high: index Expr
+
+  fmt {
+    child(operand)
+    if_flag(negated) { " NOT BETWEEN " } else { " BETWEEN " }
+    child(low) " AND " child(high)
+  }
+}
+
+node LikeExpr {
+  negated: inline Bool
+  operand: index Expr
+  pattern: index Expr
+  escape: index Expr
+
+  fmt {
+    child(operand)
+    if_flag(negated) { " NOT LIKE " } else { " LIKE " }
+    child(pattern)
+    if_set(escape) { " ESCAPE " child(escape) }
+  }
+}
+
+node CaseExpr {
+  operand: index Expr
+  else_expr: index Expr
+  whens: index CaseWhenList
+
+  fmt {
+    "CASE"
+    if_set(operand) { " " child(operand) }
+    if_set(whens) { child(whens) }
+    if_set(else_expr) { " ELSE " child(else_expr) }
+    " END"
+  }
+}
+
+node CaseWhen {
+  when_expr: index Expr
+  then_expr: index Expr
+
+  fmt { " WHEN " child(when_expr) " THEN " child(then_expr) }
+}
+
+list CaseWhenList {
+  CaseWhen
+  fmt { for_each { child(_item) } }
+}

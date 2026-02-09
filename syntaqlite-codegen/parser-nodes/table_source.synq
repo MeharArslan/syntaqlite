@@ -1,0 +1,64 @@
+enum JoinType {
+  COMMA INNER LEFT RIGHT FULL CROSS
+  NATURAL_INNER NATURAL_LEFT NATURAL_RIGHT NATURAL_FULL
+}
+
+node TableRef {
+  table_name: inline SyntaqliteSourceSpan
+  schema: inline SyntaqliteSourceSpan
+  alias: inline SyntaqliteSourceSpan
+
+  fmt {
+    if_span(schema) { span(schema) "." }
+    span(table_name)
+    if_span(alias) { " AS " span(alias) }
+  }
+}
+
+node SubqueryTableSource {
+  select: index Stmt
+  alias: inline SyntaqliteSourceSpan
+
+  fmt {
+    "(" child(select) ")"
+    if_span(alias) { " AS " span(alias) }
+  }
+}
+
+node JoinClause {
+  join_type: inline JoinType
+  left: index Expr
+  right: index Expr
+  on_expr: index Expr
+  using_columns: index ExprList
+
+  fmt {
+    switch(join_type) {
+      COMMA {
+        child(left) ", " child(right)
+        if_set(on_expr) { hardline "ON " child(on_expr) }
+        if_set(using_columns) { " USING (" child(using_columns) ")" }
+      }
+      default {
+        child(left) hardline
+        enum_display(join_type, {
+          INNER="JOIN" LEFT="LEFT JOIN" RIGHT="RIGHT JOIN"
+          FULL="FULL JOIN" CROSS="CROSS JOIN"
+          NATURAL_INNER="NATURAL JOIN" NATURAL_LEFT="NATURAL LEFT JOIN"
+          NATURAL_RIGHT="NATURAL RIGHT JOIN" NATURAL_FULL="NATURAL FULL JOIN"
+          COMMA=","
+        })
+        " " child(right)
+        if_set(on_expr) { hardline "ON " child(on_expr) }
+        if_set(using_columns) { " USING (" child(using_columns) ")" }
+      }
+    }
+  }
+}
+
+node JoinPrefix {
+  source: index Expr
+  join_type: inline JoinType
+
+  fmt { child(source) }
+}

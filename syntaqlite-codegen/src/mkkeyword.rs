@@ -4,10 +4,9 @@ use std::os::raw::{c_char, c_int};
 
 use crate::run;
 
-/// Rust representation of the C Keyword struct
+/// Rust representation of the C Keyword struct.
 ///
-/// TODO(lalitm): add some code which verifies that this struct definition is
-/// consistent with the definition in C.
+/// Layout is verified against the C definition in tests below.
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct Keyword {
@@ -95,4 +94,67 @@ pub fn run_mkkeyword(args: &[String]) -> ! {
     let exit_code = unsafe { mkkeyword_main(argc, argv, keywords_ptr, n_keywords) };
 
     std::process::exit(exit_code);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::mem;
+
+    unsafe extern "C" {
+        static keyword_sizeof: usize;
+        static keyword_offsetof_zName: usize;
+        static keyword_offsetof_zTokenType: usize;
+        static keyword_offsetof_mask: usize;
+        static keyword_offsetof_priority: usize;
+        static keyword_offsetof_id: usize;
+        static keyword_offsetof_hash: usize;
+        static keyword_offsetof_offset: usize;
+        static keyword_offsetof_len: usize;
+        static keyword_offsetof_prefix: usize;
+        static keyword_offsetof_longestSuffix: usize;
+        static keyword_offsetof_iNext: usize;
+        static keyword_offsetof_substrId: usize;
+        static keyword_offsetof_substrOffset: usize;
+        static keyword_offsetof_zOrigName: usize;
+    }
+
+    #[test]
+    fn keyword_struct_matches_c_layout() {
+        unsafe {
+            assert_eq!(mem::size_of::<Keyword>(), keyword_sizeof, "sizeof mismatch");
+            assert_eq!(mem::offset_of!(Keyword, z_name), keyword_offsetof_zName);
+            assert_eq!(
+                mem::offset_of!(Keyword, z_token_type),
+                keyword_offsetof_zTokenType
+            );
+            assert_eq!(mem::offset_of!(Keyword, mask), keyword_offsetof_mask);
+            assert_eq!(
+                mem::offset_of!(Keyword, priority),
+                keyword_offsetof_priority
+            );
+            assert_eq!(mem::offset_of!(Keyword, id), keyword_offsetof_id);
+            assert_eq!(mem::offset_of!(Keyword, hash), keyword_offsetof_hash);
+            assert_eq!(mem::offset_of!(Keyword, offset), keyword_offsetof_offset);
+            assert_eq!(mem::offset_of!(Keyword, len), keyword_offsetof_len);
+            assert_eq!(mem::offset_of!(Keyword, prefix), keyword_offsetof_prefix);
+            assert_eq!(
+                mem::offset_of!(Keyword, longest_suffix),
+                keyword_offsetof_longestSuffix
+            );
+            assert_eq!(mem::offset_of!(Keyword, i_next), keyword_offsetof_iNext);
+            assert_eq!(
+                mem::offset_of!(Keyword, substr_id),
+                keyword_offsetof_substrId
+            );
+            assert_eq!(
+                mem::offset_of!(Keyword, substr_offset),
+                keyword_offsetof_substrOffset
+            );
+            assert_eq!(
+                mem::offset_of!(Keyword, z_orig_name),
+                keyword_offsetof_zOrigName
+            );
+        }
+    }
 }

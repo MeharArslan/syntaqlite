@@ -1,0 +1,88 @@
+enum FrameType { NONE RANGE ROWS GROUPS }
+enum FrameBoundType { UNBOUNDED_PRECEDING EXPR_PRECEDING CURRENT_ROW EXPR_FOLLOWING UNBOUNDED_FOLLOWING }
+enum FrameExclude { NONE NO_OTHERS CURRENT_ROW GROUP TIES }
+
+node FrameBound {
+  bound_type: inline FrameBoundType
+  expr: index Expr
+
+  fmt {
+    switch(bound_type) {
+      UNBOUNDED_PRECEDING { "UNBOUNDED PRECEDING" }
+      EXPR_PRECEDING      { child(expr) " PRECEDING" }
+      CURRENT_ROW         { "CURRENT ROW" }
+      EXPR_FOLLOWING      { child(expr) " FOLLOWING" }
+      UNBOUNDED_FOLLOWING { "UNBOUNDED FOLLOWING" }
+    }
+  }
+}
+
+node FrameSpec {
+  frame_type: inline FrameType
+  exclude: inline FrameExclude
+  start_bound: index FrameBound
+  end_bound: index FrameBound
+
+  fmt {
+    switch(frame_type) {
+      RANGE  { "RANGE" }
+      ROWS   { "ROWS" }
+      GROUPS { "GROUPS" }
+    }
+    " BETWEEN " child(start_bound) " AND " child(end_bound)
+    switch(exclude) {
+      NO_OTHERS   { " EXCLUDE NO OTHERS" }
+      CURRENT_ROW { " EXCLUDE CURRENT ROW" }
+      GROUP       { " EXCLUDE GROUP" }
+      TIES        { " EXCLUDE TIES" }
+    }
+  }
+}
+
+node WindowDef {
+  base_window_name: inline SyntaqliteSourceSpan
+  partition_by: index ExprList
+  orderby: index OrderByList
+  frame: index FrameSpec
+
+  fmt {
+    if_span(base_window_name) { span(base_window_name) } else {
+      "("
+      if_set(partition_by) { "PARTITION BY " child(partition_by) }
+      if_set(orderby) {
+        if_set(partition_by) { " " }
+        "ORDER BY " child(orderby)
+      }
+      if_set(frame) {
+        if_set(partition_by) { " " } else {
+          if_set(orderby) { " " }
+        }
+        child(frame)
+      }
+      ")"
+    }
+  }
+}
+
+list WindowDefList { WindowDef }
+
+node NamedWindowDef {
+  window_name: inline SyntaqliteSourceSpan
+  window_def: index WindowDef
+
+  fmt { span(window_name) " AS " child(window_def) }
+}
+
+list NamedWindowDefList { NamedWindowDef }
+
+node FilterOver {
+  filter_expr: index Expr
+  over_def: index WindowDef
+  over_name: inline SyntaqliteSourceSpan
+
+  fmt {
+    if_set(filter_expr) { "FILTER (WHERE " child(filter_expr) ")" }
+    if_set(over_def) { " OVER " child(over_def) }
+    if_span(over_name) { " OVER " span(over_name) }
+  }
+}

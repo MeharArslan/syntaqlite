@@ -1,0 +1,11 @@
+node ColumnRef {
+  column: inline SyntaqliteSourceSpan
+  table: inline SyntaqliteSourceSpan
+  schema: inline SyntaqliteSourceSpan
+
+  fmt {
+    if_span(schema) { span(schema) "." }
+    if_span(table) { span(table) "." }
+    span(column)
+  }
+}

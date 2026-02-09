@@ -1,0 +1,195 @@
+enum ForeignKeyAction { NO_ACTION SET_NULL SET_DEFAULT CASCADE RESTRICT }
+enum GeneratedColumnStorage { VIRTUAL STORED }
+enum ColumnConstraintKind { DEFAULT NOT_NULL PRIMARY_KEY UNIQUE CHECK REFERENCES COLLATE GENERATED NULL }
+enum TableConstraintKind { PRIMARY_KEY UNIQUE CHECK FOREIGN_KEY }
+
+flags CreateTableStmtFlags { WITHOUT_ROWID = 1 STRICT = 2 }
+
+node ForeignKeyClause {
+  ref_table: inline SyntaqliteSourceSpan
+  ref_columns: index ExprList
+  on_delete: inline ForeignKeyAction
+  on_update: inline ForeignKeyAction
+  is_deferred: inline Bool
+
+  fmt {
+    if_span(ref_table) { "REFERENCES " span(ref_table) }
+    if_set(ref_columns) { "(" child(ref_columns) ")" }
+    switch(on_delete) {
+      SET_NULL    { " ON DELETE SET NULL" }
+      SET_DEFAULT { " ON DELETE SET DEFAULT" }
+      CASCADE     { " ON DELETE CASCADE" }
+      RESTRICT    { " ON DELETE RESTRICT" }
+    }
+    switch(on_update) {
+      SET_NULL    { " ON UPDATE SET NULL" }
+      SET_DEFAULT { " ON UPDATE SET DEFAULT" }
+      CASCADE     { " ON UPDATE CASCADE" }
+      RESTRICT    { " ON UPDATE RESTRICT" }
+    }
+    if_flag(is_deferred) { "DEFERRABLE INITIALLY DEFERRED" }
+  }
+}
+
+node ColumnConstraint {
+  kind: inline ColumnConstraintKind
+  constraint_name: inline SyntaqliteSourceSpan
+  onconf: inline ConflictAction
+  sort_order: inline SortOrder
+  is_autoincrement: inline Bool
+  collation_name: inline SyntaqliteSourceSpan
+  generated_storage: inline GeneratedColumnStorage
+  default_expr: index Expr
+  check_expr: index Expr
+  generated_expr: index Expr
+  fk_clause: index Expr
+
+  fmt {
+    if_span(constraint_name) { "CONSTRAINT " span(constraint_name) " " }
+    switch(kind) {
+      PRIMARY_KEY {
+        "PRIMARY KEY"
+        if_enum(sort_order, DESC) { " DESC" }
+        if_flag(is_autoincrement) { " AUTOINCREMENT" }
+        switch(onconf) {
+          ROLLBACK { " ON CONFLICT ROLLBACK" }
+          ABORT    { " ON CONFLICT ABORT" }
+          FAIL     { " ON CONFLICT FAIL" }
+          IGNORE   { " ON CONFLICT IGNORE" }
+          REPLACE  { " ON CONFLICT REPLACE" }
+        }
+      }
+      NOT_NULL {
+        "NOT NULL"
+        switch(onconf) {
+          ROLLBACK { " ON CONFLICT ROLLBACK" }
+          ABORT    { " ON CONFLICT ABORT" }
+          FAIL     { " ON CONFLICT FAIL" }
+          IGNORE   { " ON CONFLICT IGNORE" }
+          REPLACE  { " ON CONFLICT REPLACE" }
+        }
+      }
+      UNIQUE {
+        "UNIQUE"
+        switch(onconf) {
+          ROLLBACK { " ON CONFLICT ROLLBACK" }
+          ABORT    { " ON CONFLICT ABORT" }
+          FAIL     { " ON CONFLICT FAIL" }
+          IGNORE   { " ON CONFLICT IGNORE" }
+          REPLACE  { " ON CONFLICT REPLACE" }
+        }
+      }
+      CHECK     { "CHECK(" child(check_expr) ")" }
+      DEFAULT   { "DEFAULT " child(default_expr) }
+      COLLATE   { "COLLATE " span(collation_name) }
+      REFERENCES { child(fk_clause) }
+      GENERATED {
+        "AS (" child(generated_expr) ")"
+        if_enum(generated_storage, STORED) { " STORED" }
+      }
+      NULL { "NULL" }
+    }
+  }
+}
+
+list ColumnConstraintList {
+  ColumnConstraint
+  fmt { for_each(sep: " ") { child(_item) } }
+}
+
+node ColumnDef {
+  column_name: inline SyntaqliteSourceSpan
+  type_name: inline SyntaqliteSourceSpan
+  constraints: index Expr
+
+  fmt {
+    span(column_name)
+    if_span(type_name) { " " span(type_name) }
+    if_set(constraints) { " " child(constraints) }
+  }
+}
+
+list ColumnDefList {
+  ColumnDef
+  fmt { for_each(sep: "," line) { child(_item) } }
+}
+
+node TableConstraint {
+  kind: inline TableConstraintKind
+  constraint_name: inline SyntaqliteSourceSpan
+  onconf: inline ConflictAction
+  is_autoincrement: inline Bool
+  columns: index Expr
+  check_expr: index Expr
+  fk_clause: index Expr
+
+  fmt {
+    if_span(constraint_name) { "CONSTRAINT " span(constraint_name) " " }
+    switch(kind) {
+      PRIMARY_KEY {
+        "PRIMARY KEY(" child(columns) ")"
+        switch(onconf) {
+          ROLLBACK { " ON CONFLICT ROLLBACK" }
+          ABORT    { " ON CONFLICT ABORT" }
+          FAIL     { " ON CONFLICT FAIL" }
+          IGNORE   { " ON CONFLICT IGNORE" }
+          REPLACE  { " ON CONFLICT REPLACE" }
+        }
+      }
+      UNIQUE {
+        "UNIQUE(" child(columns) ")"
+        switch(onconf) {
+          ROLLBACK { " ON CONFLICT ROLLBACK" }
+          ABORT    { " ON CONFLICT ABORT" }
+          FAIL     { " ON CONFLICT FAIL" }
+          IGNORE   { " ON CONFLICT IGNORE" }
+          REPLACE  { " ON CONFLICT REPLACE" }
+        }
+      }
+      CHECK       { "CHECK(" child(check_expr) ")" }
+      FOREIGN_KEY { "FOREIGN KEY(" child(columns) ") " child(fk_clause) }
+    }
+  }
+}
+
+list TableConstraintList {
+  TableConstraint
+  fmt { for_each(sep: "," line) { child(_item) } }
+}
+
+node CreateTableStmt {
+  table_name: inline SyntaqliteSourceSpan
+  schema: inline SyntaqliteSourceSpan
+  is_temp: inline Bool
+  if_not_exists: inline Bool
+  flags: inline CreateTableStmtFlags
+  columns: index Expr
+  table_constraints: index Expr
+  as_select: index Stmt
+
+  fmt {
+    group {
+      "CREATE"
+      if_flag(is_temp) { " TEMP" }
+      " TABLE"
+      if_flag(if_not_exists) { " IF NOT EXISTS" }
+      " "
+      if_span(schema) { span(schema) "." }
+      span(table_name)
+      if_set(columns) {
+        "("
+        group {
+          nest {
+            softline
+            child(columns)
+            if_set(table_constraints) { "," line child(table_constraints) }
+          }
+        }
+        softline ")"
+      }
+      if_set(as_select) { " AS" hardline child(as_select) }
+      if_flag(flags.without_rowid) { " WITHOUT ROWID" }
+      if_flag(flags.strict) { " STRICT" }
+    }
+  }
+}

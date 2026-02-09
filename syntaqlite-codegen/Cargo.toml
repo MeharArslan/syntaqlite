@@ -3,7 +3,7 @@ name = "syntaqlite-codegen"
 version = "0.1.0"
 edition = "2024"
 autobins = false
-exclude = ["src/main.rs"]
+exclude = ["src/main.rs", "parser-actions", "parser-nodes"]
 
 [[bin]]
 name = "syntaqlite-codegen"
