@@ -1,3 +1,4 @@
+mod c_writer;
 pub mod grammar_parser;
 pub mod lemon;
 pub mod mkkeyword;
@@ -5,7 +6,7 @@ mod run;
 
 use std::fs;
 use std::path::Path;
-use syntaqlite_codegen_utils::{c_extractor, c_transformer, c_writer};
+use syntaqlite_codegen_utils::{c_extractor, c_transformer};
 
 pub struct TokenizerExtractResult {
     pub char_map: String,

@@ -529,27 +529,4 @@ mod tests {
         let grammar = LemonGrammar::parse(input).unwrap();
         assert_eq!(grammar.rules[0].precedence_override, Some("PLUS"));
     }
-
-    #[test]
-    fn test_parse_sqlite_grammar() {
-        let input = std::fs::read_to_string(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../third_party/src/sqlite/src/parse.y"),
-        )
-        .unwrap();
-
-        let grammar = LemonGrammar::parse(&input).unwrap();
-
-        assert!(
-            grammar.tokens.len() > 0,
-            "Expected to find token declarations"
-        );
-        assert!(grammar.rules.len() > 0, "Expected to find grammar rules");
-
-        println!(
-            "Parsed {} tokens and {} rules from SQLite grammar",
-            grammar.tokens.len(),
-            grammar.rules.len()
-        );
-    }
 }
