@@ -27,14 +27,6 @@ impl CWriter {
         self.buffer
     }
 
-    pub fn len(&self) -> usize {
-        self.buffer.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.buffer.is_empty()
-    }
-
     // Basic output
 
     pub fn newline(&mut self) -> &mut Self {
@@ -49,23 +41,10 @@ impl CWriter {
         self.newline()
     }
 
-    /// Add a raw line without indentation
-    pub fn raw(&mut self, text: &str) -> &mut Self {
-        self.buffer.push_str(text);
-        self.newline()
-    }
-
     /// Write a fragment (anything that implements Display)
     pub fn fragment(&mut self, fragment: &impl std::fmt::Display) -> &mut Self {
         write!(self.buffer, "{}", fragment).unwrap();
         self.newline()
-    }
-
-    /// Write text without newline (will be indented if at line start)
-    pub fn write(&mut self, text: &str) -> &mut Self {
-        self.write_indent();
-        self.buffer.push_str(text);
-        self
     }
 
     /// Start a block (increase indentation)
@@ -159,148 +138,6 @@ impl CWriter {
         self.at_line_start = true;
     }
 
-    /// Start a typedef struct
-    pub fn typedef_struct_start(&mut self, name: &str) {
-        self.write_indent();
-        writeln!(self.buffer, "typedef struct {} {{", name).unwrap();
-        self.indent();
-        self.at_line_start = true;
-    }
-
-    /// Add a struct field
-    pub fn struct_field(&mut self, type_name: &str, field_name: &str, comment: Option<&str>) {
-        self.write_indent();
-        write!(self.buffer, "{} {};", type_name, field_name).unwrap();
-        if let Some(cmt) = comment {
-            write!(self.buffer, "  // {}", cmt).unwrap();
-        }
-        self.newline();
-    }
-
-    /// End a typedef struct
-    pub fn typedef_struct_end(&mut self, name: &str) {
-        self.dedent();
-        self.write_indent();
-        writeln!(self.buffer, "}} {};", name).unwrap();
-        self.at_line_start = true;
-    }
-
-    /// Emit a typedef union for flags
-    pub fn typedef_flags_union(&mut self, name: &str, flags: &[(&str, u8)]) {
-        self.write_indent();
-        writeln!(self.buffer, "typedef union {} {{", name).unwrap();
-        self.indent();
-
-        self.write_indent();
-        self.buffer.push_str("uint8_t raw;\n");
-
-        self.write_indent();
-        self.buffer.push_str("struct {\n");
-        self.indent();
-
-        let mut sorted_flags = flags.to_vec();
-        sorted_flags.sort_by_key(|(_, val)| *val);
-
-        let mut next_bit = 0;
-        for (flag_name, value) in sorted_flags {
-            let bit_pos = value.trailing_zeros() as usize;
-
-            if bit_pos > next_bit {
-                self.write_indent();
-                writeln!(self.buffer, "uint8_t : {};", bit_pos - next_bit).unwrap();
-            }
-
-            self.write_indent();
-            writeln!(self.buffer, "uint8_t {} : 1;", flag_name.to_lowercase()).unwrap();
-            next_bit = bit_pos + 1;
-        }
-
-        self.dedent();
-        self.write_indent();
-        self.buffer.push_str("};\n");
-
-        self.dedent();
-        self.write_indent();
-        writeln!(self.buffer, "}} {};", name).unwrap();
-        self.at_line_start = true;
-    }
-
-    /// Emit a function signature
-    pub fn function_sig(
-        &mut self,
-        return_type: &str,
-        name: &str,
-        params: &[(&str, &str)],
-        is_inline: bool,
-        is_static: bool,
-    ) {
-        self.write_indent();
-
-        if is_static {
-            self.buffer.push_str("static ");
-        }
-        if is_inline {
-            self.buffer.push_str("inline ");
-        }
-
-        write!(self.buffer, "{} {}(", return_type, name).unwrap();
-
-        if params.is_empty() {
-            self.buffer.push_str("void");
-        } else {
-            let params_str: String = params
-                .iter()
-                .map(|(ty, pname)| format!("{} {}", ty, pname))
-                .collect::<Vec<_>>()
-                .join(", ");
-
-            // Check if we need to wrap (from current position)
-            let current_line_len = self.buffer.len() - self.buffer.rfind('\n').unwrap_or(0);
-            if current_line_len + params_str.len() > 80 {
-                self.newline();
-                self.indent();
-                for (i, (ty, pname)) in params.iter().enumerate() {
-                    self.write_indent();
-                    write!(self.buffer, "{} {}", ty, pname).unwrap();
-                    if i < params.len() - 1 {
-                        self.buffer.push(',');
-                    }
-                    self.newline();
-                }
-                self.dedent();
-                self.write_indent();
-                self.buffer.push(')');
-            } else {
-                self.buffer.push_str(&params_str);
-                self.buffer.push(')');
-            }
-        }
-
-        // Don't add newline - caller may want to add "{" or ";"
-    }
-
-    /// Start a function body (adds " {" and increases indent)
-    pub fn block_start(&mut self) {
-        self.buffer.push_str(" {\n");
-        self.indent();
-        self.at_line_start = true;
-    }
-
-    /// End a function body
-    pub fn block_end(&mut self) {
-        self.dedent();
-        self.write_indent();
-        self.buffer.push_str("}\n");
-        self.at_line_start = true;
-    }
-
-    /// Emit a return statement
-    pub fn return_stmt(&mut self, expr: &str) {
-        self.write_indent();
-        writeln!(self.buffer, "return {};", expr).unwrap();
-        self.at_line_start = true;
-    }
-
     /// Emit a comment line
     pub fn comment(&mut self, text: &str) -> &mut Self {
         self.write_indent();
@@ -351,32 +188,6 @@ mod tests {
         assert!(output.contains("typedef enum Color {"));
         assert!(output.contains("RED = 0,"));
         assert!(output.contains("BLUE = 2"));
-    }
-
-    #[test]
-    fn test_struct() {
-        let mut w = CWriter::new();
-        w.typedef_struct_start("Point");
-        w.struct_field("int", "x", None);
-        w.struct_field("int", "y", Some("Y coordinate"));
-        w.typedef_struct_end("Point");
-
-        let output = w.finish();
-        assert!(output.contains("typedef struct Point {"));
-        assert!(output.contains("int x;"));
-        assert!(output.contains("int y;  // Y coordinate"));
-        assert!(output.contains("} Point;"));
-    }
-
-    #[test]
-    fn test_flags_union() {
-        let mut w = CWriter::new();
-        w.typedef_flags_union("MyFlags", &[("FOO", 0x01), ("BAR", 0x02), ("BAZ", 0x04)]);
-
-        let output = w.finish();
-        assert!(output.contains("typedef union MyFlags {"));
-        assert!(output.contains("uint8_t raw;"));
-        assert!(output.contains("uint8_t foo : 1;"));
     }
 
     #[test]
