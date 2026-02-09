@@ -30,7 +30,7 @@ static inline uint32_t synq_ast_aggregate_function_call(
     uint32_t filter_clause,
     uint32_t over_clause
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL,
+    return synq_ast_build(ctx,
         &(SyntaqliteAggregateFunctionCall){
             .tag = SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL,
             .func_name = func_name,
@@ -47,7 +47,7 @@ static inline uint32_t synq_ast_cast_expr(
     uint32_t expr,
     SyntaqliteSourceSpan type_name
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_CAST_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteCastExpr){
             .tag = SYNTAQLITE_NODE_CAST_EXPR,
             .expr = expr,
@@ -61,7 +61,7 @@ static inline uint32_t synq_ast_column_ref(
     SyntaqliteSourceSpan table,
     SyntaqliteSourceSpan schema
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_COLUMN_REF,
+    return synq_ast_build(ctx,
         &(SyntaqliteColumnRef){
             .tag = SYNTAQLITE_NODE_COLUMN_REF,
             .column = column,
@@ -76,7 +76,7 @@ static inline uint32_t synq_ast_compound_select(
     uint32_t left,
     uint32_t right
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_COMPOUND_SELECT,
+    return synq_ast_build(ctx,
         &(SyntaqliteCompoundSelect){
             .tag = SYNTAQLITE_NODE_COMPOUND_SELECT,
             .op = op,
@@ -89,7 +89,7 @@ static inline uint32_t synq_ast_subquery_expr(
     SynqAstContext *ctx,
     uint32_t select
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_SUBQUERY_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteSubqueryExpr){
             .tag = SYNTAQLITE_NODE_SUBQUERY_EXPR,
             .select = select
@@ -100,7 +100,7 @@ static inline uint32_t synq_ast_exists_expr(
     SynqAstContext *ctx,
     uint32_t select
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_EXISTS_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteExistsExpr){
             .tag = SYNTAQLITE_NODE_EXISTS_EXPR,
             .select = select
@@ -113,7 +113,7 @@ static inline uint32_t synq_ast_in_expr(
     uint32_t operand,
     uint32_t source
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_IN_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteInExpr){
             .tag = SYNTAQLITE_NODE_IN_EXPR,
             .negated = negated,
@@ -128,7 +128,7 @@ static inline uint32_t synq_ast_is_expr(
     uint32_t left,
     uint32_t right
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_IS_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteIsExpr){
             .tag = SYNTAQLITE_NODE_IS_EXPR,
             .op = op,
@@ -144,7 +144,7 @@ static inline uint32_t synq_ast_between_expr(
     uint32_t low,
     uint32_t high
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_BETWEEN_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteBetweenExpr){
             .tag = SYNTAQLITE_NODE_BETWEEN_EXPR,
             .negated = negated,
@@ -161,7 +161,7 @@ static inline uint32_t synq_ast_like_expr(
     uint32_t pattern,
     uint32_t escape
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_LIKE_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteLikeExpr){
             .tag = SYNTAQLITE_NODE_LIKE_EXPR,
             .negated = negated,
@@ -177,7 +177,7 @@ static inline uint32_t synq_ast_case_expr(
     uint32_t else_expr,
     uint32_t whens
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_CASE_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteCaseExpr){
             .tag = SYNTAQLITE_NODE_CASE_EXPR,
             .operand = operand,
@@ -191,7 +191,7 @@ static inline uint32_t synq_ast_case_when(
     uint32_t when_expr,
     uint32_t then_expr
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_CASE_WHEN,
+    return synq_ast_build(ctx,
         &(SyntaqliteCaseWhen){
             .tag = SYNTAQLITE_NODE_CASE_WHEN,
             .when_expr = when_expr,
@@ -227,7 +227,7 @@ static inline uint32_t synq_ast_foreign_key_clause(
     SyntaqliteForeignKeyAction on_update,
     SyntaqliteBool is_deferred
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_FOREIGN_KEY_CLAUSE,
+    return synq_ast_build(ctx,
         &(SyntaqliteForeignKeyClause){
             .tag = SYNTAQLITE_NODE_FOREIGN_KEY_CLAUSE,
             .ref_table = ref_table,
@@ -252,7 +252,7 @@ static inline uint32_t synq_ast_column_constraint(
     uint32_t generated_expr,
     uint32_t fk_clause
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_COLUMN_CONSTRAINT,
+    return synq_ast_build(ctx,
         &(SyntaqliteColumnConstraint){
             .tag = SYNTAQLITE_NODE_COLUMN_CONSTRAINT,
             .kind = kind,
@@ -295,7 +295,7 @@ static inline uint32_t synq_ast_column_def(
     SyntaqliteSourceSpan type_name,
     uint32_t constraints
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_COLUMN_DEF,
+    return synq_ast_build(ctx,
         &(SyntaqliteColumnDef){
             .tag = SYNTAQLITE_NODE_COLUMN_DEF,
             .column_name = column_name,
@@ -334,7 +334,7 @@ static inline uint32_t synq_ast_table_constraint(
     uint32_t check_expr,
     uint32_t fk_clause
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_TABLE_CONSTRAINT,
+    return synq_ast_build(ctx,
         &(SyntaqliteTableConstraint){
             .tag = SYNTAQLITE_NODE_TABLE_CONSTRAINT,
             .kind = kind,
@@ -378,7 +378,7 @@ static inline uint32_t synq_ast_create_table_stmt(
     uint32_t table_constraints,
     uint32_t as_select
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_CREATE_TABLE_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteCreateTableStmt){
             .tag = SYNTAQLITE_NODE_CREATE_TABLE_STMT,
             .table_name = table_name,
@@ -399,7 +399,7 @@ static inline uint32_t synq_ast_cte_definition(
     uint32_t columns,
     uint32_t select
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_CTE_DEFINITION,
+    return synq_ast_build(ctx,
         &(SyntaqliteCteDefinition){
             .tag = SYNTAQLITE_NODE_CTE_DEFINITION,
             .cte_name = cte_name,
@@ -435,7 +435,7 @@ static inline uint32_t synq_ast_with_clause(
     uint32_t ctes,
     uint32_t select
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_WITH_CLAUSE,
+    return synq_ast_build(ctx,
         &(SyntaqliteWithClause){
             .tag = SYNTAQLITE_NODE_WITH_CLAUSE,
             .recursive = recursive,
@@ -449,7 +449,7 @@ static inline uint32_t synq_ast_delete_stmt(
     uint32_t table,
     uint32_t where
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_DELETE_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteDeleteStmt){
             .tag = SYNTAQLITE_NODE_DELETE_STMT,
             .table = table,
@@ -463,7 +463,7 @@ static inline uint32_t synq_ast_set_clause(
     uint32_t columns,
     uint32_t value
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_SET_CLAUSE,
+    return synq_ast_build(ctx,
         &(SyntaqliteSetClause){
             .tag = SYNTAQLITE_NODE_SET_CLAUSE,
             .column = column,
@@ -500,7 +500,7 @@ static inline uint32_t synq_ast_update_stmt(
     uint32_t from_clause,
     uint32_t where
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_UPDATE_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteUpdateStmt){
             .tag = SYNTAQLITE_NODE_UPDATE_STMT,
             .conflict_action = conflict_action,
@@ -518,7 +518,7 @@ static inline uint32_t synq_ast_insert_stmt(
     uint32_t columns,
     uint32_t source
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_INSERT_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteInsertStmt){
             .tag = SYNTAQLITE_NODE_INSERT_STMT,
             .conflict_action = conflict_action,
@@ -534,7 +534,7 @@ static inline uint32_t synq_ast_binary_expr(
     uint32_t left,
     uint32_t right
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_BINARY_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteBinaryExpr){
             .tag = SYNTAQLITE_NODE_BINARY_EXPR,
             .op = op,
@@ -548,7 +548,7 @@ static inline uint32_t synq_ast_unary_expr(
     SyntaqliteUnaryOp op,
     uint32_t operand
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_UNARY_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteUnaryExpr){
             .tag = SYNTAQLITE_NODE_UNARY_EXPR,
             .op = op,
@@ -561,7 +561,7 @@ static inline uint32_t synq_ast_literal(
     SyntaqliteLiteralType literal_type,
     SyntaqliteSourceSpan source
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_LITERAL,
+    return synq_ast_build(ctx,
         &(SyntaqliteLiteral){
             .tag = SYNTAQLITE_NODE_LITERAL,
             .literal_type = literal_type,
@@ -597,7 +597,7 @@ static inline uint32_t synq_ast_function_call(
     uint32_t filter_clause,
     uint32_t over_clause
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_FUNCTION_CALL,
+    return synq_ast_build(ctx,
         &(SyntaqliteFunctionCall){
             .tag = SYNTAQLITE_NODE_FUNCTION_CALL,
             .func_name = func_name,
@@ -612,7 +612,7 @@ static inline uint32_t synq_ast_variable(
     SynqAstContext *ctx,
     SyntaqliteSourceSpan source
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_VARIABLE,
+    return synq_ast_build(ctx,
         &(SyntaqliteVariable){
             .tag = SYNTAQLITE_NODE_VARIABLE,
             .source = source
@@ -624,7 +624,7 @@ static inline uint32_t synq_ast_collate_expr(
     uint32_t expr,
     SyntaqliteSourceSpan collation
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_COLLATE_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteCollateExpr){
             .tag = SYNTAQLITE_NODE_COLLATE_EXPR,
             .expr = expr,
@@ -637,7 +637,7 @@ static inline uint32_t synq_ast_raise_expr(
     SyntaqliteRaiseType raise_type,
     uint32_t error_message
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_RAISE_EXPR,
+    return synq_ast_build(ctx,
         &(SyntaqliteRaiseExpr){
             .tag = SYNTAQLITE_NODE_RAISE_EXPR,
             .raise_type = raise_type,
@@ -650,7 +650,7 @@ static inline uint32_t synq_ast_qualified_name(
     SyntaqliteSourceSpan object_name,
     SyntaqliteSourceSpan schema
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_QUALIFIED_NAME,
+    return synq_ast_build(ctx,
         &(SyntaqliteQualifiedName){
             .tag = SYNTAQLITE_NODE_QUALIFIED_NAME,
             .object_name = object_name,
@@ -664,7 +664,7 @@ static inline uint32_t synq_ast_drop_stmt(
     SyntaqliteBool if_exists,
     uint32_t target
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_DROP_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteDropStmt){
             .tag = SYNTAQLITE_NODE_DROP_STMT,
             .object_type = object_type,
@@ -680,7 +680,7 @@ static inline uint32_t synq_ast_alter_table_stmt(
     SyntaqliteSourceSpan new_name,
     SyntaqliteSourceSpan old_name
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_ALTER_TABLE_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteAlterTableStmt){
             .tag = SYNTAQLITE_NODE_ALTER_TABLE_STMT,
             .op = op,
@@ -695,7 +695,7 @@ static inline uint32_t synq_ast_transaction_stmt(
     SyntaqliteTransactionOp op,
     SyntaqliteTransactionType trans_type
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_TRANSACTION_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteTransactionStmt){
             .tag = SYNTAQLITE_NODE_TRANSACTION_STMT,
             .op = op,
@@ -708,7 +708,7 @@ static inline uint32_t synq_ast_savepoint_stmt(
     SyntaqliteSavepointOp op,
     SyntaqliteSourceSpan savepoint_name
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_SAVEPOINT_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteSavepointStmt){
             .tag = SYNTAQLITE_NODE_SAVEPOINT_STMT,
             .op = op,
@@ -722,7 +722,7 @@ static inline uint32_t synq_ast_result_column(
     SyntaqliteSourceSpan alias,
     uint32_t expr
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_RESULT_COLUMN,
+    return synq_ast_build(ctx,
         &(SyntaqliteResultColumn){
             .tag = SYNTAQLITE_NODE_RESULT_COLUMN,
             .flags = flags,
@@ -763,7 +763,7 @@ static inline uint32_t synq_ast_select_stmt(
     uint32_t limit_clause,
     uint32_t window_clause
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_SELECT_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteSelectStmt){
             .tag = SYNTAQLITE_NODE_SELECT_STMT,
             .flags = flags,
@@ -784,7 +784,7 @@ static inline uint32_t synq_ast_ordering_term(
     SyntaqliteSortOrder sort_order,
     SyntaqliteNullsOrder nulls_order
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_ORDERING_TERM,
+    return synq_ast_build(ctx,
         &(SyntaqliteOrderingTerm){
             .tag = SYNTAQLITE_NODE_ORDERING_TERM,
             .expr = expr,
@@ -818,7 +818,7 @@ static inline uint32_t synq_ast_limit_clause(
     uint32_t limit,
     uint32_t offset
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_LIMIT_CLAUSE,
+    return synq_ast_build(ctx,
         &(SyntaqliteLimitClause){
             .tag = SYNTAQLITE_NODE_LIMIT_CLAUSE,
             .limit = limit,
@@ -832,7 +832,7 @@ static inline uint32_t synq_ast_table_ref(
     SyntaqliteSourceSpan schema,
     SyntaqliteSourceSpan alias
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_TABLE_REF,
+    return synq_ast_build(ctx,
         &(SyntaqliteTableRef){
             .tag = SYNTAQLITE_NODE_TABLE_REF,
             .table_name = table_name,
@@ -846,7 +846,7 @@ static inline uint32_t synq_ast_subquery_table_source(
     uint32_t select,
     SyntaqliteSourceSpan alias
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_SUBQUERY_TABLE_SOURCE,
+    return synq_ast_build(ctx,
         &(SyntaqliteSubqueryTableSource){
             .tag = SYNTAQLITE_NODE_SUBQUERY_TABLE_SOURCE,
             .select = select,
@@ -862,7 +862,7 @@ static inline uint32_t synq_ast_join_clause(
     uint32_t on_expr,
     uint32_t using_columns
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_JOIN_CLAUSE,
+    return synq_ast_build(ctx,
         &(SyntaqliteJoinClause){
             .tag = SYNTAQLITE_NODE_JOIN_CLAUSE,
             .join_type = join_type,
@@ -878,7 +878,7 @@ static inline uint32_t synq_ast_join_prefix(
     uint32_t source,
     SyntaqliteJoinType join_type
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_JOIN_PREFIX,
+    return synq_ast_build(ctx,
         &(SyntaqliteJoinPrefix){
             .tag = SYNTAQLITE_NODE_JOIN_PREFIX,
             .source = source,
@@ -891,7 +891,7 @@ static inline uint32_t synq_ast_trigger_event(
     SyntaqliteTriggerEventType event_type,
     uint32_t columns
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_TRIGGER_EVENT,
+    return synq_ast_build(ctx,
         &(SyntaqliteTriggerEvent){
             .tag = SYNTAQLITE_NODE_TRIGGER_EVENT,
             .event_type = event_type,
@@ -931,7 +931,7 @@ static inline uint32_t synq_ast_create_trigger_stmt(
     uint32_t when_expr,
     uint32_t body
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_CREATE_TRIGGER_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteCreateTriggerStmt){
             .tag = SYNTAQLITE_NODE_CREATE_TRIGGER_STMT,
             .trigger_name = trigger_name,
@@ -954,7 +954,7 @@ static inline uint32_t synq_ast_create_virtual_table_stmt(
     SyntaqliteBool if_not_exists,
     SyntaqliteSourceSpan module_args
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_CREATE_VIRTUAL_TABLE_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteCreateVirtualTableStmt){
             .tag = SYNTAQLITE_NODE_CREATE_VIRTUAL_TABLE_STMT,
             .table_name = table_name,
@@ -972,7 +972,7 @@ static inline uint32_t synq_ast_pragma_stmt(
     SyntaqliteSourceSpan value,
     SyntaqlitePragmaForm pragma_form
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_PRAGMA_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqlitePragmaStmt){
             .tag = SYNTAQLITE_NODE_PRAGMA_STMT,
             .pragma_name = pragma_name,
@@ -988,7 +988,7 @@ static inline uint32_t synq_ast_analyze_stmt(
     SyntaqliteSourceSpan schema,
     SyntaqliteAnalyzeKind kind
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_ANALYZE_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteAnalyzeStmt){
             .tag = SYNTAQLITE_NODE_ANALYZE_STMT,
             .target_name = target_name,
@@ -1003,7 +1003,7 @@ static inline uint32_t synq_ast_attach_stmt(
     uint32_t db_name,
     uint32_t key
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_ATTACH_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteAttachStmt){
             .tag = SYNTAQLITE_NODE_ATTACH_STMT,
             .filename = filename,
@@ -1016,7 +1016,7 @@ static inline uint32_t synq_ast_detach_stmt(
     SynqAstContext *ctx,
     uint32_t db_name
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_DETACH_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteDetachStmt){
             .tag = SYNTAQLITE_NODE_DETACH_STMT,
             .db_name = db_name
@@ -1028,7 +1028,7 @@ static inline uint32_t synq_ast_vacuum_stmt(
     SyntaqliteSourceSpan schema,
     uint32_t into_expr
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_VACUUM_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteVacuumStmt){
             .tag = SYNTAQLITE_NODE_VACUUM_STMT,
             .schema = schema,
@@ -1041,7 +1041,7 @@ static inline uint32_t synq_ast_explain_stmt(
     SyntaqliteExplainMode explain_mode,
     uint32_t stmt
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_EXPLAIN_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteExplainStmt){
             .tag = SYNTAQLITE_NODE_EXPLAIN_STMT,
             .explain_mode = explain_mode,
@@ -1059,7 +1059,7 @@ static inline uint32_t synq_ast_create_index_stmt(
     uint32_t columns,
     uint32_t where
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_CREATE_INDEX_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteCreateIndexStmt){
             .tag = SYNTAQLITE_NODE_CREATE_INDEX_STMT,
             .index_name = index_name,
@@ -1081,7 +1081,7 @@ static inline uint32_t synq_ast_create_view_stmt(
     uint32_t column_names,
     uint32_t select
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_CREATE_VIEW_STMT,
+    return synq_ast_build(ctx,
         &(SyntaqliteCreateViewStmt){
             .tag = SYNTAQLITE_NODE_CREATE_VIEW_STMT,
             .view_name = view_name,
@@ -1117,7 +1117,7 @@ static inline uint32_t synq_ast_values_clause(
     SynqAstContext *ctx,
     uint32_t rows
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_VALUES_CLAUSE,
+    return synq_ast_build(ctx,
         &(SyntaqliteValuesClause){
             .tag = SYNTAQLITE_NODE_VALUES_CLAUSE,
             .rows = rows
@@ -1129,7 +1129,7 @@ static inline uint32_t synq_ast_frame_bound(
     SyntaqliteFrameBoundType bound_type,
     uint32_t expr
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_FRAME_BOUND,
+    return synq_ast_build(ctx,
         &(SyntaqliteFrameBound){
             .tag = SYNTAQLITE_NODE_FRAME_BOUND,
             .bound_type = bound_type,
@@ -1144,7 +1144,7 @@ static inline uint32_t synq_ast_frame_spec(
     uint32_t start_bound,
     uint32_t end_bound
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_FRAME_SPEC,
+    return synq_ast_build(ctx,
         &(SyntaqliteFrameSpec){
             .tag = SYNTAQLITE_NODE_FRAME_SPEC,
             .frame_type = frame_type,
@@ -1161,7 +1161,7 @@ static inline uint32_t synq_ast_window_def(
     uint32_t orderby,
     uint32_t frame
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_WINDOW_DEF,
+    return synq_ast_build(ctx,
         &(SyntaqliteWindowDef){
             .tag = SYNTAQLITE_NODE_WINDOW_DEF,
             .base_window_name = base_window_name,
@@ -1196,7 +1196,7 @@ static inline uint32_t synq_ast_named_window_def(
     SyntaqliteSourceSpan window_name,
     uint32_t window_def
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_NAMED_WINDOW_DEF,
+    return synq_ast_build(ctx,
         &(SyntaqliteNamedWindowDef){
             .tag = SYNTAQLITE_NODE_NAMED_WINDOW_DEF,
             .window_name = window_name,
@@ -1230,7 +1230,7 @@ static inline uint32_t synq_ast_filter_over(
     uint32_t over_def,
     SyntaqliteSourceSpan over_name
 ) {
-    return synq_ast_build(ctx, SYNTAQLITE_NODE_FILTER_OVER,
+    return synq_ast_build(ctx,
         &(SyntaqliteFilterOver){
             .tag = SYNTAQLITE_NODE_FILTER_OVER,
             .filter_expr = filter_expr,

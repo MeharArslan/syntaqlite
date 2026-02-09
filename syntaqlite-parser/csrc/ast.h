@@ -33,8 +33,8 @@ typedef struct SynqAstContext {
 void synq_ast_ctx_init(SynqAstContext *ctx);
 void synq_ast_ctx_free(SynqAstContext *ctx);
 
-// Generic node builder: arena alloc + memcpy.
-uint32_t synq_ast_build(SynqAstContext *ctx, uint32_t tag,
+// Generic node builder: copy node data into the arena.
+uint32_t synq_ast_build(SynqAstContext *ctx,
                         const void *node_data, uint32_t node_size);
 
 uint32_t synq_ast_list_start(SynqAstContext *ctx, uint32_t tag, uint32_t first_child);

@@ -27,17 +27,20 @@ typedef struct SynqArena {
 void synq_arena_init(SynqArena* a);
 void synq_arena_free(SynqArena* a);
 
-// Allocate space in the arena for a node with the given tag and size.
-// Returns the node ID. Aborts on OOM.
-uint32_t synq_arena_alloc(SynqArena* a, uint32_t tag, uint32_t size);
+// Copy data into the arena and register in the offset table.
+// Returns the node ID.
+uint32_t synq_arena_alloc(SynqArena* a, const void* data, uint32_t size);
 
 // Reserve a node ID in the offset table without allocating arena bytes.
 // The offset is written later by synq_arena_commit.
 uint32_t synq_arena_reserve_id(SynqArena* a);
 
-// Commit a previously reserved node ID: set its offset and reserve `size`
-// bytes in the data buffer. Returns a pointer to the reserved bytes.
-void* synq_arena_commit(SynqArena* a, uint32_t node_id, uint32_t size);
+// Commit data at a previously reserved node ID.
+void synq_arena_commit(SynqArena* a, uint32_t node_id,
+                       const void* data, uint32_t size);
+
+// Append raw bytes to the arena without registering an offset entry.
+void synq_arena_append(SynqArena* a, const void* data, uint32_t size);
 
 #ifdef __cplusplus
 }

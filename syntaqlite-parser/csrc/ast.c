@@ -2,8 +2,6 @@
 
 #include "csrc/ast.h"
 
-#include <string.h>
-
 // Common header for all list nodes in the arena.
 typedef struct {
     uint32_t tag;
@@ -15,12 +13,10 @@ static void list_flush_top(SynqAstContext *ctx) {
     SynqListDesc *desc = &ctx->list_stack.data[ctx->list_stack.count - 1];
     uint32_t count = ctx->child_buf.count - desc->offset;
     uint32_t children_size = count * (uint32_t)sizeof(uint32_t);
-    uint32_t total = (uint32_t)sizeof(SynqListHeader) + children_size;
 
-    uint8_t *dest = (uint8_t *)synq_arena_commit(&ctx->ast, desc->node_id, total);
     SynqListHeader hdr = { .tag = desc->tag, .count = count };
-    memcpy(dest, &hdr, sizeof(hdr));
-    memcpy(dest + sizeof(hdr), ctx->child_buf.data + desc->offset, children_size);
+    synq_arena_commit(&ctx->ast, desc->node_id, &hdr, (uint32_t)sizeof(hdr));
+    synq_arena_append(&ctx->ast, ctx->child_buf.data + desc->offset, children_size);
 
     // Truncate child_buf and pop descriptor
     ctx->child_buf.count = desc->offset;
@@ -39,12 +35,9 @@ void synq_ast_ctx_free(SynqAstContext *ctx) {
     synq_arena_free(&ctx->ast);
 }
 
-uint32_t synq_ast_build(SynqAstContext *ctx, uint32_t tag,
+uint32_t synq_ast_build(SynqAstContext *ctx,
                         const void *node_data, uint32_t node_size) {
-    uint32_t id = synq_arena_alloc(&ctx->ast, tag, node_size);
-    void *dest = synq_arena_ptr(&ctx->ast, id);
-    memcpy(dest, node_data, node_size);
-    return id;
+    return synq_arena_alloc(&ctx->ast, node_data, node_size);
 }
 
 uint32_t synq_ast_list_start(SynqAstContext *ctx, uint32_t tag, uint32_t first_child) {

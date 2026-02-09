@@ -75,15 +75,6 @@ extern "C" {
 // Lvalue access to element at index
 #define synq_vec_at(v, i) ((v)->data[i])
 
-// Ensure space for n more elements, advance count, write pointer to out.
-#define synq_vec_extend(v, n, out)            \
-  do {                                         \
-    uint32_t _n = (n);                         \
-    synq_vec_ensure((v), (v)->count + _n);     \
-    (out) = (v)->data + (v)->count;            \
-    (v)->count += _n;                          \
-  } while (0)
-
 // Decrement count, evaluate to last element
 #define synq_vec_pop(v) ((v)->data[--(v)->count])
 

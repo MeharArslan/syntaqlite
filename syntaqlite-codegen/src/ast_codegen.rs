@@ -235,13 +235,13 @@ fn emit_node_builder_inline(
     }
 
     let literal = format!("&({}){{{}}}", sn, init_parts.join(", "));
-    let call = format!("return synq_ast_build(ctx, {}, {}, (uint32_t)sizeof({}));", tag, literal, sn);
+    let call = format!("return synq_ast_build(ctx, {}, (uint32_t)sizeof({}));", literal, sn);
 
     w.indent();
     if call.len() <= 80 {
         w.line(&call);
     } else {
-        w.line(&format!("return synq_ast_build(ctx, {},", tag));
+        w.line("return synq_ast_build(ctx,");
         w.indent();
         w.line(&format!("&({}){{", sn));
         w.indent();
