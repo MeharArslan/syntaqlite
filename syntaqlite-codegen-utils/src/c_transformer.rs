@@ -175,6 +175,27 @@ impl CTransformer {
         }
     }
 
+    /// Remove the first `/* ... */` block comment containing `needle`.
+    pub fn remove_block_comment_containing(mut self, needle: &str) -> Self {
+        if let Some(idx) = self.content.find(needle) {
+            // Scan backwards for /*
+            if let Some(start) = self.content[..idx].rfind("/*") {
+                // Scan forwards for */
+                if let Some(end_rel) = self.content[start..].find("*/") {
+                    let end = start + end_rel + 2;
+                    // Also consume trailing newline
+                    let end = if self.content[end..].starts_with('\n') {
+                        end + 1
+                    } else {
+                        end
+                    };
+                    self.content.replace_range(start..end, "");
+                }
+            }
+        }
+        self
+    }
+
     /// Remove an exact chunk of text from the content
     pub fn remove_text(mut self, text: &str) -> Self {
         self.content = self.content.replace(text, "");
