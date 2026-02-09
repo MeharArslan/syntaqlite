@@ -1,4 +1,6 @@
 use clap::{Parser, Subcommand};
+use std::fs;
+use std::path::Path;
 use std::process;
 
 #[derive(Parser)]
@@ -15,11 +17,11 @@ struct Args {
 enum Command {
     Codegen {
         #[arg(long, required = true)]
-        parse_y: String,
+        actions_dir: String,
         #[arg(long, required = true)]
         tokenize_c: String,
-        #[arg(long, default_value = "syntaqlite-parser/csrc/sqlite_tokenize.c")]
-        tokenize_output: String,
+        #[arg(long, default_value = "syntaqlite-parser/csrc")]
+        output_dir: String,
     },
     Lemon {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -37,27 +39,72 @@ fn main() {
     let result = (|| -> Result<(), String> {
         match args.command {
             Command::Codegen {
-                parse_y,
+                actions_dir,
                 tokenize_c,
-                tokenize_output,
+                output_dir,
             } => {
+                let temp_dir = tempfile::TempDir::new()
+                    .map_err(|e| format!("Failed to create temp directory: {}", e))?;
+                let work_dir = temp_dir.path().to_str()
+                    .ok_or_else(|| "Invalid temp directory path".to_string())?
+                    .to_string();
+
+                // Step 1: Generate parser (writes parse.c, parse.h into temp dir)
                 if args.verbose {
                     eprintln!("Generating parser...");
                 }
-                let tokens_output = "syntaqlite-parser/csrc/sqlite_tokens.h";
-                syntaqlite_codegen::generate_parser(&parse_y, None, Some(tokens_output))?;
+                syntaqlite_codegen::generate_parser(&actions_dir, &work_dir)?;
 
+                // Step 2: Extract tokenizer
                 if args.verbose {
                     eprintln!("Extracting tokenizer...");
                 }
-                let extract_result =
-                    syntaqlite_codegen::extract_tokenizer(&tokenize_c, &tokenize_output)?;
+                let (tokenize_content, extract_result) =
+                    syntaqlite_codegen::extract_tokenizer(&tokenize_c)?;
 
+                // Step 3: Generate keyword hash
                 if args.verbose {
                     eprintln!("Generating keyword hash...");
                 }
-                let keyword_output = "syntaqlite-parser/csrc/sqlite_keyword.c";
-                syntaqlite_codegen::generate_keyword_hash(keyword_output, &extract_result)?;
+                let (keyword_tables, keyword_func) =
+                    syntaqlite_codegen::generate_keyword_hash(&extract_result)?;
+
+                // Step 4: Copy all outputs to final destination
+                if args.verbose {
+                    eprintln!("Writing output files...");
+                }
+                let out = Path::new(&output_dir);
+                fs::create_dir_all(out)
+                    .map_err(|e| format!("Failed to create output directory: {}", e))?;
+
+                let include_dir = Path::new(&output_dir)
+                    .parent()
+                    .unwrap_or(Path::new("."))
+                    .join("include/syntaqlite");
+                fs::create_dir_all(&include_dir)
+                    .map_err(|e| format!("Failed to create include directory: {}", e))?;
+                fs::copy(
+                    temp_dir.path().join("parse.h"),
+                    include_dir.join("tokens.h"),
+                ).map_err(|e| format!("Failed to write tokens.h: {}", e))?;
+
+                let raw_parse_c = fs::read_to_string(temp_dir.path().join("parse.c"))
+                    .map_err(|e| format!("Failed to read parse.c: {}", e))?;
+                let (parse_c, parse_data_h) =
+                    syntaqlite_codegen::split_parse_c(&raw_parse_c)?;
+                fs::write(out.join("sqlite_parse.c"), parse_c)
+                    .map_err(|e| format!("Failed to write sqlite_parse.c: {}", e))?;
+                fs::write(out.join("sqlite_parse_data.h"), parse_data_h)
+                    .map_err(|e| format!("Failed to write sqlite_parse_data.h: {}", e))?;
+
+                fs::write(out.join("sqlite_tokenize.c"), tokenize_content)
+                    .map_err(|e| format!("Failed to write sqlite_tokenize.c: {}", e))?;
+
+                fs::write(out.join("sqlite_keyword_tables.h"), keyword_tables)
+                    .map_err(|e| format!("Failed to write sqlite_keyword_tables.h: {}", e))?;
+
+                fs::write(out.join("sqlite_keyword.c"), keyword_func)
+                    .map_err(|e| format!("Failed to write sqlite_keyword.c: {}", e))?;
 
                 if args.verbose {
                     eprintln!("Code generation complete");

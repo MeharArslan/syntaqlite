@@ -16,6 +16,20 @@ pub struct LemonGrammar<'a> {
     pub tokens: Vec<TokenDecl<'a>>,
     pub rules: Vec<GrammarRule<'a>>,
     pub token_classes: Vec<TokenClass<'a>>,
+    pub fallbacks: Vec<FallbackDecl<'a>>,
+    pub precedences: Vec<PrecedenceDecl<'a>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PrecedenceDecl<'a> {
+    pub assoc: &'a str, // "left", "right", or "nonassoc"
+    pub tokens: Vec<&'a str>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FallbackDecl<'a> {
+    pub target: &'a str,
+    pub tokens: Vec<&'a str>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -119,6 +133,8 @@ impl<'a> Parser<'a> {
         let mut tokens = Vec::new();
         let mut rules = Vec::new();
         let mut token_classes = Vec::new();
+        let mut fallbacks = Vec::new();
+        let mut precedences = Vec::new();
         while parser.peek().is_some() {
             parser.skip_ws();
             match parser.peek() {
@@ -131,6 +147,12 @@ impl<'a> Parser<'a> {
                         }
                         "token_class" => {
                             parser.parse_token_class(&mut token_classes)?;
+                        }
+                        "fallback" => {
+                            parser.parse_fallback(&mut fallbacks)?;
+                        }
+                        "left" | "right" | "nonassoc" => {
+                            parser.parse_precedence(directive, &mut precedences)?;
                         }
                         "ifdef" => {
                             // Skip entire ifdef block (EXCLUDE these rules)
@@ -173,6 +195,8 @@ impl<'a> Parser<'a> {
             tokens,
             rules,
             token_classes,
+            fallbacks,
+            precedences,
         })
     }
 
@@ -337,6 +361,52 @@ impl<'a> Parser<'a> {
         let tokens = &self.input[start..self.pos].trim();
         token_classes.push(TokenClass { name, tokens });
         Ok(())
+    }
+
+    fn parse_fallback(&mut self, fallbacks: &mut Vec<FallbackDecl<'a>>) -> Result<()> {
+        self.skip_ws();
+        let target = self.parse_identifier()?;
+        let tokens = self.collect_identifiers_until_dot(true)?;
+        fallbacks.push(FallbackDecl { target, tokens });
+        Ok(())
+    }
+
+    fn parse_precedence(
+        &mut self,
+        assoc: &'a str,
+        precedences: &mut Vec<PrecedenceDecl<'a>>,
+    ) -> Result<()> {
+        let tokens = self.collect_identifiers_until_dot(false)?;
+        precedences.push(PrecedenceDecl { assoc, tokens });
+        Ok(())
+    }
+
+    /// Collect identifier tokens until '.', optionally handling %ifdef/%ifndef/%endif inline.
+    fn collect_identifiers_until_dot(&mut self, handle_ifdefs: bool) -> Result<Vec<&'a str>> {
+        let mut names = Vec::new();
+        loop {
+            self.skip_ws();
+            match self.peek() {
+                Some('.') => {
+                    self.next();
+                    break;
+                }
+                Some('%') if handle_ifdefs => {
+                    self.next();
+                    let directive = self.parse_identifier()?;
+                    match directive {
+                        "ifdef" => self.skip_ifdef_block()?,
+                        "ifndef" | "endif" => self.skip_to_eol(),
+                        _ => self.skip_to_eol(),
+                    }
+                }
+                Some(ch) if ch.is_alphabetic() || ch == '_' => {
+                    names.push(self.parse_identifier()?);
+                }
+                _ => break,
+            }
+        }
+        Ok(names)
     }
 
     fn skip_block(&mut self) {

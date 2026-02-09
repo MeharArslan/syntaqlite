@@ -78,8 +78,7 @@ fn generate_header(grammar: &grammar_parser::LemonGrammar, source: &str) -> Resu
 
 pub fn extract_tokenizer(
     tokenize_c_path: &str,
-    output_path: &str,
-) -> Result<TokenizerExtractResult, String> {
+) -> Result<(String, TokenizerExtractResult), String> {
     let tokenize_content = fs::read_to_string(tokenize_c_path)
         .map_err(|e| format!("Failed to read {}: {}", tokenize_c_path, e))?;
     let tokenize_extractor = c_extractor::CExtractor::new(&tokenize_content);
@@ -144,7 +143,7 @@ pub fn extract_tokenizer(
     let combined = {
         let mut w = c_writer::CWriter::new();
         w.include_local("csrc/sqlite_compat.h")
-            .include_local("csrc/sqlite_tokens.h")
+            .include_local("syntaqlite/tokens.h")
             .include_local("csrc/sqlite_keyword.h")
             .newline()
             .fragment(&cc_defines)
@@ -169,52 +168,23 @@ pub fn extract_tokenizer(
         .replace_all("TK_", "SYNTAQLITE_TK_")
         .finish();
 
-    fs::write(output_path, output)
-        .map_err(|e| format!("Failed to write {}: {}", output_path, e))?;
-
-    Ok(TokenizerExtractResult {
-        char_map: char_map.text,
-        upper_to_lower: upper_to_lower.text,
-    })
+    Ok((
+        output,
+        TokenizerExtractResult {
+            char_map: char_map.text,
+            upper_to_lower: upper_to_lower.text,
+        },
+    ))
 }
 
-/// Generate parser by processing SQLite grammar and running lemon
-///
-/// This function:
-/// 1. Reads the grammar file and writes to a temporary directory
-/// 2. Extracts grammar tokens/rules using extract_grammar
-/// 3. Writes the embedded lempar.c template
-/// 4. Runs lemon via subprocess to generate parse.c and parse.h
-/// 5. Copies parse.h (token definitions) to tokens_output if provided
-///
-/// # Arguments
-/// * `grammar_path` - Path to the parse.y grammar file
-/// * `output_dir` - Optional output directory (uses tempdir if not specified)
-/// * `tokens_output` - Optional path to copy parse.h (token definitions) to
-///
-/// # Errors
-/// Returns error if file operations or lemon execution fails
 pub fn generate_parser(
-    grammar_path: &str,
-    output_dir: Option<&str>,
-    tokens_output: Option<&str>,
+    actions_dir: &str,
+    output_dir: &str,
 ) -> Result<(), String> {
-    let grammar_bytes =
-        fs::read(grammar_path).map_err(|e| format!("Failed to read {}: {}", grammar_path, e))?;
-    // Create or use provided output directory
-    let temp_dir: Option<tempfile::TempDir>;
-    let work_dir = if let Some(dir) = output_dir {
-        let path = Path::new(dir);
-        fs::create_dir_all(path)
-            .map_err(|e| format!("Failed to create output directory: {}", e))?;
-        path
-    } else {
-        temp_dir = Some(
-            tempfile::TempDir::new()
-                .map_err(|e| format!("Failed to create temp directory: {}", e))?,
-        );
-        temp_dir.as_ref().unwrap().path()
-    };
+    let grammar_bytes = concatenate_y_files(actions_dir)?;
+    let work_dir = Path::new(output_dir);
+    fs::create_dir_all(work_dir)
+        .map_err(|e| format!("Failed to create output directory: {}", e))?;
 
     // Step 1: Write raw grammar to working directory
     let raw_parse_y_path = work_dir.join("parse_raw.y");
@@ -257,6 +227,7 @@ pub fn generate_parser(
         std::env::current_exe().map_err(|e| format!("Failed to get current executable: {}", e))?,
     )
     .arg("lemon")
+    .arg("-l")
     .arg(&template_arg)
     .arg(parse_y_str)
     .status()
@@ -277,41 +248,106 @@ pub fn generate_parser(
         return Err("Lemon did not generate parse.h".to_string());
     }
 
-    // Copy token definitions if output path provided
-    if let Some(tokens_out) = tokens_output {
-        if let Some(parent) = Path::new(tokens_out).parent() {
-            fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create tokens output directory: {}", e))?;
-        }
-
-        // Read parse.h and rename TK_ to SYNTAQLITE_TK_
-        let parse_h_content =
-            fs::read_to_string(&parse_h).map_err(|e| format!("Failed to read parse.h: {}", e))?;
-        let renamed_content = parse_h_content.replace("TK_", "SYNTAQLITE_TK_");
-
-        fs::write(tokens_out, renamed_content)
-            .map_err(|e| format!("Failed to write {}: {}", tokens_out, e))?;
-    }
-
     Ok(())
+}
+
+/// Post-process lemon's parse.c, extracting data tables into a separate header.
+///
+/// Returns (parse_c_content, parse_data_h_content).
+pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
+    let extractor = c_extractor::CExtractor::new(parse_c);
+
+    // Extract sections
+    let control_defines = extractor.extract_between_markers(
+        "Begin control #defines",
+        "End control #defines",
+    )?;
+    let parsing_tables_raw = extractor.extract_between_markers(
+        "Begin parsing tables",
+        "End of lemon-generated parsing tables",
+    )?;
+    let yytestcase = extractor.extract_enclosing_ifdef("# define yytestcase")?;
+    let parser_structs = extractor.extract_between_markers(
+        "struct yyStackEntry",
+        "typedef struct yyParser yyParser;",
+    )?;
+    let yyfallback = extractor.extract_enclosing_ifdef("yyFallback")?;
+    let token_names = extractor.extract_enclosing_ifdef("yyTokenName")?;
+    let rule_names = extractor.extract_enclosing_ifdef("yyRuleName")?;
+    let rule_info_lhs = extractor.extract_static_array("yyRuleInfoLhs")?;
+    let rule_info_nrhs = extractor.extract_static_array("yyRuleInfoNRhs")?;
+    let reduce_actions = extractor.extract_between_markers(
+        "Begin reduce actions",
+        "End reduce actions",
+    )?;
+
+    // Remove all extracted sections from main
+    let main = c_transformer::CTransformer::new(parse_c)
+        .remove_text(&control_defines)
+        .remove_text(&yytestcase)
+        .remove_text(&parsing_tables_raw)
+        .remove_text(&parser_structs)
+        .remove_text(&yyfallback)
+        .remove_text(&token_names)
+        .remove_text(&rule_names)
+        .remove_text(&rule_info_lhs.text)
+        .remove_text(&rule_info_nrhs.text)
+        .replace_all(
+            &reduce_actions,
+            "      default: yy_reduce_actions(yypParser, yyruleno, yymsp, yyLookahead, yyLookaheadToken); break;",
+        )
+        .finish();
+
+    // Strip the marker comment from parsing tables (keep only the data)
+    let parsing_tables = parsing_tables_raw
+        .lines()
+        .filter(|l| !l.contains("Begin parsing tables"))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // Wrap reduce actions in a function
+    let reduce_actions_fn = [
+        "static void yy_reduce_actions(",
+        "  yyParser *yypParser,",
+        "  unsigned int yyruleno,",
+        "  yyStackEntry *yymsp,",
+        "  int yyLookahead,",
+        "  ParseTOKENTYPE yyLookaheadToken",
+        "){",
+        "  ParseARG_FETCH",
+        "  (void)yyLookahead;",
+        "  (void)yyLookaheadToken;",
+        "  switch( yyruleno ){",
+        &reduce_actions,
+        "  };",
+        "}",
+    ]
+    .join("\n");
+
+    // Build header from extracted sections
+    let header = [
+        control_defines,
+        yytestcase,
+        parser_structs,
+        parsing_tables,
+        yyfallback,
+        token_names,
+        rule_names,
+        rule_info_lhs.text,
+        rule_info_nrhs.text,
+        reduce_actions_fn,
+    ]
+    .join("\n\n");
+
+    Ok((main, header))
 }
 
 /// Generate keyword hash lookup table
 ///
-/// This function runs mkkeywordhash to generate optimized C code for keyword
-/// recognition. The generated code is split into two files:
-/// - sqlite_keyword_tables.h: Static keyword tables and hash data
-/// - sqlite_keyword.c: The lookup function and character mapping arrays
-///
-/// # Arguments
-/// * `output_path` - Path where the generated keyword hash C code will be written
-///
-/// # Errors
-/// Returns error if mkkeywordhash execution fails or file writing fails
+/// Returns (tables_header_content, keyword_function_content).
 pub fn generate_keyword_hash(
-    output_path: &str,
     extract_result: &TokenizerExtractResult,
-) -> Result<(), String> {
+) -> Result<(String, String), String> {
     // Run mkkeywordhash as a subprocess and capture its output
     let output = std::process::Command::new(
         std::env::current_exe().map_err(|e| format!("Failed to get current executable: {}", e))?,
@@ -346,16 +382,7 @@ pub fn generate_keyword_hash(
     // Split the processed code into tables and function
     let (tables_content, function_content) = split_keyword_code(&processed_code, extract_result)?;
 
-    // Write the tables header file
-    let tables_path = "syntaqlite-parser/csrc/sqlite_keyword_tables.h";
-    fs::write(tables_path, tables_content)
-        .map_err(|e| format!("Failed to write {}: {}", tables_path, e))?;
-
-    // Write the function C file
-    fs::write(output_path, function_content)
-        .map_err(|e| format!("Failed to write {}: {}", output_path, e))?;
-
-    Ok(())
+    Ok((tables_content, function_content))
 }
 
 /// Split keyword code into tables header and function implementation
@@ -371,7 +398,7 @@ fn split_keyword_code(
     tables.line("#ifndef SQLITE_KEYWORD_TABLES_H");
     tables.line("#define SQLITE_KEYWORD_TABLES_H");
     tables.newline();
-    tables.include_local("csrc/sqlite_tokens.h");
+    tables.include_local("syntaqlite/tokens.h");
     tables.newline();
     tables.fragment(&split.before);
     tables.newline();
@@ -400,4 +427,41 @@ fn split_keyword_code(
     }
 
     Ok((tables.finish(), func.finish()))
+}
+
+/// Read all .y files from a directory, sort by name, and concatenate their contents.
+fn concatenate_y_files(dir: &str) -> Result<Vec<u8>, String> {
+    let dir_path = Path::new(dir);
+    if !dir_path.is_dir() {
+        return Err(format!("{} is not a directory", dir));
+    }
+
+    let mut y_files: Vec<_> = fs::read_dir(dir_path)
+        .map_err(|e| format!("Failed to read directory {}: {}", dir, e))?
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("y") {
+                Some(path)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    y_files.sort();
+
+    if y_files.is_empty() {
+        return Err(format!("No .y files found in {}", dir));
+    }
+
+    let mut combined = Vec::new();
+    for path in &y_files {
+        let content =
+            fs::read(path).map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
+        combined.extend_from_slice(&content);
+        combined.push(b'\n');
+    }
+
+    Ok(combined)
 }

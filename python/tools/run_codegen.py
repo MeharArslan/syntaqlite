@@ -22,14 +22,13 @@ def main():
     project_root = Path(__file__).parent.parent.parent
     codegen_crate = project_root / "syntaqlite-codegen"
     sqlite_src = project_root / "third_party" / "src" / "sqlite" / "src"
-    parse_y = sqlite_src / "parse.y"
+    actions_dir = codegen_crate / "parser-actions"
     tokenize_c = sqlite_src / "tokenize.c"
-    tokenize_output = project_root / "syntaqlite-parser" / "csrc" / "sqlite_tokenize.c"
+    output_dir = project_root / "syntaqlite-parser" / "csrc"
 
     # Validate input files
-    if not parse_y.exists():
-        print(f"Error: SQLite grammar not found at {parse_y}", file=sys.stderr)
-        print("Please ensure third_party/src/sqlite is populated", file=sys.stderr)
+    if not actions_dir.is_dir():
+        print(f"Error: Parser actions directory not found at {actions_dir}", file=sys.stderr)
         return 1
 
     if not tokenize_c.exists():
@@ -52,9 +51,9 @@ def main():
         [
             str(codegen_bin),
             "codegen",
-            "--parse-y", str(parse_y),
+            "--actions-dir", str(actions_dir),
             "--tokenize-c", str(tokenize_c),
-            "--tokenize-output", str(tokenize_output),
+            "--output-dir", str(output_dir),
         ],
     )
 

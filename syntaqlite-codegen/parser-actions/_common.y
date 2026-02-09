@@ -12,6 +12,58 @@
 // - Terminals are SynqToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
 
+%token_prefix SYNTAQLITE_TK_
+%start_symbol input
+
+%include {
+#include "syntaqlite/tokens.h"
+#include "csrc/sqlite_parse_data.h"
+
+#define YYNOERRORRECOVERY 1
+#define YYPARSEFREENEVERNULL 1
+}
+
+// ============ Tokens ============
+
+%token ABORT ACTION AFTER ANALYZE ASC ATTACH BEFORE BEGIN BY CASCADE CAST.
+%token CONFLICT DATABASE DEFERRED DESC DETACH EACH END EXCLUSIVE EXPLAIN FAIL.
+%token OR AND NOT IS ISNOT MATCH LIKE_KW BETWEEN IN ISNULL NOTNULL NE EQ.
+%token GT LE LT GE ESCAPE.
+
+// The following directive causes tokens ABORT, AFTER, ASC, etc. to
+// fallback to ID if they will not parse as their original value.
+// This obviates the need for the "id" nonterminal.
+//
+%fallback ID
+  ABORT ACTION AFTER ANALYZE ASC ATTACH BEFORE BEGIN BY CASCADE CAST COLUMNKW
+  CONFLICT DATABASE DEFERRED DESC DETACH DO
+  EACH END EXCLUSIVE EXPLAIN FAIL FOR
+  IGNORE IMMEDIATE INITIALLY INSTEAD LIKE_KW MATCH NO PLAN
+  QUERY KEY OF OFFSET PRAGMA RAISE RECURSIVE RELEASE REPLACE RESTRICT ROW ROWS
+  ROLLBACK SAVEPOINT TEMP TRIGGER VACUUM VIEW VIRTUAL WITH WITHOUT
+  NULLS FIRST LAST
+  CURRENT FOLLOWING PARTITION PRECEDING RANGE UNBOUNDED
+  EXCLUDE GROUPS OTHERS TIES
+  GENERATED ALWAYS
+  MATERIALIZED
+  REINDEX RENAME CTIME_KW IF
+  .
+%wildcard ANY.
+
+%left OR.
+%left AND.
+%right NOT.
+%left IS MATCH LIKE_KW BETWEEN IN ISNULL NOTNULL NE EQ.
+%left GT LE LT GE.
+%right ESCAPE.
+%left BITAND BITOR LSHIFT RSHIFT.
+%left PLUS MINUS.
+%left STAR SLASH REM.
+%left CONCAT PTR.
+%left COLLATE.
+%right BITNOT.
+%nonassoc ON.
+
 // ============ Token classes (match SQLite's parse.y) ============
 
 %token_class id  ID|INDEXED.

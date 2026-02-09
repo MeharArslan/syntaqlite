@@ -1,7 +1,7 @@
 #ifndef SQLITE_KEYWORD_TABLES_H
 #define SQLITE_KEYWORD_TABLES_H
 
-#include "csrc/sqlite_tokens.h"
+#include "syntaqlite/tokens.h"
 
 /***** This file contains automatically generated code ******
 **

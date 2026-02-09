@@ -23,11 +23,6 @@
 
 #include <stdint.h>
 
-// Token type constants (SYNTAQLITE_TOKEN_SELECT, SYNTAQLITE_TOKEN_SEMI, etc.)
-// When SYNTAQLITE_EXTENSION_GRAMMAR is defined, the generated header
-// automatically includes the dialect-specific tokens instead.
-#include "syntaqlite/sqlite_tokens_gen.h"  // IWYU pragma: export
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -37,7 +32,7 @@ extern "C" {
 typedef struct SyntaqliteToken {
   const char* text;  // Pointer into source text (not null-terminated)
   uint32_t length;   // Token length in bytes
-  uint16_t type;     // SYNTAQLITE_TOKEN_* token type
+  uint16_t type;     // SYNTAQLITE_TK_* token type
 } SyntaqliteToken;
 
 // Opaque tokenizer handle.

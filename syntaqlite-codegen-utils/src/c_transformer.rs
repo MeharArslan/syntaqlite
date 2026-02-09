@@ -175,6 +175,12 @@ impl CTransformer {
         }
     }
 
+    /// Remove an exact chunk of text from the content
+    pub fn remove_text(mut self, text: &str) -> Self {
+        self.content = self.content.replace(text, "");
+        self
+    }
+
     /// Append content at the end of the file
     pub fn append(mut self, content: &str) -> Self {
         self.content.push_str(content);

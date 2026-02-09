@@ -199,5 +199,97 @@ fn test_grammar_integration() {
     let full_grammar = LemonGrammar::parse(&full).expect("Full combined grammar should parse");
 
     println!("Full grammar: {} rules", full_grammar.rules.len());
+
+    // Verify %token declarations match
+    let base_token_names: Vec<&str> = base_grammar.tokens.iter().map(|t| t.name).collect();
+    let action_token_names: Vec<&str> = combined_grammar.tokens.iter().map(|t| t.name).collect();
+
+    if base_token_names != action_token_names {
+        let base_set: std::collections::HashSet<&str> = base_token_names.iter().copied().collect();
+        let action_set: std::collections::HashSet<&str> =
+            action_token_names.iter().copied().collect();
+        let missing: Vec<&&str> = base_set.difference(&action_set).collect();
+        let extra: Vec<&&str> = action_set.difference(&base_set).collect();
+        panic!(
+            "Token declarations mismatch.\n  Missing from actions: {:?}\n  Extra in actions: {:?}",
+            missing, extra
+        );
+    }
+    println!("Token declarations: {} match", base_token_names.len());
+
+    // Verify %fallback declarations match
+    assert_eq!(
+        base_grammar.fallbacks.len(),
+        combined_grammar.fallbacks.len(),
+        "Different number of %fallback declarations: base has {}, actions have {}",
+        base_grammar.fallbacks.len(),
+        combined_grammar.fallbacks.len()
+    );
+
+    for (base_fb, action_fb) in base_grammar
+        .fallbacks
+        .iter()
+        .zip(combined_grammar.fallbacks.iter())
+    {
+        assert_eq!(
+            base_fb.target, action_fb.target,
+            "Fallback target mismatch: base has '{}', actions have '{}'",
+            base_fb.target, action_fb.target
+        );
+
+        let base_fb_set: std::collections::HashSet<&str> = base_fb.tokens.iter().copied().collect();
+        let action_fb_set: std::collections::HashSet<&str> =
+            action_fb.tokens.iter().copied().collect();
+
+        if base_fb_set != action_fb_set {
+            let missing: Vec<&&str> = base_fb_set.difference(&action_fb_set).collect();
+            let extra: Vec<&&str> = action_fb_set.difference(&base_fb_set).collect();
+            panic!(
+                "Fallback '{}' tokens mismatch.\n  Missing from actions: {:?}\n  Extra in actions: {:?}",
+                base_fb.target, missing, extra
+            );
+        }
+        println!(
+            "Fallback '{}': {} tokens match",
+            base_fb.target,
+            base_fb.tokens.len()
+        );
+    }
+
+    // Verify %left/%right/%nonassoc precedence declarations match
+    assert_eq!(
+        base_grammar.precedences.len(),
+        combined_grammar.precedences.len(),
+        "Different number of precedence declarations: base has {}, actions have {}",
+        base_grammar.precedences.len(),
+        combined_grammar.precedences.len()
+    );
+
+    for (i, (base_prec, action_prec)) in base_grammar
+        .precedences
+        .iter()
+        .zip(combined_grammar.precedences.iter())
+        .enumerate()
+    {
+        assert_eq!(
+            base_prec.assoc, action_prec.assoc,
+            "Precedence #{} associativity mismatch: base has '%{}', actions have '%{}'",
+            i, base_prec.assoc, action_prec.assoc
+        );
+        assert_eq!(
+            base_prec.tokens,
+            action_prec.tokens,
+            "Precedence '%{} {}' tokens mismatch:\n  base:    {:?}\n  actions: {:?}",
+            base_prec.assoc,
+            base_prec.tokens.join(" "),
+            base_prec.tokens,
+            action_prec.tokens
+        );
+    }
+    println!(
+        "Precedence declarations: {} match",
+        base_grammar.precedences.len()
+    );
+
     println!("All checks passed");
 }

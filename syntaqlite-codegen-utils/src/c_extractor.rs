@@ -340,6 +340,39 @@ impl CExtractor {
         merged
     }
 
+    /// Find the ifdef/ifndef block that contains a line matching `inner_marker`,
+    /// and return the full block text (from #if... through #endif).
+    pub fn extract_enclosing_ifdef(&self, inner_marker: &str) -> Result<String, String> {
+        let line_idx = self
+            .lines
+            .iter()
+            .position(|l| l.contains(inner_marker))
+            .ok_or_else(|| format!("Could not find line containing '{}'", inner_marker))?;
+        let (start, end) = self
+            .find_enclosing_ifdef(line_idx)
+            .ok_or_else(|| format!("No enclosing ifdef found for '{}'", inner_marker))?;
+        Ok(self.lines[start..=end].join("\n"))
+    }
+
+    /// Extract lines between (and including) two marker strings.
+    pub fn extract_between_markers(
+        &self,
+        start_marker: &str,
+        end_marker: &str,
+    ) -> Result<String, String> {
+        let start = self
+            .lines
+            .iter()
+            .position(|l| l.contains(start_marker))
+            .ok_or_else(|| format!("Could not find start marker: {}", start_marker))?;
+        let end = self.lines[start..]
+            .iter()
+            .position(|l| l.contains(end_marker))
+            .map(|i| start + i)
+            .ok_or_else(|| format!("Could not find end marker: {}", end_marker))?;
+        Ok(self.lines[start..=end].join("\n"))
+    }
+
     fn extract_line_ranges(&self, ranges: &[(usize, usize)]) -> String {
         ranges
             .iter()
