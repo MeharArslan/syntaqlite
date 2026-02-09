@@ -23,6 +23,10 @@ fn main() {
     println!("cargo:rerun-if-changed=csrc/ast.h");
     println!("cargo:rerun-if-changed=csrc/ast.c");
     println!("cargo:rerun-if-changed=csrc/ast_builder.h");
+    println!("cargo:rerun-if-changed=csrc/arena.c");
+    println!("cargo:rerun-if-changed=csrc/arena.h");
+    println!("cargo:rerun-if-changed=csrc/vec.h");
+    println!("cargo:rerun-if-changed=csrc/xmalloc.h");
     println!("cargo:rerun-if-changed=include/syntaqlite/ast.h");
     println!("cargo:rerun-if-changed=include/syntaqlite/ast_nodes.h");
 }

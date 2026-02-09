@@ -366,7 +366,7 @@ typedef enum SyntaqliteNodeTag {
 // ============ Node Structs ============
 
 typedef struct SyntaqliteAggregateFunctionCall {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan func_name;
     SyntaqliteAggregateFunctionCallFlags flags;
     uint32_t args;
@@ -376,51 +376,51 @@ typedef struct SyntaqliteAggregateFunctionCall {
 } SyntaqliteAggregateFunctionCall;
 
 typedef struct SyntaqliteCastExpr {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t expr;
     SyntaqliteSourceSpan type_name;
 } SyntaqliteCastExpr;
 
 typedef struct SyntaqliteColumnRef {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan column;
     SyntaqliteSourceSpan table;
     SyntaqliteSourceSpan schema;
 } SyntaqliteColumnRef;
 
 typedef struct SyntaqliteCompoundSelect {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteCompoundOp op;
     uint32_t left;
     uint32_t right;
 } SyntaqliteCompoundSelect;
 
 typedef struct SyntaqliteSubqueryExpr {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t select;
 } SyntaqliteSubqueryExpr;
 
 typedef struct SyntaqliteExistsExpr {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t select;
 } SyntaqliteExistsExpr;
 
 typedef struct SyntaqliteInExpr {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteBool negated;
     uint32_t operand;
     uint32_t source;
 } SyntaqliteInExpr;
 
 typedef struct SyntaqliteIsExpr {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteIsOp op;
     uint32_t left;
     uint32_t right;
 } SyntaqliteIsExpr;
 
 typedef struct SyntaqliteBetweenExpr {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteBool negated;
     uint32_t operand;
     uint32_t low;
@@ -428,7 +428,7 @@ typedef struct SyntaqliteBetweenExpr {
 } SyntaqliteBetweenExpr;
 
 typedef struct SyntaqliteLikeExpr {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteBool negated;
     uint32_t operand;
     uint32_t pattern;
@@ -436,28 +436,27 @@ typedef struct SyntaqliteLikeExpr {
 } SyntaqliteLikeExpr;
 
 typedef struct SyntaqliteCaseExpr {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t operand;
     uint32_t else_expr;
     uint32_t whens;
 } SyntaqliteCaseExpr;
 
 typedef struct SyntaqliteCaseWhen {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t when_expr;
     uint32_t then_expr;
 } SyntaqliteCaseWhen;
 
 // List of CaseWhen
 typedef struct SyntaqliteCaseWhenList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteCaseWhenList;
 
 typedef struct SyntaqliteForeignKeyClause {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan ref_table;
     uint32_t ref_columns;
     SyntaqliteForeignKeyAction on_delete;
@@ -466,7 +465,7 @@ typedef struct SyntaqliteForeignKeyClause {
 } SyntaqliteForeignKeyClause;
 
 typedef struct SyntaqliteColumnConstraint {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteColumnConstraintKind kind;
     SyntaqliteSourceSpan constraint_name;
     SyntaqliteConflictAction onconf;
@@ -482,14 +481,13 @@ typedef struct SyntaqliteColumnConstraint {
 
 // List of ColumnConstraint
 typedef struct SyntaqliteColumnConstraintList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteColumnConstraintList;
 
 typedef struct SyntaqliteColumnDef {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan column_name;
     SyntaqliteSourceSpan type_name;
     uint32_t constraints;
@@ -497,14 +495,13 @@ typedef struct SyntaqliteColumnDef {
 
 // List of ColumnDef
 typedef struct SyntaqliteColumnDefList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteColumnDefList;
 
 typedef struct SyntaqliteTableConstraint {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteTableConstraintKind kind;
     SyntaqliteSourceSpan constraint_name;
     SyntaqliteConflictAction onconf;
@@ -516,14 +513,13 @@ typedef struct SyntaqliteTableConstraint {
 
 // List of TableConstraint
 typedef struct SyntaqliteTableConstraintList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteTableConstraintList;
 
 typedef struct SyntaqliteCreateTableStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan table_name;
     SyntaqliteSourceSpan schema;
     SyntaqliteBool is_temp;
@@ -535,7 +531,7 @@ typedef struct SyntaqliteCreateTableStmt {
 } SyntaqliteCreateTableStmt;
 
 typedef struct SyntaqliteCteDefinition {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan cte_name;
     SyntaqliteMaterialized materialized;
     uint32_t columns;
@@ -544,27 +540,26 @@ typedef struct SyntaqliteCteDefinition {
 
 // List of CteDefinition
 typedef struct SyntaqliteCteList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteCteList;
 
 typedef struct SyntaqliteWithClause {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteBool recursive;
     uint32_t ctes;
     uint32_t select;
 } SyntaqliteWithClause;
 
 typedef struct SyntaqliteDeleteStmt {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t table;
     uint32_t where;
 } SyntaqliteDeleteStmt;
 
 typedef struct SyntaqliteSetClause {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan column;
     uint32_t columns;
     uint32_t value;
@@ -572,14 +567,13 @@ typedef struct SyntaqliteSetClause {
 
 // List of SetClause
 typedef struct SyntaqliteSetClauseList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteSetClauseList;
 
 typedef struct SyntaqliteUpdateStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteConflictAction conflict_action;
     uint32_t table;
     uint32_t setlist;
@@ -588,7 +582,7 @@ typedef struct SyntaqliteUpdateStmt {
 } SyntaqliteUpdateStmt;
 
 typedef struct SyntaqliteInsertStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteConflictAction conflict_action;
     uint32_t table;
     uint32_t columns;
@@ -596,34 +590,33 @@ typedef struct SyntaqliteInsertStmt {
 } SyntaqliteInsertStmt;
 
 typedef struct SyntaqliteBinaryExpr {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteBinaryOp op;
     uint32_t left;
     uint32_t right;
 } SyntaqliteBinaryExpr;
 
 typedef struct SyntaqliteUnaryExpr {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteUnaryOp op;
     uint32_t operand;
 } SyntaqliteUnaryExpr;
 
 typedef struct SyntaqliteLiteral {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteLiteralType literal_type;
     SyntaqliteSourceSpan source;
 } SyntaqliteLiteral;
 
 // List of Expr
 typedef struct SyntaqliteExprList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteExprList;
 
 typedef struct SyntaqliteFunctionCall {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan func_name;
     SyntaqliteFunctionCallFlags flags;
     uint32_t args;
@@ -632,37 +625,37 @@ typedef struct SyntaqliteFunctionCall {
 } SyntaqliteFunctionCall;
 
 typedef struct SyntaqliteVariable {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan source;
 } SyntaqliteVariable;
 
 typedef struct SyntaqliteCollateExpr {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t expr;
     SyntaqliteSourceSpan collation;
 } SyntaqliteCollateExpr;
 
 typedef struct SyntaqliteRaiseExpr {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteRaiseType raise_type;
     uint32_t error_message;
 } SyntaqliteRaiseExpr;
 
 typedef struct SyntaqliteQualifiedName {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan object_name;
     SyntaqliteSourceSpan schema;
 } SyntaqliteQualifiedName;
 
 typedef struct SyntaqliteDropStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteDropObjectType object_type;
     SyntaqliteBool if_exists;
     uint32_t target;
 } SyntaqliteDropStmt;
 
 typedef struct SyntaqliteAlterTableStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteAlterOp op;
     uint32_t target;
     SyntaqliteSourceSpan new_name;
@@ -670,19 +663,19 @@ typedef struct SyntaqliteAlterTableStmt {
 } SyntaqliteAlterTableStmt;
 
 typedef struct SyntaqliteTransactionStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteTransactionOp op;
     SyntaqliteTransactionType trans_type;
 } SyntaqliteTransactionStmt;
 
 typedef struct SyntaqliteSavepointStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSavepointOp op;
     SyntaqliteSourceSpan savepoint_name;
 } SyntaqliteSavepointStmt;
 
 typedef struct SyntaqliteResultColumn {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteResultColumnFlags flags;
     SyntaqliteSourceSpan alias;
     uint32_t expr;
@@ -690,14 +683,13 @@ typedef struct SyntaqliteResultColumn {
 
 // List of ResultColumn
 typedef struct SyntaqliteResultColumnList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteResultColumnList;
 
 typedef struct SyntaqliteSelectStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSelectStmtFlags flags;
     uint32_t columns;
     uint32_t from_clause;
@@ -710,7 +702,7 @@ typedef struct SyntaqliteSelectStmt {
 } SyntaqliteSelectStmt;
 
 typedef struct SyntaqliteOrderingTerm {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t expr;
     SyntaqliteSortOrder sort_order;
     SyntaqliteNullsOrder nulls_order;
@@ -718,33 +710,32 @@ typedef struct SyntaqliteOrderingTerm {
 
 // List of OrderingTerm
 typedef struct SyntaqliteOrderByList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteOrderByList;
 
 typedef struct SyntaqliteLimitClause {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t limit;
     uint32_t offset;
 } SyntaqliteLimitClause;
 
 typedef struct SyntaqliteTableRef {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan table_name;
     SyntaqliteSourceSpan schema;
     SyntaqliteSourceSpan alias;
 } SyntaqliteTableRef;
 
 typedef struct SyntaqliteSubqueryTableSource {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t select;
     SyntaqliteSourceSpan alias;
 } SyntaqliteSubqueryTableSource;
 
 typedef struct SyntaqliteJoinClause {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteJoinType join_type;
     uint32_t left;
     uint32_t right;
@@ -753,27 +744,26 @@ typedef struct SyntaqliteJoinClause {
 } SyntaqliteJoinClause;
 
 typedef struct SyntaqliteJoinPrefix {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t source;
     SyntaqliteJoinType join_type;
 } SyntaqliteJoinPrefix;
 
 typedef struct SyntaqliteTriggerEvent {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteTriggerEventType event_type;
     uint32_t columns;
 } SyntaqliteTriggerEvent;
 
 // List of Stmt
 typedef struct SyntaqliteTriggerCmdList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteTriggerCmdList;
 
 typedef struct SyntaqliteCreateTriggerStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan trigger_name;
     SyntaqliteSourceSpan schema;
     SyntaqliteBool is_temp;
@@ -786,7 +776,7 @@ typedef struct SyntaqliteCreateTriggerStmt {
 } SyntaqliteCreateTriggerStmt;
 
 typedef struct SyntaqliteCreateVirtualTableStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan table_name;
     SyntaqliteSourceSpan schema;
     SyntaqliteSourceSpan module_name;
@@ -795,7 +785,7 @@ typedef struct SyntaqliteCreateVirtualTableStmt {
 } SyntaqliteCreateVirtualTableStmt;
 
 typedef struct SyntaqlitePragmaStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan pragma_name;
     SyntaqliteSourceSpan schema;
     SyntaqliteSourceSpan value;
@@ -803,38 +793,38 @@ typedef struct SyntaqlitePragmaStmt {
 } SyntaqlitePragmaStmt;
 
 typedef struct SyntaqliteAnalyzeStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan target_name;
     SyntaqliteSourceSpan schema;
     SyntaqliteAnalyzeKind kind;
 } SyntaqliteAnalyzeStmt;
 
 typedef struct SyntaqliteAttachStmt {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t filename;
     uint32_t db_name;
     uint32_t key;
 } SyntaqliteAttachStmt;
 
 typedef struct SyntaqliteDetachStmt {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t db_name;
 } SyntaqliteDetachStmt;
 
 typedef struct SyntaqliteVacuumStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan schema;
     uint32_t into_expr;
 } SyntaqliteVacuumStmt;
 
 typedef struct SyntaqliteExplainStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteExplainMode explain_mode;
     uint32_t stmt;
 } SyntaqliteExplainStmt;
 
 typedef struct SyntaqliteCreateIndexStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan index_name;
     SyntaqliteSourceSpan schema;
     SyntaqliteSourceSpan table_name;
@@ -845,7 +835,7 @@ typedef struct SyntaqliteCreateIndexStmt {
 } SyntaqliteCreateIndexStmt;
 
 typedef struct SyntaqliteCreateViewStmt {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan view_name;
     SyntaqliteSourceSpan schema;
     SyntaqliteBool is_temp;
@@ -856,25 +846,24 @@ typedef struct SyntaqliteCreateViewStmt {
 
 // List of ExprList
 typedef struct SyntaqliteValuesRowList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteValuesRowList;
 
 typedef struct SyntaqliteValuesClause {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t rows;
 } SyntaqliteValuesClause;
 
 typedef struct SyntaqliteFrameBound {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteFrameBoundType bound_type;
     uint32_t expr;
 } SyntaqliteFrameBound;
 
 typedef struct SyntaqliteFrameSpec {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteFrameType frame_type;
     SyntaqliteFrameExclude exclude;
     uint32_t start_bound;
@@ -882,7 +871,7 @@ typedef struct SyntaqliteFrameSpec {
 } SyntaqliteFrameSpec;
 
 typedef struct SyntaqliteWindowDef {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan base_window_name;
     uint32_t partition_by;
     uint32_t orderby;
@@ -891,28 +880,26 @@ typedef struct SyntaqliteWindowDef {
 
 // List of WindowDef
 typedef struct SyntaqliteWindowDefList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteWindowDefList;
 
 typedef struct SyntaqliteNamedWindowDef {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteSourceSpan window_name;
     uint32_t window_def;
 } SyntaqliteNamedWindowDef;
 
 // List of NamedWindowDef
 typedef struct SyntaqliteNamedWindowDefList {
-    uint8_t tag;
-    uint8_t _pad[3];
+    uint32_t tag;
     uint32_t count;
     uint32_t children[];
 } SyntaqliteNamedWindowDefList;
 
 typedef struct SyntaqliteFilterOver {
-    uint8_t tag;
+    uint32_t tag;
     uint32_t filter_expr;
     uint32_t over_def;
     SyntaqliteSourceSpan over_name;
@@ -921,7 +908,7 @@ typedef struct SyntaqliteFilterOver {
 // ============ Node Union ============
 
 typedef union SyntaqliteNode {
-    uint8_t tag;
+    uint32_t tag;
     SyntaqliteAggregateFunctionCall aggregate_function_call;
     SyntaqliteCastExpr cast_expr;
     SyntaqliteColumnRef column_ref;

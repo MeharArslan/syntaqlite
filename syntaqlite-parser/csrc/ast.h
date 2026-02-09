@@ -3,48 +3,43 @@
 #ifndef SYNQ_AST_H
 #define SYNQ_AST_H
 
-#include <stddef.h>
 #include <stdint.h>
 
-#include "syntaqlite/ast.h"
+#include "csrc/arena.h"
+#include "csrc/vec.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// TODO: replace with real definitions once wired up
-typedef struct SynqArena {
-    uint8_t *data;
-    uint32_t *offsets;
-} SynqArena;
-
-typedef struct SynqSourceRange {
-    uint32_t first;
-    uint32_t last;
-} SynqSourceRange;
-
-typedef struct SynqRanges {
-    SynqSourceRange *data;
-} SynqRanges;
+// List descriptor: lightweight metadata for one in-progress list.
+typedef struct SynqListDesc {
+    uint32_t node_id;   // reserved arena ID
+    uint32_t offset;    // start index into child_buf
+    uint32_t tag;
+} SynqListDesc;
 
 typedef struct SynqAstContext {
     SynqArena ast;
-    SynqRanges ranges;
+
+    // Shared child-ID buffer for all in-progress lists.
+    // Each list owns a contiguous slice starting at its offset.
+    SYNQ_VEC(uint32_t) child_buf;
+
+    // Stack of list descriptors.  Inner lists sit above outer lists.
+    SYNQ_VEC(SynqListDesc) list_stack;
 } SynqAstContext;
 
-uint32_t synq_arena_alloc(SynqArena *arena, uint8_t tag, size_t size);
-uint32_t synq_ast_list_empty(SynqAstContext *ctx, uint8_t tag, size_t size);
-uint32_t synq_ast_list_start(SynqAstContext *ctx, uint8_t tag, uint32_t first_child);
-uint32_t synq_ast_list_append(SynqAstContext *ctx, uint32_t list_id, uint32_t child, uint8_t tag);
-void synq_ast_list_flush(SynqAstContext *ctx);
-void synq_ast_ranges_sync(SynqAstContext *ctx);
-void synq_ast_range_union(SynqAstContext *ctx, SynqSourceRange *r, uint32_t child_id);
-void synq_ast_range_union_span(SynqSourceRange *r, SyntaqliteSourceSpan span);
+void synq_ast_ctx_init(SynqAstContext *ctx);
+void synq_ast_ctx_free(SynqAstContext *ctx);
 
-// Generic node builder: arena alloc + memcpy + table-driven range computation.
-// All per-node static inline builders delegate to this.
-uint32_t synq_ast_build(SynqAstContext *ctx, uint8_t tag,
-                        const void *node_data, size_t node_size);
+// Generic node builder: arena alloc + memcpy.
+uint32_t synq_ast_build(SynqAstContext *ctx, uint32_t tag,
+                        const void *node_data, uint32_t node_size);
+
+uint32_t synq_ast_list_start(SynqAstContext *ctx, uint32_t tag, uint32_t first_child);
+void synq_ast_list_append(SynqAstContext *ctx, uint32_t list_id, uint32_t child);
+void synq_ast_list_flush(SynqAstContext *ctx);
 
 #ifdef __cplusplus
 }

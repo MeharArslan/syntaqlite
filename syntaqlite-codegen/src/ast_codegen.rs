@@ -69,7 +69,7 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
         match item {
             Item::Node { name, fields, .. } => {
                 let sname = c_type_name(name);
-                let mut f = vec![("uint8_t".to_string(), "tag".to_string())];
+                let mut f = vec![("uint32_t".to_string(), "tag".to_string())];
                 for field in fields {
                     f.push((field_c_type(field, &enum_names, &flags_names), field.name.clone()));
                 }
@@ -80,8 +80,7 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
             Item::List { name, child_type, .. } => {
                 w.comment(&format!("List of {}", child_type));
                 w.typedef_struct(&c_type_name(name), &[
-                    ("uint8_t", "tag"),
-                    ("uint8_t", "_pad[3]"),
+                    ("uint32_t", "tag"),
                     ("uint32_t", "count"),
                     ("uint32_t", "children[]"),
                 ]);
@@ -93,7 +92,7 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
 
     // Node union
     w.section("Node Union");
-    let mut union_members = vec![("uint8_t".to_string(), "tag".to_string())];
+    let mut union_members = vec![("uint32_t".to_string(), "tag".to_string())];
     for item in items {
         let name = match item {
             Item::Node { name, .. } | Item::List { name, .. } => name,
@@ -236,7 +235,7 @@ fn emit_node_builder_inline(
     }
 
     let literal = format!("&({}){{{}}}", sn, init_parts.join(", "));
-    let call = format!("return synq_ast_build(ctx, {}, {}, sizeof({}));", tag, literal, sn);
+    let call = format!("return synq_ast_build(ctx, {}, {}, (uint32_t)sizeof({}));", tag, literal, sn);
 
     w.indent();
     if call.len() <= 80 {
@@ -251,7 +250,7 @@ fn emit_node_builder_inline(
             w.line(&format!("{}{}", part, comma));
         }
         w.dedent();
-        w.line(&format!("}}, sizeof({}));", sn));
+        w.line(&format!("}}, (uint32_t)sizeof({}));", sn));
         w.dedent();
     }
     w.dedent();
@@ -261,18 +260,7 @@ fn emit_node_builder_inline(
 
 fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
     let func = builder_name(name);
-    let sn = c_type_name(name);
     let tag = tag_name(name);
-
-    // Empty list creator
-    w.comment(&format!("Create empty {}", name));
-    w.func_signature("static inline ", "uint32_t", &format!("{}_empty", func),
-        &["SynqAstContext *ctx"], " {");
-    w.indent();
-    w.line(&format!("return synq_ast_list_empty(ctx, {}, sizeof({}));", tag, sn));
-    w.dedent();
-    w.line("}");
-    w.newline();
 
     // Single-child creator
     w.comment(&format!("Create {} with single child", name));
@@ -284,8 +272,7 @@ fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
     w.line("}");
     w.newline();
 
-    // Append function
-    w.comment(&format!("Append child to {} (may reallocate, returns new list ID)", name));
+    // Append-or-create: starts a new list on NULL_NODE, otherwise appends
     w.func_signature("static inline ", "uint32_t", &format!("{}_append", func),
         &["SynqAstContext *ctx", "uint32_t list_id", "uint32_t child"], " {");
     w.indent();
@@ -294,7 +281,8 @@ fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
     w.line(&format!("return synq_ast_list_start(ctx, {}, child);", tag));
     w.dedent();
     w.line("}");
-    w.line(&format!("return synq_ast_list_append(ctx, list_id, child, {});", tag));
+    w.line("synq_ast_list_append(ctx, list_id, child);");
+    w.line("return list_id;");
     w.dedent();
     w.line("}");
     w.newline();

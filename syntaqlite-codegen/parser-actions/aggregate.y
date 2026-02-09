@@ -27,8 +27,7 @@ expr(A) ::= idj(B) LP distinct(C) exprlist(D) ORDER BY sortlist(E) RP. {
 
 // Aggregate function call with filter/over
 expr(A) ::= idj(B) LP distinct(C) exprlist(D) ORDER BY sortlist(E) RP filter_over(F). {
-    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)
-        (pCtx->astCtx->ast.data + pCtx->astCtx->ast.offsets[F]);
+    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->astCtx->ast, F);
     A = synq_ast_aggregate_function_call(pCtx->astCtx,
         synq_span(pCtx, B),
         (SyntaqliteAggregateFunctionCallFlags){.raw = (uint8_t)C},

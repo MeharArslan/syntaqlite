@@ -36,8 +36,7 @@ expr(A) ::= idj(B) LP STAR RP. {
 
 // Function call with arguments and filter/over: func(args) FILTER/OVER
 expr(A) ::= idj(B) LP distinct(C) exprlist(D) RP filter_over(E). {
-    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)
-        (pCtx->astCtx->ast.data + pCtx->astCtx->ast.offsets[E]);
+    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->astCtx->ast, E);
     A = synq_ast_function_call(pCtx->astCtx,
         synq_span(pCtx, B),
         (SyntaqliteFunctionCallFlags){.raw = (uint8_t)C},
@@ -48,8 +47,7 @@ expr(A) ::= idj(B) LP distinct(C) exprlist(D) RP filter_over(E). {
 
 // Function call with star and filter/over: COUNT(*) FILTER/OVER
 expr(A) ::= idj(B) LP STAR RP filter_over(C). {
-    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)
-        (pCtx->astCtx->ast.data + pCtx->astCtx->ast.offsets[C]);
+    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->astCtx->ast, C);
     A = synq_ast_function_call(pCtx->astCtx,
         synq_span(pCtx, B),
         (SyntaqliteFunctionCallFlags){.star = 1},

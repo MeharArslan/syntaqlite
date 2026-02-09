@@ -7,32 +7,37 @@
 #ifndef SYNQ_SRC_BASE_ARENA_H
 #define SYNQ_SRC_BASE_ARENA_H
 
-#include <stddef.h>
 #include <stdint.h>
+
+#include "csrc/vec.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct SynqArena {
-  uint8_t* data;
-  uint32_t size;
-  uint32_t capacity;
-  uint32_t* offsets;
-  uint32_t offsets_size;
-  uint32_t offset_capacity;
+  SYNQ_VEC(uint8_t) data;
+  SYNQ_VEC(uint32_t) offsets;
 } SynqArena;
+
+// Get pointer to node data by offset-table ID.
+#define synq_arena_ptr(a, id) \
+  (&synq_vec_at(&(a)->data, synq_vec_at(&(a)->offsets, id)))
 
 void synq_arena_init(SynqArena* a);
 void synq_arena_free(SynqArena* a);
 
 // Allocate space in the arena for a node with the given tag and size.
 // Returns the node ID. Aborts on OOM.
-uint32_t synq_arena_alloc(SynqArena* a, uint8_t tag, size_t size);
+uint32_t synq_arena_alloc(SynqArena* a, uint32_t tag, uint32_t size);
 
 // Reserve a node ID in the offset table without allocating arena bytes.
-// The offset is written later (e.g., by the list accumulator flush).
+// The offset is written later by synq_arena_commit.
 uint32_t synq_arena_reserve_id(SynqArena* a);
+
+// Commit a previously reserved node ID: set its offset and reserve `size`
+// bytes in the data buffer. Returns a pointer to the reserved bytes.
+void* synq_arena_commit(SynqArena* a, uint32_t node_id, uint32_t size);
 
 #ifdef __cplusplus
 }

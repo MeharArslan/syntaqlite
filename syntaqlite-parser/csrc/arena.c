@@ -4,61 +4,41 @@
 
 // Shared arena allocator with offset table.
 
-#include <stdlib.h>
+#include <string.h>
 
 #include "csrc/arena.h"
-#include "csrc/xmalloc.h"
 
 void synq_arena_init(SynqArena* a) {
-  a->data = NULL;
-  a->size = 0;
-  a->capacity = 0;
-  a->offsets = NULL;
-  a->offsets_size = 0;
-  a->offset_capacity = 0;
+  synq_vec_init(&a->data);
+  synq_vec_init(&a->offsets);
 }
 
 void synq_arena_free(SynqArena* a) {
-  free(a->data);
-  free(a->offsets);
-  a->data = NULL;
-  a->offsets = NULL;
-  a->size = 0;
-  a->capacity = 0;
-  a->offsets_size = 0;
-  a->offset_capacity = 0;
+  synq_vec_free(&a->data);
+  synq_vec_free(&a->offsets);
 }
 
-uint32_t synq_arena_alloc(SynqArena* a, uint8_t tag, size_t size) {
-  // Grow arena if needed
-  if (a->size + size > a->capacity) {
-    size_t new_capacity = a->capacity * 2 + size + 1024;
-    a->data = (uint8_t*)synq_xrealloc(a->data, new_capacity);
-    a->capacity = (uint32_t)new_capacity;
-  }
+uint32_t synq_arena_alloc(SynqArena* a, uint32_t tag, uint32_t size) {
+  uint32_t node_id = synq_vec_len(&a->offsets);
+  uint32_t offset = synq_vec_len(&a->data);
+  synq_vec_push(&a->offsets, offset);
 
-  // Grow offset table if needed
-  if (a->offsets_size >= a->offset_capacity) {
-    size_t new_capacity = a->offset_capacity * 2 + 64;
-    a->offsets =
-        (uint32_t*)synq_xrealloc(a->offsets, new_capacity * sizeof(uint32_t));
-    a->offset_capacity = (uint32_t)new_capacity;
-  }
-
-  uint32_t node_id = a->offsets_size++;
-  a->offsets[node_id] = a->size;
-  a->data[a->size] = tag;
-  a->size += (uint32_t)size;
+  uint8_t* dest;
+  synq_vec_extend(&a->data, (uint32_t)size, dest);
+  memcpy(dest, &tag, sizeof(tag));
 
   return node_id;
 }
 
 uint32_t synq_arena_reserve_id(SynqArena* a) {
-  if (a->offsets_size >= a->offset_capacity) {
-    size_t new_capacity = a->offset_capacity * 2 + 64;
-    a->offsets =
-        (uint32_t*)synq_xrealloc(a->offsets, new_capacity * sizeof(uint32_t));
-    a->offset_capacity = (uint32_t)new_capacity;
-  }
-  return a->offsets_size++;
+  uint32_t node_id = synq_vec_len(&a->offsets);
+  synq_vec_push(&a->offsets, 0);
+  return node_id;
+}
+
+void* synq_arena_commit(SynqArena* a, uint32_t node_id, uint32_t size) {
+  synq_vec_at(&a->offsets, node_id) = synq_vec_len(&a->data);
+  uint8_t* dest;
+  synq_vec_extend(&a->data, (uint32_t)size, dest);
+  return dest;
 }

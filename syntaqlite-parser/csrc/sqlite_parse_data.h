@@ -2554,8 +2554,7 @@ static void yy_reduce_actions(
         break;
       case 7: /* expr ::= ID|INDEXED|JOIN_KW LP distinct exprlist ORDER BY sortlist RP filter_over */
 {
-    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)
-        (pCtx->astCtx->ast.data + pCtx->astCtx->ast.offsets[yymsp[0].minor.yy0]);
+    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->astCtx->ast, yymsp[0].minor.yy0);
     yylhsminor.yy0 = synq_ast_aggregate_function_call(pCtx->astCtx,
         synq_span(pCtx, yymsp[-8].minor.yy0),
         (SyntaqliteAggregateFunctionCallFlags){.raw = (uint8_t)yymsp[-6].minor.yy0},
@@ -3798,8 +3797,7 @@ static void yy_reduce_actions(
         break;
       case 193: /* expr ::= ID|INDEXED|JOIN_KW LP distinct exprlist RP filter_over */
 {
-    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)
-        (pCtx->astCtx->ast.data + pCtx->astCtx->ast.offsets[yymsp[0].minor.yy0]);
+    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->astCtx->ast, yymsp[0].minor.yy0);
     yylhsminor.yy0 = synq_ast_function_call(pCtx->astCtx,
         synq_span(pCtx, yymsp[-5].minor.yy0),
         (SyntaqliteFunctionCallFlags){.raw = (uint8_t)yymsp[-3].minor.yy0},
@@ -3811,8 +3809,7 @@ static void yy_reduce_actions(
         break;
       case 194: /* expr ::= ID|INDEXED|JOIN_KW LP STAR RP filter_over */
 {
-    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)
-        (pCtx->astCtx->ast.data + pCtx->astCtx->ast.offsets[yymsp[0].minor.yy0]);
+    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->astCtx->ast, yymsp[0].minor.yy0);
     yylhsminor.yy0 = synq_ast_function_call(pCtx->astCtx,
         synq_span(pCtx, yymsp[-4].minor.yy0),
         (SyntaqliteFunctionCallFlags){.star = 1},
@@ -4806,8 +4803,7 @@ static void yy_reduce_actions(
       case 403: /* filter_over ::= filter_clause over_clause */
 {
     // Unpack the over_clause FilterOver to combine with filter expr
-    SyntaqliteFilterOver *fo_over = (SyntaqliteFilterOver*)
-        (pCtx->astCtx->ast.data + pCtx->astCtx->ast.offsets[yymsp[0].minor.yy0]);
+    SyntaqliteFilterOver *fo_over = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->astCtx->ast, yymsp[0].minor.yy0);
     yylhsminor.yy0 = synq_ast_filter_over(pCtx->astCtx,
         yymsp[-1].minor.yy0,
         fo_over->over_def,
