@@ -50,16 +50,16 @@ extern "C" {
 
 // Ensure capacity >= needed (capacity is always a power of two).
 // The void* cast uses __typeof__ for C++ compatibility (realloc returns void*).
-#define synq_vec_ensure(v, needed)                       \
-  do {                                                   \
-    if ((needed) > (v)->capacity) {                      \
-      uint32_t _cap = (v)->capacity ? (v)->capacity : 16;\
-      while (_cap < (needed))                            \
-        _cap *= 2;                                       \
-      (v)->data = (__typeof__((v)->data))synq_xrealloc(  \
-          (v)->data, (size_t)_cap * sizeof(*(v)->data)); \
-      (v)->capacity = _cap;                              \
-    }                                                    \
+#define synq_vec_ensure(v, needed)                        \
+  do {                                                    \
+    if ((needed) > (v)->capacity) {                       \
+      uint32_t _cap = (v)->capacity ? (v)->capacity : 16; \
+      while (_cap < (needed))                             \
+        _cap *= 2;                                        \
+      (v)->data = (__typeof__((v)->data))synq_xrealloc(   \
+          (v)->data, (size_t)_cap * sizeof(*(v)->data));  \
+      (v)->capacity = _cap;                               \
+    }                                                     \
   } while (0)
 
 // Append one element, grow if needed
@@ -74,6 +74,12 @@ extern "C" {
 
 // Lvalue access to element at index
 #define synq_vec_at(v, i) ((v)->data[i])
+
+// Set count to n, discarding trailing elements
+#define synq_vec_truncate(v, n) \
+  do {                          \
+    (v)->count = (n);           \
+  } while (0)
 
 // Decrement count, evaluate to last element
 #define synq_vec_pop(v) ((v)->data[--(v)->count])

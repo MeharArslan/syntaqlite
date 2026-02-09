@@ -19,7 +19,7 @@ from pathlib import Path
 
 ROOT_DIR = Path(__file__).parent.parent.parent
 SQLITE_SRC_DIR = ROOT_DIR / "third_party" / "src" / "sqlite"
-CODEGEN_CRATE_DIR = ROOT_DIR / "crates" / "syntaqlite-codegen"
+CODEGEN_CRATE_DIR = ROOT_DIR / "syntaqlite-codegen"
 VENDOR_DIR = CODEGEN_CRATE_DIR / "sqlite"
 
 # Files to vendor from SQLite
@@ -27,7 +27,6 @@ SQLITE_TOOLS = [
     ("tool/lemon.c", "lemon.c"),
     ("tool/lempar.c", "lempar.c"),
     ("tool/mkkeywordhash.c", "mkkeywordhash.c"),
-    ("src/parse.y", "parse.y"),
 ]
 
 

@@ -36,8 +36,10 @@ uint32_t synq_arena_alloc(SynqArena* a, const void* data, uint32_t size);
 uint32_t synq_arena_reserve_id(SynqArena* a);
 
 // Commit data at a previously reserved node ID.
-void synq_arena_commit(SynqArena* a, uint32_t node_id,
-                       const void* data, uint32_t size);
+void synq_arena_commit(SynqArena* a,
+                       uint32_t node_id,
+                       const void* data,
+                       uint32_t size);
 
 // Append raw bytes to the arena without registering an offset entry.
 void synq_arena_append(SynqArena* a, const void* data, uint32_t size);
