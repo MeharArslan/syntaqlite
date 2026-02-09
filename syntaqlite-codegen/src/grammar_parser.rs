@@ -186,15 +186,13 @@ impl<'a> Parser<'a> {
         // Skip optional LHS alias: name(X)
         self.skip_ws();
         if self.peek() == Some('(') {
-            self.skip_until(')');
-            self.next();
+            self.advance_until(')');
+            self.next(); // consume ')'
         }
 
         // Expect ::=
         self.skip_ws();
-        self.expect(':')?;
-        self.expect(':')?;
-        self.expect('=')?;
+        self.expect_multi(&[':', ':', '='])?;
 
         // Parse RHS symbols
         let mut rhs = Vec::new();
@@ -362,54 +360,46 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn skip_to_next_item(&mut self) {
-        // Skip until we find a line that doesn't start with whitespace
-        while let Some(ch) = self.peek() {
-            if ch == '{' {
-                self.skip_block();
-            } else if ch == '\n' {
-                self.next();
-                if !matches!(self.peek(), Some(' ' | '\t')) {
-                    break;
-                }
-            } else {
-                self.next();
-            }
-        }
-    }
+    /// Advance until target character is found (stops before the character).
+    /// Returns true if found, false if end of input reached.
+    fn advance_until(&mut self, target: char) -> bool {
+        let rest = &self.input[self.pos..];
+        let byte_count = rest.find(target).unwrap_or(rest.len());
+        let found = byte_count < rest.len();
 
-    fn skip_until(&mut self, target: char) {
-        while let Some(ch) = self.peek() {
-            if ch == target {
-                break;
+        let end_pos = (self.pos + byte_count).min(self.input.len());
+        let skipped = &self.input[self.pos..end_pos];
+
+        for ch in skipped.chars() {
+            if ch == '\n' {
+                self.line += 1;
+                self.column = 1;
+            } else {
+                self.column += 1;
             }
-            self.next();
         }
+
+        self.pos = end_pos;
+        self.chars = self.input[self.pos..].char_indices().peekable();
+
+        found
     }
 
     fn skip_to_eol(&mut self) {
-        while let Some(ch) = self.peek() {
-            if ch == '\n' {
-                self.next(); // consume the newline
-                break;
-            }
-            self.next();
+        if self.advance_until('\n') {
+            self.next(); // consume the newline
         }
     }
 
     fn skip_ifdef_block(&mut self) -> Result<()> {
-        // Skip until %endif
         self.skip_to_eol();
 
-        while self.peek().is_some() {
-            if self.peek() == Some('%') {
-                self.next();
-                if self.parse_identifier().ok() == Some("endif") {
-                    self.skip_to_eol();
-                    return Ok(());
-                }
+        while self.advance_until('%') {
+            self.next(); // consume %
+            if self.parse_identifier().ok() == Some("endif") {
+                self.skip_to_eol();
+                return Ok(());
             }
-            self.next();
         }
         Ok(())
     }
@@ -433,8 +423,7 @@ impl<'a> Parser<'a> {
     }
 
     fn skip_line_comment(&mut self) {
-        self.next(); // /
-        self.next(); // /
+        self.expect_multi(&['/', '/']).expect("caller should have verified //");
         while let Some(ch) = self.next() {
             if ch == '\n' {
                 break;
@@ -443,11 +432,10 @@ impl<'a> Parser<'a> {
     }
 
     fn skip_block_comment(&mut self) {
-        self.next(); // /
-        self.next(); // *
+        self.expect_multi(&['/', '*']).expect("caller should have verified /*");
         while let Some(ch) = self.next() {
             if ch == '*' && self.pos < self.input.len() && self.input[self.pos..].starts_with('/') {
-                self.next(); // /
+                self.next();
                 break;
             }
         }
@@ -479,6 +467,13 @@ impl<'a> Parser<'a> {
             Some(ch) => Err(self.error(&format!("Expected '{}', got '{}'", expected, ch))),
             None => Err(self.error(&format!("Expected '{}', got EOF", expected))),
         }
+    }
+
+    fn expect_multi(&mut self, expected: &[char]) -> Result<()> {
+        for &ch in expected {
+            self.expect(ch)?;
+        }
+        Ok(())
     }
 
     fn error(&self, message: &str) -> ParseError {
