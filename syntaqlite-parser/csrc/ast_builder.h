@@ -199,24 +199,12 @@ static inline uint32_t synq_ast_case_when(
         }, (uint32_t)sizeof(SyntaqliteCaseWhen));
 }
 
-// Create CaseWhenList with single child
 static inline uint32_t synq_ast_case_when_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_CASE_WHEN_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_case_when_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_CASE_WHEN_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_CASE_WHEN_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_foreign_key_clause(
@@ -269,24 +257,12 @@ static inline uint32_t synq_ast_column_constraint(
         }, (uint32_t)sizeof(SyntaqliteColumnConstraint));
 }
 
-// Create ColumnConstraintList with single child
 static inline uint32_t synq_ast_column_constraint_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_COLUMN_CONSTRAINT_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_column_constraint_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_COLUMN_CONSTRAINT_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_COLUMN_CONSTRAINT_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_column_def(
@@ -304,24 +280,12 @@ static inline uint32_t synq_ast_column_def(
         }, (uint32_t)sizeof(SyntaqliteColumnDef));
 }
 
-// Create ColumnDefList with single child
 static inline uint32_t synq_ast_column_def_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_COLUMN_DEF_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_column_def_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_COLUMN_DEF_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_COLUMN_DEF_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_table_constraint(
@@ -347,24 +311,12 @@ static inline uint32_t synq_ast_table_constraint(
         }, (uint32_t)sizeof(SyntaqliteTableConstraint));
 }
 
-// Create TableConstraintList with single child
 static inline uint32_t synq_ast_table_constraint_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_TABLE_CONSTRAINT_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_table_constraint_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_TABLE_CONSTRAINT_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_TABLE_CONSTRAINT_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_create_table_stmt(
@@ -409,24 +361,12 @@ static inline uint32_t synq_ast_cte_definition(
         }, (uint32_t)sizeof(SyntaqliteCteDefinition));
 }
 
-// Create CteList with single child
 static inline uint32_t synq_ast_cte_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_CTE_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_cte_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_CTE_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_CTE_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_with_clause(
@@ -472,24 +412,12 @@ static inline uint32_t synq_ast_set_clause(
         }, (uint32_t)sizeof(SyntaqliteSetClause));
 }
 
-// Create SetClauseList with single child
 static inline uint32_t synq_ast_set_clause_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_SET_CLAUSE_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_set_clause_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_SET_CLAUSE_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_SET_CLAUSE_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_update_stmt(
@@ -569,24 +497,12 @@ static inline uint32_t synq_ast_literal(
         }, (uint32_t)sizeof(SyntaqliteLiteral));
 }
 
-// Create ExprList with single child
 static inline uint32_t synq_ast_expr_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_EXPR_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_expr_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_EXPR_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_EXPR_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_function_call(
@@ -731,24 +647,12 @@ static inline uint32_t synq_ast_result_column(
         }, (uint32_t)sizeof(SyntaqliteResultColumn));
 }
 
-// Create ResultColumnList with single child
 static inline uint32_t synq_ast_result_column_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_RESULT_COLUMN_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_result_column_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_RESULT_COLUMN_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_RESULT_COLUMN_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_select_stmt(
@@ -793,24 +697,12 @@ static inline uint32_t synq_ast_ordering_term(
         }, (uint32_t)sizeof(SyntaqliteOrderingTerm));
 }
 
-// Create OrderByList with single child
 static inline uint32_t synq_ast_order_by_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_ORDER_BY_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_order_by_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_ORDER_BY_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_ORDER_BY_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_limit_clause(
@@ -899,24 +791,12 @@ static inline uint32_t synq_ast_trigger_event(
         }, (uint32_t)sizeof(SyntaqliteTriggerEvent));
 }
 
-// Create TriggerCmdList with single child
 static inline uint32_t synq_ast_trigger_cmd_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_TRIGGER_CMD_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_trigger_cmd_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_TRIGGER_CMD_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_TRIGGER_CMD_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_create_trigger_stmt(
@@ -1093,24 +973,12 @@ static inline uint32_t synq_ast_create_view_stmt(
         }, (uint32_t)sizeof(SyntaqliteCreateViewStmt));
 }
 
-// Create ValuesRowList with single child
 static inline uint32_t synq_ast_values_row_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_VALUES_ROW_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_values_row_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_VALUES_ROW_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_VALUES_ROW_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_values_clause(
@@ -1171,24 +1039,12 @@ static inline uint32_t synq_ast_window_def(
         }, (uint32_t)sizeof(SyntaqliteWindowDef));
 }
 
-// Create WindowDefList with single child
 static inline uint32_t synq_ast_window_def_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_WINDOW_DEF_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_window_def_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_WINDOW_DEF_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_WINDOW_DEF_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_named_window_def(
@@ -1204,24 +1060,12 @@ static inline uint32_t synq_ast_named_window_def(
         }, (uint32_t)sizeof(SyntaqliteNamedWindowDef));
 }
 
-// Create NamedWindowDefList with single child
 static inline uint32_t synq_ast_named_window_def_list(
-    SynqAstContext *ctx,
-    uint32_t first_child
-) {
-    return synq_ast_list_start(ctx, SYNTAQLITE_NODE_NAMED_WINDOW_DEF_LIST, first_child);
-}
-
-static inline uint32_t synq_ast_named_window_def_list_append(
     SynqAstContext *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    if (list_id == SYNTAQLITE_NULL_NODE) {
-        return synq_ast_list_start(ctx, SYNTAQLITE_NODE_NAMED_WINDOW_DEF_LIST, child);
-    }
-    synq_ast_list_append(ctx, list_id, child);
-    return list_id;
+    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_NAMED_WINDOW_DEF_LIST, list_id, child);
 }
 
 static inline uint32_t synq_ast_filter_over(

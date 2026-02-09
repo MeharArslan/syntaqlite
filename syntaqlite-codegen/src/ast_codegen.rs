@@ -262,27 +262,10 @@ fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
     let func = builder_name(name);
     let tag = tag_name(name);
 
-    // Single-child creator
-    w.comment(&format!("Create {} with single child", name));
     w.func_signature("static inline ", "uint32_t", &func,
-        &["SynqAstContext *ctx", "uint32_t first_child"], " {");
-    w.indent();
-    w.line(&format!("return synq_ast_list_start(ctx, {}, first_child);", tag));
-    w.dedent();
-    w.line("}");
-    w.newline();
-
-    // Append-or-create: starts a new list on NULL_NODE, otherwise appends
-    w.func_signature("static inline ", "uint32_t", &format!("{}_append", func),
         &["SynqAstContext *ctx", "uint32_t list_id", "uint32_t child"], " {");
     w.indent();
-    w.line("if (list_id == SYNTAQLITE_NULL_NODE) {");
-    w.indent();
-    w.line(&format!("return synq_ast_list_start(ctx, {}, child);", tag));
-    w.dedent();
-    w.line("}");
-    w.line("synq_ast_list_append(ctx, list_id, child);");
-    w.line("return list_id;");
+    w.line(&format!("return synq_ast_list_append(ctx, {}, list_id, child);", tag));
     w.dedent();
     w.line("}");
     w.newline();

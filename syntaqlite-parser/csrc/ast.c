@@ -40,23 +40,23 @@ uint32_t synq_ast_build(SynqAstContext *ctx,
     return synq_arena_alloc(&ctx->ast, node_data, node_size);
 }
 
-uint32_t synq_ast_list_start(SynqAstContext *ctx, uint32_t tag, uint32_t first_child) {
-    SynqListDesc desc;
-    desc.node_id = synq_arena_reserve_id(&ctx->ast);
-    desc.offset = ctx->child_buf.count;
-    desc.tag = tag;
-
-    synq_vec_push(&ctx->list_stack, desc);
-    synq_vec_push(&ctx->child_buf, first_child);
-    return desc.node_id;
-}
-
-void synq_ast_list_append(SynqAstContext *ctx, uint32_t list_id, uint32_t child) {
+uint32_t synq_ast_list_append(SynqAstContext *ctx, uint32_t tag,
+                              uint32_t list_id, uint32_t child) {
+    if (list_id == SYNTAQLITE_NULL_NODE) {
+        SynqListDesc desc;
+        desc.node_id = synq_arena_reserve_id(&ctx->ast);
+        desc.offset = ctx->child_buf.count;
+        desc.tag = tag;
+        synq_vec_push(&ctx->list_stack, desc);
+        synq_vec_push(&ctx->child_buf, child);
+        return desc.node_id;
+    }
     // Auto-flush completed inner lists above the target
     while (ctx->list_stack.data[ctx->list_stack.count - 1].node_id != list_id) {
         list_flush_top(ctx);
     }
     synq_vec_push(&ctx->child_buf, child);
+    return list_id;
 }
 
 void synq_ast_list_flush(SynqAstContext *ctx) {

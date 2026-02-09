@@ -7,6 +7,7 @@
 
 #include "csrc/arena.h"
 #include "csrc/vec.h"
+#include "syntaqlite/ast.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,8 +38,9 @@ void synq_ast_ctx_free(SynqAstContext *ctx);
 uint32_t synq_ast_build(SynqAstContext *ctx,
                         const void *node_data, uint32_t node_size);
 
-uint32_t synq_ast_list_start(SynqAstContext *ctx, uint32_t tag, uint32_t first_child);
-void synq_ast_list_append(SynqAstContext *ctx, uint32_t list_id, uint32_t child);
+uint32_t synq_ast_list_append(SynqAstContext *ctx, uint32_t tag,
+                              uint32_t list_id, uint32_t child);
+
 void synq_ast_list_flush(SynqAstContext *ctx);
 
 #ifdef __cplusplus
