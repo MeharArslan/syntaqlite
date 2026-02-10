@@ -3,15 +3,17 @@
 
 // Header-only type-generic dynamic array.
 // Works on any struct with {T *data; uint32_t count; uint32_t capacity;}.
+//
+// All mutating operations take a SyntaqliteMemMethods parameter for
+// allocation. This lets the vec use the caller's configured allocator.
 
 #ifndef SYNQ_SRC_BASE_VEC_H
 #define SYNQ_SRC_BASE_VEC_H
 
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
-#include "csrc/xmalloc.h"
+#include "syntaqlite/config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -34,12 +36,12 @@ extern "C" {
   } while (0)
 
 // Free + zero
-#define synq_vec_free(v) \
-  do {                   \
-    free((v)->data);     \
-    (v)->data = NULL;    \
-    (v)->count = 0;      \
-    (v)->capacity = 0;   \
+#define synq_vec_free(v, mem)  \
+  do {                         \
+    (mem).xFree((v)->data);    \
+    (v)->data = NULL;          \
+    (v)->count = 0;            \
+    (v)->capacity = 0;         \
   } while (0)
 
 // Reset count, keep allocation
@@ -49,24 +51,29 @@ extern "C" {
   } while (0)
 
 // Ensure capacity >= needed (capacity is always a power of two).
-// The void* cast uses __typeof__ for C++ compatibility (realloc returns void*).
-#define synq_vec_ensure(v, needed)                        \
-  do {                                                    \
-    if ((needed) > (v)->capacity) {                       \
-      uint32_t _cap = (v)->capacity ? (v)->capacity : 16; \
-      while (_cap < (needed))                             \
-        _cap *= 2;                                        \
-      (v)->data = (__typeof__((v)->data))synq_xrealloc(   \
-          (v)->data, (size_t)_cap * sizeof(*(v)->data));  \
-      (v)->capacity = _cap;                               \
-    }                                                     \
+// Growth uses malloc + memcpy + free (no realloc).
+#define synq_vec_ensure(v, needed, mem)                                     \
+  do {                                                                      \
+    if ((needed) > (v)->capacity) {                                         \
+      uint32_t _cap = (v)->capacity ? (v)->capacity : 16;                   \
+      while (_cap < (needed))                                               \
+        _cap *= 2;                                                          \
+      void* _new = (mem).xMalloc((size_t)_cap * sizeof(*(v)->data));        \
+      if ((v)->data) {                                                      \
+        memcpy(_new, (v)->data,                                             \
+               (size_t)(v)->count * sizeof(*(v)->data));                    \
+        (mem).xFree((v)->data);                                             \
+      }                                                                     \
+      (v)->data = (__typeof__((v)->data))_new;                              \
+      (v)->capacity = _cap;                                                 \
+    }                                                                       \
   } while (0)
 
 // Append one element, grow if needed
-#define synq_vec_push(v, val)             \
-  do {                                    \
-    synq_vec_ensure((v), (v)->count + 1); \
-    (v)->data[(v)->count++] = (val);      \
+#define synq_vec_push(v, val, mem)            \
+  do {                                        \
+    synq_vec_ensure((v), (v)->count + 1, mem);\
+    (v)->data[(v)->count++] = (val);          \
   } while (0)
 
 // Element count
@@ -85,10 +92,10 @@ extern "C" {
 #define synq_vec_pop(v) ((v)->data[--(v)->count])
 
 // Bulk append via memcpy
-#define synq_vec_push_n(v, src, n)                                          \
+#define synq_vec_push_n(v, src, n, mem)                                     \
   do {                                                                      \
     uint32_t _n = (n);                                                      \
-    synq_vec_ensure((v), (v)->count + _n);                                  \
+    synq_vec_ensure((v), (v)->count + _n, mem);                             \
     memcpy((v)->data + (v)->count, (src), (size_t)_n * sizeof(*(v)->data)); \
     (v)->count += _n;                                                       \
   } while (0)

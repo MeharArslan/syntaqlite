@@ -21,6 +21,7 @@ typedef struct SynqListDesc {
 } SynqListDesc;
 
 typedef struct SynqAstContext {
+  SyntaqliteMemMethods mem;
   SynqArena ast;
 
   // Shared child-ID buffer for all in-progress lists.
@@ -31,7 +32,7 @@ typedef struct SynqAstContext {
   SYNQ_VEC(SynqListDesc) list_stack;
 } SynqAstContext;
 
-void synq_ast_ctx_init(SynqAstContext* ctx);
+void synq_ast_ctx_init(SynqAstContext* ctx, SyntaqliteMemMethods mem);
 void synq_ast_ctx_free(SynqAstContext* ctx);
 
 // Generic node builder: copy node data into the arena.

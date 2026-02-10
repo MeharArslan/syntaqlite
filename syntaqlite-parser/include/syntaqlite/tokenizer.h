@@ -10,7 +10,8 @@
 // custom analysis, etc.).
 //
 // Usage:
-//   SyntaqliteTokenizer *tok = syntaqlite_tokenizer_create();
+//   SyntaqliteConfig config = SYNTAQLITE_CONFIG_DEFAULT;
+//   SyntaqliteTokenizer *tok = syntaqlite_tokenizer_create(&config);
 //   syntaqlite_tokenizer_reset(tok, sql, len);
 //   SyntaqliteToken token;
 //   while (syntaqlite_tokenizer_next(tok, &token)) {
@@ -22,6 +23,8 @@
 #define SYNTAQLITE_TOKENIZER_H
 
 #include <stdint.h>
+
+#include "syntaqlite/config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +44,9 @@ typedef struct SyntaqliteTokenizer SyntaqliteTokenizer;
 // --- Lifecycle ---
 
 // 1. Allocate a tokenizer. The tokenizer is inert until reset() is called.
-SyntaqliteTokenizer* syntaqlite_tokenizer_create(void);
+//    The config is copied — the caller's SyntaqliteConfig does not need to
+//    outlive the tokenizer. Pass NULL for all defaults.
+SyntaqliteTokenizer* syntaqlite_tokenizer_create(const SyntaqliteConfig* config);
 
 // 2. Bind a source buffer. The cursor starts at the beginning. The source
 //    must remain valid until the next reset() or destroy(). Can be called

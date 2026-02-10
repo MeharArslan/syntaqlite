@@ -11,32 +11,32 @@ void synq_arena_init(SynqArena* a) {
   synq_vec_init(&a->offsets);
 }
 
-void synq_arena_free(SynqArena* a) {
-  synq_vec_free(&a->data);
-  synq_vec_free(&a->offsets);
+void synq_arena_free(SynqArena* a, SyntaqliteMemMethods mem) {
+  synq_vec_free(&a->data, mem);
+  synq_vec_free(&a->offsets, mem);
 }
 
-uint32_t synq_arena_alloc(SynqArena* a, const void* data, uint32_t size) {
+uint32_t synq_arena_alloc(SynqArena* a, const void* data, uint32_t size,
+                          SyntaqliteMemMethods mem) {
   uint32_t node_id = synq_vec_len(&a->offsets);
-  synq_vec_push(&a->offsets, synq_vec_len(&a->data));
-  synq_vec_push_n(&a->data, data, size);
+  synq_vec_push(&a->offsets, synq_vec_len(&a->data), mem);
+  synq_vec_push_n(&a->data, data, size, mem);
   return node_id;
 }
 
-uint32_t synq_arena_reserve_id(SynqArena* a) {
+uint32_t synq_arena_reserve_id(SynqArena* a, SyntaqliteMemMethods mem) {
   uint32_t node_id = synq_vec_len(&a->offsets);
-  synq_vec_push(&a->offsets, 0);
+  synq_vec_push(&a->offsets, 0, mem);
   return node_id;
 }
 
-void synq_arena_commit(SynqArena* a,
-                       uint32_t node_id,
-                       const void* data,
-                       uint32_t size) {
+void synq_arena_commit(SynqArena* a, uint32_t node_id, const void* data,
+                       uint32_t size, SyntaqliteMemMethods mem) {
   synq_vec_at(&a->offsets, node_id) = synq_vec_len(&a->data);
-  synq_vec_push_n(&a->data, data, size);
+  synq_vec_push_n(&a->data, data, size, mem);
 }
 
-void synq_arena_append(SynqArena* a, const void* data, uint32_t size) {
-  synq_vec_push_n(&a->data, data, size);
+void synq_arena_append(SynqArena* a, const void* data, uint32_t size,
+                       SyntaqliteMemMethods mem) {
+  synq_vec_push_n(&a->data, data, size, mem);
 }

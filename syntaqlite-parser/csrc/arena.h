@@ -25,24 +25,24 @@ typedef struct SynqArena {
   (&synq_vec_at(&(a)->data, synq_vec_at(&(a)->offsets, id)))
 
 void synq_arena_init(SynqArena* a);
-void synq_arena_free(SynqArena* a);
+void synq_arena_free(SynqArena* a, SyntaqliteMemMethods mem);
 
 // Copy data into the arena and register in the offset table.
 // Returns the node ID.
-uint32_t synq_arena_alloc(SynqArena* a, const void* data, uint32_t size);
+uint32_t synq_arena_alloc(SynqArena* a, const void* data, uint32_t size,
+                          SyntaqliteMemMethods mem);
 
 // Reserve a node ID in the offset table without allocating arena bytes.
 // The offset is written later by synq_arena_commit.
-uint32_t synq_arena_reserve_id(SynqArena* a);
+uint32_t synq_arena_reserve_id(SynqArena* a, SyntaqliteMemMethods mem);
 
 // Commit data at a previously reserved node ID.
-void synq_arena_commit(SynqArena* a,
-                       uint32_t node_id,
-                       const void* data,
-                       uint32_t size);
+void synq_arena_commit(SynqArena* a, uint32_t node_id, const void* data,
+                       uint32_t size, SyntaqliteMemMethods mem);
 
 // Append raw bytes to the arena without registering an offset entry.
-void synq_arena_append(SynqArena* a, const void* data, uint32_t size);
+void synq_arena_append(SynqArena* a, const void* data, uint32_t size,
+                       SyntaqliteMemMethods mem);
 
 #ifdef __cplusplus
 }

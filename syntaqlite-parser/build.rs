@@ -10,6 +10,7 @@ fn main() {
         .file(csrc.join("sqlite_keyword.c"))
         .file(csrc.join("ast.c"))
         .file(csrc.join("arena.c"))
+        .file(csrc.join("tokenizer.c"))
         .include(&manifest_dir)
         .include(manifest_dir.join("include"))
         .compile("syntaqlite_parser");
@@ -25,8 +26,9 @@ fn main() {
     println!("cargo:rerun-if-changed=csrc/ast_builder.h");
     println!("cargo:rerun-if-changed=csrc/arena.c");
     println!("cargo:rerun-if-changed=csrc/arena.h");
+    println!("cargo:rerun-if-changed=csrc/tokenizer.c");
+    println!("cargo:rerun-if-changed=csrc/sqlite_tokenize.h");
     println!("cargo:rerun-if-changed=csrc/vec.h");
-    println!("cargo:rerun-if-changed=csrc/xmalloc.h");
     println!("cargo:rerun-if-changed=include/syntaqlite/ast.h");
     println!("cargo:rerun-if-changed=include/syntaqlite/ast_nodes.h");
 }

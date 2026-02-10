@@ -10,12 +10,12 @@
 // valid until the next reset() or destroy() call. Access them via
 // syntaqlite_parser_node().
 //
-// If you plan to format afterwards, create the parser with collect_tokens=1
+// If you plan to format afterwards, set config.parser.collect_tokens = 1
 // so the formatter can preserve comments and whitespace decisions.
 //
 // Usage:
-//   SyntaqliteParser *p =
-//   syntaqlite_parser_create((SyntaqliteParserConfig){0});
+//   SyntaqliteConfig config = SYNTAQLITE_CONFIG_DEFAULT;
+//   SyntaqliteParser *p = syntaqlite_parser_create(&config);
 //   syntaqlite_parser_reset(p, sql, len);
 //   SyntaqliteParseResult result;
 //   while ((result = syntaqlite_parser_next(p)).root != SYNTAQLITE_NULL_NODE) {
@@ -30,6 +30,7 @@
 #include <stdint.h>
 
 #include "syntaqlite/ast_nodes.h"
+#include "syntaqlite/config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,15 +38,6 @@ extern "C" {
 
 // Opaque parser handle (heap-allocated).
 typedef struct SyntaqliteParser SyntaqliteParser;
-
-// Parser configuration. Passed to create() and fixed for the parser's lifetime.
-typedef struct SyntaqliteParserConfig {
-  int collect_tokens;  // If nonzero, record every token so the formatter can
-                       // reconstruct comments and whitespace. Required before
-                       // calling syntaqlite_format_stmt().
-  int trace;           // If nonzero, enable Lemon parser tracing on stderr
-                       // (debug builds only; ignored in release).
-} SyntaqliteParserConfig;
 
 // Result from syntaqlite_parser_next(). Check root first: if it is
 // SYNTAQLITE_NULL_NODE, parsing is done — then check error to see if it
@@ -59,9 +51,9 @@ typedef struct SyntaqliteParseResult {
 // --- Lifecycle ---
 
 // 1. Allocate a parser. The parser is inert until reset() is called.
-//    A zero-initialized config gives defaults (no token collection, no
-//    tracing).
-SyntaqliteParser* syntaqlite_parser_create(SyntaqliteParserConfig config);
+//    The config is copied — the caller's SyntaqliteConfig does not need to
+//    outlive the parser. Pass NULL for all defaults.
+SyntaqliteParser* syntaqlite_parser_create(const SyntaqliteConfig* config);
 
 // 2. Bind a source buffer and reset all internal state. The source must
 //    remain valid until the next reset() or destroy(). Can be called again
