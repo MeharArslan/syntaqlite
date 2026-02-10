@@ -150,14 +150,6 @@ const SyntaqliteDialectExtension* syntaqlite_load_extension(
     const char* lib_path,
     const char* entry_point);
 
-// ---------------------------------------------------------------------------
-// Debug / inspection
-// ---------------------------------------------------------------------------
-
-// Print an AST subtree rooted at node_id to a file stream (e.g. stderr).
-// Needs the parser to resolve child node IDs and access source text.
-void syntaqlite_ast_print(SyntaqliteParser* p, uint32_t node_id, FILE* out);
-
 #ifdef __cplusplus
 }
 #endif

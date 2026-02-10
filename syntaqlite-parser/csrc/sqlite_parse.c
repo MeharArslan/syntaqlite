@@ -24,6 +24,7 @@
 */
 /************ Begin %include sections from the grammar ************************/
 #include <string.h>
+
 #include "csrc/parser.h"
 #include "csrc/sqlite_parse_data.h"
 #include "syntaqlite/tokens.h"

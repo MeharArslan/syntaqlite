@@ -101,7 +101,11 @@ struct SyntaqliteParser {
   SynqParseCtx ctx;
   const char* source;
   uint32_t source_len;
-  uint32_t offset;  // Tokenizer cursor into source.
+  uint32_t offset;           // Tokenizer cursor into source.
+  int last_token_type;       // Last non-whitespace token fed to Lemon.
+  int finished;              // 1 after EOF has been sent to Lemon.
+  int had_error;             // Sticky error flag.
+  char error_msg[256];       // Error message buffer.
   int trace;
   int collect_tokens;
   const SyntaqliteDialectExtension* extension;
@@ -134,6 +138,10 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->source = source;
   p->source_len = len;
   p->offset = 0;
+  p->last_token_type = 0;
+  p->finished = 0;
+  p->had_error = 0;
+  p->error_msg[0] = '\0';
 
   // Reset parse context.
   p->ctx.source = source;
@@ -144,40 +152,54 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 }
 
 SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
-  SyntaqliteParseResult result = {
-      .root = SYNTAQLITE_NULL_NODE,
-      .error = 0,
-      .error_msg = NULL,
-  };
+  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL};
+
+  if (p->finished || p->had_error) {
+    result.error = p->had_error;
+    result.error_msg = p->had_error ? p->error_msg : NULL;
+    return result;
+  }
 
   // Reset per-statement state.
   p->ctx.root = SYNTAQLITE_NULL_NODE;
   p->ctx.stmt_completed = 0;
   p->ctx.error = 0;
 
-  int had_tokens = 0;
+  const unsigned char* z = (const unsigned char*)p->source;
 
-  while (p->offset < p->source_len) {
+  while (p->offset < p->source_len && z[p->offset] != '\0') {
     int token_type = 0;
-    i64 token_len = synq_sqlite3GetToken(
-        (const unsigned char*)p->source + p->offset, &token_type);
+    i64 token_len = synq_sqlite3GetToken(z + p->offset, &token_type);
+    if (token_len <= 0)
+      break;
 
-    uint32_t offset = p->offset;
+    uint32_t tok_offset = p->offset;
     p->offset += (uint32_t)token_len;
 
-    // Skip whitespace and comments.
+    // Skip whitespace and comments for the parser.
     if (token_type == SYNTAQLITE_TK_SPACE ||
         token_type == SYNTAQLITE_TK_COMMENT) {
       continue;
     }
 
-    had_tokens = 1;
     SynqToken minor = {
-        .z = p->source + offset,
+        .z = p->source + tok_offset,
         .n = (int)token_len,
         .type = token_type,
     };
     SyntaqliteParse(p->lemon, token_type, minor, &p->ctx);
+    p->last_token_type = token_type;
+
+    if (p->ctx.error) {
+      p->had_error = 1;
+      if (p->error_msg[0] == '\0') {
+        snprintf(p->error_msg, sizeof(p->error_msg),
+                 "syntax error near '%.*s'", (int)token_len, minor.z);
+      }
+      result.error = 1;
+      result.error_msg = p->error_msg;
+      return result;
+    }
 
     // A statement was completed (ecmd reduced).
     if (p->ctx.stmt_completed) {
@@ -185,7 +207,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
 
       // Bare semicolons produce SYNTAQLITE_NULL_NODE — skip them.
       if (p->ctx.root == SYNTAQLITE_NULL_NODE) {
-        had_tokens = 0;
+        p->ctx.root = SYNTAQLITE_NULL_NODE;
         continue;
       }
 
@@ -194,18 +216,51 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
     }
   }
 
-  // End of input — feed EOF to trigger final reductions.
-  if (had_tokens) {
-    SynqToken eof = {.z = NULL, .n = 0, .type = 0};
-    SyntaqliteParse(p->lemon, 0, eof, &p->ctx);
+  // Reached end of input. Synthesize SEMI if the last token wasn't one,
+  // so that statements without a trailing semicolon still complete.
+  if (p->last_token_type != 0 &&
+      p->last_token_type != SYNTAQLITE_TK_SEMI) {
+    SynqToken semi = {.z = NULL, .n = 0, .type = SYNTAQLITE_TK_SEMI};
+    SyntaqliteParse(p->lemon, SYNTAQLITE_TK_SEMI, semi, &p->ctx);
 
-    if (p->ctx.stmt_completed && p->ctx.root != SYNTAQLITE_NULL_NODE) {
-      result.root = p->ctx.root;
-    } else {
-      // Tokens were fed but no statement completed — syntax error.
+    if (p->ctx.error) {
+      p->had_error = 1;
+      if (p->error_msg[0] == '\0') {
+        snprintf(p->error_msg, sizeof(p->error_msg),
+                 "incomplete SQL statement");
+      }
       result.error = 1;
-      result.error_msg = "incomplete SQL statement";
+      result.error_msg = p->error_msg;
+      return result;
     }
+
+    if (p->ctx.stmt_completed &&
+        p->ctx.root != SYNTAQLITE_NULL_NODE) {
+      result.root = p->ctx.root;
+      p->finished = 1;
+      return result;
+    }
+  }
+
+  // Send end-of-input to finalize the parser.
+  SynqToken eof = {.z = NULL, .n = 0, .type = 0};
+  SyntaqliteParse(p->lemon, 0, eof, &p->ctx);
+  p->finished = 1;
+
+  if (p->ctx.error) {
+    p->had_error = 1;
+    if (p->error_msg[0] == '\0') {
+      snprintf(p->error_msg, sizeof(p->error_msg),
+               "incomplete SQL statement");
+    }
+    result.error = 1;
+    result.error_msg = p->error_msg;
+    return result;
+  }
+
+  // Check if the final reduction produced a root.
+  if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
+    result.root = p->ctx.root;
   }
 
   return result;

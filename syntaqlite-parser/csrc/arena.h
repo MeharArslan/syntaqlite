@@ -10,6 +10,7 @@
 #include <stdint.h>
 
 #include "csrc/vec.h"
+#include "syntaqlite/config.h"
 
 #ifdef __cplusplus
 extern "C" {

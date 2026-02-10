@@ -172,6 +172,32 @@ fn main() {
                 fs::write(out.join("sqlite_keyword.c"), keyword_func)
                     .map_err(|e| format!("Failed to write sqlite_keyword.c: {}", e))?;
 
+                // Step 5: Generate Rust bindings
+                if args.verbose {
+                    eprintln!("Generating Rust bindings...");
+                }
+                let rust_gen_dir = Path::new(&output_dir)
+                    .parent()
+                    .unwrap_or(Path::new("."))
+                    .join("src/generated");
+                fs::create_dir_all(&rust_gen_dir)
+                    .map_err(|e| format!("Failed to create Rust generated directory: {}", e))?;
+
+                let parse_h_content = fs::read_to_string(temp_dir.path().join("parse.h"))
+                    .map_err(|e| format!("Failed to read parse.h: {}", e))?;
+                let token_defines = syntaqlite_codegen::extract_token_defines(&parse_h_content);
+
+                let rust_tokens = syntaqlite_codegen::ast_codegen::generate_rust_tokens(&token_defines);
+                fs::write(rust_gen_dir.join("tokens.rs"), rust_tokens)
+                    .map_err(|e| format!("Failed to write tokens.rs: {}", e))?;
+
+                let rust_nodes = syntaqlite_codegen::ast_codegen::generate_rust_nodes(&all_items);
+                fs::write(rust_gen_dir.join("nodes.rs"), rust_nodes)
+                    .map_err(|e| format!("Failed to write nodes.rs: {}", e))?;
+
+                fs::write(rust_gen_dir.join("mod.rs"), "pub mod nodes;\npub mod tokens;\n")
+                    .map_err(|e| format!("Failed to write mod.rs: {}", e))?;
+
                 if args.verbose {
                     eprintln!("Code generation complete");
                 }

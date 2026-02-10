@@ -2,13 +2,13 @@ enum ConflictAction { DEFAULT ROLLBACK ABORT FAIL IGNORE REPLACE }
 
 node DeleteStmt {
   table: index Expr
-  where: index Expr
+  where_clause: index Expr
 
   fmt {
     group {
       "DELETE"
       clause("FROM", table)
-      clause("WHERE", where)
+      clause("WHERE", where_clause)
     }
   }
 }
@@ -33,7 +33,7 @@ node UpdateStmt {
   table: index Expr
   setlist: index SetClauseList
   from_clause: index Expr
-  where: index Expr
+  where_clause: index Expr
 
   fmt {
     group {
@@ -48,7 +48,7 @@ node UpdateStmt {
       " " child(table)
       clause("SET", setlist)
       clause("FROM", from_clause)
-      clause("WHERE", where)
+      clause("WHERE", where_clause)
     }
   }
 }

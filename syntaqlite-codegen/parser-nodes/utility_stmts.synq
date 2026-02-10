@@ -79,7 +79,7 @@ node CreateIndexStmt {
   is_unique: inline Bool
   if_not_exists: inline Bool
   columns: index OrderByList
-  where: index Expr
+  where_clause: index Expr
 
   fmt {
     group {
@@ -92,7 +92,7 @@ node CreateIndexStmt {
       span(index_name)
       " ON " span(table_name)
       " (" child(columns) ")"
-      clause("WHERE", where)
+      clause("WHERE", where_clause)
     }
   }
 }

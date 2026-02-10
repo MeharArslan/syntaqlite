@@ -387,13 +387,13 @@ static inline uint32_t synq_parse_with_clause(
 static inline uint32_t synq_parse_delete_stmt(
     SynqParseCtx *ctx,
     uint32_t table,
-    uint32_t where
+    uint32_t where_clause
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteDeleteStmt){
             .tag = SYNTAQLITE_NODE_DELETE_STMT,
             .table = table,
-            .where = where
+            .where_clause = where_clause
         }, (uint32_t)sizeof(SyntaqliteDeleteStmt));
 }
 
@@ -426,7 +426,7 @@ static inline uint32_t synq_parse_update_stmt(
     uint32_t table,
     uint32_t setlist,
     uint32_t from_clause,
-    uint32_t where
+    uint32_t where_clause
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteUpdateStmt){
@@ -435,7 +435,7 @@ static inline uint32_t synq_parse_update_stmt(
             .table = table,
             .setlist = setlist,
             .from_clause = from_clause,
-            .where = where
+            .where_clause = where_clause
         }, (uint32_t)sizeof(SyntaqliteUpdateStmt));
 }
 
@@ -660,7 +660,7 @@ static inline uint32_t synq_parse_select_stmt(
     SyntaqliteSelectStmtFlags flags,
     uint32_t columns,
     uint32_t from_clause,
-    uint32_t where,
+    uint32_t where_clause,
     uint32_t groupby,
     uint32_t having,
     uint32_t orderby,
@@ -673,7 +673,7 @@ static inline uint32_t synq_parse_select_stmt(
             .flags = flags,
             .columns = columns,
             .from_clause = from_clause,
-            .where = where,
+            .where_clause = where_clause,
             .groupby = groupby,
             .having = having,
             .orderby = orderby,
@@ -937,7 +937,7 @@ static inline uint32_t synq_parse_create_index_stmt(
     SyntaqliteBool is_unique,
     SyntaqliteBool if_not_exists,
     uint32_t columns,
-    uint32_t where
+    uint32_t where_clause
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteCreateIndexStmt){
@@ -948,7 +948,7 @@ static inline uint32_t synq_parse_create_index_stmt(
             .is_unique = is_unique,
             .if_not_exists = if_not_exists,
             .columns = columns,
-            .where = where
+            .where_clause = where_clause
         }, (uint32_t)sizeof(SyntaqliteCreateIndexStmt));
 }
 
@@ -1200,7 +1200,7 @@ static const SynqFieldRangeMeta range_meta_with_clause[] = {
 
 static const SynqFieldRangeMeta range_meta_delete_stmt[] = {
     {offsetof(SyntaqliteDeleteStmt, table), 0},
-    {offsetof(SyntaqliteDeleteStmt, where), 0},
+    {offsetof(SyntaqliteDeleteStmt, where_clause), 0},
 };
 
 static const SynqFieldRangeMeta range_meta_set_clause[] = {
@@ -1213,7 +1213,7 @@ static const SynqFieldRangeMeta range_meta_update_stmt[] = {
     {offsetof(SyntaqliteUpdateStmt, table), 0},
     {offsetof(SyntaqliteUpdateStmt, setlist), 0},
     {offsetof(SyntaqliteUpdateStmt, from_clause), 0},
-    {offsetof(SyntaqliteUpdateStmt, where), 0},
+    {offsetof(SyntaqliteUpdateStmt, where_clause), 0},
 };
 
 static const SynqFieldRangeMeta range_meta_insert_stmt[] = {
@@ -1282,7 +1282,7 @@ static const SynqFieldRangeMeta range_meta_result_column[] = {
 static const SynqFieldRangeMeta range_meta_select_stmt[] = {
     {offsetof(SyntaqliteSelectStmt, columns), 0},
     {offsetof(SyntaqliteSelectStmt, from_clause), 0},
-    {offsetof(SyntaqliteSelectStmt, where), 0},
+    {offsetof(SyntaqliteSelectStmt, where_clause), 0},
     {offsetof(SyntaqliteSelectStmt, groupby), 0},
     {offsetof(SyntaqliteSelectStmt, having), 0},
     {offsetof(SyntaqliteSelectStmt, orderby), 0},
@@ -1376,7 +1376,7 @@ static const SynqFieldRangeMeta range_meta_create_index_stmt[] = {
     {offsetof(SyntaqliteCreateIndexStmt, schema), 1},
     {offsetof(SyntaqliteCreateIndexStmt, table_name), 1},
     {offsetof(SyntaqliteCreateIndexStmt, columns), 0},
-    {offsetof(SyntaqliteCreateIndexStmt, where), 0},
+    {offsetof(SyntaqliteCreateIndexStmt, where_clause), 0},
 };
 
 static const SynqFieldRangeMeta range_meta_create_view_stmt[] = {

@@ -15,6 +15,24 @@ pub struct TokenizerExtractResult {
     pub upper_to_lower: String,
 }
 
+/// Parse `#define SYNTAQLITE_TK_NAME VALUE` lines from lemon's parse.h output.
+/// Returns structured `(name, value)` pairs where name is the short name (e.g. "ABORT").
+pub fn extract_token_defines(parse_h: &str) -> Vec<(String, u32)> {
+    let mut tokens = Vec::new();
+    for line in parse_h.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("#define SYNTAQLITE_TK_") {
+            let mut parts = rest.split_whitespace();
+            if let (Some(name), Some(value_str)) = (parts.next(), parts.next()) {
+                if let Ok(value) = value_str.parse::<u32>() {
+                    tokens.push((name.to_string(), value));
+                }
+            }
+        }
+    }
+    tokens
+}
+
 // Embed lempar.c template (needed by the library)
 const LEMPAR_C: &[u8] = include_bytes!("../sqlite/lempar.c");
 

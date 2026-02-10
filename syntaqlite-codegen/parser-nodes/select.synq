@@ -25,7 +25,7 @@ node SelectStmt {
   flags: inline SelectStmtFlags
   columns: index ResultColumnList
   from_clause: index Expr
-  where: index Expr
+  where_clause: index Expr
   groupby: index ExprList
   having: index Expr
   orderby: index OrderByList
@@ -37,7 +37,7 @@ node SelectStmt {
       if_flag(flags.distinct) { "SELECT DISTINCT" } else { "SELECT" }
       if_set(columns) { group { nest { line child(columns) } } }
       clause("FROM", from_clause)
-      clause("WHERE", where)
+      clause("WHERE", where_clause)
       clause("GROUP BY", groupby)
       clause("HAVING", having)
       clause("ORDER BY", orderby)
