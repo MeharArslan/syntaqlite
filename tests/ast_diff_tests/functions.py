@@ -13,25 +13,27 @@ class FunctionCallBasic(TestSuite):
         return AstTestBlueprint(
             sql="SELECT random()",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: FunctionCall
-        func_name: "random"
-        flags: (none)
-        args: null
-        filter_clause: null
-        over_clause: null
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      FunctionCall
+                        func_name: "random"
+                        flags: (none)
+                        args: (none)
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -39,28 +41,31 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT abs(1)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: FunctionCall
-        func_name: "abs"
-        flags: (none)
-        args: ExprList[1]
-          Literal
-            literal_type: INTEGER
-            source: "1"
-        filter_clause: null
-        over_clause: null
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      FunctionCall
+                        func_name: "abs"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            Literal
+                              literal_type: INTEGER
+                              source: "1"
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -68,34 +73,37 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT max(1, 2, 3)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: FunctionCall
-        func_name: "max"
-        flags: (none)
-        args: ExprList[3]
-          Literal
-            literal_type: INTEGER
-            source: "1"
-          Literal
-            literal_type: INTEGER
-            source: "2"
-          Literal
-            literal_type: INTEGER
-            source: "3"
-        filter_clause: null
-        over_clause: null
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      FunctionCall
+                        func_name: "max"
+                        flags: (none)
+                        args:
+                          ExprList [3 items]
+                            Literal
+                              literal_type: INTEGER
+                              source: "1"
+                            Literal
+                              literal_type: INTEGER
+                              source: "2"
+                            Literal
+                              literal_type: INTEGER
+                              source: "3"
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -103,25 +111,27 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT count(*)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: FunctionCall
-        func_name: "count"
-        flags: STAR
-        args: null
-        filter_clause: null
-        over_clause: null
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      FunctionCall
+                        func_name: "count"
+                        flags: STAR
+                        args: (none)
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -129,28 +139,31 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT count(DISTINCT 1)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: FunctionCall
-        func_name: "count"
-        flags: DISTINCT
-        args: ExprList[1]
-          Literal
-            literal_type: INTEGER
-            source: "1"
-        filter_clause: null
-        over_clause: null
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      FunctionCall
+                        func_name: "count"
+                        flags: DISTINCT
+                        args:
+                          ExprList [1 items]
+                            Literal
+                              literal_type: INTEGER
+                              source: "1"
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -158,36 +171,40 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT abs(max(1, 2))",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: FunctionCall
-        func_name: "abs"
-        flags: (none)
-        args: ExprList[1]
-          FunctionCall
-            func_name: "max"
-            flags: (none)
-            args: ExprList[2]
-              Literal
-                literal_type: INTEGER
-                source: "1"
-              Literal
-                literal_type: INTEGER
-                source: "2"
-            filter_clause: null
-            over_clause: null
-        filter_clause: null
-        over_clause: null
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      FunctionCall
+                        func_name: "abs"
+                        flags: (none)
+                        args:
+                          ExprList [1 items]
+                            FunctionCall
+                              func_name: "max"
+                              flags: (none)
+                              args:
+                                ExprList [2 items]
+                                  Literal
+                                    literal_type: INTEGER
+                                    source: "1"
+                                  Literal
+                                    literal_type: INTEGER
+                                    source: "2"
+                              filter_clause: (none)
+                              over_clause: (none)
+                        filter_clause: (none)
+                        over_clause: (none)
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )

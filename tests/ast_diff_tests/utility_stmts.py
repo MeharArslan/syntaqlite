@@ -136,15 +136,17 @@ class AttachDetachStmts(TestSuite):
         return AstTestBlueprint(
             sql="ATTACH 'file.db' AS db2",
             out="""\
-AttachStmt
-  filename: Literal
-    literal_type: STRING
-    source: "'file.db'"
-  db_name: ColumnRef
-    column: "db2"
-    table: null
-    schema: null
-  key: null
+            AttachStmt
+              filename:
+                Literal
+                  literal_type: STRING
+                  source: "'file.db'"
+              db_name:
+                ColumnRef
+                  column: "db2"
+                  table: null
+                  schema: null
+              key: (none)
 """,
         )
 
@@ -152,15 +154,17 @@ AttachStmt
         return AstTestBlueprint(
             sql="ATTACH DATABASE 'file.db' AS db2",
             out="""\
-AttachStmt
-  filename: Literal
-    literal_type: STRING
-    source: "'file.db'"
-  db_name: ColumnRef
-    column: "db2"
-    table: null
-    schema: null
-  key: null
+            AttachStmt
+              filename:
+                Literal
+                  literal_type: STRING
+                  source: "'file.db'"
+              db_name:
+                ColumnRef
+                  column: "db2"
+                  table: null
+                  schema: null
+              key: (none)
 """,
         )
 
@@ -168,11 +172,12 @@ AttachStmt
         return AstTestBlueprint(
             sql="DETACH db2",
             out="""\
-DetachStmt
-  db_name: ColumnRef
-    column: "db2"
-    table: null
-    schema: null
+            DetachStmt
+              db_name:
+                ColumnRef
+                  column: "db2"
+                  table: null
+                  schema: null
 """,
         )
 
@@ -180,11 +185,12 @@ DetachStmt
         return AstTestBlueprint(
             sql="DETACH DATABASE db2",
             out="""\
-DetachStmt
-  db_name: ColumnRef
-    column: "db2"
-    table: null
-    schema: null
+            DetachStmt
+              db_name:
+                ColumnRef
+                  column: "db2"
+                  table: null
+                  schema: null
 """,
         )
 
@@ -196,9 +202,9 @@ class VacuumStmts(TestSuite):
         return AstTestBlueprint(
             sql="VACUUM",
             out="""\
-VacuumStmt
-  schema: null
-  into_expr: null
+            VacuumStmt
+              schema: null
+              into_expr: (none)
 """,
         )
 
@@ -206,11 +212,12 @@ VacuumStmt
         return AstTestBlueprint(
             sql="VACUUM INTO 'backup.db'",
             out="""\
-VacuumStmt
-  schema: null
-  into_expr: Literal
-    literal_type: STRING
-    source: "'backup.db'"
+            VacuumStmt
+              schema: null
+              into_expr:
+                Literal
+                  literal_type: STRING
+                  source: "'backup.db'"
 """,
         )
 
@@ -218,9 +225,9 @@ VacuumStmt
         return AstTestBlueprint(
             sql="VACUUM main",
             out="""\
-VacuumStmt
-  schema: "main"
-  into_expr: null
+            VacuumStmt
+              schema: "main"
+              into_expr: (none)
 """,
         )
 
@@ -232,24 +239,27 @@ class ExplainStmts(TestSuite):
         return AstTestBlueprint(
             sql="EXPLAIN SELECT 1",
             out="""\
-ExplainStmt
-  explain_mode: EXPLAIN
-  stmt: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: Literal
-          literal_type: INTEGER
-          source: "1"
-    from_clause: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            ExplainStmt
+              explain_mode: EXPLAIN
+              stmt:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -257,25 +267,28 @@ ExplainStmt
         return AstTestBlueprint(
             sql="EXPLAIN QUERY PLAN SELECT * FROM t",
             out="""\
-ExplainStmt
-  explain_mode: QUERY_PLAN
-  stmt: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: STAR
-        alias: null
-        expr: null
-    from_clause: TableRef
-      table_name: "t"
-      schema: null
-      alias: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            ExplainStmt
+              explain_mode: QUERY_PLAN
+              stmt:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: STAR
+                        alias: null
+                        expr: (none)
+                  from_clause:
+                    TableRef
+                      table_name: "t"
+                      schema: null
+                      alias: null
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -287,21 +300,23 @@ class CreateIndexStmts(TestSuite):
         return AstTestBlueprint(
             sql="CREATE INDEX idx ON t(x)",
             out="""\
-CreateIndexStmt
-  index_name: "idx"
-  schema: null
-  table_name: "t"
-  is_unique: FALSE
-  if_not_exists: FALSE
-  columns: OrderByList[1]
-    OrderingTerm
-      expr: ColumnRef
-        column: "x"
-        table: null
-        schema: null
-      sort_order: ASC
-      nulls_order: NONE
-  where: null
+            CreateIndexStmt
+              index_name: "idx"
+              schema: null
+              table_name: "t"
+              is_unique: FALSE
+              if_not_exists: FALSE
+              columns:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      ColumnRef
+                        column: "x"
+                        table: null
+                        schema: null
+                    sort_order: ASC
+                    nulls_order: NONE
+              where_clause: (none)
 """,
         )
 
@@ -309,21 +324,23 @@ CreateIndexStmt
         return AstTestBlueprint(
             sql="CREATE UNIQUE INDEX idx ON t(x)",
             out="""\
-CreateIndexStmt
-  index_name: "idx"
-  schema: null
-  table_name: "t"
-  is_unique: TRUE
-  if_not_exists: FALSE
-  columns: OrderByList[1]
-    OrderingTerm
-      expr: ColumnRef
-        column: "x"
-        table: null
-        schema: null
-      sort_order: ASC
-      nulls_order: NONE
-  where: null
+            CreateIndexStmt
+              index_name: "idx"
+              schema: null
+              table_name: "t"
+              is_unique: TRUE
+              if_not_exists: FALSE
+              columns:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      ColumnRef
+                        column: "x"
+                        table: null
+                        schema: null
+                    sort_order: ASC
+                    nulls_order: NONE
+              where_clause: (none)
 """,
         )
 
@@ -331,21 +348,23 @@ CreateIndexStmt
         return AstTestBlueprint(
             sql="CREATE INDEX IF NOT EXISTS idx ON t(x)",
             out="""\
-CreateIndexStmt
-  index_name: "idx"
-  schema: null
-  table_name: "t"
-  is_unique: FALSE
-  if_not_exists: TRUE
-  columns: OrderByList[1]
-    OrderingTerm
-      expr: ColumnRef
-        column: "x"
-        table: null
-        schema: null
-      sort_order: ASC
-      nulls_order: NONE
-  where: null
+            CreateIndexStmt
+              index_name: "idx"
+              schema: null
+              table_name: "t"
+              is_unique: FALSE
+              if_not_exists: TRUE
+              columns:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      ColumnRef
+                        column: "x"
+                        table: null
+                        schema: null
+                    sort_order: ASC
+                    nulls_order: NONE
+              where_clause: (none)
 """,
         )
 
@@ -353,29 +372,34 @@ CreateIndexStmt
         return AstTestBlueprint(
             sql="CREATE INDEX idx ON t(x) WHERE x > 0",
             out="""\
-CreateIndexStmt
-  index_name: "idx"
-  schema: null
-  table_name: "t"
-  is_unique: FALSE
-  if_not_exists: FALSE
-  columns: OrderByList[1]
-    OrderingTerm
-      expr: ColumnRef
-        column: "x"
-        table: null
-        schema: null
-      sort_order: ASC
-      nulls_order: NONE
-  where: BinaryExpr
-    op: GT
-    left: ColumnRef
-      column: "x"
-      table: null
-      schema: null
-    right: Literal
-      literal_type: INTEGER
-      source: "0"
+            CreateIndexStmt
+              index_name: "idx"
+              schema: null
+              table_name: "t"
+              is_unique: FALSE
+              if_not_exists: FALSE
+              columns:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      ColumnRef
+                        column: "x"
+                        table: null
+                        schema: null
+                    sort_order: ASC
+                    nulls_order: NONE
+              where_clause:
+                BinaryExpr
+                  op: GT
+                  left:
+                    ColumnRef
+                      column: "x"
+                      table: null
+                      schema: null
+                  right:
+                    Literal
+                      literal_type: INTEGER
+                      source: "0"
 """,
         )
 
@@ -383,21 +407,23 @@ CreateIndexStmt
         return AstTestBlueprint(
             sql="CREATE INDEX main.idx ON t(x)",
             out="""\
-CreateIndexStmt
-  index_name: "idx"
-  schema: "main"
-  table_name: "t"
-  is_unique: FALSE
-  if_not_exists: FALSE
-  columns: OrderByList[1]
-    OrderingTerm
-      expr: ColumnRef
-        column: "x"
-        table: null
-        schema: null
-      sort_order: ASC
-      nulls_order: NONE
-  where: null
+            CreateIndexStmt
+              index_name: "idx"
+              schema: "main"
+              table_name: "t"
+              is_unique: FALSE
+              if_not_exists: FALSE
+              columns:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      ColumnRef
+                        column: "x"
+                        table: null
+                        schema: null
+                    sort_order: ASC
+                    nulls_order: NONE
+              where_clause: (none)
 """,
         )
 
@@ -405,28 +431,31 @@ CreateIndexStmt
         return AstTestBlueprint(
             sql="CREATE INDEX idx ON t(x, y DESC)",
             out="""\
-CreateIndexStmt
-  index_name: "idx"
-  schema: null
-  table_name: "t"
-  is_unique: FALSE
-  if_not_exists: FALSE
-  columns: OrderByList[2]
-    OrderingTerm
-      expr: ColumnRef
-        column: "x"
-        table: null
-        schema: null
-      sort_order: ASC
-      nulls_order: NONE
-    OrderingTerm
-      expr: ColumnRef
-        column: "y"
-        table: null
-        schema: null
-      sort_order: DESC
-      nulls_order: NONE
-  where: null
+            CreateIndexStmt
+              index_name: "idx"
+              schema: null
+              table_name: "t"
+              is_unique: FALSE
+              if_not_exists: FALSE
+              columns:
+                OrderByList [2 items]
+                  OrderingTerm
+                    expr:
+                      ColumnRef
+                        column: "x"
+                        table: null
+                        schema: null
+                    sort_order: ASC
+                    nulls_order: NONE
+                  OrderingTerm
+                    expr:
+                      ColumnRef
+                        column: "y"
+                        table: null
+                        schema: null
+                    sort_order: DESC
+                    nulls_order: NONE
+              where_clause: (none)
 """,
         )
 
@@ -438,29 +467,32 @@ class CreateViewStmts(TestSuite):
         return AstTestBlueprint(
             sql="CREATE VIEW v AS SELECT * FROM t",
             out="""\
-CreateViewStmt
-  view_name: "v"
-  schema: null
-  is_temp: FALSE
-  if_not_exists: FALSE
-  column_names: null
-  select: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: STAR
-        alias: null
-        expr: null
-    from_clause: TableRef
-      table_name: "t"
-      schema: null
-      alias: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            CreateViewStmt
+              view_name: "v"
+              schema: null
+              is_temp: FALSE
+              if_not_exists: FALSE
+              column_names: (none)
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: STAR
+                        alias: null
+                        expr: (none)
+                  from_clause:
+                    TableRef
+                      table_name: "t"
+                      schema: null
+                      alias: null
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -468,29 +500,32 @@ CreateViewStmt
         return AstTestBlueprint(
             sql="CREATE TEMP VIEW v AS SELECT * FROM t",
             out="""\
-CreateViewStmt
-  view_name: "v"
-  schema: null
-  is_temp: TRUE
-  if_not_exists: FALSE
-  column_names: null
-  select: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: STAR
-        alias: null
-        expr: null
-    from_clause: TableRef
-      table_name: "t"
-      schema: null
-      alias: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            CreateViewStmt
+              view_name: "v"
+              schema: null
+              is_temp: TRUE
+              if_not_exists: FALSE
+              column_names: (none)
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: STAR
+                        alias: null
+                        expr: (none)
+                  from_clause:
+                    TableRef
+                      table_name: "t"
+                      schema: null
+                      alias: null
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -498,29 +533,32 @@ CreateViewStmt
         return AstTestBlueprint(
             sql="CREATE VIEW IF NOT EXISTS v AS SELECT * FROM t",
             out="""\
-CreateViewStmt
-  view_name: "v"
-  schema: null
-  is_temp: FALSE
-  if_not_exists: TRUE
-  column_names: null
-  select: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: STAR
-        alias: null
-        expr: null
-    from_clause: TableRef
-      table_name: "t"
-      schema: null
-      alias: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            CreateViewStmt
+              view_name: "v"
+              schema: null
+              is_temp: FALSE
+              if_not_exists: TRUE
+              column_names: (none)
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: STAR
+                        alias: null
+                        expr: (none)
+                  from_clause:
+                    TableRef
+                      table_name: "t"
+                      schema: null
+                      alias: null
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -528,46 +566,52 @@ CreateViewStmt
         return AstTestBlueprint(
             sql="CREATE VIEW v(a, b) AS SELECT x, y FROM t",
             out="""\
-CreateViewStmt
-  view_name: "v"
-  schema: null
-  is_temp: FALSE
-  if_not_exists: FALSE
-  column_names: ExprList[2]
-    ColumnRef
-      column: "a"
-      table: null
-      schema: null
-    ColumnRef
-      column: "b"
-      table: null
-      schema: null
-  select: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[2]
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: ColumnRef
-          column: "x"
-          table: null
-          schema: null
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: ColumnRef
-          column: "y"
-          table: null
-          schema: null
-    from_clause: TableRef
-      table_name: "t"
-      schema: null
-      alias: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            CreateViewStmt
+              view_name: "v"
+              schema: null
+              is_temp: FALSE
+              if_not_exists: FALSE
+              column_names:
+                ExprList [2 items]
+                  ColumnRef
+                    column: "a"
+                    table: null
+                    schema: null
+                  ColumnRef
+                    column: "b"
+                    table: null
+                    schema: null
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [2 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          ColumnRef
+                            column: "x"
+                            table: null
+                            schema: null
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          ColumnRef
+                            column: "y"
+                            table: null
+                            schema: null
+                  from_clause:
+                    TableRef
+                      table_name: "t"
+                      schema: null
+                      alias: null
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )

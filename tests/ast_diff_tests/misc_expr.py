@@ -13,21 +13,23 @@ class BindParameters(TestSuite):
         return AstTestBlueprint(
             sql="SELECT ?",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Variable
-        source: "?"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Variable
+                        source: "?"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -35,21 +37,23 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT ?1",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Variable
-        source: "?1"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Variable
+                        source: "?1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -57,21 +61,23 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT :name",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Variable
-        source: ":name"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Variable
+                        source: ":name"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -79,21 +85,23 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT @name",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Variable
-        source: "@name"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Variable
+                        source: "@name"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -101,21 +109,23 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT $name",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Variable
-        source: "$name"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Variable
+                        source: "$name"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -127,24 +137,27 @@ class CollateExpressions(TestSuite):
         return AstTestBlueprint(
             sql="SELECT 1 COLLATE NOCASE",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: CollateExpr
-        expr: Literal
-          literal_type: INTEGER
-          source: "1"
-        collation: "NOCASE"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      CollateExpr
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                        collation: "NOCASE"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -152,24 +165,27 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT 'hello' COLLATE BINARY",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: CollateExpr
-        expr: Literal
-          literal_type: STRING
-          source: "'hello'"
-        collation: "BINARY"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      CollateExpr
+                        expr:
+                          Literal
+                            literal_type: STRING
+                            source: "'hello'"
+                        collation: "BINARY"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -181,22 +197,24 @@ class DateTimeKeywords(TestSuite):
         return AstTestBlueprint(
             sql="SELECT CURRENT_TIME",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: CURRENT
-        source: "CURRENT_TIME"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: CURRENT
+                        source: "CURRENT_TIME"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -204,22 +222,24 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT CURRENT_DATE",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: CURRENT
-        source: "CURRENT_DATE"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: CURRENT
+                        source: "CURRENT_DATE"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -227,21 +247,23 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT CURRENT_TIMESTAMP",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: CURRENT
-        source: "CURRENT_TIMESTAMP"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: CURRENT
+                        source: "CURRENT_TIMESTAMP"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )

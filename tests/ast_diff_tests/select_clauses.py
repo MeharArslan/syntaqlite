@@ -13,29 +13,34 @@ class SelectWhere(TestSuite):
         return AstTestBlueprint(
             sql="SELECT 1 WHERE 1 > 0",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: BinaryExpr
-    op: GT
-    left: Literal
-      literal_type: INTEGER
-      source: "1"
-    right: Literal
-      literal_type: INTEGER
-      source: "0"
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause:
+                BinaryExpr
+                  op: GT
+                  left:
+                    Literal
+                      literal_type: INTEGER
+                      source: "1"
+                  right:
+                    Literal
+                      literal_type: INTEGER
+                      source: "0"
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -47,25 +52,28 @@ class SelectGroupBy(TestSuite):
         return AstTestBlueprint(
             sql="SELECT 1 GROUP BY 1",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: null
-  groupby: ExprList[1]
-    Literal
-      literal_type: INTEGER
-      source: "1"
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby:
+                ExprList [1 items]
+                  Literal
+                    literal_type: INTEGER
+                    source: "1"
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -73,32 +81,38 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT 1 GROUP BY 1 HAVING 1 > 0",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: null
-  groupby: ExprList[1]
-    Literal
-      literal_type: INTEGER
-      source: "1"
-  having: BinaryExpr
-    op: GT
-    left: Literal
-      literal_type: INTEGER
-      source: "1"
-    right: Literal
-      literal_type: INTEGER
-      source: "0"
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby:
+                ExprList [1 items]
+                  Literal
+                    literal_type: INTEGER
+                    source: "1"
+              having:
+                BinaryExpr
+                  op: GT
+                  left:
+                    Literal
+                      literal_type: INTEGER
+                      source: "1"
+                  right:
+                    Literal
+                      literal_type: INTEGER
+                      source: "0"
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -110,28 +124,32 @@ class SelectOrderBy(TestSuite):
         return AstTestBlueprint(
             sql="SELECT 1 ORDER BY 1",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: OrderByList[1]
-    OrderingTerm
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-      sort_order: ASC
-      nulls_order: NONE
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+                    sort_order: ASC
+                    nulls_order: NONE
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -139,28 +157,32 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT 1 ORDER BY 1 DESC",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: OrderByList[1]
-    OrderingTerm
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-      sort_order: DESC
-      nulls_order: NONE
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+                    sort_order: DESC
+                    nulls_order: NONE
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -168,28 +190,32 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT 1 ORDER BY 1 NULLS FIRST",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: OrderByList[1]
-    OrderingTerm
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-      sort_order: ASC
-      nulls_order: FIRST
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+                    sort_order: ASC
+                    nulls_order: FIRST
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -197,28 +223,32 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT 1 ORDER BY 1 DESC NULLS LAST",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: OrderByList[1]
-    OrderingTerm
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-      sort_order: DESC
-      nulls_order: LAST
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+                    sort_order: DESC
+                    nulls_order: LAST
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -226,34 +256,39 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT 1 ORDER BY 1 ASC, 2 DESC",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: OrderByList[2]
-    OrderingTerm
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-      sort_order: ASC
-      nulls_order: NONE
-    OrderingTerm
-      expr: Literal
-        literal_type: INTEGER
-        source: "2"
-      sort_order: DESC
-      nulls_order: NONE
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby:
+                OrderByList [2 items]
+                  OrderingTerm
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+                    sort_order: ASC
+                    nulls_order: NONE
+                  OrderingTerm
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "2"
+                    sort_order: DESC
+                    nulls_order: NONE
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -265,26 +300,30 @@ class SelectLimit(TestSuite):
         return AstTestBlueprint(
             sql="SELECT 1 LIMIT 10",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: LimitClause
-    limit: Literal
-      literal_type: INTEGER
-      source: "10"
-    offset: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause:
+                LimitClause
+                  limit:
+                    Literal
+                      literal_type: INTEGER
+                      source: "10"
+                  offset: (none)
+              window_clause: (none)
 """,
         )
 
@@ -292,28 +331,33 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT 1 LIMIT 10 OFFSET 5",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: LimitClause
-    limit: Literal
-      literal_type: INTEGER
-      source: "10"
-    offset: Literal
-      literal_type: INTEGER
-      source: "5"
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause:
+                LimitClause
+                  limit:
+                    Literal
+                      literal_type: INTEGER
+                      source: "10"
+                  offset:
+                    Literal
+                      literal_type: INTEGER
+                      source: "5"
+              window_clause: (none)
 """,
         )
 
@@ -321,28 +365,33 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT 1 LIMIT 5, 10",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: LimitClause
-    limit: Literal
-      literal_type: INTEGER
-      source: "10"
-    offset: Literal
-      literal_type: INTEGER
-      source: "5"
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause:
+                LimitClause
+                  limit:
+                    Literal
+                      literal_type: INTEGER
+                      source: "10"
+                  offset:
+                    Literal
+                      literal_type: INTEGER
+                      source: "5"
+              window_clause: (none)
 """,
         )
 
@@ -354,38 +403,47 @@ class SelectCombined(TestSuite):
         return AstTestBlueprint(
             sql="SELECT 1 WHERE 1 > 0 ORDER BY 1 LIMIT 10",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-  from_clause: null
-  where: BinaryExpr
-    op: GT
-    left: Literal
-      literal_type: INTEGER
-      source: "1"
-    right: Literal
-      literal_type: INTEGER
-      source: "0"
-  groupby: null
-  having: null
-  orderby: OrderByList[1]
-    OrderingTerm
-      expr: Literal
-        literal_type: INTEGER
-        source: "1"
-      sort_order: ASC
-      nulls_order: NONE
-  limit_clause: LimitClause
-    limit: Literal
-      literal_type: INTEGER
-      source: "10"
-    offset: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+              from_clause: (none)
+              where_clause:
+                BinaryExpr
+                  op: GT
+                  left:
+                    Literal
+                      literal_type: INTEGER
+                      source: "1"
+                  right:
+                    Literal
+                      literal_type: INTEGER
+                      source: "0"
+              groupby: (none)
+              having: (none)
+              orderby:
+                OrderByList [1 items]
+                  OrderingTerm
+                    expr:
+                      Literal
+                        literal_type: INTEGER
+                        source: "1"
+                    sort_order: ASC
+                    nulls_order: NONE
+              limit_clause:
+                LimitClause
+                  limit:
+                    Literal
+                      literal_type: INTEGER
+                      source: "10"
+                  offset: (none)
+              window_clause: (none)
 """,
         )

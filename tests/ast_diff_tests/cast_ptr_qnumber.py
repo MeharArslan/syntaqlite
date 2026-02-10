@@ -13,24 +13,27 @@ class CastExpr(TestSuite):
         return AstTestBlueprint(
             sql="SELECT CAST(1 AS INTEGER)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: CastExpr
-        expr: Literal
-          literal_type: INTEGER
-          source: "1"
-        type_name: "INTEGER"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      CastExpr
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                        type_name: "INTEGER"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -38,24 +41,27 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT CAST('hello' AS TEXT)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: CastExpr
-        expr: Literal
-          literal_type: STRING
-          source: "'hello'"
-        type_name: "TEXT"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      CastExpr
+                        expr:
+                          Literal
+                            literal_type: STRING
+                            source: "'hello'"
+                        type_name: "TEXT"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -63,24 +69,27 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT CAST(3.14 AS REAL)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: CastExpr
-        expr: Literal
-          literal_type: FLOAT
-          source: "3.14"
-        type_name: "REAL"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      CastExpr
+                        expr:
+                          Literal
+                            literal_type: FLOAT
+                            source: "3.14"
+                        type_name: "REAL"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -88,25 +97,28 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT CAST(x AS VARCHAR(100))",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: CastExpr
-        expr: ColumnRef
-          column: "x"
-          table: null
-          schema: null
-        type_name: "VARCHAR(100)"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      CastExpr
+                        expr:
+                          ColumnRef
+                            column: "x"
+                            table: null
+                            schema: null
+                        type_name: "VARCHAR(100)"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -114,25 +126,28 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT CAST(x AS DECIMAL(10,2))",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: CastExpr
-        expr: ColumnRef
-          column: "x"
-          table: null
-          schema: null
-        type_name: "DECIMAL(10,2)"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      CastExpr
+                        expr:
+                          ColumnRef
+                            column: "x"
+                            table: null
+                            schema: null
+                        type_name: "DECIMAL(10,2)"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -140,25 +155,28 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT CAST(x AS DOUBLE PRECISION)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: CastExpr
-        expr: ColumnRef
-          column: "x"
-          table: null
-          schema: null
-        type_name: "DOUBLE PRECISION"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      CastExpr
+                        expr:
+                          ColumnRef
+                            column: "x"
+                            table: null
+                            schema: null
+                        type_name: "DOUBLE PRECISION"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -166,24 +184,27 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT CAST(1 AS )",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: CastExpr
-        expr: Literal
-          literal_type: INTEGER
-          source: "1"
-        type_name: null
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      CastExpr
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                        type_name: null
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -195,27 +216,31 @@ class PtrExpr(TestSuite):
         return AstTestBlueprint(
             sql="SELECT '{\"a\":1}' -> '$.a'",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: BinaryExpr
-        op: PTR
-        left: Literal
-          literal_type: STRING
-          source: "'{\\"a\\":1}'"
-        right: Literal
-          literal_type: STRING
-          source: "'$.a'"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      BinaryExpr
+                        op: PTR
+                        left:
+                          Literal
+                            literal_type: STRING
+                            source: "'{"a":1}'"
+                        right:
+                          Literal
+                            literal_type: STRING
+                            source: "'$.a'"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -223,28 +248,32 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT j -> '$.name'",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: BinaryExpr
-        op: PTR
-        left: ColumnRef
-          column: "j"
-          table: null
-          schema: null
-        right: Literal
-          literal_type: STRING
-          source: "'$.name'"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      BinaryExpr
+                        op: PTR
+                        left:
+                          ColumnRef
+                            column: "j"
+                            table: null
+                            schema: null
+                        right:
+                          Literal
+                            literal_type: STRING
+                            source: "'$.name'"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -256,22 +285,24 @@ class QnumberLiteral(TestSuite):
         return AstTestBlueprint(
             sql="SELECT 1_000_000",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: QNUMBER
-        source: "1_000_000"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: QNUMBER
+                        source: "1_000_000"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -279,22 +310,24 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT 1_000.50",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: Literal
-        literal_type: QNUMBER
-        source: "1_000.50"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      Literal
+                        literal_type: QNUMBER
+                        source: "1_000.50"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -306,26 +339,28 @@ class RowValue(TestSuite):
         return AstTestBlueprint(
             sql="SELECT (1, 2)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: ExprList[2]
-        Literal
-          literal_type: INTEGER
-          source: "1"
-        Literal
-          literal_type: INTEGER
-          source: "2"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      ExprList [2 items]
+                        Literal
+                          literal_type: INTEGER
+                          source: "1"
+                        Literal
+                          literal_type: INTEGER
+                          source: "2"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -333,28 +368,30 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT (1, 2, 3)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: ExprList[3]
-        Literal
-          literal_type: INTEGER
-          source: "1"
-        Literal
-          literal_type: INTEGER
-          source: "2"
-        Literal
-          literal_type: INTEGER
-          source: "3"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      ExprList [3 items]
+                        Literal
+                          literal_type: INTEGER
+                          source: "1"
+                        Literal
+                          literal_type: INTEGER
+                          source: "2"
+                        Literal
+                          literal_type: INTEGER
+                          source: "3"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )

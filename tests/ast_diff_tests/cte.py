@@ -13,46 +13,53 @@ class WithClause(TestSuite):
         return AstTestBlueprint(
             sql="WITH t AS (SELECT 1) SELECT * FROM t",
             out="""\
-WithClause
-  recursive: FALSE
-  ctes: CteList[1]
-    CteDefinition
-      cte_name: "t"
-      materialized: DEFAULT
-      columns: null
-      select: SelectStmt
-        flags: (none)
-        columns: ResultColumnList[1]
-          ResultColumn
-            flags: (none)
-            alias: null
-            expr: Literal
-              literal_type: INTEGER
-              source: "1"
-        from_clause: null
-        where: null
-        groupby: null
-        having: null
-        orderby: null
-        limit_clause: null
-        window_clause: null
-  select: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: STAR
-        alias: null
-        expr: null
-    from_clause: TableRef
-      table_name: "t"
-      schema: null
-      alias: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            WithClause
+              recursive: FALSE
+              ctes:
+                CteList [1 items]
+                  CteDefinition
+                    cte_name: "t"
+                    materialized: DEFAULT
+                    columns: (none)
+                    select:
+                      SelectStmt
+                        flags: (none)
+                        columns:
+                          ResultColumnList [1 items]
+                            ResultColumn
+                              flags: (none)
+                              alias: null
+                              expr:
+                                Literal
+                                  literal_type: INTEGER
+                                  source: "1"
+                        from_clause: (none)
+                        where_clause: (none)
+                        groupby: (none)
+                        having: (none)
+                        orderby: (none)
+                        limit_clause: (none)
+                        window_clause: (none)
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: STAR
+                        alias: null
+                        expr: (none)
+                  from_clause:
+                    TableRef
+                      table_name: "t"
+                      schema: null
+                      alias: null
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -60,60 +67,69 @@ WithClause
         return AstTestBlueprint(
             sql="WITH t(a, b) AS (SELECT 1, 2) SELECT * FROM t",
             out="""\
-WithClause
-  recursive: FALSE
-  ctes: CteList[1]
-    CteDefinition
-      cte_name: "t"
-      materialized: DEFAULT
-      columns: ExprList[2]
-        ColumnRef
-          column: "a"
-          table: null
-          schema: null
-        ColumnRef
-          column: "b"
-          table: null
-          schema: null
-      select: SelectStmt
-        flags: (none)
-        columns: ResultColumnList[2]
-          ResultColumn
-            flags: (none)
-            alias: null
-            expr: Literal
-              literal_type: INTEGER
-              source: "1"
-          ResultColumn
-            flags: (none)
-            alias: null
-            expr: Literal
-              literal_type: INTEGER
-              source: "2"
-        from_clause: null
-        where: null
-        groupby: null
-        having: null
-        orderby: null
-        limit_clause: null
-        window_clause: null
-  select: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: STAR
-        alias: null
-        expr: null
-    from_clause: TableRef
-      table_name: "t"
-      schema: null
-      alias: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            WithClause
+              recursive: FALSE
+              ctes:
+                CteList [1 items]
+                  CteDefinition
+                    cte_name: "t"
+                    materialized: DEFAULT
+                    columns:
+                      ExprList [2 items]
+                        ColumnRef
+                          column: "a"
+                          table: null
+                          schema: null
+                        ColumnRef
+                          column: "b"
+                          table: null
+                          schema: null
+                    select:
+                      SelectStmt
+                        flags: (none)
+                        columns:
+                          ResultColumnList [2 items]
+                            ResultColumn
+                              flags: (none)
+                              alias: null
+                              expr:
+                                Literal
+                                  literal_type: INTEGER
+                                  source: "1"
+                            ResultColumn
+                              flags: (none)
+                              alias: null
+                              expr:
+                                Literal
+                                  literal_type: INTEGER
+                                  source: "2"
+                        from_clause: (none)
+                        where_clause: (none)
+                        groupby: (none)
+                        having: (none)
+                        orderby: (none)
+                        limit_clause: (none)
+                        window_clause: (none)
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: STAR
+                        alias: null
+                        expr: (none)
+                  from_clause:
+                    TableRef
+                      table_name: "t"
+                      schema: null
+                      alias: null
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -121,80 +137,96 @@ WithClause
         return AstTestBlueprint(
             sql="WITH RECURSIVE cnt(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM cnt) SELECT x FROM cnt",
             out="""\
-WithClause
-  recursive: TRUE
-  ctes: CteList[1]
-    CteDefinition
-      cte_name: "cnt"
-      materialized: DEFAULT
-      columns: ExprList[1]
-        ColumnRef
-          column: "x"
-          table: null
-          schema: null
-      select: CompoundSelect
-        op: UNION_ALL
-        left: SelectStmt
-          flags: (none)
-          columns: ResultColumnList[1]
-            ResultColumn
-              flags: (none)
-              alias: null
-              expr: Literal
-                literal_type: INTEGER
-                source: "1"
-          from_clause: null
-          where: null
-          groupby: null
-          having: null
-          orderby: null
-          limit_clause: null
-          window_clause: null
-        right: SelectStmt
-          flags: (none)
-          columns: ResultColumnList[1]
-            ResultColumn
-              flags: (none)
-              alias: null
-              expr: BinaryExpr
-                op: PLUS
-                left: ColumnRef
-                  column: "x"
-                  table: null
-                  schema: null
-                right: Literal
-                  literal_type: INTEGER
-                  source: "1"
-          from_clause: TableRef
-            table_name: "cnt"
-            schema: null
-            alias: null
-          where: null
-          groupby: null
-          having: null
-          orderby: null
-          limit_clause: null
-          window_clause: null
-  select: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: ColumnRef
-          column: "x"
-          table: null
-          schema: null
-    from_clause: TableRef
-      table_name: "cnt"
-      schema: null
-      alias: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            WithClause
+              recursive: TRUE
+              ctes:
+                CteList [1 items]
+                  CteDefinition
+                    cte_name: "cnt"
+                    materialized: DEFAULT
+                    columns:
+                      ExprList [1 items]
+                        ColumnRef
+                          column: "x"
+                          table: null
+                          schema: null
+                    select:
+                      CompoundSelect
+                        op: UNION_ALL
+                        left:
+                          SelectStmt
+                            flags: (none)
+                            columns:
+                              ResultColumnList [1 items]
+                                ResultColumn
+                                  flags: (none)
+                                  alias: null
+                                  expr:
+                                    Literal
+                                      literal_type: INTEGER
+                                      source: "1"
+                            from_clause: (none)
+                            where_clause: (none)
+                            groupby: (none)
+                            having: (none)
+                            orderby: (none)
+                            limit_clause: (none)
+                            window_clause: (none)
+                        right:
+                          SelectStmt
+                            flags: (none)
+                            columns:
+                              ResultColumnList [1 items]
+                                ResultColumn
+                                  flags: (none)
+                                  alias: null
+                                  expr:
+                                    BinaryExpr
+                                      op: PLUS
+                                      left:
+                                        ColumnRef
+                                          column: "x"
+                                          table: null
+                                          schema: null
+                                      right:
+                                        Literal
+                                          literal_type: INTEGER
+                                          source: "1"
+                            from_clause:
+                              TableRef
+                                table_name: "cnt"
+                                schema: null
+                                alias: null
+                            where_clause: (none)
+                            groupby: (none)
+                            having: (none)
+                            orderby: (none)
+                            limit_clause: (none)
+                            window_clause: (none)
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          ColumnRef
+                            column: "x"
+                            table: null
+                            schema: null
+                  from_clause:
+                    TableRef
+                      table_name: "cnt"
+                      schema: null
+                      alias: null
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -202,66 +234,76 @@ WithClause
         return AstTestBlueprint(
             sql="WITH a AS (SELECT 1), b AS (SELECT 2) SELECT * FROM a",
             out="""\
-WithClause
-  recursive: FALSE
-  ctes: CteList[2]
-    CteDefinition
-      cte_name: "a"
-      materialized: DEFAULT
-      columns: null
-      select: SelectStmt
-        flags: (none)
-        columns: ResultColumnList[1]
-          ResultColumn
-            flags: (none)
-            alias: null
-            expr: Literal
-              literal_type: INTEGER
-              source: "1"
-        from_clause: null
-        where: null
-        groupby: null
-        having: null
-        orderby: null
-        limit_clause: null
-        window_clause: null
-    CteDefinition
-      cte_name: "b"
-      materialized: DEFAULT
-      columns: null
-      select: SelectStmt
-        flags: (none)
-        columns: ResultColumnList[1]
-          ResultColumn
-            flags: (none)
-            alias: null
-            expr: Literal
-              literal_type: INTEGER
-              source: "2"
-        from_clause: null
-        where: null
-        groupby: null
-        having: null
-        orderby: null
-        limit_clause: null
-        window_clause: null
-  select: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: STAR
-        alias: null
-        expr: null
-    from_clause: TableRef
-      table_name: "a"
-      schema: null
-      alias: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            WithClause
+              recursive: FALSE
+              ctes:
+                CteList [2 items]
+                  CteDefinition
+                    cte_name: "a"
+                    materialized: DEFAULT
+                    columns: (none)
+                    select:
+                      SelectStmt
+                        flags: (none)
+                        columns:
+                          ResultColumnList [1 items]
+                            ResultColumn
+                              flags: (none)
+                              alias: null
+                              expr:
+                                Literal
+                                  literal_type: INTEGER
+                                  source: "1"
+                        from_clause: (none)
+                        where_clause: (none)
+                        groupby: (none)
+                        having: (none)
+                        orderby: (none)
+                        limit_clause: (none)
+                        window_clause: (none)
+                  CteDefinition
+                    cte_name: "b"
+                    materialized: DEFAULT
+                    columns: (none)
+                    select:
+                      SelectStmt
+                        flags: (none)
+                        columns:
+                          ResultColumnList [1 items]
+                            ResultColumn
+                              flags: (none)
+                              alias: null
+                              expr:
+                                Literal
+                                  literal_type: INTEGER
+                                  source: "2"
+                        from_clause: (none)
+                        where_clause: (none)
+                        groupby: (none)
+                        having: (none)
+                        orderby: (none)
+                        limit_clause: (none)
+                        window_clause: (none)
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: STAR
+                        alias: null
+                        expr: (none)
+                  from_clause:
+                    TableRef
+                      table_name: "a"
+                      schema: null
+                      alias: null
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -269,46 +311,53 @@ WithClause
         return AstTestBlueprint(
             sql="WITH t AS MATERIALIZED (SELECT 1) SELECT * FROM t",
             out="""\
-WithClause
-  recursive: FALSE
-  ctes: CteList[1]
-    CteDefinition
-      cte_name: "t"
-      materialized: MATERIALIZED
-      columns: null
-      select: SelectStmt
-        flags: (none)
-        columns: ResultColumnList[1]
-          ResultColumn
-            flags: (none)
-            alias: null
-            expr: Literal
-              literal_type: INTEGER
-              source: "1"
-        from_clause: null
-        where: null
-        groupby: null
-        having: null
-        orderby: null
-        limit_clause: null
-        window_clause: null
-  select: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: STAR
-        alias: null
-        expr: null
-    from_clause: TableRef
-      table_name: "t"
-      schema: null
-      alias: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            WithClause
+              recursive: FALSE
+              ctes:
+                CteList [1 items]
+                  CteDefinition
+                    cte_name: "t"
+                    materialized: MATERIALIZED
+                    columns: (none)
+                    select:
+                      SelectStmt
+                        flags: (none)
+                        columns:
+                          ResultColumnList [1 items]
+                            ResultColumn
+                              flags: (none)
+                              alias: null
+                              expr:
+                                Literal
+                                  literal_type: INTEGER
+                                  source: "1"
+                        from_clause: (none)
+                        where_clause: (none)
+                        groupby: (none)
+                        having: (none)
+                        orderby: (none)
+                        limit_clause: (none)
+                        window_clause: (none)
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: STAR
+                        alias: null
+                        expr: (none)
+                  from_clause:
+                    TableRef
+                      table_name: "t"
+                      schema: null
+                      alias: null
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -316,45 +365,52 @@ WithClause
         return AstTestBlueprint(
             sql="WITH t AS NOT MATERIALIZED (SELECT 1) SELECT * FROM t",
             out="""\
-WithClause
-  recursive: FALSE
-  ctes: CteList[1]
-    CteDefinition
-      cte_name: "t"
-      materialized: NOT_MATERIALIZED
-      columns: null
-      select: SelectStmt
-        flags: (none)
-        columns: ResultColumnList[1]
-          ResultColumn
-            flags: (none)
-            alias: null
-            expr: Literal
-              literal_type: INTEGER
-              source: "1"
-        from_clause: null
-        where: null
-        groupby: null
-        having: null
-        orderby: null
-        limit_clause: null
-        window_clause: null
-  select: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: STAR
-        alias: null
-        expr: null
-    from_clause: TableRef
-      table_name: "t"
-      schema: null
-      alias: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            WithClause
+              recursive: FALSE
+              ctes:
+                CteList [1 items]
+                  CteDefinition
+                    cte_name: "t"
+                    materialized: NOT_MATERIALIZED
+                    columns: (none)
+                    select:
+                      SelectStmt
+                        flags: (none)
+                        columns:
+                          ResultColumnList [1 items]
+                            ResultColumn
+                              flags: (none)
+                              alias: null
+                              expr:
+                                Literal
+                                  literal_type: INTEGER
+                                  source: "1"
+                        from_clause: (none)
+                        where_clause: (none)
+                        groupby: (none)
+                        having: (none)
+                        orderby: (none)
+                        limit_clause: (none)
+                        window_clause: (none)
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: STAR
+                        alias: null
+                        expr: (none)
+                  from_clause:
+                    TableRef
+                      table_name: "t"
+                      schema: null
+                      alias: null
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )

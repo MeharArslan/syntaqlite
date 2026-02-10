@@ -17,6 +17,13 @@ impl Bool {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Bool::False => "FALSE",
+            Bool::True => "TRUE",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -42,6 +49,18 @@ impl LiteralType {
             5 => Some(LiteralType::Current),
             6 => Some(LiteralType::Qnumber),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            LiteralType::Integer => "INTEGER",
+            LiteralType::Float => "FLOAT",
+            LiteralType::String => "STRING",
+            LiteralType::Blob => "BLOB",
+            LiteralType::Null => "NULL",
+            LiteralType::Current => "CURRENT",
+            LiteralType::Qnumber => "QNUMBER",
         }
     }
 }
@@ -95,6 +114,30 @@ impl BinaryOp {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            BinaryOp::Plus => "PLUS",
+            BinaryOp::Minus => "MINUS",
+            BinaryOp::Star => "STAR",
+            BinaryOp::Slash => "SLASH",
+            BinaryOp::Rem => "REM",
+            BinaryOp::Lt => "LT",
+            BinaryOp::Gt => "GT",
+            BinaryOp::Le => "LE",
+            BinaryOp::Ge => "GE",
+            BinaryOp::Eq => "EQ",
+            BinaryOp::Ne => "NE",
+            BinaryOp::And => "AND",
+            BinaryOp::Or => "OR",
+            BinaryOp::Bitand => "BITAND",
+            BinaryOp::Bitor => "BITOR",
+            BinaryOp::Lshift => "LSHIFT",
+            BinaryOp::Rshift => "RSHIFT",
+            BinaryOp::Concat => "CONCAT",
+            BinaryOp::Ptr => "PTR",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -116,6 +159,15 @@ impl UnaryOp {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            UnaryOp::Minus => "MINUS",
+            UnaryOp::Plus => "PLUS",
+            UnaryOp::Bitnot => "BITNOT",
+            UnaryOp::Not => "NOT",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -135,6 +187,15 @@ impl CompoundOp {
             2 => Some(CompoundOp::Intersect),
             3 => Some(CompoundOp::Except),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            CompoundOp::Union => "UNION",
+            CompoundOp::UnionAll => "UNION_ALL",
+            CompoundOp::Intersect => "INTERSECT",
+            CompoundOp::Except => "EXCEPT",
         }
     }
 }
@@ -162,6 +223,17 @@ impl IsOp {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            IsOp::Is => "IS",
+            IsOp::IsNot => "IS_NOT",
+            IsOp::Isnull => "ISNULL",
+            IsOp::Notnull => "NOTNULL",
+            IsOp::IsNotDistinct => "IS_NOT_DISTINCT",
+            IsOp::IsDistinct => "IS_DISTINCT",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -185,6 +257,16 @@ impl ForeignKeyAction {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ForeignKeyAction::NoAction => "NO_ACTION",
+            ForeignKeyAction::SetNull => "SET_NULL",
+            ForeignKeyAction::SetDefault => "SET_DEFAULT",
+            ForeignKeyAction::Cascade => "CASCADE",
+            ForeignKeyAction::Restrict => "RESTRICT",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -200,6 +282,13 @@ impl GeneratedColumnStorage {
             0 => Some(GeneratedColumnStorage::Virtual),
             1 => Some(GeneratedColumnStorage::Stored),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            GeneratedColumnStorage::Virtual => "VIRTUAL",
+            GeneratedColumnStorage::Stored => "STORED",
         }
     }
 }
@@ -233,6 +322,20 @@ impl ColumnConstraintKind {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ColumnConstraintKind::Default => "DEFAULT",
+            ColumnConstraintKind::NotNull => "NOT_NULL",
+            ColumnConstraintKind::PrimaryKey => "PRIMARY_KEY",
+            ColumnConstraintKind::Unique => "UNIQUE",
+            ColumnConstraintKind::Check => "CHECK",
+            ColumnConstraintKind::References => "REFERENCES",
+            ColumnConstraintKind::Collate => "COLLATE",
+            ColumnConstraintKind::Generated => "GENERATED",
+            ColumnConstraintKind::Null => "NULL",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -254,6 +357,15 @@ impl TableConstraintKind {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TableConstraintKind::PrimaryKey => "PRIMARY_KEY",
+            TableConstraintKind::Unique => "UNIQUE",
+            TableConstraintKind::Check => "CHECK",
+            TableConstraintKind::ForeignKey => "FOREIGN_KEY",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -271,6 +383,14 @@ impl Materialized {
             1 => Some(Materialized::Materialized),
             2 => Some(Materialized::NotMaterialized),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Materialized::Default => "DEFAULT",
+            Materialized::Materialized => "MATERIALIZED",
+            Materialized::NotMaterialized => "NOT_MATERIALIZED",
         }
     }
 }
@@ -298,6 +418,17 @@ impl ConflictAction {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ConflictAction::Default => "DEFAULT",
+            ConflictAction::Rollback => "ROLLBACK",
+            ConflictAction::Abort => "ABORT",
+            ConflictAction::Fail => "FAIL",
+            ConflictAction::Ignore => "IGNORE",
+            ConflictAction::Replace => "REPLACE",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -317,6 +448,15 @@ impl RaiseType {
             2 => Some(RaiseType::Abort),
             3 => Some(RaiseType::Fail),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RaiseType::Ignore => "IGNORE",
+            RaiseType::Rollback => "ROLLBACK",
+            RaiseType::Abort => "ABORT",
+            RaiseType::Fail => "FAIL",
         }
     }
 }
@@ -340,6 +480,15 @@ impl DropObjectType {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            DropObjectType::Table => "TABLE",
+            DropObjectType::Index => "INDEX",
+            DropObjectType::View => "VIEW",
+            DropObjectType::Trigger => "TRIGGER",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -361,6 +510,15 @@ impl AlterOp {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            AlterOp::RenameTable => "RENAME_TABLE",
+            AlterOp::RenameColumn => "RENAME_COLUMN",
+            AlterOp::DropColumn => "DROP_COLUMN",
+            AlterOp::AddColumn => "ADD_COLUMN",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -378,6 +536,14 @@ impl TransactionType {
             1 => Some(TransactionType::Immediate),
             2 => Some(TransactionType::Exclusive),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TransactionType::Deferred => "DEFERRED",
+            TransactionType::Immediate => "IMMEDIATE",
+            TransactionType::Exclusive => "EXCLUSIVE",
         }
     }
 }
@@ -399,6 +565,14 @@ impl TransactionOp {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TransactionOp::Begin => "BEGIN",
+            TransactionOp::Commit => "COMMIT",
+            TransactionOp::Rollback => "ROLLBACK",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -418,6 +592,14 @@ impl SavepointOp {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SavepointOp::Savepoint => "SAVEPOINT",
+            SavepointOp::Release => "RELEASE",
+            SavepointOp::RollbackTo => "ROLLBACK_TO",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -433,6 +615,13 @@ impl SortOrder {
             0 => Some(SortOrder::Asc),
             1 => Some(SortOrder::Desc),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            SortOrder::Asc => "ASC",
+            SortOrder::Desc => "DESC",
         }
     }
 }
@@ -452,6 +641,14 @@ impl NullsOrder {
             1 => Some(NullsOrder::First),
             2 => Some(NullsOrder::Last),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            NullsOrder::None => "NONE",
+            NullsOrder::First => "FIRST",
+            NullsOrder::Last => "LAST",
         }
     }
 }
@@ -487,6 +684,21 @@ impl JoinType {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            JoinType::Comma => "COMMA",
+            JoinType::Inner => "INNER",
+            JoinType::Left => "LEFT",
+            JoinType::Right => "RIGHT",
+            JoinType::Full => "FULL",
+            JoinType::Cross => "CROSS",
+            JoinType::NaturalInner => "NATURAL_INNER",
+            JoinType::NaturalLeft => "NATURAL_LEFT",
+            JoinType::NaturalRight => "NATURAL_RIGHT",
+            JoinType::NaturalFull => "NATURAL_FULL",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -504,6 +716,14 @@ impl TriggerTiming {
             1 => Some(TriggerTiming::After),
             2 => Some(TriggerTiming::InsteadOf),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TriggerTiming::Before => "BEFORE",
+            TriggerTiming::After => "AFTER",
+            TriggerTiming::InsteadOf => "INSTEAD_OF",
         }
     }
 }
@@ -525,6 +745,14 @@ impl TriggerEventType {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TriggerEventType::Delete => "DELETE",
+            TriggerEventType::Insert => "INSERT",
+            TriggerEventType::Update => "UPDATE",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -540,6 +768,13 @@ impl ExplainMode {
             0 => Some(ExplainMode::Explain),
             1 => Some(ExplainMode::QueryPlan),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            ExplainMode::Explain => "EXPLAIN",
+            ExplainMode::QueryPlan => "QUERY_PLAN",
         }
     }
 }
@@ -561,6 +796,14 @@ impl PragmaForm {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            PragmaForm::Bare => "BARE",
+            PragmaForm::Eq => "EQ",
+            PragmaForm::Call => "CALL",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -576,6 +819,13 @@ impl AnalyzeKind {
             0 => Some(AnalyzeKind::Analyze),
             1 => Some(AnalyzeKind::Reindex),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            AnalyzeKind::Analyze => "ANALYZE",
+            AnalyzeKind::Reindex => "REINDEX",
         }
     }
 }
@@ -597,6 +847,15 @@ impl FrameType {
             2 => Some(FrameType::Rows),
             3 => Some(FrameType::Groups),
             _ => None,
+        }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FrameType::None => "NONE",
+            FrameType::Range => "RANGE",
+            FrameType::Rows => "ROWS",
+            FrameType::Groups => "GROUPS",
         }
     }
 }
@@ -622,6 +881,16 @@ impl FrameBoundType {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FrameBoundType::UnboundedPreceding => "UNBOUNDED_PRECEDING",
+            FrameBoundType::ExprPreceding => "EXPR_PRECEDING",
+            FrameBoundType::CurrentRow => "CURRENT_ROW",
+            FrameBoundType::ExprFollowing => "EXPR_FOLLOWING",
+            FrameBoundType::UnboundedFollowing => "UNBOUNDED_FOLLOWING",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -645,6 +914,16 @@ impl FrameExclude {
             _ => None,
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FrameExclude::None => "NONE",
+            FrameExclude::NoOthers => "NO_OTHERS",
+            FrameExclude::CurrentRow => "CURRENT_ROW",
+            FrameExclude::Group => "GROUP",
+            FrameExclude::Ties => "TIES",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -653,7 +932,14 @@ pub struct AggregateFunctionCallFlags(pub u8);
 
 impl AggregateFunctionCallFlags {
     pub fn distinct(&self) -> bool {
-        self.0 & (1 << 1) != 0
+        self.0 & 1 != 0
+    }
+
+    pub fn dump_str(&self) -> String {
+        if self.0 == 0 { return "(none)".into(); }
+        let mut s = String::new();
+        if self.distinct() { if !s.is_empty() { s.push(' '); } s.push_str("DISTINCT"); }
+        s
     }
 }
 
@@ -663,10 +949,18 @@ pub struct CreateTableStmtFlags(pub u8);
 
 impl CreateTableStmtFlags {
     pub fn without_rowid(&self) -> bool {
-        self.0 & (1 << 1) != 0
+        self.0 & 1 != 0
     }
     pub fn strict(&self) -> bool {
-        self.0 & (1 << 2) != 0
+        self.0 & 2 != 0
+    }
+
+    pub fn dump_str(&self) -> String {
+        if self.0 == 0 { return "(none)".into(); }
+        let mut s = String::new();
+        if self.without_rowid() { if !s.is_empty() { s.push(' '); } s.push_str("WITHOUT_ROWID"); }
+        if self.strict() { if !s.is_empty() { s.push(' '); } s.push_str("STRICT"); }
+        s
     }
 }
 
@@ -676,10 +970,18 @@ pub struct FunctionCallFlags(pub u8);
 
 impl FunctionCallFlags {
     pub fn distinct(&self) -> bool {
-        self.0 & (1 << 1) != 0
+        self.0 & 1 != 0
     }
     pub fn star(&self) -> bool {
-        self.0 & (1 << 2) != 0
+        self.0 & 2 != 0
+    }
+
+    pub fn dump_str(&self) -> String {
+        if self.0 == 0 { return "(none)".into(); }
+        let mut s = String::new();
+        if self.distinct() { if !s.is_empty() { s.push(' '); } s.push_str("DISTINCT"); }
+        if self.star() { if !s.is_empty() { s.push(' '); } s.push_str("STAR"); }
+        s
     }
 }
 
@@ -689,7 +991,14 @@ pub struct ResultColumnFlags(pub u8);
 
 impl ResultColumnFlags {
     pub fn star(&self) -> bool {
-        self.0 & (1 << 1) != 0
+        self.0 & 1 != 0
+    }
+
+    pub fn dump_str(&self) -> String {
+        if self.0 == 0 { return "(none)".into(); }
+        let mut s = String::new();
+        if self.star() { if !s.is_empty() { s.push(' '); } s.push_str("STAR"); }
+        s
     }
 }
 
@@ -699,7 +1008,14 @@ pub struct SelectStmtFlags(pub u8);
 
 impl SelectStmtFlags {
     pub fn distinct(&self) -> bool {
-        self.0 & (1 << 1) != 0
+        self.0 & 1 != 0
+    }
+
+    pub fn dump_str(&self) -> String {
+        if self.0 == 0 { return "(none)".into(); }
+        let mut s = String::new();
+        if self.distinct() { if !s.is_empty() { s.push(' '); } s.push_str("DISTINCT"); }
+        s
     }
 }
 

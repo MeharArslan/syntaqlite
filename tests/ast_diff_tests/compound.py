@@ -13,40 +13,46 @@ class CompoundSelect(TestSuite):
         return AstTestBlueprint(
             sql="SELECT 1 UNION SELECT 2",
             out="""\
-CompoundSelect
-  op: UNION
-  left: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: Literal
-          literal_type: INTEGER
-          source: "1"
-    from_clause: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
-  right: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: Literal
-          literal_type: INTEGER
-          source: "2"
-    from_clause: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            CompoundSelect
+              op: UNION
+              left:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
+              right:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "2"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -54,40 +60,46 @@ CompoundSelect
         return AstTestBlueprint(
             sql="SELECT 1 UNION ALL SELECT 2",
             out="""\
-CompoundSelect
-  op: UNION_ALL
-  left: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: Literal
-          literal_type: INTEGER
-          source: "1"
-    from_clause: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
-  right: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: Literal
-          literal_type: INTEGER
-          source: "2"
-    from_clause: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            CompoundSelect
+              op: UNION_ALL
+              left:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
+              right:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "2"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -95,40 +107,46 @@ CompoundSelect
         return AstTestBlueprint(
             sql="SELECT 1 INTERSECT SELECT 2",
             out="""\
-CompoundSelect
-  op: INTERSECT
-  left: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: Literal
-          literal_type: INTEGER
-          source: "1"
-    from_clause: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
-  right: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: Literal
-          literal_type: INTEGER
-          source: "2"
-    from_clause: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            CompoundSelect
+              op: INTERSECT
+              left:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
+              right:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "2"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -136,40 +154,46 @@ CompoundSelect
         return AstTestBlueprint(
             sql="SELECT 1 EXCEPT SELECT 2",
             out="""\
-CompoundSelect
-  op: EXCEPT
-  left: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: Literal
-          literal_type: INTEGER
-          source: "1"
-    from_clause: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
-  right: SelectStmt
-    flags: (none)
-    columns: ResultColumnList[1]
-      ResultColumn
-        flags: (none)
-        alias: null
-        expr: Literal
-          literal_type: INTEGER
-          source: "2"
-    from_clause: null
-    where: null
-    groupby: null
-    having: null
-    orderby: null
-    limit_clause: null
-    window_clause: null
+            CompoundSelect
+              op: EXCEPT
+              left:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
+              right:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "2"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )
 
@@ -181,36 +205,41 @@ class SubqueryExpr(TestSuite):
         return AstTestBlueprint(
             sql="SELECT (SELECT 1)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: SubqueryExpr
-        select: SelectStmt
-          flags: (none)
-          columns: ResultColumnList[1]
-            ResultColumn
+            SelectStmt
               flags: (none)
-              alias: null
-              expr: Literal
-                literal_type: INTEGER
-                source: "1"
-          from_clause: null
-          where: null
-          groupby: null
-          having: null
-          orderby: null
-          limit_clause: null
-          window_clause: null
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      SubqueryExpr
+                        select:
+                          SelectStmt
+                            flags: (none)
+                            columns:
+                              ResultColumnList [1 items]
+                                ResultColumn
+                                  flags: (none)
+                                  alias: null
+                                  expr:
+                                    Literal
+                                      literal_type: INTEGER
+                                      source: "1"
+                            from_clause: (none)
+                            where_clause: (none)
+                            groupby: (none)
+                            having: (none)
+                            orderby: (none)
+                            limit_clause: (none)
+                            window_clause: (none)
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -218,36 +247,41 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT EXISTS (SELECT 1)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: ExistsExpr
-        select: SelectStmt
-          flags: (none)
-          columns: ResultColumnList[1]
-            ResultColumn
+            SelectStmt
               flags: (none)
-              alias: null
-              expr: Literal
-                literal_type: INTEGER
-                source: "1"
-          from_clause: null
-          where: null
-          groupby: null
-          having: null
-          orderby: null
-          limit_clause: null
-          window_clause: null
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      ExistsExpr
+                        select:
+                          SelectStmt
+                            flags: (none)
+                            columns:
+                              ResultColumnList [1 items]
+                                ResultColumn
+                                  flags: (none)
+                                  alias: null
+                                  expr:
+                                    Literal
+                                      literal_type: INTEGER
+                                      source: "1"
+                            from_clause: (none)
+                            where_clause: (none)
+                            groupby: (none)
+                            having: (none)
+                            orderby: (none)
+                            limit_clause: (none)
+                            window_clause: (none)
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -259,34 +293,38 @@ class InExpr(TestSuite):
         return AstTestBlueprint(
             sql="SELECT 1 IN (1, 2, 3)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: InExpr
-        negated: FALSE
-        operand: Literal
-          literal_type: INTEGER
-          source: "1"
-        source: ExprList[3]
-          Literal
-            literal_type: INTEGER
-            source: "1"
-          Literal
-            literal_type: INTEGER
-            source: "2"
-          Literal
-            literal_type: INTEGER
-            source: "3"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      InExpr
+                        negated: FALSE
+                        operand:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                        source:
+                          ExprList [3 items]
+                            Literal
+                              literal_type: INTEGER
+                              source: "1"
+                            Literal
+                              literal_type: INTEGER
+                              source: "2"
+                            Literal
+                              literal_type: INTEGER
+                              source: "3"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -294,34 +332,38 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT 1 NOT IN (1, 2, 3)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: InExpr
-        negated: TRUE
-        operand: Literal
-          literal_type: INTEGER
-          source: "1"
-        source: ExprList[3]
-          Literal
-            literal_type: INTEGER
-            source: "1"
-          Literal
-            literal_type: INTEGER
-            source: "2"
-          Literal
-            literal_type: INTEGER
-            source: "3"
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      InExpr
+                        negated: TRUE
+                        operand:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                        source:
+                          ExprList [3 items]
+                            Literal
+                              literal_type: INTEGER
+                              source: "1"
+                            Literal
+                              literal_type: INTEGER
+                              source: "2"
+                            Literal
+                              literal_type: INTEGER
+                              source: "3"
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )
 
@@ -329,40 +371,47 @@ SelectStmt
         return AstTestBlueprint(
             sql="SELECT 1 IN (SELECT 1)",
             out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: InExpr
-        negated: FALSE
-        operand: Literal
-          literal_type: INTEGER
-          source: "1"
-        source: SubqueryExpr
-          select: SelectStmt
-            flags: (none)
-            columns: ResultColumnList[1]
-              ResultColumn
-                flags: (none)
-                alias: null
-                expr: Literal
-                  literal_type: INTEGER
-                  source: "1"
-            from_clause: null
-            where: null
-            groupby: null
-            having: null
-            orderby: null
-            limit_clause: null
-            window_clause: null
-  from_clause: null
-  where: null
-  groupby: null
-  having: null
-  orderby: null
-  limit_clause: null
-  window_clause: null
+            SelectStmt
+              flags: (none)
+              columns:
+                ResultColumnList [1 items]
+                  ResultColumn
+                    flags: (none)
+                    alias: null
+                    expr:
+                      InExpr
+                        negated: FALSE
+                        operand:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                        source:
+                          SubqueryExpr
+                            select:
+                              SelectStmt
+                                flags: (none)
+                                columns:
+                                  ResultColumnList [1 items]
+                                    ResultColumn
+                                      flags: (none)
+                                      alias: null
+                                      expr:
+                                        Literal
+                                          literal_type: INTEGER
+                                          source: "1"
+                                from_clause: (none)
+                                where_clause: (none)
+                                groupby: (none)
+                                having: (none)
+                                orderby: (none)
+                                limit_clause: (none)
+                                window_clause: (none)
+              from_clause: (none)
+              where_clause: (none)
+              groupby: (none)
+              having: (none)
+              orderby: (none)
+              limit_clause: (none)
+              window_clause: (none)
 """,
         )

@@ -154,9 +154,11 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
   SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL};
 
-  if (p->finished || p->had_error) {
-    result.error = p->had_error;
-    result.error_msg = p->had_error ? p->error_msg : NULL;
+  if (p->finished) {
+    if (p->had_error) {
+      result.error = 1;
+      result.error_msg = p->error_msg;
+    }
     return result;
   }
 
@@ -192,6 +194,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
 
     if (p->ctx.error) {
       p->had_error = 1;
+      p->finished = 1;
       if (p->error_msg[0] == '\0') {
         snprintf(p->error_msg, sizeof(p->error_msg),
                  "syntax error near '%.*s'", (int)token_len, minor.z);
@@ -225,6 +228,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
 
     if (p->ctx.error) {
       p->had_error = 1;
+      p->finished = 1;
       if (p->error_msg[0] == '\0') {
         snprintf(p->error_msg, sizeof(p->error_msg),
                  "incomplete SQL statement");

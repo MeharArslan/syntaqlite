@@ -1,3 +1,4 @@
+pub mod dump;
 pub(crate) mod ffi;
 mod generated;
 pub mod nodes;

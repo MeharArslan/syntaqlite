@@ -13,12 +13,13 @@ class DropTable(TestSuite):
         return AstTestBlueprint(
             sql="DROP TABLE t",
             out="""\
-DropStmt
-  object_type: TABLE
-  if_exists: FALSE
-  target: QualifiedName
-    object_name: "t"
-    schema: null
+            DropStmt
+              object_type: TABLE
+              if_exists: FALSE
+              target:
+                QualifiedName
+                  object_name: "t"
+                  schema: null
 """,
         )
 
@@ -26,12 +27,13 @@ DropStmt
         return AstTestBlueprint(
             sql="DROP TABLE IF EXISTS t",
             out="""\
-DropStmt
-  object_type: TABLE
-  if_exists: TRUE
-  target: QualifiedName
-    object_name: "t"
-    schema: null
+            DropStmt
+              object_type: TABLE
+              if_exists: TRUE
+              target:
+                QualifiedName
+                  object_name: "t"
+                  schema: null
 """,
         )
 
@@ -39,12 +41,13 @@ DropStmt
         return AstTestBlueprint(
             sql="DROP TABLE main.t",
             out="""\
-DropStmt
-  object_type: TABLE
-  if_exists: FALSE
-  target: QualifiedName
-    object_name: "t"
-    schema: "main"
+            DropStmt
+              object_type: TABLE
+              if_exists: FALSE
+              target:
+                QualifiedName
+                  object_name: "t"
+                  schema: "main"
 """,
         )
 
@@ -56,12 +59,13 @@ class DropOther(TestSuite):
         return AstTestBlueprint(
             sql="DROP INDEX idx",
             out="""\
-DropStmt
-  object_type: INDEX
-  if_exists: FALSE
-  target: QualifiedName
-    object_name: "idx"
-    schema: null
+            DropStmt
+              object_type: INDEX
+              if_exists: FALSE
+              target:
+                QualifiedName
+                  object_name: "idx"
+                  schema: null
 """,
         )
 
@@ -69,12 +73,13 @@ DropStmt
         return AstTestBlueprint(
             sql="DROP VIEW v",
             out="""\
-DropStmt
-  object_type: VIEW
-  if_exists: FALSE
-  target: QualifiedName
-    object_name: "v"
-    schema: null
+            DropStmt
+              object_type: VIEW
+              if_exists: FALSE
+              target:
+                QualifiedName
+                  object_name: "v"
+                  schema: null
 """,
         )
 
@@ -82,12 +87,13 @@ DropStmt
         return AstTestBlueprint(
             sql="DROP TRIGGER tr",
             out="""\
-DropStmt
-  object_type: TRIGGER
-  if_exists: FALSE
-  target: QualifiedName
-    object_name: "tr"
-    schema: null
+            DropStmt
+              object_type: TRIGGER
+              if_exists: FALSE
+              target:
+                QualifiedName
+                  object_name: "tr"
+                  schema: null
 """,
         )
 
@@ -99,13 +105,14 @@ class AlterTableRename(TestSuite):
         return AstTestBlueprint(
             sql="ALTER TABLE t RENAME TO t2",
             out="""\
-AlterTableStmt
-  op: RENAME_TABLE
-  target: QualifiedName
-    object_name: "t"
-    schema: null
-  new_name: "t2"
-  old_name: null
+            AlterTableStmt
+              op: RENAME_TABLE
+              target:
+                QualifiedName
+                  object_name: "t"
+                  schema: null
+              new_name: "t2"
+              old_name: null
 """,
         )
 
@@ -113,13 +120,14 @@ AlterTableStmt
         return AstTestBlueprint(
             sql="ALTER TABLE t RENAME COLUMN c1 TO c2",
             out="""\
-AlterTableStmt
-  op: RENAME_COLUMN
-  target: QualifiedName
-    object_name: "t"
-    schema: null
-  new_name: "c2"
-  old_name: "c1"
+            AlterTableStmt
+              op: RENAME_COLUMN
+              target:
+                QualifiedName
+                  object_name: "t"
+                  schema: null
+              new_name: "c2"
+              old_name: "c1"
 """,
         )
 
@@ -127,13 +135,14 @@ AlterTableStmt
         return AstTestBlueprint(
             sql="ALTER TABLE t RENAME c1 TO c2",
             out="""\
-AlterTableStmt
-  op: RENAME_COLUMN
-  target: QualifiedName
-    object_name: "t"
-    schema: null
-  new_name: "c2"
-  old_name: "c1"
+            AlterTableStmt
+              op: RENAME_COLUMN
+              target:
+                QualifiedName
+                  object_name: "t"
+                  schema: null
+              new_name: "c2"
+              old_name: "c1"
 """,
         )
 
@@ -145,13 +154,14 @@ class AlterTableDropAdd(TestSuite):
         return AstTestBlueprint(
             sql="ALTER TABLE t DROP COLUMN c1",
             out="""\
-AlterTableStmt
-  op: DROP_COLUMN
-  target: QualifiedName
-    object_name: "t"
-    schema: null
-  new_name: null
-  old_name: "c1"
+            AlterTableStmt
+              op: DROP_COLUMN
+              target:
+                QualifiedName
+                  object_name: "t"
+                  schema: null
+              new_name: null
+              old_name: "c1"
 """,
         )
 
@@ -159,11 +169,11 @@ AlterTableStmt
         return AstTestBlueprint(
             sql="ALTER TABLE t ADD COLUMN c1",
             out="""\
-AlterTableStmt
-  op: ADD_COLUMN
-  target: null
-  new_name: null
-  old_name: "c1"
+            AlterTableStmt
+              op: ADD_COLUMN
+              target: (none)
+              new_name: null
+              old_name: "c1"
 """,
         )
 

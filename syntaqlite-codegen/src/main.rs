@@ -195,7 +195,11 @@ fn main() {
                 fs::write(rust_gen_dir.join("nodes.rs"), rust_nodes)
                     .map_err(|e| format!("Failed to write nodes.rs: {}", e))?;
 
-                fs::write(rust_gen_dir.join("mod.rs"), "pub mod nodes;\npub mod tokens;\n")
+                let rust_dump = syntaqlite_codegen::ast_codegen::generate_rust_dump(&all_items);
+                fs::write(rust_gen_dir.join("dump.rs"), rust_dump)
+                    .map_err(|e| format!("Failed to write dump.rs: {}", e))?;
+
+                fs::write(rust_gen_dir.join("mod.rs"), "pub mod dump;\npub mod nodes;\npub mod tokens;\n")
                     .map_err(|e| format!("Failed to write mod.rs: {}", e))?;
 
                 if args.verbose {
