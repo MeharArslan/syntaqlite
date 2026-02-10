@@ -13,7 +13,7 @@
 #define SYNQ_AST_BUILDER_H
 
 #include "csrc/parser.h"
-#include "syntaqlite/ast_nodes.h"
+#include "syntaqlite/node.h"
 
 #ifdef __cplusplus
 extern "C" {

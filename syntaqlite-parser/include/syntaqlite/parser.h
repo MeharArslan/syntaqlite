@@ -37,8 +37,9 @@
 #define SYNTAQLITE_PARSER_H
 
 #include <stdint.h>
+#include <stdio.h>
 
-#include "syntaqlite/ast_nodes.h"
+#include "syntaqlite/node.h"
 #include "syntaqlite/config.h"
 
 #ifdef __cplusplus
@@ -98,7 +99,7 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p);
 
 // Look up a node by its arena ID. The returned pointer is valid until the
 // next reset() or destroy(). Use node->type to determine which union member
-// to read (see ast_nodes.h for the full SyntaqliteNode definition).
+// to read (see node.h for the full SyntaqliteNode definition).
 const SyntaqliteNode* syntaqlite_parser_node(SyntaqliteParser* p,
                                              uint32_t node_id);
 
@@ -148,6 +149,14 @@ void syntaqlite_parser_set_extension(SyntaqliteParser* p,
 const SyntaqliteDialectExtension* syntaqlite_load_extension(
     const char* lib_path,
     const char* entry_point);
+
+// ---------------------------------------------------------------------------
+// Debug / inspection
+// ---------------------------------------------------------------------------
+
+// Print an AST subtree rooted at node_id to a file stream (e.g. stderr).
+// Needs the parser to resolve child node IDs and access source text.
+void syntaqlite_ast_print(SyntaqliteParser* p, uint32_t node_id, FILE* out);
 
 #ifdef __cplusplus
 }

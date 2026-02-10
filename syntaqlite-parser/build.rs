@@ -50,6 +50,5 @@ fn main() {
     println!("cargo:rerun-if-changed=include/syntaqlite/config.h");
     println!("cargo:rerun-if-changed=include/syntaqlite/parser.h");
     println!("cargo:rerun-if-changed=include/syntaqlite/tokenizer.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/ast.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/ast_nodes.h");
+    println!("cargo:rerun-if-changed=include/syntaqlite/node.h");
 }

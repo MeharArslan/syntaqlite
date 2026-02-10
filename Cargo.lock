@@ -251,6 +251,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "syntaqlite-cli"
+version = "0.1.0"
+
+[[package]]
 name = "syntaqlite-codegen"
 version = "0.1.0"
 dependencies = [

@@ -3,7 +3,7 @@
 members = [
     "syntaqlite-parser",
     "syntaqlite-codegen",
-    "syntaqlite-codegen-utils",
+    "syntaqlite-codegen-utils", "syntaqlite-cli",
 ]
 resolver = "3"
 

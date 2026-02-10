@@ -4,7 +4,7 @@
 """Generate C code from AST node definitions.
 
 This module produces:
-- ast_nodes.h: Node structs, union, arena types, tag enum, size table
+- node.h: Node structs, union, arena types, tag enum, size table
 - ast_builder.h: Builder function declarations
 - ast_builder.c: Builder implementations with arena allocation
 """
@@ -228,9 +228,17 @@ def generate_public_ast_nodes_h(node_defs: list[AnyNodeDef], enum_defs: list[Enu
     lines.append("#include <stddef.h>")
     lines.append("#include <stdint.h>")
     lines.append("")
-    lines.append('#include "syntaqlite/ast.h"')
     lines.append("")
     emit_extern_c(lines)
+
+    lines.append("")
+    lines.append("#define SYNTAQLITE_NULL_NODE 0xFFFFFFFFu")
+    lines.append("")
+    lines.append("typedef struct SyntaqliteSourceSpan {")
+    lines.append("    uint32_t offset;")
+    lines.append("    uint16_t length;")
+    lines.append("} SyntaqliteSourceSpan;")
+    lines.append("")
 
     _emit_enums(lines, enum_defs)
     _emit_flags(lines, flags_defs)

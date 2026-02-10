@@ -12,13 +12,21 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
     let mut w = CWriter::new();
 
     w.file_header();
-    w.header_guard_start("SYNTAQLITE_AST_NODES_H");
+    w.header_guard_start("SYNTAQLITE_NODE_H");
     w.include_system("stddef.h");
     w.include_system("stdint.h");
     w.newline();
-    w.include_local("syntaqlite/ast.h");
     w.newline();
     w.extern_c_start();
+
+    // Shared AST primitives (formerly in ast.h)
+    w.line("#define SYNTAQLITE_NULL_NODE 0xFFFFFFFFu");
+    w.newline();
+    w.typedef_struct("SyntaqliteSourceSpan", &[
+        ("uint32_t", "offset"),
+        ("uint16_t", "length"),
+    ]);
+    w.newline();
 
     // Enums
     let mut any_enum = false;
@@ -106,7 +114,7 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
 
     w.extern_c_end();
     w.newline();
-    w.header_guard_end("SYNTAQLITE_AST_NODES_H");
+    w.header_guard_end("SYNTAQLITE_NODE_H");
 
     w.finish()
 }
@@ -120,7 +128,7 @@ pub fn generate_ast_builder_h(items: &[Item]) -> String {
     w.file_header();
     w.header_guard_start("SYNQ_AST_BUILDER_H");
     w.include_local("csrc/parser.h");
-    w.include_local("syntaqlite/ast_nodes.h");
+    w.include_local("syntaqlite/node.h");
     w.newline();
     w.extern_c_start();
 

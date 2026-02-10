@@ -20,7 +20,7 @@
 
 #include "csrc/arena.h"
 #include "csrc/vec.h"
-#include "syntaqlite/ast.h"
+#include "syntaqlite/node.h"
 
 #ifdef __cplusplus
 extern "C" {

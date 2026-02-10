@@ -147,8 +147,8 @@ fn main() {
 
                 // Step 4b: Generate AST code from node definitions
                 let ast_nodes_h = syntaqlite_codegen::ast_codegen::generate_ast_nodes_h(&all_items);
-                fs::write(include_dir.join("ast_nodes.h"), ast_nodes_h)
-                    .map_err(|e| format!("Failed to write ast_nodes.h: {}", e))?;
+                fs::write(include_dir.join("node.h"), ast_nodes_h)
+                    .map_err(|e| format!("Failed to write node.h: {}", e))?;
 
                 let ast_builder_h = syntaqlite_codegen::ast_codegen::generate_ast_builder_h(&all_items);
                 fs::write(out.join("ast_builder.h"), ast_builder_h)
