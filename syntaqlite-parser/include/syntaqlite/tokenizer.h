@@ -3,19 +3,20 @@
 
 // Streaming tokenizer for SQLite SQL.
 //
-// This is the lowest-level entry point — it splits SQL text into tokens
-// without any parsing or structure. Most users don't need this directly;
-// the parser (parser.h) and formatter (formatter.h) handle tokenization
-// internally. Use this when you need raw token access (syntax highlighting,
-// custom analysis, etc.).
+// The lowest-level entry point — splits SQL text into a flat sequence of
+// tokens without any parsing or tree structure. Most users don't need this
+// directly; the parser (parser.h) and formatter (formatter.h) handle
+// tokenization internally. Use this when you need raw token access
+// (syntax highlighting, custom analysis, etc.).
+//
+// Lifecycle: create → reset → next (loop) → destroy.
 //
 // Usage:
-//   SyntaqliteConfig config = SYNTAQLITE_CONFIG_DEFAULT;
-//   SyntaqliteTokenizer *tok = syntaqlite_tokenizer_create(&config);
+//   SyntaqliteTokenizer* tok = syntaqlite_tokenizer_create(NULL);
 //   syntaqlite_tokenizer_reset(tok, sql, len);
 //   SyntaqliteToken token;
 //   while (syntaqlite_tokenizer_next(tok, &token)) {
-//     // process token
+//     // process token.type, token.text, token.length
 //   }
 //   syntaqlite_tokenizer_destroy(tok);
 
@@ -30,37 +31,45 @@
 extern "C" {
 #endif
 
-// Token returned by the tokenizer. The text pointer points into the source
-// buffer passed to reset(), so it is only valid while that buffer is alive.
-typedef struct SyntaqliteToken {
-  const char* text;  // Pointer into source text (not null-terminated)
-  uint32_t length;   // Token length in bytes
-  uint16_t type;     // SYNTAQLITE_TK_* token type
-} SyntaqliteToken;
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
-// Opaque tokenizer handle.
+// Opaque tokenizer handle (heap-allocated, reusable across inputs).
 typedef struct SyntaqliteTokenizer SyntaqliteTokenizer;
 
-// --- Lifecycle ---
+// A single token produced by the tokenizer. The text pointer points into
+// the source buffer bound by the last reset() call, so it is only valid
+// while that buffer is alive. The text is NOT null-terminated.
+typedef struct SyntaqliteToken {
+  const char* text;  // Pointer into source text.
+  uint32_t length;   // Token length in bytes.
+  uint32_t type;     // Token type (SYNTAQLITE_TK_* from tokens.h).
+} SyntaqliteToken;
 
-// 1. Allocate a tokenizer. The tokenizer is inert until reset() is called.
-//    The config is copied — the caller's SyntaqliteConfig does not need to
-//    outlive the tokenizer. Pass NULL for all defaults.
-SyntaqliteTokenizer* syntaqlite_tokenizer_create(const SyntaqliteConfig* config);
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
 
-// 2. Bind a source buffer. The cursor starts at the beginning. The source
-//    must remain valid until the next reset() or destroy(). Can be called
-//    again to tokenize a new input without reallocating.
+// Allocate a tokenizer. The tokenizer is inert until reset() is called.
+// The mem methods are copied — the caller's struct does not need to outlive
+// the tokenizer. Pass NULL for all defaults (malloc/free).
+SyntaqliteTokenizer* syntaqlite_tokenizer_create(
+    const SyntaqliteMemMethods* mem);
+
+// Bind a source buffer and start tokenizing from the beginning. The source
+// must remain valid until the next reset() or destroy(). Can be called
+// again to tokenize a new input without reallocating.
 void syntaqlite_tokenizer_reset(SyntaqliteTokenizer* tok,
                                 const char* source,
                                 uint32_t len);
 
-// 3. Advance to the next token. Returns 1 if a token was written to *out,
-//    0 at end-of-input. Every token is returned, including whitespace
-//    (SYNTAQLITE_TOKEN_SPACE) and comments (SYNTAQLITE_TOKEN_COMMENT).
+// Advance to the next token. Returns 1 if a token was written to *out,
+// 0 at end-of-input. Every token is returned, including whitespace and
+// comments.
 int syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out);
 
-// 4. Free the tokenizer. No-op if tok is NULL.
+// Free the tokenizer and all its memory. No-op if tok is NULL.
 void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok);
 
 #ifdef __cplusplus

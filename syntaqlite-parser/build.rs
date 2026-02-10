@@ -29,6 +29,9 @@ fn main() {
     println!("cargo:rerun-if-changed=csrc/tokenizer.c");
     println!("cargo:rerun-if-changed=csrc/sqlite_tokenize.h");
     println!("cargo:rerun-if-changed=csrc/vec.h");
+    println!("cargo:rerun-if-changed=include/syntaqlite/config.h");
+    println!("cargo:rerun-if-changed=include/syntaqlite/parser.h");
+    println!("cargo:rerun-if-changed=include/syntaqlite/tokenizer.h");
     println!("cargo:rerun-if-changed=include/syntaqlite/ast.h");
     println!("cargo:rerun-if-changed=include/syntaqlite/ast_nodes.h");
 }

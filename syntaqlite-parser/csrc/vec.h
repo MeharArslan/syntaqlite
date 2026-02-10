@@ -36,12 +36,12 @@ extern "C" {
   } while (0)
 
 // Free + zero
-#define synq_vec_free(v, mem)  \
-  do {                         \
-    (mem).xFree((v)->data);    \
-    (v)->data = NULL;          \
-    (v)->count = 0;            \
-    (v)->capacity = 0;         \
+#define synq_vec_free(v, mem) \
+  do {                        \
+    (mem).xFree((v)->data);   \
+    (v)->data = NULL;         \
+    (v)->count = 0;           \
+    (v)->capacity = 0;        \
   } while (0)
 
 // Reset count, keep allocation
@@ -52,28 +52,27 @@ extern "C" {
 
 // Ensure capacity >= needed (capacity is always a power of two).
 // Growth uses malloc + memcpy + free (no realloc).
-#define synq_vec_ensure(v, needed, mem)                                     \
-  do {                                                                      \
-    if ((needed) > (v)->capacity) {                                         \
-      uint32_t _cap = (v)->capacity ? (v)->capacity : 16;                   \
-      while (_cap < (needed))                                               \
-        _cap *= 2;                                                          \
-      void* _new = (mem).xMalloc((size_t)_cap * sizeof(*(v)->data));        \
-      if ((v)->data) {                                                      \
-        memcpy(_new, (v)->data,                                             \
-               (size_t)(v)->count * sizeof(*(v)->data));                    \
-        (mem).xFree((v)->data);                                             \
-      }                                                                     \
-      (v)->data = (__typeof__((v)->data))_new;                              \
-      (v)->capacity = _cap;                                                 \
-    }                                                                       \
+#define synq_vec_ensure(v, needed, mem)                                   \
+  do {                                                                    \
+    if ((needed) > (v)->capacity) {                                       \
+      uint32_t _cap = (v)->capacity ? (v)->capacity : 16;                 \
+      while (_cap < (needed))                                             \
+        _cap *= 2;                                                        \
+      void* _new = (mem).xMalloc((size_t)_cap * sizeof(*(v)->data));      \
+      if ((v)->data) {                                                    \
+        memcpy(_new, (v)->data, (size_t)(v)->count * sizeof(*(v)->data)); \
+        (mem).xFree((v)->data);                                           \
+      }                                                                   \
+      (v)->data = (__typeof__((v)->data))_new;                            \
+      (v)->capacity = _cap;                                               \
+    }                                                                     \
   } while (0)
 
 // Append one element, grow if needed
-#define synq_vec_push(v, val, mem)            \
-  do {                                        \
-    synq_vec_ensure((v), (v)->count + 1, mem);\
-    (v)->data[(v)->count++] = (val);          \
+#define synq_vec_push(v, val, mem)             \
+  do {                                         \
+    synq_vec_ensure((v), (v)->count + 1, mem); \
+    (v)->data[(v)->count++] = (val);           \
   } while (0)
 
 // Element count

@@ -3,7 +3,6 @@
 
 #include "syntaqlite/tokenizer.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 #include "csrc/sqlite_tokenize.h"
@@ -15,22 +14,12 @@ struct SyntaqliteTokenizer {
   uint32_t offset;
 };
 
-static void* default_malloc(size_t size) { return malloc(size); }
-static void default_free(void* ptr) { free(ptr); }
-
 SyntaqliteTokenizer* syntaqlite_tokenizer_create(
-    const SyntaqliteConfig* config) {
-  SyntaqliteMemMethods mem;
-  if (config && config->mem.xMalloc) {
-    mem = config->mem;
-  } else {
-    mem.xMalloc = default_malloc;
-    mem.xFree = default_free;
-  }
-
-  SyntaqliteTokenizer* tok = mem.xMalloc(sizeof(SyntaqliteTokenizer));
+    const SyntaqliteMemMethods* mem) {
+  SyntaqliteMemMethods m = mem ? *mem : SYNTAQLITE_MEM_METHODS_DEFAULT;
+  SyntaqliteTokenizer* tok = m.xMalloc(sizeof(SyntaqliteTokenizer));
   memset(tok, 0, sizeof(*tok));
-  tok->mem = mem;
+  tok->mem = m;
   return tok;
 }
 
@@ -53,7 +42,7 @@ int syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out) {
 
   out->text = tok->source + tok->offset;
   out->length = (uint32_t)token_len;
-  out->type = (uint16_t)token_type;
+  out->type = (uint32_t)token_type;
 
   tok->offset += (uint32_t)token_len;
   return 1;
