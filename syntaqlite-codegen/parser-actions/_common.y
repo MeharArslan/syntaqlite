@@ -5,22 +5,50 @@
 // Python tooling validates coverage and consistency.
 //
 // Conventions:
-// - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
-// - pCtx->zSql: Original SQL text (for computing offsets)
+// - pCtx: Parse context (SynqParseCtx*), threaded via %extra_argument
 // - pCtx->root: Set to root node ID at input rule
-// - Terminals are SynqToken with .z (pointer) and .n (length)
-// - Non-terminals are u32 node IDs
+// - Terminals are SynqToken with .z (pointer), .n (length), .type (token ID)
+// - Non-terminals default to uint32_t (node IDs)
+// - synq_span(pCtx, tok) converts a SynqToken into SyntaqliteSourceSpan
+// - SYNQ_NO_SPAN is the zero sentinel span
 
+%name SyntaqliteParse
 %token_prefix SYNTAQLITE_TK_
 %start_symbol input
+%extra_argument {SynqParseCtx* pCtx}
 
 %include {
+#include <string.h>
+#include "csrc/parser.h"
 #include "csrc/sqlite_parse_data.h"
 #include "syntaqlite/tokens.h"
 
 #define YYNOERRORRECOVERY 1
 #define YYPARSEFREENEVERNULL 1
+}
+
+// ============ Type declarations ============
+//
+// %token_type and %default_type are global; individual %type declarations
+// live next to the rules they describe in each action file.
+
+%token_type {SynqToken}
+%default_type {uint32_t}
+
+// ============ Error handlers ============
+
+%syntax_error {
+  (void)yymajor;
+  (void)TOKEN;
+  if (pCtx) {
+    pCtx->error = 1;
+  }
+}
+
+%stack_overflow {
+  if (pCtx) {
+    pCtx->error = 1;
+  }
 }
 
 // ============ Tokens ============
@@ -97,7 +125,7 @@ ecmd(A) ::= SEMI. {
 ecmd(A) ::= cmdx(B) SEMI. {
     A = B;
     pCtx->root = B;
-    synq_ast_list_flush(pCtx->astCtx);
+    synq_parse_list_flush(pCtx);
     pCtx->stmt_completed = 1;
 }
 

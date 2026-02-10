@@ -12,7 +12,7 @@
 #ifndef SYNQ_AST_BUILDER_H
 #define SYNQ_AST_BUILDER_H
 
-#include "csrc/ast.h"
+#include "csrc/parser.h"
 #include "syntaqlite/ast_nodes.h"
 
 #ifdef __cplusplus
@@ -21,8 +21,8 @@ extern "C" {
 
 // ============ Builder Functions ============
 
-static inline uint32_t synq_ast_aggregate_function_call(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_aggregate_function_call(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan func_name,
     SyntaqliteAggregateFunctionCallFlags flags,
     uint32_t args,
@@ -30,7 +30,7 @@ static inline uint32_t synq_ast_aggregate_function_call(
     uint32_t filter_clause,
     uint32_t over_clause
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteAggregateFunctionCall){
             .tag = SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL,
             .func_name = func_name,
@@ -42,12 +42,12 @@ static inline uint32_t synq_ast_aggregate_function_call(
         }, (uint32_t)sizeof(SyntaqliteAggregateFunctionCall));
 }
 
-static inline uint32_t synq_ast_cast_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_cast_expr(
+    SynqParseCtx *ctx,
     uint32_t expr,
     SyntaqliteSourceSpan type_name
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteCastExpr){
             .tag = SYNTAQLITE_NODE_CAST_EXPR,
             .expr = expr,
@@ -55,13 +55,13 @@ static inline uint32_t synq_ast_cast_expr(
         }, (uint32_t)sizeof(SyntaqliteCastExpr));
 }
 
-static inline uint32_t synq_ast_column_ref(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_column_ref(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan column,
     SyntaqliteSourceSpan table,
     SyntaqliteSourceSpan schema
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteColumnRef){
             .tag = SYNTAQLITE_NODE_COLUMN_REF,
             .column = column,
@@ -70,13 +70,13 @@ static inline uint32_t synq_ast_column_ref(
         }, (uint32_t)sizeof(SyntaqliteColumnRef));
 }
 
-static inline uint32_t synq_ast_compound_select(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_compound_select(
+    SynqParseCtx *ctx,
     SyntaqliteCompoundOp op,
     uint32_t left,
     uint32_t right
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteCompoundSelect){
             .tag = SYNTAQLITE_NODE_COMPOUND_SELECT,
             .op = op,
@@ -85,35 +85,35 @@ static inline uint32_t synq_ast_compound_select(
         }, (uint32_t)sizeof(SyntaqliteCompoundSelect));
 }
 
-static inline uint32_t synq_ast_subquery_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_subquery_expr(
+    SynqParseCtx *ctx,
     uint32_t select
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteSubqueryExpr){
             .tag = SYNTAQLITE_NODE_SUBQUERY_EXPR,
             .select = select
         }, (uint32_t)sizeof(SyntaqliteSubqueryExpr));
 }
 
-static inline uint32_t synq_ast_exists_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_exists_expr(
+    SynqParseCtx *ctx,
     uint32_t select
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteExistsExpr){
             .tag = SYNTAQLITE_NODE_EXISTS_EXPR,
             .select = select
         }, (uint32_t)sizeof(SyntaqliteExistsExpr));
 }
 
-static inline uint32_t synq_ast_in_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_in_expr(
+    SynqParseCtx *ctx,
     SyntaqliteBool negated,
     uint32_t operand,
     uint32_t source
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteInExpr){
             .tag = SYNTAQLITE_NODE_IN_EXPR,
             .negated = negated,
@@ -122,13 +122,13 @@ static inline uint32_t synq_ast_in_expr(
         }, (uint32_t)sizeof(SyntaqliteInExpr));
 }
 
-static inline uint32_t synq_ast_is_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_is_expr(
+    SynqParseCtx *ctx,
     SyntaqliteIsOp op,
     uint32_t left,
     uint32_t right
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteIsExpr){
             .tag = SYNTAQLITE_NODE_IS_EXPR,
             .op = op,
@@ -137,14 +137,14 @@ static inline uint32_t synq_ast_is_expr(
         }, (uint32_t)sizeof(SyntaqliteIsExpr));
 }
 
-static inline uint32_t synq_ast_between_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_between_expr(
+    SynqParseCtx *ctx,
     SyntaqliteBool negated,
     uint32_t operand,
     uint32_t low,
     uint32_t high
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteBetweenExpr){
             .tag = SYNTAQLITE_NODE_BETWEEN_EXPR,
             .negated = negated,
@@ -154,14 +154,14 @@ static inline uint32_t synq_ast_between_expr(
         }, (uint32_t)sizeof(SyntaqliteBetweenExpr));
 }
 
-static inline uint32_t synq_ast_like_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_like_expr(
+    SynqParseCtx *ctx,
     SyntaqliteBool negated,
     uint32_t operand,
     uint32_t pattern,
     uint32_t escape
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteLikeExpr){
             .tag = SYNTAQLITE_NODE_LIKE_EXPR,
             .negated = negated,
@@ -171,13 +171,13 @@ static inline uint32_t synq_ast_like_expr(
         }, (uint32_t)sizeof(SyntaqliteLikeExpr));
 }
 
-static inline uint32_t synq_ast_case_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_case_expr(
+    SynqParseCtx *ctx,
     uint32_t operand,
     uint32_t else_expr,
     uint32_t whens
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteCaseExpr){
             .tag = SYNTAQLITE_NODE_CASE_EXPR,
             .operand = operand,
@@ -186,12 +186,12 @@ static inline uint32_t synq_ast_case_expr(
         }, (uint32_t)sizeof(SyntaqliteCaseExpr));
 }
 
-static inline uint32_t synq_ast_case_when(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_case_when(
+    SynqParseCtx *ctx,
     uint32_t when_expr,
     uint32_t then_expr
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteCaseWhen){
             .tag = SYNTAQLITE_NODE_CASE_WHEN,
             .when_expr = when_expr,
@@ -199,23 +199,23 @@ static inline uint32_t synq_ast_case_when(
         }, (uint32_t)sizeof(SyntaqliteCaseWhen));
 }
 
-static inline uint32_t synq_ast_case_when_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_case_when_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_CASE_WHEN_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_CASE_WHEN_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_foreign_key_clause(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_foreign_key_clause(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan ref_table,
     uint32_t ref_columns,
     SyntaqliteForeignKeyAction on_delete,
     SyntaqliteForeignKeyAction on_update,
     SyntaqliteBool is_deferred
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteForeignKeyClause){
             .tag = SYNTAQLITE_NODE_FOREIGN_KEY_CLAUSE,
             .ref_table = ref_table,
@@ -226,8 +226,8 @@ static inline uint32_t synq_ast_foreign_key_clause(
         }, (uint32_t)sizeof(SyntaqliteForeignKeyClause));
 }
 
-static inline uint32_t synq_ast_column_constraint(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_column_constraint(
+    SynqParseCtx *ctx,
     SyntaqliteColumnConstraintKind kind,
     SyntaqliteSourceSpan constraint_name,
     SyntaqliteConflictAction onconf,
@@ -240,7 +240,7 @@ static inline uint32_t synq_ast_column_constraint(
     uint32_t generated_expr,
     uint32_t fk_clause
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteColumnConstraint){
             .tag = SYNTAQLITE_NODE_COLUMN_CONSTRAINT,
             .kind = kind,
@@ -257,21 +257,21 @@ static inline uint32_t synq_ast_column_constraint(
         }, (uint32_t)sizeof(SyntaqliteColumnConstraint));
 }
 
-static inline uint32_t synq_ast_column_constraint_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_column_constraint_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_COLUMN_CONSTRAINT_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_COLUMN_CONSTRAINT_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_column_def(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_column_def(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan column_name,
     SyntaqliteSourceSpan type_name,
     uint32_t constraints
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteColumnDef){
             .tag = SYNTAQLITE_NODE_COLUMN_DEF,
             .column_name = column_name,
@@ -280,16 +280,16 @@ static inline uint32_t synq_ast_column_def(
         }, (uint32_t)sizeof(SyntaqliteColumnDef));
 }
 
-static inline uint32_t synq_ast_column_def_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_column_def_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_COLUMN_DEF_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_COLUMN_DEF_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_table_constraint(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_table_constraint(
+    SynqParseCtx *ctx,
     SyntaqliteTableConstraintKind kind,
     SyntaqliteSourceSpan constraint_name,
     SyntaqliteConflictAction onconf,
@@ -298,7 +298,7 @@ static inline uint32_t synq_ast_table_constraint(
     uint32_t check_expr,
     uint32_t fk_clause
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteTableConstraint){
             .tag = SYNTAQLITE_NODE_TABLE_CONSTRAINT,
             .kind = kind,
@@ -311,16 +311,16 @@ static inline uint32_t synq_ast_table_constraint(
         }, (uint32_t)sizeof(SyntaqliteTableConstraint));
 }
 
-static inline uint32_t synq_ast_table_constraint_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_table_constraint_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_TABLE_CONSTRAINT_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_TABLE_CONSTRAINT_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_create_table_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_create_table_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan table_name,
     SyntaqliteSourceSpan schema,
     SyntaqliteBool is_temp,
@@ -330,7 +330,7 @@ static inline uint32_t synq_ast_create_table_stmt(
     uint32_t table_constraints,
     uint32_t as_select
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteCreateTableStmt){
             .tag = SYNTAQLITE_NODE_CREATE_TABLE_STMT,
             .table_name = table_name,
@@ -344,14 +344,14 @@ static inline uint32_t synq_ast_create_table_stmt(
         }, (uint32_t)sizeof(SyntaqliteCreateTableStmt));
 }
 
-static inline uint32_t synq_ast_cte_definition(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_cte_definition(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan cte_name,
     SyntaqliteMaterialized materialized,
     uint32_t columns,
     uint32_t select
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteCteDefinition){
             .tag = SYNTAQLITE_NODE_CTE_DEFINITION,
             .cte_name = cte_name,
@@ -361,21 +361,21 @@ static inline uint32_t synq_ast_cte_definition(
         }, (uint32_t)sizeof(SyntaqliteCteDefinition));
 }
 
-static inline uint32_t synq_ast_cte_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_cte_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_CTE_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_CTE_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_with_clause(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_with_clause(
+    SynqParseCtx *ctx,
     SyntaqliteBool recursive,
     uint32_t ctes,
     uint32_t select
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteWithClause){
             .tag = SYNTAQLITE_NODE_WITH_CLAUSE,
             .recursive = recursive,
@@ -384,12 +384,12 @@ static inline uint32_t synq_ast_with_clause(
         }, (uint32_t)sizeof(SyntaqliteWithClause));
 }
 
-static inline uint32_t synq_ast_delete_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_delete_stmt(
+    SynqParseCtx *ctx,
     uint32_t table,
     uint32_t where
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteDeleteStmt){
             .tag = SYNTAQLITE_NODE_DELETE_STMT,
             .table = table,
@@ -397,13 +397,13 @@ static inline uint32_t synq_ast_delete_stmt(
         }, (uint32_t)sizeof(SyntaqliteDeleteStmt));
 }
 
-static inline uint32_t synq_ast_set_clause(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_set_clause(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan column,
     uint32_t columns,
     uint32_t value
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteSetClause){
             .tag = SYNTAQLITE_NODE_SET_CLAUSE,
             .column = column,
@@ -412,23 +412,23 @@ static inline uint32_t synq_ast_set_clause(
         }, (uint32_t)sizeof(SyntaqliteSetClause));
 }
 
-static inline uint32_t synq_ast_set_clause_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_set_clause_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_SET_CLAUSE_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_SET_CLAUSE_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_update_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_update_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteConflictAction conflict_action,
     uint32_t table,
     uint32_t setlist,
     uint32_t from_clause,
     uint32_t where
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteUpdateStmt){
             .tag = SYNTAQLITE_NODE_UPDATE_STMT,
             .conflict_action = conflict_action,
@@ -439,14 +439,14 @@ static inline uint32_t synq_ast_update_stmt(
         }, (uint32_t)sizeof(SyntaqliteUpdateStmt));
 }
 
-static inline uint32_t synq_ast_insert_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_insert_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteConflictAction conflict_action,
     uint32_t table,
     uint32_t columns,
     uint32_t source
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteInsertStmt){
             .tag = SYNTAQLITE_NODE_INSERT_STMT,
             .conflict_action = conflict_action,
@@ -456,13 +456,13 @@ static inline uint32_t synq_ast_insert_stmt(
         }, (uint32_t)sizeof(SyntaqliteInsertStmt));
 }
 
-static inline uint32_t synq_ast_binary_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_binary_expr(
+    SynqParseCtx *ctx,
     SyntaqliteBinaryOp op,
     uint32_t left,
     uint32_t right
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteBinaryExpr){
             .tag = SYNTAQLITE_NODE_BINARY_EXPR,
             .op = op,
@@ -471,12 +471,12 @@ static inline uint32_t synq_ast_binary_expr(
         }, (uint32_t)sizeof(SyntaqliteBinaryExpr));
 }
 
-static inline uint32_t synq_ast_unary_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_unary_expr(
+    SynqParseCtx *ctx,
     SyntaqliteUnaryOp op,
     uint32_t operand
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteUnaryExpr){
             .tag = SYNTAQLITE_NODE_UNARY_EXPR,
             .op = op,
@@ -484,12 +484,12 @@ static inline uint32_t synq_ast_unary_expr(
         }, (uint32_t)sizeof(SyntaqliteUnaryExpr));
 }
 
-static inline uint32_t synq_ast_literal(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_literal(
+    SynqParseCtx *ctx,
     SyntaqliteLiteralType literal_type,
     SyntaqliteSourceSpan source
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteLiteral){
             .tag = SYNTAQLITE_NODE_LITERAL,
             .literal_type = literal_type,
@@ -497,23 +497,23 @@ static inline uint32_t synq_ast_literal(
         }, (uint32_t)sizeof(SyntaqliteLiteral));
 }
 
-static inline uint32_t synq_ast_expr_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_expr_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_EXPR_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_EXPR_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_function_call(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_function_call(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan func_name,
     SyntaqliteFunctionCallFlags flags,
     uint32_t args,
     uint32_t filter_clause,
     uint32_t over_clause
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteFunctionCall){
             .tag = SYNTAQLITE_NODE_FUNCTION_CALL,
             .func_name = func_name,
@@ -524,23 +524,23 @@ static inline uint32_t synq_ast_function_call(
         }, (uint32_t)sizeof(SyntaqliteFunctionCall));
 }
 
-static inline uint32_t synq_ast_variable(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_variable(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan source
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteVariable){
             .tag = SYNTAQLITE_NODE_VARIABLE,
             .source = source
         }, (uint32_t)sizeof(SyntaqliteVariable));
 }
 
-static inline uint32_t synq_ast_collate_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_collate_expr(
+    SynqParseCtx *ctx,
     uint32_t expr,
     SyntaqliteSourceSpan collation
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteCollateExpr){
             .tag = SYNTAQLITE_NODE_COLLATE_EXPR,
             .expr = expr,
@@ -548,12 +548,12 @@ static inline uint32_t synq_ast_collate_expr(
         }, (uint32_t)sizeof(SyntaqliteCollateExpr));
 }
 
-static inline uint32_t synq_ast_raise_expr(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_raise_expr(
+    SynqParseCtx *ctx,
     SyntaqliteRaiseType raise_type,
     uint32_t error_message
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteRaiseExpr){
             .tag = SYNTAQLITE_NODE_RAISE_EXPR,
             .raise_type = raise_type,
@@ -561,12 +561,12 @@ static inline uint32_t synq_ast_raise_expr(
         }, (uint32_t)sizeof(SyntaqliteRaiseExpr));
 }
 
-static inline uint32_t synq_ast_qualified_name(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_qualified_name(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan object_name,
     SyntaqliteSourceSpan schema
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteQualifiedName){
             .tag = SYNTAQLITE_NODE_QUALIFIED_NAME,
             .object_name = object_name,
@@ -574,13 +574,13 @@ static inline uint32_t synq_ast_qualified_name(
         }, (uint32_t)sizeof(SyntaqliteQualifiedName));
 }
 
-static inline uint32_t synq_ast_drop_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_drop_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteDropObjectType object_type,
     SyntaqliteBool if_exists,
     uint32_t target
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteDropStmt){
             .tag = SYNTAQLITE_NODE_DROP_STMT,
             .object_type = object_type,
@@ -589,14 +589,14 @@ static inline uint32_t synq_ast_drop_stmt(
         }, (uint32_t)sizeof(SyntaqliteDropStmt));
 }
 
-static inline uint32_t synq_ast_alter_table_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_alter_table_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteAlterOp op,
     uint32_t target,
     SyntaqliteSourceSpan new_name,
     SyntaqliteSourceSpan old_name
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteAlterTableStmt){
             .tag = SYNTAQLITE_NODE_ALTER_TABLE_STMT,
             .op = op,
@@ -606,12 +606,12 @@ static inline uint32_t synq_ast_alter_table_stmt(
         }, (uint32_t)sizeof(SyntaqliteAlterTableStmt));
 }
 
-static inline uint32_t synq_ast_transaction_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_transaction_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteTransactionOp op,
     SyntaqliteTransactionType trans_type
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteTransactionStmt){
             .tag = SYNTAQLITE_NODE_TRANSACTION_STMT,
             .op = op,
@@ -619,12 +619,12 @@ static inline uint32_t synq_ast_transaction_stmt(
         }, (uint32_t)sizeof(SyntaqliteTransactionStmt));
 }
 
-static inline uint32_t synq_ast_savepoint_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_savepoint_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteSavepointOp op,
     SyntaqliteSourceSpan savepoint_name
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteSavepointStmt){
             .tag = SYNTAQLITE_NODE_SAVEPOINT_STMT,
             .op = op,
@@ -632,13 +632,13 @@ static inline uint32_t synq_ast_savepoint_stmt(
         }, (uint32_t)sizeof(SyntaqliteSavepointStmt));
 }
 
-static inline uint32_t synq_ast_result_column(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_result_column(
+    SynqParseCtx *ctx,
     SyntaqliteResultColumnFlags flags,
     SyntaqliteSourceSpan alias,
     uint32_t expr
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteResultColumn){
             .tag = SYNTAQLITE_NODE_RESULT_COLUMN,
             .flags = flags,
@@ -647,16 +647,16 @@ static inline uint32_t synq_ast_result_column(
         }, (uint32_t)sizeof(SyntaqliteResultColumn));
 }
 
-static inline uint32_t synq_ast_result_column_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_result_column_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_RESULT_COLUMN_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_RESULT_COLUMN_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_select_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_select_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteSelectStmtFlags flags,
     uint32_t columns,
     uint32_t from_clause,
@@ -667,7 +667,7 @@ static inline uint32_t synq_ast_select_stmt(
     uint32_t limit_clause,
     uint32_t window_clause
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteSelectStmt){
             .tag = SYNTAQLITE_NODE_SELECT_STMT,
             .flags = flags,
@@ -682,13 +682,13 @@ static inline uint32_t synq_ast_select_stmt(
         }, (uint32_t)sizeof(SyntaqliteSelectStmt));
 }
 
-static inline uint32_t synq_ast_ordering_term(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_ordering_term(
+    SynqParseCtx *ctx,
     uint32_t expr,
     SyntaqliteSortOrder sort_order,
     SyntaqliteNullsOrder nulls_order
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteOrderingTerm){
             .tag = SYNTAQLITE_NODE_ORDERING_TERM,
             .expr = expr,
@@ -697,20 +697,20 @@ static inline uint32_t synq_ast_ordering_term(
         }, (uint32_t)sizeof(SyntaqliteOrderingTerm));
 }
 
-static inline uint32_t synq_ast_order_by_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_order_by_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_ORDER_BY_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_ORDER_BY_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_limit_clause(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_limit_clause(
+    SynqParseCtx *ctx,
     uint32_t limit,
     uint32_t offset
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteLimitClause){
             .tag = SYNTAQLITE_NODE_LIMIT_CLAUSE,
             .limit = limit,
@@ -718,13 +718,13 @@ static inline uint32_t synq_ast_limit_clause(
         }, (uint32_t)sizeof(SyntaqliteLimitClause));
 }
 
-static inline uint32_t synq_ast_table_ref(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_table_ref(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan table_name,
     SyntaqliteSourceSpan schema,
     SyntaqliteSourceSpan alias
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteTableRef){
             .tag = SYNTAQLITE_NODE_TABLE_REF,
             .table_name = table_name,
@@ -733,12 +733,12 @@ static inline uint32_t synq_ast_table_ref(
         }, (uint32_t)sizeof(SyntaqliteTableRef));
 }
 
-static inline uint32_t synq_ast_subquery_table_source(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_subquery_table_source(
+    SynqParseCtx *ctx,
     uint32_t select,
     SyntaqliteSourceSpan alias
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteSubqueryTableSource){
             .tag = SYNTAQLITE_NODE_SUBQUERY_TABLE_SOURCE,
             .select = select,
@@ -746,15 +746,15 @@ static inline uint32_t synq_ast_subquery_table_source(
         }, (uint32_t)sizeof(SyntaqliteSubqueryTableSource));
 }
 
-static inline uint32_t synq_ast_join_clause(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_join_clause(
+    SynqParseCtx *ctx,
     SyntaqliteJoinType join_type,
     uint32_t left,
     uint32_t right,
     uint32_t on_expr,
     uint32_t using_columns
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteJoinClause){
             .tag = SYNTAQLITE_NODE_JOIN_CLAUSE,
             .join_type = join_type,
@@ -765,12 +765,12 @@ static inline uint32_t synq_ast_join_clause(
         }, (uint32_t)sizeof(SyntaqliteJoinClause));
 }
 
-static inline uint32_t synq_ast_join_prefix(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_join_prefix(
+    SynqParseCtx *ctx,
     uint32_t source,
     SyntaqliteJoinType join_type
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteJoinPrefix){
             .tag = SYNTAQLITE_NODE_JOIN_PREFIX,
             .source = source,
@@ -778,12 +778,12 @@ static inline uint32_t synq_ast_join_prefix(
         }, (uint32_t)sizeof(SyntaqliteJoinPrefix));
 }
 
-static inline uint32_t synq_ast_trigger_event(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_trigger_event(
+    SynqParseCtx *ctx,
     SyntaqliteTriggerEventType event_type,
     uint32_t columns
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteTriggerEvent){
             .tag = SYNTAQLITE_NODE_TRIGGER_EVENT,
             .event_type = event_type,
@@ -791,16 +791,16 @@ static inline uint32_t synq_ast_trigger_event(
         }, (uint32_t)sizeof(SyntaqliteTriggerEvent));
 }
 
-static inline uint32_t synq_ast_trigger_cmd_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_trigger_cmd_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_TRIGGER_CMD_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_TRIGGER_CMD_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_create_trigger_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_create_trigger_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan trigger_name,
     SyntaqliteSourceSpan schema,
     SyntaqliteBool is_temp,
@@ -811,7 +811,7 @@ static inline uint32_t synq_ast_create_trigger_stmt(
     uint32_t when_expr,
     uint32_t body
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteCreateTriggerStmt){
             .tag = SYNTAQLITE_NODE_CREATE_TRIGGER_STMT,
             .trigger_name = trigger_name,
@@ -826,15 +826,15 @@ static inline uint32_t synq_ast_create_trigger_stmt(
         }, (uint32_t)sizeof(SyntaqliteCreateTriggerStmt));
 }
 
-static inline uint32_t synq_ast_create_virtual_table_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_create_virtual_table_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan table_name,
     SyntaqliteSourceSpan schema,
     SyntaqliteSourceSpan module_name,
     SyntaqliteBool if_not_exists,
     SyntaqliteSourceSpan module_args
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteCreateVirtualTableStmt){
             .tag = SYNTAQLITE_NODE_CREATE_VIRTUAL_TABLE_STMT,
             .table_name = table_name,
@@ -845,14 +845,14 @@ static inline uint32_t synq_ast_create_virtual_table_stmt(
         }, (uint32_t)sizeof(SyntaqliteCreateVirtualTableStmt));
 }
 
-static inline uint32_t synq_ast_pragma_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_pragma_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan pragma_name,
     SyntaqliteSourceSpan schema,
     SyntaqliteSourceSpan value,
     SyntaqlitePragmaForm pragma_form
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqlitePragmaStmt){
             .tag = SYNTAQLITE_NODE_PRAGMA_STMT,
             .pragma_name = pragma_name,
@@ -862,13 +862,13 @@ static inline uint32_t synq_ast_pragma_stmt(
         }, (uint32_t)sizeof(SyntaqlitePragmaStmt));
 }
 
-static inline uint32_t synq_ast_analyze_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_analyze_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan target_name,
     SyntaqliteSourceSpan schema,
     SyntaqliteAnalyzeKind kind
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteAnalyzeStmt){
             .tag = SYNTAQLITE_NODE_ANALYZE_STMT,
             .target_name = target_name,
@@ -877,13 +877,13 @@ static inline uint32_t synq_ast_analyze_stmt(
         }, (uint32_t)sizeof(SyntaqliteAnalyzeStmt));
 }
 
-static inline uint32_t synq_ast_attach_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_attach_stmt(
+    SynqParseCtx *ctx,
     uint32_t filename,
     uint32_t db_name,
     uint32_t key
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteAttachStmt){
             .tag = SYNTAQLITE_NODE_ATTACH_STMT,
             .filename = filename,
@@ -892,23 +892,23 @@ static inline uint32_t synq_ast_attach_stmt(
         }, (uint32_t)sizeof(SyntaqliteAttachStmt));
 }
 
-static inline uint32_t synq_ast_detach_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_detach_stmt(
+    SynqParseCtx *ctx,
     uint32_t db_name
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteDetachStmt){
             .tag = SYNTAQLITE_NODE_DETACH_STMT,
             .db_name = db_name
         }, (uint32_t)sizeof(SyntaqliteDetachStmt));
 }
 
-static inline uint32_t synq_ast_vacuum_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_vacuum_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan schema,
     uint32_t into_expr
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteVacuumStmt){
             .tag = SYNTAQLITE_NODE_VACUUM_STMT,
             .schema = schema,
@@ -916,12 +916,12 @@ static inline uint32_t synq_ast_vacuum_stmt(
         }, (uint32_t)sizeof(SyntaqliteVacuumStmt));
 }
 
-static inline uint32_t synq_ast_explain_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_explain_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteExplainMode explain_mode,
     uint32_t stmt
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteExplainStmt){
             .tag = SYNTAQLITE_NODE_EXPLAIN_STMT,
             .explain_mode = explain_mode,
@@ -929,8 +929,8 @@ static inline uint32_t synq_ast_explain_stmt(
         }, (uint32_t)sizeof(SyntaqliteExplainStmt));
 }
 
-static inline uint32_t synq_ast_create_index_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_create_index_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan index_name,
     SyntaqliteSourceSpan schema,
     SyntaqliteSourceSpan table_name,
@@ -939,7 +939,7 @@ static inline uint32_t synq_ast_create_index_stmt(
     uint32_t columns,
     uint32_t where
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteCreateIndexStmt){
             .tag = SYNTAQLITE_NODE_CREATE_INDEX_STMT,
             .index_name = index_name,
@@ -952,8 +952,8 @@ static inline uint32_t synq_ast_create_index_stmt(
         }, (uint32_t)sizeof(SyntaqliteCreateIndexStmt));
 }
 
-static inline uint32_t synq_ast_create_view_stmt(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_create_view_stmt(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan view_name,
     SyntaqliteSourceSpan schema,
     SyntaqliteBool is_temp,
@@ -961,7 +961,7 @@ static inline uint32_t synq_ast_create_view_stmt(
     uint32_t column_names,
     uint32_t select
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteCreateViewStmt){
             .tag = SYNTAQLITE_NODE_CREATE_VIEW_STMT,
             .view_name = view_name,
@@ -973,31 +973,31 @@ static inline uint32_t synq_ast_create_view_stmt(
         }, (uint32_t)sizeof(SyntaqliteCreateViewStmt));
 }
 
-static inline uint32_t synq_ast_values_row_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_values_row_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_VALUES_ROW_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_VALUES_ROW_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_values_clause(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_values_clause(
+    SynqParseCtx *ctx,
     uint32_t rows
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteValuesClause){
             .tag = SYNTAQLITE_NODE_VALUES_CLAUSE,
             .rows = rows
         }, (uint32_t)sizeof(SyntaqliteValuesClause));
 }
 
-static inline uint32_t synq_ast_frame_bound(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_frame_bound(
+    SynqParseCtx *ctx,
     SyntaqliteFrameBoundType bound_type,
     uint32_t expr
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteFrameBound){
             .tag = SYNTAQLITE_NODE_FRAME_BOUND,
             .bound_type = bound_type,
@@ -1005,14 +1005,14 @@ static inline uint32_t synq_ast_frame_bound(
         }, (uint32_t)sizeof(SyntaqliteFrameBound));
 }
 
-static inline uint32_t synq_ast_frame_spec(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_frame_spec(
+    SynqParseCtx *ctx,
     SyntaqliteFrameType frame_type,
     SyntaqliteFrameExclude exclude,
     uint32_t start_bound,
     uint32_t end_bound
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteFrameSpec){
             .tag = SYNTAQLITE_NODE_FRAME_SPEC,
             .frame_type = frame_type,
@@ -1022,14 +1022,14 @@ static inline uint32_t synq_ast_frame_spec(
         }, (uint32_t)sizeof(SyntaqliteFrameSpec));
 }
 
-static inline uint32_t synq_ast_window_def(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_window_def(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan base_window_name,
     uint32_t partition_by,
     uint32_t orderby,
     uint32_t frame
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteWindowDef){
             .tag = SYNTAQLITE_NODE_WINDOW_DEF,
             .base_window_name = base_window_name,
@@ -1039,20 +1039,20 @@ static inline uint32_t synq_ast_window_def(
         }, (uint32_t)sizeof(SyntaqliteWindowDef));
 }
 
-static inline uint32_t synq_ast_window_def_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_window_def_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_WINDOW_DEF_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_WINDOW_DEF_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_named_window_def(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_named_window_def(
+    SynqParseCtx *ctx,
     SyntaqliteSourceSpan window_name,
     uint32_t window_def
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteNamedWindowDef){
             .tag = SYNTAQLITE_NODE_NAMED_WINDOW_DEF,
             .window_name = window_name,
@@ -1060,21 +1060,21 @@ static inline uint32_t synq_ast_named_window_def(
         }, (uint32_t)sizeof(SyntaqliteNamedWindowDef));
 }
 
-static inline uint32_t synq_ast_named_window_def_list(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_named_window_def_list(
+    SynqParseCtx *ctx,
     uint32_t list_id,
     uint32_t child
 ) {
-    return synq_ast_list_append(ctx, SYNTAQLITE_NODE_NAMED_WINDOW_DEF_LIST, list_id, child);
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_NAMED_WINDOW_DEF_LIST, list_id, child);
 }
 
-static inline uint32_t synq_ast_filter_over(
-    SynqAstContext *ctx,
+static inline uint32_t synq_parse_filter_over(
+    SynqParseCtx *ctx,
     uint32_t filter_expr,
     uint32_t over_def,
     SyntaqliteSourceSpan over_name
 ) {
-    return synq_ast_build(ctx,
+    return synq_parse_build(ctx,
         &(SyntaqliteFilterOver){
             .tag = SYNTAQLITE_NODE_FILTER_OVER,
             .filter_expr = filter_expr,

@@ -6,7 +6,6 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
@@ -16,7 +15,7 @@
 
 // Function call with arguments: func(args) or func(DISTINCT args)
 expr(A) ::= idj(B) LP distinct(C) exprlist(D) RP. {
-    A = synq_ast_function_call(pCtx->astCtx,
+    A = synq_parse_function_call(pCtx,
         synq_span(pCtx, B),
         (SyntaqliteFunctionCallFlags){.raw = (uint8_t)C},
         D,
@@ -26,7 +25,7 @@ expr(A) ::= idj(B) LP distinct(C) exprlist(D) RP. {
 
 // Function call with star: COUNT(*)
 expr(A) ::= idj(B) LP STAR RP. {
-    A = synq_ast_function_call(pCtx->astCtx,
+    A = synq_parse_function_call(pCtx,
         synq_span(pCtx, B),
         (SyntaqliteFunctionCallFlags){.star = 1},
         SYNTAQLITE_NULL_NODE,
@@ -36,8 +35,8 @@ expr(A) ::= idj(B) LP STAR RP. {
 
 // Function call with arguments and filter/over: func(args) FILTER/OVER
 expr(A) ::= idj(B) LP distinct(C) exprlist(D) RP filter_over(E). {
-    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->astCtx->ast, E);
-    A = synq_ast_function_call(pCtx->astCtx,
+    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->ast, E);
+    A = synq_parse_function_call(pCtx,
         synq_span(pCtx, B),
         (SyntaqliteFunctionCallFlags){.raw = (uint8_t)C},
         D,
@@ -47,8 +46,8 @@ expr(A) ::= idj(B) LP distinct(C) exprlist(D) RP filter_over(E). {
 
 // Function call with star and filter/over: COUNT(*) FILTER/OVER
 expr(A) ::= idj(B) LP STAR RP filter_over(C). {
-    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->astCtx->ast, C);
-    A = synq_ast_function_call(pCtx->astCtx,
+    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->ast, C);
+    A = synq_parse_function_call(pCtx,
         synq_span(pCtx, B),
         (SyntaqliteFunctionCallFlags){.star = 1},
         SYNTAQLITE_NULL_NODE,

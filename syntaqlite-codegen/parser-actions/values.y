@@ -6,7 +6,6 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
@@ -16,23 +15,23 @@
 
 // Single-row VALUES: produces a ValuesRowList with one row (nexprlist).
 values(A) ::= VALUES LP nexprlist(X) RP. {
-    A = synq_ast_values_row_list(pCtx->astCtx, X);
+    A = synq_parse_values_row_list(pCtx, SYNTAQLITE_NULL_NODE, X);
 }
 
 // Multi-row VALUES: append a row to existing ValuesRowList.
 mvalues(A) ::= values(A) COMMA LP nexprlist(Y) RP. {
-    A = synq_ast_values_row_list_append(pCtx->astCtx, A, Y);
+    A = synq_parse_values_row_list(pCtx, A, Y);
 }
 
 mvalues(A) ::= mvalues(A) COMMA LP nexprlist(Y) RP. {
-    A = synq_ast_values_row_list_append(pCtx->astCtx, A, Y);
+    A = synq_parse_values_row_list(pCtx, A, Y);
 }
 
 // Wrap ValuesRowList into a ValuesClause at the oneselect level.
 oneselect(A) ::= values(B). {
-    A = synq_ast_values_clause(pCtx->astCtx, B);
+    A = synq_parse_values_clause(pCtx, B);
 }
 
 oneselect(A) ::= mvalues(B). {
-    A = synq_ast_values_clause(pCtx->astCtx, B);
+    A = synq_parse_values_clause(pCtx, B);
 }

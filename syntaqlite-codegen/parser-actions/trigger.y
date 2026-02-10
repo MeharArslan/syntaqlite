@@ -6,18 +6,20 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
+
+%type trigger_time {int}
+%type trnm {SynqToken}
 
 // ============ CREATE TRIGGER ============
 
 // The main cmd rule: completes the trigger with its body
 cmd(A) ::= createkw trigger_decl(D) BEGIN trigger_cmd_list(S) END. {
     // D is a partially-built CreateTriggerStmt, fill in the body
-    SyntaqliteNode *trig = AST_NODE(&pCtx->astCtx->ast, D);
+    SyntaqliteNode *trig = AST_NODE(&pCtx->ast, D);
     trig->create_trigger_stmt.body = S;
     A = D;
 }
@@ -28,7 +30,7 @@ trigger_decl(A) ::= temp(T) TRIGGER ifnotexists(NOERR) nm(B) dbnm(Z)
                     ON fullname(E) foreach_clause when_clause(G). {
     SyntaqliteSourceSpan trig_name = Z.z ? synq_span(pCtx, Z) : synq_span(pCtx, B);
     SyntaqliteSourceSpan trig_schema = Z.z ? synq_span(pCtx, B) : SYNQ_NO_SPAN;
-    A = synq_ast_create_trigger_stmt(pCtx->astCtx,
+    A = synq_parse_create_trigger_stmt(pCtx,
         trig_name,
         trig_schema,
         (SyntaqliteBool)T,
@@ -43,7 +45,7 @@ trigger_decl(A) ::= temp(T) TRIGGER ifnotexists(NOERR) nm(B) dbnm(Z)
 // ============ Trigger timing ============
 
 trigger_time(A) ::= BEFORE|AFTER(X). {
-    A = (X.type == SYNTAQLITE_TOKEN_BEFORE) ? (int)SYNTAQLITE_TRIGGER_TIMING_BEFORE
+    A = (X.type == SYNTAQLITE_TK_BEFORE) ? (int)SYNTAQLITE_TRIGGER_TIMING_BEFORE
                                : (int)SYNTAQLITE_TRIGGER_TIMING_AFTER;
 }
 
@@ -58,19 +60,19 @@ trigger_time(A) ::= . {
 // ============ Trigger event ============
 
 trigger_event(A) ::= DELETE|INSERT(X). {
-    SyntaqliteTriggerEventType evt = (X.type == SYNTAQLITE_TOKEN_DELETE)
+    SyntaqliteTriggerEventType evt = (X.type == SYNTAQLITE_TK_DELETE)
         ? SYNTAQLITE_TRIGGER_EVENT_TYPE_DELETE
         : SYNTAQLITE_TRIGGER_EVENT_TYPE_INSERT;
-    A = synq_ast_trigger_event(pCtx->astCtx, evt, SYNTAQLITE_NULL_NODE);
+    A = synq_parse_trigger_event(pCtx, evt, SYNTAQLITE_NULL_NODE);
 }
 
 trigger_event(A) ::= UPDATE. {
-    A = synq_ast_trigger_event(pCtx->astCtx,
+    A = synq_parse_trigger_event(pCtx,
         SYNTAQLITE_TRIGGER_EVENT_TYPE_UPDATE, SYNTAQLITE_NULL_NODE);
 }
 
 trigger_event(A) ::= UPDATE OF idlist(X). {
-    A = synq_ast_trigger_event(pCtx->astCtx,
+    A = synq_parse_trigger_event(pCtx,
         SYNTAQLITE_TRIGGER_EVENT_TYPE_UPDATE, X);
 }
 
@@ -97,11 +99,11 @@ when_clause(A) ::= WHEN expr(X). {
 // ============ Trigger command list ============
 
 trigger_cmd_list(A) ::= trigger_cmd_list(L) trigger_cmd(X) SEMI. {
-    A = synq_ast_trigger_cmd_list_append(pCtx->astCtx, L, X);
+    A = synq_parse_trigger_cmd_list(pCtx, L, X);
 }
 
 trigger_cmd_list(A) ::= trigger_cmd(X) SEMI. {
-    A = synq_ast_trigger_cmd_list(pCtx->astCtx, X);
+    A = synq_parse_trigger_cmd_list(pCtx, SYNTAQLITE_NULL_NODE, X);
 }
 
 // ============ trnm (table name in trigger context) ============
@@ -133,23 +135,23 @@ tridxby ::= NOT INDEXED. {
 
 // UPDATE within trigger
 trigger_cmd(A) ::= UPDATE orconf(R) trnm(X) tridxby SET setlist(Y) from(F) where_opt(Z) scanpt. {
-    uint32_t tbl = synq_ast_table_ref(pCtx->astCtx,
+    uint32_t tbl = synq_parse_table_ref(pCtx,
         synq_span(pCtx, X), SYNQ_NO_SPAN, SYNQ_NO_SPAN);
-    A = synq_ast_update_stmt(pCtx->astCtx, (SyntaqliteConflictAction)R, tbl, Y, F, Z);
+    A = synq_parse_update_stmt(pCtx, (SyntaqliteConflictAction)R, tbl, Y, F, Z);
 }
 
 // INSERT within trigger
 trigger_cmd(A) ::= scanpt insert_cmd(R) INTO trnm(X) idlist_opt(F) select(S) upsert scanpt. {
-    uint32_t tbl = synq_ast_table_ref(pCtx->astCtx,
+    uint32_t tbl = synq_parse_table_ref(pCtx,
         synq_span(pCtx, X), SYNQ_NO_SPAN, SYNQ_NO_SPAN);
-    A = synq_ast_insert_stmt(pCtx->astCtx, (SyntaqliteConflictAction)R, tbl, F, S);
+    A = synq_parse_insert_stmt(pCtx, (SyntaqliteConflictAction)R, tbl, F, S);
 }
 
 // DELETE within trigger
 trigger_cmd(A) ::= DELETE FROM trnm(X) tridxby where_opt(Y) scanpt. {
-    uint32_t tbl = synq_ast_table_ref(pCtx->astCtx,
+    uint32_t tbl = synq_parse_table_ref(pCtx,
         synq_span(pCtx, X), SYNQ_NO_SPAN, SYNQ_NO_SPAN);
-    A = synq_ast_delete_stmt(pCtx->astCtx, tbl, Y);
+    A = synq_parse_delete_stmt(pCtx, tbl, Y);
 }
 
 // SELECT within trigger

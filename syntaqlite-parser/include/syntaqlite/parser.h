@@ -93,6 +93,24 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p);
 void syntaqlite_parser_destroy(SyntaqliteParser* p);
 
 // ---------------------------------------------------------------------------
+// Reading results
+// ---------------------------------------------------------------------------
+
+// Look up a node by its arena ID. The returned pointer is valid until the
+// next reset() or destroy(). Use node->type to determine which union member
+// to read (see ast_nodes.h for the full SyntaqliteNode definition).
+const SyntaqliteNode* syntaqlite_parser_node(SyntaqliteParser* p,
+                                             uint32_t node_id);
+
+// Return a pointer to the source text bound by the last reset() call.
+// Useful for extracting token text via SyntaqliteSourceSpan offsets:
+//   syntaqlite_parser_source(p) + span.offset
+const char* syntaqlite_parser_source(SyntaqliteParser* p);
+
+// Return the byte length of the source text bound by the last reset() call.
+uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p);
+
+// ---------------------------------------------------------------------------
 // Configuration (call after create, before first reset)
 // ---------------------------------------------------------------------------
 
@@ -130,24 +148,6 @@ void syntaqlite_parser_set_extension(SyntaqliteParser* p,
 const SyntaqliteDialectExtension* syntaqlite_load_extension(
     const char* lib_path,
     const char* entry_point);
-
-// ---------------------------------------------------------------------------
-// Reading results
-// ---------------------------------------------------------------------------
-
-// Look up a node by its arena ID. The returned pointer is valid until the
-// next reset() or destroy(). Use node->type to determine which union member
-// to read (see ast_nodes.h for the full SyntaqliteNode definition).
-const SyntaqliteNode* syntaqlite_parser_node(SyntaqliteParser* p,
-                                             uint32_t node_id);
-
-// Return a pointer to the source text bound by the last reset() call.
-// Useful for extracting token text via SyntaqliteSourceSpan offsets:
-//   syntaqlite_parser_source(p) + span.offset
-const char* syntaqlite_parser_source(SyntaqliteParser* p);
-
-// Return the byte length of the source text bound by the last reset() call.
-uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p);
 
 #ifdef __cplusplus
 }

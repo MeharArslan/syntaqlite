@@ -6,11 +6,16 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
+
+%type with {SynqWithValue}
+%type insert_cmd {int}
+%type orconf {int}
+%type resolvetype {int}
+%type indexed_opt {SynqToken}
 
 // ============ WITH for DML ============
 // The 'with' nonterminal is used by DML statements (DELETE/UPDATE/INSERT).
@@ -35,9 +40,9 @@ with(A) ::= WITH RECURSIVE wqlist(W). {
 
 cmd(A) ::= with(W) DELETE FROM xfullname(X) indexed_opt(I) where_opt_ret(E). {
     (void)I;
-    uint32_t del = synq_ast_delete_stmt(pCtx->astCtx, X, E);
+    uint32_t del = synq_parse_delete_stmt(pCtx, X, E);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {
-        A = synq_ast_with_clause(pCtx->astCtx, W.is_recursive, W.cte_list, del);
+        A = synq_parse_with_clause(pCtx, W.is_recursive, W.cte_list, del);
     } else {
         A = del;
     }
@@ -47,9 +52,9 @@ cmd(A) ::= with(W) DELETE FROM xfullname(X) indexed_opt(I) where_opt_ret(E). {
 
 cmd(A) ::= with(W) UPDATE orconf(R) xfullname(X) indexed_opt(I) SET setlist(Y) from(F) where_opt_ret(E). {
     (void)I;
-    uint32_t upd = synq_ast_update_stmt(pCtx->astCtx, (SyntaqliteConflictAction)R, X, Y, F, E);
+    uint32_t upd = synq_parse_update_stmt(pCtx, (SyntaqliteConflictAction)R, X, Y, F, E);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {
-        A = synq_ast_with_clause(pCtx->astCtx, W.is_recursive, W.cte_list, upd);
+        A = synq_parse_with_clause(pCtx, W.is_recursive, W.cte_list, upd);
     } else {
         A = upd;
     }
@@ -59,18 +64,18 @@ cmd(A) ::= with(W) UPDATE orconf(R) xfullname(X) indexed_opt(I) SET setlist(Y) f
 
 cmd(A) ::= with(W) insert_cmd(R) INTO xfullname(X) idlist_opt(F) select(S) upsert(U). {
     (void)U;
-    uint32_t ins = synq_ast_insert_stmt(pCtx->astCtx, (SyntaqliteConflictAction)R, X, F, S);
+    uint32_t ins = synq_parse_insert_stmt(pCtx, (SyntaqliteConflictAction)R, X, F, S);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {
-        A = synq_ast_with_clause(pCtx->astCtx, W.is_recursive, W.cte_list, ins);
+        A = synq_parse_with_clause(pCtx, W.is_recursive, W.cte_list, ins);
     } else {
         A = ins;
     }
 }
 
 cmd(A) ::= with(W) insert_cmd(R) INTO xfullname(X) idlist_opt(F) DEFAULT VALUES returning. {
-    uint32_t ins = synq_ast_insert_stmt(pCtx->astCtx, (SyntaqliteConflictAction)R, X, F, SYNTAQLITE_NULL_NODE);
+    uint32_t ins = synq_parse_insert_stmt(pCtx, (SyntaqliteConflictAction)R, X, F, SYNTAQLITE_NULL_NODE);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {
-        A = synq_ast_with_clause(pCtx->astCtx, W.is_recursive, W.cte_list, ins);
+        A = synq_parse_with_clause(pCtx, W.is_recursive, W.cte_list, ins);
     } else {
         A = ins;
     }
@@ -113,22 +118,22 @@ resolvetype(A) ::= REPLACE. {
 // ============ xfullname (DML table reference) ============
 
 xfullname(A) ::= nm(X). {
-    A = synq_ast_table_ref(pCtx->astCtx,
+    A = synq_parse_table_ref(pCtx,
         synq_span(pCtx, X), SYNQ_NO_SPAN, SYNQ_NO_SPAN);
 }
 
 xfullname(A) ::= nm(X) DOT nm(Y). {
-    A = synq_ast_table_ref(pCtx->astCtx,
+    A = synq_parse_table_ref(pCtx,
         synq_span(pCtx, Y), synq_span(pCtx, X), SYNQ_NO_SPAN);
 }
 
 xfullname(A) ::= nm(X) DOT nm(Y) AS nm(Z). {
-    A = synq_ast_table_ref(pCtx->astCtx,
+    A = synq_parse_table_ref(pCtx,
         synq_span(pCtx, Y), synq_span(pCtx, X), synq_span(pCtx, Z));
 }
 
 xfullname(A) ::= nm(X) AS nm(Z). {
-    A = synq_ast_table_ref(pCtx->astCtx,
+    A = synq_parse_table_ref(pCtx,
         synq_span(pCtx, X), SYNQ_NO_SPAN, synq_span(pCtx, Z));
 }
 
@@ -167,27 +172,27 @@ where_opt_ret(A) ::= WHERE expr(X) RETURNING selcollist(Y). {
 // ============ SET list (UPDATE assignments) ============
 
 setlist(A) ::= setlist(L) COMMA nm(X) EQ expr(Y). {
-    uint32_t clause = synq_ast_set_clause(pCtx->astCtx,
+    uint32_t clause = synq_parse_set_clause(pCtx,
         synq_span(pCtx, X), SYNTAQLITE_NULL_NODE, Y);
-    A = synq_ast_set_clause_list_append(pCtx->astCtx, L, clause);
+    A = synq_parse_set_clause_list(pCtx, L, clause);
 }
 
 setlist(A) ::= setlist(L) COMMA LP idlist(X) RP EQ expr(Y). {
-    uint32_t clause = synq_ast_set_clause(pCtx->astCtx,
+    uint32_t clause = synq_parse_set_clause(pCtx,
         SYNQ_NO_SPAN, X, Y);
-    A = synq_ast_set_clause_list_append(pCtx->astCtx, L, clause);
+    A = synq_parse_set_clause_list(pCtx, L, clause);
 }
 
 setlist(A) ::= nm(X) EQ expr(Y). {
-    uint32_t clause = synq_ast_set_clause(pCtx->astCtx,
+    uint32_t clause = synq_parse_set_clause(pCtx,
         synq_span(pCtx, X), SYNTAQLITE_NULL_NODE, Y);
-    A = synq_ast_set_clause_list(pCtx->astCtx, clause);
+    A = synq_parse_set_clause_list(pCtx, SYNTAQLITE_NULL_NODE, clause);
 }
 
 setlist(A) ::= LP idlist(X) RP EQ expr(Y). {
-    uint32_t clause = synq_ast_set_clause(pCtx->astCtx,
+    uint32_t clause = synq_parse_set_clause(pCtx,
         SYNQ_NO_SPAN, X, Y);
-    A = synq_ast_set_clause_list(pCtx->astCtx, clause);
+    A = synq_parse_set_clause_list(pCtx, SYNTAQLITE_NULL_NODE, clause);
 }
 
 // ============ Column list for INSERT ============

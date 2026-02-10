@@ -6,7 +6,6 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
@@ -16,6 +15,6 @@
 
 // table.* in result columns
 selcollist(A) ::= sclp(B) scanpt nm(C) DOT STAR. {
-    uint32_t col = synq_ast_result_column(pCtx->astCtx, (SyntaqliteResultColumnFlags){.star = 1}, synq_span(pCtx, C), SYNTAQLITE_NULL_NODE);
-    A = synq_ast_result_column_list_append(pCtx->astCtx, B, col);
+    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.star = 1}, synq_span(pCtx, C), SYNTAQLITE_NULL_NODE);
+    A = synq_parse_result_column_list(pCtx, B, col);
 }

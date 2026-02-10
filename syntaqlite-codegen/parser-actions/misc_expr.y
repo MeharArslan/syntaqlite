@@ -6,7 +6,6 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
@@ -15,11 +14,11 @@
 // ============ Bind Parameters ============
 
 expr(A) ::= VARIABLE(B). {
-    A = synq_ast_variable(pCtx->astCtx, synq_span(pCtx, B));
+    A = synq_parse_variable(pCtx, synq_span(pCtx, B));
 }
 
 // ============ COLLATE Expression ============
 
 expr(A) ::= expr(B) COLLATE ids(C). {
-    A = synq_ast_collate_expr(pCtx->astCtx, B, synq_span(pCtx, C));
+    A = synq_parse_collate_expr(pCtx, B, synq_span(pCtx, C));
 }

@@ -6,37 +6,38 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
 
+%type likeop {SynqToken}
+
 // ============ IS / ISNULL / NOTNULL ============
 
 expr(A) ::= expr(B) ISNULL|NOTNULL(E). {
-    SyntaqliteIsOp op = (E.type == SYNTAQLITE_TOKEN_ISNULL) ? SYNTAQLITE_IS_OP_ISNULL : SYNTAQLITE_IS_OP_NOTNULL;
-    A = synq_ast_is_expr(pCtx->astCtx, op, B, SYNTAQLITE_NULL_NODE);
+    SyntaqliteIsOp op = (E.type == SYNTAQLITE_TK_ISNULL) ? SYNTAQLITE_IS_OP_ISNULL : SYNTAQLITE_IS_OP_NOTNULL;
+    A = synq_parse_is_expr(pCtx, op, B, SYNTAQLITE_NULL_NODE);
 }
 
 expr(A) ::= expr(B) NOT NULL. {
-    A = synq_ast_is_expr(pCtx->astCtx, SYNTAQLITE_IS_OP_NOTNULL, B, SYNTAQLITE_NULL_NODE);
+    A = synq_parse_is_expr(pCtx, SYNTAQLITE_IS_OP_NOTNULL, B, SYNTAQLITE_NULL_NODE);
 }
 
 expr(A) ::= expr(B) IS expr(C). {
-    A = synq_ast_is_expr(pCtx->astCtx, SYNTAQLITE_IS_OP_IS, B, C);
+    A = synq_parse_is_expr(pCtx, SYNTAQLITE_IS_OP_IS, B, C);
 }
 
 expr(A) ::= expr(B) IS NOT expr(C). {
-    A = synq_ast_is_expr(pCtx->astCtx, SYNTAQLITE_IS_OP_IS_NOT, B, C);
+    A = synq_parse_is_expr(pCtx, SYNTAQLITE_IS_OP_IS_NOT, B, C);
 }
 
 expr(A) ::= expr(B) IS NOT DISTINCT FROM expr(C). {
-    A = synq_ast_is_expr(pCtx->astCtx, SYNTAQLITE_IS_OP_IS_NOT_DISTINCT, B, C);
+    A = synq_parse_is_expr(pCtx, SYNTAQLITE_IS_OP_IS_NOT_DISTINCT, B, C);
 }
 
 expr(A) ::= expr(B) IS DISTINCT FROM expr(C). {
-    A = synq_ast_is_expr(pCtx->astCtx, SYNTAQLITE_IS_OP_IS_DISTINCT, B, C);
+    A = synq_parse_is_expr(pCtx, SYNTAQLITE_IS_OP_IS_DISTINCT, B, C);
 }
 
 // ============ BETWEEN ============
@@ -50,7 +51,7 @@ between_op(A) ::= NOT BETWEEN. {
 }
 
 expr(A) ::= expr(B) between_op(C) expr(D) AND expr(E). [BETWEEN] {
-    A = synq_ast_between_expr(pCtx->astCtx, (SyntaqliteBool)C, B, D, E);
+    A = synq_parse_between_expr(pCtx, (SyntaqliteBool)C, B, D, E);
 }
 
 // ============ LIKE / GLOB / MATCH ============
@@ -66,28 +67,28 @@ likeop(A) ::= NOT LIKE_KW|MATCH(B). {
 
 expr(A) ::= expr(B) likeop(C) expr(D). [LIKE_KW] {
     SyntaqliteBool negated = (C.n & 0x80000000) ? SYNTAQLITE_BOOL_TRUE : SYNTAQLITE_BOOL_FALSE;
-    A = synq_ast_like_expr(pCtx->astCtx, negated, B, D, SYNTAQLITE_NULL_NODE);
+    A = synq_parse_like_expr(pCtx, negated, B, D, SYNTAQLITE_NULL_NODE);
 }
 
 expr(A) ::= expr(B) likeop(C) expr(D) ESCAPE expr(E). [LIKE_KW] {
     SyntaqliteBool negated = (C.n & 0x80000000) ? SYNTAQLITE_BOOL_TRUE : SYNTAQLITE_BOOL_FALSE;
-    A = synq_ast_like_expr(pCtx->astCtx, negated, B, D, E);
+    A = synq_parse_like_expr(pCtx, negated, B, D, E);
 }
 
 // ============ CASE ============
 
 expr(A) ::= CASE case_operand(B) case_exprlist(C) case_else(D) END. {
-    A = synq_ast_case_expr(pCtx->astCtx, B, D, C);
+    A = synq_parse_case_expr(pCtx, B, D, C);
 }
 
 case_exprlist(A) ::= case_exprlist(B) WHEN expr(C) THEN expr(D). {
-    uint32_t w = synq_ast_case_when(pCtx->astCtx, C, D);
-    A = synq_ast_case_when_list_append(pCtx->astCtx, B, w);
+    uint32_t w = synq_parse_case_when(pCtx, C, D);
+    A = synq_parse_case_when_list(pCtx, B, w);
 }
 
 case_exprlist(A) ::= WHEN expr(B) THEN expr(C). {
-    uint32_t w = synq_ast_case_when(pCtx->astCtx, B, C);
-    A = synq_ast_case_when_list(pCtx->astCtx, w);
+    uint32_t w = synq_parse_case_when(pCtx, B, C);
+    A = synq_parse_case_when_list(pCtx, SYNTAQLITE_NULL_NODE, w);
 }
 
 case_else(A) ::= ELSE expr(B). {

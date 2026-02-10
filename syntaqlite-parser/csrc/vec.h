@@ -13,8 +13,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "syntaqlite/config.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

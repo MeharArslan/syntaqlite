@@ -6,7 +6,6 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
@@ -22,11 +21,11 @@ cmd(A) ::= create_vtab(X). {
 // With arguments in parentheses
 cmd(A) ::= create_vtab(X) LP(L) vtabarglist RP(R). {
     // Capture module arguments span (content between parens)
-    SyntaqliteNode *vtab = AST_NODE(&pCtx->astCtx->ast, X);
+    SyntaqliteNode *vtab = AST_NODE(&pCtx->ast, X);
     const char *args_start = L.z + L.n;
     const char *args_end = R.z;
     vtab->create_virtual_table_stmt.module_args = (SyntaqliteSourceSpan){
-        (uint32_t)(args_start - pCtx->zSql),
+        (uint32_t)(args_start - pCtx->source),
         (uint16_t)(args_end - args_start)
     };
     A = X;
@@ -36,7 +35,7 @@ cmd(A) ::= create_vtab(X) LP(L) vtabarglist RP(R). {
 create_vtab(A) ::= createkw VIRTUAL TABLE ifnotexists(E) nm(X) dbnm(Y) USING nm(Z). {
     SyntaqliteSourceSpan tbl_name = Y.z ? synq_span(pCtx, Y) : synq_span(pCtx, X);
     SyntaqliteSourceSpan tbl_schema = Y.z ? synq_span(pCtx, X) : SYNQ_NO_SPAN;
-    A = synq_ast_create_virtual_table_stmt(pCtx->astCtx,
+    A = synq_parse_create_virtual_table_stmt(pCtx,
         tbl_name,
         tbl_schema,
         synq_span(pCtx, Z),

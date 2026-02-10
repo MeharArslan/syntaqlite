@@ -6,7 +6,6 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
@@ -16,7 +15,7 @@
 
 // Simple column reference: just a name
 expr(A) ::= idj(B). {
-    A = synq_ast_column_ref(pCtx->astCtx,
+    A = synq_parse_column_ref(pCtx,
         synq_span(pCtx, B),
         SYNQ_NO_SPAN,
         SYNQ_NO_SPAN);
@@ -24,7 +23,7 @@ expr(A) ::= idj(B). {
 
 // Qualified column reference: table.column
 expr(A) ::= nm(B) DOT nm(C). {
-    A = synq_ast_column_ref(pCtx->astCtx,
+    A = synq_parse_column_ref(pCtx,
         synq_span(pCtx, C),
         synq_span(pCtx, B),
         SYNQ_NO_SPAN);
@@ -32,7 +31,7 @@ expr(A) ::= nm(B) DOT nm(C). {
 
 // Fully qualified: schema.table.column
 expr(A) ::= nm(B) DOT nm(C) DOT nm(D). {
-    A = synq_ast_column_ref(pCtx->astCtx,
+    A = synq_parse_column_ref(pCtx,
         synq_span(pCtx, D),
         synq_span(pCtx, C),
         synq_span(pCtx, B));

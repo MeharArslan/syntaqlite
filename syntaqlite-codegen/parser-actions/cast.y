@@ -6,16 +6,18 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
 
+%type typetoken {SynqToken}
+%type typename {SynqToken}
+
 // ============ CAST Expression ============
 
 expr(A) ::= CAST LP expr(E) AS typetoken(T) RP. {
-    A = synq_ast_cast_expr(pCtx->astCtx, E, synq_span(pCtx, T));
+    A = synq_parse_cast_expr(pCtx, E, synq_span(pCtx, T));
 }
 
 // ============ Type Token ============

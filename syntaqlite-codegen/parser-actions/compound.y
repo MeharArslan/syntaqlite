@@ -6,32 +6,35 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
 
+%type multiselect_op {int}
+%type in_op {int}
+%type dbnm {SynqToken}
+
 // ============ Compound SELECT ============
 
 selectnowith(A) ::= selectnowith(A) multiselect_op(Y) oneselect(Z). {
-    A = synq_ast_compound_select(pCtx->astCtx, (SyntaqliteCompoundOp)Y, A, Z);
+    A = synq_parse_compound_select(pCtx, (SyntaqliteCompoundOp)Y, A, Z);
 }
 
-multiselect_op(A) ::= UNION(OP). { A = 0; UNUSED_PARAMETER(OP); }
+multiselect_op(A) ::= UNION(OP). { A = 0; (void)OP; }
 multiselect_op(A) ::= UNION ALL. { A = 1; }
 multiselect_op(A) ::= EXCEPT|INTERSECT(OP). {
-    A = (OP.type == SYNTAQLITE_TOKEN_INTERSECT) ? 2 : 3;
+    A = (OP.type == SYNTAQLITE_TK_INTERSECT) ? 2 : 3;
 }
 
 // ============ Subquery Expressions ============
 
 expr(A) ::= LP select(X) RP. {
-    A = synq_ast_subquery_expr(pCtx->astCtx, X);
+    A = synq_parse_subquery_expr(pCtx, X);
 }
 
 expr(A) ::= EXISTS LP select(Y) RP. {
-    A = synq_ast_exists_expr(pCtx->astCtx, Y);
+    A = synq_parse_exists_expr(pCtx, Y);
 }
 
 // ============ IN Expressions ============
@@ -40,18 +43,18 @@ in_op(A) ::= IN. { A = 0; }
 in_op(A) ::= NOT IN. { A = 1; }
 
 expr(A) ::= expr(A) in_op(N) LP exprlist(Y) RP. [IN] {
-    A = synq_ast_in_expr(pCtx->astCtx, (SyntaqliteBool)N, A, Y);
+    A = synq_parse_in_expr(pCtx, (SyntaqliteBool)N, A, Y);
 }
 
 expr(A) ::= expr(A) in_op(N) LP select(Y) RP. [IN] {
-    uint32_t sub = synq_ast_subquery_expr(pCtx->astCtx, Y);
-    A = synq_ast_in_expr(pCtx->astCtx, (SyntaqliteBool)N, A, sub);
+    uint32_t sub = synq_parse_subquery_expr(pCtx, Y);
+    A = synq_parse_in_expr(pCtx, (SyntaqliteBool)N, A, sub);
 }
 
 expr(A) ::= expr(A) in_op(N) nm(Y) dbnm(Z) paren_exprlist(E). [IN] {
     // Table-valued function IN expression - stub for now
     (void)Y; (void)Z; (void)E;
-    A = synq_ast_in_expr(pCtx->astCtx, (SyntaqliteBool)N, A, SYNTAQLITE_NULL_NODE);
+    A = synq_parse_in_expr(pCtx, (SyntaqliteBool)N, A, SYNTAQLITE_NULL_NODE);
 }
 
 // ============ Helper rules ============

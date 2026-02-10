@@ -119,7 +119,7 @@ pub fn generate_ast_builder_h(items: &[Item]) -> String {
 
     w.file_header();
     w.header_guard_start("SYNQ_AST_BUILDER_H");
-    w.include_local("csrc/ast.h");
+    w.include_local("csrc/parser.h");
     w.include_local("syntaqlite/ast_nodes.h");
     w.newline();
     w.extern_c_start();
@@ -138,7 +138,7 @@ pub fn generate_ast_builder_h(items: &[Item]) -> String {
         }
     }
 
-    // Range field metadata (used by synq_ast_build in ast.c)
+    // Range field metadata (used by synq_parse_build in ast.c)
     emit_range_metadata(&mut w, items);
 
     w.extern_c_end();
@@ -174,7 +174,7 @@ fn tag_name(name: &str) -> String {
 }
 
 fn builder_name(name: &str) -> String {
-    format!("synq_ast_{}", pascal_to_snake(name))
+    format!("synq_parse_{}", pascal_to_snake(name))
 }
 
 fn field_c_type(
@@ -221,7 +221,7 @@ fn emit_node_builder_inline(
     let tag = tag_name(name);
     let func = builder_name(name);
 
-    let mut param_strs = vec!["SynqAstContext *ctx".to_string()];
+    let mut param_strs = vec!["SynqParseCtx *ctx".to_string()];
     for field in fields {
         param_strs.push(format!("{} {}", field_c_type(field, enum_names, flags_names), field.name));
     }
@@ -235,13 +235,13 @@ fn emit_node_builder_inline(
     }
 
     let literal = format!("&({}){{{}}}", sn, init_parts.join(", "));
-    let call = format!("return synq_ast_build(ctx, {}, (uint32_t)sizeof({}));", literal, sn);
+    let call = format!("return synq_parse_build(ctx, {}, (uint32_t)sizeof({}));", literal, sn);
 
     w.indent();
     if call.len() <= 80 {
         w.line(&call);
     } else {
-        w.line("return synq_ast_build(ctx,");
+        w.line("return synq_parse_build(ctx,");
         w.indent();
         w.line(&format!("&({}){{", sn));
         w.indent();
@@ -263,9 +263,9 @@ fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
     let tag = tag_name(name);
 
     w.func_signature("static inline ", "uint32_t", &func,
-        &["SynqAstContext *ctx", "uint32_t list_id", "uint32_t child"], " {");
+        &["SynqParseCtx *ctx", "uint32_t list_id", "uint32_t child"], " {");
     w.indent();
-    w.line(&format!("return synq_ast_list_append(ctx, {}, list_id, child);", tag));
+    w.line(&format!("return synq_parse_list_append(ctx, {}, list_id, child);", tag));
     w.dedent();
     w.line("}");
     w.newline();

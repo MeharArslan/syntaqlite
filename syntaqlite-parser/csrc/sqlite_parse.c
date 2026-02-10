@@ -23,6 +23,8 @@
 ** input grammar file:
 */
 /************ Begin %include sections from the grammar ************************/
+#include <string.h>
+#include "csrc/parser.h"
 #include "csrc/sqlite_parse_data.h"
 #include "syntaqlite/tokens.h"
 
@@ -237,7 +239,7 @@
 **    YYACTIONTYPE       is the data type used for "action codes" - numbers
 **                       that indicate what to do in response to the next
 **                       token.
-**    ParseTOKENTYPE     is the data type used for minor type for terminal
+**    SyntaqliteParseTOKENTYPE     is the data type used for minor type for terminal
 **                       symbols.  Background: A "minor type" is a semantic
 **                       value associated with a terminal or non-terminal
 **                       symbols.  For example, for an "ID" terminal symbol,
@@ -248,16 +250,16 @@
 **                       symbols.
 **    YYMINORTYPE        is the data type used for all minor types.
 **                       This is typically a union of many types, one of
-**                       which is ParseTOKENTYPE.  The entry in the union
+**                       which is SyntaqliteParseTOKENTYPE.  The entry in the union
 **                       for terminal symbols is called "yy0".
 **    YYSTACKDEPTH       is the maximum depth of the parser's stack.  If
 **                       zero the stack is dynamically sized using realloc()
-**    ParseARG_SDECL     A static variable declaration for the %extra_argument
-**    ParseARG_PDECL     A parameter declaration for the %extra_argument
-**    ParseARG_PARAM     Code to pass %extra_argument as a subroutine parameter
-**    ParseARG_STORE     Code to store %extra_argument into yypParser
-**    ParseARG_FETCH     Code to extract %extra_argument from yypParser
-**    ParseCTX_*         As ParseARG_ except for %extra_context
+**    SyntaqliteParseARG_SDECL     A static variable declaration for the %extra_argument
+**    SyntaqliteParseARG_PDECL     A parameter declaration for the %extra_argument
+**    SyntaqliteParseARG_PARAM     Code to pass %extra_argument as a subroutine parameter
+**    SyntaqliteParseARG_STORE     Code to store %extra_argument into yypParser
+**    SyntaqliteParseARG_FETCH     Code to extract %extra_argument from yypParser
+**    SyntaqliteParseCTX_*         As SyntaqliteParseARG_ except for %extra_context
 **    YYREALLOC          Name of the realloc() function to use
 **    YYFREE             Name of the free() function to use
 **    YYDYNSTACK         True if stack space should be extended on heap
@@ -420,7 +422,7 @@ static char *yyTracePrompt = 0;
 ** Outputs:
 ** None.
 */
-void ParseTrace(FILE *TraceFILE, char *zTracePrompt){
+void SyntaqliteParseTrace(FILE *TraceFILE, char *zTracePrompt){
   yyTraceFILE = TraceFILE;
   yyTracePrompt = zTracePrompt;
   if( yyTraceFILE==0 ) yyTracePrompt = 0;
@@ -475,7 +477,7 @@ static int yyGrowStack(yyParser *p){
 #endif
 
 /* Datatype of the argument to the memory allocated passed as the
-** second argument to ParseAlloc() below.  This can be changed by
+** second argument to SyntaqliteParseAlloc() below.  This can be changed by
 ** putting an appropriate #define in the %include section of the input
 ** grammar.
 */
@@ -485,9 +487,9 @@ static int yyGrowStack(yyParser *p){
 
 /* Initialize a new parser that has already been allocated.
 */
-void ParseInit(void *yypRawParser ParseCTX_PDECL){
+void SyntaqliteParseInit(void *yypRawParser SyntaqliteParseCTX_PDECL){
   yyParser *yypParser = (yyParser*)yypRawParser;
-  ParseCTX_STORE
+  SyntaqliteParseCTX_STORE
 #ifdef YYTRACKMAXSTACKDEPTH
   yypParser->yyhwm = 0;
 #endif
@@ -501,7 +503,7 @@ void ParseInit(void *yypRawParser ParseCTX_PDECL){
   yypParser->yystack[0].major = 0;
 }
 
-#ifndef Parse_ENGINEALWAYSONSTACK
+#ifndef SyntaqliteParse_ENGINEALWAYSONSTACK
 /* 
 ** This function allocates a new parser.
 ** The only argument is a pointer to a function which works like
@@ -512,18 +514,18 @@ void ParseInit(void *yypRawParser ParseCTX_PDECL){
 **
 ** Outputs:
 ** A pointer to a parser.  This pointer is used in subsequent calls
-** to Parse and ParseFree.
+** to SyntaqliteParse and SyntaqliteParseFree.
 */
-void *ParseAlloc(void *(*mallocProc)(YYMALLOCARGTYPE) ParseCTX_PDECL){
+void *SyntaqliteParseAlloc(void *(*mallocProc)(YYMALLOCARGTYPE) SyntaqliteParseCTX_PDECL){
   yyParser *yypParser;
   yypParser = (yyParser*)(*mallocProc)( (YYMALLOCARGTYPE)sizeof(yyParser) );
   if( yypParser ){
-    ParseCTX_STORE
-    ParseInit(yypParser ParseCTX_PARAM);
+    SyntaqliteParseCTX_STORE
+    SyntaqliteParseInit(yypParser SyntaqliteParseCTX_PARAM);
   }
   return (void*)yypParser;
 }
-#endif /* Parse_ENGINEALWAYSONSTACK */
+#endif /* SyntaqliteParse_ENGINEALWAYSONSTACK */
 
 
 /* The following function deletes the "minor type" or semantic value
@@ -538,8 +540,8 @@ static void yy_destructor(
   YYCODETYPE yymajor,     /* Type code for object to destroy */
   YYMINORTYPE *yypminor   /* The object to be destroyed */
 ){
-  ParseARG_FETCH
-  ParseCTX_FETCH
+  SyntaqliteParseARG_FETCH
+  SyntaqliteParseCTX_FETCH
   switch( yymajor ){
     /* Here is inserted the actions which take place when a
     ** terminal or non-terminal is destroyed.  This can happen
@@ -581,7 +583,7 @@ static void yy_pop_parser_stack(yyParser *pParser){
 /*
 ** Clear all secondary memory allocations from the parser
 */
-void ParseFinalize(void *p){
+void SyntaqliteParseFinalize(void *p){
   yyParser *pParser = (yyParser*)p;
 
   /* In-lined version of calling yy_pop_parser_stack() for each
@@ -606,7 +608,7 @@ void ParseFinalize(void *p){
 #endif
 }
 
-#ifndef Parse_ENGINEALWAYSONSTACK
+#ifndef SyntaqliteParse_ENGINEALWAYSONSTACK
 /* 
 ** Deallocate and destroy a parser.  Destructors are called for
 ** all stack elements before shutting the parser down.
@@ -615,23 +617,23 @@ void ParseFinalize(void *p){
 ** is defined in a %include section of the input grammar) then it is
 ** assumed that the input pointer is never NULL.
 */
-void ParseFree(
+void SyntaqliteParseFree(
   void *p,                    /* The parser to be deleted */
   void (*freeProc)(void*)     /* Function used to reclaim memory */
 ){
 #ifndef YYPARSEFREENEVERNULL
   if( p==0 ) return;
 #endif
-  ParseFinalize(p);
+  SyntaqliteParseFinalize(p);
   (*freeProc)(p);
 }
-#endif /* Parse_ENGINEALWAYSONSTACK */
+#endif /* SyntaqliteParse_ENGINEALWAYSONSTACK */
 
 /*
 ** Return the peak depth of the stack for a parser.
 */
 #ifdef YYTRACKMAXSTACKDEPTH
-int ParseStackPeak(void *p){
+int SyntaqliteParseStackPeak(void *p){
   yyParser *pParser = (yyParser*)p;
   return pParser->yyhwm;
 }
@@ -655,7 +657,7 @@ static unsigned char yycoverage[YYNSTATE][YYNTOKEN];
 ** Return the number of missed state/lookahead combinations.
 */
 #if defined(YYCOVERAGE)
-int ParseCoverage(FILE *out){
+int SyntaqliteParseCoverage(FILE *out){
   int stateno, iLookAhead, i;
   int nMissed = 0;
   for(stateno=0; stateno<YYNSTATE; stateno++){
@@ -773,8 +775,8 @@ static YYACTIONTYPE yy_find_reduce_action(
 ** The following routine is called if the stack overflows.
 */
 static void yyStackOverflow(yyParser *yypParser){
-   ParseARG_FETCH
-   ParseCTX_FETCH
+   SyntaqliteParseARG_FETCH
+   SyntaqliteParseCTX_FETCH
 #ifndef NDEBUG
    if( yyTraceFILE ){
      fprintf(yyTraceFILE,"%sStack Overflow!\n",yyTracePrompt);
@@ -784,9 +786,13 @@ static void yyStackOverflow(yyParser *yypParser){
    /* Here code is inserted which will execute if the parser
    ** stack every overflows */
 /******** Begin %stack_overflow code ******************************************/
+
+  if (pCtx) {
+    pCtx->error = 1;
+  }
 /******** End %stack_overflow code ********************************************/
-   ParseARG_STORE /* Suppress warning about unused %extra_argument var */
-   ParseCTX_STORE
+   SyntaqliteParseARG_STORE /* Suppress warning about unused %extra_argument var */
+   SyntaqliteParseCTX_STORE
 }
 
 /*
@@ -817,7 +823,7 @@ static void yy_shift(
   yyParser *yypParser,          /* The parser to be shifted */
   YYACTIONTYPE yyNewState,      /* The new state to shift in */
   YYCODETYPE yyMajor,           /* The major token to shift in */
-  ParseTOKENTYPE yyMinor        /* The minor token to shift in */
+  SyntaqliteParseTOKENTYPE yyMinor        /* The minor token to shift in */
 ){
   yyStackEntry *yytos;
   yypParser->yytos++;
@@ -870,14 +876,14 @@ static YYACTIONTYPE yy_reduce(
   yyParser *yypParser,         /* The parser */
   unsigned int yyruleno,       /* Number of the rule by which to reduce */
   int yyLookahead,             /* Lookahead token, or YYNOCODE if none */
-  ParseTOKENTYPE yyLookaheadToken  /* Value of the lookahead token */
-  ParseCTX_PDECL                   /* %extra_context */
+  SyntaqliteParseTOKENTYPE yyLookaheadToken  /* Value of the lookahead token */
+  SyntaqliteParseCTX_PDECL                   /* %extra_context */
 ){
   int yygoto;                     /* The next state */
   YYACTIONTYPE yyact;             /* The next action */
   yyStackEntry *yymsp;            /* The top of the parser's stack */
   int yysize;                     /* Amount to pop the stack */
-  ParseARG_FETCH
+  SyntaqliteParseARG_FETCH
   (void)yyLookahead;
   (void)yyLookaheadToken;
   yymsp = yypParser->yytos;
@@ -920,8 +926,8 @@ static YYACTIONTYPE yy_reduce(
 static void yy_parse_failed(
   yyParser *yypParser           /* The parser */
 ){
-  ParseARG_FETCH
-  ParseCTX_FETCH
+  SyntaqliteParseARG_FETCH
+  SyntaqliteParseCTX_FETCH
 #ifndef NDEBUG
   if( yyTraceFILE ){
     fprintf(yyTraceFILE,"%sFail!\n",yyTracePrompt);
@@ -932,8 +938,8 @@ static void yy_parse_failed(
   ** parser fails */
 /************ Begin %parse_failure code ***************************************/
 /************ End %parse_failure code *****************************************/
-  ParseARG_STORE /* Suppress warning about unused %extra_argument variable */
-  ParseCTX_STORE
+  SyntaqliteParseARG_STORE /* Suppress warning about unused %extra_argument variable */
+  SyntaqliteParseCTX_STORE
 }
 #endif /* YYNOERRORRECOVERY */
 
@@ -943,15 +949,21 @@ static void yy_parse_failed(
 static void yy_syntax_error(
   yyParser *yypParser,           /* The parser */
   int yymajor,                   /* The major type of the error token */
-  ParseTOKENTYPE yyminor         /* The minor type of the error token */
+  SyntaqliteParseTOKENTYPE yyminor         /* The minor type of the error token */
 ){
-  ParseARG_FETCH
-  ParseCTX_FETCH
+  SyntaqliteParseARG_FETCH
+  SyntaqliteParseCTX_FETCH
 #define TOKEN yyminor
 /************ Begin %syntax_error code ****************************************/
+
+  (void)yymajor;
+  (void)TOKEN;
+  if (pCtx) {
+    pCtx->error = 1;
+  }
 /************ End %syntax_error code ******************************************/
-  ParseARG_STORE /* Suppress warning about unused %extra_argument variable */
-  ParseCTX_STORE
+  SyntaqliteParseARG_STORE /* Suppress warning about unused %extra_argument variable */
+  SyntaqliteParseCTX_STORE
 }
 
 /*
@@ -960,8 +972,8 @@ static void yy_syntax_error(
 static void yy_accept(
   yyParser *yypParser           /* The parser */
 ){
-  ParseARG_FETCH
-  ParseCTX_FETCH
+  SyntaqliteParseARG_FETCH
+  SyntaqliteParseCTX_FETCH
 #ifndef NDEBUG
   if( yyTraceFILE ){
     fprintf(yyTraceFILE,"%sAccept!\n",yyTracePrompt);
@@ -975,13 +987,13 @@ static void yy_accept(
   ** parser accepts */
 /*********** Begin %parse_accept code *****************************************/
 /*********** End %parse_accept code *******************************************/
-  ParseARG_STORE /* Suppress warning about unused %extra_argument variable */
-  ParseCTX_STORE
+  SyntaqliteParseARG_STORE /* Suppress warning about unused %extra_argument variable */
+  SyntaqliteParseCTX_STORE
 }
 
 /* The main parser program.
 ** The first argument is a pointer to a structure obtained from
-** "ParseAlloc" which describes the current state of the parser.
+** "SyntaqliteParseAlloc" which describes the current state of the parser.
 ** The second argument is the major token number.  The third is
 ** the minor token.  The fourth optional argument is whatever the
 ** user wants (and specified in the grammar) and is available for
@@ -998,11 +1010,11 @@ static void yy_accept(
 ** Outputs:
 ** None.
 */
-void Parse(
+void SyntaqliteParse(
   void *yyp,                   /* The parser */
   int yymajor,                 /* The major token code number */
-  ParseTOKENTYPE yyminor       /* The value for the token */
-  ParseARG_PDECL               /* Optional %extra_argument parameter */
+  SyntaqliteParseTOKENTYPE yyminor       /* The value for the token */
+  SyntaqliteParseARG_PDECL               /* Optional %extra_argument parameter */
 ){
   YYMINORTYPE yyminorunion;
   YYACTIONTYPE yyact;   /* The parser action. */
@@ -1013,8 +1025,8 @@ void Parse(
   int yyerrorhit = 0;   /* True if yymajor has invoked an error */
 #endif
   yyParser *yypParser = (yyParser*)yyp;  /* The parser */
-  ParseCTX_FETCH
-  ParseARG_STORE
+  SyntaqliteParseCTX_FETCH
+  SyntaqliteParseARG_STORE
 
   assert( yypParser->yytos!=0 );
 #if !defined(YYERRORSYMBOL) && !defined(YYNOERRORRECOVERY)
@@ -1076,7 +1088,7 @@ void Parse(
           }
         }
       }
-      yyact = yy_reduce(yypParser,yyruleno,yymajor,yyminor ParseCTX_PARAM);
+      yyact = yy_reduce(yypParser,yyruleno,yymajor,yyminor SyntaqliteParseCTX_PARAM);
     }else if( yyact <= YY_MAX_SHIFTREDUCE ){
       yy_shift(yypParser,yyact,(YYCODETYPE)yymajor,yyminor);
 #ifndef YYNOERRORRECOVERY
@@ -1208,7 +1220,7 @@ void Parse(
 ** Return the fallback token corresponding to canonical token iToken, or
 ** 0 if iToken has no fallback.
 */
-int ParseFallback(int iToken){
+int SyntaqliteParseFallback(int iToken){
 #ifdef YYFALLBACK
   assert( iToken<(int)(sizeof(yyFallback)/sizeof(yyFallback[0])) );
   return yyFallback[iToken];

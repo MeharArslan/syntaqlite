@@ -6,7 +6,6 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
@@ -16,7 +15,7 @@
 
 // Aggregate function call: func(args ORDER BY sortlist) or func(DISTINCT args ORDER BY sortlist)
 expr(A) ::= idj(B) LP distinct(C) exprlist(D) ORDER BY sortlist(E) RP. {
-    A = synq_ast_aggregate_function_call(pCtx->astCtx,
+    A = synq_parse_aggregate_function_call(pCtx,
         synq_span(pCtx, B),
         (SyntaqliteAggregateFunctionCallFlags){.raw = (uint8_t)C},
         D,
@@ -27,8 +26,8 @@ expr(A) ::= idj(B) LP distinct(C) exprlist(D) ORDER BY sortlist(E) RP. {
 
 // Aggregate function call with filter/over
 expr(A) ::= idj(B) LP distinct(C) exprlist(D) ORDER BY sortlist(E) RP filter_over(F). {
-    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->astCtx->ast, F);
-    A = synq_ast_aggregate_function_call(pCtx->astCtx,
+    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->ast, F);
+    A = synq_parse_aggregate_function_call(pCtx,
         synq_span(pCtx, B),
         (SyntaqliteAggregateFunctionCallFlags){.raw = (uint8_t)C},
         D,

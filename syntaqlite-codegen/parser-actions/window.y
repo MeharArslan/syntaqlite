@@ -6,26 +6,29 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
 
+%type range_or_rows {int}
+%type frame_exclude_opt {int}
+%type frame_exclude {int}
+
 // ============ Window Definition Lists ============
 
 windowdefn_list(A) ::= windowdefn(B). {
-    A = synq_ast_named_window_def_list(pCtx->astCtx, B);
+    A = synq_parse_named_window_def_list(pCtx, SYNTAQLITE_NULL_NODE, B);
 }
 
 windowdefn_list(A) ::= windowdefn_list(B) COMMA windowdefn(C). {
-    A = synq_ast_named_window_def_list_append(pCtx->astCtx, B, C);
+    A = synq_parse_named_window_def_list(pCtx, B, C);
 }
 
 // ============ Window Definition ============
 
 windowdefn(A) ::= nm(B) AS LP window(C) RP. {
-    A = synq_ast_named_window_def(pCtx->astCtx,
+    A = synq_parse_named_window_def(pCtx,
         synq_span(pCtx, B),
         C);
 }
@@ -33,7 +36,7 @@ windowdefn(A) ::= nm(B) AS LP window(C) RP. {
 // ============ Window Specification ============
 
 window(A) ::= PARTITION BY nexprlist(B) orderby_opt(C) frame_opt(D). {
-    A = synq_ast_window_def(pCtx->astCtx,
+    A = synq_parse_window_def(pCtx,
         SYNQ_NO_SPAN,
         B,
         C,
@@ -41,7 +44,7 @@ window(A) ::= PARTITION BY nexprlist(B) orderby_opt(C) frame_opt(D). {
 }
 
 window(A) ::= nm(B) PARTITION BY nexprlist(C) orderby_opt(D) frame_opt(E). {
-    A = synq_ast_window_def(pCtx->astCtx,
+    A = synq_parse_window_def(pCtx,
         synq_span(pCtx, B),
         C,
         D,
@@ -49,7 +52,7 @@ window(A) ::= nm(B) PARTITION BY nexprlist(C) orderby_opt(D) frame_opt(E). {
 }
 
 window(A) ::= ORDER BY sortlist(B) frame_opt(C). {
-    A = synq_ast_window_def(pCtx->astCtx,
+    A = synq_parse_window_def(pCtx,
         SYNQ_NO_SPAN,
         SYNTAQLITE_NULL_NODE,
         B,
@@ -57,7 +60,7 @@ window(A) ::= ORDER BY sortlist(B) frame_opt(C). {
 }
 
 window(A) ::= nm(B) ORDER BY sortlist(C) frame_opt(D). {
-    A = synq_ast_window_def(pCtx->astCtx,
+    A = synq_parse_window_def(pCtx,
         synq_span(pCtx, B),
         SYNTAQLITE_NULL_NODE,
         C,
@@ -65,7 +68,7 @@ window(A) ::= nm(B) ORDER BY sortlist(C) frame_opt(D). {
 }
 
 window(A) ::= frame_opt(B). {
-    A = synq_ast_window_def(pCtx->astCtx,
+    A = synq_parse_window_def(pCtx,
         SYNQ_NO_SPAN,
         SYNTAQLITE_NULL_NODE,
         SYNTAQLITE_NULL_NODE,
@@ -73,7 +76,7 @@ window(A) ::= frame_opt(B). {
 }
 
 window(A) ::= nm(B) frame_opt(C). {
-    A = synq_ast_window_def(pCtx->astCtx,
+    A = synq_parse_window_def(pCtx,
         synq_span(pCtx, B),
         SYNTAQLITE_NULL_NODE,
         SYNTAQLITE_NULL_NODE,
@@ -88,10 +91,10 @@ frame_opt(A) ::= . {
 
 frame_opt(A) ::= range_or_rows(B) frame_bound_s(C) frame_exclude_opt(D). {
     // Single bound: start=C, end=CURRENT ROW (implicit)
-    uint32_t end_bound = synq_ast_frame_bound(pCtx->astCtx,
+    uint32_t end_bound = synq_parse_frame_bound(pCtx,
         SYNTAQLITE_FRAME_BOUND_TYPE_CURRENT_ROW,
         SYNTAQLITE_NULL_NODE);
-    A = synq_ast_frame_spec(pCtx->astCtx,
+    A = synq_parse_frame_spec(pCtx,
         (SyntaqliteFrameType)B,
         (SyntaqliteFrameExclude)D,
         C,
@@ -99,7 +102,7 @@ frame_opt(A) ::= range_or_rows(B) frame_bound_s(C) frame_exclude_opt(D). {
 }
 
 frame_opt(A) ::= range_or_rows(B) BETWEEN frame_bound_s(C) AND frame_bound_e(D) frame_exclude_opt(E). {
-    A = synq_ast_frame_spec(pCtx->astCtx,
+    A = synq_parse_frame_spec(pCtx,
         (SyntaqliteFrameType)B,
         (SyntaqliteFrameExclude)E,
         C,
@@ -110,8 +113,8 @@ frame_opt(A) ::= range_or_rows(B) BETWEEN frame_bound_s(C) AND frame_bound_e(D) 
 
 range_or_rows(A) ::= RANGE|ROWS|GROUPS(B). {
     switch (B.type) {
-        case SYNTAQLITE_TOKEN_RANGE:  A = SYNTAQLITE_FRAME_TYPE_RANGE; break;
-        case SYNTAQLITE_TOKEN_ROWS:   A = SYNTAQLITE_FRAME_TYPE_ROWS; break;
+        case SYNTAQLITE_TK_RANGE:  A = SYNTAQLITE_FRAME_TYPE_RANGE; break;
+        case SYNTAQLITE_TK_ROWS:   A = SYNTAQLITE_FRAME_TYPE_ROWS; break;
         default:        A = SYNTAQLITE_FRAME_TYPE_GROUPS; break;
     }
 }
@@ -123,7 +126,7 @@ frame_bound_s(A) ::= frame_bound(B). {
 }
 
 frame_bound_s(A) ::= UNBOUNDED PRECEDING. {
-    A = synq_ast_frame_bound(pCtx->astCtx,
+    A = synq_parse_frame_bound(pCtx,
         SYNTAQLITE_FRAME_BOUND_TYPE_UNBOUNDED_PRECEDING,
         SYNTAQLITE_NULL_NODE);
 }
@@ -133,20 +136,20 @@ frame_bound_e(A) ::= frame_bound(B). {
 }
 
 frame_bound_e(A) ::= UNBOUNDED FOLLOWING. {
-    A = synq_ast_frame_bound(pCtx->astCtx,
+    A = synq_parse_frame_bound(pCtx,
         SYNTAQLITE_FRAME_BOUND_TYPE_UNBOUNDED_FOLLOWING,
         SYNTAQLITE_NULL_NODE);
 }
 
 frame_bound(A) ::= expr(B) PRECEDING|FOLLOWING(C). {
-    SyntaqliteFrameBoundType bt = (C.type == SYNTAQLITE_TOKEN_PRECEDING)
+    SyntaqliteFrameBoundType bt = (C.type == SYNTAQLITE_TK_PRECEDING)
         ? SYNTAQLITE_FRAME_BOUND_TYPE_EXPR_PRECEDING
         : SYNTAQLITE_FRAME_BOUND_TYPE_EXPR_FOLLOWING;
-    A = synq_ast_frame_bound(pCtx->astCtx, bt, B);
+    A = synq_parse_frame_bound(pCtx, bt, B);
 }
 
 frame_bound(A) ::= CURRENT ROW. {
-    A = synq_ast_frame_bound(pCtx->astCtx,
+    A = synq_parse_frame_bound(pCtx,
         SYNTAQLITE_FRAME_BOUND_TYPE_CURRENT_ROW,
         SYNTAQLITE_NULL_NODE);
 }
@@ -170,7 +173,7 @@ frame_exclude(A) ::= CURRENT ROW. {
 }
 
 frame_exclude(A) ::= GROUP|TIES(B). {
-    A = (B.type == SYNTAQLITE_TOKEN_GROUP)
+    A = (B.type == SYNTAQLITE_TK_GROUP)
         ? SYNTAQLITE_FRAME_EXCLUDE_GROUP
         : SYNTAQLITE_FRAME_EXCLUDE_TIES;
 }
@@ -185,8 +188,8 @@ window_clause(A) ::= WINDOW windowdefn_list(B). {
 
 filter_over(A) ::= filter_clause(B) over_clause(C). {
     // Unpack the over_clause FilterOver to combine with filter expr
-    SyntaqliteFilterOver *fo_over = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->astCtx->ast, C);
-    A = synq_ast_filter_over(pCtx->astCtx,
+    SyntaqliteFilterOver *fo_over = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->ast, C);
+    A = synq_parse_filter_over(pCtx,
         B,
         fo_over->over_def,
         SYNQ_NO_SPAN);
@@ -197,7 +200,7 @@ filter_over(A) ::= over_clause(B). {
 }
 
 filter_over(A) ::= filter_clause(B). {
-    A = synq_ast_filter_over(pCtx->astCtx,
+    A = synq_parse_filter_over(pCtx,
         B,
         SYNTAQLITE_NULL_NODE,
         SYNQ_NO_SPAN);
@@ -206,7 +209,7 @@ filter_over(A) ::= filter_clause(B). {
 // ============ Over Clause ============
 
 over_clause(A) ::= OVER LP window(B) RP. {
-    A = synq_ast_filter_over(pCtx->astCtx,
+    A = synq_parse_filter_over(pCtx,
         SYNTAQLITE_NULL_NODE,
         B,
         SYNQ_NO_SPAN);
@@ -214,12 +217,12 @@ over_clause(A) ::= OVER LP window(B) RP. {
 
 over_clause(A) ::= OVER nm(B). {
     // Create a WindowDef with just base_window_name to represent a named window ref
-    uint32_t wdef = synq_ast_window_def(pCtx->astCtx,
+    uint32_t wdef = synq_parse_window_def(pCtx,
         synq_span(pCtx, B),
         SYNTAQLITE_NULL_NODE,
         SYNTAQLITE_NULL_NODE,
         SYNTAQLITE_NULL_NODE);
-    A = synq_ast_filter_over(pCtx->astCtx,
+    A = synq_parse_filter_over(pCtx,
         SYNTAQLITE_NULL_NODE,
         wdef,
         SYNQ_NO_SPAN);

@@ -6,22 +6,23 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
 
+%type raisetype {int}
+
 // ============ RAISE Expressions ============
 
 // RAISE(IGNORE) - no error message
 expr(A) ::= RAISE LP IGNORE RP. {
-    A = synq_ast_raise_expr(pCtx->astCtx, SYNTAQLITE_RAISE_TYPE_IGNORE, SYNTAQLITE_NULL_NODE);
+    A = synq_parse_raise_expr(pCtx, SYNTAQLITE_RAISE_TYPE_IGNORE, SYNTAQLITE_NULL_NODE);
 }
 
 // RAISE(type, error_message)
 expr(A) ::= RAISE LP raisetype(T) COMMA expr(Z) RP. {
-    A = synq_ast_raise_expr(pCtx->astCtx, (SyntaqliteRaiseType)T, Z);
+    A = synq_parse_raise_expr(pCtx, (SyntaqliteRaiseType)T, Z);
 }
 
 // ============ Raise Type ============

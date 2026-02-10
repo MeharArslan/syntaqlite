@@ -27,6 +27,9 @@ typedef struct SynqArena {
 void synq_arena_init(SynqArena* a);
 void synq_arena_free(SynqArena* a, SyntaqliteMemMethods mem);
 
+// Reset counts to zero, keeping allocated memory for reuse.
+void synq_arena_clear(SynqArena* a);
+
 // Copy data into the arena and register in the offset table.
 // Returns the node ID.
 uint32_t synq_arena_alloc(SynqArena* a, const void* data, uint32_t size,

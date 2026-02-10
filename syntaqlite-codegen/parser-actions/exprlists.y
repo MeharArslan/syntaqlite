@@ -6,7 +6,6 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
@@ -23,16 +22,16 @@ exprlist(A) ::= . {
 }
 
 nexprlist(A) ::= nexprlist(B) COMMA expr(C). {
-    A = synq_ast_expr_list_append(pCtx->astCtx, B, C);
+    A = synq_parse_expr_list(pCtx, B, C);
 }
 
 nexprlist(A) ::= expr(B). {
-    A = synq_ast_expr_list(pCtx->astCtx, B);
+    A = synq_parse_expr_list(pCtx, SYNTAQLITE_NULL_NODE, B);
 }
 
 // ============ Row Value Tuple ============
 // (1, 2, 3) => ExprList with 3 elements
 
 expr(A) ::= LP nexprlist(X) COMMA expr(Y) RP. {
-    A = synq_ast_expr_list_append(pCtx->astCtx, X, Y);
+    A = synq_parse_expr_list(pCtx, X, Y);
 }

@@ -6,22 +6,28 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
 
+%type columnname {SynqColumnNameValue}
+%type ifexists {int}
+%type transtype {int}
+%type trans_opt {int}
+%type savepoint_opt {int}
+%type kwcolumn_opt {int}
+
 // ============ Qualified name (fullname) ============
 
 fullname(A) ::= nm(X). {
-    A = synq_ast_qualified_name(pCtx->astCtx,
+    A = synq_parse_qualified_name(pCtx,
         synq_span(pCtx, X),
         SYNQ_NO_SPAN);
 }
 
 fullname(A) ::= nm(X) DOT nm(Y). {
-    A = synq_ast_qualified_name(pCtx->astCtx,
+    A = synq_parse_qualified_name(pCtx,
         synq_span(pCtx, Y),
         synq_span(pCtx, X));
 }
@@ -39,46 +45,46 @@ ifexists(A) ::= . {
 // ============ DROP statements ============
 
 cmd(A) ::= DROP TABLE ifexists(E) fullname(X). {
-    A = synq_ast_drop_stmt(pCtx->astCtx, SYNTAQLITE_DROP_OBJECT_TYPE_TABLE, (SyntaqliteBool)E, X);
+    A = synq_parse_drop_stmt(pCtx, SYNTAQLITE_DROP_OBJECT_TYPE_TABLE, (SyntaqliteBool)E, X);
 }
 
 cmd(A) ::= DROP VIEW ifexists(E) fullname(X). {
-    A = synq_ast_drop_stmt(pCtx->astCtx, SYNTAQLITE_DROP_OBJECT_TYPE_VIEW, (SyntaqliteBool)E, X);
+    A = synq_parse_drop_stmt(pCtx, SYNTAQLITE_DROP_OBJECT_TYPE_VIEW, (SyntaqliteBool)E, X);
 }
 
 cmd(A) ::= DROP INDEX ifexists(E) fullname(X). {
-    A = synq_ast_drop_stmt(pCtx->astCtx, SYNTAQLITE_DROP_OBJECT_TYPE_INDEX, (SyntaqliteBool)E, X);
+    A = synq_parse_drop_stmt(pCtx, SYNTAQLITE_DROP_OBJECT_TYPE_INDEX, (SyntaqliteBool)E, X);
 }
 
 cmd(A) ::= DROP TRIGGER ifexists(NOERR) fullname(X). {
-    A = synq_ast_drop_stmt(pCtx->astCtx, SYNTAQLITE_DROP_OBJECT_TYPE_TRIGGER, (SyntaqliteBool)NOERR, X);
+    A = synq_parse_drop_stmt(pCtx, SYNTAQLITE_DROP_OBJECT_TYPE_TRIGGER, (SyntaqliteBool)NOERR, X);
 }
 
 // ============ ALTER TABLE ============
 
 cmd(A) ::= ALTER TABLE fullname(X) RENAME TO nm(Z). {
-    A = synq_ast_alter_table_stmt(pCtx->astCtx,
+    A = synq_parse_alter_table_stmt(pCtx,
         SYNTAQLITE_ALTER_OP_RENAME_TABLE, X,
         synq_span(pCtx, Z),
         SYNQ_NO_SPAN);
 }
 
 cmd(A) ::= ALTER TABLE fullname(X) RENAME kwcolumn_opt nm(Y) TO nm(Z). {
-    A = synq_ast_alter_table_stmt(pCtx->astCtx,
+    A = synq_parse_alter_table_stmt(pCtx,
         SYNTAQLITE_ALTER_OP_RENAME_COLUMN, X,
         synq_span(pCtx, Z),
         synq_span(pCtx, Y));
 }
 
 cmd(A) ::= ALTER TABLE fullname(X) DROP kwcolumn_opt nm(Y). {
-    A = synq_ast_alter_table_stmt(pCtx->astCtx,
+    A = synq_parse_alter_table_stmt(pCtx,
         SYNTAQLITE_ALTER_OP_DROP_COLUMN, X,
         SYNQ_NO_SPAN,
         synq_span(pCtx, Y));
 }
 
 cmd(A) ::= ALTER TABLE add_column_fullname ADD kwcolumn_opt columnname(Y) carglist. {
-    A = synq_ast_alter_table_stmt(pCtx->astCtx,
+    A = synq_parse_alter_table_stmt(pCtx,
         SYNTAQLITE_ALTER_OP_ADD_COLUMN, SYNTAQLITE_NULL_NODE,
         SYNQ_NO_SPAN,
         Y.name);
@@ -107,19 +113,19 @@ columnname(A) ::= nm(X) typetoken(Y). {
 // ============ Transaction control ============
 
 cmd(A) ::= BEGIN transtype(Y) trans_opt. {
-    A = synq_ast_transaction_stmt(pCtx->astCtx,
+    A = synq_parse_transaction_stmt(pCtx,
         SYNTAQLITE_TRANSACTION_OP_BEGIN,
         (SyntaqliteTransactionType)Y);
 }
 
 cmd(A) ::= COMMIT|END trans_opt. {
-    A = synq_ast_transaction_stmt(pCtx->astCtx,
+    A = synq_parse_transaction_stmt(pCtx,
         SYNTAQLITE_TRANSACTION_OP_COMMIT,
         SYNTAQLITE_TRANSACTION_TYPE_DEFERRED);
 }
 
 cmd(A) ::= ROLLBACK trans_opt. {
-    A = synq_ast_transaction_stmt(pCtx->astCtx,
+    A = synq_parse_transaction_stmt(pCtx,
         SYNTAQLITE_TRANSACTION_OP_ROLLBACK,
         SYNTAQLITE_TRANSACTION_TYPE_DEFERRED);
 }
@@ -167,19 +173,19 @@ savepoint_opt(A) ::= . {
 }
 
 cmd(A) ::= SAVEPOINT nm(X). {
-    A = synq_ast_savepoint_stmt(pCtx->astCtx,
+    A = synq_parse_savepoint_stmt(pCtx,
         SYNTAQLITE_SAVEPOINT_OP_SAVEPOINT,
         synq_span(pCtx, X));
 }
 
 cmd(A) ::= RELEASE savepoint_opt nm(X). {
-    A = synq_ast_savepoint_stmt(pCtx->astCtx,
+    A = synq_parse_savepoint_stmt(pCtx,
         SYNTAQLITE_SAVEPOINT_OP_RELEASE,
         synq_span(pCtx, X));
 }
 
 cmd(A) ::= ROLLBACK trans_opt TO savepoint_opt nm(X). {
-    A = synq_ast_savepoint_stmt(pCtx->astCtx,
+    A = synq_parse_savepoint_stmt(pCtx,
         SYNTAQLITE_SAVEPOINT_OP_ROLLBACK_TO,
         synq_span(pCtx, X));
 }

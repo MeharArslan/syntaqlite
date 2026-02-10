@@ -308,16 +308,17 @@ pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
         .collect::<Vec<_>>()
         .join("\n");
 
-    // Wrap reduce actions in a function
+    // Wrap reduce actions in a function.
+    // Uses SyntaqliteParse-prefixed macros (from %name SyntaqliteParse).
     let reduce_actions_fn = [
         "static void yy_reduce_actions(",
         "  yyParser *yypParser,",
         "  unsigned int yyruleno,",
         "  yyStackEntry *yymsp,",
         "  int yyLookahead,",
-        "  ParseTOKENTYPE yyLookaheadToken",
+        "  SyntaqliteParseTOKENTYPE yyLookaheadToken",
         "){",
-        "  ParseARG_FETCH",
+        "  SyntaqliteParseARG_FETCH",
         "  (void)yyLookahead;",
         "  (void)yyLookaheadToken;",
         "  switch( yyruleno ){",
@@ -331,6 +332,8 @@ pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
     let mut w = c_writer::CWriter::new();
     w.file_header();
     w.include_local("csrc/ast_builder.h");
+    w.include_local("csrc/parser.h");
+    w.include_local("syntaqlite/tokens.h");
     w.newline();
     for section in [
         &control_defines,

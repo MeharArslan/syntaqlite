@@ -6,17 +6,20 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
 
+%type on_using {SynqOnUsingValue}
+%type joinop {int}
+%type indexed_by {SynqToken}
+
 // ============ FROM clause table sources ============
 
 // stl_prefix carries the accumulated seltablist plus pending join type
 stl_prefix(A) ::= seltablist(A) joinop(Y). {
-    A = synq_ast_join_prefix(pCtx->astCtx, A, (SyntaqliteJoinType)Y);
+    A = synq_parse_join_prefix(pCtx, A, (SyntaqliteJoinType)Y);
 }
 
 stl_prefix(A) ::= . {
@@ -35,12 +38,12 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) as(Z) on_using(N). {
         table_name = synq_span(pCtx, Y);
         schema = SYNQ_NO_SPAN;
     }
-    uint32_t tref = synq_ast_table_ref(pCtx->astCtx, table_name, schema, alias);
+    uint32_t tref = synq_parse_table_ref(pCtx, table_name, schema, alias);
     if (A == SYNTAQLITE_NULL_NODE) {
         A = tref;
     } else {
-        SyntaqliteNode *pfx = AST_NODE(&pCtx->astCtx->ast, A);
-        A = synq_ast_join_clause(pCtx->astCtx,
+        SyntaqliteNode *pfx = AST_NODE(&pCtx->ast, A);
+        A = synq_parse_join_clause(pCtx,
             pfx->join_prefix.join_type,
             pfx->join_prefix.source,
             tref, N.on_expr, N.using_cols);
@@ -60,12 +63,12 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) as(Z) indexed_by(I) on_using(N). {
         table_name = synq_span(pCtx, Y);
         schema = SYNQ_NO_SPAN;
     }
-    uint32_t tref = synq_ast_table_ref(pCtx->astCtx, table_name, schema, alias);
+    uint32_t tref = synq_parse_table_ref(pCtx, table_name, schema, alias);
     if (A == SYNTAQLITE_NULL_NODE) {
         A = tref;
     } else {
-        SyntaqliteNode *pfx = AST_NODE(&pCtx->astCtx->ast, A);
-        A = synq_ast_join_clause(pCtx->astCtx,
+        SyntaqliteNode *pfx = AST_NODE(&pCtx->ast, A);
+        A = synq_parse_join_clause(pCtx,
             pfx->join_prefix.join_type,
             pfx->join_prefix.source,
             tref, N.on_expr, N.using_cols);
@@ -85,12 +88,12 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) LP exprlist(E) RP as(Z) on_using(N
         table_name = synq_span(pCtx, Y);
         schema = SYNQ_NO_SPAN;
     }
-    uint32_t tref = synq_ast_table_ref(pCtx->astCtx, table_name, schema, alias);
+    uint32_t tref = synq_parse_table_ref(pCtx, table_name, schema, alias);
     if (A == SYNTAQLITE_NULL_NODE) {
         A = tref;
     } else {
-        SyntaqliteNode *pfx = AST_NODE(&pCtx->astCtx->ast, A);
-        A = synq_ast_join_clause(pCtx->astCtx,
+        SyntaqliteNode *pfx = AST_NODE(&pCtx->ast, A);
+        A = synq_parse_join_clause(pCtx,
             pfx->join_prefix.join_type,
             pfx->join_prefix.source,
             tref, N.on_expr, N.using_cols);
@@ -100,12 +103,12 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) LP exprlist(E) RP as(Z) on_using(N
 // Subquery table source: FROM (SELECT ...) AS t
 seltablist(A) ::= stl_prefix(A) LP select(S) RP as(Z) on_using(N). {
     SyntaqliteSourceSpan alias = (Z.z != NULL) ? synq_span(pCtx, Z) : SYNQ_NO_SPAN;
-    uint32_t sub = synq_ast_subquery_table_source(pCtx->astCtx, S, alias);
+    uint32_t sub = synq_parse_subquery_table_source(pCtx, S, alias);
     if (A == SYNTAQLITE_NULL_NODE) {
         A = sub;
     } else {
-        SyntaqliteNode *pfx = AST_NODE(&pCtx->astCtx->ast, A);
-        A = synq_ast_join_clause(pCtx->astCtx,
+        SyntaqliteNode *pfx = AST_NODE(&pCtx->ast, A);
+        A = synq_parse_join_clause(pCtx,
             pfx->join_prefix.join_type,
             pfx->join_prefix.source,
             sub, N.on_expr, N.using_cols);
@@ -118,8 +121,8 @@ seltablist(A) ::= stl_prefix(A) LP seltablist(F) RP as(Z) on_using(N). {
     if (A == SYNTAQLITE_NULL_NODE) {
         A = F;
     } else {
-        SyntaqliteNode *pfx = AST_NODE(&pCtx->astCtx->ast, A);
-        A = synq_ast_join_clause(pCtx->astCtx,
+        SyntaqliteNode *pfx = AST_NODE(&pCtx->ast, A);
+        A = synq_parse_join_clause(pCtx,
             pfx->join_prefix.join_type,
             pfx->join_prefix.source,
             F, N.on_expr, N.using_cols);
@@ -129,7 +132,7 @@ seltablist(A) ::= stl_prefix(A) LP seltablist(F) RP as(Z) on_using(N). {
 // ============ Join operators ============
 
 joinop(X) ::= COMMA|JOIN(OP). {
-    X = (OP.type == SYNTAQLITE_TOKEN_COMMA)
+    X = (OP.type == SYNTAQLITE_TK_COMMA)
         ? (int)SYNTAQLITE_JOIN_TYPE_COMMA
         : (int)SYNTAQLITE_JOIN_TYPE_INNER;
 }
@@ -238,13 +241,13 @@ indexed_by(A) ::= NOT INDEXED. {
 // ============ ID list (for USING clause) ============
 
 idlist(A) ::= idlist(A) COMMA nm(Y). {
-    uint32_t col = synq_ast_column_ref(pCtx->astCtx,
+    uint32_t col = synq_parse_column_ref(pCtx,
         synq_span(pCtx, Y), SYNQ_NO_SPAN, SYNQ_NO_SPAN);
-    A = synq_ast_expr_list_append(pCtx->astCtx, A, col);
+    A = synq_parse_expr_list(pCtx, A, col);
 }
 
 idlist(A) ::= nm(Y). {
-    uint32_t col = synq_ast_column_ref(pCtx->astCtx,
+    uint32_t col = synq_parse_column_ref(pCtx,
         synq_span(pCtx, Y), SYNQ_NO_SPAN, SYNQ_NO_SPAN);
-    A = synq_ast_expr_list(pCtx->astCtx, col);
+    A = synq_parse_expr_list(pCtx, SYNTAQLITE_NULL_NODE, col);
 }

@@ -16,6 +16,11 @@ void synq_arena_free(SynqArena* a, SyntaqliteMemMethods mem) {
   synq_vec_free(&a->offsets, mem);
 }
 
+void synq_arena_clear(SynqArena* a) {
+  synq_vec_clear(&a->data);
+  synq_vec_clear(&a->offsets);
+}
+
 uint32_t synq_arena_alloc(SynqArena* a, const void* data, uint32_t size,
                           SyntaqliteMemMethods mem) {
   uint32_t node_id = synq_vec_len(&a->offsets);

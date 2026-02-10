@@ -6,7 +6,6 @@
 //
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
-// - pCtx->astCtx: AST context for builder calls
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
 // - Terminals are SynqToken with .z (pointer) and .n (length)
@@ -15,13 +14,13 @@
 // ============ Sort List (ORDER BY) ============
 
 sortlist(A) ::= sortlist(B) COMMA expr(C) sortorder(D) nulls(E). {
-    uint32_t term = synq_ast_ordering_term(pCtx->astCtx, C, (SyntaqliteSortOrder)D, (SyntaqliteNullsOrder)E);
-    A = synq_ast_order_by_list_append(pCtx->astCtx, B, term);
+    uint32_t term = synq_parse_ordering_term(pCtx, C, (SyntaqliteSortOrder)D, (SyntaqliteNullsOrder)E);
+    A = synq_parse_order_by_list(pCtx, B, term);
 }
 
 sortlist(A) ::= expr(B) sortorder(C) nulls(D). {
-    uint32_t term = synq_ast_ordering_term(pCtx->astCtx, B, (SyntaqliteSortOrder)C, (SyntaqliteNullsOrder)D);
-    A = synq_ast_order_by_list(pCtx->astCtx, term);
+    uint32_t term = synq_parse_ordering_term(pCtx, B, (SyntaqliteSortOrder)C, (SyntaqliteNullsOrder)D);
+    A = synq_parse_order_by_list(pCtx, SYNTAQLITE_NULL_NODE, term);
 }
 
 // ============ Sort Order ============
