@@ -273,6 +273,10 @@ name = "syntaqlite-codegen-utils"
 version = "0.1.0"
 
 [[package]]
+name = "syntaqlite-fmt"
+version = "0.1.0"
+
+[[package]]
 name = "syntaqlite-parser"
 version = "0.1.0"
 dependencies = [
