@@ -1,5 +1,37 @@
 use crate::nodes::SourceSpan;
 
+/// Extracted fields of a node, returned by value from `Node::fields()`.
+#[derive(Debug)]
+pub struct Fields<'a> {
+    buf: [FieldVal<'a>; 16],
+    len: usize,
+}
+
+impl<'a> Fields<'a> {
+    pub(crate) fn new() -> Self {
+        Self {
+            buf: [FieldVal::NodeId(0); 16],
+            len: 0,
+        }
+    }
+
+    pub(crate) fn push(&mut self, val: FieldVal<'a>) {
+        self.buf[self.len] = val;
+        self.len += 1;
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+}
+
+impl<'a> std::ops::Deref for Fields<'a> {
+    type Target = [FieldVal<'a>];
+    fn deref(&self) -> &[FieldVal<'a>] {
+        &self.buf[..self.len]
+    }
+}
+
 /// A typed field value extracted from a node struct by generated code.
 #[derive(Clone, Copy, Debug)]
 pub enum FieldVal<'a> {
@@ -21,8 +53,8 @@ pub(crate) enum FieldKind {
     NodeId,
     Span,
     Bool,
-    Flags,
-    Enum,
+    Flags(fn(u8) -> String),
+    Enum(fn(u32) -> Option<&'static str>),
 }
 
 /// Metadata for one field of a node struct: its byte offset and value kind.
@@ -30,6 +62,7 @@ pub(crate) enum FieldKind {
 pub(crate) struct FieldDescriptor {
     pub offset: u16,
     pub kind: FieldKind,
+    pub name: &'static str,
 }
 
 impl FieldDescriptor {
@@ -53,8 +86,8 @@ impl FieldDescriptor {
                     }
                 }
                 FieldKind::Bool => FieldVal::Bool(*(field_ptr as *const u32) != 0),
-                FieldKind::Flags => FieldVal::Flags(*(field_ptr as *const u8)),
-                FieldKind::Enum => FieldVal::Enum(*(field_ptr as *const u32)),
+                FieldKind::Flags(_) => FieldVal::Flags(*(field_ptr as *const u8)),
+                FieldKind::Enum(_) => FieldVal::Enum(*(field_ptr as *const u32)),
             }
         }
     }

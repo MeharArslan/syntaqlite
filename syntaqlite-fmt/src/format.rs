@@ -1,4 +1,4 @@
-use syntaqlite_parser::{FieldVal, Session, MAX_FIELDS, NULL_NODE};
+use syntaqlite_parser::{FieldVal, Session, NULL_NODE};
 
 use crate::doc::{DocArena, DocId};
 use crate::interpret::{interpret, FmtCtx, InterpretTrivia};
@@ -66,8 +66,7 @@ fn format_node_inner<'a>(
         None
     };
 
-    let mut buf = [FieldVal::NodeId(0); MAX_FIELDS];
-    let fields = node.fields(source, &mut buf);
+    let fields = node.fields(source);
 
     let trivia = trivia_ctx.map(|tc| InterpretTrivia {
         ctx: tc,
@@ -78,7 +77,7 @@ fn format_node_inner<'a>(
     interpret(
         entry.ops,
         ctx,
-        fields,
+        &fields,
         children,
         arena,
         &format_child,
@@ -111,11 +110,10 @@ pub fn first_source_offset(
 
     // Check span fields directly.
     let source = session.source();
-    let mut buf = [FieldVal::NodeId(0); MAX_FIELDS];
-    let fields = node.fields(source, &mut buf);
+    let fields = node.fields(source);
 
     let mut min: Option<u32> = None;
-    for field in fields {
+    for field in fields.iter() {
         if let FieldVal::Span(s, offset) = field {
             if !s.is_empty() {
                 min = Some(match min {
@@ -130,7 +128,7 @@ pub fn first_source_offset(
     }
 
     // No spans found — check child NodeId fields recursively.
-    for field in fields {
+    for field in fields.iter() {
         if let FieldVal::NodeId(child_id) = field {
             if let Some(off) = first_source_offset(dispatch, session, *child_id) {
                 return Some(off);

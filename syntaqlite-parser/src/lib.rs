@@ -6,7 +6,7 @@ pub mod nodes;
 mod parser;
 mod tokenizer;
 
-pub use fields::FieldVal;
+pub use fields::{FieldVal, Fields};
 pub use generated::nodes::*;
 pub use generated::tokens::TokenType;
 pub use nodes::{NodeList, SourceSpan, NULL_NODE};
