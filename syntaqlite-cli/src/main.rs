@@ -8,8 +8,7 @@ use syntaqlite_fmt::{
     first_source_offset, format_node, format_node_with_trivia, render, DocArena, FormatConfig,
     KeywordCase, TriviaCtx,
 };
-use syntaqlite_parser::dump;
-use syntaqlite_parser::TriviaKind;
+use syntaqlite_parser::{dump_node, TriviaKind};
 
 #[derive(Parser)]
 #[command(name = "syntaqlite", about = "Tools for SQLite SQL")]
@@ -233,7 +232,7 @@ fn cmd_ast_source(source: &str) -> Result<(), String> {
         if count > 0 {
             buf.push_str("----\n");
         }
-        dump::dump_node(&session, root_id, &mut buf, 0);
+        dump_node(&session, root_id, &mut buf, 0);
         count += 1;
     }
 
