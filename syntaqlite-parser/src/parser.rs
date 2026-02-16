@@ -132,16 +132,18 @@ impl Parser {
         // SAFETY: source_buf is null-terminated and lives as long as
         // the Parser. The Session borrows &mut self, preventing
         // mutation until it is dropped.
+        let c_source_ptr = self.source_buf.as_ptr();
         unsafe {
             ffi::syntaqlite_parser_reset(
                 self.raw,
-                self.source_buf.as_ptr() as *const _,
+                c_source_ptr as *const _,
                 source.len() as u32,
             );
         }
         Session {
             parser: self,
             source,
+            c_source_ptr,
         }
     }
 
@@ -166,6 +168,7 @@ impl Parser {
         Session {
             parser: self,
             source: source_str,
+            c_source_ptr: source.as_ptr() as *const u8,
         }
     }
 }
@@ -189,6 +192,12 @@ impl Default for Parser {
 pub struct Session<'a> {
     parser: &'a mut Parser,
     source: &'a str,
+    /// The pointer that the C parser uses as its source base. This may differ
+    /// from `source.as_ptr()` when `parse()` copies into an internal buffer.
+    /// `feed_token` translates user text pointers through this so that the C
+    /// code's `tok.z - ctx->source` offset arithmetic is correct regardless
+    /// of whether the copying or zero-copy path was used.
+    c_source_ptr: *const u8,
 }
 
 impl<'a> Session<'a> {
@@ -264,11 +273,20 @@ impl<'a> Session<'a> {
         token_type: u32,
         text: &str,
     ) -> Result<Option<u32>, ParseError> {
+        // Translate the text pointer so it's relative to the C parser's source
+        // buffer. When parse() copies the source into an internal buffer, the
+        // user's text slice points into the original string while the C parser
+        // expects pointers into the copy. Computing the byte offset within
+        // self.source and adding it to c_source_ptr makes the C-side
+        // `tok.z - ctx->source` arithmetic correct in both the copying
+        // (parse) and zero-copy (parse_cstr) paths.
+        let offset = text.as_ptr() as usize - self.source.as_ptr() as usize;
+        let c_text = unsafe { self.c_source_ptr.add(offset) };
         let rc = unsafe {
             ffi::syntaqlite_parser_feed_token(
                 self.parser.raw,
                 token_type as c_int,
-                text.as_ptr() as *const _,
+                c_text as *const _,
                 text.len() as c_int,
             )
         };

@@ -9,7 +9,7 @@ pub mod trivia;
 
 pub use config::{FormatConfig, KeywordCase};
 pub use doc::{DocArena, DocId, NIL_DOC};
-pub use format::{first_source_offset, format_node, format_node_with_trivia};
+pub use format::{first_source_offset, format_node, format_node_with_trivia, last_source_offset};
 pub use interpret::FmtCtx;
 pub use ops::NodeFmt;
 pub use syntaqlite_parser::FieldVal;
