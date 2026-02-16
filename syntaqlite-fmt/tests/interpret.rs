@@ -1,13 +1,13 @@
 use syntaqlite_fmt::interpret::interpret;
 use syntaqlite_fmt::ops::FmtOp;
-use syntaqlite_parser::FieldVal;
+use syntaqlite_parser::{FieldVal, NodeId};
 use syntaqlite_fmt::{render, DocArena, FmtCtx, FormatConfig, NIL_DOC};
 
-fn noop_child(_: u32, _: &mut DocArena) -> u32 {
+fn noop_child(_: NodeId, _: &mut DocArena) -> u32 {
     NIL_DOC
 }
 
-fn no_lists(_: u32) -> Vec<u32> {
+fn no_lists(_: NodeId) -> Vec<NodeId> {
     panic!("resolve_list not expected")
 }
 
@@ -28,7 +28,7 @@ fn run_default(ops: &[FmtOp], ctx: &FmtCtx, fields: &[FieldVal]) -> String {
     run(ops, ctx, fields, &FormatConfig::default())
 }
 
-const NULL: u32 = 0xFFFF_FFFF;
+const NULL: NodeId = NodeId::NULL;
 
 // -- Basic ops --
 
@@ -90,14 +90,14 @@ fn span_reads_source_text() {
 
 #[test]
 fn child_recurses_into_child_node() {
-    let fields = &[FieldVal::NodeId(42)];
+    let fields = &[FieldVal::NodeId(NodeId(42))];
     let ops = &[FmtOp::Child(0)];
     let ctx = ctx(&[]);
     let mut arena = DocArena::new();
     let doc = interpret(
         ops, &ctx, fields, None, &mut arena,
-        &|node_id, arena| {
-            assert_eq!(node_id, 42);
+        &|node_id: NodeId, arena: &mut DocArena| {
+            assert_eq!(node_id, NodeId(42));
             arena.text("child_result")
         },
         &no_lists,
@@ -118,7 +118,7 @@ fn child_skips_null_node() {
 
 #[test]
 fn ifset_executes_then_branch() {
-    let fields = &[FieldVal::NodeId(42)];
+    let fields = &[FieldVal::NodeId(NodeId(42))];
     let strings = &["YES", "NO"];
     let ops = &[
         FmtOp::IfSet(0, 2),
@@ -163,7 +163,7 @@ fn ifset_without_else() {
 
 #[test]
 fn foreach_comma_separated() {
-    let fields = &[FieldVal::NodeId(99)];
+    let fields = &[FieldVal::NodeId(NodeId(99))];
     let strings = &[", "];
     let ops = &[
         FmtOp::GroupStart,
@@ -177,15 +177,15 @@ fn foreach_comma_separated() {
     let mut arena = DocArena::new();
     let doc = interpret(
         ops, &ctx, fields, None, &mut arena,
-        &|id: u32, arena: &mut DocArena| match id {
+        &|id: NodeId, arena: &mut DocArena| match id.0 {
             10 => arena.text("a"),
             20 => arena.text("b"),
             30 => arena.text("c"),
-            _ => panic!("unexpected: {id}"),
+            _ => panic!("unexpected"),
         },
-        &|id| match id {
-            99 => vec![10, 20, 30],
-            _ => panic!("unexpected list: {id}"),
+        &|id: NodeId| match id.0 {
+            99 => vec![NodeId(10), NodeId(20), NodeId(30)],
+            _ => panic!("unexpected list"),
         },
         None,
     );
@@ -194,7 +194,7 @@ fn foreach_comma_separated() {
 
 #[test]
 fn foreach_with_line_breaks() {
-    let fields = &[FieldVal::NodeId(99)];
+    let fields = &[FieldVal::NodeId(NodeId(99))];
     let strings = &[","];
     let ops = &[
         FmtOp::GroupStart,
@@ -209,13 +209,13 @@ fn foreach_with_line_breaks() {
     let mut arena = DocArena::new();
     let doc = interpret(
         ops, &ctx, fields, None, &mut arena,
-        &|id: u32, arena: &mut DocArena| match id {
+        &|id: NodeId, arena: &mut DocArena| match id.0 {
             10 => arena.text("aaaa"),
             20 => arena.text("bbbb"),
             _ => panic!("unexpected"),
         },
-        &|id| match id {
-            99 => vec![10, 20],
+        &|id: NodeId| match id.0 {
+            99 => vec![NodeId(10), NodeId(20)],
             _ => panic!("unexpected"),
         },
         None,
@@ -227,7 +227,7 @@ fn foreach_with_line_breaks() {
 
 #[test]
 fn foreach_empty_list() {
-    let fields = &[FieldVal::NodeId(99)];
+    let fields = &[FieldVal::NodeId(NodeId(99))];
     let strings = &["a", ", ", "b"];
     let ops = &[
         FmtOp::Keyword(0),
@@ -242,7 +242,7 @@ fn foreach_empty_list() {
     let doc = interpret(
         ops, &ctx, fields, None, &mut arena,
         &noop_child,
-        &|id| match id {
+        &|id: NodeId| match id.0 {
             99 => vec![],
             _ => panic!("unexpected"),
         },
@@ -397,7 +397,7 @@ fn enum_display_with_nonzero_base() {
 
 #[test]
 fn foreach_self_start() {
-    let children = &[10u32, 20, 30];
+    let children = &[NodeId(10), NodeId(20), NodeId(30)];
     let strings = &[", "];
     let ops = &[
         FmtOp::ForEachSelfStart,
@@ -409,7 +409,7 @@ fn foreach_self_start() {
     let mut arena = DocArena::new();
     let doc = interpret(
         ops, &ctx, &[], Some(children), &mut arena,
-        &|id: u32, arena: &mut DocArena| match id {
+        &|id: NodeId, arena: &mut DocArena| match id.0 {
             10 => arena.text("x"),
             20 => arena.text("y"),
             30 => arena.text("z"),
@@ -423,7 +423,7 @@ fn foreach_self_start() {
 
 #[test]
 fn foreach_self_empty() {
-    let children: &[u32] = &[];
+    let children: &[NodeId] = &[];
     let strings = &["[", ", ", "]"];
     let ops = &[
         FmtOp::Keyword(0),

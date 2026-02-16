@@ -1,11 +1,9 @@
-use syntaqlite_parser::{FieldVal, Session};
+use syntaqlite_parser::{FieldVal, NodeId, Session};
 
 use crate::doc::{DocArena, DocId};
 use crate::format::first_source_offset;
 use crate::ops::{FmtOp, NodeFmt};
 use crate::trivia::{flush_trivia, TriviaCtx};
-
-const NULL_NODE: u32 = 0xFFFF_FFFF;
 
 /// Session-level context shared across all interpret calls during formatting.
 pub struct FmtCtx<'a> {
@@ -28,7 +26,7 @@ enum StackFrame {
 }
 
 struct ForEachState {
-    children: Vec<u32>,
+    children: Vec<NodeId>,
     index: usize,
     body_start: usize,
 }
@@ -44,10 +42,10 @@ pub fn interpret<'a>(
     ops: &[FmtOp],
     ctx: &FmtCtx<'a>,
     fields: &[FieldVal<'a>],
-    list_children: Option<&[u32]>,
+    list_children: Option<&[NodeId]>,
     arena: &mut DocArena<'a>,
-    format_child: &dyn Fn(u32, &mut DocArena<'a>) -> DocId,
-    resolve_list: &dyn Fn(u32) -> Vec<u32>,
+    format_child: &dyn Fn(NodeId, &mut DocArena<'a>) -> DocId,
+    resolve_list: &dyn Fn(NodeId) -> Vec<NodeId>,
     trivia: Option<&InterpretTrivia<'a>>,
 ) -> DocId {
     let mut parts: Vec<DocId> = Vec::new();
@@ -81,7 +79,7 @@ pub fn interpret<'a>(
                 let FieldVal::NodeId(child_id) = fields[idx as usize] else {
                     panic!("Child: field {} is not a NodeId", idx);
                 };
-                if child_id != NULL_NODE {
+                if !child_id.is_null() {
                     if let Some(it) = trivia {
                         if let Some(offset) = first_source_offset(it.dispatch, it.session, child_id) {
                             let drain = it.ctx.drain_before(offset, arena);
@@ -147,7 +145,7 @@ pub fn interpret<'a>(
                 let FieldVal::NodeId(id) = fields[idx as usize] else {
                     panic!("IfSet: field {} is not a NodeId", idx);
                 };
-                if id == NULL_NODE {
+                if id.is_null() {
                     ip += skip as usize;
                 } else if let Some(it) = trivia {
                     // Drain trivia before this clause's source range.
@@ -165,7 +163,7 @@ pub fn interpret<'a>(
                 let FieldVal::NodeId(list_id) = fields[idx as usize] else {
                     panic!("ForEachStart: field {} is not a NodeId", idx);
                 };
-                if list_id == NULL_NODE {
+                if list_id.is_null() {
                     ip = skip_to_foreach_end(ops, ip);
                 } else {
                     let children = resolve_list(list_id);

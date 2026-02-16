@@ -74,8 +74,8 @@ typedef struct SyntaqliteParseResult {
 // (begin_macro / end_macro). The formatter uses these to reconstruct macro
 // calls from the expanded AST.
 typedef struct SyntaqliteMacroRegion {
-  uint32_t call_offset;   // Byte offset of macro call in original source.
-  uint32_t call_length;   // Byte length of entire macro call.
+  uint32_t call_offset;    // Byte offset of macro call in original source.
+  uint32_t call_length;    // Byte length of entire macro call.
 } SyntaqliteMacroRegion;
 
 // Opaque handle to a dialect extension (extra keywords, grammar rules, AST
@@ -152,6 +152,7 @@ void syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable);
 // original layout. Required before passing the parser to the formatter.
 // Default: off (0).
 void syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable);
+
 
 // Set a dialect extension on this parser. The extension pointer must remain
 // valid for the lifetime of the parser. Pass NULL to remove a previously

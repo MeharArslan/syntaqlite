@@ -10,13 +10,13 @@ fn feed_tokens_select_1() {
 
     // Feed SELECT token.
     let r = session
-        .feed_token(TokenType::Select as u32, &source[0..6])
+        .feed_token(TokenType::Select, &source[0..6])
         .unwrap();
     assert!(r.is_none());
 
     // Feed integer literal token.
     let r = session
-        .feed_token(TokenType::Integer as u32, &source[7..8])
+        .feed_token(TokenType::Integer, &source[7..8])
         .unwrap();
     assert!(r.is_none());
 
@@ -35,15 +35,15 @@ fn feed_tokens_with_semicolon() {
     let mut session = parser.parse(source);
 
     session
-        .feed_token(TokenType::Select as u32, &source[0..6])
+        .feed_token(TokenType::Select, &source[0..6])
         .unwrap();
     session
-        .feed_token(TokenType::Integer as u32, &source[7..8])
+        .feed_token(TokenType::Integer, &source[7..8])
         .unwrap();
 
     // SEMI is shifted but the ecmd reduction hasn't fired yet (needs lookahead).
     let r = session
-        .feed_token(TokenType::Semi as u32, &source[8..9])
+        .feed_token(TokenType::Semi, &source[8..9])
         .unwrap();
     assert!(r.is_none());
 
@@ -62,26 +62,26 @@ fn feed_tokens_multi_statement() {
 
     // First statement: SELECT 1 ;
     session
-        .feed_token(TokenType::Select as u32, &source[0..6])
+        .feed_token(TokenType::Select, &source[0..6])
         .unwrap();
     session
-        .feed_token(TokenType::Integer as u32, &source[7..8])
+        .feed_token(TokenType::Integer, &source[7..8])
         .unwrap();
     let r = session
-        .feed_token(TokenType::Semi as u32, &source[8..9])
+        .feed_token(TokenType::Semi, &source[8..9])
         .unwrap();
     assert!(r.is_none()); // SEMI shifted, not reduced yet.
 
     // Second statement's first token provides the lookahead that completes stmt 1.
     let r = session
-        .feed_token(TokenType::Select as u32, &source[10..16])
+        .feed_token(TokenType::Select, &source[10..16])
         .unwrap();
     let root1 = r.expect("first statement should complete on next SELECT");
     assert_eq!(session.node(root1).unwrap().tag(), NodeTag::SelectStmt);
 
     // Continue second statement.
     session
-        .feed_token(TokenType::Integer as u32, &source[17..18])
+        .feed_token(TokenType::Integer, &source[17..18])
         .unwrap();
 
     let root2 = session.finish().unwrap().expect("second statement");
@@ -96,17 +96,17 @@ fn feed_token_skips_space() {
     let mut session = parser.parse(source);
 
     session
-        .feed_token(TokenType::Select as u32, &source[0..6])
+        .feed_token(TokenType::Select, &source[0..6])
         .unwrap();
 
     // Feed a space — should be silently skipped.
     let r = session
-        .feed_token(TokenType::Space as u32, &source[6..7])
+        .feed_token(TokenType::Space, &source[6..7])
         .unwrap();
     assert!(r.is_none());
 
     session
-        .feed_token(TokenType::Integer as u32, &source[7..8])
+        .feed_token(TokenType::Integer, &source[7..8])
         .unwrap();
 
     let root_id = session.finish().unwrap().expect("expected a statement");
@@ -124,16 +124,16 @@ fn feed_token_records_comment_trivia() {
     let mut session = parser.parse(source);
 
     session
-        .feed_token(TokenType::Select as u32, &source[0..6])
+        .feed_token(TokenType::Select, &source[0..6])
         .unwrap();
 
     // Feed a line comment — "-- hello" starts at offset 7.
     session
-        .feed_token(TokenType::Comment as u32, &source[7..15])
+        .feed_token(TokenType::Comment, &source[7..15])
         .unwrap();
 
     session
-        .feed_token(TokenType::Integer as u32, &source[16..17])
+        .feed_token(TokenType::Integer, &source[16..17])
         .unwrap();
 
     let root_id = session.finish().unwrap().expect("expected a statement");
@@ -156,10 +156,10 @@ fn macro_regions_recorded() {
     session.begin_macro(7, 13);
 
     session
-        .feed_token(TokenType::Select as u32, &source[0..6])
+        .feed_token(TokenType::Select, &source[0..6])
         .unwrap();
     session
-        .feed_token(TokenType::Integer as u32, &source[7..8])
+        .feed_token(TokenType::Integer, &source[7..8])
         .unwrap();
 
     session.end_macro();
@@ -183,10 +183,10 @@ fn nested_macro_regions() {
     session.begin_macro(10, 5);
 
     session
-        .feed_token(TokenType::Select as u32, &source[0..6])
+        .feed_token(TokenType::Select, &source[0..6])
         .unwrap();
     session
-        .feed_token(TokenType::Integer as u32, &source[7..8])
+        .feed_token(TokenType::Integer, &source[7..8])
         .unwrap();
 
     session.end_macro();
@@ -200,6 +200,95 @@ fn nested_macro_regions() {
     assert_eq!(regions[0].call_length, 30);
     assert_eq!(regions[1].call_offset, 10);
     assert_eq!(regions[1].call_length, 5);
+}
+
+/// A macro that expands to a complete expression (single node) is well-aligned.
+/// The parser should accept it without error.
+#[test]
+fn macro_well_aligned_complete_expression() {
+    // Source: "SELECT foo!(1 + 2), 3"
+    //          0123456789012345678901
+    // Macro:         ^----------^  offset=7, length=11 → "foo!(1 + 2)"
+    let source = "SELECT foo!(1 + 2), 3";
+    let mut parser = Parser::new();
+    let mut session = parser.parse(source);
+
+    session
+        .feed_token(TokenType::Select, &source[0..6])
+        .unwrap();
+
+    session.begin_macro(7, 11);
+    // Expanded tokens: 1 + 2 (all spans inside macro region 7..18)
+    session
+        .feed_token(TokenType::Integer, &source[12..13])
+        .unwrap();
+    session
+        .feed_token(TokenType::Plus, &source[14..15])
+        .unwrap();
+    session
+        .feed_token(TokenType::Integer, &source[16..17])
+        .unwrap();
+    session.end_macro();
+
+    // Comma and "3" are outside the macro.
+    session
+        .feed_token(TokenType::Comma, &source[18..19])
+        .unwrap();
+    session
+        .feed_token(TokenType::Integer, &source[20..21])
+        .unwrap();
+
+    let root = session.finish().unwrap().expect("expected a statement");
+    assert_eq!(session.node(root).unwrap().tag(), NodeTag::SelectStmt);
+}
+
+/// A macro whose expanded tokens end up in a node that also contains
+/// tokens from outside the macro region. The parser detects this straddle
+/// and returns an error.
+///
+/// Source: "SELECT 1 FROM foo!(x) y"
+///          0         1         2
+///          01234567890123456789012345
+/// Macro:                ^------^  offset=14, length=7 → "foo!(x)"
+///
+/// The macro expands to just the identifier "x". Then "y" is fed as a
+/// regular token. SQLite treats "FROM x y" as "FROM x AS y", creating a
+/// TableRef with table_name pointing at "x" (inside macro, offset 19)
+/// and alias pointing at "y" (outside macro, offset 22). This straddles
+/// the macro boundary — the parser rejects it.
+#[test]
+fn macro_straddle_rejected_by_parser() {
+    let source = "SELECT 1 FROM foo!(x) y";
+    let mut parser = Parser::new();
+    let mut session = parser.parse(source);
+
+    session
+        .feed_token(TokenType::Select, &source[0..6])
+        .unwrap();
+    session
+        .feed_token(TokenType::Integer, &source[7..8])
+        .unwrap();
+    session
+        .feed_token(TokenType::From, &source[9..13])
+        .unwrap();
+
+    // Macro: "foo!(x)" at offset 14, length 7.
+    session.begin_macro(14, 7);
+    session
+        .feed_token(TokenType::Id, &source[19..20]) // "x"
+        .unwrap();
+    session.end_macro();
+
+    // "y" outside macro — creates a straddling TableRef.
+    session
+        .feed_token(TokenType::Id, &source[22..23])
+        .unwrap();
+    let err = session.finish().unwrap_err();
+    assert!(
+        err.message.contains("straddle"),
+        "expected straddle error, got: {}",
+        err.message
+    );
 }
 
 /// finish() without feeding any tokens returns None.

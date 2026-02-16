@@ -2,7 +2,7 @@ use std::ffi::{c_int, CStr};
 
 use crate::ffi;
 use crate::generated::nodes::Node;
-use crate::nodes::NULL_NODE;
+use crate::nodes::NodeId;
 
 // Compile-time check: Trivia must have identical layout to ffi::RawTrivia
 // so we can transmute the C pointer directly to &[Trivia].
@@ -54,7 +54,7 @@ pub struct Trivia {
 /// (`begin_macro` / `end_macro`). The formatter can use these to reconstruct
 /// macro calls from the expanded AST.
 ///
-/// Layout matches `SyntaqliteMacroRegion` in C (call_offset: u32, call_length: u32).
+/// Layout matches `SyntaqliteMacroRegion` in C.
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub struct MacroRegion {
@@ -203,12 +203,13 @@ pub struct Session<'a> {
 impl<'a> Session<'a> {
     /// Parse the next SQL statement. Returns `None` when all statements have
     /// been consumed (or input was empty).
-    pub fn next_statement(&mut self) -> Option<Result<u32, ParseError>> {
+    pub fn next_statement(&mut self) -> Option<Result<NodeId, ParseError>> {
         // SAFETY: parser.raw is valid and exclusively borrowed via &mut self.
         let result = unsafe { ffi::syntaqlite_parser_next(self.parser.raw) };
 
-        if result.root != NULL_NODE {
-            return Some(Ok(result.root));
+        let id = NodeId(result.root);
+        if !id.is_null() {
+            return Some(Ok(id));
         }
 
         if result.error != 0 {
@@ -224,15 +225,15 @@ impl<'a> Session<'a> {
     }
 
     /// Look up a node by its arena ID, returning a typed `Node` enum.
-    pub fn node(&self, id: u32) -> Option<Node<'a>> {
-        if id == NULL_NODE {
+    pub fn node(&self, id: NodeId) -> Option<Node<'a>> {
+        if id.is_null() {
             return None;
         }
         // SAFETY: parser.raw is valid. syntaqlite_parser_node returns a pointer
         // into the arena that is valid until the next reset() or destroy(), both
         // of which require &mut access that Session holds exclusively. The 'a
         // lifetime is bounded by the Session borrow.
-        let ptr = unsafe { ffi::syntaqlite_parser_node(self.parser.raw, id) };
+        let ptr = unsafe { ffi::syntaqlite_parser_node(self.parser.raw, id.0) };
         Some(unsafe { Node::from_raw(ptr) })
     }
 
@@ -270,9 +271,9 @@ impl<'a> Session<'a> {
     /// The `text` pointer must point into the source buffer bound by `parse()`.
     pub fn feed_token(
         &mut self,
-        token_type: u32,
+        token_type: crate::TokenType,
         text: &str,
-    ) -> Result<Option<u32>, ParseError> {
+    ) -> Result<Option<NodeId>, ParseError> {
         // Translate the text pointer so it's relative to the C parser's source
         // buffer. When parse() copies the source into an internal buffer, the
         // user's text slice points into the original string while the C parser
@@ -294,7 +295,7 @@ impl<'a> Session<'a> {
             0 => Ok(None),
             1 => {
                 let result = unsafe { ffi::syntaqlite_parser_result(self.parser.raw) };
-                Ok(Some(result.root))
+                Ok(Some(NodeId(result.root)))
             }
             _ => {
                 let result = unsafe { ffi::syntaqlite_parser_result(self.parser.raw) };
@@ -316,13 +317,13 @@ impl<'a> Session<'a> {
     /// the parser. Returns `Ok(Some(root_id))` if a final statement
     /// completed, `Ok(None)` if there was nothing pending, or `Err` on
     /// parse error.
-    pub fn finish(&mut self) -> Result<Option<u32>, ParseError> {
+    pub fn finish(&mut self) -> Result<Option<NodeId>, ParseError> {
         let rc = unsafe { ffi::syntaqlite_parser_finish(self.parser.raw) };
         match rc {
             0 => Ok(None),
             1 => {
                 let result = unsafe { ffi::syntaqlite_parser_result(self.parser.raw) };
-                Ok(Some(result.root))
+                Ok(Some(NodeId(result.root)))
             }
             _ => {
                 let result = unsafe { ffi::syntaqlite_parser_result(self.parser.raw) };
@@ -365,5 +366,13 @@ impl<'a> Session<'a> {
         }
         // SAFETY: RawMacroRegion and MacroRegion have identical repr(C) layout.
         unsafe { std::slice::from_raw_parts(ptr as *const MacroRegion, count as usize) }
+    }
+}
+
+impl Iterator for Session<'_> {
+    type Item = Result<NodeId, ParseError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_statement()
     }
 }

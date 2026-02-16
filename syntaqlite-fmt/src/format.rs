@@ -1,6 +1,6 @@
 use std::cell::Cell;
 
-use syntaqlite_parser::{FieldVal, MacroRegion, Session, NULL_NODE};
+use syntaqlite_parser::{MacroRegion, NodeId, Session};
 
 use crate::doc::{DocArena, DocId};
 use crate::interpret::{interpret, FmtCtx, InterpretTrivia};
@@ -13,10 +13,11 @@ pub fn format_node<'a>(
     dispatch: &'a [Option<NodeFmt>],
     ctx: &FmtCtx<'a>,
     session: &'a Session<'a>,
-    node_id: u32,
+    node_id: NodeId,
     arena: &mut DocArena<'a>,
 ) -> DocId {
-    format_node_inner(dispatch, ctx, session, node_id, arena, None)
+    let consumed = Cell::new(0u64);
+    format_node_inner(dispatch, ctx, session, node_id, arena, None, &consumed)
 }
 
 /// Format an AST node with trivia (comment) interleaving.
@@ -24,34 +25,33 @@ pub fn format_node_with_trivia<'a>(
     dispatch: &'a [Option<NodeFmt>],
     ctx: &FmtCtx<'a>,
     session: &'a Session<'a>,
-    node_id: u32,
+    node_id: NodeId,
     arena: &mut DocArena<'a>,
     trivia_ctx: &'a TriviaCtx<'a>,
 ) -> DocId {
-    format_node_inner(dispatch, ctx, session, node_id, arena, Some(trivia_ctx))
+    let consumed = Cell::new(0u64);
+    format_node_inner(
+        dispatch,
+        ctx,
+        session,
+        node_id,
+        arena,
+        Some(trivia_ctx),
+        &consumed,
+    )
 }
 
 fn format_node_inner<'a>(
     dispatch: &'a [Option<NodeFmt>],
     ctx: &FmtCtx<'a>,
     session: &'a Session<'a>,
-    node_id: u32,
+    node_id: NodeId,
     arena: &mut DocArena<'a>,
     trivia_ctx: Option<&'a TriviaCtx<'a>>,
+    consumed_regions: &Cell<u64>,
 ) -> DocId {
-    if node_id == NULL_NODE {
+    if node_id.is_null() {
         return NIL_DOC;
-    }
-
-    // Check if this node falls entirely within a macro region.
-    // If so, emit the original macro call text verbatim.
-    let macro_regions = session.macro_regions();
-    if !macro_regions.is_empty() {
-        if let Some(verbatim) =
-            try_macro_verbatim(dispatch, session, node_id, macro_regions, arena)
-        {
-            return verbatim;
-        }
     }
 
     let Some(node) = session.node(node_id) else {
@@ -64,10 +64,29 @@ fn format_node_inner<'a>(
         return NIL_DOC;
     };
     let source = session.source();
-    let format_child = |id: u32, arena: &mut DocArena<'a>| {
-        format_node_inner(dispatch, ctx, session, id, arena, trivia_ctx)
+    let macro_regions = session.macro_regions();
+
+    // The format_child closure checks for macro overlap. If a child's subtree
+    // overlaps with any macro region, emit the source text verbatim instead
+    // of recursing into the child's formatting. This keeps the macro check at
+    // the child level so that parent keywords (SELECT, FROM, etc.) are still
+    // emitted by bytecode.
+    let format_child = |id: NodeId, arena: &mut DocArena<'a>| {
+        if !macro_regions.is_empty() {
+            if let Some(verbatim) = try_macro_verbatim(
+                dispatch,
+                session,
+                id,
+                macro_regions,
+                arena,
+                consumed_regions,
+            ) {
+                return verbatim;
+            }
+        }
+        format_node_inner(dispatch, ctx, session, id, arena, trivia_ctx, consumed_regions)
     };
-    let resolve_list = |id: u32| -> Vec<u32> {
+    let resolve_list = |id: NodeId| -> Vec<NodeId> {
         session
             .node(id)
             .and_then(|n| n.as_list())
@@ -105,9 +124,11 @@ fn format_node_inner<'a>(
 pub fn first_source_offset(
     dispatch: &[Option<NodeFmt>],
     session: &Session<'_>,
-    node_id: u32,
+    node_id: NodeId,
 ) -> Option<u32> {
-    if node_id == NULL_NODE {
+    use syntaqlite_parser::FieldVal;
+
+    if node_id.is_null() {
         return None;
     }
     let node = session.node(node_id)?;
@@ -158,9 +179,11 @@ pub fn first_source_offset(
 pub fn last_source_offset(
     dispatch: &[Option<NodeFmt>],
     session: &Session<'_>,
-    node_id: u32,
+    node_id: NodeId,
 ) -> Option<u32> {
-    if node_id == NULL_NODE {
+    use syntaqlite_parser::FieldVal;
+
+    if node_id.is_null() {
         return None;
     }
     let node = session.node(node_id)?;
@@ -218,22 +241,45 @@ pub fn last_source_offset(
     max
 }
 
-/// If the node's source span falls entirely within a macro region, return a
-/// verbatim text doc of the original macro call. Otherwise return None.
+/// Check if a node's subtree overlaps with any macro region. If so:
+/// - First overlap for a region: emit verbatim text covering the union of the
+///   node's source range and the overlapping macro call range(s), mark consumed
+/// - Subsequent overlaps for the same region: return NIL_DOC (suppress)
+/// - No overlap: return None (format normally)
 fn try_macro_verbatim<'a>(
     dispatch: &[Option<NodeFmt>],
     session: &'a Session<'a>,
-    node_id: u32,
+    node_id: NodeId,
     regions: &[MacroRegion],
     arena: &mut DocArena<'a>,
+    consumed: &Cell<u64>,
 ) -> Option<DocId> {
     let first = first_source_offset(dispatch, session, node_id)?;
     let last = last_source_offset(dispatch, session, node_id)?;
-    let source = session.source();
-    for r in regions {
-        let r_end = r.call_offset + r.call_length;
-        if first >= r.call_offset && last <= r_end {
-            return Some(arena.text(&source[r.call_offset as usize..r_end as usize]));
+
+    for (i, r) in regions.iter().enumerate() {
+        if i >= 64 {
+            break; // Bitset limit
+        }
+        let r_start = r.call_offset;
+        let r_end = r_start + r.call_length;
+
+        // Check overlap: node's span range [first, last] intersects
+        // macro region [r_start, r_end].
+        if first < r_end && last > r_start {
+            let bit = 1u64 << i;
+            let bits = consumed.get();
+            if bits & bit != 0 {
+                // Already emitted — suppress this node.
+                return Some(NIL_DOC);
+            }
+            // First overlap — emit verbatim. The range is the union of the
+            // node's source range and the macro call range.
+            consumed.set(bits | bit);
+            let source = session.source();
+            let verbatim_start = first.min(r_start) as usize;
+            let verbatim_end = last.max(r_end) as usize;
+            return Some(arena.text(&source[verbatim_start..verbatim_end]));
         }
     }
     None

@@ -6,6 +6,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "csrc/arena.h"
+#include "csrc/ast_builder.h"
 #include "csrc/parser.h"
 #include "csrc/sqlite_parser.h"
 #include "csrc/sqlite_tokenize.h"
@@ -188,6 +190,67 @@ static int feed_one_token(SyntaqliteParser* p, int token_type,
 }
 
 // ---------------------------------------------------------------------------
+// Internal: check macro straddle after statement completion.
+// ---------------------------------------------------------------------------
+
+// Check if a macro region boundary crosses through a single AST node.
+// A straddle means the node has SourceSpan fields both inside and outside
+// a macro region — the macro didn't expand to a complete syntactic unit.
+// Returns 0 on success, -1 if straddle detected.
+static int check_macro_straddle(SyntaqliteParser* p) {
+  uint32_t macro_count = synq_vec_len(&p->macros);
+  if (macro_count == 0) return 0;
+
+  uint32_t node_count = synq_vec_len(&p->ctx.ast.offsets);
+
+  for (uint32_t nid = 0; nid < node_count; nid++) {
+    const SyntaqliteNode* node =
+        (const SyntaqliteNode*)synq_arena_ptr(&p->ctx.ast, nid);
+    uint32_t tag = node->tag;
+    if (tag == 0 || tag >= SYNTAQLITE_NODE_COUNT) continue;
+
+    const SynqFieldRangeMeta* fields = range_meta_table[tag].fields;
+    uint8_t field_count = range_meta_table[tag].count;
+    if (fields == NULL || field_count == 0) continue;  // List node or empty.
+
+    // Check each macro region for straddle: some SourceSpan fields inside,
+    // some outside.
+    for (uint32_t mi = 0; mi < macro_count; mi++) {
+      SyntaqliteMacroRegion r = synq_vec_at(&p->macros, mi);
+      uint32_t r_start = r.call_offset;
+      uint32_t r_end = r_start + r.call_length;
+
+      int has_inside = 0;
+      int has_outside = 0;
+
+      for (uint8_t fi = 0; fi < field_count; fi++) {
+        if (fields[fi].kind != 1) continue;  // Not a SourceSpan.
+        const SyntaqliteSourceSpan* sp =
+            (const SyntaqliteSourceSpan*)((const char*)node + fields[fi].offset);
+        if (sp->length == 0) continue;
+
+        uint32_t s_start = sp->offset;
+        uint32_t s_end = sp->offset + sp->length;
+
+        if (s_start >= r_start && s_end <= r_end) {
+          has_inside = 1;
+        } else {
+          has_outside = 1;
+        }
+      }
+
+      if (has_inside && has_outside) {
+        snprintf(p->error_msg, sizeof(p->error_msg),
+                 "macro expansion straddles node boundary");
+        p->had_error = 1;
+        return -1;
+      }
+    }
+  }
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
 // Internal: synthesize SEMI + EOF to finish parsing.
 // Returns: 0 = done, 1 = final statement completed, -1 = error.
 // ---------------------------------------------------------------------------
@@ -231,6 +294,7 @@ static int finish_input(SyntaqliteParser* p) {
   }
 
   if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
+    if (check_macro_straddle(p) < 0) return -1;
     return 1;
   }
 
@@ -348,10 +412,17 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
   }
 
   int rc = feed_one_token(p, token_type, text, len);
+  if (rc < 0) return rc;
+
   if (rc == 1 && p->ctx.root == SYNTAQLITE_NULL_NODE) {
     // Bare semicolon — not a real statement.
     return 0;
   }
+
+  if (rc == 1 && check_macro_straddle(p) < 0) {
+    return -1;
+  }
+
   return rc;
 }
 
@@ -442,6 +513,7 @@ void syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable) {
 void syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable) {
   p->collect_tokens = enable;
 }
+
 
 const SyntaqliteTrivia* syntaqlite_parser_trivia(SyntaqliteParser* p,
                                                   uint32_t* count) {

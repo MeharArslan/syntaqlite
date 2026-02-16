@@ -5,7 +5,20 @@ use crate::Session;
 
 // ── Core types ──────────────────────────────────────────────────────────
 
-pub const NULL_NODE: u32 = 0xFFFF_FFFF;
+/// A typed wrapper around a raw arena node ID.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct NodeId(pub u32);
+
+impl NodeId {
+    /// Sentinel value representing a missing/null node.
+    pub const NULL: NodeId = NodeId(0xFFFF_FFFF);
+
+    /// Returns `true` if this is the null sentinel.
+    pub fn is_null(&self) -> bool {
+        self.0 == Self::NULL.0
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(C)]
@@ -34,13 +47,14 @@ pub struct NodeList {
 }
 
 impl NodeList {
-    pub fn children(&self) -> &[u32] {
+    pub fn children(&self) -> &[NodeId] {
         // SAFETY: The arena allocates list nodes as { tag, count, children[count] }
         // contiguously, so `count` u32 values immediately follow this header.
         // NodeList is only constructed via Node::from_raw() which validates the
-        // tag from a valid arena pointer.
+        // tag from a valid arena pointer. NodeId is #[repr(transparent)] over u32,
+        // so &[NodeId] has the same layout as &[u32].
         unsafe {
-            let base = (self as *const NodeList).add(1) as *const u32;
+            let base = (self as *const NodeList).add(1) as *const NodeId;
             std::slice::from_raw_parts(base, self.count as usize)
         }
     }
@@ -58,7 +72,7 @@ pub struct Fields<'a> {
 impl<'a> Fields<'a> {
     pub(crate) fn new() -> Self {
         Self {
-            buf: [FieldVal::NodeId(0); 16],
+            buf: [FieldVal::NodeId(NodeId::NULL); 16],
             len: 0,
         }
     }
@@ -83,8 +97,8 @@ impl<'a> std::ops::Deref for Fields<'a> {
 /// A typed field value extracted from a node struct.
 #[derive(Clone, Copy, Debug)]
 pub enum FieldVal<'a> {
-    /// u32 node ID (child node or list reference).
-    NodeId(u32),
+    /// Node ID (child node or list reference).
+    NodeId(NodeId),
     /// Source text from a SourceSpan field, with its source offset.
     Span(&'a str, u32),
     /// Boolean value.
@@ -124,7 +138,7 @@ impl FieldDescriptor {
         unsafe {
             let field_ptr = ptr.add(self.offset as usize);
             match self.kind {
-                FieldKind::NodeId => FieldVal::NodeId(*(field_ptr as *const u32)),
+                FieldKind::NodeId => FieldVal::NodeId(NodeId(*(field_ptr as *const u32))),
                 FieldKind::Span => {
                     let span = &*(field_ptr as *const SourceSpan);
                     if span.length == 0 {
@@ -144,8 +158,8 @@ impl FieldDescriptor {
 // ── Dump ────────────────────────────────────────────────────────────────
 
 /// Dump an AST node tree as indented text.
-pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize) {
-    if id == NULL_NODE {
+pub fn dump_node(session: &Session<'_>, id: NodeId, out: &mut String, indent: usize) {
+    if id.is_null() {
         return;
     }
     let Some(node) = session.node(id) else {
@@ -157,8 +171,8 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
 
     if let Some(list) = node.as_list() {
         let _ = writeln!(out, "{pad}{} [{} items]", NODE_NAMES[tag], list.count);
-        for &child_id in list.children() {
-            dump_node(session, child_id, out, indent + 1);
+        for child_id in list.children() {
+            dump_node(session, *child_id, out, indent + 1);
         }
         return;
     }
@@ -170,7 +184,7 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
     for (desc, val) in descriptors.iter().zip(fields.iter()) {
         match (val, &desc.kind) {
             (FieldVal::NodeId(child_id), _) => {
-                if *child_id == NULL_NODE {
+                if child_id.is_null() {
                     let _ = writeln!(out, "{pad}  {}: (none)", desc.name);
                 } else {
                     let _ = writeln!(out, "{pad}  {}:", desc.name);

@@ -4,10 +4,10 @@ use syntaqlite_parser::*;
 /// Build a Doc tree from a parsed AST node using the typed Node API.
 fn format_node<'a>(
     session: &Session<'a>,
-    node_id: u32,
+    node_id: NodeId,
     arena: &mut DocArena<'a>,
 ) -> DocId {
-    if node_id == NULL_NODE {
+    if node_id.is_null() {
         return NIL_DOC;
     }
     let node = match session.node(node_id) {
@@ -123,7 +123,7 @@ fn format_select<'a>(
     let mut parts = vec![select_kw, cols_nested];
 
     // FROM <table>
-    if stmt.from_clause != NULL_NODE {
+    if !stmt.from_clause.is_null() {
         let line = arena.line();
         let from_kw = arena.keyword("FROM");
         let sp = arena.line();
@@ -134,7 +134,7 @@ fn format_select<'a>(
     }
 
     // WHERE <expr>
-    if stmt.where_clause != NULL_NODE {
+    if !stmt.where_clause.is_null() {
         let line = arena.line();
         let where_kw = arena.keyword("WHERE");
         let sp = arena.line();
