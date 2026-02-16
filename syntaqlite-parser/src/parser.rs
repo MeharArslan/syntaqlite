@@ -20,6 +20,12 @@ impl std::error::Error for ParseError {}
 /// Owns a parser instance. Reusable across inputs via `parse()`.
 pub struct Parser {
     raw: *mut ffi::RawParser,
+    /// Null-terminated copy of the source text. The C tokenizer (SQLite's
+    /// `synq_sqlite3GetToken`) reads until it hits a null byte, so we must
+    /// ensure the source is null-terminated. Rust `&str` does not guarantee
+    /// this. The buffer is reused across `parse()` calls to avoid repeated
+    /// allocations.
+    source_buf: Vec<u8>,
 }
 
 // SAFETY: The C parser is self-contained (no thread-local or shared mutable
@@ -33,7 +39,10 @@ impl Parser {
         // default malloc/free. It always succeeds (assert guards the result).
         let raw = unsafe { ffi::syntaqlite_parser_create(std::ptr::null()) };
         assert!(!raw.is_null(), "parser allocation failed");
-        Parser { raw }
+        Parser {
+            raw,
+            source_buf: Vec::new(),
+        }
     }
 
     /// Enable Lemon trace output to stderr (debug builds only).
@@ -44,22 +53,52 @@ impl Parser {
 
     /// Bind source text and return a `Session` for iterating statements.
     ///
-    /// The session borrows `self` mutably and the source string, so both
-    /// must outlive the session. Previous parse results are invalidated.
+    /// Copies the source into an internal buffer to add a null terminator
+    /// (required by the C tokenizer). For zero-copy parsing, use
+    /// [`parse_cstr`](Self::parse_cstr).
     pub fn parse<'a>(&'a mut self, source: &'a str) -> Session<'a> {
-        // SAFETY: self.raw is valid. source.as_ptr() points to source.len()
-        // valid bytes. The C side stores the pointer and length without copying,
-        // and the borrow on `source` in Session<'a> keeps it alive.
+        self.source_buf.clear();
+        self.source_buf.reserve(source.len() + 1);
+        self.source_buf.extend_from_slice(source.as_bytes());
+        self.source_buf.push(0);
+
+        // SAFETY: source_buf is null-terminated and lives as long as
+        // the Parser. The Session borrows &mut self, preventing
+        // mutation until it is dropped.
         unsafe {
             ffi::syntaqlite_parser_reset(
                 self.raw,
-                source.as_ptr() as *const _,
+                self.source_buf.as_ptr() as *const _,
                 source.len() as u32,
             );
         }
         Session {
             parser: self,
             source,
+        }
+    }
+
+    /// Zero-copy variant: bind a null-terminated source and return a `Session`.
+    ///
+    /// The `&CStr` already guarantees a trailing `\0`, so no copy is needed.
+    /// The source must be valid UTF-8 (panics otherwise).
+    pub fn parse_cstr<'a>(&'a mut self, source: &'a CStr) -> Session<'a> {
+        let bytes = source.to_bytes(); // excludes the null terminator
+        let source_str =
+            std::str::from_utf8(bytes).expect("source must be valid UTF-8");
+
+        // SAFETY: CStr guarantees null-termination. The borrow on `source`
+        // in Session<'a> keeps the pointer valid for the session's lifetime.
+        unsafe {
+            ffi::syntaqlite_parser_reset(
+                self.raw,
+                source.as_ptr(),
+                bytes.len() as u32,
+            );
+        }
+        Session {
+            parser: self,
+            source: source_str,
         }
     }
 }

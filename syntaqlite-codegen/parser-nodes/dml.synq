@@ -60,17 +60,19 @@ node InsertStmt {
   source: index Stmt
 
   fmt {
-    if_enum(conflict_action, REPLACE) { "REPLACE" } else {
-      "INSERT"
-      switch(conflict_action) {
-        ROLLBACK { " OR ROLLBACK" }
-        ABORT    { " OR ABORT" }
-        FAIL     { " OR FAIL" }
-        IGNORE   { " OR IGNORE" }
+    group {
+      if_enum(conflict_action, REPLACE) { "REPLACE" } else {
+        "INSERT"
+        switch(conflict_action) {
+          ROLLBACK { " OR ROLLBACK" }
+          ABORT    { " OR ABORT" }
+          FAIL     { " OR FAIL" }
+          IGNORE   { " OR IGNORE" }
+        }
       }
+      " INTO " child(table)
+      if_set(columns) { group { "(" nest { softline child(columns) } softline ")" } }
+      if_set(source) { line child(source) }
     }
-    " INTO " child(table)
-    if_set(columns) { " (" child(columns) ")" }
-    if_set(source) { hardline child(source) }
   }
 }

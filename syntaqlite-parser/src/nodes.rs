@@ -81,8 +81,8 @@ impl<'a> NodeRef<'a> {
         NodeTag::from_raw(raw).unwrap_or(NodeTag::Null)
     }
 
-    /// Access the underlying pointer (for generated cast methods).
-    pub(crate) fn ptr(&self) -> *const u32 {
+    /// Access the underlying pointer.
+    pub fn ptr(&self) -> *const u32 {
         self.ptr
     }
 }

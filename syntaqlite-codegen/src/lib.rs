@@ -1,5 +1,6 @@
 pub mod ast_codegen;
 pub mod c_writer;
+pub mod fmt_compiler;
 pub mod grammar_parser;
 pub mod lemon;
 pub mod mkkeyword;

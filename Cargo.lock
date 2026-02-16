@@ -275,6 +275,9 @@ version = "0.1.0"
 [[package]]
 name = "syntaqlite-fmt"
 version = "0.1.0"
+dependencies = [
+ "syntaqlite-parser",
+]
 
 [[package]]
 name = "syntaqlite-parser"

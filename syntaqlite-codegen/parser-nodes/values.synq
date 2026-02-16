@@ -1,7 +1,7 @@
 list ValuesRowList {
   ExprList
   fmt {
-    for_each(sep: "," line) { "(" child(_item) ")" }
+    for_each(sep: "," line) { group { "(" child(_item) ")" } }
   }
 }
 
@@ -9,6 +9,8 @@ node ValuesClause {
   rows: index ValuesRowList
 
   fmt {
-    "VALUES" nest { hardline child(rows) }
+    group {
+      "VALUES" nest { line child(rows) }
+    }
   }
 }
