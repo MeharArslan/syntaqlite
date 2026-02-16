@@ -110,6 +110,8 @@ struct SyntaqliteParser {
   int collect_tokens;
   const SyntaqliteDialectExtension* extension;
   SYNQ_VEC(SyntaqliteTrivia) trivia;
+  int macro_depth;           // Nesting depth (0 = not in macro).
+  SYNQ_VEC(SyntaqliteMacroRegion) macros;
 };
 
 // ---------------------------------------------------------------------------
@@ -124,6 +126,7 @@ SyntaqliteParser* syntaqlite_parser_create(const SyntaqliteMemMethods* mem) {
   p->lemon = SyntaqliteParseAlloc(m.xMalloc);
   synq_parse_ctx_init(&p->ctx, m);
   synq_vec_init(&p->trivia);
+  synq_vec_init(&p->macros);
   return p;
 }
 
@@ -145,6 +148,8 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->had_error = 0;
   p->error_msg[0] = '\0';
   synq_vec_clear(&p->trivia);
+  p->macro_depth = 0;
+  synq_vec_clear(&p->macros);
 
   // Reset parse context.
   p->ctx.source = source;
@@ -153,6 +158,88 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->ctx.error = 0;
   p->ctx.error_offset = 0;
 }
+
+// ---------------------------------------------------------------------------
+// Internal: feed one real token to Lemon.
+// Returns: 0 = keep going, 1 = statement completed, -1 = error.
+// ---------------------------------------------------------------------------
+
+static int feed_one_token(SyntaqliteParser* p, int token_type,
+                           const char* text, int len) {
+  SynqToken minor = {.z = text, .n = len, .type = token_type};
+  SyntaqliteParse(p->lemon, token_type, minor, &p->ctx);
+  p->last_token_type = token_type;
+
+  if (p->ctx.error) {
+    p->had_error = 1;
+    if (p->error_msg[0] == '\0') {
+      snprintf(p->error_msg, sizeof(p->error_msg),
+               "syntax error near '%.*s'", len, text ? text : "");
+    }
+    return -1;
+  }
+
+  if (p->ctx.stmt_completed) {
+    p->ctx.stmt_completed = 0;
+    return 1;
+  }
+
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// Internal: synthesize SEMI + EOF to finish parsing.
+// Returns: 0 = done, 1 = final statement completed, -1 = error.
+// ---------------------------------------------------------------------------
+
+static int finish_input(SyntaqliteParser* p) {
+  // Nothing to do if no tokens were ever fed.
+  if (p->last_token_type == 0) {
+    p->finished = 1;
+    return 0;
+  }
+
+  // Synthesize SEMI if the last token wasn't one.
+  if (p->last_token_type != SYNTAQLITE_TK_SEMI) {
+    int rc = feed_one_token(p, SYNTAQLITE_TK_SEMI, NULL, 0);
+    if (rc < 0) {
+      p->finished = 1;
+      snprintf(p->error_msg, sizeof(p->error_msg),
+               "incomplete SQL statement");
+      return -1;
+    }
+    if (rc == 1 && p->ctx.root != SYNTAQLITE_NULL_NODE) {
+      p->finished = 1;
+      return 1;
+    }
+  }
+
+  // Send end-of-input (EOF) to flush the final reduction. LALR(1) parsers
+  // need one token of lookahead — the EOF provides it, triggering any
+  // pending reduce (e.g. ecmd ::= cmdx SEMI).
+  SynqToken eof = {.z = NULL, .n = 0, .type = 0};
+  SyntaqliteParse(p->lemon, 0, eof, &p->ctx);
+  p->finished = 1;
+
+  if (p->ctx.error) {
+    p->had_error = 1;
+    if (p->error_msg[0] == '\0') {
+      snprintf(p->error_msg, sizeof(p->error_msg),
+               "incomplete SQL statement");
+    }
+    return -1;
+  }
+
+  if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
+    return 1;
+  }
+
+  return 0;
+}
+
+// ---------------------------------------------------------------------------
+// High-level API
+// ---------------------------------------------------------------------------
 
 SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
   SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL};
@@ -197,90 +284,114 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
       continue;
     }
 
-    SynqToken minor = {
-        .z = p->source + tok_offset,
-        .n = (int)token_len,
-        .type = token_type,
-    };
-    SyntaqliteParse(p->lemon, token_type, minor, &p->ctx);
-    p->last_token_type = token_type;
-
-    if (p->ctx.error) {
-      p->had_error = 1;
+    int rc = feed_one_token(p, token_type, p->source + tok_offset,
+                            (int)token_len);
+    if (rc < 0) {
       p->finished = 1;
-      if (p->error_msg[0] == '\0') {
-        snprintf(p->error_msg, sizeof(p->error_msg),
-                 "syntax error near '%.*s'", (int)token_len, minor.z);
-      }
       result.error = 1;
       result.error_msg = p->error_msg;
       return result;
     }
 
-    // A statement was completed (ecmd reduced).
-    if (p->ctx.stmt_completed) {
-      p->ctx.stmt_completed = 0;
-
+    if (rc == 1) {
       // Bare semicolons produce SYNTAQLITE_NULL_NODE — skip them.
       if (p->ctx.root == SYNTAQLITE_NULL_NODE) {
-        p->ctx.root = SYNTAQLITE_NULL_NODE;
         continue;
       }
-
       result.root = p->ctx.root;
       return result;
     }
   }
 
-  // Reached end of input. Synthesize SEMI if the last token wasn't one,
-  // so that statements without a trailing semicolon still complete.
-  if (p->last_token_type != 0 &&
-      p->last_token_type != SYNTAQLITE_TK_SEMI) {
-    SynqToken semi = {.z = NULL, .n = 0, .type = SYNTAQLITE_TK_SEMI};
-    SyntaqliteParse(p->lemon, SYNTAQLITE_TK_SEMI, semi, &p->ctx);
-
-    if (p->ctx.error) {
-      p->had_error = 1;
-      p->finished = 1;
-      if (p->error_msg[0] == '\0') {
-        snprintf(p->error_msg, sizeof(p->error_msg),
-                 "incomplete SQL statement");
-      }
-      result.error = 1;
-      result.error_msg = p->error_msg;
-      return result;
-    }
-
-    if (p->ctx.stmt_completed &&
-        p->ctx.root != SYNTAQLITE_NULL_NODE) {
-      result.root = p->ctx.root;
-      p->finished = 1;
-      return result;
-    }
-  }
-
-  // Send end-of-input to finalize the parser.
-  SynqToken eof = {.z = NULL, .n = 0, .type = 0};
-  SyntaqliteParse(p->lemon, 0, eof, &p->ctx);
-  p->finished = 1;
-
-  if (p->ctx.error) {
-    p->had_error = 1;
-    if (p->error_msg[0] == '\0') {
-      snprintf(p->error_msg, sizeof(p->error_msg),
-               "incomplete SQL statement");
-    }
+  // End of input.
+  int rc = finish_input(p);
+  if (rc < 0) {
     result.error = 1;
     result.error_msg = p->error_msg;
-    return result;
-  }
-
-  // Check if the final reduction produced a root.
-  if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
+  } else if (rc == 1) {
     result.root = p->ctx.root;
   }
-
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Low-level token-feeding API
+// ---------------------------------------------------------------------------
+
+int syntaqlite_parser_feed_token(SyntaqliteParser* p,
+                                  int token_type,
+                                  const char* text,
+                                  int len) {
+  // Skip whitespace silently.
+  if (token_type == SYNTAQLITE_TK_SPACE) {
+    return 0;
+  }
+
+  // Record comments as trivia but don't feed to Lemon.
+  if (token_type == SYNTAQLITE_TK_COMMENT) {
+    if (p->collect_tokens && text) {
+      uint32_t tok_offset = (uint32_t)(text - p->source);
+      SyntaqliteTrivia t = {
+          tok_offset, (uint32_t)len,
+          (uint8_t)(text[0] == '-' ? 0 : 1)};
+      synq_vec_push(&p->trivia, t, p->mem);
+    }
+    return 0;
+  }
+
+  // Reset per-statement state if starting fresh.
+  if (p->last_token_type == 0 ||
+      p->ctx.root != SYNTAQLITE_NULL_NODE) {
+    p->ctx.root = SYNTAQLITE_NULL_NODE;
+    p->ctx.stmt_completed = 0;
+    p->ctx.error = 0;
+  }
+
+  int rc = feed_one_token(p, token_type, text, len);
+  if (rc == 1 && p->ctx.root == SYNTAQLITE_NULL_NODE) {
+    // Bare semicolon — not a real statement.
+    return 0;
+  }
+  return rc;
+}
+
+SyntaqliteParseResult syntaqlite_parser_result(SyntaqliteParser* p) {
+  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL};
+  if (p->had_error) {
+    result.error = 1;
+    result.error_msg = p->error_msg;
+  } else if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
+    result.root = p->ctx.root;
+  }
+  return result;
+}
+
+int syntaqlite_parser_finish(SyntaqliteParser* p) {
+  return finish_input(p);
+}
+
+// ---------------------------------------------------------------------------
+// Macro region tracking
+// ---------------------------------------------------------------------------
+
+void syntaqlite_parser_begin_macro(SyntaqliteParser* p,
+                                    uint32_t call_offset,
+                                    uint32_t call_length) {
+  SyntaqliteMacroRegion region = {call_offset, call_length};
+  synq_vec_push(&p->macros, region, p->mem);
+  p->macro_depth++;
+}
+
+void syntaqlite_parser_end_macro(SyntaqliteParser* p) {
+  if (p->macro_depth > 0) {
+    p->macro_depth--;
+  }
+}
+
+const SyntaqliteMacroRegion* syntaqlite_parser_macro_regions(
+    SyntaqliteParser* p, uint32_t* count) {
+  *count = synq_vec_len(&p->macros);
+  return p->macros.data;
 }
 
 void syntaqlite_parser_destroy(SyntaqliteParser* p) {
@@ -288,6 +399,7 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p) {
     SyntaqliteParseFree(p->lemon, p->mem.xFree);
     synq_parse_ctx_free(&p->ctx);
     synq_vec_free(&p->trivia, p->mem);
+    synq_vec_free(&p->macros, p->mem);
     p->mem.xFree(p);
   }
 }

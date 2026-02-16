@@ -32,6 +32,12 @@ pub(crate) struct RawTrivia {
     pub kind: u8,
 }
 
+#[repr(C)]
+pub(crate) struct RawMacroRegion {
+    pub call_offset: u32,
+    pub call_length: u32,
+}
+
 // The C API uses `SyntaqliteNode*` as an opaque return. We only read via
 // the tag field (first u32) and then cast to the right struct, so we just
 // receive `*const u32`.
@@ -52,6 +58,20 @@ unsafe extern "C" {
 
     // Trivia (comments)
     pub fn syntaqlite_parser_trivia(p: *mut RawParser, count: *mut u32) -> *const RawTrivia;
+
+    // Low-level token-feeding API
+    pub fn syntaqlite_parser_feed_token(
+        p: *mut RawParser, token_type: c_int,
+        text: *const c_char, len: c_int) -> c_int;
+    pub fn syntaqlite_parser_result(p: *mut RawParser) -> RawParseResult;
+    pub fn syntaqlite_parser_finish(p: *mut RawParser) -> c_int;
+
+    // Macro region tracking
+    pub fn syntaqlite_parser_begin_macro(
+        p: *mut RawParser, call_offset: u32, call_length: u32);
+    pub fn syntaqlite_parser_end_macro(p: *mut RawParser);
+    pub fn syntaqlite_parser_macro_regions(
+        p: *mut RawParser, count: *mut u32) -> *const RawMacroRegion;
 
     // Tokenizer lifecycle
     pub fn syntaqlite_tokenizer_create(mem: *const RawMemMethods) -> *mut RawTokenizer;

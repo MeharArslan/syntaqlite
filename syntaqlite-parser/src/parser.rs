@@ -14,6 +14,20 @@ const _: () = {
     assert!(std::mem::offset_of!(Trivia, kind) == std::mem::offset_of!(ffi::RawTrivia, kind));
 };
 
+// Compile-time check: MacroRegion must have identical layout to ffi::RawMacroRegion.
+const _: () = {
+    assert!(std::mem::size_of::<MacroRegion>() == std::mem::size_of::<ffi::RawMacroRegion>());
+    assert!(std::mem::align_of::<MacroRegion>() == std::mem::align_of::<ffi::RawMacroRegion>());
+    assert!(
+        std::mem::offset_of!(MacroRegion, call_offset)
+            == std::mem::offset_of!(ffi::RawMacroRegion, call_offset)
+    );
+    assert!(
+        std::mem::offset_of!(MacroRegion, call_length)
+            == std::mem::offset_of!(ffi::RawMacroRegion, call_length)
+    );
+};
+
 /// The kind of a trivia item (comment).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
@@ -34,6 +48,20 @@ pub struct Trivia {
     pub offset: u32,
     pub length: u32,
     pub kind: TriviaKind,
+}
+
+/// A recorded macro invocation region. Populated via the low-level API
+/// (`begin_macro` / `end_macro`). The formatter can use these to reconstruct
+/// macro calls from the expanded AST.
+///
+/// Layout matches `SyntaqliteMacroRegion` in C (call_offset: u32, call_length: u32).
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct MacroRegion {
+    /// Byte offset of the macro call in the original source.
+    pub call_offset: u32,
+    /// Byte length of the entire macro call.
+    pub call_length: u32,
 }
 
 /// A parse error with a human-readable message.
@@ -218,5 +246,106 @@ impl<'a> Session<'a> {
         // SAFETY: RawTrivia and Trivia have identical repr(C) layout
         // (u32, u32, u8). The pointer is valid for the lifetime of &self.
         unsafe { std::slice::from_raw_parts(ptr as *const Trivia, count as usize) }
+    }
+
+    // -- Low-level token-feeding API ------------------------------------------
+
+    /// Feed a single token to the parser.
+    ///
+    /// `TK_SPACE` is silently skipped. `TK_COMMENT` is recorded as trivia
+    /// (when `set_collect_tokens` is enabled) but not fed to the parser.
+    ///
+    /// Returns `Ok(Some(root_id))` when a statement completes,
+    /// `Ok(None)` to keep going, or `Err` on parse error.
+    ///
+    /// The `text` pointer must point into the source buffer bound by `parse()`.
+    pub fn feed_token(
+        &mut self,
+        token_type: u32,
+        text: &str,
+    ) -> Result<Option<u32>, ParseError> {
+        let rc = unsafe {
+            ffi::syntaqlite_parser_feed_token(
+                self.parser.raw,
+                token_type as c_int,
+                text.as_ptr() as *const _,
+                text.len() as c_int,
+            )
+        };
+        match rc {
+            0 => Ok(None),
+            1 => {
+                let result = unsafe { ffi::syntaqlite_parser_result(self.parser.raw) };
+                Ok(Some(result.root))
+            }
+            _ => {
+                let result = unsafe { ffi::syntaqlite_parser_result(self.parser.raw) };
+                let msg = if result.error_msg.is_null() {
+                    "parse error".to_string()
+                } else {
+                    unsafe { CStr::from_ptr(result.error_msg) }
+                        .to_string_lossy()
+                        .into_owned()
+                };
+                Err(ParseError { message: msg })
+            }
+        }
+    }
+
+    /// Signal end of input when using the low-level token-feeding API.
+    ///
+    /// Synthesizes a SEMI if the last token wasn't one, and sends EOF to
+    /// the parser. Returns `Ok(Some(root_id))` if a final statement
+    /// completed, `Ok(None)` if there was nothing pending, or `Err` on
+    /// parse error.
+    pub fn finish(&mut self) -> Result<Option<u32>, ParseError> {
+        let rc = unsafe { ffi::syntaqlite_parser_finish(self.parser.raw) };
+        match rc {
+            0 => Ok(None),
+            1 => {
+                let result = unsafe { ffi::syntaqlite_parser_result(self.parser.raw) };
+                Ok(Some(result.root))
+            }
+            _ => {
+                let result = unsafe { ffi::syntaqlite_parser_result(self.parser.raw) };
+                let msg = if result.error_msg.is_null() {
+                    "parse error".to_string()
+                } else {
+                    unsafe { CStr::from_ptr(result.error_msg) }
+                        .to_string_lossy()
+                        .into_owned()
+                };
+                Err(ParseError { message: msg })
+            }
+        }
+    }
+
+    /// Mark subsequent fed tokens as being inside a macro expansion.
+    ///
+    /// `call_offset` and `call_length` describe the macro call's byte range
+    /// in the original source. Calls may nest (for nested macro expansions).
+    pub fn begin_macro(&mut self, call_offset: u32, call_length: u32) {
+        unsafe {
+            ffi::syntaqlite_parser_begin_macro(self.parser.raw, call_offset, call_length);
+        }
+    }
+
+    /// End the innermost macro expansion region.
+    pub fn end_macro(&mut self) {
+        unsafe {
+            ffi::syntaqlite_parser_end_macro(self.parser.raw);
+        }
+    }
+
+    /// Return all macro regions recorded via `begin_macro`/`end_macro`.
+    pub fn macro_regions(&self) -> &[MacroRegion] {
+        let mut count: u32 = 0;
+        let ptr =
+            unsafe { ffi::syntaqlite_parser_macro_regions(self.parser.raw, &mut count) };
+        if count == 0 || ptr.is_null() {
+            return &[];
+        }
+        // SAFETY: RawMacroRegion and MacroRegion have identical repr(C) layout.
+        unsafe { std::slice::from_raw_parts(ptr as *const MacroRegion, count as usize) }
     }
 }

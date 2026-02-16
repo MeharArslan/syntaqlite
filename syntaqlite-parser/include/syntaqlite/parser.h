@@ -70,6 +70,14 @@ typedef struct SyntaqliteParseResult {
   const char* error_msg;  // Human-readable message (owned by parser), or NULL.
 } SyntaqliteParseResult;
 
+// A recorded macro invocation region, populated via the low-level API
+// (begin_macro / end_macro). The formatter uses these to reconstruct macro
+// calls from the expanded AST.
+typedef struct SyntaqliteMacroRegion {
+  uint32_t call_offset;   // Byte offset of macro call in original source.
+  uint32_t call_length;   // Byte length of entire macro call.
+} SyntaqliteMacroRegion;
+
 // Opaque handle to a dialect extension (extra keywords, grammar rules, AST
 // node types) produced by the syntaqlite codegen tooling. Extensions are
 // additive — the base SQLite grammar is always included.
@@ -124,6 +132,12 @@ uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p);
 const SyntaqliteTrivia* syntaqlite_parser_trivia(SyntaqliteParser* p,
                                                   uint32_t* count);
 
+// Return the macro regions recorded via begin_macro/end_macro. The returned
+// pointer is valid until the next reset() or destroy(). Sets *count to the
+// number of regions.
+const SyntaqliteMacroRegion* syntaqlite_parser_macro_regions(
+    SyntaqliteParser* p, uint32_t* count);
+
 // ---------------------------------------------------------------------------
 // Configuration (call after create, before first reset)
 // ---------------------------------------------------------------------------
@@ -144,6 +158,50 @@ void syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable);
 // set extension (reverts to pure SQLite grammar).
 void syntaqlite_parser_set_extension(SyntaqliteParser* p,
                                      const SyntaqliteDialectExtension* ext);
+
+// ---------------------------------------------------------------------------
+// Low-level token-feeding API
+// ---------------------------------------------------------------------------
+//
+// Alternative to syntaqlite_parser_next() for embedders that perform their
+// own tokenization (e.g. macro expansion). Call reset() first to bind a
+// source buffer, then feed tokens one at a time.
+//
+// Usage:
+//   syntaqlite_parser_reset(p, source, len);
+//   while (has_more_tokens) {
+//     int rc = syntaqlite_parser_feed_token(p, type, text, tlen);
+//     if (rc == 1) { /* statement complete, read result */ }
+//     if (rc < 0) { /* error */ }
+//   }
+//   int rc = syntaqlite_parser_finish(p);
+//   if (rc == 1) { /* final statement complete */ }
+
+// Feed a single token. TK_SPACE is silently skipped. TK_COMMENT is recorded
+// as trivia (when collect_tokens is enabled) but not fed to the parser.
+// Returns: 0 = keep going, 1 = statement completed, -1 = error.
+int syntaqlite_parser_feed_token(SyntaqliteParser* p,
+                                  int token_type,
+                                  const char* text,
+                                  int len);
+
+// Retrieve the parse result after feed_token returns 1 or after finish().
+SyntaqliteParseResult syntaqlite_parser_result(SyntaqliteParser* p);
+
+// Signal end-of-input. Synthesizes a SEMI if needed and sends EOF to the
+// parser. Returns: 0 = done (no pending statement), 1 = final statement
+// completed, -1 = error.
+int syntaqlite_parser_finish(SyntaqliteParser* p);
+
+// Mark subsequent fed tokens as being inside a macro expansion.
+// call_offset/call_length describe the macro call's byte range in the
+// original source. Calls may nest (for nested macro expansions).
+void syntaqlite_parser_begin_macro(SyntaqliteParser* p,
+                                    uint32_t call_offset,
+                                    uint32_t call_length);
+
+// End the innermost macro expansion region.
+void syntaqlite_parser_end_macro(SyntaqliteParser* p);
 
 // ---------------------------------------------------------------------------
 // Dialect extensions
