@@ -53,49 +53,29 @@ class DmlFormat(TestSuite):
     def test_insert_values(self):
         return AstTestBlueprint(
             sql="insert into t values (1, 2)",
-            out="""\
-                INSERT INTO t
-                VALUES
-                  (1, 2)
-            """,
+            out="INSERT INTO t VALUES (1, 2)",
         )
 
     def test_insert_columns(self):
         return AstTestBlueprint(
             sql="insert into t (a, b) values (1, 2)",
-            out="""\
-                INSERT INTO t (a, b)
-                VALUES
-                  (1, 2)
-            """,
+            out="INSERT INTO t(a, b) VALUES (1, 2)",
         )
 
     def test_insert_or_replace(self):
         return AstTestBlueprint(
             sql="insert or replace into t values (1)",
-            out="""\
-                REPLACE INTO t
-                VALUES
-                  (1)
-            """,
+            out="REPLACE INTO t VALUES (1)",
         )
 
     def test_replace(self):
         return AstTestBlueprint(
             sql="replace into t values (1)",
-            out="""\
-                REPLACE INTO t
-                VALUES
-                  (1)
-            """,
+            out="REPLACE INTO t VALUES (1)",
         )
 
     def test_insert_or_ignore(self):
         return AstTestBlueprint(
             sql="insert or ignore into t values (1)",
-            out="""\
-                INSERT OR IGNORE INTO t
-                VALUES
-                  (1)
-            """,
+            out="INSERT OR IGNORE INTO t VALUES (1)",
         )

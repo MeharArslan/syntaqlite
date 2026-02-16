@@ -41,16 +41,18 @@ node JoinClause {
       }
       default {
         child(left) hardline
-        enum_display(join_type, {
-          INNER="JOIN" LEFT="LEFT JOIN" RIGHT="RIGHT JOIN"
-          FULL="FULL JOIN" CROSS="CROSS JOIN"
-          NATURAL_INNER="NATURAL JOIN" NATURAL_LEFT="NATURAL LEFT JOIN"
-          NATURAL_RIGHT="NATURAL RIGHT JOIN" NATURAL_FULL="NATURAL FULL JOIN"
-          COMMA=","
-        })
-        " " child(right)
-        if_set(on_expr) { hardline "ON " child(on_expr) }
-        if_set(using_columns) { " USING (" child(using_columns) ")" }
+        group {
+          enum_display(join_type, {
+            INNER="JOIN" LEFT="LEFT JOIN" RIGHT="RIGHT JOIN"
+            FULL="FULL JOIN" CROSS="CROSS JOIN"
+            NATURAL_INNER="NATURAL JOIN" NATURAL_LEFT="NATURAL LEFT JOIN"
+            NATURAL_RIGHT="NATURAL RIGHT JOIN" NATURAL_FULL="NATURAL FULL JOIN"
+            COMMA=","
+          })
+          " " child(right)
+          if_set(on_expr) { nest { line "ON " child(on_expr) } }
+          if_set(using_columns) { " USING (" child(using_columns) ")" }
+        }
       }
     }
   }

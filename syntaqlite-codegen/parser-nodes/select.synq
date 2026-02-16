@@ -36,7 +36,7 @@ node SelectStmt {
     group {
       if_flag(flags.distinct) { "SELECT DISTINCT" } else { "SELECT" }
       if_set(columns) { group { nest { line child(columns) } } }
-      clause("FROM", from_clause)
+      if_set(from_clause) { line "FROM " child(from_clause) }
       clause("WHERE", where_clause)
       clause("GROUP BY", groupby)
       clause("HAVING", having)

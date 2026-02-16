@@ -6,8 +6,7 @@ node DeleteStmt {
 
   fmt {
     group {
-      "DELETE"
-      clause("FROM", table)
+      "DELETE FROM " child(table)
       clause("WHERE", where_clause)
     }
   }
@@ -47,7 +46,7 @@ node UpdateStmt {
       }
       " " child(table)
       clause("SET", setlist)
-      clause("FROM", from_clause)
+      if_set(from_clause) { line "FROM " child(from_clause) }
       clause("WHERE", where_clause)
     }
   }

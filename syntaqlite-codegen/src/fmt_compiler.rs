@@ -208,7 +208,7 @@ fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<String>) {
             ops.push("FmtOp::GroupEnd".to_string());
         }
         Fmt::Nest(body) => {
-            ops.push("FmtOp::NestStart(4)".to_string());
+            ops.push("FmtOp::NestStart(2)".to_string());
             compile_seq(body, ctx, ops);
             ops.push("FmtOp::NestEnd".to_string());
         }
@@ -255,7 +255,7 @@ fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<String>) {
         }
         Fmt::Clause { keyword, field } => {
             // clause("KW", field) expands to:
-            //   IfSet(field, skip) Line Keyword("KW") NestStart(4) Line Child(field) NestEnd EndIf
+            //   IfSet(field, skip) Line Keyword("KW") NestStart(2) Line Child(field) NestEnd EndIf
             let field_idx = ctx.field(field).idx;
             compile_conditional(
                 &format!("FmtOp::IfSet({}, {{SKIP}})", field_idx),
@@ -850,7 +850,7 @@ mod tests {
 
         let output = generate_rust_fmt_ops(&items);
         assert!(output.contains("FmtOp::IfSet(0,"));
-        assert!(output.contains("FmtOp::NestStart(4)"));
+        assert!(output.contains("FmtOp::NestStart(2)"));
         assert!(output.contains("FmtOp::Child(0)"));
         assert!(output.contains("FmtOp::NestEnd"));
     }

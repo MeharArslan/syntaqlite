@@ -11,7 +11,7 @@ node TriggerEvent {
       INSERT { "INSERT" }
       UPDATE {
         "UPDATE"
-        if_set(columns) { " OF " child(columns) }
+        if_set(columns) { group { " OF " child(columns) } }
       }
     }
   }

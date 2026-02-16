@@ -5,8 +5,8 @@ node BinaryExpr {
 
   fmt {
     switch(op) {
-      AND { group { child(left) line "AND " child(right) } }
-      OR  { group { child(left) line "OR "  child(right) } }
+      AND { child(left) line "AND " child(right) }
+      OR  { child(left) line "OR "  child(right) }
       default {
         group {
           child(left) line

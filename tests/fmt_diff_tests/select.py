@@ -72,7 +72,10 @@ class SelectFormat(TestSuite):
             out="""\
                 SELECT a, b, c, d, e, f, g, h, i, j
                 FROM very_long_table_name
-                WHERE a = 1 AND b = 2 AND c = 3
+                WHERE
+                  a = 1
+                  AND b = 2
+                  AND c = 3
             """,
         )
 

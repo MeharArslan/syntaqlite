@@ -39,20 +39,13 @@ class ValuesFormat(TestSuite):
     def test_single_row(self):
         return AstTestBlueprint(
             sql="values (1, 2, 3)",
-            out="""\
-                VALUES
-                  (1, 2, 3)
-            """,
+            out="VALUES (1, 2, 3)",
         )
 
     def test_multiple_rows(self):
         return AstTestBlueprint(
             sql="values (1, 2), (3, 4)",
-            out="""\
-                VALUES
-                  (1, 2),
-                  (3, 4)
-            """,
+            out="VALUES (1, 2), (3, 4)",
         )
 
 
@@ -109,10 +102,8 @@ class JoinFormat(TestSuite):
             sql="select * from a join b on a.id = b.id",
             out="""\
                 SELECT *
-                FROM
-                  a
-                  JOIN b
-                  ON a.id = b.id
+                FROM a
+                JOIN b ON a.id = b.id
             """,
         )
 
@@ -121,10 +112,8 @@ class JoinFormat(TestSuite):
             sql="select * from a left join b on a.id = b.id",
             out="""\
                 SELECT *
-                FROM
-                  a
-                  LEFT JOIN b
-                  ON a.id = b.id
+                FROM a
+                LEFT JOIN b ON a.id = b.id
             """,
         )
 
@@ -133,9 +122,8 @@ class JoinFormat(TestSuite):
             sql="select * from a cross join b",
             out="""\
                 SELECT *
-                FROM
-                  a
-                  CROSS JOIN b
+                FROM a
+                CROSS JOIN b
             """,
         )
 
@@ -144,9 +132,8 @@ class JoinFormat(TestSuite):
             sql="select * from a join b using (id)",
             out="""\
                 SELECT *
-                FROM
-                  a
-                  JOIN b USING (id)
+                FROM a
+                JOIN b USING (id)
             """,
         )
 

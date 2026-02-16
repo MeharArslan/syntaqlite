@@ -20,7 +20,7 @@ impl Default for KeywordCase {
 pub struct FormatConfig {
     /// Maximum line width before breaking. Default: 80.
     pub line_width: usize,
-    /// Number of spaces per indentation level. Default: 4.
+    /// Number of spaces per indentation level. Default: 2.
     pub indent_width: usize,
     /// How to case SQL keywords. Default: Preserve.
     pub keyword_case: KeywordCase,
@@ -30,7 +30,7 @@ impl Default for FormatConfig {
     fn default() -> Self {
         FormatConfig {
             line_width: 80,
-            indent_width: 4,
+            indent_width: 2,
             keyword_case: KeywordCase::Preserve,
         }
     }

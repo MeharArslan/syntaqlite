@@ -32,7 +32,9 @@ class WindowFunctionFormat(TestSuite):
             out="""\
                 SELECT sum(x) OVER w1, avg(y) OVER w2
                 FROM t
-                WINDOW w1 AS (ORDER BY a), w2 AS (PARTITION BY b ORDER BY c)
+                WINDOW
+                  w1 AS (ORDER BY a),
+                  w2 AS (PARTITION BY b ORDER BY c)
             """,
         )
 

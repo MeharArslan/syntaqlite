@@ -74,7 +74,7 @@ fn long_select_breaks() {
     let result = format_sql_with("SELECT column_one, column_two FROM very_long_table", &config);
     assert_eq!(
         result,
-        "SELECT\n    column_one,\n    column_two\nFROM\n    very_long_table"
+        "SELECT\n  column_one,\n  column_two\nFROM very_long_table"
     );
 }
 
@@ -229,7 +229,7 @@ fn insert_many_values_breaks() {
     );
     assert_eq!(
         result,
-        "INSERT INTO t(a, b)\nVALUES\n    (1, 2),\n    (3, 4),\n    (5, 6),\n    (7, 8)"
+        "INSERT INTO t(a, b)\nVALUES\n  (1, 2),\n  (3, 4),\n  (5, 6),\n  (7, 8)"
     );
 }
 
