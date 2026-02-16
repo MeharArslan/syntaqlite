@@ -1,7 +1,7 @@
 use syntaqlite_fmt::{render, DocArena, DocId, FormatConfig, NIL_DOC};
 use syntaqlite_parser::*;
 
-/// Build a Doc tree from a parsed AST node using the typed NodeRef API.
+/// Build a Doc tree from a parsed AST node using the typed Node API.
 fn format_node<'a>(
     session: &Session<'a>,
     node_id: u32,
@@ -10,19 +10,17 @@ fn format_node<'a>(
     if node_id == NULL_NODE {
         return NIL_DOC;
     }
-    let node_ref = match session.node(node_id) {
+    let node = match session.node(node_id) {
         Some(n) => n,
         None => return NIL_DOC,
     };
     let source = session.source();
 
-    match node_ref.tag() {
-        NodeTag::Literal => {
-            let lit = node_ref.as_literal().unwrap();
+    match node {
+        Node::Literal(lit) => {
             arena.text(lit.source.as_str(source))
         }
-        NodeTag::ColumnRef => {
-            let cr = node_ref.as_column_ref().unwrap();
+        Node::ColumnRef(cr) => {
             let mut parts = Vec::new();
             if !cr.schema.is_empty() {
                 parts.push(arena.text(cr.schema.as_str(source)));
@@ -35,8 +33,7 @@ fn format_node<'a>(
             parts.push(arena.text(cr.column.as_str(source)));
             arena.cats(&parts)
         }
-        NodeTag::TableRef => {
-            let tr = node_ref.as_table_ref().unwrap();
+        Node::TableRef(tr) => {
             let mut parts = Vec::new();
             if !tr.schema.is_empty() {
                 parts.push(arena.text(tr.schema.as_str(source)));
@@ -51,12 +48,10 @@ fn format_node<'a>(
             }
             arena.cats(&parts)
         }
-        NodeTag::Variable => {
-            let v = node_ref.as_variable().unwrap();
+        Node::Variable(v) => {
             arena.text(v.source.as_str(source))
         }
-        NodeTag::BinaryExpr => {
-            let expr = node_ref.as_binary_expr().unwrap();
+        Node::BinaryExpr(expr) => {
             let left = format_node(session, expr.left, arena);
             let op_str = binary_op_str(expr.op);
             let op_doc = if matches!(expr.op, BinaryOp::And | BinaryOp::Or) {
@@ -69,8 +64,7 @@ fn format_node<'a>(
             let sp2 = arena.text(" ");
             arena.cats(&[left, sp1, op_doc, sp2, right])
         }
-        NodeTag::UnaryExpr => {
-            let expr = node_ref.as_unary_expr().unwrap();
+        Node::UnaryExpr(expr) => {
             let op_str = match expr.op {
                 UnaryOp::Minus => "-",
                 UnaryOp::Plus => "+",
@@ -81,8 +75,7 @@ fn format_node<'a>(
             let operand = format_node(session, expr.operand, arena);
             arena.cat(op_doc, operand)
         }
-        NodeTag::ResultColumn => {
-            let rc = node_ref.as_result_column().unwrap();
+        Node::ResultColumn(rc) => {
             let mut doc = if rc.flags.star() {
                 arena.text("*")
             } else {
@@ -98,10 +91,9 @@ fn format_node<'a>(
             }
             doc
         }
-        NodeTag::SelectStmt => format_select(session, &node_ref, arena),
+        Node::SelectStmt(stmt) => format_select(session, stmt, arena),
         // List nodes: comma-separated with soft breaks
-        NodeTag::ResultColumnList | NodeTag::ExprList => {
-            let list = node_ref.as_list().unwrap();
+        Node::ResultColumnList(list) | Node::ExprList(list) => {
             let children = list.children();
             let mut parts = Vec::new();
             for (i, &child_id) in children.iter().enumerate() {
@@ -119,11 +111,9 @@ fn format_node<'a>(
 
 fn format_select<'a>(
     session: &Session<'a>,
-    node_ref: &NodeRef<'a>,
+    stmt: &SelectStmt,
     arena: &mut DocArena<'a>,
 ) -> DocId {
-    let stmt = node_ref.as_select_stmt().unwrap();
-
     // SELECT <columns>
     let select_kw = arena.keyword("SELECT");
     let sp = arena.line();

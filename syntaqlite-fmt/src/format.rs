@@ -1,66 +1,58 @@
-use syntaqlite_parser::{NodeRef, Session, NULL_NODE};
+use syntaqlite_parser::{FieldVal, Session, MAX_FIELDS, NULL_NODE};
 
 use crate::doc::{DocArena, DocId};
-use crate::interpret::{interpret, FieldVal, FmtCtx};
-use crate::ops::{FieldDescriptor, FieldKind, NodeFmt};
+use crate::interpret::{interpret, FmtCtx, InterpretTrivia};
+use crate::ops::NodeFmt;
+use crate::trivia::TriviaCtx;
 use crate::NIL_DOC;
-
-/// Extract typed field values from a node using field descriptors.
-///
-/// Reads each field at its `offset_of!`-computed byte offset and wraps
-/// the raw value in the appropriate `FieldVal` variant.
-fn extract_fields<'a>(
-    node: NodeRef<'_>,
-    source: &'a str,
-    descriptors: &[FieldDescriptor],
-) -> Vec<FieldVal<'a>> {
-    let ptr = node.ptr() as *const u8;
-    descriptors
-        .iter()
-        .map(|desc| {
-            let p = unsafe { ptr.add(desc.offset as usize) };
-            match desc.kind {
-                FieldKind::NodeId => FieldVal::NodeId(unsafe { *(p as *const u32) }),
-                FieldKind::Span => {
-                    let o = unsafe { *(p as *const u32) } as usize;
-                    let l = unsafe { *(p.add(4) as *const u16) } as usize;
-                    if l == 0 {
-                        FieldVal::Span("")
-                    } else {
-                        FieldVal::Span(&source[o..o + l])
-                    }
-                }
-                FieldKind::Bool => FieldVal::Bool(unsafe { *(p as *const u32) } != 0),
-                FieldKind::Flags => FieldVal::Flags(unsafe { *p }),
-                FieldKind::Enum => FieldVal::Enum(unsafe { *(p as *const u32) }),
-            }
-        })
-        .collect()
-}
 
 /// Format any AST node by looking up its bytecode in the dispatch table.
 pub fn format_node<'a>(
-    dispatch: &[Option<NodeFmt>],
+    dispatch: &'a [Option<NodeFmt>],
     ctx: &FmtCtx<'a>,
-    session: &Session<'a>,
+    session: &'a Session<'a>,
     node_id: u32,
     arena: &mut DocArena<'a>,
+) -> DocId {
+    format_node_inner(dispatch, ctx, session, node_id, arena, None)
+}
+
+/// Format an AST node with trivia (comment) interleaving.
+pub fn format_node_with_trivia<'a>(
+    dispatch: &'a [Option<NodeFmt>],
+    ctx: &FmtCtx<'a>,
+    session: &'a Session<'a>,
+    node_id: u32,
+    arena: &mut DocArena<'a>,
+    trivia_ctx: &'a TriviaCtx<'a>,
+) -> DocId {
+    format_node_inner(dispatch, ctx, session, node_id, arena, Some(trivia_ctx))
+}
+
+fn format_node_inner<'a>(
+    dispatch: &'a [Option<NodeFmt>],
+    ctx: &FmtCtx<'a>,
+    session: &'a Session<'a>,
+    node_id: u32,
+    arena: &mut DocArena<'a>,
+    trivia_ctx: Option<&'a TriviaCtx<'a>>,
 ) -> DocId {
     if node_id == NULL_NODE {
         return NIL_DOC;
     }
-    let Some(node_ref) = session.node(node_id) else {
+    let Some(node) = session.node(node_id) else {
         return NIL_DOC;
     };
     let Some(entry) = dispatch
-        .get(node_ref.tag() as usize)
+        .get(node.tag() as usize)
         .and_then(|o| o.as_ref())
     else {
         return NIL_DOC;
     };
     let source = session.source();
-    let format_child =
-        |id: u32, arena: &mut DocArena<'a>| format_node(dispatch, ctx, session, id, arena);
+    let format_child = |id: u32, arena: &mut DocArena<'a>| {
+        format_node_inner(dispatch, ctx, session, id, arena, trivia_ctx)
+    };
     let resolve_list = |id: u32| -> Vec<u32> {
         session
             .node(id)
@@ -68,19 +60,83 @@ pub fn format_node<'a>(
             .map(|l| l.children().to_vec())
             .unwrap_or_default()
     };
-    let children = if node_ref.tag().is_list() {
-        Some(node_ref.as_list().unwrap().children())
+    let children = if node.tag().is_list() {
+        Some(node.as_list().unwrap().children())
     } else {
         None
     };
-    let fields = extract_fields(node_ref, source, entry.fields);
+
+    let mut buf = [FieldVal::NodeId(0); MAX_FIELDS];
+    let fields = node.fields(source, &mut buf);
+
+    let trivia = trivia_ctx.map(|tc| InterpretTrivia {
+        ctx: tc,
+        dispatch,
+        session,
+    });
+
     interpret(
         entry.ops,
         ctx,
-        &fields,
+        fields,
         children,
         arena,
         &format_child,
         &resolve_list,
+        trivia.as_ref(),
     )
+}
+
+/// Compute the first (lowest) source offset of a node by scanning its fields.
+/// Returns None if no non-empty source span is found.
+pub fn first_source_offset(
+    dispatch: &[Option<NodeFmt>],
+    session: &Session<'_>,
+    node_id: u32,
+) -> Option<u32> {
+    if node_id == NULL_NODE {
+        return None;
+    }
+    let node = session.node(node_id)?;
+
+    // For list nodes, check the first child.
+    if node.tag().is_list() {
+        let list = node.as_list()?;
+        let children = list.children();
+        if !children.is_empty() {
+            return first_source_offset(dispatch, session, children[0]);
+        }
+        return None;
+    }
+
+    // Check span fields directly.
+    let source = session.source();
+    let mut buf = [FieldVal::NodeId(0); MAX_FIELDS];
+    let fields = node.fields(source, &mut buf);
+
+    let mut min: Option<u32> = None;
+    for field in fields {
+        if let FieldVal::Span(s, offset) = field {
+            if !s.is_empty() {
+                min = Some(match min {
+                    Some(prev) => prev.min(*offset),
+                    None => *offset,
+                });
+            }
+        }
+    }
+    if min.is_some() {
+        return min;
+    }
+
+    // No spans found — check child NodeId fields recursively.
+    for field in fields {
+        if let FieldVal::NodeId(child_id) = field {
+            if let Some(off) = first_source_offset(dispatch, session, *child_id) {
+                return Some(off);
+            }
+        }
+    }
+
+    None
 }

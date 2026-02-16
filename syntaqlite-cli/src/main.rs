@@ -4,8 +4,12 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use syntaqlite_fmt::generated::fmt_ops::{CTX, DISPATCH};
-use syntaqlite_fmt::{format_node, render, DocArena, FormatConfig, KeywordCase};
+use syntaqlite_fmt::{
+    first_source_offset, format_node, format_node_with_trivia, render, DocArena, FormatConfig,
+    KeywordCase, TriviaCtx,
+};
 use syntaqlite_parser::dump;
+use syntaqlite_parser::TriviaKind;
 
 #[derive(Parser)]
 #[command(name = "syntaqlite", about = "Tools for SQLite SQL")]
@@ -70,25 +74,124 @@ fn expand_paths(patterns: &[String]) -> Result<Vec<PathBuf>, String> {
 
 fn format_source(source: &str, config: &FormatConfig, semicolons: bool) -> Result<String, String> {
     let mut parser = syntaqlite_parser::Parser::new();
+    parser.set_collect_tokens(true);
     let mut session = parser.parse(source);
-    let mut out = String::new();
-    let mut first = true;
 
+    // Parse all statements first so we can access trivia afterwards.
+    let mut roots = Vec::new();
     while let Some(result) = session.next_statement() {
         let root_id = result.map_err(|e| format!("parse error: {e}"))?;
+        roots.push(root_id);
+    }
+
+    let trivia = session.trivia();
+
+    // Fast path: no trivia, format without comment handling.
+    if trivia.is_empty() {
+        let mut out = String::new();
+        let mut first = true;
+        for &root_id in &roots {
+            if !first {
+                if semicolons {
+                    out.push(';');
+                }
+                out.push_str("\n\n");
+            }
+            let mut arena = DocArena::new();
+            let doc = format_node(&DISPATCH, &CTX, &session, root_id, &mut arena);
+            out.push_str(&render(&arena, doc, config));
+            first = false;
+        }
         if !first {
+            if semicolons {
+                out.push(';');
+            }
+            out.push('\n');
+        }
+        return Ok(out);
+    }
+
+    // Slow path: interleave comments.
+    let mut out = String::new();
+    let mut trivia_cursor = 0;
+
+    for (i, &root_id) in roots.iter().enumerate() {
+        if i > 0 {
             if semicolons {
                 out.push(';');
             }
             out.push_str("\n\n");
         }
+
+        // Compute this statement's first source offset.
+        let stmt_start = first_source_offset(&DISPATCH, &session, root_id)
+            .unwrap_or(source.len() as u32);
+
+        // Emit pre-statement trivia (comments before this statement).
+        while trivia_cursor < trivia.len() && trivia[trivia_cursor].offset < stmt_start {
+            let t = &trivia[trivia_cursor];
+            let text = &source[t.offset as usize..(t.offset + t.length) as usize];
+            match t.kind {
+                TriviaKind::LineComment => {
+                    out.push_str(text);
+                    out.push('\n');
+                }
+                TriviaKind::BlockComment => {
+                    out.push_str(text);
+                    out.push(' ');
+                }
+            }
+            trivia_cursor += 1;
+        }
+
+        // Determine the end boundary for within-statement trivia.
+        let stmt_end = if i + 1 < roots.len() {
+            first_source_offset(&DISPATCH, &session, roots[i + 1])
+                .unwrap_or(source.len() as u32)
+        } else {
+            source.len() as u32
+        };
+
+        // Collect within-statement trivia items.
+        let within_start = trivia_cursor;
+        while trivia_cursor < trivia.len() && trivia[trivia_cursor].offset < stmt_end {
+            trivia_cursor += 1;
+        }
+        let within_trivia = &trivia[within_start..trivia_cursor];
+
+        // Format the statement with trivia interleaving.
         let mut arena = DocArena::new();
-        let doc = format_node(&DISPATCH, &CTX, &session, root_id, &mut arena);
-        out.push_str(&render(&arena, doc, config));
-        first = false;
+        if within_trivia.is_empty() {
+            let doc = format_node(&DISPATCH, &CTX, &session, root_id, &mut arena);
+            out.push_str(&render(&arena, doc, config));
+        } else {
+            let trivia_ctx = TriviaCtx::new(within_trivia, source);
+            let doc =
+                format_node_with_trivia(&DISPATCH, &CTX, &session, root_id, &mut arena, &trivia_ctx);
+            // Flush remaining trivia (trailing comments at end of statement).
+            let trailing = trivia_ctx.drain_remaining(&mut arena);
+            let final_doc = arena.cat(doc, trailing);
+            out.push_str(&render(&arena, final_doc, config));
+        }
     }
 
-    if !first {
+    // Emit post-last-statement trivia.
+    while trivia_cursor < trivia.len() {
+        let t = &trivia[trivia_cursor];
+        let text = &source[t.offset as usize..(t.offset + t.length) as usize];
+        match t.kind {
+            TriviaKind::LineComment => {
+                out.push_str(text);
+                out.push('\n');
+            }
+            TriviaKind::BlockComment => {
+                out.push_str(text);
+            }
+        }
+        trivia_cursor += 1;
+    }
+
+    if !roots.is_empty() {
         if semicolons {
             out.push(';');
         }

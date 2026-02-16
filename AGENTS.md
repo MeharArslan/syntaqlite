@@ -85,5 +85,6 @@ This allows projects like libSQL, rqlite, or custom embedded databases to use sy
 
 | Tool | Purpose |
 |------|---------|
+| `tools/dev/run-codegen` | Regenerate all generated code (C headers, Rust nodes/tokens/dump/fmt_ops) from `.synq` definitions and SQLite grammar |
 | `python/tools/extract_sqlite.py` | Extract SQLite tokenizer and parser |
 | `python/tools/install_build_deps.py` | Download Zig compiler and dependencies |

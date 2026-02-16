@@ -109,6 +109,7 @@ struct SyntaqliteParser {
   int trace;
   int collect_tokens;
   const SyntaqliteDialectExtension* extension;
+  SYNQ_VEC(SyntaqliteTrivia) trivia;
 };
 
 // ---------------------------------------------------------------------------
@@ -122,6 +123,7 @@ SyntaqliteParser* syntaqlite_parser_create(const SyntaqliteMemMethods* mem) {
   p->mem = m;
   p->lemon = SyntaqliteParseAlloc(m.xMalloc);
   synq_parse_ctx_init(&p->ctx, m);
+  synq_vec_init(&p->trivia);
   return p;
 }
 
@@ -142,6 +144,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->finished = 0;
   p->had_error = 0;
   p->error_msg[0] = '\0';
+  synq_vec_clear(&p->trivia);
 
   // Reset parse context.
   p->ctx.source = source;
@@ -178,9 +181,19 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
     uint32_t tok_offset = p->offset;
     p->offset += (uint32_t)token_len;
 
-    // Skip whitespace and comments for the parser.
-    if (token_type == SYNTAQLITE_TK_SPACE ||
-        token_type == SYNTAQLITE_TK_COMMENT) {
+    // Skip whitespace.
+    if (token_type == SYNTAQLITE_TK_SPACE) {
+      continue;
+    }
+
+    // Capture comments as trivia when collect_tokens is enabled.
+    if (token_type == SYNTAQLITE_TK_COMMENT) {
+      if (p->collect_tokens) {
+        SyntaqliteTrivia t = {
+            tok_offset, (uint32_t)token_len,
+            z[tok_offset] == '-' ? (uint8_t)0 : (uint8_t)1};
+        synq_vec_push(&p->trivia, t, p->mem);
+      }
       continue;
     }
 
@@ -274,6 +287,7 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p) {
   if (p) {
     SyntaqliteParseFree(p->lemon, p->mem.xFree);
     synq_parse_ctx_free(&p->ctx);
+    synq_vec_free(&p->trivia, p->mem);
     p->mem.xFree(p);
   }
 }
@@ -315,6 +329,12 @@ void syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable) {
 
 void syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable) {
   p->collect_tokens = enable;
+}
+
+const SyntaqliteTrivia* syntaqlite_parser_trivia(SyntaqliteParser* p,
+                                                  uint32_t* count) {
+  *count = synq_vec_len(&p->trivia);
+  return p->trivia.data;
 }
 
 void syntaqlite_parser_set_extension(

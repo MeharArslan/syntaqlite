@@ -56,7 +56,8 @@ class LeadingLineComment(TestSuite):
                 SELECT a
                 -- apply filter
                 FROM t
-                WHERE x = 1
+                WHERE
+                  x = 1
             """,
         )
 

@@ -1,5 +1,6 @@
-use syntaqlite_fmt::interpret::{interpret, FieldVal};
+use syntaqlite_fmt::interpret::interpret;
 use syntaqlite_fmt::ops::FmtOp;
+use syntaqlite_parser::FieldVal;
 use syntaqlite_fmt::{render, DocArena, FmtCtx, FormatConfig, NIL_DOC};
 
 fn noop_child(_: u32, _: &mut DocArena) -> u32 {
@@ -19,7 +20,7 @@ fn ctx<'a>(strings: &'a [&'a str]) -> FmtCtx<'a> {
 
 fn run(ops: &[FmtOp], ctx: &FmtCtx, fields: &[FieldVal], config: &FormatConfig) -> String {
     let mut arena = DocArena::new();
-    let doc = interpret(ops, ctx, fields, None, &mut arena, &noop_child, &no_lists);
+    let doc = interpret(ops, ctx, fields, None, &mut arena, &noop_child, &no_lists, None);
     render(&arena, doc, config)
 }
 
@@ -82,7 +83,7 @@ fn nest_indentation() {
 
 #[test]
 fn span_reads_source_text() {
-    let fields = &[FieldVal::Span("hello")];
+    let fields = &[FieldVal::Span("hello", 0)];
     let ops = &[FmtOp::Span(0)];
     assert_eq!(run_default(ops, &ctx(&[]), fields), "hello");
 }
@@ -100,6 +101,7 @@ fn child_recurses_into_child_node() {
             arena.text("child_result")
         },
         &no_lists,
+        None,
     );
     assert_eq!(render(&arena, doc, &FormatConfig::default()), "child_result");
 }
@@ -185,6 +187,7 @@ fn foreach_comma_separated() {
             99 => vec![10, 20, 30],
             _ => panic!("unexpected list: {id}"),
         },
+        None,
     );
     assert_eq!(render(&arena, doc, &FormatConfig::default()), "a, b, c");
 }
@@ -215,6 +218,7 @@ fn foreach_with_line_breaks() {
             99 => vec![10, 20],
             _ => panic!("unexpected"),
         },
+        None,
     );
     assert_eq!(render(&arena, doc, &FormatConfig::default()), "aaaa, bbbb");
     let narrow = FormatConfig { line_width: 5, ..Default::default() };
@@ -242,6 +246,7 @@ fn foreach_empty_list() {
             99 => vec![],
             _ => panic!("unexpected"),
         },
+        None,
     );
     assert_eq!(render(&arena, doc, &FormatConfig::default()), "ab");
 }
@@ -340,7 +345,7 @@ fn ifenum_no_match() {
 
 #[test]
 fn ifspan_set() {
-    let fields = &[FieldVal::Span("hello")];
+    let fields = &[FieldVal::Span("hello", 0)];
     let strings = &["HAS_SPAN"];
     let ops = &[
         FmtOp::IfSpan(0, 1),
@@ -352,7 +357,7 @@ fn ifspan_set() {
 
 #[test]
 fn ifspan_empty() {
-    let fields = &[FieldVal::Span("")];
+    let fields = &[FieldVal::Span("", 0)];
     let strings = &["HAS_SPAN"];
     let ops = &[
         FmtOp::IfSpan(0, 1),
@@ -372,7 +377,7 @@ fn enum_display_maps_ordinal() {
     let ctx = FmtCtx { strings, enum_display };
     let ops = &[FmtOp::EnumDisplay(0, 0)]; // field 0, base 0
     let mut arena = DocArena::new();
-    let doc = interpret(ops, &ctx, fields, None, &mut arena, &noop_child, &no_lists);
+    let doc = interpret(ops, &ctx, fields, None, &mut arena, &noop_child, &no_lists, None);
     assert_eq!(render(&arena, doc, &FormatConfig::default()), "*");
 }
 
@@ -384,7 +389,7 @@ fn enum_display_with_nonzero_base() {
     let fields = &[FieldVal::Enum(1)]; // ordinal 1 → base[2+1]=1 → "OR"
     let ops = &[FmtOp::EnumDisplay(0, 2)];
     let mut arena = DocArena::new();
-    let doc = interpret(ops, &ctx, fields, None, &mut arena, &noop_child, &no_lists);
+    let doc = interpret(ops, &ctx, fields, None, &mut arena, &noop_child, &no_lists, None);
     assert_eq!(render(&arena, doc, &FormatConfig::default()), "OR");
 }
 
@@ -411,6 +416,7 @@ fn foreach_self_start() {
             _ => panic!("unexpected"),
         },
         &no_lists,
+        None,
     );
     assert_eq!(render(&arena, doc, &FormatConfig::default()), "x, y, z");
 }
@@ -431,7 +437,7 @@ fn foreach_self_empty() {
         {
             let ctx = ctx(strings);
             let mut arena = DocArena::new();
-            let doc = interpret(ops, &ctx, &[], Some(children), &mut arena, &noop_child, &no_lists);
+            let doc = interpret(ops, &ctx, &[], Some(children), &mut arena, &noop_child, &no_lists, None);
             render(&arena, doc, &FormatConfig::default())
         },
         "[]"

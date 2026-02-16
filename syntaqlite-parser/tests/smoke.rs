@@ -1,4 +1,4 @@
-use syntaqlite_parser::{NodeTag, Parser, Tokenizer, TokenType};
+use syntaqlite_parser::{Node, NodeTag, Parser, Tokenizer, TokenType};
 
 #[test]
 fn parse_select_1() {
@@ -9,7 +9,7 @@ fn parse_select_1() {
     let node = session.node(root_id).unwrap();
     assert_eq!(node.tag(), NodeTag::SelectStmt);
 
-    let select = node.as_select_stmt().unwrap();
+    let Node::SelectStmt(select) = node else { panic!("expected SelectStmt") };
     assert_eq!(select.tag, NodeTag::SelectStmt as u32);
 
     // No more statements.

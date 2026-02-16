@@ -53,6 +53,13 @@ extern "C" {
 // Opaque parser handle (heap-allocated, reusable across inputs).
 typedef struct SyntaqliteParser SyntaqliteParser;
 
+// A trivia item (comment) captured during parsing.
+typedef struct SyntaqliteTrivia {
+  uint32_t offset;   // Byte offset in source.
+  uint32_t length;   // Byte length.
+  uint8_t kind;      // 0 = line comment (--), 1 = block comment (/* */).
+} SyntaqliteTrivia;
+
 // Result of parsing one statement via syntaqlite_parser_next().
 //
 // Check root first: if it is SYNTAQLITE_NULL_NODE, parsing is done — then
@@ -110,6 +117,12 @@ const char* syntaqlite_parser_source(SyntaqliteParser* p);
 
 // Return the byte length of the source text bound by the last reset() call.
 uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p);
+
+// Return the trivia (comments) captured during parsing. The returned pointer
+// is valid until the next reset() or destroy(). Requires collect_tokens to be
+// enabled. Sets *count to the number of trivia items.
+const SyntaqliteTrivia* syntaqlite_parser_trivia(SyntaqliteParser* p,
+                                                  uint32_t* count);
 
 // ---------------------------------------------------------------------------
 // Configuration (call after create, before first reset)

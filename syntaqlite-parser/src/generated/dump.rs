@@ -9,22 +9,12 @@ use super::nodes::*;
 /// Dump an AST node tree as indented text.
 pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize) {
     if id == NULL_NODE { return; }
-    let Some(node_ref) = session.node(id) else { return; };
+    let Some(node) = session.node(id) else { return; };
     let source = session.source();
     let pad = "  ".repeat(indent);
 
-    if node_ref.tag().is_list() {
-        let list = node_ref.as_list().unwrap();
-        let _ = writeln!(out, "{pad}{:?} [{} items]", node_ref.tag(), list.count);
-        for &child_id in list.children() {
-            dump_node(session, child_id, out, indent + 1);
-        }
-        return;
-    }
-
-    match node_ref.tag() {
-        NodeTag::AggregateFunctionCall => {
-            let n = node_ref.as_aggregate_function_call().unwrap();
+    match node {
+        Node::AggregateFunctionCall(n) => {
             let _ = writeln!(out, "{pad}AggregateFunctionCall");
             dump_span(&pad, "func_name", &n.func_name, source, out);
             let _ = writeln!(out, "{pad}  flags: {}", n.flags.dump_str());
@@ -33,81 +23,75 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             dump_child(session, &pad, "filter_clause", n.filter_clause, out, indent);
             dump_child(session, &pad, "over_clause", n.over_clause, out, indent);
         }
-        NodeTag::CastExpr => {
-            let n = node_ref.as_cast_expr().unwrap();
+        Node::CastExpr(n) => {
             let _ = writeln!(out, "{pad}CastExpr");
             dump_child(session, &pad, "expr", n.expr, out, indent);
             dump_span(&pad, "type_name", &n.type_name, source, out);
         }
-        NodeTag::ColumnRef => {
-            let n = node_ref.as_column_ref().unwrap();
+        Node::ColumnRef(n) => {
             let _ = writeln!(out, "{pad}ColumnRef");
             dump_span(&pad, "column", &n.column, source, out);
             dump_span(&pad, "table", &n.table, source, out);
             dump_span(&pad, "schema", &n.schema, source, out);
         }
-        NodeTag::CompoundSelect => {
-            let n = node_ref.as_compound_select().unwrap();
+        Node::CompoundSelect(n) => {
             let _ = writeln!(out, "{pad}CompoundSelect");
             let _ = writeln!(out, "{pad}  op: {}", n.op.as_str());
             dump_child(session, &pad, "left", n.left, out, indent);
             dump_child(session, &pad, "right", n.right, out, indent);
         }
-        NodeTag::SubqueryExpr => {
-            let n = node_ref.as_subquery_expr().unwrap();
+        Node::SubqueryExpr(n) => {
             let _ = writeln!(out, "{pad}SubqueryExpr");
             dump_child(session, &pad, "select", n.select, out, indent);
         }
-        NodeTag::ExistsExpr => {
-            let n = node_ref.as_exists_expr().unwrap();
+        Node::ExistsExpr(n) => {
             let _ = writeln!(out, "{pad}ExistsExpr");
             dump_child(session, &pad, "select", n.select, out, indent);
         }
-        NodeTag::InExpr => {
-            let n = node_ref.as_in_expr().unwrap();
+        Node::InExpr(n) => {
             let _ = writeln!(out, "{pad}InExpr");
             let _ = writeln!(out, "{pad}  negated: {}", n.negated.as_str());
             dump_child(session, &pad, "operand", n.operand, out, indent);
             dump_child(session, &pad, "source", n.source, out, indent);
         }
-        NodeTag::IsExpr => {
-            let n = node_ref.as_is_expr().unwrap();
+        Node::IsExpr(n) => {
             let _ = writeln!(out, "{pad}IsExpr");
             let _ = writeln!(out, "{pad}  op: {}", n.op.as_str());
             dump_child(session, &pad, "left", n.left, out, indent);
             dump_child(session, &pad, "right", n.right, out, indent);
         }
-        NodeTag::BetweenExpr => {
-            let n = node_ref.as_between_expr().unwrap();
+        Node::BetweenExpr(n) => {
             let _ = writeln!(out, "{pad}BetweenExpr");
             let _ = writeln!(out, "{pad}  negated: {}", n.negated.as_str());
             dump_child(session, &pad, "operand", n.operand, out, indent);
             dump_child(session, &pad, "low", n.low, out, indent);
             dump_child(session, &pad, "high", n.high, out, indent);
         }
-        NodeTag::LikeExpr => {
-            let n = node_ref.as_like_expr().unwrap();
+        Node::LikeExpr(n) => {
             let _ = writeln!(out, "{pad}LikeExpr");
             let _ = writeln!(out, "{pad}  negated: {}", n.negated.as_str());
             dump_child(session, &pad, "operand", n.operand, out, indent);
             dump_child(session, &pad, "pattern", n.pattern, out, indent);
             dump_child(session, &pad, "escape", n.escape, out, indent);
         }
-        NodeTag::CaseExpr => {
-            let n = node_ref.as_case_expr().unwrap();
+        Node::CaseExpr(n) => {
             let _ = writeln!(out, "{pad}CaseExpr");
             dump_child(session, &pad, "operand", n.operand, out, indent);
             dump_child(session, &pad, "else_expr", n.else_expr, out, indent);
             dump_child(session, &pad, "whens", n.whens, out, indent);
         }
-        NodeTag::CaseWhen => {
-            let n = node_ref.as_case_when().unwrap();
+        Node::CaseWhen(n) => {
             let _ = writeln!(out, "{pad}CaseWhen");
             dump_child(session, &pad, "when_expr", n.when_expr, out, indent);
             dump_child(session, &pad, "then_expr", n.then_expr, out, indent);
         }
-        NodeTag::ForeignKeyClause => {
-            let n = node_ref.as_foreign_key_clause().unwrap();
+        Node::CaseWhenList(list) => {
+            let _ = writeln!(out, "{pad}CaseWhenList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::ForeignKeyClause(n) => {
             let _ = writeln!(out, "{pad}ForeignKeyClause");
             dump_span(&pad, "ref_table", &n.ref_table, source, out);
             dump_child(session, &pad, "ref_columns", n.ref_columns, out, indent);
@@ -115,8 +99,7 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             let _ = writeln!(out, "{pad}  on_update: {}", n.on_update.as_str());
             let _ = writeln!(out, "{pad}  is_deferred: {}", n.is_deferred.as_str());
         }
-        NodeTag::ColumnConstraint => {
-            let n = node_ref.as_column_constraint().unwrap();
+        Node::ColumnConstraint(n) => {
             let _ = writeln!(out, "{pad}ColumnConstraint");
             let _ = writeln!(out, "{pad}  kind: {}", n.kind.as_str());
             dump_span(&pad, "constraint_name", &n.constraint_name, source, out);
@@ -130,15 +113,25 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             dump_child(session, &pad, "generated_expr", n.generated_expr, out, indent);
             dump_child(session, &pad, "fk_clause", n.fk_clause, out, indent);
         }
-        NodeTag::ColumnDef => {
-            let n = node_ref.as_column_def().unwrap();
+        Node::ColumnConstraintList(list) => {
+            let _ = writeln!(out, "{pad}ColumnConstraintList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::ColumnDef(n) => {
             let _ = writeln!(out, "{pad}ColumnDef");
             dump_span(&pad, "column_name", &n.column_name, source, out);
             dump_span(&pad, "type_name", &n.type_name, source, out);
             dump_child(session, &pad, "constraints", n.constraints, out, indent);
         }
-        NodeTag::TableConstraint => {
-            let n = node_ref.as_table_constraint().unwrap();
+        Node::ColumnDefList(list) => {
+            let _ = writeln!(out, "{pad}ColumnDefList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::TableConstraint(n) => {
             let _ = writeln!(out, "{pad}TableConstraint");
             let _ = writeln!(out, "{pad}  kind: {}", n.kind.as_str());
             dump_span(&pad, "constraint_name", &n.constraint_name, source, out);
@@ -148,8 +141,13 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             dump_child(session, &pad, "check_expr", n.check_expr, out, indent);
             dump_child(session, &pad, "fk_clause", n.fk_clause, out, indent);
         }
-        NodeTag::CreateTableStmt => {
-            let n = node_ref.as_create_table_stmt().unwrap();
+        Node::TableConstraintList(list) => {
+            let _ = writeln!(out, "{pad}TableConstraintList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::CreateTableStmt(n) => {
             let _ = writeln!(out, "{pad}CreateTableStmt");
             dump_span(&pad, "table_name", &n.table_name, source, out);
             dump_span(&pad, "schema", &n.schema, source, out);
@@ -160,36 +158,43 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             dump_child(session, &pad, "table_constraints", n.table_constraints, out, indent);
             dump_child(session, &pad, "as_select", n.as_select, out, indent);
         }
-        NodeTag::CteDefinition => {
-            let n = node_ref.as_cte_definition().unwrap();
+        Node::CteDefinition(n) => {
             let _ = writeln!(out, "{pad}CteDefinition");
             dump_span(&pad, "cte_name", &n.cte_name, source, out);
             let _ = writeln!(out, "{pad}  materialized: {}", n.materialized.as_str());
             dump_child(session, &pad, "columns", n.columns, out, indent);
             dump_child(session, &pad, "select", n.select, out, indent);
         }
-        NodeTag::WithClause => {
-            let n = node_ref.as_with_clause().unwrap();
+        Node::CteList(list) => {
+            let _ = writeln!(out, "{pad}CteList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::WithClause(n) => {
             let _ = writeln!(out, "{pad}WithClause");
             let _ = writeln!(out, "{pad}  recursive: {}", n.recursive.as_str());
             dump_child(session, &pad, "ctes", n.ctes, out, indent);
             dump_child(session, &pad, "select", n.select, out, indent);
         }
-        NodeTag::DeleteStmt => {
-            let n = node_ref.as_delete_stmt().unwrap();
+        Node::DeleteStmt(n) => {
             let _ = writeln!(out, "{pad}DeleteStmt");
             dump_child(session, &pad, "table", n.table, out, indent);
             dump_child(session, &pad, "where_clause", n.where_clause, out, indent);
         }
-        NodeTag::SetClause => {
-            let n = node_ref.as_set_clause().unwrap();
+        Node::SetClause(n) => {
             let _ = writeln!(out, "{pad}SetClause");
             dump_span(&pad, "column", &n.column, source, out);
             dump_child(session, &pad, "columns", n.columns, out, indent);
             dump_child(session, &pad, "value", n.value, out, indent);
         }
-        NodeTag::UpdateStmt => {
-            let n = node_ref.as_update_stmt().unwrap();
+        Node::SetClauseList(list) => {
+            let _ = writeln!(out, "{pad}SetClauseList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::UpdateStmt(n) => {
             let _ = writeln!(out, "{pad}UpdateStmt");
             let _ = writeln!(out, "{pad}  conflict_action: {}", n.conflict_action.as_str());
             dump_child(session, &pad, "table", n.table, out, indent);
@@ -197,35 +202,36 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             dump_child(session, &pad, "from_clause", n.from_clause, out, indent);
             dump_child(session, &pad, "where_clause", n.where_clause, out, indent);
         }
-        NodeTag::InsertStmt => {
-            let n = node_ref.as_insert_stmt().unwrap();
+        Node::InsertStmt(n) => {
             let _ = writeln!(out, "{pad}InsertStmt");
             let _ = writeln!(out, "{pad}  conflict_action: {}", n.conflict_action.as_str());
             dump_child(session, &pad, "table", n.table, out, indent);
             dump_child(session, &pad, "columns", n.columns, out, indent);
             dump_child(session, &pad, "source", n.source, out, indent);
         }
-        NodeTag::BinaryExpr => {
-            let n = node_ref.as_binary_expr().unwrap();
+        Node::BinaryExpr(n) => {
             let _ = writeln!(out, "{pad}BinaryExpr");
             let _ = writeln!(out, "{pad}  op: {}", n.op.as_str());
             dump_child(session, &pad, "left", n.left, out, indent);
             dump_child(session, &pad, "right", n.right, out, indent);
         }
-        NodeTag::UnaryExpr => {
-            let n = node_ref.as_unary_expr().unwrap();
+        Node::UnaryExpr(n) => {
             let _ = writeln!(out, "{pad}UnaryExpr");
             let _ = writeln!(out, "{pad}  op: {}", n.op.as_str());
             dump_child(session, &pad, "operand", n.operand, out, indent);
         }
-        NodeTag::Literal => {
-            let n = node_ref.as_literal().unwrap();
+        Node::Literal(n) => {
             let _ = writeln!(out, "{pad}Literal");
             let _ = writeln!(out, "{pad}  literal_type: {}", n.literal_type.as_str());
             dump_span(&pad, "source", &n.source, source, out);
         }
-        NodeTag::FunctionCall => {
-            let n = node_ref.as_function_call().unwrap();
+        Node::ExprList(list) => {
+            let _ = writeln!(out, "{pad}ExprList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::FunctionCall(n) => {
             let _ = writeln!(out, "{pad}FunctionCall");
             dump_span(&pad, "func_name", &n.func_name, source, out);
             let _ = writeln!(out, "{pad}  flags: {}", n.flags.dump_str());
@@ -233,65 +239,61 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             dump_child(session, &pad, "filter_clause", n.filter_clause, out, indent);
             dump_child(session, &pad, "over_clause", n.over_clause, out, indent);
         }
-        NodeTag::Variable => {
-            let n = node_ref.as_variable().unwrap();
+        Node::Variable(n) => {
             let _ = writeln!(out, "{pad}Variable");
             dump_span(&pad, "source", &n.source, source, out);
         }
-        NodeTag::CollateExpr => {
-            let n = node_ref.as_collate_expr().unwrap();
+        Node::CollateExpr(n) => {
             let _ = writeln!(out, "{pad}CollateExpr");
             dump_child(session, &pad, "expr", n.expr, out, indent);
             dump_span(&pad, "collation", &n.collation, source, out);
         }
-        NodeTag::RaiseExpr => {
-            let n = node_ref.as_raise_expr().unwrap();
+        Node::RaiseExpr(n) => {
             let _ = writeln!(out, "{pad}RaiseExpr");
             let _ = writeln!(out, "{pad}  raise_type: {}", n.raise_type.as_str());
             dump_child(session, &pad, "error_message", n.error_message, out, indent);
         }
-        NodeTag::QualifiedName => {
-            let n = node_ref.as_qualified_name().unwrap();
+        Node::QualifiedName(n) => {
             let _ = writeln!(out, "{pad}QualifiedName");
             dump_span(&pad, "object_name", &n.object_name, source, out);
             dump_span(&pad, "schema", &n.schema, source, out);
         }
-        NodeTag::DropStmt => {
-            let n = node_ref.as_drop_stmt().unwrap();
+        Node::DropStmt(n) => {
             let _ = writeln!(out, "{pad}DropStmt");
             let _ = writeln!(out, "{pad}  object_type: {}", n.object_type.as_str());
             let _ = writeln!(out, "{pad}  if_exists: {}", n.if_exists.as_str());
             dump_child(session, &pad, "target", n.target, out, indent);
         }
-        NodeTag::AlterTableStmt => {
-            let n = node_ref.as_alter_table_stmt().unwrap();
+        Node::AlterTableStmt(n) => {
             let _ = writeln!(out, "{pad}AlterTableStmt");
             let _ = writeln!(out, "{pad}  op: {}", n.op.as_str());
             dump_child(session, &pad, "target", n.target, out, indent);
             dump_span(&pad, "new_name", &n.new_name, source, out);
             dump_span(&pad, "old_name", &n.old_name, source, out);
         }
-        NodeTag::TransactionStmt => {
-            let n = node_ref.as_transaction_stmt().unwrap();
+        Node::TransactionStmt(n) => {
             let _ = writeln!(out, "{pad}TransactionStmt");
             let _ = writeln!(out, "{pad}  op: {}", n.op.as_str());
             let _ = writeln!(out, "{pad}  trans_type: {}", n.trans_type.as_str());
         }
-        NodeTag::SavepointStmt => {
-            let n = node_ref.as_savepoint_stmt().unwrap();
+        Node::SavepointStmt(n) => {
             let _ = writeln!(out, "{pad}SavepointStmt");
             let _ = writeln!(out, "{pad}  op: {}", n.op.as_str());
             dump_span(&pad, "savepoint_name", &n.savepoint_name, source, out);
         }
-        NodeTag::ResultColumn => {
-            let n = node_ref.as_result_column().unwrap();
+        Node::ResultColumn(n) => {
             let _ = writeln!(out, "{pad}ResultColumn");
             let _ = writeln!(out, "{pad}  flags: {}", n.flags.dump_str());
             dump_span(&pad, "alias", &n.alias, source, out);
             dump_child(session, &pad, "expr", n.expr, out, indent);
         }
-        NodeTag::SelectStmt => {
-            let n = node_ref.as_select_stmt().unwrap();
+        Node::ResultColumnList(list) => {
+            let _ = writeln!(out, "{pad}ResultColumnList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::SelectStmt(n) => {
             let _ = writeln!(out, "{pad}SelectStmt");
             let _ = writeln!(out, "{pad}  flags: {}", n.flags.dump_str());
             dump_child(session, &pad, "columns", n.columns, out, indent);
@@ -303,34 +305,35 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             dump_child(session, &pad, "limit_clause", n.limit_clause, out, indent);
             dump_child(session, &pad, "window_clause", n.window_clause, out, indent);
         }
-        NodeTag::OrderingTerm => {
-            let n = node_ref.as_ordering_term().unwrap();
+        Node::OrderingTerm(n) => {
             let _ = writeln!(out, "{pad}OrderingTerm");
             dump_child(session, &pad, "expr", n.expr, out, indent);
             let _ = writeln!(out, "{pad}  sort_order: {}", n.sort_order.as_str());
             let _ = writeln!(out, "{pad}  nulls_order: {}", n.nulls_order.as_str());
         }
-        NodeTag::LimitClause => {
-            let n = node_ref.as_limit_clause().unwrap();
+        Node::OrderByList(list) => {
+            let _ = writeln!(out, "{pad}OrderByList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::LimitClause(n) => {
             let _ = writeln!(out, "{pad}LimitClause");
             dump_child(session, &pad, "limit", n.limit, out, indent);
             dump_child(session, &pad, "offset", n.offset, out, indent);
         }
-        NodeTag::TableRef => {
-            let n = node_ref.as_table_ref().unwrap();
+        Node::TableRef(n) => {
             let _ = writeln!(out, "{pad}TableRef");
             dump_span(&pad, "table_name", &n.table_name, source, out);
             dump_span(&pad, "schema", &n.schema, source, out);
             dump_span(&pad, "alias", &n.alias, source, out);
         }
-        NodeTag::SubqueryTableSource => {
-            let n = node_ref.as_subquery_table_source().unwrap();
+        Node::SubqueryTableSource(n) => {
             let _ = writeln!(out, "{pad}SubqueryTableSource");
             dump_child(session, &pad, "select", n.select, out, indent);
             dump_span(&pad, "alias", &n.alias, source, out);
         }
-        NodeTag::JoinClause => {
-            let n = node_ref.as_join_clause().unwrap();
+        Node::JoinClause(n) => {
             let _ = writeln!(out, "{pad}JoinClause");
             let _ = writeln!(out, "{pad}  join_type: {}", n.join_type.as_str());
             dump_child(session, &pad, "left", n.left, out, indent);
@@ -338,20 +341,23 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             dump_child(session, &pad, "on_expr", n.on_expr, out, indent);
             dump_child(session, &pad, "using_columns", n.using_columns, out, indent);
         }
-        NodeTag::JoinPrefix => {
-            let n = node_ref.as_join_prefix().unwrap();
+        Node::JoinPrefix(n) => {
             let _ = writeln!(out, "{pad}JoinPrefix");
             dump_child(session, &pad, "source", n.source, out, indent);
             let _ = writeln!(out, "{pad}  join_type: {}", n.join_type.as_str());
         }
-        NodeTag::TriggerEvent => {
-            let n = node_ref.as_trigger_event().unwrap();
+        Node::TriggerEvent(n) => {
             let _ = writeln!(out, "{pad}TriggerEvent");
             let _ = writeln!(out, "{pad}  event_type: {}", n.event_type.as_str());
             dump_child(session, &pad, "columns", n.columns, out, indent);
         }
-        NodeTag::CreateTriggerStmt => {
-            let n = node_ref.as_create_trigger_stmt().unwrap();
+        Node::TriggerCmdList(list) => {
+            let _ = writeln!(out, "{pad}TriggerCmdList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::CreateTriggerStmt(n) => {
             let _ = writeln!(out, "{pad}CreateTriggerStmt");
             dump_span(&pad, "trigger_name", &n.trigger_name, source, out);
             dump_span(&pad, "schema", &n.schema, source, out);
@@ -363,8 +369,7 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             dump_child(session, &pad, "when_expr", n.when_expr, out, indent);
             dump_child(session, &pad, "body", n.body, out, indent);
         }
-        NodeTag::CreateVirtualTableStmt => {
-            let n = node_ref.as_create_virtual_table_stmt().unwrap();
+        Node::CreateVirtualTableStmt(n) => {
             let _ = writeln!(out, "{pad}CreateVirtualTableStmt");
             dump_span(&pad, "table_name", &n.table_name, source, out);
             dump_span(&pad, "schema", &n.schema, source, out);
@@ -372,47 +377,40 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             let _ = writeln!(out, "{pad}  if_not_exists: {}", n.if_not_exists.as_str());
             dump_span(&pad, "module_args", &n.module_args, source, out);
         }
-        NodeTag::PragmaStmt => {
-            let n = node_ref.as_pragma_stmt().unwrap();
+        Node::PragmaStmt(n) => {
             let _ = writeln!(out, "{pad}PragmaStmt");
             dump_span(&pad, "pragma_name", &n.pragma_name, source, out);
             dump_span(&pad, "schema", &n.schema, source, out);
             dump_span(&pad, "value", &n.value, source, out);
             let _ = writeln!(out, "{pad}  pragma_form: {}", n.pragma_form.as_str());
         }
-        NodeTag::AnalyzeStmt => {
-            let n = node_ref.as_analyze_stmt().unwrap();
+        Node::AnalyzeStmt(n) => {
             let _ = writeln!(out, "{pad}AnalyzeStmt");
             dump_span(&pad, "target_name", &n.target_name, source, out);
             dump_span(&pad, "schema", &n.schema, source, out);
             let _ = writeln!(out, "{pad}  kind: {}", n.kind.as_str());
         }
-        NodeTag::AttachStmt => {
-            let n = node_ref.as_attach_stmt().unwrap();
+        Node::AttachStmt(n) => {
             let _ = writeln!(out, "{pad}AttachStmt");
             dump_child(session, &pad, "filename", n.filename, out, indent);
             dump_child(session, &pad, "db_name", n.db_name, out, indent);
             dump_child(session, &pad, "key", n.key, out, indent);
         }
-        NodeTag::DetachStmt => {
-            let n = node_ref.as_detach_stmt().unwrap();
+        Node::DetachStmt(n) => {
             let _ = writeln!(out, "{pad}DetachStmt");
             dump_child(session, &pad, "db_name", n.db_name, out, indent);
         }
-        NodeTag::VacuumStmt => {
-            let n = node_ref.as_vacuum_stmt().unwrap();
+        Node::VacuumStmt(n) => {
             let _ = writeln!(out, "{pad}VacuumStmt");
             dump_span(&pad, "schema", &n.schema, source, out);
             dump_child(session, &pad, "into_expr", n.into_expr, out, indent);
         }
-        NodeTag::ExplainStmt => {
-            let n = node_ref.as_explain_stmt().unwrap();
+        Node::ExplainStmt(n) => {
             let _ = writeln!(out, "{pad}ExplainStmt");
             let _ = writeln!(out, "{pad}  explain_mode: {}", n.explain_mode.as_str());
             dump_child(session, &pad, "stmt", n.stmt, out, indent);
         }
-        NodeTag::CreateIndexStmt => {
-            let n = node_ref.as_create_index_stmt().unwrap();
+        Node::CreateIndexStmt(n) => {
             let _ = writeln!(out, "{pad}CreateIndexStmt");
             dump_span(&pad, "index_name", &n.index_name, source, out);
             dump_span(&pad, "schema", &n.schema, source, out);
@@ -422,8 +420,7 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             dump_child(session, &pad, "columns", n.columns, out, indent);
             dump_child(session, &pad, "where_clause", n.where_clause, out, indent);
         }
-        NodeTag::CreateViewStmt => {
-            let n = node_ref.as_create_view_stmt().unwrap();
+        Node::CreateViewStmt(n) => {
             let _ = writeln!(out, "{pad}CreateViewStmt");
             dump_span(&pad, "view_name", &n.view_name, source, out);
             dump_span(&pad, "schema", &n.schema, source, out);
@@ -432,48 +429,58 @@ pub fn dump_node(session: &Session<'_>, id: u32, out: &mut String, indent: usize
             dump_child(session, &pad, "column_names", n.column_names, out, indent);
             dump_child(session, &pad, "select", n.select, out, indent);
         }
-        NodeTag::ValuesClause => {
-            let n = node_ref.as_values_clause().unwrap();
+        Node::ValuesRowList(list) => {
+            let _ = writeln!(out, "{pad}ValuesRowList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::ValuesClause(n) => {
             let _ = writeln!(out, "{pad}ValuesClause");
             dump_child(session, &pad, "rows", n.rows, out, indent);
         }
-        NodeTag::FrameBound => {
-            let n = node_ref.as_frame_bound().unwrap();
+        Node::FrameBound(n) => {
             let _ = writeln!(out, "{pad}FrameBound");
             let _ = writeln!(out, "{pad}  bound_type: {}", n.bound_type.as_str());
             dump_child(session, &pad, "expr", n.expr, out, indent);
         }
-        NodeTag::FrameSpec => {
-            let n = node_ref.as_frame_spec().unwrap();
+        Node::FrameSpec(n) => {
             let _ = writeln!(out, "{pad}FrameSpec");
             let _ = writeln!(out, "{pad}  frame_type: {}", n.frame_type.as_str());
             let _ = writeln!(out, "{pad}  exclude: {}", n.exclude.as_str());
             dump_child(session, &pad, "start_bound", n.start_bound, out, indent);
             dump_child(session, &pad, "end_bound", n.end_bound, out, indent);
         }
-        NodeTag::WindowDef => {
-            let n = node_ref.as_window_def().unwrap();
+        Node::WindowDef(n) => {
             let _ = writeln!(out, "{pad}WindowDef");
             dump_span(&pad, "base_window_name", &n.base_window_name, source, out);
             dump_child(session, &pad, "partition_by", n.partition_by, out, indent);
             dump_child(session, &pad, "orderby", n.orderby, out, indent);
             dump_child(session, &pad, "frame", n.frame, out, indent);
         }
-        NodeTag::NamedWindowDef => {
-            let n = node_ref.as_named_window_def().unwrap();
+        Node::WindowDefList(list) => {
+            let _ = writeln!(out, "{pad}WindowDefList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::NamedWindowDef(n) => {
             let _ = writeln!(out, "{pad}NamedWindowDef");
             dump_span(&pad, "window_name", &n.window_name, source, out);
             dump_child(session, &pad, "window_def", n.window_def, out, indent);
         }
-        NodeTag::FilterOver => {
-            let n = node_ref.as_filter_over().unwrap();
+        Node::NamedWindowDefList(list) => {
+            let _ = writeln!(out, "{pad}NamedWindowDefList [{} items]", list.count);
+            for &child_id in list.children() {
+                dump_node(session, child_id, out, indent + 1);
+            }
+        }
+        Node::FilterOver(n) => {
             let _ = writeln!(out, "{pad}FilterOver");
             dump_child(session, &pad, "filter_expr", n.filter_expr, out, indent);
             dump_child(session, &pad, "over_def", n.over_def, out, indent);
             dump_span(&pad, "over_name", &n.over_name, source, out);
         }
-        _ => {
-            let _ = writeln!(out, "{pad}{:?}", node_ref.tag());
-        }
+        _ => {}
     }
 }

@@ -8,10 +8,12 @@
 //! - Per-node `extract_xxx()` functions that produce `&[FieldVal]`
 //! - `DISPATCH` table indexed by NodeTag ordinal
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::Write as _;
 
-use crate::node_parser::{Field, Fmt, Item, Storage};
+#[cfg(test)]
+use crate::node_parser::Storage;
+use crate::node_parser::{Field, Fmt, Item};
 
 // ── String interning ────────────────────────────────────────────────────
 
@@ -88,12 +90,8 @@ impl EnumDisplayTable {
 struct FieldInfo {
     /// Index into the FieldVal array for this node.
     idx: u16,
-    /// The field's storage type.
-    storage: Storage,
     /// The type name (e.g. "SelectStmtFlags", "SortOrder", "SyntaqliteSourceSpan").
     type_name: String,
-    /// The field name in the struct.
-    name: String,
 }
 
 /// Collect fields for a node, assigning sequential indices.
@@ -104,9 +102,7 @@ fn build_field_map(fields: &[Field]) -> (Vec<FieldInfo>, HashMap<String, usize>)
         name_to_idx.insert(f.name.clone(), i);
         infos.push(FieldInfo {
             idx: i as u16,
-            storage: f.storage.clone(),
             type_name: f.type_name.clone(),
-            name: f.name.clone(),
         });
     }
     (infos, name_to_idx)
@@ -472,56 +468,8 @@ fn upper_snake(name: &str) -> String {
     pascal_to_snake(name).to_uppercase()
 }
 
-/// Check if a name is a Rust keyword that needs raw-identifier syntax.
-fn is_rust_keyword(name: &str) -> bool {
-    matches!(
-        name,
-        "as" | "break" | "const" | "continue" | "crate" | "else" | "enum"
-            | "extern" | "false" | "fn" | "for" | "if" | "impl" | "in"
-            | "let" | "loop" | "match" | "mod" | "move" | "mut" | "pub"
-            | "ref" | "return" | "self" | "Self" | "static" | "struct"
-            | "super" | "trait" | "true" | "type" | "unsafe" | "use"
-            | "where" | "while" | "async" | "await" | "dyn"
-    )
-}
-
-fn rust_field_name(name: &str) -> String {
-    if is_rust_keyword(name) {
-        format!("r#{}", name)
-    } else {
-        name.to_string()
-    }
-}
-
-/// Map a field's storage/type to a FieldKind string.
-fn field_kind_str(
-    field: &FieldInfo,
-    enum_names: &HashSet<&str>,
-    flags_names: &HashSet<&str>,
-) -> &'static str {
-    match field.storage {
-        Storage::Index => "FieldKind::NodeId",
-        Storage::Inline => {
-            if field.type_name == "SyntaqliteSourceSpan" {
-                "FieldKind::Span"
-            } else if field.type_name == "Bool" {
-                "FieldKind::Bool"
-            } else if flags_names.contains(field.type_name.as_str()) {
-                "FieldKind::Flags"
-            } else if enum_names.contains(field.type_name.as_str()) {
-                "FieldKind::Enum"
-            } else {
-                panic!("unknown inline type: {}", field.type_name)
-            }
-        }
-    }
-}
-
 /// Generate the complete `fmt_ops.rs` file.
 pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
-    let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
-    let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
-
     // Build enum variant maps (name → ordered variants)
     let enum_items: HashMap<String, Vec<String>> = items
         .iter()
@@ -547,8 +495,6 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
     struct CompiledNode {
         name: String,
         ops: Vec<String>,
-        fields: Vec<FieldInfo>,
-        is_list: bool,
     }
     let mut compiled: Vec<CompiledNode> = Vec::new();
 
@@ -569,8 +515,6 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
                 compiled.push(CompiledNode {
                     name: name.clone(),
                     ops,
-                    fields: field_infos,
-                    is_list: false,
                 });
             }
             Item::List { name, fmt: Some(fmt_body), .. } => {
@@ -588,8 +532,6 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
                 compiled.push(CompiledNode {
                     name: name.clone(),
                     ops,
-                    fields: Vec::new(),
-                    is_list: true,
                 });
             }
             Item::List { name, fmt: None, .. } => {
@@ -605,8 +547,6 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
                 compiled.push(CompiledNode {
                     name: name.clone(),
                     ops,
-                    fields: Vec::new(),
-                    is_list: true,
                 });
             }
             _ => {}
@@ -626,10 +566,9 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
     writeln!(out).unwrap();
     writeln!(out, "#![allow(unused)]").unwrap();
     writeln!(out).unwrap();
-    writeln!(out, "use std::mem::offset_of;").unwrap();
     writeln!(out, "use syntaqlite_parser::*;").unwrap();
     writeln!(out, "use crate::interpret::FmtCtx;").unwrap();
-    writeln!(out, "use crate::ops::{{FmtOp, FieldDescriptor, FieldKind, NodeFmt}};").unwrap();
+    writeln!(out, "use crate::ops::{{FmtOp, NodeFmt}};").unwrap();
     writeln!(out, "use crate::DocArena;").unwrap();
     writeln!(out).unwrap();
 
@@ -649,7 +588,7 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
     writeln!(out, "];").unwrap();
     writeln!(out).unwrap();
 
-    // Per-node: const ops array + field descriptor array
+    // Per-node: const ops array
     for cn in &compiled {
         let upper = upper_snake(&cn.name);
 
@@ -659,22 +598,6 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
             writeln!(out, "    {},", op).unwrap();
         }
         writeln!(out, "];").unwrap();
-
-        // Field descriptors (only for non-list nodes)
-        if !cn.is_list && !cn.fields.is_empty() {
-            writeln!(out, "const FIELDS_{}: &[FieldDescriptor] = &[", upper).unwrap();
-            for field in &cn.fields {
-                let kind = field_kind_str(field, &enum_names, &flags_names);
-                let fname = rust_field_name(&field.name);
-                writeln!(
-                    out,
-                    "    FieldDescriptor {{ offset: offset_of!({}, {}) as u16, kind: {} }},",
-                    cn.name, fname, kind,
-                )
-                .unwrap();
-            }
-            writeln!(out, "];").unwrap();
-        }
         writeln!(out).unwrap();
     }
 
@@ -684,15 +607,10 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
     writeln!(out, "    let mut t = [NONE; {}];", tag_count).unwrap();
     for cn in &compiled {
         let upper = upper_snake(&cn.name);
-        let fields_ref = if cn.is_list || cn.fields.is_empty() {
-            "&[]".to_string()
-        } else {
-            format!("FIELDS_{}", upper)
-        };
         writeln!(
             out,
-            "    t[NodeTag::{} as usize] = Some(NodeFmt {{ ops: FMT_{}, fields: {} }});",
-            cn.name, upper, fields_ref,
+            "    t[NodeTag::{} as usize] = Some(NodeFmt {{ ops: FMT_{} }});",
+            cn.name, upper,
         )
         .unwrap();
     }
@@ -726,10 +644,8 @@ mod tests {
         let output = generate_rust_fmt_ops(&items);
         assert!(output.contains("FMT_LITERAL"));
         assert!(output.contains("FmtOp::Span(0)"));
-        // Field descriptor with offset_of!
-        assert!(output.contains("FIELDS_LITERAL"));
-        assert!(output.contains("offset_of!(Literal, source)"));
-        assert!(output.contains("FieldKind::Span"));
+        // No more field descriptors — fields are accessed via Node::field()
+        assert!(!output.contains("FIELDS_LITERAL"));
         // Dispatch table entry
         assert!(output.contains("NodeTag::Literal"));
     }

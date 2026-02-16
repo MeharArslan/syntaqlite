@@ -25,6 +25,13 @@ pub(crate) struct RawMemMethods {
     pub x_free: unsafe extern "C" fn(*mut c_void),
 }
 
+#[repr(C)]
+pub(crate) struct RawTrivia {
+    pub offset: u32,
+    pub length: u32,
+    pub kind: u8,
+}
+
 // The C API uses `SyntaqliteNode*` as an opaque return. We only read via
 // the tag field (first u32) and then cast to the right struct, so we just
 // receive `*const u32`.
@@ -41,6 +48,10 @@ unsafe extern "C" {
 
     // Parser configuration
     pub fn syntaqlite_parser_set_trace(p: *mut RawParser, enable: c_int);
+    pub fn syntaqlite_parser_set_collect_tokens(p: *mut RawParser, enable: c_int);
+
+    // Trivia (comments)
+    pub fn syntaqlite_parser_trivia(p: *mut RawParser, count: *mut u32) -> *const RawTrivia;
 
     // Tokenizer lifecycle
     pub fn syntaqlite_tokenizer_create(mem: *const RawMemMethods) -> *mut RawTokenizer;

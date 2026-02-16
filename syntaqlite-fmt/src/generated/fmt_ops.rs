@@ -2,10 +2,9 @@
 
 #![allow(unused)]
 
-use std::mem::offset_of;
 use syntaqlite_parser::*;
 use crate::interpret::FmtCtx;
-use crate::ops::{FmtOp, FieldDescriptor, FieldKind, NodeFmt};
+use crate::ops::{FmtOp, NodeFmt};
 use crate::DocArena;
 
 const STRINGS: &[&str] = &[
@@ -248,14 +247,6 @@ const FMT_AGGREGATE_FUNCTION_CALL: &[FmtOp] = &[
     FmtOp::Child(5),
     FmtOp::EndIf,
 ];
-const FIELDS_AGGREGATE_FUNCTION_CALL: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(AggregateFunctionCall, func_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(AggregateFunctionCall, flags) as u16, kind: FieldKind::Flags },
-    FieldDescriptor { offset: offset_of!(AggregateFunctionCall, args) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(AggregateFunctionCall, orderby) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(AggregateFunctionCall, filter_clause) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(AggregateFunctionCall, over_clause) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_CAST_EXPR: &[FmtOp] = &[
     FmtOp::Keyword(6),
@@ -263,10 +254,6 @@ const FMT_CAST_EXPR: &[FmtOp] = &[
     FmtOp::Keyword(7),
     FmtOp::Span(1),
     FmtOp::Keyword(3),
-];
-const FIELDS_CAST_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CastExpr, expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CastExpr, type_name) as u16, kind: FieldKind::Span },
 ];
 
 const FMT_COLUMN_REF: &[FmtOp] = &[
@@ -280,11 +267,6 @@ const FMT_COLUMN_REF: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::Span(0),
 ];
-const FIELDS_COLUMN_REF: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(ColumnRef, column) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(ColumnRef, table) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(ColumnRef, schema) as u16, kind: FieldKind::Span },
-];
 
 const FMT_COMPOUND_SELECT: &[FmtOp] = &[
     FmtOp::Child(1),
@@ -293,28 +275,17 @@ const FMT_COMPOUND_SELECT: &[FmtOp] = &[
     FmtOp::HardLine,
     FmtOp::Child(2),
 ];
-const FIELDS_COMPOUND_SELECT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CompoundSelect, op) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(CompoundSelect, left) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CompoundSelect, right) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_SUBQUERY_EXPR: &[FmtOp] = &[
     FmtOp::Keyword(0),
     FmtOp::Child(0),
     FmtOp::Keyword(3),
 ];
-const FIELDS_SUBQUERY_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(SubqueryExpr, select) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_EXISTS_EXPR: &[FmtOp] = &[
     FmtOp::Keyword(13),
     FmtOp::Child(0),
     FmtOp::Keyword(3),
-];
-const FIELDS_EXISTS_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(ExistsExpr, select) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_IN_EXPR: &[FmtOp] = &[
@@ -327,11 +298,6 @@ const FMT_IN_EXPR: &[FmtOp] = &[
     FmtOp::Keyword(0),
     FmtOp::Child(2),
     FmtOp::Keyword(3),
-];
-const FIELDS_IN_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(InExpr, negated) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(InExpr, operand) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(InExpr, source) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_IS_EXPR: &[FmtOp] = &[
@@ -369,11 +335,6 @@ const FMT_IS_EXPR: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::EndIf,
 ];
-const FIELDS_IS_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(IsExpr, op) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(IsExpr, left) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(IsExpr, right) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_BETWEEN_EXPR: &[FmtOp] = &[
     FmtOp::Child(1),
@@ -385,12 +346,6 @@ const FMT_BETWEEN_EXPR: &[FmtOp] = &[
     FmtOp::Child(2),
     FmtOp::Keyword(24),
     FmtOp::Child(3),
-];
-const FIELDS_BETWEEN_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(BetweenExpr, negated) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(BetweenExpr, operand) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(BetweenExpr, low) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(BetweenExpr, high) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_LIKE_EXPR: &[FmtOp] = &[
@@ -405,12 +360,6 @@ const FMT_LIKE_EXPR: &[FmtOp] = &[
     FmtOp::Keyword(27),
     FmtOp::Child(3),
     FmtOp::EndIf,
-];
-const FIELDS_LIKE_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(LikeExpr, negated) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(LikeExpr, operand) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(LikeExpr, pattern) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(LikeExpr, escape) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_CASE_EXPR: &[FmtOp] = &[
@@ -428,21 +377,12 @@ const FMT_CASE_EXPR: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::Keyword(31),
 ];
-const FIELDS_CASE_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CaseExpr, operand) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CaseExpr, else_expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CaseExpr, whens) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_CASE_WHEN: &[FmtOp] = &[
     FmtOp::Keyword(32),
     FmtOp::Child(0),
     FmtOp::Keyword(33),
     FmtOp::Child(1),
-];
-const FIELDS_CASE_WHEN: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CaseWhen, when_expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CaseWhen, then_expr) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_CASE_WHEN_LIST: &[FmtOp] = &[
@@ -494,13 +434,6 @@ const FMT_FOREIGN_KEY_CLAUSE: &[FmtOp] = &[
     FmtOp::IfBool(4, 2),
     FmtOp::Keyword(43),
     FmtOp::EndIf,
-];
-const FIELDS_FOREIGN_KEY_CLAUSE: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(ForeignKeyClause, ref_table) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(ForeignKeyClause, ref_columns) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(ForeignKeyClause, on_delete) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(ForeignKeyClause, on_update) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(ForeignKeyClause, is_deferred) as u16, kind: FieldKind::Bool },
 ];
 
 const FMT_COLUMN_CONSTRAINT: &[FmtOp] = &[
@@ -617,19 +550,6 @@ const FMT_COLUMN_CONSTRAINT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::EndIf,
 ];
-const FIELDS_COLUMN_CONSTRAINT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, kind) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, constraint_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, onconf) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, sort_order) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, is_autoincrement) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, collation_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, generated_storage) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, default_expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, check_expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, generated_expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, fk_clause) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_COLUMN_CONSTRAINT_LIST: &[FmtOp] = &[
     FmtOp::ForEachSelfStart,
@@ -648,11 +568,6 @@ const FMT_COLUMN_DEF: &[FmtOp] = &[
     FmtOp::Keyword(29),
     FmtOp::Child(2),
     FmtOp::EndIf,
-];
-const FIELDS_COLUMN_DEF: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(ColumnDef, column_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(ColumnDef, type_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(ColumnDef, constraints) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_COLUMN_DEF_LIST: &[FmtOp] = &[
@@ -732,15 +647,6 @@ const FMT_TABLE_CONSTRAINT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::EndIf,
 ];
-const FIELDS_TABLE_CONSTRAINT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(TableConstraint, kind) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(TableConstraint, constraint_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(TableConstraint, onconf) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(TableConstraint, is_autoincrement) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(TableConstraint, columns) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(TableConstraint, check_expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(TableConstraint, fk_clause) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_TABLE_CONSTRAINT_LIST: &[FmtOp] = &[
     FmtOp::ForEachSelfStart,
@@ -795,16 +701,6 @@ const FMT_CREATE_TABLE_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::GroupEnd,
 ];
-const FIELDS_CREATE_TABLE_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CreateTableStmt, table_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateTableStmt, schema) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateTableStmt, is_temp) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(CreateTableStmt, if_not_exists) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(CreateTableStmt, flags) as u16, kind: FieldKind::Flags },
-    FieldDescriptor { offset: offset_of!(CreateTableStmt, columns) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CreateTableStmt, table_constraints) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CreateTableStmt, as_select) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_CTE_DEFINITION: &[FmtOp] = &[
     FmtOp::Span(0),
@@ -825,12 +721,6 @@ const FMT_CTE_DEFINITION: &[FmtOp] = &[
     FmtOp::Keyword(0),
     FmtOp::Child(3),
     FmtOp::Keyword(3),
-];
-const FIELDS_CTE_DEFINITION: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CteDefinition, cte_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CteDefinition, materialized) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(CteDefinition, columns) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CteDefinition, select) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_CTE_LIST: &[FmtOp] = &[
@@ -853,11 +743,6 @@ const FMT_WITH_CLAUSE: &[FmtOp] = &[
     FmtOp::HardLine,
     FmtOp::Child(2),
 ];
-const FIELDS_WITH_CLAUSE: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(WithClause, recursive) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(WithClause, ctes) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(WithClause, select) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_DELETE_STMT: &[FmtOp] = &[
     FmtOp::GroupStart,
@@ -873,10 +758,6 @@ const FMT_DELETE_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::GroupEnd,
 ];
-const FIELDS_DELETE_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(DeleteStmt, table) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(DeleteStmt, where_clause) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_SET_CLAUSE: &[FmtOp] = &[
     FmtOp::IfSpan(0, 2),
@@ -890,11 +771,6 @@ const FMT_SET_CLAUSE: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::Keyword(79),
     FmtOp::Child(2),
-];
-const FIELDS_SET_CLAUSE: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(SetClause, column) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(SetClause, columns) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(SetClause, value) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_SET_CLAUSE_LIST: &[FmtOp] = &[
@@ -952,13 +828,6 @@ const FMT_UPDATE_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::GroupEnd,
 ];
-const FIELDS_UPDATE_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(UpdateStmt, conflict_action) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(UpdateStmt, table) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(UpdateStmt, setlist) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(UpdateStmt, from_clause) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(UpdateStmt, where_clause) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_INSERT_STMT: &[FmtOp] = &[
     FmtOp::GroupStart,
@@ -1001,12 +870,6 @@ const FMT_INSERT_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::GroupEnd,
 ];
-const FIELDS_INSERT_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(InsertStmt, conflict_action) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(InsertStmt, table) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(InsertStmt, columns) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(InsertStmt, source) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_BINARY_EXPR: &[FmtOp] = &[
     FmtOp::IfEnum(0, 11, 5),
@@ -1031,27 +894,14 @@ const FMT_BINARY_EXPR: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::EndIf,
 ];
-const FIELDS_BINARY_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(BinaryExpr, op) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(BinaryExpr, left) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(BinaryExpr, right) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_UNARY_EXPR: &[FmtOp] = &[
     FmtOp::EnumDisplay(0, 23),
     FmtOp::Child(1),
 ];
-const FIELDS_UNARY_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(UnaryExpr, op) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(UnaryExpr, operand) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_LITERAL: &[FmtOp] = &[
     FmtOp::Span(1),
-];
-const FIELDS_LITERAL: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(Literal, literal_type) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(Literal, source) as u16, kind: FieldKind::Span },
 ];
 
 const FMT_EXPR_LIST: &[FmtOp] = &[
@@ -1092,29 +942,15 @@ const FMT_FUNCTION_CALL: &[FmtOp] = &[
     FmtOp::Child(4),
     FmtOp::EndIf,
 ];
-const FIELDS_FUNCTION_CALL: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(FunctionCall, func_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(FunctionCall, flags) as u16, kind: FieldKind::Flags },
-    FieldDescriptor { offset: offset_of!(FunctionCall, args) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(FunctionCall, filter_clause) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(FunctionCall, over_clause) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_VARIABLE: &[FmtOp] = &[
     FmtOp::Span(0),
-];
-const FIELDS_VARIABLE: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(Variable, source) as u16, kind: FieldKind::Span },
 ];
 
 const FMT_COLLATE_EXPR: &[FmtOp] = &[
     FmtOp::Child(0),
     FmtOp::Keyword(114),
     FmtOp::Span(1),
-];
-const FIELDS_COLLATE_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CollateExpr, expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CollateExpr, collation) as u16, kind: FieldKind::Span },
 ];
 
 const FMT_RAISE_EXPR: &[FmtOp] = &[
@@ -1140,10 +976,6 @@ const FMT_RAISE_EXPR: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::Keyword(3),
 ];
-const FIELDS_RAISE_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(RaiseExpr, raise_type) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(RaiseExpr, error_message) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_QUALIFIED_NAME: &[FmtOp] = &[
     FmtOp::IfSpan(1, 3),
@@ -1151,10 +983,6 @@ const FMT_QUALIFIED_NAME: &[FmtOp] = &[
     FmtOp::Keyword(8),
     FmtOp::EndIf,
     FmtOp::Span(0),
-];
-const FIELDS_QUALIFIED_NAME: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(QualifiedName, object_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(QualifiedName, schema) as u16, kind: FieldKind::Span },
 ];
 
 const FMT_DROP_STMT: &[FmtOp] = &[
@@ -1165,11 +993,6 @@ const FMT_DROP_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::Keyword(29),
     FmtOp::Child(2),
-];
-const FIELDS_DROP_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(DropStmt, object_type) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(DropStmt, if_exists) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(DropStmt, target) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_ALTER_TABLE_STMT: &[FmtOp] = &[
@@ -1200,12 +1023,6 @@ const FMT_ALTER_TABLE_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::EndIf,
 ];
-const FIELDS_ALTER_TABLE_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(AlterTableStmt, op) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(AlterTableStmt, target) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(AlterTableStmt, new_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(AlterTableStmt, old_name) as u16, kind: FieldKind::Span },
-];
 
 const FMT_TRANSACTION_STMT: &[FmtOp] = &[
     FmtOp::IfEnum(0, 0, 3),
@@ -1220,10 +1037,6 @@ const FMT_TRANSACTION_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::EndIf,
     FmtOp::EndIf,
-];
-const FIELDS_TRANSACTION_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(TransactionStmt, op) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(TransactionStmt, trans_type) as u16, kind: FieldKind::Enum },
 ];
 
 const FMT_SAVEPOINT_STMT: &[FmtOp] = &[
@@ -1242,10 +1055,6 @@ const FMT_SAVEPOINT_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::EndIf,
 ];
-const FIELDS_SAVEPOINT_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(SavepointStmt, op) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(SavepointStmt, savepoint_name) as u16, kind: FieldKind::Span },
-];
 
 const FMT_RESULT_COLUMN: &[FmtOp] = &[
     FmtOp::IfFlag(0, 1, 7),
@@ -1262,11 +1071,6 @@ const FMT_RESULT_COLUMN: &[FmtOp] = &[
     FmtOp::Keyword(7),
     FmtOp::Span(1),
     FmtOp::EndIf,
-];
-const FIELDS_RESULT_COLUMN: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(ResultColumn, flags) as u16, kind: FieldKind::Flags },
-    FieldDescriptor { offset: offset_of!(ResultColumn, alias) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(ResultColumn, expr) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_RESULT_COLUMN_LIST: &[FmtOp] = &[
@@ -1347,17 +1151,6 @@ const FMT_SELECT_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::GroupEnd,
 ];
-const FIELDS_SELECT_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(SelectStmt, flags) as u16, kind: FieldKind::Flags },
-    FieldDescriptor { offset: offset_of!(SelectStmt, columns) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(SelectStmt, from_clause) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(SelectStmt, where_clause) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(SelectStmt, groupby) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(SelectStmt, having) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(SelectStmt, orderby) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(SelectStmt, limit_clause) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(SelectStmt, window_clause) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_ORDERING_TERM: &[FmtOp] = &[
     FmtOp::Child(0),
@@ -1370,11 +1163,6 @@ const FMT_ORDERING_TERM: &[FmtOp] = &[
     FmtOp::IfEnum(2, 2, 2),
     FmtOp::Keyword(150),
     FmtOp::EndIf,
-];
-const FIELDS_ORDERING_TERM: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(OrderingTerm, expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(OrderingTerm, sort_order) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(OrderingTerm, nulls_order) as u16, kind: FieldKind::Enum },
 ];
 
 const FMT_ORDER_BY_LIST: &[FmtOp] = &[
@@ -1392,10 +1180,6 @@ const FMT_LIMIT_CLAUSE: &[FmtOp] = &[
     FmtOp::Child(1),
     FmtOp::EndIf,
 ];
-const FIELDS_LIMIT_CLAUSE: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(LimitClause, limit) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(LimitClause, offset) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_TABLE_REF: &[FmtOp] = &[
     FmtOp::IfSpan(1, 3),
@@ -1408,11 +1192,6 @@ const FMT_TABLE_REF: &[FmtOp] = &[
     FmtOp::Span(2),
     FmtOp::EndIf,
 ];
-const FIELDS_TABLE_REF: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(TableRef, table_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(TableRef, schema) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(TableRef, alias) as u16, kind: FieldKind::Span },
-];
 
 const FMT_SUBQUERY_TABLE_SOURCE: &[FmtOp] = &[
     FmtOp::Keyword(0),
@@ -1422,10 +1201,6 @@ const FMT_SUBQUERY_TABLE_SOURCE: &[FmtOp] = &[
     FmtOp::Keyword(7),
     FmtOp::Span(1),
     FmtOp::EndIf,
-];
-const FIELDS_SUBQUERY_TABLE_SOURCE: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(SubqueryTableSource, select) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(SubqueryTableSource, alias) as u16, kind: FieldKind::Span },
 ];
 
 const FMT_JOIN_CLAUSE: &[FmtOp] = &[
@@ -1465,20 +1240,9 @@ const FMT_JOIN_CLAUSE: &[FmtOp] = &[
     FmtOp::GroupEnd,
     FmtOp::EndIf,
 ];
-const FIELDS_JOIN_CLAUSE: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(JoinClause, join_type) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(JoinClause, left) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(JoinClause, right) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(JoinClause, on_expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(JoinClause, using_columns) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_JOIN_PREFIX: &[FmtOp] = &[
     FmtOp::Child(0),
-];
-const FIELDS_JOIN_PREFIX: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(JoinPrefix, source) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(JoinPrefix, join_type) as u16, kind: FieldKind::Enum },
 ];
 
 const FMT_TRIGGER_EVENT: &[FmtOp] = &[
@@ -1499,10 +1263,6 @@ const FMT_TRIGGER_EVENT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::EndIf,
     FmtOp::EndIf,
-];
-const FIELDS_TRIGGER_EVENT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(TriggerEvent, event_type) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(TriggerEvent, columns) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_TRIGGER_CMD_LIST: &[FmtOp] = &[
@@ -1561,17 +1321,6 @@ const FMT_CREATE_TRIGGER_STMT: &[FmtOp] = &[
     FmtOp::HardLine,
     FmtOp::Keyword(172),
 ];
-const FIELDS_CREATE_TRIGGER_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CreateTriggerStmt, trigger_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateTriggerStmt, schema) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateTriggerStmt, is_temp) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(CreateTriggerStmt, if_not_exists) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(CreateTriggerStmt, timing) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(CreateTriggerStmt, event) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CreateTriggerStmt, table) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CreateTriggerStmt, when_expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CreateTriggerStmt, body) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_CREATE_VIRTUAL_TABLE_STMT: &[FmtOp] = &[
     FmtOp::Keyword(173),
@@ -1592,13 +1341,6 @@ const FMT_CREATE_VIRTUAL_TABLE_STMT: &[FmtOp] = &[
     FmtOp::Keyword(3),
     FmtOp::EndIf,
 ];
-const FIELDS_CREATE_VIRTUAL_TABLE_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CreateVirtualTableStmt, table_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateVirtualTableStmt, schema) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateVirtualTableStmt, module_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateVirtualTableStmt, if_not_exists) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(CreateVirtualTableStmt, module_args) as u16, kind: FieldKind::Span },
-];
 
 const FMT_PRAGMA_STMT: &[FmtOp] = &[
     FmtOp::Keyword(175),
@@ -1617,12 +1359,6 @@ const FMT_PRAGMA_STMT: &[FmtOp] = &[
     FmtOp::Keyword(3),
     FmtOp::EndIf,
     FmtOp::EndIf,
-];
-const FIELDS_PRAGMA_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(PragmaStmt, pragma_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(PragmaStmt, schema) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(PragmaStmt, value) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(PragmaStmt, pragma_form) as u16, kind: FieldKind::Enum },
 ];
 
 const FMT_ANALYZE_STMT: &[FmtOp] = &[
@@ -1643,11 +1379,6 @@ const FMT_ANALYZE_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::EndIf,
 ];
-const FIELDS_ANALYZE_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(AnalyzeStmt, target_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(AnalyzeStmt, schema) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(AnalyzeStmt, kind) as u16, kind: FieldKind::Enum },
-];
 
 const FMT_ATTACH_STMT: &[FmtOp] = &[
     FmtOp::Keyword(178),
@@ -1659,18 +1390,10 @@ const FMT_ATTACH_STMT: &[FmtOp] = &[
     FmtOp::Child(2),
     FmtOp::EndIf,
 ];
-const FIELDS_ATTACH_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(AttachStmt, filename) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(AttachStmt, db_name) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(AttachStmt, key) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_DETACH_STMT: &[FmtOp] = &[
     FmtOp::Keyword(180),
     FmtOp::Child(0),
-];
-const FIELDS_DETACH_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(DetachStmt, db_name) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_VACUUM_STMT: &[FmtOp] = &[
@@ -1684,10 +1407,6 @@ const FMT_VACUUM_STMT: &[FmtOp] = &[
     FmtOp::Child(1),
     FmtOp::EndIf,
 ];
-const FIELDS_VACUUM_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(VacuumStmt, schema) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(VacuumStmt, into_expr) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_EXPLAIN_STMT: &[FmtOp] = &[
     FmtOp::IfEnum(0, 1, 2),
@@ -1697,10 +1416,6 @@ const FMT_EXPLAIN_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::HardLine,
     FmtOp::Child(1),
-];
-const FIELDS_EXPLAIN_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(ExplainStmt, explain_mode) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(ExplainStmt, stmt) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_CREATE_INDEX_STMT: &[FmtOp] = &[
@@ -1734,15 +1449,6 @@ const FMT_CREATE_INDEX_STMT: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::GroupEnd,
 ];
-const FIELDS_CREATE_INDEX_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CreateIndexStmt, index_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateIndexStmt, schema) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateIndexStmt, table_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateIndexStmt, is_unique) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(CreateIndexStmt, if_not_exists) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(CreateIndexStmt, columns) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CreateIndexStmt, where_clause) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_CREATE_VIEW_STMT: &[FmtOp] = &[
     FmtOp::Keyword(66),
@@ -1770,14 +1476,6 @@ const FMT_CREATE_VIEW_STMT: &[FmtOp] = &[
     FmtOp::HardLine,
     FmtOp::Child(5),
 ];
-const FIELDS_CREATE_VIEW_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CreateViewStmt, view_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateViewStmt, schema) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(CreateViewStmt, is_temp) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(CreateViewStmt, if_not_exists) as u16, kind: FieldKind::Bool },
-    FieldDescriptor { offset: offset_of!(CreateViewStmt, column_names) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(CreateViewStmt, select) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_VALUES_ROW_LIST: &[FmtOp] = &[
     FmtOp::ForEachSelfStart,
@@ -1799,9 +1497,6 @@ const FMT_VALUES_CLAUSE: &[FmtOp] = &[
     FmtOp::Child(0),
     FmtOp::NestEnd,
     FmtOp::GroupEnd,
-];
-const FIELDS_VALUES_CLAUSE: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(ValuesClause, rows) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_FRAME_BOUND: &[FmtOp] = &[
@@ -1826,10 +1521,6 @@ const FMT_FRAME_BOUND: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::EndIf,
     FmtOp::EndIf,
-];
-const FIELDS_FRAME_BOUND: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(FrameBound, bound_type) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(FrameBound, expr) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_FRAME_SPEC: &[FmtOp] = &[
@@ -1864,12 +1555,6 @@ const FMT_FRAME_SPEC: &[FmtOp] = &[
     FmtOp::EndIf,
     FmtOp::EndIf,
 ];
-const FIELDS_FRAME_SPEC: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(FrameSpec, frame_type) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(FrameSpec, exclude) as u16, kind: FieldKind::Enum },
-    FieldDescriptor { offset: offset_of!(FrameSpec, start_bound) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(FrameSpec, end_bound) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_WINDOW_DEF: &[FmtOp] = &[
     FmtOp::IfSpan(0, 2),
@@ -1900,12 +1585,6 @@ const FMT_WINDOW_DEF: &[FmtOp] = &[
     FmtOp::Keyword(3),
     FmtOp::EndIf,
 ];
-const FIELDS_WINDOW_DEF: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(WindowDef, base_window_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(WindowDef, partition_by) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(WindowDef, orderby) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(WindowDef, frame) as u16, kind: FieldKind::NodeId },
-];
 
 const FMT_WINDOW_DEF_LIST: &[FmtOp] = &[
     FmtOp::ForEachSelfStart,
@@ -1919,10 +1598,6 @@ const FMT_NAMED_WINDOW_DEF: &[FmtOp] = &[
     FmtOp::Span(0),
     FmtOp::Keyword(7),
     FmtOp::Child(1),
-];
-const FIELDS_NAMED_WINDOW_DEF: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(NamedWindowDef, window_name) as u16, kind: FieldKind::Span },
-    FieldDescriptor { offset: offset_of!(NamedWindowDef, window_def) as u16, kind: FieldKind::NodeId },
 ];
 
 const FMT_NAMED_WINDOW_DEF_LIST: &[FmtOp] = &[
@@ -1948,88 +1623,83 @@ const FMT_FILTER_OVER: &[FmtOp] = &[
     FmtOp::Span(2),
     FmtOp::EndIf,
 ];
-const FIELDS_FILTER_OVER: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(FilterOver, filter_expr) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(FilterOver, over_def) as u16, kind: FieldKind::NodeId },
-    FieldDescriptor { offset: offset_of!(FilterOver, over_name) as u16, kind: FieldKind::Span },
-];
 
 pub const DISPATCH: [Option<NodeFmt>; 74] = {
     const NONE: Option<NodeFmt> = None;
     let mut t = [NONE; 74];
-    t[NodeTag::AggregateFunctionCall as usize] = Some(NodeFmt { ops: FMT_AGGREGATE_FUNCTION_CALL, fields: FIELDS_AGGREGATE_FUNCTION_CALL });
-    t[NodeTag::CastExpr as usize] = Some(NodeFmt { ops: FMT_CAST_EXPR, fields: FIELDS_CAST_EXPR });
-    t[NodeTag::ColumnRef as usize] = Some(NodeFmt { ops: FMT_COLUMN_REF, fields: FIELDS_COLUMN_REF });
-    t[NodeTag::CompoundSelect as usize] = Some(NodeFmt { ops: FMT_COMPOUND_SELECT, fields: FIELDS_COMPOUND_SELECT });
-    t[NodeTag::SubqueryExpr as usize] = Some(NodeFmt { ops: FMT_SUBQUERY_EXPR, fields: FIELDS_SUBQUERY_EXPR });
-    t[NodeTag::ExistsExpr as usize] = Some(NodeFmt { ops: FMT_EXISTS_EXPR, fields: FIELDS_EXISTS_EXPR });
-    t[NodeTag::InExpr as usize] = Some(NodeFmt { ops: FMT_IN_EXPR, fields: FIELDS_IN_EXPR });
-    t[NodeTag::IsExpr as usize] = Some(NodeFmt { ops: FMT_IS_EXPR, fields: FIELDS_IS_EXPR });
-    t[NodeTag::BetweenExpr as usize] = Some(NodeFmt { ops: FMT_BETWEEN_EXPR, fields: FIELDS_BETWEEN_EXPR });
-    t[NodeTag::LikeExpr as usize] = Some(NodeFmt { ops: FMT_LIKE_EXPR, fields: FIELDS_LIKE_EXPR });
-    t[NodeTag::CaseExpr as usize] = Some(NodeFmt { ops: FMT_CASE_EXPR, fields: FIELDS_CASE_EXPR });
-    t[NodeTag::CaseWhen as usize] = Some(NodeFmt { ops: FMT_CASE_WHEN, fields: FIELDS_CASE_WHEN });
-    t[NodeTag::CaseWhenList as usize] = Some(NodeFmt { ops: FMT_CASE_WHEN_LIST, fields: &[] });
-    t[NodeTag::ForeignKeyClause as usize] = Some(NodeFmt { ops: FMT_FOREIGN_KEY_CLAUSE, fields: FIELDS_FOREIGN_KEY_CLAUSE });
-    t[NodeTag::ColumnConstraint as usize] = Some(NodeFmt { ops: FMT_COLUMN_CONSTRAINT, fields: FIELDS_COLUMN_CONSTRAINT });
-    t[NodeTag::ColumnConstraintList as usize] = Some(NodeFmt { ops: FMT_COLUMN_CONSTRAINT_LIST, fields: &[] });
-    t[NodeTag::ColumnDef as usize] = Some(NodeFmt { ops: FMT_COLUMN_DEF, fields: FIELDS_COLUMN_DEF });
-    t[NodeTag::ColumnDefList as usize] = Some(NodeFmt { ops: FMT_COLUMN_DEF_LIST, fields: &[] });
-    t[NodeTag::TableConstraint as usize] = Some(NodeFmt { ops: FMT_TABLE_CONSTRAINT, fields: FIELDS_TABLE_CONSTRAINT });
-    t[NodeTag::TableConstraintList as usize] = Some(NodeFmt { ops: FMT_TABLE_CONSTRAINT_LIST, fields: &[] });
-    t[NodeTag::CreateTableStmt as usize] = Some(NodeFmt { ops: FMT_CREATE_TABLE_STMT, fields: FIELDS_CREATE_TABLE_STMT });
-    t[NodeTag::CteDefinition as usize] = Some(NodeFmt { ops: FMT_CTE_DEFINITION, fields: FIELDS_CTE_DEFINITION });
-    t[NodeTag::CteList as usize] = Some(NodeFmt { ops: FMT_CTE_LIST, fields: &[] });
-    t[NodeTag::WithClause as usize] = Some(NodeFmt { ops: FMT_WITH_CLAUSE, fields: FIELDS_WITH_CLAUSE });
-    t[NodeTag::DeleteStmt as usize] = Some(NodeFmt { ops: FMT_DELETE_STMT, fields: FIELDS_DELETE_STMT });
-    t[NodeTag::SetClause as usize] = Some(NodeFmt { ops: FMT_SET_CLAUSE, fields: FIELDS_SET_CLAUSE });
-    t[NodeTag::SetClauseList as usize] = Some(NodeFmt { ops: FMT_SET_CLAUSE_LIST, fields: &[] });
-    t[NodeTag::UpdateStmt as usize] = Some(NodeFmt { ops: FMT_UPDATE_STMT, fields: FIELDS_UPDATE_STMT });
-    t[NodeTag::InsertStmt as usize] = Some(NodeFmt { ops: FMT_INSERT_STMT, fields: FIELDS_INSERT_STMT });
-    t[NodeTag::BinaryExpr as usize] = Some(NodeFmt { ops: FMT_BINARY_EXPR, fields: FIELDS_BINARY_EXPR });
-    t[NodeTag::UnaryExpr as usize] = Some(NodeFmt { ops: FMT_UNARY_EXPR, fields: FIELDS_UNARY_EXPR });
-    t[NodeTag::Literal as usize] = Some(NodeFmt { ops: FMT_LITERAL, fields: FIELDS_LITERAL });
-    t[NodeTag::ExprList as usize] = Some(NodeFmt { ops: FMT_EXPR_LIST, fields: &[] });
-    t[NodeTag::FunctionCall as usize] = Some(NodeFmt { ops: FMT_FUNCTION_CALL, fields: FIELDS_FUNCTION_CALL });
-    t[NodeTag::Variable as usize] = Some(NodeFmt { ops: FMT_VARIABLE, fields: FIELDS_VARIABLE });
-    t[NodeTag::CollateExpr as usize] = Some(NodeFmt { ops: FMT_COLLATE_EXPR, fields: FIELDS_COLLATE_EXPR });
-    t[NodeTag::RaiseExpr as usize] = Some(NodeFmt { ops: FMT_RAISE_EXPR, fields: FIELDS_RAISE_EXPR });
-    t[NodeTag::QualifiedName as usize] = Some(NodeFmt { ops: FMT_QUALIFIED_NAME, fields: FIELDS_QUALIFIED_NAME });
-    t[NodeTag::DropStmt as usize] = Some(NodeFmt { ops: FMT_DROP_STMT, fields: FIELDS_DROP_STMT });
-    t[NodeTag::AlterTableStmt as usize] = Some(NodeFmt { ops: FMT_ALTER_TABLE_STMT, fields: FIELDS_ALTER_TABLE_STMT });
-    t[NodeTag::TransactionStmt as usize] = Some(NodeFmt { ops: FMT_TRANSACTION_STMT, fields: FIELDS_TRANSACTION_STMT });
-    t[NodeTag::SavepointStmt as usize] = Some(NodeFmt { ops: FMT_SAVEPOINT_STMT, fields: FIELDS_SAVEPOINT_STMT });
-    t[NodeTag::ResultColumn as usize] = Some(NodeFmt { ops: FMT_RESULT_COLUMN, fields: FIELDS_RESULT_COLUMN });
-    t[NodeTag::ResultColumnList as usize] = Some(NodeFmt { ops: FMT_RESULT_COLUMN_LIST, fields: &[] });
-    t[NodeTag::SelectStmt as usize] = Some(NodeFmt { ops: FMT_SELECT_STMT, fields: FIELDS_SELECT_STMT });
-    t[NodeTag::OrderingTerm as usize] = Some(NodeFmt { ops: FMT_ORDERING_TERM, fields: FIELDS_ORDERING_TERM });
-    t[NodeTag::OrderByList as usize] = Some(NodeFmt { ops: FMT_ORDER_BY_LIST, fields: &[] });
-    t[NodeTag::LimitClause as usize] = Some(NodeFmt { ops: FMT_LIMIT_CLAUSE, fields: FIELDS_LIMIT_CLAUSE });
-    t[NodeTag::TableRef as usize] = Some(NodeFmt { ops: FMT_TABLE_REF, fields: FIELDS_TABLE_REF });
-    t[NodeTag::SubqueryTableSource as usize] = Some(NodeFmt { ops: FMT_SUBQUERY_TABLE_SOURCE, fields: FIELDS_SUBQUERY_TABLE_SOURCE });
-    t[NodeTag::JoinClause as usize] = Some(NodeFmt { ops: FMT_JOIN_CLAUSE, fields: FIELDS_JOIN_CLAUSE });
-    t[NodeTag::JoinPrefix as usize] = Some(NodeFmt { ops: FMT_JOIN_PREFIX, fields: FIELDS_JOIN_PREFIX });
-    t[NodeTag::TriggerEvent as usize] = Some(NodeFmt { ops: FMT_TRIGGER_EVENT, fields: FIELDS_TRIGGER_EVENT });
-    t[NodeTag::TriggerCmdList as usize] = Some(NodeFmt { ops: FMT_TRIGGER_CMD_LIST, fields: &[] });
-    t[NodeTag::CreateTriggerStmt as usize] = Some(NodeFmt { ops: FMT_CREATE_TRIGGER_STMT, fields: FIELDS_CREATE_TRIGGER_STMT });
-    t[NodeTag::CreateVirtualTableStmt as usize] = Some(NodeFmt { ops: FMT_CREATE_VIRTUAL_TABLE_STMT, fields: FIELDS_CREATE_VIRTUAL_TABLE_STMT });
-    t[NodeTag::PragmaStmt as usize] = Some(NodeFmt { ops: FMT_PRAGMA_STMT, fields: FIELDS_PRAGMA_STMT });
-    t[NodeTag::AnalyzeStmt as usize] = Some(NodeFmt { ops: FMT_ANALYZE_STMT, fields: FIELDS_ANALYZE_STMT });
-    t[NodeTag::AttachStmt as usize] = Some(NodeFmt { ops: FMT_ATTACH_STMT, fields: FIELDS_ATTACH_STMT });
-    t[NodeTag::DetachStmt as usize] = Some(NodeFmt { ops: FMT_DETACH_STMT, fields: FIELDS_DETACH_STMT });
-    t[NodeTag::VacuumStmt as usize] = Some(NodeFmt { ops: FMT_VACUUM_STMT, fields: FIELDS_VACUUM_STMT });
-    t[NodeTag::ExplainStmt as usize] = Some(NodeFmt { ops: FMT_EXPLAIN_STMT, fields: FIELDS_EXPLAIN_STMT });
-    t[NodeTag::CreateIndexStmt as usize] = Some(NodeFmt { ops: FMT_CREATE_INDEX_STMT, fields: FIELDS_CREATE_INDEX_STMT });
-    t[NodeTag::CreateViewStmt as usize] = Some(NodeFmt { ops: FMT_CREATE_VIEW_STMT, fields: FIELDS_CREATE_VIEW_STMT });
-    t[NodeTag::ValuesRowList as usize] = Some(NodeFmt { ops: FMT_VALUES_ROW_LIST, fields: &[] });
-    t[NodeTag::ValuesClause as usize] = Some(NodeFmt { ops: FMT_VALUES_CLAUSE, fields: FIELDS_VALUES_CLAUSE });
-    t[NodeTag::FrameBound as usize] = Some(NodeFmt { ops: FMT_FRAME_BOUND, fields: FIELDS_FRAME_BOUND });
-    t[NodeTag::FrameSpec as usize] = Some(NodeFmt { ops: FMT_FRAME_SPEC, fields: FIELDS_FRAME_SPEC });
-    t[NodeTag::WindowDef as usize] = Some(NodeFmt { ops: FMT_WINDOW_DEF, fields: FIELDS_WINDOW_DEF });
-    t[NodeTag::WindowDefList as usize] = Some(NodeFmt { ops: FMT_WINDOW_DEF_LIST, fields: &[] });
-    t[NodeTag::NamedWindowDef as usize] = Some(NodeFmt { ops: FMT_NAMED_WINDOW_DEF, fields: FIELDS_NAMED_WINDOW_DEF });
-    t[NodeTag::NamedWindowDefList as usize] = Some(NodeFmt { ops: FMT_NAMED_WINDOW_DEF_LIST, fields: &[] });
-    t[NodeTag::FilterOver as usize] = Some(NodeFmt { ops: FMT_FILTER_OVER, fields: FIELDS_FILTER_OVER });
+    t[NodeTag::AggregateFunctionCall as usize] = Some(NodeFmt { ops: FMT_AGGREGATE_FUNCTION_CALL });
+    t[NodeTag::CastExpr as usize] = Some(NodeFmt { ops: FMT_CAST_EXPR });
+    t[NodeTag::ColumnRef as usize] = Some(NodeFmt { ops: FMT_COLUMN_REF });
+    t[NodeTag::CompoundSelect as usize] = Some(NodeFmt { ops: FMT_COMPOUND_SELECT });
+    t[NodeTag::SubqueryExpr as usize] = Some(NodeFmt { ops: FMT_SUBQUERY_EXPR });
+    t[NodeTag::ExistsExpr as usize] = Some(NodeFmt { ops: FMT_EXISTS_EXPR });
+    t[NodeTag::InExpr as usize] = Some(NodeFmt { ops: FMT_IN_EXPR });
+    t[NodeTag::IsExpr as usize] = Some(NodeFmt { ops: FMT_IS_EXPR });
+    t[NodeTag::BetweenExpr as usize] = Some(NodeFmt { ops: FMT_BETWEEN_EXPR });
+    t[NodeTag::LikeExpr as usize] = Some(NodeFmt { ops: FMT_LIKE_EXPR });
+    t[NodeTag::CaseExpr as usize] = Some(NodeFmt { ops: FMT_CASE_EXPR });
+    t[NodeTag::CaseWhen as usize] = Some(NodeFmt { ops: FMT_CASE_WHEN });
+    t[NodeTag::CaseWhenList as usize] = Some(NodeFmt { ops: FMT_CASE_WHEN_LIST });
+    t[NodeTag::ForeignKeyClause as usize] = Some(NodeFmt { ops: FMT_FOREIGN_KEY_CLAUSE });
+    t[NodeTag::ColumnConstraint as usize] = Some(NodeFmt { ops: FMT_COLUMN_CONSTRAINT });
+    t[NodeTag::ColumnConstraintList as usize] = Some(NodeFmt { ops: FMT_COLUMN_CONSTRAINT_LIST });
+    t[NodeTag::ColumnDef as usize] = Some(NodeFmt { ops: FMT_COLUMN_DEF });
+    t[NodeTag::ColumnDefList as usize] = Some(NodeFmt { ops: FMT_COLUMN_DEF_LIST });
+    t[NodeTag::TableConstraint as usize] = Some(NodeFmt { ops: FMT_TABLE_CONSTRAINT });
+    t[NodeTag::TableConstraintList as usize] = Some(NodeFmt { ops: FMT_TABLE_CONSTRAINT_LIST });
+    t[NodeTag::CreateTableStmt as usize] = Some(NodeFmt { ops: FMT_CREATE_TABLE_STMT });
+    t[NodeTag::CteDefinition as usize] = Some(NodeFmt { ops: FMT_CTE_DEFINITION });
+    t[NodeTag::CteList as usize] = Some(NodeFmt { ops: FMT_CTE_LIST });
+    t[NodeTag::WithClause as usize] = Some(NodeFmt { ops: FMT_WITH_CLAUSE });
+    t[NodeTag::DeleteStmt as usize] = Some(NodeFmt { ops: FMT_DELETE_STMT });
+    t[NodeTag::SetClause as usize] = Some(NodeFmt { ops: FMT_SET_CLAUSE });
+    t[NodeTag::SetClauseList as usize] = Some(NodeFmt { ops: FMT_SET_CLAUSE_LIST });
+    t[NodeTag::UpdateStmt as usize] = Some(NodeFmt { ops: FMT_UPDATE_STMT });
+    t[NodeTag::InsertStmt as usize] = Some(NodeFmt { ops: FMT_INSERT_STMT });
+    t[NodeTag::BinaryExpr as usize] = Some(NodeFmt { ops: FMT_BINARY_EXPR });
+    t[NodeTag::UnaryExpr as usize] = Some(NodeFmt { ops: FMT_UNARY_EXPR });
+    t[NodeTag::Literal as usize] = Some(NodeFmt { ops: FMT_LITERAL });
+    t[NodeTag::ExprList as usize] = Some(NodeFmt { ops: FMT_EXPR_LIST });
+    t[NodeTag::FunctionCall as usize] = Some(NodeFmt { ops: FMT_FUNCTION_CALL });
+    t[NodeTag::Variable as usize] = Some(NodeFmt { ops: FMT_VARIABLE });
+    t[NodeTag::CollateExpr as usize] = Some(NodeFmt { ops: FMT_COLLATE_EXPR });
+    t[NodeTag::RaiseExpr as usize] = Some(NodeFmt { ops: FMT_RAISE_EXPR });
+    t[NodeTag::QualifiedName as usize] = Some(NodeFmt { ops: FMT_QUALIFIED_NAME });
+    t[NodeTag::DropStmt as usize] = Some(NodeFmt { ops: FMT_DROP_STMT });
+    t[NodeTag::AlterTableStmt as usize] = Some(NodeFmt { ops: FMT_ALTER_TABLE_STMT });
+    t[NodeTag::TransactionStmt as usize] = Some(NodeFmt { ops: FMT_TRANSACTION_STMT });
+    t[NodeTag::SavepointStmt as usize] = Some(NodeFmt { ops: FMT_SAVEPOINT_STMT });
+    t[NodeTag::ResultColumn as usize] = Some(NodeFmt { ops: FMT_RESULT_COLUMN });
+    t[NodeTag::ResultColumnList as usize] = Some(NodeFmt { ops: FMT_RESULT_COLUMN_LIST });
+    t[NodeTag::SelectStmt as usize] = Some(NodeFmt { ops: FMT_SELECT_STMT });
+    t[NodeTag::OrderingTerm as usize] = Some(NodeFmt { ops: FMT_ORDERING_TERM });
+    t[NodeTag::OrderByList as usize] = Some(NodeFmt { ops: FMT_ORDER_BY_LIST });
+    t[NodeTag::LimitClause as usize] = Some(NodeFmt { ops: FMT_LIMIT_CLAUSE });
+    t[NodeTag::TableRef as usize] = Some(NodeFmt { ops: FMT_TABLE_REF });
+    t[NodeTag::SubqueryTableSource as usize] = Some(NodeFmt { ops: FMT_SUBQUERY_TABLE_SOURCE });
+    t[NodeTag::JoinClause as usize] = Some(NodeFmt { ops: FMT_JOIN_CLAUSE });
+    t[NodeTag::JoinPrefix as usize] = Some(NodeFmt { ops: FMT_JOIN_PREFIX });
+    t[NodeTag::TriggerEvent as usize] = Some(NodeFmt { ops: FMT_TRIGGER_EVENT });
+    t[NodeTag::TriggerCmdList as usize] = Some(NodeFmt { ops: FMT_TRIGGER_CMD_LIST });
+    t[NodeTag::CreateTriggerStmt as usize] = Some(NodeFmt { ops: FMT_CREATE_TRIGGER_STMT });
+    t[NodeTag::CreateVirtualTableStmt as usize] = Some(NodeFmt { ops: FMT_CREATE_VIRTUAL_TABLE_STMT });
+    t[NodeTag::PragmaStmt as usize] = Some(NodeFmt { ops: FMT_PRAGMA_STMT });
+    t[NodeTag::AnalyzeStmt as usize] = Some(NodeFmt { ops: FMT_ANALYZE_STMT });
+    t[NodeTag::AttachStmt as usize] = Some(NodeFmt { ops: FMT_ATTACH_STMT });
+    t[NodeTag::DetachStmt as usize] = Some(NodeFmt { ops: FMT_DETACH_STMT });
+    t[NodeTag::VacuumStmt as usize] = Some(NodeFmt { ops: FMT_VACUUM_STMT });
+    t[NodeTag::ExplainStmt as usize] = Some(NodeFmt { ops: FMT_EXPLAIN_STMT });
+    t[NodeTag::CreateIndexStmt as usize] = Some(NodeFmt { ops: FMT_CREATE_INDEX_STMT });
+    t[NodeTag::CreateViewStmt as usize] = Some(NodeFmt { ops: FMT_CREATE_VIEW_STMT });
+    t[NodeTag::ValuesRowList as usize] = Some(NodeFmt { ops: FMT_VALUES_ROW_LIST });
+    t[NodeTag::ValuesClause as usize] = Some(NodeFmt { ops: FMT_VALUES_CLAUSE });
+    t[NodeTag::FrameBound as usize] = Some(NodeFmt { ops: FMT_FRAME_BOUND });
+    t[NodeTag::FrameSpec as usize] = Some(NodeFmt { ops: FMT_FRAME_SPEC });
+    t[NodeTag::WindowDef as usize] = Some(NodeFmt { ops: FMT_WINDOW_DEF });
+    t[NodeTag::WindowDefList as usize] = Some(NodeFmt { ops: FMT_WINDOW_DEF_LIST });
+    t[NodeTag::NamedWindowDef as usize] = Some(NodeFmt { ops: FMT_NAMED_WINDOW_DEF });
+    t[NodeTag::NamedWindowDefList as usize] = Some(NodeFmt { ops: FMT_NAMED_WINDOW_DEF_LIST });
+    t[NodeTag::FilterOver as usize] = Some(NodeFmt { ops: FMT_FILTER_OVER });
     t
 };
 

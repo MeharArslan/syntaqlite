@@ -1,7 +1,40 @@
-use std::ffi::CStr;
+use std::ffi::{c_int, CStr};
 
 use crate::ffi;
-use crate::nodes::{NodeRef, NULL_NODE};
+use crate::generated::nodes::Node;
+use crate::nodes::NULL_NODE;
+
+// Compile-time check: Trivia must have identical layout to ffi::RawTrivia
+// so we can transmute the C pointer directly to &[Trivia].
+const _: () = {
+    assert!(std::mem::size_of::<Trivia>() == std::mem::size_of::<ffi::RawTrivia>());
+    assert!(std::mem::align_of::<Trivia>() == std::mem::align_of::<ffi::RawTrivia>());
+    assert!(std::mem::offset_of!(Trivia, offset) == std::mem::offset_of!(ffi::RawTrivia, offset));
+    assert!(std::mem::offset_of!(Trivia, length) == std::mem::offset_of!(ffi::RawTrivia, length));
+    assert!(std::mem::offset_of!(Trivia, kind) == std::mem::offset_of!(ffi::RawTrivia, kind));
+};
+
+/// The kind of a trivia item (comment).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum TriviaKind {
+    /// A line comment starting with `--`.
+    LineComment = 0,
+    /// A block comment delimited by `/* ... */`.
+    BlockComment = 1,
+}
+
+/// A comment captured during parsing. Trivia items are sorted by source offset.
+///
+/// Layout matches `SyntaqliteTrivia` in C (offset: u32, length: u32, kind: u8)
+/// so we can return a slice directly from the C buffer without copying.
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct Trivia {
+    pub offset: u32,
+    pub length: u32,
+    pub kind: TriviaKind,
+}
 
 /// A parse error with a human-readable message.
 #[derive(Debug, Clone)]
@@ -49,6 +82,12 @@ impl Parser {
     pub fn set_trace(&mut self, enable: bool) {
         // SAFETY: self.raw is valid for the lifetime of Parser (Drop cleans up).
         unsafe { ffi::syntaqlite_parser_set_trace(self.raw, enable as _) }
+    }
+
+    /// Enable token/trivia collection. Required for comment preservation
+    /// during formatting.
+    pub fn set_collect_tokens(&mut self, enable: bool) {
+        unsafe { ffi::syntaqlite_parser_set_collect_tokens(self.raw, enable as c_int) }
     }
 
     /// Bind source text and return a `Session` for iterating statements.
@@ -147,21 +186,37 @@ impl<'a> Session<'a> {
         None
     }
 
-    /// Look up a node by its arena ID.
-    pub fn node(&self, id: u32) -> Option<NodeRef<'a>> {
+    /// Look up a node by its arena ID, returning a typed `Node` enum.
+    pub fn node(&self, id: u32) -> Option<Node<'a>> {
         if id == NULL_NODE {
             return None;
         }
         // SAFETY: parser.raw is valid. syntaqlite_parser_node returns a pointer
         // into the arena that is valid until the next reset() or destroy(), both
         // of which require &mut access that Session holds exclusively. The 'a
-        // lifetime on NodeRef is bounded by the Session borrow.
+        // lifetime is bounded by the Session borrow.
         let ptr = unsafe { ffi::syntaqlite_parser_node(self.parser.raw, id) };
-        Some(unsafe { NodeRef::from_raw(ptr) })
+        Some(unsafe { Node::from_raw(ptr) })
     }
 
     /// The source text bound to this session.
     pub fn source(&self) -> &'a str {
         self.source
+    }
+
+    /// Return all trivia (comments) captured during parsing.
+    /// Requires `set_collect_tokens(true)` before parsing.
+    ///
+    /// Returns a slice into the parser's internal buffer — valid until
+    /// the parser is reset or destroyed (which requires `&mut`).
+    pub fn trivia(&self) -> &[Trivia] {
+        let mut count: u32 = 0;
+        let ptr = unsafe { ffi::syntaqlite_parser_trivia(self.parser.raw, &mut count) };
+        if count == 0 || ptr.is_null() {
+            return &[];
+        }
+        // SAFETY: RawTrivia and Trivia have identical repr(C) layout
+        // (u32, u32, u8). The pointer is valid for the lifetime of &self.
+        unsafe { std::slice::from_raw_parts(ptr as *const Trivia, count as usize) }
     }
 }

@@ -2,33 +2,10 @@ pub type StringId = u16;
 pub type FieldIdx = u16;
 pub type SkipCount = u16;
 
-/// What kind of value lives at a field offset in a repr(C) node struct.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FieldKind {
-    /// u32 node ID (`index` fields).
-    NodeId,
-    /// SourceSpan: u32 offset + u16 length (6 bytes, padded to 8).
-    Span,
-    /// Bool enum: repr(u32), 0 = false.
-    Bool,
-    /// Flags newtype: u8.
-    Flags,
-    /// Value enum: repr(u32) ordinal.
-    Enum,
-}
-
-/// Describes one field's location and type within a repr(C) node struct.
-#[derive(Debug, Clone, Copy)]
-pub struct FieldDescriptor {
-    pub offset: u16,
-    pub kind: FieldKind,
-}
-
-/// A node's formatting entry: bytecode ops + field layout.
+/// A node's formatting entry: bytecode ops.
 #[derive(Debug, Clone, Copy)]
 pub struct NodeFmt {
     pub ops: &'static [FmtOp],
-    pub fields: &'static [FieldDescriptor],
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
