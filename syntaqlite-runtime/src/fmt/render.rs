@@ -1,12 +1,6 @@
 use super::{FormatConfig, KeywordCase};
 use super::doc::{Doc, DocArena, DocId, NIL_DOC};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Mode {
-    Flat,
-    Break,
-}
-
 /// Render a document tree to a string using the Lindig strict algorithm.
 pub fn render(arena: &DocArena, root: DocId, config: &FormatConfig) -> String {
     if root == NIL_DOC {
@@ -110,6 +104,16 @@ pub fn render(arena: &DocArena, root: DocId, config: &FormatConfig) -> String {
 
     out
 }
+
+// ── Private types ─────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    Flat,
+    Break,
+}
+
+// ── Private helpers ───────────────────────────────────────────────────
 
 /// Render buffered line suffixes directly to output (before the next newline).
 fn flush_line_suffixes(

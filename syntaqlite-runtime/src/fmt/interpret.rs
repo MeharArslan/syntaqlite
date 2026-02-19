@@ -5,95 +5,7 @@ use super::bytecode::opcodes;
 use super::doc::{DocArena, DocId};
 use super::trivia::{flush_trivia, TriviaCtx};
 
-// ── FmtOp types (formerly ops.rs) ────────────────────────────────────────
-
-pub type StringId = u16;
-pub type FieldIdx = u16;
-pub type SkipCount = u16;
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum FmtOp {
-    /// Emit a keyword from the string table.
-    Keyword(StringId),
-    /// Emit source text from a Span field.
-    Span(FieldIdx),
-    /// Recursively format the child node whose ID is in a NodeId field.
-    /// Skipped if the child ID is NULL_NODE.
-    Child(FieldIdx),
-    /// Flat: space. Break: newline + indent.
-    Line,
-    /// Flat: empty. Break: newline + indent.
-    SoftLine,
-    /// Always newline + indent.
-    HardLine,
-    /// Begin a group (try flat, break if doesn't fit).
-    GroupStart,
-    /// End a group.
-    GroupEnd,
-    /// Begin indentation nest.
-    NestStart(i16),
-    /// End indentation nest.
-    NestEnd,
-    /// If NodeId field != NULL_NODE, execute next ops; else skip.
-    IfSet(FieldIdx, SkipCount),
-    /// End of then-branch. If reached, skip the else-branch.
-    Else(SkipCount),
-    /// No-op marker ending a conditional block.
-    EndIf,
-    /// Begin iterating children of the list node referenced by a NodeId field.
-    ForEachStart(FieldIdx),
-    /// Format the current iteration child.
-    ChildItem,
-    /// Emit separator text between list items (not after last).
-    ForEachSep(StringId),
-    /// End of ForEach body.
-    ForEachEnd,
-    /// If Bool field is true, execute next ops; else skip.
-    IfBool(FieldIdx, SkipCount),
-    /// If Flags field has (value & mask) != 0, execute next ops; else skip.
-    IfFlag(FieldIdx, u8, SkipCount),
-    /// If Enum field == variant ordinal, execute next ops; else skip.
-    IfEnum(FieldIdx, u16, SkipCount),
-    /// If Span field is non-empty, execute next ops; else skip.
-    IfSpan(FieldIdx, SkipCount),
-    /// Map enum ordinal → string via lookup table. `u16` is base index into enum_display table.
-    EnumDisplay(FieldIdx, u16),
-    /// Begin iterating children of self (for list nodes).
-    ForEachSelfStart,
-}
-
-// ── Decode / Encode ─────────────────────────────────────────────────────
-
-fn decode_op(opcode: u8, a: u8, b: u16, c: u16) -> FmtOp {
-    match opcode {
-        opcodes::KEYWORD => FmtOp::Keyword(b),
-        opcodes::SPAN => FmtOp::Span(a as u16),
-        opcodes::CHILD => FmtOp::Child(a as u16),
-        opcodes::LINE => FmtOp::Line,
-        opcodes::SOFTLINE => FmtOp::SoftLine,
-        opcodes::HARDLINE => FmtOp::HardLine,
-        opcodes::GROUP_START => FmtOp::GroupStart,
-        opcodes::GROUP_END => FmtOp::GroupEnd,
-        opcodes::NEST_START => FmtOp::NestStart(b as i16),
-        opcodes::NEST_END => FmtOp::NestEnd,
-        opcodes::IF_SET => FmtOp::IfSet(a as u16, c),
-        opcodes::ELSE_OP => FmtOp::Else(c),
-        opcodes::END_IF => FmtOp::EndIf,
-        opcodes::FOR_EACH_START => FmtOp::ForEachStart(a as u16),
-        opcodes::CHILD_ITEM => FmtOp::ChildItem,
-        opcodes::FOR_EACH_SEP => FmtOp::ForEachSep(b),
-        opcodes::FOR_EACH_END => FmtOp::ForEachEnd,
-        opcodes::IF_BOOL => FmtOp::IfBool(a as u16, c),
-        opcodes::IF_FLAG => FmtOp::IfFlag(a as u16, b as u8, c),
-        opcodes::IF_ENUM => FmtOp::IfEnum(a as u16, b, c),
-        opcodes::IF_SPAN => FmtOp::IfSpan(a as u16, c),
-        opcodes::ENUM_DISPLAY => FmtOp::EnumDisplay(a as u16, b),
-        opcodes::FOR_EACH_SELF_START => FmtOp::ForEachSelfStart,
-        _ => panic!("unknown opcode {} in fmt data", opcode),
-    }
-}
-
-// ── Interpreter ──────────────────────────────────────────────────────────
+// ── Interpreter (pub(crate)) ────────────────────────────────────────────
 
 /// Bytecode interpreter for formatting ops. Reads string/enum data via
 /// `Dialect` safe accessors and decodes ops from a byte slice on demand.
@@ -128,30 +40,6 @@ impl<'a, 'b> Interpreter<'a, 'b> {
             trivia_ctx,
             source_offset,
         }
-    }
-
-    /// Look up a string from the C string table by index.
-    #[inline]
-    fn string(&self, sid: u16) -> &'a str {
-        self.dialect.fmt_string(sid)
-    }
-
-    /// Look up a value in the enum display table.
-    #[inline]
-    fn enum_display_val(&self, idx: usize) -> u16 {
-        self.dialect.fmt_enum_display_val(idx)
-    }
-
-    /// Decode op at position `ip` from the raw byte stream.
-    #[inline]
-    fn op_at(&self, ip: usize) -> FmtOp {
-        debug_assert!(ip < self.ops_len);
-        let base = ip * 6;
-        let opcode = self.ops[base];
-        let a = self.ops[base + 1];
-        let b = u16::from_le_bytes([self.ops[base + 2], self.ops[base + 3]]);
-        let c = u16::from_le_bytes([self.ops[base + 4], self.ops[base + 5]]);
-        decode_op(opcode, a, b, c)
     }
 
     /// Interpret the ops into a Doc tree.
@@ -391,6 +279,30 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         arena.cats(&parts)
     }
 
+    /// Look up a string from the C string table by index.
+    #[inline]
+    fn string(&self, sid: u16) -> &'a str {
+        self.dialect.fmt_string(sid)
+    }
+
+    /// Look up a value in the enum display table.
+    #[inline]
+    fn enum_display_val(&self, idx: usize) -> u16 {
+        self.dialect.fmt_enum_display_val(idx)
+    }
+
+    /// Decode the op at position `ip` from the raw byte stream.
+    #[inline(always)]
+    fn op_at(&self, ip: usize) -> FmtOp {
+        debug_assert!(ip < self.ops_len);
+        let base = ip * 6;
+        let opcode = self.ops[base];
+        let a = self.ops[base + 1];
+        let b = u16::from_le_bytes([self.ops[base + 2], self.ops[base + 3]]);
+        let c = u16::from_le_bytes([self.ops[base + 4], self.ops[base + 5]]);
+        FmtOp::decode(opcode, a, b, c)
+    }
+
     /// Find the matching ForEachEnd scanning forward from `from_ip`.
     fn skip_to_foreach_end(&self, from_ip: usize) -> usize {
         let mut depth = 1;
@@ -412,7 +324,134 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     }
 }
 
-// -- Stack frames for the interpreter ----------------------------------------
+// ── Private types ───────────────────────────────────────────────────────
+
+type StringId = u16;
+type FieldIdx = u16;
+type SkipCount = u16;
+
+/// Typed representation of a single formatting opcode.
+/// Decoded from raw 6-byte ops via `FmtOp::decode()` (a `const fn`,
+/// so LLVM resolves the decode match at compile time when the opcode
+/// is statically known in each match arm).
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum FmtOp {
+    /// Emit a keyword from the string table.
+    Keyword(StringId),
+    /// Emit source text from a Span field.
+    Span(FieldIdx),
+    /// Recursively format the child node whose ID is in a NodeId field.
+    /// Skipped if the child ID is NULL_NODE.
+    Child(FieldIdx),
+    /// Flat: space. Break: newline + indent.
+    Line,
+    /// Flat: empty. Break: newline + indent.
+    SoftLine,
+    /// Always newline + indent.
+    HardLine,
+    /// Begin a group (try flat, break if doesn't fit).
+    GroupStart,
+    /// End a group.
+    GroupEnd,
+    /// Begin indentation nest.
+    NestStart(i16),
+    /// End indentation nest.
+    NestEnd,
+    /// If NodeId field != NULL_NODE, execute next ops; else skip.
+    IfSet(FieldIdx, SkipCount),
+    /// End of then-branch. If reached, skip the else-branch.
+    Else(SkipCount),
+    /// No-op marker ending a conditional block.
+    EndIf,
+    /// Begin iterating children of the list node referenced by a NodeId field.
+    ForEachStart(FieldIdx),
+    /// Format the current iteration child.
+    ChildItem,
+    /// Emit separator text between list items (not after last).
+    ForEachSep(StringId),
+    /// End of ForEach body.
+    ForEachEnd,
+    /// If Bool field is true, execute next ops; else skip.
+    IfBool(FieldIdx, SkipCount),
+    /// If Flags field has (value & mask) != 0, execute next ops; else skip.
+    IfFlag(FieldIdx, u8, SkipCount),
+    /// If Enum field == variant ordinal, execute next ops; else skip.
+    IfEnum(FieldIdx, u16, SkipCount),
+    /// If Span field is non-empty, execute next ops; else skip.
+    IfSpan(FieldIdx, SkipCount),
+    /// Map enum ordinal → string via lookup table. `u16` is base index into enum_display table.
+    EnumDisplay(FieldIdx, u16),
+    /// Begin iterating children of self (for list nodes).
+    ForEachSelfStart,
+}
+
+impl FmtOp {
+    /// Decode a raw opcode tuple into a typed `FmtOp`.
+    #[inline(always)]
+    pub const fn decode(opcode: u8, a: u8, b: u16, c: u16) -> Self {
+        match opcode {
+            opcodes::KEYWORD => FmtOp::Keyword(b),
+            opcodes::SPAN => FmtOp::Span(a as u16),
+            opcodes::CHILD => FmtOp::Child(a as u16),
+            opcodes::LINE => FmtOp::Line,
+            opcodes::SOFTLINE => FmtOp::SoftLine,
+            opcodes::HARDLINE => FmtOp::HardLine,
+            opcodes::GROUP_START => FmtOp::GroupStart,
+            opcodes::GROUP_END => FmtOp::GroupEnd,
+            opcodes::NEST_START => FmtOp::NestStart(b as i16),
+            opcodes::NEST_END => FmtOp::NestEnd,
+            opcodes::IF_SET => FmtOp::IfSet(a as u16, c),
+            opcodes::ELSE_OP => FmtOp::Else(c),
+            opcodes::END_IF => FmtOp::EndIf,
+            opcodes::FOR_EACH_START => FmtOp::ForEachStart(a as u16),
+            opcodes::CHILD_ITEM => FmtOp::ChildItem,
+            opcodes::FOR_EACH_SEP => FmtOp::ForEachSep(b),
+            opcodes::FOR_EACH_END => FmtOp::ForEachEnd,
+            opcodes::IF_BOOL => FmtOp::IfBool(a as u16, c),
+            opcodes::IF_FLAG => FmtOp::IfFlag(a as u16, b as u8, c),
+            opcodes::IF_ENUM => FmtOp::IfEnum(a as u16, b, c),
+            opcodes::IF_SPAN => FmtOp::IfSpan(a as u16, c),
+            opcodes::ENUM_DISPLAY => FmtOp::EnumDisplay(a as u16, b),
+            opcodes::FOR_EACH_SELF_START => FmtOp::ForEachSelfStart,
+            _ => panic!("unknown opcode in fmt data"),
+        }
+    }
+}
+
+#[cfg(test)]
+impl FmtOp {
+    /// Encode this op into its 6-byte binary representation.
+    const fn encode(self) -> [u8; 6] {
+        let (opcode, a, b, c): (u8, u8, u16, u16) = match self {
+            FmtOp::Keyword(b) => (opcodes::KEYWORD, 0, b, 0),
+            FmtOp::Span(a) => (opcodes::SPAN, a as u8, 0, 0),
+            FmtOp::Child(a) => (opcodes::CHILD, a as u8, 0, 0),
+            FmtOp::Line => (opcodes::LINE, 0, 0, 0),
+            FmtOp::SoftLine => (opcodes::SOFTLINE, 0, 0, 0),
+            FmtOp::HardLine => (opcodes::HARDLINE, 0, 0, 0),
+            FmtOp::GroupStart => (opcodes::GROUP_START, 0, 0, 0),
+            FmtOp::GroupEnd => (opcodes::GROUP_END, 0, 0, 0),
+            FmtOp::NestStart(indent) => (opcodes::NEST_START, 0, indent as u16, 0),
+            FmtOp::NestEnd => (opcodes::NEST_END, 0, 0, 0),
+            FmtOp::IfSet(a, c) => (opcodes::IF_SET, a as u8, 0, c),
+            FmtOp::Else(c) => (opcodes::ELSE_OP, 0, 0, c),
+            FmtOp::EndIf => (opcodes::END_IF, 0, 0, 0),
+            FmtOp::ForEachStart(a) => (opcodes::FOR_EACH_START, a as u8, 0, 0),
+            FmtOp::ChildItem => (opcodes::CHILD_ITEM, 0, 0, 0),
+            FmtOp::ForEachSep(b) => (opcodes::FOR_EACH_SEP, 0, b, 0),
+            FmtOp::ForEachEnd => (opcodes::FOR_EACH_END, 0, 0, 0),
+            FmtOp::IfBool(a, c) => (opcodes::IF_BOOL, a as u8, 0, c),
+            FmtOp::IfFlag(a, mask, c) => (opcodes::IF_FLAG, a as u8, mask as u16, c),
+            FmtOp::IfEnum(a, b, c) => (opcodes::IF_ENUM, a as u8, b, c),
+            FmtOp::IfSpan(a, c) => (opcodes::IF_SPAN, a as u8, 0, c),
+            FmtOp::EnumDisplay(a, b) => (opcodes::ENUM_DISPLAY, a as u8, b, 0),
+            FmtOp::ForEachSelfStart => (opcodes::FOR_EACH_SELF_START, 0, 0, 0),
+        };
+        let bb = b.to_le_bytes();
+        let cb = c.to_le_bytes();
+        [opcode, a, bb[0], bb[1], cb[0], cb[1]]
+    }
+}
 
 enum StackFrame {
     Group(Vec<DocId>),
@@ -427,44 +466,12 @@ struct ForEachState {
 
 // ── Test helpers ────────────────────────────────────────────────────────
 
+/// Encode a slice of `FmtOp`s into raw bytes.
 #[cfg(test)]
-pub(crate) fn encode_op(op: &FmtOp) -> [u8; 6] {
-    let (opcode, a, b, c) = match *op {
-        FmtOp::Keyword(b) => (opcodes::KEYWORD, 0u8, b, 0u16),
-        FmtOp::Span(a) => (opcodes::SPAN, a as u8, 0, 0),
-        FmtOp::Child(a) => (opcodes::CHILD, a as u8, 0, 0),
-        FmtOp::Line => (opcodes::LINE, 0, 0, 0),
-        FmtOp::SoftLine => (opcodes::SOFTLINE, 0, 0, 0),
-        FmtOp::HardLine => (opcodes::HARDLINE, 0, 0, 0),
-        FmtOp::GroupStart => (opcodes::GROUP_START, 0, 0, 0),
-        FmtOp::GroupEnd => (opcodes::GROUP_END, 0, 0, 0),
-        FmtOp::NestStart(indent) => (opcodes::NEST_START, 0, indent as u16, 0),
-        FmtOp::NestEnd => (opcodes::NEST_END, 0, 0, 0),
-        FmtOp::IfSet(a, c) => (opcodes::IF_SET, a as u8, 0, c),
-        FmtOp::Else(c) => (opcodes::ELSE_OP, 0, 0, c),
-        FmtOp::EndIf => (opcodes::END_IF, 0, 0, 0),
-        FmtOp::ForEachStart(a) => (opcodes::FOR_EACH_START, a as u8, 0, 0),
-        FmtOp::ChildItem => (opcodes::CHILD_ITEM, 0, 0, 0),
-        FmtOp::ForEachSep(b) => (opcodes::FOR_EACH_SEP, 0, b, 0),
-        FmtOp::ForEachEnd => (opcodes::FOR_EACH_END, 0, 0, 0),
-        FmtOp::IfBool(a, c) => (opcodes::IF_BOOL, a as u8, 0, c),
-        FmtOp::IfFlag(a, mask, c) => (opcodes::IF_FLAG, a as u8, mask as u16, c),
-        FmtOp::IfEnum(a, b, c) => (opcodes::IF_ENUM, a as u8, b, c),
-        FmtOp::IfSpan(a, c) => (opcodes::IF_SPAN, a as u8, 0, c),
-        FmtOp::EnumDisplay(a, b) => (opcodes::ENUM_DISPLAY, a as u8, b, 0),
-        FmtOp::ForEachSelfStart => (opcodes::FOR_EACH_SELF_START, 0, 0, 0),
-    };
-    let b_bytes = b.to_le_bytes();
-    let c_bytes = c.to_le_bytes();
-    [opcode, a, b_bytes[0], b_bytes[1], c_bytes[0], c_bytes[1]]
-}
-
-/// Test helper: encodes FmtOps into raw bytes.
-#[cfg(test)]
-pub(crate) fn encode_ops(ops: &[FmtOp]) -> Vec<u8> {
+fn encode_ops(ops: &[FmtOp]) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(ops.len() * 6);
     for op in ops {
-        bytes.extend_from_slice(&encode_op(op));
+        bytes.extend_from_slice(&op.encode());
     }
     bytes
 }
