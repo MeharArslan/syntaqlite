@@ -10,8 +10,7 @@ fn parse_select_1() {
     let node = session.node(root_id).unwrap();
     assert_eq!(node.tag(), NodeTag::SelectStmt);
 
-    let Node::SelectStmt(select) = node else { panic!("expected SelectStmt") };
-    assert_eq!(select.tag, NodeTag::SelectStmt as u32);
+    let Node::SelectStmt(_select) = node else { panic!("expected SelectStmt") };
 
     // No more statements.
     assert!(session.next_statement().is_none());

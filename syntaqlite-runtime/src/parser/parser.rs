@@ -105,6 +105,46 @@ impl Drop for Parser {
     }
 }
 
+// ── NodeReader ──────────────────────────────────────────────────────────
+
+/// A lightweight, `Copy` handle for reading nodes from the parser arena.
+///
+/// This is the read-only half of `CursorBase`. Dialect crates embed it in
+/// view structs so that accessor methods can resolve `NodeId` children
+/// without requiring a back-reference to the full cursor.
+///
+/// # Safety invariant
+/// The raw pointer must remain valid for `'a`. This is guaranteed when
+/// `NodeReader` is obtained from a `CursorBase` (which borrows the parser
+/// exclusively for `'a`).
+#[derive(Clone, Copy)]
+pub struct NodeReader<'a> {
+    raw: *mut ffi::Parser,
+    source: &'a str,
+}
+
+impl<'a> NodeReader<'a> {
+    /// Get a raw pointer to a node in the arena. Returns `(pointer, tag)`.
+    pub fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
+        if id.is_null() {
+            return None;
+        }
+        unsafe {
+            let ptr = ffi::syntaqlite_parser_node(self.raw, id.0);
+            if ptr.is_null() {
+                return None;
+            }
+            let tag = *(ptr as *const u32);
+            Some((ptr as *const u8, tag))
+        }
+    }
+
+    /// The source text bound to this reader.
+    pub fn source(&self) -> &'a str {
+        self.source
+    }
+}
+
 // ── CursorBase ──────────────────────────────────────────────────────────
 
 /// Shared read-only cursor state. Both `StatementCursor` and `TokenFeeder`
@@ -169,6 +209,14 @@ impl<'a> CursorBase<'a> {
             raw,
             source: source_str,
             c_source_ptr: source.as_ptr() as *const u8,
+        }
+    }
+
+    /// Get a `NodeReader` handle for resolving nodes from the arena.
+    pub fn reader(&self) -> NodeReader<'a> {
+        NodeReader {
+            raw: self.raw,
+            source: self.source,
         }
     }
 
@@ -294,6 +342,11 @@ impl<'a> StatementCursor<'a> {
     }
 
     // Delegate read-only methods for convenience
+
+    /// Get a `NodeReader` handle for resolving nodes from the arena.
+    pub fn reader(&self) -> NodeReader<'a> {
+        self.0.reader()
+    }
 
     /// Get a raw pointer to a node in the arena. Returns (pointer, tag).
     pub fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {

@@ -1,7 +1,7 @@
 use std::ops::Range;
 
-use crate::generated::nodes::Node;
-use crate::generated::tokens::TokenType;
+use crate::ast::Node;
+use crate::tokens::TokenType;
 
 // ── Parser ──────────────────────────────────────────────────────────────
 
@@ -49,8 +49,12 @@ impl<'a> StatementCursor<'a> {
 
     /// Get a typed AST node by ID.
     pub fn node(&self, id: syntaqlite_runtime::NodeId) -> Option<Node<'a>> {
-        let (ptr, _tag) = self.inner.node_ptr(id)?;
-        Some(unsafe { Node::from_raw(ptr as *const u32) })
+        Node::resolve(self.inner.reader(), id)
+    }
+
+    /// Get a `NodeReader` for resolving nodes from the arena.
+    pub fn reader(&self) -> syntaqlite_runtime::NodeReader<'a> {
+        self.inner.reader()
     }
 
     /// The source text bound to this cursor.
@@ -163,8 +167,7 @@ impl<'a> TokenFeeder<'a> {
 
     /// Get a typed AST node by ID.
     pub fn node(&self, id: syntaqlite_runtime::NodeId) -> Option<Node<'a>> {
-        let (ptr, _tag) = self.inner.node_ptr(id)?;
-        Some(unsafe { Node::from_raw(ptr as *const u32) })
+        Node::resolve(self.inner.reader(), id)
     }
 
     /// The source text bound to this feeder.

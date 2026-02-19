@@ -5,7 +5,7 @@ use crate::dialect::Dialect;
 use super::ffi;
 use super::ffi::{MacroRegion, Trivia};
 use super::nodes::NodeId;
-use super::parser::{CursorBase, ParseError, ParserConfig};
+use super::parser::{CursorBase, NodeReader, ParseError, ParserConfig};
 
 /// A low-level parser for token-by-token feeding. Owns its own C parser
 /// handle and source buffer, independent of `Parser`.
@@ -169,6 +169,11 @@ impl<'a> TokenFeeder<'a> {
     }
 
     // Delegate read-only methods for convenience
+
+    /// Get a `NodeReader` handle for resolving nodes from the arena.
+    pub fn reader(&self) -> NodeReader<'a> {
+        self.0.reader()
+    }
 
     /// Get a raw pointer to a node in the arena. Returns (pointer, tag).
     pub fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {

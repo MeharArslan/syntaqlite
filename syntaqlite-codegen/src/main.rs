@@ -189,27 +189,26 @@ fn main() {
                 if args.verbose {
                     eprintln!("Generating Rust bindings...");
                 }
-                let rust_gen_dir = Path::new(&output_dir)
+                let rust_src_dir = Path::new(&output_dir)
                     .parent()
                     .unwrap_or(Path::new("."))
-                    .join("src/generated");
-                fs::create_dir_all(&rust_gen_dir)
-                    .map_err(|e| format!("Failed to create Rust generated directory: {}", e))?;
+                    .join("src");
 
                 let parse_h_content = fs::read_to_string(temp_dir.path().join("parse.h"))
                     .map_err(|e| format!("Failed to read parse.h: {}", e))?;
                 let token_defines = syntaqlite_codegen::extract_token_defines(&parse_h_content);
 
                 let rust_tokens = syntaqlite_codegen::ast_codegen::generate_rust_tokens(&token_defines);
-                fs::write(rust_gen_dir.join("tokens.rs"), rust_tokens)
+                fs::write(rust_src_dir.join("tokens.rs"), rust_tokens)
                     .map_err(|e| format!("Failed to write tokens.rs: {}", e))?;
 
-                let rust_nodes = syntaqlite_codegen::ast_codegen::generate_rust_nodes(&all_items);
-                fs::write(rust_gen_dir.join("nodes.rs"), rust_nodes)
-                    .map_err(|e| format!("Failed to write nodes.rs: {}", e))?;
+                let rust_ffi = syntaqlite_codegen::ast_codegen::generate_rust_ffi_nodes(&all_items);
+                fs::write(rust_src_dir.join("ffi.rs"), rust_ffi)
+                    .map_err(|e| format!("Failed to write ffi.rs: {}", e))?;
 
-                fs::write(rust_gen_dir.join("mod.rs"), "pub mod nodes;\npub mod tokens;\n")
-                    .map_err(|e| format!("Failed to write mod.rs: {}", e))?;
+                let rust_ast = syntaqlite_codegen::ast_codegen::generate_rust_ast(&all_items);
+                fs::write(rust_src_dir.join("ast.rs"), rust_ast)
+                    .map_err(|e| format!("Failed to write ast.rs: {}", e))?;
 
                 // Step 6: Generate C AST metadata and fmt data headers
                 if args.verbose {
