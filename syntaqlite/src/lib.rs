@@ -1,31 +1,41 @@
 mod generated;
 mod dialect;
 mod fmt_data;
-pub mod nodes;
-mod tokenizer;
-
+pub(crate) mod nodes;
 mod parser;
 
-// Re-export runtime types that callers need (but NOT Parser or Dialect).
-pub use syntaqlite_runtime::{
-    FieldVal, Fields, MacroRegion, NodeId, NodeList, ParseError,
-    Session, SourceSpan, Trivia, TriviaKind,
-};
-
-// SQLite-specific parser (wraps runtime Parser with the SQLite dialect).
+// ── Root: the essentials ────────────────────────────────────────────────
 pub use parser::Parser;
+pub use syntaqlite_runtime::{NodeId, ParseError, Session, SourceSpan};
 
-// Dialect-specific exports
-pub use generated::nodes::*;
-pub use generated::tokens::TokenType;
-pub use dialect::{dump_node, SessionExt, NODE_INFO};
-pub use tokenizer::{Token, TokenStream, Tokenizer};
+// ── AST types & inspection ──────────────────────────────────────────────
+pub mod ast {
+    pub use crate::generated::nodes::*;
+    pub use crate::dialect::{dump_node, SessionExt, NODE_INFO};
+    pub use syntaqlite_runtime::{
+        MacroRegion, NodeList, Trivia, TriviaKind,
+    };
+}
 
-// Formatter re-exports (runtime engine + dialect data)
-pub use syntaqlite_runtime::fmt::{
-    DocArena, DocId, NIL_DOC, FormatConfig, KeywordCase,
-    FmtCtx, NodeFmt, NodeInfo, TriviaCtx,
-    format_node, format_node_with_trivia, first_source_offset, last_source_offset,
-    render,
-};
-pub use fmt_data::{dispatch, ctx};
+// ── Formatter ───────────────────────────────────────────────────────────
+pub mod fmt {
+    pub use syntaqlite_runtime::fmt::{
+        DocArena, FormatConfig, KeywordCase, TriviaCtx,
+        format_node, format_node_with_trivia, first_source_offset, render,
+    };
+    pub use crate::fmt_data::{dispatch, ctx};
+    pub use crate::ast::NODE_INFO;
+}
+
+// ── Tokenizer ───────────────────────────────────────────────────────────
+pub mod tokenizer {
+    mod inner {
+        pub use crate::tokenizer_impl::*;
+    }
+    pub use inner::*;
+    pub use crate::generated::tokens::TokenType;
+}
+
+// Private implementation module for the tokenizer wrapper types.
+#[path = "tokenizer.rs"]
+mod tokenizer_impl;

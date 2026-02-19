@@ -1,6 +1,8 @@
 /// Integration tests: macro regions are emitted verbatim by the formatter.
-use syntaqlite::{ctx, dispatch, format_node, render, DocArena, FormatConfig, NODE_INFO};
-use syntaqlite::{Parser, SessionExt, TokenType};
+use syntaqlite::ast::SessionExt;
+use syntaqlite::fmt::{ctx, dispatch, format_node, render, DocArena, FormatConfig, NODE_INFO};
+use syntaqlite::tokenizer::TokenType;
+use syntaqlite::Parser;
 
 #[test]
 fn macro_call_emitted_verbatim() {

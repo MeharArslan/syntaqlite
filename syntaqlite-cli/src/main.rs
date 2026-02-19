@@ -3,10 +3,10 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use syntaqlite::{
-    first_source_offset, format_node, format_node_with_trivia, render, DocArena, FormatConfig,
-    KeywordCase, TriviaCtx, ctx, dispatch, NODE_INFO,
-    dump_node, TriviaKind,
+use syntaqlite::ast::{dump_node, TriviaKind};
+use syntaqlite::fmt::{
+    ctx, dispatch, first_source_offset, format_node, format_node_with_trivia, render,
+    DocArena, FormatConfig, KeywordCase, NODE_INFO, TriviaCtx,
 };
 
 #[derive(Parser)]

@@ -1,4 +1,6 @@
-use syntaqlite::{NodeTag, Parser, SessionExt, TokenType};
+use syntaqlite::ast::{NodeTag, SessionExt};
+use syntaqlite::tokenizer::TokenType;
+use syntaqlite::Parser;
 
 /// Feed tokens for "SELECT 1" via the low-level API and verify same AST
 /// as the high-level parse.

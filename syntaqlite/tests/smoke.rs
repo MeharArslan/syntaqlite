@@ -1,4 +1,6 @@
-use syntaqlite::{Node, NodeTag, Parser, SessionExt, Tokenizer, TokenType};
+use syntaqlite::ast::{Node, NodeTag, SessionExt};
+use syntaqlite::tokenizer::{Tokenizer, TokenType};
+use syntaqlite::Parser;
 
 #[test]
 fn parse_select_1() {

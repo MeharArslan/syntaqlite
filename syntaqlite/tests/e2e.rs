@@ -1,5 +1,6 @@
+use syntaqlite::ast::*;
+use syntaqlite::{NodeId, Parser, Session};
 use syntaqlite_runtime::fmt::{render, DocArena, DocId, FormatConfig, NIL_DOC};
-use syntaqlite::*;
 
 /// Build a Doc tree from a parsed AST node using the typed Node API.
 fn format_node<'a>(

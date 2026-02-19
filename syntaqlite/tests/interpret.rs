@@ -1,6 +1,7 @@
 use syntaqlite_runtime::fmt::interpret::interpret;
 use syntaqlite_runtime::fmt::ops::FmtOp;
-use syntaqlite::{FieldVal, NodeId};
+use syntaqlite::NodeId;
+use syntaqlite_runtime::FieldVal;
 use syntaqlite_runtime::fmt::{render, DocArena, FmtCtx, FormatConfig, NIL_DOC};
 
 fn noop_child(_: NodeId, _: &mut DocArena) -> u32 {

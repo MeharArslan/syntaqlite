@@ -1,6 +1,6 @@
 /// Integration tests exercising the generated dispatch table + ctx
 /// with the hand-written format_node and renderer.
-use syntaqlite::{ctx, dispatch, format_node, render, DocArena, FormatConfig, KeywordCase, NODE_INFO};
+use syntaqlite::fmt::{ctx, dispatch, format_node, render, DocArena, FormatConfig, KeywordCase, NODE_INFO};
 use syntaqlite::Parser;
 
 fn format_sql(sql: &str) -> String {
