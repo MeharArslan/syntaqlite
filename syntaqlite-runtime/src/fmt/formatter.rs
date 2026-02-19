@@ -1,7 +1,8 @@
 use std::cell::Cell;
 
 use crate::dialect::Dialect;
-use crate::parser::{MacroRegion, NodeId, NodeList, Parser, SessionBase, Trivia, TriviaKind};
+use crate::dialect::ffi::{FieldMeta, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN};
+use crate::parser::{CursorBase, FieldVal, Fields, MacroRegion, NodeId, NodeList, Parser, ParserConfig, SourceSpan, Trivia, TriviaKind};
 
 use super::FormatConfig;
 use super::doc::{DocArena, DocId, NIL_DOC};
@@ -29,8 +30,8 @@ impl<'d> Formatter<'d> {
         if dialect.raw.fmt_strings.is_null() || dialect.raw.fmt_string_count == 0 {
             return Err("C dialect has no fmt data");
         }
-        let mut parser = Parser::new(dialect);
-        parser.set_collect_tokens(true);
+        let config = ParserConfig { collect_tokens: true, ..Default::default() };
+        let parser = Parser::with_config(dialect, &config);
         Ok(Formatter {
             dialect: *dialect,
             parser,
@@ -58,15 +59,15 @@ impl<'d> Formatter<'d> {
 
     /// Format SQL source text. Handles multiple statements and preserves comments.
     pub fn format(&mut self, source: &str) -> Result<String, crate::parser::ParseError> {
-        let mut session = self.parser.parse(source);
+        let mut cursor = self.parser.parse(source);
 
         let mut roots = Vec::new();
-        while let Some(result) = session.next_statement() {
+        while let Some(result) = cursor.next_statement() {
             roots.push(result?);
         }
 
-        let trivia = session.trivia().to_vec();
-        let base = session.base();
+        let trivia = cursor.trivia().to_vec();
+        let base = cursor.base();
         Ok(format_stmts(
             self.dialect,
             &self.config,
@@ -80,9 +81,9 @@ impl<'d> Formatter<'d> {
 
     /// Format a single pre-parsed AST node. This is the low-level entry point
     /// for cases where the caller controls parsing (e.g. macro expansion).
-    pub fn format_node(&self, session: &SessionBase<'_>, node_id: NodeId) -> String {
+    pub fn format_node(&self, cursor: &CursorBase<'_>, node_id: NodeId) -> String {
         let mut arena = DocArena::new();
-        let doc = format_node(self.dialect, session, node_id, &mut arena);
+        let doc = format_node(self.dialect, cursor, node_id, &mut arena);
         render(&arena, doc, &self.config)
     }
 }
@@ -93,7 +94,7 @@ fn format_stmts<'a>(
     dialect: Dialect<'_>,
     config: &FormatConfig,
     semicolons: bool,
-    session: &'a SessionBase<'a>,
+    cursor: &'a CursorBase<'a>,
     roots: &[NodeId],
     trivia: &[Trivia],
     source: &str,
@@ -110,7 +111,7 @@ fn format_stmts<'a>(
         }
 
         let stmt_start =
-            dialect.first_source_offset(session, root_id).unwrap_or(source.len() as u32);
+            first_source_offset(&dialect, cursor, root_id).unwrap_or(source.len() as u32);
 
         // Emit leading trivia (comments before this statement).
         while trivia_cursor < trivia.len() && trivia[trivia_cursor].offset < stmt_start {
@@ -131,8 +132,7 @@ fn format_stmts<'a>(
 
         // Collect trivia within this statement's span.
         let stmt_end = if i + 1 < roots.len() {
-            dialect
-                .first_source_offset(session, roots[i + 1])
+            first_source_offset(&dialect, cursor, roots[i + 1])
                 .unwrap_or(source.len() as u32)
         } else {
             source.len() as u32
@@ -147,12 +147,12 @@ fn format_stmts<'a>(
         // Format the statement, interleaving any within-statement trivia.
         let mut arena = DocArena::new();
         if within_trivia.is_empty() {
-            let doc = format_node(dialect, session, root_id, &mut arena);
+            let doc = format_node(dialect, cursor, root_id, &mut arena);
             out.push_str(&render(&arena, doc, config));
         } else {
             let trivia_ctx = TriviaCtx::new(within_trivia, source);
             let doc =
-                format_node_with_trivia(dialect, session, root_id, &mut arena, &trivia_ctx);
+                format_node_with_trivia(dialect, cursor, root_id, &mut arena, &trivia_ctx);
             let trailing = trivia_ctx.drain_remaining(&mut arena);
             let final_doc = arena.cat(doc, trailing);
             out.push_str(&render(&arena, final_doc, config));
@@ -188,17 +188,17 @@ fn format_stmts<'a>(
 
 fn format_node<'a>(
     dialect: Dialect<'a>,
-    session: &'a SessionBase<'a>,
+    cursor: &'a CursorBase<'a>,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
 ) -> DocId {
     let consumed = Cell::new(0u64);
-    format_node_inner(dialect, session, node_id, arena, None, &consumed)
+    format_node_inner(dialect, cursor, node_id, arena, None, &consumed)
 }
 
 fn format_node_with_trivia<'a>(
     dialect: Dialect<'a>,
-    session: &'a SessionBase<'a>,
+    cursor: &'a CursorBase<'a>,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
     trivia_ctx: &'a TriviaCtx<'a>,
@@ -206,7 +206,7 @@ fn format_node_with_trivia<'a>(
     let consumed = Cell::new(0u64);
     format_node_inner(
         dialect,
-        session,
+        cursor,
         node_id,
         arena,
         Some(trivia_ctx),
@@ -216,7 +216,7 @@ fn format_node_with_trivia<'a>(
 
 fn format_node_inner<'a>(
     dialect: Dialect<'a>,
-    session: &'a SessionBase<'a>,
+    cursor: &'a CursorBase<'a>,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
     trivia_ctx: Option<&'a TriviaCtx<'a>>,
@@ -226,20 +226,20 @@ fn format_node_inner<'a>(
         return NIL_DOC;
     }
 
-    let Some((ptr, tag)) = session.node_ptr(node_id) else {
+    let Some((ptr, tag)) = cursor.node_ptr(node_id) else {
         return NIL_DOC;
     };
-    let Some((ops_bytes, ops_len)) = dialect.fmt_dispatch(tag) else {
+    let Some((ops_bytes, ops_len)) = fmt_dispatch(&dialect, tag) else {
         return NIL_DOC;
     };
-    let source = session.source();
-    let macro_regions = session.macro_regions();
+    let source = cursor.source();
+    let macro_regions = cursor.macro_regions();
 
     let format_child = move |id: NodeId, arena: &mut DocArena<'a>| {
         if !macro_regions.is_empty() {
             if let Some(verbatim) = try_macro_verbatim(
                 dialect,
-                session,
+                cursor,
                 id,
                 macro_regions,
                 arena,
@@ -250,7 +250,7 @@ fn format_node_inner<'a>(
         }
         format_node_inner(
             dialect,
-            session,
+            cursor,
             id,
             arena,
             trivia_ctx,
@@ -258,26 +258,26 @@ fn format_node_inner<'a>(
         )
     };
     let resolve_list = move |id: NodeId| -> Vec<NodeId> {
-        session
+        cursor
             .node_ptr(id)
-            .filter(|&(_, t)| dialect.is_list(t))
+            .filter(|&(_, t)| is_list(&dialect, t))
             .map(|(p, _)| {
                 let list = unsafe { &*(p as *const NodeList) };
                 list.children().to_vec()
             })
             .unwrap_or_default()
     };
-    let children = if dialect.is_list(tag) {
+    let children = if is_list(&dialect, tag) {
         let list = unsafe { &*(ptr as *const NodeList) };
         Some(list.children() as &[NodeId])
     } else {
         None
     };
 
-    let fields = dialect.extract_fields(ptr, tag, source);
+    let fields = extract_fields(&dialect, ptr, tag, source);
 
     let source_offset_fn =
-        move |id: NodeId| -> Option<u32> { dialect.first_source_offset(session, id) };
+        move |id: NodeId| -> Option<u32> { first_source_offset(&dialect, cursor, id) };
     let source_offset: Option<&dyn Fn(NodeId) -> Option<u32>> =
         if trivia_ctx.is_some() { Some(&source_offset_fn) } else { None };
 
@@ -296,14 +296,14 @@ fn format_node_inner<'a>(
 /// Check if a node's subtree overlaps with any macro region.
 fn try_macro_verbatim<'a>(
     dialect: Dialect<'_>,
-    session: &'a SessionBase<'a>,
+    cursor: &'a CursorBase<'a>,
     node_id: NodeId,
     regions: &[MacroRegion],
     arena: &mut DocArena<'a>,
     consumed: &Cell<u64>,
 ) -> Option<DocId> {
-    let first = dialect.first_source_offset(session, node_id)?;
-    let last = dialect.last_source_offset(session, node_id)?;
+    let first = first_source_offset(&dialect, cursor, node_id)?;
+    let last = last_source_offset(&dialect, cursor, node_id)?;
 
     for (i, r) in regions.iter().enumerate() {
         if i >= 64 {
@@ -319,11 +319,203 @@ fn try_macro_verbatim<'a>(
                 return Some(NIL_DOC);
             }
             consumed.set(bits | bit);
-            let source = session.source();
+            let source = cursor.source();
             let verbatim_start = first.min(r_start) as usize;
             let verbatim_end = last.max(r_end) as usize;
             return Some(arena.text(&source[verbatim_start..verbatim_end]));
         }
     }
     None
+}
+
+// ── Dialect accessors ───────────────────────────────────────────────────
+//
+// These operate on a Dialect handle but live here because the formatter
+// is the only consumer.
+
+/// Whether the given node tag represents a list node.
+fn is_list(dialect: &Dialect<'_>, tag: u32) -> bool {
+    let idx = tag as usize;
+    if idx >= dialect.raw.node_count as usize {
+        return false;
+    }
+    unsafe { *dialect.raw.list_tags.add(idx) != 0 }
+}
+
+/// Return the field metadata for a node tag.
+fn field_meta<'d>(dialect: &Dialect<'d>, tag: u32) -> &'d [FieldMeta] {
+    let idx = tag as usize;
+    if idx >= dialect.raw.node_count as usize {
+        return &[];
+    }
+    let count = unsafe { *dialect.raw.field_meta_counts.add(idx) } as usize;
+    let ptr = unsafe { *dialect.raw.field_meta.add(idx) };
+    if count == 0 || ptr.is_null() {
+        return &[];
+    }
+    unsafe { std::slice::from_raw_parts(ptr, count) }
+}
+
+/// Extract typed field values from a raw node pointer.
+fn extract_fields<'a>(dialect: &Dialect<'_>, ptr: *const u8, tag: u32, source: &'a str) -> Fields<'a> {
+    let meta = field_meta(dialect, tag);
+    let mut fields = Fields::new();
+    for m in meta {
+        fields.push(unsafe { extract_one(ptr, m, source) });
+    }
+    fields
+}
+
+/// # Safety
+/// `ptr` must point to a valid node struct whose field at `m.offset` has
+/// the type indicated by `m.kind`.
+unsafe fn extract_one<'a>(ptr: *const u8, m: &FieldMeta, source: &'a str) -> FieldVal<'a> {
+    unsafe {
+        let field_ptr = ptr.add(m.offset as usize);
+        match m.kind {
+            FIELD_NODE_ID => FieldVal::NodeId(NodeId(*(field_ptr as *const u32))),
+            FIELD_SPAN => {
+                let span = &*(field_ptr as *const SourceSpan);
+                if span.length == 0 {
+                    FieldVal::Span("", 0)
+                } else {
+                    FieldVal::Span(span.as_str(source), span.offset)
+                }
+            }
+            FIELD_BOOL => FieldVal::Bool(*(field_ptr as *const u32) != 0),
+            FIELD_FLAGS => FieldVal::Flags(*(field_ptr as *const u8)),
+            FIELD_ENUM => FieldVal::Enum(*(field_ptr as *const u32)),
+            _ => panic!("unknown C field kind: {}", m.kind),
+        }
+    }
+}
+
+/// Look up the ops byte slice and op count for a given node tag.
+/// Returns `None` if the tag has no formatter ops.
+fn fmt_dispatch<'d>(dialect: &Dialect<'d>, tag: u32) -> Option<(&'d [u8], usize)> {
+    let idx = tag as usize;
+    if idx >= dialect.raw.fmt_dispatch_count as usize {
+        return None;
+    }
+    let packed = unsafe { *dialect.raw.fmt_dispatch.add(idx) };
+    let offset = (packed >> 16) as u16;
+    let length = (packed & 0xFFFF) as u16;
+    if offset == 0xFFFF {
+        return None;
+    }
+    let byte_offset = offset as usize * 6;
+    let byte_len = length as usize * 6;
+    let slice = unsafe {
+        std::slice::from_raw_parts(dialect.raw.fmt_ops.add(byte_offset), byte_len)
+    };
+    Some((slice, length as usize))
+}
+
+/// Find the earliest source offset in a node's subtree.
+fn first_source_offset(
+    dialect: &Dialect<'_>,
+    cursor: &CursorBase<'_>,
+    node_id: NodeId,
+) -> Option<u32> {
+    if node_id.is_null() {
+        return None;
+    }
+    let (ptr, tag) = cursor.node_ptr(node_id)?;
+
+    if is_list(dialect, tag) {
+        let list = unsafe { &*(ptr as *const NodeList) };
+        let children = list.children();
+        if !children.is_empty() {
+            return first_source_offset(dialect, cursor, children[0]);
+        }
+        return None;
+    }
+
+    let source = cursor.source();
+    let fields = extract_fields(dialect, ptr, tag, source);
+
+    let mut min: Option<u32> = None;
+    for field in fields.iter() {
+        if let FieldVal::Span(s, offset) = field {
+            if !s.is_empty() {
+                min = Some(match min {
+                    Some(prev) => prev.min(*offset),
+                    None => *offset,
+                });
+            }
+        }
+    }
+    if min.is_some() {
+        return min;
+    }
+
+    for field in fields.iter() {
+        if let FieldVal::NodeId(child_id) = field {
+            if let Some(off) = first_source_offset(dialect, cursor, *child_id) {
+                return Some(off);
+            }
+        }
+    }
+
+    None
+}
+
+/// Find the latest source offset (end) in a node's subtree.
+fn last_source_offset(
+    dialect: &Dialect<'_>,
+    cursor: &CursorBase<'_>,
+    node_id: NodeId,
+) -> Option<u32> {
+    if node_id.is_null() {
+        return None;
+    }
+    let (ptr, tag) = cursor.node_ptr(node_id)?;
+
+    if is_list(dialect, tag) {
+        let list = unsafe { &*(ptr as *const NodeList) };
+        let children = list.children();
+        if !children.is_empty() {
+            return last_source_offset(dialect, cursor, children[children.len() - 1]);
+        }
+        return None;
+    }
+
+    let source = cursor.source();
+    let fields = extract_fields(dialect, ptr, tag, source);
+
+    let mut max: Option<u32> = None;
+    for field in fields.iter() {
+        if let FieldVal::Span(s, offset) = field {
+            if !s.is_empty() {
+                let end = *offset + s.len() as u32;
+                max = Some(match max {
+                    Some(prev) => prev.max(end),
+                    None => end,
+                });
+            }
+        }
+    }
+    if max.is_some() {
+        for field in fields.iter() {
+            if let FieldVal::NodeId(child_id) = field {
+                if let Some(end) = last_source_offset(dialect, cursor, *child_id) {
+                    max = Some(max.unwrap().max(end));
+                }
+            }
+        }
+        return max;
+    }
+
+    for field in fields.iter() {
+        if let FieldVal::NodeId(child_id) = field {
+            if let Some(end) = last_source_offset(dialect, cursor, *child_id) {
+                max = Some(match max {
+                    Some(prev) => prev.max(end),
+                    None => end,
+                });
+            }
+        }
+    }
+
+    max
 }

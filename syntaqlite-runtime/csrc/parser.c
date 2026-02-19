@@ -111,6 +111,7 @@ struct SyntaqliteParser {
   char error_msg[256];       // Error message buffer.
   int trace;
   int collect_tokens;
+  int sealed;
   SYNQ_VEC(SyntaqliteTrivia) trivia;
   int macro_depth;           // Nesting depth (0 = not in macro).
   SYNQ_VEC(SyntaqliteMacroRegion) macros;
@@ -137,6 +138,9 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
 void syntaqlite_parser_reset(SyntaqliteParser* p,
                              const char* source,
                              uint32_t len) {
+  // Seal the parser on first use — configuration is frozen after this.
+  p->sealed = 1;
+
   // Clear AST arena — keeps allocated memory for reuse.
   synq_parse_ctx_clear(&p->ctx);
 
@@ -645,7 +649,8 @@ uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p) {
 // Configuration
 // ---------------------------------------------------------------------------
 
-void syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable) {
+int syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable) {
+  if (p->sealed) return -1;
   p->trace = enable;
 #ifndef NDEBUG
   if (enable) {
@@ -654,10 +659,13 @@ void syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable) {
     SyntaqliteParseTrace(NULL, NULL);
   }
 #endif
+  return 0;
 }
 
-void syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable) {
+int syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable) {
+  if (p->sealed) return -1;
   p->collect_tokens = enable;
+  return 0;
 }
 
 

@@ -91,16 +91,16 @@ fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
 
 fn cmd_ast_source(dialect: &Dialect, source: &str) -> Result<(), String> {
     let mut parser = syntaqlite_runtime::Parser::new(dialect);
-    let mut session = parser.parse(source);
+    let mut cursor = parser.parse(source);
     let mut buf = String::new();
     let mut count = 0;
 
-    while let Some(result) = session.next_statement() {
+    while let Some(result) = cursor.next_statement() {
         let root_id = result.map_err(|e| format!("parse error: {e}"))?;
         if count > 0 {
             buf.push_str("----\n");
         }
-        session.dump_node(root_id, &mut buf, 0);
+        cursor.dump_node(root_id, &mut buf, 0);
         count += 1;
     }
 

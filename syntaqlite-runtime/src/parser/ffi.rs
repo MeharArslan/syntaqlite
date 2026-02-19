@@ -124,8 +124,8 @@ unsafe extern "C" {
     pub fn syntaqlite_parser_node(p: *mut Parser, node_id: u32) -> *const u32;
 
     // Parser configuration
-    pub fn syntaqlite_parser_set_trace(p: *mut Parser, enable: c_int);
-    pub fn syntaqlite_parser_set_collect_tokens(p: *mut Parser, enable: c_int);
+    pub fn syntaqlite_parser_set_trace(p: *mut Parser, enable: c_int) -> c_int;
+    pub fn syntaqlite_parser_set_collect_tokens(p: *mut Parser, enable: c_int) -> c_int;
 
     // Trivia (comments)
     pub fn syntaqlite_parser_trivia(p: *mut Parser, count: *mut u32) -> *const Trivia;

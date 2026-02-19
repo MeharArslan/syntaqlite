@@ -1,3 +1,3 @@
 fn main() {
-    syntaqlite_cli::run("syntaqlite", syntaqlite::dialect());
+    syntaqlite_cli::run("syntaqlite", syntaqlite::Sqlite::dialect());
 }

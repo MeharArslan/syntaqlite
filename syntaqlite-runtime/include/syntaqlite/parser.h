@@ -146,13 +146,15 @@ char* syntaqlite_dump_node(SyntaqliteParser* p, uint32_t node_id,
 // Enable parser trace output (debug builds only). When enabled, the parser
 // prints shift/reduce actions to stderr. Useful for diagnosing grammar
 // conflicts or unexpected parses. Default: off (0).
-void syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable);
+// Returns 0 on success, -1 if the parser has already been used.
+int syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable);
 
 // Enable token collection. When enabled, the parser records every token
 // (including whitespace and comments) so the formatter can reproduce the
 // original layout. Required before passing the parser to the formatter.
 // Default: off (0).
-void syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable);
+// Returns 0 on success, -1 if the parser has already been used.
+int syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable);
 
 
 // ---------------------------------------------------------------------------
