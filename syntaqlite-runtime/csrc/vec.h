@@ -7,8 +7,8 @@
 // All mutating operations take a SyntaqliteMemMethods parameter for
 // allocation. This lets the vec use the caller's configured allocator.
 
-#ifndef SYNQ_SRC_BASE_VEC_H
-#define SYNQ_SRC_BASE_VEC_H
+#ifndef SYNTAQLITE_INTERNAL_VEC_H
+#define SYNTAQLITE_INTERNAL_VEC_H
 
 #include <stdint.h>
 #include <string.h>
@@ -26,7 +26,7 @@ extern "C" {
   }
 
 // Zero-init
-#define synq_vec_init(v) \
+#define syntaqlite_vec_init(v) \
   do {                   \
     (v)->data = NULL;    \
     (v)->count = 0;      \
@@ -34,7 +34,7 @@ extern "C" {
   } while (0)
 
 // Free + zero
-#define synq_vec_free(v, mem) \
+#define syntaqlite_vec_free(v, mem) \
   do {                        \
     (mem).xFree((v)->data);   \
     (v)->data = NULL;         \
@@ -43,14 +43,14 @@ extern "C" {
   } while (0)
 
 // Reset count, keep allocation
-#define synq_vec_clear(v) \
+#define syntaqlite_vec_clear(v) \
   do {                    \
     (v)->count = 0;       \
   } while (0)
 
 // Ensure capacity >= needed (capacity is always a power of two).
 // Growth uses malloc + memcpy + free (no realloc).
-#define synq_vec_ensure(v, needed, mem)                                   \
+#define syntaqlite_vec_ensure(v, needed, mem)                                   \
   do {                                                                    \
     if ((needed) > (v)->capacity) {                                       \
       uint32_t _cap = (v)->capacity ? (v)->capacity : 16;                 \
@@ -67,32 +67,32 @@ extern "C" {
   } while (0)
 
 // Append one element, grow if needed
-#define synq_vec_push(v, val, mem)             \
+#define syntaqlite_vec_push(v, val, mem)             \
   do {                                         \
-    synq_vec_ensure((v), (v)->count + 1, mem); \
+    syntaqlite_vec_ensure((v), (v)->count + 1, mem); \
     (v)->data[(v)->count++] = (val);           \
   } while (0)
 
 // Element count
-#define synq_vec_len(v) ((v)->count)
+#define syntaqlite_vec_len(v) ((v)->count)
 
 // Lvalue access to element at index
-#define synq_vec_at(v, i) ((v)->data[i])
+#define syntaqlite_vec_at(v, i) ((v)->data[i])
 
 // Set count to n, discarding trailing elements
-#define synq_vec_truncate(v, n) \
+#define syntaqlite_vec_truncate(v, n) \
   do {                          \
     (v)->count = (n);           \
   } while (0)
 
 // Decrement count, evaluate to last element
-#define synq_vec_pop(v) ((v)->data[--(v)->count])
+#define syntaqlite_vec_pop(v) ((v)->data[--(v)->count])
 
 // Bulk append via memcpy
-#define synq_vec_push_n(v, src, n, mem)                                     \
+#define syntaqlite_vec_push_n(v, src, n, mem)                                     \
   do {                                                                      \
     uint32_t _n = (n);                                                      \
-    synq_vec_ensure((v), (v)->count + _n, mem);                             \
+    syntaqlite_vec_ensure((v), (v)->count + _n, mem);                             \
     memcpy((v)->data + (v)->count, (src), (size_t)_n * sizeof(*(v)->data)); \
     (v)->count += _n;                                                       \
   } while (0)
@@ -101,4 +101,4 @@ extern "C" {
 }
 #endif
 
-#endif  // SYNQ_SRC_BASE_VEC_H
+#endif  // SYNTAQLITE_INTERNAL_VEC_H

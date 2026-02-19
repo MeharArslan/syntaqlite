@@ -6,10 +6,10 @@
 // Conventions:
 // - pCtx: Parse context (SynqParseContext*)
 // - pCtx->zSql: Original SQL text (for computing offsets)
-// - Terminals are SynqToken with .z (pointer) and .n (length)
+// - Terminals are SyntaqliteToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs (default) or int/%type-declared types
 
-%type scantok {SynqToken}
+%type scantok {SyntaqliteToken}
 %type autoinc {int}
 %type refargs {int}
 %type refarg {int}

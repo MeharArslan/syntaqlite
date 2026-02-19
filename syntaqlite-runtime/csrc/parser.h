@@ -4,15 +4,15 @@
 // Parse context and AST builder interface.
 // Provides:
 //   - SynqParseCtx: parse/AST state threaded via %extra_argument
-//   - SynqToken: terminal token type (used as %token_type in lemon grammar)
-//   - synq_span(): converts SynqToken to SyntaqliteSourceSpan
+//   - SyntaqliteToken: terminal token type (used as %token_type in lemon grammar)
+//   - synq_span(): converts SyntaqliteToken to SyntaqliteSourceSpan
 //   - AST builder functions: synq_parse_build, synq_parse_list_append, etc.
 //   - AST_NODE macro for in-place AST node mutation
 //
 // Grammar actions receive pCtx via lemon's %extra_argument mechanism.
 
-#ifndef SYNQ_PARSER_H
-#define SYNQ_PARSER_H
+#ifndef SYNTAQLITE_INTERNAL_PARSER_H
+#define SYNTAQLITE_INTERNAL_PARSER_H
 
 #include <stdint.h>
 #include <string.h>
@@ -20,6 +20,7 @@
 #include "csrc/arena.h"
 #include "csrc/vec.h"
 #include "syntaqlite/types.h"
+#include "syntaqlite/dialect.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -86,24 +87,11 @@ uint32_t synq_parse_list_append(SynqParseCtx* ctx,
 void synq_parse_list_flush(SynqParseCtx* ctx);
 
 // ---------------------------------------------------------------------------
-// Token type — used as %token_type in the lemon grammar
-// ---------------------------------------------------------------------------
-//
-// Terminals carry a pointer to the source text, the token length, and the
-// token type ID.  Grammar actions access these via .z, .n, and .type.
-
-typedef struct SynqToken {
-  const char* z;  // Pointer to start of token in source text.
-  int n;          // Length of token in bytes.
-  int type;       // Token type ID (SYNTAQLITE_TK_*).
-} SynqToken;
-
-// ---------------------------------------------------------------------------
 // Token → span conversion
 // ---------------------------------------------------------------------------
 
 static inline SyntaqliteSourceSpan synq_span(SynqParseCtx* ctx,
-                                             SynqToken tok) {
+                                             SyntaqliteToken tok) {
   if (tok.z == NULL) return (SyntaqliteSourceSpan){0, 0};
   uint32_t offset = (uint32_t)(tok.z - ctx->source);
   return (SyntaqliteSourceSpan){
@@ -114,26 +102,11 @@ static inline SyntaqliteSourceSpan synq_span(SynqParseCtx* ctx,
 
 #define SYNQ_NO_SPAN ((SyntaqliteSourceSpan){0, 0})
 
-// ---------------------------------------------------------------------------
-// Range field metadata — used by the macro straddle check.
-// ---------------------------------------------------------------------------
-
-// Describes one field of an AST node for range analysis.
-//   kind 0 → node_id (uint32_t, at `offset` bytes from node start)
-//   kind 1 → SyntaqliteSourceSpan (at `offset` bytes from node start)
-typedef struct SynqFieldRangeMeta {
-  uint16_t offset;
-  uint8_t kind;
-} SynqFieldRangeMeta;
-
-// One entry in the per-tag range metadata table.
-typedef struct SynqRangeMetaEntry {
-  const SynqFieldRangeMeta* fields;
-  uint8_t count;
-} SynqRangeMetaEntry;
+// Range field metadata types (SyntaqliteFieldRangeMeta, SyntaqliteRangeMetaEntry)
+// are defined in syntaqlite/dialect.h.
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // SYNQ_PARSER_H
+#endif  // SYNTAQLITE_INTERNAL_PARSER_H

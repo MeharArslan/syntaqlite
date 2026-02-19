@@ -4,8 +4,8 @@
 // SQLite compatibility definitions for syntaqlite.
 // Provides type aliases, macros, and structures needed by tokenizer and parser.
 
-#ifndef SYNQ_SRC_COMMON_SQLITE_COMPAT_H
-#define SYNQ_SRC_COMMON_SQLITE_COMPAT_H
+#ifndef SYNTAQLITE_INTERNAL_SQLITE_COMPAT_H
+#define SYNTAQLITE_INTERNAL_SQLITE_COMPAT_H
 
 #include <stdint.h>
 
@@ -29,7 +29,7 @@ typedef uint32_t u32;
 #define deliberate_fall_through [[fallthrough]]
 #else
 #define deliberate_fall_through
-#endif  // SYNQ_SRC_COMMON_SQLITE_COMPAT_H
+#endif  // SYNTAQLITE_INTERNAL_SQLITE_COMPAT_H
 
 // No-op for testcase macro if not defined
 #ifndef testcase
@@ -41,4 +41,4 @@ typedef uint32_t u32;
 #define assert(X)
 #endif
 
-#endif  // SYNQ_SRC_COMMON_SQLITE_COMPAT_H
+#endif  // SYNTAQLITE_INTERNAL_SQLITE_COMPAT_H

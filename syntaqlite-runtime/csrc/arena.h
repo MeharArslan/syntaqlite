@@ -4,8 +4,8 @@
 
 // Arena allocator with offset table for node-based data structures.
 
-#ifndef SYNQ_SRC_BASE_ARENA_H
-#define SYNQ_SRC_BASE_ARENA_H
+#ifndef SYNTAQLITE_INTERNAL_ARENA_H
+#define SYNTAQLITE_INTERNAL_ARENA_H
 
 #include <stdint.h>
 
@@ -23,7 +23,7 @@ typedef struct SynqArena {
 
 // Get pointer to node data by offset-table ID.
 #define synq_arena_ptr(a, id) \
-  (&synq_vec_at(&(a)->data, synq_vec_at(&(a)->offsets, id)))
+  (&syntaqlite_vec_at(&(a)->data, syntaqlite_vec_at(&(a)->offsets, id)))
 
 void synq_arena_init(SynqArena* a);
 void synq_arena_free(SynqArena* a, SyntaqliteMemMethods mem);
@@ -52,4 +52,4 @@ void synq_arena_append(SynqArena* a, const void* data, uint32_t size,
 }
 #endif
 
-#endif  // SYNQ_SRC_BASE_ARENA_H
+#endif  // SYNTAQLITE_INTERNAL_ARENA_H

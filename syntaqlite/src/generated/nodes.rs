@@ -2131,9 +2131,286 @@ impl<'a> Node<'a> {
     }
 }
 
+#[allow(dead_code)]
+const DISPLAY_AGGREGATE_FUNCTION_CALL_FLAGS: &[&str] = &[
+    "DISTINCT",
+];
+
+#[allow(dead_code)]
+const DISPLAY_BOOL: &[&str] = &[
+    "FALSE",
+    "TRUE",
+];
+
+#[allow(dead_code)]
+const DISPLAY_LITERAL_TYPE: &[&str] = &[
+    "INTEGER",
+    "FLOAT",
+    "STRING",
+    "BLOB",
+    "NULL",
+    "CURRENT",
+    "QNUMBER",
+];
+
+#[allow(dead_code)]
+const DISPLAY_BINARY_OP: &[&str] = &[
+    "PLUS",
+    "MINUS",
+    "STAR",
+    "SLASH",
+    "REM",
+    "LT",
+    "GT",
+    "LE",
+    "GE",
+    "EQ",
+    "NE",
+    "AND",
+    "OR",
+    "BITAND",
+    "BITOR",
+    "LSHIFT",
+    "RSHIFT",
+    "CONCAT",
+    "PTR",
+];
+
+#[allow(dead_code)]
+const DISPLAY_UNARY_OP: &[&str] = &[
+    "MINUS",
+    "PLUS",
+    "BITNOT",
+    "NOT",
+];
+
+#[allow(dead_code)]
+const DISPLAY_COMPOUND_OP: &[&str] = &[
+    "UNION",
+    "UNION_ALL",
+    "INTERSECT",
+    "EXCEPT",
+];
+
+#[allow(dead_code)]
+const DISPLAY_IS_OP: &[&str] = &[
+    "IS",
+    "IS_NOT",
+    "ISNULL",
+    "NOTNULL",
+    "IS_NOT_DISTINCT",
+    "IS_DISTINCT",
+];
+
+#[allow(dead_code)]
+const DISPLAY_FOREIGN_KEY_ACTION: &[&str] = &[
+    "NO_ACTION",
+    "SET_NULL",
+    "SET_DEFAULT",
+    "CASCADE",
+    "RESTRICT",
+];
+
+#[allow(dead_code)]
+const DISPLAY_GENERATED_COLUMN_STORAGE: &[&str] = &[
+    "VIRTUAL",
+    "STORED",
+];
+
+#[allow(dead_code)]
+const DISPLAY_COLUMN_CONSTRAINT_KIND: &[&str] = &[
+    "DEFAULT",
+    "NOT_NULL",
+    "PRIMARY_KEY",
+    "UNIQUE",
+    "CHECK",
+    "REFERENCES",
+    "COLLATE",
+    "GENERATED",
+    "NULL",
+];
+
+#[allow(dead_code)]
+const DISPLAY_TABLE_CONSTRAINT_KIND: &[&str] = &[
+    "PRIMARY_KEY",
+    "UNIQUE",
+    "CHECK",
+    "FOREIGN_KEY",
+];
+
+#[allow(dead_code)]
+const DISPLAY_CREATE_TABLE_STMT_FLAGS: &[&str] = &[
+    "WITHOUT_ROWID",
+    "STRICT",
+];
+
+#[allow(dead_code)]
+const DISPLAY_MATERIALIZED: &[&str] = &[
+    "DEFAULT",
+    "MATERIALIZED",
+    "NOT_MATERIALIZED",
+];
+
+#[allow(dead_code)]
+const DISPLAY_CONFLICT_ACTION: &[&str] = &[
+    "DEFAULT",
+    "ROLLBACK",
+    "ABORT",
+    "FAIL",
+    "IGNORE",
+    "REPLACE",
+];
+
+#[allow(dead_code)]
+const DISPLAY_FUNCTION_CALL_FLAGS: &[&str] = &[
+    "DISTINCT",
+    "STAR",
+];
+
+#[allow(dead_code)]
+const DISPLAY_RAISE_TYPE: &[&str] = &[
+    "IGNORE",
+    "ROLLBACK",
+    "ABORT",
+    "FAIL",
+];
+
+#[allow(dead_code)]
+const DISPLAY_DROP_OBJECT_TYPE: &[&str] = &[
+    "TABLE",
+    "INDEX",
+    "VIEW",
+    "TRIGGER",
+];
+
+#[allow(dead_code)]
+const DISPLAY_ALTER_OP: &[&str] = &[
+    "RENAME_TABLE",
+    "RENAME_COLUMN",
+    "DROP_COLUMN",
+    "ADD_COLUMN",
+];
+
+#[allow(dead_code)]
+const DISPLAY_TRANSACTION_TYPE: &[&str] = &[
+    "DEFERRED",
+    "IMMEDIATE",
+    "EXCLUSIVE",
+];
+
+#[allow(dead_code)]
+const DISPLAY_TRANSACTION_OP: &[&str] = &[
+    "BEGIN",
+    "COMMIT",
+    "ROLLBACK",
+];
+
+#[allow(dead_code)]
+const DISPLAY_SAVEPOINT_OP: &[&str] = &[
+    "SAVEPOINT",
+    "RELEASE",
+    "ROLLBACK_TO",
+];
+
+#[allow(dead_code)]
+const DISPLAY_SORT_ORDER: &[&str] = &[
+    "ASC",
+    "DESC",
+];
+
+#[allow(dead_code)]
+const DISPLAY_NULLS_ORDER: &[&str] = &[
+    "NONE",
+    "FIRST",
+    "LAST",
+];
+
+#[allow(dead_code)]
+const DISPLAY_RESULT_COLUMN_FLAGS: &[&str] = &[
+    "STAR",
+];
+
+#[allow(dead_code)]
+const DISPLAY_SELECT_STMT_FLAGS: &[&str] = &[
+    "DISTINCT",
+];
+
+#[allow(dead_code)]
+const DISPLAY_JOIN_TYPE: &[&str] = &[
+    "COMMA",
+    "INNER",
+    "LEFT",
+    "RIGHT",
+    "FULL",
+    "CROSS",
+    "NATURAL_INNER",
+    "NATURAL_LEFT",
+    "NATURAL_RIGHT",
+    "NATURAL_FULL",
+];
+
+#[allow(dead_code)]
+const DISPLAY_TRIGGER_TIMING: &[&str] = &[
+    "BEFORE",
+    "AFTER",
+    "INSTEAD_OF",
+];
+
+#[allow(dead_code)]
+const DISPLAY_TRIGGER_EVENT_TYPE: &[&str] = &[
+    "DELETE",
+    "INSERT",
+    "UPDATE",
+];
+
+#[allow(dead_code)]
+const DISPLAY_EXPLAIN_MODE: &[&str] = &[
+    "EXPLAIN",
+    "QUERY_PLAN",
+];
+
+#[allow(dead_code)]
+const DISPLAY_PRAGMA_FORM: &[&str] = &[
+    "BARE",
+    "EQ",
+    "CALL",
+];
+
+#[allow(dead_code)]
+const DISPLAY_ANALYZE_KIND: &[&str] = &[
+    "ANALYZE",
+    "REINDEX",
+];
+
+#[allow(dead_code)]
+const DISPLAY_FRAME_TYPE: &[&str] = &[
+    "NONE",
+    "RANGE",
+    "ROWS",
+    "GROUPS",
+];
+
+#[allow(dead_code)]
+const DISPLAY_FRAME_BOUND_TYPE: &[&str] = &[
+    "UNBOUNDED_PRECEDING",
+    "EXPR_PRECEDING",
+    "CURRENT_ROW",
+    "EXPR_FOLLOWING",
+    "UNBOUNDED_FOLLOWING",
+];
+
+#[allow(dead_code)]
+const DISPLAY_FRAME_EXCLUDE: &[&str] = &[
+    "NONE",
+    "NO_OTHERS",
+    "CURRENT_ROW",
+    "GROUP",
+    "TIES",
+];
+
 const FIELDS_AGGREGATE_FUNCTION_CALL: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(AggregateFunctionCall, func_name) as u16, kind: FieldKind::Span, name: "func_name" },
-    FieldDescriptor { offset: offset_of!(AggregateFunctionCall, flags) as u16, kind: FieldKind::Flags(|v| AggregateFunctionCallFlags(v).dump_str()), name: "flags" },
+    FieldDescriptor { offset: offset_of!(AggregateFunctionCall, flags) as u16, kind: FieldKind::Flags(DISPLAY_AGGREGATE_FUNCTION_CALL_FLAGS), name: "flags" },
     FieldDescriptor { offset: offset_of!(AggregateFunctionCall, args) as u16, kind: FieldKind::NodeId, name: "args" },
     FieldDescriptor { offset: offset_of!(AggregateFunctionCall, orderby) as u16, kind: FieldKind::NodeId, name: "orderby" },
     FieldDescriptor { offset: offset_of!(AggregateFunctionCall, filter_clause) as u16, kind: FieldKind::NodeId, name: "filter_clause" },
@@ -2149,7 +2426,7 @@ const FIELDS_COLUMN_REF: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(ColumnRef, schema) as u16, kind: FieldKind::Span, name: "schema" },
 ];
 const FIELDS_COMPOUND_SELECT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(CompoundSelect, op) as u16, kind: FieldKind::Enum(|v| CompoundOp::from_raw(v).map(|e| e.as_str())), name: "op" },
+    FieldDescriptor { offset: offset_of!(CompoundSelect, op) as u16, kind: FieldKind::Enum(DISPLAY_COMPOUND_OP), name: "op" },
     FieldDescriptor { offset: offset_of!(CompoundSelect, left) as u16, kind: FieldKind::NodeId, name: "left" },
     FieldDescriptor { offset: offset_of!(CompoundSelect, right) as u16, kind: FieldKind::NodeId, name: "right" },
 ];
@@ -2165,7 +2442,7 @@ const FIELDS_IN_EXPR: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(InExpr, source) as u16, kind: FieldKind::NodeId, name: "source" },
 ];
 const FIELDS_IS_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(IsExpr, op) as u16, kind: FieldKind::Enum(|v| IsOp::from_raw(v).map(|e| e.as_str())), name: "op" },
+    FieldDescriptor { offset: offset_of!(IsExpr, op) as u16, kind: FieldKind::Enum(DISPLAY_IS_OP), name: "op" },
     FieldDescriptor { offset: offset_of!(IsExpr, left) as u16, kind: FieldKind::NodeId, name: "left" },
     FieldDescriptor { offset: offset_of!(IsExpr, right) as u16, kind: FieldKind::NodeId, name: "right" },
 ];
@@ -2193,18 +2470,18 @@ const FIELDS_CASE_WHEN: &[FieldDescriptor] = &[
 const FIELDS_FOREIGN_KEY_CLAUSE: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(ForeignKeyClause, ref_table) as u16, kind: FieldKind::Span, name: "ref_table" },
     FieldDescriptor { offset: offset_of!(ForeignKeyClause, ref_columns) as u16, kind: FieldKind::NodeId, name: "ref_columns" },
-    FieldDescriptor { offset: offset_of!(ForeignKeyClause, on_delete) as u16, kind: FieldKind::Enum(|v| ForeignKeyAction::from_raw(v).map(|e| e.as_str())), name: "on_delete" },
-    FieldDescriptor { offset: offset_of!(ForeignKeyClause, on_update) as u16, kind: FieldKind::Enum(|v| ForeignKeyAction::from_raw(v).map(|e| e.as_str())), name: "on_update" },
+    FieldDescriptor { offset: offset_of!(ForeignKeyClause, on_delete) as u16, kind: FieldKind::Enum(DISPLAY_FOREIGN_KEY_ACTION), name: "on_delete" },
+    FieldDescriptor { offset: offset_of!(ForeignKeyClause, on_update) as u16, kind: FieldKind::Enum(DISPLAY_FOREIGN_KEY_ACTION), name: "on_update" },
     FieldDescriptor { offset: offset_of!(ForeignKeyClause, is_deferred) as u16, kind: FieldKind::Bool, name: "is_deferred" },
 ];
 const FIELDS_COLUMN_CONSTRAINT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, kind) as u16, kind: FieldKind::Enum(|v| ColumnConstraintKind::from_raw(v).map(|e| e.as_str())), name: "kind" },
+    FieldDescriptor { offset: offset_of!(ColumnConstraint, kind) as u16, kind: FieldKind::Enum(DISPLAY_COLUMN_CONSTRAINT_KIND), name: "kind" },
     FieldDescriptor { offset: offset_of!(ColumnConstraint, constraint_name) as u16, kind: FieldKind::Span, name: "constraint_name" },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, onconf) as u16, kind: FieldKind::Enum(|v| ConflictAction::from_raw(v).map(|e| e.as_str())), name: "onconf" },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, sort_order) as u16, kind: FieldKind::Enum(|v| SortOrder::from_raw(v).map(|e| e.as_str())), name: "sort_order" },
+    FieldDescriptor { offset: offset_of!(ColumnConstraint, onconf) as u16, kind: FieldKind::Enum(DISPLAY_CONFLICT_ACTION), name: "onconf" },
+    FieldDescriptor { offset: offset_of!(ColumnConstraint, sort_order) as u16, kind: FieldKind::Enum(DISPLAY_SORT_ORDER), name: "sort_order" },
     FieldDescriptor { offset: offset_of!(ColumnConstraint, is_autoincrement) as u16, kind: FieldKind::Bool, name: "is_autoincrement" },
     FieldDescriptor { offset: offset_of!(ColumnConstraint, collation_name) as u16, kind: FieldKind::Span, name: "collation_name" },
-    FieldDescriptor { offset: offset_of!(ColumnConstraint, generated_storage) as u16, kind: FieldKind::Enum(|v| GeneratedColumnStorage::from_raw(v).map(|e| e.as_str())), name: "generated_storage" },
+    FieldDescriptor { offset: offset_of!(ColumnConstraint, generated_storage) as u16, kind: FieldKind::Enum(DISPLAY_GENERATED_COLUMN_STORAGE), name: "generated_storage" },
     FieldDescriptor { offset: offset_of!(ColumnConstraint, default_expr) as u16, kind: FieldKind::NodeId, name: "default_expr" },
     FieldDescriptor { offset: offset_of!(ColumnConstraint, check_expr) as u16, kind: FieldKind::NodeId, name: "check_expr" },
     FieldDescriptor { offset: offset_of!(ColumnConstraint, generated_expr) as u16, kind: FieldKind::NodeId, name: "generated_expr" },
@@ -2216,9 +2493,9 @@ const FIELDS_COLUMN_DEF: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(ColumnDef, constraints) as u16, kind: FieldKind::NodeId, name: "constraints" },
 ];
 const FIELDS_TABLE_CONSTRAINT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(TableConstraint, kind) as u16, kind: FieldKind::Enum(|v| TableConstraintKind::from_raw(v).map(|e| e.as_str())), name: "kind" },
+    FieldDescriptor { offset: offset_of!(TableConstraint, kind) as u16, kind: FieldKind::Enum(DISPLAY_TABLE_CONSTRAINT_KIND), name: "kind" },
     FieldDescriptor { offset: offset_of!(TableConstraint, constraint_name) as u16, kind: FieldKind::Span, name: "constraint_name" },
-    FieldDescriptor { offset: offset_of!(TableConstraint, onconf) as u16, kind: FieldKind::Enum(|v| ConflictAction::from_raw(v).map(|e| e.as_str())), name: "onconf" },
+    FieldDescriptor { offset: offset_of!(TableConstraint, onconf) as u16, kind: FieldKind::Enum(DISPLAY_CONFLICT_ACTION), name: "onconf" },
     FieldDescriptor { offset: offset_of!(TableConstraint, is_autoincrement) as u16, kind: FieldKind::Bool, name: "is_autoincrement" },
     FieldDescriptor { offset: offset_of!(TableConstraint, columns) as u16, kind: FieldKind::NodeId, name: "columns" },
     FieldDescriptor { offset: offset_of!(TableConstraint, check_expr) as u16, kind: FieldKind::NodeId, name: "check_expr" },
@@ -2229,14 +2506,14 @@ const FIELDS_CREATE_TABLE_STMT: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(CreateTableStmt, schema) as u16, kind: FieldKind::Span, name: "schema" },
     FieldDescriptor { offset: offset_of!(CreateTableStmt, is_temp) as u16, kind: FieldKind::Bool, name: "is_temp" },
     FieldDescriptor { offset: offset_of!(CreateTableStmt, if_not_exists) as u16, kind: FieldKind::Bool, name: "if_not_exists" },
-    FieldDescriptor { offset: offset_of!(CreateTableStmt, flags) as u16, kind: FieldKind::Flags(|v| CreateTableStmtFlags(v).dump_str()), name: "flags" },
+    FieldDescriptor { offset: offset_of!(CreateTableStmt, flags) as u16, kind: FieldKind::Flags(DISPLAY_CREATE_TABLE_STMT_FLAGS), name: "flags" },
     FieldDescriptor { offset: offset_of!(CreateTableStmt, columns) as u16, kind: FieldKind::NodeId, name: "columns" },
     FieldDescriptor { offset: offset_of!(CreateTableStmt, table_constraints) as u16, kind: FieldKind::NodeId, name: "table_constraints" },
     FieldDescriptor { offset: offset_of!(CreateTableStmt, as_select) as u16, kind: FieldKind::NodeId, name: "as_select" },
 ];
 const FIELDS_CTE_DEFINITION: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(CteDefinition, cte_name) as u16, kind: FieldKind::Span, name: "cte_name" },
-    FieldDescriptor { offset: offset_of!(CteDefinition, materialized) as u16, kind: FieldKind::Enum(|v| Materialized::from_raw(v).map(|e| e.as_str())), name: "materialized" },
+    FieldDescriptor { offset: offset_of!(CteDefinition, materialized) as u16, kind: FieldKind::Enum(DISPLAY_MATERIALIZED), name: "materialized" },
     FieldDescriptor { offset: offset_of!(CteDefinition, columns) as u16, kind: FieldKind::NodeId, name: "columns" },
     FieldDescriptor { offset: offset_of!(CteDefinition, select) as u16, kind: FieldKind::NodeId, name: "select" },
 ];
@@ -2255,34 +2532,34 @@ const FIELDS_SET_CLAUSE: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(SetClause, value) as u16, kind: FieldKind::NodeId, name: "value" },
 ];
 const FIELDS_UPDATE_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(UpdateStmt, conflict_action) as u16, kind: FieldKind::Enum(|v| ConflictAction::from_raw(v).map(|e| e.as_str())), name: "conflict_action" },
+    FieldDescriptor { offset: offset_of!(UpdateStmt, conflict_action) as u16, kind: FieldKind::Enum(DISPLAY_CONFLICT_ACTION), name: "conflict_action" },
     FieldDescriptor { offset: offset_of!(UpdateStmt, table) as u16, kind: FieldKind::NodeId, name: "table" },
     FieldDescriptor { offset: offset_of!(UpdateStmt, setlist) as u16, kind: FieldKind::NodeId, name: "setlist" },
     FieldDescriptor { offset: offset_of!(UpdateStmt, from_clause) as u16, kind: FieldKind::NodeId, name: "from_clause" },
     FieldDescriptor { offset: offset_of!(UpdateStmt, where_clause) as u16, kind: FieldKind::NodeId, name: "where_clause" },
 ];
 const FIELDS_INSERT_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(InsertStmt, conflict_action) as u16, kind: FieldKind::Enum(|v| ConflictAction::from_raw(v).map(|e| e.as_str())), name: "conflict_action" },
+    FieldDescriptor { offset: offset_of!(InsertStmt, conflict_action) as u16, kind: FieldKind::Enum(DISPLAY_CONFLICT_ACTION), name: "conflict_action" },
     FieldDescriptor { offset: offset_of!(InsertStmt, table) as u16, kind: FieldKind::NodeId, name: "table" },
     FieldDescriptor { offset: offset_of!(InsertStmt, columns) as u16, kind: FieldKind::NodeId, name: "columns" },
     FieldDescriptor { offset: offset_of!(InsertStmt, source) as u16, kind: FieldKind::NodeId, name: "source" },
 ];
 const FIELDS_BINARY_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(BinaryExpr, op) as u16, kind: FieldKind::Enum(|v| BinaryOp::from_raw(v).map(|e| e.as_str())), name: "op" },
+    FieldDescriptor { offset: offset_of!(BinaryExpr, op) as u16, kind: FieldKind::Enum(DISPLAY_BINARY_OP), name: "op" },
     FieldDescriptor { offset: offset_of!(BinaryExpr, left) as u16, kind: FieldKind::NodeId, name: "left" },
     FieldDescriptor { offset: offset_of!(BinaryExpr, right) as u16, kind: FieldKind::NodeId, name: "right" },
 ];
 const FIELDS_UNARY_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(UnaryExpr, op) as u16, kind: FieldKind::Enum(|v| UnaryOp::from_raw(v).map(|e| e.as_str())), name: "op" },
+    FieldDescriptor { offset: offset_of!(UnaryExpr, op) as u16, kind: FieldKind::Enum(DISPLAY_UNARY_OP), name: "op" },
     FieldDescriptor { offset: offset_of!(UnaryExpr, operand) as u16, kind: FieldKind::NodeId, name: "operand" },
 ];
 const FIELDS_LITERAL: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(Literal, literal_type) as u16, kind: FieldKind::Enum(|v| LiteralType::from_raw(v).map(|e| e.as_str())), name: "literal_type" },
+    FieldDescriptor { offset: offset_of!(Literal, literal_type) as u16, kind: FieldKind::Enum(DISPLAY_LITERAL_TYPE), name: "literal_type" },
     FieldDescriptor { offset: offset_of!(Literal, source) as u16, kind: FieldKind::Span, name: "source" },
 ];
 const FIELDS_FUNCTION_CALL: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(FunctionCall, func_name) as u16, kind: FieldKind::Span, name: "func_name" },
-    FieldDescriptor { offset: offset_of!(FunctionCall, flags) as u16, kind: FieldKind::Flags(|v| FunctionCallFlags(v).dump_str()), name: "flags" },
+    FieldDescriptor { offset: offset_of!(FunctionCall, flags) as u16, kind: FieldKind::Flags(DISPLAY_FUNCTION_CALL_FLAGS), name: "flags" },
     FieldDescriptor { offset: offset_of!(FunctionCall, args) as u16, kind: FieldKind::NodeId, name: "args" },
     FieldDescriptor { offset: offset_of!(FunctionCall, filter_clause) as u16, kind: FieldKind::NodeId, name: "filter_clause" },
     FieldDescriptor { offset: offset_of!(FunctionCall, over_clause) as u16, kind: FieldKind::NodeId, name: "over_clause" },
@@ -2295,7 +2572,7 @@ const FIELDS_COLLATE_EXPR: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(CollateExpr, collation) as u16, kind: FieldKind::Span, name: "collation" },
 ];
 const FIELDS_RAISE_EXPR: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(RaiseExpr, raise_type) as u16, kind: FieldKind::Enum(|v| RaiseType::from_raw(v).map(|e| e.as_str())), name: "raise_type" },
+    FieldDescriptor { offset: offset_of!(RaiseExpr, raise_type) as u16, kind: FieldKind::Enum(DISPLAY_RAISE_TYPE), name: "raise_type" },
     FieldDescriptor { offset: offset_of!(RaiseExpr, error_message) as u16, kind: FieldKind::NodeId, name: "error_message" },
 ];
 const FIELDS_QUALIFIED_NAME: &[FieldDescriptor] = &[
@@ -2303,31 +2580,31 @@ const FIELDS_QUALIFIED_NAME: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(QualifiedName, schema) as u16, kind: FieldKind::Span, name: "schema" },
 ];
 const FIELDS_DROP_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(DropStmt, object_type) as u16, kind: FieldKind::Enum(|v| DropObjectType::from_raw(v).map(|e| e.as_str())), name: "object_type" },
+    FieldDescriptor { offset: offset_of!(DropStmt, object_type) as u16, kind: FieldKind::Enum(DISPLAY_DROP_OBJECT_TYPE), name: "object_type" },
     FieldDescriptor { offset: offset_of!(DropStmt, if_exists) as u16, kind: FieldKind::Bool, name: "if_exists" },
     FieldDescriptor { offset: offset_of!(DropStmt, target) as u16, kind: FieldKind::NodeId, name: "target" },
 ];
 const FIELDS_ALTER_TABLE_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(AlterTableStmt, op) as u16, kind: FieldKind::Enum(|v| AlterOp::from_raw(v).map(|e| e.as_str())), name: "op" },
+    FieldDescriptor { offset: offset_of!(AlterTableStmt, op) as u16, kind: FieldKind::Enum(DISPLAY_ALTER_OP), name: "op" },
     FieldDescriptor { offset: offset_of!(AlterTableStmt, target) as u16, kind: FieldKind::NodeId, name: "target" },
     FieldDescriptor { offset: offset_of!(AlterTableStmt, new_name) as u16, kind: FieldKind::Span, name: "new_name" },
     FieldDescriptor { offset: offset_of!(AlterTableStmt, old_name) as u16, kind: FieldKind::Span, name: "old_name" },
 ];
 const FIELDS_TRANSACTION_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(TransactionStmt, op) as u16, kind: FieldKind::Enum(|v| TransactionOp::from_raw(v).map(|e| e.as_str())), name: "op" },
-    FieldDescriptor { offset: offset_of!(TransactionStmt, trans_type) as u16, kind: FieldKind::Enum(|v| TransactionType::from_raw(v).map(|e| e.as_str())), name: "trans_type" },
+    FieldDescriptor { offset: offset_of!(TransactionStmt, op) as u16, kind: FieldKind::Enum(DISPLAY_TRANSACTION_OP), name: "op" },
+    FieldDescriptor { offset: offset_of!(TransactionStmt, trans_type) as u16, kind: FieldKind::Enum(DISPLAY_TRANSACTION_TYPE), name: "trans_type" },
 ];
 const FIELDS_SAVEPOINT_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(SavepointStmt, op) as u16, kind: FieldKind::Enum(|v| SavepointOp::from_raw(v).map(|e| e.as_str())), name: "op" },
+    FieldDescriptor { offset: offset_of!(SavepointStmt, op) as u16, kind: FieldKind::Enum(DISPLAY_SAVEPOINT_OP), name: "op" },
     FieldDescriptor { offset: offset_of!(SavepointStmt, savepoint_name) as u16, kind: FieldKind::Span, name: "savepoint_name" },
 ];
 const FIELDS_RESULT_COLUMN: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(ResultColumn, flags) as u16, kind: FieldKind::Flags(|v| ResultColumnFlags(v).dump_str()), name: "flags" },
+    FieldDescriptor { offset: offset_of!(ResultColumn, flags) as u16, kind: FieldKind::Flags(DISPLAY_RESULT_COLUMN_FLAGS), name: "flags" },
     FieldDescriptor { offset: offset_of!(ResultColumn, alias) as u16, kind: FieldKind::Span, name: "alias" },
     FieldDescriptor { offset: offset_of!(ResultColumn, expr) as u16, kind: FieldKind::NodeId, name: "expr" },
 ];
 const FIELDS_SELECT_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(SelectStmt, flags) as u16, kind: FieldKind::Flags(|v| SelectStmtFlags(v).dump_str()), name: "flags" },
+    FieldDescriptor { offset: offset_of!(SelectStmt, flags) as u16, kind: FieldKind::Flags(DISPLAY_SELECT_STMT_FLAGS), name: "flags" },
     FieldDescriptor { offset: offset_of!(SelectStmt, columns) as u16, kind: FieldKind::NodeId, name: "columns" },
     FieldDescriptor { offset: offset_of!(SelectStmt, from_clause) as u16, kind: FieldKind::NodeId, name: "from_clause" },
     FieldDescriptor { offset: offset_of!(SelectStmt, where_clause) as u16, kind: FieldKind::NodeId, name: "where_clause" },
@@ -2339,8 +2616,8 @@ const FIELDS_SELECT_STMT: &[FieldDescriptor] = &[
 ];
 const FIELDS_ORDERING_TERM: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(OrderingTerm, expr) as u16, kind: FieldKind::NodeId, name: "expr" },
-    FieldDescriptor { offset: offset_of!(OrderingTerm, sort_order) as u16, kind: FieldKind::Enum(|v| SortOrder::from_raw(v).map(|e| e.as_str())), name: "sort_order" },
-    FieldDescriptor { offset: offset_of!(OrderingTerm, nulls_order) as u16, kind: FieldKind::Enum(|v| NullsOrder::from_raw(v).map(|e| e.as_str())), name: "nulls_order" },
+    FieldDescriptor { offset: offset_of!(OrderingTerm, sort_order) as u16, kind: FieldKind::Enum(DISPLAY_SORT_ORDER), name: "sort_order" },
+    FieldDescriptor { offset: offset_of!(OrderingTerm, nulls_order) as u16, kind: FieldKind::Enum(DISPLAY_NULLS_ORDER), name: "nulls_order" },
 ];
 const FIELDS_LIMIT_CLAUSE: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(LimitClause, limit) as u16, kind: FieldKind::NodeId, name: "limit" },
@@ -2356,7 +2633,7 @@ const FIELDS_SUBQUERY_TABLE_SOURCE: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(SubqueryTableSource, alias) as u16, kind: FieldKind::Span, name: "alias" },
 ];
 const FIELDS_JOIN_CLAUSE: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(JoinClause, join_type) as u16, kind: FieldKind::Enum(|v| JoinType::from_raw(v).map(|e| e.as_str())), name: "join_type" },
+    FieldDescriptor { offset: offset_of!(JoinClause, join_type) as u16, kind: FieldKind::Enum(DISPLAY_JOIN_TYPE), name: "join_type" },
     FieldDescriptor { offset: offset_of!(JoinClause, left) as u16, kind: FieldKind::NodeId, name: "left" },
     FieldDescriptor { offset: offset_of!(JoinClause, right) as u16, kind: FieldKind::NodeId, name: "right" },
     FieldDescriptor { offset: offset_of!(JoinClause, on_expr) as u16, kind: FieldKind::NodeId, name: "on_expr" },
@@ -2364,10 +2641,10 @@ const FIELDS_JOIN_CLAUSE: &[FieldDescriptor] = &[
 ];
 const FIELDS_JOIN_PREFIX: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(JoinPrefix, source) as u16, kind: FieldKind::NodeId, name: "source" },
-    FieldDescriptor { offset: offset_of!(JoinPrefix, join_type) as u16, kind: FieldKind::Enum(|v| JoinType::from_raw(v).map(|e| e.as_str())), name: "join_type" },
+    FieldDescriptor { offset: offset_of!(JoinPrefix, join_type) as u16, kind: FieldKind::Enum(DISPLAY_JOIN_TYPE), name: "join_type" },
 ];
 const FIELDS_TRIGGER_EVENT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(TriggerEvent, event_type) as u16, kind: FieldKind::Enum(|v| TriggerEventType::from_raw(v).map(|e| e.as_str())), name: "event_type" },
+    FieldDescriptor { offset: offset_of!(TriggerEvent, event_type) as u16, kind: FieldKind::Enum(DISPLAY_TRIGGER_EVENT_TYPE), name: "event_type" },
     FieldDescriptor { offset: offset_of!(TriggerEvent, columns) as u16, kind: FieldKind::NodeId, name: "columns" },
 ];
 const FIELDS_CREATE_TRIGGER_STMT: &[FieldDescriptor] = &[
@@ -2375,7 +2652,7 @@ const FIELDS_CREATE_TRIGGER_STMT: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(CreateTriggerStmt, schema) as u16, kind: FieldKind::Span, name: "schema" },
     FieldDescriptor { offset: offset_of!(CreateTriggerStmt, is_temp) as u16, kind: FieldKind::Bool, name: "is_temp" },
     FieldDescriptor { offset: offset_of!(CreateTriggerStmt, if_not_exists) as u16, kind: FieldKind::Bool, name: "if_not_exists" },
-    FieldDescriptor { offset: offset_of!(CreateTriggerStmt, timing) as u16, kind: FieldKind::Enum(|v| TriggerTiming::from_raw(v).map(|e| e.as_str())), name: "timing" },
+    FieldDescriptor { offset: offset_of!(CreateTriggerStmt, timing) as u16, kind: FieldKind::Enum(DISPLAY_TRIGGER_TIMING), name: "timing" },
     FieldDescriptor { offset: offset_of!(CreateTriggerStmt, event) as u16, kind: FieldKind::NodeId, name: "event" },
     FieldDescriptor { offset: offset_of!(CreateTriggerStmt, table) as u16, kind: FieldKind::NodeId, name: "table" },
     FieldDescriptor { offset: offset_of!(CreateTriggerStmt, when_expr) as u16, kind: FieldKind::NodeId, name: "when_expr" },
@@ -2392,12 +2669,12 @@ const FIELDS_PRAGMA_STMT: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(PragmaStmt, pragma_name) as u16, kind: FieldKind::Span, name: "pragma_name" },
     FieldDescriptor { offset: offset_of!(PragmaStmt, schema) as u16, kind: FieldKind::Span, name: "schema" },
     FieldDescriptor { offset: offset_of!(PragmaStmt, value) as u16, kind: FieldKind::Span, name: "value" },
-    FieldDescriptor { offset: offset_of!(PragmaStmt, pragma_form) as u16, kind: FieldKind::Enum(|v| PragmaForm::from_raw(v).map(|e| e.as_str())), name: "pragma_form" },
+    FieldDescriptor { offset: offset_of!(PragmaStmt, pragma_form) as u16, kind: FieldKind::Enum(DISPLAY_PRAGMA_FORM), name: "pragma_form" },
 ];
 const FIELDS_ANALYZE_STMT: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(AnalyzeStmt, target_name) as u16, kind: FieldKind::Span, name: "target_name" },
     FieldDescriptor { offset: offset_of!(AnalyzeStmt, schema) as u16, kind: FieldKind::Span, name: "schema" },
-    FieldDescriptor { offset: offset_of!(AnalyzeStmt, kind) as u16, kind: FieldKind::Enum(|v| AnalyzeKind::from_raw(v).map(|e| e.as_str())), name: "kind" },
+    FieldDescriptor { offset: offset_of!(AnalyzeStmt, kind) as u16, kind: FieldKind::Enum(DISPLAY_ANALYZE_KIND), name: "kind" },
 ];
 const FIELDS_ATTACH_STMT: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(AttachStmt, filename) as u16, kind: FieldKind::NodeId, name: "filename" },
@@ -2412,7 +2689,7 @@ const FIELDS_VACUUM_STMT: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(VacuumStmt, into_expr) as u16, kind: FieldKind::NodeId, name: "into_expr" },
 ];
 const FIELDS_EXPLAIN_STMT: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(ExplainStmt, explain_mode) as u16, kind: FieldKind::Enum(|v| ExplainMode::from_raw(v).map(|e| e.as_str())), name: "explain_mode" },
+    FieldDescriptor { offset: offset_of!(ExplainStmt, explain_mode) as u16, kind: FieldKind::Enum(DISPLAY_EXPLAIN_MODE), name: "explain_mode" },
     FieldDescriptor { offset: offset_of!(ExplainStmt, stmt) as u16, kind: FieldKind::NodeId, name: "stmt" },
 ];
 const FIELDS_CREATE_INDEX_STMT: &[FieldDescriptor] = &[
@@ -2436,12 +2713,12 @@ const FIELDS_VALUES_CLAUSE: &[FieldDescriptor] = &[
     FieldDescriptor { offset: offset_of!(ValuesClause, rows) as u16, kind: FieldKind::NodeId, name: "rows" },
 ];
 const FIELDS_FRAME_BOUND: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(FrameBound, bound_type) as u16, kind: FieldKind::Enum(|v| FrameBoundType::from_raw(v).map(|e| e.as_str())), name: "bound_type" },
+    FieldDescriptor { offset: offset_of!(FrameBound, bound_type) as u16, kind: FieldKind::Enum(DISPLAY_FRAME_BOUND_TYPE), name: "bound_type" },
     FieldDescriptor { offset: offset_of!(FrameBound, expr) as u16, kind: FieldKind::NodeId, name: "expr" },
 ];
 const FIELDS_FRAME_SPEC: &[FieldDescriptor] = &[
-    FieldDescriptor { offset: offset_of!(FrameSpec, frame_type) as u16, kind: FieldKind::Enum(|v| FrameType::from_raw(v).map(|e| e.as_str())), name: "frame_type" },
-    FieldDescriptor { offset: offset_of!(FrameSpec, exclude) as u16, kind: FieldKind::Enum(|v| FrameExclude::from_raw(v).map(|e| e.as_str())), name: "exclude" },
+    FieldDescriptor { offset: offset_of!(FrameSpec, frame_type) as u16, kind: FieldKind::Enum(DISPLAY_FRAME_TYPE), name: "frame_type" },
+    FieldDescriptor { offset: offset_of!(FrameSpec, exclude) as u16, kind: FieldKind::Enum(DISPLAY_FRAME_EXCLUDE), name: "exclude" },
     FieldDescriptor { offset: offset_of!(FrameSpec, start_bound) as u16, kind: FieldKind::NodeId, name: "start_bound" },
     FieldDescriptor { offset: offset_of!(FrameSpec, end_bound) as u16, kind: FieldKind::NodeId, name: "end_bound" },
 ];
@@ -2537,6 +2814,7 @@ pub(crate) const FIELD_DESCRIPTORS: &[&[FieldDescriptor]] = &[
     &[], // NodeTag::NamedWindowDefList
     FIELDS_FILTER_OVER, // NodeTag::FilterOver
 ];
+#[allow(dead_code)]
 pub(crate) const NODE_NAMES: &[&str] = &[
     "Null",
     "AggregateFunctionCall",

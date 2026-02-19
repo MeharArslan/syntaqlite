@@ -47,7 +47,7 @@ extern "C" {
 typedef struct SyntaqliteParser SyntaqliteParser;
 
 // Opaque dialect handle — produced by dialect crates (e.g. syntaqlite_sqlite_dialect()).
-typedef struct SynqDialect SynqDialect;
+typedef struct SyntaqliteDialect SyntaqliteDialect;
 
 // A trivia item (comment) captured during parsing.
 typedef struct SyntaqliteTrivia {
@@ -88,7 +88,7 @@ typedef struct SyntaqliteDialectExtension SyntaqliteDialectExtension;
 // to outlive the parser. Pass NULL for mem defaults (malloc/free). The dialect
 // pointer must remain valid for the lifetime of the parser.
 SyntaqliteParser* syntaqlite_create_parser_with_dialect(
-    const SyntaqliteMemMethods* mem, const SynqDialect* dialect);
+    const SyntaqliteMemMethods* mem, const SyntaqliteDialect* dialect);
 
 // Bind a source buffer and reset all internal state. The source must remain
 // valid until the next reset() or destroy(). Can be called again to parse a

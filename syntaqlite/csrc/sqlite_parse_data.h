@@ -19,7 +19,7 @@
 #define YYNOCODE 322
 #define YYACTIONTYPE unsigned short int
 #define YYWILDCARD 91
-#define SyntaqliteParseTOKENTYPE SynqToken
+#define SyntaqliteParseTOKENTYPE SyntaqliteToken
 typedef union {
   int yyinit;
   SyntaqliteParseTOKENTYPE yy0;
@@ -3420,7 +3420,7 @@ static void yy_reduce_actions(
         break;
       case 124: /* withnm ::= nm */
 {
-    // Token passthrough - nm already produces SynqToken
+    // Token passthrough - nm already produces SyntaqliteToken
 }
         break;
       case 125: /* wqas ::= AS */

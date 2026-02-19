@@ -7,9 +7,9 @@
 // Conventions:
 // - pCtx: Parse context (SynqParseCtx*), threaded via %extra_argument
 // - pCtx->root: Set to root node ID at input rule
-// - Terminals are SynqToken with .z (pointer), .n (length), .type (token ID)
+// - Terminals are SyntaqliteToken with .z (pointer), .n (length), .type (token ID)
 // - Non-terminals default to uint32_t (node IDs)
-// - synq_span(pCtx, tok) converts a SynqToken into SyntaqliteSourceSpan
+// - synq_span(pCtx, tok) converts a SyntaqliteToken into SyntaqliteSourceSpan
 // - SYNQ_NO_SPAN is the zero sentinel span
 
 %name SyntaqliteParse
@@ -34,7 +34,7 @@
 // %token_type and %default_type are global; individual %type declarations
 // live next to the rules they describe in each action file.
 
-%token_type {SynqToken}
+%token_type {SyntaqliteToken}
 %default_type {uint32_t}
 
 // ============ Error handlers ============

@@ -7,8 +7,8 @@
 #include <string.h>
 
 #include "csrc/arena.h"
-#include "csrc/dialect.h"
 #include "csrc/parser.h"
+#include "syntaqlite/dialect.h"
 #include "csrc/sqlite_tokenize.h"
 
 // ---------------------------------------------------------------------------
@@ -24,36 +24,36 @@ typedef struct {
 // Flush the topmost list from the stack into the arena.
 static void list_flush_top(SynqParseCtx* ctx) {
   SynqListDesc* desc =
-      &synq_vec_at(&ctx->list_stack, synq_vec_len(&ctx->list_stack) - 1);
-  uint32_t count = synq_vec_len(&ctx->child_buf) - desc->offset;
+      &syntaqlite_vec_at(&ctx->list_stack, syntaqlite_vec_len(&ctx->list_stack) - 1);
+  uint32_t count = syntaqlite_vec_len(&ctx->child_buf) - desc->offset;
   uint32_t children_size = count * (uint32_t)sizeof(uint32_t);
 
   SynqListHeader hdr = {.tag = desc->tag, .count = count};
   synq_arena_commit(&ctx->ast, desc->node_id, &hdr, (uint32_t)sizeof(hdr),
                     ctx->mem);
-  synq_arena_append(&ctx->ast, &synq_vec_at(&ctx->child_buf, desc->offset),
+  synq_arena_append(&ctx->ast, &syntaqlite_vec_at(&ctx->child_buf, desc->offset),
                     children_size, ctx->mem);
 
-  synq_vec_truncate(&ctx->child_buf, desc->offset);
-  synq_vec_pop(&ctx->list_stack);
+  syntaqlite_vec_truncate(&ctx->child_buf, desc->offset);
+  syntaqlite_vec_pop(&ctx->list_stack);
 }
 
 void synq_parse_ctx_init(SynqParseCtx* ctx, SyntaqliteMemMethods mem) {
   ctx->mem = mem;
   synq_arena_init(&ctx->ast);
-  synq_vec_init(&ctx->child_buf);
-  synq_vec_init(&ctx->list_stack);
+  syntaqlite_vec_init(&ctx->child_buf);
+  syntaqlite_vec_init(&ctx->list_stack);
 }
 
 void synq_parse_ctx_free(SynqParseCtx* ctx) {
-  synq_vec_free(&ctx->child_buf, ctx->mem);
-  synq_vec_free(&ctx->list_stack, ctx->mem);
+  syntaqlite_vec_free(&ctx->child_buf, ctx->mem);
+  syntaqlite_vec_free(&ctx->list_stack, ctx->mem);
   synq_arena_free(&ctx->ast, ctx->mem);
 }
 
 void synq_parse_ctx_clear(SynqParseCtx* ctx) {
-  synq_vec_clear(&ctx->child_buf);
-  synq_vec_clear(&ctx->list_stack);
+  syntaqlite_vec_clear(&ctx->child_buf);
+  syntaqlite_vec_clear(&ctx->list_stack);
   synq_arena_clear(&ctx->ast);
 }
 
@@ -70,23 +70,23 @@ uint32_t synq_parse_list_append(SynqParseCtx* ctx,
   if (list_id == SYNTAQLITE_NULL_NODE) {
     SynqListDesc desc;
     desc.node_id = synq_arena_reserve_id(&ctx->ast, ctx->mem);
-    desc.offset = synq_vec_len(&ctx->child_buf);
+    desc.offset = syntaqlite_vec_len(&ctx->child_buf);
     desc.tag = tag;
-    synq_vec_push(&ctx->list_stack, desc, ctx->mem);
-    synq_vec_push(&ctx->child_buf, child, ctx->mem);
+    syntaqlite_vec_push(&ctx->list_stack, desc, ctx->mem);
+    syntaqlite_vec_push(&ctx->child_buf, child, ctx->mem);
     return desc.node_id;
   }
   // Auto-flush completed inner lists above the target
-  while (synq_vec_at(&ctx->list_stack, synq_vec_len(&ctx->list_stack) - 1)
+  while (syntaqlite_vec_at(&ctx->list_stack, syntaqlite_vec_len(&ctx->list_stack) - 1)
              .node_id != list_id) {
     list_flush_top(ctx);
   }
-  synq_vec_push(&ctx->child_buf, child, ctx->mem);
+  syntaqlite_vec_push(&ctx->child_buf, child, ctx->mem);
   return list_id;
 }
 
 void synq_parse_list_flush(SynqParseCtx* ctx) {
-  while (synq_vec_len(&ctx->list_stack) > 0) {
+  while (syntaqlite_vec_len(&ctx->list_stack) > 0) {
     list_flush_top(ctx);
   }
 }
@@ -97,7 +97,7 @@ void synq_parse_list_flush(SynqParseCtx* ctx) {
 
 struct SyntaqliteParser {
   SyntaqliteMemMethods mem;
-  const SynqDialect* dialect;
+  const SyntaqliteDialect* dialect;
   void* lemon;
   SynqParseCtx ctx;
   const char* source;
@@ -120,7 +120,7 @@ struct SyntaqliteParser {
 // ---------------------------------------------------------------------------
 
 SyntaqliteParser* syntaqlite_create_parser_with_dialect(
-    const SyntaqliteMemMethods* mem, const SynqDialect* dialect) {
+    const SyntaqliteMemMethods* mem, const SyntaqliteDialect* dialect) {
   SyntaqliteMemMethods m = mem ? *mem : SYNTAQLITE_MEM_METHODS_DEFAULT;
   SyntaqliteParser* p = m.xMalloc(sizeof(SyntaqliteParser));
   memset(p, 0, sizeof(*p));
@@ -128,8 +128,8 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
   p->dialect = dialect;
   p->lemon = dialect->lemon_alloc(m.xMalloc);
   synq_parse_ctx_init(&p->ctx, m);
-  synq_vec_init(&p->trivia);
-  synq_vec_init(&p->macros);
+  syntaqlite_vec_init(&p->trivia);
+  syntaqlite_vec_init(&p->macros);
   return p;
 }
 
@@ -150,9 +150,9 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->finished = 0;
   p->had_error = 0;
   p->error_msg[0] = '\0';
-  synq_vec_clear(&p->trivia);
+  syntaqlite_vec_clear(&p->trivia);
   p->macro_depth = 0;
-  synq_vec_clear(&p->macros);
+  syntaqlite_vec_clear(&p->macros);
 
   // Reset parse context.
   p->ctx.source = source;
@@ -169,7 +169,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 
 static int feed_one_token(SyntaqliteParser* p, int token_type,
                            const char* text, int len) {
-  SynqToken minor = {.z = text, .n = len, .type = token_type};
+  SyntaqliteToken minor = {.z = text, .n = len, .type = token_type};
   p->dialect->lemon_parse(p->lemon, token_type, minor, &p->ctx);
   p->last_token_type = token_type;
 
@@ -195,11 +195,11 @@ static int feed_one_token(SyntaqliteParser* p, int token_type,
 // ---------------------------------------------------------------------------
 
 static int check_macro_straddle(SyntaqliteParser* p) {
-  uint32_t macro_count = synq_vec_len(&p->macros);
+  uint32_t macro_count = syntaqlite_vec_len(&p->macros);
   if (macro_count == 0) return 0;
   if (!p->dialect->range_meta) return 0;
 
-  uint32_t node_count = synq_vec_len(&p->ctx.ast.offsets);
+  uint32_t node_count = syntaqlite_vec_len(&p->ctx.ast.offsets);
   const SyntaqliteMacroRegion* macros = p->macros.data;
 
   for (uint32_t nid = 0; nid < node_count; nid++) {
@@ -208,7 +208,7 @@ static int check_macro_straddle(SyntaqliteParser* p) {
     memcpy(&tag, raw, sizeof(tag));
     if (tag == 0 || tag >= p->dialect->node_count) continue;
 
-    const SynqRangeMetaEntry* entry = &p->dialect->range_meta[tag];
+    const SyntaqliteRangeMetaEntry* entry = &p->dialect->range_meta[tag];
     if (entry->fields == NULL || entry->count == 0) continue;
 
     for (uint32_t mi = 0; mi < macro_count; mi++) {
@@ -275,7 +275,7 @@ static int finish_input(SyntaqliteParser* p) {
   // Send end-of-input (EOF) to flush the final reduction. LALR(1) parsers
   // need one token of lookahead — the EOF provides it, triggering any
   // pending reduce (e.g. ecmd ::= cmdx SEMI).
-  SynqToken eof = {.z = NULL, .n = 0, .type = 0};
+  SyntaqliteToken eof = {.z = NULL, .n = 0, .type = 0};
   p->dialect->lemon_parse(p->lemon, 0, eof, &p->ctx);
   p->finished = 1;
 
@@ -338,7 +338,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
         SyntaqliteTrivia t = {
             tok_offset, (uint32_t)token_len,
             z[tok_offset] == '-' ? (uint8_t)0 : (uint8_t)1};
-        synq_vec_push(&p->trivia, t, p->mem);
+        syntaqlite_vec_push(&p->trivia, t, p->mem);
       }
       continue;
     }
@@ -393,7 +393,7 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
       SyntaqliteTrivia t = {
           tok_offset, (uint32_t)len,
           (uint8_t)(text[0] == '-' ? 0 : 1)};
-      synq_vec_push(&p->trivia, t, p->mem);
+      syntaqlite_vec_push(&p->trivia, t, p->mem);
     }
     return 0;
   }
@@ -444,7 +444,7 @@ void syntaqlite_parser_begin_macro(SyntaqliteParser* p,
                                     uint32_t call_offset,
                                     uint32_t call_length) {
   SyntaqliteMacroRegion region = {call_offset, call_length};
-  synq_vec_push(&p->macros, region, p->mem);
+  syntaqlite_vec_push(&p->macros, region, p->mem);
   p->macro_depth++;
 }
 
@@ -456,7 +456,7 @@ void syntaqlite_parser_end_macro(SyntaqliteParser* p) {
 
 const SyntaqliteMacroRegion* syntaqlite_parser_macro_regions(
     SyntaqliteParser* p, uint32_t* count) {
-  *count = synq_vec_len(&p->macros);
+  *count = syntaqlite_vec_len(&p->macros);
   return p->macros.data;
 }
 
@@ -464,8 +464,8 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p) {
   if (p) {
     p->dialect->lemon_free(p->lemon, p->mem.xFree);
     synq_parse_ctx_free(&p->ctx);
-    synq_vec_free(&p->trivia, p->mem);
-    synq_vec_free(&p->macros, p->mem);
+    syntaqlite_vec_free(&p->trivia, p->mem);
+    syntaqlite_vec_free(&p->macros, p->mem);
     p->mem.xFree(p);
   }
 }
@@ -509,7 +509,7 @@ void syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable) {
 
 const SyntaqliteTrivia* syntaqlite_parser_trivia(SyntaqliteParser* p,
                                                   uint32_t* count) {
-  *count = synq_vec_len(&p->trivia);
+  *count = syntaqlite_vec_len(&p->trivia);
   return p->trivia.data;
 }
 

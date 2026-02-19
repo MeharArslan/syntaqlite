@@ -119,7 +119,7 @@ pub fn generate_ast_builder_h(items: &[Item]) -> String {
     let mut w = CWriter::new();
 
     w.file_header();
-    w.header_guard_start("SYNQ_AST_BUILDER_H");
+    w.header_guard_start("SYNTAQLITE_AST_BUILDER_H");
     w.include_local("csrc/parser.h");
     w.include_local("syntaqlite/node.h");
     w.newline();
@@ -144,7 +144,7 @@ pub fn generate_ast_builder_h(items: &[Item]) -> String {
 
     w.extern_c_end();
     w.newline();
-    w.header_guard_end("SYNQ_AST_BUILDER_H");
+    w.header_guard_end("SYNTAQLITE_AST_BUILDER_H");
 
     w.finish()
 }
@@ -274,7 +274,7 @@ fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
 
 fn emit_range_metadata(w: &mut CWriter, items: &[Item]) {
     w.section("Range Field Metadata");
-    // SynqFieldRangeMeta and SynqRangeMetaEntry are defined in csrc/parser.h (runtime).
+    // SyntaqliteFieldRangeMeta and SyntaqliteRangeMetaEntry are defined in syntaqlite/dialect.h.
     w.newline();
 
     // Per-node arrays
@@ -284,7 +284,7 @@ fn emit_range_metadata(w: &mut CWriter, items: &[Item]) {
         if rf.is_empty() { continue; }
         let sn = c_type_name(name);
         let var = format!("range_meta_{}", pascal_to_snake(name));
-        w.line(&format!("static const SynqFieldRangeMeta {}[] = {{", var));
+        w.line(&format!("static const SyntaqliteFieldRangeMeta {}[] = {{", var));
         w.indent();
         for (fname, kind) in &rf {
             w.line(&format!("{{offsetof({}, {}), {}}},", sn, fname, kind));
@@ -295,7 +295,7 @@ fn emit_range_metadata(w: &mut CWriter, items: &[Item]) {
     }
 
     // Dispatch table
-    w.line("static const SynqRangeMetaEntry range_meta_table[] = {");
+    w.line("static const SyntaqliteRangeMetaEntry range_meta_table[] = {");
     w.indent();
     w.line("[SYNTAQLITE_NODE_NULL] = {NULL, 0},");
     for item in items {
@@ -319,6 +319,243 @@ fn emit_range_metadata(w: &mut CWriter, items: &[Item]) {
     w.dedent();
     w.line("};");
     w.newline();
+}
+
+// ── C field metadata codegen ────────────────────────────────────────────
+
+/// Generate a C header (`ast_meta.h`) containing `SyntaqliteFieldMeta` arrays,
+/// display string tables for enums/flags, and the top-level dispatch tables
+/// (`node_names`, `field_meta`, `field_meta_counts`, `list_tags`).
+///
+/// This header is included by the dialect's `sqlite_dialect_meta.c` and provides
+/// all the AST metadata needed by `SyntaqliteDialect`.
+pub fn generate_c_field_meta(items: &[Item]) -> String {
+    let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
+    let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
+
+    let mut w = CWriter::new();
+    w.file_header();
+    w.header_guard_start("SYNTAQLITE_AST_META_H");
+    w.include_system("stddef.h");
+    w.include_local("syntaqlite/dialect.h");
+    w.include_local("syntaqlite/node.h");
+    w.newline();
+
+    // Emit display string arrays for enums
+    for item in items {
+        let Item::Enum { name, variants } = item else { continue };
+        let var = format!("display_{}", pascal_to_snake(name));
+        w.line(&format!("static const char* const {}[] = {{", var));
+        w.indent();
+        for v in variants {
+            w.line(&format!("\"{}\",", v));
+        }
+        w.dedent();
+        w.line("};");
+        w.newline();
+    }
+
+    // Emit display string arrays for flags (indexed by bit position)
+    for item in items {
+        let Item::Flags { name, flags } = item else { continue };
+        let max_bit_pos = flags.iter().map(|(_, v)| bit_position(*v)).max().unwrap_or(0);
+        let var = format!("display_{}", pascal_to_snake(name));
+        w.line(&format!("static const char* const {}[] = {{", var));
+        w.indent();
+        for pos in 0..=max_bit_pos {
+            let label = flags.iter()
+                .find(|(_, v)| bit_position(*v) == pos)
+                .map(|(n, _)| n.as_str())
+                .unwrap_or("");
+            w.line(&format!("\"{}\",", label));
+        }
+        w.dedent();
+        w.line("};");
+        w.newline();
+    }
+
+    // Emit per-node SyntaqliteFieldMeta arrays
+    for item in items {
+        let Item::Node { name, fields, .. } = item else { continue };
+        if fields.is_empty() { continue; }
+        let sn = c_type_name(name);
+        let var = format!("field_meta_{}", pascal_to_snake(name));
+        w.line(&format!("static const SyntaqliteFieldMeta {}[] = {{", var));
+        w.indent();
+        for field in fields {
+            let kind = c_field_kind(field, &enum_names, &flags_names);
+            let (display, display_count) = c_field_display(field, &enum_names, &flags_names);
+            w.line(&format!(
+                "{{offsetof({}, {}), {}, \"{}\", {}, {}}},",
+                sn, field.name, kind, field.name, display, display_count,
+            ));
+        }
+        w.dedent();
+        w.line("};");
+        w.newline();
+    }
+
+    // Top-level tables
+    w.section("Node Names");
+    w.line("static const char* const ast_meta_node_names[] = {");
+    w.indent();
+    w.line("\"Null\",");
+    for item in items {
+        let name = match item {
+            Item::Node { name, .. } | Item::List { name, .. } => name,
+            _ => continue,
+        };
+        w.line(&format!("\"{}\",", name));
+    }
+    w.dedent();
+    w.line("};");
+    w.newline();
+
+    w.section("Field Meta Dispatch");
+    w.line("static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {");
+    w.indent();
+    w.line("NULL, /* Null */");
+    for item in items {
+        match item {
+            Item::Node { name, fields, .. } => {
+                if fields.is_empty() {
+                    w.line(&format!("NULL, /* {} */", name));
+                } else {
+                    w.line(&format!("field_meta_{}, /* {} */", pascal_to_snake(name), name));
+                }
+            }
+            Item::List { name, .. } => {
+                w.line(&format!("NULL, /* {} */", name));
+            }
+            _ => {}
+        }
+    }
+    w.dedent();
+    w.line("};");
+    w.newline();
+
+    w.line("static const uint8_t ast_meta_field_meta_counts[] = {");
+    w.indent();
+    w.line("0, /* Null */");
+    for item in items {
+        match item {
+            Item::Node { name, fields, .. } => {
+                w.line(&format!("{}, /* {} */", fields.len(), name));
+            }
+            Item::List { name, .. } => {
+                w.line(&format!("0, /* {} */", name));
+            }
+            _ => {}
+        }
+    }
+    w.dedent();
+    w.line("};");
+    w.newline();
+
+    w.section("List Tags");
+    w.line("static const uint8_t ast_meta_list_tags[] = {");
+    w.indent();
+    w.line("0, /* Null */");
+    for item in items {
+        match item {
+            Item::Node { name, .. } => {
+                w.line(&format!("0, /* {} */", name));
+            }
+            Item::List { name, .. } => {
+                w.line(&format!("1, /* {} */", name));
+            }
+            _ => {}
+        }
+    }
+    w.dedent();
+    w.line("};");
+    w.newline();
+
+    w.header_guard_end("SYNTAQLITE_AST_META_H");
+    w.finish()
+}
+
+/// Generate a C header containing the fmt bytecode as a byte array.
+pub fn generate_c_fmt_data(data: &[u8]) -> String {
+    let mut w = CWriter::new();
+    w.file_header();
+    w.header_guard_start("SYNTAQLITE_FMT_DATA_H");
+    w.include_system("stdint.h");
+    w.newline();
+
+    w.line(&format!("static const uint8_t fmt_bytecode_data[] = {{"));
+    w.indent();
+
+    // Emit in rows of 16 bytes
+    for chunk in data.chunks(16) {
+        let hex: Vec<String> = chunk.iter().map(|b| format!("0x{:02x}", b)).collect();
+        w.line(&format!("{},", hex.join(",")));
+    }
+
+    w.dedent();
+    w.line("};");
+    w.newline();
+    w.line(&format!("static const uint32_t fmt_bytecode_len = {};", data.len()));
+    w.newline();
+
+    w.header_guard_end("SYNTAQLITE_FMT_DATA_H");
+    w.finish()
+}
+
+/// Map a field to its SYNTAQLITE_FIELD_* constant string.
+fn c_field_kind(
+    field: &Field,
+    enum_names: &HashSet<&str>,
+    flags_names: &HashSet<&str>,
+) -> &'static str {
+    match field.storage {
+        Storage::Index => "SYNTAQLITE_FIELD_NODE_ID",
+        Storage::Inline => {
+            let t = &field.type_name;
+            if t == "SyntaqliteSourceSpan" {
+                "SYNTAQLITE_FIELD_SPAN"
+            } else if t == "Bool" {
+                "SYNTAQLITE_FIELD_BOOL"
+            } else if flags_names.contains(t.as_str()) {
+                "SYNTAQLITE_FIELD_FLAGS"
+            } else if enum_names.contains(t.as_str()) {
+                "SYNTAQLITE_FIELD_ENUM"
+            } else {
+                panic!("unknown inline type for C field meta codegen: {}", t)
+            }
+        }
+    }
+}
+
+/// Return (display_expr, display_count) for a field's C metadata.
+fn c_field_display(
+    field: &Field,
+    enum_names: &HashSet<&str>,
+    flags_names: &HashSet<&str>,
+) -> (String, String) {
+    match field.storage {
+        Storage::Inline => {
+            let t = &field.type_name;
+            if enum_names.contains(t.as_str()) {
+                let var = format!("display_{}", pascal_to_snake(t));
+                let count = format!("sizeof({}) / sizeof({}[0])", var, var);
+                (var, count)
+            } else if flags_names.contains(t.as_str()) {
+                let var = format!("display_{}", pascal_to_snake(t));
+                let count = format!("sizeof({}) / sizeof({}[0])", var, var);
+                (var, count)
+            } else {
+                ("NULL".into(), "0".into())
+            }
+        }
+        _ => ("NULL".into(), "0".into()),
+    }
+}
+
+/// Convert a bit value (power of 2) to its bit position.
+fn bit_position(value: u32) -> u32 {
+    if value == 0 { return 0; }
+    value.trailing_zeros()
 }
 
 // ── Rust codegen ────────────────────────────────────────────────────────
@@ -694,6 +931,9 @@ pub fn generate_rust_nodes(items: &[Item]) -> String {
     writeln!(out, "}}").unwrap();
     writeln!(out).unwrap();
 
+    // Display tables for enums and flags (used by FieldKind)
+    generate_display_tables(&mut out, items);
+
     // Per-node field descriptor arrays
     generate_field_descriptor_arrays(&mut out, items, &enum_names, &flags_names);
 
@@ -708,7 +948,7 @@ pub fn generate_rust_nodes(items: &[Item]) -> String {
 
 // ── Generated field descriptor arrays ───────────────────────────────────
 
-/// Map a field to its FieldKind string (with display fn ptrs for Enum/Flags).
+/// Map a field to its FieldKind string, referencing the generated display tables.
 fn field_kind_str(
     field: &Field,
     enum_names: &HashSet<&str>,
@@ -723,12 +963,50 @@ fn field_kind_str(
             } else if t == "Bool" {
                 "FieldKind::Bool".into()
             } else if flags_names.contains(t.as_str()) {
-                format!("FieldKind::Flags(|v| {}(v).dump_str())", t)
+                format!("FieldKind::Flags(DISPLAY_{})", upper_snake(t))
             } else if enum_names.contains(t.as_str()) {
-                format!("FieldKind::Enum(|v| {}::from_raw(v).map(|e| e.as_str()))", t)
+                format!("FieldKind::Enum(DISPLAY_{})", upper_snake(t))
             } else {
                 panic!("unknown inline type for field codegen: {}", t)
             }
+        }
+    }
+}
+
+/// Emit `DISPLAY_XXX` const arrays for each enum and flags type.
+fn generate_display_tables(out: &mut String, items: &[Item]) {
+    for item in items {
+        match item {
+            Item::Enum { name, variants } => {
+                let const_name = format!("DISPLAY_{}", upper_snake(name));
+                writeln!(out, "#[allow(dead_code)]").unwrap();
+                writeln!(out, "const {}: &[&str] = &[", const_name).unwrap();
+                for v in variants {
+                    writeln!(out, "    \"{}\",", v).unwrap();
+                }
+                writeln!(out, "];").unwrap();
+                writeln!(out).unwrap();
+            }
+            Item::Flags { name, flags } => {
+                let const_name = format!("DISPLAY_{}", upper_snake(name));
+                // Indexed by bit position
+                let max_bit_pos = flags.iter()
+                    .map(|(_, v)| v.trailing_zeros())
+                    .max()
+                    .unwrap_or(0);
+                writeln!(out, "#[allow(dead_code)]").unwrap();
+                writeln!(out, "const {}: &[&str] = &[", const_name).unwrap();
+                for pos in 0..=max_bit_pos {
+                    let label = flags.iter()
+                        .find(|(_, v)| v.trailing_zeros() == pos && *v == (1 << pos))
+                        .map(|(n, _)| n.as_str())
+                        .unwrap_or("");
+                    writeln!(out, "    \"{}\",", label).unwrap();
+                }
+                writeln!(out, "];").unwrap();
+                writeln!(out).unwrap();
+            }
+            _ => {}
         }
     }
 }
@@ -761,6 +1039,7 @@ fn generate_field_descriptor_arrays(
 
 /// Emit `NODE_NAMES` table indexed by `NodeTag`.
 fn generate_node_names_table(out: &mut String, items: &[Item]) {
+    writeln!(out, "#[allow(dead_code)]").unwrap();
     writeln!(out, "pub(crate) const NODE_NAMES: &[&str] = &[").unwrap();
     writeln!(out, "    \"Null\",").unwrap();
     for item in items {

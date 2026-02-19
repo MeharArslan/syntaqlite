@@ -5,8 +5,8 @@
 // These are used by the Lemon-generated parser actions and are
 // specific to the SQLite dialect.
 
-#ifndef SYNQ_GRAMMAR_TYPES_H
-#define SYNQ_GRAMMAR_TYPES_H
+#ifndef SYNTAQLITE_GRAMMAR_TYPES_H
+#define SYNTAQLITE_GRAMMAR_TYPES_H
 
 #include "syntaqlite/types.h"
 
@@ -50,4 +50,4 @@ typedef struct SynqWithValue {
 }
 #endif
 
-#endif  // SYNQ_GRAMMAR_TYPES_H
+#endif  // SYNTAQLITE_GRAMMAR_TYPES_H

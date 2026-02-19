@@ -159,22 +159,22 @@ fn main() {
                 fs::write(out.join("ast_builder.h"), ast_builder_h)
                     .map_err(|e| format!("Failed to write ast_builder.h: {}", e))?;
 
-                let raw_parse_c = fs::read_to_string(temp_dir.path().join("parse.c"))
-                    .map_err(|e| format!("Failed to read parse.c: {}", e))?;
-                let (parse_c, parse_data_h) =
-                    syntaqlite_codegen::split_parse_c(&raw_parse_c)?;
-                fs::write(out.join("sqlite_parse.c"), parse_c)
-                    .map_err(|e| format!("Failed to write sqlite_parse.c: {}", e))?;
-                fs::write(out.join("sqlite_parse_data.h"), parse_data_h)
-                    .map_err(|e| format!("Failed to write sqlite_parse_data.h: {}", e))?;
-
-                // Runtime engine files (tokenizer, keywords) go to runtime_csrc if set.
+                // Runtime engine files (tokenizer, keywords, parse engine) go to runtime_csrc if set.
                 let rt_out = runtime_csrc.as_deref().map(Path::new).unwrap_or(out);
                 fs::create_dir_all(rt_out)
                     .map_err(|e| format!("Failed to create runtime csrc directory: {}", e))?;
                 if runtime_csrc.is_some() {
                     clean_generated_files(rt_out, args.verbose);
                 }
+
+                let raw_parse_c = fs::read_to_string(temp_dir.path().join("parse.c"))
+                    .map_err(|e| format!("Failed to read parse.c: {}", e))?;
+                let (parse_c, parse_data_h) =
+                    syntaqlite_codegen::split_parse_c(&raw_parse_c)?;
+                fs::write(rt_out.join("sqlite_parse.c"), parse_c)
+                    .map_err(|e| format!("Failed to write sqlite_parse.c: {}", e))?;
+                fs::write(out.join("sqlite_parse_data.h"), parse_data_h)
+                    .map_err(|e| format!("Failed to write sqlite_parse_data.h: {}", e))?;
 
                 fs::write(rt_out.join("sqlite_tokenize.c"), tokenize_content)
                     .map_err(|e| format!("Failed to write sqlite_tokenize.c: {}", e))?;
@@ -222,6 +222,18 @@ fn main() {
                 let bytecode = syntaqlite_codegen::fmt_compiler::generate_fmt_bytecode(&all_items);
                 fs::write(fmt_gen_dir.join("fmt.bin"), &bytecode)
                     .map_err(|e| format!("Failed to write fmt.bin: {}", e))?;
+
+                // Step 7: Generate C AST metadata and fmt data headers
+                if args.verbose {
+                    eprintln!("Generating C AST metadata...");
+                }
+                let ast_meta_h = syntaqlite_codegen::ast_codegen::generate_c_field_meta(&all_items);
+                fs::write(out.join("sqlite_dialect_data.h"), ast_meta_h)
+                    .map_err(|e| format!("Failed to write sqlite_dialect_data.h: {}", e))?;
+
+                let fmt_data_h = syntaqlite_codegen::ast_codegen::generate_c_fmt_data(&bytecode);
+                fs::write(out.join("fmt_data.h"), fmt_data_h)
+                    .map_err(|e| format!("Failed to write fmt_data.h: {}", e))?;
 
                 if args.verbose {
                     eprintln!("Code generation complete");

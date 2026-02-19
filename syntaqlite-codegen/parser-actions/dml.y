@@ -8,14 +8,14 @@
 // - pCtx: Parse context (SynqParseContext*)
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
-// - Terminals are SynqToken with .z (pointer) and .n (length)
+// - Terminals are SyntaqliteToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
 
 %type with {SynqWithValue}
 %type insert_cmd {int}
 %type orconf {int}
 %type resolvetype {int}
-%type indexed_opt {SynqToken}
+%type indexed_opt {SyntaqliteToken}
 
 // ============ WITH for DML ============
 // The 'with' nonterminal is used by DML statements (DELETE/UPDATE/INSERT).

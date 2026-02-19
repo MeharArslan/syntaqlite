@@ -107,13 +107,18 @@ pub enum FieldVal<'a> {
 }
 
 /// The kind of value stored in a node field.
+///
+/// For `Flags` and `Enum`, the display table holds human-readable names:
+/// - `Flags`: indexed by bit position (0, 1, 2, …); each entry is the flag name
+///   for that bit, or `""` if unused.
+/// - `Enum`: indexed by ordinal (0, 1, 2, …); each entry is the variant name.
 #[derive(Clone, Copy, Debug)]
 pub enum FieldKind {
     NodeId,
     Span,
     Bool,
-    Flags(fn(u8) -> String),
-    Enum(fn(u32) -> Option<&'static str>),
+    Flags(&'static [&'static str]),
+    Enum(&'static [&'static str]),
 }
 
 /// Metadata for one field of a node struct: its byte offset and value kind.
@@ -150,6 +155,26 @@ impl FieldDescriptor {
             }
         }
     }
+}
+
+/// Format a flags byte using the display table (indexed by bit position).
+pub fn format_flags(value: u8, display: &[&str]) -> String {
+    if value == 0 {
+        return "(none)".into();
+    }
+    let mut s = String::new();
+    for bit in 0..8u8 {
+        if value & (1 << bit) != 0 {
+            let name = display.get(bit as usize).copied().unwrap_or("?");
+            if !name.is_empty() {
+                if !s.is_empty() {
+                    s.push(' ');
+                }
+                s.push_str(name);
+            }
+        }
+    }
+    if s.is_empty() { "(none)".into() } else { s }
 }
 
 // ── Dump ────────────────────────────────────────────────────────────────
@@ -215,10 +240,11 @@ pub fn dump_node_with(
                 let _ = writeln!(out, "{pad}  {}: {s}", desc.name);
             }
             (FieldVal::Flags(v), FieldKind::Flags(display)) => {
-                let _ = writeln!(out, "{pad}  {}: {}", desc.name, display(*v));
+                let s = format_flags(*v, display);
+                let _ = writeln!(out, "{pad}  {}: {s}", desc.name);
             }
             (FieldVal::Enum(v), FieldKind::Enum(display)) => {
-                let s = display(*v).unwrap_or("?");
+                let s = display.get(*v as usize).copied().unwrap_or("?");
                 let _ = writeln!(out, "{pad}  {}: {s}", desc.name);
             }
             _ => {}
