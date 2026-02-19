@@ -30,6 +30,52 @@ typedef struct SyntaqliteToken {
     int type;        // token type ID (SYNTAQLITE_TK_*)
 } SyntaqliteToken;
 
+// ── Parse tables (Lemon data) ───────────────────────────────────────────
+
+typedef struct SynqParseTables {
+    const unsigned short *yy_action;
+    const unsigned short *yy_lookahead;
+    const unsigned short *yy_shift_ofst;
+    const short *yy_reduce_ofst;
+    const unsigned short *yy_default;
+    const unsigned short *yy_fallback;     // NULL if no fallback
+    const unsigned short *yy_rule_lhs;
+    const signed char *yy_rule_nrhs;
+
+    int n_action;
+    int n_lookahead;
+    int n_fallback;
+
+    unsigned short nocode;
+    unsigned short wildcard;            // 0 if none
+    unsigned short nstate;
+    unsigned short nrule;
+    unsigned short nrule_with_action;
+    unsigned short ntoken;
+    unsigned short max_shift;
+    unsigned short min_shiftreduce;
+    unsigned short max_shiftreduce;
+    unsigned short error_action;
+    unsigned short accept_action;
+    unsigned short no_action;
+    unsigned short min_reduce;
+    unsigned short max_reduce;
+    unsigned short acttab_count;
+    unsigned short shift_count;
+    unsigned short reduce_count;
+
+    const char *const *token_names;     // NULL in release
+    const char *const *rule_names;      // NULL in release
+} SynqParseTables;
+
+typedef void (*SynqReduceActionsFn)(
+    void *parser,              // yyParser*
+    unsigned int ruleno,
+    void *yymsp,               // yyStackEntry*
+    int lookahead,
+    SyntaqliteToken lookahead_token
+);
+
 typedef struct SyntaqliteFieldRangeMeta {
     uint16_t offset;
     uint8_t kind;
@@ -61,14 +107,9 @@ typedef struct SyntaqliteFieldMeta {
 typedef struct SyntaqliteDialect {
     const char* name;
 
-    // Parser vtable (Lemon lifecycle).
-    void* (*lemon_alloc)(void* (*mallocProc)(size_t));
-    void (*lemon_init)(void* parser);
-    void (*lemon_finalize)(void* parser);
-    void (*lemon_free)(void* parser, void (*freeProc)(void*));
-    void (*lemon_parse)(void* parser, int token_type, SyntaqliteToken minor,
-                        SynqParseCtx* ctx);
-    void (*lemon_trace)(FILE* trace_file, char* prompt); // NULL if unsupported
+    // Parse tables + reduce actions (replaces Lemon vtable).
+    const SynqParseTables *tables;
+    SynqReduceActionsFn reduce_actions;
 
     // Range metadata for the macro straddle check.
     const SyntaqliteRangeMetaEntry* range_meta;

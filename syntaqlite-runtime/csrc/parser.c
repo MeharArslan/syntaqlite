@@ -9,6 +9,7 @@
 #include "csrc/arena.h"
 #include "csrc/parser.h"
 #include "syntaqlite/dialect.h"
+#include "csrc/sqlite_parser.h"
 #include "csrc/sqlite_tokenize.h"
 
 // ---------------------------------------------------------------------------
@@ -126,7 +127,7 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
   memset(p, 0, sizeof(*p));
   p->mem = m;
   p->dialect = dialect;
-  p->lemon = dialect->lemon_alloc(m.xMalloc);
+  p->lemon = SyntaqliteParseAlloc(m.xMalloc);
   synq_parse_ctx_init(&p->ctx, m);
   syntaqlite_vec_init(&p->trivia);
   syntaqlite_vec_init(&p->macros);
@@ -140,8 +141,8 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   synq_parse_ctx_clear(&p->ctx);
 
   // Re-initialize lemon parser state (reuses allocation).
-  p->dialect->lemon_finalize(p->lemon);
-  p->dialect->lemon_init(p->lemon);
+  SyntaqliteParseFinalize(p->lemon);
+  SyntaqliteParseInit(p->lemon);
 
   p->source = source;
   p->source_len = len;
@@ -170,7 +171,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 static int feed_one_token(SyntaqliteParser* p, int token_type,
                            const char* text, int len) {
   SyntaqliteToken minor = {.z = text, .n = len, .type = token_type};
-  p->dialect->lemon_parse(p->lemon, token_type, minor, &p->ctx);
+  SyntaqliteParse(p->lemon, token_type, minor, &p->ctx);
   p->last_token_type = token_type;
 
   if (p->ctx.error) {
@@ -276,7 +277,7 @@ static int finish_input(SyntaqliteParser* p) {
   // need one token of lookahead — the EOF provides it, triggering any
   // pending reduce (e.g. ecmd ::= cmdx SEMI).
   SyntaqliteToken eof = {.z = NULL, .n = 0, .type = 0};
-  p->dialect->lemon_parse(p->lemon, 0, eof, &p->ctx);
+  SyntaqliteParse(p->lemon, 0, eof, &p->ctx);
   p->finished = 1;
 
   if (p->ctx.error) {
@@ -462,7 +463,7 @@ const SyntaqliteMacroRegion* syntaqlite_parser_macro_regions(
 
 void syntaqlite_parser_destroy(SyntaqliteParser* p) {
   if (p) {
-    p->dialect->lemon_free(p->lemon, p->mem.xFree);
+    SyntaqliteParseFree(p->lemon, p->mem.xFree);
     synq_parse_ctx_free(&p->ctx);
     syntaqlite_vec_free(&p->trivia, p->mem);
     syntaqlite_vec_free(&p->macros, p->mem);
@@ -493,13 +494,13 @@ uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p) {
 
 void syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable) {
   p->trace = enable;
-  if (p->dialect->lemon_trace) {
-    if (enable) {
-      p->dialect->lemon_trace(stderr, "parser> ");
-    } else {
-      p->dialect->lemon_trace(NULL, NULL);
-    }
+#ifndef NDEBUG
+  if (enable) {
+    SyntaqliteParseTrace(stderr, "parser> ");
+  } else {
+    SyntaqliteParseTrace(NULL, NULL);
   }
+#endif
 }
 
 void syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable) {

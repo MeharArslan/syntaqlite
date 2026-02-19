@@ -8,7 +8,7 @@
 #include "syntaqlite/tokens.h"
 #include "syntaqlite/dialect.h"
 #include "csrc/ast_builder.h"
-#include "csrc/sqlite_parser.h"
+#include "csrc/sqlite_parse_data.h"
 #include "csrc/sqlite_dialect_data.h"
 #include "csrc/fmt_data.h"
 
@@ -19,17 +19,10 @@
 static const SyntaqliteDialect SQLITE_DIALECT = {
     .name = "sqlite",
 
-    // Parser vtable (Lemon lifecycle)
-    .lemon_alloc = SyntaqliteParseAlloc,
-    .lemon_init = SyntaqliteParseInit,
-    .lemon_finalize = SyntaqliteParseFinalize,
-    .lemon_free = SyntaqliteParseFree,
-    .lemon_parse = SyntaqliteParse,
-#ifndef NDEBUG
-    .lemon_trace = SyntaqliteParseTrace,
-#else
-    .lemon_trace = NULL,
-#endif
+    // Parse tables + reduce actions
+    .tables = &SQLITE_PARSE_TABLES,
+    .reduce_actions = (SynqReduceActionsFn)yy_reduce_actions,
+
     .range_meta = range_meta_table,
     .tk_space = SYNTAQLITE_TK_SPACE,
     .tk_semi = SYNTAQLITE_TK_SEMI,

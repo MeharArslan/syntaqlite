@@ -27,7 +27,11 @@
 
 #include "csrc/parser.h"
 #include "csrc/grammar_types.h"
-#include "csrc/sqlite_parse_data.h"
+#ifdef SYNTAQLITE_INLINE_PARSER_DATA_HEADER
+  #include SYNTAQLITE_INLINE_PARSER_DATA_HEADER
+#else
+  #include "csrc/synq_lemon_generic.h"
+#endif
 #include "syntaqlite/tokens.h"
 
 #define YYNOERRORRECOVERY 1
@@ -285,7 +289,7 @@
 # define INTERFACE 1
 #endif
 
-#define YY_NLOOKAHEAD ((int)(sizeof(yy_lookahead)/sizeof(yy_lookahead[0])))
+/* YY_NLOOKAHEAD defined in data header */
 
 /* Define the yytestcase() macro to be a no-op if is not already defined
 ** otherwise.
@@ -705,7 +709,7 @@ static YYACTIONTYPE yy_find_shift_action(
     if( yy_lookahead[i]!=iLookAhead ){
 #ifdef YYFALLBACK
       YYCODETYPE iFallback;            /* Fallback token */
-      assert( iLookAhead<sizeof(yyFallback)/sizeof(yyFallback[0]) );
+      assert( iLookAhead<YY_NFALLBACK );
       iFallback = yyFallback[iLookAhead];
       if( iFallback!=0 ){
 #ifndef NDEBUG
@@ -737,7 +741,7 @@ static YYACTIONTYPE yy_find_shift_action(
 #endif /* YYWILDCARD */
       return yy_default[stateno];
     }else{
-      assert( i>=0 && i<(int)(sizeof(yy_action)/sizeof(yy_action[0])) );
+      assert( i>=0 && i<YY_NACTION );
       return yy_action[i];
     }
   }while(1);
@@ -901,7 +905,7 @@ static YYACTIONTYPE yy_reduce(
   */
       default: yy_reduce_actions(yypParser, yyruleno, yymsp, yyLookahead, yyLookaheadToken); break;
   };
-  assert( yyruleno<sizeof(yyRuleInfoLhs)/sizeof(yyRuleInfoLhs[0]) );
+  assert( yyruleno<YY_NRULELHS );
   yygoto = yyRuleInfoLhs[yyruleno];
   yysize = yyRuleInfoNRhs[yyruleno];
   yyact = yy_find_reduce_action(yymsp[yysize].stateno,(YYCODETYPE)yygoto);
@@ -1055,7 +1059,7 @@ void SyntaqliteParse(
     if( yyact >= YY_MIN_REDUCE ){
       unsigned int yyruleno = yyact - YY_MIN_REDUCE; /* Reduce by this rule */
 #ifndef NDEBUG
-      assert( yyruleno<(int)(sizeof(yyRuleName)/sizeof(yyRuleName[0])) );
+      assert( yyruleno<YY_NRULENAME );
       if( yyTraceFILE ){
         int yysize = yyRuleInfoNRhs[yyruleno];
         if( yysize ){
@@ -1224,7 +1228,7 @@ void SyntaqliteParse(
 */
 int SyntaqliteParseFallback(int iToken){
 #ifdef YYFALLBACK
-  assert( iToken<(int)(sizeof(yyFallback)/sizeof(yyFallback[0])) );
+  assert( iToken<(int)(YY_NFALLBACK) );
   return yyFallback[iToken];
 #else
   (void)iToken;

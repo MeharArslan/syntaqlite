@@ -33,13 +33,9 @@ pub struct RawFieldMeta {
 pub struct RawSyntaqliteDialect {
     pub name: *const std::ffi::c_char,
 
-    // Parser vtable (Lemon lifecycle)
-    pub lemon_alloc: *const std::ffi::c_void,
-    pub lemon_init: *const std::ffi::c_void,
-    pub lemon_finalize: *const std::ffi::c_void,
-    pub lemon_free: *const std::ffi::c_void,
-    pub lemon_parse: *const std::ffi::c_void,
-    pub lemon_trace: *const std::ffi::c_void,
+    // Parse tables + reduce actions
+    pub tables: *const std::ffi::c_void,
+    pub reduce_actions: *const std::ffi::c_void,
 
     // Range metadata
     pub range_meta: *const std::ffi::c_void,

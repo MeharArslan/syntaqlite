@@ -4908,3 +4908,66 @@ static void yy_reduce_actions(
   };
 }
 
+/* Size macros for engine code (inline path uses sizeof, generic uses these) */
+#define YY_NLOOKAHEAD ((int)(sizeof(yy_lookahead)/sizeof(yy_lookahead[0])))
+#define YY_NACTION ((int)(sizeof(yy_action)/sizeof(yy_action[0])))
+#define YY_NFALLBACK ((int)(sizeof(yyFallback)/sizeof(yyFallback[0])))
+#define YY_NRULELHS ((int)(sizeof(yyRuleInfoLhs)/sizeof(yyRuleInfoLhs[0])))
+#ifdef NDEBUG
+#define YY_NRULENAME 0
+#else
+#define YY_NRULENAME ((int)(sizeof(yyRuleName)/sizeof(yyRuleName[0])))
+#endif
+
+#define YY_N_ACTION_VAL 2174
+#define YY_N_FALLBACK_VAL 187
+
+
+#include "syntaqlite/dialect.h"
+
+static const SynqParseTables SQLITE_PARSE_TABLES = {
+    .yy_action = yy_action,
+    .yy_lookahead = yy_lookahead,
+    .yy_shift_ofst = yy_shift_ofst,
+    .yy_reduce_ofst = yy_reduce_ofst,
+    .yy_default = yy_default,
+#ifdef YYFALLBACK
+    .yy_fallback = yyFallback,
+#else
+    .yy_fallback = NULL,
+#endif
+    .yy_rule_lhs = yyRuleInfoLhs,
+    .yy_rule_nrhs = yyRuleInfoNRhs,
+
+    .n_action = YY_N_ACTION_VAL,
+    .n_lookahead = YY_NLOOKAHEAD,
+    .n_fallback = YY_N_FALLBACK_VAL,
+
+    .nocode = 322,
+    .wildcard = 91,
+    .nstate = 583,
+    .nrule = 409,
+    .nrule_with_action = 409,
+    .ntoken = 187,
+    .max_shift = 582,
+    .min_shiftreduce = 845,
+    .max_shiftreduce = 1253,
+    .error_action = 1254,
+    .accept_action = 1255,
+    .no_action = 1256,
+    .min_reduce = 1257,
+    .max_reduce = 1665,
+    .acttab_count = YY_N_ACTION_VAL,
+    .shift_count = YY_SHIFT_COUNT,
+    .reduce_count = YY_REDUCE_COUNT,
+
+#ifndef NDEBUG
+    .token_names = yyTokenName,
+    .rule_names = yyRuleName,
+#else
+    .token_names = NULL,
+    .rule_names = NULL,
+#endif
+};
+
+
