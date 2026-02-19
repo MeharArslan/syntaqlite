@@ -3,10 +3,9 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use syntaqlite_fmt::generated::fmt_ops::{CTX, DISPATCH};
 use syntaqlite_fmt::{
     first_source_offset, format_node, format_node_with_trivia, render, DocArena, FormatConfig,
-    KeywordCase, TriviaCtx,
+    KeywordCase, TriviaCtx, ctx, dispatch,
 };
 use syntaqlite_parser::{dump_node, TriviaKind};
 
@@ -97,7 +96,7 @@ fn format_source(source: &str, config: &FormatConfig, semicolons: bool) -> Resul
                 out.push_str("\n\n");
             }
             let mut arena = DocArena::new();
-            let doc = format_node(&DISPATCH, &CTX, &session, root_id, &mut arena);
+            let doc = format_node(dispatch(), ctx(), &session, root_id, &mut arena);
             out.push_str(&render(&arena, doc, config));
             first = false;
         }
@@ -123,7 +122,7 @@ fn format_source(source: &str, config: &FormatConfig, semicolons: bool) -> Resul
         }
 
         // Compute this statement's first source offset.
-        let stmt_start = first_source_offset(&DISPATCH, &session, root_id)
+        let stmt_start = first_source_offset(dispatch(), &session, root_id)
             .unwrap_or(source.len() as u32);
 
         // Emit pre-statement trivia (comments before this statement).
@@ -145,7 +144,7 @@ fn format_source(source: &str, config: &FormatConfig, semicolons: bool) -> Resul
 
         // Determine the end boundary for within-statement trivia.
         let stmt_end = if i + 1 < roots.len() {
-            first_source_offset(&DISPATCH, &session, roots[i + 1])
+            first_source_offset(dispatch(), &session, roots[i + 1])
                 .unwrap_or(source.len() as u32)
         } else {
             source.len() as u32
@@ -161,12 +160,12 @@ fn format_source(source: &str, config: &FormatConfig, semicolons: bool) -> Resul
         // Format the statement with trivia interleaving.
         let mut arena = DocArena::new();
         if within_trivia.is_empty() {
-            let doc = format_node(&DISPATCH, &CTX, &session, root_id, &mut arena);
+            let doc = format_node(dispatch(), ctx(), &session, root_id, &mut arena);
             out.push_str(&render(&arena, doc, config));
         } else {
             let trivia_ctx = TriviaCtx::new(within_trivia, source);
             let doc =
-                format_node_with_trivia(&DISPATCH, &CTX, &session, root_id, &mut arena, &trivia_ctx);
+                format_node_with_trivia(dispatch(), ctx(), &session, root_id, &mut arena, &trivia_ctx);
             // Flush remaining trivia (trailing comments at end of statement).
             let trailing = trivia_ctx.drain_remaining(&mut arena);
             let final_doc = arena.cat(doc, trailing);

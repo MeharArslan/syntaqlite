@@ -1,12 +1,14 @@
-//! Compiles .synq `Fmt` AST trees into FmtOp bytecode arrays and emits them
-//! as generated Rust source code.
+//! Compiles .synq `Fmt` AST trees into FmtOp bytecode and emits them
+//! as either generated Rust source code or binary bytecode.
 //!
-//! The generated file contains:
+//! The generated Rust file contains:
 //! - `STRINGS: &[&str]` — interned keywords/punctuation
 //! - `ENUM_DISPLAY: &[u16]` — flat table mapping enum ordinals → StringId
 //! - Per-node `FMT_XXX: &[FmtOp]` constant arrays
-//! - Per-node `extract_xxx()` functions that produce `&[FieldVal]`
 //! - `DISPATCH` table indexed by NodeTag ordinal
+//!
+//! The binary bytecode file contains the same data in a compact format
+//! loadable at runtime (see `bytecode.rs` in syntaqlite-fmt).
 
 use std::collections::HashMap;
 use std::fmt::Write as _;
@@ -14,6 +16,15 @@ use std::fmt::Write as _;
 #[cfg(test)]
 use crate::node_parser::Storage;
 use crate::node_parser::{Field, Fmt, Item};
+
+use syntaqlite_fmt_bytecode::opcodes;
+use syntaqlite_fmt_bytecode::RawOp;
+
+/// Convert a field index (u16) to u8 for binary encoding, panicking if too large.
+fn idx_u8(idx: u16) -> u8 {
+    assert!(idx < 256, "field index {} too large for bytecode encoding", idx);
+    idx as u8
+}
 
 // ── String interning ────────────────────────────────────────────────────
 
@@ -108,7 +119,7 @@ fn build_field_map(fields: &[Field]) -> (Vec<FieldInfo>, HashMap<String, usize>)
     (infos, name_to_idx)
 }
 
-// ── Fmt → FmtOp compilation ────────────────────────────────────────────
+// ── Fmt → RawOp compilation ─────────────────────────────────────────────
 
 struct CompileCtx<'a> {
     strings: &'a mut StringTable,
@@ -171,63 +182,63 @@ impl<'a> CompileCtx<'a> {
 
 }
 
-/// Compile a sequence of Fmt nodes into FmtOp string representations.
-fn compile_seq(fmts: &[Fmt], ctx: &mut CompileCtx, ops: &mut Vec<String>) {
+/// Compile a sequence of Fmt nodes into RawOps.
+fn compile_seq(fmts: &[Fmt], ctx: &mut CompileCtx, ops: &mut Vec<RawOp>) {
     for fmt in fmts {
         compile_one(fmt, ctx, ops);
     }
 }
 
-fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<String>) {
+fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<RawOp>) {
     match fmt {
         Fmt::Text(s) => {
             let sid = ctx.strings.intern(s);
-            ops.push(format!("FmtOp::Keyword({})", sid));
+            ops.push(RawOp { opcode: opcodes::KEYWORD, a: 0, b: sid, c: 0 });
         }
         Fmt::Child(field) if field == "_item" => {
-            ops.push("FmtOp::ChildItem".to_string());
+            ops.push(RawOp::simple(opcodes::CHILD_ITEM));
         }
         Fmt::Child(field) => {
             let info = ctx.field(field);
-            ops.push(format!("FmtOp::Child({})", info.idx));
+            ops.push(RawOp { opcode: opcodes::CHILD, a: idx_u8(info.idx), b: 0, c: 0 });
         }
         Fmt::Span(field) => {
             let info = ctx.field(field);
-            ops.push(format!("FmtOp::Span({})", info.idx));
+            ops.push(RawOp { opcode: opcodes::SPAN, a: idx_u8(info.idx), b: 0, c: 0 });
         }
-        Fmt::Line => ops.push("FmtOp::Line".to_string()),
-        Fmt::SoftLine => ops.push("FmtOp::SoftLine".to_string()),
-        Fmt::HardLine => ops.push("FmtOp::HardLine".to_string()),
+        Fmt::Line => ops.push(RawOp::simple(opcodes::LINE)),
+        Fmt::SoftLine => ops.push(RawOp::simple(opcodes::SOFTLINE)),
+        Fmt::HardLine => ops.push(RawOp::simple(opcodes::HARDLINE)),
         Fmt::Group(body) => {
-            ops.push("FmtOp::GroupStart".to_string());
+            ops.push(RawOp::simple(opcodes::GROUP_START));
             compile_seq(body, ctx, ops);
-            ops.push("FmtOp::GroupEnd".to_string());
+            ops.push(RawOp::simple(opcodes::GROUP_END));
         }
         Fmt::Nest(body) => {
-            ops.push("FmtOp::NestStart(2)".to_string());
+            ops.push(RawOp { opcode: opcodes::NEST_START, a: 0, b: 2u16, c: 0 });
             compile_seq(body, ctx, ops);
-            ops.push("FmtOp::NestEnd".to_string());
+            ops.push(RawOp::simple(opcodes::NEST_END));
         }
         Fmt::IfSet { field, then, els } => {
+            let idx = idx_u8(ctx.field(field).idx);
             compile_conditional(
-                &format!("FmtOp::IfSet({}, {{SKIP}})", ctx.field(field).idx),
+                RawOp { opcode: opcodes::IF_SET, a: idx, b: 0, c: 0 },
                 then, els.as_deref(), ctx, ops,
             );
         }
         Fmt::IfFlag { field, bit, then, els } => {
-            // if_flag can be used on Bool fields (no dot) or Flags fields (with dot)
             let base_field = field.as_str();
             if ctx.is_bool_field(base_field) {
-                let info = ctx.field(base_field);
+                let idx = idx_u8(ctx.field(base_field).idx);
                 compile_conditional(
-                    &format!("FmtOp::IfBool({}, {{SKIP}})", info.idx),
+                    RawOp { opcode: opcodes::IF_BOOL, a: idx, b: 0, c: 0 },
                     then, els.as_deref(), ctx, ops,
                 );
             } else if ctx.is_flags_field(base_field) {
-                let info = ctx.field(base_field);
+                let idx = idx_u8(ctx.field(base_field).idx);
                 let mask = ctx.flag_mask(base_field, bit.as_deref());
                 compile_conditional(
-                    &format!("FmtOp::IfFlag({}, {}, {{SKIP}})", info.idx, mask),
+                    RawOp { opcode: opcodes::IF_FLAG, a: idx, b: mask as u16, c: 0 },
                     then, els.as_deref(), ctx, ops,
                 );
             } else {
@@ -235,26 +246,24 @@ fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<String>) {
             }
         }
         Fmt::IfEnum { field, variant, then, els } => {
-            let info = ctx.field(field);
+            let idx = idx_u8(ctx.field(field).idx);
             let ordinal = ctx.enum_ordinal(field, variant);
             compile_conditional(
-                &format!("FmtOp::IfEnum({}, {}, {{SKIP}})", info.idx, ordinal),
+                RawOp { opcode: opcodes::IF_ENUM, a: idx, b: ordinal, c: 0 },
                 then, els.as_deref(), ctx, ops,
             );
         }
         Fmt::IfSpan { field, then, els } => {
-            let info = ctx.field(field);
+            let idx = idx_u8(ctx.field(field).idx);
             compile_conditional(
-                &format!("FmtOp::IfSpan({}, {{SKIP}})", info.idx),
+                RawOp { opcode: opcodes::IF_SPAN, a: idx, b: 0, c: 0 },
                 then, els.as_deref(), ctx, ops,
             );
         }
         Fmt::Clause { keyword, field } => {
-            // clause("KW", field) expands to:
-            //   IfSet(field, skip) Line Keyword("KW") NestStart(2) Line Child(field) NestEnd EndIf
-            let field_idx = ctx.field(field).idx;
+            let field_idx = idx_u8(ctx.field(field).idx);
             compile_conditional(
-                &format!("FmtOp::IfSet({}, {{SKIP}})", field_idx),
+                RawOp { opcode: opcodes::IF_SET, a: field_idx, b: 0, c: 0 },
                 &[
                     Fmt::Line,
                     Fmt::Text(keyword.clone()),
@@ -266,40 +275,33 @@ fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<String>) {
             );
         }
         Fmt::Switch { field, cases, default } => {
-            // Compile as a chain of IfEnum/Else/EndIf blocks.
             compile_switch(field, cases, default.as_deref(), ctx, ops);
         }
         Fmt::EnumDisplay { field, mappings } => {
-            let field_idx = ctx.field(field).idx;
+            let field_idx = idx_u8(ctx.field(field).idx);
             let variants = ctx.enum_variants(field).to_vec();
             let base = ctx.enum_display.add(ctx.strings, &variants, mappings);
-            ops.push(format!("FmtOp::EnumDisplay({}, {})", field_idx, base));
+            ops.push(RawOp { opcode: opcodes::ENUM_DISPLAY, a: field_idx, b: base, c: 0 });
         }
         Fmt::ForEach { sep, body } => {
-            ops.push("FmtOp::ForEachSelfStart".to_string());
-            // The body uses `child(_item)` which compiles to ChildItem
+            ops.push(RawOp::simple(opcodes::FOR_EACH_SELF_START));
             for item in body {
                 compile_foreach_body_item(item, ctx, ops);
             }
             if let Some(sep_items) = sep {
-                // The first keyword/text becomes ForEachSep which handles
-                // the last-item check: on last iteration, it skips to
-                // ForEachEnd, also skipping any remaining separator items.
                 let mut emitted_sep = false;
                 for s in sep_items {
                     if !emitted_sep {
                         match s {
                             Fmt::Text(text) => {
                                 let sid = ctx.strings.intern(text);
-                                ops.push(format!("FmtOp::ForEachSep({})", sid));
+                                ops.push(RawOp { opcode: opcodes::FOR_EACH_SEP, a: 0, b: sid, c: 0 });
                                 emitted_sep = true;
                                 continue;
                             }
                             _ => {
-                                // Non-keyword first (e.g. hardline): insert
-                                // ForEachSep with empty string for skip logic
                                 let sid = ctx.strings.intern("");
-                                ops.push(format!("FmtOp::ForEachSep({})", sid));
+                                ops.push(RawOp { opcode: opcodes::FOR_EACH_SEP, a: 0, b: sid, c: 0 });
                                 emitted_sep = true;
                             }
                         }
@@ -308,35 +310,35 @@ fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<String>) {
                 }
                 if !emitted_sep {
                     let sid = ctx.strings.intern("");
-                    ops.push(format!("FmtOp::ForEachSep({})", sid));
+                    ops.push(RawOp { opcode: opcodes::FOR_EACH_SEP, a: 0, b: sid, c: 0 });
                 }
             }
-            ops.push("FmtOp::ForEachEnd".to_string());
+            ops.push(RawOp::simple(opcodes::FOR_EACH_END));
         }
     }
 }
 
 /// Compile a single item inside a for_each body, mapping `child(_item)` to `ChildItem`.
-fn compile_foreach_body_item(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<String>) {
+fn compile_foreach_body_item(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<RawOp>) {
     match fmt {
         Fmt::Child(name) if name == "_item" => {
-            ops.push("FmtOp::ChildItem".to_string());
+            ops.push(RawOp::simple(opcodes::CHILD_ITEM));
         }
         _ => compile_one(fmt, ctx, ops),
     }
 }
 
 /// Compile a conditional (IfXxx ... Else ... EndIf) with skip-count fixup.
-/// `head_template` must contain `{SKIP}` which gets replaced with the actual skip count.
+/// `head` must have `c = 0`; it will be set to the computed skip count.
 fn compile_conditional(
-    head_template: &str,
+    head: RawOp,
     then: &[Fmt],
     els: Option<&[Fmt]>,
     ctx: &mut CompileCtx,
-    ops: &mut Vec<String>,
+    ops: &mut Vec<RawOp>,
 ) {
     let head_pos = ops.len();
-    ops.push(String::new()); // placeholder for head
+    ops.push(head); // placeholder — c will be filled in
 
     // Compile then-branch
     let then_start = ops.len();
@@ -346,7 +348,7 @@ fn compile_conditional(
     if let Some(else_body) = els {
         // Add Else (placeholder)
         let else_pos = ops.len();
-        ops.push(String::new()); // placeholder for Else
+        ops.push(RawOp::simple(opcodes::ELSE_OP)); // c filled below
 
         // Compile else-branch
         let else_start = ops.len();
@@ -354,18 +356,15 @@ fn compile_conditional(
         let else_len = ops.len() - else_start;
 
         // EndIf
-        ops.push("FmtOp::EndIf".to_string());
+        ops.push(RawOp::simple(opcodes::END_IF));
 
-        // Fix up: head skip = then_len + 1 (to skip then-body + Else op)
-        ops[head_pos] = head_template.replace("{SKIP}", &(then_len + 1).to_string());
-        // Fix up: Else skip = else_len + 1 (to skip else-body + EndIf)
-        ops[else_pos] = format!("FmtOp::Else({})", else_len + 1);
+        // Fix up skip counts
+        ops[head_pos].c = (then_len + 1) as u16;
+        ops[else_pos].c = (else_len + 1) as u16;
     } else {
         // No else branch
-        ops.push("FmtOp::EndIf".to_string());
-
-        // Fix up: head skip = then_len + 1 (skip then-body + EndIf)
-        ops[head_pos] = head_template.replace("{SKIP}", &(then_len + 1).to_string());
+        ops.push(RawOp::simple(opcodes::END_IF));
+        ops[head_pos].c = (then_len + 1) as u16;
     }
 }
 
@@ -375,20 +374,13 @@ fn compile_switch(
     cases: &[(String, Vec<Fmt>)],
     default: Option<&[Fmt]>,
     ctx: &mut CompileCtx,
-    ops: &mut Vec<String>,
+    ops: &mut Vec<RawOp>,
 ) {
-    // Strategy: compile each case as IfEnum(field, ordinal, skip) ... then
-    // the next case follows. At the end, the default (if any).
-    //
-    // We need skip counts that jump to the end of the entire switch.
-    // Approach: compile all case bodies, then fix up skips.
+    let field_idx = idx_u8(ctx.field(field).idx);
 
-    let field_idx = ctx.field(field).idx;
-
-    // Collect compiled case bodies first to measure sizes
     struct CaseChunk {
         ordinal: u16,
-        body_ops: Vec<String>,
+        body_ops: Vec<RawOp>,
     }
     let mut chunks: Vec<CaseChunk> = Vec::new();
     for (variant, body) in cases {
@@ -403,18 +395,15 @@ fn compile_switch(
         compile_seq(def, ctx, &mut default_ops);
     }
 
-    // Compile as nested if-else chain:
-    // IfEnum(case0) { body0 } else { IfEnum(case1) { body1 } else { ... default ... } }
-
     fn emit_chain(
-        field_idx: u16,
+        field_idx: u8,
         chunks: &[CaseChunk],
-        default_ops: &[String],
-        ops: &mut Vec<String>,
+        default_ops: &[RawOp],
+        ops: &mut Vec<RawOp>,
     ) {
         if chunks.is_empty() {
             for op in default_ops {
-                ops.push(op.clone());
+                ops.push(*op);
             }
             return;
         }
@@ -430,25 +419,147 @@ fn compile_switch(
         let has_else = !else_ops.is_empty();
 
         if has_else {
-            ops.push(format!("FmtOp::IfEnum({}, {}, {})", field_idx, chunk.ordinal, then_len + 1));
+            ops.push(RawOp { opcode: opcodes::IF_ENUM, a: field_idx, b: chunk.ordinal, c: (then_len + 1) as u16 });
             for op in &chunk.body_ops {
-                ops.push(op.clone());
+                ops.push(*op);
             }
-            ops.push(format!("FmtOp::Else({})", else_ops.len() + 1));
+            ops.push(RawOp { opcode: opcodes::ELSE_OP, a: 0, b: 0, c: (else_ops.len() + 1) as u16 });
             for op in &else_ops {
-                ops.push(op.clone());
+                ops.push(*op);
             }
-            ops.push("FmtOp::EndIf".to_string());
+            ops.push(RawOp::simple(opcodes::END_IF));
         } else {
-            ops.push(format!("FmtOp::IfEnum({}, {}, {})", field_idx, chunk.ordinal, then_len + 1));
+            ops.push(RawOp { opcode: opcodes::IF_ENUM, a: field_idx, b: chunk.ordinal, c: (then_len + 1) as u16 });
             for op in &chunk.body_ops {
-                ops.push(op.clone());
+                ops.push(*op);
             }
-            ops.push("FmtOp::EndIf".to_string());
+            ops.push(RawOp::simple(opcodes::END_IF));
         }
     }
 
     emit_chain(field_idx, &chunks, &default_ops, ops);
+}
+
+// ── Shared compilation ──────────────────────────────────────────────────
+
+struct CompiledNode {
+    name: String,
+    ops: Vec<RawOp>,
+}
+
+struct CompiledFmt {
+    strings: StringTable,
+    enum_display: EnumDisplayTable,
+    nodes: Vec<CompiledNode>,
+    tag_count: usize,
+}
+
+/// Compile all items into the intermediate representation shared by both emitters.
+fn compile_all(items: &[Item]) -> CompiledFmt {
+    let enum_items: HashMap<String, Vec<String>> = items
+        .iter()
+        .filter_map(|item| match item {
+            Item::Enum { name, variants } => Some((name.clone(), variants.clone())),
+            _ => None,
+        })
+        .collect();
+
+    let flags_items: HashMap<String, Vec<(String, u32)>> = items
+        .iter()
+        .filter_map(|item| match item {
+            Item::Flags { name, flags } => Some((name.clone(), flags.clone())),
+            _ => None,
+        })
+        .collect();
+
+    let mut strings = StringTable::new();
+    let mut enum_display = EnumDisplayTable::new();
+    let mut compiled: Vec<CompiledNode> = Vec::new();
+
+    for item in items {
+        match item {
+            Item::Node { name, fields, fmt: Some(fmt_body) } => {
+                let (field_infos, field_map) = build_field_map(fields);
+                let mut ops = Vec::new();
+                let mut cctx = CompileCtx {
+                    strings: &mut strings,
+                    enum_display: &mut enum_display,
+                    field_infos: &field_infos,
+                    field_map: &field_map,
+                    enum_items: &enum_items,
+                    flags_items: &flags_items,
+                };
+                compile_seq(fmt_body, &mut cctx, &mut ops);
+                compiled.push(CompiledNode { name: name.clone(), ops });
+            }
+            Item::List { name, fmt: Some(fmt_body), .. } => {
+                let (field_infos, field_map) = build_field_map(&[]);
+                let mut ops = Vec::new();
+                let mut cctx = CompileCtx {
+                    strings: &mut strings,
+                    enum_display: &mut enum_display,
+                    field_infos: &field_infos,
+                    field_map: &field_map,
+                    enum_items: &enum_items,
+                    flags_items: &flags_items,
+                };
+                compile_seq(fmt_body, &mut cctx, &mut ops);
+                compiled.push(CompiledNode { name: name.clone(), ops });
+            }
+            Item::List { name, fmt: None, .. } => {
+                // Default list fmt: for_each(sep: ",") { child(_item) line }
+                let comma_sid = strings.intern(",");
+                let ops = vec![
+                    RawOp::simple(opcodes::FOR_EACH_SELF_START),
+                    RawOp::simple(opcodes::CHILD_ITEM),
+                    RawOp { opcode: opcodes::FOR_EACH_SEP, a: 0, b: comma_sid, c: 0 },
+                    RawOp::simple(opcodes::LINE),
+                    RawOp::simple(opcodes::FOR_EACH_END),
+                ];
+                compiled.push(CompiledNode { name: name.clone(), ops });
+            }
+            _ => {}
+        }
+    }
+
+    let tag_count = items
+        .iter()
+        .filter(|i| matches!(i, Item::Node { .. } | Item::List { .. }))
+        .count()
+        + 1;
+
+    CompiledFmt { strings, enum_display, nodes: compiled, tag_count }
+}
+
+// ── RawOp → Rust source text ────────────────────────────────────────────
+
+fn raw_op_to_string(op: &RawOp) -> String {
+    match op.opcode {
+        opcodes::KEYWORD => format!("FmtOp::Keyword({})", op.b),
+        opcodes::SPAN => format!("FmtOp::Span({})", op.a),
+        opcodes::CHILD => format!("FmtOp::Child({})", op.a),
+        opcodes::LINE => "FmtOp::Line".to_string(),
+        opcodes::SOFTLINE => "FmtOp::SoftLine".to_string(),
+        opcodes::HARDLINE => "FmtOp::HardLine".to_string(),
+        opcodes::GROUP_START => "FmtOp::GroupStart".to_string(),
+        opcodes::GROUP_END => "FmtOp::GroupEnd".to_string(),
+        opcodes::NEST_START => format!("FmtOp::NestStart({})", op.b as i16),
+        opcodes::NEST_END => "FmtOp::NestEnd".to_string(),
+        opcodes::IF_SET => format!("FmtOp::IfSet({}, {})", op.a, op.c),
+        opcodes::ELSE_OP => format!("FmtOp::Else({})", op.c),
+        opcodes::END_IF => "FmtOp::EndIf".to_string(),
+        opcodes::FOR_EACH_START => format!("FmtOp::ForEachStart({})", op.a),
+        opcodes::CHILD_ITEM => "FmtOp::ChildItem".to_string(),
+        opcodes::FOR_EACH_SEP => format!("FmtOp::ForEachSep({})", op.b),
+        opcodes::FOR_EACH_END => "FmtOp::ForEachEnd".to_string(),
+        opcodes::IF_BOOL => format!("FmtOp::IfBool({}, {})", op.a, op.c),
+        opcodes::IF_FLAG => format!("FmtOp::IfFlag({}, {}, {})", op.a, op.b, op.c),
+        opcodes::IF_ENUM => format!("FmtOp::IfEnum({}, {}, {})", op.a, op.b, op.c),
+        opcodes::IF_SPAN => format!("FmtOp::IfSpan({}, {})", op.a, op.c),
+        opcodes::ENUM_DISPLAY => format!("FmtOp::EnumDisplay({}, {})", op.a, op.b),
+        opcodes::FOR_EACH_SELF_START => "FmtOp::ForEachSelfStart".to_string(),
+        _ => panic!("unknown opcode {}", op.opcode),
+    }
 }
 
 // ── Rust code emission ──────────────────────────────────────────────────
@@ -468,99 +579,10 @@ fn upper_snake(name: &str) -> String {
     pascal_to_snake(name).to_uppercase()
 }
 
-/// Generate the complete `fmt_ops.rs` file.
+/// Generate the complete `fmt_ops.rs` file (const-array style, used by tests).
 pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
-    // Build enum variant maps (name → ordered variants)
-    let enum_items: HashMap<String, Vec<String>> = items
-        .iter()
-        .filter_map(|item| match item {
-            Item::Enum { name, variants } => Some((name.clone(), variants.clone())),
-            _ => None,
-        })
-        .collect();
+    let compiled = compile_all(items);
 
-    // Build flags maps
-    let flags_items: HashMap<String, Vec<(String, u32)>> = items
-        .iter()
-        .filter_map(|item| match item {
-            Item::Flags { name, flags } => Some((name.clone(), flags.clone())),
-            _ => None,
-        })
-        .collect();
-
-    let mut strings = StringTable::new();
-    let mut enum_display = EnumDisplayTable::new();
-
-    // Compile all nodes and lists with fmt blocks
-    struct CompiledNode {
-        name: String,
-        ops: Vec<String>,
-    }
-    let mut compiled: Vec<CompiledNode> = Vec::new();
-
-    for item in items {
-        match item {
-            Item::Node { name, fields, fmt: Some(fmt_body) } => {
-                let (field_infos, field_map) = build_field_map(fields);
-                let mut ops = Vec::new();
-                let mut cctx = CompileCtx {
-                    strings: &mut strings,
-                    enum_display: &mut enum_display,
-                    field_infos: &field_infos,
-                    field_map: &field_map,
-                    enum_items: &enum_items,
-                    flags_items: &flags_items,
-                };
-                compile_seq(fmt_body, &mut cctx, &mut ops);
-                compiled.push(CompiledNode {
-                    name: name.clone(),
-                    ops,
-                });
-            }
-            Item::List { name, fmt: Some(fmt_body), .. } => {
-                let (field_infos, field_map) = build_field_map(&[]);
-                let mut ops = Vec::new();
-                let mut cctx = CompileCtx {
-                    strings: &mut strings,
-                    enum_display: &mut enum_display,
-                    field_infos: &field_infos,
-                    field_map: &field_map,
-                    enum_items: &enum_items,
-                    flags_items: &flags_items,
-                };
-                compile_seq(fmt_body, &mut cctx, &mut ops);
-                compiled.push(CompiledNode {
-                    name: name.clone(),
-                    ops,
-                });
-            }
-            Item::List { name, fmt: None, .. } => {
-                // Default list fmt: for_each(sep: ",") { child(_item) line }
-                let comma_sid = strings.intern(",");
-                let ops = vec![
-                    "FmtOp::ForEachSelfStart".to_string(),
-                    "FmtOp::ChildItem".to_string(),
-                    format!("FmtOp::ForEachSep({})", comma_sid),
-                    "FmtOp::Line".to_string(),
-                    "FmtOp::ForEachEnd".to_string(),
-                ];
-                compiled.push(CompiledNode {
-                    name: name.clone(),
-                    ops,
-                });
-            }
-            _ => {}
-        }
-    }
-
-    // Count total tags for dispatch table (nodes + lists + Null)
-    let tag_count = items
-        .iter()
-        .filter(|i| matches!(i, Item::Node { .. } | Item::List { .. }))
-        .count()
-        + 1;
-
-    // -- Emit Rust source --
     let mut out = String::new();
     writeln!(out, "// @generated by syntaqlite-codegen — DO NOT EDIT").unwrap();
     writeln!(out).unwrap();
@@ -574,7 +596,7 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
 
     // String table
     writeln!(out, "const STRINGS: &[&str] = &[").unwrap();
-    for s in &strings.strings {
+    for s in &compiled.strings.strings {
         writeln!(out, "    {:?},", s).unwrap();
     }
     writeln!(out, "];").unwrap();
@@ -582,30 +604,28 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
 
     // Enum display table
     writeln!(out, "const ENUM_DISPLAY: &[u16] = &[").unwrap();
-    for &sid in &enum_display.entries {
+    for &sid in &compiled.enum_display.entries {
         write!(out, "{}, ", sid).unwrap();
     }
     writeln!(out, "];").unwrap();
     writeln!(out).unwrap();
 
     // Per-node: const ops array
-    for cn in &compiled {
+    for cn in &compiled.nodes {
         let upper = upper_snake(&cn.name);
-
-        // Ops array
         writeln!(out, "const FMT_{}: &[FmtOp] = &[", upper).unwrap();
         for op in &cn.ops {
-            writeln!(out, "    {},", op).unwrap();
+            writeln!(out, "    {},", raw_op_to_string(op)).unwrap();
         }
         writeln!(out, "];").unwrap();
         writeln!(out).unwrap();
     }
 
     // Dispatch table
-    writeln!(out, "pub const DISPATCH: [Option<NodeFmt>; {}] = {{", tag_count).unwrap();
+    writeln!(out, "pub const DISPATCH: [Option<NodeFmt>; {}] = {{", compiled.tag_count).unwrap();
     writeln!(out, "    const NONE: Option<NodeFmt> = None;").unwrap();
-    writeln!(out, "    let mut t = [NONE; {}];", tag_count).unwrap();
-    for cn in &compiled {
+    writeln!(out, "    let mut t = [NONE; {}];", compiled.tag_count).unwrap();
+    for cn in &compiled.nodes {
         let upper = upper_snake(&cn.name);
         writeln!(
             out,
@@ -621,6 +641,51 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
     writeln!(out, "pub const CTX: FmtCtx<'static> = FmtCtx {{ strings: STRINGS, enum_display: ENUM_DISPLAY }};").unwrap();
 
     out
+}
+
+// ── Binary bytecode emission ────────────────────────────────────────────
+
+/// Generate binary bytecode for the formatter.
+///
+/// Format: `[Header:16] [StringTable] [EnumDisplay] [OpPool] [DispatchTable]`
+pub fn generate_fmt_bytecode(items: &[Item]) -> Vec<u8> {
+    let compiled = compile_all(items);
+
+    // Flatten all ops into a single pool, recording each node's offset and length.
+    let mut op_pool: Vec<RawOp> = Vec::new();
+    let mut node_ranges: Vec<(&str, u16, u16)> = Vec::new(); // (name, offset, length)
+
+    for cn in &compiled.nodes {
+        let offset = op_pool.len() as u16;
+        let length = cn.ops.len() as u16;
+        op_pool.extend_from_slice(&cn.ops);
+        node_ranges.push((&cn.name, offset, length));
+    }
+
+    // Build ordinal map: node name → tag ordinal.
+    // Ordinals are assigned sequentially starting from 1 (0 = Null tag).
+    let mut ordinal_map: HashMap<&str, usize> = HashMap::new();
+    let mut next_ordinal = 1usize;
+    for item in items {
+        match item {
+            Item::Node { name, .. } | Item::List { name, .. } => {
+                ordinal_map.insert(name, next_ordinal);
+                next_ordinal += 1;
+            }
+            _ => {}
+        }
+    }
+
+    // Build dispatch table
+    let mut dispatch_table: Vec<(u16, u16)> = vec![(0xFFFF, 0); compiled.tag_count];
+    for &(name, offset, length) in &node_ranges {
+        if let Some(&ordinal) = ordinal_map.get(name) {
+            dispatch_table[ordinal] = (offset, length);
+        }
+    }
+
+    let string_refs: Vec<&str> = compiled.strings.strings.iter().map(|s| s.as_str()).collect();
+    syntaqlite_fmt_bytecode::encode(&string_refs, &compiled.enum_display.entries, &op_pool, &dispatch_table)
 }
 
 #[cfg(test)]
@@ -792,5 +857,61 @@ mod tests {
         assert!(output.contains("DISPATCH: [Option<NodeFmt>; 3]"));
         assert!(output.contains("NodeTag::Foo"));
         assert!(output.contains("NodeTag::FooList"));
+    }
+
+    #[test]
+    fn bytecode_round_trip() {
+        let items = vec![
+            Item::Enum {
+                name: "BinOp".into(),
+                variants: vec!["PLUS".into(), "MINUS".into()],
+            },
+            Item::Node {
+                name: "Literal".into(),
+                fields: vec![Field {
+                    name: "source".into(),
+                    storage: Storage::Inline,
+                    type_name: "SyntaqliteSourceSpan".into(),
+                }],
+                fmt: Some(vec![Fmt::Span("source".into())]),
+            },
+            Item::Node {
+                name: "Test".into(),
+                fields: vec![
+                    Field { name: "op".into(), storage: Storage::Inline, type_name: "BinOp".into() },
+                ],
+                fmt: Some(vec![
+                    Fmt::EnumDisplay {
+                        field: "op".into(),
+                        mappings: vec![
+                            ("PLUS".into(), "+".into()),
+                            ("MINUS".into(), "-".into()),
+                        ],
+                    },
+                ]),
+            },
+            Item::List {
+                name: "TestList".into(),
+                child_type: "Test".into(),
+                fmt: None,
+            },
+        ];
+
+        let bytecode = generate_fmt_bytecode(&items);
+
+        // Verify header
+        assert_eq!(&bytecode[0..4], b"SQFM");
+        let version = u16::from_le_bytes([bytecode[4], bytecode[5]]);
+        assert_eq!(version, 1);
+        let hash = u16::from_le_bytes([bytecode[6], bytecode[7]]);
+        assert_eq!(hash, syntaqlite_fmt_bytecode::BYTECODE_VERSION_HASH);
+
+        // Verify counts
+        let string_count = u16::from_le_bytes([bytecode[8], bytecode[9]]);
+        assert!(string_count > 0);
+        let dispatch_count = u16::from_le_bytes([bytecode[14], bytecode[15]]);
+        // 4 items (Literal, Test, TestList) + 1 (Null) = 4 tags
+        // But Enum doesn't count, so: 3 nodes/lists + 1 Null = 4
+        assert_eq!(dispatch_count, 4);
     }
 }

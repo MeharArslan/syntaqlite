@@ -273,6 +273,7 @@ dependencies = [
  "cc",
  "clap",
  "syntaqlite-codegen-utils",
+ "syntaqlite-fmt-bytecode",
  "tempfile",
 ]
 
@@ -284,8 +285,13 @@ version = "0.1.0"
 name = "syntaqlite-fmt"
 version = "0.1.0"
 dependencies = [
+ "syntaqlite-fmt-bytecode",
  "syntaqlite-parser",
 ]
+
+[[package]]
+name = "syntaqlite-fmt-bytecode"
+version = "0.1.0"
 
 [[package]]
 name = "syntaqlite-parser"

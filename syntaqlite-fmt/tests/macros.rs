@@ -1,6 +1,5 @@
 /// Integration tests: macro regions are emitted verbatim by the formatter.
-use syntaqlite_fmt::generated::fmt_ops::{CTX, DISPATCH};
-use syntaqlite_fmt::{format_node, render, DocArena, FormatConfig};
+use syntaqlite_fmt::{ctx, dispatch, format_node, render, DocArena, FormatConfig};
 use syntaqlite_parser::{Parser, TokenType};
 
 /// Simulate a macro call "foo!(1 + 2)" that expands to tokens 1, +, 2.
@@ -54,7 +53,7 @@ fn macro_call_emitted_verbatim() {
     let root = session.finish().unwrap().expect("expected a statement");
 
     let mut arena = DocArena::new();
-    let doc = format_node(&DISPATCH, &CTX, &session, root, &mut arena);
+    let doc = format_node(dispatch(), ctx(), &session, root, &mut arena);
     let result = render(&arena, doc, &FormatConfig::default());
 
     assert_eq!(result, "SELECT foo!(1 + 2), 3");
@@ -98,7 +97,7 @@ fn macro_multi_node_emitted_once() {
     let root = session.finish().unwrap().expect("expected a statement");
 
     let mut arena = DocArena::new();
-    let doc = format_node(&DISPATCH, &CTX, &session, root, &mut arena);
+    let doc = format_node(dispatch(), ctx(), &session, root, &mut arena);
     let result = render(&arena, doc, &FormatConfig::default());
 
     assert_eq!(result, "SELECT macro!(a, b)");
@@ -162,7 +161,7 @@ fn macro_multi_node_no_extra_separator() {
     let root = session.finish().unwrap().expect("expected a statement");
 
     let mut arena = DocArena::new();
-    let doc = format_node(&DISPATCH, &CTX, &session, root, &mut arena);
+    let doc = format_node(dispatch(), ctx(), &session, root, &mut arena);
     let result = render(&arena, doc, &FormatConfig::default());
 
     assert_eq!(result, "SELECT foo!(a, b), c");
@@ -198,7 +197,7 @@ fn no_macro_regions_formats_normally() {
     let root = session.finish().unwrap().expect("expected a statement");
 
     let mut arena = DocArena::new();
-    let doc = format_node(&DISPATCH, &CTX, &session, root, &mut arena);
+    let doc = format_node(dispatch(), ctx(), &session, root, &mut arena);
     let result = render(&arena, doc, &FormatConfig::default());
 
     // Normal formatting: spaces normalized, no verbatim override.

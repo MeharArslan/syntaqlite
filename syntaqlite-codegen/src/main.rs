@@ -198,9 +198,9 @@ fn main() {
                 fs::write(rust_gen_dir.join("mod.rs"), "pub mod nodes;\npub mod tokens;\n")
                     .map_err(|e| format!("Failed to write mod.rs: {}", e))?;
 
-                // Step 6: Generate fmt ops for syntaqlite-fmt
+                // Step 6: Generate fmt bytecode and module for syntaqlite-fmt
                 if args.verbose {
-                    eprintln!("Generating fmt ops...");
+                    eprintln!("Generating fmt bytecode...");
                 }
                 let fmt_gen_dir = Path::new(&output_dir)
                     .parent()
@@ -211,12 +211,9 @@ fn main() {
                 fs::create_dir_all(&fmt_gen_dir)
                     .map_err(|e| format!("Failed to create fmt generated directory: {}", e))?;
 
-                let rust_fmt_ops = syntaqlite_codegen::fmt_compiler::generate_rust_fmt_ops(&all_items);
-                fs::write(fmt_gen_dir.join("fmt_ops.rs"), &rust_fmt_ops)
-                    .map_err(|e| format!("Failed to write fmt_ops.rs: {}", e))?;
-
-                fs::write(fmt_gen_dir.join("mod.rs"), "pub mod fmt_ops;\n")
-                    .map_err(|e| format!("Failed to write fmt mod.rs: {}", e))?;
+                let bytecode = syntaqlite_codegen::fmt_compiler::generate_fmt_bytecode(&all_items);
+                fs::write(fmt_gen_dir.join("fmt.bin"), &bytecode)
+                    .map_err(|e| format!("Failed to write fmt.bin: {}", e))?;
 
                 if args.verbose {
                     eprintln!("Code generation complete");

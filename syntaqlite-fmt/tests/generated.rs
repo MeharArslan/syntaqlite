@@ -1,7 +1,6 @@
-/// Integration tests exercising the generated DISPATCH table + CTX
+/// Integration tests exercising the generated dispatch table + ctx
 /// with the hand-written format_node and renderer.
-use syntaqlite_fmt::generated::fmt_ops::{CTX, DISPATCH};
-use syntaqlite_fmt::{format_node, render, DocArena, FormatConfig};
+use syntaqlite_fmt::{ctx, dispatch, format_node, render, DocArena, FormatConfig};
 use syntaqlite_parser::Parser;
 
 fn format_sql(sql: &str) -> String {
@@ -13,7 +12,7 @@ fn format_sql_with(sql: &str, config: &FormatConfig) -> String {
     let mut session = parser.parse(sql);
     let root = session.next_statement().unwrap().unwrap();
     let mut arena = DocArena::new();
-    let doc = format_node(&DISPATCH, &CTX, &session, root, &mut arena);
+    let doc = format_node(dispatch(), ctx(), &session, root, &mut arena);
     render(&arena, doc, config)
 }
 
