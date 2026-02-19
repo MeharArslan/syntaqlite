@@ -1,6 +1,6 @@
 /// Integration tests: macro regions are emitted verbatim by the formatter.
 use syntaqlite::low_level::TokenParser;
-use syntaqlite::tokens::TokenType;
+use syntaqlite::low_level::TokenType;
 
 fn runtime_formatter() -> syntaqlite_runtime::fmt::Formatter<'static> {
     syntaqlite_runtime::fmt::Formatter::new(syntaqlite::low_level::Sqlite::dialect()).unwrap()

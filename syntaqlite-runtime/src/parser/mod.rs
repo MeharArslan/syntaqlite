@@ -1,6 +1,7 @@
 pub(crate) mod ffi;
 mod parser;
 mod token_parser;
+#[doc(hidden)]
 pub mod nodes;
 mod tokenizer;
 mod typed_list;

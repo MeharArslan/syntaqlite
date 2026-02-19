@@ -1,3 +1,4 @@
+#[doc(hidden)]
 pub mod bytecode;
 mod doc;
 mod formatter;

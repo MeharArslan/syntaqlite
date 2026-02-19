@@ -1,6 +1,5 @@
 mod ffi;
 pub mod ast;
-pub mod tokens;
 mod wrappers;
 
 use std::sync::LazyLock;
@@ -17,9 +16,12 @@ static DIALECT: LazyLock<syntaqlite_runtime::Dialect<'static>> =
 
 // ── Re-exports ─────────────────────────────────────────────────────────
 
+pub use syntaqlite_runtime::NodeId;
+
 /// Low-level APIs for advanced use cases (e.g. custom token feeding/tokenizing).
 pub mod low_level {
     pub use crate::wrappers::{TokenFeeder, TokenParser, Tokenizer, TokenCursor};
+    pub use crate::tokens::TokenType;
 
     /// Marker type for the SQLite dialect.
     pub struct Sqlite;
@@ -32,6 +34,13 @@ pub mod low_level {
     }
 }
 
+/// Access the SQLite dialect handle (for use with `syntaqlite_runtime` APIs).
+pub fn dialect() -> &'static syntaqlite_runtime::Dialect<'static> {
+    &DIALECT
+}
+
 pub use wrappers::{Formatter, Parser, StatementCursor};
 pub use syntaqlite_runtime::ParseError;
 pub use syntaqlite_runtime::fmt::{FormatConfig, KeywordCase};
+
+mod tokens;

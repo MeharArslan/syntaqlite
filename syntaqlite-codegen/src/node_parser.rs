@@ -14,6 +14,7 @@ pub enum Item {
     Enum { name: String, variants: Vec<String> },
     Flags { name: String, flags: Vec<(String, u32)> },
     List { name: String, child_type: String, fmt: Option<Vec<Fmt>> },
+    Abstract { name: String, members: Vec<String> },
 }
 
 impl Item {
@@ -170,6 +171,7 @@ impl Parser {
         if self.at("enum") { self.advance(); return self.parse_enum(); }
         if self.at("flags") { self.advance(); return self.parse_flags(); }
         if self.at("list") { self.advance(); return self.parse_list(); }
+        if self.at("abstract") { self.advance(); return self.parse_abstract(); }
         Err(format!("expected item keyword, got {:?}", self.peek()))
     }
 
@@ -216,6 +218,15 @@ impl Parser {
         }
         self.advance();
         Ok(Item::Flags { name, flags })
+    }
+
+    fn parse_abstract(&mut self) -> Result<Item, String> {
+        let name = self.ident()?;
+        self.expect(&Token::LBrace)?;
+        let mut members = Vec::new();
+        while !self.at_tok(&Token::RBrace) { members.push(self.ident()?); }
+        self.advance();
+        Ok(Item::Abstract { name, members })
     }
 
     fn parse_list(&mut self) -> Result<Item, String> {

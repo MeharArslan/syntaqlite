@@ -2,7 +2,7 @@
 
 #![allow(dead_code)]
 
-use syntaqlite_runtime::{NodeId, SourceSpan};
+use syntaqlite_runtime::parser::{NodeId, SourceSpan};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]

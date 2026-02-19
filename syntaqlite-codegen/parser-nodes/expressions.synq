@@ -43,3 +43,23 @@ node Literal {
 }
 
 list ExprList { Expr }
+
+abstract Expr {
+  BinaryExpr UnaryExpr Literal ColumnRef Variable
+  FunctionCall AggregateFunctionCall
+  CastExpr CollateExpr CaseExpr
+  IsExpr BetweenExpr LikeExpr InExpr
+  SubqueryExpr ExistsExpr RaiseExpr
+}
+
+abstract Stmt {
+  SelectStmt CompoundSelect ValuesClause WithClause
+  InsertStmt UpdateStmt DeleteStmt
+  CreateTableStmt CreateIndexStmt CreateViewStmt
+  CreateTriggerStmt CreateVirtualTableStmt
+  DropStmt AlterTableStmt
+  TransactionStmt SavepointStmt
+  PragmaStmt AnalyzeStmt
+  AttachStmt DetachStmt VacuumStmt
+  ExplainStmt
+}

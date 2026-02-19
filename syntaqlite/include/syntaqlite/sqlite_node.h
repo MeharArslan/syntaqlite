@@ -984,6 +984,264 @@ typedef union SyntaqliteNode {
     SyntaqliteFilterOver filter_over;
 } SyntaqliteNode;
 
+// ============ Abstract Type: Expr ============
+
+typedef union SyntaqliteExpr {
+    uint32_t tag;
+    SyntaqliteBinaryExpr binary_expr;
+    SyntaqliteUnaryExpr unary_expr;
+    SyntaqliteLiteral literal;
+    SyntaqliteColumnRef column_ref;
+    SyntaqliteVariable variable;
+    SyntaqliteFunctionCall function_call;
+    SyntaqliteAggregateFunctionCall aggregate_function_call;
+    SyntaqliteCastExpr cast_expr;
+    SyntaqliteCollateExpr collate_expr;
+    SyntaqliteCaseExpr case_expr;
+    SyntaqliteIsExpr is_expr;
+    SyntaqliteBetweenExpr between_expr;
+    SyntaqliteLikeExpr like_expr;
+    SyntaqliteInExpr in_expr;
+    SyntaqliteSubqueryExpr subquery_expr;
+    SyntaqliteExistsExpr exists_expr;
+    SyntaqliteRaiseExpr raise_expr;
+} SyntaqliteExpr;
+
+static inline int syntaqlite_is_expr(SyntaqliteNodeTag tag) {
+    switch (tag) {
+        case SYNTAQLITE_NODE_BINARY_EXPR: return 1;
+        case SYNTAQLITE_NODE_UNARY_EXPR: return 1;
+        case SYNTAQLITE_NODE_LITERAL: return 1;
+        case SYNTAQLITE_NODE_COLUMN_REF: return 1;
+        case SYNTAQLITE_NODE_VARIABLE: return 1;
+        case SYNTAQLITE_NODE_FUNCTION_CALL: return 1;
+        case SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL: return 1;
+        case SYNTAQLITE_NODE_CAST_EXPR: return 1;
+        case SYNTAQLITE_NODE_COLLATE_EXPR: return 1;
+        case SYNTAQLITE_NODE_CASE_EXPR: return 1;
+        case SYNTAQLITE_NODE_IS_EXPR: return 1;
+        case SYNTAQLITE_NODE_BETWEEN_EXPR: return 1;
+        case SYNTAQLITE_NODE_LIKE_EXPR: return 1;
+        case SYNTAQLITE_NODE_IN_EXPR: return 1;
+        case SYNTAQLITE_NODE_SUBQUERY_EXPR: return 1;
+        case SYNTAQLITE_NODE_EXISTS_EXPR: return 1;
+        case SYNTAQLITE_NODE_RAISE_EXPR: return 1;
+        default: return 0;
+    }
+}
+
+static inline const SyntaqliteBinaryExpr* syntaqlite_expr_as_binary_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_BINARY_EXPR ? &node->binary_expr : NULL;
+}
+
+static inline const SyntaqliteUnaryExpr* syntaqlite_expr_as_unary_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_UNARY_EXPR ? &node->unary_expr : NULL;
+}
+
+static inline const SyntaqliteLiteral* syntaqlite_expr_as_literal(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_LITERAL ? &node->literal : NULL;
+}
+
+static inline const SyntaqliteColumnRef* syntaqlite_expr_as_column_ref(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_COLUMN_REF ? &node->column_ref : NULL;
+}
+
+static inline const SyntaqliteVariable* syntaqlite_expr_as_variable(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_VARIABLE ? &node->variable : NULL;
+}
+
+static inline const SyntaqliteFunctionCall* syntaqlite_expr_as_function_call(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_FUNCTION_CALL ? &node->function_call : NULL;
+}
+
+static inline const SyntaqliteAggregateFunctionCall* syntaqlite_expr_as_aggregate_function_call(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL ? &node->aggregate_function_call : NULL;
+}
+
+static inline const SyntaqliteCastExpr* syntaqlite_expr_as_cast_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_CAST_EXPR ? &node->cast_expr : NULL;
+}
+
+static inline const SyntaqliteCollateExpr* syntaqlite_expr_as_collate_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_COLLATE_EXPR ? &node->collate_expr : NULL;
+}
+
+static inline const SyntaqliteCaseExpr* syntaqlite_expr_as_case_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_CASE_EXPR ? &node->case_expr : NULL;
+}
+
+static inline const SyntaqliteIsExpr* syntaqlite_expr_as_is_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_IS_EXPR ? &node->is_expr : NULL;
+}
+
+static inline const SyntaqliteBetweenExpr* syntaqlite_expr_as_between_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_BETWEEN_EXPR ? &node->between_expr : NULL;
+}
+
+static inline const SyntaqliteLikeExpr* syntaqlite_expr_as_like_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_LIKE_EXPR ? &node->like_expr : NULL;
+}
+
+static inline const SyntaqliteInExpr* syntaqlite_expr_as_in_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_IN_EXPR ? &node->in_expr : NULL;
+}
+
+static inline const SyntaqliteSubqueryExpr* syntaqlite_expr_as_subquery_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_SUBQUERY_EXPR ? &node->subquery_expr : NULL;
+}
+
+static inline const SyntaqliteExistsExpr* syntaqlite_expr_as_exists_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_EXISTS_EXPR ? &node->exists_expr : NULL;
+}
+
+static inline const SyntaqliteRaiseExpr* syntaqlite_expr_as_raise_expr(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_RAISE_EXPR ? &node->raise_expr : NULL;
+}
+
+// ============ Abstract Type: Stmt ============
+
+typedef union SyntaqliteStmt {
+    uint32_t tag;
+    SyntaqliteSelectStmt select_stmt;
+    SyntaqliteCompoundSelect compound_select;
+    SyntaqliteValuesClause values_clause;
+    SyntaqliteWithClause with_clause;
+    SyntaqliteInsertStmt insert_stmt;
+    SyntaqliteUpdateStmt update_stmt;
+    SyntaqliteDeleteStmt delete_stmt;
+    SyntaqliteCreateTableStmt create_table_stmt;
+    SyntaqliteCreateIndexStmt create_index_stmt;
+    SyntaqliteCreateViewStmt create_view_stmt;
+    SyntaqliteCreateTriggerStmt create_trigger_stmt;
+    SyntaqliteCreateVirtualTableStmt create_virtual_table_stmt;
+    SyntaqliteDropStmt drop_stmt;
+    SyntaqliteAlterTableStmt alter_table_stmt;
+    SyntaqliteTransactionStmt transaction_stmt;
+    SyntaqliteSavepointStmt savepoint_stmt;
+    SyntaqlitePragmaStmt pragma_stmt;
+    SyntaqliteAnalyzeStmt analyze_stmt;
+    SyntaqliteAttachStmt attach_stmt;
+    SyntaqliteDetachStmt detach_stmt;
+    SyntaqliteVacuumStmt vacuum_stmt;
+    SyntaqliteExplainStmt explain_stmt;
+} SyntaqliteStmt;
+
+static inline int syntaqlite_is_stmt(SyntaqliteNodeTag tag) {
+    switch (tag) {
+        case SYNTAQLITE_NODE_SELECT_STMT: return 1;
+        case SYNTAQLITE_NODE_COMPOUND_SELECT: return 1;
+        case SYNTAQLITE_NODE_VALUES_CLAUSE: return 1;
+        case SYNTAQLITE_NODE_WITH_CLAUSE: return 1;
+        case SYNTAQLITE_NODE_INSERT_STMT: return 1;
+        case SYNTAQLITE_NODE_UPDATE_STMT: return 1;
+        case SYNTAQLITE_NODE_DELETE_STMT: return 1;
+        case SYNTAQLITE_NODE_CREATE_TABLE_STMT: return 1;
+        case SYNTAQLITE_NODE_CREATE_INDEX_STMT: return 1;
+        case SYNTAQLITE_NODE_CREATE_VIEW_STMT: return 1;
+        case SYNTAQLITE_NODE_CREATE_TRIGGER_STMT: return 1;
+        case SYNTAQLITE_NODE_CREATE_VIRTUAL_TABLE_STMT: return 1;
+        case SYNTAQLITE_NODE_DROP_STMT: return 1;
+        case SYNTAQLITE_NODE_ALTER_TABLE_STMT: return 1;
+        case SYNTAQLITE_NODE_TRANSACTION_STMT: return 1;
+        case SYNTAQLITE_NODE_SAVEPOINT_STMT: return 1;
+        case SYNTAQLITE_NODE_PRAGMA_STMT: return 1;
+        case SYNTAQLITE_NODE_ANALYZE_STMT: return 1;
+        case SYNTAQLITE_NODE_ATTACH_STMT: return 1;
+        case SYNTAQLITE_NODE_DETACH_STMT: return 1;
+        case SYNTAQLITE_NODE_VACUUM_STMT: return 1;
+        case SYNTAQLITE_NODE_EXPLAIN_STMT: return 1;
+        default: return 0;
+    }
+}
+
+static inline const SyntaqliteSelectStmt* syntaqlite_stmt_as_select_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_SELECT_STMT ? &node->select_stmt : NULL;
+}
+
+static inline const SyntaqliteCompoundSelect* syntaqlite_stmt_as_compound_select(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_COMPOUND_SELECT ? &node->compound_select : NULL;
+}
+
+static inline const SyntaqliteValuesClause* syntaqlite_stmt_as_values_clause(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_VALUES_CLAUSE ? &node->values_clause : NULL;
+}
+
+static inline const SyntaqliteWithClause* syntaqlite_stmt_as_with_clause(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_WITH_CLAUSE ? &node->with_clause : NULL;
+}
+
+static inline const SyntaqliteInsertStmt* syntaqlite_stmt_as_insert_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_INSERT_STMT ? &node->insert_stmt : NULL;
+}
+
+static inline const SyntaqliteUpdateStmt* syntaqlite_stmt_as_update_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_UPDATE_STMT ? &node->update_stmt : NULL;
+}
+
+static inline const SyntaqliteDeleteStmt* syntaqlite_stmt_as_delete_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_DELETE_STMT ? &node->delete_stmt : NULL;
+}
+
+static inline const SyntaqliteCreateTableStmt* syntaqlite_stmt_as_create_table_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_CREATE_TABLE_STMT ? &node->create_table_stmt : NULL;
+}
+
+static inline const SyntaqliteCreateIndexStmt* syntaqlite_stmt_as_create_index_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_CREATE_INDEX_STMT ? &node->create_index_stmt : NULL;
+}
+
+static inline const SyntaqliteCreateViewStmt* syntaqlite_stmt_as_create_view_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_CREATE_VIEW_STMT ? &node->create_view_stmt : NULL;
+}
+
+static inline const SyntaqliteCreateTriggerStmt* syntaqlite_stmt_as_create_trigger_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_CREATE_TRIGGER_STMT ? &node->create_trigger_stmt : NULL;
+}
+
+static inline const SyntaqliteCreateVirtualTableStmt* syntaqlite_stmt_as_create_virtual_table_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_CREATE_VIRTUAL_TABLE_STMT ? &node->create_virtual_table_stmt : NULL;
+}
+
+static inline const SyntaqliteDropStmt* syntaqlite_stmt_as_drop_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_DROP_STMT ? &node->drop_stmt : NULL;
+}
+
+static inline const SyntaqliteAlterTableStmt* syntaqlite_stmt_as_alter_table_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_ALTER_TABLE_STMT ? &node->alter_table_stmt : NULL;
+}
+
+static inline const SyntaqliteTransactionStmt* syntaqlite_stmt_as_transaction_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_TRANSACTION_STMT ? &node->transaction_stmt : NULL;
+}
+
+static inline const SyntaqliteSavepointStmt* syntaqlite_stmt_as_savepoint_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_SAVEPOINT_STMT ? &node->savepoint_stmt : NULL;
+}
+
+static inline const SyntaqlitePragmaStmt* syntaqlite_stmt_as_pragma_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_PRAGMA_STMT ? &node->pragma_stmt : NULL;
+}
+
+static inline const SyntaqliteAnalyzeStmt* syntaqlite_stmt_as_analyze_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_ANALYZE_STMT ? &node->analyze_stmt : NULL;
+}
+
+static inline const SyntaqliteAttachStmt* syntaqlite_stmt_as_attach_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_ATTACH_STMT ? &node->attach_stmt : NULL;
+}
+
+static inline const SyntaqliteDetachStmt* syntaqlite_stmt_as_detach_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_DETACH_STMT ? &node->detach_stmt : NULL;
+}
+
+static inline const SyntaqliteVacuumStmt* syntaqlite_stmt_as_vacuum_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_VACUUM_STMT ? &node->vacuum_stmt : NULL;
+}
+
+static inline const SyntaqliteExplainStmt* syntaqlite_stmt_as_explain_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_EXPLAIN_STMT ? &node->explain_stmt : NULL;
+}
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,7 +1,11 @@
 use std::ops::Range;
 
+use syntaqlite_runtime::parser::{CursorBase, MacroRegion, Trivia};
+
 use crate::ast::Node;
-use crate::tokens::TokenType;
+use crate::low_level::TokenType;
+use crate::NodeId;
+use crate::ParseError;
 
 // ── Parser ──────────────────────────────────────────────────────────────
 
@@ -16,7 +20,7 @@ impl Parser {
     /// Create a new parser for the SQLite dialect with default configuration.
     pub fn new() -> Self {
         Parser {
-            inner: syntaqlite_runtime::Parser::new(crate::low_level::Sqlite::dialect()),
+            inner: syntaqlite_runtime::Parser::new(crate::dialect()),
         }
     }
 
@@ -43,12 +47,12 @@ impl<'a> StatementCursor<'a> {
     /// Parse the next SQL statement.
     pub fn next_statement(
         &mut self,
-    ) -> Option<Result<syntaqlite_runtime::NodeId, syntaqlite_runtime::ParseError>> {
+    ) -> Option<Result<NodeId, ParseError>> {
         self.inner.next_statement()
     }
 
     /// Get a typed AST node by ID.
-    pub fn node(&self, id: syntaqlite_runtime::NodeId) -> Option<Node<'a>> {
+    pub fn node(&self, id: NodeId) -> Option<Node<'a>> {
         Node::resolve(self.inner.reader(), id)
     }
 
@@ -63,14 +67,14 @@ impl<'a> StatementCursor<'a> {
     }
 
     /// Return all trivia (comments) captured during parsing.
-    pub fn trivia(&self) -> &[syntaqlite_runtime::Trivia] {
+    pub fn trivia(&self) -> &[Trivia] {
         self.inner.trivia()
     }
 
     /// Dump an AST node tree as indented text.
     pub fn dump_node(
         &self,
-        id: syntaqlite_runtime::NodeId,
+        id: NodeId,
         out: &mut String,
         indent: usize,
     ) {
@@ -78,18 +82,18 @@ impl<'a> StatementCursor<'a> {
     }
 
     /// Return all macro regions.
-    pub fn macro_regions(&self) -> &[syntaqlite_runtime::MacroRegion] {
+    pub fn macro_regions(&self) -> &[MacroRegion] {
         self.inner.macro_regions()
     }
 
     /// Access the underlying `CursorBase` (e.g. for `Formatter::format_node`).
-    pub fn base(&self) -> &syntaqlite_runtime::CursorBase<'a> {
+    pub fn base(&self) -> &CursorBase<'a> {
         self.inner.base()
     }
 }
 
 impl Iterator for StatementCursor<'_> {
-    type Item = Result<syntaqlite_runtime::NodeId, syntaqlite_runtime::ParseError>;
+    type Item = Result<NodeId, ParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_statement()
@@ -100,14 +104,14 @@ impl Iterator for StatementCursor<'_> {
 
 /// A low-level token parser pre-configured for the SQLite dialect.
 pub struct TokenParser {
-    inner: syntaqlite_runtime::TokenParser,
+    inner: syntaqlite_runtime::parser::TokenParser,
 }
 
 impl TokenParser {
     /// Create a new token parser for the SQLite dialect.
     pub fn new() -> Self {
         TokenParser {
-            inner: syntaqlite_runtime::TokenParser::new(crate::low_level::Sqlite::dialect()),
+            inner: syntaqlite_runtime::parser::TokenParser::new(crate::dialect()),
         }
     }
 
@@ -133,7 +137,7 @@ impl TokenParser {
 
 /// A low-level token-feeding cursor with typed SQLite node/token access.
 pub struct TokenFeeder<'a> {
-    inner: syntaqlite_runtime::TokenFeeder<'a>,
+    inner: syntaqlite_runtime::parser::TokenFeeder<'a>,
 }
 
 impl<'a> TokenFeeder<'a> {
@@ -144,14 +148,14 @@ impl<'a> TokenFeeder<'a> {
         &mut self,
         token_type: TokenType,
         span: Range<usize>,
-    ) -> Result<Option<syntaqlite_runtime::NodeId>, syntaqlite_runtime::ParseError> {
+    ) -> Result<Option<NodeId>, ParseError> {
         self.inner.feed_token(token_type.into(), span)
     }
 
     /// Signal end of input.
     pub fn finish(
         &mut self,
-    ) -> Result<Option<syntaqlite_runtime::NodeId>, syntaqlite_runtime::ParseError> {
+    ) -> Result<Option<NodeId>, ParseError> {
         self.inner.finish()
     }
 
@@ -166,7 +170,7 @@ impl<'a> TokenFeeder<'a> {
     }
 
     /// Get a typed AST node by ID.
-    pub fn node(&self, id: syntaqlite_runtime::NodeId) -> Option<Node<'a>> {
+    pub fn node(&self, id: NodeId) -> Option<Node<'a>> {
         Node::resolve(self.inner.reader(), id)
     }
 
@@ -176,14 +180,14 @@ impl<'a> TokenFeeder<'a> {
     }
 
     /// Return all trivia (comments) captured during parsing.
-    pub fn trivia(&self) -> &[syntaqlite_runtime::Trivia] {
+    pub fn trivia(&self) -> &[Trivia] {
         self.inner.trivia()
     }
 
     /// Dump an AST node tree as indented text.
     pub fn dump_node(
         &self,
-        id: syntaqlite_runtime::NodeId,
+        id: NodeId,
         out: &mut String,
         indent: usize,
     ) {
@@ -191,12 +195,12 @@ impl<'a> TokenFeeder<'a> {
     }
 
     /// Return all macro regions.
-    pub fn macro_regions(&self) -> &[syntaqlite_runtime::MacroRegion] {
+    pub fn macro_regions(&self) -> &[MacroRegion] {
         self.inner.macro_regions()
     }
 
     /// Access the underlying `CursorBase` (e.g. for `Formatter::format_node`).
-    pub fn base(&self) -> &syntaqlite_runtime::CursorBase<'a> {
+    pub fn base(&self) -> &CursorBase<'a> {
         self.inner.base()
     }
 }
@@ -211,12 +215,12 @@ pub struct Formatter {
 impl Formatter {
     /// Create a formatter with default configuration.
     pub fn new() -> Result<Self, &'static str> {
-        let inner = syntaqlite_runtime::fmt::Formatter::new(crate::low_level::Sqlite::dialect())?;
+        let inner = syntaqlite_runtime::fmt::Formatter::new(crate::dialect())?;
         Ok(Formatter { inner })
     }
 
     /// Set the format configuration.
-    pub fn with_config(mut self, config: syntaqlite_runtime::fmt::FormatConfig) -> Self {
+    pub fn with_config(mut self, config: crate::FormatConfig) -> Self {
         self.inner = self.inner.with_config(config);
         self
     }
@@ -228,7 +232,7 @@ impl Formatter {
     }
 
     /// Access the current configuration.
-    pub fn config(&self) -> &syntaqlite_runtime::fmt::FormatConfig {
+    pub fn config(&self) -> &crate::FormatConfig {
         self.inner.config()
     }
 
@@ -236,7 +240,7 @@ impl Formatter {
     pub fn format(
         &mut self,
         source: &str,
-    ) -> Result<String, syntaqlite_runtime::ParseError> {
+    ) -> Result<String, ParseError> {
         self.inner.format(source)
     }
 
@@ -244,25 +248,24 @@ impl Formatter {
     pub fn format_node(
         &self,
         cursor: &StatementCursor<'_>,
-        node_id: syntaqlite_runtime::NodeId,
+        node_id: NodeId,
     ) -> String {
         self.inner.format_node(cursor.base(), node_id)
     }
-
 }
 
 // ── Tokenizer ───────────────────────────────────────────────────────────
 
 /// A tokenizer for SQLite SQL.
 pub struct Tokenizer {
-    inner: syntaqlite_runtime::Tokenizer,
+    inner: syntaqlite_runtime::parser::Tokenizer,
 }
 
 impl Tokenizer {
     /// Create a new tokenizer.
     pub fn new() -> Self {
         Tokenizer {
-            inner: syntaqlite_runtime::Tokenizer::new(),
+            inner: syntaqlite_runtime::parser::Tokenizer::new(),
         }
     }
 
@@ -286,7 +289,7 @@ impl Tokenizer {
 
 /// An active tokenizer session yielding typed SQLite tokens.
 pub struct TokenCursor<'a> {
-    inner: syntaqlite_runtime::TokenCursor<'a>,
+    inner: syntaqlite_runtime::parser::TokenCursor<'a>,
 }
 
 impl<'a> Iterator for TokenCursor<'a> {

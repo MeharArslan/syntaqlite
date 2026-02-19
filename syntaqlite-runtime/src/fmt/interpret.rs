@@ -536,7 +536,7 @@ impl TestDialect {
 mod tests {
     use super::*;
     use crate::parser::NodeId;
-    use crate::FieldVal;
+    use crate::parser::FieldVal;
     use super::super::FormatConfig;
     use super::super::doc::{DocArena, NIL_DOC};
     use super::super::render::render;

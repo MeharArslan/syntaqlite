@@ -1,5 +1,6 @@
 //! Dialect types: the opaque handle and C ABI mirror structs.
 
+#[doc(hidden)]
 pub mod ffi;
 
 // ── Opaque dialect handle ──────────────────────────────────────────────
