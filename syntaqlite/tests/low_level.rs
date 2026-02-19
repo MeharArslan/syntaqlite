@@ -1,13 +1,12 @@
 use syntaqlite::ast::{NodeTag, SessionExt};
-use syntaqlite::tokenizer::TokenType;
-use syntaqlite::Parser;
+use syntaqlite::tokens::TokenType;
 
 /// Feed tokens for "SELECT 1" via the low-level API and verify same AST
 /// as the high-level parse.
 #[test]
 fn feed_tokens_select_1() {
     let source = "SELECT 1";
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
 
     // Feed SELECT token.
@@ -33,7 +32,7 @@ fn feed_tokens_select_1() {
 #[test]
 fn feed_tokens_with_semicolon() {
     let source = "SELECT 1;";
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
 
     session
@@ -59,7 +58,7 @@ fn feed_tokens_with_semicolon() {
 #[test]
 fn feed_tokens_multi_statement() {
     let source = "SELECT 1; SELECT 2";
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
 
     // First statement: SELECT 1 ;
@@ -94,7 +93,7 @@ fn feed_tokens_multi_statement() {
 #[test]
 fn feed_token_skips_space() {
     let source = "SELECT 1";
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
 
     session
@@ -121,7 +120,7 @@ fn feed_token_records_comment_trivia() {
     // Source layout: "SELECT -- hello\n1"
     //                 0123456789...
     let source = "SELECT -- hello\n1";
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     parser.set_collect_tokens(true);
     let mut session = parser.parse(source);
 
@@ -151,7 +150,7 @@ fn feed_token_records_comment_trivia() {
 #[test]
 fn macro_regions_recorded() {
     let source = "SELECT 1";
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
 
     // Simulate a macro call at positions 7..20 in the original source.
@@ -178,7 +177,7 @@ fn macro_regions_recorded() {
 #[test]
 fn nested_macro_regions() {
     let source = "SELECT 1";
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
 
     session.begin_macro(0, 30);
@@ -212,7 +211,7 @@ fn macro_well_aligned_complete_expression() {
     //          0123456789012345678901
     // Macro:         ^----------^  offset=7, length=11 → "foo!(1 + 2)"
     let source = "SELECT foo!(1 + 2), 3";
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
 
     session
@@ -261,7 +260,7 @@ fn macro_well_aligned_complete_expression() {
 #[test]
 fn macro_straddle_rejected_by_parser() {
     let source = "SELECT 1 FROM foo!(x) y";
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
 
     session
@@ -297,7 +296,7 @@ fn macro_straddle_rejected_by_parser() {
 #[test]
 fn finish_with_no_tokens() {
     let source = "";
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
 
     let r = session.finish().unwrap();
@@ -307,7 +306,7 @@ fn finish_with_no_tokens() {
 /// High-level API still works after the refactor.
 #[test]
 fn high_level_api_still_works() {
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse("SELECT 1; SELECT 2");
 
     let r1 = session.next_statement().unwrap().unwrap();

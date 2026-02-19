@@ -1,19 +1,20 @@
 /// Integration tests exercising the generated dispatch table + ctx
 /// with the hand-written format_node and renderer.
-use syntaqlite::fmt::{ctx, dispatch, format_node, render, DocArena, FormatConfig, KeywordCase, NODE_INFO};
-use syntaqlite::Parser;
+use syntaqlite::{DialectTypes, Sqlite};
+use syntaqlite_runtime::fmt::{format_node, render, DocArena, FormatConfig, KeywordCase};
 
 fn format_sql(sql: &str) -> String {
     format_sql_with(sql, &FormatConfig::default())
 }
 
 fn format_sql_with(sql: &str, config: &FormatConfig) -> String {
-    let mut parser = Parser::new();
+    let info = Sqlite::info();
+    let ni = info.node_info();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(sql);
     let root = session.next_statement().unwrap().unwrap();
-    let ni = &NODE_INFO;
     let mut arena = DocArena::new();
-    let doc = format_node(dispatch(), ctx(), &session, ni, root, &mut arena);
+    let doc = format_node(info.dispatch(), info.ctx(), &session, &ni, root, &mut arena);
     render(&arena, doc, config)
 }
 

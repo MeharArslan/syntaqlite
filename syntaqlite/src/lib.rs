@@ -62,12 +62,46 @@ impl syntaqlite_runtime::DialectTypes for Sqlite {
 pub mod ast {
     pub use crate::generated::nodes::*;
     pub use syntaqlite_runtime::{MacroRegion, NodeList, Trivia, TriviaKind};
-    pub use syntaqlite_runtime::SessionExt;
+
+    /// Convenience trait that hardcodes `Sqlite` so callers don't need
+    /// turbofish: `session.node(id)` just works.
+    pub trait SessionExt<'a> {
+        fn node(&self, id: syntaqlite_runtime::NodeId) -> Option<Node<'a>>;
+        fn feed(
+            &mut self,
+            token_type: crate::generated::tokens::TokenType,
+            text: &str,
+        ) -> Result<Option<syntaqlite_runtime::NodeId>, syntaqlite_runtime::ParseError>;
+    }
+
+    impl<'a> SessionExt<'a> for syntaqlite_runtime::Session<'a> {
+        fn node(&self, id: syntaqlite_runtime::NodeId) -> Option<Node<'a>> {
+            <Self as syntaqlite_runtime::SessionExt<'a, crate::Sqlite>>::node(self, id)
+        }
+
+        fn feed(
+            &mut self,
+            token_type: crate::generated::tokens::TokenType,
+            text: &str,
+        ) -> Result<Option<syntaqlite_runtime::NodeId>, syntaqlite_runtime::ParseError> {
+            <Self as syntaqlite_runtime::SessionExt<'a, crate::Sqlite>>::feed(self, token_type, text)
+        }
+    }
 }
 
 // Tokens
 #[cfg(feature = "parser")]
 pub use generated::tokens;
+
+// Parser
+#[cfg(feature = "parser")]
+pub use syntaqlite_runtime::Parser;
+
+/// Create a parser pre-configured for the SQLite dialect.
+#[cfg(feature = "parser")]
+pub fn create_parser() -> syntaqlite_runtime::Parser {
+    INFO.parser()
+}
 
 // Runtime types
 #[cfg(feature = "parser")]

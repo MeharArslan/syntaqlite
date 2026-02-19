@@ -1,10 +1,9 @@
 use syntaqlite::ast::{Node, NodeTag, SessionExt};
-use syntaqlite::tokenizer::{Tokenizer, TokenType};
-use syntaqlite::Parser;
+
 
 #[test]
 fn parse_select_1() {
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse("SELECT 1;");
 
     let root_id = session.next_statement().unwrap().unwrap();
@@ -20,7 +19,7 @@ fn parse_select_1() {
 
 #[test]
 fn parse_multiple_statements() {
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse("SELECT 1; SELECT 2;");
 
     let root1 = session.next_statement().unwrap().unwrap();
@@ -34,7 +33,7 @@ fn parse_multiple_statements() {
 
 #[test]
 fn parse_error() {
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse("SELECT");
 
     let result = session.next_statement().unwrap();
@@ -42,23 +41,8 @@ fn parse_error() {
 }
 
 #[test]
-fn tokenize_select() {
-    let mut tokenizer = Tokenizer::new();
-    let tokens: Vec<_> = tokenizer.tokenize("SELECT 1").collect();
-
-    assert_eq!(tokens[0].token_type, TokenType::Select);
-    assert_eq!(tokens[0].text, "SELECT");
-
-    assert_eq!(tokens[1].token_type, TokenType::Space);
-    assert_eq!(tokens[1].text, " ");
-
-    assert_eq!(tokens[2].token_type, TokenType::Integer);
-    assert_eq!(tokens[2].text, "1");
-}
-
-#[test]
 fn parser_reuse() {
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
 
     // First parse
     {

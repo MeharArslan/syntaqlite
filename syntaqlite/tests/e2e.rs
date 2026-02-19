@@ -1,5 +1,5 @@
 use syntaqlite::ast::*;
-use syntaqlite::{NodeId, Parser, Session};
+use syntaqlite::{NodeId, Session};
 use syntaqlite_runtime::fmt::{render, DocArena, DocId, FormatConfig, NIL_DOC};
 
 /// Build a Doc tree from a parsed AST node using the typed Node API.
@@ -177,7 +177,7 @@ fn format_sql(sql: &str) -> String {
 }
 
 fn format_sql_with(sql: &str, config: &FormatConfig) -> String {
-    let mut parser = Parser::new();
+    let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(sql);
     let root = session.next_statement().unwrap().unwrap();
     let mut arena = DocArena::new();
