@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 /// A handle into the `DocArena`. `NIL_DOC` represents an empty/absent document.
 pub type DocId = u32;
 

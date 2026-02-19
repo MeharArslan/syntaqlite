@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 use std::marker::PhantomData;
 
 use super::nodes::{NodeId, NodeList};
@@ -9,7 +12,7 @@ use super::parser::NodeReader;
 /// generic containers like `TypedList` can resolve children without
 /// dialect-specific code.
 pub trait FromArena<'a>: Sized {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self>;
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self>;
 }
 
 /// A typed, read-only view over a `NodeList` in the parser arena.
@@ -19,7 +22,7 @@ pub trait FromArena<'a>: Sized {
 #[derive(Clone, Copy)]
 pub struct TypedList<'a, T> {
     raw: &'a NodeList,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
     _phantom: PhantomData<fn() -> T>,
 }
 
@@ -33,7 +36,7 @@ impl<T> std::fmt::Debug for TypedList<'_, T> {
 
 impl<'a, T> TypedList<'a, T> {
     /// Construct a `TypedList` from a raw `NodeList` reference and reader.
-    pub fn new(raw: &'a NodeList, reader: NodeReader<'a>) -> Self {
+    pub fn new(raw: &'a NodeList, reader: &'a NodeReader<'a>) -> Self {
         TypedList { raw, reader, _phantom: PhantomData }
     }
 
@@ -65,7 +68,7 @@ impl<'a, T: FromArena<'a>> TypedList<'a, T> {
 
 /// Blanket `FromArena` for `TypedList` — resolves the `NodeId` as a list node.
 impl<'a, T> FromArena<'a> for TypedList<'a, T> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
         // SAFETY: the arena tag was already validated as a list type by the
         // grammar; the pointer is valid for 'a.

@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 // AST building actions for CREATE TRIGGER grammar rules.
 // These rules get merged with SQLite's parse.y during code generation.
 //

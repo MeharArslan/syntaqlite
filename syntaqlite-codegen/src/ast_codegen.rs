@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 use std::collections::HashSet;
 use std::fmt::Write as _;
 
@@ -69,6 +72,13 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
     }
     tag_variants.push(("SYNTAQLITE_NODE_COUNT".into(), None));
     w.typedef_enum("SyntaqliteNodeTag", &refs_i32(&tag_variants));
+    w.line("#ifdef __cplusplus");
+    w.line("static_assert(sizeof(SyntaqliteNodeTag) == sizeof(uint32_t),");
+    w.line("              \"SyntaqliteNodeTag must be 32 bits for FFI compatibility\");");
+    w.line("#else");
+    w.line("_Static_assert(sizeof(SyntaqliteNodeTag) == sizeof(uint32_t),");
+    w.line("               \"SyntaqliteNodeTag must be 32 bits for FFI compatibility\");");
+    w.line("#endif");
     w.newline();
 
     // Node structs
@@ -77,7 +87,7 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
         match item {
             Item::Node { name, fields, .. } => {
                 let sname = c_type_name(name);
-                let mut f = vec![("uint32_t".to_string(), "tag".to_string())];
+                let mut f = vec![("SyntaqliteNodeTag".to_string(), "tag".to_string())];
                 for field in fields {
                     f.push((field_c_type(field, &enum_names, &flags_names), field.name.clone()));
                 }
@@ -96,7 +106,7 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
 
     // Node union
     w.section("Node Union");
-    let mut union_members = vec![("uint32_t".to_string(), "tag".to_string())];
+    let mut union_members = vec![("SyntaqliteNodeTag".to_string(), "tag".to_string())];
     for item in items {
         let name = match item {
             Item::Node { name, .. } | Item::List { name, .. } => name,
@@ -115,7 +125,7 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
 
         // Union type
         let c_abs_name = c_type_name(name);
-        let mut abs_union_members = vec![("uint32_t".to_string(), "tag".to_string())];
+        let mut abs_union_members = vec![("SyntaqliteNodeTag".to_string(), "tag".to_string())];
         for member in members {
             abs_union_members.push((c_type_name(member), pascal_to_snake(member)));
         }
@@ -153,6 +163,29 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
     }
 
     w.extern_c_end();
+    w.newline();
+
+    // C++ NodeTag specializations (tag-checked NodeCast support)
+    w.line("#if defined(__cplusplus) && __cplusplus >= 201703L");
+    w.line("#include \"syntaqlite/parser.h\"");
+    w.newline();
+    w.line("namespace syntaqlite {");
+    w.newline();
+    for item in items {
+        let name = match item {
+            Item::Node { name, .. } | Item::List { name, .. } => name,
+            _ => continue,
+        };
+        let cname = c_type_name(name);
+        let tag = tag_name(name);
+        w.line(&format!("template <> struct NodeTag<{}> {{", cname));
+        w.line(&format!("  static constexpr bool kHasTag = true;"));
+        w.line(&format!("  static constexpr uint32_t kValue = {};", tag));
+        w.line("};");
+    }
+    w.newline();
+    w.line("}  // namespace syntaqlite");
+    w.line("#endif");
     w.newline();
     w.header_guard_end("SYNTAQLITE_SQLITE_NODE_H");
 
@@ -1311,7 +1344,7 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
 
         // FromArena impl
         writeln!(out, "impl<'a> FromArena<'a> for {}<'a> {{", abs_name).unwrap();
-        writeln!(out, "    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {{").unwrap();
+        writeln!(out, "    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {{").unwrap();
         writeln!(out, "        let node = Node::resolve(reader, id)?;").unwrap();
         writeln!(out, "        Some(match node {{").unwrap();
         for member in members {
@@ -1340,7 +1373,8 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
         if !uses_reader {
             writeln!(out, "    #[allow(dead_code)]").unwrap();
         }
-        writeln!(out, "    reader: NodeReader<'a>,").unwrap();
+        writeln!(out, "    reader: &'a NodeReader<'a>,").unwrap();
+        writeln!(out, "    id: NodeId,").unwrap();
         writeln!(out, "}}").unwrap();
         writeln!(out).unwrap();
 
@@ -1348,6 +1382,16 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
         writeln!(out, "impl std::fmt::Debug for {}<'_> {{", name).unwrap();
         writeln!(out, "    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {{").unwrap();
         writeln!(out, "        self.raw.fmt(f)").unwrap();
+        writeln!(out, "    }}").unwrap();
+        writeln!(out, "}}").unwrap();
+        writeln!(out).unwrap();
+
+        // Display impl — dump AST via NodeReader
+        writeln!(out, "impl std::fmt::Display for {}<'_> {{", name).unwrap();
+        writeln!(out, "    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {{").unwrap();
+        writeln!(out, "        let mut buf = String::new();").unwrap();
+        writeln!(out, "        self.reader.dump_node(self.id, &mut buf, 0);").unwrap();
+        writeln!(out, "        f.write_str(&buf)").unwrap();
         writeln!(out, "    }}").unwrap();
         writeln!(out, "}}").unwrap();
         writeln!(out).unwrap();
@@ -1367,9 +1411,9 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
 
         // FromArena impl — resolve from arena by NodeId
         writeln!(out, "impl<'a> FromArena<'a> for {}<'a> {{", name).unwrap();
-        writeln!(out, "    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {{").unwrap();
+        writeln!(out, "    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {{").unwrap();
         writeln!(out, "        let (ptr, _) = reader.node_ptr(id)?;").unwrap();
-        writeln!(out, "        Some({} {{ raw: unsafe {{ &*(ptr as *const crate::ffi::{}) }}, reader }})", name, name).unwrap();
+        writeln!(out, "        Some({} {{ raw: unsafe {{ &*(ptr as *const crate::ffi::{}) }}, reader, id }})", name, name).unwrap();
         writeln!(out, "    }}").unwrap();
         writeln!(out, "}}").unwrap();
         writeln!(out).unwrap();
@@ -1413,13 +1457,13 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
 
     writeln!(out, "impl<'a> Node<'a> {{").unwrap();
 
-    // from_raw — now takes source
+    // from_raw
     writeln!(out, "    /// Construct a typed `Node` from a raw arena pointer.").unwrap();
     writeln!(out, "    ///").unwrap();
     writeln!(out, "    /// # Safety").unwrap();
     writeln!(out, "    /// `ptr` must be non-null, well-aligned, and valid for `'a`.").unwrap();
     writeln!(out, "    /// Its first `u32` must be a valid `NodeTag` discriminant.").unwrap();
-    writeln!(out, "    pub(crate) unsafe fn from_raw(ptr: *const u32, reader: NodeReader<'a>) -> Node<'a> {{").unwrap();
+    writeln!(out, "    pub(crate) unsafe fn from_raw(ptr: *const u32, reader: &'a NodeReader<'a>, id: NodeId) -> Node<'a> {{").unwrap();
     writeln!(out, "        // SAFETY: caller guarantees ptr is valid for 'a with a valid tag.").unwrap();
     writeln!(out, "        unsafe {{").unwrap();
     writeln!(out, "        let tag = NodeTag::from_raw(*ptr).unwrap_or(NodeTag::Null);").unwrap();
@@ -1427,7 +1471,7 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
     for item in items {
         match item {
             Item::Node { name, .. } => {
-                writeln!(out, "            NodeTag::{n} => Node::{n}({n} {{ raw: &*(ptr as *const crate::ffi::{n}), reader }}),", n = name).unwrap();
+                writeln!(out, "            NodeTag::{n} => Node::{n}({n} {{ raw: &*(ptr as *const crate::ffi::{n}), reader, id }}),", n = name).unwrap();
             }
             Item::List { name, .. } => {
                 writeln!(out, "            NodeTag::{n} => Node::{n}(TypedList::new(&*(ptr as *const NodeList), reader)),", n = name).unwrap();
@@ -1443,9 +1487,9 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
 
     // resolve — safe wrapper to look up a NodeId via the reader
     writeln!(out, "    /// Resolve a `NodeId` into a typed `Node`, or `None` if null/invalid.").unwrap();
-    writeln!(out, "    pub(crate) fn resolve(reader: NodeReader<'a>, id: NodeId) -> Option<Node<'a>> {{").unwrap();
+    writeln!(out, "    pub(crate) fn resolve(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Node<'a>> {{").unwrap();
     writeln!(out, "        let (ptr, _tag) = reader.node_ptr(id)?;").unwrap();
-    writeln!(out, "        Some(unsafe {{ Node::from_raw(ptr as *const u32, reader) }})").unwrap();
+    writeln!(out, "        Some(unsafe {{ Node::from_raw(ptr as *const u32, reader, id) }})").unwrap();
     writeln!(out, "    }}").unwrap();
     writeln!(out).unwrap();
 
@@ -1468,9 +1512,31 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
     writeln!(out, "}}").unwrap();
     writeln!(out).unwrap();
 
+    // Display impl for Node — delegates to NodeReader::dump_node
+    writeln!(out, "impl std::fmt::Display for Node<'_> {{").unwrap();
+    writeln!(out, "    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {{").unwrap();
+    writeln!(out, "        match self {{").unwrap();
+    for item in items {
+        match item {
+            Item::Node { name, .. } => {
+                writeln!(out, "            Node::{n}(n) => std::fmt::Display::fmt(n, f),", n = name).unwrap();
+            }
+            Item::List { .. } => {
+                // TypedList doesn't store id, so use Debug fallback
+            }
+            _ => {}
+        }
+    }
+    // Fallback for list variants and phantom
+    writeln!(out, "            _ => std::fmt::Debug::fmt(self, f),").unwrap();
+    writeln!(out, "        }}").unwrap();
+    writeln!(out, "    }}").unwrap();
+    writeln!(out, "}}").unwrap();
+    writeln!(out).unwrap();
+
     // FromArena impl for Node
     writeln!(out, "impl<'a> FromArena<'a> for Node<'a> {{").unwrap();
-    writeln!(out, "    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {{").unwrap();
+    writeln!(out, "    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {{").unwrap();
     writeln!(out, "        Node::resolve(reader, id)").unwrap();
     writeln!(out, "    }}").unwrap();
     writeln!(out, "}}").unwrap();
@@ -1478,4 +1544,3 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
 
     out
 }
-

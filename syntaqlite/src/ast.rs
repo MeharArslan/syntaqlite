@@ -1205,7 +1205,7 @@ pub enum Select<'a> {
 }
 
 impl<'a> FromArena<'a> for Select<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::SelectStmt(n) => Select::SelectStmt(n),
@@ -1227,7 +1227,7 @@ pub enum InExprSource<'a> {
 }
 
 impl<'a> FromArena<'a> for InExprSource<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::ExprList(n) => InExprSource::ExprList(n),
@@ -1262,7 +1262,7 @@ pub enum Expr<'a> {
 }
 
 impl<'a> FromArena<'a> for Expr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::BinaryExpr(n) => Expr::BinaryExpr(n),
@@ -1317,7 +1317,7 @@ pub enum Stmt<'a> {
 }
 
 impl<'a> FromArena<'a> for Stmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::SelectStmt(n) => Stmt::SelectStmt(n),
@@ -1359,7 +1359,7 @@ pub enum TableSource<'a> {
 }
 
 impl<'a> FromArena<'a> for TableSource<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::TableRef(n) => TableSource::TableRef(n),
@@ -1374,12 +1374,21 @@ impl<'a> FromArena<'a> for TableSource<'a> {
 #[derive(Clone, Copy)]
 pub struct AggregateFunctionCall<'a> {
     raw: &'a crate::ffi::AggregateFunctionCall,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for AggregateFunctionCall<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for AggregateFunctionCall<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1405,21 +1414,30 @@ impl<'a> AggregateFunctionCall<'a> {
 }
 
 impl<'a> FromArena<'a> for AggregateFunctionCall<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(AggregateFunctionCall { raw: unsafe { &*(ptr as *const crate::ffi::AggregateFunctionCall) }, reader })
+        Some(AggregateFunctionCall { raw: unsafe { &*(ptr as *const crate::ffi::AggregateFunctionCall) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct CastExpr<'a> {
     raw: &'a crate::ffi::CastExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for CastExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for CastExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1433,21 +1451,30 @@ impl<'a> CastExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for CastExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(CastExpr { raw: unsafe { &*(ptr as *const crate::ffi::CastExpr) }, reader })
+        Some(CastExpr { raw: unsafe { &*(ptr as *const crate::ffi::CastExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct ColumnRef<'a> {
     raw: &'a crate::ffi::ColumnRef,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for ColumnRef<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for ColumnRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1464,21 +1491,30 @@ impl<'a> ColumnRef<'a> {
 }
 
 impl<'a> FromArena<'a> for ColumnRef<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(ColumnRef { raw: unsafe { &*(ptr as *const crate::ffi::ColumnRef) }, reader })
+        Some(ColumnRef { raw: unsafe { &*(ptr as *const crate::ffi::ColumnRef) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct CompoundSelect<'a> {
     raw: &'a crate::ffi::CompoundSelect,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for CompoundSelect<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for CompoundSelect<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1495,21 +1531,30 @@ impl<'a> CompoundSelect<'a> {
 }
 
 impl<'a> FromArena<'a> for CompoundSelect<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(CompoundSelect { raw: unsafe { &*(ptr as *const crate::ffi::CompoundSelect) }, reader })
+        Some(CompoundSelect { raw: unsafe { &*(ptr as *const crate::ffi::CompoundSelect) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct SubqueryExpr<'a> {
     raw: &'a crate::ffi::SubqueryExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for SubqueryExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for SubqueryExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1520,21 +1565,30 @@ impl<'a> SubqueryExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for SubqueryExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(SubqueryExpr { raw: unsafe { &*(ptr as *const crate::ffi::SubqueryExpr) }, reader })
+        Some(SubqueryExpr { raw: unsafe { &*(ptr as *const crate::ffi::SubqueryExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct ExistsExpr<'a> {
     raw: &'a crate::ffi::ExistsExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for ExistsExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for ExistsExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1545,21 +1599,30 @@ impl<'a> ExistsExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for ExistsExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(ExistsExpr { raw: unsafe { &*(ptr as *const crate::ffi::ExistsExpr) }, reader })
+        Some(ExistsExpr { raw: unsafe { &*(ptr as *const crate::ffi::ExistsExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct InExpr<'a> {
     raw: &'a crate::ffi::InExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for InExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for InExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1576,21 +1639,30 @@ impl<'a> InExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for InExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(InExpr { raw: unsafe { &*(ptr as *const crate::ffi::InExpr) }, reader })
+        Some(InExpr { raw: unsafe { &*(ptr as *const crate::ffi::InExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct IsExpr<'a> {
     raw: &'a crate::ffi::IsExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for IsExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for IsExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1607,21 +1679,30 @@ impl<'a> IsExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for IsExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(IsExpr { raw: unsafe { &*(ptr as *const crate::ffi::IsExpr) }, reader })
+        Some(IsExpr { raw: unsafe { &*(ptr as *const crate::ffi::IsExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct BetweenExpr<'a> {
     raw: &'a crate::ffi::BetweenExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for BetweenExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for BetweenExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1641,21 +1722,30 @@ impl<'a> BetweenExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for BetweenExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(BetweenExpr { raw: unsafe { &*(ptr as *const crate::ffi::BetweenExpr) }, reader })
+        Some(BetweenExpr { raw: unsafe { &*(ptr as *const crate::ffi::BetweenExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct LikeExpr<'a> {
     raw: &'a crate::ffi::LikeExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for LikeExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for LikeExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1675,21 +1765,30 @@ impl<'a> LikeExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for LikeExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(LikeExpr { raw: unsafe { &*(ptr as *const crate::ffi::LikeExpr) }, reader })
+        Some(LikeExpr { raw: unsafe { &*(ptr as *const crate::ffi::LikeExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct CaseExpr<'a> {
     raw: &'a crate::ffi::CaseExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for CaseExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for CaseExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1706,21 +1805,30 @@ impl<'a> CaseExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for CaseExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(CaseExpr { raw: unsafe { &*(ptr as *const crate::ffi::CaseExpr) }, reader })
+        Some(CaseExpr { raw: unsafe { &*(ptr as *const crate::ffi::CaseExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct CaseWhen<'a> {
     raw: &'a crate::ffi::CaseWhen,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for CaseWhen<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for CaseWhen<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1734,21 +1842,30 @@ impl<'a> CaseWhen<'a> {
 }
 
 impl<'a> FromArena<'a> for CaseWhen<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(CaseWhen { raw: unsafe { &*(ptr as *const crate::ffi::CaseWhen) }, reader })
+        Some(CaseWhen { raw: unsafe { &*(ptr as *const crate::ffi::CaseWhen) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct ForeignKeyClause<'a> {
     raw: &'a crate::ffi::ForeignKeyClause,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for ForeignKeyClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for ForeignKeyClause<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1771,21 +1888,30 @@ impl<'a> ForeignKeyClause<'a> {
 }
 
 impl<'a> FromArena<'a> for ForeignKeyClause<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(ForeignKeyClause { raw: unsafe { &*(ptr as *const crate::ffi::ForeignKeyClause) }, reader })
+        Some(ForeignKeyClause { raw: unsafe { &*(ptr as *const crate::ffi::ForeignKeyClause) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct ColumnConstraint<'a> {
     raw: &'a crate::ffi::ColumnConstraint,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for ColumnConstraint<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for ColumnConstraint<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1826,21 +1952,30 @@ impl<'a> ColumnConstraint<'a> {
 }
 
 impl<'a> FromArena<'a> for ColumnConstraint<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(ColumnConstraint { raw: unsafe { &*(ptr as *const crate::ffi::ColumnConstraint) }, reader })
+        Some(ColumnConstraint { raw: unsafe { &*(ptr as *const crate::ffi::ColumnConstraint) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct ColumnDef<'a> {
     raw: &'a crate::ffi::ColumnDef,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for ColumnDef<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for ColumnDef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1857,21 +1992,30 @@ impl<'a> ColumnDef<'a> {
 }
 
 impl<'a> FromArena<'a> for ColumnDef<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(ColumnDef { raw: unsafe { &*(ptr as *const crate::ffi::ColumnDef) }, reader })
+        Some(ColumnDef { raw: unsafe { &*(ptr as *const crate::ffi::ColumnDef) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct TableConstraint<'a> {
     raw: &'a crate::ffi::TableConstraint,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for TableConstraint<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for TableConstraint<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1903,21 +2047,30 @@ impl<'a> TableConstraint<'a> {
 }
 
 impl<'a> FromArena<'a> for TableConstraint<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(TableConstraint { raw: unsafe { &*(ptr as *const crate::ffi::TableConstraint) }, reader })
+        Some(TableConstraint { raw: unsafe { &*(ptr as *const crate::ffi::TableConstraint) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct CreateTableStmt<'a> {
     raw: &'a crate::ffi::CreateTableStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for CreateTableStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for CreateTableStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1949,21 +2102,30 @@ impl<'a> CreateTableStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for CreateTableStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(CreateTableStmt { raw: unsafe { &*(ptr as *const crate::ffi::CreateTableStmt) }, reader })
+        Some(CreateTableStmt { raw: unsafe { &*(ptr as *const crate::ffi::CreateTableStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct CteDefinition<'a> {
     raw: &'a crate::ffi::CteDefinition,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for CteDefinition<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for CteDefinition<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -1983,21 +2145,30 @@ impl<'a> CteDefinition<'a> {
 }
 
 impl<'a> FromArena<'a> for CteDefinition<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(CteDefinition { raw: unsafe { &*(ptr as *const crate::ffi::CteDefinition) }, reader })
+        Some(CteDefinition { raw: unsafe { &*(ptr as *const crate::ffi::CteDefinition) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct WithClause<'a> {
     raw: &'a crate::ffi::WithClause,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for WithClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for WithClause<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2014,21 +2185,30 @@ impl<'a> WithClause<'a> {
 }
 
 impl<'a> FromArena<'a> for WithClause<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(WithClause { raw: unsafe { &*(ptr as *const crate::ffi::WithClause) }, reader })
+        Some(WithClause { raw: unsafe { &*(ptr as *const crate::ffi::WithClause) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct DeleteStmt<'a> {
     raw: &'a crate::ffi::DeleteStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for DeleteStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for DeleteStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2042,21 +2222,30 @@ impl<'a> DeleteStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for DeleteStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(DeleteStmt { raw: unsafe { &*(ptr as *const crate::ffi::DeleteStmt) }, reader })
+        Some(DeleteStmt { raw: unsafe { &*(ptr as *const crate::ffi::DeleteStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct SetClause<'a> {
     raw: &'a crate::ffi::SetClause,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for SetClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for SetClause<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2073,21 +2262,30 @@ impl<'a> SetClause<'a> {
 }
 
 impl<'a> FromArena<'a> for SetClause<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(SetClause { raw: unsafe { &*(ptr as *const crate::ffi::SetClause) }, reader })
+        Some(SetClause { raw: unsafe { &*(ptr as *const crate::ffi::SetClause) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct UpdateStmt<'a> {
     raw: &'a crate::ffi::UpdateStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for UpdateStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for UpdateStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2110,21 +2308,30 @@ impl<'a> UpdateStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for UpdateStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(UpdateStmt { raw: unsafe { &*(ptr as *const crate::ffi::UpdateStmt) }, reader })
+        Some(UpdateStmt { raw: unsafe { &*(ptr as *const crate::ffi::UpdateStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct InsertStmt<'a> {
     raw: &'a crate::ffi::InsertStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for InsertStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for InsertStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2144,21 +2351,30 @@ impl<'a> InsertStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for InsertStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(InsertStmt { raw: unsafe { &*(ptr as *const crate::ffi::InsertStmt) }, reader })
+        Some(InsertStmt { raw: unsafe { &*(ptr as *const crate::ffi::InsertStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct BinaryExpr<'a> {
     raw: &'a crate::ffi::BinaryExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for BinaryExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for BinaryExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2175,21 +2391,30 @@ impl<'a> BinaryExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for BinaryExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(BinaryExpr { raw: unsafe { &*(ptr as *const crate::ffi::BinaryExpr) }, reader })
+        Some(BinaryExpr { raw: unsafe { &*(ptr as *const crate::ffi::BinaryExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct UnaryExpr<'a> {
     raw: &'a crate::ffi::UnaryExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for UnaryExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for UnaryExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2203,21 +2428,30 @@ impl<'a> UnaryExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for UnaryExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(UnaryExpr { raw: unsafe { &*(ptr as *const crate::ffi::UnaryExpr) }, reader })
+        Some(UnaryExpr { raw: unsafe { &*(ptr as *const crate::ffi::UnaryExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct Literal<'a> {
     raw: &'a crate::ffi::Literal,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for Literal<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for Literal<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2231,21 +2465,30 @@ impl<'a> Literal<'a> {
 }
 
 impl<'a> FromArena<'a> for Literal<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(Literal { raw: unsafe { &*(ptr as *const crate::ffi::Literal) }, reader })
+        Some(Literal { raw: unsafe { &*(ptr as *const crate::ffi::Literal) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct FunctionCall<'a> {
     raw: &'a crate::ffi::FunctionCall,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for FunctionCall<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for FunctionCall<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2268,21 +2511,30 @@ impl<'a> FunctionCall<'a> {
 }
 
 impl<'a> FromArena<'a> for FunctionCall<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(FunctionCall { raw: unsafe { &*(ptr as *const crate::ffi::FunctionCall) }, reader })
+        Some(FunctionCall { raw: unsafe { &*(ptr as *const crate::ffi::FunctionCall) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct Variable<'a> {
     raw: &'a crate::ffi::Variable,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for Variable<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for Variable<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2293,21 +2545,30 @@ impl<'a> Variable<'a> {
 }
 
 impl<'a> FromArena<'a> for Variable<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(Variable { raw: unsafe { &*(ptr as *const crate::ffi::Variable) }, reader })
+        Some(Variable { raw: unsafe { &*(ptr as *const crate::ffi::Variable) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct CollateExpr<'a> {
     raw: &'a crate::ffi::CollateExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for CollateExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for CollateExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2321,21 +2582,30 @@ impl<'a> CollateExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for CollateExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(CollateExpr { raw: unsafe { &*(ptr as *const crate::ffi::CollateExpr) }, reader })
+        Some(CollateExpr { raw: unsafe { &*(ptr as *const crate::ffi::CollateExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct RaiseExpr<'a> {
     raw: &'a crate::ffi::RaiseExpr,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for RaiseExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for RaiseExpr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2349,21 +2619,30 @@ impl<'a> RaiseExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for RaiseExpr<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(RaiseExpr { raw: unsafe { &*(ptr as *const crate::ffi::RaiseExpr) }, reader })
+        Some(RaiseExpr { raw: unsafe { &*(ptr as *const crate::ffi::RaiseExpr) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct QualifiedName<'a> {
     raw: &'a crate::ffi::QualifiedName,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for QualifiedName<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for QualifiedName<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2377,21 +2656,30 @@ impl<'a> QualifiedName<'a> {
 }
 
 impl<'a> FromArena<'a> for QualifiedName<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(QualifiedName { raw: unsafe { &*(ptr as *const crate::ffi::QualifiedName) }, reader })
+        Some(QualifiedName { raw: unsafe { &*(ptr as *const crate::ffi::QualifiedName) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct DropStmt<'a> {
     raw: &'a crate::ffi::DropStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for DropStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for DropStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2408,21 +2696,30 @@ impl<'a> DropStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for DropStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(DropStmt { raw: unsafe { &*(ptr as *const crate::ffi::DropStmt) }, reader })
+        Some(DropStmt { raw: unsafe { &*(ptr as *const crate::ffi::DropStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct AlterTableStmt<'a> {
     raw: &'a crate::ffi::AlterTableStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for AlterTableStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for AlterTableStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2442,9 +2739,9 @@ impl<'a> AlterTableStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for AlterTableStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(AlterTableStmt { raw: unsafe { &*(ptr as *const crate::ffi::AlterTableStmt) }, reader })
+        Some(AlterTableStmt { raw: unsafe { &*(ptr as *const crate::ffi::AlterTableStmt) }, reader, id })
     }
 }
 
@@ -2452,12 +2749,21 @@ impl<'a> FromArena<'a> for AlterTableStmt<'a> {
 pub struct TransactionStmt<'a> {
     raw: &'a crate::ffi::TransactionStmt,
     #[allow(dead_code)]
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for TransactionStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for TransactionStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2471,21 +2777,30 @@ impl<'a> TransactionStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for TransactionStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(TransactionStmt { raw: unsafe { &*(ptr as *const crate::ffi::TransactionStmt) }, reader })
+        Some(TransactionStmt { raw: unsafe { &*(ptr as *const crate::ffi::TransactionStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct SavepointStmt<'a> {
     raw: &'a crate::ffi::SavepointStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for SavepointStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for SavepointStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2499,21 +2814,30 @@ impl<'a> SavepointStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for SavepointStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(SavepointStmt { raw: unsafe { &*(ptr as *const crate::ffi::SavepointStmt) }, reader })
+        Some(SavepointStmt { raw: unsafe { &*(ptr as *const crate::ffi::SavepointStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct ResultColumn<'a> {
     raw: &'a crate::ffi::ResultColumn,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for ResultColumn<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for ResultColumn<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2530,21 +2854,30 @@ impl<'a> ResultColumn<'a> {
 }
 
 impl<'a> FromArena<'a> for ResultColumn<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(ResultColumn { raw: unsafe { &*(ptr as *const crate::ffi::ResultColumn) }, reader })
+        Some(ResultColumn { raw: unsafe { &*(ptr as *const crate::ffi::ResultColumn) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct SelectStmt<'a> {
     raw: &'a crate::ffi::SelectStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for SelectStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for SelectStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2579,21 +2912,30 @@ impl<'a> SelectStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for SelectStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(SelectStmt { raw: unsafe { &*(ptr as *const crate::ffi::SelectStmt) }, reader })
+        Some(SelectStmt { raw: unsafe { &*(ptr as *const crate::ffi::SelectStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct OrderingTerm<'a> {
     raw: &'a crate::ffi::OrderingTerm,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for OrderingTerm<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for OrderingTerm<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2610,21 +2952,30 @@ impl<'a> OrderingTerm<'a> {
 }
 
 impl<'a> FromArena<'a> for OrderingTerm<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(OrderingTerm { raw: unsafe { &*(ptr as *const crate::ffi::OrderingTerm) }, reader })
+        Some(OrderingTerm { raw: unsafe { &*(ptr as *const crate::ffi::OrderingTerm) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct LimitClause<'a> {
     raw: &'a crate::ffi::LimitClause,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for LimitClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for LimitClause<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2638,21 +2989,30 @@ impl<'a> LimitClause<'a> {
 }
 
 impl<'a> FromArena<'a> for LimitClause<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(LimitClause { raw: unsafe { &*(ptr as *const crate::ffi::LimitClause) }, reader })
+        Some(LimitClause { raw: unsafe { &*(ptr as *const crate::ffi::LimitClause) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct TableRef<'a> {
     raw: &'a crate::ffi::TableRef,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for TableRef<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for TableRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2669,21 +3029,30 @@ impl<'a> TableRef<'a> {
 }
 
 impl<'a> FromArena<'a> for TableRef<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(TableRef { raw: unsafe { &*(ptr as *const crate::ffi::TableRef) }, reader })
+        Some(TableRef { raw: unsafe { &*(ptr as *const crate::ffi::TableRef) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct SubqueryTableSource<'a> {
     raw: &'a crate::ffi::SubqueryTableSource,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for SubqueryTableSource<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for SubqueryTableSource<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2697,21 +3066,30 @@ impl<'a> SubqueryTableSource<'a> {
 }
 
 impl<'a> FromArena<'a> for SubqueryTableSource<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(SubqueryTableSource { raw: unsafe { &*(ptr as *const crate::ffi::SubqueryTableSource) }, reader })
+        Some(SubqueryTableSource { raw: unsafe { &*(ptr as *const crate::ffi::SubqueryTableSource) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct JoinClause<'a> {
     raw: &'a crate::ffi::JoinClause,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for JoinClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for JoinClause<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2734,21 +3112,30 @@ impl<'a> JoinClause<'a> {
 }
 
 impl<'a> FromArena<'a> for JoinClause<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(JoinClause { raw: unsafe { &*(ptr as *const crate::ffi::JoinClause) }, reader })
+        Some(JoinClause { raw: unsafe { &*(ptr as *const crate::ffi::JoinClause) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct JoinPrefix<'a> {
     raw: &'a crate::ffi::JoinPrefix,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for JoinPrefix<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for JoinPrefix<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2762,21 +3149,30 @@ impl<'a> JoinPrefix<'a> {
 }
 
 impl<'a> FromArena<'a> for JoinPrefix<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(JoinPrefix { raw: unsafe { &*(ptr as *const crate::ffi::JoinPrefix) }, reader })
+        Some(JoinPrefix { raw: unsafe { &*(ptr as *const crate::ffi::JoinPrefix) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct TriggerEvent<'a> {
     raw: &'a crate::ffi::TriggerEvent,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for TriggerEvent<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for TriggerEvent<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2790,21 +3186,30 @@ impl<'a> TriggerEvent<'a> {
 }
 
 impl<'a> FromArena<'a> for TriggerEvent<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(TriggerEvent { raw: unsafe { &*(ptr as *const crate::ffi::TriggerEvent) }, reader })
+        Some(TriggerEvent { raw: unsafe { &*(ptr as *const crate::ffi::TriggerEvent) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct CreateTriggerStmt<'a> {
     raw: &'a crate::ffi::CreateTriggerStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for CreateTriggerStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for CreateTriggerStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2839,21 +3244,30 @@ impl<'a> CreateTriggerStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for CreateTriggerStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(CreateTriggerStmt { raw: unsafe { &*(ptr as *const crate::ffi::CreateTriggerStmt) }, reader })
+        Some(CreateTriggerStmt { raw: unsafe { &*(ptr as *const crate::ffi::CreateTriggerStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct CreateVirtualTableStmt<'a> {
     raw: &'a crate::ffi::CreateVirtualTableStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for CreateVirtualTableStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for CreateVirtualTableStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2876,21 +3290,30 @@ impl<'a> CreateVirtualTableStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for CreateVirtualTableStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(CreateVirtualTableStmt { raw: unsafe { &*(ptr as *const crate::ffi::CreateVirtualTableStmt) }, reader })
+        Some(CreateVirtualTableStmt { raw: unsafe { &*(ptr as *const crate::ffi::CreateVirtualTableStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct PragmaStmt<'a> {
     raw: &'a crate::ffi::PragmaStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for PragmaStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for PragmaStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2910,21 +3333,30 @@ impl<'a> PragmaStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for PragmaStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(PragmaStmt { raw: unsafe { &*(ptr as *const crate::ffi::PragmaStmt) }, reader })
+        Some(PragmaStmt { raw: unsafe { &*(ptr as *const crate::ffi::PragmaStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct AnalyzeStmt<'a> {
     raw: &'a crate::ffi::AnalyzeStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for AnalyzeStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for AnalyzeStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2941,21 +3373,30 @@ impl<'a> AnalyzeStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for AnalyzeStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(AnalyzeStmt { raw: unsafe { &*(ptr as *const crate::ffi::AnalyzeStmt) }, reader })
+        Some(AnalyzeStmt { raw: unsafe { &*(ptr as *const crate::ffi::AnalyzeStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct AttachStmt<'a> {
     raw: &'a crate::ffi::AttachStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for AttachStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for AttachStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2972,21 +3413,30 @@ impl<'a> AttachStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for AttachStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(AttachStmt { raw: unsafe { &*(ptr as *const crate::ffi::AttachStmt) }, reader })
+        Some(AttachStmt { raw: unsafe { &*(ptr as *const crate::ffi::AttachStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct DetachStmt<'a> {
     raw: &'a crate::ffi::DetachStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for DetachStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for DetachStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -2997,21 +3447,30 @@ impl<'a> DetachStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for DetachStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(DetachStmt { raw: unsafe { &*(ptr as *const crate::ffi::DetachStmt) }, reader })
+        Some(DetachStmt { raw: unsafe { &*(ptr as *const crate::ffi::DetachStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct VacuumStmt<'a> {
     raw: &'a crate::ffi::VacuumStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for VacuumStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for VacuumStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -3025,21 +3484,30 @@ impl<'a> VacuumStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for VacuumStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(VacuumStmt { raw: unsafe { &*(ptr as *const crate::ffi::VacuumStmt) }, reader })
+        Some(VacuumStmt { raw: unsafe { &*(ptr as *const crate::ffi::VacuumStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct ExplainStmt<'a> {
     raw: &'a crate::ffi::ExplainStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for ExplainStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for ExplainStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -3053,21 +3521,30 @@ impl<'a> ExplainStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for ExplainStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(ExplainStmt { raw: unsafe { &*(ptr as *const crate::ffi::ExplainStmt) }, reader })
+        Some(ExplainStmt { raw: unsafe { &*(ptr as *const crate::ffi::ExplainStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct CreateIndexStmt<'a> {
     raw: &'a crate::ffi::CreateIndexStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for CreateIndexStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for CreateIndexStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -3096,21 +3573,30 @@ impl<'a> CreateIndexStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for CreateIndexStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(CreateIndexStmt { raw: unsafe { &*(ptr as *const crate::ffi::CreateIndexStmt) }, reader })
+        Some(CreateIndexStmt { raw: unsafe { &*(ptr as *const crate::ffi::CreateIndexStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct CreateViewStmt<'a> {
     raw: &'a crate::ffi::CreateViewStmt,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for CreateViewStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for CreateViewStmt<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -3136,21 +3622,30 @@ impl<'a> CreateViewStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for CreateViewStmt<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(CreateViewStmt { raw: unsafe { &*(ptr as *const crate::ffi::CreateViewStmt) }, reader })
+        Some(CreateViewStmt { raw: unsafe { &*(ptr as *const crate::ffi::CreateViewStmt) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct ValuesClause<'a> {
     raw: &'a crate::ffi::ValuesClause,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for ValuesClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for ValuesClause<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -3161,21 +3656,30 @@ impl<'a> ValuesClause<'a> {
 }
 
 impl<'a> FromArena<'a> for ValuesClause<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(ValuesClause { raw: unsafe { &*(ptr as *const crate::ffi::ValuesClause) }, reader })
+        Some(ValuesClause { raw: unsafe { &*(ptr as *const crate::ffi::ValuesClause) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct FrameBound<'a> {
     raw: &'a crate::ffi::FrameBound,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for FrameBound<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for FrameBound<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -3189,21 +3693,30 @@ impl<'a> FrameBound<'a> {
 }
 
 impl<'a> FromArena<'a> for FrameBound<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(FrameBound { raw: unsafe { &*(ptr as *const crate::ffi::FrameBound) }, reader })
+        Some(FrameBound { raw: unsafe { &*(ptr as *const crate::ffi::FrameBound) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct FrameSpec<'a> {
     raw: &'a crate::ffi::FrameSpec,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for FrameSpec<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for FrameSpec<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -3223,21 +3736,30 @@ impl<'a> FrameSpec<'a> {
 }
 
 impl<'a> FromArena<'a> for FrameSpec<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(FrameSpec { raw: unsafe { &*(ptr as *const crate::ffi::FrameSpec) }, reader })
+        Some(FrameSpec { raw: unsafe { &*(ptr as *const crate::ffi::FrameSpec) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct WindowDef<'a> {
     raw: &'a crate::ffi::WindowDef,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for WindowDef<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for WindowDef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -3257,21 +3779,30 @@ impl<'a> WindowDef<'a> {
 }
 
 impl<'a> FromArena<'a> for WindowDef<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(WindowDef { raw: unsafe { &*(ptr as *const crate::ffi::WindowDef) }, reader })
+        Some(WindowDef { raw: unsafe { &*(ptr as *const crate::ffi::WindowDef) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct NamedWindowDef<'a> {
     raw: &'a crate::ffi::NamedWindowDef,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for NamedWindowDef<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for NamedWindowDef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -3285,21 +3816,30 @@ impl<'a> NamedWindowDef<'a> {
 }
 
 impl<'a> FromArena<'a> for NamedWindowDef<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(NamedWindowDef { raw: unsafe { &*(ptr as *const crate::ffi::NamedWindowDef) }, reader })
+        Some(NamedWindowDef { raw: unsafe { &*(ptr as *const crate::ffi::NamedWindowDef) }, reader, id })
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct FilterOver<'a> {
     raw: &'a crate::ffi::FilterOver,
-    reader: NodeReader<'a>,
+    reader: &'a NodeReader<'a>,
+    id: NodeId,
 }
 
 impl std::fmt::Debug for FilterOver<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for FilterOver<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.reader.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
@@ -3316,9 +3856,9 @@ impl<'a> FilterOver<'a> {
 }
 
 impl<'a> FromArena<'a> for FilterOver<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         let (ptr, _) = reader.node_ptr(id)?;
-        Some(FilterOver { raw: unsafe { &*(ptr as *const crate::ffi::FilterOver) }, reader })
+        Some(FilterOver { raw: unsafe { &*(ptr as *const crate::ffi::FilterOver) }, reader, id })
     }
 }
 
@@ -3461,93 +4001,93 @@ impl<'a> Node<'a> {
     /// # Safety
     /// `ptr` must be non-null, well-aligned, and valid for `'a`.
     /// Its first `u32` must be a valid `NodeTag` discriminant.
-    pub(crate) unsafe fn from_raw(ptr: *const u32, reader: NodeReader<'a>) -> Node<'a> {
+    pub(crate) unsafe fn from_raw(ptr: *const u32, reader: &'a NodeReader<'a>, id: NodeId) -> Node<'a> {
         // SAFETY: caller guarantees ptr is valid for 'a with a valid tag.
         unsafe {
         let tag = NodeTag::from_raw(*ptr).unwrap_or(NodeTag::Null);
         match tag {
-            NodeTag::AggregateFunctionCall => Node::AggregateFunctionCall(AggregateFunctionCall { raw: &*(ptr as *const crate::ffi::AggregateFunctionCall), reader }),
-            NodeTag::CastExpr => Node::CastExpr(CastExpr { raw: &*(ptr as *const crate::ffi::CastExpr), reader }),
-            NodeTag::ColumnRef => Node::ColumnRef(ColumnRef { raw: &*(ptr as *const crate::ffi::ColumnRef), reader }),
-            NodeTag::CompoundSelect => Node::CompoundSelect(CompoundSelect { raw: &*(ptr as *const crate::ffi::CompoundSelect), reader }),
-            NodeTag::SubqueryExpr => Node::SubqueryExpr(SubqueryExpr { raw: &*(ptr as *const crate::ffi::SubqueryExpr), reader }),
-            NodeTag::ExistsExpr => Node::ExistsExpr(ExistsExpr { raw: &*(ptr as *const crate::ffi::ExistsExpr), reader }),
-            NodeTag::InExpr => Node::InExpr(InExpr { raw: &*(ptr as *const crate::ffi::InExpr), reader }),
-            NodeTag::IsExpr => Node::IsExpr(IsExpr { raw: &*(ptr as *const crate::ffi::IsExpr), reader }),
-            NodeTag::BetweenExpr => Node::BetweenExpr(BetweenExpr { raw: &*(ptr as *const crate::ffi::BetweenExpr), reader }),
-            NodeTag::LikeExpr => Node::LikeExpr(LikeExpr { raw: &*(ptr as *const crate::ffi::LikeExpr), reader }),
-            NodeTag::CaseExpr => Node::CaseExpr(CaseExpr { raw: &*(ptr as *const crate::ffi::CaseExpr), reader }),
-            NodeTag::CaseWhen => Node::CaseWhen(CaseWhen { raw: &*(ptr as *const crate::ffi::CaseWhen), reader }),
+            NodeTag::AggregateFunctionCall => Node::AggregateFunctionCall(AggregateFunctionCall { raw: &*(ptr as *const crate::ffi::AggregateFunctionCall), reader, id }),
+            NodeTag::CastExpr => Node::CastExpr(CastExpr { raw: &*(ptr as *const crate::ffi::CastExpr), reader, id }),
+            NodeTag::ColumnRef => Node::ColumnRef(ColumnRef { raw: &*(ptr as *const crate::ffi::ColumnRef), reader, id }),
+            NodeTag::CompoundSelect => Node::CompoundSelect(CompoundSelect { raw: &*(ptr as *const crate::ffi::CompoundSelect), reader, id }),
+            NodeTag::SubqueryExpr => Node::SubqueryExpr(SubqueryExpr { raw: &*(ptr as *const crate::ffi::SubqueryExpr), reader, id }),
+            NodeTag::ExistsExpr => Node::ExistsExpr(ExistsExpr { raw: &*(ptr as *const crate::ffi::ExistsExpr), reader, id }),
+            NodeTag::InExpr => Node::InExpr(InExpr { raw: &*(ptr as *const crate::ffi::InExpr), reader, id }),
+            NodeTag::IsExpr => Node::IsExpr(IsExpr { raw: &*(ptr as *const crate::ffi::IsExpr), reader, id }),
+            NodeTag::BetweenExpr => Node::BetweenExpr(BetweenExpr { raw: &*(ptr as *const crate::ffi::BetweenExpr), reader, id }),
+            NodeTag::LikeExpr => Node::LikeExpr(LikeExpr { raw: &*(ptr as *const crate::ffi::LikeExpr), reader, id }),
+            NodeTag::CaseExpr => Node::CaseExpr(CaseExpr { raw: &*(ptr as *const crate::ffi::CaseExpr), reader, id }),
+            NodeTag::CaseWhen => Node::CaseWhen(CaseWhen { raw: &*(ptr as *const crate::ffi::CaseWhen), reader, id }),
             NodeTag::CaseWhenList => Node::CaseWhenList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::ForeignKeyClause => Node::ForeignKeyClause(ForeignKeyClause { raw: &*(ptr as *const crate::ffi::ForeignKeyClause), reader }),
-            NodeTag::ColumnConstraint => Node::ColumnConstraint(ColumnConstraint { raw: &*(ptr as *const crate::ffi::ColumnConstraint), reader }),
+            NodeTag::ForeignKeyClause => Node::ForeignKeyClause(ForeignKeyClause { raw: &*(ptr as *const crate::ffi::ForeignKeyClause), reader, id }),
+            NodeTag::ColumnConstraint => Node::ColumnConstraint(ColumnConstraint { raw: &*(ptr as *const crate::ffi::ColumnConstraint), reader, id }),
             NodeTag::ColumnConstraintList => Node::ColumnConstraintList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::ColumnDef => Node::ColumnDef(ColumnDef { raw: &*(ptr as *const crate::ffi::ColumnDef), reader }),
+            NodeTag::ColumnDef => Node::ColumnDef(ColumnDef { raw: &*(ptr as *const crate::ffi::ColumnDef), reader, id }),
             NodeTag::ColumnDefList => Node::ColumnDefList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::TableConstraint => Node::TableConstraint(TableConstraint { raw: &*(ptr as *const crate::ffi::TableConstraint), reader }),
+            NodeTag::TableConstraint => Node::TableConstraint(TableConstraint { raw: &*(ptr as *const crate::ffi::TableConstraint), reader, id }),
             NodeTag::TableConstraintList => Node::TableConstraintList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::CreateTableStmt => Node::CreateTableStmt(CreateTableStmt { raw: &*(ptr as *const crate::ffi::CreateTableStmt), reader }),
-            NodeTag::CteDefinition => Node::CteDefinition(CteDefinition { raw: &*(ptr as *const crate::ffi::CteDefinition), reader }),
+            NodeTag::CreateTableStmt => Node::CreateTableStmt(CreateTableStmt { raw: &*(ptr as *const crate::ffi::CreateTableStmt), reader, id }),
+            NodeTag::CteDefinition => Node::CteDefinition(CteDefinition { raw: &*(ptr as *const crate::ffi::CteDefinition), reader, id }),
             NodeTag::CteList => Node::CteList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::WithClause => Node::WithClause(WithClause { raw: &*(ptr as *const crate::ffi::WithClause), reader }),
-            NodeTag::DeleteStmt => Node::DeleteStmt(DeleteStmt { raw: &*(ptr as *const crate::ffi::DeleteStmt), reader }),
-            NodeTag::SetClause => Node::SetClause(SetClause { raw: &*(ptr as *const crate::ffi::SetClause), reader }),
+            NodeTag::WithClause => Node::WithClause(WithClause { raw: &*(ptr as *const crate::ffi::WithClause), reader, id }),
+            NodeTag::DeleteStmt => Node::DeleteStmt(DeleteStmt { raw: &*(ptr as *const crate::ffi::DeleteStmt), reader, id }),
+            NodeTag::SetClause => Node::SetClause(SetClause { raw: &*(ptr as *const crate::ffi::SetClause), reader, id }),
             NodeTag::SetClauseList => Node::SetClauseList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::UpdateStmt => Node::UpdateStmt(UpdateStmt { raw: &*(ptr as *const crate::ffi::UpdateStmt), reader }),
-            NodeTag::InsertStmt => Node::InsertStmt(InsertStmt { raw: &*(ptr as *const crate::ffi::InsertStmt), reader }),
-            NodeTag::BinaryExpr => Node::BinaryExpr(BinaryExpr { raw: &*(ptr as *const crate::ffi::BinaryExpr), reader }),
-            NodeTag::UnaryExpr => Node::UnaryExpr(UnaryExpr { raw: &*(ptr as *const crate::ffi::UnaryExpr), reader }),
-            NodeTag::Literal => Node::Literal(Literal { raw: &*(ptr as *const crate::ffi::Literal), reader }),
+            NodeTag::UpdateStmt => Node::UpdateStmt(UpdateStmt { raw: &*(ptr as *const crate::ffi::UpdateStmt), reader, id }),
+            NodeTag::InsertStmt => Node::InsertStmt(InsertStmt { raw: &*(ptr as *const crate::ffi::InsertStmt), reader, id }),
+            NodeTag::BinaryExpr => Node::BinaryExpr(BinaryExpr { raw: &*(ptr as *const crate::ffi::BinaryExpr), reader, id }),
+            NodeTag::UnaryExpr => Node::UnaryExpr(UnaryExpr { raw: &*(ptr as *const crate::ffi::UnaryExpr), reader, id }),
+            NodeTag::Literal => Node::Literal(Literal { raw: &*(ptr as *const crate::ffi::Literal), reader, id }),
             NodeTag::ExprList => Node::ExprList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::FunctionCall => Node::FunctionCall(FunctionCall { raw: &*(ptr as *const crate::ffi::FunctionCall), reader }),
-            NodeTag::Variable => Node::Variable(Variable { raw: &*(ptr as *const crate::ffi::Variable), reader }),
-            NodeTag::CollateExpr => Node::CollateExpr(CollateExpr { raw: &*(ptr as *const crate::ffi::CollateExpr), reader }),
-            NodeTag::RaiseExpr => Node::RaiseExpr(RaiseExpr { raw: &*(ptr as *const crate::ffi::RaiseExpr), reader }),
-            NodeTag::QualifiedName => Node::QualifiedName(QualifiedName { raw: &*(ptr as *const crate::ffi::QualifiedName), reader }),
-            NodeTag::DropStmt => Node::DropStmt(DropStmt { raw: &*(ptr as *const crate::ffi::DropStmt), reader }),
-            NodeTag::AlterTableStmt => Node::AlterTableStmt(AlterTableStmt { raw: &*(ptr as *const crate::ffi::AlterTableStmt), reader }),
-            NodeTag::TransactionStmt => Node::TransactionStmt(TransactionStmt { raw: &*(ptr as *const crate::ffi::TransactionStmt), reader }),
-            NodeTag::SavepointStmt => Node::SavepointStmt(SavepointStmt { raw: &*(ptr as *const crate::ffi::SavepointStmt), reader }),
-            NodeTag::ResultColumn => Node::ResultColumn(ResultColumn { raw: &*(ptr as *const crate::ffi::ResultColumn), reader }),
+            NodeTag::FunctionCall => Node::FunctionCall(FunctionCall { raw: &*(ptr as *const crate::ffi::FunctionCall), reader, id }),
+            NodeTag::Variable => Node::Variable(Variable { raw: &*(ptr as *const crate::ffi::Variable), reader, id }),
+            NodeTag::CollateExpr => Node::CollateExpr(CollateExpr { raw: &*(ptr as *const crate::ffi::CollateExpr), reader, id }),
+            NodeTag::RaiseExpr => Node::RaiseExpr(RaiseExpr { raw: &*(ptr as *const crate::ffi::RaiseExpr), reader, id }),
+            NodeTag::QualifiedName => Node::QualifiedName(QualifiedName { raw: &*(ptr as *const crate::ffi::QualifiedName), reader, id }),
+            NodeTag::DropStmt => Node::DropStmt(DropStmt { raw: &*(ptr as *const crate::ffi::DropStmt), reader, id }),
+            NodeTag::AlterTableStmt => Node::AlterTableStmt(AlterTableStmt { raw: &*(ptr as *const crate::ffi::AlterTableStmt), reader, id }),
+            NodeTag::TransactionStmt => Node::TransactionStmt(TransactionStmt { raw: &*(ptr as *const crate::ffi::TransactionStmt), reader, id }),
+            NodeTag::SavepointStmt => Node::SavepointStmt(SavepointStmt { raw: &*(ptr as *const crate::ffi::SavepointStmt), reader, id }),
+            NodeTag::ResultColumn => Node::ResultColumn(ResultColumn { raw: &*(ptr as *const crate::ffi::ResultColumn), reader, id }),
             NodeTag::ResultColumnList => Node::ResultColumnList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::SelectStmt => Node::SelectStmt(SelectStmt { raw: &*(ptr as *const crate::ffi::SelectStmt), reader }),
-            NodeTag::OrderingTerm => Node::OrderingTerm(OrderingTerm { raw: &*(ptr as *const crate::ffi::OrderingTerm), reader }),
+            NodeTag::SelectStmt => Node::SelectStmt(SelectStmt { raw: &*(ptr as *const crate::ffi::SelectStmt), reader, id }),
+            NodeTag::OrderingTerm => Node::OrderingTerm(OrderingTerm { raw: &*(ptr as *const crate::ffi::OrderingTerm), reader, id }),
             NodeTag::OrderByList => Node::OrderByList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::LimitClause => Node::LimitClause(LimitClause { raw: &*(ptr as *const crate::ffi::LimitClause), reader }),
-            NodeTag::TableRef => Node::TableRef(TableRef { raw: &*(ptr as *const crate::ffi::TableRef), reader }),
-            NodeTag::SubqueryTableSource => Node::SubqueryTableSource(SubqueryTableSource { raw: &*(ptr as *const crate::ffi::SubqueryTableSource), reader }),
-            NodeTag::JoinClause => Node::JoinClause(JoinClause { raw: &*(ptr as *const crate::ffi::JoinClause), reader }),
-            NodeTag::JoinPrefix => Node::JoinPrefix(JoinPrefix { raw: &*(ptr as *const crate::ffi::JoinPrefix), reader }),
-            NodeTag::TriggerEvent => Node::TriggerEvent(TriggerEvent { raw: &*(ptr as *const crate::ffi::TriggerEvent), reader }),
+            NodeTag::LimitClause => Node::LimitClause(LimitClause { raw: &*(ptr as *const crate::ffi::LimitClause), reader, id }),
+            NodeTag::TableRef => Node::TableRef(TableRef { raw: &*(ptr as *const crate::ffi::TableRef), reader, id }),
+            NodeTag::SubqueryTableSource => Node::SubqueryTableSource(SubqueryTableSource { raw: &*(ptr as *const crate::ffi::SubqueryTableSource), reader, id }),
+            NodeTag::JoinClause => Node::JoinClause(JoinClause { raw: &*(ptr as *const crate::ffi::JoinClause), reader, id }),
+            NodeTag::JoinPrefix => Node::JoinPrefix(JoinPrefix { raw: &*(ptr as *const crate::ffi::JoinPrefix), reader, id }),
+            NodeTag::TriggerEvent => Node::TriggerEvent(TriggerEvent { raw: &*(ptr as *const crate::ffi::TriggerEvent), reader, id }),
             NodeTag::TriggerCmdList => Node::TriggerCmdList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::CreateTriggerStmt => Node::CreateTriggerStmt(CreateTriggerStmt { raw: &*(ptr as *const crate::ffi::CreateTriggerStmt), reader }),
-            NodeTag::CreateVirtualTableStmt => Node::CreateVirtualTableStmt(CreateVirtualTableStmt { raw: &*(ptr as *const crate::ffi::CreateVirtualTableStmt), reader }),
-            NodeTag::PragmaStmt => Node::PragmaStmt(PragmaStmt { raw: &*(ptr as *const crate::ffi::PragmaStmt), reader }),
-            NodeTag::AnalyzeStmt => Node::AnalyzeStmt(AnalyzeStmt { raw: &*(ptr as *const crate::ffi::AnalyzeStmt), reader }),
-            NodeTag::AttachStmt => Node::AttachStmt(AttachStmt { raw: &*(ptr as *const crate::ffi::AttachStmt), reader }),
-            NodeTag::DetachStmt => Node::DetachStmt(DetachStmt { raw: &*(ptr as *const crate::ffi::DetachStmt), reader }),
-            NodeTag::VacuumStmt => Node::VacuumStmt(VacuumStmt { raw: &*(ptr as *const crate::ffi::VacuumStmt), reader }),
-            NodeTag::ExplainStmt => Node::ExplainStmt(ExplainStmt { raw: &*(ptr as *const crate::ffi::ExplainStmt), reader }),
-            NodeTag::CreateIndexStmt => Node::CreateIndexStmt(CreateIndexStmt { raw: &*(ptr as *const crate::ffi::CreateIndexStmt), reader }),
-            NodeTag::CreateViewStmt => Node::CreateViewStmt(CreateViewStmt { raw: &*(ptr as *const crate::ffi::CreateViewStmt), reader }),
+            NodeTag::CreateTriggerStmt => Node::CreateTriggerStmt(CreateTriggerStmt { raw: &*(ptr as *const crate::ffi::CreateTriggerStmt), reader, id }),
+            NodeTag::CreateVirtualTableStmt => Node::CreateVirtualTableStmt(CreateVirtualTableStmt { raw: &*(ptr as *const crate::ffi::CreateVirtualTableStmt), reader, id }),
+            NodeTag::PragmaStmt => Node::PragmaStmt(PragmaStmt { raw: &*(ptr as *const crate::ffi::PragmaStmt), reader, id }),
+            NodeTag::AnalyzeStmt => Node::AnalyzeStmt(AnalyzeStmt { raw: &*(ptr as *const crate::ffi::AnalyzeStmt), reader, id }),
+            NodeTag::AttachStmt => Node::AttachStmt(AttachStmt { raw: &*(ptr as *const crate::ffi::AttachStmt), reader, id }),
+            NodeTag::DetachStmt => Node::DetachStmt(DetachStmt { raw: &*(ptr as *const crate::ffi::DetachStmt), reader, id }),
+            NodeTag::VacuumStmt => Node::VacuumStmt(VacuumStmt { raw: &*(ptr as *const crate::ffi::VacuumStmt), reader, id }),
+            NodeTag::ExplainStmt => Node::ExplainStmt(ExplainStmt { raw: &*(ptr as *const crate::ffi::ExplainStmt), reader, id }),
+            NodeTag::CreateIndexStmt => Node::CreateIndexStmt(CreateIndexStmt { raw: &*(ptr as *const crate::ffi::CreateIndexStmt), reader, id }),
+            NodeTag::CreateViewStmt => Node::CreateViewStmt(CreateViewStmt { raw: &*(ptr as *const crate::ffi::CreateViewStmt), reader, id }),
             NodeTag::ValuesRowList => Node::ValuesRowList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::ValuesClause => Node::ValuesClause(ValuesClause { raw: &*(ptr as *const crate::ffi::ValuesClause), reader }),
-            NodeTag::FrameBound => Node::FrameBound(FrameBound { raw: &*(ptr as *const crate::ffi::FrameBound), reader }),
-            NodeTag::FrameSpec => Node::FrameSpec(FrameSpec { raw: &*(ptr as *const crate::ffi::FrameSpec), reader }),
-            NodeTag::WindowDef => Node::WindowDef(WindowDef { raw: &*(ptr as *const crate::ffi::WindowDef), reader }),
+            NodeTag::ValuesClause => Node::ValuesClause(ValuesClause { raw: &*(ptr as *const crate::ffi::ValuesClause), reader, id }),
+            NodeTag::FrameBound => Node::FrameBound(FrameBound { raw: &*(ptr as *const crate::ffi::FrameBound), reader, id }),
+            NodeTag::FrameSpec => Node::FrameSpec(FrameSpec { raw: &*(ptr as *const crate::ffi::FrameSpec), reader, id }),
+            NodeTag::WindowDef => Node::WindowDef(WindowDef { raw: &*(ptr as *const crate::ffi::WindowDef), reader, id }),
             NodeTag::WindowDefList => Node::WindowDefList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::NamedWindowDef => Node::NamedWindowDef(NamedWindowDef { raw: &*(ptr as *const crate::ffi::NamedWindowDef), reader }),
+            NodeTag::NamedWindowDef => Node::NamedWindowDef(NamedWindowDef { raw: &*(ptr as *const crate::ffi::NamedWindowDef), reader, id }),
             NodeTag::NamedWindowDefList => Node::NamedWindowDefList(TypedList::new(&*(ptr as *const NodeList), reader)),
-            NodeTag::FilterOver => Node::FilterOver(FilterOver { raw: &*(ptr as *const crate::ffi::FilterOver), reader }),
+            NodeTag::FilterOver => Node::FilterOver(FilterOver { raw: &*(ptr as *const crate::ffi::FilterOver), reader, id }),
             _ => unreachable!("unknown node tag"),
         }
         } // unsafe
     }
 
     /// Resolve a `NodeId` into a typed `Node`, or `None` if null/invalid.
-    pub(crate) fn resolve(reader: NodeReader<'a>, id: NodeId) -> Option<Node<'a>> {
+    pub(crate) fn resolve(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Node<'a>> {
         let (ptr, _tag) = reader.node_ptr(id)?;
-        Some(unsafe { Node::from_raw(ptr as *const u32, reader) })
+        Some(unsafe { Node::from_raw(ptr as *const u32, reader, id) })
     }
 
     /// The node's tag.
@@ -3632,8 +4172,76 @@ impl<'a> Node<'a> {
 
 }
 
+impl std::fmt::Display for Node<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Node::AggregateFunctionCall(n) => std::fmt::Display::fmt(n, f),
+            Node::CastExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::ColumnRef(n) => std::fmt::Display::fmt(n, f),
+            Node::CompoundSelect(n) => std::fmt::Display::fmt(n, f),
+            Node::SubqueryExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::ExistsExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::InExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::IsExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::BetweenExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::LikeExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::CaseExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::CaseWhen(n) => std::fmt::Display::fmt(n, f),
+            Node::ForeignKeyClause(n) => std::fmt::Display::fmt(n, f),
+            Node::ColumnConstraint(n) => std::fmt::Display::fmt(n, f),
+            Node::ColumnDef(n) => std::fmt::Display::fmt(n, f),
+            Node::TableConstraint(n) => std::fmt::Display::fmt(n, f),
+            Node::CreateTableStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::CteDefinition(n) => std::fmt::Display::fmt(n, f),
+            Node::WithClause(n) => std::fmt::Display::fmt(n, f),
+            Node::DeleteStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::SetClause(n) => std::fmt::Display::fmt(n, f),
+            Node::UpdateStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::InsertStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::BinaryExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::UnaryExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::Literal(n) => std::fmt::Display::fmt(n, f),
+            Node::FunctionCall(n) => std::fmt::Display::fmt(n, f),
+            Node::Variable(n) => std::fmt::Display::fmt(n, f),
+            Node::CollateExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::RaiseExpr(n) => std::fmt::Display::fmt(n, f),
+            Node::QualifiedName(n) => std::fmt::Display::fmt(n, f),
+            Node::DropStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::AlterTableStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::TransactionStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::SavepointStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::ResultColumn(n) => std::fmt::Display::fmt(n, f),
+            Node::SelectStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::OrderingTerm(n) => std::fmt::Display::fmt(n, f),
+            Node::LimitClause(n) => std::fmt::Display::fmt(n, f),
+            Node::TableRef(n) => std::fmt::Display::fmt(n, f),
+            Node::SubqueryTableSource(n) => std::fmt::Display::fmt(n, f),
+            Node::JoinClause(n) => std::fmt::Display::fmt(n, f),
+            Node::JoinPrefix(n) => std::fmt::Display::fmt(n, f),
+            Node::TriggerEvent(n) => std::fmt::Display::fmt(n, f),
+            Node::CreateTriggerStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::CreateVirtualTableStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::PragmaStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::AnalyzeStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::AttachStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::DetachStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::VacuumStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::ExplainStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::CreateIndexStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::CreateViewStmt(n) => std::fmt::Display::fmt(n, f),
+            Node::ValuesClause(n) => std::fmt::Display::fmt(n, f),
+            Node::FrameBound(n) => std::fmt::Display::fmt(n, f),
+            Node::FrameSpec(n) => std::fmt::Display::fmt(n, f),
+            Node::WindowDef(n) => std::fmt::Display::fmt(n, f),
+            Node::NamedWindowDef(n) => std::fmt::Display::fmt(n, f),
+            Node::FilterOver(n) => std::fmt::Display::fmt(n, f),
+            _ => std::fmt::Debug::fmt(self, f),
+        }
+    }
+}
+
 impl<'a> FromArena<'a> for Node<'a> {
-    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         Node::resolve(reader, id)
     }
 }

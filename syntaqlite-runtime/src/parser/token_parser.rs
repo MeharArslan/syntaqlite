@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 use std::ffi::{c_int, CStr};
 use std::ops::Range;
 
@@ -85,7 +88,8 @@ impl<'a> TokenFeeder<'a> {
         // SAFETY: raw is valid; result struct and error_msg pointer are valid
         // for the lifetime of the parser.
         unsafe {
-            let result = ffi::syntaqlite_parser_result(self.0.raw);
+            let raw = self.0.reader.raw();
+            let result = ffi::syntaqlite_parser_result(raw);
             if rc == 1 {
                 return Ok(NodeId(result.root));
             }
@@ -116,10 +120,11 @@ impl<'a> TokenFeeder<'a> {
         span: Range<usize>,
     ) -> Result<Option<NodeId>, ParseError> {
         // SAFETY: c_source_ptr is valid for the source length; raw is valid.
+        let raw = self.0.reader.raw();
         let rc = unsafe {
             let c_text = self.0.c_source_ptr.add(span.start);
             ffi::syntaqlite_parser_feed_token(
-                self.0.raw,
+                raw,
                 token_type as c_int,
                 c_text as *const _,
                 span.len() as c_int,
@@ -139,7 +144,7 @@ impl<'a> TokenFeeder<'a> {
     /// parse error.
     pub fn finish(&mut self) -> Result<Option<NodeId>, ParseError> {
         // SAFETY: raw is valid.
-        let rc = unsafe { ffi::syntaqlite_parser_finish(self.0.raw) };
+        let rc = unsafe { ffi::syntaqlite_parser_finish(self.0.reader.raw()) };
         match rc {
             0 => Ok(None),
             _ => self.parse_result(rc).map(Some),
@@ -152,14 +157,14 @@ impl<'a> TokenFeeder<'a> {
     /// in the original source. Calls may nest (for nested macro expansions).
     pub fn begin_macro(&mut self, call_offset: u32, call_length: u32) {
         unsafe {
-            ffi::syntaqlite_parser_begin_macro(self.0.raw, call_offset, call_length);
+            ffi::syntaqlite_parser_begin_macro(self.0.reader.raw(), call_offset, call_length);
         }
     }
 
     /// End the innermost macro expansion region.
     pub fn end_macro(&mut self) {
         unsafe {
-            ffi::syntaqlite_parser_end_macro(self.0.raw);
+            ffi::syntaqlite_parser_end_macro(self.0.reader.raw());
         }
     }
 
@@ -170,14 +175,9 @@ impl<'a> TokenFeeder<'a> {
 
     // Delegate read-only methods for convenience
 
-    /// Get a `NodeReader` handle for resolving nodes from the arena.
-    pub fn reader(&self) -> NodeReader<'a> {
+    /// Get a reference to the embedded `NodeReader`.
+    pub fn reader(&self) -> &NodeReader<'a> {
         self.0.reader()
-    }
-
-    /// Get a raw pointer to a node in the arena. Returns (pointer, tag).
-    pub fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
-        self.0.node_ptr(id)
     }
 
     /// The source text bound to this feeder.

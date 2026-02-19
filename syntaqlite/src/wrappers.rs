@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 use std::ops::Range;
 
 use syntaqlite_runtime::parser::{CursorBase, MacroRegion, Trivia};
@@ -52,33 +55,15 @@ impl<'a> StatementCursor<'a> {
     }
 
     /// Get a typed AST node by ID.
-    pub fn node(&self, id: NodeId) -> Option<Node<'a>> {
+    ///
+    /// The returned `Node` borrows this cursor, so it cannot outlive it.
+    pub fn node(&self, id: NodeId) -> Option<Node<'_>> {
         Node::resolve(self.inner.reader(), id)
-    }
-
-    /// Get a `NodeReader` for resolving nodes from the arena.
-    pub fn reader(&self) -> syntaqlite_runtime::NodeReader<'a> {
-        self.inner.reader()
-    }
-
-    /// The source text bound to this cursor.
-    pub fn source(&self) -> &'a str {
-        self.inner.source()
     }
 
     /// Return all trivia (comments) captured during parsing.
     pub fn trivia(&self) -> &[Trivia] {
         self.inner.trivia()
-    }
-
-    /// Dump an AST node tree as indented text.
-    pub fn dump_node(
-        &self,
-        id: NodeId,
-        out: &mut String,
-        indent: usize,
-    ) {
-        self.inner.dump_node(id, out, indent)
     }
 
     /// Return all macro regions.
@@ -87,7 +72,7 @@ impl<'a> StatementCursor<'a> {
     }
 
     /// Access the underlying `CursorBase` (e.g. for `Formatter::format_node`).
-    pub fn base(&self) -> &CursorBase<'a> {
+    pub(crate) fn base(&self) -> &CursorBase<'a> {
         self.inner.base()
     }
 }
@@ -170,28 +155,15 @@ impl<'a> TokenFeeder<'a> {
     }
 
     /// Get a typed AST node by ID.
-    pub fn node(&self, id: NodeId) -> Option<Node<'a>> {
+    ///
+    /// The returned `Node` borrows this feeder, so it cannot outlive it.
+    pub fn node(&self, id: NodeId) -> Option<Node<'_>> {
         Node::resolve(self.inner.reader(), id)
-    }
-
-    /// The source text bound to this feeder.
-    pub fn source(&self) -> &'a str {
-        self.inner.source()
     }
 
     /// Return all trivia (comments) captured during parsing.
     pub fn trivia(&self) -> &[Trivia] {
         self.inner.trivia()
-    }
-
-    /// Dump an AST node tree as indented text.
-    pub fn dump_node(
-        &self,
-        id: NodeId,
-        out: &mut String,
-        indent: usize,
-    ) {
-        self.inner.dump_node(id, out, indent)
     }
 
     /// Return all macro regions.

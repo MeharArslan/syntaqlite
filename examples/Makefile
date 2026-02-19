@@ -42,7 +42,7 @@ ALL_OBJS := $(ENGINE_OBJS) $(LEMON_OBJS) $(DIALECT_OBJS)
 
 .PHONY: all clean
 
-all: select_columns
+all: select_columns select_columns_c
 
 # Engine objects
 arena.o: $(RUNTIME)/csrc/arena.c
@@ -70,5 +70,8 @@ libsyntaqlite.a: $(ALL_OBJS)
 select_columns: select_columns.cc libsyntaqlite.a
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
+select_columns_c: select_columns.c libsyntaqlite.a
+	$(CC) $(CFLAGS) -o $@ $^
+
 clean:
-	rm -f select_columns libsyntaqlite.a *.o
+	rm -f select_columns select_columns_c libsyntaqlite.a *.o

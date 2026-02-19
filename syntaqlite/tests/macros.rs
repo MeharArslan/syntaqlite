@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 /// Integration tests: macro regions are emitted verbatim by the formatter.
 use syntaqlite::low_level::TokenParser;
 use syntaqlite::low_level::TokenType;

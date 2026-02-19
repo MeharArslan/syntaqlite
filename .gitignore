@@ -12,6 +12,7 @@ out/.build.lock
 *.o
 *.a
 examples/select_columns
+examples/select_columns_c
 
 # Added by cargo
 /target

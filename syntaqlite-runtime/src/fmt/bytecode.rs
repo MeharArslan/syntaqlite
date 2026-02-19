@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 //! Shared opcode constants and raw op type used by both
 //! the codegen emitter (syntaqlite-codegen) and the runtime interpreter.
 

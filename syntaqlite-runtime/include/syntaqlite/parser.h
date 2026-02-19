@@ -200,6 +200,45 @@ static inline int syntaqlite_node_is_present(uint32_t node_id) {
 }
 
 // ---------------------------------------------------------------------------
+// Typed access macros
+// ---------------------------------------------------------------------------
+
+// Look up a node by ID and cast to a concrete type. Returns NULL if the
+// node ID is SYNTAQLITE_NULL_NODE.
+//
+//   const SyntaqliteStmt* stmt = SYNTAQLITE_NODE(p, SyntaqliteStmt, root_id);
+#define SYNTAQLITE_NODE(p, Type, id) \
+    ((id) == SYNTAQLITE_NULL_NODE \
+        ? (const Type*)0 \
+        : (const Type*)syntaqlite_parser_node((p), (id)))
+
+// Cast the i-th child of a list node to a concrete type.
+//
+//   const SyntaqliteColumnDef* cd =
+//       SYNTAQLITE_LIST_ITEM(p, SyntaqliteColumnDef, list, i);
+#define SYNTAQLITE_LIST_ITEM(p, Type, list, i) \
+    ((const Type*)syntaqlite_list_child((p), (list), (i)))
+
+// Iterate over every child in a list node, binding each as `const Type* var`.
+// Handles null list IDs (zero iterations). The variable is scoped to the loop.
+//
+//   SYNTAQLITE_LIST_FOREACH(p, SyntaqliteColumnDef, col, ct->columns) {
+//     printf("%.*s\n", col->column_name.length,
+//            syntaqlite_parser_source(p) + col->column_name.offset);
+//   }
+#define SYNTAQLITE_LIST_FOREACH(p, Type, var, list_id) \
+    for (const void* _sqlist_##var = syntaqlite_node_is_present(list_id) \
+             ? syntaqlite_parser_node((p), (list_id)) : 0, \
+             *_sqonce_##var = 0; \
+         !_sqonce_##var; _sqonce_##var = (const void*)1) \
+    for (uint32_t _sqi_##var = 0, \
+             _sqn_##var = _sqlist_##var \
+                 ? syntaqlite_list_count(_sqlist_##var) : 0; \
+         _sqi_##var < _sqn_##var; _sqi_##var++) \
+    for (const Type* var = SYNTAQLITE_LIST_ITEM(p, Type, _sqlist_##var, \
+             _sqi_##var); var; var = 0)
+
+// ---------------------------------------------------------------------------
 // AST dump
 // ---------------------------------------------------------------------------
 
@@ -298,11 +337,26 @@ inline bool IsPresent(uint32_t node_id) {
   return node_id != SYNTAQLITE_NULL_NODE;
 }
 
+// Maps a concrete node type to its tag constant. Specialize in dialect
+// headers (e.g. sqlite_node.h) to enable tag-checked NodeCast.
+template <typename T>
+struct NodeTag {
+  // No default value — unspecialized types get an unchecked cast.
+  static constexpr bool kHasTag = false;
+  static constexpr uint32_t kValue = 0;
+};
+
 // Returns a typed pointer to a node.  Returns nullptr if `node_id` is null.
+// When a NodeTag<T> specialization exists, also checks the tag and returns
+// nullptr on mismatch.
 template <typename T>
 const T* NodeCast(SyntaqliteParser* p, uint32_t node_id) {
   if (node_id == SYNTAQLITE_NULL_NODE) return nullptr;
-  return static_cast<const T*>(syntaqlite_parser_node(p, node_id));
+  const T* node = static_cast<const T*>(syntaqlite_parser_node(p, node_id));
+  if constexpr (NodeTag<T>::kHasTag) {
+    if (node->tag != NodeTag<T>::kValue) return nullptr;
+  }
+  return node;
 }
 
 // Iterable view over a list node's children with typed element access.

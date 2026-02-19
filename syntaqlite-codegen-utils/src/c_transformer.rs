@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 //! High-level C code transformer that applies transformations in-place.
 //!
 //! Instead of manually extracting, transforming, and reassembling pieces,

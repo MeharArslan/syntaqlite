@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 use std::ffi::{c_int, CStr};
 
 use crate::dialect::Dialect;
@@ -143,6 +146,27 @@ impl<'a> NodeReader<'a> {
     pub fn source(&self) -> &'a str {
         self.source
     }
+
+    /// Access the raw C parser pointer (crate-internal).
+    pub(crate) fn raw(&self) -> *mut ffi::Parser {
+        self.raw
+    }
+
+    /// Dump an AST node tree as indented text. Uses C-side metadata (field
+    /// names, display strings) so no Rust-side string tables are needed.
+    pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
+        unsafe extern "C" { fn free(ptr: *mut std::ffi::c_void); }
+        // SAFETY: raw is valid; dump_node returns a malloc'd NUL-terminated
+        // string (or null). We free the C string after copying.
+        unsafe {
+            let ptr = ffi::syntaqlite_dump_node(self.raw, id.0, indent as u32);
+            if !ptr.is_null() {
+                let cstr = CStr::from_ptr(ptr);
+                out.push_str(&cstr.to_string_lossy());
+                free(ptr as *mut std::ffi::c_void);
+            }
+        }
+    }
 }
 
 // ── CursorBase ──────────────────────────────────────────────────────────
@@ -150,8 +174,7 @@ impl<'a> NodeReader<'a> {
 /// Shared read-only cursor state. Both `StatementCursor` and `TokenFeeder`
 /// wrap this.
 pub struct CursorBase<'a> {
-    pub(crate) raw: *mut ffi::Parser,
-    source: &'a str,
+    pub(crate) reader: NodeReader<'a>,
     /// The pointer that the C parser uses as its source base. This may differ
     /// from `source.as_ptr()` when `parse()` copies into an internal buffer.
     /// `feed_token` translates user text pointers through this so that the C
@@ -183,8 +206,7 @@ impl<'a> CursorBase<'a> {
             );
         }
         CursorBase {
-            raw,
-            source,
+            reader: NodeReader { raw, source },
             c_source_ptr,
         }
     }
@@ -206,18 +228,17 @@ impl<'a> CursorBase<'a> {
             );
         }
         CursorBase {
-            raw,
-            source: source_str,
+            reader: NodeReader { raw, source: source_str },
             c_source_ptr: source.as_ptr() as *const u8,
         }
     }
 
-    /// Get a `NodeReader` handle for resolving nodes from the arena.
-    pub fn reader(&self) -> NodeReader<'a> {
-        NodeReader {
-            raw: self.raw,
-            source: self.source,
-        }
+    /// Get a reference to the embedded `NodeReader`.
+    ///
+    /// The returned reference borrows `self`, so nodes resolved through it
+    /// cannot outlive this cursor.
+    pub fn reader(&self) -> &NodeReader<'a> {
+        &self.reader
     }
 
     /// Get a raw pointer to a node in the arena. Returns (pointer, tag).
@@ -225,26 +246,12 @@ impl<'a> CursorBase<'a> {
     /// This is the dialect-agnostic primitive. Dialect crates wrap this to
     /// return a typed `Node` enum.
     pub fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
-        if id.is_null() {
-            return None;
-        }
-        // SAFETY: raw is valid. syntaqlite_parser_node returns a pointer
-        // into the arena that is valid until the next reset() or destroy(), both
-        // of which require &mut access that the cursor holds exclusively.
-        // The first u32 at that pointer is always the node tag.
-        unsafe {
-            let ptr = ffi::syntaqlite_parser_node(self.raw, id.0);
-            if ptr.is_null() {
-                return None;
-            }
-            let tag = *(ptr as *const u32);
-            Some((ptr as *const u8, tag))
-        }
+        self.reader.node_ptr(id)
     }
 
     /// The source text bound to this cursor.
     pub fn source(&self) -> &'a str {
-        self.source
+        self.reader.source()
     }
 
     /// If `id` refers to a list node, return its child node IDs.
@@ -268,7 +275,7 @@ impl<'a> CursorBase<'a> {
         // the lifetime of &self (until the next reset/destroy, which need &mut).
         unsafe {
             let mut count: u32 = 0;
-            let ptr = ffi::syntaqlite_parser_trivia(self.raw, &mut count);
+            let ptr = ffi::syntaqlite_parser_trivia(self.reader.raw(), &mut count);
             if count == 0 || ptr.is_null() {
                 return &[];
             }
@@ -279,17 +286,7 @@ impl<'a> CursorBase<'a> {
     /// Dump an AST node tree as indented text. Uses C-side metadata (field
     /// names, display strings) so no Rust-side string tables are needed.
     pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
-        unsafe extern "C" { fn free(ptr: *mut std::ffi::c_void); }
-        // SAFETY: raw is valid; dump_node returns a malloc'd NUL-terminated
-        // string (or null). We free the C string after copying.
-        unsafe {
-            let ptr = ffi::syntaqlite_dump_node(self.raw, id.0, indent as u32);
-            if !ptr.is_null() {
-                let cstr = CStr::from_ptr(ptr);
-                out.push_str(&cstr.to_string_lossy());
-                free(ptr as *mut std::ffi::c_void);
-            }
-        }
+        self.reader.dump_node(id, out, indent)
     }
 
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
@@ -297,7 +294,7 @@ impl<'a> CursorBase<'a> {
         // SAFETY: same as trivia() — pointer valid for lifetime of &self.
         unsafe {
             let mut count: u32 = 0;
-            let ptr = ffi::syntaqlite_parser_macro_regions(self.raw, &mut count);
+            let ptr = ffi::syntaqlite_parser_macro_regions(self.reader.raw(), &mut count);
             if count == 0 || ptr.is_null() {
                 return &[];
             }
@@ -319,7 +316,7 @@ impl<'a> StatementCursor<'a> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         // When error is set, error_msg is a NUL-terminated string in the
         // parser's buffer (valid for parser lifetime).
-        let result = unsafe { ffi::syntaqlite_parser_next(self.0.raw) };
+        let result = unsafe { ffi::syntaqlite_parser_next(self.0.reader.raw()) };
 
         let id = NodeId(result.root);
         if !id.is_null() {
@@ -343,14 +340,9 @@ impl<'a> StatementCursor<'a> {
 
     // Delegate read-only methods for convenience
 
-    /// Get a `NodeReader` handle for resolving nodes from the arena.
-    pub fn reader(&self) -> NodeReader<'a> {
+    /// Get a reference to the embedded `NodeReader`.
+    pub fn reader(&self) -> &NodeReader<'a> {
         self.0.reader()
-    }
-
-    /// Get a raw pointer to a node in the arena. Returns (pointer, tag).
-    pub fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
-        self.0.node_ptr(id)
     }
 
     /// The source text bound to this cursor.

@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 //! C ABI mirror structs for the dialect.
 
 pub const FIELD_NODE_ID: u8 = 0;

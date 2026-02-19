@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 use std::ffi::{c_char, c_int, c_void};
 
 use crate::dialect::ffi::Dialect;

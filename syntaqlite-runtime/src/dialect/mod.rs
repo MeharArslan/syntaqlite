@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 //! Dialect types: the opaque handle and C ABI mirror structs.
 
 #[doc(hidden)]

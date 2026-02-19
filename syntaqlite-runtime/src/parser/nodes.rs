@@ -1,3 +1,6 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
 // ── Core types ──────────────────────────────────────────────────────────
 
 /// A typed wrapper around a raw arena node ID.
@@ -103,4 +106,3 @@ pub enum FieldVal<'a> {
     /// Enum ordinal.
     Enum(u32),
 }
-
