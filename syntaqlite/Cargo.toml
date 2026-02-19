@@ -3,8 +3,13 @@ name = "syntaqlite"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = ["parser", "fmt"]
+parser = ["syntaqlite-runtime/parser"]
+fmt = ["parser", "syntaqlite-runtime/fmt"]
+
 [build-dependencies]
 cc = "1.0"
 
 [dependencies]
-syntaqlite-runtime = { path = "../syntaqlite-runtime" }
+syntaqlite-runtime = { path = "../syntaqlite-runtime", default-features = false }

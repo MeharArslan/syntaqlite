@@ -4,7 +4,7 @@ use std::sync::LazyLock;
 use syntaqlite_runtime::parser::nodes::NodeId;
 use syntaqlite_runtime::{Dialect, ParseError, Session};
 
-use crate::generated::nodes::{Node, FIELD_DESCRIPTORS, NODE_NAMES, NodeTag};
+use crate::generated::nodes::{Node, FIELD_DESCRIPTORS, NODE_NAMES};
 use crate::generated::tokens::TokenType;
 
 unsafe extern "C" {
@@ -54,13 +54,3 @@ pub fn dump_node(session: &Session<'_>, id: NodeId, out: &mut String, indent: us
         indent,
     )
 }
-
-fn is_list_tag(tag: u32) -> bool {
-    NodeTag::from_raw(tag).map_or(false, |t| t.is_list())
-}
-
-/// Node metadata for the SQLite dialect, used by the runtime formatter.
-pub static NODE_INFO: syntaqlite_runtime::fmt::NodeInfo = syntaqlite_runtime::fmt::NodeInfo {
-    field_descriptors: FIELD_DESCRIPTORS,
-    is_list: is_list_tag,
-};
