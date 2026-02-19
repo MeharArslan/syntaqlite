@@ -384,3 +384,9 @@ impl TokenType {
         }
     }
 }
+
+impl From<TokenType> for u32 {
+    fn from(t: TokenType) -> u32 {
+        t as u32
+    }
+}

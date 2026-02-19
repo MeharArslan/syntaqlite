@@ -2,7 +2,6 @@ use std::ffi::{c_char, c_int, c_void};
 
 // Opaque C types
 pub(crate) enum RawParser {}
-pub(crate) enum RawTokenizer {}
 pub(crate) enum RawDialect {}
 
 #[repr(C)]
@@ -10,13 +9,6 @@ pub(crate) struct RawParseResult {
     pub root: u32,
     pub error: c_int,
     pub error_msg: *const c_char,
-}
-
-#[repr(C)]
-pub(crate) struct RawToken {
-    pub text: *const c_char,
-    pub length: u32,
-    pub type_: u32,
 }
 
 // SyntaqliteMemMethods — matches config.h layout.
@@ -75,9 +67,4 @@ unsafe extern "C" {
     pub fn syntaqlite_parser_macro_regions(
         p: *mut RawParser, count: *mut u32) -> *const RawMacroRegion;
 
-    // Tokenizer lifecycle
-    pub fn syntaqlite_tokenizer_create(mem: *const RawMemMethods) -> *mut RawTokenizer;
-    pub fn syntaqlite_tokenizer_reset(tok: *mut RawTokenizer, source: *const c_char, len: u32);
-    pub fn syntaqlite_tokenizer_next(tok: *mut RawTokenizer, out: *mut RawToken) -> c_int;
-    pub fn syntaqlite_tokenizer_destroy(tok: *mut RawTokenizer);
 }
