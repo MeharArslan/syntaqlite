@@ -37,6 +37,8 @@ pub struct FormatConfig {
     pub indent_width: usize,
     /// How to case SQL keywords. Default: Preserve.
     pub keyword_case: KeywordCase,
+    /// Append semicolons after each statement. Default: false.
+    pub semicolons: bool,
 }
 
 impl Default for FormatConfig {
@@ -45,6 +47,7 @@ impl Default for FormatConfig {
             line_width: 80,
             indent_width: 2,
             keyword_case: KeywordCase::Preserve,
+            semicolons: false,
         }
     }
 }

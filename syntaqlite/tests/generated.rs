@@ -7,9 +7,7 @@ fn format_sql(sql: &str) -> String {
 }
 
 fn format_sql_with(sql: &str, config: FormatConfig) -> String {
-    let mut f = syntaqlite::Formatter::new()
-        .unwrap()
-        .with_config(config);
+    let mut f = syntaqlite::Formatter::with_config(config).unwrap();
     let result = f.format(sql).unwrap();
     // Strip the trailing newline that Formatter appends
     result.trim_end_matches('\n').to_string()

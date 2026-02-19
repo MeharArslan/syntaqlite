@@ -20,8 +20,6 @@ pub struct Formatter<'d> {
     dialect: Dialect<'d>,
     parser: Parser,
     config: FormatConfig,
-    /// Append semicolons after each statement.
-    pub semicolons: bool,
 }
 
 // SAFETY: Dialect is Send+Sync, Parser is Send.
@@ -30,29 +28,21 @@ unsafe impl Send for Formatter<'_> {}
 impl<'d> Formatter<'d> {
     /// Create a formatter for the given dialect with default configuration.
     pub fn new(dialect: &Dialect<'d>) -> Result<Self, &'static str> {
+        Self::with_config(dialect, FormatConfig::default())
+    }
+
+    /// Create a formatter with the given configuration.
+    pub fn with_config(dialect: &Dialect<'d>, config: FormatConfig) -> Result<Self, &'static str> {
         if !dialect.has_fmt_data() {
             return Err("C dialect has no fmt data");
         }
-        let config = ParserConfig { collect_tokens: true, ..Default::default() };
-        let parser = Parser::with_config(dialect, &config);
+        let parser_config = ParserConfig { collect_tokens: true, ..Default::default() };
+        let parser = Parser::with_config(dialect, &parser_config);
         Ok(Formatter {
             dialect: *dialect,
             parser,
-            config: FormatConfig::default(),
-            semicolons: false,
+            config,
         })
-    }
-
-    /// Set the format configuration.
-    pub fn with_config(mut self, config: FormatConfig) -> Self {
-        self.config = config;
-        self
-    }
-
-    /// Set whether to append semicolons after each statement.
-    pub fn with_semicolons(mut self, semicolons: bool) -> Self {
-        self.semicolons = semicolons;
-        self
     }
 
     /// Access the current configuration.
@@ -74,7 +64,7 @@ impl<'d> Formatter<'d> {
         Ok(format_stmts(
             self.dialect,
             &self.config,
-            self.semicolons,
+            self.config.semicolons,
             base,
             &roots,
             &comments,

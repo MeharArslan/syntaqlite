@@ -71,13 +71,6 @@ impl Parser {
         parser
     }
 
-    /// Enable or disable parser trace output.
-    pub fn set_trace(&mut self, enable: bool) {
-        unsafe {
-            ffi::syntaqlite_parser_set_trace(self.raw, enable as c_int);
-        }
-    }
-
     /// Bind source text and return a `StatementCursor` for iterating statements.
     ///
     /// Copies the source into an internal buffer to add a null terminator
@@ -171,7 +164,7 @@ impl<'a> NodeReader<'a> {
 
 // ── CursorBase ──────────────────────────────────────────────────────────
 
-/// Shared read-only cursor state. Both `StatementCursor` and `TokenFeeder`
+/// Shared read-only cursor state. Both `StatementCursor` and `LowLevelCursor`
 /// wrap this.
 pub struct CursorBase<'a> {
     pub(crate) reader: NodeReader<'a>,

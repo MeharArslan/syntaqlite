@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite::ast::NodeTag;
+use syntaqlite::ast::Stmt;
 use syntaqlite::low_level::TokenType;
 
 /// Feed tokens for "SELECT 1" via the low-level API and verify same AST
@@ -9,21 +9,20 @@ use syntaqlite::low_level::TokenType;
 #[test]
 fn feed_tokens_select_1() {
     let source = "SELECT 1";
-    let mut tp = syntaqlite::low_level::TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = syntaqlite::low_level::LowLevelParser::new();
+    let mut cursor = tp.feed(source);
 
     // Feed SELECT token.
-    let r = feeder.feed_token(TokenType::Select, 0..6).unwrap();
+    let r = cursor.feed_token(TokenType::Select, 0..6).unwrap();
     assert!(r.is_none());
 
     // Feed integer literal token.
-    let r = feeder.feed_token(TokenType::Integer, 7..8).unwrap();
+    let r = cursor.feed_token(TokenType::Integer, 7..8).unwrap();
     assert!(r.is_none());
 
     // finish() synthesizes SEMI + EOF, triggering the ecmd reduction.
-    let root_id = feeder.finish().unwrap().expect("expected a statement");
-    let node = feeder.node(root_id).unwrap();
-    assert_eq!(node.tag(), NodeTag::SelectStmt);
+    let stmt = cursor.finish().unwrap().expect("expected a statement");
+    assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
 /// Feed tokens with an explicit SEMI. The LALR(1) parser needs one token of
@@ -31,19 +30,19 @@ fn feed_tokens_select_1() {
 #[test]
 fn feed_tokens_with_semicolon() {
     let source = "SELECT 1;";
-    let mut tp = syntaqlite::low_level::TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = syntaqlite::low_level::LowLevelParser::new();
+    let mut cursor = tp.feed(source);
 
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
-    feeder.feed_token(TokenType::Integer, 7..8).unwrap();
+    cursor.feed_token(TokenType::Select, 0..6).unwrap();
+    cursor.feed_token(TokenType::Integer, 7..8).unwrap();
 
     // SEMI is shifted but the ecmd reduction hasn't fired yet (needs lookahead).
-    let r = feeder.feed_token(TokenType::Semi, 8..9).unwrap();
+    let r = cursor.feed_token(TokenType::Semi, 8..9).unwrap();
     assert!(r.is_none());
 
     // finish() sends EOF which provides the lookahead.
-    let root_id = feeder.finish().unwrap().expect("expected a statement");
-    assert_eq!(feeder.node(root_id).unwrap().tag(), NodeTag::SelectStmt);
+    let stmt = cursor.finish().unwrap().expect("expected a statement");
+    assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
 /// Multiple statements: the second statement's first token triggers
@@ -51,67 +50,63 @@ fn feed_tokens_with_semicolon() {
 #[test]
 fn feed_tokens_multi_statement() {
     let source = "SELECT 1; SELECT 2";
-    let mut tp = syntaqlite::low_level::TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = syntaqlite::low_level::LowLevelParser::new();
+    let mut cursor = tp.feed(source);
 
     // First statement: SELECT 1 ;
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
-    feeder.feed_token(TokenType::Integer, 7..8).unwrap();
-    let r = feeder.feed_token(TokenType::Semi, 8..9).unwrap();
+    cursor.feed_token(TokenType::Select, 0..6).unwrap();
+    cursor.feed_token(TokenType::Integer, 7..8).unwrap();
+    let r = cursor.feed_token(TokenType::Semi, 8..9).unwrap();
     assert!(r.is_none()); // SEMI shifted, not reduced yet.
 
     // Second statement's first token provides the lookahead that completes stmt 1.
-    let r = feeder.feed_token(TokenType::Select, 10..16).unwrap();
-    let root1 = r.expect("first statement should complete on next SELECT");
-    assert_eq!(feeder.node(root1).unwrap().tag(), NodeTag::SelectStmt);
+    let stmt1 = cursor.feed_token(TokenType::Select, 10..16).unwrap();
+    assert!(stmt1.is_some(), "first statement should complete on next SELECT");
 
     // Continue second statement.
-    feeder.feed_token(TokenType::Integer, 17..18).unwrap();
+    cursor.feed_token(TokenType::Integer, 17..18).unwrap();
 
-    let root2 = feeder.finish().unwrap().expect("second statement");
-    assert_eq!(feeder.node(root2).unwrap().tag(), NodeTag::SelectStmt);
+    let stmt2 = cursor.finish().unwrap();
+    assert!(stmt2.is_some(), "second statement should complete");
 }
 
 /// TK_SPACE should be silently ignored.
 #[test]
 fn feed_token_skips_space() {
     let source = "SELECT 1";
-    let mut tp = syntaqlite::low_level::TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = syntaqlite::low_level::LowLevelParser::new();
+    let mut cursor = tp.feed(source);
 
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
+    cursor.feed_token(TokenType::Select, 0..6).unwrap();
 
     // Feed a space — should be silently skipped.
-    let r = feeder.feed_token(TokenType::Space, 6..7).unwrap();
+    let r = cursor.feed_token(TokenType::Space, 6..7).unwrap();
     assert!(r.is_none());
 
-    feeder.feed_token(TokenType::Integer, 7..8).unwrap();
+    cursor.feed_token(TokenType::Integer, 7..8).unwrap();
 
-    let root_id = feeder.finish().unwrap().expect("expected a statement");
-    assert_eq!(feeder.node(root_id).unwrap().tag(), NodeTag::SelectStmt);
+    let stmt = cursor.finish().unwrap().expect("expected a statement");
+    assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
 /// TK_COMMENT should be recorded as a comment.
 #[test]
 fn feed_token_records_comment() {
-    // Source layout: "SELECT -- hello\n1"
-    //                 0123456789...
+    use syntaqlite::low_level::Sqlite;
+    use syntaqlite_runtime::parser::{LowLevelParser, ParserConfig};
+
     let source = "SELECT -- hello\n1";
-    let mut tp = syntaqlite::low_level::TokenParser::new().with_collect_tokens();
-    let mut feeder = tp.feed(source);
+    let config = ParserConfig { trace: false, collect_tokens: true };
+    let mut tp = LowLevelParser::with_config(Sqlite::dialect(), &config);
+    let mut cursor = tp.feed(source);
 
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
+    cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
+    cursor.feed_token(TokenType::Comment as u32, 7..15).unwrap();
+    cursor.feed_token(TokenType::Integer as u32, 16..17).unwrap();
 
-    // Feed a line comment — "-- hello" starts at offset 7.
-    feeder.feed_token(TokenType::Comment, 7..15).unwrap();
+    cursor.finish().unwrap().expect("expected a statement");
 
-    feeder.feed_token(TokenType::Integer, 16..17).unwrap();
-
-    let root_id = feeder.finish().unwrap().expect("expected a statement");
-    assert_eq!(feeder.node(root_id).unwrap().tag(), NodeTag::SelectStmt);
-
-    // Verify comment was captured.
-    let comments = feeder.comments();
+    let comments = cursor.base().comments();
     assert_eq!(comments.len(), 1);
     assert_eq!(comments[0].length, 8);
 }
@@ -119,21 +114,21 @@ fn feed_token_records_comment() {
 /// begin_macro / end_macro records macro regions.
 #[test]
 fn macro_regions_recorded() {
+    use syntaqlite::low_level::Sqlite;
+    use syntaqlite_runtime::parser::LowLevelParser;
+
     let source = "SELECT 1";
-    let mut tp = syntaqlite::low_level::TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = LowLevelParser::new(Sqlite::dialect());
+    let mut cursor = tp.feed(source);
 
-    // Simulate a macro call at positions 7..20 in the original source.
-    feeder.begin_macro(7, 13);
+    cursor.begin_macro(7, 13);
+    cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
+    cursor.feed_token(TokenType::Integer as u32, 7..8).unwrap();
+    cursor.end_macro();
 
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
-    feeder.feed_token(TokenType::Integer, 7..8).unwrap();
+    cursor.finish().unwrap();
 
-    feeder.end_macro();
-
-    feeder.finish().unwrap();
-
-    let regions = feeder.macro_regions();
+    let regions = cursor.base().macro_regions();
     assert_eq!(regions.len(), 1);
     assert_eq!(regions[0].call_offset, 7);
     assert_eq!(regions[0].call_length, 13);
@@ -142,22 +137,23 @@ fn macro_regions_recorded() {
 /// Nested macro regions are both recorded.
 #[test]
 fn nested_macro_regions() {
+    use syntaqlite::low_level::Sqlite;
+    use syntaqlite_runtime::parser::LowLevelParser;
+
     let source = "SELECT 1";
-    let mut tp = syntaqlite::low_level::TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = LowLevelParser::new(Sqlite::dialect());
+    let mut cursor = tp.feed(source);
 
-    feeder.begin_macro(0, 30);
-    feeder.begin_macro(10, 5);
+    cursor.begin_macro(0, 30);
+    cursor.begin_macro(10, 5);
+    cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
+    cursor.feed_token(TokenType::Integer as u32, 7..8).unwrap();
+    cursor.end_macro();
+    cursor.end_macro();
 
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
-    feeder.feed_token(TokenType::Integer, 7..8).unwrap();
+    cursor.finish().unwrap();
 
-    feeder.end_macro();
-    feeder.end_macro();
-
-    feeder.finish().unwrap();
-
-    let regions = feeder.macro_regions();
+    let regions = cursor.base().macro_regions();
     assert_eq!(regions.len(), 2);
     assert_eq!(regions[0].call_offset, 0);
     assert_eq!(regions[0].call_length, 30);
@@ -169,62 +165,44 @@ fn nested_macro_regions() {
 /// The parser should accept it without error.
 #[test]
 fn macro_well_aligned_complete_expression() {
-    // Source: "SELECT foo!(1 + 2), 3"
-    //          0123456789012345678901
-    // Macro:         ^----------^  offset=7, length=11 → "foo!(1 + 2)"
     let source = "SELECT foo!(1 + 2), 3";
-    let mut tp = syntaqlite::low_level::TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = syntaqlite::low_level::LowLevelParser::new();
+    let mut cursor = tp.feed(source);
 
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
+    cursor.feed_token(TokenType::Select, 0..6).unwrap();
 
-    feeder.begin_macro(7, 11);
-    // Expanded tokens: 1 + 2 (all spans inside macro region 7..18)
-    feeder.feed_token(TokenType::Integer, 12..13).unwrap();
-    feeder.feed_token(TokenType::Plus, 14..15).unwrap();
-    feeder.feed_token(TokenType::Integer, 16..17).unwrap();
-    feeder.end_macro();
+    cursor.begin_macro(7, 11);
+    cursor.feed_token(TokenType::Integer, 12..13).unwrap();
+    cursor.feed_token(TokenType::Plus, 14..15).unwrap();
+    cursor.feed_token(TokenType::Integer, 16..17).unwrap();
+    cursor.end_macro();
 
-    // Comma and "3" are outside the macro.
-    feeder.feed_token(TokenType::Comma, 18..19).unwrap();
-    feeder.feed_token(TokenType::Integer, 20..21).unwrap();
+    cursor.feed_token(TokenType::Comma, 18..19).unwrap();
+    cursor.feed_token(TokenType::Integer, 20..21).unwrap();
 
-    let root = feeder.finish().unwrap().expect("expected a statement");
-    assert_eq!(feeder.node(root).unwrap().tag(), NodeTag::SelectStmt);
+    let stmt = cursor.finish().unwrap().expect("expected a statement");
+    assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
 /// A macro whose expanded tokens end up in a node that also contains
 /// tokens from outside the macro region. The parser detects this straddle
 /// and returns an error.
-///
-/// Source: "SELECT 1 FROM foo!(x) y"
-///          0         1         2
-///          01234567890123456789012345
-/// Macro:                ^------^  offset=14, length=7 → "foo!(x)"
-///
-/// The macro expands to just the identifier "x". Then "y" is fed as a
-/// regular token. SQLite treats "FROM x y" as "FROM x AS y", creating a
-/// TableRef with table_name pointing at "x" (inside macro, offset 19)
-/// and alias pointing at "y" (outside macro, offset 22). This straddles
-/// the macro boundary — the parser rejects it.
 #[test]
 fn macro_straddle_rejected_by_parser() {
     let source = "SELECT 1 FROM foo!(x) y";
-    let mut tp = syntaqlite::low_level::TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = syntaqlite::low_level::LowLevelParser::new();
+    let mut cursor = tp.feed(source);
 
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
-    feeder.feed_token(TokenType::Integer, 7..8).unwrap();
-    feeder.feed_token(TokenType::From, 9..13).unwrap();
+    cursor.feed_token(TokenType::Select, 0..6).unwrap();
+    cursor.feed_token(TokenType::Integer, 7..8).unwrap();
+    cursor.feed_token(TokenType::From, 9..13).unwrap();
 
-    // Macro: "foo!(x)" at offset 14, length 7.
-    feeder.begin_macro(14, 7);
-    feeder.feed_token(TokenType::Id, 19..20).unwrap(); // "x"
-    feeder.end_macro();
+    cursor.begin_macro(14, 7);
+    cursor.feed_token(TokenType::Id, 19..20).unwrap();
+    cursor.end_macro();
 
-    // "y" outside macro — creates a straddling TableRef.
-    feeder.feed_token(TokenType::Id, 22..23).unwrap();
-    let err = feeder.finish().unwrap_err();
+    cursor.feed_token(TokenType::Id, 22..23).unwrap();
+    let err = cursor.finish().unwrap_err();
     assert!(
         err.message.contains("straddle"),
         "expected straddle error, got: {}",
@@ -236,18 +214,16 @@ fn macro_straddle_rejected_by_parser() {
 #[test]
 fn finish_with_no_tokens() {
     let source = "";
-    let mut tp = syntaqlite::low_level::TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = syntaqlite::low_level::LowLevelParser::new();
+    let mut cursor = tp.feed(source);
 
-    let r = feeder.finish().unwrap();
+    let r = cursor.finish().unwrap();
     assert!(r.is_none());
 }
 
 /// High-level API still works after the refactor.
 #[test]
 fn high_level_api_still_works() {
-    use syntaqlite::ast::Stmt;
-
     let mut parser = syntaqlite::Parser::new();
     let mut cursor = parser.parse("SELECT 1; SELECT 2");
 

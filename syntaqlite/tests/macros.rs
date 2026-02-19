@@ -2,98 +2,112 @@
 // Licensed under the Apache License, Version 2.0.
 
 /// Integration tests: macro regions are emitted verbatim by the formatter.
-use syntaqlite::low_level::TokenParser;
-use syntaqlite::low_level::TokenType;
+use syntaqlite::low_level::Sqlite;
+use syntaqlite_runtime::parser::LowLevelParser;
 
-fn runtime_formatter() -> syntaqlite_runtime::fmt::Formatter<'static> {
-    syntaqlite_runtime::fmt::Formatter::new(syntaqlite::low_level::Sqlite::dialect()).unwrap()
+fn dialect() -> &'static syntaqlite_runtime::Dialect<'static> {
+    Sqlite::dialect()
+}
+
+fn formatter() -> syntaqlite_runtime::fmt::Formatter<'static> {
+    syntaqlite_runtime::fmt::Formatter::new(dialect()).unwrap()
+}
+
+// Token type constants (raw u32 values for the runtime API).
+mod tk {
+    use syntaqlite::low_level::TokenType;
+    pub const SELECT: u32 = TokenType::Select as u32;
+    pub const INTEGER: u32 = TokenType::Integer as u32;
+    pub const PLUS: u32 = TokenType::Plus as u32;
+    pub const COMMA: u32 = TokenType::Comma as u32;
+    pub const ID: u32 = TokenType::Id as u32;
 }
 
 #[test]
 fn macro_call_emitted_verbatim() {
     let source = "SELECT foo!(1 + 2), 3";
-    let fmt = runtime_formatter();
+    let fmt = formatter();
 
-    let mut tp = TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = LowLevelParser::new(dialect());
+    let mut cursor = tp.feed(source);
 
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
+    cursor.feed_token(tk::SELECT, 0..6).unwrap();
 
-    feeder.begin_macro(7, 11);
-    feeder.feed_token(TokenType::Integer, 12..13).unwrap();
-    feeder.feed_token(TokenType::Plus, 14..15).unwrap();
-    feeder.feed_token(TokenType::Integer, 16..17).unwrap();
-    feeder.end_macro();
+    cursor.begin_macro(7, 11);
+    cursor.feed_token(tk::INTEGER, 12..13).unwrap();
+    cursor.feed_token(tk::PLUS, 14..15).unwrap();
+    cursor.feed_token(tk::INTEGER, 16..17).unwrap();
+    cursor.end_macro();
 
-    feeder.feed_token(TokenType::Comma, 18..19).unwrap();
-    feeder.feed_token(TokenType::Integer, 20..21).unwrap();
+    cursor.feed_token(tk::COMMA, 18..19).unwrap();
+    cursor.feed_token(tk::INTEGER, 20..21).unwrap();
 
-    let root = feeder.finish().unwrap().expect("expected a statement");
+    let root = cursor.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(feeder.base(), root), "SELECT foo!(1 + 2), 3");
+    assert_eq!(fmt.format_node(cursor.base(), root), "SELECT foo!(1 + 2), 3");
 }
 
 #[test]
 fn macro_multi_node_emitted_once() {
     let source = "SELECT macro!(a, b)";
-    let fmt = runtime_formatter();
+    let fmt = formatter();
 
-    let mut tp = TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = LowLevelParser::new(dialect());
+    let mut cursor = tp.feed(source);
 
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
+    cursor.feed_token(tk::SELECT, 0..6).unwrap();
 
-    feeder.begin_macro(7, 12);
-    feeder.feed_token(TokenType::Id, 14..15).unwrap();
-    feeder.feed_token(TokenType::Comma, 15..16).unwrap();
-    feeder.feed_token(TokenType::Id, 17..18).unwrap();
-    feeder.end_macro();
+    cursor.begin_macro(7, 12);
+    cursor.feed_token(tk::ID, 14..15).unwrap();
+    cursor.feed_token(tk::COMMA, 15..16).unwrap();
+    cursor.feed_token(tk::ID, 17..18).unwrap();
+    cursor.end_macro();
 
-    let root = feeder.finish().unwrap().expect("expected a statement");
+    let root = cursor.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(feeder.base(), root), "SELECT macro!(a, b)");
+    assert_eq!(fmt.format_node(cursor.base(), root), "SELECT macro!(a, b)");
 }
 
 #[test]
 fn macro_multi_node_no_extra_separator() {
     let source = "SELECT foo!(a, b), c";
-    let fmt = runtime_formatter();
+    let fmt = formatter();
 
-    let mut tp = TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = LowLevelParser::new(dialect());
+    let mut cursor = tp.feed(source);
 
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
+    cursor.feed_token(tk::SELECT, 0..6).unwrap();
 
-    feeder.begin_macro(7, 10);
-    feeder.feed_token(TokenType::Id, 12..13).unwrap();
-    feeder.feed_token(TokenType::Comma, 13..14).unwrap();
-    feeder.feed_token(TokenType::Id, 15..16).unwrap();
-    feeder.end_macro();
+    cursor.begin_macro(7, 10);
+    cursor.feed_token(tk::ID, 12..13).unwrap();
+    cursor.feed_token(tk::COMMA, 13..14).unwrap();
+    cursor.feed_token(tk::ID, 15..16).unwrap();
+    cursor.end_macro();
 
-    feeder.feed_token(TokenType::Comma, 17..18).unwrap();
-    feeder.feed_token(TokenType::Id, 19..20).unwrap();
+    cursor.feed_token(tk::COMMA, 17..18).unwrap();
+    cursor.feed_token(tk::ID, 19..20).unwrap();
 
-    let root = feeder.finish().unwrap().expect("expected a statement");
+    let root = cursor.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(feeder.base(), root), "SELECT foo!(a, b), c");
+    assert_eq!(fmt.format_node(cursor.base(), root), "SELECT foo!(a, b), c");
 }
 
 #[test]
 fn no_macro_regions_formats_normally() {
     let source = "SELECT  1+2,  3";
-    let fmt = runtime_formatter();
+    let fmt = formatter();
 
-    let mut tp = TokenParser::new();
-    let mut feeder = tp.feed(source);
+    let mut tp = LowLevelParser::new(dialect());
+    let mut cursor = tp.feed(source);
 
-    feeder.feed_token(TokenType::Select, 0..6).unwrap();
-    feeder.feed_token(TokenType::Integer, 8..9).unwrap();
-    feeder.feed_token(TokenType::Plus, 9..10).unwrap();
-    feeder.feed_token(TokenType::Integer, 10..11).unwrap();
-    feeder.feed_token(TokenType::Comma, 11..12).unwrap();
-    feeder.feed_token(TokenType::Integer, 14..15).unwrap();
+    cursor.feed_token(tk::SELECT, 0..6).unwrap();
+    cursor.feed_token(tk::INTEGER, 8..9).unwrap();
+    cursor.feed_token(tk::PLUS, 9..10).unwrap();
+    cursor.feed_token(tk::INTEGER, 10..11).unwrap();
+    cursor.feed_token(tk::COMMA, 11..12).unwrap();
+    cursor.feed_token(tk::INTEGER, 14..15).unwrap();
 
-    let root = feeder.finish().unwrap().expect("expected a statement");
+    let root = cursor.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(feeder.base(), root), "SELECT 1 + 2, 3");
+    assert_eq!(fmt.format_node(cursor.base(), root), "SELECT 1 + 2, 3");
 }

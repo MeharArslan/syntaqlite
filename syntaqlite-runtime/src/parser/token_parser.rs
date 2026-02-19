@@ -6,34 +6,33 @@ use std::ops::Range;
 
 use crate::dialect::Dialect;
 use super::ffi;
-use super::ffi::{Comment, MacroRegion};
 use super::nodes::NodeId;
-use super::parser::{CursorBase, NodeReader, ParseError, ParserConfig};
+use super::parser::{CursorBase, ParseError, ParserConfig};
 
 /// A low-level parser for token-by-token feeding. Owns its own C parser
 /// handle and source buffer, independent of `Parser`.
-pub struct TokenParser {
+pub struct LowLevelParser {
     raw: *mut ffi::Parser,
     source_buf: Vec<u8>,
 }
 
 // SAFETY: Same reasoning as Parser — the C parser is self-contained.
-unsafe impl Send for TokenParser {}
+unsafe impl Send for LowLevelParser {}
 
-impl TokenParser {
-    /// Create a new token parser for the given dialect.
+impl LowLevelParser {
+    /// Create a new low-level parser for the given dialect.
     pub fn new(dialect: &Dialect) -> Self {
         let raw = unsafe {
             ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw)
         };
         assert!(!raw.is_null(), "parser allocation failed");
-        TokenParser {
+        LowLevelParser {
             raw,
             source_buf: Vec::new(),
         }
     }
 
-    /// Create a token parser with the given configuration.
+    /// Create a low-level parser with the given configuration.
     pub fn with_config(dialect: &Dialect, config: &ParserConfig) -> Self {
         let tp = Self::new(dialect);
         unsafe {
@@ -43,52 +42,47 @@ impl TokenParser {
         tp
     }
 
-    /// Enable or disable parser trace output.
-    pub fn set_trace(&mut self, enable: bool) {
-        unsafe {
-            ffi::syntaqlite_parser_set_trace(self.raw, enable as c_int);
-        }
-    }
-
-    /// Enable or disable token collection (needed for comment capture).
-    pub fn set_collect_tokens(&mut self, enable: bool) {
-        unsafe {
-            ffi::syntaqlite_parser_set_collect_tokens(self.raw, enable as c_int);
-        }
-    }
-
-    /// Bind source text and return a `TokenFeeder` for low-level token feeding.
-    pub fn feed<'a>(&'a mut self, source: &'a str) -> TokenFeeder<'a> {
+    /// Bind source text and return a `LowLevelCursor` for token feeding.
+    pub fn feed<'a>(&'a mut self, source: &'a str) -> LowLevelCursor<'a> {
         let base = CursorBase::new(self.raw, &mut self.source_buf, source);
-        TokenFeeder(base)
+        LowLevelCursor { base, finished: false }
     }
 
-    /// Zero-copy variant: bind a null-terminated source and return a `TokenFeeder`.
-    pub fn feed_cstr<'a>(&'a mut self, source: &'a CStr) -> TokenFeeder<'a> {
+    /// Zero-copy variant: bind a null-terminated source and return a `LowLevelCursor`.
+    pub fn feed_cstr<'a>(&'a mut self, source: &'a CStr) -> LowLevelCursor<'a> {
         let base = CursorBase::new_cstr(self.raw, source);
-        TokenFeeder(base)
+        LowLevelCursor { base, finished: false }
     }
 }
 
-impl Drop for TokenParser {
+impl Drop for LowLevelParser {
     fn drop(&mut self) {
         unsafe { ffi::syntaqlite_parser_destroy(self.raw) }
     }
 }
 
-// ── TokenFeeder ─────────────────────────────────────────────────────────
+// ── LowLevelCursor ──────────────────────────────────────────────────────
 
-/// A low-level token-feeding cursor. Feed tokens manually and get parse results.
-pub struct TokenFeeder<'a>(pub(crate) CursorBase<'a>);
+/// A low-level cursor for feeding tokens one at a time.
+///
+/// After calling `finish()`, no further methods may be called.
+pub struct LowLevelCursor<'a> {
+    pub(crate) base: CursorBase<'a>,
+    finished: bool,
+}
 
-impl<'a> TokenFeeder<'a> {
+impl<'a> LowLevelCursor<'a> {
+    fn assert_not_finished(&self) {
+        assert!(!self.finished, "LowLevelCursor used after finish()");
+    }
+
     /// Read the parser result after a statement-completing or error return code.
     /// rc == 1 means success, anything else is an error.
     fn parse_result(&self, rc: c_int) -> Result<NodeId, ParseError> {
         // SAFETY: raw is valid; result struct and error_msg pointer are valid
         // for the lifetime of the parser.
         unsafe {
-            let raw = self.0.reader.raw();
+            let raw = self.base.reader.raw();
             let result = ffi::syntaqlite_parser_result(raw);
             if rc == 1 {
                 return Ok(NodeId(result.root));
@@ -112,17 +106,18 @@ impl<'a> TokenFeeder<'a> {
     /// Returns `Ok(Some(root_id))` when a statement completes,
     /// `Ok(None)` to keep going, or `Err` on parse error.
     ///
-    /// `span` is a byte range into the source text bound by this feeder.
+    /// `span` is a byte range into the source text bound by this cursor.
     /// `token_type` is a raw token type ordinal (dialect-specific).
     pub fn feed_token(
         &mut self,
         token_type: u32,
         span: Range<usize>,
     ) -> Result<Option<NodeId>, ParseError> {
+        self.assert_not_finished();
         // SAFETY: c_source_ptr is valid for the source length; raw is valid.
-        let raw = self.0.reader.raw();
+        let raw = self.base.reader.raw();
         let rc = unsafe {
-            let c_text = self.0.c_source_ptr.add(span.start);
+            let c_text = self.base.c_source_ptr.add(span.start);
             ffi::syntaqlite_parser_feed_token(
                 raw,
                 token_type as c_int,
@@ -136,15 +131,19 @@ impl<'a> TokenFeeder<'a> {
         }
     }
 
-    /// Signal end of input when using the low-level token-feeding API.
+    /// Signal end of input.
     ///
     /// Synthesizes a SEMI if the last token wasn't one, and sends EOF to
     /// the parser. Returns `Ok(Some(root_id))` if a final statement
     /// completed, `Ok(None)` if there was nothing pending, or `Err` on
     /// parse error.
+    ///
+    /// No further methods may be called after `finish()`.
     pub fn finish(&mut self) -> Result<Option<NodeId>, ParseError> {
+        self.assert_not_finished();
+        self.finished = true;
         // SAFETY: raw is valid.
-        let rc = unsafe { ffi::syntaqlite_parser_finish(self.0.reader.raw()) };
+        let rc = unsafe { ffi::syntaqlite_parser_finish(self.base.reader.raw()) };
         match rc {
             0 => Ok(None),
             _ => self.parse_result(rc).map(Some),
@@ -156,47 +155,22 @@ impl<'a> TokenFeeder<'a> {
     /// `call_offset` and `call_length` describe the macro call's byte range
     /// in the original source. Calls may nest (for nested macro expansions).
     pub fn begin_macro(&mut self, call_offset: u32, call_length: u32) {
+        self.assert_not_finished();
         unsafe {
-            ffi::syntaqlite_parser_begin_macro(self.0.reader.raw(), call_offset, call_length);
+            ffi::syntaqlite_parser_begin_macro(self.base.reader.raw(), call_offset, call_length);
         }
     }
 
     /// End the innermost macro expansion region.
     pub fn end_macro(&mut self) {
+        self.assert_not_finished();
         unsafe {
-            ffi::syntaqlite_parser_end_macro(self.0.reader.raw());
+            ffi::syntaqlite_parser_end_macro(self.base.reader.raw());
         }
     }
 
     /// Access the underlying `CursorBase` for read-only operations.
     pub fn base(&self) -> &CursorBase<'a> {
-        &self.0
-    }
-
-    // Delegate read-only methods for convenience
-
-    /// Get a reference to the embedded `NodeReader`.
-    pub fn reader(&self) -> &NodeReader<'a> {
-        self.0.reader()
-    }
-
-    /// The source text bound to this feeder.
-    pub fn source(&self) -> &'a str {
-        self.0.source()
-    }
-
-    /// Return all comments captured during parsing.
-    pub fn comments(&self) -> &[Comment] {
-        self.0.comments()
-    }
-
-    /// Dump an AST node tree as indented text.
-    pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
-        self.0.dump_node(id, out, indent)
-    }
-
-    /// Return all macro regions recorded via `begin_macro`/`end_macro`.
-    pub fn macro_regions(&self) -> &[MacroRegion] {
-        self.0.macro_regions()
+        &self.base
     }
 }

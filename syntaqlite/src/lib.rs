@@ -19,11 +19,9 @@ static DIALECT: LazyLock<syntaqlite_runtime::Dialect<'static>> =
 
 // ── Re-exports ─────────────────────────────────────────────────────────
 
-pub use syntaqlite_runtime::NodeId;
-
 /// Low-level APIs for advanced use cases (e.g. custom token feeding/tokenizing).
 pub mod low_level {
-    pub use crate::wrappers::{TokenFeeder, TokenParser, Tokenizer, TokenCursor};
+    pub use crate::wrappers::{LowLevelCursor, LowLevelParser, Tokenizer, TokenCursor};
     pub use crate::tokens::TokenType;
 
     /// Marker type for the SQLite dialect.

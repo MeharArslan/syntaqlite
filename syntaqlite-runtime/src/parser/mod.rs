@@ -12,6 +12,6 @@ mod typed_list;
 pub use ffi::{Comment, CommentKind, MacroRegion};
 pub use nodes::{FieldVal, Fields, NodeId, NodeList, SourceSpan};
 pub use parser::{CursorBase, NodeReader, ParseError, Parser, ParserConfig, StatementCursor};
-pub use token_parser::{TokenFeeder, TokenParser};
+pub use token_parser::{LowLevelCursor, LowLevelParser};
 pub use tokenizer::{RawToken, Tokenizer, TokenCursor};
 pub use typed_list::{FromArena, TypedList};

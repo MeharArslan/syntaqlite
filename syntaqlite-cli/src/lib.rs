@@ -118,10 +118,10 @@ fn cmd_fmt(
     in_place: bool,
     semicolons: bool,
 ) -> Result<(), String> {
-    let mut formatter = Formatter::new(dialect)
-        .map_err(|e| format!("failed to load formatter: {e}"))?
-        .with_config(config)
-        .with_semicolons(semicolons);
+    let mut config = config;
+    config.semicolons = semicolons;
+    let mut formatter = Formatter::with_config(dialect, config)
+        .map_err(|e| format!("failed to load formatter: {e}"))?;
 
     let paths = expand_paths(&files)?;
 

@@ -3,11 +3,8 @@
 
 use std::ops::Range;
 
-use syntaqlite_runtime::parser::{Comment, CursorBase, MacroRegion};
-
-use crate::ast::{FromArena, Node, Stmt};
+use crate::ast::{FromArena, Stmt};
 use crate::low_level::TokenType;
-use crate::NodeId;
 use crate::ParseError;
 
 // ── Parser ──────────────────────────────────────────────────────────────
@@ -27,10 +24,11 @@ impl Parser {
         }
     }
 
-    /// Enable parser trace output (prints state transitions to stderr).
-    pub fn with_trace(mut self) -> Self {
-        self.inner.set_trace(true);
-        self
+    /// Create a parser with the given configuration.
+    pub fn with_config(config: &syntaqlite_runtime::parser::ParserConfig) -> Self {
+        Parser {
+            inner: syntaqlite_runtime::Parser::with_config(crate::dialect(), config),
+        }
     }
 
     /// Parse source text and return a `StatementCursor` for iterating statements.
@@ -60,69 +58,85 @@ impl<'a> StatementCursor<'a> {
         Some(Ok(Stmt::from_arena(reader, id).expect("parser returned invalid node")))
     }
 
-    /// Access the underlying `CursorBase` (e.g. for `Formatter::format_node`).
-    pub(crate) fn base(&self) -> &CursorBase<'a> {
-        self.inner.base()
-    }
 }
 
-// ── TokenParser ─────────────────────────────────────────────────────────
+// ── LowLevelParser ─────────────────────────────────────────────────────
 
-/// A low-level token parser pre-configured for the SQLite dialect.
-pub struct TokenParser {
-    inner: syntaqlite_runtime::parser::TokenParser,
+/// A low-level parser pre-configured for the SQLite dialect.
+///
+/// Feed tokens one at a time via `LowLevelCursor`.
+pub struct LowLevelParser {
+    inner: syntaqlite_runtime::parser::LowLevelParser,
 }
 
-impl TokenParser {
-    /// Create a new token parser for the SQLite dialect.
+impl LowLevelParser {
+    /// Create a new low-level parser for the SQLite dialect with default configuration.
     pub fn new() -> Self {
-        TokenParser {
-            inner: syntaqlite_runtime::parser::TokenParser::new(crate::dialect()),
+        LowLevelParser {
+            inner: syntaqlite_runtime::parser::LowLevelParser::new(crate::dialect()),
         }
     }
 
-    /// Enable parser trace output (prints state transitions to stderr).
-    pub fn with_trace(mut self) -> Self {
-        self.inner.set_trace(true);
-        self
+    /// Create a low-level parser with the given configuration.
+    pub fn with_config(config: &syntaqlite_runtime::parser::ParserConfig) -> Self {
+        LowLevelParser {
+            inner: syntaqlite_runtime::parser::LowLevelParser::with_config(crate::dialect(), config),
+        }
     }
 
-    /// Enable token collection (needed for comment capture).
-    pub fn with_collect_tokens(mut self) -> Self {
-        self.inner.set_collect_tokens(true);
-        self
-    }
-
-    /// Bind source text and return a `TokenFeeder` for low-level token feeding.
-    pub fn feed<'a>(&'a mut self, source: &'a str) -> TokenFeeder<'a> {
-        TokenFeeder { inner: self.inner.feed(source) }
+    /// Bind source text and return a `LowLevelCursor` for token feeding.
+    pub fn feed<'a>(&'a mut self, source: &'a str) -> LowLevelCursor<'a> {
+        LowLevelCursor { inner: self.inner.feed(source) }
     }
 }
 
-// ── TokenFeeder ─────────────────────────────────────────────────────────
+// ── LowLevelCursor ──────────────────────────────────────────────────────
 
-/// A low-level token-feeding cursor with typed SQLite node/token access.
-pub struct TokenFeeder<'a> {
-    inner: syntaqlite_runtime::parser::TokenFeeder<'a>,
+/// A low-level cursor for feeding tokens one at a time.
+///
+/// After calling `finish()`, only `node()` and `base()` may be called.
+pub struct LowLevelCursor<'a> {
+    inner: syntaqlite_runtime::parser::LowLevelCursor<'a>,
 }
 
-impl<'a> TokenFeeder<'a> {
+impl<'a> LowLevelCursor<'a> {
     /// Feed a typed token to the parser.
     ///
-    /// `span` is a byte range into the source text bound by this feeder.
+    /// Returns `Ok(Some(stmt))` when a statement completes,
+    /// `Ok(None)` to keep going, or `Err` on parse error.
+    ///
+    /// The returned `Stmt` borrows this cursor, so it cannot be held
+    /// across further `feed_token` calls.
+    ///
+    /// `span` is a byte range into the source text bound by this cursor.
     pub fn feed_token(
         &mut self,
         token_type: TokenType,
         span: Range<usize>,
-    ) -> Result<Option<NodeId>, ParseError> {
-        self.inner.feed_token(token_type.into(), span)
+    ) -> Result<Option<Stmt<'_>>, ParseError> {
+        match self.inner.feed_token(token_type.into(), span)? {
+            None => Ok(None),
+            Some(id) => {
+                let reader = self.inner.base().reader();
+                Ok(Some(Stmt::from_arena(reader, id).expect("parser returned invalid node")))
+            }
+        }
     }
 
     /// Signal end of input.
-    pub fn finish(
-        &mut self,
-    ) -> Result<Option<NodeId>, ParseError> {
-        self.inner.finish()
+    ///
+    /// Returns `Ok(Some(stmt))` if a final statement completed,
+    /// `Ok(None)` if there was nothing pending, or `Err` on parse error.
+    ///
+    /// After calling `finish()`, no further feeding methods may be called.
+    pub fn finish(&mut self) -> Result<Option<Stmt<'_>>, ParseError> {
+        match self.inner.finish()? {
+            None => Ok(None),
+            Some(id) => {
+                let reader = self.inner.base().reader();
+                Ok(Some(Stmt::from_arena(reader, id).expect("parser returned invalid node")))
+            }
+        }
     }
 
     /// Mark subsequent fed tokens as being inside a macro expansion.
@@ -135,27 +149,6 @@ impl<'a> TokenFeeder<'a> {
         self.inner.end_macro()
     }
 
-    /// Get a typed AST node by ID.
-    ///
-    /// The returned `Node` borrows this feeder, so it cannot outlive it.
-    pub fn node(&self, id: NodeId) -> Option<Node<'_>> {
-        Node::resolve(self.inner.reader(), id)
-    }
-
-    /// Return all comments captured during parsing.
-    pub fn comments(&self) -> &[Comment] {
-        self.inner.comments()
-    }
-
-    /// Return all macro regions.
-    pub fn macro_regions(&self) -> &[MacroRegion] {
-        self.inner.macro_regions()
-    }
-
-    /// Access the underlying `CursorBase` (e.g. for `Formatter::format_node`).
-    pub fn base(&self) -> &CursorBase<'a> {
-        self.inner.base()
-    }
 }
 
 // ── Formatter ───────────────────────────────────────────────────────────
@@ -172,16 +165,10 @@ impl Formatter {
         Ok(Formatter { inner })
     }
 
-    /// Set the format configuration.
-    pub fn with_config(mut self, config: crate::FormatConfig) -> Self {
-        self.inner = self.inner.with_config(config);
-        self
-    }
-
-    /// Set whether to append semicolons after each statement.
-    pub fn with_semicolons(mut self, semicolons: bool) -> Self {
-        self.inner = self.inner.with_semicolons(semicolons);
-        self
+    /// Create a formatter with the given configuration.
+    pub fn with_config(config: crate::FormatConfig) -> Result<Self, &'static str> {
+        let inner = syntaqlite_runtime::fmt::Formatter::with_config(crate::dialect(), config)?;
+        Ok(Formatter { inner })
     }
 
     /// Access the current configuration.
@@ -197,14 +184,7 @@ impl Formatter {
         self.inner.format(source)
     }
 
-    /// Format a single pre-parsed AST node.
-    pub fn format_node(
-        &self,
-        cursor: &StatementCursor<'_>,
-        node_id: NodeId,
-    ) -> String {
-        self.inner.format_node(cursor.base(), node_id)
-    }
+
 }
 
 // ── Tokenizer ───────────────────────────────────────────────────────────
