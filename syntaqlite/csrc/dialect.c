@@ -55,6 +55,6 @@ const SyntaqliteDialect* syntaqlite_sqlite_dialect(void) {
 }
 
 // Convenience: create a parser pre-configured for the SQLite dialect.
-SyntaqliteParser* syntaqlite_create_parser(const SyntaqliteMemMethods* mem) {
+SyntaqliteParser* syntaqlite_create_sqlite_parser(const SyntaqliteMemMethods* mem) {
     return syntaqlite_create_parser_with_dialect(mem, &SQLITE_DIALECT);
 }

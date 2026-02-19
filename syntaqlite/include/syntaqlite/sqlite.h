@@ -16,10 +16,23 @@ typedef struct SyntaqliteDialect SyntaqliteDialect;
 typedef struct SyntaqliteParser SyntaqliteParser;
 
 const SyntaqliteDialect* syntaqlite_sqlite_dialect(void);
-SyntaqliteParser* syntaqlite_create_parser(const SyntaqliteMemMethods* mem);
+SyntaqliteParser* syntaqlite_create_sqlite_parser(const SyntaqliteMemMethods* mem);
 
 #ifdef __cplusplus
 }
+#endif
+
+#if defined(__cplusplus) && __cplusplus >= 201703L
+#include "syntaqlite/parser.h"
+
+namespace syntaqlite {
+
+// Create a Parser pre-configured for the SQLite dialect.
+inline Parser SqliteParser() {
+  return Parser(syntaqlite_create_sqlite_parser(nullptr));
+}
+
+}  // namespace syntaqlite
 #endif
 
 #endif  // SYNTAQLITE_SQLITE_H

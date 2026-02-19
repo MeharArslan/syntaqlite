@@ -33,6 +33,7 @@
 #include <stdio.h>
 
 #include "syntaqlite/config.h"
+#include "syntaqlite/types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -131,6 +132,74 @@ const SyntaqliteMacroRegion* syntaqlite_parser_macro_regions(
     SyntaqliteParser* p, uint32_t* count);
 
 // ---------------------------------------------------------------------------
+// Source span helpers
+// ---------------------------------------------------------------------------
+
+// Extract text for a source span. Returns a pointer into the parser's source
+// buffer (NOT null-terminated). Sets *out_len to the byte length. Returns
+// NULL if the span is empty (length == 0).
+//
+// Usage:
+//   SyntaqliteColumnRef* col = ...;
+//   uint32_t len;
+//   const char* name = syntaqlite_span_text(p, col->column, &len);
+//   if (name) printf("column: %.*s\n", (int)len, name);
+static inline const char* syntaqlite_span_text(
+    SyntaqliteParser* p,
+    SyntaqliteSourceSpan span,
+    uint32_t* out_len) {
+  if (span.length == 0) {
+    *out_len = 0;
+    return NULL;
+  }
+  *out_len = span.length;
+  return syntaqlite_parser_source(p) + span.offset;
+}
+
+// Test whether a source span is present (non-empty).
+static inline int syntaqlite_span_is_present(SyntaqliteSourceSpan span) {
+  return span.length != 0;
+}
+
+// ---------------------------------------------------------------------------
+// List node helpers
+// ---------------------------------------------------------------------------
+
+// Return the number of children in a list node. The node pointer must point
+// to a list node (one whose struct has tag + count + children[] layout).
+static inline uint32_t syntaqlite_list_count(const void* list_node) {
+  const uint32_t* raw = (const uint32_t*)list_node;
+  return raw[1];  // count is the second uint32_t after tag
+}
+
+// Return the node ID of the i-th child in a list node. Does NOT bounds-check.
+static inline uint32_t syntaqlite_list_child_id(const void* list_node,
+                                                uint32_t index) {
+  const uint32_t* raw = (const uint32_t*)list_node;
+  return raw[2 + index];  // children start at offset 8 (after tag + count)
+}
+
+// Return a pointer to the i-th child node in a list. Combines list_child_id
+// with syntaqlite_parser_node for convenience. Returns NULL if the child ID
+// is SYNTAQLITE_NULL_NODE.
+static inline const void* syntaqlite_list_child(SyntaqliteParser* p,
+                                                const void* list_node,
+                                                uint32_t index) {
+  uint32_t child_id = syntaqlite_list_child_id(list_node, index);
+  if (child_id == SYNTAQLITE_NULL_NODE) return NULL;
+  return syntaqlite_parser_node(p, child_id);
+}
+
+// ---------------------------------------------------------------------------
+// Optional node field helpers
+// ---------------------------------------------------------------------------
+
+// Test whether a node ID field is present (not SYNTAQLITE_NULL_NODE).
+static inline int syntaqlite_node_is_present(uint32_t node_id) {
+  return node_id != SYNTAQLITE_NULL_NODE;
+}
+
+// ---------------------------------------------------------------------------
 // AST dump
 // ---------------------------------------------------------------------------
 
@@ -203,6 +272,168 @@ void syntaqlite_parser_end_macro(SyntaqliteParser* p);
 
 #ifdef __cplusplus
 }
+#endif
+
+// ---------------------------------------------------------------------------
+// C++ convenience wrappers (requires C++17)
+// ---------------------------------------------------------------------------
+
+#if defined(__cplusplus) && __cplusplus >= 201703L
+#include <string_view>
+
+namespace syntaqlite {
+
+// Extracts a string_view from a source span.  Returns empty if absent.
+inline std::string_view SpanText(SyntaqliteParser* p,
+                                 SyntaqliteSourceSpan span) {
+  if (span.length == 0) return {};
+  return {syntaqlite_parser_source(p) + span.offset, span.length};
+}
+
+// Returns true if a source span is present (non-empty).
+inline bool IsPresent(SyntaqliteSourceSpan span) { return span.length != 0; }
+
+// Returns true if a node ID is present (not null).
+inline bool IsPresent(uint32_t node_id) {
+  return node_id != SYNTAQLITE_NULL_NODE;
+}
+
+// Returns a typed pointer to a node.  Returns nullptr if `node_id` is null.
+template <typename T>
+const T* NodeCast(SyntaqliteParser* p, uint32_t node_id) {
+  if (node_id == SYNTAQLITE_NULL_NODE) return nullptr;
+  return static_cast<const T*>(syntaqlite_parser_node(p, node_id));
+}
+
+// Iterable view over a list node's children with typed element access.
+//
+// Usage:
+//   for (const auto* col :
+//        syntaqlite::MakeListView<SyntaqliteColumnDef>(p, table.columns)) {
+//     printf("%.*s\n", col->column_name.length,
+//            syntaqlite_parser_source(p) + col->column_name.offset);
+//   }
+template <typename T>
+class ListView {
+ public:
+  ListView(SyntaqliteParser* parser, const void* list)
+      : parser_(parser), list_(list) {}
+
+  uint32_t size() const {
+    return list_ ? syntaqlite_list_count(list_) : 0;
+  }
+
+  const T* operator[](uint32_t i) const {
+    return static_cast<const T*>(syntaqlite_list_child(parser_, list_, i));
+  }
+
+  class Iterator {
+   public:
+    Iterator(SyntaqliteParser* parser, const void* list, uint32_t index)
+        : parser_(parser), list_(list), index_(index) {}
+
+    const T* operator*() const {
+      return static_cast<const T*>(
+          syntaqlite_list_child(parser_, list_, index_));
+    }
+    Iterator& operator++() { ++index_; return *this; }
+    bool operator!=(const Iterator& other) const {
+      return index_ != other.index_;
+    }
+
+   private:
+    SyntaqliteParser* parser_;
+    const void* list_;
+    uint32_t index_;
+  };
+
+  Iterator begin() const { return {parser_, list_, 0}; }
+  Iterator end() const { return {parser_, list_, size()}; }
+
+ private:
+  SyntaqliteParser* parser_;
+  const void* list_;
+};
+
+// Creates a ListView from a list node ID.  Returns an empty view if null.
+template <typename T>
+ListView<T> MakeListView(SyntaqliteParser* p, uint32_t list_id) {
+  if (list_id == SYNTAQLITE_NULL_NODE) return {p, nullptr};
+  return {p, syntaqlite_parser_node(p, list_id)};
+}
+
+// RAII wrapper for SyntaqliteParser.  Non-copyable, movable.
+//
+// Usage:
+//   auto parser = syntaqlite::SqliteParser();  // see sqlite.h
+//   parser.Reset("SELECT 1; SELECT 2;");
+//   SyntaqliteParseResult result;
+//   while (result = parser.Next(), syntaqlite::IsPresent(result.root)) {
+//     const auto* stmt = parser.Node<SyntaqliteStmt>(result.root);
+//     ...
+//   }
+class Parser {
+ public:
+  // Takes ownership of a raw parser handle.
+  explicit Parser(SyntaqliteParser* raw) : raw_(raw) {}
+  ~Parser() { syntaqlite_parser_destroy(raw_); }
+
+  Parser(const Parser&) = delete;
+  Parser& operator=(const Parser&) = delete;
+  Parser(Parser&& other) noexcept : raw_(other.raw_) {
+    other.raw_ = nullptr;
+  }
+  Parser& operator=(Parser&& other) noexcept {
+    if (this != &other) {
+      syntaqlite_parser_destroy(raw_);
+      raw_ = other.raw_;
+      other.raw_ = nullptr;
+    }
+    return *this;
+  }
+
+  // Returns the underlying C handle.
+  SyntaqliteParser* raw() const { return raw_; }
+
+  // Binds source text and resets all parser state.
+  void Reset(const char* sql, uint32_t len) {
+    syntaqlite_parser_reset(raw_, sql, len);
+  }
+  void Reset(std::string_view sql) {
+    syntaqlite_parser_reset(raw_, sql.data(),
+                            static_cast<uint32_t>(sql.size()));
+  }
+
+  // Parses the next statement.
+  SyntaqliteParseResult Next() { return syntaqlite_parser_next(raw_); }
+
+  // Returns a typed pointer to a node by ID.
+  template <typename T>
+  const T* Node(uint32_t node_id) const {
+    return NodeCast<T>(raw_, node_id);
+  }
+
+  // Returns an iterable view over a list node's children.
+  template <typename T>
+  ListView<T> List(uint32_t list_id) const {
+    return MakeListView<T>(raw_, list_id);
+  }
+
+  // Extracts text from a source span.
+  std::string_view Text(SyntaqliteSourceSpan span) const {
+    return SpanText(raw_, span);
+  }
+
+  // Dumps an AST node as indented text.  Caller must free() the result.
+  char* DumpNode(uint32_t node_id, uint32_t indent = 0) const {
+    return syntaqlite_dump_node(raw_, node_id, indent);
+  }
+
+ private:
+  SyntaqliteParser* raw_;
+};
+
+}  // namespace syntaqlite
 #endif
 
 #endif  // SYNTAQLITE_PARSER_H

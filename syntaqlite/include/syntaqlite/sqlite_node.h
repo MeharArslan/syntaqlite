@@ -18,6 +18,12 @@
 #include "syntaqlite/types.h"
 
 #ifdef __cplusplus
+#define SYNTAQLITE_FLEXIBLE_ARRAY 1
+#else
+#define SYNTAQLITE_FLEXIBLE_ARRAY
+#endif
+
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -250,7 +256,7 @@ typedef union SyntaqliteAggregateFunctionCallFlags {
     uint8_t raw;
     struct {
         uint8_t distinct : 1;
-    };
+    } bits;
 } SyntaqliteAggregateFunctionCallFlags;
 
 typedef union SyntaqliteCreateTableStmtFlags {
@@ -258,7 +264,7 @@ typedef union SyntaqliteCreateTableStmtFlags {
     struct {
         uint8_t without_rowid : 1;
         uint8_t strict : 1;
-    };
+    } bits;
 } SyntaqliteCreateTableStmtFlags;
 
 typedef union SyntaqliteFunctionCallFlags {
@@ -266,21 +272,21 @@ typedef union SyntaqliteFunctionCallFlags {
     struct {
         uint8_t distinct : 1;
         uint8_t star : 1;
-    };
+    } bits;
 } SyntaqliteFunctionCallFlags;
 
 typedef union SyntaqliteResultColumnFlags {
     uint8_t raw;
     struct {
         uint8_t star : 1;
-    };
+    } bits;
 } SyntaqliteResultColumnFlags;
 
 typedef union SyntaqliteSelectStmtFlags {
     uint8_t raw;
     struct {
         uint8_t distinct : 1;
-    };
+    } bits;
 } SyntaqliteSelectStmtFlags;
 
 // ============ Node Tags ============
@@ -452,7 +458,7 @@ typedef struct SyntaqliteCaseWhen {
 typedef struct SyntaqliteCaseWhenList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteCaseWhenList;
 
 typedef struct SyntaqliteForeignKeyClause {
@@ -483,7 +489,7 @@ typedef struct SyntaqliteColumnConstraint {
 typedef struct SyntaqliteColumnConstraintList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteColumnConstraintList;
 
 typedef struct SyntaqliteColumnDef {
@@ -497,7 +503,7 @@ typedef struct SyntaqliteColumnDef {
 typedef struct SyntaqliteColumnDefList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteColumnDefList;
 
 typedef struct SyntaqliteTableConstraint {
@@ -516,7 +522,7 @@ typedef struct SyntaqliteTableConstraint {
 typedef struct SyntaqliteTableConstraintList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteTableConstraintList;
 
 typedef struct SyntaqliteCreateTableStmt {
@@ -543,7 +549,7 @@ typedef struct SyntaqliteCteDefinition {
 typedef struct SyntaqliteCteList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteCteList;
 
 typedef struct SyntaqliteWithClause {
@@ -570,7 +576,7 @@ typedef struct SyntaqliteSetClause {
 typedef struct SyntaqliteSetClauseList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteSetClauseList;
 
 typedef struct SyntaqliteUpdateStmt {
@@ -613,7 +619,7 @@ typedef struct SyntaqliteLiteral {
 typedef struct SyntaqliteExprList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteExprList;
 
 typedef struct SyntaqliteFunctionCall {
@@ -686,7 +692,7 @@ typedef struct SyntaqliteResultColumn {
 typedef struct SyntaqliteResultColumnList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteResultColumnList;
 
 typedef struct SyntaqliteSelectStmt {
@@ -713,7 +719,7 @@ typedef struct SyntaqliteOrderingTerm {
 typedef struct SyntaqliteOrderByList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteOrderByList;
 
 typedef struct SyntaqliteLimitClause {
@@ -760,7 +766,7 @@ typedef struct SyntaqliteTriggerEvent {
 typedef struct SyntaqliteTriggerCmdList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteTriggerCmdList;
 
 typedef struct SyntaqliteCreateTriggerStmt {
@@ -849,7 +855,7 @@ typedef struct SyntaqliteCreateViewStmt {
 typedef struct SyntaqliteValuesRowList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteValuesRowList;
 
 typedef struct SyntaqliteValuesClause {
@@ -883,7 +889,7 @@ typedef struct SyntaqliteWindowDef {
 typedef struct SyntaqliteWindowDefList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteWindowDefList;
 
 typedef struct SyntaqliteNamedWindowDef {
@@ -896,7 +902,7 @@ typedef struct SyntaqliteNamedWindowDef {
 typedef struct SyntaqliteNamedWindowDefList {
     uint32_t tag;
     uint32_t count;
-    uint32_t children[];
+    uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];
 } SyntaqliteNamedWindowDefList;
 
 typedef struct SyntaqliteFilterOver {

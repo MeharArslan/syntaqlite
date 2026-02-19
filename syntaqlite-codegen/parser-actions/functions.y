@@ -27,7 +27,7 @@ expr(A) ::= idj(B) LP distinct(C) exprlist(D) RP. {
 expr(A) ::= idj(B) LP STAR RP. {
     A = synq_parse_function_call(pCtx,
         synq_span(pCtx, B),
-        (SyntaqliteFunctionCallFlags){.star = 1},
+        (SyntaqliteFunctionCallFlags){.bits = {.star = 1}},
         SYNTAQLITE_NULL_NODE,
         SYNTAQLITE_NULL_NODE,
         SYNTAQLITE_NULL_NODE);
@@ -49,7 +49,7 @@ expr(A) ::= idj(B) LP STAR RP filter_over(C). {
     SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->ast, C);
     A = synq_parse_function_call(pCtx,
         synq_span(pCtx, B),
-        (SyntaqliteFunctionCallFlags){.star = 1},
+        (SyntaqliteFunctionCallFlags){.bits = {.star = 1}},
         SYNTAQLITE_NULL_NODE,
         fo->filter_expr,
         fo->over_def);

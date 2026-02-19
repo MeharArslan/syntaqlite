@@ -9,12 +9,9 @@
 # Build lock file used by tools/dev/build-lock
 out/.build.lock
 
-.zig-cache
-zig-out
-
-# Generated at build time by build_synq_codegen.py
-src/codegen/src/lempar_data.zig
+*.o
+*.a
+examples/select_columns
 
 # Added by cargo
-
 /target

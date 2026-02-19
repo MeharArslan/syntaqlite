@@ -19,6 +19,13 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
     w.newline();
     w.include_local("syntaqlite/types.h");
     w.newline();
+    // C++ doesn't have flexible array members; use [1] as a common workaround.
+    w.line("#ifdef __cplusplus");
+    w.line("#define SYNTAQLITE_FLEXIBLE_ARRAY 1");
+    w.line("#else");
+    w.line("#define SYNTAQLITE_FLEXIBLE_ARRAY");
+    w.line("#endif");
+    w.newline();
     w.extern_c_start();
 
     // Enums
@@ -80,11 +87,7 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
             }
             Item::List { name, child_type, .. } => {
                 w.comment(&format!("List of {}", child_type));
-                w.typedef_struct(&c_type_name(name), &[
-                    ("uint32_t", "tag"),
-                    ("uint32_t", "count"),
-                    ("uint32_t", "children[]"),
-                ]);
+                w.typedef_list_struct(&c_type_name(name));
                 w.newline();
             }
             _ => {}

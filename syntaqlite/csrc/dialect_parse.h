@@ -2612,7 +2612,7 @@ static void yy_reduce_actions(
         break;
       case 15: /* selcollist ::= sclp scanpt nm DOT STAR */
 {
-    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.star = 1}, synq_span(pCtx, yymsp[-2].minor.yy0), SYNTAQLITE_NULL_NODE);
+    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.bits = {.star = 1}}, synq_span(pCtx, yymsp[-2].minor.yy0), SYNTAQLITE_NULL_NODE);
     yylhsminor.yy605 = synq_parse_result_column_list(pCtx, yymsp[-4].minor.yy605, col);
 }
   yymsp[-4].minor.yy605 = yylhsminor.yy605;
@@ -3807,7 +3807,7 @@ static void yy_reduce_actions(
 {
     yylhsminor.yy605 = synq_parse_function_call(pCtx,
         synq_span(pCtx, yymsp[-3].minor.yy0),
-        (SyntaqliteFunctionCallFlags){.star = 1},
+        (SyntaqliteFunctionCallFlags){.bits = {.star = 1}},
         SYNTAQLITE_NULL_NODE,
         SYNTAQLITE_NULL_NODE,
         SYNTAQLITE_NULL_NODE);
@@ -3831,7 +3831,7 @@ static void yy_reduce_actions(
     SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->ast, yymsp[0].minor.yy605);
     yylhsminor.yy605 = synq_parse_function_call(pCtx,
         synq_span(pCtx, yymsp[-4].minor.yy0),
-        (SyntaqliteFunctionCallFlags){.star = 1},
+        (SyntaqliteFunctionCallFlags){.bits = {.star = 1}},
         SYNTAQLITE_NULL_NODE,
         fo->filter_expr,
         fo->over_def);
@@ -4107,7 +4107,7 @@ static void yy_reduce_actions(
         break;
       case 254: /* selcollist ::= sclp scanpt STAR */
 {
-    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.star = 1}, SYNQ_NO_SPAN, SYNTAQLITE_NULL_NODE);
+    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.bits = {.star = 1}}, SYNQ_NO_SPAN, SYNTAQLITE_NULL_NODE);
     yylhsminor.yy605 = synq_parse_result_column_list(pCtx, yymsp[-2].minor.yy605, col);
 }
   yymsp[-2].minor.yy605 = yylhsminor.yy605;

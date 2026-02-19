@@ -180,8 +180,11 @@ impl CWriter {
         self.at_line_start = true;
     }
 
-    /// Emit a typedef union with uint8_t raw + anonymous bitfield struct for flags.
+    /// Emit a typedef union with uint8_t raw + named bitfield struct for flags.
     /// `bits` is (name, bit_position) pairs.
+    ///
+    /// Access: `flags.bits.star`, `flags.bits.distinct`, or `flags.raw` for
+    /// the packed byte. Consistent across C and C++.
     pub fn typedef_flags_union(&mut self, name: &str, bits: &[(&str, u32)]) {
         self.write_indent();
         writeln!(self.buffer, "typedef union {} {{", name).unwrap();
@@ -200,7 +203,25 @@ impl CWriter {
             next_bit = bit_pos + 1;
         }
         self.dedent();
-        self.line("};");
+        self.line("} bits;");
+        self.dedent();
+        self.write_indent();
+        writeln!(self.buffer, "}} {};", name).unwrap();
+        self.at_line_start = true;
+    }
+
+    /// Emit a list node struct: `{ tag, count, children[] }`.
+    ///
+    /// Uses `SYNTAQLITE_FLEXIBLE_ARRAY` to be C++ compatible: C uses `[]`,
+    /// C++ uses `[1]` (a common workaround since C++ lacks flexible arrays).
+    pub fn typedef_list_struct(&mut self, name: &str) {
+        self.write_indent();
+        writeln!(self.buffer, "typedef struct {} {{", name).unwrap();
+        self.at_line_start = true;
+        self.indent();
+        self.line("uint32_t tag;");
+        self.line("uint32_t count;");
+        self.line("uint32_t children[SYNTAQLITE_FLEXIBLE_ARRAY];");
         self.dedent();
         self.write_indent();
         writeln!(self.buffer, "}} {};", name).unwrap();

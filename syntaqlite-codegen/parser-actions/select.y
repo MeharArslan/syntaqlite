@@ -45,7 +45,7 @@ selcollist(A) ::= sclp(B) scanpt expr(C) scanpt as(D). {
 }
 
 selcollist(A) ::= sclp(B) scanpt STAR. {
-    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.star = 1}, SYNQ_NO_SPAN, SYNTAQLITE_NULL_NODE);
+    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.bits = {.star = 1}}, SYNQ_NO_SPAN, SYNTAQLITE_NULL_NODE);
     A = synq_parse_result_column_list(pCtx, B, col);
 }
 
