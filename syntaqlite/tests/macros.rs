@@ -2,11 +2,10 @@
 // Licensed under the Apache License, Version 2.0.
 
 /// Integration tests: macro regions are emitted verbatim by the formatter.
-use syntaqlite::low_level::Sqlite;
 use syntaqlite_runtime::parser::LowLevelParser;
 
 fn dialect() -> &'static syntaqlite_runtime::Dialect<'static> {
-    Sqlite::dialect()
+    syntaqlite::low_level::dialect()
 }
 
 fn formatter() -> syntaqlite_runtime::fmt::Formatter<'static> {

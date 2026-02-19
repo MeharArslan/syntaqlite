@@ -92,12 +92,12 @@ fn feed_token_skips_space() {
 /// TK_COMMENT should be recorded as a comment.
 #[test]
 fn feed_token_records_comment() {
-    use syntaqlite::low_level::Sqlite;
+
     use syntaqlite_runtime::parser::{LowLevelParser, ParserConfig};
 
     let source = "SELECT -- hello\n1";
     let config = ParserConfig { trace: false, collect_tokens: true };
-    let mut tp = LowLevelParser::with_config(Sqlite::dialect(), &config);
+    let mut tp = LowLevelParser::with_config(syntaqlite::low_level::dialect(), &config);
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
@@ -114,11 +114,11 @@ fn feed_token_records_comment() {
 /// begin_macro / end_macro records macro regions.
 #[test]
 fn macro_regions_recorded() {
-    use syntaqlite::low_level::Sqlite;
+
     use syntaqlite_runtime::parser::LowLevelParser;
 
     let source = "SELECT 1";
-    let mut tp = LowLevelParser::new(Sqlite::dialect());
+    let mut tp = LowLevelParser::new(syntaqlite::low_level::dialect());
     let mut cursor = tp.feed(source);
 
     cursor.begin_macro(7, 13);
@@ -137,11 +137,11 @@ fn macro_regions_recorded() {
 /// Nested macro regions are both recorded.
 #[test]
 fn nested_macro_regions() {
-    use syntaqlite::low_level::Sqlite;
+
     use syntaqlite_runtime::parser::LowLevelParser;
 
     let source = "SELECT 1";
-    let mut tp = LowLevelParser::new(Sqlite::dialect());
+    let mut tp = LowLevelParser::new(syntaqlite::low_level::dialect());
     let mut cursor = tp.feed(source);
 
     cursor.begin_macro(0, 30);

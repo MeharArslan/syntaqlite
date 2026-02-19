@@ -2,5 +2,5 @@
 // Licensed under the Apache License, Version 2.0.
 
 fn main() {
-    syntaqlite_cli::run("syntaqlite", syntaqlite::dialect());
+    syntaqlite_cli::run("syntaqlite", syntaqlite::low_level::dialect());
 }

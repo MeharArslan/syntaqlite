@@ -38,6 +38,7 @@ pub struct Parser {
     /// this. The buffer is reused across `parse()` calls to avoid repeated
     /// allocations.
     pub(crate) source_buf: Vec<u8>,
+    config: ParserConfig,
 }
 
 // SAFETY: The C parser is self-contained (no thread-local or shared mutable
@@ -56,19 +57,26 @@ impl Parser {
         Parser {
             raw,
             source_buf: Vec::new(),
+            config: ParserConfig::default(),
         }
     }
 
     /// Create a parser with the given configuration applied at construction.
     pub fn with_config(dialect: &Dialect, config: &ParserConfig) -> Self {
-        let parser = Self::new(dialect);
+        let mut parser = Self::new(dialect);
         // SAFETY: Parser is freshly created (not sealed), so these calls
         // always return 0.
         unsafe {
             ffi::syntaqlite_parser_set_trace(parser.raw, config.trace as c_int);
             ffi::syntaqlite_parser_set_collect_tokens(parser.raw, config.collect_tokens as c_int);
         }
+        parser.config = config.clone();
         parser
+    }
+
+    /// Access the current configuration.
+    pub fn config(&self) -> &ParserConfig {
+        &self.config
     }
 
     /// Bind source text and return a `StatementCursor` for iterating statements.

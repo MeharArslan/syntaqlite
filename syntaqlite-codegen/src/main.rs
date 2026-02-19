@@ -235,6 +235,14 @@ fn main() {
                 fs::write(rust_src_dir.join("ast.rs"), rust_ast)
                     .map_err(|e| format!("Failed to write ast.rs: {}", e))?;
 
+                let rust_lib = syntaqlite_codegen::ast_codegen::generate_rust_lib("syntaqlite_sqlite_dialect");
+                fs::write(rust_src_dir.join("lib.rs"), rust_lib)
+                    .map_err(|e| format!("Failed to write lib.rs: {}", e))?;
+
+                let rust_wrappers = syntaqlite_codegen::ast_codegen::generate_rust_wrappers();
+                fs::write(rust_src_dir.join("wrappers.rs"), rust_wrappers)
+                    .map_err(|e| format!("Failed to write wrappers.rs: {}", e))?;
+
                 // Step 6: Generate C AST metadata and fmt data headers
                 if args.verbose {
                     eprintln!("Generating C AST metadata...");
