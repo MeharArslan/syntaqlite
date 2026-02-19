@@ -11,7 +11,8 @@ pub enum Bool {
 }
 
 impl Bool {
-    pub fn from_raw(raw: u32) -> Option<Bool> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<Bool> {
         match raw {
             0 => Some(Bool::False),
             1 => Some(Bool::True),
@@ -40,7 +41,8 @@ pub enum LiteralType {
 }
 
 impl LiteralType {
-    pub fn from_raw(raw: u32) -> Option<LiteralType> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<LiteralType> {
         match raw {
             0 => Some(LiteralType::Integer),
             1 => Some(LiteralType::Float),
@@ -91,7 +93,8 @@ pub enum BinaryOp {
 }
 
 impl BinaryOp {
-    pub fn from_raw(raw: u32) -> Option<BinaryOp> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<BinaryOp> {
         match raw {
             0 => Some(BinaryOp::Plus),
             1 => Some(BinaryOp::Minus),
@@ -151,7 +154,8 @@ pub enum UnaryOp {
 }
 
 impl UnaryOp {
-    pub fn from_raw(raw: u32) -> Option<UnaryOp> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<UnaryOp> {
         match raw {
             0 => Some(UnaryOp::Minus),
             1 => Some(UnaryOp::Plus),
@@ -181,7 +185,8 @@ pub enum CompoundOp {
 }
 
 impl CompoundOp {
-    pub fn from_raw(raw: u32) -> Option<CompoundOp> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<CompoundOp> {
         match raw {
             0 => Some(CompoundOp::Union),
             1 => Some(CompoundOp::UnionAll),
@@ -213,7 +218,8 @@ pub enum IsOp {
 }
 
 impl IsOp {
-    pub fn from_raw(raw: u32) -> Option<IsOp> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<IsOp> {
         match raw {
             0 => Some(IsOp::Is),
             1 => Some(IsOp::IsNot),
@@ -248,7 +254,8 @@ pub enum ForeignKeyAction {
 }
 
 impl ForeignKeyAction {
-    pub fn from_raw(raw: u32) -> Option<ForeignKeyAction> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<ForeignKeyAction> {
         match raw {
             0 => Some(ForeignKeyAction::NoAction),
             1 => Some(ForeignKeyAction::SetNull),
@@ -278,7 +285,8 @@ pub enum GeneratedColumnStorage {
 }
 
 impl GeneratedColumnStorage {
-    pub fn from_raw(raw: u32) -> Option<GeneratedColumnStorage> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<GeneratedColumnStorage> {
         match raw {
             0 => Some(GeneratedColumnStorage::Virtual),
             1 => Some(GeneratedColumnStorage::Stored),
@@ -309,7 +317,8 @@ pub enum ColumnConstraintKind {
 }
 
 impl ColumnConstraintKind {
-    pub fn from_raw(raw: u32) -> Option<ColumnConstraintKind> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<ColumnConstraintKind> {
         match raw {
             0 => Some(ColumnConstraintKind::Default),
             1 => Some(ColumnConstraintKind::NotNull),
@@ -349,7 +358,8 @@ pub enum TableConstraintKind {
 }
 
 impl TableConstraintKind {
-    pub fn from_raw(raw: u32) -> Option<TableConstraintKind> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<TableConstraintKind> {
         match raw {
             0 => Some(TableConstraintKind::PrimaryKey),
             1 => Some(TableConstraintKind::Unique),
@@ -378,7 +388,8 @@ pub enum Materialized {
 }
 
 impl Materialized {
-    pub fn from_raw(raw: u32) -> Option<Materialized> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<Materialized> {
         match raw {
             0 => Some(Materialized::Default),
             1 => Some(Materialized::Materialized),
@@ -408,7 +419,8 @@ pub enum ConflictAction {
 }
 
 impl ConflictAction {
-    pub fn from_raw(raw: u32) -> Option<ConflictAction> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<ConflictAction> {
         match raw {
             0 => Some(ConflictAction::Default),
             1 => Some(ConflictAction::Rollback),
@@ -442,7 +454,8 @@ pub enum RaiseType {
 }
 
 impl RaiseType {
-    pub fn from_raw(raw: u32) -> Option<RaiseType> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<RaiseType> {
         match raw {
             0 => Some(RaiseType::Ignore),
             1 => Some(RaiseType::Rollback),
@@ -472,7 +485,8 @@ pub enum DropObjectType {
 }
 
 impl DropObjectType {
-    pub fn from_raw(raw: u32) -> Option<DropObjectType> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<DropObjectType> {
         match raw {
             0 => Some(DropObjectType::Table),
             1 => Some(DropObjectType::Index),
@@ -502,7 +516,8 @@ pub enum AlterOp {
 }
 
 impl AlterOp {
-    pub fn from_raw(raw: u32) -> Option<AlterOp> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<AlterOp> {
         match raw {
             0 => Some(AlterOp::RenameTable),
             1 => Some(AlterOp::RenameColumn),
@@ -531,7 +546,8 @@ pub enum TransactionType {
 }
 
 impl TransactionType {
-    pub fn from_raw(raw: u32) -> Option<TransactionType> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<TransactionType> {
         match raw {
             0 => Some(TransactionType::Deferred),
             1 => Some(TransactionType::Immediate),
@@ -558,7 +574,8 @@ pub enum TransactionOp {
 }
 
 impl TransactionOp {
-    pub fn from_raw(raw: u32) -> Option<TransactionOp> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<TransactionOp> {
         match raw {
             0 => Some(TransactionOp::Begin),
             1 => Some(TransactionOp::Commit),
@@ -585,7 +602,8 @@ pub enum SavepointOp {
 }
 
 impl SavepointOp {
-    pub fn from_raw(raw: u32) -> Option<SavepointOp> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<SavepointOp> {
         match raw {
             0 => Some(SavepointOp::Savepoint),
             1 => Some(SavepointOp::Release),
@@ -611,7 +629,8 @@ pub enum SortOrder {
 }
 
 impl SortOrder {
-    pub fn from_raw(raw: u32) -> Option<SortOrder> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<SortOrder> {
         match raw {
             0 => Some(SortOrder::Asc),
             1 => Some(SortOrder::Desc),
@@ -636,7 +655,8 @@ pub enum NullsOrder {
 }
 
 impl NullsOrder {
-    pub fn from_raw(raw: u32) -> Option<NullsOrder> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<NullsOrder> {
         match raw {
             0 => Some(NullsOrder::None),
             1 => Some(NullsOrder::First),
@@ -670,7 +690,8 @@ pub enum JoinType {
 }
 
 impl JoinType {
-    pub fn from_raw(raw: u32) -> Option<JoinType> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<JoinType> {
         match raw {
             0 => Some(JoinType::Comma),
             1 => Some(JoinType::Inner),
@@ -711,7 +732,8 @@ pub enum TriggerTiming {
 }
 
 impl TriggerTiming {
-    pub fn from_raw(raw: u32) -> Option<TriggerTiming> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<TriggerTiming> {
         match raw {
             0 => Some(TriggerTiming::Before),
             1 => Some(TriggerTiming::After),
@@ -738,7 +760,8 @@ pub enum TriggerEventType {
 }
 
 impl TriggerEventType {
-    pub fn from_raw(raw: u32) -> Option<TriggerEventType> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<TriggerEventType> {
         match raw {
             0 => Some(TriggerEventType::Delete),
             1 => Some(TriggerEventType::Insert),
@@ -764,7 +787,8 @@ pub enum ExplainMode {
 }
 
 impl ExplainMode {
-    pub fn from_raw(raw: u32) -> Option<ExplainMode> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<ExplainMode> {
         match raw {
             0 => Some(ExplainMode::Explain),
             1 => Some(ExplainMode::QueryPlan),
@@ -789,7 +813,8 @@ pub enum PragmaForm {
 }
 
 impl PragmaForm {
-    pub fn from_raw(raw: u32) -> Option<PragmaForm> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<PragmaForm> {
         match raw {
             0 => Some(PragmaForm::Bare),
             1 => Some(PragmaForm::Eq),
@@ -815,7 +840,8 @@ pub enum AnalyzeKind {
 }
 
 impl AnalyzeKind {
-    pub fn from_raw(raw: u32) -> Option<AnalyzeKind> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<AnalyzeKind> {
         match raw {
             0 => Some(AnalyzeKind::Analyze),
             1 => Some(AnalyzeKind::Reindex),
@@ -841,7 +867,8 @@ pub enum FrameType {
 }
 
 impl FrameType {
-    pub fn from_raw(raw: u32) -> Option<FrameType> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<FrameType> {
         match raw {
             0 => Some(FrameType::None),
             1 => Some(FrameType::Range),
@@ -872,7 +899,8 @@ pub enum FrameBoundType {
 }
 
 impl FrameBoundType {
-    pub fn from_raw(raw: u32) -> Option<FrameBoundType> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<FrameBoundType> {
         match raw {
             0 => Some(FrameBoundType::UnboundedPreceding),
             1 => Some(FrameBoundType::ExprPreceding),
@@ -905,7 +933,8 @@ pub enum FrameExclude {
 }
 
 impl FrameExclude {
-    pub fn from_raw(raw: u32) -> Option<FrameExclude> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<FrameExclude> {
         match raw {
             0 => Some(FrameExclude::None),
             1 => Some(FrameExclude::NoOthers),
@@ -1100,7 +1129,8 @@ pub enum NodeTag {
 }
 
 impl NodeTag {
-    pub fn from_raw(raw: u32) -> Option<NodeTag> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<NodeTag> {
         match raw {
             0 => Some(NodeTag::Null),
             1 => Some(NodeTag::AggregateFunctionCall),
@@ -1180,7 +1210,8 @@ impl NodeTag {
         }
     }
 
-    pub fn is_list(&self) -> bool {
+    #[allow(dead_code)]
+    pub(crate) fn is_list(&self) -> bool {
         matches!(self, NodeTag::CaseWhenList | NodeTag::ColumnConstraintList | NodeTag::ColumnDefList | NodeTag::TableConstraintList | NodeTag::CteList | NodeTag::SetClauseList | NodeTag::ExprList | NodeTag::ResultColumnList | NodeTag::OrderByList | NodeTag::TriggerCmdList | NodeTag::ValuesRowList | NodeTag::WindowDefList | NodeTag::NamedWindowDefList
         )
     }

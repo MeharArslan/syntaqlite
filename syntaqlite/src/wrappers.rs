@@ -16,15 +16,14 @@ impl Parser {
     /// Create a new parser for the SQLite dialect with default configuration.
     pub fn new() -> Self {
         Parser {
-            inner: syntaqlite_runtime::Parser::new(crate::Sqlite::dialect()),
+            inner: syntaqlite_runtime::Parser::new(crate::low_level::Sqlite::dialect()),
         }
     }
 
-    /// Create a new parser for the SQLite dialect with the given configuration.
-    pub fn with_config(config: &syntaqlite_runtime::ParserConfig) -> Self {
-        Parser {
-            inner: syntaqlite_runtime::Parser::with_config(crate::Sqlite::dialect(), config),
-        }
+    /// Enable parser trace output (prints state transitions to stderr).
+    pub fn with_trace(mut self) -> Self {
+        self.inner.set_trace(true);
+        self
     }
 
     /// Parse source text and return a `StatementCursor` for iterating statements.
@@ -104,15 +103,20 @@ impl TokenParser {
     /// Create a new token parser for the SQLite dialect.
     pub fn new() -> Self {
         TokenParser {
-            inner: syntaqlite_runtime::TokenParser::new(crate::Sqlite::dialect()),
+            inner: syntaqlite_runtime::TokenParser::new(crate::low_level::Sqlite::dialect()),
         }
     }
 
-    /// Create a new token parser with the given configuration.
-    pub fn with_config(config: &syntaqlite_runtime::ParserConfig) -> Self {
-        TokenParser {
-            inner: syntaqlite_runtime::TokenParser::with_config(crate::Sqlite::dialect(), config),
-        }
+    /// Enable parser trace output (prints state transitions to stderr).
+    pub fn with_trace(mut self) -> Self {
+        self.inner.set_trace(true);
+        self
+    }
+
+    /// Enable token collection (needed for trivia/comment capture).
+    pub fn with_collect_tokens(mut self) -> Self {
+        self.inner.set_collect_tokens(true);
+        self
     }
 
     /// Bind source text and return a `TokenFeeder` for low-level token feeding.
@@ -204,7 +208,7 @@ pub struct Formatter {
 impl Formatter {
     /// Create a formatter with default configuration.
     pub fn new() -> Result<Self, &'static str> {
-        let inner = syntaqlite_runtime::fmt::Formatter::new(crate::Sqlite::dialect())?;
+        let inner = syntaqlite_runtime::fmt::Formatter::new(crate::low_level::Sqlite::dialect())?;
         Ok(Formatter { inner })
     }
 
@@ -236,11 +240,12 @@ impl Formatter {
     /// Format a single pre-parsed AST node.
     pub fn format_node(
         &self,
-        cursor: &syntaqlite_runtime::CursorBase<'_>,
+        cursor: &StatementCursor<'_>,
         node_id: syntaqlite_runtime::NodeId,
     ) -> String {
-        self.inner.format_node(cursor, node_id)
+        self.inner.format_node(cursor.base(), node_id)
     }
+
 }
 
 // ── Tokenizer ───────────────────────────────────────────────────────────

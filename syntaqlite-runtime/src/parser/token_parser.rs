@@ -40,6 +40,20 @@ impl TokenParser {
         tp
     }
 
+    /// Enable or disable parser trace output.
+    pub fn set_trace(&mut self, enable: bool) {
+        unsafe {
+            ffi::syntaqlite_parser_set_trace(self.raw, enable as c_int);
+        }
+    }
+
+    /// Enable or disable token collection (needed for trivia capture).
+    pub fn set_collect_tokens(&mut self, enable: bool) {
+        unsafe {
+            ffi::syntaqlite_parser_set_collect_tokens(self.raw, enable as c_int);
+        }
+    }
+
     /// Bind source text and return a `TokenFeeder` for low-level token feeding.
     pub fn feed<'a>(&'a mut self, source: &'a str) -> TokenFeeder<'a> {
         let base = CursorBase::new(self.raw, &mut self.source_buf, source);

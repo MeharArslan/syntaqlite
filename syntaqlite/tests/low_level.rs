@@ -6,7 +6,7 @@ use syntaqlite::tokens::TokenType;
 #[test]
 fn feed_tokens_select_1() {
     let source = "SELECT 1";
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = syntaqlite::low_level::TokenParser::new();
     let mut feeder = tp.feed(source);
 
     // Feed SELECT token.
@@ -28,7 +28,7 @@ fn feed_tokens_select_1() {
 #[test]
 fn feed_tokens_with_semicolon() {
     let source = "SELECT 1;";
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = syntaqlite::low_level::TokenParser::new();
     let mut feeder = tp.feed(source);
 
     feeder.feed_token(TokenType::Select, 0..6).unwrap();
@@ -48,7 +48,7 @@ fn feed_tokens_with_semicolon() {
 #[test]
 fn feed_tokens_multi_statement() {
     let source = "SELECT 1; SELECT 2";
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = syntaqlite::low_level::TokenParser::new();
     let mut feeder = tp.feed(source);
 
     // First statement: SELECT 1 ;
@@ -73,7 +73,7 @@ fn feed_tokens_multi_statement() {
 #[test]
 fn feed_token_skips_space() {
     let source = "SELECT 1";
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = syntaqlite::low_level::TokenParser::new();
     let mut feeder = tp.feed(source);
 
     feeder.feed_token(TokenType::Select, 0..6).unwrap();
@@ -94,8 +94,7 @@ fn feed_token_records_comment_trivia() {
     // Source layout: "SELECT -- hello\n1"
     //                 0123456789...
     let source = "SELECT -- hello\n1";
-    let config = syntaqlite::ParserConfig { collect_tokens: true, ..Default::default() };
-    let mut tp = syntaqlite::TokenParser::with_config(&config);
+    let mut tp = syntaqlite::low_level::TokenParser::new().with_collect_tokens();
     let mut feeder = tp.feed(source);
 
     feeder.feed_token(TokenType::Select, 0..6).unwrap();
@@ -118,7 +117,7 @@ fn feed_token_records_comment_trivia() {
 #[test]
 fn macro_regions_recorded() {
     let source = "SELECT 1";
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = syntaqlite::low_level::TokenParser::new();
     let mut feeder = tp.feed(source);
 
     // Simulate a macro call at positions 7..20 in the original source.
@@ -141,7 +140,7 @@ fn macro_regions_recorded() {
 #[test]
 fn nested_macro_regions() {
     let source = "SELECT 1";
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = syntaqlite::low_level::TokenParser::new();
     let mut feeder = tp.feed(source);
 
     feeder.begin_macro(0, 30);
@@ -171,7 +170,7 @@ fn macro_well_aligned_complete_expression() {
     //          0123456789012345678901
     // Macro:         ^----------^  offset=7, length=11 → "foo!(1 + 2)"
     let source = "SELECT foo!(1 + 2), 3";
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = syntaqlite::low_level::TokenParser::new();
     let mut feeder = tp.feed(source);
 
     feeder.feed_token(TokenType::Select, 0..6).unwrap();
@@ -208,7 +207,7 @@ fn macro_well_aligned_complete_expression() {
 #[test]
 fn macro_straddle_rejected_by_parser() {
     let source = "SELECT 1 FROM foo!(x) y";
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = syntaqlite::low_level::TokenParser::new();
     let mut feeder = tp.feed(source);
 
     feeder.feed_token(TokenType::Select, 0..6).unwrap();
@@ -234,7 +233,7 @@ fn macro_straddle_rejected_by_parser() {
 #[test]
 fn finish_with_no_tokens() {
     let source = "";
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = syntaqlite::low_level::TokenParser::new();
     let mut feeder = tp.feed(source);
 
     let r = feeder.finish().unwrap();

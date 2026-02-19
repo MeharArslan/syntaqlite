@@ -192,7 +192,8 @@ pub enum TokenType {
 }
 
 impl TokenType {
-    pub fn from_raw(raw: u32) -> Option<TokenType> {
+    #[allow(dead_code)]
+    pub(crate) fn from_raw(raw: u32) -> Option<TokenType> {
         match raw {
             1 => Some(TokenType::Abort),
             2 => Some(TokenType::Action),

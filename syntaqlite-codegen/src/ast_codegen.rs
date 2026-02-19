@@ -694,7 +694,8 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
 
     // from_raw conversion
     writeln!(out, "impl TokenType {{").unwrap();
-    writeln!(out, "    pub fn from_raw(raw: u32) -> Option<TokenType> {{").unwrap();
+    writeln!(out, "    #[allow(dead_code)]").unwrap();
+    writeln!(out, "    pub(crate) fn from_raw(raw: u32) -> Option<TokenType> {{").unwrap();
     writeln!(out, "        match raw {{").unwrap();
     for (name, value) in tokens {
         let variant = upper_snake_to_pascal(name);
@@ -763,7 +764,8 @@ pub fn generate_rust_nodes(items: &[Item]) -> String {
         writeln!(out).unwrap();
 
         writeln!(out, "impl {} {{", name).unwrap();
-        writeln!(out, "    pub fn from_raw(raw: u32) -> Option<{}> {{", name).unwrap();
+        writeln!(out, "    #[allow(dead_code)]").unwrap();
+        writeln!(out, "    pub(crate) fn from_raw(raw: u32) -> Option<{}> {{", name).unwrap();
         writeln!(out, "        match raw {{").unwrap();
         for (i, v) in variants.iter().enumerate() {
             let variant_name = upper_snake_to_pascal(v);
@@ -840,7 +842,8 @@ pub fn generate_rust_nodes(items: &[Item]) -> String {
     writeln!(out).unwrap();
 
     writeln!(out, "impl NodeTag {{").unwrap();
-    writeln!(out, "    pub fn from_raw(raw: u32) -> Option<NodeTag> {{").unwrap();
+    writeln!(out, "    #[allow(dead_code)]").unwrap();
+    writeln!(out, "    pub(crate) fn from_raw(raw: u32) -> Option<NodeTag> {{").unwrap();
     writeln!(out, "        match raw {{").unwrap();
     writeln!(out, "            0 => Some(NodeTag::Null),").unwrap();
     let mut idx = 1u32;
@@ -856,7 +859,8 @@ pub fn generate_rust_nodes(items: &[Item]) -> String {
     writeln!(out, "        }}").unwrap();
     writeln!(out, "    }}").unwrap();
     writeln!(out).unwrap();
-    writeln!(out, "    pub fn is_list(&self) -> bool {{").unwrap();
+    writeln!(out, "    #[allow(dead_code)]").unwrap();
+    writeln!(out, "    pub(crate) fn is_list(&self) -> bool {{").unwrap();
     writeln!(out, "        matches!(self, {}", list_tags.iter().map(|t| format!("NodeTag::{}", t)).collect::<Vec<_>>().join(" | ")).unwrap();
     writeln!(out, "        )").unwrap();
     writeln!(out, "    }}").unwrap();

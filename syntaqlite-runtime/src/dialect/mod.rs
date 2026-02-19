@@ -23,7 +23,7 @@ impl<'d> Dialect<'d> {
     }
 
     /// Whether the given node tag represents a list node.
-    pub fn is_list(&self, tag: u32) -> bool {
+    pub(crate) fn is_list(&self, tag: u32) -> bool {
         let idx = tag as usize;
         if idx >= self.raw.node_count as usize {
             return false;
@@ -32,7 +32,7 @@ impl<'d> Dialect<'d> {
     }
 
     /// Return the field metadata slice for a node tag.
-    pub fn field_meta(&self, tag: u32) -> &'d [ffi::FieldMeta] {
+    pub(crate) fn field_meta(&self, tag: u32) -> &'d [ffi::FieldMeta] {
         let idx = tag as usize;
         if idx >= self.raw.node_count as usize {
             return &[];
@@ -51,7 +51,7 @@ impl<'d> Dialect<'d> {
 
     /// Read the packed fmt_dispatch entry for a node tag.
     /// Returns `None` if tag is out of range or has no ops (sentinel 0xFFFF).
-    pub fn fmt_dispatch(&self, tag: u32) -> Option<(&'d [u8], usize)> {
+    pub(crate) fn fmt_dispatch(&self, tag: u32) -> Option<(&'d [u8], usize)> {
         let idx = tag as usize;
         if idx >= self.raw.fmt_dispatch_count as usize {
             return None;
@@ -76,7 +76,7 @@ impl<'d> Dialect<'d> {
     }
 
     /// Look up a string from the C fmt string table by index.
-    pub fn fmt_string(&self, idx: u16) -> &'d str {
+    pub(crate) fn fmt_string(&self, idx: u16) -> &'d str {
         let i = idx as usize;
         assert!(
             i < self.raw.fmt_string_count as usize,
@@ -91,7 +91,7 @@ impl<'d> Dialect<'d> {
     }
 
     /// Look up a value in the enum display table.
-    pub fn fmt_enum_display_val(&self, idx: usize) -> u16 {
+    pub(crate) fn fmt_enum_display_val(&self, idx: usize) -> u16 {
         assert!(
             idx < self.raw.fmt_enum_display_count as usize,
             "enum_display index {} out of bounds",
@@ -101,7 +101,7 @@ impl<'d> Dialect<'d> {
     }
 
     /// Whether this dialect has formatter data.
-    pub fn has_fmt_data(&self) -> bool {
+    pub(crate) fn has_fmt_data(&self) -> bool {
         !self.raw.fmt_strings.is_null() && self.raw.fmt_string_count > 0
     }
 }

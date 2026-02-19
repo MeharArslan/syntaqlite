@@ -1,16 +1,17 @@
 /// Integration tests: macro regions are emitted verbatim by the formatter.
+use syntaqlite::low_level::TokenParser;
 use syntaqlite::tokens::TokenType;
 
-fn formatter() -> syntaqlite::Formatter {
-    syntaqlite::Formatter::new().unwrap()
+fn runtime_formatter() -> syntaqlite_runtime::fmt::Formatter<'static> {
+    syntaqlite_runtime::fmt::Formatter::new(syntaqlite::low_level::Sqlite::dialect()).unwrap()
 }
 
 #[test]
 fn macro_call_emitted_verbatim() {
     let source = "SELECT foo!(1 + 2), 3";
-    let fmt = formatter();
+    let fmt = runtime_formatter();
 
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = TokenParser::new();
     let mut feeder = tp.feed(source);
 
     feeder.feed_token(TokenType::Select, 0..6).unwrap();
@@ -32,9 +33,9 @@ fn macro_call_emitted_verbatim() {
 #[test]
 fn macro_multi_node_emitted_once() {
     let source = "SELECT macro!(a, b)";
-    let fmt = formatter();
+    let fmt = runtime_formatter();
 
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = TokenParser::new();
     let mut feeder = tp.feed(source);
 
     feeder.feed_token(TokenType::Select, 0..6).unwrap();
@@ -53,9 +54,9 @@ fn macro_multi_node_emitted_once() {
 #[test]
 fn macro_multi_node_no_extra_separator() {
     let source = "SELECT foo!(a, b), c";
-    let fmt = formatter();
+    let fmt = runtime_formatter();
 
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = TokenParser::new();
     let mut feeder = tp.feed(source);
 
     feeder.feed_token(TokenType::Select, 0..6).unwrap();
@@ -77,9 +78,9 @@ fn macro_multi_node_no_extra_separator() {
 #[test]
 fn no_macro_regions_formats_normally() {
     let source = "SELECT  1+2,  3";
-    let fmt = formatter();
+    let fmt = runtime_formatter();
 
-    let mut tp = syntaqlite::TokenParser::new();
+    let mut tp = TokenParser::new();
     let mut feeder = tp.feed(source);
 
     feeder.feed_token(TokenType::Select, 0..6).unwrap();
