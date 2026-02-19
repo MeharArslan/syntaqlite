@@ -8,6 +8,7 @@ pub mod grammar_parser;
 pub mod lemon;
 pub mod mkkeyword;
 pub mod node_parser;
+pub mod rust_writer;
 mod run;
 
 use std::fs;
