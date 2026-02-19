@@ -3334,7 +3334,7 @@ static void yy_reduce_actions(
         SYNTAQLITE_TABLE_CONSTRAINT_KIND_PRIMARY_KEY,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)yymsp[0].minor.yy144, (SyntaqliteBool)yymsp[-2].minor.yy144,
-        yymsp[-3].minor.yy605, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
+        yymsp[-3].minor.yy605, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
     yymsp[-6].minor.yy462.pending_name = SYNQ_NO_SPAN;
 }
         break;
@@ -3344,7 +3344,7 @@ static void yy_reduce_actions(
         SYNTAQLITE_TABLE_CONSTRAINT_KIND_UNIQUE,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)yymsp[0].minor.yy144, SYNTAQLITE_BOOL_FALSE,
-        yymsp[-2].minor.yy605, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
+        yymsp[-2].minor.yy605, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
     yymsp[-4].minor.yy462.pending_name = SYNQ_NO_SPAN;
 }
         break;
@@ -3354,7 +3354,7 @@ static void yy_reduce_actions(
         SYNTAQLITE_TABLE_CONSTRAINT_KIND_CHECK,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)yymsp[0].minor.yy144, SYNTAQLITE_BOOL_FALSE,
-        SYNTAQLITE_NULL_NODE, yymsp[-2].minor.yy605, SYNTAQLITE_NULL_NODE);
+        SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, yymsp[-2].minor.yy605, SYNTAQLITE_NULL_NODE);
     yymsp[-4].minor.yy462.pending_name = SYNQ_NO_SPAN;
 }
         break;
@@ -3368,7 +3368,7 @@ static void yy_reduce_actions(
         SYNTAQLITE_TABLE_CONSTRAINT_KIND_FOREIGN_KEY,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_BOOL_FALSE,
-        yymsp[-6].minor.yy605, SYNTAQLITE_NULL_NODE, fk);
+        SYNTAQLITE_NULL_NODE, yymsp[-6].minor.yy605, SYNTAQLITE_NULL_NODE, fk);
     yymsp[-9].minor.yy462.pending_name = SYNQ_NO_SPAN;
 }
         break;

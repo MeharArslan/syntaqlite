@@ -363,7 +363,8 @@ static const SyntaqliteFieldMeta field_meta_table_constraint[] = {
     {offsetof(SyntaqliteTableConstraint, constraint_name), SYNTAQLITE_FIELD_SPAN, "constraint_name", NULL, 0},
     {offsetof(SyntaqliteTableConstraint, onconf), SYNTAQLITE_FIELD_ENUM, "onconf", display_conflict_action, sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
     {offsetof(SyntaqliteTableConstraint, is_autoincrement), SYNTAQLITE_FIELD_BOOL, "is_autoincrement", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteTableConstraint, columns), SYNTAQLITE_FIELD_NODE_ID, "columns", NULL, 0},
+    {offsetof(SyntaqliteTableConstraint, pk_columns), SYNTAQLITE_FIELD_NODE_ID, "pk_columns", NULL, 0},
+    {offsetof(SyntaqliteTableConstraint, fk_columns), SYNTAQLITE_FIELD_NODE_ID, "fk_columns", NULL, 0},
     {offsetof(SyntaqliteTableConstraint, check_expr), SYNTAQLITE_FIELD_NODE_ID, "check_expr", NULL, 0},
     {offsetof(SyntaqliteTableConstraint, fk_clause), SYNTAQLITE_FIELD_NODE_ID, "fk_clause", NULL, 0},
 };
@@ -826,7 +827,7 @@ static const uint8_t ast_meta_field_meta_counts[] = {
     0, /* ColumnConstraintList */
     3, /* ColumnDef */
     0, /* ColumnDefList */
-    7, /* TableConstraint */
+    8, /* TableConstraint */
     0, /* TableConstraintList */
     8, /* CreateTableStmt */
     4, /* CteDefinition */

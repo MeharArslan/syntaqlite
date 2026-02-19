@@ -1193,6 +1193,50 @@ impl NodeTag {
     }
 }
 
+/// Abstract `Select` — pattern-match to access the concrete type.
+#[derive(Debug, Clone, Copy)]
+pub enum Select<'a> {
+    SelectStmt(SelectStmt<'a>),
+    CompoundSelect(CompoundSelect<'a>),
+    WithClause(WithClause<'a>),
+    ValuesClause(ValuesClause<'a>),
+    /// A node that doesn't match any known `Select` variant.
+    Other(Node<'a>),
+}
+
+impl<'a> FromArena<'a> for Select<'a> {
+    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+        let node = Node::resolve(reader, id)?;
+        Some(match node {
+            Node::SelectStmt(n) => Select::SelectStmt(n),
+            Node::CompoundSelect(n) => Select::CompoundSelect(n),
+            Node::WithClause(n) => Select::WithClause(n),
+            Node::ValuesClause(n) => Select::ValuesClause(n),
+            other => Select::Other(other),
+        })
+    }
+}
+
+/// Abstract `InExprSource` — pattern-match to access the concrete type.
+#[derive(Debug, Clone, Copy)]
+pub enum InExprSource<'a> {
+    ExprList(ExprList<'a>),
+    SubqueryExpr(SubqueryExpr<'a>),
+    /// A node that doesn't match any known `InExprSource` variant.
+    Other(Node<'a>),
+}
+
+impl<'a> FromArena<'a> for InExprSource<'a> {
+    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+        let node = Node::resolve(reader, id)?;
+        Some(match node {
+            Node::ExprList(n) => InExprSource::ExprList(n),
+            Node::SubqueryExpr(n) => InExprSource::SubqueryExpr(n),
+            other => InExprSource::Other(other),
+        })
+    }
+}
+
 /// Abstract `Expr` — pattern-match to access the concrete type.
 #[derive(Debug, Clone, Copy)]
 pub enum Expr<'a> {
@@ -1299,6 +1343,30 @@ impl<'a> FromArena<'a> for Stmt<'a> {
             Node::VacuumStmt(n) => Stmt::VacuumStmt(n),
             Node::ExplainStmt(n) => Stmt::ExplainStmt(n),
             other => Stmt::Other(other),
+        })
+    }
+}
+
+/// Abstract `TableSource` — pattern-match to access the concrete type.
+#[derive(Debug, Clone, Copy)]
+pub enum TableSource<'a> {
+    TableRef(TableRef<'a>),
+    SubqueryTableSource(SubqueryTableSource<'a>),
+    JoinClause(JoinClause<'a>),
+    JoinPrefix(JoinPrefix<'a>),
+    /// A node that doesn't match any known `TableSource` variant.
+    Other(Node<'a>),
+}
+
+impl<'a> FromArena<'a> for TableSource<'a> {
+    fn from_arena(reader: NodeReader<'a>, id: NodeId) -> Option<Self> {
+        let node = Node::resolve(reader, id)?;
+        Some(match node {
+            Node::TableRef(n) => TableSource::TableRef(n),
+            Node::SubqueryTableSource(n) => TableSource::SubqueryTableSource(n),
+            Node::JoinClause(n) => TableSource::JoinClause(n),
+            Node::JoinPrefix(n) => TableSource::JoinPrefix(n),
+            other => TableSource::Other(other),
         })
     }
 }
@@ -1418,10 +1486,10 @@ impl<'a> CompoundSelect<'a> {
     pub fn op(&self) -> CompoundOp {
         self.raw.op
     }
-    pub fn left(&self) -> Option<Stmt<'a>> {
+    pub fn left(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.left)
     }
-    pub fn right(&self) -> Option<Stmt<'a>> {
+    pub fn right(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.right)
     }
 }
@@ -1446,7 +1514,7 @@ impl std::fmt::Debug for SubqueryExpr<'_> {
 }
 
 impl<'a> SubqueryExpr<'a> {
-    pub fn select(&self) -> Option<Stmt<'a>> {
+    pub fn select(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.select)
     }
 }
@@ -1471,7 +1539,7 @@ impl std::fmt::Debug for ExistsExpr<'_> {
 }
 
 impl<'a> ExistsExpr<'a> {
-    pub fn select(&self) -> Option<Stmt<'a>> {
+    pub fn select(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.select)
     }
 }
@@ -1502,7 +1570,7 @@ impl<'a> InExpr<'a> {
     pub fn operand(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.operand)
     }
-    pub fn source(&self) -> Option<Expr<'a>> {
+    pub fn source(&self) -> Option<InExprSource<'a>> {
         FromArena::from_arena(self.reader, self.raw.source)
     }
 }
@@ -1752,7 +1820,7 @@ impl<'a> ColumnConstraint<'a> {
     pub fn generated_expr(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.generated_expr)
     }
-    pub fn fk_clause(&self) -> Option<Expr<'a>> {
+    pub fn fk_clause(&self) -> Option<ForeignKeyClause<'a>> {
         FromArena::from_arena(self.reader, self.raw.fk_clause)
     }
 }
@@ -1783,7 +1851,7 @@ impl<'a> ColumnDef<'a> {
     pub fn type_name(&self) -> &'a str {
         self.raw.type_name.as_str(self.reader.source())
     }
-    pub fn constraints(&self) -> Option<Expr<'a>> {
+    pub fn constraints(&self) -> Option<ColumnConstraintList<'a>> {
         FromArena::from_arena(self.reader, self.raw.constraints)
     }
 }
@@ -1820,13 +1888,16 @@ impl<'a> TableConstraint<'a> {
     pub fn is_autoincrement(&self) -> bool {
         self.raw.is_autoincrement == crate::ffi::Bool::True
     }
-    pub fn columns(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.columns)
+    pub fn pk_columns(&self) -> Option<OrderByList<'a>> {
+        FromArena::from_arena(self.reader, self.raw.pk_columns)
+    }
+    pub fn fk_columns(&self) -> Option<ExprList<'a>> {
+        FromArena::from_arena(self.reader, self.raw.fk_columns)
     }
     pub fn check_expr(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.check_expr)
     }
-    pub fn fk_clause(&self) -> Option<Expr<'a>> {
+    pub fn fk_clause(&self) -> Option<ForeignKeyClause<'a>> {
         FromArena::from_arena(self.reader, self.raw.fk_clause)
     }
 }
@@ -1866,13 +1937,13 @@ impl<'a> CreateTableStmt<'a> {
     pub fn flags(&self) -> CreateTableStmtFlags {
         self.raw.flags
     }
-    pub fn columns(&self) -> Option<Expr<'a>> {
+    pub fn columns(&self) -> Option<ColumnDefList<'a>> {
         FromArena::from_arena(self.reader, self.raw.columns)
     }
-    pub fn table_constraints(&self) -> Option<Expr<'a>> {
+    pub fn table_constraints(&self) -> Option<TableConstraintList<'a>> {
         FromArena::from_arena(self.reader, self.raw.table_constraints)
     }
-    pub fn as_select(&self) -> Option<Stmt<'a>> {
+    pub fn as_select(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.as_select)
     }
 }
@@ -1906,7 +1977,7 @@ impl<'a> CteDefinition<'a> {
     pub fn columns(&self) -> Option<ExprList<'a>> {
         FromArena::from_arena(self.reader, self.raw.columns)
     }
-    pub fn select(&self) -> Option<Stmt<'a>> {
+    pub fn select(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.select)
     }
 }
@@ -1937,7 +2008,7 @@ impl<'a> WithClause<'a> {
     pub fn ctes(&self) -> Option<CteList<'a>> {
         FromArena::from_arena(self.reader, self.raw.ctes)
     }
-    pub fn select(&self) -> Option<Stmt<'a>> {
+    pub fn select(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.select)
     }
 }
@@ -1962,7 +2033,7 @@ impl std::fmt::Debug for DeleteStmt<'_> {
 }
 
 impl<'a> DeleteStmt<'a> {
-    pub fn table(&self) -> Option<Expr<'a>> {
+    pub fn table(&self) -> Option<TableRef<'a>> {
         FromArena::from_arena(self.reader, self.raw.table)
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
@@ -2024,13 +2095,13 @@ impl<'a> UpdateStmt<'a> {
     pub fn conflict_action(&self) -> ConflictAction {
         self.raw.conflict_action
     }
-    pub fn table(&self) -> Option<Expr<'a>> {
+    pub fn table(&self) -> Option<TableRef<'a>> {
         FromArena::from_arena(self.reader, self.raw.table)
     }
     pub fn setlist(&self) -> Option<SetClauseList<'a>> {
         FromArena::from_arena(self.reader, self.raw.setlist)
     }
-    pub fn from_clause(&self) -> Option<Expr<'a>> {
+    pub fn from_clause(&self) -> Option<TableSource<'a>> {
         FromArena::from_arena(self.reader, self.raw.from_clause)
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
@@ -2061,13 +2132,13 @@ impl<'a> InsertStmt<'a> {
     pub fn conflict_action(&self) -> ConflictAction {
         self.raw.conflict_action
     }
-    pub fn table(&self) -> Option<Expr<'a>> {
+    pub fn table(&self) -> Option<TableRef<'a>> {
         FromArena::from_arena(self.reader, self.raw.table)
     }
     pub fn columns(&self) -> Option<ExprList<'a>> {
         FromArena::from_arena(self.reader, self.raw.columns)
     }
-    pub fn source(&self) -> Option<Stmt<'a>> {
+    pub fn source(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.source)
     }
 }
@@ -2331,7 +2402,7 @@ impl<'a> DropStmt<'a> {
     pub fn if_exists(&self) -> bool {
         self.raw.if_exists == crate::ffi::Bool::True
     }
-    pub fn target(&self) -> Option<Expr<'a>> {
+    pub fn target(&self) -> Option<QualifiedName<'a>> {
         FromArena::from_arena(self.reader, self.raw.target)
     }
 }
@@ -2359,7 +2430,7 @@ impl<'a> AlterTableStmt<'a> {
     pub fn op(&self) -> AlterOp {
         self.raw.op
     }
-    pub fn target(&self) -> Option<Expr<'a>> {
+    pub fn target(&self) -> Option<QualifiedName<'a>> {
         FromArena::from_arena(self.reader, self.raw.target)
     }
     pub fn new_name(&self) -> &'a str {
@@ -2484,7 +2555,7 @@ impl<'a> SelectStmt<'a> {
     pub fn columns(&self) -> Option<ResultColumnList<'a>> {
         FromArena::from_arena(self.reader, self.raw.columns)
     }
-    pub fn from_clause(&self) -> Option<Expr<'a>> {
+    pub fn from_clause(&self) -> Option<TableSource<'a>> {
         FromArena::from_arena(self.reader, self.raw.from_clause)
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
@@ -2617,7 +2688,7 @@ impl std::fmt::Debug for SubqueryTableSource<'_> {
 }
 
 impl<'a> SubqueryTableSource<'a> {
-    pub fn select(&self) -> Option<Stmt<'a>> {
+    pub fn select(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.select)
     }
     pub fn alias(&self) -> &'a str {
@@ -2648,10 +2719,10 @@ impl<'a> JoinClause<'a> {
     pub fn join_type(&self) -> JoinType {
         self.raw.join_type
     }
-    pub fn left(&self) -> Option<Expr<'a>> {
+    pub fn left(&self) -> Option<TableSource<'a>> {
         FromArena::from_arena(self.reader, self.raw.left)
     }
-    pub fn right(&self) -> Option<Expr<'a>> {
+    pub fn right(&self) -> Option<TableSource<'a>> {
         FromArena::from_arena(self.reader, self.raw.right)
     }
     pub fn on_expr(&self) -> Option<Expr<'a>> {
@@ -2682,7 +2753,7 @@ impl std::fmt::Debug for JoinPrefix<'_> {
 }
 
 impl<'a> JoinPrefix<'a> {
-    pub fn source(&self) -> Option<Expr<'a>> {
+    pub fn source(&self) -> Option<TableSource<'a>> {
         FromArena::from_arena(self.reader, self.raw.source)
     }
     pub fn join_type(&self) -> JoinType {
@@ -2756,7 +2827,7 @@ impl<'a> CreateTriggerStmt<'a> {
     pub fn event(&self) -> Option<TriggerEvent<'a>> {
         FromArena::from_arena(self.reader, self.raw.event)
     }
-    pub fn table(&self) -> Option<Expr<'a>> {
+    pub fn table(&self) -> Option<QualifiedName<'a>> {
         FromArena::from_arena(self.reader, self.raw.table)
     }
     pub fn when_expr(&self) -> Option<Expr<'a>> {
@@ -3059,7 +3130,7 @@ impl<'a> CreateViewStmt<'a> {
     pub fn column_names(&self) -> Option<ExprList<'a>> {
         FromArena::from_arena(self.reader, self.raw.column_names)
     }
-    pub fn select(&self) -> Option<Stmt<'a>> {
+    pub fn select(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.select)
     }
 }

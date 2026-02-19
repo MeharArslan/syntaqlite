@@ -1,9 +1,13 @@
+abstract Select {
+  SelectStmt CompoundSelect WithClause ValuesClause
+}
+
 enum CompoundOp { UNION UNION_ALL INTERSECT EXCEPT }
 
 node CompoundSelect {
   op: inline CompoundOp
-  left: index Stmt
-  right: index Stmt
+  left: index Select
+  right: index Select
 
   fmt {
     child(left) hardline
@@ -16,21 +20,25 @@ node CompoundSelect {
 }
 
 node SubqueryExpr {
-  select: index Stmt
+  select: index Select
 
   fmt { "(" child(select) ")" }
 }
 
 node ExistsExpr {
-  select: index Stmt
+  select: index Select
 
   fmt { "EXISTS (" child(select) ")" }
+}
+
+abstract InExprSource {
+  ExprList SubqueryExpr
 }
 
 node InExpr {
   negated: inline Bool
   operand: index Expr
-  source: index Expr
+  source: index InExprSource
 
   fmt {
     child(operand)

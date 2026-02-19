@@ -506,7 +506,8 @@ typedef struct SyntaqliteTableConstraint {
     SyntaqliteSourceSpan constraint_name;
     SyntaqliteConflictAction onconf;
     SyntaqliteBool is_autoincrement;
-    uint32_t columns;
+    uint32_t pk_columns;
+    uint32_t fk_columns;
     uint32_t check_expr;
     uint32_t fk_clause;
 } SyntaqliteTableConstraint;
@@ -984,6 +985,66 @@ typedef union SyntaqliteNode {
     SyntaqliteFilterOver filter_over;
 } SyntaqliteNode;
 
+// ============ Abstract Type: Select ============
+
+typedef union SyntaqliteSelect {
+    uint32_t tag;
+    SyntaqliteSelectStmt select_stmt;
+    SyntaqliteCompoundSelect compound_select;
+    SyntaqliteWithClause with_clause;
+    SyntaqliteValuesClause values_clause;
+} SyntaqliteSelect;
+
+static inline int syntaqlite_is_select(SyntaqliteNodeTag tag) {
+    switch (tag) {
+        case SYNTAQLITE_NODE_SELECT_STMT: return 1;
+        case SYNTAQLITE_NODE_COMPOUND_SELECT: return 1;
+        case SYNTAQLITE_NODE_WITH_CLAUSE: return 1;
+        case SYNTAQLITE_NODE_VALUES_CLAUSE: return 1;
+        default: return 0;
+    }
+}
+
+static inline const SyntaqliteSelectStmt* syntaqlite_select_as_select_stmt(const SyntaqliteSelect* node) {
+    return node->tag == SYNTAQLITE_NODE_SELECT_STMT ? &node->select_stmt : NULL;
+}
+
+static inline const SyntaqliteCompoundSelect* syntaqlite_select_as_compound_select(const SyntaqliteSelect* node) {
+    return node->tag == SYNTAQLITE_NODE_COMPOUND_SELECT ? &node->compound_select : NULL;
+}
+
+static inline const SyntaqliteWithClause* syntaqlite_select_as_with_clause(const SyntaqliteSelect* node) {
+    return node->tag == SYNTAQLITE_NODE_WITH_CLAUSE ? &node->with_clause : NULL;
+}
+
+static inline const SyntaqliteValuesClause* syntaqlite_select_as_values_clause(const SyntaqliteSelect* node) {
+    return node->tag == SYNTAQLITE_NODE_VALUES_CLAUSE ? &node->values_clause : NULL;
+}
+
+// ============ Abstract Type: InExprSource ============
+
+typedef union SyntaqliteInExprSource {
+    uint32_t tag;
+    SyntaqliteExprList expr_list;
+    SyntaqliteSubqueryExpr subquery_expr;
+} SyntaqliteInExprSource;
+
+static inline int syntaqlite_is_in_expr_source(SyntaqliteNodeTag tag) {
+    switch (tag) {
+        case SYNTAQLITE_NODE_EXPR_LIST: return 1;
+        case SYNTAQLITE_NODE_SUBQUERY_EXPR: return 1;
+        default: return 0;
+    }
+}
+
+static inline const SyntaqliteExprList* syntaqlite_in_expr_source_as_expr_list(const SyntaqliteInExprSource* node) {
+    return node->tag == SYNTAQLITE_NODE_EXPR_LIST ? &node->expr_list : NULL;
+}
+
+static inline const SyntaqliteSubqueryExpr* syntaqlite_in_expr_source_as_subquery_expr(const SyntaqliteInExprSource* node) {
+    return node->tag == SYNTAQLITE_NODE_SUBQUERY_EXPR ? &node->subquery_expr : NULL;
+}
+
 // ============ Abstract Type: Expr ============
 
 typedef union SyntaqliteExpr {
@@ -1240,6 +1301,42 @@ static inline const SyntaqliteVacuumStmt* syntaqlite_stmt_as_vacuum_stmt(const S
 
 static inline const SyntaqliteExplainStmt* syntaqlite_stmt_as_explain_stmt(const SyntaqliteStmt* node) {
     return node->tag == SYNTAQLITE_NODE_EXPLAIN_STMT ? &node->explain_stmt : NULL;
+}
+
+// ============ Abstract Type: TableSource ============
+
+typedef union SyntaqliteTableSource {
+    uint32_t tag;
+    SyntaqliteTableRef table_ref;
+    SyntaqliteSubqueryTableSource subquery_table_source;
+    SyntaqliteJoinClause join_clause;
+    SyntaqliteJoinPrefix join_prefix;
+} SyntaqliteTableSource;
+
+static inline int syntaqlite_is_table_source(SyntaqliteNodeTag tag) {
+    switch (tag) {
+        case SYNTAQLITE_NODE_TABLE_REF: return 1;
+        case SYNTAQLITE_NODE_SUBQUERY_TABLE_SOURCE: return 1;
+        case SYNTAQLITE_NODE_JOIN_CLAUSE: return 1;
+        case SYNTAQLITE_NODE_JOIN_PREFIX: return 1;
+        default: return 0;
+    }
+}
+
+static inline const SyntaqliteTableRef* syntaqlite_table_source_as_table_ref(const SyntaqliteTableSource* node) {
+    return node->tag == SYNTAQLITE_NODE_TABLE_REF ? &node->table_ref : NULL;
+}
+
+static inline const SyntaqliteSubqueryTableSource* syntaqlite_table_source_as_subquery_table_source(const SyntaqliteTableSource* node) {
+    return node->tag == SYNTAQLITE_NODE_SUBQUERY_TABLE_SOURCE ? &node->subquery_table_source : NULL;
+}
+
+static inline const SyntaqliteJoinClause* syntaqlite_table_source_as_join_clause(const SyntaqliteTableSource* node) {
+    return node->tag == SYNTAQLITE_NODE_JOIN_CLAUSE ? &node->join_clause : NULL;
+}
+
+static inline const SyntaqliteJoinPrefix* syntaqlite_table_source_as_join_prefix(const SyntaqliteTableSource* node) {
+    return node->tag == SYNTAQLITE_NODE_JOIN_PREFIX ? &node->join_prefix : NULL;
 }
 
 #ifdef __cplusplus

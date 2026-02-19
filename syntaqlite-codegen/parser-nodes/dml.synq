@@ -1,7 +1,7 @@
 enum ConflictAction { DEFAULT ROLLBACK ABORT FAIL IGNORE REPLACE }
 
 node DeleteStmt {
-  table: index Expr
+  table: index TableRef
   where_clause: index Expr
 
   fmt {
@@ -29,9 +29,9 @@ list SetClauseList { SetClause }
 
 node UpdateStmt {
   conflict_action: inline ConflictAction
-  table: index Expr
+  table: index TableRef
   setlist: index SetClauseList
-  from_clause: index Expr
+  from_clause: index TableSource
   where_clause: index Expr
 
   fmt {
@@ -54,9 +54,9 @@ node UpdateStmt {
 
 node InsertStmt {
   conflict_action: inline ConflictAction
-  table: index Expr
+  table: index TableRef
   columns: index ExprList
-  source: index Stmt
+  source: index Select
 
   fmt {
     group {

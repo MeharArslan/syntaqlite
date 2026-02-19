@@ -294,7 +294,8 @@ static inline uint32_t synq_parse_table_constraint(
     SyntaqliteSourceSpan constraint_name,
     SyntaqliteConflictAction onconf,
     SyntaqliteBool is_autoincrement,
-    uint32_t columns,
+    uint32_t pk_columns,
+    uint32_t fk_columns,
     uint32_t check_expr,
     uint32_t fk_clause
 ) {
@@ -305,7 +306,8 @@ static inline uint32_t synq_parse_table_constraint(
             .constraint_name = constraint_name,
             .onconf = onconf,
             .is_autoincrement = is_autoincrement,
-            .columns = columns,
+            .pk_columns = pk_columns,
+            .fk_columns = fk_columns,
             .check_expr = check_expr,
             .fk_clause = fk_clause
         }, (uint32_t)sizeof(SyntaqliteTableConstraint));
@@ -1173,7 +1175,8 @@ static const SyntaqliteFieldRangeMeta range_meta_column_def[] = {
 
 static const SyntaqliteFieldRangeMeta range_meta_table_constraint[] = {
     {offsetof(SyntaqliteTableConstraint, constraint_name), 1},
-    {offsetof(SyntaqliteTableConstraint, columns), 0},
+    {offsetof(SyntaqliteTableConstraint, pk_columns), 0},
+    {offsetof(SyntaqliteTableConstraint, fk_columns), 0},
     {offsetof(SyntaqliteTableConstraint, check_expr), 0},
     {offsetof(SyntaqliteTableConstraint, fk_clause), 0},
 };
@@ -1436,7 +1439,7 @@ static const SyntaqliteRangeMetaEntry range_meta_table[] = {
     [SYNTAQLITE_NODE_COLUMN_CONSTRAINT_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_COLUMN_DEF] = {range_meta_column_def, 3},
     [SYNTAQLITE_NODE_COLUMN_DEF_LIST] = {NULL, 0},
-    [SYNTAQLITE_NODE_TABLE_CONSTRAINT] = {range_meta_table_constraint, 4},
+    [SYNTAQLITE_NODE_TABLE_CONSTRAINT] = {range_meta_table_constraint, 5},
     [SYNTAQLITE_NODE_TABLE_CONSTRAINT_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_CREATE_TABLE_STMT] = {range_meta_create_table_stmt, 5},
     [SYNTAQLITE_NODE_CTE_DEFINITION] = {range_meta_cte_definition, 3},

@@ -4,7 +4,7 @@ node CteDefinition {
   cte_name: inline SyntaqliteSourceSpan
   materialized: inline Materialized
   columns: index ExprList
-  select: index Stmt
+  select: index Select
 
   fmt {
     span(cte_name)
@@ -21,7 +21,7 @@ list CteList { CteDefinition }
 node WithClause {
   recursive: inline Bool
   ctes: index CteList
-  select: index Stmt
+  select: index Select
 
   fmt {
     if_flag(recursive) { "WITH RECURSIVE " } else { "WITH " }

@@ -24,7 +24,7 @@ list ResultColumnList { ResultColumn }
 node SelectStmt {
   flags: inline SelectStmtFlags
   columns: index ResultColumnList
-  from_clause: index Expr
+  from_clause: index TableSource
   where_clause: index Expr
   groupby: index ExprList
   having: index Expr

@@ -506,7 +506,7 @@ tcons(A) ::= PRIMARY KEY LP sortlist(X) autoinc(I) RP onconf(R). {
         SYNTAQLITE_TABLE_CONSTRAINT_KIND_PRIMARY_KEY,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)R, (SyntaqliteBool)I,
-        X, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
+        X, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
     A.pending_name = SYNQ_NO_SPAN;
 }
 
@@ -515,7 +515,7 @@ tcons(A) ::= UNIQUE LP sortlist(X) RP onconf(R). {
         SYNTAQLITE_TABLE_CONSTRAINT_KIND_UNIQUE,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)R, SYNTAQLITE_BOOL_FALSE,
-        X, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
+        X, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
     A.pending_name = SYNQ_NO_SPAN;
 }
 
@@ -524,7 +524,7 @@ tcons(A) ::= CHECK LP expr(E) RP onconf(R). {
         SYNTAQLITE_TABLE_CONSTRAINT_KIND_CHECK,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)R, SYNTAQLITE_BOOL_FALSE,
-        SYNTAQLITE_NULL_NODE, E, SYNTAQLITE_NULL_NODE);
+        SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, E, SYNTAQLITE_NULL_NODE);
     A.pending_name = SYNQ_NO_SPAN;
 }
 
@@ -537,7 +537,7 @@ tcons(A) ::= FOREIGN KEY LP eidlist(FA) RP REFERENCES nm(T) eidlist_opt(TA) refa
         SYNTAQLITE_TABLE_CONSTRAINT_KIND_FOREIGN_KEY,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_BOOL_FALSE,
-        FA, SYNTAQLITE_NULL_NODE, fk);
+        SYNTAQLITE_NULL_NODE, FA, SYNTAQLITE_NULL_NODE, fk);
     A.pending_name = SYNQ_NO_SPAN;
 }
 

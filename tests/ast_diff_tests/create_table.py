@@ -1082,7 +1082,7 @@ class TableConstraintPrimaryKey(TestSuite):
                     constraint_name: null
                     onconf: DEFAULT
                     is_autoincrement: FALSE
-                    columns:
+                    pk_columns:
                       OrderByList [2 items]
                         OrderingTerm
                           expr:
@@ -1100,6 +1100,7 @@ class TableConstraintPrimaryKey(TestSuite):
                               schema: null
                           sort_order: ASC
                           nulls_order: NONE
+                    fk_columns: (none)
                     check_expr: (none)
                     fk_clause: (none)
               as_select: (none)
@@ -1129,7 +1130,7 @@ class TableConstraintPrimaryKey(TestSuite):
                     constraint_name: "pk"
                     onconf: DEFAULT
                     is_autoincrement: FALSE
-                    columns:
+                    pk_columns:
                       OrderByList [1 items]
                         OrderingTerm
                           expr:
@@ -1139,6 +1140,7 @@ class TableConstraintPrimaryKey(TestSuite):
                               schema: null
                           sort_order: ASC
                           nulls_order: NONE
+                    fk_columns: (none)
                     check_expr: (none)
                     fk_clause: (none)
               as_select: (none)
@@ -1176,7 +1178,7 @@ class TableConstraintUnique(TestSuite):
                     constraint_name: null
                     onconf: DEFAULT
                     is_autoincrement: FALSE
-                    columns:
+                    pk_columns:
                       OrderByList [2 items]
                         OrderingTerm
                           expr:
@@ -1194,6 +1196,7 @@ class TableConstraintUnique(TestSuite):
                               schema: null
                           sort_order: ASC
                           nulls_order: NONE
+                    fk_columns: (none)
                     check_expr: (none)
                     fk_clause: (none)
               as_select: (none)
@@ -1231,7 +1234,8 @@ class TableConstraintCheck(TestSuite):
                     constraint_name: null
                     onconf: DEFAULT
                     is_autoincrement: FALSE
-                    columns: (none)
+                    pk_columns: (none)
+                    fk_columns: (none)
                     check_expr:
                       BinaryExpr
                         op: GT
@@ -1277,7 +1281,8 @@ class TableConstraintForeignKey(TestSuite):
                     constraint_name: null
                     onconf: DEFAULT
                     is_autoincrement: FALSE
-                    columns:
+                    pk_columns: (none)
+                    fk_columns:
                       ExprList [1 items]
                         ColumnRef
                           column: "a"
@@ -1323,7 +1328,8 @@ class TableConstraintForeignKey(TestSuite):
                     constraint_name: null
                     onconf: DEFAULT
                     is_autoincrement: FALSE
-                    columns:
+                    pk_columns: (none)
+                    fk_columns:
                       ExprList [1 items]
                         ColumnRef
                           column: "a"
@@ -1369,7 +1375,8 @@ class TableConstraintForeignKey(TestSuite):
                     constraint_name: null
                     onconf: DEFAULT
                     is_autoincrement: FALSE
-                    columns:
+                    pk_columns: (none)
+                    fk_columns:
                       ExprList [1 items]
                         ColumnRef
                           column: "a"

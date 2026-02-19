@@ -31,7 +31,7 @@ node CreateTriggerStmt {
   if_not_exists: inline Bool
   timing: inline TriggerTiming
   event: index TriggerEvent
-  table: index Expr
+  table: index QualifiedName
   when_expr: index Expr
   body: index TriggerCmdList
 

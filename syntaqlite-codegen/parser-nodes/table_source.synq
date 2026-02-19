@@ -16,7 +16,7 @@ node TableRef {
 }
 
 node SubqueryTableSource {
-  select: index Stmt
+  select: index Select
   alias: inline SyntaqliteSourceSpan
 
   fmt {
@@ -27,8 +27,8 @@ node SubqueryTableSource {
 
 node JoinClause {
   join_type: inline JoinType
-  left: index Expr
-  right: index Expr
+  left: index TableSource
+  right: index TableSource
   on_expr: index Expr
   using_columns: index ExprList
 
@@ -59,8 +59,12 @@ node JoinClause {
 }
 
 node JoinPrefix {
-  source: index Expr
+  source: index TableSource
   join_type: inline JoinType
 
   fmt { child(source) }
+}
+
+abstract TableSource {
+  TableRef SubqueryTableSource JoinClause JoinPrefix
 }

@@ -163,7 +163,8 @@ pub(crate) struct TableConstraint {
     pub(crate) constraint_name: SourceSpan,
     pub(crate) onconf: super::ast::ConflictAction,
     pub(crate) is_autoincrement: Bool,
-    pub(crate) columns: NodeId,
+    pub(crate) pk_columns: NodeId,
+    pub(crate) fk_columns: NodeId,
     pub(crate) check_expr: NodeId,
     pub(crate) fk_clause: NodeId,
 }

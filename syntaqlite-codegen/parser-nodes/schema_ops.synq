@@ -17,7 +17,7 @@ node QualifiedName {
 node DropStmt {
   object_type: inline DropObjectType
   if_exists: inline Bool
-  target: index Expr
+  target: index QualifiedName
 
   fmt {
     "DROP "
@@ -31,7 +31,7 @@ node DropStmt {
 
 node AlterTableStmt {
   op: inline AlterOp
-  target: index Expr
+  target: index QualifiedName
   new_name: inline SyntaqliteSourceSpan
   old_name: inline SyntaqliteSourceSpan
 

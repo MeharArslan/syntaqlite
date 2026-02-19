@@ -103,7 +103,7 @@ node CreateViewStmt {
   is_temp: inline Bool
   if_not_exists: inline Bool
   column_names: index ExprList
-  select: index Stmt
+  select: index Select
 
   fmt {
     "CREATE"
