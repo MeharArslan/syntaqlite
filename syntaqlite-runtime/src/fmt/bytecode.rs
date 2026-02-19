@@ -1,9 +1,9 @@
-//! Loads binary bytecode and provides the static formatter data.
+//! Loads binary bytecode and provides the formatter data.
 
 use super::bytecode_format as bc;
 
 use super::interpret::FmtCtx;
-use super::ops::{FmtOp, NodeFmt};
+use super::ops::FmtOp;
 
 /// Loaded formatter data, owning all allocations.
 pub struct LoadedFmt {
@@ -11,12 +11,6 @@ pub struct LoadedFmt {
     enum_display: Vec<u16>,
     ops: Vec<FmtOp>,
     dispatch_entries: Vec<(u16, u16)>, // (offset, length) per tag
-}
-
-/// Leaked static formatter data, suitable for use with the interpreter.
-pub struct StaticFmt {
-    pub dispatch: &'static [Option<NodeFmt>],
-    pub ctx: FmtCtx<'static>,
 }
 
 impl LoadedFmt {
@@ -36,44 +30,26 @@ impl LoadedFmt {
         })
     }
 
-    /// Leak all owned data into `'static` references.
-    /// The formatter data lives for the process lifetime.
-    pub fn into_static(self) -> StaticFmt {
-        // Leak strings: Vec<String> → &'static [&'static str]
-        let str_refs: Vec<&'static str> = self
-            .strings
-            .into_iter()
-            .map(|s| -> &'static str { Box::leak(s.into_boxed_str()) })
-            .collect();
-        let strings: &'static [&'static str] = Box::leak(str_refs.into_boxed_slice());
-
-        // Leak enum display
-        let enum_display: &'static [u16] = Box::leak(self.enum_display.into_boxed_slice());
-
-        // Leak ops
-        let ops: &'static [FmtOp] = Box::leak(self.ops.into_boxed_slice());
-
-        // Build dispatch table
-        let mut dispatch: Vec<Option<NodeFmt>> = Vec::with_capacity(self.dispatch_entries.len());
-        for &(offset, length) in &self.dispatch_entries {
-            if offset == 0xFFFF {
-                dispatch.push(None);
-            } else {
-                let start = offset as usize;
-                let end = start + length as usize;
-                dispatch.push(Some(NodeFmt {
-                    ops: &ops[start..end],
-                }));
-            }
+    /// Get the formatting ops for a node tag, or None if no formatting is defined.
+    pub fn node_ops(&self, tag: u32) -> Option<&[FmtOp]> {
+        let &(offset, length) = self.dispatch_entries.get(tag as usize)?;
+        if offset == 0xFFFF {
+            return None;
         }
-        let dispatch: &'static [Option<NodeFmt>] = Box::leak(dispatch.into_boxed_slice());
+        Some(&self.ops[offset as usize..offset as usize + length as usize])
+    }
 
-        let ctx = FmtCtx {
-            strings,
-            enum_display,
-        };
+    /// Build a FmtCtx borrowing from this LoadedFmt.
+    pub fn ctx(&self) -> FmtCtx<'_> {
+        FmtCtx {
+            strings: &self.strings,
+            enum_display: &self.enum_display,
+        }
+    }
 
-        StaticFmt { dispatch, ctx }
+    /// Number of dispatch entries (= node_count).
+    pub fn node_count(&self) -> usize {
+        self.dispatch_entries.len()
     }
 }
 

@@ -2,19 +2,18 @@ use crate::parser::{FieldVal, NodeId, Session};
 
 use super::doc::{DocArena, DocId};
 use super::format::{first_source_offset, NodeInfo};
-use super::ops::{FmtOp, NodeFmt};
+use super::ops::FmtOp;
 use super::trivia::{flush_trivia, TriviaCtx};
 
 /// Session-level context shared across all interpret calls during formatting.
 pub struct FmtCtx<'a> {
-    pub strings: &'a [&'a str],
+    pub strings: &'a [String],
     pub enum_display: &'a [u16],
 }
 
 /// Trivia context passed into the interpreter for comment interleaving.
 pub struct InterpretTrivia<'a> {
     pub ctx: &'a TriviaCtx<'a>,
-    pub dispatch: &'a [Option<NodeFmt>],
     pub session: &'a Session<'a>,
     pub node_info: &'a NodeInfo,
 }
@@ -61,7 +60,7 @@ pub fn interpret<'a>(
                 if trivia.is_some() {
                     parts.extend(pending_lines.drain(..));
                 }
-                parts.push(arena.keyword(ctx.strings[sid as usize]));
+                parts.push(arena.keyword(&ctx.strings[sid as usize]));
             }
             FmtOp::Span(idx) => {
                 let FieldVal::Span(s, offset) = fields[idx as usize] else {
@@ -82,7 +81,7 @@ pub fn interpret<'a>(
                 };
                 if !child_id.is_null() {
                     if let Some(it) = trivia {
-                        if let Some(offset) = first_source_offset(it.dispatch, it.session, it.node_info, child_id) {
+                        if let Some(offset) = first_source_offset(it.session, it.node_info, child_id) {
                             let drain = it.ctx.drain_before(offset, arena);
                             flush_trivia(drain, &mut pending_lines, &mut parts);
                         } else {
@@ -150,7 +149,7 @@ pub fn interpret<'a>(
                     ip += skip as usize;
                 } else if let Some(it) = trivia {
                     // Drain trivia before this clause's source range.
-                    if let Some(offset) = first_source_offset(it.dispatch, it.session, it.node_info, id) {
+                    if let Some(offset) = first_source_offset(it.session, it.node_info, id) {
                         let drain = it.ctx.drain_before(offset, arena);
                         flush_trivia(drain, &mut pending_lines, &mut parts);
                     }
@@ -183,7 +182,7 @@ pub fn interpret<'a>(
                 let state = for_each_stack.last().expect("ChildItem outside ForEach");
                 let child_id = state.children[state.index];
                 if let Some(it) = trivia {
-                    if let Some(offset) = first_source_offset(it.dispatch, it.session, it.node_info, child_id) {
+                    if let Some(offset) = first_source_offset(it.session, it.node_info, child_id) {
                         let drain = it.ctx.drain_before(offset, arena);
                         flush_trivia(drain, &mut pending_lines, &mut parts);
                     } else {
@@ -195,7 +194,7 @@ pub fn interpret<'a>(
             FmtOp::ForEachSep(sid) => {
                 let state = for_each_stack.last().expect("ForEachSep outside ForEach");
                 if state.index < state.children.len() - 1 {
-                    parts.push(arena.text(ctx.strings[sid as usize]));
+                    parts.push(arena.text(&ctx.strings[sid as usize]));
                 } else {
                     ip = skip_to_foreach_end(ops, ip);
                     continue;
@@ -251,7 +250,7 @@ pub fn interpret<'a>(
                     parts.extend(pending_lines.drain(..));
                 }
                 let string_id = ctx.enum_display[base as usize + ordinal as usize];
-                parts.push(arena.keyword(ctx.strings[string_id as usize]));
+                parts.push(arena.keyword(&ctx.strings[string_id as usize]));
             }
             FmtOp::ForEachSelfStart => {
                 let children = list_children.expect("ForEachSelfStart on non-list node");

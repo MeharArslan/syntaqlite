@@ -2,15 +2,21 @@ use std::cell::Cell;
 
 use crate::parser::{FieldDescriptor, FieldVal, Fields, MacroRegion, NodeId, NodeList, Session};
 
+use super::bytecode::LoadedFmt;
 use super::doc::{DocArena, DocId, NIL_DOC};
-use super::interpret::{interpret, FmtCtx, InterpretTrivia};
-use super::ops::NodeFmt;
+use super::interpret::{InterpretTrivia, interpret};
 use super::trivia::TriviaCtx;
 
 /// Dialect-specific node metadata needed by the formatter.
 pub struct NodeInfo {
-    pub field_descriptors: &'static [&'static [FieldDescriptor]],
-    pub is_list: fn(u32) -> bool,
+    pub field_descriptors: Vec<Vec<FieldDescriptor>>,
+    pub list_tags: Vec<bool>,
+}
+
+impl NodeInfo {
+    pub fn is_list(&self, tag: u32) -> bool {
+        self.list_tags.get(tag as usize).copied().unwrap_or(false)
+    }
 }
 
 /// Extract fields from a raw node pointer using the given descriptors.
@@ -28,21 +34,19 @@ fn extract_fields<'a>(
 
 /// Format any AST node by looking up its bytecode in the dispatch table.
 pub fn format_node<'a>(
-    dispatch: &'a [Option<NodeFmt>],
-    ctx: &FmtCtx<'a>,
+    fmt: &'a LoadedFmt,
     session: &'a Session<'a>,
     node_info: &'a NodeInfo,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
 ) -> DocId {
     let consumed = Cell::new(0u64);
-    format_node_inner(dispatch, ctx, session, node_info, node_id, arena, None, &consumed)
+    format_node_inner(fmt, session, node_info, node_id, arena, None, &consumed)
 }
 
 /// Format an AST node with trivia (comment) interleaving.
 pub fn format_node_with_trivia<'a>(
-    dispatch: &'a [Option<NodeFmt>],
-    ctx: &FmtCtx<'a>,
+    fmt: &'a LoadedFmt,
     session: &'a Session<'a>,
     node_info: &'a NodeInfo,
     node_id: NodeId,
@@ -51,8 +55,7 @@ pub fn format_node_with_trivia<'a>(
 ) -> DocId {
     let consumed = Cell::new(0u64);
     format_node_inner(
-        dispatch,
-        ctx,
+        fmt,
         session,
         node_info,
         node_id,
@@ -63,8 +66,7 @@ pub fn format_node_with_trivia<'a>(
 }
 
 fn format_node_inner<'a>(
-    dispatch: &'a [Option<NodeFmt>],
-    ctx: &FmtCtx<'a>,
+    fmt: &'a LoadedFmt,
     session: &'a Session<'a>,
     node_info: &'a NodeInfo,
     node_id: NodeId,
@@ -79,22 +81,16 @@ fn format_node_inner<'a>(
     let Some((ptr, tag)) = session.node_ptr(node_id) else {
         return NIL_DOC;
     };
-    let tag_idx = tag as usize;
-    let Some(entry) = dispatch.get(tag_idx).and_then(|o| o.as_ref()) else {
+    let Some(ops) = fmt.node_ops(tag) else {
         return NIL_DOC;
     };
+    let ctx = fmt.ctx();
     let source = session.source();
     let macro_regions = session.macro_regions();
 
-    // The format_child closure checks for macro overlap. If a child's subtree
-    // overlaps with any macro region, emit the source text verbatim instead
-    // of recursing into the child's formatting. This keeps the macro check at
-    // the child level so that parent keywords (SELECT, FROM, etc.) are still
-    // emitted by bytecode.
     let format_child = |id: NodeId, arena: &mut DocArena<'a>| {
         if !macro_regions.is_empty() {
             if let Some(verbatim) = try_macro_verbatim(
-                dispatch,
                 session,
                 node_info,
                 id,
@@ -105,38 +101,45 @@ fn format_node_inner<'a>(
                 return verbatim;
             }
         }
-        format_node_inner(dispatch, ctx, session, node_info, id, arena, trivia_ctx, consumed_regions)
+        format_node_inner(
+            fmt,
+            session,
+            node_info,
+            id,
+            arena,
+            trivia_ctx,
+            consumed_regions,
+        )
     };
     let resolve_list = |id: NodeId| -> Vec<NodeId> {
         session
             .node_ptr(id)
-            .filter(|&(_, t)| (node_info.is_list)(t))
+            .filter(|&(_, t)| node_info.is_list(t))
             .map(|(p, _)| {
                 let list = unsafe { &*(p as *const NodeList) };
                 list.children().to_vec()
             })
             .unwrap_or_default()
     };
-    let children = if (node_info.is_list)(tag) {
+    let children = if node_info.is_list(tag) {
         let list = unsafe { &*(ptr as *const NodeList) };
         Some(list.children() as &[NodeId])
     } else {
         None
     };
 
-    let descriptors = node_info.field_descriptors[tag_idx];
+    let descriptors = &node_info.field_descriptors[tag as usize];
     let fields = extract_fields(ptr, descriptors, source);
 
     let trivia = trivia_ctx.map(|tc| InterpretTrivia {
         ctx: tc,
-        dispatch,
         session,
         node_info,
     });
 
     interpret(
-        entry.ops,
-        ctx,
+        ops,
+        &ctx,
         &fields,
         children,
         arena,
@@ -149,7 +152,6 @@ fn format_node_inner<'a>(
 /// Compute the first (lowest) source offset of a node by scanning its fields.
 /// Returns None if no non-empty source span is found.
 pub fn first_source_offset(
-    dispatch: &[Option<NodeFmt>],
     session: &Session<'_>,
     node_info: &NodeInfo,
     node_id: NodeId,
@@ -160,18 +162,18 @@ pub fn first_source_offset(
     let (ptr, tag) = session.node_ptr(node_id)?;
 
     // For list nodes, check the first child.
-    if (node_info.is_list)(tag) {
+    if node_info.is_list(tag) {
         let list = unsafe { &*(ptr as *const NodeList) };
         let children = list.children();
         if !children.is_empty() {
-            return first_source_offset(dispatch, session, node_info, children[0]);
+            return first_source_offset(session, node_info, children[0]);
         }
         return None;
     }
 
     // Check span fields directly.
     let source = session.source();
-    let descriptors = node_info.field_descriptors[tag as usize];
+    let descriptors = &node_info.field_descriptors[tag as usize];
     let fields = extract_fields(ptr, descriptors, source);
 
     let mut min: Option<u32> = None;
@@ -192,7 +194,7 @@ pub fn first_source_offset(
     // No spans found — check child NodeId fields recursively.
     for field in fields.iter() {
         if let FieldVal::NodeId(child_id) = field {
-            if let Some(off) = first_source_offset(dispatch, session, node_info, *child_id) {
+            if let Some(off) = first_source_offset(session, node_info, *child_id) {
                 return Some(off);
             }
         }
@@ -203,8 +205,7 @@ pub fn first_source_offset(
 
 /// Compute the last (highest) source offset end of a node by scanning its fields.
 /// Returns None if no non-empty source span is found.
-pub fn last_source_offset(
-    dispatch: &[Option<NodeFmt>],
+fn last_source_offset(
     session: &Session<'_>,
     node_info: &NodeInfo,
     node_id: NodeId,
@@ -215,18 +216,18 @@ pub fn last_source_offset(
     let (ptr, tag) = session.node_ptr(node_id)?;
 
     // For list nodes, check the last child.
-    if (node_info.is_list)(tag) {
+    if node_info.is_list(tag) {
         let list = unsafe { &*(ptr as *const NodeList) };
         let children = list.children();
         if !children.is_empty() {
-            return last_source_offset(dispatch, session, node_info, children[children.len() - 1]);
+            return last_source_offset(session, node_info, children[children.len() - 1]);
         }
         return None;
     }
 
     // Check span fields directly — take max(offset + text.len()).
     let source = session.source();
-    let descriptors = node_info.field_descriptors[tag as usize];
+    let descriptors = &node_info.field_descriptors[tag as usize];
     let fields = extract_fields(ptr, descriptors, source);
 
     let mut max: Option<u32> = None;
@@ -242,10 +243,9 @@ pub fn last_source_offset(
         }
     }
     if max.is_some() {
-        // Also check child nodes — they may extend beyond direct spans.
         for field in fields.iter() {
             if let FieldVal::NodeId(child_id) = field {
-                if let Some(end) = last_source_offset(dispatch, session, node_info, *child_id) {
+                if let Some(end) = last_source_offset(session, node_info, *child_id) {
                     max = Some(max.unwrap().max(end));
                 }
             }
@@ -256,7 +256,7 @@ pub fn last_source_offset(
     // No spans found — check child NodeId fields recursively.
     for field in fields.iter() {
         if let FieldVal::NodeId(child_id) = field {
-            if let Some(end) = last_source_offset(dispatch, session, node_info, *child_id) {
+            if let Some(end) = last_source_offset(session, node_info, *child_id) {
                 max = Some(match max {
                     Some(prev) => prev.max(end),
                     None => end,
@@ -268,13 +268,8 @@ pub fn last_source_offset(
     max
 }
 
-/// Check if a node's subtree overlaps with any macro region. If so:
-/// - First overlap for a region: emit verbatim text covering the union of the
-///   node's source range and the overlapping macro call range(s), mark consumed
-/// - Subsequent overlaps for the same region: return NIL_DOC (suppress)
-/// - No overlap: return None (format normally)
+/// Check if a node's subtree overlaps with any macro region.
 fn try_macro_verbatim<'a>(
-    dispatch: &[Option<NodeFmt>],
     session: &'a Session<'a>,
     node_info: &NodeInfo,
     node_id: NodeId,
@@ -282,27 +277,22 @@ fn try_macro_verbatim<'a>(
     arena: &mut DocArena<'a>,
     consumed: &Cell<u64>,
 ) -> Option<DocId> {
-    let first = first_source_offset(dispatch, session, node_info, node_id)?;
-    let last = last_source_offset(dispatch, session, node_info, node_id)?;
+    let first = first_source_offset(session, node_info, node_id)?;
+    let last = last_source_offset(session, node_info, node_id)?;
 
     for (i, r) in regions.iter().enumerate() {
         if i >= 64 {
-            break; // Bitset limit
+            break;
         }
         let r_start = r.call_offset;
         let r_end = r_start + r.call_length;
 
-        // Check overlap: node's span range [first, last] intersects
-        // macro region [r_start, r_end].
         if first < r_end && last > r_start {
             let bit = 1u64 << i;
             let bits = consumed.get();
             if bits & bit != 0 {
-                // Already emitted — suppress this node.
                 return Some(NIL_DOC);
             }
-            // First overlap — emit verbatim. The range is the union of the
-            // node's source range and the macro call range.
             consumed.set(bits | bit);
             let source = session.source();
             let verbatim_start = first.min(r_start) as usize;

@@ -1,13 +1,14 @@
-//! Converts a C `SyntaqliteDialect` struct into a Rust `DialectInfo`.
+//! Converts C `SyntaqliteDialect` structs into fully-owned Rust types.
 //!
-//! This module provides `dialect_to_info` which is used both by compiled-in
-//! dialects (like `syntaqlite` crate) and by dynamically loaded `.so` dialects.
+//! A single `convert()` call returns one `ConvertedDialect`. No leaking.
 
 use std::ffi::CStr;
 
-use crate::parser::nodes::{FieldDescriptor, FieldKind};
-use crate::parser::Dialect;
-use crate::DialectInfo;
+use crate::parser::nodes::{dump_node_with, FieldDescriptor, FieldKind, NodeId};
+use crate::parser::{Dialect, Session};
+
+#[cfg(feature = "fmt")]
+use crate::fmt::{LoadedFmt, NodeInfo};
 
 // ── C ABI mirror structs ────────────────────────────────────────────────
 
@@ -57,43 +58,76 @@ pub struct RawSyntaqliteDialect {
     pub fmt_data_len: u32,
 }
 
-// ── Conversion ──────────────────────────────────────────────────────────
+// ── ConvertedDialect ────────────────────────────────────────────────────
 
-/// Convert a C `SyntaqliteDialect` into a Rust `DialectInfo`.
-///
-/// The `SyntaqliteDialect` struct contains both the parser vtable and AST
-/// metadata inline — no separate pointer indirection needed.
+/// Fully-owned Rust representation of a C dialect. No leaked memory.
+pub struct ConvertedDialect {
+    pub dialect: Dialect,
+    pub node_names: Vec<String>,
+    pub field_descriptors: Vec<Vec<FieldDescriptor>>,
+    #[cfg(feature = "fmt")]
+    pub node_info: NodeInfo,
+    #[cfg(feature = "fmt")]
+    pub fmt: LoadedFmt,
+}
+
+unsafe impl Send for ConvertedDialect {}
+unsafe impl Sync for ConvertedDialect {}
+
+impl ConvertedDialect {
+    pub fn parser(&self) -> crate::parser::Parser {
+        crate::parser::Parser::new(&self.dialect)
+    }
+
+    pub fn dump_node(
+        &self,
+        session: &Session<'_>,
+        id: NodeId,
+        out: &mut String,
+        indent: usize,
+    ) {
+        dump_node_with(
+            &|nid| session.node_ptr(nid),
+            session.source(),
+            &self.field_descriptors,
+            &self.node_names,
+            id,
+            out,
+            indent,
+        )
+    }
+}
+
+/// Single entry point: converts a C dialect into fully owned Rust data.
+/// No leaking.
 ///
 /// # Safety
-/// All pointers must be valid. Arrays must have lengths matching `node_count`.
-pub unsafe fn dialect_to_info(raw: *const RawSyntaqliteDialect) -> DialectInfo {
-    let raw = unsafe { &*raw };
-    let node_count = raw.node_count as usize;
+/// The pointer must be valid. All C arrays must have lengths matching `node_count`.
+pub unsafe fn convert(raw: *const RawSyntaqliteDialect) -> ConvertedDialect {
+    let raw_ref = unsafe { &*raw };
+    let node_count = raw_ref.node_count as usize;
 
-    // Convert node names
-    let c_names = unsafe { std::slice::from_raw_parts(raw.node_names, node_count) };
-    let mut names: Vec<&'static str> = Vec::with_capacity(node_count);
-    for &name_ptr in c_names {
-        let s = c_str_to_static(name_ptr);
-        names.push(s);
-    }
-    let node_names: &'static [&'static str] = Box::leak(names.into_boxed_slice());
+    // Dialect handle
+    let dialect = unsafe { Dialect::from_raw(raw as *const std::ffi::c_void) };
 
-    // Convert field metadata
-    let c_meta_ptrs = unsafe { std::slice::from_raw_parts(raw.field_meta, node_count) };
-    let c_meta_counts = unsafe { std::slice::from_raw_parts(raw.field_meta_counts, node_count) };
+    // Node names
+    let c_names = unsafe { std::slice::from_raw_parts(raw_ref.node_names, node_count) };
+    let node_names: Vec<String> = c_names.iter().map(|&p| c_str_to_owned(p)).collect();
 
-    let mut descriptors: Vec<&'static [FieldDescriptor]> = Vec::with_capacity(node_count);
+    // Field descriptors
+    let c_meta_ptrs = unsafe { std::slice::from_raw_parts(raw_ref.field_meta, node_count) };
+    let c_meta_counts = unsafe { std::slice::from_raw_parts(raw_ref.field_meta_counts, node_count) };
+    let mut field_descriptors: Vec<Vec<FieldDescriptor>> = Vec::with_capacity(node_count);
     for i in 0..node_count {
         let count = c_meta_counts[i] as usize;
         if count == 0 || c_meta_ptrs[i].is_null() {
-            descriptors.push(&[]);
+            field_descriptors.push(Vec::new());
             continue;
         }
         let c_fields = unsafe { std::slice::from_raw_parts(c_meta_ptrs[i], count) };
         let mut fields: Vec<FieldDescriptor> = Vec::with_capacity(count);
         for cf in c_fields {
-            let name = c_str_to_static(cf.name);
+            let name = c_str_to_owned(cf.name);
             let kind = convert_field_kind(cf);
             fields.push(FieldDescriptor {
                 offset: cf.offset,
@@ -101,60 +135,42 @@ pub unsafe fn dialect_to_info(raw: *const RawSyntaqliteDialect) -> DialectInfo {
                 name,
             });
         }
-        descriptors.push(Box::leak(fields.into_boxed_slice()));
+        field_descriptors.push(fields);
     }
-    let field_descriptors: &'static [&'static [FieldDescriptor]] =
-        Box::leak(descriptors.into_boxed_slice());
 
-    // Build is_list from list_tags array
-    let c_list_tags = unsafe { std::slice::from_raw_parts(raw.list_tags, node_count) };
-    let list_tags: &'static [u8] = Box::leak(c_list_tags.to_vec().into_boxed_slice());
-    // Store the leaked slice in a static so the fn pointer can reference it.
-    // This works because dialect_to_info is called once per dialect in a LazyLock.
-    IS_LIST_TABLE.store(
-        list_tags.as_ptr() as *mut u8,
-        std::sync::atomic::Ordering::Release,
-    );
-    IS_LIST_TABLE_LEN.store(node_count, std::sync::atomic::Ordering::Release);
-
-    // The dialect pointer IS the raw pointer itself — the parser vtable is inline.
-    let dialect = unsafe { Dialect::from_raw(raw as *const RawSyntaqliteDialect as *const std::ffi::c_void) };
-
+    // Formatter-specific data
     #[cfg(feature = "fmt")]
-    let fmt = if !raw.fmt_data.is_null() && raw.fmt_data_len > 0 {
-        let data = unsafe { std::slice::from_raw_parts(raw.fmt_data, raw.fmt_data_len as usize) };
-        crate::fmt::LoadedFmt::load(data)
-            .expect("failed to load fmt bytecode from C dialect")
-            .into_static()
-    } else {
-        panic!("C dialect has no fmt data but fmt feature is enabled")
+    let node_info = {
+        let c_list_tags = unsafe { std::slice::from_raw_parts(raw_ref.list_tags, node_count) };
+        let list_tags: Vec<bool> = c_list_tags.iter().map(|&b| b != 0).collect();
+        NodeInfo {
+            field_descriptors: field_descriptors.clone(),
+            list_tags,
+        }
     };
 
-    DialectInfo {
+    #[cfg(feature = "fmt")]
+    let fmt = {
+        if raw_ref.fmt_data.is_null() || raw_ref.fmt_data_len == 0 {
+            panic!("C dialect has no fmt data");
+        }
+        let data =
+            unsafe { std::slice::from_raw_parts(raw_ref.fmt_data, raw_ref.fmt_data_len as usize) };
+        LoadedFmt::load(data).expect("failed to load fmt bytecode from C dialect")
+    };
+
+    ConvertedDialect {
         dialect,
-        field_descriptors,
         node_names,
-        is_list: is_list_from_table,
+        field_descriptors,
+        #[cfg(feature = "fmt")]
+        node_info,
         #[cfg(feature = "fmt")]
         fmt,
     }
 }
 
-// Global storage for the is_list lookup table.
-// Safe because dialect_to_info is called once per dialect in a LazyLock.
-static IS_LIST_TABLE: std::sync::atomic::AtomicPtr<u8> =
-    std::sync::atomic::AtomicPtr::new(std::ptr::null_mut());
-static IS_LIST_TABLE_LEN: std::sync::atomic::AtomicUsize =
-    std::sync::atomic::AtomicUsize::new(0);
-
-fn is_list_from_table(tag: u32) -> bool {
-    let ptr = IS_LIST_TABLE.load(std::sync::atomic::Ordering::Acquire);
-    let len = IS_LIST_TABLE_LEN.load(std::sync::atomic::Ordering::Acquire);
-    if ptr.is_null() || (tag as usize) >= len {
-        return false;
-    }
-    unsafe { *ptr.add(tag as usize) != 0 }
-}
+// ── Internal helpers ────────────────────────────────────────────────────
 
 /// Convert a C field's kind + display arrays into a Rust `FieldKind`.
 fn convert_field_kind(cf: &RawFieldMeta) -> FieldKind {
@@ -164,12 +180,11 @@ fn convert_field_kind(cf: &RawFieldMeta) -> FieldKind {
         FIELD_BOOL => FieldKind::Bool,
         FIELD_FLAGS | FIELD_ENUM => {
             let count = cf.display_count as usize;
-            let display: &'static [&'static str] = if count > 0 && !cf.display.is_null() {
+            let display: Vec<String> = if count > 0 && !cf.display.is_null() {
                 let c_ptrs = unsafe { std::slice::from_raw_parts(cf.display, count) };
-                let strs: Vec<&'static str> = c_ptrs.iter().map(|&p| c_str_to_static(p)).collect();
-                Box::leak(strs.into_boxed_slice())
+                c_ptrs.iter().map(|&p| c_str_to_owned(p)).collect()
             } else {
-                &[]
+                Vec::new()
             };
             if cf.kind == FIELD_FLAGS {
                 FieldKind::Flags(display)
@@ -181,37 +196,8 @@ fn convert_field_kind(cf: &RawFieldMeta) -> FieldKind {
     }
 }
 
-/// Convert a C string pointer to a leaked `&'static str`.
-fn c_str_to_static(ptr: *const std::ffi::c_char) -> &'static str {
+/// Convert a C string pointer to an owned `String`.
+fn c_str_to_owned(ptr: *const std::ffi::c_char) -> String {
     let cstr = unsafe { CStr::from_ptr(ptr) };
-    let s: &str = cstr.to_str().expect("non-UTF8 string from C dialect");
-    Box::leak(s.to_string().into_boxed_str())
-}
-
-// ── Dynamic loading ─────────────────────────────────────────────────────
-
-pub fn load_dialect(path: &std::path::Path) -> Result<&'static DialectInfo, String> {
-    use libloading::{Library, Symbol};
-
-    let lib = unsafe { Library::new(path) }
-        .map_err(|e| format!("failed to load dialect library {:?}: {}", path, e))?;
-
-    // Convention: the shared library exports `syntaqlite_dialect` returning
-    // a *const RawSyntaqliteDialect.
-    let func: Symbol<unsafe extern "C" fn() -> *const RawSyntaqliteDialect> =
-        unsafe { lib.get(b"syntaqlite_dialect") }
-            .map_err(|e| format!("symbol `syntaqlite_dialect` not found: {}", e))?;
-
-    let raw = unsafe { func() };
-    if raw.is_null() {
-        return Err("syntaqlite_dialect() returned null".into());
-    }
-
-    let info = unsafe { dialect_to_info(raw) };
-    let info = Box::leak(Box::new(info));
-
-    // Leak the library handle to keep the .so loaded
-    std::mem::forget(lib);
-
-    Ok(info)
+    cstr.to_str().expect("non-UTF8 string from C dialect").to_string()
 }

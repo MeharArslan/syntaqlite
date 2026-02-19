@@ -74,11 +74,6 @@ typedef struct SyntaqliteMacroRegion {
   uint32_t call_length;    // Byte length of entire macro call.
 } SyntaqliteMacroRegion;
 
-// Opaque handle to a dialect extension (extra keywords, grammar rules, AST
-// node types) produced by the syntaqlite codegen tooling. Extensions are
-// additive — the base SQLite grammar is always included.
-typedef struct SyntaqliteDialectExtension SyntaqliteDialectExtension;
-
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------
@@ -152,12 +147,6 @@ void syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable);
 void syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable);
 
 
-// Set a dialect extension on this parser. The extension pointer must remain
-// valid for the lifetime of the parser. Pass NULL to remove a previously
-// set extension (reverts to pure SQLite grammar).
-void syntaqlite_parser_set_extension(SyntaqliteParser* p,
-                                     const SyntaqliteDialectExtension* ext);
-
 // ---------------------------------------------------------------------------
 // Low-level token-feeding API
 // ---------------------------------------------------------------------------
@@ -201,24 +190,6 @@ void syntaqlite_parser_begin_macro(SyntaqliteParser* p,
 
 // End the innermost macro expansion region.
 void syntaqlite_parser_end_macro(SyntaqliteParser* p);
-
-// ---------------------------------------------------------------------------
-// Dialect extensions
-// ---------------------------------------------------------------------------
-
-// Load a dialect extension from a shared library at runtime (dlopen).
-//
-// lib_path:    Path to the .so / .dylib / .dll containing the extension.
-// entry_point: Name of the C entry-point symbol that returns the extension
-//              tables. Pass NULL to use the default convention: the
-//              library's basename with "_dialect_extension" appended
-//              (e.g. "libsql_dialect.so" → "libsql_dialect_extension").
-//
-// Returns a pointer to the loaded extension, or NULL on failure. The
-// returned pointer is valid until the library is unloaded.
-const SyntaqliteDialectExtension* syntaqlite_load_extension(
-    const char* lib_path,
-    const char* entry_point);
 
 #ifdef __cplusplus
 }

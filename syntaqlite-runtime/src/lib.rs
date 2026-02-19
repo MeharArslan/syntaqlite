@@ -10,6 +10,7 @@ pub mod fmt;
 
 mod dialect;
 
-pub use dialect::{DialectInfo, DialectTypes, SessionExt};
+pub use dialect::{DialectTypes, SessionExt};
 
 pub mod c_dialect;
+pub use c_dialect::ConvertedDialect;

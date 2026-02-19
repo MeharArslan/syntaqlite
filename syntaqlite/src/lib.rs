@@ -5,6 +5,7 @@ use std::sync::LazyLock;
 use generated::nodes::Node;
 use generated::tokens::TokenType;
 use syntaqlite_runtime::c_dialect::RawSyntaqliteDialect;
+use syntaqlite_runtime::ConvertedDialect;
 
 /// Marker type for the SQLite dialect.
 pub struct Sqlite;
@@ -13,10 +14,10 @@ unsafe extern "C" {
     fn syntaqlite_sqlite_dialect() -> *const RawSyntaqliteDialect;
 }
 
-static INFO: LazyLock<syntaqlite_runtime::DialectInfo> = LazyLock::new(|| {
+static DIALECT: LazyLock<ConvertedDialect> = LazyLock::new(|| {
     let raw = unsafe { syntaqlite_sqlite_dialect() };
     assert!(!raw.is_null());
-    unsafe { syntaqlite_runtime::c_dialect::dialect_to_info(raw) }
+    unsafe { syntaqlite_runtime::c_dialect::convert(raw) }
 });
 
 impl syntaqlite_runtime::DialectTypes for Sqlite {
@@ -26,10 +27,18 @@ impl syntaqlite_runtime::DialectTypes for Sqlite {
     unsafe fn node_from_raw<'a>(ptr: *const u32) -> Node<'a> {
         unsafe { Node::from_raw(ptr) }
     }
+}
 
-    fn info() -> &'static syntaqlite_runtime::DialectInfo {
-        &INFO
-    }
+// ── Public API ──────────────────────────────────────────────────────────
+
+/// Access the fully-converted SQLite dialect (lazy-initialized).
+pub fn dialect() -> &'static ConvertedDialect {
+    &DIALECT
+}
+
+/// Create a parser pre-configured for the SQLite dialect.
+pub fn create_parser() -> syntaqlite_runtime::Parser {
+    DIALECT.parser()
 }
 
 // ── Re-exports ─────────────────────────────────────────────────────────
@@ -71,13 +80,8 @@ pub use generated::tokens;
 // Parser
 pub use syntaqlite_runtime::Parser;
 
-/// Create a parser pre-configured for the SQLite dialect.
-pub fn create_parser() -> syntaqlite_runtime::Parser {
-    INFO.parser()
-}
-
 // Runtime types
 pub use syntaqlite_runtime::{NodeId, ParseError, Session, SourceSpan};
 
-// The dialect info (everything a consumer needs)
-pub use syntaqlite_runtime::{DialectInfo, DialectTypes};
+// Dialect traits
+pub use syntaqlite_runtime::DialectTypes;

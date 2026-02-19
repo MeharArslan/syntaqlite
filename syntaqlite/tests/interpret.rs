@@ -12,11 +12,15 @@ fn no_lists(_: NodeId) -> Vec<NodeId> {
     panic!("resolve_list not expected")
 }
 
-fn ctx<'a>(strings: &'a [&'a str]) -> FmtCtx<'a> {
+fn ctx(strings: &[String]) -> FmtCtx<'_> {
     FmtCtx {
         strings,
         enum_display: &[],
     }
+}
+
+fn s(strs: &[&str]) -> Vec<String> {
+    strs.iter().map(|s| s.to_string()).collect()
 }
 
 fn run(ops: &[FmtOp], ctx: &FmtCtx, fields: &[FieldVal], config: &FormatConfig) -> String {
@@ -35,13 +39,13 @@ const NULL: NodeId = NodeId::NULL;
 
 #[test]
 fn single_keyword() {
-    let strings = &["SELECT"];
-    assert_eq!(run_default(&[FmtOp::Keyword(0)], &ctx(strings), &[]), "SELECT");
+    let strings = s(&["SELECT"]);
+    assert_eq!(run_default(&[FmtOp::Keyword(0)], &ctx(&strings), &[]), "SELECT");
 }
 
 #[test]
 fn group_fits_flat() {
-    let strings = &["SELECT", "FROM"];
+    let strings = s(&["SELECT", "FROM"]);
     let ops = &[
         FmtOp::GroupStart,
         FmtOp::Keyword(0),
@@ -49,12 +53,12 @@ fn group_fits_flat() {
         FmtOp::Keyword(1),
         FmtOp::GroupEnd,
     ];
-    assert_eq!(run_default(ops, &ctx(strings), &[]), "SELECT FROM");
+    assert_eq!(run_default(ops, &ctx(&strings), &[]), "SELECT FROM");
 }
 
 #[test]
 fn group_breaks_when_narrow() {
-    let strings = &["SELECT", "FROM"];
+    let strings = s(&["SELECT", "FROM"]);
     let ops = &[
         FmtOp::GroupStart,
         FmtOp::Keyword(0),
@@ -63,12 +67,12 @@ fn group_breaks_when_narrow() {
         FmtOp::GroupEnd,
     ];
     let config = FormatConfig { line_width: 5, ..Default::default() };
-    assert_eq!(run(ops, &ctx(strings), &[], &config), "SELECT\nFROM");
+    assert_eq!(run(ops, &ctx(&strings), &[], &config), "SELECT\nFROM");
 }
 
 #[test]
 fn nest_indentation() {
-    let strings = &["SELECT", "a"];
+    let strings = s(&["SELECT", "a"]);
     let ops = &[
         FmtOp::GroupStart,
         FmtOp::Keyword(0),
@@ -79,21 +83,23 @@ fn nest_indentation() {
         FmtOp::GroupEnd,
     ];
     let config = FormatConfig { line_width: 5, ..Default::default() };
-    assert_eq!(run(ops, &ctx(strings), &[], &config), "SELECT\n    a");
+    assert_eq!(run(ops, &ctx(&strings), &[], &config), "SELECT\n    a");
 }
 
 #[test]
 fn span_reads_source_text() {
+    let strings = s(&[]);
     let fields = &[FieldVal::Span("hello", 0)];
     let ops = &[FmtOp::Span(0)];
-    assert_eq!(run_default(ops, &ctx(&[]), fields), "hello");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "hello");
 }
 
 #[test]
 fn child_recurses_into_child_node() {
+    let strings = s(&[]);
     let fields = &[FieldVal::NodeId(NodeId(42))];
     let ops = &[FmtOp::Child(0)];
-    let ctx = ctx(&[]);
+    let ctx = ctx(&strings);
     let mut arena = DocArena::new();
     let doc = interpret(
         ops, &ctx, fields, None, &mut arena,
@@ -109,18 +115,18 @@ fn child_recurses_into_child_node() {
 
 #[test]
 fn child_skips_null_node() {
+    let strings = s(&["a", "b"]);
     let fields = &[FieldVal::NodeId(NULL)];
-    let strings = &["a", "b"];
     let ops = &[FmtOp::Keyword(0), FmtOp::Child(0), FmtOp::Keyword(1)];
-    assert_eq!(run_default(ops, &ctx(strings), fields), "ab");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "ab");
 }
 
 // -- IfSet --
 
 #[test]
 fn ifset_executes_then_branch() {
+    let strings = s(&["YES", "NO"]);
     let fields = &[FieldVal::NodeId(NodeId(42))];
-    let strings = &["YES", "NO"];
     let ops = &[
         FmtOp::IfSet(0, 2),
         FmtOp::Keyword(0),
@@ -128,13 +134,13 @@ fn ifset_executes_then_branch() {
         FmtOp::Keyword(1),
         FmtOp::EndIf,
     ];
-    assert_eq!(run_default(ops, &ctx(strings), fields), "YES");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "YES");
 }
 
 #[test]
 fn ifset_executes_else_branch() {
+    let strings = s(&["YES", "NO"]);
     let fields = &[FieldVal::NodeId(NULL)];
-    let strings = &["YES", "NO"];
     let ops = &[
         FmtOp::IfSet(0, 2),
         FmtOp::Keyword(0),
@@ -142,13 +148,13 @@ fn ifset_executes_else_branch() {
         FmtOp::Keyword(1),
         FmtOp::EndIf,
     ];
-    assert_eq!(run_default(ops, &ctx(strings), fields), "NO");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "NO");
 }
 
 #[test]
 fn ifset_without_else() {
+    let strings = s(&["a", "b", "c"]);
     let fields = &[FieldVal::NodeId(NULL)];
-    let strings = &["a", "b", "c"];
     let ops = &[
         FmtOp::Keyword(0),
         FmtOp::IfSet(0, 2),
@@ -157,15 +163,15 @@ fn ifset_without_else() {
         FmtOp::EndIf,
         FmtOp::Keyword(2),
     ];
-    assert_eq!(run_default(ops, &ctx(strings), fields), "ac");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "ac");
 }
 
 // -- ForEach --
 
 #[test]
 fn foreach_comma_separated() {
+    let strings = s(&[", "]);
     let fields = &[FieldVal::NodeId(NodeId(99))];
-    let strings = &[", "];
     let ops = &[
         FmtOp::GroupStart,
         FmtOp::ForEachStart(0),
@@ -174,7 +180,7 @@ fn foreach_comma_separated() {
         FmtOp::ForEachEnd,
         FmtOp::GroupEnd,
     ];
-    let ctx = ctx(strings);
+    let ctx = ctx(&strings);
     let mut arena = DocArena::new();
     let doc = interpret(
         ops, &ctx, fields, None, &mut arena,
@@ -195,8 +201,8 @@ fn foreach_comma_separated() {
 
 #[test]
 fn foreach_with_line_breaks() {
+    let strings = s(&[","]);
     let fields = &[FieldVal::NodeId(NodeId(99))];
-    let strings = &[","];
     let ops = &[
         FmtOp::GroupStart,
         FmtOp::ForEachStart(0),
@@ -206,7 +212,7 @@ fn foreach_with_line_breaks() {
         FmtOp::ForEachEnd,
         FmtOp::GroupEnd,
     ];
-    let ctx = ctx(strings);
+    let ctx = ctx(&strings);
     let mut arena = DocArena::new();
     let doc = interpret(
         ops, &ctx, fields, None, &mut arena,
@@ -228,8 +234,8 @@ fn foreach_with_line_breaks() {
 
 #[test]
 fn foreach_empty_list() {
+    let strings = s(&["a", ", ", "b"]);
     let fields = &[FieldVal::NodeId(NodeId(99))];
-    let strings = &["a", ", ", "b"];
     let ops = &[
         FmtOp::Keyword(0),
         FmtOp::ForEachStart(0),
@@ -238,7 +244,7 @@ fn foreach_empty_list() {
         FmtOp::ForEachEnd,
         FmtOp::Keyword(2),
     ];
-    let ctx = ctx(strings);
+    let ctx = ctx(&strings);
     let mut arena = DocArena::new();
     let doc = interpret(
         ops, &ctx, fields, None, &mut arena,
@@ -256,8 +262,8 @@ fn foreach_empty_list() {
 
 #[test]
 fn ifbool_true() {
+    let strings = s(&["YES", "NO"]);
     let fields = &[FieldVal::Bool(true)];
-    let strings = &["YES", "NO"];
     let ops = &[
         FmtOp::IfBool(0, 2),
         FmtOp::Keyword(0),
@@ -265,13 +271,13 @@ fn ifbool_true() {
         FmtOp::Keyword(1),
         FmtOp::EndIf,
     ];
-    assert_eq!(run_default(ops, &ctx(strings), fields), "YES");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "YES");
 }
 
 #[test]
 fn ifbool_false() {
+    let strings = s(&["YES", "NO"]);
     let fields = &[FieldVal::Bool(false)];
-    let strings = &["YES", "NO"];
     let ops = &[
         FmtOp::IfBool(0, 2),
         FmtOp::Keyword(0),
@@ -279,15 +285,15 @@ fn ifbool_false() {
         FmtOp::Keyword(1),
         FmtOp::EndIf,
     ];
-    assert_eq!(run_default(ops, &ctx(strings), fields), "NO");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "NO");
 }
 
 // -- IfFlag --
 
 #[test]
 fn ifflag_set() {
+    let strings = s(&["DISTINCT", "ALL"]);
     let fields = &[FieldVal::Flags(0b0000_0001)];
-    let strings = &["DISTINCT", "ALL"];
     let ops = &[
         FmtOp::IfFlag(0, 1, 2),
         FmtOp::Keyword(0),
@@ -295,13 +301,13 @@ fn ifflag_set() {
         FmtOp::Keyword(1),
         FmtOp::EndIf,
     ];
-    assert_eq!(run_default(ops, &ctx(strings), fields), "DISTINCT");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "DISTINCT");
 }
 
 #[test]
 fn ifflag_clear() {
+    let strings = s(&["DISTINCT", "ALL"]);
     let fields = &[FieldVal::Flags(0b0000_0000)];
-    let strings = &["DISTINCT", "ALL"];
     let ops = &[
         FmtOp::IfFlag(0, 1, 2),
         FmtOp::Keyword(0),
@@ -309,15 +315,15 @@ fn ifflag_clear() {
         FmtOp::Keyword(1),
         FmtOp::EndIf,
     ];
-    assert_eq!(run_default(ops, &ctx(strings), fields), "ALL");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "ALL");
 }
 
 // -- IfEnum --
 
 #[test]
 fn ifenum_match() {
+    let strings = s(&[" DESC", ""]);
     let fields = &[FieldVal::Enum(1)];
-    let strings = &[" DESC", ""];
     let ops = &[
         FmtOp::IfEnum(0, 1, 2),
         FmtOp::Keyword(0),
@@ -325,13 +331,13 @@ fn ifenum_match() {
         FmtOp::Keyword(1),
         FmtOp::EndIf,
     ];
-    assert_eq!(run_default(ops, &ctx(strings), fields), " DESC");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), " DESC");
 }
 
 #[test]
 fn ifenum_no_match() {
+    let strings = s(&[" DESC", ""]);
     let fields = &[FieldVal::Enum(0)];
-    let strings = &[" DESC", ""];
     let ops = &[
         FmtOp::IfEnum(0, 1, 2),
         FmtOp::Keyword(0),
@@ -339,43 +345,43 @@ fn ifenum_no_match() {
         FmtOp::Keyword(1),
         FmtOp::EndIf,
     ];
-    assert_eq!(run_default(ops, &ctx(strings), fields), "");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "");
 }
 
 // -- IfSpan --
 
 #[test]
 fn ifspan_set() {
+    let strings = s(&["HAS_SPAN"]);
     let fields = &[FieldVal::Span("hello", 0)];
-    let strings = &["HAS_SPAN"];
     let ops = &[
         FmtOp::IfSpan(0, 1),
         FmtOp::Keyword(0),
         FmtOp::EndIf,
     ];
-    assert_eq!(run_default(ops, &ctx(strings), fields), "HAS_SPAN");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "HAS_SPAN");
 }
 
 #[test]
 fn ifspan_empty() {
+    let strings = s(&["HAS_SPAN"]);
     let fields = &[FieldVal::Span("", 0)];
-    let strings = &["HAS_SPAN"];
     let ops = &[
         FmtOp::IfSpan(0, 1),
         FmtOp::Keyword(0),
         FmtOp::EndIf,
     ];
-    assert_eq!(run_default(ops, &ctx(strings), fields), "");
+    assert_eq!(run_default(ops, &ctx(&strings), fields), "");
 }
 
 // -- EnumDisplay --
 
 #[test]
 fn enum_display_maps_ordinal() {
+    let strings = s(&["+", "-", "*"]);
     let fields = &[FieldVal::Enum(2)];
-    let strings = &["+", "-", "*"];
     let enum_display: &[u16] = &[0, 1, 2];
-    let ctx = FmtCtx { strings, enum_display };
+    let ctx = FmtCtx { strings: &strings, enum_display };
     let ops = &[FmtOp::EnumDisplay(0, 0)];
     let mut arena = DocArena::new();
     let doc = interpret(ops, &ctx, fields, None, &mut arena, &noop_child, &no_lists, None);
@@ -384,9 +390,9 @@ fn enum_display_maps_ordinal() {
 
 #[test]
 fn enum_display_with_nonzero_base() {
-    let strings = &["AND", "OR"];
+    let strings = s(&["AND", "OR"]);
     let enum_display: &[u16] = &[10, 11, 0, 1];
-    let ctx = FmtCtx { strings, enum_display };
+    let ctx = FmtCtx { strings: &strings, enum_display };
     let fields = &[FieldVal::Enum(1)];
     let ops = &[FmtOp::EnumDisplay(0, 2)];
     let mut arena = DocArena::new();
@@ -398,15 +404,15 @@ fn enum_display_with_nonzero_base() {
 
 #[test]
 fn foreach_self_start() {
+    let strings = s(&[", "]);
     let children = &[NodeId(10), NodeId(20), NodeId(30)];
-    let strings = &[", "];
     let ops = &[
         FmtOp::ForEachSelfStart,
         FmtOp::ChildItem,
         FmtOp::ForEachSep(0),
         FmtOp::ForEachEnd,
     ];
-    let ctx = ctx(strings);
+    let ctx = ctx(&strings);
     let mut arena = DocArena::new();
     let doc = interpret(
         ops, &ctx, &[], Some(children), &mut arena,
@@ -424,8 +430,8 @@ fn foreach_self_start() {
 
 #[test]
 fn foreach_self_empty() {
+    let strings = s(&["[", ", ", "]"]);
     let children: &[NodeId] = &[];
-    let strings = &["[", ", ", "]"];
     let ops = &[
         FmtOp::Keyword(0),
         FmtOp::ForEachSelfStart,
@@ -436,7 +442,7 @@ fn foreach_self_empty() {
     ];
     assert_eq!(
         {
-            let ctx = ctx(strings);
+            let ctx = ctx(&strings);
             let mut arena = DocArena::new();
             let doc = interpret(ops, &ctx, &[], Some(children), &mut arena, &noop_child, &no_lists, None);
             render(&arena, doc, &FormatConfig::default())

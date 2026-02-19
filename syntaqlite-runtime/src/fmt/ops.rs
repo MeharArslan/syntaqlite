@@ -2,12 +2,6 @@ pub type StringId = u16;
 pub type FieldIdx = u16;
 pub type SkipCount = u16;
 
-/// A node's formatting entry: bytecode ops.
-#[derive(Debug, Clone, Copy)]
-pub struct NodeFmt {
-    pub ops: &'static [FmtOp],
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum FmtOp {
     /// Emit a keyword from the string table.

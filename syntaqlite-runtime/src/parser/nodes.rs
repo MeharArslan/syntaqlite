@@ -112,21 +112,21 @@ pub enum FieldVal<'a> {
 /// - `Flags`: indexed by bit position (0, 1, 2, …); each entry is the flag name
 ///   for that bit, or `""` if unused.
 /// - `Enum`: indexed by ordinal (0, 1, 2, …); each entry is the variant name.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum FieldKind {
     NodeId,
     Span,
     Bool,
-    Flags(&'static [&'static str]),
-    Enum(&'static [&'static str]),
+    Flags(Vec<String>),
+    Enum(Vec<String>),
 }
 
 /// Metadata for one field of a node struct: its byte offset and value kind.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct FieldDescriptor {
     pub offset: u16,
     pub kind: FieldKind,
-    pub name: &'static str,
+    pub name: String,
 }
 
 impl FieldDescriptor {
@@ -136,7 +136,7 @@ impl FieldDescriptor {
     /// `ptr` must point to a valid, well-aligned node struct whose field at
     /// `self.offset` has the type indicated by `self.kind`. `source` must be
     /// the original source string from which SourceSpan offsets were derived.
-    pub unsafe fn extract<'a>(self, ptr: *const u8, source: &'a str) -> FieldVal<'a> {
+    pub unsafe fn extract<'a>(&self, ptr: *const u8, source: &'a str) -> FieldVal<'a> {
         unsafe {
             let field_ptr = ptr.add(self.offset as usize);
             match self.kind {
@@ -158,14 +158,14 @@ impl FieldDescriptor {
 }
 
 /// Format a flags byte using the display table (indexed by bit position).
-pub fn format_flags(value: u8, display: &[&str]) -> String {
+pub fn format_flags(value: u8, display: &[String]) -> String {
     if value == 0 {
         return "(none)".into();
     }
     let mut s = String::new();
     for bit in 0..8u8 {
         if value & (1 << bit) != 0 {
-            let name = display.get(bit as usize).copied().unwrap_or("?");
+            let name = display.get(bit as usize).map(|s| s.as_str()).unwrap_or("?");
             if !name.is_empty() {
                 if !s.is_empty() {
                     s.push(' ');
@@ -184,8 +184,8 @@ pub fn format_flags(value: u8, display: &[&str]) -> String {
 pub fn dump_node_with(
     node_ptr_fn: &dyn Fn(NodeId) -> Option<(*const u8, u32)>,
     source: &str,
-    field_descriptors: &[&[FieldDescriptor]],
-    node_names: &[&str],
+    field_descriptors: &[Vec<FieldDescriptor>],
+    node_names: &[String],
     id: NodeId,
     out: &mut String,
     indent: usize,
@@ -200,7 +200,7 @@ pub fn dump_node_with(
     let pad = "  ".repeat(indent);
 
     // Check if this is a list node (tag + count header)
-    let descriptors = field_descriptors.get(tag_idx).copied().unwrap_or(&[]);
+    let descriptors = field_descriptors.get(tag_idx).map(|v| v.as_slice()).unwrap_or(&[]);
     if descriptors.is_empty() && tag != 0 {
         // Likely a list node — check by reading the NodeList header
         let list = unsafe { &*(ptr as *const NodeList) };
@@ -244,7 +244,7 @@ pub fn dump_node_with(
                 let _ = writeln!(out, "{pad}  {}: {s}", desc.name);
             }
             (FieldVal::Enum(v), FieldKind::Enum(display)) => {
-                let s = display.get(*v as usize).copied().unwrap_or("?");
+                let s = display.get(*v as usize).map(|s| s.as_str()).unwrap_or("?");
                 let _ = writeln!(out, "{pad}  {}: {s}", desc.name);
             }
             _ => {}

@@ -110,7 +110,6 @@ struct SyntaqliteParser {
   char error_msg[256];       // Error message buffer.
   int trace;
   int collect_tokens;
-  const SyntaqliteDialectExtension* extension;
   SYNQ_VEC(SyntaqliteTrivia) trivia;
   int macro_depth;           // Nesting depth (0 = not in macro).
   SYNQ_VEC(SyntaqliteMacroRegion) macros;
@@ -514,8 +513,3 @@ const SyntaqliteTrivia* syntaqlite_parser_trivia(SyntaqliteParser* p,
   return p->trivia.data;
 }
 
-void syntaqlite_parser_set_extension(
-    SyntaqliteParser* p,
-    const SyntaqliteDialectExtension* ext) {
-  p->extension = ext;
-}

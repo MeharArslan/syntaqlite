@@ -7,15 +7,7 @@ use syntaqlite_runtime::fmt::{
     first_source_offset, format_node, format_node_with_trivia, render, DocArena,
     FormatConfig, KeywordCase, TriviaCtx,
 };
-use syntaqlite_runtime::{DialectInfo, TriviaKind};
-
-/// All dialect-specific data the CLI commands need.
-pub struct DialectCli {
-    /// Display name for the CLI (used in `--help`).
-    pub name: &'static str,
-    /// The dialect info (parser, formatter, AST dumper).
-    pub info: &'static DialectInfo,
-}
+use syntaqlite_runtime::{ConvertedDialect, TriviaKind};
 
 #[derive(Parser)]
 #[command(about = "SQL formatting and analysis tools")]
@@ -79,13 +71,12 @@ fn expand_paths(patterns: &[String]) -> Result<Vec<PathBuf>, String> {
 }
 
 fn format_source(
-    dialect: &DialectCli,
+    dialect: &ConvertedDialect,
     source: &str,
     config: &FormatConfig,
     semicolons: bool,
 ) -> Result<String, String> {
-    let info = dialect.info;
-    let mut parser = info.parser();
+    let mut parser = dialect.parser();
     parser.set_collect_tokens(true);
     let mut session = parser.parse(source);
 
@@ -96,9 +87,8 @@ fn format_source(
     }
 
     let trivia = session.trivia();
-    let ni = info.node_info();
-    let dispatch = info.dispatch();
-    let ctx = info.ctx();
+    let ni = &dialect.node_info;
+    let fmt = &dialect.fmt;
 
     if trivia.is_empty() {
         let mut out = String::new();
@@ -111,7 +101,7 @@ fn format_source(
                 out.push_str("\n\n");
             }
             let mut arena = DocArena::new();
-            let doc = format_node(dispatch, ctx, &session, &ni, root_id, &mut arena);
+            let doc = format_node(fmt, &session, ni, root_id, &mut arena);
             out.push_str(&render(&arena, doc, config));
             first = false;
         }
@@ -135,7 +125,7 @@ fn format_source(
             out.push_str("\n\n");
         }
 
-        let stmt_start = first_source_offset(dispatch, &session, &ni, root_id)
+        let stmt_start = first_source_offset(&session, ni, root_id)
             .unwrap_or(source.len() as u32);
 
         while trivia_cursor < trivia.len() && trivia[trivia_cursor].offset < stmt_start {
@@ -155,7 +145,7 @@ fn format_source(
         }
 
         let stmt_end = if i + 1 < roots.len() {
-            first_source_offset(dispatch, &session, &ni, roots[i + 1])
+            first_source_offset(&session, ni, roots[i + 1])
                 .unwrap_or(source.len() as u32)
         } else {
             source.len() as u32
@@ -169,16 +159,14 @@ fn format_source(
 
         let mut arena = DocArena::new();
         if within_trivia.is_empty() {
-            let doc =
-                format_node(dispatch, ctx, &session, &ni, root_id, &mut arena);
+            let doc = format_node(fmt, &session, ni, root_id, &mut arena);
             out.push_str(&render(&arena, doc, config));
         } else {
             let trivia_ctx = TriviaCtx::new(within_trivia, source);
             let doc = format_node_with_trivia(
-                dispatch,
-                ctx,
+                fmt,
                 &session,
-                &ni,
+                ni,
                 root_id,
                 &mut arena,
                 &trivia_ctx,
@@ -213,7 +201,7 @@ fn format_source(
     Ok(out)
 }
 
-fn cmd_ast(dialect: &DialectCli, files: Vec<String>) -> Result<(), String> {
+fn cmd_ast(dialect: &ConvertedDialect, files: Vec<String>) -> Result<(), String> {
     let paths = expand_paths(&files)?;
 
     if paths.is_empty() {
@@ -235,9 +223,8 @@ fn cmd_ast(dialect: &DialectCli, files: Vec<String>) -> Result<(), String> {
     Ok(())
 }
 
-fn cmd_ast_source(dialect: &DialectCli, source: &str) -> Result<(), String> {
-    let info = dialect.info;
-    let mut parser = info.parser();
+fn cmd_ast_source(dialect: &ConvertedDialect, source: &str) -> Result<(), String> {
+    let mut parser = dialect.parser();
     let mut session = parser.parse(source);
     let mut buf = String::new();
     let mut count = 0;
@@ -247,7 +234,7 @@ fn cmd_ast_source(dialect: &DialectCli, source: &str) -> Result<(), String> {
         if count > 0 {
             buf.push_str("----\n");
         }
-        info.dump_node(&session, root_id, &mut buf, 0);
+        dialect.dump_node(&session, root_id, &mut buf, 0);
         count += 1;
     }
 
@@ -256,7 +243,7 @@ fn cmd_ast_source(dialect: &DialectCli, source: &str) -> Result<(), String> {
 }
 
 fn cmd_fmt(
-    dialect: &DialectCli,
+    dialect: &ConvertedDialect,
     files: Vec<String>,
     config: &FormatConfig,
     in_place: bool,
@@ -309,9 +296,9 @@ fn cmd_fmt(
 }
 
 /// Run the CLI with the given dialect configuration.
-pub fn run(dialect: &DialectCli) {
+pub fn run(name: &str, dialect: &ConvertedDialect) {
     let cli = Cli::try_parse_from(
-        std::iter::once(dialect.name.to_string())
+        std::iter::once(name.to_string())
             .chain(std::env::args().skip(1)),
     )
     .unwrap_or_else(|e| e.exit());
