@@ -212,16 +212,7 @@ fn main() {
                     .map_err(|e| format!("Failed to write mod.rs: {}", e))?;
 
                 // Step 6: Generate fmt bytecode
-                if args.verbose {
-                    eprintln!("Generating fmt bytecode...");
-                }
-                let fmt_gen_dir = rust_gen_dir.clone();
-                fs::create_dir_all(&fmt_gen_dir)
-                    .map_err(|e| format!("Failed to create fmt generated directory: {}", e))?;
-
                 let bytecode = syntaqlite_codegen::fmt_compiler::generate_fmt_bytecode(&all_items);
-                fs::write(fmt_gen_dir.join("fmt.bin"), &bytecode)
-                    .map_err(|e| format!("Failed to write fmt.bin: {}", e))?;
 
                 // Step 7: Generate C AST metadata and fmt data headers
                 if args.verbose {

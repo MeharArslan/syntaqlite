@@ -14,6 +14,14 @@ pub struct LoadedFmt {
 }
 
 impl LoadedFmt {
+    /// Load formatter data from a dialect's C static bytecode.
+    pub fn from_dialect(dialect: &crate::Dialect) -> Result<Self, &'static str> {
+        let d = unsafe { &*(dialect.raw as *const crate::dialect::RawSyntaqliteDialect) };
+        assert!(!d.fmt_data.is_null() && d.fmt_data_len > 0, "C dialect has no fmt data");
+        let data = unsafe { std::slice::from_raw_parts(d.fmt_data, d.fmt_data_len as usize) };
+        Self::load(data)
+    }
+
     pub fn load(data: &[u8]) -> Result<Self, &'static str> {
         let decoded = bc::decode(data)?;
 

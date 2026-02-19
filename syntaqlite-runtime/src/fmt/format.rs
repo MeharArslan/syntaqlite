@@ -14,6 +14,45 @@ pub struct NodeInfo {
 }
 
 impl NodeInfo {
+    /// Build node metadata by reading C static arrays from a dialect.
+    pub fn from_dialect(dialect: &crate::Dialect) -> Self {
+        use crate::dialect::*;
+        use crate::parser::nodes::{FieldDescriptor, FieldKind};
+
+        let d = unsafe { &*(dialect.raw as *const RawSyntaqliteDialect) };
+        let node_count = d.node_count as usize;
+
+        let c_meta_ptrs = unsafe { std::slice::from_raw_parts(d.field_meta, node_count) };
+        let c_meta_counts = unsafe { std::slice::from_raw_parts(d.field_meta_counts, node_count) };
+        let mut field_descriptors: Vec<Vec<FieldDescriptor>> = Vec::with_capacity(node_count);
+        for i in 0..node_count {
+            let count = c_meta_counts[i] as usize;
+            if count == 0 || c_meta_ptrs[i].is_null() {
+                field_descriptors.push(Vec::new());
+                continue;
+            }
+            let c_fields = unsafe { std::slice::from_raw_parts(c_meta_ptrs[i], count) };
+            let mut fields: Vec<FieldDescriptor> = Vec::with_capacity(count);
+            for cf in c_fields {
+                let kind = match cf.kind {
+                    FIELD_NODE_ID => FieldKind::NodeId,
+                    FIELD_SPAN => FieldKind::Span,
+                    FIELD_BOOL => FieldKind::Bool,
+                    FIELD_FLAGS => FieldKind::Flags,
+                    FIELD_ENUM => FieldKind::Enum,
+                    _ => panic!("unknown C field kind: {}", cf.kind),
+                };
+                fields.push(FieldDescriptor { offset: cf.offset, kind });
+            }
+            field_descriptors.push(fields);
+        }
+
+        let c_list_tags = unsafe { std::slice::from_raw_parts(d.list_tags, node_count) };
+        let list_tags: Vec<bool> = c_list_tags.iter().map(|&b| b != 0).collect();
+
+        NodeInfo { field_descriptors, list_tags }
+    }
+
     pub fn is_list(&self, tag: u32) -> bool {
         self.list_tags.get(tag as usize).copied().unwrap_or(false)
     }

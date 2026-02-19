@@ -1,5 +1,6 @@
 use std::ffi::{c_int, CStr};
 
+use crate::dialect::Dialect;
 use super::ffi;
 use super::nodes::NodeId;
 
@@ -63,29 +64,6 @@ pub struct MacroRegion {
     pub call_length: u32,
 }
 
-/// An opaque dialect handle. Dialect crates (e.g. `syntaqlite`) provide a
-/// function that returns a `&'static Dialect` for their grammar.
-pub struct Dialect {
-    raw: *const ffi::RawDialect,
-}
-
-impl Dialect {
-    /// Create a `Dialect` from a raw C pointer returned by a dialect's
-    /// FFI function (e.g. `syntaqlite_sqlite_dialect`).
-    ///
-    /// # Safety
-    /// The pointer must point to a valid `SynqDialect` with `'static` lifetime.
-    pub unsafe fn from_raw(raw: *const std::ffi::c_void) -> Self {
-        Dialect {
-            raw: raw as *const ffi::RawDialect,
-        }
-    }
-}
-
-// SAFETY: The dialect is a pointer to a static C struct with no mutable state.
-unsafe impl Send for Dialect {}
-unsafe impl Sync for Dialect {}
-
 /// A parse error with a human-readable message.
 #[derive(Debug, Clone)]
 pub struct ParseError {
@@ -121,7 +99,7 @@ impl Parser {
         // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
         // a new parser with default malloc/free. It always succeeds.
         let raw = unsafe {
-            ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw)
+            ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw as *const _)
         };
         assert!(!raw.is_null(), "parser allocation failed");
         Parser {

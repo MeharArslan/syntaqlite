@@ -4,8 +4,7 @@ use std::sync::LazyLock;
 
 use generated::nodes::Node;
 use generated::tokens::TokenType;
-use syntaqlite_runtime::c_dialect::RawSyntaqliteDialect;
-use syntaqlite_runtime::ConvertedDialect;
+use syntaqlite_runtime::dialect::RawSyntaqliteDialect;
 
 /// Marker type for the SQLite dialect.
 pub struct Sqlite;
@@ -14,10 +13,10 @@ unsafe extern "C" {
     fn syntaqlite_sqlite_dialect() -> *const RawSyntaqliteDialect;
 }
 
-static DIALECT: LazyLock<ConvertedDialect> = LazyLock::new(|| {
+static DIALECT: LazyLock<syntaqlite_runtime::Dialect> = LazyLock::new(|| {
     let raw = unsafe { syntaqlite_sqlite_dialect() };
     assert!(!raw.is_null());
-    unsafe { syntaqlite_runtime::c_dialect::convert(raw) }
+    unsafe { syntaqlite_runtime::Dialect::from_raw(raw as *const std::ffi::c_void) }
 });
 
 impl syntaqlite_runtime::DialectTypes for Sqlite {
@@ -31,25 +30,24 @@ impl syntaqlite_runtime::DialectTypes for Sqlite {
 
 // ── Public API ──────────────────────────────────────────────────────────
 
-/// Access the fully-converted SQLite dialect (lazy-initialized).
-pub fn dialect() -> &'static ConvertedDialect {
+/// Access the SQLite dialect (lazy-initialized).
+pub fn dialect() -> &'static syntaqlite_runtime::Dialect {
     &DIALECT
 }
 
 /// Create a parser pre-configured for the SQLite dialect.
 pub fn create_parser() -> syntaqlite_runtime::Parser {
-    DIALECT.parser()
+    syntaqlite_runtime::Parser::new(&DIALECT)
 }
 
 // ── Re-exports ─────────────────────────────────────────────────────────
 
-// AST types & inspection
 pub mod ast {
     pub use crate::generated::nodes::*;
     pub use syntaqlite_runtime::{MacroRegion, NodeList, Trivia, TriviaKind};
 
     /// Convenience trait that hardcodes `Sqlite` so callers don't need
-    /// turbofish: `session.node(id)` just works.
+    /// turbofish: `session.feed(TokenType, text)` just works.
     pub trait SessionExt<'a> {
         fn node(&self, id: syntaqlite_runtime::NodeId) -> Option<Node<'a>>;
         fn feed(
@@ -74,14 +72,5 @@ pub mod ast {
     }
 }
 
-// Tokens
 pub use generated::tokens;
-
-// Parser
-pub use syntaqlite_runtime::Parser;
-
-// Runtime types
-pub use syntaqlite_runtime::{NodeId, ParseError, Session, SourceSpan};
-
-// Dialect traits
-pub use syntaqlite_runtime::DialectTypes;
+pub use syntaqlite_runtime::{Dialect, DialectTypes, NodeId, ParseError, Parser, Session, SourceSpan};
