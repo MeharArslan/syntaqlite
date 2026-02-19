@@ -33,6 +33,6 @@ pub mod ast {
 }
 
 pub use generated::tokens;
-pub use wrappers::{Formatter, Parser, StatementCursor, TokenFeeder, TokenParser, Tokenizer, TokenizerSession};
+pub use wrappers::{Formatter, Parser, StatementCursor, TokenFeeder, TokenParser, Tokenizer, TokenCursor};
 pub use syntaqlite_runtime::{CursorBase, ParseError, ParserConfig};
 pub use syntaqlite_runtime::fmt::{FormatConfig, KeywordCase};

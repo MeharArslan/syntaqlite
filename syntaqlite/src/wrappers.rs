@@ -258,22 +258,30 @@ impl Tokenizer {
         }
     }
 
-    /// Bind source text and return a session for iterating typed tokens.
-    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> TokenizerSession<'a> {
-        TokenizerSession {
+    /// Bind source text and return a cursor for iterating typed tokens.
+    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> TokenCursor<'a> {
+        TokenCursor {
             inner: self.inner.tokenize(source),
+        }
+    }
+
+    /// Zero-copy variant: bind a null-terminated source and return a
+    /// `TokenCursor`. The source must be valid UTF-8 (panics otherwise).
+    pub fn tokenize_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> TokenCursor<'a> {
+        TokenCursor {
+            inner: self.inner.tokenize_cstr(source),
         }
     }
 }
 
-// ── TokenizerSession ────────────────────────────────────────────────────
+// ── TokenCursor ────────────────────────────────────────────────────
 
 /// An active tokenizer session yielding typed SQLite tokens.
-pub struct TokenizerSession<'a> {
-    inner: syntaqlite_runtime::TokenizerSession<'a>,
+pub struct TokenCursor<'a> {
+    inner: syntaqlite_runtime::TokenCursor<'a>,
 }
 
-impl<'a> Iterator for TokenizerSession<'a> {
+impl<'a> Iterator for TokenCursor<'a> {
     type Item = (TokenType, &'a str);
 
     fn next(&mut self) -> Option<Self::Item> {

@@ -10,23 +10,23 @@ fn macro_call_emitted_verbatim() {
     let source = "SELECT foo!(1 + 2), 3";
     let fmt = formatter();
 
-    let mut parser = syntaqlite::Parser::new();
-    let mut session = parser.token_session(source);
+    let mut tp = syntaqlite::TokenParser::new();
+    let mut feeder = tp.feed(source);
 
-    session.feed(TokenType::Select, &source[0..6]).unwrap();
+    feeder.feed_token(TokenType::Select, 0..6).unwrap();
 
-    session.begin_macro(7, 11);
-    session.feed(TokenType::Integer, &source[12..13]).unwrap();
-    session.feed(TokenType::Plus, &source[14..15]).unwrap();
-    session.feed(TokenType::Integer, &source[16..17]).unwrap();
-    session.end_macro();
+    feeder.begin_macro(7, 11);
+    feeder.feed_token(TokenType::Integer, 12..13).unwrap();
+    feeder.feed_token(TokenType::Plus, 14..15).unwrap();
+    feeder.feed_token(TokenType::Integer, 16..17).unwrap();
+    feeder.end_macro();
 
-    session.feed(TokenType::Comma, &source[18..19]).unwrap();
-    session.feed(TokenType::Integer, &source[20..21]).unwrap();
+    feeder.feed_token(TokenType::Comma, 18..19).unwrap();
+    feeder.feed_token(TokenType::Integer, 20..21).unwrap();
 
-    let root = session.finish().unwrap().expect("expected a statement");
+    let root = feeder.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(session.base(), root), "SELECT foo!(1 + 2), 3");
+    assert_eq!(fmt.format_node(feeder.base(), root), "SELECT foo!(1 + 2), 3");
 }
 
 #[test]
@@ -34,20 +34,20 @@ fn macro_multi_node_emitted_once() {
     let source = "SELECT macro!(a, b)";
     let fmt = formatter();
 
-    let mut parser = syntaqlite::Parser::new();
-    let mut session = parser.token_session(source);
+    let mut tp = syntaqlite::TokenParser::new();
+    let mut feeder = tp.feed(source);
 
-    session.feed(TokenType::Select, &source[0..6]).unwrap();
+    feeder.feed_token(TokenType::Select, 0..6).unwrap();
 
-    session.begin_macro(7, 12);
-    session.feed(TokenType::Id, &source[14..15]).unwrap();
-    session.feed(TokenType::Comma, &source[15..16]).unwrap();
-    session.feed(TokenType::Id, &source[17..18]).unwrap();
-    session.end_macro();
+    feeder.begin_macro(7, 12);
+    feeder.feed_token(TokenType::Id, 14..15).unwrap();
+    feeder.feed_token(TokenType::Comma, 15..16).unwrap();
+    feeder.feed_token(TokenType::Id, 17..18).unwrap();
+    feeder.end_macro();
 
-    let root = session.finish().unwrap().expect("expected a statement");
+    let root = feeder.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(session.base(), root), "SELECT macro!(a, b)");
+    assert_eq!(fmt.format_node(feeder.base(), root), "SELECT macro!(a, b)");
 }
 
 #[test]
@@ -55,23 +55,23 @@ fn macro_multi_node_no_extra_separator() {
     let source = "SELECT foo!(a, b), c";
     let fmt = formatter();
 
-    let mut parser = syntaqlite::Parser::new();
-    let mut session = parser.token_session(source);
+    let mut tp = syntaqlite::TokenParser::new();
+    let mut feeder = tp.feed(source);
 
-    session.feed(TokenType::Select, &source[0..6]).unwrap();
+    feeder.feed_token(TokenType::Select, 0..6).unwrap();
 
-    session.begin_macro(7, 10);
-    session.feed(TokenType::Id, &source[12..13]).unwrap();
-    session.feed(TokenType::Comma, &source[13..14]).unwrap();
-    session.feed(TokenType::Id, &source[15..16]).unwrap();
-    session.end_macro();
+    feeder.begin_macro(7, 10);
+    feeder.feed_token(TokenType::Id, 12..13).unwrap();
+    feeder.feed_token(TokenType::Comma, 13..14).unwrap();
+    feeder.feed_token(TokenType::Id, 15..16).unwrap();
+    feeder.end_macro();
 
-    session.feed(TokenType::Comma, &source[17..18]).unwrap();
-    session.feed(TokenType::Id, &source[19..20]).unwrap();
+    feeder.feed_token(TokenType::Comma, 17..18).unwrap();
+    feeder.feed_token(TokenType::Id, 19..20).unwrap();
 
-    let root = session.finish().unwrap().expect("expected a statement");
+    let root = feeder.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(session.base(), root), "SELECT foo!(a, b), c");
+    assert_eq!(fmt.format_node(feeder.base(), root), "SELECT foo!(a, b), c");
 }
 
 #[test]
@@ -79,17 +79,17 @@ fn no_macro_regions_formats_normally() {
     let source = "SELECT  1+2,  3";
     let fmt = formatter();
 
-    let mut parser = syntaqlite::Parser::new();
-    let mut session = parser.token_session(source);
+    let mut tp = syntaqlite::TokenParser::new();
+    let mut feeder = tp.feed(source);
 
-    session.feed(TokenType::Select, &source[0..6]).unwrap();
-    session.feed(TokenType::Integer, &source[8..9]).unwrap();
-    session.feed(TokenType::Plus, &source[9..10]).unwrap();
-    session.feed(TokenType::Integer, &source[10..11]).unwrap();
-    session.feed(TokenType::Comma, &source[11..12]).unwrap();
-    session.feed(TokenType::Integer, &source[14..15]).unwrap();
+    feeder.feed_token(TokenType::Select, 0..6).unwrap();
+    feeder.feed_token(TokenType::Integer, 8..9).unwrap();
+    feeder.feed_token(TokenType::Plus, 9..10).unwrap();
+    feeder.feed_token(TokenType::Integer, 10..11).unwrap();
+    feeder.feed_token(TokenType::Comma, 11..12).unwrap();
+    feeder.feed_token(TokenType::Integer, 14..15).unwrap();
 
-    let root = session.finish().unwrap().expect("expected a statement");
+    let root = feeder.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(session.base(), root), "SELECT 1 + 2, 3");
+    assert_eq!(fmt.format_node(feeder.base(), root), "SELECT 1 + 2, 3");
 }

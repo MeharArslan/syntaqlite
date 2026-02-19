@@ -3,7 +3,7 @@ pub mod parser;
 pub use parser::{
     CursorBase, FieldVal, Fields, NodeId,
     NodeList, SourceSpan, MacroRegion, ParseError, Parser, ParserConfig, RawToken,
-    StatementCursor, TokenFeeder, TokenParser, Tokenizer, TokenizerSession, Trivia, TriviaKind,
+    StatementCursor, TokenFeeder, TokenParser, Tokenizer, TokenCursor, Trivia, TriviaKind,
 };
 
 #[cfg(feature = "fmt")]

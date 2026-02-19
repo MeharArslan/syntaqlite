@@ -1,3 +1,5 @@
+use std::ffi::CStr;
+
 use super::ffi;
 
 /// A raw token: (token_type ordinal, text slice).
@@ -32,11 +34,12 @@ impl Tokenizer {
         }
     }
 
-    /// Bind source text and return a `TokenizerSession` for iterating tokens.
+    /// Bind source text and return a `TokenCursor` for iterating tokens.
     ///
     /// Copies the source into an internal buffer to add a null terminator
-    /// (required by the C tokenizer).
-    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> TokenizerSession<'a> {
+    /// (required by the C tokenizer). For zero-copy tokenization, use
+    /// [`tokenize_cstr`](Self::tokenize_cstr).
+    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> TokenCursor<'a> {
         self.source_buf.clear();
         self.source_buf.reserve(source.len() + 1);
         self.source_buf.extend_from_slice(source.as_bytes());
@@ -50,9 +53,34 @@ impl Tokenizer {
                 source.len() as u32,
             );
         }
-        TokenizerSession {
-            tokenizer: self,
+        TokenCursor {
+            raw: self.raw,
             source,
+            c_source_base: c_source_ptr,
+        }
+    }
+
+    /// Zero-copy variant: bind a null-terminated source and return a
+    /// `TokenCursor`.
+    ///
+    /// The `&CStr` already guarantees a trailing `\0`, so no copy is needed.
+    /// The source must be valid UTF-8 (panics otherwise).
+    pub fn tokenize_cstr<'a>(&'a mut self, source: &'a CStr) -> TokenCursor<'a> {
+        let bytes = source.to_bytes();
+        let source_str =
+            std::str::from_utf8(bytes).expect("source must be valid UTF-8");
+
+        unsafe {
+            ffi::syntaqlite_tokenizer_reset(
+                self.raw,
+                source.as_ptr(),
+                bytes.len() as u32,
+            );
+        }
+        TokenCursor {
+            raw: self.raw,
+            source: source_str,
+            c_source_base: source.as_ptr() as *const u8,
         }
     }
 }
@@ -63,13 +91,16 @@ impl Drop for Tokenizer {
     }
 }
 
-/// An active tokenizer session. Iterates tokens from the bound source.
-pub struct TokenizerSession<'a> {
-    tokenizer: &'a mut Tokenizer,
+/// An active tokenizer cursor. Iterates tokens from the bound source.
+pub struct TokenCursor<'a> {
+    raw: *mut ffi::Tokenizer,
     source: &'a str,
+    /// Base pointer of the C source buffer. Used to compute offsets back
+    /// into the Rust `source` slice.
+    c_source_base: *const u8,
 }
 
-impl<'a> Iterator for TokenizerSession<'a> {
+impl<'a> Iterator for TokenCursor<'a> {
     type Item = RawToken<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -78,14 +109,13 @@ impl<'a> Iterator for TokenizerSession<'a> {
             length: 0,
             type_: 0,
         };
-        let rc = unsafe { ffi::syntaqlite_tokenizer_next(self.tokenizer.raw, &mut token) };
+        let rc = unsafe { ffi::syntaqlite_tokenizer_next(self.raw, &mut token) };
         if rc == 0 {
             return None;
         }
 
         // Compute offset into the source string from the C pointer.
-        let c_base = self.tokenizer.source_buf.as_ptr();
-        let offset = token.text as usize - c_base as usize;
+        let offset = token.text as usize - self.c_source_base as usize;
         let len = token.length as usize;
         let text = &self.source[offset..offset + len];
 
