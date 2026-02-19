@@ -234,7 +234,7 @@ fn cmd_ast_source(dialect: &ConvertedDialect, source: &str) -> Result<(), String
         if count > 0 {
             buf.push_str("----\n");
         }
-        dialect.dump_node(&session, root_id, &mut buf, 0);
+        session.dump_node(root_id, &mut buf, 0);
         count += 1;
     }
 

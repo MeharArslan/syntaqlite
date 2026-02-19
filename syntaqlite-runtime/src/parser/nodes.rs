@@ -1,5 +1,3 @@
-use std::fmt::Write;
-
 // ── Core types ──────────────────────────────────────────────────────────
 
 /// A typed wrapper around a raw arena node ID.
@@ -107,26 +105,20 @@ pub enum FieldVal<'a> {
 }
 
 /// The kind of value stored in a node field.
-///
-/// For `Flags` and `Enum`, the display table holds human-readable names:
-/// - `Flags`: indexed by bit position (0, 1, 2, …); each entry is the flag name
-///   for that bit, or `""` if unused.
-/// - `Enum`: indexed by ordinal (0, 1, 2, …); each entry is the variant name.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum FieldKind {
     NodeId,
     Span,
     Bool,
-    Flags(Vec<String>),
-    Enum(Vec<String>),
+    Flags,
+    Enum,
 }
 
 /// Metadata for one field of a node struct: its byte offset and value kind.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct FieldDescriptor {
     pub offset: u16,
     pub kind: FieldKind,
-    pub name: String,
 }
 
 impl FieldDescriptor {
@@ -150,104 +142,9 @@ impl FieldDescriptor {
                     }
                 }
                 FieldKind::Bool => FieldVal::Bool(*(field_ptr as *const u32) != 0),
-                FieldKind::Flags(_) => FieldVal::Flags(*(field_ptr as *const u8)),
-                FieldKind::Enum(_) => FieldVal::Enum(*(field_ptr as *const u32)),
+                FieldKind::Flags => FieldVal::Flags(*(field_ptr as *const u8)),
+                FieldKind::Enum => FieldVal::Enum(*(field_ptr as *const u32)),
             }
-        }
-    }
-}
-
-/// Format a flags byte using the display table (indexed by bit position).
-pub fn format_flags(value: u8, display: &[String]) -> String {
-    if value == 0 {
-        return "(none)".into();
-    }
-    let mut s = String::new();
-    for bit in 0..8u8 {
-        if value & (1 << bit) != 0 {
-            let name = display.get(bit as usize).map(|s| s.as_str()).unwrap_or("?");
-            if !name.is_empty() {
-                if !s.is_empty() {
-                    s.push(' ');
-                }
-                s.push_str(name);
-            }
-        }
-    }
-    if s.is_empty() { "(none)".into() } else { s }
-}
-
-// ── Dump ────────────────────────────────────────────────────────────────
-
-/// Dump an AST node tree as indented text. Parameterized over dialect-specific
-/// node metadata (field descriptors, node names) and a raw node pointer lookup.
-pub fn dump_node_with(
-    node_ptr_fn: &dyn Fn(NodeId) -> Option<(*const u8, u32)>,
-    source: &str,
-    field_descriptors: &[Vec<FieldDescriptor>],
-    node_names: &[String],
-    id: NodeId,
-    out: &mut String,
-    indent: usize,
-) {
-    if id.is_null() {
-        return;
-    }
-    let Some((ptr, tag)) = node_ptr_fn(id) else {
-        return;
-    };
-    let tag_idx = tag as usize;
-    let pad = "  ".repeat(indent);
-
-    // Check if this is a list node (tag + count header)
-    let descriptors = field_descriptors.get(tag_idx).map(|v| v.as_slice()).unwrap_or(&[]);
-    if descriptors.is_empty() && tag != 0 {
-        // Likely a list node — check by reading the NodeList header
-        let list = unsafe { &*(ptr as *const NodeList) };
-        let _ = writeln!(out, "{pad}{} [{} items]", node_names[tag_idx], list.count);
-        for child_id in list.children() {
-            dump_node_with(node_ptr_fn, source, field_descriptors, node_names, *child_id, out, indent + 1);
-        }
-        return;
-    }
-
-    let _ = writeln!(out, "{pad}{}", node_names[tag_idx]);
-
-    let mut fields = Fields::new();
-    for desc in descriptors {
-        fields.push(unsafe { desc.extract(ptr, source) });
-    }
-
-    for (desc, val) in descriptors.iter().zip(fields.iter()) {
-        match (val, &desc.kind) {
-            (FieldVal::NodeId(child_id), _) => {
-                if child_id.is_null() {
-                    let _ = writeln!(out, "{pad}  {}: (none)", desc.name);
-                } else {
-                    let _ = writeln!(out, "{pad}  {}:", desc.name);
-                    dump_node_with(node_ptr_fn, source, field_descriptors, node_names, *child_id, out, indent + 2);
-                }
-            }
-            (FieldVal::Span(text, _), _) => {
-                if text.is_empty() {
-                    let _ = writeln!(out, "{pad}  {}: null", desc.name);
-                } else {
-                    let _ = writeln!(out, "{pad}  {}: \"{text}\"", desc.name);
-                }
-            }
-            (FieldVal::Bool(b), _) => {
-                let s = if *b { "TRUE" } else { "FALSE" };
-                let _ = writeln!(out, "{pad}  {}: {s}", desc.name);
-            }
-            (FieldVal::Flags(v), FieldKind::Flags(display)) => {
-                let s = format_flags(*v, display);
-                let _ = writeln!(out, "{pad}  {}: {s}", desc.name);
-            }
-            (FieldVal::Enum(v), FieldKind::Enum(display)) => {
-                let s = display.get(*v as usize).map(|s| s.as_str()).unwrap_or("?");
-                let _ = writeln!(out, "{pad}  {}: {s}", desc.name);
-            }
-            _ => {}
         }
     }
 }

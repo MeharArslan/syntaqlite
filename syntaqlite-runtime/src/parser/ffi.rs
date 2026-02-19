@@ -67,4 +67,8 @@ unsafe extern "C" {
     pub fn syntaqlite_parser_macro_regions(
         p: *mut RawParser, count: *mut u32) -> *const RawMacroRegion;
 
+    // AST dump
+    pub fn syntaqlite_dump_node(
+        p: *mut RawParser, node_id: u32, indent: u32) -> *mut c_char;
+
 }

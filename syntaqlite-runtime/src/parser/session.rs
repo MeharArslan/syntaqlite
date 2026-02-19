@@ -381,6 +381,21 @@ impl<'a> Session<'a> {
         }
     }
 
+    /// Dump an AST node tree as indented text. Uses C-side metadata (field
+    /// names, display strings) so no Rust-side string tables are needed.
+    pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
+        let ptr = unsafe {
+            ffi::syntaqlite_dump_node(self.parser.raw, id.0, indent as u32)
+        };
+        if !ptr.is_null() {
+            let cstr = unsafe { CStr::from_ptr(ptr) };
+            out.push_str(&cstr.to_string_lossy());
+            // Free the C-allocated string via the parser's default allocator (free).
+            unsafe extern "C" { fn free(ptr: *mut std::ffi::c_void); }
+            unsafe { free(ptr as *mut std::ffi::c_void) };
+        }
+    }
+
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
     pub fn macro_regions(&self) -> &[MacroRegion] {
         let mut count: u32 = 0;

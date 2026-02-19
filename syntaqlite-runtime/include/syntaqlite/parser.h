@@ -132,6 +132,15 @@ const SyntaqliteMacroRegion* syntaqlite_parser_macro_regions(
     SyntaqliteParser* p, uint32_t* count);
 
 // ---------------------------------------------------------------------------
+// AST dump
+// ---------------------------------------------------------------------------
+
+// Dump an AST node tree as indented text. Returns a malloc'd NUL-terminated
+// string. The caller must free() the result. Returns NULL on allocation failure.
+char* syntaqlite_dump_node(SyntaqliteParser* p, uint32_t node_id,
+                           uint32_t indent);
+
+// ---------------------------------------------------------------------------
 // Configuration (call after create, before first reset)
 // ---------------------------------------------------------------------------
 
