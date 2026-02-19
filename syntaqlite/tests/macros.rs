@@ -3,7 +3,7 @@ use syntaqlite::ast::SessionExt;
 use syntaqlite::tokens::TokenType;
 use syntaqlite_runtime::fmt::Formatter;
 
-fn formatter() -> Formatter {
+fn formatter() -> Formatter<'static> {
     Formatter::new(syntaqlite::dialect()).unwrap()
 }
 

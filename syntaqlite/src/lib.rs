@@ -4,18 +4,18 @@ use std::sync::LazyLock;
 
 use generated::nodes::Node;
 use generated::tokens::TokenType;
-use syntaqlite_runtime::dialect::ffi::SyntaqliteDialect;
+use syntaqlite_runtime::dialect::ffi;
 
 /// Marker type for the SQLite dialect.
 pub struct Sqlite;
 
 unsafe extern "C" {
     // SAFETY: The generated code must provide this function, and it must return
-    // a valid pointer to a `SyntaqliteDialect` struct with `'static` lifetime.
-    fn syntaqlite_sqlite_dialect() -> *const SyntaqliteDialect;
+    // a valid pointer to a `ffi::Dialect` struct with `'static` lifetime.
+    fn syntaqlite_sqlite_dialect() -> *const ffi::Dialect;
 }
 
-static DIALECT: LazyLock<syntaqlite_runtime::Dialect> =
+static DIALECT: LazyLock<syntaqlite_runtime::Dialect<'static>> =
     LazyLock::new(|| unsafe { syntaqlite_runtime::Dialect::from_raw(syntaqlite_sqlite_dialect()) });
 
 impl syntaqlite_runtime::DialectTypes for Sqlite {
@@ -30,7 +30,7 @@ impl syntaqlite_runtime::DialectTypes for Sqlite {
 // ── Public API ──────────────────────────────────────────────────────────
 
 /// Access the SQLite dialect (lazy-initialized).
-pub fn dialect() -> &'static syntaqlite_runtime::Dialect {
+pub fn dialect() -> &'static syntaqlite_runtime::Dialect<'static> {
     &DIALECT
 }
 

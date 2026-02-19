@@ -21,7 +21,7 @@ impl std::error::Error for ParseError {}
 
 /// Owns a parser instance. Reusable across inputs via `parse()`.
 pub struct Parser {
-    raw: *mut ffi::SyntaqliteParser,
+    raw: *mut ffi::Parser,
     /// Null-terminated copy of the source text. The C tokenizer (SQLite's
     /// `synq_sqlite3GetToken`) reads until it hits a null byte, so we must
     /// ensure the source is null-terminated. Rust `&str` does not guarantee

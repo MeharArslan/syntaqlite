@@ -1,3 +1,4 @@
+use crate::dialect::Dialect;
 use crate::parser::{FieldVal, NodeId};
 
 use super::bytecode::opcodes;
@@ -94,17 +95,12 @@ fn decode_op(opcode: u8, a: u8, b: u16, c: u16) -> FmtOp {
 
 // ── Interpreter ──────────────────────────────────────────────────────────
 
-/// Bytecode interpreter for formatting ops. Holds raw C pointers and
-/// decodes everything on demand — zero allocation for data access.
+/// Bytecode interpreter for formatting ops. Reads string/enum data via
+/// `Dialect` safe accessors and decodes ops from a byte slice on demand.
 pub(crate) struct Interpreter<'a, 'b> {
-    // C string table (keywords, separators)
-    fmt_strings: *const *const std::ffi::c_char,
-    fmt_string_count: usize,
-    // C enum display lookup table
-    fmt_enum_display: *const u16,
-    fmt_enum_display_count: usize,
+    dialect: Dialect<'a>,
     // Raw ops for the current node (6 bytes each, decoded on demand)
-    ops_base: *const u8,
+    ops: &'b [u8],
     ops_len: usize,
     // Callbacks
     format_child: &'b dyn Fn(NodeId, &mut DocArena<'a>) -> DocId,
@@ -113,18 +109,10 @@ pub(crate) struct Interpreter<'a, 'b> {
     source_offset: Option<&'b dyn Fn(NodeId) -> Option<u32>>,
 }
 
-// SAFETY: All pointers reference static C data with no mutable state.
-unsafe impl<'a, 'b> Send for Interpreter<'a, 'b> {}
-unsafe impl<'a, 'b> Sync for Interpreter<'a, 'b> {}
-
 impl<'a, 'b> Interpreter<'a, 'b> {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
-        fmt_strings: *const *const std::ffi::c_char,
-        fmt_string_count: usize,
-        fmt_enum_display: *const u16,
-        fmt_enum_display_count: usize,
-        ops_base: *const u8,
+        dialect: Dialect<'a>,
+        ops: &'b [u8],
         ops_len: usize,
         format_child: &'b dyn Fn(NodeId, &mut DocArena<'a>) -> DocId,
         resolve_list: &'b dyn Fn(NodeId) -> Vec<NodeId>,
@@ -132,11 +120,8 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         source_offset: Option<&'b dyn Fn(NodeId) -> Option<u32>>,
     ) -> Self {
         Interpreter {
-            fmt_strings,
-            fmt_string_count,
-            fmt_enum_display,
-            fmt_enum_display_count,
-            ops_base,
+            dialect,
+            ops,
             ops_len,
             format_child,
             resolve_list,
@@ -146,22 +131,15 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     }
 
     /// Look up a string from the C string table by index.
-    /// Returns `&'a str` — the raw pointer access does not borrow `self`.
     #[inline]
     fn string(&self, sid: u16) -> &'a str {
-        let idx = sid as usize;
-        assert!(idx < self.fmt_string_count, "string index {} out of bounds (count={})", idx, self.fmt_string_count);
-        unsafe {
-            let cstr = std::ffi::CStr::from_ptr(*self.fmt_strings.add(idx));
-            cstr.to_str().expect("invalid UTF-8 in fmt string")
-        }
+        self.dialect.fmt_string(sid)
     }
 
     /// Look up a value in the enum display table.
     #[inline]
     fn enum_display_val(&self, idx: usize) -> u16 {
-        assert!(idx < self.fmt_enum_display_count, "enum_display index {} out of bounds", idx);
-        unsafe { *self.fmt_enum_display.add(idx) }
+        self.dialect.fmt_enum_display_val(idx)
     }
 
     /// Decode op at position `ip` from the raw byte stream.
@@ -169,19 +147,11 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     fn op_at(&self, ip: usize) -> FmtOp {
         debug_assert!(ip < self.ops_len);
         let base = ip * 6;
-        unsafe {
-            let opcode = *self.ops_base.add(base);
-            let a = *self.ops_base.add(base + 1);
-            let b = u16::from_le_bytes([
-                *self.ops_base.add(base + 2),
-                *self.ops_base.add(base + 3),
-            ]);
-            let c = u16::from_le_bytes([
-                *self.ops_base.add(base + 4),
-                *self.ops_base.add(base + 5),
-            ]);
-            decode_op(opcode, a, b, c)
-        }
+        let opcode = self.ops[base];
+        let a = self.ops[base + 1];
+        let b = u16::from_le_bytes([self.ops[base + 2], self.ops[base + 3]]);
+        let c = u16::from_le_bytes([self.ops[base + 4], self.ops[base + 5]]);
+        decode_op(opcode, a, b, c)
     }
 
     /// Interpret the ops into a Doc tree.
@@ -489,56 +459,69 @@ pub(crate) fn encode_op(op: &FmtOp) -> [u8; 6] {
     [opcode, a, b_bytes[0], b_bytes[1], c_bytes[0], c_bytes[1]]
 }
 
-/// Test helper: owns CStrings and provides C-compatible string pointer array.
+/// Test helper: encodes FmtOps into raw bytes.
 #[cfg(test)]
-pub(crate) struct TestStrings {
+pub(crate) fn encode_ops(ops: &[FmtOp]) -> Vec<u8> {
+    let mut bytes = Vec::with_capacity(ops.len() * 6);
+    for op in ops {
+        bytes.extend_from_slice(&encode_op(op));
+    }
+    bytes
+}
+
+/// Test helper: owns string table data and a minimal `ffi::Dialect`.
+#[cfg(test)]
+pub(crate) struct TestDialect {
     _strings: Vec<std::ffi::CString>,
-    ptrs: Vec<*const std::ffi::c_char>,
+    _ptrs: Vec<*const std::ffi::c_char>,
+    _enum_display: Vec<u16>,
+    raw: crate::dialect::ffi::Dialect,
 }
 
 #[cfg(test)]
-impl TestStrings {
-    pub fn new(strings: &[&str]) -> Self {
+impl TestDialect {
+    pub fn new(strings: &[&str], enum_display: &[u16]) -> Self {
         let cstrings: Vec<std::ffi::CString> = strings
             .iter()
             .map(|s| std::ffi::CString::new(*s).unwrap())
             .collect();
-        let ptrs: Vec<*const std::ffi::c_char> = cstrings.iter().map(|cs| cs.as_ptr()).collect();
-        TestStrings { _strings: cstrings, ptrs }
-    }
+        let ptrs: Vec<*const std::ffi::c_char> =
+            cstrings.iter().map(|cs| cs.as_ptr()).collect();
+        let enum_display = enum_display.to_vec();
 
-    pub fn ptr(&self) -> *const *const std::ffi::c_char {
-        self.ptrs.as_ptr()
-    }
+        let raw = crate::dialect::ffi::Dialect {
+            name: std::ptr::null(),
+            tables: std::ptr::null(),
+            reduce_actions: std::ptr::null(),
+            range_meta: std::ptr::null(),
+            tk_space: 0,
+            tk_semi: 0,
+            tk_comment: 0,
+            node_count: 0,
+            node_names: std::ptr::null(),
+            field_meta: std::ptr::null(),
+            field_meta_counts: std::ptr::null(),
+            list_tags: std::ptr::null(),
+            fmt_strings: ptrs.as_ptr(),
+            fmt_string_count: ptrs.len() as u16,
+            fmt_enum_display: enum_display.as_ptr(),
+            fmt_enum_display_count: enum_display.len() as u16,
+            fmt_ops: std::ptr::null(),
+            fmt_op_count: 0,
+            fmt_dispatch: std::ptr::null(),
+            fmt_dispatch_count: 0,
+        };
 
-    pub fn count(&self) -> usize {
-        self.ptrs.len()
-    }
-}
-
-/// Test helper: encodes FmtOps into raw bytes and provides C-compatible pointer.
-#[cfg(test)]
-pub(crate) struct TestOps {
-    bytes: Vec<u8>,
-    len: usize,
-}
-
-#[cfg(test)]
-impl TestOps {
-    pub fn new(ops: &[FmtOp]) -> Self {
-        let mut bytes = Vec::with_capacity(ops.len() * 6);
-        for op in ops {
-            bytes.extend_from_slice(&encode_op(op));
+        TestDialect {
+            _strings: cstrings,
+            _ptrs: ptrs,
+            _enum_display: enum_display,
+            raw,
         }
-        TestOps { bytes, len: ops.len() }
     }
 
-    pub fn ptr(&self) -> *const u8 {
-        self.bytes.as_ptr()
-    }
-
-    pub fn len(&self) -> usize {
-        self.len
+    pub fn dialect(&self) -> Dialect<'_> {
+        Dialect { raw: &self.raw }
     }
 }
 
@@ -560,14 +543,12 @@ mod tests {
     }
 
     fn run(ops: &[FmtOp], strings: &[&str], enum_display: &[u16], fields: &[FieldVal], config: &FormatConfig) -> String {
-        let ts = TestStrings::new(strings);
-        let to = TestOps::new(ops);
-        let ed_ptr = if enum_display.is_empty() { std::ptr::null() } else { enum_display.as_ptr() };
+        let td = TestDialect::new(strings, enum_display);
+        let dialect = td.dialect();
+        let ops_bytes = encode_ops(ops);
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            ts.ptr(), ts.count(),
-            ed_ptr, enum_display.len(),
-            to.ptr(), to.len(),
+            dialect, &ops_bytes, ops.len(),
             &noop_child, &no_lists, None, None,
         );
         let doc = interp.run(fields, None, &mut arena);
@@ -634,8 +615,9 @@ mod tests {
 
     #[test]
     fn child_recurses_into_child_node() {
-        let ts = TestStrings::new(&[]);
-        let to = TestOps::new(&[FmtOp::Child(0)]);
+        let td = TestDialect::new(&[], &[]);
+        let dialect = td.dialect();
+        let ops_bytes = encode_ops(&[FmtOp::Child(0)]);
         let fields = &[FieldVal::NodeId(NodeId(42))];
         let mut arena = DocArena::new();
         let format_child = |node_id: NodeId, arena: &mut DocArena| {
@@ -643,9 +625,7 @@ mod tests {
             arena.text("child_result")
         };
         let interp = Interpreter::new(
-            ts.ptr(), ts.count(),
-            std::ptr::null(), 0,
-            to.ptr(), to.len(),
+            dialect, &ops_bytes, 1,
             &format_child, &no_lists, None, None,
         );
         let doc = interp.run(fields, None, &mut arena);
@@ -701,15 +681,17 @@ mod tests {
 
     #[test]
     fn foreach_comma_separated() {
-        let ts = TestStrings::new(&[", "]);
-        let to = TestOps::new(&[
+        let td = TestDialect::new(&[", "], &[]);
+        let dialect = td.dialect();
+        let ops = &[
             FmtOp::GroupStart,
             FmtOp::ForEachStart(0),
             FmtOp::ChildItem,
             FmtOp::ForEachSep(0),
             FmtOp::ForEachEnd,
             FmtOp::GroupEnd,
-        ]);
+        ];
+        let ops_bytes = encode_ops(ops);
         let fields = &[FieldVal::NodeId(NodeId(99))];
         let format_child = |id: NodeId, arena: &mut DocArena| match id.0 {
             10 => arena.text("a"),
@@ -723,9 +705,7 @@ mod tests {
         };
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            ts.ptr(), ts.count(),
-            std::ptr::null(), 0,
-            to.ptr(), to.len(),
+            dialect, &ops_bytes, ops.len(),
             &format_child, &resolve_list, None, None,
         );
         let doc = interp.run(fields, None, &mut arena);
@@ -734,8 +714,9 @@ mod tests {
 
     #[test]
     fn foreach_with_line_breaks() {
-        let ts = TestStrings::new(&[","]);
-        let to = TestOps::new(&[
+        let td = TestDialect::new(&[","], &[]);
+        let dialect = td.dialect();
+        let ops = &[
             FmtOp::GroupStart,
             FmtOp::ForEachStart(0),
             FmtOp::ChildItem,
@@ -743,7 +724,8 @@ mod tests {
             FmtOp::Line,
             FmtOp::ForEachEnd,
             FmtOp::GroupEnd,
-        ]);
+        ];
+        let ops_bytes = encode_ops(ops);
         let fields = &[FieldVal::NodeId(NodeId(99))];
         let format_child = |id: NodeId, arena: &mut DocArena| match id.0 {
             10 => arena.text("aaaa"),
@@ -756,9 +738,7 @@ mod tests {
         };
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            ts.ptr(), ts.count(),
-            std::ptr::null(), 0,
-            to.ptr(), to.len(),
+            dialect, &ops_bytes, ops.len(),
             &format_child, &resolve_list, None, None,
         );
         let doc = interp.run(fields, None, &mut arena);
@@ -769,15 +749,17 @@ mod tests {
 
     #[test]
     fn foreach_empty_list() {
-        let ts = TestStrings::new(&["a", ", ", "b"]);
-        let to = TestOps::new(&[
+        let td = TestDialect::new(&["a", ", ", "b"], &[]);
+        let dialect = td.dialect();
+        let ops = &[
             FmtOp::Keyword(0),
             FmtOp::ForEachStart(0),
             FmtOp::ChildItem,
             FmtOp::ForEachSep(1),
             FmtOp::ForEachEnd,
             FmtOp::Keyword(2),
-        ]);
+        ];
+        let ops_bytes = encode_ops(ops);
         let fields = &[FieldVal::NodeId(NodeId(99))];
         let resolve_list = |id: NodeId| match id.0 {
             99 => vec![],
@@ -785,9 +767,7 @@ mod tests {
         };
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            ts.ptr(), ts.count(),
-            std::ptr::null(), 0,
-            to.ptr(), to.len(),
+            dialect, &ops_bytes, ops.len(),
             &noop_child, &resolve_list, None, None,
         );
         let doc = interp.run(fields, None, &mut arena);
@@ -912,13 +892,15 @@ mod tests {
 
     #[test]
     fn foreach_self_start() {
-        let ts = TestStrings::new(&[", "]);
-        let to = TestOps::new(&[
+        let td = TestDialect::new(&[", "], &[]);
+        let dialect = td.dialect();
+        let ops = &[
             FmtOp::ForEachSelfStart,
             FmtOp::ChildItem,
             FmtOp::ForEachSep(0),
             FmtOp::ForEachEnd,
-        ]);
+        ];
+        let ops_bytes = encode_ops(ops);
         let children = &[NodeId(10), NodeId(20), NodeId(30)];
         let format_child = |id: NodeId, arena: &mut DocArena| match id.0 {
             10 => arena.text("x"),
@@ -928,9 +910,7 @@ mod tests {
         };
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            ts.ptr(), ts.count(),
-            std::ptr::null(), 0,
-            to.ptr(), to.len(),
+            dialect, &ops_bytes, ops.len(),
             &format_child, &no_lists, None, None,
         );
         let doc = interp.run(&[], Some(children), &mut arena);
@@ -939,21 +919,21 @@ mod tests {
 
     #[test]
     fn foreach_self_empty() {
-        let ts = TestStrings::new(&["[", ", ", "]"]);
-        let to = TestOps::new(&[
+        let td = TestDialect::new(&["[", ", ", "]"], &[]);
+        let dialect = td.dialect();
+        let ops = &[
             FmtOp::Keyword(0),
             FmtOp::ForEachSelfStart,
             FmtOp::ChildItem,
             FmtOp::ForEachSep(1),
             FmtOp::ForEachEnd,
             FmtOp::Keyword(2),
-        ]);
+        ];
+        let ops_bytes = encode_ops(ops);
         let children: &[NodeId] = &[];
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            ts.ptr(), ts.count(),
-            std::ptr::null(), 0,
-            to.ptr(), to.len(),
+            dialect, &ops_bytes, ops.len(),
             &noop_child, &no_lists, None, None,
         );
         let doc = interp.run(&[], Some(children), &mut arena);

@@ -29,9 +29,9 @@ const _: () = {
     assert!(std::mem::offset_of!(FieldMeta, display_count) == 3 * P);
 };
 
-/// Mirrors the C `SyntaqliteDialect` struct defined in `include/syntaqlite/dialect.h`.
+/// Mirrors the C `Dialect` struct defined in `include/syntaqlite/dialect.h`.
 #[repr(C)]
-pub struct SyntaqliteDialect {
+pub struct Dialect {
     pub name: *const std::ffi::c_char,
 
     // Parse tables + reduce actions
@@ -77,25 +77,25 @@ const _: () = {
     const B: usize = align_up(A + P + 2);           // fmt_ops
     const C: usize = align_up(B + P + 2);           // fmt_dispatch
 
-    assert!(std::mem::offset_of!(SyntaqliteDialect, name) == 0);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, tables) == P);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, reduce_actions) == 2 * P);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, range_meta) == 3 * P);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, tk_space) == 4 * P);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, tk_semi) == 4 * P + 4);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, tk_comment) == 4 * P + 8);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, node_count) == 4 * P + 12);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, node_names) == AFTER_INTS);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, field_meta) == 5 * P + 16);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, field_meta_counts) == 6 * P + 16);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, list_tags) == 7 * P + 16);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, fmt_strings) == 8 * P + 16);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, fmt_string_count) == FMT_STR_COUNT);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, fmt_enum_display) == A);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, fmt_enum_display_count) == A + P);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, fmt_ops) == B);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, fmt_op_count) == B + P);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, fmt_dispatch) == C);
-    assert!(std::mem::offset_of!(SyntaqliteDialect, fmt_dispatch_count) == C + P);
-    assert!(std::mem::size_of::<SyntaqliteDialect>() == align_up(C + P + 2));
+    assert!(std::mem::offset_of!(Dialect, name) == 0);
+    assert!(std::mem::offset_of!(Dialect, tables) == P);
+    assert!(std::mem::offset_of!(Dialect, reduce_actions) == 2 * P);
+    assert!(std::mem::offset_of!(Dialect, range_meta) == 3 * P);
+    assert!(std::mem::offset_of!(Dialect, tk_space) == 4 * P);
+    assert!(std::mem::offset_of!(Dialect, tk_semi) == 4 * P + 4);
+    assert!(std::mem::offset_of!(Dialect, tk_comment) == 4 * P + 8);
+    assert!(std::mem::offset_of!(Dialect, node_count) == 4 * P + 12);
+    assert!(std::mem::offset_of!(Dialect, node_names) == AFTER_INTS);
+    assert!(std::mem::offset_of!(Dialect, field_meta) == 5 * P + 16);
+    assert!(std::mem::offset_of!(Dialect, field_meta_counts) == 6 * P + 16);
+    assert!(std::mem::offset_of!(Dialect, list_tags) == 7 * P + 16);
+    assert!(std::mem::offset_of!(Dialect, fmt_strings) == 8 * P + 16);
+    assert!(std::mem::offset_of!(Dialect, fmt_string_count) == FMT_STR_COUNT);
+    assert!(std::mem::offset_of!(Dialect, fmt_enum_display) == A);
+    assert!(std::mem::offset_of!(Dialect, fmt_enum_display_count) == A + P);
+    assert!(std::mem::offset_of!(Dialect, fmt_ops) == B);
+    assert!(std::mem::offset_of!(Dialect, fmt_op_count) == B + P);
+    assert!(std::mem::offset_of!(Dialect, fmt_dispatch) == C);
+    assert!(std::mem::offset_of!(Dialect, fmt_dispatch_count) == C + P);
+    assert!(std::mem::size_of::<Dialect>() == align_up(C + P + 2));
 };

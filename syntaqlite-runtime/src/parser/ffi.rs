@@ -1,9 +1,9 @@
 use std::ffi::{c_char, c_int, c_void};
 
-use crate::dialect::ffi::SyntaqliteDialect;
+use crate::dialect::ffi::Dialect;
 
 // Opaque C types
-pub(crate) enum SyntaqliteParser {}
+pub(crate) enum Parser {}
 
 /// Mirrors C `SyntaqliteParseResult` from `include/syntaqlite/parser.h`.
 #[repr(C)]
@@ -94,37 +94,37 @@ const _: () = {
 unsafe extern "C" {
     // Parser lifecycle
     pub fn syntaqlite_create_parser_with_dialect(
-        mem: *const MemMethods, dialect: *const SyntaqliteDialect) -> *mut SyntaqliteParser;
-    pub fn syntaqlite_parser_reset(p: *mut SyntaqliteParser, source: *const c_char, len: u32);
-    pub fn syntaqlite_parser_next(p: *mut SyntaqliteParser) -> ParseResult;
-    pub fn syntaqlite_parser_destroy(p: *mut SyntaqliteParser);
+        mem: *const MemMethods, dialect: *const Dialect) -> *mut Parser;
+    pub fn syntaqlite_parser_reset(p: *mut Parser, source: *const c_char, len: u32);
+    pub fn syntaqlite_parser_next(p: *mut Parser) -> ParseResult;
+    pub fn syntaqlite_parser_destroy(p: *mut Parser);
 
     // Parser accessors
-    pub fn syntaqlite_parser_node(p: *mut SyntaqliteParser, node_id: u32) -> *const u32;
+    pub fn syntaqlite_parser_node(p: *mut Parser, node_id: u32) -> *const u32;
 
     // Parser configuration
-    pub fn syntaqlite_parser_set_trace(p: *mut SyntaqliteParser, enable: c_int);
-    pub fn syntaqlite_parser_set_collect_tokens(p: *mut SyntaqliteParser, enable: c_int);
+    pub fn syntaqlite_parser_set_trace(p: *mut Parser, enable: c_int);
+    pub fn syntaqlite_parser_set_collect_tokens(p: *mut Parser, enable: c_int);
 
     // Trivia (comments)
-    pub fn syntaqlite_parser_trivia(p: *mut SyntaqliteParser, count: *mut u32) -> *const Trivia;
+    pub fn syntaqlite_parser_trivia(p: *mut Parser, count: *mut u32) -> *const Trivia;
 
     // Low-level token-feeding API
     pub fn syntaqlite_parser_feed_token(
-        p: *mut SyntaqliteParser, token_type: c_int,
+        p: *mut Parser, token_type: c_int,
         text: *const c_char, len: c_int) -> c_int;
-    pub fn syntaqlite_parser_result(p: *mut SyntaqliteParser) -> ParseResult;
-    pub fn syntaqlite_parser_finish(p: *mut SyntaqliteParser) -> c_int;
+    pub fn syntaqlite_parser_result(p: *mut Parser) -> ParseResult;
+    pub fn syntaqlite_parser_finish(p: *mut Parser) -> c_int;
 
     // Macro region tracking
     pub fn syntaqlite_parser_begin_macro(
-        p: *mut SyntaqliteParser, call_offset: u32, call_length: u32);
-    pub fn syntaqlite_parser_end_macro(p: *mut SyntaqliteParser);
+        p: *mut Parser, call_offset: u32, call_length: u32);
+    pub fn syntaqlite_parser_end_macro(p: *mut Parser);
     pub fn syntaqlite_parser_macro_regions(
-        p: *mut SyntaqliteParser, count: *mut u32) -> *const MacroRegion;
+        p: *mut Parser, count: *mut u32) -> *const MacroRegion;
 
     // AST dump
     pub fn syntaqlite_dump_node(
-        p: *mut SyntaqliteParser, node_id: u32, indent: u32) -> *mut c_char;
+        p: *mut Parser, node_id: u32, indent: u32) -> *mut c_char;
 
 }
