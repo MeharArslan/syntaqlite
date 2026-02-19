@@ -91,9 +91,9 @@ fn feed_token_skips_space() {
     assert_eq!(feeder.node(root_id).unwrap().tag(), NodeTag::SelectStmt);
 }
 
-/// TK_COMMENT should be recorded as trivia.
+/// TK_COMMENT should be recorded as a comment.
 #[test]
-fn feed_token_records_comment_trivia() {
+fn feed_token_records_comment() {
     // Source layout: "SELECT -- hello\n1"
     //                 0123456789...
     let source = "SELECT -- hello\n1";
@@ -110,10 +110,10 @@ fn feed_token_records_comment_trivia() {
     let root_id = feeder.finish().unwrap().expect("expected a statement");
     assert_eq!(feeder.node(root_id).unwrap().tag(), NodeTag::SelectStmt);
 
-    // Verify trivia was captured.
-    let trivia = feeder.trivia();
-    assert_eq!(trivia.len(), 1);
-    assert_eq!(trivia[0].length, 8);
+    // Verify comment was captured.
+    let comments = feeder.comments();
+    assert_eq!(comments.len(), 1);
+    assert_eq!(comments[0].length, 8);
 }
 
 /// begin_macro / end_macro records macro regions.
@@ -246,14 +246,16 @@ fn finish_with_no_tokens() {
 /// High-level API still works after the refactor.
 #[test]
 fn high_level_api_still_works() {
+    use syntaqlite::ast::Stmt;
+
     let mut parser = syntaqlite::Parser::new();
     let mut cursor = parser.parse("SELECT 1; SELECT 2");
 
     let r1 = cursor.next_statement().unwrap().unwrap();
-    assert_eq!(cursor.node(r1).unwrap().tag(), NodeTag::SelectStmt);
+    assert!(matches!(r1, Stmt::SelectStmt(_)));
 
     let r2 = cursor.next_statement().unwrap().unwrap();
-    assert_eq!(cursor.node(r2).unwrap().tag(), NodeTag::SelectStmt);
+    assert!(matches!(r2, Stmt::SelectStmt(_)));
 
     assert!(cursor.next_statement().is_none());
 }

@@ -40,34 +40,34 @@ const _: () = {
     assert!(std::mem::offset_of!(MemMethods, x_free) == P);
 };
 
-/// The kind of a trivia item (comment).
+/// The kind of a comment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-pub enum TriviaKind {
+pub enum CommentKind {
     /// A line comment starting with `--`.
     LineComment = 0,
     /// A block comment delimited by `/* ... */`.
     BlockComment = 1,
 }
 
-/// A comment captured during parsing. Trivia items are sorted by source offset.
+/// A comment captured during parsing. Comments are sorted by source offset.
 ///
-/// Mirrors C `SyntaqliteTrivia` from `include/syntaqlite/parser.h`.
+/// Mirrors C `SyntaqliteComment` from `include/syntaqlite/parser.h`.
 /// Layout: (offset: u32, length: u32, kind: u8) — returned directly from
 /// the C buffer without copying.
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
-pub struct Trivia {
+pub struct Comment {
     pub offset: u32,
     pub length: u32,
-    pub kind: TriviaKind,
+    pub kind: CommentKind,
 }
 
 const _: () = {
-    assert!(std::mem::size_of::<Trivia>() == 12);
-    assert!(std::mem::offset_of!(Trivia, offset) == 0);
-    assert!(std::mem::offset_of!(Trivia, length) == 4);
-    assert!(std::mem::offset_of!(Trivia, kind) == 8);
+    assert!(std::mem::size_of::<Comment>() == 12);
+    assert!(std::mem::offset_of!(Comment, offset) == 0);
+    assert!(std::mem::offset_of!(Comment, length) == 4);
+    assert!(std::mem::offset_of!(Comment, kind) == 8);
 };
 
 /// A recorded macro invocation region. Populated via the low-level API
@@ -130,8 +130,8 @@ unsafe extern "C" {
     pub fn syntaqlite_parser_set_trace(p: *mut Parser, enable: c_int) -> c_int;
     pub fn syntaqlite_parser_set_collect_tokens(p: *mut Parser, enable: c_int) -> c_int;
 
-    // Trivia (comments)
-    pub fn syntaqlite_parser_trivia(p: *mut Parser, count: *mut u32) -> *const Trivia;
+    // Comments
+    pub fn syntaqlite_parser_comments(p: *mut Parser, count: *mut u32) -> *const Comment;
 
     // Low-level token-feeding API
     pub fn syntaqlite_parser_feed_token(

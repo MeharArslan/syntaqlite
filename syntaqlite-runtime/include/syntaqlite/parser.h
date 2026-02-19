@@ -49,12 +49,12 @@ typedef struct SyntaqliteParser SyntaqliteParser;
 // Opaque dialect handle — produced by dialect crates (e.g. syntaqlite_sqlite_dialect()).
 typedef struct SyntaqliteDialect SyntaqliteDialect;
 
-// A trivia item (comment) captured during parsing.
-typedef struct SyntaqliteTrivia {
+// A comment captured during parsing.
+typedef struct SyntaqliteComment {
   uint32_t offset;   // Byte offset in source.
   uint32_t length;   // Byte length.
   uint8_t kind;      // 0 = line comment (--), 1 = block comment (/* */).
-} SyntaqliteTrivia;
+} SyntaqliteComment;
 
 // Result of parsing one statement via syntaqlite_parser_next().
 //
@@ -119,11 +119,11 @@ const char* syntaqlite_parser_source(SyntaqliteParser* p);
 // Return the byte length of the source text bound by the last reset() call.
 uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p);
 
-// Return the trivia (comments) captured during parsing. The returned pointer
+// Return the comments captured during parsing. The returned pointer
 // is valid until the next reset() or destroy(). Requires collect_tokens to be
-// enabled. Sets *count to the number of trivia items.
-const SyntaqliteTrivia* syntaqlite_parser_trivia(SyntaqliteParser* p,
-                                                  uint32_t* count);
+// enabled. Sets *count to the number of comments.
+const SyntaqliteComment* syntaqlite_parser_comments(SyntaqliteParser* p,
+                                                     uint32_t* count);
 
 // Return the macro regions recorded via begin_macro/end_macro. The returned
 // pointer is valid until the next reset() or destroy(). Sets *count to the
@@ -284,7 +284,7 @@ int syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable);
 //   if (rc == 1) { /* final statement complete */ }
 
 // Feed a single token. TK_SPACE is silently skipped. TK_COMMENT is recorded
-// as trivia (when collect_tokens is enabled) but not fed to the parser.
+// as a comment (when collect_tokens is enabled) but not fed to the parser.
 // Returns: 0 = keep going, 1 = statement completed, -1 = error.
 int syntaqlite_parser_feed_token(SyntaqliteParser* p,
                                   int token_type,

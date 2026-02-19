@@ -112,7 +112,7 @@ struct SyntaqliteParser {
   int trace;
   int collect_tokens;
   int sealed;
-  SYNQ_VEC(SyntaqliteTrivia) trivia;
+  SYNQ_VEC(SyntaqliteComment) comments;
   int macro_depth;           // Nesting depth (0 = not in macro).
   SYNQ_VEC(SyntaqliteMacroRegion) macros;
 };
@@ -130,7 +130,7 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
   p->dialect = dialect;
   p->lemon = SyntaqliteParseAlloc(m.xMalloc);
   synq_parse_ctx_init(&p->ctx, m);
-  syntaqlite_vec_init(&p->trivia);
+  syntaqlite_vec_init(&p->comments);
   syntaqlite_vec_init(&p->macros);
   return p;
 }
@@ -155,7 +155,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->finished = 0;
   p->had_error = 0;
   p->error_msg[0] = '\0';
-  syntaqlite_vec_clear(&p->trivia);
+  syntaqlite_vec_clear(&p->comments);
   p->macro_depth = 0;
   syntaqlite_vec_clear(&p->macros);
 
@@ -337,13 +337,13 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
       continue;
     }
 
-    // Capture comments as trivia when collect_tokens is enabled.
+    // Capture comments as comments when collect_tokens is enabled.
     if (token_type == p->dialect->tk_comment) {
       if (p->collect_tokens) {
-        SyntaqliteTrivia t = {
+        SyntaqliteComment t = {
             tok_offset, (uint32_t)token_len,
             z[tok_offset] == '-' ? (uint8_t)0 : (uint8_t)1};
-        syntaqlite_vec_push(&p->trivia, t, p->mem);
+        syntaqlite_vec_push(&p->comments, t, p->mem);
       }
       continue;
     }
@@ -391,14 +391,14 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
     return 0;
   }
 
-  // Record comments as trivia but don't feed to Lemon.
+  // Record comments as comments but don't feed to Lemon.
   if (token_type == p->dialect->tk_comment) {
     if (p->collect_tokens && text) {
       uint32_t tok_offset = (uint32_t)(text - p->source);
-      SyntaqliteTrivia t = {
+      SyntaqliteComment t = {
           tok_offset, (uint32_t)len,
           (uint8_t)(text[0] == '-' ? 0 : 1)};
-      syntaqlite_vec_push(&p->trivia, t, p->mem);
+      syntaqlite_vec_push(&p->comments, t, p->mem);
     }
     return 0;
   }
@@ -622,7 +622,7 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p) {
   if (p) {
     SyntaqliteParseFree(p->lemon, p->mem.xFree);
     synq_parse_ctx_free(&p->ctx);
-    syntaqlite_vec_free(&p->trivia, p->mem);
+    syntaqlite_vec_free(&p->comments, p->mem);
     syntaqlite_vec_free(&p->macros, p->mem);
     p->mem.xFree(p);
   }
@@ -669,9 +669,9 @@ int syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable) {
 }
 
 
-const SyntaqliteTrivia* syntaqlite_parser_trivia(SyntaqliteParser* p,
+const SyntaqliteComment* syntaqlite_parser_comments(SyntaqliteParser* p,
                                                   uint32_t* count) {
-  *count = syntaqlite_vec_len(&p->trivia);
-  return p->trivia.data;
+  *count = syntaqlite_vec_len(&p->comments);
+  return p->comments.data;
 }
 

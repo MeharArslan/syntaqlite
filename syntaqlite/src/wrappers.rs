@@ -3,9 +3,9 @@
 
 use std::ops::Range;
 
-use syntaqlite_runtime::parser::{CursorBase, MacroRegion, Trivia};
+use syntaqlite_runtime::parser::{Comment, CursorBase, MacroRegion};
 
-use crate::ast::Node;
+use crate::ast::{FromArena, Node, Stmt};
 use crate::low_level::TokenType;
 use crate::NodeId;
 use crate::ParseError;
@@ -47,41 +47,22 @@ pub struct StatementCursor<'a> {
 }
 
 impl<'a> StatementCursor<'a> {
-    /// Parse the next SQL statement.
-    pub fn next_statement(
-        &mut self,
-    ) -> Option<Result<NodeId, ParseError>> {
-        self.inner.next_statement()
-    }
-
-    /// Get a typed AST node by ID.
+    /// Parse and return the next SQL statement as a typed `Stmt`.
     ///
-    /// The returned `Node` borrows this cursor, so it cannot outlive it.
-    pub fn node(&self, id: NodeId) -> Option<Node<'_>> {
-        Node::resolve(self.inner.reader(), id)
-    }
-
-    /// Return all trivia (comments) captured during parsing.
-    pub fn trivia(&self) -> &[Trivia] {
-        self.inner.trivia()
-    }
-
-    /// Return all macro regions.
-    pub fn macro_regions(&self) -> &[MacroRegion] {
-        self.inner.macro_regions()
+    /// The returned `Stmt` borrows this cursor, so it cannot outlive it.
+    /// Returns `None` when all statements have been consumed.
+    pub fn next_statement(&mut self) -> Option<Result<Stmt<'_>, ParseError>> {
+        let id = match self.inner.next_statement()? {
+            Ok(id) => id,
+            Err(e) => return Some(Err(e)),
+        };
+        let reader = self.inner.reader();
+        Some(Ok(Stmt::from_arena(reader, id).expect("parser returned invalid node")))
     }
 
     /// Access the underlying `CursorBase` (e.g. for `Formatter::format_node`).
     pub(crate) fn base(&self) -> &CursorBase<'a> {
         self.inner.base()
-    }
-}
-
-impl Iterator for StatementCursor<'_> {
-    type Item = Result<NodeId, ParseError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.next_statement()
     }
 }
 
@@ -106,7 +87,7 @@ impl TokenParser {
         self
     }
 
-    /// Enable token collection (needed for trivia/comment capture).
+    /// Enable token collection (needed for comment capture).
     pub fn with_collect_tokens(mut self) -> Self {
         self.inner.set_collect_tokens(true);
         self
@@ -161,9 +142,9 @@ impl<'a> TokenFeeder<'a> {
         Node::resolve(self.inner.reader(), id)
     }
 
-    /// Return all trivia (comments) captured during parsing.
-    pub fn trivia(&self) -> &[Trivia] {
-        self.inner.trivia()
+    /// Return all comments captured during parsing.
+    pub fn comments(&self) -> &[Comment] {
+        self.inner.comments()
     }
 
     /// Return all macro regions.

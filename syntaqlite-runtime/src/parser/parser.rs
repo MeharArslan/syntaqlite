@@ -5,7 +5,7 @@ use std::ffi::{c_int, CStr};
 
 use crate::dialect::Dialect;
 use super::ffi;
-use super::ffi::{MacroRegion, Trivia};
+use super::ffi::{Comment, MacroRegion};
 use super::nodes::{NodeId, NodeList};
 
 /// A parse error with a human-readable message.
@@ -265,17 +265,17 @@ impl<'a> CursorBase<'a> {
         Some(unsafe { &*(ptr as *const NodeList) }.children())
     }
 
-    /// Return all trivia (comments) captured during parsing.
+    /// Return all comments captured during parsing.
     /// Requires `collect_tokens: true` in `ParserConfig`.
     ///
     /// Returns a slice into the parser's internal buffer — valid until
     /// the parser is reset or destroyed (which requires `&mut`).
-    pub fn trivia(&self) -> &[Trivia] {
+    pub fn comments(&self) -> &[Comment] {
         // SAFETY: raw is valid; the returned pointer and count are valid for
         // the lifetime of &self (until the next reset/destroy, which need &mut).
         unsafe {
             let mut count: u32 = 0;
-            let ptr = ffi::syntaqlite_parser_trivia(self.reader.raw(), &mut count);
+            let ptr = ffi::syntaqlite_parser_comments(self.reader.raw(), &mut count);
             if count == 0 || ptr.is_null() {
                 return &[];
             }
@@ -291,7 +291,7 @@ impl<'a> CursorBase<'a> {
 
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
     pub fn macro_regions(&self) -> &[MacroRegion] {
-        // SAFETY: same as trivia() — pointer valid for lifetime of &self.
+        // SAFETY: same as comments() — pointer valid for lifetime of &self.
         unsafe {
             let mut count: u32 = 0;
             let ptr = ffi::syntaqlite_parser_macro_regions(self.reader.raw(), &mut count);
@@ -350,19 +350,9 @@ impl<'a> StatementCursor<'a> {
         self.0.source()
     }
 
-    /// Return all trivia (comments) captured during parsing.
-    pub fn trivia(&self) -> &[Trivia] {
-        self.0.trivia()
-    }
-
     /// Dump an AST node tree as indented text.
     pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
         self.0.dump_node(id, out, indent)
-    }
-
-    /// Return all macro regions recorded via `begin_macro`/`end_macro`.
-    pub fn macro_regions(&self) -> &[MacroRegion] {
-        self.0.macro_regions()
     }
 }
 

@@ -9,7 +9,7 @@ pub mod nodes;
 mod tokenizer;
 mod typed_list;
 
-pub use ffi::{MacroRegion, Trivia, TriviaKind};
+pub use ffi::{Comment, CommentKind, MacroRegion};
 pub use nodes::{FieldVal, Fields, NodeId, NodeList, SourceSpan};
 pub use parser::{CursorBase, NodeReader, ParseError, Parser, ParserConfig, StatementCursor};
 pub use token_parser::{TokenFeeder, TokenParser};

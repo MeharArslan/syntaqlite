@@ -6,7 +6,7 @@ use std::ops::Range;
 
 use crate::dialect::Dialect;
 use super::ffi;
-use super::ffi::{MacroRegion, Trivia};
+use super::ffi::{Comment, MacroRegion};
 use super::nodes::NodeId;
 use super::parser::{CursorBase, NodeReader, ParseError, ParserConfig};
 
@@ -50,7 +50,7 @@ impl TokenParser {
         }
     }
 
-    /// Enable or disable token collection (needed for trivia capture).
+    /// Enable or disable token collection (needed for comment capture).
     pub fn set_collect_tokens(&mut self, enable: bool) {
         unsafe {
             ffi::syntaqlite_parser_set_collect_tokens(self.raw, enable as c_int);
@@ -106,7 +106,7 @@ impl<'a> TokenFeeder<'a> {
 
     /// Feed a single token to the parser.
     ///
-    /// `TK_SPACE` is silently skipped. `TK_COMMENT` is recorded as trivia
+    /// `TK_SPACE` is silently skipped. `TK_COMMENT` is recorded as a comment
     /// (when `collect_tokens` is enabled) but not fed to the parser.
     ///
     /// Returns `Ok(Some(root_id))` when a statement completes,
@@ -185,9 +185,9 @@ impl<'a> TokenFeeder<'a> {
         self.0.source()
     }
 
-    /// Return all trivia (comments) captured during parsing.
-    pub fn trivia(&self) -> &[Trivia] {
-        self.0.trivia()
+    /// Return all comments captured during parsing.
+    pub fn comments(&self) -> &[Comment] {
+        self.0.comments()
     }
 
     /// Dump an AST node tree as indented text.

@@ -5,13 +5,13 @@ use std::cell::Cell;
 
 use crate::dialect::Dialect;
 use crate::dialect::ffi::{FieldMeta, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN};
-use crate::parser::{CursorBase, FieldVal, Fields, MacroRegion, NodeId, Parser, ParserConfig, SourceSpan, Trivia, TriviaKind};
+use crate::parser::{Comment, CommentKind, CursorBase, FieldVal, Fields, MacroRegion, NodeId, Parser, ParserConfig, SourceSpan};
 
 use super::FormatConfig;
 use super::doc::{DocArena, DocId, NIL_DOC};
 use super::interpret::Interpreter;
 use super::render::render;
-use super::trivia::TriviaCtx;
+use super::comment::CommentCtx;
 
 // ── Formatter ───────────────────────────────────────────────────────────
 
@@ -69,15 +69,15 @@ impl<'d> Formatter<'d> {
             roots.push(result?);
         }
 
-        let trivia = cursor.trivia().to_vec();
         let base = cursor.base();
+        let comments = base.comments().to_vec();
         Ok(format_stmts(
             self.dialect,
             &self.config,
             self.semicolons,
             base,
             &roots,
-            &trivia,
+            &comments,
             source,
         ))
     }
@@ -99,11 +99,11 @@ fn format_stmts<'a>(
     semicolons: bool,
     cursor: &'a CursorBase<'a>,
     roots: &[NodeId],
-    trivia: &[Trivia],
+    comments: &[Comment],
     source: &str,
 ) -> String {
     let mut out = String::new();
-    let mut trivia_cursor = 0;
+    let mut comment_cursor = 0;
 
     for (i, &root_id) in roots.iter().enumerate() {
         if i > 0 {
@@ -116,24 +116,24 @@ fn format_stmts<'a>(
         let stmt_start =
             first_source_offset(&dialect, cursor, root_id).unwrap_or(source.len() as u32);
 
-        // Emit leading trivia (comments before this statement).
-        while trivia_cursor < trivia.len() && trivia[trivia_cursor].offset < stmt_start {
-            let t = &trivia[trivia_cursor];
+        // Emit leading comments before this statement.
+        while comment_cursor < comments.len() && comments[comment_cursor].offset < stmt_start {
+            let t = &comments[comment_cursor];
             let text = &source[t.offset as usize..(t.offset + t.length) as usize];
             match t.kind {
-                TriviaKind::LineComment => {
+                CommentKind::LineComment => {
                     out.push_str(text);
                     out.push('\n');
                 }
-                TriviaKind::BlockComment => {
+                CommentKind::BlockComment => {
                     out.push_str(text);
                     out.push(' ');
                 }
             }
-            trivia_cursor += 1;
+            comment_cursor += 1;
         }
 
-        // Collect trivia within this statement's span.
+        // Collect comments within this statement's span.
         let stmt_end = if i + 1 < roots.len() {
             first_source_offset(&dialect, cursor, roots[i + 1])
                 .unwrap_or(source.len() as u32)
@@ -141,41 +141,41 @@ fn format_stmts<'a>(
             source.len() as u32
         };
 
-        let within_start = trivia_cursor;
-        while trivia_cursor < trivia.len() && trivia[trivia_cursor].offset < stmt_end {
-            trivia_cursor += 1;
+        let within_start = comment_cursor;
+        while comment_cursor < comments.len() && comments[comment_cursor].offset < stmt_end {
+            comment_cursor += 1;
         }
-        let within_trivia = &trivia[within_start..trivia_cursor];
+        let within_comments = &comments[within_start..comment_cursor];
 
-        // Format the statement, interleaving any within-statement trivia.
+        // Format the statement, interleaving any within-statement comments.
         let mut arena = DocArena::new();
-        if within_trivia.is_empty() {
+        if within_comments.is_empty() {
             let doc = format_node(dialect, cursor, root_id, &mut arena);
             out.push_str(&render(&arena, doc, config));
         } else {
-            let trivia_ctx = TriviaCtx::new(within_trivia, source);
+            let comment_ctx = CommentCtx::new(within_comments, source);
             let doc =
-                format_node_with_trivia(dialect, cursor, root_id, &mut arena, &trivia_ctx);
-            let trailing = trivia_ctx.drain_remaining(&mut arena);
+                format_node_with_comments(dialect, cursor, root_id, &mut arena, &comment_ctx);
+            let trailing = comment_ctx.drain_remaining(&mut arena);
             let final_doc = arena.cat(doc, trailing);
             out.push_str(&render(&arena, final_doc, config));
         }
     }
 
-    // Emit trailing trivia after the last statement.
-    while trivia_cursor < trivia.len() {
-        let t = &trivia[trivia_cursor];
+    // Emit trailing comments after the last statement.
+    while comment_cursor < comments.len() {
+        let t = &comments[comment_cursor];
         let text = &source[t.offset as usize..(t.offset + t.length) as usize];
         match t.kind {
-            TriviaKind::LineComment => {
+            CommentKind::LineComment => {
                 out.push_str(text);
                 out.push('\n');
             }
-            TriviaKind::BlockComment => {
+            CommentKind::BlockComment => {
                 out.push_str(text);
             }
         }
-        trivia_cursor += 1;
+        comment_cursor += 1;
     }
 
     if !roots.is_empty() {
@@ -199,12 +199,12 @@ fn format_node<'a>(
     format_node_inner(dialect, cursor, node_id, arena, None, &consumed)
 }
 
-fn format_node_with_trivia<'a>(
+fn format_node_with_comments<'a>(
     dialect: Dialect<'a>,
     cursor: &'a CursorBase<'a>,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
-    trivia_ctx: &'a TriviaCtx<'a>,
+    comment_ctx: &'a CommentCtx<'a>,
 ) -> DocId {
     let consumed = Cell::new(0u64);
     format_node_inner(
@@ -212,7 +212,7 @@ fn format_node_with_trivia<'a>(
         cursor,
         node_id,
         arena,
-        Some(trivia_ctx),
+        Some(comment_ctx),
         &consumed,
     )
 }
@@ -222,7 +222,7 @@ fn format_node_inner<'a>(
     cursor: &'a CursorBase<'a>,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
-    trivia_ctx: Option<&'a TriviaCtx<'a>>,
+    comment_ctx: Option<&'a CommentCtx<'a>>,
     consumed_regions: &Cell<u64>,
 ) -> DocId {
     if node_id.is_null() {
@@ -256,7 +256,7 @@ fn format_node_inner<'a>(
             cursor,
             id,
             arena,
-            trivia_ctx,
+            comment_ctx,
             consumed_regions,
         )
     };
@@ -273,7 +273,7 @@ fn format_node_inner<'a>(
     let source_offset_fn =
         move |id: NodeId| -> Option<u32> { first_source_offset(&dialect, cursor, id) };
     let source_offset: Option<&dyn Fn(NodeId) -> Option<u32>> =
-        if trivia_ctx.is_some() { Some(&source_offset_fn) } else { None };
+        if comment_ctx.is_some() { Some(&source_offset_fn) } else { None };
 
     Interpreter::new(
         dialect,
@@ -281,7 +281,7 @@ fn format_node_inner<'a>(
         ops_len,
         &format_child,
         &resolve_list,
-        trivia_ctx,
+        comment_ctx,
         source_offset,
     )
     .run(&fields, children, arena)

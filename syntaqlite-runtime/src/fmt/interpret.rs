@@ -6,7 +6,7 @@ use crate::parser::{FieldVal, NodeId};
 
 use super::bytecode::opcodes;
 use super::doc::{DocArena, DocId};
-use super::trivia::{flush_trivia, TriviaCtx};
+use super::comment::{flush_comments, CommentCtx};
 
 // ── Interpreter (pub(crate)) ────────────────────────────────────────────
 
@@ -20,7 +20,7 @@ pub(crate) struct Interpreter<'a, 'b> {
     // Callbacks
     format_child: &'b dyn Fn(NodeId, &mut DocArena<'a>) -> DocId,
     resolve_list: &'b dyn Fn(NodeId) -> Vec<NodeId>,
-    trivia_ctx: Option<&'b TriviaCtx<'a>>,
+    comment_ctx: Option<&'b CommentCtx<'a>>,
     source_offset: Option<&'b dyn Fn(NodeId) -> Option<u32>>,
 }
 
@@ -31,7 +31,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         ops_len: usize,
         format_child: &'b dyn Fn(NodeId, &mut DocArena<'a>) -> DocId,
         resolve_list: &'b dyn Fn(NodeId) -> Vec<NodeId>,
-        trivia_ctx: Option<&'b TriviaCtx<'a>>,
+        comment_ctx: Option<&'b CommentCtx<'a>>,
         source_offset: Option<&'b dyn Fn(NodeId) -> Option<u32>>,
     ) -> Self {
         Interpreter {
@@ -40,7 +40,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
             ops_len,
             format_child,
             resolve_list,
-            trivia_ctx,
+            comment_ctx,
             source_offset,
         }
     }
@@ -60,12 +60,12 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         let mut for_each_stack: Vec<ForEachState> = Vec::new();
         let mut pending_lines: Vec<DocId> = Vec::new();
         let mut ip: usize = 0;
-        let has_trivia = self.trivia_ctx.is_some();
+        let has_comments = self.comment_ctx.is_some();
 
         while ip < self.ops_len {
             match self.op_at(ip) {
                 FmtOp::Keyword(sid) => {
-                    if has_trivia {
+                    if has_comments {
                         parts.extend(pending_lines.drain(..));
                     }
                     parts.push(arena.keyword(self.string(sid)));
@@ -75,9 +75,9 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                         panic!("Span: field {} is not a Span", idx);
                     };
                     if !s.is_empty() {
-                        if let Some(tc) = self.trivia_ctx {
+                        if let Some(tc) = self.comment_ctx {
                             let drain = tc.drain_before(offset, arena);
-                            flush_trivia(drain, &mut pending_lines, &mut parts);
+                            flush_comments(drain, &mut pending_lines, &mut parts);
                             tc.set_source_end(offset + s.len() as u32);
                         }
                         parts.push(arena.text(s));
@@ -88,10 +88,10 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                         panic!("Child: field {} is not a NodeId", idx);
                     };
                     if !child_id.is_null() {
-                        if let (Some(tc), Some(so)) = (self.trivia_ctx, self.source_offset) {
+                        if let (Some(tc), Some(so)) = (self.comment_ctx, self.source_offset) {
                             if let Some(offset) = so(child_id) {
                                 let drain = tc.drain_before(offset, arena);
-                                flush_trivia(drain, &mut pending_lines, &mut parts);
+                                flush_comments(drain, &mut pending_lines, &mut parts);
                             } else {
                                 parts.extend(pending_lines.drain(..));
                             }
@@ -100,21 +100,21 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                     }
                 }
                 FmtOp::Line => {
-                    if has_trivia {
+                    if has_comments {
                         pending_lines.push(arena.line());
                     } else {
                         parts.push(arena.line());
                     }
                 }
                 FmtOp::SoftLine => {
-                    if has_trivia {
+                    if has_comments {
                         pending_lines.push(arena.softline());
                     } else {
                         parts.push(arena.softline());
                     }
                 }
                 FmtOp::HardLine => {
-                    if has_trivia {
+                    if has_comments {
                         pending_lines.push(arena.hardline());
                     } else {
                         parts.push(arena.hardline());
@@ -155,11 +155,11 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                     };
                     if id.is_null() {
                         ip += skip as usize;
-                    } else if let (Some(tc), Some(so)) = (self.trivia_ctx, self.source_offset) {
-                        // Drain trivia before this clause's source range.
+                    } else if let (Some(tc), Some(so)) = (self.comment_ctx, self.source_offset) {
+                        // Drain comments before this clause's source range.
                         if let Some(offset) = so(id) {
                             let drain = tc.drain_before(offset, arena);
-                            flush_trivia(drain, &mut pending_lines, &mut parts);
+                            flush_comments(drain, &mut pending_lines, &mut parts);
                         }
                     }
                 }
@@ -189,10 +189,10 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                 FmtOp::ChildItem => {
                     let state = for_each_stack.last().expect("ChildItem outside ForEach");
                     let child_id = state.children[state.index];
-                    if let (Some(tc), Some(so)) = (self.trivia_ctx, self.source_offset) {
+                    if let (Some(tc), Some(so)) = (self.comment_ctx, self.source_offset) {
                         if let Some(offset) = so(child_id) {
                             let drain = tc.drain_before(offset, arena);
-                            flush_trivia(drain, &mut pending_lines, &mut parts);
+                            flush_comments(drain, &mut pending_lines, &mut parts);
                         } else {
                             parts.extend(pending_lines.drain(..));
                         }
@@ -254,7 +254,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                     let FieldVal::Enum(ordinal) = fields[idx as usize] else {
                         panic!("EnumDisplay: field {} is not an Enum", idx);
                     };
-                    if has_trivia {
+                    if has_comments {
                         parts.extend(pending_lines.drain(..));
                     }
                     let string_id = self.enum_display_val(base as usize + ordinal as usize);

@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite::ast::{Node, NodeTag};
+use syntaqlite::ast::Stmt;
 
 
 #[test]
@@ -9,11 +9,8 @@ fn parse_select_1() {
     let mut parser = syntaqlite::Parser::new();
     let mut session = parser.parse("SELECT 1;");
 
-    let root_id = session.next_statement().unwrap().unwrap();
-    let node = session.node(root_id).unwrap();
-    assert_eq!(node.tag(), NodeTag::SelectStmt);
-
-    let Node::SelectStmt(_select) = node else { panic!("expected SelectStmt") };
+    let stmt = session.next_statement().unwrap().unwrap();
+    let Stmt::SelectStmt(_select) = stmt else { panic!("expected SelectStmt") };
 
     // No more statements.
     assert!(session.next_statement().is_none());
@@ -24,11 +21,11 @@ fn parse_multiple_statements() {
     let mut parser = syntaqlite::Parser::new();
     let mut session = parser.parse("SELECT 1; SELECT 2;");
 
-    let root1 = session.next_statement().unwrap().unwrap();
-    assert_eq!(session.node(root1).unwrap().tag(), NodeTag::SelectStmt);
+    let stmt1 = session.next_statement().unwrap().unwrap();
+    assert!(matches!(stmt1, Stmt::SelectStmt(_)));
 
-    let root2 = session.next_statement().unwrap().unwrap();
-    assert_eq!(session.node(root2).unwrap().tag(), NodeTag::SelectStmt);
+    let stmt2 = session.next_statement().unwrap().unwrap();
+    assert!(matches!(stmt2, Stmt::SelectStmt(_)));
 
     assert!(session.next_statement().is_none());
 }
@@ -49,14 +46,14 @@ fn parser_reuse() {
     // First parse
     {
         let mut session = parser.parse("SELECT 1");
-        let root = session.next_statement().unwrap().unwrap();
-        assert_eq!(session.node(root).unwrap().tag(), NodeTag::SelectStmt);
+        let stmt = session.next_statement().unwrap().unwrap();
+        assert!(matches!(stmt, Stmt::SelectStmt(_)));
     }
 
     // Reuse with different input
     {
         let mut session = parser.parse("DELETE FROM t");
-        let root = session.next_statement().unwrap().unwrap();
-        assert_eq!(session.node(root).unwrap().tag(), NodeTag::DeleteStmt);
+        let stmt = session.next_statement().unwrap().unwrap();
+        assert!(matches!(stmt, Stmt::DeleteStmt(_)));
     }
 }
