@@ -43,10 +43,9 @@ pub fn create_parser() -> syntaqlite_runtime::Parser {
 
 pub mod ast {
     pub use crate::generated::nodes::*;
-    pub use syntaqlite_runtime::{MacroRegion, NodeList, Trivia, TriviaKind};
+    pub use syntaqlite_runtime::{MacroRegion, NodeId, NodeList, SourceSpan, Trivia, TriviaKind};
 
-    /// Convenience trait that hardcodes `Sqlite` so callers don't need
-    /// turbofish: `session.feed(TokenType, text)` just works.
+    /// Concrete trait hardcoding `Sqlite` so callers don't need turbofish.
     pub trait SessionExt<'a> {
         fn node(&self, id: syntaqlite_runtime::NodeId) -> Option<Node<'a>>;
         fn feed(
@@ -74,6 +73,4 @@ pub mod ast {
 }
 
 pub use generated::tokens;
-pub use syntaqlite_runtime::{
-    Dialect, DialectTypes, NodeId, ParseError, Parser, Session, SourceSpan,
-};
+pub use syntaqlite_runtime::{ParseError, Parser, Session};
