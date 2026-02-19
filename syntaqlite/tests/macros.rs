@@ -1,17 +1,16 @@
 /// Integration tests: macro regions are emitted verbatim by the formatter.
 use syntaqlite::ast::SessionExt;
 use syntaqlite::tokens::TokenType;
-use syntaqlite_runtime::fmt::{format_node, render, DocArena, FormatConfig, LoadedFmt};
+use syntaqlite_runtime::fmt::Formatter;
 
-fn load_fmt() -> LoadedFmt {
-    LoadedFmt::from_dialect(syntaqlite::dialect()).unwrap()
+fn formatter() -> Formatter {
+    Formatter::new(syntaqlite::dialect()).unwrap()
 }
 
 #[test]
 fn macro_call_emitted_verbatim() {
     let source = "SELECT foo!(1 + 2), 3";
-    let d = syntaqlite::dialect();
-    let fmt = load_fmt();
+    let fmt = formatter();
 
     let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
@@ -29,19 +28,13 @@ fn macro_call_emitted_verbatim() {
 
     let root = session.finish().unwrap().expect("expected a statement");
 
-    let ni = syntaqlite_runtime::fmt::NodeInfo::from_dialect(d);
-    let mut arena = DocArena::new();
-    let doc = format_node(&fmt, &session, &ni, root, &mut arena);
-    let result = render(&arena, doc, &FormatConfig::default());
-
-    assert_eq!(result, "SELECT foo!(1 + 2), 3");
+    assert_eq!(fmt.format_node(&session, root), "SELECT foo!(1 + 2), 3");
 }
 
 #[test]
 fn macro_multi_node_emitted_once() {
     let source = "SELECT macro!(a, b)";
-    let d = syntaqlite::dialect();
-    let fmt = load_fmt();
+    let fmt = formatter();
 
     let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
@@ -56,19 +49,13 @@ fn macro_multi_node_emitted_once() {
 
     let root = session.finish().unwrap().expect("expected a statement");
 
-    let ni = syntaqlite_runtime::fmt::NodeInfo::from_dialect(d);
-    let mut arena = DocArena::new();
-    let doc = format_node(&fmt, &session, &ni, root, &mut arena);
-    let result = render(&arena, doc, &FormatConfig::default());
-
-    assert_eq!(result, "SELECT macro!(a, b)");
+    assert_eq!(fmt.format_node(&session, root), "SELECT macro!(a, b)");
 }
 
 #[test]
 fn macro_multi_node_no_extra_separator() {
     let source = "SELECT foo!(a, b), c";
-    let d = syntaqlite::dialect();
-    let fmt = load_fmt();
+    let fmt = formatter();
 
     let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
@@ -86,19 +73,13 @@ fn macro_multi_node_no_extra_separator() {
 
     let root = session.finish().unwrap().expect("expected a statement");
 
-    let ni = syntaqlite_runtime::fmt::NodeInfo::from_dialect(d);
-    let mut arena = DocArena::new();
-    let doc = format_node(&fmt, &session, &ni, root, &mut arena);
-    let result = render(&arena, doc, &FormatConfig::default());
-
-    assert_eq!(result, "SELECT foo!(a, b), c");
+    assert_eq!(fmt.format_node(&session, root), "SELECT foo!(a, b), c");
 }
 
 #[test]
 fn no_macro_regions_formats_normally() {
     let source = "SELECT  1+2,  3";
-    let d = syntaqlite::dialect();
-    let fmt = load_fmt();
+    let fmt = formatter();
 
     let mut parser = syntaqlite::create_parser();
     let mut session = parser.parse(source);
@@ -112,10 +93,5 @@ fn no_macro_regions_formats_normally() {
 
     let root = session.finish().unwrap().expect("expected a statement");
 
-    let ni = syntaqlite_runtime::fmt::NodeInfo::from_dialect(d);
-    let mut arena = DocArena::new();
-    let doc = format_node(&fmt, &session, &ni, root, &mut arena);
-    let result = render(&arena, doc, &FormatConfig::default());
-
-    assert_eq!(result, "SELECT 1 + 2, 3");
+    assert_eq!(fmt.format_node(&session, root), "SELECT 1 + 2, 3");
 }

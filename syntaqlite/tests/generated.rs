@@ -1,21 +1,18 @@
 /// Integration tests exercising the generated dispatch table + ctx
 /// with the hand-written format_node and renderer.
-use syntaqlite_runtime::fmt::{format_node, render, DocArena, FormatConfig, KeywordCase, LoadedFmt};
+use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
 
 fn format_sql(sql: &str) -> String {
-    format_sql_with(sql, &FormatConfig::default())
+    format_sql_with(sql, FormatConfig::default())
 }
 
-fn format_sql_with(sql: &str, config: &FormatConfig) -> String {
-    let d = syntaqlite::dialect();
-    let fmt = LoadedFmt::from_dialect(d).unwrap();
-    let ni = syntaqlite_runtime::fmt::NodeInfo::from_dialect(d);
-    let mut parser = syntaqlite::create_parser();
-    let mut session = parser.parse(sql);
-    let root = session.next_statement().unwrap().unwrap();
-    let mut arena = DocArena::new();
-    let doc = format_node(&fmt, &session, &ni, root, &mut arena);
-    render(&arena, doc, config)
+fn format_sql_with(sql: &str, config: FormatConfig) -> String {
+    let mut f = Formatter::new(syntaqlite::dialect())
+        .unwrap()
+        .with_config(config);
+    let result = f.format(sql).unwrap();
+    // Strip the trailing newline that Formatter appends
+    result.trim_end_matches('\n').to_string()
 }
 
 // -- Basic SELECT --
@@ -72,7 +69,7 @@ fn long_select_breaks() {
         line_width: 20,
         ..Default::default()
     };
-    let result = format_sql_with("SELECT column_one, column_two FROM very_long_table", &config);
+    let result = format_sql_with("SELECT column_one, column_two FROM very_long_table", config);
     assert_eq!(
         result,
         "SELECT\n  column_one,\n  column_two\nFROM very_long_table"
@@ -190,7 +187,7 @@ fn insert_breaks_when_narrow() {
         line_width: 20,
         ..Default::default()
     };
-    let result = format_sql_with("INSERT INTO t(a, b) VALUES(1, 2)", &config);
+    let result = format_sql_with("INSERT INTO t(a, b) VALUES(1, 2)", config);
     assert_eq!(
         result,
         "INSERT INTO t(a, b)\nVALUES (1, 2)"
@@ -207,7 +204,7 @@ fn insert_many_values_flat() {
     };
     let result = format_sql_with(
         "INSERT INTO t(a, b) VALUES(1, 2), (3, 4), (5, 6), (7, 8)",
-        &config,
+        config,
     );
     assert_eq!(
         result,
@@ -223,7 +220,7 @@ fn insert_many_values_breaks() {
     };
     let result = format_sql_with(
         "INSERT INTO t(a, b) VALUES(1, 2), (3, 4), (5, 6), (7, 8)",
-        &config,
+        config,
     );
     assert_eq!(
         result,
@@ -240,7 +237,7 @@ fn keyword_case_lower() {
         ..Default::default()
     };
     assert_eq!(
-        format_sql_with("SELECT a FROM t", &config),
+        format_sql_with("SELECT a FROM t", config),
         "select a from t"
     );
 }
@@ -252,7 +249,7 @@ fn keyword_case_upper() {
         ..Default::default()
     };
     assert_eq!(
-        format_sql_with("select a from t", &config),
+        format_sql_with("select a from t", config),
         "SELECT a FROM t"
     );
 }

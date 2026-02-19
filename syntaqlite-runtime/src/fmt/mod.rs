@@ -1,17 +1,19 @@
 pub mod bytecode;
 pub mod bytecode_format;
 mod config;
-mod doc;
+pub mod doc;
 mod format;
+mod formatter;
 pub mod interpret;
 pub mod ops;
-mod render;
+pub mod render;
 pub mod trivia;
 
-pub use bytecode::LoadedFmt;
+// ── Primary public API ─────────────────────────────────────────────────
 pub use config::{FormatConfig, KeywordCase};
+pub use formatter::Formatter;
+
+// ── Low-level types (for internal tests and codegen) ───────────────────
 pub use doc::{DocArena, DocId, NIL_DOC};
-pub use format::{first_source_offset, format_node, format_node_with_trivia, NodeInfo};
 pub use interpret::FmtCtx;
 pub use render::render;
-pub use trivia::TriviaCtx;

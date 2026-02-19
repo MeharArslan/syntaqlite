@@ -1,7 +1,7 @@
 use crate::parser::{FieldVal, NodeId, Session};
 
 use super::doc::{DocArena, DocId};
-use super::format::{first_source_offset, NodeInfo};
+use super::format::{first_source_offset, NodeMeta};
 use super::ops::FmtOp;
 use super::trivia::{flush_trivia, TriviaCtx};
 
@@ -15,7 +15,7 @@ pub struct FmtCtx<'a> {
 pub struct InterpretTrivia<'a> {
     pub ctx: &'a TriviaCtx<'a>,
     pub session: &'a Session<'a>,
-    pub node_info: &'a NodeInfo,
+    pub node_meta: &'a NodeMeta,
 }
 
 // -- Stack frames for the interpreter ----------------------------------------
@@ -81,7 +81,7 @@ pub fn interpret<'a>(
                 };
                 if !child_id.is_null() {
                     if let Some(it) = trivia {
-                        if let Some(offset) = first_source_offset(it.session, it.node_info, child_id) {
+                        if let Some(offset) = first_source_offset(it.session, it.node_meta, child_id) {
                             let drain = it.ctx.drain_before(offset, arena);
                             flush_trivia(drain, &mut pending_lines, &mut parts);
                         } else {
@@ -149,7 +149,7 @@ pub fn interpret<'a>(
                     ip += skip as usize;
                 } else if let Some(it) = trivia {
                     // Drain trivia before this clause's source range.
-                    if let Some(offset) = first_source_offset(it.session, it.node_info, id) {
+                    if let Some(offset) = first_source_offset(it.session, it.node_meta, id) {
                         let drain = it.ctx.drain_before(offset, arena);
                         flush_trivia(drain, &mut pending_lines, &mut parts);
                     }
@@ -182,7 +182,7 @@ pub fn interpret<'a>(
                 let state = for_each_stack.last().expect("ChildItem outside ForEach");
                 let child_id = state.children[state.index];
                 if let Some(it) = trivia {
-                    if let Some(offset) = first_source_offset(it.session, it.node_info, child_id) {
+                    if let Some(offset) = first_source_offset(it.session, it.node_meta, child_id) {
                         let drain = it.ctx.drain_before(offset, arena);
                         flush_trivia(drain, &mut pending_lines, &mut parts);
                     } else {

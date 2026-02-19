@@ -3,11 +3,8 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use syntaqlite_runtime::fmt::{
-    first_source_offset, format_node, format_node_with_trivia, render, DocArena,
-    FormatConfig, KeywordCase, LoadedFmt, TriviaCtx,
-};
-use syntaqlite_runtime::{Dialect, TriviaKind};
+use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
+use syntaqlite_runtime::Dialect;
 
 #[derive(Parser)]
 #[command(about = "SQL formatting and analysis tools")]
@@ -70,137 +67,6 @@ fn expand_paths(patterns: &[String]) -> Result<Vec<PathBuf>, String> {
     Ok(out)
 }
 
-fn format_source(
-    dialect: &Dialect,
-    fmt: &LoadedFmt,
-    source: &str,
-    config: &FormatConfig,
-    semicolons: bool,
-) -> Result<String, String> {
-    let mut parser = syntaqlite_runtime::Parser::new(dialect);
-    parser.set_collect_tokens(true);
-    let mut session = parser.parse(source);
-
-    let mut roots = Vec::new();
-    while let Some(result) = session.next_statement() {
-        let root_id = result.map_err(|e| format!("parse error: {e}"))?;
-        roots.push(root_id);
-    }
-
-    let trivia = session.trivia();
-    let ni = syntaqlite_runtime::fmt::NodeInfo::from_dialect(dialect);
-
-    if trivia.is_empty() {
-        let mut out = String::new();
-        let mut first = true;
-        for &root_id in &roots {
-            if !first {
-                if semicolons {
-                    out.push(';');
-                }
-                out.push_str("\n\n");
-            }
-            let mut arena = DocArena::new();
-            let doc = format_node(fmt, &session, &ni, root_id, &mut arena);
-            out.push_str(&render(&arena, doc, config));
-            first = false;
-        }
-        if !first {
-            if semicolons {
-                out.push(';');
-            }
-            out.push('\n');
-        }
-        return Ok(out);
-    }
-
-    let mut out = String::new();
-    let mut trivia_cursor = 0;
-
-    for (i, &root_id) in roots.iter().enumerate() {
-        if i > 0 {
-            if semicolons {
-                out.push(';');
-            }
-            out.push_str("\n\n");
-        }
-
-        let stmt_start = first_source_offset(&session, &ni, root_id)
-            .unwrap_or(source.len() as u32);
-
-        while trivia_cursor < trivia.len() && trivia[trivia_cursor].offset < stmt_start {
-            let t = &trivia[trivia_cursor];
-            let text = &source[t.offset as usize..(t.offset + t.length) as usize];
-            match t.kind {
-                TriviaKind::LineComment => {
-                    out.push_str(text);
-                    out.push('\n');
-                }
-                TriviaKind::BlockComment => {
-                    out.push_str(text);
-                    out.push(' ');
-                }
-            }
-            trivia_cursor += 1;
-        }
-
-        let stmt_end = if i + 1 < roots.len() {
-            first_source_offset(&session, &ni, roots[i + 1])
-                .unwrap_or(source.len() as u32)
-        } else {
-            source.len() as u32
-        };
-
-        let within_start = trivia_cursor;
-        while trivia_cursor < trivia.len() && trivia[trivia_cursor].offset < stmt_end {
-            trivia_cursor += 1;
-        }
-        let within_trivia = &trivia[within_start..trivia_cursor];
-
-        let mut arena = DocArena::new();
-        if within_trivia.is_empty() {
-            let doc = format_node(fmt, &session, &ni, root_id, &mut arena);
-            out.push_str(&render(&arena, doc, config));
-        } else {
-            let trivia_ctx = TriviaCtx::new(within_trivia, source);
-            let doc = format_node_with_trivia(
-                fmt,
-                &session,
-                &ni,
-                root_id,
-                &mut arena,
-                &trivia_ctx,
-            );
-            let trailing = trivia_ctx.drain_remaining(&mut arena);
-            let final_doc = arena.cat(doc, trailing);
-            out.push_str(&render(&arena, final_doc, config));
-        }
-    }
-
-    while trivia_cursor < trivia.len() {
-        let t = &trivia[trivia_cursor];
-        let text = &source[t.offset as usize..(t.offset + t.length) as usize];
-        match t.kind {
-            TriviaKind::LineComment => {
-                out.push_str(text);
-                out.push('\n');
-            }
-            TriviaKind::BlockComment => {
-                out.push_str(text);
-            }
-        }
-        trivia_cursor += 1;
-    }
-
-    if !roots.is_empty() {
-        if semicolons {
-            out.push(';');
-        }
-        out.push('\n');
-    }
-    Ok(out)
-}
-
 fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
     let paths = expand_paths(&files)?;
 
@@ -245,12 +111,15 @@ fn cmd_ast_source(dialect: &Dialect, source: &str) -> Result<(), String> {
 fn cmd_fmt(
     dialect: &Dialect,
     files: Vec<String>,
-    config: &FormatConfig,
+    config: FormatConfig,
     in_place: bool,
     semicolons: bool,
 ) -> Result<(), String> {
-    let fmt = LoadedFmt::from_dialect(dialect)
-        .map_err(|e| format!("failed to load formatter: {e}"))?;
+    let mut formatter = Formatter::new(dialect)
+        .map_err(|e| format!("failed to load formatter: {e}"))?
+        .with_config(config)
+        .with_semicolons(semicolons);
+
     let paths = expand_paths(&files)?;
 
     if paths.is_empty() {
@@ -261,7 +130,7 @@ fn cmd_fmt(
         io::stdin()
             .read_to_string(&mut source)
             .map_err(|e| format!("reading stdin: {e}"))?;
-        let out = format_source(dialect, &fmt, &source, config, semicolons)?;
+        let out = formatter.format(&source).map_err(|e| format!("{e}"))?;
         print!("{out}");
         return Ok(());
     }
@@ -270,7 +139,7 @@ fn cmd_fmt(
     for path in &paths {
         let source =
             fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-        match format_source(dialect, &fmt, &source, config, semicolons) {
+        match formatter.format(&source) {
             Ok(out) => {
                 if in_place {
                     if out != source {
@@ -300,8 +169,7 @@ fn cmd_fmt(
 /// Run the CLI with the given dialect configuration.
 pub fn run(name: &str, dialect: &Dialect) {
     let cli = Cli::try_parse_from(
-        std::iter::once(name.to_string())
-            .chain(std::env::args().skip(1)),
+        std::iter::once(name.to_string()).chain(std::env::args().skip(1)),
     )
     .unwrap_or_else(|e| e.exit());
 
@@ -323,7 +191,7 @@ pub fn run(name: &str, dialect: &Dialect) {
                 },
                 ..Default::default()
             };
-            cmd_fmt(dialect, files, &config, in_place, semicolons)
+            cmd_fmt(dialect, files, config, in_place, semicolons)
         }
     };
 

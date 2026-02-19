@@ -1,7 +1,7 @@
 pub mod parser;
 
 pub use parser::{
-    FieldDescriptor, FieldKind, FieldVal, Fields, NodeId,
+    FieldVal, Fields, NodeId,
     NodeList, SourceSpan, MacroRegion, ParseError, Parser, Session, Trivia, TriviaKind,
 };
 
