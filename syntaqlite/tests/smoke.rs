@@ -1,9 +1,9 @@
-use syntaqlite::ast::{Node, NodeTag, SessionExt};
+use syntaqlite::ast::{Node, NodeTag};
 
 
 #[test]
 fn parse_select_1() {
-    let mut parser = syntaqlite::create_parser();
+    let mut parser = syntaqlite::Parser::new();
     let mut session = parser.parse("SELECT 1;");
 
     let root_id = session.next_statement().unwrap().unwrap();
@@ -19,7 +19,7 @@ fn parse_select_1() {
 
 #[test]
 fn parse_multiple_statements() {
-    let mut parser = syntaqlite::create_parser();
+    let mut parser = syntaqlite::Parser::new();
     let mut session = parser.parse("SELECT 1; SELECT 2;");
 
     let root1 = session.next_statement().unwrap().unwrap();
@@ -33,7 +33,7 @@ fn parse_multiple_statements() {
 
 #[test]
 fn parse_error() {
-    let mut parser = syntaqlite::create_parser();
+    let mut parser = syntaqlite::Parser::new();
     let mut session = parser.parse("SELECT");
 
     let result = session.next_statement().unwrap();
@@ -42,7 +42,7 @@ fn parse_error() {
 
 #[test]
 fn parser_reuse() {
-    let mut parser = syntaqlite::create_parser();
+    let mut parser = syntaqlite::Parser::new();
 
     // First parse
     {

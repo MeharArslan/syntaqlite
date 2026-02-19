@@ -1,10 +1,8 @@
 /// Integration tests: macro regions are emitted verbatim by the formatter.
-use syntaqlite::ast::SessionExt;
 use syntaqlite::tokens::TokenType;
-use syntaqlite_runtime::fmt::Formatter;
 
-fn formatter() -> Formatter<'static> {
-    Formatter::new(syntaqlite::dialect()).unwrap()
+fn formatter() -> syntaqlite::Formatter {
+    syntaqlite::Formatter::new().unwrap()
 }
 
 #[test]
@@ -12,8 +10,8 @@ fn macro_call_emitted_verbatim() {
     let source = "SELECT foo!(1 + 2), 3";
     let fmt = formatter();
 
-    let mut parser = syntaqlite::create_parser();
-    let mut session = parser.parse(source);
+    let mut parser = syntaqlite::Parser::new();
+    let mut session = parser.token_session(source);
 
     session.feed(TokenType::Select, &source[0..6]).unwrap();
 
@@ -28,7 +26,7 @@ fn macro_call_emitted_verbatim() {
 
     let root = session.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(&session, root), "SELECT foo!(1 + 2), 3");
+    assert_eq!(fmt.format_node(session.base(), root), "SELECT foo!(1 + 2), 3");
 }
 
 #[test]
@@ -36,8 +34,8 @@ fn macro_multi_node_emitted_once() {
     let source = "SELECT macro!(a, b)";
     let fmt = formatter();
 
-    let mut parser = syntaqlite::create_parser();
-    let mut session = parser.parse(source);
+    let mut parser = syntaqlite::Parser::new();
+    let mut session = parser.token_session(source);
 
     session.feed(TokenType::Select, &source[0..6]).unwrap();
 
@@ -49,7 +47,7 @@ fn macro_multi_node_emitted_once() {
 
     let root = session.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(&session, root), "SELECT macro!(a, b)");
+    assert_eq!(fmt.format_node(session.base(), root), "SELECT macro!(a, b)");
 }
 
 #[test]
@@ -57,8 +55,8 @@ fn macro_multi_node_no_extra_separator() {
     let source = "SELECT foo!(a, b), c";
     let fmt = formatter();
 
-    let mut parser = syntaqlite::create_parser();
-    let mut session = parser.parse(source);
+    let mut parser = syntaqlite::Parser::new();
+    let mut session = parser.token_session(source);
 
     session.feed(TokenType::Select, &source[0..6]).unwrap();
 
@@ -73,7 +71,7 @@ fn macro_multi_node_no_extra_separator() {
 
     let root = session.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(&session, root), "SELECT foo!(a, b), c");
+    assert_eq!(fmt.format_node(session.base(), root), "SELECT foo!(a, b), c");
 }
 
 #[test]
@@ -81,8 +79,8 @@ fn no_macro_regions_formats_normally() {
     let source = "SELECT  1+2,  3";
     let fmt = formatter();
 
-    let mut parser = syntaqlite::create_parser();
-    let mut session = parser.parse(source);
+    let mut parser = syntaqlite::Parser::new();
+    let mut session = parser.token_session(source);
 
     session.feed(TokenType::Select, &source[0..6]).unwrap();
     session.feed(TokenType::Integer, &source[8..9]).unwrap();
@@ -93,5 +91,5 @@ fn no_macro_regions_formats_normally() {
 
     let root = session.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(&session, root), "SELECT 1 + 2, 3");
+    assert_eq!(fmt.format_node(session.base(), root), "SELECT 1 + 2, 3");
 }

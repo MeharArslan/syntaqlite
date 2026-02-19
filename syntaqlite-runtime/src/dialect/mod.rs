@@ -3,7 +3,7 @@
 pub mod ffi;
 
 use crate::parser::nodes::NodeId;
-use crate::parser::{FieldVal, Fields, NodeList, ParseError, Session, SourceSpan};
+use crate::parser::{FieldVal, Fields, NodeList, SessionBase, SourceSpan};
 
 use ffi::{FieldMeta, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN};
 
@@ -115,7 +115,7 @@ impl<'d> Dialect<'d> {
     /// Find the earliest source offset in a node's subtree.
     pub(crate) fn first_source_offset(
         &self,
-        session: &Session<'_>,
+        session: &SessionBase<'_>,
         node_id: NodeId,
     ) -> Option<u32> {
         if node_id.is_null() {
@@ -164,7 +164,7 @@ impl<'d> Dialect<'d> {
     /// Find the latest source offset (end) in a node's subtree.
     pub(crate) fn last_source_offset(
         &self,
-        session: &Session<'_>,
+        session: &SessionBase<'_>,
         node_id: NodeId,
     ) -> Option<u32> {
         if node_id.is_null() {
@@ -250,39 +250,5 @@ unsafe fn extract_one<'a>(ptr: *const u8, m: &FieldMeta, source: &'a str) -> Fie
             FIELD_ENUM => FieldVal::Enum(*(field_ptr as *const u32)),
             _ => panic!("unknown C field kind: {}", m.kind),
         }
-    }
-}
-
-// ── Typed access traits ────────────────────────────────────────────────
-
-/// Trait that dialect crates implement to provide typed access to nodes and tokens.
-///
-/// The runtime provides blanket impls of `SessionExt` for any `D: DialectTypes`,
-/// so dialect crates don't need to write any session-extension boilerplate.
-pub trait DialectTypes: 'static {
-    type Node<'a>;
-    type TokenType: Copy + Into<u32>;
-
-    /// # Safety
-    /// The pointer must point to a valid node struct within the session's arena.
-    unsafe fn node_from_raw<'a>(ptr: *const u32) -> Self::Node<'a>;
-}
-
-/// Extension trait adding typed node access and token feeding to `Session`.
-///
-/// Implemented via blanket impl for any `D: DialectTypes`.
-pub trait SessionExt<'a, D: DialectTypes> {
-    fn node(&self, id: NodeId) -> Option<D::Node<'a>>;
-    fn feed(&mut self, token_type: D::TokenType, text: &str) -> Result<Option<NodeId>, ParseError>;
-}
-
-impl<'a, D: DialectTypes> SessionExt<'a, D> for Session<'a> {
-    fn node(&self, id: NodeId) -> Option<D::Node<'a>> {
-        let (ptr, _tag) = self.node_ptr(id)?;
-        Some(unsafe { D::node_from_raw(ptr as *const u32) })
-    }
-
-    fn feed(&mut self, token_type: D::TokenType, text: &str) -> Result<Option<NodeId>, ParseError> {
-        self.feed_token(token_type.into(), text)
     }
 }

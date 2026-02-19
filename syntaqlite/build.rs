@@ -23,7 +23,7 @@ fn main() {
 
     // Dialect sources (dialect glue).
     cc::Build::new()
-        .file(csrc.join("sqlite_dialect.c"))
+        .file(csrc.join("dialect.c"))
         .include(&runtime_dir)
         .include(runtime_dir.join("include"))
         .include(&manifest_dir)
@@ -39,7 +39,7 @@ fn main() {
         .include(runtime_dir.join("include"))
         .include(&manifest_dir)
         .include(manifest_dir.join("include"))
-        .define("SYNTAQLITE_INLINE_PARSER_DATA_HEADER", Some(r#""csrc/sqlite_parse_data.h""#))
+        .define("SYNTAQLITE_INLINE_PARSER_DATA_HEADER", Some(r#""csrc/dialect_parse.h""#))
         .flag("-Wno-int-conversion")
         .flag("-Wno-void-pointer-to-int-cast")
         .flag("-Wno-unused-variable")
@@ -69,13 +69,14 @@ fn main() {
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite/types.h");
 
     // Dialect sources
-    println!("cargo:rerun-if-changed=csrc/sqlite_dialect.c");
-    println!("cargo:rerun-if-changed=csrc/sqlite_dialect_data.h");
-    println!("cargo:rerun-if-changed=csrc/fmt_data.h");
+    println!("cargo:rerun-if-changed=csrc/dialect.c");
+    println!("cargo:rerun-if-changed=csrc/dialect_meta.h");
+    println!("cargo:rerun-if-changed=csrc/dialect_fmt.h");
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite/dialect.h");
-    println!("cargo:rerun-if-changed=csrc/grammar_types.h");
-    println!("cargo:rerun-if-changed=csrc/ast_builder.h");
-    println!("cargo:rerun-if-changed=csrc/sqlite_parse_data.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/tokens.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/node.h");
+    println!("cargo:rerun-if-changed=csrc/dialect_grammar_types.h");
+    println!("cargo:rerun-if-changed=csrc/dialect_builder.h");
+    println!("cargo:rerun-if-changed=csrc/dialect_parse.h");
+    println!("cargo:rerun-if-changed=include/syntaqlite/sqlite_tokens.h");
+    println!("cargo:rerun-if-changed=include/syntaqlite/sqlite_node.h");
+    println!("cargo:rerun-if-changed=include/syntaqlite/sqlite.h");
 }

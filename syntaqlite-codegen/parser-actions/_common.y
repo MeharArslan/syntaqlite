@@ -21,9 +21,9 @@
 #include <string.h>
 
 #include "csrc/parser.h"
-#include "csrc/grammar_types.h"
-#include "csrc/sqlite_parse_data.h"
-#include "syntaqlite/tokens.h"
+#include "csrc/dialect_grammar_types.h"
+#include "csrc/dialect_parse.h"
+#include "syntaqlite/sqlite_tokens.h"
 
 #define YYNOERRORRECOVERY 1
 #define YYPARSEFREENEVERNULL 1

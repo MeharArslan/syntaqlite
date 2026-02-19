@@ -13,7 +13,7 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
     let mut w = CWriter::new();
 
     w.file_header();
-    w.header_guard_start("SYNTAQLITE_NODE_H");
+    w.header_guard_start("SYNTAQLITE_SQLITE_NODE_H");
     w.include_system("stddef.h");
     w.include_system("stdint.h");
     w.newline();
@@ -107,7 +107,7 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
 
     w.extern_c_end();
     w.newline();
-    w.header_guard_end("SYNTAQLITE_NODE_H");
+    w.header_guard_end("SYNTAQLITE_SQLITE_NODE_H");
 
     w.finish()
 }
@@ -119,9 +119,9 @@ pub fn generate_ast_builder_h(items: &[Item]) -> String {
     let mut w = CWriter::new();
 
     w.file_header();
-    w.header_guard_start("SYNTAQLITE_AST_BUILDER_H");
+    w.header_guard_start("SYNTAQLITE_DIALECT_BUILDER_H");
     w.include_local("csrc/parser.h");
-    w.include_local("syntaqlite/node.h");
+    w.include_local("syntaqlite/sqlite_node.h");
     w.newline();
     w.extern_c_start();
 
@@ -144,7 +144,7 @@ pub fn generate_ast_builder_h(items: &[Item]) -> String {
 
     w.extern_c_end();
     w.newline();
-    w.header_guard_end("SYNTAQLITE_AST_BUILDER_H");
+    w.header_guard_end("SYNTAQLITE_DIALECT_BUILDER_H");
 
     w.finish()
 }
@@ -323,11 +323,11 @@ fn emit_range_metadata(w: &mut CWriter, items: &[Item]) {
 
 // ── C field metadata codegen ────────────────────────────────────────────
 
-/// Generate a C header (`ast_meta.h`) containing `SyntaqliteFieldMeta` arrays,
+/// Generate a C header (`dialect_meta.h`) containing `SyntaqliteFieldMeta` arrays,
 /// display string tables for enums/flags, and the top-level dispatch tables
 /// (`node_names`, `field_meta`, `field_meta_counts`, `list_tags`).
 ///
-/// This header is included by the dialect's `sqlite_dialect_meta.c` and provides
+/// This header is included by the dialect's `dialect.c` and provides
 /// all the AST metadata needed by `SyntaqliteDialect`.
 pub fn generate_c_field_meta(items: &[Item]) -> String {
     let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
@@ -335,10 +335,10 @@ pub fn generate_c_field_meta(items: &[Item]) -> String {
 
     let mut w = CWriter::new();
     w.file_header();
-    w.header_guard_start("SYNTAQLITE_AST_META_H");
+    w.header_guard_start("SYNTAQLITE_DIALECT_META_H");
     w.include_system("stddef.h");
     w.include_local("syntaqlite/dialect.h");
-    w.include_local("syntaqlite/node.h");
+    w.include_local("syntaqlite/sqlite_node.h");
     w.newline();
 
     // Emit display string arrays for enums
@@ -471,7 +471,7 @@ pub fn generate_c_field_meta(items: &[Item]) -> String {
     w.line("};");
     w.newline();
 
-    w.header_guard_end("SYNTAQLITE_AST_META_H");
+    w.header_guard_end("SYNTAQLITE_DIALECT_META_H");
     w.finish()
 }
 
@@ -481,7 +481,7 @@ pub fn generate_c_fmt_arrays(items: &[Item]) -> String {
 
     let mut w = CWriter::new();
     w.file_header();
-    w.header_guard_start("SYNTAQLITE_FMT_DATA_H");
+    w.header_guard_start("SYNTAQLITE_DIALECT_FMT_H");
     w.include_system("stdint.h");
     w.newline();
 
@@ -567,7 +567,7 @@ pub fn generate_c_fmt_arrays(items: &[Item]) -> String {
     w.line("};");
     w.newline();
 
-    w.header_guard_end("SYNTAQLITE_FMT_DATA_H");
+    w.header_guard_end("SYNTAQLITE_DIALECT_FMT_H");
     w.finish()
 }
 

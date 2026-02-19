@@ -5,12 +5,12 @@
 // all wired into a single SyntaqliteDialect struct.
 
 #include "syntaqlite/parser.h"
-#include "syntaqlite/tokens.h"
+#include "syntaqlite/sqlite_tokens.h"
 #include "syntaqlite/dialect.h"
-#include "csrc/ast_builder.h"
-#include "csrc/sqlite_parse_data.h"
-#include "csrc/sqlite_dialect_data.h"
-#include "csrc/fmt_data.h"
+#include "csrc/dialect_builder.h"
+#include "csrc/dialect_parse.h"
+#include "csrc/dialect_meta.h"
+#include "csrc/dialect_fmt.h"
 
 // ---------------------------------------------------------------------------
 // SQLite dialect descriptor

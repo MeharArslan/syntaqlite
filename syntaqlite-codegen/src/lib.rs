@@ -164,7 +164,7 @@ pub fn extract_tokenizer(
     let combined = {
         let mut w = c_writer::CWriter::new();
         w.include_local("csrc/sqlite_compat.h")
-            .include_local("syntaqlite/tokens.h")
+            .include_local("syntaqlite/sqlite_tokens.h")
             .include_local("csrc/sqlite_keyword.h")
             .newline()
             .fragment(&cc_defines)
@@ -399,10 +399,10 @@ pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
     // Build header from extracted sections
     let mut w = c_writer::CWriter::new();
     w.file_header();
-    w.include_local("csrc/ast_builder.h");
+    w.include_local("csrc/dialect_builder.h");
     w.include_local("csrc/parser.h");
-    w.include_local("csrc/grammar_types.h");
-    w.include_local("syntaqlite/tokens.h");
+    w.include_local("csrc/dialect_grammar_types.h");
+    w.include_local("syntaqlite/sqlite_tokens.h");
     w.newline();
     for section in [
         &control_defines,
@@ -618,7 +618,7 @@ fn split_keyword_code(
     tables.line("#ifndef SQLITE_KEYWORD_TABLES_H");
     tables.line("#define SQLITE_KEYWORD_TABLES_H");
     tables.newline();
-    tables.include_local("syntaqlite/tokens.h");
+    tables.include_local("syntaqlite/sqlite_tokens.h");
     tables.newline();
     tables.fragment(&split.before);
     tables.newline();

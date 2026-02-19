@@ -1,13 +1,13 @@
 /// Integration tests exercising the generated dispatch table + ctx
 /// with the hand-written format_node and renderer.
-use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
+use syntaqlite::{FormatConfig, KeywordCase};
 
 fn format_sql(sql: &str) -> String {
     format_sql_with(sql, FormatConfig::default())
 }
 
 fn format_sql_with(sql: &str, config: FormatConfig) -> String {
-    let mut f = Formatter::new(syntaqlite::dialect())
+    let mut f = syntaqlite::Formatter::new()
         .unwrap()
         .with_config(config);
     let result = f.format(sql).unwrap();

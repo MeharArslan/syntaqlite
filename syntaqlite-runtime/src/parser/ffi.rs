@@ -87,6 +87,27 @@ const _: () = {
     assert!(std::mem::offset_of!(MacroRegion, call_length) == 4);
 };
 
+// Opaque C tokenizer type
+pub(crate) enum Tokenizer {}
+
+/// A single token produced by the C tokenizer.
+///
+/// Mirrors C `SyntaqliteToken` from `include/syntaqlite/tokenizer.h`.
+#[repr(C)]
+pub(crate) struct Token {
+    pub text: *const c_char,
+    pub length: u32,
+    pub type_: u32,
+}
+
+const _: () = {
+    const P: usize = std::mem::size_of::<*const ()>();
+    assert!(std::mem::offset_of!(Token, text) == 0);
+    assert!(std::mem::offset_of!(Token, length) == P);
+    assert!(std::mem::offset_of!(Token, type_) == P + 4);
+    assert!(std::mem::size_of::<Token>() == P + 8);
+};
+
 // The C API uses `SyntaqliteNode*` as an opaque return. We only read via
 // the tag field (first u32) and then cast to the right struct, so we just
 // receive `*const u32`.
@@ -126,5 +147,11 @@ unsafe extern "C" {
     // AST dump
     pub fn syntaqlite_dump_node(
         p: *mut Parser, node_id: u32, indent: u32) -> *mut c_char;
+
+    // Tokenizer
+    pub fn syntaqlite_tokenizer_create(mem: *const MemMethods) -> *mut Tokenizer;
+    pub fn syntaqlite_tokenizer_reset(tok: *mut Tokenizer, source: *const c_char, len: u32);
+    pub fn syntaqlite_tokenizer_next(tok: *mut Tokenizer, out: *mut Token) -> c_int;
+    pub fn syntaqlite_tokenizer_destroy(tok: *mut Tokenizer);
 
 }

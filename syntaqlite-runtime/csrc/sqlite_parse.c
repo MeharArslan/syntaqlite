@@ -26,13 +26,9 @@
 #include <string.h>
 
 #include "csrc/parser.h"
-#include "csrc/grammar_types.h"
-#ifdef SYNTAQLITE_INLINE_PARSER_DATA_HEADER
-  #include SYNTAQLITE_INLINE_PARSER_DATA_HEADER
-#else
-  #include "csrc/synq_lemon_generic.h"
-#endif
-#include "syntaqlite/tokens.h"
+#include "csrc/dialect_grammar_types.h"
+#include "csrc/dialect_parse.h"
+#include "syntaqlite/sqlite_tokens.h"
 
 #define YYNOERRORRECOVERY 1
 #define YYPARSEFREENEVERNULL 1

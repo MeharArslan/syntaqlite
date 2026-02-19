@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
 use crate::dialect::Dialect;
-use crate::parser::{MacroRegion, NodeId, NodeList, Parser, Session, Trivia, TriviaKind};
+use crate::parser::{MacroRegion, NodeId, NodeList, Parser, SessionBase, Trivia, TriviaKind};
 
 use super::FormatConfig;
 use super::doc::{DocArena, DocId, NIL_DOC};
@@ -65,21 +65,22 @@ impl<'d> Formatter<'d> {
             roots.push(result?);
         }
 
-        let trivia = session.trivia();
+        let trivia = session.trivia().to_vec();
+        let base = session.base();
         Ok(format_stmts(
             self.dialect,
             &self.config,
             self.semicolons,
-            &session,
+            base,
             &roots,
-            trivia,
+            &trivia,
             source,
         ))
     }
 
     /// Format a single pre-parsed AST node. This is the low-level entry point
     /// for cases where the caller controls parsing (e.g. macro expansion).
-    pub fn format_node(&self, session: &Session<'_>, node_id: NodeId) -> String {
+    pub fn format_node(&self, session: &SessionBase<'_>, node_id: NodeId) -> String {
         let mut arena = DocArena::new();
         let doc = format_node(self.dialect, session, node_id, &mut arena);
         render(&arena, doc, &self.config)
@@ -92,7 +93,7 @@ fn format_stmts<'a>(
     dialect: Dialect<'_>,
     config: &FormatConfig,
     semicolons: bool,
-    session: &'a Session<'a>,
+    session: &'a SessionBase<'a>,
     roots: &[NodeId],
     trivia: &[Trivia],
     source: &str,
@@ -187,7 +188,7 @@ fn format_stmts<'a>(
 
 fn format_node<'a>(
     dialect: Dialect<'a>,
-    session: &'a Session<'a>,
+    session: &'a SessionBase<'a>,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
 ) -> DocId {
@@ -197,7 +198,7 @@ fn format_node<'a>(
 
 fn format_node_with_trivia<'a>(
     dialect: Dialect<'a>,
-    session: &'a Session<'a>,
+    session: &'a SessionBase<'a>,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
     trivia_ctx: &'a TriviaCtx<'a>,
@@ -215,7 +216,7 @@ fn format_node_with_trivia<'a>(
 
 fn format_node_inner<'a>(
     dialect: Dialect<'a>,
-    session: &'a Session<'a>,
+    session: &'a SessionBase<'a>,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
     trivia_ctx: Option<&'a TriviaCtx<'a>>,
@@ -295,7 +296,7 @@ fn format_node_inner<'a>(
 /// Check if a node's subtree overlaps with any macro region.
 fn try_macro_verbatim<'a>(
     dialect: Dialect<'_>,
-    session: &'a Session<'a>,
+    session: &'a SessionBase<'a>,
     node_id: NodeId,
     regions: &[MacroRegion],
     arena: &mut DocArena<'a>,
