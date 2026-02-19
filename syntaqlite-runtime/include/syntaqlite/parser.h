@@ -32,7 +32,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "syntaqlite/types.h"
 #include "syntaqlite/config.h"
 
 #ifdef __cplusplus
@@ -62,7 +61,7 @@ typedef struct SyntaqliteTrivia {
 // check error to see whether it ended cleanly or with a parse error.
 typedef struct SyntaqliteParseResult {
   uint32_t root;          // Root node ID, or SYNTAQLITE_NULL_NODE.
-  int error;              // Nonzero if a parse error occurred.
+  int32_t error;          // Nonzero if a parse error occurred.
   const char* error_msg;  // Human-readable message (owned by parser), or NULL.
 } SyntaqliteParseResult;
 

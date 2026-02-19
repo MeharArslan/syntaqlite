@@ -35,9 +35,15 @@ static const SyntaqliteDialect SQLITE_DIALECT = {
     .field_meta_counts = ast_meta_field_meta_counts,
     .list_tags = ast_meta_list_tags,
 
-    // Formatter bytecode
-    .fmt_data = fmt_bytecode_data,
-    .fmt_data_len = fmt_bytecode_len,
+    // Formatter data
+    .fmt_strings = fmt_strings,
+    .fmt_string_count = sizeof(fmt_strings) / sizeof(fmt_strings[0]),
+    .fmt_enum_display = fmt_enum_display,
+    .fmt_enum_display_count = sizeof(fmt_enum_display) / sizeof(fmt_enum_display[0]),
+    .fmt_ops = fmt_ops,
+    .fmt_op_count = sizeof(fmt_ops) / 6,
+    .fmt_dispatch = fmt_dispatch,
+    .fmt_dispatch_count = sizeof(fmt_dispatch) / sizeof(fmt_dispatch[0]),
 };
 
 // ---------------------------------------------------------------------------

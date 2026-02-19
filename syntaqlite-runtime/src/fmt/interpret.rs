@@ -1,21 +1,445 @@
-use crate::parser::{FieldVal, NodeId, Session};
+use crate::parser::{FieldVal, NodeId};
 
+use super::bytecode::opcodes;
 use super::doc::{DocArena, DocId};
-use super::format::{first_source_offset, NodeMeta};
-use super::ops::FmtOp;
 use super::trivia::{flush_trivia, TriviaCtx};
 
-/// Session-level context shared across all interpret calls during formatting.
-pub struct FmtCtx<'a> {
-    pub strings: &'a [String],
-    pub enum_display: &'a [u16],
+// ── FmtOp types (formerly ops.rs) ────────────────────────────────────────
+
+pub type StringId = u16;
+pub type FieldIdx = u16;
+pub type SkipCount = u16;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum FmtOp {
+    /// Emit a keyword from the string table.
+    Keyword(StringId),
+    /// Emit source text from a Span field.
+    Span(FieldIdx),
+    /// Recursively format the child node whose ID is in a NodeId field.
+    /// Skipped if the child ID is NULL_NODE.
+    Child(FieldIdx),
+    /// Flat: space. Break: newline + indent.
+    Line,
+    /// Flat: empty. Break: newline + indent.
+    SoftLine,
+    /// Always newline + indent.
+    HardLine,
+    /// Begin a group (try flat, break if doesn't fit).
+    GroupStart,
+    /// End a group.
+    GroupEnd,
+    /// Begin indentation nest.
+    NestStart(i16),
+    /// End indentation nest.
+    NestEnd,
+    /// If NodeId field != NULL_NODE, execute next ops; else skip.
+    IfSet(FieldIdx, SkipCount),
+    /// End of then-branch. If reached, skip the else-branch.
+    Else(SkipCount),
+    /// No-op marker ending a conditional block.
+    EndIf,
+    /// Begin iterating children of the list node referenced by a NodeId field.
+    ForEachStart(FieldIdx),
+    /// Format the current iteration child.
+    ChildItem,
+    /// Emit separator text between list items (not after last).
+    ForEachSep(StringId),
+    /// End of ForEach body.
+    ForEachEnd,
+    /// If Bool field is true, execute next ops; else skip.
+    IfBool(FieldIdx, SkipCount),
+    /// If Flags field has (value & mask) != 0, execute next ops; else skip.
+    IfFlag(FieldIdx, u8, SkipCount),
+    /// If Enum field == variant ordinal, execute next ops; else skip.
+    IfEnum(FieldIdx, u16, SkipCount),
+    /// If Span field is non-empty, execute next ops; else skip.
+    IfSpan(FieldIdx, SkipCount),
+    /// Map enum ordinal → string via lookup table. `u16` is base index into enum_display table.
+    EnumDisplay(FieldIdx, u16),
+    /// Begin iterating children of self (for list nodes).
+    ForEachSelfStart,
 }
 
-/// Trivia context passed into the interpreter for comment interleaving.
-pub struct InterpretTrivia<'a> {
-    pub ctx: &'a TriviaCtx<'a>,
-    pub session: &'a Session<'a>,
-    pub node_meta: &'a NodeMeta,
+// ── Decode / Encode ─────────────────────────────────────────────────────
+
+fn decode_op(opcode: u8, a: u8, b: u16, c: u16) -> FmtOp {
+    match opcode {
+        opcodes::KEYWORD => FmtOp::Keyword(b),
+        opcodes::SPAN => FmtOp::Span(a as u16),
+        opcodes::CHILD => FmtOp::Child(a as u16),
+        opcodes::LINE => FmtOp::Line,
+        opcodes::SOFTLINE => FmtOp::SoftLine,
+        opcodes::HARDLINE => FmtOp::HardLine,
+        opcodes::GROUP_START => FmtOp::GroupStart,
+        opcodes::GROUP_END => FmtOp::GroupEnd,
+        opcodes::NEST_START => FmtOp::NestStart(b as i16),
+        opcodes::NEST_END => FmtOp::NestEnd,
+        opcodes::IF_SET => FmtOp::IfSet(a as u16, c),
+        opcodes::ELSE_OP => FmtOp::Else(c),
+        opcodes::END_IF => FmtOp::EndIf,
+        opcodes::FOR_EACH_START => FmtOp::ForEachStart(a as u16),
+        opcodes::CHILD_ITEM => FmtOp::ChildItem,
+        opcodes::FOR_EACH_SEP => FmtOp::ForEachSep(b),
+        opcodes::FOR_EACH_END => FmtOp::ForEachEnd,
+        opcodes::IF_BOOL => FmtOp::IfBool(a as u16, c),
+        opcodes::IF_FLAG => FmtOp::IfFlag(a as u16, b as u8, c),
+        opcodes::IF_ENUM => FmtOp::IfEnum(a as u16, b, c),
+        opcodes::IF_SPAN => FmtOp::IfSpan(a as u16, c),
+        opcodes::ENUM_DISPLAY => FmtOp::EnumDisplay(a as u16, b),
+        opcodes::FOR_EACH_SELF_START => FmtOp::ForEachSelfStart,
+        _ => panic!("unknown opcode {} in fmt data", opcode),
+    }
+}
+
+// ── Interpreter ──────────────────────────────────────────────────────────
+
+/// Bytecode interpreter for formatting ops. Holds raw C pointers and
+/// decodes everything on demand — zero allocation for data access.
+pub(crate) struct Interpreter<'a, 'b> {
+    // C string table (keywords, separators)
+    fmt_strings: *const *const std::ffi::c_char,
+    fmt_string_count: usize,
+    // C enum display lookup table
+    fmt_enum_display: *const u16,
+    fmt_enum_display_count: usize,
+    // Raw ops for the current node (6 bytes each, decoded on demand)
+    ops_base: *const u8,
+    ops_len: usize,
+    // Callbacks
+    format_child: &'b dyn Fn(NodeId, &mut DocArena<'a>) -> DocId,
+    resolve_list: &'b dyn Fn(NodeId) -> Vec<NodeId>,
+    trivia_ctx: Option<&'b TriviaCtx<'a>>,
+    source_offset: Option<&'b dyn Fn(NodeId) -> Option<u32>>,
+}
+
+// SAFETY: All pointers reference static C data with no mutable state.
+unsafe impl<'a, 'b> Send for Interpreter<'a, 'b> {}
+unsafe impl<'a, 'b> Sync for Interpreter<'a, 'b> {}
+
+impl<'a, 'b> Interpreter<'a, 'b> {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        fmt_strings: *const *const std::ffi::c_char,
+        fmt_string_count: usize,
+        fmt_enum_display: *const u16,
+        fmt_enum_display_count: usize,
+        ops_base: *const u8,
+        ops_len: usize,
+        format_child: &'b dyn Fn(NodeId, &mut DocArena<'a>) -> DocId,
+        resolve_list: &'b dyn Fn(NodeId) -> Vec<NodeId>,
+        trivia_ctx: Option<&'b TriviaCtx<'a>>,
+        source_offset: Option<&'b dyn Fn(NodeId) -> Option<u32>>,
+    ) -> Self {
+        Interpreter {
+            fmt_strings,
+            fmt_string_count,
+            fmt_enum_display,
+            fmt_enum_display_count,
+            ops_base,
+            ops_len,
+            format_child,
+            resolve_list,
+            trivia_ctx,
+            source_offset,
+        }
+    }
+
+    /// Look up a string from the C string table by index.
+    /// Returns `&'a str` — the raw pointer access does not borrow `self`.
+    #[inline]
+    fn string(&self, sid: u16) -> &'a str {
+        let idx = sid as usize;
+        assert!(idx < self.fmt_string_count, "string index {} out of bounds (count={})", idx, self.fmt_string_count);
+        unsafe {
+            let cstr = std::ffi::CStr::from_ptr(*self.fmt_strings.add(idx));
+            cstr.to_str().expect("invalid UTF-8 in fmt string")
+        }
+    }
+
+    /// Look up a value in the enum display table.
+    #[inline]
+    fn enum_display_val(&self, idx: usize) -> u16 {
+        assert!(idx < self.fmt_enum_display_count, "enum_display index {} out of bounds", idx);
+        unsafe { *self.fmt_enum_display.add(idx) }
+    }
+
+    /// Decode op at position `ip` from the raw byte stream.
+    #[inline]
+    fn op_at(&self, ip: usize) -> FmtOp {
+        debug_assert!(ip < self.ops_len);
+        let base = ip * 6;
+        unsafe {
+            let opcode = *self.ops_base.add(base);
+            let a = *self.ops_base.add(base + 1);
+            let b = u16::from_le_bytes([
+                *self.ops_base.add(base + 2),
+                *self.ops_base.add(base + 3),
+            ]);
+            let c = u16::from_le_bytes([
+                *self.ops_base.add(base + 4),
+                *self.ops_base.add(base + 5),
+            ]);
+            decode_op(opcode, a, b, c)
+        }
+    }
+
+    /// Interpret the ops into a Doc tree.
+    ///
+    /// `fields` contains typed values extracted from the node struct.
+    /// `list_children` is set when the current node is a list (for `ForEachSelfStart`).
+    pub fn run(
+        &self,
+        fields: &[FieldVal<'a>],
+        list_children: Option<&[NodeId]>,
+        arena: &mut DocArena<'a>,
+    ) -> DocId {
+        let mut parts: Vec<DocId> = Vec::new();
+        let mut stack: Vec<StackFrame> = Vec::new();
+        let mut for_each_stack: Vec<ForEachState> = Vec::new();
+        let mut pending_lines: Vec<DocId> = Vec::new();
+        let mut ip: usize = 0;
+        let has_trivia = self.trivia_ctx.is_some();
+
+        while ip < self.ops_len {
+            match self.op_at(ip) {
+                FmtOp::Keyword(sid) => {
+                    if has_trivia {
+                        parts.extend(pending_lines.drain(..));
+                    }
+                    parts.push(arena.keyword(self.string(sid)));
+                }
+                FmtOp::Span(idx) => {
+                    let FieldVal::Span(s, offset) = fields[idx as usize] else {
+                        panic!("Span: field {} is not a Span", idx);
+                    };
+                    if !s.is_empty() {
+                        if let Some(tc) = self.trivia_ctx {
+                            let drain = tc.drain_before(offset, arena);
+                            flush_trivia(drain, &mut pending_lines, &mut parts);
+                            tc.set_source_end(offset + s.len() as u32);
+                        }
+                        parts.push(arena.text(s));
+                    }
+                }
+                FmtOp::Child(idx) => {
+                    let FieldVal::NodeId(child_id) = fields[idx as usize] else {
+                        panic!("Child: field {} is not a NodeId", idx);
+                    };
+                    if !child_id.is_null() {
+                        if let (Some(tc), Some(so)) = (self.trivia_ctx, self.source_offset) {
+                            if let Some(offset) = so(child_id) {
+                                let drain = tc.drain_before(offset, arena);
+                                flush_trivia(drain, &mut pending_lines, &mut parts);
+                            } else {
+                                parts.extend(pending_lines.drain(..));
+                            }
+                        }
+                        parts.push((self.format_child)(child_id, arena));
+                    }
+                }
+                FmtOp::Line => {
+                    if has_trivia {
+                        pending_lines.push(arena.line());
+                    } else {
+                        parts.push(arena.line());
+                    }
+                }
+                FmtOp::SoftLine => {
+                    if has_trivia {
+                        pending_lines.push(arena.softline());
+                    } else {
+                        parts.push(arena.softline());
+                    }
+                }
+                FmtOp::HardLine => {
+                    if has_trivia {
+                        pending_lines.push(arena.hardline());
+                    } else {
+                        parts.push(arena.hardline());
+                    }
+                }
+                FmtOp::GroupStart => {
+                    stack.push(StackFrame::Group(std::mem::take(&mut parts)));
+                }
+                FmtOp::GroupEnd => {
+                    // Flush any pending lines before closing the group.
+                    parts.extend(pending_lines.drain(..));
+                    let inner = arena.cats(&parts);
+                    match stack.pop().expect("unmatched GroupEnd") {
+                        StackFrame::Group(parent) => {
+                            parts = parent;
+                            parts.push(arena.group(inner));
+                        }
+                        _ => panic!("expected Group frame"),
+                    }
+                }
+                FmtOp::NestStart(indent) => {
+                    stack.push(StackFrame::Nest(indent, std::mem::take(&mut parts)));
+                }
+                FmtOp::NestEnd => {
+                    parts.extend(pending_lines.drain(..));
+                    let inner = arena.cats(&parts);
+                    match stack.pop().expect("unmatched NestEnd") {
+                        StackFrame::Nest(indent, parent) => {
+                            parts = parent;
+                            parts.push(arena.nest(indent, inner));
+                        }
+                        _ => panic!("expected Nest frame"),
+                    }
+                }
+                FmtOp::IfSet(idx, skip) => {
+                    let FieldVal::NodeId(id) = fields[idx as usize] else {
+                        panic!("IfSet: field {} is not a NodeId", idx);
+                    };
+                    if id.is_null() {
+                        ip += skip as usize;
+                    } else if let (Some(tc), Some(so)) = (self.trivia_ctx, self.source_offset) {
+                        // Drain trivia before this clause's source range.
+                        if let Some(offset) = so(id) {
+                            let drain = tc.drain_before(offset, arena);
+                            flush_trivia(drain, &mut pending_lines, &mut parts);
+                        }
+                    }
+                }
+                FmtOp::Else(skip) => {
+                    ip += skip as usize;
+                }
+                FmtOp::EndIf => {}
+                FmtOp::ForEachStart(idx) => {
+                    let FieldVal::NodeId(list_id) = fields[idx as usize] else {
+                        panic!("ForEachStart: field {} is not a NodeId", idx);
+                    };
+                    if list_id.is_null() {
+                        ip = self.skip_to_foreach_end(ip);
+                    } else {
+                        let children = (self.resolve_list)(list_id);
+                        if children.is_empty() {
+                            ip = self.skip_to_foreach_end(ip);
+                        } else {
+                            for_each_stack.push(ForEachState {
+                                children,
+                                index: 0,
+                                body_start: ip + 1,
+                            });
+                        }
+                    }
+                }
+                FmtOp::ChildItem => {
+                    let state = for_each_stack.last().expect("ChildItem outside ForEach");
+                    let child_id = state.children[state.index];
+                    if let (Some(tc), Some(so)) = (self.trivia_ctx, self.source_offset) {
+                        if let Some(offset) = so(child_id) {
+                            let drain = tc.drain_before(offset, arena);
+                            flush_trivia(drain, &mut pending_lines, &mut parts);
+                        } else {
+                            parts.extend(pending_lines.drain(..));
+                        }
+                    }
+                    parts.push((self.format_child)(child_id, arena));
+                }
+                FmtOp::ForEachSep(sid) => {
+                    let state = for_each_stack.last().expect("ForEachSep outside ForEach");
+                    if state.index < state.children.len() - 1 {
+                        parts.push(arena.text(self.string(sid)));
+                    } else {
+                        ip = self.skip_to_foreach_end(ip);
+                        continue;
+                    }
+                }
+                FmtOp::ForEachEnd => {
+                    let state = for_each_stack.last_mut().expect("ForEachEnd outside ForEach");
+                    state.index += 1;
+                    if state.index < state.children.len() {
+                        ip = state.body_start;
+                        continue;
+                    } else {
+                        for_each_stack.pop();
+                    }
+                }
+                FmtOp::IfBool(idx, skip) => {
+                    let FieldVal::Bool(val) = fields[idx as usize] else {
+                        panic!("IfBool: field {} is not a Bool", idx);
+                    };
+                    if !val {
+                        ip += skip as usize;
+                    }
+                }
+                FmtOp::IfFlag(idx, mask, skip) => {
+                    let FieldVal::Flags(f) = fields[idx as usize] else {
+                        panic!("IfFlag: field {} is not Flags", idx);
+                    };
+                    if f & mask == 0 {
+                        ip += skip as usize;
+                    }
+                }
+                FmtOp::IfEnum(idx, ordinal, skip) => {
+                    let FieldVal::Enum(val) = fields[idx as usize] else {
+                        panic!("IfEnum: field {} is not an Enum", idx);
+                    };
+                    if val != ordinal as u32 {
+                        ip += skip as usize;
+                    }
+                }
+                FmtOp::IfSpan(idx, skip) => {
+                    let FieldVal::Span(s, _) = fields[idx as usize] else {
+                        panic!("IfSpan: field {} is not a Span", idx);
+                    };
+                    if s.is_empty() {
+                        ip += skip as usize;
+                    }
+                }
+                FmtOp::EnumDisplay(idx, base) => {
+                    let FieldVal::Enum(ordinal) = fields[idx as usize] else {
+                        panic!("EnumDisplay: field {} is not an Enum", idx);
+                    };
+                    if has_trivia {
+                        parts.extend(pending_lines.drain(..));
+                    }
+                    let string_id = self.enum_display_val(base as usize + ordinal as usize);
+                    parts.push(arena.keyword(self.string(string_id)));
+                }
+                FmtOp::ForEachSelfStart => {
+                    let children = list_children.expect("ForEachSelfStart on non-list node");
+                    if children.is_empty() {
+                        ip = self.skip_to_foreach_end(ip);
+                    } else {
+                        for_each_stack.push(ForEachState {
+                            children: children.to_vec(),
+                            index: 0,
+                            body_start: ip + 1,
+                        });
+                    }
+                }
+            }
+            ip += 1;
+        }
+
+        // Flush any remaining pending lines.
+        parts.extend(pending_lines.drain(..));
+
+        arena.cats(&parts)
+    }
+
+    /// Find the matching ForEachEnd scanning forward from `from_ip`.
+    fn skip_to_foreach_end(&self, from_ip: usize) -> usize {
+        let mut depth = 1;
+        let mut ip = from_ip + 1;
+        while ip < self.ops_len {
+            match self.op_at(ip) {
+                FmtOp::ForEachStart(_) | FmtOp::ForEachSelfStart => depth += 1,
+                FmtOp::ForEachEnd => {
+                    depth -= 1;
+                    if depth == 0 {
+                        return ip;
+                    }
+                }
+                _ => {}
+            }
+            ip += 1;
+        }
+        panic!("unmatched ForEachStart");
+    }
 }
 
 // -- Stack frames for the interpreter ----------------------------------------
@@ -31,265 +455,508 @@ struct ForEachState {
     body_start: usize,
 }
 
-/// Interpret an FmtOp bytecode array into a Doc tree.
-///
-/// `fields` contains typed values extracted from the node struct by generated code.
-/// `list_children` is set when the current node is a list (for `ForEachSelfStart`).
-/// `format_child` recursively formats a child node by ID.
-/// `resolve_list` returns the child IDs of a list node.
-/// `trivia` optionally provides comment interleaving context.
-pub fn interpret<'a>(
-    ops: &[FmtOp],
-    ctx: &FmtCtx<'a>,
-    fields: &[FieldVal<'a>],
-    list_children: Option<&[NodeId]>,
-    arena: &mut DocArena<'a>,
-    format_child: &dyn Fn(NodeId, &mut DocArena<'a>) -> DocId,
-    resolve_list: &dyn Fn(NodeId) -> Vec<NodeId>,
-    trivia: Option<&InterpretTrivia<'a>>,
-) -> DocId {
-    let mut parts: Vec<DocId> = Vec::new();
-    let mut stack: Vec<StackFrame> = Vec::new();
-    let mut for_each_stack: Vec<ForEachState> = Vec::new();
-    let mut pending_lines: Vec<DocId> = Vec::new();
-    let mut ip: usize = 0;
+// ── Test helpers ────────────────────────────────────────────────────────
 
-    while ip < ops.len() {
-        match ops[ip] {
-            FmtOp::Keyword(sid) => {
-                if trivia.is_some() {
-                    parts.extend(pending_lines.drain(..));
-                }
-                parts.push(arena.keyword(&ctx.strings[sid as usize]));
-            }
-            FmtOp::Span(idx) => {
-                let FieldVal::Span(s, offset) = fields[idx as usize] else {
-                    panic!("Span: field {} is not a Span", idx);
-                };
-                if !s.is_empty() {
-                    if let Some(it) = trivia {
-                        let drain = it.ctx.drain_before(offset, arena);
-                        flush_trivia(drain, &mut pending_lines, &mut parts);
-                        it.ctx.set_source_end(offset + s.len() as u32);
-                    }
-                    parts.push(arena.text(s));
-                }
-            }
-            FmtOp::Child(idx) => {
-                let FieldVal::NodeId(child_id) = fields[idx as usize] else {
-                    panic!("Child: field {} is not a NodeId", idx);
-                };
-                if !child_id.is_null() {
-                    if let Some(it) = trivia {
-                        if let Some(offset) = first_source_offset(it.session, it.node_meta, child_id) {
-                            let drain = it.ctx.drain_before(offset, arena);
-                            flush_trivia(drain, &mut pending_lines, &mut parts);
-                        } else {
-                            parts.extend(pending_lines.drain(..));
-                        }
-                    }
-                    parts.push(format_child(child_id, arena));
-                }
-            }
-            FmtOp::Line => {
-                if trivia.is_some() {
-                    pending_lines.push(arena.line());
-                } else {
-                    parts.push(arena.line());
-                }
-            }
-            FmtOp::SoftLine => {
-                if trivia.is_some() {
-                    pending_lines.push(arena.softline());
-                } else {
-                    parts.push(arena.softline());
-                }
-            }
-            FmtOp::HardLine => {
-                if trivia.is_some() {
-                    pending_lines.push(arena.hardline());
-                } else {
-                    parts.push(arena.hardline());
-                }
-            }
-            FmtOp::GroupStart => {
-                stack.push(StackFrame::Group(std::mem::take(&mut parts)));
-            }
-            FmtOp::GroupEnd => {
-                // Flush any pending lines before closing the group.
-                parts.extend(pending_lines.drain(..));
-                let inner = arena.cats(&parts);
-                match stack.pop().expect("unmatched GroupEnd") {
-                    StackFrame::Group(parent) => {
-                        parts = parent;
-                        parts.push(arena.group(inner));
-                    }
-                    _ => panic!("expected Group frame"),
-                }
-            }
-            FmtOp::NestStart(indent) => {
-                stack.push(StackFrame::Nest(indent, std::mem::take(&mut parts)));
-            }
-            FmtOp::NestEnd => {
-                parts.extend(pending_lines.drain(..));
-                let inner = arena.cats(&parts);
-                match stack.pop().expect("unmatched NestEnd") {
-                    StackFrame::Nest(indent, parent) => {
-                        parts = parent;
-                        parts.push(arena.nest(indent, inner));
-                    }
-                    _ => panic!("expected Nest frame"),
-                }
-            }
-            FmtOp::IfSet(idx, skip) => {
-                let FieldVal::NodeId(id) = fields[idx as usize] else {
-                    panic!("IfSet: field {} is not a NodeId", idx);
-                };
-                if id.is_null() {
-                    ip += skip as usize;
-                } else if let Some(it) = trivia {
-                    // Drain trivia before this clause's source range.
-                    if let Some(offset) = first_source_offset(it.session, it.node_meta, id) {
-                        let drain = it.ctx.drain_before(offset, arena);
-                        flush_trivia(drain, &mut pending_lines, &mut parts);
-                    }
-                }
-            }
-            FmtOp::Else(skip) => {
-                ip += skip as usize;
-            }
-            FmtOp::EndIf => {}
-            FmtOp::ForEachStart(idx) => {
-                let FieldVal::NodeId(list_id) = fields[idx as usize] else {
-                    panic!("ForEachStart: field {} is not a NodeId", idx);
-                };
-                if list_id.is_null() {
-                    ip = skip_to_foreach_end(ops, ip);
-                } else {
-                    let children = resolve_list(list_id);
-                    if children.is_empty() {
-                        ip = skip_to_foreach_end(ops, ip);
-                    } else {
-                        for_each_stack.push(ForEachState {
-                            children,
-                            index: 0,
-                            body_start: ip + 1,
-                        });
-                    }
-                }
-            }
-            FmtOp::ChildItem => {
-                let state = for_each_stack.last().expect("ChildItem outside ForEach");
-                let child_id = state.children[state.index];
-                if let Some(it) = trivia {
-                    if let Some(offset) = first_source_offset(it.session, it.node_meta, child_id) {
-                        let drain = it.ctx.drain_before(offset, arena);
-                        flush_trivia(drain, &mut pending_lines, &mut parts);
-                    } else {
-                        parts.extend(pending_lines.drain(..));
-                    }
-                }
-                parts.push(format_child(child_id, arena));
-            }
-            FmtOp::ForEachSep(sid) => {
-                let state = for_each_stack.last().expect("ForEachSep outside ForEach");
-                if state.index < state.children.len() - 1 {
-                    parts.push(arena.text(&ctx.strings[sid as usize]));
-                } else {
-                    ip = skip_to_foreach_end(ops, ip);
-                    continue;
-                }
-            }
-            FmtOp::ForEachEnd => {
-                let state = for_each_stack.last_mut().expect("ForEachEnd outside ForEach");
-                state.index += 1;
-                if state.index < state.children.len() {
-                    ip = state.body_start;
-                    continue;
-                } else {
-                    for_each_stack.pop();
-                }
-            }
-            FmtOp::IfBool(idx, skip) => {
-                let FieldVal::Bool(val) = fields[idx as usize] else {
-                    panic!("IfBool: field {} is not a Bool", idx);
-                };
-                if !val {
-                    ip += skip as usize;
-                }
-            }
-            FmtOp::IfFlag(idx, mask, skip) => {
-                let FieldVal::Flags(f) = fields[idx as usize] else {
-                    panic!("IfFlag: field {} is not Flags", idx);
-                };
-                if f & mask == 0 {
-                    ip += skip as usize;
-                }
-            }
-            FmtOp::IfEnum(idx, ordinal, skip) => {
-                let FieldVal::Enum(val) = fields[idx as usize] else {
-                    panic!("IfEnum: field {} is not an Enum", idx);
-                };
-                if val != ordinal as u32 {
-                    ip += skip as usize;
-                }
-            }
-            FmtOp::IfSpan(idx, skip) => {
-                let FieldVal::Span(s, _) = fields[idx as usize] else {
-                    panic!("IfSpan: field {} is not a Span", idx);
-                };
-                if s.is_empty() {
-                    ip += skip as usize;
-                }
-            }
-            FmtOp::EnumDisplay(idx, base) => {
-                let FieldVal::Enum(ordinal) = fields[idx as usize] else {
-                    panic!("EnumDisplay: field {} is not an Enum", idx);
-                };
-                if trivia.is_some() {
-                    parts.extend(pending_lines.drain(..));
-                }
-                let string_id = ctx.enum_display[base as usize + ordinal as usize];
-                parts.push(arena.keyword(&ctx.strings[string_id as usize]));
-            }
-            FmtOp::ForEachSelfStart => {
-                let children = list_children.expect("ForEachSelfStart on non-list node");
-                if children.is_empty() {
-                    ip = skip_to_foreach_end(ops, ip);
-                } else {
-                    for_each_stack.push(ForEachState {
-                        children: children.to_vec(),
-                        index: 0,
-                        body_start: ip + 1,
-                    });
-                }
-            }
-        }
-        ip += 1;
-    }
-
-    // Flush any remaining pending lines.
-    parts.extend(pending_lines.drain(..));
-
-    arena.cats(&parts)
+#[cfg(test)]
+pub(crate) fn encode_op(op: &FmtOp) -> [u8; 6] {
+    let (opcode, a, b, c) = match *op {
+        FmtOp::Keyword(b) => (opcodes::KEYWORD, 0u8, b, 0u16),
+        FmtOp::Span(a) => (opcodes::SPAN, a as u8, 0, 0),
+        FmtOp::Child(a) => (opcodes::CHILD, a as u8, 0, 0),
+        FmtOp::Line => (opcodes::LINE, 0, 0, 0),
+        FmtOp::SoftLine => (opcodes::SOFTLINE, 0, 0, 0),
+        FmtOp::HardLine => (opcodes::HARDLINE, 0, 0, 0),
+        FmtOp::GroupStart => (opcodes::GROUP_START, 0, 0, 0),
+        FmtOp::GroupEnd => (opcodes::GROUP_END, 0, 0, 0),
+        FmtOp::NestStart(indent) => (opcodes::NEST_START, 0, indent as u16, 0),
+        FmtOp::NestEnd => (opcodes::NEST_END, 0, 0, 0),
+        FmtOp::IfSet(a, c) => (opcodes::IF_SET, a as u8, 0, c),
+        FmtOp::Else(c) => (opcodes::ELSE_OP, 0, 0, c),
+        FmtOp::EndIf => (opcodes::END_IF, 0, 0, 0),
+        FmtOp::ForEachStart(a) => (opcodes::FOR_EACH_START, a as u8, 0, 0),
+        FmtOp::ChildItem => (opcodes::CHILD_ITEM, 0, 0, 0),
+        FmtOp::ForEachSep(b) => (opcodes::FOR_EACH_SEP, 0, b, 0),
+        FmtOp::ForEachEnd => (opcodes::FOR_EACH_END, 0, 0, 0),
+        FmtOp::IfBool(a, c) => (opcodes::IF_BOOL, a as u8, 0, c),
+        FmtOp::IfFlag(a, mask, c) => (opcodes::IF_FLAG, a as u8, mask as u16, c),
+        FmtOp::IfEnum(a, b, c) => (opcodes::IF_ENUM, a as u8, b, c),
+        FmtOp::IfSpan(a, c) => (opcodes::IF_SPAN, a as u8, 0, c),
+        FmtOp::EnumDisplay(a, b) => (opcodes::ENUM_DISPLAY, a as u8, b, 0),
+        FmtOp::ForEachSelfStart => (opcodes::FOR_EACH_SELF_START, 0, 0, 0),
+    };
+    let b_bytes = b.to_le_bytes();
+    let c_bytes = c.to_le_bytes();
+    [opcode, a, b_bytes[0], b_bytes[1], c_bytes[0], c_bytes[1]]
 }
 
-/// Find the matching ForEachEnd scanning forward from `from_ip`.
-fn skip_to_foreach_end(ops: &[FmtOp], from_ip: usize) -> usize {
-    let mut depth = 1;
-    let mut ip = from_ip + 1;
-    while ip < ops.len() {
-        match ops[ip] {
-            FmtOp::ForEachStart(_) | FmtOp::ForEachSelfStart => depth += 1,
-            FmtOp::ForEachEnd => {
-                depth -= 1;
-                if depth == 0 {
-                    return ip;
-                }
-            }
-            _ => {}
-        }
-        ip += 1;
+/// Test helper: owns CStrings and provides C-compatible string pointer array.
+#[cfg(test)]
+pub(crate) struct TestStrings {
+    _strings: Vec<std::ffi::CString>,
+    ptrs: Vec<*const std::ffi::c_char>,
+}
+
+#[cfg(test)]
+impl TestStrings {
+    pub fn new(strings: &[&str]) -> Self {
+        let cstrings: Vec<std::ffi::CString> = strings
+            .iter()
+            .map(|s| std::ffi::CString::new(*s).unwrap())
+            .collect();
+        let ptrs: Vec<*const std::ffi::c_char> = cstrings.iter().map(|cs| cs.as_ptr()).collect();
+        TestStrings { _strings: cstrings, ptrs }
     }
-    panic!("unmatched ForEachStart");
+
+    pub fn ptr(&self) -> *const *const std::ffi::c_char {
+        self.ptrs.as_ptr()
+    }
+
+    pub fn count(&self) -> usize {
+        self.ptrs.len()
+    }
+}
+
+/// Test helper: encodes FmtOps into raw bytes and provides C-compatible pointer.
+#[cfg(test)]
+pub(crate) struct TestOps {
+    bytes: Vec<u8>,
+    len: usize,
+}
+
+#[cfg(test)]
+impl TestOps {
+    pub fn new(ops: &[FmtOp]) -> Self {
+        let mut bytes = Vec::with_capacity(ops.len() * 6);
+        for op in ops {
+            bytes.extend_from_slice(&encode_op(op));
+        }
+        TestOps { bytes, len: ops.len() }
+    }
+
+    pub fn ptr(&self) -> *const u8 {
+        self.bytes.as_ptr()
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::NodeId;
+    use crate::FieldVal;
+    use super::super::FormatConfig;
+    use super::super::doc::{DocArena, NIL_DOC};
+    use super::super::render::render;
+
+    fn noop_child(_: NodeId, _: &mut DocArena) -> u32 {
+        NIL_DOC
+    }
+
+    fn no_lists(_: NodeId) -> Vec<NodeId> {
+        panic!("resolve_list not expected")
+    }
+
+    fn run(ops: &[FmtOp], strings: &[&str], enum_display: &[u16], fields: &[FieldVal], config: &FormatConfig) -> String {
+        let ts = TestStrings::new(strings);
+        let to = TestOps::new(ops);
+        let ed_ptr = if enum_display.is_empty() { std::ptr::null() } else { enum_display.as_ptr() };
+        let mut arena = DocArena::new();
+        let interp = Interpreter::new(
+            ts.ptr(), ts.count(),
+            ed_ptr, enum_display.len(),
+            to.ptr(), to.len(),
+            &noop_child, &no_lists, None, None,
+        );
+        let doc = interp.run(fields, None, &mut arena);
+        render(&arena, doc, config)
+    }
+
+    fn run_default(ops: &[FmtOp], strings: &[&str], fields: &[FieldVal]) -> String {
+        run(ops, strings, &[], fields, &FormatConfig::default())
+    }
+
+    const NULL: NodeId = NodeId::NULL;
+
+    #[test]
+    fn single_keyword() {
+        assert_eq!(run_default(&[FmtOp::Keyword(0)], &["SELECT"], &[]), "SELECT");
+    }
+
+    #[test]
+    fn group_fits_flat() {
+        let ops = &[
+            FmtOp::GroupStart,
+            FmtOp::Keyword(0),
+            FmtOp::Line,
+            FmtOp::Keyword(1),
+            FmtOp::GroupEnd,
+        ];
+        assert_eq!(run_default(ops, &["SELECT", "FROM"], &[]), "SELECT FROM");
+    }
+
+    #[test]
+    fn group_breaks_when_narrow() {
+        let ops = &[
+            FmtOp::GroupStart,
+            FmtOp::Keyword(0),
+            FmtOp::Line,
+            FmtOp::Keyword(1),
+            FmtOp::GroupEnd,
+        ];
+        let config = FormatConfig { line_width: 5, ..Default::default() };
+        assert_eq!(run(ops, &["SELECT", "FROM"], &[], &[], &config), "SELECT\nFROM");
+    }
+
+    #[test]
+    fn nest_indentation() {
+        let ops = &[
+            FmtOp::GroupStart,
+            FmtOp::Keyword(0),
+            FmtOp::NestStart(4),
+            FmtOp::Line,
+            FmtOp::Keyword(1),
+            FmtOp::NestEnd,
+            FmtOp::GroupEnd,
+        ];
+        let config = FormatConfig { line_width: 5, ..Default::default() };
+        assert_eq!(run(ops, &["SELECT", "a"], &[], &[], &config), "SELECT\n    a");
+    }
+
+    #[test]
+    fn span_reads_source_text() {
+        let fields = &[FieldVal::Span("hello", 0)];
+        let ops = &[FmtOp::Span(0)];
+        assert_eq!(run_default(ops, &[], fields), "hello");
+    }
+
+    #[test]
+    fn child_recurses_into_child_node() {
+        let ts = TestStrings::new(&[]);
+        let to = TestOps::new(&[FmtOp::Child(0)]);
+        let fields = &[FieldVal::NodeId(NodeId(42))];
+        let mut arena = DocArena::new();
+        let format_child = |node_id: NodeId, arena: &mut DocArena| {
+            assert_eq!(node_id, NodeId(42));
+            arena.text("child_result")
+        };
+        let interp = Interpreter::new(
+            ts.ptr(), ts.count(),
+            std::ptr::null(), 0,
+            to.ptr(), to.len(),
+            &format_child, &no_lists, None, None,
+        );
+        let doc = interp.run(fields, None, &mut arena);
+        assert_eq!(render(&arena, doc, &FormatConfig::default()), "child_result");
+    }
+
+    #[test]
+    fn child_skips_null_node() {
+        let fields = &[FieldVal::NodeId(NULL)];
+        let ops = &[FmtOp::Keyword(0), FmtOp::Child(0), FmtOp::Keyword(1)];
+        assert_eq!(run_default(ops, &["a", "b"], fields), "ab");
+    }
+
+    #[test]
+    fn ifset_executes_then_branch() {
+        let fields = &[FieldVal::NodeId(NodeId(42))];
+        let ops = &[
+            FmtOp::IfSet(0, 2),
+            FmtOp::Keyword(0),
+            FmtOp::Else(1),
+            FmtOp::Keyword(1),
+            FmtOp::EndIf,
+        ];
+        assert_eq!(run_default(ops, &["YES", "NO"], fields), "YES");
+    }
+
+    #[test]
+    fn ifset_executes_else_branch() {
+        let fields = &[FieldVal::NodeId(NULL)];
+        let ops = &[
+            FmtOp::IfSet(0, 2),
+            FmtOp::Keyword(0),
+            FmtOp::Else(1),
+            FmtOp::Keyword(1),
+            FmtOp::EndIf,
+        ];
+        assert_eq!(run_default(ops, &["YES", "NO"], fields), "NO");
+    }
+
+    #[test]
+    fn ifset_without_else() {
+        let fields = &[FieldVal::NodeId(NULL)];
+        let ops = &[
+            FmtOp::Keyword(0),
+            FmtOp::IfSet(0, 2),
+            FmtOp::Line,
+            FmtOp::Keyword(1),
+            FmtOp::EndIf,
+            FmtOp::Keyword(2),
+        ];
+        assert_eq!(run_default(ops, &["a", "b", "c"], fields), "ac");
+    }
+
+    #[test]
+    fn foreach_comma_separated() {
+        let ts = TestStrings::new(&[", "]);
+        let to = TestOps::new(&[
+            FmtOp::GroupStart,
+            FmtOp::ForEachStart(0),
+            FmtOp::ChildItem,
+            FmtOp::ForEachSep(0),
+            FmtOp::ForEachEnd,
+            FmtOp::GroupEnd,
+        ]);
+        let fields = &[FieldVal::NodeId(NodeId(99))];
+        let format_child = |id: NodeId, arena: &mut DocArena| match id.0 {
+            10 => arena.text("a"),
+            20 => arena.text("b"),
+            30 => arena.text("c"),
+            _ => panic!("unexpected"),
+        };
+        let resolve_list = |id: NodeId| match id.0 {
+            99 => vec![NodeId(10), NodeId(20), NodeId(30)],
+            _ => panic!("unexpected list"),
+        };
+        let mut arena = DocArena::new();
+        let interp = Interpreter::new(
+            ts.ptr(), ts.count(),
+            std::ptr::null(), 0,
+            to.ptr(), to.len(),
+            &format_child, &resolve_list, None, None,
+        );
+        let doc = interp.run(fields, None, &mut arena);
+        assert_eq!(render(&arena, doc, &FormatConfig::default()), "a, b, c");
+    }
+
+    #[test]
+    fn foreach_with_line_breaks() {
+        let ts = TestStrings::new(&[","]);
+        let to = TestOps::new(&[
+            FmtOp::GroupStart,
+            FmtOp::ForEachStart(0),
+            FmtOp::ChildItem,
+            FmtOp::ForEachSep(0),
+            FmtOp::Line,
+            FmtOp::ForEachEnd,
+            FmtOp::GroupEnd,
+        ]);
+        let fields = &[FieldVal::NodeId(NodeId(99))];
+        let format_child = |id: NodeId, arena: &mut DocArena| match id.0 {
+            10 => arena.text("aaaa"),
+            20 => arena.text("bbbb"),
+            _ => panic!("unexpected"),
+        };
+        let resolve_list = |id: NodeId| match id.0 {
+            99 => vec![NodeId(10), NodeId(20)],
+            _ => panic!("unexpected"),
+        };
+        let mut arena = DocArena::new();
+        let interp = Interpreter::new(
+            ts.ptr(), ts.count(),
+            std::ptr::null(), 0,
+            to.ptr(), to.len(),
+            &format_child, &resolve_list, None, None,
+        );
+        let doc = interp.run(fields, None, &mut arena);
+        assert_eq!(render(&arena, doc, &FormatConfig::default()), "aaaa, bbbb");
+        let narrow = FormatConfig { line_width: 5, ..Default::default() };
+        assert_eq!(render(&arena, doc, &narrow), "aaaa,\nbbbb");
+    }
+
+    #[test]
+    fn foreach_empty_list() {
+        let ts = TestStrings::new(&["a", ", ", "b"]);
+        let to = TestOps::new(&[
+            FmtOp::Keyword(0),
+            FmtOp::ForEachStart(0),
+            FmtOp::ChildItem,
+            FmtOp::ForEachSep(1),
+            FmtOp::ForEachEnd,
+            FmtOp::Keyword(2),
+        ]);
+        let fields = &[FieldVal::NodeId(NodeId(99))];
+        let resolve_list = |id: NodeId| match id.0 {
+            99 => vec![],
+            _ => panic!("unexpected"),
+        };
+        let mut arena = DocArena::new();
+        let interp = Interpreter::new(
+            ts.ptr(), ts.count(),
+            std::ptr::null(), 0,
+            to.ptr(), to.len(),
+            &noop_child, &resolve_list, None, None,
+        );
+        let doc = interp.run(fields, None, &mut arena);
+        assert_eq!(render(&arena, doc, &FormatConfig::default()), "ab");
+    }
+
+    #[test]
+    fn ifbool_true() {
+        let fields = &[FieldVal::Bool(true)];
+        let ops = &[
+            FmtOp::IfBool(0, 2),
+            FmtOp::Keyword(0),
+            FmtOp::Else(1),
+            FmtOp::Keyword(1),
+            FmtOp::EndIf,
+        ];
+        assert_eq!(run_default(ops, &["YES", "NO"], fields), "YES");
+    }
+
+    #[test]
+    fn ifbool_false() {
+        let fields = &[FieldVal::Bool(false)];
+        let ops = &[
+            FmtOp::IfBool(0, 2),
+            FmtOp::Keyword(0),
+            FmtOp::Else(1),
+            FmtOp::Keyword(1),
+            FmtOp::EndIf,
+        ];
+        assert_eq!(run_default(ops, &["YES", "NO"], fields), "NO");
+    }
+
+    #[test]
+    fn ifflag_set() {
+        let fields = &[FieldVal::Flags(0b0000_0001)];
+        let ops = &[
+            FmtOp::IfFlag(0, 1, 2),
+            FmtOp::Keyword(0),
+            FmtOp::Else(1),
+            FmtOp::Keyword(1),
+            FmtOp::EndIf,
+        ];
+        assert_eq!(run_default(ops, &["DISTINCT", "ALL"], fields), "DISTINCT");
+    }
+
+    #[test]
+    fn ifflag_clear() {
+        let fields = &[FieldVal::Flags(0b0000_0000)];
+        let ops = &[
+            FmtOp::IfFlag(0, 1, 2),
+            FmtOp::Keyword(0),
+            FmtOp::Else(1),
+            FmtOp::Keyword(1),
+            FmtOp::EndIf,
+        ];
+        assert_eq!(run_default(ops, &["DISTINCT", "ALL"], fields), "ALL");
+    }
+
+    #[test]
+    fn ifenum_match() {
+        let fields = &[FieldVal::Enum(1)];
+        let ops = &[
+            FmtOp::IfEnum(0, 1, 2),
+            FmtOp::Keyword(0),
+            FmtOp::Else(1),
+            FmtOp::Keyword(1),
+            FmtOp::EndIf,
+        ];
+        assert_eq!(run_default(ops, &[" DESC", ""], fields), " DESC");
+    }
+
+    #[test]
+    fn ifenum_no_match() {
+        let fields = &[FieldVal::Enum(0)];
+        let ops = &[
+            FmtOp::IfEnum(0, 1, 2),
+            FmtOp::Keyword(0),
+            FmtOp::Else(1),
+            FmtOp::Keyword(1),
+            FmtOp::EndIf,
+        ];
+        assert_eq!(run_default(ops, &[" DESC", ""], fields), "");
+    }
+
+    #[test]
+    fn ifspan_set() {
+        let fields = &[FieldVal::Span("hello", 0)];
+        let ops = &[
+            FmtOp::IfSpan(0, 1),
+            FmtOp::Keyword(0),
+            FmtOp::EndIf,
+        ];
+        assert_eq!(run_default(ops, &["HAS_SPAN"], fields), "HAS_SPAN");
+    }
+
+    #[test]
+    fn ifspan_empty() {
+        let fields = &[FieldVal::Span("", 0)];
+        let ops = &[
+            FmtOp::IfSpan(0, 1),
+            FmtOp::Keyword(0),
+            FmtOp::EndIf,
+        ];
+        assert_eq!(run_default(ops, &["HAS_SPAN"], fields), "");
+    }
+
+    #[test]
+    fn enum_display_maps_ordinal() {
+        let fields = &[FieldVal::Enum(2)];
+        let enum_display: &[u16] = &[0, 1, 2];
+        let ops = &[FmtOp::EnumDisplay(0, 0)];
+        assert_eq!(run(ops, &["+", "-", "*"], enum_display, fields, &FormatConfig::default()), "*");
+    }
+
+    #[test]
+    fn enum_display_with_nonzero_base() {
+        let enum_display: &[u16] = &[10, 11, 0, 1];
+        let fields = &[FieldVal::Enum(1)];
+        let ops = &[FmtOp::EnumDisplay(0, 2)];
+        assert_eq!(run(ops, &["AND", "OR"], enum_display, fields, &FormatConfig::default()), "OR");
+    }
+
+    #[test]
+    fn foreach_self_start() {
+        let ts = TestStrings::new(&[", "]);
+        let to = TestOps::new(&[
+            FmtOp::ForEachSelfStart,
+            FmtOp::ChildItem,
+            FmtOp::ForEachSep(0),
+            FmtOp::ForEachEnd,
+        ]);
+        let children = &[NodeId(10), NodeId(20), NodeId(30)];
+        let format_child = |id: NodeId, arena: &mut DocArena| match id.0 {
+            10 => arena.text("x"),
+            20 => arena.text("y"),
+            30 => arena.text("z"),
+            _ => panic!("unexpected"),
+        };
+        let mut arena = DocArena::new();
+        let interp = Interpreter::new(
+            ts.ptr(), ts.count(),
+            std::ptr::null(), 0,
+            to.ptr(), to.len(),
+            &format_child, &no_lists, None, None,
+        );
+        let doc = interp.run(&[], Some(children), &mut arena);
+        assert_eq!(render(&arena, doc, &FormatConfig::default()), "x, y, z");
+    }
+
+    #[test]
+    fn foreach_self_empty() {
+        let ts = TestStrings::new(&["[", ", ", "]"]);
+        let to = TestOps::new(&[
+            FmtOp::Keyword(0),
+            FmtOp::ForEachSelfStart,
+            FmtOp::ChildItem,
+            FmtOp::ForEachSep(1),
+            FmtOp::ForEachEnd,
+            FmtOp::Keyword(2),
+        ]);
+        let children: &[NodeId] = &[];
+        let mut arena = DocArena::new();
+        let interp = Interpreter::new(
+            ts.ptr(), ts.count(),
+            std::ptr::null(), 0,
+            to.ptr(), to.len(),
+            &noop_child, &no_lists, None, None,
+        );
+        let doc = interp.run(&[], Some(children), &mut arena);
+        assert_eq!(render(&arena, doc, &FormatConfig::default()), "[]");
+    }
 }

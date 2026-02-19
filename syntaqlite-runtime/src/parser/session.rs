@@ -2,67 +2,8 @@ use std::ffi::{c_int, CStr};
 
 use crate::dialect::Dialect;
 use super::ffi;
+use super::ffi::{MacroRegion, Trivia};
 use super::nodes::NodeId;
-
-// Compile-time check: Trivia must have identical layout to ffi::RawTrivia
-// so we can transmute the C pointer directly to &[Trivia].
-const _: () = {
-    assert!(std::mem::size_of::<Trivia>() == std::mem::size_of::<ffi::RawTrivia>());
-    assert!(std::mem::align_of::<Trivia>() == std::mem::align_of::<ffi::RawTrivia>());
-    assert!(std::mem::offset_of!(Trivia, offset) == std::mem::offset_of!(ffi::RawTrivia, offset));
-    assert!(std::mem::offset_of!(Trivia, length) == std::mem::offset_of!(ffi::RawTrivia, length));
-    assert!(std::mem::offset_of!(Trivia, kind) == std::mem::offset_of!(ffi::RawTrivia, kind));
-};
-
-// Compile-time check: MacroRegion must have identical layout to ffi::RawMacroRegion.
-const _: () = {
-    assert!(std::mem::size_of::<MacroRegion>() == std::mem::size_of::<ffi::RawMacroRegion>());
-    assert!(std::mem::align_of::<MacroRegion>() == std::mem::align_of::<ffi::RawMacroRegion>());
-    assert!(
-        std::mem::offset_of!(MacroRegion, call_offset)
-            == std::mem::offset_of!(ffi::RawMacroRegion, call_offset)
-    );
-    assert!(
-        std::mem::offset_of!(MacroRegion, call_length)
-            == std::mem::offset_of!(ffi::RawMacroRegion, call_length)
-    );
-};
-
-/// The kind of a trivia item (comment).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u8)]
-pub enum TriviaKind {
-    /// A line comment starting with `--`.
-    LineComment = 0,
-    /// A block comment delimited by `/* ... */`.
-    BlockComment = 1,
-}
-
-/// A comment captured during parsing. Trivia items are sorted by source offset.
-///
-/// Layout matches `SyntaqliteTrivia` in C (offset: u32, length: u32, kind: u8)
-/// so we can return a slice directly from the C buffer without copying.
-#[derive(Debug, Clone, Copy)]
-#[repr(C)]
-pub struct Trivia {
-    pub offset: u32,
-    pub length: u32,
-    pub kind: TriviaKind,
-}
-
-/// A recorded macro invocation region. Populated via the low-level API
-/// (`begin_macro` / `end_macro`). The formatter can use these to reconstruct
-/// macro calls from the expanded AST.
-///
-/// Layout matches `SyntaqliteMacroRegion` in C.
-#[derive(Debug, Clone, Copy)]
-#[repr(C)]
-pub struct MacroRegion {
-    /// Byte offset of the macro call in the original source.
-    pub call_offset: u32,
-    /// Byte length of the entire macro call.
-    pub call_length: u32,
-}
 
 /// A parse error with a human-readable message.
 #[derive(Debug, Clone)]
@@ -80,7 +21,7 @@ impl std::error::Error for ParseError {}
 
 /// Owns a parser instance. Reusable across inputs via `parse()`.
 pub struct Parser {
-    raw: *mut ffi::RawParser,
+    raw: *mut ffi::SyntaqliteParser,
     /// Null-terminated copy of the source text. The C tokenizer (SQLite's
     /// `synq_sqlite3GetToken`) reads until it hits a null byte, so we must
     /// ensure the source is null-terminated. Rust `&str` does not guarantee
@@ -99,7 +40,7 @@ impl Parser {
         // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
         // a new parser with default malloc/free. It always succeeds.
         let raw = unsafe {
-            ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw as *const _)
+            ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw)
         };
         assert!(!raw.is_null(), "parser allocation failed");
         Parser {
@@ -255,9 +196,8 @@ impl<'a> Session<'a> {
         if count == 0 || ptr.is_null() {
             return &[];
         }
-        // SAFETY: RawTrivia and Trivia have identical repr(C) layout
-        // (u32, u32, u8). The pointer is valid for the lifetime of &self.
-        unsafe { std::slice::from_raw_parts(ptr as *const Trivia, count as usize) }
+        // SAFETY: The pointer is valid for the lifetime of &self.
+        unsafe { std::slice::from_raw_parts(ptr, count as usize) }
     }
 
     // -- Low-level token-feeding API ------------------------------------------
@@ -382,8 +322,8 @@ impl<'a> Session<'a> {
         if count == 0 || ptr.is_null() {
             return &[];
         }
-        // SAFETY: RawMacroRegion and MacroRegion have identical repr(C) layout.
-        unsafe { std::slice::from_raw_parts(ptr as *const MacroRegion, count as usize) }
+        // SAFETY: The pointer is valid for the lifetime of &self.
+        unsafe { std::slice::from_raw_parts(ptr, count as usize) }
     }
 }
 

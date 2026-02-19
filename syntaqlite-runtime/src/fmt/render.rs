@@ -1,4 +1,4 @@
-use super::config::{FormatConfig, KeywordCase};
+use super::{FormatConfig, KeywordCase};
 use super::doc::{Doc, DocArena, DocId, NIL_DOC};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,11 +93,6 @@ pub fn render(arena: &DocArena, root: DocId, config: &FormatConfig) -> String {
                     stack.push((indent, Mode::Break, *child));
                 }
             }
-
-            Doc::IfBreak { broken, flat } => match mode {
-                Mode::Flat => stack.push((indent, mode, *flat)),
-                Mode::Break => stack.push((indent, mode, *broken)),
-            },
 
             Doc::LineSuffix { child } => {
                 line_suffix_buf.push((indent, mode, *child));
@@ -234,10 +229,6 @@ fn fits(arena: &DocArena, doc_id: DocId, indent: i32, remaining: i32) -> bool {
             Doc::Group { child } => {
                 // In flat mode, groups are transparent
                 stack.push((indent, *child));
-            }
-            Doc::IfBreak { flat, .. } => {
-                // In flat mode, use the flat variant
-                stack.push((indent, *flat));
             }
             Doc::LineSuffix { .. } => {
                 // Line suffixes don't contribute to width in flat mode

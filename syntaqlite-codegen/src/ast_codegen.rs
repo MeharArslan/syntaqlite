@@ -475,27 +475,96 @@ pub fn generate_c_field_meta(items: &[Item]) -> String {
     w.finish()
 }
 
-/// Generate a C header containing the fmt bytecode as a byte array.
-pub fn generate_c_fmt_data(data: &[u8]) -> String {
+/// Generate a C header containing structured fmt arrays (strings, enum_display, ops, dispatch).
+pub fn generate_c_fmt_arrays(items: &[Item]) -> String {
+    let compiled = crate::fmt_compiler::compile_all(items);
+
     let mut w = CWriter::new();
     w.file_header();
     w.header_guard_start("SYNTAQLITE_FMT_DATA_H");
     w.include_system("stdint.h");
     w.newline();
 
-    w.line(&format!("static const uint8_t fmt_bytecode_data[] = {{"));
+    // String table
+    w.line("static const char* const fmt_strings[] = {");
     w.indent();
-
-    // Emit in rows of 16 bytes
-    for chunk in data.chunks(16) {
-        let hex: Vec<String> = chunk.iter().map(|b| format!("0x{:02x}", b)).collect();
-        w.line(&format!("{},", hex.join(",")));
+    for s in &compiled.strings {
+        // Escape for C string literal
+        let escaped = s.replace('\\', "\\\\").replace('"', "\\\"").replace('\n', "\\n");
+        w.line(&format!("\"{}\",", escaped));
     }
-
     w.dedent();
     w.line("};");
     w.newline();
-    w.line(&format!("static const uint32_t fmt_bytecode_len = {};", data.len()));
+
+    // Enum display table
+    w.line("static const uint16_t fmt_enum_display[] = {");
+    w.indent();
+    let enum_display = &compiled.enum_display;
+    for chunk in enum_display.chunks(16) {
+        let vals: Vec<String> = chunk.iter().map(|v| format!("{}", v)).collect();
+        w.line(&format!("{},", vals.join(",")));
+    }
+    w.dedent();
+    w.line("};");
+    w.newline();
+
+    // Flatten all ops into a single pool, recording each node's offset and length.
+    let mut op_pool: Vec<syntaqlite_runtime::fmt::bytecode::RawOp> = Vec::new();
+    let mut node_ranges: Vec<(&str, u16, u16)> = Vec::new();
+
+    for cn in &compiled.nodes {
+        let offset = op_pool.len() as u16;
+        let length = cn.ops.len() as u16;
+        op_pool.extend_from_slice(&cn.ops);
+        node_ranges.push((&cn.name, offset, length));
+    }
+
+    // Op pool (6 bytes per op, packed as raw bytes)
+    w.line("static const uint8_t fmt_ops[] = {");
+    w.indent();
+    for op in &op_pool {
+        let b_bytes = op.b.to_le_bytes();
+        let c_bytes = op.c.to_le_bytes();
+        w.line(&format!(
+            "{},{},{},{},{},{},",
+            op.opcode, op.a, b_bytes[0], b_bytes[1], c_bytes[0], c_bytes[1],
+        ));
+    }
+    w.dedent();
+    w.line("};");
+    w.newline();
+
+    // Build dispatch table: packed (offset << 16 | length) per node tag
+    let mut dispatch_table: Vec<u32> = vec![0xFFFF_0000; compiled.tag_count];
+
+    // Build ordinal map
+    let mut ordinal_map: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    let mut next_ordinal = 1usize;
+    for item in items {
+        match item {
+            Item::Node { name, .. } | Item::List { name, .. } => {
+                ordinal_map.insert(name, next_ordinal);
+                next_ordinal += 1;
+            }
+            _ => {}
+        }
+    }
+
+    for &(name, offset, length) in &node_ranges {
+        if let Some(&ordinal) = ordinal_map.get(name) {
+            dispatch_table[ordinal] = ((offset as u32) << 16) | (length as u32);
+        }
+    }
+
+    w.line("static const uint32_t fmt_dispatch[] = {");
+    w.indent();
+    for chunk in dispatch_table.chunks(8) {
+        let vals: Vec<String> = chunk.iter().map(|v| format!("0x{:08x}", v)).collect();
+        w.line(&format!("{},", vals.join(",")));
+    }
+    w.dedent();
+    w.line("};");
     w.newline();
 
     w.header_guard_end("SYNTAQLITE_FMT_DATA_H");

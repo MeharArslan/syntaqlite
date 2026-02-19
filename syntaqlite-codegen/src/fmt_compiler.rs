@@ -17,8 +17,8 @@ use std::fmt::Write as _;
 use crate::node_parser::Storage;
 use crate::node_parser::{Field, Fmt, Item};
 
-use syntaqlite_runtime::fmt::bytecode_format::opcodes;
-use syntaqlite_runtime::fmt::bytecode_format::RawOp;
+use syntaqlite_runtime::fmt::bytecode::opcodes;
+use syntaqlite_runtime::fmt::bytecode::RawOp;
 
 /// Convert a field index (u16) to u8 for binary encoding, panicking if too large.
 fn idx_u8(idx: u16) -> u8 {
@@ -442,20 +442,20 @@ fn compile_switch(
 
 // ── Shared compilation ──────────────────────────────────────────────────
 
-struct CompiledNode {
-    name: String,
-    ops: Vec<RawOp>,
+pub struct CompiledNode {
+    pub name: String,
+    pub ops: Vec<RawOp>,
 }
 
-struct CompiledFmt {
-    strings: StringTable,
-    enum_display: EnumDisplayTable,
-    nodes: Vec<CompiledNode>,
-    tag_count: usize,
+pub struct CompiledFmt {
+    pub strings: Vec<String>,
+    pub enum_display: Vec<u16>,
+    pub nodes: Vec<CompiledNode>,
+    pub tag_count: usize,
 }
 
 /// Compile all items into the intermediate representation shared by both emitters.
-fn compile_all(items: &[Item]) -> CompiledFmt {
+pub fn compile_all(items: &[Item]) -> CompiledFmt {
     let enum_items: HashMap<String, Vec<String>> = items
         .iter()
         .filter_map(|item| match item {
@@ -528,7 +528,12 @@ fn compile_all(items: &[Item]) -> CompiledFmt {
         .count()
         + 1;
 
-    CompiledFmt { strings, enum_display, nodes: compiled, tag_count }
+    CompiledFmt {
+        strings: strings.strings,
+        enum_display: enum_display.entries,
+        nodes: compiled,
+        tag_count,
+    }
 }
 
 // ── RawOp → Rust source text ────────────────────────────────────────────
@@ -596,7 +601,7 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
 
     // String table
     writeln!(out, "const STRINGS: &[&str] = &[").unwrap();
-    for s in &compiled.strings.strings {
+    for s in &compiled.strings {
         writeln!(out, "    {:?},", s).unwrap();
     }
     writeln!(out, "];").unwrap();
@@ -604,7 +609,7 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
 
     // Enum display table
     writeln!(out, "const ENUM_DISPLAY: &[u16] = &[").unwrap();
-    for &sid in &compiled.enum_display.entries {
+    for &sid in &compiled.enum_display {
         write!(out, "{}, ", sid).unwrap();
     }
     writeln!(out, "];").unwrap();
@@ -643,50 +648,6 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
     out
 }
 
-// ── Binary bytecode emission ────────────────────────────────────────────
-
-/// Generate binary bytecode for the formatter.
-///
-/// Format: `[Header:16] [StringTable] [EnumDisplay] [OpPool] [DispatchTable]`
-pub fn generate_fmt_bytecode(items: &[Item]) -> Vec<u8> {
-    let compiled = compile_all(items);
-
-    // Flatten all ops into a single pool, recording each node's offset and length.
-    let mut op_pool: Vec<RawOp> = Vec::new();
-    let mut node_ranges: Vec<(&str, u16, u16)> = Vec::new(); // (name, offset, length)
-
-    for cn in &compiled.nodes {
-        let offset = op_pool.len() as u16;
-        let length = cn.ops.len() as u16;
-        op_pool.extend_from_slice(&cn.ops);
-        node_ranges.push((&cn.name, offset, length));
-    }
-
-    // Build ordinal map: node name → tag ordinal.
-    // Ordinals are assigned sequentially starting from 1 (0 = Null tag).
-    let mut ordinal_map: HashMap<&str, usize> = HashMap::new();
-    let mut next_ordinal = 1usize;
-    for item in items {
-        match item {
-            Item::Node { name, .. } | Item::List { name, .. } => {
-                ordinal_map.insert(name, next_ordinal);
-                next_ordinal += 1;
-            }
-            _ => {}
-        }
-    }
-
-    // Build dispatch table
-    let mut dispatch_table: Vec<(u16, u16)> = vec![(0xFFFF, 0); compiled.tag_count];
-    for &(name, offset, length) in &node_ranges {
-        if let Some(&ordinal) = ordinal_map.get(name) {
-            dispatch_table[ordinal] = (offset, length);
-        }
-    }
-
-    let string_refs: Vec<&str> = compiled.strings.strings.iter().map(|s| s.as_str()).collect();
-    syntaqlite_runtime::fmt::bytecode_format::encode(&string_refs, &compiled.enum_display.entries, &op_pool, &dispatch_table)
-}
 
 #[cfg(test)]
 mod tests {
@@ -859,59 +820,4 @@ mod tests {
         assert!(output.contains("NodeTag::FooList"));
     }
 
-    #[test]
-    fn bytecode_round_trip() {
-        let items = vec![
-            Item::Enum {
-                name: "BinOp".into(),
-                variants: vec!["PLUS".into(), "MINUS".into()],
-            },
-            Item::Node {
-                name: "Literal".into(),
-                fields: vec![Field {
-                    name: "source".into(),
-                    storage: Storage::Inline,
-                    type_name: "SyntaqliteSourceSpan".into(),
-                }],
-                fmt: Some(vec![Fmt::Span("source".into())]),
-            },
-            Item::Node {
-                name: "Test".into(),
-                fields: vec![
-                    Field { name: "op".into(), storage: Storage::Inline, type_name: "BinOp".into() },
-                ],
-                fmt: Some(vec![
-                    Fmt::EnumDisplay {
-                        field: "op".into(),
-                        mappings: vec![
-                            ("PLUS".into(), "+".into()),
-                            ("MINUS".into(), "-".into()),
-                        ],
-                    },
-                ]),
-            },
-            Item::List {
-                name: "TestList".into(),
-                child_type: "Test".into(),
-                fmt: None,
-            },
-        ];
-
-        let bytecode = generate_fmt_bytecode(&items);
-
-        // Verify header
-        assert_eq!(&bytecode[0..4], b"SQFM");
-        let version = u16::from_le_bytes([bytecode[4], bytecode[5]]);
-        assert_eq!(version, 1);
-        let hash = u16::from_le_bytes([bytecode[6], bytecode[7]]);
-        assert_eq!(hash, syntaqlite_runtime::fmt::bytecode_format::BYTECODE_VERSION_HASH);
-
-        // Verify counts
-        let string_count = u16::from_le_bytes([bytecode[8], bytecode[9]]);
-        assert!(string_count > 0);
-        let dispatch_count = u16::from_le_bytes([bytecode[14], bytecode[15]]);
-        // 4 items (Literal, Test, TestList) + 1 (Null) = 4 tags
-        // But Enum doesn't count, so: 3 nodes/lists + 1 Null = 4
-        assert_eq!(dispatch_count, 4);
-    }
 }

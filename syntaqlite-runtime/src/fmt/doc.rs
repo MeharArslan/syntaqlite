@@ -24,8 +24,6 @@ pub enum Doc<'a> {
     Nest { indent: i16, child: DocId },
     /// Try to fit `child` on one line; break if it doesn't fit.
     Group { child: DocId },
-    /// Emit `broken` when enclosing group breaks, `flat` when it fits.
-    IfBreak { broken: DocId, flat: DocId },
     /// Defer `child` to end of current line (for trailing comments).
     LineSuffix { child: DocId },
     /// Force the enclosing group to break.
@@ -41,12 +39,6 @@ pub struct DocArena<'a> {
 impl<'a> DocArena<'a> {
     pub fn new() -> Self {
         DocArena { docs: Vec::new() }
-    }
-
-    pub fn with_capacity(cap: usize) -> Self {
-        DocArena {
-            docs: Vec::with_capacity(cap),
-        }
     }
 
     fn push(&mut self, doc: Doc<'a>) -> DocId {
@@ -117,10 +109,6 @@ impl<'a> DocArena<'a> {
             return NIL_DOC;
         }
         self.push(Doc::Group { child })
-    }
-
-    pub fn if_break(&mut self, broken: DocId, flat: DocId) -> DocId {
-        self.push(Doc::IfBreak { broken, flat })
     }
 
     pub fn line_suffix(&mut self, child: DocId) -> DocId {

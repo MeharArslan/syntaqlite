@@ -115,9 +115,9 @@ typedef struct SyntaqliteDialect {
     const SyntaqliteRangeMetaEntry* range_meta;
 
     // Well-known token IDs.
-    int tk_space;
-    int tk_semi;
-    int tk_comment;
+    int32_t tk_space;
+    int32_t tk_semi;
+    int32_t tk_comment;
 
     // AST metadata — all arrays indexed by node tag, length = node_count.
     uint32_t                              node_count;
@@ -126,9 +126,15 @@ typedef struct SyntaqliteDialect {
     const uint8_t*                        field_meta_counts;
     const uint8_t*                        list_tags;         // 1 = list node
 
-    // Formatter bytecode (NULL + 0 to skip formatting).
-    const uint8_t* fmt_data;
-    uint32_t       fmt_data_len;
+    // Formatter data — all static arrays, NULL to skip formatting.
+    const char* const*    fmt_strings;           // keyword/punctuation strings (null-terminated)
+    uint16_t              fmt_string_count;
+    const uint16_t*       fmt_enum_display;      // enum ordinal → string ID mapping
+    uint16_t              fmt_enum_display_count;
+    const uint8_t*        fmt_ops;               // packed 6-byte raw ops (opcode, a, b_lo, b_hi, c_lo, c_hi)
+    uint16_t              fmt_op_count;
+    const uint32_t*       fmt_dispatch;          // packed (u16 offset << 16 | u16 length) per node tag
+    uint16_t              fmt_dispatch_count;
 } SyntaqliteDialect;
 
 #ifdef __cplusplus
