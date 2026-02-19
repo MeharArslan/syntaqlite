@@ -257,13 +257,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "syntaqlite"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "syntaqlite-runtime",
+]
+
+[[package]]
 name = "syntaqlite-cli"
 version = "0.1.0"
 dependencies = [
  "clap",
  "glob",
- "syntaqlite-fmt",
- "syntaqlite-parser",
+ "syntaqlite",
 ]
 
 [[package]]
@@ -273,7 +280,7 @@ dependencies = [
  "cc",
  "clap",
  "syntaqlite-codegen-utils",
- "syntaqlite-fmt-bytecode",
+ "syntaqlite-runtime",
  "tempfile",
 ]
 
@@ -282,23 +289,8 @@ name = "syntaqlite-codegen-utils"
 version = "0.1.0"
 
 [[package]]
-name = "syntaqlite-fmt"
+name = "syntaqlite-runtime"
 version = "0.1.0"
-dependencies = [
- "syntaqlite-fmt-bytecode",
- "syntaqlite-parser",
-]
-
-[[package]]
-name = "syntaqlite-fmt-bytecode"
-version = "0.1.0"
-
-[[package]]
-name = "syntaqlite-parser"
-version = "0.1.0"
-dependencies = [
- "cc",
-]
 
 [[package]]
 name = "tempfile"

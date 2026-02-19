@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "csrc/parser.h"
+#include "csrc/grammar_types.h"
 #include "csrc/sqlite_parse_data.h"
 #include "syntaqlite/tokens.h"
 

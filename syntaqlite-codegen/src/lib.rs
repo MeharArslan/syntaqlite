@@ -352,6 +352,7 @@ pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
     w.file_header();
     w.include_local("csrc/ast_builder.h");
     w.include_local("csrc/parser.h");
+    w.include_local("csrc/grammar_types.h");
     w.include_local("syntaqlite/tokens.h");
     w.newline();
     for section in [

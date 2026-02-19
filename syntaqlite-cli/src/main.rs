@@ -3,11 +3,11 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use syntaqlite_fmt::{
+use syntaqlite::{
     first_source_offset, format_node, format_node_with_trivia, render, DocArena, FormatConfig,
-    KeywordCase, TriviaCtx, ctx, dispatch,
+    KeywordCase, TriviaCtx, ctx, dispatch, NODE_INFO,
+    dump_node, TriviaKind,
 };
-use syntaqlite_parser::{dump_node, TriviaKind};
 
 #[derive(Parser)]
 #[command(name = "syntaqlite", about = "Tools for SQLite SQL")]
@@ -71,7 +71,7 @@ fn expand_paths(patterns: &[String]) -> Result<Vec<PathBuf>, String> {
 }
 
 fn format_source(source: &str, config: &FormatConfig, semicolons: bool) -> Result<String, String> {
-    let mut parser = syntaqlite_parser::Parser::new();
+    let mut parser = syntaqlite::Parser::new();
     parser.set_collect_tokens(true);
     let mut session = parser.parse(source);
 
@@ -83,6 +83,7 @@ fn format_source(source: &str, config: &FormatConfig, semicolons: bool) -> Resul
     }
 
     let trivia = session.trivia();
+    let ni = &NODE_INFO;
 
     // Fast path: no trivia, format without comment handling.
     if trivia.is_empty() {
@@ -96,7 +97,7 @@ fn format_source(source: &str, config: &FormatConfig, semicolons: bool) -> Resul
                 out.push_str("\n\n");
             }
             let mut arena = DocArena::new();
-            let doc = format_node(dispatch(), ctx(), &session, root_id, &mut arena);
+            let doc = format_node(dispatch(), ctx(), &session, ni, root_id, &mut arena);
             out.push_str(&render(&arena, doc, config));
             first = false;
         }
@@ -122,7 +123,7 @@ fn format_source(source: &str, config: &FormatConfig, semicolons: bool) -> Resul
         }
 
         // Compute this statement's first source offset.
-        let stmt_start = first_source_offset(dispatch(), &session, root_id)
+        let stmt_start = first_source_offset(dispatch(), &session, ni, root_id)
             .unwrap_or(source.len() as u32);
 
         // Emit pre-statement trivia (comments before this statement).
@@ -144,7 +145,7 @@ fn format_source(source: &str, config: &FormatConfig, semicolons: bool) -> Resul
 
         // Determine the end boundary for within-statement trivia.
         let stmt_end = if i + 1 < roots.len() {
-            first_source_offset(dispatch(), &session, roots[i + 1])
+            first_source_offset(dispatch(), &session, ni, roots[i + 1])
                 .unwrap_or(source.len() as u32)
         } else {
             source.len() as u32
@@ -160,12 +161,12 @@ fn format_source(source: &str, config: &FormatConfig, semicolons: bool) -> Resul
         // Format the statement with trivia interleaving.
         let mut arena = DocArena::new();
         if within_trivia.is_empty() {
-            let doc = format_node(dispatch(), ctx(), &session, root_id, &mut arena);
+            let doc = format_node(dispatch(), ctx(), &session, ni, root_id, &mut arena);
             out.push_str(&render(&arena, doc, config));
         } else {
             let trivia_ctx = TriviaCtx::new(within_trivia, source);
             let doc =
-                format_node_with_trivia(dispatch(), ctx(), &session, root_id, &mut arena, &trivia_ctx);
+                format_node_with_trivia(dispatch(), ctx(), &session, ni, root_id, &mut arena, &trivia_ctx);
             // Flush remaining trivia (trailing comments at end of statement).
             let trailing = trivia_ctx.drain_remaining(&mut arena);
             let final_doc = arena.cat(doc, trailing);
@@ -221,7 +222,7 @@ fn cmd_ast(files: Vec<String>) -> Result<(), String> {
 }
 
 fn cmd_ast_source(source: &str) -> Result<(), String> {
-    let mut parser = syntaqlite_parser::Parser::new();
+    let mut parser = syntaqlite::Parser::new();
     let mut session = parser.parse(source);
     let mut buf = String::new();
     let mut count = 0;

@@ -1,0 +1,9 @@
+[package]
+name = "syntaqlite-runtime"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["parser", "fmt"]
+parser = []
+fmt = ["parser"]

@@ -17,8 +17,8 @@ use std::fmt::Write as _;
 use crate::node_parser::Storage;
 use crate::node_parser::{Field, Fmt, Item};
 
-use syntaqlite_fmt_bytecode::opcodes;
-use syntaqlite_fmt_bytecode::RawOp;
+use syntaqlite_runtime::fmt::bytecode_format::opcodes;
+use syntaqlite_runtime::fmt::bytecode_format::RawOp;
 
 /// Convert a field index (u16) to u8 for binary encoding, panicking if too large.
 fn idx_u8(idx: u16) -> u8 {
@@ -685,7 +685,7 @@ pub fn generate_fmt_bytecode(items: &[Item]) -> Vec<u8> {
     }
 
     let string_refs: Vec<&str> = compiled.strings.strings.iter().map(|s| s.as_str()).collect();
-    syntaqlite_fmt_bytecode::encode(&string_refs, &compiled.enum_display.entries, &op_pool, &dispatch_table)
+    syntaqlite_runtime::fmt::bytecode_format::encode(&string_refs, &compiled.enum_display.entries, &op_pool, &dispatch_table)
 }
 
 #[cfg(test)]
@@ -904,7 +904,7 @@ mod tests {
         let version = u16::from_le_bytes([bytecode[4], bytecode[5]]);
         assert_eq!(version, 1);
         let hash = u16::from_le_bytes([bytecode[6], bytecode[7]]);
-        assert_eq!(hash, syntaqlite_fmt_bytecode::BYTECODE_VERSION_HASH);
+        assert_eq!(hash, syntaqlite_runtime::fmt::bytecode_format::BYTECODE_VERSION_HASH);
 
         // Verify counts
         let string_count = u16::from_le_bytes([bytecode[8], bytecode[9]]);

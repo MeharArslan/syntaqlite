@@ -17,17 +17,9 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
     w.include_system("stddef.h");
     w.include_system("stdint.h");
     w.newline();
+    w.include_local("syntaqlite/types.h");
     w.newline();
     w.extern_c_start();
-
-    // Shared AST primitives
-    w.line("#define SYNTAQLITE_NULL_NODE 0xFFFFFFFFu");
-    w.newline();
-    w.typedef_struct("SyntaqliteSourceSpan", &[
-        ("uint32_t", "offset"),
-        ("uint16_t", "length"),
-    ]);
-    w.newline();
 
     // Enums
     let mut any_enum = false;
@@ -282,7 +274,7 @@ fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
 
 fn emit_range_metadata(w: &mut CWriter, items: &[Item]) {
     w.section("Range Field Metadata");
-    w.line("typedef struct { uint16_t offset; uint8_t kind; } SynqFieldRangeMeta;");
+    // SynqFieldRangeMeta and SynqRangeMetaEntry are defined in csrc/parser.h (runtime).
     w.newline();
 
     // Per-node arrays
@@ -303,7 +295,7 @@ fn emit_range_metadata(w: &mut CWriter, items: &[Item]) {
     }
 
     // Dispatch table
-    w.line("static const struct { const SynqFieldRangeMeta *fields; uint8_t count; } range_meta_table[] = {");
+    w.line("static const SynqRangeMetaEntry range_meta_table[] = {");
     w.indent();
     w.line("[SYNTAQLITE_NODE_NULL] = {NULL, 0},");
     for item in items {

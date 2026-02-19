@@ -1,12 +1,11 @@
 # Cargo.toml
 [workspace]
 members = [
-    "syntaqlite-parser",
+    "syntaqlite-runtime",
+    "syntaqlite",
     "syntaqlite-codegen",
     "syntaqlite-codegen-utils",
     "syntaqlite-cli",
-    "syntaqlite-fmt",
-    "syntaqlite-fmt-bytecode",
 ]
 resolver = "3"
 

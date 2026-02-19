@@ -22,8 +22,12 @@ enum Command {
         nodes_dir: String,
         #[arg(long, required = true)]
         tokenize_c: String,
-        #[arg(long, default_value = "syntaqlite-parser/csrc")]
+        #[arg(long, default_value = "syntaqlite/csrc")]
         output_dir: String,
+        /// Output directory for runtime engine files (tokenizer, keywords).
+        /// If not set, these files are written to output_dir.
+        #[arg(long)]
+        runtime_csrc: Option<String>,
     },
     Lemon {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -66,6 +70,7 @@ fn main() {
                 nodes_dir,
                 tokenize_c,
                 output_dir,
+                runtime_csrc,
             } => {
                 let temp_dir = tempfile::TempDir::new()
                     .map_err(|e| format!("Failed to create temp directory: {}", e))?;
@@ -163,13 +168,21 @@ fn main() {
                 fs::write(out.join("sqlite_parse_data.h"), parse_data_h)
                     .map_err(|e| format!("Failed to write sqlite_parse_data.h: {}", e))?;
 
-                fs::write(out.join("sqlite_tokenize.c"), tokenize_content)
+                // Runtime engine files (tokenizer, keywords) go to runtime_csrc if set.
+                let rt_out = runtime_csrc.as_deref().map(Path::new).unwrap_or(out);
+                fs::create_dir_all(rt_out)
+                    .map_err(|e| format!("Failed to create runtime csrc directory: {}", e))?;
+                if runtime_csrc.is_some() {
+                    clean_generated_files(rt_out, args.verbose);
+                }
+
+                fs::write(rt_out.join("sqlite_tokenize.c"), tokenize_content)
                     .map_err(|e| format!("Failed to write sqlite_tokenize.c: {}", e))?;
 
-                fs::write(out.join("sqlite_keyword_tables.h"), keyword_tables)
+                fs::write(rt_out.join("sqlite_keyword_tables.h"), keyword_tables)
                     .map_err(|e| format!("Failed to write sqlite_keyword_tables.h: {}", e))?;
 
-                fs::write(out.join("sqlite_keyword.c"), keyword_func)
+                fs::write(rt_out.join("sqlite_keyword.c"), keyword_func)
                     .map_err(|e| format!("Failed to write sqlite_keyword.c: {}", e))?;
 
                 // Step 5: Generate Rust bindings
@@ -198,16 +211,11 @@ fn main() {
                 fs::write(rust_gen_dir.join("mod.rs"), "pub mod nodes;\npub mod tokens;\n")
                     .map_err(|e| format!("Failed to write mod.rs: {}", e))?;
 
-                // Step 6: Generate fmt bytecode and module for syntaqlite-fmt
+                // Step 6: Generate fmt bytecode
                 if args.verbose {
                     eprintln!("Generating fmt bytecode...");
                 }
-                let fmt_gen_dir = Path::new(&output_dir)
-                    .parent()
-                    .unwrap_or(Path::new("."))
-                    .parent()
-                    .unwrap_or(Path::new("."))
-                    .join("syntaqlite-fmt/src/generated");
+                let fmt_gen_dir = rust_gen_dir.clone();
                 fs::create_dir_all(&fmt_gen_dir)
                     .map_err(|e| format!("Failed to create fmt generated directory: {}", e))?;
 
