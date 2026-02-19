@@ -65,6 +65,27 @@ impl Drop for TokenParser {
 pub struct TokenFeeder<'a>(pub(crate) CursorBase<'a>);
 
 impl<'a> TokenFeeder<'a> {
+    /// Read the parser result after a statement-completing or error return code.
+    /// rc == 1 means success, anything else is an error.
+    fn parse_result(&self, rc: c_int) -> Result<NodeId, ParseError> {
+        // SAFETY: raw is valid; result struct and error_msg pointer are valid
+        // for the lifetime of the parser.
+        unsafe {
+            let result = ffi::syntaqlite_parser_result(self.0.raw);
+            if rc == 1 {
+                return Ok(NodeId(result.root));
+            }
+            let msg = if result.error_msg.is_null() {
+                "parse error".to_string()
+            } else {
+                CStr::from_ptr(result.error_msg)
+                    .to_string_lossy()
+                    .into_owned()
+            };
+            Err(ParseError { message: msg })
+        }
+    }
+
     /// Feed a single token to the parser.
     ///
     /// `TK_SPACE` is silently skipped. `TK_COMMENT` is recorded as trivia
@@ -80,33 +101,19 @@ impl<'a> TokenFeeder<'a> {
         token_type: u32,
         span: Range<usize>,
     ) -> Result<Option<NodeId>, ParseError> {
-        let c_text = unsafe { self.0.c_source_ptr.add(span.start) };
-        let len = span.len();
+        // SAFETY: c_source_ptr is valid for the source length; raw is valid.
         let rc = unsafe {
+            let c_text = self.0.c_source_ptr.add(span.start);
             ffi::syntaqlite_parser_feed_token(
                 self.0.raw,
                 token_type as c_int,
                 c_text as *const _,
-                len as c_int,
+                span.len() as c_int,
             )
         };
         match rc {
             0 => Ok(None),
-            1 => {
-                let result = unsafe { ffi::syntaqlite_parser_result(self.0.raw) };
-                Ok(Some(NodeId(result.root)))
-            }
-            _ => {
-                let result = unsafe { ffi::syntaqlite_parser_result(self.0.raw) };
-                let msg = if result.error_msg.is_null() {
-                    "parse error".to_string()
-                } else {
-                    unsafe { CStr::from_ptr(result.error_msg) }
-                        .to_string_lossy()
-                        .into_owned()
-                };
-                Err(ParseError { message: msg })
-            }
+            _ => self.parse_result(rc).map(Some),
         }
     }
 
@@ -117,24 +124,11 @@ impl<'a> TokenFeeder<'a> {
     /// completed, `Ok(None)` if there was nothing pending, or `Err` on
     /// parse error.
     pub fn finish(&mut self) -> Result<Option<NodeId>, ParseError> {
+        // SAFETY: raw is valid.
         let rc = unsafe { ffi::syntaqlite_parser_finish(self.0.raw) };
         match rc {
             0 => Ok(None),
-            1 => {
-                let result = unsafe { ffi::syntaqlite_parser_result(self.0.raw) };
-                Ok(Some(NodeId(result.root)))
-            }
-            _ => {
-                let result = unsafe { ffi::syntaqlite_parser_result(self.0.raw) };
-                let msg = if result.error_msg.is_null() {
-                    "parse error".to_string()
-                } else {
-                    unsafe { CStr::from_ptr(result.error_msg) }
-                        .to_string_lossy()
-                        .into_owned()
-                };
-                Err(ParseError { message: msg })
-            }
+            _ => self.parse_result(rc).map(Some),
         }
     }
 

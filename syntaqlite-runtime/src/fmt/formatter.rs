@@ -2,7 +2,7 @@ use std::cell::Cell;
 
 use crate::dialect::Dialect;
 use crate::dialect::ffi::{FieldMeta, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN};
-use crate::parser::{CursorBase, FieldVal, Fields, MacroRegion, NodeId, NodeList, Parser, ParserConfig, SourceSpan, Trivia, TriviaKind};
+use crate::parser::{CursorBase, FieldVal, Fields, MacroRegion, NodeId, Parser, ParserConfig, SourceSpan, Trivia, TriviaKind};
 
 use super::FormatConfig;
 use super::doc::{DocArena, DocId, NIL_DOC};
@@ -27,7 +27,7 @@ unsafe impl Send for Formatter<'_> {}
 impl<'d> Formatter<'d> {
     /// Create a formatter for the given dialect with default configuration.
     pub fn new(dialect: &Dialect<'d>) -> Result<Self, &'static str> {
-        if dialect.raw.fmt_strings.is_null() || dialect.raw.fmt_string_count == 0 {
+        if !dialect.has_fmt_data() {
             return Err("C dialect has no fmt data");
         }
         let config = ParserConfig { collect_tokens: true, ..Default::default() };
@@ -229,7 +229,7 @@ fn format_node_inner<'a>(
     let Some((ptr, tag)) = cursor.node_ptr(node_id) else {
         return NIL_DOC;
     };
-    let Some((ops_bytes, ops_len)) = fmt_dispatch(&dialect, tag) else {
+    let Some((ops_bytes, ops_len)) = dialect.fmt_dispatch(tag) else {
         return NIL_DOC;
     };
     let source = cursor.source();
@@ -259,20 +259,11 @@ fn format_node_inner<'a>(
     };
     let resolve_list = move |id: NodeId| -> Vec<NodeId> {
         cursor
-            .node_ptr(id)
-            .filter(|&(_, t)| is_list(&dialect, t))
-            .map(|(p, _)| {
-                let list = unsafe { &*(p as *const NodeList) };
-                list.children().to_vec()
-            })
+            .list_children(id, &dialect)
+            .map(|c| c.to_vec())
             .unwrap_or_default()
     };
-    let children = if is_list(&dialect, tag) {
-        let list = unsafe { &*(ptr as *const NodeList) };
-        Some(list.children() as &[NodeId])
-    } else {
-        None
-    };
+    let children = cursor.list_children(node_id, &dialect);
 
     let fields = extract_fields(&dialect, ptr, tag, source);
 
@@ -328,37 +319,11 @@ fn try_macro_verbatim<'a>(
     None
 }
 
-// ── Dialect accessors ───────────────────────────────────────────────────
-//
-// These operate on a Dialect handle but live here because the formatter
-// is the only consumer.
-
-/// Whether the given node tag represents a list node.
-fn is_list(dialect: &Dialect<'_>, tag: u32) -> bool {
-    let idx = tag as usize;
-    if idx >= dialect.raw.node_count as usize {
-        return false;
-    }
-    unsafe { *dialect.raw.list_tags.add(idx) != 0 }
-}
-
-/// Return the field metadata for a node tag.
-fn field_meta<'d>(dialect: &Dialect<'d>, tag: u32) -> &'d [FieldMeta] {
-    let idx = tag as usize;
-    if idx >= dialect.raw.node_count as usize {
-        return &[];
-    }
-    let count = unsafe { *dialect.raw.field_meta_counts.add(idx) } as usize;
-    let ptr = unsafe { *dialect.raw.field_meta.add(idx) };
-    if count == 0 || ptr.is_null() {
-        return &[];
-    }
-    unsafe { std::slice::from_raw_parts(ptr, count) }
-}
+// ── Field extraction ────────────────────────────────────────────────────
 
 /// Extract typed field values from a raw node pointer.
 fn extract_fields<'a>(dialect: &Dialect<'_>, ptr: *const u8, tag: u32, source: &'a str) -> Fields<'a> {
-    let meta = field_meta(dialect, tag);
+    let meta = dialect.field_meta(tag);
     let mut fields = Fields::new();
     for m in meta {
         fields.push(unsafe { extract_one(ptr, m, source) });
@@ -390,27 +355,6 @@ unsafe fn extract_one<'a>(ptr: *const u8, m: &FieldMeta, source: &'a str) -> Fie
     }
 }
 
-/// Look up the ops byte slice and op count for a given node tag.
-/// Returns `None` if the tag has no formatter ops.
-fn fmt_dispatch<'d>(dialect: &Dialect<'d>, tag: u32) -> Option<(&'d [u8], usize)> {
-    let idx = tag as usize;
-    if idx >= dialect.raw.fmt_dispatch_count as usize {
-        return None;
-    }
-    let packed = unsafe { *dialect.raw.fmt_dispatch.add(idx) };
-    let offset = (packed >> 16) as u16;
-    let length = (packed & 0xFFFF) as u16;
-    if offset == 0xFFFF {
-        return None;
-    }
-    let byte_offset = offset as usize * 6;
-    let byte_len = length as usize * 6;
-    let slice = unsafe {
-        std::slice::from_raw_parts(dialect.raw.fmt_ops.add(byte_offset), byte_len)
-    };
-    Some((slice, length as usize))
-}
-
 /// Find the earliest source offset in a node's subtree.
 fn first_source_offset(
     dialect: &Dialect<'_>,
@@ -420,17 +364,16 @@ fn first_source_offset(
     if node_id.is_null() {
         return None;
     }
-    let (ptr, tag) = cursor.node_ptr(node_id)?;
 
-    if is_list(dialect, tag) {
-        let list = unsafe { &*(ptr as *const NodeList) };
-        let children = list.children();
-        if !children.is_empty() {
-            return first_source_offset(dialect, cursor, children[0]);
-        }
-        return None;
+    if let Some(children) = cursor.list_children(node_id, dialect) {
+        return if children.is_empty() {
+            None
+        } else {
+            first_source_offset(dialect, cursor, children[0])
+        };
     }
 
+    let (ptr, tag) = cursor.node_ptr(node_id)?;
     let source = cursor.source();
     let fields = extract_fields(dialect, ptr, tag, source);
 
@@ -469,17 +412,16 @@ fn last_source_offset(
     if node_id.is_null() {
         return None;
     }
-    let (ptr, tag) = cursor.node_ptr(node_id)?;
 
-    if is_list(dialect, tag) {
-        let list = unsafe { &*(ptr as *const NodeList) };
-        let children = list.children();
-        if !children.is_empty() {
-            return last_source_offset(dialect, cursor, children[children.len() - 1]);
-        }
-        return None;
+    if let Some(children) = cursor.list_children(node_id, dialect) {
+        return if children.is_empty() {
+            None
+        } else {
+            last_source_offset(dialect, cursor, children[children.len() - 1])
+        };
     }
 
+    let (ptr, tag) = cursor.node_ptr(node_id)?;
     let source = cursor.source();
     let fields = extract_fields(dialect, ptr, tag, source);
 

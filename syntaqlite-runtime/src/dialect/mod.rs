@@ -21,6 +21,89 @@ impl<'d> Dialect<'d> {
     pub unsafe fn from_raw(raw: *const ffi::Dialect) -> Self {
         unsafe { Dialect { raw: &*raw } }
     }
+
+    /// Whether the given node tag represents a list node.
+    pub fn is_list(&self, tag: u32) -> bool {
+        let idx = tag as usize;
+        if idx >= self.raw.node_count as usize {
+            return false;
+        }
+        unsafe { *self.raw.list_tags.add(idx) != 0 }
+    }
+
+    /// Return the field metadata slice for a node tag.
+    pub fn field_meta(&self, tag: u32) -> &'d [ffi::FieldMeta] {
+        let idx = tag as usize;
+        if idx >= self.raw.node_count as usize {
+            return &[];
+        }
+        // SAFETY: idx is bounds-checked above; field_meta_counts and field_meta
+        // are parallel arrays of length node_count populated by codegen.
+        unsafe {
+            let count = *self.raw.field_meta_counts.add(idx) as usize;
+            let ptr = *self.raw.field_meta.add(idx);
+            if count == 0 || ptr.is_null() {
+                return &[];
+            }
+            std::slice::from_raw_parts(ptr, count)
+        }
+    }
+
+    /// Read the packed fmt_dispatch entry for a node tag.
+    /// Returns `None` if tag is out of range or has no ops (sentinel 0xFFFF).
+    pub fn fmt_dispatch(&self, tag: u32) -> Option<(&'d [u8], usize)> {
+        let idx = tag as usize;
+        if idx >= self.raw.fmt_dispatch_count as usize {
+            return None;
+        }
+        // SAFETY: idx is bounds-checked above; fmt_dispatch and fmt_ops are
+        // static arrays populated by codegen.
+        unsafe {
+            let packed = *self.raw.fmt_dispatch.add(idx);
+            let offset = (packed >> 16) as u16;
+            let length = (packed & 0xFFFF) as u16;
+            if offset == 0xFFFF {
+                return None;
+            }
+            let byte_offset = offset as usize * 6;
+            let byte_len = length as usize * 6;
+            let slice = std::slice::from_raw_parts(
+                self.raw.fmt_ops.add(byte_offset),
+                byte_len,
+            );
+            Some((slice, length as usize))
+        }
+    }
+
+    /// Look up a string from the C fmt string table by index.
+    pub fn fmt_string(&self, idx: u16) -> &'d str {
+        let i = idx as usize;
+        assert!(
+            i < self.raw.fmt_string_count as usize,
+            "string index {} out of bounds (count={})",
+            i,
+            self.raw.fmt_string_count,
+        );
+        unsafe {
+            let cstr = std::ffi::CStr::from_ptr(*self.raw.fmt_strings.add(i));
+            cstr.to_str().expect("invalid UTF-8 in fmt string")
+        }
+    }
+
+    /// Look up a value in the enum display table.
+    pub fn fmt_enum_display_val(&self, idx: usize) -> u16 {
+        assert!(
+            idx < self.raw.fmt_enum_display_count as usize,
+            "enum_display index {} out of bounds",
+            idx,
+        );
+        unsafe { *self.raw.fmt_enum_display.add(idx) }
+    }
+
+    /// Whether this dialect has formatter data.
+    pub fn has_fmt_data(&self) -> bool {
+        !self.raw.fmt_strings.is_null() && self.raw.fmt_string_count > 0
+    }
 }
 
 // SAFETY: The dialect wraps a reference to a C struct with no mutable state.

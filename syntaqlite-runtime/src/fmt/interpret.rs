@@ -282,30 +282,13 @@ impl<'a, 'b> Interpreter<'a, 'b> {
     /// Look up a string from the C string table by index.
     #[inline]
     fn string(&self, sid: u16) -> &'a str {
-        let raw = self.dialect.raw;
-        let idx = sid as usize;
-        assert!(
-            idx < raw.fmt_string_count as usize,
-            "string index {} out of bounds (count={})",
-            idx,
-            raw.fmt_string_count,
-        );
-        unsafe {
-            let cstr = std::ffi::CStr::from_ptr(*raw.fmt_strings.add(idx));
-            cstr.to_str().expect("invalid UTF-8 in fmt string")
-        }
+        self.dialect.fmt_string(sid)
     }
 
     /// Look up a value in the enum display table.
     #[inline]
     fn enum_display_val(&self, idx: usize) -> u16 {
-        let raw = self.dialect.raw;
-        assert!(
-            idx < raw.fmt_enum_display_count as usize,
-            "enum_display index {} out of bounds",
-            idx,
-        );
-        unsafe { *raw.fmt_enum_display.add(idx) }
+        self.dialect.fmt_enum_display_val(idx)
     }
 
     /// Decode the op at position `ip` from the raw byte stream.

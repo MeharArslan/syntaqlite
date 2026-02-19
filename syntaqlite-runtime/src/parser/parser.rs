@@ -3,7 +3,7 @@ use std::ffi::{c_int, CStr};
 use crate::dialect::Dialect;
 use super::ffi;
 use super::ffi::{MacroRegion, Trivia};
-use super::nodes::NodeId;
+use super::nodes::{NodeId, NodeList};
 
 /// A parse error with a human-readable message.
 #[derive(Debug, Clone)]
@@ -176,17 +176,31 @@ impl<'a> CursorBase<'a> {
         // SAFETY: raw is valid. syntaqlite_parser_node returns a pointer
         // into the arena that is valid until the next reset() or destroy(), both
         // of which require &mut access that the cursor holds exclusively.
-        let ptr = unsafe { ffi::syntaqlite_parser_node(self.raw, id.0) };
-        if ptr.is_null() {
-            return None;
+        // The first u32 at that pointer is always the node tag.
+        unsafe {
+            let ptr = ffi::syntaqlite_parser_node(self.raw, id.0);
+            if ptr.is_null() {
+                return None;
+            }
+            let tag = *(ptr as *const u32);
+            Some((ptr as *const u8, tag))
         }
-        let tag = unsafe { *(ptr as *const u32) };
-        Some((ptr as *const u8, tag))
     }
 
     /// The source text bound to this cursor.
     pub fn source(&self) -> &'a str {
         self.source
+    }
+
+    /// If `id` refers to a list node, return its child node IDs.
+    pub fn list_children(&self, id: NodeId, dialect: &Dialect) -> Option<&[NodeId]> {
+        let (ptr, tag) = self.node_ptr(id)?;
+        if !dialect.is_list(tag) {
+            return None;
+        }
+        // SAFETY: ptr is a valid arena pointer and the tag confirms it is a
+        // list node, so it has NodeList layout (tag, count, children[count]).
+        Some(unsafe { &*(ptr as *const NodeList) }.children())
     }
 
     /// Return all trivia (comments) captured during parsing.
@@ -195,40 +209,45 @@ impl<'a> CursorBase<'a> {
     /// Returns a slice into the parser's internal buffer — valid until
     /// the parser is reset or destroyed (which requires `&mut`).
     pub fn trivia(&self) -> &[Trivia] {
-        let mut count: u32 = 0;
-        let ptr = unsafe { ffi::syntaqlite_parser_trivia(self.raw, &mut count) };
-        if count == 0 || ptr.is_null() {
-            return &[];
+        // SAFETY: raw is valid; the returned pointer and count are valid for
+        // the lifetime of &self (until the next reset/destroy, which need &mut).
+        unsafe {
+            let mut count: u32 = 0;
+            let ptr = ffi::syntaqlite_parser_trivia(self.raw, &mut count);
+            if count == 0 || ptr.is_null() {
+                return &[];
+            }
+            std::slice::from_raw_parts(ptr, count as usize)
         }
-        // SAFETY: The pointer is valid for the lifetime of &self.
-        unsafe { std::slice::from_raw_parts(ptr, count as usize) }
     }
 
     /// Dump an AST node tree as indented text. Uses C-side metadata (field
     /// names, display strings) so no Rust-side string tables are needed.
     pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
-        let ptr = unsafe {
-            ffi::syntaqlite_dump_node(self.raw, id.0, indent as u32)
-        };
-        if !ptr.is_null() {
-            let cstr = unsafe { CStr::from_ptr(ptr) };
-            out.push_str(&cstr.to_string_lossy());
-            // Free the C-allocated string via the parser's default allocator (free).
-            unsafe extern "C" { fn free(ptr: *mut std::ffi::c_void); }
-            unsafe { free(ptr as *mut std::ffi::c_void) };
+        unsafe extern "C" { fn free(ptr: *mut std::ffi::c_void); }
+        // SAFETY: raw is valid; dump_node returns a malloc'd NUL-terminated
+        // string (or null). We free the C string after copying.
+        unsafe {
+            let ptr = ffi::syntaqlite_dump_node(self.raw, id.0, indent as u32);
+            if !ptr.is_null() {
+                let cstr = CStr::from_ptr(ptr);
+                out.push_str(&cstr.to_string_lossy());
+                free(ptr as *mut std::ffi::c_void);
+            }
         }
     }
 
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
     pub fn macro_regions(&self) -> &[MacroRegion] {
-        let mut count: u32 = 0;
-        let ptr =
-            unsafe { ffi::syntaqlite_parser_macro_regions(self.raw, &mut count) };
-        if count == 0 || ptr.is_null() {
-            return &[];
+        // SAFETY: same as trivia() — pointer valid for lifetime of &self.
+        unsafe {
+            let mut count: u32 = 0;
+            let ptr = ffi::syntaqlite_parser_macro_regions(self.raw, &mut count);
+            if count == 0 || ptr.is_null() {
+                return &[];
+            }
+            std::slice::from_raw_parts(ptr, count as usize)
         }
-        // SAFETY: The pointer is valid for the lifetime of &self.
-        unsafe { std::slice::from_raw_parts(ptr, count as usize) }
     }
 }
 
@@ -243,6 +262,8 @@ impl<'a> StatementCursor<'a> {
     /// been consumed (or input was empty).
     pub fn next_statement(&mut self) -> Option<Result<NodeId, ParseError>> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
+        // When error is set, error_msg is a NUL-terminated string in the
+        // parser's buffer (valid for parser lifetime).
         let result = unsafe { ffi::syntaqlite_parser_next(self.0.raw) };
 
         let id = NodeId(result.root);
@@ -251,8 +272,6 @@ impl<'a> StatementCursor<'a> {
         }
 
         if result.error != 0 {
-            // SAFETY: When error is set, error_msg points to a NUL-terminated
-            // string in the parser's error_msg buffer (valid for parser lifetime).
             let msg = unsafe { CStr::from_ptr(result.error_msg) }
                 .to_string_lossy()
                 .into_owned();
