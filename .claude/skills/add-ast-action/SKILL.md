@@ -11,15 +11,7 @@ Implement new CST-to-AST folding for SQLite grammar rules. This skill covers def
 
 ### 1. Identify upstream rules to implement
 
-Check which upstream rules don't yet have action rules:
-
-```bash
-tools/dev/diff-upstream-grammar third_party/src/sqlite/src/parse.y
-```
-
-The `+` lines show upstream rules; `-` lines show our action rules. Rules present in upstream but not in our actions are candidates to implement.
-
-For the exact rule signature (with labels), check the actual upstream grammar:
+Check the upstream grammar for rules to implement:
 
 ```bash
 grep -n 'your_nonterminal' third_party/src/sqlite/src/parse.y
@@ -29,63 +21,16 @@ grep -n 'your_nonterminal' third_party/src/sqlite/src/parse.y
 
 ### 2. Define AST nodes
 
-Create or edit a Python node definition file in `src/parser/nodes/`.
+Create or edit a `.synq` node definition file in `syntaqlite-codegen/parser-nodes/`.
 
-```python
-# src/parser/nodes/your_module.py
-from ..defs import Node, List, Enum, Flags, inline, index
-
-ENUMS = [
-    Enum("YourEnum", "VALUE_A", "VALUE_B"),
-]
-
-FLAGS = [
-    Flags("YourNodeFlags", OPTION_A=0x01, OPTION_B=0x02),
-]
-
-NODES = [
-    Node("YourNode",
-        kind=inline("YourEnum"),                # Enum field (prints as VALUE_A, VALUE_B)
-        flags=inline("YourNodeFlags"),          # Flags field (prints as OPTION_A|OPTION_B)
-        is_active=inline("Bool"),               # Boolean field (prints as FALSE/TRUE)
-        name=inline("SyntaqliteSourceSpan"),    # Source text reference
-        child=index("Expr"),                    # Node reference (nullable)
-    ),
-    List("YourList", child_type="YourNode"),    # Variable-length list
-]
-```
-
-**Type system**:
-- **Enums**: `Enum("Name", "VAL_A", "VAL_B")` — values are sequential (0, 1, 2...). Referenced as `inline("Name")`. Printed as `VAL_A`, `VAL_B`.
-- **Flags**: `Flags("Name", BIT_A=0x01, BIT_B=0x02)` — bitfield flags. Referenced as `inline("Name")`. Printed as `BIT_A|BIT_B` or `(none)`.
-- **Bool**: Shared `Enum("Bool", "FALSE", "TRUE")` in `_common.py`. Use `inline("Bool")` for all boolean fields. Printed as `FALSE`/`TRUE`.
-- **Source spans**: `inline("SyntaqliteSourceSpan")` for text references.
-- **Node references**: `index("Expr")` etc. — nullable via `SYNTAQLITE_NULL_NODE`.
-
-**Do not use `inline("u8")`** — all integer-like fields should be typed enums, flags, or Bool.
-
-Register the module in `src/parser/nodes/__init__.py`:
-```python
-from .your_module import ENUMS as _YOUR_ENUMS, NODES as _YOUR_NODES, FLAGS as _YOUR_FLAGS
-# Append to ENUMS, NODES, and FLAGS lists
-```
-
-**Abstract types** (for index fields): `Expr`, `Stmt`, `TableSource`, `InsertSource`
-
-Register the module in `src/parser/nodes/__init__.py`:
-```python
-from .your_module import ENUMS as _YOUR_ENUMS, NODES as _YOUR_NODES
-# Append to ENUMS and NODES lists
-```
-
-**Important**: Append new items AFTER existing ones — ordering affects binary compatibility (enum values and node tag IDs are sequential).
+See `syntaqlite-codegen/parser-nodes/SYNTAX.md` for the `.synq` file format.
 
 ### 3. Write grammar action rules
 
-Create a `.y` file in `src/parser/actions/`:
+Create a `.y` file in `syntaqlite-codegen/parser-actions/`:
 
 ```c
-// src/parser/actions/your_actions.y
+// syntaqlite-codegen/parser-actions/your_actions.y
 
 // Conventions:
 // - pCtx: SyntaqliteParseContext*
@@ -117,93 +62,28 @@ expr(A) ::= expr(B) in_op(C) LP exprlist(D) RP. [IN] {
     ...
 }
 ```
-The grammar builder strips `[MARKER]` from signatures for matching, then preserves it in the generated output.
 
-### 4. Add %type declarations if needed
-
-If your nonterminal uses a non-default type (not `uint32_t`), add a `%type` declaration in `python/syntaqlite/sqlite_extractor/grammar_build.py` around line 418:
-
-```python
-%type your_nonterminal {{SyntaqliteToken}}   # For token-passing rules
-%type your_nonterminal {{int}}                # For integer-passing rules
-```
-
-**Nonterminals that need `%type`**: Any nonterminal that passes through a `SyntaqliteToken` (like `nm`, `ids`, `as`, `likeop`) or an integer value (like `distinct`, `sortorder`, `multiselect_op`, `in_op`). If in doubt, check what the upstream parse.y declares with `%type`.
-
-### 5. Regenerate, build, and test
+### 4. Regenerate, build, and test
 
 ```bash
-python3 python/tools/extract_sqlite.py   # Regenerate all code
-tools/dev/build-lock -C out/mac_debug     # Build (use build-lock for multi-agent)
-tools/tests/run-ast-diff-tests --binary out/mac_debug/ast_test  # Run tests
+tools/dev/run-codegen    # Regenerate all code
+cargo build              # Build
+cargo test               # Run tests
 ```
-
-### 6. Write tests
-
-Create `tests/ast_diff_tests/your_suite.py`:
-
-```python
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
-
-class YourTests(TestSuite):
-    def test_basic(self):
-        return AstTestBlueprint(
-            sql="SELECT your_syntax_here",
-            out="""\
-SelectStmt
-  flags: (none)
-  columns: ResultColumnList[1]
-    ResultColumn
-      flags: (none)
-      alias: null
-      expr: YourNode
-        kind: VALUE_A
-        ...
-""",
-        )
-```
-
-**Discovering expected output**: Run the test binary manually to see what the AST printer produces:
-```bash
-echo "SELECT your_syntax_here;" | out/mac_debug/ast_test
-```
-
-Test suites are auto-discovered — just create a `.py` file under `tests/ast_diff_tests/`.
 
 ## Debugging techniques
 
 ### Parser tracing
 
-When a rule produces unexpected results or a syntax error, use the `--trace` flag on the test binary to enable Lemon's built-in parser trace:
+When a rule produces unexpected results or a syntax error, use the `--trace` flag on the CLI to enable Lemon's built-in parser trace:
 
 ```bash
-echo "SELECT 1 UNION SELECT 2;" | out/mac_debug/ast_test --trace
-```
-
-Trace output goes to stderr and shows every shift/reduce action, which state the parser is in, and which rule it's reducing. The AST output still goes to stdout. This is invaluable for diagnosing:
-- Why a token causes a syntax error (the parser is in a state that doesn't accept it)
-- Why a rule isn't being reduced (precedence or conflict issue)
-- Which alternative rule the parser chose at an ambiguity point
-
-To see just the trace (suppress AST output):
-```bash
-echo "SELECT 1 UNION SELECT 2;" | out/mac_debug/ast_test --trace > /dev/null
-```
-
-**Note**: `--trace` is only available in debug builds (where `NDEBUG` is not defined). It's a no-op in release builds.
-
-### Lemon state file
-
-Run lemon without `-l` to generate a `.out` file showing all parser states and conflicts:
-
-```bash
-# The .out file is generated alongside the .c file
-# Look for it in the build output directory after running extract_sqlite.py
+echo "SELECT 1 UNION SELECT 2;" | cargo run -p syntaqlite-cli -- ast --trace
 ```
 
 ### Cross-referencing upstream parse.y
 
-When debugging why a rule doesn't match, compare your action signature against the ACTUAL upstream rule (not the lemon -g stripped version):
+When debugging why a rule doesn't match, compare your action signature against the ACTUAL upstream rule:
 
 ```bash
 grep -A5 'your_nonterminal(A) ::=' third_party/src/sqlite/src/parse.y
@@ -218,26 +98,15 @@ Watch for:
 
 1. **Syntax error on valid SQL**: Your action rule signature doesn't match upstream exactly. Check token names, alternation order.
 
-2. **Rule silently not applied (bare rule used instead)**: Signature mismatch due to precedence markers or label differences. Check that `_parse_actions_file` strips `[MARKER]` correctly.
+2. **Rule silently not applied (bare rule used instead)**: Signature mismatch due to precedence markers or label differences.
 
 3. **Fallback tokens breaking things**: Tokens like UNION/EXCEPT/INTERSECT can fall back to ID if `%ifdef SQLITE_OMIT_COMPOUND_SELECT` blocks are incorrectly included. We don't define OMIT macros, so `%ifdef` blocks should be excluded.
-
-4. **Type mismatch errors**: Your nonterminal needs a `%type` declaration in `grammar_build.py`. Error will say something like "type mismatch" or you'll get a C compiler error about incompatible types.
-
-5. **Generated builder wrong signature**: Check that your node field names don't conflict with Python's `Node()` first positional param `name`. Use `func_name` instead of `name` for fields.
 
 ## Key files reference
 
 | File | Purpose |
 |------|---------|
-| `src/parser/nodes/*.py` | AST node definitions (Python DSL) |
-| `src/parser/actions/*.y` | Grammar action rules |
-| `python/syntaqlite/ast_codegen/defs.py` | Node/List/Enum/inline/index DSL |
-| `python/syntaqlite/ast_codegen/codegen.py` | C code generator |
-| `python/syntaqlite/ast_codegen/validator.py` | Validates index field references |
-| `src/parser/nodes/__init__.py` | Module registry (import order = tag order) |
-| `python/syntaqlite/sqlite_extractor/grammar_build.py` | Grammar merging + %type declarations |
+| `syntaqlite-codegen/parser-nodes/*.synq` | AST node definitions |
+| `syntaqlite-codegen/parser-actions/*.y` | Grammar action rules |
+| `syntaqlite-codegen/` | Rust code generator |
 | `third_party/src/sqlite/src/parse.y` | Upstream SQLite grammar (ground truth) |
-| `src/ast/ast_test_main.c` | Test binary entry point (add tracing here) |
-| `tests/ast_diff_tests/*.py` | AST diff test suites |
-| `python/syntaqlite/diff_tests/testing.py` | Test framework (AstTestBlueprint, TestSuite) |
