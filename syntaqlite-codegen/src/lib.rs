@@ -193,8 +193,8 @@ pub fn extract_tokenizer(
     codegen::sqlite_runtime_codegen::extract_tokenizer(tokenize_c_path, dialect)
 }
 
-pub fn generate_parser(actions_dir: &str, output_dir: &str) -> Result<(), String> {
-    codegen::parser_pipeline::generate_parser(actions_dir, output_dir)
+pub fn generate_parser(actions_dir: &str, parser_name: &str, output_dir: &str) -> Result<(), String> {
+    codegen::parser_pipeline::generate_parser(actions_dir, parser_name, output_dir)
 }
 
 /// Extract terminal symbols (potential keywords) from extension `.y` grammar
@@ -237,9 +237,11 @@ pub fn concatenate_y_contents(files: &[(String, String)]) -> Result<Vec<u8>, Str
 /// Generate parser from in-memory .y file contents (merged base + extensions).
 ///
 /// Same pipeline as [`generate_parser`] but reads from memory instead of disk.
+/// `parser_name` is the Lemon `%name` value (e.g. `"SynqSqliteParse"`).
 pub fn generate_parser_from_contents(
     y_files: &[(String, String)],
+    parser_name: &str,
     output_dir: &str,
 ) -> Result<(), String> {
-    codegen::parser_pipeline::generate_parser_from_contents(y_files, output_dir)
+    codegen::parser_pipeline::generate_parser_from_contents(y_files, parser_name, output_dir)
 }

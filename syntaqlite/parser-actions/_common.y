@@ -15,7 +15,6 @@
 // - synq_span(pCtx, tok) converts a SynqParseToken into SyntaqliteSourceSpan
 // - SYNQ_NO_SPAN is the zero sentinel span
 
-%name SynqSqliteParse
 %token_prefix SYNTAQLITE_TK_
 %start_symbol input
 %extra_argument {SynqParseCtx* pCtx}

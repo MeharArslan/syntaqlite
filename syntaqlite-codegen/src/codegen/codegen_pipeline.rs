@@ -19,17 +19,9 @@ fn parse_synq_items(synq_files: &[(String, String)]) -> Result<Vec<synq_parser::
 pub(crate) fn generate_codegen_artifacts(
     request: &CodegenRequest<'_>,
 ) -> Result<CodegenArtifacts, String> {
-    let y_files: Vec<(String, String)> = request
-        .y_files
-        .iter()
-        .map(|(name, content)| {
-            let rewritten = match request.parser_symbol_prefix {
-                Some(prefix) => content.replace("SynqSqliteParse", prefix),
-                None => content.clone(),
-            };
-            (name.clone(), rewritten)
-        })
-        .collect();
+    let parser_name = request
+        .parser_symbol_prefix
+        .unwrap_or("SynqSqliteParse");
 
     let all_items = parse_synq_items(request.synq_files)?;
     let ast_model = dialect_codegen::AstModel::new(&all_items);
@@ -37,7 +29,8 @@ pub(crate) fn generate_codegen_artifacts(
     let work_dir =
         tempfile::TempDir::new().map_err(|e| format!("Failed to create temp directory: {e}"))?;
     crate::codegen::parser_pipeline::generate_parser_from_contents(
-        &y_files,
+        request.y_files,
+        parser_name,
         work_dir.path().to_string_lossy().as_ref(),
     )?;
     let parse_h = fs::read_to_string(work_dir.path().join("parse.h"))

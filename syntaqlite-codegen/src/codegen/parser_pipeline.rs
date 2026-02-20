@@ -7,8 +7,15 @@ use std::path::Path;
 // Embed lempar.c template (needed by the library)
 const LEMPAR_C: &[u8] = include_bytes!("../../sqlite/lempar.c");
 
-pub(crate) fn generate_parser(actions_dir: &str, output_dir: &str) -> Result<(), String> {
-    let grammar_bytes = concatenate_y_files(actions_dir)?;
+pub(crate) fn generate_parser(
+    actions_dir: &str,
+    parser_name: &str,
+    output_dir: &str,
+) -> Result<(), String> {
+    let body = concatenate_y_files(actions_dir)?;
+    let directive = format!("%name {parser_name}\n");
+    let mut grammar_bytes = directive.into_bytes();
+    grammar_bytes.extend_from_slice(&body);
     generate_parser_with_grammar_bytes(&grammar_bytes, output_dir)
 }
 
@@ -26,11 +33,18 @@ pub(crate) fn concatenate_y_contents(files: &[(String, String)]) -> Result<Vec<u
 }
 
 /// Generate parser from in-memory .y file contents (merged base + extensions).
+///
+/// `parser_name` is the Lemon `%name` directive value (e.g. `"SynqSqliteParse"`),
+/// prepended to the concatenated grammar so each dialect gets its own symbol prefix.
 pub(crate) fn generate_parser_from_contents(
     y_files: &[(String, String)],
+    parser_name: &str,
     output_dir: &str,
 ) -> Result<(), String> {
-    let grammar_bytes = concatenate_y_contents(y_files)?;
+    let body = concatenate_y_contents(y_files)?;
+    let directive = format!("%name {parser_name}\n");
+    let mut grammar_bytes = directive.into_bytes();
+    grammar_bytes.extend_from_slice(&body);
     generate_parser_with_grammar_bytes(&grammar_bytes, output_dir)
 }
 

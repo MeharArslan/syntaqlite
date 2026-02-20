@@ -8,3 +8,9 @@ cmd(A) ::= CREATE PERFETTO TABLE nm(X) AS select(S). {
         synq_span(pCtx, X),
         S);
 }
+
+cmd(A) ::= CREATE PERFETTO TABLE nm(X). {
+    A = synq_parse_create_perfetto_table_stmt(pCtx,
+        synq_span(pCtx, X),
+        SYNTAQLITE_NULL_NODE);
+}
