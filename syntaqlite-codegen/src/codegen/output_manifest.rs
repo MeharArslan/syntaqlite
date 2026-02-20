@@ -7,7 +7,6 @@ use crate::{CodegenArtifacts, DialectNaming};
 pub enum OutputBucket {
     Include,
     DialectCsrc,
-    RuntimeCsrc,
     RustSrc,
 }
 
@@ -67,22 +66,22 @@ pub fn sqlite_output_manifest(
     });
 
     out.push(OutputArtifact {
-        bucket: OutputBucket::RuntimeCsrc,
+        bucket: OutputBucket::DialectCsrc,
         file_name: "sqlite_parse.c".to_string(),
         content: artifacts.parse_c,
     });
     out.push(OutputArtifact {
-        bucket: OutputBucket::RuntimeCsrc,
+        bucket: OutputBucket::DialectCsrc,
         file_name: "sqlite_tokenize.c".to_string(),
         content: artifacts.tokenize_c,
     });
     out.push(OutputArtifact {
-        bucket: OutputBucket::RuntimeCsrc,
+        bucket: OutputBucket::DialectCsrc,
         file_name: "sqlite_keyword.c".to_string(),
         content: artifacts.keyword_c,
     });
     out.push(OutputArtifact {
-        bucket: OutputBucket::RuntimeCsrc,
+        bucket: OutputBucket::DialectCsrc,
         file_name: "sqlite_keyword.h".to_string(),
         content: artifacts.keyword_h,
     });

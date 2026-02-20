@@ -27,10 +27,6 @@ enum Command {
         tokenize_c: String,
         #[arg(long, default_value = "syntaqlite/csrc")]
         output_dir: String,
-        /// Output directory for runtime engine files (tokenizer, keywords).
-        /// If not set, these files are written to output_dir.
-        #[arg(long)]
-        runtime_csrc: Option<String>,
     },
     Lemon {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -107,7 +103,6 @@ fn handle_codegen(
     nodes_dir: &str,
     tokenize_c: &str,
     output_dir: &str,
-    runtime_csrc: Option<&str>,
     verbose: bool,
 ) -> Result<(), String> {
     let dialect = syntaqlite_codegen::DialectNaming::new("sqlite");
@@ -151,19 +146,11 @@ fn handle_codegen(
     ensure_dir(&include_dir, "include directory")?;
     ensure_dir(&rust_src_dir, "Rust src directory")?;
 
-    // Runtime engine files (tokenizer, keywords, parse engine) go to runtime_csrc if set.
-    let rt_out = runtime_csrc.map(Path::new).unwrap_or(out);
-    ensure_dir(rt_out, "runtime csrc directory")?;
-    if runtime_csrc.is_some() {
-        clean_generated_files(rt_out, verbose);
-    }
-
     log_verbose(verbose, "Writing output files...");
     for output in outputs {
         let dir = match output.bucket {
             syntaqlite_codegen::OutputBucket::Include => &include_dir,
             syntaqlite_codegen::OutputBucket::DialectCsrc => out,
-            syntaqlite_codegen::OutputBucket::RuntimeCsrc => rt_out,
             syntaqlite_codegen::OutputBucket::RustSrc => &rust_src_dir,
         };
         write_file(&dir.join(output.file_name), output.content)?;
@@ -240,13 +227,11 @@ fn main() {
                 nodes_dir,
                 tokenize_c,
                 output_dir,
-                runtime_csrc,
             } => handle_codegen(
                 &actions_dir,
                 &nodes_dir,
                 &tokenize_c,
                 &output_dir,
-                runtime_csrc.as_deref(),
                 args.verbose,
             ),
             Command::Lemon { args: lemon_args } => {

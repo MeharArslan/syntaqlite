@@ -193,14 +193,6 @@ static inline uint32_t synq_parse_case_when(
         }, (uint32_t)sizeof(SyntaqliteCaseWhen));
 }
 
-static inline uint32_t synq_parse_case_when_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_CASE_WHEN_LIST, list_id, child);
-}
-
 static inline uint32_t synq_parse_foreign_key_clause(
     SynqParseCtx *ctx,
     SyntaqliteSourceSpan ref_table,
@@ -251,14 +243,6 @@ static inline uint32_t synq_parse_column_constraint(
         }, (uint32_t)sizeof(SyntaqliteColumnConstraint));
 }
 
-static inline uint32_t synq_parse_column_constraint_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_COLUMN_CONSTRAINT_LIST, list_id, child);
-}
-
 static inline uint32_t synq_parse_column_def(
     SynqParseCtx *ctx,
     SyntaqliteSourceSpan column_name,
@@ -272,14 +256,6 @@ static inline uint32_t synq_parse_column_def(
             .type_name = type_name,
             .constraints = constraints
         }, (uint32_t)sizeof(SyntaqliteColumnDef));
-}
-
-static inline uint32_t synq_parse_column_def_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_COLUMN_DEF_LIST, list_id, child);
 }
 
 static inline uint32_t synq_parse_table_constraint(
@@ -305,14 +281,6 @@ static inline uint32_t synq_parse_table_constraint(
             .check_expr = check_expr,
             .fk_clause = fk_clause
         }, (uint32_t)sizeof(SyntaqliteTableConstraint));
-}
-
-static inline uint32_t synq_parse_table_constraint_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_TABLE_CONSTRAINT_LIST, list_id, child);
 }
 
 static inline uint32_t synq_parse_create_table_stmt(
@@ -357,14 +325,6 @@ static inline uint32_t synq_parse_cte_definition(
         }, (uint32_t)sizeof(SyntaqliteCteDefinition));
 }
 
-static inline uint32_t synq_parse_cte_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_CTE_LIST, list_id, child);
-}
-
 static inline uint32_t synq_parse_with_clause(
     SynqParseCtx *ctx,
     SyntaqliteBool recursive,
@@ -406,14 +366,6 @@ static inline uint32_t synq_parse_set_clause(
             .columns = columns,
             .value = value
         }, (uint32_t)sizeof(SyntaqliteSetClause));
-}
-
-static inline uint32_t synq_parse_set_clause_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_SET_CLAUSE_LIST, list_id, child);
 }
 
 static inline uint32_t synq_parse_update_stmt(
@@ -491,14 +443,6 @@ static inline uint32_t synq_parse_literal(
             .literal_type = literal_type,
             .source = source
         }, (uint32_t)sizeof(SyntaqliteLiteral));
-}
-
-static inline uint32_t synq_parse_expr_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_EXPR_LIST, list_id, child);
 }
 
 static inline uint32_t synq_parse_function_call(
@@ -643,14 +587,6 @@ static inline uint32_t synq_parse_result_column(
         }, (uint32_t)sizeof(SyntaqliteResultColumn));
 }
 
-static inline uint32_t synq_parse_result_column_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_RESULT_COLUMN_LIST, list_id, child);
-}
-
 static inline uint32_t synq_parse_select_stmt(
     SynqParseCtx *ctx,
     SyntaqliteSelectStmtFlags flags,
@@ -691,14 +627,6 @@ static inline uint32_t synq_parse_ordering_term(
             .sort_order = sort_order,
             .nulls_order = nulls_order
         }, (uint32_t)sizeof(SyntaqliteOrderingTerm));
-}
-
-static inline uint32_t synq_parse_order_by_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_ORDER_BY_LIST, list_id, child);
 }
 
 static inline uint32_t synq_parse_limit_clause(
@@ -785,14 +713,6 @@ static inline uint32_t synq_parse_trigger_event(
             .event_type = event_type,
             .columns = columns
         }, (uint32_t)sizeof(SyntaqliteTriggerEvent));
-}
-
-static inline uint32_t synq_parse_trigger_cmd_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_TRIGGER_CMD_LIST, list_id, child);
 }
 
 static inline uint32_t synq_parse_create_trigger_stmt(
@@ -969,14 +889,6 @@ static inline uint32_t synq_parse_create_view_stmt(
         }, (uint32_t)sizeof(SyntaqliteCreateViewStmt));
 }
 
-static inline uint32_t synq_parse_values_row_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_VALUES_ROW_LIST, list_id, child);
-}
-
 static inline uint32_t synq_parse_values_clause(
     SynqParseCtx *ctx,
     uint32_t rows
@@ -1035,14 +947,6 @@ static inline uint32_t synq_parse_window_def(
         }, (uint32_t)sizeof(SyntaqliteWindowDef));
 }
 
-static inline uint32_t synq_parse_window_def_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_WINDOW_DEF_LIST, list_id, child);
-}
-
 static inline uint32_t synq_parse_named_window_def(
     SynqParseCtx *ctx,
     SyntaqliteSourceSpan window_name,
@@ -1054,14 +958,6 @@ static inline uint32_t synq_parse_named_window_def(
             .window_name = window_name,
             .window_def = window_def
         }, (uint32_t)sizeof(SyntaqliteNamedWindowDef));
-}
-
-static inline uint32_t synq_parse_named_window_def_list(
-    SynqParseCtx *ctx,
-    uint32_t list_id,
-    uint32_t child
-) {
-    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_NAMED_WINDOW_DEF_LIST, list_id, child);
 }
 
 static inline uint32_t synq_parse_filter_over(
@@ -1077,6 +973,110 @@ static inline uint32_t synq_parse_filter_over(
             .over_def = over_def,
             .over_name = over_name
         }, (uint32_t)sizeof(SyntaqliteFilterOver));
+}
+
+static inline uint32_t synq_parse_case_when_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_CASE_WHEN_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_column_constraint_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_COLUMN_CONSTRAINT_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_column_def_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_COLUMN_DEF_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_table_constraint_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_TABLE_CONSTRAINT_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_cte_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_CTE_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_set_clause_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_SET_CLAUSE_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_expr_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_EXPR_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_result_column_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_RESULT_COLUMN_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_order_by_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_ORDER_BY_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_trigger_cmd_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_TRIGGER_CMD_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_values_row_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_VALUES_ROW_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_window_def_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_WINDOW_DEF_LIST, list_id, child);
+}
+
+static inline uint32_t synq_parse_named_window_def_list(
+    SynqParseCtx *ctx,
+    uint32_t list_id,
+    uint32_t child
+) {
+    return synq_parse_list_append(ctx, SYNTAQLITE_NODE_NAMED_WINDOW_DEF_LIST, list_id, child);
 }
 
 // ============ Range Field Metadata ============
@@ -1427,27 +1427,20 @@ static const SyntaqliteRangeMetaEntry range_meta_table[] = {
     [SYNTAQLITE_NODE_LIKE_EXPR] = {range_meta_like_expr, 3},
     [SYNTAQLITE_NODE_CASE_EXPR] = {range_meta_case_expr, 3},
     [SYNTAQLITE_NODE_CASE_WHEN] = {range_meta_case_when, 2},
-    [SYNTAQLITE_NODE_CASE_WHEN_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_FOREIGN_KEY_CLAUSE] = {range_meta_foreign_key_clause, 2},
     [SYNTAQLITE_NODE_COLUMN_CONSTRAINT] = {range_meta_column_constraint, 6},
-    [SYNTAQLITE_NODE_COLUMN_CONSTRAINT_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_COLUMN_DEF] = {range_meta_column_def, 3},
-    [SYNTAQLITE_NODE_COLUMN_DEF_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_TABLE_CONSTRAINT] = {range_meta_table_constraint, 5},
-    [SYNTAQLITE_NODE_TABLE_CONSTRAINT_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_CREATE_TABLE_STMT] = {range_meta_create_table_stmt, 5},
     [SYNTAQLITE_NODE_CTE_DEFINITION] = {range_meta_cte_definition, 3},
-    [SYNTAQLITE_NODE_CTE_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_WITH_CLAUSE] = {range_meta_with_clause, 2},
     [SYNTAQLITE_NODE_DELETE_STMT] = {range_meta_delete_stmt, 2},
     [SYNTAQLITE_NODE_SET_CLAUSE] = {range_meta_set_clause, 3},
-    [SYNTAQLITE_NODE_SET_CLAUSE_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_UPDATE_STMT] = {range_meta_update_stmt, 4},
     [SYNTAQLITE_NODE_INSERT_STMT] = {range_meta_insert_stmt, 3},
     [SYNTAQLITE_NODE_BINARY_EXPR] = {range_meta_binary_expr, 2},
     [SYNTAQLITE_NODE_UNARY_EXPR] = {range_meta_unary_expr, 1},
     [SYNTAQLITE_NODE_LITERAL] = {range_meta_literal, 1},
-    [SYNTAQLITE_NODE_EXPR_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_FUNCTION_CALL] = {range_meta_function_call, 4},
     [SYNTAQLITE_NODE_VARIABLE] = {range_meta_variable, 1},
     [SYNTAQLITE_NODE_COLLATE_EXPR] = {range_meta_collate_expr, 2},
@@ -1458,17 +1451,14 @@ static const SyntaqliteRangeMetaEntry range_meta_table[] = {
     [SYNTAQLITE_NODE_TRANSACTION_STMT] = {NULL, 0},
     [SYNTAQLITE_NODE_SAVEPOINT_STMT] = {range_meta_savepoint_stmt, 1},
     [SYNTAQLITE_NODE_RESULT_COLUMN] = {range_meta_result_column, 2},
-    [SYNTAQLITE_NODE_RESULT_COLUMN_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_SELECT_STMT] = {range_meta_select_stmt, 8},
     [SYNTAQLITE_NODE_ORDERING_TERM] = {range_meta_ordering_term, 1},
-    [SYNTAQLITE_NODE_ORDER_BY_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_LIMIT_CLAUSE] = {range_meta_limit_clause, 2},
     [SYNTAQLITE_NODE_TABLE_REF] = {range_meta_table_ref, 3},
     [SYNTAQLITE_NODE_SUBQUERY_TABLE_SOURCE] = {range_meta_subquery_table_source, 2},
     [SYNTAQLITE_NODE_JOIN_CLAUSE] = {range_meta_join_clause, 4},
     [SYNTAQLITE_NODE_JOIN_PREFIX] = {range_meta_join_prefix, 1},
     [SYNTAQLITE_NODE_TRIGGER_EVENT] = {range_meta_trigger_event, 1},
-    [SYNTAQLITE_NODE_TRIGGER_CMD_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_CREATE_TRIGGER_STMT] = {range_meta_create_trigger_stmt, 6},
     [SYNTAQLITE_NODE_CREATE_VIRTUAL_TABLE_STMT] = {range_meta_create_virtual_table_stmt, 4},
     [SYNTAQLITE_NODE_PRAGMA_STMT] = {range_meta_pragma_stmt, 3},
@@ -1479,15 +1469,25 @@ static const SyntaqliteRangeMetaEntry range_meta_table[] = {
     [SYNTAQLITE_NODE_EXPLAIN_STMT] = {range_meta_explain_stmt, 1},
     [SYNTAQLITE_NODE_CREATE_INDEX_STMT] = {range_meta_create_index_stmt, 5},
     [SYNTAQLITE_NODE_CREATE_VIEW_STMT] = {range_meta_create_view_stmt, 4},
-    [SYNTAQLITE_NODE_VALUES_ROW_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_VALUES_CLAUSE] = {range_meta_values_clause, 1},
     [SYNTAQLITE_NODE_FRAME_BOUND] = {range_meta_frame_bound, 1},
     [SYNTAQLITE_NODE_FRAME_SPEC] = {range_meta_frame_spec, 2},
     [SYNTAQLITE_NODE_WINDOW_DEF] = {range_meta_window_def, 4},
-    [SYNTAQLITE_NODE_WINDOW_DEF_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_NAMED_WINDOW_DEF] = {range_meta_named_window_def, 2},
-    [SYNTAQLITE_NODE_NAMED_WINDOW_DEF_LIST] = {NULL, 0},
     [SYNTAQLITE_NODE_FILTER_OVER] = {range_meta_filter_over, 3},
+    [SYNTAQLITE_NODE_CASE_WHEN_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_COLUMN_CONSTRAINT_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_COLUMN_DEF_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_TABLE_CONSTRAINT_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_CTE_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_SET_CLAUSE_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_EXPR_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_RESULT_COLUMN_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_ORDER_BY_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_TRIGGER_CMD_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_VALUES_ROW_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_WINDOW_DEF_LIST] = {NULL, 0},
+    [SYNTAQLITE_NODE_NAMED_WINDOW_DEF_LIST] = {NULL, 0},
 };
 
 #ifdef __cplusplus

@@ -738,27 +738,20 @@ static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {
     field_meta_like_expr, /* LikeExpr */
     field_meta_case_expr, /* CaseExpr */
     field_meta_case_when, /* CaseWhen */
-    NULL, /* CaseWhenList */
     field_meta_foreign_key_clause, /* ForeignKeyClause */
     field_meta_column_constraint, /* ColumnConstraint */
-    NULL, /* ColumnConstraintList */
     field_meta_column_def, /* ColumnDef */
-    NULL, /* ColumnDefList */
     field_meta_table_constraint, /* TableConstraint */
-    NULL, /* TableConstraintList */
     field_meta_create_table_stmt, /* CreateTableStmt */
     field_meta_cte_definition, /* CteDefinition */
-    NULL, /* CteList */
     field_meta_with_clause, /* WithClause */
     field_meta_delete_stmt, /* DeleteStmt */
     field_meta_set_clause, /* SetClause */
-    NULL, /* SetClauseList */
     field_meta_update_stmt, /* UpdateStmt */
     field_meta_insert_stmt, /* InsertStmt */
     field_meta_binary_expr, /* BinaryExpr */
     field_meta_unary_expr, /* UnaryExpr */
     field_meta_literal, /* Literal */
-    NULL, /* ExprList */
     field_meta_function_call, /* FunctionCall */
     field_meta_variable, /* Variable */
     field_meta_collate_expr, /* CollateExpr */
@@ -769,17 +762,14 @@ static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {
     field_meta_transaction_stmt, /* TransactionStmt */
     field_meta_savepoint_stmt, /* SavepointStmt */
     field_meta_result_column, /* ResultColumn */
-    NULL, /* ResultColumnList */
     field_meta_select_stmt, /* SelectStmt */
     field_meta_ordering_term, /* OrderingTerm */
-    NULL, /* OrderByList */
     field_meta_limit_clause, /* LimitClause */
     field_meta_table_ref, /* TableRef */
     field_meta_subquery_table_source, /* SubqueryTableSource */
     field_meta_join_clause, /* JoinClause */
     field_meta_join_prefix, /* JoinPrefix */
     field_meta_trigger_event, /* TriggerEvent */
-    NULL, /* TriggerCmdList */
     field_meta_create_trigger_stmt, /* CreateTriggerStmt */
     field_meta_create_virtual_table_stmt, /* CreateVirtualTableStmt */
     field_meta_pragma_stmt, /* PragmaStmt */
@@ -790,15 +780,25 @@ static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {
     field_meta_explain_stmt, /* ExplainStmt */
     field_meta_create_index_stmt, /* CreateIndexStmt */
     field_meta_create_view_stmt, /* CreateViewStmt */
-    NULL, /* ValuesRowList */
     field_meta_values_clause, /* ValuesClause */
     field_meta_frame_bound, /* FrameBound */
     field_meta_frame_spec, /* FrameSpec */
     field_meta_window_def, /* WindowDef */
-    NULL, /* WindowDefList */
     field_meta_named_window_def, /* NamedWindowDef */
-    NULL, /* NamedWindowDefList */
     field_meta_filter_over, /* FilterOver */
+    NULL, /* CaseWhenList */
+    NULL, /* ColumnConstraintList */
+    NULL, /* ColumnDefList */
+    NULL, /* TableConstraintList */
+    NULL, /* CteList */
+    NULL, /* SetClauseList */
+    NULL, /* ExprList */
+    NULL, /* ResultColumnList */
+    NULL, /* OrderByList */
+    NULL, /* TriggerCmdList */
+    NULL, /* ValuesRowList */
+    NULL, /* WindowDefList */
+    NULL, /* NamedWindowDefList */
 };
 
 static const uint8_t ast_meta_field_meta_counts[] = {
@@ -815,27 +815,20 @@ static const uint8_t ast_meta_field_meta_counts[] = {
     4, /* LikeExpr */
     3, /* CaseExpr */
     2, /* CaseWhen */
-    0, /* CaseWhenList */
     5, /* ForeignKeyClause */
     11, /* ColumnConstraint */
-    0, /* ColumnConstraintList */
     3, /* ColumnDef */
-    0, /* ColumnDefList */
     8, /* TableConstraint */
-    0, /* TableConstraintList */
     8, /* CreateTableStmt */
     4, /* CteDefinition */
-    0, /* CteList */
     3, /* WithClause */
     2, /* DeleteStmt */
     3, /* SetClause */
-    0, /* SetClauseList */
     5, /* UpdateStmt */
     4, /* InsertStmt */
     3, /* BinaryExpr */
     2, /* UnaryExpr */
     2, /* Literal */
-    0, /* ExprList */
     5, /* FunctionCall */
     1, /* Variable */
     2, /* CollateExpr */
@@ -846,17 +839,14 @@ static const uint8_t ast_meta_field_meta_counts[] = {
     2, /* TransactionStmt */
     2, /* SavepointStmt */
     3, /* ResultColumn */
-    0, /* ResultColumnList */
     9, /* SelectStmt */
     3, /* OrderingTerm */
-    0, /* OrderByList */
     2, /* LimitClause */
     3, /* TableRef */
     2, /* SubqueryTableSource */
     5, /* JoinClause */
     2, /* JoinPrefix */
     2, /* TriggerEvent */
-    0, /* TriggerCmdList */
     9, /* CreateTriggerStmt */
     5, /* CreateVirtualTableStmt */
     4, /* PragmaStmt */
@@ -867,15 +857,25 @@ static const uint8_t ast_meta_field_meta_counts[] = {
     2, /* ExplainStmt */
     7, /* CreateIndexStmt */
     6, /* CreateViewStmt */
-    0, /* ValuesRowList */
     1, /* ValuesClause */
     2, /* FrameBound */
     4, /* FrameSpec */
     4, /* WindowDef */
-    0, /* WindowDefList */
     2, /* NamedWindowDef */
-    0, /* NamedWindowDefList */
     3, /* FilterOver */
+    0, /* CaseWhenList */
+    0, /* ColumnConstraintList */
+    0, /* ColumnDefList */
+    0, /* TableConstraintList */
+    0, /* CteList */
+    0, /* SetClauseList */
+    0, /* ExprList */
+    0, /* ResultColumnList */
+    0, /* OrderByList */
+    0, /* TriggerCmdList */
+    0, /* ValuesRowList */
+    0, /* WindowDefList */
+    0, /* NamedWindowDefList */
 };
 
 // ============ List Tags ============
@@ -894,27 +894,20 @@ static const uint8_t ast_meta_list_tags[] = {
     0, /* LikeExpr */
     0, /* CaseExpr */
     0, /* CaseWhen */
-    1, /* CaseWhenList */
     0, /* ForeignKeyClause */
     0, /* ColumnConstraint */
-    1, /* ColumnConstraintList */
     0, /* ColumnDef */
-    1, /* ColumnDefList */
     0, /* TableConstraint */
-    1, /* TableConstraintList */
     0, /* CreateTableStmt */
     0, /* CteDefinition */
-    1, /* CteList */
     0, /* WithClause */
     0, /* DeleteStmt */
     0, /* SetClause */
-    1, /* SetClauseList */
     0, /* UpdateStmt */
     0, /* InsertStmt */
     0, /* BinaryExpr */
     0, /* UnaryExpr */
     0, /* Literal */
-    1, /* ExprList */
     0, /* FunctionCall */
     0, /* Variable */
     0, /* CollateExpr */
@@ -925,17 +918,14 @@ static const uint8_t ast_meta_list_tags[] = {
     0, /* TransactionStmt */
     0, /* SavepointStmt */
     0, /* ResultColumn */
-    1, /* ResultColumnList */
     0, /* SelectStmt */
     0, /* OrderingTerm */
-    1, /* OrderByList */
     0, /* LimitClause */
     0, /* TableRef */
     0, /* SubqueryTableSource */
     0, /* JoinClause */
     0, /* JoinPrefix */
     0, /* TriggerEvent */
-    1, /* TriggerCmdList */
     0, /* CreateTriggerStmt */
     0, /* CreateVirtualTableStmt */
     0, /* PragmaStmt */
@@ -946,15 +936,25 @@ static const uint8_t ast_meta_list_tags[] = {
     0, /* ExplainStmt */
     0, /* CreateIndexStmt */
     0, /* CreateViewStmt */
-    1, /* ValuesRowList */
     0, /* ValuesClause */
     0, /* FrameBound */
     0, /* FrameSpec */
     0, /* WindowDef */
-    1, /* WindowDefList */
     0, /* NamedWindowDef */
-    1, /* NamedWindowDefList */
     0, /* FilterOver */
+    1, /* CaseWhenList */
+    1, /* ColumnConstraintList */
+    1, /* ColumnDefList */
+    1, /* TableConstraintList */
+    1, /* CteList */
+    1, /* SetClauseList */
+    1, /* ExprList */
+    1, /* ResultColumnList */
+    1, /* OrderByList */
+    1, /* TriggerCmdList */
+    1, /* ValuesRowList */
+    1, /* WindowDefList */
+    1, /* NamedWindowDefList */
 };
 
 #endif  // SYNTAQLITE_DIALECT_META_H

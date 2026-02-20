@@ -27,7 +27,6 @@ def main():
     nodes_dir = dialect_crate / "parser-nodes"
     tokenize_c = sqlite_src / "tokenize.c"
     output_dir = project_root / "syntaqlite" / "csrc"
-    runtime_csrc = project_root / "syntaqlite-runtime" / "csrc"
 
     # Validate input files
     if not actions_dir.is_dir():
@@ -58,7 +57,6 @@ def main():
             "--nodes-dir", str(nodes_dir),
             "--tokenize-c", str(tokenize_c),
             "--output-dir", str(output_dir),
-            "--runtime-csrc", str(runtime_csrc),
         ],
     )
 

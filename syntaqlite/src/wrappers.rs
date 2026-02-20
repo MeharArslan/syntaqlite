@@ -5,9 +5,9 @@
 
 use std::ops::Range;
 
-use crate::ParseError;
 use crate::ast::{FromArena, Stmt};
 use crate::low_level::TokenType;
+use crate::ParseError;
 
 /// A parser pre-configured for this dialect.
 ///
@@ -38,9 +38,7 @@ impl Parser {
 
     /// Parse source text and return a `StatementCursor` for iterating statements.
     pub fn parse<'a>(&'a mut self, source: &'a str) -> StatementCursor<'a> {
-        StatementCursor {
-            inner: self.inner.parse(source),
-        }
+        StatementCursor { inner: self.inner.parse(source) }
     }
 }
 
@@ -60,9 +58,7 @@ impl<'a> StatementCursor<'a> {
             Err(e) => return Some(Err(e)),
         };
         let reader = self.inner.reader();
-        Some(Ok(
-            Stmt::from_arena(reader, id).expect("parser returned invalid node")
-        ))
+        Some(Ok(Stmt::from_arena(reader, id).expect("parser returned invalid node")))
     }
 }
 
@@ -90,9 +86,7 @@ impl LowLevelParser {
 
     /// Bind source text and return a `LowLevelCursor` for token feeding.
     pub fn feed<'a>(&'a mut self, source: &'a str) -> LowLevelCursor<'a> {
-        LowLevelCursor {
-            inner: self.inner.feed(source),
-        }
+        LowLevelCursor { inner: self.inner.feed(source) }
     }
 }
 
@@ -122,9 +116,7 @@ impl<'a> LowLevelCursor<'a> {
             None => Ok(None),
             Some(id) => {
                 let reader = self.inner.base().reader();
-                Ok(Some(
-                    Stmt::from_arena(reader, id).expect("parser returned invalid node"),
-                ))
+                Ok(Some(Stmt::from_arena(reader, id).expect("parser returned invalid node")))
             }
         }
     }
@@ -140,9 +132,7 @@ impl<'a> LowLevelCursor<'a> {
             None => Ok(None),
             Some(id) => {
                 let reader = self.inner.base().reader();
-                Ok(Some(
-                    Stmt::from_arena(reader, id).expect("parser returned invalid node"),
-                ))
+                Ok(Some(Stmt::from_arena(reader, id).expect("parser returned invalid node")))
             }
         }
     }
@@ -182,7 +172,10 @@ impl Formatter {
     }
 
     /// Format SQL source text.
-    pub fn format(&mut self, source: &str) -> Result<String, ParseError> {
+    pub fn format(
+        &mut self,
+        source: &str,
+    ) -> Result<String, ParseError> {
         self.inner.format(source)
     }
 }
@@ -226,7 +219,8 @@ impl<'a> Iterator for TokenCursor<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let raw = self.inner.next()?;
-        let tt = TokenType::from_raw(raw.token_type).unwrap_or(TokenType::Illegal);
+        let tt = TokenType::from_raw(raw.token_type)
+            .unwrap_or(TokenType::Illegal);
         Some((tt, raw.text))
     }
 }
