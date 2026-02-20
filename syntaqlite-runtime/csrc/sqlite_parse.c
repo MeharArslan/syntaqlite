@@ -377,7 +377,7 @@
 **                     shifting non-terminals after a reduce.
 **  yy_default[]       Default action for each state.
 **
-
+*/
 
 /* The next table maps tokens (terminal symbols) into fallback tokens.  
 ** If a construct like the following:

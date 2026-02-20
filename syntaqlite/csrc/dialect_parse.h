@@ -763,7 +763,6 @@ static const YYACTIONTYPE yy_default[] = {
  /*   570 */  1254, 1277, 1254, 1254, 1254, 1274, 1254, 1254, 1254, 1254,
  /*   580 */  1254, 1254, 1254,
 };
-/********** End of lemon-generated parsing tables *****************************/
 
 #ifdef YYFALLBACK
 static const YYCODETYPE yyFallback[] = {

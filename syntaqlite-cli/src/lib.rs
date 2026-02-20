@@ -41,16 +41,20 @@ enum Command {
         semicolons: bool,
     },
     /// Generate amalgamated dialect C sources for embedding.
+    ///
+    /// Base SQLite grammar and node files are embedded in the binary.
+    /// When `--actions-dir` / `--nodes-dir` are provided, those extension
+    /// files are merged with the base (same-name files replace the base).
     GenerateDialect {
         /// Dialect name (e.g. "sqlite").
         #[arg(long, required = true)]
         dialect: String,
-        /// Directory containing .y grammar action files.
-        #[arg(long, required = true)]
-        actions_dir: String,
-        /// Directory containing .synq node definitions.
-        #[arg(long, required = true)]
-        nodes_dir: String,
+        /// Directory containing .y grammar action files (extensions only; base is embedded).
+        #[arg(long)]
+        actions_dir: Option<String>,
+        /// Directory containing .synq node definitions (extensions only; base is embedded).
+        #[arg(long)]
+        nodes_dir: Option<String>,
         /// Path to SQLite's tokenize.c.
         #[arg(long, required = true)]
         tokenize_c: String,
@@ -205,13 +209,14 @@ fn cmd_fmt(
 
 fn cmd_generate_dialect(
     dialect: &str,
-    actions_dir: &str,
-    nodes_dir: &str,
+    actions_dir: Option<&str>,
+    nodes_dir: Option<&str>,
     tokenize_c: &str,
     runtime_dir: &str,
     output_dir: &str,
 ) -> Result<(), String> {
     use syntaqlite_codegen::amalgamate;
+    use syntaqlite_codegen::base_files;
 
     // Run codegen into a temp directory.
     let temp_dir = tempfile::TempDir::new()
@@ -222,7 +227,21 @@ fn cmd_generate_dialect(
     fs::create_dir_all(&csrc).map_err(|e| format!("creating csrc dir: {e}"))?;
     fs::create_dir_all(&include).map_err(|e| format!("creating include dir: {e}"))?;
 
-    codegen_to_dir(actions_dir, nodes_dir, tokenize_c, &csrc, &include)?;
+    // Load extension files from user dirs (if provided).
+    let ext_y = match actions_dir {
+        Some(dir) => read_files_from_dir(dir, "y")?,
+        None => Vec::new(),
+    };
+    let ext_synq = match nodes_dir {
+        Some(dir) => read_files_from_dir(dir, "synq")?,
+        None => Vec::new(),
+    };
+
+    // Merge base + extensions.
+    let merged_y = base_files::merge_file_sets(base_files::base_y_files(), &ext_y);
+    let merged_synq = base_files::merge_file_sets(base_files::base_synq_files(), &ext_synq);
+
+    codegen_to_dir_with_base(&merged_y, &merged_synq, tokenize_c, &csrc, &include)?;
 
     // Full amalgamation: runtime + dialect into one pair of files.
     let result = amalgamate::amalgamate_full(dialect, Path::new(runtime_dir), temp.as_ref())?;
@@ -238,38 +257,49 @@ fn cmd_generate_dialect(
     Ok(())
 }
 
-/// Run the codegen pipeline, writing C outputs to `csrc_dir` and `include_dir`.
-fn codegen_to_dir(
-    actions_dir: &str,
-    nodes_dir: &str,
+/// Read all files with the given extension from a directory.
+fn read_files_from_dir(dir: &str, ext: &str) -> Result<Vec<(String, String)>, String> {
+    let dir_path = Path::new(dir);
+    if !dir_path.is_dir() {
+        return Err(format!("{dir} is not a directory"));
+    }
+    let mut files: Vec<(String, String)> = fs::read_dir(dir_path)
+        .map_err(|e| format!("reading {dir}: {e}"))?
+        .filter_map(|entry| {
+            let path = entry.ok()?.path();
+            if path.extension()?.to_str()? == ext {
+                let name = path.file_name()?.to_str()?.to_string();
+                let content = fs::read_to_string(&path).ok()?;
+                Some((name, content))
+            } else {
+                None
+            }
+        })
+        .collect();
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(files)
+}
+
+/// Run the codegen pipeline from merged in-memory file sets.
+fn codegen_to_dir_with_base(
+    y_files: &[(String, String)],
+    synq_files: &[(String, String)],
     tokenize_c: &str,
     csrc_dir: &Path,
     include_dir: &Path,
 ) -> Result<(), String> {
-    // Parse node definitions.
-    let nodes_path = Path::new(nodes_dir);
-    let mut synq_files: Vec<_> = fs::read_dir(nodes_path)
-        .map_err(|e| format!("reading {nodes_dir}: {e}"))?
-        .filter_map(|e| {
-            let p = e.ok()?.path();
-            (p.extension()?.to_str()? == "synq").then_some(p)
-        })
-        .collect();
-    synq_files.sort();
+    // Parse node definitions from in-memory contents.
     let mut all_items = Vec::new();
-    for path in &synq_files {
-        let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
-        let content = fs::read_to_string(path)
-            .map_err(|e| format!("{name}: {e}"))?;
-        let items = syntaqlite_codegen::node_parser::parse_node(&content)
+    for (name, content) in synq_files {
+        let items = syntaqlite_codegen::node_parser::parse_node(content)
             .map_err(|e| format!("{name}: {e}"))?;
         all_items.extend(items);
     }
 
-    // Generate parser (lemon).
+    // Generate parser (lemon) from in-memory .y contents.
     let work_dir = tempfile::TempDir::new()
         .map_err(|e| format!("creating work directory: {e}"))?;
-    syntaqlite_codegen::generate_parser(actions_dir, work_dir.path().to_str().unwrap())?;
+    syntaqlite_codegen::generate_parser_from_contents(y_files, work_dir.path().to_str().unwrap())?;
 
     // Extract tokenizer.
     let (tokenize_content, extract_result) =
@@ -377,7 +407,14 @@ pub fn run(name: &str, dialect: &Dialect) {
             tokenize_c,
             runtime_dir,
             output_dir,
-        } => cmd_generate_dialect(&dialect_name, &actions_dir, &nodes_dir, &tokenize_c, &runtime_dir, &output_dir),
+        } => cmd_generate_dialect(
+            &dialect_name,
+            actions_dir.as_deref(),
+            nodes_dir.as_deref(),
+            &tokenize_c,
+            &runtime_dir,
+            &output_dir,
+        ),
         Command::Lemon { args } => {
             syntaqlite_codegen::lemon::run_lemon(&args);
         }

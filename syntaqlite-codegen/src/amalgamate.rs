@@ -30,7 +30,7 @@ pub fn amalgamate_runtime(runtime_dir: &Path) -> Result<AmalgamateOutput, String
     let include = runtime_dir.join("include");
     let graph = collect_files(&[&csrc, &include])?;
     validate_graph(&graph)?;
-    emit(&graph, None)
+    emit(&graph, EmitMode::RuntimeOnly)
 }
 
 /// Produce `syntaqlite_<dialect>.{h,c}` that references `syntaqlite_runtime.h`
@@ -45,12 +45,12 @@ pub fn amalgamate_dialect(dialect: &str, dialect_dir: &Path) -> Result<Amalgamat
     let include = dialect_dir.join("include");
     let graph = collect_files(&[&csrc, &include])?;
     validate_graph(&graph)?;
-    emit(&graph, Some(dialect))
+    emit(&graph, EmitMode::DialectOnly(dialect))
 }
 
 /// Produce `syntaqlite_<dialect>.{h,c}` with the runtime inlined.
 pub fn amalgamate_full(
-    _dialect: &str,
+    dialect: &str,
     runtime_dir: &Path,
     dialect_dir: &Path,
 ) -> Result<AmalgamateOutput, String> {
@@ -66,7 +66,7 @@ pub fn amalgamate_full(
         &dialect_include,
     ])?;
     validate_graph(&graph)?;
-    emit(&graph, None)
+    emit(&graph, EmitMode::Full(dialect))
 }
 
 // ---------------------------------------------------------------------------
@@ -287,12 +287,18 @@ fn toposort_visit(
 // Step 5: Emit amalgamated output
 // ---------------------------------------------------------------------------
 
+/// Amalgamation mode — determines output structure and naming.
+enum EmitMode<'a> {
+    /// Runtime only: `syntaqlite_runtime.{h,c}` + `syntaqlite_ext.h`.
+    RuntimeOnly,
+    /// Dialect only: `syntaqlite_<name>.{h,c}`, expects external runtime/ext headers.
+    DialectOnly(&'a str),
+    /// Full: runtime + dialect inlined into `syntaqlite_<name>.{h,c}`.
+    Full(&'a str),
+}
+
 /// Emit the amalgamated header and source files.
-///
-/// If `dialect` is Some, the source file includes the runtime header via an
-/// overridable `SYNTAQLITE_RUNTIME_HEADER` macro and the extension header via
-/// `SYNTAQLITE_EXT_HEADER`.
-fn emit(graph: &FileGraph, dialect: Option<&str>) -> Result<AmalgamateOutput, String> {
+fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
     let files = &graph.files;
     let all_indices: Vec<usize> = (0..files.len()).collect();
 
@@ -320,27 +326,17 @@ fn emit(graph: &FileGraph, dialect: Option<&str>) -> Result<AmalgamateOutput, St
     // The set of include keys being inlined (all collected files).
     let inlined_keys: HashSet<&str> = files.iter().map(|f| f.include_key.as_str()).collect();
 
-    // Determine naming.
-    let (guard, header_filename) = if let Some(d) = dialect {
-        (
+    // Determine naming from mode.
+    let (guard, header_filename) = match &mode {
+        EmitMode::DialectOnly(d) | EmitMode::Full(d) => (
             format!("SYNTAQLITE_{}_H", d.to_uppercase()),
             format!("syntaqlite_{d}.h"),
-        )
-    } else if files.iter().any(|f| f.include_key.starts_with("syntaqlite/sqlite")) {
-        // Full amalgamation (runtime + dialect).
-        (
-            "SYNTAQLITE_SQLITE_H".to_string(),
-            "syntaqlite_sqlite.h".to_string(),
-        )
-    } else {
-        (
+        ),
+        EmitMode::RuntimeOnly => (
             "SYNTAQLITE_RUNTIME_H".to_string(),
             "syntaqlite_runtime.h".to_string(),
-        )
+        ),
     };
-
-    let is_runtime_only = dialect.is_none() && !files.iter().any(|f| f.include_key.starts_with("syntaqlite/sqlite"));
-    let is_full = dialect.is_none() && !is_runtime_only;
 
     // ── Build .h ──
     let mut header = String::new();
@@ -356,7 +352,7 @@ fn emit(graph: &FileGraph, dialect: Option<&str>) -> Result<AmalgamateOutput, St
     header.push_str(&format!("\n#endif  /* {guard} */\n"));
 
     // ── Build ext header (runtime-only mode) ──
-    let ext_header = if is_runtime_only && !ext_headers.is_empty() {
+    let ext_header = if matches!(mode, EmitMode::RuntimeOnly) && !ext_headers.is_empty() {
         let mut ext = String::new();
         ext.push_str("/*\n");
         ext.push_str("** syntaqlite amalgamation — machine generated, do not edit.\n");
@@ -381,8 +377,8 @@ fn emit(graph: &FileGraph, dialect: Option<&str>) -> Result<AmalgamateOutput, St
     source.push_str("** syntaqlite amalgamation — machine generated, do not edit.\n");
     source.push_str("*/\n\n");
 
-    // Include our own header (+ runtime/ext headers for dialect-only mode).
-    if dialect.is_some() {
+    // Dialect-only mode: include external runtime/ext headers.
+    if matches!(mode, EmitMode::DialectOnly(_)) {
         source.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
         source.push_str("#define SYNTAQLITE_RUNTIME_HEADER \"syntaqlite_runtime.h\"\n");
         source.push_str("#endif\n");
@@ -403,8 +399,8 @@ fn emit(graph: &FileGraph, dialect: Option<&str>) -> Result<AmalgamateOutput, St
         source.push_str("#define SYNTAQLITE_INLINE_PARSER_DATA_HEADER /* already inlined */\n\n");
     }
 
-    // For full amalgamation, extension headers go into the .c alongside internal headers.
-    if is_full {
+    // Full mode: extension headers go into the .c alongside internal headers.
+    if matches!(mode, EmitMode::Full(_)) {
         for &i in &ext_headers {
             emit_file(&files[i], &inlined_keys, &mut source);
         }
