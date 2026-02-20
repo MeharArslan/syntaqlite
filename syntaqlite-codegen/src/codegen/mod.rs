@@ -5,4 +5,4 @@ pub(crate) mod codegen_pipeline;
 pub(crate) mod grammar_codegen;
 pub mod output_manifest;
 pub(crate) mod parser_pipeline;
-pub(crate) mod sqlite_codegen;
+pub(crate) mod sqlite_runtime_codegen;

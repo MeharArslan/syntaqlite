@@ -279,7 +279,7 @@ fn codegen_to_dir_with_base(
     csrc_dir: &Path,
     include_dir: &Path,
 ) -> Result<(), String> {
-    let dialect_spec = syntaqlite_codegen::DialectSpec::new(dialect);
+    let dialect_spec = syntaqlite_codegen::DialectNaming::new(dialect);
     let parser_prefix = dialect_spec.parser_symbol_prefix();
 
     // Extract extra keywords from extension .y files (terminals not in
@@ -330,11 +330,11 @@ fn codegen_to_dir_with_base(
         .map_err(|e| format!("writing sqlite_parse.c: {e}"))?;
 
     // Forward-declaration headers for parser and tokenizer.
-    let parse_h = syntaqlite_codegen::ast_codegen::generate_parse_h(dialect);
+    let parse_h = syntaqlite_codegen::dialect_codegen::generate_parse_h(dialect);
     fs::write(csrc_dir.join("sqlite_parse.h"), parse_h)
         .map_err(|e| format!("writing sqlite_parse.h: {e}"))?;
 
-    let tokenize_h = syntaqlite_codegen::ast_codegen::generate_tokenize_h(dialect);
+    let tokenize_h = syntaqlite_codegen::dialect_codegen::generate_tokenize_h(dialect);
     fs::write(csrc_dir.join("sqlite_tokenize.h"), tokenize_h)
         .map_err(|e| format!("writing sqlite_tokenize.h: {e}"))?;
 

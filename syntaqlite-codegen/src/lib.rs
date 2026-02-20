@@ -2,12 +2,12 @@
 // Licensed under the Apache License, Version 2.0.
 
 pub mod amalgamate;
-pub mod ast_codegen;
 pub mod base_files;
 mod codegen;
+pub mod dialect_codegen;
 pub mod fmt_compiler;
 pub mod grammar_parser;
-pub mod node_parser;
+pub mod synq_parser;
 mod tools;
 mod util;
 mod writers;
@@ -27,11 +27,11 @@ pub fn run_mkkeyword(args: &[String]) -> ! {
 }
 
 #[derive(Debug, Clone)]
-pub struct DialectSpec {
+pub struct DialectNaming {
     name: String,
 }
 
-impl DialectSpec {
+impl DialectNaming {
     pub fn new(name: impl Into<String>) -> Self {
         Self { name: name.into() }
     }
@@ -126,7 +126,7 @@ pub struct CodegenArtifacts {
 }
 
 pub struct CodegenRequest<'a> {
-    pub dialect: &'a DialectSpec,
+    pub dialect: &'a DialectNaming,
     pub y_files: &'a [(String, String)],
     pub synq_files: &'a [(String, String)],
     pub tokenize_c_path: &'a str,
@@ -190,7 +190,7 @@ pub fn extract_tokenizer(
     tokenize_c_path: &str,
     dialect: &str,
 ) -> Result<(String, TokenizerExtractResult), String> {
-    codegen::sqlite_codegen::extract_tokenizer(tokenize_c_path, dialect)
+    codegen::sqlite_runtime_codegen::extract_tokenizer(tokenize_c_path, dialect)
 }
 
 pub fn generate_parser(actions_dir: &str, output_dir: &str) -> Result<(), String> {
@@ -204,7 +204,7 @@ pub fn generate_parser(actions_dir: &str, output_dir: &str) -> Result<(), String
 /// directives, and RHS symbols in grammar rules. Duplicates against the base
 /// keyword table are handled by `run_mkkeyword` (silently skipped).
 pub fn extract_terminals_from_y(extension_y_contents: &[&str]) -> Vec<String> {
-    codegen::sqlite_codegen::extract_terminals_from_y(extension_y_contents)
+    codegen::sqlite_runtime_codegen::extract_terminals_from_y(extension_y_contents)
 }
 
 /// Generate keyword hash lookup as a single `.c` file.
@@ -221,12 +221,12 @@ pub fn generate_keyword_hash(
     dialect: &str,
     extra_keywords: &[String],
 ) -> Result<String, String> {
-    codegen::sqlite_codegen::generate_keyword_hash(extract_result, dialect, extra_keywords)
+    codegen::sqlite_runtime_codegen::generate_keyword_hash(extract_result, dialect, extra_keywords)
 }
 
 /// Generate the `sqlite_keyword.h` header with the forward declaration for the keyword lookup function.
 pub fn generate_keyword_h() -> String {
-    codegen::sqlite_codegen::generate_keyword_h()
+    codegen::sqlite_runtime_codegen::generate_keyword_h()
 }
 
 /// Concatenate in-memory .y file contents (already sorted by caller).

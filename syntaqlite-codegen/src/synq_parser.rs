@@ -4,7 +4,7 @@
 // ── Public API ───────────────────────────────────────────────────────────
 
 /// Parse a single .synq file's contents into a list of items.
-pub fn parse_node(input: &str) -> Result<Vec<Item>, String> {
+pub fn parse_synq_file(input: &str) -> Result<Vec<Item>, String> {
     let tokens = tokenize(input)?;
     Parser::new(tokens).parse_file()
 }
@@ -314,7 +314,7 @@ impl Parser {
     fn parse_item(&mut self) -> Result<Item, String> {
         if self.at("node") {
             self.advance();
-            return self.parse_node();
+            return self.parse_node_item();
         }
         if self.at("enum") {
             self.advance();
@@ -335,7 +335,7 @@ impl Parser {
         Err(format!("expected item keyword, got {:?}", self.peek()))
     }
 
-    fn parse_node(&mut self) -> Result<Item, String> {
+    fn parse_node_item(&mut self) -> Result<Item, String> {
         let name = self.ident()?;
         self.expect(&Token::LBrace)?;
         let mut fields = Vec::new();

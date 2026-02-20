@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use crate::{CodegenArtifacts, DialectSpec};
+use crate::{CodegenArtifacts, DialectNaming};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputBucket {
@@ -19,7 +19,7 @@ pub struct OutputArtifact {
 }
 
 pub fn sqlite_output_manifest(
-    dialect: &DialectSpec,
+    dialect: &DialectNaming,
     artifacts: CodegenArtifacts,
 ) -> Result<Vec<OutputArtifact>, String> {
     let mut out = Vec::new();

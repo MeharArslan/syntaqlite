@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 
-use crate::node_parser::{Field, Fmt, Item};
+use crate::synq_parser::{Field, Fmt, Item};
 
 mod c_ast;
 mod c_dialect;

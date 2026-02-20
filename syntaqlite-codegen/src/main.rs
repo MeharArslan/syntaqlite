@@ -110,7 +110,7 @@ fn handle_codegen(
     runtime_csrc: Option<&str>,
     verbose: bool,
 ) -> Result<(), String> {
-    let dialect = syntaqlite_codegen::DialectSpec::new("sqlite");
+    let dialect = syntaqlite_codegen::DialectNaming::new("sqlite");
 
     log_verbose(verbose, "Loading grammar + node definition files...");
     let y_files = syntaqlite_codegen::read_named_files_from_dir(actions_dir, "y")?;

@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 
-use crate::node_parser::{Field, Item, Storage};
+use crate::synq_parser::{Field, Item, Storage};
 use crate::util::naming::{pascal_to_snake, upper_snake};
 use crate::writers::c_writer::CWriter;
 

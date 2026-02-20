@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 
-use crate::node_parser::{Field, Item, Storage};
+use crate::synq_parser::{Field, Item, Storage};
 use crate::util::naming::upper_snake_to_pascal;
 use crate::writers::rust_writer::RustWriter;
 

@@ -18,8 +18,8 @@ use std::fmt::Write as _;
 use std::fmt::{Display, Formatter};
 
 #[cfg(test)]
-use crate::node_parser::Storage;
-use crate::node_parser::{Field, Fmt, Item};
+use crate::synq_parser::Storage;
+use crate::synq_parser::{Field, Fmt, Item};
 use crate::util::naming::upper_snake;
 
 use syntaqlite_runtime::fmt::bytecode::RawOp;
