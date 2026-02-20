@@ -3,11 +3,10 @@
 
 use std::collections::HashSet;
 
-use crate::synq_parser::Field;
-use crate::util::naming::{pascal_to_snake, upper_snake};
+use crate::synq_parser::{Field, Storage};
+use crate::util::{pascal_to_snake, upper_snake};
 use crate::writers::c_writer::CWriter;
 
-use super::c_common::{builder_name, c_type_name, field_c_type, range_fields, refs_i32, tag_name};
 use super::{AstModel, NodeLikeRef};
 
 pub fn generate_ast_nodes_header(model: &AstModel<'_>, dialect: &str) -> String {
@@ -370,4 +369,45 @@ fn emit_range_metadata(w: &mut CWriter, model: &AstModel<'_>) {
     w.dedent();
     w.line("};");
     w.newline();
+}
+
+fn c_type_name(name: &str) -> String {
+    format!("Syntaqlite{}", name)
+}
+
+fn tag_name(name: &str) -> String {
+    format!("SYNTAQLITE_NODE_{}", upper_snake(name))
+}
+
+fn builder_name(name: &str) -> String {
+    format!("synq_parse_{}", pascal_to_snake(name))
+}
+
+fn field_c_type(field: &Field, enum_names: &HashSet<&str>, flags_names: &HashSet<&str>) -> String {
+    match field.storage {
+        Storage::Index => "uint32_t".into(),
+        Storage::Inline => {
+            let t = &field.type_name;
+            if enum_names.contains(t.as_str()) || flags_names.contains(t.as_str()) {
+                c_type_name(t)
+            } else {
+                t.clone()
+            }
+        }
+    }
+}
+
+fn refs_i32(owned: &[(String, Option<i32>)]) -> Vec<(&str, Option<i32>)> {
+    owned.iter().map(|(s, v)| (s.as_str(), *v)).collect()
+}
+
+fn range_fields(fields: &[Field]) -> Vec<(&str, u8)> {
+    fields
+        .iter()
+        .filter_map(|f| match f.storage {
+            Storage::Index => Some((f.name.as_str(), 0)),
+            Storage::Inline if f.type_name == "SyntaqliteSourceSpan" => Some((f.name.as_str(), 1)),
+            _ => None,
+        })
+        .collect()
 }

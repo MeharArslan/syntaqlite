@@ -20,7 +20,7 @@ use std::fmt::{Display, Formatter};
 #[cfg(test)]
 use crate::synq_parser::Storage;
 use crate::synq_parser::{Field, Fmt, Item};
-use crate::util::naming::upper_snake;
+use crate::util::upper_snake;
 
 use syntaqlite_runtime::fmt::bytecode::RawOp;
 use syntaqlite_runtime::fmt::bytecode::opcodes;

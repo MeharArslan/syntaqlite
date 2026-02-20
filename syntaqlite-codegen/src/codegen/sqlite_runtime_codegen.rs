@@ -6,8 +6,8 @@ use std::fs;
 use syntaqlite_codegen_utils::{c_extractor, c_transformer};
 
 use crate::TokenizerExtractResult;
-use crate::util::naming;
-use crate::util::subprocess;
+use crate::util::pascal_case;
+
 use crate::writers::c_writer::CWriter;
 
 pub(crate) fn extract_tokenizer(
@@ -99,7 +99,7 @@ pub(crate) fn extract_tokenizer(
         .replace_in_function("sqlite3GetToken", "keywordCode", "synq_sqlite3_keywordCode")
         .rename_function(
             "sqlite3GetToken",
-            &format!("Synq{}GetToken", naming::pascal_case(dialect)),
+            &format!("Synq{}GetToken", pascal_case(dialect)),
         )
         .replace_all("TK_", "SYNTAQLITE_TK_")
         .finish();
@@ -160,7 +160,7 @@ pub(crate) fn generate_keyword_hash(
     dialect: &str,
     extra_keywords: &[String],
 ) -> Result<String, String> {
-    let mut cmd = subprocess::self_subcommand("mkkeyword")?;
+    let mut cmd = crate::util::self_subcommand("mkkeyword")?;
 
     let _kw_file;
     if !extra_keywords.is_empty() {

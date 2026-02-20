@@ -4,8 +4,6 @@
 use std::fs;
 use std::path::Path;
 
-use crate::util::subprocess;
-
 // Embed lempar.c template (needed by the library)
 const LEMPAR_C: &[u8] = include_bytes!("../../sqlite/lempar.c");
 
@@ -83,7 +81,7 @@ pub(crate) fn generate_parser_with_grammar_bytes(
 }
 
 fn run_lemon(template_arg: &str, parse_y_str: &str) -> Result<std::process::ExitStatus, String> {
-    subprocess::self_subcommand("lemon")?
+    crate::util::self_subcommand("lemon")?
         .arg("-l")
         .arg(template_arg)
         .arg(parse_y_str)

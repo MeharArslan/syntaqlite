@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use crate::util::naming::pascal_case;
+use crate::util::pascal_case;
 use crate::writers::c_writer::CWriter;
 
 pub fn generate_dialect_c(dialect: &str) -> String {

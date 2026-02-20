@@ -69,7 +69,7 @@ impl DialectNaming {
     }
 
     pub fn parser_symbol_prefix(&self) -> String {
-        format!("Synq{}Parse", util::naming::pascal_case(&self.name))
+        format!("Synq{}Parse", util::pascal_case(&self.name))
     }
 
     pub fn guarded_tokens_header(&self, tokens_content: &str) -> String {
