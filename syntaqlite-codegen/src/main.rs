@@ -23,8 +23,6 @@ enum Command {
         actions_dir: String,
         #[arg(long, required = true)]
         nodes_dir: String,
-        #[arg(long, required = true)]
-        tokenize_c: String,
         #[arg(long, default_value = "syntaqlite/csrc")]
         output_dir: String,
     },
@@ -101,7 +99,6 @@ fn write_file(path: &Path, content: impl AsRef<[u8]>) -> Result<(), String> {
 fn handle_codegen(
     actions_dir: &str,
     nodes_dir: &str,
-    tokenize_c: &str,
     output_dir: &str,
     verbose: bool,
 ) -> Result<(), String> {
@@ -117,7 +114,6 @@ fn handle_codegen(
         dialect: &dialect,
         y_files: &y_files,
         synq_files: &synq_files,
-        tokenize_c_path: tokenize_c,
         extra_keywords: &no_keywords,
         parser_symbol_prefix: None,
         include_rust: true,
@@ -225,15 +221,8 @@ fn main() {
             Command::Codegen {
                 actions_dir,
                 nodes_dir,
-                tokenize_c,
                 output_dir,
-            } => handle_codegen(
-                &actions_dir,
-                &nodes_dir,
-                &tokenize_c,
-                &output_dir,
-                args.verbose,
-            ),
+            } => handle_codegen(&actions_dir, &nodes_dir, &output_dir, args.verbose),
             Command::Lemon { args: lemon_args } => {
                 log_verbose(
                     args.verbose,

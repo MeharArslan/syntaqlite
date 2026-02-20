@@ -232,14 +232,8 @@ fn cmd_generate_dialect(
     let temp = temp_dir.path();
     let csrc = temp.join("csrc");
     let include = temp.join("include").join(format!("syntaqlite_{dialect}"));
-    let tokenize_c = temp.join("sqlite_tokenize.c");
     fs::create_dir_all(&csrc).map_err(|e| format!("creating csrc dir: {e}"))?;
     fs::create_dir_all(&include).map_err(|e| format!("creating include dir: {e}"))?;
-    fs::write(
-        &tokenize_c,
-        syntaqlite_codegen::embedded_sqlite_tokenize_c(),
-    )
-    .map_err(|e| format!("writing embedded tokenize.c: {e}"))?;
 
     // Load extension files from user dirs (if provided).
     let ext_y = match actions_dir {
@@ -255,14 +249,7 @@ fn cmd_generate_dialect(
     let merged_y = base_files::merge_file_sets(base_files::base_y_files(), &ext_y);
     let merged_synq = base_files::merge_file_sets(base_files::base_synq_files(), &ext_synq);
 
-    codegen_to_dir_with_base(
-        dialect,
-        &merged_y,
-        &merged_synq,
-        &tokenize_c.to_string_lossy(),
-        &csrc,
-        &include,
-    )?;
+    codegen_to_dir_with_base(dialect, &merged_y, &merged_synq, &csrc, &include)?;
 
     let out = Path::new(output_dir);
     fs::create_dir_all(out).map_err(|e| format!("creating output dir: {e}"))?;
@@ -280,7 +267,6 @@ fn codegen_to_dir_with_base(
     dialect: &str,
     y_files: &[(String, String)],
     synq_files: &[(String, String)],
-    tokenize_c: &str,
     csrc_dir: &Path,
     include_dir: &Path,
 ) -> Result<(), String> {
@@ -306,7 +292,6 @@ fn codegen_to_dir_with_base(
         dialect: &dialect_spec,
         y_files,
         synq_files,
-        tokenize_c_path: tokenize_c,
         extra_keywords: &extra_keywords,
         parser_symbol_prefix: Some(&parser_prefix),
         include_rust: false,

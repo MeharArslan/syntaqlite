@@ -11,22 +11,16 @@ use crate::TokenizerExtractResult;
 use crate::writers::c_writer::CWriter;
 
 pub(crate) fn extract_tokenizer(
-    tokenize_c_path: &str,
+    tokenize_content: &str,
+    global_content: &str,
+    sqliteint_content: &str,
     dialect: &str,
 ) -> Result<(String, TokenizerExtractResult), String> {
-    let tokenize_content = fs::read_to_string(tokenize_c_path)
-        .map_err(|e| format!("Failed to read {tokenize_c_path}: {e}"))?;
-    let tokenize_extractor = c_extractor::CExtractor::new(&tokenize_content);
+    let tokenize_extractor = c_extractor::CExtractor::new(tokenize_content);
 
-    let global_c = "third_party/src/sqlite/src/global.c";
-    let global_content =
-        fs::read_to_string(global_c).map_err(|e| format!("Failed to read {global_c}: {e}"))?;
-    let global_extractor = c_extractor::CExtractor::new(&global_content);
+    let global_extractor = c_extractor::CExtractor::new(global_content);
 
-    let sqliteint_h = "third_party/src/sqlite/src/sqliteInt.h";
-    let sqliteint_content = fs::read_to_string(sqliteint_h)
-        .map_err(|e| format!("Failed to read {sqliteint_h}: {e}"))?;
-    let sqliteint_extractor = c_extractor::CExtractor::new(&sqliteint_content);
+    let sqliteint_extractor = c_extractor::CExtractor::new(sqliteint_content);
 
     let cc_defines = tokenize_extractor.extract_specific_defines(&[
         "CC_X",

@@ -36,10 +36,7 @@ pub(crate) fn generate_codegen_artifacts(
     let parse_c = fs::read_to_string(work_dir.path().join("parse.c"))
         .map_err(|e| format!("Failed to read parse.c: {e}"))?;
 
-    let (tokenize_c, extract_result) = crate::codegen::sqlite_runtime_codegen::extract_tokenizer(
-        request.tokenize_c_path,
-        request.dialect.name(),
-    )?;
+    let (tokenize_c, extract_result) = crate::extract_tokenizer(request.dialect.name())?;
     let keyword_c = crate::codegen::sqlite_runtime_codegen::generate_keyword_hash(
         &extract_result,
         request.dialect.name(),
