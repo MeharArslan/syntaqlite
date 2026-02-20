@@ -57,16 +57,14 @@ pub(crate) fn generate_codegen_artifacts(
     let keyword_h = crate::codegen::sqlite_runtime_codegen::generate_keyword_h();
 
     let ast_nodes_h =
-        dialect_codegen::generate_ast_nodes_h_from_model(&ast_model, request.dialect.name());
+        dialect_codegen::generate_ast_nodes_header(&ast_model, request.dialect.name());
     let ast_builder_h =
-        dialect_codegen::generate_ast_builder_h_from_model(&ast_model, request.dialect.name());
-    let dialect_meta_h = dialect_codegen::try_generate_c_field_meta_from_model_typed(
-        &ast_model,
-        request.dialect.name(),
-    )
-    .map_err(|e| e.to_string())?;
-    let dialect_fmt_h = dialect_codegen::try_generate_c_fmt_arrays_typed(ast_model.items())
-        .map_err(|e| e.to_string())?;
+        dialect_codegen::generate_ast_builder_header(&ast_model, request.dialect.name());
+    let dialect_meta_h =
+        dialect_codegen::generate_c_field_metadata(&ast_model, request.dialect.name())
+            .map_err(|e| e.to_string())?;
+    let dialect_fmt_h =
+        dialect_codegen::generate_c_fmt_tables(&ast_model).map_err(|e| e.to_string())?;
     let dialect_c = dialect_codegen::generate_dialect_c(request.dialect.name());
     let dialect_h = dialect_codegen::generate_dialect_h(request.dialect.name());
     let dialect_dispatch_h = dialect_codegen::generate_dialect_dispatch_h(request.dialect.name());
@@ -75,8 +73,8 @@ pub(crate) fn generate_codegen_artifacts(
         let token_defines = crate::extract_token_defines(&parse_h);
         Some(RustCodegenArtifacts {
             tokens_rs: dialect_codegen::generate_rust_tokens(&token_defines),
-            ffi_rs: dialect_codegen::generate_rust_ffi_nodes_from_model(&ast_model),
-            ast_rs: dialect_codegen::generate_rust_ast_from_model(&ast_model),
+            ffi_rs: dialect_codegen::generate_rust_ffi_nodes(&ast_model),
+            ast_rs: dialect_codegen::generate_rust_ast(&ast_model),
             lib_rs: dialect_codegen::generate_rust_lib(&request.dialect.dialect_symbol_fn_name()),
             wrappers_rs: dialect_codegen::generate_rust_wrappers(),
         })

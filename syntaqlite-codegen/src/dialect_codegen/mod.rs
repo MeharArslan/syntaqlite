@@ -5,26 +5,22 @@ use std::collections::HashSet;
 
 use crate::synq_parser::{Field, Fmt, Item};
 
-mod c_ast;
+mod c_common;
 mod c_dialect;
+mod c_fmt_codegen;
+mod c_meta_codegen;
+mod c_nodes_codegen;
 mod rust_ast;
 mod rust_dialect;
 
-pub use c_ast::{
-    CCodegenError, generate_ast_builder_h, generate_ast_builder_h_from_model, generate_ast_nodes_h,
-    generate_ast_nodes_h_from_model, generate_c_field_meta, generate_c_field_meta_from_model,
-    generate_c_fmt_arrays, try_generate_c_field_meta, try_generate_c_field_meta_from_model,
-    try_generate_c_field_meta_from_model_typed, try_generate_c_field_meta_typed,
-    try_generate_c_fmt_arrays, try_generate_c_fmt_arrays_typed,
-};
 pub use c_dialect::{
     generate_dialect_c, generate_dialect_dispatch_h, generate_dialect_h, generate_parse_h,
     generate_tokenize_h,
 };
-pub use rust_ast::{
-    generate_rust_ast, generate_rust_ast_from_model, generate_rust_ffi_nodes,
-    generate_rust_ffi_nodes_from_model, generate_rust_tokens,
-};
+pub use c_fmt_codegen::{CFmtCodegenError, generate_c_fmt_tables};
+pub use c_meta_codegen::{CMetaCodegenError, generate_c_field_metadata};
+pub use c_nodes_codegen::{generate_ast_builder_header, generate_ast_nodes_header};
+pub use rust_ast::{generate_rust_ast, generate_rust_ffi_nodes, generate_rust_tokens};
 pub use rust_dialect::{generate_rust_lib, generate_rust_wrappers};
 
 pub use crate::util::naming::pascal_case;
@@ -77,95 +73,68 @@ pub enum NodeLikeRef<'a> {
 
 impl<'a> AstModel<'a> {
     pub fn new(items: &'a [Item]) -> Self {
-        let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
-        let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
-        let node_names: HashSet<&str> = items
-            .iter()
-            .filter_map(|i| match i {
-                Item::Node { name, .. } => Some(name.as_str()),
-                _ => None,
-            })
-            .collect();
-        let list_names: HashSet<&str> = items
-            .iter()
-            .filter_map(|i| match i {
-                Item::List { name, .. } => Some(name.as_str()),
-                _ => None,
-            })
-            .collect();
-        let enums: Vec<EnumRef<'a>> = items
-            .iter()
-            .filter_map(|i| match i {
-                Item::Enum { name, variants } => Some(EnumRef {
-                    name: name.as_str(),
-                    variants: variants.as_slice(),
-                }),
-                _ => None,
-            })
-            .collect();
-        let flags: Vec<FlagsRef<'a>> = items
-            .iter()
-            .filter_map(|i| match i {
-                Item::Flags { name, flags } => Some(FlagsRef {
-                    name: name.as_str(),
-                    flags: flags.as_slice(),
-                }),
-                _ => None,
-            })
-            .collect();
-        let nodes: Vec<NodeRef<'a>> = items
-            .iter()
-            .filter_map(|i| match i {
-                Item::Node { name, fields, fmt } => Some(NodeRef {
-                    name: name.as_str(),
-                    fields: fields.as_slice(),
-                    fmt: fmt.as_deref(),
-                }),
-                _ => None,
-            })
-            .collect();
-        let lists: Vec<ListRef<'a>> = items
-            .iter()
-            .filter_map(|i| match i {
+        let mut enum_names: HashSet<&str> = HashSet::new();
+        let mut flags_names: HashSet<&str> = HashSet::new();
+        let mut node_names: HashSet<&str> = HashSet::new();
+        let mut list_names: HashSet<&str> = HashSet::new();
+        let mut enums: Vec<EnumRef<'a>> = Vec::new();
+        let mut flags: Vec<FlagsRef<'a>> = Vec::new();
+        let mut nodes: Vec<NodeRef<'a>> = Vec::new();
+        let mut lists: Vec<ListRef<'a>> = Vec::new();
+        let mut node_like_items: Vec<NodeLikeRef<'a>> = Vec::new();
+        let mut abstract_items: Vec<(&str, &[String])> = Vec::new();
+
+        for item in items {
+            match item {
+                Item::Enum { name, variants } => {
+                    let name = name.as_str();
+                    enum_names.insert(name);
+                    enums.push(EnumRef {
+                        name,
+                        variants: variants.as_slice(),
+                    });
+                }
+                Item::Flags {
+                    name,
+                    flags: values,
+                } => {
+                    let name = name.as_str();
+                    flags_names.insert(name);
+                    flags.push(FlagsRef {
+                        name,
+                        flags: values.as_slice(),
+                    });
+                }
+                Item::Node { name, fields, fmt } => {
+                    let node = NodeRef {
+                        name: name.as_str(),
+                        fields: fields.as_slice(),
+                        fmt: fmt.as_deref(),
+                    };
+                    node_names.insert(node.name);
+                    nodes.push(node);
+                    node_like_items.push(NodeLikeRef::Node(node));
+                }
                 Item::List {
                     name,
                     child_type,
                     fmt,
-                } => Some(ListRef {
-                    name: name.as_str(),
-                    child_type: child_type.as_str(),
-                    fmt: fmt.as_deref(),
-                }),
-                _ => None,
-            })
-            .collect();
-        let node_like_items: Vec<NodeLikeRef<'a>> = items
-            .iter()
-            .filter_map(|i| match i {
-                Item::Node { name, fields, fmt } => Some(NodeLikeRef::Node(NodeRef {
-                    name: name.as_str(),
-                    fields: fields.as_slice(),
-                    fmt: fmt.as_deref(),
-                })),
-                Item::List {
-                    name,
-                    child_type,
-                    fmt,
-                } => Some(NodeLikeRef::List(ListRef {
-                    name: name.as_str(),
-                    child_type: child_type.as_str(),
-                    fmt: fmt.as_deref(),
-                })),
-                _ => None,
-            })
-            .collect();
-        let abstract_items: Vec<(&str, &[String])> = items
-            .iter()
-            .filter_map(|i| match i {
-                Item::Abstract { name, members } => Some((name.as_str(), members.as_slice())),
-                _ => None,
-            })
-            .collect();
+                } => {
+                    let list = ListRef {
+                        name: name.as_str(),
+                        child_type: child_type.as_str(),
+                        fmt: fmt.as_deref(),
+                    };
+                    list_names.insert(list.name);
+                    lists.push(list);
+                    node_like_items.push(NodeLikeRef::List(list));
+                }
+                Item::Abstract { name, members } => {
+                    abstract_items.push((name.as_str(), members.as_slice()));
+                }
+            }
+        }
+
         Self {
             items,
             enum_names,

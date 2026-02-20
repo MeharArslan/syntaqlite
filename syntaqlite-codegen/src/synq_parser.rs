@@ -37,21 +37,6 @@ pub enum Item {
     },
 }
 
-impl Item {
-    pub fn as_enum_name(&self) -> Option<&str> {
-        match self {
-            Item::Enum { name, .. } => Some(name),
-            _ => None,
-        }
-    }
-    pub fn as_flags_name(&self) -> Option<&str> {
-        match self {
-            Item::Flags { name, .. } => Some(name),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum Storage {
     Index,

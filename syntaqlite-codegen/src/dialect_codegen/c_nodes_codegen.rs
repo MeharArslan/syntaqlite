@@ -1,0 +1,373 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
+use std::collections::HashSet;
+
+use crate::synq_parser::Field;
+use crate::util::naming::{pascal_to_snake, upper_snake};
+use crate::writers::c_writer::CWriter;
+
+use super::c_common::{builder_name, c_type_name, field_c_type, range_fields, refs_i32, tag_name};
+use super::{AstModel, NodeLikeRef};
+
+pub fn generate_ast_nodes_header(model: &AstModel<'_>, dialect: &str) -> String {
+    let enum_names = model.enum_names();
+    let flags_names = model.flags_names();
+
+    let mut w = CWriter::new();
+
+    w.file_header();
+    let guard = format!("SYNTAQLITE_{}_NODE_H", dialect.to_uppercase());
+    w.header_guard_start(&guard);
+    w.include_system("stddef.h");
+    w.include_system("stdint.h");
+    w.newline();
+    w.include_local("syntaqlite/types.h");
+    w.newline();
+    // C++ doesn't have flexible array members; use [1] as a common workaround.
+    w.line("#ifdef __cplusplus");
+    w.line("#define SYNTAQLITE_FLEXIBLE_ARRAY 1");
+    w.line("#else");
+    w.line("#define SYNTAQLITE_FLEXIBLE_ARRAY");
+    w.line("#endif");
+    w.newline();
+    w.extern_c_start();
+
+    // Enums
+    let mut any_enum = false;
+    for entry in model.enums() {
+        let name = entry.name;
+        let variants = entry.variants;
+        if !any_enum {
+            w.section("Value Enums");
+            any_enum = true;
+        }
+        let prefix = format!("SYNTAQLITE_{}", upper_snake(name));
+        let owned: Vec<_> = variants
+            .iter()
+            .enumerate()
+            .map(|(i, v)| (format!("{}_{}", prefix, v), Some(i as i32)))
+            .collect();
+        w.typedef_enum(&c_type_name(name), &refs_i32(&owned));
+        w.newline();
+    }
+
+    // Flags
+    let mut any_flags = false;
+    for entry in model.flags() {
+        let name = entry.name;
+        let flags = entry.flags;
+        if !any_flags {
+            w.section("Flags Types");
+            any_flags = true;
+        }
+        let mut sorted: Vec<_> = flags.iter().collect();
+        sorted.sort_by_key(|(_, v)| *v);
+        let bits: Vec<_> = sorted.iter().map(|(n, v)| (n.to_lowercase(), *v)).collect();
+        let bit_refs: Vec<_> = bits.iter().map(|(n, v)| (n.as_str(), *v)).collect();
+        w.typedef_flags_union(&c_type_name(name), &bit_refs);
+        w.newline();
+    }
+
+    // Node tags
+    w.section("Node Tags");
+    let mut tag_variants: Vec<(String, Option<i32>)> =
+        vec![("SYNTAQLITE_NODE_NULL".into(), Some(0))];
+    for item in model.node_like_items() {
+        let name = match item {
+            NodeLikeRef::Node(node) => node.name,
+            NodeLikeRef::List(list) => list.name,
+        };
+        tag_variants.push((tag_name(name), None));
+    }
+    tag_variants.push(("SYNTAQLITE_NODE_COUNT".into(), None));
+    w.typedef_enum("SyntaqliteNodeTag", &refs_i32(&tag_variants));
+    w.line("#ifdef __cplusplus");
+    w.line("static_assert(sizeof(SyntaqliteNodeTag) == sizeof(uint32_t),");
+    w.line("              \"SyntaqliteNodeTag must be 32 bits for FFI compatibility\");");
+    w.line("#else");
+    w.line("_Static_assert(sizeof(SyntaqliteNodeTag) == sizeof(uint32_t),");
+    w.line("               \"SyntaqliteNodeTag must be 32 bits for FFI compatibility\");");
+    w.line("#endif");
+    w.newline();
+
+    // Node structs
+    w.section("Node Structs");
+    for item in model.node_like_items() {
+        match item {
+            NodeLikeRef::Node(node) => {
+                let sname = c_type_name(node.name);
+                let mut f = vec![("SyntaqliteNodeTag".to_string(), "tag".to_string())];
+                for field in node.fields {
+                    f.push((
+                        field_c_type(field, enum_names, flags_names),
+                        field.name.clone(),
+                    ));
+                }
+                let refs: Vec<_> = f.iter().map(|(t, n)| (t.as_str(), n.as_str())).collect();
+                w.typedef_struct(&sname, &refs);
+                w.newline();
+            }
+            NodeLikeRef::List(list) => {
+                w.comment(&format!("List of {}", list.child_type));
+                w.typedef_list_struct(&c_type_name(list.name));
+                w.newline();
+            }
+        }
+    }
+
+    // Node union
+    w.section("Node Union");
+    let mut union_members = vec![("SyntaqliteNodeTag".to_string(), "tag".to_string())];
+    for item in model.node_like_items() {
+        let name = match item {
+            NodeLikeRef::Node(node) => node.name,
+            NodeLikeRef::List(list) => list.name,
+        };
+        union_members.push((c_type_name(name), pascal_to_snake(name)));
+    }
+    let union_refs: Vec<_> = union_members
+        .iter()
+        .map(|(t, n)| (t.as_str(), n.as_str()))
+        .collect();
+    w.typedef_union("SyntaqliteNode", &union_refs);
+    w.newline();
+
+    // Abstract type unions and accessors
+    for &(name, members) in model.abstract_items() {
+        w.section(&format!("Abstract Type: {}", name));
+
+        let c_abs_name = c_type_name(name);
+        let mut abs_union_members = vec![("SyntaqliteNodeTag".to_string(), "tag".to_string())];
+        for member in members {
+            abs_union_members.push((c_type_name(member), pascal_to_snake(member)));
+        }
+        let abs_refs: Vec<_> = abs_union_members
+            .iter()
+            .map(|(t, n)| (t.as_str(), n.as_str()))
+            .collect();
+        w.typedef_union(&c_abs_name, &abs_refs);
+        w.newline();
+
+        let check_fn = format!("syntaqlite_is_{}", pascal_to_snake(name));
+        w.line(&format!(
+            "static inline int {}(SyntaqliteNodeTag tag) {{",
+            check_fn
+        ));
+        w.indent();
+        w.line("switch (tag) {");
+        w.indent();
+        for member in members {
+            w.line(&format!("case {}: return 1;", tag_name(member)));
+        }
+        w.line("default: return 0;");
+        w.dedent();
+        w.line("}");
+        w.dedent();
+        w.line("}");
+        w.newline();
+
+        for member in members {
+            let accessor_fn = format!(
+                "syntaqlite_{}_as_{}",
+                pascal_to_snake(name),
+                pascal_to_snake(member)
+            );
+            let member_type = c_type_name(member);
+            w.line(&format!(
+                "static inline const {}* {}(const {}* node) {{",
+                member_type, accessor_fn, c_abs_name
+            ));
+            w.indent();
+            w.line(&format!(
+                "return node->tag == {} ? &node->{} : NULL;",
+                tag_name(member),
+                pascal_to_snake(member)
+            ));
+            w.dedent();
+            w.line("}");
+            w.newline();
+        }
+    }
+
+    w.extern_c_end();
+    w.newline();
+
+    // C++ NodeTag specializations (tag-checked NodeCast support)
+    w.line("#if defined(__cplusplus) && __cplusplus >= 201703L");
+    w.line("#include \"syntaqlite/parser.h\"");
+    w.newline();
+    w.line("namespace syntaqlite {");
+    w.newline();
+    for item in model.node_like_items() {
+        let name = match item {
+            NodeLikeRef::Node(node) => node.name,
+            NodeLikeRef::List(list) => list.name,
+        };
+        let cname = c_type_name(name);
+        let tag = tag_name(name);
+        w.line(&format!("template <> struct NodeTag<{}> {{", cname));
+        w.line("  static constexpr bool kHasTag = true;");
+        w.line(&format!("  static constexpr uint32_t kValue = {};", tag));
+        w.line("};");
+    }
+    w.newline();
+    w.line("}  // namespace syntaqlite");
+    w.line("#endif");
+    w.newline();
+    w.header_guard_end(&guard);
+
+    w.finish()
+}
+
+pub fn generate_ast_builder_header(model: &AstModel<'_>, dialect: &str) -> String {
+    let enum_names = model.enum_names();
+    let flags_names = model.flags_names();
+
+    let mut w = CWriter::new();
+
+    w.file_header();
+    w.header_guard_start("SYNTAQLITE_DIALECT_BUILDER_H");
+    w.include_local("syntaqlite_ext/ast_builder.h");
+    w.include_local(&format!("syntaqlite_{dialect}/{dialect}_node.h"));
+    w.newline();
+    w.extern_c_start();
+
+    w.section("Builder Functions");
+
+    for node in model.nodes() {
+        emit_node_builder_inline(&mut w, node.name, node.fields, enum_names, flags_names);
+    }
+    for list in model.lists() {
+        emit_list_builder_inline(&mut w, list.name);
+    }
+
+    // Range field metadata (used by synq_parse_build in ast.c)
+    emit_range_metadata(&mut w, model);
+
+    w.extern_c_end();
+    w.newline();
+    w.header_guard_end("SYNTAQLITE_DIALECT_BUILDER_H");
+
+    w.finish()
+}
+
+fn emit_node_builder_inline(
+    w: &mut CWriter,
+    name: &str,
+    fields: &[Field],
+    enum_names: &HashSet<&str>,
+    flags_names: &HashSet<&str>,
+) {
+    let sn = c_type_name(name);
+    let tag = tag_name(name);
+    let func = builder_name(name);
+
+    let mut param_strs = vec!["SynqParseCtx *ctx".to_string()];
+    for field in fields {
+        param_strs.push(format!(
+            "{} {}",
+            field_c_type(field, enum_names, flags_names),
+            field.name
+        ));
+    }
+    let params: Vec<&str> = param_strs.iter().map(|s| s.as_str()).collect();
+    w.func_signature("static inline ", "uint32_t", &func, &params, " {");
+
+    let mut init_parts = vec![format!(".tag = {}", tag)];
+    for field in fields {
+        init_parts.push(format!(".{} = {}", field.name, field.name));
+    }
+
+    let literal = format!("&({}){{{}}}", sn, init_parts.join(", "));
+    let call = format!(
+        "return synq_parse_build(ctx, {}, (uint32_t)sizeof({}));",
+        literal, sn
+    );
+
+    w.indent();
+    if call.len() <= 80 {
+        w.line(&call);
+    } else {
+        w.line("return synq_parse_build(ctx,");
+        w.indent();
+        w.line(&format!("&({}){{", sn));
+        w.indent();
+        for (i, part) in init_parts.iter().enumerate() {
+            let comma = if i < init_parts.len() - 1 { "," } else { "" };
+            w.line(&format!("{}{}", part, comma));
+        }
+        w.dedent();
+        w.line(&format!("}}, (uint32_t)sizeof({}));", sn));
+        w.dedent();
+    }
+    w.dedent();
+    w.line("}");
+    w.newline();
+}
+
+fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
+    let func = builder_name(name);
+    let tag = tag_name(name);
+
+    w.func_signature(
+        "static inline ",
+        "uint32_t",
+        &func,
+        &["SynqParseCtx *ctx", "uint32_t list_id", "uint32_t child"],
+        " {",
+    );
+    w.indent();
+    w.line(&format!(
+        "return synq_parse_list_append(ctx, {}, list_id, child);",
+        tag
+    ));
+    w.dedent();
+    w.line("}");
+    w.newline();
+}
+
+fn emit_range_metadata(w: &mut CWriter, model: &AstModel<'_>) {
+    w.section("Range Field Metadata");
+    w.newline();
+
+    for node in model.nodes() {
+        let rf = range_fields(node.fields);
+        if rf.is_empty() {
+            continue;
+        }
+        let sn = c_type_name(node.name);
+        let var = format!("range_meta_{}", pascal_to_snake(node.name));
+        w.line(&format!(
+            "static const SyntaqliteFieldRangeMeta {}[] = {{",
+            var
+        ));
+        w.indent();
+        for (fname, kind) in &rf {
+            w.line(&format!("{{offsetof({}, {}), {}}},", sn, fname, kind));
+        }
+        w.dedent();
+        w.line("};");
+        w.newline();
+    }
+
+    w.line("static const SyntaqliteRangeMetaEntry range_meta_table[] = {");
+    w.indent();
+    w.line("[SYNTAQLITE_NODE_NULL] = {NULL, 0},");
+    for node in model.nodes() {
+        let tag = tag_name(node.name);
+        let rf = range_fields(node.fields);
+        if rf.is_empty() {
+            w.line(&format!("[{}] = {{NULL, 0}},", tag));
+        } else {
+            let var = format!("range_meta_{}", pascal_to_snake(node.name));
+            w.line(&format!("[{}] = {{{}, {}}},", tag, var, rf.len()));
+        }
+    }
+    for list in model.lists() {
+        w.line(&format!("[{}] = {{NULL, 0}},", tag_name(list.name)));
+    }
+    w.dedent();
+    w.line("};");
+    w.newline();
+}

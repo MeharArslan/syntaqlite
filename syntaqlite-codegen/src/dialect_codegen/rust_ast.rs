@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 
-use crate::synq_parser::{Field, Item, Storage};
+use crate::synq_parser::{Field, Storage};
 use crate::util::naming::upper_snake_to_pascal;
 use crate::writers::rust_writer::RustWriter;
 
@@ -368,12 +368,7 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
 ///
 /// Emits `pub(crate)` `#[repr(C)]` node structs and the `Bool` enum.
 /// Enum/flags types are referenced via `super::ast::`.
-pub fn generate_rust_ffi_nodes(items: &[Item]) -> String {
-    let model = AstModel::new(items);
-    generate_rust_ffi_nodes_from_model(&model)
-}
-
-pub fn generate_rust_ffi_nodes_from_model(model: &AstModel<'_>) -> String {
+pub fn generate_rust_ffi_nodes(model: &AstModel<'_>) -> String {
     let enum_names = model.enum_names();
     let flags_names = model.flags_names();
 
@@ -419,12 +414,7 @@ pub fn generate_rust_ffi_nodes_from_model(model: &AstModel<'_>) -> String {
 ///
 /// Emits enums, flags, `NodeTag`, view structs with ergonomic accessors,
 /// and the `Node<'a>` enum that wraps them.
-pub fn generate_rust_ast(items: &[Item]) -> String {
-    let model = AstModel::new(items);
-    generate_rust_ast_from_model(&model)
-}
-
-pub fn generate_rust_ast_from_model(model: &AstModel<'_>) -> String {
+pub fn generate_rust_ast(model: &AstModel<'_>) -> String {
     let enum_names = model.enum_names();
     let flags_names = model.flags_names();
     let node_names = model.node_names();
