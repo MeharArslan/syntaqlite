@@ -3,7 +3,7 @@
 
 use clap::{Parser, Subcommand};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process;
 
 #[derive(Parser)]
@@ -39,6 +39,27 @@ enum Command {
     Mkkeyword {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
+    },
+    /// Produce C amalgamation files (single-file compilation units).
+    Amalgamate {
+        /// Dialect name (e.g. "sqlite").
+        #[arg(long, required = true)]
+        dialect: String,
+        /// Path to the syntaqlite-runtime crate root.
+        #[arg(long, required = true)]
+        runtime_dir: String,
+        /// Path to the dialect crate root (e.g. syntaqlite/).
+        #[arg(long, required = true)]
+        dialect_dir: String,
+        /// Output directory for generated files.
+        #[arg(long, required = true)]
+        output_dir: String,
+        /// Emit only the runtime amalgamation.
+        #[arg(long)]
+        runtime_only: bool,
+        /// Emit only the dialect amalgamation (references runtime header).
+        #[arg(long)]
+        dialect_only: bool,
     },
 }
 
@@ -276,6 +297,63 @@ fn main() {
                 }
 
                 syntaqlite_codegen::mkkeyword::run_mkkeyword(&mkkeyword_args);
+            }
+            Command::Amalgamate {
+                dialect,
+                runtime_dir,
+                dialect_dir,
+                output_dir,
+                runtime_only,
+                dialect_only,
+            } => {
+                use syntaqlite_codegen::amalgamate;
+
+                let out = Path::new(&output_dir);
+                fs::create_dir_all(out)
+                    .map_err(|e| format!("Failed to create output directory: {e}"))?;
+
+                let runtime = PathBuf::from(&runtime_dir);
+                let dialect_path = PathBuf::from(&dialect_dir);
+
+                if runtime_only {
+                    if args.verbose {
+                        eprintln!("Generating runtime amalgamation...");
+                    }
+                    let result = amalgamate::amalgamate_runtime(&runtime)?;
+                    fs::write(out.join("syntaqlite_runtime.h"), &result.header)
+                        .map_err(|e| format!("writing header: {e}"))?;
+                    fs::write(out.join("syntaqlite_runtime.c"), &result.source)
+                        .map_err(|e| format!("writing source: {e}"))?;
+                    if args.verbose {
+                        eprintln!("Wrote syntaqlite_runtime.{{h,c}}");
+                    }
+                } else if dialect_only {
+                    if args.verbose {
+                        eprintln!("Generating dialect amalgamation...");
+                    }
+                    let result = amalgamate::amalgamate_dialect(&dialect, &dialect_path)?;
+                    fs::write(out.join(format!("syntaqlite_{dialect}.h")), &result.header)
+                        .map_err(|e| format!("writing header: {e}"))?;
+                    fs::write(out.join(format!("syntaqlite_{dialect}.c")), &result.source)
+                        .map_err(|e| format!("writing source: {e}"))?;
+                    if args.verbose {
+                        eprintln!("Wrote syntaqlite_{dialect}.{{h,c}}");
+                    }
+                } else {
+                    if args.verbose {
+                        eprintln!("Generating full amalgamation...");
+                    }
+                    let result = amalgamate::amalgamate_full(&dialect, &runtime, &dialect_path)?;
+                    fs::write(out.join(format!("syntaqlite_{dialect}.h")), &result.header)
+                        .map_err(|e| format!("writing header: {e}"))?;
+                    fs::write(out.join(format!("syntaqlite_{dialect}.c")), &result.source)
+                        .map_err(|e| format!("writing source: {e}"))?;
+                    if args.verbose {
+                        eprintln!("Wrote syntaqlite_{dialect}.{{h,c}}");
+                    }
+                }
+
+                Ok(())
             }
         }
     })();

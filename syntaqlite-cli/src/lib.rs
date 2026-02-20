@@ -3,7 +3,7 @@
 
 use std::fs;
 use std::io::{self, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand, ValueEnum};
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
@@ -39,6 +39,37 @@ enum Command {
         /// Append semicolons after each statement
         #[arg(long)]
         semicolons: bool,
+    },
+    /// Generate amalgamated dialect C sources for embedding.
+    GenerateDialect {
+        /// Dialect name (e.g. "sqlite").
+        #[arg(long, required = true)]
+        dialect: String,
+        /// Directory containing .y grammar action files.
+        #[arg(long, required = true)]
+        actions_dir: String,
+        /// Directory containing .synq node definitions.
+        #[arg(long, required = true)]
+        nodes_dir: String,
+        /// Path to SQLite's tokenize.c.
+        #[arg(long, required = true)]
+        tokenize_c: String,
+        /// Output directory for amalgamated files.
+        #[arg(long, required = true)]
+        output_dir: String,
+    },
+    // Hidden subcommands for codegen subprocess support.
+    // generate_parser() and generate_keyword_hash() spawn current_exe() with
+    // these subcommands. They must be present in any binary that calls codegen.
+    #[command(hide = true)]
+    Lemon {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+    #[command(hide = true)]
+    Mkkeyword {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
     },
 }
 
@@ -169,6 +200,150 @@ fn cmd_fmt(
     Ok(())
 }
 
+fn cmd_generate_dialect(
+    dialect: &str,
+    actions_dir: &str,
+    nodes_dir: &str,
+    tokenize_c: &str,
+    output_dir: &str,
+) -> Result<(), String> {
+    use syntaqlite_codegen::amalgamate;
+
+    // Run codegen into a temp directory.
+    let temp_dir = tempfile::TempDir::new()
+        .map_err(|e| format!("creating temp directory: {e}"))?;
+    let temp = temp_dir.path();
+    let csrc = temp.join("csrc");
+    let include = temp.join("include").join("syntaqlite");
+    fs::create_dir_all(&csrc).map_err(|e| format!("creating csrc dir: {e}"))?;
+    fs::create_dir_all(&include).map_err(|e| format!("creating include dir: {e}"))?;
+
+    codegen_to_dir(actions_dir, nodes_dir, tokenize_c, &csrc, &include)?;
+
+    // Amalgamate the generated files.
+    let result = amalgamate::amalgamate_dialect(dialect, temp.as_ref())?;
+
+    let out = Path::new(output_dir);
+    fs::create_dir_all(out).map_err(|e| format!("creating output dir: {e}"))?;
+    fs::write(out.join(format!("syntaqlite_{dialect}.h")), &result.header)
+        .map_err(|e| format!("writing header: {e}"))?;
+    fs::write(out.join(format!("syntaqlite_{dialect}.c")), &result.source)
+        .map_err(|e| format!("writing source: {e}"))?;
+
+    eprintln!("wrote {}/syntaqlite_{dialect}.{{h,c}}", out.display());
+    Ok(())
+}
+
+/// Run the codegen pipeline, writing C outputs to `csrc_dir` and `include_dir`.
+fn codegen_to_dir(
+    actions_dir: &str,
+    nodes_dir: &str,
+    tokenize_c: &str,
+    csrc_dir: &Path,
+    include_dir: &Path,
+) -> Result<(), String> {
+    // Parse node definitions.
+    let nodes_path = Path::new(nodes_dir);
+    let mut synq_files: Vec<_> = fs::read_dir(nodes_path)
+        .map_err(|e| format!("reading {nodes_dir}: {e}"))?
+        .filter_map(|e| {
+            let p = e.ok()?.path();
+            (p.extension()?.to_str()? == "synq").then_some(p)
+        })
+        .collect();
+    synq_files.sort();
+    let mut all_items = Vec::new();
+    for path in &synq_files {
+        let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("?");
+        let content = fs::read_to_string(path)
+            .map_err(|e| format!("{name}: {e}"))?;
+        let items = syntaqlite_codegen::node_parser::parse_node(&content)
+            .map_err(|e| format!("{name}: {e}"))?;
+        all_items.extend(items);
+    }
+
+    // Generate parser (lemon).
+    let work_dir = tempfile::TempDir::new()
+        .map_err(|e| format!("creating work directory: {e}"))?;
+    syntaqlite_codegen::generate_parser(actions_dir, work_dir.path().to_str().unwrap())?;
+
+    // Extract tokenizer.
+    let (tokenize_content, extract_result) =
+        syntaqlite_codegen::extract_tokenizer(tokenize_c)?;
+
+    // Generate keyword hash.
+    let (keyword_tables, keyword_func) =
+        syntaqlite_codegen::generate_keyword_hash(&extract_result)?;
+
+    // Write token header.
+    let tokens_content = fs::read_to_string(work_dir.path().join("parse.h"))
+        .map_err(|e| format!("reading parse.h: {e}"))?;
+    let guarded = format!(
+        "/*\n\
+         ** The author disclaims copyright to this source code.  In place of\n\
+         ** a legal notice, here is a blessing:\n\
+         **\n\
+         **    May you do good and not evil.\n\
+         **    May you find forgiveness for yourself and forgive others.\n\
+         **    May you share freely, never taking more than you give.\n\
+         **\n\
+         ** @generated by syntaqlite-codegen — DO NOT EDIT\n\
+         */\n\
+         \n\
+         #ifndef SYNTAQLITE_SQLITE_TOKENS_H\n\
+         #define SYNTAQLITE_SQLITE_TOKENS_H\n\
+         \n\
+         {}\
+         \n\
+         #endif  // SYNTAQLITE_SQLITE_TOKENS_H\n",
+        tokens_content,
+    );
+    fs::write(include_dir.join("sqlite_tokens.h"), guarded)
+        .map_err(|e| format!("writing sqlite_tokens.h: {e}"))?;
+
+    // AST headers.
+    let ast_nodes_h = syntaqlite_codegen::ast_codegen::generate_ast_nodes_h(&all_items);
+    fs::write(include_dir.join("sqlite_node.h"), ast_nodes_h)
+        .map_err(|e| format!("writing sqlite_node.h: {e}"))?;
+
+    let ast_builder_h = syntaqlite_codegen::ast_codegen::generate_ast_builder_h(&all_items);
+    fs::write(csrc_dir.join("dialect_builder.h"), ast_builder_h)
+        .map_err(|e| format!("writing dialect_builder.h: {e}"))?;
+
+    // Parse engine + data header.
+    let raw_parse_c = fs::read_to_string(work_dir.path().join("parse.c"))
+        .map_err(|e| format!("reading parse.c: {e}"))?;
+    let (parse_c, parse_data_h) = syntaqlite_codegen::split_parse_c(&raw_parse_c)?;
+    fs::write(csrc_dir.join("sqlite_parse.c"), parse_c)
+        .map_err(|e| format!("writing sqlite_parse.c: {e}"))?;
+    fs::write(csrc_dir.join("dialect_parse.h"), parse_data_h)
+        .map_err(|e| format!("writing dialect_parse.h: {e}"))?;
+
+    // Tokenizer + keywords.
+    fs::write(csrc_dir.join("sqlite_tokenize.c"), tokenize_content)
+        .map_err(|e| format!("writing sqlite_tokenize.c: {e}"))?;
+    fs::write(csrc_dir.join("sqlite_keyword_tables.h"), keyword_tables)
+        .map_err(|e| format!("writing sqlite_keyword_tables.h: {e}"))?;
+    fs::write(csrc_dir.join("sqlite_keyword.c"), keyword_func)
+        .map_err(|e| format!("writing sqlite_keyword.c: {e}"))?;
+
+    // Metadata + formatter data.
+    let ast_meta_h = syntaqlite_codegen::ast_codegen::generate_c_field_meta(&all_items);
+    fs::write(csrc_dir.join("dialect_meta.h"), ast_meta_h)
+        .map_err(|e| format!("writing dialect_meta.h: {e}"))?;
+
+    let fmt_data_h = syntaqlite_codegen::ast_codegen::generate_c_fmt_arrays(&all_items);
+    fs::write(csrc_dir.join("dialect_fmt.h"), fmt_data_h)
+        .map_err(|e| format!("writing dialect_fmt.h: {e}"))?;
+
+    // Grammar types header.
+    let grammar_types_h = syntaqlite_codegen::ast_codegen::generate_grammar_types_h(&all_items);
+    fs::write(csrc_dir.join("dialect_grammar_types.h"), grammar_types_h)
+        .map_err(|e| format!("writing dialect_grammar_types.h: {e}"))?;
+
+    Ok(())
+}
+
 /// Run the CLI with the given dialect configuration.
 pub fn run(name: &str, dialect: &Dialect) {
     let cli = Cli::try_parse_from(
@@ -195,6 +370,19 @@ pub fn run(name: &str, dialect: &Dialect) {
                 ..Default::default()
             };
             cmd_fmt(dialect, files, config, in_place, semicolons)
+        }
+        Command::GenerateDialect {
+            dialect: dialect_name,
+            actions_dir,
+            nodes_dir,
+            tokenize_c,
+            output_dir,
+        } => cmd_generate_dialect(&dialect_name, &actions_dir, &nodes_dir, &tokenize_c, &output_dir),
+        Command::Lemon { args } => {
+            syntaqlite_codegen::lemon::run_lemon(&args);
+        }
+        Command::Mkkeyword { args } => {
+            syntaqlite_codegen::mkkeyword::run_mkkeyword(&args);
         }
     };
 

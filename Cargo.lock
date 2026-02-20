@@ -271,7 +271,9 @@ dependencies = [
  "clap",
  "glob",
  "syntaqlite",
+ "syntaqlite-codegen",
  "syntaqlite-runtime",
+ "tempfile",
 ]
 
 [[package]]
