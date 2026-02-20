@@ -19,9 +19,7 @@ fn parse_synq_items(synq_files: &[(String, String)]) -> Result<Vec<synq_parser::
 pub(crate) fn generate_codegen_artifacts(
     request: &CodegenRequest<'_>,
 ) -> Result<CodegenArtifacts, String> {
-    let parser_name = request
-        .parser_symbol_prefix
-        .unwrap_or("SynqSqliteParse");
+    let parser_name = request.parser_symbol_prefix.unwrap_or("SynqSqliteParse");
 
     let all_items = parse_synq_items(request.synq_files)?;
     let ast_model = dialect_codegen::AstModel::new(&all_items);

@@ -10,12 +10,18 @@ fn main() {
     // Get the path to vendored SQLite tools in this crate
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let sqlite_dir = PathBuf::from(&manifest_dir).join("sqlite");
+    let tokenize_c = PathBuf::from(&manifest_dir).join("../third_party/src/sqlite/src/tokenize.c");
 
     let lemon_path = sqlite_dir.join("lemon.c");
     let mkkeywordhash_path = sqlite_dir.join("mkkeywordhash.c");
 
     println!("cargo:rerun-if-changed={}", lemon_path.display());
     println!("cargo:rerun-if-changed={}", mkkeywordhash_path.display());
+    println!("cargo:rerun-if-changed={}", tokenize_c.display());
+    println!(
+        "cargo:rustc-env=SYNTAQLITE_SQLITE_TOKENIZE_C={}",
+        tokenize_c.display()
+    );
 
     // Compile lemon.c with main renamed to lemon_main
     cc::Build::new()

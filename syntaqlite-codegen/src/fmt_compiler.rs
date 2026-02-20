@@ -22,8 +22,8 @@ use crate::synq_parser::Storage;
 use crate::synq_parser::{Field, Fmt, Item};
 use crate::util::upper_snake;
 
-use syntaqlite_runtime::fmt::bytecode::RawOp;
 use syntaqlite_runtime::fmt::bytecode::opcodes;
+use syntaqlite_runtime::fmt::bytecode::RawOp;
 
 #[derive(Debug, Clone)]
 pub enum FmtCompileError {

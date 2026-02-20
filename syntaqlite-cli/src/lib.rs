@@ -10,11 +10,6 @@ use syntaqlite_runtime::dialect::ffi as dialect_ffi;
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
 use syntaqlite_runtime::Dialect;
 
-const EMBEDDED_SQLITE_TOKENIZE_C: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../third_party/src/sqlite/src/tokenize.c"
-));
-
 #[derive(Parser)]
 #[command(about = "SQL formatting and analysis tools")]
 struct Cli {
@@ -240,8 +235,11 @@ fn cmd_generate_dialect(
     let tokenize_c = temp.join("sqlite_tokenize.c");
     fs::create_dir_all(&csrc).map_err(|e| format!("creating csrc dir: {e}"))?;
     fs::create_dir_all(&include).map_err(|e| format!("creating include dir: {e}"))?;
-    fs::write(&tokenize_c, EMBEDDED_SQLITE_TOKENIZE_C)
-        .map_err(|e| format!("writing embedded tokenize.c: {e}"))?;
+    fs::write(
+        &tokenize_c,
+        syntaqlite_codegen::embedded_sqlite_tokenize_c(),
+    )
+    .map_err(|e| format!("writing embedded tokenize.c: {e}"))?;
 
     // Load extension files from user dirs (if provided).
     let ext_y = match actions_dir {
