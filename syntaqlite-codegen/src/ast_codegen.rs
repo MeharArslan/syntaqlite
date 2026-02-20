@@ -955,6 +955,177 @@ fn rust_field_name(name: &str) -> String {
     }
 }
 
+fn emit_rust_value_enum(w: &mut RustWriter, name: &str, variants: &[String]) {
+    w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
+    w.line("#[repr(u32)]");
+    w.open_block(&format!("pub enum {} {{", name));
+    for (i, v) in variants.iter().enumerate() {
+        let variant_name = upper_snake_to_pascal(v);
+        w.line(&format!("{} = {},", variant_name, i));
+    }
+    w.close_block("}");
+    w.newline();
+
+    w.open_block(&format!("impl {} {{", name));
+    w.line("#[allow(dead_code)]");
+    w.open_block(&format!(
+        "pub(crate) fn from_raw(raw: u32) -> Option<{}> {{",
+        name
+    ));
+    w.open_block("match raw {");
+    for (i, v) in variants.iter().enumerate() {
+        let variant_name = upper_snake_to_pascal(v);
+        w.line(&format!("{} => Some({}::{}),", i, name, variant_name));
+    }
+    w.line("_ => None,");
+    w.close_block("}");
+    w.close_block("}");
+    w.newline();
+
+    w.open_block("pub fn as_str(&self) -> &'static str {");
+    w.open_block("match self {");
+    for v in variants {
+        let variant_name = upper_snake_to_pascal(v);
+        w.line(&format!("{}::{} => \"{}\",", name, variant_name, v));
+    }
+    w.close_block("}");
+    w.close_block("}");
+    w.close_block("}");
+    w.newline();
+}
+
+fn emit_rust_flags_type(w: &mut RustWriter, name: &str, flags: &[(String, u32)]) {
+    w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]");
+    w.line("#[repr(transparent)]");
+    w.line(&format!("pub struct {}(pub u8);", name));
+    w.newline();
+
+    w.open_block(&format!("impl {} {{", name));
+    let mut sorted: Vec<_> = flags.iter().collect();
+    sorted.sort_by_key(|(_, v)| *v);
+    for (flag_name, bit) in &sorted {
+        let method = flag_name.to_lowercase();
+        w.open_block(&format!("pub fn {}(&self) -> bool {{", method));
+        w.line(&format!("self.0 & {} != 0", bit));
+        w.close_block("}");
+    }
+    w.newline();
+    w.open_block("pub fn dump_str(&self) -> String {");
+    w.line("if self.0 == 0 { return \"(none)\".into(); }");
+    w.line("let mut s = String::new();");
+    for (flag_name, _) in &sorted {
+        let method = flag_name.to_lowercase();
+        w.line(&format!(
+            "if self.{}() {{ if !s.is_empty() {{ s.push(' '); }} s.push_str(\"{}\"); }}",
+            method, flag_name
+        ));
+    }
+    w.line("s");
+    w.close_block("}");
+    w.close_block("}");
+    w.newline();
+}
+
+fn emit_rust_node_tag_type(w: &mut RustWriter, items: &[Item]) {
+    let mut tag_names: Vec<String> = Vec::new();
+    let mut list_tags: Vec<String> = Vec::new();
+    for item in items {
+        match item {
+            Item::Node { name, .. } => tag_names.push(name.clone()),
+            Item::List { name, .. } => {
+                tag_names.push(name.clone());
+                list_tags.push(name.clone());
+            }
+            _ => {}
+        }
+    }
+
+    w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
+    w.line("#[repr(u32)]");
+    w.open_block("pub enum NodeTag {");
+    w.line("Null = 0,");
+    for (i, name) in tag_names.iter().enumerate() {
+        w.line(&format!("{name} = {},", i + 1));
+    }
+    w.close_block("}");
+    w.newline();
+
+    w.open_block("impl NodeTag {");
+    w.line("#[allow(dead_code)]");
+    w.open_block("pub(crate) fn from_raw(raw: u32) -> Option<NodeTag> {");
+    w.open_block("match raw {");
+    w.line("0 => Some(NodeTag::Null),");
+    for (i, name) in tag_names.iter().enumerate() {
+        w.line(&format!("{} => Some(NodeTag::{name}),", i + 1));
+    }
+    w.line("_ => None,");
+    w.close_block("}");
+    w.close_block("}");
+    w.newline();
+
+    w.line("#[allow(dead_code)]");
+    w.open_block("pub(crate) fn is_list(&self) -> bool {");
+    if list_tags.is_empty() {
+        w.line("false");
+    } else {
+        w.line(&format!(
+            "matches!(self, {})",
+            list_tags
+                .iter()
+                .map(|t| format!("NodeTag::{t}"))
+                .collect::<Vec<_>>()
+                .join(" | ")
+        ));
+    }
+    w.close_block("}");
+    w.close_block("}");
+    w.newline();
+}
+
+fn emit_rust_node_structs(
+    w: &mut RustWriter,
+    items: &[Item],
+    enum_names: &HashSet<&str>,
+    flags_names: &HashSet<&str>,
+    struct_visibility: &str,
+    field_visibility: &str,
+    field_type: fn(&Field, &HashSet<&str>, &HashSet<&str>) -> String,
+) {
+    for item in items {
+        let Item::Node { name, fields, .. } = item else {
+            continue;
+        };
+        w.line("#[derive(Debug, Clone, Copy)]");
+        w.line("#[repr(C)]");
+        w.open_block(&format!("{struct_visibility} struct {name} {{"));
+        w.line(&format!("{field_visibility} tag: u32,"));
+        for field in fields {
+            let ty = field_type(field, enum_names, flags_names);
+            let fname = rust_field_name(&field.name);
+            w.line(&format!("{field_visibility} {fname}: {ty},"));
+        }
+        w.close_block("}");
+        w.newline();
+    }
+}
+
+fn emit_rust_node_tag_accessor(w: &mut RustWriter, items: &[Item]) {
+    w.doc_comment("The node's tag.");
+    w.open_block("pub fn tag(&self) -> NodeTag {");
+    w.open_block("match self {");
+    for item in items {
+        let name = match item {
+            Item::Node { name, .. } | Item::List { name, .. } => name,
+            _ => continue,
+        };
+        w.line(&format!("Node::{name}(..) => NodeTag::{name},"));
+    }
+    w.line("Node::__Phantom(_) => unreachable!(),");
+    w.close_block("}");
+    w.close_block("}");
+    w.newline();
+}
+
 /// Generate Rust source for token type enum.
 pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     let mut w = RustWriter::new();
@@ -963,46 +1134,34 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     // TokenType enum
     w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]");
     w.line("#[repr(u32)]");
-    w.line("pub enum TokenType {");
-    w.indent();
+    w.open_block("pub enum TokenType {");
     for (name, value) in tokens {
         let variant = upper_snake_to_pascal(name);
         w.line(&format!("{} = {},", variant, value));
     }
-    w.dedent();
-    w.line("}");
+    w.close_block("}");
     w.newline();
 
     // from_raw conversion
-    w.line("impl TokenType {");
-    w.indent();
+    w.open_block("impl TokenType {");
     w.line("#[allow(dead_code)]");
-    w.line("pub(crate) fn from_raw(raw: u32) -> Option<TokenType> {");
-    w.indent();
-    w.line("match raw {");
-    w.indent();
+    w.open_block("pub(crate) fn from_raw(raw: u32) -> Option<TokenType> {");
+    w.open_block("match raw {");
     for (name, value) in tokens {
         let variant = upper_snake_to_pascal(name);
         w.line(&format!("{} => Some(TokenType::{}),", value, variant));
     }
     w.line("_ => None,");
-    w.dedent();
-    w.line("}");
-    w.dedent();
-    w.line("}");
-    w.dedent();
-    w.line("}");
+    w.close_block("}");
+    w.close_block("}");
+    w.close_block("}");
     w.newline();
 
-    w.line("impl From<TokenType> for u32 {");
-    w.indent();
-    w.line("fn from(t: TokenType) -> u32 {");
-    w.indent();
+    w.open_block("impl From<TokenType> for u32 {");
+    w.open_block("fn from(t: TokenType) -> u32 {");
     w.line("t as u32");
-    w.dedent();
-    w.line("}");
-    w.dedent();
-    w.line("}");
+    w.close_block("}");
+    w.close_block("}");
 
     w.finish()
 }
@@ -1045,53 +1204,7 @@ pub fn generate_rust_nodes(items: &[Item]) -> String {
         let Item::Enum { name, variants } = item else {
             continue;
         };
-        w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
-        w.line("#[repr(u32)]");
-        w.line(&format!("pub enum {} {{", name));
-        w.indent();
-        for (i, v) in variants.iter().enumerate() {
-            let variant_name = upper_snake_to_pascal(v);
-            w.line(&format!("{} = {},", variant_name, i));
-        }
-        w.dedent();
-        w.line("}");
-        w.newline();
-
-        w.line(&format!("impl {} {{", name));
-        w.indent();
-        w.line("#[allow(dead_code)]");
-        w.line(&format!(
-            "pub(crate) fn from_raw(raw: u32) -> Option<{}> {{",
-            name
-        ));
-        w.indent();
-        w.line("match raw {");
-        w.indent();
-        for (i, v) in variants.iter().enumerate() {
-            let variant_name = upper_snake_to_pascal(v);
-            w.line(&format!("{} => Some({}::{}),", i, name, variant_name));
-        }
-        w.line("_ => None,");
-        w.dedent();
-        w.line("}");
-        w.dedent();
-        w.line("}");
-        w.newline();
-        w.line("pub fn as_str(&self) -> &'static str {");
-        w.indent();
-        w.line("match self {");
-        w.indent();
-        for v in variants {
-            let variant_name = upper_snake_to_pascal(v);
-            w.line(&format!("{}::{} => \"{}\",", name, variant_name, v));
-        }
-        w.dedent();
-        w.line("}");
-        w.dedent();
-        w.line("}");
-        w.dedent();
-        w.line("}");
-        w.newline();
+        emit_rust_value_enum(&mut w, name, variants);
     }
 
     // Flags types
@@ -1099,128 +1212,22 @@ pub fn generate_rust_nodes(items: &[Item]) -> String {
         let Item::Flags { name, flags } = item else {
             continue;
         };
-        w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]");
-        w.line("#[repr(transparent)]");
-        w.line(&format!("pub struct {}(pub u8);", name));
-        w.newline();
-        w.line(&format!("impl {} {{", name));
-        w.indent();
-        let mut sorted: Vec<_> = flags.iter().collect();
-        sorted.sort_by_key(|(_, v)| *v);
-        for (flag_name, bit) in &sorted {
-            let method = flag_name.to_lowercase();
-            w.line(&format!("pub fn {}(&self) -> bool {{", method));
-            w.indent();
-            w.line(&format!("self.0 & {} != 0", bit));
-            w.dedent();
-            w.line("}");
-        }
-        w.newline();
-        w.line("pub fn dump_str(&self) -> String {");
-        w.indent();
-        w.line("if self.0 == 0 { return \"(none)\".into(); }");
-        w.line("let mut s = String::new();");
-        for (flag_name, _) in &sorted {
-            let method = flag_name.to_lowercase();
-            w.line(&format!(
-                "if self.{}() {{ if !s.is_empty() {{ s.push(' '); }} s.push_str(\"{}\"); }}",
-                method, flag_name
-            ));
-        }
-        w.line("s");
-        w.dedent();
-        w.line("}");
-        w.dedent();
-        w.line("}");
-        w.newline();
+        emit_rust_flags_type(&mut w, name, flags);
     }
 
     // NodeTag enum
-    w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
-    w.line("#[repr(u32)]");
-    w.line("pub enum NodeTag {");
-    w.indent();
-    w.line("Null = 0,");
-    let mut tag_index = 1u32;
-    let mut list_tags: Vec<String> = Vec::new();
-    for item in items {
-        match item {
-            Item::Node { name, .. } => {
-                w.line(&format!("{} = {},", name, tag_index));
-                tag_index += 1;
-            }
-            Item::List { name, .. } => {
-                w.line(&format!("{} = {},", name, tag_index));
-                list_tags.push(name.clone());
-                tag_index += 1;
-            }
-            _ => {}
-        }
-    }
-    w.dedent();
-    w.line("}");
-    w.newline();
-
-    w.line("impl NodeTag {");
-    w.indent();
-    w.line("#[allow(dead_code)]");
-    w.line("pub(crate) fn from_raw(raw: u32) -> Option<NodeTag> {");
-    w.indent();
-    w.line("match raw {");
-    w.indent();
-    w.line("0 => Some(NodeTag::Null),");
-    let mut idx = 1u32;
-    for item in items {
-        let name = match item {
-            Item::Node { name, .. } | Item::List { name, .. } => name,
-            _ => continue,
-        };
-        w.line(&format!("{} => Some(NodeTag::{}),", idx, name));
-        idx += 1;
-    }
-    w.line("_ => None,");
-    w.dedent();
-    w.line("}");
-    w.dedent();
-    w.line("}");
-    w.newline();
-    w.line("#[allow(dead_code)]");
-    w.line("pub(crate) fn is_list(&self) -> bool {");
-    w.indent();
-    w.line(&format!(
-        "matches!(self, {}",
-        list_tags
-            .iter()
-            .map(|t| format!("NodeTag::{}", t))
-            .collect::<Vec<_>>()
-            .join(" | ")
-    ));
-    w.line(")");
-    w.dedent();
-    w.line("}");
-    w.dedent();
-    w.line("}");
-    w.newline();
+    emit_rust_node_tag_type(&mut w, items);
 
     // Node structs
-    for item in items {
-        let Item::Node { name, fields, .. } = item else {
-            continue;
-        };
-        w.line("#[derive(Debug, Clone, Copy)]");
-        w.line("#[repr(C)]");
-        w.line(&format!("pub struct {} {{", name));
-        w.indent();
-        w.line("pub tag: u32,");
-        for field in fields {
-            let ty = rust_field_type(field, &enum_names, &flags_names);
-            let fname = rust_field_name(&field.name);
-            w.line(&format!("pub {}: {},", fname, ty));
-        }
-        w.dedent();
-        w.line("}");
-        w.newline();
-    }
+    emit_rust_node_structs(
+        &mut w,
+        items,
+        &enum_names,
+        &flags_names,
+        "pub",
+        "pub",
+        rust_field_type,
+    );
 
     // Node<'a> enum — typed wrapper for AST nodes
     w.doc_comment("A typed AST node. Pattern-match to access the concrete type.");
@@ -1290,24 +1297,7 @@ pub fn generate_rust_nodes(items: &[Item]) -> String {
     w.newline();
 
     // tag()
-    w.doc_comment("The node's tag.");
-    w.line("pub fn tag(&self) -> NodeTag {");
-    w.indent();
-    w.line("match self {");
-    w.indent();
-    for item in items {
-        let name = match item {
-            Item::Node { name, .. } | Item::List { name, .. } => name,
-            _ => continue,
-        };
-        w.line(&format!("Node::{}(_) => NodeTag::{},", name, name));
-    }
-    w.line("Node::__Phantom(_) => unreachable!(),");
-    w.dedent();
-    w.line("}");
-    w.dedent();
-    w.line("}");
-    w.newline();
+    emit_rust_node_tag_accessor(&mut w, items);
 
     // as_list()
     w.doc_comment("If this is a list node, return the list.");
@@ -1366,24 +1356,15 @@ pub fn generate_rust_ffi_nodes(items: &[Item]) -> String {
     w.newline();
 
     // Node structs — pub(crate), #[repr(C)]
-    for item in items {
-        let Item::Node { name, fields, .. } = item else {
-            continue;
-        };
-        w.line("#[derive(Debug, Clone, Copy)]");
-        w.line("#[repr(C)]");
-        w.line(&format!("pub(crate) struct {} {{", name));
-        w.indent();
-        w.line("pub(crate) tag: u32,");
-        for field in fields {
-            let ty = rust_ffi_field_type(field, &enum_names, &flags_names);
-            let fname = rust_field_name(&field.name);
-            w.line(&format!("pub(crate) {}: {},", fname, ty));
-        }
-        w.dedent();
-        w.line("}");
-        w.newline();
-    }
+    emit_rust_node_structs(
+        &mut w,
+        items,
+        &enum_names,
+        &flags_names,
+        "pub(crate)",
+        "pub(crate)",
+        rust_ffi_field_type,
+    );
 
     w.finish()
 }
@@ -1444,53 +1425,7 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
         if name == "Bool" {
             continue;
         }
-        w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
-        w.line("#[repr(u32)]");
-        w.line(&format!("pub enum {} {{", name));
-        w.indent();
-        for (i, v) in variants.iter().enumerate() {
-            let variant_name = upper_snake_to_pascal(v);
-            w.line(&format!("{} = {},", variant_name, i));
-        }
-        w.dedent();
-        w.line("}");
-        w.newline();
-
-        w.line(&format!("impl {} {{", name));
-        w.indent();
-        w.line("#[allow(dead_code)]");
-        w.line(&format!(
-            "pub(crate) fn from_raw(raw: u32) -> Option<{}> {{",
-            name
-        ));
-        w.indent();
-        w.line("match raw {");
-        w.indent();
-        for (i, v) in variants.iter().enumerate() {
-            let variant_name = upper_snake_to_pascal(v);
-            w.line(&format!("{} => Some({}::{}),", i, name, variant_name));
-        }
-        w.line("_ => None,");
-        w.dedent();
-        w.line("}");
-        w.dedent();
-        w.line("}");
-        w.newline();
-        w.line("pub fn as_str(&self) -> &'static str {");
-        w.indent();
-        w.line("match self {");
-        w.indent();
-        for v in variants {
-            let variant_name = upper_snake_to_pascal(v);
-            w.line(&format!("{}::{} => \"{}\",", name, variant_name, v));
-        }
-        w.dedent();
-        w.line("}");
-        w.dedent();
-        w.line("}");
-        w.dedent();
-        w.line("}");
-        w.newline();
+        emit_rust_value_enum(&mut w, name, variants);
     }
 
     // Flags types
@@ -1498,112 +1433,11 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
         let Item::Flags { name, flags } = item else {
             continue;
         };
-        w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]");
-        w.line("#[repr(transparent)]");
-        w.line(&format!("pub struct {}(pub u8);", name));
-        w.newline();
-        w.line(&format!("impl {} {{", name));
-        w.indent();
-        let mut sorted: Vec<_> = flags.iter().collect();
-        sorted.sort_by_key(|(_, v)| *v);
-        for (flag_name, bit) in &sorted {
-            let method = flag_name.to_lowercase();
-            w.line(&format!("pub fn {}(&self) -> bool {{", method));
-            w.indent();
-            w.line(&format!("self.0 & {} != 0", bit));
-            w.dedent();
-            w.line("}");
-        }
-        w.newline();
-        w.line("pub fn dump_str(&self) -> String {");
-        w.indent();
-        w.line("if self.0 == 0 { return \"(none)\".into(); }");
-        w.line("let mut s = String::new();");
-        for (flag_name, _) in &sorted {
-            let method = flag_name.to_lowercase();
-            w.line(&format!(
-                "if self.{}() {{ if !s.is_empty() {{ s.push(' '); }} s.push_str(\"{}\"); }}",
-                method, flag_name
-            ));
-        }
-        w.line("s");
-        w.dedent();
-        w.line("}");
-        w.dedent();
-        w.line("}");
-        w.newline();
+        emit_rust_flags_type(&mut w, name, flags);
     }
 
     // NodeTag enum
-    w.lines(
-        "
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-        #[repr(u32)]
-        pub enum NodeTag {
-    ",
-    );
-    w.indent();
-    w.line("Null = 0,");
-    let mut tag_index = 1u32;
-    let mut list_tags: Vec<String> = Vec::new();
-    for item in items {
-        match item {
-            Item::Node { name, .. } => {
-                w.line(&format!("{} = {},", name, tag_index));
-                tag_index += 1;
-            }
-            Item::List { name, .. } => {
-                w.line(&format!("{} = {},", name, tag_index));
-                list_tags.push(name.clone());
-                tag_index += 1;
-            }
-            _ => {}
-        }
-    }
-    w.dedent();
-    w.line("}");
-    w.newline();
-
-    w.line("impl NodeTag {");
-    w.indent();
-    w.line("#[allow(dead_code)]");
-    w.line("pub(crate) fn from_raw(raw: u32) -> Option<NodeTag> {");
-    w.indent();
-    w.line("match raw {");
-    w.indent();
-    w.line("0 => Some(NodeTag::Null),");
-    let mut idx = 1u32;
-    for item in items {
-        let name = match item {
-            Item::Node { name, .. } | Item::List { name, .. } => name,
-            _ => continue,
-        };
-        w.line(&format!("{} => Some(NodeTag::{}),", idx, name));
-        idx += 1;
-    }
-    w.line("_ => None,");
-    w.dedent();
-    w.line("}");
-    w.dedent();
-    w.line("}");
-    w.newline();
-    w.line("#[allow(dead_code)]");
-    w.line("pub(crate) fn is_list(&self) -> bool {");
-    w.indent();
-    w.line(&format!(
-        "matches!(self, {}",
-        list_tags
-            .iter()
-            .map(|t| format!("NodeTag::{}", t))
-            .collect::<Vec<_>>()
-            .join(" | ")
-    ));
-    w.line(")");
-    w.dedent();
-    w.line("}");
-    w.dedent();
-    w.line("}");
-    w.newline();
+    emit_rust_node_tag_type(&mut w, items);
 
     // Abstract type enums (Expr, Stmt, etc.)
     for &(abs_name, members) in &abstract_items {
@@ -1836,24 +1670,7 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
     w.newline();
 
     // tag()
-    w.doc_comment("The node's tag.");
-    w.line("pub fn tag(&self) -> NodeTag {");
-    w.indent();
-    w.line("match self {");
-    w.indent();
-    for item in items {
-        let name = match item {
-            Item::Node { name, .. } | Item::List { name, .. } => name,
-            _ => continue,
-        };
-        w.line(&format!("Node::{}(_) => NodeTag::{},", name, name));
-    }
-    w.line("Node::__Phantom(_) => unreachable!(),");
-    w.dedent();
-    w.line("}");
-    w.dedent();
-    w.line("}");
-    w.newline();
+    emit_rust_node_tag_accessor(&mut w, items);
 
     w.dedent();
     w.line("}");
@@ -2295,7 +2112,9 @@ pub fn generate_dialect_c(dialect: &str) -> String {
     w.line("    // Parser lifecycle");
     w.line(&format!("    .parser_alloc = Synq{pascal}ParseAlloc,"));
     w.line(&format!("    .parser_init = Synq{pascal}ParseInit,"));
-    w.line(&format!("    .parser_finalize = Synq{pascal}ParseFinalize,"));
+    w.line(&format!(
+        "    .parser_finalize = Synq{pascal}ParseFinalize,"
+    ));
     w.line(&format!("    .parser_free = Synq{pascal}ParseFree,"));
     w.line(&format!("    .parser_feed = Synq{pascal}Parse,"));
     w.line("#ifndef NDEBUG");
@@ -2391,13 +2210,27 @@ pub fn generate_dialect_dispatch_h(dialect: &str) -> String {
     w.line(&format!("#define {guard}"));
     w.newline();
     let pascal = pascal_case(dialect);
-    w.line(&format!("#define SYNQ_PARSER_ALLOC(d, m)          Synq{pascal}ParseAlloc(m)"));
-    w.line(&format!("#define SYNQ_PARSER_INIT(d, p)           Synq{pascal}ParseInit(p)"));
-    w.line(&format!("#define SYNQ_PARSER_FINALIZE(d, p)       Synq{pascal}ParseFinalize(p)"));
-    w.line(&format!("#define SYNQ_PARSER_FREE(d, p, f)        Synq{pascal}ParseFree(p, f)"));
-    w.line(&format!("#define SYNQ_PARSER_FEED(d, p, t, m, c)  Synq{pascal}Parse(p, t, m, c)"));
-    w.line(&format!("#define SYNQ_PARSER_TRACE(d, f, s)       Synq{pascal}ParseTrace(f, s)"));
-    w.line(&format!("#define SYNQ_GET_TOKEN(d, z, t)          Synq{pascal}GetToken(z, t)"));
+    w.line(&format!(
+        "#define SYNQ_PARSER_ALLOC(d, m)          Synq{pascal}ParseAlloc(m)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_PARSER_INIT(d, p)           Synq{pascal}ParseInit(p)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_PARSER_FINALIZE(d, p)       Synq{pascal}ParseFinalize(p)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_PARSER_FREE(d, p, f)        Synq{pascal}ParseFree(p, f)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_PARSER_FEED(d, p, t, m, c)  Synq{pascal}Parse(p, t, m, c)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_PARSER_TRACE(d, f, s)       Synq{pascal}ParseTrace(f, s)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_GET_TOKEN(d, z, t)          Synq{pascal}GetToken(z, t)"
+    ));
     w.newline();
     w.line(&format!("#endif  // {guard}"));
     w.finish()
@@ -2426,14 +2259,25 @@ pub fn generate_parse_h(dialect: &str) -> String {
     w.line("extern \"C\" {");
     w.line("#endif");
     w.newline();
-    w.line(&format!("void* Synq{pascal}ParseAlloc(void* (*mallocProc)(size_t));"));
+    w.line(&format!(
+        "void* Synq{pascal}ParseAlloc(void* (*mallocProc)(size_t));"
+    ));
     w.line(&format!("void Synq{pascal}ParseInit(void* parser);"));
     w.line(&format!("void Synq{pascal}ParseFinalize(void* parser);"));
-    w.line(&format!("void Synq{pascal}ParseFree(void* parser, void (*freeProc)(void*));"));
-    w.line(&format!("void Synq{pascal}Parse(void* parser, int token_type, SynqParseToken minor,"));
-    w.line(&format!("{}SynqParseCtx* pCtx);", " ".repeat(5 + 4 + pascal.len() + 5 + 1)));
+    w.line(&format!(
+        "void Synq{pascal}ParseFree(void* parser, void (*freeProc)(void*));"
+    ));
+    w.line(&format!(
+        "void Synq{pascal}Parse(void* parser, int token_type, SynqParseToken minor,"
+    ));
+    w.line(&format!(
+        "{}SynqParseCtx* pCtx);",
+        " ".repeat(5 + 4 + pascal.len() + 5 + 1)
+    ));
     w.line("#ifndef NDEBUG");
-    w.line(&format!("void Synq{pascal}ParseTrace(FILE* trace_file, char* prompt);"));
+    w.line(&format!(
+        "void Synq{pascal}ParseTrace(FILE* trace_file, char* prompt);"
+    ));
     w.line("#endif");
     w.newline();
     w.line("#ifdef __cplusplus");
@@ -2456,7 +2300,9 @@ pub fn generate_tokenize_h(dialect: &str) -> String {
     w.newline();
     w.include_local("syntaqlite_ext/sqlite_compat.h");
     w.newline();
-    w.line(&format!("i64 Synq{pascal}GetToken(const unsigned char* z, int* tokenType);"));
+    w.line(&format!(
+        "i64 Synq{pascal}GetToken(const unsigned char* z, int* tokenType);"
+    ));
     w.newline();
     w.line(&format!("#endif  // {guard}"));
     w.finish()

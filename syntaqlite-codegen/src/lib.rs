@@ -172,9 +172,7 @@ pub fn extract_tokenizer(
         let mut w = c_writer::CWriter::new();
         w.sqlite_file_header();
         w.include_local("syntaqlite_ext/sqlite_compat.h");
-        w.include_local(&format!(
-            "syntaqlite_{dialect}/{dialect}_tokens.h"
-        ));
+        w.include_local(&format!("syntaqlite_{dialect}/{dialect}_tokens.h"));
         w.include_local("csrc/sqlite_keyword.h")
             .newline()
             .fragment(&cc_defines)
@@ -195,7 +193,10 @@ pub fn extract_tokenizer(
     let output = c_transformer::CTransformer::new(&combined)
         .add_array_static("sqlite3CtypeMap")
         .replace_in_function("sqlite3GetToken", "keywordCode", "synq_sqlite3_keywordCode")
-        .rename_function("sqlite3GetToken", &format!("Synq{}GetToken", ast_codegen::pascal_case(dialect)))
+        .rename_function(
+            "sqlite3GetToken",
+            &format!("Synq{}GetToken", ast_codegen::pascal_case(dialect)),
+        )
         .replace_all("TK_", "SYNTAQLITE_TK_")
         .finish();
 
@@ -210,73 +211,7 @@ pub fn extract_tokenizer(
 
 pub fn generate_parser(actions_dir: &str, output_dir: &str) -> Result<(), String> {
     let grammar_bytes = concatenate_y_files(actions_dir)?;
-    let work_dir = Path::new(output_dir);
-    fs::create_dir_all(work_dir)
-        .map_err(|e| format!("Failed to create output directory: {}", e))?;
-
-    // Step 1: Write raw grammar to working directory
-    let raw_parse_y_path = work_dir.join("parse_raw.y");
-    fs::write(&raw_parse_y_path, &grammar_bytes)
-        .map_err(|e| format!("Failed to write parse_raw.y: {}", e))?;
-
-    // Step 2: Extract grammar using extract_grammar
-    let extracted_grammar_path = work_dir.join("parse_extracted.h");
-    let raw_parse_y_str = raw_parse_y_path
-        .to_str()
-        .ok_or_else(|| "Invalid raw parse.y path".to_string())?;
-    let extracted_grammar_str = extracted_grammar_path
-        .to_str()
-        .ok_or_else(|| "Invalid extracted grammar path".to_string())?;
-
-    extract_grammar(raw_parse_y_str, Some(extracted_grammar_str))?;
-
-    // Step 3: Write lempar.c template to working directory
-    let lempar_path = work_dir.join("lempar.c");
-    fs::write(&lempar_path, LEMPAR_C).map_err(|e| format!("Failed to write lempar.c: {}", e))?;
-
-    // Step 4: Write the original grammar for lemon processing
-    // (lemon needs the full .y file with rules, not just the extracted tokens)
-    let parse_y_path = work_dir.join("parse.y");
-    fs::write(&parse_y_path, &grammar_bytes)
-        .map_err(|e| format!("Failed to write parse.y: {}", e))?;
-
-    // Step 5: Run lemon with -T option pointing to our template
-    // Spawn ourselves as a subprocess with the lemon subcommand
-    // Note: lemon expects -T and the path combined as a single argument: -T/path/to/template.c
-    let parse_y_str = parse_y_path
-        .to_str()
-        .ok_or_else(|| "Invalid parse.y path".to_string())?;
-    let lempar_str = lempar_path
-        .to_str()
-        .ok_or_else(|| "Invalid lempar.c path".to_string())?;
-    let template_arg = format!("-T{}", lempar_str);
-
-    let status = std::process::Command::new(
-        std::env::current_exe().map_err(|e| format!("Failed to get current executable: {}", e))?,
-    )
-    .arg("lemon")
-    .arg("-l")
-    .arg(&template_arg)
-    .arg(parse_y_str)
-    .status()
-    .map_err(|e| format!("Failed to spawn lemon subprocess: {}", e))?;
-
-    if !status.success() {
-        return Err(format!("Lemon failed with exit code: {}", status));
-    }
-
-    // Verify outputs were generated
-    let parse_c = work_dir.join("parse.c");
-    let parse_h = work_dir.join("parse.h");
-
-    if !parse_c.exists() {
-        return Err("Lemon did not generate parse.c".to_string());
-    }
-    if !parse_h.exists() {
-        return Err("Lemon did not generate parse.h".to_string());
-    }
-
-    Ok(())
+    generate_parser_with_grammar_bytes(&grammar_bytes, output_dir)
 }
 
 /// Extract terminal symbols (potential keywords) from extension `.y` grammar
@@ -443,12 +378,19 @@ pub fn generate_parser_from_contents(
     output_dir: &str,
 ) -> Result<(), String> {
     let grammar_bytes = concatenate_y_contents(y_files)?;
+    generate_parser_with_grammar_bytes(&grammar_bytes, output_dir)
+}
+
+fn generate_parser_with_grammar_bytes(
+    grammar_bytes: &[u8],
+    output_dir: &str,
+) -> Result<(), String> {
     let work_dir = Path::new(output_dir);
     fs::create_dir_all(work_dir)
         .map_err(|e| format!("Failed to create output directory: {}", e))?;
 
     let raw_parse_y_path = work_dir.join("parse_raw.y");
-    fs::write(&raw_parse_y_path, &grammar_bytes)
+    fs::write(&raw_parse_y_path, grammar_bytes)
         .map_err(|e| format!("Failed to write parse_raw.y: {}", e))?;
 
     let extracted_grammar_path = work_dir.join("parse_extracted.h");
@@ -465,7 +407,7 @@ pub fn generate_parser_from_contents(
     fs::write(&lempar_path, LEMPAR_C).map_err(|e| format!("Failed to write lempar.c: {}", e))?;
 
     let parse_y_path = work_dir.join("parse.y");
-    fs::write(&parse_y_path, &grammar_bytes)
+    fs::write(&parse_y_path, grammar_bytes)
         .map_err(|e| format!("Failed to write parse.y: {}", e))?;
 
     let parse_y_str = parse_y_path

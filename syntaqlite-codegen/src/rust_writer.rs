@@ -53,6 +53,22 @@ impl RustWriter {
         self.newline()
     }
 
+    /// Emit a block opener and increase indentation.
+    ///
+    /// Example: `open_block("impl Foo {")`.
+    pub fn open_block(&mut self, header: &str) -> &mut Self {
+        self.line(header);
+        self.indent()
+    }
+
+    /// Decrease indentation and emit a block closer.
+    ///
+    /// Example: `close_block("}")`.
+    pub fn close_block(&mut self, footer: &str) -> &mut Self {
+        self.dedent();
+        self.line(footer)
+    }
+
     /// Emit a multiline string block, stripping common leading whitespace.
     ///
     /// Leading/trailing blank lines are trimmed. The minimum indentation across

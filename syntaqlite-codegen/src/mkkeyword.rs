@@ -118,7 +118,11 @@ pub fn run_mkkeyword(args: &[String]) -> ! {
 
     for (name_c, token_c) in &extra_cstrings {
         let bytes = name_c.to_bytes();
-        assert!(bytes.len() < 20, "keyword {:?} too long for z_orig_name[20]", name_c);
+        assert!(
+            bytes.len() < 20,
+            "keyword {:?} too long for z_orig_name[20]",
+            name_c
+        );
 
         let mut z_orig_name = [0i8; 20];
         for (i, &b) in bytes.iter().enumerate() {

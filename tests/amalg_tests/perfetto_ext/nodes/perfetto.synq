@@ -1,7 +1,9 @@
 node CreatePerfettoTableStmt {
   table_name: inline SyntaqliteSourceSpan
+  select: index Select
 
   fmt {
-    "CREATE PERFETTO TABLE " span(table_name)
+    "CREATE PERFETTO TABLE " span(table_name) " AS"
+    hardline child(select)
   }
 }

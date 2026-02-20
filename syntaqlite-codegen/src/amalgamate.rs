@@ -401,10 +401,9 @@ fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
     // Emit dialect dispatch headers before other internal headers so that
     // the direct-call macros are defined before dialect_dispatch.h is
     // processed (its fallback is guarded by `#elif !defined(SYNQ_PARSER_ALLOC)`).
-    let (dispatch_headers, other_headers): (Vec<usize>, Vec<usize>) =
-        internal_headers.iter().partition(|&&i| {
-            files[i].include_key.ends_with("_dialect_dispatch.h")
-        });
+    let (dispatch_headers, other_headers): (Vec<usize>, Vec<usize>) = internal_headers
+        .iter()
+        .partition(|&&i| files[i].include_key.ends_with("_dialect_dispatch.h"));
     for &i in &dispatch_headers {
         emit_file(&files[i], &inlined_keys, &mut source);
     }

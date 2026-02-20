@@ -7,11 +7,21 @@ use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand, ValueEnum};
 use syntaqlite_runtime::Dialect;
+use syntaqlite_runtime::dialect::ffi as dialect_ffi;
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
 
 #[derive(Parser)]
 #[command(about = "SQL formatting and analysis tools")]
 struct Cli {
+    /// Path to a shared library (.so/.dylib/.dll) providing an extension dialect.
+    #[arg(long)]
+    extension_dialect: Option<String>,
+
+    /// Dialect name for symbol lookup (required with --extension-dialect).
+    /// The library must export `syntaqlite_<name>_dialect`.
+    #[arg(long)]
+    dialect_name: Option<String>,
+
     #[command(subcommand)]
     command: Command,
 }
@@ -426,14 +436,67 @@ fn codegen_to_dir_with_base(
 }
 
 
+/// Load an extension dialect from a shared library.
+///
+/// The library must export a function `syntaqlite_<name>_dialect` returning
+/// `*const SyntaqliteDialect`. The returned `Library` must be kept alive for
+/// the `Dialect` to remain valid.
+unsafe fn load_extension_dialect(
+    path: &str,
+    name: &str,
+) -> Result<(libloading::Library, Dialect<'static>), String> {
+    let lib = unsafe {
+        libloading::Library::new(path).map_err(|e| format!("failed to load {path}: {e}"))?
+    };
+
+    let symbol_name = format!("syntaqlite_{name}_dialect");
+    let func: libloading::Symbol<unsafe extern "C" fn() -> *const dialect_ffi::Dialect> = unsafe {
+        lib.get(symbol_name.as_bytes())
+            .map_err(|e| format!("symbol {symbol_name} not found in {path}: {e}"))?
+    };
+
+    let raw = unsafe { func() };
+    if raw.is_null() {
+        return Err(format!("{symbol_name} returned null"));
+    }
+    let dialect = unsafe { Dialect::from_raw(raw) };
+
+    Ok((lib, dialect))
+}
+
 /// Run the CLI with the given dialect configuration.
 pub fn run(name: &str, dialect: &Dialect) {
     let cli =
         Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
             .unwrap_or_else(|e| e.exit());
 
+    // Validate flag combination.
+    if cli.extension_dialect.is_some() != cli.dialect_name.is_some() {
+        eprintln!("error: --extension-dialect and --dialect-name must be used together");
+        std::process::exit(1);
+    }
+
+    // Load extension dialect if requested. The library handle must stay alive
+    // until after the command finishes.
+    let _ext_lib;
+    let active_dialect: &Dialect;
+    let ext_dialect;
+
+    if let (Some(path), Some(ext_name)) = (&cli.extension_dialect, &cli.dialect_name) {
+        let (lib, d) = unsafe { load_extension_dialect(path, ext_name) }.unwrap_or_else(|e| {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        });
+        _ext_lib = Some(lib);
+        ext_dialect = d;
+        active_dialect = &ext_dialect;
+    } else {
+        _ext_lib = None;
+        active_dialect = dialect;
+    }
+
     let result = match cli.command {
-        Command::Ast { files } => cmd_ast(dialect, files),
+        Command::Ast { files } => cmd_ast(active_dialect, files),
         Command::Fmt {
             files,
             line_width,
@@ -450,7 +513,7 @@ pub fn run(name: &str, dialect: &Dialect) {
                 },
                 ..Default::default()
             };
-            cmd_fmt(dialect, files, config, in_place, semicolons)
+            cmd_fmt(active_dialect, files, config, in_place, semicolons)
         }
         Command::GenerateDialect {
             dialect: dialect_name,

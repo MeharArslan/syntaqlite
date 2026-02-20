@@ -10,9 +10,18 @@
 /// Returns all base `.y` action files (filename, contents) in alphabetical order.
 pub fn base_y_files() -> &'static [(&'static str, &'static str)] {
     &[
-        ("_common.y", include_str!("../../syntaqlite/parser-actions/_common.y")),
-        ("aggregate.y", include_str!("../../syntaqlite/parser-actions/aggregate.y")),
-        ("cast.y", include_str!("../../syntaqlite/parser-actions/cast.y")),
+        (
+            "_common.y",
+            include_str!("../../syntaqlite/parser-actions/_common.y"),
+        ),
+        (
+            "aggregate.y",
+            include_str!("../../syntaqlite/parser-actions/aggregate.y"),
+        ),
+        (
+            "cast.y",
+            include_str!("../../syntaqlite/parser-actions/cast.y"),
+        ),
         (
             "column_ref_select.y",
             include_str!("../../syntaqlite/parser-actions/column_ref_select.y"),
@@ -21,7 +30,10 @@ pub fn base_y_files() -> &'static [(&'static str, &'static str)] {
             "column_refs.y",
             include_str!("../../syntaqlite/parser-actions/column_refs.y"),
         ),
-        ("compound.y", include_str!("../../syntaqlite/parser-actions/compound.y")),
+        (
+            "compound.y",
+            include_str!("../../syntaqlite/parser-actions/compound.y"),
+        ),
         (
             "conditionals.y",
             include_str!("../../syntaqlite/parser-actions/conditionals.y"),
@@ -30,21 +42,42 @@ pub fn base_y_files() -> &'static [(&'static str, &'static str)] {
             "create_table.y",
             include_str!("../../syntaqlite/parser-actions/create_table.y"),
         ),
-        ("cte.y", include_str!("../../syntaqlite/parser-actions/cte.y")),
-        ("dml.y", include_str!("../../syntaqlite/parser-actions/dml.y")),
+        (
+            "cte.y",
+            include_str!("../../syntaqlite/parser-actions/cte.y"),
+        ),
+        (
+            "dml.y",
+            include_str!("../../syntaqlite/parser-actions/dml.y"),
+        ),
         (
             "expressions.y",
             include_str!("../../syntaqlite/parser-actions/expressions.y"),
         ),
-        ("exprlists.y", include_str!("../../syntaqlite/parser-actions/exprlists.y")),
-        ("functions.y", include_str!("../../syntaqlite/parser-actions/functions.y")),
+        (
+            "exprlists.y",
+            include_str!("../../syntaqlite/parser-actions/exprlists.y"),
+        ),
+        (
+            "functions.y",
+            include_str!("../../syntaqlite/parser-actions/functions.y"),
+        ),
         (
             "identifiers.y",
             include_str!("../../syntaqlite/parser-actions/identifiers.y"),
         ),
-        ("literals.y", include_str!("../../syntaqlite/parser-actions/literals.y")),
-        ("misc_expr.y", include_str!("../../syntaqlite/parser-actions/misc_expr.y")),
-        ("orderby.y", include_str!("../../syntaqlite/parser-actions/orderby.y")),
+        (
+            "literals.y",
+            include_str!("../../syntaqlite/parser-actions/literals.y"),
+        ),
+        (
+            "misc_expr.y",
+            include_str!("../../syntaqlite/parser-actions/misc_expr.y"),
+        ),
+        (
+            "orderby.y",
+            include_str!("../../syntaqlite/parser-actions/orderby.y"),
+        ),
         (
             "raise_expr.y",
             include_str!("../../syntaqlite/parser-actions/raise_expr.y"),
@@ -53,23 +86,38 @@ pub fn base_y_files() -> &'static [(&'static str, &'static str)] {
             "schema_ops.y",
             include_str!("../../syntaqlite/parser-actions/schema_ops.y"),
         ),
-        ("select.y", include_str!("../../syntaqlite/parser-actions/select.y")),
+        (
+            "select.y",
+            include_str!("../../syntaqlite/parser-actions/select.y"),
+        ),
         (
             "table_source.y",
             include_str!("../../syntaqlite/parser-actions/table_source.y"),
         ),
-        ("trigger.y", include_str!("../../syntaqlite/parser-actions/trigger.y")),
+        (
+            "trigger.y",
+            include_str!("../../syntaqlite/parser-actions/trigger.y"),
+        ),
         (
             "utility_stmts.y",
             include_str!("../../syntaqlite/parser-actions/utility_stmts.y"),
         ),
-        ("values.y", include_str!("../../syntaqlite/parser-actions/values.y")),
+        (
+            "values.y",
+            include_str!("../../syntaqlite/parser-actions/values.y"),
+        ),
         (
             "virtual_table.y",
             include_str!("../../syntaqlite/parser-actions/virtual_table.y"),
         ),
-        ("window.y", include_str!("../../syntaqlite/parser-actions/window.y")),
-        ("ztokens.y", include_str!("../../syntaqlite/parser-actions/ztokens.y")),
+        (
+            "window.y",
+            include_str!("../../syntaqlite/parser-actions/window.y"),
+        ),
+        (
+            "ztokens.y",
+            include_str!("../../syntaqlite/parser-actions/ztokens.y"),
+        ),
     ]
 }
 
@@ -80,12 +128,18 @@ pub fn base_synq_files() -> &'static [(&'static str, &'static str)] {
             "aggregate.synq",
             include_str!("../../syntaqlite/parser-nodes/aggregate.synq"),
         ),
-        ("cast.synq", include_str!("../../syntaqlite/parser-nodes/cast.synq")),
+        (
+            "cast.synq",
+            include_str!("../../syntaqlite/parser-nodes/cast.synq"),
+        ),
         (
             "column_ref.synq",
             include_str!("../../syntaqlite/parser-nodes/column_ref.synq"),
         ),
-        ("common.synq", include_str!("../../syntaqlite/parser-nodes/common.synq")),
+        (
+            "common.synq",
+            include_str!("../../syntaqlite/parser-nodes/common.synq"),
+        ),
         (
             "compound.synq",
             include_str!("../../syntaqlite/parser-nodes/compound.synq"),
@@ -98,8 +152,14 @@ pub fn base_synq_files() -> &'static [(&'static str, &'static str)] {
             "create_table.synq",
             include_str!("../../syntaqlite/parser-nodes/create_table.synq"),
         ),
-        ("cte.synq", include_str!("../../syntaqlite/parser-nodes/cte.synq")),
-        ("dml.synq", include_str!("../../syntaqlite/parser-nodes/dml.synq")),
+        (
+            "cte.synq",
+            include_str!("../../syntaqlite/parser-nodes/cte.synq"),
+        ),
+        (
+            "dml.synq",
+            include_str!("../../syntaqlite/parser-nodes/dml.synq"),
+        ),
         (
             "expressions.synq",
             include_str!("../../syntaqlite/parser-nodes/expressions.synq"),
@@ -120,18 +180,30 @@ pub fn base_synq_files() -> &'static [(&'static str, &'static str)] {
             "schema_ops.synq",
             include_str!("../../syntaqlite/parser-nodes/schema_ops.synq"),
         ),
-        ("select.synq", include_str!("../../syntaqlite/parser-nodes/select.synq")),
+        (
+            "select.synq",
+            include_str!("../../syntaqlite/parser-nodes/select.synq"),
+        ),
         (
             "table_source.synq",
             include_str!("../../syntaqlite/parser-nodes/table_source.synq"),
         ),
-        ("trigger.synq", include_str!("../../syntaqlite/parser-nodes/trigger.synq")),
+        (
+            "trigger.synq",
+            include_str!("../../syntaqlite/parser-nodes/trigger.synq"),
+        ),
         (
             "utility_stmts.synq",
             include_str!("../../syntaqlite/parser-nodes/utility_stmts.synq"),
         ),
-        ("values.synq", include_str!("../../syntaqlite/parser-nodes/values.synq")),
-        ("window.synq", include_str!("../../syntaqlite/parser-nodes/window.synq")),
+        (
+            "values.synq",
+            include_str!("../../syntaqlite/parser-nodes/values.synq"),
+        ),
+        (
+            "window.synq",
+            include_str!("../../syntaqlite/parser-nodes/window.synq"),
+        ),
     ]
 }
 
