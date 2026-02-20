@@ -420,17 +420,111 @@ fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
     Ok(AmalgamateOutput { header, source, ext_header })
 }
 
-/// Emit a single file's content, stripping all `#include "..."` and
-/// `#include <...>` directives (already inlined or provided by the runtime
-/// amalgamation header) and header guards.
+/// Detect the include-guard macro of a header file, if any.
+///
+/// Returns `Some(guard)` when the first two preprocessor directives are
+/// `#ifndef GUARD` / `#define GUARD` and the file ends with `#endif`.
+fn detect_include_guard(content: &str) -> Option<String> {
+    let lines: Vec<&str> = content.lines().collect();
+
+    // Find first two preprocessor directives (skip blanks and comments).
+    let mut pp = Vec::new();
+    for &line in &lines {
+        let t = line.trim();
+        if t.is_empty() || t.starts_with("//") || t.starts_with("/*") || t.starts_with("**") || t.starts_with("*/") {
+            continue;
+        }
+        if t.starts_with('#') {
+            pp.push(t);
+            if pp.len() == 2 {
+                break;
+            }
+        } else {
+            // Non-preprocessor, non-blank/comment content before two directives → no guard.
+            return None;
+        }
+    }
+
+    if pp.len() < 2 {
+        return None;
+    }
+
+    let guard = pp[0].strip_prefix("#ifndef")?.trim().to_string();
+    if guard.is_empty() {
+        return None;
+    }
+    let define_guard = pp[1].strip_prefix("#define")?.trim().to_string();
+    if define_guard != guard {
+        return None;
+    }
+
+    // Verify there's a trailing `#endif` (with optional comment).
+    for &line in lines.iter().rev() {
+        let t = line.trim();
+        if t.is_empty() {
+            continue;
+        }
+        if t.starts_with("#endif") {
+            return Some(guard);
+        }
+        break;
+    }
+    None
+}
+
+/// Emit a single file's content, stripping all `#include "..."` directives
+/// (already inlined or provided by the runtime amalgamation header) and
+/// include guards (the outer amalgamation guard subsumes them).
 fn emit_file(file: &SourceFile, _inlined_keys: &HashSet<&str>, out: &mut String) {
     out.push_str(&format!(
         "/* ======== begin: {} ======== */\n",
         file.include_key
     ));
 
-    for line in file.content.lines() {
+    let guard = detect_include_guard(&file.content);
+
+    // Track whether we've seen the `#ifndef GUARD` / `#define GUARD` pair
+    // and whether we need to strip the final `#endif`.
+    let mut guard_ifndef_seen = false;
+    let mut guard_define_seen = false;
+    let mut lines: Vec<&str> = file.content.lines().collect();
+
+    // If we have a guard, strip the trailing `#endif` (search from end).
+    if guard.is_some() {
+        for i in (0..lines.len()).rev() {
+            let t = lines[i].trim();
+            if t.is_empty() {
+                continue;
+            }
+            if t.starts_with("#endif") {
+                lines[i] = "";
+                break;
+            }
+            break;
+        }
+    }
+
+    for line in &lines {
         let trimmed = line.trim();
+
+        // Strip include guard directives.
+        if let Some(ref g) = guard {
+            if !guard_ifndef_seen {
+                if let Some(rest) = trimmed.strip_prefix("#ifndef") {
+                    if rest.trim() == g {
+                        guard_ifndef_seen = true;
+                        continue;
+                    }
+                }
+            } else if !guard_define_seen {
+                if let Some(rest) = trimmed.strip_prefix("#define") {
+                    if rest.trim() == g {
+                        guard_define_seen = true;
+                        continue;
+                    }
+                }
+            }
+        }
 
         if let Some(rest) = trimmed.strip_prefix("#include") {
             let rest = rest.trim();

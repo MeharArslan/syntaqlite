@@ -4,67 +4,40 @@ DIALECT := $(ROOT)/syntaqlite
 
 CC := cc
 CXX := c++
-CFLAGS := -Wall -Wextra -Wpedantic -std=c11 \
-	-I$(RUNTIME)/include \
-	-I$(DIALECT)/include \
-	-I$(RUNTIME) \
-	-I$(DIALECT)
-CXXFLAGS := -Wall -Wextra -Wpedantic -std=c++17 \
-	-I$(RUNTIME)/include \
-	-I$(DIALECT)/include \
-	-I$(RUNTIME) \
-	-I$(DIALECT)
+CFLAGS := -Wall -Wextra -Wpedantic -std=c11 -I.
+CXXFLAGS := -Wall -Wextra -Wpedantic -std=c++17 -I.
 
-# C source files needed for the engine + dialect.
-ENGINE_SRCS := \
-	$(RUNTIME)/csrc/arena.c \
-	$(RUNTIME)/csrc/tokenizer.c \
-	$(RUNTIME)/csrc/parser.c \
-	$(RUNTIME)/csrc/sqlite_tokenize.c \
-	$(RUNTIME)/csrc/sqlite_keyword.c
-
-LEMON_SRCS := $(RUNTIME)/csrc/sqlite_parse.c
-LEMON_CFLAGS := \
-	-DSYNTAQLITE_INLINE_PARSER_DATA_HEADER='"csrc/dialect_parse.h"' \
+# Relaxed warnings for generated amalgamation source.
+AMALG_CFLAGS := \
 	-Wno-int-conversion \
 	-Wno-void-pointer-to-int-cast \
 	-Wno-unused-variable \
 	-Wno-unused-parameter \
 	-Wno-comment
 
-DIALECT_SRCS := $(DIALECT)/csrc/dialect.c
+CODEGEN := $(ROOT)/target/release/syntaqlite-codegen
 
-# Build engine + dialect as a static lib so we don't recompile for each example.
-ENGINE_OBJS := $(patsubst %.c,%.o,$(notdir $(ENGINE_SRCS)))
-LEMON_OBJS := sqlite_parse.o
-DIALECT_OBJS := dialect.o
-ALL_OBJS := $(ENGINE_OBJS) $(LEMON_OBJS) $(DIALECT_OBJS)
-
-.PHONY: all clean
+.PHONY: all clean amalgamation
 
 all: select_columns select_columns_c
 
-# Engine objects
-arena.o: $(RUNTIME)/csrc/arena.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-tokenizer.o: $(RUNTIME)/csrc/tokenizer.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-parser.o: $(RUNTIME)/csrc/parser.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-sqlite_tokenize.o: $(RUNTIME)/csrc/sqlite_tokenize.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-sqlite_keyword.o: $(RUNTIME)/csrc/sqlite_keyword.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+# Generate amalgamation files from codegen.
+syntaqlite_sqlite.h syntaqlite_sqlite.c: $(CODEGEN)
+	$(CODEGEN) amalgamate \
+		--dialect sqlite \
+		--runtime-dir $(RUNTIME) \
+		--dialect-dir $(DIALECT) \
+		--output-dir .
 
-# Lemon parser (relaxed warnings)
-sqlite_parse.o: $(RUNTIME)/csrc/sqlite_parse.c
-	$(CC) $(CFLAGS) $(LEMON_CFLAGS) -c -o $@ $<
+$(CODEGEN):
+	cargo build --release --manifest-path $(ROOT)/syntaqlite-codegen/Cargo.toml
 
-# Dialect glue
-dialect.o: $(DIALECT)/csrc/dialect.c
-	$(CC) $(CFLAGS) -c -o $@ $<
+amalgamation: syntaqlite_sqlite.h syntaqlite_sqlite.c
 
-libsyntaqlite.a: $(ALL_OBJS)
+syntaqlite_sqlite.o: syntaqlite_sqlite.c syntaqlite_sqlite.h
+	$(CC) $(CFLAGS) $(AMALG_CFLAGS) -c -o $@ $<
+
+libsyntaqlite.a: syntaqlite_sqlite.o
 	ar rcs $@ $^
 
 select_columns: select_columns.cc libsyntaqlite.a
@@ -75,3 +48,4 @@ select_columns_c: select_columns.c libsyntaqlite.a
 
 clean:
 	rm -f select_columns select_columns_c libsyntaqlite.a *.o
+	rm -f syntaqlite_sqlite.h syntaqlite_sqlite.c

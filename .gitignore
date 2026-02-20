@@ -13,6 +13,8 @@ out/.build.lock
 *.a
 examples/select_columns
 examples/select_columns_c
+examples/syntaqlite_sqlite.h
+examples/syntaqlite_sqlite.c
 
 # Added by cargo
 /target

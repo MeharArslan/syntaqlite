@@ -12,9 +12,7 @@
 #include <string.h>
 #include <strings.h>
 
-#include "syntaqlite/parser.h"
-#include "syntaqlite_sqlite/sqlite.h"
-#include "syntaqlite_sqlite/sqlite_node.h"
+#include "syntaqlite_sqlite.h"
 
 // ── Schema ──────────────────────────────────────────────────────────────
 
@@ -34,8 +32,10 @@ typedef struct Schema {
   int table_count;
 } Schema;
 
-static void schema_put(Schema* s, const char* name,
-                       const Column* cols, int count) {
+static void schema_put(Schema* s,
+                       const char* name,
+                       const Column* cols,
+                       int count) {
   for (int i = 0; i < s->table_count; i++) {
     if (strcasecmp(s->tables[i].name, name) == 0) {
       memcpy(s->tables[i].columns, cols, count * sizeof(Column));
@@ -59,8 +59,10 @@ static const TableSchema* schema_get(const Schema* s, const char* name) {
 
 // ── Helpers ─────────────────────────────────────────────────────────────
 
-static void span_to_str(SyntaqliteParser* p, SyntaqliteSourceSpan span,
-                        char* buf, int buf_size) {
+static void span_to_str(SyntaqliteParser* p,
+                        SyntaqliteSourceSpan span,
+                        char* buf,
+                        int buf_size) {
   uint32_t len;
   const char* text = syntaqlite_span_text(p, span, &len);
   if (!text) {
@@ -84,7 +86,8 @@ typedef struct ColumnList {
   int count;
 } ColumnList;
 
-static void col_list_push(ColumnList* cl, const char* name,
+static void col_list_push(ColumnList* cl,
+                          const char* name,
                           const char* source) {
   Column* c = &cl->items[cl->count++];
   snprintf(c->name, sizeof(c->name), "%s", name);
@@ -127,7 +130,8 @@ static void collect_from_sources(SyntaqliteParser* p,
                                  TableSourceList* out) {
   const SyntaqliteTableSource* node =
       SYNTAQLITE_NODE(p, SyntaqliteTableSource, from_id);
-  if (!node) return;
+  if (!node)
+    return;
 
   switch (node->tag) {
     case SYNTAQLITE_NODE_TABLE_REF: {
@@ -196,12 +200,15 @@ static void collect_from_sources(SyntaqliteParser* p,
 // reference with an explicit table qualifier (e.g. u.name), use that. If it's
 // a bare column reference, search the FROM sources for the first table that
 // has a matching column name. For compound expressions, leave source empty.
-static void expr_source(SyntaqliteParser* p, uint32_t expr_id,
+static void expr_source(SyntaqliteParser* p,
+                        uint32_t expr_id,
                         const TableSourceList* sources,
-                        char* buf, int buf_size) {
+                        char* buf,
+                        int buf_size) {
   buf[0] = '\0';
   const SyntaqliteExpr* expr = SYNTAQLITE_NODE(p, SyntaqliteExpr, expr_id);
-  if (!expr) return;
+  if (!expr)
+    return;
 
   if (expr->tag == SYNTAQLITE_NODE_COLUMN_REF) {
     const SyntaqliteColumnRef* ref = &expr->column_ref;
@@ -224,8 +231,10 @@ static void expr_source(SyntaqliteParser* p, uint32_t expr_id,
   }
 }
 
-static void expr_name(SyntaqliteParser* p, uint32_t expr_id,
-                      char* buf, int buf_size) {
+static void expr_name(SyntaqliteParser* p,
+                      uint32_t expr_id,
+                      char* buf,
+                      int buf_size) {
   const SyntaqliteExpr* expr = SYNTAQLITE_NODE(p, SyntaqliteExpr, expr_id);
   if (!expr) {
     snprintf(buf, buf_size, "?");
@@ -357,7 +366,8 @@ static void resolve_stmt_columns(SyntaqliteParser* p,
                                  const Schema* schema,
                                  ColumnList* out) {
   const SyntaqliteStmt* stmt = SYNTAQLITE_NODE(p, SyntaqliteStmt, stmt_id);
-  if (!stmt) return;
+  if (!stmt)
+    return;
 
   switch (stmt->tag) {
     case SYNTAQLITE_NODE_SELECT_STMT:
@@ -380,8 +390,8 @@ static void resolve_stmt_columns(SyntaqliteParser* p,
                                   cte->columns) {
             span_to_str(p, col_ref->column, cols[nc].name,
                         sizeof(cols[nc].name));
-            snprintf(cols[nc].source_table, sizeof(cols[nc].source_table),
-                     "%s", cte_name);
+            snprintf(cols[nc].source_table, sizeof(cols[nc].source_table), "%s",
+                     cte_name);
             nc++;
           }
           schema_put(&local, cte_name, cols, nc);
@@ -425,12 +435,11 @@ static int process_statement(SyntaqliteParser* p,
       if (syntaqlite_node_is_present(ct->columns)) {
         Column cols[64];
         int count = 0;
-        SYNTAQLITE_LIST_FOREACH(p, SyntaqliteColumnDef, col_def,
-                                ct->columns) {
+        SYNTAQLITE_LIST_FOREACH(p, SyntaqliteColumnDef, col_def, ct->columns) {
           span_to_str(p, col_def->column_name, cols[count].name,
                       sizeof(cols[count].name));
-          snprintf(cols[count].source_table,
-                   sizeof(cols[count].source_table), "%s", table_name);
+          snprintf(cols[count].source_table, sizeof(cols[count].source_table),
+                   "%s", table_name);
           count++;
         }
         schema_put(schema, table_name, cols, count);
@@ -460,8 +469,8 @@ static int process_statement(SyntaqliteParser* p,
                                 cv->column_names) {
           span_to_str(p, col_ref->column, cols[count].name,
                       sizeof(cols[count].name));
-          snprintf(cols[count].source_table,
-                   sizeof(cols[count].source_table), "%s", view_name);
+          snprintf(cols[count].source_table, sizeof(cols[count].source_table),
+                   "%s", view_name);
           count++;
         }
         schema_put(schema, view_name, cols, count);
