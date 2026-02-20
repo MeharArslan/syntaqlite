@@ -6,20 +6,26 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand, ValueEnum};
-use syntaqlite_runtime::Dialect;
 use syntaqlite_runtime::dialect::ffi as dialect_ffi;
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
+use syntaqlite_runtime::Dialect;
+
+const EMBEDDED_SQLITE_TOKENIZE_C: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../third_party/src/sqlite/src/tokenize.c"
+));
 
 #[derive(Parser)]
 #[command(about = "SQL formatting and analysis tools")]
 struct Cli {
-    /// Path to a shared library (.so/.dylib/.dll) providing an extension dialect.
-    #[arg(long)]
-    extension_dialect: Option<String>,
+    /// Path to a shared library (.so/.dylib/.dll) providing a dialect.
+    #[arg(long = "dialect")]
+    dialect_path: Option<String>,
 
-    /// Dialect name for symbol lookup (required with --extension-dialect).
-    /// The library must export `syntaqlite_<name>_dialect`.
-    #[arg(long)]
+    /// Dialect name for symbol lookup.
+    /// When omitted, the loader resolves `syntaqlite_dialect`.
+    /// With a name, it resolves `syntaqlite_<name>_dialect`.
+    #[arg(long, requires = "dialect_path")]
     dialect_name: Option<String>,
 
     #[command(subcommand)]
@@ -55,25 +61,18 @@ enum Command {
     /// Base SQLite grammar and node files are embedded in the binary.
     /// When `--actions-dir` / `--nodes-dir` are provided, those extension
     /// files are merged with the base (same-name files replace the base).
-    GenerateDialect {
-        /// Dialect name (e.g. "sqlite").
+    Dialect {
+        /// Dialect identifier (e.g. "sqlite").
         #[arg(long, required = true)]
-        dialect: String,
+        name: String,
         /// Directory containing .y grammar action files (extensions only; base is embedded).
         #[arg(long)]
         actions_dir: Option<String>,
         /// Directory containing .synq node definitions (extensions only; base is embedded).
         #[arg(long)]
         nodes_dir: Option<String>,
-        /// Path to SQLite's tokenize.c.
-        #[arg(long, required = true)]
-        tokenize_c: String,
-        /// Path to syntaqlite-runtime directory (for full amalgamation).
-        #[arg(long, required = true)]
-        runtime_dir: String,
-        /// Output directory for amalgamated files.
-        #[arg(long, required = true)]
-        output_dir: String,
+        #[command(subcommand)]
+        command: DialectCommand,
     },
     // Hidden subcommands for codegen subprocess support.
     // generate_parser() and generate_keyword_hash() spawn current_exe() with
@@ -95,6 +94,16 @@ enum CasingArg {
     Preserve,
     Upper,
     Lower,
+}
+
+#[derive(Subcommand)]
+enum DialectCommand {
+    /// Emit amalgamated C/H files.
+    Csrc {
+        /// Output directory for amalgamated files.
+        #[arg(long, required = true)]
+        output_dir: String,
+    },
 }
 
 /// Expand a list of file paths / glob patterns into concrete paths.
@@ -218,8 +227,6 @@ fn cmd_generate_dialect(
     dialect: &str,
     actions_dir: Option<&str>,
     nodes_dir: Option<&str>,
-    tokenize_c: &str,
-    runtime_dir: &str,
     output_dir: &str,
 ) -> Result<(), String> {
     use syntaqlite_codegen::amalgamate;
@@ -230,8 +237,11 @@ fn cmd_generate_dialect(
     let temp = temp_dir.path();
     let csrc = temp.join("csrc");
     let include = temp.join("include").join(format!("syntaqlite_{dialect}"));
+    let tokenize_c = temp.join("sqlite_tokenize.c");
     fs::create_dir_all(&csrc).map_err(|e| format!("creating csrc dir: {e}"))?;
     fs::create_dir_all(&include).map_err(|e| format!("creating include dir: {e}"))?;
+    fs::write(&tokenize_c, EMBEDDED_SQLITE_TOKENIZE_C)
+        .map_err(|e| format!("writing embedded tokenize.c: {e}"))?;
 
     // Load extension files from user dirs (if provided).
     let ext_y = match actions_dir {
@@ -251,21 +261,18 @@ fn cmd_generate_dialect(
         dialect,
         &merged_y,
         &merged_synq,
-        tokenize_c,
+        &tokenize_c.to_string_lossy(),
         &csrc,
         &include,
     )?;
 
-    // Full amalgamation: runtime + dialect into one pair of files.
-    let result = amalgamate::amalgamate_full(dialect, Path::new(runtime_dir), temp.as_ref())?;
-
     let out = Path::new(output_dir);
     fs::create_dir_all(out).map_err(|e| format!("creating output dir: {e}"))?;
+    let result = amalgamate::amalgamate_dialect(dialect, temp.as_ref())?;
     fs::write(out.join(format!("syntaqlite_{dialect}.h")), &result.header)
         .map_err(|e| format!("writing header: {e}"))?;
     fs::write(out.join(format!("syntaqlite_{dialect}.c")), &result.source)
         .map_err(|e| format!("writing source: {e}"))?;
-
     eprintln!("wrote {}/syntaqlite_{dialect}.{{h,c}}", out.display());
     Ok(())
 }
@@ -370,20 +377,29 @@ fn codegen_to_dir_with_base(
     Ok(())
 }
 
+const DEFAULT_DIALECT_SYMBOL: &str = "syntaqlite_dialect";
+
+fn dialect_symbol_name(name: Option<&str>) -> String {
+    match name {
+        Some(name) => format!("syntaqlite_{name}_dialect"),
+        None => DEFAULT_DIALECT_SYMBOL.to_string(),
+    }
+}
+
 /// Load an extension dialect from a shared library.
 ///
-/// The library must export a function `syntaqlite_<name>_dialect` returning
-/// `*const SyntaqliteDialect`. The returned `Library` must be kept alive for
-/// the `Dialect` to remain valid.
-unsafe fn load_extension_dialect(
+/// The library must export `syntaqlite_dialect` by default, or
+/// `syntaqlite_<name>_dialect` when `name` is provided. The returned
+/// `Library` must be kept alive for the `Dialect` to remain valid.
+unsafe fn load_dynamic_dialect(
     path: &str,
-    name: &str,
+    name: Option<&str>,
 ) -> Result<(libloading::Library, Dialect<'static>), String> {
     let lib = unsafe {
         libloading::Library::new(path).map_err(|e| format!("failed to load {path}: {e}"))?
     };
 
-    let symbol_name = format!("syntaqlite_{name}_dialect");
+    let symbol_name = dialect_symbol_name(name);
     let func: libloading::Symbol<unsafe extern "C" fn() -> *const dialect_ffi::Dialect> = unsafe {
         lib.get(symbol_name.as_bytes())
             .map_err(|e| format!("symbol {symbol_name} not found in {path}: {e}"))?
@@ -404,28 +420,23 @@ pub fn run(name: &str, dialect: &Dialect) {
         Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
             .unwrap_or_else(|e| e.exit());
 
-    // Validate flag combination.
-    if cli.extension_dialect.is_some() != cli.dialect_name.is_some() {
-        eprintln!("error: --extension-dialect and --dialect-name must be used together");
-        std::process::exit(1);
-    }
-
-    // Load extension dialect if requested. The library handle must stay alive
+    // Load a dynamic dialect if requested. The library handle must stay alive
     // until after the command finishes.
-    let _ext_lib;
+    let _dialect_lib;
     let active_dialect: &Dialect;
-    let ext_dialect;
+    let dyn_dialect;
 
-    if let (Some(path), Some(ext_name)) = (&cli.extension_dialect, &cli.dialect_name) {
-        let (lib, d) = unsafe { load_extension_dialect(path, ext_name) }.unwrap_or_else(|e| {
-            eprintln!("error: {e}");
-            std::process::exit(1);
-        });
-        _ext_lib = Some(lib);
-        ext_dialect = d;
-        active_dialect = &ext_dialect;
+    if let Some(path) = &cli.dialect_path {
+        let (lib, d) = unsafe { load_dynamic_dialect(path, cli.dialect_name.as_deref()) }
+            .unwrap_or_else(|e| {
+                eprintln!("error: {e}");
+                std::process::exit(1);
+            });
+        _dialect_lib = Some(lib);
+        dyn_dialect = d;
+        active_dialect = &dyn_dialect;
     } else {
-        _ext_lib = None;
+        _dialect_lib = None;
         active_dialect = dialect;
     }
 
@@ -449,21 +460,19 @@ pub fn run(name: &str, dialect: &Dialect) {
             };
             cmd_fmt(active_dialect, files, config, in_place, semicolons)
         }
-        Command::GenerateDialect {
-            dialect: dialect_name,
+        Command::Dialect {
+            name,
             actions_dir,
             nodes_dir,
-            tokenize_c,
-            runtime_dir,
-            output_dir,
-        } => cmd_generate_dialect(
-            &dialect_name,
-            actions_dir.as_deref(),
-            nodes_dir.as_deref(),
-            &tokenize_c,
-            &runtime_dir,
-            &output_dir,
-        ),
+            command,
+        } => match command {
+            DialectCommand::Csrc { output_dir } => cmd_generate_dialect(
+                &name,
+                actions_dir.as_deref(),
+                nodes_dir.as_deref(),
+                &output_dir,
+            ),
+        },
         Command::Lemon { args } => {
             syntaqlite_codegen::run_lemon(&args);
         }
@@ -475,5 +484,23 @@ pub fn run(name: &str, dialect: &Dialect) {
     if let Err(e) = result {
         eprintln!("error: {e}");
         std::process::exit(1);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::dialect_symbol_name;
+
+    #[test]
+    fn picks_default_symbol_when_name_missing() {
+        assert_eq!(dialect_symbol_name(None), "syntaqlite_dialect");
+    }
+
+    #[test]
+    fn uses_named_symbol_when_name_given() {
+        assert_eq!(
+            dialect_symbol_name(Some("sqlite")),
+            "syntaqlite_sqlite_dialect"
+        );
     }
 }

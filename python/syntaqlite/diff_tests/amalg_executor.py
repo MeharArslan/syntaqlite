@@ -28,8 +28,6 @@ class DialectConfig:
 def build_amalgamation(
     cli_binary: Path,
     dialect: DialectConfig,
-    tokenize_c: Path,
-    runtime_dir: Path,
     output_dir: Path,
 ) -> Path:
     """Generate amalgamated C files for a dialect.
@@ -37,10 +35,9 @@ def build_amalgamation(
     Returns the output directory.
     """
     cmd = [
-        str(cli_binary), "generate-dialect",
-        "--dialect", dialect.name,
-        "--tokenize-c", str(tokenize_c),
-        "--runtime-dir", str(runtime_dir),
+        str(cli_binary), "dialect",
+        "--name", dialect.name,
+        "csrc",
         "--output-dir", str(output_dir),
     ]
     if dialect.actions_dir:
@@ -51,7 +48,7 @@ def build_amalgamation(
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         raise RuntimeError(
-            f"generate-dialect failed for {dialect.name}:\n{proc.stderr}"
+            f"dialect generation failed for {dialect.name}:\n{proc.stderr}"
         )
     return output_dir
 
@@ -93,8 +90,6 @@ class AmalgTestContext:
     def __init__(self, root_dir: Path, cli_binary: Path):
         self.root_dir = root_dir
         self.cli_binary = cli_binary
-        self.tokenize_c = root_dir / "third_party/src/sqlite/src/tokenize.c"
-        self.runtime_dir = root_dir / "syntaqlite-runtime"
         self.test_c = root_dir / "tests/amalg_tests/test_ast.c"
         self._temp_dir = tempfile.TemporaryDirectory(prefix="syntaqlite_amalg_test_")
         self._binaries: Dict[str, Path] = {}
@@ -113,7 +108,7 @@ class AmalgTestContext:
 
         build_amalgamation(
             self.cli_binary, dialect,
-            self.tokenize_c, self.runtime_dir, amalg_dir,
+            amalg_dir,
         )
 
         binary = temp / f"test_{dialect.name}"

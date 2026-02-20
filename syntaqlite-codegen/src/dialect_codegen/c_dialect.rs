@@ -73,6 +73,13 @@ pub fn generate_dialect_c(dialect: &str) -> String {
     w.line(&format!("    return &{upper}_DIALECT;"));
     w.line("}");
     w.newline();
+    w.line("#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL");
+    w.line("const SyntaqliteDialect* syntaqlite_dialect(void) {");
+    w.line(&format!("    return syntaqlite_{dialect}_dialect();"));
+    w.line("}");
+    w.line("#endif");
+    w.newline();
+    w.line("#ifndef SYNTAQLITE_NO_DIALECT_CREATE_PARSER_API");
     w.line(&format!(
         "SyntaqliteParser* syntaqlite_create_{dialect}_parser(const SyntaqliteMemMethods* mem) {{"
     ));
@@ -80,6 +87,7 @@ pub fn generate_dialect_c(dialect: &str) -> String {
         "    return syntaqlite_create_parser_with_dialect(mem, &{upper}_DIALECT);"
     ));
     w.line("}");
+    w.line("#endif");
 
     w.finish()
 }
@@ -107,9 +115,14 @@ pub fn generate_dialect_h(dialect: &str) -> String {
     w.line(&format!(
         "const SyntaqliteDialect* syntaqlite_{dialect}_dialect(void);"
     ));
+    w.line("#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL");
+    w.line("const SyntaqliteDialect* syntaqlite_dialect(void);");
+    w.line("#endif");
+    w.line("#ifndef SYNTAQLITE_NO_DIALECT_CREATE_PARSER_API");
     w.line(&format!(
         "SyntaqliteParser* syntaqlite_create_{dialect}_parser(const SyntaqliteMemMethods* mem);"
     ));
+    w.line("#endif");
     w.newline();
     w.line("#ifdef __cplusplus");
     w.line("}");
@@ -121,11 +134,13 @@ pub fn generate_dialect_h(dialect: &str) -> String {
     w.line("namespace syntaqlite {");
     w.newline();
     let pascal = pascal_case(dialect);
+    w.line("#ifndef SYNTAQLITE_NO_DIALECT_CREATE_PARSER_API");
     w.line(&format!("inline Parser {pascal}Parser() {{"));
     w.line(&format!(
         "  return Parser(syntaqlite_create_{dialect}_parser(nullptr));"
     ));
     w.line("}");
+    w.line("#endif");
     w.newline();
     w.line("}  // namespace syntaqlite");
     w.line("#endif");
@@ -133,6 +148,25 @@ pub fn generate_dialect_h(dialect: &str) -> String {
     w.line(&format!("#endif  // {guard}"));
 
     w.finish()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{generate_dialect_c, generate_dialect_h};
+
+    #[test]
+    fn c_source_exposes_default_symbol_guard() {
+        let c = generate_dialect_c("sqlite");
+        assert!(c.contains("#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL"));
+        assert!(c.contains("const SyntaqliteDialect* syntaqlite_dialect(void)"));
+    }
+
+    #[test]
+    fn header_exposes_default_symbol_guard() {
+        let h = generate_dialect_h("sqlite");
+        assert!(h.contains("#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL"));
+        assert!(h.contains("const SyntaqliteDialect* syntaqlite_dialect(void);"));
+    }
 }
 
 /// Generate the dialect dispatch header for amalgamation builds.
