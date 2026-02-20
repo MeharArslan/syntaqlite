@@ -22,8 +22,9 @@ def main():
     project_root = Path(__file__).parent.parent.parent
     codegen_crate = project_root / "syntaqlite-codegen"
     sqlite_src = project_root / "third_party" / "src" / "sqlite" / "src"
-    actions_dir = codegen_crate / "parser-actions"
-    nodes_dir = codegen_crate / "parser-nodes"
+    dialect_crate = project_root / "syntaqlite"
+    actions_dir = dialect_crate / "parser-actions"
+    nodes_dir = dialect_crate / "parser-nodes"
     tokenize_c = sqlite_src / "tokenize.c"
     output_dir = project_root / "syntaqlite" / "csrc"
     runtime_csrc = project_root / "syntaqlite-runtime" / "csrc"

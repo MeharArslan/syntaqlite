@@ -21,16 +21,16 @@ grep -n 'your_nonterminal' third_party/src/sqlite/src/parse.y
 
 ### 2. Define AST nodes
 
-Create or edit a `.synq` node definition file in `syntaqlite-codegen/parser-nodes/`.
+Create or edit a `.synq` node definition file in `syntaqlite/parser-nodes/`.
 
-See `syntaqlite-codegen/parser-nodes/SYNTAX.md` for the `.synq` file format.
+See `syntaqlite/parser-nodes/SYNTAX.md` for the `.synq` file format.
 
 ### 3. Write grammar action rules
 
-Create a `.y` file in `syntaqlite-codegen/parser-actions/`:
+Create a `.y` file in `syntaqlite/parser-actions/`:
 
 ```c
-// syntaqlite-codegen/parser-actions/your_actions.y
+// syntaqlite/parser-actions/your_actions.y
 
 // Conventions:
 // - pCtx: SyntaqliteParseContext*
@@ -106,7 +106,7 @@ Watch for:
 
 | File | Purpose |
 |------|---------|
-| `syntaqlite-codegen/parser-nodes/*.synq` | AST node definitions |
-| `syntaqlite-codegen/parser-actions/*.y` | Grammar action rules |
+| `syntaqlite/parser-nodes/*.synq` | AST node definitions |
+| `syntaqlite/parser-actions/*.y` | Grammar action rules |
 | `syntaqlite-codegen/` | Rust code generator |
 | `third_party/src/sqlite/src/parse.y` | Upstream SQLite grammar (ground truth) |

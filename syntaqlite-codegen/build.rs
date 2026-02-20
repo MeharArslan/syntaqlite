@@ -58,7 +58,7 @@ fn register_grammar_files() {
     }
 
     // Track all parser action files
-    let parser_actions_dir = base_dir.join("parser-actions");
+    let parser_actions_dir = base_dir.join("../syntaqlite/parser-actions");
     if parser_actions_dir.exists() {
         println!("cargo:rerun-if-changed={}", parser_actions_dir.display());
 
@@ -73,7 +73,7 @@ fn register_grammar_files() {
     }
 
     // Track parser nodes directory too
-    let parser_nodes_dir = base_dir.join("parser-nodes");
+    let parser_nodes_dir = base_dir.join("../syntaqlite/parser-nodes");
     if parser_nodes_dir.exists() {
         println!("cargo:rerun-if-changed={}", parser_nodes_dir.display());
     }

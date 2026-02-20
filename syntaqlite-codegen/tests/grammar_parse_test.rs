@@ -22,8 +22,8 @@ fn test_grammar_integration() {
     let base_dir = PathBuf::from(manifest_dir);
 
     let sqlite_parse_y = base_dir.join("../third_party/src/sqlite/src/parse.y");
-    let parser_actions_dir = base_dir.join("parser-actions");
-    let common_y = base_dir.join("parser-actions/_common.y");
+    let parser_actions_dir = base_dir.join("../syntaqlite/parser-actions");
+    let common_y = base_dir.join("../syntaqlite/parser-actions/_common.y");
 
     // Skip if workspace files not available
     if !sqlite_parse_y.exists() || !parser_actions_dir.exists() {

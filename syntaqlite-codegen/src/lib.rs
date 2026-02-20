@@ -279,26 +279,99 @@ pub fn generate_parser(actions_dir: &str, output_dir: &str) -> Result<(), String
     Ok(())
 }
 
+/// Extract terminal symbols (potential keywords) from extension `.y` grammar
+/// files using the Lemon grammar parser.
+///
+/// Collects uppercase identifiers from `%token` declarations, `%fallback`
+/// directives, and RHS symbols in grammar rules. Duplicates against the base
+/// keyword table are handled by `run_mkkeyword` (silently skipped).
+pub fn extract_terminals_from_y(extension_y_contents: &[&str]) -> Vec<String> {
+    use std::collections::HashSet;
+
+    let mut terminals: HashSet<String> = HashSet::new();
+
+    for content in extension_y_contents {
+        let grammar = match grammar_parser::LemonGrammar::parse(content) {
+            Ok(g) => g,
+            Err(_) => continue,
+        };
+
+        // %token declarations
+        for tok in &grammar.tokens {
+            if is_keyword_like(tok.name) {
+                terminals.insert(tok.name.to_string());
+            }
+        }
+
+        // %fallback declarations (both target and token lists)
+        for fb in &grammar.fallbacks {
+            for tok in &fb.tokens {
+                if is_keyword_like(tok) {
+                    terminals.insert(tok.to_string());
+                }
+            }
+        }
+
+        // Uppercase RHS symbols in rules (terminals in Lemon are uppercase)
+        for rule in &grammar.rules {
+            for sym in &rule.rhs {
+                if is_keyword_like(sym.name) {
+                    terminals.insert(sym.name.to_string());
+                }
+            }
+        }
+    }
+
+    terminals.into_iter().collect()
+}
+
+/// Returns true if `name` looks like a keyword token: purely uppercase
+/// ASCII letters, at least 2 characters.
+fn is_keyword_like(name: &str) -> bool {
+    name.len() >= 2 && name.chars().all(|c| c.is_ascii_uppercase())
+}
+
 /// Generate keyword hash lookup as a single `.c` file.
 ///
 /// Returns the content of `sqlite_keyword.c` containing tables, char maps,
 /// and the `synq_sqlite3_keywordCode` function.
+///
+/// When `extra_keywords` is non-empty, those keywords are added to the
+/// hash table alongside the base 148 SQLite keywords (duplicates are
+/// silently skipped). This produces a fully self-contained keyword lookup
+/// that recognises both base and extension keywords.
 pub fn generate_keyword_hash(
     extract_result: &TokenizerExtractResult,
     dialect: &str,
+    extra_keywords: &[String],
 ) -> Result<String, String> {
-    // Run mkkeywordhash as a subprocess and capture its output
-    let output = std::process::Command::new(
-        std::env::current_exe().map_err(|e| format!("Failed to get current executable: {}", e))?,
-    )
-    .arg("mkkeyword")
-    .output()
-    .map_err(|e| format!("Failed to spawn mkkeyword subprocess: {}", e))?;
+    let exe =
+        std::env::current_exe().map_err(|e| format!("Failed to get current executable: {}", e))?;
+    let mut cmd = std::process::Command::new(&exe);
+    cmd.arg("mkkeyword");
+
+    // Write extra keywords to a temp file if any.
+    let _kw_file; // keep alive
+    if !extra_keywords.is_empty() {
+        let f = tempfile::NamedTempFile::new()
+            .map_err(|e| format!("Failed to create keyword temp file: {}", e))?;
+        fs::write(f.path(), extra_keywords.join("\n"))
+            .map_err(|e| format!("Failed to write keyword file: {}", e))?;
+        cmd.arg("--extra-file").arg(f.path());
+        _kw_file = Some(f);
+    } else {
+        _kw_file = None;
+    }
+
+    let output = cmd
+        .output()
+        .map_err(|e| format!("Failed to spawn mkkeyword subprocess: {}", e))?;
 
     if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
         return Err(format!(
-            "mkkeyword failed with exit code: {}",
-            output.status
+            "mkkeyword failed with exit code: {}\n{}",
+            output.status, stderr
         ));
     }
 

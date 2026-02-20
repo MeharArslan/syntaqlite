@@ -317,12 +317,30 @@ fn codegen_to_dir_with_base(
     let (tokenize_content, extract_result) =
         syntaqlite_codegen::extract_tokenizer(tokenize_c, dialect)?;
 
-    // Generate keyword hash.
-    let keyword_c = syntaqlite_codegen::generate_keyword_hash(&extract_result, dialect)?;
+    // Extract extra keywords from extension .y files (terminals not in
+    // the base keyword table are added to the hash). Duplicates with
+    // base keywords are silently skipped by mkkeywordhash.
+    let ext_y_contents: Vec<&str> = y_files
+        .iter()
+        .filter(|(name, _)| {
+            // Only scan extension files (not base files).
+            !syntaqlite_codegen::base_files::base_y_files()
+                .iter()
+                .any(|(base_name, _)| *base_name == name.as_str())
+        })
+        .map(|(_, content)| content.as_str())
+        .collect();
+    let extra_keywords = syntaqlite_codegen::extract_terminals_from_y(&ext_y_contents);
+
+    // Generate keyword hash with extension keywords included.
+    let keyword_c =
+        syntaqlite_codegen::generate_keyword_hash(&extract_result, dialect, &extra_keywords)?;
 
     // Write token header.
     let tokens_content = fs::read_to_string(work_dir.path().join("parse.h"))
         .map_err(|e| format!("reading parse.h: {e}"))?;
+
+    // Write token header.
     let upper = dialect.to_uppercase();
     let guard = format!("SYNTAQLITE_{upper}_TOKENS_H");
     let guarded = format!(
@@ -406,6 +424,7 @@ fn codegen_to_dir_with_base(
 
     Ok(())
 }
+
 
 /// Run the CLI with the given dialect configuration.
 pub fn run(name: &str, dialect: &Dialect) {

@@ -46,55 +46,111 @@ unsafe extern "C" {
     ) -> c_int;
 }
 
-/// Run mkkeywordhash with arbitrary arguments (pass-through)
+/// Run mkkeywordhash with arbitrary arguments (pass-through).
+///
+/// When `--extra-file <path>` is provided, reads extra keyword names from
+/// that file (one per line) and appends them to the base keyword table.
+/// Duplicates (keywords already in the base table) are silently skipped.
+///
+/// Without `--extra-file`, uses only the compiled-in base table.
 ///
 /// **Warning: This function ALWAYS exits the process and never returns!**
-///
-/// This function calls the embedded mkkeywordhash C code and then exits the process
-/// with mkkeywordhash's exit code. This ensures consistent behavior since C code can
-/// call `exit()` directly anyway.
-///
-/// **Only use this function if:**
-/// - You're calling it from a CLI tool where exiting is acceptable
-/// - You're running it in a subprocess that can be terminated
-///
-/// # Arguments
-/// * `args` - Arguments to pass to mkkeywordhash (not including program name)
 pub fn run_mkkeyword(args: &[String]) -> ! {
-    let c_args = run::prepare_c_args("mkkeywordhash", args);
+    use std::ffi::CString;
 
-    // Get pointers to the global data
+    // Parse --extra-file from args.
+    let mut extra_file: Option<String> = None;
+    let mut forward_args: Vec<String> = Vec::new();
+    let mut skip_next = false;
+    for (i, arg) in args.iter().enumerate() {
+        if skip_next {
+            skip_next = false;
+            continue;
+        }
+        if arg == "--extra-file" {
+            extra_file = args.get(i + 1).cloned();
+            skip_next = true;
+        } else {
+            forward_args.push(arg.clone());
+        }
+    }
+
+    let c_args = run::prepare_c_args("mkkeywordhash", &forward_args);
+
+    // Read the compiled-in base keyword table.
     let table_ptr = std::ptr::addr_of!(aKeywordTable);
     let n_keyword_ptr = std::ptr::addr_of!(nKeyword);
-
-    // Read the global data
-    // SAFETY:
-    // - aKeywordTable and nKeyword are valid global symbols compiled into our binary
-    // - read() copies the data without creating references
     let (keywords_array, n_keywords) = unsafe {
-        let n_keywords = n_keyword_ptr.read();
-        let keywords_array = std::ptr::read(table_ptr);
-        (keywords_array, n_keywords)
+        let n = n_keyword_ptr.read();
+        let arr = std::ptr::read(table_ptr);
+        (arr, n)
     };
+    let mut keywords_copy = keywords_array.to_vec();
 
-    // Create a mutable copy for C to modify
-    let keywords_copy = keywords_array.to_vec();
+    // Collect base keyword names for deduplication.
+    // z_name is a pointer to a string literal (z_orig_name is zero-initialized
+    // at this point — it gets filled in later by mkkeyword_main).
+    let base_names: std::collections::HashSet<String> = keywords_copy
+        .iter()
+        .map(|kw| unsafe {
+            std::ffi::CStr::from_ptr(kw.z_name)
+                .to_string_lossy()
+                .to_string()
+        })
+        .collect();
 
-    // Prepare arguments for C function call
+    // Read extra keywords from file and append (skipping duplicates).
+    let mut extra_cstrings: Vec<(CString, CString)> = Vec::new();
+    if let Some(path) = &extra_file {
+        let content =
+            std::fs::read_to_string(path).unwrap_or_else(|e| panic!("reading {path}: {e}"));
+        for line in content.lines() {
+            let name = line.trim().to_uppercase();
+            if name.is_empty() || base_names.contains(&name) {
+                continue;
+            }
+
+            let name_c = CString::new(name.as_str()).expect("keyword contains NUL");
+            let token_c = CString::new(format!("TK_{name}")).expect("token type contains NUL");
+            extra_cstrings.push((name_c, token_c));
+        }
+    }
+
+    for (name_c, token_c) in &extra_cstrings {
+        let bytes = name_c.to_bytes();
+        assert!(bytes.len() < 20, "keyword {:?} too long for z_orig_name[20]", name_c);
+
+        let mut z_orig_name = [0i8; 20];
+        for (i, &b) in bytes.iter().enumerate() {
+            z_orig_name[i] = b as i8;
+        }
+
+        keywords_copy.push(Keyword {
+            z_name: name_c.as_ptr() as *mut c_char,
+            z_token_type: token_c.as_ptr() as *mut c_char,
+            mask: 0x00000002, // ALWAYS
+            priority: 0,
+            id: 0,
+            hash: 0,
+            offset: 0,
+            len: 0,
+            prefix: 0,
+            longest_suffix: 0,
+            i_next: 0,
+            substr_id: 0,
+            substr_offset: 0,
+            z_orig_name,
+        });
+    }
+
+    let total = n_keywords + extra_cstrings.len() as c_int;
     let argc = c_args.argc;
     let argv = c_args.argv();
     let keywords_ptr = keywords_copy.as_ptr();
 
-    // Call the C function with the mutable copy
-    // SAFETY:
-    // - mkkeyword_main is a valid C function compiled into our binary
-    // - argc matches the length of argv (excluding null terminator)
-    // - All CStrings are valid null-terminated C strings
-    // - CStrings are kept alive in c_args until after the call
-    // - argv pointers are valid for the duration of the call
-    // - argv array is null-terminated for C
-    // - keywords_copy is kept alive for the duration of the call
-    let exit_code = unsafe { mkkeyword_main(argc, argv, keywords_ptr, n_keywords) };
+    // SAFETY: mkkeyword_main is a valid C function; all pointers and CStrings
+    // are kept alive in keywords_copy, extra_cstrings, and c_args.
+    let exit_code = unsafe { mkkeyword_main(argc, argv, keywords_ptr, total) };
 
     std::process::exit(exit_code);
 }

@@ -14,10 +14,15 @@ from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
 class PerfettoExtension(TestSuite):
     """Tests for perfetto dialect extension syntax."""
 
-    # NOTE: test_create_perfetto_table is not yet possible because the
-    # tokenizer (extracted from SQLite's tokenize.c) doesn't recognize
-    # extension keywords like PERFETTO — it emits ID instead.  Once
-    # tokenizer extension support is implemented, add that test here.
+    def test_create_perfetto_table(self):
+        """Extension keyword PERFETTO is recognized by the tokenizer."""
+        return AstTestBlueprint(
+            sql="CREATE PERFETTO TABLE foo",
+            out="""\
+            CreatePerfettoTableStmt
+              table_name: "foo"
+""",
+        )
 
     def test_base_select_still_works(self):
         """Base SQLite syntax must still work in an extended dialect."""

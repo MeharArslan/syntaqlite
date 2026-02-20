@@ -152,7 +152,7 @@ fn main() {
                     eprintln!("Generating keyword hash...");
                 }
                 let keyword_c =
-                    syntaqlite_codegen::generate_keyword_hash(&extract_result, "sqlite")?;
+                    syntaqlite_codegen::generate_keyword_hash(&extract_result, "sqlite", &[])?;
 
                 // Step 4: Clean stale generated files, then write outputs
                 let out = Path::new(&output_dir);
