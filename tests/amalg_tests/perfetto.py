@@ -21,6 +21,7 @@ class PerfettoExtension(TestSuite):
             out="""\
             CreatePerfettoTableStmt
               table_name: "foo"
+              select: (none)
 """,
         )
 
