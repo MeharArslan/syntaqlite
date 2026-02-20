@@ -195,7 +195,7 @@ pub fn extract_tokenizer(
     let output = c_transformer::CTransformer::new(&combined)
         .add_array_static("sqlite3CtypeMap")
         .replace_in_function("sqlite3GetToken", "keywordCode", "synq_sqlite3_keywordCode")
-        .rename_function("sqlite3GetToken", "synq_sqlite3GetToken")
+        .rename_function("sqlite3GetToken", &format!("Synq{}GetToken", ast_codegen::pascal_case(dialect)))
         .replace_all("TK_", "SYNTAQLITE_TK_")
         .finish();
 

@@ -41,17 +41,17 @@ static const SyntaqliteDialect SQLITE_DIALECT = {
     .fmt_dispatch_count = sizeof(fmt_dispatch) / sizeof(fmt_dispatch[0]),
 
     // Parser lifecycle
-    .parser_alloc = SyntaqliteParseAlloc,
-    .parser_init = SyntaqliteParseInit,
-    .parser_finalize = SyntaqliteParseFinalize,
-    .parser_free = SyntaqliteParseFree,
-    .parser_feed = SyntaqliteParse,
+    .parser_alloc = SynqSqliteParseAlloc,
+    .parser_init = SynqSqliteParseInit,
+    .parser_finalize = SynqSqliteParseFinalize,
+    .parser_free = SynqSqliteParseFree,
+    .parser_feed = SynqSqliteParse,
 #ifndef NDEBUG
-    .parser_trace = SyntaqliteParseTrace,
+    .parser_trace = SynqSqliteParseTrace,
 #endif
 
     // Tokenizer
-    .get_token = synq_sqlite3GetToken,
+    .get_token = SynqSqliteGetToken,
 };
 
 // ============ Public API ============

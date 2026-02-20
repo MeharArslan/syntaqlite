@@ -33,7 +33,7 @@ pub struct ParserConfig {
 pub struct Parser {
     pub(crate) raw: *mut ffi::Parser,
     /// Null-terminated copy of the source text. The C tokenizer (SQLite's
-    /// `synq_sqlite3GetToken`) reads until it hits a null byte, so we must
+    /// `SynqSqliteGetToken`) reads until it hits a null byte, so we must
     /// ensure the source is null-terminated. Rust `&str` does not guarantee
     /// this. The buffer is reused across `parse()` calls to avoid repeated
     /// allocations.

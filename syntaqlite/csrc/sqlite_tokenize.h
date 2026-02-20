@@ -6,6 +6,6 @@
 
 #include "syntaqlite_ext/sqlite_compat.h"
 
-i64 synq_sqlite3GetToken(const unsigned char* z, int* tokenType);
+i64 SynqSqliteGetToken(const unsigned char* z, int* tokenType);
 
 #endif  // SYNTAQLITE_INTERNAL_SQLITE_TOKENIZE_H

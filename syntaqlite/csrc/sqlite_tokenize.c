@@ -150,7 +150,7 @@ static const unsigned char aiClass[] = {
 #endif
 };
 
-i64 synq_sqlite3GetToken(const unsigned char *z, int *tokenType){
+i64 SynqSqliteGetToken(const unsigned char *z, int *tokenType){
   i64 i;
   int c;
   switch( aiClass[*z] ){  /* Switch on the character-class of the first byte
