@@ -27,9 +27,10 @@ pub struct Tokenizer {
 unsafe impl Send for Tokenizer {}
 
 impl Tokenizer {
-    /// Create a new tokenizer.
-    pub fn new() -> Self {
-        let raw = unsafe { ffi::syntaqlite_tokenizer_create(std::ptr::null()) };
+    /// Create a new tokenizer bound to the given dialect.
+    pub fn new(dialect: crate::dialect::Dialect<'_>) -> Self {
+        let raw =
+            unsafe { ffi::syntaqlite_tokenizer_create(std::ptr::null(), dialect.raw as *const _) };
         assert!(!raw.is_null(), "tokenizer allocation failed");
         Tokenizer {
             raw,
@@ -70,15 +71,10 @@ impl Tokenizer {
     /// The source must be valid UTF-8 (panics otherwise).
     pub fn tokenize_cstr<'a>(&'a mut self, source: &'a CStr) -> TokenCursor<'a> {
         let bytes = source.to_bytes();
-        let source_str =
-            std::str::from_utf8(bytes).expect("source must be valid UTF-8");
+        let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 
         unsafe {
-            ffi::syntaqlite_tokenizer_reset(
-                self.raw,
-                source.as_ptr(),
-                bytes.len() as u32,
-            );
+            ffi::syntaqlite_tokenizer_reset(self.raw, source.as_ptr(), bytes.len() as u32);
         }
         TokenCursor {
             raw: self.raw,

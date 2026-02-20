@@ -60,7 +60,6 @@ impl<'a> CommentCtx<'a> {
                         // Leading: comment on its own line.
                         leading.push(arena.hardline());
                         leading.push(arena.text(text));
-
                     } else {
                         // Trailing: comment at end of current line
                         let space = arena.text(" ");
@@ -74,7 +73,6 @@ impl<'a> CommentCtx<'a> {
                     if has_newline {
                         leading.push(arena.hardline());
                         leading.push(arena.text(text));
-
                     } else {
                         trailing.push(arena.text(" "));
                         trailing.push(arena.text(text));
@@ -106,11 +104,7 @@ impl<'a> CommentCtx<'a> {
 /// - Trailing comments (LineSuffix) go before any pending lines
 /// - Pending lines are flushed
 /// - Leading comments (own-line comments) go after pending lines
-pub fn flush_comments(
-    drain: DrainResult,
-    pending_lines: &mut Vec<DocId>,
-    parts: &mut Vec<DocId>,
-) {
+pub fn flush_comments(drain: DrainResult, pending_lines: &mut Vec<DocId>, parts: &mut Vec<DocId>) {
     if drain.trailing != NIL_DOC {
         parts.push(drain.trailing);
     }

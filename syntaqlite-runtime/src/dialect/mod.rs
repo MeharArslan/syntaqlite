@@ -71,10 +71,7 @@ impl<'d> Dialect<'d> {
             }
             let byte_offset = offset as usize * 6;
             let byte_len = length as usize * 6;
-            let slice = std::slice::from_raw_parts(
-                self.raw.fmt_ops.add(byte_offset),
-                byte_len,
-            );
+            let slice = std::slice::from_raw_parts(self.raw.fmt_ops.add(byte_offset), byte_len);
             Some((slice, length as usize))
         }
     }

@@ -51,11 +51,15 @@ typedef struct SyntaqliteToken {
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-// Allocate a tokenizer. The tokenizer is inert until reset() is called.
-// The mem methods are copied — the caller's struct does not need to outlive
-// the tokenizer. Pass NULL for all defaults (malloc/free).
+// Forward declaration.
+typedef struct SyntaqliteDialect SyntaqliteDialect;
+
+// Allocate a tokenizer bound to a dialect. The tokenizer is inert until
+// reset() is called. The dialect must outlive the tokenizer.
+// The mem methods are copied — pass NULL for all defaults (malloc/free).
 SyntaqliteTokenizer* syntaqlite_tokenizer_create(
-    const SyntaqliteMemMethods* mem);
+    const SyntaqliteMemMethods* mem,
+    const SyntaqliteDialect* dialect);
 
 // Bind a source buffer and start tokenizing from the beginning. The source
 // must remain valid until the next reset() or destroy(). Can be called

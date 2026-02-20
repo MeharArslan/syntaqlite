@@ -7,19 +7,16 @@
 #include "syntaqlite_sqlite/sqlite_tokens.h"
 #include "syntaqlite/dialect.h"
 #include "csrc/dialect_builder.h"
-#include "csrc/dialect_parse.h"
 #include "csrc/dialect_meta.h"
 #include "csrc/dialect_fmt.h"
+#include "csrc/sqlite_parse.h"
+#include "csrc/sqlite_tokenize.h"
 
 // ============ sqlite dialect descriptor ============
 
 
 static const SyntaqliteDialect SQLITE_DIALECT = {
     .name = "sqlite",
-
-    // Parse tables + reduce actions
-    .tables = &SQLITE_PARSE_TABLES,
-    .reduce_actions = (SynqReduceActionsFn)yy_reduce_actions,
 
     .range_meta = range_meta_table,
     .tk_space = SYNTAQLITE_TK_SPACE,
@@ -42,6 +39,19 @@ static const SyntaqliteDialect SQLITE_DIALECT = {
     .fmt_op_count = sizeof(fmt_ops) / 6,
     .fmt_dispatch = fmt_dispatch,
     .fmt_dispatch_count = sizeof(fmt_dispatch) / sizeof(fmt_dispatch[0]),
+
+    // Parser lifecycle
+    .parser_alloc = SyntaqliteParseAlloc,
+    .parser_init = SyntaqliteParseInit,
+    .parser_finalize = SyntaqliteParseFinalize,
+    .parser_free = SyntaqliteParseFree,
+    .parser_feed = SyntaqliteParse,
+#ifndef NDEBUG
+    .parser_trace = SyntaqliteParseTrace,
+#endif
+
+    // Tokenizer
+    .get_token = synq_sqlite3GetToken,
 };
 
 // ============ Public API ============

@@ -61,7 +61,10 @@ fn feed_tokens_multi_statement() {
 
     // Second statement's first token provides the lookahead that completes stmt 1.
     let stmt1 = cursor.feed_token(TokenType::Select, 10..16).unwrap();
-    assert!(stmt1.is_some(), "first statement should complete on next SELECT");
+    assert!(
+        stmt1.is_some(),
+        "first statement should complete on next SELECT"
+    );
 
     // Continue second statement.
     cursor.feed_token(TokenType::Integer, 17..18).unwrap();
@@ -92,17 +95,21 @@ fn feed_token_skips_space() {
 /// TK_COMMENT should be recorded as a comment.
 #[test]
 fn feed_token_records_comment() {
-
     use syntaqlite_runtime::parser::{LowLevelParser, ParserConfig};
 
     let source = "SELECT -- hello\n1";
-    let config = ParserConfig { trace: false, collect_tokens: true };
+    let config = ParserConfig {
+        trace: false,
+        collect_tokens: true,
+    };
     let mut tp = LowLevelParser::with_config(syntaqlite::low_level::dialect(), &config);
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
     cursor.feed_token(TokenType::Comment as u32, 7..15).unwrap();
-    cursor.feed_token(TokenType::Integer as u32, 16..17).unwrap();
+    cursor
+        .feed_token(TokenType::Integer as u32, 16..17)
+        .unwrap();
 
     cursor.finish().unwrap().expect("expected a statement");
 
@@ -114,7 +121,6 @@ fn feed_token_records_comment() {
 /// begin_macro / end_macro records macro regions.
 #[test]
 fn macro_regions_recorded() {
-
     use syntaqlite_runtime::parser::LowLevelParser;
 
     let source = "SELECT 1";
@@ -137,7 +143,6 @@ fn macro_regions_recorded() {
 /// Nested macro regions are both recorded.
 #[test]
 fn nested_macro_regions() {
-
     use syntaqlite_runtime::parser::LowLevelParser;
 
     let source = "SELECT 1";

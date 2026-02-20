@@ -6,8 +6,8 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand, ValueEnum};
-use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
 use syntaqlite_runtime::Dialect;
+use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
 
 #[derive(Parser)]
 #[command(about = "SQL formatting and analysis tools")]
@@ -120,8 +120,7 @@ fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
     }
 
     for path in &paths {
-        let source =
-            fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let source = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
         if paths.len() > 1 {
             println!("==> {} <==", path.display());
         }
@@ -178,14 +177,12 @@ fn cmd_fmt(
 
     let mut errors = Vec::new();
     for path in &paths {
-        let source =
-            fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let source = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
         match formatter.format(&source) {
             Ok(out) => {
                 if in_place {
                     if out != source {
-                        fs::write(path, &out)
-                            .map_err(|e| format!("{}: {e}", path.display()))?;
+                        fs::write(path, &out).map_err(|e| format!("{}: {e}", path.display()))?;
                         eprintln!("formatted {}", path.display());
                     }
                 } else {
@@ -219,8 +216,7 @@ fn cmd_generate_dialect(
     use syntaqlite_codegen::base_files;
 
     // Run codegen into a temp directory.
-    let temp_dir = tempfile::TempDir::new()
-        .map_err(|e| format!("creating temp directory: {e}"))?;
+    let temp_dir = tempfile::TempDir::new().map_err(|e| format!("creating temp directory: {e}"))?;
     let temp = temp_dir.path();
     let csrc = temp.join("csrc");
     let include = temp.join("include").join(format!("syntaqlite_{dialect}"));
@@ -241,7 +237,14 @@ fn cmd_generate_dialect(
     let merged_y = base_files::merge_file_sets(base_files::base_y_files(), &ext_y);
     let merged_synq = base_files::merge_file_sets(base_files::base_synq_files(), &ext_synq);
 
-    codegen_to_dir_with_base(dialect, &merged_y, &merged_synq, tokenize_c, &csrc, &include)?;
+    codegen_to_dir_with_base(
+        dialect,
+        &merged_y,
+        &merged_synq,
+        tokenize_c,
+        &csrc,
+        &include,
+    )?;
 
     // Full amalgamation: runtime + dialect into one pair of files.
     let result = amalgamate::amalgamate_full(dialect, Path::new(runtime_dir), temp.as_ref())?;
@@ -298,8 +301,7 @@ fn codegen_to_dir_with_base(
     }
 
     // Generate parser (lemon) from in-memory .y contents.
-    let work_dir = tempfile::TempDir::new()
-        .map_err(|e| format!("creating work directory: {e}"))?;
+    let work_dir = tempfile::TempDir::new().map_err(|e| format!("creating work directory: {e}"))?;
     syntaqlite_codegen::generate_parser_from_contents(y_files, work_dir.path().to_str().unwrap())?;
 
     // Extract tokenizer.
@@ -307,8 +309,7 @@ fn codegen_to_dir_with_base(
         syntaqlite_codegen::extract_tokenizer(tokenize_c, dialect)?;
 
     // Generate keyword hash.
-    let (keyword_tables, keyword_func) =
-        syntaqlite_codegen::generate_keyword_hash(&extract_result, dialect)?;
+    let keyword_c = syntaqlite_codegen::generate_keyword_hash(&extract_result, dialect)?;
 
     // Write token header.
     let tokens_content = fs::read_to_string(work_dir.path().join("parse.h"))
@@ -342,25 +343,21 @@ fn codegen_to_dir_with_base(
     fs::write(include_dir.join(format!("{dialect}_node.h")), ast_nodes_h)
         .map_err(|e| format!("writing {dialect}_node.h: {e}"))?;
 
-    let ast_builder_h = syntaqlite_codegen::ast_codegen::generate_ast_builder_h(&all_items, dialect);
+    let ast_builder_h =
+        syntaqlite_codegen::ast_codegen::generate_ast_builder_h(&all_items, dialect);
     fs::write(csrc_dir.join("dialect_builder.h"), ast_builder_h)
         .map_err(|e| format!("writing dialect_builder.h: {e}"))?;
 
-    // Parse engine + data header.
+    // Parse engine (raw Lemon output, compiled as part of dialect unit).
     let raw_parse_c = fs::read_to_string(work_dir.path().join("parse.c"))
         .map_err(|e| format!("reading parse.c: {e}"))?;
-    let (parse_c, parse_data_h) = syntaqlite_codegen::split_parse_c(&raw_parse_c, dialect)?;
-    fs::write(csrc_dir.join("sqlite_parse.c"), parse_c)
+    fs::write(csrc_dir.join("sqlite_parse.c"), raw_parse_c)
         .map_err(|e| format!("writing sqlite_parse.c: {e}"))?;
-    fs::write(csrc_dir.join("dialect_parse.h"), parse_data_h)
-        .map_err(|e| format!("writing dialect_parse.h: {e}"))?;
 
     // Tokenizer + keywords.
     fs::write(csrc_dir.join("sqlite_tokenize.c"), tokenize_content)
         .map_err(|e| format!("writing sqlite_tokenize.c: {e}"))?;
-    fs::write(csrc_dir.join("sqlite_keyword_tables.h"), keyword_tables)
-        .map_err(|e| format!("writing sqlite_keyword_tables.h: {e}"))?;
-    fs::write(csrc_dir.join("sqlite_keyword.c"), keyword_func)
+    fs::write(csrc_dir.join("sqlite_keyword.c"), keyword_c)
         .map_err(|e| format!("writing sqlite_keyword.c: {e}"))?;
 
     // Metadata + formatter data.
@@ -386,10 +383,9 @@ fn codegen_to_dir_with_base(
 
 /// Run the CLI with the given dialect configuration.
 pub fn run(name: &str, dialect: &Dialect) {
-    let cli = Cli::try_parse_from(
-        std::iter::once(name.to_string()).chain(std::env::args().skip(1)),
-    )
-    .unwrap_or_else(|e| e.exit());
+    let cli =
+        Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
+            .unwrap_or_else(|e| e.exit());
 
     let result = match cli.command {
         Command::Ast { files } => cmd_ast(dialect, files),

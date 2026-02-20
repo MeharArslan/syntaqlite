@@ -18,7 +18,9 @@ pub(crate) struct ParseResult {
 
 const _: () = {
     const P: usize = std::mem::size_of::<*const ()>();
-    const fn align_up(n: usize) -> usize { (n + P - 1) & !(P - 1) }
+    const fn align_up(n: usize) -> usize {
+        (n + P - 1) & !(P - 1)
+    }
 
     assert!(std::mem::offset_of!(ParseResult, root) == 0);
     assert!(std::mem::offset_of!(ParseResult, error) == 4);
@@ -118,7 +120,9 @@ const _: () = {
 unsafe extern "C" {
     // Parser lifecycle
     pub fn syntaqlite_create_parser_with_dialect(
-        mem: *const MemMethods, dialect: *const Dialect) -> *mut Parser;
+        mem: *const MemMethods,
+        dialect: *const Dialect,
+    ) -> *mut Parser;
     pub fn syntaqlite_parser_reset(p: *mut Parser, source: *const c_char, len: u32);
     pub fn syntaqlite_parser_next(p: *mut Parser) -> ParseResult;
     pub fn syntaqlite_parser_destroy(p: *mut Parser);
@@ -135,24 +139,27 @@ unsafe extern "C" {
 
     // Low-level token-feeding API
     pub fn syntaqlite_parser_feed_token(
-        p: *mut Parser, token_type: c_int,
-        text: *const c_char, len: c_int) -> c_int;
+        p: *mut Parser,
+        token_type: c_int,
+        text: *const c_char,
+        len: c_int,
+    ) -> c_int;
     pub fn syntaqlite_parser_result(p: *mut Parser) -> ParseResult;
     pub fn syntaqlite_parser_finish(p: *mut Parser) -> c_int;
 
     // Macro region tracking
-    pub fn syntaqlite_parser_begin_macro(
-        p: *mut Parser, call_offset: u32, call_length: u32);
+    pub fn syntaqlite_parser_begin_macro(p: *mut Parser, call_offset: u32, call_length: u32);
     pub fn syntaqlite_parser_end_macro(p: *mut Parser);
-    pub fn syntaqlite_parser_macro_regions(
-        p: *mut Parser, count: *mut u32) -> *const MacroRegion;
+    pub fn syntaqlite_parser_macro_regions(p: *mut Parser, count: *mut u32) -> *const MacroRegion;
 
     // AST dump
-    pub fn syntaqlite_dump_node(
-        p: *mut Parser, node_id: u32, indent: u32) -> *mut c_char;
+    pub fn syntaqlite_dump_node(p: *mut Parser, node_id: u32, indent: u32) -> *mut c_char;
 
     // Tokenizer
-    pub fn syntaqlite_tokenizer_create(mem: *const MemMethods) -> *mut Tokenizer;
+    pub fn syntaqlite_tokenizer_create(
+        mem: *const MemMethods,
+        dialect: *const crate::dialect::ffi::Dialect,
+    ) -> *mut Tokenizer;
     pub fn syntaqlite_tokenizer_reset(tok: *mut Tokenizer, source: *const c_char, len: u32);
     pub fn syntaqlite_tokenizer_next(tok: *mut Tokenizer, out: *mut Token) -> c_int;
     pub fn syntaqlite_tokenizer_destroy(tok: *mut Tokenizer);

@@ -37,7 +37,11 @@ impl<T> std::fmt::Debug for TypedList<'_, T> {
 impl<'a, T> TypedList<'a, T> {
     /// Construct a `TypedList` from a raw `NodeList` reference and reader.
     pub fn new(raw: &'a NodeList, reader: &'a NodeReader<'a>) -> Self {
-        TypedList { raw, reader, _phantom: PhantomData }
+        TypedList {
+            raw,
+            reader,
+            _phantom: PhantomData,
+        }
     }
 
     /// Number of children in this list.
@@ -62,7 +66,9 @@ impl<'a, T: FromArena<'a>> TypedList<'a, T> {
     pub fn iter(&self) -> impl Iterator<Item = T> + 'a {
         let reader = self.reader;
         let children = self.raw.children();
-        children.iter().filter_map(move |&id| T::from_arena(reader, id))
+        children
+            .iter()
+            .filter_map(move |&id| T::from_arena(reader, id))
     }
 }
 
@@ -72,6 +78,9 @@ impl<'a, T> FromArena<'a> for TypedList<'a, T> {
         let (ptr, _) = reader.node_ptr(id)?;
         // SAFETY: the arena tag was already validated as a list type by the
         // grammar; the pointer is valid for 'a.
-        Some(TypedList::new(unsafe { &*(ptr as *const NodeList) }, reader))
+        Some(TypedList::new(
+            unsafe { &*(ptr as *const NodeList) },
+            reader,
+        ))
     }
 }

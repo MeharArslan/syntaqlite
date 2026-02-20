@@ -3,14 +3,15 @@
 
 use syntaqlite::ast::Stmt;
 
-
 #[test]
 fn parse_select_1() {
     let mut parser = syntaqlite::Parser::new();
     let mut session = parser.parse("SELECT 1;");
 
     let stmt = session.next_statement().unwrap().unwrap();
-    let Stmt::SelectStmt(_select) = stmt else { panic!("expected SelectStmt") };
+    let Stmt::SelectStmt(_select) = stmt else {
+        panic!("expected SelectStmt")
+    };
 
     // No more statements.
     assert!(session.next_statement().is_none());

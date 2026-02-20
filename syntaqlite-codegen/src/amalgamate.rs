@@ -154,13 +154,9 @@ fn collect_files(dirs: &[&Path]) -> Result<FileGraph, String> {
     Ok(FileGraph { files })
 }
 
-fn walk_dir(
-    dir: &Path,
-    prefix: &str,
-    map: &mut BTreeMap<String, PathBuf>,
-) -> Result<(), String> {
-    let entries = fs::read_dir(dir)
-        .map_err(|e| format!("reading directory {}: {e}", dir.display()))?;
+fn walk_dir(dir: &Path, prefix: &str, map: &mut BTreeMap<String, PathBuf>) -> Result<(), String> {
+    let entries =
+        fs::read_dir(dir).map_err(|e| format!("reading directory {}: {e}", dir.display()))?;
     for entry in entries {
         let entry = entry.map_err(|e| format!("reading entry: {e}"))?;
         let path = entry.path();
@@ -393,14 +389,20 @@ fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
     }
     source.push_str(&format!("#include \"{header_filename}\"\n\n"));
 
-    // Handle SYNTAQLITE_INLINE_PARSER_DATA_HEADER: if any file uses it and
-    // dialect_parse.h is already inlined, define the macro to nothing.
-    let has_inline_macro = files.iter().any(|f| {
-        f.content.contains("SYNTAQLITE_INLINE_PARSER_DATA_HEADER")
-    });
-    if has_inline_macro {
-        source.push_str("#define SYNTAQLITE_INLINE_PARSER_DATA_HEADER /* already inlined */\n\n");
+    // Handle inline macros: when a file uses an inline include macro and the
+    // target header is already inlined in the amalgamation, define the macro
+    // to nothing so the `#include MACRO` becomes a no-op.
+    for macro_name in &[
+        "SYNTAQLITE_INLINE_PARSER_DATA_HEADER",
+        "SYNTAQLITE_INLINE_KEYWORD_TABLES",
+        "SYNTAQLITE_INLINE_TOKEN_HEADER",
+    ] {
+        let has_macro = files.iter().any(|f| f.content.contains(macro_name));
+        if has_macro {
+            source.push_str(&format!("#define {macro_name} /* already inlined */\n"));
+        }
     }
+    source.push('\n');
 
     // Full mode: extension headers go into the .c alongside internal headers.
     if matches!(mode, EmitMode::Full(_)) {
@@ -417,7 +419,11 @@ fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
         emit_file(&files[i], &inlined_keys, &mut source);
     }
 
-    Ok(AmalgamateOutput { header, source, ext_header })
+    Ok(AmalgamateOutput {
+        header,
+        source,
+        ext_header,
+    })
 }
 
 /// Detect the include-guard macro of a header file, if any.
@@ -431,7 +437,12 @@ fn detect_include_guard(content: &str) -> Option<String> {
     let mut pp = Vec::new();
     for &line in &lines {
         let t = line.trim();
-        if t.is_empty() || t.starts_with("//") || t.starts_with("/*") || t.starts_with("**") || t.starts_with("*/") {
+        if t.is_empty()
+            || t.starts_with("//")
+            || t.starts_with("/*")
+            || t.starts_with("**")
+            || t.starts_with("*/")
+        {
             continue;
         }
         if t.starts_with('#') {
@@ -550,4 +561,3 @@ fn emit_file(file: &SourceFile, _inlined_keys: &HashSet<&str>, out: &mut String)
         file.include_key
     ));
 }
-

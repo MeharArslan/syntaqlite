@@ -1,13 +1,13 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use std::ffi::{c_int, CStr};
+use std::ffi::{CStr, c_int};
 use std::ops::Range;
 
-use crate::dialect::Dialect;
 use super::ffi;
 use super::nodes::NodeId;
 use super::parser::{CursorBase, ParseError, ParserConfig};
+use crate::dialect::Dialect;
 
 /// A low-level parser for token-by-token feeding. Owns its own C parser
 /// handle and source buffer, independent of `Parser`.
@@ -22,9 +22,8 @@ unsafe impl Send for LowLevelParser {}
 impl LowLevelParser {
     /// Create a new low-level parser for the given dialect.
     pub fn new(dialect: &Dialect) -> Self {
-        let raw = unsafe {
-            ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw)
-        };
+        let raw =
+            unsafe { ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw) };
         assert!(!raw.is_null(), "parser allocation failed");
         LowLevelParser {
             raw,
@@ -45,13 +44,19 @@ impl LowLevelParser {
     /// Bind source text and return a `LowLevelCursor` for token feeding.
     pub fn feed<'a>(&'a mut self, source: &'a str) -> LowLevelCursor<'a> {
         let base = CursorBase::new(self.raw, &mut self.source_buf, source);
-        LowLevelCursor { base, finished: false }
+        LowLevelCursor {
+            base,
+            finished: false,
+        }
     }
 
     /// Zero-copy variant: bind a null-terminated source and return a `LowLevelCursor`.
     pub fn feed_cstr<'a>(&'a mut self, source: &'a CStr) -> LowLevelCursor<'a> {
         let base = CursorBase::new_cstr(self.raw, source);
-        LowLevelCursor { base, finished: false }
+        LowLevelCursor {
+            base,
+            finished: false,
+        }
     }
 }
 

@@ -9,8 +9,6 @@
 
 #include "csrc/parse_ctx.h"
 #include "syntaqlite/dialect.h"
-#include "csrc/sqlite_parser.h"
-#include "csrc/sqlite_tokenize.h"
 
 // ---------------------------------------------------------------------------
 // AST builder internals
@@ -127,7 +125,7 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
   memset(p, 0, sizeof(*p));
   p->mem = m;
   p->dialect = dialect;
-  p->lemon = SyntaqliteParseAlloc(m.xMalloc);
+  p->lemon = dialect->parser_alloc(m.xMalloc);
   synq_parse_ctx_init(&p->ctx, m);
   syntaqlite_vec_init(&p->comments);
   syntaqlite_vec_init(&p->macros);
@@ -144,8 +142,8 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   synq_parse_ctx_clear(&p->ctx);
 
   // Re-initialize lemon parser state (reuses allocation).
-  SyntaqliteParseFinalize(p->lemon);
-  SyntaqliteParseInit(p->lemon);
+  p->dialect->parser_finalize(p->lemon);
+  p->dialect->parser_init(p->lemon);
 
   p->source = source;
   p->source_len = len;
@@ -174,7 +172,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 static int feed_one_token(SyntaqliteParser* p, int token_type,
                            const char* text, int len) {
   SynqParseToken minor = {.z = text, .n = len, .type = token_type};
-  SyntaqliteParse(p->lemon, token_type, minor, &p->ctx);
+  p->dialect->parser_feed(p->lemon, token_type, minor, &p->ctx);
   p->last_token_type = token_type;
 
   if (p->ctx.error) {
@@ -280,7 +278,7 @@ static int finish_input(SyntaqliteParser* p) {
   // need one token of lookahead — the EOF provides it, triggering any
   // pending reduce (e.g. ecmd ::= cmdx SEMI).
   SynqParseToken eof = {.z = NULL, .n = 0, .type = 0};
-  SyntaqliteParse(p->lemon, 0, eof, &p->ctx);
+  p->dialect->parser_feed(p->lemon, 0, eof, &p->ctx);
   p->finished = 1;
 
   if (p->ctx.error) {
@@ -324,7 +322,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
 
   while (p->offset < p->source_len && z[p->offset] != '\0') {
     int token_type = 0;
-    int64_t token_len = synq_sqlite3GetToken(z + p->offset, &token_type);
+    int64_t token_len = p->dialect->get_token(z + p->offset, &token_type);
     if (token_len <= 0)
       break;
 
@@ -619,7 +617,7 @@ char* syntaqlite_dump_node(SyntaqliteParser* p, uint32_t node_id,
 
 void syntaqlite_parser_destroy(SyntaqliteParser* p) {
   if (p) {
-    SyntaqliteParseFree(p->lemon, p->mem.xFree);
+    p->dialect->parser_free(p->lemon, p->mem.xFree);
     synq_parse_ctx_free(&p->ctx);
     syntaqlite_vec_free(&p->comments, p->mem);
     syntaqlite_vec_free(&p->macros, p->mem);
@@ -651,13 +649,13 @@ uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p) {
 int syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable) {
   if (p->sealed) return -1;
   p->trace = enable;
-#ifndef NDEBUG
-  if (enable) {
-    SyntaqliteParseTrace(stderr, "parser> ");
-  } else {
-    SyntaqliteParseTrace(NULL, NULL);
+  if (p->dialect->parser_trace) {
+    if (enable) {
+      p->dialect->parser_trace(stderr, "parser> ");
+    } else {
+      p->dialect->parser_trace(NULL, NULL);
+    }
   }
-#endif
   return 0;
 }
 

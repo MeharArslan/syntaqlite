@@ -25,6 +25,8 @@
 
 #include "syntaqlite_ext/ast_builder.h"
 #include "syntaqlite/types.h"
+#include "csrc/dialect_builder.h"
+#include "syntaqlite_sqlite/sqlite_tokens.h"
 
 /* BEGIN GRAMMAR_TYPES */
 // Grammar-specific struct types for multi-valued grammar nonterminals.
@@ -61,8 +63,6 @@ typedef struct SynqWithValue {
   int is_recursive;
 } SynqWithValue;
 /* END GRAMMAR_TYPES */
-
-#include "csrc/dialect_parse.h"
 
 #define YYNOERRORRECOVERY 1
 #define YYPARSEFREENEVERNULL 1

@@ -189,7 +189,7 @@ impl Tokenizer {
     /// Create a new tokenizer.
     pub fn new() -> Self {
         Tokenizer {
-            inner: syntaqlite_runtime::parser::Tokenizer::new(),
+            inner: syntaqlite_runtime::parser::Tokenizer::new(*crate::DIALECT),
         }
     }
 

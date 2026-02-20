@@ -70,15 +70,23 @@ impl RustWriter {
         let raw_lines: Vec<&str> = text.lines().collect();
 
         // Trim leading/trailing empty lines
-        let start = raw_lines.iter().position(|l| !l.trim().is_empty()).unwrap_or(0);
-        let end = raw_lines.iter().rposition(|l| !l.trim().is_empty()).map(|i| i + 1).unwrap_or(0);
+        let start = raw_lines
+            .iter()
+            .position(|l| !l.trim().is_empty())
+            .unwrap_or(0);
+        let end = raw_lines
+            .iter()
+            .rposition(|l| !l.trim().is_empty())
+            .map(|i| i + 1)
+            .unwrap_or(0);
         if start >= end {
             return self;
         }
         let lines = &raw_lines[start..end];
 
         // Find minimum indentation among non-empty lines
-        let min_indent = lines.iter()
+        let min_indent = lines
+            .iter()
             .filter(|l| !l.trim().is_empty())
             .map(|l| l.len() - l.trim_start().len())
             .min()
@@ -155,11 +163,13 @@ mod tests {
     #[test]
     fn test_lines_strips_common_indent() {
         let mut w = RustWriter::new();
-        w.lines("
+        w.lines(
+            "
             pub fn foo() {
                 body
             }
-        ");
+        ",
+        );
         let output = w.finish();
         assert_eq!(output, "pub fn foo() {\n    body\n}\n");
     }
@@ -168,11 +178,13 @@ mod tests {
     fn test_lines_respects_writer_indent() {
         let mut w = RustWriter::new();
         w.indent();
-        w.lines("
+        w.lines(
+            "
             fn bar() {
                 x
             }
-        ");
+        ",
+        );
         let output = w.finish();
         assert_eq!(output, "    fn bar() {\n        x\n    }\n");
     }
@@ -180,11 +192,13 @@ mod tests {
     #[test]
     fn test_lines_with_empty_lines() {
         let mut w = RustWriter::new();
-        w.lines("
+        w.lines(
+            "
             a
 
             b
-        ");
+        ",
+        );
         let output = w.finish();
         assert_eq!(output, "a\n\nb\n");
     }

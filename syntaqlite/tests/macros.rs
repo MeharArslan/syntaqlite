@@ -43,7 +43,10 @@ fn macro_call_emitted_verbatim() {
 
     let root = cursor.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(cursor.base(), root), "SELECT foo!(1 + 2), 3");
+    assert_eq!(
+        fmt.format_node(cursor.base(), root),
+        "SELECT foo!(1 + 2), 3"
+    );
 }
 
 #[test]

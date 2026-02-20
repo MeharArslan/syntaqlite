@@ -1,0 +1,7 @@
+node CreatePerfettoTableStmt {
+  table_name: inline SyntaqliteSourceSpan
+
+  fmt {
+    "CREATE PERFETTO TABLE " span(table_name)
+  }
+}

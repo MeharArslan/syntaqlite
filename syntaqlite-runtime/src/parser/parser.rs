@@ -1,12 +1,12 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use std::ffi::{c_int, CStr};
+use std::ffi::{CStr, c_int};
 
-use crate::dialect::Dialect;
 use super::ffi;
 use super::ffi::{Comment, MacroRegion};
 use super::nodes::{NodeId, NodeList};
+use crate::dialect::Dialect;
 
 /// A parse error with a human-readable message.
 #[derive(Debug, Clone)]
@@ -50,9 +50,8 @@ impl Parser {
     pub fn new(dialect: &Dialect) -> Self {
         // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
         // a new parser with default malloc/free. It always succeeds.
-        let raw = unsafe {
-            ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw)
-        };
+        let raw =
+            unsafe { ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw) };
         assert!(!raw.is_null(), "parser allocation failed");
         Parser {
             raw,
@@ -156,7 +155,9 @@ impl<'a> NodeReader<'a> {
     /// Dump an AST node tree as indented text. Uses C-side metadata (field
     /// names, display strings) so no Rust-side string tables are needed.
     pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
-        unsafe extern "C" { fn free(ptr: *mut std::ffi::c_void); }
+        unsafe extern "C" {
+            fn free(ptr: *mut std::ffi::c_void);
+        }
         // SAFETY: raw is valid; dump_node returns a malloc'd NUL-terminated
         // string (or null). We free the C string after copying.
         unsafe {
@@ -188,11 +189,7 @@ impl<'a> CursorBase<'a> {
     /// Construct a CursorBase from a raw parser pointer and source text.
     /// Copies the source into `source_buf` to null-terminate it, then resets
     /// the C parser.
-    pub(crate) fn new(
-        raw: *mut ffi::Parser,
-        source_buf: &'a mut Vec<u8>,
-        source: &'a str,
-    ) -> Self {
+    pub(crate) fn new(raw: *mut ffi::Parser, source_buf: &'a mut Vec<u8>, source: &'a str) -> Self {
         source_buf.clear();
         source_buf.reserve(source.len() + 1);
         source_buf.extend_from_slice(source.as_bytes());
@@ -200,11 +197,7 @@ impl<'a> CursorBase<'a> {
 
         let c_source_ptr = source_buf.as_ptr();
         unsafe {
-            ffi::syntaqlite_parser_reset(
-                raw,
-                c_source_ptr as *const _,
-                source.len() as u32,
-            );
+            ffi::syntaqlite_parser_reset(raw, c_source_ptr as *const _, source.len() as u32);
         }
         CursorBase {
             reader: NodeReader { raw, source },
@@ -213,23 +206,18 @@ impl<'a> CursorBase<'a> {
     }
 
     /// Construct a CursorBase from a raw parser pointer and a CStr (zero-copy).
-    pub(crate) fn new_cstr(
-        raw: *mut ffi::Parser,
-        source: &'a CStr,
-    ) -> Self {
+    pub(crate) fn new_cstr(raw: *mut ffi::Parser, source: &'a CStr) -> Self {
         let bytes = source.to_bytes();
-        let source_str =
-            std::str::from_utf8(bytes).expect("source must be valid UTF-8");
+        let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 
         unsafe {
-            ffi::syntaqlite_parser_reset(
-                raw,
-                source.as_ptr(),
-                bytes.len() as u32,
-            );
+            ffi::syntaqlite_parser_reset(raw, source.as_ptr(), bytes.len() as u32);
         }
         CursorBase {
-            reader: NodeReader { raw, source: source_str },
+            reader: NodeReader {
+                raw,
+                source: source_str,
+            },
             c_source_ptr: source.as_ptr() as *const u8,
         }
     }

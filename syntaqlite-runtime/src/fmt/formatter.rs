@@ -4,14 +4,19 @@
 use std::cell::Cell;
 
 use crate::dialect::Dialect;
-use crate::dialect::ffi::{FieldMeta, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN};
-use crate::parser::{Comment, CommentKind, CursorBase, FieldVal, Fields, MacroRegion, NodeId, Parser, ParserConfig, SourceSpan};
+use crate::dialect::ffi::{
+    FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldMeta,
+};
+use crate::parser::{
+    Comment, CommentKind, CursorBase, FieldVal, Fields, MacroRegion, NodeId, Parser, ParserConfig,
+    SourceSpan,
+};
 
 use super::FormatConfig;
+use super::comment::CommentCtx;
 use super::doc::{DocArena, DocId, NIL_DOC};
 use super::interpret::Interpreter;
 use super::render::render;
-use super::comment::CommentCtx;
 
 // ── Formatter ───────────────────────────────────────────────────────────
 
@@ -36,7 +41,10 @@ impl<'d> Formatter<'d> {
         if !dialect.has_fmt_data() {
             return Err("C dialect has no fmt data");
         }
-        let parser_config = ParserConfig { collect_tokens: true, ..Default::default() };
+        let parser_config = ParserConfig {
+            collect_tokens: true,
+            ..Default::default()
+        };
         let parser = Parser::with_config(dialect, &parser_config);
         Ok(Formatter {
             dialect: *dialect,
@@ -125,8 +133,7 @@ fn format_stmts<'a>(
 
         // Collect comments within this statement's span.
         let stmt_end = if i + 1 < roots.len() {
-            first_source_offset(&dialect, cursor, roots[i + 1])
-                .unwrap_or(source.len() as u32)
+            first_source_offset(&dialect, cursor, roots[i + 1]).unwrap_or(source.len() as u32)
         } else {
             source.len() as u32
         };
@@ -144,8 +151,7 @@ fn format_stmts<'a>(
             out.push_str(&render(&arena, doc, config));
         } else {
             let comment_ctx = CommentCtx::new(within_comments, source);
-            let doc =
-                format_node_with_comments(dialect, cursor, root_id, &mut arena, &comment_ctx);
+            let doc = format_node_with_comments(dialect, cursor, root_id, &mut arena, &comment_ctx);
             let trailing = comment_ctx.drain_remaining(&mut arena);
             let final_doc = arena.cat(doc, trailing);
             out.push_str(&render(&arena, final_doc, config));
@@ -230,25 +236,13 @@ fn format_node_inner<'a>(
 
     let format_child = move |id: NodeId, arena: &mut DocArena<'a>| {
         if !macro_regions.is_empty() {
-            if let Some(verbatim) = try_macro_verbatim(
-                dialect,
-                cursor,
-                id,
-                macro_regions,
-                arena,
-                consumed_regions,
-            ) {
+            if let Some(verbatim) =
+                try_macro_verbatim(dialect, cursor, id, macro_regions, arena, consumed_regions)
+            {
                 return verbatim;
             }
         }
-        format_node_inner(
-            dialect,
-            cursor,
-            id,
-            arena,
-            comment_ctx,
-            consumed_regions,
-        )
+        format_node_inner(dialect, cursor, id, arena, comment_ctx, consumed_regions)
     };
     let resolve_list = move |id: NodeId| -> Vec<NodeId> {
         cursor
@@ -262,8 +256,11 @@ fn format_node_inner<'a>(
 
     let source_offset_fn =
         move |id: NodeId| -> Option<u32> { first_source_offset(&dialect, cursor, id) };
-    let source_offset: Option<&dyn Fn(NodeId) -> Option<u32>> =
-        if comment_ctx.is_some() { Some(&source_offset_fn) } else { None };
+    let source_offset: Option<&dyn Fn(NodeId) -> Option<u32>> = if comment_ctx.is_some() {
+        Some(&source_offset_fn)
+    } else {
+        None
+    };
 
     Interpreter::new(
         dialect,
@@ -315,7 +312,12 @@ fn try_macro_verbatim<'a>(
 // ── Field extraction ────────────────────────────────────────────────────
 
 /// Extract typed field values from a raw node pointer.
-fn extract_fields<'a>(dialect: &Dialect<'_>, ptr: *const u8, tag: u32, source: &'a str) -> Fields<'a> {
+fn extract_fields<'a>(
+    dialect: &Dialect<'_>,
+    ptr: *const u8,
+    tag: u32,
+    source: &'a str,
+) -> Fields<'a> {
     let meta = dialect.field_meta(tag);
     let mut fields = Fields::new();
     for m in meta {

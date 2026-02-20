@@ -21,7 +21,9 @@ pub struct FieldMeta {
 
 const _: () = {
     const P: usize = std::mem::size_of::<*const ()>();
-    const fn align_up(n: usize) -> usize { (n + P - 1) & !(P - 1) }
+    const fn align_up(n: usize) -> usize {
+        (n + P - 1) & !(P - 1)
+    }
 
     // offset(0) u16, kind(2) u8, [padding], name(P) ptr, display(2P) ptr, display_count(3P) u8, [padding]
     assert!(std::mem::size_of::<FieldMeta>() == align_up(3 * P + 1));
@@ -36,10 +38,6 @@ const _: () = {
 #[repr(C)]
 pub struct Dialect {
     pub name: *const std::ffi::c_char,
-
-    // Parse tables + reduce actions
-    pub tables: *const std::ffi::c_void,
-    pub reduce_actions: *const std::ffi::c_void,
 
     // Range metadata
     pub range_meta: *const std::ffi::c_void,
@@ -65,34 +63,45 @@ pub struct Dialect {
     pub fmt_op_count: u16,
     pub fmt_dispatch: *const u32,
     pub fmt_dispatch_count: u16,
+
+    // Parser lifecycle (function pointers provided by dialect)
+    pub parser_alloc: *const std::ffi::c_void,
+    pub parser_init: *const std::ffi::c_void,
+    pub parser_finalize: *const std::ffi::c_void,
+    pub parser_free: *const std::ffi::c_void,
+    pub parser_feed: *const std::ffi::c_void,
+    pub parser_trace: *const std::ffi::c_void,
+
+    // Tokenizer (function pointer provided by dialect)
+    pub get_token: *const std::ffi::c_void,
 }
 
 const _: () = {
     const P: usize = std::mem::size_of::<*const ()>();
-    const fn align_up(n: usize) -> usize { (n + P - 1) & !(P - 1) }
+    const fn align_up(n: usize) -> usize {
+        (n + P - 1) & !(P - 1)
+    }
 
-    // 4 pointers, then 4×i32 (16 bytes), then 4 pointers.
-    const AFTER_INTS: usize = 4 * P + 16;
-    // fmt_strings is the 9th pointer (indices 0..8), fmt_string_count is u16 after it.
-    const FMT_STR_COUNT: usize = 9 * P + 16;
+    // name(0), range_meta(P), then 3×i32 + 1×u32 = 16 bytes, then 4 ptrs
+    const AFTER_INTS: usize = 2 * P + 16;
+    // fmt_strings is the 7th pointer (0..6), fmt_string_count is u16 after it.
+    const FMT_STR_COUNT: usize = 7 * P + 16;
     // Each (ptr, u16) pair: the u16 sits right after the ptr, then padding to next ptr.
-    const A: usize = align_up(FMT_STR_COUNT + 2);  // fmt_enum_display
-    const B: usize = align_up(A + P + 2);           // fmt_ops
-    const C: usize = align_up(B + P + 2);           // fmt_dispatch
+    const A: usize = align_up(FMT_STR_COUNT + 2); // fmt_enum_display
+    const B: usize = align_up(A + P + 2); // fmt_ops
+    const C: usize = align_up(B + P + 2); // fmt_dispatch
 
     assert!(std::mem::offset_of!(Dialect, name) == 0);
-    assert!(std::mem::offset_of!(Dialect, tables) == P);
-    assert!(std::mem::offset_of!(Dialect, reduce_actions) == 2 * P);
-    assert!(std::mem::offset_of!(Dialect, range_meta) == 3 * P);
-    assert!(std::mem::offset_of!(Dialect, tk_space) == 4 * P);
-    assert!(std::mem::offset_of!(Dialect, tk_semi) == 4 * P + 4);
-    assert!(std::mem::offset_of!(Dialect, tk_comment) == 4 * P + 8);
-    assert!(std::mem::offset_of!(Dialect, node_count) == 4 * P + 12);
+    assert!(std::mem::offset_of!(Dialect, range_meta) == P);
+    assert!(std::mem::offset_of!(Dialect, tk_space) == 2 * P);
+    assert!(std::mem::offset_of!(Dialect, tk_semi) == 2 * P + 4);
+    assert!(std::mem::offset_of!(Dialect, tk_comment) == 2 * P + 8);
+    assert!(std::mem::offset_of!(Dialect, node_count) == 2 * P + 12);
     assert!(std::mem::offset_of!(Dialect, node_names) == AFTER_INTS);
-    assert!(std::mem::offset_of!(Dialect, field_meta) == 5 * P + 16);
-    assert!(std::mem::offset_of!(Dialect, field_meta_counts) == 6 * P + 16);
-    assert!(std::mem::offset_of!(Dialect, list_tags) == 7 * P + 16);
-    assert!(std::mem::offset_of!(Dialect, fmt_strings) == 8 * P + 16);
+    assert!(std::mem::offset_of!(Dialect, field_meta) == 3 * P + 16);
+    assert!(std::mem::offset_of!(Dialect, field_meta_counts) == 4 * P + 16);
+    assert!(std::mem::offset_of!(Dialect, list_tags) == 5 * P + 16);
+    assert!(std::mem::offset_of!(Dialect, fmt_strings) == 6 * P + 16);
     assert!(std::mem::offset_of!(Dialect, fmt_string_count) == FMT_STR_COUNT);
     assert!(std::mem::offset_of!(Dialect, fmt_enum_display) == A);
     assert!(std::mem::offset_of!(Dialect, fmt_enum_display_count) == A + P);
@@ -100,5 +109,15 @@ const _: () = {
     assert!(std::mem::offset_of!(Dialect, fmt_op_count) == B + P);
     assert!(std::mem::offset_of!(Dialect, fmt_dispatch) == C);
     assert!(std::mem::offset_of!(Dialect, fmt_dispatch_count) == C + P);
-    assert!(std::mem::size_of::<Dialect>() == align_up(C + P + 2));
+
+    // Parser + tokenizer function pointers: 7 pointers
+    const FN_PTRS: usize = align_up(C + P + 2); // parser_alloc
+    assert!(std::mem::offset_of!(Dialect, parser_alloc) == FN_PTRS);
+    assert!(std::mem::offset_of!(Dialect, parser_init) == FN_PTRS + P);
+    assert!(std::mem::offset_of!(Dialect, parser_finalize) == FN_PTRS + 2 * P);
+    assert!(std::mem::offset_of!(Dialect, parser_free) == FN_PTRS + 3 * P);
+    assert!(std::mem::offset_of!(Dialect, parser_feed) == FN_PTRS + 4 * P);
+    assert!(std::mem::offset_of!(Dialect, parser_trace) == FN_PTRS + 5 * P);
+    assert!(std::mem::offset_of!(Dialect, get_token) == FN_PTRS + 6 * P);
+    assert!(std::mem::size_of::<Dialect>() == FN_PTRS + 7 * P);
 };

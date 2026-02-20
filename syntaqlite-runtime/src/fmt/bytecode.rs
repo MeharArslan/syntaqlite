@@ -45,6 +45,11 @@ pub struct RawOp {
 
 impl RawOp {
     pub fn simple(opcode: u8) -> Self {
-        RawOp { opcode, a: 0, b: 0, c: 0 }
+        RawOp {
+            opcode,
+            a: 0,
+            b: 0,
+            c: 0,
+        }
     }
 }

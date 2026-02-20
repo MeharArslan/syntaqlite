@@ -5,8 +5,8 @@ use crate::dialect::Dialect;
 use crate::parser::{FieldVal, NodeId};
 
 use super::bytecode::opcodes;
+use super::comment::{CommentCtx, flush_comments};
 use super::doc::{DocArena, DocId};
-use super::comment::{flush_comments, CommentCtx};
 
 // ── Interpreter (pub(crate)) ────────────────────────────────────────────
 
@@ -209,7 +209,9 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                     }
                 }
                 FmtOp::ForEachEnd => {
-                    let state = for_each_stack.last_mut().expect("ForEachEnd outside ForEach");
+                    let state = for_each_stack
+                        .last_mut()
+                        .expect("ForEachEnd outside ForEach");
                     state.index += 1;
                     if state.index < state.children.len() {
                         ip = state.body_start;
@@ -495,14 +497,11 @@ impl TestDialect {
             .iter()
             .map(|s| std::ffi::CString::new(*s).unwrap())
             .collect();
-        let ptrs: Vec<*const std::ffi::c_char> =
-            cstrings.iter().map(|cs| cs.as_ptr()).collect();
+        let ptrs: Vec<*const std::ffi::c_char> = cstrings.iter().map(|cs| cs.as_ptr()).collect();
         let enum_display = enum_display.to_vec();
 
         let raw = crate::dialect::ffi::Dialect {
             name: std::ptr::null(),
-            tables: std::ptr::null(),
-            reduce_actions: std::ptr::null(),
             range_meta: std::ptr::null(),
             tk_space: 0,
             tk_semi: 0,
@@ -520,6 +519,13 @@ impl TestDialect {
             fmt_op_count: 0,
             fmt_dispatch: std::ptr::null(),
             fmt_dispatch_count: 0,
+            parser_alloc: std::ptr::null(),
+            parser_init: std::ptr::null(),
+            parser_finalize: std::ptr::null(),
+            parser_free: std::ptr::null(),
+            parser_feed: std::ptr::null(),
+            parser_trace: std::ptr::null(),
+            get_token: std::ptr::null(),
         };
 
         TestDialect {
@@ -537,12 +543,12 @@ impl TestDialect {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::parser::NodeId;
-    use crate::parser::FieldVal;
     use super::super::FormatConfig;
     use super::super::doc::{DocArena, NIL_DOC};
     use super::super::render::render;
+    use super::*;
+    use crate::parser::FieldVal;
+    use crate::parser::NodeId;
 
     fn noop_child(_: NodeId, _: &mut DocArena) -> u32 {
         NIL_DOC
@@ -552,14 +558,25 @@ mod tests {
         panic!("resolve_list not expected")
     }
 
-    fn run(ops: &[FmtOp], strings: &[&str], enum_display: &[u16], fields: &[FieldVal], config: &FormatConfig) -> String {
+    fn run(
+        ops: &[FmtOp],
+        strings: &[&str],
+        enum_display: &[u16],
+        fields: &[FieldVal],
+        config: &FormatConfig,
+    ) -> String {
         let td = TestDialect::new(strings, enum_display);
         let dialect = td.dialect();
         let ops_bytes = encode_ops(ops);
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            dialect, &ops_bytes, ops.len(),
-            &noop_child, &no_lists, None, None,
+            dialect,
+            &ops_bytes,
+            ops.len(),
+            &noop_child,
+            &no_lists,
+            None,
+            None,
         );
         let doc = interp.run(fields, None, &mut arena);
         render(&arena, doc, config)
@@ -573,7 +590,10 @@ mod tests {
 
     #[test]
     fn single_keyword() {
-        assert_eq!(run_default(&[FmtOp::Keyword(0)], &["SELECT"], &[]), "SELECT");
+        assert_eq!(
+            run_default(&[FmtOp::Keyword(0)], &["SELECT"], &[]),
+            "SELECT"
+        );
     }
 
     #[test]
@@ -597,8 +617,14 @@ mod tests {
             FmtOp::Keyword(1),
             FmtOp::GroupEnd,
         ];
-        let config = FormatConfig { line_width: 5, ..Default::default() };
-        assert_eq!(run(ops, &["SELECT", "FROM"], &[], &[], &config), "SELECT\nFROM");
+        let config = FormatConfig {
+            line_width: 5,
+            ..Default::default()
+        };
+        assert_eq!(
+            run(ops, &["SELECT", "FROM"], &[], &[], &config),
+            "SELECT\nFROM"
+        );
     }
 
     #[test]
@@ -612,8 +638,14 @@ mod tests {
             FmtOp::NestEnd,
             FmtOp::GroupEnd,
         ];
-        let config = FormatConfig { line_width: 5, ..Default::default() };
-        assert_eq!(run(ops, &["SELECT", "a"], &[], &[], &config), "SELECT\n    a");
+        let config = FormatConfig {
+            line_width: 5,
+            ..Default::default()
+        };
+        assert_eq!(
+            run(ops, &["SELECT", "a"], &[], &[], &config),
+            "SELECT\n    a"
+        );
     }
 
     #[test]
@@ -634,12 +666,12 @@ mod tests {
             assert_eq!(node_id, NodeId(42));
             arena.text("child_result")
         };
-        let interp = Interpreter::new(
-            dialect, &ops_bytes, 1,
-            &format_child, &no_lists, None, None,
-        );
+        let interp = Interpreter::new(dialect, &ops_bytes, 1, &format_child, &no_lists, None, None);
         let doc = interp.run(fields, None, &mut arena);
-        assert_eq!(render(&arena, doc, &FormatConfig::default()), "child_result");
+        assert_eq!(
+            render(&arena, doc, &FormatConfig::default()),
+            "child_result"
+        );
     }
 
     #[test]
@@ -715,8 +747,13 @@ mod tests {
         };
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            dialect, &ops_bytes, ops.len(),
-            &format_child, &resolve_list, None, None,
+            dialect,
+            &ops_bytes,
+            ops.len(),
+            &format_child,
+            &resolve_list,
+            None,
+            None,
         );
         let doc = interp.run(fields, None, &mut arena);
         assert_eq!(render(&arena, doc, &FormatConfig::default()), "a, b, c");
@@ -748,12 +785,20 @@ mod tests {
         };
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            dialect, &ops_bytes, ops.len(),
-            &format_child, &resolve_list, None, None,
+            dialect,
+            &ops_bytes,
+            ops.len(),
+            &format_child,
+            &resolve_list,
+            None,
+            None,
         );
         let doc = interp.run(fields, None, &mut arena);
         assert_eq!(render(&arena, doc, &FormatConfig::default()), "aaaa, bbbb");
-        let narrow = FormatConfig { line_width: 5, ..Default::default() };
+        let narrow = FormatConfig {
+            line_width: 5,
+            ..Default::default()
+        };
         assert_eq!(render(&arena, doc, &narrow), "aaaa,\nbbbb");
     }
 
@@ -777,8 +822,13 @@ mod tests {
         };
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            dialect, &ops_bytes, ops.len(),
-            &noop_child, &resolve_list, None, None,
+            dialect,
+            &ops_bytes,
+            ops.len(),
+            &noop_child,
+            &resolve_list,
+            None,
+            None,
         );
         let doc = interp.run(fields, None, &mut arena);
         assert_eq!(render(&arena, doc, &FormatConfig::default()), "ab");
@@ -865,22 +915,14 @@ mod tests {
     #[test]
     fn ifspan_set() {
         let fields = &[FieldVal::Span("hello", 0)];
-        let ops = &[
-            FmtOp::IfSpan(0, 1),
-            FmtOp::Keyword(0),
-            FmtOp::EndIf,
-        ];
+        let ops = &[FmtOp::IfSpan(0, 1), FmtOp::Keyword(0), FmtOp::EndIf];
         assert_eq!(run_default(ops, &["HAS_SPAN"], fields), "HAS_SPAN");
     }
 
     #[test]
     fn ifspan_empty() {
         let fields = &[FieldVal::Span("", 0)];
-        let ops = &[
-            FmtOp::IfSpan(0, 1),
-            FmtOp::Keyword(0),
-            FmtOp::EndIf,
-        ];
+        let ops = &[FmtOp::IfSpan(0, 1), FmtOp::Keyword(0), FmtOp::EndIf];
         assert_eq!(run_default(ops, &["HAS_SPAN"], fields), "");
     }
 
@@ -889,7 +931,16 @@ mod tests {
         let fields = &[FieldVal::Enum(2)];
         let enum_display: &[u16] = &[0, 1, 2];
         let ops = &[FmtOp::EnumDisplay(0, 0)];
-        assert_eq!(run(ops, &["+", "-", "*"], enum_display, fields, &FormatConfig::default()), "*");
+        assert_eq!(
+            run(
+                ops,
+                &["+", "-", "*"],
+                enum_display,
+                fields,
+                &FormatConfig::default()
+            ),
+            "*"
+        );
     }
 
     #[test]
@@ -897,7 +948,16 @@ mod tests {
         let enum_display: &[u16] = &[10, 11, 0, 1];
         let fields = &[FieldVal::Enum(1)];
         let ops = &[FmtOp::EnumDisplay(0, 2)];
-        assert_eq!(run(ops, &["AND", "OR"], enum_display, fields, &FormatConfig::default()), "OR");
+        assert_eq!(
+            run(
+                ops,
+                &["AND", "OR"],
+                enum_display,
+                fields,
+                &FormatConfig::default()
+            ),
+            "OR"
+        );
     }
 
     #[test]
@@ -920,8 +980,13 @@ mod tests {
         };
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            dialect, &ops_bytes, ops.len(),
-            &format_child, &no_lists, None, None,
+            dialect,
+            &ops_bytes,
+            ops.len(),
+            &format_child,
+            &no_lists,
+            None,
+            None,
         );
         let doc = interp.run(&[], Some(children), &mut arena);
         assert_eq!(render(&arena, doc, &FormatConfig::default()), "x, y, z");
@@ -943,8 +1008,13 @@ mod tests {
         let children: &[NodeId] = &[];
         let mut arena = DocArena::new();
         let interp = Interpreter::new(
-            dialect, &ops_bytes, ops.len(),
-            &noop_child, &no_lists, None, None,
+            dialect,
+            &ops_bytes,
+            ops.len(),
+            &noop_child,
+            &no_lists,
+            None,
+            None,
         );
         let doc = interp.run(&[], Some(children), &mut arena);
         assert_eq!(render(&arena, doc, &FormatConfig::default()), "[]");

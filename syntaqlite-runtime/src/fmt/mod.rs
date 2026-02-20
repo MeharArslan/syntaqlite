@@ -3,11 +3,11 @@
 
 #[doc(hidden)]
 pub mod bytecode;
+mod comment;
 mod doc;
 mod formatter;
 mod interpret;
 mod render;
-mod comment;
 
 // ── Config types (formerly config.rs) ────────────────────────────────────
 

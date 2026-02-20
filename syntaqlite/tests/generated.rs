@@ -53,10 +53,7 @@ fn select_star() {
 
 #[test]
 fn select_column_alias() {
-    assert_eq!(
-        format_sql("SELECT a AS x FROM t"),
-        "SELECT a AS x FROM t"
-    );
+    assert_eq!(format_sql("SELECT a AS x FROM t"), "SELECT a AS x FROM t");
 }
 
 // -- Line breaking --
@@ -98,10 +95,7 @@ fn binary_and_or() {
 
 #[test]
 fn table_with_alias() {
-    assert_eq!(
-        format_sql("SELECT a FROM t AS u"),
-        "SELECT a FROM t AS u"
-    );
+    assert_eq!(format_sql("SELECT a FROM t AS u"), "SELECT a FROM t AS u");
 }
 
 // -- Subqueries and complex clauses --
@@ -186,10 +180,7 @@ fn insert_breaks_when_narrow() {
         ..Default::default()
     };
     let result = format_sql_with("INSERT INTO t(a, b) VALUES(1, 2)", config);
-    assert_eq!(
-        result,
-        "INSERT INTO t(a, b)\nVALUES (1, 2)"
-    );
+    assert_eq!(result, "INSERT INTO t(a, b)\nVALUES (1, 2)");
 }
 
 // -- Large VALUES --

@@ -20,12 +20,16 @@ use std::fmt::Write as _;
 use crate::node_parser::Storage;
 use crate::node_parser::{Field, Fmt, Item};
 
-use syntaqlite_runtime::fmt::bytecode::opcodes;
 use syntaqlite_runtime::fmt::bytecode::RawOp;
+use syntaqlite_runtime::fmt::bytecode::opcodes;
 
 /// Convert a field index (u16) to u8 for binary encoding, panicking if too large.
 fn idx_u8(idx: u16) -> u8 {
-    assert!(idx < 256, "field index {} too large for bytecode encoding", idx);
+    assert!(
+        idx < 256,
+        "field index {} too large for bytecode encoding",
+        idx
+    );
     idx as u8
 }
 
@@ -135,7 +139,9 @@ struct CompileCtx<'a> {
 
 impl<'a> CompileCtx<'a> {
     fn field(&self, name: &str) -> &FieldInfo {
-        let idx = self.field_map.get(name)
+        let idx = self
+            .field_map
+            .get(name)
             .unwrap_or_else(|| panic!("unknown field: {}", name));
         &self.field_infos[*idx]
     }
@@ -143,9 +149,12 @@ impl<'a> CompileCtx<'a> {
     /// Resolve which enum type a field has (for enum_display, if_enum, switch).
     fn enum_variants(&self, field_name: &str) -> &[String] {
         let info = self.field(field_name);
-        self.enum_items
-            .get(&info.type_name)
-            .unwrap_or_else(|| panic!("field {} has type {} which is not an enum", field_name, info.type_name))
+        self.enum_items.get(&info.type_name).unwrap_or_else(|| {
+            panic!(
+                "field {} has type {} which is not an enum",
+                field_name, info.type_name
+            )
+        })
     }
 
     /// Find the ordinal of a variant within an enum.
@@ -154,8 +163,12 @@ impl<'a> CompileCtx<'a> {
         variants
             .iter()
             .position(|v| v == variant)
-            .unwrap_or_else(|| panic!("variant {} not found in enum for field {}", variant, field_name))
-            as u16
+            .unwrap_or_else(|| {
+                panic!(
+                    "variant {} not found in enum for field {}",
+                    variant, field_name
+                )
+            }) as u16
     }
 
     /// Find the bit mask for a flag within a flags type, or handle Bool fields.
@@ -169,7 +182,10 @@ impl<'a> CompileCtx<'a> {
                 .map(|(_, v)| *v as u8)
                 .unwrap_or_else(|| panic!("flag {} not found in {}", bit, info.type_name))
         } else {
-            panic!("field {} has type {} which is not a flags type", field_name, info.type_name);
+            panic!(
+                "field {} has type {} which is not a flags type",
+                field_name, info.type_name
+            );
         }
     }
 
@@ -182,7 +198,6 @@ impl<'a> CompileCtx<'a> {
         let info = self.field(name);
         self.flags_items.contains_key(&info.type_name)
     }
-
 }
 
 /// Compile a sequence of Fmt nodes into RawOps.
@@ -196,18 +211,33 @@ fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<RawOp>) {
     match fmt {
         Fmt::Text(s) => {
             let sid = ctx.strings.intern(s);
-            ops.push(RawOp { opcode: opcodes::KEYWORD, a: 0, b: sid, c: 0 });
+            ops.push(RawOp {
+                opcode: opcodes::KEYWORD,
+                a: 0,
+                b: sid,
+                c: 0,
+            });
         }
         Fmt::Child(field) if field == "_item" => {
             ops.push(RawOp::simple(opcodes::CHILD_ITEM));
         }
         Fmt::Child(field) => {
             let info = ctx.field(field);
-            ops.push(RawOp { opcode: opcodes::CHILD, a: idx_u8(info.idx), b: 0, c: 0 });
+            ops.push(RawOp {
+                opcode: opcodes::CHILD,
+                a: idx_u8(info.idx),
+                b: 0,
+                c: 0,
+            });
         }
         Fmt::Span(field) => {
             let info = ctx.field(field);
-            ops.push(RawOp { opcode: opcodes::SPAN, a: idx_u8(info.idx), b: 0, c: 0 });
+            ops.push(RawOp {
+                opcode: opcodes::SPAN,
+                a: idx_u8(info.idx),
+                b: 0,
+                c: 0,
+            });
         }
         Fmt::Line => ops.push(RawOp::simple(opcodes::LINE)),
         Fmt::SoftLine => ops.push(RawOp::simple(opcodes::SOFTLINE)),
@@ -218,55 +248,115 @@ fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<RawOp>) {
             ops.push(RawOp::simple(opcodes::GROUP_END));
         }
         Fmt::Nest(body) => {
-            ops.push(RawOp { opcode: opcodes::NEST_START, a: 0, b: 2u16, c: 0 });
+            ops.push(RawOp {
+                opcode: opcodes::NEST_START,
+                a: 0,
+                b: 2u16,
+                c: 0,
+            });
             compile_seq(body, ctx, ops);
             ops.push(RawOp::simple(opcodes::NEST_END));
         }
         Fmt::IfSet { field, then, els } => {
             let idx = idx_u8(ctx.field(field).idx);
             compile_conditional(
-                RawOp { opcode: opcodes::IF_SET, a: idx, b: 0, c: 0 },
-                then, els.as_deref(), ctx, ops,
+                RawOp {
+                    opcode: opcodes::IF_SET,
+                    a: idx,
+                    b: 0,
+                    c: 0,
+                },
+                then,
+                els.as_deref(),
+                ctx,
+                ops,
             );
         }
-        Fmt::IfFlag { field, bit, then, els } => {
+        Fmt::IfFlag {
+            field,
+            bit,
+            then,
+            els,
+        } => {
             let base_field = field.as_str();
             if ctx.is_bool_field(base_field) {
                 let idx = idx_u8(ctx.field(base_field).idx);
                 compile_conditional(
-                    RawOp { opcode: opcodes::IF_BOOL, a: idx, b: 0, c: 0 },
-                    then, els.as_deref(), ctx, ops,
+                    RawOp {
+                        opcode: opcodes::IF_BOOL,
+                        a: idx,
+                        b: 0,
+                        c: 0,
+                    },
+                    then,
+                    els.as_deref(),
+                    ctx,
+                    ops,
                 );
             } else if ctx.is_flags_field(base_field) {
                 let idx = idx_u8(ctx.field(base_field).idx);
                 let mask = ctx.flag_mask(base_field, bit.as_deref());
                 compile_conditional(
-                    RawOp { opcode: opcodes::IF_FLAG, a: idx, b: mask as u16, c: 0 },
-                    then, els.as_deref(), ctx, ops,
+                    RawOp {
+                        opcode: opcodes::IF_FLAG,
+                        a: idx,
+                        b: mask as u16,
+                        c: 0,
+                    },
+                    then,
+                    els.as_deref(),
+                    ctx,
+                    ops,
                 );
             } else {
                 panic!("if_flag on field {} which is neither Bool nor Flags", field);
             }
         }
-        Fmt::IfEnum { field, variant, then, els } => {
+        Fmt::IfEnum {
+            field,
+            variant,
+            then,
+            els,
+        } => {
             let idx = idx_u8(ctx.field(field).idx);
             let ordinal = ctx.enum_ordinal(field, variant);
             compile_conditional(
-                RawOp { opcode: opcodes::IF_ENUM, a: idx, b: ordinal, c: 0 },
-                then, els.as_deref(), ctx, ops,
+                RawOp {
+                    opcode: opcodes::IF_ENUM,
+                    a: idx,
+                    b: ordinal,
+                    c: 0,
+                },
+                then,
+                els.as_deref(),
+                ctx,
+                ops,
             );
         }
         Fmt::IfSpan { field, then, els } => {
             let idx = idx_u8(ctx.field(field).idx);
             compile_conditional(
-                RawOp { opcode: opcodes::IF_SPAN, a: idx, b: 0, c: 0 },
-                then, els.as_deref(), ctx, ops,
+                RawOp {
+                    opcode: opcodes::IF_SPAN,
+                    a: idx,
+                    b: 0,
+                    c: 0,
+                },
+                then,
+                els.as_deref(),
+                ctx,
+                ops,
             );
         }
         Fmt::Clause { keyword, field } => {
             let field_idx = idx_u8(ctx.field(field).idx);
             compile_conditional(
-                RawOp { opcode: opcodes::IF_SET, a: field_idx, b: 0, c: 0 },
+                RawOp {
+                    opcode: opcodes::IF_SET,
+                    a: field_idx,
+                    b: 0,
+                    c: 0,
+                },
                 &[
                     Fmt::Line,
                     Fmt::Text(keyword.clone()),
@@ -277,14 +367,23 @@ fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<RawOp>) {
                 ops,
             );
         }
-        Fmt::Switch { field, cases, default } => {
+        Fmt::Switch {
+            field,
+            cases,
+            default,
+        } => {
             compile_switch(field, cases, default.as_deref(), ctx, ops);
         }
         Fmt::EnumDisplay { field, mappings } => {
             let field_idx = idx_u8(ctx.field(field).idx);
             let variants = ctx.enum_variants(field).to_vec();
             let base = ctx.enum_display.add(ctx.strings, &variants, mappings);
-            ops.push(RawOp { opcode: opcodes::ENUM_DISPLAY, a: field_idx, b: base, c: 0 });
+            ops.push(RawOp {
+                opcode: opcodes::ENUM_DISPLAY,
+                a: field_idx,
+                b: base,
+                c: 0,
+            });
         }
         Fmt::ForEach { sep, body } => {
             ops.push(RawOp::simple(opcodes::FOR_EACH_SELF_START));
@@ -298,13 +397,23 @@ fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<RawOp>) {
                         match s {
                             Fmt::Text(text) => {
                                 let sid = ctx.strings.intern(text);
-                                ops.push(RawOp { opcode: opcodes::FOR_EACH_SEP, a: 0, b: sid, c: 0 });
+                                ops.push(RawOp {
+                                    opcode: opcodes::FOR_EACH_SEP,
+                                    a: 0,
+                                    b: sid,
+                                    c: 0,
+                                });
                                 emitted_sep = true;
                                 continue;
                             }
                             _ => {
                                 let sid = ctx.strings.intern("");
-                                ops.push(RawOp { opcode: opcodes::FOR_EACH_SEP, a: 0, b: sid, c: 0 });
+                                ops.push(RawOp {
+                                    opcode: opcodes::FOR_EACH_SEP,
+                                    a: 0,
+                                    b: sid,
+                                    c: 0,
+                                });
                                 emitted_sep = true;
                             }
                         }
@@ -313,7 +422,12 @@ fn compile_one(fmt: &Fmt, ctx: &mut CompileCtx, ops: &mut Vec<RawOp>) {
                 }
                 if !emitted_sep {
                     let sid = ctx.strings.intern("");
-                    ops.push(RawOp { opcode: opcodes::FOR_EACH_SEP, a: 0, b: sid, c: 0 });
+                    ops.push(RawOp {
+                        opcode: opcodes::FOR_EACH_SEP,
+                        a: 0,
+                        b: sid,
+                        c: 0,
+                    });
                 }
             }
             ops.push(RawOp::simple(opcodes::FOR_EACH_END));
@@ -422,17 +536,32 @@ fn compile_switch(
         let has_else = !else_ops.is_empty();
 
         if has_else {
-            ops.push(RawOp { opcode: opcodes::IF_ENUM, a: field_idx, b: chunk.ordinal, c: (then_len + 1) as u16 });
+            ops.push(RawOp {
+                opcode: opcodes::IF_ENUM,
+                a: field_idx,
+                b: chunk.ordinal,
+                c: (then_len + 1) as u16,
+            });
             for op in &chunk.body_ops {
                 ops.push(*op);
             }
-            ops.push(RawOp { opcode: opcodes::ELSE_OP, a: 0, b: 0, c: (else_ops.len() + 1) as u16 });
+            ops.push(RawOp {
+                opcode: opcodes::ELSE_OP,
+                a: 0,
+                b: 0,
+                c: (else_ops.len() + 1) as u16,
+            });
             for op in &else_ops {
                 ops.push(*op);
             }
             ops.push(RawOp::simple(opcodes::END_IF));
         } else {
-            ops.push(RawOp { opcode: opcodes::IF_ENUM, a: field_idx, b: chunk.ordinal, c: (then_len + 1) as u16 });
+            ops.push(RawOp {
+                opcode: opcodes::IF_ENUM,
+                a: field_idx,
+                b: chunk.ordinal,
+                c: (then_len + 1) as u16,
+            });
             for op in &chunk.body_ops {
                 ops.push(*op);
             }
@@ -481,7 +610,11 @@ pub fn compile_all(items: &[Item]) -> CompiledFmt {
 
     for item in items {
         match item {
-            Item::Node { name, fields, fmt: Some(fmt_body) } => {
+            Item::Node {
+                name,
+                fields,
+                fmt: Some(fmt_body),
+            } => {
                 let (field_infos, field_map) = build_field_map(fields);
                 let mut ops = Vec::new();
                 let mut cctx = CompileCtx {
@@ -493,9 +626,16 @@ pub fn compile_all(items: &[Item]) -> CompiledFmt {
                     flags_items: &flags_items,
                 };
                 compile_seq(fmt_body, &mut cctx, &mut ops);
-                compiled.push(CompiledNode { name: name.clone(), ops });
+                compiled.push(CompiledNode {
+                    name: name.clone(),
+                    ops,
+                });
             }
-            Item::List { name, fmt: Some(fmt_body), .. } => {
+            Item::List {
+                name,
+                fmt: Some(fmt_body),
+                ..
+            } => {
                 let (field_infos, field_map) = build_field_map(&[]);
                 let mut ops = Vec::new();
                 let mut cctx = CompileCtx {
@@ -507,19 +647,32 @@ pub fn compile_all(items: &[Item]) -> CompiledFmt {
                     flags_items: &flags_items,
                 };
                 compile_seq(fmt_body, &mut cctx, &mut ops);
-                compiled.push(CompiledNode { name: name.clone(), ops });
+                compiled.push(CompiledNode {
+                    name: name.clone(),
+                    ops,
+                });
             }
-            Item::List { name, fmt: None, .. } => {
+            Item::List {
+                name, fmt: None, ..
+            } => {
                 // Default list fmt: for_each(sep: ",") { child(_item) line }
                 let comma_sid = strings.intern(",");
                 let ops = vec![
                     RawOp::simple(opcodes::FOR_EACH_SELF_START),
                     RawOp::simple(opcodes::CHILD_ITEM),
-                    RawOp { opcode: opcodes::FOR_EACH_SEP, a: 0, b: comma_sid, c: 0 },
+                    RawOp {
+                        opcode: opcodes::FOR_EACH_SEP,
+                        a: 0,
+                        b: comma_sid,
+                        c: 0,
+                    },
                     RawOp::simple(opcodes::LINE),
                     RawOp::simple(opcodes::FOR_EACH_END),
                 ];
-                compiled.push(CompiledNode { name: name.clone(), ops });
+                compiled.push(CompiledNode {
+                    name: name.clone(),
+                    ops,
+                });
             }
             _ => {}
         }
@@ -630,7 +783,12 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
     }
 
     // Dispatch table
-    writeln!(out, "pub const DISPATCH: [Option<NodeFmt>; {}] = {{", compiled.tag_count).unwrap();
+    writeln!(
+        out,
+        "pub const DISPATCH: [Option<NodeFmt>; {}] = {{",
+        compiled.tag_count
+    )
+    .unwrap();
     writeln!(out, "    const NONE: Option<NodeFmt> = None;").unwrap();
     writeln!(out, "    let mut t = [NONE; {}];", compiled.tag_count).unwrap();
     for cn in &compiled.nodes {
@@ -651,24 +809,21 @@ pub fn generate_rust_fmt_ops(items: &[Item]) -> String {
     out
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn compile_simple_keyword() {
-        let items = vec![
-            Item::Node {
-                name: "Literal".into(),
-                fields: vec![Field {
-                    name: "source".into(),
-                    storage: Storage::Inline,
-                    type_name: "SyntaqliteSourceSpan".into(),
-                }],
-                fmt: Some(vec![Fmt::Span("source".into())]),
-            },
-        ];
+        let items = vec![Item::Node {
+            name: "Literal".into(),
+            fields: vec![Field {
+                name: "source".into(),
+                storage: Storage::Inline,
+                type_name: "SyntaqliteSourceSpan".into(),
+            }],
+            fmt: Some(vec![Fmt::Span("source".into())]),
+        }];
 
         let output = generate_rust_fmt_ops(&items);
         assert!(output.contains("FMT_LITERAL"));
@@ -681,21 +836,19 @@ mod tests {
 
     #[test]
     fn compile_if_set_with_else() {
-        let items = vec![
-            Item::Node {
-                name: "Test".into(),
-                fields: vec![
-                    Field { name: "child".into(), storage: Storage::Index, type_name: "Expr".into() },
-                ],
-                fmt: Some(vec![
-                    Fmt::IfSet {
-                        field: "child".into(),
-                        then: vec![Fmt::Text("YES".into())],
-                        els: Some(vec![Fmt::Text("NO".into())]),
-                    },
-                ]),
-            },
-        ];
+        let items = vec![Item::Node {
+            name: "Test".into(),
+            fields: vec![Field {
+                name: "child".into(),
+                storage: Storage::Index,
+                type_name: "Expr".into(),
+            }],
+            fmt: Some(vec![Fmt::IfSet {
+                field: "child".into(),
+                then: vec![Fmt::Text("YES".into())],
+                els: Some(vec![Fmt::Text("NO".into())]),
+            }]),
+        }];
 
         let output = generate_rust_fmt_ops(&items);
         assert!(output.contains("FmtOp::IfSet(0,"));
@@ -712,25 +865,25 @@ mod tests {
             },
             Item::Node {
                 name: "Test".into(),
-                fields: vec![
-                    Field { name: "op".into(), storage: Storage::Inline, type_name: "MyOp".into() },
-                ],
-                fmt: Some(vec![
-                    Fmt::Switch {
-                        field: "op".into(),
-                        cases: vec![
-                            ("ADD".into(), vec![Fmt::Text("+".into())]),
-                            ("SUB".into(), vec![Fmt::Text("-".into())]),
-                        ],
-                        default: None,
-                    },
-                ]),
+                fields: vec![Field {
+                    name: "op".into(),
+                    storage: Storage::Inline,
+                    type_name: "MyOp".into(),
+                }],
+                fmt: Some(vec![Fmt::Switch {
+                    field: "op".into(),
+                    cases: vec![
+                        ("ADD".into(), vec![Fmt::Text("+".into())]),
+                        ("SUB".into(), vec![Fmt::Text("-".into())]),
+                    ],
+                    default: None,
+                }]),
             },
         ];
 
         let output = generate_rust_fmt_ops(&items);
-        assert!(output.contains("FmtOp::IfEnum(0, 0,"));  // ADD = ordinal 0
-        assert!(output.contains("FmtOp::IfEnum(0, 1,"));  // SUB = ordinal 1
+        assert!(output.contains("FmtOp::IfEnum(0, 0,")); // ADD = ordinal 0
+        assert!(output.contains("FmtOp::IfEnum(0, 1,")); // SUB = ordinal 1
     }
 
     #[test]
@@ -742,18 +895,15 @@ mod tests {
             },
             Item::Node {
                 name: "Test".into(),
-                fields: vec![
-                    Field { name: "op".into(), storage: Storage::Inline, type_name: "BinOp".into() },
-                ],
-                fmt: Some(vec![
-                    Fmt::EnumDisplay {
-                        field: "op".into(),
-                        mappings: vec![
-                            ("PLUS".into(), "+".into()),
-                            ("MINUS".into(), "-".into()),
-                        ],
-                    },
-                ]),
+                fields: vec![Field {
+                    name: "op".into(),
+                    storage: Storage::Inline,
+                    type_name: "BinOp".into(),
+                }],
+                fmt: Some(vec![Fmt::EnumDisplay {
+                    field: "op".into(),
+                    mappings: vec![("PLUS".into(), "+".into()), ("MINUS".into(), "-".into())],
+                }]),
             },
         ];
 
@@ -764,13 +914,11 @@ mod tests {
 
     #[test]
     fn compile_default_list() {
-        let items = vec![
-            Item::List {
-                name: "ExprList".into(),
-                child_type: "Expr".into(),
-                fmt: None,
-            },
-        ];
+        let items = vec![Item::List {
+            name: "ExprList".into(),
+            child_type: "Expr".into(),
+            fmt: None,
+        }];
 
         let output = generate_rust_fmt_ops(&items);
         assert!(output.contains("FMT_EXPR_LIST"));
@@ -781,17 +929,18 @@ mod tests {
 
     #[test]
     fn compile_clause() {
-        let items = vec![
-            Item::Node {
-                name: "Test".into(),
-                fields: vec![
-                    Field { name: "target".into(), storage: Storage::Index, type_name: "Expr".into() },
-                ],
-                fmt: Some(vec![
-                    Fmt::Clause { keyword: "FROM".into(), field: "target".into() },
-                ]),
-            },
-        ];
+        let items = vec![Item::Node {
+            name: "Test".into(),
+            fields: vec![Field {
+                name: "target".into(),
+                storage: Storage::Index,
+                type_name: "Expr".into(),
+            }],
+            fmt: Some(vec![Fmt::Clause {
+                keyword: "FROM".into(),
+                field: "target".into(),
+            }]),
+        }];
 
         let output = generate_rust_fmt_ops(&items);
         assert!(output.contains("FmtOp::IfSet(0,"));
@@ -805,9 +954,11 @@ mod tests {
         let items = vec![
             Item::Node {
                 name: "Foo".into(),
-                fields: vec![
-                    Field { name: "x".into(), storage: Storage::Index, type_name: "Expr".into() },
-                ],
+                fields: vec![Field {
+                    name: "x".into(),
+                    storage: Storage::Index,
+                    type_name: "Expr".into(),
+                }],
                 fmt: Some(vec![Fmt::Child("x".into())]),
             },
             Item::List {
@@ -822,5 +973,4 @@ mod tests {
         assert!(output.contains("NodeTag::Foo"));
         assert!(output.contains("NodeTag::FooList"));
     }
-
 }
