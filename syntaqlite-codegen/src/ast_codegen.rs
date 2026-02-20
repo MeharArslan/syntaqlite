@@ -9,14 +9,15 @@ use crate::rust_writer::RustWriter;
 
 // ── Public API ──────────────────────────────────────────────────────────
 
-pub fn generate_ast_nodes_h(items: &[Item]) -> String {
+pub fn generate_ast_nodes_h(items: &[Item], dialect: &str) -> String {
     let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
     let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
 
     let mut w = CWriter::new();
 
     w.file_header();
-    w.header_guard_start("SYNTAQLITE_SQLITE_NODE_H");
+    let guard = format!("SYNTAQLITE_{}_NODE_H", dialect.to_uppercase());
+    w.header_guard_start(&guard);
     w.include_system("stddef.h");
     w.include_system("stdint.h");
     w.newline();
@@ -192,7 +193,7 @@ pub fn generate_ast_nodes_h(items: &[Item]) -> String {
     w.finish()
 }
 
-pub fn generate_ast_builder_h(items: &[Item]) -> String {
+pub fn generate_ast_builder_h(items: &[Item], dialect: &str) -> String {
     let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
     let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
 
@@ -201,7 +202,7 @@ pub fn generate_ast_builder_h(items: &[Item]) -> String {
     w.file_header();
     w.header_guard_start("SYNTAQLITE_DIALECT_BUILDER_H");
     w.include_local("syntaqlite_ext/ast_builder.h");
-    w.include_local("syntaqlite/sqlite_node.h");
+    w.include_local(&format!("syntaqlite_{dialect}/{dialect}_node.h"));
     w.newline();
     w.extern_c_start();
 
@@ -409,7 +410,7 @@ fn emit_range_metadata(w: &mut CWriter, items: &[Item]) {
 ///
 /// This header is included by the dialect's `dialect.c` and provides
 /// all the AST metadata needed by `SyntaqliteDialect`.
-pub fn generate_c_field_meta(items: &[Item]) -> String {
+pub fn generate_c_field_meta(items: &[Item], dialect: &str) -> String {
     let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
     let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
 
@@ -418,7 +419,7 @@ pub fn generate_c_field_meta(items: &[Item]) -> String {
     w.header_guard_start("SYNTAQLITE_DIALECT_META_H");
     w.include_system("stddef.h");
     w.include_local("syntaqlite/dialect.h");
-    w.include_local("syntaqlite/sqlite_node.h");
+    w.include_local(&format!("syntaqlite_{dialect}/{dialect}_node.h"));
     w.newline();
 
     // Emit display string arrays for enums
@@ -1991,4 +1992,123 @@ pub fn generate_rust_wrappers() -> String {
     ");
 
     w.finish()
+}
+
+/// Generate `dialect.c` — the dialect descriptor struct and public API functions.
+///
+/// `dialect` is a short name like `"sqlite"` or `"perfetto"`.
+pub fn generate_dialect_c(dialect: &str) -> String {
+    let upper = dialect.to_uppercase();
+    let mut w = CWriter::new();
+    w.file_header();
+    w.include_local("syntaqlite/parser.h");
+    w.include_local(&format!("syntaqlite_{dialect}/{dialect}_tokens.h"));
+    w.include_local("syntaqlite/dialect.h");
+    w.include_local("csrc/dialect_builder.h");
+    w.include_local("csrc/dialect_parse.h");
+    w.include_local("csrc/dialect_meta.h");
+    w.include_local("csrc/dialect_fmt.h");
+    w.newline();
+
+    w.section(&format!("{} dialect descriptor", dialect));
+    w.newline();
+    w.line(&format!("static const SyntaqliteDialect {upper}_DIALECT = {{"));
+    w.line(&format!("    .name = \"{dialect}\","));
+    w.newline();
+    w.line("    // Parse tables + reduce actions");
+    w.line(&format!("    .tables = &{upper}_PARSE_TABLES,"));
+    w.line("    .reduce_actions = (SynqReduceActionsFn)yy_reduce_actions,");
+    w.newline();
+    w.line("    .range_meta = range_meta_table,");
+    w.line("    .tk_space = SYNTAQLITE_TK_SPACE,");
+    w.line("    .tk_semi = SYNTAQLITE_TK_SEMI,");
+    w.line("    .tk_comment = SYNTAQLITE_TK_COMMENT,");
+    w.newline();
+    w.line("    // AST metadata");
+    w.line("    .node_count = sizeof(ast_meta_node_names) / sizeof(ast_meta_node_names[0]),");
+    w.line("    .node_names = ast_meta_node_names,");
+    w.line("    .field_meta = ast_meta_field_meta,");
+    w.line("    .field_meta_counts = ast_meta_field_meta_counts,");
+    w.line("    .list_tags = ast_meta_list_tags,");
+    w.newline();
+    w.line("    // Formatter data");
+    w.line("    .fmt_strings = fmt_strings,");
+    w.line("    .fmt_string_count = sizeof(fmt_strings) / sizeof(fmt_strings[0]),");
+    w.line("    .fmt_enum_display = fmt_enum_display,");
+    w.line("    .fmt_enum_display_count = sizeof(fmt_enum_display) / sizeof(fmt_enum_display[0]),");
+    w.line("    .fmt_ops = fmt_ops,");
+    w.line("    .fmt_op_count = sizeof(fmt_ops) / 6,");
+    w.line("    .fmt_dispatch = fmt_dispatch,");
+    w.line("    .fmt_dispatch_count = sizeof(fmt_dispatch) / sizeof(fmt_dispatch[0]),");
+    w.line("};");
+    w.newline();
+
+    w.section("Public API");
+    w.newline();
+    w.line(&format!("const SyntaqliteDialect* syntaqlite_{dialect}_dialect(void) {{"));
+    w.line(&format!("    return &{upper}_DIALECT;"));
+    w.line("}");
+    w.newline();
+    w.line(&format!("SyntaqliteParser* syntaqlite_create_{dialect}_parser(const SyntaqliteMemMethods* mem) {{"));
+    w.line(&format!("    return syntaqlite_create_parser_with_dialect(mem, &{upper}_DIALECT);"));
+    w.line("}");
+
+    w.finish()
+}
+
+/// Generate the public API header for a dialect.
+///
+/// `dialect` is a short name like `"sqlite"` or `"perfetto"`.
+pub fn generate_dialect_h(dialect: &str) -> String {
+    let upper = dialect.to_uppercase();
+    let guard = format!("SYNTAQLITE_{upper}_H");
+    let mut w = CWriter::new();
+    w.file_header();
+    w.line(&format!("#ifndef {guard}"));
+    w.line(&format!("#define {guard}"));
+    w.newline();
+    w.include_local("syntaqlite/config.h");
+    w.newline();
+    w.line("#ifdef __cplusplus");
+    w.line("extern \"C\" {");
+    w.line("#endif");
+    w.newline();
+    w.line("typedef struct SyntaqliteDialect SyntaqliteDialect;");
+    w.line("typedef struct SyntaqliteParser SyntaqliteParser;");
+    w.newline();
+    w.line(&format!("const SyntaqliteDialect* syntaqlite_{dialect}_dialect(void);"));
+    w.line(&format!("SyntaqliteParser* syntaqlite_create_{dialect}_parser(const SyntaqliteMemMethods* mem);"));
+    w.newline();
+    w.line("#ifdef __cplusplus");
+    w.line("}");
+    w.line("#endif");
+    w.newline();
+    w.line("#if defined(__cplusplus) && __cplusplus >= 201703L");
+    w.include_local("syntaqlite/parser.h");
+    w.newline();
+    w.line("namespace syntaqlite {");
+    w.newline();
+    let pascal = pascal_case(dialect);
+    w.line(&format!("inline Parser {pascal}Parser() {{"));
+    w.line(&format!("  return Parser(syntaqlite_create_{dialect}_parser(nullptr));"));
+    w.line("}");
+    w.newline();
+    w.line("}  // namespace syntaqlite");
+    w.line("#endif");
+    w.newline();
+    w.line(&format!("#endif  // {guard}"));
+
+    w.finish()
+}
+
+fn pascal_case(s: &str) -> String {
+    s.split('_')
+        .map(|part| {
+            let mut chars = part.chars();
+            match chars.next() {
+                Some(c) => c.to_uppercase().to_string() + chars.as_str(),
+                None => String::new(),
+            }
+        })
+        .collect()
 }

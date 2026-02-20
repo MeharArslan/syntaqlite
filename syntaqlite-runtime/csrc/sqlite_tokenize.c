@@ -10,7 +10,7 @@
 */
 
 #include "csrc/sqlite_compat.h"
-#include "syntaqlite/sqlite_tokens.h"
+#include "syntaqlite_sqlite/sqlite_tokens.h"
 #include "csrc/sqlite_keyword.h"
 
 #define CC_X          0    /* The letter 'x', or start of BLOB literal */

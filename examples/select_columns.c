@@ -13,8 +13,8 @@
 #include <strings.h>
 
 #include "syntaqlite/parser.h"
-#include "syntaqlite/sqlite.h"
-#include "syntaqlite/sqlite_node.h"
+#include "syntaqlite_sqlite/sqlite.h"
+#include "syntaqlite_sqlite/sqlite_node.h"
 
 // ── Schema ──────────────────────────────────────────────────────────────
 

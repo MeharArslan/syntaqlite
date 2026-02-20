@@ -105,6 +105,7 @@ fn generate_header(grammar: &grammar_parser::LemonGrammar) -> Result<String, Str
 
 pub fn extract_tokenizer(
     tokenize_c_path: &str,
+    dialect: &str,
 ) -> Result<(String, TokenizerExtractResult), String> {
     let tokenize_content = fs::read_to_string(tokenize_c_path)
         .map_err(|e| format!("Failed to read {}: {}", tokenize_c_path, e))?;
@@ -171,7 +172,7 @@ pub fn extract_tokenizer(
         let mut w = c_writer::CWriter::new();
         w.sqlite_file_header();
         w.include_local("csrc/sqlite_compat.h")
-            .include_local("syntaqlite/sqlite_tokens.h")
+            .include_local(&format!("syntaqlite_{dialect}/{dialect}_tokens.h"))
             .include_local("csrc/sqlite_keyword.h")
             .newline()
             .fragment(&cc_defines)
@@ -281,8 +282,11 @@ pub fn generate_parser(
 
 /// Post-process lemon's parse.c, extracting data tables into a separate header.
 ///
+/// `dialect` is a short name (e.g. `"sqlite"`, `"perfetto"`) used to name the
+/// `SynqParseTables` variable (`SQLITE_PARSE_TABLES`, `PERFETTO_PARSE_TABLES`, etc.).
+///
 /// Returns (parse_c_content, parse_data_h_content).
-pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
+pub fn split_parse_c(parse_c: &str, dialect: &str) -> Result<(String, String), String> {
     let extractor = c_extractor::CExtractor::new(parse_c);
 
     // Extract sections
@@ -418,7 +422,7 @@ pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
     let size_macros = build_size_macros(&defines, &parsing_tables);
 
     // Build SynqParseTables initializer.
-    let tables_initializer = build_tables_initializer(&defines);
+    let tables_initializer = build_tables_initializer(&defines, dialect);
 
     // Build header from extracted sections (SQLite-derived)
     let mut w = c_writer::CWriter::new();
@@ -426,7 +430,7 @@ pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
     w.include_local("csrc/dialect_builder.h");
     w.include_local("syntaqlite_ext/ast_builder.h");
     w.include_local("syntaqlite/types.h");
-    w.include_local("syntaqlite/sqlite_tokens.h");
+    w.include_local(&format!("syntaqlite_{dialect}/{dialect}_tokens.h"));
     w.newline();
 
     // Grammar-specific struct types (extracted from %include block).
@@ -535,15 +539,16 @@ fn build_size_macros(
     s
 }
 
-/// Build a `static const SynqParseTables SQLITE_PARSE_TABLES = { ... }` initializer.
-fn build_tables_initializer(defines: &std::collections::HashMap<String, String>) -> String {
+/// Build a `static const SynqParseTables <DIALECT>_PARSE_TABLES = { ... }` initializer.
+fn build_tables_initializer(defines: &std::collections::HashMap<String, String>, dialect: &str) -> String {
+    let upper = dialect.to_uppercase();
     let get = |key: &str| -> &str {
         defines.get(key).map(|s| s.as_str()).unwrap_or("0")
     };
 
     let mut s = String::new();
     s.push_str("#include \"syntaqlite/dialect.h\"\n\n");
-    s.push_str("static const SynqParseTables SQLITE_PARSE_TABLES = {\n");
+    s.push_str(&format!("static const SynqParseTables {upper}_PARSE_TABLES = {{\n"));
     s.push_str("    .yy_action = yy_action,\n");
     s.push_str("    .yy_lookahead = yy_lookahead,\n");
     s.push_str("    .yy_shift_ofst = yy_shift_ofst,\n");
@@ -598,6 +603,7 @@ fn build_tables_initializer(defines: &std::collections::HashMap<String, String>)
 /// Returns (tables_header_content, keyword_function_content).
 pub fn generate_keyword_hash(
     extract_result: &TokenizerExtractResult,
+    dialect: &str,
 ) -> Result<(String, String), String> {
     // Run mkkeywordhash as a subprocess and capture its output
     let output = std::process::Command::new(
@@ -631,7 +637,7 @@ pub fn generate_keyword_hash(
         .finish();
 
     // Split the processed code into tables and function
-    let (tables_content, function_content) = split_keyword_code(&processed_code, extract_result)?;
+    let (tables_content, function_content) = split_keyword_code(&processed_code, extract_result, dialect)?;
 
     Ok((tables_content, function_content))
 }
@@ -640,6 +646,7 @@ pub fn generate_keyword_hash(
 fn split_keyword_code(
     code: &str,
     extract_result: &TokenizerExtractResult,
+    dialect: &str,
 ) -> Result<(String, String), String> {
     // Use CExtractor to split by the function
     let extractor = c_extractor::CExtractor::new(code);
@@ -650,7 +657,7 @@ fn split_keyword_code(
     tables.line("#ifndef SQLITE_KEYWORD_TABLES_H");
     tables.line("#define SQLITE_KEYWORD_TABLES_H");
     tables.newline();
-    tables.include_local("syntaqlite/sqlite_tokens.h");
+    tables.include_local(&format!("syntaqlite_{dialect}/{dialect}_tokens.h"));
     tables.newline();
     tables.fragment(&split.before);
     tables.newline();

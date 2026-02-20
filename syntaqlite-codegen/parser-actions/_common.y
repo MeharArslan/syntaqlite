@@ -25,7 +25,6 @@
 
 #include "syntaqlite_ext/ast_builder.h"
 #include "syntaqlite/types.h"
-#include "syntaqlite/sqlite_tokens.h"
 
 /* BEGIN GRAMMAR_TYPES */
 // Grammar-specific struct types for multi-valued grammar nonterminals.

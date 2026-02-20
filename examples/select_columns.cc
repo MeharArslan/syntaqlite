@@ -13,8 +13,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "syntaqlite/sqlite.h"
-#include "syntaqlite/sqlite_node.h"
+#include "syntaqlite_sqlite/sqlite.h"
+#include "syntaqlite_sqlite/sqlite_node.h"
 
 using syntaqlite::IsPresent;
 

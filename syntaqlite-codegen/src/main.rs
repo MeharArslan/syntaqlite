@@ -139,21 +139,21 @@ fn main() {
                     eprintln!("Extracting tokenizer...");
                 }
                 let (tokenize_content, extract_result) =
-                    syntaqlite_codegen::extract_tokenizer(&tokenize_c)?;
+                    syntaqlite_codegen::extract_tokenizer(&tokenize_c, "sqlite")?;
 
                 // Step 3: Generate keyword hash
                 if args.verbose {
                     eprintln!("Generating keyword hash...");
                 }
                 let (keyword_tables, keyword_func) =
-                    syntaqlite_codegen::generate_keyword_hash(&extract_result)?;
+                    syntaqlite_codegen::generate_keyword_hash(&extract_result, "sqlite")?;
 
                 // Step 4: Clean stale generated files, then write outputs
                 let out = Path::new(&output_dir);
                 let include_dir = Path::new(&output_dir)
                     .parent()
                     .unwrap_or(Path::new("."))
-                    .join("include/syntaqlite");
+                    .join("include/syntaqlite_sqlite");
 
                 for dir in [out, include_dir.as_path()] {
                     if dir.is_dir() {
@@ -187,21 +187,20 @@ fn main() {
                          #ifndef SYNTAQLITE_SQLITE_TOKENS_H\n\
                          #define SYNTAQLITE_SQLITE_TOKENS_H\n\
                          \n\
-                         {}\
+                         {tokens_content}\
                          \n\
                          #endif  // SYNTAQLITE_SQLITE_TOKENS_H\n",
-                        tokens_content,
                     );
                     fs::write(include_dir.join("sqlite_tokens.h"), guarded)
                         .map_err(|e| format!("Failed to write sqlite_tokens.h: {}", e))?;
                 }
 
                 // Step 4b: Generate AST code from node definitions
-                let ast_nodes_h = syntaqlite_codegen::ast_codegen::generate_ast_nodes_h(&all_items);
+                let ast_nodes_h = syntaqlite_codegen::ast_codegen::generate_ast_nodes_h(&all_items, "sqlite");
                 fs::write(include_dir.join("sqlite_node.h"), ast_nodes_h)
                     .map_err(|e| format!("Failed to write sqlite_node.h: {}", e))?;
 
-                let ast_builder_h = syntaqlite_codegen::ast_codegen::generate_ast_builder_h(&all_items);
+                let ast_builder_h = syntaqlite_codegen::ast_codegen::generate_ast_builder_h(&all_items, "sqlite");
                 fs::write(out.join("dialect_builder.h"), ast_builder_h)
                     .map_err(|e| format!("Failed to write dialect_builder.h: {}", e))?;
 
@@ -216,7 +215,7 @@ fn main() {
                 let raw_parse_c = fs::read_to_string(temp_dir.path().join("parse.c"))
                     .map_err(|e| format!("Failed to read parse.c: {}", e))?;
                 let (parse_c, parse_data_h) =
-                    syntaqlite_codegen::split_parse_c(&raw_parse_c)?;
+                    syntaqlite_codegen::split_parse_c(&raw_parse_c, "sqlite")?;
                 fs::write(rt_out.join("sqlite_parse.c"), parse_c)
                     .map_err(|e| format!("Failed to write sqlite_parse.c: {}", e))?;
                 fs::write(out.join("dialect_parse.h"), parse_data_h)
@@ -268,13 +267,25 @@ fn main() {
                 if args.verbose {
                     eprintln!("Generating C AST metadata...");
                 }
-                let ast_meta_h = syntaqlite_codegen::ast_codegen::generate_c_field_meta(&all_items);
+                let ast_meta_h = syntaqlite_codegen::ast_codegen::generate_c_field_meta(&all_items, "sqlite");
                 fs::write(out.join("dialect_meta.h"), ast_meta_h)
                     .map_err(|e| format!("Failed to write dialect_meta.h: {}", e))?;
 
                 let fmt_data_h = syntaqlite_codegen::ast_codegen::generate_c_fmt_arrays(&all_items);
                 fs::write(out.join("dialect_fmt.h"), fmt_data_h)
                     .map_err(|e| format!("Failed to write dialect_fmt.h: {}", e))?;
+
+                // Step 7: Generate dialect descriptor and public API header
+                if args.verbose {
+                    eprintln!("Generating dialect descriptor...");
+                }
+                let dialect_c = syntaqlite_codegen::ast_codegen::generate_dialect_c("sqlite");
+                fs::write(out.join("dialect.c"), dialect_c)
+                    .map_err(|e| format!("Failed to write dialect.c: {}", e))?;
+
+                let dialect_h = syntaqlite_codegen::ast_codegen::generate_dialect_h("sqlite");
+                fs::write(include_dir.join("sqlite.h"), dialect_h)
+                    .map_err(|e| format!("Failed to write sqlite.h: {}", e))?;
 
                 if args.verbose {
                     eprintln!("Code generation complete");

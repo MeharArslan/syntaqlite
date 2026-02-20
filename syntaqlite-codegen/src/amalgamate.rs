@@ -191,7 +191,10 @@ fn walk_dir(
 fn classify(include_key: &str) -> FileKind {
     if include_key.starts_with("syntaqlite_ext/") {
         FileKind::ExtHeader
-    } else if include_key.starts_with("syntaqlite/") {
+    } else if include_key.starts_with("syntaqlite/") || include_key.starts_with("syntaqlite_") {
+        // Matches runtime headers (syntaqlite/types.h) and dialect headers
+        // (syntaqlite_sqlite/sqlite.h, syntaqlite_perfetto/perfetto.h, etc.).
+        // syntaqlite_ext/ is handled above.
         FileKind::PublicHeader
     } else if include_key.ends_with(".h") {
         FileKind::InternalHeader

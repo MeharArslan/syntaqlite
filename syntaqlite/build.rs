@@ -79,7 +79,7 @@ fn main() {
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite/dialect.h");
     println!("cargo:rerun-if-changed=csrc/dialect_builder.h");
     println!("cargo:rerun-if-changed=csrc/dialect_parse.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/sqlite_tokens.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/sqlite_node.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/sqlite.h");
+    println!("cargo:rerun-if-changed=include/syntaqlite_sqlite/sqlite_tokens.h");
+    println!("cargo:rerun-if-changed=include/syntaqlite_sqlite/sqlite_node.h");
+    println!("cargo:rerun-if-changed=include/syntaqlite_sqlite/sqlite.h");
 }
