@@ -4,7 +4,7 @@
 #ifndef SYNTAQLITE_INTERNAL_SQLITE_TOKENIZE_H
 #define SYNTAQLITE_INTERNAL_SQLITE_TOKENIZE_H
 
-#include "csrc/sqlite_compat.h"
+#include "syntaqlite_ext/sqlite_compat.h"
 
 i64 synq_sqlite3GetToken(const unsigned char* z, int* tokenType);
 

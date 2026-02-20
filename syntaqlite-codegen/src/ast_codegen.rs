@@ -2376,6 +2376,33 @@ pub fn generate_dialect_h(dialect: &str) -> String {
     w.finish()
 }
 
+/// Generate the dialect dispatch header for amalgamation builds.
+///
+/// Produces a header like `sqlite_dialect_dispatch.h` that defines the
+/// `SYNQ_PARSER_ALLOC`, etc. macros to call the dialect's parser/tokenizer
+/// functions directly (bypassing function pointer indirection).
+pub fn generate_dialect_dispatch_h(dialect: &str) -> String {
+    let upper = dialect.to_uppercase();
+    let guard = format!("SYNTAQLITE_{upper}_DIALECT_DISPATCH_H");
+    let mut w = CWriter::new();
+    w.file_header();
+    w.line(&format!("#ifndef {guard}"));
+    w.line(&format!("#define {guard}"));
+    w.newline();
+    w.line("#define SYNQ_PARSER_ALLOC(d, m)          SyntaqliteParseAlloc(m)");
+    w.line("#define SYNQ_PARSER_INIT(d, p)           SyntaqliteParseInit(p)");
+    w.line("#define SYNQ_PARSER_FINALIZE(d, p)       SyntaqliteParseFinalize(p)");
+    w.line("#define SYNQ_PARSER_FREE(d, p, f)        SyntaqliteParseFree(p, f)");
+    w.line("#define SYNQ_PARSER_FEED(d, p, t, m, c)  SyntaqliteParse(p, t, m, c)");
+    w.line("#define SYNQ_PARSER_TRACE(d, f, s)       SyntaqliteParseTrace(f, s)");
+    w.line(&format!(
+        "#define SYNQ_GET_TOKEN(d, z, t)          synq_{dialect}3GetToken(z, t)"
+    ));
+    w.newline();
+    w.line(&format!("#endif  // {guard}"));
+    w.finish()
+}
+
 fn pascal_case(s: &str) -> String {
     s.split('_')
         .map(|part| {

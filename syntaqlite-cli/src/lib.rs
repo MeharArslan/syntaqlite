@@ -378,6 +378,14 @@ fn codegen_to_dir_with_base(
     fs::write(include_dir.join(format!("{dialect}.h")), dialect_h)
         .map_err(|e| format!("writing {dialect}.h: {e}"))?;
 
+    let dialect_dispatch_h =
+        syntaqlite_codegen::ast_codegen::generate_dialect_dispatch_h(dialect);
+    fs::write(
+        csrc_dir.join(format!("{dialect}_dialect_dispatch.h")),
+        dialect_dispatch_h,
+    )
+    .map_err(|e| format!("writing {dialect}_dialect_dispatch.h: {e}"))?;
+
     Ok(())
 }
 

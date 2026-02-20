@@ -47,7 +47,8 @@ fn main() {
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/parser.c");
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/parse_ctx.h");
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/tokenizer.c");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/sqlite_compat.h");
+    println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/dialect_dispatch.h");
+    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite_ext/sqlite_compat.h");
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite/config.h");
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite/parser.h");
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite/tokenizer.h");

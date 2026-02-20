@@ -171,14 +171,10 @@ pub fn extract_tokenizer(
     let combined = {
         let mut w = c_writer::CWriter::new();
         w.sqlite_file_header();
-        w.include_local("csrc/sqlite_compat.h");
-        w.line("#ifdef SYNTAQLITE_INLINE_TOKEN_HEADER");
-        w.line("  #include SYNTAQLITE_INLINE_TOKEN_HEADER");
-        w.line("#else");
-        w.line(&format!(
-            "  #include \"syntaqlite_{dialect}/{dialect}_tokens.h\""
+        w.include_local("syntaqlite_ext/sqlite_compat.h");
+        w.include_local(&format!(
+            "syntaqlite_{dialect}/{dialect}_tokens.h"
         ));
-        w.line("#endif");
         w.include_local("csrc/sqlite_keyword.h")
             .newline()
             .fragment(&cc_defines)
@@ -324,7 +320,7 @@ pub fn generate_keyword_hash(
 
     let mut w = c_writer::CWriter::new();
     w.sqlite_file_header();
-    w.include_local("csrc/sqlite_compat.h");
+    w.include_local("syntaqlite_ext/sqlite_compat.h");
     w.include_local(&format!("syntaqlite_{dialect}/{dialect}_tokens.h"));
     w.newline();
 

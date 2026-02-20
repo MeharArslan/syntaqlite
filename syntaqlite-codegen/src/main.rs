@@ -295,6 +295,11 @@ fn main() {
                 fs::write(include_dir.join("sqlite.h"), dialect_h)
                     .map_err(|e| format!("Failed to write sqlite.h: {}", e))?;
 
+                let dialect_dispatch_h =
+                    syntaqlite_codegen::ast_codegen::generate_dialect_dispatch_h("sqlite");
+                fs::write(out.join("sqlite_dialect_dispatch.h"), dialect_dispatch_h)
+                    .map_err(|e| format!("Failed to write sqlite_dialect_dispatch.h: {}", e))?;
+
                 if args.verbose {
                     eprintln!("Code generation complete");
                 }

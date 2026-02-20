@@ -389,19 +389,6 @@ fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
     }
     source.push_str(&format!("#include \"{header_filename}\"\n\n"));
 
-    // Handle inline macros: when a file uses an inline include macro and the
-    // target header is already inlined in the amalgamation, define the macro
-    // to nothing so the `#include MACRO` becomes a no-op.
-    for macro_name in &[
-        "SYNTAQLITE_INLINE_PARSER_DATA_HEADER",
-        "SYNTAQLITE_INLINE_KEYWORD_TABLES",
-        "SYNTAQLITE_INLINE_TOKEN_HEADER",
-    ] {
-        let has_macro = files.iter().any(|f| f.content.contains(macro_name));
-        if has_macro {
-            source.push_str(&format!("#define {macro_name} /* already inlined */\n"));
-        }
-    }
     source.push('\n');
 
     // Full mode: extension headers go into the .c alongside internal headers.
@@ -411,8 +398,17 @@ fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
         }
     }
 
-    // Internal headers, then sources.
-    for &i in &internal_headers {
+    // Emit dialect dispatch headers before other internal headers so that
+    // the direct-call macros are defined before dialect_dispatch.h is
+    // processed (its fallback is guarded by `#elif !defined(SYNQ_PARSER_ALLOC)`).
+    let (dispatch_headers, other_headers): (Vec<usize>, Vec<usize>) =
+        internal_headers.iter().partition(|&&i| {
+            files[i].include_key.ends_with("_dialect_dispatch.h")
+        });
+    for &i in &dispatch_headers {
+        emit_file(&files[i], &inlined_keys, &mut source);
+    }
+    for &i in &other_headers {
         emit_file(&files[i], &inlined_keys, &mut source);
     }
     for &i in &sources {
@@ -548,7 +544,7 @@ fn emit_file(file: &SourceFile, _inlined_keys: &HashSet<&str>, out: &mut String)
             }
             // System includes (`<...>`) are kept in place — they may be
             // inside conditional blocks (e.g. `#ifdef __cplusplus`).
-            // Macro includes (e.g. `#include SYNTAQLITE_INLINE_PARSER_DATA_HEADER`)
+            // Macro includes (e.g. `#include SYNTAQLITE_INLINE_DIALECT_DISPATCH`)
             // are also kept as-is.
         }
 

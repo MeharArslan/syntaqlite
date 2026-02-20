@@ -5,6 +5,7 @@
 
 #include <string.h>
 
+#include "csrc/dialect_dispatch.h"
 #include "syntaqlite/dialect.h"
 
 struct SyntaqliteTokenizer {
@@ -40,7 +41,7 @@ int syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out) {
   }
 
   int token_type = 0;
-  int64_t token_len = tok->dialect->get_token(
+  int64_t token_len = SYNQ_GET_TOKEN(tok->dialect,
       (const unsigned char*)tok->source + tok->offset, &token_type);
 
   out->text = tok->source + tok->offset;
