@@ -36,10 +36,10 @@ pub fn amalgamate_runtime(runtime_dir: &Path) -> Result<AmalgamateOutput, String
 /// Produce `syntaqlite_<dialect>.{h,c}` that references `syntaqlite_runtime.h`
 /// and `syntaqlite_ext.h`.
 ///
-/// Any `#include "..."` that doesn't resolve to a file in the dialect tree is
-/// assumed to be a runtime header and is stripped — the emitted `.c` file
-/// includes the runtime amalgamation header via `SYNTAQLITE_RUNTIME_HEADER`
-/// and the extension header via `SYNTAQLITE_EXT_HEADER`.
+/// Runtime-style `#include "..."` directives that don't resolve to a file in
+/// the dialect tree are stripped — the emitted `.c` file includes the runtime
+/// amalgamation header via `SYNTAQLITE_RUNTIME_HEADER` and the extension
+/// header via `SYNTAQLITE_EXT_HEADER`.
 pub fn amalgamate_dialect(dialect: &str, dialect_dir: &Path) -> Result<AmalgamateOutput, String> {
     let csrc = dialect_dir.join("csrc");
     let include = dialect_dir.join("include");
@@ -203,16 +203,40 @@ fn classify(include_key: &str) -> FileKind {
 // Step 2: Parse #include directives
 // ---------------------------------------------------------------------------
 
+enum IncludeDirective<'a> {
+    Quoted(&'a str),
+    System,
+    Other,
+}
+
+/// Parse an include directive and return the include target shape.
+///
+/// Handles both `#include "x"` and `# include "x"` forms.
+fn parse_include_directive(line: &str) -> Option<IncludeDirective<'_>> {
+    let trimmed = line.trim_start();
+    if !trimmed.starts_with('#') {
+        return None;
+    }
+    let after_hash = trimmed[1..].trim_start();
+    let after_kw = after_hash.strip_prefix("include")?.trim_start();
+
+    if let Some(rest) = after_kw.strip_prefix('"') {
+        let end = rest.find('"')?;
+        return Some(IncludeDirective::Quoted(&rest[..end]));
+    }
+    if let Some(rest) = after_kw.strip_prefix('<') {
+        let _ = rest.find('>')?;
+        return Some(IncludeDirective::System);
+    }
+    Some(IncludeDirective::Other)
+}
+
 /// Extract `#include "..."` paths from file content.
 fn parse_local_includes(content: &str) -> Vec<String> {
     let mut local = Vec::new();
     for line in content.lines() {
-        let trimmed = line.trim();
-        if let Some(rest) = trimmed.strip_prefix("#include") {
-            let rest = rest.trim();
-            if let Some(path) = rest.strip_prefix('"').and_then(|r| r.strip_suffix('"')) {
-                local.push(path.to_string());
-            }
+        if let Some(IncludeDirective::Quoted(path)) = parse_include_directive(line) {
+            local.push(path.to_string());
         }
     }
     local
@@ -478,10 +502,9 @@ fn detect_include_guard(content: &str) -> Option<String> {
     None
 }
 
-/// Emit a single file's content, stripping all `#include "..."` directives
-/// (already inlined or provided by the runtime amalgamation header) and
-/// include guards (the outer amalgamation guard subsumes them).
-fn emit_file(file: &SourceFile, _inlined_keys: &HashSet<&str>, out: &mut String) {
+/// Emit a single file's content, stripping include guards and only those quoted
+/// includes that are already inlined or known runtime-style headers.
+fn emit_file(file: &SourceFile, inlined_keys: &HashSet<&str>, out: &mut String) {
     out.push_str(&format!(
         "/* ======== begin: {} ======== */\n",
         file.include_key
@@ -532,19 +555,17 @@ fn emit_file(file: &SourceFile, _inlined_keys: &HashSet<&str>, out: &mut String)
             }
         }
 
-        if let Some(rest) = trimmed.strip_prefix("#include") {
-            let rest = rest.trim();
-            if rest.starts_with('"') {
-                // All quoted local includes are stripped:
-                // - Inlined files are already present above in the amalgamation.
-                // - Unresolved files are runtime headers provided by the
-                //   runtime amalgamation or the self-include at the top.
-                continue;
+        if let Some(include) = parse_include_directive(trimmed) {
+            match include {
+                IncludeDirective::Quoted(path) => {
+                    if should_strip_quoted_include(path, inlined_keys) {
+                        continue;
+                    }
+                }
+                IncludeDirective::System | IncludeDirective::Other => {
+                    // System and macro includes are preserved.
+                }
             }
-            // System includes (`<...>`) are kept in place — they may be
-            // inside conditional blocks (e.g. `#ifdef __cplusplus`).
-            // Macro includes (e.g. `#include SYNTAQLITE_INLINE_DIALECT_DISPATCH`)
-            // are also kept as-is.
         }
 
         out.push_str(line);
@@ -555,4 +576,48 @@ fn emit_file(file: &SourceFile, _inlined_keys: &HashSet<&str>, out: &mut String)
         "/* ======== end: {} ======== */\n\n",
         file.include_key
     ));
+}
+
+fn should_strip_quoted_include(path: &str, inlined_keys: &HashSet<&str>) -> bool {
+    if inlined_keys.contains(path) {
+        return true;
+    }
+    // Dialect-only amalgamations intentionally drop runtime-supplied local
+    // headers and rely on SYNTAQLITE_RUNTIME_HEADER / SYNTAQLITE_EXT_HEADER.
+    path.starts_with("syntaqlite/")
+        || path.starts_with("syntaqlite_")
+        || path.starts_with("syntaqlite_ext/")
+        || path.starts_with("csrc/")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_include_directive_accepts_spaced_form() {
+        let inc = parse_include_directive("# include \"syntaqlite/foo.h\"");
+        assert!(matches!(
+            inc,
+            Some(IncludeDirective::Quoted("syntaqlite/foo.h"))
+        ));
+    }
+
+    #[test]
+    fn parse_include_directive_handles_system_and_macro() {
+        let sys = parse_include_directive("#include <stdint.h>");
+        assert!(matches!(sys, Some(IncludeDirective::System)));
+
+        let mac = parse_include_directive("#include SYNTAQLITE_RUNTIME_HEADER");
+        assert!(matches!(mac, Some(IncludeDirective::Other)));
+    }
+
+    #[test]
+    fn strip_quoted_include_only_for_inlined_or_runtime_paths() {
+        let mut inlined = HashSet::new();
+        inlined.insert("foo/bar.h");
+        assert!(should_strip_quoted_include("foo/bar.h", &inlined));
+        assert!(should_strip_quoted_include("syntaqlite/parser.h", &inlined));
+        assert!(!should_strip_quoted_include("vendor/custom.h", &inlined));
+    }
 }

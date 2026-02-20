@@ -465,10 +465,10 @@ pub fn run(name: &str, dialect: &Dialect) {
             &output_dir,
         ),
         Command::Lemon { args } => {
-            syntaqlite_codegen::lemon::run_lemon(&args);
+            syntaqlite_codegen::run_lemon(&args);
         }
         Command::Mkkeyword { args } => {
-            syntaqlite_codegen::mkkeyword::run_mkkeyword(&args);
+            syntaqlite_codegen::run_mkkeyword(&args);
         }
     };
 

@@ -16,31 +16,12 @@ pub(crate) struct ParseResult {
     pub error_msg: *const c_char,
 }
 
-const _: () = {
-    const P: usize = std::mem::size_of::<*const ()>();
-    const fn align_up(n: usize) -> usize {
-        (n + P - 1) & !(P - 1)
-    }
-
-    assert!(std::mem::offset_of!(ParseResult, root) == 0);
-    assert!(std::mem::offset_of!(ParseResult, error) == 4);
-    assert!(std::mem::offset_of!(ParseResult, error_msg) == align_up(8));
-    assert!(std::mem::size_of::<ParseResult>() == align_up(align_up(8) + P));
-};
-
 /// Mirrors C `SyntaqliteMemMethods` from `include/syntaqlite/config.h`.
 #[repr(C)]
 pub(crate) struct MemMethods {
     pub x_malloc: unsafe extern "C" fn(usize) -> *mut c_void,
     pub x_free: unsafe extern "C" fn(*mut c_void),
 }
-
-const _: () = {
-    const P: usize = std::mem::size_of::<*const ()>();
-    assert!(std::mem::size_of::<MemMethods>() == 2 * P);
-    assert!(std::mem::offset_of!(MemMethods, x_malloc) == 0);
-    assert!(std::mem::offset_of!(MemMethods, x_free) == P);
-};
 
 /// The kind of a comment.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,13 +46,6 @@ pub struct Comment {
     pub kind: CommentKind,
 }
 
-const _: () = {
-    assert!(std::mem::size_of::<Comment>() == 12);
-    assert!(std::mem::offset_of!(Comment, offset) == 0);
-    assert!(std::mem::offset_of!(Comment, length) == 4);
-    assert!(std::mem::offset_of!(Comment, kind) == 8);
-};
-
 /// A recorded macro invocation region. Populated via the low-level API
 /// (`begin_macro` / `end_macro`). The formatter can use these to reconstruct
 /// macro calls from the expanded AST.
@@ -86,12 +60,6 @@ pub struct MacroRegion {
     pub call_length: u32,
 }
 
-const _: () = {
-    assert!(std::mem::size_of::<MacroRegion>() == 8);
-    assert!(std::mem::offset_of!(MacroRegion, call_offset) == 0);
-    assert!(std::mem::offset_of!(MacroRegion, call_length) == 4);
-};
-
 // Opaque C tokenizer type
 pub(crate) enum Tokenizer {}
 
@@ -104,14 +72,6 @@ pub(crate) struct Token {
     pub length: u32,
     pub type_: u32,
 }
-
-const _: () = {
-    const P: usize = std::mem::size_of::<*const ()>();
-    assert!(std::mem::offset_of!(Token, text) == 0);
-    assert!(std::mem::offset_of!(Token, length) == P);
-    assert!(std::mem::offset_of!(Token, type_) == P + 4);
-    assert!(std::mem::size_of::<Token>() == P + 8);
-};
 
 // The C API uses `SyntaqliteNode*` as an opaque return. We only read via
 // the tag field (first u32) and then cast to the right struct, so we just

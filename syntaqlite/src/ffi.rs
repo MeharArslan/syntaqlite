@@ -583,4 +583,3 @@ pub(crate) struct FilterOver {
     pub(crate) over_def: NodeId,
     pub(crate) over_name: SourceSpan,
 }
-

@@ -7,7 +7,7 @@
 //! Use `lines()` for multiline static blocks; use `line()` + `indent()`/`dedent()`
 //! for dynamic content in loops.
 
-use std::fmt::Write as _;
+use crate::writers::text_writer::TextWriterCore;
 
 const RUST_FILE_HEADER: &str = "\
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
@@ -19,9 +19,7 @@ const RUST_FILE_HEADER: &str = "\
 
 /// Simple Rust code writer with single-buffer output and indentation tracking
 pub struct RustWriter {
-    buffer: String,
-    indent: usize,
-    at_line_start: bool,
+    core: TextWriterCore,
 }
 
 impl RustWriter {
@@ -29,28 +27,24 @@ impl RustWriter {
 
     pub fn new() -> Self {
         Self {
-            buffer: String::new(),
-            indent: 0,
-            at_line_start: true,
+            core: TextWriterCore::new(),
         }
     }
 
     pub fn finish(self) -> String {
-        self.buffer
+        self.core.finish()
     }
 
     // Basic output
 
     pub fn newline(&mut self) -> &mut Self {
-        self.buffer.push('\n');
-        self.at_line_start = true;
+        self.core.newline();
         self
     }
 
     pub fn line(&mut self, text: &str) -> &mut Self {
-        self.write_indent();
-        self.buffer.push_str(text);
-        self.newline()
+        self.core.line(text);
+        self
     }
 
     /// Emit a block opener and increase indentation.
@@ -119,50 +113,31 @@ impl RustWriter {
         self
     }
 
-    /// Write a fragment (anything that implements Display)
-    pub fn fragment(&mut self, fragment: &impl std::fmt::Display) -> &mut Self {
-        write!(self.buffer, "{}", fragment).unwrap();
-        self.newline()
-    }
-
     /// Start a block (increase indentation)
     pub fn indent(&mut self) -> &mut Self {
-        self.indent += 1;
+        self.core.indent();
         self
     }
 
     /// End a block (decrease indentation)
     pub fn dedent(&mut self) -> &mut Self {
-        self.indent = self.indent.saturating_sub(1);
+        self.core.dedent();
         self
     }
 
     /// Emit the syntaqlite copyright + @generated header.
     pub fn file_header(&mut self) {
-        self.buffer.push_str(RUST_FILE_HEADER);
-        self.at_line_start = true;
+        self.core.push_raw(RUST_FILE_HEADER);
     }
 
     /// Emit a doc comment line: `/// text` (or just `///` if text is empty)
     pub fn doc_comment(&mut self, text: &str) -> &mut Self {
-        self.write_indent();
         if text.is_empty() {
-            self.buffer.push_str("///");
+            self.line("///");
         } else {
-            write!(self.buffer, "/// {}", text).unwrap();
+            self.line(&format!("/// {}", text));
         }
-        self.newline()
-    }
-
-    // ========== Private helpers ==========
-
-    fn write_indent(&mut self) {
-        if self.at_line_start && self.indent > 0 {
-            for _ in 0..self.indent {
-                self.buffer.push_str("    ");
-            }
-        }
-        self.at_line_start = false;
+        self
     }
 }
 

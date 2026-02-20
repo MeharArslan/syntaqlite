@@ -1,0 +1,68 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
+use std::fmt::{Display, Write as _};
+
+/// Shared single-buffer text writer with indentation tracking.
+pub(crate) struct TextWriterCore {
+    buffer: String,
+    indent: usize,
+    at_line_start: bool,
+}
+
+impl TextWriterCore {
+    pub(crate) fn new() -> Self {
+        Self {
+            buffer: String::new(),
+            indent: 0,
+            at_line_start: true,
+        }
+    }
+
+    pub(crate) fn finish(self) -> String {
+        self.buffer
+    }
+
+    pub(crate) fn newline(&mut self) {
+        self.buffer.push('\n');
+        self.at_line_start = true;
+    }
+
+    pub(crate) fn line(&mut self, text: &str) {
+        self.write_indent();
+        self.buffer.push_str(text);
+        self.newline();
+    }
+
+    pub(crate) fn raw_line(&mut self, text: &str) {
+        self.buffer.push_str(text);
+        self.newline();
+    }
+
+    pub(crate) fn fragment(&mut self, fragment: &impl Display) {
+        write!(self.buffer, "{}", fragment).unwrap();
+        self.newline();
+    }
+
+    pub(crate) fn indent(&mut self) {
+        self.indent += 1;
+    }
+
+    pub(crate) fn dedent(&mut self) {
+        self.indent = self.indent.saturating_sub(1);
+    }
+
+    pub(crate) fn push_raw(&mut self, text: &str) {
+        self.buffer.push_str(text);
+        self.at_line_start = text.ends_with('\n');
+    }
+
+    pub(crate) fn write_indent(&mut self) {
+        if self.at_line_start && self.indent > 0 {
+            for _ in 0..self.indent {
+                self.buffer.push_str("    ");
+            }
+        }
+        self.at_line_start = false;
+    }
+}
