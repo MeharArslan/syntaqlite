@@ -228,19 +228,23 @@ pub fn generate_c_field_metadata(
     w.line("static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {");
     w.indent();
     w.line("NULL, /* Null */");
-    for node in model.nodes() {
-        if node.fields.is_empty() {
-            w.line(&format!("NULL, /* {} */", node.name));
-        } else {
-            w.line(&format!(
-                "field_meta_{}, /* {} */",
-                pascal_to_snake(node.name),
-                node.name
-            ));
+    for item in model.node_like_items() {
+        match item {
+            NodeLikeRef::Node(node) => {
+                if node.fields.is_empty() {
+                    w.line(&format!("NULL, /* {} */", node.name));
+                } else {
+                    w.line(&format!(
+                        "field_meta_{}, /* {} */",
+                        pascal_to_snake(node.name),
+                        node.name
+                    ));
+                }
+            }
+            NodeLikeRef::List(list) => {
+                w.line(&format!("NULL, /* {} */", list.name));
+            }
         }
-    }
-    for list in model.lists() {
-        w.line(&format!("NULL, /* {} */", list.name));
     }
     w.dedent();
     w.line("};");
@@ -249,11 +253,15 @@ pub fn generate_c_field_metadata(
     w.line("static const uint8_t ast_meta_field_meta_counts[] = {");
     w.indent();
     w.line("0, /* Null */");
-    for node in model.nodes() {
-        w.line(&format!("{}, /* {} */", node.fields.len(), node.name));
-    }
-    for list in model.lists() {
-        w.line(&format!("0, /* {} */", list.name));
+    for item in model.node_like_items() {
+        match item {
+            NodeLikeRef::Node(node) => {
+                w.line(&format!("{}, /* {} */", node.fields.len(), node.name));
+            }
+            NodeLikeRef::List(list) => {
+                w.line(&format!("0, /* {} */", list.name));
+            }
+        }
     }
     w.dedent();
     w.line("};");
@@ -263,11 +271,15 @@ pub fn generate_c_field_metadata(
     w.line("static const uint8_t ast_meta_list_tags[] = {");
     w.indent();
     w.line("0, /* Null */");
-    for node in model.nodes() {
-        w.line(&format!("0, /* {} */", node.name));
-    }
-    for list in model.lists() {
-        w.line(&format!("1, /* {} */", list.name));
+    for item in model.node_like_items() {
+        match item {
+            NodeLikeRef::Node(node) => {
+                w.line(&format!("0, /* {} */", node.name));
+            }
+            NodeLikeRef::List(list) => {
+                w.line(&format!("1, /* {} */", list.name));
+            }
+        }
     }
     w.dedent();
     w.line("};");
