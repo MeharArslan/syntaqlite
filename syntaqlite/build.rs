@@ -52,10 +52,11 @@ fn main() {
 
     // Engine (runtime) sources
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/arena.c");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/arena.h");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/vec.h");
+    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite_ext/arena.h");
+    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite_ext/vec.h");
+    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite_ext/ast_builder.h");
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/parser.c");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/parser.h");
+    println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/parse_ctx.h");
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/tokenizer.c");
     // dialect.h was removed — parser vtable is now in syntaqlite/dialect.h
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/csrc/sqlite_tokenize.c");
@@ -76,7 +77,6 @@ fn main() {
     println!("cargo:rerun-if-changed=csrc/dialect_meta.h");
     println!("cargo:rerun-if-changed=csrc/dialect_fmt.h");
     println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite/dialect.h");
-    println!("cargo:rerun-if-changed=csrc/dialect_grammar_types.h");
     println!("cargo:rerun-if-changed=csrc/dialect_builder.h");
     println!("cargo:rerun-if-changed=csrc/dialect_parse.h");
     println!("cargo:rerun-if-changed=include/syntaqlite/sqlite_tokens.h");

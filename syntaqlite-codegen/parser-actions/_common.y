@@ -10,9 +10,9 @@
 // Conventions:
 // - pCtx: Parse context (SynqParseCtx*), threaded via %extra_argument
 // - pCtx->root: Set to root node ID at input rule
-// - Terminals are SyntaqliteToken with .z (pointer), .n (length), .type (token ID)
+// - Terminals are SynqParseToken with .z (pointer), .n (length), .type (token ID)
 // - Non-terminals default to uint32_t (node IDs)
-// - synq_span(pCtx, tok) converts a SyntaqliteToken into SyntaqliteSourceSpan
+// - synq_span(pCtx, tok) converts a SynqParseToken into SyntaqliteSourceSpan
 // - SYNQ_NO_SPAN is the zero sentinel span
 
 %name SyntaqliteParse
@@ -23,10 +23,47 @@
 %include {
 #include <string.h>
 
-#include "csrc/parser.h"
-#include "csrc/dialect_grammar_types.h"
-#include "csrc/dialect_parse.h"
+#include "syntaqlite_ext/ast_builder.h"
+#include "syntaqlite/types.h"
 #include "syntaqlite/sqlite_tokens.h"
+
+/* BEGIN GRAMMAR_TYPES */
+// Grammar-specific struct types for multi-valued grammar nonterminals.
+// These are used by Lemon-generated parser actions to bundle multiple
+// values through a single nonterminal reduction.
+
+// columnname: passes name span + typetoken span from column definition.
+typedef struct SynqColumnNameValue {
+  SyntaqliteSourceSpan name;
+  SyntaqliteSourceSpan typetoken;
+} SynqColumnNameValue;
+
+// ccons / tcons / generated: a constraint node + pending constraint name.
+typedef struct SynqConstraintValue {
+  uint32_t node;
+  SyntaqliteSourceSpan pending_name;
+} SynqConstraintValue;
+
+// carglist / conslist: accumulated constraint list + pending name for next.
+typedef struct SynqConstraintListValue {
+  uint32_t list;
+  SyntaqliteSourceSpan pending_name;
+} SynqConstraintListValue;
+
+// on_using: ON expr / USING column-list discriminator.
+typedef struct SynqOnUsingValue {
+  uint32_t on_expr;
+  uint32_t using_cols;
+} SynqOnUsingValue;
+
+// with: recursive flag + CTE list node ID.
+typedef struct SynqWithValue {
+  uint32_t cte_list;
+  int is_recursive;
+} SynqWithValue;
+/* END GRAMMAR_TYPES */
+
+#include "csrc/dialect_parse.h"
 
 #define YYNOERRORRECOVERY 1
 #define YYPARSEFREENEVERNULL 1
@@ -37,7 +74,7 @@
 // %token_type and %default_type are global; individual %type declarations
 // live next to the rules they describe in each action file.
 
-%token_type {SyntaqliteToken}
+%token_type {SynqParseToken}
 %default_type {uint32_t}
 
 // ============ Error handlers ============

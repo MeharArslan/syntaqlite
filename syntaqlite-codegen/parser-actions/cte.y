@@ -11,10 +11,10 @@
 // - pCtx: Parse context (SynqParseContext*)
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
-// - Terminals are SyntaqliteToken with .z (pointer) and .n (length)
+// - Terminals are SynqParseToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
 
-%type withnm {SyntaqliteToken}
+%type withnm {SynqParseToken}
 %type wqas {int}
 %type collate {int}
 
@@ -47,7 +47,7 @@ wqlist(A) ::= wqlist(A) COMMA wqitem(X). {
 // ============ CTE name ============
 
 withnm(A) ::= nm(A). {
-    // Token passthrough - nm already produces SyntaqliteToken
+    // Token passthrough - nm already produces SynqParseToken
 }
 
 // ============ AS materialization hint ============

@@ -200,7 +200,7 @@ pub fn generate_ast_builder_h(items: &[Item]) -> String {
 
     w.file_header();
     w.header_guard_start("SYNTAQLITE_DIALECT_BUILDER_H");
-    w.include_local("csrc/parser.h");
+    w.include_local("syntaqlite_ext/ast_builder.h");
     w.include_local("syntaqlite/sqlite_node.h");
     w.newline();
     w.extern_c_start();

@@ -11,12 +11,12 @@
 // - pCtx: Parse context (SynqParseContext*)
 // - pCtx->zSql: Original SQL text (for computing offsets)
 // - pCtx->root: Set to root node ID at input rule
-// - Terminals are SyntaqliteToken with .z (pointer) and .n (length)
+// - Terminals are SynqParseToken with .z (pointer) and .n (length)
 // - Non-terminals are u32 node IDs
 
 %type on_using {SynqOnUsingValue}
 %type joinop {int}
-%type indexed_by {SyntaqliteToken}
+%type indexed_by {SynqParseToken}
 
 // ============ FROM clause table sources ============
 

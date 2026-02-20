@@ -10,16 +10,52 @@
 */
 
 #include "csrc/dialect_builder.h"
-#include "csrc/parser.h"
-#include "csrc/dialect_grammar_types.h"
+#include "syntaqlite_ext/ast_builder.h"
+#include "syntaqlite/types.h"
 #include "syntaqlite/sqlite_tokens.h"
+
+/* BEGIN GRAMMAR_TYPES */
+// Grammar-specific struct types for multi-valued grammar nonterminals.
+// These are used by Lemon-generated parser actions to bundle multiple
+// values through a single nonterminal reduction.
+
+// columnname: passes name span + typetoken span from column definition.
+typedef struct SynqColumnNameValue {
+  SyntaqliteSourceSpan name;
+  SyntaqliteSourceSpan typetoken;
+} SynqColumnNameValue;
+
+// ccons / tcons / generated: a constraint node + pending constraint name.
+typedef struct SynqConstraintValue {
+  uint32_t node;
+  SyntaqliteSourceSpan pending_name;
+} SynqConstraintValue;
+
+// carglist / conslist: accumulated constraint list + pending name for next.
+typedef struct SynqConstraintListValue {
+  uint32_t list;
+  SyntaqliteSourceSpan pending_name;
+} SynqConstraintListValue;
+
+// on_using: ON expr / USING column-list discriminator.
+typedef struct SynqOnUsingValue {
+  uint32_t on_expr;
+  uint32_t using_cols;
+} SynqOnUsingValue;
+
+// with: recursive flag + CTE list node ID.
+typedef struct SynqWithValue {
+  uint32_t cte_list;
+  int is_recursive;
+} SynqWithValue;
+/* END GRAMMAR_TYPES */
 
 /************* Begin control #defines *****************************************/
 #define YYCODETYPE unsigned short int
 #define YYNOCODE 322
 #define YYACTIONTYPE unsigned short int
 #define YYWILDCARD 91
-#define SyntaqliteParseTOKENTYPE SyntaqliteToken
+#define SyntaqliteParseTOKENTYPE SynqParseToken
 typedef union {
   int yyinit;
   SyntaqliteParseTOKENTYPE yy0;
@@ -3420,7 +3456,7 @@ static void yy_reduce_actions(
         break;
       case 124: /* withnm ::= nm */
 {
-    // Token passthrough - nm already produces SyntaqliteToken
+    // Token passthrough - nm already produces SynqParseToken
 }
         break;
       case 125: /* wqas ::= AS */

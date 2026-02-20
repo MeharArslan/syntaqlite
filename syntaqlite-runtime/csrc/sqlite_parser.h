@@ -11,7 +11,7 @@
 #include <stddef.h>
 #include <stdio.h>
 
-#include "csrc/parser.h"
+#include "syntaqlite_ext/ast_builder.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,7 +21,7 @@ void* SyntaqliteParseAlloc(void* (*mallocProc)(size_t));
 void SyntaqliteParseInit(void* parser);
 void SyntaqliteParseFinalize(void* parser);
 void SyntaqliteParseFree(void* parser, void (*freeProc)(void*));
-void SyntaqliteParse(void* parser, int token_type, SyntaqliteToken minor,
+void SyntaqliteParse(void* parser, int token_type, SynqParseToken minor,
                      SynqParseCtx* pCtx);
 #ifndef NDEBUG
 void SyntaqliteParseTrace(FILE* trace_file, char* prompt);

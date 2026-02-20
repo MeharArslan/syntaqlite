@@ -308,6 +308,13 @@ pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
         "End reduce actions",
     )?;
 
+    // Extract grammar-specific types (defined in _common.y %include block).
+    // These belong in the dialect data header, not the engine.
+    let grammar_types = extractor.extract_between_markers(
+        "BEGIN GRAMMAR_TYPES",
+        "END GRAMMAR_TYPES",
+    ).unwrap_or_default();
+
     // Parse control #define values for the SynqParseTables initializer.
     let defines = parse_control_defines(&control_defines);
 
@@ -323,6 +330,7 @@ pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
         .remove_text(&rule_names)
         .remove_text(&rule_info_lhs.text)
         .remove_text(&rule_info_nrhs.text)
+        .remove_text(&grammar_types)
         .replace_all(
             &reduce_actions,
             "      default: yy_reduce_actions(yypParser, yyruleno, yymsp, yyLookahead, yyLookaheadToken); break;",
@@ -414,10 +422,17 @@ pub fn split_parse_c(parse_c: &str) -> Result<(String, String), String> {
     let mut w = c_writer::CWriter::new();
     w.sqlite_file_header();
     w.include_local("csrc/dialect_builder.h");
-    w.include_local("csrc/parser.h");
-    w.include_local("csrc/dialect_grammar_types.h");
+    w.include_local("syntaqlite_ext/ast_builder.h");
+    w.include_local("syntaqlite/types.h");
     w.include_local("syntaqlite/sqlite_tokens.h");
     w.newline();
+
+    // Grammar-specific struct types (extracted from %include block).
+    if !grammar_types.is_empty() {
+        w.fragment(&grammar_types);
+        w.newline();
+    }
+
     for section in [
         &control_defines,
         &yytestcase,

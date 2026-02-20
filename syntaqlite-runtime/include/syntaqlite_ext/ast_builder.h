@@ -4,21 +4,21 @@
 // Parse context and AST builder interface.
 // Provides:
 //   - SynqParseCtx: parse/AST state threaded via %extra_argument
-//   - SyntaqliteToken: terminal token type (used as %token_type in lemon grammar)
-//   - synq_span(): converts SyntaqliteToken to SyntaqliteSourceSpan
+//   - SynqParseToken: terminal token type (used as %token_type in lemon grammar)
+//   - synq_span(): converts SynqParseToken to SyntaqliteSourceSpan
 //   - AST builder functions: synq_parse_build, synq_parse_list_append, etc.
 //   - AST_NODE macro for in-place AST node mutation
 //
 // Grammar actions receive pCtx via lemon's %extra_argument mechanism.
 
-#ifndef SYNTAQLITE_INTERNAL_PARSER_H
-#define SYNTAQLITE_INTERNAL_PARSER_H
+#ifndef SYNTAQLITE_EXT_AST_BUILDER_H
+#define SYNTAQLITE_EXT_AST_BUILDER_H
 
 #include <stdint.h>
 #include <string.h>
 
-#include "csrc/arena.h"
-#include "csrc/vec.h"
+#include "syntaqlite_ext/arena.h"
+#include "syntaqlite_ext/vec.h"
 #include "syntaqlite/types.h"
 #include "syntaqlite/dialect.h"
 
@@ -55,11 +55,8 @@ typedef struct SynqParseCtx {
   uint32_t error_offset;  // Byte offset of the error token in source.
 } SynqParseCtx;
 
-void synq_parse_ctx_init(SynqParseCtx* ctx, SyntaqliteMemMethods mem);
-void synq_parse_ctx_free(SynqParseCtx* ctx);
-
-// Reset to empty state, keeping allocated memory for reuse.
-void synq_parse_ctx_clear(SynqParseCtx* ctx);
+// Lifecycle functions (synq_parse_ctx_init, synq_parse_ctx_free,
+// synq_parse_ctx_clear) are runtime-internal — see csrc/parse_ctx.h.
 
 // ---------------------------------------------------------------------------
 // AST node access macro (for in-place mutation in grammar actions)
@@ -91,7 +88,7 @@ void synq_parse_list_flush(SynqParseCtx* ctx);
 // ---------------------------------------------------------------------------
 
 static inline SyntaqliteSourceSpan synq_span(SynqParseCtx* ctx,
-                                             SyntaqliteToken tok) {
+                                             SynqParseToken tok) {
   if (tok.z == NULL) return (SyntaqliteSourceSpan){0, 0};
   uint32_t offset = (uint32_t)(tok.z - ctx->source);
   return (SyntaqliteSourceSpan){
@@ -109,4 +106,4 @@ static inline SyntaqliteSourceSpan synq_span(SynqParseCtx* ctx,
 }
 #endif
 
-#endif  // SYNTAQLITE_INTERNAL_PARSER_H
+#endif  // SYNTAQLITE_EXT_AST_BUILDER_H

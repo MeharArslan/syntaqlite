@@ -7,8 +7,8 @@
 // All mutating operations take a SyntaqliteMemMethods parameter for
 // allocation. This lets the vec use the caller's configured allocator.
 
-#ifndef SYNTAQLITE_INTERNAL_VEC_H
-#define SYNTAQLITE_INTERNAL_VEC_H
+#ifndef SYNTAQLITE_EXT_VEC_H
+#define SYNTAQLITE_EXT_VEC_H
 
 #include <stdint.h>
 #include <string.h>
@@ -101,4 +101,4 @@ extern "C" {
 }
 #endif
 
-#endif  // SYNTAQLITE_INTERNAL_VEC_H
+#endif  // SYNTAQLITE_EXT_VEC_H

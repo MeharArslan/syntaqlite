@@ -24,11 +24,11 @@ extern "C" {
 // Forward-declared; full definition in csrc/parser.h.
 typedef struct SynqParseCtx SynqParseCtx;
 
-typedef struct SyntaqliteToken {
+typedef struct SynqParseToken {
     const char* z;   // pointer to start of token in source text
     int n;           // length in bytes
     int type;        // token type ID (SYNTAQLITE_TK_*)
-} SyntaqliteToken;
+} SynqParseToken;
 
 // ── Parse tables (Lemon data) ───────────────────────────────────────────
 
@@ -73,7 +73,7 @@ typedef void (*SynqReduceActionsFn)(
     unsigned int ruleno,
     void *yymsp,               // yyStackEntry*
     int lookahead,
-    SyntaqliteToken lookahead_token
+    SynqParseToken lookahead_token
 );
 
 typedef struct SyntaqliteFieldRangeMeta {

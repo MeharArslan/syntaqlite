@@ -36,10 +36,13 @@
 /************ Begin %include sections from the grammar ************************/
 #include <string.h>
 
-#include "csrc/parser.h"
-#include "csrc/dialect_grammar_types.h"
-#include "csrc/dialect_parse.h"
+#include "syntaqlite_ext/ast_builder.h"
+#include "syntaqlite/types.h"
 #include "syntaqlite/sqlite_tokens.h"
+
+
+
+#include "csrc/dialect_parse.h"
 
 #define YYNOERRORRECOVERY 1
 #define YYPARSEFREENEVERNULL 1

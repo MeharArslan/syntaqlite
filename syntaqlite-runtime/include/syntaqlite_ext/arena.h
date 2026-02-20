@@ -4,12 +4,12 @@
 
 // Arena allocator with offset table for node-based data structures.
 
-#ifndef SYNTAQLITE_INTERNAL_ARENA_H
-#define SYNTAQLITE_INTERNAL_ARENA_H
+#ifndef SYNTAQLITE_EXT_ARENA_H
+#define SYNTAQLITE_EXT_ARENA_H
 
 #include <stdint.h>
 
-#include "csrc/vec.h"
+#include "syntaqlite_ext/vec.h"
 #include "syntaqlite/config.h"
 
 #ifdef __cplusplus
@@ -52,4 +52,4 @@ void synq_arena_append(SynqArena* a, const void* data, uint32_t size,
 }
 #endif
 
-#endif  // SYNTAQLITE_INTERNAL_ARENA_H
+#endif  // SYNTAQLITE_EXT_ARENA_H

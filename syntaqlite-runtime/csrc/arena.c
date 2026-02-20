@@ -4,7 +4,7 @@
 
 // Shared arena allocator with offset table.
 
-#include "csrc/arena.h"
+#include "syntaqlite_ext/arena.h"
 
 void synq_arena_init(SynqArena* a) {
   syntaqlite_vec_init(&a->data);

@@ -324,8 +324,12 @@ fn main() {
                         .map_err(|e| format!("writing header: {e}"))?;
                     fs::write(out.join("syntaqlite_runtime.c"), &result.source)
                         .map_err(|e| format!("writing source: {e}"))?;
+                    if let Some(ext) = &result.ext_header {
+                        fs::write(out.join("syntaqlite_ext.h"), ext)
+                            .map_err(|e| format!("writing ext header: {e}"))?;
+                    }
                     if args.verbose {
-                        eprintln!("Wrote syntaqlite_runtime.{{h,c}}");
+                        eprintln!("Wrote syntaqlite_runtime.{{h,c}} + syntaqlite_ext.h");
                     }
                 } else if dialect_only {
                     if args.verbose {

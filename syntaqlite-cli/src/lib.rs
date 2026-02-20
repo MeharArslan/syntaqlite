@@ -54,6 +54,9 @@ enum Command {
         /// Path to SQLite's tokenize.c.
         #[arg(long, required = true)]
         tokenize_c: String,
+        /// Path to syntaqlite-runtime directory (for full amalgamation).
+        #[arg(long, required = true)]
+        runtime_dir: String,
         /// Output directory for amalgamated files.
         #[arg(long, required = true)]
         output_dir: String,
@@ -205,6 +208,7 @@ fn cmd_generate_dialect(
     actions_dir: &str,
     nodes_dir: &str,
     tokenize_c: &str,
+    runtime_dir: &str,
     output_dir: &str,
 ) -> Result<(), String> {
     use syntaqlite_codegen::amalgamate;
@@ -220,8 +224,8 @@ fn cmd_generate_dialect(
 
     codegen_to_dir(actions_dir, nodes_dir, tokenize_c, &csrc, &include)?;
 
-    // Amalgamate the generated files.
-    let result = amalgamate::amalgamate_dialect(dialect, temp.as_ref())?;
+    // Full amalgamation: runtime + dialect into one pair of files.
+    let result = amalgamate::amalgamate_full(dialect, Path::new(runtime_dir), temp.as_ref())?;
 
     let out = Path::new(output_dir);
     fs::create_dir_all(out).map_err(|e| format!("creating output dir: {e}"))?;
@@ -336,11 +340,6 @@ fn codegen_to_dir(
     fs::write(csrc_dir.join("dialect_fmt.h"), fmt_data_h)
         .map_err(|e| format!("writing dialect_fmt.h: {e}"))?;
 
-    // Grammar types header.
-    let grammar_types_h = syntaqlite_codegen::ast_codegen::generate_grammar_types_h(&all_items);
-    fs::write(csrc_dir.join("dialect_grammar_types.h"), grammar_types_h)
-        .map_err(|e| format!("writing dialect_grammar_types.h: {e}"))?;
-
     Ok(())
 }
 
@@ -376,8 +375,9 @@ pub fn run(name: &str, dialect: &Dialect) {
             actions_dir,
             nodes_dir,
             tokenize_c,
+            runtime_dir,
             output_dir,
-        } => cmd_generate_dialect(&dialect_name, &actions_dir, &nodes_dir, &tokenize_c, &output_dir),
+        } => cmd_generate_dialect(&dialect_name, &actions_dir, &nodes_dir, &tokenize_c, &runtime_dir, &output_dir),
         Command::Lemon { args } => {
             syntaqlite_codegen::lemon::run_lemon(&args);
         }

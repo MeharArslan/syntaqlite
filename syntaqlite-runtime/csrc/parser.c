@@ -7,8 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "csrc/arena.h"
-#include "csrc/parser.h"
+#include "csrc/parse_ctx.h"
 #include "syntaqlite/dialect.h"
 #include "csrc/sqlite_parser.h"
 #include "csrc/sqlite_tokenize.h"
@@ -174,7 +173,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 
 static int feed_one_token(SyntaqliteParser* p, int token_type,
                            const char* text, int len) {
-  SyntaqliteToken minor = {.z = text, .n = len, .type = token_type};
+  SynqParseToken minor = {.z = text, .n = len, .type = token_type};
   SyntaqliteParse(p->lemon, token_type, minor, &p->ctx);
   p->last_token_type = token_type;
 
@@ -280,7 +279,7 @@ static int finish_input(SyntaqliteParser* p) {
   // Send end-of-input (EOF) to flush the final reduction. LALR(1) parsers
   // need one token of lookahead — the EOF provides it, triggering any
   // pending reduce (e.g. ecmd ::= cmdx SEMI).
-  SyntaqliteToken eof = {.z = NULL, .n = 0, .type = 0};
+  SynqParseToken eof = {.z = NULL, .n = 0, .type = 0};
   SyntaqliteParse(p->lemon, 0, eof, &p->ctx);
   p->finished = 1;
 

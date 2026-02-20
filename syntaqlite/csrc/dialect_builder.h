@@ -6,7 +6,7 @@
 #ifndef SYNTAQLITE_DIALECT_BUILDER_H
 #define SYNTAQLITE_DIALECT_BUILDER_H
 
-#include "csrc/parser.h"
+#include "syntaqlite_ext/ast_builder.h"
 #include "syntaqlite/sqlite_node.h"
 
 #ifdef __cplusplus
