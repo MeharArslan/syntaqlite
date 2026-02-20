@@ -7,11 +7,86 @@ use crate::c_writer::CWriter;
 use crate::node_parser::{Field, Item, Storage};
 use crate::rust_writer::RustWriter;
 
+pub struct AstModel<'a> {
+    items: &'a [Item],
+    enum_names: HashSet<&'a str>,
+    flags_names: HashSet<&'a str>,
+    node_names: HashSet<&'a str>,
+    list_names: HashSet<&'a str>,
+    abstract_items: Vec<(&'a str, &'a [String])>,
+}
+
+impl<'a> AstModel<'a> {
+    pub fn new(items: &'a [Item]) -> Self {
+        let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
+        let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
+        let node_names: HashSet<&str> = items
+            .iter()
+            .filter_map(|i| match i {
+                Item::Node { name, .. } => Some(name.as_str()),
+                _ => None,
+            })
+            .collect();
+        let list_names: HashSet<&str> = items
+            .iter()
+            .filter_map(|i| match i {
+                Item::List { name, .. } => Some(name.as_str()),
+                _ => None,
+            })
+            .collect();
+        let abstract_items: Vec<(&str, &[String])> = items
+            .iter()
+            .filter_map(|i| match i {
+                Item::Abstract { name, members } => Some((name.as_str(), members.as_slice())),
+                _ => None,
+            })
+            .collect();
+        Self {
+            items,
+            enum_names,
+            flags_names,
+            node_names,
+            list_names,
+            abstract_items,
+        }
+    }
+
+    pub fn items(&self) -> &'a [Item] {
+        self.items
+    }
+
+    pub fn enum_names(&self) -> &HashSet<&'a str> {
+        &self.enum_names
+    }
+
+    pub fn flags_names(&self) -> &HashSet<&'a str> {
+        &self.flags_names
+    }
+
+    pub fn node_names(&self) -> &HashSet<&'a str> {
+        &self.node_names
+    }
+
+    pub fn list_names(&self) -> &HashSet<&'a str> {
+        &self.list_names
+    }
+
+    pub fn abstract_items(&self) -> &[(&'a str, &'a [String])] {
+        &self.abstract_items
+    }
+}
+
 // ── Public API ──────────────────────────────────────────────────────────
 
 pub fn generate_ast_nodes_h(items: &[Item], dialect: &str) -> String {
-    let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
-    let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
+    let model = AstModel::new(items);
+    generate_ast_nodes_h_from_model(&model, dialect)
+}
+
+pub fn generate_ast_nodes_h_from_model(model: &AstModel<'_>, dialect: &str) -> String {
+    let items = model.items();
+    let enum_names = model.enum_names();
+    let flags_names = model.flags_names();
 
     let mut w = CWriter::new();
 
@@ -101,7 +176,7 @@ pub fn generate_ast_nodes_h(items: &[Item], dialect: &str) -> String {
                 let mut f = vec![("SyntaqliteNodeTag".to_string(), "tag".to_string())];
                 for field in fields {
                     f.push((
-                        field_c_type(field, &enum_names, &flags_names),
+                        field_c_type(field, enum_names, flags_names),
                         field.name.clone(),
                     ));
                 }
@@ -231,8 +306,14 @@ pub fn generate_ast_nodes_h(items: &[Item], dialect: &str) -> String {
 }
 
 pub fn generate_ast_builder_h(items: &[Item], dialect: &str) -> String {
-    let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
-    let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
+    let model = AstModel::new(items);
+    generate_ast_builder_h_from_model(&model, dialect)
+}
+
+pub fn generate_ast_builder_h_from_model(model: &AstModel<'_>, dialect: &str) -> String {
+    let items = model.items();
+    let enum_names = model.enum_names();
+    let flags_names = model.flags_names();
 
     let mut w = CWriter::new();
 
@@ -248,7 +329,7 @@ pub fn generate_ast_builder_h(items: &[Item], dialect: &str) -> String {
     for item in items {
         match item {
             Item::Node { name, fields, .. } => {
-                emit_node_builder_inline(&mut w, name, fields, &enum_names, &flags_names);
+                emit_node_builder_inline(&mut w, name, fields, enum_names, flags_names);
             }
             Item::List { name, .. } => {
                 emit_list_builder_inline(&mut w, name);
@@ -469,8 +550,14 @@ fn emit_range_metadata(w: &mut CWriter, items: &[Item]) {
 /// This header is included by the dialect's `dialect.c` and provides
 /// all the AST metadata needed by `SyntaqliteDialect`.
 pub fn generate_c_field_meta(items: &[Item], dialect: &str) -> String {
-    let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
-    let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
+    let model = AstModel::new(items);
+    generate_c_field_meta_from_model(&model, dialect)
+}
+
+pub fn generate_c_field_meta_from_model(model: &AstModel<'_>, dialect: &str) -> String {
+    let items = model.items();
+    let enum_names = model.enum_names();
+    let flags_names = model.flags_names();
 
     let mut w = CWriter::new();
     w.file_header();
@@ -535,8 +622,8 @@ pub fn generate_c_field_meta(items: &[Item], dialect: &str) -> String {
         w.line(&format!("static const SyntaqliteFieldMeta {}[] = {{", var));
         w.indent();
         for field in fields {
-            let kind = c_field_kind(field, &enum_names, &flags_names);
-            let (display, display_count) = c_field_display(field, &enum_names, &flags_names);
+            let kind = c_field_kind(field, enum_names, flags_names);
+            let (display, display_count) = c_field_display(field, enum_names, flags_names);
             w.line(&format!(
                 "{{offsetof({}, {}), {}, \"{}\", {}, {}}},",
                 sn, field.name, kind, field.name, display, display_count,
@@ -804,27 +891,6 @@ fn rust_ffi_field_type(
                 "Bool".into()
             } else if enum_names.contains(t.as_str()) || flags_names.contains(t.as_str()) {
                 format!("super::ast::{}", t)
-            } else if t == "SyntaqliteSourceSpan" {
-                "SourceSpan".into()
-            } else {
-                t.clone()
-            }
-        }
-    }
-}
-
-/// Map a field to its Rust type name (for pub API structs).
-fn rust_field_type(
-    field: &Field,
-    enum_names: &HashSet<&str>,
-    flags_names: &HashSet<&str>,
-) -> String {
-    match field.storage {
-        Storage::Index => "NodeId".into(),
-        Storage::Inline => {
-            let t = &field.type_name;
-            if enum_names.contains(t.as_str()) || flags_names.contains(t.as_str()) {
-                t.clone()
             } else if t == "SyntaqliteSourceSpan" {
                 "SourceSpan".into()
             } else {
@@ -1184,152 +1250,19 @@ fn upper_snake_to_pascal(name: &str) -> String {
         .collect()
 }
 
-/// Generate Rust source for all AST node types.
-///
-/// Only emits dynamic content derived from .synq definitions: enums, flags,
-/// NodeTag, node structs, `is_list_tag`, and the `Node<'a>` enum.
-/// Static types (SourceSpan, NodeList) live in hand-written `crate::nodes`.
-pub fn generate_rust_nodes(items: &[Item]) -> String {
-    let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
-    let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
-
-    let mut w = RustWriter::new();
-    w.file_header();
-    w.line("use syntaqlite_runtime::parser::{NodeId, NodeList, SourceSpan};");
-    w.line("use std::marker::PhantomData;");
-    w.newline();
-
-    // Value enums
-    for item in items {
-        let Item::Enum { name, variants } = item else {
-            continue;
-        };
-        emit_rust_value_enum(&mut w, name, variants);
-    }
-
-    // Flags types
-    for item in items {
-        let Item::Flags { name, flags } = item else {
-            continue;
-        };
-        emit_rust_flags_type(&mut w, name, flags);
-    }
-
-    // NodeTag enum
-    emit_rust_node_tag_type(&mut w, items);
-
-    // Node structs
-    emit_rust_node_structs(
-        &mut w,
-        items,
-        &enum_names,
-        &flags_names,
-        "pub",
-        "pub",
-        rust_field_type,
-    );
-
-    // Node<'a> enum — typed wrapper for AST nodes
-    w.doc_comment("A typed AST node. Pattern-match to access the concrete type.");
-    w.line("#[derive(Debug, Clone, Copy)]");
-    w.line("pub enum Node<'a> {");
-    w.indent();
-    for item in items {
-        match item {
-            Item::Node { name, .. } => {
-                w.line(&format!("{}(&'a {}),", name, name));
-            }
-            Item::List {
-                name, child_type, ..
-            } => {
-                w.doc_comment(&format!("List of {}", child_type));
-                w.line(&format!("{}(&'a NodeList),", name));
-            }
-            _ => {}
-        }
-    }
-    w.doc_comment("Placeholder for PhantomData lifetime — never constructed.");
-    w.line("#[doc(hidden)]");
-    w.line("__Phantom(PhantomData<&'a ()>),");
-    w.dedent();
-    w.line("}");
-    w.newline();
-
-    w.line("impl<'a> Node<'a> {");
-    w.indent();
-
-    // from_raw
-    w.doc_comment("Construct a typed `Node` from a raw arena pointer.");
-    w.doc_comment("");
-    w.doc_comment("# Safety");
-    w.doc_comment("`ptr` must be non-null, well-aligned, and valid for `'a`.");
-    w.doc_comment("Its first `u32` must be a valid `NodeTag` discriminant.");
-    w.line("pub(crate) unsafe fn from_raw(ptr: *const u32) -> Node<'a> {");
-    w.indent();
-    w.line("// SAFETY: caller guarantees ptr is valid for 'a with a valid tag.");
-    w.line("unsafe {");
-    w.line("let tag = NodeTag::from_raw(*ptr).unwrap_or(NodeTag::Null);");
-    w.line("match tag {");
-    w.indent();
-    for item in items {
-        match item {
-            Item::Node { name, .. } => {
-                w.line(&format!(
-                    "NodeTag::{} => Node::{}(&*(ptr as *const {})),",
-                    name, name, name
-                ));
-            }
-            Item::List { name, .. } => {
-                w.line(&format!(
-                    "NodeTag::{} => Node::{}(&*(ptr as *const NodeList)),",
-                    name, name
-                ));
-            }
-            _ => {}
-        }
-    }
-    w.line("_ => unreachable!(\"unknown node tag\"),");
-    w.dedent();
-    w.line("}");
-    w.line("} // unsafe");
-    w.dedent();
-    w.line("}");
-    w.newline();
-
-    // tag()
-    emit_rust_node_tag_accessor(&mut w, items);
-
-    // as_list()
-    w.doc_comment("If this is a list node, return the list.");
-    w.line("pub fn as_list(&self) -> Option<&'a NodeList> {");
-    w.indent();
-    w.line("match self {");
-    w.indent();
-    for item in items {
-        if let Item::List { name, .. } = item {
-            w.line(&format!("Node::{}(l) => Some(l),", name));
-        }
-    }
-    w.line("_ => None,");
-    w.dedent();
-    w.line("}");
-    w.dedent();
-    w.line("}");
-
-    w.dedent();
-    w.line("}");
-    w.newline();
-
-    w.finish()
-}
-
 /// Generate Rust source for the FFI layer (`ffi.rs`).
 ///
 /// Emits `pub(crate)` `#[repr(C)]` node structs and the `Bool` enum.
 /// Enum/flags types are referenced via `super::ast::`.
 pub fn generate_rust_ffi_nodes(items: &[Item]) -> String {
-    let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
-    let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
+    let model = AstModel::new(items);
+    generate_rust_ffi_nodes_from_model(&model)
+}
+
+pub fn generate_rust_ffi_nodes_from_model(model: &AstModel<'_>) -> String {
+    let items = model.items();
+    let enum_names = model.enum_names();
+    let flags_names = model.flags_names();
 
     let mut w = RustWriter::new();
     w.file_header();
@@ -1359,8 +1292,8 @@ pub fn generate_rust_ffi_nodes(items: &[Item]) -> String {
     emit_rust_node_structs(
         &mut w,
         items,
-        &enum_names,
-        &flags_names,
+        enum_names,
+        flags_names,
         "pub(crate)",
         "pub(crate)",
         rust_ffi_field_type,
@@ -1374,39 +1307,17 @@ pub fn generate_rust_ffi_nodes(items: &[Item]) -> String {
 /// Emits enums, flags, `NodeTag`, view structs with ergonomic accessors,
 /// and the `Node<'a>` enum that wraps them.
 pub fn generate_rust_ast(items: &[Item]) -> String {
-    let enum_names: HashSet<&str> = items.iter().filter_map(Item::as_enum_name).collect();
-    let flags_names: HashSet<&str> = items.iter().filter_map(Item::as_flags_name).collect();
-    let node_names: HashSet<&str> = items
-        .iter()
-        .filter_map(|i| {
-            if let Item::Node { name, .. } = i {
-                Some(name.as_str())
-            } else {
-                None
-            }
-        })
-        .collect();
-    let list_names: HashSet<&str> = items
-        .iter()
-        .filter_map(|i| {
-            if let Item::List { name, .. } = i {
-                Some(name.as_str())
-            } else {
-                None
-            }
-        })
-        .collect();
-    // Abstract types: explicitly declared via `abstract Name { ... }` in .synq files.
-    let abstract_items: Vec<(&str, &[String])> = items
-        .iter()
-        .filter_map(|i| {
-            if let Item::Abstract { name, members } = i {
-                Some((name.as_str(), members.as_slice()))
-            } else {
-                None
-            }
-        })
-        .collect();
+    let model = AstModel::new(items);
+    generate_rust_ast_from_model(&model)
+}
+
+pub fn generate_rust_ast_from_model(model: &AstModel<'_>) -> String {
+    let items = model.items();
+    let enum_names = model.enum_names();
+    let flags_names = model.flags_names();
+    let node_names = model.node_names();
+    let list_names = model.list_names();
+    let abstract_items = model.abstract_items();
 
     let mut w = RustWriter::new();
     w.file_header();
@@ -1440,7 +1351,7 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
     emit_rust_node_tag_type(&mut w, items);
 
     // Abstract type enums (Expr, Stmt, etc.)
-    for &(abs_name, members) in &abstract_items {
+    for &(abs_name, members) in abstract_items {
         w.doc_comment(&format!(
             "Abstract `{}` — pattern-match to access the concrete type.",
             abs_name
@@ -1545,7 +1456,7 @@ pub fn generate_rust_ast(items: &[Item]) -> String {
         for field in fields {
             let fname = rust_field_name(&field.name);
             let return_type =
-                rust_view_return_type(field, &enum_names, &flags_names, &node_names, &list_names);
+                rust_view_return_type(field, enum_names, flags_names, node_names, list_names);
             let body = rust_view_accessor_body(field);
             w.line(&format!("pub fn {}(&self) -> {} {{", fname, return_type));
             w.indent();
