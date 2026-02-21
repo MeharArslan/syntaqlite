@@ -35,6 +35,8 @@ NINJA_VERSION = "1.13.2"
 SQLITE_VERSION = "3510200"  # 3.51.2
 SQLITE_YEAR = "2026"
 RUST_VERSION = "1.93.0"  # Latest stable
+EMSCRIPTEN_VERSION = "4.0.8"  # Pre-built tarballs from Perfetto's GCS
+NODE_VERSION = "20.11.0"  # Pre-built from Chromium's storage (same as Perfetto)
 
 
 @dataclass
@@ -64,32 +66,137 @@ class SourceDep:
 
 # fmt: off
 BINARY_DEPS = [
-    BinaryDep("gn", GN_VERSION, f"https://chrome-infra-packages.appspot.com/dl/gn/gn/mac-amd64/+/git_revision:{GN_VERSION}", "68c9ad9456dd93090c39134781833ee7865d19627541cb9ba9003aeea9ce4e26", "darwin", "x64"),
-    BinaryDep("gn", GN_VERSION, f"https://chrome-infra-packages.appspot.com/dl/gn/gn/mac-arm64/+/git_revision:{GN_VERSION}", "2e55c4f65ce690fef9c03af8abe2b76e01e0017fc040c2d7529c089abbe48309", "darwin", "arm64"),
-    BinaryDep("gn", GN_VERSION, f"https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/git_revision:{GN_VERSION}", "be32d9e5a79d52145baf22f83a5e4aa83724d6bdcdf53370fa00e5eba45596fa", "linux", "x64"),
-    BinaryDep("gn", GN_VERSION, f"https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-arm64/+/git_revision:{GN_VERSION}", "bbd8bab058398a005d240c09c17ce0af4fab69ae8d022a40ac7d0a218681de73", "linux", "arm64"),
-    BinaryDep("gn", GN_VERSION, f"https://chrome-infra-packages.appspot.com/dl/gn/gn/windows-amd64/+/git_revision:{GN_VERSION}", "c10f4622abd995a1c070e46b0df8bbe7b83278b9ff2b05ae8245dabf7cb02b8c", "windows", "x64"),
-    BinaryDep("ninja", NINJA_VERSION, f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-mac.zip", "c99048673aa765960a99cf10c6ddb9f1fad506099ff0a0e137ad8960a88f321b", "darwin", "all"),
-    BinaryDep("ninja", NINJA_VERSION, f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-linux.zip", "5749cbc4e668273514150a80e387a957f933c6ed3f5f11e03fb30955e2bbead6", "linux", "x64"),
-    BinaryDep("ninja", NINJA_VERSION, f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-linux-aarch64.zip", "fd2cacc8050a7f12a16a2e48f9e06fca5c14fc4c2bee2babb67b58be17a607fc", "linux", "arm64"),
-    BinaryDep("ninja", NINJA_VERSION, f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-win.zip", "07fc8261b42b20e71d1720b39068c2e14ffcee6396b76fb7a795fb460b78dc65", "windows", "x64"),
+    BinaryDep("gn", GN_VERSION,
+              f"https://chrome-infra-packages.appspot.com/dl/gn/gn/mac-amd64/+/git_revision:{GN_VERSION}",
+              "68c9ad9456dd93090c39134781833ee7865d19627541cb9ba9003aeea9ce4e26",
+              "darwin", "x64"),
+    BinaryDep("gn", GN_VERSION,
+              f"https://chrome-infra-packages.appspot.com/dl/gn/gn/mac-arm64/+/git_revision:{GN_VERSION}",
+              "2e55c4f65ce690fef9c03af8abe2b76e01e0017fc040c2d7529c089abbe48309",
+              "darwin", "arm64"),
+    BinaryDep("gn", GN_VERSION,
+              f"https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/git_revision:{GN_VERSION}",
+              "be32d9e5a79d52145baf22f83a5e4aa83724d6bdcdf53370fa00e5eba45596fa",
+              "linux", "x64"),
+    BinaryDep("gn", GN_VERSION,
+              f"https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-arm64/+/git_revision:{GN_VERSION}",
+              "bbd8bab058398a005d240c09c17ce0af4fab69ae8d022a40ac7d0a218681de73",
+              "linux", "arm64"),
+    BinaryDep("gn", GN_VERSION,
+              f"https://chrome-infra-packages.appspot.com/dl/gn/gn/windows-amd64/+/git_revision:{GN_VERSION}",
+              "c10f4622abd995a1c070e46b0df8bbe7b83278b9ff2b05ae8245dabf7cb02b8c",
+              "windows", "x64"),
+    BinaryDep("ninja", NINJA_VERSION,
+              f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-mac.zip",
+              "c99048673aa765960a99cf10c6ddb9f1fad506099ff0a0e137ad8960a88f321b",
+              "darwin", "all"),
+    BinaryDep("ninja", NINJA_VERSION,
+              f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-linux.zip",
+              "5749cbc4e668273514150a80e387a957f933c6ed3f5f11e03fb30955e2bbead6",
+              "linux", "x64"),
+    BinaryDep("ninja", NINJA_VERSION,
+              f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-linux-aarch64.zip",
+              "fd2cacc8050a7f12a16a2e48f9e06fca5c14fc4c2bee2babb67b58be17a607fc",
+              "linux", "arm64"),
+    BinaryDep("ninja", NINJA_VERSION,
+              f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-win.zip",
+              "07fc8261b42b20e71d1720b39068c2e14ffcee6396b76fb7a795fb460b78dc65",
+              "windows", "x64"),
     # clang-format: raw binaries from Chromium's cloud storage.
-    # SHA1s from https://chromium.googlesource.com/chromium/src/buildtools/+/refs/heads/master/{mac,linux64,win}/
-    BinaryDep("clang-format", "8503422f", "https://storage.googleapis.com/chromium-clang-format/8503422f469ae56cc74f0ea2c03f2d872f4a2303", "dabf93691361e8bd1d07466d67584072ece5c24e2b812c16458b8ff801c33e29", "darwin", "arm64", "raw"),
-    BinaryDep("clang-format", "7d46d237", "https://storage.googleapis.com/chromium-clang-format/7d46d237f9664f41ef46b10c1392dcb559250f25", "0c3c13febeb0495ef0086509c24605ecae9e3d968ff9669d12514b8a55c7824e", "darwin", "x64", "raw"),
-    BinaryDep("clang-format", "79a7b4e5", "https://storage.googleapis.com/chromium-clang-format/79a7b4e5336339c17b828de10d80611ff0f85961", "889266a51681d55bd4b9e02c9a104fa6ee22ecdfa7e8253532e5ea47e2e4cb4a", "linux", "x64", "raw"),
-    BinaryDep("clang-format", "565cab9c", "https://storage.googleapis.com/chromium-clang-format/565cab9c66d61360c27c7d4df5defe1a78ab56d3", "5557943a174e3b67cdc389c10b0ceea2195f318c5c665dd77a427ed01a094557", "windows", "x64", "raw"),
-    # Rust toolchain: tar.gz on all platforms.
+    BinaryDep("clang-format", "8503422f",
+              "https://storage.googleapis.com/chromium-clang-format/8503422f469ae56cc74f0ea2c03f2d872f4a2303",
+              "dabf93691361e8bd1d07466d67584072ece5c24e2b812c16458b8ff801c33e29",
+              "darwin", "arm64", "raw"),
+    BinaryDep("clang-format", "7d46d237",
+              "https://storage.googleapis.com/chromium-clang-format/7d46d237f9664f41ef46b10c1392dcb559250f25",
+              "0c3c13febeb0495ef0086509c24605ecae9e3d968ff9669d12514b8a55c7824e",
+              "darwin", "x64", "raw"),
+    BinaryDep("clang-format", "79a7b4e5",
+              "https://storage.googleapis.com/chromium-clang-format/79a7b4e5336339c17b828de10d80611ff0f85961",
+              "889266a51681d55bd4b9e02c9a104fa6ee22ecdfa7e8253532e5ea47e2e4cb4a",
+              "linux", "x64", "raw"),
+    BinaryDep("clang-format", "565cab9c",
+              "https://storage.googleapis.com/chromium-clang-format/565cab9c66d61360c27c7d4df5defe1a78ab56d3",
+              "5557943a174e3b67cdc389c10b0ceea2195f318c5c665dd77a427ed01a094557",
+              "windows", "x64", "raw"),
+    # Rust toolchain.
     # SHA256 hashes from https://static.rust-lang.org/dist/channel-rust-1.93.0.toml
-    BinaryDep("rust", RUST_VERSION, f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-aarch64-apple-darwin.tar.gz", "e33cf237cfff8af75581fedece9f3c348e976bb8246078786f1888c3b251d380", "darwin", "arm64", "tar.gz", f"rust-{RUST_VERSION}-aarch64-apple-darwin"),
-    BinaryDep("rust", RUST_VERSION, f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-apple-darwin.tar.gz", "0297504189bdee029bacb61245cb131e3a2cc4bfd50c9e11281ea8957706e675", "darwin", "x64", "tar.gz", f"rust-{RUST_VERSION}-x86_64-apple-darwin"),
-    BinaryDep("rust", RUST_VERSION, f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-unknown-linux-gnu.tar.gz", "ca55df589f7cd68eec883086c5ff63ece04a1820e6d23e514fbb412cc8bf77a4", "linux", "x64", "tar.gz", f"rust-{RUST_VERSION}-x86_64-unknown-linux-gnu"),
-    BinaryDep("rust", RUST_VERSION, f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-aarch64-unknown-linux-gnu.tar.gz", "091f981b95cbc6713ce6d6c23817286d4c10fd35fc76a990a3af430421751cfc", "linux", "arm64", "tar.gz", f"rust-{RUST_VERSION}-aarch64-unknown-linux-gnu"),
-    BinaryDep("rust", RUST_VERSION, f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-pc-windows-msvc.tar.gz", "4d171c1a5a0e4b2450b6426be70faa9bf31848362262d4dc8e9b29072e268e43", "windows", "x64", "tar.gz", f"rust-{RUST_VERSION}-x86_64-pc-windows-msvc"),
+    BinaryDep("rust", RUST_VERSION,
+              f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-aarch64-apple-darwin.tar.gz",
+              "e33cf237cfff8af75581fedece9f3c348e976bb8246078786f1888c3b251d380",
+              "darwin", "arm64", "tar.gz",
+              f"rust-{RUST_VERSION}-aarch64-apple-darwin"),
+    BinaryDep("rust", RUST_VERSION,
+              f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-apple-darwin.tar.gz",
+              "0297504189bdee029bacb61245cb131e3a2cc4bfd50c9e11281ea8957706e675",
+              "darwin", "x64", "tar.gz",
+              f"rust-{RUST_VERSION}-x86_64-apple-darwin"),
+    BinaryDep("rust", RUST_VERSION,
+              f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-unknown-linux-gnu.tar.gz",
+              "ca55df589f7cd68eec883086c5ff63ece04a1820e6d23e514fbb412cc8bf77a4",
+              "linux", "x64", "tar.gz",
+              f"rust-{RUST_VERSION}-x86_64-unknown-linux-gnu"),
+    BinaryDep("rust", RUST_VERSION,
+              f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-aarch64-unknown-linux-gnu.tar.gz",
+              "091f981b95cbc6713ce6d6c23817286d4c10fd35fc76a990a3af430421751cfc",
+              "linux", "arm64", "tar.gz",
+              f"rust-{RUST_VERSION}-aarch64-unknown-linux-gnu"),
+    BinaryDep("rust", RUST_VERSION,
+              f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-pc-windows-msvc.tar.gz",
+              "4d171c1a5a0e4b2450b6426be70faa9bf31848362262d4dc8e9b29072e268e43",
+              "windows", "x64", "tar.gz",
+              f"rust-{RUST_VERSION}-x86_64-pc-windows-msvc"),
+]
+
+# UI deps: emscripten toolchain, node.js, and wasm32 rust std.
+# Installed only when --ui is passed.
+UI_DEPS = [
+    # Rust std for wasm32-unknown-emscripten target.
+    BinaryDep("rust-wasm32", RUST_VERSION,
+              f"https://static.rust-lang.org/dist/2026-01-22/rust-std-{RUST_VERSION}-wasm32-unknown-emscripten.tar.gz",
+              "3695cbe0527720c1104f327c356a6015756f15f0a63fdc2a00f78c316b0f7f8a",
+              "all", "all", "tar.gz",
+              f"rust-std-{RUST_VERSION}-wasm32-unknown-emscripten"),
+    # Node.js: pre-built from Chromium's storage (same as Perfetto).
+    BinaryDep("nodejs", NODE_VERSION,
+              "https://storage.googleapis.com/chromium-nodejs/20.11.0/5b5681e12a21cda986410f69e03e6220a21dd4d2",
+              "cecb99fbb369a9090dddc27e228b66335cd72555b44fa8839ef78e56c51682c5",
+              "darwin", "arm64", "tar.gz",
+              "node-darwin-arm64"),
+    BinaryDep("nodejs", NODE_VERSION,
+              "https://storage.googleapis.com/chromium-nodejs/20.11.0/e3c0fd53caae857309815f3f8de7c2dce49d7bca",
+              "20affacca2480c368b75a1d91ec1a2720604b325207ef0cf39cfef3c235dad19",
+              "darwin", "x64", "tar.gz",
+              "node-darwin-x64"),
+    BinaryDep("nodejs", NODE_VERSION,
+              "https://storage.googleapis.com/chromium-nodejs/20.11.0/f9a337cfa0e2b92d3e5c671c26b454bd8e99769e",
+              "0ba9cc91698c1f833a1fdc1fe0cb392d825ad484c71b0d84388ac80bfd3d6079",
+              "linux", "x64", "tar.gz",
+              "node-linux-x64"),
+    # Emscripten: pre-built toolchain tarballs from Perfetto's GCS.
+    # Contains emcc, clang, wasm-ld etc. ready to use.
+    BinaryDep("emscripten", EMSCRIPTEN_VERSION,
+              f"https://storage.googleapis.com/perfetto/emscripten-{EMSCRIPTEN_VERSION}-mac.tgz",
+              "2682c43580ae2265b4c7f3c7963629f7f501eb24a8ffa01be0059f9f5b3b8cd0",
+              "darwin", "arm64", "tar.gz",
+              "install"),
+    BinaryDep("emscripten", EMSCRIPTEN_VERSION,
+              f"https://storage.googleapis.com/perfetto/emscripten-{EMSCRIPTEN_VERSION}-mac-x64.tgz",
+              "e1b2e6d4797338ed884f9d8a8419f93fc42cfcdea5e8a8b29fe13c6fd3fe7f7a",
+              "darwin", "x64", "tar.gz",
+              "install"),
+    BinaryDep("emscripten", EMSCRIPTEN_VERSION,
+              f"https://storage.googleapis.com/perfetto/emscripten-{EMSCRIPTEN_VERSION}-linux.tgz",
+              "2fd3e39b5e233bad39799c31029b6d6d5295135cb00c1bb2fd9a4b2c4b7c264b",
+              "linux", "x64", "tar.gz",
+              "install"),
 ]
 
 SOURCE_DEPS = [
-    SourceDep("sqlite", SQLITE_VERSION, f"https://sqlite.org/{SQLITE_YEAR}/sqlite-src-{SQLITE_VERSION}.zip", "e436bb919850445ce5168fb033d2d0d5c53a9d8c9602c7fa62b3e0025541d481", f"sqlite-src-{SQLITE_VERSION}"),
+    SourceDep("sqlite", SQLITE_VERSION,
+              f"https://sqlite.org/{SQLITE_YEAR}/sqlite-src-{SQLITE_VERSION}.zip",
+              "e436bb919850445ce5168fb033d2d0d5c53a9d8c9602c7fa62b3e0025541d481",
+              f"sqlite-src-{SQLITE_VERSION}"),
 ]
 # fmt: on
 
@@ -404,6 +511,11 @@ def main():
         action="store_true",
         help="Install Rust toolchain (optional, for Rust rewrite)"
     )
+    parser.add_argument(
+        "--ui",
+        action="store_true",
+        help="Install Emscripten SDK (for wasm/web-playground builds)"
+    )
     args = parser.parse_args()
     VERBOSITY = args.verbose
 
@@ -412,17 +524,41 @@ def main():
 
     success = True
 
-    # Install binary dependencies
-    for dep in BINARY_DEPS:
-        # Skip Rust unless --rust flag is provided
-        if dep.name == "rust" and not args.rust:
-            continue
+    def install_deps(deps, subdir=False):
+        nonlocal success
+        for dep in deps:
+            if dep.name == "rust" and not args.rust:
+                continue
+            os_match = dep.target_os == "all" or dep.target_os == host_os
+            arch_match = dep.target_arch == "all" or dep.target_arch == host_arch
+            if os_match and arch_match:
+                dep_dir = os.path.join(bin_target_dir, dep.name) if subdir else bin_target_dir
+                if not install_binary_dep(dep, dep_dir):
+                    success = False
 
-        os_match = dep.target_os == "all" or dep.target_os == host_os
-        arch_match = dep.target_arch == "all" or dep.target_arch == host_arch
-        if os_match and arch_match:
-            if not install_binary_dep(dep, bin_target_dir):
-                success = False
+    # Install binary dependencies (always).
+    install_deps(BINARY_DEPS)
+
+    # Install UI dependencies (--ui only).
+    # Each UI dep goes into its own subdirectory to avoid polluting the
+    # shared bin dir with their bin/, lib/ etc.
+    if args.ui:
+        install_deps(UI_DEPS, subdir=True)
+
+        # Patch emscripten_config to point NODE_JS at our hermetic node.
+        em_config = os.path.join(bin_target_dir, "emscripten", "emscripten_config")
+        node_bin = os.path.join(bin_target_dir, "nodejs", "bin", "node")
+        if os.path.exists(em_config) and os.path.exists(node_bin):
+            with open(em_config) as f:
+                config = f.read()
+            patched = []
+            for line in config.splitlines():
+                if line.startswith("NODE_JS"):
+                    patched.append(f"NODE_JS = '{node_bin}'")
+                else:
+                    patched.append(line)
+            with open(em_config, "w") as f:
+                f.write("\n".join(patched) + "\n")
 
     # Install source dependencies
     for dep in SOURCE_DEPS:

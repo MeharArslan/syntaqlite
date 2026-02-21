@@ -32,6 +32,13 @@ def run_rust_binary(binary_name, args=None, cwd=None):
     if args is None:
         args = []
 
+    # --no-sysroot: skip setting RUSTFLAGS --sysroot so callers can provide
+    # their own target-specific sysroot via CARGO_TARGET_*_RUSTFLAGS.
+    set_sysroot = True
+    if "--no-sysroot" in args:
+        set_sysroot = False
+        args = [a for a in args if a != "--no-sysroot"]
+
     os_dir, ext = get_platform_dir()
     if os_dir is None:
         print("OS not supported: %s" % platform.system())
@@ -54,8 +61,9 @@ def run_rust_binary(binary_name, args=None, cwd=None):
         os.environ["RUSTC"] = rustc_path
 
     # Set sysroot so rustc can find the standard library
-    rustc_sysroot = os.path.join(rust_root, "rustc")
-    os.environ["RUSTFLAGS"] = f"--sysroot {rustc_sysroot}"
+    if set_sysroot:
+        rustc_sysroot = os.path.join(rust_root, "rustc")
+        os.environ["RUSTFLAGS"] = f"--sysroot {rustc_sysroot}"
 
     if cwd or platform.system().lower() == "windows":
         # subprocess for cross-platform compatibility and cwd support

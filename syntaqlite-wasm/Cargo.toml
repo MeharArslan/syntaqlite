@@ -1,0 +1,7 @@
+[package]
+name = "syntaqlite-wasm"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+syntaqlite-runtime = { path = "../syntaqlite-runtime", features = ["fmt"] }

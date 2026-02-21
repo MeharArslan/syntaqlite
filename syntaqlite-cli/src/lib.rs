@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use clap::{Parser, Subcommand, ValueEnum};
 use syntaqlite_runtime::dialect::ffi as dialect_ffi;
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
-use syntaqlite_runtime::Dialect;
+use syntaqlite_runtime::{Dialect, ParseError, Parser as RuntimeParser};
 
 #[derive(Parser)]
 #[command(about = "SQL formatting and analysis tools")]
@@ -144,20 +144,7 @@ fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
 }
 
 fn cmd_ast_source(dialect: &Dialect, source: &str) -> Result<(), String> {
-    let mut parser = syntaqlite_runtime::Parser::new(dialect);
-    let mut cursor = parser.parse(source);
-    let mut buf = String::new();
-    let mut count = 0;
-
-    while let Some(result) = cursor.next_statement() {
-        let root_id = result.map_err(|e| format!("parse error: {e}"))?;
-        if count > 0 {
-            buf.push_str("----\n");
-        }
-        cursor.dump_node(root_id, &mut buf, 0);
-        count += 1;
-    }
-
+    let buf = dump_ast_source(dialect, source).map_err(|e| format!("parse error: {e}"))?;
     print!("{buf}");
     Ok(())
 }
@@ -171,8 +158,6 @@ fn cmd_fmt(
 ) -> Result<(), String> {
     let mut config = config;
     config.semicolons = semicolons;
-    let mut formatter = Formatter::with_config(dialect, config)
-        .map_err(|e| format!("failed to load formatter: {e}"))?;
 
     let paths = expand_paths(&files)?;
 
@@ -184,7 +169,7 @@ fn cmd_fmt(
         io::stdin()
             .read_to_string(&mut source)
             .map_err(|e| format!("reading stdin: {e}"))?;
-        let out = formatter.format(&source).map_err(|e| format!("{e}"))?;
+        let out = format_source(dialect, &source, config.clone()).map_err(|e| format!("{e}"))?;
         print!("{out}");
         return Ok(());
     }
@@ -192,7 +177,7 @@ fn cmd_fmt(
     let mut errors = Vec::new();
     for path in &paths {
         let source = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-        match formatter.format(&source) {
+        match format_source(dialect, &source, config.clone()) {
             Ok(out) => {
                 if in_place {
                     if out != source {
@@ -216,6 +201,34 @@ fn cmd_fmt(
         return Err(errors.join("\n"));
     }
     Ok(())
+}
+
+fn dump_ast_source(dialect: &Dialect, source: &str) -> Result<String, ParseError> {
+    let mut parser = RuntimeParser::new(dialect);
+    let mut cursor = parser.parse(source);
+    let mut out = String::new();
+    let mut count = 0;
+
+    while let Some(result) = cursor.next_statement() {
+        let root_id = result?;
+        if count > 0 {
+            out.push_str("----\n");
+        }
+        cursor.dump_node(root_id, &mut out, 0);
+        count += 1;
+    }
+
+    Ok(out)
+}
+
+fn format_source(
+    dialect: &Dialect,
+    source: &str,
+    config: FormatConfig,
+) -> Result<String, ParseError> {
+    let mut formatter = Formatter::with_config(dialect, config)
+        .map_err(|e| ParseError { message: e.to_string() })?;
+    formatter.format(source)
 }
 
 fn cmd_generate_dialect(
@@ -406,8 +419,8 @@ pub fn run(name: &str, dialect: &Dialect) {
     // Load a dynamic dialect if requested. The library handle must stay alive
     // until after the command finishes.
     let _dialect_lib;
-    let active_dialect: &Dialect;
     let dyn_dialect;
+    let active_dialect: &Dialect;
 
     if let Some(path) = &cli.dialect_path {
         let (lib, d) = unsafe { load_dynamic_dialect(path, cli.dialect_name.as_deref()) }

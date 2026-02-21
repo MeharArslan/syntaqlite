@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>syntaqlite WASM Playground</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="topbar-group brand">
+        <p class="kicker">syntaqlite</p>
+        <h1>Playground</h1>
+      </div>
+
+      <div class="topbar-group upload-grid">
+        <div>
+          <label for="extension-file">Dialect WASM</label>
+          <input id="extension-file" type="file" accept=".wasm,application/wasm" />
+        </div>
+        <div>
+          <label for="extension-name">Dialect Name (optional)</label>
+          <input id="extension-name" type="text" placeholder="e.g. perfetto" />
+        </div>
+      </div>
+
+      <div class="topbar-group fmt-grid">
+        <div>
+          <label for="line-width">Line Width</label>
+          <input id="line-width" type="number" min="20" max="240" value="80" />
+        </div>
+        <div>
+          <label for="keyword-case">Keyword Case</label>
+          <select id="keyword-case">
+            <option value="0">Preserve</option>
+            <option value="1" selected>Upper</option>
+            <option value="2">Lower</option>
+          </select>
+        </div>
+        <div class="checkbox-row">
+          <input id="semicolons" type="checkbox" />
+          <label for="semicolons">Append semicolons</label>
+        </div>
+      </div>
+
+      <div class="topbar-group actions">
+        <div class="button-row">
+          <button id="load-extension" type="button">Load Dialect</button>
+          <button id="clear-extension" type="button" class="ghost">Unload</button>
+          <button id="run-format" type="button">Format</button>
+          <button id="run-ast" type="button">AST</button>
+          <button id="run-both" type="button" class="ghost">Run Both</button>
+        </div>
+        <p id="engine-status" class="status">Loading runtime and built-in dialect...</p>
+      </div>
+    </header>
+
+    <section class="workspace">
+      <section class="pane editor-pane">
+        <h2>SQL Input</h2>
+        <textarea id="sql-input" spellcheck="false">select a, b from t where c = 1;</textarea>
+      </section>
+
+      <section class="pane viewer-pane">
+        <article class="output-block">
+          <h2>Formatted SQL</h2>
+          <pre id="format-output"></pre>
+        </article>
+        <article class="output-block">
+          <h2>AST Dump</h2>
+          <pre id="ast-output"></pre>
+        </article>
+      </section>
+    </section>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

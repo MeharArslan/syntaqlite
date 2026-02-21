@@ -3,6 +3,7 @@
 members = [
     "syntaqlite-runtime",
     "syntaqlite",
+    "syntaqlite-wasm",
     "syntaqlite-codegen",
     "syntaqlite-codegen-utils",
     "syntaqlite-cli",

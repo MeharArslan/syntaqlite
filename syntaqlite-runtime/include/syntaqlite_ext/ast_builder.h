@@ -55,8 +55,11 @@ typedef struct SynqParseCtx {
   uint32_t error_offset;  // Byte offset of the error token in source.
 } SynqParseCtx;
 
-// Lifecycle functions (synq_parse_ctx_init, synq_parse_ctx_free,
-// synq_parse_ctx_clear) are runtime-internal — see csrc/parse_ctx.h.
+// Common header for all list nodes in the arena.
+typedef struct SynqListHeader {
+  uint32_t tag;
+  uint32_t count;
+} SynqListHeader;
 
 // ---------------------------------------------------------------------------
 // AST node access macro (for in-place mutation in grammar actions)
@@ -71,17 +74,85 @@ typedef struct SynqParseCtx {
 // AST builder functions
 // ---------------------------------------------------------------------------
 
+// Flush the topmost list from the stack into the arena.
+static inline void synq_parse_list_flush_top(SynqParseCtx* ctx) {
+  SynqListDesc* desc =
+      &syntaqlite_vec_at(&ctx->list_stack, syntaqlite_vec_len(&ctx->list_stack) - 1);
+  uint32_t count = syntaqlite_vec_len(&ctx->child_buf) - desc->offset;
+  uint32_t children_size = count * (uint32_t)sizeof(uint32_t);
+
+  SynqListHeader hdr = {.tag = desc->tag, .count = count};
+  synq_arena_commit(&ctx->ast, desc->node_id, &hdr, (uint32_t)sizeof(hdr), ctx->mem);
+  synq_arena_append(
+      &ctx->ast,
+      &syntaqlite_vec_at(&ctx->child_buf, desc->offset),
+      children_size,
+      ctx->mem
+  );
+
+  syntaqlite_vec_truncate(&ctx->child_buf, desc->offset);
+  syntaqlite_vec_pop(&ctx->list_stack);
+}
+
+static inline void synq_parse_ctx_init(SynqParseCtx* ctx, SyntaqliteMemMethods mem) {
+  ctx->mem = mem;
+  synq_arena_init(&ctx->ast);
+  syntaqlite_vec_init(&ctx->child_buf);
+  syntaqlite_vec_init(&ctx->list_stack);
+}
+
+static inline void synq_parse_ctx_free(SynqParseCtx* ctx) {
+  syntaqlite_vec_free(&ctx->child_buf, ctx->mem);
+  syntaqlite_vec_free(&ctx->list_stack, ctx->mem);
+  synq_arena_free(&ctx->ast, ctx->mem);
+}
+
+// Reset to empty state, keeping allocated memory for reuse.
+static inline void synq_parse_ctx_clear(SynqParseCtx* ctx) {
+  syntaqlite_vec_clear(&ctx->child_buf);
+  syntaqlite_vec_clear(&ctx->list_stack);
+  synq_arena_clear(&ctx->ast);
+}
+
 // Generic node builder: copy node data into the arena.
-uint32_t synq_parse_build(SynqParseCtx* ctx,
-                          const void* node_data,
-                          uint32_t node_size);
+static inline uint32_t synq_parse_build(
+    SynqParseCtx* ctx,
+    const void* node_data,
+    uint32_t node_size
+) {
+  return synq_arena_alloc(&ctx->ast, node_data, node_size, ctx->mem);
+}
 
-uint32_t synq_parse_list_append(SynqParseCtx* ctx,
-                                uint32_t tag,
-                                uint32_t list_id,
-                                uint32_t child);
+static inline uint32_t synq_parse_list_append(
+    SynqParseCtx* ctx,
+    uint32_t tag,
+    uint32_t list_id,
+    uint32_t child
+) {
+  if (list_id == SYNTAQLITE_NULL_NODE) {
+    SynqListDesc desc;
+    desc.node_id = synq_arena_reserve_id(&ctx->ast, ctx->mem);
+    desc.offset = syntaqlite_vec_len(&ctx->child_buf);
+    desc.tag = tag;
+    syntaqlite_vec_push(&ctx->list_stack, desc, ctx->mem);
+    syntaqlite_vec_push(&ctx->child_buf, child, ctx->mem);
+    return desc.node_id;
+  }
 
-void synq_parse_list_flush(SynqParseCtx* ctx);
+  // Auto-flush completed inner lists above the target.
+  while (syntaqlite_vec_at(&ctx->list_stack, syntaqlite_vec_len(&ctx->list_stack) - 1).node_id !=
+         list_id) {
+    synq_parse_list_flush_top(ctx);
+  }
+  syntaqlite_vec_push(&ctx->child_buf, child, ctx->mem);
+  return list_id;
+}
+
+static inline void synq_parse_list_flush(SynqParseCtx* ctx) {
+  while (syntaqlite_vec_len(&ctx->list_stack) > 0) {
+    synq_parse_list_flush_top(ctx);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Token → span conversion

@@ -18,3 +18,8 @@ examples/syntaqlite_sqlite.c
 
 # Added by cargo
 /target
+
+# web-playground generated artifacts
+/web-playground/syntaqlite-runtime.js
+/web-playground/syntaqlite-*.wasm
+/web-playground/syntaqlite.wasm

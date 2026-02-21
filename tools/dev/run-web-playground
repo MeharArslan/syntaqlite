@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+# Copyright 2025 The syntaqlite Authors. All rights reserved.
+# Licensed under the Apache License, Version 2.0.
+
+import argparse
+import os
+import subprocess
+import sys
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Build and serve web-playground")
+    parser.add_argument("--port", type=int, default=8080, help="port for http server")
+    parser.add_argument(
+        "--skip-build",
+        action="store_true",
+        help="serve existing assets without rebuilding",
+    )
+    args = parser.parse_args()
+
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    if not args.skip_build:
+        build = os.path.join(root, "tools", "dev", "build-web-playground")
+        rc = subprocess.call([build], cwd=root)
+        if rc != 0:
+            return rc
+
+    web_dir = os.path.join(root, "web-playground")
+    print(f"serving {web_dir} at http://localhost:{args.port}")
+    return subprocess.call([sys.executable, "-m", "http.server", str(args.port)], cwd=web_dir)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

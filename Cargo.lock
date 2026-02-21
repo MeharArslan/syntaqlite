@@ -305,6 +305,16 @@ version = "0.1.0"
 [[package]]
 name = "syntaqlite-runtime"
 version = "0.1.0"
+dependencies = [
+ "cc",
+]
+
+[[package]]
+name = "syntaqlite-wasm"
+version = "0.1.0"
+dependencies = [
+ "syntaqlite-runtime",
+]
 
 [[package]]
 name = "tempfile"
