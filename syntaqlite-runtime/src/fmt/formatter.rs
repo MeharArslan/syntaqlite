@@ -188,11 +188,12 @@ fn drain_trailing_gap<'a>(
     arena: &mut DocArena<'a>,
     parts: &mut Vec<DocId>,
 ) {
+    let mut last_end = ctx.prev_token_end();
     while let Some(c) = ctx.peek_comment() {
         if c.offset >= before {
             break;
         }
-        let gap_start = (ctx.last_source_end() as usize).min(source.len());
+        let gap_start = (last_end as usize).min(source.len());
         let gap_end = (c.offset as usize).min(source.len());
         if gap_start < gap_end && source[gap_start..gap_end].contains('\n') {
             break; // This comment is on a new line — it's leading, not trailing.
@@ -211,7 +212,7 @@ fn drain_trailing_gap<'a>(
                 parts.push(arena.text(text));
             }
         }
-        ctx.set_source_end(c.offset + c.length);
+        last_end = c.offset + c.length;
         ctx.advance_comment();
     }
 }
@@ -231,7 +232,6 @@ fn drain_gap_comments<'a>(
         let text = &source[c.offset as usize..(c.offset + c.length) as usize];
         parts.push(arena.text(text));
         parts.push(arena.hardline());
-        ctx.set_source_end(c.offset + c.length);
         ctx.advance_comment();
     }
 }
@@ -337,7 +337,6 @@ fn try_macro_verbatim<'a>(
             }
             consumed.set(bits | bit);
             ctx.advance_past(r_end);
-            ctx.set_source_end(r_end);
             return Some(arena.text(&source[r_start as usize..r_end as usize]));
         }
     }

@@ -69,10 +69,10 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                 FmtOp::Keyword(sid) => {
                     let kw_text = self.string(sid);
                     if let Some(ci) = &self.comments {
-                        if let Some((tok_offset, tok_end)) = ci.ctx.next_keyword_tokens(kw_text) {
+                        if let Some((tok_offset, word_count)) = ci.ctx.peek_keyword_tokens(kw_text) {
                             let drain = ci.ctx.drain_before(tok_offset, arena);
                             flush_comments(drain, &mut pending_lines, &mut parts);
-                            ci.ctx.set_source_end(tok_end);
+                            ci.ctx.advance_token_cursor(word_count);
                         } else {
                             parts.extend(pending_lines.drain(..));
                         }
@@ -87,9 +87,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                         if let Some(ci) = &self.comments {
                             let drain = ci.ctx.drain_before(offset, arena);
                             flush_comments(drain, &mut pending_lines, &mut parts);
-                            let span_end = offset + s.len() as u32;
-                            ci.ctx.set_source_end(span_end);
-                            ci.ctx.advance_past(span_end);
+                            ci.ctx.advance_past(offset + s.len() as u32);
                         }
                         parts.push(arena.text(s));
                     }
@@ -211,7 +209,9 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                     if state.index < state.children.len() - 1 {
                         let sep_text = self.string(sid);
                         if let Some(ci) = &self.comments {
-                            ci.ctx.next_keyword_tokens(sep_text);
+                            if let Some((_, word_count)) = ci.ctx.peek_keyword_tokens(sep_text) {
+                                ci.ctx.advance_token_cursor(word_count);
+                            }
                         }
                         parts.push(arena.text(sep_text));
                     } else {
@@ -270,10 +270,10 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                     let string_id = self.enum_display_val(base as usize + ordinal as usize);
                     let kw_text = self.string(string_id);
                     if let Some(ci) = &self.comments {
-                        if let Some((tok_offset, tok_end)) = ci.ctx.next_keyword_tokens(kw_text) {
+                        if let Some((tok_offset, word_count)) = ci.ctx.peek_keyword_tokens(kw_text) {
                             let drain = ci.ctx.drain_before(tok_offset, arena);
                             flush_comments(drain, &mut pending_lines, &mut parts);
-                            ci.ctx.set_source_end(tok_end);
+                            ci.ctx.advance_token_cursor(word_count);
                         } else {
                             parts.extend(pending_lines.drain(..));
                         }

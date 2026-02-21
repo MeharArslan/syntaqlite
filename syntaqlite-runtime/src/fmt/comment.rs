@@ -22,7 +22,6 @@ pub struct CommentCtx<'a> {
     source: &'a str,
     cursor: Cell<usize>,
     token_cursor: Cell<usize>,
-    last_source_end: Cell<u32>,
 }
 
 impl<'a> CommentCtx<'a> {
@@ -33,14 +32,18 @@ impl<'a> CommentCtx<'a> {
             source,
             cursor: Cell::new(0),
             token_cursor: Cell::new(0),
-            last_source_end: Cell::new(0),
         }
     }
 
-    /// Update the tracked source position (call after processing a Span).
-    pub fn set_source_end(&self, offset: u32) {
-        if offset > self.last_source_end.get() {
-            self.last_source_end.set(offset);
+    /// End offset of the token just before the current token cursor position.
+    /// Returns 0 if the cursor is at the start.
+    pub fn prev_token_end(&self) -> u32 {
+        let idx = self.token_cursor.get();
+        if idx > 0 {
+            let tp = &self.tokens[idx - 1];
+            tp.offset + tp.length
+        } else {
+            0
         }
     }
 
@@ -54,6 +57,7 @@ impl<'a> CommentCtx<'a> {
         let mut trailing = Vec::new();
         let mut leading = Vec::new();
         let mut cursor = self.cursor.get();
+        let mut last_end = self.prev_token_end();
         while cursor < self.comments.len() && self.comments[cursor].offset < before {
             let t = &self.comments[cursor];
             let comment_end = (t.offset + t.length) as usize;
@@ -77,7 +81,6 @@ impl<'a> CommentCtx<'a> {
 
             let text = &self.source[t.offset as usize..comment_end];
 
-            let last_end = self.last_source_end.get();
             let gap_start = (last_end as usize).min(self.source.len());
             let gap_end = (t.offset as usize).min(self.source.len());
             let has_newline = gap_start < gap_end && self.source[gap_start..gap_end].contains('\n');
@@ -112,7 +115,7 @@ impl<'a> CommentCtx<'a> {
                 }
             }
 
-            self.last_source_end.set(t.offset + t.length);
+            last_end = t.offset + t.length;
             cursor += 1;
         }
 
@@ -124,10 +127,11 @@ impl<'a> CommentCtx<'a> {
         }
     }
 
-    /// Advance past N tokens (one per whitespace-separated word in the keyword).
-    /// Returns (first_offset, last_end) for drain_before and set_source_end.
-    /// The keyword is trimmed before counting words.
-    pub fn next_keyword_tokens(&self, kw_text: &str) -> Option<(u32, u32)> {
+    /// Peek at the next N tokens (one per whitespace-separated word in the keyword)
+    /// without advancing the token cursor.
+    /// Returns (first_offset, word_count) so the caller can drain comments before
+    /// the keyword, then call `advance_token_cursor(word_count)`.
+    pub fn peek_keyword_tokens(&self, kw_text: &str) -> Option<(u32, usize)> {
         let word_count = kw_text.trim().split_whitespace().count();
         if word_count == 0 {
             return None;
@@ -137,10 +141,12 @@ impl<'a> CommentCtx<'a> {
             return None;
         }
         let first_offset = self.tokens[first_idx].offset;
-        let last = &self.tokens[first_idx + word_count - 1];
-        let last_end = last.offset + last.length;
-        self.token_cursor.set(first_idx + word_count);
-        Some((first_offset, last_end))
+        Some((first_offset, word_count))
+    }
+
+    /// Advance the token cursor by `n` positions.
+    pub fn advance_token_cursor(&self, n: usize) {
+        self.token_cursor.set(self.token_cursor.get() + n);
     }
 
     /// Advance the token cursor past all tokens whose offset < end_offset.
@@ -180,11 +186,6 @@ impl<'a> CommentCtx<'a> {
         } else {
             None
         }
-    }
-
-    /// Return the current tracked source end position.
-    pub fn last_source_end(&self) -> u32 {
-        self.last_source_end.get()
     }
 
     /// Flush all remaining comments (for end-of-statement trailing comments).
