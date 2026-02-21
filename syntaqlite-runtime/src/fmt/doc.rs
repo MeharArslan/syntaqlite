@@ -1,6 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+use super::KeywordCase;
+
 /// A handle into the `DocArena`. `NIL_DOC` represents an empty/absent document.
 pub type DocId = u32;
 
@@ -10,7 +12,7 @@ pub const NIL_DOC: DocId = u32::MAX;
 
 /// A node in the document algebra. Lifetime `'a` covers borrowed text slices.
 #[derive(Debug, Clone)]
-pub enum Doc<'a> {
+enum Doc<'a> {
     /// Source text (identifiers, literals). Never case-transformed.
     Text(&'a str),
     /// SQL keyword. Subject to `KeywordCase` at render time.
@@ -51,8 +53,7 @@ impl<'a> DocArena<'a> {
         id
     }
 
-    /// Get a reference to the doc at `id`. Panics if `id` is `NIL_DOC` or out of bounds.
-    pub fn get(&self, id: DocId) -> &Doc<'a> {
+    fn get(&self, id: DocId) -> &Doc<'a> {
         &self.docs[id as usize]
     }
 
@@ -124,11 +125,236 @@ impl<'a> DocArena<'a> {
     pub fn break_parent(&mut self) -> DocId {
         self.push(Doc::BreakParent)
     }
+
+    // -- Render --
+
+    /// Render the document tree rooted at `root` to a string.
+    pub fn render(&self, root: DocId, line_width: usize, keyword_case: KeywordCase) -> String {
+        if root == NIL_DOC {
+            return String::new();
+        }
+
+        let mut out = String::new();
+        let mut pos: usize = 0;
+        let mut stack: Vec<(i32, Mode, DocId)> = vec![(0, Mode::Break, root)];
+        let mut line_suffix_buf: Vec<(i32, Mode, DocId)> = Vec::new();
+
+        while let Some((indent, mode, doc_id)) = stack.pop() {
+            if doc_id == NIL_DOC {
+                continue;
+            }
+
+            match self.get(doc_id) {
+                Doc::Text(s) => {
+                    out.push_str(s);
+                    pos += s.len();
+                }
+
+                Doc::Keyword(s) => {
+                    push_keyword(s, keyword_case, &mut out);
+                    pos += s.len();
+                }
+
+                Doc::Line => match mode {
+                    Mode::Flat => {
+                        out.push(' ');
+                        pos += 1;
+                    }
+                    Mode::Break => {
+                        flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, &mut out, &mut pos);
+                        emit_newline(indent, &mut out, &mut pos);
+                    }
+                },
+
+                Doc::SoftLine => match mode {
+                    Mode::Flat => {}
+                    Mode::Break => {
+                        flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, &mut out, &mut pos);
+                        emit_newline(indent, &mut out, &mut pos);
+                    }
+                },
+
+                Doc::HardLine => {
+                    flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, &mut out, &mut pos);
+                    emit_newline(indent, &mut out, &mut pos);
+                }
+
+                Doc::Cat { left, right } => {
+                    stack.push((indent, mode, *right));
+                    stack.push((indent, mode, *left));
+                }
+
+                Doc::Nest { indent: di, child } => {
+                    stack.push((indent + *di as i32, mode, *child));
+                }
+
+                Doc::Group { child } => {
+                    if self.fits(*child, indent, line_width as i32 - pos as i32) {
+                        stack.push((indent, Mode::Flat, *child));
+                    } else {
+                        stack.push((indent, Mode::Break, *child));
+                    }
+                }
+
+                Doc::LineSuffix { child } => {
+                    line_suffix_buf.push((indent, mode, *child));
+                }
+
+                Doc::BreakParent => {}
+            }
+        }
+
+        flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, &mut out, &mut pos);
+        out
+    }
+
+    /// Check whether a document fits within `remaining` columns when rendered flat.
+    fn fits(&self, doc_id: DocId, indent: i32, remaining: i32) -> bool {
+        if remaining < 0 {
+            return false;
+        }
+
+        let mut remaining = remaining;
+        let mut stack: Vec<(i32, DocId)> = vec![(indent, doc_id)];
+
+        while let Some((indent, doc_id)) = stack.pop() {
+            if remaining < 0 {
+                return false;
+            }
+            if doc_id == NIL_DOC {
+                continue;
+            }
+
+            match self.get(doc_id) {
+                Doc::Text(s) | Doc::Keyword(s) => {
+                    remaining -= s.len() as i32;
+                }
+                Doc::Line => {
+                    remaining -= 1;
+                }
+                Doc::SoftLine => {}
+                Doc::HardLine => {
+                    return false;
+                }
+                Doc::Cat { left, right } => {
+                    stack.push((indent, *right));
+                    stack.push((indent, *left));
+                }
+                Doc::Nest { indent: di, child } => {
+                    stack.push((indent + *di as i32, *child));
+                }
+                Doc::Group { child } => {
+                    stack.push((indent, *child));
+                }
+                Doc::LineSuffix { .. } => {}
+                Doc::BreakParent => {
+                    return false;
+                }
+            }
+        }
+
+        remaining >= 0
+    }
+}
+
+// ── Private helpers ──────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Mode {
+    Flat,
+    Break,
+}
+
+fn emit_newline(indent: i32, out: &mut String, pos: &mut usize) {
+    out.push('\n');
+    let spaces = indent.max(0) as usize;
+    for _ in 0..spaces {
+        out.push(' ');
+    }
+    *pos = spaces;
+}
+
+/// Push a keyword string with the appropriate casing to the output.
+fn push_keyword(s: &str, case: KeywordCase, out: &mut String) {
+    match case {
+        KeywordCase::Preserve => out.push_str(s),
+        KeywordCase::Upper => {
+            for c in s.chars() {
+                for u in c.to_uppercase() {
+                    out.push(u);
+                }
+            }
+        }
+        KeywordCase::Lower => {
+            for c in s.chars() {
+                for l in c.to_lowercase() {
+                    out.push(l);
+                }
+            }
+        }
+    }
+}
+
+/// Render buffered line suffixes directly to output (before the next newline).
+fn flush_line_suffixes(
+    arena: &DocArena,
+    buf: &mut Vec<(i32, Mode, DocId)>,
+    keyword_case: KeywordCase,
+    out: &mut String,
+    pos: &mut usize,
+) {
+    if buf.is_empty() {
+        return;
+    }
+    for (indent, _mode, doc_id) in buf.drain(..) {
+        render_inline(arena, doc_id, indent, keyword_case, out, pos);
+    }
+}
+
+/// Render a doc tree directly into the output string (used for line suffixes).
+fn render_inline(
+    arena: &DocArena,
+    doc_id: DocId,
+    indent: i32,
+    keyword_case: KeywordCase,
+    out: &mut String,
+    pos: &mut usize,
+) {
+    if doc_id == NIL_DOC {
+        return;
+    }
+    let mut stack: Vec<(i32, DocId)> = vec![(indent, doc_id)];
+    while let Some((indent, doc_id)) = stack.pop() {
+        if doc_id == NIL_DOC {
+            continue;
+        }
+        match arena.get(doc_id) {
+            Doc::Text(s) => {
+                out.push_str(s);
+                *pos += s.len();
+            }
+            Doc::Keyword(s) => {
+                push_keyword(s, keyword_case, out);
+                *pos += s.len();
+            }
+            Doc::Cat { left, right } => {
+                stack.push((indent, *right));
+                stack.push((indent, *left));
+            }
+            Doc::Nest { indent: di, child } => {
+                stack.push((indent + *di as i32, *child));
+            }
+            _ => {}
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const WIDTH: usize = 80;
+    const CASE: KeywordCase = KeywordCase::Preserve;
 
     #[test]
     fn arena_alloc_and_get() {
@@ -145,12 +371,8 @@ mod tests {
     fn nil_doc_identity_in_cat() {
         let mut arena = DocArena::new();
         let a = arena.text("a");
-
-        // cat(NIL, a) == a
         assert_eq!(arena.cat(NIL_DOC, a), a);
-        // cat(a, NIL) == a
         assert_eq!(arena.cat(a, NIL_DOC), a);
-        // cat(NIL, NIL) == NIL
         assert_eq!(arena.cat(NIL_DOC, NIL_DOC), NIL_DOC);
     }
 
@@ -168,7 +390,6 @@ mod tests {
         let a = arena.text("a");
         let b = arena.text("b");
         let result = arena.cats(&[NIL_DOC, a, NIL_DOC, b, NIL_DOC]);
-        // Should be Cat { left: a, right: b }
         match arena.get(result) {
             Doc::Cat { left, right } => {
                 assert_eq!(*left, a);
@@ -187,9 +408,64 @@ mod tests {
 
     #[test]
     fn cats_empty() {
-        let arena = DocArena::new();
-        assert_eq!(arena.docs.len(), 0);
-        let mut arena = arena;
+        let mut arena = DocArena::new();
         assert_eq!(arena.cats(&[]), NIL_DOC);
+    }
+
+    #[test]
+    fn plain_text() {
+        let mut arena = DocArena::new();
+        let doc = arena.text("hello world");
+        assert_eq!(arena.render(doc, WIDTH, CASE), "hello world");
+    }
+
+    #[test]
+    fn cat_two_texts() {
+        let mut arena = DocArena::new();
+        let a = arena.text("hello");
+        let b = arena.text(" world");
+        let doc = arena.cat(a, b);
+        assert_eq!(arena.render(doc, WIDTH, CASE), "hello world");
+    }
+
+    #[test]
+    fn group_fits_flat() {
+        let mut arena = DocArena::new();
+        let a = arena.text("a");
+        let sp = arena.line();
+        let b = arena.text("b");
+        let inner = arena.cats(&[a, sp, b]);
+        let doc = arena.group(inner);
+        assert_eq!(arena.render(doc, WIDTH, CASE), "a b");
+    }
+
+    #[test]
+    fn group_breaks() {
+        let mut arena = DocArena::new();
+        let a = arena.text("aaaa");
+        let sp = arena.line();
+        let b = arena.text("bbbb");
+        let inner = arena.cats(&[a, sp, b]);
+        let doc = arena.group(inner);
+        assert_eq!(arena.render(doc, 6, CASE), "aaaa\nbbbb");
+    }
+
+    #[test]
+    fn nest_indentation() {
+        let mut arena = DocArena::new();
+        let a = arena.text("a");
+        let sp = arena.line();
+        let b = arena.text("b");
+        let inner = arena.cats(&[a, sp, b]);
+        let nested = arena.nest(4, inner);
+        let doc = arena.group(nested);
+        assert_eq!(arena.render(doc, 3, CASE), "a b");
+        assert_eq!(arena.render(doc, 2, CASE), "a\n    b");
+    }
+
+    #[test]
+    fn nil_doc_renders_empty() {
+        let arena = DocArena::new();
+        assert_eq!(arena.render(NIL_DOC, WIDTH, CASE), "");
     }
 }

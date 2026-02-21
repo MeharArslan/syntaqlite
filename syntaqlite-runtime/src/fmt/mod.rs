@@ -7,7 +7,6 @@ mod comment;
 mod doc;
 mod formatter;
 mod interpret;
-mod render;
 
 // ── Config types (formerly config.rs) ────────────────────────────────────
 

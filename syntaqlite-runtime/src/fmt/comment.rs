@@ -15,21 +15,21 @@ pub struct DrainResult {
     pub leading: DocId,
 }
 
-/// Tracks position through a sorted comment array during Doc tree construction.
+/// Two cursors advancing monotonically through sorted comment and token arrays.
+/// Shared via `&` across recursive format calls; interior mutability is required
+/// because the recursive `format_child` closure captures `&CommentCtx`.
 pub struct CommentCtx<'a> {
     comments: &'a [Comment],
     tokens: &'a [TokenPos],
-    source: &'a str,
     cursor: Cell<usize>,
     token_cursor: Cell<usize>,
 }
 
 impl<'a> CommentCtx<'a> {
-    pub fn new(comments: &'a [Comment], tokens: &'a [TokenPos], source: &'a str) -> Self {
+    pub fn new(comments: &'a [Comment], tokens: &'a [TokenPos]) -> Self {
         CommentCtx {
             comments,
             tokens,
-            source,
             cursor: Cell::new(0),
             token_cursor: Cell::new(0),
         }
@@ -53,7 +53,12 @@ impl<'a> CommentCtx<'a> {
     /// between a comment and `before`. This prevents comments that precede
     /// an intervening keyword from being attributed to the child after the
     /// keyword.
-    pub fn drain_before(&self, before: u32, arena: &mut DocArena<'a>) -> DrainResult {
+    pub fn drain_before(
+        &self,
+        before: u32,
+        source: &'a str,
+        arena: &mut DocArena<'a>,
+    ) -> DrainResult {
         let mut trailing = Vec::new();
         let mut leading = Vec::new();
         let mut cursor = self.cursor.get();
@@ -66,10 +71,10 @@ impl<'a> CommentCtx<'a> {
             // between the end of this comment and `before`. If so, there's
             // an intervening keyword — stop draining so this comment stays
             // with the keyword rather than being pulled past it.
-            let before_usize = (before as usize).min(self.source.len());
+            let before_usize = (before as usize).min(source.len());
             if comment_end < before_usize
                 && has_non_comment_text(
-                    self.source,
+                    source,
                     comment_end,
                     before_usize,
                     self.comments,
@@ -79,24 +84,19 @@ impl<'a> CommentCtx<'a> {
                 break;
             }
 
-            let text = &self.source[t.offset as usize..comment_end];
+            let text = &source[t.offset as usize..comment_end];
 
-            let gap_start = (last_end as usize).min(self.source.len());
-            let gap_end = (t.offset as usize).min(self.source.len());
-            let has_newline = gap_start < gap_end && self.source[gap_start..gap_end].contains('\n');
+            let gap_start = (last_end as usize).min(source.len());
+            let gap_end = (t.offset as usize).min(source.len());
+            let has_newline = gap_start < gap_end && source[gap_start..gap_end].contains('\n');
 
             match t.kind {
                 CommentKind::LineComment => {
                     if has_newline {
-                        // Leading: comment on its own line.
-                        // HardLine before puts the comment on a new line,
-                        // HardLine after ensures the next token doesn't
-                        // concatenate with the comment text.
                         leading.push(arena.hardline());
                         leading.push(arena.text(text));
                         leading.push(arena.hardline());
                     } else {
-                        // Trailing: comment at end of current line
                         let space = arena.text(" ");
                         let comment = arena.text(text);
                         let inner = arena.cat(space, comment);
@@ -129,8 +129,6 @@ impl<'a> CommentCtx<'a> {
 
     /// Peek at the next N tokens (one per whitespace-separated word in the keyword)
     /// without advancing the token cursor.
-    /// Returns (first_offset, word_count) so the caller can drain comments before
-    /// the keyword, then call `advance_token_cursor(word_count)`.
     pub fn peek_keyword_tokens(&self, kw_text: &str) -> Option<(u32, usize)> {
         let word_count = kw_text.trim().split_whitespace().count();
         if word_count == 0 {
@@ -150,7 +148,6 @@ impl<'a> CommentCtx<'a> {
     }
 
     /// Advance the token cursor past all tokens whose offset < end_offset.
-    /// Used after processing a span to keep the token cursor in sync.
     pub fn advance_past(&self, end_offset: u32) {
         let mut idx = self.token_cursor.get();
         while idx < self.tokens.len() && self.tokens[idx].offset < end_offset {
@@ -169,7 +166,7 @@ impl<'a> CommentCtx<'a> {
         }
     }
 
-    /// Advance the comment cursor by one (call after peek_comment).
+    /// Advance the comment cursor by one.
     pub fn advance_comment(&self) {
         let idx = self.cursor.get();
         if idx < self.comments.len() {
@@ -188,9 +185,9 @@ impl<'a> CommentCtx<'a> {
         }
     }
 
-    /// Flush all remaining comments (for end-of-statement trailing comments).
-    pub fn drain_remaining(&self, arena: &mut DocArena<'a>) -> DocId {
-        let drain = self.drain_before(u32::MAX, arena);
+    /// Flush all remaining comments.
+    pub fn drain_remaining(&self, source: &'a str, arena: &mut DocArena<'a>) -> DocId {
+        let drain = self.drain_before(u32::MAX, source, arena);
         arena.cat(drain.trailing, drain.leading)
     }
 }

@@ -1,25 +1,18 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use std::cell::Cell;
-
 use crate::dialect::Dialect;
 use crate::dialect::ffi::{
     FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldMeta,
 };
 use crate::parser::{
-    Comment, CommentKind, CursorBase, FieldVal, Fields, MacroRegion, NodeId, Parser,
-    ParserConfig, SourceSpan, TokenPos,
+    CommentKind, CursorBase, FieldVal, Fields, MacroRegion, NodeId, Parser, ParserConfig,
+    SourceSpan,
 };
-use super::interpret::CommentInfo;
-
 use super::FormatConfig;
 use super::comment::CommentCtx;
 use super::doc::{DocArena, DocId, NIL_DOC};
-use super::interpret::Interpreter;
-use super::render::render;
-
-// ── Formatter ───────────────────────────────────────────────────────────
+use super::interpret::{FmtCtx, interpret};
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {
@@ -71,16 +64,52 @@ impl<'d> Formatter<'d> {
         let base = cursor.base();
         let comments = base.comments().to_vec();
         let tokens = base.tokens();
-        Ok(format_stmts(
-            self.dialect,
-            &self.config,
-            self.config.semicolons,
-            base,
-            &roots,
-            &comments,
-            tokens,
-            source,
-        ))
+        let source = base.source();
+
+        if roots.is_empty() {
+            return Ok(String::new());
+        }
+
+        let mut arena = DocArena::new();
+        let comment_ctx = if comments.is_empty() {
+            None
+        } else {
+            Some(CommentCtx::new(&comments, tokens))
+        };
+        let comment_ctx_ref = comment_ctx.as_ref();
+        let semicolons = self.config.semicolons;
+
+        let mut parts: Vec<DocId> = Vec::new();
+        for (i, &root_id) in roots.iter().enumerate() {
+            if i > 0 {
+                emit_stmt_separator(&comment_ctx, semicolons, source, &mut arena, &mut parts);
+            } else if let Some(cctx) = &comment_ctx {
+                if let Some((next_offset, _)) = cctx.peek_next_token() {
+                    drain_gap_comments(cctx, next_offset, source, &mut arena, &mut parts);
+                }
+            }
+
+            let ctx = FmtCtx {
+                dialect: self.dialect,
+                cursor: base,
+                comment_ctx: comment_ctx_ref,
+            };
+            let mut consumed = 0u64;
+            parts.push(format_node_inner(&ctx, root_id, &mut arena, &mut consumed));
+        }
+
+        if let Some(cctx) = &comment_ctx {
+            parts.push(cctx.drain_remaining(source, &mut arena));
+        }
+
+        let doc = arena.cats(&parts);
+        let mut out = arena.render(doc, self.config.line_width, self.config.keyword_case);
+
+        if semicolons {
+            out.push(';');
+        }
+        out.push('\n');
+        Ok(out)
     }
 
     /// Format a single pre-parsed AST node. This is the low-level entry point
@@ -88,95 +117,44 @@ impl<'d> Formatter<'d> {
     pub fn format_node<'a>(&self, cursor: &'a CursorBase<'a>, node_id: NodeId) -> String {
         let mut arena = DocArena::new();
         let tokens = cursor.tokens();
-        let source = cursor.source();
-        let ctx = CommentCtx::new(&[], tokens, source);
-        let doc = format_node(self.dialect, cursor, node_id, &mut arena, Some(&ctx));
-        render(&arena, doc, &self.config)
+        let comment_ctx = CommentCtx::new(&[], tokens);
+        let ctx = FmtCtx {
+            dialect: self.dialect,
+            cursor,
+            comment_ctx: Some(&comment_ctx),
+        };
+        let mut consumed = 0u64;
+        let doc = format_node_inner(&ctx, node_id, &mut arena, &mut consumed);
+        arena.render(doc, self.config.line_width, self.config.keyword_case)
     }
 }
 
-// ── Multi-statement formatting ──────────────────────────────────────────
+// ── Multi-statement helpers ─────────────────────────────────────────────
 
-fn format_stmts<'a>(
-    dialect: Dialect<'_>,
-    config: &FormatConfig,
+fn emit_stmt_separator<'a>(
+    comment_ctx: &Option<CommentCtx<'a>>,
     semicolons: bool,
-    cursor: &'a CursorBase<'a>,
-    roots: &[NodeId],
-    comments: &[Comment],
-    tokens: &[TokenPos],
-    source: &str,
-) -> String {
-    if roots.is_empty() {
-        return String::new();
-    }
-
-    let mut arena = DocArena::new();
-
-    let comment_ctx = if comments.is_empty() {
-        None
-    } else {
-        Some(CommentCtx::new(comments, tokens, source))
-    };
-    let comment_ctx_ref = comment_ctx.as_ref();
-
-    let mut parts: Vec<DocId> = Vec::new();
-    for (i, &root_id) in roots.iter().enumerate() {
-        if let Some(ctx) = &comment_ctx {
-            if let Some((next_offset, _)) = ctx.peek_next_token() {
-                if i == 0 {
-                    // Drain comments before the first statement (e.g. file header).
-                    drain_gap_comments(ctx, next_offset, source, &mut arena, &mut parts);
-                } else {
-                    // Emit statement separator.
-                    if semicolons {
-                        parts.push(arena.text(";"));
-                    }
-                    // Drain trailing comments (same line as end of previous stmt).
-                    drain_trailing_gap(ctx, next_offset, source, &mut arena, &mut parts);
-                    // Statement separator blank line.
-                    parts.push(arena.hardline());
-                    parts.push(arena.hardline());
-                    // Drain leading comments (on their own lines before next stmt).
-                    drain_gap_comments(ctx, next_offset, source, &mut arena, &mut parts);
-                }
-            } else if i > 0 {
-                if semicolons {
-                    parts.push(arena.text(";"));
-                }
-                parts.push(arena.hardline());
-                parts.push(arena.hardline());
-            }
-        } else if i > 0 {
+    source: &'a str,
+    arena: &mut DocArena<'a>,
+    parts: &mut Vec<DocId>,
+) {
+    if let Some(cctx) = comment_ctx {
+        if let Some((next_offset, _)) = cctx.peek_next_token() {
             if semicolons {
                 parts.push(arena.text(";"));
             }
+            drain_trailing_gap(cctx, next_offset, source, arena, parts);
             parts.push(arena.hardline());
             parts.push(arena.hardline());
+            drain_gap_comments(cctx, next_offset, source, arena, parts);
+            return;
         }
-
-        parts.push(format_node(
-            dialect,
-            cursor,
-            root_id,
-            &mut arena,
-            comment_ctx_ref,
-        ));
     }
-
-    if let Some(ctx) = &comment_ctx {
-        let trailing = ctx.drain_remaining(&mut arena);
-        parts.push(trailing);
-    }
-
-    let doc = arena.cats(&parts);
-    let mut out = render(&arena, doc, config);
-
     if semicolons {
-        out.push(';');
+        parts.push(arena.text(";"));
     }
-    out.push('\n');
-    out
+    parts.push(arena.hardline());
+    parts.push(arena.hardline());
 }
 
 /// Drain trailing comments from the inter-statement gap (same line as the
@@ -196,7 +174,7 @@ fn drain_trailing_gap<'a>(
         let gap_start = (last_end as usize).min(source.len());
         let gap_end = (c.offset as usize).min(source.len());
         if gap_start < gap_end && source[gap_start..gap_end].contains('\n') {
-            break; // This comment is on a new line — it's leading, not trailing.
+            break;
         }
         let text = &source[c.offset as usize..(c.offset + c.length) as usize];
         match c.kind {
@@ -238,86 +216,41 @@ fn drain_gap_comments<'a>(
 
 // ── Single-node formatting ──────────────────────────────────────────────
 
-fn format_node<'a>(
-    dialect: Dialect<'a>,
-    cursor: &'a CursorBase<'a>,
+pub(crate) fn format_node_inner<'a>(
+    ctx: &FmtCtx<'a>,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
-    comment_ctx: Option<&'a CommentCtx<'a>>,
-) -> DocId {
-    let consumed = Cell::new(0u64);
-    format_node_inner(dialect, cursor, node_id, arena, comment_ctx, &consumed)
-}
-
-fn format_node_inner<'a>(
-    dialect: Dialect<'a>,
-    cursor: &'a CursorBase<'a>,
-    node_id: NodeId,
-    arena: &mut DocArena<'a>,
-    comment_ctx: Option<&'a CommentCtx<'a>>,
-    consumed_regions: &Cell<u64>,
+    consumed_regions: &mut u64,
 ) -> DocId {
     if node_id.is_null() {
         return NIL_DOC;
     }
 
-    let Some((ptr, tag)) = cursor.node_ptr(node_id) else {
+    let Some((ptr, tag)) = ctx.cursor.node_ptr(node_id) else {
         return NIL_DOC;
     };
-    let Some((ops_bytes, ops_len)) = dialect.fmt_dispatch(tag) else {
+    let Some((ops_bytes, ops_len)) = ctx.dialect.fmt_dispatch(tag) else {
         return NIL_DOC;
     };
-    let source = cursor.source();
-    let macro_regions = cursor.macro_regions();
+    let children = ctx.cursor.list_children(node_id, &ctx.dialect);
+    let source = ctx.source();
 
-    let format_child = move |id: NodeId, arena: &mut DocArena<'a>| {
-        if !macro_regions.is_empty() {
-            if let Some(verbatim) = try_macro_verbatim(
-                comment_ctx,
-                macro_regions,
-                source,
-                arena,
-                consumed_regions,
-            ) {
-                return verbatim;
-            }
-        }
-        format_node_inner(dialect, cursor, id, arena, comment_ctx, consumed_regions)
-    };
-    let resolve_list = move |id: NodeId| -> Vec<NodeId> {
-        cursor
-            .list_children(id, &dialect)
-            .map(|c| c.to_vec())
-            .unwrap_or_default()
-    };
-    let children = cursor.list_children(node_id, &dialect);
+    let fields = extract_fields(&ctx.dialect, ptr, tag, source);
 
-    let fields = extract_fields(&dialect, ptr, tag, source);
-
-    let comments = comment_ctx.map(|ctx| CommentInfo { ctx });
-
-    Interpreter::new(
-        dialect,
-        ops_bytes,
-        ops_len,
-        &format_child,
-        &resolve_list,
-        comments,
-    )
-    .run(&fields, children, arena)
+    interpret(ctx, ops_bytes, ops_len, &fields, children, consumed_regions, arena)
 }
 
 /// Check if the next token falls within a macro region. If so, emit the
 /// entire macro call verbatim and advance the token cursor past it.
-fn try_macro_verbatim<'a>(
-    comment_ctx: Option<&CommentCtx<'a>>,
+pub(crate) fn try_macro_verbatim<'a>(
+    ctx: &FmtCtx<'a>,
     regions: &[MacroRegion],
-    source: &'a str,
     arena: &mut DocArena<'a>,
-    consumed: &Cell<u64>,
+    consumed: &mut u64,
 ) -> Option<DocId> {
-    let ctx = comment_ctx?;
-    let (tok_offset, _) = ctx.peek_next_token()?;
+    let cctx = ctx.comment_ctx?;
+    let (tok_offset, _) = cctx.peek_next_token()?;
+    let source = ctx.source();
 
     for (i, r) in regions.iter().enumerate() {
         if i >= 64 {
@@ -328,15 +261,12 @@ fn try_macro_verbatim<'a>(
 
         if tok_offset >= r_start && tok_offset < r_end {
             let bit = 1u64 << i;
-            let bits = consumed.get();
-            if bits & bit != 0 {
-                // Already consumed — this is another child within the same
-                // macro region. Emit NIL and advance past its tokens.
-                ctx.advance_past(r_end);
+            if *consumed & bit != 0 {
+                cctx.advance_past(r_end);
                 return Some(NIL_DOC);
             }
-            consumed.set(bits | bit);
-            ctx.advance_past(r_end);
+            *consumed |= bit;
+            cctx.advance_past(r_end);
             return Some(arena.text(&source[r_start as usize..r_end as usize]));
         }
     }
@@ -346,12 +276,7 @@ fn try_macro_verbatim<'a>(
 // ── Field extraction ────────────────────────────────────────────────────
 
 /// Extract typed field values from a raw node pointer.
-fn extract_fields<'a>(
-    dialect: &Dialect<'_>,
-    ptr: *const u8,
-    tag: u32,
-    source: &'a str,
-) -> Fields<'a> {
+fn extract_fields<'a>(dialect: &Dialect<'_>, ptr: *const u8, tag: u32, source: &'a str) -> Fields<'a> {
     let meta = dialect.field_meta(tag);
     let mut fields = Fields::new();
     for m in meta {
@@ -383,4 +308,3 @@ unsafe fn extract_one<'a>(ptr: *const u8, m: &FieldMeta, source: &'a str) -> Fie
         }
     }
 }
-
