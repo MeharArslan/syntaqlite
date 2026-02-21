@@ -179,18 +179,17 @@ node CreateTableStmt {
       span(table_name)
       if_set(columns) {
         "("
-        group {
-          nest {
-            softline
-            child(columns)
-            if_set(table_constraints) { "," line child(table_constraints) }
-          }
+        nest {
+          softline
+          child(columns)
+          if_set(table_constraints) { "," line child(table_constraints) }
         }
         softline ")"
       }
-      if_set(as_select) { " AS" hardline child(as_select) }
+      if_set(as_select) { line "AS" }
       if_flag(flags.without_rowid) { " WITHOUT ROWID" }
       if_flag(flags.strict) { " STRICT" }
     }
+    if_set(as_select) { hardline child(as_select) }
   }
 }

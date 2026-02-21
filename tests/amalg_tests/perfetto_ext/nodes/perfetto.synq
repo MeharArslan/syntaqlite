@@ -9,7 +9,10 @@ node PerfettoArgDef {
   }
 }
 
-list PerfettoArgDefList { PerfettoArgDef }
+list PerfettoArgDefList {
+  PerfettoArgDef
+  fmt { for_each(sep: "," line) { child(_item) } }
+}
 
 node PerfettoMacroArg {
   arg_name: inline SyntaqliteSourceSpan
@@ -40,7 +43,16 @@ node PerfettoReturnType {
   fmt {
     switch(kind) {
       SCALAR { span(scalar_type) }
-      TABLE  { "TABLE(" child(table_columns) ")" }
+      TABLE  {
+        group {
+          "TABLE("
+          nest {
+            softline
+            child(table_columns)
+          }
+          softline ")"
+        }
+      }
     }
   }
 }
@@ -53,12 +65,22 @@ node CreatePerfettoTableStmt {
   select: index Select
 
   fmt {
-    "CREATE"
-    if_flag(or_replace) { " OR REPLACE" }
-    " PERFETTO TABLE " span(table_name)
-    if_span(table_impl) { " USING " span(table_impl) }
-    if_set(schema) { "(" child(schema) ")" }
-    if_set(select) { " AS" hardline child(select) }
+    group {
+      "CREATE"
+      if_flag(or_replace) { " OR REPLACE" }
+      " PERFETTO TABLE " span(table_name)
+      if_span(table_impl) { " USING " span(table_impl) }
+      if_set(schema) {
+        "("
+        nest {
+          softline
+          child(schema)
+        }
+        softline ")"
+      }
+      if_set(select) { line "AS" }
+    }
+    if_set(select) { hardline child(select) }
   }
 }
 
@@ -69,11 +91,21 @@ node CreatePerfettoViewStmt {
   select: index Select
 
   fmt {
-    "CREATE"
-    if_flag(or_replace) { " OR REPLACE" }
-    " PERFETTO VIEW " span(view_name)
-    if_set(schema) { "(" child(schema) ")" }
-    " AS" hardline child(select)
+    group {
+      "CREATE"
+      if_flag(or_replace) { " OR REPLACE" }
+      " PERFETTO VIEW " span(view_name)
+      if_set(schema) {
+        "("
+        nest {
+          softline
+          child(schema)
+        }
+        softline ")"
+      }
+      line "AS"
+    }
+    hardline child(select)
   }
 }
 
@@ -85,12 +117,23 @@ node CreatePerfettoFunctionStmt {
   select: index Select
 
   fmt {
-    "CREATE"
-    if_flag(or_replace) { " OR REPLACE" }
-    " PERFETTO FUNCTION " span(function_name)
-    "(" if_set(args) { child(args) } ")"
-    " RETURNS " child(return_type)
-    " AS" hardline child(select)
+    group {
+      "CREATE"
+      if_flag(or_replace) { " OR REPLACE" }
+      " PERFETTO FUNCTION " span(function_name)
+      "("
+      if_set(args) {
+        nest {
+          softline
+          child(args)
+        }
+        softline
+      }
+      ")"
+      " RETURNS " child(return_type)
+      line "AS"
+    }
+    hardline child(select)
   }
 }
 

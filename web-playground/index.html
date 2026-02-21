@@ -8,69 +8,57 @@
 </head>
 <body>
   <main class="app">
-    <header class="topbar">
-      <div class="topbar-group brand">
-        <p class="kicker">syntaqlite</p>
-        <h1>Playground</h1>
+    <header class="toolbar">
+      <div class="toolbar-left">
+        <span class="brand"><span class="kicker">syntaqlite</span> Playground</span>
+        <span id="engine-status" class="status">Loading...</span>
       </div>
-
-      <div class="topbar-group upload-grid">
-        <div>
-          <label for="extension-file">Dialect WASM</label>
+      <div class="toolbar-right">
+        <div class="dialect-controls">
           <input id="extension-file" type="file" accept=".wasm,application/wasm" />
+          <input id="extension-name" type="text" placeholder="dialect name" class="dialect-name" />
+          <button id="clear-extension" type="button" class="ghost btn-sm" title="Unload dialect">Unload</button>
         </div>
-        <div>
-          <label for="extension-name">Dialect Name (optional)</label>
-          <input id="extension-name" type="text" placeholder="e.g. perfetto" />
+        <div class="fmt-controls-wrapper">
+          <button id="toggle-fmt-options" type="button" class="ghost btn-sm">Options</button>
+          <div id="fmt-popover" class="fmt-popover hidden">
+            <div class="fmt-row">
+              <label for="line-width">Line Width</label>
+              <input id="line-width" type="number" min="20" max="240" value="80" />
+            </div>
+            <div class="fmt-row">
+              <label for="keyword-case">Keyword Case</label>
+              <select id="keyword-case">
+                <option value="0">Preserve</option>
+                <option value="1" selected>Upper</option>
+                <option value="2">Lower</option>
+              </select>
+            </div>
+            <div class="fmt-row checkbox-row">
+              <input id="semicolons" type="checkbox" />
+              <label for="semicolons">Append semicolons</label>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div class="topbar-group fmt-grid">
-        <div>
-          <label for="line-width">Line Width</label>
-          <input id="line-width" type="number" min="20" max="240" value="80" />
-        </div>
-        <div>
-          <label for="keyword-case">Keyword Case</label>
-          <select id="keyword-case">
-            <option value="0">Preserve</option>
-            <option value="1" selected>Upper</option>
-            <option value="2">Lower</option>
-          </select>
-        </div>
-        <div class="checkbox-row">
-          <input id="semicolons" type="checkbox" />
-          <label for="semicolons">Append semicolons</label>
-        </div>
-      </div>
-
-      <div class="topbar-group actions">
-        <div class="button-row">
-          <button id="load-extension" type="button">Load Dialect</button>
-          <button id="clear-extension" type="button" class="ghost">Unload</button>
-          <button id="run-format" type="button">Format</button>
-          <button id="run-ast" type="button">AST</button>
-          <button id="run-both" type="button" class="ghost">Run Both</button>
-        </div>
-        <p id="engine-status" class="status">Loading runtime and built-in dialect...</p>
       </div>
     </header>
 
     <section class="workspace">
       <section class="pane editor-pane">
-        <h2>SQL Input</h2>
-        <textarea id="sql-input" spellcheck="false">select a, b from t where c = 1;</textarea>
+        <textarea id="sql-input" spellcheck="false" placeholder="Enter SQL here...">select a, b from t where c = 1;</textarea>
       </section>
 
       <section class="pane viewer-pane">
-        <article class="output-block">
-          <h2>Formatted SQL</h2>
+        <nav class="tab-bar">
+          <button class="tab active" data-tab="format">Formatted</button>
+          <button class="tab" data-tab="ast">AST</button>
+        </nav>
+        <div class="tab-panel active" data-panel="format">
           <pre id="format-output"></pre>
-        </article>
-        <article class="output-block">
-          <h2>AST Dump</h2>
+        </div>
+        <div class="tab-panel" data-panel="ast">
           <pre id="ast-output"></pre>
-        </article>
+        </div>
       </section>
     </section>
   </main>

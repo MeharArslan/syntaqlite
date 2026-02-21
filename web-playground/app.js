@@ -191,21 +191,23 @@ function dialectSymbolFromName(name) {
   return `syntaqlite_${name.trim()}_dialect`;
 }
 
+// ── UI references ──
+
 const ui = {
   extensionFile: document.querySelector("#extension-file"),
   extensionName: document.querySelector("#extension-name"),
-  loadExtension: document.querySelector("#load-extension"),
   clearExtension: document.querySelector("#clear-extension"),
+  toggleFmtOptions: document.querySelector("#toggle-fmt-options"),
+  fmtPopover: document.querySelector("#fmt-popover"),
   engineStatus: document.querySelector("#engine-status"),
   sqlInput: document.querySelector("#sql-input"),
   lineWidth: document.querySelector("#line-width"),
   keywordCase: document.querySelector("#keyword-case"),
   semicolons: document.querySelector("#semicolons"),
-  runFormat: document.querySelector("#run-format"),
-  runAst: document.querySelector("#run-ast"),
-  runBoth: document.querySelector("#run-both"),
   formatOutput: document.querySelector("#format-output"),
   astOutput: document.querySelector("#ast-output"),
+  tabs: document.querySelectorAll(".tab"),
+  tabPanels: document.querySelectorAll(".tab-panel"),
 };
 
 const state = {
@@ -213,11 +215,15 @@ const state = {
   builtinDialect: null,
   uploadedDialect: null,
   activeDialect: null,
+  activeTab: "format",
+  debounceTimer: null,
 };
+
+// ── Status ──
 
 function updateStatus(text, isError = false) {
   ui.engineStatus.textContent = text;
-  ui.engineStatus.style.color = isError ? "#b00020" : "";
+  ui.engineStatus.classList.toggle("error", isError);
 }
 
 function ensureReady() {
@@ -228,6 +234,8 @@ function ensureReady() {
     throw new Error("no active dialect loaded");
   }
 }
+
+// ── Dialect ──
 
 function activateDialect(binding) {
   state.runtime.setDialectPointer(binding.ptr);
@@ -250,10 +258,10 @@ async function initBuiltinDialect() {
   };
   activateDialect(binding);
   state.builtinDialect = binding;
-  updateStatus("Runtime and built-in SQLite dialect ready.");
+  updateStatus("Ready.");
 }
 
-async function onLoadExtension() {
+async function onDialectFileChanged() {
   if (!state.runtime) {
     updateStatus("Runtime is not initialized yet.", true);
     return;
@@ -261,7 +269,6 @@ async function onLoadExtension() {
 
   const file = ui.extensionFile.files?.[0];
   if (!file) {
-    updateStatus("Select a dialect .wasm file first.", true);
     return;
   }
 
@@ -277,7 +284,8 @@ async function onLoadExtension() {
     };
     activateDialect(binding);
     state.uploadedDialect = binding;
-    updateStatus(`Loaded dialect ${file.name} via ${symbol} (ptr=${ptr}).`);
+    updateStatus(`Dialect: ${file.name}`);
+    scheduleAutoRun();
   } catch (err) {
     updateStatus(`Failed to load dialect: ${err.message}`, true);
   } finally {
@@ -292,11 +300,13 @@ function onClearExtension() {
   }
 
   state.uploadedDialect = null;
+  ui.extensionFile.value = "";
 
   if (state.builtinDialect) {
     try {
       activateDialect(state.builtinDialect);
-      updateStatus("Uploaded dialect removed. Using built-in SQLite dialect.");
+      updateStatus("Using built-in SQLite dialect.");
+      scheduleAutoRun();
       return;
     } catch (err) {
       updateStatus(`Failed to restore built-in dialect: ${err.message}`, true);
@@ -309,6 +319,33 @@ function onClearExtension() {
   updateStatus("Dialect cleared.");
 }
 
+// ── Tabs ──
+
+function switchTab(tabName) {
+  state.activeTab = tabName;
+  ui.tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === tabName));
+  ui.tabPanels.forEach((p) => p.classList.toggle("active", p.dataset.panel === tabName));
+  scheduleAutoRun();
+}
+
+// ── Format options popover ──
+
+function toggleFmtPopover() {
+  ui.fmtPopover.classList.toggle("hidden");
+}
+
+function closeFmtPopoverOnClickOutside(e) {
+  if (
+    !ui.fmtPopover.classList.contains("hidden") &&
+    !ui.fmtPopover.contains(e.target) &&
+    e.target !== ui.toggleFmtOptions
+  ) {
+    ui.fmtPopover.classList.add("hidden");
+  }
+}
+
+// ── Running ──
+
 function collectFormatOptions() {
   return {
     lineWidth: Math.max(20, Number(ui.lineWidth.value || 80)),
@@ -317,55 +354,52 @@ function collectFormatOptions() {
   };
 }
 
-function runFormat() {
+function runActiveTab() {
   try {
     ensureReady();
-  } catch (err) {
-    updateStatus(err.message, true);
+  } catch {
     return;
   }
 
   const sql = ui.sqlInput.value;
-  const result = state.runtime.runFmt(sql, collectFormatOptions());
-  if (!result.ok) {
-    ui.formatOutput.textContent = "";
-    updateStatus(`Format error: ${result.text}`, true);
-    return;
-  }
 
-  ui.formatOutput.textContent = result.text;
-  updateStatus(`Format completed via ${state.activeDialect.label}.`);
+  if (state.activeTab === "format") {
+    const result = state.runtime.runFmt(sql, collectFormatOptions());
+    ui.formatOutput.textContent = result.ok ? result.text : `Error: ${result.text}`;
+  } else {
+    const result = state.runtime.runAst(sql);
+    ui.astOutput.textContent = result.ok ? result.text : `Error: ${result.text}`;
+  }
 }
 
-function runAst() {
-  try {
-    ensureReady();
-  } catch (err) {
-    updateStatus(err.message, true);
-    return;
-  }
-
-  const sql = ui.sqlInput.value;
-  const result = state.runtime.runAst(sql);
-  if (!result.ok) {
-    ui.astOutput.textContent = "";
-    updateStatus(`AST error: ${result.text}`, true);
-    return;
-  }
-
-  ui.astOutput.textContent = result.text;
-  updateStatus(`AST completed via ${state.activeDialect.label}.`);
+function scheduleAutoRun() {
+  clearTimeout(state.debounceTimer);
+  state.debounceTimer = setTimeout(runActiveTab, 150);
 }
+
+// ── Events ──
 
 function bindEvents() {
-  ui.loadExtension.addEventListener("click", onLoadExtension);
+  // Dialect: auto-load on file select
+  ui.extensionFile.addEventListener("change", onDialectFileChanged);
   ui.clearExtension.addEventListener("click", onClearExtension);
-  ui.runFormat.addEventListener("click", runFormat);
-  ui.runAst.addEventListener("click", runAst);
-  ui.runBoth.addEventListener("click", () => {
-    runFormat();
-    runAst();
+
+  // Format options popover
+  ui.toggleFmtOptions.addEventListener("click", toggleFmtPopover);
+  document.addEventListener("click", closeFmtPopoverOnClickOutside);
+
+  // Format options changes trigger re-run
+  ui.lineWidth.addEventListener("input", scheduleAutoRun);
+  ui.keywordCase.addEventListener("change", scheduleAutoRun);
+  ui.semicolons.addEventListener("change", scheduleAutoRun);
+
+  // Tabs
+  ui.tabs.forEach((tab) => {
+    tab.addEventListener("click", () => switchTab(tab.dataset.tab));
   });
+
+  // Auto-run on SQL input change
+  ui.sqlInput.addEventListener("input", scheduleAutoRun);
 }
 
 async function main() {
@@ -373,8 +407,10 @@ async function main() {
   try {
     await initRuntime();
     await initBuiltinDialect();
+    // Run once with initial content
+    runActiveTab();
   } catch (err) {
-    updateStatus(`Failed to initialize playground: ${err.message}`, true);
+    updateStatus(`Failed to initialize: ${err.message}`, true);
   }
 }
 

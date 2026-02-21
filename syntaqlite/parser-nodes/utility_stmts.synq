@@ -106,14 +106,24 @@ node CreateViewStmt {
   select: index Select
 
   fmt {
-    "CREATE"
-    if_flag(is_temp) { " TEMP" }
-    " VIEW"
-    if_flag(if_not_exists) { " IF NOT EXISTS" }
-    " "
-    if_span(schema) { span(schema) "." }
-    span(view_name)
-    if_set(column_names) { group { "(" child(column_names) ")" } }
-    " AS" hardline child(select)
+    group {
+      "CREATE"
+      if_flag(is_temp) { " TEMP" }
+      " VIEW"
+      if_flag(if_not_exists) { " IF NOT EXISTS" }
+      " "
+      if_span(schema) { span(schema) "." }
+      span(view_name)
+      if_set(column_names) {
+        "("
+        nest {
+          softline
+          child(column_names)
+        }
+        softline ")"
+      }
+      line "AS"
+    }
+    hardline child(select)
   }
 }
