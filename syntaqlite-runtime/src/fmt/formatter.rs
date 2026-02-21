@@ -85,9 +85,12 @@ impl<'d> Formatter<'d> {
 
     /// Format a single pre-parsed AST node. This is the low-level entry point
     /// for cases where the caller controls parsing (e.g. macro expansion).
-    pub fn format_node(&self, cursor: &CursorBase<'_>, node_id: NodeId) -> String {
+    pub fn format_node<'a>(&self, cursor: &'a CursorBase<'a>, node_id: NodeId) -> String {
         let mut arena = DocArena::new();
-        let doc = format_node(self.dialect, cursor, node_id, &mut arena, None);
+        let tokens = cursor.tokens();
+        let source = cursor.source();
+        let ctx = CommentCtx::new(&[], tokens, source);
+        let doc = format_node(self.dialect, cursor, node_id, &mut arena, Some(&ctx));
         render(&arena, doc, &self.config)
     }
 }
@@ -269,9 +272,13 @@ fn format_node_inner<'a>(
 
     let format_child = move |id: NodeId, arena: &mut DocArena<'a>| {
         if !macro_regions.is_empty() {
-            if let Some(verbatim) =
-                try_macro_verbatim(dialect, cursor, id, macro_regions, arena, consumed_regions)
-            {
+            if let Some(verbatim) = try_macro_verbatim(
+                comment_ctx,
+                macro_regions,
+                source,
+                arena,
+                consumed_regions,
+            ) {
                 return verbatim;
             }
         }
@@ -287,12 +294,7 @@ fn format_node_inner<'a>(
 
     let fields = extract_fields(&dialect, ptr, tag, source);
 
-    let source_offset_fn =
-        move |id: NodeId| -> Option<u32> { first_source_offset(&dialect, cursor, id) };
-    let comments = comment_ctx.map(|ctx| CommentInfo {
-        ctx,
-        source_offset: &source_offset_fn as &dyn Fn(NodeId) -> Option<u32>,
-    });
+    let comments = comment_ctx.map(|ctx| CommentInfo { ctx });
 
     Interpreter::new(
         dialect,
@@ -305,17 +307,17 @@ fn format_node_inner<'a>(
     .run(&fields, children, arena)
 }
 
-/// Check if a node's subtree overlaps with any macro region.
+/// Check if the next token falls within a macro region. If so, emit the
+/// entire macro call verbatim and advance the token cursor past it.
 fn try_macro_verbatim<'a>(
-    dialect: Dialect<'_>,
-    cursor: &'a CursorBase<'a>,
-    node_id: NodeId,
+    comment_ctx: Option<&CommentCtx<'a>>,
     regions: &[MacroRegion],
+    source: &'a str,
     arena: &mut DocArena<'a>,
     consumed: &Cell<u64>,
 ) -> Option<DocId> {
-    let first = first_source_offset(&dialect, cursor, node_id)?;
-    let last = last_source_offset(&dialect, cursor, node_id)?;
+    let ctx = comment_ctx?;
+    let (tok_offset, _) = ctx.peek_next_token()?;
 
     for (i, r) in regions.iter().enumerate() {
         if i >= 64 {
@@ -324,17 +326,19 @@ fn try_macro_verbatim<'a>(
         let r_start = r.call_offset;
         let r_end = r_start + r.call_length;
 
-        if first < r_end && last > r_start {
+        if tok_offset >= r_start && tok_offset < r_end {
             let bit = 1u64 << i;
             let bits = consumed.get();
             if bits & bit != 0 {
+                // Already consumed — this is another child within the same
+                // macro region. Emit NIL and advance past its tokens.
+                ctx.advance_past(r_end);
                 return Some(NIL_DOC);
             }
             consumed.set(bits | bit);
-            let source = cursor.source();
-            let verbatim_start = first.min(r_start) as usize;
-            let verbatim_end = last.max(r_end) as usize;
-            return Some(arena.text(&source[verbatim_start..verbatim_end]));
+            ctx.advance_past(r_end);
+            ctx.set_source_end(r_end);
+            return Some(arena.text(&source[r_start as usize..r_end as usize]));
         }
     }
     None
@@ -381,109 +385,3 @@ unsafe fn extract_one<'a>(ptr: *const u8, m: &FieldMeta, source: &'a str) -> Fie
     }
 }
 
-/// Find the earliest source offset in a node's subtree.
-fn first_source_offset(
-    dialect: &Dialect<'_>,
-    cursor: &CursorBase<'_>,
-    node_id: NodeId,
-) -> Option<u32> {
-    if node_id.is_null() {
-        return None;
-    }
-
-    if let Some(children) = cursor.list_children(node_id, dialect) {
-        return if children.is_empty() {
-            None
-        } else {
-            first_source_offset(dialect, cursor, children[0])
-        };
-    }
-
-    let (ptr, tag) = cursor.node_ptr(node_id)?;
-    let source = cursor.source();
-    let fields = extract_fields(dialect, ptr, tag, source);
-
-    let mut min: Option<u32> = None;
-    for field in fields.iter() {
-        if let FieldVal::Span(s, offset) = field {
-            if !s.is_empty() {
-                min = Some(match min {
-                    Some(prev) => prev.min(*offset),
-                    None => *offset,
-                });
-            }
-        }
-    }
-    if min.is_some() {
-        return min;
-    }
-
-    for field in fields.iter() {
-        if let FieldVal::NodeId(child_id) = field {
-            if let Some(off) = first_source_offset(dialect, cursor, *child_id) {
-                return Some(off);
-            }
-        }
-    }
-
-    None
-}
-
-/// Find the latest source offset (end) in a node's subtree.
-fn last_source_offset(
-    dialect: &Dialect<'_>,
-    cursor: &CursorBase<'_>,
-    node_id: NodeId,
-) -> Option<u32> {
-    if node_id.is_null() {
-        return None;
-    }
-
-    if let Some(children) = cursor.list_children(node_id, dialect) {
-        return if children.is_empty() {
-            None
-        } else {
-            last_source_offset(dialect, cursor, children[children.len() - 1])
-        };
-    }
-
-    let (ptr, tag) = cursor.node_ptr(node_id)?;
-    let source = cursor.source();
-    let fields = extract_fields(dialect, ptr, tag, source);
-
-    let mut max: Option<u32> = None;
-    for field in fields.iter() {
-        if let FieldVal::Span(s, offset) = field {
-            if !s.is_empty() {
-                let end = *offset + s.len() as u32;
-                max = Some(match max {
-                    Some(prev) => prev.max(end),
-                    None => end,
-                });
-            }
-        }
-    }
-    if max.is_some() {
-        for field in fields.iter() {
-            if let FieldVal::NodeId(child_id) = field {
-                if let Some(end) = last_source_offset(dialect, cursor, *child_id) {
-                    max = Some(max.unwrap().max(end));
-                }
-            }
-        }
-        return max;
-    }
-
-    for field in fields.iter() {
-        if let FieldVal::NodeId(child_id) = field {
-            if let Some(end) = last_source_offset(dialect, cursor, *child_id) {
-                max = Some(match max {
-                    Some(prev) => prev.max(end),
-                    None => end,
-                });
-            }
-        }
-    }
-
-    max
-}

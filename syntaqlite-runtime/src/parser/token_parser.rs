@@ -21,10 +21,14 @@ unsafe impl Send for LowLevelParser {}
 
 impl LowLevelParser {
     /// Create a new low-level parser for the given dialect.
+    /// Token collection is enabled by default (required for formatting).
     pub fn new(dialect: &Dialect) -> Self {
         let raw =
             unsafe { ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw) };
         assert!(!raw.is_null(), "parser allocation failed");
+        unsafe {
+            ffi::syntaqlite_parser_set_collect_tokens(raw, 1);
+        }
         LowLevelParser {
             raw,
             source_buf: Vec::new(),

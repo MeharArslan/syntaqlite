@@ -13,7 +13,6 @@ use super::doc::{DocArena, DocId};
 /// Comment-related context bundled into a single optional parameter.
 pub(crate) struct CommentInfo<'a, 'b> {
     pub ctx: &'b CommentCtx<'a>,
-    pub source_offset: &'b dyn Fn(NodeId) -> Option<u32>,
 }
 
 /// Bytecode interpreter for formatting ops. Reads string/enum data via
@@ -101,7 +100,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                     };
                     if !child_id.is_null() {
                         if let Some(ci) = &self.comments {
-                            if let Some(offset) = (ci.source_offset)(child_id) {
+                            if let Some((offset, _)) = ci.ctx.peek_next_token() {
                                 let drain = ci.ctx.drain_before(offset, arena);
                                 flush_comments(drain, &mut pending_lines, &mut parts);
                             } else {
@@ -198,7 +197,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                     let state = for_each_stack.last().expect("ChildItem outside ForEach");
                     let child_id = state.children[state.index];
                     if let Some(ci) = &self.comments {
-                        if let Some(offset) = (ci.source_offset)(child_id) {
+                        if let Some((offset, _)) = ci.ctx.peek_next_token() {
                             let drain = ci.ctx.drain_before(offset, arena);
                             flush_comments(drain, &mut pending_lines, &mut parts);
                         } else {
@@ -210,7 +209,11 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                 FmtOp::ForEachSep(sid) => {
                     let state = for_each_stack.last().expect("ForEachSep outside ForEach");
                     if state.index < state.children.len() - 1 {
-                        parts.push(arena.text(self.string(sid)));
+                        let sep_text = self.string(sid);
+                        if let Some(ci) = &self.comments {
+                            ci.ctx.next_keyword_tokens(sep_text);
+                        }
+                        parts.push(arena.text(sep_text));
                     } else {
                         ip = self.skip_to_foreach_end(ip);
                         continue;
