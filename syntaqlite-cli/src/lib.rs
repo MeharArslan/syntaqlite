@@ -48,7 +48,7 @@ enum Command {
         #[arg(short = 'i', long)]
         in_place: bool,
         /// Append semicolons after each statement
-        #[arg(long)]
+        #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         semicolons: bool,
     },
     /// Generate amalgamated dialect C sources for embedding.
