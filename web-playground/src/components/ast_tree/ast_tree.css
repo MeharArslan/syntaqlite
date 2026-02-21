@@ -1,0 +1,27 @@
+/* Copyright 2025 The syntaqlite Authors. All rights reserved. */
+/* Licensed under the Apache License, Version 2.0. */
+
+/* ── AST canvas graph block ── */
+.sq-ast-graph {
+  display: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--code-bg);
+}
+
+.sq-ast-graph canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.sq-tab-panel--active.sq-tab-panel--graph .sq-ast-tree {
+  display: none;
+}
+
+.sq-tab-panel--active.sq-tab-panel--graph .sq-ast-graph {
+  display: block;
+}

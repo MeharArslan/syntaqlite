@@ -1,0 +1,114 @@
+/* Copyright 2025 The syntaqlite Authors. All rights reserved. */
+/* Licensed under the Apache License, Version 2.0. */
+
+/* ── AST tree block ── */
+.sq-ast-tree {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+  background: var(--code-bg);
+  font-family: "Source Code Pro", "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.sq-ast-tree--error {
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--danger);
+}
+
+/* ── AST node element ── */
+.sq-ast-tree__node {
+  margin: 0;
+  padding: 0 0 0 16px;
+  border-left: 1px solid var(--line);
+}
+
+.sq-ast-tree > .sq-ast-tree__node,
+.sq-ast-tree > div > .sq-ast-tree__node {
+  border-left: none;
+  padding-left: 0;
+}
+
+.sq-ast-tree__node > details {
+  margin: 0;
+}
+
+.sq-ast-tree__node > details > summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 1px 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  user-select: none;
+}
+
+.sq-ast-tree__node > details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.sq-ast-tree__node > details > summary::before {
+  content: "\25b6";
+  font-size: 0.6em;
+  color: var(--muted);
+  display: inline-block;
+  transition: transform 150ms ease;
+  width: 10px;
+  text-align: center;
+}
+
+.sq-ast-tree__node > details[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.sq-ast-tree__node > details > summary:hover {
+  background: var(--accent-soft);
+}
+
+/* ── Leaf / value elements ── */
+.sq-ast-tree__name {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.sq-ast-tree__field-label {
+  color: var(--muted);
+}
+
+.sq-ast-tree__list-count {
+  color: var(--muted);
+  font-size: 0.8em;
+  font-weight: normal;
+}
+
+.sq-ast-tree__leaf {
+  padding: 1px 4px 1px 19px;
+  color: var(--ink);
+}
+
+.sq-ast-tree__leaf .sq-ast-tree__field-label {
+  color: var(--muted);
+}
+
+.sq-ast-tree__value {
+  color: var(--ink);
+}
+
+.sq-ast-tree__value--string {
+  color: var(--string-val);
+}
+
+.sq-ast-tree__value--bool {
+  color: var(--bool-val);
+}
+
+.sq-ast-tree__value--null {
+  color: var(--muted);
+  font-style: italic;
+}

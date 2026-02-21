@@ -1,0 +1,140 @@
+/* Copyright 2025 The syntaqlite Authors. All rights reserved. */
+/* Licensed under the Apache License, Version 2.0. */
+
+:root {
+  --toolbar-h: 46px;
+}
+
+[data-theme="dark"] {
+  --bg: #1a1d1e;
+  --surface: #232729;
+  --surface-soft: #1e2224;
+  --ink: #d4d8d6;
+  --muted: #8a8f8c;
+  --line: #353a3c;
+  --line-strong: #4a5052;
+  --accent: #d4826a;
+  --accent-soft: #2f2220;
+  --code-bg: #1c2021;
+  --danger: #e06b66;
+  --input-bg: #2a2e30;
+  --btn-hover: #c0715a;
+  --ghost-hover: #332926;
+  --ghost-border: #5c4a44;
+  --string-val: #d4a656;
+  --bool-val: #c08edb;
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg: #f5f4f0;
+  --surface: #ffffff;
+  --surface-soft: #fbfbf8;
+  --ink: #1f2121;
+  --muted: #6a6f6c;
+  --line: #dadfd6;
+  --line-strong: #c3cabf;
+  --accent: #b8553a;
+  --accent-soft: #f5ebe7;
+  --code-bg: #f3f5f1;
+  --danger: #af413c;
+  --input-bg: #ffffff;
+  --btn-hover: #a04830;
+  --ghost-hover: #f0ddd7;
+  --ghost-border: color-mix(in srgb, var(--accent) 35%, var(--line) 65%);
+  --string-val: #8a5d22;
+  --bool-val: #7a3e9d;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  color: var(--ink);
+  background: var(--bg);
+  font-family: "Avenir Next", "Gill Sans", "Segoe UI Variable", "Trebuchet MS", sans-serif;
+  line-height: 1.45;
+}
+
+[data-theme="light"] body {
+  background: radial-gradient(circle at 100% 0, #edf3e9 0%, rgba(237, 243, 233, 0) 46%),
+    linear-gradient(180deg, #faf9f6 0%, var(--bg) 100%);
+}
+
+/* ── App shell ── */
+.sq-app {
+  width: 100%;
+  height: 100vh;
+  display: grid;
+  grid-template-rows: var(--toolbar-h) 1fr;
+  gap: 0;
+  padding: 0;
+}
+
+/* ── Base form elements ── */
+button {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: var(--surface);
+  background: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  transition: background-color 130ms ease, border-color 130ms ease;
+}
+
+button:hover {
+  background: var(--btn-hover);
+  border-color: var(--btn-hover);
+}
+
+button.sq-ghost {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--ghost-border);
+}
+
+button.sq-ghost:hover {
+  background: var(--ghost-hover);
+}
+
+button.sq-btn-sm {
+  padding: 3px 8px;
+  font-size: 0.85rem;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 50%, transparent 50%);
+  outline-offset: 1px;
+  border-color: var(--line-strong);
+}
+
+pre {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  border: none;
+  border-radius: 0;
+  padding: 14px;
+  background: var(--code-bg);
+  font-family: "Source Code Pro", "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 0.95rem;
+  line-height: 1.46;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

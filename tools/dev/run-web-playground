@@ -2,16 +2,13 @@
 # Copyright 2025 The syntaqlite Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0.
 
-"""Dev server for web-playground with live reload.
+"""Dev server for web-playground.
 
-Watches frontend files (HTML, CSS, JS) and triggers a browser reload on change.
-With --watch-dialect, also rebuilds the dialect .wasm when C or .synq sources change.
+Does everything: builds WASM, installs npm deps, starts Vite, watches for
+C/grammar/Rust changes and rebuilds automatically.
 """
 
-import argparse
-import http.server
 import os
-import queue
 import subprocess
 import sys
 import threading
@@ -20,213 +17,84 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Injected into HTML responses to enable live reload via SSE.
-LIVE_RELOAD_SNIPPET = b"""\
-<script>
-(function() {
-  var es = new EventSource("/__livereload");
-  es.onmessage = function(e) { location.reload(); };
-  es.onerror = function() {
-    es.close();
-    setTimeout(function() { location.reload(); }, 1000);
-  };
-})();
-</script>
-"""
-
-# Global event queue — watcher thread pushes, SSE handler pops.
-reload_events = queue.Queue()
+WATCH_EXTS = {".c", ".h", ".synq", ".y", ".rs"}
 
 
-class LiveReloadHandler(http.server.SimpleHTTPRequestHandler):
-    """Serves files from web-playground/ with live-reload support."""
-
-    def do_GET(self):
-        if self.path == "/__livereload":
-            self._handle_sse()
-            return
-        super().do_GET()
-
-    def end_headers(self):
-        # Disable caching so the browser always gets fresh files.
-        self.send_header("Cache-Control", "no-store")
-        super().end_headers()
-
-    def send_response_only(self, code, message=None):
-        super().send_response_only(code, message)
-
-    def _handle_sse(self):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/event-stream")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("Connection", "keep-alive")
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.end_headers()
-        try:
-            while True:
-                try:
-                    reload_events.get(timeout=30)
-                    self.wfile.write(b"data: reload\n\n")
-                    self.wfile.flush()
-                except queue.Empty:
-                    # Send keepalive comment to prevent connection timeout.
-                    self.wfile.write(b": keepalive\n\n")
-                    self.wfile.flush()
-        except (BrokenPipeError, ConnectionResetError, OSError):
-            pass
-
-    def copyfile(self, source, outputfile):
-        """Inject live-reload script before </body> in HTML responses."""
-        content_type = self.headers.get("Content-Type", "")
-        # Only for the initial response (self.path check avoids double reads).
-        if "text/html" in (getattr(self, "_content_type_hint", "") or content_type):
-            data = source.read()
-            data = data.replace(b"</body>", LIVE_RELOAD_SNIPPET + b"</body>")
-            outputfile.write(data)
-            return
-        super().copyfile(source, outputfile)
-
-    def send_head(self):
-        """Capture content type for copyfile injection."""
-        result = super().send_head()
-        # Stash the content type we just sent so copyfile can check it.
-        ct = self.headers.get("Content-Type", "")
-        # Actually we need the *response* content type, not the request header.
-        return result
-
-    def guess_type(self, path):
-        t = super().guess_type(path)
-        self._content_type_hint = t
-        return t
-
-    def log_message(self, format, *args):
-        # Quieter logs: skip noisy SSE polling.
-        if len(args) >= 1 and "/__livereload" in str(args[0]):
-            return
-        super().log_message(format, *args)
-
-
-# ---------------------------------------------------------------------------
-# File watcher (poll-based, no external dependencies)
-# ---------------------------------------------------------------------------
-
-FRONTEND_EXTS = {".html", ".css", ".js"}
-DIALECT_EXTS = {".c", ".h", ".synq", ".y"}
-
-
-def scan_mtimes(directory, extensions):
+def scan_mtimes(directories, extensions):
     """Return dict of {filepath: mtime} for files matching extensions."""
     mtimes = {}
-    for dirpath, _dirnames, filenames in os.walk(directory):
-        for fname in filenames:
-            if os.path.splitext(fname)[1] in extensions:
-                full = os.path.join(dirpath, fname)
-                try:
-                    mtimes[full] = os.path.getmtime(full)
-                except OSError:
-                    pass
+    for directory in directories:
+        if not os.path.isdir(directory):
+            continue
+        for dirpath, _dirnames, filenames in os.walk(directory):
+            for fname in filenames:
+                if os.path.splitext(fname)[1] in extensions:
+                    full = os.path.join(dirpath, fname)
+                    try:
+                        mtimes[full] = os.path.getmtime(full)
+                    except OSError:
+                        pass
     return mtimes
 
 
-def watch_frontend(web_dir, interval=0.5):
-    """Watch frontend files and push reload events on change."""
-    prev = scan_mtimes(web_dir, FRONTEND_EXTS)
-    while True:
-        time.sleep(interval)
-        curr = scan_mtimes(web_dir, FRONTEND_EXTS)
-        if curr != prev:
-            changed = [
-                f for f in curr
-                if curr[f] != prev.get(f)
-            ]
-            for f in changed:
-                rel = os.path.relpath(f, web_dir)
-                print(f"\033[36m[reload]\033[0m {rel} changed")
-            reload_events.put("reload")
-            prev = curr
-
-
-def watch_dialect(root, web_dir, build_script, interval=1.0):
-    """Watch dialect C/.synq sources, rebuild, and trigger reload on change."""
+def watch_and_rebuild(root, build_script, interval=1.0):
+    """Watch C, grammar, and Rust sources; rebuild WASM on change."""
     watch_dirs = [
         os.path.join(root, "syntaqlite", "csrc"),
         os.path.join(root, "syntaqlite", "include"),
         os.path.join(root, "syntaqlite", "parser-nodes"),
         os.path.join(root, "syntaqlite-runtime", "include"),
+        os.path.join(root, "syntaqlite-runtime", "src"),
+        os.path.join(root, "syntaqlite-wasm", "src"),
     ]
-    prev = {}
-    for d in watch_dirs:
-        if os.path.isdir(d):
-            prev.update(scan_mtimes(d, DIALECT_EXTS))
+    prev = scan_mtimes(watch_dirs, WATCH_EXTS)
 
     while True:
         time.sleep(interval)
-        curr = {}
-        for d in watch_dirs:
-            if os.path.isdir(d):
-                curr.update(scan_mtimes(d, DIALECT_EXTS))
+        curr = scan_mtimes(watch_dirs, WATCH_EXTS)
         if curr != prev:
             changed = [f for f in curr if curr[f] != prev.get(f)]
             for f in changed:
                 rel = os.path.relpath(f, root)
-                print(f"\033[33m[rebuild]\033[0m {rel} changed, rebuilding dialect...")
+                print(f"\033[33m[rebuild]\033[0m {rel} changed")
+            print("\033[33m[rebuild]\033[0m rebuilding WASM...")
             rc = subprocess.call([build_script], cwd=root)
             if rc == 0:
-                print("\033[32m[rebuild]\033[0m dialect rebuilt successfully")
-                reload_events.put("reload")
+                print("\033[32m[rebuild]\033[0m done — browser will reload")
             else:
-                print("\033[31m[rebuild]\033[0m dialect build failed (exit %d)" % rc)
-            prev = curr
+                print("\033[31m[rebuild]\033[0m build failed (exit %d)" % rc)
+            prev = scan_mtimes(watch_dirs, WATCH_EXTS)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Dev server for web-playground with live reload")
-    parser.add_argument("--port", type=int, default=8080, help="port for http server")
-    parser.add_argument(
-        "--skip-build",
-        action="store_true",
-        help="serve existing assets without rebuilding",
-    )
-    parser.add_argument(
-        "--watch-dialect",
-        action="store_true",
-        help="also watch C/.synq sources and rebuild dialect wasm on change",
-    )
-    args = parser.parse_args()
+    web_dir = os.path.join(ROOT, "web-playground")
+    build_script = os.path.join(ROOT, "tools", "dev", "build-web-playground")
 
-    if not args.skip_build:
-        build = os.path.join(ROOT, "tools", "dev", "build-web-playground")
-        rc = subprocess.call([build], cwd=ROOT)
+    # 1. Build WASM
+    print("\033[1m[dev]\033[0m building WASM...")
+    rc = subprocess.call([build_script], cwd=ROOT)
+    if rc != 0:
+        return rc
+
+    # 2. Install npm deps if needed
+    if not os.path.isdir(os.path.join(web_dir, "node_modules")):
+        print("\033[1m[dev]\033[0m installing npm dependencies...")
+        rc = subprocess.call(["npm", "install"], cwd=web_dir)
         if rc != 0:
             return rc
 
-    web_dir = os.path.join(ROOT, "web-playground")
-
-    # Start frontend file watcher.
-    t = threading.Thread(target=watch_frontend, args=(web_dir,), daemon=True)
+    # 3. Watch for source changes and rebuild in background
+    t = threading.Thread(target=watch_and_rebuild, args=(ROOT, build_script), daemon=True)
     t.start()
 
-    # Optionally watch dialect sources too.
-    if args.watch_dialect:
-        build_script = os.path.join(ROOT, "tools", "dev", "build-web-playground")
-        td = threading.Thread(
-            target=watch_dialect, args=(ROOT, web_dir, build_script), daemon=True,
-        )
-        td.start()
-
-    print(f"\033[1m[dev]\033[0m serving {web_dir} at http://localhost:{args.port}")
-    print(f"\033[1m[dev]\033[0m live reload enabled — editing HTML/CSS/JS triggers browser refresh")
-    if args.watch_dialect:
-        print(f"\033[1m[dev]\033[0m dialect watch enabled — C/.synq changes trigger rebuild + refresh")
-
-    server = http.server.HTTPServer(("", args.port), LiveReloadHandler)
-    os.chdir(web_dir)
+    # 4. Start Vite
+    print("\033[1m[dev]\033[0m starting Vite dev server")
+    print("\033[1m[dev]\033[0m watching C/grammar/Rust sources for changes")
     try:
-        server.serve_forever()
+        return subprocess.call(["npx", "vite"], cwd=web_dir)
     except KeyboardInterrupt:
         print("\n\033[1m[dev]\033[0m shutting down")
-        server.shutdown()
-    return 0
+        return 0
 
 
 if __name__ == "__main__":

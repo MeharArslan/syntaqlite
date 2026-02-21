@@ -1,0 +1,167 @@
+/* Copyright 2025 The syntaqlite Authors. All rights reserved. */
+/* Licensed under the Apache License, Version 2.0. */
+
+/* ── Toolbar block ── */
+.sq-toolbar {
+  height: var(--toolbar-h);
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--surface), var(--surface-soft));
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.88rem;
+  box-shadow: 0 1px 4px rgba(27, 32, 30, 0.06);
+  z-index: 10;
+}
+
+.sq-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.sq-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sq-toolbar__brand {
+  font-weight: 600;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+.sq-toolbar__kicker {
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+}
+
+.sq-toolbar__theme-toggle {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.sq-toolbar__theme-toggle:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+
+/* ── Dialect popover block ── */
+.sq-dialect-popover {
+  position: relative;
+}
+
+.sq-dialect-popover__trigger {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.sq-dialect-popover__trigger:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+
+.sq-dialect-popover__panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  min-width: 280px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sq-dialect-popover--open .sq-dialect-popover__panel {
+  display: flex;
+}
+
+.sq-dialect-popover__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sq-dialect-popover__label {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 600;
+  min-width: 52px;
+}
+
+.sq-dialect-popover__file-btn {
+  flex: 1;
+  font-size: 0.82rem;
+  padding: 5px 10px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: var(--ink);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.sq-dialect-popover__file-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.sq-dialect-popover__file-input {
+  display: none;
+}
+
+.sq-dialect-popover__name {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background: var(--input-bg);
+  color: var(--ink);
+}
+
+.sq-dialect-popover__backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.sq-dialect-popover--open .sq-dialect-popover__backdrop {
+  display: block;
+}
+
+@media (max-width: 700px) {
+  .sq-toolbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 6px 8px;
+  }
+}

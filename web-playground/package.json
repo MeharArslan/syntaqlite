@@ -1,0 +1,25 @@
+{
+  "name": "syntaqlite-playground",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "check": "biome check src/",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "mithril": "^2.2.7",
+    "monaco-editor": "^0.52.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/mithril": "^2.2.7",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.7",
+    "vite-plugin-checker": "^0.8.0",
+    "vitest": "^3.0.4"
+  }
+}

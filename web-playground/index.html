@@ -4,67 +4,12 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>syntaqlite WASM Playground</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <main class="app">
-    <header class="toolbar">
-      <div class="toolbar-left">
-        <span class="brand"><span class="kicker">syntaqlite</span> Playground</span>
-        <span id="engine-status" class="status">Loading...</span>
-      </div>
-      <div class="toolbar-right">
-        <div class="dialect-controls">
-          <input id="extension-file" type="file" accept=".wasm,application/wasm" />
-          <input id="extension-name" type="text" placeholder="dialect name" class="dialect-name" />
-          <button id="clear-extension" type="button" class="ghost btn-sm" title="Unload dialect">Unload</button>
-        </div>
-      </div>
-    </header>
-
-    <section class="workspace">
-      <section class="pane editor-pane">
-        <textarea id="sql-input" spellcheck="false" placeholder="Enter SQL here...">select a, b from t where c = 1;</textarea>
-      </section>
-
-      <section class="pane viewer-pane">
-        <nav class="tab-bar">
-          <button class="tab active" data-tab="format">Formatted</button>
-          <button class="tab" data-tab="ast">AST</button>
-        </nav>
-        <div class="tab-panel active" data-panel="format">
-          <div class="panel-options">
-            <label for="line-width">Width</label>
-            <input id="line-width" type="number" min="20" max="240" value="80" />
-            <label for="keyword-case">Keywords</label>
-            <select id="keyword-case">
-              <option value="0">Preserve</option>
-              <option value="1" selected>Upper</option>
-              <option value="2">Lower</option>
-            </select>
-            <input id="semicolons" type="checkbox" checked />
-            <label for="semicolons">Semicolons</label>
-          </div>
-          <pre id="format-output"></pre>
-        </div>
-        <div class="tab-panel" data-panel="ast">
-          <div class="panel-options">
-            <label for="ast-view-mode">View</label>
-            <select id="ast-view-mode">
-              <option value="outline">Outline</option>
-              <option value="graph">Graph</option>
-            </select>
-            <input id="ast-show-nulls" type="checkbox" />
-            <label for="ast-show-nulls">Show empty fields</label>
-          </div>
-          <div id="ast-output" class="ast-tree"></div>
-          <div id="ast-canvas-container" class="ast-canvas-container">
-            <canvas id="ast-canvas"></canvas>
-          </div>
-        </div>
-      </section>
-    </section>
-  </main>
-  <script type="module" src="./app.js"></script>
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
 </body>
 </html>

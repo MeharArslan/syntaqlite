@@ -1,0 +1,95 @@
+/* Copyright 2025 The syntaqlite Authors. All rights reserved. */
+/* Licensed under the Apache License, Version 2.0. */
+
+/* ── Viewer pane block ── */
+.sq-viewer-pane {
+  grid-template-rows: auto 1fr;
+}
+
+/* ── Tab bar block ── */
+.sq-tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-soft);
+  padding: 0 8px;
+  gap: 0;
+}
+
+.sq-tab-bar__tab {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.sq-tab-bar__tab:hover {
+  color: var(--ink);
+  background: transparent;
+}
+
+.sq-tab-bar__tab--active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: transparent;
+}
+
+/* ── Tab panel block ── */
+.sq-tab-panel {
+  display: none;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sq-tab-panel--active {
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+/* ── Panel options block ── */
+.sq-panel-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-soft);
+  font-size: 0.92rem;
+}
+
+.sq-panel-options label {
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.sq-panel-options input[type="number"] {
+  width: 60px;
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--ink);
+  background: var(--input-bg);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.sq-panel-options select {
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--ink);
+  background: var(--input-bg);
+  font: inherit;
+  font-size: 0.85rem;
+}

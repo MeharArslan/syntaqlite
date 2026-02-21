@@ -157,7 +157,6 @@ pub(crate) fn interpret<'a>(
                 let FieldVal::NodeId(list_id) = fields[idx as usize] else {
                     panic!("ForEachStart: field {} is not a NodeId", idx);
                 };
-
                 if list_id.is_null() {
                     ip = skip_to_foreach_end(ops, ops_count, ip);
                 } else {
@@ -166,7 +165,6 @@ pub(crate) fn interpret<'a>(
                         .list_children(list_id, &ctx.dialect)
                         .map(|c| c.to_vec())
                         .unwrap_or_default();
-
                     if children.is_empty() {
                         ip = skip_to_foreach_end(ops, ops_count, ip);
                     } else {
@@ -174,7 +172,7 @@ pub(crate) fn interpret<'a>(
                             children,
                             index: 0,
                             body_start: ip + 1,
-                            pending_sep: None,
+                            sep_checkpoint: None,
                         });
                     }
                 }
@@ -182,35 +180,71 @@ pub(crate) fn interpret<'a>(
             FmtOp::ChildItem => {
                 let state = for_each_stack.last().expect("ChildItem outside ForEach");
                 let child_id = state.children[state.index];
-                if let Some(cctx) = ctx.comment_ctx {
-                    if let Some((offset, _)) = cctx.peek_next_token() {
-                        let drain = cctx.drain_before(offset, source, arena);
-                        flush_comments(drain, &mut pending_lines, &mut parts);
-                    } else {
-                        parts.extend(pending_lines.drain(..));
-                    }
-                }
-                let doc = format_child_doc(ctx, child_id, consumed_regions, arena);
-                if doc != NIL_DOC {
-                    // Flush any deferred separator before this visible child.
+
+                // Check macro suppression BEFORE draining comments.
+                // try_macro_verbatim only peeks and does not advance.
+                let macro_regions = ctx.cursor.macro_regions();
+                let macro_doc = if !macro_regions.is_empty()
+                    && ctx.cursor.list_children(child_id, &ctx.dialect).is_none()
+                {
+                    super::formatter::try_macro_verbatim(
+                        ctx, macro_regions, arena, consumed_regions,
+                    )
+                } else {
+                    None
+                };
+
+                if macro_doc == Some(NIL_DOC) {
+                    // Macro-suppressed child. Undo the previous separator
+                    // and advance cursor past this child's tokens.
+                    // Don't skip — let ForEachSep/Line execute so a new
+                    // separator is emitted for the next non-suppressed child.
                     let state = for_each_stack.last_mut().unwrap();
-                    if let Some(sep) = state.pending_sep.take() {
-                        parts.push(sep);
+                    if let Some(checkpoint) = state.sep_checkpoint.take() {
+                        parts.truncate(checkpoint);
+                        pending_lines.clear();
                     }
-                    parts.push(doc);
+                    let _ = super::formatter::format_node_inner(
+                        ctx, child_id, arena, consumed_regions,
+                    );
+                } else {
+                    // Drain comments before this child.
+                    if let Some(cctx) = ctx.comment_ctx {
+                        if let Some((offset, _)) = cctx.peek_next_token() {
+                            let drain = cctx.drain_before(offset, source, arena);
+                            flush_comments(drain, &mut pending_lines, &mut parts);
+                        } else {
+                            parts.extend(pending_lines.drain(..));
+                        }
+                    }
+
+                    if let Some(verbatim) = macro_doc {
+                        // First macro encounter — emit verbatim text,
+                        // advance cursor through this child's tokens.
+                        let _ = super::formatter::format_node_inner(
+                            ctx, child_id, arena, consumed_regions,
+                        );
+                        parts.push(verbatim);
+                    } else {
+                        parts.push(format_child_doc(
+                            ctx, child_id, consumed_regions, arena,
+                        ));
+                    }
                 }
             }
             FmtOp::ForEachSep(sid) => {
-                let state = for_each_stack.last_mut().expect("ForEachSep outside ForEach");
+                let state = for_each_stack
+                    .last_mut()
+                    .expect("ForEachSep outside ForEach");
                 if state.index < state.children.len() - 1 {
+                    state.sep_checkpoint = Some(parts.len());
                     let sep_text = ctx.dialect.fmt_string(sid);
                     if let Some(cctx) = ctx.comment_ctx {
                         if let Some((_, word_count)) = cctx.peek_keyword_tokens(sep_text) {
                             cctx.advance_token_cursor(word_count);
                         }
                     }
-                    // Defer separator — only emitted if next child is non-nil.
-                    state.pending_sep = Some(arena.text(sep_text));
+                    parts.push(arena.text(sep_text));
                 } else {
                     ip = skip_to_foreach_end(ops, ops_count, ip);
                     continue;
@@ -288,7 +322,7 @@ pub(crate) fn interpret<'a>(
                         children: children.to_vec(),
                         index: 0,
                         body_start: ip + 1,
-                        pending_sep: None,
+                        sep_checkpoint: None,
                     });
                 }
             }
@@ -302,6 +336,10 @@ pub(crate) fn interpret<'a>(
 
 /// Format a child node. Checks for macro verbatim regions first, then
 /// recurses into `format_node_inner`.
+///
+/// Returns `NIL_DOC` if the child is inside an already-consumed macro region
+/// (i.e. it should be suppressed). In all cases, the token cursor is advanced
+/// past the child's tokens.
 fn format_child_doc<'a>(
     ctx: &FmtCtx<'a>,
     child_id: NodeId,
@@ -311,12 +349,16 @@ fn format_child_doc<'a>(
     let macro_regions = ctx.cursor.macro_regions();
     // Only check macro regions for non-list nodes. List nodes are formatted
     // normally so their individual children can be macro-checked.
-    if !macro_regions.is_empty() && ctx.cursor.list_children(child_id, &ctx.dialect).is_none() {
-        if let Some(verbatim) = super::formatter::try_macro_verbatim(
-            ctx, child_id, macro_regions, arena, consumed_regions,
-        )
-        {
-            return verbatim;
+    if !macro_regions.is_empty()
+        && ctx.cursor.list_children(child_id, &ctx.dialect).is_none()
+    {
+        if let Some(doc) = super::formatter::try_macro_verbatim(
+            ctx, macro_regions, arena, consumed_regions,
+        ) {
+            // Advance the token cursor through this child's tokens by
+            // formatting it (output is discarded).
+            let _ = super::formatter::format_node_inner(ctx, child_id, arena, consumed_regions);
+            return doc;
         }
     }
     super::formatter::format_node_inner(ctx, child_id, arena, consumed_regions)
@@ -458,6 +500,7 @@ struct ForEachState {
     children: Vec<NodeId>,
     index: usize,
     body_start: usize,
-    /// Deferred separator text. Set by ForEachSep, flushed by next non-nil ChildItem.
-    pending_sep: Option<DocId>,
+    /// `parts.len()` saved just before ForEachSep emits. If the next
+    /// ChildItem is macro-suppressed, truncate back to undo the separator.
+    sep_checkpoint: Option<usize>,
 }
