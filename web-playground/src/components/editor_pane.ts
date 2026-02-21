@@ -2,6 +2,8 @@
 // Licensed under the Apache License, Version 2.0.
 
 import m from "mithril";
+import type * as monaco from "monaco-editor";
+import type {SqlPreset} from "../app/sql_presets";
 import type {Theme} from "../types";
 import {MonacoEditor} from "../widgets/monaco_editor";
 import "./editor_pane.css";
@@ -9,20 +11,58 @@ import "./editor_pane.css";
 export interface EditorPaneAttrs {
   theme: Theme;
   initialSql: string;
+  presetLibraryLabel: string;
+  presets: SqlPreset[];
+  selectedPresetId: string;
+  onPresetChange: (presetId: string) => void;
   onContentChange: (s: string) => void;
+  onEditorCreated?: (editor: monaco.editor.IStandaloneCodeEditor) => void;
 }
 
 export class EditorPane implements m.ClassComponent<EditorPaneAttrs> {
   view(vnode: m.Vnode<EditorPaneAttrs>) {
-    const {theme, initialSql, onContentChange} = vnode.attrs;
+    const {
+      theme,
+      initialSql,
+      presetLibraryLabel,
+      presets,
+      selectedPresetId,
+      onPresetChange,
+      onContentChange,
+      onEditorCreated,
+    } = vnode.attrs;
+    const selectedPreset = presets.find((p) => p.id === selectedPresetId) ?? presets[0] ?? null;
+    const selectedDescription =
+      selectedPresetId === "custom"
+        ? "Custom mode. Editing the SQL keeps this mode selected."
+        : (selectedPreset?.description ?? "");
+
     return m("section.sq-workspace__pane.sq-editor-pane", [
-      m(MonacoEditor, {
-        theme,
-        initialValue: initialSql,
-        onContentChange,
-        lineNumbers: "on",
-        renderLineHighlight: "gutter",
-      }),
+      m("div.sq-editor-pane__toolbar", [
+        m("label.sq-editor-pane__label", {for: "sq-editor-preset"}, `${presetLibraryLabel} Presets`),
+        m(
+          "select#sq-editor-preset.sq-editor-pane__select",
+          {
+            value: selectedPresetId,
+            onchange: (e: Event) => onPresetChange((e.target as HTMLSelectElement).value),
+          },
+          [
+            ...presets.map((preset) => m("option", {value: preset.id}, preset.label)),
+            m("option", {value: "custom"}, "Custom"),
+          ],
+        ),
+        m("span.sq-editor-pane__description", selectedDescription),
+      ]),
+      m("div.sq-editor-pane__editor", [
+        m(MonacoEditor, {
+          theme,
+          initialValue: initialSql,
+          onContentChange,
+          onEditorCreated,
+          lineNumbers: "on",
+          renderLineHighlight: "gutter",
+        }),
+      ]),
     ]);
   }
 }

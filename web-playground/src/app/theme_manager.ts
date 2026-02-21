@@ -17,6 +17,12 @@ export class ThemeManager {
     this.apply(this.current);
   }
 
+  set(theme: Theme): void {
+    if (this.current === theme) return;
+    this.current = theme;
+    this.apply(theme);
+  }
+
   apply(theme: Theme): void {
     document.documentElement.setAttribute("data-theme", theme);
     for (const fn of this.listeners) fn(theme);

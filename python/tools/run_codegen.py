@@ -55,7 +55,6 @@ def main():
             "codegen",
             "--actions-dir", str(actions_dir),
             "--nodes-dir", str(nodes_dir),
-            "--tokenize-c", str(tokenize_c),
             "--output-dir", str(output_dir),
         ],
     )

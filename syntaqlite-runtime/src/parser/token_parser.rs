@@ -103,7 +103,21 @@ impl<'a> LowLevelCursor<'a> {
                     .to_string_lossy()
                     .into_owned()
             };
-            Err(ParseError { message: msg })
+            let offset = if result.error_offset == 0xFFFFFFFF {
+                None
+            } else {
+                Some(result.error_offset as usize)
+            };
+            let length = if result.error_length == 0 {
+                None
+            } else {
+                Some(result.error_length as usize)
+            };
+            Err(ParseError {
+                message: msg,
+                offset,
+                length,
+            })
         }
     }
 

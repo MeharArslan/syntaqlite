@@ -3,6 +3,7 @@
 
 import m from "mithril";
 import {App} from "./app/app";
+import {registerSemanticTokensProvider} from "./app/semantic_tokens";
 import {AppComponent} from "./components/app";
 import "./styles/main.css";
 
@@ -52,6 +53,7 @@ async function main() {
   try {
     await app.runtime.load();
     await app.dialect.loadDefault(app.runtime);
+    registerSemanticTokensProvider(app.runtime);
     app.runtime.updateStatus("Ready.");
   } catch (err) {
     app.runtime.updateStatus(`Failed to initialize: ${(err as Error).message}`, true);

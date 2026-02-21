@@ -6,6 +6,41 @@
 #[doc(hidden)]
 pub mod ffi;
 
+// ── Token category ─────────────────────────────────────────────────────
+
+/// Semantic category for a token type, used for syntax highlighting.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TokenCategory {
+    Other = 0,
+    Keyword = 1,
+    Identifier = 2,
+    String = 3,
+    Number = 4,
+    Operator = 5,
+    Punctuation = 6,
+    Comment = 7,
+    Variable = 8,
+    Function = 9,
+}
+
+impl TokenCategory {
+    fn from_u8(v: u8) -> Self {
+        match v {
+            1 => Self::Keyword,
+            2 => Self::Identifier,
+            3 => Self::String,
+            4 => Self::Number,
+            5 => Self::Operator,
+            6 => Self::Punctuation,
+            7 => Self::Comment,
+            8 => Self::Variable,
+            9 => Self::Function,
+            _ => Self::Other,
+        }
+    }
+}
+
 // ── Opaque dialect handle ──────────────────────────────────────────────
 
 /// An opaque dialect handle. Dialect crates (e.g. `syntaqlite`) provide a
@@ -119,6 +154,25 @@ impl<'d> Dialect<'d> {
     /// Whether this dialect has formatter data.
     pub(crate) fn has_fmt_data(&self) -> bool {
         !self.raw.fmt_strings.is_null() && self.raw.fmt_string_count > 0
+    }
+
+    /// Classify a token type ordinal into a semantic category.
+    pub fn token_category(&self, token_type: u32) -> TokenCategory {
+        if self.raw.token_categories.is_null() || token_type >= self.raw.token_type_count {
+            return TokenCategory::Other;
+        }
+        let byte = unsafe { *self.raw.token_categories.add(token_type as usize) };
+        TokenCategory::from_u8(byte)
+    }
+
+    /// The well-known `TK_SPACE` token type ordinal.
+    pub fn tk_space(&self) -> u32 {
+        self.raw.tk_space as u32
+    }
+
+    /// The well-known `TK_COMMENT` token type ordinal.
+    pub fn tk_comment(&self) -> u32 {
+        self.raw.tk_comment as u32
     }
 }
 

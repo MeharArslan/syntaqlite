@@ -53,6 +53,7 @@ typedef struct SynqParseCtx {
   int stmt_completed;     // Set by grammar actions when ecmd reduces.
   int error;              // Set when a syntax error occurs.
   uint32_t error_offset;  // Byte offset of the error token in source.
+  uint32_t error_length;  // Byte length of the error token.
 } SynqParseCtx;
 
 // Common header for all list nodes in the arena.

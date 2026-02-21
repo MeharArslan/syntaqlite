@@ -3,11 +3,15 @@
 
 import type {
   AstResult,
+  DiagnosticEntry,
+  DiagnosticsResult,
   DialectBinding,
   EmscriptenModule,
   EmscriptenModuleConfig,
   FormatOptions,
   FormatResult,
+  SemanticTokenEntry,
+  SemanticTokensResult,
 } from "../types";
 
 const RUNTIME_JS_PATH = "./syntaqlite-runtime.js";
@@ -30,6 +34,8 @@ export class Engine {
   private astRaw: WasmFn | null = null;
   private astJsonRaw: WasmFn | null = null;
   private fmtRaw: WasmFn | null = null;
+  private diagnosticsRaw: WasmFn | null = null;
+  private semanticTokensRaw: WasmFn | null = null;
   private resultPtrRaw: WasmFn | null = null;
   private resultLenRaw: WasmFn | null = null;
   private resultFreeRaw: WasmFn | null = null;
@@ -53,6 +59,8 @@ export class Engine {
     this.astRaw = this.resolveRuntimeFn("wasm_ast");
     this.astJsonRaw = this.resolveRuntimeFn("wasm_ast_json");
     this.fmtRaw = this.resolveRuntimeFn("wasm_fmt");
+    this.diagnosticsRaw = this.tryResolveRuntimeFn("wasm_diagnostics");
+    this.semanticTokensRaw = this.tryResolveRuntimeFn("wasm_semantic_tokens");
     this.resultPtrRaw = this.resolveRuntimeFn("wasm_result_ptr");
     this.resultLenRaw = this.resolveRuntimeFn("wasm_result_len");
     this.resultFreeRaw = this.resolveRuntimeFn("wasm_result_free");
@@ -64,6 +72,12 @@ export class Engine {
       throw new Error(`missing runtime function: _${symbol}`);
     }
     return fn;
+  }
+
+  /** Like resolveRuntimeFn but returns null if not found. */
+  private tryResolveRuntimeFn(symbol: string): WasmFn | null {
+    const fn = this.module![`_${symbol}`];
+    return typeof fn === "function" ? fn : null;
   }
 
   private resolveDialectFn(
@@ -177,6 +191,36 @@ export class Engine {
     );
     const text = this.readAndClearResult();
     return {ok: status === 0, text};
+  }
+
+  runSemanticTokens(sql: string): SemanticTokensResult {
+    if (!this.semanticTokensRaw) return {ok: false, tokens: []};
+    try {
+      const count = this.withInput(sql, (ptr, len) => this.semanticTokensRaw!(ptr, len));
+      const text = this.readAndClearResult();
+      if (count < 0) return {ok: false, tokens: []};
+      if (count === 0) return {ok: true, tokens: []};
+      const tokens: SemanticTokenEntry[] = JSON.parse(text);
+      return {ok: true, tokens};
+    } catch (e) {
+      console.warn("wasm_semantic_tokens failed:", e);
+      return {ok: false, tokens: []};
+    }
+  }
+
+  runDiagnostics(sql: string): DiagnosticsResult {
+    if (!this.diagnosticsRaw) return {ok: false, diagnostics: []};
+    try {
+      const count = this.withInput(sql, (ptr, len) => this.diagnosticsRaw!(ptr, len));
+      const text = this.readAndClearResult();
+      if (count < 0) return {ok: false, diagnostics: []};
+      if (count === 0) return {ok: true, diagnostics: []};
+      const diagnostics: DiagnosticEntry[] = JSON.parse(text);
+      return {ok: true, diagnostics};
+    } catch (e) {
+      console.warn("wasm_diagnostics failed:", e);
+      return {ok: false, diagnostics: []};
+    }
   }
 }
 

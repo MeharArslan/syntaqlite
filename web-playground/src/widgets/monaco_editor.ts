@@ -80,6 +80,7 @@ const SHARED_EDITOR_OPTIONS: monaco.editor.IStandaloneEditorConstructionOptions 
   fontLigatures: true,
   automaticLayout: true,
   padding: {top: 12},
+  "semanticHighlighting.enabled": true,
 };
 
 export interface MonacoEditorAttrs {
@@ -89,11 +90,12 @@ export interface MonacoEditorAttrs {
   lineNumbers?: "on" | "off";
   renderLineHighlight?: "gutter" | "none";
   onContentChange?: (text: string) => void;
+  onEditorCreated?: (editor: monaco.editor.IStandaloneCodeEditor) => void;
 }
 
 export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
   oncreate(vnode: m.VnodeDOM<MonacoEditorAttrs>) {
-    const {theme, initialValue, readOnly, lineNumbers, renderLineHighlight, onContentChange} =
+    const {theme, initialValue, readOnly, lineNumbers, renderLineHighlight, onContentChange, onEditorCreated} =
       vnode.attrs;
     ensureThemesRegistered();
 
@@ -132,6 +134,10 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
       this.editor.onDidChangeModelContent(() => {
         if (this.editor) onContentChange(this.editor.getValue());
       });
+    }
+
+    if (onEditorCreated) {
+      onEditorCreated(this.editor);
     }
   }
 

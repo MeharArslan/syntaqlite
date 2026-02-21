@@ -85,7 +85,8 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->ctx.root = SYNTAQLITE_NULL_NODE;
   p->ctx.stmt_completed = 0;
   p->ctx.error = 0;
-  p->ctx.error_offset = 0;
+  p->ctx.error_offset = 0xFFFFFFFF;
+  p->ctx.error_length = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -101,6 +102,10 @@ static int feed_one_token(SyntaqliteParser* p, int token_type,
 
   if (p->ctx.error) {
     p->had_error = 1;
+    if (text) {
+      p->ctx.error_offset = (uint32_t)(text - p->source);
+      p->ctx.error_length = (uint32_t)len;
+    }
     if (p->error_msg[0] == '\0') {
       snprintf(p->error_msg, sizeof(p->error_msg),
                "syntax error near '%.*s'", len, text ? text : "");
@@ -188,6 +193,8 @@ static int finish_input(SyntaqliteParser* p) {
     int rc = feed_one_token(p, p->dialect->tk_semi, NULL, 0);
     if (rc < 0) {
       p->finished = 1;
+      p->ctx.error_offset = p->offset;
+      p->ctx.error_length = 0;
       snprintf(p->error_msg, sizeof(p->error_msg),
                "incomplete SQL statement");
       return -1;
@@ -207,6 +214,8 @@ static int finish_input(SyntaqliteParser* p) {
 
   if (p->ctx.error) {
     p->had_error = 1;
+    p->ctx.error_offset = p->offset;
+    p->ctx.error_length = 0;
     if (p->error_msg[0] == '\0') {
       snprintf(p->error_msg, sizeof(p->error_msg),
                "incomplete SQL statement");
@@ -227,12 +236,14 @@ static int finish_input(SyntaqliteParser* p) {
 // ---------------------------------------------------------------------------
 
 SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
-  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL};
+  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL, 0xFFFFFFFF, 0};
 
   if (p->finished) {
     if (p->had_error) {
       result.error = 1;
       result.error_msg = p->error_msg;
+      result.error_offset = p->ctx.error_offset;
+      result.error_length = p->ctx.error_length;
     }
     return result;
   }
@@ -283,6 +294,8 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
       p->finished = 1;
       result.error = 1;
       result.error_msg = p->error_msg;
+      result.error_offset = p->ctx.error_offset;
+      result.error_length = p->ctx.error_length;
       return result;
     }
 
@@ -301,6 +314,8 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
   if (rc < 0) {
     result.error = 1;
     result.error_msg = p->error_msg;
+    result.error_offset = p->ctx.error_offset;
+    result.error_length = p->ctx.error_length;
   } else if (rc == 1) {
     result.root = p->ctx.root;
   }
@@ -363,10 +378,12 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
 }
 
 SyntaqliteParseResult syntaqlite_parser_result(SyntaqliteParser* p) {
-  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL};
+  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL, 0xFFFFFFFF, 0};
   if (p->had_error) {
     result.error = 1;
     result.error_msg = p->error_msg;
+    result.error_offset = p->ctx.error_offset;
+    result.error_length = p->ctx.error_length;
   } else if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
     result.root = p->ctx.root;
   }

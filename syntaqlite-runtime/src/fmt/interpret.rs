@@ -188,7 +188,10 @@ pub(crate) fn interpret<'a>(
                     && ctx.cursor.list_children(child_id, &ctx.dialect).is_none()
                 {
                     super::formatter::try_macro_verbatim(
-                        ctx, macro_regions, arena, consumed_regions,
+                        ctx,
+                        macro_regions,
+                        arena,
+                        consumed_regions,
                     )
                 } else {
                     None
@@ -204,9 +207,8 @@ pub(crate) fn interpret<'a>(
                         parts.truncate(checkpoint);
                         pending_lines.clear();
                     }
-                    let _ = super::formatter::format_node_inner(
-                        ctx, child_id, arena, consumed_regions,
-                    );
+                    let _ =
+                        super::formatter::format_node_inner(ctx, child_id, arena, consumed_regions);
                 } else {
                     // Drain comments before this child.
                     if let Some(cctx) = ctx.comment_ctx {
@@ -222,13 +224,14 @@ pub(crate) fn interpret<'a>(
                         // First macro encounter — emit verbatim text,
                         // advance cursor through this child's tokens.
                         let _ = super::formatter::format_node_inner(
-                            ctx, child_id, arena, consumed_regions,
+                            ctx,
+                            child_id,
+                            arena,
+                            consumed_regions,
                         );
                         parts.push(verbatim);
                     } else {
-                        parts.push(format_child_doc(
-                            ctx, child_id, consumed_regions, arena,
-                        ));
+                        parts.push(format_child_doc(ctx, child_id, consumed_regions, arena));
                     }
                 }
             }
@@ -349,12 +352,10 @@ fn format_child_doc<'a>(
     let macro_regions = ctx.cursor.macro_regions();
     // Only check macro regions for non-list nodes. List nodes are formatted
     // normally so their individual children can be macro-checked.
-    if !macro_regions.is_empty()
-        && ctx.cursor.list_children(child_id, &ctx.dialect).is_none()
-    {
-        if let Some(doc) = super::formatter::try_macro_verbatim(
-            ctx, macro_regions, arena, consumed_regions,
-        ) {
+    if !macro_regions.is_empty() && ctx.cursor.list_children(child_id, &ctx.dialect).is_none() {
+        if let Some(doc) =
+            super::formatter::try_macro_verbatim(ctx, macro_regions, arena, consumed_regions)
+        {
             // Advance the token cursor through this child's tokens by
             // formatting it (output is discarded).
             let _ = super::formatter::format_node_inner(ctx, child_id, arena, consumed_regions);

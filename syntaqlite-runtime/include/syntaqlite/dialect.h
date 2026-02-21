@@ -99,6 +99,10 @@ typedef struct SyntaqliteDialect {
 
     // Tokenizer (provided by dialect)
     int64_t (*get_token)(const unsigned char* z, int* tokenType);
+
+    // Token categories (indexed by token type ordinal)
+    const uint8_t* token_categories;   // length = token_type_count; NULL = no categories
+    uint32_t       token_type_count;
 } SyntaqliteDialect;
 
 #ifdef __cplusplus

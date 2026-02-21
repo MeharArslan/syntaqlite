@@ -10,6 +10,8 @@ use syntaqlite_runtime::dialect::ffi as dialect_ffi;
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
 use syntaqlite_runtime::{Dialect, ParseError, Parser as RuntimeParser};
 
+mod lsp;
+
 #[derive(Parser)]
 #[command(about = "SQL formatting and analysis tools")]
 struct Cli {
@@ -51,6 +53,8 @@ enum Command {
         #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         semicolons: bool,
     },
+    /// Start the language server (stdio)
+    Lsp,
     /// Generate amalgamated dialect C sources for embedding.
     ///
     /// Base SQLite grammar and node files are embedded in the binary.
@@ -228,6 +232,8 @@ fn format_source(
 ) -> Result<String, ParseError> {
     let mut formatter = Formatter::with_config(dialect, config).map_err(|e| ParseError {
         message: e.to_string(),
+        offset: None,
+        length: None,
     })?;
     formatter.format(source)
 }
@@ -355,6 +361,12 @@ fn codegen_to_dir_with_base(
     fs::write(csrc_dir.join("dialect_fmt.h"), artifacts.dialect_fmt_h)
         .map_err(|e| format!("writing dialect_fmt.h: {e}"))?;
 
+    fs::write(
+        csrc_dir.join("dialect_tokens.h"),
+        artifacts.dialect_tokens_h,
+    )
+    .map_err(|e| format!("writing dialect_tokens.h: {e}"))?;
+
     // Dialect descriptor + public API.
     fs::write(csrc_dir.join("dialect.c"), artifacts.dialect_c)
         .map_err(|e| format!("writing dialect.c: {e}"))?;
@@ -439,6 +451,7 @@ pub fn run(name: &str, dialect: &Dialect) {
 
     let result = match cli.command {
         Command::Ast { files } => cmd_ast(active_dialect, files),
+        Command::Lsp => lsp::cmd_lsp(active_dialect),
         Command::Fmt {
             files,
             line_width,

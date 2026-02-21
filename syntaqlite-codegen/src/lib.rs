@@ -137,6 +137,7 @@ pub struct CodegenArtifacts {
     pub ast_builder_h: String,
     pub dialect_meta_h: String,
     pub dialect_fmt_h: String,
+    pub dialect_tokens_h: String,
     pub dialect_c: String,
     pub dialect_h: String,
     pub dialect_dispatch_h: String,

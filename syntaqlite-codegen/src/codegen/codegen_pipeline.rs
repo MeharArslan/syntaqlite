@@ -53,14 +53,16 @@ pub(crate) fn generate_codegen_artifacts(
             .map_err(|e| e.to_string())?;
     let dialect_fmt_h =
         dialect_codegen::generate_c_fmt_tables(&ast_model).map_err(|e| e.to_string())?;
-    let dialect_c = dialect_codegen::generate_dialect_c(request.dialect.name());
+    let token_defines = crate::extract_token_defines(&parse_h);
+    let dialect_tokens_h = dialect_codegen::generate_token_categories_header(&token_defines);
+    let dialect_c =
+        dialect_codegen::generate_dialect_c(request.dialect.name(), Some(&token_defines));
     let dialect_h = dialect_codegen::generate_dialect_h(request.dialect.name());
     let dialect_dispatch_h = dialect_codegen::generate_dialect_dispatch_h(request.dialect.name());
 
     let rust = if request.include_rust {
-        let token_defines = crate::extract_token_defines(&parse_h);
         Some(RustCodegenArtifacts {
-            tokens_rs: dialect_codegen::generate_rust_tokens(&token_defines),
+            tokens_rs: dialect_codegen::generate_rust_tokens(&token_defines[..]),
             ffi_rs: dialect_codegen::generate_rust_ffi_nodes(&ast_model),
             ast_rs: dialect_codegen::generate_rust_ast(&ast_model),
             lib_rs: dialect_codegen::generate_rust_lib(&request.dialect.dialect_symbol_fn_name()),
@@ -80,6 +82,7 @@ pub(crate) fn generate_codegen_artifacts(
         ast_builder_h,
         dialect_meta_h,
         dialect_fmt_h,
+        dialect_tokens_h,
         dialect_c,
         dialect_h,
         dialect_dispatch_h,

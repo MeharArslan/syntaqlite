@@ -118,3 +118,33 @@ export interface DialectBinding {
   ptr: number;
   label: string;
 }
+
+// ── Diagnostics types ──
+
+export interface DiagnosticEntry {
+  startOffset: number;
+  endOffset: number;
+  message: string;
+  severity: "error" | "warning" | "info" | "hint";
+}
+
+export interface DiagnosticsResult {
+  ok: boolean;
+  diagnostics: DiagnosticEntry[];
+}
+
+// ── Semantic tokens types ──
+
+export interface SemanticTokenEntry {
+  /** Byte offset in the source. */
+  o: number;
+  /** Length in bytes. */
+  l: number;
+  /** Token category (matches TokenCategory enum: 1=keyword, 2=identifier, etc.). */
+  t: number;
+}
+
+export interface SemanticTokensResult {
+  ok: boolean;
+  tokens: SemanticTokenEntry[];
+}

@@ -7,7 +7,11 @@ edition = "2024"
 clap = { version = "4.5", features = ["derive"] }
 glob = "0.3"
 libloading = "0.8"
+lsp-server = "0.7"
+lsp-types = "0.97"
+serde_json = "1"
 syntaqlite = { path = "../syntaqlite" }
 syntaqlite-codegen = { path = "../syntaqlite-codegen" }
+syntaqlite-lsp = { path = "../syntaqlite-lsp" }
 syntaqlite-runtime = { path = "../syntaqlite-runtime", features = ["fmt"] }
 tempfile = "3.8"

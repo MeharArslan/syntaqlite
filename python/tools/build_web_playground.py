@@ -77,9 +77,14 @@ def main():
     # Build runtime as emscripten main module and expose dynamic linker APIs.
     target_rustflags += " -C link-arg=-sMAIN_MODULE=2"
     target_rustflags += " -C link-arg=-sALLOW_TABLE_GROWTH"
+    target_rustflags += " -C link-arg=-sALLOW_MEMORY_GROWTH"
     target_rustflags += (
         " -C link-arg=-sEXPORTED_RUNTIME_METHODS=[\"loadDynamicLibrary\",\"ccall\",\"cwrap\"]"
     )
+    # Emit DWARF debug info into a separate file so Chrome DevTools can
+    # symbolize stack traces without bloating the served .wasm.
+    target_rustflags += " -C link-arg=-g"
+    target_rustflags += " -C link-arg=-gseparate-dwarf=syntaqlite-runtime.debug.wasm"
     if args.rustflags:
         target_rustflags += " " + args.rustflags
     env["CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_RUSTFLAGS"] = target_rustflags.strip()
@@ -130,6 +135,13 @@ def main():
     shutil.copy2(runtime_js_src, out_runtime_js)
     shutil.copy2(runtime_wasm_src, out_runtime_wasm)
 
+    # Copy separate DWARF debug info if present.
+    runtime_debug_src = os.path.join(wasm_target_dir, "syntaqlite-runtime.debug.wasm")
+    if os.path.isfile(runtime_debug_src):
+        out_runtime_debug = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-runtime.debug.wasm")
+        shutil.copy2(runtime_debug_src, out_runtime_debug)
+        print("wrote %s" % out_runtime_debug)
+
     # Build built-in SQLite dialect wasm from C sources directly.
     wrapper_dir = os.path.join(ROOT_DIR, ".cache", "web-playground")
     os.makedirs(wrapper_dir, exist_ok=True)
@@ -155,10 +167,13 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
 }
 """)
 
+    out_dialect_debug = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-sqlite.debug.wasm")
     emcc_cmd = [
         "emcc",
         "-O3",
         "-fPIC",
+        "-g",
+        "-gseparate-dwarf=" + out_dialect_debug,
         os.path.join(ROOT_DIR, "syntaqlite", "csrc", "dialect.c"),
         os.path.join(ROOT_DIR, "syntaqlite", "csrc", "sqlite_parse.c"),
         os.path.join(ROOT_DIR, "syntaqlite", "csrc", "sqlite_tokenize.c"),
@@ -167,6 +182,8 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
         "-I", os.path.join(ROOT_DIR, "syntaqlite"),
         "-I", os.path.join(ROOT_DIR, "syntaqlite", "include"),
         "-I", os.path.join(ROOT_DIR, "syntaqlite-runtime", "include"),
+        "-DSYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL",
+        "-DSYNTAQLITE_NO_DIALECT_CREATE_PARSER_API",
         "-sWASM_BIGINT",
         "-sSIDE_MODULE=1",
         "--no-entry",
@@ -180,6 +197,8 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
     print("wrote %s" % out_runtime_js)
     print("wrote %s" % out_runtime_wasm)
     print("wrote %s" % out_dialect)
+    if os.path.isfile(out_dialect_debug):
+        print("wrote %s" % out_dialect_debug)
 
     # Build Perfetto dialect wasm side module.
     perfetto_work_dir = os.path.join(ROOT_DIR, ".cache", "perfetto-wasm")
@@ -214,9 +233,11 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
                 "#endif\n")
 
     out_perfetto = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-perfetto.wasm")
+    out_perfetto_debug = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-perfetto.debug.wasm")
     rc = subprocess.call(
         [
             "emcc", "-O3", "-fPIC",
+            "-g", "-gseparate-dwarf=" + out_perfetto_debug,
             os.path.join(perfetto_csrc_dir, "syntaqlite_perfetto.c"),
             "-I", perfetto_csrc_dir,
             "-I", os.path.join(ROOT_DIR, "syntaqlite-runtime", "include"),
@@ -230,6 +251,8 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
         return rc
 
     print("wrote %s" % out_perfetto)
+    if os.path.isfile(out_perfetto_debug):
+        print("wrote %s" % out_perfetto_debug)
     return 0
 
 

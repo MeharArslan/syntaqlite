@@ -14,6 +14,8 @@ pub(crate) struct ParseResult {
     pub root: u32,
     pub error: i32,
     pub error_msg: *const c_char,
+    pub error_offset: u32,
+    pub error_length: u32,
 }
 
 /// Mirrors C `SyntaqliteMemMethods` from `include/syntaqlite/config.h`.

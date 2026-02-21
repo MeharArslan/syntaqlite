@@ -8,10 +8,16 @@ use super::ffi::{Comment, MacroRegion};
 use super::nodes::{NodeId, NodeList};
 use crate::dialect::Dialect;
 
-/// A parse error with a human-readable message.
+/// A parse error with a human-readable message and optional source location.
 #[derive(Debug, Clone)]
 pub struct ParseError {
     pub message: String,
+    /// Byte offset of the error token in the source text.
+    /// `None` if the error location is unknown.
+    pub offset: Option<usize>,
+    /// Byte length of the error token.
+    /// `None` if the error length is unknown.
+    pub length: Option<usize>,
 }
 
 impl std::fmt::Display for ParseError {
@@ -48,16 +54,23 @@ unsafe impl Send for Parser {}
 
 impl Parser {
     pub fn new(dialect: &Dialect) -> Self {
+        Self::try_new(dialect).expect("parser allocation failed")
+    }
+
+    /// Fallible constructor — returns `None` if the C-side allocation fails.
+    pub fn try_new(dialect: &Dialect) -> Option<Self> {
         // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
-        // a new parser with default malloc/free. It always succeeds.
+        // a new parser with default malloc/free.
         let raw =
             unsafe { ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw) };
-        assert!(!raw.is_null(), "parser allocation failed");
-        Parser {
+        if raw.is_null() {
+            return None;
+        }
+        Some(Parser {
             raw,
             source_buf: Vec::new(),
             config: ParserConfig::default(),
-        }
+        })
     }
 
     /// Create a parser with the given configuration applied at construction.
@@ -85,7 +98,10 @@ impl Parser {
     /// [`parse_cstr`](Self::parse_cstr).
     pub fn parse<'a>(&'a mut self, source: &'a str) -> StatementCursor<'a> {
         let base = CursorBase::new(self.raw, &mut self.source_buf, source);
-        StatementCursor(base)
+        StatementCursor {
+            base,
+            poisoned: false,
+        }
     }
 
     /// Zero-copy variant: bind a null-terminated source and return a
@@ -95,7 +111,10 @@ impl Parser {
     /// The source must be valid UTF-8 (panics otherwise).
     pub fn parse_cstr<'a>(&'a mut self, source: &'a CStr) -> StatementCursor<'a> {
         let base = CursorBase::new_cstr(self.raw, source);
-        StatementCursor(base)
+        StatementCursor {
+            base,
+            poisoned: false,
+        }
     }
 }
 
@@ -309,16 +328,26 @@ impl<'a> CursorBase<'a> {
 
 /// A streaming cursor over parsed SQL statements. Iterate with
 /// `next_statement()` or the `Iterator` impl.
-pub struct StatementCursor<'a>(pub(crate) CursorBase<'a>);
+pub struct StatementCursor<'a> {
+    pub(crate) base: CursorBase<'a>,
+    /// Once an error is returned, the cursor is poisoned and all subsequent
+    /// calls to `next_statement()` return `None`.
+    poisoned: bool,
+}
 
 impl<'a> StatementCursor<'a> {
     /// Parse the next SQL statement. Returns `None` when all statements have
-    /// been consumed (or input was empty).
+    /// been consumed (or input was empty), or when the cursor has been
+    /// poisoned by a previous error.
     pub fn next_statement(&mut self) -> Option<Result<NodeId, ParseError>> {
+        if self.poisoned {
+            return None;
+        }
+
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         // When error is set, error_msg is a NUL-terminated string in the
         // parser's buffer (valid for parser lifetime).
-        let result = unsafe { ffi::syntaqlite_parser_next(self.0.reader.raw()) };
+        let result = unsafe { ffi::syntaqlite_parser_next(self.base.reader.raw()) };
 
         let id = NodeId(result.root);
         if !id.is_null() {
@@ -326,10 +355,25 @@ impl<'a> StatementCursor<'a> {
         }
 
         if result.error != 0 {
+            self.poisoned = true;
             let msg = unsafe { CStr::from_ptr(result.error_msg) }
                 .to_string_lossy()
                 .into_owned();
-            return Some(Err(ParseError { message: msg }));
+            let offset = if result.error_offset == 0xFFFFFFFF {
+                None
+            } else {
+                Some(result.error_offset as usize)
+            };
+            let length = if result.error_length == 0 {
+                None
+            } else {
+                Some(result.error_length as usize)
+            };
+            return Some(Err(ParseError {
+                message: msg,
+                offset,
+                length,
+            }));
         }
 
         None
@@ -337,24 +381,24 @@ impl<'a> StatementCursor<'a> {
 
     /// Access the underlying `CursorBase` for read-only operations.
     pub fn base(&self) -> &CursorBase<'a> {
-        &self.0
+        &self.base
     }
 
     // Delegate read-only methods for convenience
 
     /// Get a reference to the embedded `NodeReader`.
     pub fn reader(&self) -> &NodeReader<'a> {
-        self.0.reader()
+        self.base.reader()
     }
 
     /// The source text bound to this cursor.
     pub fn source(&self) -> &'a str {
-        self.0.source()
+        self.base.source()
     }
 
     /// Dump an AST node tree as indented text.
     pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
-        self.0.dump_node(id, out, indent)
+        self.base.dump_node(id, out, indent)
     }
 }
 

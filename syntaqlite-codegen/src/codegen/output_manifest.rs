@@ -56,6 +56,11 @@ pub fn sqlite_output_manifest(
     });
     out.push(OutputArtifact {
         bucket: OutputBucket::DialectCsrc,
+        file_name: "dialect_tokens.h".to_string(),
+        content: artifacts.dialect_tokens_h,
+    });
+    out.push(OutputArtifact {
+        bucket: OutputBucket::DialectCsrc,
         file_name: "dialect.c".to_string(),
         content: artifacts.dialect_c,
     });

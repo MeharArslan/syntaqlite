@@ -1,8 +1,7 @@
 [package]
-name = "syntaqlite-wasm"
+name = "syntaqlite-lsp"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-syntaqlite-lsp = { path = "../syntaqlite-lsp" }
 syntaqlite-runtime = { path = "../syntaqlite-runtime", features = ["fmt"] }

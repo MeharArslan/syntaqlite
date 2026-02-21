@@ -4,7 +4,54 @@
 use crate::util::pascal_case;
 use crate::writers::c_writer::CWriter;
 
-pub fn generate_dialect_c(dialect: &str) -> String {
+/// Classify a token name into a `TokenCategory` byte value.
+fn classify_token(name: &str) -> u8 {
+    match name {
+        "STRING" | "BLOB" => 3,               // String
+        "INTEGER" | "FLOAT" | "QNUMBER" => 4, // Number
+        "BITAND" | "BITOR" | "LSHIFT" | "RSHIFT" | "PLUS" | "MINUS" | "STAR" | "SLASH" | "REM"
+        | "CONCAT" | "PTR" | "BITNOT" | "NE" | "EQ" | "GT" | "LE" | "LT" | "GE" => 5, // Operator
+        "SEMI" | "LP" | "RP" | "COMMA" | "DOT" | "ASTERISK" => 6, // Punctuation
+        "COMMENT" => 7,                       // Comment
+        "VARIABLE" => 8,                      // Variable
+        "AGG_FUNCTION" | "AGGFUNCTION" | "FUNCTION" => 9, // Function
+        "ID" => 2,                            // Identifier
+        "SPACE" | "ERROR" | "ILLEGAL" | "SPAN" | "UPLUS" | "UMINUS" | "TRUTH" | "REGISTER"
+        | "VECTOR" | "SELECT_COLUMN" | "IF_NULL_ROW" | "AGG_COLUMN" => 0, // Other
+        _ => 1,                               // Keyword (everything else)
+    }
+}
+
+/// Generate a C header with a static token categories table.
+pub fn generate_token_categories_header(tokens: &[(String, u32)]) -> String {
+    let max_ordinal = tokens.iter().map(|(_, v)| *v).max().unwrap_or(0);
+    let count = max_ordinal as usize + 1;
+
+    // Build ordinal → category map
+    let mut categories = vec![0u8; count]; // default = Other
+    for (name, ordinal) in tokens {
+        categories[*ordinal as usize] = classify_token(name);
+    }
+
+    let mut w = CWriter::new();
+    w.file_header();
+    w.line(&format!("#define TOKEN_TYPE_COUNT {count}"));
+    w.newline();
+    w.line(&format!(
+        "static const uint8_t token_categories[{count}] = {{"
+    ));
+
+    // Emit 16 values per line for readability
+    for chunk in categories.chunks(16) {
+        let vals: Vec<String> = chunk.iter().map(|b| format!("{b}")).collect();
+        w.line(&format!("    {},", vals.join(",")));
+    }
+
+    w.line("};");
+    w.finish()
+}
+
+pub fn generate_dialect_c(dialect: &str, tokens: Option<&[(String, u32)]>) -> String {
     let upper = dialect.to_uppercase();
     let mut w = CWriter::new();
     w.file_header();
@@ -14,6 +61,9 @@ pub fn generate_dialect_c(dialect: &str) -> String {
     w.include_local("csrc/dialect_builder.h");
     w.include_local("csrc/dialect_meta.h");
     w.include_local("csrc/dialect_fmt.h");
+    if tokens.is_some() {
+        w.include_local("csrc/dialect_tokens.h");
+    }
     w.include_local("csrc/sqlite_parse.h");
     w.include_local("csrc/sqlite_tokenize.h");
     w.newline();
@@ -62,6 +112,15 @@ pub fn generate_dialect_c(dialect: &str) -> String {
     w.newline();
     w.line("    // Tokenizer");
     w.line(&format!("    .get_token = Synq{pascal}GetToken,"));
+    w.newline();
+    w.line("    // Token categories");
+    if tokens.is_some() {
+        w.line("    .token_categories = token_categories,");
+        w.line("    .token_type_count = TOKEN_TYPE_COUNT,");
+    } else {
+        w.line("    .token_categories = 0,");
+        w.line("    .token_type_count = 0,");
+    }
     w.line("};");
     w.newline();
 
@@ -152,11 +211,11 @@ pub fn generate_dialect_h(dialect: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{generate_dialect_c, generate_dialect_h};
+    use super::{generate_dialect_c, generate_dialect_h, generate_token_categories_header};
 
     #[test]
     fn c_source_exposes_default_symbol_guard() {
-        let c = generate_dialect_c("sqlite");
+        let c = generate_dialect_c("sqlite", None);
         assert!(c.contains("#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL"));
         assert!(c.contains("const SyntaqliteDialect* syntaqlite_dialect(void)"));
     }
@@ -166,6 +225,46 @@ mod tests {
         let h = generate_dialect_h("sqlite");
         assert!(h.contains("#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL"));
         assert!(h.contains("const SyntaqliteDialect* syntaqlite_dialect(void);"));
+    }
+
+    #[test]
+    fn token_categories_header_classifies_correctly() {
+        let tokens = vec![
+            ("SEMI".to_string(), 0),
+            ("SELECT".to_string(), 1),
+            ("ID".to_string(), 2),
+            ("STRING".to_string(), 3),
+            ("INTEGER".to_string(), 4),
+            ("PLUS".to_string(), 5),
+            ("COMMENT".to_string(), 6),
+            ("VARIABLE".to_string(), 7),
+            ("FUNCTION".to_string(), 8),
+            ("SPACE".to_string(), 9),
+        ];
+        let h = generate_token_categories_header(&tokens);
+        assert!(h.contains("#define TOKEN_TYPE_COUNT 10"));
+        assert!(h.contains("token_categories[10]"));
+        // SEMI=6(punct), SELECT=1(kw), ID=2(ident), STRING=3(str),
+        // INTEGER=4(num), PLUS=5(op), COMMENT=7(comment), VARIABLE=8(var),
+        // FUNCTION=9(func), SPACE=0(other)
+        assert!(h.contains("6,1,2,3,4,5,7,8,9,0,"));
+    }
+
+    #[test]
+    fn dialect_c_with_tokens_includes_categories() {
+        let tokens = vec![("SELECT".to_string(), 0)];
+        let c = generate_dialect_c("sqlite", Some(&tokens));
+        assert!(c.contains(".token_categories = token_categories,"));
+        assert!(c.contains(".token_type_count = TOKEN_TYPE_COUNT,"));
+        assert!(c.contains("csrc/dialect_tokens.h"));
+    }
+
+    #[test]
+    fn dialect_c_without_tokens_uses_null() {
+        let c = generate_dialect_c("sqlite", None);
+        assert!(c.contains(".token_categories = 0,"));
+        assert!(c.contains(".token_type_count = 0,"));
+        assert!(!c.contains("dialect_tokens.h"));
     }
 }
 
