@@ -3,22 +3,110 @@
 
 import m from "mithril";
 import type {Attrs} from "../app/app";
+import {DIALECT_PRESETS} from "../app/dialect_manager";
 import "./header.css";
 
 export class Header implements m.ClassComponent<Attrs> {
-  dialectNameInput = "";
-  popoverOpen = false;
-  selectedFileName = "";
+  private customPopoverOpen = false;
+  private customSymbol = "syntaqlite_dialect";
+  private customFile: File | null = null;
+  private customError: string | null = null;
+  private customLoading = false;
 
   view(vnode: m.Vnode<Attrs>) {
     const {app} = vnode.attrs;
-    const hasUpload = app.dialect.uploaded !== null;
+    const activeId = app.dialect.activePresetId;
 
     return m("header.sq-toolbar", [
       m("div.sq-toolbar__left", [
         m("span.sq-toolbar__brand", [m("span.sq-toolbar__kicker", "syntaqlite"), " Playground"]),
       ]),
       m("div.sq-toolbar__right", [
+        m("div.sq-dialect-switcher", [
+          ...DIALECT_PRESETS.map((preset) =>
+            m(
+              "button.sq-dialect-switcher__btn",
+              {
+                class: activeId === preset.id ? "sq-dialect-switcher__btn--active" : "",
+                onclick: () => app.dialect.selectPreset(app.runtime, preset),
+              },
+              preset.label,
+            ),
+          ),
+          m(
+            "div.sq-dialect-popover",
+            {class: this.customPopoverOpen ? "sq-dialect-popover--open" : ""},
+            [
+              m(
+                "button.sq-dialect-switcher__btn",
+                {
+                  class: activeId === "custom" ? "sq-dialect-switcher__btn--active" : "",
+                  onclick: (e: Event) => {
+                    e.stopPropagation();
+                    this.customPopoverOpen = !this.customPopoverOpen;
+                    if (this.customPopoverOpen) this.customError = null;
+                  },
+                },
+                activeId === "custom" && app.dialect.customLabel
+                  ? app.dialect.customLabel
+                  : "Custom",
+              ),
+              m("div.sq-dialect-popover__backdrop", {onclick: () => this.closePopover()}),
+              m("div.sq-dialect-popover__panel", {onclick: (e: Event) => e.stopPropagation()}, [
+                m("div.sq-dialect-popover__row", [
+                  m("span.sq-dialect-popover__label", "File"),
+                  m(
+                    "div.sq-dialect-popover__file-btn",
+                    {
+                      onclick: () => {
+                        const input = document.getElementById(
+                          "dialect-file-input",
+                        ) as HTMLInputElement;
+                        input?.click();
+                      },
+                    },
+                    this.customFile ? this.customFile.name : "Choose .wasm file...",
+                  ),
+                  m("input.sq-dialect-popover__file-input#dialect-file-input[type=file]", {
+                    accept: ".wasm,application/wasm",
+                    onchange: (e: Event) => {
+                      const input = e.target as HTMLInputElement;
+                      const file = input.files?.[0];
+                      if (file) {
+                        this.customFile = file;
+                        this.customError = null;
+                      }
+                    },
+                  }),
+                ]),
+                m("div.sq-dialect-popover__row", [
+                  m("span.sq-dialect-popover__label", "Symbol"),
+                  m("input.sq-dialect-popover__name[type=text]", {
+                    placeholder: "syntaqlite_xyz_dialect",
+                    value: this.customSymbol,
+                    oninput: (e: Event) => {
+                      this.customSymbol = (e.target as HTMLInputElement).value;
+                      this.customError = null;
+                    },
+                  }),
+                ]),
+                this.customError
+                  ? m("div.sq-dialect-popover__error", this.customError)
+                  : null,
+                m("div.sq-dialect-popover__row", [
+                  m(
+                    "button.sq-dialect-popover__load-btn",
+                    {
+                      disabled: !this.customFile || this.customLoading,
+                      onclick: () => this.loadCustom(app),
+                    },
+                    this.customLoading ? "Loading..." : "Load",
+                  ),
+                ]),
+              ]),
+            ],
+          ),
+        ]),
         m(
           "button.sq-toolbar__theme-toggle",
           {
@@ -31,90 +119,26 @@ export class Header implements m.ClassComponent<Attrs> {
           },
           app.theme.current === "dark" ? "Light" : "Dark",
         ),
-        m("div.sq-dialect-popover", {class: this.popoverOpen ? "sq-dialect-popover--open" : ""}, [
-          m(
-            "button.sq-dialect-popover__trigger",
-            {
-              type: "button",
-              onclick: (e: Event) => {
-                e.stopPropagation();
-                this.popoverOpen = !this.popoverOpen;
-              },
-            },
-            hasUpload ? `Dialect: ${app.dialect.uploaded?.label}` : "Dialect",
-          ),
-          m("div.sq-dialect-popover__backdrop", {
-            onclick: () => this.closePopover(),
-          }),
-          m(
-            "div.sq-dialect-popover__panel",
-            {
-              onclick(e: Event) {
-                e.stopPropagation();
-              },
-            },
-            [
-              m("div.sq-dialect-popover__row", [
-                m("span.sq-dialect-popover__label", "File"),
-                m(
-                  "div.sq-dialect-popover__file-btn",
-                  {
-                    onclick() {
-                      const input = document.getElementById(
-                        "dialect-file-input",
-                      ) as HTMLInputElement;
-                      input?.click();
-                    },
-                  },
-                  this.selectedFileName || "Choose .wasm file...",
-                ),
-                m("input.sq-dialect-popover__file-input#dialect-file-input[type=file]", {
-                  accept: ".wasm,application/wasm",
-                  onchange: (e: Event) => {
-                    const input = e.target as HTMLInputElement;
-                    const file = input.files?.[0];
-                    if (file) {
-                      this.selectedFileName = file.name;
-                      app.dialect.loadFromFile(app.runtime, file, this.dialectNameInput);
-                      this.closePopover();
-                    }
-                  },
-                }),
-              ]),
-              m("div.sq-dialect-popover__row", [
-                m("span.sq-dialect-popover__label", "Symbol"),
-                m("input.sq-dialect-popover__name[type=text]", {
-                  placeholder: "dialect name",
-                  value: this.dialectNameInput,
-                  oninput: (e: Event) => {
-                    this.dialectNameInput = (e.target as HTMLInputElement).value;
-                  },
-                }),
-              ]),
-              hasUpload
-                ? m("div.sq-dialect-popover__row", [
-                    m(
-                      "button.sq-ghost.sq-btn-sm",
-                      {
-                        type: "button",
-                        onclick: () => {
-                          app.dialect.clearUpload(app.runtime);
-                          this.selectedFileName = "";
-                          this.closePopover();
-                        },
-                      },
-                      "Unload dialect",
-                    ),
-                  ])
-                : null,
-            ],
-          ),
-        ]),
       ]),
     ]);
   }
 
+  private async loadCustom(app: InstanceType<typeof import("../app/app").App>) {
+    if (!this.customFile) return;
+    this.customLoading = true;
+    this.customError = null;
+    m.redraw();
+    const error = await app.dialect.loadFromFile(app.runtime, this.customFile, this.customSymbol);
+    this.customLoading = false;
+    if (error) {
+      this.customError = error;
+    } else {
+      this.closePopover();
+    }
+    m.redraw();
+  }
+
   private closePopover() {
-    this.popoverOpen = false;
+    this.customPopoverOpen = false;
   }
 }

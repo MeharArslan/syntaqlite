@@ -3,79 +3,92 @@
 
 import m from "mithril";
 import type {DialectBinding} from "../types";
-import {
-  BUILTIN_DIALECT_SYMBOL,
-  BUILTIN_DIALECT_WASM_PATH,
-  type Engine,
-  dialectSymbolFromName,
-} from "./engine";
+import type {Engine} from "./engine";
+
+export interface DialectPreset {
+  id: string;
+  label: string;
+  wasm: string;
+  symbol: string;
+}
+
+export const DIALECT_PRESETS: DialectPreset[] = [
+  {
+    id: "sqlite",
+    label: "SQLite",
+    wasm: "./syntaqlite-sqlite.wasm",
+    symbol: "syntaqlite_sqlite_dialect",
+  },
+  {
+    id: "perfetto",
+    label: "PerfettoSQL",
+    wasm: "./syntaqlite-perfetto.wasm",
+    symbol: "syntaqlite_perfetto_dialect",
+  },
+];
 
 export class DialectManager {
-  builtin: DialectBinding | null = null;
-  uploaded: DialectBinding | null = null;
+  activePresetId: string = DIALECT_PRESETS[0].id;
   active: DialectBinding | null = null;
+  customLabel: string | null = null;
 
-  activate(engine: Engine, binding: DialectBinding): void {
-    engine.setDialectPointer(binding.ptr);
-    this.active = binding;
+  private cache = new Map<string, DialectBinding>();
+
+  async loadDefault(engine: Engine): Promise<void> {
+    await this.selectPreset(engine, DIALECT_PRESETS[0]);
   }
 
-  async loadBuiltin(engine: Engine): Promise<void> {
+  async selectPreset(engine: Engine, preset: DialectPreset): Promise<void> {
     if (!engine.ready) {
       engine.updateStatus("Runtime is not initialized yet.", true);
       m.redraw();
       return;
     }
-    const binding = await engine.loadDialectFromUrl(
-      BUILTIN_DIALECT_WASM_PATH,
-      BUILTIN_DIALECT_SYMBOL,
-    );
-    binding.label = "Built-in SQLite";
-    this.activate(engine, binding);
-    this.builtin = binding;
+    try {
+      const binding = await this.loadCached(engine, preset.wasm, preset.symbol, preset.label);
+      engine.setDialectPointer(binding.ptr);
+      this.active = binding;
+      this.activePresetId = preset.id;
+      this.customLabel = null;
+      engine.updateStatus(`Dialect: ${preset.label}`);
+    } catch (err) {
+      engine.updateStatus(`Failed to load ${preset.label}: ${(err as Error).message}`, true);
+    }
+    m.redraw();
   }
 
-  async loadFromFile(engine: Engine, file: File, dialectName: string): Promise<void> {
+  async loadFromFile(engine: Engine, file: File, symbol: string): Promise<string | null> {
     if (!engine.ready) {
-      engine.updateStatus("Runtime is not initialized yet.", true);
-      m.redraw();
-      return;
+      return "Runtime is not initialized yet.";
     }
-    const symbol = dialectSymbolFromName(dialectName);
     const url = URL.createObjectURL(file);
     try {
       const binding = await engine.loadDialectFromUrl(url, symbol);
       binding.label = file.name;
-      this.activate(engine, binding);
-      this.uploaded = binding;
+      engine.setDialectPointer(binding.ptr);
+      this.active = binding;
+      this.activePresetId = "custom";
+      this.customLabel = file.name;
       engine.updateStatus(`Dialect: ${file.name}`);
+      return null;
     } catch (err) {
-      engine.updateStatus(`Failed to load dialect: ${(err as Error).message}`, true);
+      return (err as Error).message;
     } finally {
       URL.revokeObjectURL(url);
     }
-    m.redraw();
   }
 
-  clearUpload(engine: Engine): void {
-    if (!engine.ready) {
-      engine.updateStatus("Runtime is not initialized yet.", true);
-      m.redraw();
-      return;
-    }
-    this.uploaded = null;
-    try {
-      if (this.builtin) {
-        this.activate(engine, this.builtin);
-        engine.updateStatus("Using built-in SQLite dialect.");
-      } else {
-        engine.clearDialectPointer();
-        this.active = null;
-        engine.updateStatus("Dialect cleared.");
-      }
-    } catch (err) {
-      engine.updateStatus(`Failed to restore built-in dialect: ${(err as Error).message}`, true);
-    }
-    m.redraw();
+  private async loadCached(
+    engine: Engine,
+    wasm: string,
+    symbol: string,
+    label: string,
+  ): Promise<DialectBinding> {
+    const cached = this.cache.get(symbol);
+    if (cached) return cached;
+    const binding = await engine.loadDialectFromUrl(wasm, symbol);
+    binding.label = label;
+    this.cache.set(symbol, binding);
+    return binding;
   }
 }

@@ -12,15 +12,8 @@ import type {
 
 const RUNTIME_JS_PATH = "./syntaqlite-runtime.js";
 const RUNTIME_WASM_PATH = "./syntaqlite-runtime.wasm";
-export const BUILTIN_DIALECT_WASM_PATH = "./syntaqlite-sqlite.wasm";
-export const BUILTIN_DIALECT_SYMBOL = "syntaqlite_sqlite_dialect";
 
 type WasmFn = (...args: number[]) => number;
-
-export function dialectSymbolFromName(name: string): string {
-  if (!name || !name.trim()) return "syntaqlite_dialect";
-  return `syntaqlite_${name.trim()}_dialect`;
-}
 
 export class Engine {
   status = "Loading...";
@@ -116,9 +109,14 @@ export class Engine {
     if (maybePromise && typeof (maybePromise as Promise<void>).then === "function") {
       await maybePromise;
     }
-    const fn = this.resolveDialectFn(symbol, localScope);
-    const ptr = fn() >>> 0;
-    if (ptr === 0) throw new Error(`${symbol} returned null`);
+    let ptr: number;
+    try {
+      const fn = this.resolveDialectFn(symbol, localScope);
+      ptr = fn() >>> 0;
+    } catch {
+      throw new Error(`Symbol "${symbol}" not found in the WASM module.`);
+    }
+    if (ptr === 0) throw new Error(`Symbol "${symbol}" returned null.`);
     this.setDialectPointer(ptr);
     return {symbol, ptr, label: symbol};
   }

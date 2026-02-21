@@ -117,7 +117,7 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
         matchBrackets: "never" as const,
         folding: false,
         glyphMargin: false,
-        lineDecorationsWidth: 0,
+        lineDecorationsWidth: 12,
         lineNumbersMinChars: 0,
         contextmenu: false,
         hideCursorInOverviewRuler: true,
@@ -158,7 +158,7 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
   }
 
   view() {
-    return m("div");
+    return m("div", {style: {width: "100%", height: "100%"}});
   }
 
   private editor: monaco.editor.IStandaloneCodeEditor | null = null;

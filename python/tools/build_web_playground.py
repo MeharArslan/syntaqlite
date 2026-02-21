@@ -180,6 +180,56 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
     print("wrote %s" % out_runtime_js)
     print("wrote %s" % out_runtime_wasm)
     print("wrote %s" % out_dialect)
+
+    # Build Perfetto dialect wasm side module.
+    perfetto_work_dir = os.path.join(ROOT_DIR, ".cache", "perfetto-wasm")
+    perfetto_csrc_dir = os.path.join(perfetto_work_dir, "csrc")
+    os.makedirs(perfetto_csrc_dir, exist_ok=True)
+
+    rc = subprocess.call(
+        [
+            sys.executable, cargo, "--no-sysroot",
+            "run", "-p", "syntaqlite-cli", "--",
+            "dialect", "--name", "perfetto",
+            "--actions-dir", os.path.join(ROOT_DIR, "dialects", "perfetto", "actions"),
+            "--nodes-dir", os.path.join(ROOT_DIR, "dialects", "perfetto", "nodes"),
+            "csrc", "--output-dir", perfetto_csrc_dir,
+        ],
+        cwd=ROOT_DIR, env=env,
+    )
+    if rc != 0:
+        print("failed to generate perfetto amalgamated C sources", file=sys.stderr)
+        return rc
+
+    # Write shim headers for side module compilation.
+    with open(os.path.join(perfetto_csrc_dir, "syntaqlite_runtime.h"), "w", encoding="utf-8") as f:
+        f.write("#ifndef SYNTAQLITE_RUNTIME_H\n#define SYNTAQLITE_RUNTIME_H\n"
+                "#include \"syntaqlite/config.h\"\n#include \"syntaqlite/types.h\"\n"
+                "#include \"syntaqlite/dialect.h\"\n#include \"syntaqlite/parser.h\"\n"
+                "#include \"syntaqlite/tokenizer.h\"\n#endif\n")
+    with open(os.path.join(perfetto_csrc_dir, "syntaqlite_ext.h"), "w", encoding="utf-8") as f:
+        f.write("#ifndef SYNTAQLITE_EXT_H\n#define SYNTAQLITE_EXT_H\n"
+                "#include \"syntaqlite_ext/sqlite_compat.h\"\n#include \"syntaqlite_ext/arena.h\"\n"
+                "#include \"syntaqlite_ext/vec.h\"\n#include \"syntaqlite_ext/ast_builder.h\"\n"
+                "#endif\n")
+
+    out_perfetto = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-perfetto.wasm")
+    rc = subprocess.call(
+        [
+            "emcc", "-O3", "-fPIC",
+            os.path.join(perfetto_csrc_dir, "syntaqlite_perfetto.c"),
+            "-I", perfetto_csrc_dir,
+            "-I", os.path.join(ROOT_DIR, "syntaqlite-runtime", "include"),
+            "-sWASM_BIGINT", "-sSIDE_MODULE=1", "--no-entry",
+            "-o", out_perfetto,
+        ],
+        cwd=ROOT_DIR, env=env,
+    )
+    if rc != 0:
+        print("failed to compile perfetto dialect wasm", file=sys.stderr)
+        return rc
+
+    print("wrote %s" % out_perfetto)
     return 0
 
 

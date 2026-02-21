@@ -46,6 +46,7 @@ def watch_and_rebuild(root, build_script, interval=1.0):
         os.path.join(root, "syntaqlite-runtime", "include"),
         os.path.join(root, "syntaqlite-runtime", "src"),
         os.path.join(root, "syntaqlite-wasm", "src"),
+        os.path.join(root, "dialects"),
     ]
     prev = scan_mtimes(watch_dirs, WATCH_EXTS)
 

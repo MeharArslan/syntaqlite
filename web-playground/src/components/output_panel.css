@@ -73,15 +73,10 @@
   user-select: none;
 }
 
-.sq-panel-options input[type="number"] {
-  width: 60px;
-  padding: 3px 6px;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  color: var(--ink);
-  background: var(--input-bg);
-  font: inherit;
-  font-size: 0.85rem;
+.sq-panel-options input[type="range"] {
+  width: 100px;
+  accent-color: var(--accent);
+  cursor: pointer;
 }
 
 .sq-panel-options select {

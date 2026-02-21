@@ -51,7 +51,7 @@ async function main() {
 
   try {
     await app.runtime.load();
-    await app.dialect.loadBuiltin(app.runtime);
+    await app.dialect.loadDefault(app.runtime);
     app.runtime.updateStatus("Ready.");
   } catch (err) {
     app.runtime.updateStatus(`Failed to initialize: ${(err as Error).message}`, true);

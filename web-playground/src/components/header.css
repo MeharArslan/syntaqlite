@@ -60,26 +60,44 @@
   border-color: var(--accent-soft);
 }
 
-/* ── Dialect popover block ── */
-.sq-dialect-popover {
-  position: relative;
+/* ── Dialect switcher block ── */
+.sq-dialect-switcher {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: visible;
 }
 
-.sq-dialect-popover__trigger {
+.sq-dialect-switcher__btn {
   background: transparent;
-  border: 1px solid var(--line);
+  border: none;
   color: var(--muted);
   padding: 4px 10px;
   font-size: 0.85rem;
   line-height: 1;
   cursor: pointer;
-  border-radius: 6px;
+  white-space: nowrap;
 }
 
-.sq-dialect-popover__trigger:hover {
+.sq-dialect-switcher__btn:not(:last-child) {
+  border-right: 1px solid var(--line);
+}
+
+.sq-dialect-switcher__btn:hover {
   background: var(--accent-soft);
   color: var(--accent);
-  border-color: var(--accent-soft);
+}
+
+.sq-dialect-switcher__btn--active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Dialect popover block (custom upload) ── */
+.sq-dialect-popover {
+  position: relative;
 }
 
 .sq-dialect-popover__panel {
@@ -145,6 +163,35 @@
   font-size: 0.82rem;
   background: var(--input-bg);
   color: var(--ink);
+}
+
+.sq-dialect-popover__error {
+  font-size: 0.78rem;
+  color: var(--error, #d44);
+  padding: 2px 0;
+}
+
+.sq-dialect-popover__load-btn {
+  flex: 1;
+  padding: 5px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.sq-dialect-popover__load-btn:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--surface);
+}
+
+.sq-dialect-popover__load-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .sq-dialect-popover__backdrop {

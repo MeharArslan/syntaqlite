@@ -39,8 +39,8 @@ DIALECT_CONFIGS = {
     "sqlite": DialectConfig(name="sqlite"),
     "perfetto": DialectConfig(
         name="perfetto",
-        actions_dir=os.path.join(ROOT_DIR, "tests/amalg_tests/perfetto_ext/actions"),
-        nodes_dir=os.path.join(ROOT_DIR, "tests/amalg_tests/perfetto_ext/nodes"),
+        actions_dir=os.path.join(ROOT_DIR, "dialects/perfetto/actions"),
+        nodes_dir=os.path.join(ROOT_DIR, "dialects/perfetto/nodes"),
     ),
 }
 

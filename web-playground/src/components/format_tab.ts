@@ -42,16 +42,13 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
 
     return m("div.sq-tab-panel", {class: active ? "sq-tab-panel--active" : ""}, [
       m("div.sq-panel-options", [
-        m("label", "Width"),
-        m("input[type=number]", {
+        m("label", `Width: ${this.formatOptions.lineWidth}`),
+        m("input[type=range]", {
           min: 20,
           max: 240,
           value: this.formatOptions.lineWidth,
           oninput: (e: Event) => {
-            this.formatOptions.lineWidth = Math.max(
-              20,
-              Number((e.target as HTMLInputElement).value) || 80,
-            );
+            this.formatOptions.lineWidth = Number((e.target as HTMLInputElement).value);
           },
         }),
         m("label", "Keywords"),
