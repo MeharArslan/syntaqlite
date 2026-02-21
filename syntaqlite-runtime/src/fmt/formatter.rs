@@ -8,9 +8,10 @@ use crate::dialect::ffi::{
     FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldMeta,
 };
 use crate::parser::{
-    Comment, CommentKind, CursorBase, FieldVal, Fields, MacroRegion, NodeId, Parser, ParserConfig,
-    SourceSpan,
+    Comment, CommentKind, CursorBase, FieldVal, Fields, MacroRegion, NodeId, Parser,
+    ParserConfig, SourceSpan, TokenPos,
 };
+use super::interpret::CommentInfo;
 
 use super::FormatConfig;
 use super::comment::CommentCtx;
@@ -69,6 +70,7 @@ impl<'d> Formatter<'d> {
 
         let base = cursor.base();
         let comments = base.comments().to_vec();
+        let tokens = base.tokens();
         Ok(format_stmts(
             self.dialect,
             &self.config,
@@ -76,6 +78,7 @@ impl<'d> Formatter<'d> {
             base,
             &roots,
             &comments,
+            tokens,
             source,
         ))
     }
@@ -84,7 +87,7 @@ impl<'d> Formatter<'d> {
     /// for cases where the caller controls parsing (e.g. macro expansion).
     pub fn format_node(&self, cursor: &CursorBase<'_>, node_id: NodeId) -> String {
         let mut arena = DocArena::new();
-        let doc = format_node(self.dialect, cursor, node_id, &mut arena);
+        let doc = format_node(self.dialect, cursor, node_id, &mut arena, None);
         render(&arena, doc, &self.config)
     }
 }
@@ -98,89 +101,136 @@ fn format_stmts<'a>(
     cursor: &'a CursorBase<'a>,
     roots: &[NodeId],
     comments: &[Comment],
+    tokens: &[TokenPos],
     source: &str,
 ) -> String {
-    let mut out = String::new();
-    let mut comment_cursor = 0;
-
-    for (i, &root_id) in roots.iter().enumerate() {
-        if i > 0 {
-            if semicolons {
-                out.push(';');
-            }
-            out.push_str("\n\n");
-        }
-
-        let stmt_start =
-            first_source_offset(&dialect, cursor, root_id).unwrap_or(source.len() as u32);
-
-        // Emit leading comments before this statement.
-        while comment_cursor < comments.len() && comments[comment_cursor].offset < stmt_start {
-            let t = &comments[comment_cursor];
-            let text = &source[t.offset as usize..(t.offset + t.length) as usize];
-            match t.kind {
-                CommentKind::LineComment => {
-                    out.push_str(text);
-                    out.push('\n');
-                }
-                CommentKind::BlockComment => {
-                    out.push_str(text);
-                    out.push(' ');
-                }
-            }
-            comment_cursor += 1;
-        }
-
-        // Collect comments within this statement's span.
-        let stmt_end = if i + 1 < roots.len() {
-            first_source_offset(&dialect, cursor, roots[i + 1]).unwrap_or(source.len() as u32)
-        } else {
-            source.len() as u32
-        };
-
-        let within_start = comment_cursor;
-        while comment_cursor < comments.len() && comments[comment_cursor].offset < stmt_end {
-            comment_cursor += 1;
-        }
-        let within_comments = &comments[within_start..comment_cursor];
-
-        // Format the statement, interleaving any within-statement comments.
-        let mut arena = DocArena::new();
-        if within_comments.is_empty() {
-            let doc = format_node(dialect, cursor, root_id, &mut arena);
-            out.push_str(&render(&arena, doc, config));
-        } else {
-            let comment_ctx = CommentCtx::new(within_comments, source);
-            let doc = format_node_with_comments(dialect, cursor, root_id, &mut arena, &comment_ctx);
-            let trailing = comment_ctx.drain_remaining(&mut arena);
-            let final_doc = arena.cat(doc, trailing);
-            out.push_str(&render(&arena, final_doc, config));
-        }
+    if roots.is_empty() {
+        return String::new();
     }
 
-    // Emit trailing comments after the last statement.
-    while comment_cursor < comments.len() {
-        let t = &comments[comment_cursor];
-        let text = &source[t.offset as usize..(t.offset + t.length) as usize];
-        match t.kind {
+    let mut arena = DocArena::new();
+
+    let comment_ctx = if comments.is_empty() {
+        None
+    } else {
+        Some(CommentCtx::new(comments, tokens, source))
+    };
+    let comment_ctx_ref = comment_ctx.as_ref();
+
+    let mut parts: Vec<DocId> = Vec::new();
+    for (i, &root_id) in roots.iter().enumerate() {
+        if let Some(ctx) = &comment_ctx {
+            if let Some((next_offset, _)) = ctx.peek_next_token() {
+                if i == 0 {
+                    // Drain comments before the first statement (e.g. file header).
+                    drain_gap_comments(ctx, next_offset, source, &mut arena, &mut parts);
+                } else {
+                    // Emit statement separator.
+                    if semicolons {
+                        parts.push(arena.text(";"));
+                    }
+                    // Drain trailing comments (same line as end of previous stmt).
+                    drain_trailing_gap(ctx, next_offset, source, &mut arena, &mut parts);
+                    // Statement separator blank line.
+                    parts.push(arena.hardline());
+                    parts.push(arena.hardline());
+                    // Drain leading comments (on their own lines before next stmt).
+                    drain_gap_comments(ctx, next_offset, source, &mut arena, &mut parts);
+                }
+            } else if i > 0 {
+                if semicolons {
+                    parts.push(arena.text(";"));
+                }
+                parts.push(arena.hardline());
+                parts.push(arena.hardline());
+            }
+        } else if i > 0 {
+            if semicolons {
+                parts.push(arena.text(";"));
+            }
+            parts.push(arena.hardline());
+            parts.push(arena.hardline());
+        }
+
+        parts.push(format_node(
+            dialect,
+            cursor,
+            root_id,
+            &mut arena,
+            comment_ctx_ref,
+        ));
+    }
+
+    if let Some(ctx) = &comment_ctx {
+        let trailing = ctx.drain_remaining(&mut arena);
+        parts.push(trailing);
+    }
+
+    let doc = arena.cats(&parts);
+    let mut out = render(&arena, doc, config);
+
+    if semicolons {
+        out.push(';');
+    }
+    out.push('\n');
+    out
+}
+
+/// Drain trailing comments from the inter-statement gap (same line as the
+/// previous statement's end). Stops at the first newline.
+fn drain_trailing_gap<'a>(
+    ctx: &CommentCtx<'a>,
+    before: u32,
+    source: &'a str,
+    arena: &mut DocArena<'a>,
+    parts: &mut Vec<DocId>,
+) {
+    while let Some(c) = ctx.peek_comment() {
+        if c.offset >= before {
+            break;
+        }
+        let gap_start = (ctx.last_source_end() as usize).min(source.len());
+        let gap_end = (c.offset as usize).min(source.len());
+        if gap_start < gap_end && source[gap_start..gap_end].contains('\n') {
+            break; // This comment is on a new line — it's leading, not trailing.
+        }
+        let text = &source[c.offset as usize..(c.offset + c.length) as usize];
+        match c.kind {
             CommentKind::LineComment => {
-                out.push_str(text);
-                out.push('\n');
+                let space = arena.text(" ");
+                let comment = arena.text(text);
+                let inner = arena.cat(space, comment);
+                parts.push(arena.line_suffix(inner));
+                parts.push(arena.break_parent());
             }
             CommentKind::BlockComment => {
-                out.push_str(text);
+                parts.push(arena.text(" "));
+                parts.push(arena.text(text));
             }
         }
-        comment_cursor += 1;
+        ctx.set_source_end(c.offset + c.length);
+        ctx.advance_comment();
     }
+}
 
-    if !roots.is_empty() {
-        if semicolons {
-            out.push(';');
+/// Drain leading comments from the inter-statement gap (each on its own line).
+fn drain_gap_comments<'a>(
+    ctx: &CommentCtx<'a>,
+    before: u32,
+    source: &'a str,
+    arena: &mut DocArena<'a>,
+    parts: &mut Vec<DocId>,
+) {
+    while let Some(c) = ctx.peek_comment() {
+        if c.offset >= before {
+            break;
         }
-        out.push('\n');
+        let text = &source[c.offset as usize..(c.offset + c.length) as usize];
+        parts.push(arena.text(text));
+        parts.push(arena.hardline());
+        ctx.set_source_end(c.offset + c.length);
+        ctx.advance_comment();
     }
-    out
 }
 
 // ── Single-node formatting ──────────────────────────────────────────────
@@ -190,27 +240,10 @@ fn format_node<'a>(
     cursor: &'a CursorBase<'a>,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
+    comment_ctx: Option<&'a CommentCtx<'a>>,
 ) -> DocId {
     let consumed = Cell::new(0u64);
-    format_node_inner(dialect, cursor, node_id, arena, None, &consumed)
-}
-
-fn format_node_with_comments<'a>(
-    dialect: Dialect<'a>,
-    cursor: &'a CursorBase<'a>,
-    node_id: NodeId,
-    arena: &mut DocArena<'a>,
-    comment_ctx: &'a CommentCtx<'a>,
-) -> DocId {
-    let consumed = Cell::new(0u64);
-    format_node_inner(
-        dialect,
-        cursor,
-        node_id,
-        arena,
-        Some(comment_ctx),
-        &consumed,
-    )
+    format_node_inner(dialect, cursor, node_id, arena, comment_ctx, &consumed)
 }
 
 fn format_node_inner<'a>(
@@ -256,11 +289,10 @@ fn format_node_inner<'a>(
 
     let source_offset_fn =
         move |id: NodeId| -> Option<u32> { first_source_offset(&dialect, cursor, id) };
-    let source_offset: Option<&dyn Fn(NodeId) -> Option<u32>> = if comment_ctx.is_some() {
-        Some(&source_offset_fn)
-    } else {
-        None
-    };
+    let comments = comment_ctx.map(|ctx| CommentInfo {
+        ctx,
+        source_offset: &source_offset_fn as &dyn Fn(NodeId) -> Option<u32>,
+    });
 
     Interpreter::new(
         dialect,
@@ -268,8 +300,7 @@ fn format_node_inner<'a>(
         ops_len,
         &format_child,
         &resolve_list,
-        comment_ctx,
-        source_offset,
+        comments,
     )
     .run(&fields, children, arena)
 }

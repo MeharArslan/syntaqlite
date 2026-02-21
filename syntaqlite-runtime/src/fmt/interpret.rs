@@ -10,6 +10,12 @@ use super::doc::{DocArena, DocId};
 
 // ── Interpreter (pub(crate)) ────────────────────────────────────────────
 
+/// Comment-related context bundled into a single optional parameter.
+pub(crate) struct CommentInfo<'a, 'b> {
+    pub ctx: &'b CommentCtx<'a>,
+    pub source_offset: &'b dyn Fn(NodeId) -> Option<u32>,
+}
+
 /// Bytecode interpreter for formatting ops. Reads string/enum data via
 /// `Dialect` safe accessors and decodes ops from a byte slice on demand.
 pub(crate) struct Interpreter<'a, 'b> {
@@ -20,8 +26,7 @@ pub(crate) struct Interpreter<'a, 'b> {
     // Callbacks
     format_child: &'b dyn Fn(NodeId, &mut DocArena<'a>) -> DocId,
     resolve_list: &'b dyn Fn(NodeId) -> Vec<NodeId>,
-    comment_ctx: Option<&'b CommentCtx<'a>>,
-    source_offset: Option<&'b dyn Fn(NodeId) -> Option<u32>>,
+    comments: Option<CommentInfo<'a, 'b>>,
 }
 
 impl<'a, 'b> Interpreter<'a, 'b> {
@@ -31,8 +36,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         ops_len: usize,
         format_child: &'b dyn Fn(NodeId, &mut DocArena<'a>) -> DocId,
         resolve_list: &'b dyn Fn(NodeId) -> Vec<NodeId>,
-        comment_ctx: Option<&'b CommentCtx<'a>>,
-        source_offset: Option<&'b dyn Fn(NodeId) -> Option<u32>>,
+        comments: Option<CommentInfo<'a, 'b>>,
     ) -> Self {
         Interpreter {
             dialect,
@@ -40,8 +44,7 @@ impl<'a, 'b> Interpreter<'a, 'b> {
             ops_len,
             format_child,
             resolve_list,
-            comment_ctx,
-            source_offset,
+            comments,
         }
     }
 
@@ -60,25 +63,34 @@ impl<'a, 'b> Interpreter<'a, 'b> {
         let mut for_each_stack: Vec<ForEachState> = Vec::new();
         let mut pending_lines: Vec<DocId> = Vec::new();
         let mut ip: usize = 0;
-        let has_comments = self.comment_ctx.is_some();
+        let has_comments = self.comments.is_some();
 
         while ip < self.ops_len {
             match self.op_at(ip) {
                 FmtOp::Keyword(sid) => {
-                    if has_comments {
-                        parts.extend(pending_lines.drain(..));
+                    let kw_text = self.string(sid);
+                    if let Some(ci) = &self.comments {
+                        if let Some((tok_offset, tok_end)) = ci.ctx.next_keyword_tokens(kw_text) {
+                            let drain = ci.ctx.drain_before(tok_offset, arena);
+                            flush_comments(drain, &mut pending_lines, &mut parts);
+                            ci.ctx.set_source_end(tok_end);
+                        } else {
+                            parts.extend(pending_lines.drain(..));
+                        }
                     }
-                    parts.push(arena.keyword(self.string(sid)));
+                    parts.push(arena.keyword(kw_text));
                 }
                 FmtOp::Span(idx) => {
                     let FieldVal::Span(s, offset) = fields[idx as usize] else {
                         panic!("Span: field {} is not a Span", idx);
                     };
                     if !s.is_empty() {
-                        if let Some(tc) = self.comment_ctx {
-                            let drain = tc.drain_before(offset, arena);
+                        if let Some(ci) = &self.comments {
+                            let drain = ci.ctx.drain_before(offset, arena);
                             flush_comments(drain, &mut pending_lines, &mut parts);
-                            tc.set_source_end(offset + s.len() as u32);
+                            let span_end = offset + s.len() as u32;
+                            ci.ctx.set_source_end(span_end);
+                            ci.ctx.advance_past(span_end);
                         }
                         parts.push(arena.text(s));
                     }
@@ -88,9 +100,9 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                         panic!("Child: field {} is not a NodeId", idx);
                     };
                     if !child_id.is_null() {
-                        if let (Some(tc), Some(so)) = (self.comment_ctx, self.source_offset) {
-                            if let Some(offset) = so(child_id) {
-                                let drain = tc.drain_before(offset, arena);
+                        if let Some(ci) = &self.comments {
+                            if let Some(offset) = (ci.source_offset)(child_id) {
+                                let drain = ci.ctx.drain_before(offset, arena);
                                 flush_comments(drain, &mut pending_lines, &mut parts);
                             } else {
                                 parts.extend(pending_lines.drain(..));
@@ -155,13 +167,9 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                     };
                     if id.is_null() {
                         ip += skip as usize;
-                    } else if let (Some(tc), Some(so)) = (self.comment_ctx, self.source_offset) {
-                        // Drain comments before this clause's source range.
-                        if let Some(offset) = so(id) {
-                            let drain = tc.drain_before(offset, arena);
-                            flush_comments(drain, &mut pending_lines, &mut parts);
-                        }
                     }
+                    // Don't drain comments here — let Child/ChildItem/Span
+                    // handle draining at the correct nesting level.
                 }
                 FmtOp::Else(skip) => {
                     ip += skip as usize;
@@ -189,9 +197,9 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                 FmtOp::ChildItem => {
                     let state = for_each_stack.last().expect("ChildItem outside ForEach");
                     let child_id = state.children[state.index];
-                    if let (Some(tc), Some(so)) = (self.comment_ctx, self.source_offset) {
-                        if let Some(offset) = so(child_id) {
-                            let drain = tc.drain_before(offset, arena);
+                    if let Some(ci) = &self.comments {
+                        if let Some(offset) = (ci.source_offset)(child_id) {
+                            let drain = ci.ctx.drain_before(offset, arena);
                             flush_comments(drain, &mut pending_lines, &mut parts);
                         } else {
                             parts.extend(pending_lines.drain(..));
@@ -256,11 +264,18 @@ impl<'a, 'b> Interpreter<'a, 'b> {
                     let FieldVal::Enum(ordinal) = fields[idx as usize] else {
                         panic!("EnumDisplay: field {} is not an Enum", idx);
                     };
-                    if has_comments {
-                        parts.extend(pending_lines.drain(..));
-                    }
                     let string_id = self.enum_display_val(base as usize + ordinal as usize);
-                    parts.push(arena.keyword(self.string(string_id)));
+                    let kw_text = self.string(string_id);
+                    if let Some(ci) = &self.comments {
+                        if let Some((tok_offset, tok_end)) = ci.ctx.next_keyword_tokens(kw_text) {
+                            let drain = ci.ctx.drain_before(tok_offset, arena);
+                            flush_comments(drain, &mut pending_lines, &mut parts);
+                            ci.ctx.set_source_end(tok_end);
+                        } else {
+                            parts.extend(pending_lines.drain(..));
+                        }
+                    }
+                    parts.push(arena.keyword(kw_text));
                 }
                 FmtOp::ForEachSelfStart => {
                     let children = list_children.expect("ForEachSelfStart on non-list node");
@@ -576,7 +591,6 @@ mod tests {
             &noop_child,
             &no_lists,
             None,
-            None,
         );
         let doc = interp.run(fields, None, &mut arena);
         render(&arena, doc, config)
@@ -666,7 +680,7 @@ mod tests {
             assert_eq!(node_id, NodeId(42));
             arena.text("child_result")
         };
-        let interp = Interpreter::new(dialect, &ops_bytes, 1, &format_child, &no_lists, None, None);
+        let interp = Interpreter::new(dialect, &ops_bytes, 1, &format_child, &no_lists, None);
         let doc = interp.run(fields, None, &mut arena);
         assert_eq!(
             render(&arena, doc, &FormatConfig::default()),
@@ -753,7 +767,6 @@ mod tests {
             &format_child,
             &resolve_list,
             None,
-            None,
         );
         let doc = interp.run(fields, None, &mut arena);
         assert_eq!(render(&arena, doc, &FormatConfig::default()), "a, b, c");
@@ -791,7 +804,6 @@ mod tests {
             &format_child,
             &resolve_list,
             None,
-            None,
         );
         let doc = interp.run(fields, None, &mut arena);
         assert_eq!(render(&arena, doc, &FormatConfig::default()), "aaaa, bbbb");
@@ -827,7 +839,6 @@ mod tests {
             ops.len(),
             &noop_child,
             &resolve_list,
-            None,
             None,
         );
         let doc = interp.run(fields, None, &mut arena);
@@ -986,7 +997,6 @@ mod tests {
             &format_child,
             &no_lists,
             None,
-            None,
         );
         let doc = interp.run(&[], Some(children), &mut arena);
         assert_eq!(render(&arena, doc, &FormatConfig::default()), "x, y, z");
@@ -1013,7 +1023,6 @@ mod tests {
             ops.len(),
             &noop_child,
             &no_lists,
-            None,
             None,
         );
         let doc = interp.run(&[], Some(children), &mut arena);

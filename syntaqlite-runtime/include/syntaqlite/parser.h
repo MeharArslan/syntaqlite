@@ -56,6 +56,12 @@ typedef struct SyntaqliteComment {
   uint8_t kind;      // 0 = line comment (--), 1 = block comment (/* */).
 } SyntaqliteComment;
 
+// A non-whitespace, non-comment token position captured during parsing.
+typedef struct SyntaqliteTokenPos {
+  uint32_t offset;   // Byte offset in source.
+  uint32_t length;   // Byte length.
+} SyntaqliteTokenPos;
+
 // Result of parsing one statement via syntaqlite_parser_next().
 //
 // Check root first: if it is SYNTAQLITE_NULL_NODE, parsing is done — then
@@ -124,6 +130,12 @@ uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p);
 // enabled. Sets *count to the number of comments.
 const SyntaqliteComment* syntaqlite_parser_comments(SyntaqliteParser* p,
                                                      uint32_t* count);
+
+// Return the non-whitespace, non-comment token positions captured during
+// parsing. Requires collect_tokens to be enabled. Sets *count to the number
+// of tokens. The returned pointer is valid until the next reset() or destroy().
+const SyntaqliteTokenPos* syntaqlite_parser_tokens(SyntaqliteParser* p,
+                                                    uint32_t* count);
 
 // Return the macro regions recorded via begin_macro/end_macro. The returned
 // pointer is valid until the next reset() or destroy(). Sets *count to the

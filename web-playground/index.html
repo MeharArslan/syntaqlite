@@ -19,27 +19,6 @@
           <input id="extension-name" type="text" placeholder="dialect name" class="dialect-name" />
           <button id="clear-extension" type="button" class="ghost btn-sm" title="Unload dialect">Unload</button>
         </div>
-        <div class="fmt-controls-wrapper">
-          <button id="toggle-fmt-options" type="button" class="ghost btn-sm">Options</button>
-          <div id="fmt-popover" class="fmt-popover hidden">
-            <div class="fmt-row">
-              <label for="line-width">Line Width</label>
-              <input id="line-width" type="number" min="20" max="240" value="80" />
-            </div>
-            <div class="fmt-row">
-              <label for="keyword-case">Keyword Case</label>
-              <select id="keyword-case">
-                <option value="0">Preserve</option>
-                <option value="1" selected>Upper</option>
-                <option value="2">Lower</option>
-              </select>
-            </div>
-            <div class="fmt-row checkbox-row">
-              <input id="semicolons" type="checkbox" checked />
-              <label for="semicolons">Append semicolons</label>
-            </div>
-          </div>
-        </div>
       </div>
     </header>
 
@@ -54,10 +33,34 @@
           <button class="tab" data-tab="ast">AST</button>
         </nav>
         <div class="tab-panel active" data-panel="format">
+          <div class="panel-options">
+            <label for="line-width">Width</label>
+            <input id="line-width" type="number" min="20" max="240" value="80" />
+            <label for="keyword-case">Keywords</label>
+            <select id="keyword-case">
+              <option value="0">Preserve</option>
+              <option value="1" selected>Upper</option>
+              <option value="2">Lower</option>
+            </select>
+            <input id="semicolons" type="checkbox" checked />
+            <label for="semicolons">Semicolons</label>
+          </div>
           <pre id="format-output"></pre>
         </div>
         <div class="tab-panel" data-panel="ast">
-          <pre id="ast-output"></pre>
+          <div class="panel-options">
+            <label for="ast-view-mode">View</label>
+            <select id="ast-view-mode">
+              <option value="outline">Outline</option>
+              <option value="graph">Graph</option>
+            </select>
+            <input id="ast-show-nulls" type="checkbox" />
+            <label for="ast-show-nulls">Show empty fields</label>
+          </div>
+          <div id="ast-output" class="ast-tree"></div>
+          <div id="ast-canvas-container" class="ast-canvas-container">
+            <canvas id="ast-canvas"></canvas>
+          </div>
         </div>
       </section>
     </section>

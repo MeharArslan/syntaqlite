@@ -46,6 +46,16 @@ pub struct Comment {
     pub kind: CommentKind,
 }
 
+/// A non-whitespace, non-comment token position captured during parsing.
+///
+/// Mirrors C `SyntaqliteTokenPos` from `include/syntaqlite/parser.h`.
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct TokenPos {
+    pub offset: u32,
+    pub length: u32,
+}
+
 /// A recorded macro invocation region. Populated via the low-level API
 /// (`begin_macro` / `end_macro`). The formatter can use these to reconstruct
 /// macro calls from the expanded AST.
@@ -96,6 +106,9 @@ unsafe extern "C" {
 
     // Comments
     pub fn syntaqlite_parser_comments(p: *mut Parser, count: *mut u32) -> *const Comment;
+
+    // Token positions
+    pub fn syntaqlite_parser_tokens(p: *mut Parser, count: *mut u32) -> *const TokenPos;
 
     // Low-level token-feeding API
     pub fn syntaqlite_parser_feed_token(

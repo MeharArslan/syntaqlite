@@ -31,6 +31,7 @@ struct SyntaqliteParser {
   int collect_tokens;
   int sealed;
   SYNQ_VEC(SyntaqliteComment) comments;
+  SYNQ_VEC(SyntaqliteTokenPos) tokens;
   int macro_depth;           // Nesting depth (0 = not in macro).
   SYNQ_VEC(SyntaqliteMacroRegion) macros;
 };
@@ -49,6 +50,7 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
   p->lemon = SYNQ_PARSER_ALLOC(dialect, m.xMalloc);
   synq_parse_ctx_init(&p->ctx, m);
   syntaqlite_vec_init(&p->comments);
+  syntaqlite_vec_init(&p->tokens);
   syntaqlite_vec_init(&p->macros);
   return p;
 }
@@ -74,6 +76,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->had_error = 0;
   p->error_msg[0] = '\0';
   syntaqlite_vec_clear(&p->comments);
+  syntaqlite_vec_clear(&p->tokens);
   p->macro_depth = 0;
   syntaqlite_vec_clear(&p->macros);
 
@@ -266,6 +269,14 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
       continue;
     }
 
+    // Capture non-whitespace, non-comment, non-semicolon token positions.
+    // Semicolons are statement separators, not part of the AST — including
+    // them would desync the token cursor with format ops.
+    if (p->collect_tokens && token_type != p->dialect->tk_semi) {
+      SyntaqliteTokenPos tp = {tok_offset, (uint32_t)token_len};
+      syntaqlite_vec_push(&p->tokens, tp, p->mem);
+    }
+
     int rc = feed_one_token(p, token_type, p->source + tok_offset,
                             (int)token_len);
     if (rc < 0) {
@@ -319,6 +330,13 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
       syntaqlite_vec_push(&p->comments, t, p->mem);
     }
     return 0;
+  }
+
+  // Capture non-whitespace, non-comment, non-semicolon token positions.
+  if (p->collect_tokens && text && token_type != p->dialect->tk_semi) {
+    uint32_t tok_offset = (uint32_t)(text - p->source);
+    SyntaqliteTokenPos tp = {tok_offset, (uint32_t)len};
+    syntaqlite_vec_push(&p->tokens, tp, p->mem);
   }
 
   // Reset per-statement state if starting fresh.
@@ -541,6 +559,7 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p) {
     SYNQ_PARSER_FREE(p->dialect, p->lemon, p->mem.xFree);
     synq_parse_ctx_free(&p->ctx);
     syntaqlite_vec_free(&p->comments, p->mem);
+    syntaqlite_vec_free(&p->tokens, p->mem);
     syntaqlite_vec_free(&p->macros, p->mem);
     p->mem.xFree(p);
   }
@@ -589,4 +608,10 @@ const SyntaqliteComment* syntaqlite_parser_comments(SyntaqliteParser* p,
                                                   uint32_t* count) {
   *count = syntaqlite_vec_len(&p->comments);
   return p->comments.data;
+}
+
+const SyntaqliteTokenPos* syntaqlite_parser_tokens(SyntaqliteParser* p,
+                                                    uint32_t* count) {
+  *count = syntaqlite_vec_len(&p->tokens);
+  return p->tokens.data;
 }

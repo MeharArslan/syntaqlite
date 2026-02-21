@@ -26,8 +26,23 @@ impl<'d> Dialect<'d> {
         unsafe { Dialect { raw: &*raw } }
     }
 
+    /// Return the node name for the given tag.
+    pub fn node_name(&self, tag: u32) -> &'d str {
+        let idx = tag as usize;
+        assert!(
+            idx < self.raw.node_count as usize,
+            "node tag {} out of bounds (count={})",
+            idx,
+            self.raw.node_count,
+        );
+        unsafe {
+            let cstr = std::ffi::CStr::from_ptr(*self.raw.node_names.add(idx));
+            cstr.to_str().expect("invalid UTF-8 in node name")
+        }
+    }
+
     /// Whether the given node tag represents a list node.
-    pub(crate) fn is_list(&self, tag: u32) -> bool {
+    pub fn is_list(&self, tag: u32) -> bool {
         let idx = tag as usize;
         if idx >= self.raw.node_count as usize {
             return false;
@@ -36,7 +51,7 @@ impl<'d> Dialect<'d> {
     }
 
     /// Return the field metadata slice for a node tag.
-    pub(crate) fn field_meta(&self, tag: u32) -> &'d [ffi::FieldMeta] {
+    pub fn field_meta(&self, tag: u32) -> &'d [ffi::FieldMeta] {
         let idx = tag as usize;
         if idx >= self.raw.node_count as usize {
             return &[];

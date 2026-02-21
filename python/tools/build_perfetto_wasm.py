@@ -145,7 +145,6 @@ def main():
         [
             "emcc",
             "-O3",
-            "-g3",
             "-fPIC",
             c_file,
             "-I",

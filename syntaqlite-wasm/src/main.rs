@@ -4,9 +4,10 @@
 use std::cell::{Cell, RefCell};
 use std::slice;
 
-use syntaqlite_runtime::dialect::ffi as dialect_ffi;
+use syntaqlite_runtime::dialect::ffi::{self as dialect_ffi, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN};
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
-use syntaqlite_runtime::{Dialect, Parser};
+use syntaqlite_runtime::parser::{CursorBase, SourceSpan};
+use syntaqlite_runtime::{Dialect, NodeId, Parser};
 
 thread_local! {
     static RESULT_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
@@ -44,6 +45,212 @@ fn resolve_dialect() -> Result<Dialect<'static>, String> {
     let raw = ptr as *const dialect_ffi::Dialect;
     // SAFETY: the caller must provide a valid pointer to a dialect descriptor.
     Ok(unsafe { Dialect::from_raw(raw) })
+}
+
+// ── JSON AST dump ────────────────────────────────────────────────────
+
+fn json_escape(out: &mut String, s: &str) {
+    for ch in s.chars() {
+        match ch {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c < '\x20' => {
+                use std::fmt::Write;
+                let _ = write!(out, "\\u{:04x}", c as u32);
+            }
+            c => out.push(c),
+        }
+    }
+}
+
+fn dump_node_json(out: &mut String, dialect: &Dialect, cursor: &CursorBase, id: NodeId) {
+    let Some((ptr, tag)) = cursor.node_ptr(id) else {
+        out.push_str("null");
+        return;
+    };
+
+    let name = dialect.node_name(tag);
+
+    if dialect.is_list(tag) {
+        let children = cursor.list_children(id, dialect).unwrap_or(&[]);
+        out.push_str("{\"type\":\"list\",\"name\":\"");
+        json_escape(out, name);
+        out.push_str("\",\"count\":");
+        out.push_str(&children.len().to_string());
+        out.push_str(",\"children\":[");
+        for (i, &child_id) in children.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            dump_node_json(out, dialect, cursor, child_id);
+        }
+        out.push_str("]}");
+        return;
+    }
+
+    let meta = dialect.field_meta(tag);
+    let source = cursor.source();
+
+    out.push_str("{\"type\":\"node\",\"name\":\"");
+    json_escape(out, name);
+    out.push_str("\",\"fields\":[");
+
+    for (i, m) in meta.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+
+        let label = unsafe { std::ffi::CStr::from_ptr(m.name) }
+            .to_str()
+            .unwrap_or("?");
+
+        unsafe {
+            let field_ptr = ptr.add(m.offset as usize);
+            match m.kind {
+                FIELD_NODE_ID => {
+                    let child_id = NodeId(*(field_ptr as *const u32));
+                    out.push_str("{\"label\":\"");
+                    json_escape(out, label);
+                    out.push_str("\",\"kind\":\"node\",\"child\":");
+                    if child_id.is_null() {
+                        out.push_str("null");
+                    } else {
+                        dump_node_json(out, dialect, cursor, child_id);
+                    }
+                    out.push('}');
+                }
+                FIELD_SPAN => {
+                    let span = &*(field_ptr as *const SourceSpan);
+                    out.push_str("{\"label\":\"");
+                    json_escape(out, label);
+                    out.push_str("\",\"kind\":\"span\",\"value\":");
+                    if span.is_empty() {
+                        out.push_str("null");
+                    } else {
+                        out.push('"');
+                        json_escape(out, span.as_str(source));
+                        out.push('"');
+                    }
+                    out.push('}');
+                }
+                FIELD_BOOL => {
+                    let val = *(field_ptr as *const u32) != 0;
+                    out.push_str("{\"label\":\"");
+                    json_escape(out, label);
+                    out.push_str("\",\"kind\":\"bool\",\"value\":");
+                    out.push_str(if val { "true" } else { "false" });
+                    out.push('}');
+                }
+                FIELD_ENUM => {
+                    let val = *(field_ptr as *const u32);
+                    out.push_str("{\"label\":\"");
+                    json_escape(out, label);
+                    out.push_str("\",\"kind\":\"enum\",\"value\":");
+                    // C dump: display[val] where val is the raw enum ordinal.
+                    let display_count = m.display_count as usize;
+                    if (val as usize) < display_count && !m.display.is_null() {
+                        let display_ptr = *m.display.add(val as usize);
+                        if !display_ptr.is_null() {
+                            let cstr = std::ffi::CStr::from_ptr(display_ptr);
+                            let s = cstr.to_str().unwrap_or("?");
+                            out.push('"');
+                            json_escape(out, s);
+                            out.push('"');
+                        } else {
+                            out.push_str("null");
+                        }
+                    } else {
+                        out.push_str("null");
+                    }
+                    out.push('}');
+                }
+                FIELD_FLAGS => {
+                    let val = *(field_ptr as *const u8);
+                    out.push_str("{\"label\":\"");
+                    json_escape(out, label);
+                    out.push_str("\",\"kind\":\"flags\",\"value\":[");
+                    let display_count = m.display_count as usize;
+                    let mut first = true;
+                    for bit in 0..8u8 {
+                        if val & (1 << bit) != 0 {
+                            if !first {
+                                out.push(',');
+                            }
+                            first = false;
+                            if (bit as usize) < display_count {
+                                let display_ptr = *m.display.add(bit as usize);
+                                if !display_ptr.is_null() {
+                                    let cstr = std::ffi::CStr::from_ptr(display_ptr);
+                                    let s = cstr.to_str().unwrap_or("?");
+                                    out.push('"');
+                                    json_escape(out, s);
+                                    out.push('"');
+                                } else {
+                                    out.push_str(&(1u32 << bit).to_string());
+                                }
+                            } else {
+                                out.push_str(&(1u32 << bit).to_string());
+                            }
+                        }
+                    }
+                    out.push_str("]}");
+                }
+                _ => {
+                    out.push_str("{\"label\":\"");
+                    json_escape(out, label);
+                    out.push_str("\",\"kind\":\"unknown\",\"value\":null}");
+                }
+            }
+        }
+    }
+
+    out.push_str("]}");
+}
+
+fn run_ast_json(ptr: u32, len: u32) -> i32 {
+    let dialect = match resolve_dialect() {
+        Ok(d) => d,
+        Err(e) => {
+            set_result(&e);
+            return 1;
+        }
+    };
+    let source = match decode_input(ptr, len) {
+        Ok(source) => source,
+        Err(e) => {
+            set_result(&e);
+            return 1;
+        }
+    };
+
+    let mut parser = Parser::new(&dialect);
+    let mut cursor = parser.parse(&source);
+    let mut out = String::new();
+    out.push('[');
+    let mut count = 0;
+
+    while let Some(result) = cursor.next_statement() {
+        match result {
+            Ok(root_id) => {
+                if count > 0 {
+                    out.push(',');
+                }
+                dump_node_json(&mut out, &dialect, cursor.base(), root_id);
+                count += 1;
+            }
+            Err(e) => {
+                set_result(&e.to_string());
+                return 1;
+            }
+        }
+    }
+
+    out.push(']');
+    set_result(&out);
+    0
 }
 
 fn run_ast(ptr: u32, len: u32) -> i32 {
@@ -209,6 +416,11 @@ pub extern "C" fn wasm_free(ptr: u32, len: u32) {
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_ast(ptr: u32, len: u32) -> i32 {
     run_ast(ptr, len)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_ast_json(ptr: u32, len: u32) -> i32 {
+    run_ast_json(ptr, len)
 }
 
 #[unsafe(no_mangle)]

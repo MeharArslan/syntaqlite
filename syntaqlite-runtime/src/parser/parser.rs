@@ -254,6 +254,19 @@ impl<'a> CursorBase<'a> {
         Some(unsafe { &*(ptr as *const NodeList) }.children())
     }
 
+    /// Return all non-whitespace, non-comment token positions captured
+    /// during parsing. Requires `collect_tokens: true` in `ParserConfig`.
+    pub fn tokens(&self) -> &[ffi::TokenPos] {
+        unsafe {
+            let mut count: u32 = 0;
+            let ptr = ffi::syntaqlite_parser_tokens(self.reader.raw(), &mut count);
+            if count == 0 || ptr.is_null() {
+                return &[];
+            }
+            std::slice::from_raw_parts(ptr, count as usize)
+        }
+    }
+
     /// Return all comments captured during parsing.
     /// Requires `collect_tokens: true` in `ParserConfig`.
     ///

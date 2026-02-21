@@ -74,8 +74,6 @@ def main():
     )
     target_rustflags = env.get("CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_RUSTFLAGS", "")
     target_rustflags += " --sysroot " + wasm32_sysroot
-    # Keep export names stable for direct symbol lookup in the browser.
-    target_rustflags += " -C link-arg=-g3"
     # Build runtime as emscripten main module and expose dynamic linker APIs.
     target_rustflags += " -C link-arg=-sMAIN_MODULE=2"
     target_rustflags += " -C link-arg=-sALLOW_TABLE_GROWTH"
@@ -160,7 +158,6 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
     emcc_cmd = [
         "emcc",
         "-O3",
-        "-g3",
         "-fPIC",
         os.path.join(ROOT_DIR, "syntaqlite", "csrc", "dialect.c"),
         os.path.join(ROOT_DIR, "syntaqlite", "csrc", "sqlite_parse.c"),
