@@ -4,7 +4,9 @@
 use std::cell::{Cell, RefCell};
 use std::slice;
 
-use syntaqlite_runtime::dialect::ffi::{self as dialect_ffi, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN};
+use syntaqlite_runtime::dialect::ffi::{
+    self as dialect_ffi, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN,
+};
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
 use syntaqlite_runtime::parser::{CursorBase, SourceSpan};
 use syntaqlite_runtime::{Dialect, NodeId, Parser};

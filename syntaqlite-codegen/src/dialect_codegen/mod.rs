@@ -16,7 +16,7 @@ pub use c_dialect::{
     generate_tokenize_h,
 };
 pub use c_meta_codegen::{
-    generate_c_field_metadata, generate_c_fmt_tables, CFmtCodegenError, CMetaCodegenError,
+    CFmtCodegenError, CMetaCodegenError, generate_c_field_metadata, generate_c_fmt_tables,
 };
 pub use c_nodes_codegen::{generate_ast_builder_header, generate_ast_nodes_header};
 pub use rust_ast::{generate_rust_ast, generate_rust_ffi_nodes, generate_rust_tokens};

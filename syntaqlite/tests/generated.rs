@@ -263,9 +263,7 @@ fn comment_before_join_does_not_move() {
     // A comment between child(left) and JOIN should stay before JOIN,
     // not get pulled to after JOIN by child(right)'s drain.
     assert_eq!(
-        format_sql(
-            "SELECT a FROM slice\n-- before join\nJOIN track"
-        ),
+        format_sql("SELECT a FROM slice\n-- before join\nJOIN track"),
         "SELECT a\nFROM slice\n-- before join\nJOIN track"
     );
 }
@@ -295,10 +293,7 @@ fn comment_trailing_not_dropped_when_followed_by_line_comment() {
 
 #[test]
 fn multi_stmt_basic() {
-    assert_eq!(
-        format_sql("SELECT 1;\nSELECT 2"),
-        "SELECT 1;\n\nSELECT 2"
-    );
+    assert_eq!(format_sql("SELECT 1;\nSELECT 2"), "SELECT 1;\n\nSELECT 2");
 }
 
 #[test]
@@ -322,10 +317,7 @@ fn multi_stmt_trailing_comment_after_first() {
 #[test]
 fn comment_before_first_stmt() {
     // A leading comment before the very first statement.
-    assert_eq!(
-        format_sql("-- header\nSELECT 1"),
-        "-- header\nSELECT 1"
-    );
+    assert_eq!(format_sql("-- header\nSELECT 1"), "-- header\nSELECT 1");
 }
 
 // -- Keyword casing --

@@ -226,8 +226,9 @@ fn format_source(
     source: &str,
     config: FormatConfig,
 ) -> Result<String, ParseError> {
-    let mut formatter = Formatter::with_config(dialect, config)
-        .map_err(|e| ParseError { message: e.to_string() })?;
+    let mut formatter = Formatter::with_config(dialect, config).map_err(|e| ParseError {
+        message: e.to_string(),
+    })?;
     formatter.format(source)
 }
 

@@ -161,7 +161,13 @@ impl<'a> DocArena<'a> {
                         pos += 1;
                     }
                     Mode::Break => {
-                        flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, &mut out, &mut pos);
+                        flush_line_suffixes(
+                            self,
+                            &mut line_suffix_buf,
+                            keyword_case,
+                            &mut out,
+                            &mut pos,
+                        );
                         emit_newline(indent, &mut out, &mut pos);
                     }
                 },
@@ -169,13 +175,25 @@ impl<'a> DocArena<'a> {
                 Doc::SoftLine => match mode {
                     Mode::Flat => {}
                     Mode::Break => {
-                        flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, &mut out, &mut pos);
+                        flush_line_suffixes(
+                            self,
+                            &mut line_suffix_buf,
+                            keyword_case,
+                            &mut out,
+                            &mut pos,
+                        );
                         emit_newline(indent, &mut out, &mut pos);
                     }
                 },
 
                 Doc::HardLine => {
-                    flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, &mut out, &mut pos);
+                    flush_line_suffixes(
+                        self,
+                        &mut line_suffix_buf,
+                        keyword_case,
+                        &mut out,
+                        &mut pos,
+                    );
                     emit_newline(indent, &mut out, &mut pos);
                 }
 

@@ -6,7 +6,7 @@ use crate::parser::{CursorBase, FieldVal, NodeId};
 
 use super::bytecode::opcodes;
 use super::comment::{CommentCtx, flush_comments};
-use super::doc::{DocArena, DocId};
+use super::doc::{DocArena, DocId, NIL_DOC};
 
 /// Shared context threaded through the recursive formatting tree.
 /// Bundles the state that is constant across all nodes in a single format call.
@@ -49,6 +49,7 @@ pub(crate) fn interpret<'a>(
         match op_at(ops, ip) {
             FmtOp::Keyword(sid) => {
                 let kw_text = ctx.dialect.fmt_string(sid);
+
                 if let Some(cctx) = ctx.comment_ctx {
                     if let Some((tok_offset, word_count)) = cctx.peek_keyword_tokens(kw_text) {
                         let drain = cctx.drain_before(tok_offset, source, arena);
@@ -64,6 +65,7 @@ pub(crate) fn interpret<'a>(
                 let FieldVal::Span(s, offset) = fields[idx as usize] else {
                     panic!("Span: field {} is not a Span", idx);
                 };
+
                 if !s.is_empty() {
                     if let Some(cctx) = ctx.comment_ctx {
                         let drain = cctx.drain_before(offset, source, arena);
@@ -77,6 +79,7 @@ pub(crate) fn interpret<'a>(
                 let FieldVal::NodeId(child_id) = fields[idx as usize] else {
                     panic!("Child: field {} is not a NodeId", idx);
                 };
+
                 if !child_id.is_null() {
                     if let Some(cctx) = ctx.comment_ctx {
                         if let Some((offset, _)) = cctx.peek_next_token() {
@@ -154,6 +157,7 @@ pub(crate) fn interpret<'a>(
                 let FieldVal::NodeId(list_id) = fields[idx as usize] else {
                     panic!("ForEachStart: field {} is not a NodeId", idx);
                 };
+
                 if list_id.is_null() {
                     ip = skip_to_foreach_end(ops, ops_count, ip);
                 } else {
@@ -162,6 +166,7 @@ pub(crate) fn interpret<'a>(
                         .list_children(list_id, &ctx.dialect)
                         .map(|c| c.to_vec())
                         .unwrap_or_default();
+
                     if children.is_empty() {
                         ip = skip_to_foreach_end(ops, ops_count, ip);
                     } else {
@@ -169,6 +174,7 @@ pub(crate) fn interpret<'a>(
                             children,
                             index: 0,
                             body_start: ip + 1,
+                            pending_sep: None,
                         });
                     }
                 }
@@ -184,10 +190,18 @@ pub(crate) fn interpret<'a>(
                         parts.extend(pending_lines.drain(..));
                     }
                 }
-                parts.push(format_child_doc(ctx, child_id, consumed_regions, arena));
+                let doc = format_child_doc(ctx, child_id, consumed_regions, arena);
+                if doc != NIL_DOC {
+                    // Flush any deferred separator before this visible child.
+                    let state = for_each_stack.last_mut().unwrap();
+                    if let Some(sep) = state.pending_sep.take() {
+                        parts.push(sep);
+                    }
+                    parts.push(doc);
+                }
             }
             FmtOp::ForEachSep(sid) => {
-                let state = for_each_stack.last().expect("ForEachSep outside ForEach");
+                let state = for_each_stack.last_mut().expect("ForEachSep outside ForEach");
                 if state.index < state.children.len() - 1 {
                     let sep_text = ctx.dialect.fmt_string(sid);
                     if let Some(cctx) = ctx.comment_ctx {
@@ -195,7 +209,8 @@ pub(crate) fn interpret<'a>(
                             cctx.advance_token_cursor(word_count);
                         }
                     }
-                    parts.push(arena.text(sep_text));
+                    // Defer separator — only emitted if next child is non-nil.
+                    state.pending_sep = Some(arena.text(sep_text));
                 } else {
                     ip = skip_to_foreach_end(ops, ops_count, ip);
                     continue;
@@ -249,8 +264,9 @@ pub(crate) fn interpret<'a>(
                 let FieldVal::Enum(ordinal) = fields[idx as usize] else {
                     panic!("EnumDisplay: field {} is not an Enum", idx);
                 };
-                let string_id =
-                    ctx.dialect.fmt_enum_display_val(base as usize + ordinal as usize);
+                let string_id = ctx
+                    .dialect
+                    .fmt_enum_display_val(base as usize + ordinal as usize);
                 let kw_text = ctx.dialect.fmt_string(string_id);
                 if let Some(cctx) = ctx.comment_ctx {
                     if let Some((tok_offset, word_count)) = cctx.peek_keyword_tokens(kw_text) {
@@ -272,6 +288,7 @@ pub(crate) fn interpret<'a>(
                         children: children.to_vec(),
                         index: 0,
                         body_start: ip + 1,
+                        pending_sep: None,
                     });
                 }
             }
@@ -292,10 +309,13 @@ fn format_child_doc<'a>(
     arena: &mut DocArena<'a>,
 ) -> DocId {
     let macro_regions = ctx.cursor.macro_regions();
-    if !macro_regions.is_empty() {
+    // Only check macro regions for non-list nodes. List nodes are formatted
+    // normally so their individual children can be macro-checked.
+    if !macro_regions.is_empty() && ctx.cursor.list_children(child_id, &ctx.dialect).is_none() {
         if let Some(verbatim) = super::formatter::try_macro_verbatim(
-            ctx, macro_regions, arena, consumed_regions,
-        ) {
+            ctx, child_id, macro_regions, arena, consumed_regions,
+        )
+        {
             return verbatim;
         }
     }
@@ -438,4 +458,6 @@ struct ForEachState {
     children: Vec<NodeId>,
     index: usize,
     body_start: usize,
+    /// Deferred separator text. Set by ForEachSep, flushed by next non-nil ChildItem.
+    pending_sep: Option<DocId>,
 }

@@ -1,6 +1,10 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+use super::FormatConfig;
+use super::comment::CommentCtx;
+use super::doc::{DocArena, DocId, NIL_DOC};
+use super::interpret::{FmtCtx, interpret};
 use crate::dialect::Dialect;
 use crate::dialect::ffi::{
     FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldMeta,
@@ -9,10 +13,6 @@ use crate::parser::{
     CommentKind, CursorBase, FieldVal, Fields, MacroRegion, NodeId, Parser, ParserConfig,
     SourceSpan,
 };
-use super::FormatConfig;
-use super::comment::CommentCtx;
-use super::doc::{DocArena, DocId, NIL_DOC};
-use super::interpret::{FmtCtx, interpret};
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {
@@ -237,37 +237,93 @@ pub(crate) fn format_node_inner<'a>(
 
     let fields = extract_fields(&ctx.dialect, ptr, tag, source);
 
-    interpret(ctx, ops_bytes, ops_len, &fields, children, consumed_regions, arena)
+    interpret(
+        ctx,
+        ops_bytes,
+        ops_len,
+        &fields,
+        children,
+        consumed_regions,
+        arena,
+    )
 }
 
-/// Check if the next token falls within a macro region. If so, emit the
-/// entire macro call verbatim and advance the token cursor past it.
+/// Check if a child node falls within a macro region. On first encounter,
+/// emit the entire macro call verbatim and advance the token cursor past it.
+/// On subsequent encounters (same region already consumed), return NIL_DOC.
 pub(crate) fn try_macro_verbatim<'a>(
     ctx: &FmtCtx<'a>,
+    child_id: NodeId,
     regions: &[MacroRegion],
     arena: &mut DocArena<'a>,
     consumed: &mut u64,
 ) -> Option<DocId> {
     let cctx = ctx.comment_ctx?;
-    let (tok_offset, _) = cctx.peek_next_token()?;
-    let source = ctx.source();
 
-    for (i, r) in regions.iter().enumerate() {
-        if i >= 64 {
-            break;
-        }
-        let r_start = r.call_offset;
-        let r_end = r_start + r.call_length;
-
-        if tok_offset >= r_start && tok_offset < r_end {
-            let bit = 1u64 << i;
-            if *consumed & bit != 0 {
-                cctx.advance_past(r_end);
-                return Some(NIL_DOC);
+    // First try the token cursor — if the next token is inside a macro region,
+    // this child is the first to be formatted in that region.
+    if let Some((tok_offset, _)) = cctx.peek_next_token() {
+        for (i, r) in regions.iter().enumerate() {
+            if i >= 64 {
+                break;
             }
-            *consumed |= bit;
-            cctx.advance_past(r_end);
-            return Some(arena.text(&source[r_start as usize..r_end as usize]));
+            let r_start = r.call_offset;
+            let r_end = r_start + r.call_length;
+
+            if tok_offset >= r_start && tok_offset < r_end {
+                let bit = 1u64 << i;
+                if *consumed & bit != 0 {
+                    cctx.advance_past(r_end);
+                    return Some(NIL_DOC);
+                }
+                *consumed |= bit;
+                cctx.advance_past(r_end);
+                let source = ctx.source();
+                return Some(arena.text(&source[r_start as usize..r_end as usize]));
+            }
+        }
+    }
+
+    // The token cursor may already be past a consumed macro region (advanced
+    // by the first child). Check if this node's source position falls within
+    // an already-consumed region.
+    if *consumed != 0 {
+        if let Some(node_offset) = first_span_offset(ctx, child_id) {
+            for (i, r) in regions.iter().enumerate() {
+                if i >= 64 {
+                    break;
+                }
+                let bit = 1u64 << i;
+                if *consumed & bit == 0 {
+                    continue;
+                }
+                let r_start = r.call_offset;
+                let r_end = r_start + r.call_length;
+                if node_offset >= r_start && node_offset < r_end {
+                    return Some(NIL_DOC);
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Find the first span offset in a node's fields. Used to determine
+/// if a node falls within a macro region.
+fn first_span_offset(ctx: &FmtCtx<'_>, node_id: NodeId) -> Option<u32> {
+    let (ptr, tag) = ctx.cursor.node_ptr(node_id)?;
+    let source = ctx.source();
+    let fields = extract_fields(&ctx.dialect, ptr, tag, source);
+    for field in fields.iter() {
+        match field {
+            FieldVal::Span(s, offset) if !s.is_empty() => return Some(*offset),
+            FieldVal::NodeId(child) if !child.is_null() => {
+                if let Some(off) = first_span_offset(ctx, *child) {
+                    return Some(off);
+                }
+            }
+            _ => {}
         }
     }
     None
@@ -276,7 +332,12 @@ pub(crate) fn try_macro_verbatim<'a>(
 // ── Field extraction ────────────────────────────────────────────────────
 
 /// Extract typed field values from a raw node pointer.
-fn extract_fields<'a>(dialect: &Dialect<'_>, ptr: *const u8, tag: u32, source: &'a str) -> Fields<'a> {
+fn extract_fields<'a>(
+    dialect: &Dialect<'_>,
+    ptr: *const u8,
+    tag: u32,
+    source: &'a str,
+) -> Fields<'a> {
     let meta = dialect.field_meta(tag);
     let mut fields = Fields::new();
     for m in meta {

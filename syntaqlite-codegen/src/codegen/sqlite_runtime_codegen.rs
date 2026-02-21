@@ -5,8 +5,8 @@ use std::fs;
 
 use syntaqlite_codegen_utils::{c_extractor, c_transformer};
 
-use crate::util::pascal_case;
 use crate::TokenizerExtractResult;
+use crate::util::pascal_case;
 
 use crate::writers::c_writer::CWriter;
 
