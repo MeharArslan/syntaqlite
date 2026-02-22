@@ -83,7 +83,6 @@ export class Workspace implements m.ClassComponent<Attrs> {
       m(EditorPane, {
         theme: app.theme.current,
         initialSql: this.sql,
-        presetLibraryLabel: presetLibrary.label,
         presets: presetLibrary.presets,
         selectedPresetId,
         onPresetChange: (presetId: string) => {

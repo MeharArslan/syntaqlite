@@ -157,6 +157,7 @@ impl<'a> DocArena<'a> {
         let mut out = String::new();
         let mut stack = Vec::new();
         let mut fits_stack = Vec::new();
+        let mut line_suffix_buf = Vec::new();
         self.render_into(
             root,
             line_width,
@@ -164,6 +165,7 @@ impl<'a> DocArena<'a> {
             &mut out,
             &mut stack,
             &mut fits_stack,
+            &mut line_suffix_buf,
         );
         out
     }
@@ -179,6 +181,7 @@ impl<'a> DocArena<'a> {
         out: &mut String,
         stack: &mut Vec<(i32, Mode, DocId)>,
         fits_stack: &mut Vec<(i32, DocId)>,
+        line_suffix_buf: &mut Vec<(i32, Mode, DocId)>,
     ) {
         if root == NIL_DOC {
             return;
@@ -187,7 +190,6 @@ impl<'a> DocArena<'a> {
         out.reserve(self.docs.len() * 4);
         let mut pos: usize = 0;
         stack.push((0, Mode::Break, root));
-        let mut line_suffix_buf: Vec<(i32, Mode, DocId)> = Vec::new();
 
         while let Some((indent, mode, doc_id)) = stack.pop() {
             if doc_id == NIL_DOC {
@@ -213,7 +215,7 @@ impl<'a> DocArena<'a> {
                     Mode::Break => {
                         flush_line_suffixes(
                             self,
-                            &mut line_suffix_buf,
+                            line_suffix_buf,
                             keyword_case,
                             out,
                             &mut pos,
@@ -227,7 +229,7 @@ impl<'a> DocArena<'a> {
                     Mode::Break => {
                         flush_line_suffixes(
                             self,
-                            &mut line_suffix_buf,
+                            line_suffix_buf,
                             keyword_case,
                             out,
                             &mut pos,
@@ -237,7 +239,7 @@ impl<'a> DocArena<'a> {
                 },
 
                 Doc::HardLine => {
-                    flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, out, &mut pos);
+                    flush_line_suffixes(self, line_suffix_buf, keyword_case, out, &mut pos);
                     emit_newline(indent, out, &mut pos);
                 }
 
@@ -266,7 +268,7 @@ impl<'a> DocArena<'a> {
             }
         }
 
-        flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, out, &mut pos);
+        flush_line_suffixes(self, line_suffix_buf, keyword_case, out, &mut pos);
     }
 
     /// Check whether a document fits within `remaining` columns when rendered flat.
@@ -350,33 +352,35 @@ fn emit_newline(indent: i32, out: &mut String, pos: &mut usize) {
 }
 
 /// Push a keyword string with the appropriate casing to the output.
+///
+/// Single-pass with direct pointer writes: reserves capacity once, then
+/// writes transformed bytes into spare capacity with no per-byte bounds
+/// checks. A single `set_len` at the end commits all bytes at once.
+#[inline]
 fn push_keyword(s: &str, case: KeywordCase, out: &mut String) {
     match case {
         KeywordCase::Preserve => out.push_str(s),
-        KeywordCase::Upper => {
-            if s.is_ascii() {
-                let start = out.len();
-                out.push_str(s);
-                out[start..].make_ascii_uppercase();
-            } else {
-                for c in s.chars() {
-                    for u in c.to_uppercase() {
-                        out.push(u);
+        KeywordCase::Upper | KeywordCase::Lower => {
+            let src = s.as_bytes();
+            let slen = src.len();
+            out.reserve(slen);
+            // SAFETY: we reserved `slen` bytes of spare capacity. We write
+            // exactly `slen` valid ASCII bytes (case-transformed), then commit
+            // via set_len. All fmt keywords are ASCII, so the result is valid UTF-8.
+            unsafe {
+                let buf = out.as_mut_vec();
+                let old_len = buf.len();
+                let dst = buf.as_mut_ptr().add(old_len);
+                if case == KeywordCase::Upper {
+                    for i in 0..slen {
+                        dst.add(i).write(src.get_unchecked(i).to_ascii_uppercase());
+                    }
+                } else {
+                    for i in 0..slen {
+                        dst.add(i).write(src.get_unchecked(i).to_ascii_lowercase());
                     }
                 }
-            }
-        }
-        KeywordCase::Lower => {
-            if s.is_ascii() {
-                let start = out.len();
-                out.push_str(s);
-                out[start..].make_ascii_lowercase();
-            } else {
-                for c in s.chars() {
-                    for l in c.to_lowercase() {
-                        out.push(l);
-                    }
-                }
+                buf.set_len(old_len + slen);
             }
         }
     }

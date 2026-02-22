@@ -42,7 +42,10 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
 
     return m("div.sq-tab-panel", {class: active ? "sq-tab-panel--active" : ""}, [
       m("div.sq-panel-options", [
-        m("label", `Width: ${this.formatOptions.lineWidth}`),
+        m("label.sq-panel-options__width-label", [
+          "Width:",
+          m("span.sq-panel-options__width-value", String(this.formatOptions.lineWidth)),
+        ]),
         m("input[type=range]", {
           min: 20,
           max: 240,

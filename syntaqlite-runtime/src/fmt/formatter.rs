@@ -31,6 +31,8 @@ pub struct Formatter<'d> {
     render_stack: Vec<(i32, super::doc::Mode, DocId)>,
     /// Reusable fits-check stack — recycled between format calls.
     render_fits_stack: Vec<(i32, DocId)>,
+    /// Reusable line-suffix buffer — recycled between format calls.
+    render_line_suffix_buf: Vec<(i32, super::doc::Mode, DocId)>,
 }
 
 // SAFETY: Dialect is Send+Sync, Parser is Send.
@@ -61,6 +63,7 @@ impl<'d> Formatter<'d> {
             render_out: String::new(),
             render_stack: Vec::new(),
             render_fits_stack: Vec::new(),
+            render_line_suffix_buf: Vec::new(),
         })
     }
 
@@ -137,6 +140,8 @@ impl<'d> Formatter<'d> {
         render_stack.clear();
         let mut fits_stack = std::mem::take(&mut self.render_fits_stack);
         fits_stack.clear();
+        let mut line_suffix_buf = std::mem::take(&mut self.render_line_suffix_buf);
+        line_suffix_buf.clear();
 
         arena.render_into(
             doc,
@@ -145,6 +150,7 @@ impl<'d> Formatter<'d> {
             &mut out,
             &mut render_stack,
             &mut fits_stack,
+            &mut line_suffix_buf,
         );
 
         if semicolons {
@@ -159,6 +165,7 @@ impl<'d> Formatter<'d> {
         self.render_out = out;
         self.render_stack = render_stack;
         self.render_fits_stack = fits_stack;
+        self.render_line_suffix_buf = line_suffix_buf;
 
         Ok(result)
     }

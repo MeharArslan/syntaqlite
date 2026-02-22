@@ -12,7 +12,6 @@ import "./editor_pane.css";
 export interface EditorPaneAttrs {
   theme: Theme;
   initialSql: string;
-  presetLibraryLabel: string;
   presets: SqlPreset[];
   selectedPresetId: string;
   onPresetChange: (presetId: string) => void;
@@ -25,7 +24,6 @@ export class EditorPane implements m.ClassComponent<EditorPaneAttrs> {
     const {
       theme,
       initialSql,
-      presetLibraryLabel,
       presets,
       selectedPresetId,
       onPresetChange,
@@ -40,7 +38,7 @@ export class EditorPane implements m.ClassComponent<EditorPaneAttrs> {
 
     return m("section.sq-workspace__pane.sq-editor-pane", [
       m("div.sq-editor-pane__toolbar", [
-        m("label.sq-editor-pane__label", {for: "sq-editor-preset"}, `${presetLibraryLabel} Presets`),
+        m("label.sq-editor-pane__label", {for: "sq-editor-preset"}, "Presets"),
         m(
           "select#sq-editor-preset.sq-editor-pane__select",
           {

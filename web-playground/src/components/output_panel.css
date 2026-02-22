@@ -73,6 +73,19 @@
   user-select: none;
 }
 
+.sq-panel-options__width-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 78px;
+}
+
+.sq-panel-options__width-value {
+  min-width: 3ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .sq-panel-options input[type="range"] {
   width: 100px;
   accent-color: var(--accent);
