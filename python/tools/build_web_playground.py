@@ -138,6 +138,8 @@ def main():
 
     # Copy the built wasm to web-playground/.
     wasm_target_dir = os.path.join(ROOT_DIR, "target", "wasm32-unknown-emscripten", "release")
+    out_public_dir = os.path.join(ROOT_DIR, "web-playground", "public")
+    os.makedirs(out_public_dir, exist_ok=True)
     out_runtime_js = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-runtime.js")
     out_runtime_wasm = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-runtime.wasm")
     out_dialect = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-sqlite.wasm")
