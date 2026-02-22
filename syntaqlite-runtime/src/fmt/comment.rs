@@ -59,8 +59,8 @@ impl<'a> CommentCtx<'a> {
         source: &'a str,
         arena: &mut DocArena<'a>,
     ) -> DrainResult {
-        let mut trailing = Vec::new();
-        let mut leading = Vec::new();
+        let mut trailing = NIL_DOC;
+        let mut leading = NIL_DOC;
         let mut cursor = self.cursor.get();
         let mut last_end = self.prev_token_end();
         while cursor < self.comments.len() && self.comments[cursor].offset < before {
@@ -93,24 +93,49 @@ impl<'a> CommentCtx<'a> {
             match t.kind {
                 CommentKind::LineComment => {
                     if has_newline {
-                        leading.push(arena.hardline());
-                        leading.push(arena.text(text));
-                        leading.push(arena.hardline());
+                        let hl1 = arena.hardline();
+                        let txt = arena.text(text);
+                        let hl2 = arena.hardline();
+                        let inner = arena.cat(txt, hl2);
+                        let chunk = arena.cat(hl1, inner);
+                        leading = if leading == NIL_DOC {
+                            chunk
+                        } else {
+                            arena.cat(leading, chunk)
+                        };
                     } else {
                         let space = arena.text(" ");
                         let comment = arena.text(text);
                         let inner = arena.cat(space, comment);
-                        trailing.push(arena.line_suffix(inner));
-                        trailing.push(arena.break_parent());
+                        let ls = arena.line_suffix(inner);
+                        let bp = arena.break_parent();
+                        let chunk = arena.cat(ls, bp);
+                        trailing = if trailing == NIL_DOC {
+                            chunk
+                        } else {
+                            arena.cat(trailing, chunk)
+                        };
                     }
                 }
                 CommentKind::BlockComment => {
                     if has_newline {
-                        leading.push(arena.hardline());
-                        leading.push(arena.text(text));
+                        let hl = arena.hardline();
+                        let txt = arena.text(text);
+                        let chunk = arena.cat(hl, txt);
+                        leading = if leading == NIL_DOC {
+                            chunk
+                        } else {
+                            arena.cat(leading, chunk)
+                        };
                     } else {
-                        trailing.push(arena.text(" "));
-                        trailing.push(arena.text(text));
+                        let sp = arena.text(" ");
+                        let txt = arena.text(text);
+                        let chunk = arena.cat(sp, txt);
+                        trailing = if trailing == NIL_DOC {
+                            chunk
+                        } else {
+                            arena.cat(trailing, chunk)
+                        };
                     }
                 }
             }
@@ -121,10 +146,7 @@ impl<'a> CommentCtx<'a> {
 
         self.cursor.set(cursor);
 
-        DrainResult {
-            trailing: arena.cats(&trailing),
-            leading: arena.cats(&leading),
-        }
+        DrainResult { trailing, leading }
     }
 
     /// Peek at the next N tokens (one per whitespace-separated word in the keyword)

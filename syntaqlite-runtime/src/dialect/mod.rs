@@ -24,6 +24,22 @@ pub enum TokenCategory {
     Function = 9,
 }
 
+/// The semantic token legend: LSP/Monaco token type names in legend-index order.
+///
+/// This is the single source of truth for the legend. Both the LSP server
+/// capabilities and the WASM/Monaco provider must use this same ordering.
+pub const SEMANTIC_TOKEN_LEGEND: &[&str] = &[
+    "keyword",     // 0
+    "variable",    // 1
+    "string",      // 2
+    "number",      // 3
+    "operator",    // 4
+    "comment",     // 5
+    "punctuation", // 6
+    "type",        // 7 — identifier (LSP has no "identifier" type; "type" is conventional)
+    "function",    // 8
+];
+
 impl TokenCategory {
     fn from_u8(v: u8) -> Self {
         match v {
@@ -37,6 +53,30 @@ impl TokenCategory {
             8 => Self::Variable,
             9 => Self::Function,
             _ => Self::Other,
+        }
+    }
+
+    /// The LSP semantic token type name for this category.
+    /// Returns `None` for `Other` (not emitted as a semantic token).
+    pub fn legend_name(self) -> Option<&'static str> {
+        let idx = self.legend_index()?;
+        Some(SEMANTIC_TOKEN_LEGEND[idx as usize])
+    }
+
+    /// Index into [`SEMANTIC_TOKEN_LEGEND`] for this category.
+    /// Returns `None` for `Other`.
+    pub fn legend_index(self) -> Option<u32> {
+        match self {
+            Self::Keyword => Some(0),
+            Self::Variable => Some(1),
+            Self::String => Some(2),
+            Self::Number => Some(3),
+            Self::Operator => Some(4),
+            Self::Comment => Some(5),
+            Self::Punctuation => Some(6),
+            Self::Identifier => Some(7),
+            Self::Function => Some(8),
+            Self::Other => None,
         }
     }
 }

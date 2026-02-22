@@ -44,6 +44,11 @@ pub fn run_mkkeyword(args: &[String]) -> ! {
     tools::mkkeyword::run_mkkeyword(args)
 }
 
+/// Return the set of token names that are keywords in the base SQLite table.
+pub fn base_keyword_token_names() -> std::collections::HashSet<String> {
+    tools::mkkeyword::base_keyword_token_names()
+}
+
 #[derive(Debug, Clone)]
 pub struct DialectNaming {
     name: String,

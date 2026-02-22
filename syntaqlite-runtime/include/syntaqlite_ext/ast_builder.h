@@ -20,6 +20,7 @@
 #include "syntaqlite_ext/arena.h"
 #include "syntaqlite_ext/vec.h"
 #include "syntaqlite/types.h"
+#include "syntaqlite/parser.h"
 #include "syntaqlite/dialect.h"
 
 #ifdef __cplusplus
@@ -54,6 +55,11 @@ typedef struct SynqParseCtx {
   int error;              // Set when a syntax error occurs.
   uint32_t error_offset;  // Byte offset of the error token in source.
   uint32_t error_length;  // Byte length of the error token.
+
+  // Token marking — points to the parser's token list (NULL if not collecting).
+  // Typed as void* because SYNQ_VEC produces anonymous struct types; the
+  // synq_mark_as_id() helper casts it to the right layout.
+  void* tokens;
 } SynqParseCtx;
 
 // Common header for all list nodes in the arena.
@@ -170,6 +176,17 @@ static inline SyntaqliteSourceSpan synq_span(SynqParseCtx* ctx,
 }
 
 #define SYNQ_NO_SPAN ((SyntaqliteSourceSpan){0, 0})
+
+// Mark a token as "used as identifier" (fallback from keyword).
+// O(1) — uses the token_idx stored in SynqParseToken at collection time.
+static inline void synq_mark_as_id(SynqParseCtx* ctx, SynqParseToken tok) {
+  if (!ctx->tokens || tok.token_idx == 0xFFFFFFFF) return;
+  // ctx->tokens is a void* pointing to SYNQ_VEC(SyntaqliteTokenPos).
+  // The vec layout is: { SyntaqliteTokenPos* data; uint32_t count; uint32_t capacity; }
+  typedef struct { SyntaqliteTokenPos* data; uint32_t count; uint32_t capacity; } TokenVec;
+  TokenVec* tv = (TokenVec*)ctx->tokens;
+  tv->data[tok.token_idx].flags |= SYNQ_TOKEN_FLAG_AS_ID;
+}
 
 // Range field metadata types (SyntaqliteFieldRangeMeta, SyntaqliteRangeMetaEntry)
 // are defined in syntaqlite/dialect.h.

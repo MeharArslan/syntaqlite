@@ -10,13 +10,14 @@ use lsp_types::notification::{
 };
 use lsp_types::request::{Formatting, Request as _, SemanticTokensFullRequest};
 use lsp_types::{
-    DiagnosticSeverity, Position, Range, SemanticTokenType, SemanticTokensFullOptions,
-    SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
+    DiagnosticSeverity, Position, PositionEncodingKind, Range, SemanticTokenType,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
     SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextEdit,
+    TextDocumentSyncKind, TextEdit, Uri,
 };
-use syntaqlite_lsp::{AnalysisHost, Severity, TokenCategory};
+use syntaqlite_lsp::{AnalysisHost, Severity};
 use syntaqlite_runtime::Dialect;
+use syntaqlite_runtime::dialect::SEMANTIC_TOKEN_LEGEND;
 use syntaqlite_runtime::fmt::FormatConfig;
 
 pub(crate) fn cmd_lsp(dialect: &Dialect) -> Result<(), String> {
@@ -27,22 +28,16 @@ fn run_lsp(dialect: &Dialect) -> Result<(), Box<dyn Error + Sync + Send>> {
     let (connection, io_threads) = Connection::stdio();
 
     let server_capabilities = serde_json::to_value(ServerCapabilities {
+        position_encoding: Some(PositionEncodingKind::UTF8),
         text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
         document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
         semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
             SemanticTokensOptions {
                 legend: SemanticTokensLegend {
-                    token_types: vec![
-                        SemanticTokenType::KEYWORD,            // 0
-                        SemanticTokenType::VARIABLE,           // 1
-                        SemanticTokenType::STRING,             // 2
-                        SemanticTokenType::NUMBER,             // 3
-                        SemanticTokenType::OPERATOR,           // 4
-                        SemanticTokenType::COMMENT,            // 5
-                        SemanticTokenType::new("punctuation"), // 6
-                        SemanticTokenType::TYPE,               // 7 (identifier)
-                        SemanticTokenType::FUNCTION,           // 8
-                    ],
+                    token_types: SEMANTIC_TOKEN_LEGEND
+                        .iter()
+                        .map(|&name| SemanticTokenType::new(name))
+                        .collect(),
                     token_modifiers: vec![],
                 },
                 full: Some(SemanticTokensFullOptions::Bool(true)),
@@ -62,7 +57,7 @@ fn run_lsp(dialect: &Dialect) -> Result<(), Box<dyn Error + Sync + Send>> {
                 if connection.handle_shutdown(&req)? {
                     return Ok(());
                 }
-                handle_request(&connection, &host, req)?;
+                handle_request(&connection, &mut host, req)?;
             }
             Message::Notification(notif) => {
                 handle_notification(&connection, &mut host, notif)?;
@@ -77,83 +72,61 @@ fn run_lsp(dialect: &Dialect) -> Result<(), Box<dyn Error + Sync + Send>> {
 
 fn handle_request(
     connection: &Connection,
-    host: &AnalysisHost,
+    host: &mut AnalysisHost,
     req: Request,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
-    if req.method == Formatting::METHOD {
-        let params: lsp_types::DocumentFormattingParams = serde_json::from_value(req.params)?;
-        let uri = params.text_document.uri.as_str();
-        let config = FormatConfig::default();
+    let response = match req.method.as_str() {
+        Formatting::METHOD => {
+            let params: lsp_types::DocumentFormattingParams = serde_json::from_value(req.params)?;
+            let uri = params.text_document.uri.as_str();
+            let config = FormatConfig::default();
 
-        let response = match host.format(uri, &config) {
-            Ok(formatted) => {
-                let edit = TextEdit {
-                    range: Range::new(Position::new(0, 0), Position::new(u32::MAX, 0)),
-                    new_text: formatted,
-                };
-                Response::new_ok(req.id, Some(vec![edit]))
+            match host.format(uri, &config) {
+                Ok(formatted) => {
+                    let edit = TextEdit {
+                        range: Range::new(Position::new(0, 0), Position::new(u32::MAX, 0)),
+                        new_text: formatted,
+                    };
+                    Response::new_ok(req.id, Some(vec![edit]))
+                }
+                Err(e) => Response::new_err(
+                    req.id,
+                    lsp_server::ErrorCode::InternalError as i32,
+                    e.to_string(),
+                ),
             }
-            Err(e) => Response::new_err(
-                req.id,
-                lsp_server::ErrorCode::InternalError as i32,
-                e.to_string(),
-            ),
-        };
-        connection.sender.send(Message::Response(response))?;
-    } else if req.method == SemanticTokensFullRequest::METHOD {
-        let params: lsp_types::SemanticTokensParams = serde_json::from_value(req.params)?;
-        let uri = params.text_document.uri.as_str();
-        let source = host.document_source(uri).unwrap_or("").to_string();
-        let tokens = host.semantic_tokens(uri);
-
-        let mut data = Vec::new();
-        let mut prev_line = 0u32;
-        let mut prev_start = 0u32;
-
-        for tok in &tokens {
-            let pos = offset_to_position(&source, tok.offset);
-            let delta_line = pos.line - prev_line;
-            let delta_start = if delta_line == 0 {
-                pos.character - prev_start
-            } else {
-                pos.character
-            };
-            let token_type = category_to_legend_index(tok.category);
-            data.push(lsp_types::SemanticToken {
-                delta_line,
-                delta_start,
-                length: tok.length as u32,
-                token_type,
-                token_modifiers_bitset: 0,
-            });
-            prev_line = pos.line;
-            prev_start = pos.character;
         }
+        SemanticTokensFullRequest::METHOD => {
+            let params: lsp_types::SemanticTokensParams = serde_json::from_value(req.params)?;
+            let uri = params.text_document.uri.as_str();
+            let encoded = host.semantic_tokens_encoded(uri, None);
 
-        let result = SemanticTokensResult::Tokens(lsp_types::SemanticTokens {
-            result_id: None,
-            data,
-        });
-        let response = Response::new_ok(req.id, result);
-        connection.sender.send(Message::Response(response))?;
-    }
+            // Convert flat u32 array (5 per token) into lsp_types::SemanticToken structs.
+            let data: Vec<lsp_types::SemanticToken> = encoded
+                .chunks_exact(5)
+                .map(|c| lsp_types::SemanticToken {
+                    delta_line: c[0],
+                    delta_start: c[1],
+                    length: c[2],
+                    token_type: c[3],
+                    token_modifiers_bitset: c[4],
+                })
+                .collect();
+
+            let result = SemanticTokensResult::Tokens(lsp_types::SemanticTokens {
+                result_id: None,
+                data,
+            });
+            Response::new_ok(req.id, result)
+        }
+        _ => Response::new_err(
+            req.id,
+            lsp_server::ErrorCode::MethodNotFound as i32,
+            format!("unknown request method: {}", req.method),
+        ),
+    };
+    connection.sender.send(Message::Response(response))?;
     Ok(())
-}
-
-/// Map a `TokenCategory` to an index in the semantic tokens legend.
-fn category_to_legend_index(cat: TokenCategory) -> u32 {
-    match cat {
-        TokenCategory::Keyword => 0,
-        TokenCategory::Variable => 1,
-        TokenCategory::String => 2,
-        TokenCategory::Number => 3,
-        TokenCategory::Operator => 4,
-        TokenCategory::Comment => 5,
-        TokenCategory::Punctuation => 6,
-        TokenCategory::Identifier => 7,
-        TokenCategory::Function => 8,
-        TokenCategory::Other => 0,
-    }
 }
 
 fn handle_notification(
@@ -165,17 +138,21 @@ fn handle_notification(
         DidOpenTextDocument::METHOD => {
             let params: lsp_types::DidOpenTextDocumentParams =
                 serde_json::from_value(notif.params)?;
-            let uri = params.text_document.uri.as_str();
-            host.open_document(uri, params.text_document.version, params.text_document.text);
+            let uri = &params.text_document.uri;
+            host.open_document(
+                uri.as_str(),
+                params.text_document.version,
+                params.text_document.text,
+            );
             publish_diagnostics(connection, host, uri)?;
         }
         DidChangeTextDocument::METHOD => {
             let params: lsp_types::DidChangeTextDocumentParams =
                 serde_json::from_value(notif.params)?;
-            let uri = params.text_document.uri.as_str();
+            let uri = &params.text_document.uri;
             // Full sync — take the last content change.
             if let Some(change) = params.content_changes.into_iter().last() {
-                host.update_document(uri, params.text_document.version, change.text);
+                host.update_document(uri.as_str(), params.text_document.version, change.text);
             }
             publish_diagnostics(connection, host, uri)?;
         }
@@ -201,16 +178,27 @@ fn handle_notification(
 fn publish_diagnostics(
     connection: &Connection,
     host: &mut AnalysisHost,
-    uri: &str,
+    uri: &Uri,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
-    let source = host.document_source(uri).unwrap_or("").to_string();
-    let diags = host.diagnostics(uri);
+    let uri_str = uri.as_str();
+    let Some((version, source, diags)) = host.document_diagnostics(uri_str) else {
+        return Ok(());
+    };
+
+    // Collect all offsets and convert in a single O(n) pass.
+    let mut offsets: Vec<usize> = Vec::with_capacity(diags.len() * 2);
+    for d in diags {
+        offsets.push(d.start_offset);
+        offsets.push(d.end_offset);
+    }
+    let positions = offsets_to_positions(source, &offsets);
 
     let lsp_diags: Vec<lsp_types::Diagnostic> = diags
         .iter()
-        .map(|d| {
-            let start = offset_to_position(&source, d.start_offset);
-            let end = offset_to_position(&source, d.end_offset);
+        .enumerate()
+        .map(|(i, d)| {
+            let start = positions[i * 2];
+            let end = positions[i * 2 + 1];
             lsp_types::Diagnostic {
                 range: Range::new(start, end),
                 severity: Some(match d.severity {
@@ -227,11 +215,9 @@ fn publish_diagnostics(
         .collect();
 
     let params = lsp_types::PublishDiagnosticsParams {
-        uri: uri
-            .parse()
-            .unwrap_or_else(|_| format!("file:///{uri}").parse().unwrap()),
+        uri: uri.clone(),
         diagnostics: lsp_diags,
-        version: None,
+        version: Some(version),
     };
 
     let notif = Notification::new(PublishDiagnostics::METHOD.to_string(), params);
@@ -239,21 +225,44 @@ fn publish_diagnostics(
     Ok(())
 }
 
-/// Convert a byte offset to an LSP Position (line, character).
-fn offset_to_position(source: &str, offset: usize) -> Position {
-    let offset = offset.min(source.len());
+/// Convert multiple byte offsets to LSP Positions in a single O(n) pass.
+///
+/// Sorts offsets internally and walks the source once, producing positions
+/// in the original order.
+fn offsets_to_positions(source: &str, offsets: &[usize]) -> Vec<Position> {
+    if offsets.is_empty() {
+        return Vec::new();
+    }
+
+    // Build (offset, original_index) pairs sorted by offset.
+    let mut indexed: Vec<(usize, usize)> = offsets
+        .iter()
+        .copied()
+        .enumerate()
+        .map(|(i, o)| (o, i))
+        .collect();
+    indexed.sort_unstable_by_key(|&(o, _)| o);
+
+    let mut result = vec![Position::new(0, 0); offsets.len()];
+    let src = source.as_bytes();
+    let len = src.len();
     let mut line = 0u32;
     let mut col = 0u32;
-    for (i, ch) in source.char_indices() {
-        if i >= offset {
-            break;
+    let mut pos = 0usize;
+
+    for (offset, orig_idx) in indexed {
+        let offset = offset.min(len);
+        while pos < offset {
+            if src[pos] == b'\n' {
+                line += 1;
+                col = 0;
+            } else {
+                col += 1;
+            }
+            pos += 1;
         }
-        if ch == '\n' {
-            line += 1;
-            col = 0;
-        } else {
-            col += ch.len_utf8() as u32;
-        }
+        result[orig_idx] = Position::new(line, col);
     }
-    Position::new(line, col)
+
+    result
 }

@@ -3,8 +3,9 @@
 
 import m from "mithril";
 import type * as monaco from "monaco-editor";
-import type {SqlPreset} from "../app/sql_presets";
+import type {SqlPreset} from "./workspace/sql_presets";
 import type {Theme} from "../types";
+import {INPUT_MODEL_URI} from "../app/editor_models";
 import {MonacoEditor} from "../widgets/monaco_editor";
 import "./editor_pane.css";
 
@@ -57,6 +58,7 @@ export class EditorPane implements m.ClassComponent<EditorPaneAttrs> {
         m(MonacoEditor, {
           theme,
           initialValue: initialSql,
+          modelUri: INPUT_MODEL_URI,
           onContentChange,
           onEditorCreated,
           lineNumbers: "on",

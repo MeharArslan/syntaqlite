@@ -31,6 +31,7 @@ typedef struct SynqParseToken {
     const char* z;   // pointer to start of token in source text
     int n;           // length in bytes
     int type;        // token type ID (SYNTAQLITE_TK_*)
+    uint32_t token_idx;  // index into parser's token vec (0xFFFFFFFF if not collecting)
 } SynqParseToken;
 
 typedef struct SyntaqliteFieldRangeMeta {

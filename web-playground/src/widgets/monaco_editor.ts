@@ -86,6 +86,7 @@ const SHARED_EDITOR_OPTIONS: monaco.editor.IStandaloneEditorConstructionOptions 
 export interface MonacoEditorAttrs {
   theme: Theme;
   initialValue: string;
+  modelUri?: string;
   readOnly?: boolean;
   lineNumbers?: "on" | "off";
   renderLineHighlight?: "gutter" | "none";
@@ -95,8 +96,16 @@ export interface MonacoEditorAttrs {
 
 export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
   oncreate(vnode: m.VnodeDOM<MonacoEditorAttrs>) {
-    const {theme, initialValue, readOnly, lineNumbers, renderLineHighlight, onContentChange, onEditorCreated} =
-      vnode.attrs;
+    const {
+      theme,
+      initialValue,
+      modelUri,
+      readOnly,
+      lineNumbers,
+      renderLineHighlight,
+      onContentChange,
+      onEditorCreated,
+    } = vnode.attrs;
     ensureThemesRegistered();
 
     const opts: monaco.editor.IStandaloneEditorConstructionOptions = {
@@ -106,6 +115,17 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
       lineNumbers: lineNumbers ?? "on",
       renderLineHighlight: renderLineHighlight ?? "gutter",
     };
+
+    if (modelUri) {
+      const uri = monaco.Uri.parse(modelUri);
+      let model = monaco.editor.getModel(uri);
+      if (!model) {
+        model = monaco.editor.createModel(initialValue, "sql", uri);
+      } else if (model.getValue() !== initialValue) {
+        model.setValue(initialValue);
+      }
+      opts.model = model;
+    }
 
     if (readOnly) {
       Object.assign(opts, {
@@ -152,7 +172,7 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
     // For read-only editors (no onContentChange), sync value from outside.
     if (!onContentChange && initialValue !== this.lastSyncedValue) {
       this.lastSyncedValue = initialValue;
-      if (this.editor) this.editor.setValue(initialValue);
+      if (this.editor) this.editor.getModel()?.setValue(initialValue);
     }
   }
 

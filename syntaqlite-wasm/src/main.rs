@@ -24,6 +24,24 @@ struct LspHost {
     host: syntaqlite_lsp::AnalysisHost<'static>,
 }
 
+fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
+    let mut lsp = LSP_HOST.with(|cell| cell.borrow_mut().take());
+    if lsp.as_ref().is_none_or(|h| h.dialect_ptr != dialect_ptr) {
+        let raw = dialect_ptr as *const dialect_ffi::Dialect;
+        // SAFETY: the caller set a valid dialect pointer via wasm_set_dialect.
+        let dialect = unsafe { Dialect::from_raw(raw) };
+        lsp = Some(LspHost {
+            dialect_ptr,
+            host: syntaqlite_lsp::AnalysisHost::new(dialect),
+        });
+    }
+    lsp.expect("LSP host must be initialized")
+}
+
+fn store_lsp_host(lsp: LspHost) {
+    LSP_HOST.with(|cell| *cell.borrow_mut() = Some(lsp));
+}
+
 fn set_result(text: &str) {
     RESULT_BUF.with(|buf| {
         let mut buf = buf.borrow_mut();
@@ -464,7 +482,7 @@ pub extern "C" fn wasm_result_free() {
 
 const WASM_DOC_URI: &str = "wasm://input";
 
-fn run_diagnostics(ptr: u32, len: u32) -> i32 {
+fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
     let dialect_ptr = DIALECT_PTR.with(|p| p.get());
     if dialect_ptr == 0 {
         set_result("dialect pointer is not set; call wasm_set_dialect first");
@@ -481,22 +499,10 @@ fn run_diagnostics(ptr: u32, len: u32) -> i32 {
     // Take the host out of the RefCell so we don't hold the borrow during
     // work that might panic. If it panics, we lose the host but don't poison
     // the RefCell.
-    let mut lsp = LSP_HOST.with(|cell| cell.borrow_mut().take());
-
-    // Lazily create or recreate the host when the dialect changes.
-    if lsp.as_ref().is_none_or(|h| h.dialect_ptr != dialect_ptr) {
-        let raw = dialect_ptr as *const dialect_ffi::Dialect;
-        // SAFETY: the caller set a valid dialect pointer via wasm_set_dialect.
-        let dialect = unsafe { Dialect::from_raw(raw) };
-        lsp = Some(LspHost {
-            dialect_ptr,
-            host: syntaqlite_lsp::AnalysisHost::new(dialect),
-        });
-    }
-
-    let h = lsp.as_mut().unwrap();
-    h.host.update_document(WASM_DOC_URI, 1, source);
-    let diags = h.host.diagnostics(WASM_DOC_URI);
+    let mut lsp = take_or_create_lsp_host(dialect_ptr);
+    lsp.host
+        .update_document(WASM_DOC_URI, version as i32, source);
+    let diags = lsp.host.diagnostics(WASM_DOC_URI);
 
     let count = diags.len() as i32;
 
@@ -526,12 +532,12 @@ fn run_diagnostics(ptr: u32, len: u32) -> i32 {
     set_result(&out);
 
     // Put the host back for reuse.
-    LSP_HOST.with(|cell| *cell.borrow_mut() = lsp);
+    store_lsp_host(lsp);
 
     count
 }
 
-fn run_semantic_tokens(ptr: u32, len: u32) -> i32 {
+fn run_semantic_tokens(ptr: u32, len: u32, range_start: u32, range_end: u32, version: u32) -> i32 {
     let dialect_ptr = DIALECT_PTR.with(|p| p.get());
     if dialect_ptr == 0 {
         set_result("dialect pointer is not set; call wasm_set_dialect first");
@@ -545,49 +551,43 @@ fn run_semantic_tokens(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut lsp = LSP_HOST.with(|cell| cell.borrow_mut().take());
+    let mut lsp = take_or_create_lsp_host(dialect_ptr);
+    lsp.host
+        .update_document(WASM_DOC_URI, version as i32, source);
 
-    if lsp.as_ref().is_none_or(|h| h.dialect_ptr != dialect_ptr) {
-        let raw = dialect_ptr as *const dialect_ffi::Dialect;
-        let dialect = unsafe { Dialect::from_raw(raw) };
-        lsp = Some(LspHost {
-            dialect_ptr,
-            host: syntaqlite_lsp::AnalysisHost::new(dialect),
-        });
-    }
+    let range = if range_start == 0 && range_end == 0xFFFFFFFF {
+        None
+    } else {
+        Some((range_start as usize, range_end as usize))
+    };
+    let encoded = lsp.host.semantic_tokens_encoded(WASM_DOC_URI, range);
 
-    let h = lsp.as_mut().unwrap();
-    h.host.update_document(WASM_DOC_URI, 1, source);
-    let tokens = h.host.semantic_tokens(WASM_DOC_URI);
+    let token_count = (encoded.len() / 5) as i32;
 
-    let count = tokens.len() as i32;
+    // Write the Vec<u32> as raw bytes into RESULT_BUF.
+    RESULT_BUF.with(|buf| {
+        let mut buf = buf.borrow_mut();
+        buf.clear();
+        let bytes: &[u8] =
+            unsafe { slice::from_raw_parts(encoded.as_ptr() as *const u8, encoded.len() * 4) };
+        buf.extend_from_slice(bytes);
+    });
 
-    let mut out = String::new();
-    out.push('[');
-    for (i, t) in tokens.iter().enumerate() {
-        if i > 0 {
-            out.push(',');
-        }
-        out.push_str("{\"o\":");
-        out.push_str(&t.offset.to_string());
-        out.push_str(",\"l\":");
-        out.push_str(&t.length.to_string());
-        out.push_str(",\"t\":");
-        out.push_str(&(t.category as u8).to_string());
-        out.push('}');
-    }
-    out.push(']');
-    set_result(&out);
+    store_lsp_host(lsp);
 
-    LSP_HOST.with(|cell| *cell.borrow_mut() = lsp);
-
-    count
+    token_count
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn wasm_semantic_tokens(ptr: u32, len: u32) -> i32 {
+pub extern "C" fn wasm_semantic_tokens(
+    ptr: u32,
+    len: u32,
+    range_start: u32,
+    range_end: u32,
+    version: u32,
+) -> i32 {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        run_semantic_tokens(ptr, len)
+        run_semantic_tokens(ptr, len, range_start, range_end, version)
     })) {
         Ok(result) => result,
         Err(_) => {
@@ -598,8 +598,10 @@ pub extern "C" fn wasm_semantic_tokens(ptr: u32, len: u32) -> i32 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn wasm_diagnostics(ptr: u32, len: u32) -> i32 {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run_diagnostics(ptr, len))) {
+pub extern "C" fn wasm_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        run_diagnostics(ptr, len, version)
+    })) {
         Ok(result) => result,
         Err(_) => {
             set_result("wasm_diagnostics panicked");

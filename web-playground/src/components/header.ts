@@ -5,7 +5,13 @@ import m from "mithril";
 import type {Attrs} from "../app/app";
 import {DIALECT_PRESETS} from "../app/dialect_manager";
 import {HelpTooltip} from "./help_tooltip";
+import {SegmentedSwitch} from "./switch";
 import "./header.css";
+
+const THEME_SWITCH_OPTIONS = [
+  {id: "light", label: "Light"},
+  {id: "dark", label: "Dark"},
+] as const;
 
 export class Header implements m.ClassComponent<Attrs> {
   private customPopoverOpen = false;
@@ -129,18 +135,15 @@ export class Header implements m.ClassComponent<Attrs> {
         ]),
         m("div.sq-theme-controls", [
           m("span.sq-theme-controls__label", "Theme"),
-          m(
-            "button.sq-toolbar__theme-toggle",
-            {
-              type: "button",
-              title: "Toggle theme",
-              onclick: () => {
-                app.theme.toggle();
-                m.redraw();
-              },
+          m(SegmentedSwitch, {
+            options: THEME_SWITCH_OPTIONS,
+            value: app.theme.current,
+            ariaLabel: "Theme",
+            onChange: (value) => {
+              app.theme.set(value as "light" | "dark");
+              m.redraw();
             },
-            app.theme.current === "dark" ? "Light" : "Dark",
-          ),
+          }),
         ]),
       ]),
     ]);

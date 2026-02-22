@@ -108,6 +108,12 @@ pub(crate) fn extract_tokenizer(
 }
 
 /// Extract terminal symbols (potential keywords) from extension `.y` grammar files.
+///
+/// Collects from `%token`, `%fallback`, and rule RHS symbols.
+///
+/// `ID` is intentionally excluded: it is a parser identifier token, not an SQL
+/// keyword, and including it would cause identifier tokens to be misclassified
+/// as keywords in semantic highlighting metadata.
 pub(crate) fn extract_terminals_from_y(extension_y_contents: &[&str]) -> Vec<String> {
     use std::collections::HashSet;
 
@@ -135,7 +141,7 @@ pub(crate) fn extract_terminals_from_y(extension_y_contents: &[&str]) -> Vec<Str
 
         for rule in &grammar.rules {
             for sym in &rule.rhs {
-                if is_keyword_like(sym.name) {
+                if is_keyword_like(sym.name) && sym.name != "ID" {
                     terminals.insert(sym.name.to_string());
                 }
             }
@@ -147,6 +153,30 @@ pub(crate) fn extract_terminals_from_y(extension_y_contents: &[&str]) -> Vec<Str
 
 fn is_keyword_like(name: &str) -> bool {
     name.len() >= 2 && name.chars().all(|c| c.is_ascii_uppercase())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    #[test]
+    fn extract_terminals_collects_rhs_tokens_but_excludes_id() {
+        let y = r#"
+%token PERFETTO MACRO.
+%fallback ID PERFETTO MODULE.
+cmd ::= INCLUDE PERFETTO MODULE ID DOT ID.
+cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
+"#;
+        let got: BTreeSet<String> = super::extract_terminals_from_y(&[y]).into_iter().collect();
+        let want: BTreeSet<String> = [
+            "ANY", "AS", "CREATE", "DOT", "INCLUDE", "LP", "MACRO", "MODULE", "PERFETTO", "RP",
+        ]
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+        assert_eq!(got, want);
+        assert!(!got.contains("ID"));
+    }
 }
 
 pub(crate) fn generate_keyword_hash(

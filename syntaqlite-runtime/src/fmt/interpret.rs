@@ -44,6 +44,7 @@ pub(crate) fn interpret<'a>(
     let mut pending_lines: Vec<DocId> = Vec::new();
     let mut ip: usize = 0;
     let has_comments = ctx.comment_ctx.is_some();
+    let jump_table = build_foreach_jump_table(ops, ops_count);
 
     while ip < ops_count {
         match op_at(ops, ip) {
@@ -158,15 +159,14 @@ pub(crate) fn interpret<'a>(
                     panic!("ForEachStart: field {} is not a NodeId", idx);
                 };
                 if list_id.is_null() {
-                    ip = skip_to_foreach_end(ops, ops_count, ip);
+                    ip = skip_to_foreach_end(ops, ops_count, ip, &jump_table);
                 } else {
                     let children = ctx
                         .cursor
                         .list_children(list_id, &ctx.dialect)
-                        .map(|c| c.to_vec())
-                        .unwrap_or_default();
+                        .unwrap_or(&[]);
                     if children.is_empty() {
-                        ip = skip_to_foreach_end(ops, ops_count, ip);
+                        ip = skip_to_foreach_end(ops, ops_count, ip, &jump_table);
                     } else {
                         for_each_stack.push(ForEachState {
                             children,
@@ -249,7 +249,7 @@ pub(crate) fn interpret<'a>(
                     }
                     parts.push(arena.text(sep_text));
                 } else {
-                    ip = skip_to_foreach_end(ops, ops_count, ip);
+                    ip = skip_to_foreach_end(ops, ops_count, ip, &jump_table);
                     continue;
                 }
             }
@@ -319,10 +319,10 @@ pub(crate) fn interpret<'a>(
             FmtOp::ForEachSelfStart => {
                 let children = list_children.expect("ForEachSelfStart on non-list node");
                 if children.is_empty() {
-                    ip = skip_to_foreach_end(ops, ops_count, ip);
+                    ip = skip_to_foreach_end(ops, ops_count, ip, &jump_table);
                 } else {
                     for_each_stack.push(ForEachState {
-                        children: children.to_vec(),
+                        children,
                         index: 0,
                         body_start: ip + 1,
                         sep_checkpoint: None,
@@ -378,8 +378,41 @@ fn op_at(ops: &[u8], ip: usize) -> FmtOp {
     FmtOp::decode(opcode, a, b, c)
 }
 
-/// Find the matching ForEachEnd scanning forward from `from_ip`.
-fn skip_to_foreach_end(ops: &[u8], ops_count: usize, from_ip: usize) -> usize {
+/// Pre-compute a jump table mapping ForEachStart/ForEachSelfStart ip → ForEachEnd ip.
+fn build_foreach_jump_table(ops: &[u8], ops_count: usize) -> Vec<usize> {
+    let mut table = vec![0usize; ops_count];
+    let mut stack: Vec<usize> = Vec::new();
+    for ip in 0..ops_count {
+        match op_at(ops, ip) {
+            FmtOp::ForEachStart(_) | FmtOp::ForEachSelfStart => {
+                stack.push(ip);
+            }
+            FmtOp::ForEachEnd => {
+                if let Some(start_ip) = stack.pop() {
+                    table[start_ip] = ip;
+                }
+            }
+            _ => {}
+        }
+    }
+    table
+}
+
+/// Find the matching ForEachEnd for the ForEach starting at `from_ip`.
+/// Uses the precomputed jump table for O(1) lookup; falls back to linear scan
+/// for ForEachSep (which skips to end mid-body).
+fn skip_to_foreach_end(
+    ops: &[u8],
+    ops_count: usize,
+    from_ip: usize,
+    jump_table: &[usize],
+) -> usize {
+    // Direct lookup works for ForEachStart/ForEachSelfStart positions.
+    let target = jump_table[from_ip];
+    if target != 0 {
+        return target;
+    }
+    // Fallback: linear scan (for ForEachSep which isn't in the jump table).
     let mut depth = 1;
     let mut ip = from_ip + 1;
     while ip < ops_count {
@@ -497,8 +530,8 @@ enum StackFrame {
     Nest(i16, Vec<DocId>),
 }
 
-struct ForEachState {
-    children: Vec<NodeId>,
+struct ForEachState<'a> {
+    children: &'a [NodeId],
     index: usize,
     body_start: usize,
     /// `parts.len()` saved just before ForEachSep emits. If the next

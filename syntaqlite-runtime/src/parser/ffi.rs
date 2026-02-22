@@ -48,6 +48,9 @@ pub struct Comment {
     pub kind: CommentKind,
 }
 
+/// Token flags bitfield.
+pub const TOKEN_FLAG_AS_ID: u32 = 1;
+
 /// A non-whitespace, non-comment token position captured during parsing.
 ///
 /// Mirrors C `SyntaqliteTokenPos` from `include/syntaqlite/parser.h`.
@@ -56,6 +59,10 @@ pub struct Comment {
 pub struct TokenPos {
     pub offset: u32,
     pub length: u32,
+    /// Original token type from tokenizer (pre-fallback).
+    pub type_: u32,
+    /// Bitfield: TOKEN_FLAG_AS_ID etc.
+    pub flags: u32,
 }
 
 /// A recorded macro invocation region. Populated via the low-level API

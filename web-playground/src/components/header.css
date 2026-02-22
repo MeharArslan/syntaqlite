@@ -43,23 +43,6 @@
   font-weight: 600;
 }
 
-.sq-toolbar__theme-toggle {
-  background: transparent;
-  border: 1px solid var(--line);
-  color: var(--muted);
-  padding: 4px 10px;
-  font-size: 0.85rem;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: 6px;
-}
-
-.sq-toolbar__theme-toggle:hover {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-color: var(--accent-soft);
-}
-
 /* ── Theme controls block ── */
 .sq-theme-controls {
   display: flex;

@@ -1,12 +1,18 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+use std::collections::HashSet;
+
 use crate::util::pascal_case;
 use crate::writers::c_writer::CWriter;
 
 /// Classify a token name into a `TokenCategory` byte value.
-fn classify_token(name: &str) -> u8 {
-    match name {
+///
+/// If `keyword_names` is provided (from the mkkeywordhash table + dialect
+/// extra keywords), any token whose name appears in that set is classified
+/// as Keyword (1), overriding the default heuristic.
+fn classify_token(name: &str, keyword_names: Option<&HashSet<String>>) -> u8 {
+    let base = match name {
         "STRING" | "BLOB" => 3,               // String
         "INTEGER" | "FLOAT" | "QNUMBER" => 4, // Number
         "BITAND" | "BITOR" | "LSHIFT" | "RSHIFT" | "PLUS" | "MINUS" | "STAR" | "SLASH" | "REM"
@@ -18,19 +24,36 @@ fn classify_token(name: &str) -> u8 {
         "ID" => 2,                            // Identifier
         "SPACE" | "ERROR" | "ILLEGAL" | "SPAN" | "UPLUS" | "UMINUS" | "TRUTH" | "REGISTER"
         | "VECTOR" | "SELECT_COLUMN" | "IF_NULL_ROW" | "AGG_COLUMN" => 0, // Other
-        _ => 1,                               // Keyword (everything else)
+        _ => 0,                               // Other (unknown tokens)
+    };
+
+    // Keyword-set override should only affect tokens that are otherwise
+    // unknown ("Other") or function-like (FUNCTION/AGG_FUNCTION), so
+    // structural tokens like ID/DOT/LP remain correctly classified.
+    if let Some(kws) = keyword_names {
+        if kws.contains(name) && (base == 0 || base == 9) {
+            return 1; // Keyword
+        }
     }
+
+    base
 }
 
 /// Generate a C header with a static token categories table.
-pub fn generate_token_categories_header(tokens: &[(String, u32)]) -> String {
+///
+/// When `keyword_names` is provided, tokens whose names appear in the set
+/// are classified as Keyword (1), overriding the default heuristic.
+pub fn generate_token_categories_header(
+    tokens: &[(String, u32)],
+    keyword_names: Option<&HashSet<String>>,
+) -> String {
     let max_ordinal = tokens.iter().map(|(_, v)| *v).max().unwrap_or(0);
     let count = max_ordinal as usize + 1;
 
     // Build ordinal → category map
     let mut categories = vec![0u8; count]; // default = Other
     for (name, ordinal) in tokens {
-        categories[*ordinal as usize] = classify_token(name);
+        categories[*ordinal as usize] = classify_token(name, keyword_names);
     }
 
     let mut w = CWriter::new();
@@ -229,6 +252,8 @@ mod tests {
 
     #[test]
     fn token_categories_header_classifies_correctly() {
+        use std::collections::HashSet;
+
         let tokens = vec![
             ("SEMI".to_string(), 0),
             ("SELECT".to_string(), 1),
@@ -241,13 +266,53 @@ mod tests {
             ("FUNCTION".to_string(), 8),
             ("SPACE".to_string(), 9),
         ];
-        let h = generate_token_categories_header(&tokens);
+        let kws: HashSet<String> = ["SELECT"].iter().map(|s| s.to_string()).collect();
+        let h = generate_token_categories_header(&tokens, Some(&kws));
         assert!(h.contains("#define TOKEN_TYPE_COUNT 10"));
         assert!(h.contains("token_categories[10]"));
         // SEMI=6(punct), SELECT=1(kw), ID=2(ident), STRING=3(str),
         // INTEGER=4(num), PLUS=5(op), COMMENT=7(comment), VARIABLE=8(var),
         // FUNCTION=9(func), SPACE=0(other)
         assert!(h.contains("6,1,2,3,4,5,7,8,9,0,"));
+    }
+
+    #[test]
+    fn token_categories_keyword_override() {
+        use std::collections::HashSet;
+
+        let tokens = vec![
+            ("SELECT".to_string(), 0),
+            ("FUNCTION".to_string(), 1),
+            ("ID".to_string(), 2),
+        ];
+        // FUNCTION is in the keyword set, so it should be Keyword(1) not Function(9)
+        let kws: HashSet<String> = ["SELECT", "FUNCTION"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        let h = generate_token_categories_header(&tokens, Some(&kws));
+        // SELECT=1(kw), FUNCTION=1(kw, overridden), ID=2(ident)
+        assert!(h.contains("1,1,2,"));
+    }
+
+    #[test]
+    fn id_never_becomes_keyword_even_if_present_in_keyword_set() {
+        use std::collections::HashSet;
+
+        let tokens = vec![("ID".to_string(), 0)];
+        let kws: HashSet<String> = ["ID"].iter().map(|s| s.to_string()).collect();
+        let h = generate_token_categories_header(&tokens, Some(&kws));
+        assert!(h.contains("2,"));
+    }
+
+    #[test]
+    fn punctuation_does_not_become_keyword_even_if_present_in_keyword_set() {
+        use std::collections::HashSet;
+
+        let tokens = vec![("DOT".to_string(), 0)];
+        let kws: HashSet<String> = ["DOT"].iter().map(|s| s.to_string()).collect();
+        let h = generate_token_categories_header(&tokens, Some(&kws));
+        assert!(h.contains("6,"));
     }
 
     #[test]
@@ -265,6 +330,29 @@ mod tests {
         assert!(c.contains(".token_categories = 0,"));
         assert!(c.contains(".token_type_count = 0,"));
         assert!(!c.contains("dialect_tokens.h"));
+    }
+
+    /// Tokens not in the keyword set and not explicitly matched should be
+    /// Other (0), not Keyword.  This catches dialect-specific internal tokens
+    /// (e.g. TRUEFALSE, COLUMN) being falsely classified as keywords.
+    #[test]
+    fn unknown_tokens_default_to_other_not_keyword() {
+        use std::collections::HashSet;
+
+        let tokens = vec![
+            ("SELECT".to_string(), 0),
+            ("ID".to_string(), 1),
+            ("TRUEFALSE".to_string(), 2), // internal token, not a keyword
+            ("COLUMN".to_string(), 3),    // internal token, not a keyword
+            ("FILTER".to_string(), 4),    // internal token, not a keyword
+        ];
+        let kws: HashSet<String> = ["SELECT"].iter().map(|s| s.to_string()).collect();
+        let h = generate_token_categories_header(&tokens, Some(&kws));
+        // SELECT=1(kw), ID=2(ident), TRUEFALSE=0(other), COLUMN=0(other), FILTER=0(other)
+        assert!(
+            h.contains("1,2,0,0,0,"),
+            "unknown tokens should be Other (0), not Keyword (1); got:\n{h}"
+        );
     }
 }
 

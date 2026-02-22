@@ -3,6 +3,7 @@
 
 import m from "mithril";
 import type {Theme} from "../types";
+import {FORMATTED_MODEL_URI} from "../app/editor_models";
 import {MonacoEditor} from "../widgets/monaco_editor";
 import "./format_output.css";
 
@@ -18,6 +19,7 @@ export class FormatOutput implements m.ClassComponent<FormatOutputAttrs> {
       m(MonacoEditor, {
         theme,
         initialValue: text,
+        modelUri: FORMATTED_MODEL_URI,
         readOnly: true,
         lineNumbers: "off",
         renderLineHighlight: "none",

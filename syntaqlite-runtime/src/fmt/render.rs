@@ -178,16 +178,29 @@ fn push_keyword(s: &str, config: &FormatConfig, out: &mut String) {
     match config.keyword_case {
         KeywordCase::Preserve => out.push_str(s),
         KeywordCase::Upper => {
-            for c in s.chars() {
-                for u in c.to_uppercase() {
-                    out.push(u);
+            if s.is_ascii() {
+                let start = out.len();
+                out.push_str(s);
+                // SAFETY: ASCII bytes are valid UTF-8 after uppercasing.
+                out[start..].make_ascii_uppercase();
+            } else {
+                for c in s.chars() {
+                    for u in c.to_uppercase() {
+                        out.push(u);
+                    }
                 }
             }
         }
         KeywordCase::Lower => {
-            for c in s.chars() {
-                for l in c.to_lowercase() {
-                    out.push(l);
+            if s.is_ascii() {
+                let start = out.len();
+                out.push_str(s);
+                out[start..].make_ascii_lowercase();
+            } else {
+                for c in s.chars() {
+                    for l in c.to_lowercase() {
+                        out.push(l);
+                    }
                 }
             }
         }

@@ -19,6 +19,7 @@
 // ============ Identifiers ============
 
 nm(A) ::= idj(B). {
+    synq_mark_as_id(pCtx, B);
     A = B;
 }
 

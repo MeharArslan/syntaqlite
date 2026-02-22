@@ -87,6 +87,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->ctx.error = 0;
   p->ctx.error_offset = 0xFFFFFFFF;
   p->ctx.error_length = 0;
+  p->ctx.tokens = p->collect_tokens ? &p->tokens : NULL;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,8 +96,8 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 // ---------------------------------------------------------------------------
 
 static int feed_one_token(SyntaqliteParser* p, int token_type,
-                           const char* text, int len) {
-  SynqParseToken minor = {.z = text, .n = len, .type = token_type};
+                           const char* text, int len, uint32_t token_idx) {
+  SynqParseToken minor = {.z = text, .n = len, .type = token_type, .token_idx = token_idx};
   SYNQ_PARSER_FEED(p->dialect, p->lemon, token_type, minor, &p->ctx);
   p->last_token_type = token_type;
 
@@ -190,7 +191,7 @@ static int finish_input(SyntaqliteParser* p) {
 
   // Synthesize SEMI if the last token wasn't one.
   if (p->last_token_type != p->dialect->tk_semi) {
-    int rc = feed_one_token(p, p->dialect->tk_semi, NULL, 0);
+    int rc = feed_one_token(p, p->dialect->tk_semi, NULL, 0, 0xFFFFFFFF);
     if (rc < 0) {
       p->finished = 1;
       p->ctx.error_offset = p->offset;
@@ -208,7 +209,7 @@ static int finish_input(SyntaqliteParser* p) {
   // Send end-of-input (EOF) to flush the final reduction. LALR(1) parsers
   // need one token of lookahead — the EOF provides it, triggering any
   // pending reduce (e.g. ecmd ::= cmdx SEMI).
-  SynqParseToken eof = {.z = NULL, .n = 0, .type = 0};
+  SynqParseToken eof = {.z = NULL, .n = 0, .type = 0, .token_idx = 0xFFFFFFFF};
   SYNQ_PARSER_FEED(p->dialect, p->lemon, 0, eof, &p->ctx);
   p->finished = 1;
 
@@ -283,13 +284,15 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
     // Capture non-whitespace, non-comment, non-semicolon token positions.
     // Semicolons are statement separators, not part of the AST — including
     // them would desync the token cursor with format ops.
+    uint32_t tidx = 0xFFFFFFFF;
     if (p->collect_tokens && token_type != p->dialect->tk_semi) {
-      SyntaqliteTokenPos tp = {tok_offset, (uint32_t)token_len};
+      SyntaqliteTokenPos tp = {tok_offset, (uint32_t)token_len, (uint32_t)token_type, 0};
       syntaqlite_vec_push(&p->tokens, tp, p->mem);
+      tidx = syntaqlite_vec_len(&p->tokens) - 1;
     }
 
     int rc = feed_one_token(p, token_type, p->source + tok_offset,
-                            (int)token_len);
+                            (int)token_len, tidx);
     if (rc < 0) {
       p->finished = 1;
       result.error = 1;
@@ -348,10 +351,12 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
   }
 
   // Capture non-whitespace, non-comment, non-semicolon token positions.
+  uint32_t tidx = 0xFFFFFFFF;
   if (p->collect_tokens && text && token_type != p->dialect->tk_semi) {
     uint32_t tok_offset = (uint32_t)(text - p->source);
-    SyntaqliteTokenPos tp = {tok_offset, (uint32_t)len};
+    SyntaqliteTokenPos tp = {tok_offset, (uint32_t)len, (uint32_t)token_type, 0};
     syntaqlite_vec_push(&p->tokens, tp, p->mem);
+    tidx = syntaqlite_vec_len(&p->tokens) - 1;
   }
 
   // Reset per-statement state if starting fresh.
@@ -362,7 +367,7 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
     p->ctx.error = 0;
   }
 
-  int rc = feed_one_token(p, token_type, text, len);
+  int rc = feed_one_token(p, token_type, text, len, tidx);
   if (rc < 0) return rc;
 
   if (rc == 1 && p->ctx.root == SYNTAQLITE_NULL_NODE) {

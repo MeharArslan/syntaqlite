@@ -4,8 +4,9 @@
 import m from "mithril";
 import * as monaco from "monaco-editor";
 import type {Attrs} from "../app/app";
+import {isInputModelPath} from "../app/editor_models";
 import type {Engine} from "../app/engine";
-import {getSqlPresetLibrary} from "../app/sql_presets";
+import {getSqlPresetLibrary} from "./workspace/sql_presets";
 import {debounce} from "../base/debounce";
 import type {DiagnosticEntry} from "../types";
 import {EditorPane} from "./editor_pane";
@@ -42,7 +43,9 @@ export class Workspace implements m.ClassComponent<Attrs> {
   private debouncedUpdate: (sql: string) => void;
   private debouncedDiagnostics: (engine: Engine, sql: string) => void;
   private presetSelectionByDialect = new Map<string, string>();
+  private customSqlByDialect = new Map<string, string>();
   private applyingPreset = false;
+  private lastAppliedDialectPtr: number | null = null;
   /** Track the last dialect pointer we ran diagnostics against. */
   private lastDiagnosticDialectPtr: number | null = null;
 
@@ -63,13 +66,17 @@ export class Workspace implements m.ClassComponent<Attrs> {
     const presetLibrary = getSqlPresetLibrary(app.dialect.activePresetId);
     const selectedPresetId = this.ensurePresetSelection(presetLibrary);
 
-    // Re-run diagnostics when the dialect changes (or on first load).
-    // This mirrors the pattern used by FormatTab and AstTab.
-    if (app.runtime.ready && this.editor && app.dialect.active) {
+    // Apply dialect-specific preset SQL and refresh analysis whenever the
+    // active dialect pointer changes.
+    if (app.runtime.ready && app.dialect.active) {
       const dPtr = app.dialect.active.ptr;
-      if (dPtr !== this.lastDiagnosticDialectPtr) {
+      if (dPtr !== this.lastAppliedDialectPtr) {
+        this.lastAppliedDialectPtr = dPtr;
+        this.applySelectionForDialect(app.runtime, presetLibrary.dialectId, selectedPresetId, true);
         this.lastDiagnosticDialectPtr = dPtr;
+      } else if (this.editor && dPtr !== this.lastDiagnosticDialectPtr) {
         this.updateDiagnostics(app.runtime, this.sql);
+        this.lastDiagnosticDialectPtr = dPtr;
       }
     }
 
@@ -82,9 +89,7 @@ export class Workspace implements m.ClassComponent<Attrs> {
         selectedPresetId,
         onPresetChange: (presetId: string) => {
           this.presetSelectionByDialect.set(presetLibrary.dialectId, presetId);
-          if (presetId !== CUSTOM_PRESET_ID) {
-            this.applyPresetById(app.runtime, presetLibrary.dialectId, presetId);
-          }
+          this.applySelectionForDialect(app.runtime, presetLibrary.dialectId, presetId);
         },
         onContentChange: (s: string) => {
           if (!this.applyingPreset) {
@@ -93,6 +98,7 @@ export class Workspace implements m.ClassComponent<Attrs> {
               this.presetSelectionByDialect.set(presetLibrary.dialectId, CUSTOM_PRESET_ID);
               m.redraw();
             }
+            this.customSqlByDialect.set(presetLibrary.dialectId, s);
           }
           this.debouncedUpdate(s);
           this.debouncedDiagnostics(app.runtime, s);
@@ -116,21 +122,53 @@ export class Workspace implements m.ClassComponent<Attrs> {
     return first;
   }
 
-  private applyPresetById(engine: Engine, dialectId: string, presetId: string): void {
+  private applyPresetById(
+    engine: Engine,
+    dialectId: string,
+    presetId: string,
+    forceEditorRefresh = false,
+  ): void {
     const presetLibrary = getSqlPresetLibrary(dialectId);
     const preset = presetLibrary.presets.find((item) => item.id === presetId);
     if (!preset) return;
 
+    this.applySql(engine, preset.sql, forceEditorRefresh);
+  }
+
+  private applySelectionForDialect(
+    engine: Engine,
+    dialectId: string,
+    presetId: string,
+    forceEditorRefresh = false,
+  ): void {
+    if (presetId === CUSTOM_PRESET_ID) {
+      const customSql = this.customSqlByDialect.get(dialectId);
+      if (customSql !== undefined) {
+        this.applySql(engine, customSql, forceEditorRefresh);
+        return;
+      }
+      const fallback = getSqlPresetLibrary(dialectId).presets[0];
+      if (fallback) {
+        this.presetSelectionByDialect.set(dialectId, fallback.id);
+        this.applySql(engine, fallback.sql, forceEditorRefresh);
+      }
+      return;
+    }
+    this.applyPresetById(engine, dialectId, presetId, forceEditorRefresh);
+  }
+
+  private applySql(engine: Engine, sql: string, forceEditorRefresh = false): void {
     this.applyingPreset = true;
     try {
-      this.sql = preset.sql;
-      if (this.editor && this.editor.getValue() !== preset.sql) {
-        this.editor.setValue(preset.sql);
+      this.sql = sql;
+      if (this.editor && (forceEditorRefresh || this.editor.getValue() !== sql)) {
+        // Force setValue on dialect switch so Monaco requests fresh semantic tokens.
+        this.editor.setValue(sql);
       }
     } finally {
       this.applyingPreset = false;
     }
-    this.updateDiagnostics(engine, preset.sql);
+    this.updateDiagnostics(engine, sql);
     m.redraw();
   }
 
@@ -139,8 +177,12 @@ export class Workspace implements m.ClassComponent<Attrs> {
 
     const model = this.editor.getModel();
     if (!model) return;
+    if (!isInputModelPath(model.uri.path)) {
+      monaco.editor.setModelMarkers(model, "syntaqlite", []);
+      return;
+    }
 
-    const result = engine.runDiagnostics(sql);
+    const result = engine.runDiagnostics(sql, model.getVersionId());
     if (!result.ok) {
       monaco.editor.setModelMarkers(model, "syntaqlite", []);
       return;

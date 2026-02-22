@@ -56,10 +56,15 @@ typedef struct SyntaqliteComment {
   uint8_t kind;      // 0 = line comment (--), 1 = block comment (/* */).
 } SyntaqliteComment;
 
+// Token flags bitfield.
+#define SYNQ_TOKEN_FLAG_AS_ID 1  // Token was consumed as identifier (fallback from keyword).
+
 // A non-whitespace, non-comment token position captured during parsing.
 typedef struct SyntaqliteTokenPos {
   uint32_t offset;   // Byte offset in source.
   uint32_t length;   // Byte length.
+  uint32_t type;     // Original token type from tokenizer (pre-fallback).
+  uint32_t flags;    // Bitfield: SYNQ_TOKEN_FLAG_AS_ID etc.
 } SyntaqliteTokenPos;
 
 // Result of parsing one statement via syntaqlite_parser_next().

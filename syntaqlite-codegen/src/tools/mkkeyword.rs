@@ -46,6 +46,32 @@ unsafe extern "C" {
     ) -> c_int;
 }
 
+/// Return the set of token names that are keywords in the base SQLite table.
+///
+/// Reads the compiled-in `aKeywordTable` and strips the `TK_` prefix from
+/// each entry's `z_token_type` field, yielding names like `"SELECT"`,
+/// `"FUNCTION"`, etc.
+pub fn base_keyword_token_names() -> std::collections::HashSet<String> {
+    let table_ptr = std::ptr::addr_of!(aKeywordTable);
+    let n_keyword_ptr = std::ptr::addr_of!(nKeyword);
+    unsafe {
+        let n = n_keyword_ptr.read() as usize;
+        let arr = std::ptr::read(table_ptr);
+        arr[..n]
+            .iter()
+            .map(|kw| {
+                let token_type = std::ffi::CStr::from_ptr(kw.z_token_type)
+                    .to_string_lossy()
+                    .to_string();
+                token_type
+                    .strip_prefix("TK_")
+                    .unwrap_or(&token_type)
+                    .to_string()
+            })
+            .collect()
+    }
+}
+
 /// Run mkkeywordhash with arbitrary arguments (pass-through).
 ///
 /// When `--extra-file <path>` is provided, reads extra keyword names from

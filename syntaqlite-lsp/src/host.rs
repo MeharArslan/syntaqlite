@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 use syntaqlite_runtime::dialect::TokenCategory;
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter};
-use syntaqlite_runtime::parser::Tokenizer;
+use syntaqlite_runtime::parser::{ParserConfig, TOKEN_FLAG_AS_ID};
 use syntaqlite_runtime::{Dialect, ParseError, Parser};
 
 use crate::context::AmbientContext;
@@ -26,6 +26,7 @@ struct Document {
 
 struct DocumentState {
     diagnostics: Vec<Diagnostic>,
+    semantic_tokens: Vec<SemanticToken>,
 }
 
 impl<'d> AnalysisHost<'d> {
@@ -62,6 +63,9 @@ impl<'d> AnalysisHost<'d> {
     /// Update a document's content, invalidating cached state.
     pub fn update_document(&mut self, uri: &str, version: i32, text: String) {
         if let Some(doc) = self.documents.get_mut(uri) {
+            if doc.version == version && doc.source == text {
+                return;
+            }
             doc.version = version;
             doc.source = text;
             doc.state = None;
@@ -78,14 +82,23 @@ impl<'d> AnalysisHost<'d> {
     /// Get diagnostics for a document, lazily parsing if needed.
     pub fn diagnostics(&mut self, uri: &str) -> &[Diagnostic] {
         if let Some(doc) = self.documents.get_mut(uri) {
-            if doc.state.is_none() {
-                let diagnostics = compute_diagnostics(&self.dialect, &doc.source);
-                doc.state = Some(DocumentState { diagnostics });
-            }
+            ensure_document_state(&self.dialect, doc);
             &doc.state.as_ref().unwrap().diagnostics
         } else {
             &[]
         }
+    }
+
+    /// Borrow document source + diagnostics + version in one host borrow.
+    pub fn document_diagnostics(&mut self, uri: &str) -> Option<(i32, &str, &[Diagnostic])> {
+        let doc = self.documents.get_mut(uri)?;
+        ensure_document_state(&self.dialect, doc);
+        let state = doc.state.as_ref().unwrap();
+        Some((
+            doc.version,
+            doc.source.as_str(),
+            state.diagnostics.as_slice(),
+        ))
     }
 
     /// Get the source text for a document, if it exists.
@@ -94,34 +107,99 @@ impl<'d> AnalysisHost<'d> {
     }
 
     /// Get semantic tokens for a document.
-    pub fn semantic_tokens(&self, uri: &str) -> Vec<SemanticToken> {
-        let doc = match self.documents.get(uri) {
+    ///
+    /// Uses the parser with `collect_tokens` to resolve keyword/identifier
+    /// fallback via grammar actions (tokens marked with `SYNQ_TOKEN_FLAG_AS_ID`
+    /// are classified as `Identifier` regardless of their original token type).
+    pub fn semantic_tokens(&mut self, uri: &str) -> Vec<SemanticToken> {
+        let doc = match self.documents.get_mut(uri) {
             Some(d) => d,
             None => return Vec::new(),
         };
-        let source = &doc.source;
-        let mut tokenizer = Tokenizer::new(self.dialect);
-        let tk_space = self.dialect.tk_space();
-        let cursor = tokenizer.tokenize(source);
-        let source_base = source.as_ptr() as usize;
+        ensure_document_state(&self.dialect, doc);
+        doc.state
+            .as_ref()
+            .unwrap()
+            .semantic_tokens
+            .as_slice()
+            .to_vec()
+    }
 
-        cursor
-            .filter_map(|raw| {
-                if raw.token_type == tk_space {
-                    return None;
+    /// Get semantic tokens as a delta-encoded `Uint32Array`-compatible vector.
+    ///
+    /// Each token is 5 u32s: `[deltaLine, deltaStartChar, length, legendIndex, 0]`.
+    /// This is the format Monaco/LSP expects, computed in a single O(n) pass
+    /// over the source.
+    ///
+    /// When `range` is `Some((start_offset, end_offset))`, only tokens whose
+    /// offset falls within the byte range are emitted (the full document is
+    /// still parsed for correct fallback resolution).
+    pub fn semantic_tokens_encoded(
+        &mut self,
+        uri: &str,
+        range: Option<(usize, usize)>,
+    ) -> Vec<u32> {
+        let doc = match self.documents.get_mut(uri) {
+            Some(d) => d,
+            None => return Vec::new(),
+        };
+        ensure_document_state(&self.dialect, doc);
+        let source = doc.source.as_bytes();
+        let tokens = &doc.state.as_ref().unwrap().semantic_tokens;
+
+        let (range_start, range_end) = range.unwrap_or((0, source.len()));
+
+        let mut result = Vec::with_capacity(tokens.len() * 5);
+        let mut prev_line: u32 = 0;
+        let mut prev_col: u32 = 0;
+        // Walk source bytes in lockstep with tokens (both sorted by offset).
+        let mut cur_line: u32 = 0;
+        let mut cur_col: u32 = 0;
+        let mut src_pos: usize = 0;
+
+        for tok in tokens {
+            // Advance src_pos to tok.offset, tracking line/col.
+            while src_pos < tok.offset && src_pos < source.len() {
+                if source[src_pos] == b'\n' {
+                    cur_line += 1;
+                    cur_col = 0;
+                } else {
+                    cur_col += 1;
                 }
-                let cat = self.dialect.token_category(raw.token_type);
-                if cat == TokenCategory::Other {
-                    return None;
-                }
-                let offset = raw.text.as_ptr() as usize - source_base;
-                Some(SemanticToken {
-                    offset,
-                    length: raw.text.len(),
-                    category: cat,
-                })
-            })
-            .collect()
+                src_pos += 1;
+            }
+
+            // Range filter: skip tokens before range, stop after range.
+            if tok.offset < range_start {
+                continue;
+            }
+            if tok.offset >= range_end {
+                break;
+            }
+
+            let legend_idx = match tok.category.legend_index() {
+                Some(idx) => idx,
+                None => continue, // Skip Other tokens
+            };
+
+            let delta_line = cur_line - prev_line;
+            let delta_start = if delta_line == 0 {
+                cur_col - prev_col
+            } else {
+                cur_col
+            };
+
+            result.push(delta_line);
+            result.push(delta_start);
+            result.push(tok.length as u32);
+            result.push(legend_idx);
+            result.push(0); // modifiers bitset
+
+            prev_line = cur_line;
+            prev_col = cur_col;
+        }
+
+        result
     }
 
     /// Format a document's source text.
@@ -136,38 +214,65 @@ impl<'d> AnalysisHost<'d> {
     }
 }
 
-fn compute_diagnostics(dialect: &Dialect, source: &str) -> Vec<Diagnostic> {
-    let mut parser = match Parser::try_new(dialect) {
-        Some(p) => p,
-        None => {
-            return vec![Diagnostic {
-                start_offset: 0,
-                end_offset: 0,
-                message: "parser allocation failed".to_string(),
-                severity: Severity::Error,
-            }];
-        }
+fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
+    let config = ParserConfig {
+        collect_tokens: true,
+        ..Default::default()
     };
+    let mut parser = Parser::with_config(dialect, &config);
     let mut cursor = parser.parse(source);
     let mut diagnostics = Vec::new();
 
     while let Some(result) = cursor.next_statement() {
-        match result {
-            Ok(_) => {}
-            Err(err) => {
-                let (start_offset, end_offset) = error_span(&err, source);
-                diagnostics.push(Diagnostic {
-                    start_offset,
-                    end_offset,
-                    message: err.message,
-                    severity: Severity::Error,
-                });
-                break;
-            }
+        if let Err(err) = result {
+            let (start_offset, end_offset) = error_span(&err, source);
+            diagnostics.push(Diagnostic {
+                start_offset,
+                end_offset,
+                message: err.message,
+                severity: Severity::Error,
+            });
+            break;
         }
     }
 
-    diagnostics
+    let mut semantic_tokens = Vec::new();
+
+    for tp in cursor.base().tokens() {
+        let cat = if tp.flags & TOKEN_FLAG_AS_ID != 0 {
+            TokenCategory::Identifier
+        } else {
+            dialect.token_category(tp.type_)
+        };
+        if cat == TokenCategory::Other {
+            continue;
+        }
+        semantic_tokens.push(SemanticToken {
+            offset: tp.offset as usize,
+            length: tp.length as usize,
+            category: cat,
+        });
+    }
+
+    for c in cursor.base().comments() {
+        semantic_tokens.push(SemanticToken {
+            offset: c.offset as usize,
+            length: c.length as usize,
+            category: TokenCategory::Comment,
+        });
+    }
+    semantic_tokens.sort_by_key(|t| t.offset);
+
+    DocumentState {
+        diagnostics,
+        semantic_tokens,
+    }
+}
+
+fn ensure_document_state(dialect: &Dialect, doc: &mut Document) {
+    if doc.state.is_none() {
+        doc.state = Some(compute_document_state(dialect, &doc.source));
+    }
 }
 
 fn error_span(err: &ParseError, source: &str) -> (usize, usize) {

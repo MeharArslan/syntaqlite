@@ -3,7 +3,10 @@
 
 import m from "mithril";
 import {App} from "./app/app";
-import {registerSemanticTokensProvider} from "./app/semantic_tokens";
+import * as monaco from "monaco-editor";
+import "monaco-editor/esm/vs/basic-languages/sql/sql.contribution";
+import {isInputModelPath} from "./app/editor_models";
+import type {Engine} from "./app/engine";
 import {AppComponent} from "./components/app";
 import "./styles/main.css";
 
@@ -39,6 +42,44 @@ function setupMonacoWorkers() {
       });
     },
   };
+}
+
+// Legend order must match SEMANTIC_TOKEN_LEGEND in syntaqlite-runtime.
+const TOKEN_LEGEND: monaco.languages.SemanticTokensLegend = {
+  tokenTypes: [
+    "keyword", // 0
+    "variable", // 1
+    "string", // 2
+    "number", // 3
+    "operator", // 4
+    "comment", // 5
+    "punctuation", // 6
+    "type", // 7 (identifier)
+    "function", // 8
+  ],
+  tokenModifiers: [],
+};
+
+function registerSemanticTokensProvider(engine: Engine): void {
+  monaco.languages.registerDocumentRangeSemanticTokensProvider("sql", {
+    getLegend: () => TOKEN_LEGEND,
+
+    provideDocumentRangeSemanticTokens(
+      model: monaco.editor.ITextModel,
+      range: monaco.Range,
+    ): monaco.languages.ProviderResult<monaco.languages.SemanticTokens> {
+      if (!engine.ready) return {data: new Uint32Array(0)};
+      if (!isInputModelPath(model.uri.path)) {
+        return {data: new Uint32Array(0)};
+      }
+      const source = model.getValue();
+      const rangeStart = model.getOffsetAt(range.getStartPosition());
+      const rangeEnd = model.getOffsetAt(range.getEndPosition());
+      const version = model.getVersionId();
+      const data = engine.runSemanticTokens(source, rangeStart, rangeEnd, version);
+      return {data: data ?? new Uint32Array(0)};
+    },
+  });
 }
 
 async function main() {

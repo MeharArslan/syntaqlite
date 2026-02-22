@@ -54,7 +54,13 @@ pub(crate) fn generate_codegen_artifacts(
     let dialect_fmt_h =
         dialect_codegen::generate_c_fmt_tables(&ast_model).map_err(|e| e.to_string())?;
     let token_defines = crate::extract_token_defines(&parse_h);
-    let dialect_tokens_h = dialect_codegen::generate_token_categories_header(&token_defines);
+    // Build keyword set from the base mkkeywordhash table + dialect extra keywords.
+    let mut keyword_names = crate::base_keyword_token_names();
+    for kw in request.extra_keywords {
+        keyword_names.insert(kw.to_uppercase());
+    }
+    let dialect_tokens_h =
+        dialect_codegen::generate_token_categories_header(&token_defines, Some(&keyword_names));
     let dialect_c =
         dialect_codegen::generate_dialect_c(request.dialect.name(), Some(&token_defines));
     let dialect_h = dialect_codegen::generate_dialect_h(request.dialect.name());

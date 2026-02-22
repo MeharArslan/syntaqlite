@@ -8,6 +8,7 @@ members = [
     "syntaqlite-codegen-utils",
     "syntaqlite-cli",
     "syntaqlite-lsp",
+    "benches",
 ]
 resolver = "3"
 

@@ -10,8 +10,6 @@ import type {
   EmscriptenModuleConfig,
   FormatOptions,
   FormatResult,
-  SemanticTokenEntry,
-  SemanticTokensResult,
 } from "../types";
 
 const RUNTIME_JS_PATH = "./syntaqlite-runtime.js";
@@ -193,25 +191,41 @@ export class Engine {
     return {ok: status === 0, text};
   }
 
-  runSemanticTokens(sql: string): SemanticTokensResult {
-    if (!this.semanticTokensRaw) return {ok: false, tokens: []};
+  /** Run semantic token analysis over a byte range. Returns a pre-encoded
+   *  Uint32Array (5 u32s per token: deltaLine, deltaStartChar, length,
+   *  legendIndex, 0) ready for Monaco, or null on failure.
+   *  Pass rangeStart=0 and rangeEnd=0xFFFFFFFF for the full document. */
+  runSemanticTokens(
+    sql: string,
+    rangeStart = 0,
+    rangeEnd = 0xffffffff,
+    version = 1,
+  ): Uint32Array | null {
+    if (!this.semanticTokensRaw) return null;
     try {
-      const count = this.withInput(sql, (ptr, len) => this.semanticTokensRaw!(ptr, len));
-      const text = this.readAndClearResult();
-      if (count < 0) return {ok: false, tokens: []};
-      if (count === 0) return {ok: true, tokens: []};
-      const tokens: SemanticTokenEntry[] = JSON.parse(text);
-      return {ok: true, tokens};
+      const count = this.withInput(sql, (ptr, len) =>
+        this.semanticTokensRaw!(ptr, len, rangeStart, rangeEnd, version),
+      );
+      if (count <= 0) {
+        this.resultFreeRaw!();
+        return count === 0 ? new Uint32Array(0) : null;
+      }
+      // Read raw bytes from RESULT_BUF as a Uint32Array (5 u32s per token).
+      const rptr = this.resultPtrRaw!();
+      const rlen = this.resultLenRaw!();
+      const bytes = this.heapU8().slice(rptr, rptr + rlen);
+      this.resultFreeRaw!();
+      return new Uint32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
     } catch (e) {
       console.warn("wasm_semantic_tokens failed:", e);
-      return {ok: false, tokens: []};
+      return null;
     }
   }
 
-  runDiagnostics(sql: string): DiagnosticsResult {
+  runDiagnostics(sql: string, version = 1): DiagnosticsResult {
     if (!this.diagnosticsRaw) return {ok: false, diagnostics: []};
     try {
-      const count = this.withInput(sql, (ptr, len) => this.diagnosticsRaw!(ptr, len));
+      const count = this.withInput(sql, (ptr, len) => this.diagnosticsRaw!(ptr, len, version));
       const text = this.readAndClearResult();
       if (count < 0) return {ok: false, diagnostics: []};
       if (count === 0) return {ok: true, diagnostics: []};
