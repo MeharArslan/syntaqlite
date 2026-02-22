@@ -46,6 +46,32 @@ impl<'a> DocArena<'a> {
         DocArena { docs: Vec::new() }
     }
 
+    /// Create a new arena with pre-allocated capacity.
+    pub fn with_capacity(cap: usize) -> Self {
+        DocArena { docs: Vec::with_capacity(cap) }
+    }
+
+    /// Create a new arena, reusing the allocation from a previous arena.
+    ///
+    /// The old arena is consumed. The new arena has the same capacity but
+    /// a fresh (possibly different) lifetime parameter.
+    pub fn recycle<'b>(old: DocArena<'b>) -> Self {
+        let mut docs = old.docs;
+        docs.clear();
+        // SAFETY: Vec is cleared so no Doc<'b> values remain. The empty Vec's
+        // allocation is lifetime-independent (just a heap pointer + capacity).
+        let docs: Vec<Doc<'a>> = unsafe {
+            let (ptr, _, cap) = docs.into_raw_parts();
+            Vec::from_raw_parts(ptr.cast(), 0, cap)
+        };
+        DocArena { docs }
+    }
+
+    /// Number of docs currently in the arena.
+    pub fn len(&self) -> usize {
+        self.docs.len()
+    }
+
     fn push(&mut self, doc: Doc<'a>) -> DocId {
         let id = self.docs.len() as DocId;
         debug_assert!(id != NIL_DOC, "DocArena overflow");
@@ -134,9 +160,10 @@ impl<'a> DocArena<'a> {
             return String::new();
         }
 
-        let mut out = String::new();
+        let mut out = String::with_capacity(self.docs.len() * 4);
         let mut pos: usize = 0;
-        let mut stack: Vec<(i32, Mode, DocId)> = vec![(0, Mode::Break, root)];
+        let mut stack: Vec<(i32, Mode, DocId)> = Vec::with_capacity(64);
+        stack.push((0, Mode::Break, root));
         let mut line_suffix_buf: Vec<(i32, Mode, DocId)> = Vec::new();
 
         while let Some((indent, mode, doc_id)) = stack.pop() {
@@ -233,7 +260,8 @@ impl<'a> DocArena<'a> {
         }
 
         let mut remaining = remaining;
-        let mut stack: Vec<(i32, DocId)> = vec![(indent, doc_id)];
+        let mut stack: Vec<(i32, DocId)> = Vec::with_capacity(16);
+        stack.push((indent, doc_id));
 
         while let Some((indent, doc_id)) = stack.pop() {
             if remaining < 0 {
@@ -283,11 +311,17 @@ enum Mode {
     Break,
 }
 
+/// Static buffer of spaces for indent emission (avoids per-char push).
+const SPACES: &str = "                                                                                                                                ";
+
 fn emit_newline(indent: i32, out: &mut String, pos: &mut usize) {
     out.push('\n');
     let spaces = indent.max(0) as usize;
-    for _ in 0..spaces {
-        out.push(' ');
+    let mut remaining = spaces;
+    while remaining > 0 {
+        let chunk = remaining.min(SPACES.len());
+        out.push_str(&SPACES[..chunk]);
+        remaining -= chunk;
     }
     *pos = spaces;
 }
@@ -297,16 +331,28 @@ fn push_keyword(s: &str, case: KeywordCase, out: &mut String) {
     match case {
         KeywordCase::Preserve => out.push_str(s),
         KeywordCase::Upper => {
-            for c in s.chars() {
-                for u in c.to_uppercase() {
-                    out.push(u);
+            if s.is_ascii() {
+                let start = out.len();
+                out.push_str(s);
+                out[start..].make_ascii_uppercase();
+            } else {
+                for c in s.chars() {
+                    for u in c.to_uppercase() {
+                        out.push(u);
+                    }
                 }
             }
         }
         KeywordCase::Lower => {
-            for c in s.chars() {
-                for l in c.to_lowercase() {
-                    out.push(l);
+            if s.is_ascii() {
+                let start = out.len();
+                out.push_str(s);
+                out[start..].make_ascii_lowercase();
+            } else {
+                for c in s.chars() {
+                    for l in c.to_lowercase() {
+                        out.push(l);
+                    }
                 }
             }
         }

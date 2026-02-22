@@ -63,6 +63,15 @@ def main():
         print("Codegen failed", file=sys.stderr)
         return result.returncode
 
+    # Format generated Rust code so checked-in artifacts are consistently styled.
+    result = subprocess.run(
+        ["cargo", "fmt", "--all"],
+        cwd=project_root,
+    )
+    if result.returncode != 0:
+        print("cargo fmt failed", file=sys.stderr)
+        return result.returncode
+
     return 0
 
 

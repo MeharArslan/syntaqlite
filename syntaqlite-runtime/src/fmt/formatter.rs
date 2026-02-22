@@ -19,6 +19,9 @@ pub struct Formatter<'d> {
     dialect: Dialect<'d>,
     parser: Parser,
     config: FormatConfig,
+    /// Reusable scratch arena — cleared between format calls to avoid
+    /// re-allocating the backing Vec.
+    arena: DocArena<'static>,
 }
 
 // SAFETY: Dialect is Send+Sync, Parser is Send.
@@ -44,6 +47,7 @@ impl<'d> Formatter<'d> {
             dialect: *dialect,
             parser,
             config,
+            arena: DocArena::with_capacity(256),
         })
     }
 
@@ -62,7 +66,7 @@ impl<'d> Formatter<'d> {
         }
 
         let base = cursor.base();
-        let comments = base.comments().to_vec();
+        let comments = base.comments();
         let tokens = base.tokens();
         let source = base.source();
 
@@ -70,11 +74,14 @@ impl<'d> Formatter<'d> {
             return Ok(String::new());
         }
 
-        let mut arena = DocArena::new();
+        // Recycle the arena from the previous call (reuses the Vec allocation).
+        let prev_arena = std::mem::replace(&mut self.arena, DocArena::new());
+        let mut arena = DocArena::recycle(prev_arena);
+
         let comment_ctx = if comments.is_empty() {
             None
         } else {
-            Some(CommentCtx::new(&comments, tokens))
+            Some(CommentCtx::new(comments, tokens))
         };
         let comment_ctx_ref = comment_ctx.as_ref();
         let semicolons = self.config.semicolons;
@@ -109,6 +116,10 @@ impl<'d> Formatter<'d> {
             out.push(';');
         }
         out.push('\n');
+
+        // Recycle arena back for next call.
+        self.arena = DocArena::recycle(arena);
+
         Ok(out)
     }
 
