@@ -18,6 +18,7 @@
 
 // Aggregate function call: func(args ORDER BY sortlist) or func(DISTINCT args ORDER BY sortlist)
 expr(A) ::= idj(B) LP distinct(C) exprlist(D) ORDER BY sortlist(E) RP. {
+    synq_mark_as_function(pCtx, B);
     A = synq_parse_aggregate_function_call(pCtx,
         synq_span(pCtx, B),
         (SyntaqliteAggregateFunctionCallFlags){.raw = (uint8_t)C},
@@ -30,6 +31,7 @@ expr(A) ::= idj(B) LP distinct(C) exprlist(D) ORDER BY sortlist(E) RP. {
 // Aggregate function call with filter/over
 expr(A) ::= idj(B) LP distinct(C) exprlist(D) ORDER BY sortlist(E) RP filter_over(F). {
     SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->ast, F);
+    synq_mark_as_function(pCtx, B);
     A = synq_parse_aggregate_function_call(pCtx,
         synq_span(pCtx, B),
         (SyntaqliteAggregateFunctionCallFlags){.raw = (uint8_t)C},

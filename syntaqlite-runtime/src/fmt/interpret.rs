@@ -5,7 +5,7 @@ use crate::dialect::Dialect;
 use crate::parser::{CursorBase, FieldVal, NodeId};
 
 use super::bytecode::opcodes;
-use super::comment::{CommentCtx, flush_comments};
+use super::comment::{CommentCtx, DrainResult};
 use super::doc::{DocArena, DocId, NIL_DOC};
 
 /// Shared context threaded through the recursive formatting tree.
@@ -24,9 +24,12 @@ impl<'a> FmtCtx<'a> {
 
 /// Interpret formatting bytecode into a Doc tree.
 ///
-/// `ops_bytes[..ops_count * 6]` is the bytecode for the current node.
-/// `fields` contains typed values extracted from the node struct.
-/// `list_children` is set when the current node is a list (for `ForEachSelfStart`).
+/// Instead of collecting DocIds into a `Vec<DocId>` and calling `cats()` at
+/// the end, this builds a left-leaning Cat chain directly in the arena via a
+/// single `running: DocId` accumulator.  GroupStart/GroupEnd and
+/// NestStart/NestEnd save/restore the accumulator on a tiny stack of DocIds
+/// (no Vec-of-DocIds).  This eliminates the dominant source of `grow_one`
+/// allocator pressure in the formatter hot path.
 pub(crate) fn interpret<'a>(
     ctx: &FmtCtx<'a>,
     ops_bytes: &[u8],
@@ -38,10 +41,14 @@ pub(crate) fn interpret<'a>(
 ) -> DocId {
     let ops = &ops_bytes[..ops_count * 6];
     let source = ctx.source();
-    let mut parts: Vec<DocId> = Vec::new();
-    let mut stack: Vec<StackFrame> = Vec::new();
+
+    // Running accumulator — replaces `parts: Vec<DocId>`.
+    let mut running: DocId = NIL_DOC;
+    // Pending line breaks — replaces `pending_lines: Vec<DocId>`.
+    let mut pending: DocId = NIL_DOC;
+
+    let mut gn_stack: Vec<GNFrame> = Vec::new();
     let mut for_each_stack: Vec<ForEachState> = Vec::new();
-    let mut pending_lines: Vec<DocId> = Vec::new();
     let mut ip: usize = 0;
     let has_comments = ctx.comment_ctx.is_some();
     let jump_table = build_foreach_jump_table(ops, ops_count);
@@ -54,13 +61,14 @@ pub(crate) fn interpret<'a>(
                 if let Some(cctx) = ctx.comment_ctx {
                     if let Some((tok_offset, word_count)) = cctx.peek_keyword_tokens(kw_text) {
                         let drain = cctx.drain_before(tok_offset, source, arena);
-                        flush_comments(drain, &mut pending_lines, &mut parts);
+                        flush_drain(drain, &mut pending, &mut running, arena);
                         cctx.advance_token_cursor(word_count);
                     } else {
-                        parts.extend(pending_lines.drain(..));
+                        running = arena.cat(running, pending);
+                        pending = NIL_DOC;
                     }
                 }
-                parts.push(arena.keyword(kw_text));
+                running = arena.cat(running, arena.keyword(kw_text));
             }
             FmtOp::Span(idx) => {
                 let FieldVal::Span(s, offset) = fields[idx as usize] else {
@@ -70,10 +78,10 @@ pub(crate) fn interpret<'a>(
                 if !s.is_empty() {
                     if let Some(cctx) = ctx.comment_ctx {
                         let drain = cctx.drain_before(offset, source, arena);
-                        flush_comments(drain, &mut pending_lines, &mut parts);
+                        flush_drain(drain, &mut pending, &mut running, arena);
                         cctx.advance_past(offset + s.len() as u32);
                     }
-                    parts.push(arena.text(s));
+                    running = arena.cat(running, arena.text(s));
                 }
             }
             FmtOp::Child(idx) => {
@@ -85,59 +93,63 @@ pub(crate) fn interpret<'a>(
                     if let Some(cctx) = ctx.comment_ctx {
                         if let Some((offset, _)) = cctx.peek_next_token() {
                             let drain = cctx.drain_before(offset, source, arena);
-                            flush_comments(drain, &mut pending_lines, &mut parts);
+                            flush_drain(drain, &mut pending, &mut running, arena);
                         } else {
-                            parts.extend(pending_lines.drain(..));
+                            running = arena.cat(running, pending);
+                            pending = NIL_DOC;
                         }
                     }
-                    parts.push(format_child_doc(ctx, child_id, consumed_regions, arena));
+                    let child_doc = format_child_doc(ctx, child_id, consumed_regions, arena);
+                    running = arena.cat(running, child_doc);
                 }
             }
             FmtOp::Line => {
                 if has_comments {
-                    pending_lines.push(arena.line());
+                    pending = arena.cat(pending, arena.line());
                 } else {
-                    parts.push(arena.line());
+                    running = arena.cat(running, arena.line());
                 }
             }
             FmtOp::SoftLine => {
                 if has_comments {
-                    pending_lines.push(arena.softline());
+                    pending = arena.cat(pending, arena.softline());
                 } else {
-                    parts.push(arena.softline());
+                    running = arena.cat(running, arena.softline());
                 }
             }
             FmtOp::HardLine => {
                 if has_comments {
-                    pending_lines.push(arena.hardline());
+                    pending = arena.cat(pending, arena.hardline());
                 } else {
-                    parts.push(arena.hardline());
+                    running = arena.cat(running, arena.hardline());
                 }
             }
             FmtOp::GroupStart => {
-                stack.push(StackFrame::Group(std::mem::take(&mut parts)));
+                gn_stack.push(GNFrame::Group(running));
+                running = NIL_DOC;
             }
             FmtOp::GroupEnd => {
-                parts.extend(pending_lines.drain(..));
-                let inner = arena.cats(&parts);
-                match stack.pop().expect("unmatched GroupEnd") {
-                    StackFrame::Group(parent) => {
-                        parts = parent;
-                        parts.push(arena.group(inner));
+                running = arena.cat(running, pending);
+                pending = NIL_DOC;
+                let inner = running;
+                match gn_stack.pop().expect("unmatched GroupEnd") {
+                    GNFrame::Group(parent) => {
+                        running = arena.cat(parent, arena.group(inner));
                     }
                     _ => panic!("expected Group frame"),
                 }
             }
             FmtOp::NestStart(indent) => {
-                stack.push(StackFrame::Nest(indent, std::mem::take(&mut parts)));
+                gn_stack.push(GNFrame::Nest(indent, running));
+                running = NIL_DOC;
             }
             FmtOp::NestEnd => {
-                parts.extend(pending_lines.drain(..));
-                let inner = arena.cats(&parts);
-                match stack.pop().expect("unmatched NestEnd") {
-                    StackFrame::Nest(indent, parent) => {
-                        parts = parent;
-                        parts.push(arena.nest(indent, inner));
+                running = arena.cat(running, pending);
+                pending = NIL_DOC;
+                let inner = running;
+                match gn_stack.pop().expect("unmatched NestEnd") {
+                    GNFrame::Nest(indent, parent) => {
+                        running = arena.cat(parent, arena.nest(indent, inner));
                     }
                     _ => panic!("expected Nest frame"),
                 }
@@ -182,7 +194,6 @@ pub(crate) fn interpret<'a>(
                 let child_id = state.children[state.index];
 
                 // Check macro suppression BEFORE draining comments.
-                // try_macro_verbatim only peeks and does not advance.
                 let macro_regions = ctx.cursor.macro_regions();
                 let macro_doc = if !macro_regions.is_empty()
                     && ctx.cursor.list_children(child_id, &ctx.dialect).is_none()
@@ -199,13 +210,11 @@ pub(crate) fn interpret<'a>(
 
                 if macro_doc == Some(NIL_DOC) {
                     // Macro-suppressed child. Undo the previous separator
-                    // and advance cursor past this child's tokens.
-                    // Don't skip — let ForEachSep/Line execute so a new
-                    // separator is emitted for the next non-suppressed child.
+                    // and discard pending line breaks.
                     let state = for_each_stack.last_mut().unwrap();
-                    if let Some(checkpoint) = state.sep_checkpoint.take() {
-                        parts.truncate(checkpoint);
-                        pending_lines.clear();
+                    if let Some((saved_running, saved_pending)) = state.sep_checkpoint.take() {
+                        running = saved_running;
+                        pending = saved_pending;
                     }
                     let _ =
                         super::formatter::format_node_inner(ctx, child_id, arena, consumed_regions);
@@ -214,24 +223,25 @@ pub(crate) fn interpret<'a>(
                     if let Some(cctx) = ctx.comment_ctx {
                         if let Some((offset, _)) = cctx.peek_next_token() {
                             let drain = cctx.drain_before(offset, source, arena);
-                            flush_comments(drain, &mut pending_lines, &mut parts);
+                            flush_drain(drain, &mut pending, &mut running, arena);
                         } else {
-                            parts.extend(pending_lines.drain(..));
+                            running = arena.cat(running, pending);
+                            pending = NIL_DOC;
                         }
                     }
 
                     if let Some(verbatim) = macro_doc {
-                        // First macro encounter — emit verbatim text,
-                        // advance cursor through this child's tokens.
                         let _ = super::formatter::format_node_inner(
                             ctx,
                             child_id,
                             arena,
                             consumed_regions,
                         );
-                        parts.push(verbatim);
+                        running = arena.cat(running, verbatim);
                     } else {
-                        parts.push(format_child_doc(ctx, child_id, consumed_regions, arena));
+                        let child_doc =
+                            format_child_doc(ctx, child_id, consumed_regions, arena);
+                        running = arena.cat(running, child_doc);
                     }
                 }
             }
@@ -240,14 +250,14 @@ pub(crate) fn interpret<'a>(
                     .last_mut()
                     .expect("ForEachSep outside ForEach");
                 if state.index < state.children.len() - 1 {
-                    state.sep_checkpoint = Some(parts.len());
+                    state.sep_checkpoint = Some((running, pending));
                     let sep_text = ctx.dialect.fmt_string(sid);
                     if let Some(cctx) = ctx.comment_ctx {
                         if let Some((_, word_count)) = cctx.peek_keyword_tokens(sep_text) {
                             cctx.advance_token_cursor(word_count);
                         }
                     }
-                    parts.push(arena.text(sep_text));
+                    running = arena.cat(running, arena.text(sep_text));
                 } else {
                     ip = skip_to_foreach_end(ops, ops_count, ip, &jump_table);
                     continue;
@@ -308,13 +318,14 @@ pub(crate) fn interpret<'a>(
                 if let Some(cctx) = ctx.comment_ctx {
                     if let Some((tok_offset, word_count)) = cctx.peek_keyword_tokens(kw_text) {
                         let drain = cctx.drain_before(tok_offset, source, arena);
-                        flush_comments(drain, &mut pending_lines, &mut parts);
+                        flush_drain(drain, &mut pending, &mut running, arena);
                         cctx.advance_token_cursor(word_count);
                     } else {
-                        parts.extend(pending_lines.drain(..));
+                        running = arena.cat(running, pending);
+                        pending = NIL_DOC;
                     }
                 }
-                parts.push(arena.keyword(kw_text));
+                running = arena.cat(running, arena.keyword(kw_text));
             }
             FmtOp::ForEachSelfStart => {
                 let children = list_children.expect("ForEachSelfStart on non-list node");
@@ -333,8 +344,7 @@ pub(crate) fn interpret<'a>(
         ip += 1;
     }
 
-    parts.extend(pending_lines.drain(..));
-    arena.cats(&parts)
+    arena.cat(running, pending)
 }
 
 /// Format a child node. Checks for macro verbatim regions first, then
@@ -363,6 +373,28 @@ fn format_child_doc<'a>(
         }
     }
     super::formatter::format_node_inner(ctx, child_id, arena, consumed_regions)
+}
+
+// ── Comment drain helper ────────────────────────────────────────────────
+
+/// Flush a `DrainResult` into the running/pending accumulators.
+///
+/// Equivalent to the old `flush_comments()` but operates on single DocIds
+/// instead of Vecs, eliminating all Vec allocation.
+#[inline]
+fn flush_drain(drain: DrainResult, pending: &mut DocId, running: &mut DocId, arena: &mut DocArena) {
+    if drain.trailing != NIL_DOC {
+        *running = arena.cat(*running, drain.trailing);
+    }
+    if drain.leading != NIL_DOC {
+        // Leading comments already start with a HardLine — drop pending
+        // to avoid an extra blank line.
+        *pending = NIL_DOC;
+        *running = arena.cat(*running, drain.leading);
+    } else {
+        *running = arena.cat(*running, *pending);
+        *pending = NIL_DOC;
+    }
 }
 
 // ── Bytecode helpers ────────────────────────────────────────────────────
@@ -525,16 +557,20 @@ impl FmtOp {
     }
 }
 
-enum StackFrame {
-    Group(Vec<DocId>),
-    Nest(i16, Vec<DocId>),
+/// Group/Nest frame — saves the parent's running DocId.
+/// Previously stored a `Vec<DocId>` (the parent's parts list).
+enum GNFrame {
+    Group(DocId),
+    Nest(i16, DocId),
 }
 
 struct ForEachState<'a> {
     children: &'a [NodeId],
     index: usize,
     body_start: usize,
-    /// `parts.len()` saved just before ForEachSep emits. If the next
-    /// ChildItem is macro-suppressed, truncate back to undo the separator.
-    sep_checkpoint: Option<usize>,
+    /// Saved `(running, pending)` before the separator was emitted.
+    /// If the next ChildItem is macro-suppressed, restore these to undo
+    /// the separator (the orphaned Doc nodes remain in the arena but are
+    /// unreachable and harmless).
+    sep_checkpoint: Option<(DocId, DocId)>,
 }

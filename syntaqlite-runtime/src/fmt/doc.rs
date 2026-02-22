@@ -48,7 +48,9 @@ impl<'a> DocArena<'a> {
 
     /// Create a new arena with pre-allocated capacity.
     pub fn with_capacity(cap: usize) -> Self {
-        DocArena { docs: Vec::with_capacity(cap) }
+        DocArena {
+            docs: Vec::with_capacity(cap),
+        }
     }
 
     /// Create a new arena, reusing the allocation from a previous arena.
@@ -65,11 +67,6 @@ impl<'a> DocArena<'a> {
             Vec::from_raw_parts(ptr.cast(), 0, cap)
         };
         DocArena { docs }
-    }
-
-    /// Number of docs currently in the arena.
-    pub fn len(&self) -> usize {
-        self.docs.len()
     }
 
     fn push(&mut self, doc: Doc<'a>) -> DocId {
@@ -156,31 +153,18 @@ impl<'a> DocArena<'a> {
 
     /// Render the document tree rooted at `root` to a string.
     pub fn render(&self, root: DocId, line_width: usize, keyword_case: KeywordCase) -> String {
-        let mut scratch = RenderScratch::new();
-        self.render_with(root, line_width, keyword_case, &mut scratch)
-    }
-
-    /// Render using caller-provided scratch buffers (avoids re-allocating
-    /// the render stack and fits stack on repeated calls).
-    pub fn render_with(
-        &self,
-        root: DocId,
-        line_width: usize,
-        keyword_case: KeywordCase,
-        scratch: &mut RenderScratch,
-    ) -> String {
         if root == NIL_DOC {
             return String::new();
         }
 
         let mut out = String::with_capacity(self.docs.len() * 4);
         let mut pos: usize = 0;
-        scratch.stack.clear();
-        scratch.stack.push((0, Mode::Break, root));
-        scratch.line_suffix_buf.clear();
-        scratch.fits_stack.clear();
+        let mut stack: Vec<(i32, Mode, DocId)> = Vec::with_capacity(64);
+        stack.push((0, Mode::Break, root));
+        let mut line_suffix_buf: Vec<(i32, Mode, DocId)> = Vec::new();
+        let mut fits_stack: Vec<(i32, DocId)> = Vec::with_capacity(32);
 
-        while let Some((indent, mode, doc_id)) = scratch.stack.pop() {
+        while let Some((indent, mode, doc_id)) = stack.pop() {
             if doc_id == NIL_DOC {
                 continue;
             }
@@ -204,7 +188,7 @@ impl<'a> DocArena<'a> {
                     Mode::Break => {
                         flush_line_suffixes(
                             self,
-                            &mut scratch.line_suffix_buf,
+                            &mut line_suffix_buf,
                             keyword_case,
                             &mut out,
                             &mut pos,
@@ -218,7 +202,7 @@ impl<'a> DocArena<'a> {
                     Mode::Break => {
                         flush_line_suffixes(
                             self,
-                            &mut scratch.line_suffix_buf,
+                            &mut line_suffix_buf,
                             keyword_case,
                             &mut out,
                             &mut pos,
@@ -230,7 +214,7 @@ impl<'a> DocArena<'a> {
                 Doc::HardLine => {
                     flush_line_suffixes(
                         self,
-                        &mut scratch.line_suffix_buf,
+                        &mut line_suffix_buf,
                         keyword_case,
                         &mut out,
                         &mut pos,
@@ -239,37 +223,48 @@ impl<'a> DocArena<'a> {
                 }
 
                 Doc::Cat { left, right } => {
-                    scratch.stack.push((indent, mode, *right));
-                    scratch.stack.push((indent, mode, *left));
+                    stack.push((indent, mode, *right));
+                    stack.push((indent, mode, *left));
                 }
 
                 Doc::Nest { indent: di, child } => {
-                    scratch.stack.push((indent + *di as i32, mode, *child));
+                    stack.push((indent + *di as i32, mode, *child));
                 }
 
                 Doc::Group { child } => {
-                    if self.fits_with(*child, indent, line_width as i32 - pos as i32, &mut scratch.fits_stack) {
-                        scratch.stack.push((indent, Mode::Flat, *child));
+                    if self.fits_with(
+                        *child,
+                        indent,
+                        line_width as i32 - pos as i32,
+                        &mut fits_stack,
+                    ) {
+                        stack.push((indent, Mode::Flat, *child));
                     } else {
-                        scratch.stack.push((indent, Mode::Break, *child));
+                        stack.push((indent, Mode::Break, *child));
                     }
                 }
 
                 Doc::LineSuffix { child } => {
-                    scratch.line_suffix_buf.push((indent, mode, *child));
+                    line_suffix_buf.push((indent, mode, *child));
                 }
 
                 Doc::BreakParent => {}
             }
         }
 
-        flush_line_suffixes(self, &mut scratch.line_suffix_buf, keyword_case, &mut out, &mut pos);
+        flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, &mut out, &mut pos);
         out
     }
 
     /// Check whether a document fits within `remaining` columns when rendered flat.
     /// Reuses `scratch` to avoid per-call allocation.
-    fn fits_with(&self, doc_id: DocId, indent: i32, remaining: i32, scratch: &mut Vec<(i32, DocId)>) -> bool {
+    fn fits_with(
+        &self,
+        doc_id: DocId,
+        indent: i32,
+        remaining: i32,
+        scratch: &mut Vec<(i32, DocId)>,
+    ) -> bool {
         if remaining < 0 {
             return false;
         }
@@ -315,25 +310,6 @@ impl<'a> DocArena<'a> {
         }
 
         remaining >= 0
-    }
-}
-
-/// Reusable scratch buffers for the render pass. Storing this in the
-/// `Formatter` avoids re-allocating the render stack, fits stack, and
-/// line-suffix buffer on every `format()` call.
-pub struct RenderScratch {
-    stack: Vec<(i32, Mode, DocId)>,
-    line_suffix_buf: Vec<(i32, Mode, DocId)>,
-    fits_stack: Vec<(i32, DocId)>,
-}
-
-impl RenderScratch {
-    pub fn new() -> Self {
-        RenderScratch {
-            stack: Vec::with_capacity(64),
-            line_suffix_buf: Vec::new(),
-            fits_stack: Vec::with_capacity(32),
-        }
     }
 }
 

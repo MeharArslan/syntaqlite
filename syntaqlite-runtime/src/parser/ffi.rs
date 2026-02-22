@@ -50,6 +50,7 @@ pub struct Comment {
 
 /// Token flags bitfield.
 pub const TOKEN_FLAG_AS_ID: u32 = 1;
+pub const TOKEN_FLAG_AS_FUNCTION: u32 = 2;
 
 /// A non-whitespace, non-comment token position captured during parsing.
 ///

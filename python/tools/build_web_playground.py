@@ -6,11 +6,35 @@
 import argparse
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 import sys
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def strip_separate_dwarf_link_arg(flags):
+    """Remove any existing -gseparate-dwarf linker arg from rustflags."""
+    if not flags:
+        return ""
+
+    parts = shlex.split(flags)
+    out = []
+    i = 0
+    while i < len(parts):
+        part = parts[i]
+        if part == "-C" and i + 1 < len(parts):
+            next_part = parts[i + 1]
+            if next_part.startswith("link-arg=-gseparate-dwarf="):
+                i += 2
+                continue
+        if part.startswith("-Clink-arg=-gseparate-dwarf="):
+            i += 1
+            continue
+        out.append(part)
+        i += 1
+    return " ".join(out)
 
 
 def get_platform_dir():
@@ -79,7 +103,10 @@ def main():
     wasm32_sysroot = os.path.join(
         bin_dir, "rust-wasm32", "rust-std-wasm32-unknown-emscripten",
     )
-    target_rustflags = env.get("CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_RUSTFLAGS", "")
+    # Keep inherited rustflags, but avoid duplicate/stale separate-dwarf outputs.
+    target_rustflags = strip_separate_dwarf_link_arg(
+        env.get("CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_RUSTFLAGS", ""),
+    )
     target_rustflags += " --sysroot " + wasm32_sysroot
     # Build runtime as emscripten main module and expose dynamic linker APIs.
     target_rustflags += " -C link-arg=-sMAIN_MODULE=2"

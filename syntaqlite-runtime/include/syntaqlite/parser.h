@@ -58,6 +58,7 @@ typedef struct SyntaqliteComment {
 
 // Token flags bitfield.
 #define SYNQ_TOKEN_FLAG_AS_ID 1  // Token was consumed as identifier (fallback from keyword).
+#define SYNQ_TOKEN_FLAG_AS_FUNCTION 2  // Token was consumed as function name.
 
 // A non-whitespace, non-comment token position captured during parsing.
 typedef struct SyntaqliteTokenPos {
