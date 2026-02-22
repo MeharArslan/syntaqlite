@@ -3,7 +3,7 @@
 
 use super::FormatConfig;
 use super::comment::CommentCtx;
-use super::doc::{DocArena, DocId, NIL_DOC};
+use super::doc::{DocArena, DocId, NIL_DOC, RenderScratch};
 use super::interpret::{FmtCtx, interpret};
 use crate::dialect::Dialect;
 use crate::dialect::ffi::{
@@ -22,6 +22,8 @@ pub struct Formatter<'d> {
     /// Reusable scratch arena — cleared between format calls to avoid
     /// re-allocating the backing Vec.
     arena: DocArena<'static>,
+    /// Reusable render scratch buffers (stack, fits_stack, line_suffix_buf).
+    render_scratch: RenderScratch,
 }
 
 // SAFETY: Dialect is Send+Sync, Parser is Send.
@@ -48,6 +50,7 @@ impl<'d> Formatter<'d> {
             parser,
             config,
             arena: DocArena::with_capacity(256),
+            render_scratch: RenderScratch::new(),
         })
     }
 
@@ -110,7 +113,7 @@ impl<'d> Formatter<'d> {
         }
 
         let doc = arena.cats(&parts);
-        let mut out = arena.render(doc, self.config.line_width, self.config.keyword_case);
+        let mut out = arena.render_with(doc, self.config.line_width, self.config.keyword_case, &mut self.render_scratch);
 
         if semicolons {
             out.push(';');

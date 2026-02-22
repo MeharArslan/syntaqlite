@@ -5,7 +5,7 @@ import m from "mithril";
 import {App} from "./app/app";
 import * as monaco from "monaco-editor";
 import "monaco-editor/esm/vs/basic-languages/sql/sql.contribution";
-import {isInputModelPath} from "./app/editor_models";
+import {INPUT_MODEL_URI} from "./app/editor_models";
 import type {Engine} from "./app/engine";
 import {AppComponent} from "./components/app";
 import "./styles/main.css";
@@ -69,7 +69,7 @@ function registerSemanticTokensProvider(engine: Engine): void {
       range: monaco.Range,
     ): monaco.languages.ProviderResult<monaco.languages.SemanticTokens> {
       if (!engine.ready) return {data: new Uint32Array(0)};
-      if (!isInputModelPath(model.uri.path)) {
+      if (model.uri.toString() !== INPUT_MODEL_URI) {
         return {data: new Uint32Array(0)};
       }
       const source = model.getValue();

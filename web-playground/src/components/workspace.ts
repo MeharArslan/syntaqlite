@@ -4,7 +4,6 @@
 import m from "mithril";
 import * as monaco from "monaco-editor";
 import type {Attrs} from "../app/app";
-import {isInputModelPath} from "../app/editor_models";
 import type {Engine} from "../app/engine";
 import {getSqlPresetLibrary} from "./workspace/sql_presets";
 import {debounce} from "../base/debounce";
@@ -177,11 +176,6 @@ export class Workspace implements m.ClassComponent<Attrs> {
 
     const model = this.editor.getModel();
     if (!model) return;
-    if (!isInputModelPath(model.uri.path)) {
-      monaco.editor.setModelMarkers(model, "syntaqlite", []);
-      return;
-    }
-
     const result = engine.runDiagnostics(sql, model.getVersionId());
     if (!result.ok) {
       monaco.editor.setModelMarkers(model, "syntaqlite", []);

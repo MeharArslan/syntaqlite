@@ -66,6 +66,13 @@ def main():
     os.makedirs(em_cache_dir, exist_ok=True)
     env["EM_CACHE"] = em_cache_dir
 
+    runtime_debug_relpath = os.path.join(
+        "target",
+        "wasm32-unknown-emscripten",
+        "release",
+        "syntaqlite-runtime.debug.wasm",
+    )
+
     # Point rustc at the wasm32 standard library installed by install-build-deps --ui.
     # --no-sysroot prevents the global RUSTFLAGS --sysroot so that the target-specific
     # CARGO_TARGET_*_RUSTFLAGS can set it for wasm32 without conflict.
@@ -84,7 +91,7 @@ def main():
     # Emit DWARF debug info into a separate file so Chrome DevTools can
     # symbolize stack traces without bloating the served .wasm.
     target_rustflags += " -C link-arg=-g"
-    target_rustflags += " -C link-arg=-gseparate-dwarf=syntaqlite-runtime.debug.wasm"
+    target_rustflags += " -C link-arg=-gseparate-dwarf=" + runtime_debug_relpath
     if args.rustflags:
         target_rustflags += " " + args.rustflags
     env["CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_RUSTFLAGS"] = target_rustflags.strip()
