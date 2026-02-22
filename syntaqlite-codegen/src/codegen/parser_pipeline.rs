@@ -156,6 +156,27 @@ static YYACTIONTYPE synq_find_reduce_action_safe(YYACTIONTYPE stateno, YYCODETYP
   return yy_action[i];\n\
 }}\n\
 \n\
+/* Like yy_find_shift_action but skips YYWILDCARD and YYFALLBACK paths.\n\
+** Wildcard matches are for error recovery (ANY token) and fallback matches\n\
+** accept keywords as identifiers — neither should appear as keyword\n\
+** autocompletion suggestions. */\n\
+static YYACTIONTYPE synq_find_shift_action_strict(\n\
+  YYCODETYPE iLookAhead,\n\
+  YYACTIONTYPE stateno\n\
+){{\n\
+  int i;\n\
+  if( stateno>YY_MAX_SHIFT ) return stateno;\n\
+  i = yy_shift_ofst[stateno];\n\
+  assert( i>=0 );\n\
+  assert( i+YYNTOKEN<=(int)YY_NLOOKAHEAD );\n\
+  i += iLookAhead;\n\
+  if( yy_lookahead[i]!=iLookAhead ){{\n\
+    /* No specific entry — skip fallback and wildcard, use default. */\n\
+    return yy_default[stateno];\n\
+  }}\n\
+  return yy_action[i];\n\
+}}\n\
+\n\
 static int synq_can_lookahead(yyParser* p, int token) {{\n\
   YYACTIONTYPE stack_states[YYSTACKDEPTH + 1];\n\
   int top = 0;\n\
@@ -171,15 +192,15 @@ static int synq_can_lookahead(yyParser* p, int token) {{\n\
   }}\n\
 \n\
   while( steps++ < 10000 ) {{\n\
-    YYACTIONTYPE action = yy_find_shift_action((YYCODETYPE)token, stack_states[top]);\n\
+    YYACTIONTYPE action = synq_find_shift_action_strict((YYCODETYPE)token, stack_states[top]);\n\
 \n\
     if( action==YY_ERROR_ACTION || action==YY_NO_ACTION ) return 0;\n\
     if( action==YY_ACCEPT_ACTION ) return token==0;\n\
     if( action<=YY_MAX_SHIFT ) return 1;\n\
 \n\
-    if( action>=YY_MIN_SHIFTREDUCE && action<=YY_MAX_SHIFTREDUCE ) {{\n\
-      action += YY_MIN_REDUCE - YY_MIN_SHIFTREDUCE;\n\
-    }}\n\
+    /* Shift-reduce: the token is consumed (shifted) then a reduce follows.\n\
+    ** This means the token IS accepted, same as a pure shift. */\n\
+    if( action>=YY_MIN_SHIFTREDUCE && action<=YY_MAX_SHIFTREDUCE ) return 1;\n\
 \n\
     if( action>=YY_MIN_REDUCE && action<=YY_MAX_REDUCE ) {{\n\
       int rule = (int)(action - YY_MIN_REDUCE);\n\

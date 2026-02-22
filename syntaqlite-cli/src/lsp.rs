@@ -182,6 +182,7 @@ fn completion_items_for_expected(
             out.push(CompletionItem {
                 label,
                 kind: Some(CompletionItemKind::KEYWORD),
+                detail: Some("keyword".into()),
                 ..Default::default()
             });
         }
@@ -445,5 +446,24 @@ mod tests {
             join_kw_labels.iter().any(|kw| labels.contains(kw)),
             "none of {join_kw_labels:?} found: labels={labels:?}, expected={expected_names:?}"
         );
+    }
+
+    #[test]
+    fn keyword_completion_items_use_keyword_kind() {
+        let dialect = *syntaqlite::low_level::dialect();
+        let mut host = AnalysisHost::new(dialect);
+        let uri = "file:///test.sql";
+        let sql = "SELECT a FROM t WH";
+        host.open_document(uri, 1, sql.to_string());
+
+        let expected = host.expected_tokens_at_offset(uri, sql.len());
+        let items = completion_items_for_expected(&dialect, &host, &expected);
+
+        let where_item = items.iter().find(|i| i.label == "WHERE").unwrap();
+        assert_eq!(
+            where_item.kind,
+            Some(lsp_types::CompletionItemKind::KEYWORD)
+        );
+        assert_eq!(where_item.detail.as_deref(), Some("keyword"));
     }
 }

@@ -336,10 +336,12 @@ fn replay_expected_tokens(
     } {
         boundary -= 1;
     }
+    let mut backtracked = false;
     if boundary > 0 && tokens[boundary - 1].end == cursor_offset && cursor_offset > 0 {
         let b = source.as_bytes()[cursor_offset - 1];
         if b.is_ascii_alphanumeric() || b == b'_' {
             boundary -= 1;
+            backtracked = true;
         }
     }
     let tk_semi = dialect.tk_semi();
@@ -357,6 +359,25 @@ fn replay_expected_tokens(
             return last_expected;
         }
         last_expected = cursor.expected_tokens();
+    }
+
+    // When the cursor is at the end of an identifier token, we backtracked past it
+    // to offer identifier completions. Also feed it and merge the expected tokens
+    // that follow, so keywords like JOIN are suggested too.
+    if backtracked {
+        let extra_tok = &tokens[boundary];
+        if cursor
+            .feed_token(extra_tok.type_, extra_tok.start..extra_tok.end)
+            .is_ok()
+        {
+            let after = cursor.expected_tokens();
+            let mut seen: std::collections::HashSet<u32> = last_expected.iter().copied().collect();
+            for tok in after {
+                if seen.insert(tok) {
+                    last_expected.push(tok);
+                }
+            }
+        }
     }
 
     last_expected
@@ -454,6 +475,63 @@ mod tests {
         assert!(
             expected.contains(&(TokenType::JoinKw as u32)),
             "expected TK_JOIN_KW after FROM alias, got {:?}",
+            expected
+        );
+    }
+
+    #[test]
+    fn completions_include_join_after_from_table_with_trailing_space() {
+        let dialect = *syntaqlite::low_level::dialect();
+        let mut host = AnalysisHost::new(dialect);
+        let uri = "file:///test.sql";
+        let sql = "SELECT * FROM slice ";
+        host.open_document(uri, 1, sql.to_string());
+
+        let expected = host.expected_tokens_at_offset(uri, sql.len());
+        // TK_JOIN (163) is the bare "JOIN" keyword in the grammar.
+        // TK_JOIN_KW (108) covers join modifiers (INNER, LEFT, etc.).
+        assert!(
+            expected.contains(&(TokenType::Join as u32)),
+            "expected TK_JOIN after FROM table with trailing space, got {:?}",
+            expected
+        );
+        // Irrelevant keywords must NOT appear (wildcard/fallback paths excluded).
+        assert!(
+            !expected.contains(&(TokenType::Create as u32)),
+            "TK_CREATE should not appear after FROM table, got {:?}",
+            expected
+        );
+        assert!(
+            !expected.contains(&(TokenType::Select as u32)),
+            "TK_SELECT should not appear after FROM table, got {:?}",
+            expected
+        );
+        // Keywords that fallback to ID must not appear as keyword completions.
+        assert!(
+            !expected.contains(&(TokenType::Virtual as u32)),
+            "TK_VIRTUAL (fallback to ID) should not appear after FROM table, got {:?}",
+            expected
+        );
+    }
+
+    #[test]
+    fn completions_include_join_after_from_table_no_trailing_space() {
+        let dialect = *syntaqlite::low_level::dialect();
+        let mut host = AnalysisHost::new(dialect);
+        let uri = "file:///test.sql";
+        // No trailing space — cursor right at end of "slice"
+        let sql = "SELECT * FROM slice";
+        host.open_document(uri, 1, sql.to_string());
+
+        let expected = host.expected_tokens_at_offset(uri, sql.len());
+        eprintln!(
+            "expected tokens after 'SELECT * FROM slice' (no space): {:?}",
+            expected
+        );
+        // Even without trailing space, after a complete table name, JOIN should be offered
+        assert!(
+            expected.contains(&(TokenType::Join as u32)),
+            "expected TK_JOIN after FROM table without trailing space, got {:?}",
             expected
         );
     }
