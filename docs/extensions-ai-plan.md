@@ -17,7 +17,8 @@ syntaqlite needs to support SQLite dialects — databases that use SQLite as a b
 ```
 syntaqlite-runtime        # Grammar-agnostic engines
 syntaqlite                # SQLite dialect (generated + hand-written)
-syntaqlite-codegen        # Tool: .y + .synq → dialect code
+syntaqlite-codegen        # Generic dialect code generation library
+syntaqlite-codegen-sqlite # SQLite extraction + orchestration library
 syntaqlite-cli            # lib + bin: reusable CLI framework + default binary
 ```
 
@@ -109,9 +110,11 @@ fmt = ["parser", "syntaqlite-runtime/fmt"]
 lint = ["parser", "syntaqlite-runtime/lint"]
 ```
 
-### syntaqlite-codegen
+### syntaqlite-codegen + syntaqlite-codegen-sqlite
 
-Takes `.y` grammar files and `.synq` node definitions as input. Produces both C and Rust code for a dialect crate.
+`syntaqlite-codegen` is the generic dialect code generation library: `.synq` parsing, AST model, C/Rust code generation. It has no SQLite-specific knowledge.
+
+`syntaqlite-codegen-sqlite` handles SQLite-specific extraction and orchestration: tokenizer/keyword extraction from SQLite C sources, lemon/mkkeyword tools, and the pipeline that wires SQLite extraction into generic dialect codegen.
 
 For extension dialects, codegen merges the base SQLite grammar with extension grammar files and generates a complete set of artifacts (not a delta — Lemon produces monolithic tables).
 
@@ -138,7 +141,8 @@ End user / application
        └─ syntaqlite-runtime (activated transitively via features)
 
 Dialect author
-  └─ syntaqlite-codegen (build-time tool)
+  └─ syntaqlite-codegen-sqlite (build-time tool)
+       └─ syntaqlite-codegen (generic dialect codegen library)
        → generates dialect crate that depends on syntaqlite-runtime
 ```
 
@@ -178,7 +182,7 @@ my-dialect/
 
 Extension grammar files are merged with the base SQLite grammar:
 
-1. Concatenate base `.y` files (from `syntaqlite-codegen/parser-actions/`)
+1. Concatenate base `.y` files (from `syntaqlite/parser-actions/`)
 2. Append extension `.y` files after base grammar
 3. Extension `%token` declarations are placed after base rules to ensure base tokens get IDs first
 4. Run Lemon on the merged grammar → monolithic parser tables + reduce function
@@ -218,7 +222,7 @@ Given base grammar + extension grammar + extension nodes, codegen generates:
 For pure C consumers, codegen produces a single-file amalgamation:
 
 ```bash
-syntaqlite-codegen amalgamation \
+syntaqlite amalgamate \
   --output syntaqlite.c syntaqlite.h
 ```
 
@@ -268,10 +272,10 @@ uint32_t synq_node_tag(SynqParseCtx* ctx, uint32_t node_id);
 
 ```bash
 # 1. Generate dialect crate
-syntaqlite-codegen generate \
+syntaqlite codegen \
   --base-grammar third_party/sqlite/parse.y \
-  --base-actions syntaqlite-codegen/parser-actions/ \
-  --base-nodes syntaqlite-codegen/parser-nodes/ \
+  --base-actions syntaqlite/parser-actions/ \
+  --base-nodes syntaqlite/parser-nodes/ \
   --ext-actions my-dialect/actions/ \
   --ext-nodes my-dialect/nodes/ \
   --output-crate my-dialect-syntax/
@@ -286,7 +290,7 @@ The generated crate depends on `syntaqlite-runtime` and provides the same API sh
 
 ```bash
 # 1. Generate dialect header
-syntaqlite-codegen amalgamation \
+syntaqlite amalgamate \
   --ext-actions my-dialect/actions/ \
   --ext-nodes my-dialect/nodes/ \
   --output-dialect my_dialect.h
@@ -338,7 +342,7 @@ The current codebase has everything in a handful of crates. The migration to the
 
 2. **Reshape `syntaqlite` as a dialect crate.** The remaining code — generated parser tables, token/node definitions, keyword hash, formatter bytecode — becomes the SQLite dialect crate. Add the high-level typed API.
 
-3. **Update codegen.** Teach `syntaqlite-codegen` to accept extension grammar/node directories and produce merged output. Add amalgamation generation.
+3. **Update codegen.** Teach `syntaqlite-codegen`/`syntaqlite-codegen-sqlite` to accept extension grammar/node directories and produce merged output. Add amalgamation generation.
 
 4. **Validate with Perfetto.** The existing Perfetto test extension (in `tests/extensions/`) is the first real dialect to build against the new system.
 

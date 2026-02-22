@@ -1,7 +1,7 @@
 # SQLite Vendored Sources
 
 This directory contains vendored SQLite tool sources needed to build the
-syntaqlite-codegen library. These files are copied from the main SQLite
+syntaqlite-codegen-sqlite library. These files are copied from the main SQLite
 source tree to make the crate self-contained for publishing to crates.io.
 
 ## Files

@@ -25,7 +25,7 @@ pub struct CDefines {
 }
 
 impl CFunction {
-    pub(crate) fn new(text: String, name: String) -> Self {
+    pub fn new(text: String, name: String) -> Self {
         Self { text, name }
     }
 }
@@ -38,13 +38,13 @@ pub struct SplitByFunction {
 }
 
 impl CStaticArray {
-    pub(crate) fn new(text: String) -> Self {
+    pub fn new(text: String) -> Self {
         Self { text }
     }
 }
 
 impl CDefines {
-    pub(crate) fn new(text: String) -> Self {
+    pub fn new(text: String) -> Self {
         Self { text }
     }
 }

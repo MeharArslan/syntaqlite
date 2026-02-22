@@ -4,10 +4,10 @@
 use std::fs;
 use std::path::Path;
 
-use syntaqlite_codegen_utils::c_transformer::CTransformer;
+use syntaqlite_codegen::c_source::c_transformer::CTransformer;
 
 // Embed lempar.c template (needed by the library)
-const LEMPAR_C: &[u8] = include_bytes!("../../sqlite/lempar.c");
+const LEMPAR_C: &[u8] = include_bytes!("../sqlite/lempar.c");
 
 pub(crate) fn generate_parser(
     actions_dir: &str,
@@ -69,7 +69,7 @@ pub(crate) fn generate_parser_with_grammar_bytes(
         .to_str()
         .ok_or_else(|| "Invalid extracted grammar path".to_string())?;
 
-    crate::codegen::grammar_codegen::extract_grammar(parse_y_str, Some(extracted_grammar_str))?;
+    crate::grammar_codegen::extract_grammar(parse_y_str, Some(extracted_grammar_str))?;
 
     let lempar_path = work_dir.join("lempar.c");
     fs::write(&lempar_path, LEMPAR_C).map_err(|e| format!("Failed to write lempar.c: {e}"))?;
@@ -245,7 +245,7 @@ int {parser_name}ExpectedTokens(void* parser, int* out_tokens, int out_cap) {{\n
 
 /// Read all .y files from a directory, sort by name, and concatenate their contents.
 fn concatenate_y_files(dir: &str) -> Result<Vec<u8>, String> {
-    let y_files = crate::read_named_files_from_dir(dir, "y")?;
+    let y_files = syntaqlite_codegen::read_named_files_from_dir(dir, "y")?;
     if y_files.is_empty() {
         return Err(format!("No .y files found in {dir}"));
     }

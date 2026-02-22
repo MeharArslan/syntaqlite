@@ -705,6 +705,7 @@ dependencies = [
  "serde_json",
  "syntaqlite",
  "syntaqlite-codegen",
+ "syntaqlite-codegen-sqlite",
  "syntaqlite-lsp",
  "syntaqlite-runtime",
  "tempfile",
@@ -714,16 +715,17 @@ dependencies = [
 name = "syntaqlite-codegen"
 version = "0.1.0"
 dependencies = [
- "cc",
- "clap",
- "syntaqlite-codegen-utils",
  "syntaqlite-runtime",
- "tempfile",
 ]
 
 [[package]]
-name = "syntaqlite-codegen-utils"
+name = "syntaqlite-codegen-sqlite"
 version = "0.1.0"
+dependencies = [
+ "cc",
+ "syntaqlite-codegen",
+ "tempfile",
+]
 
 [[package]]
 name = "syntaqlite-lsp"

@@ -3,7 +3,9 @@
 
 use std::fs;
 use std::io::{self, Read};
-use std::path::{Path, PathBuf};
+#[cfg(feature = "codegen")]
+use std::path::Path;
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
 use syntaqlite_runtime::dialect::ffi as dialect_ffi;
@@ -60,6 +62,7 @@ enum Command {
     /// Base SQLite grammar and node files are embedded in the binary.
     /// When `--actions-dir` / `--nodes-dir` are provided, those extension
     /// files are merged with the base (same-name files replace the base).
+    #[cfg(feature = "codegen")]
     Dialect {
         /// Dialect identifier (e.g. "sqlite").
         #[arg(long, required = true)]
@@ -73,14 +76,49 @@ enum Command {
         #[command(subcommand)]
         command: DialectCommand,
     },
+    /// Run the full codegen pipeline (grammar extraction, parser generation,
+    /// tokenizer extraction, keyword hash, AST metadata, Rust bindings).
+    #[cfg(feature = "codegen")]
+    Codegen {
+        #[arg(long, required = true)]
+        actions_dir: String,
+        #[arg(long, required = true)]
+        nodes_dir: String,
+        #[arg(long, default_value = "syntaqlite/csrc")]
+        output_dir: String,
+    },
+    /// Produce C amalgamation files (single-file compilation units).
+    #[cfg(feature = "codegen")]
+    Amalgamate {
+        /// Dialect name (e.g. "sqlite").
+        #[arg(long, required = true)]
+        dialect: String,
+        /// Path to the syntaqlite-runtime crate root.
+        #[arg(long, required = true)]
+        runtime_dir: String,
+        /// Path to the dialect crate root (e.g. syntaqlite/).
+        #[arg(long, required = true)]
+        dialect_dir: String,
+        /// Output directory for generated files.
+        #[arg(long, required = true)]
+        output_dir: String,
+        /// Emit only the runtime amalgamation.
+        #[arg(long)]
+        runtime_only: bool,
+        /// Emit only the dialect amalgamation (references runtime header).
+        #[arg(long)]
+        dialect_only: bool,
+    },
     // Hidden subcommands for codegen subprocess support.
     // generate_parser() and generate_keyword_hash() spawn current_exe() with
     // these subcommands. They must be present in any binary that calls codegen.
+    #[cfg(feature = "codegen")]
     #[command(hide = true)]
     Lemon {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
         args: Vec<String>,
     },
+    #[cfg(feature = "codegen")]
     #[command(hide = true)]
     Mkkeyword {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -95,6 +133,7 @@ enum CasingArg {
     Lower,
 }
 
+#[cfg(feature = "codegen")]
 #[derive(Subcommand)]
 enum DialectCommand {
     /// Emit amalgamated C/H files.
@@ -238,6 +277,7 @@ fn format_source(
     formatter.format(source)
 }
 
+#[cfg(feature = "codegen")]
 fn cmd_generate_dialect(
     dialect: &str,
     actions_dir: Option<&str>,
@@ -245,7 +285,7 @@ fn cmd_generate_dialect(
     output_dir: &str,
 ) -> Result<(), String> {
     use syntaqlite_codegen::amalgamate;
-    use syntaqlite_codegen::base_files;
+    use syntaqlite_codegen_sqlite::base_files;
 
     // Run codegen into a temp directory.
     let temp_dir = tempfile::TempDir::new().map_err(|e| format!("creating temp directory: {e}"))?;
@@ -257,11 +297,11 @@ fn cmd_generate_dialect(
 
     // Load extension files from user dirs (if provided).
     let ext_y = match actions_dir {
-        Some(dir) => syntaqlite_codegen::read_named_files_from_dir(dir, "y")?,
+        Some(dir) => syntaqlite_codegen_sqlite::read_named_files_from_dir(dir, "y")?,
         None => Vec::new(),
     };
     let ext_synq = match nodes_dir {
-        Some(dir) => syntaqlite_codegen::read_named_files_from_dir(dir, "synq")?,
+        Some(dir) => syntaqlite_codegen_sqlite::read_named_files_from_dir(dir, "synq")?,
         None => Vec::new(),
     };
 
@@ -283,6 +323,7 @@ fn cmd_generate_dialect(
 }
 
 /// Run the codegen pipeline from merged in-memory file sets.
+#[cfg(feature = "codegen")]
 fn codegen_to_dir_with_base(
     dialect: &str,
     y_files: &[(String, String)],
@@ -290,7 +331,7 @@ fn codegen_to_dir_with_base(
     csrc_dir: &Path,
     include_dir: &Path,
 ) -> Result<(), String> {
-    let dialect_spec = syntaqlite_codegen::DialectNaming::new(dialect);
+    let dialect_spec = syntaqlite_codegen_sqlite::DialectNaming::new(dialect);
     let parser_prefix = dialect_spec.parser_symbol_prefix();
 
     // Extract extra keywords from extension .y files (terminals not in
@@ -300,15 +341,15 @@ fn codegen_to_dir_with_base(
         .iter()
         .filter(|(name, _)| {
             // Only scan extension files (not base files).
-            !syntaqlite_codegen::base_files::base_y_files()
+            !syntaqlite_codegen_sqlite::base_files::base_y_files()
                 .iter()
                 .any(|(base_name, _)| *base_name == name.as_str())
         })
         .map(|(_, content)| content.as_str())
         .collect();
-    let extra_keywords = syntaqlite_codegen::extract_terminals_from_y(&ext_y_contents);
+    let extra_keywords = syntaqlite_codegen_sqlite::extract_terminals_from_y(&ext_y_contents);
 
-    let request = syntaqlite_codegen::CodegenRequest {
+    let request = syntaqlite_codegen_sqlite::CodegenRequest {
         dialect: &dialect_spec,
         y_files,
         synq_files,
@@ -316,7 +357,7 @@ fn codegen_to_dir_with_base(
         parser_symbol_prefix: Some(&parser_prefix),
         include_rust: false,
     };
-    let artifacts = syntaqlite_codegen::generate_codegen_artifacts(&request)?;
+    let artifacts = syntaqlite_codegen_sqlite::generate_codegen_artifacts(&request)?;
 
     // Write token header.
     fs::write(
@@ -340,11 +381,13 @@ fn codegen_to_dir_with_base(
         .map_err(|e| format!("writing sqlite_parse.c: {e}"))?;
 
     // Forward-declaration headers for parser and tokenizer.
-    let parse_h = syntaqlite_codegen::dialect_codegen::generate_parse_h(dialect);
+    let parse_h =
+        syntaqlite_codegen::dialect_codegen::generate_parse_h(dialect);
     fs::write(csrc_dir.join("sqlite_parse.h"), parse_h)
         .map_err(|e| format!("writing sqlite_parse.h: {e}"))?;
 
-    let tokenize_h = syntaqlite_codegen::dialect_codegen::generate_tokenize_h(dialect);
+    let tokenize_h =
+        syntaqlite_codegen::dialect_codegen::generate_tokenize_h(dialect);
     fs::write(csrc_dir.join("sqlite_tokenize.h"), tokenize_h)
         .map_err(|e| format!("writing sqlite_tokenize.h: {e}"))?;
 
@@ -382,6 +425,169 @@ fn codegen_to_dir_with_base(
         artifacts.dialect_dispatch_h,
     )
     .map_err(|e| format!("writing {dialect}_dialect_dispatch.h: {e}"))?;
+
+    Ok(())
+}
+
+/// Delete any .c/.h files in `dir` whose first 512 bytes contain the autogenerated marker.
+#[cfg(feature = "codegen")]
+fn clean_generated_files(dir: &Path, verbose: bool) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        if ext != "c" && ext != "h" {
+            continue;
+        }
+        // Read just the first 512 bytes to check for the marker
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let prefix = &content[..content.len().min(512)];
+        if prefix.contains(syntaqlite_codegen::AUTOGENERATED_MARKER) {
+            if verbose {
+                eprintln!("  Removing stale generated file: {}", path.display());
+            }
+            let _ = fs::remove_file(&path);
+        }
+    }
+}
+
+#[cfg(feature = "codegen")]
+fn log_verbose(verbose: bool, message: &str) {
+    if verbose {
+        eprintln!("{message}");
+    }
+}
+
+#[cfg(feature = "codegen")]
+fn ensure_dir(path: &Path, label: &str) -> Result<(), String> {
+    fs::create_dir_all(path).map_err(|e| format!("Failed to create {label}: {e}"))
+}
+
+#[cfg(feature = "codegen")]
+fn write_file(path: &Path, content: impl AsRef<[u8]>) -> Result<(), String> {
+    fs::write(path, content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))
+}
+
+#[cfg(feature = "codegen")]
+fn handle_codegen(
+    actions_dir: &str,
+    nodes_dir: &str,
+    output_dir: &str,
+    verbose: bool,
+) -> Result<(), String> {
+    let dialect = syntaqlite_codegen_sqlite::DialectNaming::new("sqlite");
+
+    log_verbose(verbose, "Loading grammar + node definition files...");
+    let y_files = syntaqlite_codegen_sqlite::read_named_files_from_dir(actions_dir, "y")?;
+    let synq_files = syntaqlite_codegen_sqlite::read_named_files_from_dir(nodes_dir, "synq")?;
+
+    log_verbose(verbose, "Running unified codegen pipeline...");
+    let no_keywords: Vec<String> = Vec::new();
+    let request = syntaqlite_codegen_sqlite::CodegenRequest {
+        dialect: &dialect,
+        y_files: &y_files,
+        synq_files: &synq_files,
+        extra_keywords: &no_keywords,
+        parser_symbol_prefix: None,
+        include_rust: true,
+    };
+    let artifacts = syntaqlite_codegen_sqlite::generate_codegen_artifacts(&request)?;
+    let outputs = syntaqlite_codegen_sqlite::sqlite_output_manifest(&dialect, artifacts)?;
+
+    // Step 4: Clean stale generated files, then write outputs
+    let out = Path::new(output_dir);
+    let include_dir = Path::new(output_dir)
+        .parent()
+        .unwrap_or(Path::new("."))
+        .join(format!("include/{}", dialect.include_dir_name()));
+    let rust_src_dir = Path::new(output_dir)
+        .parent()
+        .unwrap_or(Path::new("."))
+        .join("src");
+
+    for dir in [out, include_dir.as_path()] {
+        if dir.is_dir() {
+            clean_generated_files(dir, verbose);
+        }
+    }
+
+    ensure_dir(out, "output directory")?;
+    ensure_dir(&include_dir, "include directory")?;
+    ensure_dir(&rust_src_dir, "Rust src directory")?;
+
+    log_verbose(verbose, "Writing output files...");
+    for output in outputs {
+        let dir = match output.bucket {
+            syntaqlite_codegen_sqlite::OutputBucket::Include => &include_dir,
+            syntaqlite_codegen_sqlite::OutputBucket::DialectCsrc => out,
+            syntaqlite_codegen_sqlite::OutputBucket::RustSrc => &rust_src_dir,
+        };
+        write_file(&dir.join(output.file_name), output.content)?;
+    }
+
+    log_verbose(verbose, "Code generation complete");
+    Ok(())
+}
+
+#[cfg(feature = "codegen")]
+fn write_amalgamation_outputs(
+    out: &Path,
+    header_name: &str,
+    source_name: &str,
+    result: &syntaqlite_codegen::amalgamate::AmalgamateOutput,
+) -> Result<(), String> {
+    write_file(&out.join(header_name), &result.header)?;
+    write_file(&out.join(source_name), &result.source)?;
+    if let Some(ext) = &result.ext_header {
+        write_file(&out.join("syntaqlite_ext.h"), ext)?;
+    }
+    Ok(())
+}
+
+#[cfg(feature = "codegen")]
+fn handle_amalgamate(
+    dialect: &str,
+    runtime_dir: &str,
+    dialect_dir: &str,
+    output_dir: &str,
+    runtime_only: bool,
+    dialect_only: bool,
+    verbose: bool,
+) -> Result<(), String> {
+    use syntaqlite_codegen::amalgamate;
+
+    let out = Path::new(output_dir);
+    ensure_dir(out, "output directory")?;
+
+    let runtime = PathBuf::from(runtime_dir);
+    let dialect_path = PathBuf::from(dialect_dir);
+
+    if runtime_only {
+        log_verbose(verbose, "Generating runtime amalgamation...");
+        let result = amalgamate::amalgamate_runtime(&runtime)?;
+        write_amalgamation_outputs(out, "syntaqlite_runtime.h", "syntaqlite_runtime.c", &result)?;
+        log_verbose(verbose, "Wrote syntaqlite_runtime.{h,c} + syntaqlite_ext.h");
+    } else {
+        let (phase, result) = if dialect_only {
+            (
+                "Generating dialect amalgamation...",
+                amalgamate::amalgamate_dialect(dialect, &dialect_path)?,
+            )
+        } else {
+            (
+                "Generating full amalgamation...",
+                amalgamate::amalgamate_full(dialect, &runtime, &dialect_path)?,
+            )
+        };
+        log_verbose(verbose, phase);
+        let base = format!("syntaqlite_{dialect}");
+        write_amalgamation_outputs(out, &format!("{base}.h"), &format!("{base}.c"), &result)?;
+        log_verbose(verbose, &format!("Wrote {base}.{{h,c}}"));
+    }
 
     Ok(())
 }
@@ -449,6 +655,12 @@ pub fn run(name: &str, dialect: &Dialect) {
         active_dialect = dialect;
     }
 
+    // The `verbose` flag is not part of the shared Cli struct, but codegen
+    // subcommands accept it via their own global flag. For the absorbed
+    // Codegen/Amalgamate commands we hard-code verbose=false; the old
+    // syntaqlite-codegen binary had a top-level --verbose flag, but we
+    // keep things simple here.
+
     let result = match cli.command {
         Command::Ast { files } => cmd_ast(active_dialect, files),
         Command::Lsp => lsp::cmd_lsp(active_dialect),
@@ -470,6 +682,7 @@ pub fn run(name: &str, dialect: &Dialect) {
             };
             cmd_fmt(active_dialect, files, config, in_place, semicolons)
         }
+        #[cfg(feature = "codegen")]
         Command::Dialect {
             name,
             actions_dir,
@@ -483,11 +696,36 @@ pub fn run(name: &str, dialect: &Dialect) {
                 &output_dir,
             ),
         },
+        #[cfg(feature = "codegen")]
+        Command::Codegen {
+            actions_dir,
+            nodes_dir,
+            output_dir,
+        } => handle_codegen(&actions_dir, &nodes_dir, &output_dir, false),
+        #[cfg(feature = "codegen")]
+        Command::Amalgamate {
+            dialect,
+            runtime_dir,
+            dialect_dir,
+            output_dir,
+            runtime_only,
+            dialect_only,
+        } => handle_amalgamate(
+            &dialect,
+            &runtime_dir,
+            &dialect_dir,
+            &output_dir,
+            runtime_only,
+            dialect_only,
+            false,
+        ),
+        #[cfg(feature = "codegen")]
         Command::Lemon { args } => {
-            syntaqlite_codegen::run_lemon(&args);
+            syntaqlite_codegen_sqlite::run_lemon(&args);
         }
+        #[cfg(feature = "codegen")]
         Command::Mkkeyword { args } => {
-            syntaqlite_codegen::run_mkkeyword(&args);
+            syntaqlite_codegen_sqlite::run_mkkeyword(&args);
         }
     };
 

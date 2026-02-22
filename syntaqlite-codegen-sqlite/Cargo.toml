@@ -1,0 +1,12 @@
+[package]
+name = "syntaqlite-codegen-sqlite"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+syntaqlite-codegen = { path = "../syntaqlite-codegen" }
+tempfile = "3.8"
+
+[build-dependencies]
+cc = "1.0"
+syntaqlite-codegen = { path = "../syntaqlite-codegen" }

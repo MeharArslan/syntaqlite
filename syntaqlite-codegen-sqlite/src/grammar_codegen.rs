@@ -3,8 +3,8 @@
 
 use std::fs;
 
-use crate::grammar_parser;
-use crate::writers::c_writer::CWriter;
+use syntaqlite_codegen::grammar_parser;
+use syntaqlite_codegen::writers::c_writer::CWriter;
 
 pub(crate) fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<(), String> {
     let input_text =

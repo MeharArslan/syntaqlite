@@ -6,7 +6,7 @@
 //! Instead of manually extracting, transforming, and reassembling pieces,
 //! CTransformer handles the orchestration automatically.
 
-use crate::c_extractor::CExtractor;
+use crate::c_source::c_extractor::CExtractor;
 
 pub struct CTransformer {
     content: String,

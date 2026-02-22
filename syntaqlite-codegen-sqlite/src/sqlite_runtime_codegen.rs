@@ -3,12 +3,11 @@
 
 use std::fs;
 
-use syntaqlite_codegen_utils::{c_extractor, c_transformer};
+use syntaqlite_codegen::c_source::{c_extractor, c_transformer};
+use syntaqlite_codegen::util::pascal_case;
+use syntaqlite_codegen::writers::c_writer::CWriter;
 
 use crate::TokenizerExtractResult;
-use crate::util::pascal_case;
-
-use crate::writers::c_writer::CWriter;
 
 pub(crate) fn extract_tokenizer(
     tokenize_content: &str,
@@ -120,7 +119,7 @@ pub(crate) fn extract_terminals_from_y(extension_y_contents: &[&str]) -> Vec<Str
     let mut terminals: HashSet<String> = HashSet::new();
 
     for content in extension_y_contents {
-        let grammar = match crate::grammar_parser::LemonGrammar::parse(content) {
+        let grammar = match syntaqlite_codegen::grammar_parser::LemonGrammar::parse(content) {
             Ok(g) => g,
             Err(_) => continue,
         };

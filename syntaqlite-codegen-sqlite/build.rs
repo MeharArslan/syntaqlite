@@ -4,7 +4,7 @@
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use syntaqlite_codegen_utils::c_transformer::CTransformer;
+use syntaqlite_codegen::c_source::c_transformer::CTransformer;
 
 fn main() {
     // Get the path to vendored SQLite tools in this crate

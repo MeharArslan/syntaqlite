@@ -5,7 +5,7 @@ members = [
     "syntaqlite",
     "syntaqlite-wasm",
     "syntaqlite-codegen",
-    "syntaqlite-codegen-utils",
+    "syntaqlite-codegen-sqlite",
     "syntaqlite-cli",
     "syntaqlite-lsp",
     "benches",
