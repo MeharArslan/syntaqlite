@@ -22,14 +22,31 @@ impl<'a> FmtCtx<'a> {
     }
 }
 
+/// Reusable scratch buffers for the interpret loop, allocated once per
+/// `Formatter` and threaded through the recursive `format_node_inner` →
+/// `interpret` call chain.  Each `interpret` call saves the current Vec
+/// lengths on entry and truncates back on exit, so nested calls share
+/// the same backing allocations.
+pub(crate) struct InterpretScratch {
+    gn_stack: Vec<GNFrame>,
+    for_each_stack: Vec<ForEachState<'static>>,
+}
+
+impl InterpretScratch {
+    pub fn new() -> Self {
+        InterpretScratch {
+            gn_stack: Vec::new(),
+            for_each_stack: Vec::new(),
+        }
+    }
+}
+
 /// Interpret formatting bytecode into a Doc tree.
 ///
-/// Instead of collecting DocIds into a `Vec<DocId>` and calling `cats()` at
-/// the end, this builds a left-leaning Cat chain directly in the arena via a
-/// single `running: DocId` accumulator.  GroupStart/GroupEnd and
-/// NestStart/NestEnd save/restore the accumulator on a tiny stack of DocIds
-/// (no Vec-of-DocIds).  This eliminates the dominant source of `grow_one`
-/// allocator pressure in the formatter hot path.
+/// Uses a single `running: DocId` accumulator instead of `Vec<DocId>` parts.
+/// GroupStart/GroupEnd and NestStart/NestEnd save/restore the accumulator on
+/// a tiny stack of DocIds. Scratch buffers are shared across recursive calls
+/// to eliminate per-node allocation.
 pub(crate) fn interpret<'a>(
     ctx: &FmtCtx<'a>,
     ops_bytes: &[u8],
@@ -38,6 +55,7 @@ pub(crate) fn interpret<'a>(
     list_children: Option<&[NodeId]>,
     consumed_regions: &mut u64,
     arena: &mut DocArena<'a>,
+    scratch: &mut InterpretScratch,
 ) -> DocId {
     let ops = &ops_bytes[..ops_count * 6];
     let source = ctx.source();
@@ -47,11 +65,12 @@ pub(crate) fn interpret<'a>(
     // Pending line breaks — replaces `pending_lines: Vec<DocId>`.
     let mut pending: DocId = NIL_DOC;
 
-    let mut gn_stack: Vec<GNFrame> = Vec::new();
-    let mut for_each_stack: Vec<ForEachState> = Vec::new();
+    // Save stack depths so we can truncate on exit (nested calls share the Vecs).
+    let gn_save = scratch.gn_stack.len();
+    let fe_save = scratch.for_each_stack.len();
+
     let mut ip: usize = 0;
     let has_comments = ctx.comment_ctx.is_some();
-    let jump_table = build_foreach_jump_table(ops, ops_count);
 
     while ip < ops_count {
         match op_at(ops, ip) {
@@ -101,7 +120,8 @@ pub(crate) fn interpret<'a>(
                             pending = NIL_DOC;
                         }
                     }
-                    let child_doc = format_child_doc(ctx, child_id, consumed_regions, arena);
+                    let child_doc =
+                        format_child_doc(ctx, child_id, consumed_regions, arena, scratch);
                     running = arena.cat(running, child_doc);
                 }
             }
@@ -130,14 +150,14 @@ pub(crate) fn interpret<'a>(
                 }
             }
             FmtOp::GroupStart => {
-                gn_stack.push(GNFrame::Group(running));
+                scratch.gn_stack.push(GNFrame::Group(running));
                 running = NIL_DOC;
             }
             FmtOp::GroupEnd => {
                 running = arena.cat(running, pending);
                 pending = NIL_DOC;
                 let inner = running;
-                match gn_stack.pop().expect("unmatched GroupEnd") {
+                match scratch.gn_stack.pop().expect("unmatched GroupEnd") {
                     GNFrame::Group(parent) => {
                         let g = arena.group(inner);
                         running = arena.cat(parent, g);
@@ -146,14 +166,14 @@ pub(crate) fn interpret<'a>(
                 }
             }
             FmtOp::NestStart(indent) => {
-                gn_stack.push(GNFrame::Nest(indent, running));
+                scratch.gn_stack.push(GNFrame::Nest(indent, running));
                 running = NIL_DOC;
             }
             FmtOp::NestEnd => {
                 running = arena.cat(running, pending);
                 pending = NIL_DOC;
                 let inner = running;
-                match gn_stack.pop().expect("unmatched NestEnd") {
+                match scratch.gn_stack.pop().expect("unmatched NestEnd") {
                     GNFrame::Nest(indent, parent) => {
                         let n = arena.nest(indent, inner);
                         running = arena.cat(parent, n);
@@ -178,26 +198,36 @@ pub(crate) fn interpret<'a>(
                     panic!("ForEachStart: field {} is not a NodeId", idx);
                 };
                 if list_id.is_null() {
-                    ip = skip_to_foreach_end(ops, ops_count, ip, &jump_table);
+                    ip = skip_to_foreach_end(ops, ops_count, ip);
                 } else {
                     let children = ctx
                         .cursor
                         .list_children(list_id, &ctx.dialect)
                         .unwrap_or(&[]);
                     if children.is_empty() {
-                        ip = skip_to_foreach_end(ops, ops_count, ip, &jump_table);
+                        ip = skip_to_foreach_end(ops, ops_count, ip);
                     } else {
-                        for_each_stack.push(ForEachState {
+                        // SAFETY: ForEachState borrows `children` which lives as
+                        // long as `ctx.cursor`. We truncate the stack back to
+                        // `fe_save` before returning, so no dangling references
+                        // escape this call.
+                        let state = ForEachState {
                             children,
                             index: 0,
                             body_start: ip + 1,
                             sep_checkpoint: None,
-                        });
+                        };
+                        scratch
+                            .for_each_stack
+                            .push(unsafe { std::mem::transmute(state) });
                     }
                 }
             }
             FmtOp::ChildItem => {
-                let state = for_each_stack.last().expect("ChildItem outside ForEach");
+                let state = scratch
+                    .for_each_stack
+                    .last()
+                    .expect("ChildItem outside ForEach");
                 let child_id = state.children[state.index];
 
                 // Check macro suppression BEFORE draining comments.
@@ -218,13 +248,18 @@ pub(crate) fn interpret<'a>(
                 if macro_doc == Some(NIL_DOC) {
                     // Macro-suppressed child. Undo the previous separator
                     // and discard pending line breaks.
-                    let state = for_each_stack.last_mut().unwrap();
+                    let state = scratch.for_each_stack.last_mut().unwrap();
                     if let Some((saved_running, saved_pending)) = state.sep_checkpoint.take() {
                         running = saved_running;
                         pending = saved_pending;
                     }
-                    let _ =
-                        super::formatter::format_node_inner(ctx, child_id, arena, consumed_regions);
+                    let _ = super::formatter::format_node_inner(
+                        ctx,
+                        child_id,
+                        arena,
+                        consumed_regions,
+                        scratch,
+                    );
                 } else {
                     // Drain comments before this child.
                     if let Some(cctx) = ctx.comment_ctx {
@@ -243,16 +278,19 @@ pub(crate) fn interpret<'a>(
                             child_id,
                             arena,
                             consumed_regions,
+                            scratch,
                         );
                         running = arena.cat(running, verbatim);
                     } else {
-                        let child_doc = format_child_doc(ctx, child_id, consumed_regions, arena);
+                        let child_doc =
+                            format_child_doc(ctx, child_id, consumed_regions, arena, scratch);
                         running = arena.cat(running, child_doc);
                     }
                 }
             }
             FmtOp::ForEachSep(sid) => {
-                let state = for_each_stack
+                let state = scratch
+                    .for_each_stack
                     .last_mut()
                     .expect("ForEachSep outside ForEach");
                 if state.index < state.children.len() - 1 {
@@ -266,12 +304,13 @@ pub(crate) fn interpret<'a>(
                     let sep = arena.text(sep_text);
                     running = arena.cat(running, sep);
                 } else {
-                    ip = skip_to_foreach_end(ops, ops_count, ip, &jump_table);
+                    ip = skip_to_foreach_end(ops, ops_count, ip);
                     continue;
                 }
             }
             FmtOp::ForEachEnd => {
-                let state = for_each_stack
+                let state = scratch
+                    .for_each_stack
                     .last_mut()
                     .expect("ForEachEnd outside ForEach");
                 state.index += 1;
@@ -279,7 +318,7 @@ pub(crate) fn interpret<'a>(
                     ip = state.body_start;
                     continue;
                 } else {
-                    for_each_stack.pop();
+                    scratch.for_each_stack.pop();
                 }
             }
             FmtOp::IfBool(idx, skip) => {
@@ -338,65 +377,66 @@ pub(crate) fn interpret<'a>(
             FmtOp::ForEachSelfStart => {
                 let children = list_children.expect("ForEachSelfStart on non-list node");
                 if children.is_empty() {
-                    ip = skip_to_foreach_end(ops, ops_count, ip, &jump_table);
+                    ip = skip_to_foreach_end(ops, ops_count, ip);
                 } else {
-                    for_each_stack.push(ForEachState {
+                    let state = ForEachState {
                         children,
                         index: 0,
                         body_start: ip + 1,
                         sep_checkpoint: None,
-                    });
+                    };
+                    scratch
+                        .for_each_stack
+                        .push(unsafe { std::mem::transmute(state) });
                 }
             }
         }
         ip += 1;
     }
 
+    // Restore scratch stacks to their entry depths.
+    scratch.gn_stack.truncate(gn_save);
+    scratch.for_each_stack.truncate(fe_save);
+
     arena.cat(running, pending)
 }
 
 /// Format a child node. Checks for macro verbatim regions first, then
 /// recurses into `format_node_inner`.
-///
-/// Returns `NIL_DOC` if the child is inside an already-consumed macro region
-/// (i.e. it should be suppressed). In all cases, the token cursor is advanced
-/// past the child's tokens.
 fn format_child_doc<'a>(
     ctx: &FmtCtx<'a>,
     child_id: NodeId,
     consumed_regions: &mut u64,
     arena: &mut DocArena<'a>,
+    scratch: &mut InterpretScratch,
 ) -> DocId {
     let macro_regions = ctx.cursor.macro_regions();
-    // Only check macro regions for non-list nodes. List nodes are formatted
-    // normally so their individual children can be macro-checked.
     if !macro_regions.is_empty() && ctx.cursor.list_children(child_id, &ctx.dialect).is_none() {
         if let Some(doc) =
             super::formatter::try_macro_verbatim(ctx, macro_regions, arena, consumed_regions)
         {
-            // Advance the token cursor through this child's tokens by
-            // formatting it (output is discarded).
-            let _ = super::formatter::format_node_inner(ctx, child_id, arena, consumed_regions);
+            let _ = super::formatter::format_node_inner(
+                ctx,
+                child_id,
+                arena,
+                consumed_regions,
+                scratch,
+            );
             return doc;
         }
     }
-    super::formatter::format_node_inner(ctx, child_id, arena, consumed_regions)
+    super::formatter::format_node_inner(ctx, child_id, arena, consumed_regions, scratch)
 }
 
 // ── Comment drain helper ────────────────────────────────────────────────
 
 /// Flush a `DrainResult` into the running/pending accumulators.
-///
-/// Equivalent to the old `flush_comments()` but operates on single DocIds
-/// instead of Vecs, eliminating all Vec allocation.
 #[inline]
 fn flush_drain(drain: DrainResult, pending: &mut DocId, running: &mut DocId, arena: &mut DocArena) {
     if drain.trailing != NIL_DOC {
         *running = arena.cat(*running, drain.trailing);
     }
     if drain.leading != NIL_DOC {
-        // Leading comments already start with a HardLine — drop pending
-        // to avoid an extra blank line.
         *pending = NIL_DOC;
         *running = arena.cat(*running, drain.leading);
     } else {
@@ -418,42 +458,12 @@ fn op_at(ops: &[u8], ip: usize) -> FmtOp {
     FmtOp::decode(opcode, a, b, c)
 }
 
-/// Pre-compute a jump table mapping ForEachStart/ForEachSelfStart ip → ForEachEnd ip.
-fn build_foreach_jump_table(ops: &[u8], ops_count: usize) -> Vec<usize> {
-    let mut table = vec![0usize; ops_count];
-    let mut stack: Vec<usize> = Vec::new();
-    for ip in 0..ops_count {
-        match op_at(ops, ip) {
-            FmtOp::ForEachStart(_) | FmtOp::ForEachSelfStart => {
-                stack.push(ip);
-            }
-            FmtOp::ForEachEnd => {
-                if let Some(start_ip) = stack.pop() {
-                    table[start_ip] = ip;
-                }
-            }
-            _ => {}
-        }
-    }
-    table
-}
-
-/// Find the matching ForEachEnd for the ForEach starting at `from_ip`.
-/// Uses the precomputed jump table for O(1) lookup; falls back to linear scan
-/// for ForEachSep (which skips to end mid-body).
-fn skip_to_foreach_end(
-    ops: &[u8],
-    ops_count: usize,
-    from_ip: usize,
-    jump_table: &[usize],
-) -> usize {
-    // Direct lookup works for ForEachStart/ForEachSelfStart positions.
-    let target = jump_table[from_ip];
-    if target != 0 {
-        return target;
-    }
-    // Fallback: linear scan (for ForEachSep which isn't in the jump table).
-    let mut depth = 1;
+/// Find the matching ForEachEnd for the ForEach at `from_ip` via linear scan.
+/// ForEach bodies are typically very short (5-15 ops), so a linear scan is
+/// faster than building and indexing a per-node jump table (which requires
+/// a `vec![0; ops_count]` allocation).
+fn skip_to_foreach_end(ops: &[u8], ops_count: usize, from_ip: usize) -> usize {
+    let mut depth = 1u32;
     let mut ip = from_ip + 1;
     while ip < ops_count {
         match op_at(ops, ip) {
@@ -566,7 +576,6 @@ impl FmtOp {
 }
 
 /// Group/Nest frame — saves the parent's running DocId.
-/// Previously stored a `Vec<DocId>` (the parent's parts list).
 enum GNFrame {
     Group(DocId),
     Nest(i16, DocId),

@@ -41,6 +41,7 @@ pub struct Dialect {
 
     // Formatter data
     pub fmt_strings: *const *const std::ffi::c_char,
+    pub fmt_string_lens: *const u16,
     pub fmt_string_count: u16,
     pub fmt_enum_display: *const u16,
     pub fmt_enum_display_count: u16,

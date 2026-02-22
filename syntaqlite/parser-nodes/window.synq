@@ -47,19 +47,24 @@ node WindowDef {
 
   fmt {
     if_span(base_window_name) { span(base_window_name) } else {
-      "("
-      if_set(partition_by) { "PARTITION BY " child(partition_by) }
-      if_set(orderby) {
-        if_set(partition_by) { " " }
-        "ORDER BY " child(orderby)
-      }
-      if_set(frame) {
-        if_set(partition_by) { " " } else {
-          if_set(orderby) { " " }
+      group {
+        "("
+        nest {
+          softline
+          if_set(partition_by) { "PARTITION BY " child(partition_by) }
+          if_set(orderby) {
+            if_set(partition_by) { line }
+            "ORDER BY " child(orderby)
+          }
+          if_set(frame) {
+            if_set(partition_by) { line } else {
+              if_set(orderby) { line }
+            }
+            child(frame)
+          }
         }
-        child(frame)
+        softline ")"
       }
-      ")"
     }
   }
 }

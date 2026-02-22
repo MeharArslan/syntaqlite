@@ -10,7 +10,8 @@ mod tokenizer;
 mod typed_list;
 
 pub use ffi::{
-    Comment, CommentKind, MacroRegion, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TokenPos,
+    Comment, CommentKind, MacroRegion, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID,
+    TOKEN_FLAG_AS_TYPE, TokenPos,
 };
 pub use nodes::{FieldVal, Fields, NodeId, NodeList, SourceSpan};
 pub use parser::{CursorBase, NodeReader, ParseError, Parser, ParserConfig, StatementCursor};

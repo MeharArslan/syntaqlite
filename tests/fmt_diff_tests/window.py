@@ -41,6 +41,55 @@ class WindowFunctionFormat(TestSuite):
             """,
         )
 
+    def test_long_over_partition_wraps(self):
+        return AstTestBlueprint(
+            sql="""\
+                SELECT
+                  customer_id,
+                  order_id,
+                  order_total,
+                  rank() OVER (PARTITION BY customer_iddffkjllfjksljdfdklsfjklsfjkljfdklsdsjklfjkslfjljskdfjkl ORDER BY order_total DESC) AS customer_rank,
+                  dense_rank() OVER (PARTITION BY customer_id ORDER BY order_total DESC) AS customer_dense_rank,
+                  count(*) OVER (PARTITION BY customer_id) AS customer_order_count
+                FROM orders
+                WHERE
+                  order_total > 0;
+            """,
+            out="""\
+                SELECT
+                  customer_id,
+                  order_id,
+                  order_total,
+                  rank() OVER (
+                    PARTITION BY customer_iddffkjllfjksljdfdklsfjklsfjkljfdklsdsjklfjkslfjljskdfjkl
+                    ORDER BY order_total DESC
+                  ) AS customer_rank,
+                  dense_rank() OVER (PARTITION BY customer_id ORDER BY order_total DESC) AS customer_dense_rank,
+                  count(*) OVER (PARTITION BY customer_id) AS customer_order_count
+                FROM orders
+                WHERE
+                  order_total > 0
+            """,
+        )
+
+    def test_long_named_window_def_wraps(self):
+        return AstTestBlueprint(
+            sql="""\
+                select sum(order_total) over w
+                from orders
+                window w as (partition by customer_iddffkjllfjksljdfdklsfjklsfjkljfdklsdsjklfjkslfjljskdfjkl order by order_total desc)
+            """,
+            out="""\
+                SELECT sum(order_total) OVER w
+                FROM orders
+                WINDOW
+                  w AS (
+                    PARTITION BY customer_iddffkjllfjksljdfdklsfjklsfjkljfdklsdsjklfjkslfjljskdfjkl
+                    ORDER BY order_total DESC
+                  )
+            """,
+        )
+
 
 class FilterOverFormat(TestSuite):
     def test_filter_only(self):
@@ -84,7 +133,10 @@ class FrameSpecFormat(TestSuite):
             sql="select sum(x) over (order by y groups between unbounded preceding and unbounded following exclude ties) from t",
             out="""\
                 SELECT
-                  sum(x) OVER (ORDER BY y GROUPS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE TIES)
+                  sum(x) OVER (
+                    ORDER BY y
+                    GROUPS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE TIES
+                  )
                 FROM t
             """,
         )

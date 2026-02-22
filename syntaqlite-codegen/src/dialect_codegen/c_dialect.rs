@@ -112,6 +112,7 @@ pub fn generate_dialect_c(dialect: &str, tokens: Option<&[(String, u32)]>) -> St
     w.newline();
     w.line("    // Formatter data");
     w.line("    .fmt_strings = fmt_strings,");
+    w.line("    .fmt_string_lens = fmt_string_lens,");
     w.line("    .fmt_string_count = sizeof(fmt_strings) / sizeof(fmt_strings[0]),");
     w.line("    .fmt_enum_display = fmt_enum_display,");
     w.line("    .fmt_enum_display_count = sizeof(fmt_enum_display) / sizeof(fmt_enum_display[0]),");

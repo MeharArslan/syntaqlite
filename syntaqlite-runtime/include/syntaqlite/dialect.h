@@ -82,6 +82,7 @@ typedef struct SyntaqliteDialect {
 
     // Formatter data — all static arrays, NULL to skip formatting.
     const char* const*    fmt_strings;           // keyword/punctuation strings (null-terminated)
+    const uint16_t*       fmt_string_lens;        // precomputed strlen for each fmt_strings entry
     uint16_t              fmt_string_count;
     const uint16_t*       fmt_enum_display;      // enum ordinal → string ID mapping
     uint16_t              fmt_enum_display_count;

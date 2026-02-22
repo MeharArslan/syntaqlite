@@ -45,9 +45,11 @@ typetoken(A) ::= typename(A) LP signed COMMA signed RP(Y). {
 // Note: lemon -g inlines 'ids' as 'ids', so we use that directly.
 
 typename(A) ::= ids(B). {
+    synq_mark_as_type(pCtx, B);
     A = B;
 }
 
 typename(A) ::= typename(A) ids(Y). {
+    synq_mark_as_type(pCtx, Y);
     A.n = Y.n + (int)(Y.z - A.z);
 }

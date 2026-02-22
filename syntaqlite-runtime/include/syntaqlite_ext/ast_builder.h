@@ -199,6 +199,17 @@ static inline void synq_mark_as_function(SynqParseCtx* ctx, SynqParseToken tok) 
   tv->data[tok.token_idx].flags |= SYNQ_TOKEN_FLAG_AS_FUNCTION;
 }
 
+// Mark a token as "used as type name" in type contexts.
+// O(1) — uses the token_idx stored in SynqParseToken at collection time.
+static inline void synq_mark_as_type(SynqParseCtx* ctx, SynqParseToken tok) {
+  if (!ctx->tokens || tok.token_idx == 0xFFFFFFFF) return;
+  // ctx->tokens is a void* pointing to SYNQ_VEC(SyntaqliteTokenPos).
+  // The vec layout is: { SyntaqliteTokenPos* data; uint32_t count; uint32_t capacity; }
+  typedef struct { SyntaqliteTokenPos* data; uint32_t count; uint32_t capacity; } TokenVec;
+  TokenVec* tv = (TokenVec*)ctx->tokens;
+  tv->data[tok.token_idx].flags |= SYNQ_TOKEN_FLAG_AS_TYPE;
+}
+
 // Range field metadata types (SyntaqliteFieldRangeMeta, SyntaqliteRangeMetaEntry)
 // are defined in syntaqlite/dialect.h.
 

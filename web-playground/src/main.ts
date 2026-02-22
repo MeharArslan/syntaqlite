@@ -56,6 +56,7 @@ const TOKEN_LEGEND: monaco.languages.SemanticTokensLegend = {
     "punctuation", // 6
     "identifier", // 7
     "function", // 8
+    "type", // 9
   ],
   tokenModifiers: [],
 };

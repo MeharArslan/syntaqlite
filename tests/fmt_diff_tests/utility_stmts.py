@@ -153,6 +153,16 @@ class CreateIndexFormat(TestSuite):
             out="CREATE INDEX idx ON t (x, y DESC)",
         )
 
+    def test_create_index_multiline_columns(self):
+        return AstTestBlueprint(
+            sql="""\
+                create index idx_hot_slices on hot_slices(ts,
+                dur,
+                track_id)
+            """,
+            out="CREATE INDEX idx_hot_slices ON hot_slices (ts, dur, track_id)",
+        )
+
     def test_create_index_with_where(self):
         return AstTestBlueprint(
             sql="create index idx on t(x) where x > 0",

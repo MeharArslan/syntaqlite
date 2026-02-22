@@ -152,17 +152,42 @@ impl<'a> DocArena<'a> {
     // -- Render --
 
     /// Render the document tree rooted at `root` to a string.
+    /// Convenience wrapper around `render_into` that allocates fresh buffers.
     pub fn render(&self, root: DocId, line_width: usize, keyword_case: KeywordCase) -> String {
+        let mut out = String::new();
+        let mut stack = Vec::new();
+        let mut fits_stack = Vec::new();
+        self.render_into(
+            root,
+            line_width,
+            keyword_case,
+            &mut out,
+            &mut stack,
+            &mut fits_stack,
+        );
+        out
+    }
+
+    /// Render into caller-provided buffers, reusing their allocations.
+    /// This avoids re-allocating the render stack, fits stack, and output
+    /// string on every format call.
+    pub fn render_into(
+        &self,
+        root: DocId,
+        line_width: usize,
+        keyword_case: KeywordCase,
+        out: &mut String,
+        stack: &mut Vec<(i32, Mode, DocId)>,
+        fits_stack: &mut Vec<(i32, DocId)>,
+    ) {
         if root == NIL_DOC {
-            return String::new();
+            return;
         }
 
-        let mut out = String::with_capacity(self.docs.len() * 4);
+        out.reserve(self.docs.len() * 4);
         let mut pos: usize = 0;
-        let mut stack: Vec<(i32, Mode, DocId)> = Vec::with_capacity(64);
         stack.push((0, Mode::Break, root));
         let mut line_suffix_buf: Vec<(i32, Mode, DocId)> = Vec::new();
-        let mut fits_stack: Vec<(i32, DocId)> = Vec::with_capacity(32);
 
         while let Some((indent, mode, doc_id)) = stack.pop() {
             if doc_id == NIL_DOC {
@@ -176,7 +201,7 @@ impl<'a> DocArena<'a> {
                 }
 
                 Doc::Keyword(s) => {
-                    push_keyword(s, keyword_case, &mut out);
+                    push_keyword(s, keyword_case, out);
                     pos += s.len();
                 }
 
@@ -190,10 +215,10 @@ impl<'a> DocArena<'a> {
                             self,
                             &mut line_suffix_buf,
                             keyword_case,
-                            &mut out,
+                            out,
                             &mut pos,
                         );
-                        emit_newline(indent, &mut out, &mut pos);
+                        emit_newline(indent, out, &mut pos);
                     }
                 },
 
@@ -204,22 +229,16 @@ impl<'a> DocArena<'a> {
                             self,
                             &mut line_suffix_buf,
                             keyword_case,
-                            &mut out,
+                            out,
                             &mut pos,
                         );
-                        emit_newline(indent, &mut out, &mut pos);
+                        emit_newline(indent, out, &mut pos);
                     }
                 },
 
                 Doc::HardLine => {
-                    flush_line_suffixes(
-                        self,
-                        &mut line_suffix_buf,
-                        keyword_case,
-                        &mut out,
-                        &mut pos,
-                    );
-                    emit_newline(indent, &mut out, &mut pos);
+                    flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, out, &mut pos);
+                    emit_newline(indent, out, &mut pos);
                 }
 
                 Doc::Cat { left, right } => {
@@ -232,12 +251,7 @@ impl<'a> DocArena<'a> {
                 }
 
                 Doc::Group { child } => {
-                    if self.fits_with(
-                        *child,
-                        indent,
-                        line_width as i32 - pos as i32,
-                        &mut fits_stack,
-                    ) {
+                    if self.fits_with(*child, indent, line_width as i32 - pos as i32, fits_stack) {
                         stack.push((indent, Mode::Flat, *child));
                     } else {
                         stack.push((indent, Mode::Break, *child));
@@ -252,8 +266,7 @@ impl<'a> DocArena<'a> {
             }
         }
 
-        flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, &mut out, &mut pos);
-        out
+        flush_line_suffixes(self, &mut line_suffix_buf, keyword_case, out, &mut pos);
     }
 
     /// Check whether a document fits within `remaining` columns when rendered flat.
@@ -316,7 +329,7 @@ impl<'a> DocArena<'a> {
 // ── Private helpers ──────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Mode {
+pub(crate) enum Mode {
     Flat,
     Break,
 }

@@ -33,6 +33,7 @@ static const SyntaqliteDialect SQLITE_DIALECT = {
 
     // Formatter data
     .fmt_strings = fmt_strings,
+    .fmt_string_lens = fmt_string_lens,
     .fmt_string_count = sizeof(fmt_strings) / sizeof(fmt_strings[0]),
     .fmt_enum_display = fmt_enum_display,
     .fmt_enum_display_count = sizeof(fmt_enum_display) / sizeof(fmt_enum_display[0]),

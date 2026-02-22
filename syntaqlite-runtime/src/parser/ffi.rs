@@ -51,6 +51,7 @@ pub struct Comment {
 /// Token flags bitfield.
 pub const TOKEN_FLAG_AS_ID: u32 = 1;
 pub const TOKEN_FLAG_AS_FUNCTION: u32 = 2;
+pub const TOKEN_FLAG_AS_TYPE: u32 = 4;
 
 /// A non-whitespace, non-comment token position captured during parsing.
 ///
@@ -62,7 +63,7 @@ pub struct TokenPos {
     pub length: u32,
     /// Original token type from tokenizer (pre-fallback).
     pub type_: u32,
-    /// Bitfield: TOKEN_FLAG_AS_ID etc.
+    /// Bitfield: TOKEN_FLAG_AS_ID / AS_FUNCTION / AS_TYPE.
     pub flags: u32,
 }
 

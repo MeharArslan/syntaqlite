@@ -22,6 +22,7 @@ pub enum TokenCategory {
     Comment = 7,
     Variable = 8,
     Function = 9,
+    Type = 10,
 }
 
 /// The semantic token legend: LSP/Monaco token type names in legend-index order.
@@ -38,6 +39,7 @@ pub const SEMANTIC_TOKEN_LEGEND: &[&str] = &[
     "punctuation", // 6
     "identifier",  // 7
     "function",    // 8
+    "type",        // 9
 ];
 
 impl TokenCategory {
@@ -52,6 +54,7 @@ impl TokenCategory {
             7 => Self::Comment,
             8 => Self::Variable,
             9 => Self::Function,
+            10 => Self::Type,
             _ => Self::Other,
         }
     }
@@ -76,6 +79,7 @@ impl TokenCategory {
             Self::Punctuation => Some(6),
             Self::Identifier => Some(7),
             Self::Function => Some(8),
+            Self::Type => Some(9),
             Self::Other => None,
         }
     }
@@ -167,17 +171,23 @@ impl<'d> Dialect<'d> {
     }
 
     /// Look up a string from the C fmt string table by index.
+    ///
+    /// Uses the precomputed `fmt_string_lens` array to skip `strlen`, and
+    /// `from_utf8_unchecked` since all fmt strings are ASCII keywords.
+    #[inline]
     pub(crate) fn fmt_string(&self, idx: u16) -> &'d str {
         let i = idx as usize;
-        assert!(
+        debug_assert!(
             i < self.raw.fmt_string_count as usize,
             "string index {} out of bounds (count={})",
             i,
             self.raw.fmt_string_count,
         );
         unsafe {
-            let cstr = std::ffi::CStr::from_ptr(*self.raw.fmt_strings.add(i));
-            cstr.to_str().expect("invalid UTF-8 in fmt string")
+            let ptr = *self.raw.fmt_strings.add(i);
+            let len = *self.raw.fmt_string_lens.add(i) as usize;
+            let bytes = std::slice::from_raw_parts(ptr as *const u8, len);
+            std::str::from_utf8_unchecked(bytes)
         }
     }
 

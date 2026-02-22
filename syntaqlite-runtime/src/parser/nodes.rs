@@ -31,7 +31,13 @@ impl SourceSpan {
     }
 
     pub fn as_str<'a>(&self, source: &'a str) -> &'a str {
-        &source[self.offset as usize..(self.offset as usize + self.length as usize)]
+        let start = self.offset as usize;
+        let end = start + self.length as usize;
+        // SAFETY: `source` is a valid &str, and the parser guarantees that
+        // offset/length fall on valid UTF-8 boundaries (token boundaries are
+        // always char-aligned). Skipping the redundant UTF-8 boundary check
+        // avoids `str::from_utf8` in the hot path.
+        unsafe { source.get_unchecked(start..end) }
     }
 }
 
@@ -61,22 +67,27 @@ impl NodeList {
 // ── Field extraction ────────────────────────────────────────────────────
 
 /// Extracted fields of a node, returned by value from `Node::fields()`.
-#[derive(Debug)]
+///
+/// Uses `MaybeUninit` internally so that `new()` is zero-cost — no need to
+/// initialize all 16 slots when most nodes only have 2-5 fields.
 pub struct Fields<'a> {
-    buf: [FieldVal<'a>; 16],
+    buf: [std::mem::MaybeUninit<FieldVal<'a>>; 16],
     len: usize,
 }
 
 impl<'a> Fields<'a> {
+    #[inline]
     pub fn new() -> Self {
         Self {
-            buf: [FieldVal::NodeId(NodeId::NULL); 16],
+            // SAFETY: An array of MaybeUninit doesn't require initialization.
+            buf: unsafe { std::mem::MaybeUninit::uninit().assume_init() },
             len: 0,
         }
     }
 
+    #[inline]
     pub fn push(&mut self, val: FieldVal<'a>) {
-        self.buf[self.len] = val;
+        self.buf[self.len] = std::mem::MaybeUninit::new(val);
         self.len += 1;
     }
 
@@ -88,7 +99,8 @@ impl<'a> Fields<'a> {
 impl<'a> std::ops::Deref for Fields<'a> {
     type Target = [FieldVal<'a>];
     fn deref(&self) -> &[FieldVal<'a>] {
-        &self.buf[..self.len]
+        // SAFETY: buf[..len] slots were all written via `push`.
+        unsafe { std::slice::from_raw_parts(self.buf.as_ptr().cast(), self.len) }
     }
 }
 

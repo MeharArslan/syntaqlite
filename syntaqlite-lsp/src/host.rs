@@ -5,7 +5,9 @@ use std::collections::HashMap;
 
 use syntaqlite_runtime::dialect::TokenCategory;
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter};
-use syntaqlite_runtime::parser::{ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID};
+use syntaqlite_runtime::parser::{
+    ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE,
+};
 use syntaqlite_runtime::{Dialect, ParseError, Parser};
 
 use crate::context::AmbientContext;
@@ -113,6 +115,7 @@ impl<'d> AnalysisHost<'d> {
     /// are classified as `Identifier` regardless of their original token type).
     /// Function callee names marked with `SYNQ_TOKEN_FLAG_AS_FUNCTION` are
     /// classified as `Function`.
+    /// Tokens marked with `SYNQ_TOKEN_FLAG_AS_TYPE` are classified as `Type`.
     pub fn semantic_tokens(&mut self, uri: &str) -> Vec<SemanticToken> {
         let doc = match self.documents.get_mut(uri) {
             Some(d) => d,
@@ -243,6 +246,8 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
     for tp in cursor.base().tokens() {
         let cat = if tp.flags & TOKEN_FLAG_AS_FUNCTION != 0 {
             TokenCategory::Function
+        } else if tp.flags & TOKEN_FLAG_AS_TYPE != 0 {
+            TokenCategory::Type
         } else if tp.flags & TOKEN_FLAG_AS_ID != 0 {
             TokenCategory::Identifier
         } else {

@@ -240,3 +240,32 @@ fn high_level_api_still_works() {
 
     assert!(cursor.next_statement().is_none());
 }
+
+/// Type names in SQLite type contexts should be marked with AS_TYPE so
+/// semantic highlighting can render them as `type`.
+#[test]
+fn sqlite_type_tokens_are_marked_as_type() {
+    use syntaqlite_runtime::parser::{Parser, ParserConfig, TOKEN_FLAG_AS_TYPE};
+
+    let source = "CREATE TABLE t(a int, b TEXT); SELECT CAST(a AS varchar(10)) FROM t";
+    let config = ParserConfig {
+        trace: false,
+        collect_tokens: true,
+    };
+    let mut parser = Parser::with_config(syntaqlite::low_level::dialect(), &config);
+    let mut cursor = parser.parse(source);
+
+    while let Some(stmt) = cursor.next_statement() {
+        stmt.expect("parse should succeed");
+    }
+
+    let marked: Vec<&str> = cursor
+        .base()
+        .tokens()
+        .iter()
+        .filter(|tp| tp.flags & TOKEN_FLAG_AS_TYPE != 0)
+        .map(|tp| &source[tp.offset as usize..(tp.offset as usize + tp.length as usize)])
+        .collect();
+
+    assert_eq!(marked, vec!["int", "TEXT", "varchar"]);
+}

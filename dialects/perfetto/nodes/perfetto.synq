@@ -31,7 +31,10 @@ node PerfettoIndexedColumn {
   fmt { span(column_name) }
 }
 
-list PerfettoIndexedColumnList { PerfettoIndexedColumn }
+list PerfettoIndexedColumnList {
+  PerfettoIndexedColumn
+  fmt { for_each(sep: "," line) { child(_item) } }
+}
 
 enum PerfettoReturnKind { SCALAR TABLE }
 
@@ -60,7 +63,6 @@ node PerfettoReturnType {
 node CreatePerfettoTableStmt {
   table_name: inline SyntaqliteSourceSpan
   or_replace: inline Bool
-  table_impl: inline SyntaqliteSourceSpan
   schema: index PerfettoArgDefList
   select: index Select
 
@@ -69,7 +71,6 @@ node CreatePerfettoTableStmt {
       "CREATE"
       if_flag(or_replace) { " OR REPLACE" }
       " PERFETTO TABLE " span(table_name)
-      if_span(table_impl) { " USING " span(table_impl) }
       if_set(schema) {
         "("
         nest {
@@ -130,9 +131,9 @@ node CreatePerfettoFunctionStmt {
         softline
       }
       ")"
-      " RETURNS " child(return_type)
-      line "AS"
     }
+    hardline "RETURNS " child(return_type)
+    hardline "AS"
     hardline child(select)
   }
 }
@@ -144,10 +145,18 @@ node CreatePerfettoIndexStmt {
   columns: index PerfettoIndexedColumnList
 
   fmt {
-    "CREATE"
-    if_flag(or_replace) { " OR REPLACE" }
-    " PERFETTO INDEX " span(index_name)
-    " ON " span(table_name) "(" child(columns) ")"
+    group {
+      "CREATE"
+      if_flag(or_replace) { " OR REPLACE" }
+      " PERFETTO INDEX " span(index_name)
+      " ON " span(table_name)
+      "("
+      nest {
+        softline
+        child(columns)
+      }
+      softline ")"
+    }
   }
 }
 

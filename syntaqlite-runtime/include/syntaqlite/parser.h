@@ -59,13 +59,14 @@ typedef struct SyntaqliteComment {
 // Token flags bitfield.
 #define SYNQ_TOKEN_FLAG_AS_ID 1  // Token was consumed as identifier (fallback from keyword).
 #define SYNQ_TOKEN_FLAG_AS_FUNCTION 2  // Token was consumed as function name.
+#define SYNQ_TOKEN_FLAG_AS_TYPE 4  // Token was consumed as a type name.
 
 // A non-whitespace, non-comment token position captured during parsing.
 typedef struct SyntaqliteTokenPos {
   uint32_t offset;   // Byte offset in source.
   uint32_t length;   // Byte length.
   uint32_t type;     // Original token type from tokenizer (pre-fallback).
-  uint32_t flags;    // Bitfield: SYNQ_TOKEN_FLAG_AS_ID etc.
+  uint32_t flags;    // Bitfield: SYNQ_TOKEN_FLAG_AS_ID / AS_FUNCTION / AS_TYPE.
 } SyntaqliteTokenPos;
 
 // Result of parsing one statement via syntaqlite_parser_next().

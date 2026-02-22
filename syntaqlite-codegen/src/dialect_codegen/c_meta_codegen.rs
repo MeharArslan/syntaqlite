@@ -65,6 +65,16 @@ pub fn generate_c_fmt_tables(model: &AstModel<'_>) -> Result<String, CFmtCodegen
     w.line("};");
     w.newline();
 
+    w.line("static const uint16_t fmt_string_lens[] = {");
+    w.indent();
+    for chunk in compiled.strings.chunks(16) {
+        let vals: Vec<String> = chunk.iter().map(|s| format!("{}", s.len())).collect();
+        w.line(&format!("{},", vals.join(",")));
+    }
+    w.dedent();
+    w.line("};");
+    w.newline();
+
     w.line("static const uint16_t fmt_enum_display[] = {");
     w.indent();
     let enum_display = &compiled.enum_display;

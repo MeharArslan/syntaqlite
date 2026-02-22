@@ -4,7 +4,7 @@
 use super::FormatConfig;
 use super::comment::CommentCtx;
 use super::doc::{DocArena, DocId, NIL_DOC};
-use super::interpret::{FmtCtx, interpret};
+use super::interpret::{FmtCtx, InterpretScratch, interpret};
 use crate::dialect::Dialect;
 use crate::dialect::ffi::{
     FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldMeta,
@@ -22,6 +22,15 @@ pub struct Formatter<'d> {
     /// Reusable scratch arena — cleared between format calls to avoid
     /// re-allocating the backing Vec.
     arena: DocArena<'static>,
+    /// Reusable scratch buffers for the bytecode interpreter, shared across
+    /// all recursive `interpret` calls within a single `format()` invocation.
+    interpret_scratch: InterpretScratch,
+    /// Reusable output string — recycled between format calls.
+    render_out: String,
+    /// Reusable render stack — recycled between format calls.
+    render_stack: Vec<(i32, super::doc::Mode, DocId)>,
+    /// Reusable fits-check stack — recycled between format calls.
+    render_fits_stack: Vec<(i32, DocId)>,
 }
 
 // SAFETY: Dialect is Send+Sync, Parser is Send.
@@ -48,6 +57,10 @@ impl<'d> Formatter<'d> {
             parser,
             config,
             arena: DocArena::with_capacity(256),
+            interpret_scratch: InterpretScratch::new(),
+            render_out: String::new(),
+            render_stack: Vec::new(),
+            render_fits_stack: Vec::new(),
         })
     }
 
@@ -102,7 +115,13 @@ impl<'d> Formatter<'d> {
                 comment_ctx: comment_ctx_ref,
             };
             let mut consumed = 0u64;
-            parts.push(format_node_inner(&ctx, root_id, &mut arena, &mut consumed));
+            parts.push(format_node_inner(
+                &ctx,
+                root_id,
+                &mut arena,
+                &mut consumed,
+                &mut self.interpret_scratch,
+            ));
         }
 
         if let Some(cctx) = &comment_ctx {
@@ -110,17 +129,38 @@ impl<'d> Formatter<'d> {
         }
 
         let doc = arena.cats(&parts);
-        let mut out = arena.render(doc, self.config.line_width, self.config.keyword_case);
+
+        // Reuse the output string and render stacks from the previous call.
+        let mut out = std::mem::take(&mut self.render_out);
+        out.clear();
+        let mut render_stack = std::mem::take(&mut self.render_stack);
+        render_stack.clear();
+        let mut fits_stack = std::mem::take(&mut self.render_fits_stack);
+        fits_stack.clear();
+
+        arena.render_into(
+            doc,
+            self.config.line_width,
+            self.config.keyword_case,
+            &mut out,
+            &mut render_stack,
+            &mut fits_stack,
+        );
 
         if semicolons {
             out.push(';');
         }
         out.push('\n');
 
-        // Recycle arena back for next call.
+        // Recycle arena and render buffers back for next call.
         self.arena = DocArena::recycle(arena);
+        // Take a clone of the output to return; stash the allocation for reuse.
+        let result = out.clone();
+        self.render_out = out;
+        self.render_stack = render_stack;
+        self.render_fits_stack = fits_stack;
 
-        Ok(out)
+        Ok(result)
     }
 
     /// Format a single pre-parsed AST node. This is the low-level entry point
@@ -135,7 +175,8 @@ impl<'d> Formatter<'d> {
             comment_ctx: Some(&comment_ctx),
         };
         let mut consumed = 0u64;
-        let doc = format_node_inner(&ctx, node_id, &mut arena, &mut consumed);
+        let mut scratch = InterpretScratch::new();
+        let doc = format_node_inner(&ctx, node_id, &mut arena, &mut consumed, &mut scratch);
         arena.render(doc, self.config.line_width, self.config.keyword_case)
     }
 }
@@ -227,11 +268,13 @@ fn drain_gap_comments<'a>(
 
 // ── Single-node formatting ──────────────────────────────────────────────
 
+#[inline]
 pub(crate) fn format_node_inner<'a>(
     ctx: &FmtCtx<'a>,
     node_id: NodeId,
     arena: &mut DocArena<'a>,
     consumed_regions: &mut u64,
+    scratch: &mut InterpretScratch,
 ) -> DocId {
     if node_id.is_null() {
         return NIL_DOC;
@@ -256,6 +299,7 @@ pub(crate) fn format_node_inner<'a>(
         children,
         consumed_regions,
         arena,
+        scratch,
     )
 }
 
@@ -301,6 +345,7 @@ pub(crate) fn try_macro_verbatim<'a>(
 // ── Field extraction ────────────────────────────────────────────────────
 
 /// Extract typed field values from a raw node pointer.
+#[inline]
 fn extract_fields<'a>(
     dialect: &Dialect<'_>,
     ptr: *const u8,

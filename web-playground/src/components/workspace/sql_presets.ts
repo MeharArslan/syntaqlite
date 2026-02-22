@@ -118,7 +118,6 @@ WHERE cpu = $cpu AND dur >= $min_dur;`,
     label: "Create Perfetto Table",
     description: "Perfetto table declaration with SELECT body.",
     sql: `CREATE PERFETTO TABLE hot_slices
-USING SPAN_JOIN
 AS
 SELECT ts, dur, name, track_id
 FROM slice
