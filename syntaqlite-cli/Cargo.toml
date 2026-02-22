@@ -3,9 +3,14 @@ name = "syntaqlite-cli"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "syntaqlite"
+path = "src/main.rs"
+
 [features]
-default = ["codegen"]
-codegen = ["dep:syntaqlite-codegen-sqlite", "dep:syntaqlite-codegen"]
+default = ["codegen-dialect"]
+codegen-dialect = ["dep:syntaqlite-codegen"]
+codegen-sqlite = ["dep:syntaqlite-codegen"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
@@ -16,7 +21,6 @@ lsp-types = "0.97"
 serde_json = "1"
 syntaqlite = { path = "../syntaqlite" }
 syntaqlite-codegen = { path = "../syntaqlite-codegen", optional = true }
-syntaqlite-codegen-sqlite = { path = "../syntaqlite-codegen-sqlite", optional = true }
 syntaqlite-lsp = { path = "../syntaqlite-lsp" }
 syntaqlite-runtime = { path = "../syntaqlite-runtime", features = ["fmt"] }
 tempfile = "3.8"

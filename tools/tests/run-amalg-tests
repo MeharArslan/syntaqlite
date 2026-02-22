@@ -57,8 +57,8 @@ def dialect_for_test(test_name: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser(description="Run amalgamation integration tests")
-    parser.add_argument("--binary", default="target/debug/syntaqlite-cli",
-                        help="Path to syntaqlite-cli binary")
+    parser.add_argument("--binary", default="target/debug/syntaqlite",
+                        help="Path to syntaqlite binary")
     parser.add_argument("--filter", help="Run only tests matching pattern")
     parser.add_argument("--rebaseline", action="store_true",
                         help="Print suggested output for failures")

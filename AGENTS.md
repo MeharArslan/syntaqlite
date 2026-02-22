@@ -33,8 +33,7 @@ This allows projects like libSQL, rqlite, or custom embedded databases to use sy
 
 - `syntaqlite-runtime/` - Grammar-agnostic Rust runtime (parser FFI, node types, formatter)
 - `syntaqlite/` - SQLite dialect crate (marker type, generated code)
-- `syntaqlite-codegen/` - Generic dialect code generation library (.synq parsing, AST model, C/Rust codegen)
-- `syntaqlite-codegen-sqlite/` - SQLite extraction + orchestration library (tokenizer/keyword extraction, lemon/mkkeyword tools)
+- `syntaqlite-codegen/` - Dialect code generation library (.synq parsing, AST model, C/Rust codegen, SQLite extraction, lemon/mkkeyword tools)
 - `syntaqlite-cli/` - CLI tool (ast, fmt, codegen, amalgamate commands)
 - `python/tools/` - Developer utilities (diff upstream grammar, format sources, etc.)
 - `third_party/src/sqlite/` - SQLite source (v3.51.2)

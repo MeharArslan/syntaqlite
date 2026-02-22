@@ -4,13 +4,13 @@
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use syntaqlite_codegen::c_source::c_transformer::CTransformer;
 
 fn main() {
     // Get the path to vendored SQLite tools in this crate
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let sqlite_dir = PathBuf::from(&manifest_dir).join("sqlite");
-    let tokenize_c = PathBuf::from(&manifest_dir).join("../third_party/src/sqlite/src/tokenize.c");
+    let tokenize_c =
+        PathBuf::from(&manifest_dir).join("../third_party/src/sqlite/src/tokenize.c");
 
     let lemon_path = sqlite_dir.join("lemon.c");
     let mkkeywordhash_path = sqlite_dir.join("mkkeywordhash.c");
@@ -148,59 +148,79 @@ fn transform_mkkeywordhash(input: &PathBuf, output: &PathBuf) -> Result<(), Stri
     let content = fs::read_to_string(input)
         .map_err(|e| format!("Failed to read {}: {}", input.display(), e))?;
 
-    let transformed = CTransformer::new(&content)
-        .remove_static("aKeywordTable")
-        .add_const("Keyword aKeywordTable")
-        .remove_static("nKeyword")
-        .add_const("int nKeyword")
-        .add_function_parameters("findById", "Keyword *aKeywordTable, int nKeyword")
-        .add_function_parameters("reorder", "Keyword *aKeywordTable, int nKeyword")
-        .add_function_parameters("main", "Keyword *aKeywordTable, int nKeyword")
-        // Fix call sites: append keyword args after existing args
-        .replace_in_function(
-            "main",
-            "findById(p->id)",
-            "findById(p->id, aKeywordTable, nKeyword)",
-        )
-        .replace_in_function(
-            "main",
-            "findById(p->substrId)",
-            "findById(p->substrId, aKeywordTable, nKeyword)",
-        )
-        .replace_in_function(
-            "main",
-            "reorder(&aKWHash[h])",
-            "reorder(&aKWHash[h], aKeywordTable, nKeyword)",
-        )
-        // Fix recursive call in reorder function itself
-        .replace_in_function(
-            "reorder",
-            "reorder(&aKeywordTable[i].iNext)",
-            "reorder(&aKeywordTable[i].iNext, aKeywordTable, nKeyword)",
-        )
-        .rename_function("main", "mkkeyword_main")
-        // Expose struct layout so Rust tests can verify the Keyword struct matches.
-        .add_system_include("stddef.h")
-        .append(concat!(
-            "const size_t keyword_sizeof = sizeof(struct Keyword);\n",
-            "const size_t keyword_offsetof_zName = offsetof(struct Keyword, zName);\n",
-            "const size_t keyword_offsetof_zTokenType = offsetof(struct Keyword, zTokenType);\n",
-            "const size_t keyword_offsetof_mask = offsetof(struct Keyword, mask);\n",
-            "const size_t keyword_offsetof_priority = offsetof(struct Keyword, priority);\n",
-            "const size_t keyword_offsetof_id = offsetof(struct Keyword, id);\n",
-            "const size_t keyword_offsetof_hash = offsetof(struct Keyword, hash);\n",
-            "const size_t keyword_offsetof_offset = offsetof(struct Keyword, offset);\n",
-            "const size_t keyword_offsetof_len = offsetof(struct Keyword, len);\n",
-            "const size_t keyword_offsetof_prefix = offsetof(struct Keyword, prefix);\n",
-            "const size_t keyword_offsetof_longestSuffix = offsetof(struct Keyword, longestSuffix);\n",
-            "const size_t keyword_offsetof_iNext = offsetof(struct Keyword, iNext);\n",
-            "const size_t keyword_offsetof_substrId = offsetof(struct Keyword, substrId);\n",
-            "const size_t keyword_offsetof_substrOffset = offsetof(struct Keyword, substrOffset);\n",
-            "const size_t keyword_offsetof_zOrigName = offsetof(struct Keyword, zOrigName);\n",
-        ))
-        .finish();
+    // Inline the CTransformer operations as direct string manipulations.
+    // Order matters: transform function signatures first, then call sites,
+    // then rename.
+    let mut s = content;
 
-    fs::write(output, transformed)
+    // remove_static("aKeywordTable") + add_const("Keyword aKeywordTable")
+    s = s.replacen("static Keyword aKeywordTable", "const Keyword aKeywordTable", 1);
+
+    // remove_static("nKeyword") + add_const("int nKeyword")
+    s = s.replacen("static int nKeyword", "const int nKeyword", 1);
+
+    // add_function_parameters: findById, reorder, main
+    s = s.replacen(
+        "findById(int id){",
+        "findById(int id, Keyword *aKeywordTable, int nKeyword){",
+        1,
+    );
+    s = s.replacen(
+        "reorder(int *pFrom){",
+        "reorder(int *pFrom, Keyword *aKeywordTable, int nKeyword){",
+        1,
+    );
+    s = s.replacen(
+        "main(int argc, char **argv){",
+        "main(int argc, char **argv, Keyword *aKeywordTable, int nKeyword){",
+        1,
+    );
+
+    // Fix call sites: append keyword args after existing args
+    s = s.replace(
+        "findById(p->id)",
+        "findById(p->id, aKeywordTable, nKeyword)",
+    );
+    s = s.replace(
+        "findById(p->substrId)",
+        "findById(p->substrId, aKeywordTable, nKeyword)",
+    );
+    s = s.replace(
+        "reorder(&aKWHash[h])",
+        "reorder(&aKWHash[h], aKeywordTable, nKeyword)",
+    );
+    // Fix recursive call in reorder function itself
+    s = s.replace(
+        "reorder(&aKeywordTable[i].iNext)",
+        "reorder(&aKeywordTable[i].iNext, aKeywordTable, nKeyword)",
+    );
+
+    // rename_function("main", "mkkeyword_main")
+    s = s.replace("main(int argc", "mkkeyword_main(int argc");
+
+    // add_system_include("stddef.h")
+    s = format!("#include <stddef.h>\n{}", s);
+
+    // append struct layout exports
+    s.push_str(concat!(
+        "const size_t keyword_sizeof = sizeof(struct Keyword);\n",
+        "const size_t keyword_offsetof_zName = offsetof(struct Keyword, zName);\n",
+        "const size_t keyword_offsetof_zTokenType = offsetof(struct Keyword, zTokenType);\n",
+        "const size_t keyword_offsetof_mask = offsetof(struct Keyword, mask);\n",
+        "const size_t keyword_offsetof_priority = offsetof(struct Keyword, priority);\n",
+        "const size_t keyword_offsetof_id = offsetof(struct Keyword, id);\n",
+        "const size_t keyword_offsetof_hash = offsetof(struct Keyword, hash);\n",
+        "const size_t keyword_offsetof_offset = offsetof(struct Keyword, offset);\n",
+        "const size_t keyword_offsetof_len = offsetof(struct Keyword, len);\n",
+        "const size_t keyword_offsetof_prefix = offsetof(struct Keyword, prefix);\n",
+        "const size_t keyword_offsetof_longestSuffix = offsetof(struct Keyword, longestSuffix);\n",
+        "const size_t keyword_offsetof_iNext = offsetof(struct Keyword, iNext);\n",
+        "const size_t keyword_offsetof_substrId = offsetof(struct Keyword, substrId);\n",
+        "const size_t keyword_offsetof_substrOffset = offsetof(struct Keyword, substrOffset);\n",
+        "const size_t keyword_offsetof_zOrigName = offsetof(struct Keyword, zOrigName);\n",
+    ));
+
+    fs::write(output, s)
         .map_err(|e| format!("Failed to write {}: {}", output.display(), e))?;
 
     Ok(())

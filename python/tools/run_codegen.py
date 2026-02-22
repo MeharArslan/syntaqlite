@@ -20,7 +20,6 @@ from pathlib import Path
 def main():
     # Automatically determine paths from project structure
     project_root = Path(__file__).parent.parent.parent
-    cli_crate = project_root / "syntaqlite-cli"
     sqlite_src = project_root / "third_party" / "src" / "sqlite" / "src"
     dialect_crate = project_root / "syntaqlite"
     actions_dir = dialect_crate / "parser-actions"
@@ -38,9 +37,9 @@ def main():
         print("Please ensure third_party/src/sqlite is populated", file=sys.stderr)
         return 1
 
-    # Build CLI (includes codegen feature by default)
+    # Build CLI with codegen-sqlite feature (opt-in, not default)
     result = subprocess.run(
-        ["cargo", "build", "--release", "-p", "syntaqlite-cli"],
+        ["cargo", "build", "--release", "-p", "syntaqlite-cli", "--features", "codegen-sqlite"],
         cwd=project_root,
     )
     if result.returncode != 0:

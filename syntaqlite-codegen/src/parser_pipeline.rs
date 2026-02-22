@@ -4,7 +4,7 @@
 use std::fs;
 use std::path::Path;
 
-use syntaqlite_codegen::c_source::c_transformer::CTransformer;
+use crate::c_source::c_transformer::CTransformer;
 
 // Embed lempar.c template (needed by the library)
 const LEMPAR_C: &[u8] = include_bytes!("../sqlite/lempar.c");
@@ -100,7 +100,7 @@ pub(crate) fn generate_parser_with_grammar_bytes(
 }
 
 fn run_lemon(template_arg: &str, parse_y_str: &str) -> Result<std::process::ExitStatus, String> {
-    crate::util::self_subcommand("lemon")?
+    crate::sqlite_util::self_subcommand("lemon")?
         .arg("-l")
         .arg(template_arg)
         .arg(parse_y_str)
@@ -245,7 +245,7 @@ int {parser_name}ExpectedTokens(void* parser, int* out_tokens, int out_cap) {{\n
 
 /// Read all .y files from a directory, sort by name, and concatenate their contents.
 fn concatenate_y_files(dir: &str) -> Result<Vec<u8>, String> {
-    let y_files = syntaqlite_codegen::read_named_files_from_dir(dir, "y")?;
+    let y_files = crate::read_named_files_from_dir(dir, "y")?;
     if y_files.is_empty() {
         return Err(format!("No .y files found in {dir}"));
     }

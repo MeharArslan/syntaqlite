@@ -5,3 +5,7 @@ edition = "2024"
 
 [dependencies]
 syntaqlite-runtime = { path = "../syntaqlite-runtime", default-features = false, features = ["fmt"] }
+tempfile = "3.8"
+
+[build-dependencies]
+cc = "1.0"

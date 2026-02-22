@@ -3,9 +3,9 @@
 
 use std::fs;
 
-use syntaqlite_codegen::c_source::{c_extractor, c_transformer};
-use syntaqlite_codegen::util::pascal_case;
-use syntaqlite_codegen::writers::c_writer::CWriter;
+use crate::c_source::{c_extractor, c_transformer};
+use crate::util::pascal_case;
+use crate::writers::c_writer::CWriter;
 
 use crate::TokenizerExtractResult;
 
@@ -119,7 +119,7 @@ pub(crate) fn extract_terminals_from_y(extension_y_contents: &[&str]) -> Vec<Str
     let mut terminals: HashSet<String> = HashSet::new();
 
     for content in extension_y_contents {
-        let grammar = match syntaqlite_codegen::grammar_parser::LemonGrammar::parse(content) {
+        let grammar = match crate::grammar_parser::LemonGrammar::parse(content) {
             Ok(g) => g,
             Err(_) => continue,
         };
@@ -183,7 +183,7 @@ pub(crate) fn generate_keyword_hash(
     dialect: &str,
     extra_keywords: &[String],
 ) -> Result<String, String> {
-    let mut cmd = crate::util::self_subcommand("mkkeyword")?;
+    let mut cmd = crate::sqlite_util::self_subcommand("mkkeyword")?;
 
     let _kw_file;
     if !extra_keywords.is_empty() {
@@ -218,7 +218,7 @@ pub(crate) fn generate_keyword_hash(
     let kw_code_sym = format!("synq_{}_aKWCode", dialect);
     let kw_count_sym = format!("synq_{}_nKeyword", dialect);
 
-    let processed_code = c_transformer::CTransformer::new(&generated_code)
+    let processed_code = crate::c_source::c_transformer::CTransformer::new(&generated_code)
         .remove_function("sqlite3KeywordCode")
         .remove_function("sqlite3_keyword_name")
         .remove_function("sqlite3_keyword_count")

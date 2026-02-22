@@ -10,8 +10,11 @@ use syntaqlite_runtime::dialect::ffi as dialect_ffi;
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
 use syntaqlite_runtime::{Dialect, ParseError, Parser as RuntimeParser};
 
-#[cfg(feature = "codegen")]
-mod codegen;
+#[cfg(feature = "codegen-dialect")]
+mod codegen_dialect;
+
+#[cfg(feature = "codegen-sqlite")]
+mod codegen_sqlite;
 
 mod lsp;
 
@@ -58,9 +61,12 @@ enum Command {
     },
     /// Start the language server (stdio)
     Lsp,
-    #[cfg(feature = "codegen")]
+    #[cfg(feature = "codegen-dialect")]
     #[command(flatten)]
-    Codegen(codegen::CodegenCommand),
+    Dialect(codegen_dialect::CodegenCommand),
+    #[cfg(feature = "codegen-sqlite")]
+    #[command(flatten)]
+    Sqlite(codegen_sqlite::CodegenCommand),
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -287,8 +293,10 @@ pub fn run(name: &str, dialect: &Dialect) {
             };
             cmd_fmt(active_dialect, files, config, in_place, semicolons)
         }
-        #[cfg(feature = "codegen")]
-        Command::Codegen(cmd) => codegen::dispatch(cmd),
+        #[cfg(feature = "codegen-dialect")]
+        Command::Dialect(cmd) => codegen_dialect::dispatch(cmd),
+        #[cfg(feature = "codegen-sqlite")]
+        Command::Sqlite(cmd) => codegen_sqlite::dispatch(cmd),
     };
 
     if let Err(e) = result {
