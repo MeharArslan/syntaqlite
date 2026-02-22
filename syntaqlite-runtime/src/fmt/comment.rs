@@ -252,23 +252,3 @@ fn has_non_comment_text(
     }
     false
 }
-
-/// Insert drained comments into the parts list, respecting pending line breaks.
-///
-/// - Trailing comments (LineSuffix) go before any pending lines
-/// - If there are leading comments, they already start with a HardLine,
-///   so pending lines are dropped to avoid a double line break
-/// - If there are no leading comments, pending lines are flushed normally
-pub fn flush_comments(drain: DrainResult, pending_lines: &mut Vec<DocId>, parts: &mut Vec<DocId>) {
-    if drain.trailing != NIL_DOC {
-        parts.push(drain.trailing);
-    }
-    if drain.leading != NIL_DOC {
-        // Leading comments already start with a HardLine — drop pending
-        // lines to avoid an extra blank line.
-        pending_lines.clear();
-        parts.push(drain.leading);
-    } else {
-        parts.extend(pending_lines.drain(..));
-    }
-}

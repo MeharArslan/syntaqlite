@@ -36,7 +36,7 @@ pub const SEMANTIC_TOKEN_LEGEND: &[&str] = &[
     "operator",    // 4
     "comment",     // 5
     "punctuation", // 6
-    "type",        // 7 — identifier (LSP has no "identifier" type; "type" is conventional)
+    "identifier",  // 7
     "function",    // 8
 ];
 

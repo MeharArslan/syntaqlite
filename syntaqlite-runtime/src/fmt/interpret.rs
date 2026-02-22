@@ -68,7 +68,8 @@ pub(crate) fn interpret<'a>(
                         pending = NIL_DOC;
                     }
                 }
-                running = arena.cat(running, arena.keyword(kw_text));
+                let kw = arena.keyword(kw_text);
+                running = arena.cat(running, kw);
             }
             FmtOp::Span(idx) => {
                 let FieldVal::Span(s, offset) = fields[idx as usize] else {
@@ -81,7 +82,8 @@ pub(crate) fn interpret<'a>(
                         flush_drain(drain, &mut pending, &mut running, arena);
                         cctx.advance_past(offset + s.len() as u32);
                     }
-                    running = arena.cat(running, arena.text(s));
+                    let txt = arena.text(s);
+                    running = arena.cat(running, txt);
                 }
             }
             FmtOp::Child(idx) => {
@@ -104,24 +106,27 @@ pub(crate) fn interpret<'a>(
                 }
             }
             FmtOp::Line => {
+                let l = arena.line();
                 if has_comments {
-                    pending = arena.cat(pending, arena.line());
+                    pending = arena.cat(pending, l);
                 } else {
-                    running = arena.cat(running, arena.line());
+                    running = arena.cat(running, l);
                 }
             }
             FmtOp::SoftLine => {
+                let sl = arena.softline();
                 if has_comments {
-                    pending = arena.cat(pending, arena.softline());
+                    pending = arena.cat(pending, sl);
                 } else {
-                    running = arena.cat(running, arena.softline());
+                    running = arena.cat(running, sl);
                 }
             }
             FmtOp::HardLine => {
+                let hl = arena.hardline();
                 if has_comments {
-                    pending = arena.cat(pending, arena.hardline());
+                    pending = arena.cat(pending, hl);
                 } else {
-                    running = arena.cat(running, arena.hardline());
+                    running = arena.cat(running, hl);
                 }
             }
             FmtOp::GroupStart => {
@@ -134,7 +139,8 @@ pub(crate) fn interpret<'a>(
                 let inner = running;
                 match gn_stack.pop().expect("unmatched GroupEnd") {
                     GNFrame::Group(parent) => {
-                        running = arena.cat(parent, arena.group(inner));
+                        let g = arena.group(inner);
+                        running = arena.cat(parent, g);
                     }
                     _ => panic!("expected Group frame"),
                 }
@@ -149,7 +155,8 @@ pub(crate) fn interpret<'a>(
                 let inner = running;
                 match gn_stack.pop().expect("unmatched NestEnd") {
                     GNFrame::Nest(indent, parent) => {
-                        running = arena.cat(parent, arena.nest(indent, inner));
+                        let n = arena.nest(indent, inner);
+                        running = arena.cat(parent, n);
                     }
                     _ => panic!("expected Nest frame"),
                 }
@@ -239,8 +246,7 @@ pub(crate) fn interpret<'a>(
                         );
                         running = arena.cat(running, verbatim);
                     } else {
-                        let child_doc =
-                            format_child_doc(ctx, child_id, consumed_regions, arena);
+                        let child_doc = format_child_doc(ctx, child_id, consumed_regions, arena);
                         running = arena.cat(running, child_doc);
                     }
                 }
@@ -257,7 +263,8 @@ pub(crate) fn interpret<'a>(
                             cctx.advance_token_cursor(word_count);
                         }
                     }
-                    running = arena.cat(running, arena.text(sep_text));
+                    let sep = arena.text(sep_text);
+                    running = arena.cat(running, sep);
                 } else {
                     ip = skip_to_foreach_end(ops, ops_count, ip, &jump_table);
                     continue;
@@ -325,7 +332,8 @@ pub(crate) fn interpret<'a>(
                         pending = NIL_DOC;
                     }
                 }
-                running = arena.cat(running, arena.keyword(kw_text));
+                let kw = arena.keyword(kw_text);
+                running = arena.cat(running, kw);
             }
             FmtOp::ForEachSelfStart => {
                 let children = list_children.expect("ForEachSelfStart on non-list node");

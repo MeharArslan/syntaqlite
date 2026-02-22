@@ -26,7 +26,8 @@ function ensureThemesRegistered() {
       {token: "comment.sql", foreground: "5a6260", fontStyle: "italic"},
       {token: "function", foreground: "8bbcb0"},
       {token: "function.sql", foreground: "8bbcb0"},
-      {token: "identifier", foreground: "d4d8d6"},
+      {token: "identifier", foreground: "4ec9b0"},
+      {token: "identifier.sql", foreground: "4ec9b0"},
       {token: "predefined.sql", foreground: "8bbcb0"},
     ],
     colors: {
@@ -56,7 +57,8 @@ function ensureThemesRegistered() {
       {token: "comment.sql", foreground: "9aa09d", fontStyle: "italic"},
       {token: "function", foreground: "b8553a"},
       {token: "function.sql", foreground: "b8553a"},
-      {token: "identifier", foreground: "1f2121"},
+      {token: "identifier", foreground: "267f99"},
+      {token: "identifier.sql", foreground: "267f99"},
       {token: "predefined.sql", foreground: "b8553a"},
     ],
     colors: {
