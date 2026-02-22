@@ -729,6 +729,7 @@ version = "0.1.0"
 name = "syntaqlite-lsp"
 version = "0.1.0"
 dependencies = [
+ "syntaqlite",
  "syntaqlite-runtime",
 ]
 

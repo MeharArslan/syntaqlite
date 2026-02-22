@@ -213,6 +213,12 @@ pub(crate) fn generate_keyword_hash(
     let generated_code = String::from_utf8(output.stdout)
         .map_err(|e| format!("Invalid UTF-8 in mkkeyword output: {e}"))?;
 
+    let kw_text_sym = format!("synq_{}_zKWText", dialect);
+    let kw_offset_sym = format!("synq_{}_aKWOffset", dialect);
+    let kw_len_sym = format!("synq_{}_aKWLen", dialect);
+    let kw_code_sym = format!("synq_{}_aKWCode", dialect);
+    let kw_count_sym = format!("synq_{}_nKeyword", dialect);
+
     let processed_code = c_transformer::CTransformer::new(&generated_code)
         .remove_function("sqlite3KeywordCode")
         .remove_function("sqlite3_keyword_name")
@@ -221,6 +227,14 @@ pub(crate) fn generate_keyword_hash(
         .remove_lines_matching("#define SQLITE_N_KEYWORD")
         .rename_function("keywordCode", "synq_sqlite3_keywordCode")
         .remove_static("synq_sqlite3_keywordCode")
+        .remove_static("zKWText")
+        .remove_static("aKWOffset")
+        .remove_static("aKWLen")
+        .remove_static("aKWCode")
+        .replace_all("zKWText", &kw_text_sym)
+        .replace_all("aKWOffset", &kw_offset_sym)
+        .replace_all("aKWLen", &kw_len_sym)
+        .replace_all("aKWCode", &kw_code_sym)
         .replace_all("TK_", "SYNTAQLITE_TK_")
         .finish();
 
@@ -236,6 +250,10 @@ pub(crate) fn generate_keyword_hash(
     w.newline();
 
     w.fragment(&processed_code);
+    w.newline();
+    w.line(&format!(
+        "const unsigned int {kw_count_sym} = sizeof({kw_code_sym}) / sizeof({kw_code_sym}[0]);"
+    ));
     w.newline();
 
     Ok(w.finish())

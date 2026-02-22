@@ -5,3 +5,6 @@ edition = "2024"
 
 [dependencies]
 syntaqlite-runtime = { path = "../syntaqlite-runtime", features = ["fmt"] }
+
+[dev-dependencies]
+syntaqlite = { path = "../syntaqlite" }

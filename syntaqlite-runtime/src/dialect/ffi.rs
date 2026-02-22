@@ -62,8 +62,14 @@ pub struct Dialect {
     // Tokenizer (function pointer provided by dialect)
     pub get_token: *const std::ffi::c_void,
 
-    // Token categories (indexed by token type ordinal)
-    pub token_names: *const *const std::ffi::c_char,
+    // Keyword table metadata
+    pub keyword_text: *const std::ffi::c_char,
+    pub keyword_offsets: *const u16,
+    pub keyword_lens: *const u8,
+    pub keyword_codes: *const u8,
+    pub keyword_count: *const u32,
+
+    // Token metadata (indexed by token type ordinal)
     pub token_categories: *const u8,
     pub token_type_count: u32,
 }

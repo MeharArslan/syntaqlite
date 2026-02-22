@@ -52,10 +52,8 @@ pub fn generate_token_categories_header(
 
     // Build ordinal → category map
     let mut categories = vec![0u8; count]; // default = Other
-    let mut token_names = vec![None::<String>; count];
     for (name, ordinal) in tokens {
         categories[*ordinal as usize] = classify_token(name, keyword_names);
-        token_names[*ordinal as usize] = Some(name.clone());
     }
 
     let mut w = CWriter::new();
@@ -73,21 +71,6 @@ pub fn generate_token_categories_header(
     }
 
     w.line("};");
-    w.newline();
-    w.line(&format!(
-        "static const char* const token_names[{count}] = {{"
-    ));
-    for chunk in token_names.chunks(8) {
-        let vals: Vec<String> = chunk
-            .iter()
-            .map(|name| match name {
-                Some(n) => format!("\"{n}\""),
-                None => "0".to_string(),
-            })
-            .collect();
-        w.line(&format!("    {},", vals.join(",")));
-    }
-    w.line("};");
     w.finish()
 }
 
@@ -104,9 +87,23 @@ pub fn generate_dialect_c(dialect: &str, tokens: Option<&[(String, u32)]>) -> St
     if tokens.is_some() {
         w.include_local("csrc/dialect_tokens.h");
     }
+    w.include_local("csrc/sqlite_keyword.h");
     w.include_local("csrc/sqlite_parse.h");
     w.include_local("csrc/sqlite_tokenize.h");
     w.newline();
+
+    if tokens.is_some() {
+        for (ctype, sym) in [
+            ("const char", "zKWText[]"),
+            ("const unsigned short int", "aKWOffset[]"),
+            ("const unsigned char", "aKWLen[]"),
+            ("const unsigned char", "aKWCode[]"),
+            ("const unsigned int", "nKeyword"),
+        ] {
+            w.line(&format!("extern {ctype} synq_{dialect}_{sym};"));
+        }
+        w.newline();
+    }
 
     w.section(&format!("{} dialect descriptor", dialect));
     w.newline();
@@ -157,13 +154,26 @@ pub fn generate_dialect_c(dialect: &str, tokens: Option<&[(String, u32)]>) -> St
     w.line("    // Tokenizer");
     w.line(&format!("    .get_token = Synq{pascal}GetToken,"));
     w.newline();
-    w.line("    // Token categories");
+    w.line("    // Keyword table");
     if tokens.is_some() {
-        w.line("    .token_names = token_names,");
+        w.line(&format!("    .keyword_text = synq_{dialect}_zKWText,"));
+        w.line(&format!("    .keyword_offsets = synq_{dialect}_aKWOffset,"));
+        w.line(&format!("    .keyword_lens = synq_{dialect}_aKWLen,"));
+        w.line(&format!("    .keyword_codes = synq_{dialect}_aKWCode,"));
+        w.line(&format!("    .keyword_count = &synq_{dialect}_nKeyword,"));
+    } else {
+        w.line("    .keyword_text = 0,");
+        w.line("    .keyword_offsets = 0,");
+        w.line("    .keyword_lens = 0,");
+        w.line("    .keyword_codes = 0,");
+        w.line("    .keyword_count = 0,");
+    }
+    w.newline();
+    w.line("    // Token metadata");
+    if tokens.is_some() {
         w.line("    .token_categories = token_categories,");
         w.line("    .token_type_count = TOKEN_TYPE_COUNT,");
     } else {
-        w.line("    .token_names = 0,");
         w.line("    .token_categories = 0,");
         w.line("    .token_type_count = 0,");
     }
@@ -293,14 +303,10 @@ mod tests {
         let h = generate_token_categories_header(&tokens, Some(&kws));
         assert!(h.contains("#define TOKEN_TYPE_COUNT 10"));
         assert!(h.contains("token_categories[10]"));
-        assert!(h.contains("token_names[10]"));
         // SEMI=6(punct), SELECT=1(kw), ID=2(ident), STRING=3(str),
         // INTEGER=4(num), PLUS=5(op), COMMENT=7(comment), VARIABLE=8(var),
         // FUNCTION=9(func), SPACE=0(other)
         assert!(h.contains("6,1,2,3,4,5,7,8,9,0,"));
-        assert!(h.contains(
-            "\"SEMI\",\"SELECT\",\"ID\",\"STRING\",\"INTEGER\",\"PLUS\",\"COMMENT\",\"VARIABLE\","
-        ));
     }
 
     #[test]
@@ -347,7 +353,11 @@ mod tests {
         let tokens = vec![("SELECT".to_string(), 0)];
         let c = generate_dialect_c("sqlite", Some(&tokens));
         assert!(c.contains(".parser_expected_tokens = SynqSqliteParseExpectedTokens,"));
-        assert!(c.contains(".token_names = token_names,"));
+        assert!(c.contains(".keyword_text = synq_sqlite_zKWText,"));
+        assert!(c.contains(".keyword_offsets = synq_sqlite_aKWOffset,"));
+        assert!(c.contains(".keyword_lens = synq_sqlite_aKWLen,"));
+        assert!(c.contains(".keyword_codes = synq_sqlite_aKWCode,"));
+        assert!(c.contains(".keyword_count = &synq_sqlite_nKeyword,"));
         assert!(c.contains(".token_categories = token_categories,"));
         assert!(c.contains(".token_type_count = TOKEN_TYPE_COUNT,"));
         assert!(c.contains("csrc/dialect_tokens.h"));
@@ -356,7 +366,11 @@ mod tests {
     #[test]
     fn dialect_c_without_tokens_uses_null() {
         let c = generate_dialect_c("sqlite", None);
-        assert!(c.contains(".token_names = 0,"));
+        assert!(c.contains(".keyword_text = 0,"));
+        assert!(c.contains(".keyword_offsets = 0,"));
+        assert!(c.contains(".keyword_lens = 0,"));
+        assert!(c.contains(".keyword_codes = 0,"));
+        assert!(c.contains(".keyword_count = 0,"));
         assert!(c.contains(".token_categories = 0,"));
         assert!(c.contains(".token_type_count = 0,"));
         assert!(!c.contains("dialect_tokens.h"));

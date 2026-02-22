@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::slice;
 
 use syntaqlite_runtime::dialect::ffi::{
@@ -579,15 +579,6 @@ fn run_semantic_tokens(ptr: u32, len: u32, range_start: u32, range_end: u32, ver
     token_count
 }
 
-fn completion_kind_name(dialect: &Dialect, token_type: u32) -> Option<&'static str> {
-    match dialect.token_category(token_type) {
-        syntaqlite_runtime::dialect::TokenCategory::Keyword => Some("keyword"),
-        syntaqlite_runtime::dialect::TokenCategory::Function => Some("function"),
-        syntaqlite_runtime::dialect::TokenCategory::Type => Some("class"),
-        _ => None,
-    }
-}
-
 fn is_keyword_symbol(name: &str) -> bool {
     !name.is_empty()
         && name
@@ -622,22 +613,23 @@ fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
     let expected = lsp
         .host
         .expected_tokens_at_offset(WASM_DOC_URI, offset as usize);
+    let expected_set: HashSet<u32> = expected.into_iter().collect();
 
-    let mut seen = BTreeSet::new();
+    let mut seen = HashSet::new();
     let mut count = 0i32;
     let mut out = String::new();
     out.push('[');
 
-    for tok in expected {
-        let Some(name) = dialect.token_name(tok) else {
+    for i in 0..dialect.keyword_count() {
+        let Some((code, name)) = dialect.keyword_entry(i) else {
             continue;
         };
+        if !expected_set.contains(&code) {
+            continue;
+        }
         if !is_keyword_symbol(name) {
             continue;
         }
-        let Some(kind) = completion_kind_name(&dialect, tok) else {
-            continue;
-        };
         if !seen.insert(name.to_string()) {
             continue;
         }
@@ -647,7 +639,7 @@ fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
         out.push_str("{\"label\":\"");
         json_escape(&mut out, name);
         out.push_str("\",\"kind\":\"");
-        out.push_str(kind);
+        out.push_str("keyword");
         out.push_str("\"}");
         count += 1;
     }

@@ -215,21 +215,40 @@ impl<'d> Dialect<'d> {
         TokenCategory::from_u8(byte)
     }
 
-    /// Return the token symbol name for a token type ordinal (e.g. `SELECT`).
-    pub fn token_name(&self, token_type: u32) -> Option<&'d str> {
-        if self.raw.token_names.is_null() || token_type >= self.raw.token_type_count {
+    /// Return number of entries in the dialect's exported mkkeyword table.
+    pub fn keyword_count(&self) -> usize {
+        if self.raw.keyword_count.is_null() {
+            return 0;
+        }
+        unsafe { *self.raw.keyword_count as usize }
+    }
+
+    /// Return the `idx`th keyword entry as `(token_type, keyword_lexeme)`.
+    pub fn keyword_entry(&self, idx: usize) -> Option<(u32, &'d str)> {
+        if self.raw.keyword_text.is_null()
+            || self.raw.keyword_offsets.is_null()
+            || self.raw.keyword_lens.is_null()
+            || self.raw.keyword_codes.is_null()
+            || self.raw.keyword_count.is_null()
+        {
             return None;
         }
+
         unsafe {
-            let ptr = *self.raw.token_names.add(token_type as usize);
-            if ptr.is_null() {
+            let keyword_count = *self.raw.keyword_count as usize;
+            if idx >= keyword_count {
                 return None;
             }
-            Some(
-                std::ffi::CStr::from_ptr(ptr)
-                    .to_str()
-                    .expect("invalid UTF-8 in token name"),
-            )
+            let code = *self.raw.keyword_codes.add(idx) as u32;
+            let len = *self.raw.keyword_lens.add(idx) as usize;
+            if len == 0 {
+                return None;
+            }
+            let off = *self.raw.keyword_offsets.add(idx) as usize;
+            let text_base = self.raw.keyword_text as *const u8;
+            let bytes = std::slice::from_raw_parts(text_base.add(off), len);
+            let value = std::str::from_utf8_unchecked(bytes);
+            Some((code, value))
         }
     }
 

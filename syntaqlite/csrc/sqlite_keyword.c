@@ -115,7 +115,7 @@ const unsigned char ebcdicToAscii[] = {
 ** on platforms with limited memory.
 */
 /* Hash score: 231 */
-/* zKWText[] encodes 1007 bytes of keyword text in 667 bytes */
+/* synq_sqlite_zKWText[] encodes 1007 bytes of keyword text in 667 bytes */
 /*   REINDEXEDESCAPEACHECKEYBEFOREIGNOREGEXPLAINSTEADDATABASELECT       */
 /*   ABLEFTHENDEFERRABLELSEXCLUDELETEMPORARYISNULLSAVEPOINTERSECT       */
 /*   IESNOTNULLIKEXCEPTRANSACTIONATURALTERAISEXCLUSIVEXISTS             */
@@ -128,7 +128,7 @@ const unsigned char ebcdicToAscii[] = {
 /*   EPLACEFIRSTFOLLOWINGFROMFULLIMITIFORDERESTRICTOTHERSOVER           */
 /*   ETURNINGRIGHTROLLBACKROWSUNBOUNDEDUNIONUSINGVACUUMVIEWINDOWBY      */
 /*   INITIALLYPRIMARY                                                   */
-static const char zKWText[666] = {
+const char synq_sqlite_zKWText[666] = {
   'R','E','I','N','D','E','X','E','D','E','S','C','A','P','E','A','C','H',
   'E','C','K','E','Y','B','E','F','O','R','E','I','G','N','O','R','E','G',
   'E','X','P','L','A','I','N','S','T','E','A','D','D','A','T','A','B','A',
@@ -197,8 +197,8 @@ static const unsigned char aKWNext[148] = {0,
     99,  44,   0,  55,   0,  76,   0,  95,  32,  33,  57,  25,   0,
    102,   0,   0,  87,
 };
-/* aKWLen[i] is the length (in bytes) of the i-th keyword */
-static const unsigned char aKWLen[148] = {0,
+/* synq_sqlite_aKWLen[i] is the length (in bytes) of the i-th keyword */
+const unsigned char synq_sqlite_aKWLen[148] = {0,
      7,   7,   5,   4,   6,   4,   5,   3,   6,   7,   3,   6,   6,
      7,   7,   3,   8,   2,   6,   5,   4,   4,   3,  10,   4,   7,
      6,   9,   4,   2,   6,   5,   9,   9,   4,   7,   3,   2,   4,
@@ -212,9 +212,9 @@ static const unsigned char aKWLen[148] = {0,
      4,   9,   5,   8,   4,   3,   9,   5,   5,   6,   4,   6,   2,
      2,   9,   3,   7,
 };
-/* aKWOffset[i] is the index into zKWText[] of the start of
+/* synq_sqlite_aKWOffset[i] is the index into synq_sqlite_zKWText[] of the start of
 ** the text for the i-th keyword. */
-static const unsigned short int aKWOffset[148] = {0,
+const unsigned short int synq_sqlite_aKWOffset[148] = {0,
      0,   2,   2,   8,   9,  14,  16,  20,  23,  25,  25,  29,  33,
     36,  41,  46,  48,  53,  54,  59,  62,  65,  67,  69,  78,  81,
     86,  90,  90,  94,  99, 101, 105, 111, 119, 123, 123, 123, 126,
@@ -228,8 +228,8 @@ static const unsigned short int aKWOffset[148] = {0,
    585, 588, 597, 602, 610, 610, 614, 623, 628, 633, 639, 642, 645,
    648, 650, 655, 659,
 };
-/* aKWCode[i] is the parser symbol code for the i-th keyword */
-static const unsigned char aKWCode[148] = {0,
+/* synq_sqlite_aKWCode[i] is the parser symbol code for the i-th keyword */
+const unsigned char synq_sqlite_aKWCode[148] = {0,
   SYNTAQLITE_TK_REINDEX,    SYNTAQLITE_TK_INDEXED,    SYNTAQLITE_TK_INDEX,      SYNTAQLITE_TK_DESC,       SYNTAQLITE_TK_ESCAPE,     
   SYNTAQLITE_TK_EACH,       SYNTAQLITE_TK_CHECK,      SYNTAQLITE_TK_KEY,        SYNTAQLITE_TK_BEFORE,     SYNTAQLITE_TK_FOREIGN,    
   SYNTAQLITE_TK_FOR,        SYNTAQLITE_TK_IGNORE,     SYNTAQLITE_TK_LIKE_KW,    SYNTAQLITE_TK_EXPLAIN,    SYNTAQLITE_TK_INSTEAD,    
@@ -399,8 +399,8 @@ int synq_sqlite3_keywordCode(const char *z, int n, int *pType){
   assert( n>=2 );
   i = ((charMap(z[0])*4) ^ (charMap(z[n-1])*3) ^ n*1) % 127;
   for(i=(int)aKWHash[i]; i>0; i=aKWNext[i]){
-    if( aKWLen[i]!=n ) continue;
-    zKW = &zKWText[aKWOffset[i]];
+    if( synq_sqlite_aKWLen[i]!=n ) continue;
+    zKW = &synq_sqlite_zKWText[synq_sqlite_aKWOffset[i]];
 #ifdef SQLITE_ASCII
     if( (z[0]&~0x20)!=zKW[0] ) continue;
     if( (z[1]&~0x20)!=zKW[1] ) continue;
@@ -561,7 +561,7 @@ int synq_sqlite3_keywordCode(const char *z, int n, int *pType){
     testcase( i==145 ); /* INITIALLY */
     testcase( i==146 ); /* ALL */
     testcase( i==147 ); /* PRIMARY */
-    *pType = aKWCode[i];
+    *pType = synq_sqlite_aKWCode[i];
     break;
   }
   return n;
@@ -571,4 +571,6 @@ int synq_sqlite3_keywordCode(const char *z, int n, int *pType){
 
 
 
+
+const unsigned int synq_sqlite_nKeyword = sizeof(synq_sqlite_aKWCode) / sizeof(synq_sqlite_aKWCode[0]);
 

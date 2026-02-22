@@ -10,8 +10,15 @@
 #include "csrc/dialect_meta.h"
 #include "csrc/dialect_fmt.h"
 #include "csrc/dialect_tokens.h"
+#include "csrc/sqlite_keyword.h"
 #include "csrc/sqlite_parse.h"
 #include "csrc/sqlite_tokenize.h"
+
+extern const char synq_sqlite_zKWText[];
+extern const unsigned short int synq_sqlite_aKWOffset[];
+extern const unsigned char synq_sqlite_aKWLen[];
+extern const unsigned char synq_sqlite_aKWCode[];
+extern const unsigned int synq_sqlite_nKeyword;
 
 // ============ sqlite dialect descriptor ============
 
@@ -56,8 +63,14 @@ static const SyntaqliteDialect SQLITE_DIALECT = {
     // Tokenizer
     .get_token = SynqSqliteGetToken,
 
-    // Token categories
-    .token_names = token_names,
+    // Keyword table
+    .keyword_text = synq_sqlite_zKWText,
+    .keyword_offsets = synq_sqlite_aKWOffset,
+    .keyword_lens = synq_sqlite_aKWLen,
+    .keyword_codes = synq_sqlite_aKWCode,
+    .keyword_count = &synq_sqlite_nKeyword,
+
+    // Token metadata
     .token_categories = token_categories,
     .token_type_count = TOKEN_TYPE_COUNT,
 };

@@ -146,20 +146,73 @@ fn expected_tokens_c_snippet(parser_name: &str) -> String {
 /* syntaqlite extension: enumerate terminals that can be shifted/reduced from\n\
 ** the parser's current state. Returns the total number of expected tokens,\n\
 ** even when out_tokens/out_cap only request a prefix. */\n\
+static YYACTIONTYPE synq_find_reduce_action_safe(YYACTIONTYPE stateno, YYCODETYPE iLookAhead) {{\n\
+  int i;\n\
+  if( stateno>YY_REDUCE_COUNT ) return yy_default[stateno];\n\
+  i = yy_reduce_ofst[stateno] + iLookAhead;\n\
+  if( i<0 || i>=YY_ACTTAB_COUNT || yy_lookahead[i]!=iLookAhead ) {{\n\
+    return yy_default[stateno];\n\
+  }}\n\
+  return yy_action[i];\n\
+}}\n\
+\n\
+static int synq_can_lookahead(yyParser* p, int token) {{\n\
+  YYACTIONTYPE stack_states[YYSTACKDEPTH + 1];\n\
+  int top = 0;\n\
+  int i = 0;\n\
+  int steps = 0;\n\
+\n\
+  if( p==0 || p->yytos==0 ) return 0;\n\
+\n\
+  top = (int)(p->yytos - p->yystack);\n\
+  if( top<0 || top>YYSTACKDEPTH ) return 0;\n\
+  for(i=0; i<=top; i++) {{\n\
+    stack_states[i] = p->yystack[i].stateno;\n\
+  }}\n\
+\n\
+  while( steps++ < 10000 ) {{\n\
+    YYACTIONTYPE action = yy_find_shift_action((YYCODETYPE)token, stack_states[top]);\n\
+\n\
+    if( action==YY_ERROR_ACTION || action==YY_NO_ACTION ) return 0;\n\
+    if( action==YY_ACCEPT_ACTION ) return token==0;\n\
+    if( action<=YY_MAX_SHIFT ) return 1;\n\
+\n\
+    if( action>=YY_MIN_SHIFTREDUCE && action<=YY_MAX_SHIFTREDUCE ) {{\n\
+      action += YY_MIN_REDUCE - YY_MIN_SHIFTREDUCE;\n\
+    }}\n\
+\n\
+    if( action>=YY_MIN_REDUCE && action<=YY_MAX_REDUCE ) {{\n\
+      int rule = (int)(action - YY_MIN_REDUCE);\n\
+      int yysize = yyRuleInfoNRhs[rule];\n\
+      YYACTIONTYPE goto_state;\n\
+\n\
+      top += yysize;  /* yyRuleInfoNRhs is negative rhs-size */\n\
+      if( top<0 ) return 0;\n\
+\n\
+      goto_state = synq_find_reduce_action_safe(stack_states[top], yyRuleInfoLhs[rule]);\n\
+      if( goto_state==YY_ERROR_ACTION || goto_state==YY_NO_ACTION ) return 0;\n\
+\n\
+      if( top>=YYSTACKDEPTH ) return 0;\n\
+      top++;\n\
+      stack_states[top] = goto_state;\n\
+      continue;\n\
+    }}\n\
+\n\
+    return 0;\n\
+  }}\n\
+\n\
+  return 0;\n\
+}}\n\
+\n\
 int {parser_name}ExpectedTokens(void* parser, int* out_tokens, int out_cap) {{\n\
   int n = 0;\n\
   int token = 0;\n\
   yyParser* p = (yyParser*)parser;\n\
-  YYACTIONTYPE state;\n\
 \n\
   if( p==0 || p->yytos==0 ) return 0;\n\
 \n\
-  state = p->yytos->stateno;\n\
-  if( state>YY_MAX_SHIFT ) return 0;\n\
-\n\
   for(token=1; token<YYNTOKEN; token++) {{\n\
-    YYACTIONTYPE action = yy_find_shift_action((YYCODETYPE)token, state);\n\
-    if( action==YY_ERROR_ACTION || action==YY_NO_ACTION ) continue;\n\
+    if( !synq_can_lookahead(p, token) ) continue;\n\
     if( out_tokens && n<out_cap ) out_tokens[n] = token;\n\
     n++;\n\
   }}\n\

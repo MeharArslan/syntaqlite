@@ -103,8 +103,14 @@ typedef struct SyntaqliteDialect {
     // Tokenizer (provided by dialect)
     int64_t (*get_token)(const unsigned char* z, int* tokenType);
 
-    // Token categories (indexed by token type ordinal)
-    const char* const* token_names; // length = token_type_count; NULL = no token names
+    // Keyword table exported by mkkeywordhash output (`sqlite_keyword.c`).
+    const char* keyword_text;                // concatenated keyword bytes
+    const uint16_t* keyword_offsets;         // keyword_count entries
+    const uint8_t* keyword_lens;             // keyword_count entries
+    const uint8_t* keyword_codes;            // keyword_count entries (token type ordinals)
+    const uint32_t* keyword_count;           // points to keyword count scalar
+
+    // Token metadata (indexed by token type ordinal)
     const uint8_t* token_categories;   // length = token_type_count; NULL = no categories
     uint32_t       token_type_count;
 } SyntaqliteDialect;

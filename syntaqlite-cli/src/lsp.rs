@@ -32,7 +32,10 @@ fn run_lsp(dialect: &Dialect) -> Result<(), Box<dyn Error + Sync + Send>> {
         position_encoding: Some(PositionEncodingKind::UTF8),
         text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
         document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
-        completion_provider: Some(CompletionOptions::default()),
+        completion_provider: Some(CompletionOptions {
+            trigger_characters: Some(vec![" ".into(), "\n".into(), "\t".into(), ";".into()]),
+            ..Default::default()
+        }),
         semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
             SemanticTokensOptions {
                 legend: SemanticTokensLegend {
@@ -152,6 +155,7 @@ fn completion_items_for_expected(
     host: &AnalysisHost,
     expected: &[u32],
 ) -> Vec<CompletionItem> {
+    let expected_set: std::collections::HashSet<u32> = expected.iter().copied().collect();
     let mut seen = std::collections::HashSet::new();
     let mut out = Vec::new();
     let mut expects_identifier = false;
@@ -160,27 +164,24 @@ fn completion_items_for_expected(
         let category = dialect.token_category(tok);
         if category == TokenCategory::Identifier {
             expects_identifier = true;
-            continue;
         }
+    }
 
-        let kind = match category {
-            TokenCategory::Keyword => CompletionItemKind::KEYWORD,
-            TokenCategory::Function => CompletionItemKind::FUNCTION,
-            TokenCategory::Type => CompletionItemKind::TYPE_PARAMETER,
-            _ => continue,
-        };
-
-        let Some(name) = dialect.token_name(tok) else {
+    for i in 0..dialect.keyword_count() {
+        let Some((code, label)) = dialect.keyword_entry(i) else {
             continue;
         };
-        if !is_keyword_symbol(name) {
+        if !expected_set.contains(&code) {
             continue;
         }
-
-        if seen.insert(name) {
+        if !is_keyword_symbol(label) {
+            continue;
+        }
+        let label = label.to_string();
+        if seen.insert(label.clone()) {
             out.push(CompletionItem {
-                label: name.to_string(),
-                kind: Some(kind),
+                label,
+                kind: Some(CompletionItemKind::KEYWORD),
                 ..Default::default()
             });
         }
@@ -189,7 +190,7 @@ fn completion_items_for_expected(
     if expects_identifier {
         if let Some(ctx) = host.ambient_context() {
             for table in &ctx.tables {
-                if seen.insert(&table.name) {
+                if seen.insert(table.name.clone()) {
                     out.push(CompletionItem {
                         label: table.name.clone(),
                         kind: Some(CompletionItemKind::STRUCT),
@@ -198,7 +199,7 @@ fn completion_items_for_expected(
                     });
                 }
                 for col in &table.columns {
-                    if seen.insert(&col.name) {
+                    if seen.insert(col.name.clone()) {
                         out.push(CompletionItem {
                             label: col.name.clone(),
                             kind: Some(CompletionItemKind::FIELD),
@@ -209,7 +210,7 @@ fn completion_items_for_expected(
                 }
             }
             for view in &ctx.views {
-                if seen.insert(&view.name) {
+                if seen.insert(view.name.clone()) {
                     out.push(CompletionItem {
                         label: view.name.clone(),
                         kind: Some(CompletionItemKind::STRUCT),
@@ -218,7 +219,7 @@ fn completion_items_for_expected(
                     });
                 }
                 for col in &view.columns {
-                    if seen.insert(&col.name) {
+                    if seen.insert(col.name.clone()) {
                         out.push(CompletionItem {
                             label: col.name.clone(),
                             kind: Some(CompletionItemKind::FIELD),
@@ -229,7 +230,7 @@ fn completion_items_for_expected(
                 }
             }
             for func in &ctx.functions {
-                if seen.insert(&func.name) {
+                if seen.insert(func.name.clone()) {
                     let detail = match func.args {
                         Some(n) => format!("function ({n} args)"),
                         None => "function (variadic)".into(),
@@ -415,4 +416,34 @@ fn position_to_offset(source: &str, pos: Position) -> usize {
         .unwrap_or(len);
 
     line_start + (pos.character as usize).min(line_end - line_start)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::completion_items_for_expected;
+    use syntaqlite_lsp::AnalysisHost;
+
+    #[test]
+    fn join_kw_uses_dialect_token_keyword_mapping() {
+        let dialect = *syntaqlite::low_level::dialect();
+        let mut host = AnalysisHost::new(dialect);
+        let uri = "file:///test.sql";
+        let sql = "SELECT * FROM s AS x J";
+        host.open_document(uri, 1, sql.to_string());
+
+        let expected = host.expected_tokens_at_offset(uri, sql.len());
+        let items = completion_items_for_expected(&dialect, &host, &expected);
+
+        let labels: Vec<&str> = items.iter().map(|i| i.label.as_str()).collect();
+        let join_kw = syntaqlite::low_level::TokenType::JoinKw as u32;
+        let join_kw_labels: Vec<&str> = (0..dialect.keyword_count())
+            .filter_map(|i| dialect.keyword_entry(i))
+            .filter_map(|(code, kw)| (code == join_kw).then_some(kw))
+            .collect();
+        let expected_names: Vec<String> = expected.iter().map(|&tok| format!("#{tok}")).collect();
+        assert!(
+            join_kw_labels.iter().any(|kw| labels.contains(kw)),
+            "none of {join_kw_labels:?} found: labels={labels:?}, expected={expected_names:?}"
+        );
+    }
 }

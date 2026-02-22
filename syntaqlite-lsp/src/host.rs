@@ -296,11 +296,10 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
 
     let mut tokens = Vec::new();
     let mut tokenizer = Tokenizer::new(*dialect);
-    let mut consumed = 0usize;
+    let source_base = source.as_ptr() as usize;
     for tok in tokenizer.tokenize(source) {
-        let start = consumed;
-        let end = consumed + tok.text.len();
-        consumed = end;
+        let start = tok.text.as_ptr() as usize - source_base;
+        let end = start + tok.text.len();
 
         tokens.push(CachedToken {
             type_: tok.token_type,
@@ -329,17 +328,38 @@ fn replay_expected_tokens(
     offset: usize,
 ) -> Vec<u32> {
     let cursor_offset = offset.min(source.len());
-    let boundary = tokens.partition_point(|t| t.end <= cursor_offset);
-    let mut parser = LowLevelParser::new(dialect);
-    let mut cursor = parser.feed(source);
-
-    for tok in &tokens[..boundary] {
-        if cursor.feed_token(tok.type_, tok.start..tok.end).is_err() {
-            return Vec::new();
+    let mut boundary = tokens.partition_point(|t| t.end <= cursor_offset);
+    // Skip zero-width tokens at cursor, then backtrack if cursor is mid-identifier.
+    while boundary > 0 && {
+        let t = &tokens[boundary - 1];
+        t.start == t.end && t.end == cursor_offset
+    } {
+        boundary -= 1;
+    }
+    if boundary > 0 && tokens[boundary - 1].end == cursor_offset && cursor_offset > 0 {
+        let b = source.as_bytes()[cursor_offset - 1];
+        if b.is_ascii_alphanumeric() || b == b'_' {
+            boundary -= 1;
         }
     }
+    let tk_semi = dialect.tk_semi();
+    let start = tokens[..boundary]
+        .iter()
+        .rposition(|t| t.type_ == tk_semi)
+        .map_or(0, |idx| idx + 1);
 
-    cursor.expected_tokens()
+    let mut parser = LowLevelParser::new(dialect);
+    let mut cursor = parser.feed(source);
+    let mut last_expected = cursor.expected_tokens();
+
+    for tok in &tokens[start..boundary] {
+        if cursor.feed_token(tok.type_, tok.start..tok.end).is_err() {
+            return last_expected;
+        }
+        last_expected = cursor.expected_tokens();
+    }
+
+    last_expected
 }
 
 fn error_span(err: &ParseError, source: &str) -> (usize, usize) {
@@ -384,3 +404,57 @@ impl std::fmt::Display for FormatError {
 }
 
 impl std::error::Error for FormatError {}
+
+#[cfg(test)]
+mod tests {
+    use super::AnalysisHost;
+    use syntaqlite::low_level::TokenType;
+
+    #[test]
+    fn completions_fall_back_to_last_good_state_on_parse_error() {
+        let dialect = *syntaqlite::low_level::dialect();
+        let mut host = AnalysisHost::new(dialect);
+        let uri = "file:///test.sql";
+        let sql = "SELECT * FR";
+        host.open_document(uri, 1, sql.to_string());
+
+        let expected = host.expected_tokens_at_offset(uri, sql.len());
+        assert!(
+            expected.contains(&(TokenType::From as u32)),
+            "expected TK_FROM after SELECT *, got {:?}",
+            expected
+        );
+    }
+
+    #[test]
+    fn completions_ignore_prior_statement_errors_after_semicolon() {
+        let dialect = *syntaqlite::low_level::dialect();
+        let mut host = AnalysisHost::new(dialect);
+        let uri = "file:///test.sql";
+        let sql = "SELEC 1; SELECT * FR";
+        host.open_document(uri, 1, sql.to_string());
+
+        let expected = host.expected_tokens_at_offset(uri, sql.len());
+        assert!(
+            expected.contains(&(TokenType::From as u32)),
+            "expected TK_FROM in second statement context, got {:?}",
+            expected
+        );
+    }
+
+    #[test]
+    fn completions_include_join_after_from_alias_with_partial_next_token() {
+        let dialect = *syntaqlite::low_level::dialect();
+        let mut host = AnalysisHost::new(dialect);
+        let uri = "file:///test.sql";
+        let sql = "SELECT * FROM s AS x J";
+        host.open_document(uri, 1, sql.to_string());
+
+        let expected = host.expected_tokens_at_offset(uri, sql.len());
+        assert!(
+            expected.contains(&(TokenType::JoinKw as u32)),
+            "expected TK_JOIN_KW after FROM alias, got {:?}",
+            expected
+        );
+    }
+}
