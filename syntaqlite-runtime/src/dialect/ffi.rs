@@ -57,11 +57,13 @@ pub struct Dialect {
     pub parser_free: *const std::ffi::c_void,
     pub parser_feed: *const std::ffi::c_void,
     pub parser_trace: *const std::ffi::c_void,
+    pub parser_expected_tokens: *const std::ffi::c_void,
 
     // Tokenizer (function pointer provided by dialect)
     pub get_token: *const std::ffi::c_void,
 
     // Token categories (indexed by token type ordinal)
+    pub token_names: *const *const std::ffi::c_char,
     pub token_categories: *const u8,
     pub token_type_count: u32,
 }

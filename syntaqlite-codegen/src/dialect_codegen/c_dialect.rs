@@ -52,8 +52,10 @@ pub fn generate_token_categories_header(
 
     // Build ordinal → category map
     let mut categories = vec![0u8; count]; // default = Other
+    let mut token_names = vec![None::<String>; count];
     for (name, ordinal) in tokens {
         categories[*ordinal as usize] = classify_token(name, keyword_names);
+        token_names[*ordinal as usize] = Some(name.clone());
     }
 
     let mut w = CWriter::new();
@@ -70,6 +72,21 @@ pub fn generate_token_categories_header(
         w.line(&format!("    {},", vals.join(",")));
     }
 
+    w.line("};");
+    w.newline();
+    w.line(&format!(
+        "static const char* const token_names[{count}] = {{"
+    ));
+    for chunk in token_names.chunks(8) {
+        let vals: Vec<String> = chunk
+            .iter()
+            .map(|name| match name {
+                Some(n) => format!("\"{n}\""),
+                None => "0".to_string(),
+            })
+            .collect();
+        w.line(&format!("    {},", vals.join(",")));
+    }
     w.line("};");
     w.finish()
 }
@@ -133,15 +150,20 @@ pub fn generate_dialect_c(dialect: &str, tokens: Option<&[(String, u32)]>) -> St
     w.line("#ifndef NDEBUG");
     w.line(&format!("    .parser_trace = Synq{pascal}ParseTrace,"));
     w.line("#endif");
+    w.line(&format!(
+        "    .parser_expected_tokens = Synq{pascal}ParseExpectedTokens,"
+    ));
     w.newline();
     w.line("    // Tokenizer");
     w.line(&format!("    .get_token = Synq{pascal}GetToken,"));
     w.newline();
     w.line("    // Token categories");
     if tokens.is_some() {
+        w.line("    .token_names = token_names,");
         w.line("    .token_categories = token_categories,");
         w.line("    .token_type_count = TOKEN_TYPE_COUNT,");
     } else {
+        w.line("    .token_names = 0,");
         w.line("    .token_categories = 0,");
         w.line("    .token_type_count = 0,");
     }
@@ -271,10 +293,14 @@ mod tests {
         let h = generate_token_categories_header(&tokens, Some(&kws));
         assert!(h.contains("#define TOKEN_TYPE_COUNT 10"));
         assert!(h.contains("token_categories[10]"));
+        assert!(h.contains("token_names[10]"));
         // SEMI=6(punct), SELECT=1(kw), ID=2(ident), STRING=3(str),
         // INTEGER=4(num), PLUS=5(op), COMMENT=7(comment), VARIABLE=8(var),
         // FUNCTION=9(func), SPACE=0(other)
         assert!(h.contains("6,1,2,3,4,5,7,8,9,0,"));
+        assert!(h.contains(
+            "\"SEMI\",\"SELECT\",\"ID\",\"STRING\",\"INTEGER\",\"PLUS\",\"COMMENT\",\"VARIABLE\","
+        ));
     }
 
     #[test]
@@ -320,6 +346,8 @@ mod tests {
     fn dialect_c_with_tokens_includes_categories() {
         let tokens = vec![("SELECT".to_string(), 0)];
         let c = generate_dialect_c("sqlite", Some(&tokens));
+        assert!(c.contains(".parser_expected_tokens = SynqSqliteParseExpectedTokens,"));
+        assert!(c.contains(".token_names = token_names,"));
         assert!(c.contains(".token_categories = token_categories,"));
         assert!(c.contains(".token_type_count = TOKEN_TYPE_COUNT,"));
         assert!(c.contains("csrc/dialect_tokens.h"));
@@ -328,6 +356,7 @@ mod tests {
     #[test]
     fn dialect_c_without_tokens_uses_null() {
         let c = generate_dialect_c("sqlite", None);
+        assert!(c.contains(".token_names = 0,"));
         assert!(c.contains(".token_categories = 0,"));
         assert!(c.contains(".token_type_count = 0,"));
         assert!(!c.contains("dialect_tokens.h"));

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use std::cell::{Cell, RefCell};
+use std::collections::BTreeSet;
 use std::slice;
 
 use syntaqlite_runtime::dialect::ffi::{
@@ -578,6 +579,85 @@ fn run_semantic_tokens(ptr: u32, len: u32, range_start: u32, range_end: u32, ver
     token_count
 }
 
+fn completion_kind_name(dialect: &Dialect, token_type: u32) -> Option<&'static str> {
+    match dialect.token_category(token_type) {
+        syntaqlite_runtime::dialect::TokenCategory::Keyword => Some("keyword"),
+        syntaqlite_runtime::dialect::TokenCategory::Function => Some("function"),
+        syntaqlite_runtime::dialect::TokenCategory::Type => Some("class"),
+        _ => None,
+    }
+}
+
+fn is_keyword_symbol(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
+}
+
+fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
+    let dialect_ptr = DIALECT_PTR.with(|p| p.get());
+    if dialect_ptr == 0 {
+        set_result("dialect pointer is not set; call wasm_set_dialect first");
+        return -1;
+    }
+    let dialect = match resolve_dialect() {
+        Ok(d) => d,
+        Err(e) => {
+            set_result(&e);
+            return -1;
+        }
+    };
+    let source = match decode_input(ptr, len) {
+        Ok(source) => source,
+        Err(e) => {
+            set_result(&e);
+            return -1;
+        }
+    };
+
+    let mut lsp = take_or_create_lsp_host(dialect_ptr);
+    lsp.host
+        .update_document(WASM_DOC_URI, version as i32, source);
+    let expected = lsp
+        .host
+        .expected_tokens_at_offset(WASM_DOC_URI, offset as usize);
+
+    let mut seen = BTreeSet::new();
+    let mut count = 0i32;
+    let mut out = String::new();
+    out.push('[');
+
+    for tok in expected {
+        let Some(name) = dialect.token_name(tok) else {
+            continue;
+        };
+        if !is_keyword_symbol(name) {
+            continue;
+        }
+        let Some(kind) = completion_kind_name(&dialect, tok) else {
+            continue;
+        };
+        if !seen.insert(name.to_string()) {
+            continue;
+        }
+        if count > 0 {
+            out.push(',');
+        }
+        out.push_str("{\"label\":\"");
+        json_escape(&mut out, name);
+        out.push_str("\",\"kind\":\"");
+        out.push_str(kind);
+        out.push_str("\"}");
+        count += 1;
+    }
+
+    out.push(']');
+    set_result(&out);
+    store_lsp_host(lsp);
+    count
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_semantic_tokens(
     ptr: u32,
@@ -592,6 +672,19 @@ pub extern "C" fn wasm_semantic_tokens(
         Ok(result) => result,
         Err(_) => {
             set_result("wasm_semantic_tokens panicked");
+            -1
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        run_completions(ptr, len, offset, version)
+    })) {
+        Ok(result) => result,
+        Err(_) => {
+            set_result("wasm_completions panicked");
             -1
         }
     }

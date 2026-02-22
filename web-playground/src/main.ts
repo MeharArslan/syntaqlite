@@ -83,6 +83,50 @@ function registerSemanticTokensProvider(engine: Engine): void {
   });
 }
 
+function registerCompletionProvider(engine: Engine): void {
+  monaco.languages.registerCompletionItemProvider("sql", {
+    provideCompletionItems(
+      model: monaco.editor.ITextModel,
+      position: monaco.Position,
+    ): monaco.languages.ProviderResult<monaco.languages.CompletionList> {
+      if (!engine.ready) return {suggestions: []};
+      if (model.uri.toString() !== INPUT_MODEL_URI) {
+        return {suggestions: []};
+      }
+
+      const source = model.getValue();
+      const offset = model.getOffsetAt(position);
+      const version = model.getVersionId();
+      const result = engine.runCompletions(source, offset, version);
+      if (!result.ok || result.items.length === 0) {
+        return {suggestions: []};
+      }
+
+      const word = model.getWordUntilPosition(position);
+      const range = new monaco.Range(
+        position.lineNumber,
+        word.startColumn,
+        position.lineNumber,
+        word.endColumn,
+      );
+
+      const suggestions: monaco.languages.CompletionItem[] = result.items.map((item) => ({
+        label: item.label,
+        insertText: item.label,
+        kind:
+          item.kind === "function"
+            ? monaco.languages.CompletionItemKind.Function
+            : item.kind === "class"
+              ? monaco.languages.CompletionItemKind.Class
+              : monaco.languages.CompletionItemKind.Keyword,
+        range,
+      }));
+
+      return {suggestions};
+    },
+  });
+}
+
 async function main() {
   setupMonacoWorkers();
 
@@ -96,6 +140,7 @@ async function main() {
     await app.runtime.load();
     await app.dialect.loadDefault(app.runtime);
     registerSemanticTokensProvider(app.runtime);
+    registerCompletionProvider(app.runtime);
     app.runtime.updateStatus("Ready.");
   } catch (err) {
     app.runtime.updateStatus(`Failed to initialize: ${(err as Error).message}`, true);

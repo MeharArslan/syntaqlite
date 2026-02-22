@@ -51,11 +51,13 @@ static const SyntaqliteDialect SQLITE_DIALECT = {
 #ifndef NDEBUG
     .parser_trace = SynqSqliteParseTrace,
 #endif
+    .parser_expected_tokens = SynqSqliteParseExpectedTokens,
 
     // Tokenizer
     .get_token = SynqSqliteGetToken,
 
     // Token categories
+    .token_names = token_names,
     .token_categories = token_categories,
     .token_type_count = TOKEN_TYPE_COUNT,
 };

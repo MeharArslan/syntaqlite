@@ -438,8 +438,7 @@ pub(crate) fn interpret_node<'a>(
                             .call_stack
                             .push(unsafe { std::mem::transmute(frame) });
 
-                        cur_ptr = cptr;
-                        cur_tag = ctag;
+                        cur_node_id = child_id;
                         ops = &child_ops_bytes[..child_ops_len * 6];
                         ops_count = child_ops_len;
                         fields = child_fields;

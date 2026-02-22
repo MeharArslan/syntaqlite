@@ -98,11 +98,13 @@ typedef struct SyntaqliteDialect {
     void (*parser_free)(void* parser, void (*freeProc)(void*));
     void (*parser_feed)(void* parser, int token_type, SynqParseToken minor, SynqParseCtx* pCtx);
     void (*parser_trace)(FILE* trace_file, char* prompt);
+    int (*parser_expected_tokens)(void* parser, int* out_tokens, int out_cap);
 
     // Tokenizer (provided by dialect)
     int64_t (*get_token)(const unsigned char* z, int* tokenType);
 
     // Token categories (indexed by token type ordinal)
+    const char* const* token_names; // length = token_type_count; NULL = no token names
     const uint8_t* token_categories;   // length = token_type_count; NULL = no categories
     uint32_t       token_type_count;
 } SyntaqliteDialect;

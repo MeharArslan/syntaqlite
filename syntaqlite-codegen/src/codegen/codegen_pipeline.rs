@@ -61,6 +61,7 @@ pub(crate) fn generate_codegen_artifacts(
     }
     let dialect_tokens_h =
         dialect_codegen::generate_token_categories_header(&token_defines, Some(&keyword_names));
+    let parse_api_h = dialect_codegen::generate_parse_h(request.dialect.name());
     let dialect_c =
         dialect_codegen::generate_dialect_c(request.dialect.name(), Some(&token_defines));
     let dialect_h = dialect_codegen::generate_dialect_h(request.dialect.name());
@@ -80,6 +81,7 @@ pub(crate) fn generate_codegen_artifacts(
 
     Ok(CodegenArtifacts {
         parse_h,
+        parse_api_h,
         parse_c,
         tokenize_c,
         keyword_c,

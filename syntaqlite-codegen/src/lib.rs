@@ -134,6 +134,7 @@ pub struct RustCodegenArtifacts {
 
 pub struct CodegenArtifacts {
     pub parse_h: String,
+    pub parse_api_h: String,
     pub parse_c: String,
     pub tokenize_c: String,
     pub keyword_c: String,

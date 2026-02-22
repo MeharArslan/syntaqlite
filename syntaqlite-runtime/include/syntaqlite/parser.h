@@ -315,6 +315,15 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
 // Retrieve the parse result after feed_token returns 1 or after finish().
 SyntaqliteParseResult syntaqlite_parser_result(SyntaqliteParser* p);
 
+// Enumerate terminal tokens that are valid next lookaheads at the parser's
+// current state. Returns the total number of expected tokens.
+//
+// If out_tokens is non-NULL, up to out_cap token IDs are written.
+// This API is intended for grammar-aware completion engines.
+int syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
+                                      int* out_tokens,
+                                      int out_cap);
+
 // Signal end-of-input. Synthesizes a SEMI if needed and sends EOF to the
 // parser. Returns: 0 = done (no pending statement), 1 = final statement
 // completed, -1 = error.

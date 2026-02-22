@@ -8,16 +8,17 @@ use lsp_types::notification::{
     DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Notification as _,
     PublishDiagnostics,
 };
-use lsp_types::request::{Formatting, Request as _, SemanticTokensFullRequest};
+use lsp_types::request::{Completion, Formatting, Request as _, SemanticTokensFullRequest};
 use lsp_types::{
-    DiagnosticSeverity, Position, PositionEncodingKind, Range, SemanticTokenType,
-    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
+    CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DiagnosticSeverity,
+    Position, PositionEncodingKind, Range, SemanticTokenType, SemanticTokensFullOptions,
+    SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
     SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextEdit, Uri,
 };
 use syntaqlite_lsp::{AnalysisHost, Severity};
 use syntaqlite_runtime::Dialect;
-use syntaqlite_runtime::dialect::SEMANTIC_TOKEN_LEGEND;
+use syntaqlite_runtime::dialect::{SEMANTIC_TOKEN_LEGEND, TokenCategory};
 use syntaqlite_runtime::fmt::FormatConfig;
 
 pub(crate) fn cmd_lsp(dialect: &Dialect) -> Result<(), String> {
@@ -31,6 +32,7 @@ fn run_lsp(dialect: &Dialect) -> Result<(), Box<dyn Error + Sync + Send>> {
         position_encoding: Some(PositionEncodingKind::UTF8),
         text_document_sync: Some(TextDocumentSyncCapability::Kind(TextDocumentSyncKind::FULL)),
         document_formatting_provider: Some(lsp_types::OneOf::Left(true)),
+        completion_provider: Some(CompletionOptions::default()),
         semantic_tokens_provider: Some(SemanticTokensServerCapabilities::SemanticTokensOptions(
             SemanticTokensOptions {
                 legend: SemanticTokensLegend {
@@ -57,7 +59,7 @@ fn run_lsp(dialect: &Dialect) -> Result<(), Box<dyn Error + Sync + Send>> {
                 if connection.handle_shutdown(&req)? {
                     return Ok(());
                 }
-                handle_request(&connection, &mut host, req)?;
+                handle_request(&connection, dialect, &mut host, req)?;
             }
             Message::Notification(notif) => {
                 handle_notification(&connection, &mut host, notif)?;
@@ -72,10 +74,26 @@ fn run_lsp(dialect: &Dialect) -> Result<(), Box<dyn Error + Sync + Send>> {
 
 fn handle_request(
     connection: &Connection,
+    dialect: &Dialect,
     host: &mut AnalysisHost,
     req: Request,
 ) -> Result<(), Box<dyn Error + Sync + Send>> {
     let response = match req.method.as_str() {
+        Completion::METHOD => {
+            let params: lsp_types::CompletionParams = serde_json::from_value(req.params)?;
+            let uri = params.text_document_position.text_document.uri;
+            let position = params.text_document_position.position;
+            let uri_str = uri.as_str();
+            match host.document_source(uri_str) {
+                Some(source) => {
+                    let offset = position_to_offset(source, position);
+                    let expected = host.expected_tokens_at_offset(uri_str, offset);
+                    let items = completion_items_for_expected(dialect, host, &expected);
+                    Response::new_ok(req.id, CompletionResponse::Array(items))
+                }
+                None => Response::new_ok(req.id, Option::<CompletionResponse>::None),
+            }
+        }
         Formatting::METHOD => {
             let params: lsp_types::DocumentFormattingParams = serde_json::from_value(req.params)?;
             let uri = params.text_document.uri.as_str();
@@ -127,6 +145,114 @@ fn handle_request(
     };
     connection.sender.send(Message::Response(response))?;
     Ok(())
+}
+
+fn completion_items_for_expected(
+    dialect: &Dialect,
+    host: &AnalysisHost,
+    expected: &[u32],
+) -> Vec<CompletionItem> {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    let mut expects_identifier = false;
+
+    for &tok in expected {
+        let category = dialect.token_category(tok);
+        if category == TokenCategory::Identifier {
+            expects_identifier = true;
+            continue;
+        }
+
+        let kind = match category {
+            TokenCategory::Keyword => CompletionItemKind::KEYWORD,
+            TokenCategory::Function => CompletionItemKind::FUNCTION,
+            TokenCategory::Type => CompletionItemKind::TYPE_PARAMETER,
+            _ => continue,
+        };
+
+        let Some(name) = dialect.token_name(tok) else {
+            continue;
+        };
+        if !is_keyword_symbol(name) {
+            continue;
+        }
+
+        if seen.insert(name) {
+            out.push(CompletionItem {
+                label: name.to_string(),
+                kind: Some(kind),
+                ..Default::default()
+            });
+        }
+    }
+
+    if expects_identifier {
+        if let Some(ctx) = host.ambient_context() {
+            for table in &ctx.tables {
+                if seen.insert(&table.name) {
+                    out.push(CompletionItem {
+                        label: table.name.clone(),
+                        kind: Some(CompletionItemKind::STRUCT),
+                        detail: Some("table".into()),
+                        ..Default::default()
+                    });
+                }
+                for col in &table.columns {
+                    if seen.insert(&col.name) {
+                        out.push(CompletionItem {
+                            label: col.name.clone(),
+                            kind: Some(CompletionItemKind::FIELD),
+                            detail: Some(format!("column ({})", table.name)),
+                            ..Default::default()
+                        });
+                    }
+                }
+            }
+            for view in &ctx.views {
+                if seen.insert(&view.name) {
+                    out.push(CompletionItem {
+                        label: view.name.clone(),
+                        kind: Some(CompletionItemKind::STRUCT),
+                        detail: Some("view".into()),
+                        ..Default::default()
+                    });
+                }
+                for col in &view.columns {
+                    if seen.insert(&col.name) {
+                        out.push(CompletionItem {
+                            label: col.name.clone(),
+                            kind: Some(CompletionItemKind::FIELD),
+                            detail: Some(format!("column ({})", view.name)),
+                            ..Default::default()
+                        });
+                    }
+                }
+            }
+            for func in &ctx.functions {
+                if seen.insert(&func.name) {
+                    let detail = match func.args {
+                        Some(n) => format!("function ({n} args)"),
+                        None => "function (variadic)".into(),
+                    };
+                    out.push(CompletionItem {
+                        label: func.name.clone(),
+                        kind: Some(CompletionItemKind::FUNCTION),
+                        detail: Some(detail),
+                        ..Default::default()
+                    });
+                }
+            }
+        }
+    }
+
+    out
+}
+
+fn is_keyword_symbol(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
 }
 
 fn handle_notification(
@@ -265,4 +391,28 @@ fn offsets_to_positions(source: &str, offsets: &[usize]) -> Vec<Position> {
     }
 
     result
+}
+
+fn position_to_offset(source: &str, pos: Position) -> usize {
+    let src = source.as_bytes();
+    let len = src.len();
+    let mut line = 0usize;
+    let mut line_start = 0usize;
+
+    while line < pos.line as usize && line_start < len {
+        if let Some(next_nl) = src[line_start..].iter().position(|&b| b == b'\n') {
+            line_start += next_nl + 1;
+            line += 1;
+        } else {
+            return len;
+        }
+    }
+
+    let line_end = src[line_start..]
+        .iter()
+        .position(|&b| b == b'\n')
+        .map(|rel| line_start + rel)
+        .unwrap_or(len);
+
+    line_start + (pos.character as usize).min(line_end - line_start)
 }

@@ -215,9 +215,32 @@ impl<'d> Dialect<'d> {
         TokenCategory::from_u8(byte)
     }
 
+    /// Return the token symbol name for a token type ordinal (e.g. `SELECT`).
+    pub fn token_name(&self, token_type: u32) -> Option<&'d str> {
+        if self.raw.token_names.is_null() || token_type >= self.raw.token_type_count {
+            return None;
+        }
+        unsafe {
+            let ptr = *self.raw.token_names.add(token_type as usize);
+            if ptr.is_null() {
+                return None;
+            }
+            Some(
+                std::ffi::CStr::from_ptr(ptr)
+                    .to_str()
+                    .expect("invalid UTF-8 in token name"),
+            )
+        }
+    }
+
     /// The well-known `TK_SPACE` token type ordinal.
     pub fn tk_space(&self) -> u32 {
         self.raw.tk_space as u32
+    }
+
+    /// The well-known `TK_SEMI` token type ordinal.
+    pub fn tk_semi(&self) -> u32 {
+        self.raw.tk_semi as u32
     }
 
     /// The well-known `TK_COMMENT` token type ordinal.

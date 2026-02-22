@@ -133,3 +133,14 @@ export interface DiagnosticsResult {
   diagnostics: DiagnosticEntry[];
 }
 
+// ── Completion types ──
+
+export interface CompletionEntry {
+  label: string;
+  kind: "keyword" | "function" | "class";
+}
+
+export interface CompletionsResult {
+  ok: boolean;
+  items: CompletionEntry[];
+}

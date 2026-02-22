@@ -3,6 +3,8 @@
 
 import type {
   AstResult,
+  CompletionEntry,
+  CompletionsResult,
   DiagnosticEntry,
   DiagnosticsResult,
   DialectBinding,
@@ -34,6 +36,7 @@ export class Engine {
   private fmtRaw: WasmFn | null = null;
   private diagnosticsRaw: WasmFn | null = null;
   private semanticTokensRaw: WasmFn | null = null;
+  private completionsRaw: WasmFn | null = null;
   private resultPtrRaw: WasmFn | null = null;
   private resultLenRaw: WasmFn | null = null;
   private resultFreeRaw: WasmFn | null = null;
@@ -59,6 +62,7 @@ export class Engine {
     this.fmtRaw = this.resolveRuntimeFn("wasm_fmt");
     this.diagnosticsRaw = this.tryResolveRuntimeFn("wasm_diagnostics");
     this.semanticTokensRaw = this.tryResolveRuntimeFn("wasm_semantic_tokens");
+    this.completionsRaw = this.tryResolveRuntimeFn("wasm_completions");
     this.resultPtrRaw = this.resolveRuntimeFn("wasm_result_ptr");
     this.resultLenRaw = this.resolveRuntimeFn("wasm_result_len");
     this.resultFreeRaw = this.resolveRuntimeFn("wasm_result_free");
@@ -234,6 +238,23 @@ export class Engine {
     } catch (e) {
       console.warn("wasm_diagnostics failed:", e);
       return {ok: false, diagnostics: []};
+    }
+  }
+
+  runCompletions(sql: string, offset: number, version = 1): CompletionsResult {
+    if (!this.completionsRaw) return {ok: false, items: []};
+    try {
+      const count = this.withInput(sql, (ptr, len) =>
+        this.completionsRaw!(ptr, len, offset >>> 0, version),
+      );
+      const text = this.readAndClearResult();
+      if (count < 0) return {ok: false, items: []};
+      if (count === 0) return {ok: true, items: []};
+      const items: CompletionEntry[] = JSON.parse(text);
+      return {ok: true, items};
+    } catch (e) {
+      console.warn("wasm_completions failed:", e);
+      return {ok: false, items: []};
     }
   }
 }

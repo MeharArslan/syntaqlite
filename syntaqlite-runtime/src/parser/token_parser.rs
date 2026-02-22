@@ -173,6 +173,43 @@ impl<'a> LowLevelCursor<'a> {
         }
     }
 
+    /// Return terminal token IDs that are valid lookaheads at the current
+    /// parser state.
+    ///
+    /// This can be used by completion engines after feeding tokens up to the
+    /// cursor. Returns raw dialect-specific token ordinals.
+    pub fn expected_tokens(&self) -> Vec<u32> {
+        self.assert_not_finished();
+        // Use a stack buffer to avoid the count-then-allocate double FFI call.
+        // 256 covers virtually all parser states; fall back to heap for outliers.
+        let raw = self.base.reader.raw();
+        let mut stack_buf = [0 as c_int; 256];
+        let total = unsafe {
+            ffi::syntaqlite_parser_expected_tokens(
+                raw,
+                stack_buf.as_mut_ptr(),
+                stack_buf.len() as c_int,
+            )
+        };
+        if total <= 0 {
+            return Vec::new();
+        }
+
+        let count = total as usize;
+        if count <= stack_buf.len() {
+            stack_buf[..count].iter().map(|&t| t as u32).collect()
+        } else {
+            // Rare: more tokens than stack buffer. Heap-allocate and re-query.
+            let mut heap_buf = vec![0 as c_int; count];
+            let written = unsafe {
+                ffi::syntaqlite_parser_expected_tokens(raw, heap_buf.as_mut_ptr(), total as c_int)
+            };
+            let len = written.clamp(0, total) as usize;
+            heap_buf.truncate(len);
+            heap_buf.into_iter().map(|t| t as u32).collect()
+        }
+    }
+
     /// Mark subsequent fed tokens as being inside a macro expansion.
     ///
     /// `call_offset` and `call_length` describe the macro call's byte range

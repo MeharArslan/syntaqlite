@@ -6,7 +6,8 @@ use std::collections::HashMap;
 use syntaqlite_runtime::dialect::TokenCategory;
 use syntaqlite_runtime::fmt::{FormatConfig, Formatter};
 use syntaqlite_runtime::parser::{
-    ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE,
+    LowLevelParser, ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE,
+    Tokenizer,
 };
 use syntaqlite_runtime::{Dialect, ParseError, Parser};
 
@@ -29,6 +30,13 @@ struct Document {
 struct DocumentState {
     diagnostics: Vec<Diagnostic>,
     semantic_tokens: Vec<SemanticToken>,
+    tokens: Vec<CachedToken>,
+}
+
+struct CachedToken {
+    type_: u32,
+    start: usize,
+    end: usize,
 }
 
 impl<'d> AnalysisHost<'d> {
@@ -217,6 +225,20 @@ impl<'d> AnalysisHost<'d> {
             Formatter::with_config(&self.dialect, config.clone()).map_err(FormatError::Setup)?;
         formatter.format(&doc.source).map_err(FormatError::Parse)
     }
+
+    /// Return parser-expected terminal token IDs at a byte offset.
+    ///
+    /// Replays tokens up to the cursor on demand — O(k) where k is the
+    /// number of tokens before the cursor. This avoids precomputing expected
+    /// sets for every token boundary.
+    pub fn expected_tokens_at_offset(&mut self, uri: &str, offset: usize) -> Vec<u32> {
+        let Some(doc) = self.documents.get_mut(uri) else {
+            return Vec::new();
+        };
+        ensure_document_state(&self.dialect, doc);
+        let state = doc.state.as_ref().unwrap();
+        replay_expected_tokens(&self.dialect, &doc.source, &state.tokens, offset)
+    }
 }
 
 fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
@@ -272,9 +294,25 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
     }
     semantic_tokens.sort_by_key(|t| t.offset);
 
+    let mut tokens = Vec::new();
+    let mut tokenizer = Tokenizer::new(*dialect);
+    let mut consumed = 0usize;
+    for tok in tokenizer.tokenize(source) {
+        let start = consumed;
+        let end = consumed + tok.text.len();
+        consumed = end;
+
+        tokens.push(CachedToken {
+            type_: tok.token_type,
+            start,
+            end,
+        });
+    }
+
     DocumentState {
         diagnostics,
         semantic_tokens,
+        tokens,
     }
 }
 
@@ -282,6 +320,26 @@ fn ensure_document_state(dialect: &Dialect, doc: &mut Document) {
     if doc.state.is_none() {
         doc.state = Some(compute_document_state(dialect, &doc.source));
     }
+}
+
+fn replay_expected_tokens(
+    dialect: &Dialect,
+    source: &str,
+    tokens: &[CachedToken],
+    offset: usize,
+) -> Vec<u32> {
+    let cursor_offset = offset.min(source.len());
+    let boundary = tokens.partition_point(|t| t.end <= cursor_offset);
+    let mut parser = LowLevelParser::new(dialect);
+    let mut cursor = parser.feed(source);
+
+    for tok in &tokens[..boundary] {
+        if cursor.feed_token(tok.type_, tok.start..tok.end).is_err() {
+            return Vec::new();
+        }
+    }
+
+    cursor.expected_tokens()
 }
 
 fn error_span(err: &ParseError, source: &str) -> (usize, usize) {
