@@ -199,4 +199,7 @@
 #define SYNTAQLITE_TK_COMMENT                        185
 #define SYNTAQLITE_TK_ILLEGAL                        186
 
+/* syntaqlite extension: expected terminals for current parser state. */
+int SynqSqliteParseExpectedTokens(void* parser, int* out_tokens, int out_cap);
+
 #endif  // SYNTAQLITE_SQLITE_TOKENS_H

@@ -4,7 +4,7 @@
 use super::FormatConfig;
 use super::comment::CommentCtx;
 use super::doc::{DocArena, DocId, NIL_DOC};
-use super::interpret::{FmtCtx, InterpretScratch, interpret};
+use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
 use crate::dialect::Dialect;
 use crate::dialect::ffi::{
     FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldMeta,
@@ -118,11 +118,11 @@ impl<'d> Formatter<'d> {
                 comment_ctx: comment_ctx_ref,
             };
             let mut consumed = 0u64;
-            parts.push(format_node_inner(
+            parts.push(interpret_node(
                 &ctx,
                 root_id,
-                &mut arena,
                 &mut consumed,
+                &mut arena,
                 &mut self.interpret_scratch,
             ));
         }
@@ -183,7 +183,7 @@ impl<'d> Formatter<'d> {
         };
         let mut consumed = 0u64;
         let mut scratch = InterpretScratch::new();
-        let doc = format_node_inner(&ctx, node_id, &mut arena, &mut consumed, &mut scratch);
+        let doc = interpret_node(&ctx, node_id, &mut consumed, &mut arena, &mut scratch);
         arena.render(doc, self.config.line_width, self.config.keyword_case)
     }
 }
@@ -275,41 +275,6 @@ fn drain_gap_comments<'a>(
 
 // ── Single-node formatting ──────────────────────────────────────────────
 
-#[inline]
-pub(crate) fn format_node_inner<'a>(
-    ctx: &FmtCtx<'a>,
-    node_id: NodeId,
-    arena: &mut DocArena<'a>,
-    consumed_regions: &mut u64,
-    scratch: &mut InterpretScratch,
-) -> DocId {
-    if node_id.is_null() {
-        return NIL_DOC;
-    }
-
-    let Some((ptr, tag)) = ctx.cursor.node_ptr(node_id) else {
-        return NIL_DOC;
-    };
-    let Some((ops_bytes, ops_len)) = ctx.dialect.fmt_dispatch(tag) else {
-        return NIL_DOC;
-    };
-    let children = ctx.cursor.list_children(node_id, &ctx.dialect);
-    let source = ctx.source();
-
-    let fields = extract_fields(&ctx.dialect, ptr, tag, source);
-
-    interpret(
-        ctx,
-        ops_bytes,
-        ops_len,
-        &fields,
-        children,
-        consumed_regions,
-        arena,
-        scratch,
-    )
-}
-
 /// Check if the next token falls within a macro region.
 ///
 /// Returns:
@@ -318,7 +283,7 @@ pub(crate) fn format_node_inner<'a>(
 /// - `None` if the next token is not inside any macro region.
 ///
 /// Does NOT advance the token cursor — the caller is responsible for
-/// advancing it (typically by calling `format_node_inner` on the child).
+/// advancing it (typically by "calling" into the child node).
 pub(crate) fn try_macro_verbatim<'a>(
     ctx: &FmtCtx<'a>,
     regions: &[MacroRegion],
@@ -353,7 +318,7 @@ pub(crate) fn try_macro_verbatim<'a>(
 
 /// Extract typed field values from a raw node pointer.
 #[inline]
-fn extract_fields<'a>(
+pub(crate) fn extract_fields<'a>(
     dialect: &Dialect<'_>,
     ptr: *const u8,
     tag: u32,

@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use crate::dialect::Dialect;
-use crate::parser::{CursorBase, FieldVal, NodeId};
+use crate::parser::{CursorBase, FieldVal, Fields, NodeId};
 
 use super::bytecode::opcodes;
 use super::comment::{CommentCtx, DrainResult};
@@ -22,14 +22,14 @@ impl<'a> FmtCtx<'a> {
     }
 }
 
-/// Reusable scratch buffers for the interpret loop, allocated once per
-/// `Formatter` and threaded through the recursive `format_node_inner` →
-/// `interpret` call chain.  Each `interpret` call saves the current Vec
-/// lengths on entry and truncates back on exit, so nested calls share
-/// the same backing allocations.
+/// Reusable scratch buffers for the iterative interpret loop, allocated
+/// once per `Formatter`. The `call_stack` replaces native recursion;
+/// `gn_stack` and `for_each_stack` are shared across all nodes within
+/// a single format call.
 pub(crate) struct InterpretScratch {
     gn_stack: Vec<GNFrame>,
     for_each_stack: Vec<ForEachState<'static>>,
+    call_stack: Vec<CallFrame<'static>>,
 }
 
 impl InterpretScratch {
@@ -37,42 +37,124 @@ impl InterpretScratch {
         InterpretScratch {
             gn_stack: Vec::new(),
             for_each_stack: Vec::new(),
+            call_stack: Vec::new(),
         }
     }
 }
 
-/// Interpret formatting bytecode into a Doc tree.
+// Old recursive `interpret` and `format_child_doc` removed —
+// ── Iterative interpreter ────────────────────────────────────────────────
+
+/// Saved execution state of a parent node when "calling" into a child.
 ///
-/// Uses a single `running: DocId` accumulator instead of `Vec<DocId>` parts.
-/// GroupStart/GroupEnd and NestStart/NestEnd save/restore the accumulator on
-/// a tiny stack of DocIds. Scratch buffers are shared across recursive calls
-/// to eliminate per-node allocation.
-pub(crate) fn interpret<'a>(
-    ctx: &FmtCtx<'a>,
-    ops_bytes: &[u8],
+/// Stores `node_id` instead of the full `Fields<'a>` array (392 bytes)
+/// to keep the frame small (~80 bytes). Fields are cheaply re-extracted
+/// via `cursor.node_ptr(node_id)` when the parent frame is restored.
+struct CallFrame<'a> {
+    ops: &'a [u8],
     ops_count: usize,
-    fields: &[FieldVal<'a>],
-    list_children: Option<&[NodeId]>,
+    ip: usize,
+    /// Parent node ID — used to re-derive (ptr, tag) and re-extract fields on pop.
+    node_id: NodeId,
+    list_children: Option<&'a [NodeId]>,
+    running: DocId,
+    pending: DocId,
+    gn_save: usize,
+    fe_save: usize,
+    return_action: ReturnAction,
+}
+
+/// What to do with the child's result when returning to the parent.
+enum ReturnAction {
+    /// Cat child result onto parent's running accumulator.
+    CatOntoRunning,
+    /// Discard child result (macro verbatim/suppressed already handled).
+    Discard,
+}
+
+/// Iterative entry point — replaces the recursive `format_node_inner` →
+/// `interpret` → `format_child_doc` → `format_node_inner` chain.
+///
+/// Uses an explicit call stack (`scratch.call_stack`) instead of native
+/// recursion. Each `Child(idx)` or `ChildItem` op pushes a `CallFrame`
+/// and sets up the child's execution state; when a node finishes
+/// (`ip >= ops_count`), the parent's state is restored from the stack.
+pub(crate) fn interpret_node<'a>(
+    ctx: &FmtCtx<'a>,
+    root_id: NodeId,
     consumed_regions: &mut u64,
     arena: &mut DocArena<'a>,
     scratch: &mut InterpretScratch,
 ) -> DocId {
-    let ops = &ops_bytes[..ops_count * 6];
+    if root_id.is_null() {
+        return NIL_DOC;
+    }
+
+    // Look up root node.
+    let Some((ptr, tag)) = ctx.cursor.node_ptr(root_id) else {
+        return NIL_DOC;
+    };
+    let Some((ops_bytes, ops_len)) = ctx.dialect.fmt_dispatch(tag) else {
+        return NIL_DOC;
+    };
+    let children = ctx.cursor.list_children(root_id, &ctx.dialect);
     let source = ctx.source();
+    let fields = super::formatter::extract_fields(&ctx.dialect, ptr, tag, source);
 
-    // Running accumulator — replaces `parts: Vec<DocId>`.
+    // Current node's execution state.
+    let mut cur_node_id: NodeId = root_id;
+    let mut ops: &[u8] = &ops_bytes[..ops_len * 6];
+    let mut ops_count: usize = ops_len;
+    let mut fields: Fields<'a> = fields;
+    let mut list_children: Option<&[NodeId]> = children;
     let mut running: DocId = NIL_DOC;
-    // Pending line breaks — replaces `pending_lines: Vec<DocId>`.
     let mut pending: DocId = NIL_DOC;
-
-    // Save stack depths so we can truncate on exit (nested calls share the Vecs).
-    let gn_save = scratch.gn_stack.len();
-    let fe_save = scratch.for_each_stack.len();
-
+    let mut gn_save = scratch.gn_stack.len();
+    let mut fe_save = scratch.for_each_stack.len();
     let mut ip: usize = 0;
     let has_comments = ctx.comment_ctx.is_some();
 
-    while ip < ops_count {
+    let cs_save = scratch.call_stack.len();
+
+    loop {
+        if ip >= ops_count {
+            // Current node is done. Finalize its doc.
+            let result = arena.cat(running, pending);
+            scratch.gn_stack.truncate(gn_save);
+            scratch.for_each_stack.truncate(fe_save);
+
+            if scratch.call_stack.len() <= cs_save {
+                // Back to root — return final result.
+                return result;
+            }
+
+            // Pop parent frame.
+            // SAFETY: We transmuted CallFrame<'a> → CallFrame<'static> on push;
+            // reverse here. The actual borrows are valid for 'a.
+            let frame: CallFrame<'a> =
+                unsafe { std::mem::transmute(scratch.call_stack.pop().unwrap()) };
+            cur_node_id = frame.node_id;
+            ops = frame.ops;
+            ops_count = frame.ops_count;
+            ip = frame.ip;
+            // Re-extract fields from the saved node_id — cheap lookups.
+            let (rptr, rtag) = ctx.cursor.node_ptr(cur_node_id).unwrap();
+            fields = super::formatter::extract_fields(&ctx.dialect, rptr, rtag, source);
+            list_children = frame.list_children;
+            running = frame.running;
+            pending = frame.pending;
+            gn_save = frame.gn_save;
+            fe_save = frame.fe_save;
+
+            match frame.return_action {
+                ReturnAction::CatOntoRunning => {
+                    running = arena.cat(running, result);
+                }
+                ReturnAction::Discard => {}
+            }
+            continue;
+        }
+
         match op_at(ops, ip) {
             FmtOp::Keyword(sid) => {
                 let kw_text = ctx.dialect.fmt_string(sid);
@@ -111,6 +193,7 @@ pub(crate) fn interpret<'a>(
                 };
 
                 if !child_id.is_null() {
+                    // Drain comments before this child.
                     if let Some(cctx) = ctx.comment_ctx {
                         if let Some((offset, _)) = cctx.peek_next_token() {
                             let drain = cctx.drain_before(offset, source, arena);
@@ -120,9 +203,67 @@ pub(crate) fn interpret<'a>(
                             pending = NIL_DOC;
                         }
                     }
-                    let child_doc =
-                        format_child_doc(ctx, child_id, consumed_regions, arena, scratch);
-                    running = arena.cat(running, child_doc);
+
+                    // Check macro verbatim for non-list children.
+                    let mut return_action = ReturnAction::CatOntoRunning;
+                    let macro_regions = ctx.cursor.macro_regions();
+                    if !macro_regions.is_empty()
+                        && ctx.cursor.list_children(child_id, &ctx.dialect).is_none()
+                    {
+                        if let Some(doc) = super::formatter::try_macro_verbatim(
+                            ctx,
+                            macro_regions,
+                            arena,
+                            consumed_regions,
+                        ) {
+                            // Verbatim doc already added to running; still need to
+                            // "call" the child to advance comment cursor, but discard
+                            // its result.
+                            running = arena.cat(running, doc);
+                            return_action = ReturnAction::Discard;
+                        }
+                    }
+
+                    // "Call" child: push parent frame, set up child state.
+                    if let Some((cptr, ctag)) = ctx.cursor.node_ptr(child_id) {
+                        if let Some((child_ops_bytes, child_ops_len)) =
+                            ctx.dialect.fmt_dispatch(ctag)
+                        {
+                            let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
+                            let child_fields =
+                                super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
+
+                            let frame = CallFrame {
+                                ops,
+                                ops_count,
+                                ip: ip + 1,
+                                node_id: cur_node_id,
+                                list_children,
+                                running,
+                                pending,
+                                gn_save,
+                                fe_save,
+                                return_action,
+                            };
+                            // SAFETY: CallFrame borrows from ctx/cursor which live for 'a.
+                            // We truncate the call stack back to cs_save before returning.
+                            scratch
+                                .call_stack
+                                .push(unsafe { std::mem::transmute(frame) });
+
+                            cur_node_id = child_id;
+                            ops = &child_ops_bytes[..child_ops_len * 6];
+                            ops_count = child_ops_len;
+                            fields = child_fields;
+                            list_children = child_children;
+                            running = NIL_DOC;
+                            pending = NIL_DOC;
+                            gn_save = scratch.gn_stack.len();
+                            fe_save = scratch.for_each_stack.len();
+                            ip = 0;
+                            continue;
+                        }
+                    }
                 }
             }
             FmtOp::Line => {
@@ -207,10 +348,6 @@ pub(crate) fn interpret<'a>(
                     if children.is_empty() {
                         ip = skip_to_foreach_end(ops, ops_count, ip);
                     } else {
-                        // SAFETY: ForEachState borrows `children` which lives as
-                        // long as `ctx.cursor`. We truncate the stack back to
-                        // `fe_save` before returning, so no dangling references
-                        // escape this call.
                         let state = ForEachState {
                             children,
                             index: 0,
@@ -245,6 +382,8 @@ pub(crate) fn interpret<'a>(
                     None
                 };
 
+                let return_action;
+
                 if macro_doc == Some(NIL_DOC) {
                     // Macro-suppressed child. Undo the previous separator
                     // and discard pending line breaks.
@@ -253,13 +392,7 @@ pub(crate) fn interpret<'a>(
                         running = saved_running;
                         pending = saved_pending;
                     }
-                    let _ = super::formatter::format_node_inner(
-                        ctx,
-                        child_id,
-                        arena,
-                        consumed_regions,
-                        scratch,
-                    );
+                    return_action = ReturnAction::Discard;
                 } else {
                     // Drain comments before this child.
                     if let Some(cctx) = ctx.comment_ctx {
@@ -273,18 +406,50 @@ pub(crate) fn interpret<'a>(
                     }
 
                     if let Some(verbatim) = macro_doc {
-                        let _ = super::formatter::format_node_inner(
-                            ctx,
-                            child_id,
-                            arena,
-                            consumed_regions,
-                            scratch,
-                        );
+                        // Macro-verbatim: add verbatim text, still "call" child to
+                        // advance comment cursor, but discard child result.
                         running = arena.cat(running, verbatim);
+                        return_action = ReturnAction::Discard;
                     } else {
-                        let child_doc =
-                            format_child_doc(ctx, child_id, consumed_regions, arena, scratch);
-                        running = arena.cat(running, child_doc);
+                        return_action = ReturnAction::CatOntoRunning;
+                    }
+                }
+
+                // "Call" child: push parent frame, set up child state.
+                if let Some((cptr, ctag)) = ctx.cursor.node_ptr(child_id) {
+                    if let Some((child_ops_bytes, child_ops_len)) = ctx.dialect.fmt_dispatch(ctag) {
+                        let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
+                        let child_fields =
+                            super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
+
+                        let frame = CallFrame {
+                            ops,
+                            ops_count,
+                            ip: ip + 1,
+                            node_id: cur_node_id,
+                            list_children,
+                            running,
+                            pending,
+                            gn_save,
+                            fe_save,
+                            return_action,
+                        };
+                        scratch
+                            .call_stack
+                            .push(unsafe { std::mem::transmute(frame) });
+
+                        cur_ptr = cptr;
+                        cur_tag = ctag;
+                        ops = &child_ops_bytes[..child_ops_len * 6];
+                        ops_count = child_ops_len;
+                        fields = child_fields;
+                        list_children = child_children;
+                        running = NIL_DOC;
+                        pending = NIL_DOC;
+                        gn_save = scratch.gn_stack.len();
+                        fe_save = scratch.for_each_stack.len();
+                        ip = 0;
+                        continue;
                     }
                 }
             }
@@ -393,39 +558,6 @@ pub(crate) fn interpret<'a>(
         }
         ip += 1;
     }
-
-    // Restore scratch stacks to their entry depths.
-    scratch.gn_stack.truncate(gn_save);
-    scratch.for_each_stack.truncate(fe_save);
-
-    arena.cat(running, pending)
-}
-
-/// Format a child node. Checks for macro verbatim regions first, then
-/// recurses into `format_node_inner`.
-fn format_child_doc<'a>(
-    ctx: &FmtCtx<'a>,
-    child_id: NodeId,
-    consumed_regions: &mut u64,
-    arena: &mut DocArena<'a>,
-    scratch: &mut InterpretScratch,
-) -> DocId {
-    let macro_regions = ctx.cursor.macro_regions();
-    if !macro_regions.is_empty() && ctx.cursor.list_children(child_id, &ctx.dialect).is_none() {
-        if let Some(doc) =
-            super::formatter::try_macro_verbatim(ctx, macro_regions, arena, consumed_regions)
-        {
-            let _ = super::formatter::format_node_inner(
-                ctx,
-                child_id,
-                arena,
-                consumed_regions,
-                scratch,
-            );
-            return doc;
-        }
-    }
-    super::formatter::format_node_inner(ctx, child_id, arena, consumed_regions, scratch)
 }
 
 // ── Comment drain helper ────────────────────────────────────────────────

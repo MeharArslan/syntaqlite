@@ -435,6 +435,9 @@ pub fn generate_parse_h(dialect: &str) -> String {
         "{}SynqParseCtx* pCtx);",
         " ".repeat(5 + 4 + pascal.len() + 5 + 1)
     ));
+    w.line(&format!(
+        "int Synq{pascal}ParseExpectedTokens(void* parser, int* out_tokens, int out_cap);"
+    ));
     w.line("#ifndef NDEBUG");
     w.line(&format!(
         "void Synq{pascal}ParseTrace(FILE* trace_file, char* prompt);"
