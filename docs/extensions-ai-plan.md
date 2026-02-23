@@ -27,11 +27,13 @@ syntaqlite-cli            # lib + bin: reusable CLI framework + default binary
 The runtime crate contains all grammar-agnostic machinery. It works with opaque `u32` tags and descriptor tables — never names a specific node type or token.
 
 **C code (compiled via `build.rs`):**
+
 - `arena.c` — arena allocator for AST nodes
 - `parser_engine.c` — Lemon push-parser loop (derived from `lempar.c` template)
 - `tokenizer.c` — tokenizer framework (scan loop, trivia collection, char class logic)
 
 **Rust code:**
+
 - `parser.rs` — generic parser driver, feeds tokens into the C engine
 - `node.rs` — `FieldDescriptor`, `FieldVal`, raw node access by tag + offset
 - `fmt/interpreter.rs` — bytecode interpreter (generic, dialect provides bytecode blob)
@@ -71,6 +73,7 @@ lsp = ["parser", "fmt", "lint"]
 The SQLite dialect crate. Depends on `syntaqlite-runtime`. Provides both the generated dialect data and a high-level typed API.
 
 **Generated C code (via `syntaqlite-codegen`):**
+
 - `sqlite_parse_tables.c` — Lemon parser state machine (`yy_action[]`, `yy_lookahead[]`, etc.)
 - `sqlite_reduce.c` — reduce function (switch statement calling builder functions)
 - `sqlite_keyword.c` — keyword hash tables
@@ -78,11 +81,13 @@ The SQLite dialect crate. Depends on `syntaqlite-runtime`. Provides both the gen
 - `ast_builder.h` — inline builder functions (one per node type)
 
 **Generated Rust code (via `syntaqlite-codegen`):**
+
 - `tokens.rs` — `TokenType` enum
 - `nodes.rs` — node structs, `NodeTag` enum, `FieldDescriptor` arrays per node type
 - `fmt.bin` — formatter bytecode blob
 
 **Hand-written Rust code:**
+
 - `lib.rs` — high-level API wrapping the runtime with SQLite-specific data
 - `lint_rules.rs` — SQLite-specific lint rules (uses generated node types)
 
@@ -196,12 +201,14 @@ Extension grammar files are merged with the base SQLite grammar:
 Given base grammar + extension grammar + extension nodes, codegen generates:
 
 **C outputs:**
+
 - Parser tables (complete, not a delta — includes base + extension)
 - Reduce function (complete — handles all rules)
 - Keyword hash (regenerated with base + extension keywords)
 - Node structs + builders (base + extension nodes)
 
 **Rust outputs:**
+
 - `TokenType` enum (base + extension tokens)
 - `NodeTag` enum (base + extension tags)
 - Node structs + `FieldDescriptor` arrays (base + extension)
@@ -310,6 +317,7 @@ perfetto-syntax/
 ```
 
 Grammar file (`perfetto_stmts.y`):
+
 ```lemon
 %token PERFETTO MACRO INCLUDE MODULE RETURNS FUNCTION DELEGATES.
 %fallback ID FUNCTION MODULE PERFETTO.
@@ -319,6 +327,7 @@ cmd(A) ::= INCLUDE PERFETTO MODULE ID(M) DOT ID(N). { ... }
 ```
 
 Node definition (`perfetto_stmts.synq`):
+
 ```
 node PerfettoFunctionStmt {
     func_name: inline SourceSpan

@@ -2,625 +2,660 @@
 
 ## 1. Problem
 
-Syntaqlite currently extracts its tokenizer, keyword table, and character tables from a single vendored SQLite source tree (`third_party/src/sqlite/`). This pins every consumer to one SQLite version's exact tokenization and keyword recognition behavior.
+Syntaqlite currently extracts its tokenizer, keyword table, and character tables from a single vendored SQLite source tree (`third_party/src/sqlite/`, currently 3.51.2). This pins every consumer to one SQLite version's keyword recognition and token behavior, and compiles with all features enabled (no `SQLITE_OMIT_*` support).
 
-Real consumers need version-specific behavior:
+Real consumers need version- and cflag-aware behavior:
 
-- **Embedded tools** targeting a specific SQLite version (e.g., Android's bundled 3.32, iOS's 3.39) need the tokenizer and keyword set to match that version exactly — bug-for-bug.
-- **Developer tools** (LSPs, playgrounds, linters) need to switch target version at runtime without recompilation, e.g., "show me how SQLite 3.35 parses this query."
+- **Embedded tools** targeting a specific SQLite version (e.g., Android's bundled 3.32, iOS's 3.39) need the keyword set and token behavior to match that version, potentially with specific `SQLITE_OMIT_*` flags active.
+- **Developer tools** (LSPs, playgrounds, linters) need to switch target version and cflags at runtime without recompilation, e.g., "show me how SQLite 3.35 with `SQLITE_OMIT_WINDOWFUNC` parses this query."
 
 ## 2. Approach
 
-### 2.1 What varies across SQLite versions
+### 2.1 Key findings from the version analysis
 
-SQLite's SQL surface changes across versions in three ways:
+Phase 1 analyzed 66 SQLite versions (3.12.2–3.51.2). See `sqlite-version-analysis.md` for full results. Key findings:
 
-1. **Tokenizer behavior** — new token types are recognized (e.g., `->` and `->>` JSON operators added in 3.38, digit separators like `1_000` added in a later version).
-2. **Keyword set** — new keywords are added (e.g., `MATERIALIZED` and `RETURNING` in 3.35, `WITHIN` in 3.46). Keywords are never removed.
-3. **Grammar rules** — new syntax productions (e.g., window functions in 3.25, RETURNING clause in 3.35). Rules are never removed.
+- **SQLite is purely additive** — no backwards-incompatible removals across the entire version range. Every version check is `>= threshold`.
+- The tokenizer has 10 raw variants, but only two behaviorally significant non-keyword differences: `TK_PTR` (3.38) and `TK_QNUMBER` (3.46).
+- Keywords have 7 addition points (3.24–3.47), totaling 148 keywords in the latest version.
+- The grammar grew from 326 to 411 rules, all removals are refactorings.
+- `TK_COMMENT` was split from `TK_SPACE` in 3.49. Syntaqlite depends on `TK_COMMENT` everywhere and always emits it regardless of target version.
 
-A critical simplification: **SQLite is purely additive**. Newer versions are strict supersets of older ones. There are no backwards-incompatible removals. Every version check is `>= threshold`, never anything more complex.
+### 2.2 Two axes: version and cflags
 
-### 2.2 What we extract from SQLite source (the 10 fragments)
+Version and `SQLITE_OMIT_*` cflags are independent axes that both affect the SQL surface:
 
-The current extraction pipeline in `sqlite_runtime_codegen.rs` pulls these fragments using `c_extractor`:
+- **Version** determines which keywords and token types exist (additive over time).
+- **CFlags** determine which features are compiled in. They primarily affect keyword recognition and grammar rules.
 
-| Fragment                        | Source file       | Extractor call                       | Notes                           |
-| ------------------------------- | ----------------- | ------------------------------------ | ------------------------------- |
-| CC\_\* defines (30)             | `tokenize.c`      | `extract_specific_defines`           | Character class constants       |
-| `aiClass[256]`                  | `tokenize.c`      | `extract_static_array`               | Maps bytes to character classes |
-| `IdChar` macro                  | `tokenize.c`      | `extract_defines_with_ifdef_context` | Identifier character test       |
-| `charMap` macro                 | `tokenize.c`      | `extract_defines_with_ifdef_context` | Case-folding for keywords       |
-| `sqlite3GetToken()`             | `tokenize.c`      | `extract_function`                   | The tokenizer (~200 lines)      |
-| `sqlite3CtypeMap[256]`          | `global.c`        | `extract_static_array`               | Character type classification   |
-| `sqlite3UpperToLower[256]`      | `global.c`        | `extract_static_array`               | Case conversion table           |
-| `sqlite3Is{space,digit,xdigit}` | `sqliteInt.h`     | `extract_specific_defines`           | Character test macros           |
-| Keyword table (148 entries)     | `mkkeywordhash.c` | parsed by `mkkeyword` tool           | `{name, token, mask, priority}` |
-| Keyword mask `#define` blocks   | `mkkeywordhash.c` | parsed by `mkkeyword` tool           | `SQLITE_OMIT_*` to mask bits    |
+Both axes compose: a keyword is recognized only if it exists in the target version AND its feature isn't omitted by cflags.
 
-Most of these fragments are frozen across versions (character tables, macros). The version-variable ones are:
+### 2.3 Strategy: one tokenizer, version + cflag gating
 
-- `sqlite3GetToken()` — changes when new token types are added
-- CC\_\* defines — changes when new character classes are added
-- `aiClass[256]` — changes when character class assignments change
-- Keyword table — changes when keywords are added or mask values change
+Instead of maintaining multiple tokenizer variants, we use a single tokenizer (the latest, 3.51.2) and gate version/cflag-dependent behavior via a config struct passed as a parameter.
 
-### 2.3 Design: dual-mode version dispatch
+**Dual-mode dispatch** — the same generated code serves both compile-time and runtime:
 
-One set of generated source files serves both compile-time and runtime version selection through a dispatch macro:
+- **Compile-time** (`-DSYNQ_SQLITE_VERSION=3035000`): caller passes a static const config. The compiler constant-folds all comparisons and eliminates dead branches. Zero runtime cost.
+- **Runtime**: caller constructs a config and passes it. All branches are live but cheap (integer comparisons).
 
-```c
-// syntaqlite_ext/version_dispatch.h
-#ifdef SYNQ_SQLITE_VERSION
-  #define SYNQ_VER_GE(d, v)  (SYNQ_SQLITE_VERSION >= (v))
-#else
-  #define SYNQ_VER_GE(d, v)  ((d)->sqlite_version >= (v))
-#endif
-```
+### 2.4 What gets version/cflag-gated
 
-**Compile-time** (`-DSYNQ_SQLITE_VERSION=3035000`): the macro becomes a constant comparison. The C compiler eliminates all dead branches. Zero runtime cost — identical to hand-written `#if` guards.
+**1. Keywords** — the keyword lookup function checks two conditions per keyword:
 
-**Runtime** (no define): the macro reads from the dialect struct. All version branches are compiled. An LSP can call `dialect.with_version(3_035_000)` to get a version-specific shallow copy of the dialect.
+- `since <= config->sqlite_version` — does this keyword exist in this version?
+- cflag check with polarity — is this keyword's feature enabled given the active cflags?
 
-### 2.4 Strategy per component
+When a keyword isn't recognized, the tokenizer returns `TK_ID`. The parser then naturally cannot match syntax that depends on that keyword — e.g., if `RETURNING` isn't a keyword, the RETURNING clause syntax is unparseable. No AST validation needed for keyword-gated features.
 
-**Tokenizer**: store complete function variants, not line-level diffs. `sqlite3GetToken` is ~200 lines. Across all supported versions there will be roughly 5 distinct variants. That's ~1000 lines total — trivially small. A dispatch function selects the right variant based on version. Compile-time: `#if` chain selects one, compiler eliminates the rest. Runtime: 2-3 integer comparisons, once per `GetToken` call (not per token).
+**2. Token reclassification** — a small postlude in `GetToken` handles non-keyword tokenizer differences:
 
-**Keywords**: one superset hash table containing ALL keywords from ALL versions. A parallel `aKWVersion[]` array stores the introduction version of each keyword. The lookup function skips keywords newer than the target version. Same `SYNQ_VER_GE` macro — compile-time: comparisons are eliminated for always-present keywords; runtime: one extra int comparison per hash probe, negligible.
+| Token                  | Since | Reclassification for older versions                                                                                             |
+| ---------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `TK_PTR` (`->`, `->>`) | 3.38  | Set length=1, return `TK_MINUS`. Next call naturally tokenizes `>` as `TK_GT`.                                                  |
+| `TK_QNUMBER` (`1_000`) | 3.46  | Find first `_` in token, truncate length to that position, return `TK_INTEGER` or `TK_FLOAT`. Next call sees `_000` as `TK_ID`. |
 
-**Grammar**: Lemon generates a fixed state machine — can't branch at runtime. Two paths:
+**3. Subquery flag** — `SQLITE_OMIT_SUBQUERY` is the only cflag that affects grammar rules without being keyword-gated (subqueries use `(SELECT ...)` — all baseline tokens). Instead of a post-parse AST walk, the parser action code sets a flag (`pParse->sawSubquery = 1`) when a subquery production is reduced. After parsing, if `SQLITE_OMIT_SUBQUERY` is active and the flag is set, emit a diagnostic. O(1) check.
 
-- _Compile-time_: `%ifdef` in `.y` files + Lemon `-D` flags strip rules for features that don't exist in the target version. A `version_to_omit_flags()` mapping converts version to synthetic `SQLITE_OMIT_*` flags.
-- _Runtime_: always parse with the full (latest) grammar. A post-parse AST validation pass flags nodes that require a newer version: "RETURNING clause requires SQLite 3.35+". This is better UX than a cryptic parse error.
+### 2.5 What does NOT get version/cflag-gated
 
-**CFlags** (SQLITE*OMIT*\*): same dual-mode pattern. `SYNQ_HAS_FEATURE(d, flag)` macro — compile-time constant or runtime struct field. For grammar: same AST validation path as version checking. Nobody switches cflags mid-session; they're set once at initialization.
+- **`TK_COMMENT`** — syntaqlite always emits `TK_COMMENT` for comments regardless of target version. Upstream only split this from `TK_SPACE` in 3.49, but syntaqlite depends on the distinction. Deliberate enhancement that doesn't affect parsing behavior.
+- **Character tables** (`aiClass`, `cc_defines`, `ctypeMap`, `upperToLower`) — always use the latest. These are internal to the tokenizer we're already using.
+- **Grammar** — always parse with the full latest grammar. Version enforcement happens at the token level (keyword suppression). Cflag enforcement is keyword suppression + the subquery flag.
+- **Bug fixes** (NUL handling, BOM handling, i64 return type) — kept unconditionally.
 
-### 2.5 Semi-automated workflow
+### 2.6 Audit of grammar-affecting `SQLITE_OMIT_*` flags
 
-The fully automated diff-to-ifdef approach is fragile (diff alignment errors, lost semantic boundaries). The fully manual approach doesn't scale. The sweet spot:
+All `%ifdef`/`%ifndef` blocks in `parse.y` (3.51.2) were audited. Every flag except `SQLITE_OMIT_SUBQUERY` gates syntax that is entered through a keyword, so keyword suppression is sufficient:
 
-1. **Automated extraction + diffing** — tool downloads N SQLite versions, runs `c_extractor` on each, hashes fragments, produces a human-readable diff report showing exactly what changed and when.
-2. **Manual annotation** — developer reads the report, copies variant files, writes `version_map.toml` and reviews `keywords.toml`. Guided by the report, this is straightforward.
-3. **Automated oracle test generation** — tool compiles each real SQLite version, runs its tokenizer on a test corpus, captures token-by-token output as ground truth JSON. These oracle files are checked into the repo.
-4. **CI verification** — tests run syntaqlite's version-dispatched tokenizer and keyword lookup against the oracle data for every supported version. Any annotation mistake is caught automatically.
+| Flag                                   | Grammar effect                 | Keyword-gatable?                              |
+| -------------------------------------- | ------------------------------ | --------------------------------------------- |
+| `SQLITE_OMIT_EXPLAIN`                  | `EXPLAIN` statement            | Yes — `EXPLAIN` keyword                       |
+| `SQLITE_OMIT_TEMPDB`                   | `TEMP` in CREATE               | Yes — `TEMP` keyword                          |
+| `SQLITE_OMIT_COMPOUND_SELECT`          | `UNION`/`INTERSECT`/`EXCEPT`   | Yes — keywords                                |
+| `SQLITE_OMIT_WINDOWFUNC`               | Window functions (~130 lines)  | Yes — `WINDOW`/`OVER`/`PARTITION`/etc.        |
+| `SQLITE_OMIT_GENERATED_COLUMNS`        | `GENERATED ALWAYS`             | Yes — keywords                                |
+| `SQLITE_OMIT_VIEW`                     | `CREATE VIEW`                  | Yes — `VIEW` keyword                          |
+| `SQLITE_OMIT_CTE`                      | `WITH` clauses                 | Yes — `WITH` keyword (only used for CTEs)     |
+| `SQLITE_OMIT_SUBQUERY`                 | Subqueries in FROM, IN, EXISTS | **No** — uses `LP select RP`, baseline tokens |
+| `SQLITE_OMIT_CAST`                     | `CAST(x AS type)`              | Yes — `CAST` keyword                          |
+| `SQLITE_OMIT_PRAGMA`                   | `PRAGMA` statements            | Yes — `PRAGMA` keyword                        |
+| `SQLITE_OMIT_TRIGGER`                  | `CREATE TRIGGER` (~115 lines)  | Yes — `TRIGGER` keyword                       |
+| `SQLITE_OMIT_ATTACH`                   | `ATTACH`/`DETACH`              | Yes — keywords                                |
+| `SQLITE_OMIT_REINDEX`                  | `REINDEX`                      | Yes — keyword                                 |
+| `SQLITE_OMIT_ANALYZE`                  | `ANALYZE`                      | Yes — keyword                                 |
+| `SQLITE_OMIT_ALTERTABLE`               | `ALTER TABLE`                  | Yes — `ALTER` keyword                         |
+| `SQLITE_OMIT_VIRTUALTABLE`             | `CREATE VIRTUAL TABLE`         | Yes — `VIRTUAL` keyword                       |
+| `SQLITE_ENABLE_ORDERED_SET_AGGREGATES` | `WITHIN GROUP` syntax          | Yes — `WITHIN` keyword                        |
+
+### 2.7 What we no longer need (vs the original plan)
+
+- ~~Multiple tokenizer function variants~~ → one tokenizer, postlude checks
+- ~~`ai_class` / `cc_defines` variant tracking~~ → always latest
+- ~~`version_map.toml` / versioned variant files~~ → not needed
+- ~~`SYNQ_VER_GE` / `SYNQ_HAS_FEATURE` dispatch macros~~ → plain `if` on config struct fields
+- ~~AST validation pass~~ → keyword gating + subquery flag handles everything
+- ~~Versioned variant files in `syntaqlite-codegen/sqlite/versioned/`~~ → not needed
 
 ---
 
-## 3. Phase 1: Download and Analysis Tool
+## 3. Phase 1: Download and Analysis Tool (COMPLETED)
 
-This is the first thing to build. Everything else follows from the data it produces.
+Implemented in `syntaqlite-codegen/src/version_analysis/` (feature-gated behind `version-analysis`). Results in `sqlite-version-analysis.md`.
 
-### 3.1 Goal
+### 3.1 What was built
 
-Build a `syntaqlite` CLI subcommand that:
+- **Download script** (`tools/dev/download-sqlite-versions`) — downloads SQLite source files from GitHub mirror for 40+ versions (3.12.2–3.51.2). Idempotent, skips existing files.
+- **Analysis tool** (`syntaqlite analyze-versions`) — extracts 8 code fragments + keywords + grammar from each version, hashes for dedup, groups into variants, computes diffs. Outputs JSON to stdout + variant files + grammar report.
+- **Modules**: `version_analysis/{mod,extract,hash,diff,keywords,grammar}.rs`
+- **Dependencies**: `sha2` (hashing), `similar` (diffs), both optional behind `version-analysis` feature.
 
-1. Downloads SQLite source archives for a configurable set of versions
-2. Extracts the 10 code fragments from each version using the existing `c_extractor`
-3. Hashes each fragment to identify distinct variants
-4. Produces a structured analysis report showing what changed, when, and how
+### 3.2 Key results
 
-### 3.2 SQLite source acquisition
+See `sqlite-version-analysis.md` for full analysis. Summary:
 
-SQLite distributes source code as ZIP archives. We need individual source files (`src/tokenize.c`, `src/global.c`, `src/sqliteInt.h`, `tool/mkkeywordhash.c`).
+| Fragment         | Variants    | Notes                                          |
+| ---------------- | ----------- | ---------------------------------------------- |
+| `get_token`      | 10          | 2 behavioral: TK_PTR (3.38), TK_QNUMBER (3.46) |
+| `ai_class`       | 6           | Coupled to tokenizer changes                   |
+| `cc_defines`     | 4           | Coupled to tokenizer changes                   |
+| `ctype_map`      | 2           | Quote char flag in 3.13                        |
+| `upper_to_lower` | 2           | UBSAN tables in 3.36                           |
+| `char_map`       | 1           | Frozen                                         |
+| `id_char`        | 1           | Frozen                                         |
+| `is_macros`      | 1           | Frozen                                         |
+| Keywords         | 7 additions | 3.24–3.47, 148 total                           |
+| Grammar          | 24 changes  | 326→411 rules, semantically additive           |
 
-There is a **GitHub mirror** at `https://github.com/sqlite/sqlite` with tags like `version-3.35.0`. Source files live at `src/tokenize.c`, `src/global.c`, `src/sqliteInt.h`, `tool/mkkeywordhash.c`.
+---
 
-There are also direct download ZIPs at:
+## 4. Phase 2: Config Struct and Version/CFlag Gating
 
-```
-https://www.sqlite.org/YYYY/sqlite-src-3XXYYZZ.zip
-```
+### 4.1 The config struct
 
-The year varies by release. The version encoding for `3.X.Y` is `3XXYY00`; for `3.X.Y.Z` it's `3XXYYZZ`.
-
-#### Version list
-
-The tool should support a configurable version list. A sensible default covers major feature boundaries:
-
-```
-3.24.0   # upsert (ON CONFLICT)
-3.25.0   # window functions — big keyword addition
-3.26.0   3.27.0   3.28.0   3.29.0
-3.30.0   # generated columns (GENERATED, ALWAYS keywords)
-3.31.0   3.32.0   3.33.0   3.34.0
-3.35.0   # MATERIALIZED, RETURNING keywords
-3.36.0   3.37.0
-3.38.0   # -> and ->> JSON operators — tokenizer change
-3.39.0   3.40.0   3.41.0   3.42.0   3.43.0   3.44.0   3.45.0
-3.46.0   # WITHIN keyword (ordered-set aggregates)
-3.47.0   3.48.0   3.49.0   3.50.0
-3.51.0   3.51.2   # latest
-```
-
-For patch releases, generally only the latest patch matters — tokenizer/keyword changes happen in .0 releases. But the tool should accept arbitrary version lists.
-
-### 3.3 Source acquisition strategy
-
-Support multiple strategies:
-
-1. **Pre-downloaded directory** (default, most reliable) — user provides a directory:
-
-   ```
-   sqlite-sources/
-     3.24.0/src/tokenize.c
-     3.24.0/src/global.c
-     3.24.0/src/sqliteInt.h
-     3.24.0/tool/mkkeywordhash.c
-     3.25.0/src/...
-     ...
-   ```
-
-2. **GitHub raw download** — fetch individual files from the GitHub mirror:
-
-   ```
-   https://raw.githubusercontent.com/sqlite/sqlite/version-3.35.0/src/tokenize.c
-   ```
-
-3. **SQLite.org ZIPs** — fetch source archives. Requires year-to-version mapping.
-
-A simple download script can populate the directory:
-
-```bash
-#!/bin/bash
-VERSIONS="3.24.0 3.25.0 3.30.0 3.35.0 3.38.0 3.46.0 3.51.0 3.51.2"
-
-for ver in $VERSIONS; do
-    tag="version-${ver}"
-    dir="sqlite-sources/${ver}"
-    mkdir -p "$dir/src" "$dir/tool"
-    for f in src/tokenize.c src/global.c src/sqliteInt.h tool/mkkeywordhash.c; do
-        curl -sL "https://raw.githubusercontent.com/sqlite/sqlite/${tag}/${f}" \
-            -o "$dir/$f"
-    done
-    echo "Downloaded $ver"
-done
-```
-
-### 3.4 Extraction
-
-For each downloaded version, run the existing `c_extractor::CExtractor` against the three source files. The extraction logic already exists in `sqlite_runtime_codegen.rs::extract_tokenizer()`. Factor this into a reusable function:
-
-```rust
-pub struct ExtractedFragments {
-    pub cc_defines: String,
-    pub ai_class: String,
-    pub id_char: String,
-    pub char_map: String,
-    pub get_token: String,
-    pub ctype_map: String,
-    pub upper_to_lower: String,
-    pub is_macros: String,
-}
-
-pub fn extract_fragments(
-    tokenize_c: &str,
-    global_c: &str,
-    sqliteint_h: &str,
-) -> Result<ExtractedFragments, String> {
-    let tok = c_extractor::CExtractor::new(tokenize_c);
-    let glob = c_extractor::CExtractor::new(global_c);
-    let sqint = c_extractor::CExtractor::new(sqliteint_h);
-    // Reuses the exact same c_extractor calls from the current pipeline
-    ...
-}
-```
-
-The CC\_\* define names to extract are listed in `sqlite_runtime_codegen.rs` lines 26-57.
-
-#### Keyword extraction
-
-The keyword table in `mkkeywordhash.c` has a regular format. Each entry:
+The config struct lives in **`syntaqlite-runtime`** (not the dialect crate), because every dialect needs version + cflag configuration — this is shared infrastructure.
 
 ```c
-  { "ABORT",            "TK_ABORT",        CONFLICT|TRIGGER, 0      },
+// syntaqlite-runtime/include/syntaqlite/dialect_config.h
+
+typedef struct SyntaqliteDialectConfig {
+    int32_t  sqlite_version;   // Target version (e.g., 3035000). 0 = latest.
+    uint32_t cflags;           // Bitmask of active cflags. See below for semantics.
+} SyntaqliteDialectConfig;
 ```
 
-And mask defines:
+The `cflags` field is a bitmask representing the state of `SQLITE_OMIT_*` and `SQLITE_ENABLE_*` flags. Each flag maps to a named constant defined in the runtime — these are fixed SQLite concepts shared across all dialects:
 
 ```c
-#ifdef SQLITE_OMIT_RETURNING
-#  define RETURNING  0
-#else
-#  define RETURNING  0x00400000
-#endif
+// syntaqlite-runtime/include/syntaqlite/sqlite_cflags.h
+#define SYNQ_SQLITE_OMIT_WINDOWFUNC                0x00000001
+#define SYNQ_SQLITE_OMIT_RETURNING                 0x00000002
+#define SYNQ_SQLITE_OMIT_CTE                       0x00000004
+#define SYNQ_SQLITE_OMIT_SUBQUERY                  0x00000008
+#define SYNQ_SQLITE_ENABLE_ORDERED_SET_AGGREGATES   0x00000010
+// ... etc
 ```
 
-Parse these with regex or a simple C parser:
+**Polarity handling**: `SQLITE_OMIT_*` and `SQLITE_ENABLE_*` flags have opposite default states. The codegen handles this by encoding the polarity into the keyword mask table. Each keyword entry stores both a cflag bit and a polarity flag:
 
-```rust
-pub struct KeywordEntry {
-    pub name: String,        // "RETURNING"
-    pub token: String,       // "TK_RETURNING"
-    pub mask_expr: String,   // "RETURNING" (the mask symbol)
-    pub priority: u32,       // 10
-}
+- `SQLITE_OMIT_*`: the keyword is active by **default**. Setting the bit in `cflags` **disables** it.
+- `SQLITE_ENABLE_*`: the keyword is inactive by **default**. Setting the bit in `cflags` **enables** it.
 
-pub struct MaskDefine {
-    pub name: String,        // "RETURNING"
-    pub omit_flag: String,   // "SQLITE_OMIT_RETURNING"
-    pub bit_value: u32,      // 0x00400000
-}
+The keyword lookup encodes both: `aKWCFlag[i]` stores the bit, `aKWCFlagPolarity[i]` stores whether setting the bit enables or disables the keyword. See section 4.4 for the check logic.
 
-pub struct KeywordTable {
-    pub keywords: Vec<KeywordEntry>,
-    pub masks: Vec<MaskDefine>,
-}
+Users configure in terms of the `SQLITE_OMIT_*` / `SQLITE_ENABLE_*` names they know:
+
+```c
+SyntaqliteDialectConfig config = {
+    .sqlite_version = 3035000,
+    .cflags = SYNQ_SQLITE_OMIT_WINDOWFUNC
+            | SYNQ_SQLITE_OMIT_CTE
+            | SYNQ_SQLITE_ENABLE_ORDERED_SET_AGGREGATES,
+};
 ```
 
-### 3.5 Hashing and variant grouping
+A zero-initialized config means "latest version, default cflags (all OMIT off, all ENABLE off)" — identical to current behavior.
 
-Hash each fragment's normalized text (strip comments, normalize whitespace, SHA-256) to identify distinct variants. Group consecutive versions with identical hashes:
+### 4.2 Function signature changes
 
-```rust
-pub struct VariantGroup {
-    pub hash: String,
-    pub versions: Vec<SqliteVersion>,
-    pub first: SqliteVersion,
-    pub last: SqliteVersion,
-    pub text: String,
-}
+`GetToken` and `keywordCode` gain a `const SyntaqliteDialectConfig *` parameter:
 
-pub struct FragmentAnalysis {
-    pub fragment_name: String,
-    pub variants: Vec<VariantGroup>,
-}
+```c
+// Was:
+i64 SynqSqliteGetToken(const unsigned char *z, int *tokenType);
+
+// Now:
+i64 SynqSqliteGetToken(const SyntaqliteDialectConfig *config,
+                        const unsigned char *z, int *tokenType);
 ```
 
-### 3.6 Diff generation
+### 4.3 `GetToken` postlude
 
-For each fragment with more than one variant, produce a unified diff between consecutive variants using a standard diff algorithm (e.g., the `similar` crate).
+At the end of `SynqSqliteGetToken`, before returning:
 
-### 3.7 Output
-
-The tool produces two outputs:
-
-#### 1. Structured data (JSON to stdout)
-
-JSON output to stdout (pipe to `jq` or redirect to file). No TOML — `serde_json` is already a CLI dependency, no new crates needed in codegen.
-
-```json
-{
-  "meta": {
-    "versions_processed": ["3.24.0", "3.25.0", "...", "3.51.2"],
-    "extraction_date": "2026-02-22"
-  },
-  "fragments": {
-    "get_token": {
-      "variant_count": 4,
-      "variants": [
-        {
-          "id": "v1",
-          "hash": "sha256:abc123...",
-          "versions": ["3.24.0", "3.25.0", "...", "3.37.2"],
-          "first": "3.24.0",
-          "last": "3.37.2"
-        },
-        {
-          "id": "v2",
-          "hash": "sha256:def456...",
-          "versions": ["3.38.0", "...", "3.48.0"],
-          "first": "3.38.0",
-          "last": "3.48.0"
-        }
-      ]
-    },
-    "ai_class": {
-      "variant_count": 1,
-      "variants": [
-        {
-          "id": "v1",
-          "hash": "...",
-          "versions": ["..."],
-          "first": "3.24.0",
-          "last": "3.51.2"
-        }
-      ]
-    },
-    "keywords": {
-      "total_keywords_latest": 148,
-      "additions": [
-        {
-          "version": "3.25.0",
-          "added": ["CURRENT", "EXCLUDE", "FILTER", "FOLLOWING", "..."]
-        },
-        { "version": "3.35.0", "added": ["MATERIALIZED", "RETURNING"] },
-        { "version": "3.46.0", "added": ["WITHIN"] }
-      ]
+```c
+  // Version-dependent token reclassification.
+  if (config && config->sqlite_version != 0) {
+    if (*tokenType == SYNTAQLITE_TK_PTR && config->sqlite_version < 3038000) {
+      // -> and ->> operators added in 3.38.
+      // Return just the '-' as TK_MINUS; next call picks up '>' naturally.
+      *tokenType = SYNTAQLITE_TK_MINUS;
+      return 1;
+    }
+    if (*tokenType == SYNTAQLITE_TK_QNUMBER && config->sqlite_version < 3046000) {
+      // Digit separators added in 3.46.
+      // Truncate to the first underscore.
+      i64 j;
+      int saw_dot = 0;
+      for (j = 0; j < i; j++) {
+        if (z[j] == '_') break;
+        if (z[j] == '.') saw_dot = 1;
+      }
+      *tokenType = saw_dot ? SYNTAQLITE_TK_FLOAT : SYNTAQLITE_TK_INTEGER;
+      return j;
     }
   }
-}
 ```
 
-No separate markdown report — `jq` on the JSON output is sufficient for human review. Can always add later if needed.
+When `config` is NULL or `sqlite_version` is 0, this is a single branch-not-taken. When compiled with `-DSYNQ_SQLITE_VERSION=0`, the compiler eliminates the entire block.
 
-#### 2. Raw variant files
+### 4.4 Keyword version + cflag gating
 
-```
-output/variants/
-  get_token_v1.c
-  get_token_v2.c
-  ...
-  ai_class.c
-  keywords/
-    keywords_3_24_0.txt
-    keywords_3_25_0.txt
-    ...
-```
-
-### 3.8 CLI interface
-
-```
-syntaqlite analyze-versions \
-    --sqlite-source-dir ./sqlite-sources/ \
-    --output-dir ./analysis-output/
-```
-
-Source acquisition is handled by a separate bash download script (`tools/dev/download-sqlite-versions`), not by the Rust tool. No download logic in Rust.
-
-### 3.9 Handling extraction failures
-
-Older versions may have slightly different source structure. The `c_extractor` might fail on some fragments. The tool should:
-
-1. Log the failure with version and fragment name
-2. Continue processing other fragments/versions
-3. Include failures in the report: "get_token: extraction failed for 3.24.0"
-4. This tells the developer where manual intervention is needed
-
-### 3.10 Expected results
-
-| Fragment       | Expected variants | Notes                                       |
-| -------------- | ----------------- | ------------------------------------------- |
-| `get_token`    | 3-6               | Major: `->` (3.38), digit separator, others |
-| `aiClass`      | 1-2               | Might change with new CC\_\* values         |
-| CC\_\* defines | 1-2               | New defines for new token types             |
-| `ctypeMap`     | 1                 | Frozen                                      |
-| `upperToLower` | 1                 | Frozen                                      |
-| `idChar`       | 1                 | Frozen                                      |
-| `charMap`      | 1                 | Frozen                                      |
-| `isMacros`     | 1                 | Frozen                                      |
-| Keywords       | ~5 transitions    | Additions in 3.25, 3.30, 3.35, 3.46         |
-
-### 3.11 Implementation location
-
-New module: `syntaqlite-codegen/src/version_analysis/` (feature-gated behind `version-analysis`)
-
-Files:
-
-- `mod.rs` — public types (`SqliteVersion`, `ExtractedFragments`, `VersionAnalysis`, etc.) + orchestration
-- `extract.rs` — fragment extraction (reuses `CExtractor`)
-- `keywords.rs` — keyword table parsing from `mkkeywordhash.c`
-- `hash.rs` — normalization + SHA-256 hashing
-- `diff.rs` — variant grouping + unified diffs
-
-Depends on:
-
-- `syntaqlite_codegen::c_source::c_extractor::CExtractor` (existing, same crate)
-- `similar` crate (for diffs, add to Cargo.toml as optional)
-- `sha2` crate (for hashing, add to Cargo.toml as optional)
-
-No `serde`, `toml`, or `download.rs` in codegen. Serialization happens in CLI via its existing `serde_json`. Download handled by bash script (`tools/dev/download-sqlite-versions`).
-
-Wire into CLI via new subcommand in `syntaqlite-cli/src/codegen_sqlite.rs` (behind `version-analysis` feature).
-
----
-
-## 4. Phase 2: Version-Annotated Artifacts
-
-Once the analysis report exists, a developer creates the version-annotated artifacts. Guided by the report, verified by oracle tests.
-
-### 4.1 Artifacts to produce
-
-Checked into `syntaqlite-codegen/sqlite/versioned/`:
-
-- `get_token_v1.c` ... `get_token_vN.c` — complete tokenizer function per variant
-- `ai_class.c` — single version (or v1/v2 if it varies)
-- `cc_defines_v1.h` / `cc_defines_v2.h` — if they differ
-- `ctype_map.c`, `upper_to_lower.c`, `id_char.h`, `char_map.h`, `is_macros.h` — single version each
-- `keywords.toml` — all keywords with `since` field
-- `version_map.toml` — maps version ranges to variant files
-
-### 4.2 How codegen consumes these
-
-Current: `third_party/sqlite/src/tokenize.c` -> `c_extractor` -> `c_transformer` -> `sqlite_tokenize.c`
-
-New: `versioned/get_token_v*.c` -> codegen assembles dispatch function -> `c_transformer` -> `sqlite_tokenize.c`
-
-Generated `sqlite_tokenize.c`:
+The keyword table (generated by `mkkeywordhash`) gains parallel arrays for version and cflag gating:
 
 ```c
-#include "version_dispatch.h"
-static const unsigned char aiClass[] = { ... };
-
-static i64 synq_get_token_v1(const unsigned char *z, int *tokenType) { ... }
-static i64 synq_get_token_v2(const unsigned char *z, int *tokenType) { ... }
-static i64 synq_get_token_v3(const unsigned char *z, int *tokenType) { ... }
-
-i64 SynqSqliteGetToken(const SyntaqliteDialect *d, const unsigned char *z, int *tokenType) {
-#ifdef SYNQ_SQLITE_VERSION
-    #if SYNQ_SQLITE_VERSION >= 3049000
-        return synq_get_token_v3(z, tokenType);
-    #elif SYNQ_SQLITE_VERSION >= 3038000
-        return synq_get_token_v2(z, tokenType);
-    #else
-        return synq_get_token_v1(z, tokenType);
-    #endif
-#else
-    if (d->sqlite_version >= 3049000) return synq_get_token_v3(z, tokenType);
-    if (d->sqlite_version >= 3038000) return synq_get_token_v2(z, tokenType);
-    return synq_get_token_v1(z, tokenType);
-#endif
-}
-```
-
-Generated `sqlite_keyword.c` — superset hash table plus `aKWVersion[]`:
-
-```c
-static const int synq_sqlite_aKWVersion[148] = {
-    0,        /* ABORT */
+// Introduction version for each keyword (0 = always present).
+static const int32_t synq_sqlite_aKWSince[148] = {
+    0,          /* ABORT */
+    0,          /* ACTION */
     ...
-    3350000,  /* RETURNING */
+    3035000,    /* RETURNING */
+    3047000,    /* WITHIN */
+};
+
+// CFlag bit for each keyword (0 = no cflag dependency).
+static const uint32_t synq_sqlite_aKWCFlag[148] = {
+    0,                                          /* ABORT */
+    ...
+    SYNQ_SQLITE_OMIT_RETURNING,                 /* RETURNING */
+    SYNQ_SQLITE_OMIT_WINDOWFUNC,                /* WINDOW */
+    SYNQ_SQLITE_ENABLE_ORDERED_SET_AGGREGATES,  /* WITHIN */
     ...
 };
 
-int synq_sqlite3_keywordCode(const SyntaqliteDialect *d, const char *z, int n, int *pType) {
+// Polarity: 0 = OMIT (keyword active by default, bit disables it),
+//           1 = ENABLE (keyword inactive by default, bit enables it).
+static const uint8_t synq_sqlite_aKWCFlagPolarity[148] = {
+    0,  /* ABORT */
     ...
-    for (...) {
-        ...
-        if (SYNQ_VER_LT(d, synq_sqlite_aKWVersion[i])) continue;
-        if (synq_sqlite_aKWMask[i] && !SYNQ_HAS_FEATURE(d, synq_sqlite_aKWMask[i])) continue;
-        *pType = synq_sqlite_aKWCode[i];
-        break;
+    0,  /* RETURNING — OMIT flag */
+    0,  /* WINDOW — OMIT flag */
+    1,  /* WITHIN — ENABLE flag */
+    ...
+};
+```
+
+The keyword lookup function checks both version and cflags, respecting polarity:
+
+```c
+int SynqSqliteKeywordCode(const SyntaqliteDialectConfig *config,
+                           const char *z, int n, int *pType) {
+    ...
+    // Version check: skip keywords newer than target version.
+    if (config && config->sqlite_version != 0
+        && synq_sqlite_aKWSince[i] > config->sqlite_version) {
+      break;  // not a keyword, fall through to TK_ID
     }
+    // CFlag check with polarity:
+    //   OMIT (polarity=0): keyword disabled when bit IS set
+    //   ENABLE (polarity=1): keyword disabled when bit IS NOT set
+    if (config && synq_sqlite_aKWCFlag[i] != 0) {
+      int bit_set = (synq_sqlite_aKWCFlag[i] & config->cflags) != 0;
+      int is_enable = synq_sqlite_aKWCFlagPolarity[i];
+      if (bit_set != is_enable) {
+        break;  // cflag disables this keyword, fall through to TK_ID
+      }
+    }
+    *pType = synq_sqlite_aKWCode[i];
+    break;
 }
 ```
 
-### 4.3 Dialect struct changes
+The polarity logic: for OMIT flags (`polarity=0`), the keyword is disabled when the bit is set (`bit_set=1, is_enable=0, 1 != 0 → skip`). For ENABLE flags (`polarity=1`), the keyword is disabled when the bit is NOT set (`bit_set=0, is_enable=1, 0 != 1 → skip`).
 
-```c
-typedef struct SyntaqliteDialect {
-    const char* name;
-    int32_t  sqlite_version;    // NEW: e.g. 3035000
-    uint32_t feature_flags;     // NEW: bitmask, 0xFFFFFFFF = all
-    // ... existing fields unchanged ...
-} SyntaqliteDialect;
+Most keywords have `since = 0` and `cflag = 0`, so both checks are almost always false.
+
+### 4.5 Keyword `since` data
+
+From the phase 1 analysis:
+
+```
+since 0:        All keywords present in 3.12.2 (the baseline)
+since 3024000:  DO, NOTHING
+since 3025000:  CURRENT, FILTER, FOLLOWING, OVER, PARTITION,
+                PRECEDING, RANGE, ROWS, UNBOUNDED, WINDOW
+since 3028000:  EXCLUDE, GROUPS, OTHERS, TIES
+since 3030000:  FIRST, LAST, NULLS
+since 3031000:  ALWAYS, GENERATED
+since 3035000:  MATERIALIZED, RETURNING
+since 3047000:  WITHIN
 ```
 
-### 4.4 Function signature change
+### 4.6 Keyword-to-cflag mapping
 
-`get_token` and `keywordCode` gain `const SyntaqliteDialect *d` as first parameter:
+Each `SQLITE_OMIT_*` flag suppresses specific keywords:
+
+| CFlag                                  | Keywords suppressed                                                                                                   |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `SQLITE_OMIT_WINDOWFUNC`               | WINDOW, OVER, PARTITION, CURRENT, FOLLOWING, PRECEDING, RANGE, ROWS, UNBOUNDED, FILTER, EXCLUDE, GROUPS, OTHERS, TIES |
+| `SQLITE_OMIT_CTE`                      | WITH                                                                                                                  |
+| `SQLITE_OMIT_COMPOUND_SELECT`          | UNION, INTERSECT, EXCEPT                                                                                              |
+| `SQLITE_OMIT_GENERATED_COLUMNS`        | GENERATED, ALWAYS                                                                                                     |
+| `SQLITE_OMIT_RETURNING`                | RETURNING                                                                                                             |
+| `SQLITE_OMIT_CAST`                     | CAST                                                                                                                  |
+| `SQLITE_OMIT_EXPLAIN`                  | EXPLAIN                                                                                                               |
+| `SQLITE_OMIT_VIEW`                     | VIEW                                                                                                                  |
+| `SQLITE_OMIT_TRIGGER`                  | TRIGGER                                                                                                               |
+| `SQLITE_OMIT_ATTACH`                   | ATTACH, DETACH                                                                                                        |
+| `SQLITE_OMIT_PRAGMA`                   | PRAGMA                                                                                                                |
+| `SQLITE_OMIT_REINDEX`                  | REINDEX                                                                                                               |
+| `SQLITE_OMIT_ANALYZE`                  | ANALYZE                                                                                                               |
+| `SQLITE_OMIT_ALTERTABLE`               | ALTER                                                                                                                 |
+| `SQLITE_OMIT_VIRTUALTABLE`             | VIRTUAL                                                                                                               |
+| `SQLITE_OMIT_TEMPDB`                   | TEMP                                                                                                                  |
+| `SQLITE_ENABLE_ORDERED_SET_AGGREGATES` | WITHIN (note: enable flag, not omit)                                                                                  |
+
+This mapping is already encoded in `mkkeywordhash.c`'s mask table. The codegen pipeline extracts it.
+
+### 4.7 `SQLITE_OMIT_SUBQUERY` — the special case
+
+This is the only cflag that affects grammar rules without being keyword-gated. Subqueries use `(SELECT ...)` — all baseline tokens that can't be suppressed.
+
+**Solution**: set a flag on the parse context when a subquery production fires.
+
+The `%ifndef SQLITE_OMIT_SUBQUERY` blocks in `parse.y` guard three groups of rules (subqueries in FROM, IN, and expression position). Since the grammar is **not autogenerated** (it's upstream SQLite with manual modifications), we add the flag directly to the grammar action code by hand:
 
 ```c
-// Was:   (d)->get_token(z, t)
-// Now:   (d)->get_token(d, z, t)
+// Added to subquery grammar actions in parse.y:
+pParse->sawSubquery = 1;
 ```
 
-### 4.5 Rust API additions
+After parsing completes, the caller checks:
+
+```c
+if ((config->cflags & SYNQ_SQLITE_OMIT_SUBQUERY) && pParse->sawSubquery) {
+    // emit diagnostic: "subqueries not available with SQLITE_OMIT_SUBQUERY"
+}
+```
+
+This is O(1) — no AST walk needed.
+
+### 4.8 Dispatch macro update
+
+The `SYNQ_GET_TOKEN` macro gains the config parameter:
+
+```c
+// syntaqlite/csrc/sqlite_dialect_dispatch.h (inline/amalgamation mode):
+#define SYNQ_GET_TOKEN(d, cfg, z, t)  SynqSqliteGetToken(cfg, z, t)
+
+// syntaqlite-runtime/csrc/dialect_dispatch.h (function pointer mode):
+#define SYNQ_GET_TOKEN(d, cfg, z, t)  (d)->get_token(cfg, z, t)
+```
+
+The `get_token` function pointer signature in `SyntaqliteDialect` updates to:
+
+```c
+int64_t (*get_token)(const SyntaqliteDialectConfig *config,
+                     const unsigned char *z, int *tokenType);
+```
+
+The config struct is defined in the runtime — all dialects share it.
+
+### 4.9 Version/config lives on the parser
+
+The `SyntaqliteDialect` struct is static and immutable. The config is per-parser session:
+
+```c
+// New API in parser.h:
+int syntaqlite_parser_set_dialect_config(SyntaqliteParser *p,
+                                         const SyntaqliteDialectConfig *config);
+```
+
+The parser stores the config pointer and passes it through to `SYNQ_GET_TOKEN` calls in `parser.c` and `tokenizer.c`. A NULL config means "latest, default cflags" — current behavior.
+
+```c
+SyntaqliteDialectConfig config = {
+    .sqlite_version = 3035000,
+    .cflags = SYNQ_SQLITE_OMIT_WINDOWFUNC,
+};
+syntaqlite_parser_set_dialect_config(parser, &config);
+```
+
+### 4.10 Compile-time mode
+
+For compile-time version pinning, define `SYNQ_SQLITE_VERSION` and/or `SYNQ_SQLITE_CFLAGS`:
+
+```c
+// -DSYNQ_SQLITE_VERSION=3035000 -DSYNQ_SQLITE_CFLAGS=SYNQ_SQLITE_OMIT_WINDOWFUNC
+
+// In dialect_dispatch.h:
+#ifdef SYNQ_SQLITE_VERSION
+static const SyntaqliteDialectConfig SYNQ_STATIC_CONFIG = {
+    .sqlite_version = SYNQ_SQLITE_VERSION,
+#ifdef SYNQ_SQLITE_CFLAGS
+    .cflags = SYNQ_SQLITE_CFLAGS,
+#else
+    .cflags = 0,
+#endif
+};
+#define SYNQ_GET_TOKEN(d, cfg, z, t)  SynqSqliteGetToken(&SYNQ_STATIC_CONFIG, z, t)
+#endif
+```
+
+The compiler sees through the pointer to the static const and constant-folds all comparisons.
+
+### 4.11 Rust-side changes
 
 ```rust
-impl Dialect<'_> {
-    pub fn with_version(&self, version: u32) -> OwnedDialect { ... }
-    pub fn without_feature(&self, feature: Feature) -> OwnedDialect { ... }
-    pub fn version_issues(&self, stmt: &Statement, target: u32) -> Vec<VersionIssue> { ... }
+// In syntaqlite-runtime — mirrors the C struct:
+pub struct DialectConfig {
+    pub sqlite_version: i32,    // 0 = latest
+    pub cflags: u32,            // 0 = default cflags
+}
+
+// Parser gains config setter:
+impl Parser {
+    pub fn set_dialect_config(&mut self, config: &DialectConfig) { ... }
 }
 ```
+
+### 4.12 Code ownership: everything in `syntaqlite/` stays generated
+
+A key invariant: **`syntaqlite/csrc/` is 100% generated code** (`@generated` marker). All version/cflag logic — the `GetToken` postlude, the `aKWSince[]`/`aKWCFlag[]`/`aKWCFlagPolarity[]` arrays, the keyword version/cflag checks — is emitted by the codegen pipeline. No hand-written C files in the dialect crate. The config struct and cflag constants live in the runtime (hand-written, shared across all dialects).
+
+The codegen pipeline already transforms extracted code (symbol renaming via `c_transformer`, fragment assembly). Injecting the postlude into `GetToken` and emitting version/cflag data alongside the keyword table is the same kind of transformation. The "hand-written" decisions (which tokens to reclassify, version thresholds, cflag mappings) live as logic in `syntaqlite-codegen/src/`, not as C source files.
+
+This keeps the scope manageable: two `if` checks in the postlude, two data arrays for keywords. If the version-gating logic grows significantly in the future, the crate structure can be revisited — but for now, codegen injection is the right trade-off.
+
+### 4.13 Codegen changes
+
+Generated output changes (all emitted by the codegen pipeline):
+
+| File                        | Change                                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| `sqlite_tokenize.c`         | `SynqSqliteGetToken` gains `const SyntaqliteDialectConfig *` param + postlude (generated) |
+| `sqlite_keyword.c`          | `aKWSince[]` + `aKWCFlag[]` + `aKWCFlagPolarity[]` arrays + checks in lookup (generated)  |
+| `sqlite_dialect_dispatch.h` | `SYNQ_GET_TOKEN` macro gains config param, compile-time mode (generated)                  |
+| `dialect.c`                 | Function pointer assignment (signature update)                                            |
+
+Codegen pipeline changes (where the logic lives):
+
+| Module                         | Change                                                                                                    |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `sqlite_runtime_codegen.rs`    | Tokenizer extraction: inject config param + postlude into `GetToken`                                      |
+| `tools/mkkeyword.rs`           | Keyword generation: emit `aKWSince[]` + `aKWCFlag[]` + `aKWCFlagPolarity[]` arrays + version/cflag checks |
+| `dialect_codegen/c_dialect.rs` | Dispatch macro generation: add config param                                                               |
+
+Runtime changes (hand-written, dialect-agnostic):
+
+| File                                                     | Change                                                       |
+| -------------------------------------------------------- | ------------------------------------------------------------ |
+| `syntaqlite-runtime/include/syntaqlite/dialect_config.h` | NEW: `SyntaqliteDialectConfig` struct definition             |
+| `syntaqlite-runtime/include/syntaqlite/sqlite_cflags.h`  | NEW: `SYNQ_SQLITE_OMIT_*` / `SYNQ_SQLITE_ENABLE_*` constants |
+| `syntaqlite-runtime/include/syntaqlite/dialect.h`        | `get_token` function pointer signature                       |
+| `syntaqlite-runtime/include/syntaqlite/parser.h`         | `syntaqlite_parser_set_dialect_config()` API                 |
+| `syntaqlite-runtime/csrc/parser.c`                       | Store config pointer, pass to `SYNQ_GET_TOKEN`               |
+| `syntaqlite-runtime/csrc/tokenizer.c`                    | Pass config to `SYNQ_GET_TOKEN`                              |
+| `syntaqlite-runtime/csrc/dialect_dispatch.h`             | `SYNQ_GET_TOKEN` macro gains config param                    |
+| `syntaqlite-runtime/src/dialect/ffi.rs`                  | `get_token` field type update, `DialectConfig` struct        |
+| `syntaqlite-runtime/src/parser/session.rs`               | Expose `set_dialect_config`                                  |
 
 ---
 
-## 5. Phase 3: Oracle Test Generation
+## 5. Phase 3: Oracle Tests
 
-### 5.1 The oracle program
+### 5.1 Purpose
 
-A small C program compiled against each SQLite version's amalgamation:
+Verify that syntaqlite's version/cflag-gated tokenizer and keyword behavior matches real SQLite at key version boundaries.
+
+### 5.2 Test corpus
+
+SQL inputs exercising version-dependent and cflag-dependent behavior:
+
+```sql
+-- Keywords: should be TK_ID before their introduction version
+SELECT returning FROM t;
+SELECT materialized FROM t;
+SELECT within FROM t;
+SELECT window FROM t;
+SELECT filter FROM t;
+
+-- TK_PTR: should be TK_MINUS + TK_GT before 3.38
+SELECT x->'key' FROM t;
+SELECT x->>'key' FROM t;
+
+-- TK_QNUMBER: should be TK_INTEGER + TK_ID before 3.46
+SELECT 1_000;
+SELECT 1_000.5;
+SELECT 0x1_FF;
+
+-- CFlag-gated keywords
+EXPLAIN SELECT 1;                   -- SQLITE_OMIT_EXPLAIN
+SELECT * FROM (SELECT 1);           -- SQLITE_OMIT_SUBQUERY
+SELECT 1 UNION SELECT 2;            -- SQLITE_OMIT_COMPOUND_SELECT
+WITH cte AS (SELECT 1) SELECT * FROM cte;  -- SQLITE_OMIT_CTE
+SELECT CAST(1 AS TEXT);             -- SQLITE_OMIT_CAST
+
+-- Baseline: should tokenize identically across all versions
+SELECT * FROM t WHERE x = 1;
+CREATE TABLE t(a INTEGER, b TEXT);
+```
+
+### 5.3 Oracle generation
+
+A small C program compiled against each real SQLite version's amalgamation. It tokenizes the test corpus and outputs JSON with `{token_type, length, text}` per token:
 
 ```c
-// oracle_gen.c — compile with: cc oracle_gen.c sqlite3.c -o oracle
+// tools/dev/oracle_tokenizer.c
+// Compile: cc oracle_tokenizer.c sqlite3.c -o oracle
 int sqlite3GetToken(const unsigned char*, int*);
-
-int main() {
-    const char *inputs[] = {
-        "SELECT * FROM t",
-        "SELECT x->>'key' FROM t",
-        "SELECT 1_000_000",
-        "SELECT RETURNING FROM t",
-        "SELECT WITHIN FROM t",
-        NULL
-    };
-    // tokenize each, output JSON: {type_name, length} per token
-}
+int main() { /* tokenize inputs, output JSON */ }
 ```
 
 Run once per version. Output checked into `testdata/`.
 
-### 5.2 CI tests
+### 5.4 CI tests
 
 ```rust
 #[test]
-fn tokenizer_matches_oracle_3_35() {
-    let oracle = load_oracle("testdata/oracle_tokens_3_35_0.json");
-    let dialect = sqlite_dialect().with_version(3_035_000);
-    for entry in &oracle {
-        let actual = tokenize_all(&dialect, &entry.input);
-        assert_eq!(actual, entry.expected_tokens);
+fn version_gated_tokenizer_matches_oracle() {
+    let test_versions = [
+        (3_024_000, "testdata/oracle_tokens_3_24_0.json"),
+        (3_035_000, "testdata/oracle_tokens_3_35_0.json"),
+        (3_038_000, "testdata/oracle_tokens_3_38_0.json"),
+        (3_046_000, "testdata/oracle_tokens_3_46_0.json"),
+    ];
+    for (version, oracle_path) in &test_versions {
+        let oracle = load_oracle(oracle_path);
+        let config = DialectConfig { sqlite_version: *version, cflags: 0 };
+        let mut parser = Parser::new();
+        parser.set_dialect_config(&config);
+        for entry in &oracle {
+            let tokens = tokenize_all(&parser, &entry.input);
+            // TK_COMMENT vs TK_SPACE mismatch is expected for < 3.49
+            // (syntaqlite always emits TK_COMMENT, real SQLite < 3.49 emits TK_SPACE)
+            assert_tokens_match(&tokens, &entry.expected, *version);
+        }
     }
 }
 ```
 
+### 5.5 CFlag tests
+
+```rust
+#[test]
+fn omit_windowfunc_suppresses_keywords() {
+    let config = DialectConfig {
+        sqlite_version: 0,  // latest
+        cflags: SYNQ_SQLITE_OMIT_WINDOWFUNC,
+    };
+    // "WINDOW" should tokenize as TK_ID, not TK_WINDOW
+    let tokens = tokenize_with_config("SELECT window FROM t", &config);
+    assert_eq!(tokens[1].token_type, TK_ID);
+}
+
+#[test]
+fn omit_subquery_sets_flag() {
+    let config = DialectConfig {
+        sqlite_version: 0,
+        cflags: SYNQ_SQLITE_OMIT_SUBQUERY,
+    };
+    // Should parse successfully (full grammar) but flag subquery usage
+    let result = parse_with_config("SELECT * FROM (SELECT 1)", &config);
+    assert!(result.saw_subquery);
+    // The caller decides what to do with this — error, warning, etc.
+}
+```
+
+### 5.6 Oracle generation tooling
+
+```
+tools/dev/generate-oracle-data    # downloads amalgamations, compiles, runs
+tools/dev/oracle_tokenizer.c      # the C program
+```
+
+Only runs once (or when adding new test inputs). Oracle JSON files are checked in.
+
 ---
 
-## 6. Workflow: Adding a New SQLite Version
+## 6. Implementation Order
+
+1. **Config struct + signature changes** — define `SyntaqliteDialectConfig`, update `GetToken` and `keywordCode` to accept `const SyntaqliteDialectConfig *`. Wire through dispatch macros, parser, tokenizer. All callers pass NULL (latest). No behavioral change.
+
+2. **`GetToken` postlude** — add the `TK_PTR` and `TK_QNUMBER` reclassification block. Dead code when config is NULL.
+
+3. **Keyword `since` + cflag arrays** — add `aKWSince[]`, `aKWCFlag[]`, and `aKWCFlagPolarity[]` to the `mkkeywordhash` codegen pipeline. Add version + cflag checks to keyword lookup. Dead code when config is NULL.
+
+4. **Subquery flag** — add `sawSubquery` field to parse context. Set it in the subquery grammar actions. Check after parsing when `SQLITE_OMIT_SUBQUERY` is active.
+
+5. **Parser API** — add `syntaqlite_parser_set_config()`. Wire to Rust side.
+
+6. **Compile-time mode** — add `SYNQ_SQLITE_VERSION` / `SYNQ_SQLITE_OMIT_FLAGS` support to dispatch headers.
+
+7. **Oracle tests** — generate oracle data, write test harness, verify against key version boundaries and cflag combinations.
+
+---
+
+## 7. Workflow: Adding a New SQLite Version
 
 ```
 1. Download new version source
 
 2. Run: syntaqlite analyze-versions --sqlite-source-dir ./sqlite-sources/
-   Report: "GetToken: identical to v3" or "GetToken: NEW VARIANT"
+   Compare keyword list and tokenizer fragments.
 
-3a. If identical: update version_map.toml range, done. (~30 seconds)
+3. If new keywords: add entries to the `since` data in codegen, re-run codegen.
 
-3b. If new variant:
-    Copy extracted variant file into versioned/
-    Add entry to version_map.toml
-    Generate oracle test data
-    Run tests, verify, commit (~30 minutes)
+4. If tokenizer behavioral change (new token type): add reclassification
+   case to the GetToken postlude.
+
+5. Generate oracle test data for the new version.
+
+6. Run tests, verify, commit.
 ```
 
 ---
 
-## 7. Key Design Decisions
+## 8. Key Design Decisions
 
-| Decision                                     | Choice                        | Rationale                                                                         |
-| -------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------- |
-| Whole function variants vs line-level ifdefs | Whole variants                | ~200 lines x ~5 variants. Trivially small. Much easier to read, audit, debug.     |
-| Backwards compat tracking                    | Not needed                    | SQLite is purely additive. Every check is `>= threshold`.                         |
-| Runtime cflags mechanism                     | Same as runtime version       | Both resolve to AST validation. `SYNQ_HAS_FEATURE` macro, same dual-mode pattern. |
-| Keyword storage                              | Superset hash + version array | One table, one extra comparison per probe. No per-version regeneration.           |
-| Grammar runtime switching                    | Full parse + AST validation   | Better UX: "RETURNING requires 3.35+" vs cryptic syntax error.                    |
-| Automation level                             | Semi-automated + oracle tests | Tool extracts/diffs/reports. Human annotates. Tests verify.                       |
-| First phase                                  | Download + analysis only      | Produces the data for all subsequent decisions. No premature architecture.        |
-
----
-
-## 8. File Layout After Full Implementation
-
-```
-syntaqlite-codegen/
-  sqlite/
-    lemon.c                           # existing
-    lempar.c                          # existing
-    mkkeywordhash.c                   # existing
-    versioned/                        # NEW
-      get_token_v1.c ... get_token_vN.c
-      ai_class.c
-      cc_defines_v1.h  cc_defines_v2.h
-      ctype_map.c  upper_to_lower.c
-      id_char.h  char_map.h  is_macros.h
-      keywords.toml
-      version_map.toml
-  src/
-    tools/
-      version_analysis.rs             # NEW — Phase 1 tool
-      mkkeyword.rs                    # existing
-    sqlite_runtime_codegen.rs         # MODIFIED later — reads from versioned/
-
-syntaqlite-cli/
-  tests/testdata/
-    oracle_tokens_3_24_0.json         # NEW — oracle data
-    oracle_tokens_3_35_0.json
-    oracle_tokens_3_38_0.json
-    oracle_keywords_3_35_0.json
-    ...
-
-syntaqlite-runtime/
-  include/
-    syntaqlite/dialect.h              # MODIFIED — add sqlite_version, feature_flags
-    syntaqlite_ext/version_dispatch.h # NEW — SYNQ_VER_GE / SYNQ_HAS_FEATURE
-```
+| Decision                     | Choice                              | Rationale                                                                                                   |
+| ---------------------------- | ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Single tokenizer vs variants | Single + postlude                   | Only 2 behavioral differences (TK_PTR, TK_QNUMBER). Postlude is simpler than managing 10 function variants. |
+| Config location              | Parser, not dialect                 | Dialect is static const. Version/cflags are per-session configuration.                                      |
+| Config representation        | Struct pointer                      | Extensible, compiler can see through `const` pointer to static const for optimization.                      |
+| CFlag naming                 | `SQLITE_OMIT_*` names               | Users reason in SQLite terms. Direct mapping from mkkeywordhash masks.                                      |
+| Grammar cflag enforcement    | Keyword suppression + subquery flag | 16/17 cflags are keyword-gated. Only SQLITE_OMIT_SUBQUERY needs special handling (O(1) flag check).         |
+| TK_COMMENT handling          | Always emit                         | Syntaqlite depends on comment/space distinction. Deliberate divergence from pre-3.49 SQLite.                |
+| Backwards compat tracking    | Not needed                          | SQLite is purely additive. Every check is `>= threshold`.                                                   |
 
 ---
 
-## 9. Reference: Current Extraction Pipeline
+## 9. Cost Summary
 
-For context, this is how extraction currently works (the code Phase 2 eventually replaces):
+| Component                 | Runtime cost (when versioning active) | Runtime cost (when not active) |
+| ------------------------- | ------------------------------------- | ------------------------------ |
+| Keyword version check     | 1 int comparison per keyword probe    | 0 (NULL config check)          |
+| Keyword cflag check       | 1 bitmask check per keyword probe     | 0                              |
+| GetToken postlude         | 2 `if` checks (TK_PTR, TK_QNUMBER)    | 0 (NULL config check)          |
+| Subquery flag             | 1 assignment per subquery parsed      | 0                              |
+| Post-parse subquery check | 1 bitmask + flag check                | 0                              |
+| **Total**                 | **Negligible**                        | **Zero**                       |
+
+---
+
+## 10. Reference: Current Extraction Pipeline
+
+For context, this is how extraction currently works:
 
 **Build time** (`syntaqlite-codegen/build.rs`):
 
