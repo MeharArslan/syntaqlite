@@ -439,7 +439,8 @@ const CFLAG_OMIT_WINDOWFUNC: u32 = 0x00000008;
 const CFLAG_OMIT_CTE: u32 = 0x00000040;
 const CFLAG_OMIT_RETURNING: u32 = 0x00010000;
 const CFLAG_OMIT_COMPOUND_SELECT: u32 = 0x00000004;
-const CFLAG_OMIT_SUBQUERY: u32 = 0x00000080;
+// Note: OMIT_SUBQUERY (0x00000080) is not listed here because it doesn't gate
+// any keywords — it uses the saw_subquery flag instead. See subquery tests below.
 const CFLAG_OMIT_VIEW: u32 = 0x00000020;
 const CFLAG_OMIT_TRIGGER: u32 = 0x00000400;
 
