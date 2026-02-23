@@ -28,3 +28,6 @@ examples/syntaqlite_sqlite.c
 
 # profiling
 profile.json.gz
+
+# For analysis
+sqlite-sources

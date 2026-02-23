@@ -11,6 +11,7 @@ path = "src/main.rs"
 default = ["codegen-dialect"]
 codegen-dialect = ["dep:syntaqlite-codegen"]
 codegen-sqlite = ["dep:syntaqlite-codegen"]
+version-analysis = ["dep:syntaqlite-codegen", "syntaqlite-codegen/version-analysis"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }

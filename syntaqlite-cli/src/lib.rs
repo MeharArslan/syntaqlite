@@ -18,6 +18,9 @@ mod codegen_sqlite;
 
 mod lsp;
 
+#[cfg(feature = "version-analysis")]
+mod version_analysis;
+
 #[derive(Parser)]
 #[command(about = "SQL formatting and analysis tools")]
 struct Cli {
@@ -67,6 +70,9 @@ enum Command {
     #[cfg(feature = "codegen-sqlite")]
     #[command(flatten)]
     Sqlite(codegen_sqlite::CodegenCommand),
+    #[cfg(feature = "version-analysis")]
+    #[command(flatten)]
+    VersionAnalysis(version_analysis::VersionAnalysisCommand),
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -297,6 +303,8 @@ pub fn run(name: &str, dialect: &Dialect) {
         Command::Dialect(cmd) => codegen_dialect::dispatch(cmd),
         #[cfg(feature = "codegen-sqlite")]
         Command::Sqlite(cmd) => codegen_sqlite::dispatch(cmd),
+        #[cfg(feature = "version-analysis")]
+        Command::VersionAnalysis(cmd) => version_analysis::dispatch(cmd),
     };
 
     if let Err(e) = result {

@@ -272,80 +272,68 @@ For each fragment with more than one variant, produce a unified diff between con
 
 ### 3.7 Output
 
-The tool produces three outputs:
+The tool produces two outputs:
 
-#### 1. Structured data (`analysis_report.toml`)
+#### 1. Structured data (JSON to stdout)
 
-```toml
-[meta]
-versions_processed = ["3.24.0", "3.25.0", ..., "3.51.2"]
-extraction_date = "2026-02-22"
+JSON output to stdout (pipe to `jq` or redirect to file). No TOML — `serde_json` is already a CLI dependency, no new crates needed in codegen.
 
-[fragments.get_token]
-variant_count = 4
-
-[[fragments.get_token.variants]]
-id = "v1"
-hash = "sha256:abc123..."
-versions = ["3.24.0", "3.25.0", ..., "3.37.2"]
-first = "3.24.0"
-last = "3.37.2"
-
-[[fragments.get_token.variants]]
-id = "v2"
-hash = "sha256:def456..."
-versions = ["3.38.0", ..., "3.48.0"]
-first = "3.38.0"
-last = "3.48.0"
-
-[fragments.ai_class]
-variant_count = 1
-
-[fragments.keywords]
-total_keywords_latest = 148
-
-[[fragments.keywords.additions]]
-version = "3.25.0"
-added = ["CURRENT", "EXCLUDE", "FILTER", "FOLLOWING", ...]
-
-[[fragments.keywords.additions]]
-version = "3.35.0"
-added = ["MATERIALIZED", "RETURNING"]
-
-[[fragments.keywords.additions]]
-version = "3.46.0"
-added = ["WITHIN"]
+```json
+{
+  "meta": {
+    "versions_processed": ["3.24.0", "3.25.0", "...", "3.51.2"],
+    "extraction_date": "2026-02-22"
+  },
+  "fragments": {
+    "get_token": {
+      "variant_count": 4,
+      "variants": [
+        {
+          "id": "v1",
+          "hash": "sha256:abc123...",
+          "versions": ["3.24.0", "3.25.0", "...", "3.37.2"],
+          "first": "3.24.0",
+          "last": "3.37.2"
+        },
+        {
+          "id": "v2",
+          "hash": "sha256:def456...",
+          "versions": ["3.38.0", "...", "3.48.0"],
+          "first": "3.38.0",
+          "last": "3.48.0"
+        }
+      ]
+    },
+    "ai_class": {
+      "variant_count": 1,
+      "variants": [
+        {
+          "id": "v1",
+          "hash": "...",
+          "versions": ["..."],
+          "first": "3.24.0",
+          "last": "3.51.2"
+        }
+      ]
+    },
+    "keywords": {
+      "total_keywords_latest": 148,
+      "additions": [
+        {
+          "version": "3.25.0",
+          "added": ["CURRENT", "EXCLUDE", "FILTER", "FOLLOWING", "..."]
+        },
+        { "version": "3.35.0", "added": ["MATERIALIZED", "RETURNING"] },
+        { "version": "3.46.0", "added": ["WITHIN"] }
+      ]
+    }
+  }
+}
 ```
 
-#### 2. Human-readable report (`analysis_report.md`)
+No separate markdown report — `jq` on the JSON output is sufficient for human review. Can always add later if needed.
 
-```markdown
-# SQLite Version Analysis Report
-
-Processed 28 versions: 3.24.0 through 3.51.2
-
-## get_token — 4 distinct variants
-
-### Variant v1: 3.24.0 - 3.37.2 (14 versions)
-
-Base tokenizer. No JSON pointer operators.
-
-### Variant v2: 3.38.0 - 3.48.0 (11 versions)
-
-Diff from v1: +3 lines in CC_MINUS case (-> operator)
-[unified diff here]
-
-## ai_class — 1 variant (identical across all versions)
-
-## Keywords — 4 transition points
-
-| Version | Added                        | Removed |
-| ------- | ---------------------------- | ------- |
-| 3.25.0  | +16 (CURRENT, EXCLUDE, ...)  | 0       |
-| 3.35.0  | +2 (MATERIALIZED, RETURNING) | 0       |
-```
-
-#### 3. Raw variant files
+#### 2. Raw variant files
 
 ```
 output/variants/
@@ -367,15 +355,7 @@ syntaqlite analyze-versions \
     --output-dir ./analysis-output/
 ```
 
-Or with download:
-
-```
-syntaqlite analyze-versions \
-    --download \
-    --versions 3.24.0,3.25.0,...,3.51.2 \
-    --cache-dir ./sqlite-sources/ \
-    --output-dir ./analysis-output/
-```
+Source acquisition is handled by a separate bash download script (`tools/dev/download-sqlite-versions`), not by the Rust tool. No download logic in Rust.
 
 ### 3.9 Handling extraction failures
 
@@ -402,16 +382,25 @@ Older versions may have slightly different source structure. The `c_extractor` m
 
 ### 3.11 Implementation location
 
-New file: `syntaqlite-codegen-sqlite/src/tools/version_analysis.rs`
+New module: `syntaqlite-codegen/src/version_analysis/` (feature-gated behind `version-analysis`)
+
+Files:
+
+- `mod.rs` — public types (`SqliteVersion`, `ExtractedFragments`, `VersionAnalysis`, etc.) + orchestration
+- `extract.rs` — fragment extraction (reuses `CExtractor`)
+- `keywords.rs` — keyword table parsing from `mkkeywordhash.c`
+- `hash.rs` — normalization + SHA-256 hashing
+- `diff.rs` — variant grouping + unified diffs
 
 Depends on:
 
-- `syntaqlite_codegen::c_source::c_extractor::CExtractor` (existing)
-- `similar` crate (for diffs, add to Cargo.toml)
-- `sha2` crate (for hashing, add to Cargo.toml)
-- `toml` / `serde` (for structured output)
+- `syntaqlite_codegen::c_source::c_extractor::CExtractor` (existing, same crate)
+- `similar` crate (for diffs, add to Cargo.toml as optional)
+- `sha2` crate (for hashing, add to Cargo.toml as optional)
 
-Wire into CLI via new subcommand in `syntaqlite-cli/src/lib.rs` (behind the `codegen` feature).
+No `serde`, `toml`, or `download.rs` in codegen. Serialization happens in CLI via its existing `serde_json`. Download handled by bash script (`tools/dev/download-sqlite-versions`).
+
+Wire into CLI via new subcommand in `syntaqlite-cli/src/codegen_sqlite.rs` (behind `version-analysis` feature).
 
 ---
 
@@ -421,7 +410,7 @@ Once the analysis report exists, a developer creates the version-annotated artif
 
 ### 4.1 Artifacts to produce
 
-Checked into `syntaqlite-codegen-sqlite/sqlite/versioned/`:
+Checked into `syntaqlite-codegen/sqlite/versioned/`:
 
 - `get_token_v1.c` ... `get_token_vN.c` — complete tokenizer function per variant
 - `ai_class.c` — single version (or v1/v2 if it varies)
@@ -594,7 +583,7 @@ fn tokenizer_matches_oracle_3_35() {
 ## 8. File Layout After Full Implementation
 
 ```
-syntaqlite-codegen-sqlite/
+syntaqlite-codegen/
   sqlite/
     lemon.c                           # existing
     lempar.c                          # existing
@@ -613,7 +602,7 @@ syntaqlite-codegen-sqlite/
       mkkeyword.rs                    # existing
     sqlite_runtime_codegen.rs         # MODIFIED later — reads from versioned/
 
-syntaqlite/
+syntaqlite-cli/
   tests/testdata/
     oracle_tokens_3_24_0.json         # NEW — oracle data
     oracle_tokens_3_35_0.json
@@ -633,11 +622,11 @@ syntaqlite-runtime/
 
 For context, this is how extraction currently works (the code Phase 2 eventually replaces):
 
-**Build time** (`syntaqlite-codegen-sqlite/build.rs`):
+**Build time** (`syntaqlite-codegen/build.rs`):
 
 - Sets `SYNTAQLITE_SQLITE_TOKENIZE_C` env var pointing to `third_party/src/sqlite/src/tokenize.c`
 
-**Codegen time** (`syntaqlite-codegen-sqlite/src/lib.rs`):
+**Codegen time** (`syntaqlite-codegen/src/lib.rs`):
 
 - `embedded_sqlite_tokenize_c()` -> `include_str!(env!("SYNTAQLITE_SQLITE_TOKENIZE_C"))`
 - `embedded_sqlite_global_c()` -> `include_str!("/../third_party/src/sqlite/src/global.c")`
@@ -646,7 +635,7 @@ For context, this is how extraction currently works (the code Phase 2 eventually
 
 **Keyword generation** (`sqlite_runtime_codegen.rs::generate_keyword_hash()`):
 
-- Spawns `mkkeyword` subprocess (compiled from `sqlite/mkkeywordhash.c`)
+- Spawns `mkkeyword` subprocess (compiled from `syntaqlite-codegen/sqlite/mkkeywordhash.c`)
 - Accepts optional `--extra-file` for dialect extension keywords
 - Output processed by `c_transformer` to rename symbols
 
@@ -655,7 +644,7 @@ For context, this is how extraction currently works (the code Phase 2 eventually
 - `third_party/src/sqlite/src/tokenize.c` — GetToken, aiClass, CC\_\*, IdChar, charMap
 - `third_party/src/sqlite/src/global.c` — CtypeMap, UpperToLower
 - `third_party/src/sqlite/src/sqliteInt.h` — Isspace, Isdigit, Isxdigit macros
-- `syntaqlite-codegen-sqlite/sqlite/mkkeywordhash.c` — keyword table + masks
+- `syntaqlite-codegen/sqlite/mkkeywordhash.c` — keyword table + masks
 - `third_party/src/sqlite/src/parse.y` — referenced in build.rs for grammar
 
 **c_extractor API** (`syntaqlite-codegen/src/c_source/c_extractor.rs`):

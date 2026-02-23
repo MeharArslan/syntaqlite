@@ -15,6 +15,8 @@ pub(crate) mod sqlite_util;
 pub mod synq_parser;
 pub(crate) mod tools;
 pub mod util;
+#[cfg(feature = "version-analysis")]
+pub mod version_analysis;
 pub mod writers;
 
 use std::fs;
