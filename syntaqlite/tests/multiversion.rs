@@ -167,7 +167,10 @@ fn digit_separator_reclassified_to_integer_before_3_46() {
     // Before 3.46, 1_000 should truncate to just "1" (INTEGER).
     let tokens = tokenize_at_version("1_000", ver(3, 45, 0));
     assert_eq!(tokens[0].0, tk::INTEGER, "Should be INTEGER, not QNUMBER");
-    assert_eq!(tokens[0].1, "1", "Should truncate to '1' before the underscore");
+    assert_eq!(
+        tokens[0].1, "1",
+        "Should truncate to '1' before the underscore"
+    );
 }
 
 #[test]
@@ -175,7 +178,10 @@ fn digit_separator_float_reclassified_before_3_46() {
     // 1.5_0 should become FLOAT "1.5" before 3.46.
     let tokens = tokenize_at_version("1.5_0", ver(3, 45, 0));
     assert_eq!(tokens[0].0, tk::FLOAT, "Should be FLOAT, not QNUMBER");
-    assert_eq!(tokens[0].1, "1.5", "Should truncate to '1.5' before the underscore");
+    assert_eq!(
+        tokens[0].1, "1.5",
+        "Should truncate to '1.5' before the underscore"
+    );
 }
 
 #[test]
@@ -227,7 +233,8 @@ fn returning_keyword_not_recognized_before_3_35() {
     // Before that, it should NOT tokenize as TK_RETURNING.
     let tokens = tokenize_at_version("RETURNING", ver(3, 34, 0));
     assert_ne!(
-        tokens[0].0, tk::RETURNING,
+        tokens[0].0,
+        tk::RETURNING,
         "RETURNING should not be a keyword before 3.35"
     );
 }
@@ -244,7 +251,8 @@ fn returning_keyword_recognized_at_3_35() {
 fn materialized_keyword_not_recognized_before_3_35() {
     let tokens = tokenize_at_version("MATERIALIZED", ver(3, 34, 0));
     assert_ne!(
-        tokens[0].0, tk::MATERIALIZED,
+        tokens[0].0,
+        tk::MATERIALIZED,
         "MATERIALIZED should not be a keyword before 3.35"
     );
 }
@@ -255,7 +263,8 @@ fn window_keyword_not_recognized_before_3_25() {
     // WINDOW was added in 3.25.0.
     let tokens = tokenize_at_version("WINDOW", ver(3, 24, 0));
     assert_ne!(
-        tokens[0].0, tk::WINDOW,
+        tokens[0].0,
+        tk::WINDOW,
         "WINDOW should not be a keyword before 3.25"
     );
 }
@@ -265,7 +274,8 @@ fn window_keyword_not_recognized_before_3_25() {
 fn over_keyword_not_recognized_before_3_25() {
     let tokens = tokenize_at_version("OVER", ver(3, 24, 0));
     assert_ne!(
-        tokens[0].0, tk::OVER,
+        tokens[0].0,
+        tk::OVER,
         "OVER should not be a keyword before 3.25"
     );
 }
@@ -276,7 +286,8 @@ fn do_keyword_not_recognized_before_3_24() {
     // DO was added in 3.24.0 (upsert: ON CONFLICT DO).
     let tokens = tokenize_at_version("DO", ver(3, 23, 0));
     assert_ne!(
-        tokens[0].0, tk::DO,
+        tokens[0].0,
+        tk::DO,
         "DO should not be a keyword before 3.24"
     );
 }
@@ -287,7 +298,8 @@ fn filter_keyword_not_recognized_before_3_25() {
     // FILTER was added in 3.25.0 (with window functions).
     let tokens = tokenize_at_version("FILTER", ver(3, 24, 0));
     assert_ne!(
-        tokens[0].0, tk::FILTER,
+        tokens[0].0,
+        tk::FILTER,
         "FILTER should not be a keyword before 3.25"
     );
 }

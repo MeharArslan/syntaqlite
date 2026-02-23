@@ -498,24 +498,24 @@ Codegen pipeline changes (where the logic lives):
 | ------------------------------ | --------------------------------------------------------------------------------------------------------- | --------- |
 | `sqlite_runtime_codegen.rs`    | Tokenizer extraction: `_base` rename, config param injection, `generate_get_token_wrapper()` postlude fn  | COMPLETED |
 | `tools/mkkeyword.rs`           | Keyword generation: emit `aKWSince[]` + `aKWCFlag[]` + `aKWCFlagPolarity[]` arrays + version/cflag checks | TODO      |
-| `dialect_codegen/c_dialect.rs` | Dispatch macro generation: add config param. Tokenize.h: add config param + include.                     | COMPLETED |
+| `dialect_codegen/c_dialect.rs` | Dispatch macro generation: add config param. Tokenize.h: add config param + include.                      | COMPLETED |
 
 Runtime changes (hand-written, dialect-agnostic):
 
-| File                                                     | Change                                                                            | Status    |
-| -------------------------------------------------------- | --------------------------------------------------------------------------------- | --------- |
+| File                                                     | Change                                                                                                                  | Status    |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------- |
 | `syntaqlite-runtime/include/syntaqlite/dialect_config.h` | NEW: `SyntaqliteDialectConfig` struct + `SYNQ_DIALECT_CONFIG_DEFAULT` + gating macros (`SYNQ_VER_LT`, `SYNQ_HAS_CFLAG`) | COMPLETED |
-| `syntaqlite-runtime/include/syntaqlite/sqlite_cflags.h`  | NEW: `SYNQ_SQLITE_OMIT_*` / `SYNQ_SQLITE_ENABLE_*` constants                     | COMPLETED |
-| `syntaqlite-runtime/include/syntaqlite/dialect.h`        | `get_token` function pointer signature                                            | COMPLETED |
-| `syntaqlite-runtime/include/syntaqlite/parser.h`         | `syntaqlite_parser_set_dialect_config()` API + include                             | COMPLETED |
-| `syntaqlite-runtime/include/syntaqlite/tokenizer.h`      | `syntaqlite_tokenizer_set_dialect_config()` API + include                          | COMPLETED |
-| `syntaqlite-runtime/csrc/parser.c`                       | Store config by value, init with default, pass `&p->dialect_config` to `SYNQ_GET_TOKEN` | COMPLETED |
-| `syntaqlite-runtime/csrc/tokenizer.c`                    | Store config by value, init with default, pass `&tok->dialect_config` to `SYNQ_GET_TOKEN` | COMPLETED |
-| `syntaqlite-runtime/csrc/dialect_dispatch.h`             | `SYNQ_GET_TOKEN` macro gains config param                                         | COMPLETED |
-| `syntaqlite-runtime/src/dialect/ffi.rs`                  | `DialectConfig` struct + `Default` impl (`i32::MAX`, `0`)                         | COMPLETED |
-| `syntaqlite-runtime/src/parser/ffi.rs`                   | FFI declarations for `set_dialect_config` (parser + tokenizer)                    | COMPLETED |
-| `syntaqlite-runtime/src/parser/parser.rs`                | `dialect_config: DialectConfig` field + `set_dialect_config()` method              | COMPLETED |
-| `syntaqlite-runtime/src/parser/tokenizer.rs`             | `dialect_config: DialectConfig` field + `set_dialect_config()` method              | COMPLETED |
+| `syntaqlite-runtime/include/syntaqlite/sqlite_cflags.h`  | NEW: `SYNQ_SQLITE_OMIT_*` / `SYNQ_SQLITE_ENABLE_*` constants                                                            | COMPLETED |
+| `syntaqlite-runtime/include/syntaqlite/dialect.h`        | `get_token` function pointer signature                                                                                  | COMPLETED |
+| `syntaqlite-runtime/include/syntaqlite/parser.h`         | `syntaqlite_parser_set_dialect_config()` API + include                                                                  | COMPLETED |
+| `syntaqlite-runtime/include/syntaqlite/tokenizer.h`      | `syntaqlite_tokenizer_set_dialect_config()` API + include                                                               | COMPLETED |
+| `syntaqlite-runtime/csrc/parser.c`                       | Store config by value, init with default, pass `&p->dialect_config` to `SYNQ_GET_TOKEN`                                 | COMPLETED |
+| `syntaqlite-runtime/csrc/tokenizer.c`                    | Store config by value, init with default, pass `&tok->dialect_config` to `SYNQ_GET_TOKEN`                               | COMPLETED |
+| `syntaqlite-runtime/csrc/dialect_dispatch.h`             | `SYNQ_GET_TOKEN` macro gains config param                                                                               | COMPLETED |
+| `syntaqlite-runtime/src/dialect/ffi.rs`                  | `DialectConfig` struct + `Default` impl (`i32::MAX`, `0`)                                                               | COMPLETED |
+| `syntaqlite-runtime/src/parser/ffi.rs`                   | FFI declarations for `set_dialect_config` (parser + tokenizer)                                                          | COMPLETED |
+| `syntaqlite-runtime/src/parser/parser.rs`                | `dialect_config: DialectConfig` field + `set_dialect_config()` method                                                   | COMPLETED |
+| `syntaqlite-runtime/src/parser/tokenizer.rs`             | `dialect_config: DialectConfig` field + `set_dialect_config()` method                                                   | COMPLETED |
 
 ---
 
@@ -529,15 +529,15 @@ Verify that syntaqlite's version/cflag-gated tokenizer and keyword behavior matc
 
 Before writing tests, all expected behavior was verified against actual `sqlite3` shells compiled from official SQLite amalgamation downloads. The following versions were compiled and tested:
 
-| Version | Purpose | Key verification |
-| ------- | ------- | ---------------- |
-| 3.24.0  | Window keyword boundary (before) | `SELECT sum(x) OVER (...)` → error near "(" |
+| Version | Purpose                             | Key verification                                  |
+| ------- | ----------------------------------- | ------------------------------------------------- |
+| 3.24.0  | Window keyword boundary (before)    | `SELECT sum(x) OVER (...)` → error near "("       |
 | 3.34.1  | RETURNING keyword boundary (before) | `INSERT ... RETURNING *` → error near "RETURNING" |
-| 3.35.0  | RETURNING keyword boundary (after) | `INSERT ... RETURNING *` → success |
-| 3.37.2  | TK_PTR boundary (before) | `SELECT '{"a":1}' -> '$.a'` → error near ">" |
-| 3.38.0  | TK_PTR boundary (after) | `SELECT '{"a":1}' -> '$.a'` → success |
-| 3.45.3  | TK_QNUMBER boundary (before) | `SELECT 1_000` → "unrecognized token: 1_000" |
-| 3.46.0  | TK_QNUMBER boundary (after) | `SELECT 1_000` → 1000 |
+| 3.35.0  | RETURNING keyword boundary (after)  | `INSERT ... RETURNING *` → success                |
+| 3.37.2  | TK_PTR boundary (before)            | `SELECT '{"a":1}' -> '$.a'` → error near ">"      |
+| 3.38.0  | TK_PTR boundary (after)             | `SELECT '{"a":1}' -> '$.a'` → success             |
+| 3.45.3  | TK_QNUMBER boundary (before)        | `SELECT 1_000` → "unrecognized token: 1_000"      |
+| 3.46.0  | TK_QNUMBER boundary (after)         | `SELECT 1_000` → 1000                             |
 
 Amalgamations downloaded from `https://www.sqlite.org/{year}/sqlite-amalgamation-{ver}.zip` and compiled with `cc -O2 -DSQLITE_THREADSAFE=0`.
 
@@ -549,31 +549,31 @@ Tests use the runtime `Tokenizer` API directly (with `set_dialect_config`) and r
 
 **Green tests (11 passing)**:
 
-| Test | What it verifies |
-| ---- | ---------------- |
-| `ptr_operator_tokenizes_as_ptr_on_latest` | `1->2` → INTEGER, PTR, INTEGER at latest |
-| `ptr_operator_reclassified_to_minus_before_3_38` | `1->2` → INTEGER, MINUS("-"), GT, INTEGER at 3.37 |
-| `ptr_operator_works_at_3_38` | `1->2` → INTEGER, PTR, INTEGER at 3.38 |
-| `double_ptr_reclassified_before_3_38` | `1->>2` → INTEGER, MINUS("-"), RSHIFT, INTEGER at 3.37 |
-| `ptr_reclassification_parse_fails_before_3_38` | `SELECT 1->2;` fails to parse at 3.37 |
-| `ptr_reclassification_parse_succeeds_at_3_38` | `SELECT 1->2;` parses at 3.38 |
-| `digit_separator_tokenizes_as_qnumber_on_latest` | `1_000` → QNUMBER at latest |
-| `digit_separator_reclassified_to_integer_before_3_46` | `1_000` → INTEGER("1") at 3.45 |
-| `digit_separator_float_reclassified_before_3_46` | `1.5_0` → FLOAT("1.5") at 3.45 |
-| `digit_separator_works_at_3_46` | `1_000` → QNUMBER at 3.46 |
-| `basic_tokens_unaffected_by_version` | `SELECT 1 + 2` stable across 3.12, 3.37, 3.46, latest |
+| Test                                                  | What it verifies                                       |
+| ----------------------------------------------------- | ------------------------------------------------------ |
+| `ptr_operator_tokenizes_as_ptr_on_latest`             | `1->2` → INTEGER, PTR, INTEGER at latest               |
+| `ptr_operator_reclassified_to_minus_before_3_38`      | `1->2` → INTEGER, MINUS("-"), GT, INTEGER at 3.37      |
+| `ptr_operator_works_at_3_38`                          | `1->2` → INTEGER, PTR, INTEGER at 3.38                 |
+| `double_ptr_reclassified_before_3_38`                 | `1->>2` → INTEGER, MINUS("-"), RSHIFT, INTEGER at 3.37 |
+| `ptr_reclassification_parse_fails_before_3_38`        | `SELECT 1->2;` fails to parse at 3.37                  |
+| `ptr_reclassification_parse_succeeds_at_3_38`         | `SELECT 1->2;` parses at 3.38                          |
+| `digit_separator_tokenizes_as_qnumber_on_latest`      | `1_000` → QNUMBER at latest                            |
+| `digit_separator_reclassified_to_integer_before_3_46` | `1_000` → INTEGER("1") at 3.45                         |
+| `digit_separator_float_reclassified_before_3_46`      | `1.5_0` → FLOAT("1.5") at 3.45                         |
+| `digit_separator_works_at_3_46`                       | `1_000` → QNUMBER at 3.46                              |
+| `basic_tokens_unaffected_by_version`                  | `SELECT 1 + 2` stable across 3.12, 3.37, 3.46, latest  |
 
 **Red tests (7 ignored — keyword version gating not yet implemented)**:
 
-| Test | What it will verify |
-| ---- | ------------------- |
-| `returning_keyword_not_recognized_before_3_35` | `RETURNING` should not tokenize as TK_RETURNING at 3.34 |
-| `returning_keyword_recognized_at_3_35` | `RETURNING` should tokenize as TK_RETURNING at 3.35 |
-| `materialized_keyword_not_recognized_before_3_35` | `MATERIALIZED` should not be TK_MATERIALIZED at 3.34 |
-| `window_keyword_not_recognized_before_3_25` | `WINDOW` should not be TK_WINDOW at 3.24 |
-| `over_keyword_not_recognized_before_3_25` | `OVER` should not be TK_OVER at 3.24 |
-| `do_keyword_not_recognized_before_3_24` | `DO` should not be TK_DO at 3.23 |
-| `filter_keyword_not_recognized_before_3_25` | `FILTER` should not be TK_FILTER at 3.24 |
+| Test                                              | What it will verify                                     |
+| ------------------------------------------------- | ------------------------------------------------------- |
+| `returning_keyword_not_recognized_before_3_35`    | `RETURNING` should not tokenize as TK_RETURNING at 3.34 |
+| `returning_keyword_recognized_at_3_35`            | `RETURNING` should tokenize as TK_RETURNING at 3.35     |
+| `materialized_keyword_not_recognized_before_3_35` | `MATERIALIZED` should not be TK_MATERIALIZED at 3.34    |
+| `window_keyword_not_recognized_before_3_25`       | `WINDOW` should not be TK_WINDOW at 3.24                |
+| `over_keyword_not_recognized_before_3_25`         | `OVER` should not be TK_OVER at 3.24                    |
+| `do_keyword_not_recognized_before_3_24`           | `DO` should not be TK_DO at 3.23                        |
+| `filter_keyword_not_recognized_before_3_25`       | `FILTER` should not be TK_FILTER at 3.24                |
 
 These tests are marked `#[ignore]` and confirmed to fail when run with `--include-ignored`.
 
@@ -669,14 +669,14 @@ The current integration tests in `multiversion.rs` provide focused coverage of a
 
 ## 9. Cost Summary
 
-| Component                 | Runtime cost (version < latest) | Runtime cost (latest / INT32_MAX) | Compile-time cost (`-DSYNQ_SQLITE_VERSION`) |
-| ------------------------- | ------------------------------- | --------------------------------- | ------------------------------------------- |
-| Keyword version check     | 1 int comparison per keyword    | 1 int comparison (always false)   | 0 (dead code eliminated)                    |
-| Keyword cflag check       | 1 bitmask check per keyword     | 1 bitmask check (always false)    | 0 (dead code eliminated)                    |
-| GetToken postlude         | 2 `if` checks (TK_PTR, TK_QNUMBER) | 2 `if` checks (always false)  | 0 (dead code eliminated)                    |
-| Subquery flag             | 1 assignment per subquery       | 1 assignment per subquery         | 0 if subquery not applicable                |
-| Post-parse subquery check | 1 bitmask + flag check          | 0 (cflags=0)                      | 0 (dead code eliminated)                    |
-| **Total**                 | **Negligible**                  | **Negligible**                    | **Zero**                                    |
+| Component                 | Runtime cost (version < latest)    | Runtime cost (latest / INT32_MAX) | Compile-time cost (`-DSYNQ_SQLITE_VERSION`) |
+| ------------------------- | ---------------------------------- | --------------------------------- | ------------------------------------------- |
+| Keyword version check     | 1 int comparison per keyword       | 1 int comparison (always false)   | 0 (dead code eliminated)                    |
+| Keyword cflag check       | 1 bitmask check per keyword        | 1 bitmask check (always false)    | 0 (dead code eliminated)                    |
+| GetToken postlude         | 2 `if` checks (TK_PTR, TK_QNUMBER) | 2 `if` checks (always false)      | 0 (dead code eliminated)                    |
+| Subquery flag             | 1 assignment per subquery          | 1 assignment per subquery         | 0 if subquery not applicable                |
+| Post-parse subquery check | 1 bitmask + flag check             | 0 (cflags=0)                      | 0 (dead code eliminated)                    |
+| **Total**                 | **Negligible**                     | **Negligible**                    | **Zero**                                    |
 
 ---
 
