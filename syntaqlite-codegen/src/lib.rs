@@ -8,6 +8,7 @@ pub mod dialect_codegen;
 pub mod fmt_compiler;
 pub mod grammar_codegen;
 pub mod grammar_parser;
+pub(crate) mod mkkeywordhash_parser;
 pub mod output_manifest;
 pub mod parser_pipeline;
 mod sqlite_runtime_codegen;
@@ -155,6 +156,10 @@ pub struct CodegenRequest<'a> {
 
 pub(crate) fn embedded_sqlite_tokenize_c() -> &'static str {
     include_str!(env!("SYNTAQLITE_SQLITE_TOKENIZE_C"))
+}
+
+pub(crate) fn embedded_mkkeywordhash_c() -> &'static str {
+    include_str!(env!("SYNTAQLITE_MKKEYWORDHASH_C"))
 }
 
 pub(crate) fn embedded_sqlite_global_c() -> &'static str {

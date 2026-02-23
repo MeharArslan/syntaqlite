@@ -158,12 +158,22 @@ impl<'a> Parser<'a> {
                             parser.parse_precedence(directive, &mut precedences)?;
                         }
                         "ifdef" => {
-                            // Skip entire ifdef block (EXCLUDE these rules)
-                            parser.skip_ifdef_block()?;
+                            // %ifdef SQLITE_OMIT_X → EXCLUDE (skip block)
+                            // %ifdef SQLITE_ENABLE_X → INCLUDE (keep block)
+                            if parser.ifdef_should_include() {
+                                parser.skip_to_eol();
+                            } else {
+                                parser.skip_ifdef_block()?;
+                            }
                         }
                         "ifndef" => {
-                            // Keep contents, just skip the directive line (INCLUDE these rules)
-                            parser.skip_to_eol();
+                            // %ifndef SQLITE_OMIT_X → INCLUDE (keep block)
+                            // %ifndef SQLITE_ENABLE_X → EXCLUDE (skip block)
+                            if parser.ifdef_should_include() {
+                                parser.skip_ifdef_block()?;
+                            } else {
+                                parser.skip_to_eol();
+                            }
                         }
                         "endif" => {
                             // Skip endif directive (already handled by skip_ifdef_block or matching ifndef)
@@ -398,8 +408,21 @@ impl<'a> Parser<'a> {
                     self.next();
                     let directive = self.parse_identifier()?;
                     match directive {
-                        "ifdef" => self.skip_ifdef_block()?,
-                        "ifndef" | "endif" => self.skip_to_eol(),
+                        "ifdef" => {
+                            if self.ifdef_should_include() {
+                                self.skip_to_eol();
+                            } else {
+                                self.skip_ifdef_block()?;
+                            }
+                        }
+                        "ifndef" => {
+                            if self.ifdef_should_include() {
+                                self.skip_ifdef_block()?;
+                            } else {
+                                self.skip_to_eol();
+                            }
+                        }
+                        "endif" => self.skip_to_eol(),
                         _ => self.skip_to_eol(),
                     }
                 }
@@ -456,6 +479,29 @@ impl<'a> Parser<'a> {
         if self.advance_until('\n') {
             self.next(); // consume the newline
         }
+    }
+
+    /// Peek at the flag name following %ifdef/%ifndef and return true if it is
+    /// an ENABLE flag (i.e. the block should be included for %ifdef, excluded
+    /// for %ifndef). Consumes nothing beyond whitespace + the flag identifier
+    /// on the rest of the line, then skips to EOL.
+    ///
+    /// SQLITE_OMIT_*  → false (feature disabled when flag set)
+    /// SQLITE_ENABLE_* → true  (feature enabled when flag set)
+    /// Unknown         → false (conservative: treat as OMIT)
+    fn ifdef_should_include(&mut self) -> bool {
+        self.skip_ws();
+        // Peek the flag name on the rest of the line.
+        let start = self.pos;
+        while let Some(ch) = self.peek() {
+            if ch.is_alphanumeric() || ch == '_' {
+                self.next();
+            } else {
+                break;
+            }
+        }
+        let flag = &self.input[start..self.pos];
+        flag.starts_with("SQLITE_ENABLE_")
     }
 
     fn skip_ifdef_block(&mut self) -> Result<()> {

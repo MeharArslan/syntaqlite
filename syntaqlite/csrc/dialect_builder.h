@@ -36,6 +36,27 @@ static inline uint32_t synq_parse_aggregate_function_call(
         }, (uint32_t)sizeof(SyntaqliteAggregateFunctionCall));
 }
 
+static inline uint32_t synq_parse_ordered_set_function_call(
+    SynqParseCtx *ctx,
+    SyntaqliteSourceSpan func_name,
+    SyntaqliteAggregateFunctionCallFlags flags,
+    uint32_t args,
+    uint32_t orderby_expr,
+    uint32_t filter_clause,
+    uint32_t over_clause
+) {
+    return synq_parse_build(ctx,
+        &(SyntaqliteOrderedSetFunctionCall){
+            .tag = SYNTAQLITE_NODE_ORDERED_SET_FUNCTION_CALL,
+            .func_name = func_name,
+            .flags = flags,
+            .args = args,
+            .orderby_expr = orderby_expr,
+            .filter_clause = filter_clause,
+            .over_clause = over_clause
+        }, (uint32_t)sizeof(SyntaqliteOrderedSetFunctionCall));
+}
+
 static inline uint32_t synq_parse_cast_expr(
     SynqParseCtx *ctx,
     uint32_t expr,
@@ -1090,6 +1111,14 @@ static const SyntaqliteFieldRangeMeta range_meta_aggregate_function_call[] = {
     {offsetof(SyntaqliteAggregateFunctionCall, over_clause), 0},
 };
 
+static const SyntaqliteFieldRangeMeta range_meta_ordered_set_function_call[] = {
+    {offsetof(SyntaqliteOrderedSetFunctionCall, func_name), 1},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, args), 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, orderby_expr), 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, filter_clause), 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, over_clause), 0},
+};
+
 static const SyntaqliteFieldRangeMeta range_meta_cast_expr[] = {
     {offsetof(SyntaqliteCastExpr, expr), 0},
     {offsetof(SyntaqliteCastExpr, type_name), 1},
@@ -1416,6 +1445,7 @@ static const SyntaqliteFieldRangeMeta range_meta_filter_over[] = {
 static const SyntaqliteRangeMetaEntry range_meta_table[] = {
     [SYNTAQLITE_NODE_NULL] = {NULL, 0},
     [SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL] = {range_meta_aggregate_function_call, 5},
+    [SYNTAQLITE_NODE_ORDERED_SET_FUNCTION_CALL] = {range_meta_ordered_set_function_call, 5},
     [SYNTAQLITE_NODE_CAST_EXPR] = {range_meta_cast_expr, 2},
     [SYNTAQLITE_NODE_COLUMN_REF] = {range_meta_column_ref, 3},
     [SYNTAQLITE_NODE_COMPOUND_SELECT] = {range_meta_compound_select, 2},

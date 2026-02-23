@@ -46,7 +46,7 @@ list ExprList { Expr }
 
 abstract Expr {
   BinaryExpr UnaryExpr Literal ColumnRef Variable
-  FunctionCall AggregateFunctionCall
+  FunctionCall AggregateFunctionCall OrderedSetFunctionCall
   CastExpr CollateExpr CaseExpr
   IsExpr BetweenExpr LikeExpr InExpr
   SubqueryExpr ExistsExpr RaiseExpr

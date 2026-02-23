@@ -28,6 +28,18 @@ pub(crate) struct AggregateFunctionCall {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
+pub(crate) struct OrderedSetFunctionCall {
+    pub(crate) tag: u32,
+    pub(crate) func_name: SourceSpan,
+    pub(crate) flags: super::ast::AggregateFunctionCallFlags,
+    pub(crate) args: NodeId,
+    pub(crate) orderby_expr: NodeId,
+    pub(crate) filter_clause: NodeId,
+    pub(crate) over_clause: NodeId,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
 pub(crate) struct CastExpr {
     pub(crate) tag: u32,
     pub(crate) expr: NodeId,

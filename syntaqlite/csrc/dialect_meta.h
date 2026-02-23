@@ -262,6 +262,15 @@ static const SyntaqliteFieldMeta field_meta_aggregate_function_call[] = {
     {offsetof(SyntaqliteAggregateFunctionCall, over_clause), SYNTAQLITE_FIELD_NODE_ID, "over_clause", NULL, 0},
 };
 
+static const SyntaqliteFieldMeta field_meta_ordered_set_function_call[] = {
+    {offsetof(SyntaqliteOrderedSetFunctionCall, func_name), SYNTAQLITE_FIELD_SPAN, "func_name", NULL, 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, flags), SYNTAQLITE_FIELD_FLAGS, "flags", display_aggregate_function_call_flags, sizeof(display_aggregate_function_call_flags) / sizeof(display_aggregate_function_call_flags[0])},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, args), SYNTAQLITE_FIELD_NODE_ID, "args", NULL, 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, orderby_expr), SYNTAQLITE_FIELD_NODE_ID, "orderby_expr", NULL, 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, filter_clause), SYNTAQLITE_FIELD_NODE_ID, "filter_clause", NULL, 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, over_clause), SYNTAQLITE_FIELD_NODE_ID, "over_clause", NULL, 0},
+};
+
 static const SyntaqliteFieldMeta field_meta_cast_expr[] = {
     {offsetof(SyntaqliteCastExpr, expr), SYNTAQLITE_FIELD_NODE_ID, "expr", NULL, 0},
     {offsetof(SyntaqliteCastExpr, type_name), SYNTAQLITE_FIELD_SPAN, "type_name", NULL, 0},
@@ -648,6 +657,7 @@ static const SyntaqliteFieldMeta field_meta_filter_over[] = {
 static const char* const ast_meta_node_names[] = {
     "Null",
     "AggregateFunctionCall",
+    "OrderedSetFunctionCall",
     "CastExpr",
     "ColumnRef",
     "CompoundSelect",
@@ -727,6 +737,7 @@ static const char* const ast_meta_node_names[] = {
 static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {
     NULL, /* Null */
     field_meta_aggregate_function_call, /* AggregateFunctionCall */
+    field_meta_ordered_set_function_call, /* OrderedSetFunctionCall */
     field_meta_cast_expr, /* CastExpr */
     field_meta_column_ref, /* ColumnRef */
     field_meta_compound_select, /* CompoundSelect */
@@ -804,6 +815,7 @@ static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {
 static const uint8_t ast_meta_field_meta_counts[] = {
     0, /* Null */
     6, /* AggregateFunctionCall */
+    6, /* OrderedSetFunctionCall */
     2, /* CastExpr */
     3, /* ColumnRef */
     3, /* CompoundSelect */
@@ -883,6 +895,7 @@ static const uint8_t ast_meta_field_meta_counts[] = {
 static const uint8_t ast_meta_list_tags[] = {
     0, /* Null */
     0, /* AggregateFunctionCall */
+    0, /* OrderedSetFunctionCall */
     0, /* CastExpr */
     0, /* ColumnRef */
     0, /* CompoundSelect */

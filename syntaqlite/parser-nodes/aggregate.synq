@@ -21,3 +21,26 @@ node AggregateFunctionCall {
     if_set(over_clause) { " OVER " child(over_clause) }
   }
 }
+
+node OrderedSetFunctionCall {
+  func_name: inline SyntaqliteSourceSpan
+  flags: inline AggregateFunctionCallFlags
+  args: index ExprList
+  orderby_expr: index Expr
+  filter_clause: index Expr
+  over_clause: index WindowDef
+
+  fmt {
+    span(func_name)
+    group {
+      "("
+      if_flag(flags.distinct) { "DISTINCT " }
+      if_set(args) { nest { softline child(args) } }
+      softline ")"
+    }
+    " WITHIN GROUP "
+    group { "(ORDER BY " child(orderby_expr) ")" }
+    if_set(filter_clause) { " FILTER (WHERE " child(filter_clause) ")" }
+    if_set(over_clause) { " OVER " child(over_clause) }
+  }
+}

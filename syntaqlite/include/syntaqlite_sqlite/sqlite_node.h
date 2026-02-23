@@ -288,6 +288,7 @@ typedef union SyntaqliteSelectStmtFlags {
 typedef enum SyntaqliteNodeTag {
     SYNTAQLITE_NODE_NULL = 0,
     SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL,
+    SYNTAQLITE_NODE_ORDERED_SET_FUNCTION_CALL,
     SYNTAQLITE_NODE_CAST_EXPR,
     SYNTAQLITE_NODE_COLUMN_REF,
     SYNTAQLITE_NODE_COMPOUND_SELECT,
@@ -381,6 +382,16 @@ typedef struct SyntaqliteAggregateFunctionCall {
     uint32_t filter_clause;
     uint32_t over_clause;
 } SyntaqliteAggregateFunctionCall;
+
+typedef struct SyntaqliteOrderedSetFunctionCall {
+    SyntaqliteNodeTag tag;
+    SyntaqliteSourceSpan func_name;
+    SyntaqliteAggregateFunctionCallFlags flags;
+    uint32_t args;
+    uint32_t orderby_expr;
+    uint32_t filter_clause;
+    uint32_t over_clause;
+} SyntaqliteOrderedSetFunctionCall;
 
 typedef struct SyntaqliteCastExpr {
     SyntaqliteNodeTag tag;
@@ -918,6 +929,7 @@ typedef struct SyntaqliteFilterOver {
 typedef union SyntaqliteNode {
     SyntaqliteNodeTag tag;
     SyntaqliteAggregateFunctionCall aggregate_function_call;
+    SyntaqliteOrderedSetFunctionCall ordered_set_function_call;
     SyntaqliteCastExpr cast_expr;
     SyntaqliteColumnRef column_ref;
     SyntaqliteCompoundSelect compound_select;
@@ -1063,6 +1075,7 @@ typedef union SyntaqliteExpr {
     SyntaqliteVariable variable;
     SyntaqliteFunctionCall function_call;
     SyntaqliteAggregateFunctionCall aggregate_function_call;
+    SyntaqliteOrderedSetFunctionCall ordered_set_function_call;
     SyntaqliteCastExpr cast_expr;
     SyntaqliteCollateExpr collate_expr;
     SyntaqliteCaseExpr case_expr;
@@ -1084,6 +1097,7 @@ static inline int syntaqlite_is_expr(SyntaqliteNodeTag tag) {
         case SYNTAQLITE_NODE_VARIABLE: return 1;
         case SYNTAQLITE_NODE_FUNCTION_CALL: return 1;
         case SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL: return 1;
+        case SYNTAQLITE_NODE_ORDERED_SET_FUNCTION_CALL: return 1;
         case SYNTAQLITE_NODE_CAST_EXPR: return 1;
         case SYNTAQLITE_NODE_COLLATE_EXPR: return 1;
         case SYNTAQLITE_NODE_CASE_EXPR: return 1;
@@ -1124,6 +1138,10 @@ static inline const SyntaqliteFunctionCall* syntaqlite_expr_as_function_call(con
 
 static inline const SyntaqliteAggregateFunctionCall* syntaqlite_expr_as_aggregate_function_call(const SyntaqliteExpr* node) {
     return node->tag == SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL ? &node->aggregate_function_call : NULL;
+}
+
+static inline const SyntaqliteOrderedSetFunctionCall* syntaqlite_expr_as_ordered_set_function_call(const SyntaqliteExpr* node) {
+    return node->tag == SYNTAQLITE_NODE_ORDERED_SET_FUNCTION_CALL ? &node->ordered_set_function_call : NULL;
 }
 
 static inline const SyntaqliteCastExpr* syntaqlite_expr_as_cast_expr(const SyntaqliteExpr* node) {
@@ -1358,6 +1376,10 @@ namespace syntaqlite {
 template <> struct NodeTag<SyntaqliteAggregateFunctionCall> {
   static constexpr bool kHasTag = true;
   static constexpr uint32_t kValue = SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL;
+};
+template <> struct NodeTag<SyntaqliteOrderedSetFunctionCall> {
+  static constexpr bool kHasTag = true;
+  static constexpr uint32_t kValue = SYNTAQLITE_NODE_ORDERED_SET_FUNCTION_CALL;
 };
 template <> struct NodeTag<SyntaqliteCastExpr> {
   static constexpr bool kHasTag = true;

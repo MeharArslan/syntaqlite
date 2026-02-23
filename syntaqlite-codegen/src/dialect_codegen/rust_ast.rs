@@ -342,8 +342,8 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
 
     // from_raw conversion
     w.open_block("impl TokenType {");
-    w.line("#[allow(dead_code)]");
-    w.open_block("pub(crate) fn from_raw(raw: u32) -> Option<TokenType> {");
+    w.line("#[doc(hidden)]");
+    w.open_block("pub fn from_raw(raw: u32) -> Option<TokenType> {");
     w.open_block("match raw {");
     for (name, value) in tokens {
         let variant = upper_snake_to_pascal(name);

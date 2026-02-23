@@ -21,6 +21,10 @@ fn main() {
         "cargo:rustc-env=SYNTAQLITE_SQLITE_TOKENIZE_C={}",
         tokenize_c.display()
     );
+    println!(
+        "cargo:rustc-env=SYNTAQLITE_MKKEYWORDHASH_C={}",
+        mkkeywordhash_path.display()
+    );
 
     // Compile lemon.c with main renamed to lemon_main
     cc::Build::new()
@@ -35,9 +39,11 @@ fn main() {
     transform_mkkeywordhash(&mkkeywordhash_path, &modified_mkkeywordhash)
         .expect("Failed to transform mkkeywordhash.c");
 
-    // Compile the modified mkkeywordhash.c
+    // Compile the modified mkkeywordhash.c.
+    // Enable all SQLITE_ENABLE_* features so their keywords are included.
     cc::Build::new()
         .file(&modified_mkkeywordhash)
+        .define("SQLITE_ENABLE_ORDERED_SET_AGGREGATES", None)
         .flag_if_supported("-Wno-missing-field-initializers")
         .flag_if_supported("-Wno-unused-parameter")
         .flag_if_supported("-Wno-unused-variable")

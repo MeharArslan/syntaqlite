@@ -429,7 +429,7 @@ static i64 SynqSqliteGetToken_base(const SyntaqliteDialectConfig* config, const 
         break;
       }
       *tokenType = SYNTAQLITE_TK_ID;
-      return synq_sqlite3_keywordCode((char*)z, i, tokenType);
+      return synq_sqlite3_keywordCode(config, (char*)z, i, tokenType);
     }
     case CC_X: {
 #ifndef SQLITE_OMIT_BLOB_LITERAL

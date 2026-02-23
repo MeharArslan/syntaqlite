@@ -92,7 +92,11 @@ pub(crate) fn extract_tokenizer(
     let output = c_transformer::CTransformer::new(&combined)
         .add_array_static("sqlite3CtypeMap")
         .insert_after_includes("#include \"syntaqlite/dialect_config.h\"")
-        .replace_in_function("sqlite3GetToken", "keywordCode", "synq_sqlite3_keywordCode")
+        .replace_in_function(
+            "sqlite3GetToken",
+            "keywordCode((char*)",
+            "synq_sqlite3_keywordCode(config, (char*)",
+        )
         .replace_in_function(
             "sqlite3GetToken",
             "sqlite3GetToken(const unsigned char *z",
@@ -204,9 +208,263 @@ fn is_keyword_like(name: &str) -> bool {
     name.len() >= 2 && name.chars().all(|c| c.is_ascii_uppercase())
 }
 
+/// Parse `testcase(i==N); /* NAME */` comments from raw mkkeywordhash output
+/// to get (1-based index, keyword name) pairs.
+fn parse_keyword_indices(code: &str) -> Vec<(usize, String)> {
+    let mut result = Vec::new();
+    for line in code.lines() {
+        let trimmed = line.trim();
+        // Format: "testcase( i==N ); /* NAME */"
+        let Some(rest) = trimmed.strip_prefix("testcase( i==") else {
+            continue;
+        };
+        let Some(space_pos) = rest.find(' ') else {
+            continue;
+        };
+        let Ok(idx) = rest[..space_pos].parse::<usize>() else {
+            continue;
+        };
+        let Some(cs) = rest.find("/* ") else {
+            continue;
+        };
+        let after = &rest[cs + 3..];
+        let Some(ce) = after.find(" */") else {
+            continue;
+        };
+        result.push((idx, after[..ce].to_string()));
+    }
+    result
+}
+
+/// Return the SQLite version (as integer, e.g. 3035000) in which a keyword was
+/// first introduced.  Returns 0 for baseline keywords (present in 3.12.2).
+fn keyword_since_version(name: &str) -> i32 {
+    match name {
+        "DO" | "NOTHING" => 3024000,
+        "CURRENT" | "FILTER" | "FOLLOWING" | "OVER" | "PARTITION" | "PRECEDING" | "RANGE"
+        | "ROWS" | "UNBOUNDED" | "WINDOW" => 3025000,
+        "EXCLUDE" | "GROUPS" | "OTHERS" | "TIES" => 3028000,
+        "FIRST" | "LAST" | "NULLS" => 3030000,
+        "ALWAYS" | "GENERATED" => 3031000,
+        "MATERIALIZED" | "RETURNING" => 3035000,
+        "WITHIN" => 3047000,
+        _ => 0,
+    }
+}
+
+/// SYNQ cflag constants, mirroring `sqlite_cflags.h`.
+const SYNQ_CFLAG_TABLE: &[(&str, u32)] = &[
+    ("SYNQ_SQLITE_OMIT_EXPLAIN", 0x00000001),
+    ("SYNQ_SQLITE_OMIT_TEMPDB", 0x00000002),
+    ("SYNQ_SQLITE_OMIT_COMPOUND_SELECT", 0x00000004),
+    ("SYNQ_SQLITE_OMIT_WINDOWFUNC", 0x00000008),
+    ("SYNQ_SQLITE_OMIT_GENERATED_COLUMNS", 0x00000010),
+    ("SYNQ_SQLITE_OMIT_VIEW", 0x00000020),
+    ("SYNQ_SQLITE_OMIT_CTE", 0x00000040),
+    ("SYNQ_SQLITE_OMIT_SUBQUERY", 0x00000080),
+    ("SYNQ_SQLITE_OMIT_CAST", 0x00000100),
+    ("SYNQ_SQLITE_OMIT_PRAGMA", 0x00000200),
+    ("SYNQ_SQLITE_OMIT_TRIGGER", 0x00000400),
+    ("SYNQ_SQLITE_OMIT_ATTACH", 0x00000800),
+    ("SYNQ_SQLITE_OMIT_REINDEX", 0x00001000),
+    ("SYNQ_SQLITE_OMIT_ANALYZE", 0x00002000),
+    ("SYNQ_SQLITE_OMIT_ALTERTABLE", 0x00004000),
+    ("SYNQ_SQLITE_OMIT_VIRTUALTABLE", 0x00008000),
+    ("SYNQ_SQLITE_OMIT_RETURNING", 0x00010000),
+    ("SYNQ_SQLITE_ENABLE_ORDERED_SET_AGGREGATES", 0x00020000),
+];
+
+/// Look up the SYNQ cflag value for a `SQLITE_OMIT_*` or `SQLITE_ENABLE_*` flag.
+fn synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> Option<u32> {
+    let synq_name = format!("SYNQ_{sqlite_flag}");
+    SYNQ_CFLAG_TABLE
+        .iter()
+        .find(|(name, _)| *name == synq_name)
+        .map(|(_, val)| *val)
+}
+
+/// Parsed cflag data for a keyword: (cflag_value, polarity).
+struct KeywordCflagMap {
+    /// Map from keyword name → (cflag_value, polarity).
+    map: std::collections::HashMap<String, (u32, u8)>,
+}
+
+impl KeywordCflagMap {
+    /// Build cflag map by parsing the embedded `mkkeywordhash.c` source.
+    fn from_mkkeywordhash() -> Self {
+        use crate::mkkeywordhash_parser;
+
+        let source = crate::embedded_mkkeywordhash_c();
+        let table = mkkeywordhash_parser::parse_keyword_table(source)
+            .expect("failed to parse embedded mkkeywordhash.c");
+
+        // Build mask_name → (omit_flag, polarity) lookup.
+        let mask_lookup: std::collections::HashMap<&str, (&str, u8)> = table
+            .masks
+            .iter()
+            .map(|m| (m.name.as_str(), (m.omit_flag.as_str(), m.polarity)))
+            .collect();
+
+        let mut map = std::collections::HashMap::new();
+
+        for kw in &table.keywords {
+            // Skip keywords with ALWAYS mask (value 0x00000002) — always enabled.
+            if kw.mask_expr == "ALWAYS" {
+                continue;
+            }
+
+            // Skip OR'd masks (e.g. "CONFLICT|TRIGGER") — no single SYNQ constant.
+            if kw.mask_expr.contains('|') {
+                continue;
+            }
+
+            // Look up the mask symbol in the defines.
+            if let Some(&(omit_flag, polarity)) = mask_lookup.get(kw.mask_expr.as_str()) {
+                if let Some(cflag_val) = synq_cflag_for_sqlite_flag(omit_flag) {
+                    map.insert(kw.name.clone(), (cflag_val, polarity));
+                }
+            }
+        }
+
+        Self { map }
+    }
+
+    fn get(&self, keyword: &str) -> Option<(u32, u8)> {
+        self.map.get(keyword).copied()
+    }
+}
+
+/// Generate the three parallel arrays (aKWSince, aKWCFlag, aKWCFlagPolarity)
+/// as C code, given the keyword index mapping from mkkeywordhash output.
+fn generate_keyword_arrays(keyword_indices: &[(usize, String)], dialect: &str) -> String {
+    let max_idx = keyword_indices.iter().map(|(i, _)| *i).max().unwrap_or(0);
+    let array_len = max_idx + 1;
+
+    let mut since = vec![0i32; array_len];
+    let mut cflag = vec![0u32; array_len];
+    let mut polarity = vec![0u8; array_len];
+
+    let cflag_map = KeywordCflagMap::from_mkkeywordhash();
+
+    for (idx, name) in keyword_indices {
+        since[*idx] = keyword_since_version(name);
+        if let Some((cflag_val, pol)) = cflag_map.get(name) {
+            cflag[*idx] = cflag_val;
+            polarity[*idx] = pol;
+        }
+    }
+
+    let prefix = format!("synq_{}", dialect);
+
+    let fmt_array = |values: &[String], c_type: &str, name: &str| -> String {
+        let mut s = format!(
+            "static const {} {}_{}[{}] = {{",
+            c_type, prefix, name, array_len
+        );
+        for (i, v) in values.iter().enumerate() {
+            if i % 13 == 0 {
+                s.push_str("\n  ");
+            }
+            s.push_str(v);
+            if i + 1 < values.len() {
+                s.push(',');
+            }
+        }
+        s.push_str("\n};\n");
+        s
+    };
+
+    let since_strs: Vec<String> = since.iter().map(|v| v.to_string()).collect();
+    let cflag_strs: Vec<String> = cflag
+        .iter()
+        .map(|v| {
+            if *v == 0 {
+                "0".to_string()
+            } else {
+                format!("{:#010x}", v)
+            }
+        })
+        .collect();
+    let pol_strs: Vec<String> = polarity.iter().map(|v| v.to_string()).collect();
+
+    let mut out = String::new();
+    out.push_str(&fmt_array(&since_strs, "int32_t", "aKWSince"));
+    out.push_str(&fmt_array(&cflag_strs, "uint32_t", "aKWCFlag"));
+    out.push_str(&fmt_array(&pol_strs, "uint8_t", "aKWCFlagPolarity"));
+    out
+}
+
+/// The version+cflag check code that replaces `*pType = aKWCode[i]; break;`
+/// in `synq_sqlite3_keywordCode`. Uses unprefixed `aKWCode` because the
+/// CTransformer's `replace_all` will add the dialect prefix later.
+fn keyword_check_code() -> &'static str {
+    r#"/* Version check: skip keywords newer than target version. */
+    if( synq_sqlite_aKWSince[i] != 0 && SYNQ_VER_LT(config, synq_sqlite_aKWSince[i]) ){
+      break;
+    }
+    /* CFlag check with polarity. */
+    if( synq_sqlite_aKWCFlag[i] != 0 ){
+      int bit_set = SYNQ_HAS_CFLAG(config, synq_sqlite_aKWCFlag[i]) != 0;
+      int is_enable = synq_sqlite_aKWCFlagPolarity[i];
+      if( bit_set != is_enable ){
+        break;
+      }
+    }
+    *pType = aKWCode[i];
+    break;"#
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeSet;
+
+    /// Parse sqlite_cflags.h and verify every entry in SYNQ_CFLAG_TABLE matches.
+    #[test]
+    fn synq_cflag_table_matches_header() {
+        let header = include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../syntaqlite-runtime/include/syntaqlite/sqlite_cflags.h"
+        ));
+
+        // Parse all "#define SYNQ_SQLITE_* 0x..." lines from the header.
+        let mut header_defines: std::collections::HashMap<String, u32> =
+            std::collections::HashMap::new();
+        for line in header.lines() {
+            let line = line.trim();
+            if let Some(rest) = line.strip_prefix("#define SYNQ_SQLITE_") {
+                let parts: Vec<&str> = rest.split_whitespace().collect();
+                if parts.len() >= 2 {
+                    let name = format!("SYNQ_SQLITE_{}", parts[0]);
+                    if let Some(hex) = parts[1].strip_prefix("0x") {
+                        if let Ok(val) = u32::from_str_radix(hex, 16) {
+                            header_defines.insert(name, val);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Every entry in SYNQ_CFLAG_TABLE must match the header.
+        for (name, value) in super::SYNQ_CFLAG_TABLE {
+            let header_val = header_defines.get(*name);
+            assert_eq!(
+                header_val,
+                Some(value),
+                "SYNQ_CFLAG_TABLE entry {name}={value:#010x} does not match sqlite_cflags.h (got {:?})",
+                header_val
+            );
+        }
+
+        // Every entry in the header must be in SYNQ_CFLAG_TABLE.
+        let table_names: std::collections::HashSet<&str> =
+            super::SYNQ_CFLAG_TABLE.iter().map(|(n, _)| *n).collect();
+        for (name, val) in &header_defines {
+            assert!(
+                table_names.contains(name.as_str()),
+                "sqlite_cflags.h defines {name}={val:#010x} but it is missing from SYNQ_CFLAG_TABLE"
+            );
+        }
+    }
 
     #[test]
     fn extract_terminals_collects_rhs_tokens_but_excludes_id() {
@@ -262,6 +520,10 @@ pub(crate) fn generate_keyword_hash(
     let generated_code = String::from_utf8(output.stdout)
         .map_err(|e| format!("Invalid UTF-8 in mkkeyword output: {e}"))?;
 
+    // Parse keyword indices from testcase comments before any transformations.
+    let keyword_indices = parse_keyword_indices(&generated_code);
+    let keyword_arrays = generate_keyword_arrays(&keyword_indices, dialect);
+
     let kw_text_sym = format!("synq_{}_zKWText", dialect);
     let kw_offset_sym = format!("synq_{}_aKWOffset", dialect);
     let kw_len_sym = format!("synq_{}_aKWLen", dialect);
@@ -276,6 +538,18 @@ pub(crate) fn generate_keyword_hash(
         .remove_lines_matching("#define SQLITE_N_KEYWORD")
         .rename_function("keywordCode", "synq_sqlite3_keywordCode")
         .remove_static("synq_sqlite3_keywordCode")
+        // Add config parameter to keywordCode signature.
+        .replace_in_function(
+            "synq_sqlite3_keywordCode",
+            "synq_sqlite3_keywordCode(const char *z",
+            "synq_sqlite3_keywordCode(const SyntaqliteDialectConfig *config, const char *z",
+        )
+        // Replace the simple assignment with version/cflag checks.
+        .replace_in_function(
+            "synq_sqlite3_keywordCode",
+            "*pType = aKWCode[i];\n    break;",
+            keyword_check_code(),
+        )
         .remove_static("zKWText")
         .remove_static("aKWOffset")
         .remove_static("aKWLen")
@@ -287,10 +561,27 @@ pub(crate) fn generate_keyword_hash(
         .replace_all("TK_", "SYNTAQLITE_TK_")
         .finish();
 
+    // Insert keyword arrays before the keywordCode function.
+    let processed_code = {
+        let fn_marker = "int synq_sqlite3_keywordCode(";
+        match processed_code.find(fn_marker) {
+            Some(pos) => {
+                let mut result = processed_code[..pos].to_string();
+                result.push_str(&keyword_arrays);
+                result.push('\n');
+                result.push_str(&processed_code[pos..]);
+                result
+            }
+            None => processed_code,
+        }
+    };
+
     let mut w = CWriter::new();
     w.sqlite_file_header();
     w.include_local("syntaqlite_ext/sqlite_compat.h");
     w.include_local(&format!("syntaqlite_{dialect}/{dialect}_tokens.h"));
+    w.include_local("syntaqlite/dialect_config.h");
+    w.include_local("syntaqlite/sqlite_cflags.h");
     w.newline();
 
     w.fragment(&extract_result.upper_to_lower);
@@ -313,7 +604,9 @@ pub(crate) fn generate_keyword_h() -> String {
     w.sqlite_file_header();
     w.header_guard_start("SYNTAQLITE_SQLITE_KEYWORD_H");
     w.newline();
-    w.line("int synq_sqlite3_keywordCode(const char* z, int n, int* pType);");
+    w.line("#include \"syntaqlite/dialect_config.h\"");
+    w.newline();
+    w.line("int synq_sqlite3_keywordCode(const SyntaqliteDialectConfig *config, const char* z, int n, int* pType);");
     w.newline();
     w.header_guard_end("SYNTAQLITE_SQLITE_KEYWORD_H");
     w.finish()

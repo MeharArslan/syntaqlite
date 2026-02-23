@@ -40,3 +40,30 @@ expr(A) ::= idj(B) LP distinct(C) exprlist(D) ORDER BY sortlist(E) RP filter_ove
         fo->filter_expr,
         fo->over_def);
 }
+
+// ============ Ordered-Set Aggregate (WITHIN GROUP) ============
+// e.g. percentile(0.5) WITHIN GROUP (ORDER BY salary)
+
+expr(A) ::= idj(B) LP distinct(C) exprlist(D) RP WITHIN GROUP LP ORDER BY expr(E) RP. {
+    synq_mark_as_function(pCtx, B);
+    A = synq_parse_ordered_set_function_call(pCtx,
+        synq_span(pCtx, B),
+        (SyntaqliteAggregateFunctionCallFlags){.raw = (uint8_t)C},
+        D,
+        E,
+        SYNTAQLITE_NULL_NODE,
+        SYNTAQLITE_NULL_NODE);
+}
+
+// Ordered-set aggregate with filter/over
+expr(A) ::= idj(B) LP distinct(C) exprlist(D) RP WITHIN GROUP LP ORDER BY expr(E) RP filter_over(F). {
+    SyntaqliteFilterOver *fo = (SyntaqliteFilterOver*)synq_arena_ptr(&pCtx->ast, F);
+    synq_mark_as_function(pCtx, B);
+    A = synq_parse_ordered_set_function_call(pCtx,
+        synq_span(pCtx, B),
+        (SyntaqliteAggregateFunctionCallFlags){.raw = (uint8_t)C},
+        D,
+        E,
+        fo->filter_expr,
+        fo->over_def);
+}

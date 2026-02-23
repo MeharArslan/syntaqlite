@@ -13,29 +13,24 @@
 //! - 3.46.0: `SELECT 1_000` → success (digit separators added)
 //! - 3.34.1: `INSERT ... RETURNING` → error near "RETURNING"
 //! - 3.35.0: same query → success
+//! - 3.34.1: `WITH t AS MATERIALIZED (...)` → error near "MATERIALIZED"
+//! - 3.35.0: same query → success
+//! - 3.24.0: `SELECT sum(1) OVER ()` → error near "("
+//! - 3.25.0: same query → success
+//! - 3.23.1: `ON CONFLICT(x) DO NOTHING` → error near "ON"
+//! - 3.24.0: same query → success
+//! - 3.24.0: `FILTER (WHERE ...)` → error near "("
+//! - 3.25.0: same query (with OVER) → success
+//! - 3.47.0: WITHIN keyword added to mkkeywordhash (cflag-gated)
+//! - 3.47.0 without ENABLE_ORDERED_SET_AGGREGATES: WITHIN treated as ID
+//! - 3.47.0 with ENABLE_ORDERED_SET_AGGREGATES: WITHIN recognized as keyword
 
+use syntaqlite::low_level::TokenType;
 use syntaqlite_runtime::dialect::ffi::DialectConfig;
 
-// Token type constants (from generated sqlite_tokens.h / tokens.rs).
-// Using raw u32 values since TokenType::from_raw is pub(crate).
-#[allow(dead_code)]
-mod tk {
-    pub const INTEGER: u32 = 109;
-    pub const FLOAT: u32 = 110;
-    pub const MINUS: u32 = 97;
-    pub const GT: u32 = 35;
-    pub const RSHIFT: u32 = 95;
-    pub const PTR: u32 = 102;
-    pub const QNUMBER: u32 = 150;
-    pub const SPACE: u32 = 184;
-    pub const SELECT: u32 = 159;
-    pub const PLUS: u32 = 96;
-    pub const RETURNING: u32 = 147;
-    pub const MATERIALIZED: u32 = 86;
-    pub const WINDOW: u32 = 166;
-    pub const OVER: u32 = 167;
-    pub const FILTER: u32 = 168;
-    pub const DO: u32 = 42;
+/// Shorthand: convert a TokenType variant to its raw u32 value.
+const fn tk(t: TokenType) -> u32 {
+    t as u32
 }
 
 // ---------------------------------------------------------------------------
@@ -52,7 +47,7 @@ fn tokenize_at_version(sql: &str, version: i32) -> Vec<(u32, String)> {
         cflags: 0,
     });
     tok.tokenize(sql)
-        .filter(|raw| raw.token_type != tk::SPACE)
+        .filter(|raw| raw.token_type != tk(TokenType::Space))
         .map(|raw| (raw.token_type, raw.text.to_string()))
         .collect()
 }
@@ -62,13 +57,32 @@ fn tokenize_latest(sql: &str) -> Vec<(u32, String)> {
     tokenize_at_version(sql, i32::MAX)
 }
 
+/// Tokenize SQL with a specific version and cflags.
+fn tokenize_at_version_cflags(sql: &str, version: i32, cflags: u32) -> Vec<(u32, String)> {
+    let dialect = syntaqlite::low_level::dialect();
+    let mut tok = syntaqlite_runtime::parser::Tokenizer::new(*dialect);
+    tok.set_dialect_config(&DialectConfig {
+        sqlite_version: version,
+        cflags,
+    });
+    tok.tokenize(sql)
+        .filter(|raw| raw.token_type != tk(TokenType::Space))
+        .map(|raw| (raw.token_type, raw.text.to_string()))
+        .collect()
+}
+
 /// Parse SQL with a specific SQLite version and return whether it succeeded.
 fn parses_ok_at_version(sql: &str, version: i32) -> bool {
+    parses_ok_at_version_cflags(sql, version, 0)
+}
+
+/// Parse SQL with a specific version and cflags.
+fn parses_ok_at_version_cflags(sql: &str, version: i32, cflags: u32) -> bool {
     let dialect = syntaqlite::low_level::dialect();
     let mut parser = syntaqlite_runtime::Parser::new(dialect);
     parser.set_dialect_config(&DialectConfig {
         sqlite_version: version,
-        cflags: 0,
+        cflags,
     });
     let mut cursor = parser.parse(sql);
     matches!(cursor.next_statement(), Some(Ok(_)))
@@ -91,7 +105,7 @@ const fn ver(major: i32, minor: i32, patch: i32) -> i32 {
 fn ptr_operator_tokenizes_as_ptr_on_latest() {
     let tokens = tokenize_latest("1->2");
     let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
-    assert_eq!(types, vec![tk::INTEGER, tk::PTR, tk::INTEGER]);
+    assert_eq!(types, vec![tk(TokenType::Integer), tk(TokenType::Ptr), tk(TokenType::Integer)]);
 }
 
 #[test]
@@ -102,7 +116,7 @@ fn ptr_operator_reclassified_to_minus_before_3_38() {
     let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
     assert_eq!(
         types,
-        vec![tk::INTEGER, tk::MINUS, tk::GT, tk::INTEGER],
+        vec![tk(TokenType::Integer), tk(TokenType::Minus), tk(TokenType::Gt), tk(TokenType::Integer)],
         "Before 3.38, '->' should split into MINUS + GT"
     );
     // Verify the minus token is just '-' (length 1).
@@ -113,7 +127,7 @@ fn ptr_operator_reclassified_to_minus_before_3_38() {
 fn ptr_operator_works_at_3_38() {
     let tokens = tokenize_at_version("1->2", ver(3, 38, 0));
     let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
-    assert_eq!(types, vec![tk::INTEGER, tk::PTR, tk::INTEGER]);
+    assert_eq!(types, vec![tk(TokenType::Integer), tk(TokenType::Ptr), tk(TokenType::Integer)]);
 }
 
 #[test]
@@ -123,7 +137,7 @@ fn double_ptr_reclassified_before_3_38() {
     let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
     assert_eq!(
         types,
-        vec![tk::INTEGER, tk::MINUS, tk::RSHIFT, tk::INTEGER],
+        vec![tk(TokenType::Integer), tk(TokenType::Minus), tk(TokenType::Rshift), tk(TokenType::Integer)],
         "Before 3.38, '->>' should split into MINUS + RSHIFT"
     );
     assert_eq!(tokens[1].1, "-");
@@ -158,7 +172,7 @@ fn ptr_reclassification_parse_succeeds_at_3_38() {
 fn digit_separator_tokenizes_as_qnumber_on_latest() {
     let tokens = tokenize_latest("1_000");
     let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
-    assert_eq!(types, vec![tk::QNUMBER]);
+    assert_eq!(types, vec![tk(TokenType::Qnumber)]);
     assert_eq!(tokens[0].1, "1_000");
 }
 
@@ -166,7 +180,7 @@ fn digit_separator_tokenizes_as_qnumber_on_latest() {
 fn digit_separator_reclassified_to_integer_before_3_46() {
     // Before 3.46, 1_000 should truncate to just "1" (INTEGER).
     let tokens = tokenize_at_version("1_000", ver(3, 45, 0));
-    assert_eq!(tokens[0].0, tk::INTEGER, "Should be INTEGER, not QNUMBER");
+    assert_eq!(tokens[0].0, tk(TokenType::Integer), "Should be INTEGER, not QNUMBER");
     assert_eq!(
         tokens[0].1, "1",
         "Should truncate to '1' before the underscore"
@@ -177,7 +191,7 @@ fn digit_separator_reclassified_to_integer_before_3_46() {
 fn digit_separator_float_reclassified_before_3_46() {
     // 1.5_0 should become FLOAT "1.5" before 3.46.
     let tokens = tokenize_at_version("1.5_0", ver(3, 45, 0));
-    assert_eq!(tokens[0].0, tk::FLOAT, "Should be FLOAT, not QNUMBER");
+    assert_eq!(tokens[0].0, tk(TokenType::Float), "Should be FLOAT, not QNUMBER");
     assert_eq!(
         tokens[0].1, "1.5",
         "Should truncate to '1.5' before the underscore"
@@ -187,7 +201,7 @@ fn digit_separator_float_reclassified_before_3_46() {
 #[test]
 fn digit_separator_works_at_3_46() {
     let tokens = tokenize_at_version("1_000", ver(3, 46, 0));
-    assert_eq!(tokens[0].0, tk::QNUMBER);
+    assert_eq!(tokens[0].0, tk(TokenType::Qnumber));
     assert_eq!(tokens[0].1, "1_000");
 }
 
@@ -203,7 +217,7 @@ fn basic_tokens_unaffected_by_version() {
         let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
         assert_eq!(
             types,
-            vec![tk::SELECT, tk::INTEGER, tk::PLUS, tk::INTEGER],
+            vec![tk(TokenType::Select), tk(TokenType::Integer), tk(TokenType::Plus), tk(TokenType::Integer)],
             "Basic tokens should be stable at version {}",
             version
         );
@@ -211,95 +225,165 @@ fn basic_tokens_unaffected_by_version() {
 }
 
 // ---------------------------------------------------------------------------
-// Keyword version gating (not yet implemented — these tests should FAIL)
+// Keyword version gating
 //
-// Verified against real sqlite3 shells:
+// Verified against real sqlite3 shells compiled from official amalgamations:
 //   3.34.1: `INSERT INTO t VALUES(1) RETURNING *;` → error near "RETURNING"
 //   3.35.0: same query → success
-//   3.24.0: `SELECT sum(x) OVER (...);` → error near "("
-//   3.38.0: same query → success
+//   3.34.1: `WITH t AS MATERIALIZED (SELECT 1) ...` → error near "MATERIALIZED"
+//   3.35.0: same query → success
+//   3.24.0: `SELECT sum(1) OVER ();` → error near "("
+//   3.25.0: same query → success
+//   3.23.1: `ON CONFLICT(x) DO NOTHING` → error near "ON"
+//   3.24.0: same query → success
+//   3.24.0: `FILTER (WHERE ...)` → error near "("
+//   3.25.0: same query (with OVER) → success
 //
-// When keyword version gating is implemented, the tokenizer should return
-// the keyword's fallback token (typically the same value the parser's
-// %fallback would have produced) for versions older than the keyword's
-// introduction. This prevents the parser from recognizing syntax that
-// didn't exist at that version.
+// The tokenizer returns the keyword's fallback token (typically the same
+// value the parser's %fallback would have produced) for versions older
+// than the keyword's introduction. This prevents the parser from
+// recognizing syntax that didn't exist at that version.
 // ---------------------------------------------------------------------------
 
 #[test]
-#[ignore = "keyword version gating not yet implemented"]
 fn returning_keyword_not_recognized_before_3_35() {
     // RETURNING was added as a keyword in 3.35.0.
     // Before that, it should NOT tokenize as TK_RETURNING.
     let tokens = tokenize_at_version("RETURNING", ver(3, 34, 0));
     assert_ne!(
         tokens[0].0,
-        tk::RETURNING,
+        tk(TokenType::Returning),
         "RETURNING should not be a keyword before 3.35"
     );
 }
 
 #[test]
-#[ignore = "keyword version gating not yet implemented"]
 fn returning_keyword_recognized_at_3_35() {
     let tokens = tokenize_at_version("RETURNING", ver(3, 35, 0));
-    assert_eq!(tokens[0].0, tk::RETURNING);
+    assert_eq!(tokens[0].0, tk(TokenType::Returning));
 }
 
 #[test]
-#[ignore = "keyword version gating not yet implemented"]
 fn materialized_keyword_not_recognized_before_3_35() {
     let tokens = tokenize_at_version("MATERIALIZED", ver(3, 34, 0));
     assert_ne!(
         tokens[0].0,
-        tk::MATERIALIZED,
+        tk(TokenType::Materialized),
         "MATERIALIZED should not be a keyword before 3.35"
     );
 }
 
 #[test]
-#[ignore = "keyword version gating not yet implemented"]
 fn window_keyword_not_recognized_before_3_25() {
     // WINDOW was added in 3.25.0.
     let tokens = tokenize_at_version("WINDOW", ver(3, 24, 0));
     assert_ne!(
         tokens[0].0,
-        tk::WINDOW,
+        tk(TokenType::Window),
         "WINDOW should not be a keyword before 3.25"
     );
 }
 
 #[test]
-#[ignore = "keyword version gating not yet implemented"]
 fn over_keyword_not_recognized_before_3_25() {
     let tokens = tokenize_at_version("OVER", ver(3, 24, 0));
     assert_ne!(
         tokens[0].0,
-        tk::OVER,
+        tk(TokenType::Over),
         "OVER should not be a keyword before 3.25"
     );
 }
 
 #[test]
-#[ignore = "keyword version gating not yet implemented"]
 fn do_keyword_not_recognized_before_3_24() {
     // DO was added in 3.24.0 (upsert: ON CONFLICT DO).
     let tokens = tokenize_at_version("DO", ver(3, 23, 0));
     assert_ne!(
         tokens[0].0,
-        tk::DO,
+        tk(TokenType::Do),
         "DO should not be a keyword before 3.24"
     );
 }
 
 #[test]
-#[ignore = "keyword version gating not yet implemented"]
 fn filter_keyword_not_recognized_before_3_25() {
     // FILTER was added in 3.25.0 (with window functions).
     let tokens = tokenize_at_version("FILTER", ver(3, 24, 0));
     assert_ne!(
         tokens[0].0,
-        tk::FILTER,
+        tk(TokenType::Filter),
         "FILTER should not be a keyword before 3.25"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// WITHIN keyword: cflag-gated (SQLITE_ENABLE_ORDERED_SET_AGGREGATES)
+//
+// WITHIN is an ENABLE-polarity keyword (polarity=1): it is only recognized
+// when the SQLITE_ENABLE_ORDERED_SET_AGGREGATES flag IS set. Without the
+// flag, WITHIN falls back to ID.
+//
+// Verified against SQLite 3.47.0+ compiled with/without the flag.
+// ---------------------------------------------------------------------------
+
+/// SYNQ_SQLITE_ENABLE_ORDERED_SET_AGGREGATES = 0x00020000
+const CFLAG_ORDERED_SET: u32 = 0x00020000;
+
+#[test]
+fn within_keyword_not_recognized_without_cflag() {
+    // Without the ENABLE flag, WITHIN should NOT be recognized as TK_WITHIN.
+    let tokens = tokenize_at_version("WITHIN", ver(3, 47, 0));
+    assert_ne!(
+        tokens[0].0,
+        tk(TokenType::Within),
+        "WITHIN should not be a keyword without ENABLE_ORDERED_SET_AGGREGATES"
+    );
+}
+
+#[test]
+fn within_keyword_recognized_with_cflag() {
+    // With the ENABLE flag set, WITHIN should be recognized.
+    let tokens = tokenize_at_version_cflags("WITHIN", ver(3, 47, 0), CFLAG_ORDERED_SET);
+    assert_eq!(
+        tokens[0].0,
+        tk(TokenType::Within),
+        "WITHIN should be a keyword when ENABLE_ORDERED_SET_AGGREGATES is set"
+    );
+}
+
+#[test]
+fn within_keyword_not_recognized_before_3_47() {
+    // Even with the cflag, WITHIN was not available before 3.47.
+    let tokens = tokenize_at_version_cflags("WITHIN", ver(3, 46, 0), CFLAG_ORDERED_SET);
+    assert_ne!(
+        tokens[0].0,
+        tk(TokenType::Within),
+        "WITHIN should not be a keyword before 3.47 even with cflag"
+    );
+}
+
+#[test]
+fn within_group_parses_with_cflag() {
+    // percentile(0.5) WITHIN GROUP (ORDER BY salary)
+    assert!(
+        parses_ok_at_version_cflags(
+            "SELECT percentile(0.5) WITHIN GROUP (ORDER BY salary) FROM t;",
+            i32::MAX,
+            CFLAG_ORDERED_SET,
+        ),
+        "WITHIN GROUP syntax should parse when cflag is set"
+    );
+}
+
+#[test]
+fn within_group_fails_without_cflag() {
+    // Without the cflag, WITHIN falls back to ID and the syntax fails.
+    assert!(
+        !parses_ok_at_version_cflags(
+            "SELECT percentile(0.5) WITHIN GROUP (ORDER BY salary) FROM t;",
+            i32::MAX,
+            0,
+        ),
+        "WITHIN GROUP syntax should fail without cflag"
     );
 }
