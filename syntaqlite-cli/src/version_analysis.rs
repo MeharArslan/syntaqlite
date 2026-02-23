@@ -37,11 +37,9 @@ fn handle_analyze_versions(sqlite_source_dir: &str, output_dir: &str) -> Result<
     let source_dir = Path::new(sqlite_source_dir);
     let out_dir = Path::new(output_dir);
 
-    std::fs::create_dir_all(out_dir)
-        .map_err(|e| format!("failed to create output dir: {e}"))?;
+    std::fs::create_dir_all(out_dir).map_err(|e| format!("failed to create output dir: {e}"))?;
 
-    let analysis =
-        syntaqlite_codegen::version_analysis::analyze_versions(source_dir, out_dir)?;
+    let analysis = syntaqlite_codegen::version_analysis::analyze_versions(source_dir, out_dir)?;
 
     // Serialize to JSON and print to stdout.
     let json = analysis_to_json(&analysis);
@@ -58,10 +56,7 @@ fn handle_analyze_versions(sqlite_source_dir: &str, output_dir: &str) -> Result<
         } else {
             format!(", {} errors", frag.errors.len())
         };
-        eprintln!(
-            "  {name}: {} variant(s){errors}",
-            frag.variants.len()
-        );
+        eprintln!("  {name}: {} variant(s){errors}", frag.variants.len());
     }
     eprintln!(
         "  keywords: {} total, {} addition points",
@@ -80,8 +75,7 @@ fn handle_analyze_versions(sqlite_source_dir: &str, output_dir: &str) -> Result<
 
     // Write grammar report to output dir if available.
     if let Some(ref grammar) = analysis.grammar {
-        let report =
-            syntaqlite_codegen::version_analysis::grammar::format_grammar_report(grammar);
+        let report = syntaqlite_codegen::version_analysis::grammar::format_grammar_report(grammar);
         let report_path = out_dir.join("grammar_report.md");
         std::fs::write(&report_path, &report)
             .map_err(|e| format!("write {}: {e}", report_path.display()))?;
@@ -92,16 +86,18 @@ fn handle_analyze_versions(sqlite_source_dir: &str, output_dir: &str) -> Result<
 }
 
 /// Build JSON output manually to avoid adding serde to the codegen crate.
-fn analysis_to_json(
-    analysis: &syntaqlite_codegen::version_analysis::VersionAnalysis,
-) -> String {
+fn analysis_to_json(analysis: &syntaqlite_codegen::version_analysis::VersionAnalysis) -> String {
     let mut out = String::new();
     out.push_str("{\n");
 
     // meta
     out.push_str("  \"meta\": {\n");
     out.push_str("    \"versions_processed\": [");
-    let versions: Vec<String> = analysis.versions.iter().map(|v| format!("\"{v}\"")).collect();
+    let versions: Vec<String> = analysis
+        .versions
+        .iter()
+        .map(|v| format!("\"{v}\""))
+        .collect();
     out.push_str(&versions.join(", "));
     out.push_str("]\n");
     out.push_str("  },\n");

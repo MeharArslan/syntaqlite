@@ -114,6 +114,10 @@ unsafe extern "C" {
     // Parser configuration
     pub fn syntaqlite_parser_set_trace(p: *mut Parser, enable: c_int) -> c_int;
     pub fn syntaqlite_parser_set_collect_tokens(p: *mut Parser, enable: c_int) -> c_int;
+    pub fn syntaqlite_parser_set_dialect_config(
+        p: *mut Parser,
+        config: *const crate::dialect::ffi::DialectConfig,
+    ) -> c_int;
 
     // Comments
     pub fn syntaqlite_parser_comments(p: *mut Parser, count: *mut u32) -> *const Comment;
@@ -152,5 +156,9 @@ unsafe extern "C" {
     pub fn syntaqlite_tokenizer_reset(tok: *mut Tokenizer, source: *const c_char, len: u32);
     pub fn syntaqlite_tokenizer_next(tok: *mut Tokenizer, out: *mut Token) -> c_int;
     pub fn syntaqlite_tokenizer_destroy(tok: *mut Tokenizer);
+    pub fn syntaqlite_tokenizer_set_dialect_config(
+        tok: *mut Tokenizer,
+        config: *const crate::dialect::ffi::DialectConfig,
+    ) -> c_int;
 
 }

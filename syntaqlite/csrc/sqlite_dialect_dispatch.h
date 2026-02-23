@@ -12,6 +12,6 @@
 #define SYNQ_PARSER_FREE(d, p, f)        SynqSqliteParseFree(p, f)
 #define SYNQ_PARSER_FEED(d, p, t, m, c)  SynqSqliteParse(p, t, m, c)
 #define SYNQ_PARSER_TRACE(d, f, s)       SynqSqliteParseTrace(f, s)
-#define SYNQ_GET_TOKEN(d, z, t)          SynqSqliteGetToken(z, t)
+#define SYNQ_GET_TOKEN(d, cfg, z, t)     SynqSqliteGetToken(cfg, z, t)
 
 #endif  // SYNTAQLITE_SQLITE_DIALECT_DISPATCH_H

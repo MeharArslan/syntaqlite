@@ -33,6 +33,7 @@
 #include <stdio.h>
 
 #include "syntaqlite/config.h"
+#include "syntaqlite/dialect_config.h"
 #include "syntaqlite/types.h"
 
 #ifdef __cplusplus
@@ -285,6 +286,12 @@ int syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable);
 // Returns 0 on success, -1 if the parser has already been used.
 int syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable);
 
+// Set the dialect config for version/cflag-gated tokenization.
+// The config is copied — the caller's struct does not need to outlive the
+// parser. Default: latest version (INT32_MAX), no cflags.
+// Returns 0 on success, -1 if the parser has already been used.
+int syntaqlite_parser_set_dialect_config(SyntaqliteParser* p,
+                                         const SyntaqliteDialectConfig* config);
 
 // ---------------------------------------------------------------------------
 // Low-level token-feeding API

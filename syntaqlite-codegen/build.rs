@@ -9,8 +9,7 @@ fn main() {
     // Get the path to vendored SQLite tools in this crate
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let sqlite_dir = PathBuf::from(&manifest_dir).join("sqlite");
-    let tokenize_c =
-        PathBuf::from(&manifest_dir).join("../third_party/src/sqlite/src/tokenize.c");
+    let tokenize_c = PathBuf::from(&manifest_dir).join("../third_party/src/sqlite/src/tokenize.c");
 
     let lemon_path = sqlite_dir.join("lemon.c");
     let mkkeywordhash_path = sqlite_dir.join("mkkeywordhash.c");
@@ -154,7 +153,11 @@ fn transform_mkkeywordhash(input: &PathBuf, output: &PathBuf) -> Result<(), Stri
     let mut s = content;
 
     // remove_static("aKeywordTable") + add_const("Keyword aKeywordTable")
-    s = s.replacen("static Keyword aKeywordTable", "const Keyword aKeywordTable", 1);
+    s = s.replacen(
+        "static Keyword aKeywordTable",
+        "const Keyword aKeywordTable",
+        1,
+    );
 
     // remove_static("nKeyword") + add_const("int nKeyword")
     s = s.replacen("static int nKeyword", "const int nKeyword", 1);
@@ -220,8 +223,7 @@ fn transform_mkkeywordhash(input: &PathBuf, output: &PathBuf) -> Result<(), Stri
         "const size_t keyword_offsetof_zOrigName = offsetof(struct Keyword, zOrigName);\n",
     ));
 
-    fs::write(output, s)
-        .map_err(|e| format!("Failed to write {}: {}", output.display(), e))?;
+    fs::write(output, s).map_err(|e| format!("Failed to write {}: {}", output.display(), e))?;
 
     Ok(())
 }

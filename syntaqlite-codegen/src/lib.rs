@@ -184,9 +184,7 @@ pub fn base_keyword_token_names() -> std::collections::HashSet<String> {
     tools::mkkeyword::base_keyword_token_names()
 }
 
-pub(crate) fn extract_tokenizer(
-    dialect: &str,
-) -> Result<(String, TokenizerExtractResult), String> {
+pub(crate) fn extract_tokenizer(dialect: &str) -> Result<(String, TokenizerExtractResult), String> {
     sqlite_runtime_codegen::extract_tokenizer(
         embedded_sqlite_tokenize_c(),
         embedded_sqlite_global_c(),

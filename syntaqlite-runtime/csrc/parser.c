@@ -30,6 +30,7 @@ struct SyntaqliteParser {
   int trace;
   int collect_tokens;
   int sealed;
+  SyntaqliteDialectConfig dialect_config;
   SYNQ_VEC(SyntaqliteComment) comments;
   SYNQ_VEC(SyntaqliteTokenPos) tokens;
   int macro_depth;           // Nesting depth (0 = not in macro).
@@ -47,6 +48,8 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
   memset(p, 0, sizeof(*p));
   p->mem = m;
   p->dialect = dialect;
+  SyntaqliteDialectConfig default_config = SYNQ_DIALECT_CONFIG_DEFAULT;
+  p->dialect_config = default_config;
   p->lemon = SYNQ_PARSER_ALLOC(dialect, m.xMalloc);
   synq_parse_ctx_init(&p->ctx, m);
   syntaqlite_vec_init(&p->comments);
@@ -258,7 +261,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
 
   while (p->offset < p->source_len && z[p->offset] != '\0') {
     int token_type = 0;
-    int64_t token_len = SYNQ_GET_TOKEN(p->dialect, z + p->offset, &token_type);
+    int64_t token_len = SYNQ_GET_TOKEN(p->dialect, &p->dialect_config, z + p->offset, &token_type);
     if (token_len <= 0)
       break;
 
@@ -631,6 +634,13 @@ int syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable) {
 int syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable) {
   if (p->sealed) return -1;
   p->collect_tokens = enable;
+  return 0;
+}
+
+int syntaqlite_parser_set_dialect_config(SyntaqliteParser* p,
+                                         const SyntaqliteDialectConfig* config) {
+  if (p->sealed) return -1;
+  p->dialect_config = *config;
   return 0;
 }
 

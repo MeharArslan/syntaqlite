@@ -18,6 +18,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "syntaqlite/dialect_config.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -101,7 +103,8 @@ typedef struct SyntaqliteDialect {
     int (*parser_expected_tokens)(void* parser, int* out_tokens, int out_cap);
 
     // Tokenizer (provided by dialect)
-    int64_t (*get_token)(const unsigned char* z, int* tokenType);
+    int64_t (*get_token)(const SyntaqliteDialectConfig* config,
+                         const unsigned char* z, int* tokenType);
 
     // Keyword table exported by mkkeywordhash output (`sqlite_keyword.c`).
     const char* keyword_text;                // concatenated keyword bytes

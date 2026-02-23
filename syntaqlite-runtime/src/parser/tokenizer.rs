@@ -19,6 +19,8 @@ pub struct Tokenizer {
     raw: *mut ffi::Tokenizer,
     /// Null-terminated copy of the source text.
     source_buf: Vec<u8>,
+    /// Owned dialect config, kept alive so the C pointer remains valid.
+    dialect_config: crate::dialect::ffi::DialectConfig,
 }
 
 // SAFETY: The C tokenizer is self-contained (no thread-local or shared mutable
@@ -35,6 +37,21 @@ impl Tokenizer {
         Tokenizer {
             raw,
             source_buf: Vec::new(),
+            dialect_config: crate::dialect::ffi::DialectConfig::default(),
+        }
+    }
+
+    /// Set the dialect config for version/cflag-gated tokenization.
+    ///
+    /// The config is copied and owned by this tokenizer; the C side receives
+    /// a pointer to the owned copy.
+    pub fn set_dialect_config(&mut self, config: &crate::dialect::ffi::DialectConfig) {
+        self.dialect_config = *config;
+        unsafe {
+            ffi::syntaqlite_tokenizer_set_dialect_config(
+                self.raw,
+                &self.dialect_config as *const crate::dialect::ffi::DialectConfig,
+            );
         }
     }
 

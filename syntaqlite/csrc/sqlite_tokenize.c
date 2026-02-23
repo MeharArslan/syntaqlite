@@ -13,6 +13,8 @@
 #include "syntaqlite_sqlite/sqlite_tokens.h"
 #include "csrc/sqlite_keyword.h"
 
+#include "syntaqlite/dialect_config.h"
+
 #define CC_X          0    /* The letter 'x', or start of BLOB literal */
 #define CC_KYWD0      1    /* First letter of a keyword */
 #define CC_KYWD       2    /* Alphabetics or '_'.  Usable in a keyword */
@@ -150,7 +152,7 @@ static const unsigned char aiClass[] = {
 #endif
 };
 
-i64 SynqSqliteGetToken(const unsigned char *z, int *tokenType){
+static i64 SynqSqliteGetToken_base(const SyntaqliteDialectConfig* config, const unsigned char *z, int *tokenType){
   i64 i;
   int c;
   switch( aiClass[*z] ){  /* Switch on the character-class of the first byte
@@ -472,4 +474,28 @@ i64 SynqSqliteGetToken(const unsigned char *z, int *tokenType){
   while( IdChar(z[i]) ){ i++; }
   *tokenType = SYNTAQLITE_TK_ID;
   return i;
+}
+
+i64 SynqSqliteGetToken(const SyntaqliteDialectConfig* config, const unsigned char *z, int *tokenType){
+  i64 len = SynqSqliteGetToken_base(config, z, tokenType);
+  /* Version-dependent token reclassification. */
+  if( SYNQ_VER_LT(config, 3038000) && *tokenType==SYNTAQLITE_TK_PTR ){
+    /* -> and ->> operators added in 3.38.
+    ** Return just the '-' as TK_MINUS; next call picks up '>' naturally. */
+    *tokenType = SYNTAQLITE_TK_MINUS;
+    return 1;
+  }
+  if( SYNQ_VER_LT(config, 3046000) && *tokenType==SYNTAQLITE_TK_QNUMBER ){
+    /* Digit separators added in 3.46.
+    ** Truncate to the first underscore. */
+    i64 j;
+    int saw_dot = 0;
+    for(j=0; j<len; j++){
+      if( z[j]=='_' ) break;
+      if( z[j]=='.' ) saw_dot = 1;
+    }
+    *tokenType = saw_dot ? SYNTAQLITE_TK_FLOAT : SYNTAQLITE_TK_INTEGER;
+    return j;
+  }
+  return len;
 }

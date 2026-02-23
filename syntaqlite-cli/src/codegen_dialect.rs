@@ -50,9 +50,12 @@ pub(crate) fn dispatch(command: CodegenCommand) -> Result<(), String> {
             nodes_dir,
             command,
         } => match command {
-            DialectCommand::Csrc { output_dir } => {
-                cmd_generate_dialect(&name, actions_dir.as_deref(), nodes_dir.as_deref(), &output_dir)
-            }
+            DialectCommand::Csrc { output_dir } => cmd_generate_dialect(
+                &name,
+                actions_dir.as_deref(),
+                nodes_dir.as_deref(),
+                &output_dir,
+            ),
         },
     }
 }

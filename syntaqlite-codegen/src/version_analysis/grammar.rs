@@ -84,24 +84,12 @@ pub fn extract_grammar_summary(parse_y: &str) -> Result<GrammarSummary, String> 
         )
     })?;
 
-    let mut rule_signatures: Vec<String> = grammar
-        .rules
-        .iter()
-        .map(|r| r.to_string())
-        .collect();
+    let mut rule_signatures: Vec<String> = grammar.rules.iter().map(|r| r.to_string()).collect();
     rule_signatures.sort();
 
-    let nonterminals: BTreeSet<String> = grammar
-        .rules
-        .iter()
-        .map(|r| r.lhs.to_string())
-        .collect();
+    let nonterminals: BTreeSet<String> = grammar.rules.iter().map(|r| r.lhs.to_string()).collect();
 
-    let token_decls: BTreeSet<String> = grammar
-        .tokens
-        .iter()
-        .map(|t| t.name.to_string())
-        .collect();
+    let token_decls: BTreeSet<String> = grammar.tokens.iter().map(|t| t.name.to_string()).collect();
 
     let mut token_classes: Vec<String> = grammar
         .token_classes
@@ -140,9 +128,7 @@ pub fn extract_grammar_summary(parse_y: &str) -> Result<GrammarSummary, String> 
 }
 
 /// Compute diffs between consecutive version summaries.
-pub fn compute_grammar_diffs(
-    versions: &[(SqliteVersion, GrammarSummary)],
-) -> Vec<GrammarDiff> {
+pub fn compute_grammar_diffs(versions: &[(SqliteVersion, GrammarSummary)]) -> Vec<GrammarDiff> {
     let mut diffs = Vec::new();
 
     for pair in versions.windows(2) {
@@ -218,12 +204,7 @@ pub fn format_grammar_report(analysis: &GrammarAnalysis) -> String {
             .unwrap();
             writeln!(out).unwrap();
 
-            writeln!(
-                out,
-                "| Metric | {} | {} |",
-                first_ver, last_ver
-            )
-            .unwrap();
+            writeln!(out, "| Metric | {} | {} |", first_ver, last_ver).unwrap();
             writeln!(out, "| --- | --- | --- |").unwrap();
             writeln!(
                 out,
@@ -296,12 +277,7 @@ pub fn format_grammar_report(analysis: &GrammarAnalysis) -> String {
     writeln!(out).unwrap();
 
     for diff in &analysis.diffs {
-        writeln!(
-            out,
-            "#### {} → {}",
-            diff.from_version, diff.to_version
-        )
-        .unwrap();
+        writeln!(out, "#### {} → {}", diff.from_version, diff.to_version).unwrap();
         writeln!(out).unwrap();
 
         format_diff_section(&mut out, "Rules added", &diff.rules_added);
@@ -311,7 +287,11 @@ pub fn format_grammar_report(analysis: &GrammarAnalysis) -> String {
         format_diff_section(&mut out, "Nonterminals added", &diff.nonterminals_added);
         format_diff_section(&mut out, "Nonterminals removed", &diff.nonterminals_removed);
         format_diff_section(&mut out, "Token classes added", &diff.token_classes_added);
-        format_diff_section(&mut out, "Token classes removed", &diff.token_classes_removed);
+        format_diff_section(
+            &mut out,
+            "Token classes removed",
+            &diff.token_classes_removed,
+        );
         format_diff_section(&mut out, "Fallbacks added", &diff.fallbacks_added);
         format_diff_section(&mut out, "Fallbacks removed", &diff.fallbacks_removed);
         format_diff_section(&mut out, "Precedences added", &diff.precedences_added);
@@ -364,10 +344,7 @@ expr ::= INTEGER(A). { A }
             precedences: vec![],
         };
         let v2 = GrammarSummary {
-            rule_signatures: vec![
-                "expr ::= INTEGER".into(),
-                "expr ::= expr PLUS expr".into(),
-            ],
+            rule_signatures: vec!["expr ::= INTEGER".into(), "expr ::= expr PLUS expr".into()],
             nonterminals: ["expr".into()].into_iter().collect(),
             token_decls: BTreeSet::new(),
             token_classes: vec![],

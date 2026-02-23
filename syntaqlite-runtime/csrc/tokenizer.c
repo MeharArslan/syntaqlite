@@ -11,6 +11,7 @@
 struct SyntaqliteTokenizer {
   SyntaqliteMemMethods mem;
   const SyntaqliteDialect* dialect;
+  SyntaqliteDialectConfig dialect_config;
   const char* source;
   uint32_t len;
   uint32_t offset;
@@ -24,6 +25,8 @@ SyntaqliteTokenizer* syntaqlite_tokenizer_create(
   memset(tok, 0, sizeof(*tok));
   tok->mem = m;
   tok->dialect = dialect;
+  SyntaqliteDialectConfig default_config = SYNQ_DIALECT_CONFIG_DEFAULT;
+  tok->dialect_config = default_config;
   return tok;
 }
 
@@ -41,7 +44,7 @@ int syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out) {
   }
 
   int token_type = 0;
-  int64_t token_len = SYNQ_GET_TOKEN(tok->dialect,
+  int64_t token_len = SYNQ_GET_TOKEN(tok->dialect, &tok->dialect_config,
       (const unsigned char*)tok->source + tok->offset, &token_type);
 
   out->text = tok->source + tok->offset;
@@ -56,4 +59,10 @@ void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok) {
   if (tok) {
     tok->mem.xFree(tok);
   }
+}
+
+int syntaqlite_tokenizer_set_dialect_config(SyntaqliteTokenizer* tok,
+                                             const SyntaqliteDialectConfig* config) {
+  tok->dialect_config = *config;
+  return 0;
 }

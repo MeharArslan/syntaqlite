@@ -245,8 +245,7 @@ pub fn analyze_versions(
 }
 
 fn discover_versions(dir: &Path) -> Result<Vec<SqliteVersion>, String> {
-    let entries =
-        fs::read_dir(dir).map_err(|e| format!("cannot read {}: {e}", dir.display()))?;
+    let entries = fs::read_dir(dir).map_err(|e| format!("cannot read {}: {e}", dir.display()))?;
     let mut versions = Vec::new();
     for entry in entries.flatten() {
         if entry.path().is_dir() {
@@ -264,8 +263,7 @@ fn load_version_sources(base: &Path, version: &SqliteVersion) -> Result<VersionS
     let dir = base.join(version.to_string());
     let read = |rel: &str| -> Result<String, String> {
         let path = dir.join(rel);
-        fs::read_to_string(&path)
-            .map_err(|e| format!("{}: {e}", path.display()))
+        fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))
     };
     let read_optional = |rel: &str| -> Option<String> {
         let path = dir.join(rel);
@@ -347,9 +345,7 @@ fn analyze_keywords(
     }
 }
 
-fn analyze_grammar(
-    per_version: &[(SqliteVersion, Option<String>)],
-) -> Option<GrammarAnalysis> {
+fn analyze_grammar(per_version: &[(SqliteVersion, Option<String>)]) -> Option<GrammarAnalysis> {
     let mut summaries = Vec::new();
     let mut errors = Vec::new();
     let mut any_found = false;
@@ -396,8 +392,7 @@ fn write_variant_files(
     } else {
         for v in variants {
             let path = dir.join(format!("{fragment_name}_{}.c", v.id));
-            fs::write(&path, &v.text)
-                .map_err(|e| format!("write {}: {e}", path.display()))?;
+            fs::write(&path, &v.text).map_err(|e| format!("write {}: {e}", path.display()))?;
         }
     }
     Ok(())
@@ -421,8 +416,7 @@ fn write_keyword_files(
                     kw.name, kw.token, kw.mask_expr, kw.priority
                 ));
             }
-            fs::write(&path, &content)
-                .map_err(|e| format!("write {}: {e}", path.display()))?;
+            fs::write(&path, &content).map_err(|e| format!("write {}: {e}", path.display()))?;
         }
     }
     Ok(())

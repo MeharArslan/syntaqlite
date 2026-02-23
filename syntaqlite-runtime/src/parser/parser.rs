@@ -7,6 +7,7 @@ use super::ffi;
 use super::ffi::{Comment, MacroRegion};
 use super::nodes::{NodeId, NodeList};
 use crate::dialect::Dialect;
+use crate::dialect::ffi::DialectConfig;
 
 /// A parse error with a human-readable message and optional source location.
 #[derive(Debug, Clone)]
@@ -45,6 +46,8 @@ pub struct Parser {
     /// allocations.
     pub(crate) source_buf: Vec<u8>,
     config: ParserConfig,
+    /// Owned dialect config, kept alive so the C pointer remains valid.
+    dialect_config: DialectConfig,
 }
 
 // SAFETY: The C parser is self-contained (no thread-local or shared mutable
@@ -70,6 +73,7 @@ impl Parser {
             raw,
             source_buf: Vec::new(),
             config: ParserConfig::default(),
+            dialect_config: DialectConfig::default(),
         })
     }
 
@@ -89,6 +93,22 @@ impl Parser {
     /// Access the current configuration.
     pub fn config(&self) -> &ParserConfig {
         &self.config
+    }
+
+    /// Set the dialect config for version/cflag-gated tokenization.
+    ///
+    /// Must be called before first `parse()`. The config is copied and
+    /// owned by this parser; the C side receives a pointer to the owned copy.
+    pub fn set_dialect_config(&mut self, config: &DialectConfig) {
+        self.dialect_config = *config;
+        // SAFETY: We pass a pointer to self.dialect_config which is pinned
+        // by &mut self. The C side copies the config value.
+        unsafe {
+            ffi::syntaqlite_parser_set_dialect_config(
+                self.raw,
+                &self.dialect_config as *const DialectConfig,
+            );
+        }
     }
 
     /// Bind source text and return a `StatementCursor` for iterating statements.

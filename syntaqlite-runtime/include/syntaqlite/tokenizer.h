@@ -26,6 +26,7 @@
 #include <stdint.h>
 
 #include "syntaqlite/config.h"
+#include "syntaqlite/dialect_config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -75,6 +76,13 @@ int syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out);
 
 // Free the tokenizer and all its memory. No-op if tok is NULL.
 void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok);
+
+// Set the dialect config for version/cflag-gated tokenization.
+// The config is copied — the caller's struct does not need to outlive the
+// tokenizer. Default: latest version (INT32_MAX), no cflags.
+// Returns 0 on success.
+int syntaqlite_tokenizer_set_dialect_config(SyntaqliteTokenizer* tok,
+                                             const SyntaqliteDialectConfig* config);
 
 #ifdef __cplusplus
 }

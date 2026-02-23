@@ -87,7 +87,10 @@ fn parse_keyword_array(source: &str) -> Result<Vec<KeywordEntry>, String> {
 
 fn parse_keyword_line(line: &str) -> Option<KeywordEntry> {
     // Strip leading/trailing braces and comma.
-    let line = line.trim().trim_start_matches('{').trim_end_matches([',', '}']);
+    let line = line
+        .trim()
+        .trim_start_matches('{')
+        .trim_end_matches([',', '}']);
     let line = line.trim();
 
     // Split by commas, handling that mask_expr may contain `|`.

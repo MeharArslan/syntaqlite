@@ -22,9 +22,7 @@ pub struct VariantDiff {
 ///
 /// Versions must be sorted. Consecutive versions with the same hash
 /// are merged into one group.
-pub fn group_variants(
-    entries: &[(SqliteVersion, String, String)],
-) -> Vec<VariantGroup> {
+pub fn group_variants(entries: &[(SqliteVersion, String, String)]) -> Vec<VariantGroup> {
     if entries.is_empty() {
         return Vec::new();
     }

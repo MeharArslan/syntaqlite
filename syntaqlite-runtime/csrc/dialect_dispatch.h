@@ -21,7 +21,7 @@
 #define SYNQ_PARSER_FREE(d, p, f)        (d)->parser_free(p, f)
 #define SYNQ_PARSER_FEED(d, p, t, m, c)  (d)->parser_feed(p, t, m, c)
 #define SYNQ_PARSER_TRACE(d, f, s)       do { if ((d)->parser_trace) (d)->parser_trace(f, s); } while(0)
-#define SYNQ_GET_TOKEN(d, z, t)          (d)->get_token(z, t)
+#define SYNQ_GET_TOKEN(d, cfg, z, t)     (d)->get_token(cfg, z, t)
 #endif
 
 #endif  // SYNTAQLITE_INTERNAL_DIALECT_DISPATCH_H

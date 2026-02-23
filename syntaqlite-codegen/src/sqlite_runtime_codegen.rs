@@ -87,14 +87,28 @@ pub(crate) fn extract_tokenizer(
         w.finish()
     };
 
+    let get_token_name = format!("Synq{}GetToken", pascal_case(dialect));
+    let get_token_base = format!("{}_base", get_token_name);
     let output = c_transformer::CTransformer::new(&combined)
         .add_array_static("sqlite3CtypeMap")
+        .insert_after_includes("#include \"syntaqlite/dialect_config.h\"")
         .replace_in_function("sqlite3GetToken", "keywordCode", "synq_sqlite3_keywordCode")
-        .rename_function(
+        .replace_in_function(
             "sqlite3GetToken",
-            &format!("Synq{}GetToken", pascal_case(dialect)),
+            "sqlite3GetToken(const unsigned char *z",
+            "sqlite3GetToken(const SyntaqliteDialectConfig* config, const unsigned char *z",
+        )
+        .rename_function("sqlite3GetToken", &get_token_base)
+        // Make the base function static (internal linkage only).
+        .replace_all(
+            &format!("i64 {}(", get_token_base),
+            &format!("static i64 {}(", get_token_base),
         )
         .replace_all("TK_", "SYNTAQLITE_TK_")
+        .append(&generate_get_token_wrapper(
+            &get_token_name,
+            &get_token_base,
+        ))
         .finish();
 
     Ok((
@@ -104,6 +118,42 @@ pub(crate) fn extract_tokenizer(
             upper_to_lower: upper_to_lower.text,
         },
     ))
+}
+
+/// Generate the public `GetToken` wrapper that calls the `_base` function then
+/// applies version-dependent token reclassification (the "postlude").
+///
+/// When `sqlite_version` is `INT32_MAX` (latest), the postlude is a single
+/// branch-not-taken. When compiled with `SYNQ_SQLITE_VERSION` defined, the
+/// compiler constant-folds and eliminates dead branches.
+fn generate_get_token_wrapper(public_name: &str, base_name: &str) -> String {
+    format!(
+        r#"
+i64 {public_name}(const SyntaqliteDialectConfig* config, const unsigned char *z, int *tokenType){{
+  i64 len = {base_name}(config, z, tokenType);
+  /* Version-dependent token reclassification. */
+  if( SYNQ_VER_LT(config, 3038000) && *tokenType==SYNTAQLITE_TK_PTR ){{
+    /* -> and ->> operators added in 3.38.
+    ** Return just the '-' as TK_MINUS; next call picks up '>' naturally. */
+    *tokenType = SYNTAQLITE_TK_MINUS;
+    return 1;
+  }}
+  if( SYNQ_VER_LT(config, 3046000) && *tokenType==SYNTAQLITE_TK_QNUMBER ){{
+    /* Digit separators added in 3.46.
+    ** Truncate to the first underscore. */
+    i64 j;
+    int saw_dot = 0;
+    for(j=0; j<len; j++){{
+      if( z[j]=='_' ) break;
+      if( z[j]=='.' ) saw_dot = 1;
+    }}
+    *tokenType = saw_dot ? SYNTAQLITE_TK_FLOAT : SYNTAQLITE_TK_INTEGER;
+    return j;
+  }}
+  return len;
+}}
+"#
+    )
 }
 
 /// Extract terminal symbols (potential keywords) from extension `.y` grammar files.

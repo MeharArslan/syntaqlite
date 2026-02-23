@@ -433,7 +433,7 @@ pub fn generate_dialect_dispatch_h(dialect: &str) -> String {
         "#define SYNQ_PARSER_TRACE(d, f, s)       Synq{pascal}ParseTrace(f, s)"
     ));
     w.line(&format!(
-        "#define SYNQ_GET_TOKEN(d, z, t)          Synq{pascal}GetToken(z, t)"
+        "#define SYNQ_GET_TOKEN(d, cfg, z, t)     Synq{pascal}GetToken(cfg, z, t)"
     ));
     w.newline();
     w.line(&format!("#endif  // {guard}"));
@@ -506,9 +506,10 @@ pub fn generate_tokenize_h(dialect: &str) -> String {
     w.line(&format!("#define {guard}"));
     w.newline();
     w.include_local("syntaqlite_ext/sqlite_compat.h");
+    w.include_local("syntaqlite/dialect_config.h");
     w.newline();
     w.line(&format!(
-        "i64 Synq{pascal}GetToken(const unsigned char* z, int* tokenType);"
+        "i64 Synq{pascal}GetToken(const SyntaqliteDialectConfig* config, const unsigned char* z, int* tokenType);"
     ));
     w.newline();
     w.line(&format!("#endif  // {guard}"));

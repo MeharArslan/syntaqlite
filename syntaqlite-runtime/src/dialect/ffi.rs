@@ -9,6 +9,23 @@ pub const FIELD_BOOL: u8 = 2;
 pub const FIELD_FLAGS: u8 = 3;
 pub const FIELD_ENUM: u8 = 4;
 
+/// Mirrors C `SyntaqliteDialectConfig` from `include/syntaqlite/dialect_config.h`.
+#[repr(C)]
+#[derive(Debug, Clone, Copy)]
+pub struct DialectConfig {
+    pub sqlite_version: i32,
+    pub cflags: u32,
+}
+
+impl Default for DialectConfig {
+    fn default() -> Self {
+        Self {
+            sqlite_version: i32::MAX,
+            cflags: 0,
+        }
+    }
+}
+
 /// Mirrors C `SyntaqliteFieldMeta` from `include/syntaqlite/dialect.h`.
 #[repr(C)]
 pub struct FieldMeta {

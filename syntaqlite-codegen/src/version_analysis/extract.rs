@@ -111,12 +111,8 @@ pub fn extract_fragments(
         char_map: tok
             .extract_defines_with_ifdef_context(&["charMap"])
             .map(|d| d.text),
-        get_token: tok
-            .extract_function("sqlite3GetToken")
-            .map(|f| f.text),
-        ctype_map: glob
-            .extract_static_array("sqlite3CtypeMap")
-            .map(|a| a.text),
+        get_token: tok.extract_function("sqlite3GetToken").map(|f| f.text),
+        ctype_map: glob.extract_static_array("sqlite3CtypeMap").map(|a| a.text),
         upper_to_lower: glob
             .extract_static_array("sqlite3UpperToLower")
             .map(|a| a.text),
