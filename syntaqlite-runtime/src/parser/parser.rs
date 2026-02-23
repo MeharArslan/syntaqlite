@@ -121,6 +121,7 @@ impl Parser {
         StatementCursor {
             base,
             poisoned: false,
+            last_saw_subquery: false,
         }
     }
 
@@ -134,6 +135,7 @@ impl Parser {
         StatementCursor {
             base,
             poisoned: false,
+            last_saw_subquery: false,
         }
     }
 }
@@ -353,6 +355,8 @@ pub struct StatementCursor<'a> {
     /// Once an error is returned, the cursor is poisoned and all subsequent
     /// calls to `next_statement()` return `None`.
     poisoned: bool,
+    /// Value of `saw_subquery` from the last successful `next_statement()` call.
+    last_saw_subquery: bool,
 }
 
 impl<'a> StatementCursor<'a> {
@@ -371,6 +375,7 @@ impl<'a> StatementCursor<'a> {
 
         let id = NodeId(result.root);
         if !id.is_null() {
+            self.last_saw_subquery = result.saw_subquery != 0;
             return Some(Ok(id));
         }
 
@@ -397,6 +402,13 @@ impl<'a> StatementCursor<'a> {
         }
 
         None
+    }
+
+    /// Returns `true` if the last successfully parsed statement contained a
+    /// subquery (e.g. `SELECT * FROM (SELECT 1)`, `EXISTS (SELECT ...)`,
+    /// or `IN (SELECT ...)`). Reset before each statement.
+    pub fn saw_subquery(&self) -> bool {
+        self.last_saw_subquery
     }
 
     /// Access the underlying `CursorBase` for read-only operations.

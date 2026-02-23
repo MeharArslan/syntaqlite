@@ -105,7 +105,14 @@ const fn ver(major: i32, minor: i32, patch: i32) -> i32 {
 fn ptr_operator_tokenizes_as_ptr_on_latest() {
     let tokens = tokenize_latest("1->2");
     let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
-    assert_eq!(types, vec![tk(TokenType::Integer), tk(TokenType::Ptr), tk(TokenType::Integer)]);
+    assert_eq!(
+        types,
+        vec![
+            tk(TokenType::Integer),
+            tk(TokenType::Ptr),
+            tk(TokenType::Integer)
+        ]
+    );
 }
 
 #[test]
@@ -116,7 +123,12 @@ fn ptr_operator_reclassified_to_minus_before_3_38() {
     let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
     assert_eq!(
         types,
-        vec![tk(TokenType::Integer), tk(TokenType::Minus), tk(TokenType::Gt), tk(TokenType::Integer)],
+        vec![
+            tk(TokenType::Integer),
+            tk(TokenType::Minus),
+            tk(TokenType::Gt),
+            tk(TokenType::Integer)
+        ],
         "Before 3.38, '->' should split into MINUS + GT"
     );
     // Verify the minus token is just '-' (length 1).
@@ -127,7 +139,14 @@ fn ptr_operator_reclassified_to_minus_before_3_38() {
 fn ptr_operator_works_at_3_38() {
     let tokens = tokenize_at_version("1->2", ver(3, 38, 0));
     let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
-    assert_eq!(types, vec![tk(TokenType::Integer), tk(TokenType::Ptr), tk(TokenType::Integer)]);
+    assert_eq!(
+        types,
+        vec![
+            tk(TokenType::Integer),
+            tk(TokenType::Ptr),
+            tk(TokenType::Integer)
+        ]
+    );
 }
 
 #[test]
@@ -137,7 +156,12 @@ fn double_ptr_reclassified_before_3_38() {
     let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
     assert_eq!(
         types,
-        vec![tk(TokenType::Integer), tk(TokenType::Minus), tk(TokenType::Rshift), tk(TokenType::Integer)],
+        vec![
+            tk(TokenType::Integer),
+            tk(TokenType::Minus),
+            tk(TokenType::Rshift),
+            tk(TokenType::Integer)
+        ],
         "Before 3.38, '->>' should split into MINUS + RSHIFT"
     );
     assert_eq!(tokens[1].1, "-");
@@ -180,7 +204,11 @@ fn digit_separator_tokenizes_as_qnumber_on_latest() {
 fn digit_separator_reclassified_to_integer_before_3_46() {
     // Before 3.46, 1_000 should truncate to just "1" (INTEGER).
     let tokens = tokenize_at_version("1_000", ver(3, 45, 0));
-    assert_eq!(tokens[0].0, tk(TokenType::Integer), "Should be INTEGER, not QNUMBER");
+    assert_eq!(
+        tokens[0].0,
+        tk(TokenType::Integer),
+        "Should be INTEGER, not QNUMBER"
+    );
     assert_eq!(
         tokens[0].1, "1",
         "Should truncate to '1' before the underscore"
@@ -191,7 +219,11 @@ fn digit_separator_reclassified_to_integer_before_3_46() {
 fn digit_separator_float_reclassified_before_3_46() {
     // 1.5_0 should become FLOAT "1.5" before 3.46.
     let tokens = tokenize_at_version("1.5_0", ver(3, 45, 0));
-    assert_eq!(tokens[0].0, tk(TokenType::Float), "Should be FLOAT, not QNUMBER");
+    assert_eq!(
+        tokens[0].0,
+        tk(TokenType::Float),
+        "Should be FLOAT, not QNUMBER"
+    );
     assert_eq!(
         tokens[0].1, "1.5",
         "Should truncate to '1.5' before the underscore"
@@ -217,7 +249,12 @@ fn basic_tokens_unaffected_by_version() {
         let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
         assert_eq!(
             types,
-            vec![tk(TokenType::Select), tk(TokenType::Integer), tk(TokenType::Plus), tk(TokenType::Integer)],
+            vec![
+                tk(TokenType::Select),
+                tk(TokenType::Integer),
+                tk(TokenType::Plus),
+                tk(TokenType::Integer)
+            ],
             "Basic tokens should be stable at version {}",
             version
         );
@@ -386,4 +423,229 @@ fn within_group_fails_without_cflag() {
         ),
         "WITHIN GROUP syntax should fail without cflag"
     );
+}
+
+// ---------------------------------------------------------------------------
+// OMIT-polarity cflag oracle tests
+//
+// OMIT cflags suppress keywords at the tokenizer level, causing the keyword
+// to fall back to ID. This prevents the parser from recognizing the gated
+// syntax. Each test group verifies:
+//   1. The keyword falls back to ID when the OMIT flag is set.
+//   2. Parsing fails for a representative SQL statement.
+// ---------------------------------------------------------------------------
+
+const CFLAG_OMIT_WINDOWFUNC: u32 = 0x00000008;
+const CFLAG_OMIT_CTE: u32 = 0x00000040;
+const CFLAG_OMIT_RETURNING: u32 = 0x00010000;
+const CFLAG_OMIT_COMPOUND_SELECT: u32 = 0x00000004;
+const CFLAG_OMIT_SUBQUERY: u32 = 0x00000080;
+const CFLAG_OMIT_VIEW: u32 = 0x00000020;
+const CFLAG_OMIT_TRIGGER: u32 = 0x00000400;
+
+// ---- OMIT_WINDOWFUNC ----
+
+#[test]
+fn omit_windowfunc_keyword_falls_back_to_id() {
+    let tokens = tokenize_at_version_cflags("OVER", i32::MAX, CFLAG_OMIT_WINDOWFUNC);
+    assert_ne!(
+        tokens[0].0,
+        tk(TokenType::Over),
+        "OVER should fall back to ID with OMIT_WINDOWFUNC"
+    );
+}
+
+#[test]
+fn omit_windowfunc_parse_fails() {
+    assert!(
+        !parses_ok_at_version_cflags(
+            "SELECT sum(x) OVER () FROM t;",
+            i32::MAX,
+            CFLAG_OMIT_WINDOWFUNC,
+        ),
+        "Window function syntax should fail with OMIT_WINDOWFUNC"
+    );
+}
+
+// ---- OMIT_CTE ----
+
+#[test]
+fn omit_cte_keyword_falls_back_to_id() {
+    // WITH is gated by OMIT_CTE.
+    let tokens = tokenize_at_version_cflags("WITH", i32::MAX, CFLAG_OMIT_CTE);
+    assert_ne!(
+        tokens[0].0,
+        tk(TokenType::With),
+        "WITH should fall back to ID with OMIT_CTE"
+    );
+}
+
+#[test]
+fn omit_cte_parse_fails() {
+    assert!(
+        !parses_ok_at_version_cflags(
+            "WITH t AS (SELECT 1) SELECT * FROM t;",
+            i32::MAX,
+            CFLAG_OMIT_CTE,
+        ),
+        "CTE syntax should fail with OMIT_CTE"
+    );
+}
+
+// ---- OMIT_RETURNING ----
+
+#[test]
+fn omit_returning_keyword_falls_back_to_id() {
+    let tokens = tokenize_at_version_cflags("RETURNING", i32::MAX, CFLAG_OMIT_RETURNING);
+    assert_ne!(
+        tokens[0].0,
+        tk(TokenType::Returning),
+        "RETURNING should fall back to ID with OMIT_RETURNING"
+    );
+}
+
+#[test]
+fn omit_returning_parse_fails() {
+    assert!(
+        !parses_ok_at_version_cflags(
+            "INSERT INTO t VALUES(1) RETURNING *;",
+            i32::MAX,
+            CFLAG_OMIT_RETURNING,
+        ),
+        "RETURNING syntax should fail with OMIT_RETURNING"
+    );
+}
+
+// ---- OMIT_COMPOUND_SELECT ----
+
+#[test]
+fn omit_compound_select_keyword_falls_back_to_id() {
+    let tokens = tokenize_at_version_cflags("UNION", i32::MAX, CFLAG_OMIT_COMPOUND_SELECT);
+    assert_ne!(
+        tokens[0].0,
+        tk(TokenType::Union),
+        "UNION should fall back to ID with OMIT_COMPOUND_SELECT"
+    );
+}
+
+#[test]
+fn omit_compound_select_parse_fails() {
+    assert!(
+        !parses_ok_at_version_cflags(
+            "SELECT 1 UNION SELECT 2;",
+            i32::MAX,
+            CFLAG_OMIT_COMPOUND_SELECT,
+        ),
+        "UNION syntax should fail with OMIT_COMPOUND_SELECT"
+    );
+}
+
+// ---- OMIT_VIEW ----
+
+#[test]
+fn omit_view_keyword_falls_back_to_id() {
+    let tokens = tokenize_at_version_cflags("VIEW", i32::MAX, CFLAG_OMIT_VIEW);
+    assert_ne!(
+        tokens[0].0,
+        tk(TokenType::View),
+        "VIEW should fall back to ID with OMIT_VIEW"
+    );
+}
+
+#[test]
+fn omit_view_parse_fails() {
+    assert!(
+        !parses_ok_at_version_cflags(
+            "CREATE VIEW v AS SELECT 1;",
+            i32::MAX,
+            CFLAG_OMIT_VIEW,
+        ),
+        "CREATE VIEW syntax should fail with OMIT_VIEW"
+    );
+}
+
+// ---- OMIT_TRIGGER ----
+
+#[test]
+fn omit_trigger_keyword_falls_back_to_id() {
+    let tokens = tokenize_at_version_cflags("TRIGGER", i32::MAX, CFLAG_OMIT_TRIGGER);
+    assert_ne!(
+        tokens[0].0,
+        tk(TokenType::Trigger),
+        "TRIGGER should fall back to ID with OMIT_TRIGGER"
+    );
+}
+
+#[test]
+fn omit_trigger_parse_fails() {
+    assert!(
+        !parses_ok_at_version_cflags(
+            "CREATE TRIGGER t AFTER INSERT ON x BEGIN SELECT 1; END;",
+            i32::MAX,
+            CFLAG_OMIT_TRIGGER,
+        ),
+        "CREATE TRIGGER syntax should fail with OMIT_TRIGGER"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// OMIT_SUBQUERY — uses saw_subquery flag, not keyword suppression
+//
+// SQLITE_OMIT_SUBQUERY gates grammar rules via %ifndef blocks, but all tokens
+// used in subquery syntax (LP, SELECT, RP) are baseline tokens that can't be
+// suppressed. Instead, grammar actions set saw_subquery on the parse context
+// when a subquery production is reduced.
+// ---------------------------------------------------------------------------
+
+/// Parse SQL and return (success, saw_subquery).
+fn parse_saw_subquery(sql: &str) -> (bool, bool) {
+    let dialect = syntaqlite::low_level::dialect();
+    let mut parser = syntaqlite_runtime::Parser::new(dialect);
+    let mut cursor = parser.parse(sql);
+    let ok = matches!(cursor.next_statement(), Some(Ok(_)));
+    let saw = cursor.saw_subquery();
+    (ok, saw)
+}
+
+#[test]
+fn subquery_detected_in_from() {
+    let (ok, saw) = parse_saw_subquery("SELECT * FROM (SELECT 1);");
+    assert!(ok, "Should parse successfully");
+    assert!(saw, "Should detect subquery in FROM clause");
+}
+
+#[test]
+fn subquery_detected_in_exists() {
+    let (ok, saw) = parse_saw_subquery("SELECT EXISTS (SELECT 1);");
+    assert!(ok, "Should parse successfully");
+    assert!(saw, "Should detect subquery in EXISTS expression");
+}
+
+#[test]
+fn subquery_detected_in_scalar_subquery() {
+    let (ok, saw) = parse_saw_subquery("SELECT (SELECT 1);");
+    assert!(ok, "Should parse successfully");
+    assert!(saw, "Should detect scalar subquery expression");
+}
+
+#[test]
+fn subquery_detected_in_in_select() {
+    let (ok, saw) = parse_saw_subquery("SELECT 1 WHERE 1 IN (SELECT 2);");
+    assert!(ok, "Should parse successfully");
+    assert!(saw, "Should detect subquery in IN (SELECT ...) expression");
+}
+
+#[test]
+fn no_subquery_in_simple_select() {
+    let (ok, saw) = parse_saw_subquery("SELECT 1;");
+    assert!(ok, "Should parse successfully");
+    assert!(!saw, "Simple SELECT should NOT set saw_subquery");
+}
+
+#[test]
+fn no_subquery_in_in_list() {
+    // IN with a literal list — not a subquery.
+    let (ok, saw) = parse_saw_subquery("SELECT 1 WHERE 1 IN (1, 2, 3);");
+    assert!(ok, "Should parse successfully");
+    assert!(!saw, "IN with literal list should NOT set saw_subquery");
 }

@@ -80,6 +80,7 @@ typedef struct SyntaqliteParseResult {
   const char* error_msg;  // Human-readable message (owned by parser), or NULL.
   uint32_t error_offset;  // Byte offset of the error token (0xFFFFFFFF = unknown).
   uint32_t error_length;  // Byte length of the error token (0 = unknown).
+  int32_t saw_subquery;   // Nonzero if the statement contains a subquery.
 } SyntaqliteParseResult;
 
 // A recorded macro invocation region, populated via the low-level API

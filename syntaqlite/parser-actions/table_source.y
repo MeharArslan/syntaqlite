@@ -105,6 +105,7 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) LP exprlist(E) RP as(Z) on_using(N
 
 // Subquery table source: FROM (SELECT ...) AS t
 seltablist(A) ::= stl_prefix(A) LP select(S) RP as(Z) on_using(N). {
+    pCtx->saw_subquery = 1;
     SyntaqliteSourceSpan alias = (Z.z != NULL) ? synq_span(pCtx, Z) : SYNQ_NO_SPAN;
     uint32_t sub = synq_parse_subquery_table_source(pCtx, S, alias);
     if (A == SYNTAQLITE_NULL_NODE) {

@@ -240,7 +240,7 @@ static int finish_input(SyntaqliteParser* p) {
 // ---------------------------------------------------------------------------
 
 SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
-  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL, 0xFFFFFFFF, 0};
+  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL, 0xFFFFFFFF, 0, 0};
 
   if (p->finished) {
     if (p->had_error) {
@@ -256,6 +256,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
   p->ctx.root = SYNTAQLITE_NULL_NODE;
   p->ctx.stmt_completed = 0;
   p->ctx.error = 0;
+  p->ctx.saw_subquery = 0;
 
   const unsigned char* z = (const unsigned char*)p->source;
 
@@ -311,6 +312,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
         continue;
       }
       result.root = p->ctx.root;
+      result.saw_subquery = p->ctx.saw_subquery;
       return result;
     }
   }
@@ -324,6 +326,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
     result.error_length = p->ctx.error_length;
   } else if (rc == 1) {
     result.root = p->ctx.root;
+    result.saw_subquery = p->ctx.saw_subquery;
   }
   return result;
 }
@@ -368,6 +371,7 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
     p->ctx.root = SYNTAQLITE_NULL_NODE;
     p->ctx.stmt_completed = 0;
     p->ctx.error = 0;
+    p->ctx.saw_subquery = 0;
   }
 
   int rc = feed_one_token(p, token_type, text, len, tidx);
@@ -386,7 +390,7 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
 }
 
 SyntaqliteParseResult syntaqlite_parser_result(SyntaqliteParser* p) {
-  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL, 0xFFFFFFFF, 0};
+  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL, 0xFFFFFFFF, 0, 0};
   if (p->had_error) {
     result.error = 1;
     result.error_msg = p->error_msg;
@@ -394,6 +398,7 @@ SyntaqliteParseResult syntaqlite_parser_result(SyntaqliteParser* p) {
     result.error_length = p->ctx.error_length;
   } else if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
     result.root = p->ctx.root;
+    result.saw_subquery = p->ctx.saw_subquery;
   }
   return result;
 }

@@ -33,10 +33,12 @@ multiselect_op(A) ::= EXCEPT|INTERSECT(OP). {
 // ============ Subquery Expressions ============
 
 expr(A) ::= LP select(X) RP. {
+    pCtx->saw_subquery = 1;
     A = synq_parse_subquery_expr(pCtx, X);
 }
 
 expr(A) ::= EXISTS LP select(Y) RP. {
+    pCtx->saw_subquery = 1;
     A = synq_parse_exists_expr(pCtx, Y);
 }
 
@@ -50,6 +52,7 @@ expr(A) ::= expr(A) in_op(N) LP exprlist(Y) RP. [IN] {
 }
 
 expr(A) ::= expr(A) in_op(N) LP select(Y) RP. [IN] {
+    pCtx->saw_subquery = 1;
     uint32_t sub = synq_parse_subquery_expr(pCtx, Y);
     A = synq_parse_in_expr(pCtx, (SyntaqliteBool)N, A, sub);
 }
