@@ -31,25 +31,9 @@ fn main() {
     }
     build.compile("syntaqlite_dialect");
 
-    // Dialect sources
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=csrc/dialect.c");
-    println!("cargo:rerun-if-changed=csrc/sqlite_parse.c");
-    println!("cargo:rerun-if-changed=csrc/sqlite_parse.h");
-    println!("cargo:rerun-if-changed=csrc/sqlite_tokenize.c");
-    println!("cargo:rerun-if-changed=csrc/sqlite_tokenize.h");
-    println!("cargo:rerun-if-changed=csrc/sqlite_keyword.c");
-    println!("cargo:rerun-if-changed=csrc/dialect_meta.h");
-    println!("cargo:rerun-if-changed=csrc/dialect_fmt.h");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite/config.h");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite/dialect.h");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite/parser.h");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite/types.h");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite_ext/arena.h");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite_ext/ast_builder.h");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite_ext/sqlite_compat.h");
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include/syntaqlite_ext/vec.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite_sqlite/sqlite_tokens.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite_sqlite/sqlite_node.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite_sqlite/sqlite.h");
+    println!("cargo:rerun-if-changed=csrc");
+    println!("cargo:rerun-if-changed=include");
+    // Dialect C files #include runtime headers.
+    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include");
 }

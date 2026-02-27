@@ -5,7 +5,7 @@
 
 use std::os::raw::{c_char, c_int};
 
-use super::tool_run;
+use crate::util::tool_run;
 
 /// Rust representation of the C Keyword struct.
 ///

@@ -6,7 +6,7 @@ use std::fmt::{Display, Formatter};
 
 use crate::util::synq_parser::{Field, Storage};
 use crate::util::pascal_to_snake;
-use crate::pipeline::c_writer::CWriter;
+use crate::util::c_writer::CWriter;
 
 use super::{AstModel, NodeLikeRef};
 
@@ -29,7 +29,7 @@ impl std::error::Error for CMetaCodegenError {}
 
 #[derive(Debug, Clone)]
 pub enum CFmtCodegenError {
-    FmtCompile(crate::pipeline::fmt_compiler::FmtCompileError),
+    FmtCompile(super::fmt_compiler::FmtCompileError),
 }
 
 impl Display for CFmtCodegenError {
@@ -43,7 +43,7 @@ impl Display for CFmtCodegenError {
 impl std::error::Error for CFmtCodegenError {}
 
 pub fn generate_c_fmt_tables(model: &AstModel<'_>) -> Result<String, CFmtCodegenError> {
-    let compiled = crate::pipeline::fmt_compiler::try_compile_all(model.items())
+    let compiled = super::fmt_compiler::try_compile_all(model.items())
         .map_err(CFmtCodegenError::FmtCompile)?;
 
     let mut w = CWriter::new();

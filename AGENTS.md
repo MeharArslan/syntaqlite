@@ -33,7 +33,13 @@ This allows projects like libSQL, rqlite, or custom embedded databases to use sy
 
 - `syntaqlite-runtime/` - Grammar-agnostic Rust runtime (parser FFI, node types, formatter)
 - `syntaqlite/` - SQLite dialect crate (marker type, generated code)
-- `syntaqlite-buildtools/` - Build tools library (SQLite extraction, codegen pipeline, version analysis, shared utilities)
+- `syntaqlite-buildtools/` - Build tools library:
+  - `util/` - Shared utilities (parsers, C/Rust writers, case conversion, tool_run)
+  - `dialect_codegen/` - `.synq` → C/Rust codegen (AST model, node/meta/dialect/fmt codegen)
+  - `parser_tools/` - Parser generation (lemon, grammar, tokenizer/keyword assembly, base files, amalgamation)
+  - `sqlite/` - SQLite-specific output routing (output_manifest)
+  - `extract/` - SQLite source extraction
+  - `version_analysis/` - Grammar version diffing
 - `syntaqlite-cli/` - CLI tool (ast, fmt, codegen, amalgamate commands)
 - `python/tools/` - Developer utilities (diff upstream grammar, format sources, etc.)
 - `third_party/src/sqlite/` - SQLite source (v3.51.2)

@@ -22,16 +22,6 @@ fn main() {
     build.compile("syntaqlite_engine");
 
     println!("cargo:rerun-if-changed=build.rs");
-    println!("cargo:rerun-if-changed=csrc/parser.c");
-    println!("cargo:rerun-if-changed=csrc/tokenizer.c");
-    println!("cargo:rerun-if-changed=csrc/dialect_dispatch.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/config.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/dialect.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/parser.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/tokenizer.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite/types.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite_ext/arena.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite_ext/ast_builder.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite_ext/sqlite_compat.h");
-    println!("cargo:rerun-if-changed=include/syntaqlite_ext/vec.h");
+    println!("cargo:rerun-if-changed=csrc");
+    println!("cargo:rerun-if-changed=include");
 }

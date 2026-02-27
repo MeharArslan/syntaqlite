@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 
 use crate::util::pascal_case;
-use crate::pipeline::c_writer::CWriter;
+use crate::util::c_writer::CWriter;
 
 /// Classify a token name into a `TokenCategory` byte value.
 ///

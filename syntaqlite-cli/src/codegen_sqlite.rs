@@ -149,7 +149,7 @@ fn handle_codegen(
         include_rust: true,
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
-    let outputs = syntaqlite_buildtools::sqlite_output_manifest(&dialect, artifacts)?;
+    let outputs = syntaqlite_buildtools::sqlite::output_manifest::sqlite_output_manifest(&dialect, artifacts)?;
 
     // Step 4: Clean stale generated files, then write outputs
     let out = Path::new(output_dir);
@@ -175,9 +175,9 @@ fn handle_codegen(
     log_verbose(verbose, "Writing output files...");
     for output in outputs {
         let dir = match output.bucket {
-            syntaqlite_buildtools::OutputBucket::Include => &include_dir,
-            syntaqlite_buildtools::OutputBucket::DialectCsrc => out,
-            syntaqlite_buildtools::OutputBucket::RustSrc => &rust_src_dir,
+            syntaqlite_buildtools::sqlite::output_manifest::OutputBucket::Include => &include_dir,
+            syntaqlite_buildtools::sqlite::output_manifest::OutputBucket::DialectCsrc => out,
+            syntaqlite_buildtools::sqlite::output_manifest::OutputBucket::RustSrc => &rust_src_dir,
         };
         write_file(&dir.join(output.file_name), output.content)?;
     }

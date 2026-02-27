@@ -7,7 +7,7 @@
 use crate::util::c_transformer::CTransformer;
 use super::sqlite_fragments::SqliteFragments;
 use crate::util::pascal_case;
-use super::c_writer::CWriter;
+use crate::util::c_writer::CWriter;
 use crate::TokenizerExtractResult;
 
 /// Assemble the tokenizer C source from pre-extracted fragments.

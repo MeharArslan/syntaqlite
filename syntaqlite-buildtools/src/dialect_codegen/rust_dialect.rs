@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use crate::pipeline::rust_writer::RustWriter;
+use crate::util::rust_writer::RustWriter;
 
 const LIB_MODULE_DECLS: &str = r#"
 mod ffi;

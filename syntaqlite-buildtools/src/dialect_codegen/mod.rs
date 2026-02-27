@@ -8,6 +8,7 @@ use crate::util::synq_parser::{Field, Fmt, Item};
 mod c_dialect;
 mod c_meta_codegen;
 mod c_nodes_codegen;
+pub(crate) mod fmt_compiler;
 mod rust_ast;
 mod rust_dialect;
 

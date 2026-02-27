@@ -9,7 +9,7 @@ use std::fs;
 
 use crate::util::c_transformer::CTransformer;
 use super::sqlite_fragments::SqliteFragments;
-use super::c_writer::CWriter;
+use crate::util::c_writer::CWriter;
 use crate::TokenizerExtractResult;
 
 /// Return the SQLite version (as integer, e.g. 3035000) in which a keyword was
