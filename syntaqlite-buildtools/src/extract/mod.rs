@@ -33,68 +33,132 @@ pub mod virtual_tables;
 // SYNQ cflag table — the union of all cflag lists
 // ---------------------------------------------------------------------------
 
-/// SYNQ cflag constants, mirroring `sqlite_cflags.h`.
+/// SYNQ cflag index table, mirroring `sqlite_cflags.h`.
 ///
 /// This is the authoritative Rust-side table. It is the union of all cflags
 /// across [`keywords_and_parser::PARSER_CFLAGS`], [`functions::FUNCTION_CFLAGS`],
-/// and [`virtual_tables::VIRTUAL_TABLE_CFLAGS`]. Each flag occupies a single bit.
+/// and [`virtual_tables::VIRTUAL_TABLE_CFLAGS`].
 ///
-/// Sorted alphabetically within OMIT and ENABLE groups, bits assigned sequentially.
+/// Each entry is (sqlite_flag_name, synq_index_constant_name, index).
+/// Sorted alphabetically within OMIT and ENABLE groups, indices assigned sequentially.
 /// Flags may appear in multiple per-module lists (noted in comments).
-pub const SYNQ_CFLAG_TABLE: &[(&str, u64)] = &[
-    // ── OMIT flags (bits 0–24) ──────────────────────────────────────────
-    ("SYNQ_SQLITE_OMIT_ALTERTABLE",                0x0000_0000_0000_0001), // parser
-    ("SYNQ_SQLITE_OMIT_ANALYZE",                   0x0000_0000_0000_0002), // parser
-    ("SYNQ_SQLITE_OMIT_ATTACH",                    0x0000_0000_0000_0004), // parser
-    ("SYNQ_SQLITE_OMIT_AUTOINCREMENT",             0x0000_0000_0000_0008), // parser
-    ("SYNQ_SQLITE_OMIT_CAST",                      0x0000_0000_0000_0010), // parser
-    ("SYNQ_SQLITE_OMIT_COMPILEOPTION_DIAGS",       0x0000_0000_0000_0020), // functions
-    ("SYNQ_SQLITE_OMIT_COMPOUND_SELECT",           0x0000_0000_0000_0040), // parser
-    ("SYNQ_SQLITE_OMIT_CTE",                       0x0000_0000_0000_0080), // parser
-    ("SYNQ_SQLITE_OMIT_DATETIME_FUNCS",            0x0000_0000_0000_0100), // functions
-    ("SYNQ_SQLITE_OMIT_EXPLAIN",                   0x0000_0000_0000_0200), // parser
-    ("SYNQ_SQLITE_OMIT_FLOATING_POINT",            0x0000_0000_0000_0400), // functions (compile-probing excluded)
-    ("SYNQ_SQLITE_OMIT_FOREIGN_KEY",               0x0000_0000_0000_0800), // parser
-    ("SYNQ_SQLITE_OMIT_GENERATED_COLUMNS",         0x0000_0000_0000_1000), // parser
-    ("SYNQ_SQLITE_OMIT_JSON",                      0x0000_0000_0000_2000), // functions
-    ("SYNQ_SQLITE_OMIT_LOAD_EXTENSION",            0x0000_0000_0000_4000), // functions
-    ("SYNQ_SQLITE_OMIT_PRAGMA",                    0x0000_0000_0000_8000), // parser
-    ("SYNQ_SQLITE_OMIT_REINDEX",                   0x0000_0000_0001_0000), // parser
-    ("SYNQ_SQLITE_OMIT_RETURNING",                 0x0000_0000_0002_0000), // parser
-    ("SYNQ_SQLITE_OMIT_SUBQUERY",                  0x0000_0000_0004_0000), // parser
-    ("SYNQ_SQLITE_OMIT_TEMPDB",                    0x0000_0000_0008_0000), // parser
-    ("SYNQ_SQLITE_OMIT_TRIGGER",                   0x0000_0000_0010_0000), // parser
-    ("SYNQ_SQLITE_OMIT_VACUUM",                    0x0000_0000_0020_0000), // parser
-    ("SYNQ_SQLITE_OMIT_VIEW",                      0x0000_0000_0040_0000), // parser
-    ("SYNQ_SQLITE_OMIT_VIRTUALTABLE",              0x0000_0000_0080_0000), // parser, vtable
-    ("SYNQ_SQLITE_OMIT_WINDOWFUNC",                0x0000_0000_0100_0000), // parser, functions
-    // ── ENABLE / misc flags (bits 25–41) ─────────────────────────────────
-    ("SYNQ_SQLITE_ENABLE_BYTECODE_VTAB",           0x0000_0000_0200_0000), // vtable
-    ("SYNQ_SQLITE_ENABLE_CARRAY",                  0x0000_0000_0400_0000), // vtable
-    ("SYNQ_SQLITE_ENABLE_DBPAGE_VTAB",             0x0000_0000_0800_0000), // vtable
-    ("SYNQ_SQLITE_ENABLE_DBSTAT_VTAB",             0x0000_0000_1000_0000), // vtable
-    ("SYNQ_SQLITE_ENABLE_FTS3",                    0x0000_0000_2000_0000), // functions, vtable
-    ("SYNQ_SQLITE_ENABLE_FTS4",                    0x0000_0000_4000_0000), // vtable
-    ("SYNQ_SQLITE_ENABLE_FTS5",                    0x0000_0000_8000_0000), // functions, vtable
-    ("SYNQ_SQLITE_ENABLE_GEOPOLY",                 0x0000_0001_0000_0000), // functions, vtable
-    ("SYNQ_SQLITE_ENABLE_JSON1",                   0x0000_0002_0000_0000), // functions
-    ("SYNQ_SQLITE_ENABLE_MATH_FUNCTIONS",          0x0000_0004_0000_0000), // functions
-    ("SYNQ_SQLITE_ENABLE_OFFSET_SQL_FUNC",         0x0000_0008_0000_0000), // functions
-    ("SYNQ_SQLITE_ENABLE_ORDERED_SET_AGGREGATES",  0x0000_0010_0000_0000), // parser
-    ("SYNQ_SQLITE_ENABLE_PERCENTILE",              0x0000_0020_0000_0000), // functions
-    ("SYNQ_SQLITE_ENABLE_RTREE",                   0x0000_0040_0000_0000), // vtable
-    ("SYNQ_SQLITE_ENABLE_STMTVTAB",               0x0000_0080_0000_0000), // vtable
-    ("SYNQ_SQLITE_ENABLE_UPDATE_DELETE_LIMIT",     0x0000_0100_0000_0000), // parser
-    ("SYNQ_SQLITE_SOUNDEX",                        0x0000_0200_0000_0000), // functions
+pub const SYNQ_CFLAG_TABLE: &[(&str, &str, u32)] = &[
+    // ── OMIT flags (0–24) ───────────────────────────────────────────────
+    ("SQLITE_OMIT_ALTERTABLE", "SYNQ_CFLAG_OMIT_ALTERTABLE", 0), // parser
+    ("SQLITE_OMIT_ANALYZE", "SYNQ_CFLAG_OMIT_ANALYZE", 1),       // parser
+    ("SQLITE_OMIT_ATTACH", "SYNQ_CFLAG_OMIT_ATTACH", 2),         // parser
+    (
+        "SQLITE_OMIT_AUTOINCREMENT",
+        "SYNQ_CFLAG_OMIT_AUTOINCREMENT",
+        3,
+    ), // parser
+    ("SQLITE_OMIT_CAST", "SYNQ_CFLAG_OMIT_CAST", 4),             // parser
+    (
+        "SQLITE_OMIT_COMPILEOPTION_DIAGS",
+        "SYNQ_CFLAG_OMIT_COMPILEOPTION_DIAGS",
+        5,
+    ), // functions
+    (
+        "SQLITE_OMIT_COMPOUND_SELECT",
+        "SYNQ_CFLAG_OMIT_COMPOUND_SELECT",
+        6,
+    ), // parser
+    ("SQLITE_OMIT_CTE", "SYNQ_CFLAG_OMIT_CTE", 7),               // parser
+    (
+        "SQLITE_OMIT_DATETIME_FUNCS",
+        "SYNQ_CFLAG_OMIT_DATETIME_FUNCS",
+        8,
+    ), // functions
+    ("SQLITE_OMIT_EXPLAIN", "SYNQ_CFLAG_OMIT_EXPLAIN", 9),       // parser
+    (
+        "SQLITE_OMIT_FLOATING_POINT",
+        "SYNQ_CFLAG_OMIT_FLOATING_POINT",
+        10,
+    ), // functions (compile-probing excluded)
+    ("SQLITE_OMIT_FOREIGN_KEY", "SYNQ_CFLAG_OMIT_FOREIGN_KEY", 11), // parser
+    (
+        "SQLITE_OMIT_GENERATED_COLUMNS",
+        "SYNQ_CFLAG_OMIT_GENERATED_COLUMNS",
+        12,
+    ), // parser
+    ("SQLITE_OMIT_JSON", "SYNQ_CFLAG_OMIT_JSON", 13),            // functions
+    (
+        "SQLITE_OMIT_LOAD_EXTENSION",
+        "SYNQ_CFLAG_OMIT_LOAD_EXTENSION",
+        14,
+    ), // functions
+    ("SQLITE_OMIT_PRAGMA", "SYNQ_CFLAG_OMIT_PRAGMA", 15),        // parser
+    ("SQLITE_OMIT_REINDEX", "SYNQ_CFLAG_OMIT_REINDEX", 16),      // parser
+    ("SQLITE_OMIT_RETURNING", "SYNQ_CFLAG_OMIT_RETURNING", 17),  // parser
+    ("SQLITE_OMIT_SUBQUERY", "SYNQ_CFLAG_OMIT_SUBQUERY", 18),    // parser
+    ("SQLITE_OMIT_TEMPDB", "SYNQ_CFLAG_OMIT_TEMPDB", 19),        // parser
+    ("SQLITE_OMIT_TRIGGER", "SYNQ_CFLAG_OMIT_TRIGGER", 20),      // parser
+    ("SQLITE_OMIT_VACUUM", "SYNQ_CFLAG_OMIT_VACUUM", 21),        // parser
+    ("SQLITE_OMIT_VIEW", "SYNQ_CFLAG_OMIT_VIEW", 22),            // parser
+    (
+        "SQLITE_OMIT_VIRTUALTABLE",
+        "SYNQ_CFLAG_OMIT_VIRTUALTABLE",
+        23,
+    ), // parser, vtable
+    ("SQLITE_OMIT_WINDOWFUNC", "SYNQ_CFLAG_OMIT_WINDOWFUNC", 24), // parser, functions
+    // ── ENABLE / misc flags (25–41) ──────────────────────────────────────
+    (
+        "SQLITE_ENABLE_BYTECODE_VTAB",
+        "SYNQ_CFLAG_ENABLE_BYTECODE_VTAB",
+        25,
+    ), // vtable
+    ("SQLITE_ENABLE_CARRAY", "SYNQ_CFLAG_ENABLE_CARRAY", 26), // vtable
+    (
+        "SQLITE_ENABLE_DBPAGE_VTAB",
+        "SYNQ_CFLAG_ENABLE_DBPAGE_VTAB",
+        27,
+    ), // vtable
+    (
+        "SQLITE_ENABLE_DBSTAT_VTAB",
+        "SYNQ_CFLAG_ENABLE_DBSTAT_VTAB",
+        28,
+    ), // vtable
+    ("SQLITE_ENABLE_FTS3", "SYNQ_CFLAG_ENABLE_FTS3", 29),     // functions, vtable
+    ("SQLITE_ENABLE_FTS4", "SYNQ_CFLAG_ENABLE_FTS4", 30),     // vtable
+    ("SQLITE_ENABLE_FTS5", "SYNQ_CFLAG_ENABLE_FTS5", 31),     // functions, vtable
+    ("SQLITE_ENABLE_GEOPOLY", "SYNQ_CFLAG_ENABLE_GEOPOLY", 32), // functions, vtable
+    ("SQLITE_ENABLE_JSON1", "SYNQ_CFLAG_ENABLE_JSON1", 33),   // functions
+    (
+        "SQLITE_ENABLE_MATH_FUNCTIONS",
+        "SYNQ_CFLAG_ENABLE_MATH_FUNCTIONS",
+        34,
+    ), // functions
+    (
+        "SQLITE_ENABLE_OFFSET_SQL_FUNC",
+        "SYNQ_CFLAG_ENABLE_OFFSET_SQL_FUNC",
+        35,
+    ), // functions
+    (
+        "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
+        "SYNQ_CFLAG_ENABLE_ORDERED_SET_AGGREGATES",
+        36,
+    ), // parser
+    (
+        "SQLITE_ENABLE_PERCENTILE",
+        "SYNQ_CFLAG_ENABLE_PERCENTILE",
+        37,
+    ), // functions
+    ("SQLITE_ENABLE_RTREE", "SYNQ_CFLAG_ENABLE_RTREE", 38),   // vtable
+    ("SQLITE_ENABLE_STMTVTAB", "SYNQ_CFLAG_ENABLE_STMTVTAB", 39), // vtable
+    (
+        "SQLITE_ENABLE_UPDATE_DELETE_LIMIT",
+        "SYNQ_CFLAG_ENABLE_UPDATE_DELETE_LIMIT",
+        40,
+    ), // parser
+    ("SQLITE_SOUNDEX", "SYNQ_CFLAG_SOUNDEX", 41),             // functions
 ];
 
-/// Look up the SYNQ cflag bit value for a `SQLITE_OMIT_*` or `SQLITE_ENABLE_*` flag.
-pub fn synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> Option<u64> {
-    let synq_name = format!("SYNQ_{sqlite_flag}");
+/// Look up the SYNQ cflag index for a `SQLITE_OMIT_*` or `SQLITE_ENABLE_*` flag.
+pub fn synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> Option<u32> {
     SYNQ_CFLAG_TABLE
         .iter()
-        .find(|(name, _)| *name == synq_name)
-        .map(|(_, val)| *val)
+        .find(|(name, _, _)| *name == sqlite_flag)
+        .map(|(_, _, idx)| *idx)
 }
 
 #[cfg(test)]
@@ -107,43 +171,41 @@ mod tests {
             "/../syntaqlite-runtime/include/syntaqlite/sqlite_cflags.h"
         ));
 
-        let mut header_defines: std::collections::HashMap<String, u64> =
+        // Parse "#define SYNQ_CFLAG_FOO  N" lines from the header.
+        let mut header_defines: std::collections::HashMap<String, u32> =
             std::collections::HashMap::new();
         for line in header.lines() {
             let line = line.trim();
-            if let Some(rest) = line.strip_prefix("#define SYNQ_SQLITE_") {
+            if let Some(rest) = line.strip_prefix("#define SYNQ_CFLAG_") {
                 let parts: Vec<&str> = rest.split_whitespace().collect();
                 if parts.len() >= 2 {
-                    let name = format!("SYNQ_SQLITE_{}", parts[0]);
-                    // Value is like ((uint64_t)0x...) — extract the hex.
-                    let val_str = parts[1..].join("");
-                    if let Some(hex_start) = val_str.find("0x") {
-                        let hex = &val_str[hex_start + 2..];
-                        let hex = hex.trim_end_matches(|c: char| !c.is_ascii_hexdigit());
-                        if let Ok(val) = u64::from_str_radix(hex, 16) {
-                            header_defines.insert(name, val);
-                        }
+                    let name = format!("SYNQ_CFLAG_{}", parts[0]);
+                    if let Ok(val) = parts[1].parse::<u32>() {
+                        header_defines.insert(name, val);
                     }
                 }
             }
         }
 
-        for (name, value) in super::SYNQ_CFLAG_TABLE {
-            let header_val = header_defines.get(*name);
+        for (_, synq_name, index) in super::SYNQ_CFLAG_TABLE {
+            let header_val = header_defines.get(*synq_name);
             assert_eq!(
                 header_val,
-                Some(value),
-                "SYNQ_CFLAG_TABLE entry {name}={value:#018x} does not match sqlite_cflags.h (got {:?})",
+                Some(index),
+                "SYNQ_CFLAG_TABLE entry {synq_name}={index} does not match sqlite_cflags.h (got {:?})",
                 header_val
             );
         }
 
         let table_names: std::collections::HashSet<&str> =
-            super::SYNQ_CFLAG_TABLE.iter().map(|(n, _)| *n).collect();
+            super::SYNQ_CFLAG_TABLE.iter().map(|(_, n, _)| *n).collect();
         for (name, val) in &header_defines {
+            if name == "SYNQ_CFLAG_COUNT" {
+                continue;
+            }
             assert!(
                 table_names.contains(name.as_str()),
-                "sqlite_cflags.h defines {name}={val:#018x} but it is missing from SYNQ_CFLAG_TABLE"
+                "sqlite_cflags.h defines {name}={val} but it is missing from SYNQ_CFLAG_TABLE"
             );
         }
     }

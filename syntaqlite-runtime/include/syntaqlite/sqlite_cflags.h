@@ -4,59 +4,134 @@
 // SQLite compile-time flag constants for use with SyntaqliteDialectConfig.cflags.
 //
 // This is the union of all cflags that affect parser keywords, SQL functions,
-// and virtual table modules. Each flag occupies a single bit.
+// and virtual table modules.
 //
-// Sorted alphabetically within OMIT and ENABLE groups, bits assigned sequentially.
+// Sorted alphabetically within OMIT and ENABLE groups.
 
 #ifndef SYNTAQLITE_SQLITE_CFLAGS_H
 #define SYNTAQLITE_SQLITE_CFLAGS_H
 
 #include <stdint.h>
+#include <string.h>
 
-// ── OMIT flags (bits 0–24) ──────────────────────────────────────────────
-#define SYNQ_SQLITE_OMIT_ALTERTABLE                 ((uint64_t)0x0000000000000001)
-#define SYNQ_SQLITE_OMIT_ANALYZE                     ((uint64_t)0x0000000000000002)
-#define SYNQ_SQLITE_OMIT_ATTACH                      ((uint64_t)0x0000000000000004)
-#define SYNQ_SQLITE_OMIT_AUTOINCREMENT               ((uint64_t)0x0000000000000008)
-#define SYNQ_SQLITE_OMIT_CAST                        ((uint64_t)0x0000000000000010)
-#define SYNQ_SQLITE_OMIT_COMPILEOPTION_DIAGS         ((uint64_t)0x0000000000000020)
-#define SYNQ_SQLITE_OMIT_COMPOUND_SELECT             ((uint64_t)0x0000000000000040)
-#define SYNQ_SQLITE_OMIT_CTE                         ((uint64_t)0x0000000000000080)
-#define SYNQ_SQLITE_OMIT_DATETIME_FUNCS              ((uint64_t)0x0000000000000100)
-#define SYNQ_SQLITE_OMIT_EXPLAIN                     ((uint64_t)0x0000000000000200)
-#define SYNQ_SQLITE_OMIT_FLOATING_POINT              ((uint64_t)0x0000000000000400)
-#define SYNQ_SQLITE_OMIT_FOREIGN_KEY                 ((uint64_t)0x0000000000000800)
-#define SYNQ_SQLITE_OMIT_GENERATED_COLUMNS           ((uint64_t)0x0000000000001000)
-#define SYNQ_SQLITE_OMIT_JSON                        ((uint64_t)0x0000000000002000)
-#define SYNQ_SQLITE_OMIT_LOAD_EXTENSION              ((uint64_t)0x0000000000004000)
-#define SYNQ_SQLITE_OMIT_PRAGMA                      ((uint64_t)0x0000000000008000)
-#define SYNQ_SQLITE_OMIT_REINDEX                     ((uint64_t)0x0000000000010000)
-#define SYNQ_SQLITE_OMIT_RETURNING                   ((uint64_t)0x0000000000020000)
-#define SYNQ_SQLITE_OMIT_SUBQUERY                    ((uint64_t)0x0000000000040000)
-#define SYNQ_SQLITE_OMIT_TEMPDB                      ((uint64_t)0x0000000000080000)
-#define SYNQ_SQLITE_OMIT_TRIGGER                     ((uint64_t)0x0000000000100000)
-#define SYNQ_SQLITE_OMIT_VACUUM                      ((uint64_t)0x0000000000200000)
-#define SYNQ_SQLITE_OMIT_VIEW                        ((uint64_t)0x0000000000400000)
-#define SYNQ_SQLITE_OMIT_VIRTUALTABLE                ((uint64_t)0x0000000000800000)
-#define SYNQ_SQLITE_OMIT_WINDOWFUNC                  ((uint64_t)0x0000000001000000)
+// ── Cflag index constants ───────────────────────────────────────────────
+//
+// These are used for dynamic lookup (e.g. in keyword/function tables).
 
-// ── ENABLE / misc flags (bits 25–41) ────────────────────────────────────
-#define SYNQ_SQLITE_ENABLE_BYTECODE_VTAB             ((uint64_t)0x0000000002000000)
-#define SYNQ_SQLITE_ENABLE_CARRAY                    ((uint64_t)0x0000000004000000)
-#define SYNQ_SQLITE_ENABLE_DBPAGE_VTAB               ((uint64_t)0x0000000008000000)
-#define SYNQ_SQLITE_ENABLE_DBSTAT_VTAB               ((uint64_t)0x0000000010000000)
-#define SYNQ_SQLITE_ENABLE_FTS3                      ((uint64_t)0x0000000020000000)
-#define SYNQ_SQLITE_ENABLE_FTS4                      ((uint64_t)0x0000000040000000)
-#define SYNQ_SQLITE_ENABLE_FTS5                      ((uint64_t)0x0000000080000000)
-#define SYNQ_SQLITE_ENABLE_GEOPOLY                   ((uint64_t)0x0000000100000000)
-#define SYNQ_SQLITE_ENABLE_JSON1                     ((uint64_t)0x0000000200000000)
-#define SYNQ_SQLITE_ENABLE_MATH_FUNCTIONS            ((uint64_t)0x0000000400000000)
-#define SYNQ_SQLITE_ENABLE_OFFSET_SQL_FUNC           ((uint64_t)0x0000000800000000)
-#define SYNQ_SQLITE_ENABLE_ORDERED_SET_AGGREGATES    ((uint64_t)0x0000001000000000)
-#define SYNQ_SQLITE_ENABLE_PERCENTILE                ((uint64_t)0x0000002000000000)
-#define SYNQ_SQLITE_ENABLE_RTREE                     ((uint64_t)0x0000004000000000)
-#define SYNQ_SQLITE_ENABLE_STMTVTAB                  ((uint64_t)0x0000008000000000)
-#define SYNQ_SQLITE_ENABLE_UPDATE_DELETE_LIMIT        ((uint64_t)0x0000010000000000)
-#define SYNQ_SQLITE_SOUNDEX                          ((uint64_t)0x0000020000000000)
+// OMIT flags (indices 0–24):
+#define SYNQ_CFLAG_OMIT_ALTERTABLE            0
+#define SYNQ_CFLAG_OMIT_ANALYZE               1
+#define SYNQ_CFLAG_OMIT_ATTACH                2
+#define SYNQ_CFLAG_OMIT_AUTOINCREMENT         3
+#define SYNQ_CFLAG_OMIT_CAST                  4
+#define SYNQ_CFLAG_OMIT_COMPILEOPTION_DIAGS   5
+#define SYNQ_CFLAG_OMIT_COMPOUND_SELECT       6
+#define SYNQ_CFLAG_OMIT_CTE                   7
+#define SYNQ_CFLAG_OMIT_DATETIME_FUNCS        8
+#define SYNQ_CFLAG_OMIT_EXPLAIN               9
+#define SYNQ_CFLAG_OMIT_FLOATING_POINT        10
+#define SYNQ_CFLAG_OMIT_FOREIGN_KEY           11
+#define SYNQ_CFLAG_OMIT_GENERATED_COLUMNS     12
+#define SYNQ_CFLAG_OMIT_JSON                  13
+#define SYNQ_CFLAG_OMIT_LOAD_EXTENSION        14
+#define SYNQ_CFLAG_OMIT_PRAGMA                15
+#define SYNQ_CFLAG_OMIT_REINDEX               16
+#define SYNQ_CFLAG_OMIT_RETURNING             17
+#define SYNQ_CFLAG_OMIT_SUBQUERY              18
+#define SYNQ_CFLAG_OMIT_TEMPDB                19
+#define SYNQ_CFLAG_OMIT_TRIGGER               20
+#define SYNQ_CFLAG_OMIT_VACUUM                21
+#define SYNQ_CFLAG_OMIT_VIEW                  22
+#define SYNQ_CFLAG_OMIT_VIRTUALTABLE          23
+#define SYNQ_CFLAG_OMIT_WINDOWFUNC            24
+// ENABLE / misc flags (indices 25–41):
+#define SYNQ_CFLAG_ENABLE_BYTECODE_VTAB       25
+#define SYNQ_CFLAG_ENABLE_CARRAY              26
+#define SYNQ_CFLAG_ENABLE_DBPAGE_VTAB         27
+#define SYNQ_CFLAG_ENABLE_DBSTAT_VTAB         28
+#define SYNQ_CFLAG_ENABLE_FTS3                29
+#define SYNQ_CFLAG_ENABLE_FTS4                30
+#define SYNQ_CFLAG_ENABLE_FTS5                31
+#define SYNQ_CFLAG_ENABLE_GEOPOLY             32
+#define SYNQ_CFLAG_ENABLE_JSON1               33
+#define SYNQ_CFLAG_ENABLE_MATH_FUNCTIONS      34
+#define SYNQ_CFLAG_ENABLE_OFFSET_SQL_FUNC     35
+#define SYNQ_CFLAG_ENABLE_ORDERED_SET_AGGREGATES 36
+#define SYNQ_CFLAG_ENABLE_PERCENTILE          37
+#define SYNQ_CFLAG_ENABLE_RTREE               38
+#define SYNQ_CFLAG_ENABLE_STMTVTAB            39
+#define SYNQ_CFLAG_ENABLE_UPDATE_DELETE_LIMIT 40
+#define SYNQ_CFLAG_SOUNDEX                    41
+
+#define SYNQ_CFLAG_COUNT                      42
+
+// ── Named bitfield struct ───────────────────────────────────────────────
+
+typedef struct SyntaqliteCflags {
+    // OMIT flags:
+    uint8_t omit_altertable : 1;
+    uint8_t omit_analyze : 1;
+    uint8_t omit_attach : 1;
+    uint8_t omit_autoincrement : 1;
+    uint8_t omit_cast : 1;
+    uint8_t omit_compileoption_diags : 1;
+    uint8_t omit_compound_select : 1;
+    uint8_t omit_cte : 1;
+    uint8_t omit_datetime_funcs : 1;
+    uint8_t omit_explain : 1;
+    uint8_t omit_floating_point : 1;
+    uint8_t omit_foreign_key : 1;
+    uint8_t omit_generated_columns : 1;
+    uint8_t omit_json : 1;
+    uint8_t omit_load_extension : 1;
+    uint8_t omit_pragma : 1;
+    uint8_t omit_reindex : 1;
+    uint8_t omit_returning : 1;
+    uint8_t omit_subquery : 1;
+    uint8_t omit_tempdb : 1;
+    uint8_t omit_trigger : 1;
+    uint8_t omit_vacuum : 1;
+    uint8_t omit_view : 1;
+    uint8_t omit_virtualtable : 1;
+    uint8_t omit_windowfunc : 1;
+    // ENABLE / misc flags:
+    uint8_t enable_bytecode_vtab : 1;
+    uint8_t enable_carray : 1;
+    uint8_t enable_dbpage_vtab : 1;
+    uint8_t enable_dbstat_vtab : 1;
+    uint8_t enable_fts3 : 1;
+    uint8_t enable_fts4 : 1;
+    uint8_t enable_fts5 : 1;
+    uint8_t enable_geopoly : 1;
+    uint8_t enable_json1 : 1;
+    uint8_t enable_math_functions : 1;
+    uint8_t enable_offset_sql_func : 1;
+    uint8_t enable_ordered_set_aggregates : 1;
+    uint8_t enable_percentile : 1;
+    uint8_t enable_rtree : 1;
+    uint8_t enable_stmtvtab : 1;
+    uint8_t enable_update_delete_limit : 1;
+    uint8_t soundex : 1;
+    // Padding to 48 bits (6 bytes):
+    uint8_t _reserved : 5;
+} SyntaqliteCflags;
+
+#define SYNQ_CFLAGS_DEFAULT { 0 }
+
+// ── Indexed accessor ────────────────────────────────────────────────────
+//
+// For dynamic cflag lookup (keyword tables etc.). Uses the index constants
+// above. Implementation: bit ops on raw bytes — field declaration order
+// matches index order, verified by static assert in tests.
+
+static inline int synq_has_cflag(const SyntaqliteCflags *c, int idx) {
+    const uint8_t *bytes = (const uint8_t *)c;
+    return (bytes[idx / 8] >> (idx % 8)) & 1;
+}
+
+static inline void synq_set_cflag(SyntaqliteCflags *c, int idx) {
+    uint8_t *bytes = (uint8_t *)c;
+    bytes[idx / 8] |= (uint8_t)(1u << (idx % 8));
+}
 
 #endif  // SYNTAQLITE_SQLITE_CFLAGS_H

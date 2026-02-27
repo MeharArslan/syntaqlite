@@ -20,8 +20,11 @@ pub const VIRTUAL_TABLE_CFLAGS: &[(&str, &str, &[&str])] = &[
     // OMIT flags.
     //
     // Disables the entire virtual table mechanism, including all modules.
-    ("SQLITE_OMIT_VIRTUALTABLE", "omit", &["-DSQLITE_OMIT_VIRTUALTABLE"]),
-
+    (
+        "SQLITE_OMIT_VIRTUALTABLE",
+        "omit",
+        &["-DSQLITE_OMIT_VIRTUALTABLE"],
+    ),
     // ENABLE flags.
     //
     // FTS3/4 full-text search virtual tables (fts3, fts4).
@@ -33,15 +36,39 @@ pub const VIRTUAL_TABLE_CFLAGS: &[(&str, &str, &[&str])] = &[
     // R*Tree spatial index virtual table (rtree, rtree_i32).
     ("SQLITE_ENABLE_RTREE", "enable", &["-DSQLITE_ENABLE_RTREE"]),
     // Geopoly extension virtual table (geopoly). Requires RTREE.
-    ("SQLITE_ENABLE_GEOPOLY", "enable", &["-DSQLITE_ENABLE_GEOPOLY", "-DSQLITE_ENABLE_RTREE"]),
+    (
+        "SQLITE_ENABLE_GEOPOLY",
+        "enable",
+        &["-DSQLITE_ENABLE_GEOPOLY", "-DSQLITE_ENABLE_RTREE"],
+    ),
     // DBPAGE virtual table — read/write access to database pages.
-    ("SQLITE_ENABLE_DBPAGE_VTAB", "enable", &["-DSQLITE_ENABLE_DBPAGE_VTAB"]),
+    (
+        "SQLITE_ENABLE_DBPAGE_VTAB",
+        "enable",
+        &["-DSQLITE_ENABLE_DBPAGE_VTAB"],
+    ),
     // dbstat virtual table — storage statistics per table/index.
-    ("SQLITE_ENABLE_DBSTAT_VTAB", "enable", &["-DSQLITE_ENABLE_DBSTAT_VTAB"]),
+    (
+        "SQLITE_ENABLE_DBSTAT_VTAB",
+        "enable",
+        &["-DSQLITE_ENABLE_DBSTAT_VTAB"],
+    ),
     // bytecode and tables_used virtual tables.
-    ("SQLITE_ENABLE_BYTECODE_VTAB", "enable", &["-DSQLITE_ENABLE_BYTECODE_VTAB"]),
+    (
+        "SQLITE_ENABLE_BYTECODE_VTAB",
+        "enable",
+        &["-DSQLITE_ENABLE_BYTECODE_VTAB"],
+    ),
     // SQLITE_STMT virtual table — introspection of prepared statements.
-    ("SQLITE_ENABLE_STMTVTAB", "enable", &["-DSQLITE_ENABLE_STMTVTAB"]),
+    (
+        "SQLITE_ENABLE_STMTVTAB",
+        "enable",
+        &["-DSQLITE_ENABLE_STMTVTAB"],
+    ),
     // carray table-valued function (virtual table, not in PRAGMA function_list).
-    ("SQLITE_ENABLE_CARRAY", "enable", &["-DSQLITE_ENABLE_CARRAY"]),
+    (
+        "SQLITE_ENABLE_CARRAY",
+        "enable",
+        &["-DSQLITE_ENABLE_CARRAY"],
+    ),
 ];

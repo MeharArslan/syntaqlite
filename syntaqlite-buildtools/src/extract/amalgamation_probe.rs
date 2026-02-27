@@ -32,12 +32,8 @@ fn compile_sqlite3_obj(
 
     // Skip if .o exists and is newer than sqlite3.c.
     if obj_path.exists() {
-        let src_mod = fs::metadata(&sqlite3_c)
-            .and_then(|m| m.modified())
-            .ok();
-        let obj_mod = fs::metadata(&obj_path)
-            .and_then(|m| m.modified())
-            .ok();
+        let src_mod = fs::metadata(&sqlite3_c).and_then(|m| m.modified()).ok();
+        let obj_mod = fs::metadata(&obj_path).and_then(|m| m.modified()).ok();
         if let (Some(src_t), Some(obj_t)) = (src_mod, obj_mod) {
             if obj_t >= src_t {
                 return Ok(obj_path);
@@ -47,7 +43,8 @@ fn compile_sqlite3_obj(
 
     let mut cmd = Command::new("cc");
     cmd.arg("-c")
-        .arg("-o").arg(&obj_path)
+        .arg("-o")
+        .arg(&obj_path)
         .arg(&sqlite3_c)
         .arg("-DSQLITE_INTROSPECTION_PRAGMAS")
         .arg("-DSQLITE_THREADSAFE=0")
@@ -84,14 +81,14 @@ fn link_probe(
     label: &str,
 ) -> Result<PathBuf, String> {
     let probe_c_path = build_dir.join("probe.c");
-    fs::write(&probe_c_path, probe_source)
-        .map_err(|e| format!("writing probe.c: {e}"))?;
+    fs::write(&probe_c_path, probe_source).map_err(|e| format!("writing probe.c: {e}"))?;
 
     let binary_name = format!("probe_{}", label.replace(['-', '.', ' '], "_"));
     let binary_path = build_dir.join(&binary_name);
 
     let mut cmd = Command::new("cc");
-    cmd.arg("-o").arg(&binary_path)
+    cmd.arg("-o")
+        .arg(&binary_path)
         .arg(&probe_c_path)
         .arg(sqlite3_obj)
         .arg("-lm")
@@ -119,8 +116,7 @@ pub fn compile_probe(
     probe_source: &str,
     label: &str,
 ) -> Result<PathBuf, String> {
-    fs::create_dir_all(build_dir)
-        .map_err(|e| format!("creating build dir: {e}"))?;
+    fs::create_dir_all(build_dir).map_err(|e| format!("creating build dir: {e}"))?;
 
     let obj = compile_sqlite3_obj(amalgamation_dir, build_dir, defines, label)?;
     link_probe(amalgamation_dir, build_dir, &obj, probe_source, label)

@@ -23,7 +23,7 @@ from pathlib import Path
 
 def main():
     project_root = Path(__file__).parent.parent.parent
-    sqlite_src = project_root / "third_party" / "src" / "sqlite" / "src"
+    sqlite_src = project_root / "third_party" / "src" / "sqlite"
     dialect_crate = project_root / "syntaqlite"
     actions_dir = dialect_crate / "parser-actions"
     nodes_dir = dialect_crate / "parser-nodes"

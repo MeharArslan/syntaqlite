@@ -25,23 +25,55 @@ use super::amalgamation_probe;
 /// - ENABLE flags: default = OFF. We test by turning them ON to see what appears.
 const FUNCTION_CFLAGS: &[(&str, &str, &[&str])] = &[
     // OMIT flags.
-    ("SQLITE_OMIT_WINDOWFUNC", "omit", &["-DSQLITE_OMIT_WINDOWFUNC"]),
+    (
+        "SQLITE_OMIT_WINDOWFUNC",
+        "omit",
+        &["-DSQLITE_OMIT_WINDOWFUNC"],
+    ),
     ("SQLITE_OMIT_JSON", "omit", &["-DSQLITE_OMIT_JSON"]),
     // SQLITE_OMIT_FLOATING_POINT intentionally excluded: it redefines `double`
     // as `sqlite_int64`, causing compile failures on all versions with modern
     // compilers. Extremely niche (embedded systems with no FPU).
-    ("SQLITE_OMIT_LOAD_EXTENSION", "omit", &["-DSQLITE_OMIT_LOAD_EXTENSION"]),
-    ("SQLITE_OMIT_COMPILEOPTION_DIAGS", "omit", &["-DSQLITE_OMIT_COMPILEOPTION_DIAGS"]),
-    ("SQLITE_OMIT_DATETIME_FUNCS", "omit", &["-DSQLITE_OMIT_DATETIME_FUNCS"]),
+    (
+        "SQLITE_OMIT_LOAD_EXTENSION",
+        "omit",
+        &["-DSQLITE_OMIT_LOAD_EXTENSION"],
+    ),
+    (
+        "SQLITE_OMIT_COMPILEOPTION_DIAGS",
+        "omit",
+        &["-DSQLITE_OMIT_COMPILEOPTION_DIAGS"],
+    ),
+    (
+        "SQLITE_OMIT_DATETIME_FUNCS",
+        "omit",
+        &["-DSQLITE_OMIT_DATETIME_FUNCS"],
+    ),
     // ENABLE flags.
-    ("SQLITE_ENABLE_MATH_FUNCTIONS", "enable", &["-DSQLITE_ENABLE_MATH_FUNCTIONS"]),
+    (
+        "SQLITE_ENABLE_MATH_FUNCTIONS",
+        "enable",
+        &["-DSQLITE_ENABLE_MATH_FUNCTIONS"],
+    ),
     ("SQLITE_ENABLE_JSON1", "enable", &["-DSQLITE_ENABLE_JSON1"]),
-    ("SQLITE_ENABLE_PERCENTILE", "enable", &["-DSQLITE_ENABLE_PERCENTILE"]),
+    (
+        "SQLITE_ENABLE_PERCENTILE",
+        "enable",
+        &["-DSQLITE_ENABLE_PERCENTILE"],
+    ),
     ("SQLITE_SOUNDEX", "enable", &["-DSQLITE_SOUNDEX"]),
-    ("SQLITE_ENABLE_OFFSET_SQL_FUNC", "enable", &["-DSQLITE_ENABLE_OFFSET_SQL_FUNC"]),
+    (
+        "SQLITE_ENABLE_OFFSET_SQL_FUNC",
+        "enable",
+        &["-DSQLITE_ENABLE_OFFSET_SQL_FUNC"],
+    ),
     ("SQLITE_ENABLE_FTS3", "enable", &["-DSQLITE_ENABLE_FTS3"]),
     ("SQLITE_ENABLE_FTS5", "enable", &["-DSQLITE_ENABLE_FTS5"]),
-    ("SQLITE_ENABLE_GEOPOLY", "enable", &["-DSQLITE_ENABLE_GEOPOLY", "-DSQLITE_ENABLE_RTREE"]),
+    (
+        "SQLITE_ENABLE_GEOPOLY",
+        "enable",
+        &["-DSQLITE_ENABLE_GEOPOLY", "-DSQLITE_ENABLE_RTREE"],
+    ),
 ];
 
 /// The C probe program that extracts function data via PRAGMA function_list.
@@ -172,11 +204,19 @@ impl Version {
             return Err(format!("invalid version: {s}"));
         }
         Ok(Self {
-            major: parts[0].parse().map_err(|_| format!("bad major: {}", parts[0]))?,
-            minor: parts[1].parse().map_err(|_| format!("bad minor: {}", parts[1]))?,
-            patch: parts[2].parse().map_err(|_| format!("bad patch: {}", parts[2]))?,
+            major: parts[0]
+                .parse()
+                .map_err(|_| format!("bad major: {}", parts[0]))?,
+            minor: parts[1]
+                .parse()
+                .map_err(|_| format!("bad minor: {}", parts[1]))?,
+            patch: parts[2]
+                .parse()
+                .map_err(|_| format!("bad patch: {}", parts[2]))?,
             sub_patch: if parts.len() == 4 {
-                parts[3].parse().map_err(|_| format!("bad sub: {}", parts[3]))?
+                parts[3]
+                    .parse()
+                    .map_err(|_| format!("bad sub: {}", parts[3]))?
             } else {
                 0
             },
@@ -187,7 +227,11 @@ impl Version {
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.sub_patch > 0 {
-            write!(f, "{}.{}.{}.{}", self.major, self.minor, self.patch, self.sub_patch)
+            write!(
+                f,
+                "{}.{}.{}.{}",
+                self.major, self.minor, self.patch, self.sub_patch
+            )
         } else {
             write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
         }
@@ -211,9 +255,7 @@ pub fn discover_versions(amalgamation_dir: &Path) -> Result<Vec<String>, String>
             }
         }
     }
-    versions.sort_by(|a, b| {
-        Version::parse(a).unwrap().cmp(&Version::parse(b).unwrap())
-    });
+    versions.sort_by(|a, b| Version::parse(a).unwrap().cmp(&Version::parse(b).unwrap()));
     Ok(versions)
 }
 
@@ -272,11 +314,10 @@ pub fn audit_version_cflags(
     }
 
     // Write output.
-    let json = serde_json::to_string_pretty(&audit)
-        .map_err(|e| format!("serializing audit: {e}"))?;
+    let json =
+        serde_json::to_string_pretty(&audit).map_err(|e| format!("serializing audit: {e}"))?;
     if let Some(parent) = output_path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("creating output dir: {e}"))?;
+        fs::create_dir_all(parent).map_err(|e| format!("creating output dir: {e}"))?;
     }
     fs::write(output_path, format!("{json}\n"))
         .map_err(|e| format!("writing {}: {e}", output_path.display()))?;
@@ -296,9 +337,8 @@ fn compile_and_run_probe(
     defines: &[&str],
     label: &str,
 ) -> Result<FunctionSet, String> {
-    let binary = amalgamation_probe::compile_probe(
-        amalgamation_dir, build_dir, defines, PROBE_C, label,
-    )?;
+    let binary =
+        amalgamation_probe::compile_probe(amalgamation_dir, build_dir, defines, PROBE_C, label)?;
     let stdout = amalgamation_probe::run_probe(&binary)?;
     parse_function_output(&stdout)
 }
@@ -376,7 +416,11 @@ const KNOWN_BROKEN: &[(&str, &str, &str)] = &[
     // (pWinDefn, etc.) that are compiled out. Broken on all tested versions
     // including 3.51.2. The amalgamation's generated parser code doesn't
     // properly guard these references.
-    ("3.", "SQLITE_OMIT_WINDOWFUNC", "parser references compiled-out struct members (pWinDefn)"),
+    (
+        "3.",
+        "SQLITE_OMIT_WINDOWFUNC",
+        "parser references compiled-out struct members (pWinDefn)",
+    ),
 ];
 
 fn is_known_broken(version: &str, flag_name: &str) -> bool {
@@ -396,11 +440,8 @@ fn extract_version(
     let bl_defs = baseline_defines_for(available_flags);
     let baseline = compile_and_run_probe(amalgamation_dir, build_dir, &bl_defs, "baseline")?;
 
-    let baseline_names: BTreeSet<String> = baseline
-        .functions
-        .iter()
-        .map(|f| f.name.clone())
-        .collect();
+    let baseline_names: BTreeSet<String> =
+        baseline.functions.iter().map(|f| f.name.clone()).collect();
 
     eprintln!("    baseline: {} functions", baseline_names.len());
 
@@ -423,11 +464,8 @@ fn extract_version(
         let test_set = compile_and_run_probe(amalgamation_dir, build_dir, &test_defs, &label)
             .map_err(|e| format!("{version}/{flag_name}: {e}"))?;
 
-        let test_names: BTreeSet<String> = test_set
-            .functions
-            .iter()
-            .map(|f| f.name.clone())
-            .collect();
+        let test_names: BTreeSet<String> =
+            test_set.functions.iter().map(|f| f.name.clone()).collect();
 
         // Determine affected functions: present in baseline but absent in test.
         let affected: BTreeSet<String> = baseline_names.difference(&test_names).cloned().collect();
@@ -477,8 +515,7 @@ pub fn extract_function_catalog(
     // Use a persistent build directory alongside the amalgamations so that
     // compiled .o files survive across runs.
     let build_root = amalgamation_dir.join(".build-cache");
-    fs::create_dir_all(&build_root)
-        .map_err(|e| format!("creating build cache dir: {e}"))?;
+    fs::create_dir_all(&build_root).map_err(|e| format!("creating build cache dir: {e}"))?;
 
     let mut per_version: Vec<(String, BTreeSet<String>, Vec<CflagEffect>)> = Vec::new();
     let mut all_entries: BTreeMap<String, BTreeSet<(i32, String)>> = BTreeMap::new();
@@ -498,11 +535,7 @@ pub fn extract_function_catalog(
         let (baseline, effects) = extract_version(&amal_dir, version, &build_dir, &available)
             .map_err(|e| format!("{version}: {e}"))?;
 
-        let names: BTreeSet<String> = baseline
-            .functions
-            .iter()
-            .map(|f| f.name.clone())
-            .collect();
+        let names: BTreeSet<String> = baseline.functions.iter().map(|f| f.name.clone()).collect();
 
         for entry in &baseline.functions {
             all_entries
@@ -516,11 +549,10 @@ pub fn extract_function_catalog(
 
     let catalog = build_catalog(&per_version, &all_entries);
 
-    let json = serde_json::to_string_pretty(&catalog)
-        .map_err(|e| format!("serializing catalog: {e}"))?;
+    let json =
+        serde_json::to_string_pretty(&catalog).map_err(|e| format!("serializing catalog: {e}"))?;
     if let Some(parent) = output_path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("creating output dir: {e}"))?;
+        fs::create_dir_all(parent).map_err(|e| format!("creating output dir: {e}"))?;
     }
     let mut file = fs::File::create(output_path)
         .map_err(|e| format!("creating {}: {e}", output_path.display()))?;
@@ -668,13 +700,10 @@ mod tests {
 
     #[test]
     fn baseline_defines_only_uses_available() {
-        let available: BTreeSet<String> = [
-            "SQLITE_ENABLE_MATH_FUNCTIONS",
-            "SQLITE_SOUNDEX",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect();
+        let available: BTreeSet<String> = ["SQLITE_ENABLE_MATH_FUNCTIONS", "SQLITE_SOUNDEX"]
+            .into_iter()
+            .map(String::from)
+            .collect();
 
         let defs = baseline_defines_for(&available);
         assert!(defs.contains(&"-DSQLITE_ENABLE_MATH_FUNCTIONS"));
@@ -687,13 +716,10 @@ mod tests {
 
     #[test]
     fn test_defines_omit_adds_flag() {
-        let available: BTreeSet<String> = [
-            "SQLITE_OMIT_JSON",
-            "SQLITE_ENABLE_MATH_FUNCTIONS",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect();
+        let available: BTreeSet<String> = ["SQLITE_OMIT_JSON", "SQLITE_ENABLE_MATH_FUNCTIONS"]
+            .into_iter()
+            .map(String::from)
+            .collect();
 
         let defs = test_defines_for("SQLITE_OMIT_JSON", "omit", &available);
         assert!(defs.contains(&"-DSQLITE_OMIT_JSON"));
@@ -702,13 +728,10 @@ mod tests {
 
     #[test]
     fn test_defines_enable_removes_flag() {
-        let available: BTreeSet<String> = [
-            "SQLITE_ENABLE_MATH_FUNCTIONS",
-            "SQLITE_SOUNDEX",
-        ]
-        .into_iter()
-        .map(String::from)
-        .collect();
+        let available: BTreeSet<String> = ["SQLITE_ENABLE_MATH_FUNCTIONS", "SQLITE_SOUNDEX"]
+            .into_iter()
+            .map(String::from)
+            .collect();
 
         let defs = test_defines_for("SQLITE_ENABLE_MATH_FUNCTIONS", "enable", &available);
         assert!(!defs.contains(&"-DSQLITE_ENABLE_MATH_FUNCTIONS"));

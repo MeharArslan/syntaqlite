@@ -9,19 +9,66 @@ pub const FIELD_BOOL: u8 = 2;
 pub const FIELD_FLAGS: u8 = 3;
 pub const FIELD_ENUM: u8 = 4;
 
+/// Mirrors C `SyntaqliteCflags` from `include/syntaqlite/sqlite_cflags.h`.
+///
+/// A packed bitfield struct. On the Rust side we represent it as raw bytes
+/// and provide index-based accessors matching the C `SYNQ_CFLAG_*` constants.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct Cflags {
+    bytes: [u8; 6],
+}
+
+impl Cflags {
+    /// Create a zero-initialized (all flags off) cflags.
+    pub const fn new() -> Self {
+        Self { bytes: [0; 6] }
+    }
+
+    /// Check if cflag at `idx` is set.
+    #[inline]
+    pub fn has(&self, idx: u32) -> bool {
+        let byte = idx / 8;
+        let bit = idx % 8;
+        (byte < 6) && (self.bytes[byte as usize] >> bit) & 1 != 0
+    }
+
+    /// Set cflag at `idx`.
+    #[inline]
+    pub fn set(&mut self, idx: u32) {
+        let byte = idx / 8;
+        let bit = idx % 8;
+        if byte < 6 {
+            self.bytes[byte as usize] |= 1 << bit;
+        }
+    }
+}
+
+impl Default for Cflags {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl std::fmt::Debug for Cflags {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Cflags({:02x?})", &self.bytes)
+    }
+}
+
 /// Mirrors C `SyntaqliteDialectConfig` from `include/syntaqlite/dialect_config.h`.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct DialectConfig {
     pub sqlite_version: i32,
-    pub cflags: u64,
+    pub cflags: Cflags,
 }
 
 impl Default for DialectConfig {
     fn default() -> Self {
         Self {
             sqlite_version: i32::MAX,
-            cflags: 0,
+            cflags: Cflags::new(),
         }
     }
 }

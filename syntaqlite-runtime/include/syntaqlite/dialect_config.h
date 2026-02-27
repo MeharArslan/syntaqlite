@@ -7,18 +7,19 @@
 #define SYNTAQLITE_DIALECT_CONFIG_H
 
 #include <stdint.h>
+#include "syntaqlite/sqlite_cflags.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 typedef struct SyntaqliteDialectConfig {
-    int32_t  sqlite_version;   // Target version (e.g., 3035000). INT32_MAX = latest.
-    uint64_t cflags;           // Bitmask of active cflags.
+    int32_t           sqlite_version;  // Target version (e.g., 3035000). INT32_MAX = latest.
+    SyntaqliteCflags  cflags;          // Active compile-time flags.
 } SyntaqliteDialectConfig;
 
 // Default config: latest version, no cflags.
-#define SYNQ_DIALECT_CONFIG_DEFAULT { INT32_MAX, 0 }
+#define SYNQ_DIALECT_CONFIG_DEFAULT { INT32_MAX, SYNQ_CFLAGS_DEFAULT }
 
 #ifdef __cplusplus
 }
@@ -37,11 +38,7 @@ typedef struct SyntaqliteDialectConfig {
   #define SYNQ_VER_LT(config, ver) ((config)->sqlite_version < (ver))
 #endif
 
-// True if cflag `flag` is set in the config.
-#ifdef SYNQ_SQLITE_CFLAGS
-  #define SYNQ_HAS_CFLAG(config, flag) ((SYNQ_SQLITE_CFLAGS) & (flag))
-#else
-  #define SYNQ_HAS_CFLAG(config, flag) ((config)->cflags & (flag))
-#endif
+// True if cflag at index `idx` is set in the config.
+#define SYNQ_HAS_CFLAG(config, idx) synq_has_cflag(&(config)->cflags, (idx))
 
 #endif  // SYNTAQLITE_DIALECT_CONFIG_H

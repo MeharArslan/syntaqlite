@@ -16,7 +16,7 @@ pub(crate) enum ExtractCommand {
     /// consumes. It also vendors the SQLite tool sources and generates the
     /// base_files_tables.rs include file.
     SqliteExtract {
-        /// Path to the SQLite source directory (containing tokenize.c, etc.).
+        /// Path to the SQLite source tree root (containing src/ and tool/).
         #[arg(long, required = true)]
         sqlite_src: String,
         /// Output directory for vendored files (sqlite-vendored/).
@@ -93,10 +93,13 @@ fn handle_sqlite_extract(
 ) -> Result<(), String> {
     use syntaqlite_buildtools::extract;
 
-    let src = Path::new(sqlite_src);
-    if !src.is_dir() {
+    let root = Path::new(sqlite_src);
+    if !root.is_dir() {
         return Err(format!("{sqlite_src} is not a directory"));
     }
+
+    let src = root.join("src");
+    let tool_dir = root.join("tool");
 
     let out = Path::new(output_dir);
     let sources_dir = out.join("sources");
@@ -108,9 +111,6 @@ fn handle_sqlite_extract(
     fs::create_dir_all(&fragments_dir)
         .map_err(|e| format!("creating {}: {e}", fragments_dir.display()))?;
     fs::create_dir_all(&data_dir).map_err(|e| format!("creating {}: {e}", data_dir.display()))?;
-
-    // mkkeywordhash.c lives in tool/, not src/
-    let tool_dir = src.parent().unwrap_or(src).join("tool");
 
     // Step 1: Vendor sources — copy lemon.c, lempar.c, mkkeywordhash.c
     eprintln!("Vendoring SQLite tool sources...");
@@ -137,9 +137,9 @@ fn handle_sqlite_extract(
 
     // Step 3: Extract tokenizer fragments
     eprintln!("Extracting tokenizer fragments...");
-    let tokenize_c = read_source(src, "tokenize.c")?;
-    let global_c = read_source(src, "global.c")?;
-    let sqliteint_h = read_source(src, "sqliteInt.h")?;
+    let tokenize_c = read_source(&src, "tokenize.c")?;
+    let global_c = read_source(&src, "global.c")?;
+    let sqliteint_h = read_source(&src, "sqliteInt.h")?;
 
     let fragments = extract::tokenizer::extract_fragments(&tokenize_c, &global_c, &sqliteint_h)?;
     extract::tokenizer::write_fragments(&fragments, &fragments_dir)?;
@@ -147,7 +147,10 @@ fn handle_sqlite_extract(
     // Step 4: Extract keyword cflags
     eprintln!("Extracting keyword cflag data...");
     let cflags = extract::keywords_and_parser::extract_keyword_cflags(&mkkeywordhash_c)?;
-    extract::keywords_and_parser::write_keyword_cflags(&cflags, &data_dir.join("keyword_cflags.json"))?;
+    extract::keywords_and_parser::write_keyword_cflags(
+        &cflags,
+        &data_dir.join("keyword_cflags.json"),
+    )?;
 
     // Step 5: Generate base_files_tables.rs
     eprintln!("Generating base_files_tables.rs...");
@@ -190,10 +193,6 @@ fn handle_extract_functions(
         return Err(format!("{amalgamation_dir} is not a directory"));
     }
 
-    extract::functions::extract_function_catalog(
-        amal_path,
-        Path::new(audit),
-        Path::new(output),
-    )?;
+    extract::functions::extract_function_catalog(amal_path, Path::new(audit), Path::new(output))?;
     Ok(())
 }

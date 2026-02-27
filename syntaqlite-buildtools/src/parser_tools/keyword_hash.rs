@@ -29,7 +29,7 @@ fn keyword_since_version(name: &str) -> i32 {
 }
 
 /// Parse the pre-extracted keyword cflag JSON data.
-fn parse_keyword_cflags(data: &str) -> HashMap<String, (u64, u8)> {
+fn parse_keyword_cflags(data: &str) -> HashMap<String, (u32, u8)> {
     #[derive(serde::Deserialize)]
     struct KeywordCflags {
         keywords: Vec<KeywordCflagEntry>,
@@ -37,12 +37,11 @@ fn parse_keyword_cflags(data: &str) -> HashMap<String, (u64, u8)> {
     #[derive(serde::Deserialize)]
     struct KeywordCflagEntry {
         name: String,
-        cflag: u64,
+        cflag: u32,
         polarity: u8,
     }
 
-    let catalog: KeywordCflags =
-        serde_json::from_str(data).expect("invalid keyword_cflags.json");
+    let catalog: KeywordCflags = serde_json::from_str(data).expect("invalid keyword_cflags.json");
     catalog
         .keywords
         .into_iter()
@@ -82,20 +81,20 @@ fn parse_keyword_indices(code: &str) -> Vec<(usize, String)> {
 /// as C code, given the keyword index mapping from mkkeywordhash output.
 fn generate_keyword_arrays(
     keyword_indices: &[(usize, String)],
-    cflag_map: &HashMap<String, (u64, u8)>,
+    cflag_map: &HashMap<String, (u32, u8)>,
     dialect: &str,
 ) -> String {
     let max_idx = keyword_indices.iter().map(|(i, _)| *i).max().unwrap_or(0);
     let array_len = max_idx + 1;
 
     let mut since = vec![0i32; array_len];
-    let mut cflag = vec![0u64; array_len];
+    let mut cflag = vec![-1i32; array_len];
     let mut polarity = vec![0u8; array_len];
 
     for (idx, name) in keyword_indices {
         since[*idx] = keyword_since_version(name);
-        if let Some(&(cflag_val, pol)) = cflag_map.get(name) {
-            cflag[*idx] = cflag_val;
+        if let Some(&(cflag_idx, pol)) = cflag_map.get(name) {
+            cflag[*idx] = cflag_idx as i32;
             polarity[*idx] = pol;
         }
     }
@@ -121,21 +120,12 @@ fn generate_keyword_arrays(
     };
 
     let since_strs: Vec<String> = since.iter().map(|v| v.to_string()).collect();
-    let cflag_strs: Vec<String> = cflag
-        .iter()
-        .map(|v| {
-            if *v == 0 {
-                "0".to_string()
-            } else {
-                format!("{:#018x}", v)
-            }
-        })
-        .collect();
+    let cflag_strs: Vec<String> = cflag.iter().map(|v| v.to_string()).collect();
     let pol_strs: Vec<String> = polarity.iter().map(|v| v.to_string()).collect();
 
     let mut out = String::new();
     out.push_str(&fmt_array(&since_strs, "int32_t", "aKWSince"));
-    out.push_str(&fmt_array(&cflag_strs, "uint64_t", "aKWCFlag"));
+    out.push_str(&fmt_array(&cflag_strs, "int8_t", "aKWCFlag"));
     out.push_str(&fmt_array(&pol_strs, "uint8_t", "aKWCFlagPolarity"));
     out
 }
@@ -149,10 +139,10 @@ fn keyword_check_code() -> &'static str {
       break;
     }
     /* CFlag check with polarity. */
-    if( synq_sqlite_aKWCFlag[i] != 0 ){
-      int bit_set = SYNQ_HAS_CFLAG(config, synq_sqlite_aKWCFlag[i]) != 0;
+    if( synq_sqlite_aKWCFlag[i] >= 0 ){
+      int flag_set = SYNQ_HAS_CFLAG(config, synq_sqlite_aKWCFlag[i]);
       int is_enable = synq_sqlite_aKWCFlagPolarity[i];
-      if( bit_set != is_enable ){
+      if( flag_set != is_enable ){
         break;
       }
     }

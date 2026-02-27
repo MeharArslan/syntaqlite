@@ -44,7 +44,7 @@ fn tokenize_at_version(sql: &str, version: i32) -> Vec<(u32, String)> {
     let mut tok = syntaqlite_runtime::parser::Tokenizer::new(*dialect);
     tok.set_dialect_config(&DialectConfig {
         sqlite_version: version,
-        cflags: 0,
+        ..Default::default()
     });
     tok.tokenize(sql)
         .filter(|raw| raw.token_type != tk(TokenType::Space))
@@ -57,14 +57,22 @@ fn tokenize_latest(sql: &str) -> Vec<(u32, String)> {
     tokenize_at_version(sql, i32::MAX)
 }
 
-/// Tokenize SQL with a specific version and cflags.
-fn tokenize_at_version_cflags(sql: &str, version: i32, cflags: u64) -> Vec<(u32, String)> {
+/// Tokenize SQL with a specific version and cflag indices set.
+fn tokenize_at_version_cflags(
+    sql: &str,
+    version: i32,
+    cflag_indices: &[u32],
+) -> Vec<(u32, String)> {
     let dialect = syntaqlite::low_level::dialect();
     let mut tok = syntaqlite_runtime::parser::Tokenizer::new(*dialect);
-    tok.set_dialect_config(&DialectConfig {
+    let mut config = DialectConfig {
         sqlite_version: version,
-        cflags,
-    });
+        ..Default::default()
+    };
+    for &idx in cflag_indices {
+        config.cflags.set(idx);
+    }
+    tok.set_dialect_config(&config);
     tok.tokenize(sql)
         .filter(|raw| raw.token_type != tk(TokenType::Space))
         .map(|raw| (raw.token_type, raw.text.to_string()))
@@ -73,17 +81,21 @@ fn tokenize_at_version_cflags(sql: &str, version: i32, cflags: u64) -> Vec<(u32,
 
 /// Parse SQL with a specific SQLite version and return whether it succeeded.
 fn parses_ok_at_version(sql: &str, version: i32) -> bool {
-    parses_ok_at_version_cflags(sql, version, 0)
+    parses_ok_at_version_cflags(sql, version, &[])
 }
 
-/// Parse SQL with a specific version and cflags.
-fn parses_ok_at_version_cflags(sql: &str, version: i32, cflags: u64) -> bool {
+/// Parse SQL with a specific version and cflag indices set.
+fn parses_ok_at_version_cflags(sql: &str, version: i32, cflag_indices: &[u32]) -> bool {
     let dialect = syntaqlite::low_level::dialect();
     let mut parser = syntaqlite_runtime::Parser::new(dialect);
-    parser.set_dialect_config(&DialectConfig {
+    let mut config = DialectConfig {
         sqlite_version: version,
-        cflags,
-    });
+        ..Default::default()
+    };
+    for &idx in cflag_indices {
+        config.cflags.set(idx);
+    }
+    parser.set_dialect_config(&config);
     let mut cursor = parser.parse(sql);
     matches!(cursor.next_statement(), Some(Ok(_)))
 }
@@ -363,8 +375,7 @@ fn filter_keyword_not_recognized_before_3_25() {
 // Verified against SQLite 3.47.0+ compiled with/without the flag.
 // ---------------------------------------------------------------------------
 
-/// SYNQ_SQLITE_ENABLE_ORDERED_SET_AGGREGATES
-const CFLAG_ORDERED_SET: u64 = 0x0000_0010_0000_0000;
+const CFLAG_ORDERED_SET: u32 = 36; // SYNQ_CFLAG_ENABLE_ORDERED_SET_AGGREGATES
 
 #[test]
 fn within_keyword_not_recognized_without_cflag() {
@@ -380,7 +391,7 @@ fn within_keyword_not_recognized_without_cflag() {
 #[test]
 fn within_keyword_recognized_with_cflag() {
     // With the ENABLE flag set, WITHIN should be recognized.
-    let tokens = tokenize_at_version_cflags("WITHIN", ver(3, 47, 0), CFLAG_ORDERED_SET);
+    let tokens = tokenize_at_version_cflags("WITHIN", ver(3, 47, 0), &[CFLAG_ORDERED_SET]);
     assert_eq!(
         tokens[0].0,
         tk(TokenType::Within),
@@ -391,7 +402,7 @@ fn within_keyword_recognized_with_cflag() {
 #[test]
 fn within_keyword_not_recognized_before_3_47() {
     // Even with the cflag, WITHIN was not available before 3.47.
-    let tokens = tokenize_at_version_cflags("WITHIN", ver(3, 46, 0), CFLAG_ORDERED_SET);
+    let tokens = tokenize_at_version_cflags("WITHIN", ver(3, 46, 0), &[CFLAG_ORDERED_SET]);
     assert_ne!(
         tokens[0].0,
         tk(TokenType::Within),
@@ -406,7 +417,7 @@ fn within_group_parses_with_cflag() {
         parses_ok_at_version_cflags(
             "SELECT percentile(0.5) WITHIN GROUP (ORDER BY salary) FROM t;",
             i32::MAX,
-            CFLAG_ORDERED_SET,
+            &[CFLAG_ORDERED_SET],
         ),
         "WITHIN GROUP syntax should parse when cflag is set"
     );
@@ -419,7 +430,7 @@ fn within_group_fails_without_cflag() {
         !parses_ok_at_version_cflags(
             "SELECT percentile(0.5) WITHIN GROUP (ORDER BY salary) FROM t;",
             i32::MAX,
-            0,
+            &[],
         ),
         "WITHIN GROUP syntax should fail without cflag"
     );
@@ -435,20 +446,20 @@ fn within_group_fails_without_cflag() {
 //   2. Parsing fails for a representative SQL statement.
 // ---------------------------------------------------------------------------
 
-const CFLAG_OMIT_WINDOWFUNC: u64 = 0x0000_0000_0100_0000;
-const CFLAG_OMIT_CTE: u64 = 0x0000_0000_0000_0080;
-const CFLAG_OMIT_RETURNING: u64 = 0x0000_0000_0002_0000;
-const CFLAG_OMIT_COMPOUND_SELECT: u64 = 0x0000_0000_0000_0040;
+const CFLAG_OMIT_WINDOWFUNC: u32 = 24; // SYNQ_CFLAG_OMIT_WINDOWFUNC
+const CFLAG_OMIT_CTE: u32 = 7; // SYNQ_CFLAG_OMIT_CTE
+const CFLAG_OMIT_RETURNING: u32 = 17; // SYNQ_CFLAG_OMIT_RETURNING
+const CFLAG_OMIT_COMPOUND_SELECT: u32 = 6; // SYNQ_CFLAG_OMIT_COMPOUND_SELECT
 // Note: OMIT_SUBQUERY (0x00000080) is not listed here because it doesn't gate
 // any keywords — it uses the saw_subquery flag instead. See subquery tests below.
-const CFLAG_OMIT_VIEW: u64 = 0x0000_0000_0040_0000;
-const CFLAG_OMIT_TRIGGER: u64 = 0x0000_0000_0010_0000;
+const CFLAG_OMIT_VIEW: u32 = 22; // SYNQ_CFLAG_OMIT_VIEW
+const CFLAG_OMIT_TRIGGER: u32 = 20; // SYNQ_CFLAG_OMIT_TRIGGER
 
 // ---- OMIT_WINDOWFUNC ----
 
 #[test]
 fn omit_windowfunc_keyword_falls_back_to_id() {
-    let tokens = tokenize_at_version_cflags("OVER", i32::MAX, CFLAG_OMIT_WINDOWFUNC);
+    let tokens = tokenize_at_version_cflags("OVER", i32::MAX, &[CFLAG_OMIT_WINDOWFUNC]);
     assert_ne!(
         tokens[0].0,
         tk(TokenType::Over),
@@ -462,7 +473,7 @@ fn omit_windowfunc_parse_fails() {
         !parses_ok_at_version_cflags(
             "SELECT sum(x) OVER () FROM t;",
             i32::MAX,
-            CFLAG_OMIT_WINDOWFUNC,
+            &[CFLAG_OMIT_WINDOWFUNC],
         ),
         "Window function syntax should fail with OMIT_WINDOWFUNC"
     );
@@ -473,7 +484,7 @@ fn omit_windowfunc_parse_fails() {
 #[test]
 fn omit_cte_keyword_falls_back_to_id() {
     // WITH is gated by OMIT_CTE.
-    let tokens = tokenize_at_version_cflags("WITH", i32::MAX, CFLAG_OMIT_CTE);
+    let tokens = tokenize_at_version_cflags("WITH", i32::MAX, &[CFLAG_OMIT_CTE]);
     assert_ne!(
         tokens[0].0,
         tk(TokenType::With),
@@ -487,7 +498,7 @@ fn omit_cte_parse_fails() {
         !parses_ok_at_version_cflags(
             "WITH t AS (SELECT 1) SELECT * FROM t;",
             i32::MAX,
-            CFLAG_OMIT_CTE,
+            &[CFLAG_OMIT_CTE],
         ),
         "CTE syntax should fail with OMIT_CTE"
     );
@@ -497,7 +508,7 @@ fn omit_cte_parse_fails() {
 
 #[test]
 fn omit_returning_keyword_falls_back_to_id() {
-    let tokens = tokenize_at_version_cflags("RETURNING", i32::MAX, CFLAG_OMIT_RETURNING);
+    let tokens = tokenize_at_version_cflags("RETURNING", i32::MAX, &[CFLAG_OMIT_RETURNING]);
     assert_ne!(
         tokens[0].0,
         tk(TokenType::Returning),
@@ -511,7 +522,7 @@ fn omit_returning_parse_fails() {
         !parses_ok_at_version_cflags(
             "INSERT INTO t VALUES(1) RETURNING *;",
             i32::MAX,
-            CFLAG_OMIT_RETURNING,
+            &[CFLAG_OMIT_RETURNING],
         ),
         "RETURNING syntax should fail with OMIT_RETURNING"
     );
@@ -521,7 +532,7 @@ fn omit_returning_parse_fails() {
 
 #[test]
 fn omit_compound_select_keyword_falls_back_to_id() {
-    let tokens = tokenize_at_version_cflags("UNION", i32::MAX, CFLAG_OMIT_COMPOUND_SELECT);
+    let tokens = tokenize_at_version_cflags("UNION", i32::MAX, &[CFLAG_OMIT_COMPOUND_SELECT]);
     assert_ne!(
         tokens[0].0,
         tk(TokenType::Union),
@@ -535,7 +546,7 @@ fn omit_compound_select_parse_fails() {
         !parses_ok_at_version_cflags(
             "SELECT 1 UNION SELECT 2;",
             i32::MAX,
-            CFLAG_OMIT_COMPOUND_SELECT,
+            &[CFLAG_OMIT_COMPOUND_SELECT],
         ),
         "UNION syntax should fail with OMIT_COMPOUND_SELECT"
     );
@@ -545,7 +556,7 @@ fn omit_compound_select_parse_fails() {
 
 #[test]
 fn omit_view_keyword_falls_back_to_id() {
-    let tokens = tokenize_at_version_cflags("VIEW", i32::MAX, CFLAG_OMIT_VIEW);
+    let tokens = tokenize_at_version_cflags("VIEW", i32::MAX, &[CFLAG_OMIT_VIEW]);
     assert_ne!(
         tokens[0].0,
         tk(TokenType::View),
@@ -556,7 +567,7 @@ fn omit_view_keyword_falls_back_to_id() {
 #[test]
 fn omit_view_parse_fails() {
     assert!(
-        !parses_ok_at_version_cflags("CREATE VIEW v AS SELECT 1;", i32::MAX, CFLAG_OMIT_VIEW,),
+        !parses_ok_at_version_cflags("CREATE VIEW v AS SELECT 1;", i32::MAX, &[CFLAG_OMIT_VIEW],),
         "CREATE VIEW syntax should fail with OMIT_VIEW"
     );
 }
@@ -565,7 +576,7 @@ fn omit_view_parse_fails() {
 
 #[test]
 fn omit_trigger_keyword_falls_back_to_id() {
-    let tokens = tokenize_at_version_cflags("TRIGGER", i32::MAX, CFLAG_OMIT_TRIGGER);
+    let tokens = tokenize_at_version_cflags("TRIGGER", i32::MAX, &[CFLAG_OMIT_TRIGGER]);
     assert_ne!(
         tokens[0].0,
         tk(TokenType::Trigger),
@@ -579,7 +590,7 @@ fn omit_trigger_parse_fails() {
         !parses_ok_at_version_cflags(
             "CREATE TRIGGER t AFTER INSERT ON x BEGIN SELECT 1; END;",
             i32::MAX,
-            CFLAG_OMIT_TRIGGER,
+            &[CFLAG_OMIT_TRIGGER],
         ),
         "CREATE TRIGGER syntax should fail with OMIT_TRIGGER"
     );

@@ -14,6 +14,14 @@
 #include "syntaqlite/dialect_config.h"
 #include "syntaqlite/sqlite_cflags.h"
 
+/*
+** The author disclaims copyright to this source code.  In place of
+** a legal notice, here is a blessing:
+**
+**    May you do good and not evil.
+**    May you find forgiveness for yourself and forgive others.
+**    May you share freely, never taking more than you give.
+*/
 const unsigned char sqlite3UpperToLower[] = {
 #ifdef SQLITE_ASCII
       0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17,
@@ -77,6 +85,14 @@ const unsigned char sqlite3UpperToLower[] = {
    1,  0,  1,  0,  0,  1   /* aGTb[]: Use when compare(A,B) greater than zero*/
 };
 
+/*
+** The author disclaims copyright to this source code.  In place of
+** a legal notice, here is a blessing:
+**
+**    May you do good and not evil.
+**    May you find forgiveness for yourself and forgive others.
+**    May you share freely, never taking more than you give.
+*/
 #ifdef SQLITE_ASCII
 # define charMap(X) sqlite3UpperToLower[(unsigned char)X]
 #endif
@@ -410,19 +426,19 @@ static const int32_t synq_sqlite_aKWSince[149] = {
   0,0,0,3028000,3025000,3035000,0,0,3025000,0,3025000,0,0,
   0,0,3025000,3024000,0,0
 };
-static const uint32_t synq_sqlite_aKWCFlag[149] = {
-  0,0x00001000,0,0,0,0,0x00000400,0,0,0x00000400,0,0x00000400,0,
-  0,0x00000001,0x00000400,0,0x00000800,0,0,0,0,0,0,0,0,
-  0x00000008,0,0,0,0,0,0,0,0x00000004,0x00000008,0,0,0,
-  0,0,0x00000004,0,0,0,0,0,0x00000400,0,0,0,0,
-  0,0,0,0x00000400,0x00000008,0,0x00000800,0,0,0,0,0,0,
-  0x00000001,0,0x00000040,0,0,0x00000800,0,0,0x00000008,0,0,0,0,
-  0,0,0,0,0,0,0,0,0x00000001,0x00002000,0x00000200,0x00000040,0,
-  0,0,0,0,0x00008000,0x00000010,0,0,0x00000040,0x00020000,0,0,0,
-  0x00000400,0,0,0,0x00000008,0,0,0,0x00000100,0,0,0,0,
-  0,0,0x00000008,0x00000008,0,0,0x00000008,0,0,0x00000008,0,0,0,
-  0,0,0,0x00000008,0x00000008,0x00010000,0,0,0,0x00000400,0x00000008,0x00000004,0,
-  0,0x00000020,0x00000008,0,0,0
+static const int8_t synq_sqlite_aKWCFlag[149] = {
+  -1,16,-1,-1,-1,-1,20,-1,-1,20,11,20,-1,
+  -1,9,20,-1,2,-1,-1,-1,-1,-1,-1,11,-1,
+  24,-1,-1,-1,-1,-1,-1,-1,6,24,-1,-1,-1,
+  -1,-1,6,-1,11,-1,-1,-1,20,-1,-1,-1,-1,
+  -1,-1,-1,20,24,-1,2,-1,-1,-1,-1,11,-1,
+  9,-1,7,-1,-1,2,-1,-1,24,-1,11,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1,9,1,15,7,-1,
+  -1,-1,-1,-1,23,12,-1,-1,7,36,11,-1,-1,
+  20,-1,-1,-1,24,3,-1,-1,4,-1,-1,-1,-1,
+  -1,-1,24,24,-1,-1,24,-1,-1,24,-1,-1,-1,
+  -1,-1,11,24,24,17,-1,-1,-1,20,24,6,-1,
+  -1,22,24,-1,-1,-1
 };
 static const uint8_t synq_sqlite_aKWCFlagPolarity[149] = {
   0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -613,10 +629,10 @@ int synq_sqlite3_keywordCode(const SyntaqliteDialectConfig *config, const char *
       break;
     }
     /* CFlag check with polarity. */
-    if( synq_sqlite_aKWCFlag[i] != 0 ){
-      int bit_set = SYNQ_HAS_CFLAG(config, synq_sqlite_aKWCFlag[i]) != 0;
+    if( synq_sqlite_aKWCFlag[i] >= 0 ){
+      int flag_set = SYNQ_HAS_CFLAG(config, synq_sqlite_aKWCFlag[i]);
       int is_enable = synq_sqlite_aKWCFlagPolarity[i];
-      if( bit_set != is_enable ){
+      if( flag_set != is_enable ){
         break;
       }
     }

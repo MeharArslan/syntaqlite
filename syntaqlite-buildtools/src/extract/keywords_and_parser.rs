@@ -30,26 +30,74 @@ pub const PARSER_CFLAGS: &[(&str, &str, &str)] = &[
     ("SQLITE_OMIT_ALTERTABLE", "omit", "removes ALTER TABLE"),
     ("SQLITE_OMIT_ANALYZE", "omit", "removes ANALYZE"),
     ("SQLITE_OMIT_ATTACH", "omit", "removes ATTACH and DETACH"),
-    ("SQLITE_OMIT_AUTOINCREMENT", "omit", "removes AUTOINCREMENT behavior"),
+    (
+        "SQLITE_OMIT_AUTOINCREMENT",
+        "omit",
+        "removes AUTOINCREMENT behavior",
+    ),
     ("SQLITE_OMIT_CAST", "omit", "removes CAST operator"),
-    ("SQLITE_OMIT_COMPOUND_SELECT", "omit", "removes UNION, UNION ALL, INTERSECT, EXCEPT"),
-    ("SQLITE_OMIT_CTE", "omit", "removes common table expressions (WITH)"),
+    (
+        "SQLITE_OMIT_COMPOUND_SELECT",
+        "omit",
+        "removes UNION, UNION ALL, INTERSECT, EXCEPT",
+    ),
+    (
+        "SQLITE_OMIT_CTE",
+        "omit",
+        "removes common table expressions (WITH)",
+    ),
     ("SQLITE_OMIT_EXPLAIN", "omit", "removes EXPLAIN"),
-    ("SQLITE_OMIT_FOREIGN_KEY", "omit", "removes foreign key constraint syntax"),
-    ("SQLITE_OMIT_GENERATED_COLUMNS", "omit", "removes generated column syntax"),
+    (
+        "SQLITE_OMIT_FOREIGN_KEY",
+        "omit",
+        "removes foreign key constraint syntax",
+    ),
+    (
+        "SQLITE_OMIT_GENERATED_COLUMNS",
+        "omit",
+        "removes generated column syntax",
+    ),
     ("SQLITE_OMIT_PRAGMA", "omit", "removes PRAGMA command"),
     ("SQLITE_OMIT_REINDEX", "omit", "removes REINDEX"),
     ("SQLITE_OMIT_RETURNING", "omit", "removes RETURNING clause"),
-    ("SQLITE_OMIT_SUBQUERY", "omit", "removes sub-selects and IN() operator"),
-    ("SQLITE_OMIT_TEMPDB", "omit", "removes TEMP/TEMPORARY tables"),
-    ("SQLITE_OMIT_TRIGGER", "omit", "removes CREATE TRIGGER and DROP TRIGGER"),
+    (
+        "SQLITE_OMIT_SUBQUERY",
+        "omit",
+        "removes sub-selects and IN() operator",
+    ),
+    (
+        "SQLITE_OMIT_TEMPDB",
+        "omit",
+        "removes TEMP/TEMPORARY tables",
+    ),
+    (
+        "SQLITE_OMIT_TRIGGER",
+        "omit",
+        "removes CREATE TRIGGER and DROP TRIGGER",
+    ),
     ("SQLITE_OMIT_VACUUM", "omit", "removes VACUUM"),
-    ("SQLITE_OMIT_VIEW", "omit", "removes CREATE VIEW and DROP VIEW"),
-    ("SQLITE_OMIT_VIRTUALTABLE", "omit", "removes virtual table mechanism"),
+    (
+        "SQLITE_OMIT_VIEW",
+        "omit",
+        "removes CREATE VIEW and DROP VIEW",
+    ),
+    (
+        "SQLITE_OMIT_VIRTUALTABLE",
+        "omit",
+        "removes virtual table mechanism",
+    ),
     ("SQLITE_OMIT_WINDOWFUNC", "omit", "removes window functions"),
     // ENABLE flags — each adds syntax to the grammar.
-    ("SQLITE_ENABLE_ORDERED_SET_AGGREGATES", "enable", "adds WITHIN keyword for ordered-set aggregates"),
-    ("SQLITE_ENABLE_UPDATE_DELETE_LIMIT", "enable", "adds ORDER BY and LIMIT on UPDATE/DELETE"),
+    (
+        "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
+        "enable",
+        "adds WITHIN keyword for ordered-set aggregates",
+    ),
+    (
+        "SQLITE_ENABLE_UPDATE_DELETE_LIMIT",
+        "enable",
+        "adds ORDER BY and LIMIT on UPDATE/DELETE",
+    ),
 ];
 
 // ---------------------------------------------------------------------------
@@ -66,17 +114,17 @@ struct KeywordCflags {
 #[derive(Debug, Clone, serde::Serialize)]
 struct KeywordCflagEntry {
     name: String,
-    cflag: u64,
+    cflag: u32,
     /// 0 = OMIT (keyword disabled when flag set), 1 = ENABLE (keyword enabled when flag set).
     polarity: u8,
 }
 
 /// Extract keyword cflag data from mkkeywordhash.c source.
 ///
-/// Returns a map of keyword name → (cflag_value, polarity).
+/// Returns a map of keyword name → (cflag_index, polarity).
 pub fn extract_keyword_cflags(
     mkkeywordhash_source: &str,
-) -> Result<HashMap<String, (u64, u8)>, String> {
+) -> Result<HashMap<String, (u32, u8)>, String> {
     let table = mkkeywordhash_parser::parse_keyword_table(mkkeywordhash_source)?;
 
     // Build mask_name → (omit_flag, polarity) lookup.
@@ -110,7 +158,7 @@ pub fn extract_keyword_cflags(
 
 /// Write keyword cflag data to a JSON file.
 pub fn write_keyword_cflags(
-    cflags: &HashMap<String, (u64, u8)>,
+    cflags: &HashMap<String, (u32, u8)>,
     output_path: &Path,
 ) -> Result<(), String> {
     let mut entries: Vec<_> = cflags

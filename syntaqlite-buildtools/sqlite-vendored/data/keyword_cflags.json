@@ -1,213 +1,253 @@
 {
   "keywords": [
     {
+      "name": "ACTION",
+      "cflag": 11,
+      "polarity": 0
+    },
+    {
       "name": "AFTER",
-      "cflag": 1024,
+      "cflag": 20,
       "polarity": 0
     },
     {
       "name": "ALWAYS",
-      "cflag": 16,
+      "cflag": 12,
       "polarity": 0
     },
     {
       "name": "ANALYZE",
-      "cflag": 8192,
+      "cflag": 1,
       "polarity": 0
     },
     {
       "name": "ATTACH",
-      "cflag": 2048,
+      "cflag": 2,
+      "polarity": 0
+    },
+    {
+      "name": "AUTOINCREMENT",
+      "cflag": 3,
       "polarity": 0
     },
     {
       "name": "BEFORE",
-      "cflag": 1024,
+      "cflag": 20,
+      "polarity": 0
+    },
+    {
+      "name": "CASCADE",
+      "cflag": 11,
       "polarity": 0
     },
     {
       "name": "CAST",
-      "cflag": 256,
+      "cflag": 4,
       "polarity": 0
     },
     {
       "name": "CURRENT",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "DATABASE",
-      "cflag": 2048,
+      "cflag": 2,
+      "polarity": 0
+    },
+    {
+      "name": "DEFERRABLE",
+      "cflag": 11,
       "polarity": 0
     },
     {
       "name": "DETACH",
-      "cflag": 2048,
+      "cflag": 2,
       "polarity": 0
     },
     {
       "name": "EACH",
-      "cflag": 1024,
+      "cflag": 20,
       "polarity": 0
     },
     {
       "name": "EXCEPT",
-      "cflag": 4,
+      "cflag": 6,
       "polarity": 0
     },
     {
       "name": "EXCLUDE",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "EXPLAIN",
-      "cflag": 1,
+      "cflag": 9,
       "polarity": 0
     },
     {
       "name": "FILTER",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "FOLLOWING",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "FOR",
-      "cflag": 1024,
+      "cflag": 20,
+      "polarity": 0
+    },
+    {
+      "name": "FOREIGN",
+      "cflag": 11,
       "polarity": 0
     },
     {
       "name": "GROUPS",
-      "cflag": 8,
+      "cflag": 24,
+      "polarity": 0
+    },
+    {
+      "name": "INITIALLY",
+      "cflag": 11,
       "polarity": 0
     },
     {
       "name": "INSTEAD",
-      "cflag": 1024,
+      "cflag": 20,
       "polarity": 0
     },
     {
       "name": "INTERSECT",
-      "cflag": 4,
+      "cflag": 6,
       "polarity": 0
     },
     {
       "name": "MATERIALIZED",
-      "cflag": 64,
+      "cflag": 7,
       "polarity": 0
     },
     {
       "name": "OTHERS",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "OVER",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "PARTITION",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "PLAN",
-      "cflag": 1,
+      "cflag": 9,
       "polarity": 0
     },
     {
       "name": "PRAGMA",
-      "cflag": 512,
+      "cflag": 15,
       "polarity": 0
     },
     {
       "name": "PRECEDING",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "QUERY",
-      "cflag": 1,
+      "cflag": 9,
       "polarity": 0
     },
     {
       "name": "RAISE",
-      "cflag": 1024,
+      "cflag": 20,
       "polarity": 0
     },
     {
       "name": "RANGE",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "RECURSIVE",
-      "cflag": 64,
+      "cflag": 7,
+      "polarity": 0
+    },
+    {
+      "name": "REFERENCES",
+      "cflag": 11,
       "polarity": 0
     },
     {
       "name": "REINDEX",
-      "cflag": 4096,
+      "cflag": 16,
+      "polarity": 0
+    },
+    {
+      "name": "RESTRICT",
+      "cflag": 11,
       "polarity": 0
     },
     {
       "name": "RETURNING",
-      "cflag": 65536,
+      "cflag": 17,
       "polarity": 0
     },
     {
       "name": "ROW",
-      "cflag": 1024,
+      "cflag": 20,
       "polarity": 0
     },
     {
       "name": "TIES",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "TRIGGER",
-      "cflag": 1024,
+      "cflag": 20,
       "polarity": 0
     },
     {
       "name": "UNBOUNDED",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "UNION",
-      "cflag": 4,
+      "cflag": 6,
       "polarity": 0
     },
     {
       "name": "VIEW",
-      "cflag": 32,
+      "cflag": 22,
       "polarity": 0
     },
     {
       "name": "VIRTUAL",
-      "cflag": 32768,
+      "cflag": 23,
       "polarity": 0
     },
     {
       "name": "WINDOW",
-      "cflag": 8,
+      "cflag": 24,
       "polarity": 0
     },
     {
       "name": "WITH",
-      "cflag": 64,
+      "cflag": 7,
       "polarity": 0
     },
     {
       "name": "WITHIN",
-      "cflag": 131072,
+      "cflag": 36,
       "polarity": 1
     }
   ]
