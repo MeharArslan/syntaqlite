@@ -375,7 +375,7 @@ fn filter_keyword_not_recognized_before_3_25() {
 // Verified against SQLite 3.47.0+ compiled with/without the flag.
 // ---------------------------------------------------------------------------
 
-const CFLAG_ORDERED_SET: u32 = 36; // SYNQ_CFLAG_ENABLE_ORDERED_SET_AGGREGATES
+const CFLAG_ORDERED_SET: u32 = 36; // SYNQ_CFLAG_IDX_ENABLE_ORDERED_SET_AGGREGATES
 
 #[test]
 fn within_keyword_not_recognized_without_cflag() {
@@ -446,14 +446,14 @@ fn within_group_fails_without_cflag() {
 //   2. Parsing fails for a representative SQL statement.
 // ---------------------------------------------------------------------------
 
-const CFLAG_OMIT_WINDOWFUNC: u32 = 24; // SYNQ_CFLAG_OMIT_WINDOWFUNC
-const CFLAG_OMIT_CTE: u32 = 7; // SYNQ_CFLAG_OMIT_CTE
-const CFLAG_OMIT_RETURNING: u32 = 17; // SYNQ_CFLAG_OMIT_RETURNING
-const CFLAG_OMIT_COMPOUND_SELECT: u32 = 6; // SYNQ_CFLAG_OMIT_COMPOUND_SELECT
+const CFLAG_OMIT_WINDOWFUNC: u32 = 24; // SYNQ_CFLAG_IDX_OMIT_WINDOWFUNC
+const CFLAG_OMIT_CTE: u32 = 7; // SYNQ_CFLAG_IDX_OMIT_CTE
+const CFLAG_OMIT_RETURNING: u32 = 17; // SYNQ_CFLAG_IDX_OMIT_RETURNING
+const CFLAG_OMIT_COMPOUND_SELECT: u32 = 6; // SYNQ_CFLAG_IDX_OMIT_COMPOUND_SELECT
 // Note: OMIT_SUBQUERY (0x00000080) is not listed here because it doesn't gate
 // any keywords — it uses the saw_subquery flag instead. See subquery tests below.
-const CFLAG_OMIT_VIEW: u32 = 22; // SYNQ_CFLAG_OMIT_VIEW
-const CFLAG_OMIT_TRIGGER: u32 = 20; // SYNQ_CFLAG_OMIT_TRIGGER
+const CFLAG_OMIT_VIEW: u32 = 22; // SYNQ_CFLAG_IDX_OMIT_VIEW
+const CFLAG_OMIT_TRIGGER: u32 = 20; // SYNQ_CFLAG_IDX_OMIT_TRIGGER
 
 // ---- OMIT_WINDOWFUNC ----
 

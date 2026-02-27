@@ -59,17 +59,23 @@ pub struct Parser {
 
 impl Parser {
     /// Create a new parser with default configuration.
+    ///
+    /// When `pin-version` or `pin-cflags` features are enabled, the parser
+    /// is configured with the compile-time pinned values.
     pub fn new() -> Self {
-        Parser {
-            inner: syntaqlite_runtime::Parser::new(&crate::DIALECT),
-        }
+        let mut inner = syntaqlite_runtime::Parser::new(&crate::DIALECT);
+        inner.set_dialect_config(&crate::pinned_dialect_config());
+        Parser { inner }
     }
 
     /// Create a parser with the given configuration.
+    ///
+    /// When `pin-version` or `pin-cflags` features are enabled, the parser
+    /// is configured with the compile-time pinned values.
     pub fn with_config(config: &syntaqlite_runtime::parser::ParserConfig) -> Self {
-        Parser {
-            inner: syntaqlite_runtime::Parser::with_config(&crate::DIALECT, config),
-        }
+        let mut inner = syntaqlite_runtime::Parser::with_config(&crate::DIALECT, config);
+        inner.set_dialect_config(&crate::pinned_dialect_config());
+        Parser { inner }
     }
 
     /// Access the current configuration.

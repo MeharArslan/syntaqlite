@@ -12,7 +12,7 @@ pub const FIELD_ENUM: u8 = 4;
 /// Mirrors C `SyntaqliteCflags` from `include/syntaqlite/sqlite_cflags.h`.
 ///
 /// A packed bitfield struct. On the Rust side we represent it as raw bytes
-/// and provide index-based accessors matching the C `SYNQ_CFLAG_*` constants.
+/// and provide index-based accessors matching the C `SYNQ_CFLAG_IDX_*` constants.
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Cflags {
