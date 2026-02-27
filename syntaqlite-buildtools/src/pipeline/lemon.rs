@@ -5,7 +5,7 @@
 
 use std::os::raw::{c_char, c_int};
 
-use super::run;
+use super::tool_run;
 
 // External C function compiled into the binary
 unsafe extern "C" {
@@ -27,7 +27,7 @@ unsafe extern "C" {
 /// # Arguments
 /// * `args` - Arguments to pass to lemon (not including program name)
 pub fn run_lemon(args: &[String]) -> ! {
-    let c_args = run::prepare_c_args("lemon", args);
+    let c_args = tool_run::prepare_c_args("lemon", args);
 
     // SAFETY:
     // - lemon_main is a valid C function compiled into our binary

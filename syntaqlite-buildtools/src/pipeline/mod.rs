@@ -6,13 +6,17 @@
 
 pub mod amalgamate;
 pub mod base_files;
+pub mod c_writer;
 pub mod dialect_codegen;
 pub mod fmt_compiler;
 pub mod grammar_codegen;
 pub mod keyword_hash;
+pub(crate) mod lemon;
+pub(crate) mod mkkeyword;
 pub mod output_manifest;
 pub mod parser_pipeline;
+pub mod rust_writer;
 pub mod sqlite_fragments;
-pub(crate) mod tools;
+pub mod text_writer;
+pub(crate) mod tool_run;
 pub mod tokenizer_assembly;
-pub mod writers;

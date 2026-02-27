@@ -5,7 +5,7 @@ use std::collections::HashSet;
 
 use crate::util::synq_parser::{Field, Storage};
 use crate::util::upper_snake_to_pascal;
-use crate::pipeline::writers::rust_writer::RustWriter;
+use crate::pipeline::rust_writer::RustWriter;
 
 use super::{AstModel, NodeLikeRef};
 

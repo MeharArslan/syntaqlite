@@ -7,9 +7,9 @@
 use std::collections::HashMap;
 use std::fs;
 
-use crate::util::c_source::c_transformer::CTransformer;
+use crate::util::c_transformer::CTransformer;
 use super::sqlite_fragments::SqliteFragments;
-use super::writers::c_writer::CWriter;
+use super::c_writer::CWriter;
 use crate::TokenizerExtractResult;
 
 /// Return the SQLite version (as integer, e.g. 3035000) in which a keyword was

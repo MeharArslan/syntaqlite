@@ -4,7 +4,7 @@
 use std::fs;
 use std::path::Path;
 
-use crate::util::c_source::c_transformer::CTransformer;
+use crate::util::c_transformer::CTransformer;
 
 // Embed lempar.c template (needed by the library)
 const LEMPAR_C: &[u8] = include_bytes!("../../sqlite-vendored/sources/lempar.c");

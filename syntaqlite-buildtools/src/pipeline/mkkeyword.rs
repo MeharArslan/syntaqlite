@@ -5,7 +5,7 @@
 
 use std::os::raw::{c_char, c_int};
 
-use super::run;
+use super::tool_run;
 
 /// Rust representation of the C Keyword struct.
 ///
@@ -101,7 +101,7 @@ pub fn run_mkkeyword(args: &[String]) -> ! {
         }
     }
 
-    let c_args = run::prepare_c_args("mkkeywordhash", &forward_args);
+    let c_args = tool_run::prepare_c_args("mkkeywordhash", &forward_args);
 
     // Read the compiled-in base keyword table.
     let table_ptr = std::ptr::addr_of!(aKeywordTable);

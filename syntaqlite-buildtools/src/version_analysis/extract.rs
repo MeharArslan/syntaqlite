@@ -7,7 +7,7 @@
 //! pipeline extracts, but returns them as raw strings for hashing/diffing
 //! rather than feeding them into the C transformer.
 
-use crate::util::c_source::c_extractor::CExtractor;
+use crate::util::c_extractor::CExtractor;
 
 /// The names of extractable fragments (excluding keywords, handled separately).
 pub const FRAGMENT_NAMES: &[&str] = &[

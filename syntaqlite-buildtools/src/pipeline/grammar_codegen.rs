@@ -4,7 +4,7 @@
 use std::fs;
 
 use crate::util::grammar_parser;
-use super::writers::c_writer::CWriter;
+use super::c_writer::CWriter;
 
 pub(crate) fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<(), String> {
     let input_text =

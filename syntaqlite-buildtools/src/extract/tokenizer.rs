@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::Path;
 
-use crate::util::c_source::c_extractor::CExtractor;
+use crate::util::c_extractor::CExtractor;
 
 /// All extracted tokenizer fragments.
 pub struct TokenizerFragments {

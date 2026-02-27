@@ -3,7 +3,8 @@
 
 //! Shared utility helpers used by codegen modules.
 
-pub mod c_source;
+pub mod c_extractor;
+pub mod c_transformer;
 pub mod grammar_parser;
 
 #[cfg(feature = "codegen-pipeline")]
