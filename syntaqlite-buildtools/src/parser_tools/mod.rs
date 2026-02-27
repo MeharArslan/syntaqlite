@@ -7,7 +7,9 @@ pub mod amalgamate;
 pub mod base_files;
 pub(crate) mod grammar_codegen;
 pub(crate) mod keyword_hash;
+#[allow(dead_code)]
 pub(crate) mod lemon;
+#[allow(dead_code)]
 pub(crate) mod mkkeyword;
 pub(crate) mod parser_pipeline;
 pub(crate) mod sqlite_fragments;

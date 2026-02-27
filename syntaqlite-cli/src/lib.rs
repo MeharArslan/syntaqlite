@@ -295,9 +295,7 @@ pub fn run(name: &str, dialect: Option<&Dialect>) {
     }
 
     let result = match cli.command {
-        Command::Ast { files } => {
-            require_dialect(active_dialect).and_then(|d| cmd_ast(d, files))
-        }
+        Command::Ast { files } => require_dialect(active_dialect).and_then(|d| cmd_ast(d, files)),
         Command::Lsp => require_dialect(active_dialect).and_then(|d| lsp::cmd_lsp(d)),
         Command::Fmt {
             files,

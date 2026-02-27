@@ -75,7 +75,8 @@ fn handle_analyze_versions(sqlite_source_dir: &str, output_dir: &str) -> Result<
 
     // Write grammar report to output dir if available.
     if let Some(ref grammar) = analysis.grammar {
-        let report = syntaqlite_buildtools::version_analysis::grammar::format_grammar_report(grammar);
+        let report =
+            syntaqlite_buildtools::version_analysis::grammar::format_grammar_report(grammar);
         let report_path = out_dir.join("grammar_report.md");
         std::fs::write(&report_path, &report)
             .map_err(|e| format!("write {}: {e}", report_path.display()))?;

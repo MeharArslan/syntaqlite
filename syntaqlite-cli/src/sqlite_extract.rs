@@ -29,6 +29,34 @@ pub(crate) enum ExtractCommand {
         #[arg(long, required = true)]
         nodes_dir: String,
     },
+    /// Audit which cflags each SQLite amalgamation version references.
+    ///
+    /// Scans sqlite3.c for each version and writes a JSON mapping of
+    /// version → recognized flag names.
+    AuditCflags {
+        /// Directory containing amalgamations (e.g., sqlite-amalgamations/3.35.5/sqlite3.c).
+        #[arg(long, required = true)]
+        amalgamation_dir: String,
+        /// Output path for the audit JSON.
+        #[arg(long, required = true)]
+        output: String,
+    },
+    /// Extract built-in function catalog from pre-downloaded SQLite amalgamations.
+    ///
+    /// Requires a pre-computed cflag audit (from audit-cflags). Compiles each
+    /// version with only the flags it supports and uses PRAGMA function_list
+    /// to determine which functions are available under which conditions.
+    ExtractFunctions {
+        /// Directory containing amalgamations (e.g., sqlite-amalgamations/3.35.5/sqlite3.c).
+        #[arg(long, required = true)]
+        amalgamation_dir: String,
+        /// Path to the cflag audit JSON (from audit-cflags).
+        #[arg(long, required = true)]
+        audit: String,
+        /// Output path for the function catalog JSON.
+        #[arg(long, required = true)]
+        output: String,
+    },
 }
 
 /// Dispatch an extraction subcommand.
@@ -40,6 +68,15 @@ pub(crate) fn dispatch(command: ExtractCommand) -> Result<(), String> {
             actions_dir,
             nodes_dir,
         } => handle_sqlite_extract(&sqlite_src, &output_dir, &actions_dir, &nodes_dir),
+        ExtractCommand::AuditCflags {
+            amalgamation_dir,
+            output,
+        } => handle_audit_cflags(&amalgamation_dir, &output),
+        ExtractCommand::ExtractFunctions {
+            amalgamation_dir,
+            audit,
+            output,
+        } => handle_extract_functions(&amalgamation_dir, &audit, &output),
     }
 }
 
@@ -70,8 +107,7 @@ fn handle_sqlite_extract(
         .map_err(|e| format!("creating {}: {e}", sources_dir.display()))?;
     fs::create_dir_all(&fragments_dir)
         .map_err(|e| format!("creating {}: {e}", fragments_dir.display()))?;
-    fs::create_dir_all(&data_dir)
-        .map_err(|e| format!("creating {}: {e}", data_dir.display()))?;
+    fs::create_dir_all(&data_dir).map_err(|e| format!("creating {}: {e}", data_dir.display()))?;
 
     // mkkeywordhash.c lives in tool/, not src/
     let tool_dir = src.parent().unwrap_or(src).join("tool");
@@ -110,8 +146,8 @@ fn handle_sqlite_extract(
 
     // Step 4: Extract keyword cflags
     eprintln!("Extracting keyword cflag data...");
-    let cflags = extract::keywords::extract_keyword_cflags(&mkkeywordhash_c)?;
-    extract::keywords::write_keyword_cflags(&cflags, &data_dir.join("keyword_cflags.txt"))?;
+    let cflags = extract::keywords_and_parser::extract_keyword_cflags(&mkkeywordhash_c)?;
+    extract::keywords_and_parser::write_keyword_cflags(&cflags, &data_dir.join("keyword_cflags.json"))?;
 
     // Step 5: Generate base_files_tables.rs
     eprintln!("Generating base_files_tables.rs...");
@@ -127,5 +163,37 @@ fn handle_sqlite_extract(
     )?;
 
     eprintln!("Stage 1 complete. Output: {}", out.display());
+    Ok(())
+}
+
+fn handle_audit_cflags(amalgamation_dir: &str, output: &str) -> Result<(), String> {
+    use syntaqlite_buildtools::extract;
+
+    let amal_path = Path::new(amalgamation_dir);
+    if !amal_path.is_dir() {
+        return Err(format!("{amalgamation_dir} is not a directory"));
+    }
+
+    extract::functions::audit_version_cflags(amal_path, Path::new(output))?;
+    Ok(())
+}
+
+fn handle_extract_functions(
+    amalgamation_dir: &str,
+    audit: &str,
+    output: &str,
+) -> Result<(), String> {
+    use syntaqlite_buildtools::extract;
+
+    let amal_path = Path::new(amalgamation_dir);
+    if !amal_path.is_dir() {
+        return Err(format!("{amalgamation_dir} is not a directory"));
+    }
+
+    extract::functions::extract_function_catalog(
+        amal_path,
+        Path::new(audit),
+        Path::new(output),
+    )?;
     Ok(())
 }

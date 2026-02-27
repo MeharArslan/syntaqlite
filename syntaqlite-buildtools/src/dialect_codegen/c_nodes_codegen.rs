@@ -3,9 +3,9 @@
 
 use std::collections::HashSet;
 
+use crate::util::c_writer::CWriter;
 use crate::util::synq_parser::{Field, Storage};
 use crate::util::{pascal_to_snake, upper_snake};
-use crate::util::c_writer::CWriter;
 
 use super::{AstModel, NodeLikeRef};
 

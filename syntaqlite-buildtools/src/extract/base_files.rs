@@ -122,9 +122,7 @@ pub fn write_base_files_tables(
 ) -> Result<(), String> {
     let content = generate_base_files_tables(actions_dir, nodes_dir, codegen_crate_dir)?;
     if let Some(parent) = output_path.parent() {
-        fs::create_dir_all(parent)
-            .map_err(|e| format!("creating {}: {e}", parent.display()))?;
+        fs::create_dir_all(parent).map_err(|e| format!("creating {}: {e}", parent.display()))?;
     }
-    fs::write(output_path, &content)
-        .map_err(|e| format!("writing {}: {e}", output_path.display()))
+    fs::write(output_path, &content).map_err(|e| format!("writing {}: {e}", output_path.display()))
 }

@@ -7,10 +7,10 @@
 use std::collections::HashMap;
 use std::fs;
 
-use crate::util::c_transformer::CTransformer;
 use super::sqlite_fragments::SqliteFragments;
-use crate::util::c_writer::CWriter;
 use crate::TokenizerExtractResult;
+use crate::util::c_transformer::CTransformer;
+use crate::util::c_writer::CWriter;
 
 /// Return the SQLite version (as integer, e.g. 3035000) in which a keyword was
 /// first introduced.  Returns 0 for baseline keywords (present in 3.12.2).
@@ -28,28 +28,26 @@ fn keyword_since_version(name: &str) -> i32 {
     }
 }
 
-/// Parse the pre-extracted keyword cflag data.
-///
-/// Format: one line per keyword, tab-separated:
-///   KEYWORD_NAME<tab>cflag_value<tab>polarity
-///
-/// Lines starting with `#` are comments. Empty lines are skipped.
-fn parse_keyword_cflags(data: &str) -> HashMap<String, (u32, u8)> {
-    let mut map = HashMap::new();
-    for line in data.lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with('#') {
-            continue;
-        }
-        let parts: Vec<&str> = line.split('\t').collect();
-        if parts.len() >= 3 {
-            let name = parts[0].to_string();
-            let cflag: u32 = parts[1].parse().unwrap_or(0);
-            let polarity: u8 = parts[2].parse().unwrap_or(0);
-            map.insert(name, (cflag, polarity));
-        }
+/// Parse the pre-extracted keyword cflag JSON data.
+fn parse_keyword_cflags(data: &str) -> HashMap<String, (u64, u8)> {
+    #[derive(serde::Deserialize)]
+    struct KeywordCflags {
+        keywords: Vec<KeywordCflagEntry>,
     }
-    map
+    #[derive(serde::Deserialize)]
+    struct KeywordCflagEntry {
+        name: String,
+        cflag: u64,
+        polarity: u8,
+    }
+
+    let catalog: KeywordCflags =
+        serde_json::from_str(data).expect("invalid keyword_cflags.json");
+    catalog
+        .keywords
+        .into_iter()
+        .map(|e| (e.name, (e.cflag, e.polarity)))
+        .collect()
 }
 
 /// Parse `testcase(i==N); /* NAME */` comments from raw mkkeywordhash output
@@ -84,14 +82,14 @@ fn parse_keyword_indices(code: &str) -> Vec<(usize, String)> {
 /// as C code, given the keyword index mapping from mkkeywordhash output.
 fn generate_keyword_arrays(
     keyword_indices: &[(usize, String)],
-    cflag_map: &HashMap<String, (u32, u8)>,
+    cflag_map: &HashMap<String, (u64, u8)>,
     dialect: &str,
 ) -> String {
     let max_idx = keyword_indices.iter().map(|(i, _)| *i).max().unwrap_or(0);
     let array_len = max_idx + 1;
 
     let mut since = vec![0i32; array_len];
-    let mut cflag = vec![0u32; array_len];
+    let mut cflag = vec![0u64; array_len];
     let mut polarity = vec![0u8; array_len];
 
     for (idx, name) in keyword_indices {
@@ -129,7 +127,7 @@ fn generate_keyword_arrays(
             if *v == 0 {
                 "0".to_string()
             } else {
-                format!("{:#010x}", v)
+                format!("{:#018x}", v)
             }
         })
         .collect();
@@ -137,7 +135,7 @@ fn generate_keyword_arrays(
 
     let mut out = String::new();
     out.push_str(&fmt_array(&since_strs, "int32_t", "aKWSince"));
-    out.push_str(&fmt_array(&cflag_strs, "uint32_t", "aKWCFlag"));
+    out.push_str(&fmt_array(&cflag_strs, "uint64_t", "aKWCFlag"));
     out.push_str(&fmt_array(&pol_strs, "uint8_t", "aKWCFlagPolarity"));
     out
 }

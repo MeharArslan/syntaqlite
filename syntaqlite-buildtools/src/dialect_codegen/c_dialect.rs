@@ -3,8 +3,8 @@
 
 use std::collections::HashSet;
 
-use crate::util::pascal_case;
 use crate::util::c_writer::CWriter;
+use crate::util::pascal_case;
 
 /// Classify a token name into a `TokenCategory` byte value.
 ///

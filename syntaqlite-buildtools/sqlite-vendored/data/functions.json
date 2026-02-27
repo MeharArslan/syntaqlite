@@ -1,0 +1,2597 @@
+{
+  "functions": [
+    {
+      "name": "->",
+      "arities": [
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "->>",
+      "arities": [
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "abs",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "acos",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "acosh",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "asin",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "asinh",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "atan",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "atan2",
+      "arities": [
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "atanh",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "avg",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "bm25",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "ceil",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "ceiling",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "changes",
+      "arities": [
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "char",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "coalesce",
+      "arities": [
+        -4,
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "concat",
+      "arities": [
+        -3,
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.44.2"
+        }
+      ]
+    },
+    {
+      "name": "concat_ws",
+      "arities": [
+        -4,
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.44.2"
+        }
+      ]
+    },
+    {
+      "name": "cos",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "cosh",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "count",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "cume_dist",
+      "arities": [
+        0
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "current_date",
+      "arities": [
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "current_time",
+      "arities": [
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "current_timestamp",
+      "arities": [
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "date",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_OMIT_DATETIME_FUNCS",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "datetime",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_OMIT_DATETIME_FUNCS",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "degrees",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "dense_rank",
+      "arities": [
+        0
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "exp",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "first_value",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "floor",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "format",
+      "arities": [
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.38.5"
+        }
+      ]
+    },
+    {
+      "name": "fts3_tokenizer",
+      "arities": [
+        0,
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_FTS3",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5_decode",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.36.0",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5_decode_none",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.36.0",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5_expr",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.36.0",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5_expr_tcl",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.36.0",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5_fold",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.36.0",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5_get_locale",
+      "arities": [
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.47.2",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5_insttoken",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.48.0",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5_isalnum",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.36.0",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5_locale",
+      "arities": [
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.47.2",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5_rowid",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.36.0",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "fts5_source_id",
+      "arities": [
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_area",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_bbox",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_blob",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_ccw",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_contains_point",
+      "arities": [
+        0,
+        3
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_debug",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_group_bbox",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "aggregate",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_json",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_overlap",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_regular",
+      "arities": [
+        0,
+        4
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_svg",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_within",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "geopoly_xform",
+      "arities": [
+        0,
+        7
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "glob",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "group_concat",
+      "arities": [
+        0,
+        1,
+        2
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "hex",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "highlight",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_FTS5",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "if",
+      "arities": [
+        -4,
+        2,
+        3
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.48.0"
+        }
+      ]
+    },
+    {
+      "name": "ifnull",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "iif",
+      "arities": [
+        -4,
+        2,
+        3
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.32.3"
+        }
+      ]
+    },
+    {
+      "name": "instr",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "json",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_array",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_array_length",
+      "arities": [
+        0,
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_error_position",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.42.0",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_extract",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_group_array",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_group_object",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_insert",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_object",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_patch",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_pretty",
+      "arities": [
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.46.1",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_quote",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_remove",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_replace",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_set",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_type",
+      "arities": [
+        0,
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "json_valid",
+      "arities": [
+        0,
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "until": "3.38.5",
+          "cflag": "SQLITE_ENABLE_JSON1",
+          "polarity": "enable"
+        },
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "jsonb",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.45.3",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "jsonb_array",
+      "arities": [
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.45.3",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "jsonb_extract",
+      "arities": [
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.45.3",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "jsonb_group_array",
+      "arities": [
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.45.3",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "jsonb_group_object",
+      "arities": [
+        2
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.45.3",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "jsonb_insert",
+      "arities": [
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.45.3",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "jsonb_object",
+      "arities": [
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.45.3",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "jsonb_patch",
+      "arities": [
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.45.3",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "jsonb_remove",
+      "arities": [
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.45.3",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "jsonb_replace",
+      "arities": [
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.45.3",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "jsonb_set",
+      "arities": [
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.45.3",
+          "cflag": "SQLITE_OMIT_JSON",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "julianday",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_OMIT_DATETIME_FUNCS",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "lag",
+      "arities": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "last_insert_rowid",
+      "arities": [
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "last_value",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "lead",
+      "arities": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "length",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "like",
+      "arities": [
+        0,
+        2,
+        3
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "likelihood",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "likely",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "ln",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "load_extension",
+      "arities": [
+        0,
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_OMIT_LOAD_EXTENSION",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "log",
+      "arities": [
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "log10",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "log2",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "lower",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "ltrim",
+      "arities": [
+        0,
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "match",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "matchinfo",
+      "arities": [
+        0,
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_FTS3",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "max",
+      "arities": [
+        -3,
+        -1,
+        0,
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "median",
+      "arities": [
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.51.2",
+          "cflag": "SQLITE_ENABLE_PERCENTILE",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "min",
+      "arities": [
+        -3,
+        -1,
+        0,
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "mod",
+      "arities": [
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "nth_value",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "ntile",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "nullif",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "octet_length",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.43.2"
+        }
+      ]
+    },
+    {
+      "name": "offsets",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_FTS3",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "optimize",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_FTS3",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "percent_rank",
+      "arities": [
+        0
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "percentile",
+      "arities": [
+        2
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.51.2",
+          "cflag": "SQLITE_ENABLE_PERCENTILE",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "percentile_cont",
+      "arities": [
+        2
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.51.2",
+          "cflag": "SQLITE_ENABLE_PERCENTILE",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "percentile_disc",
+      "arities": [
+        2
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.51.2",
+          "cflag": "SQLITE_ENABLE_PERCENTILE",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "pi",
+      "arities": [
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "pow",
+      "arities": [
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "power",
+      "arities": [
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "printf",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "quote",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "radians",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "random",
+      "arities": [
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "randomblob",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "rank",
+      "arities": [
+        0
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "replace",
+      "arities": [
+        0,
+        3
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "round",
+      "arities": [
+        0,
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "row_number",
+      "arities": [
+        0
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "rtreecheck",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "rtreedepth",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "rtreenode",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_GEOPOLY",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "rtrim",
+      "arities": [
+        0,
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "sign",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5"
+        }
+      ]
+    },
+    {
+      "name": "sin",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "sinh",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "snippet",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "soundex",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_SOUNDEX",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "sqlite_compileoption_get",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_OMIT_COMPILEOPTION_DIAGS",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "sqlite_compileoption_used",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_OMIT_COMPILEOPTION_DIAGS",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "sqlite_log",
+      "arities": [
+        0,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "sqlite_offset",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_ENABLE_OFFSET_SQL_FUNC",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "sqlite_source_id",
+      "arities": [
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "sqlite_version",
+      "arities": [
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "sqrt",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "strftime",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_OMIT_DATETIME_FUNCS",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "string_agg",
+      "arities": [
+        2
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.44.2"
+        }
+      ]
+    },
+    {
+      "name": "substr",
+      "arities": [
+        0,
+        2,
+        3
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "substring",
+      "arities": [
+        2,
+        3
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.34.1"
+        }
+      ]
+    },
+    {
+      "name": "subtype",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.38.5"
+        }
+      ]
+    },
+    {
+      "name": "sum",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "tan",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "tanh",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "time",
+      "arities": [
+        -1,
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1",
+          "cflag": "SQLITE_OMIT_DATETIME_FUNCS",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "timediff",
+      "arities": [
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.43.2",
+          "cflag": "SQLITE_OMIT_DATETIME_FUNCS",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "total",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "window",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "total_changes",
+      "arities": [
+        0
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "trim",
+      "arities": [
+        0,
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "trunc",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.35.5",
+          "cflag": "SQLITE_ENABLE_MATH_FUNCTIONS",
+          "polarity": "enable"
+        }
+      ]
+    },
+    {
+      "name": "typeof",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "unhex",
+      "arities": [
+        1,
+        2
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.41.2"
+        }
+      ]
+    },
+    {
+      "name": "unicode",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "unistr",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.50.4"
+        }
+      ]
+    },
+    {
+      "name": "unistr_quote",
+      "arities": [
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.50.4"
+        }
+      ]
+    },
+    {
+      "name": "unixepoch",
+      "arities": [
+        -1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.38.5",
+          "cflag": "SQLITE_OMIT_DATETIME_FUNCS",
+          "polarity": "omit"
+        }
+      ]
+    },
+    {
+      "name": "unlikely",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "upper",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    },
+    {
+      "name": "zeroblob",
+      "arities": [
+        0,
+        1
+      ],
+      "category": "scalar",
+      "availability": [
+        {
+          "since": "3.30.1"
+        }
+      ]
+    }
+  ]
+}

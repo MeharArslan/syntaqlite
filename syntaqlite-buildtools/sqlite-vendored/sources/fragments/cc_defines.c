@@ -1,3 +1,11 @@
+/*
+** The author disclaims copyright to this source code.  In place of
+** a legal notice, here is a blessing:
+**
+**    May you do good and not evil.
+**    May you find forgiveness for yourself and forgive others.
+**    May you share freely, never taking more than you give.
+*/
 #define CC_X          0    /* The letter 'x', or start of BLOB literal */
 #define CC_KYWD0      1    /* First letter of a keyword */
 #define CC_KYWD       2    /* Alphabetics or '_'.  Usable in a keyword */

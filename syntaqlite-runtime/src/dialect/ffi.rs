@@ -14,7 +14,7 @@ pub const FIELD_ENUM: u8 = 4;
 #[derive(Debug, Clone, Copy)]
 pub struct DialectConfig {
     pub sqlite_version: i32,
-    pub cflags: u32,
+    pub cflags: u64,
 }
 
 impl Default for DialectConfig {

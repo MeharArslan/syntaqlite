@@ -90,10 +90,7 @@ pub fn transform_mkkeywordhash(source: &str) -> String {
 }
 
 /// Write the transformed mkkeywordhash.c to the output path.
-pub fn write_modified_mkkeywordhash(
-    source: &str,
-    output_path: &Path,
-) -> Result<(), String> {
+pub fn write_modified_mkkeywordhash(source: &str, output_path: &Path) -> Result<(), String> {
     let transformed = transform_mkkeywordhash(source);
     fs::write(output_path, transformed)
         .map_err(|e| format!("writing {}: {e}", output_path.display()))

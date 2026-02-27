@@ -23,6 +23,7 @@ pub(crate) mod c_writer;
 pub(crate) mod rust_writer;
 
 #[cfg(feature = "codegen-pipeline")]
+#[allow(dead_code)]
 pub(crate) mod tool_run;
 
 #[cfg(any(feature = "sqlite-extract", feature = "version-analysis"))]

@@ -763,6 +763,8 @@ name = "syntaqlite-buildtools"
 version = "0.1.0"
 dependencies = [
  "cc",
+ "serde",
+ "serde_json",
  "sha2",
  "similar",
  "syntaqlite-runtime",

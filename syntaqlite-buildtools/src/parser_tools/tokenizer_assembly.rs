@@ -4,11 +4,11 @@
 //! Stage 3 tokenizer assembly: combines pre-extracted C fragments with
 //! dialect-specific naming to produce the final `tokenize.c`.
 
-use crate::util::c_transformer::CTransformer;
 use super::sqlite_fragments::SqliteFragments;
-use crate::util::pascal_case;
-use crate::util::c_writer::CWriter;
 use crate::TokenizerExtractResult;
+use crate::util::c_transformer::CTransformer;
+use crate::util::c_writer::CWriter;
+use crate::util::pascal_case;
 
 /// Assemble the tokenizer C source from pre-extracted fragments.
 ///

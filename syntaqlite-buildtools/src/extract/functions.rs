@@ -1,0 +1,779 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
+//! Stage 1 function extraction: compile SQLite amalgamations with various cflag
+//! combos and use `PRAGMA function_list` to extract the built-in function catalog.
+//!
+//! Two-phase approach:
+//!   Phase 1 (audit): Scan each version's sqlite3.c to determine which cflags
+//!     are referenced. Write `version_cflags.json` to data/.
+//!   Phase 2 (extract): For each version, compile only with flags that version
+//!     actually knows about. Write `functions.json` to data/.
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
+use std::fs;
+use std::io::Write;
+use std::path::Path;
+
+use super::amalgamation_probe;
+
+/// All function-relevant cflags we care about.
+///
+/// Each entry is (flag_name, polarity, compile_defines).
+/// - OMIT flags: default = OFF. We test by turning them ON to see what disappears.
+/// - ENABLE flags: default = OFF. We test by turning them ON to see what appears.
+const FUNCTION_CFLAGS: &[(&str, &str, &[&str])] = &[
+    // OMIT flags.
+    ("SQLITE_OMIT_WINDOWFUNC", "omit", &["-DSQLITE_OMIT_WINDOWFUNC"]),
+    ("SQLITE_OMIT_JSON", "omit", &["-DSQLITE_OMIT_JSON"]),
+    // SQLITE_OMIT_FLOATING_POINT intentionally excluded: it redefines `double`
+    // as `sqlite_int64`, causing compile failures on all versions with modern
+    // compilers. Extremely niche (embedded systems with no FPU).
+    ("SQLITE_OMIT_LOAD_EXTENSION", "omit", &["-DSQLITE_OMIT_LOAD_EXTENSION"]),
+    ("SQLITE_OMIT_COMPILEOPTION_DIAGS", "omit", &["-DSQLITE_OMIT_COMPILEOPTION_DIAGS"]),
+    ("SQLITE_OMIT_DATETIME_FUNCS", "omit", &["-DSQLITE_OMIT_DATETIME_FUNCS"]),
+    // ENABLE flags.
+    ("SQLITE_ENABLE_MATH_FUNCTIONS", "enable", &["-DSQLITE_ENABLE_MATH_FUNCTIONS"]),
+    ("SQLITE_ENABLE_JSON1", "enable", &["-DSQLITE_ENABLE_JSON1"]),
+    ("SQLITE_ENABLE_PERCENTILE", "enable", &["-DSQLITE_ENABLE_PERCENTILE"]),
+    ("SQLITE_SOUNDEX", "enable", &["-DSQLITE_SOUNDEX"]),
+    ("SQLITE_ENABLE_OFFSET_SQL_FUNC", "enable", &["-DSQLITE_ENABLE_OFFSET_SQL_FUNC"]),
+    ("SQLITE_ENABLE_FTS3", "enable", &["-DSQLITE_ENABLE_FTS3"]),
+    ("SQLITE_ENABLE_FTS5", "enable", &["-DSQLITE_ENABLE_FTS5"]),
+    ("SQLITE_ENABLE_GEOPOLY", "enable", &["-DSQLITE_ENABLE_GEOPOLY", "-DSQLITE_ENABLE_RTREE"]),
+];
+
+/// The C probe program that extracts function data via PRAGMA function_list.
+const PROBE_C: &str = r#"
+#include "sqlite3.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(void) {
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+    int rc;
+
+    rc = sqlite3_open(":memory:", &db);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Cannot open database: %s\n", sqlite3_errmsg(db));
+        return 1;
+    }
+
+    rc = sqlite3_prepare_v2(db, "PRAGMA function_list", -1, &stmt, 0);
+    if (rc != SQLITE_OK) {
+        fprintf(stderr, "Cannot prepare: %s\n", sqlite3_errmsg(db));
+        sqlite3_close(db);
+        return 1;
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        const char *name = (const char *)sqlite3_column_text(stmt, 0);
+        int builtin = sqlite3_column_int(stmt, 1);
+        const char *ftype = (const char *)sqlite3_column_text(stmt, 2);
+        /* enc column is at index 3, skip */
+        int narg = sqlite3_column_int(stmt, 4);
+        /* flags column is at index 5 */
+
+        /* Emit both builtin and extension-registered functions.
+         * Extension-registered functions (builtin=0) are still compiled into the
+         * amalgamation and available — they're just registered via
+         * sqlite3BuiltinExtensions[] instead of sqlite3RegisterBuiltinFunctions().
+         * E.g., JSON1 on pre-3.38, FTS3/FTS5, geopoly, etc. */
+        (void)builtin;
+        printf("%s\t%d\t%s\n", name, narg, ftype);
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+    return 0;
+}
+"#;
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+/// A single function entry from `PRAGMA function_list`.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct FunctionEntry {
+    pub name: String,
+    pub narg: i32,
+    pub func_type: String,
+    pub builtin: bool,
+}
+
+/// The set of functions available for a particular compilation.
+#[derive(Debug, Clone)]
+pub struct FunctionSet {
+    pub functions: BTreeSet<FunctionEntry>,
+}
+
+/// Describes how a cflag affects functions for a particular version.
+#[derive(Debug, Clone)]
+pub struct CflagEffect {
+    pub flag: String,
+    pub polarity: String,
+    pub affected_functions: BTreeSet<String>,
+}
+
+/// A function's availability rule.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct AvailabilityRule {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub since: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub until: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cflag: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub polarity: Option<String>,
+}
+
+/// Complete catalog entry for a function.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct FunctionCatalogEntry {
+    pub name: String,
+    pub arities: Vec<i32>,
+    pub category: String,
+    pub availability: Vec<AvailabilityRule>,
+}
+
+/// The complete extracted function catalog.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct FunctionCatalog {
+    pub functions: Vec<FunctionCatalogEntry>,
+}
+
+/// Per-version cflag audit: which flags does each version's source reference?
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct VersionCflagAudit {
+    /// Map from version string → sorted list of recognized flag names.
+    pub versions: BTreeMap<String, Vec<String>>,
+}
+
+// ---------------------------------------------------------------------------
+// Version helper
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Version {
+    major: u32,
+    minor: u32,
+    patch: u32,
+    sub_patch: u32,
+}
+
+impl Version {
+    fn parse(s: &str) -> Result<Self, String> {
+        let parts: Vec<&str> = s.split('.').collect();
+        if parts.len() < 3 || parts.len() > 4 {
+            return Err(format!("invalid version: {s}"));
+        }
+        Ok(Self {
+            major: parts[0].parse().map_err(|_| format!("bad major: {}", parts[0]))?,
+            minor: parts[1].parse().map_err(|_| format!("bad minor: {}", parts[1]))?,
+            patch: parts[2].parse().map_err(|_| format!("bad patch: {}", parts[2]))?,
+            sub_patch: if parts.len() == 4 {
+                parts[3].parse().map_err(|_| format!("bad sub: {}", parts[3]))?
+            } else {
+                0
+            },
+        })
+    }
+}
+
+impl fmt::Display for Version {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.sub_patch > 0 {
+            write!(f, "{}.{}.{}.{}", self.major, self.minor, self.patch, self.sub_patch)
+        } else {
+            write!(f, "{}.{}.{}", self.major, self.minor, self.patch)
+        }
+    }
+}
+
+/// Discover available amalgamation versions from a directory.
+///
+/// Expected layout: `amalgamation_dir/3.35.5/sqlite3.c`
+pub fn discover_versions(amalgamation_dir: &Path) -> Result<Vec<String>, String> {
+    let entries = fs::read_dir(amalgamation_dir)
+        .map_err(|e| format!("cannot read {}: {e}", amalgamation_dir.display()))?;
+    let mut versions = Vec::new();
+    for entry in entries.flatten() {
+        if entry.path().is_dir() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if Version::parse(&name).is_ok() {
+                if entry.path().join("sqlite3.c").exists() {
+                    versions.push(name);
+                }
+            }
+        }
+    }
+    versions.sort_by(|a, b| {
+        Version::parse(a).unwrap().cmp(&Version::parse(b).unwrap())
+    });
+    Ok(versions)
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1: Audit — scan sqlite3.c for flag references
+// ---------------------------------------------------------------------------
+
+/// All flag names we look for during audit.
+fn all_flag_names() -> Vec<&'static str> {
+    FUNCTION_CFLAGS.iter().map(|(name, _, _)| *name).collect()
+}
+
+/// Scan a single version's sqlite3.c for references to our flags.
+fn scan_version_cflags(sqlite3_c: &str) -> Vec<String> {
+    let flags = all_flag_names();
+    let mut found = Vec::new();
+    for flag in flags {
+        if sqlite3_c.contains(flag) {
+            found.push(flag.to_string());
+        }
+    }
+    found
+}
+
+/// Audit all versions and write the result to `output_path`.
+pub fn audit_version_cflags(
+    amalgamation_dir: &Path,
+    output_path: &Path,
+) -> Result<VersionCflagAudit, String> {
+    let versions = discover_versions(amalgamation_dir)?;
+    if versions.is_empty() {
+        return Err(format!(
+            "no amalgamation versions found in {}",
+            amalgamation_dir.display()
+        ));
+    }
+
+    eprintln!(
+        "Auditing cflags for {} versions: {} .. {}",
+        versions.len(),
+        versions.first().unwrap(),
+        versions.last().unwrap()
+    );
+
+    let mut audit = VersionCflagAudit {
+        versions: BTreeMap::new(),
+    };
+
+    for version in &versions {
+        let sqlite3_c_path = amalgamation_dir.join(version).join("sqlite3.c");
+        let source = fs::read_to_string(&sqlite3_c_path)
+            .map_err(|e| format!("reading {}: {e}", sqlite3_c_path.display()))?;
+        let flags = scan_version_cflags(&source);
+        eprintln!("  {version}: {} flags", flags.len());
+        audit.versions.insert(version.clone(), flags);
+    }
+
+    // Write output.
+    let json = serde_json::to_string_pretty(&audit)
+        .map_err(|e| format!("serializing audit: {e}"))?;
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("creating output dir: {e}"))?;
+    }
+    fs::write(output_path, format!("{json}\n"))
+        .map_err(|e| format!("writing {}: {e}", output_path.display()))?;
+
+    eprintln!("Wrote {}", output_path.display());
+    Ok(audit)
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Extract — compile with version-appropriate flags
+// ---------------------------------------------------------------------------
+
+/// Compile and run the function probe, returning a parsed FunctionSet.
+fn compile_and_run_probe(
+    amalgamation_dir: &Path,
+    build_dir: &Path,
+    defines: &[&str],
+    label: &str,
+) -> Result<FunctionSet, String> {
+    let binary = amalgamation_probe::compile_probe(
+        amalgamation_dir, build_dir, defines, PROBE_C, label,
+    )?;
+    let stdout = amalgamation_probe::run_probe(&binary)?;
+    parse_function_output(&stdout)
+}
+
+/// Parse tab-separated probe output into a FunctionSet.
+fn parse_function_output(stdout: &str) -> Result<FunctionSet, String> {
+    let mut functions = BTreeSet::new();
+    for line in stdout.lines() {
+        let parts: Vec<&str> = line.split('\t').collect();
+        if parts.len() != 3 {
+            continue;
+        }
+        functions.insert(FunctionEntry {
+            name: parts[0].to_string(),
+            narg: parts[1].parse().unwrap_or(0),
+            func_type: parts[2].to_string(),
+            builtin: true,
+        });
+    }
+    Ok(FunctionSet { functions })
+}
+
+/// Build the baseline compile defines for a version — all available ENABLE flags ON.
+fn baseline_defines_for(available: &BTreeSet<String>) -> Vec<&'static str> {
+    let mut defines = Vec::new();
+    for &(name, polarity, flag_defines) in FUNCTION_CFLAGS {
+        if polarity == "enable" && available.contains(name) {
+            defines.extend_from_slice(flag_defines);
+        }
+    }
+    defines
+}
+
+/// Build the test defines for a specific cflag.
+///
+/// For OMIT flags: baseline + the OMIT flag.
+/// For ENABLE flags: baseline minus the ENABLE flag being tested.
+fn test_defines_for(
+    flag_name: &str,
+    polarity: &str,
+    available: &BTreeSet<String>,
+) -> Vec<&'static str> {
+    let mut defines = Vec::new();
+    for &(name, pol, flag_defines) in FUNCTION_CFLAGS {
+        if !available.contains(name) {
+            continue;
+        }
+        if polarity == "omit" {
+            // OMIT test: baseline + the OMIT flag.
+            if pol == "enable" {
+                defines.extend_from_slice(flag_defines);
+            }
+            if name == flag_name {
+                defines.extend_from_slice(flag_defines);
+            }
+        } else {
+            // ENABLE test: baseline minus this ENABLE flag.
+            if pol == "enable" && name != flag_name {
+                defines.extend_from_slice(flag_defines);
+            }
+        }
+    }
+    defines
+}
+
+/// Known-broken version × flag combinations.
+///
+/// SQLITE_OMIT_* flags are acknowledged by the SQLite project as poorly tested
+/// (see FAQ: "I get a compiler error if I use the SQLITE_OMIT_... compile-time
+/// options"). These specific combos fail to compile on their respective versions.
+///
+/// Each entry: (version_prefix, flag_name, reason).
+const KNOWN_BROKEN: &[(&str, &str, &str)] = &[
+    // SQLITE_OMIT_WINDOWFUNC: parser actions reference struct members
+    // (pWinDefn, etc.) that are compiled out. Broken on all tested versions
+    // including 3.51.2. The amalgamation's generated parser code doesn't
+    // properly guard these references.
+    ("3.", "SQLITE_OMIT_WINDOWFUNC", "parser references compiled-out struct members (pWinDefn)"),
+];
+
+fn is_known_broken(version: &str, flag_name: &str) -> bool {
+    KNOWN_BROKEN
+        .iter()
+        .any(|(ver_prefix, flag, _)| version.starts_with(ver_prefix) && *flag == flag_name)
+}
+
+/// Extract function data for a single version.
+fn extract_version(
+    amalgamation_dir: &Path,
+    version: &str,
+    build_dir: &Path,
+    available_flags: &BTreeSet<String>,
+) -> Result<(FunctionSet, Vec<CflagEffect>), String> {
+    // Compile and run baseline (all available ENABLE flags ON, no OMIT flags).
+    let bl_defs = baseline_defines_for(available_flags);
+    let baseline = compile_and_run_probe(amalgamation_dir, build_dir, &bl_defs, "baseline")?;
+
+    let baseline_names: BTreeSet<String> = baseline
+        .functions
+        .iter()
+        .map(|f| f.name.clone())
+        .collect();
+
+    eprintln!("    baseline: {} functions", baseline_names.len());
+
+    let mut effects = Vec::new();
+
+    // Test each available cflag.
+    for &(flag_name, polarity, _) in FUNCTION_CFLAGS {
+        if !available_flags.contains(flag_name) {
+            continue;
+        }
+
+        if is_known_broken(version, flag_name) {
+            eprintln!("    {flag_name}: known broken on {version}, skipping");
+            continue;
+        }
+
+        let test_defs = test_defines_for(flag_name, polarity, available_flags);
+        let label = format!("{version}_{flag_name}");
+
+        let test_set = compile_and_run_probe(amalgamation_dir, build_dir, &test_defs, &label)
+            .map_err(|e| format!("{version}/{flag_name}: {e}"))?;
+
+        let test_names: BTreeSet<String> = test_set
+            .functions
+            .iter()
+            .map(|f| f.name.clone())
+            .collect();
+
+        // Determine affected functions: present in baseline but absent in test.
+        let affected: BTreeSet<String> = baseline_names.difference(&test_names).cloned().collect();
+        if !affected.is_empty() {
+            eprintln!("    {flag_name}: {} functions affected", affected.len());
+            effects.push(CflagEffect {
+                flag: flag_name.to_string(),
+                polarity: polarity.to_string(),
+                affected_functions: affected,
+            });
+        }
+    }
+
+    Ok((baseline, effects))
+}
+
+/// Run the full extraction pipeline across all versions.
+///
+/// Requires a pre-computed audit (`version_cflags.json`) to know which flags
+/// each version supports.
+pub fn extract_function_catalog(
+    amalgamation_dir: &Path,
+    audit_path: &Path,
+    output_path: &Path,
+) -> Result<FunctionCatalog, String> {
+    // Load audit data.
+    let audit_json = fs::read_to_string(audit_path)
+        .map_err(|e| format!("reading {}: {e}", audit_path.display()))?;
+    let audit: VersionCflagAudit = serde_json::from_str(&audit_json)
+        .map_err(|e| format!("parsing {}: {e}", audit_path.display()))?;
+
+    let versions = discover_versions(amalgamation_dir)?;
+    if versions.is_empty() {
+        return Err(format!(
+            "no amalgamation versions found in {}",
+            amalgamation_dir.display()
+        ));
+    }
+
+    eprintln!(
+        "Extracting functions from {} versions: {} .. {}",
+        versions.len(),
+        versions.first().unwrap(),
+        versions.last().unwrap()
+    );
+
+    // Use a persistent build directory alongside the amalgamations so that
+    // compiled .o files survive across runs.
+    let build_root = amalgamation_dir.join(".build-cache");
+    fs::create_dir_all(&build_root)
+        .map_err(|e| format!("creating build cache dir: {e}"))?;
+
+    let mut per_version: Vec<(String, BTreeSet<String>, Vec<CflagEffect>)> = Vec::new();
+    let mut all_entries: BTreeMap<String, BTreeSet<(i32, String)>> = BTreeMap::new();
+
+    for version in &versions {
+        let amal_dir = amalgamation_dir.join(version);
+        let build_dir = build_root.join(version);
+
+        let available: BTreeSet<String> = audit
+            .versions
+            .get(version)
+            .map(|v| v.iter().cloned().collect())
+            .unwrap_or_default();
+
+        eprintln!("  {version} ({} flags available)...", available.len());
+
+        let (baseline, effects) = extract_version(&amal_dir, version, &build_dir, &available)
+            .map_err(|e| format!("{version}: {e}"))?;
+
+        let names: BTreeSet<String> = baseline
+            .functions
+            .iter()
+            .map(|f| f.name.clone())
+            .collect();
+
+        for entry in &baseline.functions {
+            all_entries
+                .entry(entry.name.clone())
+                .or_default()
+                .insert((entry.narg, entry.func_type.clone()));
+        }
+
+        per_version.push((version.clone(), names, effects));
+    }
+
+    let catalog = build_catalog(&per_version, &all_entries);
+
+    let json = serde_json::to_string_pretty(&catalog)
+        .map_err(|e| format!("serializing catalog: {e}"))?;
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("creating output dir: {e}"))?;
+    }
+    let mut file = fs::File::create(output_path)
+        .map_err(|e| format!("creating {}: {e}", output_path.display()))?;
+    file.write_all(json.as_bytes())
+        .map_err(|e| format!("writing {}: {e}", output_path.display()))?;
+    file.write_all(b"\n")
+        .map_err(|e| format!("writing {}: {e}", output_path.display()))?;
+
+    eprintln!(
+        "Wrote {} functions to {}",
+        catalog.functions.len(),
+        output_path.display()
+    );
+
+    Ok(catalog)
+}
+
+// ---------------------------------------------------------------------------
+// Catalog construction
+// ---------------------------------------------------------------------------
+
+fn build_catalog(
+    per_version: &[(String, BTreeSet<String>, Vec<CflagEffect>)],
+    all_entries: &BTreeMap<String, BTreeSet<(i32, String)>>,
+) -> FunctionCatalog {
+    let all_names: BTreeSet<&str> = per_version
+        .iter()
+        .flat_map(|(_, names, _)| names.iter().map(|s| s.as_str()))
+        .collect();
+
+    let mut functions = Vec::new();
+
+    for name in &all_names {
+        let entries = all_entries.get(*name);
+        let arities: Vec<i32> = entries
+            .map(|e| {
+                let mut a: Vec<i32> = e.iter().map(|(n, _)| *n).collect();
+                a.sort();
+                a.dedup();
+                a
+            })
+            .unwrap_or_default();
+
+        let category = entries
+            .and_then(|e| {
+                if e.iter().any(|(_, t)| t == "w") {
+                    Some("window")
+                } else if e.iter().any(|(_, t)| t == "a") {
+                    Some("aggregate")
+                } else {
+                    Some("scalar")
+                }
+            })
+            .unwrap_or("scalar")
+            .to_string();
+
+        let availability = compute_availability(name, per_version);
+
+        functions.push(FunctionCatalogEntry {
+            name: name.to_string(),
+            arities,
+            category,
+            availability,
+        });
+    }
+
+    FunctionCatalog { functions }
+}
+
+fn compute_availability(
+    func_name: &str,
+    per_version: &[(String, BTreeSet<String>, Vec<CflagEffect>)],
+) -> Vec<AvailabilityRule> {
+    let mut version_states: Vec<(String, bool, Option<(String, String)>)> = Vec::new();
+
+    for (version, baseline_names, effects) in per_version {
+        let present = baseline_names.contains(func_name);
+        let gating_cflag = effects
+            .iter()
+            .find(|e| e.affected_functions.contains(func_name))
+            .map(|e| (e.flag.clone(), e.polarity.clone()));
+        version_states.push((version.clone(), present, gating_cflag));
+    }
+
+    let mut rules = Vec::new();
+    let mut i = 0;
+    while i < version_states.len() {
+        let (ref ver, present, ref cflag) = version_states[i];
+        if !present {
+            i += 1;
+            continue;
+        }
+
+        let mut j = i + 1;
+        while j < version_states.len() {
+            let (_, next_present, ref next_cflag) = version_states[j];
+            if !next_present || next_cflag != cflag {
+                break;
+            }
+            j += 1;
+        }
+
+        let since = ver.clone();
+        let until = if j < version_states.len() {
+            Some(version_states[j].0.clone())
+        } else {
+            None
+        };
+
+        let rule = match cflag {
+            Some((flag, polarity)) => AvailabilityRule {
+                since: Some(since),
+                until,
+                cflag: Some(flag.clone()),
+                polarity: Some(polarity.clone()),
+            },
+            None => AvailabilityRule {
+                since: Some(since),
+                until,
+                cflag: None,
+                polarity: None,
+            },
+        };
+
+        rules.push(rule);
+        i = j;
+    }
+
+    rules
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn version_parse_and_display() {
+        let v = Version::parse("3.35.5").unwrap();
+        assert_eq!(v.to_string(), "3.35.5");
+    }
+
+    #[test]
+    fn baseline_defines_only_uses_available() {
+        let available: BTreeSet<String> = [
+            "SQLITE_ENABLE_MATH_FUNCTIONS",
+            "SQLITE_SOUNDEX",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+
+        let defs = baseline_defines_for(&available);
+        assert!(defs.contains(&"-DSQLITE_ENABLE_MATH_FUNCTIONS"));
+        assert!(defs.contains(&"-DSQLITE_SOUNDEX"));
+        // FTS5 is not in available, should not appear.
+        assert!(!defs.contains(&"-DSQLITE_ENABLE_FTS5"));
+        // No OMIT flags in baseline.
+        assert!(!defs.iter().any(|d| d.contains("OMIT")));
+    }
+
+    #[test]
+    fn test_defines_omit_adds_flag() {
+        let available: BTreeSet<String> = [
+            "SQLITE_OMIT_JSON",
+            "SQLITE_ENABLE_MATH_FUNCTIONS",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+
+        let defs = test_defines_for("SQLITE_OMIT_JSON", "omit", &available);
+        assert!(defs.contains(&"-DSQLITE_OMIT_JSON"));
+        assert!(defs.contains(&"-DSQLITE_ENABLE_MATH_FUNCTIONS"));
+    }
+
+    #[test]
+    fn test_defines_enable_removes_flag() {
+        let available: BTreeSet<String> = [
+            "SQLITE_ENABLE_MATH_FUNCTIONS",
+            "SQLITE_SOUNDEX",
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
+
+        let defs = test_defines_for("SQLITE_ENABLE_MATH_FUNCTIONS", "enable", &available);
+        assert!(!defs.contains(&"-DSQLITE_ENABLE_MATH_FUNCTIONS"));
+        assert!(defs.contains(&"-DSQLITE_SOUNDEX"));
+    }
+
+    #[test]
+    fn scan_finds_flags_in_source() {
+        let source = r#"
+#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+  /* math stuff */
+#endif
+#ifndef SQLITE_OMIT_JSON
+  /* json stuff */
+#endif
+"#;
+        let flags = scan_version_cflags(source);
+        assert!(flags.contains(&"SQLITE_ENABLE_MATH_FUNCTIONS".to_string()));
+        assert!(flags.contains(&"SQLITE_OMIT_JSON".to_string()));
+        assert!(!flags.contains(&"SQLITE_ENABLE_FTS5".to_string()));
+    }
+
+    #[test]
+    fn compute_availability_always_present() {
+        let per_version = vec![
+            ("3.30.0".into(), BTreeSet::from(["abs".into()]), vec![]),
+            ("3.35.0".into(), BTreeSet::from(["abs".into()]), vec![]),
+            ("3.40.0".into(), BTreeSet::from(["abs".into()]), vec![]),
+        ];
+        let rules = compute_availability("abs", &per_version);
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].since.as_deref(), Some("3.30.0"));
+        assert!(rules[0].until.is_none());
+        assert!(rules[0].cflag.is_none());
+    }
+
+    #[test]
+    fn compute_availability_cflag_change() {
+        let per_version = vec![
+            (
+                "3.35.0".into(),
+                BTreeSet::from(["json_extract".into()]),
+                vec![CflagEffect {
+                    flag: "SQLITE_ENABLE_JSON1".into(),
+                    polarity: "enable".into(),
+                    affected_functions: BTreeSet::from(["json_extract".into()]),
+                }],
+            ),
+            (
+                "3.38.0".into(),
+                BTreeSet::from(["json_extract".into()]),
+                vec![CflagEffect {
+                    flag: "SQLITE_OMIT_JSON".into(),
+                    polarity: "omit".into(),
+                    affected_functions: BTreeSet::from(["json_extract".into()]),
+                }],
+            ),
+        ];
+        let rules = compute_availability("json_extract", &per_version);
+        assert_eq!(rules.len(), 2);
+        assert_eq!(rules[0].cflag.as_deref(), Some("SQLITE_ENABLE_JSON1"));
+        assert_eq!(rules[0].polarity.as_deref(), Some("enable"));
+        assert_eq!(rules[0].until.as_deref(), Some("3.38.0"));
+        assert_eq!(rules[1].cflag.as_deref(), Some("SQLITE_OMIT_JSON"));
+        assert_eq!(rules[1].polarity.as_deref(), Some("omit"));
+        assert!(rules[1].until.is_none());
+    }
+}

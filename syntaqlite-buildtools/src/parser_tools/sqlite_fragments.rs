@@ -55,7 +55,7 @@ pub fn load() -> SqliteFragments {
         )),
         keyword_cflags: include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/sqlite-vendored/data/keyword_cflags.txt"
+            "/sqlite-vendored/data/keyword_cflags.json"
         )),
     }
 }

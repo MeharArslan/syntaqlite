@@ -58,7 +58,7 @@ fn tokenize_latest(sql: &str) -> Vec<(u32, String)> {
 }
 
 /// Tokenize SQL with a specific version and cflags.
-fn tokenize_at_version_cflags(sql: &str, version: i32, cflags: u32) -> Vec<(u32, String)> {
+fn tokenize_at_version_cflags(sql: &str, version: i32, cflags: u64) -> Vec<(u32, String)> {
     let dialect = syntaqlite::low_level::dialect();
     let mut tok = syntaqlite_runtime::parser::Tokenizer::new(*dialect);
     tok.set_dialect_config(&DialectConfig {
@@ -77,7 +77,7 @@ fn parses_ok_at_version(sql: &str, version: i32) -> bool {
 }
 
 /// Parse SQL with a specific version and cflags.
-fn parses_ok_at_version_cflags(sql: &str, version: i32, cflags: u32) -> bool {
+fn parses_ok_at_version_cflags(sql: &str, version: i32, cflags: u64) -> bool {
     let dialect = syntaqlite::low_level::dialect();
     let mut parser = syntaqlite_runtime::Parser::new(dialect);
     parser.set_dialect_config(&DialectConfig {
@@ -363,8 +363,8 @@ fn filter_keyword_not_recognized_before_3_25() {
 // Verified against SQLite 3.47.0+ compiled with/without the flag.
 // ---------------------------------------------------------------------------
 
-/// SYNQ_SQLITE_ENABLE_ORDERED_SET_AGGREGATES = 0x00020000
-const CFLAG_ORDERED_SET: u32 = 0x00020000;
+/// SYNQ_SQLITE_ENABLE_ORDERED_SET_AGGREGATES
+const CFLAG_ORDERED_SET: u64 = 0x0000_0010_0000_0000;
 
 #[test]
 fn within_keyword_not_recognized_without_cflag() {
@@ -435,14 +435,14 @@ fn within_group_fails_without_cflag() {
 //   2. Parsing fails for a representative SQL statement.
 // ---------------------------------------------------------------------------
 
-const CFLAG_OMIT_WINDOWFUNC: u32 = 0x00000008;
-const CFLAG_OMIT_CTE: u32 = 0x00000040;
-const CFLAG_OMIT_RETURNING: u32 = 0x00010000;
-const CFLAG_OMIT_COMPOUND_SELECT: u32 = 0x00000004;
+const CFLAG_OMIT_WINDOWFUNC: u64 = 0x0000_0000_0100_0000;
+const CFLAG_OMIT_CTE: u64 = 0x0000_0000_0000_0080;
+const CFLAG_OMIT_RETURNING: u64 = 0x0000_0000_0002_0000;
+const CFLAG_OMIT_COMPOUND_SELECT: u64 = 0x0000_0000_0000_0040;
 // Note: OMIT_SUBQUERY (0x00000080) is not listed here because it doesn't gate
 // any keywords — it uses the saw_subquery flag instead. See subquery tests below.
-const CFLAG_OMIT_VIEW: u32 = 0x00000020;
-const CFLAG_OMIT_TRIGGER: u32 = 0x00000400;
+const CFLAG_OMIT_VIEW: u64 = 0x0000_0000_0040_0000;
+const CFLAG_OMIT_TRIGGER: u64 = 0x0000_0000_0010_0000;
 
 // ---- OMIT_WINDOWFUNC ----
 
@@ -556,11 +556,7 @@ fn omit_view_keyword_falls_back_to_id() {
 #[test]
 fn omit_view_parse_fails() {
     assert!(
-        !parses_ok_at_version_cflags(
-            "CREATE VIEW v AS SELECT 1;",
-            i32::MAX,
-            CFLAG_OMIT_VIEW,
-        ),
+        !parses_ok_at_version_cflags("CREATE VIEW v AS SELECT 1;", i32::MAX, CFLAG_OMIT_VIEW,),
         "CREATE VIEW syntax should fail with OMIT_VIEW"
     );
 }

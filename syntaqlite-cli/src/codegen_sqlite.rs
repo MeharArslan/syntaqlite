@@ -149,7 +149,9 @@ fn handle_codegen(
         include_rust: true,
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
-    let outputs = syntaqlite_buildtools::sqlite::output_manifest::sqlite_output_manifest(&dialect, artifacts)?;
+    let outputs = syntaqlite_buildtools::sqlite::output_manifest::sqlite_output_manifest(
+        &dialect, artifacts,
+    )?;
 
     // Step 4: Clean stale generated files, then write outputs
     let out = Path::new(output_dir);

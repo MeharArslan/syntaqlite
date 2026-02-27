@@ -29,5 +29,7 @@ examples/syntaqlite_sqlite.c
 # profiling
 profile.json.gz
 
-# For analysis
+# For extraction
 sqlite-sources
+sqlite-amalgamations
+sqlite-amalgamations/.build-cache

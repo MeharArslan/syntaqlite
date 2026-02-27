@@ -14,7 +14,7 @@ extern "C" {
 
 typedef struct SyntaqliteDialectConfig {
     int32_t  sqlite_version;   // Target version (e.g., 3035000). INT32_MAX = latest.
-    uint32_t cflags;           // Bitmask of active cflags.
+    uint64_t cflags;           // Bitmask of active cflags.
 } SyntaqliteDialectConfig;
 
 // Default config: latest version, no cflags.

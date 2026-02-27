@@ -106,8 +106,8 @@ pub fn write_fragments(fragments: &TokenizerFragments, output_dir: &Path) -> Res
 
     for (name, content) in &files {
         let path = output_dir.join(name);
-        fs::write(&path, content)
-            .map_err(|e| format!("writing {}: {e}", path.display()))?;
+        let with_blessing = format!("{}{}", super::SQLITE_BLESSING, content);
+        fs::write(&path, with_blessing).map_err(|e| format!("writing {}: {e}", path.display()))?;
     }
 
     Ok(())
