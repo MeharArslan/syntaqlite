@@ -413,8 +413,10 @@ pub use codegen_api::*;
 
 // --- SQLite-specific API (stage 2/3, sqlite-codegen only) ---
 
-#[cfg(feature = "sqlite-codegen")]
-mod sqlite_api {
+// Lemon and mkkeyword subprocess entry points — needed by any binary that
+// calls generate_codegen_artifacts(), which spawns `current_exe() lemon/mkkeyword`.
+#[cfg(feature = "codegen-pipeline")]
+mod codegen_subcommands {
     use crate::parser_tools::{lemon, mkkeyword};
 
     pub fn run_lemon(args: &[String]) -> ! {
@@ -426,5 +428,5 @@ mod sqlite_api {
     }
 }
 
-#[cfg(feature = "sqlite-codegen")]
-pub use sqlite_api::*;
+#[cfg(feature = "codegen-pipeline")]
+pub use codegen_subcommands::*;

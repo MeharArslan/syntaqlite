@@ -31,5 +31,5 @@ pub struct SemanticToken {
     /// Length in bytes.
     pub length: usize,
     /// Token category.
-    pub category: syntaqlite_runtime::dialect::TokenCategory,
+    pub category: crate::dialect::TokenCategory,
 }

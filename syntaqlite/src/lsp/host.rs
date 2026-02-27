@@ -3,16 +3,16 @@
 
 use std::collections::HashMap;
 
-use syntaqlite_runtime::dialect::TokenCategory;
-use syntaqlite_runtime::fmt::{FormatConfig, Formatter};
-use syntaqlite_runtime::parser::{
+use crate::dialect::TokenCategory;
+use crate::fmt::{FormatConfig, Formatter};
+use crate::parser::{
     LowLevelParser, ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE,
     Tokenizer,
 };
-use syntaqlite_runtime::{Dialect, ParseError, Parser};
+use crate::{Dialect, ParseError, Parser};
 
-use crate::context::AmbientContext;
-use crate::types::{Diagnostic, SemanticToken, Severity};
+use crate::lsp::context::AmbientContext;
+use crate::lsp::types::{Diagnostic, SemanticToken, Severity};
 
 /// Manages open documents and runs analysis queries.
 pub struct AnalysisHost<'d> {
@@ -40,12 +40,18 @@ struct CachedToken {
 }
 
 impl<'d> AnalysisHost<'d> {
-    pub fn new(dialect: Dialect<'d>) -> Self {
+    pub fn with_dialect(dialect: Dialect<'d>) -> Self {
         AnalysisHost {
             dialect,
             documents: HashMap::new(),
             context: None,
         }
+    }
+
+    /// Create an analysis host for the built-in SQLite dialect.
+    #[cfg(feature = "sqlite")]
+    pub fn new() -> AnalysisHost<'static> {
+        AnalysisHost::with_dialect(*crate::sqlite::DIALECT)
     }
 
     /// Set the ambient database schema context.
@@ -222,7 +228,7 @@ impl<'d> AnalysisHost<'d> {
             .get(uri)
             .ok_or(FormatError::UnknownDocument)?;
         let mut formatter =
-            Formatter::with_config(&self.dialect, config.clone()).map_err(FormatError::Setup)?;
+            Formatter::with_dialect_config(&self.dialect, config.clone()).map_err(FormatError::Setup)?;
         formatter.format(&doc.source).map_err(FormatError::Parse)
     }
 
@@ -246,7 +252,7 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
         collect_tokens: true,
         ..Default::default()
     };
-    let mut parser = Parser::with_config(dialect, &config);
+    let mut parser = Parser::with_dialect_config(dialect, &config);
     let mut cursor = parser.parse(source);
     let mut diagnostics = Vec::new();
 
@@ -295,7 +301,7 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
     semantic_tokens.sort_by_key(|t| t.offset);
 
     let mut tokens = Vec::new();
-    let mut tokenizer = Tokenizer::new(*dialect);
+    let mut tokenizer = Tokenizer::with_dialect(*dialect);
     let source_base = source.as_ptr() as usize;
     for tok in tokenizer.tokenize(source) {
         let start = tok.text.as_ptr() as usize - source_base;
@@ -350,7 +356,7 @@ fn replay_expected_tokens(
         .rposition(|t| t.type_ == tk_semi)
         .map_or(0, |idx| idx + 1);
 
-    let mut parser = LowLevelParser::new(dialect);
+    let mut parser = LowLevelParser::with_dialect(dialect);
     let mut cursor = parser.feed(source);
     let mut last_expected = cursor.expected_tokens();
 
@@ -427,14 +433,14 @@ impl std::fmt::Display for FormatError {
 impl std::error::Error for FormatError {}
 
 #[cfg(test)]
+#[cfg(feature = "sqlite")]
 mod tests {
     use super::AnalysisHost;
-    use syntaqlite::low_level::TokenType;
+    use crate::sqlite::low_level::TokenType;
 
     #[test]
     fn completions_fall_back_to_last_good_state_on_parse_error() {
-        let dialect = *syntaqlite::low_level::dialect();
-        let mut host = AnalysisHost::new(dialect);
+        let mut host = AnalysisHost::new();
         let uri = "file:///test.sql";
         let sql = "SELECT * FR";
         host.open_document(uri, 1, sql.to_string());
@@ -449,8 +455,7 @@ mod tests {
 
     #[test]
     fn completions_ignore_prior_statement_errors_after_semicolon() {
-        let dialect = *syntaqlite::low_level::dialect();
-        let mut host = AnalysisHost::new(dialect);
+        let mut host = AnalysisHost::new();
         let uri = "file:///test.sql";
         let sql = "SELEC 1; SELECT * FR";
         host.open_document(uri, 1, sql.to_string());
@@ -465,8 +470,7 @@ mod tests {
 
     #[test]
     fn completions_include_join_after_from_alias_with_partial_next_token() {
-        let dialect = *syntaqlite::low_level::dialect();
-        let mut host = AnalysisHost::new(dialect);
+        let mut host = AnalysisHost::new();
         let uri = "file:///test.sql";
         let sql = "SELECT * FROM s AS x J";
         host.open_document(uri, 1, sql.to_string());
@@ -481,21 +485,17 @@ mod tests {
 
     #[test]
     fn completions_include_join_after_from_table_with_trailing_space() {
-        let dialect = *syntaqlite::low_level::dialect();
-        let mut host = AnalysisHost::new(dialect);
+        let mut host = AnalysisHost::new();
         let uri = "file:///test.sql";
         let sql = "SELECT * FROM slice ";
         host.open_document(uri, 1, sql.to_string());
 
         let expected = host.expected_tokens_at_offset(uri, sql.len());
-        // TK_JOIN (163) is the bare "JOIN" keyword in the grammar.
-        // TK_JOIN_KW (108) covers join modifiers (INNER, LEFT, etc.).
         assert!(
             expected.contains(&(TokenType::Join as u32)),
             "expected TK_JOIN after FROM table with trailing space, got {:?}",
             expected
         );
-        // Irrelevant keywords must NOT appear (wildcard/fallback paths excluded).
         assert!(
             !expected.contains(&(TokenType::Create as u32)),
             "TK_CREATE should not appear after FROM table, got {:?}",
@@ -506,7 +506,6 @@ mod tests {
             "TK_SELECT should not appear after FROM table, got {:?}",
             expected
         );
-        // Keywords that fallback to ID must not appear as keyword completions.
         assert!(
             !expected.contains(&(TokenType::Virtual as u32)),
             "TK_VIRTUAL (fallback to ID) should not appear after FROM table, got {:?}",
@@ -516,19 +515,12 @@ mod tests {
 
     #[test]
     fn completions_include_join_after_from_table_no_trailing_space() {
-        let dialect = *syntaqlite::low_level::dialect();
-        let mut host = AnalysisHost::new(dialect);
+        let mut host = AnalysisHost::new();
         let uri = "file:///test.sql";
-        // No trailing space — cursor right at end of "slice"
         let sql = "SELECT * FROM slice";
         host.open_document(uri, 1, sql.to_string());
 
         let expected = host.expected_tokens_at_offset(uri, sql.len());
-        eprintln!(
-            "expected tokens after 'SELECT * FROM slice' (no space): {:?}",
-            expected
-        );
-        // Even without trailing space, after a complete table name, JOIN should be offered
         assert!(
             expected.contains(&(TokenType::Join as u32)),
             "expected TK_JOIN after FROM table without trailing space, got {:?}",

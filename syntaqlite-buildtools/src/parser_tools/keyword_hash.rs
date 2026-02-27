@@ -131,17 +131,17 @@ fn generate_keyword_arrays(
 }
 
 /// The version+cflag check code that replaces `*pType = aKWCode[i]; break;`
-/// in `synq_sqlite3_keywordCode`. Uses unprefixed `aKWCode` because the
-/// CTransformer's `replace_all` will add the dialect prefix later.
+/// in `synq_sqlite3_keywordCode`. Uses `__SYNQ_DIALECT__` placeholder which
+/// the caller replaces with the actual dialect prefix (e.g. `synq_perfetto`).
 fn keyword_check_code() -> &'static str {
     r#"/* Version check: skip keywords newer than target version. */
-    if( synq_sqlite_aKWSince[i] != 0 && SYNQ_VER_LT(config, synq_sqlite_aKWSince[i]) ){
+    if( __SYNQ_DIALECT___aKWSince[i] != 0 && SYNQ_VER_LT(config, __SYNQ_DIALECT___aKWSince[i]) ){
       break;
     }
     /* CFlag check with polarity. */
-    if( synq_sqlite_aKWCFlag[i] >= 0 ){
-      int flag_set = SYNQ_HAS_CFLAG(config, synq_sqlite_aKWCFlag[i]);
-      int is_enable = synq_sqlite_aKWCFlagPolarity[i];
+    if( __SYNQ_DIALECT___aKWCFlag[i] >= 0 ){
+      int flag_set = SYNQ_HAS_CFLAG(config, __SYNQ_DIALECT___aKWCFlag[i]);
+      int is_enable = __SYNQ_DIALECT___aKWCFlagPolarity[i];
       if( flag_set != is_enable ){
         break;
       }
@@ -230,6 +230,7 @@ pub fn generate(
         .replace_all("aKWLen", &kw_len_sym)
         .replace_all("aKWCode", &kw_code_sym)
         .replace_all("TK_", "SYNTAQLITE_TK_")
+        .replace_all("__SYNQ_DIALECT__", &format!("synq_{}", dialect))
         .finish();
 
     // Insert keyword arrays before the keywordCode function.

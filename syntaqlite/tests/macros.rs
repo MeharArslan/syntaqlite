@@ -2,19 +2,15 @@
 // Licensed under the Apache License, Version 2.0.
 
 /// Integration tests: macro regions are emitted verbatim by the formatter.
-use syntaqlite_runtime::parser::LowLevelParser;
+use syntaqlite::parser::LowLevelParser;
 
-fn dialect() -> &'static syntaqlite_runtime::Dialect<'static> {
-    syntaqlite::low_level::dialect()
-}
-
-fn formatter() -> syntaqlite_runtime::fmt::Formatter<'static> {
-    syntaqlite_runtime::fmt::Formatter::new(dialect()).unwrap()
+fn formatter() -> syntaqlite::fmt::Formatter<'static> {
+    syntaqlite::fmt::Formatter::new().unwrap()
 }
 
 // Token type constants (raw u32 values for the runtime API).
 mod tk {
-    use syntaqlite::low_level::TokenType;
+    use syntaqlite::sqlite::low_level::TokenType;
     pub const SELECT: u32 = TokenType::Select as u32;
     pub const INTEGER: u32 = TokenType::Integer as u32;
     pub const PLUS: u32 = TokenType::Plus as u32;
@@ -27,7 +23,7 @@ fn macro_call_emitted_verbatim() {
     let source = "SELECT foo!(1 + 2), 3";
     let fmt = formatter();
 
-    let mut tp = LowLevelParser::new(dialect());
+    let mut tp = LowLevelParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -54,7 +50,7 @@ fn macro_multi_node_emitted_once() {
     let source = "SELECT macro!(a, b)";
     let fmt = formatter();
 
-    let mut tp = LowLevelParser::new(dialect());
+    let mut tp = LowLevelParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -75,7 +71,7 @@ fn macro_multi_node_no_extra_separator() {
     let source = "SELECT foo!(a, b), c";
     let fmt = formatter();
 
-    let mut tp = LowLevelParser::new(dialect());
+    let mut tp = LowLevelParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -99,7 +95,7 @@ fn no_macro_regions_formats_normally() {
     let source = "SELECT  1+2,  3";
     let fmt = formatter();
 
-    let mut tp = LowLevelParser::new(dialect());
+    let mut tp = LowLevelParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();

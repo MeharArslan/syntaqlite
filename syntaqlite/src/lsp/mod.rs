@@ -7,5 +7,5 @@ pub mod types;
 
 pub use context::AmbientContext;
 pub use host::{AnalysisHost, FormatError};
-pub use syntaqlite_runtime::dialect::TokenCategory;
+pub use crate::dialect::TokenCategory;
 pub use types::{Diagnostic, SemanticToken, Severity};

@@ -19,15 +19,18 @@ export class AstTab implements m.ClassComponent<AstTabAttrs> {
   private astResult: AstResult | null = null;
   private lastSql: string | null = null;
   private lastDialectPtr: number | null = null;
+  private lastConfigKey: string | null = null;
 
   view(vnode: m.Vnode<AstTabAttrs>) {
     const {app, sql, active} = vnode.attrs;
 
     if (active && app.runtime.ready && app.dialect.active) {
       const dPtr = app.dialect.active.ptr;
-      if (sql !== this.lastSql || dPtr !== this.lastDialectPtr) {
+      const cfgKey = app.dialectConfig.configKey;
+      if (sql !== this.lastSql || dPtr !== this.lastDialectPtr || cfgKey !== this.lastConfigKey) {
         this.lastSql = sql;
         this.lastDialectPtr = dPtr;
+        this.lastConfigKey = cfgKey;
         this.astResult = app.runtime.runAstJson(sql);
       }
     }

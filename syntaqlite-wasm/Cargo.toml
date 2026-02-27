@@ -4,5 +4,4 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-syntaqlite-lsp = { path = "../syntaqlite-lsp" }
-syntaqlite-runtime = { path = "../syntaqlite-runtime", features = ["fmt"] }
+syntaqlite = { path = "../syntaqlite", features = ["fmt", "lsp"] }

@@ -18,8 +18,8 @@ use std::fmt::{Display, Formatter};
 
 use crate::util::synq_parser::{Field, Fmt, Item};
 
-use syntaqlite_runtime::fmt::bytecode::RawOp;
-use syntaqlite_runtime::fmt::bytecode::opcodes;
+use syntaqlite::fmt::bytecode::RawOp;
+use syntaqlite::fmt::bytecode::opcodes;
 
 #[derive(Debug, Clone)]
 pub enum FmtCompileError {

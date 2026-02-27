@@ -378,7 +378,7 @@ pub fn generate_rust_ffi_nodes(model: &AstModel<'_>) -> String {
         "
         #![allow(dead_code)]
 
-        use syntaqlite_runtime::parser::{NodeId, SourceSpan};
+        use syntaqlite::parser::{NodeId, SourceSpan};
     ",
     );
     w.newline();
@@ -424,8 +424,8 @@ pub fn generate_rust_ast(model: &AstModel<'_>) -> String {
     let mut w = RustWriter::new();
     w.file_header();
     w.lines("
-        pub use syntaqlite_runtime::parser::{Comment, CommentKind, FromArena, NodeId, NodeReader, SourceSpan, TypedList};
-        pub(crate) use syntaqlite_runtime::parser::NodeList;
+        pub use syntaqlite::parser::{Comment, CommentKind, FromArena, NodeId, NodeReader, SourceSpan, TypedList};
+        pub(crate) use syntaqlite::parser::NodeList;
         use std::marker::PhantomData;
     ");
     w.newline();

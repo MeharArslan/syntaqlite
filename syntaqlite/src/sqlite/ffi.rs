@@ -5,7 +5,7 @@
 
 #![allow(dead_code)]
 
-use syntaqlite_runtime::parser::{NodeId, SourceSpan};
+use crate::parser::{NodeId, SourceSpan};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]

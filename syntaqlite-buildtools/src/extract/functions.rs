@@ -185,6 +185,20 @@ pub struct VersionCflagAudit {
     pub versions: BTreeMap<String, Vec<String>>,
 }
 
+/// A single cflag availability entry (cflag-centric format).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CflagAvailabilityEntry {
+    pub name: String,
+    pub since: String,
+    pub category: String,
+}
+
+/// Complete cflag availability data (cflag-centric format).
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CflagAvailability {
+    pub cflags: Vec<CflagAvailabilityEntry>,
+}
+
 // ---------------------------------------------------------------------------
 // Version helper
 // ---------------------------------------------------------------------------
@@ -263,9 +277,12 @@ pub fn discover_versions(amalgamation_dir: &Path) -> Result<Vec<String>, String>
 // Phase 1: Audit — scan sqlite3.c for flag references
 // ---------------------------------------------------------------------------
 
-/// All flag names we look for during audit.
+/// All flag names we look for during audit (all 42 cflags from SYNQ_CFLAG_TABLE).
 fn all_flag_names() -> Vec<&'static str> {
-    FUNCTION_CFLAGS.iter().map(|(name, _, _)| *name).collect()
+    super::SYNQ_CFLAG_TABLE
+        .iter()
+        .map(|(name, _, _, _)| *name)
+        .collect()
 }
 
 /// Scan a single version's sqlite3.c for references to our flags.
@@ -280,11 +297,13 @@ fn scan_version_cflags(sqlite3_c: &str) -> Vec<String> {
     found
 }
 
-/// Audit all versions and write the result to `output_path`.
+/// Audit all versions and write cflag-centric availability data to `output_path`.
+///
+/// Returns `CflagAvailability` with each cflag's earliest observed version (`since`).
 pub fn audit_version_cflags(
     amalgamation_dir: &Path,
     output_path: &Path,
-) -> Result<VersionCflagAudit, String> {
+) -> Result<CflagAvailability, String> {
     let versions = discover_versions(amalgamation_dir)?;
     if versions.is_empty() {
         return Err(format!(
@@ -300,22 +319,23 @@ pub fn audit_version_cflags(
         versions.last().unwrap()
     );
 
-    let mut audit = VersionCflagAudit {
-        versions: BTreeMap::new(),
-    };
-
+    // Scan each version's sqlite3.c for flag references.
+    let mut per_version: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for version in &versions {
         let sqlite3_c_path = amalgamation_dir.join(version).join("sqlite3.c");
         let source = fs::read_to_string(&sqlite3_c_path)
             .map_err(|e| format!("reading {}: {e}", sqlite3_c_path.display()))?;
         let flags = scan_version_cflags(&source);
         eprintln!("  {version}: {} flags", flags.len());
-        audit.versions.insert(version.clone(), flags);
+        per_version.insert(version.clone(), flags);
     }
 
-    // Write output.
-    let json =
-        serde_json::to_string_pretty(&audit).map_err(|e| format!("serializing audit: {e}"))?;
+    // Compute `since` per cflag (earliest version where it appears).
+    let availability = compute_cflag_availability(&per_version);
+
+    // Write cflag-centric JSON output.
+    let json = serde_json::to_string_pretty(&availability)
+        .map_err(|e| format!("serializing availability: {e}"))?;
     if let Some(parent) = output_path.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("creating output dir: {e}"))?;
     }
@@ -323,7 +343,101 @@ pub fn audit_version_cflags(
         .map_err(|e| format!("writing {}: {e}", output_path.display()))?;
 
     eprintln!("Wrote {}", output_path.display());
-    Ok(audit)
+    Ok(availability)
+}
+
+/// Compute cflag availability from per-version scan results.
+///
+/// For each cflag in SYNQ_CFLAG_TABLE, finds the earliest version where it
+/// appears in the amalgamation source. Cflags not observed in any version
+/// get `since: "0"`.
+fn compute_cflag_availability(
+    per_version: &BTreeMap<String, Vec<String>>,
+) -> CflagAvailability {
+    // Sort versions.
+    let mut sorted_versions: Vec<&String> = per_version.keys().collect();
+    sorted_versions.sort_by(|a, b| Version::parse(a).unwrap().cmp(&Version::parse(b).unwrap()));
+
+    let mut entries = Vec::new();
+    for (flag_name, _, _, category) in super::SYNQ_CFLAG_TABLE {
+        // Find earliest version containing this flag.
+        let since = sorted_versions
+            .iter()
+            .find(|v| {
+                per_version
+                    .get(**v)
+                    .map(|flags| flags.iter().any(|f| f == flag_name))
+                    .unwrap_or(false)
+            })
+            .map(|v| (*v).clone())
+            .unwrap_or_else(|| "0".to_string());
+
+        entries.push(CflagAvailabilityEntry {
+            name: flag_name.to_string(),
+            since,
+            category: category.to_string(),
+        });
+    }
+
+    CflagAvailability { cflags: entries }
+}
+
+/// Generate a Rust source file containing a const table of cflag metadata.
+pub fn generate_cflag_versions_rs(availability: &CflagAvailability) -> String {
+    let mut out = String::new();
+    out.push_str("// @generated by sqlite-extract — DO NOT EDIT\n");
+    out.push_str("\n");
+    out.push_str("/// Cflag metadata: (name, min_version, category).\n");
+    out.push_str("///\n");
+    out.push_str("/// `min_version` is the encoded SQLite version integer at which this cflag\n");
+    out.push_str("/// first appears in the amalgamation source. Zero = not observed.\n");
+    out.push_str("///\n");
+    out.push_str("/// `category` groups flags by feature area for UI presentation:\n");
+    out.push_str("/// \"parser\", \"functions\", \"vtable\", \"extensions\".\n");
+    out.push_str("pub(crate) const CFLAG_VERSIONS: &[(&str, i32, &str)] = &[\n");
+
+    for entry in &availability.cflags {
+        let ver_int = version_string_to_int(&entry.since);
+        out.push_str(&format!(
+            "    (\"{}\", {}, \"{}\"),\n",
+            entry.name, ver_int, entry.category
+        ));
+    }
+
+    out.push_str("];\n");
+    out
+}
+
+/// Write the generated Rust file to disk.
+pub fn write_cflag_versions_rs(
+    availability: &CflagAvailability,
+    output_path: &Path,
+) -> Result<(), String> {
+    let content = generate_cflag_versions_rs(availability);
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("creating dir: {e}"))?;
+    }
+    fs::write(output_path, &content)
+        .map_err(|e| format!("writing {}: {e}", output_path.display()))?;
+    eprintln!("Wrote {}", output_path.display());
+    Ok(())
+}
+
+/// Convert a dotted version string to SQLite's integer encoding.
+///
+/// `"3.35.0"` → `3035000`, `"0"` → `0`.
+fn version_string_to_int(s: &str) -> i32 {
+    if s == "0" {
+        return 0;
+    }
+    let parts: Vec<&str> = s.split('.').collect();
+    if parts.len() < 3 {
+        return 0;
+    }
+    let major: i32 = parts[0].parse().unwrap_or(0);
+    let minor: i32 = parts[1].parse().unwrap_or(0);
+    let patch: i32 = parts[2].parse().unwrap_or(0);
+    major * 1_000_000 + minor * 1_000 + patch
 }
 
 // ---------------------------------------------------------------------------
@@ -491,10 +605,10 @@ pub fn extract_function_catalog(
     audit_path: &Path,
     output_path: &Path,
 ) -> Result<FunctionCatalog, String> {
-    // Load audit data.
+    // Load audit data (cflag-centric format).
     let audit_json = fs::read_to_string(audit_path)
         .map_err(|e| format!("reading {}: {e}", audit_path.display()))?;
-    let audit: VersionCflagAudit = serde_json::from_str(&audit_json)
+    let availability: CflagAvailability = serde_json::from_str(&audit_json)
         .map_err(|e| format!("parsing {}: {e}", audit_path.display()))?;
 
     let versions = discover_versions(amalgamation_dir)?;
@@ -524,11 +638,17 @@ pub fn extract_function_catalog(
         let amal_dir = amalgamation_dir.join(version);
         let build_dir = build_root.join(version);
 
-        let available: BTreeSet<String> = audit
-            .versions
-            .get(version)
-            .map(|v| v.iter().cloned().collect())
-            .unwrap_or_default();
+        // Derive available flags: a flag is available if since <= this version.
+        let ver_int = version_string_to_int(version);
+        let available: BTreeSet<String> = availability
+            .cflags
+            .iter()
+            .filter(|e| {
+                let since_int = version_string_to_int(&e.since);
+                since_int > 0 && since_int <= ver_int
+            })
+            .map(|e| e.name.clone())
+            .collect();
 
         eprintln!("  {version} ({} flags available)...", available.len());
 

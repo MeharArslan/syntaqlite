@@ -22,6 +22,7 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
   private lastSql: string | null = null;
   private lastOptionsKey: string | null = null;
   private lastDialectPtr: number | null = null;
+  private lastConfigKey: string | null = null;
 
   view(vnode: m.Vnode<FormatTabAttrs>) {
     const {app, sql, active} = vnode.attrs;
@@ -29,10 +30,17 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
     if (active && app.runtime.ready && app.dialect.active) {
       const optKey = `${this.formatOptions.lineWidth}:${this.formatOptions.keywordCase}:${this.formatOptions.semicolons}`;
       const dPtr = app.dialect.active.ptr;
-      if (sql !== this.lastSql || optKey !== this.lastOptionsKey || dPtr !== this.lastDialectPtr) {
+      const cfgKey = app.dialectConfig.configKey;
+      if (
+        sql !== this.lastSql ||
+        optKey !== this.lastOptionsKey ||
+        dPtr !== this.lastDialectPtr ||
+        cfgKey !== this.lastConfigKey
+      ) {
         this.lastSql = sql;
         this.lastOptionsKey = optKey;
         this.lastDialectPtr = dPtr;
+        this.lastConfigKey = cfgKey;
         this.formatResult = app.runtime.runFmt(sql, this.formatOptions);
       }
     }

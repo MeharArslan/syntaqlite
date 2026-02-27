@@ -30,7 +30,7 @@ unsafe impl Send for Tokenizer {}
 
 impl Tokenizer {
     /// Create a new tokenizer bound to the given dialect.
-    pub fn new(dialect: crate::dialect::Dialect<'_>) -> Self {
+    pub fn with_dialect(dialect: crate::dialect::Dialect<'_>) -> Self {
         let raw =
             unsafe { ffi::syntaqlite_tokenizer_create(std::ptr::null(), dialect.raw as *const _) };
         assert!(!raw.is_null(), "tokenizer allocation failed");
@@ -39,6 +39,12 @@ impl Tokenizer {
             source_buf: Vec::new(),
             dialect_config: crate::dialect::ffi::DialectConfig::default(),
         }
+    }
+
+    /// Create a new tokenizer for the built-in SQLite dialect.
+    #[cfg(feature = "sqlite")]
+    pub fn new() -> Self {
+        Self::with_dialect(*crate::sqlite::DIALECT)
     }
 
     /// Set the dialect config for version/cflag-gated tokenization.

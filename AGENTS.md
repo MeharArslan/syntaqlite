@@ -31,8 +31,13 @@ This allows projects like libSQL, rqlite, or custom embedded databases to use sy
 
 ## Key Directories
 
-- `syntaqlite-runtime/` - Grammar-agnostic Rust runtime (parser FFI, node types, formatter)
-- `syntaqlite/` - SQLite dialect crate (marker type, generated code)
+- `syntaqlite/` - Unified crate: grammar-agnostic engine + SQLite dialect, feature-gated
+  - `src/parser/` - Grammar-agnostic parser FFI, node types
+  - `src/dialect/` - Dialect handle, config types, cflags
+  - `src/fmt/` - Formatter (bytecode interpreter), feature="fmt"
+  - `src/lsp/` - LSP analysis host, feature="lsp"
+  - `src/sqlite/` - SQLite dialect (AST, tokens, wrappers), feature="sqlite"
+  - Features: `default=["sqlite","fmt"]`, `lsp`, `pin-version`, `pin-cflags`
 - `syntaqlite-buildtools/` - Build tools library:
   - `util/` - Shared utilities (parsers, C/Rust writers, case conversion, tool_run)
   - `dialect_codegen/` - `.synq` → C/Rust codegen (AST model, node/meta/dialect/fmt codegen)

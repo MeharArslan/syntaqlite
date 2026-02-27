@@ -14,6 +14,12 @@ import type {
   FormatResult,
 } from "../types";
 
+export interface CflagEntry {
+  name: string;
+  minVersion: number;
+  category: string;
+}
+
 const RUNTIME_JS_PATH = "./syntaqlite-runtime.js";
 const RUNTIME_WASM_PATH = "./syntaqlite-runtime.wasm";
 
@@ -40,6 +46,11 @@ export class Engine {
   private resultPtrRaw: WasmFn | null = null;
   private resultLenRaw: WasmFn | null = null;
   private resultFreeRaw: WasmFn | null = null;
+  private setSqliteVersionRaw: WasmFn | null = null;
+  private setCflagRaw: WasmFn | null = null;
+  private clearCflagRaw: WasmFn | null = null;
+  private clearAllCflagsRaw: WasmFn | null = null;
+  private getCflagListRaw: WasmFn | null = null;
 
   get ready(): boolean {
     return this.module !== null;
@@ -66,6 +77,11 @@ export class Engine {
     this.resultPtrRaw = this.resolveRuntimeFn("wasm_result_ptr");
     this.resultLenRaw = this.resolveRuntimeFn("wasm_result_len");
     this.resultFreeRaw = this.resolveRuntimeFn("wasm_result_free");
+    this.setSqliteVersionRaw = this.tryResolveRuntimeFn("wasm_set_sqlite_version");
+    this.setCflagRaw = this.tryResolveRuntimeFn("wasm_set_cflag");
+    this.clearCflagRaw = this.tryResolveRuntimeFn("wasm_clear_cflag");
+    this.clearAllCflagsRaw = this.tryResolveRuntimeFn("wasm_clear_all_cflags");
+    this.getCflagListRaw = this.tryResolveRuntimeFn("wasm_get_cflag_list");
   }
 
   private resolveRuntimeFn(symbol: string): WasmFn {
@@ -255,6 +271,49 @@ export class Engine {
     } catch (e) {
       console.warn("wasm_completions failed:", e);
       return {ok: false, items: []};
+    }
+  }
+  setSqliteVersion(version: string): void {
+    if (!this.setSqliteVersionRaw) return;
+    const status = this.withInput(version, (ptr, len) => this.setSqliteVersionRaw!(ptr, len));
+    const detail = this.readAndClearResult();
+    if (status !== 0) {
+      throw new Error(detail || `wasm_set_sqlite_version failed with status ${status}`);
+    }
+  }
+
+  setCflag(name: string): void {
+    if (!this.setCflagRaw) return;
+    const status = this.withInput(name, (ptr, len) => this.setCflagRaw!(ptr, len));
+    const detail = this.readAndClearResult();
+    if (status !== 0) {
+      throw new Error(detail || `wasm_set_cflag failed with status ${status}`);
+    }
+  }
+
+  clearCflag(name: string): void {
+    if (!this.clearCflagRaw) return;
+    const status = this.withInput(name, (ptr, len) => this.clearCflagRaw!(ptr, len));
+    const detail = this.readAndClearResult();
+    if (status !== 0) {
+      throw new Error(detail || `wasm_clear_cflag failed with status ${status}`);
+    }
+  }
+
+  clearAllCflags(): void {
+    if (!this.clearAllCflagsRaw) return;
+    this.clearAllCflagsRaw();
+  }
+
+  getCflagList(): CflagEntry[] {
+    if (!this.getCflagListRaw) return [];
+    this.getCflagListRaw();
+    const text = this.readAndClearResult();
+    if (!text) return [];
+    try {
+      return JSON.parse(text);
+    } catch {
+      return [];
     }
   }
 }

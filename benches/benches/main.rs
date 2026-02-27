@@ -80,7 +80,7 @@ fn bench_tokenizer(c: &mut Criterion) {
     for f in &fixtures {
         group.throughput(Throughput::Bytes(f.sql.len() as u64));
         group.bench_with_input(BenchmarkId::from_parameter(f.name), &f.sql, |b, sql| {
-            let mut tok = syntaqlite::low_level::Tokenizer::new();
+            let mut tok = syntaqlite::parser::Tokenizer::new();
             b.iter(|| {
                 let cursor = tok.tokenize(black_box(sql));
                 for item in cursor {
@@ -124,7 +124,7 @@ fn bench_formatter(c: &mut Criterion) {
     for f in &fixtures {
         group.throughput(Throughput::Bytes(f.sql.len() as u64));
         group.bench_with_input(BenchmarkId::from_parameter(f.name), &f.sql, |b, sql| {
-            let mut fmt = syntaqlite::Formatter::new().unwrap();
+            let mut fmt = syntaqlite::fmt::Formatter::new().unwrap();
             b.iter(|| {
                 black_box(fmt.format(black_box(sql)).unwrap());
             });
@@ -138,7 +138,6 @@ fn bench_formatter(c: &mut Criterion) {
 
 fn bench_lsp_host(c: &mut Criterion) {
     let mut group = c.benchmark_group("lsp_host");
-    let dialect = *syntaqlite::low_level::dialect();
     let fixtures = fixtures();
 
     for f in &fixtures {
@@ -148,7 +147,7 @@ fn bench_lsp_host(c: &mut Criterion) {
             &f.sql,
             |b, sql| {
                 b.iter(|| {
-                    let mut host = syntaqlite_lsp::AnalysisHost::new(dialect);
+                    let mut host = syntaqlite::lsp::AnalysisHost::new();
                     host.open_document("test://file.sql", 1, sql.clone());
                     black_box(host.diagnostics("test://file.sql"));
                     black_box(host.semantic_tokens_encoded("test://file.sql", None));
@@ -163,7 +162,7 @@ fn bench_lsp_host(c: &mut Criterion) {
             BenchmarkId::new("update_cycle", f.name),
             &f.sql,
             |b, sql| {
-                let mut host = syntaqlite_lsp::AnalysisHost::new(dialect);
+                let mut host = syntaqlite::lsp::AnalysisHost::new();
                 host.open_document("test://file.sql", 1, sql.clone());
                 host.diagnostics("test://file.sql");
                 let mut version = 2;

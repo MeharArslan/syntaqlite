@@ -56,12 +56,13 @@ pub struct Parser {
 unsafe impl Send for Parser {}
 
 impl Parser {
-    pub fn new(dialect: &Dialect) -> Self {
-        Self::try_new(dialect).expect("parser allocation failed")
+    /// Create a parser for the given dialect.
+    pub fn with_dialect(dialect: &Dialect) -> Self {
+        Self::try_with_dialect(dialect).expect("parser allocation failed")
     }
 
     /// Fallible constructor — returns `None` if the C-side allocation fails.
-    pub fn try_new(dialect: &Dialect) -> Option<Self> {
+    pub fn try_with_dialect(dialect: &Dialect) -> Option<Self> {
         // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
         // a new parser with default malloc/free.
         let raw =
@@ -77,9 +78,9 @@ impl Parser {
         })
     }
 
-    /// Create a parser with the given configuration applied at construction.
-    pub fn with_config(dialect: &Dialect, config: &ParserConfig) -> Self {
-        let mut parser = Self::new(dialect);
+    /// Create a parser with the given dialect and configuration.
+    pub fn with_dialect_config(dialect: &Dialect, config: &ParserConfig) -> Self {
+        let mut parser = Self::with_dialect(dialect);
         // SAFETY: Parser is freshly created (not sealed), so these calls
         // always return 0.
         unsafe {
@@ -88,6 +89,18 @@ impl Parser {
         }
         parser.config = config.clone();
         parser
+    }
+
+    /// Create a parser for the built-in SQLite dialect with default configuration.
+    #[cfg(feature = "sqlite")]
+    pub fn new() -> Self {
+        Self::with_dialect(&crate::sqlite::DIALECT)
+    }
+
+    /// Create a parser for the built-in SQLite dialect with the given configuration.
+    #[cfg(feature = "sqlite")]
+    pub fn with_config(config: &ParserConfig) -> Self {
+        Self::with_dialect_config(&crate::sqlite::DIALECT, config)
     }
 
     /// Access the current configuration.

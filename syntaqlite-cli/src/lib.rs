@@ -6,9 +6,9 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand, ValueEnum};
-use syntaqlite_runtime::dialect::ffi as dialect_ffi;
-use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
-use syntaqlite_runtime::{Dialect, ParseError, Parser as RuntimeParser};
+use syntaqlite::dialect::ffi as dialect_ffi;
+use syntaqlite::fmt::{FormatConfig, Formatter, KeywordCase};
+use syntaqlite::{Dialect, ParseError, Parser as RuntimeParser};
 
 #[cfg(feature = "codegen-dialect")]
 mod codegen_dialect;
@@ -198,7 +198,7 @@ fn cmd_fmt(
 }
 
 fn dump_ast_source(dialect: &Dialect, source: &str) -> Result<String, ParseError> {
-    let mut parser = RuntimeParser::new(dialect);
+    let mut parser = RuntimeParser::with_dialect(dialect);
     let mut cursor = parser.parse(source);
     let mut out = String::new();
     let mut count = 0;
@@ -220,7 +220,7 @@ fn format_source(
     source: &str,
     config: FormatConfig,
 ) -> Result<String, ParseError> {
-    let mut formatter = Formatter::with_config(dialect, config).map_err(|e| ParseError {
+    let mut formatter = Formatter::with_dialect_config(dialect, config).map_err(|e| ParseError {
         message: e.to_string(),
         offset: None,
         length: None,

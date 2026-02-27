@@ -42,6 +42,22 @@ impl Cflags {
             self.bytes[byte as usize] |= 1 << bit;
         }
     }
+
+    /// Clear cflag at `idx`.
+    #[inline]
+    pub fn clear(&mut self, idx: u32) {
+        let byte = idx / 8;
+        let bit = idx % 8;
+        if byte < 6 {
+            self.bytes[byte as usize] &= !(1 << bit);
+        }
+    }
+
+    /// Reset all cflags to zero.
+    #[inline]
+    pub fn clear_all(&mut self) {
+        self.bytes = [0; 6];
+    }
 }
 
 impl Default for Cflags {
@@ -62,16 +78,25 @@ impl std::fmt::Debug for Cflags {
 const CFLAGS_HEADER: &str = include_str!("../../include/syntaqlite/sqlite_cflags.h");
 
 /// Metadata for a single compile-time flag.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct CflagInfo {
-    /// The suffix shared across C and Rust (e.g. `"OMIT_WINDOWFUNC"`).
+    /// The suffix shared across C and Rust (e.g. `"SQLITE_OMIT_WINDOWFUNC"`).
     ///
-    /// - C define: `SYNTAQLITE_CFLAG_OMIT_WINDOWFUNC`
-    /// - Rust env var: `SYNTAQLITE_CFLAG_OMIT_WINDOWFUNC=1`
-    pub suffix: &'static str,
+    /// - C define: `SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC`
+    /// - Rust env var: `SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC=1`
+    pub suffix: String,
     /// Bit index in [`Cflags`] (matches `SYNQ_CFLAG_IDX_*` constants).
     pub index: u32,
+    /// Minimum SQLite version (encoded integer) at which this cflag has any
+    /// observable effect on keyword recognition. Zero means baseline (all versions).
+    pub min_version: i32,
+    /// Feature-area category for UI grouping:
+    /// `"parser"`, `"functions"`, `"vtable"`, or `"extensions"`.
+    pub category: String,
 }
+
+// Generated table mapping cflag names to minimum SQLite versions.
+include!("cflag_versions_table.rs");
 
 /// All known compile-time flags, parsed once from the embedded C header.
 ///
@@ -79,14 +104,17 @@ pub struct CflagInfo {
 pub fn cflag_table() -> &'static [CflagInfo] {
     use std::sync::LazyLock;
     static TABLE: LazyLock<Vec<CflagInfo>> = LazyLock::new(|| {
+        // Collect SYNQ_CFLAG_IDX_* defines from the header.
         let mut entries = Vec::new();
         for line in CFLAGS_HEADER.lines() {
             let Some(rest) = line.strip_prefix("#define SYNQ_CFLAG_IDX_") else {
                 continue;
             };
             let mut parts = rest.split_whitespace();
-            let Some(suffix) = parts.next() else { continue };
-            if suffix == "COUNT" {
+            let Some(raw_suffix) = parts.next() else {
+                continue;
+            };
+            if raw_suffix == "COUNT" {
                 continue;
             }
             let Some(idx_str) = parts.next() else {
@@ -95,11 +123,70 @@ pub fn cflag_table() -> &'static [CflagInfo] {
             let Ok(index) = idx_str.parse::<u32>() else {
                 continue;
             };
-            entries.push(CflagInfo { suffix, index });
+            // Prepend "SQLITE_" so suffixes match SQLite define names
+            // (e.g. "OMIT_WINDOWFUNC" → "SQLITE_OMIT_WINDOWFUNC").
+            let suffix = format!("SQLITE_{raw_suffix}");
+            // Look up min_version and category from the generated table.
+            let (min_version, category) = CFLAG_VERSIONS
+                .iter()
+                .find(|(name, _, _)| *name == suffix)
+                .map(|(_, ver, cat)| (*ver, cat.to_string()))
+                .unwrap_or((0, "parser".to_string()));
+            entries.push(CflagInfo {
+                suffix,
+                index,
+                min_version,
+                category,
+            });
         }
         entries
     });
     &TABLE
+}
+
+/// Parse a dotted SQLite version string (e.g. `"3.35.0"`) into an integer
+/// using SQLite's encoding: `major * 1_000_000 + minor * 1_000 + patch`.
+/// The string `"latest"` maps to `i32::MAX`.
+pub fn parse_sqlite_version(s: &str) -> Result<i32, String> {
+    let s = s.trim();
+    if s.eq_ignore_ascii_case("latest") {
+        return Ok(i32::MAX);
+    }
+    let parts: Vec<&str> = s.split('.').collect();
+    if parts.len() != 3 {
+        return Err(format!("expected 'major.minor.patch', got '{s}'"));
+    }
+    let major: i32 = parts[0]
+        .parse()
+        .map_err(|_| format!("invalid major version: '{}'", parts[0]))?;
+    let minor: i32 = parts[1]
+        .parse()
+        .map_err(|_| format!("invalid minor version: '{}'", parts[1]))?;
+    let patch: i32 = parts[2]
+        .parse()
+        .map_err(|_| format!("invalid patch version: '{}'", parts[2]))?;
+    Ok(major * 1_000_000 + minor * 1_000 + patch)
+}
+
+/// Look up a cflag by its full canonical name
+/// (e.g. `"SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC"`).
+///
+/// Returns the bit index on success.
+pub fn parse_cflag_name(s: &str) -> Result<u32, String> {
+    let suffix = s
+        .strip_prefix("SYNTAQLITE_CFLAG_")
+        .ok_or_else(|| format!("cflag name must start with 'SYNTAQLITE_CFLAG_', got '{s}'"))?;
+    for entry in cflag_table() {
+        if entry.suffix == suffix {
+            return Ok(entry.index);
+        }
+    }
+    Err(format!("unknown cflag: '{s}'"))
+}
+
+/// Returns all known cflag suffixes (e.g. `"SQLITE_OMIT_WINDOWFUNC"`).
+pub fn cflag_names() -> Vec<&'static str> {
+    cflag_table().iter().map(|e| e.suffix.as_str()).collect()
 }
 
 /// Mirrors C `SyntaqliteDialectConfig` from `include/syntaqlite/dialect_config.h`.

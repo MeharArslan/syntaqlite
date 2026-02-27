@@ -16,10 +16,10 @@ use lsp_types::{
     SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextEdit, Uri,
 };
-use syntaqlite_lsp::{AnalysisHost, Severity};
-use syntaqlite_runtime::Dialect;
-use syntaqlite_runtime::dialect::{SEMANTIC_TOKEN_LEGEND, TokenCategory};
-use syntaqlite_runtime::fmt::FormatConfig;
+use syntaqlite::lsp::{AnalysisHost, Severity};
+use syntaqlite::Dialect;
+use syntaqlite::dialect::{SEMANTIC_TOKEN_LEGEND, TokenCategory};
+use syntaqlite::fmt::FormatConfig;
 
 pub(crate) fn cmd_lsp(dialect: &Dialect) -> Result<(), String> {
     run_lsp(dialect).map_err(|e| format!("LSP error: {e}"))
@@ -54,7 +54,7 @@ fn run_lsp(dialect: &Dialect) -> Result<(), Box<dyn Error + Sync + Send>> {
 
     let _init_params = connection.initialize(server_capabilities)?;
 
-    let mut host = AnalysisHost::new(*dialect);
+    let mut host = AnalysisHost::with_dialect(*dialect);
 
     for msg in &connection.receiver {
         match msg {
@@ -422,12 +422,12 @@ fn position_to_offset(source: &str, pos: Position) -> usize {
 #[cfg(test)]
 mod tests {
     use super::completion_items_for_expected;
-    use syntaqlite_lsp::AnalysisHost;
+    use syntaqlite::lsp::AnalysisHost;
 
     #[test]
     fn join_kw_uses_dialect_token_keyword_mapping() {
-        let dialect = *syntaqlite::low_level::dialect();
-        let mut host = AnalysisHost::new(dialect);
+        let dialect = *syntaqlite::sqlite::low_level::dialect();
+        let mut host = AnalysisHost::with_dialect(dialect);
         let uri = "file:///test.sql";
         let sql = "SELECT * FROM s AS x J";
         host.open_document(uri, 1, sql.to_string());
@@ -436,7 +436,7 @@ mod tests {
         let items = completion_items_for_expected(&dialect, &host, &expected);
 
         let labels: Vec<&str> = items.iter().map(|i| i.label.as_str()).collect();
-        let join_kw = syntaqlite::low_level::TokenType::JoinKw as u32;
+        let join_kw = syntaqlite::sqlite::low_level::TokenType::JoinKw as u32;
         let join_kw_labels: Vec<&str> = (0..dialect.keyword_count())
             .filter_map(|i| dialect.keyword_entry(i))
             .filter_map(|(code, kw)| (code == join_kw).then_some(kw))
@@ -450,8 +450,8 @@ mod tests {
 
     #[test]
     fn keyword_completion_items_use_keyword_kind() {
-        let dialect = *syntaqlite::low_level::dialect();
-        let mut host = AnalysisHost::new(dialect);
+        let dialect = *syntaqlite::sqlite::low_level::dialect();
+        let mut host = AnalysisHost::with_dialect(dialect);
         let uri = "file:///test.sql";
         let sql = "SELECT a FROM t WH";
         host.open_document(uri, 1, sql.to_string());

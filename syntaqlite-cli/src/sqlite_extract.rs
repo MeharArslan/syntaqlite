@@ -31,8 +31,8 @@ pub(crate) enum ExtractCommand {
     },
     /// Audit which cflags each SQLite amalgamation version references.
     ///
-    /// Scans sqlite3.c for each version and writes a JSON mapping of
-    /// version → recognized flag names.
+    /// Scans sqlite3.c for each version and writes a cflag-centric JSON file
+    /// plus a generated Rust table for the runtime.
     AuditCflags {
         /// Directory containing amalgamations (e.g., sqlite-amalgamations/3.35.5/sqlite3.c).
         #[arg(long, required = true)]
@@ -40,6 +40,9 @@ pub(crate) enum ExtractCommand {
         /// Output path for the audit JSON.
         #[arg(long, required = true)]
         output: String,
+        /// Output path for the generated Rust cflag versions table.
+        #[arg(long, required = true)]
+        rust_output: String,
     },
     /// Extract built-in function catalog from pre-downloaded SQLite amalgamations.
     ///
@@ -71,7 +74,8 @@ pub(crate) fn dispatch(command: ExtractCommand) -> Result<(), String> {
         ExtractCommand::AuditCflags {
             amalgamation_dir,
             output,
-        } => handle_audit_cflags(&amalgamation_dir, &output),
+            rust_output,
+        } => handle_audit_cflags(&amalgamation_dir, &output, &rust_output),
         ExtractCommand::ExtractFunctions {
             amalgamation_dir,
             audit,
@@ -169,7 +173,11 @@ fn handle_sqlite_extract(
     Ok(())
 }
 
-fn handle_audit_cflags(amalgamation_dir: &str, output: &str) -> Result<(), String> {
+fn handle_audit_cflags(
+    amalgamation_dir: &str,
+    output: &str,
+    rust_output: &str,
+) -> Result<(), String> {
     use syntaqlite_buildtools::extract;
 
     let amal_path = Path::new(amalgamation_dir);
@@ -177,7 +185,9 @@ fn handle_audit_cflags(amalgamation_dir: &str, output: &str) -> Result<(), Strin
         return Err(format!("{amalgamation_dir} is not a directory"));
     }
 
-    extract::functions::audit_version_cflags(amal_path, Path::new(output))?;
+    let availability = extract::functions::audit_version_cflags(amal_path, Path::new(output))?;
+    extract::functions::write_cflag_versions_rs(&availability, Path::new(rust_output))?;
+
     Ok(())
 }
 

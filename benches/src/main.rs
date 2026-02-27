@@ -22,7 +22,7 @@ fn main() {
         }
     }
 
-    let mut fmt = syntaqlite::Formatter::new().unwrap();
+    let mut fmt = syntaqlite::fmt::Formatter::new().unwrap();
     for _ in 0..1000 {
         std::hint::black_box(fmt.format(std::hint::black_box(&sql)).unwrap());
     }

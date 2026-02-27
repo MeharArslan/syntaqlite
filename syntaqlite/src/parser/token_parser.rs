@@ -22,7 +22,7 @@ unsafe impl Send for LowLevelParser {}
 impl LowLevelParser {
     /// Create a new low-level parser for the given dialect.
     /// Token collection is enabled by default (required for formatting).
-    pub fn new(dialect: &Dialect) -> Self {
+    pub fn with_dialect(dialect: &Dialect) -> Self {
         let raw =
             unsafe { ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw) };
         assert!(!raw.is_null(), "parser allocation failed");
@@ -35,14 +35,26 @@ impl LowLevelParser {
         }
     }
 
-    /// Create a low-level parser with the given configuration.
-    pub fn with_config(dialect: &Dialect, config: &ParserConfig) -> Self {
-        let tp = Self::new(dialect);
+    /// Create a low-level parser with the given dialect and configuration.
+    pub fn with_dialect_config(dialect: &Dialect, config: &ParserConfig) -> Self {
+        let tp = Self::with_dialect(dialect);
         unsafe {
             ffi::syntaqlite_parser_set_trace(tp.raw, config.trace as c_int);
             ffi::syntaqlite_parser_set_collect_tokens(tp.raw, config.collect_tokens as c_int);
         }
         tp
+    }
+
+    /// Create a low-level parser for the built-in SQLite dialect.
+    #[cfg(feature = "sqlite")]
+    pub fn new() -> Self {
+        Self::with_dialect(&crate::sqlite::DIALECT)
+    }
+
+    /// Create a low-level parser for the built-in SQLite dialect with the given configuration.
+    #[cfg(feature = "sqlite")]
+    pub fn with_config(config: &ParserConfig) -> Self {
+        Self::with_dialect_config(&crate::sqlite::DIALECT, config)
     }
 
     /// Bind source text and return a `LowLevelCursor` for token feeding.

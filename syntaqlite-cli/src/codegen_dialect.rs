@@ -29,6 +29,19 @@ pub(crate) enum CodegenCommand {
         #[command(subcommand)]
         command: DialectCommand,
     },
+    // Hidden subcommands for codegen subprocess support.
+    // generate_codegen_artifacts() spawns current_exe() with these subcommands.
+    // They must be present in any binary that calls the codegen pipeline.
+    #[command(hide = true)]
+    Lemon {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
+    #[command(hide = true)]
+    Mkkeyword {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -57,6 +70,8 @@ pub(crate) fn dispatch(command: CodegenCommand) -> Result<(), String> {
                 &output_dir,
             ),
         },
+        CodegenCommand::Lemon { args } => syntaqlite_buildtools::run_lemon(&args),
+        CodegenCommand::Mkkeyword { args } => syntaqlite_buildtools::run_mkkeyword(&args),
     }
 }
 

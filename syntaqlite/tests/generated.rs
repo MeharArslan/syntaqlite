@@ -1,13 +1,13 @@
 /// Integration tests exercising the generated dispatch table + ctx
 /// with the hand-written format_node and renderer.
-use syntaqlite::config::{FormatConfig, KeywordCase};
+use syntaqlite::sqlite::config::{FormatConfig, KeywordCase};
 
 fn format_sql(sql: &str) -> String {
     format_sql_with(sql, FormatConfig::default())
 }
 
 fn format_sql_with(sql: &str, config: FormatConfig) -> String {
-    let mut f = syntaqlite::Formatter::with_config(config).unwrap();
+    let mut f = syntaqlite::fmt::Formatter::with_config(config).unwrap();
     let result = f.format(sql).unwrap();
     // Strip the trailing semicolon + newline that Formatter appends
     result

@@ -1,12 +1,10 @@
 # Cargo.toml
 [workspace]
 members = [
-    "syntaqlite-runtime",
     "syntaqlite",
     "syntaqlite-wasm",
     "syntaqlite-buildtools",
     "syntaqlite-cli",
-    "syntaqlite-lsp",
     "benches",
 ]
 resolver = "3"

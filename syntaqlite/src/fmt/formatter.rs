@@ -40,12 +40,12 @@ unsafe impl Send for Formatter<'_> {}
 
 impl<'d> Formatter<'d> {
     /// Create a formatter for the given dialect with default configuration.
-    pub fn new(dialect: &Dialect<'d>) -> Result<Self, &'static str> {
-        Self::with_config(dialect, FormatConfig::default())
+    pub fn with_dialect(dialect: &Dialect<'d>) -> Result<Self, &'static str> {
+        Self::with_dialect_config(dialect, FormatConfig::default())
     }
 
-    /// Create a formatter with the given configuration.
-    pub fn with_config(dialect: &Dialect<'d>, config: FormatConfig) -> Result<Self, &'static str> {
+    /// Create a formatter with the given dialect and configuration.
+    pub fn with_dialect_config(dialect: &Dialect<'d>, config: FormatConfig) -> Result<Self, &'static str> {
         if !dialect.has_fmt_data() {
             return Err("C dialect has no fmt data");
         }
@@ -53,7 +53,7 @@ impl<'d> Formatter<'d> {
             collect_tokens: true,
             ..Default::default()
         };
-        let parser = Parser::with_config(dialect, &parser_config);
+        let parser = Parser::with_dialect_config(dialect, &parser_config);
         Ok(Formatter {
             dialect: *dialect,
             parser,
@@ -67,9 +67,26 @@ impl<'d> Formatter<'d> {
         })
     }
 
+    /// Create a formatter for the built-in SQLite dialect with default configuration.
+    #[cfg(feature = "sqlite")]
+    pub fn new() -> Result<Formatter<'static>, &'static str> {
+        Formatter::with_dialect(&crate::sqlite::DIALECT)
+    }
+
+    /// Create a formatter for the built-in SQLite dialect with the given configuration.
+    #[cfg(feature = "sqlite")]
+    pub fn with_config(config: FormatConfig) -> Result<Formatter<'static>, &'static str> {
+        Formatter::with_dialect_config(&crate::sqlite::DIALECT, config)
+    }
+
     /// Access the current configuration.
     pub fn config(&self) -> &FormatConfig {
         &self.config
+    }
+
+    /// Set dialect config (version/cflags) on the underlying parser.
+    pub fn set_dialect_config(&mut self, config: &crate::dialect::ffi::DialectConfig) {
+        self.parser.set_dialect_config(config);
     }
 
     /// Format SQL source text. Handles multiple statements and preserves comments.

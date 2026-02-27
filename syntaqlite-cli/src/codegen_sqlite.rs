@@ -27,7 +27,7 @@ pub(crate) enum CodegenCommand {
         /// Dialect name (e.g. "sqlite").
         #[arg(long, required = true)]
         dialect: String,
-        /// Path to the syntaqlite-runtime crate root.
+        /// Path to the syntaqlite crate root (for engine C sources).
         #[arg(long, required = true)]
         runtime_dir: String,
         /// Path to the dialect crate root (e.g. syntaqlite/).

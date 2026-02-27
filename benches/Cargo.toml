@@ -9,9 +9,7 @@ name = "main"
 harness = false
 
 [dependencies]
-syntaqlite = { path = "../syntaqlite" }
+syntaqlite = { path = "../syntaqlite", features = ["lsp"] }
 
 [dev-dependencies]
 criterion = "0.5"
-syntaqlite-runtime = { path = "../syntaqlite-runtime", features = ["fmt"] }
-syntaqlite-lsp = { path = "../syntaqlite-lsp" }

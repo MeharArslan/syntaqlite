@@ -1,5 +1,5 @@
 ROOT := $(shell cd .. && pwd)
-RUNTIME := $(ROOT)/syntaqlite-runtime
+RUNTIME := $(ROOT)/syntaqlite
 DIALECT := $(ROOT)/syntaqlite
 
 CC := cc

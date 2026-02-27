@@ -21,8 +21,8 @@ pub mod low_level {
     pub use crate::wrappers::{LowLevelCursor, LowLevelParser, Tokenizer, TokenCursor};
     pub use crate::tokens::TokenType;
 
-    /// Access the dialect handle (for use with `syntaqlite_runtime` APIs).
-    pub fn dialect() -> &'static syntaqlite_runtime::Dialect<'static> {
+    /// Access the dialect handle (for use with `syntaqlite` APIs).
+    pub fn dialect() -> &'static syntaqlite::Dialect<'static> {
         &crate::DIALECT
     }
 }
@@ -30,15 +30,15 @@ pub mod low_level {
 
 const LIB_EXPORTS: &str = r#"
 pub use wrappers::{Formatter, Parser, StatementCursor};
-pub use syntaqlite_runtime::ParseError;
+pub use syntaqlite::ParseError;
 "#;
 
 const LIB_CONFIG_MOD: &str = r#"
 /// Configuration types for parsers and formatters.
 pub mod config {
-    pub use syntaqlite_runtime::dialect::ffi::{CflagInfo, Cflags, DialectConfig, cflag_table};
-    pub use syntaqlite_runtime::fmt::{FormatConfig, KeywordCase};
-    pub use syntaqlite_runtime::parser::ParserConfig;
+    pub use syntaqlite::dialect::ffi::{CflagInfo, Cflags, DialectConfig, cflag_table};
+    pub use syntaqlite::fmt::{FormatConfig, KeywordCase};
+    pub use syntaqlite::parser::ParserConfig;
 }
 "#;
 
@@ -55,18 +55,18 @@ const WRAPPER_PARSER: &str = r#"
 ///
 /// Returns typed `StatementCursor` wrappers from `parse()`.
 pub struct Parser {
-    inner: syntaqlite_runtime::Parser,
+    inner: syntaqlite::Parser,
 }
 
 impl Parser {
     /// Create a new parser with default configuration.
     pub fn new() -> Self {
-        Parser { inner: syntaqlite_runtime::Parser::new(&crate::DIALECT) }
+        Parser { inner: syntaqlite::Parser::with_dialect(&crate::DIALECT) }
     }
 
     /// Create a parser with the given configuration.
     pub fn with_config(config: &crate::config::ParserConfig) -> Self {
-        Parser { inner: syntaqlite_runtime::Parser::with_config(&crate::DIALECT, config) }
+        Parser { inner: syntaqlite::Parser::with_dialect_config(&crate::DIALECT, config) }
     }
 
     /// Access the current configuration.
@@ -84,7 +84,7 @@ impl Parser {
 const WRAPPER_STATEMENT_CURSOR: &str = r#"
 /// A high-level parsing cursor with typed node access.
 pub struct StatementCursor<'a> {
-    inner: syntaqlite_runtime::StatementCursor<'a>,
+    inner: syntaqlite::StatementCursor<'a>,
 }
 
 impl<'a> StatementCursor<'a> {
@@ -108,21 +108,21 @@ const WRAPPER_LOW_LEVEL_PARSER: &str = r#"
 ///
 /// Feed tokens one at a time via `LowLevelCursor`.
 pub struct LowLevelParser {
-    inner: syntaqlite_runtime::parser::LowLevelParser,
+    inner: syntaqlite::parser::LowLevelParser,
 }
 
 impl LowLevelParser {
     /// Create a new low-level parser with default configuration.
     pub fn new() -> Self {
         LowLevelParser {
-            inner: syntaqlite_runtime::parser::LowLevelParser::new(&crate::DIALECT),
+            inner: syntaqlite::parser::LowLevelParser::with_dialect(&crate::DIALECT),
         }
     }
 
     /// Create a low-level parser with the given configuration.
     pub fn with_config(config: &crate::config::ParserConfig) -> Self {
         LowLevelParser {
-            inner: syntaqlite_runtime::parser::LowLevelParser::with_config(&crate::DIALECT, config),
+            inner: syntaqlite::parser::LowLevelParser::with_dialect_config(&crate::DIALECT, config),
         }
     }
 
@@ -138,7 +138,7 @@ const WRAPPER_LOW_LEVEL_CURSOR: &str = r#"
 ///
 /// After calling `finish()`, no further feeding methods may be called.
 pub struct LowLevelCursor<'a> {
-    inner: syntaqlite_runtime::parser::LowLevelCursor<'a>,
+    inner: syntaqlite::parser::LowLevelCursor<'a>,
 }
 
 impl<'a> LowLevelCursor<'a> {
@@ -196,19 +196,19 @@ impl<'a> LowLevelCursor<'a> {
 const WRAPPER_FORMATTER: &str = r#"
 /// SQL formatter pre-configured for this dialect.
 pub struct Formatter {
-    inner: syntaqlite_runtime::fmt::Formatter<'static>,
+    inner: syntaqlite::fmt::Formatter<'static>,
 }
 
 impl Formatter {
     /// Create a formatter with default configuration.
     pub fn new() -> Result<Self, &'static str> {
-        let inner = syntaqlite_runtime::fmt::Formatter::new(&crate::DIALECT)?;
+        let inner = syntaqlite::fmt::Formatter::with_dialect(&crate::DIALECT)?;
         Ok(Formatter { inner })
     }
 
     /// Create a formatter with the given configuration.
     pub fn with_config(config: crate::config::FormatConfig) -> Result<Self, &'static str> {
-        let inner = syntaqlite_runtime::fmt::Formatter::with_config(&crate::DIALECT, config)?;
+        let inner = syntaqlite::fmt::Formatter::with_dialect_config(&crate::DIALECT, config)?;
         Ok(Formatter { inner })
     }
 
@@ -230,14 +230,14 @@ impl Formatter {
 const WRAPPER_TOKENIZER: &str = r#"
 /// A tokenizer for SQL.
 pub struct Tokenizer {
-    inner: syntaqlite_runtime::parser::Tokenizer,
+    inner: syntaqlite::parser::Tokenizer,
 }
 
 impl Tokenizer {
     /// Create a new tokenizer.
     pub fn new() -> Self {
         Tokenizer {
-            inner: syntaqlite_runtime::parser::Tokenizer::new(*crate::DIALECT),
+            inner: syntaqlite::parser::Tokenizer::with_dialect(*crate::DIALECT),
         }
     }
 
@@ -261,7 +261,7 @@ impl Tokenizer {
 const WRAPPER_TOKEN_CURSOR: &str = r#"
 /// An active tokenizer session yielding typed tokens.
 pub struct TokenCursor<'a> {
-    inner: syntaqlite_runtime::parser::TokenCursor<'a>,
+    inner: syntaqlite::parser::TokenCursor<'a>,
 }
 
 impl<'a> Iterator for TokenCursor<'a> {
@@ -289,13 +289,13 @@ pub fn generate_rust_lib(dialect_fn: &str) -> String {
         r#"
 use std::sync::LazyLock;
 
-use syntaqlite_runtime::dialect::ffi as dialect_ffi;
+use syntaqlite::dialect::ffi as dialect_ffi;
 unsafe extern "C" {{
     fn {dialect_fn}() -> *const dialect_ffi::Dialect;
 }}
 
-static DIALECT: LazyLock<syntaqlite_runtime::Dialect<'static>> =
-    LazyLock::new(|| unsafe {{ syntaqlite_runtime::Dialect::from_raw({dialect_fn}()) }});
+static DIALECT: LazyLock<syntaqlite::Dialect<'static>> =
+    LazyLock::new(|| unsafe {{ syntaqlite::Dialect::from_raw({dialect_fn}()) }});
 "#
     ));
     w.newline();
@@ -321,11 +321,11 @@ use std::path::PathBuf;
 fn main() {{
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let csrc = manifest_dir.join("csrc");
-    let runtime_include = manifest_dir.join("../syntaqlite-runtime/include");
+    let runtime_include = manifest_dir.join("../syntaqlite/include");
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
 
     // Dialect sources — Lemon parser, tokenizer, keyword lookup, and dialect glue.
-    // Grammar-agnostic engine C is built by the syntaqlite-runtime crate.
+    // Grammar-agnostic engine C is built by the syntaqlite crate.
     let mut build = cc::Build::new();
     build
         .file(csrc.join("dialect.c"))
@@ -366,7 +366,7 @@ fn main() {{
     // With --features pin-cflags, scans for SYNTAQLITE_CFLAG_* env vars
     // and passes the same -D flags to cc.
     if env::var("CARGO_FEATURE_PIN_CFLAGS").is_ok() {{
-        let all_entries = syntaqlite_runtime::dialect::ffi::cflag_table();
+        let all_entries = syntaqlite::dialect::ffi::cflag_table();
 
         // Pass the master switch.
         build.define("SYNTAQLITE_SQLITE_CFLAGS", None);
@@ -386,8 +386,8 @@ fn main() {{
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=csrc");
     println!("cargo:rerun-if-changed=include");
-    // Dialect C files #include runtime headers.
-    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include");
+    // Dialect C files #include syntaqlite headers.
+    println!("cargo:rerun-if-changed=../syntaqlite/include");
     // Re-run when pinning env vars change.
     println!("cargo:rerun-if-env-changed=SYNTAQLITE_SQLITE_VERSION");
 }}
@@ -411,15 +411,15 @@ edition = "2024"
 
 [features]
 default = ["fmt"]
-fmt = ["syntaqlite-runtime/fmt"]
+fmt = ["syntaqlite/fmt"]
 
 # Pin version/cflags at compile time for dead-code elimination.
 # Values come from env vars, using the same names as the C defines:
 #
 #   SYNTAQLITE_SQLITE_VERSION=3035000 cargo build --features pin-version
 #
-#   SYNTAQLITE_CFLAG_OMIT_WINDOWFUNC=1 \
-#   SYNTAQLITE_CFLAG_ENABLE_FTS5=1 \
+#   SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC=1 \
+#   SYNTAQLITE_CFLAG_SQLITE_ENABLE_FTS5=1 \
 #   cargo build --features pin-cflags
 #
 pin-version = []   # Pin SQLite version via SYNTAQLITE_SQLITE_VERSION env var
@@ -427,10 +427,10 @@ pin-cflags = []    # Pin compile-time flags via SYNTAQLITE_CFLAG_* env vars
 
 [build-dependencies]
 cc = "1.0"
-syntaqlite-runtime = {{ path = "../syntaqlite-runtime", default-features = false }}
+syntaqlite = {{ path = "../syntaqlite", default-features = false }}
 
 [dependencies]
-syntaqlite-runtime = {{ path = "../syntaqlite-runtime", default-features = false }}
+syntaqlite = {{ path = "../syntaqlite", default-features = false }}
 "#
     )
 }

@@ -6,24 +6,24 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["fmt"]
-fmt = ["syntaqlite-runtime/fmt"]
+default = ["sqlite", "fmt"]
+fmt = []                     # formatter (bytecode interpreter)
+lsp = ["fmt"]                # LSP analysis host (needs fmt for formatting)
+sqlite = []                  # SQLite dialect (grammar, tokens, cflags, functions)
 
 # Pin version/cflags at compile time for dead-code elimination.
 # Values come from env vars, using the same names as the C defines:
 #
 #   SYNTAQLITE_SQLITE_VERSION=3035000 cargo build --features pin-version
 #
-#   SYNTAQLITE_CFLAG_OMIT_WINDOWFUNC=1 \
-#   SYNTAQLITE_CFLAG_ENABLE_FTS5=1 \
+#   SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC=1 \
+#   SYNTAQLITE_CFLAG_SQLITE_ENABLE_FTS5=1 \
 #   cargo build --features pin-cflags
 #
-pin-version = []   # Pin SQLite version via SYNTAQLITE_SQLITE_VERSION env var
-pin-cflags = []    # Pin compile-time flags via SYNTAQLITE_CFLAG_* env vars
+pin-version = ["sqlite"]   # Pin SQLite version via SYNTAQLITE_SQLITE_VERSION env var
+pin-cflags = ["sqlite"]    # Pin compile-time flags via SYNTAQLITE_CFLAG_* env vars
 
 [build-dependencies]
 cc = "1.0"
-syntaqlite-runtime = { path = "../syntaqlite-runtime", default-features = false }
 
 [dependencies]
-syntaqlite-runtime = { path = "../syntaqlite-runtime", default-features = false }

@@ -285,6 +285,143 @@
   display: block;
 }
 
+/* ── Config popover block ── */
+.sq-config-popover {
+  position: relative;
+}
+
+.sq-config-popover__trigger {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--muted);
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sq-config-popover__trigger:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.sq-config-popover__panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  min-width: 280px;
+  max-height: 420px;
+  overflow-y: auto;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sq-config-popover--open .sq-config-popover__panel {
+  display: flex;
+}
+
+.sq-config-popover__backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.sq-config-popover--open .sq-config-popover__backdrop {
+  display: block;
+}
+
+.sq-config-popover__section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sq-config-popover__label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sq-config-popover__select {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  background: var(--input-bg);
+  color: var(--ink);
+}
+
+.sq-config-popover__cflag-list {
+  max-height: 260px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sq-config-popover__group-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.sq-config-popover__group-label:first-child {
+  margin-top: 0;
+}
+
+.sq-config-popover__cflag-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.sq-config-popover__cflag-item:hover {
+  color: var(--accent);
+}
+
+.sq-config-popover__cflag-item input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+
+.sq-config-popover__reset-btn {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.sq-config-popover__reset-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 @media (max-width: 700px) {
   .sq-toolbar {
     flex-wrap: wrap;

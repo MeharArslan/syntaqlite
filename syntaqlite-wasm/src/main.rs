@@ -5,12 +5,13 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::slice;
 
-use syntaqlite_runtime::dialect::ffi::{
-    self as dialect_ffi, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN,
+use syntaqlite::dialect::ffi::{
+    self as dialect_ffi, DialectConfig, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID,
+    FIELD_SPAN,
 };
-use syntaqlite_runtime::fmt::{FormatConfig, Formatter, KeywordCase};
-use syntaqlite_runtime::parser::{CursorBase, SourceSpan};
-use syntaqlite_runtime::{Dialect, NodeId, Parser};
+use syntaqlite::fmt::{FormatConfig, Formatter, KeywordCase};
+use syntaqlite::parser::{CursorBase, SourceSpan};
+use syntaqlite::{Dialect, NodeId, Parser};
 
 thread_local! {
     static RESULT_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
@@ -18,11 +19,13 @@ thread_local! {
     /// Global AnalysisHost reused across wasm_diagnostics calls.
     /// Recreated when the dialect pointer changes.
     static LSP_HOST: RefCell<Option<LspHost>> = const { RefCell::new(None) };
+    /// Dialect config (version/cflags) applied to parser/formatter before each parse.
+    static DIALECT_CONFIG: Cell<DialectConfig> = const { Cell::new(DialectConfig { sqlite_version: i32::MAX, cflags: dialect_ffi::Cflags::new() }) };
 }
 
 struct LspHost {
     dialect_ptr: u32,
-    host: syntaqlite_lsp::AnalysisHost<'static>,
+    host: syntaqlite::lsp::AnalysisHost<'static>,
 }
 
 fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
@@ -33,7 +36,7 @@ fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
         let dialect = unsafe { Dialect::from_raw(raw) };
         lsp = Some(LspHost {
             dialect_ptr,
-            host: syntaqlite_lsp::AnalysisHost::new(dialect),
+            host: syntaqlite::lsp::AnalysisHost::with_dialect(dialect),
         });
     }
     lsp.expect("LSP host must be initialized")
@@ -41,6 +44,14 @@ fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
 
 fn store_lsp_host(lsp: LspHost) {
     LSP_HOST.with(|cell| *cell.borrow_mut() = Some(lsp));
+}
+
+fn get_dialect_config() -> DialectConfig {
+    DIALECT_CONFIG.with(|c| c.get())
+}
+
+fn invalidate_lsp_host() {
+    LSP_HOST.with(|h| h.borrow_mut().take());
 }
 
 fn set_result(text: &str) {
@@ -255,7 +266,9 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut parser = Parser::new(&dialect);
+    let mut parser = Parser::with_dialect(&dialect);
+    let config = get_dialect_config();
+    parser.set_dialect_config(&config);
     let mut cursor = parser.parse(&source);
     let mut out = String::new();
     out.push('[');
@@ -298,7 +311,9 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut parser = Parser::new(&dialect);
+    let mut parser = Parser::with_dialect(&dialect);
+    let config = get_dialect_config();
+    parser.set_dialect_config(&config);
     let mut cursor = parser.parse(&source);
     let mut out = String::new();
     let mut count = 0;
@@ -354,13 +369,16 @@ fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u
         ..Default::default()
     };
 
-    let mut formatter = match Formatter::with_config(&dialect, config) {
+    let mut formatter = match Formatter::with_dialect_config(&dialect, config) {
         Ok(formatter) => formatter,
         Err(e) => {
             set_result(e);
             return 1;
         }
     };
+
+    let dialect_config = get_dialect_config();
+    formatter.set_dialect_config(&dialect_config);
 
     match formatter.format(&source) {
         Ok(sql) => {
@@ -481,6 +499,120 @@ pub extern "C" fn wasm_result_free() {
     result_free()
 }
 
+// ── Dialect config WASM exports ──────────────────────────────────────
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_set_sqlite_version(ptr: u32, len: u32) -> i32 {
+    let s = match decode_input(ptr, len) {
+        Ok(s) => s,
+        Err(e) => {
+            set_result(&e);
+            return 1;
+        }
+    };
+    match dialect_ffi::parse_sqlite_version(&s) {
+        Ok(ver) => {
+            DIALECT_CONFIG.with(|c| {
+                let mut config = c.get();
+                config.sqlite_version = ver;
+                c.set(config);
+            });
+            invalidate_lsp_host();
+            0
+        }
+        Err(e) => {
+            set_result(&e);
+            1
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_set_cflag(ptr: u32, len: u32) -> i32 {
+    let s = match decode_input(ptr, len) {
+        Ok(s) => s,
+        Err(e) => {
+            set_result(&e);
+            return 1;
+        }
+    };
+    match dialect_ffi::parse_cflag_name(&s) {
+        Ok(idx) => {
+            DIALECT_CONFIG.with(|c| {
+                let mut config = c.get();
+                config.cflags.set(idx);
+                c.set(config);
+            });
+            invalidate_lsp_host();
+            0
+        }
+        Err(e) => {
+            set_result(&e);
+            1
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_clear_cflag(ptr: u32, len: u32) -> i32 {
+    let s = match decode_input(ptr, len) {
+        Ok(s) => s,
+        Err(e) => {
+            set_result(&e);
+            return 1;
+        }
+    };
+    match dialect_ffi::parse_cflag_name(&s) {
+        Ok(idx) => {
+            DIALECT_CONFIG.with(|c| {
+                let mut config = c.get();
+                config.cflags.clear(idx);
+                c.set(config);
+            });
+            invalidate_lsp_host();
+            0
+        }
+        Err(e) => {
+            set_result(&e);
+            1
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_clear_all_cflags() -> i32 {
+    DIALECT_CONFIG.with(|c| {
+        let mut config = c.get();
+        config.cflags.clear_all();
+        c.set(config);
+    });
+    invalidate_lsp_host();
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_get_cflag_list() -> i32 {
+    let table = dialect_ffi::cflag_table();
+    let mut out = String::new();
+    out.push('[');
+    for (i, entry) in table.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push_str("{\"name\":\"");
+        json_escape(&mut out, &entry.suffix);
+        out.push_str("\",\"minVersion\":");
+        out.push_str(&entry.min_version.to_string());
+        out.push_str(",\"category\":\"");
+        json_escape(&mut out, &entry.category);
+        out.push_str("\"}");
+
+    }
+    out.push(']');
+    set_result(&out);
+    0
+}
+
 const WASM_DOC_URI: &str = "wasm://input";
 
 fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
@@ -522,10 +654,10 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
         json_escape(&mut out, &d.message);
         out.push_str("\",\"severity\":\"");
         out.push_str(match d.severity {
-            syntaqlite_lsp::Severity::Error => "error",
-            syntaqlite_lsp::Severity::Warning => "warning",
-            syntaqlite_lsp::Severity::Info => "info",
-            syntaqlite_lsp::Severity::Hint => "hint",
+            syntaqlite::lsp::Severity::Error => "error",
+            syntaqlite::lsp::Severity::Warning => "warning",
+            syntaqlite::lsp::Severity::Info => "info",
+            syntaqlite::lsp::Severity::Hint => "hint",
         });
         out.push_str("\"}");
     }

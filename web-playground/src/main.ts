@@ -140,6 +140,7 @@ async function main() {
   try {
     await app.runtime.load();
     await app.dialect.loadDefault(app.runtime);
+    app.dialectConfig.loadAvailableCflags(app.runtime);
     registerSemanticTokensProvider(app.runtime);
     registerCompletionProvider(app.runtime);
     app.runtime.updateStatus("Ready.");

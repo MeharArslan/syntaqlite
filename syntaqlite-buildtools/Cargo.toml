@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-syntaqlite-runtime = { path = "../syntaqlite-runtime", default-features = false, features = ["fmt"] }
+syntaqlite = { path = "../syntaqlite", default-features = false, features = ["fmt"] }
 tempfile = "3.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

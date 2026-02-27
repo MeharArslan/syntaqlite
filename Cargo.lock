@@ -79,8 +79,6 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "syntaqlite",
- "syntaqlite-lsp",
- "syntaqlite-runtime",
 ]
 
 [[package]]
@@ -755,7 +753,6 @@ name = "syntaqlite"
 version = "0.1.0"
 dependencies = [
  "cc",
- "syntaqlite-runtime",
 ]
 
 [[package]]
@@ -767,7 +764,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "similar",
- "syntaqlite-runtime",
+ "syntaqlite",
  "tempfile",
 ]
 
@@ -783,32 +780,14 @@ dependencies = [
  "serde_json",
  "syntaqlite",
  "syntaqlite-buildtools",
- "syntaqlite-lsp",
- "syntaqlite-runtime",
  "tempfile",
-]
-
-[[package]]
-name = "syntaqlite-lsp"
-version = "0.1.0"
-dependencies = [
- "syntaqlite",
- "syntaqlite-runtime",
-]
-
-[[package]]
-name = "syntaqlite-runtime"
-version = "0.1.0"
-dependencies = [
- "cc",
 ]
 
 [[package]]
 name = "syntaqlite-wasm"
 version = "0.1.0"
 dependencies = [
- "syntaqlite-lsp",
- "syntaqlite-runtime",
+ "syntaqlite",
 ]
 
 [[package]]

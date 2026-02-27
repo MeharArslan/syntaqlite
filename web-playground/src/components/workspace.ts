@@ -47,6 +47,7 @@ export class Workspace implements m.ClassComponent<Attrs> {
   private lastAppliedDialectPtr: number | null = null;
   /** Track the last dialect pointer we ran diagnostics against. */
   private lastDiagnosticDialectPtr: number | null = null;
+  private lastDiagnosticConfigKey: string | null = null;
 
   constructor() {
     this.debouncedUpdate = debounce((sql: string) => {
@@ -69,13 +70,19 @@ export class Workspace implements m.ClassComponent<Attrs> {
     // active dialect pointer changes.
     if (app.runtime.ready && app.dialect.active) {
       const dPtr = app.dialect.active.ptr;
+      const cfgKey = app.dialectConfig.configKey;
       if (dPtr !== this.lastAppliedDialectPtr) {
         this.lastAppliedDialectPtr = dPtr;
         this.applySelectionForDialect(app.runtime, presetLibrary.dialectId, selectedPresetId, true);
         this.lastDiagnosticDialectPtr = dPtr;
-      } else if (this.editor && dPtr !== this.lastDiagnosticDialectPtr) {
+        this.lastDiagnosticConfigKey = cfgKey;
+      } else if (
+        this.editor &&
+        (dPtr !== this.lastDiagnosticDialectPtr || cfgKey !== this.lastDiagnosticConfigKey)
+      ) {
         this.updateDiagnostics(app.runtime, this.sql);
         this.lastDiagnosticDialectPtr = dPtr;
+        this.lastDiagnosticConfigKey = cfgKey;
       }
     }
 

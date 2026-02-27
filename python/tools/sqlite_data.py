@@ -259,12 +259,16 @@ def cmd_extract_functions(args: argparse.Namespace) -> int:
         return rc
 
     # Phase 1: Audit cflags per version.
+    rust_output = str(
+        PROJECT_ROOT / "syntaqlite" / "src" / "dialect" / "cflag_versions_table.rs"
+    )
     print()
     print("Phase 1: Auditing cflags per version...")
     result = subprocess.run([
         str(cli_bin), "audit-cflags",
         "--amalgamation-dir", amalgamation_dir,
         "--output", audit_output,
+        "--rust-output", rust_output,
     ])
     if result.returncode != 0:
         print("Cflag audit failed", file=sys.stderr)

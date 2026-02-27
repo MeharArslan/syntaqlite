@@ -23,8 +23,8 @@
 //! The saw_subquery tests verify the OMIT_SUBQUERY detection mechanism,
 //! which uses a parser flag rather than keyword suppression.
 
-use syntaqlite::low_level::TokenType;
-use syntaqlite_runtime::dialect::ffi::DialectConfig;
+use syntaqlite::sqlite::low_level::TokenType;
+use syntaqlite::dialect::ffi::DialectConfig;
 
 const fn tk(t: TokenType) -> u32 {
     t as u32
@@ -36,8 +36,8 @@ const fn tk(t: TokenType) -> u32 {
 
 /// Tokenize SQL with cflags set (latest version).
 fn tokenize_with_cflags(sql: &str, cflag_indices: &[u32]) -> Vec<(u32, String)> {
-    let dialect = syntaqlite::low_level::dialect();
-    let mut tok = syntaqlite_runtime::parser::Tokenizer::new(*dialect);
+    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let mut tok = syntaqlite::parser::Tokenizer::with_dialect(*dialect);
     let mut config = DialectConfig {
         sqlite_version: i32::MAX,
         ..Default::default()
@@ -63,8 +63,8 @@ fn tokenize_at_version_cflags(
     version: i32,
     cflag_indices: &[u32],
 ) -> Vec<(u32, String)> {
-    let dialect = syntaqlite::low_level::dialect();
-    let mut tok = syntaqlite_runtime::parser::Tokenizer::new(*dialect);
+    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let mut tok = syntaqlite::parser::Tokenizer::with_dialect(*dialect);
     let mut config = DialectConfig {
         sqlite_version: version,
         ..Default::default()
@@ -81,8 +81,8 @@ fn tokenize_at_version_cflags(
 
 /// Parse SQL with cflags set (latest version) and return whether it succeeded.
 fn parses_ok_with_cflags(sql: &str, cflag_indices: &[u32]) -> bool {
-    let dialect = syntaqlite::low_level::dialect();
-    let mut parser = syntaqlite_runtime::Parser::new(dialect);
+    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let mut parser = syntaqlite::Parser::with_dialect(dialect);
     let mut config = DialectConfig {
         sqlite_version: i32::MAX,
         ..Default::default()
@@ -870,8 +870,8 @@ fn omit_flag_does_not_affect_unrelated_keywords() {
 
 /// Parse SQL and return (success, saw_subquery).
 fn parse_saw_subquery(sql: &str) -> (bool, bool) {
-    let dialect = syntaqlite::low_level::dialect();
-    let mut parser = syntaqlite_runtime::Parser::new(dialect);
+    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let mut parser = syntaqlite::Parser::with_dialect(dialect);
     let mut cursor = parser.parse(sql);
     let ok = matches!(cursor.next_statement(), Some(Ok(_)));
     let saw = cursor.saw_subquery();
