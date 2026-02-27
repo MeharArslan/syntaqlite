@@ -18,27 +18,21 @@ pub struct Parser {
 
 impl Parser {
     /// Create a new parser with default configuration.
-    ///
-    /// When `pin-version` or `pin-cflags` features are enabled, the parser
-    /// is configured with the compile-time pinned values.
     pub fn new() -> Self {
-        let mut inner = syntaqlite_runtime::Parser::new(&crate::DIALECT);
-        inner.set_dialect_config(&crate::pinned_dialect_config());
-        Parser { inner }
+        Parser {
+            inner: syntaqlite_runtime::Parser::new(&crate::DIALECT),
+        }
     }
 
     /// Create a parser with the given configuration.
-    ///
-    /// When `pin-version` or `pin-cflags` features are enabled, the parser
-    /// is configured with the compile-time pinned values.
-    pub fn with_config(config: &syntaqlite_runtime::parser::ParserConfig) -> Self {
-        let mut inner = syntaqlite_runtime::Parser::with_config(&crate::DIALECT, config);
-        inner.set_dialect_config(&crate::pinned_dialect_config());
-        Parser { inner }
+    pub fn with_config(config: &crate::config::ParserConfig) -> Self {
+        Parser {
+            inner: syntaqlite_runtime::Parser::with_config(&crate::DIALECT, config),
+        }
     }
 
     /// Access the current configuration.
-    pub fn config(&self) -> &syntaqlite_runtime::parser::ParserConfig {
+    pub fn config(&self) -> &crate::config::ParserConfig {
         self.inner.config()
     }
 
@@ -88,7 +82,7 @@ impl LowLevelParser {
     }
 
     /// Create a low-level parser with the given configuration.
-    pub fn with_config(config: &syntaqlite_runtime::parser::ParserConfig) -> Self {
+    pub fn with_config(config: &crate::config::ParserConfig) -> Self {
         LowLevelParser {
             inner: syntaqlite_runtime::parser::LowLevelParser::with_config(&crate::DIALECT, config),
         }
@@ -200,13 +194,10 @@ pub struct Tokenizer {
 
 impl Tokenizer {
     /// Create a new tokenizer.
-    ///
-    /// When `pin-version` or `pin-cflags` features are enabled, the tokenizer
-    /// is configured with the compile-time pinned values.
     pub fn new() -> Self {
-        let mut inner = syntaqlite_runtime::parser::Tokenizer::new(*crate::DIALECT);
-        inner.set_dialect_config(&crate::pinned_dialect_config());
-        Tokenizer { inner }
+        Tokenizer {
+            inner: syntaqlite_runtime::parser::Tokenizer::new(*crate::DIALECT),
+        }
     }
 
     /// Bind source text and return a cursor for iterating typed tokens.

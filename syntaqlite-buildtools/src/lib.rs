@@ -116,6 +116,8 @@ mod codegen_api {
         pub ast_rs: String,
         pub lib_rs: String,
         pub wrappers_rs: String,
+        pub build_rs: String,
+        pub cargo_toml: String,
     }
 
     pub struct CodegenArtifacts {
@@ -166,6 +168,9 @@ mod codegen_api {
         pub extra_keywords: &'a [String],
         pub parser_symbol_prefix: Option<&'a str>,
         pub include_rust: bool,
+        /// Crate name for `Cargo.toml` (e.g. `"syntaqlite"`, `"syntaqlite-libsql"`).
+        /// Only used when `include_rust` is true.
+        pub crate_name: Option<&'a str>,
     }
 
     /// Return the set of token names that are keywords in the base SQLite table.
@@ -348,6 +353,10 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
                     &request.dialect.dialect_symbol_fn_name(),
                 ),
                 wrappers_rs: dialect_codegen::generate_rust_wrappers(),
+                build_rs: dialect_codegen::generate_rust_build_rs(request.dialect.name()),
+                cargo_toml: dialect_codegen::generate_cargo_toml(
+                    request.crate_name.unwrap_or(request.dialect.name()),
+                ),
             })
         } else {
             None

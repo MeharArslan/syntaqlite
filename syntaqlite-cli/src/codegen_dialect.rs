@@ -137,6 +137,7 @@ fn codegen_to_dir_with_base(
         extra_keywords: &extra_keywords,
         parser_symbol_prefix: Some(&parser_prefix),
         include_rust: false,
+        crate_name: None,
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
 

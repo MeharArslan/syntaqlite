@@ -39,11 +39,9 @@ pub use wrappers::{Formatter, Parser, StatementCursor};
 
 /// Configuration types for parsers and formatters.
 pub mod config {
-    pub use syntaqlite_runtime::dialect::ffi::{Cflags, DialectConfig};
+    pub use syntaqlite_runtime::dialect::ffi::{CflagInfo, Cflags, DialectConfig, cflag_table};
     pub use syntaqlite_runtime::fmt::{FormatConfig, KeywordCase};
     pub use syntaqlite_runtime::parser::ParserConfig;
 }
-
-include!(concat!(env!("OUT_DIR"), "/pinned_config.rs"));
 
 mod tokens;

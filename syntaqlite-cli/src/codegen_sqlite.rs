@@ -147,6 +147,7 @@ fn handle_codegen(
         extra_keywords: &no_keywords,
         parser_symbol_prefix: None,
         include_rust: true,
+        crate_name: Some("syntaqlite"),
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
     let outputs = syntaqlite_buildtools::sqlite::output_manifest::sqlite_output_manifest(
@@ -155,14 +156,9 @@ fn handle_codegen(
 
     // Step 4: Clean stale generated files, then write outputs
     let out = Path::new(output_dir);
-    let include_dir = Path::new(output_dir)
-        .parent()
-        .unwrap_or(Path::new("."))
-        .join(format!("include/{}", dialect.include_dir_name()));
-    let rust_src_dir = Path::new(output_dir)
-        .parent()
-        .unwrap_or(Path::new("."))
-        .join("src");
+    let crate_root = out.parent().unwrap_or(Path::new("."));
+    let include_dir = crate_root.join(format!("include/{}", dialect.include_dir_name()));
+    let rust_src_dir = crate_root.join("src");
 
     for dir in [out, include_dir.as_path()] {
         if dir.is_dir() {
@@ -176,10 +172,11 @@ fn handle_codegen(
 
     log_verbose(verbose, "Writing output files...");
     for output in outputs {
-        let dir = match output.bucket {
+        let dir: &Path = match output.bucket {
             syntaqlite_buildtools::sqlite::output_manifest::OutputBucket::Include => &include_dir,
             syntaqlite_buildtools::sqlite::output_manifest::OutputBucket::DialectCsrc => out,
             syntaqlite_buildtools::sqlite::output_manifest::OutputBucket::RustSrc => &rust_src_dir,
+            syntaqlite_buildtools::sqlite::output_manifest::OutputBucket::CrateRoot => crate_root,
         };
         write_file(&dir.join(output.file_name), output.content)?;
     }

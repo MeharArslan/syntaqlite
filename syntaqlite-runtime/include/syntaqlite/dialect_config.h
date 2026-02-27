@@ -23,6 +23,7 @@
 #endif
 
 #include <stdint.h>
+
 #include "syntaqlite/sqlite_cflags.h"
 
 #ifdef __cplusplus

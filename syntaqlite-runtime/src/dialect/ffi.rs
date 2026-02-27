@@ -56,6 +56,52 @@ impl std::fmt::Debug for Cflags {
     }
 }
 
+// ── Cflag metadata table ─────────────────────────────────────────────
+
+/// The raw content of `sqlite_cflags.h`, embedded at compile time.
+const CFLAGS_HEADER: &str = include_str!("../../include/syntaqlite/sqlite_cflags.h");
+
+/// Metadata for a single compile-time flag.
+#[derive(Debug, Clone, Copy)]
+pub struct CflagInfo {
+    /// The suffix shared across C and Rust (e.g. `"OMIT_WINDOWFUNC"`).
+    ///
+    /// - C define: `SYNTAQLITE_CFLAG_OMIT_WINDOWFUNC`
+    /// - Rust env var: `SYNTAQLITE_CFLAG_OMIT_WINDOWFUNC=1`
+    pub suffix: &'static str,
+    /// Bit index in [`Cflags`] (matches `SYNQ_CFLAG_IDX_*` constants).
+    pub index: u32,
+}
+
+/// All known compile-time flags, parsed once from the embedded C header.
+///
+/// Returns a static slice of [`CflagInfo`] entries in index order.
+pub fn cflag_table() -> &'static [CflagInfo] {
+    use std::sync::LazyLock;
+    static TABLE: LazyLock<Vec<CflagInfo>> = LazyLock::new(|| {
+        let mut entries = Vec::new();
+        for line in CFLAGS_HEADER.lines() {
+            let Some(rest) = line.strip_prefix("#define SYNQ_CFLAG_IDX_") else {
+                continue;
+            };
+            let mut parts = rest.split_whitespace();
+            let Some(suffix) = parts.next() else { continue };
+            if suffix == "COUNT" {
+                continue;
+            }
+            let Some(idx_str) = parts.next() else {
+                continue;
+            };
+            let Ok(index) = idx_str.parse::<u32>() else {
+                continue;
+            };
+            entries.push(CflagInfo { suffix, index });
+        }
+        entries
+    });
+    &TABLE
+}
+
 /// Mirrors C `SyntaqliteDialectConfig` from `include/syntaqlite/dialect_config.h`.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]

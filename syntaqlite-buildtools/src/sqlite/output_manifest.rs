@@ -8,6 +8,8 @@ pub enum OutputBucket {
     Include,
     DialectCsrc,
     RustSrc,
+    /// Files that belong in the crate root (e.g. `build.rs`).
+    CrateRoot,
 }
 
 #[derive(Debug, Clone)]
@@ -123,6 +125,16 @@ pub fn sqlite_output_manifest(
         bucket: OutputBucket::RustSrc,
         file_name: "wrappers.rs".to_string(),
         content: rust.wrappers_rs,
+    });
+    out.push(OutputArtifact {
+        bucket: OutputBucket::CrateRoot,
+        file_name: "build.rs".to_string(),
+        content: rust.build_rs,
+    });
+    out.push(OutputArtifact {
+        bucket: OutputBucket::CrateRoot,
+        file_name: "Cargo.toml".to_string(),
+        content: rust.cargo_toml,
     });
 
     Ok(out)

@@ -36,6 +36,7 @@ pub use syntaqlite_runtime::ParseError;
 const LIB_CONFIG_MOD: &str = r#"
 /// Configuration types for parsers and formatters.
 pub mod config {
+    pub use syntaqlite_runtime::dialect::ffi::{CflagInfo, Cflags, DialectConfig, cflag_table};
     pub use syntaqlite_runtime::fmt::{FormatConfig, KeywordCase};
     pub use syntaqlite_runtime::parser::ParserConfig;
 }
@@ -59,27 +60,17 @@ pub struct Parser {
 
 impl Parser {
     /// Create a new parser with default configuration.
-    ///
-    /// When `pin-version` or `pin-cflags` features are enabled, the parser
-    /// is configured with the compile-time pinned values.
     pub fn new() -> Self {
-        let mut inner = syntaqlite_runtime::Parser::new(&crate::DIALECT);
-        inner.set_dialect_config(&crate::pinned_dialect_config());
-        Parser { inner }
+        Parser { inner: syntaqlite_runtime::Parser::new(&crate::DIALECT) }
     }
 
     /// Create a parser with the given configuration.
-    ///
-    /// When `pin-version` or `pin-cflags` features are enabled, the parser
-    /// is configured with the compile-time pinned values.
-    pub fn with_config(config: &syntaqlite_runtime::parser::ParserConfig) -> Self {
-        let mut inner = syntaqlite_runtime::Parser::with_config(&crate::DIALECT, config);
-        inner.set_dialect_config(&crate::pinned_dialect_config());
-        Parser { inner }
+    pub fn with_config(config: &crate::config::ParserConfig) -> Self {
+        Parser { inner: syntaqlite_runtime::Parser::with_config(&crate::DIALECT, config) }
     }
 
     /// Access the current configuration.
-    pub fn config(&self) -> &syntaqlite_runtime::parser::ParserConfig {
+    pub fn config(&self) -> &crate::config::ParserConfig {
         self.inner.config()
     }
 
@@ -129,7 +120,7 @@ impl LowLevelParser {
     }
 
     /// Create a low-level parser with the given configuration.
-    pub fn with_config(config: &syntaqlite_runtime::parser::ParserConfig) -> Self {
+    pub fn with_config(config: &crate::config::ParserConfig) -> Self {
         LowLevelParser {
             inner: syntaqlite_runtime::parser::LowLevelParser::with_config(&crate::DIALECT, config),
         }
@@ -290,37 +281,158 @@ fn emit_section(w: &mut RustWriter, section: &str) {
     w.newline();
 }
 
-fn emit_lib_dialect_binding(w: &mut RustWriter, dialect_fn: &str) {
-    w.line("use std::sync::LazyLock;");
-    w.newline();
-    w.line("use syntaqlite_runtime::dialect::ffi as dialect_ffi;");
-    w.line("unsafe extern \"C\" {");
-    w.indent();
-    w.line(&format!(
-        "fn {}() -> *const dialect_ffi::Dialect;",
-        dialect_fn
-    ));
-    w.dedent();
-    w.line("}");
-    w.newline();
-    w.line("static DIALECT: LazyLock<syntaqlite_runtime::Dialect<'static>> =");
-    w.line(&format!(
-        "    LazyLock::new(|| unsafe {{ syntaqlite_runtime::Dialect::from_raw({}()) }});",
-        dialect_fn
-    ));
-    w.newline();
-}
-
 pub fn generate_rust_lib(dialect_fn: &str) -> String {
     let mut w = RustWriter::new();
     w.file_header();
     emit_section(&mut w, LIB_MODULE_DECLS);
-    emit_lib_dialect_binding(&mut w, dialect_fn);
+    w.lines(&format!(
+        r#"
+use std::sync::LazyLock;
+
+use syntaqlite_runtime::dialect::ffi as dialect_ffi;
+unsafe extern "C" {{
+    fn {dialect_fn}() -> *const dialect_ffi::Dialect;
+}}
+
+static DIALECT: LazyLock<syntaqlite_runtime::Dialect<'static>> =
+    LazyLock::new(|| unsafe {{ syntaqlite_runtime::Dialect::from_raw({dialect_fn}()) }});
+"#
+    ));
+    w.newline();
     emit_section(&mut w, LIB_LOW_LEVEL_MOD);
     emit_section(&mut w, LIB_EXPORTS);
     emit_section(&mut w, LIB_CONFIG_MOD);
     w.line("mod tokens;");
     w.finish()
+}
+
+/// Generate `build.rs` for a dialect crate.
+///
+/// The generated build script compiles the dialect's C sources via `cc`
+/// and handles version/cflag pinning by passing `-D` flags to the C compiler.
+pub fn generate_rust_build_rs(dialect_name: &str) -> String {
+    let mut w = RustWriter::new();
+    w.file_header();
+    w.lines(&format!(
+        r#"
+use std::env;
+use std::path::PathBuf;
+
+fn main() {{
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let csrc = manifest_dir.join("csrc");
+    let runtime_include = manifest_dir.join("../syntaqlite-runtime/include");
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+
+    // Dialect sources — Lemon parser, tokenizer, keyword lookup, and dialect glue.
+    // Grammar-agnostic engine C is built by the syntaqlite-runtime crate.
+    let mut build = cc::Build::new();
+    build
+        .file(csrc.join("dialect.c"))
+        .file(csrc.join("{dialect_name}_parse.c"))
+        .file(csrc.join("{dialect_name}_tokenize.c"))
+        .file(csrc.join("{dialect_name}_keyword.c"))
+        .include(&manifest_dir) // for dialect csrc/ headers
+        .include(manifest_dir.join("include")) // for dialect include/ headers
+        .include(&runtime_include) // for shared syntaqlite/*.h and syntaqlite_ext/*.h
+        .flag("-Wno-int-conversion")
+        .flag("-Wno-void-pointer-to-int-cast")
+        .flag("-Wno-unused-variable")
+        .flag("-Wno-unused-parameter")
+        .flag("-Wno-comment");
+    if target_os == "emscripten" {{
+        build.flag("-fPIC");
+    }}
+
+    // ── Version pinning ─────────────────────────────────────────────────
+    //
+    // With --features pin-version, reads SYNTAQLITE_SQLITE_VERSION env var
+    // and passes -DSYNTAQLITE_SQLITE_VERSION=<value> to cc.
+    if env::var("CARGO_FEATURE_PIN_VERSION").is_ok() {{
+        let ver_str = env::var("SYNTAQLITE_SQLITE_VERSION").unwrap_or_else(|_| {{
+            panic!(
+                "pin-version feature requires SYNTAQLITE_SQLITE_VERSION env var \
+                 (e.g. SYNTAQLITE_SQLITE_VERSION=3035000)"
+            )
+        }});
+        let _: i32 = ver_str.parse().unwrap_or_else(|_| {{
+            panic!("SYNTAQLITE_SQLITE_VERSION must be an integer (e.g. 3035000), got: {{ver_str}}")
+        }});
+        build.define("SYNTAQLITE_SQLITE_VERSION", ver_str.as_str());
+    }}
+
+    // ── Cflag pinning ───────────────────────────────────────────────────
+    //
+    // With --features pin-cflags, scans for SYNTAQLITE_CFLAG_* env vars
+    // and passes the same -D flags to cc.
+    if env::var("CARGO_FEATURE_PIN_CFLAGS").is_ok() {{
+        let all_entries = syntaqlite_runtime::dialect::ffi::cflag_table();
+
+        // Pass the master switch.
+        build.define("SYNTAQLITE_SQLITE_CFLAGS", None);
+
+        // Scan env vars for SYNTAQLITE_CFLAG_* and pass matching -D flags.
+        for entry in all_entries {{
+            let env_key = format!("SYNTAQLITE_CFLAG_{{}}", entry.suffix);
+            if env::var(&env_key).is_ok() {{
+                build.define(&env_key, None);
+                println!("cargo:rerun-if-env-changed={{env_key}}");
+            }}
+        }}
+    }}
+
+    build.compile("syntaqlite_dialect");
+
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=csrc");
+    println!("cargo:rerun-if-changed=include");
+    // Dialect C files #include runtime headers.
+    println!("cargo:rerun-if-changed=../syntaqlite-runtime/include");
+    // Re-run when pinning env vars change.
+    println!("cargo:rerun-if-env-changed=SYNTAQLITE_SQLITE_VERSION");
+}}
+"#
+    ));
+    w.finish()
+}
+
+/// Generate `Cargo.toml` for a dialect crate.
+///
+/// `crate_name` is the published crate name (e.g. `"syntaqlite"` for the
+/// base SQLite dialect, `"syntaqlite-libsql"` for an extension dialect).
+pub fn generate_cargo_toml(crate_name: &str) -> String {
+    format!(
+        r#"# @generated by syntaqlite-buildtools — DO NOT EDIT
+
+[package]
+name = "{crate_name}"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["fmt"]
+fmt = ["syntaqlite-runtime/fmt"]
+
+# Pin version/cflags at compile time for dead-code elimination.
+# Values come from env vars, using the same names as the C defines:
+#
+#   SYNTAQLITE_SQLITE_VERSION=3035000 cargo build --features pin-version
+#
+#   SYNTAQLITE_CFLAG_OMIT_WINDOWFUNC=1 \
+#   SYNTAQLITE_CFLAG_ENABLE_FTS5=1 \
+#   cargo build --features pin-cflags
+#
+pin-version = []   # Pin SQLite version via SYNTAQLITE_SQLITE_VERSION env var
+pin-cflags = []    # Pin compile-time flags via SYNTAQLITE_CFLAG_* env vars
+
+[build-dependencies]
+cc = "1.0"
+syntaqlite-runtime = {{ path = "../syntaqlite-runtime", default-features = false }}
+
+[dependencies]
+syntaqlite-runtime = {{ path = "../syntaqlite-runtime", default-features = false }}
+"#
+    )
 }
 
 /// Generate `wrappers.rs` for a dialect crate.
