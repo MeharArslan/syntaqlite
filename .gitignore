@@ -29,6 +29,14 @@ examples/syntaqlite_sqlite.c
 # profiling
 profile.json.gz
 
+# extensions/vscode
+extensions/vscode/out/
+extensions/vscode/node_modules/
+
+# extensions/mcp
+extensions/mcp/.venv/
+extensions/mcp/__pycache__/
+
 # For extraction
 sqlite-sources
 sqlite-amalgamations

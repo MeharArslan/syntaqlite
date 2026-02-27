@@ -1,0 +1,10 @@
+{
+  "languages": [
+    {
+      "languageId": "sql",
+      "filePatterns": ["*.sql"]
+    }
+  ],
+  "command": "syntaqlite",
+  "args": ["lsp"]
+}
