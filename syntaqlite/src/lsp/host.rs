@@ -576,6 +576,58 @@ mod tests {
     }
 
     #[test]
+    fn available_functions_default_config_includes_baseline() {
+        let host = AnalysisHost::new();
+        let funcs = host.available_functions();
+        let names: Vec<&str> = funcs.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"abs"), "abs should be in default config");
+        assert!(names.contains(&"count"), "count should be in default config");
+        assert!(
+            !names.contains(&"acos"),
+            "acos requires ENABLE_MATH_FUNCTIONS"
+        );
+    }
+
+    #[test]
+    fn available_functions_with_config_filters_by_cflags() {
+        let mut host = AnalysisHost::new();
+        let mut config = crate::dialect::ffi::DialectConfig::default();
+        // SQLITE_ENABLE_MATH_FUNCTIONS = cflag index 34
+        config.cflags.set(34);
+        host.set_dialect_config(config);
+        let funcs = host.available_functions();
+        let names: Vec<&str> = funcs.iter().map(|f| f.name.as_str()).collect();
+        assert!(
+            names.contains(&"acos"),
+            "acos should appear with ENABLE_MATH_FUNCTIONS"
+        );
+    }
+
+    #[test]
+    fn available_functions_merges_ambient_context() {
+        let mut host = AnalysisHost::new();
+        host.set_ambient_context(crate::lsp::context::AmbientContext {
+            tables: vec![],
+            views: vec![],
+            functions: vec![crate::lsp::context::FunctionDef {
+                name: "my_custom_func".to_string(),
+                args: Some(2),
+                description: None,
+            }],
+        });
+        let funcs = host.available_functions();
+        let names: Vec<&str> = funcs.iter().map(|f| f.name.as_str()).collect();
+        assert!(
+            names.contains(&"my_custom_func"),
+            "user-provided function should be in results"
+        );
+        assert!(
+            names.contains(&"abs"),
+            "built-in abs should still be present"
+        );
+    }
+
+    #[test]
     fn completions_include_join_after_from_table_no_trailing_space() {
         let mut host = AnalysisHost::new();
         let uri = "file:///test.sql";

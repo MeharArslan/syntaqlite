@@ -230,19 +230,22 @@ fn completion_items_for_expected(
                     }
                 }
             }
-            for func in &ctx.functions {
-                if seen.insert(func.name.clone()) {
-                    let detail = match func.args {
-                        Some(n) => format!("function ({n} args)"),
-                        None => "function (variadic)".into(),
-                    };
-                    out.push(CompletionItem {
-                        label: func.name.clone(),
-                        kind: Some(CompletionItemKind::FUNCTION),
-                        detail: Some(detail),
-                        ..Default::default()
-                    });
-                }
+        }
+
+        // All available functions: SQLite built-in (filtered by version/cflags)
+        // merged with user-provided functions from ambient context.
+        for func in host.available_functions() {
+            if seen.insert(func.name.clone()) {
+                let detail = match func.args {
+                    Some(n) => format!("function ({n} args)"),
+                    None => "function (variadic)".into(),
+                };
+                out.push(CompletionItem {
+                    label: func.name.clone(),
+                    kind: Some(CompletionItemKind::FUNCTION),
+                    detail: Some(detail),
+                    ..Default::default()
+                });
             }
         }
     }
@@ -421,6 +424,8 @@ fn position_to_offset(source: &str, pos: Position) -> usize {
 
 #[cfg(test)]
 mod tests {
+    use lsp_types::CompletionItem;
+
     use super::completion_items_for_expected;
     use syntaqlite::lsp::AnalysisHost;
 
@@ -445,6 +450,79 @@ mod tests {
         assert!(
             join_kw_labels.iter().any(|kw| labels.contains(kw)),
             "none of {join_kw_labels:?} found: labels={labels:?}, expected={expected_names:?}"
+        );
+    }
+
+    #[test]
+    fn function_completions_include_builtin_functions() {
+        let dialect = *syntaqlite::sqlite::low_level::dialect();
+        let mut host = AnalysisHost::with_dialect(dialect);
+        let uri = "file:///test.sql";
+        // After SELECT, an identifier (including function names) is expected.
+        let sql = "SELECT ";
+        host.open_document(uri, 1, sql.to_string());
+
+        let expected = host.expected_tokens_at_offset(uri, sql.len());
+        let items = completion_items_for_expected(&dialect, &host, &expected);
+
+        let func_items: Vec<&CompletionItem> = items
+            .iter()
+            .filter(|i| i.kind == Some(lsp_types::CompletionItemKind::FUNCTION))
+            .collect();
+        assert!(
+            !func_items.is_empty(),
+            "should have function completion items"
+        );
+
+        let labels: Vec<&str> = func_items.iter().map(|i| i.label.as_str()).collect();
+        assert!(labels.contains(&"abs"), "abs should be in completions");
+        assert!(labels.contains(&"count"), "count should be in completions");
+    }
+
+    #[test]
+    fn function_completions_respect_dialect_config() {
+        let dialect = *syntaqlite::sqlite::low_level::dialect();
+        let mut host = AnalysisHost::with_dialect(dialect);
+        let mut config = syntaqlite::dialect::ffi::DialectConfig::default();
+        // Enable math functions
+        config.cflags.set(34);
+        host.set_dialect_config(config);
+
+        let uri = "file:///test.sql";
+        let sql = "SELECT ";
+        host.open_document(uri, 1, sql.to_string());
+
+        let expected = host.expected_tokens_at_offset(uri, sql.len());
+        let items = completion_items_for_expected(&dialect, &host, &expected);
+        let labels: Vec<&str> = items.iter().map(|i| i.label.as_str()).collect();
+        assert!(
+            labels.contains(&"acos"),
+            "acos should appear with ENABLE_MATH_FUNCTIONS"
+        );
+    }
+
+    #[test]
+    fn function_completions_not_offered_where_identifiers_not_expected() {
+        let dialect = *syntaqlite::sqlite::low_level::dialect();
+        let mut host = AnalysisHost::with_dialect(dialect);
+        let uri = "file:///test.sql";
+        // After FROM + table + trailing space, only keywords like JOIN/WHERE expected, not identifiers for functions.
+        // Actually, identifiers are expected here (table names). Let's use a position
+        // where only keywords are expected: right after SELECT keyword with no space.
+        // "CREATE " expects TABLE/VIEW/etc. keywords, not identifiers.
+        let sql = "CREATE ";
+        host.open_document(uri, 1, sql.to_string());
+
+        let expected = host.expected_tokens_at_offset(uri, sql.len());
+        let items = completion_items_for_expected(&dialect, &host, &expected);
+        let func_items: Vec<&CompletionItem> = items
+            .iter()
+            .filter(|i| i.kind == Some(lsp_types::CompletionItemKind::FUNCTION))
+            .collect();
+        assert!(
+            func_items.is_empty(),
+            "no function completions expected after CREATE, got: {:?}",
+            func_items.iter().map(|i| &i.label).collect::<Vec<_>>()
         );
     }
 

@@ -5,6 +5,8 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::slice;
 
+use serde::Serialize;
+
 use syntaqlite::dialect::ffi::{
     self as dialect_ffi, DialectConfig, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID,
     FIELD_SPAN,
@@ -34,9 +36,11 @@ fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
         let raw = dialect_ptr as *const dialect_ffi::Dialect;
         // SAFETY: the caller set a valid dialect pointer via wasm_set_dialect.
         let dialect = unsafe { Dialect::from_raw(raw) };
+        let mut host = syntaqlite::lsp::AnalysisHost::with_dialect(dialect);
+        host.set_dialect_config(get_dialect_config());
         lsp = Some(LspHost {
             dialect_ptr,
-            host: syntaqlite::lsp::AnalysisHost::with_dialect(dialect),
+            host,
         });
     }
     lsp.expect("LSP host must be initialized")
@@ -612,6 +616,38 @@ pub extern "C" fn wasm_get_cflag_list() -> i32 {
     0
 }
 
+#[derive(Serialize)]
+struct AvailableFunction {
+    name: String,
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_get_available_functions() -> i32 {
+    let dialect_ptr = DIALECT_PTR.with(|p| p.get());
+    if dialect_ptr == 0 {
+        set_result("dialect pointer is not set; call wasm_set_dialect first");
+        return -1;
+    }
+
+    let lsp = take_or_create_lsp_host(dialect_ptr);
+    let funcs = lsp.host.available_functions();
+
+    // Deduplicate by name (multiple arities collapse to one entry).
+    let mut seen = HashSet::new();
+    let items: Vec<AvailableFunction> = funcs
+        .iter()
+        .filter(|f| seen.insert(f.name.clone()))
+        .map(|f| AvailableFunction {
+            name: f.name.clone(),
+        })
+        .collect();
+    let count = items.len() as i32;
+    set_result(&serde_json::to_string(&items).unwrap());
+
+    store_lsp_host(lsp);
+    count
+}
+
 const WASM_DOC_URI: &str = "wasm://input";
 
 fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
@@ -717,6 +753,12 @@ fn is_keyword_symbol(name: &str) -> bool {
             .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
 }
 
+#[derive(Serialize)]
+struct CompletionItem<'a> {
+    label: &'a str,
+    kind: &'a str,
+}
+
 fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
     let dialect_ptr = DIALECT_PTR.with(|p| p.get());
     if dialect_ptr == 0 {
@@ -747,36 +789,52 @@ fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
     let expected_set: HashSet<u32> = expected.into_iter().collect();
 
     let mut seen = HashSet::new();
-    let mut count = 0i32;
-    let mut out = String::new();
-    out.push('[');
+    let mut items: Vec<CompletionItem> = Vec::new();
+
+    let mut expects_identifier = false;
+    for &tok in &expected_set {
+        if dialect.token_category(tok) == syntaqlite::dialect::TokenCategory::Identifier {
+            expects_identifier = true;
+            break;
+        }
+    }
 
     for i in 0..dialect.keyword_count() {
         let Some((code, name)) = dialect.keyword_entry(i) else {
             continue;
         };
-        if !expected_set.contains(&code) {
+        if !expected_set.contains(&code) || !is_keyword_symbol(name) {
             continue;
         }
-        if !is_keyword_symbol(name) {
-            continue;
+        if seen.insert(name.to_string()) {
+            items.push(CompletionItem {
+                label: name,
+                kind: "keyword",
+            });
         }
-        if !seen.insert(name.to_string()) {
-            continue;
-        }
-        if count > 0 {
-            out.push(',');
-        }
-        out.push_str("{\"label\":\"");
-        json_escape(&mut out, name);
-        out.push_str("\",\"kind\":\"");
-        out.push_str("keyword");
-        out.push_str("\"}");
-        count += 1;
     }
 
-    out.push(']');
-    set_result(&out);
+    // When identifiers are expected, include built-in functions.
+    // Collect owned names first since available_functions() returns owned Strings.
+    let func_names: Vec<String> = if expects_identifier {
+        lsp.host
+            .available_functions()
+            .into_iter()
+            .filter(|f| seen.insert(f.name.clone()))
+            .map(|f| f.name)
+            .collect()
+    } else {
+        Vec::new()
+    };
+    for name in &func_names {
+        items.push(CompletionItem {
+            label: name,
+            kind: "function",
+        });
+    }
+
+    let count = items.len() as i32;
+    set_result(&serde_json::to_string(&items).unwrap());
     store_lsp_host(lsp);
     count
 }
