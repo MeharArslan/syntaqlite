@@ -33,6 +33,7 @@ pub struct ViewDef {
     pub columns: Vec<ColumnDef>,
 }
 
+#[derive(Clone)]
 pub struct FunctionDef {
     pub name: String,
     /// None = variadic.

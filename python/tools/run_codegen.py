@@ -4,16 +4,16 @@
 
 """Build and run syntaqlite-cli codegen to generate parser and tokenizer.
 
-Three-stage bootstrap pipeline:
-  Stage 1 (--extract): Extract C fragments from raw SQLite source.
-  Stage 2 (default):   Generate base syntaqlite crate C + Rust code.
-  Stage 3:             Dialect codegen (always available via default features).
+Multi-stage bootstrap pipeline:
+  Stage 1  (--extract): Extract C fragments from raw SQLite source.
+  Stage 1b (always):    Generate functions catalog Rust module from functions.json.
+  Stage 2  (always):    Generate base syntaqlite crate C + Rust code.
 
 Usage:
-    python3 python/tools/run_codegen.py              # Stage 2 only
-    python3 python/tools/run_codegen.py --extract     # Stage 1 + 2
-    tools/dev/run-codegen                             # Stage 2 only
-    tools/dev/run-codegen --extract                   # Stage 1 + 2
+    python3 python/tools/run_codegen.py              # Stage 1b + 2
+    python3 python/tools/run_codegen.py --extract     # Stage 1 + 1b + 2
+    tools/dev/run-codegen                             # Stage 1b + 2
+    tools/dev/run-codegen --extract                   # Stage 1 + 1b + 2
 """
 
 import subprocess
@@ -61,7 +61,30 @@ def main():
             print("Stage 1 extraction failed", file=sys.stderr)
             return result.returncode
 
-    # Stage 2: Build CLI with codegen-sqlite feature and run codegen
+    # Stage 1b: Generate functions catalog from extracted functions.json.
+    # Uses sqlite-extract feature (no runtime dependency) so the syntaqlite
+    # crate doesn't need to compile yet — avoids the bootstrap cycle where
+    # syntaqlite/src/sqlite/functions.rs depends on the generated file.
+    functions_json = vendored_dir / "data" / "functions.json"
+    functions_catalog_rs = dialect_crate / "src" / "sqlite" / "functions_catalog.rs"
+
+    print("Stage 1b: Generating functions catalog...")
+    result = subprocess.run(
+        [
+            "cargo", "run", "--release", "-p", "syntaqlite-cli",
+            "--no-default-features", "--features", "sqlite-extract",
+            "--",
+            "generate-functions-catalog",
+            "--functions-json", str(functions_json),
+            "--output", str(functions_catalog_rs),
+        ],
+        cwd=project_root,
+    )
+    if result.returncode != 0:
+        print("Functions catalog generation failed", file=sys.stderr)
+        return result.returncode
+
+    # Stage 2: Build CLI with codegen-sqlite feature and run full codegen
     print("Stage 2: Generating base SQLite dialect...")
     result = subprocess.run(
         ["cargo", "build", "--release", "-p", "syntaqlite-cli", "--features", "codegen-sqlite"],

@@ -158,7 +158,6 @@ fn handle_codegen(
     let out = Path::new(output_dir);
     let crate_root = out.parent().unwrap_or(Path::new("."));
     let include_dir = crate_root.join(format!("include/{}", dialect.include_dir_name()));
-    let rust_src_dir = crate_root.join("src");
 
     for dir in [out, include_dir.as_path()] {
         if dir.is_dir() {
@@ -166,17 +165,27 @@ fn handle_codegen(
         }
     }
 
+    // For the internal syntaqlite crate, generated Rust dialect modules
+    // (tokens.rs, ffi.rs, ast.rs) live under src/sqlite/.
+    let rust_sqlite_dir = crate_root.join("src/sqlite");
+
     ensure_dir(out, "output directory")?;
     ensure_dir(&include_dir, "include directory")?;
-    ensure_dir(&rust_src_dir, "Rust src directory")?;
+    ensure_dir(&rust_sqlite_dir, "Rust sqlite src directory")?;
+
+    use syntaqlite_buildtools::sqlite::output_manifest::OutputBucket;
 
     log_verbose(verbose, "Writing output files...");
     for output in outputs {
         let dir: &Path = match output.bucket {
-            syntaqlite_buildtools::sqlite::output_manifest::OutputBucket::Include => &include_dir,
-            syntaqlite_buildtools::sqlite::output_manifest::OutputBucket::DialectCsrc => out,
-            syntaqlite_buildtools::sqlite::output_manifest::OutputBucket::RustSrc => &rust_src_dir,
-            syntaqlite_buildtools::sqlite::output_manifest::OutputBucket::CrateRoot => crate_root,
+            OutputBucket::Include => &include_dir,
+            OutputBucket::DialectCsrc => out,
+            // Generated dialect modules go into src/sqlite/ for the internal crate.
+            OutputBucket::RustDialectSrc | OutputBucket::RustSqliteSrc => &rust_sqlite_dir,
+            // Scaffolding files (lib.rs, wrappers.rs) and crate-root files
+            // (build.rs, Cargo.toml) are hand-maintained for the internal crate.
+            // These are only used when generating external dialect crates.
+            OutputBucket::RustCrateScaffold | OutputBucket::CrateRoot => continue,
         };
         write_file(&dir.join(output.file_name), output.content)?;
     }

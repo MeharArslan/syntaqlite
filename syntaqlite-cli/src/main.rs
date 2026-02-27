@@ -6,7 +6,11 @@ fn main() {
     {
         syntaqlite_cli::run("syntaqlite", Some(syntaqlite::sqlite::low_level::dialect()));
     }
-    #[cfg(not(feature = "builtin-sqlite"))]
+    #[cfg(all(feature = "runtime", not(feature = "builtin-sqlite")))]
+    {
+        syntaqlite_cli::run("syntaqlite", None);
+    }
+    #[cfg(not(feature = "runtime"))]
     {
         syntaqlite_cli::run("syntaqlite", None);
     }

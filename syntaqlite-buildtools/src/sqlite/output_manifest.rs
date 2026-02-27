@@ -5,10 +5,20 @@ use crate::{CodegenArtifacts, DialectNaming};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputBucket {
+    /// C/H headers for `include/<dialect>/`.
     Include,
+    /// C source files for the dialect `csrc/` directory.
     DialectCsrc,
-    RustSrc,
-    /// Files that belong in the crate root (e.g. `build.rs`).
+    /// Generated Rust dialect modules (tokens.rs, ffi.rs, ast.rs).
+    /// For internal crate: `src/sqlite/`. For external crates: `src/`.
+    RustDialectSrc,
+    /// Files that belong under `src/sqlite/` (e.g. generated catalogs).
+    RustSqliteSrc,
+    /// Crate scaffolding Rust files (lib.rs, wrappers.rs) — only used by
+    /// external dialect crates. The internal syntaqlite crate hand-maintains these.
+    RustCrateScaffold,
+    /// Files that belong in the crate root (e.g. `build.rs`, `Cargo.toml`).
+    /// Only used by external dialect crates.
     CrateRoot,
 }
 
@@ -102,27 +112,27 @@ pub fn sqlite_output_manifest(
         .rust
         .ok_or_else(|| "Missing Rust artifacts from codegen pipeline".to_string())?;
     out.push(OutputArtifact {
-        bucket: OutputBucket::RustSrc,
+        bucket: OutputBucket::RustDialectSrc,
         file_name: "tokens.rs".to_string(),
         content: rust.tokens_rs,
     });
     out.push(OutputArtifact {
-        bucket: OutputBucket::RustSrc,
+        bucket: OutputBucket::RustDialectSrc,
         file_name: "ffi.rs".to_string(),
         content: rust.ffi_rs,
     });
     out.push(OutputArtifact {
-        bucket: OutputBucket::RustSrc,
+        bucket: OutputBucket::RustDialectSrc,
         file_name: "ast.rs".to_string(),
         content: rust.ast_rs,
     });
     out.push(OutputArtifact {
-        bucket: OutputBucket::RustSrc,
+        bucket: OutputBucket::RustCrateScaffold,
         file_name: "lib.rs".to_string(),
         content: rust.lib_rs,
     });
     out.push(OutputArtifact {
-        bucket: OutputBucket::RustSrc,
+        bucket: OutputBucket::RustCrateScaffold,
         file_name: "wrappers.rs".to_string(),
         content: rust.wrappers_rs,
     });
@@ -136,6 +146,14 @@ pub fn sqlite_output_manifest(
         file_name: "Cargo.toml".to_string(),
         content: rust.cargo_toml,
     });
+
+    if let Some(functions_catalog_rs) = rust.functions_catalog_rs {
+        out.push(OutputArtifact {
+            bucket: OutputBucket::RustSqliteSrc,
+            file_name: "functions_catalog.rs".to_string(),
+            content: functions_catalog_rs,
+        });
+    }
 
     Ok(out)
 }

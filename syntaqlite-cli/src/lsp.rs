@@ -16,10 +16,10 @@ use lsp_types::{
     SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextEdit, Uri,
 };
-use syntaqlite::lsp::{AnalysisHost, Severity};
 use syntaqlite::Dialect;
 use syntaqlite::dialect::{SEMANTIC_TOKEN_LEGEND, TokenCategory};
 use syntaqlite::fmt::FormatConfig;
+use syntaqlite::lsp::{AnalysisHost, Severity};
 
 pub(crate) fn cmd_lsp(dialect: &Dialect) -> Result<(), String> {
     run_lsp(dialect).map_err(|e| format!("LSP error: {e}"))

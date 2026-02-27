@@ -606,7 +606,6 @@ pub extern "C" fn wasm_get_cflag_list() -> i32 {
         out.push_str(",\"category\":\"");
         json_escape(&mut out, &entry.category);
         out.push_str("\"}");
-
     }
     out.push(']');
     set_result(&out);

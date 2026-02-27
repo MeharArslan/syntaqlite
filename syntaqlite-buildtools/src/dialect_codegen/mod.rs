@@ -21,9 +21,13 @@ pub use c_meta_codegen::{
 };
 pub use c_nodes_codegen::{generate_ast_builder_header, generate_ast_nodes_header};
 pub use rust_ast::{generate_rust_ast, generate_rust_ffi_nodes, generate_rust_tokens};
+// Note: generate_rust_ast and generate_rust_ffi_nodes take a `crate_prefix` arg:
+// "crate" for the internal syntaqlite crate, "syntaqlite" for external dialect crates.
 pub use rust_dialect::{
     generate_cargo_toml, generate_rust_build_rs, generate_rust_lib, generate_rust_wrappers,
 };
+
+pub use crate::util::functions_codegen::generate_functions_catalog;
 
 pub use crate::util::pascal_case;
 

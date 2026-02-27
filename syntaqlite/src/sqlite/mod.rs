@@ -11,6 +11,7 @@
 /// [`LowLevelCursor::finish`](low_level::LowLevelCursor::finish).
 pub mod ast;
 mod ffi;
+pub mod functions;
 
 use std::sync::LazyLock;
 

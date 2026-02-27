@@ -70,7 +70,7 @@ fn rust_view_return_type(
 }
 
 /// Generate the accessor body for a view struct field.
-fn rust_view_accessor_body(field: &Field) -> String {
+fn rust_view_accessor_body(field: &Field, ffi_path: &str) -> String {
     let fname = rust_field_name(&field.name);
     match field.storage {
         Storage::Index => {
@@ -79,7 +79,7 @@ fn rust_view_accessor_body(field: &Field) -> String {
         Storage::Inline => {
             let t = &field.type_name;
             if t == "Bool" {
-                format!("self.raw.{} == crate::ffi::Bool::True", fname)
+                format!("self.raw.{} == {ffi_path}::Bool::True", fname)
             } else if t == "SyntaqliteSourceSpan" {
                 format!("self.raw.{}.as_str(self.reader.source())", fname)
             } else {
@@ -368,19 +368,22 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
 ///
 /// Emits `pub(crate)` `#[repr(C)]` node structs and the `Bool` enum.
 /// Enum/flags types are referenced via `super::ast::`.
-pub fn generate_rust_ffi_nodes(model: &AstModel<'_>) -> String {
+///
+/// `crate_prefix` controls import paths: `"crate"` for the internal syntaqlite
+/// crate, `"syntaqlite"` for external dialect crates.
+pub fn generate_rust_ffi_nodes(model: &AstModel<'_>, crate_prefix: &str) -> String {
     let enum_names = model.enum_names();
     let flags_names = model.flags_names();
 
     let mut w = RustWriter::new();
     w.file_header();
-    w.lines(
+    w.lines(&format!(
         "
         #![allow(dead_code)]
 
-        use syntaqlite::parser::{NodeId, SourceSpan};
+        use {crate_prefix}::parser::{{NodeId, SourceSpan}};
     ",
-    );
+    ));
     w.newline();
 
     // Bool enum — FFI-internal
@@ -414,7 +417,11 @@ pub fn generate_rust_ffi_nodes(model: &AstModel<'_>) -> String {
 ///
 /// Emits enums, flags, `NodeTag`, view structs with ergonomic accessors,
 /// and the `Node<'a>` enum that wraps them.
-pub fn generate_rust_ast(model: &AstModel<'_>) -> String {
+///
+/// - `crate_prefix`: `"crate"` for internal syntaqlite, `"syntaqlite"` for external.
+/// - `ffi_path`: module path to the FFI types, e.g. `"crate::sqlite::ffi"` (internal)
+///   or `"crate::ffi"` (external).
+pub fn generate_rust_ast(model: &AstModel<'_>, crate_prefix: &str, ffi_path: &str) -> String {
     let enum_names = model.enum_names();
     let flags_names = model.flags_names();
     let node_names = model.node_names();
@@ -423,11 +430,11 @@ pub fn generate_rust_ast(model: &AstModel<'_>) -> String {
 
     let mut w = RustWriter::new();
     w.file_header();
-    w.lines("
-        pub use syntaqlite::parser::{Comment, CommentKind, FromArena, NodeId, NodeReader, SourceSpan, TypedList};
-        pub(crate) use syntaqlite::parser::NodeList;
+    w.lines(&format!("
         use std::marker::PhantomData;
-    ");
+        pub(crate) use {crate_prefix}::parser::NodeList;
+        pub use {crate_prefix}::parser::{{Comment, CommentKind, FromArena, NodeId, NodeReader, SourceSpan, TypedList}};
+    "));
     w.newline();
 
     // Value enums (skip Bool — it lives in ffi.rs)
@@ -509,7 +516,7 @@ pub fn generate_rust_ast(model: &AstModel<'_>) -> String {
         w.line("#[derive(Clone, Copy)]");
         w.line(&format!("pub struct {}<'a> {{", name));
         w.indent();
-        w.line(&format!("raw: &'a crate::ffi::{},", name));
+        w.line(&format!("raw: &'a {ffi_path}::{name},"));
         if !uses_reader {
             w.line("#[allow(dead_code)]");
         }
@@ -554,7 +561,7 @@ pub fn generate_rust_ast(model: &AstModel<'_>) -> String {
             let fname = rust_field_name(&field.name);
             let return_type =
                 rust_view_return_type(field, enum_names, flags_names, node_names, list_names);
-            let body = rust_view_accessor_body(field);
+            let body = rust_view_accessor_body(field, ffi_path);
             w.line(&format!("pub fn {}(&self) -> {} {{", fname, return_type));
             w.indent();
             w.line(&body);
@@ -572,8 +579,7 @@ pub fn generate_rust_ast(model: &AstModel<'_>) -> String {
         w.indent();
         w.line("let (ptr, _) = reader.node_ptr(id)?;");
         w.line(&format!(
-            "Some({} {{ raw: unsafe {{ &*(ptr as *const crate::ffi::{}) }}, reader, id }})",
-            name, name
+            "Some({name} {{ raw: unsafe {{ &*(ptr as *const {ffi_path}::{name}) }}, reader, id }})"
         ));
         w.dedent();
         w.line("}");
@@ -643,7 +649,7 @@ pub fn generate_rust_ast(model: &AstModel<'_>) -> String {
         match item {
             NodeLikeRef::Node(node) => {
                 let name = node.name;
-                w.line(&format!("NodeTag::{n} => Node::{n}({n} {{ raw: &*(ptr as *const crate::ffi::{n}), reader, id }}),", n = name));
+                w.line(&format!("NodeTag::{n} => Node::{n}({n} {{ raw: &*(ptr as *const {ffi_path}::{n}), reader, id }}),", n = name));
             }
             NodeLikeRef::List(list) => {
                 let name = list.name;

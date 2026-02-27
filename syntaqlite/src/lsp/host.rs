@@ -19,6 +19,8 @@ pub struct AnalysisHost<'d> {
     dialect: Dialect<'d>,
     documents: HashMap<String, Document>,
     context: Option<AmbientContext>,
+    #[cfg(feature = "sqlite")]
+    dialect_config: Option<crate::dialect::ffi::DialectConfig>,
 }
 
 struct Document {
@@ -45,6 +47,8 @@ impl<'d> AnalysisHost<'d> {
             dialect,
             documents: HashMap::new(),
             context: None,
+            #[cfg(feature = "sqlite")]
+            dialect_config: None,
         }
     }
 
@@ -62,6 +66,31 @@ impl<'d> AnalysisHost<'d> {
     /// Access the current ambient context.
     pub fn ambient_context(&self) -> Option<&AmbientContext> {
         self.context.as_ref()
+    }
+
+    /// Set the dialect configuration for filtering built-in functions.
+    #[cfg(feature = "sqlite")]
+    pub fn set_dialect_config(&mut self, config: crate::dialect::ffi::DialectConfig) {
+        self.dialect_config = Some(config);
+    }
+
+    /// Returns function definitions available in the current configuration.
+    ///
+    /// Combines SQLite built-in functions (filtered by `DialectConfig` if set)
+    /// with user-provided functions from the ambient context.
+    #[cfg(feature = "sqlite")]
+    pub fn available_functions(&self) -> Vec<crate::lsp::context::FunctionDef> {
+        let mut result = if let Some(ref config) = self.dialect_config {
+            catalog_to_function_defs(config)
+        } else {
+            catalog_to_function_defs(&crate::dialect::ffi::DialectConfig::default())
+        };
+
+        if let Some(ref ctx) = self.context {
+            result.extend(ctx.functions.iter().cloned());
+        }
+
+        result
     }
 
     /// Register a newly opened document.
@@ -227,8 +256,8 @@ impl<'d> AnalysisHost<'d> {
             .documents
             .get(uri)
             .ok_or(FormatError::UnknownDocument)?;
-        let mut formatter =
-            Formatter::with_dialect_config(&self.dialect, config.clone()).map_err(FormatError::Setup)?;
+        let mut formatter = Formatter::with_dialect_config(&self.dialect, config.clone())
+            .map_err(FormatError::Setup)?;
         formatter.format(&doc.source).map_err(FormatError::Parse)
     }
 
@@ -245,6 +274,39 @@ impl<'d> AnalysisHost<'d> {
         let state = doc.state.as_ref().unwrap();
         replay_expected_tokens(&self.dialect, &doc.source, &state.tokens, offset)
     }
+}
+
+/// Convert the SQLite function catalog into `FunctionDef` values filtered by config.
+#[cfg(feature = "sqlite")]
+fn catalog_to_function_defs(
+    config: &crate::dialect::ffi::DialectConfig,
+) -> Vec<crate::lsp::context::FunctionDef> {
+    crate::sqlite::functions::available_functions(config)
+        .into_iter()
+        .flat_map(|info| {
+            if info.arities.is_empty() {
+                // No arity info — emit a single variadic entry.
+                vec![crate::lsp::context::FunctionDef {
+                    name: info.name.to_string(),
+                    args: None,
+                    description: None,
+                }]
+            } else {
+                info.arities
+                    .iter()
+                    .map(|&arity| crate::lsp::context::FunctionDef {
+                        name: info.name.to_string(),
+                        args: if arity < 0 {
+                            None
+                        } else {
+                            Some(arity as usize)
+                        },
+                        description: None,
+                    })
+                    .collect()
+            }
+        })
+        .collect()
 }
 
 fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {

@@ -44,6 +44,18 @@ pub(crate) enum ExtractCommand {
         #[arg(long, required = true)]
         rust_output: String,
     },
+    /// Generate the Rust functions catalog module from functions.json.
+    ///
+    /// Reads the extracted `functions.json` and produces a Rust source file
+    /// containing static function metadata and availability filtering.
+    GenerateFunctionsCatalog {
+        /// Path to functions.json (from extract-functions).
+        #[arg(long, required = true)]
+        functions_json: String,
+        /// Output path for the generated Rust file.
+        #[arg(long, required = true)]
+        output: String,
+    },
     /// Extract built-in function catalog from pre-downloaded SQLite amalgamations.
     ///
     /// Requires a pre-computed cflag audit (from audit-cflags). Compiles each
@@ -71,6 +83,10 @@ pub(crate) fn dispatch(command: ExtractCommand) -> Result<(), String> {
             actions_dir,
             nodes_dir,
         } => handle_sqlite_extract(&sqlite_src, &output_dir, &actions_dir, &nodes_dir),
+        ExtractCommand::GenerateFunctionsCatalog {
+            functions_json,
+            output,
+        } => handle_generate_functions_catalog(&functions_json, &output),
         ExtractCommand::AuditCflags {
             amalgamation_dir,
             output,
@@ -87,6 +103,23 @@ pub(crate) fn dispatch(command: ExtractCommand) -> Result<(), String> {
 fn read_source(dir: &Path, name: &str) -> Result<String, String> {
     let path = dir.join(name);
     fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))
+}
+
+fn handle_generate_functions_catalog(
+    functions_json_path: &str,
+    output_path: &str,
+) -> Result<(), String> {
+    let json = fs::read_to_string(functions_json_path)
+        .map_err(|e| format!("reading {functions_json_path}: {e}"))?;
+    let content =
+        syntaqlite_buildtools::util::functions_codegen::generate_functions_catalog(&json)?;
+    let out = Path::new(output_path);
+    if let Some(parent) = out.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("creating output directory: {e}"))?;
+    }
+    fs::write(out, content).map_err(|e| format!("writing {}: {e}", out.display()))?;
+    eprintln!("wrote {output_path}");
+    Ok(())
 }
 
 fn handle_sqlite_extract(

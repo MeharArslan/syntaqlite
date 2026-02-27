@@ -22,8 +22,8 @@
 //! - 3.24.0: `FILTER (WHERE ...)` → error near "("
 //! - 3.25.0: same query (with OVER) → success
 
-use syntaqlite::sqlite::low_level::TokenType;
 use syntaqlite::dialect::ffi::DialectConfig;
+use syntaqlite::sqlite::low_level::TokenType;
 
 /// Shorthand: convert a TokenType variant to its raw u32 value.
 const fn tk(t: TokenType) -> u32 {

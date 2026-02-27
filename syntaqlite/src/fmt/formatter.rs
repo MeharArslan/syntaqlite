@@ -45,7 +45,10 @@ impl<'d> Formatter<'d> {
     }
 
     /// Create a formatter with the given dialect and configuration.
-    pub fn with_dialect_config(dialect: &Dialect<'d>, config: FormatConfig) -> Result<Self, &'static str> {
+    pub fn with_dialect_config(
+        dialect: &Dialect<'d>,
+        config: FormatConfig,
+    ) -> Result<Self, &'static str> {
         if !dialect.has_fmt_data() {
             return Err("C dialect has no fmt data");
         }

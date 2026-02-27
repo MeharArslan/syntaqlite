@@ -118,6 +118,7 @@ mod codegen_api {
         pub wrappers_rs: String,
         pub build_rs: String,
         pub cargo_toml: String,
+        pub functions_catalog_rs: Option<String>,
     }
 
     pub struct CodegenArtifacts {
@@ -345,10 +346,23 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
             dialect_codegen::generate_dialect_dispatch_h(request.dialect.name());
 
         let rust = if request.include_rust {
+            // For the internal syntaqlite crate, generated files use `crate::` paths.
+            // For external dialect crates, they use `syntaqlite::` as an external dep.
+            // For the internal syntaqlite crate, generated files live under
+            // src/sqlite/ and use `crate::` / `crate::sqlite::ffi` paths.
+            // For external dialect crates, they're at src/ and use
+            // `syntaqlite::` / `crate::ffi` paths.
+            let is_internal = request.crate_name == Some("syntaqlite");
+            let crate_prefix = if is_internal { "crate" } else { "syntaqlite" };
+            let ffi_path = if is_internal {
+                "crate::sqlite::ffi"
+            } else {
+                "crate::ffi"
+            };
             Some(RustCodegenArtifacts {
                 tokens_rs: dialect_codegen::generate_rust_tokens(&token_defines[..]),
-                ffi_rs: dialect_codegen::generate_rust_ffi_nodes(&ast_model),
-                ast_rs: dialect_codegen::generate_rust_ast(&ast_model),
+                ffi_rs: dialect_codegen::generate_rust_ffi_nodes(&ast_model, crate_prefix),
+                ast_rs: dialect_codegen::generate_rust_ast(&ast_model, crate_prefix, ffi_path),
                 lib_rs: dialect_codegen::generate_rust_lib(
                     &request.dialect.dialect_symbol_fn_name(),
                 ),
@@ -357,6 +371,7 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
                 cargo_toml: dialect_codegen::generate_cargo_toml(
                     request.crate_name.unwrap_or(request.dialect.name()),
                 ),
+                functions_catalog_rs: None,
             })
         } else {
             None

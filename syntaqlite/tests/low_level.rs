@@ -70,7 +70,9 @@ fn feed_tokens_multi_statement() {
     );
 
     // Continue second statement.
-    cursor.feed_token(TokenType::Integer as u32, 17..18).unwrap();
+    cursor
+        .feed_token(TokenType::Integer as u32, 17..18)
+        .unwrap();
 
     let stmt2 = cursor.finish().unwrap();
     assert!(stmt2.is_some(), "second statement should complete");
@@ -177,13 +179,19 @@ fn macro_well_aligned_complete_expression() {
     cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
 
     cursor.begin_macro(7, 11);
-    cursor.feed_token(TokenType::Integer as u32, 12..13).unwrap();
+    cursor
+        .feed_token(TokenType::Integer as u32, 12..13)
+        .unwrap();
     cursor.feed_token(TokenType::Plus as u32, 14..15).unwrap();
-    cursor.feed_token(TokenType::Integer as u32, 16..17).unwrap();
+    cursor
+        .feed_token(TokenType::Integer as u32, 16..17)
+        .unwrap();
     cursor.end_macro();
 
     cursor.feed_token(TokenType::Comma as u32, 18..19).unwrap();
-    cursor.feed_token(TokenType::Integer as u32, 20..21).unwrap();
+    cursor
+        .feed_token(TokenType::Integer as u32, 20..21)
+        .unwrap();
 
     let id = cursor.finish().unwrap().expect("expected a statement");
     let stmt = Stmt::from_arena(cursor.base().reader(), id).unwrap();

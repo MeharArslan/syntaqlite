@@ -351,9 +351,7 @@ pub fn audit_version_cflags(
 /// For each cflag in SYNQ_CFLAG_TABLE, finds the earliest version where it
 /// appears in the amalgamation source. Cflags not observed in any version
 /// get `since: "0"`.
-fn compute_cflag_availability(
-    per_version: &BTreeMap<String, Vec<String>>,
-) -> CflagAvailability {
+fn compute_cflag_availability(per_version: &BTreeMap<String, Vec<String>>) -> CflagAvailability {
     // Sort versions.
     let mut sorted_versions: Vec<&String> = per_version.keys().collect();
     sorted_versions.sort_by(|a, b| Version::parse(a).unwrap().cmp(&Version::parse(b).unwrap()));
