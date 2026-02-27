@@ -8,10 +8,12 @@ name = "syntaqlite"
 path = "src/main.rs"
 
 [features]
-default = ["codegen-dialect"]
-codegen-dialect = ["dep:syntaqlite-codegen"]
-codegen-sqlite = ["dep:syntaqlite-codegen"]
-version-analysis = ["dep:syntaqlite-codegen", "syntaqlite-codegen/version-analysis"]
+default = ["builtin-sqlite", "codegen-dialect"]
+builtin-sqlite = ["dep:syntaqlite"]
+codegen-dialect = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/codegen-pipeline"]
+codegen-sqlite = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/sqlite-codegen"]
+sqlite-extract = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/sqlite-extract"]
+version-analysis = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/version-analysis"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
@@ -20,8 +22,8 @@ libloading = "0.8"
 lsp-server = "0.7"
 lsp-types = "0.97"
 serde_json = "1"
-syntaqlite = { path = "../syntaqlite" }
-syntaqlite-codegen = { path = "../syntaqlite-codegen", optional = true }
+syntaqlite = { path = "../syntaqlite", optional = true }
+syntaqlite-buildtools = { path = "../syntaqlite-buildtools", optional = true, default-features = false }
 syntaqlite-lsp = { path = "../syntaqlite-lsp" }
 syntaqlite-runtime = { path = "../syntaqlite-runtime", features = ["fmt"] }
 tempfile = "3.8"

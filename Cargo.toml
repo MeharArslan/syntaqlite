@@ -4,7 +4,7 @@ members = [
     "syntaqlite-runtime",
     "syntaqlite",
     "syntaqlite-wasm",
-    "syntaqlite-codegen",
+    "syntaqlite-buildtools",
     "syntaqlite-cli",
     "syntaqlite-lsp",
     "benches",

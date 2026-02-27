@@ -2,5 +2,12 @@
 // Licensed under the Apache License, Version 2.0.
 
 fn main() {
-    syntaqlite_cli::run("syntaqlite", syntaqlite::low_level::dialect());
+    #[cfg(feature = "builtin-sqlite")]
+    {
+        syntaqlite_cli::run("syntaqlite", Some(syntaqlite::low_level::dialect()));
+    }
+    #[cfg(not(feature = "builtin-sqlite"))]
+    {
+        syntaqlite_cli::run("syntaqlite", None);
+    }
 }

@@ -759,6 +759,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "syntaqlite-buildtools"
+version = "0.1.0"
+dependencies = [
+ "cc",
+ "sha2",
+ "similar",
+ "syntaqlite-runtime",
+ "tempfile",
+]
+
+[[package]]
 name = "syntaqlite-cli"
 version = "0.1.0"
 dependencies = [
@@ -769,19 +780,8 @@ dependencies = [
  "lsp-types",
  "serde_json",
  "syntaqlite",
- "syntaqlite-codegen",
+ "syntaqlite-buildtools",
  "syntaqlite-lsp",
- "syntaqlite-runtime",
- "tempfile",
-]
-
-[[package]]
-name = "syntaqlite-codegen"
-version = "0.1.0"
-dependencies = [
- "cc",
- "sha2",
- "similar",
  "syntaqlite-runtime",
  "tempfile",
 ]

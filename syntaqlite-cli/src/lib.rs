@@ -18,6 +18,9 @@ mod codegen_sqlite;
 
 mod lsp;
 
+#[cfg(feature = "sqlite-extract")]
+mod sqlite_extract;
+
 #[cfg(feature = "version-analysis")]
 mod version_analysis;
 
@@ -70,6 +73,9 @@ enum Command {
     #[cfg(feature = "codegen-sqlite")]
     #[command(flatten)]
     Sqlite(codegen_sqlite::CodegenCommand),
+    #[cfg(feature = "sqlite-extract")]
+    #[command(flatten)]
+    Extract(sqlite_extract::ExtractCommand),
     #[cfg(feature = "version-analysis")]
     #[command(flatten)]
     VersionAnalysis(version_analysis::VersionAnalysisCommand),
@@ -101,6 +107,13 @@ fn expand_paths(patterns: &[String]) -> Result<Vec<PathBuf>, String> {
         }
     }
     Ok(out)
+}
+
+fn require_dialect<'a>(dialect: Option<&'a Dialect<'a>>) -> Result<&'a Dialect<'a>, String> {
+    dialect.ok_or_else(|| {
+        "this command requires a dialect; build with --features=builtin-sqlite or use --dialect"
+            .to_string()
+    })
 }
 
 fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
@@ -253,7 +266,10 @@ unsafe fn load_dynamic_dialect(
 }
 
 /// Run the CLI with the given dialect configuration.
-pub fn run(name: &str, dialect: &Dialect) {
+///
+/// `dialect` is `None` when built without `builtin-sqlite` — runtime commands
+/// (ast, fmt, lsp) will error, but codegen commands work fine.
+pub fn run(name: &str, dialect: Option<&Dialect>) {
     let cli =
         Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
             .unwrap_or_else(|e| e.exit());
@@ -262,7 +278,7 @@ pub fn run(name: &str, dialect: &Dialect) {
     // until after the command finishes.
     let _dialect_lib;
     let dyn_dialect;
-    let active_dialect: &Dialect;
+    let active_dialect: Option<&Dialect>;
 
     if let Some(path) = &cli.dialect_path {
         let (lib, d) = unsafe { load_dynamic_dialect(path, cli.dialect_name.as_deref()) }
@@ -272,15 +288,17 @@ pub fn run(name: &str, dialect: &Dialect) {
             });
         _dialect_lib = Some(lib);
         dyn_dialect = d;
-        active_dialect = &dyn_dialect;
+        active_dialect = Some(&dyn_dialect);
     } else {
         _dialect_lib = None;
         active_dialect = dialect;
     }
 
     let result = match cli.command {
-        Command::Ast { files } => cmd_ast(active_dialect, files),
-        Command::Lsp => lsp::cmd_lsp(active_dialect),
+        Command::Ast { files } => {
+            require_dialect(active_dialect).and_then(|d| cmd_ast(d, files))
+        }
+        Command::Lsp => require_dialect(active_dialect).and_then(|d| lsp::cmd_lsp(d)),
         Command::Fmt {
             files,
             line_width,
@@ -297,12 +315,15 @@ pub fn run(name: &str, dialect: &Dialect) {
                 },
                 ..Default::default()
             };
-            cmd_fmt(active_dialect, files, config, in_place, semicolons)
+            require_dialect(active_dialect)
+                .and_then(|d| cmd_fmt(d, files, config, in_place, semicolons))
         }
         #[cfg(feature = "codegen-dialect")]
         Command::Dialect(cmd) => codegen_dialect::dispatch(cmd),
         #[cfg(feature = "codegen-sqlite")]
         Command::Sqlite(cmd) => codegen_sqlite::dispatch(cmd),
+        #[cfg(feature = "sqlite-extract")]
+        Command::Extract(cmd) => sqlite_extract::dispatch(cmd),
         #[cfg(feature = "version-analysis")]
         Command::VersionAnalysis(cmd) => version_analysis::dispatch(cmd),
     };

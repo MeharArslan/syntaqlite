@@ -66,8 +66,8 @@ fn cmd_generate_dialect(
     nodes_dir: Option<&str>,
     output_dir: &str,
 ) -> Result<(), String> {
-    use syntaqlite_codegen::amalgamate;
-    use syntaqlite_codegen::base_files;
+    use syntaqlite_buildtools::amalgamate;
+    use syntaqlite_buildtools::base_files;
 
     // Run codegen into a temp directory.
     let temp_dir = tempfile::TempDir::new().map_err(|e| format!("creating temp directory: {e}"))?;
@@ -79,11 +79,11 @@ fn cmd_generate_dialect(
 
     // Load extension files from user dirs (if provided).
     let ext_y = match actions_dir {
-        Some(dir) => syntaqlite_codegen::read_named_files_from_dir(dir, "y")?,
+        Some(dir) => syntaqlite_buildtools::read_named_files_from_dir(dir, "y")?,
         None => Vec::new(),
     };
     let ext_synq = match nodes_dir {
-        Some(dir) => syntaqlite_codegen::read_named_files_from_dir(dir, "synq")?,
+        Some(dir) => syntaqlite_buildtools::read_named_files_from_dir(dir, "synq")?,
         None => Vec::new(),
     };
 
@@ -112,7 +112,7 @@ fn codegen_to_dir_with_base(
     csrc_dir: &Path,
     include_dir: &Path,
 ) -> Result<(), String> {
-    let dialect_spec = syntaqlite_codegen::DialectNaming::new(dialect);
+    let dialect_spec = syntaqlite_buildtools::DialectNaming::new(dialect);
     let parser_prefix = dialect_spec.parser_symbol_prefix();
 
     // Extract extra keywords from extension .y files (terminals not in
@@ -122,15 +122,15 @@ fn codegen_to_dir_with_base(
         .iter()
         .filter(|(name, _)| {
             // Only scan extension files (not base files).
-            !syntaqlite_codegen::base_files::base_y_files()
+            !syntaqlite_buildtools::base_files::base_y_files()
                 .iter()
                 .any(|(base_name, _)| *base_name == name.as_str())
         })
         .map(|(_, content)| content.as_str())
         .collect();
-    let extra_keywords = syntaqlite_codegen::extract_terminals_from_y(&ext_y_contents);
+    let extra_keywords = syntaqlite_buildtools::extract_terminals_from_y(&ext_y_contents);
 
-    let request = syntaqlite_codegen::CodegenRequest {
+    let request = syntaqlite_buildtools::CodegenRequest {
         dialect: &dialect_spec,
         y_files,
         synq_files,
@@ -138,7 +138,7 @@ fn codegen_to_dir_with_base(
         parser_symbol_prefix: Some(&parser_prefix),
         include_rust: false,
     };
-    let artifacts = syntaqlite_codegen::generate_codegen_artifacts(&request)?;
+    let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
 
     // Write token header.
     fs::write(
@@ -162,11 +162,11 @@ fn codegen_to_dir_with_base(
         .map_err(|e| format!("writing sqlite_parse.c: {e}"))?;
 
     // Forward-declaration headers for parser and tokenizer.
-    let parse_h = syntaqlite_codegen::dialect_codegen::generate_parse_h(dialect);
+    let parse_h = syntaqlite_buildtools::dialect_codegen::generate_parse_h(dialect);
     fs::write(csrc_dir.join("sqlite_parse.h"), parse_h)
         .map_err(|e| format!("writing sqlite_parse.h: {e}"))?;
 
-    let tokenize_h = syntaqlite_codegen::dialect_codegen::generate_tokenize_h(dialect);
+    let tokenize_h = syntaqlite_buildtools::dialect_codegen::generate_tokenize_h(dialect);
     fs::write(csrc_dir.join("sqlite_tokenize.h"), tokenize_h)
         .map_err(|e| format!("writing sqlite_tokenize.h: {e}"))?;
 

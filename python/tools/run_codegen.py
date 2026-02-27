@@ -4,12 +4,16 @@
 
 """Build and run syntaqlite-cli codegen to generate parser and tokenizer.
 
-This script automatically determines the correct paths based on project structure
-and runs the codegen tool via the CLI binary.
+Three-stage bootstrap pipeline:
+  Stage 1 (--extract): Extract C fragments from raw SQLite source.
+  Stage 2 (default):   Generate base syntaqlite crate C + Rust code.
+  Stage 3:             Dialect codegen (always available via default features).
 
 Usage:
-    python3 python/tools/run_codegen.py
-    tools/dev/run-codegen
+    python3 python/tools/run_codegen.py              # Stage 2 only
+    python3 python/tools/run_codegen.py --extract     # Stage 1 + 2
+    tools/dev/run-codegen                             # Stage 2 only
+    tools/dev/run-codegen --extract                   # Stage 1 + 2
 """
 
 import subprocess
@@ -18,26 +22,47 @@ from pathlib import Path
 
 
 def main():
-    # Automatically determine paths from project structure
     project_root = Path(__file__).parent.parent.parent
     sqlite_src = project_root / "third_party" / "src" / "sqlite" / "src"
     dialect_crate = project_root / "syntaqlite"
     actions_dir = dialect_crate / "parser-actions"
     nodes_dir = dialect_crate / "parser-nodes"
-    tokenize_c = sqlite_src / "tokenize.c"
     output_dir = project_root / "syntaqlite" / "csrc"
+    vendored_dir = project_root / "syntaqlite-buildtools" / "sqlite-vendored"
+
+    do_extract = "--extract" in sys.argv
 
     # Validate input files
     if not actions_dir.is_dir():
         print(f"Error: Parser actions directory not found at {actions_dir}", file=sys.stderr)
         return 1
 
-    if not tokenize_c.exists():
-        print(f"Error: SQLite tokenizer not found at {tokenize_c}", file=sys.stderr)
-        print("Please ensure third_party/src/sqlite is populated", file=sys.stderr)
-        return 1
+    if do_extract:
+        if not sqlite_src.is_dir():
+            print(f"Error: SQLite source not found at {sqlite_src}", file=sys.stderr)
+            return 1
 
-    # Build CLI with codegen-sqlite feature (opt-in, not default)
+        # Stage 1: Extract SQLite fragments, vendor sources, generate base_files_tables.rs
+        print("Stage 1: Extracting SQLite fragments and vendoring sources...")
+        result = subprocess.run(
+            [
+                "cargo", "run", "--release", "-p", "syntaqlite-cli",
+                "--no-default-features", "--features", "sqlite-extract",
+                "--",
+                "sqlite-extract",
+                "--sqlite-src", str(sqlite_src),
+                "--output-dir", str(vendored_dir),
+                "--actions-dir", str(actions_dir),
+                "--nodes-dir", str(nodes_dir),
+            ],
+            cwd=project_root,
+        )
+        if result.returncode != 0:
+            print("Stage 1 extraction failed", file=sys.stderr)
+            return result.returncode
+
+    # Stage 2: Build CLI with codegen-sqlite feature and run codegen
+    print("Stage 2: Generating base SQLite dialect...")
     result = subprocess.run(
         ["cargo", "build", "--release", "-p", "syntaqlite-cli", "--features", "codegen-sqlite"],
         cwd=project_root,
@@ -46,7 +71,6 @@ def main():
         print("Build failed", file=sys.stderr)
         return result.returncode
 
-    # Run codegen with auto-detected paths
     cli_bin = project_root / "target" / "release" / "syntaqlite"
     result = subprocess.run(
         [
@@ -62,7 +86,7 @@ def main():
         print("Codegen failed", file=sys.stderr)
         return result.returncode
 
-    # Format generated Rust code so checked-in artifacts are consistently styled.
+    # Format generated Rust code
     result = subprocess.run(
         ["cargo", "fmt", "--all"],
         cwd=project_root,
