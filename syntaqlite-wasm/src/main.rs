@@ -38,10 +38,7 @@ fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
         let dialect = unsafe { Dialect::from_raw(raw) };
         let mut host = syntaqlite::lsp::AnalysisHost::with_dialect(dialect);
         host.set_dialect_config(get_dialect_config());
-        lsp = Some(LspHost {
-            dialect_ptr,
-            host,
-        });
+        lsp = Some(LspHost { dialect_ptr, host });
     }
     lsp.expect("LSP host must be initialized")
 }
@@ -783,10 +780,10 @@ fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host
         .update_document(WASM_DOC_URI, version as i32, source);
-    let expected = lsp
+    let info = lsp
         .host
-        .expected_tokens_at_offset(WASM_DOC_URI, offset as usize);
-    let expected_set: HashSet<u32> = expected.into_iter().collect();
+        .completion_info_at_offset(WASM_DOC_URI, offset as usize);
+    let expected_set: HashSet<u32> = info.tokens.into_iter().collect();
 
     let mut seen = HashSet::new();
     let mut items: Vec<CompletionItem> = Vec::new();
@@ -814,9 +811,17 @@ fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
         }
     }
 
-    // When identifiers are expected, include built-in functions.
+    // Only show functions in Expression or Unknown context — not in TableRef.
+    let show_functions = expects_identifier
+        && matches!(
+            info.context,
+            syntaqlite::lsp::CompletionContext::Expression
+                | syntaqlite::lsp::CompletionContext::Unknown
+        );
+
+    // When identifiers are expected in an expression context, include built-in functions.
     // Collect owned names first since available_functions() returns owned Strings.
-    let func_names: Vec<String> = if expects_identifier {
+    let func_names: Vec<String> = if show_functions {
         lsp.host
             .available_functions()
             .into_iter()

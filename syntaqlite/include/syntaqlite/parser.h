@@ -332,6 +332,10 @@ int syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
                                       int* out_tokens,
                                       int out_cap);
 
+// Return the semantic completion context at the parser's current state.
+// 0 = Unknown, 1 = Expression, 2 = TableRef.
+uint32_t syntaqlite_parser_completion_context(SyntaqliteParser* p);
+
 // Signal end-of-input. Synthesizes a SEMI if needed and sends EOF to the
 // parser. Returns: 0 = done (no pending statement), 1 = final statement
 // completed, -1 = error.

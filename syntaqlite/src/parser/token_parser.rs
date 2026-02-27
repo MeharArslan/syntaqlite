@@ -222,6 +222,14 @@ impl<'a> LowLevelCursor<'a> {
         }
     }
 
+    /// Return the semantic completion context at the parser's current state.
+    ///
+    /// Returns a raw u32: 0 = Unknown, 1 = Expression, 2 = TableRef.
+    pub fn completion_context(&self) -> u32 {
+        self.assert_not_finished();
+        unsafe { ffi::syntaqlite_parser_completion_context(self.base.reader.raw()) }
+    }
+
     /// Mark subsequent fed tokens as being inside a macro expansion.
     ///
     /// `call_offset` and `call_length` describe the macro call's byte range

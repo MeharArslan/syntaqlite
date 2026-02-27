@@ -59,6 +59,7 @@ static const SyntaqliteDialect SQLITE_DIALECT = {
     .parser_trace = SynqSqliteParseTrace,
 #endif
     .parser_expected_tokens = SynqSqliteParseExpectedTokens,
+    .parser_completion_context = SynqSqliteParseCompletionContext,
 
     // Tokenizer
     .get_token = SynqSqliteGetToken,

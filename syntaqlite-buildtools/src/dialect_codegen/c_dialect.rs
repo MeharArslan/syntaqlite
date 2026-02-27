@@ -150,6 +150,9 @@ pub fn generate_dialect_c(dialect: &str, tokens: Option<&[(String, u32)]>) -> St
     w.line(&format!(
         "    .parser_expected_tokens = Synq{pascal}ParseExpectedTokens,"
     ));
+    w.line(&format!(
+        "    .parser_completion_context = Synq{pascal}ParseCompletionContext,"
+    ));
     w.newline();
     w.line("    // Tokenizer");
     w.line(&format!("    .get_token = Synq{pascal}GetToken,"));
@@ -455,6 +458,7 @@ pub fn generate_parse_h(dialect: &str) -> String {
     w.line(&format!("#define {guard}"));
     w.newline();
     w.line("#include <stddef.h>");
+    w.line("#include <stdint.h>");
     w.line("#include <stdio.h>");
     w.newline();
     w.include_local("syntaqlite_ext/ast_builder.h");
@@ -480,6 +484,9 @@ pub fn generate_parse_h(dialect: &str) -> String {
     ));
     w.line(&format!(
         "int Synq{pascal}ParseExpectedTokens(void* parser, int* out_tokens, int out_cap);"
+    ));
+    w.line(&format!(
+        "uint32_t Synq{pascal}ParseCompletionContext(void* parser);"
     ));
     w.line("#ifndef NDEBUG");
     w.line(&format!(

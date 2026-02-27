@@ -203,4 +203,7 @@
 /* syntaqlite extension: expected terminals for current parser state. */
 int SynqSqliteParseExpectedTokens(void* parser, int* out_tokens, int out_cap);
 
+/* syntaqlite extension: completion context from parser stack. */
+uint32_t SynqSqliteParseCompletionContext(void* parser);
+
 #endif  // SYNTAQLITE_SQLITE_TOKENS_H

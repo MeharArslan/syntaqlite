@@ -118,11 +118,16 @@ fn patch_generated_parser_files(
     let parse_h_content = fs::read_to_string(parse_h)
         .map_err(|e| format!("Failed to read {}: {e}", parse_h.display()))?;
 
+    let nts = extract_nonterminal_ids(&parse_c_content);
+
     let parse_c_patched = CTransformer::new(&parse_c_content)
         .append(&expected_tokens_c_snippet(parser_name))
+        .append(&nonterminal_defines_snippet(&nts))
+        .append(&completion_context_c_snippet(parser_name))
         .finish();
     let parse_h_patched = CTransformer::new(&parse_h_content)
         .append(&expected_tokens_h_snippet(parser_name))
+        .append(&completion_context_h_snippet(parser_name))
         .finish();
 
     fs::write(parse_c, parse_c_patched)
@@ -239,6 +244,122 @@ int {parser_name}ExpectedTokens(void* parser, int* out_tokens, int out_cap) {{\n
   }}\n\
 \n\
   return n;\n\
+}}\n"
+    )
+}
+
+/// Extract non-terminal IDs from Lemon-generated parse.c.
+///
+/// Scans for `#define YYNTOKEN <N>` to find the terminal count, then parses
+/// `yyTokenName[]` entries for indices >= YYNTOKEN. Returns `(name, id)` pairs.
+fn extract_nonterminal_ids(parse_c_content: &str) -> Vec<(String, u32)> {
+    // Find YYNTOKEN
+    let yyntoken: u32 = parse_c_content
+        .lines()
+        .find_map(|line| {
+            let rest = line.strip_prefix("#define YYNTOKEN")?;
+            rest.trim().parse().ok()
+        })
+        .unwrap_or(0);
+    if yyntoken == 0 {
+        return Vec::new();
+    }
+
+    // Find and parse yyTokenName[] entries
+    let mut in_array = false;
+    let mut result = Vec::new();
+    for line in parse_c_content.lines() {
+        if line.contains("yyTokenName[]") {
+            in_array = true;
+            continue;
+        }
+        if in_array && line.trim_start().starts_with("};") {
+            break;
+        }
+        if !in_array {
+            continue;
+        }
+        // Format: `  /*  193 */ "expr",`
+        let line = line.trim();
+        let Some(rest) = line.strip_prefix("/*") else {
+            continue;
+        };
+        let Some(idx_end) = rest.find("*/") else {
+            continue;
+        };
+        let idx_str = rest[..idx_end].trim();
+        let Ok(idx) = idx_str.parse::<u32>() else {
+            continue;
+        };
+        if idx < yyntoken {
+            continue;
+        }
+        // Extract the name between quotes
+        let after = &rest[idx_end + 2..];
+        let Some(q1) = after.find('"') else { continue };
+        let Some(q2) = after[q1 + 1..].find('"') else {
+            continue;
+        };
+        let name = &after[q1 + 1..q1 + 1 + q2];
+        result.push((name.to_string(), idx));
+    }
+    result
+}
+
+/// Generate `#define SYNQ_NT_<NAME> <id>` lines for all non-terminals.
+fn nonterminal_defines_snippet(nts: &[(String, u32)]) -> String {
+    let mut out = String::new();
+    out.push_str("\n/* syntaqlite extension: non-terminal IDs for completion context. */\n");
+    for (name, id) in nts {
+        let upper = name.to_uppercase();
+        out.push_str(&format!("#define SYNQ_NT_{upper} {id}\n"));
+    }
+    out
+}
+
+fn completion_context_h_snippet(parser_name: &str) -> String {
+    format!(
+        "\n/* syntaqlite extension: completion context from parser stack. */\n\
+uint32_t {parser_name}CompletionContext(void* parser);\n"
+    )
+}
+
+fn completion_context_c_snippet(parser_name: &str) -> String {
+    format!(
+        "\n\
+/* syntaqlite extension: probe the goto table to check if a state has\n\
+** an explicit goto entry for non-terminal `nt`. */\n\
+static int synq_has_goto(YYACTIONTYPE state, YYCODETYPE nt) {{\n\
+  int i;\n\
+  if( state>YY_REDUCE_COUNT ) return 0;\n\
+  i = yy_reduce_ofst[state] + nt;\n\
+  if( i<0 || i>=YY_ACTTAB_COUNT ) return 0;\n\
+  return yy_lookahead[i] == nt;\n\
+}}\n\
+\n\
+/* syntaqlite extension: determine the semantic completion context\n\
+** (Expression vs TableRef) by walking the parser stack. Returns:\n\
+**   0 = Unknown, 1 = Expression, 2 = TableRef. */\n\
+uint32_t {parser_name}CompletionContext(void* parser) {{\n\
+  yyParser* p = (yyParser*)parser;\n\
+  if( p==0 || p->yytos==0 ) return 0;\n\
+\n\
+  for(yyStackEntry* e = p->yytos; e >= p->yystack; e--) {{\n\
+    YYACTIONTYPE s = e->stateno;\n\
+\n\
+    /* Check if this state has gotos for table-ref non-terminals. */\n\
+    if( synq_has_goto(s, SYNQ_NT_SELTABLIST)\n\
+     || synq_has_goto(s, SYNQ_NT_FULLNAME)\n\
+     || synq_has_goto(s, SYNQ_NT_XFULLNAME) ) {{\n\
+      return 2; /* TableRef */\n\
+    }}\n\
+\n\
+    /* Check if this state has gotos for expression non-terminals. */\n\
+    if( synq_has_goto(s, SYNQ_NT_EXPR) ) {{\n\
+      return 1; /* Expression */\n\
+    }}\n\
+  }}\n\
+  return 0; /* Unknown */\n\
 }}\n"
     )
 }

@@ -412,6 +412,13 @@ int syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
   return p->dialect->parser_expected_tokens(p->lemon, out_tokens, out_cap);
 }
 
+uint32_t syntaqlite_parser_completion_context(SyntaqliteParser* p) {
+  if (p == NULL || p->dialect == NULL || p->dialect->parser_completion_context == NULL) {
+    return 0;
+  }
+  return p->dialect->parser_completion_context(p->lemon);
+}
+
 int syntaqlite_parser_finish(SyntaqliteParser* p) {
   return finish_input(p);
 }

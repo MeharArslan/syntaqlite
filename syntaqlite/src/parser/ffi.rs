@@ -139,6 +139,7 @@ unsafe extern "C" {
         out_tokens: *mut c_int,
         out_cap: c_int,
     ) -> c_int;
+    pub fn syntaqlite_parser_completion_context(p: *mut Parser) -> u32;
     pub fn syntaqlite_parser_finish(p: *mut Parser) -> c_int;
 
     // Macro region tracking

@@ -14,6 +14,37 @@ use crate::{Dialect, ParseError, Parser};
 use crate::lsp::context::AmbientContext;
 use crate::lsp::types::{Diagnostic, SemanticToken, Severity};
 
+/// Semantic completion context derived from parser stack state.
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompletionContext {
+    /// Could not determine context.
+    Unknown = 0,
+    /// Cursor is in an expression position (functions/values expected).
+    Expression = 1,
+    /// Cursor is in a table-reference position (table/view names expected).
+    TableRef = 2,
+}
+
+impl CompletionContext {
+    fn from_raw(v: u32) -> Self {
+        match v {
+            1 => Self::Expression,
+            2 => Self::TableRef,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+/// Expected tokens and semantic context at a cursor position.
+#[derive(Debug)]
+pub struct CompletionInfo {
+    /// Terminal token IDs valid at the cursor.
+    pub tokens: Vec<u32>,
+    /// Semantic context (expression vs table-ref).
+    pub context: CompletionContext,
+}
+
 /// Manages open documents and runs analysis queries.
 pub struct AnalysisHost<'d> {
     dialect: Dialect<'d>,
@@ -267,12 +298,20 @@ impl<'d> AnalysisHost<'d> {
     /// number of tokens before the cursor. This avoids precomputing expected
     /// sets for every token boundary.
     pub fn expected_tokens_at_offset(&mut self, uri: &str, offset: usize) -> Vec<u32> {
+        self.completion_info_at_offset(uri, offset).tokens
+    }
+
+    /// Return expected tokens and semantic completion context at a byte offset.
+    pub fn completion_info_at_offset(&mut self, uri: &str, offset: usize) -> CompletionInfo {
         let Some(doc) = self.documents.get_mut(uri) else {
-            return Vec::new();
+            return CompletionInfo {
+                tokens: Vec::new(),
+                context: CompletionContext::Unknown,
+            };
         };
         ensure_document_state(&self.dialect, doc);
         let state = doc.state.as_ref().unwrap();
-        replay_expected_tokens(&self.dialect, &doc.source, &state.tokens, offset)
+        replay_completion_info(&self.dialect, &doc.source, &state.tokens, offset)
     }
 }
 
@@ -389,12 +428,12 @@ fn ensure_document_state(dialect: &Dialect, doc: &mut Document) {
     }
 }
 
-fn replay_expected_tokens(
+fn replay_completion_info(
     dialect: &Dialect,
     source: &str,
     tokens: &[CachedToken],
     offset: usize,
-) -> Vec<u32> {
+) -> CompletionInfo {
     let cursor_offset = offset.min(source.len());
     let mut boundary = tokens.partition_point(|t| t.end <= cursor_offset);
     // Skip zero-width tokens at cursor, then backtrack if cursor is mid-identifier.
@@ -418,16 +457,24 @@ fn replay_expected_tokens(
         .rposition(|t| t.type_ == tk_semi)
         .map_or(0, |idx| idx + 1);
 
+    let stmt_tokens = &tokens[start..boundary];
+
     let mut parser = LowLevelParser::with_dialect(dialect);
     let mut cursor = parser.feed(source);
     let mut last_expected = cursor.expected_tokens();
 
-    for tok in &tokens[start..boundary] {
+    for tok in stmt_tokens {
         if cursor.feed_token(tok.type_, tok.start..tok.end).is_err() {
-            return last_expected;
+            let ctx = CompletionContext::from_raw(cursor.completion_context());
+            return CompletionInfo {
+                tokens: last_expected,
+                context: ctx,
+            };
         }
         last_expected = cursor.expected_tokens();
     }
+
+    let context = CompletionContext::from_raw(cursor.completion_context());
 
     // When the cursor is at the end of an identifier token, we backtracked past it
     // to offer identifier completions. Also feed it and merge the expected tokens
@@ -448,7 +495,10 @@ fn replay_expected_tokens(
         }
     }
 
-    last_expected
+    CompletionInfo {
+        tokens: last_expected,
+        context,
+    }
 }
 
 fn error_span(err: &ParseError, source: &str) -> (usize, usize) {
@@ -581,7 +631,10 @@ mod tests {
         let funcs = host.available_functions();
         let names: Vec<&str> = funcs.iter().map(|f| f.name.as_str()).collect();
         assert!(names.contains(&"abs"), "abs should be in default config");
-        assert!(names.contains(&"count"), "count should be in default config");
+        assert!(
+            names.contains(&"count"),
+            "count should be in default config"
+        );
         assert!(
             !names.contains(&"acos"),
             "acos requires ENABLE_MATH_FUNCTIONS"
@@ -624,6 +677,57 @@ mod tests {
         assert!(
             names.contains(&"abs"),
             "built-in abs should still be present"
+        );
+    }
+
+    #[test]
+    fn completion_context_after_from_is_table_ref() {
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        let sql = "SELECT acos() as foo FROM ";
+        host.open_document(uri, 1, sql.to_string());
+
+        let info = host.completion_info_at_offset(uri, sql.len());
+        assert_eq!(
+            info.context,
+            super::CompletionContext::TableRef,
+            "context after FROM should be TableRef, got {:?}",
+            info.context
+        );
+    }
+
+    #[test]
+    fn completion_context_after_select_is_not_table_ref() {
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        let sql = "SELECT ";
+        host.open_document(uri, 1, sql.to_string());
+
+        let info = host.completion_info_at_offset(uri, sql.len());
+        // After bare SELECT, the parser hasn't reached an expr goto state yet,
+        // so context is Unknown — but importantly it is NOT TableRef, so
+        // functions are still shown (Unknown and Expression both allow functions).
+        assert_ne!(
+            info.context,
+            super::CompletionContext::TableRef,
+            "context after SELECT should not be TableRef, got {:?}",
+            info.context
+        );
+    }
+
+    #[test]
+    fn completion_context_after_where_is_expression() {
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        let sql = "SELECT * FROM t WHERE ";
+        host.open_document(uri, 1, sql.to_string());
+
+        let info = host.completion_info_at_offset(uri, sql.len());
+        assert_eq!(
+            info.context,
+            super::CompletionContext::Expression,
+            "context after WHERE should be Expression, got {:?}",
+            info.context
         );
     }
 

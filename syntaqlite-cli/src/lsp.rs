@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use std::error::Error;
+use std::path::PathBuf;
 
 use lsp_server::{Connection, Message, Notification, Request, Response};
 use lsp_types::notification::{
@@ -11,10 +12,10 @@ use lsp_types::notification::{
 use lsp_types::request::{Completion, Formatting, Request as _, SemanticTokensFullRequest};
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DiagnosticSeverity,
-    Position, PositionEncodingKind, Range, SemanticTokenType, SemanticTokensFullOptions,
-    SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
-    SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextEdit, Uri,
+    InitializeParams, Position, PositionEncodingKind, Range, SemanticTokenType,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
+    SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri,
 };
 use syntaqlite::Dialect;
 use syntaqlite::dialect::{SEMANTIC_TOKEN_LEGEND, TokenCategory};
@@ -52,7 +53,12 @@ fn run_lsp(dialect: &Dialect) -> Result<(), Box<dyn Error + Sync + Send>> {
         ..Default::default()
     })?;
 
-    let _init_params = connection.initialize(server_capabilities)?;
+    let init_params_raw = connection.initialize(server_capabilities)?;
+    let init_params: InitializeParams = serde_json::from_value(init_params_raw)?;
+
+    if let Some(root) = workspace_root(&init_params) {
+        eprintln!("syntaqlite-lsp: workspace root: {}", root.display());
+    }
 
     let mut host = AnalysisHost::with_dialect(*dialect);
 
@@ -420,6 +426,21 @@ fn position_to_offset(source: &str, pos: Position) -> usize {
         .unwrap_or(len);
 
     line_start + (pos.character as usize).min(line_end - line_start)
+}
+
+/// Extract the workspace root directory from LSP initialization params.
+///
+/// Prefers `root_uri` (modern); falls back to deprecated `root_path`.
+fn workspace_root(params: &InitializeParams) -> Option<PathBuf> {
+    #[allow(deprecated)]
+    if let Some(uri) = &params.root_uri {
+        let s = uri.as_str();
+        if let Some(path) = s.strip_prefix("file://") {
+            return Some(PathBuf::from(path));
+        }
+    }
+    #[allow(deprecated)]
+    params.root_path.as_ref().map(PathBuf::from)
 }
 
 #[cfg(test)]

@@ -255,6 +255,7 @@ pub struct Dialect {
     pub parser_feed: *const std::ffi::c_void,
     pub parser_trace: *const std::ffi::c_void,
     pub parser_expected_tokens: *const std::ffi::c_void,
+    pub parser_completion_context: *const std::ffi::c_void,
 
     // Tokenizer (function pointer provided by dialect)
     pub get_token: *const std::ffi::c_void,

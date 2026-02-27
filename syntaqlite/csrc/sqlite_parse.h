@@ -7,6 +7,7 @@
 #define SYNTAQLITE_SQLITE_PARSE_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include "syntaqlite_ext/ast_builder.h"
@@ -22,6 +23,7 @@ void SynqSqliteParseFree(void* parser, void (*freeProc)(void*));
 void SynqSqliteParse(void* parser, int token_type, SynqParseToken minor,
                      SynqParseCtx* pCtx);
 int SynqSqliteParseExpectedTokens(void* parser, int* out_tokens, int out_cap);
+uint32_t SynqSqliteParseCompletionContext(void* parser);
 #ifndef NDEBUG
 void SynqSqliteParseTrace(FILE* trace_file, char* prompt);
 #endif

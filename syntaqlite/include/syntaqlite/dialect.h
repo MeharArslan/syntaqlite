@@ -101,6 +101,7 @@ typedef struct SyntaqliteDialect {
     void (*parser_feed)(void* parser, int token_type, SynqParseToken minor, SynqParseCtx* pCtx);
     void (*parser_trace)(FILE* trace_file, char* prompt);
     int (*parser_expected_tokens)(void* parser, int* out_tokens, int out_cap);
+    uint32_t (*parser_completion_context)(void* parser);
 
     // Tokenizer (provided by dialect)
     int64_t (*get_token)(const SyntaqliteDialectConfig* config,
