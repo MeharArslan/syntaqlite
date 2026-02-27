@@ -41,14 +41,123 @@ export class Header implements m.ClassComponent<Attrs> {
           }),
           m("div.sq-dialect-switcher", [
             ...DIALECT_PRESETS.map((preset) =>
-              m(
-                "button.sq-dialect-switcher__btn",
-                {
-                  class: activeId === preset.id ? "sq-dialect-switcher__btn--active" : "",
-                  onclick: () => app.dialect.selectPreset(app.runtime, preset),
-                },
-                preset.label,
-              ),
+              preset.id === "sqlite"
+                ? m(
+                    "div.sq-config-popover",
+                    {class: this.configPopoverOpen ? "sq-config-popover--open" : ""},
+                    [
+                      m(
+                        "button.sq-dialect-switcher__btn.sq-dialect-switcher__btn--with-chevron",
+                        {
+                          class: activeId === preset.id ? "sq-dialect-switcher__btn--active" : "",
+                          onclick: () => app.dialect.selectPreset(app.runtime, preset),
+                        },
+                        [
+                          m("span", preset.label),
+                          activeId === "sqlite"
+                            ? m("span.sq-config-chevron", {
+                                onclick: (e: Event) => {
+                                  e.stopPropagation();
+                                  this.configPopoverOpen = !this.configPopoverOpen;
+                                },
+                              }, "\u25BE")
+                            : null,
+                        ],
+                      ),
+                      m("div.sq-config-popover__backdrop", {
+                        onclick: () => {
+                          this.configPopoverOpen = false;
+                        },
+                      }),
+                      m("div.sq-config-popover__panel", {onclick: (e: Event) => e.stopPropagation()}, [
+                        m("div.sq-config-popover__section", [
+                          m("span.sq-config-popover__label", "SQLite Version"),
+                          m(
+                            "select.sq-config-popover__select",
+                            {
+                              value: app.dialectConfig.version,
+                              onchange: (e: Event) => {
+                                app.dialectConfig.version = (e.target as HTMLSelectElement).value;
+                                const visible = new Set(app.dialectConfig.visibleCflags);
+                                for (const flag of app.dialectConfig.enabledCflags) {
+                                  if (!visible.has(flag)) app.dialectConfig.enabledCflags.delete(flag);
+                                }
+                                app.dialectConfig.apply(app.runtime);
+                                m.redraw();
+                              },
+                            },
+                            VERSION_OPTIONS.map((v) => m("option", {value: v}, v)),
+                          ),
+                        ]),
+                        m("div.sq-config-popover__section", [
+                          m("span.sq-config-popover__label", "Compile Flags"),
+                          m(
+                            "div.sq-config-popover__cflag-list",
+                            (() => {
+                              const entries = app.dialectConfig.visibleCflagEntries;
+                              const groups: Record<string, string[]> = {};
+                              for (const e of entries) {
+                                (groups[e.category] ??= []).push(e.name);
+                              }
+                              const categoryOrder = ["parser", "functions", "extensions", "vtable"];
+                              const categoryLabels: Record<string, string> = {
+                                parser: "Parser",
+                                functions: "Functions",
+                                extensions: "Extensions",
+                                vtable: "Virtual Tables",
+                              };
+                              const renderGroup = (label: string, items: string[]) =>
+                                items.length === 0
+                                  ? null
+                                  : [
+                                      m("div.sq-config-popover__group-label", label),
+                                      ...items.map((suffix) =>
+                                        m("label.sq-config-popover__cflag-item", [
+                                          m("input[type=checkbox]", {
+                                            checked: app.dialectConfig.enabledCflags.has(suffix),
+                                            onchange: () => {
+                                              if (app.dialectConfig.enabledCflags.has(suffix)) {
+                                                app.dialectConfig.enabledCflags.delete(suffix);
+                                              } else {
+                                                app.dialectConfig.enabledCflags.add(suffix);
+                                              }
+                                              app.dialectConfig.apply(app.runtime);
+                                              m.redraw();
+                                            },
+                                          }),
+                                          m("span", suffix),
+                                        ]),
+                                      ),
+                                    ];
+                              return categoryOrder.map((cat) =>
+                                renderGroup(categoryLabels[cat] ?? cat, groups[cat] ?? []),
+                              );
+                            })(),
+                          ),
+                        ]),
+                        m("div.sq-config-popover__section", [
+                          m(
+                            "button.sq-config-popover__reset-btn",
+                            {
+                              onclick: () => {
+                                app.dialectConfig.reset(app.runtime);
+                                m.redraw();
+                              },
+                            },
+                            "Reset to Defaults",
+                          ),
+                        ]),
+                      ]),
+                    ],
+                  )
+                : m(
+                    "button.sq-dialect-switcher__btn",
+                    {
+                      class: activeId === preset.id ? "sq-dialect-switcher__btn--active" : "",
+                      onclick: () => app.dialect.selectPreset(app.runtime, preset),
+                    },
+                    preset.label,
+                  ),
             ),
             m(
               "div.sq-dialect-popover",
@@ -135,111 +244,6 @@ export class Header implements m.ClassComponent<Attrs> {
             ),
           ]),
         ]),
-        app.dialect.activePresetId === "sqlite"
-          ? m(
-              "div.sq-config-popover",
-              {class: this.configPopoverOpen ? "sq-config-popover--open" : ""},
-              [
-                m(
-                  "button.sq-config-popover__trigger",
-                  {
-                    onclick: (e: Event) => {
-                      e.stopPropagation();
-                      this.configPopoverOpen = !this.configPopoverOpen;
-                    },
-                  },
-                  "Config",
-                ),
-                m("div.sq-config-popover__backdrop", {
-                  onclick: () => {
-                    this.configPopoverOpen = false;
-                  },
-                }),
-                m("div.sq-config-popover__panel", {onclick: (e: Event) => e.stopPropagation()}, [
-                  m("div.sq-config-popover__section", [
-                    m("span.sq-config-popover__label", "SQLite Version"),
-                    m(
-                      "select.sq-config-popover__select",
-                      {
-                        value: app.dialectConfig.version,
-                        onchange: (e: Event) => {
-                          app.dialectConfig.version = (e.target as HTMLSelectElement).value;
-                          // Prune cflags that are no longer visible at the new version.
-                          const visible = new Set(app.dialectConfig.visibleCflags);
-                          for (const flag of app.dialectConfig.enabledCflags) {
-                            if (!visible.has(flag)) app.dialectConfig.enabledCflags.delete(flag);
-                          }
-                          app.dialectConfig.apply(app.runtime);
-                          m.redraw();
-                        },
-                      },
-                      VERSION_OPTIONS.map((v) => m("option", {value: v}, v)),
-                    ),
-                  ]),
-                  m("div.sq-config-popover__section", [
-                    m("span.sq-config-popover__label", "Compile Flags"),
-                    m(
-                      "div.sq-config-popover__cflag-list",
-                      (() => {
-                        const entries = app.dialectConfig.visibleCflagEntries;
-                        // Group by category.
-                        const groups: Record<string, string[]> = {};
-                        for (const e of entries) {
-                          (groups[e.category] ??= []).push(e.name);
-                        }
-                        // Display order for categories.
-                        const categoryOrder = ["parser", "functions", "extensions", "vtable"];
-                        const categoryLabels: Record<string, string> = {
-                          parser: "Parser",
-                          functions: "Functions",
-                          extensions: "Extensions",
-                          vtable: "Virtual Tables",
-                        };
-                        const renderGroup = (label: string, items: string[]) =>
-                          items.length === 0
-                            ? null
-                            : [
-                                m("div.sq-config-popover__group-label", label),
-                                ...items.map((suffix) =>
-                                  m("label.sq-config-popover__cflag-item", [
-                                    m("input[type=checkbox]", {
-                                      checked: app.dialectConfig.enabledCflags.has(suffix),
-                                      onchange: () => {
-                                        if (app.dialectConfig.enabledCflags.has(suffix)) {
-                                          app.dialectConfig.enabledCflags.delete(suffix);
-                                        } else {
-                                          app.dialectConfig.enabledCflags.add(suffix);
-                                        }
-                                        app.dialectConfig.apply(app.runtime);
-                                        m.redraw();
-                                      },
-                                    }),
-                                    m("span", suffix),
-                                  ]),
-                                ),
-                              ];
-                        return categoryOrder.map((cat) =>
-                          renderGroup(categoryLabels[cat] ?? cat, groups[cat] ?? []),
-                        );
-                      })(),
-                    ),
-                  ]),
-                  m("div.sq-config-popover__section", [
-                    m(
-                      "button.sq-config-popover__reset-btn",
-                      {
-                        onclick: () => {
-                          app.dialectConfig.reset(app.runtime);
-                          m.redraw();
-                        },
-                      },
-                      "Reset to Defaults",
-                    ),
-                  ]),
-                ]),
-              ],
-            )
-          : null,
         m("div.sq-theme-controls", [
           m("span.sq-theme-controls__label", "Theme"),
           m(SegmentedSwitch, {

@@ -290,22 +290,25 @@
   position: relative;
 }
 
-.sq-config-popover__trigger {
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  color: var(--muted);
-  padding: 4px 10px;
-  font-size: 0.85rem;
-  line-height: 1;
-  cursor: pointer;
-  white-space: nowrap;
+.sq-dialect-switcher__btn--with-chevron {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
 }
 
-.sq-config-popover__trigger:hover {
-  background: var(--accent-soft);
+.sq-config-chevron {
+  margin-left: 4px;
+  font-size: 0.72rem;
+  line-height: 1;
+  opacity: 0.6;
+  padding: 2px 2px 2px 3px;
+  border-left: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.sq-config-chevron:hover {
+  opacity: 1;
   color: var(--accent);
-  border-color: var(--accent);
 }
 
 .sq-config-popover__panel {
