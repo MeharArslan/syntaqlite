@@ -2,6 +2,10 @@
 name = "syntaqlite-wasm"
 version = "0.1.0"
 edition = "2024"
+repository.workspace = true
+
+[package.metadata.dist]
+dist = false
 
 [dependencies]
 serde = { version = "1.0.228", features = ["derive"] }

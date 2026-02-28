@@ -2,6 +2,9 @@
 name = "syntaqlite-cli"
 version = "0.1.0"
 edition = "2024"
+repository.workspace = true
+description = "Fast, accurate SQLite SQL formatter and parser"
+homepage = "https://github.com/LalitMaganti/syntaqlite"
 
 [[bin]]
 name = "syntaqlite"
