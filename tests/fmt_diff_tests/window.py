@@ -8,25 +8,25 @@ class WindowFunctionFormat(TestSuite):
     def test_over_order_by(self):
         return AstTestBlueprint(
             sql="select row_number() over (order by id) from t",
-            out="SELECT row_number() OVER (ORDER BY id) FROM t",
+            out="SELECT row_number() OVER (ORDER BY id) FROM t;",
         )
 
     def test_over_partition_by(self):
         return AstTestBlueprint(
             sql="select count(*) over (partition by a) from t",
-            out="SELECT count(*) OVER (PARTITION BY a) FROM t",
+            out="SELECT count(*) OVER (PARTITION BY a) FROM t;",
         )
 
     def test_over_partition_and_order(self):
         return AstTestBlueprint(
             sql="select sum(x) over (partition by a order by b) from t",
-            out="SELECT sum(x) OVER (PARTITION BY a ORDER BY b) FROM t",
+            out="SELECT sum(x) OVER (PARTITION BY a ORDER BY b) FROM t;",
         )
 
     def test_over_named_window(self):
         return AstTestBlueprint(
             sql="select sum(x) over w from t window w as (order by x)",
-            out="SELECT sum(x) OVER w FROM t WINDOW w AS (ORDER BY x)",
+            out="SELECT sum(x) OVER w FROM t WINDOW w AS (ORDER BY x);",
         )
 
     def test_multiple_named_windows(self):
@@ -37,7 +37,7 @@ class WindowFunctionFormat(TestSuite):
                 FROM t
                 WINDOW
                   w1 AS (ORDER BY a),
-                  w2 AS (PARTITION BY b ORDER BY c)
+                  w2 AS (PARTITION BY b ORDER BY c);
             """,
         )
 
@@ -68,7 +68,7 @@ class WindowFunctionFormat(TestSuite):
                   count(*) OVER (PARTITION BY customer_id) AS customer_order_count
                 FROM orders
                 WHERE
-                  order_total > 0
+                  order_total > 0;
             """,
         )
 
@@ -86,7 +86,7 @@ class WindowFunctionFormat(TestSuite):
                   w AS (
                     PARTITION BY customer_iddffkjllfjksljdfdklsfjklsfjkljfdklsdsjklfjkslfjljskdfjkl
                     ORDER BY order_total DESC
-                  )
+                  );
             """,
         )
 
@@ -95,19 +95,19 @@ class FilterOverFormat(TestSuite):
     def test_filter_only(self):
         return AstTestBlueprint(
             sql="select count(*) filter (where x > 0) from t",
-            out="SELECT count(*) FILTER (WHERE x > 0) FROM t",
+            out="SELECT count(*) FILTER (WHERE x > 0) FROM t;",
         )
 
     def test_filter_with_over(self):
         return AstTestBlueprint(
             sql="select sum(x) filter (where x > 0) over (order by y) from t",
-            out="SELECT sum(x) FILTER (WHERE x > 0) OVER (ORDER BY y) FROM t",
+            out="SELECT sum(x) FILTER (WHERE x > 0) OVER (ORDER BY y) FROM t;",
         )
 
     def test_filter_with_named_window(self):
         return AstTestBlueprint(
             sql="select sum(x) filter (where x > 0) over w from t window w as (order by y)",
-            out="SELECT sum(x) FILTER (WHERE x > 0) OVER w FROM t WINDOW w AS (ORDER BY y)",
+            out="SELECT sum(x) FILTER (WHERE x > 0) OVER w FROM t WINDOW w AS (ORDER BY y);",
         )
 
 
@@ -115,7 +115,7 @@ class FrameSpecFormat(TestSuite):
     def test_rows_between(self):
         return AstTestBlueprint(
             sql="select sum(x) over (order by y rows between 1 preceding and 1 following) from t",
-            out="SELECT sum(x) OVER (ORDER BY y ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM t",
+            out="SELECT sum(x) OVER (ORDER BY y ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM t;",
         )
 
     def test_range_unbounded(self):
@@ -124,7 +124,7 @@ class FrameSpecFormat(TestSuite):
             out="""\
                 SELECT
                   sum(x) OVER (ORDER BY y RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
-                FROM t
+                FROM t;
             """,
         )
 
@@ -137,12 +137,12 @@ class FrameSpecFormat(TestSuite):
                     ORDER BY y
                     GROUPS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE TIES
                   )
-                FROM t
+                FROM t;
             """,
         )
 
     def test_rows_single_bound(self):
         return AstTestBlueprint(
             sql="select sum(x) over (order by y rows 2 preceding) from t",
-            out="SELECT sum(x) OVER (ORDER BY y ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) FROM t",
+            out="SELECT sum(x) OVER (ORDER BY y ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) FROM t;",
         )

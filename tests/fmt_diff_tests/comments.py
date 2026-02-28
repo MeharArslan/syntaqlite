@@ -8,7 +8,7 @@ class TrailingLineComment(TestSuite):
     def test_end_of_statement(self):
         return AstTestBlueprint(
             sql="SELECT a FROM t -- trailing",
-            out="SELECT a FROM t -- trailing",
+            out="SELECT a FROM t -- trailing;",
         )
 
     def test_after_column(self):
@@ -23,14 +23,14 @@ class TrailingLineComment(TestSuite):
                 SELECT
                   a, -- first col
                   b
-                FROM t
+                FROM t;
             """,
         )
 
     def test_after_where(self):
         return AstTestBlueprint(
             sql="SELECT a FROM t WHERE x = 1 -- filter active",
-            out="SELECT a FROM t WHERE x = 1 -- filter active",
+            out="SELECT a FROM t WHERE x = 1 -- filter active;",
         )
 
 
@@ -43,7 +43,7 @@ class LeadingLineComment(TestSuite):
             """,
             out="""\
                 -- main query
-                SELECT a FROM t
+                SELECT a FROM t;
             """,
         )
 
@@ -60,7 +60,7 @@ class LeadingLineComment(TestSuite):
                 -- apply filter
                 FROM t
                 WHERE
-                  x = 1
+                  x = 1;
             """,
         )
 
@@ -69,13 +69,16 @@ class BlockComment(TestSuite):
     def test_before_statement(self):
         return AstTestBlueprint(
             sql="/* count */ SELECT count(*) FROM t",
-            out="/* count */ SELECT count(*) FROM t",
+            out="""\
+                /* count */
+                SELECT count(*) FROM t;
+            """,
         )
 
     def test_trailing_block(self):
         return AstTestBlueprint(
             sql="SELECT a /* col */ FROM t",
-            out="SELECT a /* col */ FROM t",
+            out="SELECT a /* col */ FROM t;",
         )
 
 
@@ -92,6 +95,6 @@ class MultipleComments(TestSuite):
                 SELECT
                   a, -- first
                   b -- second
-                FROM t
+                FROM t;
             """,
         )

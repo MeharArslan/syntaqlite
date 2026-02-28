@@ -8,25 +8,25 @@ class VariableFormat(TestSuite):
     def test_positional(self):
         return AstTestBlueprint(
             sql="SELECT ?1",
-            out="SELECT ?1",
+            out="SELECT ?1;",
         )
 
     def test_named_colon(self):
         return AstTestBlueprint(
             sql="SELECT :name",
-            out="SELECT :name",
+            out="SELECT :name;",
         )
 
     def test_named_at(self):
         return AstTestBlueprint(
             sql="SELECT @var",
-            out="SELECT @var",
+            out="SELECT @var;",
         )
 
     def test_named_dollar(self):
         return AstTestBlueprint(
             sql="SELECT $param",
-            out="SELECT $param",
+            out="SELECT $param;",
         )
 
 
@@ -34,7 +34,7 @@ class CollateFormat(TestSuite):
     def test_collate(self):
         return AstTestBlueprint(
             sql="select x collate nocase from t",
-            out="SELECT x COLLATE nocase FROM t",
+            out="SELECT x COLLATE nocase FROM t;",
         )
 
 
@@ -42,13 +42,13 @@ class ValuesFormat(TestSuite):
     def test_single_row(self):
         return AstTestBlueprint(
             sql="values (1, 2, 3)",
-            out="VALUES (1, 2, 3)",
+            out="VALUES (1, 2, 3);",
         )
 
     def test_multiple_rows(self):
         return AstTestBlueprint(
             sql="values (1, 2), (3, 4)",
-            out="VALUES (1, 2), (3, 4)",
+            out="VALUES (1, 2), (3, 4);",
         )
 
 
@@ -58,7 +58,7 @@ class CteFormat(TestSuite):
             sql="with cte as (select 1) select * from cte",
             out="""\
                 WITH cte AS (SELECT 1)
-                SELECT * FROM cte
+                SELECT * FROM cte;
             """,
         )
 
@@ -67,7 +67,7 @@ class CteFormat(TestSuite):
             sql="with recursive cte as (select 1) select * from cte",
             out="""\
                 WITH RECURSIVE cte AS (SELECT 1)
-                SELECT * FROM cte
+                SELECT * FROM cte;
             """,
         )
 
@@ -76,7 +76,7 @@ class CteFormat(TestSuite):
             sql="with cte(a, b) as (select 1, 2) select * from cte",
             out="""\
                 WITH cte(a, b) AS (SELECT 1, 2)
-                SELECT * FROM cte
+                SELECT * FROM cte;
             """,
         )
 
@@ -85,7 +85,7 @@ class CteFormat(TestSuite):
             sql="with cte as materialized (select 1) select * from cte",
             out="""\
                 WITH cte AS MATERIALIZED (SELECT 1)
-                SELECT * FROM cte
+                SELECT * FROM cte;
             """,
         )
 
@@ -94,7 +94,7 @@ class CteFormat(TestSuite):
             sql="with cte as not materialized (select 1) select * from cte",
             out="""\
                 WITH cte AS NOT MATERIALIZED (SELECT 1)
-                SELECT * FROM cte
+                SELECT * FROM cte;
             """,
         )
 
@@ -106,7 +106,7 @@ class JoinFormat(TestSuite):
             out="""\
                 SELECT *
                 FROM a
-                JOIN b ON a.id = b.id
+                JOIN b ON a.id = b.id;
             """,
         )
 
@@ -116,7 +116,7 @@ class JoinFormat(TestSuite):
             out="""\
                 SELECT *
                 FROM a
-                LEFT JOIN b ON a.id = b.id
+                LEFT JOIN b ON a.id = b.id;
             """,
         )
 
@@ -126,7 +126,7 @@ class JoinFormat(TestSuite):
             out="""\
                 SELECT *
                 FROM a
-                CROSS JOIN b
+                CROSS JOIN b;
             """,
         )
 
@@ -136,14 +136,14 @@ class JoinFormat(TestSuite):
             out="""\
                 SELECT *
                 FROM a
-                JOIN b USING (id)
+                JOIN b USING (id);
             """,
         )
 
     def test_comma_join(self):
         return AstTestBlueprint(
             sql="select * from a, b",
-            out="SELECT * FROM a, b",
+            out="SELECT * FROM a, b;",
         )
 
 
@@ -151,25 +151,25 @@ class SubqueryFormat(TestSuite):
     def test_subquery_table_source(self):
         return AstTestBlueprint(
             sql="select * from (select 1) as t",
-            out="SELECT * FROM (SELECT 1) AS t",
+            out="SELECT * FROM (SELECT 1) AS t;",
         )
 
     def test_scalar_subquery(self):
         return AstTestBlueprint(
             sql="select (select 1)",
-            out="SELECT (SELECT 1)",
+            out="SELECT (SELECT 1);",
         )
 
     def test_in_subquery(self):
         return AstTestBlueprint(
             sql="select a from t where x in (select id from t2)",
-            out="SELECT a FROM t WHERE x IN ((SELECT id FROM t2))",
+            out="SELECT a FROM t WHERE x IN ((SELECT id FROM t2));",
         )
 
     def test_not_in_subquery(self):
         return AstTestBlueprint(
             sql="select a from t where x not in (select id from t2)",
-            out="SELECT a FROM t WHERE x NOT IN ((SELECT id FROM t2))",
+            out="SELECT a FROM t WHERE x NOT IN ((SELECT id FROM t2));",
         )
 
 
@@ -177,25 +177,25 @@ class RaiseFormat(TestSuite):
     def test_raise_ignore(self):
         return AstTestBlueprint(
             sql="SELECT RAISE(IGNORE)",
-            out="SELECT RAISE(IGNORE)",
+            out="SELECT RAISE(IGNORE);",
         )
 
     def test_raise_rollback(self):
         return AstTestBlueprint(
             sql="SELECT RAISE(ROLLBACK, 'error message')",
-            out="SELECT RAISE(ROLLBACK, 'error message')",
+            out="SELECT RAISE(ROLLBACK, 'error message');",
         )
 
     def test_raise_abort(self):
         return AstTestBlueprint(
             sql="SELECT RAISE(ABORT, 'constraint failed')",
-            out="SELECT RAISE(ABORT, 'constraint failed')",
+            out="SELECT RAISE(ABORT, 'constraint failed');",
         )
 
     def test_raise_fail(self):
         return AstTestBlueprint(
             sql="SELECT RAISE(FAIL, 'error')",
-            out="SELECT RAISE(FAIL, 'error')",
+            out="SELECT RAISE(FAIL, 'error');",
         )
 
 
@@ -203,13 +203,13 @@ class AggregateFunctionFormat(TestSuite):
     def test_count_star(self):
         return AstTestBlueprint(
             sql="select count(*) from t",
-            out="SELECT count(*) FROM t",
+            out="SELECT count(*) FROM t;",
         )
 
     def test_sum_distinct(self):
         return AstTestBlueprint(
             sql="select sum(distinct x) from t",
-            out="SELECT sum(DISTINCT x) FROM t",
+            out="SELECT sum(DISTINCT x) FROM t;",
         )
 
 
@@ -221,7 +221,7 @@ class TriggerFormat(TestSuite):
                 CREATE TRIGGER tr BEFORE INSERT ON t
                 BEGIN
                   SELECT 1;
-                END
+                END;
             """,
         )
 
@@ -232,7 +232,7 @@ class TriggerFormat(TestSuite):
                 CREATE TRIGGER tr AFTER DELETE ON t
                 BEGIN
                   SELECT 1;
-                END
+                END;
             """,
         )
 
@@ -243,7 +243,7 @@ class TriggerFormat(TestSuite):
                 CREATE TRIGGER tr INSTEAD OF INSERT ON v
                 BEGIN
                   SELECT 1;
-                END
+                END;
             """,
         )
 
@@ -254,7 +254,7 @@ class TriggerFormat(TestSuite):
                 CREATE TEMP TRIGGER tr BEFORE INSERT ON t
                 BEGIN
                   SELECT 1;
-                END
+                END;
             """,
         )
 
@@ -265,7 +265,7 @@ class TriggerFormat(TestSuite):
                 CREATE TRIGGER IF NOT EXISTS tr BEFORE INSERT ON t
                 BEGIN
                   SELECT 1;
-                END
+                END;
             """,
         )
 
@@ -276,7 +276,7 @@ class TriggerFormat(TestSuite):
                 CREATE TRIGGER main.tr BEFORE INSERT ON t
                 BEGIN
                   SELECT 1;
-                END
+                END;
             """,
         )
 
@@ -287,7 +287,7 @@ class TriggerFormat(TestSuite):
                 CREATE TRIGGER tr BEFORE UPDATE OF col1, col2 ON t
                 BEGIN
                   SELECT 1;
-                END
+                END;
             """,
         )
 
@@ -299,7 +299,7 @@ class TriggerFormat(TestSuite):
                 WHEN new.x > 0
                 BEGIN
                   SELECT 1;
-                END
+                END;
             """,
         )
 
@@ -311,7 +311,7 @@ class TriggerFormat(TestSuite):
                 BEGIN
                   SELECT 1;
                   SELECT 2;
-                END
+                END;
             """,
         )
 
@@ -322,7 +322,7 @@ class TriggerFormat(TestSuite):
                 CREATE TRIGGER tr BEFORE INSERT ON t
                 BEGIN
                   UPDATE t2 SET a = 1;
-                END
+                END;
             """,
         )
 
@@ -331,23 +331,23 @@ class VirtualTableFormat(TestSuite):
     def test_basic_virtual_table(self):
         return AstTestBlueprint(
             sql="create virtual table vt using fts5(content)",
-            out="CREATE VIRTUAL TABLE vt USING fts5(content)",
+            out="CREATE VIRTUAL TABLE vt USING fts5(content);",
         )
 
     def test_no_args(self):
         return AstTestBlueprint(
             sql="create virtual table vt using mod",
-            out="CREATE VIRTUAL TABLE vt USING mod",
+            out="CREATE VIRTUAL TABLE vt USING mod;",
         )
 
     def test_if_not_exists(self):
         return AstTestBlueprint(
             sql="create virtual table if not exists vt using fts5(content)",
-            out="CREATE VIRTUAL TABLE IF NOT EXISTS vt USING fts5(content)",
+            out="CREATE VIRTUAL TABLE IF NOT EXISTS vt USING fts5(content);",
         )
 
     def test_schema_qualified(self):
         return AstTestBlueprint(
             sql="create virtual table main.vt using fts5",
-            out="CREATE VIRTUAL TABLE main.vt USING fts5",
+            out="CREATE VIRTUAL TABLE main.vt USING fts5;",
         )
