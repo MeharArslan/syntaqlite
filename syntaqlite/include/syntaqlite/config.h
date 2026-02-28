@@ -9,11 +9,13 @@
 //
 // Usage:
 //   // Pure defaults — no allocator needed:
-//   SyntaqliteParser* p = syntaqlite_create_sqlite_parser(NULL);  // see sqlite.h
+//   SyntaqliteParser* p = syntaqlite_create_sqlite_parser(NULL);  // see
+//   parser.h
 //
 //   // Custom allocator:
 //   SyntaqliteMemMethods mem = { my_malloc, my_free };
-//   SyntaqliteParser* p = syntaqlite_create_sqlite_parser(&mem);  // see sqlite.h
+//   SyntaqliteParser* p = syntaqlite_create_sqlite_parser(&mem);  // see
+//   parser.h
 
 #ifndef SYNTAQLITE_CONFIG_H
 #define SYNTAQLITE_CONFIG_H

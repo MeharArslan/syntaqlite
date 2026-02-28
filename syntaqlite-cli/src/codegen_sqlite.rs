@@ -19,7 +19,7 @@ pub(crate) enum CodegenCommand {
         actions_dir: String,
         #[arg(long, required = true)]
         nodes_dir: String,
-        #[arg(long, default_value = "syntaqlite/csrc")]
+        #[arg(long, default_value = "syntaqlite/csrc/sqlite")]
         output_dir: String,
     },
     /// Produce C amalgamation files (single-file compilation units).
@@ -126,6 +126,10 @@ fn handle_codegen(actions_dir: &str, nodes_dir: &str, output_dir: &str) -> Resul
         crate_name: Some("syntaqlite"),
         base_synq_files: None,
         open_for_extension: true,
+        dialect_c_includes: syntaqlite_buildtools::dialect_codegen::DialectCIncludes {
+            internal: "csrc/sqlite/",
+            public: "",
+        },
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
     let outputs = syntaqlite_buildtools::sqlite::output_manifest::sqlite_output_manifest(
@@ -134,7 +138,11 @@ fn handle_codegen(actions_dir: &str, nodes_dir: &str, output_dir: &str) -> Resul
 
     // Step 4: Clean stale generated files, then write outputs
     let out = Path::new(output_dir);
-    let crate_root = out.parent().unwrap_or(Path::new("."));
+    // output_dir is csrc/sqlite/ — crate root is two levels up.
+    let crate_root = out
+        .parent()
+        .and_then(|p| p.parent())
+        .unwrap_or(Path::new("."));
     let include_dir = crate_root.join(format!("include/{}", dialect.include_dir_name()));
 
     for dir in [out, include_dir.as_path()] {

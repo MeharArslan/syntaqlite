@@ -23,9 +23,12 @@ impl LowLevelParser {
     /// Create a new low-level parser for the given dialect.
     /// Token collection is enabled by default (required for formatting).
     pub fn with_dialect(dialect: &Dialect) -> Self {
+        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
+        // a new parser with default malloc/free. dialect.raw is valid for the call.
         let raw =
             unsafe { ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw) };
         assert!(!raw.is_null(), "parser allocation failed");
+        // SAFETY: raw is freshly created (not sealed), so this always succeeds.
         unsafe {
             ffi::syntaqlite_parser_set_collect_tokens(raw, 1);
         }
@@ -38,6 +41,8 @@ impl LowLevelParser {
     /// Create a low-level parser with the given dialect and configuration.
     pub fn with_dialect_config(dialect: &Dialect, config: &ParserConfig) -> Self {
         let tp = Self::with_dialect(dialect);
+        // SAFETY: tp.raw is freshly created (not sealed), so these calls
+        // always succeed.
         unsafe {
             ffi::syntaqlite_parser_set_trace(tp.raw, config.trace as c_int);
             ffi::syntaqlite_parser_set_collect_tokens(tp.raw, config.collect_tokens as c_int);
@@ -78,6 +83,8 @@ impl LowLevelParser {
 
 impl Drop for LowLevelParser {
     fn drop(&mut self) {
+        // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_dialect
+        // and has not been freed (Drop runs exactly once).
         unsafe { ffi::syntaqlite_parser_destroy(self.raw) }
     }
 }
@@ -196,6 +203,8 @@ impl<'a> LowLevelCursor<'a> {
         // 256 covers virtually all parser states; fall back to heap for outliers.
         let raw = self.base.reader.raw();
         let mut stack_buf = [0 as c_int; 256];
+        // SAFETY: raw is valid and exclusively borrowed via &self; stack_buf is
+        // a valid output buffer.
         let total = unsafe {
             ffi::syntaqlite_parser_expected_tokens(
                 raw,
@@ -213,6 +222,7 @@ impl<'a> LowLevelCursor<'a> {
         } else {
             // Rare: more tokens than stack buffer. Heap-allocate and re-query.
             let mut heap_buf = vec![0 as c_int; count];
+            // SAFETY: raw is valid; heap_buf is sized to hold `total` entries.
             let written = unsafe {
                 ffi::syntaqlite_parser_expected_tokens(raw, heap_buf.as_mut_ptr(), total as c_int)
             };
@@ -227,6 +237,7 @@ impl<'a> LowLevelCursor<'a> {
     /// Returns a raw u32: 0 = Unknown, 1 = Expression, 2 = TableRef.
     pub fn completion_context(&self) -> u32 {
         self.assert_not_finished();
+        // SAFETY: raw is valid and exclusively borrowed via &self.
         unsafe { ffi::syntaqlite_parser_completion_context(self.base.reader.raw()) }
     }
 
@@ -234,6 +245,7 @@ impl<'a> LowLevelCursor<'a> {
     ///
     /// Flushes any pending list nodes first, so all node data is consistent.
     pub fn node_count(&self) -> u32 {
+        // SAFETY: raw is valid and exclusively borrowed via &self.
         unsafe { ffi::syntaqlite_parser_node_count(self.base.reader.raw()) }
     }
 
@@ -243,6 +255,7 @@ impl<'a> LowLevelCursor<'a> {
     /// in the original source. Calls may nest (for nested macro expansions).
     pub fn begin_macro(&mut self, call_offset: u32, call_length: u32) {
         self.assert_not_finished();
+        // SAFETY: raw is valid and exclusively borrowed via &mut self.
         unsafe {
             ffi::syntaqlite_parser_begin_macro(self.base.reader.raw(), call_offset, call_length);
         }
@@ -251,6 +264,7 @@ impl<'a> LowLevelCursor<'a> {
     /// End the innermost macro expansion region.
     pub fn end_macro(&mut self) {
         self.assert_not_finished();
+        // SAFETY: raw is valid and exclusively borrowed via &mut self.
         unsafe {
             ffi::syntaqlite_parser_end_macro(self.base.reader.raw());
         }

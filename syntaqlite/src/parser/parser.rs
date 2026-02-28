@@ -229,6 +229,9 @@ impl<'a> NodeReader<'a> {
         if id.is_null() {
             return None;
         }
+        // SAFETY: self.raw is valid for 'a (guaranteed by NodeReader's construction
+        // from a live parser). The returned pointer is null-checked; all arena nodes
+        // start with a u32 tag, so the dereference is valid and aligned.
         unsafe {
             let ptr = ffi::syntaqlite_parser_node(self.raw, id.0);
             if ptr.is_null() {
@@ -293,6 +296,8 @@ impl<'a> CursorBase<'a> {
         source_buf.push(0);
 
         let c_source_ptr = source_buf.as_ptr();
+        // SAFETY: raw is valid (caller owns it via &mut); c_source_ptr points to
+        // source_buf which is null-terminated and lives for 'a.
         unsafe {
             ffi::syntaqlite_parser_reset(raw, c_source_ptr as *const _, source.len() as u32);
         }
@@ -307,6 +312,7 @@ impl<'a> CursorBase<'a> {
         let bytes = source.to_bytes();
         let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 
+        // SAFETY: raw is valid; source is a CStr (null-terminated, valid for 'a).
         unsafe {
             ffi::syntaqlite_parser_reset(raw, source.as_ptr(), bytes.len() as u32);
         }
@@ -354,6 +360,8 @@ impl<'a> CursorBase<'a> {
     /// Return all non-whitespace, non-comment token positions captured
     /// during parsing. Requires `collect_tokens: true` in `ParserConfig`.
     pub fn tokens(&self) -> &[ffi::TokenPos] {
+        // SAFETY: raw is valid; the returned pointer and count are valid for
+        // the lifetime of &self (until the next reset/destroy, which need &mut).
         unsafe {
             let mut count: u32 = 0;
             let ptr = ffi::syntaqlite_parser_tokens(self.reader.raw(), &mut count);
@@ -440,6 +448,8 @@ impl<'a> StatementCursor<'a> {
 
         if result.error != 0 {
             self.poisoned = true;
+            // SAFETY: error_msg is a NUL-terminated string in the parser's
+            // buffer (valid for parser lifetime), guaranteed when error != 0.
             let msg = unsafe { CStr::from_ptr(result.error_msg) }
                 .to_string_lossy()
                 .into_owned();

@@ -27,7 +27,7 @@ def main():
     dialect_crate = project_root / "syntaqlite"
     actions_dir = dialect_crate / "parser-actions"
     nodes_dir = dialect_crate / "parser-nodes"
-    output_dir = project_root / "syntaqlite" / "csrc"
+    output_dir = project_root / "syntaqlite" / "csrc" / "sqlite"
     vendored_dir = project_root / "syntaqlite-buildtools" / "sqlite-vendored"
 
     do_extract = "--extract" in sys.argv
@@ -87,7 +87,7 @@ def main():
     # Stage 2: Build CLI with codegen-sqlite feature and run full codegen
     print("Stage 2: Generating base SQLite dialect...")
     result = subprocess.run(
-        ["cargo", "build", "--release", "-p", "syntaqlite-cli", "--features", "codegen-sqlite"],
+        ["cargo", "build", "--release", "-p", "syntaqlite-cli", "--no-default-features", "--features", "codegen-sqlite"],
         cwd=project_root,
     )
     if result.returncode != 0:

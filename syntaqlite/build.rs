@@ -27,15 +27,16 @@ fn main() {
     //
     // Lemon parser, tokenizer, keyword lookup, and dialect glue.
     if env::var("CARGO_FEATURE_SQLITE").is_ok() {
+        let sqlite_csrc = csrc.join("sqlite");
         let mut build = cc::Build::new();
         build
-            .file(csrc.join("dialect.c"))
-            .file(csrc.join("sqlite_parse.c"))
-            .file(csrc.join("sqlite_tokenize.c"))
-            .file(csrc.join("sqlite_tokenize_version_gate.c"))
-            .file(csrc.join("sqlite_keyword.c"))
-            .include(&manifest_dir) // for dialect csrc/ headers
-            .include(manifest_dir.join("include")) // for dialect include/ headers
+            .file(sqlite_csrc.join("dialect.c"))
+            .file(sqlite_csrc.join("sqlite_parse.c"))
+            .file(sqlite_csrc.join("sqlite_tokenize.c"))
+            .file(sqlite_csrc.join("sqlite_tokenize_version_gate.c"))
+            .file(sqlite_csrc.join("sqlite_keyword.c"))
+            .include(&manifest_dir) // for csrc/sqlite/*.h internal headers
+            .include(manifest_dir.join("include")) // for public syntaqlite/*.h headers
             .flag("-Wno-int-conversion")
             .flag("-Wno-void-pointer-to-int-cast")
             .flag("-Wno-unused-variable")

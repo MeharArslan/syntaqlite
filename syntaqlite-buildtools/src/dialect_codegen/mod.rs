@@ -13,8 +13,8 @@ mod rust_ast;
 mod rust_dialect;
 
 pub use c_dialect::{
-    generate_dialect_c, generate_dialect_dispatch_h, generate_dialect_h, generate_parse_h,
-    generate_token_categories_header, generate_tokenize_h,
+    DialectCIncludes, generate_dialect_c, generate_dialect_dispatch_h, generate_dialect_h,
+    generate_parse_h, generate_token_categories_header, generate_tokenize_h,
 };
 pub use c_meta_codegen::{
     CFmtCodegenError, CMetaCodegenError, generate_c_field_metadata, generate_c_fmt_tables,

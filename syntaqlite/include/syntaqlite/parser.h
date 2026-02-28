@@ -367,6 +367,19 @@ void syntaqlite_parser_begin_macro(SyntaqliteParser* p,
 // End the innermost macro expansion region.
 void syntaqlite_parser_end_macro(SyntaqliteParser* p);
 
+// ---------------------------------------------------------------------------
+// SQLite dialect convenience (opt-out: -DSYNTAQLITE_OMIT_SQLITE_API)
+// ---------------------------------------------------------------------------
+
+#ifndef SYNTAQLITE_OMIT_SQLITE_API
+const SyntaqliteDialect* syntaqlite_sqlite_dialect(void);
+static inline SyntaqliteParser* syntaqlite_create_sqlite_parser(
+    const SyntaqliteMemMethods* mem) {
+  return syntaqlite_create_parser_with_dialect(mem,
+                                               syntaqlite_sqlite_dialect());
+}
+#endif
+
 #ifdef __cplusplus
 }
 #endif
@@ -484,7 +497,7 @@ ListView<T> MakeListView(SyntaqliteParser* p, uint32_t list_id) {
 // RAII wrapper for SyntaqliteParser.  Non-copyable, movable.
 //
 // Usage:
-//   auto parser = syntaqlite::SqliteParser();  // see sqlite.h
+//   auto parser = syntaqlite::SqliteParser();  // see below
 //   parser.Reset("SELECT 1; SELECT 2;");
 //   SyntaqliteParseResult result;
 //   while (result = parser.Next(), syntaqlite::IsPresent(result.root)) {
@@ -549,6 +562,13 @@ class Parser {
  private:
   SyntaqliteParser* raw_;
 };
+
+// SQLite dialect convenience (opt-out: -DSYNTAQLITE_OMIT_SQLITE_API).
+#ifndef SYNTAQLITE_OMIT_SQLITE_API
+inline Parser SqliteParser() {
+  return Parser(syntaqlite_create_sqlite_parser(nullptr));
+}
+#endif
 
 }  // namespace syntaqlite
 #endif

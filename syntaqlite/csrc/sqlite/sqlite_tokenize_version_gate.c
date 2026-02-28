@@ -9,7 +9,7 @@
 // When SQLite adds new token types in future versions, add a new version
 // gate here following the existing pattern.
 
-#include "csrc/sqlite_tokenize.h"
+#include "csrc/sqlite/sqlite_tokenize.h"
 #include "syntaqlite_sqlite/sqlite_tokens.h"
 
 i64 SynqSqliteGetToken(const SyntaqliteDialectConfig* config,

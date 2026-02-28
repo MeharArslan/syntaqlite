@@ -31,6 +31,8 @@ unsafe impl Send for Tokenizer {}
 impl Tokenizer {
     /// Create a new tokenizer bound to the given dialect.
     pub fn with_dialect(dialect: crate::dialect::Dialect<'_>) -> Self {
+        // SAFETY: syntaqlite_tokenizer_create(NULL, dialect) allocates a new
+        // tokenizer with default malloc/free. dialect.raw is valid for the call.
         let raw =
             unsafe { ffi::syntaqlite_tokenizer_create(std::ptr::null(), dialect.raw as *const _) };
         assert!(!raw.is_null(), "tokenizer allocation failed");
@@ -53,6 +55,8 @@ impl Tokenizer {
     /// a pointer to the owned copy.
     pub fn set_dialect_config(&mut self, config: &crate::dialect::ffi::DialectConfig) {
         self.dialect_config = *config;
+        // SAFETY: self.raw is valid; we pass a pointer to self.dialect_config
+        // which is pinned by &mut self. The C side copies the config value.
         unsafe {
             ffi::syntaqlite_tokenizer_set_dialect_config(
                 self.raw,
@@ -73,6 +77,8 @@ impl Tokenizer {
         self.source_buf.push(0);
 
         let c_source_ptr = self.source_buf.as_ptr();
+        // SAFETY: self.raw is valid; c_source_ptr points to source_buf which is
+        // null-terminated and lives for 'a (borrowed via &'a mut self).
         unsafe {
             ffi::syntaqlite_tokenizer_reset(
                 self.raw,
@@ -96,6 +102,7 @@ impl Tokenizer {
         let bytes = source.to_bytes();
         let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 
+        // SAFETY: self.raw is valid; source is a CStr (null-terminated, valid for 'a).
         unsafe {
             ffi::syntaqlite_tokenizer_reset(self.raw, source.as_ptr(), bytes.len() as u32);
         }
@@ -109,6 +116,8 @@ impl Tokenizer {
 
 impl Drop for Tokenizer {
     fn drop(&mut self) {
+        // SAFETY: self.raw was allocated by syntaqlite_tokenizer_create and has
+        // not been freed (Drop runs exactly once).
         unsafe { ffi::syntaqlite_tokenizer_destroy(self.raw) }
     }
 }
@@ -131,6 +140,8 @@ impl<'a> Iterator for TokenCursor<'a> {
             length: 0,
             type_: 0,
         };
+        // SAFETY: self.raw is valid (owned by Tokenizer which outlives this
+        // TokenCursor via the 'a borrow); &mut token is a valid output parameter.
         let rc = unsafe { ffi::syntaqlite_tokenizer_next(self.raw, &mut token) };
         if rc == 0 {
             return None;

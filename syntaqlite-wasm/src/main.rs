@@ -749,7 +749,7 @@ fn run_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
         }
     }
 
-    let ctx = syntaqlite::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+    let ctx = syntaqlite::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
 
     let dialect_ptr = DIALECT_PTR.with(|p| p.get());
     if dialect_ptr == 0 {

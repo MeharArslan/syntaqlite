@@ -255,21 +255,27 @@ const _: () = {
 /// Mirrors C `SyntaqliteFieldMeta` from `include/syntaqlite/dialect.h`.
 #[repr(C)]
 pub struct FieldMeta {
-    pub offset: u16,
-    pub kind: u8,
-    pub name: *const std::ffi::c_char,
-    pub display: *const *const std::ffi::c_char,
-    pub display_count: u8,
+    pub(crate) offset: u16,
+    pub(crate) kind: u8,
+    pub(crate) name: *const std::ffi::c_char,
+    pub(crate) display: *const *const std::ffi::c_char,
+    pub(crate) display_count: u8,
 }
 
 impl FieldMeta {
     /// Return the field name as a `&str`.
     ///
-    /// # Safety
-    /// The `name` pointer must be valid for the lifetime of the caller's borrow.
-    pub unsafe fn name_str(&self) -> &str {
-        let cstr = std::ffi::CStr::from_ptr(self.name);
-        cstr.to_str().expect("invalid UTF-8 in field name")
+    /// This is safe because `FieldMeta` can only be constructed within this
+    /// crate (all fields are `pub(crate)`), and all instances come from
+    /// `Dialect::field_meta()` which returns static codegen data with valid
+    /// NUL-terminated `name` pointers.
+    pub(crate) fn name_str(&self) -> &str {
+        // SAFETY: self.name is a valid NUL-terminated C string pointer from
+        // static codegen data (FieldMeta is only constructed within this crate).
+        unsafe {
+            let cstr = std::ffi::CStr::from_ptr(self.name);
+            cstr.to_str().expect("invalid UTF-8 in field name")
+        }
     }
 }
 

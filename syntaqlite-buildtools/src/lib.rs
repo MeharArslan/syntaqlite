@@ -186,6 +186,10 @@ mod codegen_api {
         /// variant for unknown tags (dialect extension support). When `false`,
         /// unknown tags are unreachable.
         pub open_for_extension: bool,
+        /// Include path prefixes for `dialect.c`. Defaults to `""` for both
+        /// internal and public — suitable for external dialect crates where
+        /// all headers live in a single output directory.
+        pub dialect_c_includes: dialect_codegen::DialectCIncludes<'a>,
     }
 
     /// Return the set of token names that are keywords in the base SQLite table.
@@ -350,8 +354,11 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
 
         // Assemble tokenizer and keyword hash from pre-extracted fragments.
         let fragments = sqlite_fragments::load();
-        let (tokenize_c, extract_result) =
-            tokenizer_assembly::assemble(&fragments, request.dialect.name())?;
+        let (tokenize_c, extract_result) = tokenizer_assembly::assemble(
+            &fragments,
+            request.dialect.name(),
+            &request.dialect_c_includes,
+        )?;
         let keyword_c = keyword_hash::generate(
             &extract_result,
             &fragments,
@@ -390,9 +397,13 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
         }
         let dialect_tokens_h =
             dialect_codegen::generate_token_categories_header(&token_defines, Some(&keyword_names));
-        let parse_api_h = dialect_codegen::generate_parse_h(request.dialect.name());
-        let dialect_c =
-            dialect_codegen::generate_dialect_c(request.dialect.name(), Some(&token_defines));
+        let parse_api_h =
+            dialect_codegen::generate_parse_h(request.dialect.name(), &request.dialect_c_includes);
+        let dialect_c = dialect_codegen::generate_dialect_c(
+            request.dialect.name(),
+            Some(&token_defines),
+            &request.dialect_c_includes,
+        );
         let dialect_h = dialect_codegen::generate_dialect_h(request.dialect.name());
         let dialect_dispatch_h =
             dialect_codegen::generate_dialect_dispatch_h(request.dialect.name());

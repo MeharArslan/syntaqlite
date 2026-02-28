@@ -347,6 +347,8 @@ pub(crate) fn extract_fields<'a>(
     let meta = dialect.field_meta(tag);
     let mut fields = Fields::new();
     for m in meta {
+        // SAFETY: ptr is a valid arena pointer from node_ptr(); m.offset and
+        // m.kind are from codegen-produced field metadata for this node tag.
         fields.push(unsafe { extract_one(ptr, m, source) });
     }
     fields

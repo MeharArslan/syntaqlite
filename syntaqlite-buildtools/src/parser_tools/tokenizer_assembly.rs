@@ -6,6 +6,7 @@
 
 use super::sqlite_fragments::SqliteFragments;
 use crate::TokenizerExtractResult;
+use crate::dialect_codegen::DialectCIncludes;
 use crate::util::c_transformer::CTransformer;
 use crate::util::c_writer::CWriter;
 use crate::util::pascal_case;
@@ -18,13 +19,16 @@ use crate::util::pascal_case;
 pub fn assemble(
     fragments: &SqliteFragments,
     dialect: &str,
+    includes: &DialectCIncludes<'_>,
 ) -> Result<(String, TokenizerExtractResult), String> {
+    let ip = includes.internal;
+    let pp = includes.public;
     let combined = {
         let mut w = CWriter::new();
         w.sqlite_file_header();
-        w.include_local("syntaqlite_ext/sqlite_compat.h");
-        w.include_local(&format!("syntaqlite_{dialect}/{dialect}_tokens.h"));
-        w.include_local("csrc/sqlite_keyword.h")
+        w.include_local(&format!("{pp}syntaqlite_ext/sqlite_compat.h"));
+        w.include_local(&format!("{pp}syntaqlite_{dialect}/{dialect}_tokens.h"));
+        w.include_local(&format!("{ip}sqlite_keyword.h"))
             .newline()
             .fragment(&fragments.cc_defines)
             .newline()
@@ -44,7 +48,7 @@ pub fn assemble(
     let get_token_base = format!("{}_base", get_token_name);
     let output = CTransformer::new(&combined)
         .add_array_static("sqlite3CtypeMap")
-        .insert_after_includes("#include \"syntaqlite/dialect_config.h\"")
+        .insert_after_includes(&format!("#include \"{pp}syntaqlite/dialect_config.h\""))
         .replace_in_function(
             "sqlite3GetToken",
             "keywordCode((char*)",

@@ -81,8 +81,21 @@ void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok);
 // The config is copied — the caller's struct does not need to outlive the
 // tokenizer. Default: latest version (INT32_MAX), no cflags.
 // Returns 0 on success.
-int syntaqlite_tokenizer_set_dialect_config(SyntaqliteTokenizer* tok,
-                                             const SyntaqliteDialectConfig* config);
+int syntaqlite_tokenizer_set_dialect_config(
+    SyntaqliteTokenizer* tok,
+    const SyntaqliteDialectConfig* config);
+
+// ---------------------------------------------------------------------------
+// SQLite dialect convenience (opt-out: -DSYNTAQLITE_OMIT_SQLITE_API)
+// ---------------------------------------------------------------------------
+
+#ifndef SYNTAQLITE_OMIT_SQLITE_API
+const SyntaqliteDialect* syntaqlite_sqlite_dialect(void);
+static inline SyntaqliteTokenizer* syntaqlite_create_sqlite_tokenizer(
+    const SyntaqliteMemMethods* mem) {
+  return syntaqlite_tokenizer_create(mem, syntaqlite_sqlite_dialect());
+}
+#endif
 
 #ifdef __cplusplus
 }

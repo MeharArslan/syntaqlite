@@ -154,6 +154,7 @@ fn codegen_to_dir_with_base(
         crate_name: None,
         base_synq_files: Some(syntaqlite_buildtools::base_files::base_synq_files()),
         open_for_extension: false,
+        dialect_c_includes: Default::default(),
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
 
@@ -174,10 +175,13 @@ fn codegen_to_dir_with_base(
     write_file(&csrc_dir.join("sqlite_parse.c"), artifacts.parse_c)?;
 
     // Forward-declaration headers for parser and tokenizer.
-    let parse_h = syntaqlite_buildtools::dialect_codegen::generate_parse_h(dialect);
+    let default_includes = syntaqlite_buildtools::dialect_codegen::DialectCIncludes::default();
+    let parse_h =
+        syntaqlite_buildtools::dialect_codegen::generate_parse_h(dialect, &default_includes);
     write_file(&csrc_dir.join("sqlite_parse.h"), parse_h)?;
 
-    let tokenize_h = syntaqlite_buildtools::dialect_codegen::generate_tokenize_h(dialect);
+    let tokenize_h =
+        syntaqlite_buildtools::dialect_codegen::generate_tokenize_h(dialect, &default_includes);
     write_file(&csrc_dir.join("sqlite_tokenize.h"), tokenize_h)?;
 
     // Tokenizer + keywords.

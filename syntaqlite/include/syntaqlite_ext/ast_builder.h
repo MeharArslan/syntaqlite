@@ -4,7 +4,8 @@
 // Parse context and AST builder interface.
 // Provides:
 //   - SynqParseCtx: parse/AST state threaded via %extra_argument
-//   - SynqParseToken: terminal token type (used as %token_type in lemon grammar)
+//   - SynqParseToken: terminal token type (used as %token_type in lemon
+//   grammar)
 //   - synq_span(): converts SynqParseToken to SyntaqliteSourceSpan
 //   - AST builder functions: synq_parse_build, synq_parse_list_append, etc.
 //   - AST_NODE macro for in-place AST node mutation
@@ -17,11 +18,11 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "syntaqlite/dialect.h"
+#include "syntaqlite/parser.h"
+#include "syntaqlite/types.h"
 #include "syntaqlite_ext/arena.h"
 #include "syntaqlite_ext/vec.h"
-#include "syntaqlite/types.h"
-#include "syntaqlite/parser.h"
-#include "syntaqlite/dialect.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,15 +50,17 @@ typedef struct SynqParseCtx {
   SYNQ_VEC(SynqListDesc) list_stack;
 
   // Parser state
-  const char* source;     // Source text base pointer (for offset computation).
-  const SyntaqliteDialectConfig* config; // Dialect config (for cflag checks in actions).
+  const char* source;  // Source text base pointer (for offset computation).
+  const SyntaqliteDialectConfig*
+      config;             // Dialect config (for cflag checks in actions).
   uint32_t root;          // Root node ID of the current statement.
   int stmt_completed;     // Set by grammar actions when ecmd reduces.
   int error;              // Set when a syntax error occurs.
   uint32_t error_offset;  // Byte offset of the error token in source.
   uint32_t error_length;  // Byte length of the error token.
   int saw_subquery;       // Set by grammar actions when a subquery is reduced.
-  int saw_update_delete_limit; // Set when ORDER BY / LIMIT used on DELETE or UPDATE.
+  int saw_update_delete_limit;  // Set when ORDER BY / LIMIT used on DELETE or
+                                // UPDATE.
 
   // Token marking — points to the parser's token list (NULL if not collecting).
   // Typed as void* because SYNQ_VEC produces anonymous struct types; the
@@ -77,8 +80,7 @@ typedef struct SynqListHeader {
 
 // Cast the arena pointer for a node ID to a void pointer.
 // Dialect code should further cast to the dialect-specific node union.
-#define AST_NODE(arena_ptr, id) \
-  ((void*)synq_arena_ptr((arena_ptr), (id)))
+#define AST_NODE(arena_ptr, id) ((void*)synq_arena_ptr((arena_ptr), (id)))
 
 // ---------------------------------------------------------------------------
 // AST builder functions
@@ -86,25 +88,24 @@ typedef struct SynqListHeader {
 
 // Flush the topmost list from the stack into the arena.
 static inline void synq_parse_list_flush_top(SynqParseCtx* ctx) {
-  SynqListDesc* desc =
-      &syntaqlite_vec_at(&ctx->list_stack, syntaqlite_vec_len(&ctx->list_stack) - 1);
+  SynqListDesc* desc = &syntaqlite_vec_at(
+      &ctx->list_stack, syntaqlite_vec_len(&ctx->list_stack) - 1);
   uint32_t count = syntaqlite_vec_len(&ctx->child_buf) - desc->offset;
   uint32_t children_size = count * (uint32_t)sizeof(uint32_t);
 
   SynqListHeader hdr = {.tag = desc->tag, .count = count};
-  synq_arena_commit(&ctx->ast, desc->node_id, &hdr, (uint32_t)sizeof(hdr), ctx->mem);
-  synq_arena_append(
-      &ctx->ast,
-      &syntaqlite_vec_at(&ctx->child_buf, desc->offset),
-      children_size,
-      ctx->mem
-  );
+  synq_arena_commit(&ctx->ast, desc->node_id, &hdr, (uint32_t)sizeof(hdr),
+                    ctx->mem);
+  synq_arena_append(&ctx->ast,
+                    &syntaqlite_vec_at(&ctx->child_buf, desc->offset),
+                    children_size, ctx->mem);
 
   syntaqlite_vec_truncate(&ctx->child_buf, desc->offset);
   syntaqlite_vec_pop(&ctx->list_stack);
 }
 
-static inline void synq_parse_ctx_init(SynqParseCtx* ctx, SyntaqliteMemMethods mem) {
+static inline void synq_parse_ctx_init(SynqParseCtx* ctx,
+                                       SyntaqliteMemMethods mem) {
   ctx->mem = mem;
   synq_arena_init(&ctx->ast);
   syntaqlite_vec_init(&ctx->child_buf);
@@ -125,20 +126,16 @@ static inline void synq_parse_ctx_clear(SynqParseCtx* ctx) {
 }
 
 // Generic node builder: copy node data into the arena.
-static inline uint32_t synq_parse_build(
-    SynqParseCtx* ctx,
-    const void* node_data,
-    uint32_t node_size
-) {
+static inline uint32_t synq_parse_build(SynqParseCtx* ctx,
+                                        const void* node_data,
+                                        uint32_t node_size) {
   return synq_arena_alloc(&ctx->ast, node_data, node_size, ctx->mem);
 }
 
-static inline uint32_t synq_parse_list_append(
-    SynqParseCtx* ctx,
-    uint32_t tag,
-    uint32_t list_id,
-    uint32_t child
-) {
+static inline uint32_t synq_parse_list_append(SynqParseCtx* ctx,
+                                              uint32_t tag,
+                                              uint32_t list_id,
+                                              uint32_t child) {
   if (list_id == SYNTAQLITE_NULL_NODE) {
     SynqListDesc desc;
     desc.node_id = synq_arena_reserve_id(&ctx->ast, ctx->mem);
@@ -150,8 +147,9 @@ static inline uint32_t synq_parse_list_append(
   }
 
   // Auto-flush completed inner lists above the target.
-  while (syntaqlite_vec_at(&ctx->list_stack, syntaqlite_vec_len(&ctx->list_stack) - 1).node_id !=
-         list_id) {
+  while (syntaqlite_vec_at(&ctx->list_stack,
+                           syntaqlite_vec_len(&ctx->list_stack) - 1)
+             .node_id != list_id) {
     synq_parse_list_flush_top(ctx);
   }
   syntaqlite_vec_push(&ctx->child_buf, child, ctx->mem);
@@ -170,7 +168,8 @@ static inline void synq_parse_list_flush(SynqParseCtx* ctx) {
 
 static inline SyntaqliteSourceSpan synq_span(SynqParseCtx* ctx,
                                              SynqParseToken tok) {
-  if (tok.z == NULL) return (SyntaqliteSourceSpan){0, 0};
+  if (tok.z == NULL)
+    return (SyntaqliteSourceSpan){0, 0};
   uint32_t offset = (uint32_t)(tok.z - ctx->source);
   return (SyntaqliteSourceSpan){
       .offset = offset,
@@ -183,21 +182,34 @@ static inline SyntaqliteSourceSpan synq_span(SynqParseCtx* ctx,
 // Mark a token as "used as identifier" (fallback from keyword).
 // O(1) — uses the token_idx stored in SynqParseToken at collection time.
 static inline void synq_mark_as_id(SynqParseCtx* ctx, SynqParseToken tok) {
-  if (!ctx->tokens || tok.token_idx == 0xFFFFFFFF) return;
+  if (!ctx->tokens || tok.token_idx == 0xFFFFFFFF)
+    return;
   // ctx->tokens is a void* pointing to SYNQ_VEC(SyntaqliteTokenPos).
-  // The vec layout is: { SyntaqliteTokenPos* data; uint32_t count; uint32_t capacity; }
-  typedef struct { SyntaqliteTokenPos* data; uint32_t count; uint32_t capacity; } TokenVec;
+  // The vec layout is: { SyntaqliteTokenPos* data; uint32_t count; uint32_t
+  // capacity; }
+  typedef struct {
+    SyntaqliteTokenPos* data;
+    uint32_t count;
+    uint32_t capacity;
+  } TokenVec;
   TokenVec* tv = (TokenVec*)ctx->tokens;
   tv->data[tok.token_idx].flags |= SYNQ_TOKEN_FLAG_AS_ID;
 }
 
 // Mark a token as "used as function name" in a function-call expression.
 // O(1) — uses the token_idx stored in SynqParseToken at collection time.
-static inline void synq_mark_as_function(SynqParseCtx* ctx, SynqParseToken tok) {
-  if (!ctx->tokens || tok.token_idx == 0xFFFFFFFF) return;
+static inline void synq_mark_as_function(SynqParseCtx* ctx,
+                                         SynqParseToken tok) {
+  if (!ctx->tokens || tok.token_idx == 0xFFFFFFFF)
+    return;
   // ctx->tokens is a void* pointing to SYNQ_VEC(SyntaqliteTokenPos).
-  // The vec layout is: { SyntaqliteTokenPos* data; uint32_t count; uint32_t capacity; }
-  typedef struct { SyntaqliteTokenPos* data; uint32_t count; uint32_t capacity; } TokenVec;
+  // The vec layout is: { SyntaqliteTokenPos* data; uint32_t count; uint32_t
+  // capacity; }
+  typedef struct {
+    SyntaqliteTokenPos* data;
+    uint32_t count;
+    uint32_t capacity;
+  } TokenVec;
   TokenVec* tv = (TokenVec*)ctx->tokens;
   tv->data[tok.token_idx].flags |= SYNQ_TOKEN_FLAG_AS_FUNCTION;
 }
@@ -205,16 +217,22 @@ static inline void synq_mark_as_function(SynqParseCtx* ctx, SynqParseToken tok) 
 // Mark a token as "used as type name" in type contexts.
 // O(1) — uses the token_idx stored in SynqParseToken at collection time.
 static inline void synq_mark_as_type(SynqParseCtx* ctx, SynqParseToken tok) {
-  if (!ctx->tokens || tok.token_idx == 0xFFFFFFFF) return;
+  if (!ctx->tokens || tok.token_idx == 0xFFFFFFFF)
+    return;
   // ctx->tokens is a void* pointing to SYNQ_VEC(SyntaqliteTokenPos).
-  // The vec layout is: { SyntaqliteTokenPos* data; uint32_t count; uint32_t capacity; }
-  typedef struct { SyntaqliteTokenPos* data; uint32_t count; uint32_t capacity; } TokenVec;
+  // The vec layout is: { SyntaqliteTokenPos* data; uint32_t count; uint32_t
+  // capacity; }
+  typedef struct {
+    SyntaqliteTokenPos* data;
+    uint32_t count;
+    uint32_t capacity;
+  } TokenVec;
   TokenVec* tv = (TokenVec*)ctx->tokens;
   tv->data[tok.token_idx].flags |= SYNQ_TOKEN_FLAG_AS_TYPE;
 }
 
-// Range field metadata types (SyntaqliteFieldRangeMeta, SyntaqliteRangeMetaEntry)
-// are defined in syntaqlite/dialect.h.
+// Range field metadata types (SyntaqliteFieldRangeMeta,
+// SyntaqliteRangeMetaEntry) are defined in syntaqlite/dialect.h.
 
 #ifdef __cplusplus
 }

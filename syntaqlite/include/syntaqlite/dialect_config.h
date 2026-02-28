@@ -17,9 +17,9 @@
 #define SYNTAQLITE_DIALECT_CONFIG_H
 
 #ifdef SYNTAQLITE_CUSTOM_INCLUDE
-# define SYNQ_STRINGIFY_(x) #x
-# define SYNQ_STRINGIFY(x)  SYNQ_STRINGIFY_(x)
-# include SYNQ_STRINGIFY(SYNTAQLITE_CUSTOM_INCLUDE)
+#define SYNQ_STRINGIFY_(x) #x
+#define SYNQ_STRINGIFY(x) SYNQ_STRINGIFY_(x)
+#include SYNQ_STRINGIFY(SYNTAQLITE_CUSTOM_INCLUDE)
 #endif
 
 #include <stdint.h>
@@ -31,12 +31,13 @@ extern "C" {
 #endif
 
 typedef struct SyntaqliteDialectConfig {
-    int32_t           sqlite_version;  // Target version (e.g., 3035000). INT32_MAX = latest.
-    SyntaqliteCflags  cflags;          // Active compile-time flags.
+  int32_t
+      sqlite_version;  // Target version (e.g., 3035000). INT32_MAX = latest.
+  SyntaqliteCflags cflags;  // Active compile-time flags.
 } SyntaqliteDialectConfig;
 
 // Default config: latest version, no cflags.
-#define SYNQ_DIALECT_CONFIG_DEFAULT { INT32_MAX, SYNQ_CFLAGS_DEFAULT }
+#define SYNQ_DIALECT_CONFIG_DEFAULT {INT32_MAX, SYNQ_CFLAGS_DEFAULT}
 
 #ifdef __cplusplus
 }
@@ -50,9 +51,9 @@ typedef struct SyntaqliteDialectConfig {
 
 // True if the target version is older than `ver`.
 #ifdef SYNTAQLITE_SQLITE_VERSION
-  #define SYNQ_VER_LT(config, ver) (SYNTAQLITE_SQLITE_VERSION < (ver))
+#define SYNQ_VER_LT(config, ver) (SYNTAQLITE_SQLITE_VERSION < (ver))
 #else
-  #define SYNQ_VER_LT(config, ver) ((config)->sqlite_version < (ver))
+#define SYNQ_VER_LT(config, ver) ((config)->sqlite_version < (ver))
 #endif
 
 // True if cflag at index `idx` is set in the config.
@@ -62,9 +63,9 @@ typedef struct SyntaqliteDialectConfig {
 // individual SYNTAQLITE_CFLAG_* defines. The compiler constant-folds the
 // bit extraction and eliminates dead branches.
 #ifdef SYNTAQLITE_SQLITE_CFLAGS
-  #define SYNQ_HAS_CFLAG(config, idx) synq_has_cflag(&synq_pinned_cflags, (idx))
+#define SYNQ_HAS_CFLAG(config, idx) synq_has_cflag(&synq_pinned_cflags, (idx))
 #else
-  #define SYNQ_HAS_CFLAG(config, idx) synq_has_cflag(&(config)->cflags, (idx))
+#define SYNQ_HAS_CFLAG(config, idx) synq_has_cflag(&(config)->cflags, (idx))
 #endif
 
 #endif  // SYNTAQLITE_DIALECT_CONFIG_H

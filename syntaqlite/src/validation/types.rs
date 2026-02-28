@@ -180,6 +180,8 @@ impl DocumentContext {
         // Extract the name span.
         let name_meta = &meta[contrib.name_field as usize];
         debug_assert_eq!(name_meta.kind, FIELD_SPAN);
+        // SAFETY: ptr is a valid arena pointer from node_ptr(); name_meta.offset
+        // is from codegen metadata, and kind == FIELD_SPAN (debug-asserted above).
         let name = unsafe {
             let span = &*(ptr.add(name_meta.offset as usize) as *const SourceSpan);
             if span.is_empty() {
@@ -202,6 +204,8 @@ impl DocumentContext {
                 if let Some(col_field_idx) = contrib.columns_field {
                     let col_meta = &meta[col_field_idx as usize];
                     debug_assert_eq!(col_meta.kind, FIELD_NODE_ID);
+                    // SAFETY: ptr is a valid arena pointer; col_meta.offset is from
+                    // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
                     let col_list_id =
                         unsafe { NodeId(*(ptr.add(col_meta.offset as usize) as *const u32)) };
                     if !col_list_id.is_null() {
@@ -215,6 +219,8 @@ impl DocumentContext {
                     if let Some(sel_field_idx) = contrib.select_field {
                         let sel_meta = &meta[sel_field_idx as usize];
                         debug_assert_eq!(sel_meta.kind, FIELD_NODE_ID);
+                        // SAFETY: ptr is a valid arena pointer; sel_meta.offset is from
+                        // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
                         let sel_id =
                             unsafe { NodeId(*(ptr.add(sel_meta.offset as usize) as *const u32)) };
                         if !sel_id.is_null() {
@@ -239,6 +245,8 @@ impl DocumentContext {
                 let args = contrib.args_field.and_then(|args_idx| {
                     let args_meta = &meta[args_idx as usize];
                     debug_assert_eq!(args_meta.kind, FIELD_NODE_ID);
+                    // SAFETY: ptr is a valid arena pointer; args_meta.offset is from
+                    // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
                     let args_id =
                         unsafe { NodeId(*(ptr.add(args_meta.offset as usize) as *const u32)) };
                     if args_id.is_null() {
@@ -249,6 +257,8 @@ impl DocumentContext {
                     if !dialect.is_list(args_tag) {
                         return None;
                     }
+                    // SAFETY: args_ptr is a valid arena pointer and is_list(args_tag)
+                    // confirmed it has NodeList layout (tag, count, children[count]).
                     let list = unsafe { &*(args_ptr as *const crate::parser::NodeList) };
                     Some(list.children().len())
                 });
@@ -286,6 +296,8 @@ fn columns_from_column_list(
     if !dialect.is_list(list_tag) {
         return;
     }
+    // SAFETY: list_ptr is a valid arena pointer and is_list(list_tag) confirmed
+    // it has NodeList layout (tag, count, children[count]).
     let list = unsafe { &*(list_ptr as *const crate::parser::NodeList) };
     let source = reader.source();
 
@@ -301,8 +313,10 @@ fn columns_from_column_list(
         // Find the first SPAN field named "column_name".
         for fm in child_meta {
             if fm.kind == FIELD_SPAN {
-                let field_name = unsafe { fm.name_str() };
+                let field_name = fm.name_str();
                 if field_name == "column_name" {
+                    // SAFETY: child_ptr is a valid arena pointer from node_ptr();
+                    // fm.offset is from codegen metadata, and kind == FIELD_SPAN.
                     let span =
                         unsafe { &*(child_ptr.add(fm.offset as usize) as *const SourceSpan) };
                     if !span.is_empty() {

@@ -15,13 +15,17 @@
 #include SYNTAQLITE_INLINE_DIALECT_DISPATCH
 #elif !defined(SYNQ_PARSER_ALLOC)
 // Default: function pointer dispatch through the dialect struct.
-#define SYNQ_PARSER_ALLOC(d, m)          (d)->parser_alloc(m)
-#define SYNQ_PARSER_INIT(d, p)           (d)->parser_init(p)
-#define SYNQ_PARSER_FINALIZE(d, p)       (d)->parser_finalize(p)
-#define SYNQ_PARSER_FREE(d, p, f)        (d)->parser_free(p, f)
-#define SYNQ_PARSER_FEED(d, p, t, m, c)  (d)->parser_feed(p, t, m, c)
-#define SYNQ_PARSER_TRACE(d, f, s)       do { if ((d)->parser_trace) (d)->parser_trace(f, s); } while(0)
-#define SYNQ_GET_TOKEN(d, cfg, z, t)     (d)->get_token(cfg, z, t)
+#define SYNQ_PARSER_ALLOC(d, m) (d)->parser_alloc(m)
+#define SYNQ_PARSER_INIT(d, p) (d)->parser_init(p)
+#define SYNQ_PARSER_FINALIZE(d, p) (d)->parser_finalize(p)
+#define SYNQ_PARSER_FREE(d, p, f) (d)->parser_free(p, f)
+#define SYNQ_PARSER_FEED(d, p, t, m, c) (d)->parser_feed(p, t, m, c)
+#define SYNQ_PARSER_TRACE(d, f, s) \
+  do {                             \
+    if ((d)->parser_trace)         \
+      (d)->parser_trace(f, s);     \
+  } while (0)
+#define SYNQ_GET_TOKEN(d, cfg, z, t) (d)->get_token(cfg, z, t)
 #endif
 
 #endif  // SYNTAQLITE_INTERNAL_DIALECT_DISPATCH_H

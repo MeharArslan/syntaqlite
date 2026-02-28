@@ -15,8 +15,8 @@ extern "C" {
 #define SYNTAQLITE_NULL_NODE 0xFFFFFFFFu
 
 typedef struct SyntaqliteSourceSpan {
-    uint32_t offset;
-    uint16_t length;
+  uint32_t offset;
+  uint16_t length;
 } SyntaqliteSourceSpan;
 
 #ifdef __cplusplus

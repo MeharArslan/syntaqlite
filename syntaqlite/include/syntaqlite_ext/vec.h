@@ -27,30 +27,30 @@ extern "C" {
 
 // Zero-init
 #define syntaqlite_vec_init(v) \
-  do {                   \
-    (v)->data = NULL;    \
-    (v)->count = 0;      \
-    (v)->capacity = 0;   \
+  do {                         \
+    (v)->data = NULL;          \
+    (v)->count = 0;            \
+    (v)->capacity = 0;         \
   } while (0)
 
 // Free + zero
 #define syntaqlite_vec_free(v, mem) \
-  do {                        \
-    (mem).xFree((v)->data);   \
-    (v)->data = NULL;         \
-    (v)->count = 0;           \
-    (v)->capacity = 0;        \
+  do {                              \
+    (mem).xFree((v)->data);         \
+    (v)->data = NULL;               \
+    (v)->count = 0;                 \
+    (v)->capacity = 0;              \
   } while (0)
 
 // Reset count, keep allocation
 #define syntaqlite_vec_clear(v) \
-  do {                    \
-    (v)->count = 0;       \
+  do {                          \
+    (v)->count = 0;             \
   } while (0)
 
 // Ensure capacity >= needed (capacity is always a power of two).
 // Growth uses malloc + memcpy + free (no realloc).
-#define syntaqlite_vec_ensure(v, needed, mem)                                   \
+#define syntaqlite_vec_ensure(v, needed, mem)                             \
   do {                                                                    \
     if ((needed) > (v)->capacity) {                                       \
       uint32_t _cap = (v)->capacity ? (v)->capacity : 16;                 \
@@ -68,9 +68,9 @@ extern "C" {
 
 // Append one element, grow if needed
 #define syntaqlite_vec_push(v, val, mem)             \
-  do {                                         \
+  do {                                               \
     syntaqlite_vec_ensure((v), (v)->count + 1, mem); \
-    (v)->data[(v)->count++] = (val);           \
+    (v)->data[(v)->count++] = (val);                 \
   } while (0)
 
 // Element count
@@ -81,18 +81,18 @@ extern "C" {
 
 // Set count to n, discarding trailing elements
 #define syntaqlite_vec_truncate(v, n) \
-  do {                          \
-    (v)->count = (n);           \
+  do {                                \
+    (v)->count = (n);                 \
   } while (0)
 
 // Decrement count, evaluate to last element
 #define syntaqlite_vec_pop(v) ((v)->data[--(v)->count])
 
 // Bulk append via memcpy
-#define syntaqlite_vec_push_n(v, src, n, mem)                                     \
+#define syntaqlite_vec_push_n(v, src, n, mem)                               \
   do {                                                                      \
     uint32_t _n = (n);                                                      \
-    syntaqlite_vec_ensure((v), (v)->count + _n, mem);                             \
+    syntaqlite_vec_ensure((v), (v)->count + _n, mem);                       \
     memcpy((v)->data + (v)->count, (src), (size_t)_n * sizeof(*(v)->data)); \
     (v)->count += _n;                                                       \
   } while (0)

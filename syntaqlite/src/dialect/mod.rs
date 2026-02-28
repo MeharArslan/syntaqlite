@@ -114,6 +114,8 @@ impl<'d> Dialect<'d> {
             idx,
             self.raw.node_count,
         );
+        // SAFETY: idx is bounds-checked above; node_names is a static array of
+        // length node_count populated by codegen, with valid NUL-terminated strings.
         unsafe {
             let cstr = std::ffi::CStr::from_ptr(*self.raw.node_names.add(idx));
             cstr.to_str().expect("invalid UTF-8 in node name")
@@ -126,6 +128,8 @@ impl<'d> Dialect<'d> {
         if idx >= self.raw.node_count as usize {
             return false;
         }
+        // SAFETY: idx is bounds-checked above; list_tags is a static array of
+        // length node_count populated by codegen.
         unsafe { *self.raw.list_tags.add(idx) != 0 }
     }
 
@@ -183,10 +187,18 @@ impl<'d> Dialect<'d> {
             i,
             self.raw.fmt_string_count,
         );
+        // SAFETY: i is bounds-checked above (debug_assert); fmt_strings and
+        // fmt_string_lens are parallel static arrays populated by codegen.
+        // from_utf8_unchecked is safe because all fmt strings are ASCII keywords
+        // (validated by debug_assert above in debug builds).
         unsafe {
             let ptr = *self.raw.fmt_strings.add(i);
             let len = *self.raw.fmt_string_lens.add(i) as usize;
             let bytes = std::slice::from_raw_parts(ptr as *const u8, len);
+            debug_assert!(
+                std::str::from_utf8(bytes).is_ok(),
+                "non-UTF-8 in fmt string at index {i}",
+            );
             std::str::from_utf8_unchecked(bytes)
         }
     }
@@ -198,6 +210,8 @@ impl<'d> Dialect<'d> {
             "enum_display index {} out of bounds",
             idx,
         );
+        // SAFETY: idx is bounds-checked above; fmt_enum_display is a static array
+        // of length fmt_enum_display_count populated by codegen.
         unsafe { *self.raw.fmt_enum_display.add(idx) }
     }
 
@@ -211,6 +225,8 @@ impl<'d> Dialect<'d> {
         if self.raw.token_categories.is_null() || token_type >= self.raw.token_type_count {
             return TokenCategory::Other;
         }
+        // SAFETY: token_type is bounds-checked above (< token_type_count) and
+        // null-checked; token_categories is a static array populated by codegen.
         let byte = unsafe { *self.raw.token_categories.add(token_type as usize) };
         TokenCategory::from_u8(byte)
     }
@@ -220,6 +236,8 @@ impl<'d> Dialect<'d> {
         if self.raw.keyword_count.is_null() {
             return 0;
         }
+        // SAFETY: keyword_count is null-checked above; it points to a static
+        // u32 populated by codegen.
         unsafe { *self.raw.keyword_count as usize }
     }
 
@@ -234,6 +252,10 @@ impl<'d> Dialect<'d> {
             return None;
         }
 
+        // SAFETY: all keyword pointers are null-checked above; keyword_codes,
+        // keyword_lens, keyword_offsets, and keyword_text are static arrays populated
+        // by codegen. idx is bounds-checked against keyword_count. keyword_text bytes
+        // are ASCII identifiers, so from_utf8_unchecked is safe.
         unsafe {
             let keyword_count = *self.raw.keyword_count as usize;
             if idx >= keyword_count {
@@ -375,6 +397,8 @@ impl<'d> Dialect<'d> {
         }
         let count = self.raw.schema_contribution_count as usize;
         for i in 0..count {
+            // SAFETY: i < count (loop bound); schema_contributions is a static
+            // array of length schema_contribution_count populated by codegen.
             let entry = unsafe { &*self.raw.schema_contributions.add(i) };
             if entry.node_tag == tag {
                 let opt = |v: u8| if v == 0xFF { None } else { Some(v) };

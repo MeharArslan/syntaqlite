@@ -7,7 +7,6 @@
 #define SYNTAQLITE_SQLITE_H
 
 #include "syntaqlite/config.h"
-#include "syntaqlite/parser.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,26 +16,8 @@ typedef struct SyntaqliteDialect SyntaqliteDialect;
 
 const SyntaqliteDialect* syntaqlite_sqlite_dialect(void);
 
-#ifndef SYNTAQLITE_OMIT_SQLITE_API
-
-static inline SyntaqliteParser* syntaqlite_create_sqlite_parser(
-    const SyntaqliteMemMethods* mem) {
-  return syntaqlite_create_parser_with_dialect(mem, syntaqlite_sqlite_dialect());
-}
-
-#endif  /* SYNTAQLITE_OMIT_SQLITE_API */
-
 #ifdef __cplusplus
 }
-
-#ifndef SYNTAQLITE_OMIT_SQLITE_API
-namespace syntaqlite {
-inline Parser SqliteParser() {
-  return Parser(syntaqlite_create_sqlite_parser(nullptr));
-}
-}  // namespace syntaqlite
-#endif  /* SYNTAQLITE_OMIT_SQLITE_API */
-
-#endif  /* __cplusplus */
+#endif
 
 #endif  // SYNTAQLITE_SQLITE_H
