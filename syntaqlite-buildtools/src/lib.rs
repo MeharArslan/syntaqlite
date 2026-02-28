@@ -26,8 +26,8 @@ pub mod sqlite;
 #[cfg(feature = "version-analysis")]
 pub mod version_analysis;
 
-#[cfg(feature = "grammar-verify")]
-pub(crate) mod grammar_verify;
+#[cfg(all(test, feature = "grammar-verify"))]
+mod grammar_verify;
 
 // --- Codegen pipeline types and functions (stage 2/3) ---
 

@@ -82,12 +82,21 @@ impl fmt::Display for GrammarMismatch {
 
 impl std::error::Error for GrammarMismatch {}
 
+/// Rules intentionally added to our grammar that are not in upstream `parse.y`.
+/// These are filtered out before comparison.
+const ALLOWED_EXTRA_RULES: &[&str] = &[
+    // Error recovery: treat `error SEMI` as a valid command so the parser can
+    // resynchronize after a syntax error and continue parsing subsequent statements.
+    "ecmd ::= error SEMI",
+];
+
 /// Compare rule signatures between upstream `parse.y` and concatenated action files.
 ///
 /// Both inputs are raw `.y` file contents (text).
 ///
 /// Returns `Ok(())` if the rule signatures, fallbacks, precedences, and token classes
-/// match exactly. Returns `Err(GrammarMismatch)` with details otherwise.
+/// match exactly (modulo [`ALLOWED_EXTRA_RULES`]). Returns `Err(GrammarMismatch)`
+/// with details otherwise.
 pub(crate) fn verify_grammar(
     upstream_parse_y: &str,
     action_files: &[(&str, &str)], // (filename, contents)
@@ -111,8 +120,13 @@ pub(crate) fn verify_grammar(
     let upstream_rules: BTreeSet<String> = upstream.rules.iter().map(|r| r.to_string()).collect();
     let actions_rules: BTreeSet<String> = actions.rules.iter().map(|r| r.to_string()).collect();
 
+    let allowed: BTreeSet<&str> = ALLOWED_EXTRA_RULES.iter().copied().collect();
     let rules_missing: Vec<String> = upstream_rules.difference(&actions_rules).cloned().collect();
-    let rules_extra: Vec<String> = actions_rules.difference(&upstream_rules).cloned().collect();
+    let rules_extra: Vec<String> = actions_rules
+        .difference(&upstream_rules)
+        .filter(|r| !allowed.contains(r.as_str()))
+        .cloned()
+        .collect();
 
     // Compare fallbacks: normalize to "target <- tok1 tok2 ..." sorted strings.
     let upstream_fallbacks = collect_fallbacks(&upstream);
