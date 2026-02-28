@@ -136,15 +136,19 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<&Dialect>) -> Result<(), String
     }
 }
 
+fn read_stdin() -> Result<String, String> {
+    let mut buf = String::new();
+    io::stdin()
+        .read_to_string(&mut buf)
+        .map_err(|e| format!("reading stdin: {e}"))?;
+    Ok(buf)
+}
+
 fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
     let paths = expand_paths(&files)?;
 
     if paths.is_empty() {
-        let mut buf = String::new();
-        io::stdin()
-            .read_to_string(&mut buf)
-            .map_err(|e| format!("reading stdin: {e}"))?;
-        return cmd_ast_source(dialect, &buf);
+        return cmd_ast_source(dialect, &read_stdin()?);
     }
 
     for path in &paths {
@@ -179,10 +183,7 @@ fn cmd_fmt(
         if in_place {
             return Err("--in-place requires file arguments".to_string());
         }
-        let mut source = String::new();
-        io::stdin()
-            .read_to_string(&mut source)
-            .map_err(|e| format!("reading stdin: {e}"))?;
+        let source = read_stdin()?;
         let out = format_source(dialect, &source, config.clone()).map_err(|e| format!("{e}"))?;
         print!("{out}");
         return Ok(());

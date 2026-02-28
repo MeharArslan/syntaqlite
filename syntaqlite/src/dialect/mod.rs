@@ -293,11 +293,10 @@ impl<'d> Dialect<'d> {
             let entry = unsafe {
                 let c_entry = &*self.raw.function_extensions.add(i);
 
-                let name: &'d str = std::mem::transmute(
-                    std::ffi::CStr::from_ptr(c_entry.info.name)
-                        .to_str()
-                        .expect("invalid UTF-8 in function extension name"),
-                );
+                let cstr = std::ffi::CStr::from_ptr(c_entry.info.name);
+                let s = cstr.to_str().expect("invalid UTF-8 in function extension name");
+                // Reborrow with 'd lifetime — the C string lives in static dialect data.
+                let name: &'d str = &*(s as *const str);
 
                 let arities: &'d [i16] =
                     if c_entry.info.arities.is_null() || c_entry.info.arity_count == 0 {

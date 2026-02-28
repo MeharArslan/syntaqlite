@@ -23,21 +23,16 @@ impl<'a> FmtCtx<'a> {
 }
 
 /// Reusable scratch buffers for the iterative interpret loop, allocated
-/// once per `Formatter`. The `call_stack` replaces native recursion;
-/// `gn_stack` and `for_each_stack` are shared across all nodes within
+/// once per `Formatter`. The `gn_stack` is shared across all nodes within
 /// a single format call.
 pub(crate) struct InterpretScratch {
     gn_stack: Vec<GNFrame>,
-    for_each_stack: Vec<ForEachState<'static>>,
-    call_stack: Vec<CallFrame<'static>>,
 }
 
 impl InterpretScratch {
     pub fn new() -> Self {
         InterpretScratch {
             gn_stack: Vec::new(),
-            for_each_stack: Vec::new(),
-            call_stack: Vec::new(),
         }
     }
 }
@@ -101,6 +96,10 @@ pub(crate) fn interpret_node<'a>(
     let source = ctx.source();
     let fields = super::formatter::extract_fields(&ctx.dialect, ptr, tag, source);
 
+    // Local stacks with correct lifetime 'a — no transmute needed.
+    let mut call_stack: Vec<CallFrame<'a>> = Vec::new();
+    let mut for_each_stack: Vec<ForEachState<'a>> = Vec::new();
+
     // Current node's execution state.
     let mut cur_node_id: NodeId = root_id;
     let mut ops: &[u8] = &ops_bytes[..ops_len * 6];
@@ -110,29 +109,57 @@ pub(crate) fn interpret_node<'a>(
     let mut running: DocId = NIL_DOC;
     let mut pending: DocId = NIL_DOC;
     let mut gn_save = scratch.gn_stack.len();
-    let mut fe_save = scratch.for_each_stack.len();
+    let mut fe_save = for_each_stack.len();
     let mut ip: usize = 0;
     let has_comments = ctx.comment_ctx.is_some();
 
-    let cs_save = scratch.call_stack.len();
+    /// Push a call frame onto the call stack, setting up child execution state.
+    /// Uses `continue` to restart the interpreter loop for the child node.
+    macro_rules! push_call_frame {
+        ($child_id:expr, $child_ops_bytes:expr, $child_ops_len:expr,
+         $child_fields:expr, $child_children:expr, $return_action_val:expr) => {{
+            let frame = CallFrame {
+                ops,
+                ops_count,
+                ip: ip + 1,
+                node_id: cur_node_id,
+                list_children,
+                running,
+                pending,
+                gn_save,
+                fe_save,
+                return_action: $return_action_val,
+            };
+            call_stack.push(frame);
+
+            cur_node_id = $child_id;
+            ops = &$child_ops_bytes[..$child_ops_len * 6];
+            ops_count = $child_ops_len;
+            fields = $child_fields;
+            list_children = $child_children;
+            running = NIL_DOC;
+            pending = NIL_DOC;
+            gn_save = scratch.gn_stack.len();
+            fe_save = for_each_stack.len();
+            ip = 0;
+            continue;
+        }};
+    }
 
     loop {
         if ip >= ops_count {
             // Current node is done. Finalize its doc.
             let result = arena.cat(running, pending);
             scratch.gn_stack.truncate(gn_save);
-            scratch.for_each_stack.truncate(fe_save);
+            for_each_stack.truncate(fe_save);
 
-            if scratch.call_stack.len() <= cs_save {
+            if call_stack.is_empty() {
                 // Back to root — return final result.
                 return result;
             }
 
             // Pop parent frame.
-            // SAFETY: We transmuted CallFrame<'a> → CallFrame<'static> on push;
-            // reverse here. The actual borrows are valid for 'a.
-            let frame: CallFrame<'a> =
-                unsafe { std::mem::transmute(scratch.call_stack.pop().unwrap()) };
+            let frame = call_stack.pop().unwrap();
             cur_node_id = frame.node_id;
             ops = frame.ops;
             ops_count = frame.ops_count;
@@ -232,36 +259,8 @@ pub(crate) fn interpret_node<'a>(
                             let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
                             let child_fields =
                                 super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
-
-                            let frame = CallFrame {
-                                ops,
-                                ops_count,
-                                ip: ip + 1,
-                                node_id: cur_node_id,
-                                list_children,
-                                running,
-                                pending,
-                                gn_save,
-                                fe_save,
-                                return_action,
-                            };
-                            // SAFETY: CallFrame borrows from ctx/cursor which live for 'a.
-                            // We truncate the call stack back to cs_save before returning.
-                            scratch
-                                .call_stack
-                                .push(unsafe { std::mem::transmute(frame) });
-
-                            cur_node_id = child_id;
-                            ops = &child_ops_bytes[..child_ops_len * 6];
-                            ops_count = child_ops_len;
-                            fields = child_fields;
-                            list_children = child_children;
-                            running = NIL_DOC;
-                            pending = NIL_DOC;
-                            gn_save = scratch.gn_stack.len();
-                            fe_save = scratch.for_each_stack.len();
-                            ip = 0;
-                            continue;
+                            push_call_frame!(child_id, child_ops_bytes, child_ops_len,
+                                child_fields, child_children, return_action);
                         }
                     }
                 }
@@ -354,15 +353,12 @@ pub(crate) fn interpret_node<'a>(
                             body_start: ip + 1,
                             sep_checkpoint: None,
                         };
-                        scratch
-                            .for_each_stack
-                            .push(unsafe { std::mem::transmute(state) });
+                        for_each_stack.push(state);
                     }
                 }
             }
             FmtOp::ChildItem => {
-                let state = scratch
-                    .for_each_stack
+                let state = for_each_stack
                     .last()
                     .expect("ChildItem outside ForEach");
                 let child_id = state.children[state.index];
@@ -387,7 +383,7 @@ pub(crate) fn interpret_node<'a>(
                 if macro_doc == Some(NIL_DOC) {
                     // Macro-suppressed child. Undo the previous separator
                     // and discard pending line breaks.
-                    let state = scratch.for_each_stack.last_mut().unwrap();
+                    let state = for_each_stack.last_mut().unwrap();
                     if let Some((saved_running, saved_pending)) = state.sep_checkpoint.take() {
                         running = saved_running;
                         pending = saved_pending;
@@ -421,40 +417,13 @@ pub(crate) fn interpret_node<'a>(
                         let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
                         let child_fields =
                             super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
-
-                        let frame = CallFrame {
-                            ops,
-                            ops_count,
-                            ip: ip + 1,
-                            node_id: cur_node_id,
-                            list_children,
-                            running,
-                            pending,
-                            gn_save,
-                            fe_save,
-                            return_action,
-                        };
-                        scratch
-                            .call_stack
-                            .push(unsafe { std::mem::transmute(frame) });
-
-                        cur_node_id = child_id;
-                        ops = &child_ops_bytes[..child_ops_len * 6];
-                        ops_count = child_ops_len;
-                        fields = child_fields;
-                        list_children = child_children;
-                        running = NIL_DOC;
-                        pending = NIL_DOC;
-                        gn_save = scratch.gn_stack.len();
-                        fe_save = scratch.for_each_stack.len();
-                        ip = 0;
-                        continue;
+                        push_call_frame!(child_id, child_ops_bytes, child_ops_len,
+                            child_fields, child_children, return_action);
                     }
                 }
             }
             FmtOp::ForEachSep(sid) => {
-                let state = scratch
-                    .for_each_stack
+                let state = for_each_stack
                     .last_mut()
                     .expect("ForEachSep outside ForEach");
                 if state.index < state.children.len() - 1 {
@@ -473,8 +442,7 @@ pub(crate) fn interpret_node<'a>(
                 }
             }
             FmtOp::ForEachEnd => {
-                let state = scratch
-                    .for_each_stack
+                let state = for_each_stack
                     .last_mut()
                     .expect("ForEachEnd outside ForEach");
                 state.index += 1;
@@ -482,7 +450,7 @@ pub(crate) fn interpret_node<'a>(
                     ip = state.body_start;
                     continue;
                 } else {
-                    scratch.for_each_stack.pop();
+                    for_each_stack.pop();
                 }
             }
             FmtOp::IfBool(idx, skip) => {
@@ -549,9 +517,7 @@ pub(crate) fn interpret_node<'a>(
                         body_start: ip + 1,
                         sep_checkpoint: None,
                     };
-                    scratch
-                        .for_each_stack
-                        .push(unsafe { std::mem::transmute(state) });
+                    for_each_stack.push(state);
                 }
             }
         }

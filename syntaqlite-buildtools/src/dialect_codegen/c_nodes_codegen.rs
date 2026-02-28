@@ -7,7 +7,7 @@ use crate::util::c_writer::CWriter;
 use crate::util::synq_parser::{Field, Storage};
 use crate::util::{pascal_to_snake, upper_snake};
 
-use super::{AstModel, NodeLikeRef};
+use super::{AstModel, NodeLikeRef, c_type_name};
 
 pub fn generate_ast_nodes_header(model: &AstModel<'_>, dialect: &str) -> String {
     let enum_names = model.enum_names();
@@ -73,10 +73,7 @@ pub fn generate_ast_nodes_header(model: &AstModel<'_>, dialect: &str) -> String 
     let mut tag_variants: Vec<(String, Option<i32>)> =
         vec![("SYNTAQLITE_NODE_NULL".into(), Some(0))];
     for item in model.node_like_items() {
-        let name = match item {
-            NodeLikeRef::Node(node) => node.name,
-            NodeLikeRef::List(list) => list.name,
-        };
+        let name = item.name();
         tag_variants.push((tag_name(name), Some(model.tag_for(name) as i32)));
     }
     tag_variants.push(("SYNTAQLITE_NODE_COUNT".into(), None));
@@ -119,10 +116,7 @@ pub fn generate_ast_nodes_header(model: &AstModel<'_>, dialect: &str) -> String 
     w.section("Node Union");
     let mut union_members = vec![("SyntaqliteNodeTag".to_string(), "tag".to_string())];
     for item in model.node_like_items() {
-        let name = match item {
-            NodeLikeRef::Node(node) => node.name,
-            NodeLikeRef::List(list) => list.name,
-        };
+        let name = item.name();
         union_members.push((c_type_name(name), pascal_to_snake(name)));
     }
     let union_refs: Vec<_> = union_members
@@ -199,10 +193,7 @@ pub fn generate_ast_nodes_header(model: &AstModel<'_>, dialect: &str) -> String 
     w.line("namespace syntaqlite {");
     w.newline();
     for item in model.node_like_items() {
-        let name = match item {
-            NodeLikeRef::Node(node) => node.name,
-            NodeLikeRef::List(list) => list.name,
-        };
+        let name = item.name();
         let cname = c_type_name(name);
         let tag = tag_name(name);
         w.line(&format!("template <> struct NodeTag<{}> {{", cname));
@@ -369,10 +360,6 @@ fn emit_range_metadata(w: &mut CWriter, model: &AstModel<'_>) {
     w.dedent();
     w.line("};");
     w.newline();
-}
-
-fn c_type_name(name: &str) -> String {
-    format!("Syntaqlite{}", name)
 }
 
 fn tag_name(name: &str) -> String {

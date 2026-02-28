@@ -21,13 +21,16 @@ use std::fmt;
 use std::fs;
 use std::path::Path;
 
+use serde::Serialize;
+
 pub use diff::VariantDiff;
 pub use extract::ExtractedFragments;
 pub use grammar::GrammarAnalysis;
 pub use keywords::{KeywordEntry, KeywordTable, MaskDefine};
 
 /// A parsed SQLite version number (e.g. 3.35.0 or 3.8.11.1).
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[serde(into = "String")]
 pub struct SqliteVersion {
     pub major: u32,
     pub minor: u32,
@@ -67,6 +70,12 @@ impl SqliteVersion {
     }
 }
 
+impl From<SqliteVersion> for String {
+    fn from(v: SqliteVersion) -> Self {
+        v.to_string()
+    }
+}
+
 impl fmt::Display for SqliteVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.sub_patch > 0 {
@@ -82,11 +91,12 @@ impl fmt::Display for SqliteVersion {
 }
 
 /// A group of consecutive versions that share an identical fragment.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct VariantGroup {
     pub id: String,
     pub hash: String,
     pub versions: Vec<SqliteVersion>,
+    #[serde(skip)]
     pub text: String,
 }
 
@@ -101,8 +111,9 @@ impl VariantGroup {
 }
 
 /// Analysis of a single fragment across all versions.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FragmentAnalysis {
+    #[serde(skip)]
     pub fragment_name: String,
     pub variants: Vec<VariantGroup>,
     pub diffs: Vec<VariantDiff>,
@@ -110,22 +121,23 @@ pub struct FragmentAnalysis {
 }
 
 /// Keyword changes between consecutive versions.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct KeywordAddition {
     pub version: SqliteVersion,
     pub added: Vec<String>,
 }
 
 /// Analysis of keyword table changes across versions.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct KeywordAnalysis {
     pub total_keywords_latest: usize,
     pub additions: Vec<KeywordAddition>,
+    #[serde(skip)]
     pub per_version: Vec<(SqliteVersion, KeywordTable)>,
 }
 
 /// Complete analysis result.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct VersionAnalysis {
     pub versions: Vec<SqliteVersion>,
     pub fragments: BTreeMap<String, FragmentAnalysis>,

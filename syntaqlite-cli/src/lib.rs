@@ -6,6 +6,9 @@ use clap::{Parser, Subcommand};
 #[cfg(feature = "runtime")]
 mod runtime;
 
+#[cfg(any(feature = "codegen-dialect", feature = "codegen-sqlite"))]
+mod fs_util;
+
 #[cfg(feature = "codegen-dialect")]
 mod codegen_dialect;
 

@@ -26,6 +26,9 @@ pub mod sqlite;
 #[cfg(feature = "version-analysis")]
 pub mod version_analysis;
 
+#[cfg(feature = "grammar-verify")]
+pub(crate) mod grammar_verify;
+
 // --- Codegen pipeline types and functions (stage 2/3) ---
 
 #[cfg(feature = "codegen-pipeline")]
@@ -192,10 +195,6 @@ mod codegen_api {
 
     /// Extract terminal symbols (potential keywords) from extension `.y` grammar files.
     pub fn extract_terminals_from_y(extension_y_contents: &[&str]) -> Vec<String> {
-        extract_terminals_from_y_impl(extension_y_contents)
-    }
-
-    fn extract_terminals_from_y_impl(extension_y_contents: &[&str]) -> Vec<String> {
         use std::collections::HashSet;
 
         let mut terminals: HashSet<String> = HashSet::new();
@@ -248,7 +247,7 @@ mod codegen_api {
 cmd ::= INCLUDE PERFETTO MODULE ID DOT ID.
 cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
 "#;
-            let got: BTreeSet<String> = super::extract_terminals_from_y_impl(&[y])
+            let got: BTreeSet<String> = super::extract_terminals_from_y(&[y])
                 .into_iter()
                 .collect();
             let want: BTreeSet<String> = [

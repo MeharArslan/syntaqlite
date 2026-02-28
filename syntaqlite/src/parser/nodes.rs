@@ -33,11 +33,7 @@ impl SourceSpan {
     pub fn as_str<'a>(&self, source: &'a str) -> &'a str {
         let start = self.offset as usize;
         let end = start + self.length as usize;
-        // SAFETY: `source` is a valid &str, and the parser guarantees that
-        // offset/length fall on valid UTF-8 boundaries (token boundaries are
-        // always char-aligned). Skipping the redundant UTF-8 boundary check
-        // avoids `str::from_utf8` in the hot path.
-        unsafe { source.get_unchecked(start..end) }
+        &source[start..end]
     }
 }
 
@@ -79,8 +75,7 @@ impl<'a> Fields<'a> {
     #[inline]
     pub fn new() -> Self {
         Self {
-            // SAFETY: An array of MaybeUninit doesn't require initialization.
-            buf: unsafe { std::mem::MaybeUninit::uninit().assume_init() },
+            buf: [const { std::mem::MaybeUninit::uninit() }; 16],
             len: 0,
         }
     }

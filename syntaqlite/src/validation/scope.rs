@@ -132,7 +132,7 @@ impl<'ctx> ScopeStack<'ctx> {
                     .map(|r| r.name.to_ascii_lowercase()),
             )
             .collect();
-        names.sort();
+        names.sort_unstable();
         names.dedup();
         names
     }
@@ -158,7 +158,7 @@ impl<'ctx> ScopeStack<'ctx> {
             }
         }
 
-        names.sort();
+        names.sort_unstable();
         names.dedup();
         names
     }

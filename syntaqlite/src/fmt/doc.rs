@@ -53,20 +53,14 @@ impl<'a> DocArena<'a> {
         }
     }
 
-    /// Create a new arena, reusing the allocation from a previous arena.
+    /// Create a new arena, reusing the capacity from a previous arena.
     ///
     /// The old arena is consumed. The new arena has the same capacity but
     /// a fresh (possibly different) lifetime parameter.
     pub fn recycle<'b>(old: DocArena<'b>) -> Self {
-        let mut docs = old.docs;
-        docs.clear();
-        // SAFETY: Vec is cleared so no Doc<'b> values remain. The empty Vec's
-        // allocation is lifetime-independent (just a heap pointer + capacity).
-        let docs: Vec<Doc<'a>> = unsafe {
-            let (ptr, _, cap) = docs.into_raw_parts();
-            Vec::from_raw_parts(ptr.cast(), 0, cap)
-        };
-        DocArena { docs }
+        let cap = old.docs.capacity();
+        drop(old);
+        DocArena::with_capacity(cap)
     }
 
     fn push(&mut self, doc: Doc<'a>) -> DocId {
@@ -340,35 +334,18 @@ fn emit_newline(indent: i32, out: &mut String, pos: &mut usize) {
 }
 
 /// Push a keyword string with the appropriate casing to the output.
-///
-/// Single-pass with direct pointer writes: reserves capacity once, then
-/// writes transformed bytes into spare capacity with no per-byte bounds
-/// checks. A single `set_len` at the end commits all bytes at once.
 #[inline]
 fn push_keyword(s: &str, case: KeywordCase, out: &mut String) {
     match case {
         KeywordCase::Preserve => out.push_str(s),
-        KeywordCase::Upper | KeywordCase::Lower => {
-            let src = s.as_bytes();
-            let slen = src.len();
-            out.reserve(slen);
-            // SAFETY: we reserved `slen` bytes of spare capacity. We write
-            // exactly `slen` valid ASCII bytes (case-transformed), then commit
-            // via set_len. All fmt keywords are ASCII, so the result is valid UTF-8.
-            unsafe {
-                let buf = out.as_mut_vec();
-                let old_len = buf.len();
-                let dst = buf.as_mut_ptr().add(old_len);
-                if case == KeywordCase::Upper {
-                    for i in 0..slen {
-                        dst.add(i).write(src.get_unchecked(i).to_ascii_uppercase());
-                    }
-                } else {
-                    for i in 0..slen {
-                        dst.add(i).write(src.get_unchecked(i).to_ascii_lowercase());
-                    }
-                }
-                buf.set_len(old_len + slen);
+        KeywordCase::Upper => {
+            for &b in s.as_bytes() {
+                out.push(b.to_ascii_uppercase() as char);
+            }
+        }
+        KeywordCase::Lower => {
+            for &b in s.as_bytes() {
+                out.push(b.to_ascii_lowercase() as char);
             }
         }
     }

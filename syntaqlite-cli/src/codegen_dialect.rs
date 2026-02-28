@@ -1,10 +1,11 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use std::fs;
 use std::path::Path;
 
 use clap::Subcommand;
+
+use crate::fs_util::{ensure_dir, write_file};
 
 /// Dialect codegen CLI subcommands.
 ///
@@ -89,8 +90,8 @@ fn cmd_generate_dialect(
     let temp = temp_dir.path();
     let csrc = temp.join("csrc");
     let include = temp.join("include").join(format!("syntaqlite_{dialect}"));
-    fs::create_dir_all(&csrc).map_err(|e| format!("creating csrc dir: {e}"))?;
-    fs::create_dir_all(&include).map_err(|e| format!("creating include dir: {e}"))?;
+    ensure_dir(&csrc, "csrc dir")?;
+    ensure_dir(&include, "include dir")?;
 
     // Load extension files from user dirs (if provided).
     let ext_y = match actions_dir {
@@ -109,12 +110,10 @@ fn cmd_generate_dialect(
     codegen_to_dir_with_base(dialect, &merged_y, &merged_synq, &csrc, &include)?;
 
     let out = Path::new(output_dir);
-    fs::create_dir_all(out).map_err(|e| format!("creating output dir: {e}"))?;
+    ensure_dir(out, "output dir")?;
     let result = amalgamate::amalgamate_dialect(dialect, temp.as_ref())?;
-    fs::write(out.join(format!("syntaqlite_{dialect}.h")), &result.header)
-        .map_err(|e| format!("writing header: {e}"))?;
-    fs::write(out.join(format!("syntaqlite_{dialect}.c")), &result.source)
-        .map_err(|e| format!("writing source: {e}"))?;
+    write_file(&out.join(format!("syntaqlite_{dialect}.h")), &result.header)?;
+    write_file(&out.join(format!("syntaqlite_{dialect}.c")), &result.source)?;
     eprintln!("wrote {}/syntaqlite_{dialect}.{{h,c}}", out.display());
     Ok(())
 }
@@ -159,69 +158,41 @@ fn codegen_to_dir_with_base(
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
 
     // Write token header.
-    fs::write(
-        include_dir.join(dialect_spec.tokens_header_name()),
+    write_file(
+        &include_dir.join(dialect_spec.tokens_header_name()),
         dialect_spec.guarded_tokens_header(&artifacts.parse_h),
-    )
-    .map_err(|e| format!("writing {dialect}_tokens.h: {e}"))?;
+    )?;
 
     // AST headers.
-    fs::write(
-        include_dir.join(dialect_spec.node_header_name()),
-        artifacts.ast_nodes_h,
-    )
-    .map_err(|e| format!("writing {dialect}_node.h: {e}"))?;
-
-    fs::write(csrc_dir.join("dialect_builder.h"), artifacts.ast_builder_h)
-        .map_err(|e| format!("writing dialect_builder.h: {e}"))?;
+    write_file(&include_dir.join(dialect_spec.node_header_name()), artifacts.ast_nodes_h)?;
+    write_file(&csrc_dir.join("dialect_builder.h"), artifacts.ast_builder_h)?;
 
     // Parse engine (raw Lemon output, compiled as part of dialect unit).
-    fs::write(csrc_dir.join("sqlite_parse.c"), artifacts.parse_c)
-        .map_err(|e| format!("writing sqlite_parse.c: {e}"))?;
+    write_file(&csrc_dir.join("sqlite_parse.c"), artifacts.parse_c)?;
 
     // Forward-declaration headers for parser and tokenizer.
     let parse_h = syntaqlite_buildtools::dialect_codegen::generate_parse_h(dialect);
-    fs::write(csrc_dir.join("sqlite_parse.h"), parse_h)
-        .map_err(|e| format!("writing sqlite_parse.h: {e}"))?;
+    write_file(&csrc_dir.join("sqlite_parse.h"), parse_h)?;
 
     let tokenize_h = syntaqlite_buildtools::dialect_codegen::generate_tokenize_h(dialect);
-    fs::write(csrc_dir.join("sqlite_tokenize.h"), tokenize_h)
-        .map_err(|e| format!("writing sqlite_tokenize.h: {e}"))?;
+    write_file(&csrc_dir.join("sqlite_tokenize.h"), tokenize_h)?;
 
     // Tokenizer + keywords.
-    fs::write(csrc_dir.join("sqlite_tokenize.c"), artifacts.tokenize_c)
-        .map_err(|e| format!("writing sqlite_tokenize.c: {e}"))?;
-    fs::write(csrc_dir.join("sqlite_keyword.c"), artifacts.keyword_c)
-        .map_err(|e| format!("writing sqlite_keyword.c: {e}"))?;
+    write_file(&csrc_dir.join("sqlite_tokenize.c"), artifacts.tokenize_c)?;
+    write_file(&csrc_dir.join("sqlite_keyword.c"), artifacts.keyword_c)?;
 
     // Metadata + formatter data.
-    fs::write(csrc_dir.join("dialect_meta.h"), artifacts.dialect_meta_h)
-        .map_err(|e| format!("writing dialect_meta.h: {e}"))?;
-
-    fs::write(csrc_dir.join("dialect_fmt.h"), artifacts.dialect_fmt_h)
-        .map_err(|e| format!("writing dialect_fmt.h: {e}"))?;
-
-    fs::write(
-        csrc_dir.join("dialect_tokens.h"),
-        artifacts.dialect_tokens_h,
-    )
-    .map_err(|e| format!("writing dialect_tokens.h: {e}"))?;
+    write_file(&csrc_dir.join("dialect_meta.h"), artifacts.dialect_meta_h)?;
+    write_file(&csrc_dir.join("dialect_fmt.h"), artifacts.dialect_fmt_h)?;
+    write_file(&csrc_dir.join("dialect_tokens.h"), artifacts.dialect_tokens_h)?;
 
     // Dialect descriptor + public API.
-    fs::write(csrc_dir.join("dialect.c"), artifacts.dialect_c)
-        .map_err(|e| format!("writing dialect.c: {e}"))?;
-
-    fs::write(
-        include_dir.join(dialect_spec.dialect_header_name()),
-        artifacts.dialect_h,
-    )
-    .map_err(|e| format!("writing {dialect}.h: {e}"))?;
-
-    fs::write(
-        csrc_dir.join(dialect_spec.dialect_dispatch_header_name()),
+    write_file(&csrc_dir.join("dialect.c"), artifacts.dialect_c)?;
+    write_file(&include_dir.join(dialect_spec.dialect_header_name()), artifacts.dialect_h)?;
+    write_file(
+        &csrc_dir.join(dialect_spec.dialect_dispatch_header_name()),
         artifacts.dialect_dispatch_h,
-    )
-    .map_err(|e| format!("writing {dialect}_dialect_dispatch.h: {e}"))?;
+    )?;
 
     Ok(())
 }

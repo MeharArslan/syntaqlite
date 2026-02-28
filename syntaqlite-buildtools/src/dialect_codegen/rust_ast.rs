@@ -37,22 +37,15 @@ fn rust_ffi_field_type(
 /// Map a field to its ergonomic return type for view struct accessors.
 fn rust_view_return_type(
     field: &Field,
-    enum_names: &HashSet<&str>,
-    flags_names: &HashSet<&str>,
-    node_names: &HashSet<&str>,
-    list_names: &HashSet<&str>,
+    _enum_names: &HashSet<&str>,
+    _flags_names: &HashSet<&str>,
+    _node_names: &HashSet<&str>,
+    _list_names: &HashSet<&str>,
 ) -> String {
     match field.storage {
         Storage::Index => {
             let t = field.type_name.as_str();
-            if list_names.contains(t) {
-                format!("Option<{}<'a>>", t)
-            } else if node_names.contains(t) {
-                format!("Option<{}<'a>>", t)
-            } else {
-                // Abstract type (Expr, Stmt, etc.) — newtype wrapper
-                format!("Option<{}<'a>>", t)
-            }
+            format!("Option<{}<'a>>", t)
         }
         Storage::Inline => {
             let t = &field.type_name;
@@ -60,8 +53,6 @@ fn rust_view_return_type(
                 "bool".into()
             } else if t == "SyntaqliteSourceSpan" {
                 "&'a str".into()
-            } else if enum_names.contains(t.as_str()) || flags_names.contains(t.as_str()) {
-                t.clone()
             } else {
                 t.clone()
             }
@@ -318,10 +309,7 @@ fn emit_rust_node_tag_accessor(
     w.open_block("pub fn tag(&self) -> NodeTag {");
     w.open_block("match self {");
     for item in node_like_items {
-        let name = match item {
-            NodeLikeRef::Node(node) => node.name,
-            NodeLikeRef::List(list) => list.name,
-        };
+        let name = item.name();
         w.line(&format!("Node::{name}(..) => NodeTag::{name},"));
     }
     if open_for_extension {

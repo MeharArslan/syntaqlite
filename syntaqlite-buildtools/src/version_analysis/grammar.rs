@@ -10,12 +10,14 @@
 use std::collections::BTreeSet;
 use std::fmt::Write;
 
+use serde::Serialize;
+
 use crate::util::grammar_parser::LemonGrammar;
 
 use super::SqliteVersion;
 
 /// Structured summary of a single version's grammar.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GrammarSummary {
     /// Canonical rule signatures, sorted. E.g. "cmd ::= EXPLAIN cmd"
     pub rule_signatures: Vec<String>,
@@ -32,7 +34,7 @@ pub struct GrammarSummary {
 }
 
 /// Changes between two consecutive grammar versions.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GrammarDiff {
     pub from_version: SqliteVersion,
     pub to_version: SqliteVersion,
@@ -68,7 +70,7 @@ impl GrammarDiff {
 }
 
 /// Full grammar analysis across all versions.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GrammarAnalysis {
     pub per_version: Vec<(SqliteVersion, GrammarSummary)>,
     pub diffs: Vec<GrammarDiff>,

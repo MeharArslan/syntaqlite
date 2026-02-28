@@ -8,7 +8,7 @@ use crate::util::c_writer::CWriter;
 use crate::util::pascal_to_snake;
 use crate::util::synq_parser::{Field, Storage};
 
-use super::{AstModel, NodeLikeRef};
+use super::{AstModel, NodeLikeRef, c_type_name};
 
 #[derive(Debug, Clone)]
 pub enum CMetaCodegenError {
@@ -115,10 +115,7 @@ pub fn generate_c_fmt_tables(model: &AstModel<'_>) -> Result<String, CFmtCodegen
     let mut ordinal_map: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
     let mut next_ordinal = 1usize;
     for item in model.node_like_items() {
-        let name = match item {
-            NodeLikeRef::Node(node) => node.name,
-            NodeLikeRef::List(list) => list.name,
-        };
+        let name = item.name();
         ordinal_map.insert(name, next_ordinal);
         next_ordinal += 1;
     }
@@ -224,10 +221,7 @@ pub fn generate_c_field_metadata(
     w.indent();
     w.line("\"Null\",");
     for item in model.node_like_items() {
-        let name = match item {
-            NodeLikeRef::Node(node) => node.name,
-            NodeLikeRef::List(list) => list.name,
-        };
+        let name = item.name();
         w.line(&format!("\"{}\",", name));
     }
     w.dedent();
@@ -350,6 +344,3 @@ fn bit_position(value: u32) -> u32 {
     value.trailing_zeros()
 }
 
-fn c_type_name(name: &str) -> String {
-    format!("Syntaqlite{}", name)
-}

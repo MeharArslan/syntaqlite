@@ -222,9 +222,7 @@ pub fn generate_dialect_h(dialect: &str) -> String {
     let guard = format!("SYNTAQLITE_{upper}_H");
     let mut w = CWriter::new();
     w.file_header();
-    w.line(&format!("#ifndef {guard}"));
-    w.line(&format!("#define {guard}"));
-    w.newline();
+    w.header_guard_start(&guard);
     w.include_local("syntaqlite/config.h");
     w.newline();
     w.line("#ifdef __cplusplus");
@@ -267,7 +265,7 @@ pub fn generate_dialect_h(dialect: &str) -> String {
     w.line("}  // namespace syntaqlite");
     w.line("#endif");
     w.newline();
-    w.line(&format!("#endif  // {guard}"));
+    w.header_guard_end(&guard);
 
     w.finish()
 }
@@ -417,9 +415,7 @@ pub fn generate_dialect_dispatch_h(dialect: &str) -> String {
     let guard = format!("SYNTAQLITE_{upper}_DIALECT_DISPATCH_H");
     let mut w = CWriter::new();
     w.file_header();
-    w.line(&format!("#ifndef {guard}"));
-    w.line(&format!("#define {guard}"));
-    w.newline();
+    w.header_guard_start(&guard);
     let pascal = pascal_case(dialect);
     w.line(&format!(
         "#define SYNQ_PARSER_ALLOC(d, m)          Synq{pascal}ParseAlloc(m)"
@@ -443,7 +439,7 @@ pub fn generate_dialect_dispatch_h(dialect: &str) -> String {
         "#define SYNQ_GET_TOKEN(d, cfg, z, t)     Synq{pascal}GetToken(cfg, z, t)"
     ));
     w.newline();
-    w.line(&format!("#endif  // {guard}"));
+    w.header_guard_end(&guard);
     w.finish()
 }
 
@@ -458,9 +454,7 @@ pub fn generate_parse_h(dialect: &str) -> String {
     let guard = format!("SYNTAQLITE_{upper}_PARSE_H");
     let mut w = CWriter::new();
     w.file_header();
-    w.line(&format!("#ifndef {guard}"));
-    w.line(&format!("#define {guard}"));
-    w.newline();
+    w.header_guard_start(&guard);
     w.line("#include <stddef.h>");
     w.line("#include <stdint.h>");
     w.line("#include <stdio.h>");
@@ -502,7 +496,7 @@ pub fn generate_parse_h(dialect: &str) -> String {
     w.line("}");
     w.line("#endif");
     w.newline();
-    w.line(&format!("#endif  // {guard}"));
+    w.header_guard_end(&guard);
     w.finish()
 }
 
@@ -513,9 +507,7 @@ pub fn generate_tokenize_h(dialect: &str) -> String {
     let guard = format!("SYNTAQLITE_INTERNAL_{upper}_TOKENIZE_H");
     let mut w = CWriter::new();
     w.file_header();
-    w.line(&format!("#ifndef {guard}"));
-    w.line(&format!("#define {guard}"));
-    w.newline();
+    w.header_guard_start(&guard);
     w.include_local("syntaqlite_ext/sqlite_compat.h");
     w.include_local("syntaqlite/dialect_config.h");
     w.newline();
@@ -523,6 +515,6 @@ pub fn generate_tokenize_h(dialect: &str) -> String {
         "i64 Synq{pascal}GetToken(const SyntaqliteDialectConfig* config, const unsigned char* z, int* tokenType);"
     ));
     w.newline();
-    w.line(&format!("#endif  // {guard}"));
+    w.header_guard_end(&guard);
     w.finish()
 }

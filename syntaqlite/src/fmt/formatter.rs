@@ -180,9 +180,9 @@ impl<'d> Formatter<'d> {
 
         // Recycle arena and render buffers back for next call.
         self.arena = DocArena::recycle(arena);
-        // Take a clone of the output to return; stash the allocation for reuse.
-        let result = out.clone();
-        self.render_out = out;
+        // Return the output; stash a fresh allocation for reuse.
+        let result = out;
+        self.render_out = String::new();
         self.render_stack = render_stack;
         self.render_fits_stack = fits_stack;
         self.render_line_suffix_buf = line_suffix_buf;

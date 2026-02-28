@@ -33,6 +33,10 @@ pub use crate::util::functions_codegen::generate_functions_catalog;
 
 pub use crate::util::pascal_case;
 
+pub(super) fn c_type_name(name: &str) -> String {
+    format!("Syntaqlite{}", name)
+}
+
 pub struct AstModel<'a> {
     items: &'a [Item],
     enum_names: HashSet<&'a str>,
@@ -82,6 +86,15 @@ pub struct ListRef<'a> {
 pub enum NodeLikeRef<'a> {
     Node(NodeRef<'a>),
     List(ListRef<'a>),
+}
+
+impl<'a> NodeLikeRef<'a> {
+    pub fn name(&self) -> &'a str {
+        match self {
+            NodeLikeRef::Node(n) => n.name,
+            NodeLikeRef::List(l) => l.name,
+        }
+    }
 }
 
 impl<'a> AstModel<'a> {
@@ -150,10 +163,7 @@ impl<'a> AstModel<'a> {
 
         let mut tag_map = HashMap::new();
         for (i, item) in node_like_items.iter().enumerate() {
-            let name = match item {
-                NodeLikeRef::Node(node) => node.name,
-                NodeLikeRef::List(list) => list.name,
-            };
+            let name = item.name();
             tag_map.insert(name.to_string(), (i + 1) as u32);
         }
         let base_tag_count = node_like_items.len() as u32;

@@ -105,12 +105,115 @@ pub struct ParseError {
 pub type Result<T> = std::result::Result<T, ParseError>;
 
 // ============================================================================
+// %if / %ifdef condition evaluator
+// ============================================================================
+
+use std::collections::HashSet;
+
+/// Evaluate a boolean expression over a set of defined symbols.
+///
+/// Each identifier is looked up in `defined`: present → `true`, absent → `false`.
+/// Supports `!` (negation), `||` (or), `&&` (and). `&&` binds tighter than `||`.
+fn eval_condition(condition: &str, defined: &HashSet<&str>) -> bool {
+    // Tokenize into: identifiers, `!`, `||`, `&&`.
+    let mut tokens = Vec::new();
+    let bytes = condition.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let ch = bytes[i];
+        if ch.is_ascii_alphanumeric() || ch == b'_' {
+            let start = i;
+            while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_') {
+                i += 1;
+            }
+            tokens.push(&condition[start..i]);
+        } else if ch == b'!' {
+            i += 1;
+            tokens.push("!");
+        } else if ch == b'|' {
+            i += 1;
+            if i < bytes.len() && bytes[i] == b'|' {
+                i += 1;
+            }
+            tokens.push("||");
+        } else if ch == b'&' {
+            i += 1;
+            if i < bytes.len() && bytes[i] == b'&' {
+                i += 1;
+            }
+            tokens.push("&&");
+        } else {
+            i += 1; // skip whitespace, etc.
+        }
+    }
+
+    // Parse into atoms (with negation) and binary operators.
+    let mut atoms: Vec<bool> = Vec::new();
+    let mut ops: Vec<&str> = Vec::new();
+    let mut negate = false;
+    for tok in &tokens {
+        match *tok {
+            "!" => negate = !negate,
+            "||" | "&&" => {
+                ops.push(tok);
+                negate = false;
+            }
+            ident => {
+                let val = defined.contains(ident) ^ negate;
+                atoms.push(val);
+                negate = false;
+            }
+        }
+    }
+
+    if atoms.is_empty() {
+        return false;
+    }
+
+    // Evaluate && first (higher precedence), then ||.
+    let mut groups = vec![atoms[0]];
+    let mut group_ops = Vec::new();
+    for (i, op) in ops.iter().enumerate() {
+        if *op == "&&" {
+            let last = groups.last_mut().unwrap();
+            *last = *last && atoms[i + 1];
+        } else {
+            group_ops.push(*op);
+            groups.push(atoms[i + 1]);
+        }
+    }
+    groups.iter().any(|&v| v)
+}
+
+/// The default set of preprocessor symbols defined when parsing SQLite's grammar.
+///
+/// `%ifdef SYM` includes the block when `SYM` is in this set.
+/// `%if EXPR` evaluates identifiers against this set.
+///
+/// Convention: `SQLITE_ENABLE_*` features that syntaqlite opts into go here.
+/// `SQLITE_OMIT_*` flags are **not** defined (features are available by default).
+pub fn default_defines() -> HashSet<&'static str> {
+    [
+        // Opt-in features that syntaqlite includes in its grammar.
+        "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
+    ]
+    .into_iter()
+    .collect()
+}
+
+// ============================================================================
 // Public API
 // ============================================================================
 
 impl<'a> LemonGrammar<'a> {
+    /// Parse with the default SQLite preprocessor defines.
     pub fn parse(input: &'a str) -> Result<Self> {
-        Parser::parse_grammar(input)
+        Self::parse_with_defines(input, &default_defines())
+    }
+
+    /// Parse with a custom set of preprocessor defines.
+    pub fn parse_with_defines(input: &'a str, defines: &HashSet<&str>) -> Result<Self> {
+        Parser::parse_grammar(input, defines)
     }
 }
 
@@ -118,20 +221,22 @@ impl<'a> LemonGrammar<'a> {
 // Parser Implementation
 // ============================================================================
 
-struct Parser<'a> {
+struct Parser<'a, 'b> {
     input: &'a str,
     pos: usize, // Current byte position
     line: usize,
     column: usize,
+    defines: &'b HashSet<&'b str>,
 }
 
-impl<'a> Parser<'a> {
-    fn parse_grammar(input: &'a str) -> Result<LemonGrammar<'a>> {
+impl<'a, 'b> Parser<'a, 'b> {
+    fn parse_grammar(input: &'a str, defines: &'b HashSet<&'b str>) -> Result<LemonGrammar<'a>> {
         let mut parser = Self {
             input,
             pos: 0,
             line: 1,
             column: 1,
+            defines,
         };
         let mut tokens = Vec::new();
         let mut rules = Vec::new();
@@ -158,22 +263,33 @@ impl<'a> Parser<'a> {
                             parser.parse_precedence(directive, &mut precedences)?;
                         }
                         "ifdef" => {
-                            // %ifdef SQLITE_OMIT_X → EXCLUDE (skip block)
-                            // %ifdef SQLITE_ENABLE_X → INCLUDE (keep block)
-                            if parser.ifdef_should_include() {
+                            if parser.ifdef_is_defined() {
                                 parser.skip_to_eol();
                             } else {
-                                parser.skip_ifdef_block()?;
+                                let end = parser.skip_ifdef_block()?;
+                                if end == "else" { /* include else branch */ }
                             }
                         }
                         "ifndef" => {
-                            // %ifndef SQLITE_OMIT_X → INCLUDE (keep block)
-                            // %ifndef SQLITE_ENABLE_X → EXCLUDE (skip block)
-                            if parser.ifdef_should_include() {
-                                parser.skip_ifdef_block()?;
+                            if parser.ifdef_is_defined() {
+                                let end = parser.skip_ifdef_block()?;
+                                if end == "else" { /* include else branch */ }
                             } else {
                                 parser.skip_to_eol();
                             }
+                        }
+                        "if" => {
+                            if parser.if_should_include() {
+                                parser.skip_to_eol();
+                            } else {
+                                let end = parser.skip_ifdef_block()?;
+                                if end == "else" { /* include else branch */ }
+                            }
+                        }
+                        "else" => {
+                            // We were including the if/ifdef/ifndef block and
+                            // hit the else branch — skip it.
+                            parser.skip_else_block()?;
                         }
                         "endif" => {
                             // Skip endif directive (already handled by skip_ifdef_block or matching ifndef)
@@ -409,14 +525,14 @@ impl<'a> Parser<'a> {
                     let directive = self.parse_identifier()?;
                     match directive {
                         "ifdef" => {
-                            if self.ifdef_should_include() {
+                            if self.ifdef_is_defined() {
                                 self.skip_to_eol();
                             } else {
                                 self.skip_ifdef_block()?;
                             }
                         }
                         "ifndef" => {
-                            if self.ifdef_should_include() {
+                            if self.ifdef_is_defined() {
                                 self.skip_ifdef_block()?;
                             } else {
                                 self.skip_to_eol();
@@ -481,17 +597,9 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Peek at the flag name following %ifdef/%ifndef and return true if it is
-    /// an ENABLE flag (i.e. the block should be included for %ifdef, excluded
-    /// for %ifndef). Consumes nothing beyond whitespace + the flag identifier
-    /// on the rest of the line, then skips to EOL.
-    ///
-    /// SQLITE_OMIT_*  → false (feature disabled when flag set)
-    /// SQLITE_ENABLE_* → true  (feature enabled when flag set)
-    /// Unknown         → false (conservative: treat as OMIT)
-    fn ifdef_should_include(&mut self) -> bool {
+    /// Read the symbol after `%ifdef`/`%ifndef` and check if it is defined.
+    fn ifdef_is_defined(&mut self) -> bool {
         self.skip_ws();
-        // Peek the flag name on the rest of the line.
         let start = self.pos;
         while let Some(ch) = self.peek() {
             if ch.is_alphanumeric() || ch == '_' {
@@ -501,12 +609,46 @@ impl<'a> Parser<'a> {
             }
         }
         let flag = &self.input[start..self.pos];
-        flag.starts_with("SQLITE_ENABLE_")
+        self.defines.contains(flag)
     }
 
-    fn skip_ifdef_block(&mut self) -> Result<()> {
+    /// Read the rest of the line as a `%if` condition and evaluate it.
+    fn if_should_include(&mut self) -> bool {
+        let start = self.pos;
+        while let Some(ch) = self.peek() {
+            if ch == '\n' {
+                break;
+            }
+            self.next();
+        }
+        let condition = &self.input[start..self.pos];
+        eval_condition(condition, self.defines)
+    }
+
+    /// Skip content until `%endif` (or `%else`). Returns the directive that
+    /// ended the skip (`"endif"` or `"else"`).
+    fn skip_ifdef_block(&mut self) -> Result<&'a str> {
         self.skip_to_eol();
 
+        while self.advance_until('%') {
+            self.next(); // consume %
+            match self.parse_identifier().ok() {
+                Some("endif") => {
+                    self.skip_to_eol();
+                    return Ok("endif");
+                }
+                Some("else") => {
+                    self.skip_to_eol();
+                    return Ok("else");
+                }
+                _ => {}
+            }
+        }
+        Ok("endif")
+    }
+
+    /// Skip from `%else` to `%endif`, discarding the else branch.
+    fn skip_else_block(&mut self) -> Result<()> {
         while self.advance_until('%') {
             self.next(); // consume %
             if self.parse_identifier().ok() == Some("endif") {

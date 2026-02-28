@@ -19,6 +19,7 @@ codegen-pipeline = []
 sqlite-extract = []
 sqlite-codegen = ["sqlite-extract", "codegen-pipeline"]
 version-analysis = ["dep:sha2", "dep:similar"]
+grammar-verify = ["codegen-pipeline"]
 
 [build-dependencies]
 cc = "1.0"

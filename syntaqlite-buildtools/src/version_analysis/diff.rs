@@ -6,12 +6,13 @@
 //! Groups consecutive versions with identical fragment hashes into
 //! `VariantGroup`s and produces unified diffs between adjacent variants.
 
+use serde::Serialize;
 use similar::TextDiff;
 
 use super::{SqliteVersion, VariantGroup};
 
 /// A unified diff between two consecutive variants.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct VariantDiff {
     pub from_id: String,
     pub to_id: String,

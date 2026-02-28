@@ -229,8 +229,7 @@ impl<'d> AnalysisHost<'d> {
     /// Get diagnostics for a document, lazily parsing if needed.
     pub fn diagnostics(&mut self, uri: &str) -> &[Diagnostic] {
         if let Some(doc) = self.documents.get_mut(uri) {
-            ensure_document_state(&self.dialect, doc);
-            &doc.state.as_ref().unwrap().diagnostics
+            &ensure_document_state(&self.dialect, doc).diagnostics
         } else {
             &[]
         }
@@ -240,12 +239,10 @@ impl<'d> AnalysisHost<'d> {
     pub fn document_diagnostics(&mut self, uri: &str) -> Option<(i32, &str, &[Diagnostic])> {
         let doc = self.documents.get_mut(uri)?;
         ensure_document_state(&self.dialect, doc);
-        let state = doc.state.as_ref().unwrap();
-        Some((
-            doc.version,
-            doc.source.as_str(),
-            state.diagnostics.as_slice(),
-        ))
+        let version = doc.version;
+        let source = doc.source.as_str();
+        let diagnostics = &doc.state.as_ref().unwrap().diagnostics;
+        Some((version, source, diagnostics))
     }
 
     /// Get the source text for a document, if it exists.
@@ -263,8 +260,7 @@ impl<'d> AnalysisHost<'d> {
     /// Tokens marked with `SYNQ_TOKEN_FLAG_AS_TYPE` are classified as `Type`.
     pub fn semantic_tokens(&mut self, uri: &str) -> &[SemanticToken] {
         if let Some(doc) = self.documents.get_mut(uri) {
-            ensure_document_state(&self.dialect, doc);
-            &doc.state.as_ref().unwrap().semantic_tokens
+            &ensure_document_state(&self.dialect, doc).semantic_tokens
         } else {
             &[]
         }
@@ -488,10 +484,11 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
     }
 }
 
-fn ensure_document_state(dialect: &Dialect, doc: &mut Document) {
+fn ensure_document_state<'a>(dialect: &Dialect, doc: &'a mut Document) -> &'a DocumentState {
     if doc.state.is_none() {
         doc.state = Some(compute_document_state(dialect, &doc.source));
     }
+    doc.state.as_ref().unwrap()
 }
 
 fn replay_completion_info(
