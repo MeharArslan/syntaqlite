@@ -53,21 +53,18 @@
   .sq-editor-pane {
     border-right: none;
     border-bottom: 1px solid var(--line);
+    min-width: 0;
   }
 
   .sq-editor-pane__toolbar {
     padding: 6px 8px;
     gap: 8px;
-    overflow: hidden;
   }
 
   .sq-editor-pane__select {
-    min-width: 0;
-    max-width: 100%;
     width: 0;
     flex: 1 1 0%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    min-width: 0;
   }
 
   .sq-editor-pane__label {
