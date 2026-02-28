@@ -29,33 +29,34 @@ export class Engine {
   status = "Loading...";
   statusError = false;
 
-  private module: EmscriptenModule | null = null;
+  private module: EmscriptenModule | undefined = undefined;
   private encoder = new TextEncoder();
   private decoder = new TextDecoder();
 
-  private setDialectRaw: WasmFn | null = null;
-  private clearDialectRaw: WasmFn | null = null;
-  private allocRaw: WasmFn | null = null;
-  private freeRaw: WasmFn | null = null;
-  private astRaw: WasmFn | null = null;
-  private astJsonRaw: WasmFn | null = null;
-  private fmtRaw: WasmFn | null = null;
-  private diagnosticsRaw: WasmFn | null = null;
-  private semanticTokensRaw: WasmFn | null = null;
-  private completionsRaw: WasmFn | null = null;
-  private resultPtrRaw: WasmFn | null = null;
-  private resultLenRaw: WasmFn | null = null;
-  private resultFreeRaw: WasmFn | null = null;
-  private setSqliteVersionRaw: WasmFn | null = null;
-  private setCflagRaw: WasmFn | null = null;
-  private clearCflagRaw: WasmFn | null = null;
-  private clearAllCflagsRaw: WasmFn | null = null;
-  private getCflagListRaw: WasmFn | null = null;
-  private setSessionContextRaw: WasmFn | null = null;
-  private clearSessionContextRaw: WasmFn | null = null;
+  private setDialectRaw: WasmFn | undefined = undefined;
+  private clearDialectRaw: WasmFn | undefined = undefined;
+  private allocRaw: WasmFn | undefined = undefined;
+  private freeRaw: WasmFn | undefined = undefined;
+  private astRaw: WasmFn | undefined = undefined;
+  private astJsonRaw: WasmFn | undefined = undefined;
+  private fmtRaw: WasmFn | undefined = undefined;
+  private diagnosticsRaw: WasmFn | undefined = undefined;
+  private semanticTokensRaw: WasmFn | undefined = undefined;
+  private completionsRaw: WasmFn | undefined = undefined;
+  private resultPtrRaw: WasmFn | undefined = undefined;
+  private resultLenRaw: WasmFn | undefined = undefined;
+  private resultFreeRaw: WasmFn | undefined = undefined;
+  private setSqliteVersionRaw: WasmFn | undefined = undefined;
+  private setCflagRaw: WasmFn | undefined = undefined;
+  private clearCflagRaw: WasmFn | undefined = undefined;
+  private clearAllCflagsRaw: WasmFn | undefined = undefined;
+  private getCflagListRaw: WasmFn | undefined = undefined;
+  private setSessionContextRaw: WasmFn | undefined = undefined;
+  private clearSessionContextRaw: WasmFn | undefined = undefined;
+  private setSessionContextDdlRaw: WasmFn | undefined = undefined;
 
   get ready(): boolean {
-    return this.module !== null;
+    return this.module !== undefined;
   }
 
   updateStatus(text: string, isError = false): void {
@@ -86,6 +87,7 @@ export class Engine {
     this.getCflagListRaw = this.tryResolveRuntimeFn("wasm_get_cflag_list");
     this.setSessionContextRaw = this.tryResolveRuntimeFn("wasm_set_session_context");
     this.clearSessionContextRaw = this.tryResolveRuntimeFn("wasm_clear_session_context");
+    this.setSessionContextDdlRaw = this.tryResolveRuntimeFn("wasm_set_session_context_ddl");
   }
 
   private resolveRuntimeFn(symbol: string): WasmFn {
@@ -96,15 +98,15 @@ export class Engine {
     return fn;
   }
 
-  /** Like resolveRuntimeFn but returns null if not found. */
-  private tryResolveRuntimeFn(symbol: string): WasmFn | null {
+  /** Like resolveRuntimeFn but returns undefined if not found. */
+  private tryResolveRuntimeFn(symbol: string): WasmFn | undefined {
     const fn = this.module![`_${symbol}`];
-    return typeof fn === "function" ? fn : null;
+    return typeof fn === "function" ? fn : undefined;
   }
 
   private resolveDialectFn(
     symbol: string,
-    localScope: Record<string, unknown> | null = null,
+    localScope: Record<string, unknown> | undefined = undefined,
   ): WasmFn {
     if (localScope && typeof localScope[symbol] === "function") {
       return localScope[symbol] as WasmFn;
@@ -152,7 +154,7 @@ export class Engine {
     } catch {
       throw new Error(`Symbol "${symbol}" not found in the WASM module.`);
     }
-    if (ptr === 0) throw new Error(`Symbol "${symbol}" returned null.`);
+    if (ptr === 0) throw new Error(`Symbol "${symbol}" returned undefined.`);
     this.setDialectPointer(ptr);
     return {symbol, ptr, label: symbol};
   }
@@ -201,7 +203,7 @@ export class Engine {
     const text = this.readAndClearResult();
     if (status !== 0) return {ok: false, error: text};
     try {
-      return {ok: true, statements: JSON.parse(text)};
+      return {ok: true, statements: JSON.parse(text, (_, v) => (v === null ? undefined : v))};
     } catch (e) {
       return {ok: false, error: `JSON parse error: ${(e as Error).message}`};
     }
@@ -217,22 +219,22 @@ export class Engine {
 
   /** Run semantic token analysis over a byte range. Returns a pre-encoded
    *  Uint32Array (5 u32s per token: deltaLine, deltaStartChar, length,
-   *  legendIndex, 0) ready for Monaco, or null on failure.
+   *  legendIndex, 0) ready for Monaco, or undefined on failure.
    *  Pass rangeStart=0 and rangeEnd=0xFFFFFFFF for the full document. */
   runSemanticTokens(
     sql: string,
     rangeStart = 0,
     rangeEnd = 0xffffffff,
     version = 1,
-  ): Uint32Array | null {
-    if (!this.semanticTokensRaw) return null;
+  ): Uint32Array | undefined {
+    if (!this.semanticTokensRaw) return undefined;
     try {
       const count = this.withInput(sql, (ptr, len) =>
         this.semanticTokensRaw!(ptr, len, rangeStart, rangeEnd, version),
       );
       if (count <= 0) {
         this.resultFreeRaw!();
-        return count === 0 ? new Uint32Array(0) : null;
+        return count === 0 ? new Uint32Array(0) : undefined;
       }
       // Read raw bytes from RESULT_BUF as a Uint32Array (5 u32s per token).
       const rptr = this.resultPtrRaw!();
@@ -242,7 +244,7 @@ export class Engine {
       return new Uint32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
     } catch (e) {
       console.warn("wasm_semantic_tokens failed:", e);
-      return null;
+      return undefined;
     }
   }
 
@@ -333,6 +335,14 @@ export class Engine {
   clearSessionContext(): void {
     if (!this.clearSessionContextRaw) return;
     this.clearSessionContextRaw();
+  }
+
+  setSessionContextDdl(sql: string): {ok: true} | {ok: false; error: string} {
+    if (!this.setSessionContextDdlRaw) return {ok: false, error: "DDL context not supported"};
+    const status = this.withInput(sql, (ptr, len) => this.setSessionContextDdlRaw!(ptr, len));
+    const detail = this.readAndClearResult();
+    if (status !== 0) return {ok: false, error: detail || "DDL parse failed"};
+    return {ok: true};
   }
 }
 

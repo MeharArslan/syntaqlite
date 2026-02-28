@@ -17,8 +17,8 @@ const THEME_SWITCH_OPTIONS = [
 export class Header implements m.ClassComponent<Attrs> {
   private customPopoverOpen = false;
   private customSymbol = "syntaqlite_dialect";
-  private customFile: File | null = null;
-  private customError: string | null = null;
+  private customFile: File | undefined = undefined;
+  private customError: string | undefined = undefined;
   private customLoading = false;
   private configPopoverOpen = false;
 
@@ -61,7 +61,7 @@ export class Header implements m.ClassComponent<Attrs> {
                                   this.configPopoverOpen = !this.configPopoverOpen;
                                 },
                               }, "\u25BE")
-                            : null,
+                            : undefined,
                         ],
                       ),
                       m("div.sq-config-popover__backdrop", {
@@ -108,7 +108,7 @@ export class Header implements m.ClassComponent<Attrs> {
                               };
                               const renderGroup = (label: string, items: string[]) =>
                                 items.length === 0
-                                  ? null
+                                  ? undefined
                                   : [
                                       m("div.sq-config-popover__group-label", label),
                                       ...items.map((suffix) =>
@@ -136,26 +136,11 @@ export class Header implements m.ClassComponent<Attrs> {
                           ),
                         ]),
                         m("div.sq-config-popover__section", [
-                          m("span.sq-config-popover__label", "Schema Context"),
-                          m("textarea.sq-config-popover__textarea", {
-                            placeholder: "table_name: col1, col2\nusers: id, name, email",
-                            rows: 4,
-                            value: app.schemaContext.rawText,
-                            oninput: (e: Event) => {
-                              app.schemaContext.rawText = (e.target as HTMLTextAreaElement).value;
-                              app.schemaContext.apply(app.runtime);
-                              m.redraw();
-                            },
-                          }),
-                          m("span.sq-config-popover__help-text", "One table per line: table_name: col1, col2"),
-                        ]),
-                        m("div.sq-config-popover__section", [
                           m(
                             "button.sq-config-popover__reset-btn",
                             {
                               onclick: () => {
                                 app.dialectConfig.reset(app.runtime);
-                                app.schemaContext.reset(app.runtime);
                                 m.redraw();
                               },
                             },
@@ -185,7 +170,7 @@ export class Header implements m.ClassComponent<Attrs> {
                     onclick: (e: Event) => {
                       e.stopPropagation();
                       this.customPopoverOpen = !this.customPopoverOpen;
-                      if (this.customPopoverOpen) this.customError = null;
+                      if (this.customPopoverOpen) this.customError = undefined;
                     },
                   },
                   activeId === "custom" && app.dialect.customLabel
@@ -215,7 +200,7 @@ export class Header implements m.ClassComponent<Attrs> {
                         const file = input.files?.[0];
                         if (file) {
                           this.customFile = file;
-                          this.customError = null;
+                          this.customError = undefined;
                         }
                       },
                     }),
@@ -227,7 +212,7 @@ export class Header implements m.ClassComponent<Attrs> {
                       value: this.customSymbol,
                       oninput: (e: Event) => {
                         this.customSymbol = (e.target as HTMLInputElement).value;
-                        this.customError = null;
+                        this.customError = undefined;
                       },
                     }),
                   ]),
@@ -243,7 +228,7 @@ export class Header implements m.ClassComponent<Attrs> {
                   ]),
                   this.customError
                     ? m("div.sq-dialect-popover__error", this.customError)
-                    : null,
+                    : undefined,
                   m("div.sq-dialect-popover__row", [
                     m(
                       "button.sq-dialect-popover__load-btn",
@@ -278,7 +263,7 @@ export class Header implements m.ClassComponent<Attrs> {
   private async loadCustom(app: InstanceType<typeof import("../app/app").App>) {
     if (!this.customFile) return;
     this.customLoading = true;
-    this.customError = null;
+    this.customError = undefined;
     m.redraw();
     const error = await app.dialect.loadFromFile(app.runtime, this.customFile, this.customSymbol);
     this.customLoading = false;

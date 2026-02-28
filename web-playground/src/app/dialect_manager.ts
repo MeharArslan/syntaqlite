@@ -29,8 +29,8 @@ export const DIALECT_PRESETS: DialectPreset[] = [
 
 export class DialectManager {
   activePresetId: string = DIALECT_PRESETS[0].id;
-  active: DialectBinding | null = null;
-  customLabel: string | null = null;
+  active: DialectBinding | undefined = undefined;
+  customLabel: string | undefined = undefined;
 
   private cache = new Map<string, DialectBinding>();
 
@@ -49,7 +49,7 @@ export class DialectManager {
       engine.setDialectPointer(binding.ptr);
       this.active = binding;
       this.activePresetId = preset.id;
-      this.customLabel = null;
+      this.customLabel = undefined;
       engine.updateStatus(`Dialect: ${preset.label}`);
     } catch (err) {
       engine.updateStatus(`Failed to load ${preset.label}: ${(err as Error).message}`, true);
@@ -57,7 +57,7 @@ export class DialectManager {
     m.redraw();
   }
 
-  async loadFromFile(engine: Engine, file: File, symbol: string): Promise<string | null> {
+  async loadFromFile(engine: Engine, file: File, symbol: string): Promise<string | undefined> {
     if (!engine.ready) {
       return "Runtime is not initialized yet.";
     }
@@ -70,7 +70,7 @@ export class DialectManager {
       this.activePresetId = "custom";
       this.customLabel = file.name;
       engine.updateStatus(`Dialect: ${file.name}`);
-      return null;
+      return undefined;
     } catch (err) {
       return (err as Error).message;
     } finally {

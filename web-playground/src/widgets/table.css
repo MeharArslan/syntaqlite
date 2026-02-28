@@ -1,0 +1,65 @@
+/* Copyright 2025 The syntaqlite Authors. All rights reserved. */
+/* Licensed under the Apache License, Version 2.0. */
+
+.sq-table-wrap {
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.sq-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+/* ── Header ── */
+
+.sq-table thead th {
+  padding: 5px 14px;
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  background: var(--surface-soft);
+  border-bottom: 1px solid var(--line);
+  /* Keep header visible while body scrolls. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* ── Body ── */
+
+.sq-table tbody tr {
+  border-bottom: 1px solid var(--line);
+  transition: background-color 80ms ease;
+}
+
+.sq-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.sq-table tbody tr:hover {
+  background: var(--accent-soft);
+}
+
+.sq-table tbody td {
+  padding: 5px 14px;
+  vertical-align: top;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+/* ── Empty state ── */
+
+.sq-table__empty {
+  padding: 14px !important;
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.82rem;
+}

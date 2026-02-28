@@ -58,12 +58,12 @@ export interface AstFieldBase {
 
 export interface AstNodeField extends AstFieldBase {
   kind: "node";
-  child: AstJsonNode | null;
+  child: AstJsonNode | undefined;
 }
 
 export interface AstSpanField extends AstFieldBase {
   kind: "span";
-  value: string | null;
+  value: string | undefined;
 }
 
 export interface AstBoolField extends AstFieldBase {
@@ -73,7 +73,7 @@ export interface AstBoolField extends AstFieldBase {
 
 export interface AstEnumField extends AstFieldBase {
   kind: "enum";
-  value: string | null;
+  value: string | undefined;
 }
 
 export interface AstFlagsField extends AstFieldBase {

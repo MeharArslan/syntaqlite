@@ -18,11 +18,11 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
     keywordCase: 1 as KeywordCase,
     semicolons: true,
   };
-  private formatResult: FormatResult | null = null;
-  private lastSql: string | null = null;
-  private lastOptionsKey: string | null = null;
-  private lastDialectPtr: number | null = null;
-  private lastConfigKey: string | null = null;
+  private formatResult: FormatResult | undefined = undefined;
+  private lastSql: string | undefined = undefined;
+  private lastOptionsKey: string | undefined = undefined;
+  private lastDialectPtr: number | undefined = undefined;
+  private lastConfigKey: string | undefined = undefined;
 
   view(vnode: m.Vnode<FormatTabAttrs>) {
     const {app, sql, active} = vnode.attrs;

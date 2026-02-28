@@ -108,7 +108,7 @@
   color: var(--bool-val);
 }
 
-.sq-ast-tree__value--null {
+.sq-ast-tree__value--none {
   color: var(--muted);
   font-style: italic;
 }

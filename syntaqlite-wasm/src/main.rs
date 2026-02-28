@@ -725,6 +725,64 @@ pub extern "C" fn wasm_clear_session_context() -> i32 {
     run_clear_session_context()
 }
 
+fn run_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
+    let dialect = match resolve_dialect() {
+        Ok(d) => d,
+        Err(e) => {
+            set_result(&e);
+            return 1;
+        }
+    };
+    let source = match decode_input(ptr, len) {
+        Ok(s) => s,
+        Err(e) => {
+            set_result(&e);
+            return 1;
+        }
+    };
+
+    let mut parser = Parser::with_dialect(&dialect);
+    let config = get_dialect_config();
+    parser.set_dialect_config(&config);
+    let mut cursor = parser.parse(&source);
+
+    let mut stmt_ids = Vec::new();
+    while let Some(result) = cursor.next_statement() {
+        match result {
+            Ok(id) => stmt_ids.push(id),
+            Err(e) => {
+                set_result(&e.to_string());
+                return 1;
+            }
+        }
+    }
+
+    let ctx = syntaqlite::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+
+    let dialect_ptr = DIALECT_PTR.with(|p| p.get());
+    if dialect_ptr == 0 {
+        set_result("dialect pointer is not set; call wasm_set_dialect first");
+        return 1;
+    }
+    let mut lsp = take_or_create_lsp_host(dialect_ptr);
+    lsp.host.set_session_context(ctx);
+    store_lsp_host(lsp);
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        run_set_session_context_ddl(ptr, len)
+    })) {
+        Ok(result) => result,
+        Err(_) => {
+            set_result("wasm_set_session_context_ddl panicked");
+            1
+        }
+    }
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_get_cflag_list() -> i32 {
     let table = dialect_ffi::cflag_table();

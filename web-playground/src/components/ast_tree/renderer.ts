@@ -92,11 +92,11 @@ export class AstCanvasRenderer {
   private canvas: HTMLCanvasElement;
   private container: HTMLElement;
   private ctx: CanvasRenderingContext2D;
-  private tree: VisNode[] | null = null;
+  private tree: VisNode[] | undefined = undefined;
   private treeWidth = 0;
   private treeHeight = 0;
   private transform: Transform = {panX: 0, panY: 0, zoom: 1.0};
-  private hoverNode: VisNode | null = null;
+  private hoverNode: VisNode | undefined = undefined;
   private dragging = false;
   private dragStart = {x: 0, y: 0};
   private dragPanStart = {x: 0, y: 0};
@@ -215,9 +215,9 @@ export class AstCanvasRenderer {
     return {cx, cy, tx, ty};
   }
 
-  private hitTest(tx: number, ty: number): VisNode | null {
-    if (!this.tree) return null;
-    function check(node: VisNode): VisNode | null {
+  private hitTest(tx: number, ty: number): VisNode | undefined {
+    if (!this.tree) return undefined;
+    function check(node: VisNode): VisNode | undefined {
       if (tx >= node.x && tx <= node.x + node.w && ty >= node.y && ty <= node.y + node.h) {
         return node;
       }
@@ -227,13 +227,13 @@ export class AstCanvasRenderer {
           if (hit) return hit;
         }
       }
-      return null;
+      return undefined;
     }
     for (const root of this.tree) {
       const hit = check(root);
       if (hit) return hit;
     }
-    return null;
+    return undefined;
   }
 
   private onMouseDown(e: MouseEvent) {
@@ -286,7 +286,7 @@ export class AstCanvasRenderer {
   private onMouseLeave() {
     this.dragging = false;
     if (this.hoverNode) {
-      this.hoverNode = null;
+      this.hoverNode = undefined;
       this.render();
     }
     this.canvas.style.cursor = "grab";

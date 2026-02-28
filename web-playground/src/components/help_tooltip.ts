@@ -35,7 +35,7 @@ export class HelpTooltip implements m.ClassComponent<HelpTooltipAttrs> {
               },
               linkLabel,
             )
-          : null,
+          : undefined,
       ]),
     ]);
   }

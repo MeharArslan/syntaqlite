@@ -3,6 +3,8 @@
 
 import type {Engine} from "./engine";
 
+export type SchemaFormat = "simple" | "ddl";
+
 interface TableEntry {
   name: string;
   columns: string[];
@@ -17,22 +19,22 @@ interface SessionContextPayload {
 /**
  * Manages user-defined schema context for validation.
  *
- * Parses a simple text format (one table per line):
- *   table_name: col1, col2, col3
- *
- * Columns are optional — a line with just a table name is valid.
+ * Supports two formats:
+ *   simple — one table per line: `table_name: col1, col2, col3`
+ *   ddl    — `CREATE TABLE name (col1 TYPE, col2 TYPE, ...);`
  */
 export class SchemaContextManager {
   rawText = "";
+  format: SchemaFormat = "simple";
+  parseError: string | undefined = undefined;
   private lastAppliedKey = "";
 
   /** Stable key for change detection (like DialectConfigManager.configKey). */
   get configKey(): string {
-    return this.rawText;
+    return `${this.format}:${this.rawText}`;
   }
 
-  /** Parse the raw text into the JSON payload for the WASM API. */
-  private parse(): SessionContextPayload {
+  private parseSimple(): SessionContextPayload {
     const tables: TableEntry[] = [];
     for (const raw of this.rawText.split("\n")) {
       const line = raw.trim();
@@ -62,9 +64,18 @@ export class SchemaContextManager {
     this.lastAppliedKey = key;
 
     if (this.rawText.trim() === "") {
+      this.parseError = undefined;
       engine.clearSessionContext();
+    } else if (this.format === "ddl") {
+      const result = engine.setSessionContextDdl(this.rawText);
+      if (result.ok) {
+        this.parseError = undefined;
+      } else {
+        this.parseError = result.error;
+      }
     } else {
-      const payload = this.parse();
+      this.parseError = undefined;
+      const payload = this.parseSimple();
       engine.setSessionContext(JSON.stringify(payload));
     }
     return true;
@@ -72,6 +83,7 @@ export class SchemaContextManager {
 
   reset(engine: Engine): void {
     this.rawText = "";
+    this.parseError = undefined;
     this.lastAppliedKey = "";
     engine.clearSessionContext();
   }

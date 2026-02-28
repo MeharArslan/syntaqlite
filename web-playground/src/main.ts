@@ -85,7 +85,7 @@ function registerSemanticTokensProvider(engine: Engine): void {
 
 function registerCompletionProvider(engine: Engine): void {
   monaco.languages.registerCompletionItemProvider("sql", {
-    triggerCharacters: [" ", "\n", "\t", ";", "(", ","],
+    triggerCharacters: [" ", "\t", ";", "(", ","],
     provideCompletionItems(
       model: monaco.editor.ITextModel,
       position: monaco.Position,

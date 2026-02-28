@@ -1,0 +1,21 @@
+/* Copyright 2025 The syntaqlite Authors. All rights reserved. */
+/* Licensed under the Apache License, Version 2.0. */
+
+.sq-resize-handle {
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.sq-resize-handle--horizontal {
+  height: 5px;
+  cursor: ns-resize;
+}
+
+.sq-resize-handle--vertical {
+  width: 5px;
+  cursor: ew-resize;
+}
+
+.sq-resize-handle:hover {
+  background: var(--line);
+}

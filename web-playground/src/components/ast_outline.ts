@@ -6,7 +6,7 @@ import type {AstField, AstJsonNode, AstResult} from "../types";
 import "./ast_outline.css";
 
 export interface AstOutlineAttrs {
-  result: AstResult | null;
+  result: AstResult | undefined;
   showEmpty: boolean;
 }
 
@@ -32,20 +32,20 @@ export const AstOutline: m.Component<AstOutlineAttrs> = {
 function isFieldEmpty(f: AstField): boolean {
   switch (f.kind) {
     case "node":
-      return f.child === null;
+      return f.child === undefined;
     case "span":
-      return f.value === null;
+      return f.value === undefined;
     case "bool":
       return f.value === false;
     case "enum":
-      return f.value === null;
+      return f.value === undefined;
     case "flags":
       return f.value.length === 0;
   }
 }
 
-function nullValue(): m.Vnode {
-  return m("span.sq-ast-tree__value.sq-ast-tree__value--null", "(none)");
+function noneValue(): m.Vnode {
+  return m("span.sq-ast-tree__value.sq-ast-tree__value--none", "(none)");
 }
 
 function leafRow(label: string, value: m.Children): m.Vnode {
@@ -54,12 +54,12 @@ function leafRow(label: string, value: m.Children): m.Vnode {
   ]);
 }
 
-function renderField(showEmpty: boolean, f: AstField): m.Vnode | null {
-  if (!showEmpty && isFieldEmpty(f)) return null;
+function renderField(showEmpty: boolean, f: AstField): m.Vnode | undefined {
+  if (!showEmpty && isFieldEmpty(f)) return undefined;
 
   if (f.kind === "node") {
-    if (f.child === null) {
-      return leafRow(f.label, nullValue());
+    if (f.child === undefined) {
+      return leafRow(f.label, noneValue());
     }
     return m("div.sq-ast-tree__node", [
       m("details", {open: true}, [
@@ -71,8 +71,8 @@ function renderField(showEmpty: boolean, f: AstField): m.Vnode | null {
 
   if (f.kind === "span") {
     const val =
-      f.value === null
-        ? nullValue()
+      f.value === undefined
+        ? noneValue()
         : m("span.sq-ast-tree__value.sq-ast-tree__value--string", `"${f.value}"`);
     return leafRow(f.label, val);
   }
@@ -85,7 +85,7 @@ function renderField(showEmpty: boolean, f: AstField): m.Vnode | null {
   }
 
   if (f.kind === "enum") {
-    const val = f.value === null ? nullValue() : m("span.sq-ast-tree__value", String(f.value));
+    const val = f.value === undefined ? noneValue() : m("span.sq-ast-tree__value", String(f.value));
     return leafRow(f.label, val);
   }
 
@@ -93,12 +93,12 @@ function renderField(showEmpty: boolean, f: AstField): m.Vnode | null {
     const display = f.value.length === 0 ? "(none)" : f.value.join(" | ");
     const cls =
       f.value.length === 0
-        ? "span.sq-ast-tree__value.sq-ast-tree__value--null"
+        ? "span.sq-ast-tree__value.sq-ast-tree__value--none"
         : "span.sq-ast-tree__value";
     return leafRow(f.label, m(cls, display));
   }
 
-  return null;
+  return undefined;
 }
 
 function renderNodes(showEmpty: boolean, nodes: AstJsonNode[]): m.Vnode {
@@ -114,7 +114,7 @@ function renderNodes(showEmpty: boolean, nodes: AstJsonNode[]): m.Vnode {
             ]),
             node.children && node.children.length > 0
               ? renderNodes(showEmpty, node.children)
-              : null,
+              : undefined,
           ]),
         ]);
       }
@@ -123,7 +123,7 @@ function renderNodes(showEmpty: boolean, nodes: AstJsonNode[]): m.Vnode {
           m("summary", [m("span.sq-ast-tree__name", node.name)]),
           node.fields && node.fields.length > 0
             ? m("div", node.fields.map((f) => renderField(showEmpty, f)).filter(Boolean))
-            : null,
+            : undefined,
         ]),
       ]);
     }),

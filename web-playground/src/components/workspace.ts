@@ -3,13 +3,14 @@
 
 import m from "mithril";
 import * as monaco from "monaco-editor";
-import type {Attrs} from "../app/app";
+import type {App, Attrs} from "../app/app";
 import type {Engine} from "../app/engine";
 import {getSqlPresetLibrary} from "./workspace/sql_presets";
 import {debounce} from "../base/debounce";
 import type {DiagnosticEntry} from "../types";
 import {EditorPane} from "./editor_pane";
 import {OutputPanel} from "./output_panel";
+import {ResizeHandle} from "../widgets/resize_handle";
 import "./workspace.css";
 
 const SEVERITY_MAP: Record<DiagnosticEntry["severity"], monaco.MarkerSeverity> = {
@@ -38,17 +39,21 @@ function offsetToLineCol(source: string, offset: number): {line: number; col: nu
 
 export class Workspace implements m.ClassComponent<Attrs> {
   private sql = "select a, b from t where c = 1;";
-  private editor: monaco.editor.IStandaloneCodeEditor | null = null;
+  private editor: monaco.editor.IStandaloneCodeEditor | undefined = undefined;
   private debouncedUpdate: (sql: string) => void;
   private debouncedDiagnostics: (engine: Engine, sql: string) => void;
   private presetSelectionByDialect = new Map<string, string>();
   private customSqlByDialect = new Map<string, string>();
+  private appRef: App | undefined = undefined;
   private applyingPreset = false;
-  private lastAppliedDialectPtr: number | null = null;
+  private lastAppliedDialectPtr: number | undefined = undefined;
   /** Track the last dialect pointer we ran diagnostics against. */
-  private lastDiagnosticDialectPtr: number | null = null;
-  private lastDiagnosticConfigKey: string | null = null;
-  private lastSchemaKey: string | null = null;
+  private lastDiagnosticDialectPtr: number | undefined = undefined;
+  private lastDiagnosticConfigKey: string | undefined = undefined;
+  private lastSchemaKey: string | undefined = undefined;
+  /** Left pane fraction (0..1), undefined = equal split. */
+  private splitFraction: number | undefined = undefined;
+  private workspaceEl: HTMLElement | undefined = undefined;
 
   constructor() {
     this.debouncedUpdate = debounce((sql: string) => {
@@ -64,6 +69,7 @@ export class Workspace implements m.ClassComponent<Attrs> {
 
   view(vnode: m.Vnode<Attrs>) {
     const {app} = vnode.attrs;
+    this.appRef = app;
     const presetLibrary = getSqlPresetLibrary(app.dialect.activePresetId);
     const selectedPresetId = this.ensurePresetSelection(presetLibrary);
 
@@ -92,7 +98,16 @@ export class Workspace implements m.ClassComponent<Attrs> {
       }
     }
 
-    return m("section.sq-workspace", [
+    const splitStyle: Record<string, string> = {};
+    if (this.splitFraction != undefined) {
+      const pct = (this.splitFraction * 100).toFixed(2);
+      splitStyle.gridTemplateColumns = `${pct}% 5px 1fr`;
+    }
+
+    return m("section.sq-workspace", {
+      style: splitStyle,
+      oncreate: (v: m.VnodeDOM) => { this.workspaceEl = v.dom as HTMLElement; },
+    }, [
       m(EditorPane, {
         theme: app.theme.current,
         initialSql: this.sql,
@@ -116,6 +131,24 @@ export class Workspace implements m.ClassComponent<Attrs> {
         },
         onEditorCreated: (editor) => {
           this.editor = editor;
+        },
+      }),
+      m(ResizeHandle, {
+        axis: "vertical",
+        onResize: (delta: number) => {
+          const el = this.workspaceEl;
+          if (!el) return;
+          const totalWidth = el.getBoundingClientRect().width;
+          const handleWidth = 5;
+          const available = totalWidth - handleWidth;
+          const current = this.splitFraction ?? 0.5;
+          const currentPx = current * available;
+          const minPx = 100;
+          const newPx = Math.max(minPx, Math.min(available - minPx, currentPx + delta));
+          this.splitFraction = newPx / available;
+        },
+        onResizeEnd: () => {
+          if (this.editor) this.editor.layout();
         },
       }),
       m(OutputPanel, {app, sql: this.sql}),
@@ -191,8 +224,11 @@ export class Workspace implements m.ClassComponent<Attrs> {
     const result = engine.runDiagnostics(sql, model.getVersionId());
     if (!result.ok) {
       monaco.editor.setModelMarkers(model, "syntaqlite", []);
+      if (this.appRef) this.appRef.diagnostics = [];
       return;
     }
+
+    if (this.appRef) this.appRef.diagnostics = result.diagnostics;
 
     const markers: monaco.editor.IMarkerData[] = result.diagnostics.map((d) => {
       const start = offsetToLineCol(sql, d.startOffset);

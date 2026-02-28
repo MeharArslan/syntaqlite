@@ -6,6 +6,7 @@ import {DialectManager} from "./dialect_manager";
 import {Engine} from "./engine";
 import {SchemaContextManager} from "./schema_context";
 import {ThemeManager} from "./theme_manager";
+import type {DiagnosticEntry} from "../types";
 
 export interface Attrs {
   app: App;
@@ -17,6 +18,7 @@ export class App {
   dialect: DialectManager;
   dialectConfig: DialectConfigManager;
   schemaContext: SchemaContextManager;
+  diagnostics: DiagnosticEntry[] = [];
 
   constructor() {
     this.theme = new ThemeManager();

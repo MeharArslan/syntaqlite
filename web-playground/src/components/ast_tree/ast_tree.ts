@@ -8,7 +8,7 @@ import {AstCanvasRenderer} from "./renderer";
 import "./ast_tree.css";
 
 export interface AstGraphAttrs {
-  result: AstResult | null;
+  result: AstResult | undefined;
   showEmpty: boolean;
   theme: Theme;
 }
@@ -33,7 +33,7 @@ export class AstGraph implements m.ClassComponent<AstGraphAttrs> {
   onremove() {
     if (this.renderer) {
       this.renderer.destroy();
-      this.renderer = null;
+      this.renderer = undefined;
     }
   }
 
@@ -41,8 +41,8 @@ export class AstGraph implements m.ClassComponent<AstGraphAttrs> {
     return m("div.sq-ast-graph", [m("canvas")]);
   }
 
-  private renderer: AstCanvasRenderer | null = null;
-  private lastTheme: Theme | null = null;
+  private renderer: AstCanvasRenderer | undefined = undefined;
+  private lastTheme: Theme | undefined = undefined;
 
   private updateGraph(attrs: AstGraphAttrs) {
     if (!this.renderer) return;

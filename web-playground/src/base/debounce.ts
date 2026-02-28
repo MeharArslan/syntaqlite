@@ -3,7 +3,7 @@
 
 // biome-ignore lint/suspicious/noExplicitAny: generic debounce requires flexible signature
 export function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T {
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  let timer: ReturnType<typeof setTimeout> | undefined = undefined;
   // biome-ignore lint/suspicious/noExplicitAny: generic debounce requires flexible signature
   return ((...args: any[]) => {
     if (timer) clearTimeout(timer);

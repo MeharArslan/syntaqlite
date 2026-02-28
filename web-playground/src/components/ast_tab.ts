@@ -16,10 +16,10 @@ export interface AstTabAttrs {
 export class AstTab implements m.ClassComponent<AstTabAttrs> {
   private astViewMode: AstViewMode = "outline";
   private astShowEmpty = false;
-  private astResult: AstResult | null = null;
-  private lastSql: string | null = null;
-  private lastDialectPtr: number | null = null;
-  private lastConfigKey: string | null = null;
+  private astResult: AstResult | undefined = undefined;
+  private lastSql: string | undefined = undefined;
+  private lastDialectPtr: number | undefined = undefined;
+  private lastConfigKey: string | undefined = undefined;
 
   view(vnode: m.Vnode<AstTabAttrs>) {
     const {app, sql, active} = vnode.attrs;

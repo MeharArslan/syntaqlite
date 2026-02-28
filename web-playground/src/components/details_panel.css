@@ -1,0 +1,180 @@
+/* Copyright 2025 The syntaqlite Authors. All rights reserved. */
+/* Licensed under the Apache License, Version 2.0. */
+
+.sq-details-panel {
+  border-top: 1px solid var(--line);
+  background: var(--surface-soft);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sq-details-panel__header {
+  display: flex;
+  align-items: center;
+  padding: 0 14px 8px 0;
+}
+
+.sq-details-panel__header .sq-tab-bar {
+  flex: 1;
+  padding: 0;
+}
+
+.sq-details-panel__header .sq-tab-bar__tab {
+  padding: 6px 14px;
+}
+
+.sq-details-panel__toggle {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 0.78rem;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.sq-details-panel__toggle:hover {
+  color: var(--accent);
+  background: transparent;
+  border: none;
+}
+
+.sq-details-panel__body {
+  padding: 0 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Remove horizontal padding when the body contains an edge-to-edge widget
+   (e.g. Table). The widget itself carries the correct cell padding. */
+.sq-details-panel__body--flush {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sq-details-panel__options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.sq-details-panel__options label {
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  font-size: 0.75rem;
+  user-select: none;
+}
+
+.sq-details-panel__options select {
+  padding: 3px 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--ink);
+  background: var(--input-bg);
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.sq-details-panel__textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  background: var(--input-bg);
+  color: var(--ink);
+  resize: none;
+  min-height: 48px;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.sq-details-panel__textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.sq-details-panel__help {
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.sq-details-panel__error {
+  font-size: 0.72rem;
+  color: var(--danger);
+  line-height: 1.3;
+}
+
+/* ── Validation tab ── */
+
+.sq-validation-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-left: 5px;
+  vertical-align: middle;
+}
+
+.sq-validation-badge--error {
+  background: var(--danger);
+  color: #fff;
+}
+
+.sq-validation-badge--warning {
+  background: #c89a3a;
+  color: #fff;
+}
+
+/* Severity icon inside a table cell */
+
+.sq-validation-severity {
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.sq-validation-severity--error {
+  color: var(--danger);
+}
+
+.sq-validation-severity--warning {
+  color: #c89a3a;
+}
+
+.sq-validation-severity--info,
+.sq-validation-severity--hint {
+  color: var(--muted);
+}
+
+/* Empty state shown via Table's emptyContent slot */
+
+.sq-validation-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.sq-validation-empty__icon {
+  color: #5aab72;
+}
+
+[data-theme="light"] .sq-validation-empty__icon {
+  color: #3d8a52;
+}

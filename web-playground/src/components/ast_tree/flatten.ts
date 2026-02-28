@@ -7,13 +7,13 @@ import type {VisNode} from "./types";
 function isFieldEmpty(f: AstField): boolean {
   switch (f.kind) {
     case "node":
-      return f.child === null;
+      return f.child === undefined;
     case "span":
-      return f.value === null;
+      return f.value === undefined;
     case "bool":
       return f.value === false;
     case "enum":
-      return f.value === null;
+      return f.value === undefined;
     case "flags":
       return f.value.length === 0;
   }
@@ -41,7 +41,7 @@ function flattenNode(node: AstJsonNode, showEmpty: boolean): VisNode {
   for (const f of node.fields || []) {
     if (!showEmpty && isFieldEmpty(f)) continue;
     if (f.kind === "node") {
-      if (f.child === null) {
+      if (f.child === undefined) {
         leafLines.push(`${f.label}: (none)`);
       } else {
         const child = flattenNode(f.child, showEmpty);
@@ -49,11 +49,11 @@ function flattenNode(node: AstJsonNode, showEmpty: boolean): VisNode {
         children.push(child);
       }
     } else if (f.kind === "span") {
-      leafLines.push(f.value === null ? `${f.label}: (none)` : `${f.label}: "${f.value}"`);
+      leafLines.push(f.value === undefined ? `${f.label}: (none)` : `${f.label}: "${f.value}"`);
     } else if (f.kind === "bool") {
       leafLines.push(`${f.label}: ${f.value ? "TRUE" : "FALSE"}`);
     } else if (f.kind === "enum") {
-      leafLines.push(f.value === null ? `${f.label}: (none)` : `${f.label}: ${f.value}`);
+      leafLines.push(f.value === undefined ? `${f.label}: (none)` : `${f.label}: ${f.value}`);
     } else if (f.kind === "flags") {
       const display = f.value.length === 0 ? "(none)" : f.value.join(" | ");
       leafLines.push(`${f.label}: ${display}`);

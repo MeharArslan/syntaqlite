@@ -30,7 +30,7 @@ export class EditorPane implements m.ClassComponent<EditorPaneAttrs> {
       onContentChange,
       onEditorCreated,
     } = vnode.attrs;
-    const selectedPreset = presets.find((p) => p.id === selectedPresetId) ?? presets[0] ?? null;
+    const selectedPreset = presets.find((p) => p.id === selectedPresetId) ?? presets[0];
     const selectedDescription =
       selectedPresetId === "custom"
         ? "Custom mode. Editing the SQL keeps this mode selected."

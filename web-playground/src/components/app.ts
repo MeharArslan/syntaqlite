@@ -4,11 +4,12 @@
 import m from "mithril";
 import type {Attrs} from "../app/app";
 import {Header} from "./header";
+import {DetailsPanel} from "./details_panel";
 import {Workspace} from "./workspace";
 
 export class AppComponent implements m.ClassComponent<Attrs> {
   view(vnode: m.Vnode<Attrs>) {
     const {app} = vnode.attrs;
-    return m("main.sq-app", [m(Header, {app}), m(Workspace, {app})]);
+    return m("main.sq-app", [m(Header, {app}), m(Workspace, {app}), m(DetailsPanel, {app})]);
   }
 }

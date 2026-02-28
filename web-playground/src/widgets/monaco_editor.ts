@@ -193,7 +193,7 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
   onremove() {
     if (this.editor) {
       this.editor.dispose();
-      this.editor = null;
+      this.editor = undefined;
     }
   }
 
@@ -201,7 +201,7 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
     return m("div", {style: {width: "100%", height: "100%"}});
   }
 
-  private editor: monaco.editor.IStandaloneCodeEditor | null = null;
-  private lastTheme: Theme | null = null;
-  private lastSyncedValue: string | null = null;
+  private editor: monaco.editor.IStandaloneCodeEditor | undefined = undefined;
+  private lastTheme: Theme | undefined = undefined;
+  private lastSyncedValue: string | undefined = undefined;
 }
