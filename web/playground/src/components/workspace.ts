@@ -37,6 +37,15 @@ function offsetToLineCol(source: string, offset: number): {line: number; col: nu
   return {line, col};
 }
 
+/** Return the 1-based statement index for a byte offset (semicolons delimit statements). */
+function countStatements(source: string, offset: number): number {
+  let count = 1;
+  for (let i = 0; i < offset && i < source.length; i++) {
+    if (source[i] === ";") count++;
+  }
+  return count;
+}
+
 export class Workspace implements m.ClassComponent<Attrs> {
   private sql = "select a, b from t where c = 1;";
   private editor: monaco.editor.IStandaloneCodeEditor | undefined = undefined;
@@ -227,6 +236,14 @@ export class Workspace implements m.ClassComponent<Attrs> {
       monaco.editor.setModelMarkers(model, "syntaqlite", []);
       if (this.appRef) this.appRef.diagnostics = [];
       return;
+    }
+
+    // Enrich diagnostics with line/col/statement info for the details panel.
+    for (const d of result.diagnostics) {
+      const pos = offsetToLineCol(sql, d.startOffset);
+      d.line = pos.line;
+      d.col = pos.col;
+      d.stmtIndex = countStatements(sql, d.startOffset);
     }
 
     if (this.appRef) this.appRef.diagnostics = result.diagnostics;

@@ -18,13 +18,12 @@
 
 @media (max-width: 700px) {
   .sq-workspace {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto 1fr;
+    /* !important overrides the inline gridTemplateColumns set by JS drag. */
+    grid-template-columns: 1fr !important;
+    grid-template-rows: 40vh 1fr;
   }
 
   .sq-workspace > .sq-resize-handle--vertical {
-    width: auto;
-    height: 5px;
-    cursor: ns-resize;
+    display: none;
   }
 }

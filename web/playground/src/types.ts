@@ -86,7 +86,7 @@ export type AstField = AstNodeField | AstSpanField | AstBoolField | AstEnumField
 // ── App types ──
 
 export type Theme = "dark" | "light";
-export type ActiveTab = "format" | "ast";
+export type ActiveTab = "format" | "ast" | "validation" | "schema";
 export type AstViewMode = "outline" | "graph";
 export type KeywordCase = 0 | 1 | 2; // 0=preserve, 1=upper, 2=lower
 
@@ -126,6 +126,12 @@ export interface DiagnosticEntry {
   endOffset: number;
   message: string;
   severity: "error" | "warning" | "info" | "hint";
+  /** 1-based line number, populated by the workspace after offset conversion. */
+  line?: number;
+  /** 1-based column number, populated by the workspace after offset conversion. */
+  col?: number;
+  /** 1-based statement index (semicolon-delimited), populated by the workspace. */
+  stmtIndex?: number;
 }
 
 export interface DiagnosticsResult {

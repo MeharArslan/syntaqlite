@@ -43,6 +43,10 @@
   font-weight: 600;
 }
 
+.sq-toolbar__title-mobile {
+  display: none;
+}
+
 /* ── Theme controls block ── */
 .sq-theme-controls {
   display: flex;
@@ -56,6 +60,11 @@
   font-size: 0.68rem;
   letter-spacing: 0.1em;
   font-weight: 600;
+}
+
+/* Mobile theme toggle (hidden on desktop) */
+.sq-theme-toggle-mobile {
+  display: none;
 }
 
 /* ── Dialect controls block ── */
@@ -449,18 +458,187 @@
   border-color: var(--accent);
 }
 
+/* ── Mobile dialect trigger block (hidden on desktop) ── */
+.sq-dialect-mobile-trigger {
+  display: none;
+}
+
+.sq-dialect-mobile-trigger__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sq-dialect-mobile-trigger__btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.sq-dialect-mobile-trigger__chevron {
+  font-size: 0.72rem;
+  opacity: 0.6;
+}
+
+.sq-dialect-mobile-trigger__backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.sq-dialect-mobile-trigger--open .sq-dialect-mobile-trigger__backdrop {
+  display: block;
+}
+
+.sq-dialect-mobile-trigger__sheet {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  border-radius: 12px 12px 0 0;
+  padding: 14px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.18);
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sq-dialect-mobile-trigger--open .sq-dialect-mobile-trigger__sheet {
+  display: flex;
+}
+
+.sq-dialect-mobile-trigger__title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0 4px 6px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 2px;
+}
+
+.sq-dialect-mobile-trigger__option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.sq-dialect-mobile-trigger__option:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.sq-dialect-mobile-trigger__option--active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* ── Mobile overrides ── */
 @media (max-width: 700px) {
   .sq-toolbar {
-    flex-wrap: wrap;
     height: auto;
     padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .sq-toolbar__left {
+    gap: 6px;
+  }
+
+  .sq-toolbar__brand {
+    font-size: 0.88rem;
+  }
+
+  .sq-toolbar__right {
+    gap: 6px;
+  }
+
+  /* Brand: show "syntaqlite" alone on mobile, hide kicker + " Playground" */
+  .sq-toolbar__kicker,
+  .sq-toolbar__title-full {
+    display: none;
+  }
+
+  .sq-toolbar__title-mobile {
+    display: inline;
+  }
+
+  /* Hide verbose labels, help tooltip, desktop dialect switcher, desktop theme */
+  .sq-dialect-controls__label,
+  .sq-theme-controls__label,
+  .sq-help-tooltip,
+  .sq-dialect-switcher,
+  .sq-dialect-popover,
+  .sq-theme-controls {
+    display: none;
   }
 
   .sq-dialect-controls {
-    flex-wrap: wrap;
+    gap: 4px;
   }
 
-  .sq-theme-controls {
-    flex-wrap: wrap;
+  /* Show mobile dialect trigger */
+  .sq-dialect-mobile-trigger {
+    display: block;
+  }
+
+  /* Show mobile theme toggle */
+  .sq-theme-toggle-mobile {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 1.1rem;
+    cursor: pointer;
+    min-height: 32px;
+  }
+
+  .sq-theme-toggle-mobile:hover {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* Keep custom upload popover inside the viewport. */
+  .sq-dialect-popover__panel,
+  .sq-config-popover__panel {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 12px 12px 0 0;
+    max-height: 70vh;
+    overflow-y: auto;
+    min-width: 0;
   }
 }

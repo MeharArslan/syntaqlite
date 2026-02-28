@@ -21,6 +21,7 @@ export class Header implements m.ClassComponent<Attrs> {
   private customError: string | undefined = undefined;
   private customLoading = false;
   private configPopoverOpen = false;
+  private dialectPopoverOpen = false;
 
   view(vnode: m.Vnode<Attrs>) {
     const {app} = vnode.attrs;
@@ -28,7 +29,11 @@ export class Header implements m.ClassComponent<Attrs> {
 
     return m("header.sq-toolbar", [
       m("div.sq-toolbar__left", [
-        m("span.sq-toolbar__brand", [m("span.sq-toolbar__kicker", "syntaqlite"), " Playground"]),
+        m("span.sq-toolbar__brand", [
+          m("span.sq-toolbar__kicker", "syntaqlite"),
+          m("span.sq-toolbar__title-full", " Playground"),
+          m("span.sq-toolbar__title-mobile", "syntaqlite"),
+        ]),
       ]),
       m("div.sq-toolbar__right", [
         m("div.sq-dialect-controls", [
@@ -39,6 +44,7 @@ export class Header implements m.ClassComponent<Attrs> {
             linkHref: "https://github.com/LalitMaganti/syntaqlite/tree/main/docs",
             linkLabel: "TODO: docs",
           }),
+          // Desktop dialect switcher
           m("div.sq-dialect-switcher", [
             ...DIALECT_PRESETS.map((preset) =>
               preset.id === "sqlite"
@@ -243,7 +249,59 @@ export class Header implements m.ClassComponent<Attrs> {
               ],
             ),
           ]),
+          // Mobile dialect trigger
+          m(
+            "div.sq-dialect-mobile-trigger",
+            {class: this.dialectPopoverOpen ? "sq-dialect-mobile-trigger--open" : ""},
+            [
+              m(
+                "button.sq-dialect-mobile-trigger__btn",
+                {
+                  onclick: () => {
+                    this.dialectPopoverOpen = !this.dialectPopoverOpen;
+                  },
+                },
+                [
+                  m("span", this.activeDialectLabel(app)),
+                  m("span.sq-dialect-mobile-trigger__chevron", "\u25BE"),
+                ],
+              ),
+              m("div.sq-dialect-mobile-trigger__backdrop", {
+                onclick: () => { this.dialectPopoverOpen = false; },
+              }),
+              m("div.sq-dialect-mobile-trigger__sheet", [
+                m("div.sq-dialect-mobile-trigger__title", "Select Dialect"),
+                ...DIALECT_PRESETS.map((preset) =>
+                  m(
+                    "button.sq-dialect-mobile-trigger__option",
+                    {
+                      class: activeId === preset.id ? "sq-dialect-mobile-trigger__option--active" : "",
+                      onclick: () => {
+                        app.dialect.selectPreset(app.runtime, preset);
+                        this.dialectPopoverOpen = false;
+                      },
+                    },
+                    preset.label,
+                  ),
+                ),
+                m(
+                  "button.sq-dialect-mobile-trigger__option",
+                  {
+                    class: activeId === "custom" ? "sq-dialect-mobile-trigger__option--active" : "",
+                    onclick: () => {
+                      this.dialectPopoverOpen = false;
+                      this.customPopoverOpen = true;
+                    },
+                  },
+                  activeId === "custom" && app.dialect.customLabel
+                    ? app.dialect.customLabel
+                    : "Custom...",
+                ),
+              ]),
+            ],
+          ),
         ]),
+        // Desktop theme controls
         m("div.sq-theme-controls", [
           m("span.sq-theme-controls__label", "Theme"),
           m(SegmentedSwitch, {
@@ -256,8 +314,27 @@ export class Header implements m.ClassComponent<Attrs> {
             },
           }),
         ]),
+        // Mobile theme toggle
+        m(
+          "button.sq-theme-toggle-mobile",
+          {
+            onclick: () => {
+              app.theme.toggle();
+              m.redraw();
+            },
+            title: app.theme.current === "dark" ? "Switch to light mode" : "Switch to dark mode",
+          },
+          app.theme.current === "dark" ? "\u2600" : "\u263E",
+        ),
       ]),
     ]);
+  }
+
+  private activeDialectLabel(app: InstanceType<typeof import("../app/app").App>): string {
+    const activeId = app.dialect.activePresetId;
+    if (activeId === "custom") return app.dialect.customLabel || "Custom";
+    const preset = DIALECT_PRESETS.find((p) => p.id === activeId);
+    return preset?.label ?? activeId;
   }
 
   private async loadCustom(app: InstanceType<typeof import("../app/app").App>) {

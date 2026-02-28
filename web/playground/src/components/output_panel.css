@@ -101,3 +101,25 @@
   font: inherit;
   font-size: 0.85rem;
 }
+
+@media (max-width: 700px) {
+  .sq-tab-bar__tab {
+    padding: 8px 10px;
+    font-size: 0.78rem;
+  }
+
+  .sq-panel-options {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+  }
+
+  .sq-panel-options input[type="range"] {
+    width: 80px;
+  }
+
+  .sq-panel-options__width-label {
+    min-width: 0;
+  }
+}

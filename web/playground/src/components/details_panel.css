@@ -178,3 +178,9 @@
 [data-theme="light"] .sq-validation-empty__icon {
   color: #3d8a52;
 }
+
+@media (max-width: 700px) {
+  .sq-details-panel {
+    display: none;
+  }
+}

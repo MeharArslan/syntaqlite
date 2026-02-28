@@ -56,13 +56,26 @@
   }
 
   .sq-editor-pane__toolbar {
-    flex-wrap: wrap;
+    padding: 6px 8px;
+    gap: 8px;
+    overflow: hidden;
   }
 
   .sq-editor-pane__select {
     min-width: 0;
     max-width: 100%;
-    width: 100%;
-    flex: 1 1 100%;
+    width: 0;
+    flex: 1 1 0%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sq-editor-pane__label {
+    font-size: 0.72rem;
+    flex: 0 0 auto;
+  }
+
+  .sq-editor-pane__description {
+    display: none;
   }
 }
