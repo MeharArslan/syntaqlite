@@ -12,6 +12,9 @@ pub mod dialect;
 
 pub use dialect::Dialect;
 
+#[cfg(feature = "validation")]
+pub mod validation;
+
 #[cfg(feature = "lsp")]
 pub mod lsp;
 

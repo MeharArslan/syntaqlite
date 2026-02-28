@@ -111,6 +111,7 @@ unsafe extern "C" {
 
     // Parser accessors
     pub fn syntaqlite_parser_node(p: *mut Parser, node_id: u32) -> *const u32;
+    pub fn syntaqlite_parser_node_count(p: *mut Parser) -> u32;
 
     // Parser configuration
     pub fn syntaqlite_parser_set_trace(p: *mut Parser, enable: c_int) -> c_int;

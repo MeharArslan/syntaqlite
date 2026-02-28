@@ -230,6 +230,13 @@ impl<'a> LowLevelCursor<'a> {
         unsafe { ffi::syntaqlite_parser_completion_context(self.base.reader.raw()) }
     }
 
+    /// Return the number of nodes currently in the parser arena.
+    ///
+    /// Flushes any pending list nodes first, so all node data is consistent.
+    pub fn node_count(&self) -> u32 {
+        unsafe { ffi::syntaqlite_parser_node_count(self.base.reader.raw()) }
+    }
+
     /// Mark subsequent fed tokens as being inside a macro expansion.
     ///
     /// `call_offset` and `call_length` describe the macro call's byte range

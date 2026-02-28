@@ -128,6 +128,10 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p);
 const void* syntaqlite_parser_node(SyntaqliteParser* p,
                                    uint32_t node_id);
 
+// Return the number of nodes currently in the arena. Flushes any pending
+// list nodes first, so the returned count and all node data are consistent.
+uint32_t syntaqlite_parser_node_count(SyntaqliteParser* p);
+
 // Return a pointer to the source text bound by the last reset() call.
 // Useful for extracting token text via SyntaqliteSourceSpan offsets:
 //   syntaqlite_parser_source(p) + span.offset

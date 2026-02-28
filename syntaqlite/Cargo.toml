@@ -8,7 +8,8 @@ edition = "2024"
 [features]
 default = ["sqlite", "fmt"]
 fmt = []                     # formatter (bytecode interpreter)
-lsp = ["fmt"]                # LSP analysis host (needs fmt for formatting)
+validation = ["sqlite"]      # semantic validation (schema checks, fuzzy suggestions)
+lsp = ["fmt", "validation"]  # LSP analysis host (needs fmt for formatting)
 sqlite = []                  # SQLite dialect (grammar, tokens, cflags, functions)
 
 # Pin version/cflags at compile time for dead-code elimination.

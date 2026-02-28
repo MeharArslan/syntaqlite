@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use crate::dialect::TokenCategory;
 use crate::fmt::{FormatConfig, Formatter};
 use crate::parser::{
-    LowLevelParser, ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE,
-    Tokenizer,
+    LowLevelParser, ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID,
+    TOKEN_FLAG_AS_TYPE, Tokenizer,
 };
 use crate::{Dialect, ParseError, Parser};
 
@@ -99,6 +99,44 @@ impl<'d> AnalysisHost<'d> {
         self.context.as_ref()
     }
 
+    /// Run semantic validation on a document.
+    ///
+    /// Parses the document, walks each statement through
+    /// `validate_statement`, and returns diagnostics for unresolved
+    /// table names, column references, and function calls.
+    #[cfg(feature = "sqlite")]
+    pub fn validate(
+        &self,
+        uri: &str,
+        config: &crate::validation::ValidationConfig,
+    ) -> Vec<Diagnostic> {
+        let Some(doc) = self.documents.get(uri) else {
+            return Vec::new();
+        };
+
+        let functions = self.available_functions();
+        let mut parser = crate::Parser::with_dialect(&self.dialect);
+        let mut cursor = parser.parse(&doc.source);
+        let mut diagnostics = Vec::new();
+
+        while let Some(result) = cursor.next_statement() {
+            let Ok(stmt_id) = result else {
+                break;
+            };
+            let reader = cursor.reader();
+            let stmt_diags = crate::validation::validate_statement(
+                reader,
+                stmt_id,
+                self.context.as_ref(),
+                &functions,
+                config,
+            );
+            diagnostics.extend(stmt_diags);
+        }
+
+        diagnostics
+    }
+
     /// Set the dialect configuration for filtering built-in functions.
     #[cfg(feature = "sqlite")]
     pub fn set_dialect_config(&mut self, config: crate::dialect::ffi::DialectConfig) {
@@ -111,11 +149,9 @@ impl<'d> AnalysisHost<'d> {
     /// with user-provided functions from the ambient context.
     #[cfg(feature = "sqlite")]
     pub fn available_functions(&self) -> Vec<crate::lsp::context::FunctionDef> {
-        let mut result = if let Some(ref config) = self.dialect_config {
-            catalog_to_function_defs(config)
-        } else {
-            catalog_to_function_defs(&crate::dialect::ffi::DialectConfig::default())
-        };
+        let default_config = crate::dialect::ffi::DialectConfig::default();
+        let config = self.dialect_config.as_ref().unwrap_or(&default_config);
+        let mut result = catalog_to_function_defs(config);
 
         if let Some(ref ctx) = self.context {
             result.extend(ctx.functions.iter().cloned());
@@ -196,12 +232,7 @@ impl<'d> AnalysisHost<'d> {
             None => return Vec::new(),
         };
         ensure_document_state(&self.dialect, doc);
-        doc.state
-            .as_ref()
-            .unwrap()
-            .semantic_tokens
-            .as_slice()
-            .to_vec()
+        doc.state.as_ref().unwrap().semantic_tokens.clone()
     }
 
     /// Get semantic tokens as a delta-encoded `Uint32Array`-compatible vector.

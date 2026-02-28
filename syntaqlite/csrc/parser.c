@@ -620,6 +620,10 @@ const void* syntaqlite_parser_node(SyntaqliteParser* p,
   return (const void*)synq_arena_ptr(&p->ctx.ast, node_id);
 }
 
+uint32_t syntaqlite_parser_node_count(SyntaqliteParser* p) {
+  return syntaqlite_vec_len(&p->ctx.ast.offsets);
+}
+
 const char* syntaqlite_parser_source(SyntaqliteParser* p) {
   return p->source;
 }
