@@ -854,4 +854,56 @@ mod tests {
             diags
         );
     }
+
+    #[test]
+    fn syntax_error_produces_diagnostic_for_bare_select() {
+        // "SELECT " with no column list should produce a syntax error diagnostic,
+        // not silently return no diagnostics.
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        host.open_document(uri, 1, "SELECT ".to_string());
+
+        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        assert!(
+            !diags.is_empty(),
+            "expected a syntax error diagnostic for bare SELECT, got none"
+        );
+        assert_eq!(
+            diags[0].severity,
+            super::Severity::Error,
+            "diagnostic should be an error"
+        );
+        assert!(
+            !diags[0].message.is_empty(),
+            "diagnostic message should not be empty"
+        );
+    }
+
+    #[test]
+    fn syntax_error_produces_diagnostic_for_incomplete_from() {
+        // "SELECT * FROM" (no table) should produce a syntax error diagnostic.
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        host.open_document(uri, 1, "SELECT * FROM".to_string());
+
+        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        assert!(
+            !diags.is_empty(),
+            "expected a syntax error diagnostic for SELECT * FROM (no table)"
+        );
+    }
+
+    #[test]
+    fn validation_returns_error_for_syntax_invalid_sql() {
+        // Validation on syntactically invalid SQL should return an error diagnostic.
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        host.open_document(uri, 1, "NOT VALID SQL;".to_string());
+
+        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        assert!(
+            !diags.is_empty(),
+            "expected a syntax error diagnostic for invalid SQL"
+        );
+    }
 }

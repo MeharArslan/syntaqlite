@@ -385,10 +385,14 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
             return;
         }
         for child_id in self.reader.child_node_ids(id, &self.dialect) {
-            if let Some(expr) = A::Expr::from_arena(self.reader, child_id) {
-                self.walk_expr(expr, scope);
-            } else if let Some(stmt) = A::Stmt::from_arena(self.reader, child_id) {
+            // Check Stmt before Expr: Expr::from_arena has a catch-all Other
+            // variant that matches any node (including SelectStmt), so checking
+            // Expr first would route statement children through walk_expr
+            // instead of walk_stmt, skipping FROM-clause table resolution.
+            if let Some(stmt) = A::Stmt::from_arena(self.reader, child_id) {
                 self.walk_stmt(stmt, scope);
+            } else if let Some(expr) = A::Expr::from_arena(self.reader, child_id) {
+                self.walk_expr(expr, scope);
             }
         }
     }
