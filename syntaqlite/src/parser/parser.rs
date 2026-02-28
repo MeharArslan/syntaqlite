@@ -135,6 +135,7 @@ impl Parser {
             base,
             poisoned: false,
             last_saw_subquery: false,
+            last_saw_update_delete_limit: false,
         }
     }
 
@@ -149,6 +150,7 @@ impl Parser {
             base,
             poisoned: false,
             last_saw_subquery: false,
+            last_saw_update_delete_limit: false,
         }
     }
 }
@@ -411,6 +413,8 @@ pub struct StatementCursor<'a> {
     poisoned: bool,
     /// Value of `saw_subquery` from the last successful `next_statement()` call.
     last_saw_subquery: bool,
+    /// Value of `saw_update_delete_limit` from the last successful `next_statement()` call.
+    last_saw_update_delete_limit: bool,
 }
 
 impl<'a> StatementCursor<'a> {
@@ -430,6 +434,7 @@ impl<'a> StatementCursor<'a> {
         let id = NodeId(result.root);
         if !id.is_null() {
             self.last_saw_subquery = result.saw_subquery != 0;
+            self.last_saw_update_delete_limit = result.saw_update_delete_limit != 0;
             return Some(Ok(id));
         }
 
@@ -463,6 +468,13 @@ impl<'a> StatementCursor<'a> {
     /// or `IN (SELECT ...)`). Reset before each statement.
     pub fn saw_subquery(&self) -> bool {
         self.last_saw_subquery
+    }
+
+    /// Returns `true` if the last successfully parsed DELETE or UPDATE statement
+    /// used ORDER BY or LIMIT clauses. These clauses require the
+    /// `SQLITE_ENABLE_UPDATE_DELETE_LIMIT` compile-time option.
+    pub fn saw_update_delete_limit(&self) -> bool {
+        self.last_saw_update_delete_limit
     }
 
     /// Access the underlying `CursorBase` for read-only operations.

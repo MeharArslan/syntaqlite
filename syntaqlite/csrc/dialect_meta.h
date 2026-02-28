@@ -399,6 +399,8 @@ static const SyntaqliteFieldMeta field_meta_with_clause[] = {
 static const SyntaqliteFieldMeta field_meta_delete_stmt[] = {
     {offsetof(SyntaqliteDeleteStmt, table), SYNTAQLITE_FIELD_NODE_ID, "table", NULL, 0},
     {offsetof(SyntaqliteDeleteStmt, where_clause), SYNTAQLITE_FIELD_NODE_ID, "where_clause", NULL, 0},
+    {offsetof(SyntaqliteDeleteStmt, orderby), SYNTAQLITE_FIELD_NODE_ID, "orderby", NULL, 0},
+    {offsetof(SyntaqliteDeleteStmt, limit_clause), SYNTAQLITE_FIELD_NODE_ID, "limit_clause", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_set_clause[] = {
@@ -413,6 +415,8 @@ static const SyntaqliteFieldMeta field_meta_update_stmt[] = {
     {offsetof(SyntaqliteUpdateStmt, setlist), SYNTAQLITE_FIELD_NODE_ID, "setlist", NULL, 0},
     {offsetof(SyntaqliteUpdateStmt, from_clause), SYNTAQLITE_FIELD_NODE_ID, "from_clause", NULL, 0},
     {offsetof(SyntaqliteUpdateStmt, where_clause), SYNTAQLITE_FIELD_NODE_ID, "where_clause", NULL, 0},
+    {offsetof(SyntaqliteUpdateStmt, orderby), SYNTAQLITE_FIELD_NODE_ID, "orderby", NULL, 0},
+    {offsetof(SyntaqliteUpdateStmt, limit_clause), SYNTAQLITE_FIELD_NODE_ID, "limit_clause", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_insert_stmt[] = {
@@ -839,10 +843,10 @@ static const uint8_t ast_meta_field_meta_counts[] = {
     4, /* CteDefinition */
     0, /* CteList */
     3, /* WithClause */
-    2, /* DeleteStmt */
+    4, /* DeleteStmt */
     3, /* SetClause */
     0, /* SetClauseList */
-    5, /* UpdateStmt */
+    7, /* UpdateStmt */
     4, /* InsertStmt */
     3, /* BinaryExpr */
     2, /* UnaryExpr */

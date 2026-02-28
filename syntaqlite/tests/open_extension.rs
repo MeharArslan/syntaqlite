@@ -49,21 +49,3 @@ fn pure_sqlite_never_produces_stmt_other() {
         }
     }
 }
-
-#[test]
-fn node_other_variant_is_matchable() {
-    // Compile-time test: the Other { id, tag } variant exists and is pattern-matchable.
-    let mut parser = Parser::new();
-    let mut cursor = parser.parse("SELECT 1");
-    let id = cursor.next_statement().unwrap().unwrap();
-    let reader = cursor.reader();
-    let node: Option<Node> = FromArena::from_arena(reader, id);
-    let node = node.unwrap();
-    match node {
-        Node::Other { id: _id, tag: _tag } => {
-            // If we ever get here for pure SQLite, that's a bug — but the pattern compiles.
-            panic!("unexpected Other for SELECT 1");
-        }
-        _ => {} // expected
-    }
-}

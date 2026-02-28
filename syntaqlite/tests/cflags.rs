@@ -920,3 +920,48 @@ fn no_subquery_in_in_list() {
     assert!(ok, "Should parse successfully");
     assert!(!saw, "IN with literal list should NOT set saw_subquery");
 }
+
+// ===========================================================================
+// ENABLE_UPDATE_DELETE_LIMIT — uses saw_update_delete_limit flag
+//
+// ORDER BY / LIMIT on DELETE and UPDATE are always accepted by the grammar
+// (superset parsing). Grammar actions set saw_update_delete_limit so callers
+// can reject when the target SQLite lacks the compile flag.
+// ===========================================================================
+
+fn parse_saw_update_delete_limit(sql: &str) -> (bool, bool) {
+    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let mut parser = syntaqlite::Parser::with_dialect(dialect);
+    let mut cursor = parser.parse(sql);
+    let ok = matches!(cursor.next_statement(), Some(Ok(_)));
+    let saw = cursor.saw_update_delete_limit();
+    (ok, saw)
+}
+
+#[test]
+fn update_delete_limit_detected_on_delete() {
+    let (ok, saw) = parse_saw_update_delete_limit("DELETE FROM t ORDER BY id LIMIT 5;");
+    assert!(ok);
+    assert!(saw, "DELETE with ORDER BY / LIMIT should set saw_update_delete_limit");
+}
+
+#[test]
+fn update_delete_limit_detected_on_update() {
+    let (ok, saw) = parse_saw_update_delete_limit("UPDATE t SET a = 1 LIMIT 3;");
+    assert!(ok);
+    assert!(saw, "UPDATE with LIMIT should set saw_update_delete_limit");
+}
+
+#[test]
+fn update_delete_limit_not_set_on_plain_delete() {
+    let (ok, saw) = parse_saw_update_delete_limit("DELETE FROM t WHERE x = 1;");
+    assert!(ok);
+    assert!(!saw, "Plain DELETE should NOT set saw_update_delete_limit");
+}
+
+#[test]
+fn update_delete_limit_not_set_on_plain_update() {
+    let (ok, saw) = parse_saw_update_delete_limit("UPDATE t SET a = 1 WHERE x = 2;");
+    assert!(ok);
+    assert!(!saw, "Plain UPDATE should NOT set saw_update_delete_limit");
+}

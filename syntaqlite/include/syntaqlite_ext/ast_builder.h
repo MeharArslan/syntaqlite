@@ -50,12 +50,14 @@ typedef struct SynqParseCtx {
 
   // Parser state
   const char* source;     // Source text base pointer (for offset computation).
+  const SyntaqliteDialectConfig* config; // Dialect config (for cflag checks in actions).
   uint32_t root;          // Root node ID of the current statement.
   int stmt_completed;     // Set by grammar actions when ecmd reduces.
   int error;              // Set when a syntax error occurs.
   uint32_t error_offset;  // Byte offset of the error token in source.
   uint32_t error_length;  // Byte length of the error token.
   int saw_subquery;       // Set by grammar actions when a subquery is reduced.
+  int saw_update_delete_limit; // Set when ORDER BY / LIMIT used on DELETE or UPDATE.
 
   // Token marking — points to the parser's token list (NULL if not collecting).
   // Typed as void* because SYNQ_VEC produces anonymous struct types; the

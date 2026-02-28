@@ -85,6 +85,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 
   // Reset parse context.
   p->ctx.source = source;
+  p->ctx.config = &p->dialect_config;
   p->ctx.root = SYNTAQLITE_NULL_NODE;
   p->ctx.stmt_completed = 0;
   p->ctx.error = 0;
@@ -240,7 +241,7 @@ static int finish_input(SyntaqliteParser* p) {
 // ---------------------------------------------------------------------------
 
 SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
-  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL, 0xFFFFFFFF, 0, 0};
+  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL, 0xFFFFFFFF, 0, 0, 0};
 
   if (p->finished) {
     if (p->had_error) {
@@ -257,6 +258,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
   p->ctx.stmt_completed = 0;
   p->ctx.error = 0;
   p->ctx.saw_subquery = 0;
+  p->ctx.saw_update_delete_limit = 0;
 
   const unsigned char* z = (const unsigned char*)p->source;
 
@@ -313,6 +315,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
       }
       result.root = p->ctx.root;
       result.saw_subquery = p->ctx.saw_subquery;
+    result.saw_update_delete_limit = p->ctx.saw_update_delete_limit;
       return result;
     }
   }
@@ -327,6 +330,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
   } else if (rc == 1) {
     result.root = p->ctx.root;
     result.saw_subquery = p->ctx.saw_subquery;
+    result.saw_update_delete_limit = p->ctx.saw_update_delete_limit;
   }
   return result;
 }
@@ -372,6 +376,7 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
     p->ctx.stmt_completed = 0;
     p->ctx.error = 0;
     p->ctx.saw_subquery = 0;
+  p->ctx.saw_update_delete_limit = 0;
   }
 
   int rc = feed_one_token(p, token_type, text, len, tidx);
@@ -390,7 +395,7 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
 }
 
 SyntaqliteParseResult syntaqlite_parser_result(SyntaqliteParser* p) {
-  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL, 0xFFFFFFFF, 0, 0};
+  SyntaqliteParseResult result = {SYNTAQLITE_NULL_NODE, 0, NULL, 0xFFFFFFFF, 0, 0, 0};
   if (p->had_error) {
     result.error = 1;
     result.error_msg = p->error_msg;
@@ -399,6 +404,7 @@ SyntaqliteParseResult syntaqlite_parser_result(SyntaqliteParser* p) {
   } else if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
     result.root = p->ctx.root;
     result.saw_subquery = p->ctx.saw_subquery;
+    result.saw_update_delete_limit = p->ctx.saw_update_delete_limit;
   }
   return result;
 }

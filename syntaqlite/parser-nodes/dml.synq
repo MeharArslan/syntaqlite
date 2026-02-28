@@ -3,11 +3,15 @@ enum ConflictAction { DEFAULT ROLLBACK ABORT FAIL IGNORE REPLACE }
 node DeleteStmt {
   table: index TableRef
   where_clause: index Expr
+  orderby: index OrderByList
+  limit_clause: index LimitClause
 
   fmt {
     group {
       "DELETE FROM " child(table)
       clause("WHERE", where_clause)
+      clause("ORDER BY", orderby)
+      clause("LIMIT", limit_clause)
     }
   }
 }
@@ -33,6 +37,8 @@ node UpdateStmt {
   setlist: index SetClauseList
   from_clause: index TableSource
   where_clause: index Expr
+  orderby: index OrderByList
+  limit_clause: index LimitClause
 
   fmt {
     group {
@@ -48,6 +54,8 @@ node UpdateStmt {
       clause("SET", setlist)
       if_set(from_clause) { line "FROM " child(from_clause) }
       clause("WHERE", where_clause)
+      clause("ORDER BY", orderby)
+      clause("LIMIT", limit_clause)
     }
   }
 }

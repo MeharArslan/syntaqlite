@@ -37,11 +37,7 @@ impl GrammarMismatch {
 
 impl fmt::Display for GrammarMismatch {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fn write_section(
-            f: &mut fmt::Formatter<'_>,
-            label: &str,
-            items: &[String],
-        ) -> fmt::Result {
+        fn write_section(f: &mut fmt::Formatter<'_>, label: &str, items: &[String]) -> fmt::Result {
             if !items.is_empty() {
                 writeln!(f, "\n{label} ({}):", items.len())?;
                 for item in items {
@@ -52,14 +48,34 @@ impl fmt::Display for GrammarMismatch {
         }
 
         writeln!(f, "Grammar mismatch detected:")?;
-        write_section(f, "Rules missing from actions (in upstream)", &self.rules_missing)?;
-        write_section(f, "Rules extra in actions (not in upstream)", &self.rules_extra)?;
+        write_section(
+            f,
+            "Rules missing from actions (in upstream)",
+            &self.rules_missing,
+        )?;
+        write_section(
+            f,
+            "Rules extra in actions (not in upstream)",
+            &self.rules_extra,
+        )?;
         write_section(f, "Fallbacks missing from actions", &self.fallbacks_missing)?;
         write_section(f, "Fallbacks extra in actions", &self.fallbacks_extra)?;
-        write_section(f, "Precedences missing from actions", &self.precedences_missing)?;
+        write_section(
+            f,
+            "Precedences missing from actions",
+            &self.precedences_missing,
+        )?;
         write_section(f, "Precedences extra in actions", &self.precedences_extra)?;
-        write_section(f, "Token classes missing from actions", &self.token_classes_missing)?;
-        write_section(f, "Token classes extra in actions", &self.token_classes_extra)?;
+        write_section(
+            f,
+            "Token classes missing from actions",
+            &self.token_classes_missing,
+        )?;
+        write_section(
+            f,
+            "Token classes extra in actions",
+            &self.token_classes_extra,
+        )?;
         Ok(())
     }
 }
@@ -203,10 +219,9 @@ expr ::= ID.
 expr ::= INTEGER. [OR]
 "#;
 
-        let actions: &[(&str, &str)] = &[
-            (
-                "a.y",
-                r#"
+        let actions: &[(&str, &str)] = &[(
+            "a.y",
+            r#"
 %fallback ID ABORT.
 %left OR.
 %left AND.
@@ -215,8 +230,7 @@ cmd ::= SELECT expr(X). { use(X); }
 expr(A) ::= ID(B). { A = B; }
 expr(A) ::= INTEGER(B). [OR] { A = B; }
 "#,
-            ),
-        ];
+        )];
 
         assert!(verify_grammar(upstream, actions).is_ok());
     }
@@ -263,8 +277,7 @@ expr(A) ::= ID(B). { A = B; }
 
     #[test]
     fn verify_sqlite_grammar_matches_actions() {
-        let upstream =
-            include_str!("../../third_party/src/sqlite/src/parse.y");
+        let upstream = include_str!("../../third_party/src/sqlite/src/parse.y");
         let base_files = crate::base_files::base_y_files();
         let actions: Vec<(&str, &str)> = base_files
             .iter()

@@ -164,7 +164,10 @@ fn codegen_to_dir_with_base(
     )?;
 
     // AST headers.
-    write_file(&include_dir.join(dialect_spec.node_header_name()), artifacts.ast_nodes_h)?;
+    write_file(
+        &include_dir.join(dialect_spec.node_header_name()),
+        artifacts.ast_nodes_h,
+    )?;
     write_file(&csrc_dir.join("dialect_builder.h"), artifacts.ast_builder_h)?;
 
     // Parse engine (raw Lemon output, compiled as part of dialect unit).
@@ -184,11 +187,17 @@ fn codegen_to_dir_with_base(
     // Metadata + formatter data.
     write_file(&csrc_dir.join("dialect_meta.h"), artifacts.dialect_meta_h)?;
     write_file(&csrc_dir.join("dialect_fmt.h"), artifacts.dialect_fmt_h)?;
-    write_file(&csrc_dir.join("dialect_tokens.h"), artifacts.dialect_tokens_h)?;
+    write_file(
+        &csrc_dir.join("dialect_tokens.h"),
+        artifacts.dialect_tokens_h,
+    )?;
 
     // Dialect descriptor + public API.
     write_file(&csrc_dir.join("dialect.c"), artifacts.dialect_c)?;
-    write_file(&include_dir.join(dialect_spec.dialect_header_name()), artifacts.dialect_h)?;
+    write_file(
+        &include_dir.join(dialect_spec.dialect_header_name()),
+        artifacts.dialect_h,
+    )?;
     write_file(
         &csrc_dir.join(dialect_spec.dialect_dispatch_header_name()),
         artifacts.dialect_dispatch_h,

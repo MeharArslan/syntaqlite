@@ -7,9 +7,6 @@
 //
 // Entry-point convention:
 //   const SyntaqliteDialect* syntaqlite_<name>_dialect(void);
-// Generated dialects also export this default alias unless disabled with
-// SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL:
-//   const SyntaqliteDialect* syntaqlite_dialect(void);
 
 #ifndef SYNTAQLITE_DIALECT_H
 #define SYNTAQLITE_DIALECT_H

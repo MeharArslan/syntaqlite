@@ -247,9 +247,7 @@ mod codegen_api {
 cmd ::= INCLUDE PERFETTO MODULE ID DOT ID.
 cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
 "#;
-            let got: BTreeSet<String> = super::extract_terminals_from_y(&[y])
-                .into_iter()
-                .collect();
+            let got: BTreeSet<String> = super::extract_terminals_from_y(&[y]).into_iter().collect();
             let want: BTreeSet<String> = [
                 "ANY", "AS", "CREATE", "DOT", "INCLUDE", "LP", "MACRO", "MODULE", "PERFETTO", "RP",
             ]

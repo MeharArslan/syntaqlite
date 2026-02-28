@@ -575,6 +575,8 @@ typedef struct SyntaqliteDeleteStmt {
     SyntaqliteNodeTag tag;
     uint32_t table;
     uint32_t where_clause;
+    uint32_t orderby;
+    uint32_t limit_clause;
 } SyntaqliteDeleteStmt;
 
 typedef struct SyntaqliteSetClause {
@@ -598,6 +600,8 @@ typedef struct SyntaqliteUpdateStmt {
     uint32_t setlist;
     uint32_t from_clause;
     uint32_t where_clause;
+    uint32_t orderby;
+    uint32_t limit_clause;
 } SyntaqliteUpdateStmt;
 
 typedef struct SyntaqliteInsertStmt {

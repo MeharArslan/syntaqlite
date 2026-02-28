@@ -86,15 +86,3 @@ static const SyntaqliteDialect SQLITE_DIALECT = {
 const SyntaqliteDialect* syntaqlite_sqlite_dialect(void) {
     return &SQLITE_DIALECT;
 }
-
-#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL
-const SyntaqliteDialect* syntaqlite_dialect(void) {
-    return syntaqlite_sqlite_dialect();
-}
-#endif
-
-#ifndef SYNTAQLITE_NO_DIALECT_CREATE_PARSER_API
-SyntaqliteParser* syntaqlite_create_sqlite_parser(const SyntaqliteMemMethods* mem) {
-    return syntaqlite_create_parser_with_dialect(mem, &SQLITE_DIALECT);
-}
-#endif

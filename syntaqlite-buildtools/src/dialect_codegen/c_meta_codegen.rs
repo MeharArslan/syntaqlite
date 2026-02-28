@@ -343,4 +343,3 @@ fn bit_position(value: u32) -> u32 {
     }
     value.trailing_zeros()
 }
-

@@ -1435,6 +1435,12 @@ impl<'a> DeleteStmt<'a> {
     pub fn where_clause(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.where_clause)
     }
+    pub fn orderby(&self) -> Option<OrderByList<'a>> {
+        FromArena::from_arena(self.reader, self.raw.orderby)
+    }
+    pub fn limit_clause(&self) -> Option<LimitClause<'a>> {
+        FromArena::from_arena(self.reader, self.raw.limit_clause)
+    }
 }
 
 impl<'a> FromArena<'a> for DeleteStmt<'a> {
@@ -1536,6 +1542,12 @@ impl<'a> UpdateStmt<'a> {
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.where_clause)
+    }
+    pub fn orderby(&self) -> Option<OrderByList<'a>> {
+        FromArena::from_arena(self.reader, self.raw.orderby)
+    }
+    pub fn limit_clause(&self) -> Option<LimitClause<'a>> {
+        FromArena::from_arena(self.reader, self.raw.limit_clause)
     }
 }
 
@@ -4729,6 +4741,12 @@ impl<'a> crate::ast_traits::DeleteStmtView<'a> for DeleteStmt<'a> {
     fn where_clause(&self) -> Option<Expr<'a>> {
         self.where_clause()
     }
+    fn orderby(&self) -> Option<OrderByList<'a>> {
+        self.orderby()
+    }
+    fn limit_clause(&self) -> Option<LimitClause<'a>> {
+        self.limit_clause()
+    }
 }
 
 impl<'a> crate::ast_traits::SetClauseView<'a> for SetClause<'a> {
@@ -4766,6 +4784,12 @@ impl<'a> crate::ast_traits::UpdateStmtView<'a> for UpdateStmt<'a> {
     }
     fn where_clause(&self) -> Option<Expr<'a>> {
         self.where_clause()
+    }
+    fn orderby(&self) -> Option<OrderByList<'a>> {
+        self.orderby()
+    }
+    fn limit_clause(&self) -> Option<LimitClause<'a>> {
+        self.limit_clause()
     }
 }
 

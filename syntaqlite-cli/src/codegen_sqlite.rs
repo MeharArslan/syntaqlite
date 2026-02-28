@@ -109,11 +109,7 @@ fn clean_generated_files(dir: &Path) {
     }
 }
 
-fn handle_codegen(
-    actions_dir: &str,
-    nodes_dir: &str,
-    output_dir: &str,
-) -> Result<(), String> {
+fn handle_codegen(actions_dir: &str, nodes_dir: &str, output_dir: &str) -> Result<(), String> {
     let dialect = syntaqlite_buildtools::DialectNaming::new("sqlite");
 
     let y_files = syntaqlite_buildtools::read_named_files_from_dir(actions_dir, "y")?;
@@ -159,7 +155,6 @@ fn handle_codegen(
 
     let rust_src_dir = crate_root.join("src");
 
-
     for output in outputs {
         let dir: &Path = match output.bucket {
             OutputBucket::Include => &include_dir,
@@ -175,7 +170,6 @@ fn handle_codegen(
         };
         write_file(&dir.join(output.file_name), output.content)?;
     }
-
 
     Ok(())
 }

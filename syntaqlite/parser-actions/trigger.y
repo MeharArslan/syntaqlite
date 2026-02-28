@@ -140,7 +140,8 @@ tridxby ::= NOT INDEXED. {
 trigger_cmd(A) ::= UPDATE orconf(R) trnm(X) tridxby SET setlist(Y) from(F) where_opt(Z) scanpt. {
     uint32_t tbl = synq_parse_table_ref(pCtx,
         synq_span(pCtx, X), SYNQ_NO_SPAN, SYNQ_NO_SPAN);
-    A = synq_parse_update_stmt(pCtx, (SyntaqliteConflictAction)R, tbl, Y, F, Z);
+    A = synq_parse_update_stmt(pCtx, (SyntaqliteConflictAction)R, tbl, Y, F, Z,
+        SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
 }
 
 // INSERT within trigger
@@ -154,7 +155,8 @@ trigger_cmd(A) ::= scanpt insert_cmd(R) INTO trnm(X) idlist_opt(F) select(S) ups
 trigger_cmd(A) ::= DELETE FROM trnm(X) tridxby where_opt(Y) scanpt. {
     uint32_t tbl = synq_parse_table_ref(pCtx,
         synq_span(pCtx, X), SYNQ_NO_SPAN, SYNQ_NO_SPAN);
-    A = synq_parse_delete_stmt(pCtx, tbl, Y);
+    A = synq_parse_delete_stmt(pCtx, tbl, Y,
+        SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
 }
 
 // SELECT within trigger

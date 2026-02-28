@@ -81,3 +81,33 @@ fn parser_reuse() {
         assert!(matches!(stmt, Stmt::DeleteStmt(_)));
     }
 }
+
+// -- DELETE / UPDATE with ORDER BY and LIMIT --
+
+#[test]
+fn parse_delete_with_order_by_limit() {
+    let mut parser = syntaqlite::Parser::new();
+    let mut cursor = parser.parse("DELETE FROM t ORDER BY id LIMIT 5;");
+
+    let id = cursor.next_statement().unwrap().unwrap();
+    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
+    let Stmt::DeleteStmt(del) = stmt else {
+        panic!("expected DeleteStmt, got {stmt:?}");
+    };
+    assert!(del.orderby().is_some(), "should have ORDER BY");
+    assert!(del.limit_clause().is_some(), "should have LIMIT");
+}
+
+#[test]
+fn parse_update_with_order_by_limit() {
+    let mut parser = syntaqlite::Parser::new();
+    let mut cursor = parser.parse("UPDATE t SET a = 1 ORDER BY id LIMIT 3;");
+
+    let id = cursor.next_statement().unwrap().unwrap();
+    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
+    let Stmt::UpdateStmt(upd) = stmt else {
+        panic!("expected UpdateStmt, got {stmt:?}");
+    };
+    assert!(upd.orderby().is_some(), "should have ORDER BY");
+    assert!(upd.limit_clause().is_some(), "should have LIMIT");
+}

@@ -40,10 +40,14 @@ with(A) ::= WITH RECURSIVE wqlist(W). {
 }
 
 // ============ DELETE ============
+// Extended form: accepts optional ORDER BY / LIMIT (SQLITE_ENABLE_UPDATE_DELETE_LIMIT).
 
-cmd(A) ::= with(W) DELETE FROM xfullname(X) indexed_opt(I) where_opt_ret(E). {
+cmd(A) ::= with(W) DELETE FROM xfullname(X) indexed_opt(I) where_opt_ret(E) orderby_opt(O) limit_opt(L). {
     (void)I;
-    uint32_t del = synq_parse_delete_stmt(pCtx, X, E);
+    if (O != SYNTAQLITE_NULL_NODE || L != SYNTAQLITE_NULL_NODE) {
+        pCtx->saw_update_delete_limit = 1;
+    }
+    uint32_t del = synq_parse_delete_stmt(pCtx, X, E, O, L);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {
         A = synq_parse_with_clause(pCtx, W.is_recursive, W.cte_list, del);
     } else {
@@ -52,10 +56,14 @@ cmd(A) ::= with(W) DELETE FROM xfullname(X) indexed_opt(I) where_opt_ret(E). {
 }
 
 // ============ UPDATE ============
+// Extended form: accepts optional ORDER BY / LIMIT (SQLITE_ENABLE_UPDATE_DELETE_LIMIT).
 
-cmd(A) ::= with(W) UPDATE orconf(R) xfullname(X) indexed_opt(I) SET setlist(Y) from(F) where_opt_ret(E). {
+cmd(A) ::= with(W) UPDATE orconf(R) xfullname(X) indexed_opt(I) SET setlist(Y) from(F) where_opt_ret(E) orderby_opt(O) limit_opt(L). {
     (void)I;
-    uint32_t upd = synq_parse_update_stmt(pCtx, (SyntaqliteConflictAction)R, X, Y, F, E);
+    if (O != SYNTAQLITE_NULL_NODE || L != SYNTAQLITE_NULL_NODE) {
+        pCtx->saw_update_delete_limit = 1;
+    }
+    uint32_t upd = synq_parse_update_stmt(pCtx, (SyntaqliteConflictAction)R, X, Y, F, E, O, L);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {
         A = synq_parse_with_clause(pCtx, W.is_recursive, W.cte_list, upd);
     } else {

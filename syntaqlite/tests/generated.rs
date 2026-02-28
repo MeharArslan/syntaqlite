@@ -16,47 +16,39 @@ fn format_sql_with(sql: &str, config: FormatConfig) -> String {
         .to_string()
 }
 
-// -- Basic SELECT --
+// -- Idempotent round-trip: well-formatted SQL survives formatting unchanged --
 
 #[test]
-fn select_literal() {
-    assert_eq!(format_sql("SELECT 42"), "SELECT 42");
-}
-
-#[test]
-fn select_column() {
-    assert_eq!(format_sql("SELECT a FROM t"), "SELECT a FROM t");
-}
-
-#[test]
-fn select_multiple_columns() {
-    assert_eq!(format_sql("SELECT a, b, c FROM t"), "SELECT a, b, c FROM t");
-}
-
-#[test]
-fn select_with_where() {
-    assert_eq!(
-        format_sql("SELECT a FROM t WHERE x = 1"),
-        "SELECT a FROM t WHERE x = 1"
-    );
-}
-
-#[test]
-fn select_distinct() {
-    assert_eq!(
-        format_sql("SELECT DISTINCT a FROM t"),
-        "SELECT DISTINCT a FROM t"
-    );
-}
-
-#[test]
-fn select_star() {
-    assert_eq!(format_sql("SELECT * FROM t"), "SELECT * FROM t");
-}
-
-#[test]
-fn select_column_alias() {
-    assert_eq!(format_sql("SELECT a AS x FROM t"), "SELECT a AS x FROM t");
+fn format_idempotent() {
+    let cases = [
+        // Basic SELECT variations
+        "SELECT 42",
+        "SELECT a FROM t",
+        "SELECT a, b, c FROM t",
+        "SELECT a FROM t WHERE x = 1",
+        "SELECT DISTINCT a FROM t",
+        "SELECT * FROM t",
+        "SELECT a AS x FROM t",
+        // Expressions
+        "SELECT 1 + 2",
+        "SELECT -1",
+        "SELECT a FROM t WHERE x = 1 AND y = 2",
+        // Table references
+        "SELECT a FROM t AS u",
+        // Clauses
+        "SELECT a, COUNT(*) FROM t GROUP BY a",
+        "SELECT a FROM t ORDER BY a",
+        "SELECT a FROM t LIMIT 10",
+        // Other statement types
+        "DELETE FROM t WHERE x = 1",
+        "UPDATE t SET a = 1 WHERE x = 2",
+        "CREATE TABLE t(a INTEGER, b TEXT)",
+        "DROP TABLE t",
+        "DROP TABLE IF EXISTS t",
+    ];
+    for sql in &cases {
+        assert_eq!(format_sql(sql), *sql, "round-trip failed for: {sql}");
+    }
 }
 
 // -- Line breaking --
@@ -74,74 +66,21 @@ fn long_select_breaks() {
     );
 }
 
-// -- Expressions --
+// -- Formatting transformations (input != output) --
 
 #[test]
-fn binary_expr() {
-    assert_eq!(format_sql("SELECT 1 + 2"), "SELECT 1 + 2");
-}
-
-#[test]
-fn unary_expr() {
-    assert_eq!(format_sql("SELECT -1"), "SELECT -1");
-}
-
-#[test]
-fn binary_and_or() {
+fn delete_with_order_by_limit() {
     assert_eq!(
-        format_sql("SELECT a FROM t WHERE x = 1 AND y = 2"),
-        "SELECT a FROM t WHERE x = 1 AND y = 2"
-    );
-}
-
-// -- Table references --
-
-#[test]
-fn table_with_alias() {
-    assert_eq!(format_sql("SELECT a FROM t AS u"), "SELECT a FROM t AS u");
-}
-
-// -- Subqueries and complex clauses --
-
-#[test]
-fn select_with_group_by() {
-    assert_eq!(
-        format_sql("SELECT a, COUNT(*) FROM t GROUP BY a"),
-        "SELECT a, COUNT(*) FROM t GROUP BY a"
+        format_sql("delete from t where x > 0 order by id limit 10 offset 5"),
+        "DELETE FROM t WHERE x > 0 ORDER BY id LIMIT 10 OFFSET 5"
     );
 }
 
 #[test]
-fn select_with_order_by() {
+fn update_with_order_by_limit() {
     assert_eq!(
-        format_sql("SELECT a FROM t ORDER BY a"),
-        "SELECT a FROM t ORDER BY a"
-    );
-}
-
-#[test]
-fn select_with_limit() {
-    assert_eq!(
-        format_sql("SELECT a FROM t LIMIT 10"),
-        "SELECT a FROM t LIMIT 10"
-    );
-}
-
-// -- Other statement types --
-
-#[test]
-fn delete_stmt() {
-    assert_eq!(
-        format_sql("DELETE FROM t WHERE x = 1"),
-        "DELETE FROM t WHERE x = 1"
-    );
-}
-
-#[test]
-fn update_stmt() {
-    assert_eq!(
-        format_sql("UPDATE t SET a = 1 WHERE x = 2"),
-        "UPDATE t SET a = 1 WHERE x = 2"
+        format_sql("update t set a = 1 where x > 0 order by id limit 5"),
+        "UPDATE t SET a = 1 WHERE x > 0 ORDER BY id LIMIT 5"
     );
 }
 
@@ -150,27 +89,6 @@ fn insert_stmt() {
     assert_eq!(
         format_sql("INSERT INTO t(a, b) VALUES(1, 2)"),
         "INSERT INTO t(a, b) VALUES (1, 2)"
-    );
-}
-
-#[test]
-fn create_table() {
-    assert_eq!(
-        format_sql("CREATE TABLE t(a INTEGER, b TEXT)"),
-        "CREATE TABLE t(a INTEGER, b TEXT)"
-    );
-}
-
-#[test]
-fn drop_table() {
-    assert_eq!(format_sql("DROP TABLE t"), "DROP TABLE t");
-}
-
-#[test]
-fn drop_table_if_exists() {
-    assert_eq!(
-        format_sql("DROP TABLE IF EXISTS t"),
-        "DROP TABLE IF EXISTS t"
     );
 }
 

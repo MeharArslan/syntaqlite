@@ -364,13 +364,17 @@ static inline uint32_t synq_parse_with_clause(
 static inline uint32_t synq_parse_delete_stmt(
     SynqParseCtx *ctx,
     uint32_t table,
-    uint32_t where_clause
+    uint32_t where_clause,
+    uint32_t orderby,
+    uint32_t limit_clause
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteDeleteStmt){
             .tag = SYNTAQLITE_NODE_DELETE_STMT,
             .table = table,
-            .where_clause = where_clause
+            .where_clause = where_clause,
+            .orderby = orderby,
+            .limit_clause = limit_clause
         }, (uint32_t)sizeof(SyntaqliteDeleteStmt));
 }
 
@@ -395,7 +399,9 @@ static inline uint32_t synq_parse_update_stmt(
     uint32_t table,
     uint32_t setlist,
     uint32_t from_clause,
-    uint32_t where_clause
+    uint32_t where_clause,
+    uint32_t orderby,
+    uint32_t limit_clause
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteUpdateStmt){
@@ -404,7 +410,9 @@ static inline uint32_t synq_parse_update_stmt(
             .table = table,
             .setlist = setlist,
             .from_clause = from_clause,
-            .where_clause = where_clause
+            .where_clause = where_clause,
+            .orderby = orderby,
+            .limit_clause = limit_clause
         }, (uint32_t)sizeof(SyntaqliteUpdateStmt));
 }
 
@@ -1226,6 +1234,8 @@ static const SyntaqliteFieldRangeMeta range_meta_with_clause[] = {
 static const SyntaqliteFieldRangeMeta range_meta_delete_stmt[] = {
     {offsetof(SyntaqliteDeleteStmt, table), 0},
     {offsetof(SyntaqliteDeleteStmt, where_clause), 0},
+    {offsetof(SyntaqliteDeleteStmt, orderby), 0},
+    {offsetof(SyntaqliteDeleteStmt, limit_clause), 0},
 };
 
 static const SyntaqliteFieldRangeMeta range_meta_set_clause[] = {
@@ -1239,6 +1249,8 @@ static const SyntaqliteFieldRangeMeta range_meta_update_stmt[] = {
     {offsetof(SyntaqliteUpdateStmt, setlist), 0},
     {offsetof(SyntaqliteUpdateStmt, from_clause), 0},
     {offsetof(SyntaqliteUpdateStmt, where_clause), 0},
+    {offsetof(SyntaqliteUpdateStmt, orderby), 0},
+    {offsetof(SyntaqliteUpdateStmt, limit_clause), 0},
 };
 
 static const SyntaqliteFieldRangeMeta range_meta_insert_stmt[] = {
@@ -1464,9 +1476,9 @@ static const SyntaqliteRangeMetaEntry range_meta_table[] = {
     [SYNTAQLITE_NODE_CREATE_TABLE_STMT] = {range_meta_create_table_stmt, 5},
     [SYNTAQLITE_NODE_CTE_DEFINITION] = {range_meta_cte_definition, 3},
     [SYNTAQLITE_NODE_WITH_CLAUSE] = {range_meta_with_clause, 2},
-    [SYNTAQLITE_NODE_DELETE_STMT] = {range_meta_delete_stmt, 2},
+    [SYNTAQLITE_NODE_DELETE_STMT] = {range_meta_delete_stmt, 4},
     [SYNTAQLITE_NODE_SET_CLAUSE] = {range_meta_set_clause, 3},
-    [SYNTAQLITE_NODE_UPDATE_STMT] = {range_meta_update_stmt, 4},
+    [SYNTAQLITE_NODE_UPDATE_STMT] = {range_meta_update_stmt, 6},
     [SYNTAQLITE_NODE_INSERT_STMT] = {range_meta_insert_stmt, 3},
     [SYNTAQLITE_NODE_BINARY_EXPR] = {range_meta_binary_expr, 2},
     [SYNTAQLITE_NODE_UNARY_EXPR] = {range_meta_unary_expr, 1},

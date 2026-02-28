@@ -1290,6 +1290,8 @@ pub trait DeleteStmtView<'a>: Copy {
     fn node_id(&self) -> NodeId;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
     fn where_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
+    fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
+    fn limit_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::LimitClause>;
 }
 
 /// Accessor trait for `SetClause` nodes.
@@ -1310,6 +1312,8 @@ pub trait UpdateStmtView<'a>: Copy {
     fn setlist(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::SetClause>>;
     fn from_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn where_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
+    fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
+    fn limit_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::LimitClause>;
 }
 
 /// Accessor trait for `InsertStmt` nodes.

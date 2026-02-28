@@ -223,6 +223,8 @@ pub(crate) struct DeleteStmt {
     pub(crate) tag: u32,
     pub(crate) table: NodeId,
     pub(crate) where_clause: NodeId,
+    pub(crate) orderby: NodeId,
+    pub(crate) limit_clause: NodeId,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -243,6 +245,8 @@ pub(crate) struct UpdateStmt {
     pub(crate) setlist: NodeId,
     pub(crate) from_clause: NodeId,
     pub(crate) where_clause: NodeId,
+    pub(crate) orderby: NodeId,
+    pub(crate) limit_clause: NodeId,
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -194,22 +194,6 @@ pub fn generate_dialect_c(dialect: &str, tokens: Option<&[(String, u32)]>) -> St
     ));
     w.line(&format!("    return &{upper}_DIALECT;"));
     w.line("}");
-    w.newline();
-    w.line("#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL");
-    w.line("const SyntaqliteDialect* syntaqlite_dialect(void) {");
-    w.line(&format!("    return syntaqlite_{dialect}_dialect();"));
-    w.line("}");
-    w.line("#endif");
-    w.newline();
-    w.line("#ifndef SYNTAQLITE_NO_DIALECT_CREATE_PARSER_API");
-    w.line(&format!(
-        "SyntaqliteParser* syntaqlite_create_{dialect}_parser(const SyntaqliteMemMethods* mem) {{"
-    ));
-    w.line(&format!(
-        "    return syntaqlite_create_parser_with_dialect(mem, &{upper}_DIALECT);"
-    ));
-    w.line("}");
-    w.line("#endif");
 
     w.finish()
 }
@@ -235,34 +219,9 @@ pub fn generate_dialect_h(dialect: &str) -> String {
     w.line(&format!(
         "const SyntaqliteDialect* syntaqlite_{dialect}_dialect(void);"
     ));
-    w.line("#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL");
-    w.line("const SyntaqliteDialect* syntaqlite_dialect(void);");
-    w.line("#endif");
-    w.line("#ifndef SYNTAQLITE_NO_DIALECT_CREATE_PARSER_API");
-    w.line(&format!(
-        "SyntaqliteParser* syntaqlite_create_{dialect}_parser(const SyntaqliteMemMethods* mem);"
-    ));
-    w.line("#endif");
     w.newline();
     w.line("#ifdef __cplusplus");
     w.line("}");
-    w.line("#endif");
-    w.newline();
-    w.line("#if defined(__cplusplus) && __cplusplus >= 201703L");
-    w.include_local("syntaqlite/parser.h");
-    w.newline();
-    w.line("namespace syntaqlite {");
-    w.newline();
-    let pascal = pascal_case(dialect);
-    w.line("#ifndef SYNTAQLITE_NO_DIALECT_CREATE_PARSER_API");
-    w.line(&format!("inline Parser {pascal}Parser() {{"));
-    w.line(&format!(
-        "  return Parser(syntaqlite_create_{dialect}_parser(nullptr));"
-    ));
-    w.line("}");
-    w.line("#endif");
-    w.newline();
-    w.line("}  // namespace syntaqlite");
     w.line("#endif");
     w.newline();
     w.header_guard_end(&guard);
@@ -275,17 +234,21 @@ mod tests {
     use super::{generate_dialect_c, generate_dialect_h, generate_token_categories_header};
 
     #[test]
-    fn c_source_exposes_default_symbol_guard() {
+    fn c_source_exposes_dialect_function() {
         let c = generate_dialect_c("sqlite", None);
-        assert!(c.contains("#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL"));
-        assert!(c.contains("const SyntaqliteDialect* syntaqlite_dialect(void)"));
+        assert!(c.contains("const SyntaqliteDialect* syntaqlite_sqlite_dialect(void)"));
+        // No default-alias or create-parser wrappers
+        assert!(!c.contains("syntaqlite_dialect(void)"));
+        assert!(!c.contains("syntaqlite_create_sqlite_parser"));
     }
 
     #[test]
-    fn header_exposes_default_symbol_guard() {
+    fn header_exposes_dialect_function() {
         let h = generate_dialect_h("sqlite");
-        assert!(h.contains("#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL"));
-        assert!(h.contains("const SyntaqliteDialect* syntaqlite_dialect(void);"));
+        assert!(h.contains("const SyntaqliteDialect* syntaqlite_sqlite_dialect(void);"));
+        // No default-alias or create-parser wrappers
+        assert!(!h.contains("syntaqlite_dialect(void)"));
+        assert!(!h.contains("syntaqlite_create_sqlite_parser"));
     }
 
     #[test]

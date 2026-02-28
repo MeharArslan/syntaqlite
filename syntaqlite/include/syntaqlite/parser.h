@@ -81,6 +81,7 @@ typedef struct SyntaqliteParseResult {
   uint32_t error_offset;  // Byte offset of the error token (0xFFFFFFFF = unknown).
   uint32_t error_length;  // Byte length of the error token (0 = unknown).
   int32_t saw_subquery;   // Nonzero if the statement contains a subquery.
+  int32_t saw_update_delete_limit; // Nonzero if DELETE/UPDATE uses ORDER BY or LIMIT.
 } SyntaqliteParseResult;
 
 // A recorded macro invocation region, populated via the low-level API

@@ -86,4 +86,3 @@ fn handle_analyze_versions(sqlite_source_dir: &str, output_dir: &str) -> Result<
 
     Ok(())
 }
-

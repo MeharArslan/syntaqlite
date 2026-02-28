@@ -16,29 +16,9 @@ typedef struct SyntaqliteDialect SyntaqliteDialect;
 typedef struct SyntaqliteParser SyntaqliteParser;
 
 const SyntaqliteDialect* syntaqlite_sqlite_dialect(void);
-#ifndef SYNTAQLITE_NO_DEFAULT_DIALECT_SYMBOL
-const SyntaqliteDialect* syntaqlite_dialect(void);
-#endif
-#ifndef SYNTAQLITE_NO_DIALECT_CREATE_PARSER_API
-SyntaqliteParser* syntaqlite_create_sqlite_parser(const SyntaqliteMemMethods* mem);
-#endif
 
 #ifdef __cplusplus
 }
-#endif
-
-#if defined(__cplusplus) && __cplusplus >= 201703L
-#include "syntaqlite/parser.h"
-
-namespace syntaqlite {
-
-#ifndef SYNTAQLITE_NO_DIALECT_CREATE_PARSER_API
-inline Parser SqliteParser() {
-  return Parser(syntaqlite_create_sqlite_parser(nullptr));
-}
-#endif
-
-}  // namespace syntaqlite
 #endif
 
 #endif  // SYNTAQLITE_SQLITE_H

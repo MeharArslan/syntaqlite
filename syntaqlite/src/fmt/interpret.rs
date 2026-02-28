@@ -259,8 +259,14 @@ pub(crate) fn interpret_node<'a>(
                             let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
                             let child_fields =
                                 super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
-                            push_call_frame!(child_id, child_ops_bytes, child_ops_len,
-                                child_fields, child_children, return_action);
+                            push_call_frame!(
+                                child_id,
+                                child_ops_bytes,
+                                child_ops_len,
+                                child_fields,
+                                child_children,
+                                return_action
+                            );
                         }
                     }
                 }
@@ -358,9 +364,7 @@ pub(crate) fn interpret_node<'a>(
                 }
             }
             FmtOp::ChildItem => {
-                let state = for_each_stack
-                    .last()
-                    .expect("ChildItem outside ForEach");
+                let state = for_each_stack.last().expect("ChildItem outside ForEach");
                 let child_id = state.children[state.index];
 
                 // Check macro suppression BEFORE draining comments.
@@ -417,8 +421,14 @@ pub(crate) fn interpret_node<'a>(
                         let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
                         let child_fields =
                             super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
-                        push_call_frame!(child_id, child_ops_bytes, child_ops_len,
-                            child_fields, child_children, return_action);
+                        push_call_frame!(
+                            child_id,
+                            child_ops_bytes,
+                            child_ops_len,
+                            child_fields,
+                            child_children,
+                            return_action
+                        );
                     }
                 }
             }

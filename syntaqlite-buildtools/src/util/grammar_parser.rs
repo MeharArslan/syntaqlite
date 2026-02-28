@@ -196,6 +196,9 @@ pub fn default_defines() -> HashSet<&'static str> {
     [
         // Opt-in features that syntaqlite includes in its grammar.
         "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
+        // Accept ORDER BY / LIMIT on DELETE and UPDATE statements.
+        // As a parser/formatter we should accept the superset of valid syntax.
+        "SQLITE_ENABLE_UPDATE_DELETE_LIMIT",
     ]
     .into_iter()
     .collect()

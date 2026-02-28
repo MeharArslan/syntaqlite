@@ -233,11 +233,7 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
         }
     }
 
-    fn check_and_add_table_ref(
-        &mut self,
-        table_ref: &A::TableRef,
-        scope: &mut ScopeStack,
-    ) {
+    fn check_and_add_table_ref(&mut self, table_ref: &A::TableRef, scope: &mut ScopeStack) {
         let name = table_ref.table_name();
         if name.is_empty() {
             return;

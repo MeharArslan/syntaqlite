@@ -391,7 +391,8 @@ int main(int argc, char** argv) {
     sql = buf;
   }
 
-  auto parser = syntaqlite::SqliteParser();
+  auto parser = syntaqlite::Parser(
+      syntaqlite_create_parser_with_dialect(nullptr, syntaqlite_sqlite_dialect()));
   parser.Reset(sql, (uint32_t)strlen(sql));
 
   Schema schema;
