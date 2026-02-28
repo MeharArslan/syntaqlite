@@ -44,6 +44,11 @@ export const VALIDATION_COLUMNS: TableColumn<DiagnosticEntry>[] = [
     label: "Message",
     render: (d) => d.message,
   },
+  {
+    key: "help",
+    label: "Help",
+    render: (d) => d.help ?? "",
+  },
 ];
 
 export const FORMAT_OPTIONS: {value: SchemaFormat; label: string}[] = [

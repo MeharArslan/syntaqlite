@@ -253,7 +253,7 @@ export class Workspace implements m.ClassComponent<Attrs> {
       const end = offsetToLineCol(sql, d.endOffset);
       return {
         severity: SEVERITY_MAP[d.severity] ?? monaco.MarkerSeverity.Error,
-        message: d.message,
+        message: d.help ? `${d.message}\nhelp: ${d.help}` : d.message,
         startLineNumber: start.line,
         startColumn: start.col,
         endLineNumber: end.line,

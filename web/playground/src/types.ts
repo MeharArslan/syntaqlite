@@ -126,6 +126,8 @@ export interface DiagnosticEntry {
   endOffset: number;
   message: string;
   severity: "error" | "warning" | "info" | "hint";
+  /** Optional help text (e.g. fuzzy suggestions), populated by WASM. */
+  help?: string;
   /** 1-based line number, populated by the workspace after offset conversion. */
   line?: number;
   /** 1-based column number, populated by the workspace after offset conversion. */
