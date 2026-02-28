@@ -98,7 +98,8 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 
 // ---------------------------------------------------------------------------
 // Internal: feed one real token to Lemon.
-// Returns: 0 = keep going, 1 = statement completed, -1 = error.
+// Returns: 0 = keep going, 1 = statement completed, 2 = statement completed
+// with error recovery (tree has ErrorNode holes), -1 = unrecoverable error.
 // ---------------------------------------------------------------------------
 
 static int feed_one_token(SyntaqliteParser* p,
@@ -201,7 +202,8 @@ static int check_macro_straddle(SyntaqliteParser* p) {
 
 // ---------------------------------------------------------------------------
 // Internal: synthesize SEMI + EOF to finish parsing.
-// Returns: 0 = done, 1 = final statement completed, -1 = error.
+// Returns: 0 = done, 1 = statement completed, 2 = statement completed with
+// error recovery (tree has ErrorNode holes), -1 = unrecoverable error.
 // ---------------------------------------------------------------------------
 
 static int finish_input(SyntaqliteParser* p) {
@@ -215,15 +217,15 @@ static int finish_input(SyntaqliteParser* p) {
   if (p->last_token_type != p->dialect->tk_semi) {
     int rc = feed_one_token(p, p->dialect->tk_semi, NULL, 0, 0xFFFFFFFF);
     if (rc == 1) {
-      if (p->had_error) {
-        p->finished = 1;
-        return -1;  // caller reads error info from p->error_msg / ctx.*
-      }
       if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
         p->finished = 1;
         if (check_macro_straddle(p) < 0)
           return -1;
-        return 1;
+        return p->had_error ? 2 : 1;
+      }
+      if (p->had_error) {
+        p->finished = 1;
+        return -1;  // no tree to return
       }
       // null root, no error = bare semicolon, fall through to EOF
     }
@@ -247,14 +249,9 @@ static int finish_input(SyntaqliteParser* p) {
   }
 
   if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
-    if (p->had_error) {
-      // Semantic error set during reduction (e.g. cflag check). The parse
-      // tree was built but the statement is invalid — report the error.
-      return -1;
-    }
     if (check_macro_straddle(p) < 0)
       return -1;
-    return 1;
+    return p->had_error ? 2 : 1;
   }
 
   // Error recovery via `ecmd ::= error SEMI.` leaves ctx.root=NULL and
@@ -355,6 +352,10 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
         continue;  // bare semicolon
       }
       if (p->had_error) {
+        // Return the recovered tree (if any) alongside the error.
+        result.root = p->ctx.root;
+        result.saw_subquery = p->ctx.saw_subquery;
+        result.saw_update_delete_limit = p->ctx.saw_update_delete_limit;
         result.error = 1;
         result.error_msg = p->error_msg;
         result.error_offset = p->ctx.error_offset;
@@ -382,6 +383,16 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
     // Clear had_error (not error_msg): the caller reads error_msg through the
     // returned pointer; clearing it here would give an empty string. The
     // buffer is reset at the start of the next statement instead.
+    p->had_error = 0;
+  } else if (rc == 2) {
+    // Error recovery succeeded: tree exists but has ErrorNode holes.
+    result.root = p->ctx.root;
+    result.saw_subquery = p->ctx.saw_subquery;
+    result.saw_update_delete_limit = p->ctx.saw_update_delete_limit;
+    result.error = 1;
+    result.error_msg = p->error_msg;
+    result.error_offset = p->ctx.error_offset;
+    result.error_length = p->ctx.error_length;
     p->had_error = 0;
   } else if (rc == 1) {
     result.root = p->ctx.root;
@@ -458,7 +469,8 @@ SyntaqliteParseResult syntaqlite_parser_result(SyntaqliteParser* p) {
     result.error_msg = p->error_msg;
     result.error_offset = p->ctx.error_offset;
     result.error_length = p->ctx.error_length;
-  } else if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
+  }
+  if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
     result.root = p->ctx.root;
     result.saw_subquery = p->ctx.saw_subquery;
     result.saw_update_delete_limit = p->ctx.saw_update_delete_limit;

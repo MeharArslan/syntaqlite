@@ -112,7 +112,11 @@ impl<'a> LowLevelCursor<'a> {
     }
 
     /// Read the parser result after a statement-completing or error return code.
-    /// rc == 1 means success, anything else is an error.
+    ///
+    /// Return codes from C:
+    /// - `1` = clean success
+    /// - `2` = success with error recovery (tree has ErrorNode holes)
+    /// - `-1` = unrecoverable error
     fn parse_result(&self, rc: c_int) -> Result<NodeId, ParseError> {
         // SAFETY: raw is valid; result struct and error_msg pointer are valid
         // for the lifetime of the parser.
@@ -122,28 +126,52 @@ impl<'a> LowLevelCursor<'a> {
             if rc == 1 {
                 return Ok(NodeId(result.root));
             }
-            let msg = if result.error_msg.is_null() {
-                "parse error".to_string()
+            let err = Self::extract_error(&result);
+            if rc == 2 {
+                // Error recovery succeeded — tree is valid but has ErrorNode holes.
+                return Err(ParseError {
+                    root: Some(NodeId(result.root)),
+                    ..err
+                });
+            }
+            // rc == -1: unrecoverable error, root may be NULL.
+            let root = if result.root != u32::MAX && result.root != 0 {
+                Some(NodeId(result.root))
             } else {
-                CStr::from_ptr(result.error_msg)
-                    .to_string_lossy()
-                    .into_owned()
-            };
-            let offset = if result.error_offset == 0xFFFFFFFF {
                 None
-            } else {
-                Some(result.error_offset as usize)
             };
-            let length = if result.error_length == 0 {
-                None
-            } else {
-                Some(result.error_length as usize)
-            };
-            Err(ParseError {
-                message: msg,
-                offset,
-                length,
-            })
+            Err(ParseError { root, ..err })
+        }
+    }
+
+    /// Extract error fields from a C parse result.
+    ///
+    /// # Safety
+    /// `result.error_msg` must be null or a valid C string.
+    unsafe fn extract_error(result: &ffi::ParseResult) -> ParseError {
+        let msg = if result.error_msg.is_null() {
+            "parse error".to_string()
+        } else {
+            // SAFETY: caller guarantees error_msg is a valid C string.
+            unsafe { CStr::from_ptr(result.error_msg) }
+                .to_string_lossy()
+                .into_owned()
+        };
+        let offset = if result.error_offset == 0xFFFFFFFF {
+            None
+        } else {
+            Some(result.error_offset as usize)
+        };
+        let length = if result.error_length == 0 {
+            None
+        } else {
+            Some(result.error_length as usize)
+        };
+        ParseError {
+            message: msg,
+            offset,
+            length,
+            root: None,
         }
     }
 
@@ -152,8 +180,9 @@ impl<'a> LowLevelCursor<'a> {
     /// `TK_SPACE` is silently skipped. `TK_COMMENT` is recorded as a comment
     /// (when `collect_tokens` is enabled) but not fed to the parser.
     ///
-    /// Returns `Ok(Some(root_id))` when a statement completes,
-    /// `Ok(None)` to keep going, or `Err` on parse error.
+    /// Returns `Ok(Some(root_id))` when a statement completes cleanly,
+    /// `Ok(None)` to keep going, or `Err` on parse error. When error
+    /// recovery succeeds, the error's `root` field contains the partial tree.
     ///
     /// `span` is a byte range into the source text bound by this cursor.
     /// `token_type` is a raw token type ordinal (dialect-specific).
@@ -184,8 +213,9 @@ impl<'a> LowLevelCursor<'a> {
     ///
     /// Synthesizes a SEMI if the last token wasn't one, and sends EOF to
     /// the parser. Returns `Ok(Some(root_id))` if a final statement
-    /// completed, `Ok(None)` if there was nothing pending, or `Err` on
-    /// parse error.
+    /// completed cleanly, `Ok(None)` if there was nothing pending, or `Err`
+    /// on parse error. When error recovery succeeds, the error's `root`
+    /// field contains the partial tree.
     ///
     /// No further methods may be called after `finish()`.
     pub fn finish(&mut self) -> Result<Option<NodeId>, ParseError> {

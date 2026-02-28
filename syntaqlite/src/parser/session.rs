@@ -32,6 +32,11 @@ pub struct ParseError {
     /// Byte length of the error token.
     /// `None` if the error length is unknown.
     pub length: Option<usize>,
+    /// Root node of a partially recovered parse tree, if error recovery
+    /// succeeded. The tree may contain `ErrorNode` placeholders (tag 0)
+    /// in positions where the parser recovered (e.g. interpolation holes).
+    /// `None` when the error was unrecoverable and no tree was produced.
+    pub root: Option<NodeId>,
 }
 
 impl std::fmt::Display for ParseError {
@@ -557,13 +562,10 @@ impl<'a> StatementCursor<'a> {
         let result = unsafe { ffi::syntaqlite_parser_next(self.base.reader.raw()) };
 
         let id = NodeId(result.root);
-        if !id.is_null() {
-            self.last_saw_subquery = result.saw_subquery != 0;
-            self.last_saw_update_delete_limit = result.saw_update_delete_limit != 0;
-            return Some(Ok(id));
-        }
+        let has_root = !id.is_null();
+        let has_error = result.error != 0;
 
-        if result.error != 0 {
+        if has_error {
             // SAFETY: error_msg is a NUL-terminated string in the parser's
             // buffer (valid for parser lifetime), guaranteed when error != 0.
             let msg = unsafe { CStr::from_ptr(result.error_msg) }
@@ -579,11 +581,25 @@ impl<'a> StatementCursor<'a> {
             } else {
                 Some(result.error_length as usize)
             };
+            let root = if has_root {
+                self.last_saw_subquery = result.saw_subquery != 0;
+                self.last_saw_update_delete_limit = result.saw_update_delete_limit != 0;
+                Some(id)
+            } else {
+                None
+            };
             return Some(Err(ParseError {
                 message: msg,
                 offset,
                 length,
+                root,
             }));
+        }
+
+        if has_root {
+            self.last_saw_subquery = result.saw_subquery != 0;
+            self.last_saw_update_delete_limit = result.saw_update_delete_limit != 0;
+            return Some(Ok(id));
         }
 
         None

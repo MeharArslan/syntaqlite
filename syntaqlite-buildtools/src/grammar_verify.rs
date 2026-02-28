@@ -88,6 +88,11 @@ const ALLOWED_EXTRA_RULES: &[&str] = &[
     // Error recovery: treat `error SEMI` as a valid command so the parser can
     // resynchronize after a syntax error and continue parsing subsequent statements.
     "ecmd ::= error SEMI",
+    // Fine-grained error recovery for interpolation holes (embedded SQL in host
+    // languages). These allow the parser to accept an error token in expression
+    // or name position and continue parsing the rest of the statement.
+    "expr ::= error",
+    "nm ::= error",
 ];
 
 /// Compare rule signatures between upstream `parse.y` and concatenated action files.

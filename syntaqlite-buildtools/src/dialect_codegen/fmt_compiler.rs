@@ -16,8 +16,8 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
-use crate::util::synq_parser::{Field, Fmt, Item};
 use super::AstModel;
+use crate::util::synq_parser::{Field, Fmt, Item};
 
 use syntaqlite::fmt::bytecode::RawOp;
 use syntaqlite::fmt::bytecode::opcodes;

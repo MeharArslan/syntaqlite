@@ -18,6 +18,14 @@
 
 // ============ Identifiers ============
 
+// Error recovery: accept a parse error in name position so that
+// interpolation holes (e.g. f-string `{table}`) produce an ErrorNode
+// without discarding the rest of the statement.
+nm(A) ::= error. {
+    A.z = NULL;
+    A.n = 0;
+}
+
 nm(A) ::= idj(B). {
     synq_mark_as_id(pCtx, B);
     A = B;

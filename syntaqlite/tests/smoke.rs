@@ -69,10 +69,7 @@ fn parse_error_has_message_and_offset() {
         .next_statement()
         .unwrap()
         .expect_err("expected parse error");
-    assert!(
-        !err.message.is_empty(),
-        "error message should not be empty"
-    );
+    assert!(!err.message.is_empty(), "error message should not be empty");
 }
 
 #[test]

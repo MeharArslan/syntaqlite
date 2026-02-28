@@ -511,7 +511,10 @@ mod tests {
             &[],
             &ValidationConfig::default(),
         );
-        let col_diags: Vec<_> = diags.iter().filter(|d| d.message.contains("column")).collect();
+        let col_diags: Vec<_> = diags
+            .iter()
+            .filter(|d| d.message.contains("column"))
+            .collect();
         assert!(
             !col_diags.is_empty(),
             "expected a diagnostic for unknown column '1' in table 'slice'"

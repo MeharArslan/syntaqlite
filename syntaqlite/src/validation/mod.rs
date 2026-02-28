@@ -107,7 +107,13 @@ pub fn validate_document(
     let mut all_diags = Vec::new();
     for &stmt_id in stmt_ids {
         let diags = validate_statement_dialect::<crate::sqlite::ast::SqliteAst>(
-            reader, stmt_id, *dialect, session, Some(&doc_ctx), functions, config,
+            reader,
+            stmt_id,
+            *dialect,
+            session,
+            Some(&doc_ctx),
+            functions,
+            config,
         );
         all_diags.extend(diags);
         doc_ctx.accumulate(reader, stmt_id, dialect, session);

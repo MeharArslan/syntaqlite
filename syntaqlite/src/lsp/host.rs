@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use crate::dialect::TokenCategory;
 use crate::fmt::{FormatConfig, Formatter};
 use crate::parser::{
-    LowLevelParser, ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE,
-    Tokenizer,
+    LowLevelParser, ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID,
+    TOKEN_FLAG_AS_TYPE, Tokenizer,
 };
 use crate::{Dialect, ParseError, Parser};
 
@@ -544,10 +544,7 @@ fn replay_completion_info(
     // that follow, so keywords like JOIN are suggested too.
     if backtracked {
         let extra_tok = &tokens[boundary];
-        if cursor
-            .feed_token(extra_tok.type_, extra_tok.start..extra_tok.end)
-            .is_ok()
-        {
+        if cursor.feed_token(extra_tok.type_, extra_tok.start..extra_tok.end).is_ok() {
             let after = cursor.expected_tokens();
             let mut seen: std::collections::HashSet<u32> = last_expected.iter().copied().collect();
             for tok in after {
@@ -912,11 +909,7 @@ mod tests {
         // Each invalid statement should produce its own diagnostic.
         let mut host = AnalysisHost::new();
         let uri = "file:///test.sql";
-        host.open_document(
-            uri,
-            1,
-            "include ;\ninclude ;\nSELECT 1;".to_string(),
-        );
+        host.open_document(uri, 1, "include ;\ninclude ;\nSELECT 1;".to_string());
 
         let (_, _, diags) = host.document_diagnostics(uri).unwrap();
         let errors: Vec<_> = diags

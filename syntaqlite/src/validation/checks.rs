@@ -21,7 +21,9 @@ pub fn check_table_ref(
     Some(make_diagnostic(
         offset,
         length,
-        DiagnosticMessage::UnknownTable { name: name.to_string() },
+        DiagnosticMessage::UnknownTable {
+            name: name.to_string(),
+        },
         suggestion.map(Help::Suggestion),
         config,
     ))
@@ -102,7 +104,9 @@ pub fn check_function_call(
         return Some(make_diagnostic(
             offset,
             length,
-            DiagnosticMessage::UnknownFunction { name: name.to_string() },
+            DiagnosticMessage::UnknownFunction {
+                name: name.to_string(),
+            },
             suggestion.map(Help::Suggestion),
             config,
         ));

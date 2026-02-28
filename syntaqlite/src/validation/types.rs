@@ -22,10 +22,21 @@ pub struct Diagnostic {
 /// consumption; [`Display`] produces the human-readable form.
 #[derive(Debug, Clone)]
 pub enum DiagnosticMessage {
-    UnknownTable { name: String },
-    UnknownColumn { column: String, table: Option<String> },
-    UnknownFunction { name: String },
-    FunctionArity { name: String, expected: Vec<usize>, got: usize },
+    UnknownTable {
+        name: String,
+    },
+    UnknownColumn {
+        column: String,
+        table: Option<String>,
+    },
+    UnknownFunction {
+        name: String,
+    },
+    FunctionArity {
+        name: String,
+        expected: Vec<usize>,
+        got: usize,
+    },
     /// Catch-all for parse errors and other unstructured messages.
     Other(String),
 }
@@ -34,14 +45,24 @@ impl std::fmt::Display for DiagnosticMessage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::UnknownTable { name } => write!(f, "unknown table '{name}'"),
-            Self::UnknownColumn { column, table: Some(t) } => {
+            Self::UnknownColumn {
+                column,
+                table: Some(t),
+            } => {
                 write!(f, "unknown column '{column}' in table '{t}'")
             }
-            Self::UnknownColumn { column, table: None } => {
+            Self::UnknownColumn {
+                column,
+                table: None,
+            } => {
                 write!(f, "unknown column '{column}'")
             }
             Self::UnknownFunction { name } => write!(f, "unknown function '{name}'"),
-            Self::FunctionArity { name, expected, got } => {
+            Self::FunctionArity {
+                name,
+                expected,
+                got,
+            } => {
                 let expected_str: Vec<String> = expected.iter().map(|n| n.to_string()).collect();
                 write!(
                     f,
@@ -82,7 +103,11 @@ impl DiagnosticMessage {
                 json_escape(out, name);
                 out.push_str("\"}");
             }
-            Self::FunctionArity { name, expected, got } => {
+            Self::FunctionArity {
+                name,
+                expected,
+                got,
+            } => {
                 out.push_str("{\"kind\":\"function_arity\",\"name\":\"");
                 json_escape(out, name);
                 out.push_str("\",\"expected\":[");
@@ -279,7 +304,7 @@ impl SessionContext {
 pub struct DocumentContext {
     pub relations: Vec<RelationDef>,
     pub functions: Vec<FunctionDef>,
-        known: KnownSchema,
+    known: KnownSchema,
 }
 
 impl DocumentContext {
@@ -287,7 +312,7 @@ impl DocumentContext {
         DocumentContext {
             relations: vec![],
             functions: vec![],
-                        known: std::collections::HashMap::new(),
+            known: std::collections::HashMap::new(),
         }
     }
 

@@ -341,6 +341,7 @@ fn format_source(
             message: e.to_string(),
             offset: None,
             length: None,
+            root: None,
         })?;
     formatter.format(source)
 }
@@ -375,12 +376,7 @@ fn cmd_validate(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
 }
 
 /// Validate a source string and print diagnostics. Returns `true` if any errors were found.
-fn validate_source(
-    dialect: &Dialect,
-    source: &str,
-    file: &str,
-    config: &ValidationConfig,
-) -> bool {
+fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &ValidationConfig) -> bool {
     let mut parser = RuntimeParser::with_dialect(dialect);
     let mut cursor = parser.parse(source);
 
@@ -407,7 +403,15 @@ fn validate_source(
         };
         let message = d.message.to_string();
         let help = d.help.as_ref().map(|h| h.to_string());
-        render_diagnostic(source, file, severity, &message, d.start_offset, d.end_offset, help.as_deref());
+        render_diagnostic(
+            source,
+            file,
+            severity,
+            &message,
+            d.start_offset,
+            d.end_offset,
+            help.as_deref(),
+        );
     }
 
     has_errors
