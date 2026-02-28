@@ -13,8 +13,8 @@ use crate::sqlite::ast::Stmt;
 
 use scope::ScopeStack;
 pub use types::{
-    AmbientContext, ColumnDef, Diagnostic, DocumentContext, FunctionDef, RelationDef, RelationKind,
-    SessionContext, Severity,
+    ColumnDef, Diagnostic, DocumentContext, FunctionDef, RelationDef, RelationKind, SessionContext,
+    Severity,
 };
 
 /// Configuration for semantic validation.

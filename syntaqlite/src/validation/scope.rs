@@ -51,7 +51,7 @@ impl<'ctx> ScopeStack<'ctx> {
             .last_mut()
             .unwrap()
             .tables
-            .insert(name.to_lowercase(), columns);
+            .insert(name.to_ascii_lowercase(), columns);
     }
 
     /// Iterate all relations from document context then session context.
@@ -73,7 +73,7 @@ impl<'ctx> ScopeStack<'ctx> {
     }
 
     pub(super) fn resolve_table(&self, name: &str) -> bool {
-        let lower = name.to_lowercase();
+        let lower = name.to_ascii_lowercase();
         self.stack.iter().any(|s| s.tables.contains_key(&lower))
             || self.ambient_relations().any(|r| r.name.eq_ignore_ascii_case(name))
     }
@@ -123,7 +123,7 @@ impl<'ctx> ScopeStack<'ctx> {
             .stack
             .iter()
             .flat_map(|s| s.tables.keys().cloned())
-            .chain(self.ambient_relations().map(|r| r.name.to_lowercase()))
+            .chain(self.ambient_relations().map(|r| r.name.to_ascii_lowercase()))
             .collect();
         names.sort();
         names.dedup();
@@ -139,7 +139,7 @@ impl<'ctx> ScopeStack<'ctx> {
             for (key, cols) in &scope.tables {
                 if table.is_none_or(|tbl| key.eq_ignore_ascii_case(tbl)) {
                     if let Some(cols) = cols {
-                        names.extend(cols.iter().map(|c| c.to_lowercase()));
+                        names.extend(cols.iter().map(|c| c.to_ascii_lowercase()));
                     }
                 }
             }
@@ -147,7 +147,7 @@ impl<'ctx> ScopeStack<'ctx> {
 
         for r in self.ambient_relations() {
             if table.is_none_or(|tbl| r.name.eq_ignore_ascii_case(tbl)) {
-                names.extend(r.columns.iter().map(|c| c.name.to_lowercase()));
+                names.extend(r.columns.iter().map(|c| c.name.to_ascii_lowercase()));
             }
         }
 
@@ -157,7 +157,7 @@ impl<'ctx> ScopeStack<'ctx> {
     }
 
     fn resolve_qualified_column(&self, table: &str, column: &str) -> ColumnResolution {
-        let lower = table.to_lowercase();
+        let lower = table.to_ascii_lowercase();
         for scope in self.stack.iter().rev() {
             if let Some(cols) = scope.tables.get(&lower) {
                 return match cols {

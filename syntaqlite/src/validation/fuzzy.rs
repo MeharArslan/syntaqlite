@@ -3,10 +3,11 @@
 
 /// Compute the Levenshtein distance between two strings (case-insensitive).
 ///
-/// Uses O(n) space where n = b.len().
+/// Uses O(n) space where n = b.len(). SQL identifiers are ASCII, so this
+/// uses byte-level comparison with ASCII lowercase conversion.
 pub(super) fn levenshtein_distance(a: &str, b: &str) -> usize {
-    let a: Vec<char> = a.chars().flat_map(|c| c.to_lowercase()).collect();
-    let b: Vec<char> = b.chars().flat_map(|c| c.to_lowercase()).collect();
+    let a: Vec<u8> = a.bytes().map(|c| c.to_ascii_lowercase()).collect();
+    let b: Vec<u8> = b.bytes().map(|c| c.to_ascii_lowercase()).collect();
 
     let m = a.len();
     let n = b.len();

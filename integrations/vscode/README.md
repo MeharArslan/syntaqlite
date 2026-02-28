@@ -20,7 +20,7 @@ export PATH="$PWD/target/release:$PATH"
 ## Development
 
 ```sh
-cd extensions/vscode
+cd integrations/vscode
 npm install
 npm run compile
 ```

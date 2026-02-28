@@ -384,6 +384,8 @@ impl<'a, 'd> Walker<'a, 'd> {
             if let Some(child) = child {
                 if let Some(expr) = node_to_expr(child) {
                     self.walk_expr(expr, scope);
+                } else if let Some(stmt) = node_to_stmt(child) {
+                    self.walk_stmt(stmt, scope);
                 }
             }
         }
@@ -444,20 +446,21 @@ mod tests {
         let dialect = crate::sqlite::low_level::dialect();
         let mut parser = crate::Parser::with_dialect(&dialect);
         let mut cursor = parser.parse(sql);
-        let mut diags = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            let Ok(stmt_id) = result else { break };
-            diags.extend(validate_statement(
-                cursor.reader(),
-                stmt_id,
-                *dialect,
-                None,
-                None,
-                &[],
-                &ValidationConfig::default(),
-            ));
-        }
-        diags
+        let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok()).collect();
+        stmt_ids
+            .iter()
+            .flat_map(|&id| {
+                validate_statement(
+                    cursor.reader(),
+                    id,
+                    *dialect,
+                    None,
+                    None,
+                    &[],
+                    &ValidationConfig::default(),
+                )
+            })
+            .collect()
     }
 
     #[test]
@@ -475,10 +478,7 @@ mod tests {
         let mut parser = crate::Parser::with_dialect(&dialect);
         let sql = "CREATE TABLE src (id INTEGER);\nCREATE TABLE t AS SELECT * FROM src;";
         let mut cursor = parser.parse(sql);
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmt_ids.push(result.expect("parse failed"));
-        }
+        let stmt_ids: Vec<_> = (&mut cursor).collect::<Result<Vec<_>, _>>().expect("parse failed");
         let ctx = crate::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids);
         let diags: Vec<_> = stmt_ids
             .iter()

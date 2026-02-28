@@ -19,7 +19,7 @@ cargo install --path syntaqlite-cli
 ## Install
 
 ```sh
-pip install -e extensions/mcp
+pip install -e integrations/mcp
 ```
 
 This gives you the `syntaqlite-mcp` command, or you can run `python -m syntaqlite_mcp`.
@@ -95,7 +95,7 @@ If you have [uv](https://docs.astral.sh/uv/) installed, you can skip `pip instal
   "mcpServers": {
     "syntaqlite": {
       "command": "uvx",
-      "args": ["--from", "/path/to/extensions/mcp", "syntaqlite-mcp"]
+      "args": ["--from", "/path/to/integrations/mcp", "syntaqlite-mcp"]
     }
   }
 }

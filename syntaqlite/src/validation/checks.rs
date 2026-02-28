@@ -82,14 +82,11 @@ pub fn check_function_call(
         return None;
     }
 
-    let matching: Vec<&FunctionDef> = functions
-        .iter()
-        .filter(|f| f.name.eq_ignore_ascii_case(name))
-        .collect();
+    let mut by_name = functions.iter().filter(|f| f.name.eq_ignore_ascii_case(name));
 
-    if matching.is_empty() {
+    let Some(first_match) = by_name.next() else {
         let mut all_names: Vec<String> = functions.iter().map(|f| f.name.clone()).collect();
-        all_names.sort();
+        all_names.sort_unstable();
         all_names.dedup();
         let suggestion = best_suggestion(name, &all_names, config.suggestion_threshold);
         return Some(make_diagnostic(
@@ -98,16 +95,17 @@ pub fn check_function_call(
             format_unknown("function", name, suggestion.as_deref()),
             config,
         ));
-    }
+    };
 
     // If any definition accepts this arg count (or is variadic), it's OK.
-    let arity_ok = matching
-        .iter()
+    let arity_ok = std::iter::once(first_match)
+        .chain(by_name)
         .any(|f| f.args.is_none_or(|n| n == arg_count));
 
     if !arity_ok {
-        let expected: Vec<String> = matching
+        let expected: Vec<String> = functions
             .iter()
+            .filter(|f| f.name.eq_ignore_ascii_case(name))
             .filter_map(|f| f.args.map(|n| n.to_string()))
             .collect();
         return Some(make_diagnostic(

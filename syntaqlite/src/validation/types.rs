@@ -367,9 +367,6 @@ fn expand_star(from_sources: &[FromSource], qualifier: &str, out: &mut Vec<Colum
     }
 }
 
-/// Deprecated: renamed to [`SessionContext`].
-pub type AmbientContext = SessionContext;
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -381,11 +378,7 @@ mod tests {
         let sql = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);";
         let mut cursor = parser.parse(sql);
 
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmt_ids.push(result.expect("parse failed"));
-        }
-
+        let stmt_ids: Vec<_> = (&mut cursor).collect::<Result<Vec<_>, _>>().expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
 
         let tables: Vec<_> = ctx.tables().collect();
@@ -417,11 +410,7 @@ mod tests {
         let sql = "CREATE TABLE orders AS SELECT order_id, total AS amount FROM src;";
         let mut cursor = parser.parse(sql);
 
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmt_ids.push(result.expect("parse failed"));
-        }
-
+        let stmt_ids: Vec<_> = (&mut cursor).collect::<Result<Vec<_>, _>>().expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
 
         let tables: Vec<_> = ctx.tables().collect();
@@ -442,11 +431,7 @@ mod tests {
             CREATE TABLE orders AS SELECT * FROM slice;\n";
         let mut cursor = parser.parse(sql);
 
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmt_ids.push(result.expect("parse failed"));
-        }
-
+        let stmt_ids: Vec<_> = (&mut cursor).collect::<Result<Vec<_>, _>>().expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
 
         let tables: Vec<_> = ctx.tables().collect();
@@ -468,11 +453,7 @@ mod tests {
             CREATE TABLE c AS SELECT a.* FROM a JOIN b ON 1;\n";
         let mut cursor = parser.parse(sql);
 
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmt_ids.push(result.expect("parse failed"));
-        }
-
+        let stmt_ids: Vec<_> = (&mut cursor).collect::<Result<Vec<_>, _>>().expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
 
         let tables: Vec<_> = ctx.tables().collect();
@@ -491,11 +472,7 @@ mod tests {
             CREATE TABLE dst AS SELECT t.* FROM src AS t;\n";
         let mut cursor = parser.parse(sql);
 
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmt_ids.push(result.expect("parse failed"));
-        }
-
+        let stmt_ids: Vec<_> = (&mut cursor).collect::<Result<Vec<_>, _>>().expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
 
         let tables: Vec<_> = ctx.tables().collect();
@@ -515,11 +492,7 @@ mod tests {
             CREATE TABLE orders AS SELECT * FROM (SELECT * FROM slice);\n";
         let mut cursor = parser.parse(sql);
 
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmt_ids.push(result.expect("parse failed"));
-        }
-
+        let stmt_ids: Vec<_> = (&mut cursor).collect::<Result<Vec<_>, _>>().expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
 
         let tables: Vec<_> = ctx.tables().collect();
@@ -538,11 +511,7 @@ mod tests {
         let sql = "CREATE VIEW active_users AS SELECT id, name FROM users WHERE active = 1;";
         let mut cursor = parser.parse(sql);
 
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmt_ids.push(result.expect("parse failed"));
-        }
-
+        let stmt_ids: Vec<_> = (&mut cursor).collect::<Result<Vec<_>, _>>().expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
 
         assert_eq!(ctx.tables().count(), 0);
@@ -563,11 +532,7 @@ mod tests {
             CREATE VIEW all_users AS SELECT * FROM users;\n";
         let mut cursor = parser.parse(sql);
 
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmt_ids.push(result.expect("parse failed"));
-        }
-
+        let stmt_ids: Vec<_> = (&mut cursor).collect::<Result<Vec<_>, _>>().expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
 
         let views: Vec<_> = ctx.views().collect();

@@ -97,16 +97,6 @@ impl<'d> AnalysisHost<'d> {
         self.context.as_ref()
     }
 
-    /// Deprecated: use `set_session_context` instead.
-    pub fn set_ambient_context(&mut self, ctx: SessionContext) {
-        self.set_session_context(ctx);
-    }
-
-    /// Deprecated: use `session_context` instead.
-    pub fn ambient_context(&self) -> Option<&SessionContext> {
-        self.session_context()
-    }
-
     /// Run semantic validation on a document.
     ///
     /// Parses the document, walks each statement through
@@ -125,14 +115,8 @@ impl<'d> AnalysisHost<'d> {
         let mut parser = crate::Parser::with_dialect(&self.dialect);
         let mut cursor = parser.parse(&doc.source);
 
-        // Collect all statement IDs first.
-        let mut stmt_ids = Vec::new();
-        loop {
-            match cursor.next_statement() {
-                Some(Ok(id)) => stmt_ids.push(id),
-                Some(Err(_)) | None => break,
-            }
-        }
+        // Collect all statement IDs first, stopping at the first parse error.
+        let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok()).collect();
 
         // Single-pass incremental validation: each statement is validated
         // against only the DDL that precedes it in the document, then its
@@ -264,13 +248,13 @@ impl<'d> AnalysisHost<'d> {
     /// Function callee names marked with `SYNQ_TOKEN_FLAG_AS_FUNCTION` are
     /// classified as `Function`.
     /// Tokens marked with `SYNQ_TOKEN_FLAG_AS_TYPE` are classified as `Type`.
-    pub fn semantic_tokens(&mut self, uri: &str) -> Vec<SemanticToken> {
-        let doc = match self.documents.get_mut(uri) {
-            Some(d) => d,
-            None => return Vec::new(),
-        };
-        ensure_document_state(&self.dialect, doc);
-        doc.state.as_ref().unwrap().semantic_tokens.clone()
+    pub fn semantic_tokens(&mut self, uri: &str) -> &[SemanticToken] {
+        if let Some(doc) = self.documents.get_mut(uri) {
+            ensure_document_state(&self.dialect, doc);
+            &doc.state.as_ref().unwrap().semantic_tokens
+        } else {
+            &[]
+        }
     }
 
     /// Get semantic tokens as a delta-encoded `Uint32Array`-compatible vector.
@@ -617,7 +601,8 @@ impl std::error::Error for FormatError {}
 #[cfg(feature = "sqlite")]
 mod tests {
     use super::AnalysisHost;
-    use crate::lsp::{AmbientContext, FunctionDef};
+    use crate::lsp::FunctionDef;
+    use crate::validation::SessionContext;
     use crate::sqlite::low_level::TokenType;
 
     #[test]
@@ -729,7 +714,7 @@ mod tests {
     #[test]
     fn available_functions_merges_ambient_context() {
         let mut host = AnalysisHost::new();
-        host.set_ambient_context(AmbientContext {
+        host.set_session_context(SessionContext {
             relations: vec![],
             functions: vec![FunctionDef {
                 name: "my_custom_func".to_string(),
