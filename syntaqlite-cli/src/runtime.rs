@@ -15,6 +15,83 @@ use syntaqlite::{Dialect, ParseError, Parser as RuntimeParser};
 
 use super::{Cli, Command};
 
+/// Convert a byte offset in `source` to a 1-based (line, column) pair.
+fn offset_to_line_col(source: &str, offset: usize) -> (usize, usize) {
+    let mut line = 1;
+    let mut col = 1;
+    for (i, ch) in source.char_indices() {
+        if i >= offset {
+            break;
+        }
+        if ch == '\n' {
+            line += 1;
+            col = 1;
+        } else {
+            col += 1;
+        }
+    }
+    (line, col)
+}
+
+/// Extract the source line containing `offset` (without trailing newline).
+fn source_line_at(source: &str, offset: usize) -> &str {
+    let start = source[..offset].rfind('\n').map_or(0, |i| i + 1);
+    let end = source[offset..]
+        .find('\n')
+        .map_or(source.len(), |i| offset + i);
+    &source[start..end]
+}
+
+/// Render a diagnostic in rustc style:
+///
+/// ```text
+/// error: syntax error near 'include'
+///  --> file.sql:1:1
+///   |
+/// 1 | include ;
+///   | ^~~~~~~
+/// ```
+fn render_diagnostic(
+    source: &str,
+    file: &str,
+    severity: &str,
+    message: &str,
+    start_offset: usize,
+    end_offset: usize,
+    help: Option<&str>,
+) {
+    let (line, col) = offset_to_line_col(source, start_offset);
+    let line_text = source_line_at(source, start_offset);
+    let gutter_width = line.to_string().len();
+
+    // Header.
+    eprintln!("{severity}: {message}");
+    eprintln!("{:>gutter_width$}--> {file}:{line}:{col}", " ");
+    eprintln!("{:>gutter_width$} |", " ");
+
+    // Source line.
+    eprintln!("{line} | {line_text}");
+
+    // Underline.
+    let underline_len = if end_offset > start_offset {
+        // Clamp to the current line.
+        let line_end_offset = start_offset + (line_text.len() - (col - 1));
+        (end_offset.min(line_end_offset) - start_offset).max(1)
+    } else {
+        1
+    };
+    let padding = col - 1;
+    eprintln!(
+        "{:>gutter_width$} | {:padding$}^{}",
+        " ",
+        "",
+        "~".repeat(underline_len.saturating_sub(1))
+    );
+    if let Some(help) = help {
+        eprintln!("{:>gutter_width$} = help: {help}", " ");
+    }
+}
+
 #[derive(Clone, Copy, ValueEnum)]
 pub(crate) enum CasingArg {
     Preserve,
@@ -152,7 +229,7 @@ fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
     let paths = expand_paths(&files)?;
 
     if paths.is_empty() {
-        return cmd_ast_source(dialect, &read_stdin()?);
+        return cmd_ast_source(dialect, &read_stdin()?, "<stdin>");
     }
 
     for path in &paths {
@@ -160,15 +237,24 @@ fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
         if paths.len() > 1 {
             println!("==> {} <==", path.display());
         }
-        cmd_ast_source(dialect, &source)?;
+        cmd_ast_source(dialect, &source, &path.display().to_string())?;
     }
     Ok(())
 }
 
-fn cmd_ast_source(dialect: &Dialect, source: &str) -> Result<(), String> {
-    let buf = dump_ast_source(dialect, source).map_err(|e| format!("parse error: {e}"))?;
+fn cmd_ast_source(dialect: &Dialect, source: &str, file: &str) -> Result<(), String> {
+    let (buf, errors) = dump_ast_source(dialect, source);
     print!("{buf}");
-    Ok(())
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        for e in &errors {
+            let start = e.offset.unwrap_or(0);
+            let end = start + e.length.unwrap_or(0);
+            render_diagnostic(source, file, "error", &e.message, start, end, None);
+        }
+        Err(format!("{} syntax error(s)", errors.len()))
+    }
 }
 
 fn cmd_fmt(
@@ -222,22 +308,27 @@ fn cmd_fmt(
     Ok(())
 }
 
-fn dump_ast_source(dialect: &Dialect, source: &str) -> Result<String, ParseError> {
+fn dump_ast_source(dialect: &Dialect, source: &str) -> (String, Vec<ParseError>) {
     let mut parser = RuntimeParser::with_dialect(dialect);
     let mut cursor = parser.parse(source);
     let mut out = String::new();
+    let mut errors = Vec::new();
     let mut count = 0;
 
     while let Some(result) = cursor.next_statement() {
-        let root_id = result?;
-        if count > 0 {
-            out.push_str("----\n");
+        match result {
+            Ok(root_id) => {
+                if count > 0 {
+                    out.push_str("----\n");
+                }
+                cursor.dump_node(root_id, &mut out, 0);
+                count += 1;
+            }
+            Err(err) => errors.push(err),
         }
-        cursor.dump_node(root_id, &mut out, 0);
-        count += 1;
     }
 
-    Ok(out)
+    (out, errors)
 }
 
 fn format_source(
@@ -260,7 +351,7 @@ fn cmd_validate(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
 
     if paths.is_empty() {
         let source = read_stdin()?;
-        let has_errors = validate_source(dialect, &source, &config);
+        let has_errors = validate_source(dialect, &source, "<stdin>", &config);
         if has_errors {
             std::process::exit(1);
         }
@@ -273,7 +364,7 @@ fn cmd_validate(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
         if paths.len() > 1 {
             println!("==> {} <==", path.display());
         }
-        if validate_source(dialect, &source, &config) {
+        if validate_source(dialect, &source, &path.display().to_string(), &config) {
             any_errors = true;
         }
     }
@@ -284,13 +375,24 @@ fn cmd_validate(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
 }
 
 /// Validate a source string and print diagnostics. Returns `true` if any errors were found.
-fn validate_source(dialect: &Dialect, source: &str, config: &ValidationConfig) -> bool {
+fn validate_source(
+    dialect: &Dialect,
+    source: &str,
+    file: &str,
+    config: &ValidationConfig,
+) -> bool {
     let mut parser = RuntimeParser::with_dialect(dialect);
     let mut cursor = parser.parse(source);
 
     let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok()).collect();
-    let diags =
-        syntaqlite::validation::validate_document(cursor.reader(), &stmt_ids, dialect, None, &[], config);
+    let diags = syntaqlite::validation::validate_document(
+        cursor.reader(),
+        &stmt_ids,
+        dialect,
+        None,
+        &[],
+        config,
+    );
 
     let mut has_errors = false;
     for d in &diags {
@@ -303,7 +405,7 @@ fn validate_source(dialect: &Dialect, source: &str, config: &ValidationConfig) -
             Severity::Info => "info",
             Severity::Hint => "hint",
         };
-        println!("{severity} {}..{}: {}", d.start_offset, d.end_offset, d.message);
+        render_diagnostic(source, file, severity, &d.message, d.start_offset, d.end_offset, d.help.as_deref());
     }
 
     has_errors

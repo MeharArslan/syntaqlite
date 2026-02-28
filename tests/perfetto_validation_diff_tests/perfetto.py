@@ -16,7 +16,12 @@ class PerfettoTableValidation(TestSuite):
         """
         return AstTestBlueprint(
             sql="CREATE PERFETTO TABLE t AS SELECT dur FROM slice",
-            out="warning 43..48: unknown table 'slice'",
+            out="""\
+                warning: unknown table 'slice'
+                 --> <stdin>:1:44
+                  |
+                1 | CREATE PERFETTO TABLE t AS SELECT dur FROM slice
+                  |                                            ^~~~~""",
         )
 
     def test_create_perfetto_table_known_table(self):
@@ -30,7 +35,12 @@ class PerfettoViewValidation(TestSuite):
     def test_create_perfetto_view_unknown_table(self):
         return AstTestBlueprint(
             sql="CREATE PERFETTO VIEW v AS SELECT dur FROM slice",
-            out="warning 42..47: unknown table 'slice'",
+            out="""\
+                warning: unknown table 'slice'
+                 --> <stdin>:1:43
+                  |
+                1 | CREATE PERFETTO VIEW v AS SELECT dur FROM slice
+                  |                                           ^~~~~""",
         )
 
 
@@ -38,7 +48,12 @@ class PerfettoFunctionValidation(TestSuite):
     def test_create_perfetto_function_unknown_table(self):
         return AstTestBlueprint(
             sql="CREATE PERFETTO FUNCTION f() RETURNS INT AS SELECT dur FROM slice",
-            out="warning 60..65: unknown table 'slice'",
+            out="""\
+                warning: unknown table 'slice'
+                 --> <stdin>:1:61
+                  |
+                1 | CREATE PERFETTO FUNCTION f() RETURNS INT AS SELECT dur FROM slice
+                  |                                                             ^~~~~""",
         )
 
 
@@ -46,7 +61,12 @@ class BaselineValidation(TestSuite):
     def test_plain_select_unknown_table(self):
         return AstTestBlueprint(
             sql="SELECT dur FROM slice",
-            out="warning 16..21: unknown table 'slice'",
+            out="""\
+                warning: unknown table 'slice'
+                 --> <stdin>:1:17
+                  |
+                1 | SELECT dur FROM slice
+                  |                 ^~~~~""",
         )
 
     def test_known_table_no_warnings(self):

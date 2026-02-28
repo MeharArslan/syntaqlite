@@ -19,7 +19,11 @@ from python.syntaqlite.diff_tests.utils import Colors, colorize, format_diff
 def _run_single_test(args: tuple) -> TestResult:
     """Worker function for parallel test execution."""
     binary, subcommand, name, blueprint = args
-    return execute_test(Path(binary), name, blueprint, subcommand=subcommand)
+    return execute_test(
+        Path(binary), name, blueprint,
+        subcommand=subcommand,
+        use_stderr=(subcommand == "validate"),
+    )
 
 
 def print_run(name: str) -> None:

@@ -21,7 +21,8 @@ pub fn check_table_ref(
     Some(make_diagnostic(
         offset,
         length,
-        format_unknown("table", name, suggestion.as_deref()),
+        format!("unknown table '{name}'"),
+        suggestion.map(|s| format!("did you mean '{s}'?")),
         config,
     ))
 }
@@ -46,13 +47,13 @@ pub fn check_column_ref(
             let tbl = table.unwrap();
             let candidates = scope.all_column_names(Some(tbl));
             let suggestion = best_suggestion(column, &candidates, config.suggestion_threshold);
-            let msg = match suggestion {
-                Some(ref s) => {
-                    format!("unknown column '{column}' in table '{tbl}', did you mean '{s}'?")
-                }
-                None => format!("unknown column '{column}' in table '{tbl}'"),
-            };
-            Some(make_diagnostic(offset, length, msg, config))
+            Some(make_diagnostic(
+                offset,
+                length,
+                format!("unknown column '{column}' in table '{tbl}'"),
+                suggestion.map(|s| format!("did you mean '{s}'?")),
+                config,
+            ))
         }
         ColumnResolution::NotFound => {
             let suggestion = best_suggestion(
@@ -63,7 +64,8 @@ pub fn check_column_ref(
             Some(make_diagnostic(
                 offset,
                 length,
-                format_unknown("column", column, suggestion.as_deref()),
+                format!("unknown column '{column}'"),
+                suggestion.map(|s| format!("did you mean '{s}'?")),
                 config,
             ))
         }
@@ -94,7 +96,8 @@ pub fn check_function_call(
         return Some(make_diagnostic(
             offset,
             length,
-            format_unknown("function", name, suggestion.as_deref()),
+            format!("unknown function '{name}'"),
+            suggestion.map(|s| format!("did you mean '{s}'?")),
             config,
         ));
     };
@@ -117,6 +120,7 @@ pub fn check_function_call(
                 "function '{name}' expects {} argument(s), got {arg_count}",
                 expected.join(" or ")
             ),
+            None,
             config,
         ));
     }
@@ -128,6 +132,7 @@ fn make_diagnostic(
     offset: usize,
     length: usize,
     message: String,
+    help: Option<String>,
     config: &ValidationConfig,
 ) -> Diagnostic {
     Diagnostic {
@@ -135,12 +140,6 @@ fn make_diagnostic(
         end_offset: offset + length,
         message,
         severity: config.severity(),
-    }
-}
-
-fn format_unknown(kind: &str, name: &str, suggestion: Option<&str>) -> String {
-    match suggestion {
-        Some(s) => format!("unknown {kind} '{name}', did you mean '{s}'?"),
-        None => format!("unknown {kind} '{name}'"),
+        help,
     }
 }

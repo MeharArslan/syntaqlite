@@ -427,8 +427,8 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
                 end_offset,
                 message: err.message,
                 severity: Severity::Error,
+                help: None,
             });
-            break;
         }
     }
 
@@ -904,6 +904,64 @@ mod tests {
         assert!(
             !diags.is_empty(),
             "expected a syntax error diagnostic for invalid SQL"
+        );
+    }
+
+    #[test]
+    fn multiple_syntax_errors_all_reported() {
+        // Each invalid statement should produce its own diagnostic.
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        host.open_document(
+            uri,
+            1,
+            "include ;\ninclude ;\nSELECT 1;".to_string(),
+        );
+
+        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        let errors: Vec<_> = diags
+            .iter()
+            .filter(|d| d.severity == super::Severity::Error)
+            .collect();
+        assert_eq!(
+            errors.len(),
+            2,
+            "expected 2 syntax errors (one per invalid statement), got {}: {:?}",
+            errors.len(),
+            errors
+        );
+    }
+
+    #[test]
+    fn syntax_errors_do_not_suppress_later_valid_statements() {
+        // A valid statement after errors should not itself produce a diagnostic.
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        host.open_document(uri, 1, "NOT VALID;\nSELECT 1;".to_string());
+
+        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        assert_eq!(
+            diags.len(),
+            1,
+            "expected exactly 1 diagnostic (for the invalid statement), got {}: {:?}",
+            diags.len(),
+            diags
+        );
+    }
+
+    #[test]
+    fn syntax_error_after_valid_statement_is_reported() {
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        host.open_document(uri, 1, "SELECT 1;\nNOT VALID;".to_string());
+
+        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        assert_eq!(
+            diags.len(),
+            1,
+            "expected exactly 1 diagnostic for the second invalid statement, got {}: {:?}",
+            diags.len(),
+            diags
         );
     }
 }

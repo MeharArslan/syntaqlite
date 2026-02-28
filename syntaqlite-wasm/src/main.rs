@@ -871,7 +871,13 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
             syntaqlite::lsp::Severity::Info => "info",
             syntaqlite::lsp::Severity::Hint => "hint",
         });
-        out.push_str("\"}");
+        out.push('"');
+        if let Some(ref help) = d.help {
+            out.push_str(",\"help\":\"");
+            json_escape(&mut out, help);
+            out.push('"');
+        }
+        out.push('}');
     }
     out.push(']');
     set_result(&out);

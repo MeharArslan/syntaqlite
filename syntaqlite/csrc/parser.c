@@ -337,6 +337,19 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
     int rc = feed_one_token(p, token_type, p->source + tok_offset,
                             (int)token_len, tidx);
 
+    // After a syntax error where SEMI is the triggering token, Lemon
+    // discards it during error recovery and then keeps consuming tokens from
+    // subsequent statements looking for a replacement SEMI.  Short-circuit
+    // by reinitialising Lemon so the next statement starts with a clean
+    // parser state.  When the triggering token is NOT a SEMI, Lemon's
+    // natural `ecmd ::= error SEMI` recovery will find the real SEMI.
+    if (p->had_error && rc == 0 && token_type == p->dialect->tk_semi) {
+      SYNQ_PARSER_FINALIZE(p->dialect, p->lemon);
+      SYNQ_PARSER_INIT(p->dialect, p->lemon);
+      p->last_token_type = 0;
+      rc = 1;
+    }
+
     if (rc == 1) {
       if (p->ctx.root == SYNTAQLITE_NULL_NODE && !p->had_error) {
         continue;  // bare semicolon

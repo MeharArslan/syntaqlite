@@ -12,6 +12,8 @@ pub struct Diagnostic {
     pub message: String,
     /// Severity level.
     pub severity: Severity,
+    /// Optional help text (e.g. "did you mean 'foo'?").
+    pub help: Option<String>,
 }
 
 /// Diagnostic severity level.

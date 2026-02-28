@@ -39,7 +39,8 @@ def execute_test(
     name: str,
     blueprint: AstTestBlueprint,
     timeout: Optional[float] = 30.0,
-    subcommand: Optional[str] = None
+    subcommand: Optional[str] = None,
+    use_stderr: bool = False,
 ) -> TestResult:
     """Execute a single test.
 
@@ -88,7 +89,7 @@ def execute_test(
         )
     elapsed_ms = int((time.monotonic() - t0) * 1000)
 
-    if proc.returncode != 0:
+    if proc.returncode != 0 and not use_stderr:
         return TestResult(
             name=name,
             passed=False,
@@ -97,7 +98,7 @@ def execute_test(
             sql=blueprint.sql
         )
 
-    actual = normalize_output(proc.stdout)
+    actual = normalize_output(proc.stderr if use_stderr else proc.stdout)
     expected = normalize_output(blueprint.out)
 
     return TestResult(
