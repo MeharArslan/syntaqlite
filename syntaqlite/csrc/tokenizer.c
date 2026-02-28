@@ -5,7 +5,7 @@
 
 #include <string.h>
 
-#include "csrc/dialect_dispatch.h"
+#include "csrc/token_wrapped.h"
 #include "syntaqlite/dialect.h"
 
 struct SyntaqliteTokenizer {
@@ -44,7 +44,7 @@ int syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out) {
   }
 
   int token_type = 0;
-  int64_t token_len = SYNQ_GET_TOKEN(
+  int64_t token_len = SynqSqliteGetTokenVersionWrapped(
       tok->dialect, &tok->dialect_config,
       (const unsigned char*)tok->source + tok->offset, &token_type);
 

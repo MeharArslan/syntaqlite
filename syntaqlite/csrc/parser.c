@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "csrc/dialect_dispatch.h"
+#include "csrc/token_wrapped.h"
 #include "syntaqlite/dialect.h"
 #include "syntaqlite_ext/ast_builder.h"
 
@@ -288,8 +289,8 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
 
   while (p->offset < p->source_len && z[p->offset] != '\0') {
     int token_type = 0;
-    int64_t token_len = SYNQ_GET_TOKEN(p->dialect, &p->dialect_config,
-                                       z + p->offset, &token_type);
+    int64_t token_len = SynqSqliteGetTokenVersionWrapped(
+        p->dialect, &p->dialect_config, z + p->offset, &token_type);
     if (token_len <= 0)
       break;
 

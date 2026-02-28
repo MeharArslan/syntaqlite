@@ -1,3 +1,8 @@
+---
+description: Regenerate all generated code from .synq definitions and SQLite grammar
+user_invocable: true
+---
+
 # run-codegen
 
 Regenerate all generated code from `.synq` definitions and SQLite grammar.

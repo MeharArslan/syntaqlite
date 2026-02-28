@@ -7,7 +7,7 @@
 // in newer SQLite versions.  When SQLite adds new token types in future
 // versions, add a new version gate here following the existing pattern.
 
-#include "csrc/sqlite/sqlite_token_wrapped.h"
+#include "csrc/token_wrapped.h"
 #include "csrc/dialect_dispatch.h"
 #include "syntaqlite/dialect.h"
 #include "syntaqlite_sqlite/sqlite_tokens.h"

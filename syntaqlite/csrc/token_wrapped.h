@@ -7,8 +7,8 @@
 // introduced in newer SQLite versions, so the parser can target
 // an older version of the grammar.
 
-#ifndef SYNTAQLITE_INTERNAL_SQLITE_TOKEN_WRAPPED_H
-#define SYNTAQLITE_INTERNAL_SQLITE_TOKEN_WRAPPED_H
+#ifndef SYNTAQLITE_INTERNAL_TOKEN_WRAPPED_H
+#define SYNTAQLITE_INTERNAL_TOKEN_WRAPPED_H
 
 #include <stdint.h>
 
@@ -21,4 +21,4 @@ int64_t SynqSqliteGetTokenVersionWrapped(const SyntaqliteDialect* d,
                                          const unsigned char* z,
                                          int* tokenType);
 
-#endif  // SYNTAQLITE_INTERNAL_SQLITE_TOKEN_WRAPPED_H
+#endif  // SYNTAQLITE_INTERNAL_TOKEN_WRAPPED_H

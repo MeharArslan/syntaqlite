@@ -16,6 +16,7 @@ fn main() {
     engine_build
         .file(csrc.join("tokenizer.c"))
         .file(csrc.join("parser.c"))
+        .file(csrc.join("token_wrapped.c"))
         .include(&manifest_dir) // for csrc/*.h internal headers
         .include(manifest_dir.join("include")); // for public syntaqlite/*.h and syntaqlite_ext/*.h
     if target_os == "emscripten" {
@@ -33,7 +34,6 @@ fn main() {
             .file(sqlite_csrc.join("dialect.c"))
             .file(sqlite_csrc.join("sqlite_parse.c"))
             .file(sqlite_csrc.join("sqlite_tokenize.c"))
-            .file(sqlite_csrc.join("sqlite_token_wrapped.c"))
             .file(sqlite_csrc.join("sqlite_keyword.c"))
             .include(&manifest_dir) // for csrc/sqlite/*.h internal headers
             .include(manifest_dir.join("include")) // for public syntaqlite/*.h headers

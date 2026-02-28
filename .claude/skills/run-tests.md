@@ -1,3 +1,8 @@
+---
+description: Run tests to verify correctness after code changes
+user_invocable: true
+---
+
 # run-tests
 
 Run tests to verify correctness after code changes.
