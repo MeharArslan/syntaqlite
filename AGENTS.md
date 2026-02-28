@@ -103,11 +103,11 @@ Behavioral correctness of the CLI is verified with Python-based diff test suites
 
 #### Suites
 
-- `tools/run-ast-diff-tests` — AST output tests (`tests/ast_diff_tests/`)
-- `tools/run-fmt-diff-tests` — formatter output tests (`tests/fmt_diff_tests/`)
+- `tools/run-ast-diff-tests` — AST output tests using `syntaqlite ast` (`tests/ast_diff_tests/`)
+- `tools/run-fmt-diff-tests` — formatter output tests using `syntaqlite fmt` (`tests/fmt_diff_tests/`)
 - `tools/run-amalg-tests` — amalgamation integration tests (`tests/amalg_tests/`)
 - `tools/run-perfetto-fmt-diff-tests` — Perfetto dialect formatter tests (`tests/perfetto_fmt_diff_tests/`)
-- `tools/run-perfetto-validation-diff-tests` — Perfetto dialect validation tests (`tests/perfetto_validation_diff_tests/`)
+- `tools/run-perfetto-validation-diff-tests` — Perfetto dialect validation tests using `syntaqlite validate` (`tests/perfetto_validation_diff_tests/`)
 
 #### Prerequisites
 
