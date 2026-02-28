@@ -542,6 +542,8 @@ class CreateTriggerBody(TestSuite):
                               source: "1"
                     from_clause: (none)
                     where_clause: (none)
+                    orderby: (none)
+                    limit_clause: (none)
 """,
         )
 
@@ -624,6 +626,8 @@ class CreateTriggerBody(TestSuite):
                           Literal
                             literal_type: INTEGER
                             source: "1"
+                    orderby: (none)
+                    limit_clause: (none)
 """,
         )
 

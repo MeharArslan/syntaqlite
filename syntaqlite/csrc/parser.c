@@ -257,6 +257,12 @@ static int finish_input(SyntaqliteParser* p) {
     return 1;
   }
 
+  // Error recovery via `ecmd ::= error SEMI.` leaves ctx.root=NULL and
+  // ctx.error=0, but had_error=1. Without this check that case returns 0
+  // (no statement, no error), silently swallowing the error.
+  if (p->had_error)
+    return -1;
+
   return 0;
 }
 
@@ -284,6 +290,11 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
   p->ctx.error = 0;
   p->ctx.saw_subquery = 0;
   p->ctx.saw_update_delete_limit = 0;
+  // Clear the error message buffer for the new statement. We do this here
+  // (not when returning the error) because result.error_msg returns a pointer
+  // into this buffer — clearing it before the function returns would give the
+  // caller a pointer to an empty string.
+  p->error_msg[0] = '\0';
 
   const unsigned char* z = (const unsigned char*)p->source;
 
@@ -335,8 +346,10 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
         result.error_msg = p->error_msg;
         result.error_offset = p->ctx.error_offset;
         result.error_length = p->ctx.error_length;
+        // Clear had_error (not error_msg): the caller reads error_msg through
+        // the returned pointer; clearing the buffer here would give an empty
+        // string. error_msg is reset at the start of the next statement.
         p->had_error = 0;
-        p->error_msg[0] = '\0';
         return result;
       }
       result.root = p->ctx.root;
@@ -353,10 +366,10 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
     result.error_msg = p->error_msg;
     result.error_offset = p->ctx.error_offset;
     result.error_length = p->ctx.error_length;
-    // Clear had_error so subsequent calls (after p->finished=1) return null
-    // root (None in Rust) rather than repeating the error.
+    // Clear had_error (not error_msg): the caller reads error_msg through the
+    // returned pointer; clearing it here would give an empty string. The
+    // buffer is reset at the start of the next statement instead.
     p->had_error = 0;
-    p->error_msg[0] = '\0';
   } else if (rc == 1) {
     result.root = p->ctx.root;
     result.saw_subquery = p->ctx.saw_subquery;

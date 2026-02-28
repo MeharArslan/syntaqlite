@@ -69,6 +69,12 @@ enum Command {
         #[arg(long, default_value_t = true, action = clap::ArgAction::Set)]
         semicolons: bool,
     },
+    /// Validate SQL and report diagnostics
+    #[cfg(feature = "runtime")]
+    Validate {
+        /// SQL files or glob patterns (reads stdin if omitted)
+        files: Vec<String>,
+    },
     /// Start the language server (stdio)
     #[cfg(feature = "runtime")]
     Lsp,

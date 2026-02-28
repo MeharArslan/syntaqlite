@@ -20,6 +20,8 @@ class DeleteBasic(TestSuite):
                   schema: null
                   alias: null
               where_clause: (none)
+              orderby: (none)
+              limit_clause: (none)
 """,
         )
 
@@ -45,6 +47,8 @@ class DeleteBasic(TestSuite):
                     Literal
                       literal_type: INTEGER
                       source: "1"
+              orderby: (none)
+              limit_clause: (none)
 """,
         )
 
@@ -59,6 +63,8 @@ class DeleteBasic(TestSuite):
                   schema: "main"
                   alias: null
               where_clause: (none)
+              orderby: (none)
+              limit_clause: (none)
 """,
         )
 
@@ -349,6 +355,8 @@ class UpdateBasic(TestSuite):
                         source: "1"
               from_clause: (none)
               where_clause: (none)
+              orderby: (none)
+              limit_clause: (none)
 """,
         )
 
@@ -392,6 +400,8 @@ class UpdateBasic(TestSuite):
                     Literal
                       literal_type: INTEGER
                       source: "3"
+              orderby: (none)
+              limit_clause: (none)
 """,
         )
 
@@ -417,6 +427,8 @@ class UpdateBasic(TestSuite):
                         source: "1"
               from_clause: (none)
               where_clause: (none)
+              orderby: (none)
+              limit_clause: (none)
 """,
         )
 

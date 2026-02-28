@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use clap::ValueEnum;
 use syntaqlite::dialect::ffi as dialect_ffi;
 use syntaqlite::fmt::{FormatConfig, Formatter, KeywordCase};
+use syntaqlite::validation::{DocumentContext, Severity, ValidationConfig};
 use syntaqlite::{Dialect, ParseError, Parser as RuntimeParser};
 
 use super::{Cli, Command};
@@ -105,6 +106,9 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<&Dialect>) -> Result<(), String
 
     match cli.command {
         Command::Ast { files } => require_dialect(active_dialect).and_then(|d| cmd_ast(d, files)),
+        Command::Validate { files } => {
+            require_dialect(active_dialect).and_then(|d| cmd_validate(d, files))
+        }
         Command::Lsp => require_dialect(active_dialect).and_then(|d| crate::lsp::cmd_lsp(d)),
         Command::Fmt {
             files,
@@ -248,4 +252,76 @@ fn format_source(
             length: None,
         })?;
     formatter.format(source)
+}
+
+fn cmd_validate(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
+    let paths = expand_paths(&files)?;
+    let config = ValidationConfig::default();
+
+    if paths.is_empty() {
+        let source = read_stdin()?;
+        let has_errors = validate_source(dialect, &source, &config);
+        if has_errors {
+            std::process::exit(1);
+        }
+        return Ok(());
+    }
+
+    let mut any_errors = false;
+    for path in &paths {
+        let source = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        if paths.len() > 1 {
+            println!("==> {} <==", path.display());
+        }
+        if validate_source(dialect, &source, &config) {
+            any_errors = true;
+        }
+    }
+    if any_errors {
+        std::process::exit(1);
+    }
+    Ok(())
+}
+
+/// Validate a source string and print diagnostics. Returns `true` if any errors were found.
+fn validate_source(dialect: &Dialect, source: &str, config: &ValidationConfig) -> bool {
+    let mut parser = RuntimeParser::with_dialect(dialect);
+    let mut cursor = parser.parse(source);
+
+    let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok()).collect();
+
+    let mut doc_ctx = DocumentContext::new();
+    let reader = cursor.reader();
+    let mut has_errors = false;
+
+    for &stmt_id in &stmt_ids {
+        let diags = syntaqlite::validation::validate_statement_dialect::<
+            syntaqlite::sqlite::ast::SqliteAst,
+        >(
+            reader,
+            stmt_id,
+            *dialect,
+            None,
+            Some(&doc_ctx),
+            &[],
+            config,
+        );
+
+        for d in &diags {
+            let severity = match d.severity {
+                Severity::Error => {
+                    has_errors = true;
+                    "error"
+                }
+                Severity::Warning => "warning",
+                Severity::Info => "info",
+                Severity::Hint => "hint",
+            };
+            println!("{severity} {}..{}: {}", d.start_offset, d.end_offset, d.message);
+        }
+
+        doc_ctx.accumulate(reader, stmt_id, dialect, None);
+    }
+
+    has_errors
 }
