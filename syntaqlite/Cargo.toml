@@ -9,6 +9,7 @@ edition = "2024"
 default = ["sqlite", "fmt", "validation"]
 fmt = []                     # formatter (bytecode interpreter)
 validation = []              # semantic validation (schema checks, fuzzy suggestions)
+embedded = ["validation"]    # embedded SQL extraction from host languages (Python f-strings, etc.)
 lsp = ["fmt", "validation"]  # LSP analysis host (needs fmt for formatting)
 sqlite = []                  # SQLite dialect (grammar, tokens, cflags, functions)
 

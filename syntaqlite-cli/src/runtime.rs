@@ -99,6 +99,11 @@ pub(crate) enum CasingArg {
     Lower,
 }
 
+#[derive(Clone, Copy, ValueEnum)]
+pub(crate) enum HostLanguage {
+    Python,
+}
+
 /// Expand a list of file paths / glob patterns into concrete paths.
 /// Returns an empty vec when the input is empty (meaning: read stdin).
 fn expand_paths(patterns: &[String]) -> Result<Vec<PathBuf>, String> {
@@ -183,8 +188,8 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<&Dialect>) -> Result<(), String
 
     match cli.command {
         Command::Ast { files } => require_dialect(active_dialect).and_then(|d| cmd_ast(d, files)),
-        Command::Validate { files } => {
-            require_dialect(active_dialect).and_then(|d| cmd_validate(d, files))
+        Command::Validate { files, lang } => {
+            require_dialect(active_dialect).and_then(|d| cmd_validate(d, files, lang))
         }
         Command::Lsp => require_dialect(active_dialect).and_then(|d| crate::lsp::cmd_lsp(d)),
         Command::Fmt {
@@ -346,13 +351,22 @@ fn format_source(
     formatter.format(source)
 }
 
-fn cmd_validate(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
+fn cmd_validate(
+    dialect: &Dialect,
+    files: Vec<String>,
+    lang: Option<HostLanguage>,
+) -> Result<(), String> {
     let paths = expand_paths(&files)?;
     let config = ValidationConfig::default();
 
     if paths.is_empty() {
         let source = read_stdin()?;
-        let has_errors = validate_source(dialect, &source, "<stdin>", &config);
+        let has_errors = match lang {
+            Some(HostLanguage::Python) => {
+                validate_embedded_source(dialect, &source, "<stdin>", &config)
+            }
+            None => validate_source(dialect, &source, "<stdin>", &config),
+        };
         if has_errors {
             std::process::exit(1);
         }
@@ -365,7 +379,13 @@ fn cmd_validate(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
         if paths.len() > 1 {
             println!("==> {} <==", path.display());
         }
-        if validate_source(dialect, &source, &path.display().to_string(), &config) {
+        let has_errors = match lang {
+            Some(HostLanguage::Python) => {
+                validate_embedded_source(dialect, &source, &path.display().to_string(), &config)
+            }
+            None => validate_source(dialect, &source, &path.display().to_string(), &config),
+        };
+        if has_errors {
             any_errors = true;
         }
     }
@@ -389,6 +409,49 @@ fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &Validat
         &[],
         config,
     );
+
+    let mut has_errors = false;
+    for d in &diags {
+        let severity = match d.severity {
+            Severity::Error => {
+                has_errors = true;
+                "error"
+            }
+            Severity::Warning => "warning",
+            Severity::Info => "info",
+            Severity::Hint => "hint",
+        };
+        let message = d.message.to_string();
+        let help = d.help.as_ref().map(|h| h.to_string());
+        render_diagnostic(
+            source,
+            file,
+            severity,
+            &message,
+            d.start_offset,
+            d.end_offset,
+            help.as_deref(),
+        );
+    }
+
+    has_errors
+}
+
+/// Validate embedded SQL in a host-language source and print diagnostics.
+/// Returns `true` if any errors were found.
+fn validate_embedded_source(
+    dialect: &Dialect,
+    source: &str,
+    file: &str,
+    config: &ValidationConfig,
+) -> bool {
+    let fragments = syntaqlite::embedded::extract_python(source);
+    if fragments.is_empty() {
+        eprintln!("no SQL fragments found in {file}");
+        return false;
+    }
+
+    let diags = syntaqlite::embedded::validate_embedded(dialect, &fragments, config);
 
     let mut has_errors = false;
     for d in &diags {

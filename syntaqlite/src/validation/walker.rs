@@ -513,7 +513,7 @@ mod tests {
         );
         let col_diags: Vec<_> = diags
             .iter()
-            .filter(|d| d.message.contains("column"))
+            .filter(|d| d.message.to_string().contains("column"))
             .collect();
         assert!(
             !col_diags.is_empty(),
@@ -530,7 +530,10 @@ mod tests {
         );
         let old_new_diags: Vec<_> = diags
             .iter()
-            .filter(|d| d.message.contains("OLD") || d.message.contains("NEW"))
+            .filter(|d| {
+                let s = d.message.to_string();
+                s.contains("OLD") || s.contains("NEW")
+            })
             .collect();
         assert!(
             old_new_diags.is_empty(),

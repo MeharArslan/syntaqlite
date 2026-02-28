@@ -74,6 +74,9 @@ enum Command {
     Validate {
         /// SQL files or glob patterns (reads stdin if omitted)
         files: Vec<String>,
+        /// Host language for embedded SQL extraction
+        #[arg(long, value_enum)]
+        lang: Option<runtime::HostLanguage>,
     },
     /// Start the language server (stdio)
     #[cfg(feature = "runtime")]
