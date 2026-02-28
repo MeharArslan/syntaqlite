@@ -9,23 +9,26 @@ use super::checks::{check_column_ref, check_function_call, check_table_ref};
 use super::scope::ScopeStack;
 use super::types::{Diagnostic, FunctionDef};
 
-pub(super) struct Walker<'a> {
+pub(super) struct Walker<'a, 'd> {
     reader: &'a NodeReader<'a>,
+    dialect: crate::Dialect<'d>,
     functions: &'a [FunctionDef],
     config: &'a ValidationConfig,
     diagnostics: Vec<Diagnostic>,
 }
 
-impl<'a> Walker<'a> {
+impl<'a, 'd> Walker<'a, 'd> {
     pub(super) fn run(
         reader: &'a NodeReader<'a>,
         stmt: Stmt<'a>,
+        dialect: crate::Dialect<'d>,
         scope: &mut ScopeStack,
         functions: &'a [FunctionDef],
         config: &'a ValidationConfig,
     ) -> Vec<Diagnostic> {
         let mut walker = Walker {
             reader,
+            dialect,
             functions,
             config,
             diagnostics: Vec::new(),
@@ -47,6 +50,7 @@ impl<'a> Walker<'a> {
             Stmt::InsertStmt(i) => self.walk_insert_stmt(i, scope),
             Stmt::UpdateStmt(u) => self.walk_update_stmt(u, scope),
             Stmt::DeleteStmt(d) => self.walk_delete_stmt(d, scope),
+            Stmt::Other(node) => self.walk_other_node(node, scope),
             _ => {}
         }
     }
@@ -128,7 +132,7 @@ impl<'a> Walker<'a> {
                     }
                 }
             }
-            Select::Other(_) => {}
+            Select::Other(node) => self.walk_other_node(node, scope),
         }
     }
 
@@ -193,7 +197,7 @@ impl<'a> Walker<'a> {
                     self.walk_table_source(src, scope);
                 }
             }
-            TableSource::Other(_) => {}
+            TableSource::Other(node) => self.walk_other_node(node, scope),
         }
     }
 
@@ -266,7 +270,7 @@ impl<'a> Walker<'a> {
                         InExprSource::SubqueryExpr(sub) => {
                             self.walk_subquery(sub.select(), scope);
                         }
-                        InExprSource::Other(_) => {}
+                        InExprSource::Other(node) => self.walk_other_node(node, scope),
                     }
                 }
             }
@@ -297,7 +301,8 @@ impl<'a> Walker<'a> {
                 self.walk_opt_expr(like.pattern(), scope);
                 self.walk_opt_expr(like.escape(), scope);
             }
-            Expr::Literal(_) | Expr::Variable(_) | Expr::RaiseExpr(_) | Expr::Other(_) => {}
+            Expr::Other(node) => self.walk_other_node(node, scope),
+            Expr::Literal(_) | Expr::Variable(_) | Expr::RaiseExpr(_) => {}
         }
     }
 
@@ -340,6 +345,21 @@ impl<'a> Walker<'a> {
             self.walk_expr_list(args, scope);
         }
         self.walk_opt_expr(filter, scope);
+    }
+
+    fn walk_other_node(&mut self, node: Node<'a>, scope: &mut ScopeStack) {
+        let id = match node {
+            Node::Other { id, .. } => id,
+            _ => return,
+        };
+        for child_id in self.reader.child_node_ids(id, &self.dialect) {
+            let child: Option<Node<'a>> = FromArena::from_arena(self.reader, child_id);
+            if let Some(child) = child {
+                if let Some(expr) = node_to_expr(child) {
+                    self.walk_expr(expr, scope);
+                }
+            }
+        }
     }
 
     fn walk_expr_list(&mut self, list: ExprList<'a>, scope: &mut ScopeStack) {

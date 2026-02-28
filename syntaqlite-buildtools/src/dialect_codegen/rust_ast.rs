@@ -227,13 +227,15 @@ fn emit_rust_flags_type(w: &mut RustWriter, name: &str, flags: &[(String, u32)])
 }
 
 fn emit_rust_node_tag_type(w: &mut RustWriter, model: &AstModel<'_>) {
-    let mut tag_names: Vec<String> = Vec::new();
+    let mut tag_names: Vec<(String, u32)> = Vec::new();
     let mut list_tags: Vec<String> = Vec::new();
     for item in model.node_like_items() {
         match item {
-            NodeLikeRef::Node(node) => tag_names.push(node.name.to_string()),
+            NodeLikeRef::Node(node) => {
+                tag_names.push((node.name.to_string(), model.tag_for(node.name)));
+            }
             NodeLikeRef::List(list) => {
-                tag_names.push(list.name.to_string());
+                tag_names.push((list.name.to_string(), model.tag_for(list.name)));
                 list_tags.push(list.name.to_string());
             }
         }
@@ -243,8 +245,8 @@ fn emit_rust_node_tag_type(w: &mut RustWriter, model: &AstModel<'_>) {
     w.line("#[repr(u32)]");
     w.open_block("pub enum NodeTag {");
     w.line("Null = 0,");
-    for (i, name) in tag_names.iter().enumerate() {
-        w.line(&format!("{name} = {},", i + 1));
+    for (name, tag) in &tag_names {
+        w.line(&format!("{name} = {tag},"));
     }
     w.close_block("}");
     w.newline();
@@ -254,8 +256,8 @@ fn emit_rust_node_tag_type(w: &mut RustWriter, model: &AstModel<'_>) {
     w.open_block("pub(crate) fn from_raw(raw: u32) -> Option<NodeTag> {");
     w.open_block("match raw {");
     w.line("0 => Some(NodeTag::Null),");
-    for (i, name) in tag_names.iter().enumerate() {
-        w.line(&format!("{} => Some(NodeTag::{name}),", i + 1));
+    for (name, tag) in &tag_names {
+        w.line(&format!("{tag} => Some(NodeTag::{name}),"));
     }
     w.line("_ => None,");
     w.close_block("}");
@@ -307,7 +309,11 @@ fn emit_rust_node_structs(
     }
 }
 
-fn emit_rust_node_tag_accessor(w: &mut RustWriter, node_like_items: &[NodeLikeRef<'_>]) {
+fn emit_rust_node_tag_accessor(
+    w: &mut RustWriter,
+    node_like_items: &[NodeLikeRef<'_>],
+    open_for_extension: bool,
+) {
     w.doc_comment("The node's tag.");
     w.open_block("pub fn tag(&self) -> NodeTag {");
     w.open_block("match self {");
@@ -318,7 +324,11 @@ fn emit_rust_node_tag_accessor(w: &mut RustWriter, node_like_items: &[NodeLikeRe
         };
         w.line(&format!("Node::{name}(..) => NodeTag::{name},"));
     }
-    w.line("Node::__Phantom(_) => unreachable!(),");
+    if open_for_extension {
+        w.line("Node::Other { .. } => NodeTag::Null,");
+    } else {
+        w.line("Node::__Phantom(_) => unreachable!(),");
+    }
     w.close_block("}");
     w.close_block("}");
     w.newline();
@@ -421,7 +431,12 @@ pub fn generate_rust_ffi_nodes(model: &AstModel<'_>, crate_prefix: &str) -> Stri
 /// - `crate_prefix`: `"crate"` for internal syntaqlite, `"syntaqlite"` for external.
 /// - `ffi_path`: module path to the FFI types, e.g. `"crate::sqlite::ffi"` (internal)
 ///   or `"crate::ffi"` (external).
-pub fn generate_rust_ast(model: &AstModel<'_>, crate_prefix: &str, ffi_path: &str) -> String {
+pub fn generate_rust_ast(
+    model: &AstModel<'_>,
+    crate_prefix: &str,
+    ffi_path: &str,
+    open_for_extension: bool,
+) -> String {
     let enum_names = model.enum_names();
     let flags_names = model.flags_names();
     let node_names = model.node_names();
@@ -430,8 +445,10 @@ pub fn generate_rust_ast(model: &AstModel<'_>, crate_prefix: &str, ffi_path: &st
 
     let mut w = RustWriter::new();
     w.file_header();
+    if !open_for_extension {
+        w.line("use std::marker::PhantomData;");
+    }
     w.lines(&format!("
-        use std::marker::PhantomData;
         pub(crate) use {crate_prefix}::parser::NodeList;
         pub use {crate_prefix}::parser::{{Comment, CommentKind, FromArena, NodeId, NodeReader, SourceSpan, TypedList}};
     "));
@@ -622,9 +639,14 @@ pub fn generate_rust_ast(model: &AstModel<'_>, crate_prefix: &str, ffi_path: &st
             }
         }
     }
-    w.doc_comment("Placeholder for PhantomData lifetime — never constructed.");
-    w.line("#[doc(hidden)]");
-    w.line("__Phantom(PhantomData<&'a ()>),");
+    if open_for_extension {
+        w.doc_comment("A node with an unknown tag from a dialect extension.");
+        w.line("Other { id: NodeId, tag: u32 },");
+    } else {
+        w.doc_comment("Placeholder for PhantomData lifetime — never constructed.");
+        w.line("#[doc(hidden)]");
+        w.line("__Phantom(PhantomData<&'a ()>),");
+    }
     w.dedent();
     w.line("}");
     w.newline();
@@ -657,7 +679,11 @@ pub fn generate_rust_ast(model: &AstModel<'_>, crate_prefix: &str, ffi_path: &st
             }
         }
     }
-    w.line("_ => unreachable!(\"unknown node tag\"),");
+    if open_for_extension {
+        w.line("_ => Node::Other { id, tag: *ptr },");
+    } else {
+        w.line("_ => unreachable!(\"unknown node tag\"),");
+    }
     w.dedent();
     w.line("}");
     w.line("} // unsafe");
@@ -678,7 +704,7 @@ pub fn generate_rust_ast(model: &AstModel<'_>, crate_prefix: &str, ffi_path: &st
     w.newline();
 
     // tag()
-    emit_rust_node_tag_accessor(&mut w, model.node_like_items());
+    emit_rust_node_tag_accessor(&mut w, model.node_like_items(), open_for_extension);
 
     w.dedent();
     w.line("}");
@@ -696,6 +722,9 @@ pub fn generate_rust_ast(model: &AstModel<'_>, crate_prefix: &str, ffi_path: &st
             "Node::{n}(n) => std::fmt::Display::fmt(n, f),",
             n = node.name
         ));
+    }
+    if open_for_extension {
+        w.line("Node::Other { tag, .. } => write!(f, \"Other(tag={tag})\"),");
     }
     // Fallback for list variants and phantom
     w.line("_ => std::fmt::Debug::fmt(self, f),");

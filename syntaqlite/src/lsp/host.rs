@@ -134,6 +134,7 @@ impl<'d> AnalysisHost<'d> {
             let stmt_diags = crate::validation::validate_statement(
                 reader,
                 stmt_id,
+                self.dialect,
                 self.context.as_ref(),
                 &functions,
                 config,
@@ -367,7 +368,7 @@ impl<'d> AnalysisHost<'d> {
 }
 
 /// Expand a `FunctionInfo` into one `FunctionDef` per arity.
-fn expand_function_info(info: &crate::catalog::FunctionInfo) -> Vec<FunctionDef> {
+fn expand_function_info(info: &crate::catalog::FunctionInfo<'_>) -> Vec<FunctionDef> {
     if info.arities.is_empty() {
         vec![FunctionDef {
             name: info.name.to_string(),

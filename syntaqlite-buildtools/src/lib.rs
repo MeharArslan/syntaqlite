@@ -172,6 +172,14 @@ mod codegen_api {
         /// Crate name for `Cargo.toml` (e.g. `"syntaqlite"`, `"syntaqlite-libsql"`).
         /// Only used when `include_rust` is true.
         pub crate_name: Option<&'a str>,
+        /// Base .synq files for extension builds. When present, base items get
+        /// pinned tags and extension items get tags after the base range.
+        /// When `None`, all items from `synq_files` are treated as base.
+        pub base_synq_files: Option<&'a [(&'a str, &'a str)]>,
+        /// When `true`, the generated `Node<'a>` enum gets an `Other { id, tag }`
+        /// variant for unknown tags (dialect extension support). When `false`,
+        /// unknown tags are unreachable.
+        pub open_for_extension: bool,
     }
 
     /// Return the set of token names that are keywords in the base SQLite table.
@@ -295,7 +303,38 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
         let parser_name = request.parser_symbol_prefix.unwrap_or("SynqSqliteParse");
 
         let all_items = parse_synq_items(request.synq_files)?;
-        let ast_model = dialect_codegen::AstModel::new(&all_items);
+
+        // For extension builds, parse base and extension items separately.
+        // Both vecs must outlive the AstModel, so declare them here.
+        let base_items_owned: Vec<util::synq_parser::Item>;
+        let ext_items_owned: Vec<util::synq_parser::Item>;
+
+        let ast_model = if let Some(base_synq) = request.base_synq_files {
+            let base_owned: Vec<(String, String)> = base_synq
+                .iter()
+                .map(|(n, c)| (n.to_string(), c.to_string()))
+                .collect();
+            base_items_owned = parse_synq_items(&base_owned)?;
+
+            let base_names: std::collections::HashSet<&str> =
+                base_synq.iter().map(|(n, _)| *n).collect();
+            let ext_files: Vec<(String, String)> = request
+                .synq_files
+                .iter()
+                .filter(|(n, _)| !base_names.contains(n.as_str()))
+                .map(|(n, c)| (n.clone(), c.clone()))
+                .collect();
+            ext_items_owned = if ext_files.is_empty() {
+                Vec::new()
+            } else {
+                parse_synq_items(&ext_files)?
+            };
+
+            dialect_codegen::AstModel::new_with_extensions(&base_items_owned, &ext_items_owned)
+                .map_err(|e| format!("extension validation: {e}"))?
+        } else {
+            dialect_codegen::AstModel::new(&all_items)
+        };
 
         let work_dir = tempfile::TempDir::new()
             .map_err(|e| format!("Failed to create temp directory: {e}"))?;
@@ -362,7 +401,12 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
             Some(RustCodegenArtifacts {
                 tokens_rs: dialect_codegen::generate_rust_tokens(&token_defines[..]),
                 ffi_rs: dialect_codegen::generate_rust_ffi_nodes(&ast_model, crate_prefix),
-                ast_rs: dialect_codegen::generate_rust_ast(&ast_model, crate_prefix, ffi_path),
+                ast_rs: dialect_codegen::generate_rust_ast(
+                    &ast_model,
+                    crate_prefix,
+                    ffi_path,
+                    request.open_for_extension,
+                ),
                 lib_rs: dialect_codegen::generate_rust_lib(
                     &request.dialect.dialect_symbol_fn_name(),
                 ),

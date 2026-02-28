@@ -77,7 +77,7 @@ pub fn generate_ast_nodes_header(model: &AstModel<'_>, dialect: &str) -> String 
             NodeLikeRef::Node(node) => node.name,
             NodeLikeRef::List(list) => list.name,
         };
-        tag_variants.push((tag_name(name), None));
+        tag_variants.push((tag_name(name), Some(model.tag_for(name) as i32)));
     }
     tag_variants.push(("SYNTAQLITE_NODE_COUNT".into(), None));
     w.typedef_enum("SyntaqliteNodeTag", &refs_i32(&tag_variants));

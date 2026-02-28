@@ -33,7 +33,7 @@ use crate::dialect::ffi::DialectConfig;
 ///
 /// Filters the full catalog by version and cflags. A function is included
 /// if at least one of its availability rules matches the config.
-pub fn available_functions(config: &DialectConfig) -> Vec<&'static FunctionInfo> {
+pub fn available_functions(config: &DialectConfig) -> Vec<&'static FunctionInfo<'static>> {
     SQLITE_FUNCTIONS
         .iter()
         .filter(|entry| catalog::is_available(entry, config))
@@ -42,7 +42,7 @@ pub fn available_functions(config: &DialectConfig) -> Vec<&'static FunctionInfo>
 }
 
 /// Returns the full unfiltered catalog of all SQLite built-in functions.
-pub fn catalog() -> &'static [FunctionEntry] {
+pub fn catalog() -> &'static [FunctionEntry<'static>] {
     SQLITE_FUNCTIONS
 }
 

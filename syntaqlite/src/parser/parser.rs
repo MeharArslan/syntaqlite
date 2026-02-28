@@ -181,6 +181,47 @@ pub struct NodeReader<'a> {
 }
 
 impl<'a> NodeReader<'a> {
+    /// Enumerate all child NodeIds of a node using dialect metadata.
+    ///
+    /// For regular nodes, returns all `Index`-typed (child node) fields.
+    /// For list nodes, returns the list's children.
+    /// Null child IDs are omitted from the result.
+    pub fn child_node_ids(&self, id: NodeId, dialect: &crate::Dialect) -> Vec<NodeId> {
+        let Some((ptr, tag)) = self.node_ptr(id) else {
+            return vec![];
+        };
+
+        if dialect.is_list(tag) {
+            // SAFETY: ptr is valid and tag confirms list layout.
+            let list = unsafe { &*(ptr as *const NodeList) };
+            return list
+                .children()
+                .iter()
+                .copied()
+                .filter(|id| !id.is_null())
+                .collect();
+        }
+
+        let meta = dialect.field_meta(tag);
+        let mut children = Vec::new();
+        for field in meta {
+            if field.kind == crate::dialect::ffi::FIELD_NODE_ID {
+                // SAFETY: ptr is a valid arena pointer, field.offset is a
+                // codegen-computed offset within the node struct, and the
+                // field at that offset is a u32 (raw NodeId).
+                let child_raw = unsafe {
+                    let field_ptr = ptr.add(field.offset as usize) as *const u32;
+                    *field_ptr
+                };
+                let child_id = NodeId(child_raw);
+                if !child_id.is_null() {
+                    children.push(child_id);
+                }
+            }
+        }
+        children
+    }
+
     /// Get a raw pointer to a node in the arena. Returns `(pointer, tag)`.
     pub fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
         if id.is_null() {

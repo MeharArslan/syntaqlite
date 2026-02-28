@@ -190,7 +190,11 @@ pub fn generate_functions_catalog(json_content: &str) -> Result<String, String> 
         count = file.functions.len()
     )
     .unwrap();
-    writeln!(out, "pub static SQLITE_FUNCTIONS: &[FunctionEntry] = &[").unwrap();
+    writeln!(
+        out,
+        "pub static SQLITE_FUNCTIONS: &[FunctionEntry<'static>] = &["
+    )
+    .unwrap();
     for func in &file.functions {
         let ident = arity_ident(&func.name);
         let cat = match func.category.as_str() {

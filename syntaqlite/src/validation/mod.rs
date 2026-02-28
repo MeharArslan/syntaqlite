@@ -51,6 +51,7 @@ impl ValidationConfig {
 pub fn validate_statement<'a>(
     reader: &'a NodeReader<'a>,
     stmt_id: NodeId,
+    dialect: crate::Dialect<'_>,
     context: Option<&SessionContext>,
     functions: &[FunctionDef],
     config: &ValidationConfig,
@@ -62,5 +63,5 @@ pub fn validate_statement<'a>(
 
     let mut scope = ScopeStack::new(context);
 
-    walker::Walker::run(reader, stmt, &mut scope, functions, config)
+    walker::Walker::run(reader, stmt, dialect, &mut scope, functions, config)
 }

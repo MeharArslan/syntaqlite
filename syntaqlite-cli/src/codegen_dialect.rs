@@ -153,6 +153,8 @@ fn codegen_to_dir_with_base(
         parser_symbol_prefix: Some(&parser_prefix),
         include_rust: false,
         crate_name: None,
+        base_synq_files: Some(syntaqlite_buildtools::base_files::base_synq_files()),
+        open_for_extension: false,
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
 

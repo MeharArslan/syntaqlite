@@ -148,6 +148,8 @@ fn handle_codegen(
         parser_symbol_prefix: None,
         include_rust: true,
         crate_name: Some("syntaqlite"),
+        base_synq_files: None,
+        open_for_extension: true,
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
     let outputs = syntaqlite_buildtools::sqlite::output_manifest::sqlite_output_manifest(

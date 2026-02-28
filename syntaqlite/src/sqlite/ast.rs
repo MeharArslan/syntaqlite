@@ -7,7 +7,6 @@ pub(crate) use crate::parser::NodeList;
 pub use crate::parser::{
     Comment, CommentKind, FromArena, NodeId, NodeReader, SourceSpan, TypedList,
 };
-use std::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -4352,9 +4351,11 @@ pub enum Node<'a> {
     /// List of NamedWindowDef
     NamedWindowDefList(NamedWindowDefList<'a>),
     FilterOver(FilterOver<'a>),
-    /// Placeholder for PhantomData lifetime — never constructed.
-    #[doc(hidden)]
-    __Phantom(PhantomData<&'a ()>),
+    /// A node with an unknown tag from a dialect extension.
+    Other {
+        id: NodeId,
+        tag: u32,
+    },
 }
 
 impl<'a> Node<'a> {
@@ -4722,7 +4723,7 @@ impl<'a> Node<'a> {
                     reader,
                     id,
                 }),
-                _ => unreachable!("unknown node tag"),
+                _ => Node::Other { id, tag: *ptr },
             }
         } // unsafe
     }
@@ -4810,7 +4811,7 @@ impl<'a> Node<'a> {
             Node::NamedWindowDef(..) => NodeTag::NamedWindowDef,
             Node::NamedWindowDefList(..) => NodeTag::NamedWindowDefList,
             Node::FilterOver(..) => NodeTag::FilterOver,
-            Node::__Phantom(_) => unreachable!(),
+            Node::Other { .. } => NodeTag::Null,
         }
     }
 }
@@ -4879,6 +4880,7 @@ impl std::fmt::Display for Node<'_> {
             Node::WindowDef(n) => std::fmt::Display::fmt(n, f),
             Node::NamedWindowDef(n) => std::fmt::Display::fmt(n, f),
             Node::FilterOver(n) => std::fmt::Display::fmt(n, f),
+            Node::Other { tag, .. } => write!(f, "Other(tag={tag})"),
             _ => std::fmt::Debug::fmt(self, f),
         }
     }
