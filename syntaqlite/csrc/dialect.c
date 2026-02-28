@@ -78,6 +78,15 @@ static const SyntaqliteDialect SQLITE_DIALECT = {
     // Function extensions (none for base dialect)
     .function_extensions = 0,
     .function_extension_count = 0,
+
+    // Schema contributions
+#ifdef SYNTAQLITE_HAS_SCHEMA_CONTRIBUTIONS
+    .schema_contributions = schema_contributions,
+    .schema_contribution_count = sizeof(schema_contributions) / sizeof(schema_contributions[0]),
+#else
+    .schema_contributions = 0,
+    .schema_contribution_count = 0,
+#endif
 };
 
 // ============ Public API ============

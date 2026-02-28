@@ -32,6 +32,7 @@ fn main() {
             .file(csrc.join("dialect.c"))
             .file(csrc.join("sqlite_parse.c"))
             .file(csrc.join("sqlite_tokenize.c"))
+            .file(csrc.join("sqlite_tokenize_version_gate.c"))
             .file(csrc.join("sqlite_keyword.c"))
             .include(&manifest_dir) // for dialect csrc/ headers
             .include(manifest_dir.join("include")) // for dialect include/ headers

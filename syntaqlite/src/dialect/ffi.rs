@@ -234,9 +234,22 @@ pub struct FunctionEntryC {
     pub availability_count: u16,
 }
 
+/// Mirrors C `SyntaqliteSchemaContribution` from `include/syntaqlite/dialect.h`.
+#[repr(C)]
+pub struct SchemaContributionC {
+    pub node_tag: u32,
+    pub kind: u8,
+    pub name_field: u8,
+    pub columns_field: u8,
+    pub select_field: u8,
+    pub args_field: u8,
+    pub _pad: [u8; 3],
+}
+
 // Layout assertions for FFI mirrors.
 const _: () = {
     assert!(std::mem::size_of::<AvailabilityRuleC>() == 16);
+    assert!(std::mem::size_of::<SchemaContributionC>() == 12);
 };
 
 /// Mirrors C `SyntaqliteFieldMeta` from `include/syntaqlite/dialect.h`.
@@ -247,6 +260,17 @@ pub struct FieldMeta {
     pub name: *const std::ffi::c_char,
     pub display: *const *const std::ffi::c_char,
     pub display_count: u8,
+}
+
+impl FieldMeta {
+    /// Return the field name as a `&str`.
+    ///
+    /// # Safety
+    /// The `name` pointer must be valid for the lifetime of the caller's borrow.
+    pub unsafe fn name_str(&self) -> &str {
+        let cstr = std::ffi::CStr::from_ptr(self.name);
+        cstr.to_str().expect("invalid UTF-8 in field name")
+    }
 }
 
 /// Mirrors the C `Dialect` struct defined in `include/syntaqlite/dialect.h`.
@@ -307,4 +331,8 @@ pub struct Dialect {
     // Dialect function extensions
     pub function_extensions: *const FunctionEntryC,
     pub function_extension_count: u32,
+
+    // Schema contributions
+    pub schema_contributions: *const SchemaContributionC,
+    pub schema_contribution_count: u32,
 }

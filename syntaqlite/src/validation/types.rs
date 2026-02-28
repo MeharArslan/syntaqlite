@@ -89,14 +89,15 @@ impl SessionContext {
     pub fn from_stmts<'a>(
         reader: &'a crate::parser::NodeReader<'a>,
         stmt_ids: &[crate::parser::NodeId],
+        dialect: crate::Dialect<'_>,
     ) -> Self {
         let mut doc = DocumentContext::new();
         for &id in stmt_ids {
-            doc.accumulate(reader, id, None);
+            doc.accumulate(reader, id, dialect, None);
         }
         SessionContext {
             relations: doc.relations,
-            functions: vec![],
+            functions: doc.functions,
         }
     }
 }
@@ -108,6 +109,7 @@ impl SessionContext {
 /// sees tables/views that were *defined before it* in the document.
 pub struct DocumentContext {
     pub relations: Vec<RelationDef>,
+    pub functions: Vec<FunctionDef>,
     #[cfg(feature = "sqlite")]
     known: KnownSchema,
 }
@@ -116,6 +118,7 @@ impl DocumentContext {
     pub fn new() -> Self {
         DocumentContext {
             relations: vec![],
+            functions: vec![],
             #[cfg(feature = "sqlite")]
             known: std::collections::HashMap::new(),
         }
@@ -144,6 +147,11 @@ impl Default for DocumentContext {
 impl DocumentContext {
     /// Process one DDL statement and update the document schema.
     ///
+    /// Uses the dialect's schema contribution metadata to determine which
+    /// node types define tables/views/functions, and which fields hold the
+    /// name, column list, and AS SELECT clause. This works for any dialect
+    /// that declares `schema { ... }` annotations in its `.synq` files.
+    ///
     /// `session` is consulted for `*` expansion so that
     /// `CREATE TABLE t AS SELECT * FROM db_table` resolves correctly when
     /// `db_table` lives in the session (live DB) context.
@@ -151,77 +159,163 @@ impl DocumentContext {
         &mut self,
         reader: &crate::parser::NodeReader<'_>,
         stmt_id: crate::parser::NodeId,
+        dialect: crate::Dialect<'_>,
         session: Option<&SessionContext>,
     ) {
-        use crate::parser::FromArena;
-        use crate::sqlite::ast::{ColumnConstraintKind, Stmt};
+        use crate::dialect::SchemaKind;
+        use crate::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
+        use crate::parser::{FromArena, NodeId, SourceSpan};
 
-        let Some(stmt) = Stmt::from_arena(reader, stmt_id) else {
+        let Some((ptr, tag)) = reader.node_ptr(stmt_id) else {
             return;
         };
 
-        match stmt {
-            Stmt::CreateTableStmt(ct) => {
-                let table_name = ct.table_name().to_string();
+        let Some(contrib) = dialect.schema_contribution_for_tag(tag) else {
+            return;
+        };
+
+        let meta = dialect.field_meta(tag);
+        let source = reader.source();
+
+        // Extract the name span.
+        let name_meta = &meta[contrib.name_field as usize];
+        debug_assert_eq!(name_meta.kind, FIELD_SPAN);
+        let name = unsafe {
+            let span = &*(ptr.add(name_meta.offset as usize) as *const SourceSpan);
+            if span.is_empty() {
+                return;
+            }
+            span.as_str(source).to_string()
+        };
+
+        match contrib.kind {
+            SchemaKind::Table | SchemaKind::View => {
+                let kind = if contrib.kind == SchemaKind::Table {
+                    RelationKind::Table
+                } else {
+                    RelationKind::View
+                };
                 let mut columns = Vec::new();
 
-                if let Some(col_list) = ct.columns() {
-                    for col in col_list.iter() {
-                        let name = col.column_name().to_string();
-                        let raw_type = col.type_name();
-                        let type_name = if raw_type.is_empty() {
-                            None
-                        } else {
-                            Some(raw_type.to_string())
-                        };
+                // Try explicit column list first (e.g., ColumnDefList).
+                let mut has_columns = false;
+                if let Some(col_field_idx) = contrib.columns_field {
+                    let col_meta = &meta[col_field_idx as usize];
+                    debug_assert_eq!(col_meta.kind, FIELD_NODE_ID);
+                    let col_list_id =
+                        unsafe { NodeId(*(ptr.add(col_meta.offset as usize) as *const u32)) };
+                    if !col_list_id.is_null() {
+                        has_columns = true;
+                        columns_from_column_list(reader, col_list_id, dialect, &mut columns);
+                    }
+                }
 
-                        let mut is_primary_key = false;
-                        let mut is_not_null = false;
-
-                        if let Some(constraints) = col.constraints() {
-                            for c in constraints.iter() {
-                                match c.kind() {
-                                    ColumnConstraintKind::PrimaryKey => is_primary_key = true,
-                                    ColumnConstraintKind::NotNull => is_not_null = true,
-                                    _ => {}
-                                }
+                // Fall back to AS SELECT for column inference.
+                if !has_columns {
+                    if let Some(sel_field_idx) = contrib.select_field {
+                        let sel_meta = &meta[sel_field_idx as usize];
+                        debug_assert_eq!(sel_meta.kind, FIELD_NODE_ID);
+                        let sel_id =
+                            unsafe { NodeId(*(ptr.add(sel_meta.offset as usize) as *const u32)) };
+                        if !sel_id.is_null() {
+                            if let Some(select) =
+                                crate::sqlite::ast::Select::from_arena(reader, sel_id)
+                            {
+                                columns_from_select(&select, &self.known, session, &mut columns);
                             }
                         }
+                    }
+                }
 
-                        columns.push(ColumnDef {
-                            name,
-                            type_name,
-                            is_primary_key,
-                            is_nullable: !is_primary_key && !is_not_null,
+                self.known
+                    .insert(name.to_ascii_lowercase(), columns.clone());
+                self.relations.push(RelationDef {
+                    name,
+                    columns,
+                    kind,
+                });
+            }
+            SchemaKind::Function => {
+                let args = contrib.args_field.and_then(|args_idx| {
+                    let args_meta = &meta[args_idx as usize];
+                    debug_assert_eq!(args_meta.kind, FIELD_NODE_ID);
+                    let args_id =
+                        unsafe { NodeId(*(ptr.add(args_meta.offset as usize) as *const u32)) };
+                    if args_id.is_null() {
+                        return None;
+                    }
+                    // Count children of the args list node.
+                    let (args_ptr, args_tag) = reader.node_ptr(args_id)?;
+                    if !dialect.is_list(args_tag) {
+                        return None;
+                    }
+                    let list = unsafe { &*(args_ptr as *const crate::parser::NodeList) };
+                    Some(list.children().len())
+                });
+                self.functions.push(FunctionDef {
+                    name,
+                    args,
+                    description: None,
+                });
+            }
+            SchemaKind::Import => {
+                // Future: resolve from SessionContext.modules
+            }
+        }
+    }
+}
+
+/// Extract column names from a column definition list node.
+///
+/// Walks list children, looking for a `column_name` span field in each child
+/// node's field metadata. This is generic over any column-definition-like
+/// node that has a field named `column_name`.
+#[cfg(feature = "sqlite")]
+fn columns_from_column_list(
+    reader: &crate::parser::NodeReader<'_>,
+    list_id: crate::parser::NodeId,
+    dialect: crate::Dialect<'_>,
+    out: &mut Vec<ColumnDef>,
+) {
+    use crate::dialect::ffi::FIELD_SPAN;
+    use crate::parser::SourceSpan;
+
+    let Some((list_ptr, list_tag)) = reader.node_ptr(list_id) else {
+        return;
+    };
+    if !dialect.is_list(list_tag) {
+        return;
+    }
+    let list = unsafe { &*(list_ptr as *const crate::parser::NodeList) };
+    let source = reader.source();
+
+    for &child_id in list.children() {
+        if child_id.is_null() {
+            continue;
+        }
+        let Some((child_ptr, child_tag)) = reader.node_ptr(child_id) else {
+            continue;
+        };
+        let child_meta = dialect.field_meta(child_tag);
+
+        // Find the first SPAN field named "column_name".
+        for fm in child_meta {
+            if fm.kind == FIELD_SPAN {
+                let field_name = unsafe { fm.name_str() };
+                if field_name == "column_name" {
+                    let span =
+                        unsafe { &*(child_ptr.add(fm.offset as usize) as *const SourceSpan) };
+                    if !span.is_empty() {
+                        out.push(ColumnDef {
+                            name: span.as_str(source).to_string(),
+                            type_name: None,
+                            is_primary_key: false,
+                            is_nullable: true,
                         });
                     }
-                } else if let Some(select) = ct.as_select() {
-                    columns_from_select(&select, &self.known, session, &mut columns);
+                    break;
                 }
-
-                self.known
-                    .insert(table_name.to_ascii_lowercase(), columns.clone());
-                self.relations.push(RelationDef {
-                    name: table_name,
-                    columns,
-                    kind: RelationKind::Table,
-                });
             }
-            Stmt::CreateViewStmt(cv) => {
-                let view_name = cv.view_name().to_string();
-                let mut columns = Vec::new();
-                if let Some(select) = cv.select() {
-                    columns_from_select(&select, &self.known, session, &mut columns);
-                }
-                self.known
-                    .insert(view_name.to_ascii_lowercase(), columns.clone());
-                self.relations.push(RelationDef {
-                    name: view_name,
-                    columns,
-                    kind: RelationKind::View,
-                });
-            }
-            _ => {}
         }
     }
 }

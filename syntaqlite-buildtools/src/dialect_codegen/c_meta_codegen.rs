@@ -343,3 +343,71 @@ fn bit_position(value: u32) -> u32 {
     }
     value.trailing_zeros()
 }
+
+pub fn generate_c_schema_contributions(model: &AstModel<'_>) -> String {
+    use crate::util::synq_parser::SchemaKind;
+
+    let mut entries = Vec::new();
+
+    for node in model.nodes() {
+        let Some(schema) = node.schema else {
+            continue;
+        };
+        let tag = model.tag_for(node.name);
+
+        let kind = match schema.kind {
+            SchemaKind::Table => 0,
+            SchemaKind::View => 1,
+            SchemaKind::Function => 2,
+            SchemaKind::Import => 3,
+        };
+
+        let resolve_field_index = |key: &str| -> u8 {
+            match schema.param(key) {
+                Some(field_name) => node
+                    .fields
+                    .iter()
+                    .position(|f| f.name == field_name)
+                    .map(|i| i as u8)
+                    .unwrap_or(0xFF),
+                None => 0xFF,
+            }
+        };
+
+        let name_field = resolve_field_index("name");
+        let columns_field = resolve_field_index("columns");
+        let select_field = resolve_field_index("as_select");
+        let args_field = resolve_field_index("args");
+
+        entries.push((
+            tag,
+            kind,
+            name_field,
+            columns_field,
+            select_field,
+            args_field,
+        ));
+    }
+
+    let mut w = CWriter::new();
+    if entries.is_empty() {
+        return w.finish();
+    }
+
+    w.newline();
+    w.section("Schema Contributions");
+    w.line("#define SYNTAQLITE_HAS_SCHEMA_CONTRIBUTIONS");
+    w.line("static const SyntaqliteSchemaContribution schema_contributions[] = {");
+    w.indent();
+    for (tag, kind, name_f, cols_f, sel_f, args_f) in &entries {
+        w.line(&format!(
+            "{{{}, {}, {}, {}, {}, {}, {{0}}}},",
+            tag, kind, name_f, cols_f, sel_f, args_f
+        ));
+    }
+    w.dedent();
+    w.line("};");
+    w.newline();
+
+    w.finish()
+}

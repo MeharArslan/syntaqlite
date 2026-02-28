@@ -68,10 +68,29 @@ fn long_select_breaks() {
 
 // -- Formatting transformations (input != output) --
 
+fn format_sql_with_cflags(sql: &str, config: FormatConfig, cflag_indices: &[u32]) -> String {
+    use syntaqlite::dialect::ffi::DialectConfig;
+    let mut f = syntaqlite::fmt::Formatter::with_config(config).unwrap();
+    let mut dc = DialectConfig::default();
+    for &idx in cflag_indices {
+        dc.cflags.set(idx);
+    }
+    f.set_dialect_config(&dc);
+    let result = f.format(sql).unwrap();
+    result
+        .trim_end_matches('\n')
+        .trim_end_matches(';')
+        .to_string()
+}
+
 #[test]
 fn delete_with_order_by_limit() {
     assert_eq!(
-        format_sql("delete from t where x > 0 order by id limit 10 offset 5"),
+        format_sql_with_cflags(
+            "delete from t where x > 0 order by id limit 10 offset 5",
+            FormatConfig::default(),
+            &[40], // SQLITE_ENABLE_UPDATE_DELETE_LIMIT
+        ),
         "DELETE FROM t WHERE x > 0 ORDER BY id LIMIT 10 OFFSET 5"
     );
 }
@@ -79,7 +98,11 @@ fn delete_with_order_by_limit() {
 #[test]
 fn update_with_order_by_limit() {
     assert_eq!(
-        format_sql("update t set a = 1 where x > 0 order by id limit 5"),
+        format_sql_with_cflags(
+            "update t set a = 1 where x > 0 order by id limit 5",
+            FormatConfig::default(),
+            &[40], // SQLITE_ENABLE_UPDATE_DELETE_LIMIT
+        ),
         "UPDATE t SET a = 1 WHERE x > 0 ORDER BY id LIMIT 5"
     );
 }

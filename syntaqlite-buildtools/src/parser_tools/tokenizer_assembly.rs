@@ -56,16 +56,7 @@ pub fn assemble(
             "sqlite3GetToken(const SyntaqliteDialectConfig* config, const unsigned char *z",
         )
         .rename_function("sqlite3GetToken", &get_token_base)
-        // Make the base function static (internal linkage only).
-        .replace_all(
-            &format!("i64 {}(", get_token_base),
-            &format!("static i64 {}(", get_token_base),
-        )
         .replace_all("TK_", "SYNTAQLITE_TK_")
-        .append(&generate_get_token_wrapper(
-            &get_token_name,
-            &get_token_base,
-        ))
         .finish();
 
     Ok((
@@ -75,36 +66,4 @@ pub fn assemble(
             upper_to_lower: fragments.upper_to_lower.to_string(),
         },
     ))
-}
-
-/// Generate the public `GetToken` wrapper that calls the `_base` function then
-/// applies version-dependent token reclassification (the "postlude").
-fn generate_get_token_wrapper(public_name: &str, base_name: &str) -> String {
-    format!(
-        r#"
-i64 {public_name}(const SyntaqliteDialectConfig* config, const unsigned char *z, int *tokenType){{
-  i64 len = {base_name}(config, z, tokenType);
-  /* Version-dependent token reclassification. */
-  if( SYNQ_VER_LT(config, 3038000) && *tokenType==SYNTAQLITE_TK_PTR ){{
-    /* -> and ->> operators added in 3.38.
-    ** Return just the '-' as TK_MINUS; next call picks up '>' naturally. */
-    *tokenType = SYNTAQLITE_TK_MINUS;
-    return 1;
-  }}
-  if( SYNQ_VER_LT(config, 3046000) && *tokenType==SYNTAQLITE_TK_QNUMBER ){{
-    /* Digit separators added in 3.46.
-    ** Truncate to the first underscore. */
-    i64 j;
-    int saw_dot = 0;
-    for(j=0; j<len; j++){{
-      if( z[j]=='_' ) break;
-      if( z[j]=='.' ) saw_dot = 1;
-    }}
-    *tokenType = saw_dot ? SYNTAQLITE_TK_FLOAT : SYNTAQLITE_TK_INTEGER;
-    return j;
-  }}
-  return len;
-}}
-"#
-    )
 }

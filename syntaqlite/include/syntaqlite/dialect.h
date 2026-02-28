@@ -59,6 +59,23 @@ typedef struct SyntaqliteFieldMeta {
     uint8_t     display_count;    // number of entries in display[]
 } SyntaqliteFieldMeta;
 
+// ── Schema contribution types ──────────────────────────────────────────
+
+#define SYNTAQLITE_SCHEMA_TABLE    0
+#define SYNTAQLITE_SCHEMA_VIEW     1
+#define SYNTAQLITE_SCHEMA_FUNCTION 2
+#define SYNTAQLITE_SCHEMA_IMPORT   3
+
+typedef struct SyntaqliteSchemaContribution {
+    uint32_t node_tag;
+    uint8_t  kind;           // SYNTAQLITE_SCHEMA_*
+    uint8_t  name_field;     // field index -> must be SPAN
+    uint8_t  columns_field;  // field index -> NODE_ID to column list (0xFF = absent)
+    uint8_t  select_field;   // field index -> NODE_ID to Select (0xFF = absent)
+    uint8_t  args_field;     // field index -> NODE_ID to args list (0xFF = absent)
+    uint8_t  _pad[3];
+} SyntaqliteSchemaContribution;
+
 // ── Function extension types ────────────────────────────────────────────
 
 typedef struct SyntaqliteFunctionInfo {
@@ -140,6 +157,10 @@ typedef struct SyntaqliteDialect {
     // Dialect function extensions (additional functions beyond the SQLite base catalog)
     const SyntaqliteFunctionEntry* function_extensions;
     uint32_t function_extension_count;
+
+    // Schema contributions (nodes that define tables/views/functions)
+    const SyntaqliteSchemaContribution* schema_contributions;
+    uint32_t schema_contribution_count;
 } SyntaqliteDialect;
 
 #ifdef __cplusplus

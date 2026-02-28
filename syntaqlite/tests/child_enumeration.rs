@@ -23,7 +23,11 @@ fn select_children_include_result_column_list_and_table_ref() {
     let children = cursor.reader().child_node_ids(stmt_id, dialect);
     // SelectStmt("SELECT a, b FROM t") should have exactly 2 non-null children:
     // a ResultColumnList and a TableRef.
-    assert_eq!(children.len(), 2, "SelectStmt should have 2 children (columns + from)");
+    assert_eq!(
+        children.len(),
+        2,
+        "SelectStmt should have 2 children (columns + from)"
+    );
 
     let tags: Vec<_> = children.iter().map(|id| node_tag(&cursor, *id)).collect();
     assert!(
@@ -43,7 +47,12 @@ fn null_id_returns_empty() {
     let mut cursor = parser.parse("SELECT 1");
     let _stmt_id = cursor.next_statement().unwrap().unwrap();
 
-    assert!(cursor.reader().child_node_ids(NodeId::NULL, dialect).is_empty());
+    assert!(
+        cursor
+            .reader()
+            .child_node_ids(NodeId::NULL, dialect)
+            .is_empty()
+    );
 }
 
 #[test]

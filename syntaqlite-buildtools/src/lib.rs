@@ -364,9 +364,22 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
             dialect_codegen::generate_ast_nodes_header(&ast_model, request.dialect.name());
         let ast_builder_h =
             dialect_codegen::generate_ast_builder_header(&ast_model, request.dialect.name());
-        let dialect_meta_h =
-            dialect_codegen::generate_c_field_metadata(&ast_model, request.dialect.name())
-                .map_err(|e| e.to_string())?;
+        let dialect_meta_h = {
+            let mut meta =
+                dialect_codegen::generate_c_field_metadata(&ast_model, request.dialect.name())
+                    .map_err(|e| e.to_string())?;
+            let schema = dialect_codegen::generate_c_schema_contributions(&ast_model);
+            if !schema.is_empty() {
+                // Insert schema contributions before the header guard end.
+                let guard_end = "#endif  // SYNTAQLITE_DIALECT_META_H";
+                if let Some(pos) = meta.find(guard_end) {
+                    meta.insert_str(pos, &schema);
+                } else {
+                    meta.push_str(&schema);
+                }
+            }
+            meta
+        };
         let dialect_fmt_h =
             dialect_codegen::generate_c_fmt_tables(&ast_model).map_err(|e| e.to_string())?;
         let token_defines = extract_token_defines(&parse_h);

@@ -627,6 +627,7 @@ pub fn try_compile_all(items: &[Item]) -> Result<CompiledFmt, FmtCompileError> {
                 name,
                 fields,
                 fmt: Some(fmt_body),
+                ..
             } => compiled.push(compile_named_fmt(
                 name,
                 fields,
@@ -830,6 +831,7 @@ mod tests {
                 type_name: "SyntaqliteSourceSpan".into(),
             }],
             fmt: Some(vec![Fmt::Span("source".into())]),
+            schema: None,
         }];
 
         let output = generate_rust_fmt_ops(&items);
@@ -855,6 +857,7 @@ mod tests {
                 then: vec![Fmt::Text("YES".into())],
                 els: Some(vec![Fmt::Text("NO".into())]),
             }]),
+            schema: None,
         }];
 
         let output = generate_rust_fmt_ops(&items);
@@ -885,6 +888,7 @@ mod tests {
                     ],
                     default: None,
                 }]),
+                schema: None,
             },
         ];
 
@@ -911,6 +915,7 @@ mod tests {
                     field: "op".into(),
                     mappings: vec![("PLUS".into(), "+".into()), ("MINUS".into(), "-".into())],
                 }]),
+                schema: None,
             },
         ];
 
@@ -947,6 +952,7 @@ mod tests {
                 keyword: "FROM".into(),
                 field: "target".into(),
             }]),
+            schema: None,
         }];
 
         let output = generate_rust_fmt_ops(&items);
@@ -967,6 +973,7 @@ mod tests {
                     type_name: "Expr".into(),
                 }],
                 fmt: Some(vec![Fmt::Child("x".into())]),
+                schema: None,
             },
             Item::List {
                 name: "FooList".into(),

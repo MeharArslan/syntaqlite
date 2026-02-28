@@ -3,7 +3,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::util::synq_parser::{Field, Fmt, Item};
+use crate::util::synq_parser::{Field, Fmt, Item, SchemaAnnotation};
 
 mod c_dialect;
 mod c_meta_codegen;
@@ -18,6 +18,7 @@ pub use c_dialect::{
 };
 pub use c_meta_codegen::{
     CFmtCodegenError, CMetaCodegenError, generate_c_field_metadata, generate_c_fmt_tables,
+    generate_c_schema_contributions,
 };
 pub use c_nodes_codegen::{generate_ast_builder_header, generate_ast_nodes_header};
 pub use rust_ast::{
@@ -73,6 +74,7 @@ pub struct NodeRef<'a> {
     pub name: &'a str,
     pub fields: &'a [Field],
     pub fmt: Option<&'a [Fmt]>,
+    pub schema: Option<&'a SchemaAnnotation>,
 }
 
 #[derive(Clone, Copy)]
@@ -131,11 +133,17 @@ impl<'a> AstModel<'a> {
                         flags: values.as_slice(),
                     });
                 }
-                Item::Node { name, fields, fmt } => {
+                Item::Node {
+                    name,
+                    fields,
+                    fmt,
+                    schema,
+                } => {
                     let node = NodeRef {
                         name: name.as_str(),
                         fields: fields.as_slice(),
                         fmt: fmt.as_deref(),
+                        schema: schema.as_ref(),
                     };
                     node_names.insert(node.name);
                     nodes.push(node);
@@ -237,12 +245,18 @@ impl<'a> AstModel<'a> {
                         flags: values.as_slice(),
                     });
                 }
-                Item::Node { name, fields, fmt } => {
+                Item::Node {
+                    name,
+                    fields,
+                    fmt,
+                    schema,
+                } => {
                     let name_str = name.as_str();
                     let node = NodeRef {
                         name: name_str,
                         fields: fields.as_slice(),
                         fmt: fmt.as_deref(),
+                        schema: schema.as_ref(),
                     };
 
                     if let Some(base_fields) = base_node_fields.get(name_str) {

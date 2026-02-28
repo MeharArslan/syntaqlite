@@ -184,6 +184,15 @@ pub fn generate_dialect_c(dialect: &str, tokens: Option<&[(String, u32)]>) -> St
     w.line("    // Function extensions (none for base dialect)");
     w.line("    .function_extensions = 0,");
     w.line("    .function_extension_count = 0,");
+    w.newline();
+    w.line("    // Schema contributions");
+    w.line("#ifdef SYNTAQLITE_HAS_SCHEMA_CONTRIBUTIONS");
+    w.line("    .schema_contributions = schema_contributions,");
+    w.line("    .schema_contribution_count = sizeof(schema_contributions) / sizeof(schema_contributions[0]),");
+    w.line("#else");
+    w.line("    .schema_contributions = 0,");
+    w.line("    .schema_contribution_count = 0,");
+    w.line("#endif");
     w.line("};");
     w.newline();
 
@@ -203,26 +212,57 @@ pub fn generate_dialect_c(dialect: &str, tokens: Option<&[(String, u32)]>) -> St
 /// `dialect` is a short name like `"sqlite"` or `"perfetto"`.
 pub fn generate_dialect_h(dialect: &str) -> String {
     let upper = dialect.to_uppercase();
+    let pascal = pascal_case(dialect);
     let guard = format!("SYNTAQLITE_{upper}_H");
     let mut w = CWriter::new();
     w.file_header();
     w.header_guard_start(&guard);
     w.include_local("syntaqlite/config.h");
+    w.include_local("syntaqlite/parser.h");
     w.newline();
     w.line("#ifdef __cplusplus");
     w.line("extern \"C\" {");
     w.line("#endif");
     w.newline();
     w.line("typedef struct SyntaqliteDialect SyntaqliteDialect;");
-    w.line("typedef struct SyntaqliteParser SyntaqliteParser;");
     w.newline();
     w.line(&format!(
         "const SyntaqliteDialect* syntaqlite_{dialect}_dialect(void);"
     ));
     w.newline();
+
+    // Convenience API: static inline wrappers, opt-out via SYNTAQLITE_OMIT_<UPPER>_API.
+    w.line(&format!("#ifndef SYNTAQLITE_OMIT_{upper}_API"));
+    w.newline();
+    w.line(&format!(
+        "static inline SyntaqliteParser* syntaqlite_create_{dialect}_parser("
+    ));
+    w.line("    const SyntaqliteMemMethods* mem) {");
+    w.line(&format!(
+        "  return syntaqlite_create_parser_with_dialect(mem, syntaqlite_{dialect}_dialect());"
+    ));
+    w.line("}");
+    w.newline();
+    w.line(&format!("#endif  /* SYNTAQLITE_OMIT_{upper}_API */"));
+    w.newline();
+
     w.line("#ifdef __cplusplus");
     w.line("}");
-    w.line("#endif");
+    w.newline();
+
+    // C++ convenience: dialect-specific Parser factory.
+    w.line(&format!("#ifndef SYNTAQLITE_OMIT_{upper}_API"));
+    w.line("namespace syntaqlite {");
+    w.line(&format!("inline Parser {pascal}Parser() {{"));
+    w.line(&format!(
+        "  return Parser(syntaqlite_create_{dialect}_parser(nullptr));"
+    ));
+    w.line("}");
+    w.line("}  // namespace syntaqlite");
+    w.line(&format!("#endif  /* SYNTAQLITE_OMIT_{upper}_API */"));
+    w.newline();
+
+    w.line("#endif  /* __cplusplus */");
     w.newline();
     w.header_guard_end(&guard);
 
@@ -246,9 +286,17 @@ mod tests {
     fn header_exposes_dialect_function() {
         let h = generate_dialect_h("sqlite");
         assert!(h.contains("const SyntaqliteDialect* syntaqlite_sqlite_dialect(void);"));
-        // No default-alias or create-parser wrappers
+        // Convenience create-parser wrapper
+        assert!(h.contains("syntaqlite_create_sqlite_parser("));
+        assert!(
+            h.contains("syntaqlite_create_parser_with_dialect(mem, syntaqlite_sqlite_dialect())")
+        );
+        // C++ convenience
+        assert!(h.contains("inline Parser SqliteParser()"));
+        // Opt-out guard
+        assert!(h.contains("SYNTAQLITE_OMIT_SQLITE_API"));
+        // No default-alias (that's SQLite-specific, not generic codegen)
         assert!(!h.contains("syntaqlite_dialect(void)"));
-        assert!(!h.contains("syntaqlite_create_sqlite_parser"));
     }
 
     #[test]
@@ -474,6 +522,9 @@ pub fn generate_tokenize_h(dialect: &str) -> String {
     w.include_local("syntaqlite_ext/sqlite_compat.h");
     w.include_local("syntaqlite/dialect_config.h");
     w.newline();
+    w.line(&format!(
+        "i64 Synq{pascal}GetToken_base(const SyntaqliteDialectConfig* config, const unsigned char* z, int* tokenType);"
+    ));
     w.line(&format!(
         "i64 Synq{pascal}GetToken(const SyntaqliteDialectConfig* config, const unsigned char* z, int* tokenType);"
     ));

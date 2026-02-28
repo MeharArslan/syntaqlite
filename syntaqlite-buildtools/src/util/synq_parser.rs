@@ -11,12 +11,43 @@ pub fn parse_synq_file(input: &str) -> Result<Vec<Item>, String> {
 
 // ── AST ──────────────────────────────────────────────────────────────────
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SchemaKind {
+    Table,
+    View,
+    Function,
+    Import,
+}
+
+#[derive(Debug, Clone)]
+pub struct SchemaParam {
+    pub key: String,
+    pub field: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct SchemaAnnotation {
+    pub kind: SchemaKind,
+    pub params: Vec<SchemaParam>,
+}
+
+impl SchemaAnnotation {
+    /// Look up a parameter by key name.
+    pub fn param(&self, key: &str) -> Option<&str> {
+        self.params
+            .iter()
+            .find(|p| p.key == key)
+            .map(|p| p.field.as_str())
+    }
+}
+
 #[derive(Debug)]
 pub enum Item {
     Node {
         name: String,
         fields: Vec<Field>,
         fmt: Option<Vec<Fmt>>,
+        schema: Option<SchemaAnnotation>,
     },
     Enum {
         name: String,
@@ -325,6 +356,7 @@ impl Parser {
         self.expect(&Token::LBrace)?;
         let mut fields = Vec::new();
         let mut fmt = None;
+        let mut schema = None;
         loop {
             if self.at_tok(&Token::RBrace) {
                 self.advance();
@@ -334,6 +366,11 @@ impl Parser {
                 self.advance();
                 self.expect(&Token::LBrace)?;
                 fmt = Some(self.parse_fmt_seq()?);
+                self.expect(&Token::RBrace)?;
+            } else if self.at("session_schema") {
+                self.advance();
+                self.expect(&Token::LBrace)?;
+                schema = Some(self.parse_schema(&name, &fields)?);
                 self.expect(&Token::RBrace)?;
             } else {
                 let name = self.ident()?;
@@ -355,7 +392,52 @@ impl Parser {
                 });
             }
         }
-        Ok(Item::Node { name, fields, fmt })
+        Ok(Item::Node {
+            name,
+            fields,
+            fmt,
+            schema,
+        })
+    }
+
+    fn parse_schema(
+        &mut self,
+        node_name: &str,
+        fields: &[Field],
+    ) -> Result<SchemaAnnotation, String> {
+        let kind_str = self.ident()?;
+        let kind = match kind_str.as_str() {
+            "table" => SchemaKind::Table,
+            "view" => SchemaKind::View,
+            "function" => SchemaKind::Function,
+            "import" => SchemaKind::Import,
+            _ => {
+                return Err(format!(
+                    "unknown schema kind '{}' in node '{}'",
+                    kind_str, node_name
+                ));
+            }
+        };
+        self.expect(&Token::LParen)?;
+        let mut params = Vec::new();
+        while !self.at_tok(&Token::RParen) {
+            if !params.is_empty() {
+                self.expect(&Token::Comma)?;
+            }
+            let key = self.ident()?;
+            self.expect(&Token::Colon)?;
+            let field = self.ident()?;
+            // Validate that the referenced field exists.
+            if !fields.iter().any(|f| f.name == field) {
+                return Err(format!(
+                    "schema annotation in '{}' references unknown field '{}'",
+                    node_name, field
+                ));
+            }
+            params.push(SchemaParam { key, field });
+        }
+        self.advance(); // consume RParen
+        Ok(SchemaAnnotation { kind, params })
     }
 
     fn parse_enum(&mut self) -> Result<Item, String> {

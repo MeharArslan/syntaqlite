@@ -525,7 +525,7 @@ int main(int argc, char** argv) {
     sql = buf;
   }
 
-  SyntaqliteParser* p = syntaqlite_create_parser_with_dialect(NULL, syntaqlite_sqlite_dialect());
+  SyntaqliteParser* p = syntaqlite_create_sqlite_parser(NULL);
   syntaqlite_parser_reset(p, sql, (uint32_t)strlen(sql));
 
   Schema schema = {0};

@@ -84,9 +84,19 @@ fn parser_reuse() {
 
 // -- DELETE / UPDATE with ORDER BY and LIMIT --
 
+fn parser_with_update_delete_limit() -> syntaqlite::Parser {
+    use syntaqlite::dialect::ffi::DialectConfig;
+    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let mut parser = syntaqlite::Parser::with_dialect(dialect);
+    let mut config = DialectConfig::default();
+    config.cflags.set(40); // SQLITE_ENABLE_UPDATE_DELETE_LIMIT
+    parser.set_dialect_config(&config);
+    parser
+}
+
 #[test]
 fn parse_delete_with_order_by_limit() {
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = parser_with_update_delete_limit();
     let mut cursor = parser.parse("DELETE FROM t ORDER BY id LIMIT 5;");
 
     let id = cursor.next_statement().unwrap().unwrap();
@@ -100,7 +110,7 @@ fn parse_delete_with_order_by_limit() {
 
 #[test]
 fn parse_update_with_order_by_limit() {
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = parser_with_update_delete_limit();
     let mut cursor = parser.parse("UPDATE t SET a = 1 ORDER BY id LIMIT 3;");
 
     let id = cursor.next_statement().unwrap().unwrap();

@@ -343,6 +343,60 @@ impl<'d> Dialect<'d> {
     }
 }
 
+// ── Schema contribution types ──────────────────────────────────────────
+
+/// What kind of schema object a node contributes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SchemaKind {
+    Table,
+    View,
+    Function,
+    Import,
+}
+
+/// A schema contribution read from the dialect's C vtable.
+#[derive(Debug, Clone, Copy)]
+pub struct SchemaContribution {
+    pub node_tag: u32,
+    pub kind: SchemaKind,
+    pub name_field: u8,
+    pub columns_field: Option<u8>,
+    pub select_field: Option<u8>,
+    pub args_field: Option<u8>,
+}
+
+impl<'d> Dialect<'d> {
+    /// Look up a schema contribution for a given node tag.
+    ///
+    /// Linear scan of the C array — typically very short (< 10 entries).
+    pub fn schema_contribution_for_tag(&self, tag: u32) -> Option<SchemaContribution> {
+        if self.raw.schema_contributions.is_null() || self.raw.schema_contribution_count == 0 {
+            return None;
+        }
+        let count = self.raw.schema_contribution_count as usize;
+        for i in 0..count {
+            let entry = unsafe { &*self.raw.schema_contributions.add(i) };
+            if entry.node_tag == tag {
+                let opt = |v: u8| if v == 0xFF { None } else { Some(v) };
+                return Some(SchemaContribution {
+                    node_tag: entry.node_tag,
+                    kind: match entry.kind {
+                        1 => SchemaKind::View,
+                        2 => SchemaKind::Function,
+                        3 => SchemaKind::Import,
+                        _ => SchemaKind::Table,
+                    },
+                    name_field: entry.name_field,
+                    columns_field: opt(entry.columns_field),
+                    select_field: opt(entry.select_field),
+                    args_field: opt(entry.args_field),
+                });
+            }
+        }
+        None
+    }
+}
+
 // SAFETY: The dialect wraps a reference to a C struct with no mutable state.
 // The raw pointers inside ffi::Dialect all point to immutable static data.
 unsafe impl Send for Dialect<'_> {}

@@ -46,6 +46,9 @@ cmd(A) ::= with(W) DELETE FROM xfullname(X) indexed_opt(I) where_opt_ret(E) orde
     (void)I;
     if (O != SYNTAQLITE_NULL_NODE || L != SYNTAQLITE_NULL_NODE) {
         pCtx->saw_update_delete_limit = 1;
+        if (!SYNQ_HAS_CFLAG(pCtx->config, SYNQ_CFLAG_IDX_ENABLE_UPDATE_DELETE_LIMIT)) {
+            pCtx->error = 1;
+        }
     }
     uint32_t del = synq_parse_delete_stmt(pCtx, X, E, O, L);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {
@@ -62,6 +65,9 @@ cmd(A) ::= with(W) UPDATE orconf(R) xfullname(X) indexed_opt(I) SET setlist(Y) f
     (void)I;
     if (O != SYNTAQLITE_NULL_NODE || L != SYNTAQLITE_NULL_NODE) {
         pCtx->saw_update_delete_limit = 1;
+        if (!SYNQ_HAS_CFLAG(pCtx->config, SYNQ_CFLAG_IDX_ENABLE_UPDATE_DELETE_LIMIT)) {
+            pCtx->error = 1;
+        }
     }
     uint32_t upd = synq_parse_update_stmt(pCtx, (SyntaqliteConflictAction)R, X, Y, F, E, O, L);
     if (W.cte_list != SYNTAQLITE_NULL_NODE) {

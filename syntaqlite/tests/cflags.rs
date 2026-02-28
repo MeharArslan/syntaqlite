@@ -922,46 +922,65 @@ fn no_subquery_in_in_list() {
 }
 
 // ===========================================================================
-// ENABLE_UPDATE_DELETE_LIMIT — uses saw_update_delete_limit flag
+// ENABLE_UPDATE_DELETE_LIMIT — parser-level cflag check
 //
-// ORDER BY / LIMIT on DELETE and UPDATE are always accepted by the grammar
-// (superset parsing). Grammar actions set saw_update_delete_limit so callers
-// can reject when the target SQLite lacks the compile flag.
+// ORDER BY / LIMIT on DELETE and UPDATE require the
+// SQLITE_ENABLE_UPDATE_DELETE_LIMIT cflag. The grammar actions check
+// the cflag at parse time and raise a syntax error if it's not set.
 // ===========================================================================
 
-fn parse_saw_update_delete_limit(sql: &str) -> (bool, bool) {
-    let dialect = syntaqlite::sqlite::low_level::dialect();
-    let mut parser = syntaqlite::Parser::with_dialect(dialect);
-    let mut cursor = parser.parse(sql);
-    let ok = matches!(cursor.next_statement(), Some(Ok(_)));
-    let saw = cursor.saw_update_delete_limit();
-    (ok, saw)
+const CFLAG_ENABLE_UPDATE_DELETE_LIMIT: u32 = 40;
+
+#[test]
+fn delete_with_order_by_limit_fails_without_cflag() {
+    assert!(
+        !parses_ok_default("DELETE FROM t ORDER BY id LIMIT 5;"),
+        "DELETE with ORDER BY/LIMIT should fail without ENABLE_UPDATE_DELETE_LIMIT"
+    );
 }
 
 #[test]
-fn update_delete_limit_detected_on_delete() {
-    let (ok, saw) = parse_saw_update_delete_limit("DELETE FROM t ORDER BY id LIMIT 5;");
-    assert!(ok);
-    assert!(saw, "DELETE with ORDER BY / LIMIT should set saw_update_delete_limit");
+fn delete_with_order_by_limit_succeeds_with_cflag() {
+    assert!(
+        parses_ok_with_cflags(
+            "DELETE FROM t ORDER BY id LIMIT 5;",
+            &[CFLAG_ENABLE_UPDATE_DELETE_LIMIT],
+        ),
+        "DELETE with ORDER BY/LIMIT should parse when ENABLE_UPDATE_DELETE_LIMIT is set"
+    );
 }
 
 #[test]
-fn update_delete_limit_detected_on_update() {
-    let (ok, saw) = parse_saw_update_delete_limit("UPDATE t SET a = 1 LIMIT 3;");
-    assert!(ok);
-    assert!(saw, "UPDATE with LIMIT should set saw_update_delete_limit");
+fn update_with_limit_fails_without_cflag() {
+    assert!(
+        !parses_ok_default("UPDATE t SET a = 1 ORDER BY id LIMIT 3;"),
+        "UPDATE with ORDER BY/LIMIT should fail without ENABLE_UPDATE_DELETE_LIMIT"
+    );
 }
 
 #[test]
-fn update_delete_limit_not_set_on_plain_delete() {
-    let (ok, saw) = parse_saw_update_delete_limit("DELETE FROM t WHERE x = 1;");
-    assert!(ok);
-    assert!(!saw, "Plain DELETE should NOT set saw_update_delete_limit");
+fn update_with_limit_succeeds_with_cflag() {
+    assert!(
+        parses_ok_with_cflags(
+            "UPDATE t SET a = 1 ORDER BY id LIMIT 3;",
+            &[CFLAG_ENABLE_UPDATE_DELETE_LIMIT],
+        ),
+        "UPDATE with ORDER BY/LIMIT should parse when ENABLE_UPDATE_DELETE_LIMIT is set"
+    );
 }
 
 #[test]
-fn update_delete_limit_not_set_on_plain_update() {
-    let (ok, saw) = parse_saw_update_delete_limit("UPDATE t SET a = 1 WHERE x = 2;");
-    assert!(ok);
-    assert!(!saw, "Plain UPDATE should NOT set saw_update_delete_limit");
+fn plain_delete_succeeds_without_cflag() {
+    assert!(
+        parses_ok_default("DELETE FROM t WHERE x = 1;"),
+        "Plain DELETE should parse without ENABLE_UPDATE_DELETE_LIMIT"
+    );
+}
+
+#[test]
+fn plain_update_succeeds_without_cflag() {
+    assert!(
+        parses_ok_default("UPDATE t SET a = 1 WHERE x = 2;"),
+        "Plain UPDATE should parse without ENABLE_UPDATE_DELETE_LIMIT"
+    );
 }
