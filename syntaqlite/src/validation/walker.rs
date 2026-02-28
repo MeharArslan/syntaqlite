@@ -210,7 +210,8 @@ impl<'a> Walker<'a> {
 
         let alias = table_ref.alias();
         let scope_name = if alias.is_empty() { name } else { alias };
-        scope.add_table(scope_name, None);
+        let columns = scope.ambient_columns_for_table(name);
+        scope.add_table(scope_name, columns);
     }
 
     fn walk_expr(&mut self, expr: Expr<'a>, scope: &mut ScopeStack) {

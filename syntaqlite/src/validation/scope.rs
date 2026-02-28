@@ -47,6 +47,24 @@ impl<'ctx> ScopeStack<'ctx> {
             .insert(name.to_lowercase(), columns);
     }
 
+    /// Look up column names for a table from the ambient schema context.
+    /// Returns `Some(columns)` if the table exists and has columns defined,
+    /// `None` if the table is not found or has no columns.
+    pub(super) fn ambient_columns_for_table(&self, name: &str) -> Option<Vec<String>> {
+        let ctx = self.ambient?;
+        for t in &ctx.tables {
+            if t.name.eq_ignore_ascii_case(name) && !t.columns.is_empty() {
+                return Some(t.columns.iter().map(|c| c.name.clone()).collect());
+            }
+        }
+        for v in &ctx.views {
+            if v.name.eq_ignore_ascii_case(name) && !v.columns.is_empty() {
+                return Some(v.columns.iter().map(|c| c.name.clone()).collect());
+            }
+        }
+        None
+    }
+
     pub(super) fn resolve_table(&self, name: &str) -> bool {
         let lower = name.to_lowercase();
         self.stack.iter().any(|s| s.tables.contains_key(&lower)) || self.ambient_has_table(name)
@@ -61,6 +79,7 @@ impl<'ctx> ScopeStack<'ctx> {
             return self.resolve_qualified_column(tbl, column);
         }
 
+        let mut has_unknown = false;
         for scope in self.stack.iter().rev() {
             for cols in scope.tables.values() {
                 match cols {
@@ -69,12 +88,19 @@ impl<'ctx> ScopeStack<'ctx> {
                             return ColumnResolution::Found;
                         }
                     }
-                    None => return ColumnResolution::Found,
+                    // A table with unknown columns — can't reject, but keep looking.
+                    None => has_unknown = true,
                 }
             }
         }
 
         if self.ambient_has_column(column) {
+            return ColumnResolution::Found;
+        }
+
+        // If any table in scope has unknown columns, we can't be sure
+        // the column doesn't exist — conservatively accept.
+        if has_unknown {
             return ColumnResolution::Found;
         }
 
