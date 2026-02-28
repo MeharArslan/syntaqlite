@@ -113,7 +113,7 @@ export class DetailsPanel implements m.ClassComponent<Attrs> {
       this.collapsed
         ? undefined
         : this.activeTab === "validation"
-          ? this.renderValidationTab(app.diagnostics)
+          ? this.renderValidationTab(app.diagnostics, app.revealDiagnostic)
           : this.activeTab === "schema"
             ? m("div.sq-details-panel__body", [
                 m("div.sq-details-panel__options", [
@@ -160,7 +160,10 @@ export class DetailsPanel implements m.ClassComponent<Attrs> {
     ];
   }
 
-  private renderValidationTab(diagnostics: DiagnosticEntry[]): m.Children {
+  private renderValidationTab(
+    diagnostics: DiagnosticEntry[],
+    revealDiagnostic?: (d: DiagnosticEntry) => void,
+  ): m.Children {
     const emptyContent = m("div.sq-validation-empty", [
       m("span.sq-validation-empty__icon", "✓"),
       "No issues found",
@@ -173,6 +176,7 @@ export class DetailsPanel implements m.ClassComponent<Attrs> {
         rows: diagnostics,
         rowKey: (_, i) => i,
         emptyContent,
+        onRowClick: revealDiagnostic ? (d) => revealDiagnostic(d) : undefined,
       }),
     );
   }

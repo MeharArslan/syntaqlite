@@ -19,6 +19,8 @@ export class App {
   dialectConfig: DialectConfigManager;
   schemaContext: SchemaContextManager;
   diagnostics: DiagnosticEntry[] = [];
+  /** Set by the workspace to reveal a diagnostic in the editor. */
+  revealDiagnostic: ((d: DiagnosticEntry) => void) | undefined = undefined;
 
   constructor() {
     this.theme = new ThemeManager();

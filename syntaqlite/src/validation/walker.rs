@@ -50,6 +50,17 @@ impl<'a, 'd> Walker<'a, 'd> {
             Stmt::InsertStmt(i) => self.walk_insert_stmt(i, scope),
             Stmt::UpdateStmt(u) => self.walk_update_stmt(u, scope),
             Stmt::DeleteStmt(d) => self.walk_delete_stmt(d, scope),
+            Stmt::CreateTableStmt(ct) => {
+                if let Some(select) = ct.as_select() {
+                    self.walk_select(select, scope);
+                }
+            }
+            Stmt::CreateViewStmt(cv) => {
+                if let Some(select) = cv.select() {
+                    self.walk_select(select, scope);
+                }
+            }
+            Stmt::CreateTriggerStmt(t) => self.walk_trigger_stmt(t, scope),
             Stmt::Other(node) => self.walk_other_node(node, scope),
             _ => {}
         }
@@ -165,6 +176,22 @@ impl<'a, 'd> Walker<'a, 'd> {
             self.check_and_add_table_ref(&table_ref, scope);
         }
         self.walk_opt_expr(delete.where_clause(), scope);
+    }
+
+    fn walk_trigger_stmt(&mut self, trigger: CreateTriggerStmt<'a>, scope: &mut ScopeStack) {
+        scope.push();
+        // OLD and NEW are pseudo-tables available in trigger body commands.
+        scope.add_table("OLD", None);
+        scope.add_table("NEW", None);
+        self.walk_opt_expr(trigger.when_expr(), scope);
+        if let Some(body) = trigger.body() {
+            for node in body.iter() {
+                if let Some(stmt) = node_to_stmt(node) {
+                    self.walk_stmt(stmt, scope);
+                }
+            }
+        }
+        scope.pop();
     }
 
     fn walk_table_source(&mut self, source: TableSource<'a>, scope: &mut ScopeStack) {
@@ -371,6 +398,19 @@ impl<'a, 'd> Walker<'a, 'd> {
     }
 }
 
+fn node_to_stmt<'a>(node: Node<'a>) -> Option<Stmt<'a>> {
+    Some(match node {
+        Node::SelectStmt(n) => Stmt::SelectStmt(n),
+        Node::CompoundSelect(n) => Stmt::CompoundSelect(n),
+        Node::ValuesClause(n) => Stmt::ValuesClause(n),
+        Node::WithClause(n) => Stmt::WithClause(n),
+        Node::InsertStmt(n) => Stmt::InsertStmt(n),
+        Node::UpdateStmt(n) => Stmt::UpdateStmt(n),
+        Node::DeleteStmt(n) => Stmt::DeleteStmt(n),
+        _ => return None,
+    })
+}
+
 fn node_to_expr<'a>(node: Node<'a>) -> Option<Expr<'a>> {
     Some(match node {
         Node::BinaryExpr(n) => Expr::BinaryExpr(n),
@@ -393,4 +433,110 @@ fn node_to_expr<'a>(node: Node<'a>) -> Option<Expr<'a>> {
         Node::RaiseExpr(n) => Expr::RaiseExpr(n),
         _ => return None,
     })
+}
+
+#[cfg(test)]
+#[cfg(feature = "sqlite")]
+mod tests {
+    use crate::validation::{validate_statement, ValidationConfig};
+
+    fn validate_sql(sql: &str) -> Vec<super::super::types::Diagnostic> {
+        let dialect = crate::sqlite::low_level::dialect();
+        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut cursor = parser.parse(sql);
+        let mut diags = Vec::new();
+        while let Some(result) = cursor.next_statement() {
+            let Ok(stmt_id) = result else { break };
+            diags.extend(validate_statement(
+                cursor.reader(),
+                stmt_id,
+                *dialect,
+                None,
+                &[],
+                &ValidationConfig::default(),
+            ));
+        }
+        diags
+    }
+
+    #[test]
+    fn create_table_as_select_unknown_table_warns() {
+        let diags = validate_sql("CREATE TABLE t AS SELECT * FROM nonexistent;");
+        assert!(
+            !diags.is_empty(),
+            "expected a diagnostic for unknown table in CREATE TABLE AS SELECT"
+        );
+    }
+
+    #[test]
+    fn create_table_as_select_known_table_no_diags() {
+        let dialect = crate::sqlite::low_level::dialect();
+        let mut parser = crate::Parser::with_dialect(&dialect);
+        let sql = "CREATE TABLE src (id INTEGER);\nCREATE TABLE t AS SELECT * FROM src;";
+        let mut cursor = parser.parse(sql);
+        let mut stmt_ids = Vec::new();
+        while let Some(result) = cursor.next_statement() {
+            stmt_ids.push(result.expect("parse failed"));
+        }
+        let ctx = crate::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+        let diags: Vec<_> = stmt_ids
+            .iter()
+            .flat_map(|&id| {
+                validate_statement(
+                    cursor.reader(),
+                    id,
+                    *dialect,
+                    Some(&ctx),
+                    &[],
+                    &ValidationConfig::default(),
+                )
+            })
+            .collect();
+        assert!(
+            diags.is_empty(),
+            "expected no diagnostics when source table is known: {:?}",
+            diags
+        );
+    }
+
+    #[test]
+    fn create_view_as_select_unknown_table_warns() {
+        let diags = validate_sql("CREATE VIEW v AS SELECT * FROM nonexistent;");
+        assert!(
+            !diags.is_empty(),
+            "expected a diagnostic for unknown table in CREATE VIEW AS SELECT"
+        );
+    }
+
+    #[test]
+    fn create_trigger_body_unknown_table_warns() {
+        let diags = validate_sql(
+            "CREATE TRIGGER trg AFTER INSERT ON t \
+             BEGIN SELECT * FROM nonexistent; END;",
+        );
+        assert!(
+            !diags.is_empty(),
+            "expected a diagnostic for unknown table in trigger body"
+        );
+    }
+
+    #[test]
+    fn create_trigger_body_old_new_no_diags() {
+        // OLD and NEW should be available in trigger body without warnings.
+        let diags = validate_sql(
+            "CREATE TRIGGER trg AFTER UPDATE ON t \
+             BEGIN SELECT NEW.x, OLD.y FROM t; END;",
+        );
+        let old_new_diags: Vec<_> = diags
+            .iter()
+            .filter(|d| {
+                d.message.contains("OLD") || d.message.contains("NEW")
+            })
+            .collect();
+        assert!(
+            old_new_diags.is_empty(),
+            "OLD/NEW should not produce diagnostics in trigger body: {:?}",
+            old_new_diags
+        );
+    }
 }

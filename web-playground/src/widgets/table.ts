@@ -27,6 +27,8 @@ export interface TableAttrs<T = unknown> {
    * Defaults to the plain text "No data".
    */
   emptyContent?: m.Children;
+  /** Called when a row is clicked. */
+  onRowClick?: (row: T, index: number) => void;
 }
 
 // The class is typed with `any` so callers can pass a typed `TableAttrs<T>`
@@ -34,7 +36,7 @@ export interface TableAttrs<T = unknown> {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export class Table implements m.ClassComponent<TableAttrs<any>> {
   view(vnode: m.Vnode<TableAttrs<any>>): m.Children {
-    const {columns, rows, rowKey, emptyContent} = vnode.attrs;
+    const {columns, rows, rowKey, emptyContent, onRowClick} = vnode.attrs;
 
     const thead = m(
       "thead",
@@ -74,7 +76,11 @@ export class Table implements m.ClassComponent<TableAttrs<any>> {
             rows.map((row, i) =>
               m(
                 "tr",
-                {key: rowKey ? rowKey(row, i) : i},
+                {
+                  key: rowKey ? rowKey(row, i) : i,
+                  class: onRowClick ? "sq-table__row--clickable" : "",
+                  onclick: onRowClick ? () => onRowClick(row, i) : undefined,
+                },
                 columns.map((col) =>
                   m(
                     "td",

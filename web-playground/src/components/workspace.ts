@@ -131,6 +131,7 @@ export class Workspace implements m.ClassComponent<Attrs> {
         },
         onEditorCreated: (editor) => {
           this.editor = editor;
+          app.revealDiagnostic = (d) => this.revealDiagnostic(d);
         },
       }),
       m(ResizeHandle, {
@@ -244,5 +245,13 @@ export class Workspace implements m.ClassComponent<Attrs> {
     });
 
     monaco.editor.setModelMarkers(model, "syntaqlite", markers);
+  }
+
+  private revealDiagnostic(d: DiagnosticEntry): void {
+    if (!this.editor) return;
+    const pos = offsetToLineCol(this.sql, d.endOffset);
+    this.editor.setPosition({lineNumber: pos.line, column: pos.col});
+    this.editor.revealLineInCenter(pos.line);
+    this.editor.focus();
   }
 }

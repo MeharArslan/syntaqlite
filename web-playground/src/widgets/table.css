@@ -55,6 +55,10 @@
   line-height: 1.4;
 }
 
+.sq-table tbody tr.sq-table__row--clickable {
+  cursor: pointer;
+}
+
 /* ── Empty state ── */
 
 .sq-table__empty {
