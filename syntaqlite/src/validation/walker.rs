@@ -452,6 +452,7 @@ mod tests {
                 stmt_id,
                 *dialect,
                 None,
+                None,
                 &[],
                 &ValidationConfig::default(),
             ));
@@ -487,6 +488,7 @@ mod tests {
                     id,
                     *dialect,
                     Some(&ctx),
+                    None,
                     &[],
                     &ValidationConfig::default(),
                 )

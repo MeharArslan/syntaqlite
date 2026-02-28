@@ -13,7 +13,8 @@ use crate::sqlite::ast::Stmt;
 
 use scope::ScopeStack;
 pub use types::{
-    AmbientContext, ColumnDef, Diagnostic, FunctionDef, SessionContext, Severity, TableDef, ViewDef,
+    AmbientContext, ColumnDef, Diagnostic, DocumentContext, FunctionDef, SessionContext, Severity,
+    TableDef, ViewDef,
 };
 
 /// Configuration for semantic validation.
@@ -48,11 +49,15 @@ impl ValidationConfig {
 ///
 /// Walks the AST and checks that table names, column references, and
 /// function calls resolve against the provided context.
+///
+/// Resolution order: SQL scope stack → `document` (DDL from earlier in the
+/// document) → `session` (externally-provided ambient schema).
 pub fn validate_statement<'a>(
     reader: &'a NodeReader<'a>,
     stmt_id: NodeId,
     dialect: crate::Dialect<'_>,
-    context: Option<&SessionContext>,
+    session: Option<&SessionContext>,
+    document: Option<&DocumentContext>,
     functions: &[FunctionDef],
     config: &ValidationConfig,
 ) -> Vec<Diagnostic> {
@@ -61,7 +66,7 @@ pub fn validate_statement<'a>(
         return Vec::new();
     };
 
-    let mut scope = ScopeStack::new(context);
+    let mut scope = ScopeStack::new(session, document);
 
     walker::Walker::run(reader, stmt, dialect, &mut scope, functions, config)
 }

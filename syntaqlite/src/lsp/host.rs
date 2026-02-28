@@ -124,22 +124,39 @@ impl<'d> AnalysisHost<'d> {
         let functions = self.available_functions();
         let mut parser = crate::Parser::with_dialect(&self.dialect);
         let mut cursor = parser.parse(&doc.source);
+
+        // Collect all statement IDs first.
+        let mut stmt_ids = Vec::new();
+        loop {
+            match cursor.next_statement() {
+                Some(Ok(id)) => stmt_ids.push(id),
+                Some(Err(_)) | None => break,
+            }
+        }
+
+        // Single-pass incremental validation: each statement is validated
+        // against only the DDL that precedes it in the document, then its
+        // own definitions are accumulated for subsequent statements.
+        let mut doc_ctx = crate::validation::DocumentContext::new();
+        let reader = cursor.reader();
         let mut diagnostics = Vec::new();
 
-        while let Some(result) = cursor.next_statement() {
-            let Ok(stmt_id) = result else {
-                break;
-            };
-            let reader = cursor.reader();
+        for &stmt_id in &stmt_ids {
+            // Validate BEFORE accumulating — statement cannot see its own definitions.
             let stmt_diags = crate::validation::validate_statement(
                 reader,
                 stmt_id,
                 self.dialect,
                 self.context.as_ref(),
+                Some(&doc_ctx),
                 &functions,
                 config,
             );
             diagnostics.extend(stmt_diags);
+
+            // Now add any DDL this statement defined to the document schema.
+            #[cfg(feature = "sqlite")]
+            doc_ctx.accumulate(reader, stmt_id, self.context.as_ref());
         }
 
         diagnostics
@@ -796,6 +813,51 @@ mod tests {
             expected.contains(&(TokenType::Join as u32)),
             "expected TK_JOIN after FROM table without trailing space, got {:?}",
             expected
+        );
+    }
+
+    #[test]
+    fn validate_select_after_create_table_as_select_no_diags() {
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        let sql = "CREATE TABLE orders AS SELECT 1 AS order_id;\nSELECT o.order_id FROM orders o;";
+        host.open_document(uri, 1, sql.to_string());
+
+        let diags = host.validate(uri, &crate::validation::ValidationConfig::default());
+        assert!(
+            diags.is_empty(),
+            "expected no diagnostics when selecting from a table defined earlier in the document: {:?}",
+            diags
+        );
+    }
+
+    #[test]
+    fn validate_select_from_unknown_table_still_warns() {
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        let sql = "SELECT * FROM nonexistent;";
+        host.open_document(uri, 1, sql.to_string());
+
+        let diags = host.validate(uri, &crate::validation::ValidationConfig::default());
+        assert!(
+            !diags.is_empty(),
+            "expected a diagnostic for an unknown table"
+        );
+    }
+
+    #[test]
+    fn validate_forward_reference_warns() {
+        // A SELECT that references a table defined *after* it should produce a warning.
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        let sql = "SELECT * FROM t;\nCREATE TABLE t (id INTEGER);";
+        host.open_document(uri, 1, sql.to_string());
+
+        let diags = host.validate(uri, &crate::validation::ValidationConfig::default());
+        assert!(
+            !diags.is_empty(),
+            "expected a diagnostic for forward reference to table t: {:?}",
+            diags
         );
     }
 }

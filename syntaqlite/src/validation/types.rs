@@ -42,84 +42,140 @@ impl SessionContext {
     /// `CREATE VIEW … AS SELECT` are expanded using tables/views defined
     /// by earlier statements in the same input.
     pub fn from_stmts<'a>(reader: &'a crate::parser::NodeReader<'a>, stmt_ids: &[crate::parser::NodeId]) -> Self {
+        let mut doc = DocumentContext::new();
+        for &id in stmt_ids {
+            doc.accumulate(reader, id, None);
+        }
+        SessionContext {
+            tables: doc.tables,
+            views: doc.views,
+            functions: vec![],
+        }
+    }
+}
+
+/// Schema accumulated from DDL statements earlier in the document being validated.
+///
+/// Built incrementally (one statement at a time) so forward references are rejected.
+/// Pass to [`validate_statement`] alongside the session context so each statement only
+/// sees tables/views that were *defined before it* in the document.
+pub struct DocumentContext {
+    pub tables: Vec<TableDef>,
+    pub views: Vec<ViewDef>,
+    #[cfg(feature = "sqlite")]
+    known: KnownSchema,
+}
+
+impl DocumentContext {
+    pub fn new() -> Self {
+        DocumentContext {
+            tables: vec![],
+            views: vec![],
+            #[cfg(feature = "sqlite")]
+            known: std::collections::HashMap::new(),
+        }
+    }
+}
+
+impl Default for DocumentContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl DocumentContext {
+    /// Process one DDL statement and update the document schema.
+    ///
+    /// `session` is consulted for `*` expansion so that
+    /// `CREATE TABLE t AS SELECT * FROM db_table` resolves correctly when
+    /// `db_table` lives in the session (live DB) context.
+    pub fn accumulate(
+        &mut self,
+        reader: &crate::parser::NodeReader<'_>,
+        stmt_id: crate::parser::NodeId,
+        session: Option<&SessionContext>,
+    ) {
         use crate::parser::FromArena;
         use crate::sqlite::ast::{ColumnConstraintKind, Stmt};
 
-        let mut tables = Vec::new();
-        let mut views = Vec::new();
-        // Accumulated schema for resolving `*` — maps lowercase name → columns.
-        let mut known: std::collections::HashMap<String, Vec<ColumnDef>> =
-            std::collections::HashMap::new();
+        let Some(stmt) = Stmt::from_arena(reader, stmt_id) else {
+            return;
+        };
 
-        for &id in stmt_ids {
-            let Some(stmt) = Stmt::from_arena(reader, id) else {
-                continue;
-            };
-            match stmt {
-                Stmt::CreateTableStmt(ct) => {
-                    let table_name = ct.table_name().to_string();
-                    let mut columns = Vec::new();
-
-                    if let Some(col_list) = ct.columns() {
-                        for col in col_list.iter() {
-                            let name = col.column_name().to_string();
-                            let raw_type = col.type_name();
-                            let type_name = if raw_type.is_empty() {
-                                None
-                            } else {
-                                Some(raw_type.to_string())
-                            };
-
-                            let mut is_primary_key = false;
-                            let mut is_not_null = false;
-
-                            if let Some(constraints) = col.constraints() {
-                                for c in constraints.iter() {
-                                    match c.kind() {
-                                        ColumnConstraintKind::PrimaryKey => is_primary_key = true,
-                                        ColumnConstraintKind::NotNull => is_not_null = true,
-                                        _ => {}
-                                    }
-                                }
-                            }
-
-                            columns.push(ColumnDef {
-                                name,
-                                type_name,
-                                is_primary_key,
-                                is_nullable: !is_primary_key && !is_not_null,
-                            });
-                        }
-                    } else if let Some(select) = ct.as_select() {
-                        columns_from_select(&select, &known, &mut columns);
-                    }
-
-                    known.insert(table_name.to_ascii_lowercase(), columns.clone());
-                    tables.push(TableDef {
-                        name: table_name,
-                        columns,
-                    });
-                }
-                Stmt::CreateViewStmt(cv) => {
-                    let view_name = cv.view_name().to_string();
-                    let mut columns = Vec::new();
-                    if let Some(select) = cv.select() {
-                        columns_from_select(&select, &known, &mut columns);
-                    }
-                    known.insert(view_name.to_ascii_lowercase(), columns.clone());
-                    views.push(ViewDef {
-                        name: view_name,
-                        columns,
-                    });
-                }
-                _ => {}
+        // Build combined known for `*` expansion: doc-so-far + session.
+        let mut combined_known = self.known.clone();
+        if let Some(sess) = session {
+            for t in &sess.tables {
+                combined_known
+                    .entry(t.name.to_ascii_lowercase())
+                    .or_insert_with(|| t.columns.clone());
+            }
+            for v in &sess.views {
+                combined_known
+                    .entry(v.name.to_ascii_lowercase())
+                    .or_insert_with(|| v.columns.clone());
             }
         }
 
-        SessionContext {
-            tables,
-            views,
-            functions: vec![],
+        match stmt {
+            Stmt::CreateTableStmt(ct) => {
+                let table_name = ct.table_name().to_string();
+                let mut columns = Vec::new();
+
+                if let Some(col_list) = ct.columns() {
+                    for col in col_list.iter() {
+                        let name = col.column_name().to_string();
+                        let raw_type = col.type_name();
+                        let type_name = if raw_type.is_empty() {
+                            None
+                        } else {
+                            Some(raw_type.to_string())
+                        };
+
+                        let mut is_primary_key = false;
+                        let mut is_not_null = false;
+
+                        if let Some(constraints) = col.constraints() {
+                            for c in constraints.iter() {
+                                match c.kind() {
+                                    ColumnConstraintKind::PrimaryKey => is_primary_key = true,
+                                    ColumnConstraintKind::NotNull => is_not_null = true,
+                                    _ => {}
+                                }
+                            }
+                        }
+
+                        columns.push(ColumnDef {
+                            name,
+                            type_name,
+                            is_primary_key,
+                            is_nullable: !is_primary_key && !is_not_null,
+                        });
+                    }
+                } else if let Some(select) = ct.as_select() {
+                    columns_from_select(&select, &combined_known, &mut columns);
+                }
+
+                self.known.insert(table_name.to_ascii_lowercase(), columns.clone());
+                self.tables.push(TableDef {
+                    name: table_name,
+                    columns,
+                });
+            }
+            Stmt::CreateViewStmt(cv) => {
+                let view_name = cv.view_name().to_string();
+                let mut columns = Vec::new();
+                if let Some(select) = cv.select() {
+                    columns_from_select(&select, &combined_known, &mut columns);
+                }
+                self.known.insert(view_name.to_ascii_lowercase(), columns.clone());
+                self.views.push(ViewDef {
+                    name: view_name,
+                    columns,
+                });
+            }
+            _ => {}
         }
     }
 }
@@ -270,6 +326,7 @@ fn expand_star(
 /// Deprecated: renamed to [`SessionContext`].
 pub type AmbientContext = SessionContext;
 
+#[derive(Clone)]
 pub struct TableDef {
     pub name: String,
     pub columns: Vec<ColumnDef>,
@@ -284,6 +341,7 @@ pub struct ColumnDef {
     pub is_nullable: bool,
 }
 
+#[derive(Clone)]
 pub struct ViewDef {
     pub name: String,
     pub columns: Vec<ColumnDef>,
