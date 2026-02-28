@@ -152,7 +152,7 @@ impl<'a> CommentCtx<'a> {
     /// Peek at the next N tokens (one per whitespace-separated word in the keyword)
     /// without advancing the token cursor.
     pub fn peek_keyword_tokens(&self, kw_text: &str) -> Option<(u32, usize)> {
-        let word_count = kw_text.trim().split_whitespace().count();
+        let word_count = kw_text.split_whitespace().count();
         if word_count == 0 {
             return None;
         }

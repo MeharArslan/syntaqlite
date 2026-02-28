@@ -1304,6 +1304,7 @@ pub trait SetClauseView<'a>: Copy {
 }
 
 /// Accessor trait for `UpdateStmt` nodes.
+#[allow(clippy::wrong_self_convention)]
 pub trait UpdateStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
@@ -1438,6 +1439,7 @@ pub trait ResultColumnView<'a>: Copy {
 }
 
 /// Accessor trait for `SelectStmt` nodes.
+#[allow(clippy::wrong_self_convention)]
 pub trait SelectStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
@@ -1575,6 +1577,7 @@ pub trait DetachStmtView<'a>: Copy {
 }
 
 /// Accessor trait for `VacuumStmt` nodes.
+#[allow(clippy::wrong_self_convention)]
 pub trait VacuumStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;

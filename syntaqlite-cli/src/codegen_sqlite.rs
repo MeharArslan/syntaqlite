@@ -129,6 +129,7 @@ fn handle_codegen(actions_dir: &str, nodes_dir: &str, output_dir: &str) -> Resul
         dialect_c_includes: syntaqlite_buildtools::dialect_codegen::DialectCIncludes {
             internal: "csrc/sqlite/",
             public: "",
+            dialect_include_dir: "syntaqlite",
         },
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;

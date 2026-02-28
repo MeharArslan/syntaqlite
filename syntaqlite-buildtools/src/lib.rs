@@ -153,10 +153,10 @@ mod codegen_api {
             let line = line.trim();
             if let Some(rest) = line.strip_prefix("#define SYNTAQLITE_TK_") {
                 let mut parts = rest.split_whitespace();
-                if let (Some(name), Some(value_str)) = (parts.next(), parts.next()) {
-                    if let Ok(value) = value_str.parse::<u32>() {
-                        tokens.push((name.to_string(), value));
-                    }
+                if let (Some(name), Some(value_str)) = (parts.next(), parts.next())
+                    && let Ok(value) = value_str.parse::<u32>()
+                {
+                    tokens.push((name.to_string(), value));
                 }
             }
         }

@@ -4,7 +4,7 @@
 use std::marker::PhantomData;
 
 use super::nodes::{NodeId, NodeList};
-use super::parser::NodeReader;
+use super::session::NodeReader;
 
 /// Resolve a value from the parser arena by `NodeId`.
 ///

@@ -114,6 +114,13 @@ impl Tokenizer {
     }
 }
 
+#[cfg(feature = "sqlite")]
+impl Default for Tokenizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Drop for Tokenizer {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_tokenizer_create and has

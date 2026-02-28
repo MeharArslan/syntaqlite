@@ -155,6 +155,13 @@ impl Parser {
     }
 }
 
+#[cfg(feature = "sqlite")]
+impl Default for Parser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Drop for Parser {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_parser_create and has
@@ -225,7 +232,7 @@ impl<'a> NodeReader<'a> {
     }
 
     /// Get a raw pointer to a node in the arena. Returns `(pointer, tag)`.
-    pub fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
+    pub(crate) fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
         if id.is_null() {
             return None;
         }
@@ -237,9 +244,35 @@ impl<'a> NodeReader<'a> {
             if ptr.is_null() {
                 return None;
             }
-            let tag = *(ptr as *const u32);
+            let tag = *ptr;
             Some((ptr as *const u8, tag))
         }
+    }
+
+    /// Return the node tag for the given ID, or `None` if null/invalid.
+    pub fn node_tag(&self, id: NodeId) -> Option<u32> {
+        self.node_ptr(id).map(|(_, tag)| tag)
+    }
+
+    /// Extract typed field values from a node, using dialect metadata.
+    ///
+    /// Returns `(tag, fields)` where `tag` is the node's type tag and
+    /// `fields` contains the extracted field values. Returns `None` if
+    /// the node ID is null or invalid.
+    pub fn extract_fields(
+        &self,
+        id: NodeId,
+        dialect: &crate::Dialect,
+    ) -> Option<(u32, super::nodes::Fields<'a>)> {
+        let (ptr, tag) = self.node_ptr(id)?;
+        let meta = dialect.field_meta(tag);
+        let mut fields = super::nodes::Fields::new();
+        for m in meta {
+            // SAFETY: ptr is a valid arena pointer from node_ptr(); m.offset
+            // and m.kind are from codegen-produced field metadata for this tag.
+            fields.push(unsafe { crate::extract_field_val(ptr, m, self.source) });
+        }
+        Some((tag, fields))
     }
 
     /// The source text bound to this reader.
@@ -337,7 +370,7 @@ impl<'a> CursorBase<'a> {
     ///
     /// This is the dialect-agnostic primitive. Dialect crates wrap this to
     /// return a typed `Node` enum.
-    pub fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
+    pub(crate) fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
         self.reader.node_ptr(id)
     }
 

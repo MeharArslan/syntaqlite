@@ -89,6 +89,16 @@ impl<'a> Fields<'a> {
     pub fn len(&self) -> usize {
         self.len
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+}
+
+impl<'a> Default for Fields<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<'a> std::ops::Deref for Fields<'a> {

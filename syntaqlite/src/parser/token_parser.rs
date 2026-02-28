@@ -6,7 +6,7 @@ use std::ops::Range;
 
 use super::ffi;
 use super::nodes::NodeId;
-use super::parser::{CursorBase, ParseError, ParserConfig};
+use super::session::{CursorBase, ParseError, ParserConfig};
 use crate::dialect::Dialect;
 
 /// A low-level parser for token-by-token feeding. Owns its own C parser
@@ -78,6 +78,13 @@ impl LowLevelParser {
             base,
             finished: false,
         }
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl Default for LowLevelParser {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

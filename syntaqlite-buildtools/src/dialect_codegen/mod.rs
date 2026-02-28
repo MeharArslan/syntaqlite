@@ -264,11 +264,11 @@ impl<'a> AstModel<'a> {
                         validate_append_only(name_str, base_fields, fields)?;
                         // Replace the base entry in node_like_items (keeps base tag).
                         for item in &mut node_like_items {
-                            if let NodeLikeRef::Node(n) = item {
-                                if n.name == name_str {
-                                    *n = node;
-                                    break;
-                                }
+                            if let NodeLikeRef::Node(n) = item
+                                && n.name == name_str
+                            {
+                                *n = node;
+                                break;
                             }
                         }
                         // Replace in nodes vec too.
@@ -302,11 +302,11 @@ impl<'a> AstModel<'a> {
                     if tag_map.contains_key(name_str) {
                         // Redefining a base list — replace in-place.
                         for item in &mut node_like_items {
-                            if let NodeLikeRef::List(l) = item {
-                                if l.name == name_str {
-                                    *l = list;
-                                    break;
-                                }
+                            if let NodeLikeRef::List(l) = item
+                                && l.name == name_str
+                            {
+                                *l = list;
+                                break;
                             }
                         }
                         for l in &mut lists {

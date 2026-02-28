@@ -89,7 +89,7 @@ impl SessionContext {
     pub fn from_stmts<'a>(
         reader: &'a crate::parser::NodeReader<'a>,
         stmt_ids: &[crate::parser::NodeId],
-        dialect: crate::Dialect<'_>,
+        dialect: &crate::Dialect<'_>,
     ) -> Self {
         let mut doc = DocumentContext::new();
         for &id in stmt_ids {
@@ -159,7 +159,7 @@ impl DocumentContext {
         &mut self,
         reader: &crate::parser::NodeReader<'_>,
         stmt_id: crate::parser::NodeId,
-        dialect: crate::Dialect<'_>,
+        dialect: &crate::Dialect<'_>,
         session: Option<&SessionContext>,
     ) {
         use crate::dialect::SchemaKind;
@@ -215,21 +215,17 @@ impl DocumentContext {
                 }
 
                 // Fall back to AS SELECT for column inference.
-                if !has_columns {
-                    if let Some(sel_field_idx) = contrib.select_field {
-                        let sel_meta = &meta[sel_field_idx as usize];
-                        debug_assert_eq!(sel_meta.kind, FIELD_NODE_ID);
-                        // SAFETY: ptr is a valid arena pointer; sel_meta.offset is from
-                        // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
-                        let sel_id =
-                            unsafe { NodeId(*(ptr.add(sel_meta.offset as usize) as *const u32)) };
-                        if !sel_id.is_null() {
-                            if let Some(select) =
-                                crate::sqlite::ast::Select::from_arena(reader, sel_id)
-                            {
-                                columns_from_select(&select, &self.known, session, &mut columns);
-                            }
-                        }
+                if !has_columns && let Some(sel_field_idx) = contrib.select_field {
+                    let sel_meta = &meta[sel_field_idx as usize];
+                    debug_assert_eq!(sel_meta.kind, FIELD_NODE_ID);
+                    // SAFETY: ptr is a valid arena pointer; sel_meta.offset is from
+                    // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
+                    let sel_id =
+                        unsafe { NodeId(*(ptr.add(sel_meta.offset as usize) as *const u32)) };
+                    if !sel_id.is_null()
+                        && let Some(select) = crate::sqlite::ast::Select::from_arena(reader, sel_id)
+                    {
+                        columns_from_select(&select, &self.known, session, &mut columns);
                     }
                 }
 
@@ -275,20 +271,19 @@ impl DocumentContext {
     }
 }
 
-/// Extract column names from a column definition list node.
+/// Extract column definitions from a column definition list node.
 ///
-/// Walks list children, looking for a `column_name` span field in each child
-/// node's field metadata. This is generic over any column-definition-like
-/// node that has a field named `column_name`.
+/// Walks list children, extracting `column_name`, `type_name`, and constraint
+/// information (PRIMARY KEY, NOT NULL) from each child node's field metadata.
 #[cfg(feature = "sqlite")]
 fn columns_from_column_list(
     reader: &crate::parser::NodeReader<'_>,
     list_id: crate::parser::NodeId,
-    dialect: crate::Dialect<'_>,
+    dialect: &crate::Dialect<'_>,
     out: &mut Vec<ColumnDef>,
 ) {
-    use crate::dialect::ffi::FIELD_SPAN;
-    use crate::parser::SourceSpan;
+    use crate::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
+    use crate::parser::{NodeId, SourceSpan};
 
     let Some((list_ptr, list_tag)) = reader.node_ptr(list_id) else {
         return;
@@ -310,22 +305,104 @@ fn columns_from_column_list(
         };
         let child_meta = dialect.field_meta(child_tag);
 
-        // Find the first SPAN field named "column_name".
+        let mut col_name = None;
+        let mut type_name = None;
+        let mut constraints_id = NodeId::NULL;
+
         for fm in child_meta {
-            if fm.kind == FIELD_SPAN {
-                let field_name = fm.name_str();
-                if field_name == "column_name" {
-                    // SAFETY: child_ptr is a valid arena pointer from node_ptr();
-                    // fm.offset is from codegen metadata, and kind == FIELD_SPAN.
+            // SAFETY: fm is from dialect.field_meta() which returns static
+            // codegen data; the name pointer is valid for 'd.
+            let field_name = unsafe { fm.name_str() };
+            match (fm.kind, field_name) {
+                (FIELD_SPAN, "column_name") => {
                     let span =
                         unsafe { &*(child_ptr.add(fm.offset as usize) as *const SourceSpan) };
                     if !span.is_empty() {
-                        out.push(ColumnDef {
-                            name: span.as_str(source).to_string(),
-                            type_name: None,
-                            is_primary_key: false,
-                            is_nullable: true,
-                        });
+                        col_name = Some(span.as_str(source).to_string());
+                    }
+                }
+                (FIELD_SPAN, "type_name") => {
+                    let span =
+                        unsafe { &*(child_ptr.add(fm.offset as usize) as *const SourceSpan) };
+                    if !span.is_empty() {
+                        type_name = Some(span.as_str(source).to_string());
+                    }
+                }
+                (FIELD_NODE_ID, "constraints") => {
+                    constraints_id =
+                        unsafe { NodeId(*(child_ptr.add(fm.offset as usize) as *const u32)) };
+                }
+                _ => {}
+            }
+        }
+
+        let Some(name) = col_name else { continue };
+
+        // Walk constraints to find PRIMARY KEY and NOT NULL.
+        let mut is_primary_key = false;
+        let mut is_nullable = true;
+        if !constraints_id.is_null() {
+            extract_column_constraints(
+                reader,
+                constraints_id,
+                dialect,
+                &mut is_primary_key,
+                &mut is_nullable,
+            );
+        }
+
+        out.push(ColumnDef {
+            name,
+            type_name,
+            is_primary_key,
+            is_nullable,
+        });
+    }
+}
+
+/// Walk a constraint list to detect PRIMARY KEY and NOT NULL constraints.
+#[cfg(feature = "sqlite")]
+fn extract_column_constraints(
+    reader: &crate::parser::NodeReader<'_>,
+    list_id: crate::parser::NodeId,
+    dialect: &crate::Dialect<'_>,
+    is_primary_key: &mut bool,
+    is_nullable: &mut bool,
+) {
+    use crate::dialect::ffi::FIELD_ENUM;
+
+    let Some((list_ptr, list_tag)) = reader.node_ptr(list_id) else {
+        return;
+    };
+    if !dialect.is_list(list_tag) {
+        return;
+    }
+    let list = unsafe { &*(list_ptr as *const crate::parser::NodeList) };
+
+    for &constraint_id in list.children() {
+        if constraint_id.is_null() {
+            continue;
+        }
+        let Some((cptr, ctag)) = reader.node_ptr(constraint_id) else {
+            continue;
+        };
+        let meta = dialect.field_meta(ctag);
+        // Look for the "kind" enum field.
+        for fm in meta {
+            if fm.kind == FIELD_ENUM {
+                let field_name = unsafe { fm.name_str() };
+                if field_name == "kind" {
+                    let ordinal = unsafe { *cptr.add(fm.offset as usize) };
+                    // Map ordinal to display name for robust matching.
+                    if let Some(display) = unsafe { fm.display_name(ordinal as usize) } {
+                        match display {
+                            "NOT_NULL" => *is_nullable = false,
+                            "PRIMARY_KEY" => {
+                                *is_primary_key = true;
+                                *is_nullable = false;
+                            }
+                            _ => {}
+                        }
                     }
                     break;
                 }
@@ -499,7 +576,7 @@ mod tests {
         let stmt_ids: Vec<_> = (&mut cursor)
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
-        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
 
         let tables: Vec<_> = ctx.tables().collect();
         assert_eq!(tables.len(), 1);
@@ -533,7 +610,7 @@ mod tests {
         let stmt_ids: Vec<_> = (&mut cursor)
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
-        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
 
         let tables: Vec<_> = ctx.tables().collect();
         assert_eq!(tables.len(), 1);
@@ -556,7 +633,7 @@ mod tests {
         let stmt_ids: Vec<_> = (&mut cursor)
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
-        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
 
         let tables: Vec<_> = ctx.tables().collect();
         assert_eq!(tables.len(), 2);
@@ -580,7 +657,7 @@ mod tests {
         let stmt_ids: Vec<_> = (&mut cursor)
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
-        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
 
         let tables: Vec<_> = ctx.tables().collect();
         let c = tables[2];
@@ -601,7 +678,7 @@ mod tests {
         let stmt_ids: Vec<_> = (&mut cursor)
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
-        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
 
         let tables: Vec<_> = ctx.tables().collect();
         let dst = tables[1];
@@ -623,7 +700,7 @@ mod tests {
         let stmt_ids: Vec<_> = (&mut cursor)
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
-        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
 
         let tables: Vec<_> = ctx.tables().collect();
         assert_eq!(tables.len(), 2);
@@ -644,7 +721,7 @@ mod tests {
         let stmt_ids: Vec<_> = (&mut cursor)
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
-        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
 
         assert_eq!(ctx.tables().count(), 0);
         let views: Vec<_> = ctx.views().collect();
@@ -667,7 +744,7 @@ mod tests {
         let stmt_ids: Vec<_> = (&mut cursor)
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
-        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+        let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
 
         let views: Vec<_> = ctx.views().collect();
         assert_eq!(views.len(), 1);

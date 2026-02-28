@@ -111,7 +111,7 @@ fn cmd_generate_dialect(
 
     let out = Path::new(output_dir);
     ensure_dir(out, "output dir")?;
-    let result = amalgamate::amalgamate_dialect(dialect, temp.as_ref())?;
+    let result = amalgamate::amalgamate_dialect(dialect, temp)?;
     write_file(&out.join(format!("syntaqlite_{dialect}.h")), &result.header)?;
     write_file(&out.join(format!("syntaqlite_{dialect}.c")), &result.source)?;
     eprintln!("wrote {}/syntaqlite_{dialect}.{{h,c}}", out.display());

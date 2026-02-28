@@ -136,19 +136,19 @@ fn collect_files(dirs: &[&Path]) -> Result<FileGraph, String> {
     }
 
     // Resolve includes.
-    for i in 0..files.len() {
-        let local_incs = parse_local_includes(&files[i].content);
+    for (i, file) in files.iter_mut().enumerate() {
+        let local_incs = parse_local_includes(&file.content);
         let mut deps = Vec::new();
         for inc in local_incs {
-            if let Some(&idx) = key_to_idx.get(&inc) {
-                if idx != i {
-                    deps.push(idx);
-                }
+            if let Some(&idx) = key_to_idx.get(&inc)
+                && idx != i
+            {
+                deps.push(idx);
             }
             // Unresolved local includes are simply not tracked — they'll be
             // stripped during emit (assumed to be runtime headers).
         }
-        files[i].deps = deps;
+        file.deps = deps;
     }
 
     Ok(FileGraph { files })
@@ -539,19 +539,18 @@ fn emit_file(file: &SourceFile, inlined_keys: &HashSet<&str>, out: &mut String) 
         // Strip include guard directives.
         if let Some(ref g) = guard {
             if !guard_ifndef_seen {
-                if let Some(rest) = trimmed.strip_prefix("#ifndef") {
-                    if rest.trim() == g {
-                        guard_ifndef_seen = true;
-                        continue;
-                    }
+                if let Some(rest) = trimmed.strip_prefix("#ifndef")
+                    && rest.trim() == g
+                {
+                    guard_ifndef_seen = true;
+                    continue;
                 }
-            } else if !guard_define_seen {
-                if let Some(rest) = trimmed.strip_prefix("#define") {
-                    if rest.trim() == g {
-                        guard_define_seen = true;
-                        continue;
-                    }
-                }
+            } else if !guard_define_seen
+                && let Some(rest) = trimmed.strip_prefix("#define")
+                && rest.trim() == g
+            {
+                guard_define_seen = true;
+                continue;
             }
         }
 

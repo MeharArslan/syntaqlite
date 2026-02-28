@@ -969,7 +969,16 @@ pub fn generate_ast_traits(model: &AstModel<'_>) -> String {
     // ── Per-node accessor traits ──
     for node in model.nodes() {
         let name = node.name;
+        // Field names like `from_clause` and `into_expr` map to SQL syntax, not
+        // Rust's From/Into conventions.  Suppress the clippy lint on affected traits.
+        let needs_convention_allow = node
+            .fields
+            .iter()
+            .any(|f| f.name.starts_with("from_") || f.name.starts_with("into_"));
         w.doc_comment(&format!("Accessor trait for `{name}` nodes."));
+        if needs_convention_allow {
+            w.line("#[allow(clippy::wrong_self_convention)]");
+        }
         w.open_block(&format!("pub trait {name}View<'a>: Copy {{"));
         w.line("type Ast: AstTypes<'a>;");
         w.line("fn node_id(&self) -> NodeId;");
@@ -1001,7 +1010,7 @@ pub fn generate_ast_traits(model: &AstModel<'_>) -> String {
             } else if list_names.contains(member.as_str()) {
                 // Lists are TypedList aliases, not associated types on AstTypes.
                 let list_type =
-                    resolve_kind_enum_list_type(member, &node_names, &list_names, model.lists());
+                    resolve_kind_enum_list_type(member, node_names, list_names, model.lists());
                 w.line(&format!("{member}({list_type}),"));
             }
         }

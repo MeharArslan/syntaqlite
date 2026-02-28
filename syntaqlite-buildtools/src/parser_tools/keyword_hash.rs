@@ -164,17 +164,16 @@ pub fn generate(
 
     let mut cmd = crate::util::self_subcommand::self_subcommand("mkkeyword")?;
 
-    let _kw_file;
-    if !extra_keywords.is_empty() {
+    let _kw_file = if !extra_keywords.is_empty() {
         let f = tempfile::NamedTempFile::new()
             .map_err(|e| format!("Failed to create keyword temp file: {e}"))?;
         fs::write(f.path(), extra_keywords.join("\n"))
             .map_err(|e| format!("Failed to write keyword file: {e}"))?;
         cmd.arg("--extra-file").arg(f.path());
-        _kw_file = Some(f);
+        Some(f)
     } else {
-        _kw_file = None;
-    }
+        None
+    };
 
     let output = cmd
         .output()

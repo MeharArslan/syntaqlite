@@ -11,20 +11,15 @@ mod interpret;
 // ── Config types (formerly config.rs) ────────────────────────────────────
 
 /// Controls how SQL keywords are cased in formatted output.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum KeywordCase {
     /// Keep keywords as they appeared in the source.
+    #[default]
     Preserve,
     /// Convert keywords to UPPER CASE.
     Upper,
     /// Convert keywords to lower case.
     Lower,
-}
-
-impl Default for KeywordCase {
-    fn default() -> Self {
-        KeywordCase::Preserve
-    }
 }
 
 /// Configuration for the SQL formatter.

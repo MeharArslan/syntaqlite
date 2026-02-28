@@ -144,10 +144,10 @@ impl<'ctx> ScopeStack<'ctx> {
 
         for scope in &self.stack {
             for (key, cols) in &scope.tables {
-                if table.is_none_or(|tbl| key.eq_ignore_ascii_case(tbl)) {
-                    if let Some(cols) = cols {
-                        names.extend(cols.iter().map(|c| c.to_ascii_lowercase()));
-                    }
+                if table.is_none_or(|tbl| key.eq_ignore_ascii_case(tbl))
+                    && let Some(cols) = cols
+                {
+                    names.extend(cols.iter().map(|c| c.to_ascii_lowercase()));
                 }
             }
         }

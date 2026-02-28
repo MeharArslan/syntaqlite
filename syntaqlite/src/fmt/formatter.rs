@@ -3,16 +3,10 @@
 
 use super::FormatConfig;
 use super::comment::CommentCtx;
-use super::doc::{DocArena, DocId, NIL_DOC};
+use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
 use crate::dialect::Dialect;
-use crate::dialect::ffi::{
-    FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldMeta,
-};
-use crate::parser::{
-    CommentKind, CursorBase, FieldVal, Fields, MacroRegion, NodeId, Parser, ParserConfig,
-    SourceSpan,
-};
+use crate::parser::{CommentKind, CursorBase, Fields, MacroRegion, NodeId, Parser, ParserConfig};
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {
@@ -25,14 +19,8 @@ pub struct Formatter<'d> {
     /// Reusable scratch buffers for the bytecode interpreter, shared across
     /// all recursive `interpret` calls within a single `format()` invocation.
     interpret_scratch: InterpretScratch,
-    /// Reusable output string — recycled between format calls.
-    render_out: String,
-    /// Reusable render stack — recycled between format calls.
-    render_stack: Vec<(i32, super::doc::Mode, DocId)>,
-    /// Reusable fits-check stack — recycled between format calls.
-    render_fits_stack: Vec<(i32, DocId)>,
-    /// Reusable line-suffix buffer — recycled between format calls.
-    render_line_suffix_buf: Vec<(i32, super::doc::Mode, DocId)>,
+    /// Reusable render buffers — recycled between format calls.
+    render_bufs: RenderBuffers,
 }
 
 // SAFETY: Dialect is Send+Sync, Parser is Send.
@@ -63,10 +51,7 @@ impl<'d> Formatter<'d> {
             config,
             arena: DocArena::with_capacity(256),
             interpret_scratch: InterpretScratch::new(),
-            render_out: String::new(),
-            render_stack: Vec::new(),
-            render_fits_stack: Vec::new(),
-            render_line_suffix_buf: Vec::new(),
+            render_bufs: RenderBuffers::new(),
         })
     }
 
@@ -126,10 +111,10 @@ impl<'d> Formatter<'d> {
         for (i, &root_id) in roots.iter().enumerate() {
             if i > 0 {
                 emit_stmt_separator(&comment_ctx, semicolons, source, &mut arena, &mut parts);
-            } else if let Some(cctx) = &comment_ctx {
-                if let Some((next_offset, _)) = cctx.peek_next_token() {
-                    drain_gap_comments(cctx, next_offset, source, &mut arena, &mut parts);
-                }
+            } else if let Some(cctx) = &comment_ctx
+                && let Some((next_offset, _)) = cctx.peek_next_token()
+            {
+                drain_gap_comments(cctx, next_offset, source, &mut arena, &mut parts);
             }
 
             let ctx = FmtCtx {
@@ -153,39 +138,26 @@ impl<'d> Formatter<'d> {
 
         let doc = arena.cats(&parts);
 
-        // Reuse the output string and render stacks from the previous call.
-        let mut out = std::mem::take(&mut self.render_out);
-        out.clear();
-        let mut render_stack = std::mem::take(&mut self.render_stack);
-        render_stack.clear();
-        let mut fits_stack = std::mem::take(&mut self.render_fits_stack);
-        fits_stack.clear();
-        let mut line_suffix_buf = std::mem::take(&mut self.render_line_suffix_buf);
-        line_suffix_buf.clear();
+        // Reuse the render buffers from the previous call.
+        let mut bufs = std::mem::take(&mut self.render_bufs);
+        bufs.clear();
 
         arena.render_into(
             doc,
             self.config.line_width,
             self.config.keyword_case,
-            &mut out,
-            &mut render_stack,
-            &mut fits_stack,
-            &mut line_suffix_buf,
+            &mut bufs,
         );
 
         if semicolons {
-            out.push(';');
+            bufs.out.push(';');
         }
-        out.push('\n');
+        bufs.out.push('\n');
 
         // Recycle arena and render buffers back for next call.
         self.arena = DocArena::recycle(arena);
-        // Return the output; stash a fresh allocation for reuse.
-        let result = out;
-        self.render_out = String::new();
-        self.render_stack = render_stack;
-        self.render_fits_stack = fits_stack;
-        self.render_line_suffix_buf = line_suffix_buf;
+        let result = std::mem::take(&mut bufs.out);
+        self.render_bufs = bufs;
 
         Ok(result)
     }
@@ -217,17 +189,17 @@ fn emit_stmt_separator<'a>(
     arena: &mut DocArena<'a>,
     parts: &mut Vec<DocId>,
 ) {
-    if let Some(cctx) = comment_ctx {
-        if let Some((next_offset, _)) = cctx.peek_next_token() {
-            if semicolons {
-                parts.push(arena.text(";"));
-            }
-            drain_trailing_gap(cctx, next_offset, source, arena, parts);
-            parts.push(arena.hardline());
-            parts.push(arena.hardline());
-            drain_gap_comments(cctx, next_offset, source, arena, parts);
-            return;
+    if let Some(cctx) = comment_ctx
+        && let Some((next_offset, _)) = cctx.peek_next_token()
+    {
+        if semicolons {
+            parts.push(arena.text(";"));
         }
+        drain_trailing_gap(cctx, next_offset, source, arena, parts);
+        parts.push(arena.hardline());
+        parts.push(arena.hardline());
+        drain_gap_comments(cctx, next_offset, source, arena, parts);
+        return;
     }
     if semicolons {
         parts.push(arena.text(";"));
@@ -349,31 +321,7 @@ pub(crate) fn extract_fields<'a>(
     for m in meta {
         // SAFETY: ptr is a valid arena pointer from node_ptr(); m.offset and
         // m.kind are from codegen-produced field metadata for this node tag.
-        fields.push(unsafe { extract_one(ptr, m, source) });
+        fields.push(unsafe { crate::extract_field_val(ptr, m, source) });
     }
     fields
-}
-
-/// # Safety
-/// `ptr` must point to a valid node struct whose field at `m.offset` has
-/// the type indicated by `m.kind`.
-unsafe fn extract_one<'a>(ptr: *const u8, m: &FieldMeta, source: &'a str) -> FieldVal<'a> {
-    unsafe {
-        let field_ptr = ptr.add(m.offset as usize);
-        match m.kind {
-            FIELD_NODE_ID => FieldVal::NodeId(NodeId(*(field_ptr as *const u32))),
-            FIELD_SPAN => {
-                let span = &*(field_ptr as *const SourceSpan);
-                if span.length == 0 {
-                    FieldVal::Span("", 0)
-                } else {
-                    FieldVal::Span(span.as_str(source), span.offset)
-                }
-            }
-            FIELD_BOOL => FieldVal::Bool(*(field_ptr as *const u32) != 0),
-            FIELD_FLAGS => FieldVal::Flags(*(field_ptr as *const u8)),
-            FIELD_ENUM => FieldVal::Enum(*(field_ptr as *const u32)),
-            _ => panic!("unknown C field kind: {}", m.kind),
-        }
-    }
 }

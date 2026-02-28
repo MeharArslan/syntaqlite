@@ -14,27 +14,24 @@ use crate::util::pascal_case;
 ///
 /// Each prefix is prepended verbatim, so include `"/"` if the prefix is a directory.
 ///
-/// **Default** (external dialect crates): both `""` — all headers assumed
-/// discoverable from a single root.
+/// **Default** (external dialect crates): both prefixes `""`, `dialect_include_dir`
+/// set to `"syntaqlite_{dialect}"` — all headers assumed discoverable from a
+/// single root.
 ///
-/// **Internal syntaqlite crate**: `internal = "csrc/sqlite/"`, `public = ""`
-/// because private headers live in `csrc/sqlite/` while public headers are
-/// found via the separate `include/` tree.
-#[derive(Debug, Clone)]
+/// **Internal syntaqlite crate**: `internal = "csrc/sqlite/"`, `public = ""`,
+/// `dialect_include_dir = "syntaqlite"` because private headers live in
+/// `csrc/sqlite/` while public headers (including dialect-specific ones) are
+/// all under `include/syntaqlite/`.
+#[derive(Debug, Clone, Default)]
 pub struct DialectCIncludes<'a> {
     /// Prefix for internal dialect headers (`dialect_builder.h`, `dialect_meta.h`, etc.).
     pub internal: &'a str,
     /// Prefix for public headers (`syntaqlite/parser.h`, `syntaqlite/dialect.h`, etc.).
     pub public: &'a str,
-}
-
-impl Default for DialectCIncludes<'_> {
-    fn default() -> Self {
-        Self {
-            internal: "",
-            public: "",
-        }
-    }
+    /// Directory name for dialect public headers (`sqlite_tokens.h`, `sqlite_node.h`, etc.)
+    /// in `#include` directives. E.g., `"syntaqlite"` (internal crate, merged with runtime)
+    /// or `"syntaqlite_mydialect"` (external dialect crate, separate directory).
+    pub dialect_include_dir: &'a str,
 }
 
 /// Classify a token name into a `TokenCategory` byte value.
@@ -61,10 +58,11 @@ fn classify_token(name: &str, keyword_names: Option<&HashSet<String>>) -> u8 {
     // Keyword-set override should only affect tokens that are otherwise
     // unknown ("Other") or function-like (FUNCTION/AGG_FUNCTION), so
     // structural tokens like ID/DOT/LP remain correctly classified.
-    if let Some(kws) = keyword_names {
-        if kws.contains(name) && (base == 0 || base == 9) {
-            return 1; // Keyword
-        }
+    if let Some(kws) = keyword_names
+        && kws.contains(name)
+        && (base == 0 || base == 9)
+    {
+        return 1; // Keyword
     }
 
     base
@@ -288,6 +286,7 @@ mod tests {
     const DEFAULT_INCLUDES: DialectCIncludes<'static> = DialectCIncludes {
         internal: "",
         public: "",
+        dialect_include_dir: "",
     };
 
     #[test]
@@ -447,6 +446,7 @@ mod tests {
         let includes = DialectCIncludes {
             internal: "csrc/sqlite/",
             public: "",
+            dialect_include_dir: "syntaqlite",
         };
         let c = generate_dialect_c("sqlite", None, &includes);
         // Internal headers use the internal prefix

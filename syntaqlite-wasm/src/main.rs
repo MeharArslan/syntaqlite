@@ -7,12 +7,9 @@ use std::slice;
 
 use serde::Serialize;
 
-use syntaqlite::dialect::ffi::{
-    self as dialect_ffi, DialectConfig, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID,
-    FIELD_SPAN,
-};
+use syntaqlite::dialect::ffi::{self as dialect_ffi, DialectConfig};
 use syntaqlite::fmt::{FormatConfig, Formatter, KeywordCase};
-use syntaqlite::parser::{CursorBase, SourceSpan};
+use syntaqlite::parser::{CursorBase, FieldVal};
 use syntaqlite::{Dialect, NodeId, Parser};
 
 thread_local! {
@@ -107,148 +104,136 @@ fn json_escape(out: &mut String, s: &str) {
     }
 }
 
-fn dump_node_json(out: &mut String, dialect: &Dialect, cursor: &CursorBase, id: NodeId) {
-    let Some((ptr, tag)) = cursor.node_ptr(id) else {
-        out.push_str("null");
-        return;
-    };
+/// Serde-serializable AST node for JSON output.
+#[derive(Serialize)]
+#[serde(tag = "type", rename_all = "camelCase")]
+enum AstNode<'a> {
+    #[serde(rename = "list")]
+    List {
+        name: &'a str,
+        count: usize,
+        children: Vec<AstNode<'a>>,
+    },
+    #[serde(rename = "node")]
+    Node {
+        name: &'a str,
+        fields: Vec<AstField<'a>>,
+    },
+}
 
+#[derive(Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+enum AstField<'a> {
+    #[serde(rename = "node")]
+    Node {
+        label: &'a str,
+        child: Option<AstNode<'a>>,
+    },
+    #[serde(rename = "span")]
+    Span {
+        label: &'a str,
+        value: Option<&'a str>,
+    },
+    #[serde(rename = "bool")]
+    Bool { label: &'a str, value: bool },
+    #[serde(rename = "enum")]
+    Enum {
+        label: &'a str,
+        value: Option<&'a str>,
+    },
+    #[serde(rename = "flags")]
+    Flags {
+        label: &'a str,
+        value: Vec<FlagValue<'a>>,
+    },
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+enum FlagValue<'a> {
+    Named(&'a str),
+    Numeric(u32),
+}
+
+fn build_ast_node<'a>(
+    dialect: &'a Dialect,
+    cursor: &'a CursorBase,
+    id: NodeId,
+) -> Option<AstNode<'a>> {
+    let tag = cursor.reader().node_tag(id)?;
     let name = dialect.node_name(tag);
 
     if dialect.is_list(tag) {
         let children = cursor.list_children(id, dialect).unwrap_or(&[]);
-        out.push_str("{\"type\":\"list\",\"name\":\"");
-        json_escape(out, name);
-        out.push_str("\",\"count\":");
-        out.push_str(&children.len().to_string());
-        out.push_str(",\"children\":[");
-        for (i, &child_id) in children.iter().enumerate() {
-            if i > 0 {
-                out.push(',');
-            }
-            dump_node_json(out, dialect, cursor, child_id);
-        }
-        out.push_str("]}");
-        return;
+        let child_nodes: Vec<_> = children
+            .iter()
+            .map(|&child_id| {
+                build_ast_node(dialect, cursor, child_id).unwrap_or(AstNode::Node {
+                    name: "null",
+                    fields: vec![],
+                })
+            })
+            .collect();
+        return Some(AstNode::List {
+            name,
+            count: child_nodes.len(),
+            children: child_nodes,
+        });
     }
 
     let meta = dialect.field_meta(tag);
-    let source = cursor.source();
+    let (_, fields) = cursor.reader().extract_fields(id, dialect)?;
 
-    out.push_str("{\"type\":\"node\",\"name\":\"");
-    json_escape(out, name);
-    out.push_str("\",\"fields\":[");
+    let ast_fields: Vec<_> = meta
+        .iter()
+        .zip(fields.iter())
+        .map(|(m, fv)| {
+            // SAFETY: m.name is a valid NUL-terminated C string from codegen.
+            let label = unsafe { m.name_str() };
 
-    for (i, m) in meta.iter().enumerate() {
-        if i > 0 {
-            out.push(',');
-        }
-
-        let label = unsafe { std::ffi::CStr::from_ptr(m.name) }
-            .to_str()
-            .unwrap_or("?");
-
-        unsafe {
-            let field_ptr = ptr.add(m.offset as usize);
-            match m.kind {
-                FIELD_NODE_ID => {
-                    let child_id = NodeId(*(field_ptr as *const u32));
-                    out.push_str("{\"label\":\"");
-                    json_escape(out, label);
-                    out.push_str("\",\"kind\":\"node\",\"child\":");
-                    if child_id.is_null() {
-                        out.push_str("null");
+            match fv {
+                FieldVal::NodeId(child_id) => AstField::Node {
+                    label,
+                    child: if child_id.is_null() {
+                        None
                     } else {
-                        dump_node_json(out, dialect, cursor, child_id);
-                    }
-                    out.push('}');
-                }
-                FIELD_SPAN => {
-                    let span = &*(field_ptr as *const SourceSpan);
-                    out.push_str("{\"label\":\"");
-                    json_escape(out, label);
-                    out.push_str("\",\"kind\":\"span\",\"value\":");
-                    if span.is_empty() {
-                        out.push_str("null");
-                    } else {
-                        out.push('"');
-                        json_escape(out, span.as_str(source));
-                        out.push('"');
-                    }
-                    out.push('}');
-                }
-                FIELD_BOOL => {
-                    let val = *(field_ptr as *const u32) != 0;
-                    out.push_str("{\"label\":\"");
-                    json_escape(out, label);
-                    out.push_str("\",\"kind\":\"bool\",\"value\":");
-                    out.push_str(if val { "true" } else { "false" });
-                    out.push('}');
-                }
-                FIELD_ENUM => {
-                    let val = *(field_ptr as *const u32);
-                    out.push_str("{\"label\":\"");
-                    json_escape(out, label);
-                    out.push_str("\",\"kind\":\"enum\",\"value\":");
-                    // C dump: display[val] where val is the raw enum ordinal.
-                    let display_count = m.display_count as usize;
-                    if (val as usize) < display_count && !m.display.is_null() {
-                        let display_ptr = *m.display.add(val as usize);
-                        if !display_ptr.is_null() {
-                            let cstr = std::ffi::CStr::from_ptr(display_ptr);
-                            let s = cstr.to_str().unwrap_or("?");
-                            out.push('"');
-                            json_escape(out, s);
-                            out.push('"');
-                        } else {
-                            out.push_str("null");
-                        }
-                    } else {
-                        out.push_str("null");
-                    }
-                    out.push('}');
-                }
-                FIELD_FLAGS => {
-                    let val = *(field_ptr as *const u8);
-                    out.push_str("{\"label\":\"");
-                    json_escape(out, label);
-                    out.push_str("\",\"kind\":\"flags\",\"value\":[");
-                    let display_count = m.display_count as usize;
-                    let mut first = true;
+                        build_ast_node(dialect, cursor, *child_id)
+                    },
+                },
+                FieldVal::Span(text, _) => AstField::Span {
+                    label,
+                    value: if text.is_empty() { None } else { Some(text) },
+                },
+                FieldVal::Bool(val) => AstField::Bool { label, value: *val },
+                FieldVal::Enum(val) => AstField::Enum {
+                    label,
+                    // SAFETY: m.display is a valid C array from codegen.
+                    value: unsafe { m.display_name(*val as usize) },
+                },
+                FieldVal::Flags(val) => {
+                    let mut flags = Vec::new();
                     for bit in 0..8u8 {
                         if val & (1 << bit) != 0 {
-                            if !first {
-                                out.push(',');
-                            }
-                            first = false;
-                            if (bit as usize) < display_count {
-                                let display_ptr = *m.display.add(bit as usize);
-                                if !display_ptr.is_null() {
-                                    let cstr = std::ffi::CStr::from_ptr(display_ptr);
-                                    let s = cstr.to_str().unwrap_or("?");
-                                    out.push('"');
-                                    json_escape(out, s);
-                                    out.push('"');
-                                } else {
-                                    out.push_str(&(1u32 << bit).to_string());
-                                }
-                            } else {
-                                out.push_str(&(1u32 << bit).to_string());
+                            // SAFETY: m.display is a valid C array from codegen.
+                            match unsafe { m.display_name(bit as usize) } {
+                                Some(s) => flags.push(FlagValue::Named(s)),
+                                None => flags.push(FlagValue::Numeric(1u32 << bit)),
                             }
                         }
                     }
-                    out.push_str("]}");
-                }
-                _ => {
-                    out.push_str("{\"label\":\"");
-                    json_escape(out, label);
-                    out.push_str("\",\"kind\":\"unknown\",\"value\":null}");
+                    AstField::Flags {
+                        label,
+                        value: flags,
+                    }
                 }
             }
-        }
-    }
+        })
+        .collect();
 
-    out.push_str("]}");
+    Some(AstNode::Node {
+        name,
+        fields: ast_fields,
+    })
 }
 
 fn run_ast_json(ptr: u32, len: u32) -> i32 {
@@ -271,19 +256,11 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let config = get_dialect_config();
     parser.set_dialect_config(&config);
     let mut cursor = parser.parse(&source);
-    let mut out = String::new();
-    out.push('[');
-    let mut count = 0;
 
+    let mut root_ids = Vec::new();
     while let Some(result) = cursor.next_statement() {
         match result {
-            Ok(root_id) => {
-                if count > 0 {
-                    out.push(',');
-                }
-                dump_node_json(&mut out, &dialect, cursor.base(), root_id);
-                count += 1;
-            }
+            Ok(root_id) => root_ids.push(root_id),
             Err(e) => {
                 set_result(&e.to_string());
                 return 1;
@@ -291,9 +268,21 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
         }
     }
 
-    out.push(']');
-    set_result(&out);
-    0
+    let nodes: Vec<_> = root_ids
+        .iter()
+        .map(|&id| build_ast_node(&dialect, cursor.base(), id))
+        .collect();
+
+    match serde_json::to_string(&nodes) {
+        Ok(json) => {
+            set_result(&json);
+            0
+        }
+        Err(e) => {
+            set_result(&e.to_string());
+            1
+        }
+    }
 }
 
 fn run_ast(ptr: u32, len: u32) -> i32 {
@@ -749,7 +738,8 @@ fn run_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
         }
     }
 
-    let ctx = syntaqlite::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
+    let ctx =
+        syntaqlite::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids, &dialect);
 
     let dialect_ptr = DIALECT_PTR.with(|p| p.get());
     if dialect_ptr == 0 {

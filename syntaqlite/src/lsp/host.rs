@@ -141,7 +141,7 @@ impl<'d> AnalysisHost<'d> {
 
             // Now add any DDL this statement defined to the document schema.
             #[cfg(feature = "sqlite")]
-            doc_ctx.accumulate(reader, stmt_id, self.dialect, self.context.as_ref());
+            doc_ctx.accumulate(reader, stmt_id, &self.dialect, self.context.as_ref());
         }
 
         diagnostics

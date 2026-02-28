@@ -66,6 +66,8 @@ node CreatePerfettoTableStmt {
   schema: index PerfettoArgDefList
   select: index Select
 
+  session_schema { table(name: table_name, as_select: select) }
+
   fmt {
     group {
       "CREATE"
@@ -90,6 +92,8 @@ node CreatePerfettoViewStmt {
   or_replace: inline Bool
   schema: index PerfettoArgDefList
   select: index Select
+
+  session_schema { view(name: view_name, as_select: select) }
 
   fmt {
     group {
@@ -116,6 +120,8 @@ node CreatePerfettoFunctionStmt {
   args: index PerfettoArgDefList
   return_type: index PerfettoReturnType
   select: index Select
+
+  session_schema { function(name: function_name, args: args) }
 
   fmt {
     group {
@@ -177,6 +183,8 @@ node CreatePerfettoMacroStmt {
 
 node IncludePerfettoModuleStmt {
   module_name: inline SyntaqliteSourceSpan
+
+  session_schema { import(name: module_name) }
 
   fmt {
     "INCLUDE PERFETTO MODULE " span(module_name)

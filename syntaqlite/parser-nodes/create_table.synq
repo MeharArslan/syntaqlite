@@ -168,6 +168,8 @@ node CreateTableStmt {
   table_constraints: index TableConstraintList
   as_select: index Select
 
+  session_schema { table(name: table_name, columns: columns, as_select: as_select) }
+
   fmt {
     group {
       "CREATE"

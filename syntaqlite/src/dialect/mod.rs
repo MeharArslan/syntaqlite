@@ -369,7 +369,7 @@ impl<'d> Dialect<'d> {
 
 /// What kind of schema object a node contributes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SchemaKind {
+pub(crate) enum SchemaKind {
     Table,
     View,
     Function,
@@ -378,20 +378,19 @@ pub enum SchemaKind {
 
 /// A schema contribution read from the dialect's C vtable.
 #[derive(Debug, Clone, Copy)]
-pub struct SchemaContribution {
-    pub node_tag: u32,
-    pub kind: SchemaKind,
-    pub name_field: u8,
-    pub columns_field: Option<u8>,
-    pub select_field: Option<u8>,
-    pub args_field: Option<u8>,
+pub(crate) struct SchemaContribution {
+    pub(crate) kind: SchemaKind,
+    pub(crate) name_field: u8,
+    pub(crate) columns_field: Option<u8>,
+    pub(crate) select_field: Option<u8>,
+    pub(crate) args_field: Option<u8>,
 }
 
 impl<'d> Dialect<'d> {
     /// Look up a schema contribution for a given node tag.
     ///
     /// Linear scan of the C array — typically very short (< 10 entries).
-    pub fn schema_contribution_for_tag(&self, tag: u32) -> Option<SchemaContribution> {
+    pub(crate) fn schema_contribution_for_tag(&self, tag: u32) -> Option<SchemaContribution> {
         if self.raw.schema_contributions.is_null() || self.raw.schema_contribution_count == 0 {
             return None;
         }
@@ -403,7 +402,6 @@ impl<'d> Dialect<'d> {
             if entry.node_tag == tag {
                 let opt = |v: u8| if v == 0xFF { None } else { Some(v) };
                 return Some(SchemaContribution {
-                    node_tag: entry.node_tag,
                     kind: match entry.kind {
                         1 => SchemaKind::View,
                         2 => SchemaKind::Function,

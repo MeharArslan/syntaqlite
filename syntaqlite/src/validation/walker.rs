@@ -446,7 +446,8 @@ mod tests {
         let stmt_ids: Vec<_> = (&mut cursor)
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
-        let ctx = crate::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids);
+        let ctx =
+            crate::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
         let diags: Vec<_> = stmt_ids
             .iter()
             .flat_map(|&id| {

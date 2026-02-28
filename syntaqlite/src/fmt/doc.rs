@@ -148,20 +148,9 @@ impl<'a> DocArena<'a> {
     /// Render the document tree rooted at `root` to a string.
     /// Convenience wrapper around `render_into` that allocates fresh buffers.
     pub fn render(&self, root: DocId, line_width: usize, keyword_case: KeywordCase) -> String {
-        let mut out = String::new();
-        let mut stack = Vec::new();
-        let mut fits_stack = Vec::new();
-        let mut line_suffix_buf = Vec::new();
-        self.render_into(
-            root,
-            line_width,
-            keyword_case,
-            &mut out,
-            &mut stack,
-            &mut fits_stack,
-            &mut line_suffix_buf,
-        );
-        out
+        let mut bufs = RenderBuffers::new();
+        self.render_into(root, line_width, keyword_case, &mut bufs);
+        bufs.out
     }
 
     /// Render into caller-provided buffers, reusing their allocations.
@@ -172,11 +161,14 @@ impl<'a> DocArena<'a> {
         root: DocId,
         line_width: usize,
         keyword_case: KeywordCase,
-        out: &mut String,
-        stack: &mut Vec<(i32, Mode, DocId)>,
-        fits_stack: &mut Vec<(i32, DocId)>,
-        line_suffix_buf: &mut Vec<(i32, Mode, DocId)>,
+        bufs: &mut RenderBuffers,
     ) {
+        let RenderBuffers {
+            out,
+            stack,
+            fits_stack,
+            line_suffix_buf,
+        } = bufs;
         if root == NIL_DOC {
             return;
         }
@@ -316,6 +308,40 @@ impl<'a> DocArena<'a> {
 pub(crate) enum Mode {
     Flat,
     Break,
+}
+
+/// Reusable buffers for `DocArena::render_into`. Keeping these across
+/// format calls avoids re-allocating the render stack, fits stack, and
+/// output string on every invocation.
+pub struct RenderBuffers {
+    pub out: String,
+    pub stack: Vec<(i32, Mode, DocId)>,
+    pub fits_stack: Vec<(i32, DocId)>,
+    pub line_suffix_buf: Vec<(i32, Mode, DocId)>,
+}
+
+impl RenderBuffers {
+    pub fn new() -> Self {
+        Self {
+            out: String::new(),
+            stack: Vec::new(),
+            fits_stack: Vec::new(),
+            line_suffix_buf: Vec::new(),
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.out.clear();
+        self.stack.clear();
+        self.fits_stack.clear();
+        self.line_suffix_buf.clear();
+    }
+}
+
+impl Default for RenderBuffers {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Static buffer of spaces for indent emission (avoids per-char push).

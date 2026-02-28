@@ -255,26 +255,47 @@ const _: () = {
 /// Mirrors C `SyntaqliteFieldMeta` from `include/syntaqlite/dialect.h`.
 #[repr(C)]
 pub struct FieldMeta {
-    pub(crate) offset: u16,
-    pub(crate) kind: u8,
-    pub(crate) name: *const std::ffi::c_char,
-    pub(crate) display: *const *const std::ffi::c_char,
-    pub(crate) display_count: u8,
+    pub offset: u16,
+    pub kind: u8,
+    pub name: *const std::ffi::c_char,
+    pub display: *const *const std::ffi::c_char,
+    pub display_count: u8,
 }
 
 impl FieldMeta {
     /// Return the field name as a `&str`.
     ///
-    /// This is safe because `FieldMeta` can only be constructed within this
-    /// crate (all fields are `pub(crate)`), and all instances come from
-    /// `Dialect::field_meta()` which returns static codegen data with valid
-    /// NUL-terminated `name` pointers.
-    pub(crate) fn name_str(&self) -> &str {
-        // SAFETY: self.name is a valid NUL-terminated C string pointer from
-        // static codegen data (FieldMeta is only constructed within this crate).
+    /// # Safety
+    /// The `name` pointer must be valid and NUL-terminated for the lifetime
+    /// of the returned `&str`.
+    pub unsafe fn name_str(&self) -> &str {
+        // SAFETY: caller guarantees that self.name is a valid, NUL-terminated
+        // C string pointer for the lifetime of the returned &str.
         unsafe {
             let cstr = std::ffi::CStr::from_ptr(self.name);
             cstr.to_str().expect("invalid UTF-8 in field name")
+        }
+    }
+
+    /// Return the display string for an enum ordinal or flag bit index.
+    ///
+    /// Returns `None` if `idx` is out of range or the entry is null.
+    ///
+    /// # Safety
+    /// The `display` pointer must be valid for `display_count` entries,
+    /// each pointing to a NUL-terminated C string (or null).
+    pub unsafe fn display_name(&self, idx: usize) -> Option<&str> {
+        if self.display.is_null() || idx >= self.display_count as usize {
+            return None;
+        }
+        // SAFETY: caller guarantees display array is valid for display_count entries.
+        unsafe {
+            let ptr = *self.display.add(idx);
+            if ptr.is_null() {
+                return None;
+            }
+            let cstr = std::ffi::CStr::from_ptr(ptr);
+            Some(cstr.to_str().unwrap_or("?"))
         }
     }
 }

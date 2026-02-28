@@ -236,38 +236,36 @@ pub(crate) fn interpret_node<'a>(
                     let macro_regions = ctx.cursor.macro_regions();
                     if !macro_regions.is_empty()
                         && ctx.cursor.list_children(child_id, &ctx.dialect).is_none()
-                    {
-                        if let Some(doc) = super::formatter::try_macro_verbatim(
+                        && let Some(doc) = super::formatter::try_macro_verbatim(
                             ctx,
                             macro_regions,
                             arena,
                             consumed_regions,
-                        ) {
-                            // Verbatim doc already added to running; still need to
-                            // "call" the child to advance comment cursor, but discard
-                            // its result.
-                            running = arena.cat(running, doc);
-                            return_action = ReturnAction::Discard;
-                        }
+                        )
+                    {
+                        // Verbatim doc already added to running; still need to
+                        // "call" the child to advance comment cursor, but discard
+                        // its result.
+                        running = arena.cat(running, doc);
+                        return_action = ReturnAction::Discard;
                     }
 
                     // "Call" child: push parent frame, set up child state.
-                    if let Some((cptr, ctag)) = ctx.cursor.node_ptr(child_id) {
-                        if let Some((child_ops_bytes, child_ops_len)) =
+                    if let Some((cptr, ctag)) = ctx.cursor.node_ptr(child_id)
+                        && let Some((child_ops_bytes, child_ops_len)) =
                             ctx.dialect.fmt_dispatch(ctag)
-                        {
-                            let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
-                            let child_fields =
-                                super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
-                            push_call_frame!(
-                                child_id,
-                                child_ops_bytes,
-                                child_ops_len,
-                                child_fields,
-                                child_children,
-                                return_action
-                            );
-                        }
+                    {
+                        let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
+                        let child_fields =
+                            super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
+                        push_call_frame!(
+                            child_id,
+                            child_ops_bytes,
+                            child_ops_len,
+                            child_fields,
+                            child_children,
+                            return_action
+                        );
                     }
                 }
             }
@@ -416,20 +414,20 @@ pub(crate) fn interpret_node<'a>(
                 }
 
                 // "Call" child: push parent frame, set up child state.
-                if let Some((cptr, ctag)) = ctx.cursor.node_ptr(child_id) {
-                    if let Some((child_ops_bytes, child_ops_len)) = ctx.dialect.fmt_dispatch(ctag) {
-                        let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
-                        let child_fields =
-                            super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
-                        push_call_frame!(
-                            child_id,
-                            child_ops_bytes,
-                            child_ops_len,
-                            child_fields,
-                            child_children,
-                            return_action
-                        );
-                    }
+                if let Some((cptr, ctag)) = ctx.cursor.node_ptr(child_id)
+                    && let Some((child_ops_bytes, child_ops_len)) = ctx.dialect.fmt_dispatch(ctag)
+                {
+                    let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
+                    let child_fields =
+                        super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
+                    push_call_frame!(
+                        child_id,
+                        child_ops_bytes,
+                        child_ops_len,
+                        child_fields,
+                        child_children,
+                        return_action
+                    );
                 }
             }
             FmtOp::ForEachSep(sid) => {
@@ -439,10 +437,10 @@ pub(crate) fn interpret_node<'a>(
                 if state.index < state.children.len() - 1 {
                     state.sep_checkpoint = Some((running, pending));
                     let sep_text = ctx.dialect.fmt_string(sid);
-                    if let Some(cctx) = ctx.comment_ctx {
-                        if let Some((_, word_count)) = cctx.peek_keyword_tokens(sep_text) {
-                            cctx.advance_token_cursor(word_count);
-                        }
+                    if let Some(cctx) = ctx.comment_ctx
+                        && let Some((_, word_count)) = cctx.peek_keyword_tokens(sep_text)
+                    {
+                        cctx.advance_token_cursor(word_count);
                     }
                     let sep = arena.text(sep_text);
                     running = arena.cat(running, sep);
