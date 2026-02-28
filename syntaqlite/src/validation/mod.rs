@@ -90,3 +90,27 @@ pub fn validate_statement<'a>(
         reader, stmt_id, *dialect, session, document, functions, config,
     )
 }
+
+/// Validate all statements in a document incrementally.
+///
+/// Each statement is validated against the schema accumulated from prior
+/// statements, then contributes its own DDL to the document context.
+pub fn validate_document(
+    reader: &NodeReader<'_>,
+    stmt_ids: &[NodeId],
+    dialect: &crate::Dialect<'_>,
+    session: Option<&SessionContext>,
+    functions: &[FunctionDef],
+    config: &ValidationConfig,
+) -> Vec<Diagnostic> {
+    let mut doc_ctx = DocumentContext::new();
+    let mut all_diags = Vec::new();
+    for &stmt_id in stmt_ids {
+        let diags = validate_statement_dialect::<crate::sqlite::ast::SqliteAst>(
+            reader, stmt_id, *dialect, session, Some(&doc_ctx), functions, config,
+        );
+        all_diags.extend(diags);
+        doc_ctx.accumulate(reader, stmt_id, dialect, session);
+    }
+    all_diags
+}

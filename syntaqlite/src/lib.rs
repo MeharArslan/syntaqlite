@@ -20,7 +20,6 @@ pub mod validation;
 #[cfg(feature = "lsp")]
 pub mod lsp;
 
-#[cfg(feature = "sqlite")]
 pub mod sqlite;
 
 // ── Shared field extraction ────────────────────────────────────────────

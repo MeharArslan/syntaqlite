@@ -13,17 +13,24 @@ pub mod ast;
 mod ffi;
 pub mod functions;
 
-use std::sync::LazyLock;
+#[cfg(feature = "sqlite")]
+mod dialect_runtime {
+    use std::sync::LazyLock;
 
-use crate::dialect::ffi as dialect_ffi;
-unsafe extern "C" {
-    fn syntaqlite_sqlite_dialect() -> *const dialect_ffi::Dialect;
+    use crate::dialect::ffi as dialect_ffi;
+    unsafe extern "C" {
+        fn syntaqlite_sqlite_dialect() -> *const dialect_ffi::Dialect;
+    }
+
+    pub(crate) static DIALECT: LazyLock<crate::Dialect<'static>> =
+        LazyLock::new(|| unsafe { crate::Dialect::from_raw(syntaqlite_sqlite_dialect()) });
 }
 
-pub(crate) static DIALECT: LazyLock<crate::Dialect<'static>> =
-    LazyLock::new(|| unsafe { crate::Dialect::from_raw(syntaqlite_sqlite_dialect()) });
+#[cfg(feature = "sqlite")]
+pub(crate) use dialect_runtime::DIALECT;
 
 /// Low-level APIs for advanced use cases (e.g. custom token feeding/tokenizing).
+#[cfg(feature = "sqlite")]
 pub mod low_level {
     pub use crate::sqlite::tokens::TokenType;
 
@@ -36,6 +43,7 @@ pub mod low_level {
 pub use crate::ParseError;
 
 /// Configuration types for parsers and formatters.
+#[cfg(feature = "sqlite")]
 pub mod config {
     pub use crate::dialect::ffi::{CflagInfo, Cflags, DialectConfig, cflag_table};
     pub use crate::fmt::{FormatConfig, KeywordCase};

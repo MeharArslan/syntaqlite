@@ -78,7 +78,6 @@ impl SessionContext {
     }
 }
 
-#[cfg(feature = "sqlite")]
 impl SessionContext {
     /// Build a `SessionContext` from parsed DDL statement roots.
     ///
@@ -110,8 +109,7 @@ impl SessionContext {
 pub struct DocumentContext {
     pub relations: Vec<RelationDef>,
     pub functions: Vec<FunctionDef>,
-    #[cfg(feature = "sqlite")]
-    known: KnownSchema,
+        known: KnownSchema,
 }
 
 impl DocumentContext {
@@ -119,8 +117,7 @@ impl DocumentContext {
         DocumentContext {
             relations: vec![],
             functions: vec![],
-            #[cfg(feature = "sqlite")]
-            known: std::collections::HashMap::new(),
+                        known: std::collections::HashMap::new(),
         }
     }
 
@@ -148,7 +145,6 @@ impl Default for DocumentContext {
 /// # Safety
 /// `ptr` must point to a valid node struct; `meta.offset` must be a valid
 /// offset to a `u32` (NodeId) field within that struct.
-#[cfg(feature = "sqlite")]
 unsafe fn read_node_id(
     ptr: *const u8,
     meta: &crate::dialect::ffi::FieldMeta,
@@ -162,7 +158,6 @@ unsafe fn read_node_id(
 /// # Safety
 /// `ptr` must point to a valid node struct; `meta.offset` must be a valid
 /// offset to a `SourceSpan` field within that struct.
-#[cfg(feature = "sqlite")]
 unsafe fn read_span<'a>(
     ptr: *const u8,
     meta: &crate::dialect::ffi::FieldMeta,
@@ -178,7 +173,6 @@ unsafe fn read_span<'a>(
     }
 }
 
-#[cfg(feature = "sqlite")]
 impl DocumentContext {
     /// Process one DDL statement and update the document schema.
     ///
@@ -299,7 +293,6 @@ impl DocumentContext {
 ///
 /// Walks list children, extracting `column_name`, `type_name`, and constraint
 /// information (PRIMARY KEY, NOT NULL) from each child node's field metadata.
-#[cfg(feature = "sqlite")]
 fn columns_from_column_list(
     reader: &crate::parser::NodeReader<'_>,
     list_id: crate::parser::NodeId,
@@ -379,7 +372,6 @@ fn columns_from_column_list(
 }
 
 /// Walk a constraint list to detect PRIMARY KEY and NOT NULL constraints.
-#[cfg(feature = "sqlite")]
 fn extract_column_constraints(
     reader: &crate::parser::NodeReader<'_>,
     list_id: crate::parser::NodeId,
@@ -427,12 +419,10 @@ fn extract_column_constraints(
 
 /// Known schema passed through select resolution — maps lowercase table/view
 /// name to its columns.
-#[cfg(feature = "sqlite")]
 type KnownSchema = std::collections::HashMap<String, Vec<ColumnDef>>;
 
 /// Best-effort column extraction from a SELECT, expanding `*` and `t.*`
 /// against previously defined tables/views.
-#[cfg(feature = "sqlite")]
 fn columns_from_select(
     select: &crate::sqlite::ast::Select<'_>,
     known: &KnownSchema,
@@ -489,7 +479,6 @@ fn columns_from_select(
 }
 
 /// A resolved FROM source: qualifier for `t.*` matching + pre-resolved columns.
-#[cfg(feature = "sqlite")]
 struct FromSource {
     /// Alias if present, otherwise the table/view name. Used for `t.*` matching.
     qualifier: String,
@@ -499,7 +488,6 @@ struct FromSource {
 }
 
 /// Walk a `TableSource` tree, resolving each leaf's columns eagerly.
-#[cfg(feature = "sqlite")]
 fn collect_from_sources(
     source: &crate::sqlite::ast::TableSource<'_>,
     known: &KnownSchema,
@@ -561,7 +549,6 @@ fn collect_from_sources(
 }
 
 /// Expand `*` or `qualifier.*` using pre-resolved FROM sources.
-#[cfg(feature = "sqlite")]
 fn expand_star(from_sources: &[FromSource], qualifier: &str, out: &mut Vec<ColumnDef>) {
     for src in from_sources {
         if !qualifier.is_empty() && !src.qualifier.eq_ignore_ascii_case(qualifier) {

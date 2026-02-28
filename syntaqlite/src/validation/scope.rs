@@ -63,12 +63,12 @@ impl<'ctx> ScopeStack<'ctx> {
     }
 
     /// Look up column names for a table from the ambient schema context.
-    /// Returns `Some(columns)` if the table exists and has columns defined,
-    /// `None` if the table is not found or has no columns.
+    /// Returns `Some(columns)` if the table exists (may be empty if no columns
+    /// could be inferred), `None` if the table is not found.
     /// Searches document context first, then session context.
     pub(super) fn ambient_columns_for_table(&self, name: &str) -> Option<Vec<String>> {
         self.ambient_relations()
-            .find(|r| r.name.eq_ignore_ascii_case(name) && !r.columns.is_empty())
+            .find(|r| r.name.eq_ignore_ascii_case(name))
             .map(|r| r.columns.iter().map(|c| c.name.clone()).collect())
     }
 

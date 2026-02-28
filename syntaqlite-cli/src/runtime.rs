@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use clap::ValueEnum;
 use syntaqlite::dialect::ffi as dialect_ffi;
 use syntaqlite::fmt::{FormatConfig, Formatter, KeywordCase};
-use syntaqlite::validation::{DocumentContext, Severity, ValidationConfig};
+use syntaqlite::validation::{Severity, ValidationConfig};
 use syntaqlite::{Dialect, ParseError, Parser as RuntimeParser};
 
 use super::{Cli, Command};
@@ -289,38 +289,21 @@ fn validate_source(dialect: &Dialect, source: &str, config: &ValidationConfig) -
     let mut cursor = parser.parse(source);
 
     let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok()).collect();
+    let diags =
+        syntaqlite::validation::validate_document(cursor.reader(), &stmt_ids, dialect, None, &[], config);
 
-    let mut doc_ctx = DocumentContext::new();
-    let reader = cursor.reader();
     let mut has_errors = false;
-
-    for &stmt_id in &stmt_ids {
-        let diags = syntaqlite::validation::validate_statement_dialect::<
-            syntaqlite::sqlite::ast::SqliteAst,
-        >(
-            reader,
-            stmt_id,
-            *dialect,
-            None,
-            Some(&doc_ctx),
-            &[],
-            config,
-        );
-
-        for d in &diags {
-            let severity = match d.severity {
-                Severity::Error => {
-                    has_errors = true;
-                    "error"
-                }
-                Severity::Warning => "warning",
-                Severity::Info => "info",
-                Severity::Hint => "hint",
-            };
-            println!("{severity} {}..{}: {}", d.start_offset, d.end_offset, d.message);
-        }
-
-        doc_ctx.accumulate(reader, stmt_id, dialect, None);
+    for d in &diags {
+        let severity = match d.severity {
+            Severity::Error => {
+                has_errors = true;
+                "error"
+            }
+            Severity::Warning => "warning",
+            Severity::Info => "info",
+            Severity::Hint => "hint",
+        };
+        println!("{severity} {}..{}: {}", d.start_offset, d.end_offset, d.message);
     }
 
     has_errors

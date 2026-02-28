@@ -408,7 +408,6 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
 }
 
 #[cfg(test)]
-#[cfg(feature = "sqlite")]
 mod tests {
     use crate::validation::{ValidationConfig, validate_statement};
 
@@ -490,6 +489,32 @@ mod tests {
         assert!(
             !diags.is_empty(),
             "expected a diagnostic for unknown table in trigger body"
+        );
+    }
+
+    #[test]
+    fn create_table_as_select_literal_column_mismatch_warns() {
+        // CREATE TABLE slice AS SELECT 2 → table has no named columns.
+        // Referencing slice."1" should warn about unknown column.
+        let dialect = crate::sqlite::low_level::dialect();
+        let mut parser = crate::Parser::with_dialect(&dialect);
+        let sql = "CREATE TABLE slice AS SELECT 2;\nSELECT slice.\"1\" FROM slice;";
+        let mut cursor = parser.parse(sql);
+        let stmt_ids: Vec<_> = (&mut cursor)
+            .collect::<Result<Vec<_>, _>>()
+            .expect("parse failed");
+        let diags = crate::validation::validate_document(
+            cursor.reader(),
+            &stmt_ids,
+            dialect,
+            None,
+            &[],
+            &ValidationConfig::default(),
+        );
+        let col_diags: Vec<_> = diags.iter().filter(|d| d.message.contains("column")).collect();
+        assert!(
+            !col_diags.is_empty(),
+            "expected a diagnostic for unknown column '1' in table 'slice'"
         );
     }
 
