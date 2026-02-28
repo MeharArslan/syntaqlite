@@ -75,7 +75,9 @@ impl<'ctx> ScopeStack<'ctx> {
     pub(super) fn resolve_table(&self, name: &str) -> bool {
         let lower = name.to_ascii_lowercase();
         self.stack.iter().any(|s| s.tables.contains_key(&lower))
-            || self.ambient_relations().any(|r| r.name.eq_ignore_ascii_case(name))
+            || self
+                .ambient_relations()
+                .any(|r| r.name.eq_ignore_ascii_case(name))
     }
 
     /// Resolve a column reference.
@@ -102,9 +104,11 @@ impl<'ctx> ScopeStack<'ctx> {
             }
         }
 
-        let ambient_found = self
-            .ambient_relations()
-            .any(|r| r.columns.iter().any(|c| c.name.eq_ignore_ascii_case(column)));
+        let ambient_found = self.ambient_relations().any(|r| {
+            r.columns
+                .iter()
+                .any(|c| c.name.eq_ignore_ascii_case(column))
+        });
         if ambient_found {
             return ColumnResolution::Found;
         }
@@ -123,7 +127,10 @@ impl<'ctx> ScopeStack<'ctx> {
             .stack
             .iter()
             .flat_map(|s| s.tables.keys().cloned())
-            .chain(self.ambient_relations().map(|r| r.name.to_ascii_lowercase()))
+            .chain(
+                self.ambient_relations()
+                    .map(|r| r.name.to_ascii_lowercase()),
+            )
             .collect();
         names.sort();
         names.dedup();

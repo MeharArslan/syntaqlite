@@ -1,37 +1,41 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use crate::parser::NodeReader;
-use crate::sqlite::ast::*;
+use std::marker::PhantomData;
+
+use crate::ast_traits::*;
+use crate::parser::{FromArena, NodeReader, TypedList};
 
 use super::ValidationConfig;
 use super::checks::{check_column_ref, check_function_call, check_table_ref};
 use super::scope::ScopeStack;
 use super::types::{Diagnostic, FunctionDef};
 
-pub(super) struct Walker<'a, 'd> {
+pub(super) struct Walker<'a, 'd, A: AstTypes<'a>> {
     reader: &'a NodeReader<'a>,
     dialect: crate::Dialect<'d>,
     functions: &'a [FunctionDef],
     config: &'a ValidationConfig,
     diagnostics: Vec<Diagnostic>,
+    _ast: PhantomData<A>,
 }
 
-impl<'a, 'd> Walker<'a, 'd> {
+impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
     pub(super) fn run(
         reader: &'a NodeReader<'a>,
-        stmt: Stmt<'a>,
+        stmt: A::Stmt,
         dialect: crate::Dialect<'d>,
         scope: &mut ScopeStack,
         functions: &'a [FunctionDef],
         config: &'a ValidationConfig,
     ) -> Vec<Diagnostic> {
-        let mut walker = Walker {
+        let mut walker: Walker<'_, '_, A> = Walker {
             reader,
             dialect,
             functions,
             config,
             diagnostics: Vec::new(),
+            _ast: PhantomData,
         };
         walker.walk_stmt(stmt, scope);
         walker.diagnostics
@@ -42,31 +46,31 @@ impl<'a, 'd> Walker<'a, 'd> {
         s.as_ptr() as usize - self.reader.source().as_ptr() as usize
     }
 
-    fn walk_stmt(&mut self, stmt: Stmt<'a>, scope: &mut ScopeStack) {
-        match stmt {
-            Stmt::SelectStmt(s) => self.walk_select_stmt(s, scope),
-            Stmt::CompoundSelect(c) => self.walk_compound_select(c, scope),
-            Stmt::WithClause(w) => self.walk_with_clause(w, scope),
-            Stmt::InsertStmt(i) => self.walk_insert_stmt(i, scope),
-            Stmt::UpdateStmt(u) => self.walk_update_stmt(u, scope),
-            Stmt::DeleteStmt(d) => self.walk_delete_stmt(d, scope),
-            Stmt::CreateTableStmt(ct) => {
+    fn walk_stmt(&mut self, stmt: A::Stmt, scope: &mut ScopeStack) {
+        match stmt.kind() {
+            StmtKind::SelectStmt(s) => self.walk_select_stmt(s, scope),
+            StmtKind::CompoundSelect(c) => self.walk_compound_select(c, scope),
+            StmtKind::WithClause(w) => self.walk_with_clause(w, scope),
+            StmtKind::InsertStmt(i) => self.walk_insert_stmt(i, scope),
+            StmtKind::UpdateStmt(u) => self.walk_update_stmt(u, scope),
+            StmtKind::DeleteStmt(d) => self.walk_delete_stmt(d, scope),
+            StmtKind::CreateTableStmt(ct) => {
                 if let Some(select) = ct.as_select() {
                     self.walk_select(select, scope);
                 }
             }
-            Stmt::CreateViewStmt(cv) => {
+            StmtKind::CreateViewStmt(cv) => {
                 if let Some(select) = cv.select() {
                     self.walk_select(select, scope);
                 }
             }
-            Stmt::CreateTriggerStmt(t) => self.walk_trigger_stmt(t, scope),
-            Stmt::Other(node) => self.walk_other_node(node, scope),
+            StmtKind::CreateTriggerStmt(t) => self.walk_trigger_stmt(t, scope),
+            StmtKind::Other(node) => self.walk_other_node(node, scope),
             _ => {}
         }
     }
 
-    fn walk_select_stmt(&mut self, select: SelectStmt<'a>, scope: &mut ScopeStack) {
+    fn walk_select_stmt(&mut self, select: A::SelectStmt, scope: &mut ScopeStack) {
         // FROM first — populates scope before column refs are checked.
         if let Some(from) = select.from_clause() {
             self.walk_table_source(from, scope);
@@ -94,7 +98,7 @@ impl<'a, 'd> Walker<'a, 'd> {
         }
     }
 
-    fn walk_compound_select(&mut self, compound: CompoundSelect<'a>, scope: &mut ScopeStack) {
+    fn walk_compound_select(&mut self, compound: A::CompoundSelect, scope: &mut ScopeStack) {
         if let Some(left) = compound.left() {
             self.walk_select(left, scope);
         }
@@ -103,7 +107,7 @@ impl<'a, 'd> Walker<'a, 'd> {
         }
     }
 
-    fn walk_with_clause(&mut self, with: WithClause<'a>, scope: &mut ScopeStack) {
+    fn walk_with_clause(&mut self, with: A::WithClause, scope: &mut ScopeStack) {
         let is_recursive = with.recursive();
 
         if let Some(cte_list) = with.ctes() {
@@ -131,23 +135,23 @@ impl<'a, 'd> Walker<'a, 'd> {
         }
     }
 
-    fn walk_select(&mut self, select: Select<'a>, scope: &mut ScopeStack) {
-        match select {
-            Select::SelectStmt(s) => self.walk_select_stmt(s, scope),
-            Select::CompoundSelect(c) => self.walk_compound_select(c, scope),
-            Select::WithClause(w) => self.walk_with_clause(w, scope),
-            Select::ValuesClause(v) => {
+    fn walk_select(&mut self, select: A::Select, scope: &mut ScopeStack) {
+        match select.kind() {
+            SelectKind::SelectStmt(s) => self.walk_select_stmt(s, scope),
+            SelectKind::CompoundSelect(c) => self.walk_compound_select(c, scope),
+            SelectKind::WithClause(w) => self.walk_with_clause(w, scope),
+            SelectKind::ValuesClause(v) => {
                 if let Some(rows) = v.rows() {
                     for row in rows.iter() {
                         self.walk_expr_list(row, scope);
                     }
                 }
             }
-            Select::Other(node) => self.walk_other_node(node, scope),
+            SelectKind::Other(node) => self.walk_other_node(node, scope),
         }
     }
 
-    fn walk_insert_stmt(&mut self, insert: InsertStmt<'a>, scope: &mut ScopeStack) {
+    fn walk_insert_stmt(&mut self, insert: A::InsertStmt, scope: &mut ScopeStack) {
         if let Some(table_ref) = insert.table() {
             self.check_and_add_table_ref(&table_ref, scope);
         }
@@ -156,7 +160,7 @@ impl<'a, 'd> Walker<'a, 'd> {
         }
     }
 
-    fn walk_update_stmt(&mut self, update: UpdateStmt<'a>, scope: &mut ScopeStack) {
+    fn walk_update_stmt(&mut self, update: A::UpdateStmt, scope: &mut ScopeStack) {
         if let Some(table_ref) = update.table() {
             self.check_and_add_table_ref(&table_ref, scope);
         }
@@ -171,14 +175,14 @@ impl<'a, 'd> Walker<'a, 'd> {
         self.walk_opt_expr(update.where_clause(), scope);
     }
 
-    fn walk_delete_stmt(&mut self, delete: DeleteStmt<'a>, scope: &mut ScopeStack) {
+    fn walk_delete_stmt(&mut self, delete: A::DeleteStmt, scope: &mut ScopeStack) {
         if let Some(table_ref) = delete.table() {
             self.check_and_add_table_ref(&table_ref, scope);
         }
         self.walk_opt_expr(delete.where_clause(), scope);
     }
 
-    fn walk_trigger_stmt(&mut self, trigger: CreateTriggerStmt<'a>, scope: &mut ScopeStack) {
+    fn walk_trigger_stmt(&mut self, trigger: A::CreateTriggerStmt, scope: &mut ScopeStack) {
         scope.push();
         // OLD and NEW are pseudo-tables available in trigger body commands.
         scope.add_table("OLD", None);
@@ -186,7 +190,8 @@ impl<'a, 'd> Walker<'a, 'd> {
         self.walk_opt_expr(trigger.when_expr(), scope);
         if let Some(body) = trigger.body() {
             for node in body.iter() {
-                if let Some(stmt) = node_to_stmt(node) {
+                let id = node.node_id();
+                if let Some(stmt) = A::Stmt::from_arena(self.reader, id) {
                     self.walk_stmt(stmt, scope);
                 }
             }
@@ -194,12 +199,12 @@ impl<'a, 'd> Walker<'a, 'd> {
         scope.pop();
     }
 
-    fn walk_table_source(&mut self, source: TableSource<'a>, scope: &mut ScopeStack) {
-        match source {
-            TableSource::TableRef(t) => {
+    fn walk_table_source(&mut self, source: A::TableSource, scope: &mut ScopeStack) {
+        match source.kind() {
+            TableSourceKind::TableRef(t) => {
                 self.check_and_add_table_ref(&t, scope);
             }
-            TableSource::SubqueryTableSource(sub) => {
+            TableSourceKind::SubqueryTableSource(sub) => {
                 scope.push();
                 if let Some(select) = sub.select() {
                     self.walk_select(select, scope);
@@ -210,7 +215,7 @@ impl<'a, 'd> Walker<'a, 'd> {
                     scope.add_table(alias, None);
                 }
             }
-            TableSource::JoinClause(join) => {
+            TableSourceKind::JoinClause(join) => {
                 if let Some(left) = join.left() {
                     self.walk_table_source(left, scope);
                 }
@@ -219,16 +224,20 @@ impl<'a, 'd> Walker<'a, 'd> {
                 }
                 self.walk_opt_expr(join.on_expr(), scope);
             }
-            TableSource::JoinPrefix(jp) => {
+            TableSourceKind::JoinPrefix(jp) => {
                 if let Some(src) = jp.source() {
                     self.walk_table_source(src, scope);
                 }
             }
-            TableSource::Other(node) => self.walk_other_node(node, scope),
+            TableSourceKind::Other(node) => self.walk_other_node(node, scope),
         }
     }
 
-    fn check_and_add_table_ref(&mut self, table_ref: &TableRef<'a>, scope: &mut ScopeStack) {
+    fn check_and_add_table_ref(
+        &mut self,
+        table_ref: &A::TableRef,
+        scope: &mut ScopeStack,
+    ) {
         let name = table_ref.table_name();
         if name.is_empty() {
             return;
@@ -245,9 +254,9 @@ impl<'a, 'd> Walker<'a, 'd> {
         scope.add_table(scope_name, columns);
     }
 
-    fn walk_expr(&mut self, expr: Expr<'a>, scope: &mut ScopeStack) {
-        match expr {
-            Expr::ColumnRef(col) => {
+    fn walk_expr(&mut self, expr: A::Expr, scope: &mut ScopeStack) {
+        match expr.kind() {
+            ExprKind::ColumnRef(col) => {
                 let column = col.column();
                 if column.is_empty() {
                     return;
@@ -262,46 +271,46 @@ impl<'a, 'd> Walker<'a, 'd> {
                     self.diagnostics.push(diag);
                 }
             }
-            Expr::FunctionCall(f) => {
+            ExprKind::FunctionCall(f) => {
                 self.walk_function(f.func_name(), f.args(), f.filter_clause(), scope);
             }
-            Expr::AggregateFunctionCall(f) => {
+            ExprKind::AggregateFunctionCall(f) => {
                 self.walk_function(f.func_name(), f.args(), f.filter_clause(), scope);
             }
-            Expr::OrderedSetFunctionCall(f) => {
+            ExprKind::OrderedSetFunctionCall(f) => {
                 self.walk_function(f.func_name(), f.args(), f.filter_clause(), scope);
             }
-            Expr::BinaryExpr(bin) => {
+            ExprKind::BinaryExpr(bin) => {
                 self.walk_opt_expr(bin.left(), scope);
                 self.walk_opt_expr(bin.right(), scope);
             }
-            Expr::UnaryExpr(un) => {
+            ExprKind::UnaryExpr(un) => {
                 self.walk_opt_expr(un.operand(), scope);
             }
-            Expr::IsExpr(is) => {
+            ExprKind::IsExpr(is) => {
                 self.walk_opt_expr(is.left(), scope);
                 self.walk_opt_expr(is.right(), scope);
             }
-            Expr::BetweenExpr(b) => {
+            ExprKind::BetweenExpr(b) => {
                 self.walk_opt_expr(b.operand(), scope);
                 self.walk_opt_expr(b.low(), scope);
                 self.walk_opt_expr(b.high(), scope);
             }
-            Expr::InExpr(in_expr) => {
+            ExprKind::InExpr(in_expr) => {
                 self.walk_opt_expr(in_expr.operand(), scope);
                 if let Some(source) = in_expr.source() {
-                    match source {
-                        InExprSource::ExprList(list) => {
+                    match source.kind() {
+                        InExprSourceKind::ExprList(list) => {
                             self.walk_expr_list(list, scope);
                         }
-                        InExprSource::SubqueryExpr(sub) => {
+                        InExprSourceKind::SubqueryExpr(sub) => {
                             self.walk_subquery(sub.select(), scope);
                         }
-                        InExprSource::Other(node) => self.walk_other_node(node, scope),
+                        InExprSourceKind::Other(node) => self.walk_other_node(node, scope),
                     }
                 }
             }
-            Expr::CaseExpr(case) => {
+            ExprKind::CaseExpr(case) => {
                 self.walk_opt_expr(case.operand(), scope);
                 if let Some(whens) = case.whens() {
                     for when in whens.iter() {
@@ -311,35 +320,35 @@ impl<'a, 'd> Walker<'a, 'd> {
                 }
                 self.walk_opt_expr(case.else_expr(), scope);
             }
-            Expr::SubqueryExpr(sub) => {
+            ExprKind::SubqueryExpr(sub) => {
                 self.walk_subquery(sub.select(), scope);
             }
-            Expr::ExistsExpr(exists) => {
+            ExprKind::ExistsExpr(exists) => {
                 self.walk_subquery(exists.select(), scope);
             }
-            Expr::CastExpr(cast) => {
+            ExprKind::CastExpr(cast) => {
                 self.walk_opt_expr(cast.expr(), scope);
             }
-            Expr::CollateExpr(collate) => {
+            ExprKind::CollateExpr(collate) => {
                 self.walk_opt_expr(collate.expr(), scope);
             }
-            Expr::LikeExpr(like) => {
+            ExprKind::LikeExpr(like) => {
                 self.walk_opt_expr(like.operand(), scope);
                 self.walk_opt_expr(like.pattern(), scope);
                 self.walk_opt_expr(like.escape(), scope);
             }
-            Expr::Other(node) => self.walk_other_node(node, scope),
-            Expr::Literal(_) | Expr::Variable(_) | Expr::RaiseExpr(_) => {}
+            ExprKind::Other(node) => self.walk_other_node(node, scope),
+            ExprKind::Literal(_) | ExprKind::Variable(_) | ExprKind::RaiseExpr(_) => {}
         }
     }
 
-    fn walk_opt_expr(&mut self, expr: Option<Expr<'a>>, scope: &mut ScopeStack) {
+    fn walk_opt_expr(&mut self, expr: Option<A::Expr>, scope: &mut ScopeStack) {
         if let Some(e) = expr {
             self.walk_expr(e, scope);
         }
     }
 
-    fn walk_subquery(&mut self, select: Option<Select<'a>>, scope: &mut ScopeStack) {
+    fn walk_subquery(&mut self, select: Option<A::Select>, scope: &mut ScopeStack) {
         if let Some(select) = select {
             scope.push();
             self.walk_select(select, scope);
@@ -350,8 +359,8 @@ impl<'a, 'd> Walker<'a, 'd> {
     fn walk_function(
         &mut self,
         name: &str,
-        args: Option<ExprList<'a>>,
-        filter: Option<Expr<'a>>,
+        args: Option<TypedList<'a, A::Node>>,
+        filter: Option<A::Expr>,
         scope: &mut ScopeStack,
     ) {
         if !name.is_empty() {
@@ -374,73 +383,34 @@ impl<'a, 'd> Walker<'a, 'd> {
         self.walk_opt_expr(filter, scope);
     }
 
-    fn walk_other_node(&mut self, node: Node<'a>, scope: &mut ScopeStack) {
-        let id = match node {
-            Node::Other { id, .. } => id,
-            _ => return,
-        };
+    fn walk_other_node(&mut self, node: A::Node, scope: &mut ScopeStack) {
+        let id = node.node_id();
+        if id.is_null() {
+            return;
+        }
         for child_id in self.reader.child_node_ids(id, &self.dialect) {
-            let child: Option<Node<'a>> = FromArena::from_arena(self.reader, child_id);
-            if let Some(child) = child {
-                if let Some(expr) = node_to_expr(child) {
-                    self.walk_expr(expr, scope);
-                } else if let Some(stmt) = node_to_stmt(child) {
-                    self.walk_stmt(stmt, scope);
-                }
+            if let Some(expr) = A::Expr::from_arena(self.reader, child_id) {
+                self.walk_expr(expr, scope);
+            } else if let Some(stmt) = A::Stmt::from_arena(self.reader, child_id) {
+                self.walk_stmt(stmt, scope);
             }
         }
     }
 
-    fn walk_expr_list(&mut self, list: ExprList<'a>, scope: &mut ScopeStack) {
+    fn walk_expr_list(&mut self, list: TypedList<'a, A::Node>, scope: &mut ScopeStack) {
         for node in list.iter() {
-            if let Some(expr) = node_to_expr(node) {
+            let id = node.node_id();
+            if let Some(expr) = A::Expr::from_arena(self.reader, id) {
                 self.walk_expr(expr, scope);
             }
         }
     }
 }
 
-fn node_to_stmt<'a>(node: Node<'a>) -> Option<Stmt<'a>> {
-    Some(match node {
-        Node::SelectStmt(n) => Stmt::SelectStmt(n),
-        Node::CompoundSelect(n) => Stmt::CompoundSelect(n),
-        Node::ValuesClause(n) => Stmt::ValuesClause(n),
-        Node::WithClause(n) => Stmt::WithClause(n),
-        Node::InsertStmt(n) => Stmt::InsertStmt(n),
-        Node::UpdateStmt(n) => Stmt::UpdateStmt(n),
-        Node::DeleteStmt(n) => Stmt::DeleteStmt(n),
-        _ => return None,
-    })
-}
-
-fn node_to_expr<'a>(node: Node<'a>) -> Option<Expr<'a>> {
-    Some(match node {
-        Node::BinaryExpr(n) => Expr::BinaryExpr(n),
-        Node::UnaryExpr(n) => Expr::UnaryExpr(n),
-        Node::Literal(n) => Expr::Literal(n),
-        Node::ColumnRef(n) => Expr::ColumnRef(n),
-        Node::Variable(n) => Expr::Variable(n),
-        Node::FunctionCall(n) => Expr::FunctionCall(n),
-        Node::AggregateFunctionCall(n) => Expr::AggregateFunctionCall(n),
-        Node::OrderedSetFunctionCall(n) => Expr::OrderedSetFunctionCall(n),
-        Node::CastExpr(n) => Expr::CastExpr(n),
-        Node::CollateExpr(n) => Expr::CollateExpr(n),
-        Node::CaseExpr(n) => Expr::CaseExpr(n),
-        Node::IsExpr(n) => Expr::IsExpr(n),
-        Node::BetweenExpr(n) => Expr::BetweenExpr(n),
-        Node::LikeExpr(n) => Expr::LikeExpr(n),
-        Node::InExpr(n) => Expr::InExpr(n),
-        Node::SubqueryExpr(n) => Expr::SubqueryExpr(n),
-        Node::ExistsExpr(n) => Expr::ExistsExpr(n),
-        Node::RaiseExpr(n) => Expr::RaiseExpr(n),
-        _ => return None,
-    })
-}
-
 #[cfg(test)]
 #[cfg(feature = "sqlite")]
 mod tests {
-    use crate::validation::{validate_statement, ValidationConfig};
+    use crate::validation::{ValidationConfig, validate_statement};
 
     fn validate_sql(sql: &str) -> Vec<super::super::types::Diagnostic> {
         let dialect = crate::sqlite::low_level::dialect();
@@ -453,7 +423,6 @@ mod tests {
                 validate_statement(
                     cursor.reader(),
                     id,
-                    *dialect,
                     None,
                     None,
                     &[],
@@ -478,7 +447,9 @@ mod tests {
         let mut parser = crate::Parser::with_dialect(&dialect);
         let sql = "CREATE TABLE src (id INTEGER);\nCREATE TABLE t AS SELECT * FROM src;";
         let mut cursor = parser.parse(sql);
-        let stmt_ids: Vec<_> = (&mut cursor).collect::<Result<Vec<_>, _>>().expect("parse failed");
+        let stmt_ids: Vec<_> = (&mut cursor)
+            .collect::<Result<Vec<_>, _>>()
+            .expect("parse failed");
         let ctx = crate::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids);
         let diags: Vec<_> = stmt_ids
             .iter()
@@ -486,7 +457,6 @@ mod tests {
                 validate_statement(
                     cursor.reader(),
                     id,
-                    *dialect,
                     Some(&ctx),
                     None,
                     &[],
@@ -531,9 +501,7 @@ mod tests {
         );
         let old_new_diags: Vec<_> = diags
             .iter()
-            .filter(|d| {
-                d.message.contains("OLD") || d.message.contains("NEW")
-            })
+            .filter(|d| d.message.contains("OLD") || d.message.contains("NEW"))
             .collect();
         assert!(
             old_new_diags.is_empty(),

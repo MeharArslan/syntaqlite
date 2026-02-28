@@ -114,6 +114,9 @@ mod codegen_api {
         pub tokens_rs: String,
         pub ffi_rs: String,
         pub ast_rs: String,
+        /// Shared AST trait definitions. Only generated for the internal syntaqlite
+        /// crate; external dialect crates import from `syntaqlite::ast_traits`.
+        pub ast_traits_rs: Option<String>,
         pub lib_rs: String,
         pub wrappers_rs: String,
         pub build_rs: String,
@@ -405,8 +408,14 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
                     &ast_model,
                     crate_prefix,
                     ffi_path,
+                    request.dialect.name(),
                     request.open_for_extension,
                 ),
+                ast_traits_rs: if is_internal {
+                    Some(dialect_codegen::generate_ast_traits(&ast_model))
+                } else {
+                    None
+                },
                 lib_rs: dialect_codegen::generate_rust_lib(
                     &request.dialect.dialect_symbol_fn_name(),
                 ),

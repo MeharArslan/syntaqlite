@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}syntaqlite docs{% endblock title %}
+
+{% block content %}
+<div class="home">
+  <h1>syntaqlite</h1>
+  <p class="tagline">Fast, accurate SQLite SQL parser, formatter, and language tools.</p>
+
+  <div class="quadrants">
+    <a href="{{ get_url(path='tutorials') }}" class="quadrant">
+      <h2>Tutorials</h2>
+      <p>Start here. Learn syntaqlite by doing.</p>
+    </a>
+    <a href="{{ get_url(path='how-to') }}" class="quadrant">
+      <h2>How-to guides</h2>
+      <p>Step-by-step guides for specific tasks.</p>
+    </a>
+    <a href="{{ get_url(path='reference') }}" class="quadrant">
+      <h2>Reference</h2>
+      <p>API and configuration reference.</p>
+    </a>
+    <a href="{{ get_url(path='explanation') }}" class="quadrant">
+      <h2>Explanation</h2>
+      <p>Background, concepts, and design decisions.</p>
+    </a>
+  </div>
+</div>
+{% endblock content %}

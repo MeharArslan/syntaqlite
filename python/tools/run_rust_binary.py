@@ -52,7 +52,7 @@ def run_rust_binary(binary_name, args=None, cwd=None):
 
     if not os.path.exists(exe_path):
         print("Rust binary not found: %s" % exe_path)
-        print("Run tools/dev/install-build-deps to install the Rust toolchain.")
+        print("Run tools/install-build-deps to install the Rust toolchain.")
         return 1
 
     # Set up environment for Rust toolchain

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ config.title }}{% endblock title %}</title>
+  <link rel="stylesheet" href="{{ get_url(path='style.css') }}">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="{{ config.base_url }}" class="site-title">syntaqlite</a>
+      <ul>
+        <li><a href="{{ get_url(path='tutorials') }}">Tutorials</a></li>
+        <li><a href="{{ get_url(path='how-to') }}">How-to</a></li>
+        <li><a href="{{ get_url(path='reference') }}">Reference</a></li>
+        <li><a href="{{ get_url(path='explanation') }}">Explanation</a></li>
+      </ul>
+      <a href="https://syntaqlite.com" class="playground-link">Playground →</a>
+    </nav>
+  </header>
+
+  <div class="layout">
+    {% block sidebar %}{% endblock sidebar %}
+    <main>
+      {% block content %}{% endblock content %}
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+# Copyright 2025 The syntaqlite Authors. All rights reserved.
+# Licensed under the Apache License, Version 2.0.
+
+"""Dev server for web-playground.
+
+Does everything: builds WASM, installs npm deps, starts Vite, watches for
+C/grammar/Rust changes and rebuilds automatically.
+"""
+
+import os
+import subprocess
+import sys
+import threading
+import time
+
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+WATCH_EXTS = {".c", ".h", ".synq", ".y", ".rs"}
+
+
+def scan_mtimes(directories, extensions):
+    """Return dict of {filepath: mtime} for files matching extensions."""
+    mtimes = {}
+    for directory in directories:
+        if not os.path.isdir(directory):
+            continue
+        for dirpath, _dirnames, filenames in os.walk(directory):
+            for fname in filenames:
+                if os.path.splitext(fname)[1] in extensions:
+                    full = os.path.join(dirpath, fname)
+                    try:
+                        mtimes[full] = os.path.getmtime(full)
+                    except OSError:
+                        pass
+    return mtimes
+
+
+def watch_and_rebuild(root, build_script, interval=1.0):
+    """Watch C, grammar, and Rust sources; rebuild WASM on change."""
+    watch_dirs = [
+        os.path.join(root, "syntaqlite", "csrc"),
+        os.path.join(root, "syntaqlite", "include"),
+        os.path.join(root, "syntaqlite", "parser-nodes"),
+        os.path.join(root, "syntaqlite", "include"),
+        os.path.join(root, "syntaqlite", "src"),
+        os.path.join(root, "syntaqlite-wasm", "src"),
+        os.path.join(root, "dialects"),
+    ]
+    prev = scan_mtimes(watch_dirs, WATCH_EXTS)
+
+    while True:
+        time.sleep(interval)
+        curr = scan_mtimes(watch_dirs, WATCH_EXTS)
+        if curr != prev:
+            changed = [f for f in curr if curr[f] != prev.get(f)]
+            for f in changed:
+                rel = os.path.relpath(f, root)
+                print(f"\033[33m[rebuild]\033[0m {rel} changed")
+            print("\033[33m[rebuild]\033[0m rebuilding WASM...")
+            rc = subprocess.call([build_script], cwd=root)
+            if rc == 0:
+                print("\033[32m[rebuild]\033[0m done — browser will reload")
+            else:
+                print("\033[31m[rebuild]\033[0m build failed (exit %d)" % rc)
+            prev = scan_mtimes(watch_dirs, WATCH_EXTS)
+
+
+def main() -> int:
+    web_dir = os.path.join(ROOT, "web", "playground")
+    build_script = os.path.join(ROOT, "tools", "build-web-playground")
+
+    # 1. Build WASM
+    print("\033[1m[dev]\033[0m building WASM...")
+    rc = subprocess.call([build_script], cwd=ROOT)
+    if rc != 0:
+        return rc
+
+    # 2. Install npm deps if needed
+    if not os.path.isdir(os.path.join(web_dir, "node_modules")):
+        print("\033[1m[dev]\033[0m installing npm dependencies...")
+        rc = subprocess.call(["npm", "install"], cwd=web_dir)
+        if rc != 0:
+            return rc
+
+    # 3. Watch for source changes and rebuild in background
+    t = threading.Thread(target=watch_and_rebuild, args=(ROOT, build_script), daemon=True)
+    t.start()
+
+    # 4. Start Vite
+    print("\033[1m[dev]\033[0m starting Vite dev server")
+    print("\033[1m[dev]\033[0m watching C/grammar/Rust sources for changes")
+    try:
+        return subprocess.call(["npx", "vite"], cwd=web_dir)
+    except KeyboardInterrupt:
+        print("\n\033[1m[dev]\033[0m shutting down")
+        return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

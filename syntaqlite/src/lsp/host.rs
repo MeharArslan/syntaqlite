@@ -97,12 +97,13 @@ impl<'d> AnalysisHost<'d> {
         self.context.as_ref()
     }
 
-    /// Run semantic validation on a document.
+    /// Run semantic validation on a document, generic over the dialect's AST types.
     ///
     /// Parses the document, walks each statement through
-    /// `validate_statement`, and returns diagnostics for unresolved
-    /// table names, column references, and function calls.
-    pub fn validate(
+    /// [`validate_statement_dialect`](crate::validation::validate_statement_dialect),
+    /// and returns diagnostics for unresolved table names, column references,
+    /// and function calls.
+    pub fn validate_dialect<A: for<'a> crate::ast_traits::AstTypes<'a>>(
         &self,
         uri: &str,
         config: &crate::validation::ValidationConfig,
@@ -127,7 +128,7 @@ impl<'d> AnalysisHost<'d> {
 
         for &stmt_id in &stmt_ids {
             // Validate BEFORE accumulating — statement cannot see its own definitions.
-            let stmt_diags = crate::validation::validate_statement(
+            let stmt_diags = crate::validation::validate_statement_dialect::<A>(
                 reader,
                 stmt_id,
                 self.dialect,
@@ -144,6 +145,18 @@ impl<'d> AnalysisHost<'d> {
         }
 
         diagnostics
+    }
+
+    /// Run semantic validation using the built-in SQLite dialect.
+    ///
+    /// Convenience wrapper around [`validate_dialect`](Self::validate_dialect).
+    #[cfg(feature = "sqlite")]
+    pub fn validate(
+        &self,
+        uri: &str,
+        config: &crate::validation::ValidationConfig,
+    ) -> Vec<Diagnostic> {
+        self.validate_dialect::<crate::sqlite::ast::SqliteAst>(uri, config)
     }
 
     /// Set the dialect configuration for filtering built-in functions.
@@ -602,8 +615,8 @@ impl std::error::Error for FormatError {}
 mod tests {
     use super::AnalysisHost;
     use crate::lsp::FunctionDef;
-    use crate::validation::SessionContext;
     use crate::sqlite::low_level::TokenType;
+    use crate::validation::SessionContext;
 
     #[test]
     fn completions_fall_back_to_last_good_state_on_parse_error() {

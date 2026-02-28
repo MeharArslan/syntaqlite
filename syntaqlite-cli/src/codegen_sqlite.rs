@@ -177,6 +177,8 @@ fn handle_codegen(
 
     use syntaqlite_buildtools::sqlite::output_manifest::OutputBucket;
 
+    let rust_src_dir = crate_root.join("src");
+
     log_verbose(verbose, "Writing output files...");
     for output in outputs {
         let dir: &Path = match output.bucket {
@@ -184,6 +186,8 @@ fn handle_codegen(
             OutputBucket::DialectCsrc => out,
             // Generated dialect modules go into src/sqlite/ for the internal crate.
             OutputBucket::RustDialectSrc | OutputBucket::RustSqliteSrc => &rust_sqlite_dir,
+            // Shared crate-level Rust modules (e.g. ast_traits.rs) go into src/.
+            OutputBucket::RustCrateSrc => &rust_src_dir,
             // Scaffolding files (lib.rs, wrappers.rs) and crate-root files
             // (build.rs, Cargo.toml) are hand-maintained for the internal crate.
             // These are only used when generating external dialect crates.

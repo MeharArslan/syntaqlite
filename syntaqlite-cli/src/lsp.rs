@@ -195,8 +195,8 @@ fn completion_items_for_expected(
     }
 
     if expects_identifier {
-        if let Some(ctx) = host.ambient_context() {
-            for table in &ctx.tables {
+        if let Some(ctx) = host.session_context() {
+            for table in ctx.tables() {
                 if seen.insert(table.name.clone()) {
                     out.push(CompletionItem {
                         label: table.name.clone(),
@@ -216,7 +216,7 @@ fn completion_items_for_expected(
                     }
                 }
             }
-            for view in &ctx.views {
+            for view in ctx.views() {
                 if seen.insert(view.name.clone()) {
                     out.push(CompletionItem {
                         label: view.name.clone(),

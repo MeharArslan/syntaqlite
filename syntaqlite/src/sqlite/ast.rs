@@ -8,1071 +8,7 @@ pub use crate::parser::{
     Comment, CommentKind, FromArena, NodeId, NodeReader, SourceSpan, TypedList,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum LiteralType {
-    Integer = 0,
-    Float = 1,
-    String = 2,
-    Blob = 3,
-    Null = 4,
-    Current = 5,
-    Qnumber = 6,
-}
-
-impl LiteralType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<LiteralType> {
-        match raw {
-            0 => Some(LiteralType::Integer),
-            1 => Some(LiteralType::Float),
-            2 => Some(LiteralType::String),
-            3 => Some(LiteralType::Blob),
-            4 => Some(LiteralType::Null),
-            5 => Some(LiteralType::Current),
-            6 => Some(LiteralType::Qnumber),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            LiteralType::Integer => "INTEGER",
-            LiteralType::Float => "FLOAT",
-            LiteralType::String => "STRING",
-            LiteralType::Blob => "BLOB",
-            LiteralType::Null => "NULL",
-            LiteralType::Current => "CURRENT",
-            LiteralType::Qnumber => "QNUMBER",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum BinaryOp {
-    Plus = 0,
-    Minus = 1,
-    Star = 2,
-    Slash = 3,
-    Rem = 4,
-    Lt = 5,
-    Gt = 6,
-    Le = 7,
-    Ge = 8,
-    Eq = 9,
-    Ne = 10,
-    And = 11,
-    Or = 12,
-    Bitand = 13,
-    Bitor = 14,
-    Lshift = 15,
-    Rshift = 16,
-    Concat = 17,
-    Ptr = 18,
-}
-
-impl BinaryOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<BinaryOp> {
-        match raw {
-            0 => Some(BinaryOp::Plus),
-            1 => Some(BinaryOp::Minus),
-            2 => Some(BinaryOp::Star),
-            3 => Some(BinaryOp::Slash),
-            4 => Some(BinaryOp::Rem),
-            5 => Some(BinaryOp::Lt),
-            6 => Some(BinaryOp::Gt),
-            7 => Some(BinaryOp::Le),
-            8 => Some(BinaryOp::Ge),
-            9 => Some(BinaryOp::Eq),
-            10 => Some(BinaryOp::Ne),
-            11 => Some(BinaryOp::And),
-            12 => Some(BinaryOp::Or),
-            13 => Some(BinaryOp::Bitand),
-            14 => Some(BinaryOp::Bitor),
-            15 => Some(BinaryOp::Lshift),
-            16 => Some(BinaryOp::Rshift),
-            17 => Some(BinaryOp::Concat),
-            18 => Some(BinaryOp::Ptr),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            BinaryOp::Plus => "PLUS",
-            BinaryOp::Minus => "MINUS",
-            BinaryOp::Star => "STAR",
-            BinaryOp::Slash => "SLASH",
-            BinaryOp::Rem => "REM",
-            BinaryOp::Lt => "LT",
-            BinaryOp::Gt => "GT",
-            BinaryOp::Le => "LE",
-            BinaryOp::Ge => "GE",
-            BinaryOp::Eq => "EQ",
-            BinaryOp::Ne => "NE",
-            BinaryOp::And => "AND",
-            BinaryOp::Or => "OR",
-            BinaryOp::Bitand => "BITAND",
-            BinaryOp::Bitor => "BITOR",
-            BinaryOp::Lshift => "LSHIFT",
-            BinaryOp::Rshift => "RSHIFT",
-            BinaryOp::Concat => "CONCAT",
-            BinaryOp::Ptr => "PTR",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum UnaryOp {
-    Minus = 0,
-    Plus = 1,
-    Bitnot = 2,
-    Not = 3,
-}
-
-impl UnaryOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<UnaryOp> {
-        match raw {
-            0 => Some(UnaryOp::Minus),
-            1 => Some(UnaryOp::Plus),
-            2 => Some(UnaryOp::Bitnot),
-            3 => Some(UnaryOp::Not),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            UnaryOp::Minus => "MINUS",
-            UnaryOp::Plus => "PLUS",
-            UnaryOp::Bitnot => "BITNOT",
-            UnaryOp::Not => "NOT",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum CompoundOp {
-    Union = 0,
-    UnionAll = 1,
-    Intersect = 2,
-    Except = 3,
-}
-
-impl CompoundOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<CompoundOp> {
-        match raw {
-            0 => Some(CompoundOp::Union),
-            1 => Some(CompoundOp::UnionAll),
-            2 => Some(CompoundOp::Intersect),
-            3 => Some(CompoundOp::Except),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            CompoundOp::Union => "UNION",
-            CompoundOp::UnionAll => "UNION_ALL",
-            CompoundOp::Intersect => "INTERSECT",
-            CompoundOp::Except => "EXCEPT",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum IsOp {
-    Is = 0,
-    IsNot = 1,
-    Isnull = 2,
-    Notnull = 3,
-    IsNotDistinct = 4,
-    IsDistinct = 5,
-}
-
-impl IsOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<IsOp> {
-        match raw {
-            0 => Some(IsOp::Is),
-            1 => Some(IsOp::IsNot),
-            2 => Some(IsOp::Isnull),
-            3 => Some(IsOp::Notnull),
-            4 => Some(IsOp::IsNotDistinct),
-            5 => Some(IsOp::IsDistinct),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            IsOp::Is => "IS",
-            IsOp::IsNot => "IS_NOT",
-            IsOp::Isnull => "ISNULL",
-            IsOp::Notnull => "NOTNULL",
-            IsOp::IsNotDistinct => "IS_NOT_DISTINCT",
-            IsOp::IsDistinct => "IS_DISTINCT",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum ForeignKeyAction {
-    NoAction = 0,
-    SetNull = 1,
-    SetDefault = 2,
-    Cascade = 3,
-    Restrict = 4,
-}
-
-impl ForeignKeyAction {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ForeignKeyAction> {
-        match raw {
-            0 => Some(ForeignKeyAction::NoAction),
-            1 => Some(ForeignKeyAction::SetNull),
-            2 => Some(ForeignKeyAction::SetDefault),
-            3 => Some(ForeignKeyAction::Cascade),
-            4 => Some(ForeignKeyAction::Restrict),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ForeignKeyAction::NoAction => "NO_ACTION",
-            ForeignKeyAction::SetNull => "SET_NULL",
-            ForeignKeyAction::SetDefault => "SET_DEFAULT",
-            ForeignKeyAction::Cascade => "CASCADE",
-            ForeignKeyAction::Restrict => "RESTRICT",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum GeneratedColumnStorage {
-    Virtual = 0,
-    Stored = 1,
-}
-
-impl GeneratedColumnStorage {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<GeneratedColumnStorage> {
-        match raw {
-            0 => Some(GeneratedColumnStorage::Virtual),
-            1 => Some(GeneratedColumnStorage::Stored),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            GeneratedColumnStorage::Virtual => "VIRTUAL",
-            GeneratedColumnStorage::Stored => "STORED",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum ColumnConstraintKind {
-    Default = 0,
-    NotNull = 1,
-    PrimaryKey = 2,
-    Unique = 3,
-    Check = 4,
-    References = 5,
-    Collate = 6,
-    Generated = 7,
-    Null = 8,
-}
-
-impl ColumnConstraintKind {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ColumnConstraintKind> {
-        match raw {
-            0 => Some(ColumnConstraintKind::Default),
-            1 => Some(ColumnConstraintKind::NotNull),
-            2 => Some(ColumnConstraintKind::PrimaryKey),
-            3 => Some(ColumnConstraintKind::Unique),
-            4 => Some(ColumnConstraintKind::Check),
-            5 => Some(ColumnConstraintKind::References),
-            6 => Some(ColumnConstraintKind::Collate),
-            7 => Some(ColumnConstraintKind::Generated),
-            8 => Some(ColumnConstraintKind::Null),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ColumnConstraintKind::Default => "DEFAULT",
-            ColumnConstraintKind::NotNull => "NOT_NULL",
-            ColumnConstraintKind::PrimaryKey => "PRIMARY_KEY",
-            ColumnConstraintKind::Unique => "UNIQUE",
-            ColumnConstraintKind::Check => "CHECK",
-            ColumnConstraintKind::References => "REFERENCES",
-            ColumnConstraintKind::Collate => "COLLATE",
-            ColumnConstraintKind::Generated => "GENERATED",
-            ColumnConstraintKind::Null => "NULL",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TableConstraintKind {
-    PrimaryKey = 0,
-    Unique = 1,
-    Check = 2,
-    ForeignKey = 3,
-}
-
-impl TableConstraintKind {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TableConstraintKind> {
-        match raw {
-            0 => Some(TableConstraintKind::PrimaryKey),
-            1 => Some(TableConstraintKind::Unique),
-            2 => Some(TableConstraintKind::Check),
-            3 => Some(TableConstraintKind::ForeignKey),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TableConstraintKind::PrimaryKey => "PRIMARY_KEY",
-            TableConstraintKind::Unique => "UNIQUE",
-            TableConstraintKind::Check => "CHECK",
-            TableConstraintKind::ForeignKey => "FOREIGN_KEY",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum Materialized {
-    Default = 0,
-    Materialized = 1,
-    NotMaterialized = 2,
-}
-
-impl Materialized {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<Materialized> {
-        match raw {
-            0 => Some(Materialized::Default),
-            1 => Some(Materialized::Materialized),
-            2 => Some(Materialized::NotMaterialized),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Materialized::Default => "DEFAULT",
-            Materialized::Materialized => "MATERIALIZED",
-            Materialized::NotMaterialized => "NOT_MATERIALIZED",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum ConflictAction {
-    Default = 0,
-    Rollback = 1,
-    Abort = 2,
-    Fail = 3,
-    Ignore = 4,
-    Replace = 5,
-}
-
-impl ConflictAction {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ConflictAction> {
-        match raw {
-            0 => Some(ConflictAction::Default),
-            1 => Some(ConflictAction::Rollback),
-            2 => Some(ConflictAction::Abort),
-            3 => Some(ConflictAction::Fail),
-            4 => Some(ConflictAction::Ignore),
-            5 => Some(ConflictAction::Replace),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ConflictAction::Default => "DEFAULT",
-            ConflictAction::Rollback => "ROLLBACK",
-            ConflictAction::Abort => "ABORT",
-            ConflictAction::Fail => "FAIL",
-            ConflictAction::Ignore => "IGNORE",
-            ConflictAction::Replace => "REPLACE",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum RaiseType {
-    Ignore = 0,
-    Rollback = 1,
-    Abort = 2,
-    Fail = 3,
-}
-
-impl RaiseType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<RaiseType> {
-        match raw {
-            0 => Some(RaiseType::Ignore),
-            1 => Some(RaiseType::Rollback),
-            2 => Some(RaiseType::Abort),
-            3 => Some(RaiseType::Fail),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            RaiseType::Ignore => "IGNORE",
-            RaiseType::Rollback => "ROLLBACK",
-            RaiseType::Abort => "ABORT",
-            RaiseType::Fail => "FAIL",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum DropObjectType {
-    Table = 0,
-    Index = 1,
-    View = 2,
-    Trigger = 3,
-}
-
-impl DropObjectType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<DropObjectType> {
-        match raw {
-            0 => Some(DropObjectType::Table),
-            1 => Some(DropObjectType::Index),
-            2 => Some(DropObjectType::View),
-            3 => Some(DropObjectType::Trigger),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            DropObjectType::Table => "TABLE",
-            DropObjectType::Index => "INDEX",
-            DropObjectType::View => "VIEW",
-            DropObjectType::Trigger => "TRIGGER",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum AlterOp {
-    RenameTable = 0,
-    RenameColumn = 1,
-    DropColumn = 2,
-    AddColumn = 3,
-}
-
-impl AlterOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<AlterOp> {
-        match raw {
-            0 => Some(AlterOp::RenameTable),
-            1 => Some(AlterOp::RenameColumn),
-            2 => Some(AlterOp::DropColumn),
-            3 => Some(AlterOp::AddColumn),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            AlterOp::RenameTable => "RENAME_TABLE",
-            AlterOp::RenameColumn => "RENAME_COLUMN",
-            AlterOp::DropColumn => "DROP_COLUMN",
-            AlterOp::AddColumn => "ADD_COLUMN",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TransactionType {
-    Deferred = 0,
-    Immediate = 1,
-    Exclusive = 2,
-}
-
-impl TransactionType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TransactionType> {
-        match raw {
-            0 => Some(TransactionType::Deferred),
-            1 => Some(TransactionType::Immediate),
-            2 => Some(TransactionType::Exclusive),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TransactionType::Deferred => "DEFERRED",
-            TransactionType::Immediate => "IMMEDIATE",
-            TransactionType::Exclusive => "EXCLUSIVE",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TransactionOp {
-    Begin = 0,
-    Commit = 1,
-    Rollback = 2,
-}
-
-impl TransactionOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TransactionOp> {
-        match raw {
-            0 => Some(TransactionOp::Begin),
-            1 => Some(TransactionOp::Commit),
-            2 => Some(TransactionOp::Rollback),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TransactionOp::Begin => "BEGIN",
-            TransactionOp::Commit => "COMMIT",
-            TransactionOp::Rollback => "ROLLBACK",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum SavepointOp {
-    Savepoint = 0,
-    Release = 1,
-    RollbackTo = 2,
-}
-
-impl SavepointOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<SavepointOp> {
-        match raw {
-            0 => Some(SavepointOp::Savepoint),
-            1 => Some(SavepointOp::Release),
-            2 => Some(SavepointOp::RollbackTo),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            SavepointOp::Savepoint => "SAVEPOINT",
-            SavepointOp::Release => "RELEASE",
-            SavepointOp::RollbackTo => "ROLLBACK_TO",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum SortOrder {
-    Asc = 0,
-    Desc = 1,
-}
-
-impl SortOrder {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<SortOrder> {
-        match raw {
-            0 => Some(SortOrder::Asc),
-            1 => Some(SortOrder::Desc),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            SortOrder::Asc => "ASC",
-            SortOrder::Desc => "DESC",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum NullsOrder {
-    None = 0,
-    First = 1,
-    Last = 2,
-}
-
-impl NullsOrder {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<NullsOrder> {
-        match raw {
-            0 => Some(NullsOrder::None),
-            1 => Some(NullsOrder::First),
-            2 => Some(NullsOrder::Last),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            NullsOrder::None => "NONE",
-            NullsOrder::First => "FIRST",
-            NullsOrder::Last => "LAST",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum JoinType {
-    Comma = 0,
-    Inner = 1,
-    Left = 2,
-    Right = 3,
-    Full = 4,
-    Cross = 5,
-    NaturalInner = 6,
-    NaturalLeft = 7,
-    NaturalRight = 8,
-    NaturalFull = 9,
-}
-
-impl JoinType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<JoinType> {
-        match raw {
-            0 => Some(JoinType::Comma),
-            1 => Some(JoinType::Inner),
-            2 => Some(JoinType::Left),
-            3 => Some(JoinType::Right),
-            4 => Some(JoinType::Full),
-            5 => Some(JoinType::Cross),
-            6 => Some(JoinType::NaturalInner),
-            7 => Some(JoinType::NaturalLeft),
-            8 => Some(JoinType::NaturalRight),
-            9 => Some(JoinType::NaturalFull),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            JoinType::Comma => "COMMA",
-            JoinType::Inner => "INNER",
-            JoinType::Left => "LEFT",
-            JoinType::Right => "RIGHT",
-            JoinType::Full => "FULL",
-            JoinType::Cross => "CROSS",
-            JoinType::NaturalInner => "NATURAL_INNER",
-            JoinType::NaturalLeft => "NATURAL_LEFT",
-            JoinType::NaturalRight => "NATURAL_RIGHT",
-            JoinType::NaturalFull => "NATURAL_FULL",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TriggerTiming {
-    Before = 0,
-    After = 1,
-    InsteadOf = 2,
-}
-
-impl TriggerTiming {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TriggerTiming> {
-        match raw {
-            0 => Some(TriggerTiming::Before),
-            1 => Some(TriggerTiming::After),
-            2 => Some(TriggerTiming::InsteadOf),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TriggerTiming::Before => "BEFORE",
-            TriggerTiming::After => "AFTER",
-            TriggerTiming::InsteadOf => "INSTEAD_OF",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TriggerEventType {
-    Delete = 0,
-    Insert = 1,
-    Update = 2,
-}
-
-impl TriggerEventType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TriggerEventType> {
-        match raw {
-            0 => Some(TriggerEventType::Delete),
-            1 => Some(TriggerEventType::Insert),
-            2 => Some(TriggerEventType::Update),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TriggerEventType::Delete => "DELETE",
-            TriggerEventType::Insert => "INSERT",
-            TriggerEventType::Update => "UPDATE",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum ExplainMode {
-    Explain = 0,
-    QueryPlan = 1,
-}
-
-impl ExplainMode {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ExplainMode> {
-        match raw {
-            0 => Some(ExplainMode::Explain),
-            1 => Some(ExplainMode::QueryPlan),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ExplainMode::Explain => "EXPLAIN",
-            ExplainMode::QueryPlan => "QUERY_PLAN",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum PragmaForm {
-    Bare = 0,
-    Eq = 1,
-    Call = 2,
-}
-
-impl PragmaForm {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<PragmaForm> {
-        match raw {
-            0 => Some(PragmaForm::Bare),
-            1 => Some(PragmaForm::Eq),
-            2 => Some(PragmaForm::Call),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            PragmaForm::Bare => "BARE",
-            PragmaForm::Eq => "EQ",
-            PragmaForm::Call => "CALL",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum AnalyzeKind {
-    Analyze = 0,
-    Reindex = 1,
-}
-
-impl AnalyzeKind {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<AnalyzeKind> {
-        match raw {
-            0 => Some(AnalyzeKind::Analyze),
-            1 => Some(AnalyzeKind::Reindex),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            AnalyzeKind::Analyze => "ANALYZE",
-            AnalyzeKind::Reindex => "REINDEX",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum FrameType {
-    None = 0,
-    Range = 1,
-    Rows = 2,
-    Groups = 3,
-}
-
-impl FrameType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<FrameType> {
-        match raw {
-            0 => Some(FrameType::None),
-            1 => Some(FrameType::Range),
-            2 => Some(FrameType::Rows),
-            3 => Some(FrameType::Groups),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            FrameType::None => "NONE",
-            FrameType::Range => "RANGE",
-            FrameType::Rows => "ROWS",
-            FrameType::Groups => "GROUPS",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum FrameBoundType {
-    UnboundedPreceding = 0,
-    ExprPreceding = 1,
-    CurrentRow = 2,
-    ExprFollowing = 3,
-    UnboundedFollowing = 4,
-}
-
-impl FrameBoundType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<FrameBoundType> {
-        match raw {
-            0 => Some(FrameBoundType::UnboundedPreceding),
-            1 => Some(FrameBoundType::ExprPreceding),
-            2 => Some(FrameBoundType::CurrentRow),
-            3 => Some(FrameBoundType::ExprFollowing),
-            4 => Some(FrameBoundType::UnboundedFollowing),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            FrameBoundType::UnboundedPreceding => "UNBOUNDED_PRECEDING",
-            FrameBoundType::ExprPreceding => "EXPR_PRECEDING",
-            FrameBoundType::CurrentRow => "CURRENT_ROW",
-            FrameBoundType::ExprFollowing => "EXPR_FOLLOWING",
-            FrameBoundType::UnboundedFollowing => "UNBOUNDED_FOLLOWING",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum FrameExclude {
-    None = 0,
-    NoOthers = 1,
-    CurrentRow = 2,
-    Group = 3,
-    Ties = 4,
-}
-
-impl FrameExclude {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<FrameExclude> {
-        match raw {
-            0 => Some(FrameExclude::None),
-            1 => Some(FrameExclude::NoOthers),
-            2 => Some(FrameExclude::CurrentRow),
-            3 => Some(FrameExclude::Group),
-            4 => Some(FrameExclude::Ties),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            FrameExclude::None => "NONE",
-            FrameExclude::NoOthers => "NO_OTHERS",
-            FrameExclude::CurrentRow => "CURRENT_ROW",
-            FrameExclude::Group => "GROUP",
-            FrameExclude::Ties => "TIES",
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct AggregateFunctionCallFlags(pub u8);
-
-impl AggregateFunctionCallFlags {
-    pub fn distinct(&self) -> bool {
-        self.0 & 1 != 0
-    }
-
-    pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
-        let mut s = String::new();
-        if self.distinct() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("DISTINCT");
-        }
-        s
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct CreateTableStmtFlags(pub u8);
-
-impl CreateTableStmtFlags {
-    pub fn without_rowid(&self) -> bool {
-        self.0 & 1 != 0
-    }
-    pub fn strict(&self) -> bool {
-        self.0 & 2 != 0
-    }
-
-    pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
-        let mut s = String::new();
-        if self.without_rowid() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("WITHOUT_ROWID");
-        }
-        if self.strict() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("STRICT");
-        }
-        s
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct FunctionCallFlags(pub u8);
-
-impl FunctionCallFlags {
-    pub fn distinct(&self) -> bool {
-        self.0 & 1 != 0
-    }
-    pub fn star(&self) -> bool {
-        self.0 & 2 != 0
-    }
-
-    pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
-        let mut s = String::new();
-        if self.distinct() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("DISTINCT");
-        }
-        if self.star() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("STAR");
-        }
-        s
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct ResultColumnFlags(pub u8);
-
-impl ResultColumnFlags {
-    pub fn star(&self) -> bool {
-        self.0 & 1 != 0
-    }
-
-    pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
-        let mut s = String::new();
-        if self.star() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("STAR");
-        }
-        s
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct SelectStmtFlags(pub u8);
-
-impl SelectStmtFlags {
-    pub fn distinct(&self) -> bool {
-        self.0 & 1 != 0
-    }
-
-    pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
-        let mut s = String::new();
-        if self.distinct() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("DISTINCT");
-        }
-        s
-    }
-}
+pub use crate::ast_traits::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -1460,6 +396,10 @@ impl std::fmt::Display for AggregateFunctionCall<'_> {
 }
 
 impl<'a> AggregateFunctionCall<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn func_name(&self) -> &'a str {
         self.raw.func_name.as_str(self.reader.source())
     }
@@ -1513,6 +453,10 @@ impl std::fmt::Display for OrderedSetFunctionCall<'_> {
 }
 
 impl<'a> OrderedSetFunctionCall<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn func_name(&self) -> &'a str {
         self.raw.func_name.as_str(self.reader.source())
     }
@@ -1566,6 +510,10 @@ impl std::fmt::Display for CastExpr<'_> {
 }
 
 impl<'a> CastExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn expr(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.expr)
     }
@@ -1607,6 +555,10 @@ impl std::fmt::Display for ColumnRef<'_> {
 }
 
 impl<'a> ColumnRef<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn column(&self) -> &'a str {
         self.raw.column.as_str(self.reader.source())
     }
@@ -1651,6 +603,10 @@ impl std::fmt::Display for CompoundSelect<'_> {
 }
 
 impl<'a> CompoundSelect<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn op(&self) -> CompoundOp {
         self.raw.op
     }
@@ -1695,6 +651,10 @@ impl std::fmt::Display for SubqueryExpr<'_> {
 }
 
 impl<'a> SubqueryExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn select(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.select)
     }
@@ -1733,6 +693,10 @@ impl std::fmt::Display for ExistsExpr<'_> {
 }
 
 impl<'a> ExistsExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn select(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.select)
     }
@@ -1771,6 +735,10 @@ impl std::fmt::Display for InExpr<'_> {
 }
 
 impl<'a> InExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn negated(&self) -> bool {
         self.raw.negated == crate::sqlite::ffi::Bool::True
     }
@@ -1815,6 +783,10 @@ impl std::fmt::Display for IsExpr<'_> {
 }
 
 impl<'a> IsExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn op(&self) -> IsOp {
         self.raw.op
     }
@@ -1859,6 +831,10 @@ impl std::fmt::Display for BetweenExpr<'_> {
 }
 
 impl<'a> BetweenExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn negated(&self) -> bool {
         self.raw.negated == crate::sqlite::ffi::Bool::True
     }
@@ -1906,6 +882,10 @@ impl std::fmt::Display for LikeExpr<'_> {
 }
 
 impl<'a> LikeExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn negated(&self) -> bool {
         self.raw.negated == crate::sqlite::ffi::Bool::True
     }
@@ -1953,6 +933,10 @@ impl std::fmt::Display for CaseExpr<'_> {
 }
 
 impl<'a> CaseExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn operand(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.operand)
     }
@@ -1997,6 +981,10 @@ impl std::fmt::Display for CaseWhen<'_> {
 }
 
 impl<'a> CaseWhen<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn when_expr(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.when_expr)
     }
@@ -2038,6 +1026,10 @@ impl std::fmt::Display for ForeignKeyClause<'_> {
 }
 
 impl<'a> ForeignKeyClause<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn ref_table(&self) -> &'a str {
         self.raw.ref_table.as_str(self.reader.source())
     }
@@ -2088,6 +1080,10 @@ impl std::fmt::Display for ColumnConstraint<'_> {
 }
 
 impl<'a> ColumnConstraint<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn kind(&self) -> ColumnConstraintKind {
         self.raw.kind
     }
@@ -2156,6 +1152,10 @@ impl std::fmt::Display for ColumnDef<'_> {
 }
 
 impl<'a> ColumnDef<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn column_name(&self) -> &'a str {
         self.raw.column_name.as_str(self.reader.source())
     }
@@ -2200,6 +1200,10 @@ impl std::fmt::Display for TableConstraint<'_> {
 }
 
 impl<'a> TableConstraint<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn kind(&self) -> TableConstraintKind {
         self.raw.kind
     }
@@ -2259,6 +1263,10 @@ impl std::fmt::Display for CreateTableStmt<'_> {
 }
 
 impl<'a> CreateTableStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn table_name(&self) -> &'a str {
         self.raw.table_name.as_str(self.reader.source())
     }
@@ -2318,6 +1326,10 @@ impl std::fmt::Display for CteDefinition<'_> {
 }
 
 impl<'a> CteDefinition<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn cte_name(&self) -> &'a str {
         self.raw.cte_name.as_str(self.reader.source())
     }
@@ -2365,6 +1377,10 @@ impl std::fmt::Display for WithClause<'_> {
 }
 
 impl<'a> WithClause<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn recursive(&self) -> bool {
         self.raw.recursive == crate::sqlite::ffi::Bool::True
     }
@@ -2409,6 +1425,10 @@ impl std::fmt::Display for DeleteStmt<'_> {
 }
 
 impl<'a> DeleteStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn table(&self) -> Option<TableRef<'a>> {
         FromArena::from_arena(self.reader, self.raw.table)
     }
@@ -2450,6 +1470,10 @@ impl std::fmt::Display for SetClause<'_> {
 }
 
 impl<'a> SetClause<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn column(&self) -> &'a str {
         self.raw.column.as_str(self.reader.source())
     }
@@ -2494,6 +1518,10 @@ impl std::fmt::Display for UpdateStmt<'_> {
 }
 
 impl<'a> UpdateStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn conflict_action(&self) -> ConflictAction {
         self.raw.conflict_action
     }
@@ -2544,6 +1572,10 @@ impl std::fmt::Display for InsertStmt<'_> {
 }
 
 impl<'a> InsertStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn conflict_action(&self) -> ConflictAction {
         self.raw.conflict_action
     }
@@ -2591,6 +1623,10 @@ impl std::fmt::Display for BinaryExpr<'_> {
 }
 
 impl<'a> BinaryExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn op(&self) -> BinaryOp {
         self.raw.op
     }
@@ -2635,6 +1671,10 @@ impl std::fmt::Display for UnaryExpr<'_> {
 }
 
 impl<'a> UnaryExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn op(&self) -> UnaryOp {
         self.raw.op
     }
@@ -2676,6 +1716,10 @@ impl std::fmt::Display for Literal<'_> {
 }
 
 impl<'a> Literal<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn literal_type(&self) -> LiteralType {
         self.raw.literal_type
     }
@@ -2717,6 +1761,10 @@ impl std::fmt::Display for FunctionCall<'_> {
 }
 
 impl<'a> FunctionCall<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn func_name(&self) -> &'a str {
         self.raw.func_name.as_str(self.reader.source())
     }
@@ -2767,6 +1815,10 @@ impl std::fmt::Display for Variable<'_> {
 }
 
 impl<'a> Variable<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn source(&self) -> &'a str {
         self.raw.source.as_str(self.reader.source())
     }
@@ -2805,6 +1857,10 @@ impl std::fmt::Display for CollateExpr<'_> {
 }
 
 impl<'a> CollateExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn expr(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.expr)
     }
@@ -2846,6 +1902,10 @@ impl std::fmt::Display for RaiseExpr<'_> {
 }
 
 impl<'a> RaiseExpr<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn raise_type(&self) -> RaiseType {
         self.raw.raise_type
     }
@@ -2887,6 +1947,10 @@ impl std::fmt::Display for QualifiedName<'_> {
 }
 
 impl<'a> QualifiedName<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn object_name(&self) -> &'a str {
         self.raw.object_name.as_str(self.reader.source())
     }
@@ -2928,6 +1992,10 @@ impl std::fmt::Display for DropStmt<'_> {
 }
 
 impl<'a> DropStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn object_type(&self) -> DropObjectType {
         self.raw.object_type
     }
@@ -2972,6 +2040,10 @@ impl std::fmt::Display for AlterTableStmt<'_> {
 }
 
 impl<'a> AlterTableStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn op(&self) -> AlterOp {
         self.raw.op
     }
@@ -3020,6 +2092,10 @@ impl std::fmt::Display for TransactionStmt<'_> {
 }
 
 impl<'a> TransactionStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn op(&self) -> TransactionOp {
         self.raw.op
     }
@@ -3061,6 +2137,10 @@ impl std::fmt::Display for SavepointStmt<'_> {
 }
 
 impl<'a> SavepointStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn op(&self) -> SavepointOp {
         self.raw.op
     }
@@ -3102,6 +2182,10 @@ impl std::fmt::Display for ResultColumn<'_> {
 }
 
 impl<'a> ResultColumn<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn flags(&self) -> ResultColumnFlags {
         self.raw.flags
     }
@@ -3146,6 +2230,10 @@ impl std::fmt::Display for SelectStmt<'_> {
 }
 
 impl<'a> SelectStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn flags(&self) -> SelectStmtFlags {
         self.raw.flags
     }
@@ -3208,6 +2296,10 @@ impl std::fmt::Display for OrderingTerm<'_> {
 }
 
 impl<'a> OrderingTerm<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn expr(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.expr)
     }
@@ -3252,6 +2344,10 @@ impl std::fmt::Display for LimitClause<'_> {
 }
 
 impl<'a> LimitClause<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn limit(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.limit)
     }
@@ -3293,6 +2389,10 @@ impl std::fmt::Display for TableRef<'_> {
 }
 
 impl<'a> TableRef<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn table_name(&self) -> &'a str {
         self.raw.table_name.as_str(self.reader.source())
     }
@@ -3337,6 +2437,10 @@ impl std::fmt::Display for SubqueryTableSource<'_> {
 }
 
 impl<'a> SubqueryTableSource<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn select(&self) -> Option<Select<'a>> {
         FromArena::from_arena(self.reader, self.raw.select)
     }
@@ -3378,6 +2482,10 @@ impl std::fmt::Display for JoinClause<'_> {
 }
 
 impl<'a> JoinClause<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn join_type(&self) -> JoinType {
         self.raw.join_type
     }
@@ -3428,6 +2536,10 @@ impl std::fmt::Display for JoinPrefix<'_> {
 }
 
 impl<'a> JoinPrefix<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn source(&self) -> Option<TableSource<'a>> {
         FromArena::from_arena(self.reader, self.raw.source)
     }
@@ -3469,6 +2581,10 @@ impl std::fmt::Display for TriggerEvent<'_> {
 }
 
 impl<'a> TriggerEvent<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn event_type(&self) -> TriggerEventType {
         self.raw.event_type
     }
@@ -3510,6 +2626,10 @@ impl std::fmt::Display for CreateTriggerStmt<'_> {
 }
 
 impl<'a> CreateTriggerStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn trigger_name(&self) -> &'a str {
         self.raw.trigger_name.as_str(self.reader.source())
     }
@@ -3572,6 +2692,10 @@ impl std::fmt::Display for CreateVirtualTableStmt<'_> {
 }
 
 impl<'a> CreateVirtualTableStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn table_name(&self) -> &'a str {
         self.raw.table_name.as_str(self.reader.source())
     }
@@ -3622,6 +2746,10 @@ impl std::fmt::Display for PragmaStmt<'_> {
 }
 
 impl<'a> PragmaStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn pragma_name(&self) -> &'a str {
         self.raw.pragma_name.as_str(self.reader.source())
     }
@@ -3669,6 +2797,10 @@ impl std::fmt::Display for AnalyzeStmt<'_> {
 }
 
 impl<'a> AnalyzeStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn target_name(&self) -> &'a str {
         self.raw.target_name.as_str(self.reader.source())
     }
@@ -3713,6 +2845,10 @@ impl std::fmt::Display for AttachStmt<'_> {
 }
 
 impl<'a> AttachStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn filename(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.filename)
     }
@@ -3757,6 +2893,10 @@ impl std::fmt::Display for DetachStmt<'_> {
 }
 
 impl<'a> DetachStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn db_name(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.db_name)
     }
@@ -3795,6 +2935,10 @@ impl std::fmt::Display for VacuumStmt<'_> {
 }
 
 impl<'a> VacuumStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn schema(&self) -> &'a str {
         self.raw.schema.as_str(self.reader.source())
     }
@@ -3836,6 +2980,10 @@ impl std::fmt::Display for ExplainStmt<'_> {
 }
 
 impl<'a> ExplainStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn explain_mode(&self) -> ExplainMode {
         self.raw.explain_mode
     }
@@ -3877,6 +3025,10 @@ impl std::fmt::Display for CreateIndexStmt<'_> {
 }
 
 impl<'a> CreateIndexStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn index_name(&self) -> &'a str {
         self.raw.index_name.as_str(self.reader.source())
     }
@@ -3933,6 +3085,10 @@ impl std::fmt::Display for CreateViewStmt<'_> {
 }
 
 impl<'a> CreateViewStmt<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn view_name(&self) -> &'a str {
         self.raw.view_name.as_str(self.reader.source())
     }
@@ -3986,6 +3142,10 @@ impl std::fmt::Display for ValuesClause<'_> {
 }
 
 impl<'a> ValuesClause<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn rows(&self) -> Option<ValuesRowList<'a>> {
         FromArena::from_arena(self.reader, self.raw.rows)
     }
@@ -4024,6 +3184,10 @@ impl std::fmt::Display for FrameBound<'_> {
 }
 
 impl<'a> FrameBound<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn bound_type(&self) -> FrameBoundType {
         self.raw.bound_type
     }
@@ -4065,6 +3229,10 @@ impl std::fmt::Display for FrameSpec<'_> {
 }
 
 impl<'a> FrameSpec<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn frame_type(&self) -> FrameType {
         self.raw.frame_type
     }
@@ -4112,6 +3280,10 @@ impl std::fmt::Display for WindowDef<'_> {
 }
 
 impl<'a> WindowDef<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn base_window_name(&self) -> &'a str {
         self.raw.base_window_name.as_str(self.reader.source())
     }
@@ -4159,6 +3331,10 @@ impl std::fmt::Display for NamedWindowDef<'_> {
 }
 
 impl<'a> NamedWindowDef<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn window_name(&self) -> &'a str {
         self.raw.window_name.as_str(self.reader.source())
     }
@@ -4200,6 +3376,10 @@ impl std::fmt::Display for FilterOver<'_> {
 }
 
 impl<'a> FilterOver<'a> {
+    /// The arena node ID of this node.
+    pub fn node_id(&self) -> NodeId {
+        self.id
+    }
     pub fn filter_expr(&self) -> Option<Expr<'a>> {
         FromArena::from_arena(self.reader, self.raw.filter_expr)
     }
@@ -4889,5 +4069,1337 @@ impl std::fmt::Display for Node<'_> {
 impl<'a> FromArena<'a> for Node<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
         Node::resolve(reader, id)
+    }
+}
+
+/// Marker type for the sqlite dialect's AST. Implements `AstTypes`.
+pub enum SqliteAst {}
+
+impl<'a> crate::ast_traits::AstTypes<'a> for SqliteAst {
+    type Node = Node<'a>;
+    type Select = Select<'a>;
+    type InExprSource = InExprSource<'a>;
+    type Expr = Expr<'a>;
+    type Stmt = Stmt<'a>;
+    type TableSource = TableSource<'a>;
+    type AggregateFunctionCall = AggregateFunctionCall<'a>;
+    type OrderedSetFunctionCall = OrderedSetFunctionCall<'a>;
+    type CastExpr = CastExpr<'a>;
+    type ColumnRef = ColumnRef<'a>;
+    type CompoundSelect = CompoundSelect<'a>;
+    type SubqueryExpr = SubqueryExpr<'a>;
+    type ExistsExpr = ExistsExpr<'a>;
+    type InExpr = InExpr<'a>;
+    type IsExpr = IsExpr<'a>;
+    type BetweenExpr = BetweenExpr<'a>;
+    type LikeExpr = LikeExpr<'a>;
+    type CaseExpr = CaseExpr<'a>;
+    type CaseWhen = CaseWhen<'a>;
+    type ForeignKeyClause = ForeignKeyClause<'a>;
+    type ColumnConstraint = ColumnConstraint<'a>;
+    type ColumnDef = ColumnDef<'a>;
+    type TableConstraint = TableConstraint<'a>;
+    type CreateTableStmt = CreateTableStmt<'a>;
+    type CteDefinition = CteDefinition<'a>;
+    type WithClause = WithClause<'a>;
+    type DeleteStmt = DeleteStmt<'a>;
+    type SetClause = SetClause<'a>;
+    type UpdateStmt = UpdateStmt<'a>;
+    type InsertStmt = InsertStmt<'a>;
+    type BinaryExpr = BinaryExpr<'a>;
+    type UnaryExpr = UnaryExpr<'a>;
+    type Literal = Literal<'a>;
+    type FunctionCall = FunctionCall<'a>;
+    type Variable = Variable<'a>;
+    type CollateExpr = CollateExpr<'a>;
+    type RaiseExpr = RaiseExpr<'a>;
+    type QualifiedName = QualifiedName<'a>;
+    type DropStmt = DropStmt<'a>;
+    type AlterTableStmt = AlterTableStmt<'a>;
+    type TransactionStmt = TransactionStmt<'a>;
+    type SavepointStmt = SavepointStmt<'a>;
+    type ResultColumn = ResultColumn<'a>;
+    type SelectStmt = SelectStmt<'a>;
+    type OrderingTerm = OrderingTerm<'a>;
+    type LimitClause = LimitClause<'a>;
+    type TableRef = TableRef<'a>;
+    type SubqueryTableSource = SubqueryTableSource<'a>;
+    type JoinClause = JoinClause<'a>;
+    type JoinPrefix = JoinPrefix<'a>;
+    type TriggerEvent = TriggerEvent<'a>;
+    type CreateTriggerStmt = CreateTriggerStmt<'a>;
+    type CreateVirtualTableStmt = CreateVirtualTableStmt<'a>;
+    type PragmaStmt = PragmaStmt<'a>;
+    type AnalyzeStmt = AnalyzeStmt<'a>;
+    type AttachStmt = AttachStmt<'a>;
+    type DetachStmt = DetachStmt<'a>;
+    type VacuumStmt = VacuumStmt<'a>;
+    type ExplainStmt = ExplainStmt<'a>;
+    type CreateIndexStmt = CreateIndexStmt<'a>;
+    type CreateViewStmt = CreateViewStmt<'a>;
+    type ValuesClause = ValuesClause<'a>;
+    type FrameBound = FrameBound<'a>;
+    type FrameSpec = FrameSpec<'a>;
+    type WindowDef = WindowDef<'a>;
+    type NamedWindowDef = NamedWindowDef<'a>;
+    type FilterOver = FilterOver<'a>;
+}
+
+impl<'a> crate::ast_traits::NodeLike<'a> for Node<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        match self {
+            Node::AggregateFunctionCall(n) => n.node_id(),
+            Node::OrderedSetFunctionCall(n) => n.node_id(),
+            Node::CastExpr(n) => n.node_id(),
+            Node::ColumnRef(n) => n.node_id(),
+            Node::CompoundSelect(n) => n.node_id(),
+            Node::SubqueryExpr(n) => n.node_id(),
+            Node::ExistsExpr(n) => n.node_id(),
+            Node::InExpr(n) => n.node_id(),
+            Node::IsExpr(n) => n.node_id(),
+            Node::BetweenExpr(n) => n.node_id(),
+            Node::LikeExpr(n) => n.node_id(),
+            Node::CaseExpr(n) => n.node_id(),
+            Node::CaseWhen(n) => n.node_id(),
+            Node::CaseWhenList(_) => NodeId::NULL,
+            Node::ForeignKeyClause(n) => n.node_id(),
+            Node::ColumnConstraint(n) => n.node_id(),
+            Node::ColumnConstraintList(_) => NodeId::NULL,
+            Node::ColumnDef(n) => n.node_id(),
+            Node::ColumnDefList(_) => NodeId::NULL,
+            Node::TableConstraint(n) => n.node_id(),
+            Node::TableConstraintList(_) => NodeId::NULL,
+            Node::CreateTableStmt(n) => n.node_id(),
+            Node::CteDefinition(n) => n.node_id(),
+            Node::CteList(_) => NodeId::NULL,
+            Node::WithClause(n) => n.node_id(),
+            Node::DeleteStmt(n) => n.node_id(),
+            Node::SetClause(n) => n.node_id(),
+            Node::SetClauseList(_) => NodeId::NULL,
+            Node::UpdateStmt(n) => n.node_id(),
+            Node::InsertStmt(n) => n.node_id(),
+            Node::BinaryExpr(n) => n.node_id(),
+            Node::UnaryExpr(n) => n.node_id(),
+            Node::Literal(n) => n.node_id(),
+            Node::ExprList(_) => NodeId::NULL,
+            Node::FunctionCall(n) => n.node_id(),
+            Node::Variable(n) => n.node_id(),
+            Node::CollateExpr(n) => n.node_id(),
+            Node::RaiseExpr(n) => n.node_id(),
+            Node::QualifiedName(n) => n.node_id(),
+            Node::DropStmt(n) => n.node_id(),
+            Node::AlterTableStmt(n) => n.node_id(),
+            Node::TransactionStmt(n) => n.node_id(),
+            Node::SavepointStmt(n) => n.node_id(),
+            Node::ResultColumn(n) => n.node_id(),
+            Node::ResultColumnList(_) => NodeId::NULL,
+            Node::SelectStmt(n) => n.node_id(),
+            Node::OrderingTerm(n) => n.node_id(),
+            Node::OrderByList(_) => NodeId::NULL,
+            Node::LimitClause(n) => n.node_id(),
+            Node::TableRef(n) => n.node_id(),
+            Node::SubqueryTableSource(n) => n.node_id(),
+            Node::JoinClause(n) => n.node_id(),
+            Node::JoinPrefix(n) => n.node_id(),
+            Node::TriggerEvent(n) => n.node_id(),
+            Node::TriggerCmdList(_) => NodeId::NULL,
+            Node::CreateTriggerStmt(n) => n.node_id(),
+            Node::CreateVirtualTableStmt(n) => n.node_id(),
+            Node::PragmaStmt(n) => n.node_id(),
+            Node::AnalyzeStmt(n) => n.node_id(),
+            Node::AttachStmt(n) => n.node_id(),
+            Node::DetachStmt(n) => n.node_id(),
+            Node::VacuumStmt(n) => n.node_id(),
+            Node::ExplainStmt(n) => n.node_id(),
+            Node::CreateIndexStmt(n) => n.node_id(),
+            Node::CreateViewStmt(n) => n.node_id(),
+            Node::ValuesRowList(_) => NodeId::NULL,
+            Node::ValuesClause(n) => n.node_id(),
+            Node::FrameBound(n) => n.node_id(),
+            Node::FrameSpec(n) => n.node_id(),
+            Node::WindowDef(n) => n.node_id(),
+            Node::WindowDefList(_) => NodeId::NULL,
+            Node::NamedWindowDef(n) => n.node_id(),
+            Node::NamedWindowDefList(_) => NodeId::NULL,
+            Node::FilterOver(n) => n.node_id(),
+            Node::Other { id, .. } => *id,
+        }
+    }
+}
+
+impl<'a> crate::ast_traits::SelectLike<'a> for Select<'a> {
+    type Ast = SqliteAst;
+    fn kind(&self) -> crate::ast_traits::SelectKind<'a, SqliteAst> {
+        match *self {
+            Select::SelectStmt(n) => crate::ast_traits::SelectKind::SelectStmt(n),
+            Select::CompoundSelect(n) => crate::ast_traits::SelectKind::CompoundSelect(n),
+            Select::WithClause(n) => crate::ast_traits::SelectKind::WithClause(n),
+            Select::ValuesClause(n) => crate::ast_traits::SelectKind::ValuesClause(n),
+            Select::Other(n) => crate::ast_traits::SelectKind::Other(n),
+        }
+    }
+}
+
+impl<'a> crate::ast_traits::InExprSourceLike<'a> for InExprSource<'a> {
+    type Ast = SqliteAst;
+    fn kind(&self) -> crate::ast_traits::InExprSourceKind<'a, SqliteAst> {
+        match *self {
+            InExprSource::ExprList(n) => crate::ast_traits::InExprSourceKind::ExprList(n),
+            InExprSource::SubqueryExpr(n) => crate::ast_traits::InExprSourceKind::SubqueryExpr(n),
+            InExprSource::Other(n) => crate::ast_traits::InExprSourceKind::Other(n),
+        }
+    }
+}
+
+impl<'a> crate::ast_traits::ExprLike<'a> for Expr<'a> {
+    type Ast = SqliteAst;
+    fn kind(&self) -> crate::ast_traits::ExprKind<'a, SqliteAst> {
+        match *self {
+            Expr::BinaryExpr(n) => crate::ast_traits::ExprKind::BinaryExpr(n),
+            Expr::UnaryExpr(n) => crate::ast_traits::ExprKind::UnaryExpr(n),
+            Expr::Literal(n) => crate::ast_traits::ExprKind::Literal(n),
+            Expr::ColumnRef(n) => crate::ast_traits::ExprKind::ColumnRef(n),
+            Expr::Variable(n) => crate::ast_traits::ExprKind::Variable(n),
+            Expr::FunctionCall(n) => crate::ast_traits::ExprKind::FunctionCall(n),
+            Expr::AggregateFunctionCall(n) => crate::ast_traits::ExprKind::AggregateFunctionCall(n),
+            Expr::OrderedSetFunctionCall(n) => {
+                crate::ast_traits::ExprKind::OrderedSetFunctionCall(n)
+            }
+            Expr::CastExpr(n) => crate::ast_traits::ExprKind::CastExpr(n),
+            Expr::CollateExpr(n) => crate::ast_traits::ExprKind::CollateExpr(n),
+            Expr::CaseExpr(n) => crate::ast_traits::ExprKind::CaseExpr(n),
+            Expr::IsExpr(n) => crate::ast_traits::ExprKind::IsExpr(n),
+            Expr::BetweenExpr(n) => crate::ast_traits::ExprKind::BetweenExpr(n),
+            Expr::LikeExpr(n) => crate::ast_traits::ExprKind::LikeExpr(n),
+            Expr::InExpr(n) => crate::ast_traits::ExprKind::InExpr(n),
+            Expr::SubqueryExpr(n) => crate::ast_traits::ExprKind::SubqueryExpr(n),
+            Expr::ExistsExpr(n) => crate::ast_traits::ExprKind::ExistsExpr(n),
+            Expr::RaiseExpr(n) => crate::ast_traits::ExprKind::RaiseExpr(n),
+            Expr::Other(n) => crate::ast_traits::ExprKind::Other(n),
+        }
+    }
+}
+
+impl<'a> crate::ast_traits::StmtLike<'a> for Stmt<'a> {
+    type Ast = SqliteAst;
+    fn kind(&self) -> crate::ast_traits::StmtKind<'a, SqliteAst> {
+        match *self {
+            Stmt::SelectStmt(n) => crate::ast_traits::StmtKind::SelectStmt(n),
+            Stmt::CompoundSelect(n) => crate::ast_traits::StmtKind::CompoundSelect(n),
+            Stmt::ValuesClause(n) => crate::ast_traits::StmtKind::ValuesClause(n),
+            Stmt::WithClause(n) => crate::ast_traits::StmtKind::WithClause(n),
+            Stmt::InsertStmt(n) => crate::ast_traits::StmtKind::InsertStmt(n),
+            Stmt::UpdateStmt(n) => crate::ast_traits::StmtKind::UpdateStmt(n),
+            Stmt::DeleteStmt(n) => crate::ast_traits::StmtKind::DeleteStmt(n),
+            Stmt::CreateTableStmt(n) => crate::ast_traits::StmtKind::CreateTableStmt(n),
+            Stmt::CreateIndexStmt(n) => crate::ast_traits::StmtKind::CreateIndexStmt(n),
+            Stmt::CreateViewStmt(n) => crate::ast_traits::StmtKind::CreateViewStmt(n),
+            Stmt::CreateTriggerStmt(n) => crate::ast_traits::StmtKind::CreateTriggerStmt(n),
+            Stmt::CreateVirtualTableStmt(n) => {
+                crate::ast_traits::StmtKind::CreateVirtualTableStmt(n)
+            }
+            Stmt::DropStmt(n) => crate::ast_traits::StmtKind::DropStmt(n),
+            Stmt::AlterTableStmt(n) => crate::ast_traits::StmtKind::AlterTableStmt(n),
+            Stmt::TransactionStmt(n) => crate::ast_traits::StmtKind::TransactionStmt(n),
+            Stmt::SavepointStmt(n) => crate::ast_traits::StmtKind::SavepointStmt(n),
+            Stmt::PragmaStmt(n) => crate::ast_traits::StmtKind::PragmaStmt(n),
+            Stmt::AnalyzeStmt(n) => crate::ast_traits::StmtKind::AnalyzeStmt(n),
+            Stmt::AttachStmt(n) => crate::ast_traits::StmtKind::AttachStmt(n),
+            Stmt::DetachStmt(n) => crate::ast_traits::StmtKind::DetachStmt(n),
+            Stmt::VacuumStmt(n) => crate::ast_traits::StmtKind::VacuumStmt(n),
+            Stmt::ExplainStmt(n) => crate::ast_traits::StmtKind::ExplainStmt(n),
+            Stmt::Other(n) => crate::ast_traits::StmtKind::Other(n),
+        }
+    }
+}
+
+impl<'a> crate::ast_traits::TableSourceLike<'a> for TableSource<'a> {
+    type Ast = SqliteAst;
+    fn kind(&self) -> crate::ast_traits::TableSourceKind<'a, SqliteAst> {
+        match *self {
+            TableSource::TableRef(n) => crate::ast_traits::TableSourceKind::TableRef(n),
+            TableSource::SubqueryTableSource(n) => {
+                crate::ast_traits::TableSourceKind::SubqueryTableSource(n)
+            }
+            TableSource::JoinClause(n) => crate::ast_traits::TableSourceKind::JoinClause(n),
+            TableSource::JoinPrefix(n) => crate::ast_traits::TableSourceKind::JoinPrefix(n),
+            TableSource::Other(n) => crate::ast_traits::TableSourceKind::Other(n),
+        }
+    }
+}
+
+impl<'a> crate::ast_traits::AggregateFunctionCallView<'a> for AggregateFunctionCall<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn func_name(&self) -> &'a str {
+        self.func_name()
+    }
+    fn flags(&self) -> AggregateFunctionCallFlags {
+        self.flags()
+    }
+    fn args(&self) -> Option<ExprList<'a>> {
+        self.args()
+    }
+    fn orderby(&self) -> Option<OrderByList<'a>> {
+        self.orderby()
+    }
+    fn filter_clause(&self) -> Option<Expr<'a>> {
+        self.filter_clause()
+    }
+    fn over_clause(&self) -> Option<WindowDef<'a>> {
+        self.over_clause()
+    }
+}
+
+impl<'a> crate::ast_traits::OrderedSetFunctionCallView<'a> for OrderedSetFunctionCall<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn func_name(&self) -> &'a str {
+        self.func_name()
+    }
+    fn flags(&self) -> AggregateFunctionCallFlags {
+        self.flags()
+    }
+    fn args(&self) -> Option<ExprList<'a>> {
+        self.args()
+    }
+    fn orderby_expr(&self) -> Option<Expr<'a>> {
+        self.orderby_expr()
+    }
+    fn filter_clause(&self) -> Option<Expr<'a>> {
+        self.filter_clause()
+    }
+    fn over_clause(&self) -> Option<WindowDef<'a>> {
+        self.over_clause()
+    }
+}
+
+impl<'a> crate::ast_traits::CastExprView<'a> for CastExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn expr(&self) -> Option<Expr<'a>> {
+        self.expr()
+    }
+    fn type_name(&self) -> &'a str {
+        self.type_name()
+    }
+}
+
+impl<'a> crate::ast_traits::ColumnRefView<'a> for ColumnRef<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn column(&self) -> &'a str {
+        self.column()
+    }
+    fn table(&self) -> &'a str {
+        self.table()
+    }
+    fn schema(&self) -> &'a str {
+        self.schema()
+    }
+}
+
+impl<'a> crate::ast_traits::CompoundSelectView<'a> for CompoundSelect<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn op(&self) -> CompoundOp {
+        self.op()
+    }
+    fn left(&self) -> Option<Select<'a>> {
+        self.left()
+    }
+    fn right(&self) -> Option<Select<'a>> {
+        self.right()
+    }
+}
+
+impl<'a> crate::ast_traits::SubqueryExprView<'a> for SubqueryExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn select(&self) -> Option<Select<'a>> {
+        self.select()
+    }
+}
+
+impl<'a> crate::ast_traits::ExistsExprView<'a> for ExistsExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn select(&self) -> Option<Select<'a>> {
+        self.select()
+    }
+}
+
+impl<'a> crate::ast_traits::InExprView<'a> for InExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn negated(&self) -> bool {
+        self.negated()
+    }
+    fn operand(&self) -> Option<Expr<'a>> {
+        self.operand()
+    }
+    fn source(&self) -> Option<InExprSource<'a>> {
+        self.source()
+    }
+}
+
+impl<'a> crate::ast_traits::IsExprView<'a> for IsExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn op(&self) -> IsOp {
+        self.op()
+    }
+    fn left(&self) -> Option<Expr<'a>> {
+        self.left()
+    }
+    fn right(&self) -> Option<Expr<'a>> {
+        self.right()
+    }
+}
+
+impl<'a> crate::ast_traits::BetweenExprView<'a> for BetweenExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn negated(&self) -> bool {
+        self.negated()
+    }
+    fn operand(&self) -> Option<Expr<'a>> {
+        self.operand()
+    }
+    fn low(&self) -> Option<Expr<'a>> {
+        self.low()
+    }
+    fn high(&self) -> Option<Expr<'a>> {
+        self.high()
+    }
+}
+
+impl<'a> crate::ast_traits::LikeExprView<'a> for LikeExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn negated(&self) -> bool {
+        self.negated()
+    }
+    fn operand(&self) -> Option<Expr<'a>> {
+        self.operand()
+    }
+    fn pattern(&self) -> Option<Expr<'a>> {
+        self.pattern()
+    }
+    fn escape(&self) -> Option<Expr<'a>> {
+        self.escape()
+    }
+}
+
+impl<'a> crate::ast_traits::CaseExprView<'a> for CaseExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn operand(&self) -> Option<Expr<'a>> {
+        self.operand()
+    }
+    fn else_expr(&self) -> Option<Expr<'a>> {
+        self.else_expr()
+    }
+    fn whens(&self) -> Option<CaseWhenList<'a>> {
+        self.whens()
+    }
+}
+
+impl<'a> crate::ast_traits::CaseWhenView<'a> for CaseWhen<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn when_expr(&self) -> Option<Expr<'a>> {
+        self.when_expr()
+    }
+    fn then_expr(&self) -> Option<Expr<'a>> {
+        self.then_expr()
+    }
+}
+
+impl<'a> crate::ast_traits::ForeignKeyClauseView<'a> for ForeignKeyClause<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn ref_table(&self) -> &'a str {
+        self.ref_table()
+    }
+    fn ref_columns(&self) -> Option<ExprList<'a>> {
+        self.ref_columns()
+    }
+    fn on_delete(&self) -> ForeignKeyAction {
+        self.on_delete()
+    }
+    fn on_update(&self) -> ForeignKeyAction {
+        self.on_update()
+    }
+    fn is_deferred(&self) -> bool {
+        self.is_deferred()
+    }
+}
+
+impl<'a> crate::ast_traits::ColumnConstraintView<'a> for ColumnConstraint<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn kind(&self) -> ColumnConstraintKind {
+        self.kind()
+    }
+    fn constraint_name(&self) -> &'a str {
+        self.constraint_name()
+    }
+    fn onconf(&self) -> ConflictAction {
+        self.onconf()
+    }
+    fn sort_order(&self) -> SortOrder {
+        self.sort_order()
+    }
+    fn is_autoincrement(&self) -> bool {
+        self.is_autoincrement()
+    }
+    fn collation_name(&self) -> &'a str {
+        self.collation_name()
+    }
+    fn generated_storage(&self) -> GeneratedColumnStorage {
+        self.generated_storage()
+    }
+    fn default_expr(&self) -> Option<Expr<'a>> {
+        self.default_expr()
+    }
+    fn check_expr(&self) -> Option<Expr<'a>> {
+        self.check_expr()
+    }
+    fn generated_expr(&self) -> Option<Expr<'a>> {
+        self.generated_expr()
+    }
+    fn fk_clause(&self) -> Option<ForeignKeyClause<'a>> {
+        self.fk_clause()
+    }
+}
+
+impl<'a> crate::ast_traits::ColumnDefView<'a> for ColumnDef<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn column_name(&self) -> &'a str {
+        self.column_name()
+    }
+    fn type_name(&self) -> &'a str {
+        self.type_name()
+    }
+    fn constraints(&self) -> Option<ColumnConstraintList<'a>> {
+        self.constraints()
+    }
+}
+
+impl<'a> crate::ast_traits::TableConstraintView<'a> for TableConstraint<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn kind(&self) -> TableConstraintKind {
+        self.kind()
+    }
+    fn constraint_name(&self) -> &'a str {
+        self.constraint_name()
+    }
+    fn onconf(&self) -> ConflictAction {
+        self.onconf()
+    }
+    fn is_autoincrement(&self) -> bool {
+        self.is_autoincrement()
+    }
+    fn pk_columns(&self) -> Option<OrderByList<'a>> {
+        self.pk_columns()
+    }
+    fn fk_columns(&self) -> Option<ExprList<'a>> {
+        self.fk_columns()
+    }
+    fn check_expr(&self) -> Option<Expr<'a>> {
+        self.check_expr()
+    }
+    fn fk_clause(&self) -> Option<ForeignKeyClause<'a>> {
+        self.fk_clause()
+    }
+}
+
+impl<'a> crate::ast_traits::CreateTableStmtView<'a> for CreateTableStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn table_name(&self) -> &'a str {
+        self.table_name()
+    }
+    fn schema(&self) -> &'a str {
+        self.schema()
+    }
+    fn is_temp(&self) -> bool {
+        self.is_temp()
+    }
+    fn if_not_exists(&self) -> bool {
+        self.if_not_exists()
+    }
+    fn flags(&self) -> CreateTableStmtFlags {
+        self.flags()
+    }
+    fn columns(&self) -> Option<ColumnDefList<'a>> {
+        self.columns()
+    }
+    fn table_constraints(&self) -> Option<TableConstraintList<'a>> {
+        self.table_constraints()
+    }
+    fn as_select(&self) -> Option<Select<'a>> {
+        self.as_select()
+    }
+}
+
+impl<'a> crate::ast_traits::CteDefinitionView<'a> for CteDefinition<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn cte_name(&self) -> &'a str {
+        self.cte_name()
+    }
+    fn materialized(&self) -> Materialized {
+        self.materialized()
+    }
+    fn columns(&self) -> Option<ExprList<'a>> {
+        self.columns()
+    }
+    fn select(&self) -> Option<Select<'a>> {
+        self.select()
+    }
+}
+
+impl<'a> crate::ast_traits::WithClauseView<'a> for WithClause<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn recursive(&self) -> bool {
+        self.recursive()
+    }
+    fn ctes(&self) -> Option<CteList<'a>> {
+        self.ctes()
+    }
+    fn select(&self) -> Option<Select<'a>> {
+        self.select()
+    }
+}
+
+impl<'a> crate::ast_traits::DeleteStmtView<'a> for DeleteStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn table(&self) -> Option<TableRef<'a>> {
+        self.table()
+    }
+    fn where_clause(&self) -> Option<Expr<'a>> {
+        self.where_clause()
+    }
+}
+
+impl<'a> crate::ast_traits::SetClauseView<'a> for SetClause<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn column(&self) -> &'a str {
+        self.column()
+    }
+    fn columns(&self) -> Option<ExprList<'a>> {
+        self.columns()
+    }
+    fn value(&self) -> Option<Expr<'a>> {
+        self.value()
+    }
+}
+
+impl<'a> crate::ast_traits::UpdateStmtView<'a> for UpdateStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn conflict_action(&self) -> ConflictAction {
+        self.conflict_action()
+    }
+    fn table(&self) -> Option<TableRef<'a>> {
+        self.table()
+    }
+    fn setlist(&self) -> Option<SetClauseList<'a>> {
+        self.setlist()
+    }
+    fn from_clause(&self) -> Option<TableSource<'a>> {
+        self.from_clause()
+    }
+    fn where_clause(&self) -> Option<Expr<'a>> {
+        self.where_clause()
+    }
+}
+
+impl<'a> crate::ast_traits::InsertStmtView<'a> for InsertStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn conflict_action(&self) -> ConflictAction {
+        self.conflict_action()
+    }
+    fn table(&self) -> Option<TableRef<'a>> {
+        self.table()
+    }
+    fn columns(&self) -> Option<ExprList<'a>> {
+        self.columns()
+    }
+    fn source(&self) -> Option<Select<'a>> {
+        self.source()
+    }
+}
+
+impl<'a> crate::ast_traits::BinaryExprView<'a> for BinaryExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn op(&self) -> BinaryOp {
+        self.op()
+    }
+    fn left(&self) -> Option<Expr<'a>> {
+        self.left()
+    }
+    fn right(&self) -> Option<Expr<'a>> {
+        self.right()
+    }
+}
+
+impl<'a> crate::ast_traits::UnaryExprView<'a> for UnaryExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn op(&self) -> UnaryOp {
+        self.op()
+    }
+    fn operand(&self) -> Option<Expr<'a>> {
+        self.operand()
+    }
+}
+
+impl<'a> crate::ast_traits::LiteralView<'a> for Literal<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn literal_type(&self) -> LiteralType {
+        self.literal_type()
+    }
+    fn source(&self) -> &'a str {
+        self.source()
+    }
+}
+
+impl<'a> crate::ast_traits::FunctionCallView<'a> for FunctionCall<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn func_name(&self) -> &'a str {
+        self.func_name()
+    }
+    fn flags(&self) -> FunctionCallFlags {
+        self.flags()
+    }
+    fn args(&self) -> Option<ExprList<'a>> {
+        self.args()
+    }
+    fn filter_clause(&self) -> Option<Expr<'a>> {
+        self.filter_clause()
+    }
+    fn over_clause(&self) -> Option<WindowDef<'a>> {
+        self.over_clause()
+    }
+}
+
+impl<'a> crate::ast_traits::VariableView<'a> for Variable<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn source(&self) -> &'a str {
+        self.source()
+    }
+}
+
+impl<'a> crate::ast_traits::CollateExprView<'a> for CollateExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn expr(&self) -> Option<Expr<'a>> {
+        self.expr()
+    }
+    fn collation(&self) -> &'a str {
+        self.collation()
+    }
+}
+
+impl<'a> crate::ast_traits::RaiseExprView<'a> for RaiseExpr<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn raise_type(&self) -> RaiseType {
+        self.raise_type()
+    }
+    fn error_message(&self) -> Option<Expr<'a>> {
+        self.error_message()
+    }
+}
+
+impl<'a> crate::ast_traits::QualifiedNameView<'a> for QualifiedName<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn object_name(&self) -> &'a str {
+        self.object_name()
+    }
+    fn schema(&self) -> &'a str {
+        self.schema()
+    }
+}
+
+impl<'a> crate::ast_traits::DropStmtView<'a> for DropStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn object_type(&self) -> DropObjectType {
+        self.object_type()
+    }
+    fn if_exists(&self) -> bool {
+        self.if_exists()
+    }
+    fn target(&self) -> Option<QualifiedName<'a>> {
+        self.target()
+    }
+}
+
+impl<'a> crate::ast_traits::AlterTableStmtView<'a> for AlterTableStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn op(&self) -> AlterOp {
+        self.op()
+    }
+    fn target(&self) -> Option<QualifiedName<'a>> {
+        self.target()
+    }
+    fn new_name(&self) -> &'a str {
+        self.new_name()
+    }
+    fn old_name(&self) -> &'a str {
+        self.old_name()
+    }
+}
+
+impl<'a> crate::ast_traits::TransactionStmtView<'a> for TransactionStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn op(&self) -> TransactionOp {
+        self.op()
+    }
+    fn trans_type(&self) -> TransactionType {
+        self.trans_type()
+    }
+}
+
+impl<'a> crate::ast_traits::SavepointStmtView<'a> for SavepointStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn op(&self) -> SavepointOp {
+        self.op()
+    }
+    fn savepoint_name(&self) -> &'a str {
+        self.savepoint_name()
+    }
+}
+
+impl<'a> crate::ast_traits::ResultColumnView<'a> for ResultColumn<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn flags(&self) -> ResultColumnFlags {
+        self.flags()
+    }
+    fn alias(&self) -> &'a str {
+        self.alias()
+    }
+    fn expr(&self) -> Option<Expr<'a>> {
+        self.expr()
+    }
+}
+
+impl<'a> crate::ast_traits::SelectStmtView<'a> for SelectStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn flags(&self) -> SelectStmtFlags {
+        self.flags()
+    }
+    fn columns(&self) -> Option<ResultColumnList<'a>> {
+        self.columns()
+    }
+    fn from_clause(&self) -> Option<TableSource<'a>> {
+        self.from_clause()
+    }
+    fn where_clause(&self) -> Option<Expr<'a>> {
+        self.where_clause()
+    }
+    fn groupby(&self) -> Option<ExprList<'a>> {
+        self.groupby()
+    }
+    fn having(&self) -> Option<Expr<'a>> {
+        self.having()
+    }
+    fn orderby(&self) -> Option<OrderByList<'a>> {
+        self.orderby()
+    }
+    fn limit_clause(&self) -> Option<LimitClause<'a>> {
+        self.limit_clause()
+    }
+    fn window_clause(&self) -> Option<NamedWindowDefList<'a>> {
+        self.window_clause()
+    }
+}
+
+impl<'a> crate::ast_traits::OrderingTermView<'a> for OrderingTerm<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn expr(&self) -> Option<Expr<'a>> {
+        self.expr()
+    }
+    fn sort_order(&self) -> SortOrder {
+        self.sort_order()
+    }
+    fn nulls_order(&self) -> NullsOrder {
+        self.nulls_order()
+    }
+}
+
+impl<'a> crate::ast_traits::LimitClauseView<'a> for LimitClause<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn limit(&self) -> Option<Expr<'a>> {
+        self.limit()
+    }
+    fn offset(&self) -> Option<Expr<'a>> {
+        self.offset()
+    }
+}
+
+impl<'a> crate::ast_traits::TableRefView<'a> for TableRef<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn table_name(&self) -> &'a str {
+        self.table_name()
+    }
+    fn schema(&self) -> &'a str {
+        self.schema()
+    }
+    fn alias(&self) -> &'a str {
+        self.alias()
+    }
+}
+
+impl<'a> crate::ast_traits::SubqueryTableSourceView<'a> for SubqueryTableSource<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn select(&self) -> Option<Select<'a>> {
+        self.select()
+    }
+    fn alias(&self) -> &'a str {
+        self.alias()
+    }
+}
+
+impl<'a> crate::ast_traits::JoinClauseView<'a> for JoinClause<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn join_type(&self) -> JoinType {
+        self.join_type()
+    }
+    fn left(&self) -> Option<TableSource<'a>> {
+        self.left()
+    }
+    fn right(&self) -> Option<TableSource<'a>> {
+        self.right()
+    }
+    fn on_expr(&self) -> Option<Expr<'a>> {
+        self.on_expr()
+    }
+    fn using_columns(&self) -> Option<ExprList<'a>> {
+        self.using_columns()
+    }
+}
+
+impl<'a> crate::ast_traits::JoinPrefixView<'a> for JoinPrefix<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn source(&self) -> Option<TableSource<'a>> {
+        self.source()
+    }
+    fn join_type(&self) -> JoinType {
+        self.join_type()
+    }
+}
+
+impl<'a> crate::ast_traits::TriggerEventView<'a> for TriggerEvent<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn event_type(&self) -> TriggerEventType {
+        self.event_type()
+    }
+    fn columns(&self) -> Option<ExprList<'a>> {
+        self.columns()
+    }
+}
+
+impl<'a> crate::ast_traits::CreateTriggerStmtView<'a> for CreateTriggerStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn trigger_name(&self) -> &'a str {
+        self.trigger_name()
+    }
+    fn schema(&self) -> &'a str {
+        self.schema()
+    }
+    fn is_temp(&self) -> bool {
+        self.is_temp()
+    }
+    fn if_not_exists(&self) -> bool {
+        self.if_not_exists()
+    }
+    fn timing(&self) -> TriggerTiming {
+        self.timing()
+    }
+    fn event(&self) -> Option<TriggerEvent<'a>> {
+        self.event()
+    }
+    fn table(&self) -> Option<QualifiedName<'a>> {
+        self.table()
+    }
+    fn when_expr(&self) -> Option<Expr<'a>> {
+        self.when_expr()
+    }
+    fn body(&self) -> Option<TriggerCmdList<'a>> {
+        self.body()
+    }
+}
+
+impl<'a> crate::ast_traits::CreateVirtualTableStmtView<'a> for CreateVirtualTableStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn table_name(&self) -> &'a str {
+        self.table_name()
+    }
+    fn schema(&self) -> &'a str {
+        self.schema()
+    }
+    fn module_name(&self) -> &'a str {
+        self.module_name()
+    }
+    fn if_not_exists(&self) -> bool {
+        self.if_not_exists()
+    }
+    fn module_args(&self) -> &'a str {
+        self.module_args()
+    }
+}
+
+impl<'a> crate::ast_traits::PragmaStmtView<'a> for PragmaStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn pragma_name(&self) -> &'a str {
+        self.pragma_name()
+    }
+    fn schema(&self) -> &'a str {
+        self.schema()
+    }
+    fn value(&self) -> &'a str {
+        self.value()
+    }
+    fn pragma_form(&self) -> PragmaForm {
+        self.pragma_form()
+    }
+}
+
+impl<'a> crate::ast_traits::AnalyzeStmtView<'a> for AnalyzeStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn target_name(&self) -> &'a str {
+        self.target_name()
+    }
+    fn schema(&self) -> &'a str {
+        self.schema()
+    }
+    fn kind(&self) -> AnalyzeKind {
+        self.kind()
+    }
+}
+
+impl<'a> crate::ast_traits::AttachStmtView<'a> for AttachStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn filename(&self) -> Option<Expr<'a>> {
+        self.filename()
+    }
+    fn db_name(&self) -> Option<Expr<'a>> {
+        self.db_name()
+    }
+    fn key(&self) -> Option<Expr<'a>> {
+        self.key()
+    }
+}
+
+impl<'a> crate::ast_traits::DetachStmtView<'a> for DetachStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn db_name(&self) -> Option<Expr<'a>> {
+        self.db_name()
+    }
+}
+
+impl<'a> crate::ast_traits::VacuumStmtView<'a> for VacuumStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn schema(&self) -> &'a str {
+        self.schema()
+    }
+    fn into_expr(&self) -> Option<Expr<'a>> {
+        self.into_expr()
+    }
+}
+
+impl<'a> crate::ast_traits::ExplainStmtView<'a> for ExplainStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn explain_mode(&self) -> ExplainMode {
+        self.explain_mode()
+    }
+    fn stmt(&self) -> Option<Stmt<'a>> {
+        self.stmt()
+    }
+}
+
+impl<'a> crate::ast_traits::CreateIndexStmtView<'a> for CreateIndexStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn index_name(&self) -> &'a str {
+        self.index_name()
+    }
+    fn schema(&self) -> &'a str {
+        self.schema()
+    }
+    fn table_name(&self) -> &'a str {
+        self.table_name()
+    }
+    fn is_unique(&self) -> bool {
+        self.is_unique()
+    }
+    fn if_not_exists(&self) -> bool {
+        self.if_not_exists()
+    }
+    fn columns(&self) -> Option<OrderByList<'a>> {
+        self.columns()
+    }
+    fn where_clause(&self) -> Option<Expr<'a>> {
+        self.where_clause()
+    }
+}
+
+impl<'a> crate::ast_traits::CreateViewStmtView<'a> for CreateViewStmt<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn view_name(&self) -> &'a str {
+        self.view_name()
+    }
+    fn schema(&self) -> &'a str {
+        self.schema()
+    }
+    fn is_temp(&self) -> bool {
+        self.is_temp()
+    }
+    fn if_not_exists(&self) -> bool {
+        self.if_not_exists()
+    }
+    fn column_names(&self) -> Option<ExprList<'a>> {
+        self.column_names()
+    }
+    fn select(&self) -> Option<Select<'a>> {
+        self.select()
+    }
+}
+
+impl<'a> crate::ast_traits::ValuesClauseView<'a> for ValuesClause<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn rows(&self) -> Option<ValuesRowList<'a>> {
+        self.rows()
+    }
+}
+
+impl<'a> crate::ast_traits::FrameBoundView<'a> for FrameBound<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn bound_type(&self) -> FrameBoundType {
+        self.bound_type()
+    }
+    fn expr(&self) -> Option<Expr<'a>> {
+        self.expr()
+    }
+}
+
+impl<'a> crate::ast_traits::FrameSpecView<'a> for FrameSpec<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn frame_type(&self) -> FrameType {
+        self.frame_type()
+    }
+    fn exclude(&self) -> FrameExclude {
+        self.exclude()
+    }
+    fn start_bound(&self) -> Option<FrameBound<'a>> {
+        self.start_bound()
+    }
+    fn end_bound(&self) -> Option<FrameBound<'a>> {
+        self.end_bound()
+    }
+}
+
+impl<'a> crate::ast_traits::WindowDefView<'a> for WindowDef<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn base_window_name(&self) -> &'a str {
+        self.base_window_name()
+    }
+    fn partition_by(&self) -> Option<ExprList<'a>> {
+        self.partition_by()
+    }
+    fn orderby(&self) -> Option<OrderByList<'a>> {
+        self.orderby()
+    }
+    fn frame(&self) -> Option<FrameSpec<'a>> {
+        self.frame()
+    }
+}
+
+impl<'a> crate::ast_traits::NamedWindowDefView<'a> for NamedWindowDef<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn window_name(&self) -> &'a str {
+        self.window_name()
+    }
+    fn window_def(&self) -> Option<WindowDef<'a>> {
+        self.window_def()
+    }
+}
+
+impl<'a> crate::ast_traits::FilterOverView<'a> for FilterOver<'a> {
+    type Ast = SqliteAst;
+    fn node_id(&self) -> NodeId {
+        self.id
+    }
+    fn filter_expr(&self) -> Option<Expr<'a>> {
+        self.filter_expr()
+    }
+    fn over_def(&self) -> Option<WindowDef<'a>> {
+        self.over_def()
+    }
+    fn over_name(&self) -> &'a str {
+        self.over_name()
     }
 }

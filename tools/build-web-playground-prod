@@ -1,0 +1,54 @@
+#!/usr/bin/env python3
+# Copyright 2025 The syntaqlite Authors. All rights reserved.
+# Licensed under the Apache License, Version 2.0.
+
+"""Production build for web-playground.
+
+Does everything: builds WASM, installs npm deps, runs Vite production build.
+Output lands in web/playground/dist/.
+"""
+
+import os
+import subprocess
+import sys
+
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def main() -> int:
+    web_dir = os.path.join(ROOT, "web", "playground")
+    build_script = os.path.join(ROOT, "tools", "build-web-playground")
+
+    # 1. Build WASM
+    print("\033[1m[build]\033[0m building WASM...")
+    rc = subprocess.call([build_script], cwd=ROOT)
+    if rc != 0:
+        return rc
+
+    # 2. Install npm deps if needed
+    if not os.path.isdir(os.path.join(web_dir, "node_modules")):
+        print("\033[1m[build]\033[0m installing npm dependencies...")
+        rc = subprocess.call(["npm", "install"], cwd=web_dir)
+        if rc != 0:
+            return rc
+
+    # 3. Type-check
+    print("\033[1m[build]\033[0m type-checking...")
+    rc = subprocess.call(["npx", "tsc", "--noEmit"], cwd=web_dir)
+    if rc != 0:
+        return rc
+
+    # 4. Vite production build
+    print("\033[1m[build]\033[0m building for production...")
+    rc = subprocess.call(["npx", "vite", "build"], cwd=web_dir)
+    if rc != 0:
+        return rc
+
+    dist_dir = os.path.join(web_dir, "dist")
+    print(f"\033[32m[build]\033[0m done — output in {dist_dir}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

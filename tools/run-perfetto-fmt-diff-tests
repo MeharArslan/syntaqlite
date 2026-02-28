@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+# Copyright 2025 The syntaqlite Authors. All rights reserved.
+# Licensed under the Apache License, Version 2.0.
+
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT_DIR))
+
+
+def _has_opt(argv: list[str], opt: str) -> bool:
+    return any(a == opt or a.startswith(f"{opt}=") for a in argv)
+
+
+def _get_opt(argv: list[str], opt: str) -> str | None:
+    for i, a in enumerate(argv):
+        if a == opt and i + 1 < len(argv):
+            return argv[i + 1]
+        prefix = f"{opt}="
+        if a.startswith(prefix):
+            return a[len(prefix):]
+    return None
+
+
+def _replace_opt(argv: list[str], opt: str, value: str) -> list[str]:
+    out = list(argv)
+    for i, a in enumerate(out):
+        if a == opt:
+            if i + 1 < len(out):
+                out[i + 1] = value
+                return out
+        prefix = f"{opt}="
+        if a.startswith(prefix):
+            out[i] = f"{opt}={value}"
+            return out
+    return [opt, value] + out
+
+
+def _write_runtime_shims(csrc_dir: Path) -> None:
+    (csrc_dir / "syntaqlite_runtime.h").write_text(
+        """\
+#ifndef SYNTAQLITE_RUNTIME_H
+#define SYNTAQLITE_RUNTIME_H
+#include \"syntaqlite/config.h\"
+#include \"syntaqlite/types.h\"
+#include \"syntaqlite/dialect.h\"
+#include \"syntaqlite/parser.h\"
+#include \"syntaqlite/tokenizer.h\"
+#endif
+""",
+        encoding="utf-8",
+    )
+    (csrc_dir / "syntaqlite_ext.h").write_text(
+        """\
+#ifndef SYNTAQLITE_EXT_H
+#define SYNTAQLITE_EXT_H
+#include \"syntaqlite_ext/sqlite_compat.h\"
+#include \"syntaqlite_ext/arena.h\"
+#include \"syntaqlite_ext/vec.h\"
+#include \"syntaqlite_ext/ast_builder.h\"
+#endif
+""",
+        encoding="utf-8",
+    )
+
+
+def _compile_perfetto_dialect(cli_binary: Path, work_dir: Path) -> Path:
+    csrc_dir = work_dir / "csrc"
+    csrc_dir.mkdir(parents=True, exist_ok=True)
+
+    subprocess.run(
+        [
+            str(cli_binary),
+            "dialect",
+            "--name",
+            "perfetto",
+            "--actions-dir",
+            str(ROOT_DIR / "dialects" / "perfetto" / "actions"),
+            "--nodes-dir",
+            str(ROOT_DIR / "dialects" / "perfetto" / "nodes"),
+            "csrc",
+            "--output-dir",
+            str(csrc_dir),
+        ],
+        cwd=ROOT_DIR,
+        check=True,
+    )
+
+    _write_runtime_shims(csrc_dir)
+
+    ext = ".dylib" if sys.platform == "darwin" else ".so"
+    out_lib = work_dir / f"libsyntaqlite_perfetto{ext}"
+
+    cc_cmd = ["cc"]
+    if sys.platform == "darwin":
+        cc_cmd += ["-dynamiclib", "-fPIC"]
+    else:
+        cc_cmd += ["-shared", "-fPIC"]
+
+    cc_cmd += [
+        str(csrc_dir / "syntaqlite_perfetto.c"),
+        str(ROOT_DIR / "syntaqlite" / "csrc" / "parser.c"),
+        "-I",
+        str(csrc_dir),
+        "-I",
+        str(ROOT_DIR / "syntaqlite"),
+        "-I",
+        str(ROOT_DIR / "syntaqlite" / "include"),
+        "-I",
+        str(ROOT_DIR / "syntaqlite" / "include"),
+        "-o",
+        str(out_lib),
+    ]
+    subprocess.run(cc_cmd, cwd=ROOT_DIR, check=True)
+    return out_lib
+
+
+def _write_wrapper(path: Path, binary: Path, dialect_lib: Path) -> None:
+    path.write_text(
+        f"""#!/bin/sh
+if [ "$1" = "fmt" ]; then
+  shift
+  exec "{binary}" --dialect "{dialect_lib}" --dialect-name perfetto fmt --semicolons false "$@"
+fi
+exec "{binary}" --dialect "{dialect_lib}" --dialect-name perfetto "$@"
+""",
+        encoding="utf-8",
+    )
+    path.chmod(0o755)
+
+
+if __name__ == "__main__":
+    from python.syntaqlite.diff_tests.runner import main
+
+    argv = sys.argv[1:]
+    if not _has_opt(argv, "--binary"):
+        argv = ["--binary", "target/debug/syntaqlite"] + argv
+    if not _has_opt(argv, "--subcommand"):
+        argv = ["--subcommand", "fmt"] + argv
+    if not _has_opt(argv, "--test-dir"):
+        argv = ["--test-dir", "tests/perfetto_fmt_diff_tests"] + argv
+
+    binary_opt = _get_opt(argv, "--binary")
+    if binary_opt is None:
+        print("error: --binary option missing", file=sys.stderr)
+        sys.exit(1)
+
+    binary_path = Path(binary_opt)
+    if not binary_path.is_absolute():
+        binary_path = ROOT_DIR / binary_path
+
+    with tempfile.TemporaryDirectory(prefix="syntaqlite_perfetto_fmt_") as temp_dir:
+        temp = Path(temp_dir)
+        dialect_lib = _compile_perfetto_dialect(binary_path, temp)
+        wrapper = temp / "syntaqlite-perfetto"
+        _write_wrapper(wrapper, binary_path, dialect_lib)
+        argv = _replace_opt(argv, "--binary", str(wrapper))
+        sys.exit(main(argv))

@@ -6,9 +6,6 @@
 
 *.pyc
 
-# Build lock file used by tools/dev/build-lock
-out/.build.lock
-
 *.o
 *.a
 examples/select_columns
@@ -19,12 +16,15 @@ examples/syntaqlite_sqlite.c
 # Added by cargo
 /target
 
-# web-playground generated artifacts (WASM now in public/)
-/web-playground/public/syntaqlite-runtime.js
-/web-playground/public/syntaqlite-*.wasm
-/web-playground/public/syntaqlite.wasm
-/web-playground/node_modules/
-/web-playground/dist/
+# web/playground generated artifacts
+/web/playground/public/syntaqlite-runtime.js
+/web/playground/public/syntaqlite-*.wasm
+/web/playground/public/syntaqlite.wasm
+/web/playground/node_modules/
+/web/playground/dist/
+
+# web/docs Zola output
+/web/docs/public/
 
 # profiling
 profile.json.gz

@@ -5,14 +5,14 @@ A fast, portable C library for tokenizing, parsing, and formatting SQLite SQL â€
 ## Building
 
 ```bash
-tools/dev/install-build-deps
-tools/dev/cargo build
+tools/install-build-deps
+tools/cargo build
 ```
 
 ## Testing
 
 ```bash
-tools/tests/run-ast-diff-tests --binary out/mac_debug/ast_test
+tools/run-ast-diff-tests --binary out/mac_debug/ast_test
 ```
 
 ## License

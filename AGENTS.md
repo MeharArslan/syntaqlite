@@ -54,4 +54,4 @@ This allows projects like libSQL, rqlite, or custom embedded databases to use sy
 
 | Tool | Purpose |
 |------|---------|
-| `tools/dev/run-codegen` | Regenerate all generated code (C headers, Rust nodes/tokens/dump/fmt_ops) from `.synq` definitions and SQLite grammar |
+| `tools/run-codegen` | Regenerate all generated code (C headers, Rust nodes/tokens/dump/fmt_ops) from `.synq` definitions and SQLite grammar |

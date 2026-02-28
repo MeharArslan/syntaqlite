@@ -625,41 +625,33 @@ struct FunctionJson {
 
 impl From<SessionContextJson> for syntaqlite::validation::SessionContext {
     fn from(json: SessionContextJson) -> Self {
+        use syntaqlite::validation::{ColumnDef, RelationDef, RelationKind};
+        let make_columns = |cols: Vec<String>| -> Vec<ColumnDef> {
+            cols.into_iter()
+                .map(|c| ColumnDef {
+                    name: c,
+                    type_name: None,
+                    is_primary_key: false,
+                    is_nullable: true,
+                })
+                .collect()
+        };
+        let relations = json
+            .tables
+            .into_iter()
+            .map(|t| RelationDef {
+                name: t.name,
+                columns: make_columns(t.columns),
+                kind: RelationKind::Table,
+            })
+            .chain(json.views.into_iter().map(|v| RelationDef {
+                name: v.name,
+                columns: make_columns(v.columns),
+                kind: RelationKind::View,
+            }))
+            .collect();
         syntaqlite::validation::SessionContext {
-            tables: json
-                .tables
-                .into_iter()
-                .map(|t| syntaqlite::validation::TableDef {
-                    name: t.name,
-                    columns: t
-                        .columns
-                        .into_iter()
-                        .map(|c| syntaqlite::validation::ColumnDef {
-                            name: c,
-                            type_name: None,
-                            is_primary_key: false,
-                            is_nullable: true,
-                        })
-                        .collect(),
-                })
-                .collect(),
-            views: json
-                .views
-                .into_iter()
-                .map(|v| syntaqlite::validation::ViewDef {
-                    name: v.name,
-                    columns: v
-                        .columns
-                        .into_iter()
-                        .map(|c| syntaqlite::validation::ColumnDef {
-                            name: c,
-                            type_name: None,
-                            is_primary_key: false,
-                            is_nullable: true,
-                        })
-                        .collect(),
-                })
-                .collect(),
+            relations,
             functions: json
                 .functions
                 .into_iter()

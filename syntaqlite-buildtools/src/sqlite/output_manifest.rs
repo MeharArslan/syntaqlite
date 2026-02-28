@@ -14,6 +14,9 @@ pub enum OutputBucket {
     RustDialectSrc,
     /// Files that belong under `src/sqlite/` (e.g. generated catalogs).
     RustSqliteSrc,
+    /// Files that belong under `src/` (e.g. `ast_traits.rs`).
+    /// Only used by the internal syntaqlite crate.
+    RustCrateSrc,
     /// Crate scaffolding Rust files (lib.rs, wrappers.rs) — only used by
     /// external dialect crates. The internal syntaqlite crate hand-maintains these.
     RustCrateScaffold,
@@ -152,6 +155,14 @@ pub fn sqlite_output_manifest(
             bucket: OutputBucket::RustSqliteSrc,
             file_name: "functions_catalog.rs".to_string(),
             content: functions_catalog_rs,
+        });
+    }
+
+    if let Some(ast_traits_rs) = rust.ast_traits_rs {
+        out.push(OutputArtifact {
+            bucket: OutputBucket::RustCrateSrc,
+            file_name: "ast_traits.rs".to_string(),
+            content: ast_traits_rs,
         });
     }
 

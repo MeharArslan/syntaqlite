@@ -30,8 +30,6 @@ THIRD_PARTY_DIR = os.path.join(ROOT_DIR, "third_party")
 THIRD_PARTY_BIN_DIR = os.path.join(THIRD_PARTY_DIR, "bin")
 THIRD_PARTY_SRC_DIR = os.path.join(THIRD_PARTY_DIR, "src")
 
-GN_VERSION = "5550ba0f4053c3cbb0bff3d60ded9d867b6fa371"
-NINJA_VERSION = "1.13.2"
 SQLITE_VERSION = "3510200"  # 3.51.2
 SQLITE_YEAR = "2026"
 RUST_VERSION = "1.93.0"  # Latest stable
@@ -66,42 +64,6 @@ class SourceDep:
 
 # fmt: off
 BINARY_DEPS = [
-    BinaryDep("gn", GN_VERSION,
-              f"https://chrome-infra-packages.appspot.com/dl/gn/gn/mac-amd64/+/git_revision:{GN_VERSION}",
-              "68c9ad9456dd93090c39134781833ee7865d19627541cb9ba9003aeea9ce4e26",
-              "darwin", "x64"),
-    BinaryDep("gn", GN_VERSION,
-              f"https://chrome-infra-packages.appspot.com/dl/gn/gn/mac-arm64/+/git_revision:{GN_VERSION}",
-              "2e55c4f65ce690fef9c03af8abe2b76e01e0017fc040c2d7529c089abbe48309",
-              "darwin", "arm64"),
-    BinaryDep("gn", GN_VERSION,
-              f"https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-amd64/+/git_revision:{GN_VERSION}",
-              "be32d9e5a79d52145baf22f83a5e4aa83724d6bdcdf53370fa00e5eba45596fa",
-              "linux", "x64"),
-    BinaryDep("gn", GN_VERSION,
-              f"https://chrome-infra-packages.appspot.com/dl/gn/gn/linux-arm64/+/git_revision:{GN_VERSION}",
-              "bbd8bab058398a005d240c09c17ce0af4fab69ae8d022a40ac7d0a218681de73",
-              "linux", "arm64"),
-    BinaryDep("gn", GN_VERSION,
-              f"https://chrome-infra-packages.appspot.com/dl/gn/gn/windows-amd64/+/git_revision:{GN_VERSION}",
-              "c10f4622abd995a1c070e46b0df8bbe7b83278b9ff2b05ae8245dabf7cb02b8c",
-              "windows", "x64"),
-    BinaryDep("ninja", NINJA_VERSION,
-              f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-mac.zip",
-              "c99048673aa765960a99cf10c6ddb9f1fad506099ff0a0e137ad8960a88f321b",
-              "darwin", "all"),
-    BinaryDep("ninja", NINJA_VERSION,
-              f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-linux.zip",
-              "5749cbc4e668273514150a80e387a957f933c6ed3f5f11e03fb30955e2bbead6",
-              "linux", "x64"),
-    BinaryDep("ninja", NINJA_VERSION,
-              f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-linux-aarch64.zip",
-              "fd2cacc8050a7f12a16a2e48f9e06fca5c14fc4c2bee2babb67b58be17a607fc",
-              "linux", "arm64"),
-    BinaryDep("ninja", NINJA_VERSION,
-              f"https://github.com/ninja-build/ninja/releases/download/v{NINJA_VERSION}/ninja-win.zip",
-              "07fc8261b42b20e71d1720b39068c2e14ffcee6396b76fb7a795fb460b78dc65",
-              "windows", "x64"),
     # clang-format: raw binaries from Chromium's cloud storage.
     BinaryDep("clang-format", "8503422f",
               "https://storage.googleapis.com/chromium-clang-format/8503422f469ae56cc74f0ea2c03f2d872f4a2303",

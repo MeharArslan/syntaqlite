@@ -21,28 +21,28 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install build dependencies
-        run: python3 tools/dev/install-build-deps --rust --ui
+        run: python3 tools/install-build-deps --rust --ui
 
       - name: Build WASM modules
-        run: python3 tools/dev/build-web-playground
+        run: python3 tools/build-web-playground
 
       - name: Install npm dependencies
-        working-directory: web-playground
+        working-directory: web/playground
         run: |
-          export PATH="$PWD/../third_party/bin/linux-amd64/nodejs/bin:$PATH"
+          export PATH="$PWD/../../third_party/bin/linux-amd64/nodejs/bin:$PATH"
           npm install
 
       - name: Build frontend
-        working-directory: web-playground
+        working-directory: web/playground
         run: |
-          export PATH="$PWD/../third_party/bin/linux-amd64/nodejs/bin:$PATH"
+          export PATH="$PWD/../../third_party/bin/linux-amd64/nodejs/bin:$PATH"
           npx tsc --noEmit
-          npx vite build --base /syntaqlite/
+          npx vite build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: web-playground/dist
+          path: web/playground/dist
 
   deploy:
     needs: build

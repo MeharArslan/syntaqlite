@@ -14,9 +14,9 @@ Usage:
     python3 python/tools/sqlite_data.py download-sources [--output-dir DIR] [--versions V1 V2 ...]
     python3 python/tools/sqlite_data.py download-amalgamations [--output-dir DIR] [--versions V1 V2 ...]
     python3 python/tools/sqlite_data.py extract-functions --amalgamation-dir DIR [--output PATH]
-    tools/dev/sqlite-data download-sources
-    tools/dev/sqlite-data download-amalgamations
-    tools/dev/sqlite-data extract-functions --amalgamation-dir sqlite-amalgamations
+    tools/sqlite-data download-sources
+    tools/sqlite-data download-amalgamations
+    tools/sqlite-data extract-functions --amalgamation-dir sqlite-amalgamations
 """
 
 import argparse

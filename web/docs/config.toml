@@ -1,0 +1,6 @@
+base_url = "https://docs.syntaqlite.com"
+title = "syntaqlite"
+compile_sass = false
+generate_feeds = false
+build_search_index = true
+

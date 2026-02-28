@@ -12,8 +12,8 @@ Multi-stage bootstrap pipeline:
 Usage:
     python3 python/tools/run_codegen.py              # Stage 1b + 2
     python3 python/tools/run_codegen.py --extract     # Stage 1 + 1b + 2
-    tools/dev/run-codegen                             # Stage 1b + 2
-    tools/dev/run-codegen --extract                   # Stage 1 + 1b + 2
+    tools/run-codegen                             # Stage 1b + 2
+    tools/run-codegen --extract                   # Stage 1 + 1b + 2
 """
 
 import subprocess

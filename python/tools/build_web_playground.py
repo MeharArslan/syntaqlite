@@ -1,7 +1,7 @@
 # Copyright 2025 The syntaqlite Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0.
 
-"""Builds the emscripten-target wasm module used by web-playground."""
+"""Builds the emscripten-target wasm module used by web/playground."""
 
 import argparse
 import os
@@ -52,7 +52,7 @@ def get_platform_dir():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Build the emscripten-target wasm module for web-playground.",
+        description="Build the emscripten-target wasm module for web/playground.",
     )
     parser.add_argument(
         "--rustflags",
@@ -73,7 +73,7 @@ def main():
 
     if not os.path.isdir(emscripten_dir):
         print("emscripten not found at %s" % emscripten_dir, file=sys.stderr)
-        print("run: tools/dev/install-build-deps --ui", file=sys.stderr)
+        print("run: tools/install-build-deps --ui", file=sys.stderr)
         return 1
 
     # Add hermetic node and emscripten to PATH.
@@ -136,13 +136,13 @@ def main():
     if rc != 0:
         return rc
 
-    # Copy the built wasm to web-playground/.
+    # Copy the built wasm to web/playground/.
     wasm_target_dir = os.path.join(ROOT_DIR, "target", "wasm32-unknown-emscripten", "release")
-    out_public_dir = os.path.join(ROOT_DIR, "web-playground", "public")
+    out_public_dir = os.path.join(ROOT_DIR, "web/playground", "public")
     os.makedirs(out_public_dir, exist_ok=True)
-    out_runtime_js = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-runtime.js")
-    out_runtime_wasm = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-runtime.wasm")
-    out_dialect = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-sqlite.wasm")
+    out_runtime_js = os.path.join(ROOT_DIR, "web/playground", "public", "syntaqlite-runtime.js")
+    out_runtime_wasm = os.path.join(ROOT_DIR, "web/playground", "public", "syntaqlite-runtime.wasm")
+    out_dialect = os.path.join(ROOT_DIR, "web/playground", "public", "syntaqlite-sqlite.wasm")
 
     runtime_js_src = None
     runtime_wasm_src = None
@@ -174,12 +174,12 @@ def main():
     # Copy separate DWARF debug info if present.
     runtime_debug_src = os.path.join(wasm_target_dir, "syntaqlite-runtime.debug.wasm")
     if os.path.isfile(runtime_debug_src):
-        out_runtime_debug = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-runtime.debug.wasm")
+        out_runtime_debug = os.path.join(ROOT_DIR, "web/playground", "public", "syntaqlite-runtime.debug.wasm")
         shutil.copy2(runtime_debug_src, out_runtime_debug)
         print("wrote %s" % out_runtime_debug)
 
     # Build built-in SQLite dialect wasm from C sources directly.
-    wrapper_dir = os.path.join(ROOT_DIR, ".cache", "web-playground")
+    wrapper_dir = os.path.join(ROOT_DIR, ".cache", "web/playground")
     os.makedirs(wrapper_dir, exist_ok=True)
     wrapper_path = os.path.join(wrapper_dir, "dialect_alias.c")
     with open(wrapper_path, "w", encoding="utf-8") as f:
@@ -203,7 +203,7 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
 }
 """)
 
-    out_dialect_debug = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-sqlite.debug.wasm")
+    out_dialect_debug = os.path.join(ROOT_DIR, "web/playground", "public", "syntaqlite-sqlite.debug.wasm")
     emcc_cmd = [
         "emcc",
         "-O3",
@@ -268,8 +268,8 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
                 "#include \"syntaqlite_ext/vec.h\"\n#include \"syntaqlite_ext/ast_builder.h\"\n"
                 "#endif\n")
 
-    out_perfetto = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-perfetto.wasm")
-    out_perfetto_debug = os.path.join(ROOT_DIR, "web-playground", "public", "syntaqlite-perfetto.debug.wasm")
+    out_perfetto = os.path.join(ROOT_DIR, "web/playground", "public", "syntaqlite-perfetto.wasm")
+    out_perfetto_debug = os.path.join(ROOT_DIR, "web/playground", "public", "syntaqlite-perfetto.debug.wasm")
     rc = subprocess.call(
         [
             "emcc", "-O3", "-fPIC",

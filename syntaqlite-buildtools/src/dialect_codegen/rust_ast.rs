@@ -5,7 +5,7 @@ use std::collections::HashSet;
 
 use crate::util::rust_writer::RustWriter;
 use crate::util::synq_parser::{Field, Storage};
-use crate::util::upper_snake_to_pascal;
+use crate::util::{pascal_case, upper_snake_to_pascal};
 
 use super::{AstModel, NodeLikeRef};
 
@@ -435,6 +435,7 @@ pub fn generate_rust_ast(
     model: &AstModel<'_>,
     crate_prefix: &str,
     ffi_path: &str,
+    dialect_name: &str,
     open_for_extension: bool,
 ) -> String {
     let enum_names = model.enum_names();
@@ -454,20 +455,10 @@ pub fn generate_rust_ast(
     "));
     w.newline();
 
-    // Value enums (skip Bool — it lives in ffi.rs)
-    for item in model.enums() {
-        let name = item.name;
-        let variants = item.variants;
-        if name == "Bool" {
-            continue;
-        }
-        emit_rust_value_enum(&mut w, name, variants);
-    }
-
-    // Flags types
-    for item in model.flags() {
-        emit_rust_flags_type(&mut w, item.name, item.flags);
-    }
+    // Re-export shared enums, flags, and trait types from the ast_traits module.
+    let traits_path = format!("{crate_prefix}::ast_traits");
+    w.line(&format!("pub use {traits_path}::*;"));
+    w.newline();
 
     // NodeTag enum
     emit_rust_node_tag_type(&mut w, model);
@@ -574,6 +565,8 @@ pub fn generate_rust_ast(
         // Accessor methods
         w.line(&format!("impl<'a> {}<'a> {{", name));
         w.indent();
+        w.doc_comment("The arena node ID of this node.");
+        w.line("pub fn node_id(&self) -> NodeId { self.id }");
         for field in fields {
             let fname = rust_field_name(&field.name);
             let return_type =
@@ -746,6 +739,315 @@ pub fn generate_rust_ast(
         }
     ",
     );
+    w.newline();
+
+    // ── Trait impls (connecting concrete types to the generic trait layer) ──
+
+    let marker = format!("{}Ast", pascal_case(dialect_name));
+
+    // Marker type
+    w.doc_comment(&format!(
+        "Marker type for the {} dialect's AST. Implements `AstTypes`.",
+        dialect_name
+    ));
+    w.line(&format!("pub enum {marker} {{}}"));
+    w.newline();
+
+    // impl AstTypes for marker
+    w.open_block(&format!(
+        "impl<'a> {traits_path}::AstTypes<'a> for {marker} {{"
+    ));
+    w.line("type Node = Node<'a>;");
+    for &(abs_name, _) in abstract_items {
+        w.line(&format!("type {abs_name} = {abs_name}<'a>;"));
+    }
+    for node in model.nodes() {
+        w.line(&format!("type {n} = {n}<'a>;", n = node.name));
+    }
+    w.close_block("}");
+    w.newline();
+
+    // impl NodeLike for Node
+    w.open_block(&format!(
+        "impl<'a> {traits_path}::NodeLike<'a> for Node<'a> {{"
+    ));
+    w.line(&format!("type Ast = {marker};"));
+    w.open_block("fn node_id(&self) -> NodeId {");
+    w.open_block("match self {");
+    for item in model.node_like_items() {
+        match item {
+            NodeLikeRef::Node(node) => {
+                w.line(&format!("Node::{}(n) => n.node_id(),", node.name));
+            }
+            NodeLikeRef::List(list) => {
+                w.line(&format!("Node::{}(_) => NodeId::NULL,", list.name));
+            }
+        }
+    }
+    if open_for_extension {
+        w.line("Node::Other { id, .. } => *id,");
+    } else {
+        w.line("Node::__Phantom(_) => unreachable!(),");
+    }
+    w.close_block("}");
+    w.close_block("}");
+    w.close_block("}");
+    w.newline();
+
+    // impl XxxLike for each abstract enum
+    for &(abs_name, members) in abstract_items {
+        w.open_block(&format!(
+            "impl<'a> {traits_path}::{abs_name}Like<'a> for {abs_name}<'a> {{"
+        ));
+        w.line(&format!("type Ast = {marker};"));
+        w.open_block(&format!(
+            "fn kind(&self) -> {traits_path}::{abs_name}Kind<'a, {marker}> {{"
+        ));
+        w.open_block("match *self {");
+        for member in members {
+            if node_names.contains(member.as_str()) || list_names.contains(member.as_str()) {
+                w.line(&format!(
+                    "{abs_name}::{member}(n) => {traits_path}::{abs_name}Kind::{member}(n),"
+                ));
+            }
+        }
+        w.line(&format!(
+            "{abs_name}::Other(n) => {traits_path}::{abs_name}Kind::Other(n),"
+        ));
+        w.close_block("}");
+        w.close_block("}");
+        w.close_block("}");
+        w.newline();
+    }
+
+    // impl XxxView for each node view struct
+    for node in model.nodes() {
+        let name = node.name;
+        w.open_block(&format!(
+            "impl<'a> {traits_path}::{name}View<'a> for {name}<'a> {{"
+        ));
+        w.line(&format!("type Ast = {marker};"));
+        w.line("fn node_id(&self) -> NodeId { self.id }");
+        for field in node.fields {
+            let fname = rust_field_name(&field.name);
+            let return_type =
+                rust_view_return_type(field, enum_names, flags_names, node_names, list_names);
+            w.open_block(&format!("fn {fname}(&self) -> {return_type} {{"));
+            w.line(&format!("self.{fname}()"));
+            w.close_block("}");
+        }
+        w.close_block("}");
+        w.newline();
+    }
+
+    w.finish()
+}
+
+// ── Generic trait layer codegen ─────────────────────────────────────────
+
+/// Resolve a list type to its generic form for use in kind-enum variants.
+///
+/// Uses `A::X` syntax (not `<Self::Ast as AstTypes<'a>>::X`) since kind enums
+/// are parameterized on `A: AstTypes<'a>`.
+fn resolve_kind_enum_list_type(
+    list_name: &str,
+    node_names: &HashSet<&str>,
+    list_names: &HashSet<&str>,
+    lists: &[super::ListRef<'_>],
+) -> String {
+    let list = lists.iter().find(|l| l.name == list_name).unwrap();
+    let child = list.child_type;
+    if node_names.contains(child) {
+        format!("TypedList<'a, A::{child}>")
+    } else if list_names.contains(child) {
+        let inner = resolve_kind_enum_list_type(child, node_names, list_names, lists);
+        format!("TypedList<'a, {inner}>")
+    } else {
+        // Abstract or unknown child → Node
+        "TypedList<'a, A::Node>".to_string()
+    }
+}
+
+/// Resolve a list's child type to its generic form for use in trait signatures.
+///
+/// - Concrete node child → `<Self::Ast as AstTypes<'a>>::ChildName`
+/// - List child (list-of-lists) → `TypedList<'a, resolve(inner)>`
+/// - Abstract child → `<Self::Ast as AstTypes<'a>>::Node`
+fn resolve_generic_element_type(
+    child_type: &str,
+    node_names: &HashSet<&str>,
+    list_names: &HashSet<&str>,
+    lists: &[super::ListRef<'_>],
+) -> String {
+    if node_names.contains(child_type) {
+        format!("<Self::Ast as AstTypes<'a>>::{child_type}")
+    } else if list_names.contains(child_type) {
+        let list = lists.iter().find(|l| l.name == child_type).unwrap();
+        let inner = resolve_generic_element_type(list.child_type, node_names, list_names, lists);
+        format!("TypedList<'a, {inner}>")
+    } else {
+        // Abstract child type → use Node
+        "<Self::Ast as AstTypes<'a>>::Node".to_string()
+    }
+}
+
+/// Map a `.synq` field to its generic return type for use in trait accessor methods.
+fn trait_field_return_type(
+    field: &Field,
+    _enum_names: &HashSet<&str>,
+    _flags_names: &HashSet<&str>,
+    node_names: &HashSet<&str>,
+    list_names: &HashSet<&str>,
+    lists: &[super::ListRef<'_>],
+    abstract_names: &HashSet<&str>,
+) -> String {
+    match field.storage {
+        Storage::Index => {
+            let t = field.type_name.as_str();
+            if list_names.contains(t) {
+                let list = lists.iter().find(|l| l.name == t).unwrap();
+                let element =
+                    resolve_generic_element_type(list.child_type, node_names, list_names, lists);
+                format!("Option<TypedList<'a, {element}>>")
+            } else if node_names.contains(t) || abstract_names.contains(t) {
+                format!("Option<<Self::Ast as AstTypes<'a>>::{t}>")
+            } else {
+                // Unknown index type — shouldn't happen, default to Node
+                "Option<<Self::Ast as AstTypes<'a>>::Node>".to_string()
+            }
+        }
+        Storage::Inline => {
+            let t = &field.type_name;
+            if t == "Bool" {
+                "bool".into()
+            } else if t == "SyntaqliteSourceSpan" {
+                "&'a str".into()
+            } else {
+                // Enum or flags — concrete shared type
+                t.clone()
+            }
+        }
+    }
+}
+
+/// Generate Rust source for the shared AST trait definitions (`ast_traits.rs`).
+///
+/// Emits shared value enums, flags, per-node accessor traits, variant kind enums
+/// for abstracts, abstract access traits, `NodeLike`, and the `AstTypes` supertrait.
+///
+/// This module is always compiled (no feature gate) and lives in the syntaqlite crate.
+/// Dialect crates import traits from `syntaqlite::ast_traits`.
+pub fn generate_ast_traits(model: &AstModel<'_>) -> String {
+    let enum_names = model.enum_names();
+    let flags_names = model.flags_names();
+    let node_names = model.node_names();
+    let list_names = model.list_names();
+    let abstract_items = model.abstract_items();
+    let abstract_names: HashSet<&str> = abstract_items.iter().map(|(name, _)| *name).collect();
+
+    let mut w = RustWriter::new();
+    w.file_header();
+
+    w.lines(
+        "
+        #![allow(clippy::type_complexity)]
+
+        use crate::parser::{FromArena, NodeId, TypedList};
+    ",
+    );
+    w.newline();
+
+    // ── Shared value enums ──
+    for item in model.enums() {
+        if item.name == "Bool" {
+            continue;
+        }
+        emit_rust_value_enum(&mut w, item.name, item.variants);
+    }
+
+    // ── Shared flags types ──
+    for item in model.flags() {
+        emit_rust_flags_type(&mut w, item.name, item.flags);
+    }
+
+    // ── NodeLike trait ──
+    w.doc_comment("Trait for the generic `Node` enum wrapper.");
+    w.open_block("pub trait NodeLike<'a>: Copy {");
+    w.line("type Ast: AstTypes<'a>;");
+    w.line("fn node_id(&self) -> NodeId;");
+    w.close_block("}");
+    w.newline();
+
+    // ── Per-node accessor traits ──
+    for node in model.nodes() {
+        let name = node.name;
+        w.doc_comment(&format!("Accessor trait for `{name}` nodes."));
+        w.open_block(&format!("pub trait {name}View<'a>: Copy {{"));
+        w.line("type Ast: AstTypes<'a>;");
+        w.line("fn node_id(&self) -> NodeId;");
+        for field in node.fields {
+            let fname = rust_field_name(&field.name);
+            let ret = trait_field_return_type(
+                field,
+                enum_names,
+                flags_names,
+                node_names,
+                list_names,
+                model.lists(),
+                &abstract_names,
+            );
+            w.line(&format!("fn {fname}(&self) -> {ret};"));
+        }
+        w.close_block("}");
+        w.newline();
+    }
+
+    // ── Variant enums for abstracts ──
+    for &(abs_name, members) in abstract_items {
+        w.doc_comment(&format!("Pattern-matching variants for `{abs_name}`."));
+        w.line("#[derive(Clone, Copy)]");
+        w.open_block(&format!("pub enum {abs_name}Kind<'a, A: AstTypes<'a>> {{"));
+        for member in members {
+            if node_names.contains(member.as_str()) {
+                w.line(&format!("{member}(A::{member}),"));
+            } else if list_names.contains(member.as_str()) {
+                // Lists are TypedList aliases, not associated types on AstTypes.
+                let list_type =
+                    resolve_kind_enum_list_type(member, &node_names, &list_names, model.lists());
+                w.line(&format!("{member}({list_type}),"));
+            }
+        }
+        w.line("Other(A::Node),");
+        w.close_block("}");
+        w.newline();
+    }
+
+    // ── Per-abstract access traits ──
+    for &(abs_name, _) in abstract_items {
+        w.doc_comment(&format!("Abstract access trait for `{abs_name}`."));
+        w.open_block(&format!("pub trait {abs_name}Like<'a>: Copy {{"));
+        w.line("type Ast: AstTypes<'a>;");
+        w.line(&format!("fn kind(&self) -> {abs_name}Kind<'a, Self::Ast>;"));
+        w.close_block("}");
+        w.newline();
+    }
+
+    // ── AstTypes supertrait ──
+    w.doc_comment("Bundle trait associating all AST types for a dialect.");
+    w.open_block("pub trait AstTypes<'a>: 'a {");
+    w.line("type Node: NodeLike<'a, Ast = Self> + Copy + FromArena<'a>;");
+    for &(abs_name, _) in abstract_items {
+        w.line(&format!(
+            "type {abs_name}: {abs_name}Like<'a, Ast = Self> + Copy + FromArena<'a>;"
+        ));
+    }
+    for node in model.nodes() {
+        let name = node.name;
+        w.line(&format!(
+            "type {name}: {name}View<'a, Ast = Self> + Copy + FromArena<'a>;"
+        ));
+    }
+    w.close_block("}");
     w.newline();
 
     w.finish()

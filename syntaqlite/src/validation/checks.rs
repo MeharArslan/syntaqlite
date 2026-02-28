@@ -82,7 +82,9 @@ pub fn check_function_call(
         return None;
     }
 
-    let mut by_name = functions.iter().filter(|f| f.name.eq_ignore_ascii_case(name));
+    let mut by_name = functions
+        .iter()
+        .filter(|f| f.name.eq_ignore_ascii_case(name));
 
     let Some(first_match) = by_name.next() else {
         let mut all_names: Vec<String> = functions.iter().map(|f| f.name.clone()).collect();
