@@ -234,6 +234,18 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
     if os.path.isfile(out_dialect_debug):
         print("wrote %s" % out_dialect_debug)
 
+    # Also copy runtime + SQLite dialect to @syntaqlite/js package for bundled distribution.
+    js_pkg_wasm_dir = os.path.join(ROOT_DIR, "web", "syntaqlite-js", "wasm")
+    os.makedirs(js_pkg_wasm_dir, exist_ok=True)
+    for src, name in [
+        (out_runtime_js, "syntaqlite-runtime.js"),
+        (out_runtime_wasm, "syntaqlite-runtime.wasm"),
+        (out_dialect, "syntaqlite-sqlite.wasm"),
+    ]:
+        dst = os.path.join(js_pkg_wasm_dir, name)
+        shutil.copy2(src, dst)
+        print("wrote %s" % dst)
+
     # Build Perfetto dialect wasm side module.
     perfetto_work_dir = os.path.join(ROOT_DIR, ".cache", "perfetto-wasm")
     perfetto_csrc_dir = os.path.join(perfetto_work_dir, "csrc")
