@@ -730,8 +730,7 @@ mod tests {
     fn available_functions_merges_ambient_context() {
         let mut host = AnalysisHost::new();
         host.set_ambient_context(AmbientContext {
-            tables: vec![],
-            views: vec![],
+            relations: vec![],
             functions: vec![FunctionDef {
                 name: "my_custom_func".to_string(),
                 args: Some(2),

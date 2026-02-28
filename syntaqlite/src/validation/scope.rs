@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use super::types::{DocumentContext, SessionContext};
+use super::types::{DocumentContext, RelationDef, SessionContext};
 
 /// A single scope level (e.g., one SELECT or subquery).
 #[derive(Debug, Default)]
@@ -54,40 +54,28 @@ impl<'ctx> ScopeStack<'ctx> {
             .insert(name.to_lowercase(), columns);
     }
 
+    /// Iterate all relations from document context then session context.
+    fn ambient_relations(&self) -> impl Iterator<Item = &RelationDef> + '_ {
+        self.document
+            .into_iter()
+            .flat_map(|d| d.relations.iter())
+            .chain(self.session.into_iter().flat_map(|s| s.relations.iter()))
+    }
+
     /// Look up column names for a table from the ambient schema context.
     /// Returns `Some(columns)` if the table exists and has columns defined,
     /// `None` if the table is not found or has no columns.
     /// Searches document context first, then session context.
     pub(super) fn ambient_columns_for_table(&self, name: &str) -> Option<Vec<String>> {
-        if let Some(doc) = self.document {
-            for t in &doc.tables {
-                if t.name.eq_ignore_ascii_case(name) && !t.columns.is_empty() {
-                    return Some(t.columns.iter().map(|c| c.name.clone()).collect());
-                }
-            }
-            for v in &doc.views {
-                if v.name.eq_ignore_ascii_case(name) && !v.columns.is_empty() {
-                    return Some(v.columns.iter().map(|c| c.name.clone()).collect());
-                }
-            }
-        }
-        let ctx = self.session?;
-        for t in &ctx.tables {
-            if t.name.eq_ignore_ascii_case(name) && !t.columns.is_empty() {
-                return Some(t.columns.iter().map(|c| c.name.clone()).collect());
-            }
-        }
-        for v in &ctx.views {
-            if v.name.eq_ignore_ascii_case(name) && !v.columns.is_empty() {
-                return Some(v.columns.iter().map(|c| c.name.clone()).collect());
-            }
-        }
-        None
+        self.ambient_relations()
+            .find(|r| r.name.eq_ignore_ascii_case(name) && !r.columns.is_empty())
+            .map(|r| r.columns.iter().map(|c| c.name.clone()).collect())
     }
 
     pub(super) fn resolve_table(&self, name: &str) -> bool {
         let lower = name.to_lowercase();
-        self.stack.iter().any(|s| s.tables.contains_key(&lower)) || self.ambient_has_table(name)
+        self.stack.iter().any(|s| s.tables.contains_key(&lower))
+            || self.ambient_relations().any(|r| r.name.eq_ignore_ascii_case(name))
     }
 
     /// Resolve a column reference.
@@ -114,7 +102,10 @@ impl<'ctx> ScopeStack<'ctx> {
             }
         }
 
-        if self.ambient_has_column(column) {
+        let ambient_found = self
+            .ambient_relations()
+            .any(|r| r.columns.iter().any(|c| c.name.eq_ignore_ascii_case(column)));
+        if ambient_found {
             return ColumnResolution::Found;
         }
 
@@ -132,15 +123,8 @@ impl<'ctx> ScopeStack<'ctx> {
             .stack
             .iter()
             .flat_map(|s| s.tables.keys().cloned())
+            .chain(self.ambient_relations().map(|r| r.name.to_lowercase()))
             .collect();
-        if let Some(doc) = self.document {
-            names.extend(doc.tables.iter().map(|t| t.name.to_lowercase()));
-            names.extend(doc.views.iter().map(|v| v.name.to_lowercase()));
-        }
-        if let Some(ctx) = self.session {
-            names.extend(ctx.tables.iter().map(|t| t.name.to_lowercase()));
-            names.extend(ctx.views.iter().map(|v| v.name.to_lowercase()));
-        }
         names.sort();
         names.dedup();
         names
@@ -151,61 +135,19 @@ impl<'ctx> ScopeStack<'ctx> {
     pub(super) fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
         let mut names = Vec::new();
 
-        match table {
-            Some(tbl) => {
-                let lower = tbl.to_lowercase();
-                for scope in &self.stack {
-                    if let Some(Some(cols)) = scope.tables.get(&lower) {
+        for scope in &self.stack {
+            for (key, cols) in &scope.tables {
+                if table.is_none_or(|tbl| key.eq_ignore_ascii_case(tbl)) {
+                    if let Some(cols) = cols {
                         names.extend(cols.iter().map(|c| c.to_lowercase()));
-                    }
-                }
-                if let Some(doc) = self.document {
-                    for t in &doc.tables {
-                        if t.name.eq_ignore_ascii_case(tbl) {
-                            names.extend(t.columns.iter().map(|c| c.name.to_lowercase()));
-                        }
-                    }
-                    for v in &doc.views {
-                        if v.name.eq_ignore_ascii_case(tbl) {
-                            names.extend(v.columns.iter().map(|c| c.name.to_lowercase()));
-                        }
-                    }
-                }
-                if let Some(ctx) = self.session {
-                    for t in &ctx.tables {
-                        if t.name.eq_ignore_ascii_case(tbl) {
-                            names.extend(t.columns.iter().map(|c| c.name.to_lowercase()));
-                        }
-                    }
-                    for v in &ctx.views {
-                        if v.name.eq_ignore_ascii_case(tbl) {
-                            names.extend(v.columns.iter().map(|c| c.name.to_lowercase()));
-                        }
                     }
                 }
             }
-            None => {
-                for scope in &self.stack {
-                    for cols in scope.tables.values().flatten() {
-                        names.extend(cols.iter().map(|c| c.to_lowercase()));
-                    }
-                }
-                if let Some(doc) = self.document {
-                    for t in &doc.tables {
-                        names.extend(t.columns.iter().map(|c| c.name.to_lowercase()));
-                    }
-                    for v in &doc.views {
-                        names.extend(v.columns.iter().map(|c| c.name.to_lowercase()));
-                    }
-                }
-                if let Some(ctx) = self.session {
-                    for t in &ctx.tables {
-                        names.extend(t.columns.iter().map(|c| c.name.to_lowercase()));
-                    }
-                    for v in &ctx.views {
-                        names.extend(v.columns.iter().map(|c| c.name.to_lowercase()));
-                    }
-                }
+        }
+
+        for r in self.ambient_relations() {
+            if table.is_none_or(|tbl| r.name.eq_ignore_ascii_case(tbl)) {
+                names.extend(r.columns.iter().map(|c| c.name.to_lowercase()));
             }
         }
 
@@ -228,46 +170,6 @@ impl<'ctx> ScopeStack<'ctx> {
             }
         }
         ColumnResolution::TableNotFound
-    }
-
-    fn ambient_has_table(&self, name: &str) -> bool {
-        if let Some(doc) = self.document {
-            if doc.tables.iter().any(|t| t.name.eq_ignore_ascii_case(name))
-                || doc.views.iter().any(|v| v.name.eq_ignore_ascii_case(name))
-            {
-                return true;
-            }
-        }
-        let Some(ctx) = self.session else {
-            return false;
-        };
-        ctx.tables.iter().any(|t| t.name.eq_ignore_ascii_case(name))
-            || ctx.views.iter().any(|v| v.name.eq_ignore_ascii_case(name))
-    }
-
-    fn ambient_has_column(&self, column: &str) -> bool {
-        if let Some(doc) = self.document {
-            let found = doc.tables.iter().any(|t| {
-                t.columns.iter().any(|c| c.name.eq_ignore_ascii_case(column))
-            }) || doc.views.iter().any(|v| {
-                v.columns.iter().any(|c| c.name.eq_ignore_ascii_case(column))
-            });
-            if found {
-                return true;
-            }
-        }
-        let Some(ctx) = self.session else {
-            return false;
-        };
-        ctx.tables.iter().any(|t| {
-            t.columns
-                .iter()
-                .any(|c| c.name.eq_ignore_ascii_case(column))
-        }) || ctx.views.iter().any(|v| {
-            v.columns
-                .iter()
-                .any(|c| c.name.eq_ignore_ascii_case(column))
-        })
     }
 }
 
