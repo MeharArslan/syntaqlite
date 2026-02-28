@@ -1,5 +1,6 @@
 ---
-description: Commit all current changes and push to the remote
+name: cp
+description: Commit all current changes and push to the remote. Use when the user asks to commit, push, save progress, or ship changes.
 user_invocable: true
 ---
 

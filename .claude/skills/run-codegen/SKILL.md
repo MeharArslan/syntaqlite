@@ -1,5 +1,6 @@
 ---
-description: Regenerate all generated code from .synq definitions and SQLite grammar
+name: run-codegen
+description: Regenerate all generated code from .synq definitions and SQLite grammar. Use when .synq files, grammar actions, or dialect definitions have been modified and generated C/Rust code needs updating.
 user_invocable: true
 ---
 

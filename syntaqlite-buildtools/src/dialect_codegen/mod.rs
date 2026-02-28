@@ -40,6 +40,7 @@ pub(super) fn c_type_name(name: &str) -> String {
 
 pub struct AstModel<'a> {
     items: &'a [Item],
+    extension_items: &'a [Item],
     enum_names: HashSet<&'a str>,
     flags_names: HashSet<&'a str>,
     node_names: HashSet<&'a str>,
@@ -178,6 +179,7 @@ impl<'a> AstModel<'a> {
 
         Self {
             items,
+            extension_items: &[],
             enum_names,
             flags_names,
             node_names,
@@ -330,7 +332,8 @@ impl<'a> AstModel<'a> {
         }
 
         Ok(Self {
-            items: base_items, // Note: items() only returns base items
+            items: base_items,
+            extension_items,
             enum_names,
             flags_names,
             node_names,
@@ -348,6 +351,13 @@ impl<'a> AstModel<'a> {
 
     pub fn items(&self) -> &'a [Item] {
         self.items
+    }
+
+    /// Iterate all items (base + extension). Use this when codegen needs the
+    /// full set — e.g. fmt compilation needs fmt blocks from both base and
+    /// extension items.
+    pub fn all_items(&self) -> impl Iterator<Item = &'a Item> {
+        self.items.iter().chain(self.extension_items.iter())
     }
 
     pub fn enum_names(&self) -> &HashSet<&'a str> {

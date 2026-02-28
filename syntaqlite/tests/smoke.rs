@@ -44,6 +44,38 @@ fn parse_error() {
 }
 
 #[test]
+fn parse_error_select_bare() {
+    // "SELECT " with trailing space — no column list, no semicolon.
+    // Should return an error with a non-empty message, not silently return None.
+    let mut parser = syntaqlite::Parser::new();
+    let mut session = parser.parse("SELECT ");
+
+    let result = session.next_statement().unwrap();
+    let err = result.expect_err("expected parse error for bare SELECT");
+    assert!(
+        !err.message.is_empty(),
+        "error message should not be empty, got: {:?}",
+        err.message
+    );
+}
+
+#[test]
+fn parse_error_has_message_and_offset() {
+    // A syntax error should carry a non-empty message.
+    let mut parser = syntaqlite::Parser::new();
+    let mut session = parser.parse("NOT VALID SQL;");
+
+    let err = session
+        .next_statement()
+        .unwrap()
+        .expect_err("expected parse error");
+    assert!(
+        !err.message.is_empty(),
+        "error message should not be empty"
+    );
+}
+
+#[test]
 fn parse_error_recovery() {
     // After a parse error, the cursor continues parsing subsequent statements.
     // Lemon's built-in error recovery synchronises on `;`.

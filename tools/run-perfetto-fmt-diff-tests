@@ -103,6 +103,7 @@ def _compile_perfetto_dialect(cli_binary: Path, work_dir: Path) -> Path:
     cc_cmd += [
         str(csrc_dir / "syntaqlite_perfetto.c"),
         str(ROOT_DIR / "syntaqlite" / "csrc" / "parser.c"),
+        str(ROOT_DIR / "syntaqlite" / "csrc" / "token_wrapped.c"),
         "-I",
         str(csrc_dir),
         "-I",

@@ -1,5 +1,6 @@
 ---
-description: Run tests to verify correctness after code changes
+name: run-tests
+description: Run tests to verify correctness after code changes. Use when the user asks to run tests, verify changes, or check that things still work. Covers Rust unit tests, AST diff tests, formatter diff tests, Perfetto dialect formatter tests, and amalgamation integration tests.
 user_invocable: true
 ---
 
@@ -16,18 +17,21 @@ Run tests to verify correctness after code changes.
 
 2. **Run Rust unit tests**:
    ```sh
-   cargo nextest run --workspace
+   tools/run-unit-tests
    ```
 
 3. **Run diff test suites** based on what changed:
-   - `.synq` files or codegen changes → run both AST and fmt diff tests
+   - `.synq` files or codegen changes → run AST, fmt, and Perfetto fmt diff tests
    - `src/fmt/` changes → `tools/run-fmt-diff-tests`
    - `src/sqlite/` or parser changes → `tools/run-ast-diff-tests`
-   - When unclear → run both AST and fmt diff tests
+   - `dialects/perfetto/` changes → `tools/run-perfetto-fmt-diff-tests` and `tools/run-amalg-tests`
+   - When unclear → run all diff test suites
 
    ```sh
    tools/run-ast-diff-tests
    tools/run-fmt-diff-tests
+   tools/run-perfetto-fmt-diff-tests
+   tools/run-amalg-tests
    ```
 
 4. **Useful flags**:

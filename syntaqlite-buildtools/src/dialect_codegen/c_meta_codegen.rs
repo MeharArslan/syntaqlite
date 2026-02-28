@@ -43,7 +43,7 @@ impl Display for CFmtCodegenError {
 impl std::error::Error for CFmtCodegenError {}
 
 pub fn generate_c_fmt_tables(model: &AstModel<'_>) -> Result<String, CFmtCodegenError> {
-    let compiled = super::fmt_compiler::try_compile_all(model.items())
+    let compiled = super::fmt_compiler::try_compile_all(model)
         .map_err(CFmtCodegenError::FmtCompile)?;
 
     let mut w = CWriter::new();
