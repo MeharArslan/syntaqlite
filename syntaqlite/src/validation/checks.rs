@@ -1,10 +1,10 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+use super::ValidationConfig;
 use super::fuzzy::best_suggestion;
 use super::scope::{ColumnResolution, ScopeStack};
 use super::types::{Diagnostic, FunctionDef};
-use super::ValidationConfig;
 
 pub fn check_table_ref(
     name: &str,
@@ -47,14 +47,19 @@ pub fn check_column_ref(
             let candidates = scope.all_column_names(Some(tbl));
             let suggestion = best_suggestion(column, &candidates, config.suggestion_threshold);
             let msg = match suggestion {
-                Some(ref s) => format!("unknown column '{column}' in table '{tbl}', did you mean '{s}'?"),
+                Some(ref s) => {
+                    format!("unknown column '{column}' in table '{tbl}', did you mean '{s}'?")
+                }
                 None => format!("unknown column '{column}' in table '{tbl}'"),
             };
             Some(make_diagnostic(offset, length, msg, config))
         }
         ColumnResolution::NotFound => {
-            let suggestion =
-                best_suggestion(column, &scope.all_column_names(None), config.suggestion_threshold);
+            let suggestion = best_suggestion(
+                column,
+                &scope.all_column_names(None),
+                config.suggestion_threshold,
+            );
             Some(make_diagnostic(
                 offset,
                 length,

@@ -8,6 +8,7 @@ pub use parser::{NodeId, NodeReader, ParseError, Parser, StatementCursor};
 #[cfg(feature = "fmt")]
 pub mod fmt;
 
+pub mod catalog;
 pub mod dialect;
 
 pub use dialect::Dialect;

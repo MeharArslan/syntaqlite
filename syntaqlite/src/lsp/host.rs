@@ -6,13 +6,13 @@ use std::collections::HashMap;
 use crate::dialect::TokenCategory;
 use crate::fmt::{FormatConfig, Formatter};
 use crate::parser::{
-    LowLevelParser, ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID,
-    TOKEN_FLAG_AS_TYPE, Tokenizer,
+    LowLevelParser, ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE,
+    Tokenizer,
 };
 use crate::{Dialect, ParseError, Parser};
 
-use crate::validation::types::{AmbientContext, FunctionDef};
 use crate::lsp::{Diagnostic, SemanticToken, Severity};
+use crate::validation::types::{FunctionDef, SessionContext};
 
 /// Semantic completion context derived from parser stack state.
 #[repr(u32)]
@@ -49,8 +49,7 @@ pub struct CompletionInfo {
 pub struct AnalysisHost<'d> {
     dialect: Dialect<'d>,
     documents: HashMap<String, Document>,
-    context: Option<AmbientContext>,
-    #[cfg(feature = "sqlite")]
+    context: Option<SessionContext>,
     dialect_config: Option<crate::dialect::ffi::DialectConfig>,
 }
 
@@ -78,7 +77,6 @@ impl<'d> AnalysisHost<'d> {
             dialect,
             documents: HashMap::new(),
             context: None,
-            #[cfg(feature = "sqlite")]
             dialect_config: None,
         }
     }
@@ -89,14 +87,24 @@ impl<'d> AnalysisHost<'d> {
         AnalysisHost::with_dialect(*crate::sqlite::DIALECT)
     }
 
-    /// Set the ambient database schema context.
-    pub fn set_ambient_context(&mut self, ctx: AmbientContext) {
+    /// Set the session context (user-provided schema and functions).
+    pub fn set_session_context(&mut self, ctx: SessionContext) {
         self.context = Some(ctx);
     }
 
-    /// Access the current ambient context.
-    pub fn ambient_context(&self) -> Option<&AmbientContext> {
+    /// Access the current session context.
+    pub fn session_context(&self) -> Option<&SessionContext> {
         self.context.as_ref()
+    }
+
+    /// Deprecated: use `set_session_context` instead.
+    pub fn set_ambient_context(&mut self, ctx: SessionContext) {
+        self.set_session_context(ctx);
+    }
+
+    /// Deprecated: use `session_context` instead.
+    pub fn ambient_context(&self) -> Option<&SessionContext> {
+        self.session_context()
     }
 
     /// Run semantic validation on a document.
@@ -104,7 +112,6 @@ impl<'d> AnalysisHost<'d> {
     /// Parses the document, walks each statement through
     /// `validate_statement`, and returns diagnostics for unresolved
     /// table names, column references, and function calls.
-    #[cfg(feature = "sqlite")]
     pub fn validate(
         &self,
         uri: &str,
@@ -138,21 +145,34 @@ impl<'d> AnalysisHost<'d> {
     }
 
     /// Set the dialect configuration for filtering built-in functions.
-    #[cfg(feature = "sqlite")]
     pub fn set_dialect_config(&mut self, config: crate::dialect::ffi::DialectConfig) {
         self.dialect_config = Some(config);
     }
 
     /// Returns function definitions available in the current configuration.
     ///
-    /// Combines SQLite built-in functions (filtered by `DialectConfig` if set)
-    /// with user-provided functions from the ambient context.
-    #[cfg(feature = "sqlite")]
+    /// Three-layer resolution:
+    /// 1. SQLite base catalog (filtered by `DialectConfig`)
+    /// 2. Dialect extensions from the C vtable (filtered by `DialectConfig`)
+    /// 3. Session context user functions
     pub fn available_functions(&self) -> Vec<FunctionDef> {
         let default_config = crate::dialect::ffi::DialectConfig::default();
         let config = self.dialect_config.as_ref().unwrap_or(&default_config);
-        let mut result = catalog_to_function_defs(config);
 
+        // Layer 1: SQLite base catalog (filtered by config)
+        #[cfg(feature = "sqlite")]
+        let mut result = catalog_to_function_defs(config);
+        #[cfg(not(feature = "sqlite"))]
+        let mut result = Vec::new();
+
+        // Layer 2: Dialect extensions (filtered by config)
+        for ext in self.dialect.function_extensions() {
+            if crate::catalog::is_available(&ext, config) {
+                result.extend(expand_function_info(&ext.info));
+            }
+        }
+
+        // Layer 3: Session context user functions
         if let Some(ref ctx) = self.context {
             result.extend(ctx.functions.iter().cloned());
         }
@@ -346,36 +366,36 @@ impl<'d> AnalysisHost<'d> {
     }
 }
 
+/// Expand a `FunctionInfo` into one `FunctionDef` per arity.
+fn expand_function_info(info: &crate::catalog::FunctionInfo) -> Vec<FunctionDef> {
+    if info.arities.is_empty() {
+        vec![FunctionDef {
+            name: info.name.to_string(),
+            args: None,
+            description: None,
+        }]
+    } else {
+        info.arities
+            .iter()
+            .map(|&arity| FunctionDef {
+                name: info.name.to_string(),
+                args: if arity < 0 {
+                    None
+                } else {
+                    Some(arity as usize)
+                },
+                description: None,
+            })
+            .collect()
+    }
+}
+
 /// Convert the SQLite function catalog into `FunctionDef` values filtered by config.
 #[cfg(feature = "sqlite")]
-fn catalog_to_function_defs(
-    config: &crate::dialect::ffi::DialectConfig,
-) -> Vec<FunctionDef> {
+fn catalog_to_function_defs(config: &crate::dialect::ffi::DialectConfig) -> Vec<FunctionDef> {
     crate::sqlite::functions::available_functions(config)
         .into_iter()
-        .flat_map(|info| {
-            if info.arities.is_empty() {
-                // No arity info — emit a single variadic entry.
-                vec![FunctionDef {
-                    name: info.name.to_string(),
-                    args: None,
-                    description: None,
-                }]
-            } else {
-                info.arities
-                    .iter()
-                    .map(|&arity| FunctionDef {
-                        name: info.name.to_string(),
-                        args: if arity < 0 {
-                            None
-                        } else {
-                            Some(arity as usize)
-                        },
-                        description: None,
-                    })
-                    .collect()
-            }
-        })
+        .flat_map(|info| expand_function_info(info))
         .collect()
 }
 

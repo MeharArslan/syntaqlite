@@ -74,6 +74,10 @@ static const SyntaqliteDialect SQLITE_DIALECT = {
     // Token metadata
     .token_categories = token_categories,
     .token_type_count = TOKEN_TYPE_COUNT,
+
+    // Function extensions (none for base dialect)
+    .function_extensions = 0,
+    .function_extension_count = 0,
 };
 
 // ============ Public API ============

@@ -266,6 +266,75 @@ impl<'d> Dialect<'d> {
     pub fn tk_comment(&self) -> u32 {
         self.raw.tk_comment as u32
     }
+
+    /// Return dialect-provided function extensions.
+    ///
+    /// Reads the C vtable's `function_extensions` array and converts each
+    /// entry into a Rust `catalog::FunctionEntry`. Returns an empty vec if
+    /// the dialect has no extensions.
+    pub fn function_extensions(&self) -> Vec<crate::catalog::FunctionEntry> {
+        if self.raw.function_extensions.is_null() || self.raw.function_extension_count == 0 {
+            return Vec::new();
+        }
+        let count = self.raw.function_extension_count as usize;
+        let mut result = Vec::with_capacity(count);
+        for i in 0..count {
+            unsafe {
+                let c_entry = &*self.raw.function_extensions.add(i);
+                let name = std::ffi::CStr::from_ptr(c_entry.info.name)
+                    .to_str()
+                    .expect("invalid UTF-8 in function extension name");
+                // Leak the name so we get a &'static str — extensions are
+                // static data from the dialect, but the CStr→&str borrow
+                // is tied to the dialect lifetime. We box-leak here because
+                // this is called rarely (once at host construction).
+                let name: &'static str = Box::leak(name.to_string().into_boxed_str());
+                let arities = if c_entry.info.arities.is_null() || c_entry.info.arity_count == 0 {
+                    &[] as &'static [i16]
+                } else {
+                    let a_count = c_entry.info.arity_count as usize;
+                    let a_slice = std::slice::from_raw_parts(c_entry.info.arities, a_count);
+                    // Leak a copy so it's 'static.
+                    Vec::from(a_slice).leak()
+                };
+                let category = match c_entry.info.category {
+                    1 => crate::catalog::FunctionCategory::Aggregate,
+                    2 => crate::catalog::FunctionCategory::Window,
+                    _ => crate::catalog::FunctionCategory::Scalar,
+                };
+                let availability =
+                    if c_entry.availability.is_null() || c_entry.availability_count == 0 {
+                        &[] as &'static [crate::catalog::AvailabilityRule]
+                    } else {
+                        let av_count = c_entry.availability_count as usize;
+                        let mut rules = Vec::with_capacity(av_count);
+                        for j in 0..av_count {
+                            let c_rule = &*c_entry.availability.add(j);
+                            rules.push(crate::catalog::AvailabilityRule {
+                                since: c_rule.since,
+                                until: c_rule.until,
+                                cflag_index: c_rule.cflag_index,
+                                cflag_polarity: if c_rule.cflag_polarity == 1 {
+                                    crate::catalog::CflagPolarity::Omit
+                                } else {
+                                    crate::catalog::CflagPolarity::Enable
+                                },
+                            });
+                        }
+                        rules.leak()
+                    };
+                result.push(crate::catalog::FunctionEntry {
+                    info: crate::catalog::FunctionInfo {
+                        name,
+                        arities,
+                        category,
+                    },
+                    availability,
+                });
+            }
+        }
+        result
+    }
 }
 
 // SAFETY: The dialect wraps a reference to a C struct with no mutable state.

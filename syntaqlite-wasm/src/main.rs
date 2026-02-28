@@ -591,6 +591,140 @@ pub extern "C" fn wasm_clear_all_cflags() -> i32 {
     0
 }
 
+// ── Session context WASM exports ─────────────────────────────────────
+
+#[derive(serde::Deserialize)]
+struct SessionContextJson {
+    #[serde(default)]
+    tables: Vec<TableJson>,
+    #[serde(default)]
+    views: Vec<ViewJson>,
+    #[serde(default)]
+    functions: Vec<FunctionJson>,
+}
+
+#[derive(serde::Deserialize)]
+struct TableJson {
+    name: String,
+    #[serde(default)]
+    columns: Vec<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct ViewJson {
+    name: String,
+    #[serde(default)]
+    columns: Vec<String>,
+}
+
+#[derive(serde::Deserialize)]
+struct FunctionJson {
+    name: String,
+    args: Option<usize>,
+}
+
+impl From<SessionContextJson> for syntaqlite::validation::SessionContext {
+    fn from(json: SessionContextJson) -> Self {
+        syntaqlite::validation::SessionContext {
+            tables: json
+                .tables
+                .into_iter()
+                .map(|t| syntaqlite::validation::TableDef {
+                    name: t.name,
+                    columns: t
+                        .columns
+                        .into_iter()
+                        .map(|c| syntaqlite::validation::ColumnDef {
+                            name: c,
+                            type_name: None,
+                            is_primary_key: false,
+                            is_nullable: true,
+                        })
+                        .collect(),
+                })
+                .collect(),
+            views: json
+                .views
+                .into_iter()
+                .map(|v| syntaqlite::validation::ViewDef {
+                    name: v.name,
+                    columns: v
+                        .columns
+                        .into_iter()
+                        .map(|c| syntaqlite::validation::ColumnDef {
+                            name: c,
+                            type_name: None,
+                            is_primary_key: false,
+                            is_nullable: true,
+                        })
+                        .collect(),
+                })
+                .collect(),
+            functions: json
+                .functions
+                .into_iter()
+                .map(|f| syntaqlite::validation::FunctionDef {
+                    name: f.name,
+                    args: f.args,
+                    description: None,
+                })
+                .collect(),
+        }
+    }
+}
+
+fn run_set_session_context(ptr: u32, len: u32) -> i32 {
+    let input = match decode_input(ptr, len) {
+        Ok(s) => s,
+        Err(e) => {
+            set_result(&e);
+            return 1;
+        }
+    };
+    let json: SessionContextJson = match serde_json::from_str(&input) {
+        Ok(v) => v,
+        Err(e) => {
+            set_result(&format!("invalid session context JSON: {e}"));
+            return 1;
+        }
+    };
+    let ctx: syntaqlite::validation::SessionContext = json.into();
+
+    let dialect_ptr = DIALECT_PTR.with(|p| p.get());
+    if dialect_ptr == 0 {
+        set_result("dialect pointer is not set; call wasm_set_dialect first");
+        return 1;
+    }
+    let mut lsp = take_or_create_lsp_host(dialect_ptr);
+    lsp.host.set_session_context(ctx);
+    store_lsp_host(lsp);
+    0
+}
+
+fn run_clear_session_context() -> i32 {
+    // Invalidate the LSP host so it's recreated without context.
+    invalidate_lsp_host();
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_set_session_context(ptr: u32, len: u32) -> i32 {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        run_set_session_context(ptr, len)
+    })) {
+        Ok(result) => result,
+        Err(_) => {
+            set_result("wasm_set_session_context panicked");
+            1
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_clear_session_context() -> i32 {
+    run_clear_session_context()
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_get_cflag_list() -> i32 {
     let table = dialect_ffi::cflag_table();
@@ -667,17 +801,23 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host
         .update_document(WASM_DOC_URI, version as i32, source);
-    let diags = lsp.host.diagnostics(WASM_DOC_URI);
+    let parse_diags: Vec<_> = lsp.host.diagnostics(WASM_DOC_URI).to_vec();
 
-    let count = diags.len() as i32;
+    // Run semantic validation (function name/arity, table/column checks).
+    let validation_config = syntaqlite::validation::ValidationConfig::default();
+    let validation_diags = lsp.host.validate(WASM_DOC_URI, &validation_config);
+
+    let total_count = parse_diags.len() + validation_diags.len();
 
     // Serialize diagnostics as JSON array (no serde in WASM).
     let mut out = String::new();
     out.push('[');
-    for (i, d) in diags.iter().enumerate() {
-        if i > 0 {
+    let mut first = true;
+    for d in parse_diags.iter().chain(validation_diags.iter()) {
+        if !first {
             out.push(',');
         }
+        first = false;
         out.push_str("{\"startOffset\":");
         out.push_str(&d.start_offset.to_string());
         out.push_str(",\"endOffset\":");
@@ -699,7 +839,7 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
     // Put the host back for reuse.
     store_lsp_host(lsp);
 
-    count
+    total_count as i32
 }
 
 fn run_semantic_tokens(ptr: u32, len: u32, range_start: u32, range_end: u32, version: u32) -> i32 {

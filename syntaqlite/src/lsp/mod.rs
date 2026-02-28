@@ -4,7 +4,9 @@
 pub mod host;
 
 pub use crate::dialect::TokenCategory;
-pub use crate::validation::types::{AmbientContext, ColumnDef, FunctionDef, TableDef, ViewDef};
+pub use crate::validation::types::{
+    AmbientContext, ColumnDef, FunctionDef, SessionContext, TableDef, ViewDef,
+};
 pub use crate::validation::types::{Diagnostic, Severity};
 pub use host::{AnalysisHost, CompletionContext, CompletionInfo, FormatError};
 

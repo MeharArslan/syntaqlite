@@ -25,9 +25,7 @@ pub(super) fn levenshtein_distance(a: &str, b: &str) -> usize {
         curr[0] = i;
         for j in 1..=n {
             let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
-            curr[j] = (prev[j] + 1)
-                .min(curr[j - 1] + 1)
-                .min(prev[j - 1] + cost);
+            curr[j] = (prev[j] + 1).min(curr[j - 1] + 1).min(prev[j - 1] + cost);
         }
         std::mem::swap(&mut prev, &mut curr);
     }
@@ -38,7 +36,11 @@ pub(super) fn levenshtein_distance(a: &str, b: &str) -> usize {
 /// Find the best matching candidate within a maximum Levenshtein distance.
 ///
 /// Returns the closest match, or `None` if no candidate is within `threshold`.
-pub(super) fn best_suggestion(name: &str, candidates: &[String], threshold: usize) -> Option<String> {
+pub(super) fn best_suggestion(
+    name: &str,
+    candidates: &[String],
+    threshold: usize,
+) -> Option<String> {
     candidates
         .iter()
         .map(|c| (levenshtein_distance(name, c), c))

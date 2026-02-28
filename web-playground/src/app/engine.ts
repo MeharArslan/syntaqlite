@@ -51,6 +51,8 @@ export class Engine {
   private clearCflagRaw: WasmFn | null = null;
   private clearAllCflagsRaw: WasmFn | null = null;
   private getCflagListRaw: WasmFn | null = null;
+  private setSessionContextRaw: WasmFn | null = null;
+  private clearSessionContextRaw: WasmFn | null = null;
 
   get ready(): boolean {
     return this.module !== null;
@@ -82,6 +84,8 @@ export class Engine {
     this.clearCflagRaw = this.tryResolveRuntimeFn("wasm_clear_cflag");
     this.clearAllCflagsRaw = this.tryResolveRuntimeFn("wasm_clear_all_cflags");
     this.getCflagListRaw = this.tryResolveRuntimeFn("wasm_get_cflag_list");
+    this.setSessionContextRaw = this.tryResolveRuntimeFn("wasm_set_session_context");
+    this.clearSessionContextRaw = this.tryResolveRuntimeFn("wasm_clear_session_context");
   }
 
   private resolveRuntimeFn(symbol: string): WasmFn {
@@ -315,6 +319,20 @@ export class Engine {
     } catch {
       return [];
     }
+  }
+
+  setSessionContext(json: string): void {
+    if (!this.setSessionContextRaw) return;
+    const status = this.withInput(json, (ptr, len) => this.setSessionContextRaw!(ptr, len));
+    const detail = this.readAndClearResult();
+    if (status !== 0) {
+      throw new Error(detail || `wasm_set_session_context failed with status ${status}`);
+    }
+  }
+
+  clearSessionContext(): void {
+    if (!this.clearSessionContextRaw) return;
+    this.clearSessionContextRaw();
   }
 }
 

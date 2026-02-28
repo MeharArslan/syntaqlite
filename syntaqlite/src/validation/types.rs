@@ -27,11 +27,14 @@ pub enum Severity {
 ///
 /// Callers populate it however they want: introspecting a live DB,
 /// parsing CREATE statements, loading from a config file, etc.
-pub struct AmbientContext {
+pub struct SessionContext {
     pub tables: Vec<TableDef>,
     pub views: Vec<ViewDef>,
     pub functions: Vec<FunctionDef>,
 }
+
+/// Deprecated: renamed to [`SessionContext`].
+pub type AmbientContext = SessionContext;
 
 pub struct TableDef {
     pub name: String,

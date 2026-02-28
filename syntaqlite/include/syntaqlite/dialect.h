@@ -62,6 +62,28 @@ typedef struct SyntaqliteFieldMeta {
     uint8_t     display_count;    // number of entries in display[]
 } SyntaqliteFieldMeta;
 
+// ── Function extension types ────────────────────────────────────────────
+
+typedef struct SyntaqliteFunctionInfo {
+    const char*     name;
+    const int16_t*  arities;
+    uint16_t        arity_count;
+    uint8_t         category;       // 0=Scalar, 1=Aggregate, 2=Window
+} SyntaqliteFunctionInfo;
+
+typedef struct SyntaqliteAvailabilityRule {
+    int32_t   since;
+    int32_t   until;
+    uint32_t  cflag_index;
+    uint8_t   cflag_polarity;       // 0=Enable, 1=Omit
+} SyntaqliteAvailabilityRule;
+
+typedef struct SyntaqliteFunctionEntry {
+    SyntaqliteFunctionInfo                info;
+    const SyntaqliteAvailabilityRule*     availability;
+    uint16_t                              availability_count;
+} SyntaqliteFunctionEntry;
+
 // ── The dialect descriptor ──────────────────────────────────────────────
 
 typedef struct SyntaqliteDialect {
@@ -117,6 +139,10 @@ typedef struct SyntaqliteDialect {
     // Token metadata (indexed by token type ordinal)
     const uint8_t* token_categories;   // length = token_type_count; NULL = no categories
     uint32_t       token_type_count;
+
+    // Dialect function extensions (additional functions beyond the SQLite base catalog)
+    const SyntaqliteFunctionEntry* function_extensions;
+    uint32_t function_extension_count;
 } SyntaqliteDialect;
 
 #ifdef __cplusplus

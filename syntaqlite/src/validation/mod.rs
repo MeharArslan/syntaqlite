@@ -12,7 +12,9 @@ use crate::parser::{FromArena, NodeId, NodeReader};
 use crate::sqlite::ast::Stmt;
 
 use scope::ScopeStack;
-pub use types::{AmbientContext, ColumnDef, Diagnostic, FunctionDef, Severity, TableDef, ViewDef};
+pub use types::{
+    AmbientContext, ColumnDef, Diagnostic, FunctionDef, SessionContext, Severity, TableDef, ViewDef,
+};
 
 /// Configuration for semantic validation.
 pub struct ValidationConfig {
@@ -49,7 +51,7 @@ impl ValidationConfig {
 pub fn validate_statement<'a>(
     reader: &'a NodeReader<'a>,
     stmt_id: NodeId,
-    context: Option<&AmbientContext>,
+    context: Option<&SessionContext>,
     functions: &[FunctionDef],
     config: &ValidationConfig,
 ) -> Vec<Diagnostic> {

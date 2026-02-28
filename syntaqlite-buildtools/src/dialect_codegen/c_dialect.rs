@@ -180,6 +180,10 @@ pub fn generate_dialect_c(dialect: &str, tokens: Option<&[(String, u32)]>) -> St
         w.line("    .token_categories = 0,");
         w.line("    .token_type_count = 0,");
     }
+    w.newline();
+    w.line("    // Function extensions (none for base dialect)");
+    w.line("    .function_extensions = 0,");
+    w.line("    .function_extension_count = 0,");
     w.line("};");
     w.newline();
 

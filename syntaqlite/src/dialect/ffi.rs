@@ -206,6 +206,39 @@ impl Default for DialectConfig {
     }
 }
 
+// ── Function extension FFI mirrors ─────────────────────────────────────
+
+/// Mirrors C `SyntaqliteFunctionInfo` from `include/syntaqlite/dialect.h`.
+#[repr(C)]
+pub struct FunctionInfoC {
+    pub name: *const std::ffi::c_char,
+    pub arities: *const i16,
+    pub arity_count: u16,
+    pub category: u8,
+}
+
+/// Mirrors C `SyntaqliteAvailabilityRule` from `include/syntaqlite/dialect.h`.
+#[repr(C)]
+pub struct AvailabilityRuleC {
+    pub since: i32,
+    pub until: i32,
+    pub cflag_index: u32,
+    pub cflag_polarity: u8,
+}
+
+/// Mirrors C `SyntaqliteFunctionEntry` from `include/syntaqlite/dialect.h`.
+#[repr(C)]
+pub struct FunctionEntryC {
+    pub info: FunctionInfoC,
+    pub availability: *const AvailabilityRuleC,
+    pub availability_count: u16,
+}
+
+// Layout assertions for FFI mirrors.
+const _: () = {
+    assert!(std::mem::size_of::<AvailabilityRuleC>() == 16);
+};
+
 /// Mirrors C `SyntaqliteFieldMeta` from `include/syntaqlite/dialect.h`.
 #[repr(C)]
 pub struct FieldMeta {
@@ -270,4 +303,8 @@ pub struct Dialect {
     // Token metadata (indexed by token type ordinal)
     pub token_categories: *const u8,
     pub token_type_count: u32,
+
+    // Dialect function extensions
+    pub function_extensions: *const FunctionEntryC,
+    pub function_extension_count: u32,
 }

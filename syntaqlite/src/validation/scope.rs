@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use super::types::AmbientContext;
+use super::types::SessionContext;
 
 /// A single scope level (e.g., one SELECT or subquery).
 #[derive(Debug, Default)]
@@ -15,12 +15,12 @@ struct Scope {
 
 /// A stack of scopes for name resolution, with optional ambient schema.
 pub(super) struct ScopeStack<'ctx> {
-    ambient: Option<&'ctx AmbientContext>,
+    ambient: Option<&'ctx SessionContext>,
     stack: Vec<Scope>,
 }
 
 impl<'ctx> ScopeStack<'ctx> {
-    pub(super) fn new(ambient: Option<&'ctx AmbientContext>) -> Self {
+    pub(super) fn new(ambient: Option<&'ctx SessionContext>) -> Self {
         ScopeStack {
             ambient,
             stack: vec![Scope::default()],
@@ -49,8 +49,7 @@ impl<'ctx> ScopeStack<'ctx> {
 
     pub(super) fn resolve_table(&self, name: &str) -> bool {
         let lower = name.to_lowercase();
-        self.stack.iter().any(|s| s.tables.contains_key(&lower))
-            || self.ambient_has_table(name)
+        self.stack.iter().any(|s| s.tables.contains_key(&lower)) || self.ambient_has_table(name)
     }
 
     /// Resolve a column reference.
@@ -173,13 +172,15 @@ impl<'ctx> ScopeStack<'ctx> {
         let Some(ctx) = self.ambient else {
             return false;
         };
-        ctx.tables
-            .iter()
-            .any(|t| t.columns.iter().any(|c| c.name.eq_ignore_ascii_case(column)))
-            || ctx
-                .views
+        ctx.tables.iter().any(|t| {
+            t.columns
                 .iter()
-                .any(|v| v.columns.iter().any(|c| c.name.eq_ignore_ascii_case(column)))
+                .any(|c| c.name.eq_ignore_ascii_case(column))
+        }) || ctx.views.iter().any(|v| {
+            v.columns
+                .iter()
+                .any(|c| c.name.eq_ignore_ascii_case(column))
+        })
     }
 }
 

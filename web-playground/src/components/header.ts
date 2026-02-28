@@ -136,11 +136,26 @@ export class Header implements m.ClassComponent<Attrs> {
                           ),
                         ]),
                         m("div.sq-config-popover__section", [
+                          m("span.sq-config-popover__label", "Schema Context"),
+                          m("textarea.sq-config-popover__textarea", {
+                            placeholder: "table_name: col1, col2\nusers: id, name, email",
+                            rows: 4,
+                            value: app.schemaContext.rawText,
+                            oninput: (e: Event) => {
+                              app.schemaContext.rawText = (e.target as HTMLTextAreaElement).value;
+                              app.schemaContext.apply(app.runtime);
+                              m.redraw();
+                            },
+                          }),
+                          m("span.sq-config-popover__help-text", "One table per line: table_name: col1, col2"),
+                        ]),
+                        m("div.sq-config-popover__section", [
                           m(
                             "button.sq-config-popover__reset-btn",
                             {
                               onclick: () => {
                                 app.dialectConfig.reset(app.runtime);
+                                app.schemaContext.reset(app.runtime);
                                 m.redraw();
                               },
                             },

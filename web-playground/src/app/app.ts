@@ -4,6 +4,7 @@
 import {DialectConfigManager} from "./dialect_config_manager";
 import {DialectManager} from "./dialect_manager";
 import {Engine} from "./engine";
+import {SchemaContextManager} from "./schema_context";
 import {ThemeManager} from "./theme_manager";
 
 export interface Attrs {
@@ -15,11 +16,13 @@ export class App {
   runtime: Engine;
   dialect: DialectManager;
   dialectConfig: DialectConfigManager;
+  schemaContext: SchemaContextManager;
 
   constructor() {
     this.theme = new ThemeManager();
     this.runtime = new Engine();
     this.dialect = new DialectManager();
     this.dialectConfig = new DialectConfigManager();
+    this.schemaContext = new SchemaContextManager();
   }
 }

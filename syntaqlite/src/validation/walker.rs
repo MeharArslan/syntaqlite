@@ -4,10 +4,10 @@
 use crate::parser::NodeReader;
 use crate::sqlite::ast::*;
 
+use super::ValidationConfig;
 use super::checks::{check_column_ref, check_function_call, check_table_ref};
 use super::scope::ScopeStack;
 use super::types::{Diagnostic, FunctionDef};
-use super::ValidationConfig;
 
 pub(super) struct Walker<'a> {
     reader: &'a NodeReader<'a>,
@@ -324,9 +324,14 @@ impl<'a> Walker<'a> {
         if !name.is_empty() {
             let offset = self.str_offset(name);
             let arg_count = args.as_ref().map_or(0, |a| a.len());
-            if let Some(diag) =
-                check_function_call(name, arg_count, offset, name.len(), self.functions, self.config)
-            {
+            if let Some(diag) = check_function_call(
+                name,
+                arg_count,
+                offset,
+                name.len(),
+                self.functions,
+                self.config,
+            ) {
                 self.diagnostics.push(diag);
             }
         }

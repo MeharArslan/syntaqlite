@@ -123,94 +123,11 @@ pub fn generate_functions_catalog(json_content: &str) -> Result<String, String> 
     )
     .unwrap();
     writeln!(out).unwrap();
-    writeln!(out, "use crate::dialect::ffi::DialectConfig;").unwrap();
-    writeln!(out).unwrap();
-
-    // Types
-    writeln!(out, "/// Category of a built-in function.").unwrap();
-    writeln!(out, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]").unwrap();
-    writeln!(out, "pub enum FunctionCategory {{").unwrap();
-    writeln!(out, "    Scalar,").unwrap();
-    writeln!(out, "    Aggregate,").unwrap();
-    writeln!(out, "    Window,").unwrap();
-    writeln!(out, "}}").unwrap();
-    writeln!(out).unwrap();
-
-    writeln!(out, "/// Whether a cflag enables or omits the function.").unwrap();
-    writeln!(out, "#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]").unwrap();
-    writeln!(out, "pub enum CflagPolarity {{").unwrap();
     writeln!(
         out,
-        "    /// Function requires the cflag to be set (SQLITE_ENABLE_*)."
+        "use crate::catalog::{{AvailabilityRule, CflagPolarity, FunctionCategory, FunctionEntry, FunctionInfo}};"
     )
     .unwrap();
-    writeln!(out, "    Enable,").unwrap();
-    writeln!(
-        out,
-        "    /// Function is omitted when the cflag is set (SQLITE_OMIT_*)."
-    )
-    .unwrap();
-    writeln!(out, "    Omit,").unwrap();
-    writeln!(out, "}}").unwrap();
-    writeln!(out).unwrap();
-
-    writeln!(out, "/// Metadata about a built-in function.").unwrap();
-    writeln!(out, "#[derive(Debug, Clone, Copy)]").unwrap();
-    writeln!(out, "pub struct FunctionInfo {{").unwrap();
-    writeln!(out, "    /// Function name (lowercase).").unwrap();
-    writeln!(out, "    pub name: &'static str,").unwrap();
-    writeln!(
-        out,
-        "    /// Supported arities. Negative values indicate variadic:"
-    )
-    .unwrap();
-    writeln!(
-        out,
-        "    /// -1 = any number of args, -N = at least N-1 args."
-    )
-    .unwrap();
-    writeln!(out, "    pub arities: &'static [i16],").unwrap();
-    writeln!(out, "    /// Function category.").unwrap();
-    writeln!(out, "    pub category: FunctionCategory,").unwrap();
-    writeln!(out, "}}").unwrap();
-    writeln!(out).unwrap();
-
-    writeln!(out, "/// A version/cflag availability rule for a function.").unwrap();
-    writeln!(out, "#[derive(Debug, Clone, Copy)]").unwrap();
-    writeln!(out, "pub struct AvailabilityRule {{").unwrap();
-    writeln!(
-        out,
-        "    /// Minimum SQLite version (encoded: major*1_000_000 + minor*1_000 + patch)."
-    )
-    .unwrap();
-    writeln!(out, "    pub since: i32,").unwrap();
-    writeln!(
-        out,
-        "    /// Maximum SQLite version (exclusive). 0 means no upper bound."
-    )
-    .unwrap();
-    writeln!(out, "    pub until: i32,").unwrap();
-    writeln!(
-        out,
-        "    /// Cflag bit index in `Cflags`, or `u32::MAX` if no cflag required."
-    )
-    .unwrap();
-    writeln!(out, "    pub cflag_index: u32,").unwrap();
-    writeln!(out, "    /// Polarity of the cflag constraint.").unwrap();
-    writeln!(out, "    pub cflag_polarity: CflagPolarity,").unwrap();
-    writeln!(out, "}}").unwrap();
-    writeln!(out).unwrap();
-
-    writeln!(
-        out,
-        "/// A function entry combining metadata with availability rules."
-    )
-    .unwrap();
-    writeln!(out, "#[derive(Debug, Clone, Copy)]").unwrap();
-    writeln!(out, "pub struct FunctionEntry {{").unwrap();
-    writeln!(out, "    pub info: FunctionInfo,").unwrap();
-    writeln!(out, "    pub availability: &'static [AvailabilityRule],").unwrap();
-    writeln!(out, "}}").unwrap();
     writeln!(out).unwrap();
 
     // Static data: arity arrays
@@ -300,63 +217,6 @@ pub fn generate_functions_catalog(json_content: &str) -> Result<String, String> 
     writeln!(out, "];").unwrap();
     writeln!(out).unwrap();
 
-    // Availability check function
-    writeln!(
-        out,
-        "/// Check whether a function entry is available for the given dialect config."
-    )
-    .unwrap();
-    writeln!(out, "///").unwrap();
-    writeln!(
-        out,
-        "/// A function is available if *any* of its availability rules matches."
-    )
-    .unwrap();
-    writeln!(out, "/// A rule matches when:").unwrap();
-    writeln!(out, "/// - The config version is >= `since`").unwrap();
-    writeln!(
-        out,
-        "/// - The config version is < `until` (if `until` is non-zero)"
-    )
-    .unwrap();
-    writeln!(
-        out,
-        "/// - If a cflag is required: for `Enable` polarity, the cflag must be set;"
-    )
-    .unwrap();
-    writeln!(out, "///   for `Omit` polarity, the cflag must NOT be set.").unwrap();
-    writeln!(
-        out,
-        "pub fn is_available(entry: &FunctionEntry, config: &DialectConfig) -> bool {{"
-    )
-    .unwrap();
-    writeln!(out, "    entry.availability.iter().any(|rule| {{").unwrap();
-    writeln!(out, "        if config.sqlite_version < rule.since {{").unwrap();
-    writeln!(out, "            return false;").unwrap();
-    writeln!(out, "        }}").unwrap();
-    writeln!(
-        out,
-        "        if rule.until != 0 && config.sqlite_version >= rule.until {{"
-    )
-    .unwrap();
-    writeln!(out, "            return false;").unwrap();
-    writeln!(out, "        }}").unwrap();
-    writeln!(out, "        if rule.cflag_index != u32::MAX {{").unwrap();
-    writeln!(
-        out,
-        "            let flag_set = config.cflags.has(rule.cflag_index);"
-    )
-    .unwrap();
-    writeln!(out, "            match rule.cflag_polarity {{").unwrap();
-    writeln!(out, "                CflagPolarity::Enable => flag_set,").unwrap();
-    writeln!(out, "                CflagPolarity::Omit => !flag_set,").unwrap();
-    writeln!(out, "            }}").unwrap();
-    writeln!(out, "        }} else {{").unwrap();
-    writeln!(out, "            true").unwrap();
-    writeln!(out, "        }}").unwrap();
-    writeln!(out, "    }})").unwrap();
-    writeln!(out, "}}").unwrap();
-
     Ok(out)
 }
 
@@ -406,7 +266,7 @@ mod tests {
         assert!(result.contains("SQLITE_FUNCTIONS"));
         assert!(result.contains("\"abs\""));
         assert!(result.contains("FunctionCategory::Scalar"));
-        assert!(result.contains("is_available"));
+        assert!(result.contains("use crate::catalog::"));
     }
 
     #[test]

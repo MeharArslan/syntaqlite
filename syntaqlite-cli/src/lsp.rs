@@ -13,9 +13,9 @@ use lsp_types::request::{Completion, Formatting, Request as _, SemanticTokensFul
 use lsp_types::{
     CompletionItem, CompletionItemKind, CompletionOptions, CompletionResponse, DiagnosticSeverity,
     InitializeParams, Position, PositionEncodingKind, Range, SemanticTokenType,
-    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions,
-    SemanticTokensResult, SemanticTokensServerCapabilities, ServerCapabilities,
-    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Uri,
+    SemanticTokensFullOptions, SemanticTokensLegend, SemanticTokensOptions, SemanticTokensResult,
+    SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextEdit, Uri,
 };
 use syntaqlite::Dialect;
 use syntaqlite::dialect::{SEMANTIC_TOKEN_LEGEND, TokenCategory};
