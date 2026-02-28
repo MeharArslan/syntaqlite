@@ -116,8 +116,21 @@ impl<'d> AnalysisHost<'d> {
         let mut parser = crate::Parser::with_dialect(&self.dialect);
         let mut cursor = parser.parse(&doc.source);
 
-        // Collect all statement IDs first, stopping at the first parse error.
-        let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok()).collect();
+        // Collect all statement IDs, continuing past parse errors.
+        // Recovered trees (error with root) are included for validation;
+        // unrecoverable errors are skipped (reported separately by
+        // compute_document_state / diagnostics()).
+        let mut stmt_ids = Vec::new();
+        while let Some(result) = cursor.next_statement() {
+            match result {
+                Ok(id) => stmt_ids.push(id),
+                Err(err) => {
+                    if let Some(id) = err.root {
+                        stmt_ids.push(id);
+                    }
+                }
+            }
+        }
 
         // Single-pass incremental validation: each statement is validated
         // against only the DDL that precedes it in the document, then its
@@ -871,7 +884,7 @@ mod tests {
             "diagnostic should be an error"
         );
         assert!(
-            !diags[0].message.is_empty(),
+            !diags[0].message.to_string().is_empty(),
             "diagnostic message should not be empty"
         );
     }
@@ -955,6 +968,149 @@ mod tests {
             "expected exactly 1 diagnostic for the second invalid statement, got {}: {:?}",
             diags.len(),
             diags
+        );
+    }
+
+    #[test]
+    fn validate_does_not_duplicate_parse_error_diagnostics() {
+        // validate() should return only semantic diagnostics, not parse errors
+        // (parse errors are already reported by diagnostics()/document_diagnostics()).
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        host.open_document(uri, 1, "SELECT ;\nSELECT 1;".to_string());
+
+        let config = crate::validation::ValidationConfig::default();
+        let validation_diags = host.validate(uri, &config);
+        // No semantic issues — the parse errors should NOT appear here.
+        assert_eq!(
+            validation_diags.len(),
+            0,
+            "validate() should not emit parse error diagnostics, got: {:?}",
+            validation_diags
+        );
+    }
+
+    #[test]
+    fn validate_continues_past_errors_to_check_later_statements() {
+        // Validation should not stop at the first parse error — subsequent
+        // valid statements should still be validated for semantic issues.
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        host.open_document(
+            uri,
+            1,
+            "SELECT ;\nSELECT ;\nSELECT * FROM no_such_table;".to_string(),
+        );
+
+        let config = crate::validation::ValidationConfig::default();
+        let validation_diags = host.validate(uri, &config);
+        let table_diags: Vec<_> = validation_diags
+            .iter()
+            .filter(|d| matches!(&d.message, crate::validation::DiagnosticMessage::UnknownTable { .. }))
+            .collect();
+        assert_eq!(
+            table_diags.len(),
+            1,
+            "expected 1 unknown-table diagnostic for 'no_such_table', got: {:?}",
+            validation_diags
+        );
+    }
+
+    #[test]
+    fn syntax_error_offset_points_at_error_token_not_following_token() {
+        // Regression: "select 1 from slice where foo = where x = y;"
+        // The message says "near 'where'" but the offset was pointing at 'y'
+        // instead of the second 'where'.
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        let sql = "select 1 from slice where foo = where x = y;";
+        host.open_document(uri, 1, sql.to_string());
+
+        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        assert!(!diags.is_empty(), "expected a syntax error diagnostic");
+
+        let diag = &diags[0];
+        assert_eq!(diag.severity, super::Severity::Error);
+
+        // The second 'where' starts at byte offset 32.
+        let second_where_offset = sql[31..].find("where").map(|i| i + 31).unwrap();
+        assert_eq!(
+            diag.start_offset, second_where_offset,
+            "error offset should point at the second 'where' (offset {}), not at '{}' (offset {})",
+            second_where_offset,
+            &sql[diag.start_offset..diag.start_offset + 1],
+            diag.start_offset,
+        );
+    }
+
+    #[test]
+    fn syntax_error_offset_via_parser_directly() {
+        // Same regression tested at the Parser level.
+        let sql = "select 1 from slice where foo = where x = y;";
+        let mut parser = crate::Parser::new();
+        let mut cursor = parser.parse(sql);
+
+        let result = cursor.next_statement();
+        let err = result
+            .expect("expected Some")
+            .expect_err("expected parse error");
+
+        assert!(
+            err.message.contains("where"),
+            "message should mention 'where', got: {}",
+            err.message
+        );
+
+        let offset = err.offset.expect("error should have an offset");
+        let second_where_offset = sql[31..].find("where").map(|i| i + 31).unwrap();
+        assert_eq!(
+            offset, second_where_offset,
+            "ParseError offset should point at the second 'where' (offset {}), got offset {} which is '{}'",
+            second_where_offset,
+            offset,
+            &sql[offset..offset + 1],
+        );
+    }
+
+    #[test]
+    fn parse_and_validate_combined_no_duplicates() {
+        // Simulates the playground pattern: parse diagnostics + validate diagnostics
+        // should not produce duplicates for parse errors.
+        let mut host = AnalysisHost::new();
+        let uri = "file:///test.sql";
+        host.open_document(
+            uri,
+            1,
+            "SELECT ;\nSELECT * FROM no_such_table;".to_string(),
+        );
+
+        let parse_diags: Vec<_> = host.diagnostics(uri).to_vec();
+        let config = crate::validation::ValidationConfig::default();
+        let validation_diags = host.validate(uri, &config);
+
+        let all_diags: Vec<_> = parse_diags
+            .iter()
+            .chain(validation_diags.iter())
+            .collect();
+
+        // 1 parse error for "SELECT ;" + 1 semantic warning for no_such_table = 2 total
+        let error_count = all_diags
+            .iter()
+            .filter(|d| d.severity == super::Severity::Error)
+            .count();
+        let warning_count = all_diags
+            .iter()
+            .filter(|d| d.severity == super::Severity::Warning)
+            .count();
+        assert_eq!(
+            error_count, 1,
+            "expected exactly 1 parse error, got {}: {:?}",
+            error_count, all_diags
+        );
+        assert_eq!(
+            warning_count, 1,
+            "expected exactly 1 semantic warning, got {}: {:?}",
+            warning_count, all_diags
         );
     }
 }

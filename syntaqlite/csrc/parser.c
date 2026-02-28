@@ -114,12 +114,10 @@ static int feed_one_token(SyntaqliteParser* p,
 
   if (p->ctx.error) {
     p->had_error = 1;
-    if (text) {
-      p->ctx.error_offset = (uint32_t)(text - p->source);
-      p->ctx.error_length = (uint32_t)len;
-    }
     if (p->error_msg[0] == '\0') {
       if (text) {
+        p->ctx.error_offset = (uint32_t)(text - p->source);
+        p->ctx.error_length = (uint32_t)len;
         snprintf(p->error_msg, sizeof(p->error_msg), "syntax error near '%.*s'",
                  len, text);
       } else {
