@@ -38,6 +38,8 @@ pub(crate) unsafe fn extract_field_val<'a>(
     m: &FieldMeta,
     source: &'a str,
 ) -> FieldVal<'a> {
+    // SAFETY: All operations below are covered by the function-level safety
+    // contract: `ptr` is a valid arena node and `m` describes its field layout.
     unsafe {
         let field_ptr = ptr.add(m.offset as usize);
         match m.kind {

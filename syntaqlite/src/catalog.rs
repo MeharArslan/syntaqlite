@@ -62,6 +62,14 @@ pub struct AvailabilityRule {
 
 const _: () = {
     assert!(std::mem::size_of::<AvailabilityRule>() == 16);
+    assert!(
+        std::mem::size_of::<AvailabilityRule>()
+            == std::mem::size_of::<crate::dialect::ffi::AvailabilityRuleC>()
+    );
+    assert!(
+        std::mem::align_of::<AvailabilityRule>()
+            == std::mem::align_of::<crate::dialect::ffi::AvailabilityRuleC>()
+    );
 };
 
 /// A function entry combining metadata with availability rules.

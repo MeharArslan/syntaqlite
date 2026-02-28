@@ -392,7 +392,8 @@ fn extract_column_constraints(
             if fm.kind == FIELD_ENUM {
                 let field_name = unsafe { fm.name_str() };
                 if field_name == "kind" {
-                    let ordinal = unsafe { *cptr.add(fm.offset as usize) };
+                    let ordinal =
+                        unsafe { *(cptr.add(fm.offset as usize) as *const u32) };
                     // Map ordinal to display name for robust matching.
                     if let Some(display) = unsafe { fm.display_name(ordinal as usize) } {
                         match display {

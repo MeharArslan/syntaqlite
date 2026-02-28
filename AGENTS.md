@@ -37,7 +37,8 @@ This allows projects like libSQL, rqlite, or custom embedded databases to use sy
   - `src/fmt/` - Formatter (bytecode interpreter), feature="fmt"
   - `src/lsp/` - LSP analysis host, feature="lsp"
   - `src/sqlite/` - SQLite dialect (AST, tokens, wrappers), feature="sqlite"
-  - Features: `default=["sqlite","fmt"]`, `lsp`, `pin-version`, `pin-cflags`
+  - `src/validation/` - Semantic validation (schema checks, fuzzy suggestions), feature="validation"
+  - Features: `default=["sqlite","fmt","validation"]`, `lsp`, `validation`, `pin-version`, `pin-cflags`
 - `syntaqlite-buildtools/` - Build tools library:
   - `util/` - Shared utilities (parsers, C/Rust writers, case conversion, tool_run)
   - `dialect_codegen/` - `.synq` → C/Rust codegen (AST model, node/meta/dialect/fmt codegen)
@@ -50,11 +51,27 @@ This allows projects like libSQL, rqlite, or custom embedded databases to use sy
 - `third_party/src/sqlite/` - SQLite source (v3.51.2)
 - `docs/` - Design documentation (ethos.md, plan.md)
 
+## `.synq` Format
+
+The `.synq` DSL defines the AST node types, enums, flags, and formatter instructions for a dialect.
+
+- **Location**: `syntaqlite/parser-nodes/*.synq`
+- **Defines**: enums, flags, nodes (with `inline`/`index` fields), lists, and `fmt` blocks
+- **Codegen produces**: C headers (`syntaqlite/csrc/`) + Rust node/token types (`syntaqlite/src/generated/`) + fmt bytecode
+- **After editing**: run `tools/run-codegen`, then verify with `cargo check && cargo clippy`
+
 ## Development Tools
 
 | Tool | Purpose |
 |------|---------|
 | `tools/run-codegen` | Regenerate all generated code (C headers, Rust nodes/tokens/dump/fmt_ops) from `.synq` definitions and SQLite grammar |
+| `tools/run-ast-diff-tests` | Run AST diff tests (`tests/ast_diff_tests/`) |
+| `tools/run-fmt-diff-tests` | Run formatter diff tests (`tests/fmt_diff_tests/`) |
+| `tools/run-amalg-tests` | Run amalgamation integration tests (`tests/amalg_tests/`) |
+| `tools/run-perfetto-fmt-diff-tests` | Run Perfetto dialect formatter tests (`tests/perfetto_fmt_diff_tests/`) |
+| `tools/format-c` | Run clang-format on C sources |
+| `tools/install-build-deps` | Install platform-specific build deps (clang-format, SQLite sources) |
+| `tools/build-web-playground` | Build WASM web playground |
 
 ## Verification
 
@@ -65,3 +82,41 @@ cargo check && cargo clippy
 ```
 
 Both must pass with **zero warnings**. Do not use `cargo build` (unnecessary linking overhead for verification).
+
+## Testing
+
+### Unit tests
+
+Both `syntaqlite` and `syntaqlite-buildtools` have Rust unit tests. Run them with:
+
+```sh
+cargo test --workspace
+```
+
+### Diff test suites
+
+Behavioral correctness of the CLI is verified with Python-based diff test suites that compare CLI output against expected baselines.
+
+#### Suites
+
+- `tools/run-ast-diff-tests` — AST output tests (`tests/ast_diff_tests/`)
+- `tools/run-fmt-diff-tests` — formatter output tests (`tests/fmt_diff_tests/`)
+- `tools/run-amalg-tests` — amalgamation integration tests (`tests/amalg_tests/`)
+- `tools/run-perfetto-fmt-diff-tests` — Perfetto dialect formatter tests (`tests/perfetto_fmt_diff_tests/`)
+
+#### Prerequisites
+
+Test runners invoke the CLI binary directly. Build it first:
+
+```sh
+cargo build -p syntaqlite-cli
+```
+
+#### Key flags
+
+| Flag | Purpose |
+|------|---------|
+| `--filter <pattern>` | Run only tests matching pattern |
+| `-v` / `-vv` | Verbose / extra-verbose output |
+| `--rebaseline` | Update expected outputs to match current output |
+| `-j <N>` / `--jobs <N>` | Parallel test execution |

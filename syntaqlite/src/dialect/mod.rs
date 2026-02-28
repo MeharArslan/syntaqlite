@@ -181,7 +181,7 @@ impl<'d> Dialect<'d> {
     #[inline]
     pub(crate) fn fmt_string(&self, idx: u16) -> &'d str {
         let i = idx as usize;
-        debug_assert!(
+        assert!(
             i < self.raw.fmt_string_count as usize,
             "string index {} out of bounds (count={})",
             i,
