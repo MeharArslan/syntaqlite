@@ -143,6 +143,34 @@ impl Default for DocumentContext {
     }
 }
 
+/// Read a `NodeId` field from a raw node pointer at the given metadata offset.
+///
+/// # Safety
+/// `ptr` must point to a valid node struct; `meta.offset` must be a valid
+/// offset to a `u32` (NodeId) field within that struct.
+#[cfg(feature = "sqlite")]
+unsafe fn read_node_id(ptr: *const u8, meta: &crate::dialect::ffi::FieldMeta) -> crate::parser::NodeId {
+    unsafe { crate::parser::NodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
+}
+
+/// Read a `SourceSpan` field from a raw node pointer, returning its text
+/// (or `""` if the span is empty).
+///
+/// # Safety
+/// `ptr` must point to a valid node struct; `meta.offset` must be a valid
+/// offset to a `SourceSpan` field within that struct.
+#[cfg(feature = "sqlite")]
+unsafe fn read_span<'a>(
+    ptr: *const u8,
+    meta: &crate::dialect::ffi::FieldMeta,
+    source: &'a str,
+) -> &'a str {
+    unsafe {
+        let span = &*(ptr.add(meta.offset as usize) as *const crate::parser::SourceSpan);
+        if span.is_empty() { "" } else { span.as_str(source) }
+    }
+}
+
 #[cfg(feature = "sqlite")]
 impl DocumentContext {
     /// Process one DDL statement and update the document schema.
@@ -164,7 +192,7 @@ impl DocumentContext {
     ) {
         use crate::dialect::SchemaKind;
         use crate::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
-        use crate::parser::{FromArena, NodeId, SourceSpan};
+        use crate::parser::FromArena;
 
         let Some((ptr, tag)) = reader.node_ptr(stmt_id) else {
             return;
@@ -182,13 +210,11 @@ impl DocumentContext {
         debug_assert_eq!(name_meta.kind, FIELD_SPAN);
         // SAFETY: ptr is a valid arena pointer from node_ptr(); name_meta.offset
         // is from codegen metadata, and kind == FIELD_SPAN (debug-asserted above).
-        let name = unsafe {
-            let span = &*(ptr.add(name_meta.offset as usize) as *const SourceSpan);
-            if span.is_empty() {
-                return;
-            }
-            span.as_str(source).to_string()
-        };
+        let name_str = unsafe { read_span(ptr, name_meta, source) };
+        if name_str.is_empty() {
+            return;
+        }
+        let name = name_str.to_string();
 
         match contrib.kind {
             SchemaKind::Table | SchemaKind::View => {
@@ -206,8 +232,7 @@ impl DocumentContext {
                     debug_assert_eq!(col_meta.kind, FIELD_NODE_ID);
                     // SAFETY: ptr is a valid arena pointer; col_meta.offset is from
                     // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
-                    let col_list_id =
-                        unsafe { NodeId(*(ptr.add(col_meta.offset as usize) as *const u32)) };
+                    let col_list_id = unsafe { read_node_id(ptr, col_meta) };
                     if !col_list_id.is_null() {
                         has_columns = true;
                         columns_from_column_list(reader, col_list_id, dialect, &mut columns);
@@ -220,8 +245,7 @@ impl DocumentContext {
                     debug_assert_eq!(sel_meta.kind, FIELD_NODE_ID);
                     // SAFETY: ptr is a valid arena pointer; sel_meta.offset is from
                     // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
-                    let sel_id =
-                        unsafe { NodeId(*(ptr.add(sel_meta.offset as usize) as *const u32)) };
+                    let sel_id = unsafe { read_node_id(ptr, sel_meta) };
                     if !sel_id.is_null()
                         && let Some(select) = crate::sqlite::ast::Select::from_arena(reader, sel_id)
                     {
@@ -243,19 +267,12 @@ impl DocumentContext {
                     debug_assert_eq!(args_meta.kind, FIELD_NODE_ID);
                     // SAFETY: ptr is a valid arena pointer; args_meta.offset is from
                     // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
-                    let args_id =
-                        unsafe { NodeId(*(ptr.add(args_meta.offset as usize) as *const u32)) };
+                    let args_id = unsafe { read_node_id(ptr, args_meta) };
                     if args_id.is_null() {
                         return None;
                     }
                     // Count children of the args list node.
-                    let (args_ptr, args_tag) = reader.node_ptr(args_id)?;
-                    if !dialect.is_list(args_tag) {
-                        return None;
-                    }
-                    // SAFETY: args_ptr is a valid arena pointer and is_list(args_tag)
-                    // confirmed it has NodeList layout (tag, count, children[count]).
-                    let list = unsafe { &*(args_ptr as *const crate::parser::NodeList) };
+                    let list = reader.resolve_list(args_id)?;
                     Some(list.children().len())
                 });
                 self.functions.push(FunctionDef {
@@ -283,17 +300,11 @@ fn columns_from_column_list(
     out: &mut Vec<ColumnDef>,
 ) {
     use crate::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
-    use crate::parser::{NodeId, SourceSpan};
+    use crate::parser::NodeId;
 
-    let Some((list_ptr, list_tag)) = reader.node_ptr(list_id) else {
+    let Some(list) = reader.resolve_list(list_id) else {
         return;
     };
-    if !dialect.is_list(list_tag) {
-        return;
-    }
-    // SAFETY: list_ptr is a valid arena pointer and is_list(list_tag) confirmed
-    // it has NodeList layout (tag, count, children[count]).
-    let list = unsafe { &*(list_ptr as *const crate::parser::NodeList) };
     let source = reader.source();
 
     for &child_id in list.children() {
@@ -315,22 +326,22 @@ fn columns_from_column_list(
             let field_name = unsafe { fm.name_str() };
             match (fm.kind, field_name) {
                 (FIELD_SPAN, "column_name") => {
-                    let span =
-                        unsafe { &*(child_ptr.add(fm.offset as usize) as *const SourceSpan) };
-                    if !span.is_empty() {
-                        col_name = Some(span.as_str(source).to_string());
+                    // SAFETY: child_ptr is valid; fm.offset is from codegen metadata.
+                    let s = unsafe { read_span(child_ptr, fm, source) };
+                    if !s.is_empty() {
+                        col_name = Some(s.to_string());
                     }
                 }
                 (FIELD_SPAN, "type_name") => {
-                    let span =
-                        unsafe { &*(child_ptr.add(fm.offset as usize) as *const SourceSpan) };
-                    if !span.is_empty() {
-                        type_name = Some(span.as_str(source).to_string());
+                    // SAFETY: child_ptr is valid; fm.offset is from codegen metadata.
+                    let s = unsafe { read_span(child_ptr, fm, source) };
+                    if !s.is_empty() {
+                        type_name = Some(s.to_string());
                     }
                 }
                 (FIELD_NODE_ID, "constraints") => {
-                    constraints_id =
-                        unsafe { NodeId(*(child_ptr.add(fm.offset as usize) as *const u32)) };
+                    // SAFETY: child_ptr is valid; fm.offset is from codegen metadata.
+                    constraints_id = unsafe { read_node_id(child_ptr, fm) };
                 }
                 _ => {}
             }
@@ -371,13 +382,9 @@ fn extract_column_constraints(
 ) {
     use crate::dialect::ffi::FIELD_ENUM;
 
-    let Some((list_ptr, list_tag)) = reader.node_ptr(list_id) else {
+    let Some(list) = reader.resolve_list(list_id) else {
         return;
     };
-    if !dialect.is_list(list_tag) {
-        return;
-    }
-    let list = unsafe { &*(list_ptr as *const crate::parser::NodeList) };
 
     for &constraint_id in list.children() {
         if constraint_id.is_null() {

@@ -28,6 +28,24 @@ pub mod sqlite;
 use dialect::ffi::{FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldMeta};
 use parser::nodes::{FieldVal, SourceSpan};
 
+/// Fill a `Fields` buffer by extracting all fields from a raw node pointer.
+///
+/// # Safety
+/// `ptr` must point to a valid node struct matching `tag`'s metadata in `dialect`.
+pub(crate) unsafe fn extract_fields<'a>(
+    dialect: &Dialect<'_>,
+    ptr: *const u8,
+    tag: u32,
+    source: &'a str,
+) -> parser::nodes::Fields<'a> {
+    let meta = dialect.field_meta(tag);
+    let mut fields = parser::nodes::Fields::new();
+    for m in meta {
+        fields.push(unsafe { extract_field_val(ptr, m, source) });
+    }
+    fields
+}
+
 /// Extract a single field value from a raw node pointer using field metadata.
 ///
 /// # Safety

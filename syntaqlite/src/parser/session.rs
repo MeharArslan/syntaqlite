@@ -289,13 +289,9 @@ impl<'a> NodeReader<'a> {
         dialect: &crate::Dialect,
     ) -> Option<(u32, super::nodes::Fields<'a>)> {
         let (ptr, tag) = self.node_ptr(id)?;
-        let meta = dialect.field_meta(tag);
-        let mut fields = super::nodes::Fields::new();
-        for m in meta {
-            // SAFETY: ptr is a valid arena pointer from node_ptr(); m.offset
-            // and m.kind are from codegen-produced field metadata for this tag.
-            fields.push(unsafe { crate::extract_field_val(ptr, m, self.source) });
-        }
+        // SAFETY: ptr is a valid arena pointer from node_ptr(); tag matches
+        // the node's type, so dialect.field_meta(tag) is correct.
+        let fields = unsafe { crate::extract_fields(dialect, ptr, tag, self.source) };
         Some((tag, fields))
     }
 
@@ -417,16 +413,9 @@ impl<'a> CursorBase<'a> {
     /// Return all non-whitespace, non-comment token positions captured
     /// during parsing. Requires `collect_tokens: true` in `ParserConfig`.
     pub fn tokens(&self) -> &[ffi::TokenPos] {
-        // SAFETY: raw is valid; the returned pointer and count are valid for
-        // the lifetime of &self (until the next reset/destroy, which need &mut).
-        unsafe {
-            let mut count: u32 = 0;
-            let ptr = ffi::syntaqlite_parser_tokens(self.reader.raw(), &mut count);
-            if count == 0 || ptr.is_null() {
-                return &[];
-            }
-            std::slice::from_raw_parts(ptr, count as usize)
-        }
+        // SAFETY: raw is valid; syntaqlite_parser_tokens returns a pointer valid
+        // for the lifetime of &self (until the next reset/destroy, which need &mut).
+        unsafe { ffi_slice(self.reader.raw(), ffi::syntaqlite_parser_tokens) }
     }
 
     /// Return all comments captured during parsing.
@@ -435,16 +424,9 @@ impl<'a> CursorBase<'a> {
     /// Returns a slice into the parser's internal buffer — valid until
     /// the parser is reset or destroyed (which requires `&mut`).
     pub fn comments(&self) -> &[Comment] {
-        // SAFETY: raw is valid; the returned pointer and count are valid for
-        // the lifetime of &self (until the next reset/destroy, which need &mut).
-        unsafe {
-            let mut count: u32 = 0;
-            let ptr = ffi::syntaqlite_parser_comments(self.reader.raw(), &mut count);
-            if count == 0 || ptr.is_null() {
-                return &[];
-            }
-            std::slice::from_raw_parts(ptr, count as usize)
-        }
+        // SAFETY: raw is valid; syntaqlite_parser_comments returns a pointer valid
+        // for the lifetime of &self (until the next reset/destroy, which need &mut).
+        unsafe { ffi_slice(self.reader.raw(), ffi::syntaqlite_parser_comments) }
     }
 
     /// Dump an AST node tree as indented text. Uses C-side metadata (field
@@ -455,16 +437,28 @@ impl<'a> CursorBase<'a> {
 
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
     pub fn macro_regions(&self) -> &[MacroRegion] {
-        // SAFETY: same as comments() — pointer valid for lifetime of &self.
-        unsafe {
-            let mut count: u32 = 0;
-            let ptr = ffi::syntaqlite_parser_macro_regions(self.reader.raw(), &mut count);
-            if count == 0 || ptr.is_null() {
-                return &[];
-            }
-            std::slice::from_raw_parts(ptr, count as usize)
-        }
+        // SAFETY: raw is valid; syntaqlite_parser_macro_regions returns a pointer valid
+        // for the lifetime of &self (until the next reset/destroy, which need &mut).
+        unsafe { ffi_slice(self.reader.raw(), ffi::syntaqlite_parser_macro_regions) }
     }
+}
+
+/// Build a slice from an FFI function that returns a pointer and writes a count.
+///
+/// # Safety
+/// `raw` must be a valid parser pointer. `f` must return a pointer that is valid
+/// for the caller's borrow of the parser, and write the element count into the
+/// provided `*mut u32`.
+unsafe fn ffi_slice<'a, T>(
+    raw: *mut ffi::Parser,
+    f: unsafe extern "C" fn(*mut ffi::Parser, *mut u32) -> *const T,
+) -> &'a [T] {
+    let mut count: u32 = 0;
+    let ptr = unsafe { f(raw, &mut count) };
+    if count == 0 || ptr.is_null() {
+        return &[];
+    }
+    unsafe { std::slice::from_raw_parts(ptr, count as usize) }
 }
 
 // ── StatementCursor (high-level) ────────────────────────────────────────
