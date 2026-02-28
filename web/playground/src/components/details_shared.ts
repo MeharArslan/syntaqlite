@@ -2,9 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 import m from "mithril";
-import type {DiagnosticEntry} from "../types";
-import type {SchemaFormat} from "../app/schema_context";
-import type {Engine} from "../app/engine";
+import type {DiagnosticEntry, SchemaFormat, Engine} from "@syntaqlite/js";
 import {Table} from "../widgets/table";
 import type {TableColumn} from "../widgets/table";
 

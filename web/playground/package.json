@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@syntaqlite/js": "file:../syntaqlite-js",
     "mithril": "^2.2.7",
     "monaco-editor": "^0.52.2"
   },

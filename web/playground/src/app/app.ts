@@ -1,13 +1,16 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-import {DialectConfigManager} from "./dialect_config_manager";
-import {DialectManager} from "./dialect_manager";
-import {Engine} from "./engine";
-import {SchemaContextManager} from "./schema_context";
+import m from "mithril";
+import {
+  Engine,
+  DialectManager,
+  DialectConfigManager,
+  SchemaContextManager,
+} from "@syntaqlite/js";
+import type {DiagnosticEntry} from "@syntaqlite/js";
 import {ThemeManager} from "./theme_manager";
 import {WindowManager} from "./window_manager";
-import type {DiagnosticEntry} from "../types";
 
 export interface Attrs {
   app: App;
@@ -26,8 +29,24 @@ export class App {
 
   constructor() {
     this.theme = new ThemeManager();
-    this.runtime = new Engine();
-    this.dialect = new DialectManager();
+    this.runtime = new Engine({ runtimeJsPath: "./syntaqlite-runtime.js" });
+    this.dialect = new DialectManager({
+      presets: [
+        {
+          id: "sqlite",
+          label: "SQLite",
+          wasmUrl: "./syntaqlite-sqlite.wasm",
+          symbol: "syntaqlite_sqlite_dialect",
+        },
+        {
+          id: "perfetto",
+          label: "PerfettoSQL",
+          wasmUrl: "./syntaqlite-perfetto.wasm",
+          symbol: "syntaqlite_perfetto_dialect",
+        },
+      ],
+      onDialectChanged: () => m.redraw(),
+    });
     this.dialectConfig = new DialectConfigManager();
     this.schemaContext = new SchemaContextManager();
     this.window = new WindowManager();

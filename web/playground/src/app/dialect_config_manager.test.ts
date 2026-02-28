@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {DialectConfigManager, versionToInt} from "./dialect_config_manager";
+import {DialectConfigManager, versionToInt} from "@syntaqlite/js";
 
 describe("versionToInt", () => {
   it("returns max int for 'latest'", () => {

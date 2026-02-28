@@ -3,8 +3,7 @@
 
 import m from "mithril";
 import type {Attrs} from "../app/app";
-import {VERSION_OPTIONS} from "../app/dialect_config_manager";
-import {DIALECT_PRESETS} from "../app/dialect_manager";
+import {VERSION_OPTIONS} from "@syntaqlite/js";
 import {HelpTooltip} from "./help_tooltip";
 import {SegmentedSwitch} from "./switch";
 import "./header.css";
@@ -46,7 +45,7 @@ export class Header implements m.ClassComponent<Attrs> {
           }),
           // Desktop dialect switcher
           m("div.sq-dialect-switcher", [
-            ...DIALECT_PRESETS.map((preset) =>
+            ...app.dialect.getPresets().map((preset) =>
               preset.id === "sqlite"
                 ? m(
                     "div.sq-config-popover",
@@ -271,7 +270,7 @@ export class Header implements m.ClassComponent<Attrs> {
               }),
               m("div.sq-dialect-mobile-trigger__sheet", [
                 m("div.sq-dialect-mobile-trigger__title", "Select Dialect"),
-                ...DIALECT_PRESETS.map((preset) =>
+                ...app.dialect.getPresets().map((preset) =>
                   m(
                     "button.sq-dialect-mobile-trigger__option",
                     {
@@ -333,7 +332,7 @@ export class Header implements m.ClassComponent<Attrs> {
   private activeDialectLabel(app: InstanceType<typeof import("../app/app").App>): string {
     const activeId = app.dialect.activePresetId;
     if (activeId === "custom") return app.dialect.customLabel || "Custom";
-    const preset = DIALECT_PRESETS.find((p) => p.id === activeId);
+    const preset = app.dialect.getPresets().find((p) => p.id === activeId);
     return preset?.label ?? activeId;
   }
 
