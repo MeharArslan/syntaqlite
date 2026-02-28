@@ -65,6 +65,7 @@ The `.synq` DSL defines the AST node types, enums, flags, and formatter instruct
 | Tool | Purpose |
 |------|---------|
 | `tools/run-codegen` | Regenerate all generated code (C headers, Rust nodes/tokens/dump/fmt_ops) from `.synq` definitions and SQLite grammar |
+| `tools/run-unit-tests` | Run workspace unit tests (prefers nextest, falls back to cargo test) |
 | `tools/run-ast-diff-tests` | Run AST diff tests (`tests/ast_diff_tests/`) |
 | `tools/run-fmt-diff-tests` | Run formatter diff tests (`tests/fmt_diff_tests/`) |
 | `tools/run-amalg-tests` | Run amalgamation integration tests (`tests/amalg_tests/`) |
@@ -90,8 +91,10 @@ Both must pass with **zero warnings**. Do not use `cargo build` (unnecessary lin
 Both `syntaqlite` and `syntaqlite-buildtools` have Rust unit tests. Run them with:
 
 ```sh
-cargo nextest run --workspace
+tools/run-unit-tests
 ```
+
+This prefers `cargo nextest` if installed, falling back to `cargo test`.
 
 ### Diff test suites
 

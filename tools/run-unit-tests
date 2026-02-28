@@ -1,0 +1,10 @@
+#!/bin/sh
+# Copyright 2025 The syntaqlite Authors. All rights reserved.
+# Licensed under the Apache License, Version 2.0.
+
+# Run workspace unit tests, preferring nextest if available.
+if command -v cargo-nextest >/dev/null 2>&1; then
+    exec cargo nextest run --workspace "$@"
+else
+    exec cargo test --workspace "$@"
+fi

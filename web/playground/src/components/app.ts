@@ -10,6 +10,13 @@ import {Workspace} from "./workspace";
 export class AppComponent implements m.ClassComponent<Attrs> {
   view(vnode: m.Vnode<Attrs>) {
     const {app} = vnode.attrs;
-    return m("main.sq-app", [m(Header, {app}), m(Workspace, {app}), m(DetailsPanel, {app})]);
+    return m("main.sq-app", [
+      m(Header, {app}),
+      app.runtime.statusError
+        ? m("div.sq-error-banner", app.runtime.status)
+        : undefined,
+      m(Workspace, {app}),
+      m(DetailsPanel, {app}),
+    ]);
   }
 }
