@@ -425,7 +425,7 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
             diagnostics.push(Diagnostic {
                 start_offset,
                 end_offset,
-                message: err.message,
+                message: crate::validation::DiagnosticMessage::Other(err.message),
                 severity: Severity::Error,
                 help: None,
             });

@@ -344,7 +344,7 @@ fn publish_diagnostics(
                     Severity::Info => DiagnosticSeverity::INFORMATION,
                     Severity::Hint => DiagnosticSeverity::HINT,
                 }),
-                message: d.message.clone(),
+                message: d.message.to_string(),
                 source: Some("syntaqlite".to_string()),
                 ..Default::default()
             }

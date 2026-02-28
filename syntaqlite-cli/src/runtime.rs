@@ -405,7 +405,9 @@ fn validate_source(
             Severity::Info => "info",
             Severity::Hint => "hint",
         };
-        render_diagnostic(source, file, severity, &d.message, d.start_offset, d.end_offset, d.help.as_deref());
+        let message = d.message.to_string();
+        let help = d.help.as_ref().map(|h| h.to_string());
+        render_diagnostic(source, file, severity, &message, d.start_offset, d.end_offset, help.as_deref());
     }
 
     has_errors

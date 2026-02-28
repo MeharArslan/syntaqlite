@@ -6,7 +6,7 @@ import {App} from "./app/app";
 import * as monaco from "monaco-editor";
 import "monaco-editor/esm/vs/basic-languages/sql/sql.contribution";
 import {INPUT_MODEL_URI} from "./app/editor_models";
-import type {Engine} from "./app/engine";
+import type {Engine} from "@syntaqlite/js";
 import {AppComponent} from "./components/app";
 import "./styles/main.css";
 
@@ -128,6 +128,45 @@ function registerCompletionProvider(engine: Engine): void {
   });
 }
 
+function registerCodeActionProvider(app: App): void {
+  monaco.languages.registerCodeActionProvider("sql", {
+    provideCodeActions(
+      model: monaco.editor.ITextModel,
+      range: monaco.Range,
+    ): monaco.languages.ProviderResult<monaco.languages.CodeActionList> {
+      if (model.uri.toString() !== INPUT_MODEL_URI) return {actions: [], dispose() {}};
+
+      const actions: monaco.languages.CodeAction[] = [];
+      for (const d of app.diagnostics) {
+        if (!d.helpDetail || d.helpDetail.kind !== "suggestion") continue;
+        if (d.line == null || d.col == null) continue;
+        const suggestion = d.helpDetail.value;
+
+        // Check if this diagnostic overlaps the requested range.
+        const dStartLine = d.line;
+        const dStartCol = d.col;
+        const dEnd = model.getPositionAt(d.endOffset);
+        const dRange = new monaco.Range(dStartLine, dStartCol, dEnd.lineNumber, dEnd.column);
+        if (!monaco.Range.areIntersectingOrTouching(range, dRange)) continue;
+
+        actions.push({
+          title: `Change to '${suggestion}'`,
+          kind: "quickfix",
+          isPreferred: true,
+          edit: {
+            edits: [{
+              resource: model.uri,
+              textEdit: {range: dRange, text: suggestion},
+              versionId: model.getVersionId(),
+            }],
+          },
+        });
+      }
+      return {actions, dispose() {}};
+    },
+  });
+}
+
 async function main() {
   setupMonacoWorkers();
 
@@ -143,6 +182,7 @@ async function main() {
     app.dialectConfig.loadAvailableCflags(app.runtime);
     registerSemanticTokensProvider(app.runtime);
     registerCompletionProvider(app.runtime);
+    registerCodeActionProvider(app);
     app.runtime.updateStatus("Ready.");
   } catch (err) {
     app.runtime.updateStatus(`Failed to initialize: ${(err as Error).message}`, true);

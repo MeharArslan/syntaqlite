@@ -13,8 +13,8 @@ use crate::parser::{FromArena, NodeId, NodeReader};
 
 use scope::ScopeStack;
 pub use types::{
-    ColumnDef, Diagnostic, DocumentContext, FunctionDef, RelationDef, RelationKind, SessionContext,
-    Severity,
+    ColumnDef, Diagnostic, DiagnosticMessage, DocumentContext, FunctionDef, Help, RelationDef,
+    RelationKind, SessionContext, Severity,
 };
 
 /// Configuration for semantic validation.

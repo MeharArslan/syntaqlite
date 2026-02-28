@@ -849,7 +849,7 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
 
     let total_count = parse_diags.len() + validation_diags.len();
 
-    // Serialize diagnostics as JSON array (no serde in WASM).
+    // Serialize diagnostics as JSON array.
     let mut out = String::new();
     out.push('[');
     let mut first = true;
@@ -858,26 +858,7 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
             out.push(',');
         }
         first = false;
-        out.push_str("{\"startOffset\":");
-        out.push_str(&d.start_offset.to_string());
-        out.push_str(",\"endOffset\":");
-        out.push_str(&d.end_offset.to_string());
-        out.push_str(",\"message\":\"");
-        json_escape(&mut out, &d.message);
-        out.push_str("\",\"severity\":\"");
-        out.push_str(match d.severity {
-            syntaqlite::lsp::Severity::Error => "error",
-            syntaqlite::lsp::Severity::Warning => "warning",
-            syntaqlite::lsp::Severity::Info => "info",
-            syntaqlite::lsp::Severity::Hint => "hint",
-        });
-        out.push('"');
-        if let Some(ref help) = d.help {
-            out.push_str(",\"help\":\"");
-            json_escape(&mut out, help);
-            out.push('"');
-        }
-        out.push('}');
+        d.write_json(&mut out);
     }
     out.push(']');
     set_result(&out);

@@ -4,7 +4,7 @@
 use super::ValidationConfig;
 use super::fuzzy::best_suggestion;
 use super::scope::{ColumnResolution, ScopeStack};
-use super::types::{Diagnostic, FunctionDef};
+use super::types::{Diagnostic, DiagnosticMessage, FunctionDef, Help};
 
 pub fn check_table_ref(
     name: &str,
@@ -21,8 +21,8 @@ pub fn check_table_ref(
     Some(make_diagnostic(
         offset,
         length,
-        format!("unknown table '{name}'"),
-        suggestion.map(|s| format!("did you mean '{s}'?")),
+        DiagnosticMessage::UnknownTable { name: name.to_string() },
+        suggestion.map(Help::Suggestion),
         config,
     ))
 }
@@ -50,8 +50,11 @@ pub fn check_column_ref(
             Some(make_diagnostic(
                 offset,
                 length,
-                format!("unknown column '{column}' in table '{tbl}'"),
-                suggestion.map(|s| format!("did you mean '{s}'?")),
+                DiagnosticMessage::UnknownColumn {
+                    column: column.to_string(),
+                    table: Some(tbl.to_string()),
+                },
+                suggestion.map(Help::Suggestion),
                 config,
             ))
         }
@@ -64,8 +67,11 @@ pub fn check_column_ref(
             Some(make_diagnostic(
                 offset,
                 length,
-                format!("unknown column '{column}'"),
-                suggestion.map(|s| format!("did you mean '{s}'?")),
+                DiagnosticMessage::UnknownColumn {
+                    column: column.to_string(),
+                    table: None,
+                },
+                suggestion.map(Help::Suggestion),
                 config,
             ))
         }
@@ -96,8 +102,8 @@ pub fn check_function_call(
         return Some(make_diagnostic(
             offset,
             length,
-            format!("unknown function '{name}'"),
-            suggestion.map(|s| format!("did you mean '{s}'?")),
+            DiagnosticMessage::UnknownFunction { name: name.to_string() },
+            suggestion.map(Help::Suggestion),
             config,
         ));
     };
@@ -108,18 +114,19 @@ pub fn check_function_call(
         .any(|f| f.args.is_none_or(|n| n == arg_count));
 
     if !arity_ok {
-        let expected: Vec<String> = functions
+        let expected: Vec<usize> = functions
             .iter()
             .filter(|f| f.name.eq_ignore_ascii_case(name))
-            .filter_map(|f| f.args.map(|n| n.to_string()))
+            .filter_map(|f| f.args)
             .collect();
         return Some(make_diagnostic(
             offset,
             length,
-            format!(
-                "function '{name}' expects {} argument(s), got {arg_count}",
-                expected.join(" or ")
-            ),
+            DiagnosticMessage::FunctionArity {
+                name: name.to_string(),
+                expected,
+                got: arg_count,
+            },
             None,
             config,
         ));
@@ -131,8 +138,8 @@ pub fn check_function_call(
 fn make_diagnostic(
     offset: usize,
     length: usize,
-    message: String,
-    help: Option<String>,
+    message: DiagnosticMessage,
+    help: Option<Help>,
     config: &ValidationConfig,
 ) -> Diagnostic {
     Diagnostic {

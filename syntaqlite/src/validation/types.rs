@@ -8,12 +8,168 @@ pub struct Diagnostic {
     pub start_offset: usize,
     /// Byte offset of the end of the diagnostic range.
     pub end_offset: usize,
-    /// Human-readable diagnostic message.
-    pub message: String,
+    /// Structured diagnostic message.
+    pub message: DiagnosticMessage,
     /// Severity level.
     pub severity: Severity,
-    /// Optional help text (e.g. "did you mean 'foo'?").
-    pub help: Option<String>,
+    /// Optional structured help attached to the diagnostic.
+    pub help: Option<Help>,
+}
+
+/// Structured diagnostic message.
+///
+/// Each variant carries the identifiers needed for machine-readable
+/// consumption; [`Display`] produces the human-readable form.
+#[derive(Debug, Clone)]
+pub enum DiagnosticMessage {
+    UnknownTable { name: String },
+    UnknownColumn { column: String, table: Option<String> },
+    UnknownFunction { name: String },
+    FunctionArity { name: String, expected: Vec<usize>, got: usize },
+    /// Catch-all for parse errors and other unstructured messages.
+    Other(String),
+}
+
+impl std::fmt::Display for DiagnosticMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::UnknownTable { name } => write!(f, "unknown table '{name}'"),
+            Self::UnknownColumn { column, table: Some(t) } => {
+                write!(f, "unknown column '{column}' in table '{t}'")
+            }
+            Self::UnknownColumn { column, table: None } => {
+                write!(f, "unknown column '{column}'")
+            }
+            Self::UnknownFunction { name } => write!(f, "unknown function '{name}'"),
+            Self::FunctionArity { name, expected, got } => {
+                let expected_str: Vec<String> = expected.iter().map(|n| n.to_string()).collect();
+                write!(
+                    f,
+                    "function '{name}' expects {} argument(s), got {got}",
+                    expected_str.join(" or ")
+                )
+            }
+            Self::Other(msg) => f.write_str(msg),
+        }
+    }
+}
+
+impl DiagnosticMessage {
+    /// Write the structured JSON representation into `out`.
+    ///
+    /// This is the machine-readable detail object; callers also emit
+    /// `"message"` with the [`Display`] string alongside it.
+    pub fn write_json(&self, out: &mut String) {
+        match self {
+            Self::UnknownTable { name } => {
+                out.push_str("{\"kind\":\"unknown_table\",\"name\":\"");
+                json_escape(out, name);
+                out.push_str("\"}");
+            }
+            Self::UnknownColumn { column, table } => {
+                out.push_str("{\"kind\":\"unknown_column\",\"column\":\"");
+                json_escape(out, column);
+                out.push('"');
+                if let Some(t) = table {
+                    out.push_str(",\"table\":\"");
+                    json_escape(out, t);
+                    out.push('"');
+                }
+                out.push('}');
+            }
+            Self::UnknownFunction { name } => {
+                out.push_str("{\"kind\":\"unknown_function\",\"name\":\"");
+                json_escape(out, name);
+                out.push_str("\"}");
+            }
+            Self::FunctionArity { name, expected, got } => {
+                out.push_str("{\"kind\":\"function_arity\",\"name\":\"");
+                json_escape(out, name);
+                out.push_str("\",\"expected\":[");
+                for (i, n) in expected.iter().enumerate() {
+                    if i > 0 {
+                        out.push(',');
+                    }
+                    out.push_str(&n.to_string());
+                }
+                out.push_str("],\"got\":");
+                out.push_str(&got.to_string());
+                out.push('}');
+            }
+            Self::Other(_) => {
+                out.push_str("null");
+            }
+        }
+    }
+}
+
+/// Structured help information attached to a diagnostic.
+#[derive(Debug, Clone)]
+pub enum Help {
+    /// A "did you mean?" suggestion with the corrected identifier.
+    Suggestion(String),
+}
+
+impl std::fmt::Display for Help {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Help::Suggestion(s) => write!(f, "did you mean '{s}'?"),
+        }
+    }
+}
+
+impl Help {
+    /// Write the structured JSON representation into `out`.
+    pub fn write_json(&self, out: &mut String) {
+        match self {
+            Help::Suggestion(s) => {
+                out.push_str("{\"kind\":\"suggestion\",\"value\":\"");
+                json_escape(out, s);
+                out.push_str("\"}");
+            }
+        }
+    }
+}
+
+/// Escape a string for JSON output (no serde in WASM).
+fn json_escape(out: &mut String, s: &str) {
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c < '\x20' => {
+                out.push_str(&format!("\\u{:04x}", c as u32));
+            }
+            c => out.push(c),
+        }
+    }
+}
+
+impl Diagnostic {
+    /// Write the full diagnostic as a JSON object into `out`.
+    pub fn write_json(&self, out: &mut String) {
+        out.push_str("{\"startOffset\":");
+        out.push_str(&self.start_offset.to_string());
+        out.push_str(",\"endOffset\":");
+        out.push_str(&self.end_offset.to_string());
+        out.push_str(",\"message\":\"");
+        json_escape(out, &self.message.to_string());
+        out.push_str("\",\"detail\":");
+        self.message.write_json(out);
+        out.push_str(",\"severity\":\"");
+        out.push_str(self.severity.json_key());
+        out.push('"');
+        if let Some(ref help) = self.help {
+            out.push_str(",\"help\":\"");
+            json_escape(out, &help.to_string());
+            out.push_str("\",\"helpDetail\":");
+            help.write_json(out);
+        }
+        out.push('}');
+    }
 }
 
 /// Diagnostic severity level.
@@ -23,6 +179,18 @@ pub enum Severity {
     Warning,
     Info,
     Hint,
+}
+
+impl Severity {
+    /// JSON string key for this severity.
+    pub fn json_key(self) -> &'static str {
+        match self {
+            Self::Error => "error",
+            Self::Warning => "warning",
+            Self::Info => "info",
+            Self::Hint => "hint",
+        }
+    }
 }
 
 /// Whether a [`RelationDef`] represents a base table or a view.
