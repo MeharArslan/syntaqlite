@@ -13,7 +13,7 @@ pub use ffi::{
     Comment, CommentKind, MacroRegion, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID,
     TOKEN_FLAG_AS_TYPE, TokenPos,
 };
-pub use nodes::{FieldVal, Fields, NodeId, NodeList, SourceSpan};
+pub use nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
 pub use session::{CursorBase, NodeReader, ParseError, Parser, ParserConfig, StatementCursor};
 pub use token_parser::{LowLevelCursor, LowLevelParser};
 pub use tokenizer::{RawToken, TokenCursor, Tokenizer};

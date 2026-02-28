@@ -367,6 +367,7 @@ impl<'d> Dialect<'d> {
 
 // ── Schema contribution types ──────────────────────────────────────────
 
+#[cfg(feature = "validation")]
 /// What kind of schema object a node contributes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SchemaKind {
@@ -376,6 +377,7 @@ pub(crate) enum SchemaKind {
     Import,
 }
 
+#[cfg(feature = "validation")]
 /// A schema contribution read from the dialect's C vtable.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct SchemaContribution {
@@ -386,6 +388,7 @@ pub(crate) struct SchemaContribution {
     pub(crate) args_field: Option<u8>,
 }
 
+#[cfg(feature = "validation")]
 impl<'d> Dialect<'d> {
     /// Look up a schema contribution for a given node tag.
     ///

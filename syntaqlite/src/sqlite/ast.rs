@@ -422,12 +422,8 @@ impl<'a> AggregateFunctionCall<'a> {
 
 impl<'a> FromArena<'a> for AggregateFunctionCall<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(AggregateFunctionCall {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::AggregateFunctionCall) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::AggregateFunctionCall>(id)?;
+        Some(AggregateFunctionCall { raw, reader, id })
     }
 }
 
@@ -479,12 +475,8 @@ impl<'a> OrderedSetFunctionCall<'a> {
 
 impl<'a> FromArena<'a> for OrderedSetFunctionCall<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(OrderedSetFunctionCall {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::OrderedSetFunctionCall) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::OrderedSetFunctionCall>(id)?;
+        Some(OrderedSetFunctionCall { raw, reader, id })
     }
 }
 
@@ -524,12 +516,8 @@ impl<'a> CastExpr<'a> {
 
 impl<'a> FromArena<'a> for CastExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(CastExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::CastExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::CastExpr>(id)?;
+        Some(CastExpr { raw, reader, id })
     }
 }
 
@@ -572,12 +560,8 @@ impl<'a> ColumnRef<'a> {
 
 impl<'a> FromArena<'a> for ColumnRef<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(ColumnRef {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::ColumnRef) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::ColumnRef>(id)?;
+        Some(ColumnRef { raw, reader, id })
     }
 }
 
@@ -620,12 +604,8 @@ impl<'a> CompoundSelect<'a> {
 
 impl<'a> FromArena<'a> for CompoundSelect<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(CompoundSelect {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::CompoundSelect) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::CompoundSelect>(id)?;
+        Some(CompoundSelect { raw, reader, id })
     }
 }
 
@@ -662,12 +642,8 @@ impl<'a> SubqueryExpr<'a> {
 
 impl<'a> FromArena<'a> for SubqueryExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(SubqueryExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::SubqueryExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::SubqueryExpr>(id)?;
+        Some(SubqueryExpr { raw, reader, id })
     }
 }
 
@@ -704,12 +680,8 @@ impl<'a> ExistsExpr<'a> {
 
 impl<'a> FromArena<'a> for ExistsExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(ExistsExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::ExistsExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::ExistsExpr>(id)?;
+        Some(ExistsExpr { raw, reader, id })
     }
 }
 
@@ -752,12 +724,8 @@ impl<'a> InExpr<'a> {
 
 impl<'a> FromArena<'a> for InExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(InExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::InExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::InExpr>(id)?;
+        Some(InExpr { raw, reader, id })
     }
 }
 
@@ -800,12 +768,8 @@ impl<'a> IsExpr<'a> {
 
 impl<'a> FromArena<'a> for IsExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(IsExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::IsExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::IsExpr>(id)?;
+        Some(IsExpr { raw, reader, id })
     }
 }
 
@@ -851,12 +815,8 @@ impl<'a> BetweenExpr<'a> {
 
 impl<'a> FromArena<'a> for BetweenExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(BetweenExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::BetweenExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::BetweenExpr>(id)?;
+        Some(BetweenExpr { raw, reader, id })
     }
 }
 
@@ -902,12 +862,8 @@ impl<'a> LikeExpr<'a> {
 
 impl<'a> FromArena<'a> for LikeExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(LikeExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::LikeExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::LikeExpr>(id)?;
+        Some(LikeExpr { raw, reader, id })
     }
 }
 
@@ -950,12 +906,8 @@ impl<'a> CaseExpr<'a> {
 
 impl<'a> FromArena<'a> for CaseExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(CaseExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::CaseExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::CaseExpr>(id)?;
+        Some(CaseExpr { raw, reader, id })
     }
 }
 
@@ -995,12 +947,8 @@ impl<'a> CaseWhen<'a> {
 
 impl<'a> FromArena<'a> for CaseWhen<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(CaseWhen {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::CaseWhen) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::CaseWhen>(id)?;
+        Some(CaseWhen { raw, reader, id })
     }
 }
 
@@ -1049,12 +997,8 @@ impl<'a> ForeignKeyClause<'a> {
 
 impl<'a> FromArena<'a> for ForeignKeyClause<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(ForeignKeyClause {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::ForeignKeyClause) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::ForeignKeyClause>(id)?;
+        Some(ForeignKeyClause { raw, reader, id })
     }
 }
 
@@ -1121,12 +1065,8 @@ impl<'a> ColumnConstraint<'a> {
 
 impl<'a> FromArena<'a> for ColumnConstraint<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(ColumnConstraint {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::ColumnConstraint) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::ColumnConstraint>(id)?;
+        Some(ColumnConstraint { raw, reader, id })
     }
 }
 
@@ -1169,12 +1109,8 @@ impl<'a> ColumnDef<'a> {
 
 impl<'a> FromArena<'a> for ColumnDef<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(ColumnDef {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::ColumnDef) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::ColumnDef>(id)?;
+        Some(ColumnDef { raw, reader, id })
     }
 }
 
@@ -1232,12 +1168,8 @@ impl<'a> TableConstraint<'a> {
 
 impl<'a> FromArena<'a> for TableConstraint<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(TableConstraint {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::TableConstraint) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::TableConstraint>(id)?;
+        Some(TableConstraint { raw, reader, id })
     }
 }
 
@@ -1295,12 +1227,8 @@ impl<'a> CreateTableStmt<'a> {
 
 impl<'a> FromArena<'a> for CreateTableStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(CreateTableStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::CreateTableStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::CreateTableStmt>(id)?;
+        Some(CreateTableStmt { raw, reader, id })
     }
 }
 
@@ -1346,12 +1274,8 @@ impl<'a> CteDefinition<'a> {
 
 impl<'a> FromArena<'a> for CteDefinition<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(CteDefinition {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::CteDefinition) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::CteDefinition>(id)?;
+        Some(CteDefinition { raw, reader, id })
     }
 }
 
@@ -1394,12 +1318,8 @@ impl<'a> WithClause<'a> {
 
 impl<'a> FromArena<'a> for WithClause<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(WithClause {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::WithClause) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::WithClause>(id)?;
+        Some(WithClause { raw, reader, id })
     }
 }
 
@@ -1445,12 +1365,8 @@ impl<'a> DeleteStmt<'a> {
 
 impl<'a> FromArena<'a> for DeleteStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(DeleteStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::DeleteStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::DeleteStmt>(id)?;
+        Some(DeleteStmt { raw, reader, id })
     }
 }
 
@@ -1493,12 +1409,8 @@ impl<'a> SetClause<'a> {
 
 impl<'a> FromArena<'a> for SetClause<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(SetClause {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::SetClause) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::SetClause>(id)?;
+        Some(SetClause { raw, reader, id })
     }
 }
 
@@ -1553,12 +1465,8 @@ impl<'a> UpdateStmt<'a> {
 
 impl<'a> FromArena<'a> for UpdateStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(UpdateStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::UpdateStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::UpdateStmt>(id)?;
+        Some(UpdateStmt { raw, reader, id })
     }
 }
 
@@ -1604,12 +1512,8 @@ impl<'a> InsertStmt<'a> {
 
 impl<'a> FromArena<'a> for InsertStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(InsertStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::InsertStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::InsertStmt>(id)?;
+        Some(InsertStmt { raw, reader, id })
     }
 }
 
@@ -1652,12 +1556,8 @@ impl<'a> BinaryExpr<'a> {
 
 impl<'a> FromArena<'a> for BinaryExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(BinaryExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::BinaryExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::BinaryExpr>(id)?;
+        Some(BinaryExpr { raw, reader, id })
     }
 }
 
@@ -1697,12 +1597,8 @@ impl<'a> UnaryExpr<'a> {
 
 impl<'a> FromArena<'a> for UnaryExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(UnaryExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::UnaryExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::UnaryExpr>(id)?;
+        Some(UnaryExpr { raw, reader, id })
     }
 }
 
@@ -1742,12 +1638,8 @@ impl<'a> Literal<'a> {
 
 impl<'a> FromArena<'a> for Literal<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(Literal {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::Literal) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::Literal>(id)?;
+        Some(Literal { raw, reader, id })
     }
 }
 
@@ -1796,12 +1688,8 @@ impl<'a> FunctionCall<'a> {
 
 impl<'a> FromArena<'a> for FunctionCall<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(FunctionCall {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::FunctionCall) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::FunctionCall>(id)?;
+        Some(FunctionCall { raw, reader, id })
     }
 }
 
@@ -1838,12 +1726,8 @@ impl<'a> Variable<'a> {
 
 impl<'a> FromArena<'a> for Variable<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(Variable {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::Variable) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::Variable>(id)?;
+        Some(Variable { raw, reader, id })
     }
 }
 
@@ -1883,12 +1767,8 @@ impl<'a> CollateExpr<'a> {
 
 impl<'a> FromArena<'a> for CollateExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(CollateExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::CollateExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::CollateExpr>(id)?;
+        Some(CollateExpr { raw, reader, id })
     }
 }
 
@@ -1928,12 +1808,8 @@ impl<'a> RaiseExpr<'a> {
 
 impl<'a> FromArena<'a> for RaiseExpr<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(RaiseExpr {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::RaiseExpr) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::RaiseExpr>(id)?;
+        Some(RaiseExpr { raw, reader, id })
     }
 }
 
@@ -1973,12 +1849,8 @@ impl<'a> QualifiedName<'a> {
 
 impl<'a> FromArena<'a> for QualifiedName<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(QualifiedName {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::QualifiedName) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::QualifiedName>(id)?;
+        Some(QualifiedName { raw, reader, id })
     }
 }
 
@@ -2021,12 +1893,8 @@ impl<'a> DropStmt<'a> {
 
 impl<'a> FromArena<'a> for DropStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(DropStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::DropStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::DropStmt>(id)?;
+        Some(DropStmt { raw, reader, id })
     }
 }
 
@@ -2072,12 +1940,8 @@ impl<'a> AlterTableStmt<'a> {
 
 impl<'a> FromArena<'a> for AlterTableStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(AlterTableStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::AlterTableStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::AlterTableStmt>(id)?;
+        Some(AlterTableStmt { raw, reader, id })
     }
 }
 
@@ -2118,12 +1982,8 @@ impl<'a> TransactionStmt<'a> {
 
 impl<'a> FromArena<'a> for TransactionStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(TransactionStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::TransactionStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::TransactionStmt>(id)?;
+        Some(TransactionStmt { raw, reader, id })
     }
 }
 
@@ -2163,12 +2023,8 @@ impl<'a> SavepointStmt<'a> {
 
 impl<'a> FromArena<'a> for SavepointStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(SavepointStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::SavepointStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::SavepointStmt>(id)?;
+        Some(SavepointStmt { raw, reader, id })
     }
 }
 
@@ -2211,12 +2067,8 @@ impl<'a> ResultColumn<'a> {
 
 impl<'a> FromArena<'a> for ResultColumn<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(ResultColumn {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::ResultColumn) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::ResultColumn>(id)?;
+        Some(ResultColumn { raw, reader, id })
     }
 }
 
@@ -2277,12 +2129,8 @@ impl<'a> SelectStmt<'a> {
 
 impl<'a> FromArena<'a> for SelectStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(SelectStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::SelectStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::SelectStmt>(id)?;
+        Some(SelectStmt { raw, reader, id })
     }
 }
 
@@ -2325,12 +2173,8 @@ impl<'a> OrderingTerm<'a> {
 
 impl<'a> FromArena<'a> for OrderingTerm<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(OrderingTerm {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::OrderingTerm) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::OrderingTerm>(id)?;
+        Some(OrderingTerm { raw, reader, id })
     }
 }
 
@@ -2370,12 +2214,8 @@ impl<'a> LimitClause<'a> {
 
 impl<'a> FromArena<'a> for LimitClause<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(LimitClause {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::LimitClause) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::LimitClause>(id)?;
+        Some(LimitClause { raw, reader, id })
     }
 }
 
@@ -2418,12 +2258,8 @@ impl<'a> TableRef<'a> {
 
 impl<'a> FromArena<'a> for TableRef<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(TableRef {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::TableRef) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::TableRef>(id)?;
+        Some(TableRef { raw, reader, id })
     }
 }
 
@@ -2463,12 +2299,8 @@ impl<'a> SubqueryTableSource<'a> {
 
 impl<'a> FromArena<'a> for SubqueryTableSource<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(SubqueryTableSource {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::SubqueryTableSource) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::SubqueryTableSource>(id)?;
+        Some(SubqueryTableSource { raw, reader, id })
     }
 }
 
@@ -2517,12 +2349,8 @@ impl<'a> JoinClause<'a> {
 
 impl<'a> FromArena<'a> for JoinClause<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(JoinClause {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::JoinClause) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::JoinClause>(id)?;
+        Some(JoinClause { raw, reader, id })
     }
 }
 
@@ -2562,12 +2390,8 @@ impl<'a> JoinPrefix<'a> {
 
 impl<'a> FromArena<'a> for JoinPrefix<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(JoinPrefix {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::JoinPrefix) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::JoinPrefix>(id)?;
+        Some(JoinPrefix { raw, reader, id })
     }
 }
 
@@ -2607,12 +2431,8 @@ impl<'a> TriggerEvent<'a> {
 
 impl<'a> FromArena<'a> for TriggerEvent<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(TriggerEvent {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::TriggerEvent) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::TriggerEvent>(id)?;
+        Some(TriggerEvent { raw, reader, id })
     }
 }
 
@@ -2673,12 +2493,8 @@ impl<'a> CreateTriggerStmt<'a> {
 
 impl<'a> FromArena<'a> for CreateTriggerStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(CreateTriggerStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::CreateTriggerStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::CreateTriggerStmt>(id)?;
+        Some(CreateTriggerStmt { raw, reader, id })
     }
 }
 
@@ -2727,12 +2543,8 @@ impl<'a> CreateVirtualTableStmt<'a> {
 
 impl<'a> FromArena<'a> for CreateVirtualTableStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(CreateVirtualTableStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::CreateVirtualTableStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::CreateVirtualTableStmt>(id)?;
+        Some(CreateVirtualTableStmt { raw, reader, id })
     }
 }
 
@@ -2778,12 +2590,8 @@ impl<'a> PragmaStmt<'a> {
 
 impl<'a> FromArena<'a> for PragmaStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(PragmaStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::PragmaStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::PragmaStmt>(id)?;
+        Some(PragmaStmt { raw, reader, id })
     }
 }
 
@@ -2826,12 +2634,8 @@ impl<'a> AnalyzeStmt<'a> {
 
 impl<'a> FromArena<'a> for AnalyzeStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(AnalyzeStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::AnalyzeStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::AnalyzeStmt>(id)?;
+        Some(AnalyzeStmt { raw, reader, id })
     }
 }
 
@@ -2874,12 +2678,8 @@ impl<'a> AttachStmt<'a> {
 
 impl<'a> FromArena<'a> for AttachStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(AttachStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::AttachStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::AttachStmt>(id)?;
+        Some(AttachStmt { raw, reader, id })
     }
 }
 
@@ -2916,12 +2716,8 @@ impl<'a> DetachStmt<'a> {
 
 impl<'a> FromArena<'a> for DetachStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(DetachStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::DetachStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::DetachStmt>(id)?;
+        Some(DetachStmt { raw, reader, id })
     }
 }
 
@@ -2961,12 +2757,8 @@ impl<'a> VacuumStmt<'a> {
 
 impl<'a> FromArena<'a> for VacuumStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(VacuumStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::VacuumStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::VacuumStmt>(id)?;
+        Some(VacuumStmt { raw, reader, id })
     }
 }
 
@@ -3006,12 +2798,8 @@ impl<'a> ExplainStmt<'a> {
 
 impl<'a> FromArena<'a> for ExplainStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(ExplainStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::ExplainStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::ExplainStmt>(id)?;
+        Some(ExplainStmt { raw, reader, id })
     }
 }
 
@@ -3066,12 +2854,8 @@ impl<'a> CreateIndexStmt<'a> {
 
 impl<'a> FromArena<'a> for CreateIndexStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(CreateIndexStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::CreateIndexStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::CreateIndexStmt>(id)?;
+        Some(CreateIndexStmt { raw, reader, id })
     }
 }
 
@@ -3123,12 +2907,8 @@ impl<'a> CreateViewStmt<'a> {
 
 impl<'a> FromArena<'a> for CreateViewStmt<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(CreateViewStmt {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::CreateViewStmt) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::CreateViewStmt>(id)?;
+        Some(CreateViewStmt { raw, reader, id })
     }
 }
 
@@ -3165,12 +2945,8 @@ impl<'a> ValuesClause<'a> {
 
 impl<'a> FromArena<'a> for ValuesClause<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(ValuesClause {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::ValuesClause) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::ValuesClause>(id)?;
+        Some(ValuesClause { raw, reader, id })
     }
 }
 
@@ -3210,12 +2986,8 @@ impl<'a> FrameBound<'a> {
 
 impl<'a> FromArena<'a> for FrameBound<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(FrameBound {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::FrameBound) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::FrameBound>(id)?;
+        Some(FrameBound { raw, reader, id })
     }
 }
 
@@ -3261,12 +3033,8 @@ impl<'a> FrameSpec<'a> {
 
 impl<'a> FromArena<'a> for FrameSpec<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(FrameSpec {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::FrameSpec) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::FrameSpec>(id)?;
+        Some(FrameSpec { raw, reader, id })
     }
 }
 
@@ -3312,12 +3080,8 @@ impl<'a> WindowDef<'a> {
 
 impl<'a> FromArena<'a> for WindowDef<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(WindowDef {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::WindowDef) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::WindowDef>(id)?;
+        Some(WindowDef { raw, reader, id })
     }
 }
 
@@ -3357,12 +3121,8 @@ impl<'a> NamedWindowDef<'a> {
 
 impl<'a> FromArena<'a> for NamedWindowDef<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(NamedWindowDef {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::NamedWindowDef) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::NamedWindowDef>(id)?;
+        Some(NamedWindowDef { raw, reader, id })
     }
 }
 
@@ -3405,12 +3165,8 @@ impl<'a> FilterOver<'a> {
 
 impl<'a> FromArena<'a> for FilterOver<'a> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        Some(FilterOver {
-            raw: unsafe { &*(ptr as *const crate::sqlite::ffi::FilterOver) },
-            reader,
-            id,
-        })
+        let raw = reader.resolve_as::<crate::sqlite::ffi::FilterOver>(id)?;
+        Some(FilterOver { raw, reader, id })
     }
 }
 

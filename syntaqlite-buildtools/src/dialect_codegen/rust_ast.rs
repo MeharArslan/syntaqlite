@@ -364,8 +364,8 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
 
 /// Generate Rust source for the FFI layer (`ffi.rs`).
 ///
-/// Emits `pub(crate)` `#[repr(C)]` node structs and the `Bool` enum.
-/// Enum/flags types are referenced via `super::ast::`.
+/// Emits `pub(crate)` `#[repr(C)]` node structs, the `Bool` enum, and
+/// `ArenaNode` impls that declare each struct's tag constant.
 ///
 /// `crate_prefix` controls import paths: `"crate"` for the internal syntaqlite
 /// crate, `"syntaqlite"` for external dialect crates.
@@ -379,7 +379,7 @@ pub fn generate_rust_ffi_nodes(model: &AstModel<'_>, crate_prefix: &str) -> Stri
         "
         #![allow(dead_code)]
 
-        use {crate_prefix}::parser::{{NodeId, SourceSpan}};
+        use {crate_prefix}::parser::{{ArenaNode, NodeId, SourceSpan}};
     ",
     ));
     w.newline();
@@ -397,7 +397,7 @@ pub fn generate_rust_ffi_nodes(model: &AstModel<'_>, crate_prefix: &str) -> Stri
     );
     w.newline();
 
-    // Node structs — pub(crate), #[repr(C)]
+    // Node structs — pub(crate), #[repr(C)], with ArenaNode impls
     emit_rust_node_structs(
         &mut w,
         model,
@@ -407,6 +407,19 @@ pub fn generate_rust_ffi_nodes(model: &AstModel<'_>, crate_prefix: &str) -> Stri
         "pub(crate)",
         rust_ffi_field_type,
     );
+
+    // ArenaNode impls — declare tag constant for each node struct
+    for node in model.nodes() {
+        let name = node.name;
+        let tag = model.tag_for(name);
+        w.line(
+            "// SAFETY: TAG matches the value the C parser writes into the `tag` field.",
+        );
+        w.line(&format!(
+            "unsafe impl ArenaNode for {name} {{ const TAG: u32 = {tag}; }}"
+        ));
+        w.newline();
+    }
 
     w.finish()
 }
@@ -570,15 +583,15 @@ pub fn generate_rust_ast(
         w.line("}");
         w.newline();
 
-        // FromArena impl — resolve from arena by NodeId
+        // FromArena impl — resolve from arena by NodeId (tag-checked, no unsafe)
         w.line(&format!("impl<'a> FromArena<'a> for {}<'a> {{", name));
         w.indent();
         w.line("fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {");
         w.indent();
-        w.line("let (ptr, _) = reader.node_ptr(id)?;");
         w.line(&format!(
-            "Some({name} {{ raw: unsafe {{ &*(ptr as *const {ffi_path}::{name}) }}, reader, id }})"
+            "let raw = reader.resolve_as::<{ffi_path}::{name}>(id)?;"
         ));
+        w.line(&format!("Some({name} {{ raw, reader, id }})"));
         w.dedent();
         w.line("}");
         w.dedent();

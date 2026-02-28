@@ -55,3 +55,13 @@ This allows projects like libSQL, rqlite, or custom embedded databases to use sy
 | Tool | Purpose |
 |------|---------|
 | `tools/run-codegen` | Regenerate all generated code (C headers, Rust nodes/tokens/dump/fmt_ops) from `.synq` definitions and SQLite grammar |
+
+## Verification
+
+Before marking any task as done, run:
+
+```sh
+cargo check && cargo clippy
+```
+
+Both must pass with **zero warnings**. Do not use `cargo build` (unnecessary linking overhead for verification).

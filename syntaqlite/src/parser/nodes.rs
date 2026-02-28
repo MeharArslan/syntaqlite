@@ -60,6 +60,17 @@ impl NodeList {
     }
 }
 
+// ── Arena node tag trait ────────────────────────────────────────────────
+
+/// Each `#[repr(C)]` FFI node struct declares its arena tag via this trait.
+///
+/// # Safety
+/// Implementors must guarantee that `TAG` matches the `tag` field value
+/// that the C parser writes into the first `u32` of the struct.
+pub unsafe trait ArenaNode {
+    const TAG: u32;
+}
+
 // ── Field extraction ────────────────────────────────────────────────────
 
 /// Extracted fields of a node, returned by value from `Node::fields()`.

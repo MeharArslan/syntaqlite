@@ -75,12 +75,7 @@ impl<'a, T: FromArena<'a>> TypedList<'a, T> {
 /// Blanket `FromArena` for `TypedList` — resolves the `NodeId` as a list node.
 impl<'a, T> FromArena<'a> for TypedList<'a, T> {
     fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
-        let (ptr, _) = reader.node_ptr(id)?;
-        // SAFETY: the arena tag was already validated as a list type by the
-        // grammar; the pointer is valid for 'a.
-        Some(TypedList::new(
-            unsafe { &*(ptr as *const NodeList) },
-            reader,
-        ))
+        let raw = reader.resolve_list(id)?;
+        Some(TypedList::new(raw, reader))
     }
 }

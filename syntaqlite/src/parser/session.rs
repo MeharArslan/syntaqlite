@@ -231,6 +231,30 @@ impl<'a> NodeReader<'a> {
         children
     }
 
+    /// Resolve a `NodeId` to a typed reference, validating the tag matches.
+    /// Returns `None` if null, invalid, or tag mismatch.
+    pub(crate) fn resolve_as<T: super::nodes::ArenaNode>(&self, id: NodeId) -> Option<&'a T> {
+        let (ptr, tag) = self.node_ptr(id)?;
+        if tag != T::TAG {
+            return None;
+        }
+        // SAFETY: tag matches T::TAG, confirming the arena node has type T.
+        // ptr is valid for 'a (guaranteed by NodeReader's construction from a
+        // live parser). T is #[repr(C)] with a u32 tag as its first field,
+        // matching the arena layout.
+        Some(unsafe { &*(ptr as *const T) })
+    }
+
+    /// Resolve a `NodeId` as a `NodeList` (for list nodes).
+    /// Returns `None` if null or invalid.
+    pub(crate) fn resolve_list(&self, id: NodeId) -> Option<&'a NodeList> {
+        let (ptr, _) = self.node_ptr(id)?;
+        // SAFETY: ptr is valid for 'a. List nodes have NodeList layout
+        // (tag, count, children[count]). The caller is responsible for
+        // ensuring the id refers to a list node (enforced by codegen).
+        Some(unsafe { &*(ptr as *const NodeList) })
+    }
+
     /// Get a raw pointer to a node in the arena. Returns `(pointer, tag)`.
     pub(crate) fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
         if id.is_null() {
