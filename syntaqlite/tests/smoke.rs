@@ -44,6 +44,24 @@ fn parse_error() {
 }
 
 #[test]
+fn parse_error_poisons_cursor() {
+    // StatementCursor is intentionally poisoned on error: once an error is
+    // returned, all subsequent next_statement() calls return None. Callers
+    // that need error recovery must create a new session.
+    let mut parser = syntaqlite::Parser::new();
+    let mut session = parser.parse("NOT VALID SQL; SELECT 1;");
+
+    let first = session.next_statement().unwrap();
+    assert!(first.is_err(), "expected parse error for invalid SQL");
+
+    // Cursor is now poisoned — further calls return None, not a result.
+    assert!(
+        session.next_statement().is_none(),
+        "poisoned cursor should return None after an error"
+    );
+}
+
+#[test]
 fn parser_reuse() {
     let mut parser = syntaqlite::Parser::new();
 

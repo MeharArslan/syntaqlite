@@ -6,9 +6,9 @@ version = "0.1.0"
 edition = "2024"
 
 [features]
-default = ["sqlite", "fmt"]
+default = ["sqlite", "fmt", "validation"]
 fmt = []                     # formatter (bytecode interpreter)
-validation = ["sqlite"]      # semantic validation (schema checks, fuzzy suggestions)
+validation = []              # semantic validation (schema checks, fuzzy suggestions)
 lsp = ["fmt", "validation"]  # LSP analysis host (needs fmt for formatting)
 sqlite = []                  # SQLite dialect (grammar, tokens, cflags, functions)
 
