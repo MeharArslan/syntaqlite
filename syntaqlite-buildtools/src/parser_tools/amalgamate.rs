@@ -40,12 +40,28 @@ pub fn amalgamate_runtime(runtime_dir: &Path) -> Result<AmalgamateOutput, String
 /// the dialect tree are stripped — the emitted `.c` file includes the runtime
 /// amalgamation header via `SYNTAQLITE_RUNTIME_HEADER` and the extension
 /// header via `SYNTAQLITE_EXT_HEADER`.
-pub fn amalgamate_dialect(dialect: &str, dialect_dir: &Path) -> Result<AmalgamateOutput, String> {
+///
+/// `runtime_header` and `ext_header` control the default values baked into
+/// the `#ifndef` guards. Pass `None` for the defaults (`"syntaqlite_runtime.h"`
+/// and `"syntaqlite_ext.h"`).
+pub fn amalgamate_dialect(
+    dialect: &str,
+    dialect_dir: &Path,
+    runtime_header: Option<&str>,
+    ext_header: Option<&str>,
+) -> Result<AmalgamateOutput, String> {
     let csrc = dialect_dir.join("csrc");
     let include = dialect_dir.join("include");
     let graph = collect_files(&[&csrc, &include])?;
     validate_graph(&graph)?;
-    emit(&graph, EmitMode::DialectOnly(dialect))
+    emit(
+        &graph,
+        EmitMode::DialectOnly {
+            dialect,
+            runtime_header: runtime_header.unwrap_or("syntaqlite_runtime.h"),
+            ext_header: ext_header.unwrap_or("syntaqlite_ext.h"),
+        },
+    )
 }
 
 /// Produce `syntaqlite_<dialect>.{h,c}` with the runtime inlined.
@@ -315,7 +331,11 @@ enum EmitMode<'a> {
     /// Runtime only: `syntaqlite_runtime.{h,c}` + `syntaqlite_ext.h`.
     RuntimeOnly,
     /// Dialect only: `syntaqlite_<name>.{h,c}`, expects external runtime/ext headers.
-    DialectOnly(&'a str),
+    DialectOnly {
+        dialect: &'a str,
+        runtime_header: &'a str,
+        ext_header: &'a str,
+    },
     /// Full: runtime + dialect inlined into `syntaqlite_<name>.{h,c}`.
     Full(&'a str),
 }
@@ -351,7 +371,7 @@ fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
 
     // Determine naming from mode.
     let (guard, header_filename) = match &mode {
-        EmitMode::DialectOnly(d) | EmitMode::Full(d) => (
+        EmitMode::DialectOnly { dialect: d, .. } | EmitMode::Full(d) => (
             format!("SYNTAQLITE_{}_H", d.to_uppercase()),
             format!("syntaqlite_{d}.h"),
         ),
@@ -401,13 +421,18 @@ fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
     source.push_str("*/\n\n");
 
     // Dialect-only mode: include external runtime/ext headers.
-    if matches!(mode, EmitMode::DialectOnly(_)) {
+    if let EmitMode::DialectOnly {
+        runtime_header,
+        ext_header,
+        ..
+    } = &mode
+    {
         source.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
-        source.push_str("#define SYNTAQLITE_RUNTIME_HEADER \"syntaqlite_runtime.h\"\n");
+        source.push_str(&format!("#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\"\n"));
         source.push_str("#endif\n");
         source.push_str("#include SYNTAQLITE_RUNTIME_HEADER\n\n");
         source.push_str("#ifndef SYNTAQLITE_EXT_HEADER\n");
-        source.push_str("#define SYNTAQLITE_EXT_HEADER \"syntaqlite_ext.h\"\n");
+        source.push_str(&format!("#define SYNTAQLITE_EXT_HEADER \"{ext_header}\"\n"));
         source.push_str("#endif\n");
         source.push_str("#include SYNTAQLITE_EXT_HEADER\n\n");
     }

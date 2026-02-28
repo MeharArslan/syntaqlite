@@ -49,9 +49,34 @@ pub(crate) enum CodegenCommand {
 pub(crate) enum DialectCommand {
     /// Emit amalgamated C/H files.
     Csrc {
-        /// Output directory for amalgamated files.
+        /// Output directory for generated files.
         #[arg(long, required = true)]
         output_dir: String,
+        /// Skip amalgamation and write raw C/H files instead.
+        /// Use with --internal-prefix / --public-prefix / --dialect-include-dir
+        /// to control the #include paths in the generated code.
+        #[arg(long)]
+        no_amalgamate: bool,
+        /// Default path for the syntaqlite runtime header in the amalgamated output.
+        /// Baked into the #ifndef SYNTAQLITE_RUNTIME_HEADER guard.
+        #[arg(long, default_value = "syntaqlite_runtime.h")]
+        runtime_header: String,
+        /// Default path for the syntaqlite extension header in the amalgamated output.
+        /// Baked into the #ifndef SYNTAQLITE_EXT_HEADER guard.
+        #[arg(long, default_value = "syntaqlite_ext.h")]
+        ext_header: String,
+        /// Prefix for internal dialect headers (dialect_builder.h, dialect_meta.h, etc.).
+        /// Only used with --no-amalgamate.
+        #[arg(long, default_value = "")]
+        internal_prefix: String,
+        /// Prefix for public headers (syntaqlite/parser.h, syntaqlite/dialect.h, etc.).
+        /// Only used with --no-amalgamate.
+        #[arg(long, default_value = "")]
+        public_prefix: String,
+        /// Directory name for dialect public headers in #include directives.
+        /// E.g. "syntaqlite_mydialect". Only used with --no-amalgamate.
+        #[arg(long, default_value = "")]
+        dialect_include_dir: String,
     },
 }
 
@@ -64,12 +89,39 @@ pub(crate) fn dispatch(command: CodegenCommand) -> Result<(), String> {
             nodes_dir,
             command,
         } => match command {
-            DialectCommand::Csrc { output_dir } => cmd_generate_dialect(
-                &name,
-                actions_dir.as_deref(),
-                nodes_dir.as_deref(),
-                &output_dir,
-            ),
+            DialectCommand::Csrc {
+                output_dir,
+                no_amalgamate,
+                runtime_header,
+                ext_header,
+                internal_prefix,
+                public_prefix,
+                dialect_include_dir,
+            } => {
+                if no_amalgamate {
+                    let includes = syntaqlite_buildtools::dialect_codegen::DialectCIncludes {
+                        internal: &internal_prefix,
+                        public: &public_prefix,
+                        dialect_include_dir: &dialect_include_dir,
+                    };
+                    cmd_generate_dialect_raw(
+                        &name,
+                        actions_dir.as_deref(),
+                        nodes_dir.as_deref(),
+                        &output_dir,
+                        &includes,
+                    )
+                } else {
+                    cmd_generate_dialect(
+                        &name,
+                        actions_dir.as_deref(),
+                        nodes_dir.as_deref(),
+                        &output_dir,
+                        &runtime_header,
+                        &ext_header,
+                    )
+                }
+            }
         },
         CodegenCommand::Lemon { args } => syntaqlite_buildtools::run_lemon(&args),
         CodegenCommand::Mkkeyword { args } => syntaqlite_buildtools::run_mkkeyword(&args),
@@ -81,15 +133,77 @@ fn cmd_generate_dialect(
     actions_dir: Option<&str>,
     nodes_dir: Option<&str>,
     output_dir: &str,
+    runtime_header: &str,
+    ext_header: &str,
 ) -> Result<(), String> {
     use syntaqlite_buildtools::amalgamate;
     use syntaqlite_buildtools::base_files;
 
-    // Run codegen into a temp directory.
+    // Run codegen into a temp directory.  The includes use `csrc/` prefix
+    // to match the temp dir layout so the amalgamator can resolve and
+    // inline all internal headers.
     let temp_dir = tempfile::TempDir::new().map_err(|e| format!("creating temp directory: {e}"))?;
     let temp = temp_dir.path();
     let csrc = temp.join("csrc");
     let include = temp.join("include").join(format!("syntaqlite_{dialect}"));
+    ensure_dir(&csrc, "csrc dir")?;
+    ensure_dir(&include, "include dir")?;
+
+    let amalg_includes = syntaqlite_buildtools::dialect_codegen::DialectCIncludes {
+        internal: "csrc/",
+        public: "",
+        dialect_include_dir: "",
+    };
+
+    // Load extension files from user dirs (if provided).
+    let ext_y = match actions_dir {
+        Some(dir) => syntaqlite_buildtools::read_named_files_from_dir(dir, "y")?,
+        None => Vec::new(),
+    };
+    let ext_synq = match nodes_dir {
+        Some(dir) => syntaqlite_buildtools::read_named_files_from_dir(dir, "synq")?,
+        None => Vec::new(),
+    };
+
+    // Merge base + extensions.
+    let merged_y = base_files::merge_file_sets(base_files::base_y_files(), &ext_y);
+    let merged_synq = base_files::merge_file_sets(base_files::base_synq_files(), &ext_synq);
+
+    codegen_to_dir_with_base(
+        dialect,
+        &merged_y,
+        &merged_synq,
+        &csrc,
+        &include,
+        &amalg_includes,
+    )?;
+
+    let out = Path::new(output_dir);
+    ensure_dir(out, "output dir")?;
+    let result = amalgamate::amalgamate_dialect(
+        dialect,
+        temp,
+        Some(runtime_header),
+        Some(ext_header),
+    )?;
+    write_file(&out.join(format!("syntaqlite_{dialect}.h")), &result.header)?;
+    write_file(&out.join(format!("syntaqlite_{dialect}.c")), &result.source)?;
+    eprintln!("wrote {}/syntaqlite_{dialect}.{{h,c}}", out.display());
+    Ok(())
+}
+
+fn cmd_generate_dialect_raw(
+    dialect: &str,
+    actions_dir: Option<&str>,
+    nodes_dir: Option<&str>,
+    output_dir: &str,
+    includes: &syntaqlite_buildtools::dialect_codegen::DialectCIncludes<'_>,
+) -> Result<(), String> {
+    use syntaqlite_buildtools::base_files;
+
+    let out = Path::new(output_dir);
+    let csrc = out.join("csrc");
+    let include = out.join("include").join(format!("syntaqlite_{dialect}"));
     ensure_dir(&csrc, "csrc dir")?;
     ensure_dir(&include, "include dir")?;
 
@@ -107,14 +221,8 @@ fn cmd_generate_dialect(
     let merged_y = base_files::merge_file_sets(base_files::base_y_files(), &ext_y);
     let merged_synq = base_files::merge_file_sets(base_files::base_synq_files(), &ext_synq);
 
-    codegen_to_dir_with_base(dialect, &merged_y, &merged_synq, &csrc, &include)?;
-
-    let out = Path::new(output_dir);
-    ensure_dir(out, "output dir")?;
-    let result = amalgamate::amalgamate_dialect(dialect, temp)?;
-    write_file(&out.join(format!("syntaqlite_{dialect}.h")), &result.header)?;
-    write_file(&out.join(format!("syntaqlite_{dialect}.c")), &result.source)?;
-    eprintln!("wrote {}/syntaqlite_{dialect}.{{h,c}}", out.display());
+    codegen_to_dir_with_base(dialect, &merged_y, &merged_synq, &csrc, &include, includes)?;
+    eprintln!("wrote raw dialect files to {}", out.display());
     Ok(())
 }
 
@@ -125,6 +233,7 @@ fn codegen_to_dir_with_base(
     synq_files: &[(String, String)],
     csrc_dir: &Path,
     include_dir: &Path,
+    includes: &syntaqlite_buildtools::dialect_codegen::DialectCIncludes<'_>,
 ) -> Result<(), String> {
     let dialect_spec = syntaqlite_buildtools::DialectNaming::new(dialect);
     let parser_prefix = dialect_spec.parser_symbol_prefix();
@@ -154,7 +263,7 @@ fn codegen_to_dir_with_base(
         crate_name: None,
         base_synq_files: Some(syntaqlite_buildtools::base_files::base_synq_files()),
         open_for_extension: false,
-        dialect_c_includes: Default::default(),
+        dialect_c_includes: includes.clone(),
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
 
@@ -175,13 +284,10 @@ fn codegen_to_dir_with_base(
     write_file(&csrc_dir.join("sqlite_parse.c"), artifacts.parse_c)?;
 
     // Forward-declaration headers for parser and tokenizer.
-    let default_includes = syntaqlite_buildtools::dialect_codegen::DialectCIncludes::default();
-    let parse_h =
-        syntaqlite_buildtools::dialect_codegen::generate_parse_h(dialect, &default_includes);
+    let parse_h = syntaqlite_buildtools::dialect_codegen::generate_parse_h(dialect, includes);
     write_file(&csrc_dir.join("sqlite_parse.h"), parse_h)?;
 
-    let tokenize_h =
-        syntaqlite_buildtools::dialect_codegen::generate_tokenize_h(dialect, &default_includes);
+    let tokenize_h = syntaqlite_buildtools::dialect_codegen::generate_tokenize_h(dialect, includes);
     write_file(&csrc_dir.join("sqlite_tokenize.h"), tokenize_h)?;
 
     // Tokenizer + keywords.

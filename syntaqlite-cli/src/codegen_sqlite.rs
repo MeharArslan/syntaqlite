@@ -218,7 +218,7 @@ fn handle_amalgamate(
         write_amalgamation_outputs(out, "syntaqlite_runtime.h", "syntaqlite_runtime.c", &result)?;
     } else {
         let result = if dialect_only {
-            amalgamate::amalgamate_dialect(dialect, &dialect_path)?
+            amalgamate::amalgamate_dialect(dialect, &dialect_path, None, None)?
         } else {
             amalgamate::amalgamate_full(dialect, &runtime, &dialect_path)?
         };

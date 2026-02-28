@@ -90,7 +90,7 @@ Both must pass with **zero warnings**. Do not use `cargo build` (unnecessary lin
 Both `syntaqlite` and `syntaqlite-buildtools` have Rust unit tests. Run them with:
 
 ```sh
-cargo test --workspace
+cargo nextest run --workspace
 ```
 
 ### Diff test suites

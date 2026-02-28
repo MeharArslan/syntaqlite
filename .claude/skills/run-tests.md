@@ -11,7 +11,7 @@ Run tests to verify correctness after code changes.
 
 2. **Run Rust unit tests**:
    ```sh
-   cargo test --workspace
+   cargo nextest run --workspace
    ```
 
 3. **Run diff test suites** based on what changed:
