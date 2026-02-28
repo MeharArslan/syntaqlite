@@ -70,6 +70,7 @@ The `.synq` DSL defines the AST node types, enums, flags, and formatter instruct
 | `tools/run-fmt-diff-tests` | Run formatter diff tests (`tests/fmt_diff_tests/`) |
 | `tools/run-amalg-tests` | Run amalgamation integration tests (`tests/amalg_tests/`) |
 | `tools/run-perfetto-fmt-diff-tests` | Run Perfetto dialect formatter tests (`tests/perfetto_fmt_diff_tests/`) |
+| `tools/run-perfetto-validation-diff-tests` | Run Perfetto dialect validation tests (`tests/perfetto_validation_diff_tests/`) |
 | `tools/format-c` | Run clang-format on C sources |
 | `tools/install-build-deps` | Install platform-specific build deps (clang-format, SQLite sources) |
 | `tools/build-web-playground` | Build WASM web playground |
@@ -106,6 +107,7 @@ Behavioral correctness of the CLI is verified with Python-based diff test suites
 - `tools/run-fmt-diff-tests` — formatter output tests (`tests/fmt_diff_tests/`)
 - `tools/run-amalg-tests` — amalgamation integration tests (`tests/amalg_tests/`)
 - `tools/run-perfetto-fmt-diff-tests` — Perfetto dialect formatter tests (`tests/perfetto_fmt_diff_tests/`)
+- `tools/run-perfetto-validation-diff-tests` — Perfetto dialect validation tests (`tests/perfetto_validation_diff_tests/`)
 
 #### Prerequisites
 
