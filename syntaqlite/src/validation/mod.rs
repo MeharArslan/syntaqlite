@@ -59,9 +59,6 @@ pub fn validate_statement<'a>(
     };
 
     let mut scope = ScopeStack::new(context);
-    let mut diagnostics = Vec::new();
 
-    walker::walk_stmt(reader, stmt, &mut scope, functions, config, &mut diagnostics);
-
-    diagnostics
+    walker::Walker::run(reader, stmt, &mut scope, functions, config)
 }

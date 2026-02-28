@@ -4,7 +4,7 @@
 /// Compute the Levenshtein distance between two strings (case-insensitive).
 ///
 /// Uses O(n) space where n = b.len().
-pub fn levenshtein_distance(a: &str, b: &str) -> usize {
+pub(super) fn levenshtein_distance(a: &str, b: &str) -> usize {
     let a: Vec<char> = a.chars().flat_map(|c| c.to_lowercase()).collect();
     let b: Vec<char> = b.chars().flat_map(|c| c.to_lowercase()).collect();
 
@@ -18,12 +18,8 @@ pub fn levenshtein_distance(a: &str, b: &str) -> usize {
         return m;
     }
 
-    let mut prev = vec![0usize; n + 1];
+    let mut prev: Vec<usize> = (0..=n).collect();
     let mut curr = vec![0usize; n + 1];
-
-    for j in 0..=n {
-        prev[j] = j;
-    }
 
     for i in 1..=m {
         curr[0] = i;
@@ -42,7 +38,7 @@ pub fn levenshtein_distance(a: &str, b: &str) -> usize {
 /// Find the best matching candidate within a maximum Levenshtein distance.
 ///
 /// Returns the closest match, or `None` if no candidate is within `threshold`.
-pub fn best_suggestion(name: &str, candidates: &[String], threshold: usize) -> Option<String> {
+pub(super) fn best_suggestion(name: &str, candidates: &[String], threshold: usize) -> Option<String> {
     candidates
         .iter()
         .map(|c| (levenshtein_distance(name, c), c))

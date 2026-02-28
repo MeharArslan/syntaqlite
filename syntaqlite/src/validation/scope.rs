@@ -14,24 +14,24 @@ struct Scope {
 }
 
 /// A stack of scopes for name resolution, with optional ambient schema.
-pub struct ScopeStack<'ctx> {
+pub(super) struct ScopeStack<'ctx> {
     ambient: Option<&'ctx AmbientContext>,
     stack: Vec<Scope>,
 }
 
 impl<'ctx> ScopeStack<'ctx> {
-    pub fn new(ambient: Option<&'ctx AmbientContext>) -> Self {
+    pub(super) fn new(ambient: Option<&'ctx AmbientContext>) -> Self {
         ScopeStack {
             ambient,
             stack: vec![Scope::default()],
         }
     }
 
-    pub fn push(&mut self) {
+    pub(super) fn push(&mut self) {
         self.stack.push(Scope::default());
     }
 
-    pub fn pop(&mut self) {
+    pub(super) fn pop(&mut self) {
         if self.stack.len() > 1 {
             self.stack.pop();
         }
@@ -39,7 +39,7 @@ impl<'ctx> ScopeStack<'ctx> {
 
     /// Add a table or alias to the current scope.
     /// `columns` is `None` if column info is not available.
-    pub fn add_table(&mut self, name: &str, columns: Option<Vec<String>>) {
+    pub(super) fn add_table(&mut self, name: &str, columns: Option<Vec<String>>) {
         self.stack
             .last_mut()
             .unwrap()
@@ -47,7 +47,7 @@ impl<'ctx> ScopeStack<'ctx> {
             .insert(name.to_lowercase(), columns);
     }
 
-    pub fn resolve_table(&self, name: &str) -> bool {
+    pub(super) fn resolve_table(&self, name: &str) -> bool {
         let lower = name.to_lowercase();
         self.stack.iter().any(|s| s.tables.contains_key(&lower))
             || self.ambient_has_table(name)
@@ -57,7 +57,7 @@ impl<'ctx> ScopeStack<'ctx> {
     ///
     /// Qualified (`table.column`): look up the specific table's columns.
     /// Unqualified (`column`): search all tables in scope + ambient.
-    pub fn resolve_column(&self, table: Option<&str>, column: &str) -> ColumnResolution {
+    pub(super) fn resolve_column(&self, table: Option<&str>, column: &str) -> ColumnResolution {
         if let Some(tbl) = table {
             return self.resolve_qualified_column(tbl, column);
         }
@@ -82,7 +82,7 @@ impl<'ctx> ScopeStack<'ctx> {
         ColumnResolution::NotFound
     }
 
-    pub fn all_table_names(&self) -> Vec<String> {
+    pub(super) fn all_table_names(&self) -> Vec<String> {
         let mut names: Vec<String> = self
             .stack
             .iter()
@@ -99,7 +99,7 @@ impl<'ctx> ScopeStack<'ctx> {
 
     /// Collect all column names visible in scope (for fuzzy matching).
     /// If `table` is given, only return columns from that table.
-    pub fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
+    pub(super) fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
         let mut names = Vec::new();
 
         match table {
@@ -184,7 +184,7 @@ impl<'ctx> ScopeStack<'ctx> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum ColumnResolution {
+pub(super) enum ColumnResolution {
     Found,
     TableFoundColumnMissing,
     TableNotFound,

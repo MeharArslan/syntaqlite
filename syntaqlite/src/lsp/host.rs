@@ -11,8 +11,8 @@ use crate::parser::{
 };
 use crate::{Dialect, ParseError, Parser};
 
-use crate::lsp::context::AmbientContext;
-use crate::lsp::types::{Diagnostic, SemanticToken, Severity};
+use crate::validation::types::{AmbientContext, FunctionDef};
+use crate::lsp::{Diagnostic, SemanticToken, Severity};
 
 /// Semantic completion context derived from parser stack state.
 #[repr(u32)]
@@ -148,7 +148,7 @@ impl<'d> AnalysisHost<'d> {
     /// Combines SQLite built-in functions (filtered by `DialectConfig` if set)
     /// with user-provided functions from the ambient context.
     #[cfg(feature = "sqlite")]
-    pub fn available_functions(&self) -> Vec<crate::lsp::context::FunctionDef> {
+    pub fn available_functions(&self) -> Vec<FunctionDef> {
         let default_config = crate::dialect::ffi::DialectConfig::default();
         let config = self.dialect_config.as_ref().unwrap_or(&default_config);
         let mut result = catalog_to_function_defs(config);
@@ -350,13 +350,13 @@ impl<'d> AnalysisHost<'d> {
 #[cfg(feature = "sqlite")]
 fn catalog_to_function_defs(
     config: &crate::dialect::ffi::DialectConfig,
-) -> Vec<crate::lsp::context::FunctionDef> {
+) -> Vec<FunctionDef> {
     crate::sqlite::functions::available_functions(config)
         .into_iter()
         .flat_map(|info| {
             if info.arities.is_empty() {
                 // No arity info — emit a single variadic entry.
-                vec![crate::lsp::context::FunctionDef {
+                vec![FunctionDef {
                     name: info.name.to_string(),
                     args: None,
                     description: None,
@@ -364,7 +364,7 @@ fn catalog_to_function_defs(
             } else {
                 info.arities
                     .iter()
-                    .map(|&arity| crate::lsp::context::FunctionDef {
+                    .map(|&arity| FunctionDef {
                         name: info.name.to_string(),
                         args: if arity < 0 {
                             None
@@ -579,6 +579,7 @@ impl std::error::Error for FormatError {}
 #[cfg(feature = "sqlite")]
 mod tests {
     use super::AnalysisHost;
+    use crate::lsp::{AmbientContext, FunctionDef};
     use crate::sqlite::low_level::TokenType;
 
     #[test]
@@ -690,10 +691,10 @@ mod tests {
     #[test]
     fn available_functions_merges_ambient_context() {
         let mut host = AnalysisHost::new();
-        host.set_ambient_context(crate::lsp::context::AmbientContext {
+        host.set_ambient_context(AmbientContext {
             tables: vec![],
             views: vec![],
-            functions: vec![crate::lsp::context::FunctionDef {
+            functions: vec![FunctionDef {
                 name: "my_custom_func".to_string(),
                 args: Some(2),
                 description: None,
