@@ -132,6 +132,20 @@ static inline uint32_t synq_parse_build(SynqParseCtx* ctx,
   return synq_arena_alloc(&ctx->ast, node_data, node_size, ctx->mem);
 }
 
+// Build an error placeholder node in the arena. The returned node ID can be
+// stored in any node field that would normally hold a valid node ID, allowing
+// the arena to record where an error occurred for later inspection.
+static inline uint32_t synq_parse_error_node(SynqParseCtx* ctx,
+                                             uint32_t offset,
+                                             uint32_t length) {
+  SyntaqliteErrorNode node = {
+      .tag = SYNTAQLITE_ERROR_NODE_TAG,
+      .offset = offset,
+      .length = length,
+  };
+  return synq_parse_build(ctx, &node, (uint32_t)sizeof(node));
+}
+
 static inline uint32_t synq_parse_list_append(SynqParseCtx* ctx,
                                               uint32_t tag,
                                               uint32_t list_id,

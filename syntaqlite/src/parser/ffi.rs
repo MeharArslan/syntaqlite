@@ -83,6 +83,25 @@ pub struct MacroRegion {
     pub call_length: u32,
 }
 
+/// Tag value for error placeholder nodes stored in the arena.
+/// Tag 0 is the sentinel (NodeTag::Null = 0 in generated code) — repurposed
+/// here as the error node tag without requiring codegen changes.
+///
+/// Mirrors C `SYNTAQLITE_ERROR_NODE_TAG` from `include/syntaqlite/parser.h`.
+pub const SYNTAQLITE_ERROR_NODE_TAG: u32 = 0;
+
+/// An error placeholder node in the parser arena.
+///
+/// Mirrors C `SyntaqliteErrorNode` from `include/syntaqlite/parser.h`.
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct ErrorNode {
+    pub tag: u32,
+    pub offset: u32,
+    pub length: u32,
+}
+const _: () = assert!(std::mem::size_of::<ErrorNode>() == 12);
+
 // Opaque C tokenizer type
 pub(crate) enum Tokenizer {}
 

@@ -14,7 +14,9 @@ pub use ffi::{
     TOKEN_FLAG_AS_TYPE, TokenPos,
 };
 pub use nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
-pub use session::{CursorBase, NodeReader, ParseError, Parser, ParserConfig, StatementCursor};
+pub use session::{
+    CursorBase, ErrorSpan, NodeReader, ParseError, Parser, ParserConfig, StatementCursor,
+};
 pub use token_parser::{LowLevelCursor, LowLevelParser};
 pub use tokenizer::{RawToken, TokenCursor, Tokenizer};
 pub use typed_list::{FromArena, TypedList};

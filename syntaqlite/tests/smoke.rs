@@ -44,21 +44,62 @@ fn parse_error() {
 }
 
 #[test]
-fn parse_error_poisons_cursor() {
-    // StatementCursor is intentionally poisoned on error: once an error is
-    // returned, all subsequent next_statement() calls return None. Callers
-    // that need error recovery must create a new session.
+fn parse_error_recovery() {
+    // After a parse error, the cursor continues parsing subsequent statements.
+    // Lemon's built-in error recovery synchronises on `;`.
     let mut parser = syntaqlite::Parser::new();
     let mut session = parser.parse("NOT VALID SQL; SELECT 1;");
 
     let first = session.next_statement().unwrap();
     assert!(first.is_err(), "expected parse error for invalid SQL");
 
-    // Cursor is now poisoned — further calls return None, not a result.
+    // Recovery: cursor should continue and return the next valid statement.
+    let second = session.next_statement().unwrap().unwrap();
     assert!(
-        session.next_statement().is_none(),
-        "poisoned cursor should return None after an error"
+        matches!(
+            Stmt::from_arena(session.reader(), second).unwrap(),
+            Stmt::SelectStmt(_)
+        ),
+        "expected SelectStmt after recovery"
     );
+
+    assert!(session.next_statement().is_none());
+}
+
+#[test]
+fn parse_error_recovery_at_eof() {
+    // An unterminated statement (no trailing `;`) reports an error and then
+    // next_statement() returns None.
+    let mut parser = syntaqlite::Parser::new();
+    let mut session = parser.parse("SELECT * FROM");
+
+    let result = session.next_statement().unwrap();
+    assert!(result.is_err());
+    assert!(session.next_statement().is_none());
+}
+
+#[test]
+fn parse_error_mid_batch() {
+    // Good → bad → good: the cursor recovers from a mid-batch error and
+    // continues to parse subsequent valid statements.
+    let mut parser = syntaqlite::Parser::new();
+    let mut session = parser.parse("SELECT 1; SELECT * FROM; SELECT 2;");
+
+    let r1 = session.next_statement().unwrap().unwrap();
+    assert!(matches!(
+        Stmt::from_arena(session.reader(), r1).unwrap(),
+        Stmt::SelectStmt(_)
+    ));
+
+    assert!(session.next_statement().unwrap().is_err());
+
+    let r3 = session.next_statement().unwrap().unwrap();
+    assert!(matches!(
+        Stmt::from_arena(session.reader(), r3).unwrap(),
+        Stmt::SelectStmt(_)
+    ));
+
+    assert!(session.next_statement().is_none());
 }
 
 #[test]

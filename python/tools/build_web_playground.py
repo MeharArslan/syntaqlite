@@ -213,7 +213,7 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
         os.path.join(ROOT_DIR, "syntaqlite", "csrc", "sqlite", "dialect.c"),
         os.path.join(ROOT_DIR, "syntaqlite", "csrc", "sqlite", "sqlite_parse.c"),
         os.path.join(ROOT_DIR, "syntaqlite", "csrc", "sqlite", "sqlite_tokenize.c"),
-        os.path.join(ROOT_DIR, "syntaqlite", "csrc", "sqlite", "sqlite_tokenize_version_gate.c"),
+        os.path.join(ROOT_DIR, "syntaqlite", "csrc", "sqlite", "sqlite_token_wrapped.c"),
         os.path.join(ROOT_DIR, "syntaqlite", "csrc", "sqlite", "sqlite_keyword.c"),
         wrapper_path,
         "-I", os.path.join(ROOT_DIR, "syntaqlite"),

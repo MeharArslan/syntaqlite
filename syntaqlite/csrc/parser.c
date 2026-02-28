@@ -117,10 +117,16 @@ static int feed_one_token(SyntaqliteParser* p,
       p->ctx.error_length = (uint32_t)len;
     }
     if (p->error_msg[0] == '\0') {
-      snprintf(p->error_msg, sizeof(p->error_msg), "syntax error near '%.*s'",
-               len, text ? text : "");
+      if (text) {
+        snprintf(p->error_msg, sizeof(p->error_msg), "syntax error near '%.*s'",
+                 len, text);
+      } else {
+        snprintf(p->error_msg, sizeof(p->error_msg),
+                 "incomplete SQL statement");
+      }
     }
-    return -1;
+    p->ctx.error = 0;  // Lemon is now driving recovery.
+    return 0;
   }
 
   if (p->ctx.stmt_completed) {
@@ -207,16 +213,18 @@ static int finish_input(SyntaqliteParser* p) {
   // Synthesize SEMI if the last token wasn't one.
   if (p->last_token_type != p->dialect->tk_semi) {
     int rc = feed_one_token(p, p->dialect->tk_semi, NULL, 0, 0xFFFFFFFF);
-    if (rc < 0) {
-      p->finished = 1;
-      p->ctx.error_offset = p->offset;
-      p->ctx.error_length = 0;
-      snprintf(p->error_msg, sizeof(p->error_msg), "incomplete SQL statement");
-      return -1;
-    }
-    if (rc == 1 && p->ctx.root != SYNTAQLITE_NULL_NODE) {
-      p->finished = 1;
-      return 1;
+    if (rc == 1) {
+      if (p->had_error) {
+        p->finished = 1;
+        return -1;  // caller reads error info from p->error_msg / ctx.*
+      }
+      if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
+        p->finished = 1;
+        if (check_macro_straddle(p) < 0)
+          return -1;
+        return 1;
+      }
+      // null root, no error = bare semicolon, fall through to EOF
     }
   }
 
@@ -238,6 +246,11 @@ static int finish_input(SyntaqliteParser* p) {
   }
 
   if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
+    if (p->had_error) {
+      // Semantic error set during reduction (e.g. cflag check). The parse
+      // tree was built but the statement is invalid — report the error.
+      return -1;
+    }
     if (check_macro_straddle(p) < 0)
       return -1;
     return 1;
@@ -311,19 +324,19 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
 
     int rc = feed_one_token(p, token_type, p->source + tok_offset,
                             (int)token_len, tidx);
-    if (rc < 0) {
-      p->finished = 1;
-      result.error = 1;
-      result.error_msg = p->error_msg;
-      result.error_offset = p->ctx.error_offset;
-      result.error_length = p->ctx.error_length;
-      return result;
-    }
 
     if (rc == 1) {
-      // Bare semicolons produce SYNTAQLITE_NULL_NODE — skip them.
-      if (p->ctx.root == SYNTAQLITE_NULL_NODE) {
-        continue;
+      if (p->ctx.root == SYNTAQLITE_NULL_NODE && !p->had_error) {
+        continue;  // bare semicolon
+      }
+      if (p->had_error) {
+        result.error = 1;
+        result.error_msg = p->error_msg;
+        result.error_offset = p->ctx.error_offset;
+        result.error_length = p->ctx.error_length;
+        p->had_error = 0;
+        p->error_msg[0] = '\0';
+        return result;
       }
       result.root = p->ctx.root;
       result.saw_subquery = p->ctx.saw_subquery;
@@ -339,6 +352,10 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
     result.error_msg = p->error_msg;
     result.error_offset = p->ctx.error_offset;
     result.error_length = p->ctx.error_length;
+    // Clear had_error so subsequent calls (after p->finished=1) return null
+    // root (None in Rust) rather than repeating the error.
+    p->had_error = 0;
+    p->error_msg[0] = '\0';
   } else if (rc == 1) {
     result.root = p->ctx.root;
     result.saw_subquery = p->ctx.saw_subquery;
@@ -519,6 +536,14 @@ static void dump_node_recursive(DumpBuf* b,
   memcpy(&tag, raw, sizeof(tag));
 
   const SyntaqliteDialect* d = p->dialect;
+  if (tag == SYNTAQLITE_ERROR_NODE_TAG) {
+    const SyntaqliteErrorNode* e = (const SyntaqliteErrorNode*)raw;
+    SyntaqliteMemMethods mem = p->mem;
+    dump_indent(b, mem, indent);
+    dump_printf(b, mem, "ErrorNode { offset: %u, length: %u }\n", e->offset,
+                e->length);
+    return;
+  }
   if (tag >= d->node_count)
     return;
 

@@ -250,6 +250,10 @@ pub struct SchemaContributionC {
 const _: () = {
     assert!(std::mem::size_of::<AvailabilityRuleC>() == 16);
     assert!(std::mem::size_of::<SchemaContributionC>() == 12);
+    #[cfg(target_pointer_width = "64")]
+    assert!(std::mem::size_of::<Dialect>() == 296);
+    #[cfg(target_pointer_width = "32")]
+    assert!(std::mem::size_of::<Dialect>() == 156);
 };
 
 /// Mirrors C `SyntaqliteFieldMeta` from `include/syntaqlite/dialect.h`.

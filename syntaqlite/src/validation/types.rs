@@ -149,7 +149,10 @@ impl Default for DocumentContext {
 /// `ptr` must point to a valid node struct; `meta.offset` must be a valid
 /// offset to a `u32` (NodeId) field within that struct.
 #[cfg(feature = "sqlite")]
-unsafe fn read_node_id(ptr: *const u8, meta: &crate::dialect::ffi::FieldMeta) -> crate::parser::NodeId {
+unsafe fn read_node_id(
+    ptr: *const u8,
+    meta: &crate::dialect::ffi::FieldMeta,
+) -> crate::parser::NodeId {
     unsafe { crate::parser::NodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
 }
 
@@ -167,7 +170,11 @@ unsafe fn read_span<'a>(
 ) -> &'a str {
     unsafe {
         let span = &*(ptr.add(meta.offset as usize) as *const crate::parser::SourceSpan);
-        if span.is_empty() { "" } else { span.as_str(source) }
+        if span.is_empty() {
+            ""
+        } else {
+            span.as_str(source)
+        }
     }
 }
 
@@ -399,8 +406,7 @@ fn extract_column_constraints(
             if fm.kind == FIELD_ENUM {
                 let field_name = unsafe { fm.name_str() };
                 if field_name == "kind" {
-                    let ordinal =
-                        unsafe { *(cptr.add(fm.offset as usize) as *const u32) };
+                    let ordinal = unsafe { *(cptr.add(fm.offset as usize) as *const u32) };
                     // Map ordinal to display name for robust matching.
                     if let Some(display) = unsafe { fm.display_name(ordinal as usize) } {
                         match display {

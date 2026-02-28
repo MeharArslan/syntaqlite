@@ -92,6 +92,12 @@ pub fn sqlite_output_manifest(
 
     out.push(OutputArtifact {
         bucket: OutputBucket::DialectCsrc,
+        file_name: "sqlite_tokenize.h".to_string(),
+        content: artifacts.tokenize_h,
+    });
+
+    out.push(OutputArtifact {
+        bucket: OutputBucket::DialectCsrc,
         file_name: "sqlite_parse.c".to_string(),
         content: artifacts.parse_c,
     });

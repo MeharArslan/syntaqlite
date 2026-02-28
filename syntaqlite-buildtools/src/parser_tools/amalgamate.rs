@@ -428,7 +428,9 @@ fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
     } = &mode
     {
         source.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
-        source.push_str(&format!("#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\"\n"));
+        source.push_str(&format!(
+            "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\"\n"
+        ));
         source.push_str("#endif\n");
         source.push_str("#include SYNTAQLITE_RUNTIME_HEADER\n\n");
         source.push_str("#ifndef SYNTAQLITE_EXT_HEADER\n");

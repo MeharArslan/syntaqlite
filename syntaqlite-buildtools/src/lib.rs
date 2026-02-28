@@ -133,6 +133,7 @@ mod codegen_api {
         pub parse_c: String,
         pub tokenize_c: String,
         pub keyword_c: String,
+        pub tokenize_h: String,
         pub keyword_h: String,
         pub ast_nodes_h: String,
         pub ast_builder_h: String,
@@ -399,6 +400,10 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
             dialect_codegen::generate_token_categories_header(&token_defines, Some(&keyword_names));
         let parse_api_h =
             dialect_codegen::generate_parse_h(request.dialect.name(), &request.dialect_c_includes);
+        let tokenize_h = dialect_codegen::generate_tokenize_h(
+            request.dialect.name(),
+            &request.dialect_c_includes,
+        );
         let dialect_c = dialect_codegen::generate_dialect_c(
             request.dialect.name(),
             Some(&token_defines),
@@ -456,6 +461,7 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
             parse_api_h,
             parse_c,
             tokenize_c,
+            tokenize_h,
             keyword_c,
             keyword_h,
             ast_nodes_h,

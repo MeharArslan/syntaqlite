@@ -96,6 +96,21 @@ typedef struct SyntaqliteMacroRegion {
   uint32_t call_length;  // Byte length of entire macro call.
 } SyntaqliteMacroRegion;
 
+// Error node tag — stored as the first uint32_t of a SyntaqliteErrorNode.
+// Tag 0 is the sentinel for error nodes; it is never used as a real node tag
+// in generated code (NodeTag::Null = 0 is a codegen sentinel, not stored in
+// the arena under normal operation).
+#define SYNTAQLITE_ERROR_NODE_TAG 0u
+
+// An error placeholder node stored in the arena when a parse error occurs.
+// Written by grammar actions via synq_parse_error_node() and recognised by
+// NodeReader::required_node / optional_node before dispatching on the tag.
+typedef struct SyntaqliteErrorNode {
+  uint32_t tag;     // Always SYNTAQLITE_ERROR_NODE_TAG (0).
+  uint32_t offset;  // Byte offset of the error in source.
+  uint32_t length;  // Byte length of the error token (0 = unknown).
+} SyntaqliteErrorNode;
+
 // ---------------------------------------------------------------------------
 // Lifecycle
 // ---------------------------------------------------------------------------

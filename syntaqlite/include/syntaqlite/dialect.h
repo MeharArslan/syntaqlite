@@ -176,6 +176,16 @@ typedef struct SyntaqliteDialect {
   uint32_t schema_contribution_count;
 } SyntaqliteDialect;
 
+#if UINTPTR_MAX == 0xFFFFFFFFu
+_Static_assert(sizeof(SyntaqliteDialect) == 156,
+               "SyntaqliteDialect size changed — update Rust mirror in "
+               "dialect/ffi.rs");
+#else
+_Static_assert(sizeof(SyntaqliteDialect) == 296,
+               "SyntaqliteDialect size changed — update Rust mirror in "
+               "dialect/ffi.rs");
+#endif
+
 #ifdef __cplusplus
 }
 #endif

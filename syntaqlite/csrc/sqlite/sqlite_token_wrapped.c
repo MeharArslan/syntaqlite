@@ -1,21 +1,22 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-// Version-dependent token reclassification wrapper.
+// Version-compatibility wrapper for the SQLite tokenizer.
 //
-// This wraps SynqSqliteGetToken_base (generated from SQLite's sqlite3GetToken)
-// and reclassifies tokens that didn't exist in older SQLite versions.
-//
-// When SQLite adds new token types in future versions, add a new version
-// gate here following the existing pattern.
+// Wraps SynqSqliteGetToken and reclassifies tokens that were introduced
+// in newer SQLite versions.  When SQLite adds new token types in future
+// versions, add a new version gate here following the existing pattern.
 
-#include "csrc/sqlite/sqlite_tokenize.h"
+#include "csrc/sqlite/sqlite_token_wrapped.h"
+#include "csrc/dialect_dispatch.h"
+#include "syntaqlite/dialect.h"
 #include "syntaqlite_sqlite/sqlite_tokens.h"
 
-i64 SynqSqliteGetToken(const SyntaqliteDialectConfig* config,
-                       const unsigned char* z,
-                       int* tokenType) {
-  i64 len = SynqSqliteGetToken_base(config, z, tokenType);
+int64_t SynqSqliteGetTokenVersionWrapped(const SyntaqliteDialect* d,
+                                         const SyntaqliteDialectConfig* config,
+                                         const unsigned char* z,
+                                         int* tokenType) {
+  int64_t len = SYNQ_GET_TOKEN(d, config, z, tokenType);
 
   if (SYNQ_VER_LT(config, 3038000) && *tokenType == SYNTAQLITE_TK_PTR) {
     /* -> and ->> operators added in 3.38.
@@ -27,7 +28,7 @@ i64 SynqSqliteGetToken(const SyntaqliteDialectConfig* config,
   if (SYNQ_VER_LT(config, 3046000) && *tokenType == SYNTAQLITE_TK_QNUMBER) {
     /* Digit separators added in 3.46.
     ** Truncate to the first underscore. */
-    i64 j;
+    int64_t j;
     int saw_dot = 0;
     for (j = 0; j < len; j++) {
       if (z[j] == '_')

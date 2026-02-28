@@ -33,7 +33,7 @@ fn main() {
             .file(sqlite_csrc.join("dialect.c"))
             .file(sqlite_csrc.join("sqlite_parse.c"))
             .file(sqlite_csrc.join("sqlite_tokenize.c"))
-            .file(sqlite_csrc.join("sqlite_tokenize_version_gate.c"))
+            .file(sqlite_csrc.join("sqlite_token_wrapped.c"))
             .file(sqlite_csrc.join("sqlite_keyword.c"))
             .include(&manifest_dir) // for csrc/sqlite/*.h internal headers
             .include(manifest_dir.join("include")) // for public syntaqlite/*.h headers

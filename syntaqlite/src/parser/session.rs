@@ -9,6 +9,19 @@ use super::nodes::{NodeId, NodeList};
 use crate::dialect::Dialect;
 use crate::dialect::ffi::DialectConfig;
 
+/// A source span describing where an error node was recorded in the arena.
+///
+/// Returned by [`NodeReader::required_node`] and [`NodeReader::optional_node`]
+/// when the resolved arena node is an `ErrorNode` (tag 0) rather than the
+/// expected typed node.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ErrorSpan {
+    /// Byte offset of the error token in the source text.
+    pub offset: u32,
+    /// Byte length of the error token (0 = unknown).
+    pub length: u32,
+}
+
 /// A parse error with a human-readable message and optional source location.
 #[derive(Debug, Clone)]
 pub struct ParseError {
@@ -133,7 +146,6 @@ impl Parser {
         let base = CursorBase::new(self.raw, &mut self.source_buf, source);
         StatementCursor {
             base,
-            poisoned: false,
             last_saw_subquery: false,
             last_saw_update_delete_limit: false,
         }
@@ -148,7 +160,6 @@ impl Parser {
         let base = CursorBase::new_cstr(self.raw, source);
         StatementCursor {
             base,
-            poisoned: false,
             last_saw_subquery: false,
             last_saw_update_delete_limit: false,
         }
@@ -276,6 +287,59 @@ impl<'a> NodeReader<'a> {
     /// Return the node tag for the given ID, or `None` if null/invalid.
     pub fn node_tag(&self, id: NodeId) -> Option<u32> {
         self.node_ptr(id).map(|(_, tag)| tag)
+    }
+
+    /// Resolve a required node field: panics (in debug) if `id` is null,
+    /// returns `Err(ErrorSpan)` if the arena node is an error placeholder,
+    /// or `Err(ErrorSpan { 0, 0 })` if the type tag mismatches.
+    pub fn required_node<T: crate::parser::typed_list::FromArena<'a>>(
+        &self,
+        id: NodeId,
+    ) -> Result<T, ErrorSpan> {
+        debug_assert!(!id.is_null(), "required field has null NodeId");
+        self.resolve_or_error(id)
+    }
+
+    /// Resolve an optional node field: returns `Ok(None)` if `id` is null,
+    /// `Err(ErrorSpan)` if the arena node is an error placeholder, or
+    /// `Ok(Some(T))` on success.
+    pub fn optional_node<T: crate::parser::typed_list::FromArena<'a>>(
+        &self,
+        id: NodeId,
+    ) -> Result<Option<T>, ErrorSpan> {
+        if id.is_null() {
+            return Ok(None);
+        }
+        self.resolve_or_error(id).map(Some)
+    }
+
+    fn resolve_or_error<T: crate::parser::typed_list::FromArena<'a>>(
+        &self,
+        id: NodeId,
+    ) -> Result<T, ErrorSpan> {
+        let Some((ptr, tag)) = self.node_ptr(id) else {
+            return Err(ErrorSpan {
+                offset: 0,
+                length: 0,
+            });
+        };
+        if tag == ffi::SYNTAQLITE_ERROR_NODE_TAG {
+            // SAFETY: tag 0 guarantees SyntaqliteErrorNode layout ({ u32, u32, u32 }, 12 bytes).
+            let e = unsafe { &*(ptr as *const ffi::ErrorNode) };
+            return Err(ErrorSpan {
+                offset: e.offset,
+                length: e.length,
+            });
+        }
+        // SAFETY: NodeReader<'a> is Copy and all its data (raw pointer, source
+        // reference) is valid for 'a. Re-casting &self to &'a NodeReader<'a>
+        // extends the borrow lifetime to 'a, which is safe because the
+        // underlying parser arena lives for 'a (same pattern as resolve_as).
+        let reader: &'a NodeReader<'a> = unsafe { &*(self as *const NodeReader<'a>) };
+        T::from_arena(reader, id).ok_or(ErrorSpan {
+            offset: 0,
+            length: 0,
+        })
     }
 
     /// Extract typed field values from a node, using dialect metadata.
@@ -465,11 +529,13 @@ unsafe fn ffi_slice<'a, T>(
 
 /// A streaming cursor over parsed SQL statements. Iterate with
 /// `next_statement()` or the `Iterator` impl.
+///
+/// On a parse error the cursor returns `Some(Err(_))` for the failing
+/// statement, then continues parsing subsequent statements (Lemon's built-in
+/// error recovery synchronises on `;`). Call `next_statement()` again to
+/// retrieve the next valid statement.
 pub struct StatementCursor<'a> {
     pub(crate) base: CursorBase<'a>,
-    /// Once an error is returned, the cursor is poisoned and all subsequent
-    /// calls to `next_statement()` return `None`.
-    poisoned: bool,
     /// Value of `saw_subquery` from the last successful `next_statement()` call.
     last_saw_subquery: bool,
     /// Value of `saw_update_delete_limit` from the last successful `next_statement()` call.
@@ -477,14 +543,14 @@ pub struct StatementCursor<'a> {
 }
 
 impl<'a> StatementCursor<'a> {
-    /// Parse the next SQL statement. Returns `None` when all statements have
-    /// been consumed (or input was empty), or when the cursor has been
-    /// poisoned by a previous error.
+    /// Parse the next SQL statement.
+    ///
+    /// Returns:
+    /// - `Some(Ok(id))` — successfully parsed statement root node.
+    /// - `Some(Err(e))` — syntax error for one statement; call again to
+    ///   continue with subsequent statements (Lemon recovers on `;`).
+    /// - `None` — all input has been consumed.
     pub fn next_statement(&mut self) -> Option<Result<NodeId, ParseError>> {
-        if self.poisoned {
-            return None;
-        }
-
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         // When error is set, error_msg is a NUL-terminated string in the
         // parser's buffer (valid for parser lifetime).
@@ -498,7 +564,6 @@ impl<'a> StatementCursor<'a> {
         }
 
         if result.error != 0 {
-            self.poisoned = true;
             // SAFETY: error_msg is a NUL-terminated string in the parser's
             // buffer (valid for parser lifetime), guaranteed when error != 0.
             let msg = unsafe { CStr::from_ptr(result.error_msg) }

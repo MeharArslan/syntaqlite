@@ -45,7 +45,6 @@ pub fn assemble(
     };
 
     let get_token_name = format!("Synq{}GetToken", pascal_case(dialect));
-    let get_token_base = format!("{}_base", get_token_name);
     let output = CTransformer::new(&combined)
         .add_array_static("sqlite3CtypeMap")
         .insert_after_includes(&format!("#include \"{pp}syntaqlite/dialect_config.h\""))
@@ -59,7 +58,7 @@ pub fn assemble(
             "sqlite3GetToken(const unsigned char *z",
             "sqlite3GetToken(const SyntaqliteDialectConfig* config, const unsigned char *z",
         )
-        .rename_function("sqlite3GetToken", &get_token_base)
+        .rename_function("sqlite3GetToken", &get_token_name)
         .replace_all("TK_", "SYNTAQLITE_TK_")
         .finish();
 

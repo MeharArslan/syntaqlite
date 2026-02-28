@@ -63,7 +63,6 @@ typedef struct SynqWithValue {
 } SynqWithValue;
 /* END GRAMMAR_TYPES */
 
-#define YYNOERRORRECOVERY 1
 #define YYPARSEFREENEVERNULL 1
 }
 
@@ -168,6 +167,20 @@ ecmd(A) ::= cmdx(B) SEMI. {
     pCtx->root = B;
     synq_parse_list_flush(pCtx);
     pCtx->stmt_completed = 1;
+}
+
+// Error recovery: discard tokens until SEMI, then complete the statement.
+// Lemon's built-in error token handles the synchronisation.
+ecmd(A) ::= error SEMI. {
+    A = SYNTAQLITE_NULL_NODE;
+    pCtx->root = SYNTAQLITE_NULL_NODE;
+    pCtx->stmt_completed = 1;
+}
+
+%parse_failure {
+    if (pCtx) {
+        pCtx->error = 1;
+    }
 }
 
 cmdx(A) ::= cmd(B). {

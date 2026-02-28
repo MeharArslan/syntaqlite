@@ -412,9 +412,7 @@ pub fn generate_rust_ffi_nodes(model: &AstModel<'_>, crate_prefix: &str) -> Stri
     for node in model.nodes() {
         let name = node.name;
         let tag = model.tag_for(name);
-        w.line(
-            "// SAFETY: TAG matches the value the C parser writes into the `tag` field.",
-        );
+        w.line("// SAFETY: TAG matches the value the C parser writes into the `tag` field.");
         w.line(&format!(
             "unsafe impl ArenaNode for {name} {{ const TAG: u32 = {tag}; }}"
         ));

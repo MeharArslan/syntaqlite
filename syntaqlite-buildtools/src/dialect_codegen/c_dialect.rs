@@ -576,9 +576,6 @@ pub fn generate_tokenize_h(dialect: &str, includes: &DialectCIncludes<'_>) -> St
     w.include_local(&format!("{pp}syntaqlite/dialect_config.h"));
     w.newline();
     w.line(&format!(
-        "i64 Synq{pascal}GetToken_base(const SyntaqliteDialectConfig* config, const unsigned char* z, int* tokenType);"
-    ));
-    w.line(&format!(
         "i64 Synq{pascal}GetToken(const SyntaqliteDialectConfig* config, const unsigned char* z, int* tokenType);"
     ));
     w.newline();

@@ -180,12 +180,8 @@ fn cmd_generate_dialect(
 
     let out = Path::new(output_dir);
     ensure_dir(out, "output dir")?;
-    let result = amalgamate::amalgamate_dialect(
-        dialect,
-        temp,
-        Some(runtime_header),
-        Some(ext_header),
-    )?;
+    let result =
+        amalgamate::amalgamate_dialect(dialect, temp, Some(runtime_header), Some(ext_header))?;
     write_file(&out.join(format!("syntaqlite_{dialect}.h")), &result.header)?;
     write_file(&out.join(format!("syntaqlite_{dialect}.c")), &result.source)?;
     eprintln!("wrote {}/syntaqlite_{dialect}.{{h,c}}", out.display());
@@ -287,8 +283,7 @@ fn codegen_to_dir_with_base(
     let parse_h = syntaqlite_buildtools::dialect_codegen::generate_parse_h(dialect, includes);
     write_file(&csrc_dir.join("sqlite_parse.h"), parse_h)?;
 
-    let tokenize_h = syntaqlite_buildtools::dialect_codegen::generate_tokenize_h(dialect, includes);
-    write_file(&csrc_dir.join("sqlite_tokenize.h"), tokenize_h)?;
+    write_file(&csrc_dir.join("sqlite_tokenize.h"), artifacts.tokenize_h)?;
 
     // Tokenizer + keywords.
     write_file(&csrc_dir.join("sqlite_tokenize.c"), artifacts.tokenize_c)?;
