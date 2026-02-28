@@ -80,6 +80,20 @@ body {
   padding: 0;
 }
 
+.sq-app:has(.sq-error-banner) {
+  grid-template-rows: var(--toolbar-h) auto 1fr auto;
+}
+
+/* ── Error banner ── */
+.sq-error-banner {
+  padding: 6px 14px;
+  background: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--danger) 30%, var(--line));
+  color: var(--danger);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
 /* ── Base form elements ── */
 button {
   border: 1px solid var(--accent);
