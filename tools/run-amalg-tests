@@ -12,7 +12,7 @@ Dialect configurations:
   - perfetto: base + extension .y/.synq files
 
 Usage:
-    tools/tests/run-amalg-tests [-v] [--filter PATTERN]
+    tools/run-amalg-tests [-v] [--filter PATTERN]
 """
 
 import argparse

@@ -105,7 +105,7 @@ Implemented in `syntaqlite-codegen/src/version_analysis/` (feature-gated behind 
 
 ### 3.1 What was built
 
-- **Download script** (`tools/dev/download-sqlite-versions`) — downloads SQLite source files from GitHub mirror for 40+ versions (3.12.2–3.51.2). Idempotent, skips existing files.
+- **Download script** (`tools/download-sqlite-versions`) — downloads SQLite source files from GitHub mirror for 40+ versions (3.12.2–3.51.2). Idempotent, skips existing files.
 - **Analysis tool** (`syntaqlite analyze-versions`) — extracts 8 code fragments + keywords + grammar from each version, hashes for dedup, groups into variants, computes diffs. Outputs JSON to stdout + variant files + grammar report.
 - **Modules**: `version_analysis/{mod,extract,hash,diff,keywords,grammar}.rs`
 - **Dependencies**: `sha2` (hashing), `similar` (diffs), both optional behind `version-analysis` feature.
@@ -619,8 +619,8 @@ Tests verify the `saw_subquery` flag on `StatementCursor`, which is set by gramm
 For comprehensive coverage, a JSON-based oracle approach may be added later:
 
 ```
-tools/dev/generate-oracle-data    # downloads amalgamations, compiles, runs
-tools/dev/oracle_tokenizer.c      # small C program that tokenizes test corpus
+tools/generate-oracle-data    # downloads amalgamations, compiles, runs
+tools/oracle_tokenizer.c      # small C program that tokenizes test corpus
 ```
 
 The current integration tests in `multiversion.rs` provide focused coverage of all version boundaries with behavior verified against real sqlite3 shells.

@@ -26,7 +26,7 @@ Date: 2026-02-20
   - `app.js`
   - `README.md`
 - Implemented engine selection (built-in vs uploaded extension), extension upload, optional dialect-name-based symbol prefix resolution, and output panels for formatted SQL + AST dump.
-- Added build helper: `tools/dev/build-web-playground`.
+- Added build helper: `tools/build-web-playground`.
 
 ## Entry 04
 
@@ -58,7 +58,7 @@ Date: 2026-02-20
 ## Entry 06
 
 - Switched playground build target from `wasm32-unknown-unknown` to `wasm32-unknown-emscripten`:
-  - Updated `tools/dev/build-web-playground`
+  - Updated `tools/build-web-playground`
   - Updated `web-playground/README.md`
 - Added fallback artifact copy logic for either `syntaqlite.wasm` or `libsyntaqlite.wasm`.
 - Build validation after switch failed due missing `emcc` in environment.
@@ -68,7 +68,7 @@ Date: 2026-02-20
 
 - Added `syntaqlite-wasm` wrapper crate with no-op `main()` plus ABI exports to satisfy emscripten executable linking expectations.
 - Updated build script to target `syntaqlite-wasm` and write wasm output to `web-playground/syntaqlite.wasm`.
-- Added `--rustflags "<...>"` passthrough argument to `tools/dev/build-web-playground` so extra linker flags can be injected without overriding global `RUSTFLAGS`.
+- Added `--rustflags "<...>"` passthrough argument to `tools/build-web-playground` so extra linker flags can be injected without overriding global `RUSTFLAGS`.
 
 ## Entry 08
 
@@ -76,7 +76,7 @@ Date: 2026-02-20
 - Updated `web-playground/app.js` with runtime import shims (`env`, `wasi_snapshot_preview1`, and compatibility module `a`) so direct `WebAssembly.instantiate` works for emscripten-built modules.
 - Added explicit detection/error when module exports are minified and expected ABI names are unavailable.
 - Verified:
-  - `tools/dev/build-web-playground` builds successfully and writes `web-playground/syntaqlite.wasm`.
+  - `tools/build-web-playground` builds successfully and writes `web-playground/syntaqlite.wasm`.
   - wasm exports include `syntaqlite_abi_*` and `memory`.
   - ABI call flow works (`syntaqlite_abi_ast("select 1")` returns AST output).
 
@@ -124,8 +124,8 @@ Date: 2026-02-20
 
 ## Entry 13
 
-- Added `tools/dev/run-web-playground` helper to build and serve the static playground:
-  - builds with `tools/dev/build-web-playground` by default
+- Added `tools/run-web-playground` helper to build and serve the static playground:
+  - builds with `tools/build-web-playground` by default
   - serves `web-playground/` via `python -m http.server`
   - supports `--port` and `--skip-build`
 
@@ -143,7 +143,7 @@ Date: 2026-02-20
 - Fixed heap access in `web-playground/app.js` for non-modularized emscripten output:
   - read/write through `Module.HEAPU8 || globalThis.HEAPU8`
 - Validation:
-  - `tools/dev/build-web-playground` succeeds
+  - `tools/build-web-playground` succeeds
   - `node --check web-playground/app.js` succeeds
   - runtime+side-module smoke test passes:
     - `loadDynamicLibrary` loads `syntaqlite-sqlite.wasm`
@@ -180,14 +180,14 @@ Date: 2026-02-20
 
 - Added a dedicated Perfetto dialect wasm build script:
   - `python/tools/build_perfetto_wasm.py`
-  - `tools/dev/build-perfetto-wasm` wrapper
+  - `tools/build-perfetto-wasm` wrapper
 - Script flow:
   - generates Perfetto amalgamated C via `syntaqlite-cli dialect --name perfetto ... csrc`
   - writes shim headers (`syntaqlite_runtime.h`, `syntaqlite_ext.h`) into the generated csrc dir
   - compiles `syntaqlite_perfetto.c` with `emcc` as a side module (`-sSIDE_MODULE=1`)
 - Default output is `web-playground/syntaqlite-perfetto.wasm`.
 - Validation:
-  - `tools/dev/build-perfetto-wasm` succeeds
+  - `tools/build-perfetto-wasm` succeeds
   - resulting module exports `syntaqlite_perfetto_dialect` and `syntaqlite_dialect`
   - runtime+dialect smoke test passes for:
     - `CREATE PERFETTO TABLE foo AS select a, b from t where c = 1`

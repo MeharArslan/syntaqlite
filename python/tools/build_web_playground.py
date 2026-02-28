@@ -123,7 +123,7 @@ def main():
         target_rustflags += " " + args.rustflags
     env["CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_RUSTFLAGS"] = target_rustflags.strip()
 
-    cargo = os.path.join(ROOT_DIR, "tools", "dev", "cargo")
+    cargo = os.path.join(ROOT_DIR, "tools", "cargo")
     rc = subprocess.call(
         [
             sys.executable, cargo, "--no-sysroot",
