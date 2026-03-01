@@ -102,6 +102,7 @@ pub(crate) enum CasingArg {
 #[derive(Clone, Copy, ValueEnum)]
 pub(crate) enum HostLanguage {
     Python,
+    Typescript,
 }
 
 /// Expand a list of file paths / glob patterns into concrete paths.
@@ -362,8 +363,8 @@ fn cmd_validate(
     if paths.is_empty() {
         let source = read_stdin()?;
         let has_errors = match lang {
-            Some(HostLanguage::Python) => {
-                validate_embedded_source(dialect, &source, "<stdin>", &config)
+            Some(lang) => {
+                validate_embedded_source(dialect, &source, "<stdin>", &config, lang)
             }
             None => validate_source(dialect, &source, "<stdin>", &config),
         };
@@ -380,8 +381,8 @@ fn cmd_validate(
             println!("==> {} <==", path.display());
         }
         let has_errors = match lang {
-            Some(HostLanguage::Python) => {
-                validate_embedded_source(dialect, &source, &path.display().to_string(), &config)
+            Some(lang) => {
+                validate_embedded_source(dialect, &source, &path.display().to_string(), &config, lang)
             }
             None => validate_source(dialect, &source, &path.display().to_string(), &config),
         };
@@ -444,8 +445,12 @@ fn validate_embedded_source(
     source: &str,
     file: &str,
     config: &ValidationConfig,
+    lang: HostLanguage,
 ) -> bool {
-    let fragments = syntaqlite::embedded::extract_python(source);
+    let fragments = match lang {
+        HostLanguage::Python => syntaqlite::embedded::extract_python(source),
+        HostLanguage::Typescript => syntaqlite::embedded::extract_typescript(source),
+    };
     if fragments.is_empty() {
         eprintln!("no SQL fragments found in {file}");
         return false;
