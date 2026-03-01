@@ -5,8 +5,10 @@ import m from "mithril";
 import {App} from "./app/app";
 import * as monaco from "monaco-editor";
 import "monaco-editor/esm/vs/basic-languages/sql/sql.contribution";
+import "monaco-editor/esm/vs/basic-languages/python/python.contribution";
+import "monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution";
 import {INPUT_MODEL_URI} from "./app/editor_models";
-import type {Engine} from "@syntaqlite/js";
+import type {Engine, EmbeddedLanguage} from "@syntaqlite/js";
 import {AppComponent} from "./components/app";
 import "./styles/main.css";
 
@@ -61,8 +63,8 @@ const TOKEN_LEGEND: monaco.languages.SemanticTokensLegend = {
   tokenModifiers: [],
 };
 
-function registerSemanticTokensProvider(engine: Engine): void {
-  monaco.languages.registerDocumentRangeSemanticTokensProvider("sql", {
+function registerSemanticTokensProvider(app: App, engine: Engine): void {
+  const provider: monaco.languages.DocumentRangeSemanticTokensProvider = {
     getLegend: () => TOKEN_LEGEND,
 
     provideDocumentRangeSemanticTokens(
@@ -74,16 +76,30 @@ function registerSemanticTokensProvider(engine: Engine): void {
         return {data: new Uint32Array(0)};
       }
       const source = model.getValue();
+      const version = model.getVersionId();
+
+      if (app.languageMode !== "sql") {
+        const data = engine.runEmbeddedSemanticTokens(
+          app.languageMode as EmbeddedLanguage,
+          source,
+          version,
+        );
+        return {data: data ?? new Uint32Array(0)};
+      }
+
       const rangeStart = model.getOffsetAt(range.getStartPosition());
       const rangeEnd = model.getOffsetAt(range.getEndPosition());
-      const version = model.getVersionId();
       const data = engine.runSemanticTokens(source, rangeStart, rangeEnd, version);
       return {data: data ?? new Uint32Array(0)};
     },
-  });
+  };
+
+  monaco.languages.registerDocumentRangeSemanticTokensProvider("sql", provider);
+  monaco.languages.registerDocumentRangeSemanticTokensProvider("python", provider);
+  monaco.languages.registerDocumentRangeSemanticTokensProvider("typescript", provider);
 }
 
-function registerCompletionProvider(engine: Engine): void {
+function registerCompletionProvider(app: App, engine: Engine): void {
   monaco.languages.registerCompletionItemProvider("sql", {
     triggerCharacters: [" ", "\t", ";", "(", ","],
     provideCompletionItems(
@@ -91,6 +107,7 @@ function registerCompletionProvider(engine: Engine): void {
       position: monaco.Position,
     ): monaco.languages.ProviderResult<monaco.languages.CompletionList> {
       if (!engine.ready) return {suggestions: []};
+      if (app.languageMode !== "sql") return {suggestions: []};
       if (model.uri.toString() !== INPUT_MODEL_URI) {
         return {suggestions: []};
       }
@@ -134,6 +151,7 @@ function registerCodeActionProvider(app: App): void {
       model: monaco.editor.ITextModel,
       range: monaco.Range,
     ): monaco.languages.ProviderResult<monaco.languages.CodeActionList> {
+      if (app.languageMode !== "sql") return {actions: [], dispose() {}};
       if (model.uri.toString() !== INPUT_MODEL_URI) return {actions: [], dispose() {}};
 
       const actions: monaco.languages.CodeAction[] = [];
@@ -180,8 +198,8 @@ async function main() {
     await app.runtime.load();
     await app.dialect.loadDefault(app.runtime);
     app.dialectConfig.loadAvailableCflags(app.runtime);
-    registerSemanticTokensProvider(app.runtime);
-    registerCompletionProvider(app.runtime);
+    registerSemanticTokensProvider(app, app.runtime);
+    registerCompletionProvider(app, app.runtime);
     registerCodeActionProvider(app);
     app.runtime.updateStatus("Ready.");
   } catch (err) {

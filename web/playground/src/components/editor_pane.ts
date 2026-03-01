@@ -9,11 +9,15 @@ import {INPUT_MODEL_URI} from "../app/editor_models";
 import {MonacoEditor} from "../widgets/monaco_editor";
 import "./editor_pane.css";
 
+export type LanguageMode = "sql" | "python" | "typescript";
+
 export interface EditorPaneAttrs {
   theme: Theme;
   initialSql: string;
   presets: SqlPreset[];
   selectedPresetId: string;
+  languageMode: LanguageMode;
+  onLanguageChange: (lang: LanguageMode) => void;
   onPresetChange: (presetId: string) => void;
   onContentChange: (s: string) => void;
   onEditorCreated?: (editor: monaco.editor.IStandaloneCodeEditor) => void;
@@ -26,6 +30,8 @@ export class EditorPane implements m.ClassComponent<EditorPaneAttrs> {
       initialSql,
       presets,
       selectedPresetId,
+      languageMode,
+      onLanguageChange,
       onPresetChange,
       onContentChange,
       onEditorCreated,
@@ -38,12 +44,27 @@ export class EditorPane implements m.ClassComponent<EditorPaneAttrs> {
 
     return m("section.sq-workspace__pane.sq-editor-pane", [
       m("div.sq-editor-pane__toolbar", [
+        m("label.sq-editor-pane__label", {for: "sq-editor-lang"}, "Language"),
+        m(
+          "select#sq-editor-lang.sq-editor-pane__select",
+          {
+            value: languageMode,
+            onchange: (e: Event) =>
+              onLanguageChange((e.target as HTMLSelectElement).value as LanguageMode),
+          },
+          [
+            m("option", {value: "sql"}, "SQL"),
+            m("option", {value: "python"}, "Python"),
+            m("option", {value: "typescript"}, "TypeScript"),
+          ],
+        ),
         m("label.sq-editor-pane__label", {for: "sq-editor-preset"}, "Presets"),
         m(
-          "select#sq-editor-preset.sq-editor-pane__select",
+          "select#sq-editor-preset.sq-editor-pane__select.sq-editor-pane__select--preset",
           {
             value: selectedPresetId,
-            onchange: (e: Event) => onPresetChange((e.target as HTMLSelectElement).value),
+            onchange: (e: Event) =>
+              onPresetChange((e.target as HTMLSelectElement).value),
           },
           [
             ...presets.map((preset) => m("option", {value: preset.id}, preset.label)),
@@ -57,6 +78,7 @@ export class EditorPane implements m.ClassComponent<EditorPaneAttrs> {
           theme,
           initialValue: initialSql,
           modelUri: INPUT_MODEL_URI,
+          language: languageMode,
           onContentChange,
           onEditorCreated,
           lineNumbers: "on",

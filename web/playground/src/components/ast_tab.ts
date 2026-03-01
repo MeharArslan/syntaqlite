@@ -25,13 +25,33 @@ export class AstTab implements m.ClassComponent<AstTabAttrs> {
     const {app, sql, active} = vnode.attrs;
 
     if (active && app.runtime.ready && app.dialect.active) {
+      const isEmbedded = app.languageMode !== "sql";
+      const fragIdx = app.selectedFragmentIndex;
+      const cacheKey = `${sql}:${app.languageMode}:${fragIdx}`;
       const dPtr = app.dialect.active.ptr;
       const cfgKey = app.dialectConfig.configKey;
-      if (sql !== this.lastSql || dPtr !== this.lastDialectPtr || cfgKey !== this.lastConfigKey) {
-        this.lastSql = sql;
+      if (cacheKey !== this.lastSql || dPtr !== this.lastDialectPtr || cfgKey !== this.lastConfigKey) {
+        this.lastSql = cacheKey;
         this.lastDialectPtr = dPtr;
         this.lastConfigKey = cfgKey;
-        this.astResult = app.runtime.runAstJson(sql);
+
+        if (isEmbedded && app.embeddedFragments.length > 0) {
+          if (fragIdx >= 0 && fragIdx < app.embeddedFragments.length) {
+            this.astResult = app.runtime.runAstJson(app.embeddedFragments[fragIdx].sqlText);
+          } else {
+            // Merge all fragments' ASTs.
+            const allStatements: import("../types").AstJsonNode[] = [];
+            for (const f of app.embeddedFragments) {
+              const r = app.runtime.runAstJson(f.sqlText);
+              if (r.ok) {
+                allStatements.push(...r.statements);
+              }
+            }
+            this.astResult = {ok: true, statements: allStatements};
+          }
+        } else {
+          this.astResult = app.runtime.runAstJson(sql);
+        }
       }
     }
 

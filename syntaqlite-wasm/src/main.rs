@@ -8,8 +8,11 @@ use std::slice;
 use serde::Serialize;
 
 use syntaqlite::dialect::ffi::{self as dialect_ffi, DialectConfig};
+use syntaqlite::embedded::{self, EmbeddedFragment};
+use syntaqlite::embedded::offset_map::OffsetMap;
 use syntaqlite::fmt::{FormatConfig, Formatter, KeywordCase};
-use syntaqlite::parser::{CursorBase, FieldVal};
+use syntaqlite::parser::{CursorBase, FieldVal, Tokenizer};
+use syntaqlite::validation::ValidationConfig;
 use syntaqlite::{Dialect, NodeId, Parser};
 
 thread_local! {
@@ -1051,6 +1054,279 @@ pub extern "C" fn wasm_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
         Ok(result) => result,
         Err(_) => {
             set_result("wasm_diagnostics panicked");
+            -1
+        }
+    }
+}
+
+// ── Embedded SQL WASM exports ────────────────────────────────────────
+
+fn extract_fragments(lang: u32, source: &str) -> Result<Vec<EmbeddedFragment>, String> {
+    match lang {
+        0 => Ok(embedded::extract_python(source)),
+        1 => Ok(embedded::extract_typescript(source)),
+        _ => Err(format!("unknown embedded language: {lang}")),
+    }
+}
+
+fn run_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
+    let source = match decode_input(ptr, len) {
+        Ok(s) => s,
+        Err(e) => {
+            set_result(&e);
+            return -1;
+        }
+    };
+
+    let fragments = match extract_fragments(lang, &source) {
+        Ok(f) => f,
+        Err(e) => {
+            set_result(&e);
+            return -1;
+        }
+    };
+
+    let count = fragments.len() as i32;
+
+    // Serialize as JSON array.
+    let mut out = String::new();
+    out.push('[');
+    for (i, f) in fragments.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        out.push_str("{\"sqlRange\":[");
+        out.push_str(&f.sql_range.start.to_string());
+        out.push(',');
+        out.push_str(&f.sql_range.end.to_string());
+        out.push_str("],\"sqlText\":\"");
+        json_escape(&mut out, &f.sql_text);
+        out.push_str("\",\"holes\":[");
+        for (j, h) in f.holes.iter().enumerate() {
+            if j > 0 {
+                out.push(',');
+            }
+            out.push_str("{\"hostRange\":[");
+            out.push_str(&h.host_range.start.to_string());
+            out.push(',');
+            out.push_str(&h.host_range.end.to_string());
+            out.push_str("],\"sqlOffset\":");
+            out.push_str(&h.sql_offset.to_string());
+            out.push_str(",\"placeholder\":\"");
+            json_escape(&mut out, &h.placeholder);
+            out.push_str("\"}");
+        }
+        out.push_str("]}");
+    }
+    out.push(']');
+    set_result(&out);
+
+    count
+}
+
+fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32, _version: u32) -> i32 {
+    let dialect = match resolve_dialect() {
+        Ok(d) => d,
+        Err(e) => {
+            set_result(&e);
+            return -1;
+        }
+    };
+    let source = match decode_input(ptr, len) {
+        Ok(s) => s,
+        Err(e) => {
+            set_result(&e);
+            return -1;
+        }
+    };
+
+    let fragments = match extract_fragments(lang, &source) {
+        Ok(f) => f,
+        Err(e) => {
+            set_result(&e);
+            return -1;
+        }
+    };
+
+    // Syntax errors only — no session context means every table/column/function
+    // would be flagged as unknown, so filter out semantic diagnostics entirely.
+    let config = ValidationConfig::default();
+    let all_diags = embedded::validate_embedded(&dialect, &fragments, &config);
+    let diags: Vec<_> = all_diags
+        .into_iter()
+        .filter(|d| d.message.is_parse_error())
+        .collect();
+
+    let total = diags.len() as i32;
+
+    let mut out = String::new();
+    out.push('[');
+    let mut first = true;
+    for d in &diags {
+        if !first {
+            out.push(',');
+        }
+        first = false;
+        d.write_json(&mut out);
+    }
+    out.push(']');
+    set_result(&out);
+
+    total
+}
+
+fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32, _version: u32) -> i32 {
+    let dialect = match resolve_dialect() {
+        Ok(d) => d,
+        Err(e) => {
+            set_result(&e);
+            return -1;
+        }
+    };
+    let source = match decode_input(ptr, len) {
+        Ok(s) => s,
+        Err(e) => {
+            set_result(&e);
+            return -1;
+        }
+    };
+
+    let fragments = match extract_fragments(lang, &source) {
+        Ok(f) => f,
+        Err(e) => {
+            set_result(&e);
+            return -1;
+        }
+    };
+
+    // Collect semantic tokens from all fragments, mapping offsets to host positions.
+    let source_bytes = source.as_bytes();
+    let mut all_tokens: Vec<(usize, usize, u32)> = Vec::new(); // (host_offset, length, legend_idx)
+
+    let mut tokenizer = Tokenizer::with_dialect(dialect);
+
+    for fragment in &fragments {
+        let offset_map = OffsetMap::new(fragment);
+        let cursor = tokenizer.tokenize(&fragment.sql_text);
+
+        for tok in cursor {
+            let cat = dialect.token_category(tok.token_type);
+            let legend_idx = match cat.legend_index() {
+                Some(idx) => idx,
+                None => continue,
+            };
+
+            let sql_offset = tok.text.as_ptr() as usize - fragment.sql_text.as_ptr() as usize;
+            let host_offset = offset_map.to_host(sql_offset);
+
+            // Clamp length to not exceed host source bounds.
+            let host_len = tok.text.len().min(source.len().saturating_sub(host_offset));
+            if host_len == 0 {
+                continue;
+            }
+
+            all_tokens.push((host_offset, host_len, legend_idx));
+        }
+    }
+
+    // Sort by host offset.
+    all_tokens.sort_by_key(|t| t.0);
+
+    // Delta-encode for Monaco (same format as semantic_tokens_encoded).
+    let mut result: Vec<u32> = Vec::with_capacity(all_tokens.len() * 5);
+    let mut prev_line: u32 = 0;
+    let mut prev_col: u32 = 0;
+    let mut cur_line: u32 = 0;
+    let mut cur_col: u32 = 0;
+    let mut src_pos: usize = 0;
+
+    for &(host_offset, host_len, legend_idx) in &all_tokens {
+        // Advance to token position, tracking line/col.
+        while src_pos < host_offset && src_pos < source_bytes.len() {
+            if source_bytes[src_pos] == b'\n' {
+                cur_line += 1;
+                cur_col = 0;
+            } else {
+                cur_col += 1;
+            }
+            src_pos += 1;
+        }
+
+        let delta_line = cur_line - prev_line;
+        let delta_start = if delta_line == 0 {
+            cur_col - prev_col
+        } else {
+            cur_col
+        };
+
+        result.push(delta_line);
+        result.push(delta_start);
+        result.push(host_len as u32);
+        result.push(legend_idx);
+        result.push(0); // modifiers
+
+        prev_line = cur_line;
+        prev_col = cur_col;
+    }
+
+    let token_count = (result.len() / 5) as i32;
+
+    // Write raw bytes into RESULT_BUF.
+    RESULT_BUF.with(|buf| {
+        let mut buf = buf.borrow_mut();
+        buf.clear();
+        let bytes: &[u8] =
+            unsafe { slice::from_raw_parts(result.as_ptr() as *const u8, result.len() * 4) };
+        buf.extend_from_slice(bytes);
+    });
+
+    token_count
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        run_embedded_extract(lang, ptr, len)
+    })) {
+        Ok(result) => result,
+        Err(_) => {
+            set_result("wasm_embedded_extract panicked");
+            -1
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_embedded_diagnostics(
+    lang: u32,
+    ptr: u32,
+    len: u32,
+    version: u32,
+) -> i32 {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        run_embedded_diagnostics(lang, ptr, len, version)
+    })) {
+        Ok(result) => result,
+        Err(_) => {
+            set_result("wasm_embedded_diagnostics panicked");
+            -1
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_embedded_semantic_tokens(
+    lang: u32,
+    ptr: u32,
+    len: u32,
+    version: u32,
+) -> i32 {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        run_embedded_semantic_tokens(lang, ptr, len, version)
+    })) {
+        Ok(result) => result,
+        Err(_) => {
+            set_result("wasm_embedded_semantic_tokens panicked");
             -1
         }
     }

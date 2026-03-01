@@ -76,6 +76,11 @@ impl std::fmt::Display for DiagnosticMessage {
 }
 
 impl DiagnosticMessage {
+    /// Returns `true` for parse errors (`Other`), `false` for semantic diagnostics.
+    pub fn is_parse_error(&self) -> bool {
+        matches!(self, Self::Other(_))
+    }
+
     /// Write the structured JSON representation into `out`.
     ///
     /// This is the machine-readable detail object; callers also emit

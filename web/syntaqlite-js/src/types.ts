@@ -158,6 +158,27 @@ export interface DiagnosticsResult {
   diagnostics: DiagnosticEntry[];
 }
 
+// ── Embedded SQL types ──
+
+export type EmbeddedLanguage = "python" | "typescript";
+
+export interface EmbeddedHole {
+  hostRange: [number, number];
+  sqlOffset: number;
+  placeholder: string;
+}
+
+export interface EmbeddedFragment {
+  sqlRange: [number, number];
+  sqlText: string;
+  holes: EmbeddedHole[];
+}
+
+export interface EmbeddedExtractResult {
+  ok: boolean;
+  fragments: EmbeddedFragment[];
+}
+
 // ── Completion types ──
 
 export interface CompletionEntry {

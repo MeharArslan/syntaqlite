@@ -33,6 +33,8 @@ export class OutputPanel implements m.ClassComponent<OutputPanelAttrs> {
     const {app, sql} = vnode.attrs;
     const mobile = app.window.isMobile;
     const tabs = mobile ? MOBILE_TABS : DESKTOP_TABS;
+    const isEmbedded = app.languageMode !== "sql";
+    const fragments = app.embeddedFragments;
 
     // On first mobile render, default to validation tab.
     if (mobile && this.activeTab === "format") {
@@ -46,9 +48,8 @@ export class OutputPanel implements m.ClassComponent<OutputPanelAttrs> {
     }
 
     return m("section.sq-workspace__pane.sq-viewer-pane", [
-      m(
-        "nav.sq-tab-bar",
-        tabs.map((t) =>
+      m("nav.sq-tab-bar", [
+        ...tabs.map((t) =>
           m(
             "button.sq-tab-bar__tab",
             {
@@ -62,7 +63,34 @@ export class OutputPanel implements m.ClassComponent<OutputPanelAttrs> {
               : t.label,
           ),
         ),
-      ),
+        // Fragment selector inside the tab bar for embedded mode.
+        isEmbedded && fragments.length > 0
+          ? m("div.sq-tab-bar__fragment-selector", [
+              m(
+                "select.sq-tab-bar__fragment-select",
+                {
+                  value: String(app.selectedFragmentIndex),
+                  onchange: (e: Event) => {
+                    app.selectedFragmentIndex = Number(
+                      (e.target as HTMLSelectElement).value,
+                    );
+                  },
+                },
+                [
+                  m("option", {value: "-1"}, `All (${fragments.length} fragments)`),
+                  ...fragments.map((f, i) => {
+                    const preview = f.sqlText.slice(0, 40).replace(/\n/g, " ").trim();
+                    return m(
+                      "option",
+                      {value: String(i)},
+                      `#${i + 1}: ${preview}${f.sqlText.length > 40 ? "\u2026" : ""}`,
+                    );
+                  }),
+                ],
+              ),
+            ])
+          : undefined,
+      ]),
       this.activeTab === "validation"
         ? renderValidationTab(app.diagnostics, app.revealDiagnostic)
         : this.activeTab === "schema"

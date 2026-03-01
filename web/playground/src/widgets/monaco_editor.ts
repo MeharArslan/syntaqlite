@@ -102,6 +102,7 @@ export interface MonacoEditorAttrs {
   initialValue: string;
   modelUri?: string;
   readOnly?: boolean;
+  language?: string;
   lineNumbers?: "on" | "off";
   renderLineHighlight?: "gutter" | "none";
   onContentChange?: (text: string) => void;
@@ -115,6 +116,7 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
       initialValue,
       modelUri,
       readOnly,
+      language,
       lineNumbers,
       renderLineHighlight,
       onContentChange,
@@ -130,13 +132,19 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
       renderLineHighlight: renderLineHighlight ?? "gutter",
     };
 
+    const lang = language ?? "sql";
     if (modelUri) {
       const uri = monaco.Uri.parse(modelUri);
       let model = monaco.editor.getModel(uri);
       if (!model) {
-        model = monaco.editor.createModel(initialValue, "sql", uri);
-      } else if (model.getValue() !== initialValue) {
-        model.setValue(initialValue);
+        model = monaco.editor.createModel(initialValue, lang, uri);
+      } else {
+        if (model.getLanguageId() !== lang) {
+          monaco.editor.setModelLanguage(model, lang);
+        }
+        if (model.getValue() !== initialValue) {
+          model.setValue(initialValue);
+        }
       }
       opts.model = model;
     }
@@ -163,6 +171,7 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
 
     this.editor = monaco.editor.create(vnode.dom as HTMLElement, opts);
     this.lastTheme = theme;
+    this.lastLanguage = lang;
 
     if (onContentChange) {
       this.editor.onDidChangeModelContent(() => {
@@ -176,11 +185,21 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
   }
 
   onupdate(vnode: m.VnodeDOM<MonacoEditorAttrs>) {
-    const {theme, initialValue, onContentChange} = vnode.attrs;
+    const {theme, initialValue, language, onContentChange} = vnode.attrs;
 
     if (theme !== this.lastTheme) {
       this.lastTheme = theme;
       if (this.editor) monaco.editor.setTheme(currentThemeName(theme));
+    }
+
+    // Switch language if changed.
+    const lang = language ?? "sql";
+    if (this.editor && lang !== this.lastLanguage) {
+      this.lastLanguage = lang;
+      const model = this.editor.getModel();
+      if (model && model.getLanguageId() !== lang) {
+        monaco.editor.setModelLanguage(model, lang);
+      }
     }
 
     // For read-only editors (no onContentChange), sync value from outside.
@@ -203,5 +222,6 @@ export class MonacoEditor implements m.ClassComponent<MonacoEditorAttrs> {
 
   private editor: monaco.editor.IStandaloneCodeEditor | undefined = undefined;
   private lastTheme: Theme | undefined = undefined;
+  private lastLanguage: string | undefined = undefined;
   private lastSyncedValue: string | undefined = undefined;
 }

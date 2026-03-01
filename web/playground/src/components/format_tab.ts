@@ -28,7 +28,9 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
     const {app, sql, active} = vnode.attrs;
 
     if (active && app.runtime.ready && app.dialect.active) {
-      const optKey = `${this.formatOptions.lineWidth}:${this.formatOptions.keywordCase}:${this.formatOptions.semicolons}`;
+      const isEmbedded = app.languageMode !== "sql";
+      const fragIdx = app.selectedFragmentIndex;
+      const optKey = `${this.formatOptions.lineWidth}:${this.formatOptions.keywordCase}:${this.formatOptions.semicolons}:${app.languageMode}:${fragIdx}`;
       const dPtr = app.dialect.active.ptr;
       const cfgKey = app.dialectConfig.configKey;
       if (
@@ -41,7 +43,34 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
         this.lastOptionsKey = optKey;
         this.lastDialectPtr = dPtr;
         this.lastConfigKey = cfgKey;
-        this.formatResult = app.runtime.runFmt(sql, this.formatOptions);
+
+        if (isEmbedded && app.embeddedFragments.length > 0) {
+          if (fragIdx >= 0 && fragIdx < app.embeddedFragments.length) {
+            this.formatResult = app.runtime.runFmt(
+              app.embeddedFragments[fragIdx].sqlText,
+              this.formatOptions,
+            );
+          } else {
+            // Format all fragments with separators.
+            const parts: string[] = [];
+            let allOk = true;
+            for (let i = 0; i < app.embeddedFragments.length; i++) {
+              const r = app.runtime.runFmt(
+                app.embeddedFragments[i].sqlText,
+                this.formatOptions,
+              );
+              if (!r.ok) {
+                allOk = false;
+                parts.push(`-- Fragment ${i + 1} (error)\n${r.text}`);
+              } else {
+                parts.push(`-- Fragment ${i + 1}\n${r.text}`);
+              }
+            }
+            this.formatResult = {ok: allOk, text: parts.join("\n\n")};
+          }
+        } else {
+          this.formatResult = app.runtime.runFmt(sql, this.formatOptions);
+        }
       }
     }
 

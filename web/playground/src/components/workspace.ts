@@ -4,11 +4,11 @@
 import m from "mithril";
 import * as monaco from "monaco-editor";
 import type {App, Attrs} from "../app/app";
-import type {Engine} from "@syntaqlite/js";
+import type {Engine, EmbeddedLanguage} from "@syntaqlite/js";
 import {getSqlPresetLibrary} from "./workspace/sql_presets";
 import {debounce} from "../base/debounce";
 import type {DiagnosticEntry} from "../types";
-import {EditorPane} from "./editor_pane";
+import {EditorPane, type LanguageMode} from "./editor_pane";
 import {OutputPanel} from "./output_panel";
 import {ResizeHandle} from "../widgets/resize_handle";
 import "./workspace.css";
@@ -51,6 +51,7 @@ export class Workspace implements m.ClassComponent<Attrs> {
   private editor: monaco.editor.IStandaloneCodeEditor | undefined = undefined;
   private debouncedUpdate: (sql: string) => void;
   private debouncedDiagnostics: (engine: Engine, sql: string) => void;
+  private debouncedEmbeddedDiagnostics: (app: App, sql: string) => void;
   private presetSelectionByDialect = new Map<string, string>();
   private customSqlByDialect = new Map<string, string>();
   private appRef: App | undefined = undefined;
@@ -74,12 +75,20 @@ export class Workspace implements m.ClassComponent<Attrs> {
       (engine: Engine, sql: string) => this.updateDiagnostics(engine, sql),
       100,
     );
+
+    this.debouncedEmbeddedDiagnostics = debounce(
+      (app: App, sql: string) => this.updateEmbeddedDiagnostics(app, sql),
+      100,
+    );
   }
 
   view(vnode: m.Vnode<Attrs>) {
     const {app} = vnode.attrs;
     this.appRef = app;
-    const presetLibrary = getSqlPresetLibrary(app.dialect.activePresetId);
+    const presetKey = app.languageMode === "sql"
+      ? app.dialect.activePresetId
+      : `${app.dialect.activePresetId}:${app.languageMode}`;
+    const presetLibrary = getSqlPresetLibrary(presetKey);
     const selectedPresetId = this.ensurePresetSelection(presetLibrary);
 
     // Apply dialect-specific preset SQL and refresh analysis whenever the
@@ -122,6 +131,25 @@ export class Workspace implements m.ClassComponent<Attrs> {
         initialSql: this.sql,
         presets: presetLibrary.presets,
         selectedPresetId,
+        languageMode: app.languageMode,
+        onLanguageChange: (lang: LanguageMode) => {
+          app.languageMode = lang;
+          app.embeddedFragments = [];
+          app.selectedFragmentIndex = -1;
+          app.diagnostics = [];
+          if (this.editor) {
+            const model = this.editor.getModel();
+            if (model) monaco.editor.setModelMarkers(model, "syntaqlite", []);
+          }
+          // Apply the first preset of the new language.
+          const newPresetKey = lang === "sql"
+            ? app.dialect.activePresetId
+            : `${app.dialect.activePresetId}:${lang}`;
+          const newLib = getSqlPresetLibrary(newPresetKey);
+          const sel = this.ensurePresetSelection(newLib);
+          this.applySelectionForDialect(app.runtime, newLib.dialectId, sel, true);
+          m.redraw();
+        },
         onPresetChange: (presetId: string) => {
           this.presetSelectionByDialect.set(presetLibrary.dialectId, presetId);
           this.applySelectionForDialect(app.runtime, presetLibrary.dialectId, presetId);
@@ -136,7 +164,11 @@ export class Workspace implements m.ClassComponent<Attrs> {
             this.customSqlByDialect.set(presetLibrary.dialectId, s);
           }
           this.debouncedUpdate(s);
-          this.debouncedDiagnostics(app.runtime, s);
+          if (app.languageMode === "sql") {
+            this.debouncedDiagnostics(app.runtime, s);
+          } else {
+            this.debouncedEmbeddedDiagnostics(app, s);
+          }
         },
         onEditorCreated: (editor) => {
           this.editor = editor;
@@ -222,7 +254,11 @@ export class Workspace implements m.ClassComponent<Attrs> {
     } finally {
       this.applyingPreset = false;
     }
-    this.updateDiagnostics(engine, sql);
+    if (this.appRef && this.appRef.languageMode !== "sql") {
+      this.updateEmbeddedDiagnostics(this.appRef, sql);
+    } else {
+      this.updateDiagnostics(engine, sql);
+    }
     m.redraw();
   }
 
@@ -251,6 +287,52 @@ export class Workspace implements m.ClassComponent<Attrs> {
     const markers: monaco.editor.IMarkerData[] = result.diagnostics.map((d) => {
       const start = offsetToLineCol(sql, d.startOffset);
       const end = offsetToLineCol(sql, d.endOffset);
+      return {
+        severity: SEVERITY_MAP[d.severity] ?? monaco.MarkerSeverity.Error,
+        message: d.help ? `${d.message}\nhelp: ${d.help}` : d.message,
+        startLineNumber: start.line,
+        startColumn: start.col,
+        endLineNumber: end.line,
+        endColumn: end.col,
+      };
+    });
+
+    monaco.editor.setModelMarkers(model, "syntaqlite", markers);
+  }
+
+  private updateEmbeddedDiagnostics(app: App, source: string): void {
+    if (!app.runtime.ready || !this.editor) return;
+
+    const model = this.editor.getModel();
+    if (!model) return;
+
+    const lang = app.languageMode as EmbeddedLanguage;
+
+    // Extract fragments.
+    const extractResult = app.runtime.runEmbeddedExtract(lang, source);
+    app.embeddedFragments = extractResult.ok ? extractResult.fragments : [];
+
+    // Run embedded diagnostics.
+    const version = model.getVersionId();
+    const result = app.runtime.runEmbeddedDiagnostics(lang, source, version);
+    if (!result.ok) {
+      monaco.editor.setModelMarkers(model, "syntaqlite", []);
+      app.diagnostics = [];
+      return;
+    }
+
+    for (const d of result.diagnostics) {
+      const pos = offsetToLineCol(source, d.startOffset);
+      d.line = pos.line;
+      d.col = pos.col;
+      d.stmtIndex = countStatements(source, d.startOffset);
+    }
+
+    app.diagnostics = result.diagnostics;
+
+    const markers: monaco.editor.IMarkerData[] = result.diagnostics.map((d) => {
+      const start = offsetToLineCol(source, d.startOffset);
+      const end = offsetToLineCol(source, d.endOffset);
       return {
         severity: SEVERITY_MAP[d.severity] ?? monaco.MarkerSeverity.Error,
         message: d.help ? `${d.message}\nhelp: ${d.help}` : d.message,

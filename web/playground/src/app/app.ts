@@ -8,7 +8,7 @@ import {
   DialectConfigManager,
   SchemaContextManager,
 } from "@syntaqlite/js";
-import type {DiagnosticEntry} from "@syntaqlite/js";
+import type {DiagnosticEntry, EmbeddedFragment, EmbeddedLanguage} from "@syntaqlite/js";
 import {ThemeManager} from "./theme_manager";
 import {WindowManager} from "./window_manager";
 
@@ -26,6 +26,13 @@ export class App {
   diagnostics: DiagnosticEntry[] = [];
   /** Set by the workspace to reveal a diagnostic in the editor. */
   revealDiagnostic: ((d: DiagnosticEntry) => void) | undefined = undefined;
+
+  /** Current editor language mode. */
+  languageMode: "sql" | EmbeddedLanguage = "sql";
+  /** Extracted SQL fragments in embedded mode. */
+  embeddedFragments: EmbeddedFragment[] = [];
+  /** Selected fragment index (-1 = show all). */
+  selectedFragmentIndex = -1;
 
   constructor() {
     this.theme = new ThemeManager();

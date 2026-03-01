@@ -31,4 +31,8 @@ export type {
   DiagnosticsResult,
   CompletionEntry,
   CompletionsResult,
+  EmbeddedLanguage,
+  EmbeddedHole,
+  EmbeddedFragment,
+  EmbeddedExtractResult,
 } from "./types";

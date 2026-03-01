@@ -134,6 +134,74 @@ ON hot_slices(ts, dur, track_id);`,
   },
 ];
 
+const PYTHON_PRESETS: SqlPreset[] = [
+  {
+    id: "py-select",
+    label: "SELECT Query",
+    description: "Python f-string with a parameterized SELECT.",
+    sql: `import sqlite3
+
+def get_active_users(conn, min_age):
+    cursor = conn.execute(
+        f"SELECT id, name, email FROM users WHERE age >= {min_age} AND active = 1 ORDER BY name"
+    )
+    return cursor.fetchall()
+`,
+  },
+  {
+    id: "py-insert",
+    label: "INSERT Statement",
+    description: "Python f-string with INSERT and multiple values.",
+    sql: `import sqlite3
+
+def add_order(conn, customer_id, total):
+    conn.execute(
+        f"INSERT INTO orders (customer_id, total, created_at) VALUES ({customer_id}, {total}, datetime('now'))"
+    )
+    conn.commit()
+`,
+  },
+  {
+    id: "py-multi",
+    label: "Multiple Queries",
+    description: "Multiple SQL strings in one Python file.",
+    sql: `import sqlite3
+
+def report(conn, department):
+    employees = conn.execute(
+        f"SELECT name, salary FROM employees WHERE department = {department} ORDER BY salary DESC"
+    ).fetchall()
+
+    stats = conn.execute(
+        f"SELECT count(*) AS cnt, avg(salary) AS avg_sal FROM employees WHERE department = {department}"
+    ).fetchone()
+
+    return employees, stats
+`,
+  },
+];
+
+const TYPESCRIPT_PRESETS: SqlPreset[] = [
+  {
+    id: "ts-select",
+    label: "SELECT Query",
+    description: "Template literal with a parameterized SELECT.",
+    sql: "import Database from 'better-sqlite3';\n\nfunction getOrders(db: Database, userId: number) {\n  return db.prepare(\n    `SELECT o.id, o.total, o.created_at\n     FROM orders o\n     WHERE o.customer_id = ${userId}\n     ORDER BY o.created_at DESC\n     LIMIT 25`\n  ).all();\n}\n",
+  },
+  {
+    id: "ts-join",
+    label: "JOIN Query",
+    description: "Template literal with a multi-table JOIN.",
+    sql: "function getOrderDetails(db: any, orderId: number) {\n  return db.prepare(\n    `SELECT o.id, c.name AS customer, li.product, li.quantity * li.price AS line_total\n     FROM orders o\n     JOIN customers c ON c.id = o.customer_id\n     JOIN line_items li ON li.order_id = o.id\n     WHERE o.id = ${orderId}`\n  ).all();\n}\n",
+  },
+  {
+    id: "ts-multi",
+    label: "Multiple Queries",
+    description: "Multiple SQL template literals in one file.",
+    sql: "const listUsers = (db: any, active: boolean) =>\n  db.prepare(\n    `SELECT id, name, email FROM users WHERE active = ${active ? 1 : 0} ORDER BY name`\n  ).all();\n\nconst countByRole = (db: any) =>\n  db.prepare(\n    `SELECT role, count(*) AS cnt FROM users GROUP BY role ORDER BY cnt DESC`\n  ).all();\n",
+  },
+];
+
 const LIBRARIES: Record<string, SqlPresetLibrary> = {
   sqlite: {
     dialectId: "sqlite",
@@ -144,6 +212,26 @@ const LIBRARIES: Record<string, SqlPresetLibrary> = {
     dialectId: "perfetto",
     label: "PerfettoSQL",
     presets: PERFETTO_PRESETS,
+  },
+  "sqlite:python": {
+    dialectId: "sqlite:python",
+    label: "Python",
+    presets: PYTHON_PRESETS,
+  },
+  "sqlite:typescript": {
+    dialectId: "sqlite:typescript",
+    label: "TypeScript",
+    presets: TYPESCRIPT_PRESETS,
+  },
+  "perfetto:python": {
+    dialectId: "perfetto:python",
+    label: "Python",
+    presets: PYTHON_PRESETS,
+  },
+  "perfetto:typescript": {
+    dialectId: "perfetto:typescript",
+    label: "TypeScript",
+    presets: TYPESCRIPT_PRESETS,
   },
 };
 

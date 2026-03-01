@@ -8,6 +8,9 @@ import type {
   DiagnosticEntry,
   DiagnosticsResult,
   DialectBinding,
+  EmbeddedExtractResult,
+  EmbeddedFragment,
+  EmbeddedLanguage,
   EmscriptenModule,
   EmscriptenModuleConfig,
   FormatOptions,
@@ -60,6 +63,9 @@ export class Engine {
   private setSessionContextRaw: WasmFn | undefined = undefined;
   private clearSessionContextRaw: WasmFn | undefined = undefined;
   private setSessionContextDdlRaw: WasmFn | undefined = undefined;
+  private embeddedExtractRaw: WasmFn | undefined = undefined;
+  private embeddedDiagnosticsRaw: WasmFn | undefined = undefined;
+  private embeddedSemanticTokensRaw: WasmFn | undefined = undefined;
 
   constructor(config: EngineConfig = {}) {
     this.config = config;
@@ -98,6 +104,9 @@ export class Engine {
     this.setSessionContextRaw = this.tryResolveRuntimeFn("wasm_set_session_context");
     this.clearSessionContextRaw = this.tryResolveRuntimeFn("wasm_clear_session_context");
     this.setSessionContextDdlRaw = this.tryResolveRuntimeFn("wasm_set_session_context_ddl");
+    this.embeddedExtractRaw = this.tryResolveRuntimeFn("wasm_embedded_extract");
+    this.embeddedDiagnosticsRaw = this.tryResolveRuntimeFn("wasm_embedded_diagnostics");
+    this.embeddedSemanticTokensRaw = this.tryResolveRuntimeFn("wasm_embedded_semantic_tokens");
   }
 
   private resolveRuntimeFn(symbol: string): WasmFn {
@@ -289,6 +298,72 @@ export class Engine {
       return {ok: false, items: []};
     }
   }
+  private embeddedLangCode(lang: EmbeddedLanguage): number {
+    return lang === "python" ? 0 : 1;
+  }
+
+  runEmbeddedExtract(lang: EmbeddedLanguage, source: string): EmbeddedExtractResult {
+    if (!this.embeddedExtractRaw) return {ok: false, fragments: []};
+    try {
+      const langCode = this.embeddedLangCode(lang);
+      const count = this.withInput(source, (ptr, len) =>
+        this.embeddedExtractRaw!(langCode, ptr, len),
+      );
+      const text = this.readAndClearResult();
+      if (count < 0) return {ok: false, fragments: []};
+      if (count === 0) return {ok: true, fragments: []};
+      const fragments: EmbeddedFragment[] = JSON.parse(text);
+      return {ok: true, fragments};
+    } catch (e) {
+      console.warn("wasm_embedded_extract failed:", e);
+      return {ok: false, fragments: []};
+    }
+  }
+
+  runEmbeddedDiagnostics(lang: EmbeddedLanguage, source: string, version = 1): DiagnosticsResult {
+    if (!this.embeddedDiagnosticsRaw) return {ok: false, diagnostics: []};
+    try {
+      const langCode = this.embeddedLangCode(lang);
+      const count = this.withInput(source, (ptr, len) =>
+        this.embeddedDiagnosticsRaw!(langCode, ptr, len, version),
+      );
+      const text = this.readAndClearResult();
+      if (count < 0) return {ok: false, diagnostics: []};
+      if (count === 0) return {ok: true, diagnostics: []};
+      const diagnostics: DiagnosticEntry[] = JSON.parse(text);
+      return {ok: true, diagnostics};
+    } catch (e) {
+      console.warn("wasm_embedded_diagnostics failed:", e);
+      return {ok: false, diagnostics: []};
+    }
+  }
+
+  runEmbeddedSemanticTokens(
+    lang: EmbeddedLanguage,
+    source: string,
+    version = 1,
+  ): Uint32Array | undefined {
+    if (!this.embeddedSemanticTokensRaw) return undefined;
+    try {
+      const langCode = this.embeddedLangCode(lang);
+      const count = this.withInput(source, (ptr, len) =>
+        this.embeddedSemanticTokensRaw!(langCode, ptr, len, version),
+      );
+      if (count <= 0) {
+        this.resultFreeRaw!();
+        return count === 0 ? new Uint32Array(0) : undefined;
+      }
+      const rptr = this.resultPtrRaw!();
+      const rlen = this.resultLenRaw!();
+      const bytes = this.heapU8().slice(rptr, rptr + rlen);
+      this.resultFreeRaw!();
+      return new Uint32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
+    } catch (e) {
+      console.warn("wasm_embedded_semantic_tokens failed:", e);
+      return undefined;
+    }
+  }
+
   setSqliteVersion(version: string): void {
     if (!this.setSqliteVersionRaw) return;
     const status = this.withInput(version, (ptr, len) => this.setSqliteVersionRaw!(ptr, len));
