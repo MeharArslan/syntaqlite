@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite::ast::{Node, Stmt};
-use syntaqlite::raw::{FromArena, RawParser};
+use syntaqlite::raw::{DialectNodeType, RawParser};
 
 #[test]
 fn pure_sqlite_never_produces_node_other() {
@@ -18,7 +18,7 @@ fn pure_sqlite_never_produces_node_other() {
         let mut cursor = parser.parse(sql);
         let node_ref = cursor.next_statement().unwrap().unwrap();
         let reader = cursor.reader();
-        let node: Option<Node> = FromArena::from_arena(reader, node_ref.id());
+        let node: Option<Node> = DialectNodeType::from_arena(reader, node_ref.id());
         assert!(node.is_some(), "should resolve: {sql}");
         match node.unwrap() {
             Node::Other { .. } => panic!("unexpected Node::Other for pure SQLite: {sql}"),
@@ -40,7 +40,7 @@ fn pure_sqlite_never_produces_stmt_other() {
         let mut cursor = parser.parse(sql);
         let node_ref = cursor.next_statement().unwrap().unwrap();
         let reader = cursor.reader();
-        let stmt: Option<Stmt> = FromArena::from_arena(reader, node_ref.id());
+        let stmt: Option<Stmt> = DialectNodeType::from_arena(reader, node_ref.id());
         assert!(stmt.is_some(), "should resolve as Stmt: {sql}");
         match stmt.unwrap() {
             Stmt::Other(_) => panic!("unexpected Stmt::Other for pure SQLite: {sql}"),

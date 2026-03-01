@@ -7,7 +7,7 @@ use super::ffi;
 use super::ffi::Comment;
 use super::nodes::NodeId;
 use crate::dialect::Dialect;
-use crate::dialect::ffi::DialectConfig;
+use syntaqlite_parser::dialect::ffi::DialectConfig;
 
 pub use syntaqlite_parser::session::{ErrorSpan, ParseError, RawNodeReader};
 
@@ -317,7 +317,7 @@ impl<'a> NodeRef<'a> {
         self.id
     }
 
-    /// Reader for typed access via `FromArena`.
+    /// Reader for typed access via `DialectNodeType`.
     pub fn reader(&self) -> RawNodeReader<'a> {
         self.reader
     }
@@ -367,7 +367,7 @@ impl<'a> NodeRef<'a> {
     }
 
     /// Dialect field metadata for this node type.
-    pub fn field_meta(&self) -> &[crate::dialect::ffi::FieldMeta] {
+    pub fn field_meta(&self) -> &[syntaqlite_parser::dialect::ffi::FieldMeta] {
         match self.tag() {
             Some(tag) => self.dialect.field_meta(tag),
             None => &[],
@@ -392,7 +392,7 @@ impl<'a> NodeRef<'a> {
     }
 
     /// Resolve as a typed AST node.
-    pub fn as_typed<T: crate::parser::typed_list::FromArena<'a>>(&self) -> Option<T> {
+    pub fn as_typed<T: crate::parser::typed_list::DialectNodeType<'a>>(&self) -> Option<T> {
         // SAFETY: NodeReader<'a> is Copy and all its data (raw pointer, source
         // reference) is valid for 'a. Re-casting to &'a NodeReader<'a> extends
         // the borrow lifetime to 'a, which is safe because the underlying

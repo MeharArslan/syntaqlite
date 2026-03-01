@@ -258,8 +258,8 @@ pub struct FunctionDef {
     pub description: Option<String>,
 }
 
-/// Expand a [`FunctionInfo`](crate::catalog::FunctionInfo) into one [`FunctionDef`] per arity.
-pub(crate) fn expand_function_info(info: &crate::catalog::FunctionInfo<'_>) -> Vec<FunctionDef> {
+/// Expand a [`FunctionInfo`](syntaqlite_parser::catalog::FunctionInfo) into one [`FunctionDef`] per arity.
+pub(crate) fn expand_function_info(info: &syntaqlite_parser::catalog::FunctionInfo<'_>) -> Vec<FunctionDef> {
     if info.arities.is_empty() {
         vec![FunctionDef {
             name: info.name.to_string(),
@@ -335,7 +335,7 @@ impl SessionContext {
     pub fn from_ddl(
         dialect: &crate::Dialect<'_>,
         source: &str,
-        dialect_config: Option<crate::dialect::ffi::DialectConfig>,
+        dialect_config: Option<syntaqlite_parser::dialect::ffi::DialectConfig>,
     ) -> Self {
         let mut builder = crate::parser::session::RawParser::builder(dialect);
         if let Some(dc) = dialect_config {
@@ -479,7 +479,7 @@ impl Default for DocumentContext {
 /// offset to a `u32` (NodeId) field within that struct.
 unsafe fn read_node_id(
     ptr: *const u8,
-    meta: &crate::dialect::ffi::FieldMeta,
+    meta: &syntaqlite_parser::dialect::ffi::FieldMeta,
 ) -> crate::parser::nodes::NodeId {
     unsafe { crate::parser::nodes::NodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
 }
@@ -492,7 +492,7 @@ unsafe fn read_node_id(
 /// offset to a `SourceSpan` field within that struct.
 unsafe fn read_span<'a>(
     ptr: *const u8,
-    meta: &crate::dialect::ffi::FieldMeta,
+    meta: &syntaqlite_parser::dialect::ffi::FieldMeta,
     source: &'a str,
 ) -> &'a str {
     unsafe {
@@ -524,8 +524,8 @@ impl DocumentContext {
         session: Option<&SessionContext>,
     ) {
         use crate::dialect::SchemaKind;
-        use crate::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
-        use crate::parser::typed_list::FromArena;
+        use syntaqlite_parser::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
+        use crate::parser::typed_list::DialectNodeType;
 
         let Some((ptr, tag)) = reader.node_ptr(stmt_id) else {
             return;
@@ -632,7 +632,7 @@ fn columns_from_column_list(
     dialect: &crate::Dialect<'_>,
     out: &mut Vec<ColumnDef>,
 ) {
-    use crate::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
+    use syntaqlite_parser::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
     use crate::parser::nodes::NodeId;
 
     let Some(list) = reader.resolve_list(list_id) else {
@@ -712,7 +712,7 @@ fn extract_column_constraints(
     is_primary_key: &mut bool,
     is_nullable: &mut bool,
 ) {
-    use crate::dialect::ffi::FIELD_ENUM;
+    use syntaqlite_parser::dialect::ffi::FIELD_ENUM;
 
     let Some(list) = reader.resolve_list(list_id) else {
         return;

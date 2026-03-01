@@ -14,9 +14,7 @@
 //! External dialect crates obtain their handle through the generated
 //! [`crate::raw::Dialect`] handle.
 
-pub(crate) mod ffi;
-
-pub use ffi::{CflagInfo, Cflags, DialectConfig, FieldMeta};
+pub use syntaqlite_parser::dialect::ffi::{CflagInfo, Cflags, DialectConfig, FieldMeta};
 
 // Re-export Dialect, schema types, and field extraction from the sys crate.
 pub(crate) use syntaqlite_parser::dialect::extract_fields;

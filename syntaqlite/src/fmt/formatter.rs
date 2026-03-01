@@ -167,7 +167,7 @@ impl<'d> Formatter<'d> {
 pub struct FormatterBuilder<'d> {
     dialect: &'d Dialect<'d>,
     format_config: FormatConfig,
-    dialect_config: Option<crate::dialect::ffi::DialectConfig>,
+    dialect_config: Option<syntaqlite_parser::dialect::ffi::DialectConfig>,
 }
 
 impl<'d> FormatterBuilder<'d> {
@@ -178,7 +178,7 @@ impl<'d> FormatterBuilder<'d> {
     }
 
     /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(mut self, config: crate::dialect::ffi::DialectConfig) -> Self {
+    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
         self.dialect_config = Some(config);
         self
     }

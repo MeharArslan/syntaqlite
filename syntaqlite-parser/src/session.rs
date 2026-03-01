@@ -6,7 +6,7 @@ use std::ffi::CStr;
 use crate::dialect::Dialect;
 use crate::nodes::{ArenaNode, NodeId, NodeList};
 use crate::parser as ffi;
-use crate::typed_list::FromArena;
+use crate::dialect_traits::DialectNodeType;
 
 /// A source span describing where an error node was recorded in the arena.
 ///
@@ -165,7 +165,7 @@ impl<'a> RawNodeReader<'a> {
     /// Resolve a required node field: panics (in debug) if `id` is null,
     /// returns `Err(ErrorSpan)` if the arena node is an error placeholder,
     /// or `Err(ErrorSpan { 0, 0 })` if the type tag mismatches.
-    pub fn required_node<T: FromArena<'a>>(&self, id: NodeId) -> Result<T, ErrorSpan> {
+    pub fn required_node<T: DialectNodeType<'a>>(&self, id: NodeId) -> Result<T, ErrorSpan> {
         debug_assert!(!id.is_null(), "required field has null NodeId");
         self.resolve_or_error(id)
     }
@@ -173,14 +173,14 @@ impl<'a> RawNodeReader<'a> {
     /// Resolve an optional node field: returns `Ok(None)` if `id` is null,
     /// `Err(ErrorSpan)` if the arena node is an error placeholder, or
     /// `Ok(Some(T))` on success.
-    pub fn optional_node<T: FromArena<'a>>(&self, id: NodeId) -> Result<Option<T>, ErrorSpan> {
+    pub fn optional_node<T: DialectNodeType<'a>>(&self, id: NodeId) -> Result<Option<T>, ErrorSpan> {
         if id.is_null() {
             return Ok(None);
         }
         self.resolve_or_error(id).map(Some)
     }
 
-    fn resolve_or_error<T: FromArena<'a>>(&self, id: NodeId) -> Result<T, ErrorSpan> {
+    fn resolve_or_error<T: DialectNodeType<'a>>(&self, id: NodeId) -> Result<T, ErrorSpan> {
         let Some((ptr, tag)) = self.node_ptr(id) else {
             return Err(ErrorSpan {
                 offset: 0,

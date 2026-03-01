@@ -108,6 +108,7 @@ def main():
         return result.returncode
 
     cli_bin = project_root / "target" / "release" / "syntaqlite"
+    internal_sqlite_wrappers = dialect_crate / "src" / "sqlite" / "wrappers.rs"
     result = subprocess.run(
         [
             str(cli_bin),
@@ -117,6 +118,7 @@ def main():
             "--output-dir", str(output_dir),
             "--rust-dir", str(rust_dir),
             "--rust-crate-src-dir", str(rust_crate_src_dir),
+            "--internal-sqlite-wrappers", str(internal_sqlite_wrappers),
         ],
     )
 

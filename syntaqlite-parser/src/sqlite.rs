@@ -7,7 +7,7 @@
 //! functions for cflag/version parsing.
 
 use crate::catalog;
-pub use crate::catalog::FunctionInfo;
+use crate::catalog::FunctionInfo;
 use crate::dialect::ffi::{CflagInfo, DialectConfig};
 
 // ── Built-in function catalog ────────────────────────────────────────────────

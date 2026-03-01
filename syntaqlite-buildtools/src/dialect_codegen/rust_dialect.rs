@@ -45,7 +45,7 @@ pub mod config {
 const WRAPPERS_PRELUDE: &str = r#"
 use std::ops::Range;
 
-use crate::ast::{FromArena, Stmt};
+use crate::ast::{DialectNodeType, Stmt};
 use crate::low_level::TokenType;
 use crate::ParseError;
 "#;
@@ -433,6 +433,153 @@ syntaqlite = {{ path = "../syntaqlite", default-features = false }}
 syntaqlite = {{ path = "../syntaqlite", default-features = false }}
 "#
     )
+}
+
+// ── Internal SQLite wrappers (for the syntaqlite crate itself) ────────────
+//
+// The internal SQLite wrappers use `TypedParser`/`TypedTokenizer` (private
+// crate-internal types) bound to `'static` (the SQLite dialect singleton).
+// This is different from external dialect crate wrappers, which use the
+// `Generic*` types from `syntaqlite::generic`.
+
+const INTERNAL_WRAPPERS_PRELUDE: &str = r#"
+use crate::parser::typed::{
+    TypedParser, TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor,
+    TypedTokenizer, TypedTokenizerBuilder,
+};
+// The SQLite dialect is a `'static` singleton, so all dialect-parameterized
+// types are concretized to `'static` in this module.
+use syntaqlite_parser_sqlite::ast::Stmt;
+use syntaqlite_parser_sqlite::tokens::TokenType;
+"#;
+
+const INTERNAL_WRAPPER_TYPE_ALIASES: &str = r#"
+// ── Type aliases ─────────────────────────────────────────────────────────
+
+/// A cursor over parsed SQL statements, yielding typed [`Stmt`] nodes.
+pub type StatementCursor<'a> = TypedStatementCursor<'a, Stmt<'a>>;
+
+/// A typed SQLite token with kind and source text.
+pub type Token<'a> = TypedToken<'a, TokenType>;
+
+/// A cursor yielding typed [`Token`]s.
+pub type TokenCursor<'a> = TypedTokenCursor<'a, TokenType>;
+
+/// A tokenizer for SQLite SQL.
+pub type Tokenizer = TypedTokenizer<'static, TokenType>;
+
+/// Builder for [`Tokenizer`].
+pub type TokenizerBuilder = TypedTokenizerBuilder<'static, TokenType>;
+"#;
+
+const INTERNAL_WRAPPER_PARSER: &str = r#"
+// ── Parser ───────────────────────────────────────────────────────────────
+
+/// A SQL parser for the built-in SQLite dialect.
+///
+/// Wraps [`TypedParser`] and yields typed [`Stmt`] nodes.
+///
+/// # Example
+///
+/// ```
+/// use syntaqlite::Parser;
+///
+/// let mut parser = Parser::new();
+/// for stmt in parser.parse("SELECT 1; CREATE TABLE t(x)") {
+///     let stmt = stmt.expect("parse error");
+///     println!("{stmt:?}");
+/// }
+/// ```
+pub struct Parser {
+    inner: TypedParser<'static>,
+}
+
+// SAFETY: TypedParser is Send.
+unsafe impl Send for Parser {}
+
+impl Parser {
+    /// Create a parser for the built-in SQLite dialect with default configuration.
+    pub fn new() -> Self {
+        Parser {
+            inner: TypedParser::new(&crate::sqlite::DIALECT),
+        }
+    }
+
+    /// Create a builder for configuring the parser before construction.
+    pub fn builder() -> ParserBuilder {
+        ParserBuilder {
+            inner: TypedParser::builder(&crate::sqlite::DIALECT),
+        }
+    }
+
+    /// Bind source text and return a [`StatementCursor`] for iterating typed statements.
+    pub fn parse<'a>(&'a mut self, source: &'a str) -> StatementCursor<'a> {
+        self.inner.parse(source)
+    }
+
+    /// Zero-copy variant: bind a null-terminated source.
+    pub fn parse_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> StatementCursor<'a> {
+        self.inner.parse_cstr(source)
+    }
+}
+
+impl Default for Parser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ── ParserBuilder ────────────────────────────────────────────────────────
+
+/// Builder for [`Parser`].
+pub struct ParserBuilder {
+    inner: TypedParserBuilder<'static>,
+}
+
+impl ParserBuilder {
+    /// Enable parser trace output.
+    pub fn trace(mut self, enable: bool) -> Self {
+        self.inner = self.inner.trace(enable);
+        self
+    }
+
+    /// Collect token positions during parsing.
+    pub fn collect_tokens(mut self, enable: bool) -> Self {
+        self.inner = self.inner.collect_tokens(enable);
+        self
+    }
+
+    /// Set dialect config for version/cflag-gated parsing.
+    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
+        self.inner = self.inner.dialect_config(config);
+        self
+    }
+
+    /// Build the parser.
+    pub fn build(self) -> Parser {
+        Parser {
+            inner: self.inner.build(),
+        }
+    }
+}
+"#;
+
+/// Generate `wrappers.rs` for the internal `syntaqlite` crate's SQLite dialect module.
+///
+/// Unlike [`generate_rust_wrappers`] (which targets external dialect crates and uses
+/// `syntaqlite::generic::*`), this generates wrappers using the crate-internal
+/// `TypedParser`/`TypedTokenizer` types, concretized to `'static` for the SQLite
+/// dialect singleton.
+pub fn generate_internal_sqlite_wrappers() -> String {
+    let mut w = RustWriter::new();
+    w.file_header();
+    w.lines(r#"//! Thin wrappers around the generic parser/tokenizer types, pre-bound to the
+//! SQLite dialect."#);
+    w.newline();
+    emit_section(&mut w, INTERNAL_WRAPPERS_PRELUDE);
+    emit_section(&mut w, INTERNAL_WRAPPER_TYPE_ALIASES);
+    w.lines(INTERNAL_WRAPPER_PARSER);
+    w.finish()
 }
 
 /// Generate `wrappers.rs` for a dialect crate.

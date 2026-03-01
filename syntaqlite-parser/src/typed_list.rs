@@ -3,17 +3,9 @@
 
 use std::marker::PhantomData;
 
+use crate::dialect_traits::DialectNodeType;
 use crate::nodes::{NodeId, NodeList};
 use crate::session::RawNodeReader;
-
-/// Resolve a value from the parser arena by `NodeId`.
-///
-/// Implemented by generated view structs (node views, `Node` enum) so that
-/// generic containers like `TypedList` can resolve children without
-/// dialect-specific code.
-pub trait FromArena<'a>: Sized {
-    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self>;
-}
 
 /// A typed, read-only view over a `NodeList` in the parser arena.
 ///
@@ -55,7 +47,7 @@ impl<'a, T> TypedList<'a, T> {
     }
 }
 
-impl<'a, T: FromArena<'a>> TypedList<'a, T> {
+impl<'a, T: DialectNodeType<'a>> TypedList<'a, T> {
     /// Get a child by index.
     pub fn get(&self, index: usize) -> Option<T> {
         let id = *self.raw.children().get(index)?;
@@ -72,8 +64,8 @@ impl<'a, T: FromArena<'a>> TypedList<'a, T> {
     }
 }
 
-/// Blanket `FromArena` for `TypedList` — resolves the `NodeId` as a list node.
-impl<'a, T> FromArena<'a> for TypedList<'a, T> {
+/// Blanket `DialectNodeType` for `TypedList` — resolves the `NodeId` as a list node.
+impl<'a, T> DialectNodeType<'a> for TypedList<'a, T> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_list(id)?;
         Some(TypedList::new(raw, reader))

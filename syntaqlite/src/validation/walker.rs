@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 
 use crate::ast_traits::*;
 use crate::parser::session::RawNodeReader;
-use crate::parser::typed_list::{FromArena, TypedList};
+use crate::parser::typed_list::{DialectNodeType, TypedList};
 
 use super::ValidationConfig;
 use super::checks::{check_column_ref, check_function_call, check_table_ref};

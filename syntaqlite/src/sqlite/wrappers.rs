@@ -10,6 +10,8 @@ use crate::parser::typed::{
     TypedParser, TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor,
     TypedTokenizer, TypedTokenizerBuilder,
 };
+// The SQLite dialect is a `'static` singleton, so all dialect-parameterized
+// types are concretized to `'static` in this module.
 use syntaqlite_parser_sqlite::ast::Stmt;
 use syntaqlite_parser_sqlite::tokens::TokenType;
 
@@ -25,10 +27,10 @@ pub type Token<'a> = TypedToken<'a, TokenType>;
 pub type TokenCursor<'a> = TypedTokenCursor<'a, TokenType>;
 
 /// A tokenizer for SQLite SQL.
-pub type Tokenizer = TypedTokenizer<TokenType>;
+pub type Tokenizer = TypedTokenizer<'static, TokenType>;
 
 /// Builder for [`Tokenizer`].
-pub type TokenizerBuilder = TypedTokenizerBuilder<TokenType>;
+pub type TokenizerBuilder = TypedTokenizerBuilder<'static, TokenType>;
 
 // ── Parser ───────────────────────────────────────────────────────────────
 
@@ -48,7 +50,7 @@ pub type TokenizerBuilder = TypedTokenizerBuilder<TokenType>;
 /// }
 /// ```
 pub struct Parser {
-    inner: TypedParser,
+    inner: TypedParser<'static>,
 }
 
 // SAFETY: TypedParser is Send.
@@ -90,7 +92,7 @@ impl Default for Parser {
 
 /// Builder for [`Parser`].
 pub struct ParserBuilder {
-    inner: TypedParserBuilder,
+    inner: TypedParserBuilder<'static>,
 }
 
 impl ParserBuilder {
@@ -107,7 +109,7 @@ impl ParserBuilder {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(mut self, config: crate::dialect::ffi::DialectConfig) -> Self {
+    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }

@@ -8,7 +8,7 @@ use super::ffi;
 use super::nodes::NodeId;
 use super::session::{CursorState, NodeRef, ParseError, RawNodeReader};
 use crate::dialect::Dialect;
-use crate::dialect::ffi::DialectConfig;
+use syntaqlite_parser::dialect::ffi::DialectConfig;
 
 /// A low-level parser for token-by-token feeding. Owns its own C parser
 /// handle and source buffer, independent of `Parser`.

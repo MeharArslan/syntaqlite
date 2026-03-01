@@ -3,57 +3,39 @@
 
 //! Typed wrappers around the dialect-agnostic base parser and tokenizer.
 //!
-//! This module provides generic types parameterized over node types (via [`FromArena`])
-//! and token types (via [`DialectTokenType`]), enabling any dialect to build ergonomic
-//! typed APIs.
-//!
-//! Dialect crates should:
-//! 1. Implement [`DialectTokenType`] for their token enum
-//! 2. Define convenience type aliases over the generic [`TypedTokenizer<T>`] and [`TypedTokenCursor<'a, T>`]
-//! 3. Use [`RawParser`] with [`TypedStatementCursor<'a, N>`] for nodes
-//!
-//! # Example for a custom dialect crate
-//!
-//! ```ignore
-//! // In your dialect crate's token module:
-//! impl DialectTokenType for MyTokenType {
-//!     fn from_token_type(raw: u32) -> Option<Self> {
-//!         MyTokenType::from_raw(raw)
-//!     }
-//! }
-//!
-//! // Convenience aliases in your public API:
-//! pub type Tokenizer = crate::parser::typed::TypedTokenizer<MyTokenType>;
-//! pub type TokenCursor<'a> = crate::parser::typed::TypedTokenCursor<'a, MyTokenType>;
-//! pub type Token<'a> = crate::parser::typed::TypedToken<'a, MyTokenType>;
-//! ```
+//! This module provides generic types parameterized over node types (via
+//! [`DialectNodeType`]) and token types (via [`DialectTokenType`]), enabling
+//! any dialect to build ergonomic typed APIs.
+
+use std::ops::Range;
 
 use super::nodes::NodeId;
 use super::session::{ParseError, RawNodeReader, RawParser, RawParserBuilder, RawStatementCursor};
+use super::token_parser::{RawIncrementalCursor, RawIncrementalParser, RawIncrementalParserBuilder};
 use super::tokenizer::{RawTokenCursor, RawTokenizer};
-use super::typed_list::FromArena;
+pub use super::typed_list::{DialectNodeType, DialectTokenType};
 
 // ── TypedParser ──────────────────────────────────────────────────────────
 
-/// A generic parser wrapping [`RawParser`], pre-bound to a static dialect.
+/// A generic parser wrapping [`RawParser`], pre-bound to a dialect.
 ///
 /// The node type `N` is chosen at the `parse()` call site, so a single
 /// `TypedParser` instance can be shared across node types.
-pub struct TypedParser {
-    inner: RawParser<'static>,
+pub struct TypedParser<'d> {
+    inner: RawParser<'d>,
 }
 
 // SAFETY: RawParser is Send; TypedParser is a thin wrapper.
-unsafe impl Send for TypedParser {}
+unsafe impl<'d> Send for TypedParser<'d> {}
 
-impl TypedParser {
-    /// Create a parser bound to the given static dialect.
-    pub fn new(dialect: &'static crate::dialect::Dialect<'static>) -> Self {
+impl<'d> TypedParser<'d> {
+    /// Create a parser bound to the given dialect.
+    pub fn new(dialect: &'d crate::dialect::Dialect<'d>) -> Self {
         Self::builder(dialect).build()
     }
 
     /// Create a builder for more detailed configuration.
-    pub fn builder(dialect: &'static crate::dialect::Dialect<'static>) -> TypedParserBuilder {
+    pub fn builder(dialect: &'d crate::dialect::Dialect<'d>) -> TypedParserBuilder<'d> {
         TypedParserBuilder {
             inner: RawParser::builder(dialect),
         }
@@ -62,7 +44,7 @@ impl TypedParser {
     /// Bind source text and return a [`TypedStatementCursor`].
     ///
     /// `N` is inferred from the return type (e.g. the dialect's `Stmt<'a>`).
-    pub fn parse<'a, N: FromArena<'a>>(
+    pub fn parse<'a, N: DialectNodeType<'a>>(
         &'a mut self,
         source: &'a str,
     ) -> TypedStatementCursor<'a, N> {
@@ -70,7 +52,7 @@ impl TypedParser {
     }
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn parse_cstr<'a, N: FromArena<'a>>(
+    pub fn parse_cstr<'a, N: DialectNodeType<'a>>(
         &'a mut self,
         source: &'a std::ffi::CStr,
     ) -> TypedStatementCursor<'a, N> {
@@ -81,11 +63,11 @@ impl TypedParser {
 // ── TypedParserBuilder ────────────────────────────────────────────────────
 
 /// Builder for [`TypedParser`].
-pub struct TypedParserBuilder {
-    inner: RawParserBuilder<'static>,
+pub struct TypedParserBuilder<'d> {
+    inner: RawParserBuilder<'d>,
 }
 
-impl TypedParserBuilder {
+impl<'d> TypedParserBuilder<'d> {
     /// Enable parser trace output.
     pub fn trace(mut self, enable: bool) -> Self {
         self.inner = self.inner.trace(enable);
@@ -99,49 +81,29 @@ impl TypedParserBuilder {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(mut self, config: crate::dialect::ffi::DialectConfig) -> Self {
+    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }
 
     /// Build the parser.
-    pub fn build(self) -> TypedParser {
+    pub fn build(self) -> TypedParser<'d> {
         TypedParser {
             inner: self.inner.build(),
         }
     }
 }
 
-// ── DialectTokenType trait ───────────────────────────────────────────────
-
-/// A token type that can be resolved from a raw token integer.
-///
-/// Each dialect's token enum must implement this trait to enable
-/// generic [`TypedTokenizer<T>`] and [`TypedTokenCursor<'a, T>`] usage.
-///
-/// # Example
-///
-/// ```ignore
-/// impl DialectTokenType for MyTokenType {
-///     fn from_token_type(raw: u32) -> Option<Self> {
-///         MyTokenType::from_raw(raw)
-///     }
-/// }
-/// ```
-pub trait DialectTokenType: Sized + Clone + Copy + std::fmt::Debug {
-    /// Attempt to resolve a raw token type code into this dialect's token variant.
-    fn from_token_type(raw: u32) -> Option<Self>;
-}
 
 // ── TypedStatementCursor ────────────────────────────────────────────────
 
 /// A generic streaming cursor over parsed SQL statements.
 ///
-/// Yields nodes of type `N` (must implement [`FromArena`]) by resolving
+/// Yields nodes of type `N` (must implement [`DialectNodeType`]) by resolving
 /// [`NodeRef`](crate::raw::NodeRef) from the underlying [`RawStatementCursor`].
 ///
 /// # Type parameter
-/// - `N: FromArena<'a>` — the typed node type (generated by codegen for each dialect)
+/// - `N: DialectNodeType<'a>` — the typed node type (generated by codegen for each dialect)
 ///
 /// # Example
 ///
@@ -153,12 +115,12 @@ pub trait DialectTokenType: Sized + Clone + Copy + std::fmt::Debug {
 ///     // Process MyNode...
 /// }
 /// ```
-pub struct TypedStatementCursor<'a, N: FromArena<'a>> {
+pub struct TypedStatementCursor<'a, N: DialectNodeType<'a>> {
     inner: RawStatementCursor<'a>,
     _phantom: std::marker::PhantomData<N>,
 }
 
-impl<'a, N: FromArena<'a>> TypedStatementCursor<'a, N> {
+impl<'a, N: DialectNodeType<'a>> TypedStatementCursor<'a, N> {
     /// Create a typed cursor from a raw cursor.
     pub fn new(inner: RawStatementCursor<'a>) -> Self {
         TypedStatementCursor {
@@ -203,7 +165,7 @@ impl<'a, N: FromArena<'a>> TypedStatementCursor<'a, N> {
     }
 }
 
-impl<'a, N: FromArena<'a>> Iterator for TypedStatementCursor<'a, N> {
+impl<'a, N: DialectNodeType<'a>> Iterator for TypedStatementCursor<'a, N> {
     type Item = Result<N, ParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -241,22 +203,22 @@ pub struct TypedToken<'a, T: DialectTokenType> {
 ///     println!("{:?}: {:?}", token.kind, token.text);
 /// }
 /// ```
-pub struct TypedTokenizer<T: DialectTokenType> {
-    inner: RawTokenizer,
+pub struct TypedTokenizer<'d, T: DialectTokenType> {
+    inner: RawTokenizer<'d>,
     _phantom: std::marker::PhantomData<T>,
 }
 
 // SAFETY: RawTokenizer is Send, and TypedTokenizer is a thin wrapper.
-unsafe impl<T: DialectTokenType> Send for TypedTokenizer<T> {}
+unsafe impl<'d, T: DialectTokenType> Send for TypedTokenizer<'d, T> {}
 
-impl<T: DialectTokenType> TypedTokenizer<T> {
+impl<'d, T: DialectTokenType> TypedTokenizer<'d, T> {
     /// Create a tokenizer with default configuration.
-    pub fn new(dialect: crate::dialect::Dialect<'static>) -> Self {
+    pub fn new(dialect: crate::dialect::Dialect<'d>) -> Self {
         Self::builder(dialect).build()
     }
 
     /// Create a builder for configuring the tokenizer before construction.
-    pub fn builder(dialect: crate::dialect::Dialect<'static>) -> TypedTokenizerBuilder<T> {
+    pub fn builder(dialect: crate::dialect::Dialect<'d>) -> TypedTokenizerBuilder<'d, T> {
         TypedTokenizerBuilder {
             inner: RawTokenizer::builder(dialect),
             _phantom: std::marker::PhantomData,
@@ -282,21 +244,21 @@ impl<T: DialectTokenType> TypedTokenizer<T> {
 
 // ── TypedTokenizerBuilder ────────────────────────────────────────────────
 
-/// Builder for configuring a [`TypedTokenizer<T>`] before construction.
-pub struct TypedTokenizerBuilder<T: DialectTokenType> {
-    inner: crate::parser::tokenizer::RawTokenizerBuilder<'static>,
+/// Builder for configuring a [`TypedTokenizer<'d, T>`] before construction.
+pub struct TypedTokenizerBuilder<'d, T: DialectTokenType> {
+    inner: crate::parser::tokenizer::RawTokenizerBuilder<'d>,
     _phantom: std::marker::PhantomData<T>,
 }
 
-impl<T: DialectTokenType> TypedTokenizerBuilder<T> {
+impl<'d, T: DialectTokenType> TypedTokenizerBuilder<'d, T> {
     /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(mut self, config: crate::dialect::ffi::DialectConfig) -> Self {
+    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }
 
     /// Build the tokenizer.
-    pub fn build(self) -> TypedTokenizer<T> {
+    pub fn build(self) -> TypedTokenizer<'d, T> {
         TypedTokenizer {
             inner: self.inner.build(),
             _phantom: std::marker::PhantomData,
@@ -329,5 +291,204 @@ impl<'a, T: DialectTokenType> Iterator for TypedTokenCursor<'a, T> {
             }
             // Skip tokens with unknown type ordinals.
         }
+    }
+}
+
+// ── TypedIncrementalParser ───────────────────────────────────────────────
+
+/// A generic incremental parser wrapping [`RawIncrementalParser`], pre-bound
+/// to a dialect.
+///
+/// Feeds tokens one at a time via [`TypedIncrementalCursor`]. Generic over
+/// both the node type `N` (for typed AST results) and the token type `T`
+/// (for typed `feed_token` calls).
+pub struct TypedIncrementalParser<'d> {
+    inner: RawIncrementalParser<'d>,
+}
+
+// SAFETY: RawIncrementalParser is Send; TypedIncrementalParser is a thin wrapper.
+unsafe impl<'d> Send for TypedIncrementalParser<'d> {}
+
+impl<'d> TypedIncrementalParser<'d> {
+    /// Create a parser bound to the given dialect.
+    pub fn new(dialect: &'d crate::dialect::Dialect<'d>) -> Self {
+        Self::builder(dialect).build()
+    }
+
+    /// Create a builder for more detailed configuration.
+    pub fn builder(
+        dialect: &'d crate::dialect::Dialect<'d>,
+    ) -> TypedIncrementalParserBuilder<'d> {
+        TypedIncrementalParserBuilder {
+            inner: RawIncrementalParser::builder(dialect),
+        }
+    }
+
+    /// Bind source text and return a [`TypedIncrementalCursor`] for token feeding.
+    ///
+    /// `N` and `T` are inferred from the call site.
+    pub fn feed<'a, N, T>(&'a mut self, source: &'a str) -> TypedIncrementalCursor<'a, N, T>
+    where
+        N: DialectNodeType<'a>,
+        T: DialectTokenType,
+    {
+        TypedIncrementalCursor {
+            inner: self.inner.feed(source),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+
+    /// Zero-copy variant: bind a null-terminated source.
+    pub fn feed_cstr<'a, N, T>(
+        &'a mut self,
+        source: &'a std::ffi::CStr,
+    ) -> TypedIncrementalCursor<'a, N, T>
+    where
+        N: DialectNodeType<'a>,
+        T: DialectTokenType,
+    {
+        TypedIncrementalCursor {
+            inner: self.inner.feed_cstr(source),
+            _phantom: std::marker::PhantomData,
+        }
+    }
+}
+
+// ── TypedIncrementalParserBuilder ────────────────────────────────────────
+
+/// Builder for [`TypedIncrementalParser`].
+pub struct TypedIncrementalParserBuilder<'d> {
+    inner: RawIncrementalParserBuilder<'d>,
+}
+
+impl<'d> TypedIncrementalParserBuilder<'d> {
+    /// Enable parser trace output.
+    pub fn trace(mut self, enable: bool) -> Self {
+        self.inner = self.inner.trace(enable);
+        self
+    }
+
+    /// Collect non-whitespace token positions during parsing.
+    pub fn collect_tokens(mut self, enable: bool) -> Self {
+        self.inner = self.inner.collect_tokens(enable);
+        self
+    }
+
+    /// Set dialect config for version/cflag-gated parsing.
+    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
+        self.inner = self.inner.dialect_config(config);
+        self
+    }
+
+    /// Build the incremental parser.
+    pub fn build(self) -> TypedIncrementalParser<'d> {
+        TypedIncrementalParser {
+            inner: self.inner.build(),
+        }
+    }
+}
+
+// ── TypedIncrementalCursor ───────────────────────────────────────────────
+
+/// A generic cursor for token-by-token incremental parsing.
+///
+/// - `N: DialectNodeType<'a>` — the typed node returned by `feed_token` / `finish`.
+/// - `T: DialectTokenType` — the typed token fed via `feed_token`.
+///
+/// After calling `finish()`, no further methods may be called.
+pub struct TypedIncrementalCursor<'a, N, T> {
+    inner: RawIncrementalCursor<'a>,
+    _phantom: std::marker::PhantomData<fn(T) -> N>,
+}
+
+impl<'a, N, T> TypedIncrementalCursor<'a, N, T>
+where
+    N: DialectNodeType<'a>,
+    T: DialectTokenType,
+{
+    /// Feed a typed token to the parser.
+    ///
+    /// Returns `Ok(Some(node))` when a statement completes, `Ok(None)` to
+    /// keep going, or `Err` on parse error.
+    pub fn feed_token(
+        &mut self,
+        token_type: T,
+        span: Range<usize>,
+    ) -> Result<Option<N>, ParseError> {
+        match self.inner.feed_token(token_type.into(), span)? {
+            None => Ok(None),
+            Some(id) => {
+                let node = self.inner.node_ref(id).as_typed::<N>()
+                    .ok_or_else(|| ParseError {
+                        message: "failed to resolve typed AST node".to_string(),
+                        offset: None,
+                        length: None,
+                        root: Some(id),
+                    })?;
+                Ok(Some(node))
+            }
+        }
+    }
+
+    /// Signal end of input.
+    ///
+    /// Returns `Ok(Some(node))` if a final statement completed, `Ok(None)`
+    /// if there was nothing pending, or `Err` on parse error.
+    ///
+    /// No further methods may be called after `finish()`.
+    pub fn finish(&mut self) -> Result<Option<N>, ParseError> {
+        match self.inner.finish()? {
+            None => Ok(None),
+            Some(id) => {
+                let node = self.inner.node_ref(id).as_typed::<N>()
+                    .ok_or_else(|| ParseError {
+                        message: "failed to resolve typed AST node".to_string(),
+                        offset: None,
+                        length: None,
+                        root: Some(id),
+                    })?;
+                Ok(Some(node))
+            }
+        }
+    }
+
+    /// Return terminal token IDs valid at the current parser state, as raw u32 ordinals.
+    pub fn expected_tokens(&self) -> Vec<u32> {
+        self.inner.expected_tokens()
+    }
+
+    /// Return the semantic completion context at the current parser state.
+    pub fn completion_context(&self) -> u32 {
+        self.inner.completion_context()
+    }
+
+    /// Return the number of nodes currently in the parser arena.
+    pub fn node_count(&self) -> u32 {
+        self.inner.node_count()
+    }
+
+    /// Mark subsequent fed tokens as inside a macro expansion.
+    pub fn begin_macro(&mut self, call_offset: u32, call_length: u32) {
+        self.inner.begin_macro(call_offset, call_length)
+    }
+
+    /// End the innermost macro expansion region.
+    pub fn end_macro(&mut self) {
+        self.inner.end_macro()
+    }
+
+    /// Get a reference to the embedded [`RawNodeReader`].
+    pub fn reader(&self) -> &RawNodeReader<'a> {
+        self.inner.reader()
+    }
+
+    /// Return all comments captured during parsing.
+    pub fn comments(&self) -> &[super::ffi::Comment] {
+        self.inner.comments()
+    }
+
+    /// Return all macro regions recorded via `begin_macro`/`end_macro`.
+    pub fn macro_regions(&self) -> &[super::ffi::MacroRegion] {
+        self.inner.macro_regions()
     }
 }

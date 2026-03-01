@@ -103,7 +103,6 @@ pub use fmt::formatter::Formatter;
 
 // ── Dialect ──────────────────────────────────────────────────────────────
 
-pub(crate) mod catalog;
 
 pub mod dialect;
 pub use dialect::Dialect;
@@ -169,7 +168,7 @@ pub mod raw {
     // ── Node / field types ───────────────────────────────────────────────
     pub use crate::parser::nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
     pub use crate::parser::session::{NodeRef, ParseError};
-    pub use crate::parser::typed_list::{FromArena, TypedList};
+    pub use crate::parser::typed_list::{DialectNodeType, DialectTokenType, TypedList};
 
     // ── Token metadata ───────────────────────────────────────────────────
     pub use crate::parser::ffi::{
@@ -178,8 +177,9 @@ pub mod raw {
 
     // ── Typed wrappers (for external dialect crates) ─────────────────────
     pub use crate::parser::typed::{
-        DialectTokenType, TypedParser, TypedParserBuilder, TypedStatementCursor, TypedToken,
-        TypedTokenCursor, TypedTokenizer, TypedTokenizerBuilder,
+        TypedIncrementalCursor, TypedIncrementalParser, TypedIncrementalParserBuilder,
+        TypedParser, TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor,
+        TypedTokenizer, TypedTokenizerBuilder,
     };
 
     // ── AST trait definitions ────────────────────────────────────────────
@@ -203,5 +203,5 @@ pub mod raw {
     // ── Dialect handle ────────────────────────────────────────────────────
 
     pub use crate::dialect::Dialect;
-    pub use crate::dialect::ffi::Dialect as FfiDialect;
+    pub use syntaqlite_parser::dialect::ffi::Dialect as FfiDialect;
 }

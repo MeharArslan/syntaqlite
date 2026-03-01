@@ -52,7 +52,7 @@ pub struct AnalysisHost<'d> {
     dialect: Dialect<'d>,
     documents: HashMap<String, Document>,
     context: Option<SessionContext>,
-    dialect_config: Option<crate::dialect::ffi::DialectConfig>,
+    dialect_config: Option<syntaqlite_parser::dialect::ffi::DialectConfig>,
 }
 
 struct Document {
@@ -190,7 +190,7 @@ impl<'d> AnalysisHost<'d> {
     }
 
     /// Set the dialect configuration for filtering built-in functions.
-    pub fn set_dialect_config(&mut self, config: crate::dialect::ffi::DialectConfig) {
+    pub fn set_dialect_config(&mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) {
         self.dialect_config = Some(config);
     }
 
@@ -201,7 +201,7 @@ impl<'d> AnalysisHost<'d> {
     /// 2. Dialect extensions from the C vtable (filtered by `DialectConfig`)
     /// 3. Session context user functions
     pub fn available_functions(&self) -> Vec<FunctionDef> {
-        let default_config = crate::dialect::ffi::DialectConfig::default();
+        let default_config = syntaqlite_parser::dialect::ffi::DialectConfig::default();
         let config = self.dialect_config.as_ref().unwrap_or(&default_config);
 
         // Layer 1: SQLite base catalog (filtered by config)
@@ -212,7 +212,7 @@ impl<'d> AnalysisHost<'d> {
 
         // Layer 2: Dialect extensions (filtered by config)
         for ext in self.dialect.function_extensions() {
-            if crate::catalog::is_available(&ext, config) {
+            if syntaqlite_parser::catalog::is_available(&ext, config) {
                 result.extend(crate::validation::expand_function_info(&ext.info));
             }
         }
@@ -500,7 +500,7 @@ impl<'d> AnalysisHost<'d> {
 
 /// Convert the SQLite function catalog into `FunctionDef` values filtered by config.
 #[cfg(feature = "sqlite")]
-fn catalog_to_function_defs(config: &crate::dialect::ffi::DialectConfig) -> Vec<FunctionDef> {
+fn catalog_to_function_defs(config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Vec<FunctionDef> {
     syntaqlite_parser::sqlite::available_functions(config)
         .into_iter()
         .flat_map(|info| crate::validation::expand_function_info(info))
@@ -774,7 +774,7 @@ mod tests {
     #[test]
     fn available_functions_with_config_filters_by_cflags() {
         let mut host = AnalysisHost::new();
-        let mut config = crate::dialect::ffi::DialectConfig::default();
+        let mut config = syntaqlite_parser::dialect::ffi::DialectConfig::default();
         // SQLITE_ENABLE_MATH_FUNCTIONS = cflag index 34
         config.cflags.set(34);
         host.set_dialect_config(config);

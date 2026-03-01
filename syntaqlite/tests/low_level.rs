@@ -3,7 +3,8 @@
 
 use syntaqlite::IncrementalParser;
 use syntaqlite::TokenType;
-use syntaqlite::ast::{FromArena, Stmt};
+use syntaqlite::ast::Stmt;
+use syntaqlite::raw::DialectNodeType;
 
 /// Feed tokens for "SELECT 1" via the low-level API and verify same AST
 /// as the high-level parse.

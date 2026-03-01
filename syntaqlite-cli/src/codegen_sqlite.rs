@@ -31,6 +31,11 @@ pub(crate) enum CodegenCommand {
         /// `<rust_crate_src_dir>/src/`. Defaults to --rust-dir when omitted.
         #[arg(long)]
         rust_crate_src_dir: Option<String>,
+        /// Path to write the internal SQLite wrappers.rs (e.g.
+        /// `syntaqlite/src/sqlite/wrappers.rs`). When omitted, the file is
+        /// not written (preserving the previous hand-edited copy).
+        #[arg(long)]
+        internal_sqlite_wrappers: Option<String>,
     },
     /// Produce C amalgamation files (single-file compilation units).
     Amalgamate {
@@ -77,12 +82,14 @@ pub(crate) fn dispatch(command: CodegenCommand) -> Result<(), String> {
             output_dir,
             rust_dir,
             rust_crate_src_dir,
+            internal_sqlite_wrappers,
         } => handle_codegen(
             &actions_dir,
             &nodes_dir,
             &output_dir,
             rust_dir.as_deref(),
             rust_crate_src_dir.as_deref(),
+            internal_sqlite_wrappers.as_deref(),
         ),
         CodegenCommand::Amalgamate {
             dialect,
@@ -133,6 +140,7 @@ fn handle_codegen(
     output_dir: &str,
     rust_dir: Option<&str>,
     rust_crate_src_dir: Option<&str>,
+    internal_sqlite_wrappers: Option<&str>,
 ) -> Result<(), String> {
     let dialect = syntaqlite_buildtools::DialectNaming::new("sqlite");
 
@@ -211,6 +219,12 @@ fn handle_codegen(
             OutputBucket::RustCrateScaffold | OutputBucket::CrateRoot => continue,
         };
         write_file(&dir.join(output.file_name), output.content)?;
+    }
+
+    // Write the internal SQLite wrappers if a path was provided.
+    if let Some(wrappers_path) = internal_sqlite_wrappers {
+        let content = syntaqlite_buildtools::dialect_codegen::generate_internal_sqlite_wrappers();
+        write_file(Path::new(wrappers_path), content)?;
     }
 
     Ok(())

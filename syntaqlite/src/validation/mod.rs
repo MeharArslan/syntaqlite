@@ -22,7 +22,7 @@ mod walker;
 use crate::ast_traits::AstTypes;
 use crate::parser::nodes::NodeId;
 use crate::parser::session::{ParseError, RawNodeReader};
-use crate::parser::typed_list::FromArena;
+use crate::parser::typed_list::DialectNodeType;
 
 use scope::ScopeStack;
 
@@ -79,7 +79,7 @@ pub fn validate_statement_dialect<'a, A: AstTypes<'a>>(
     functions: &'a [FunctionDef],
     config: &'a ValidationConfig,
 ) -> Vec<Diagnostic> {
-    let stmt: Option<A::Stmt> = FromArena::from_arena(reader, stmt_id);
+    let stmt: Option<A::Stmt> = DialectNodeType::from_arena(reader, stmt_id);
     let Some(stmt) = stmt else {
         return Vec::new();
     };
@@ -199,10 +199,10 @@ impl<'d> Validator<'d> {
     /// Create a validator for the built-in SQLite dialect with default configuration.
     ///
     /// Pre-populates the function catalog with all SQLite built-in functions
-    /// available under the default [`DialectConfig`](crate::dialect::ffi::DialectConfig).
+    /// available under the default [`DialectConfig`](syntaqlite_parser::dialect::ffi::DialectConfig).
     #[cfg(feature = "sqlite")]
     pub fn new() -> Validator<'static> {
-        let dc = crate::dialect::ffi::DialectConfig::default();
+        let dc = syntaqlite_parser::dialect::ffi::DialectConfig::default();
         let functions: Vec<FunctionDef> = syntaqlite_parser::sqlite::available_functions(&dc)
             .into_iter()
             .flat_map(|info| expand_function_info(info))
@@ -256,7 +256,7 @@ impl Default for Validator<'static> {
 pub struct ValidatorBuilder<'d> {
     dialect: &'d crate::Dialect<'d>,
     functions: Vec<FunctionDef>,
-    dialect_config: Option<crate::dialect::ffi::DialectConfig>,
+    dialect_config: Option<syntaqlite_parser::dialect::ffi::DialectConfig>,
 }
 
 impl<'d> ValidatorBuilder<'d> {
@@ -271,7 +271,7 @@ impl<'d> ValidatorBuilder<'d> {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(mut self, config: crate::dialect::ffi::DialectConfig) -> Self {
+    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
         self.dialect_config = Some(config);
         self
     }

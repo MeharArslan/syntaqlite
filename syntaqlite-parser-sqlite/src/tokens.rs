@@ -395,3 +395,9 @@ impl From<TokenType> for u32 {
         t as u32
     }
 }
+
+impl syntaqlite_parser::dialect_traits::DialectTokenType for TokenType {
+    fn from_token_type(raw: u32) -> Option<Self> {
+        Self::from_raw(raw)
+    }
+}

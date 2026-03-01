@@ -11,6 +11,7 @@
 pub mod ast_traits;
 pub mod catalog;
 pub mod dialect;
+pub mod dialect_traits;
 pub mod nodes;
 pub mod parser;
 pub mod session;

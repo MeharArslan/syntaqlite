@@ -7,7 +7,8 @@ pub(crate) use syntaqlite_parser::nodes::NodeList;
 pub use syntaqlite_parser::nodes::{NodeId, SourceSpan};
 pub use syntaqlite_parser::parser::{Comment, CommentKind};
 pub use syntaqlite_parser::session::RawNodeReader;
-pub use syntaqlite_parser::typed_list::{FromArena, TypedList};
+use syntaqlite_parser::dialect_traits::DialectNodeType;
+use syntaqlite_parser::typed_list::TypedList;
 
 pub use syntaqlite_parser::ast_traits::*;
 
@@ -206,7 +207,7 @@ pub enum Select<'a> {
     Other(Node<'a>),
 }
 
-impl<'a> FromArena<'a> for Select<'a> {
+impl<'a> DialectNodeType<'a> for Select<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
@@ -228,7 +229,7 @@ pub enum InExprSource<'a> {
     Other(Node<'a>),
 }
 
-impl<'a> FromArena<'a> for InExprSource<'a> {
+impl<'a> DialectNodeType<'a> for InExprSource<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
@@ -264,7 +265,7 @@ pub enum Expr<'a> {
     Other(Node<'a>),
 }
 
-impl<'a> FromArena<'a> for Expr<'a> {
+impl<'a> DialectNodeType<'a> for Expr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
@@ -320,7 +321,7 @@ pub enum Stmt<'a> {
     Other(Node<'a>),
 }
 
-impl<'a> FromArena<'a> for Stmt<'a> {
+impl<'a> DialectNodeType<'a> for Stmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
@@ -362,7 +363,7 @@ pub enum TableSource<'a> {
     Other(Node<'a>),
 }
 
-impl<'a> FromArena<'a> for TableSource<'a> {
+impl<'a> DialectNodeType<'a> for TableSource<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
@@ -408,20 +409,20 @@ impl<'a> AggregateFunctionCall<'a> {
         self.raw.flags
     }
     pub fn args(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.args)
+        DialectNodeType::from_arena(self.reader, self.raw.args)
     }
     pub fn orderby(&self) -> Option<OrderByList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.orderby)
+        DialectNodeType::from_arena(self.reader, self.raw.orderby)
     }
     pub fn filter_clause(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.filter_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.filter_clause)
     }
     pub fn over_clause(&self) -> Option<WindowDef<'a>> {
-        FromArena::from_arena(self.reader, self.raw.over_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.over_clause)
     }
 }
 
-impl<'a> FromArena<'a> for AggregateFunctionCall<'a> {
+impl<'a> DialectNodeType<'a> for AggregateFunctionCall<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::AggregateFunctionCall>(id)?;
         Some(AggregateFunctionCall { raw, reader, id })
@@ -461,20 +462,20 @@ impl<'a> OrderedSetFunctionCall<'a> {
         self.raw.flags
     }
     pub fn args(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.args)
+        DialectNodeType::from_arena(self.reader, self.raw.args)
     }
     pub fn orderby_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.orderby_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.orderby_expr)
     }
     pub fn filter_clause(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.filter_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.filter_clause)
     }
     pub fn over_clause(&self) -> Option<WindowDef<'a>> {
-        FromArena::from_arena(self.reader, self.raw.over_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.over_clause)
     }
 }
 
-impl<'a> FromArena<'a> for OrderedSetFunctionCall<'a> {
+impl<'a> DialectNodeType<'a> for OrderedSetFunctionCall<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::OrderedSetFunctionCall>(id)?;
         Some(OrderedSetFunctionCall { raw, reader, id })
@@ -508,14 +509,14 @@ impl<'a> CastExpr<'a> {
         self.id
     }
     pub fn expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.expr)
+        DialectNodeType::from_arena(self.reader, self.raw.expr)
     }
     pub fn type_name(&self) -> &'a str {
         self.raw.type_name.as_str(self.reader.source())
     }
 }
 
-impl<'a> FromArena<'a> for CastExpr<'a> {
+impl<'a> DialectNodeType<'a> for CastExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CastExpr>(id)?;
         Some(CastExpr { raw, reader, id })
@@ -559,7 +560,7 @@ impl<'a> ColumnRef<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for ColumnRef<'a> {
+impl<'a> DialectNodeType<'a> for ColumnRef<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ColumnRef>(id)?;
         Some(ColumnRef { raw, reader, id })
@@ -596,14 +597,14 @@ impl<'a> CompoundSelect<'a> {
         self.raw.op
     }
     pub fn left(&self) -> Option<Select<'a>> {
-        FromArena::from_arena(self.reader, self.raw.left)
+        DialectNodeType::from_arena(self.reader, self.raw.left)
     }
     pub fn right(&self) -> Option<Select<'a>> {
-        FromArena::from_arena(self.reader, self.raw.right)
+        DialectNodeType::from_arena(self.reader, self.raw.right)
     }
 }
 
-impl<'a> FromArena<'a> for CompoundSelect<'a> {
+impl<'a> DialectNodeType<'a> for CompoundSelect<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CompoundSelect>(id)?;
         Some(CompoundSelect { raw, reader, id })
@@ -637,11 +638,11 @@ impl<'a> SubqueryExpr<'a> {
         self.id
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        FromArena::from_arena(self.reader, self.raw.select)
+        DialectNodeType::from_arena(self.reader, self.raw.select)
     }
 }
 
-impl<'a> FromArena<'a> for SubqueryExpr<'a> {
+impl<'a> DialectNodeType<'a> for SubqueryExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::SubqueryExpr>(id)?;
         Some(SubqueryExpr { raw, reader, id })
@@ -675,11 +676,11 @@ impl<'a> ExistsExpr<'a> {
         self.id
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        FromArena::from_arena(self.reader, self.raw.select)
+        DialectNodeType::from_arena(self.reader, self.raw.select)
     }
 }
 
-impl<'a> FromArena<'a> for ExistsExpr<'a> {
+impl<'a> DialectNodeType<'a> for ExistsExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ExistsExpr>(id)?;
         Some(ExistsExpr { raw, reader, id })
@@ -716,14 +717,14 @@ impl<'a> InExpr<'a> {
         self.raw.negated == crate::ffi::Bool::True
     }
     pub fn operand(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.operand)
+        DialectNodeType::from_arena(self.reader, self.raw.operand)
     }
     pub fn source(&self) -> Option<InExprSource<'a>> {
-        FromArena::from_arena(self.reader, self.raw.source)
+        DialectNodeType::from_arena(self.reader, self.raw.source)
     }
 }
 
-impl<'a> FromArena<'a> for InExpr<'a> {
+impl<'a> DialectNodeType<'a> for InExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::InExpr>(id)?;
         Some(InExpr { raw, reader, id })
@@ -760,14 +761,14 @@ impl<'a> IsExpr<'a> {
         self.raw.op
     }
     pub fn left(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.left)
+        DialectNodeType::from_arena(self.reader, self.raw.left)
     }
     pub fn right(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.right)
+        DialectNodeType::from_arena(self.reader, self.raw.right)
     }
 }
 
-impl<'a> FromArena<'a> for IsExpr<'a> {
+impl<'a> DialectNodeType<'a> for IsExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::IsExpr>(id)?;
         Some(IsExpr { raw, reader, id })
@@ -804,17 +805,17 @@ impl<'a> BetweenExpr<'a> {
         self.raw.negated == crate::ffi::Bool::True
     }
     pub fn operand(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.operand)
+        DialectNodeType::from_arena(self.reader, self.raw.operand)
     }
     pub fn low(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.low)
+        DialectNodeType::from_arena(self.reader, self.raw.low)
     }
     pub fn high(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.high)
+        DialectNodeType::from_arena(self.reader, self.raw.high)
     }
 }
 
-impl<'a> FromArena<'a> for BetweenExpr<'a> {
+impl<'a> DialectNodeType<'a> for BetweenExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::BetweenExpr>(id)?;
         Some(BetweenExpr { raw, reader, id })
@@ -851,17 +852,17 @@ impl<'a> LikeExpr<'a> {
         self.raw.negated == crate::ffi::Bool::True
     }
     pub fn operand(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.operand)
+        DialectNodeType::from_arena(self.reader, self.raw.operand)
     }
     pub fn pattern(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.pattern)
+        DialectNodeType::from_arena(self.reader, self.raw.pattern)
     }
     pub fn escape(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.escape)
+        DialectNodeType::from_arena(self.reader, self.raw.escape)
     }
 }
 
-impl<'a> FromArena<'a> for LikeExpr<'a> {
+impl<'a> DialectNodeType<'a> for LikeExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::LikeExpr>(id)?;
         Some(LikeExpr { raw, reader, id })
@@ -895,17 +896,17 @@ impl<'a> CaseExpr<'a> {
         self.id
     }
     pub fn operand(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.operand)
+        DialectNodeType::from_arena(self.reader, self.raw.operand)
     }
     pub fn else_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.else_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.else_expr)
     }
     pub fn whens(&self) -> Option<CaseWhenList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.whens)
+        DialectNodeType::from_arena(self.reader, self.raw.whens)
     }
 }
 
-impl<'a> FromArena<'a> for CaseExpr<'a> {
+impl<'a> DialectNodeType<'a> for CaseExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CaseExpr>(id)?;
         Some(CaseExpr { raw, reader, id })
@@ -939,14 +940,14 @@ impl<'a> CaseWhen<'a> {
         self.id
     }
     pub fn when_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.when_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.when_expr)
     }
     pub fn then_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.then_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.then_expr)
     }
 }
 
-impl<'a> FromArena<'a> for CaseWhen<'a> {
+impl<'a> DialectNodeType<'a> for CaseWhen<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CaseWhen>(id)?;
         Some(CaseWhen { raw, reader, id })
@@ -983,7 +984,7 @@ impl<'a> ForeignKeyClause<'a> {
         self.raw.ref_table.as_str(self.reader.source())
     }
     pub fn ref_columns(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.ref_columns)
+        DialectNodeType::from_arena(self.reader, self.raw.ref_columns)
     }
     pub fn on_delete(&self) -> ForeignKeyAction {
         self.raw.on_delete
@@ -996,7 +997,7 @@ impl<'a> ForeignKeyClause<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for ForeignKeyClause<'a> {
+impl<'a> DialectNodeType<'a> for ForeignKeyClause<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ForeignKeyClause>(id)?;
         Some(ForeignKeyClause { raw, reader, id })
@@ -1051,20 +1052,20 @@ impl<'a> ColumnConstraint<'a> {
         self.raw.generated_storage
     }
     pub fn default_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.default_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.default_expr)
     }
     pub fn check_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.check_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.check_expr)
     }
     pub fn generated_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.generated_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.generated_expr)
     }
     pub fn fk_clause(&self) -> Option<ForeignKeyClause<'a>> {
-        FromArena::from_arena(self.reader, self.raw.fk_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.fk_clause)
     }
 }
 
-impl<'a> FromArena<'a> for ColumnConstraint<'a> {
+impl<'a> DialectNodeType<'a> for ColumnConstraint<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ColumnConstraint>(id)?;
         Some(ColumnConstraint { raw, reader, id })
@@ -1104,11 +1105,11 @@ impl<'a> ColumnDef<'a> {
         self.raw.type_name.as_str(self.reader.source())
     }
     pub fn constraints(&self) -> Option<ColumnConstraintList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.constraints)
+        DialectNodeType::from_arena(self.reader, self.raw.constraints)
     }
 }
 
-impl<'a> FromArena<'a> for ColumnDef<'a> {
+impl<'a> DialectNodeType<'a> for ColumnDef<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ColumnDef>(id)?;
         Some(ColumnDef { raw, reader, id })
@@ -1154,20 +1155,20 @@ impl<'a> TableConstraint<'a> {
         self.raw.is_autoincrement == crate::ffi::Bool::True
     }
     pub fn pk_columns(&self) -> Option<OrderByList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.pk_columns)
+        DialectNodeType::from_arena(self.reader, self.raw.pk_columns)
     }
     pub fn fk_columns(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.fk_columns)
+        DialectNodeType::from_arena(self.reader, self.raw.fk_columns)
     }
     pub fn check_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.check_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.check_expr)
     }
     pub fn fk_clause(&self) -> Option<ForeignKeyClause<'a>> {
-        FromArena::from_arena(self.reader, self.raw.fk_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.fk_clause)
     }
 }
 
-impl<'a> FromArena<'a> for TableConstraint<'a> {
+impl<'a> DialectNodeType<'a> for TableConstraint<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::TableConstraint>(id)?;
         Some(TableConstraint { raw, reader, id })
@@ -1216,17 +1217,17 @@ impl<'a> CreateTableStmt<'a> {
         self.raw.flags
     }
     pub fn columns(&self) -> Option<ColumnDefList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.columns)
+        DialectNodeType::from_arena(self.reader, self.raw.columns)
     }
     pub fn table_constraints(&self) -> Option<TableConstraintList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.table_constraints)
+        DialectNodeType::from_arena(self.reader, self.raw.table_constraints)
     }
     pub fn as_select(&self) -> Option<Select<'a>> {
-        FromArena::from_arena(self.reader, self.raw.as_select)
+        DialectNodeType::from_arena(self.reader, self.raw.as_select)
     }
 }
 
-impl<'a> FromArena<'a> for CreateTableStmt<'a> {
+impl<'a> DialectNodeType<'a> for CreateTableStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CreateTableStmt>(id)?;
         Some(CreateTableStmt { raw, reader, id })
@@ -1266,14 +1267,14 @@ impl<'a> CteDefinition<'a> {
         self.raw.materialized
     }
     pub fn columns(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.columns)
+        DialectNodeType::from_arena(self.reader, self.raw.columns)
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        FromArena::from_arena(self.reader, self.raw.select)
+        DialectNodeType::from_arena(self.reader, self.raw.select)
     }
 }
 
-impl<'a> FromArena<'a> for CteDefinition<'a> {
+impl<'a> DialectNodeType<'a> for CteDefinition<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CteDefinition>(id)?;
         Some(CteDefinition { raw, reader, id })
@@ -1310,14 +1311,14 @@ impl<'a> WithClause<'a> {
         self.raw.recursive == crate::ffi::Bool::True
     }
     pub fn ctes(&self) -> Option<CteList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.ctes)
+        DialectNodeType::from_arena(self.reader, self.raw.ctes)
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        FromArena::from_arena(self.reader, self.raw.select)
+        DialectNodeType::from_arena(self.reader, self.raw.select)
     }
 }
 
-impl<'a> FromArena<'a> for WithClause<'a> {
+impl<'a> DialectNodeType<'a> for WithClause<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::WithClause>(id)?;
         Some(WithClause { raw, reader, id })
@@ -1351,20 +1352,20 @@ impl<'a> DeleteStmt<'a> {
         self.id
     }
     pub fn table(&self) -> Option<TableRef<'a>> {
-        FromArena::from_arena(self.reader, self.raw.table)
+        DialectNodeType::from_arena(self.reader, self.raw.table)
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.where_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.where_clause)
     }
     pub fn orderby(&self) -> Option<OrderByList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.orderby)
+        DialectNodeType::from_arena(self.reader, self.raw.orderby)
     }
     pub fn limit_clause(&self) -> Option<LimitClause<'a>> {
-        FromArena::from_arena(self.reader, self.raw.limit_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.limit_clause)
     }
 }
 
-impl<'a> FromArena<'a> for DeleteStmt<'a> {
+impl<'a> DialectNodeType<'a> for DeleteStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::DeleteStmt>(id)?;
         Some(DeleteStmt { raw, reader, id })
@@ -1401,14 +1402,14 @@ impl<'a> SetClause<'a> {
         self.raw.column.as_str(self.reader.source())
     }
     pub fn columns(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.columns)
+        DialectNodeType::from_arena(self.reader, self.raw.columns)
     }
     pub fn value(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.value)
+        DialectNodeType::from_arena(self.reader, self.raw.value)
     }
 }
 
-impl<'a> FromArena<'a> for SetClause<'a> {
+impl<'a> DialectNodeType<'a> for SetClause<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::SetClause>(id)?;
         Some(SetClause { raw, reader, id })
@@ -1445,26 +1446,26 @@ impl<'a> UpdateStmt<'a> {
         self.raw.conflict_action
     }
     pub fn table(&self) -> Option<TableRef<'a>> {
-        FromArena::from_arena(self.reader, self.raw.table)
+        DialectNodeType::from_arena(self.reader, self.raw.table)
     }
     pub fn setlist(&self) -> Option<SetClauseList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.setlist)
+        DialectNodeType::from_arena(self.reader, self.raw.setlist)
     }
     pub fn from_clause(&self) -> Option<TableSource<'a>> {
-        FromArena::from_arena(self.reader, self.raw.from_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.from_clause)
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.where_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.where_clause)
     }
     pub fn orderby(&self) -> Option<OrderByList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.orderby)
+        DialectNodeType::from_arena(self.reader, self.raw.orderby)
     }
     pub fn limit_clause(&self) -> Option<LimitClause<'a>> {
-        FromArena::from_arena(self.reader, self.raw.limit_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.limit_clause)
     }
 }
 
-impl<'a> FromArena<'a> for UpdateStmt<'a> {
+impl<'a> DialectNodeType<'a> for UpdateStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::UpdateStmt>(id)?;
         Some(UpdateStmt { raw, reader, id })
@@ -1501,17 +1502,17 @@ impl<'a> InsertStmt<'a> {
         self.raw.conflict_action
     }
     pub fn table(&self) -> Option<TableRef<'a>> {
-        FromArena::from_arena(self.reader, self.raw.table)
+        DialectNodeType::from_arena(self.reader, self.raw.table)
     }
     pub fn columns(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.columns)
+        DialectNodeType::from_arena(self.reader, self.raw.columns)
     }
     pub fn source(&self) -> Option<Select<'a>> {
-        FromArena::from_arena(self.reader, self.raw.source)
+        DialectNodeType::from_arena(self.reader, self.raw.source)
     }
 }
 
-impl<'a> FromArena<'a> for InsertStmt<'a> {
+impl<'a> DialectNodeType<'a> for InsertStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::InsertStmt>(id)?;
         Some(InsertStmt { raw, reader, id })
@@ -1548,14 +1549,14 @@ impl<'a> BinaryExpr<'a> {
         self.raw.op
     }
     pub fn left(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.left)
+        DialectNodeType::from_arena(self.reader, self.raw.left)
     }
     pub fn right(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.right)
+        DialectNodeType::from_arena(self.reader, self.raw.right)
     }
 }
 
-impl<'a> FromArena<'a> for BinaryExpr<'a> {
+impl<'a> DialectNodeType<'a> for BinaryExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::BinaryExpr>(id)?;
         Some(BinaryExpr { raw, reader, id })
@@ -1592,11 +1593,11 @@ impl<'a> UnaryExpr<'a> {
         self.raw.op
     }
     pub fn operand(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.operand)
+        DialectNodeType::from_arena(self.reader, self.raw.operand)
     }
 }
 
-impl<'a> FromArena<'a> for UnaryExpr<'a> {
+impl<'a> DialectNodeType<'a> for UnaryExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::UnaryExpr>(id)?;
         Some(UnaryExpr { raw, reader, id })
@@ -1637,7 +1638,7 @@ impl<'a> Literal<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for Literal<'a> {
+impl<'a> DialectNodeType<'a> for Literal<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::Literal>(id)?;
         Some(Literal { raw, reader, id })
@@ -1677,17 +1678,17 @@ impl<'a> FunctionCall<'a> {
         self.raw.flags
     }
     pub fn args(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.args)
+        DialectNodeType::from_arena(self.reader, self.raw.args)
     }
     pub fn filter_clause(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.filter_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.filter_clause)
     }
     pub fn over_clause(&self) -> Option<WindowDef<'a>> {
-        FromArena::from_arena(self.reader, self.raw.over_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.over_clause)
     }
 }
 
-impl<'a> FromArena<'a> for FunctionCall<'a> {
+impl<'a> DialectNodeType<'a> for FunctionCall<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::FunctionCall>(id)?;
         Some(FunctionCall { raw, reader, id })
@@ -1725,7 +1726,7 @@ impl<'a> Variable<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for Variable<'a> {
+impl<'a> DialectNodeType<'a> for Variable<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::Variable>(id)?;
         Some(Variable { raw, reader, id })
@@ -1759,14 +1760,14 @@ impl<'a> CollateExpr<'a> {
         self.id
     }
     pub fn expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.expr)
+        DialectNodeType::from_arena(self.reader, self.raw.expr)
     }
     pub fn collation(&self) -> &'a str {
         self.raw.collation.as_str(self.reader.source())
     }
 }
 
-impl<'a> FromArena<'a> for CollateExpr<'a> {
+impl<'a> DialectNodeType<'a> for CollateExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CollateExpr>(id)?;
         Some(CollateExpr { raw, reader, id })
@@ -1803,11 +1804,11 @@ impl<'a> RaiseExpr<'a> {
         self.raw.raise_type
     }
     pub fn error_message(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.error_message)
+        DialectNodeType::from_arena(self.reader, self.raw.error_message)
     }
 }
 
-impl<'a> FromArena<'a> for RaiseExpr<'a> {
+impl<'a> DialectNodeType<'a> for RaiseExpr<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::RaiseExpr>(id)?;
         Some(RaiseExpr { raw, reader, id })
@@ -1848,7 +1849,7 @@ impl<'a> QualifiedName<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for QualifiedName<'a> {
+impl<'a> DialectNodeType<'a> for QualifiedName<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::QualifiedName>(id)?;
         Some(QualifiedName { raw, reader, id })
@@ -1888,11 +1889,11 @@ impl<'a> DropStmt<'a> {
         self.raw.if_exists == crate::ffi::Bool::True
     }
     pub fn target(&self) -> Option<QualifiedName<'a>> {
-        FromArena::from_arena(self.reader, self.raw.target)
+        DialectNodeType::from_arena(self.reader, self.raw.target)
     }
 }
 
-impl<'a> FromArena<'a> for DropStmt<'a> {
+impl<'a> DialectNodeType<'a> for DropStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::DropStmt>(id)?;
         Some(DropStmt { raw, reader, id })
@@ -1929,7 +1930,7 @@ impl<'a> AlterTableStmt<'a> {
         self.raw.op
     }
     pub fn target(&self) -> Option<QualifiedName<'a>> {
-        FromArena::from_arena(self.reader, self.raw.target)
+        DialectNodeType::from_arena(self.reader, self.raw.target)
     }
     pub fn new_name(&self) -> &'a str {
         self.raw.new_name.as_str(self.reader.source())
@@ -1939,7 +1940,7 @@ impl<'a> AlterTableStmt<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for AlterTableStmt<'a> {
+impl<'a> DialectNodeType<'a> for AlterTableStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::AlterTableStmt>(id)?;
         Some(AlterTableStmt { raw, reader, id })
@@ -1981,7 +1982,7 @@ impl<'a> TransactionStmt<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for TransactionStmt<'a> {
+impl<'a> DialectNodeType<'a> for TransactionStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::TransactionStmt>(id)?;
         Some(TransactionStmt { raw, reader, id })
@@ -2022,7 +2023,7 @@ impl<'a> SavepointStmt<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for SavepointStmt<'a> {
+impl<'a> DialectNodeType<'a> for SavepointStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::SavepointStmt>(id)?;
         Some(SavepointStmt { raw, reader, id })
@@ -2062,11 +2063,11 @@ impl<'a> ResultColumn<'a> {
         self.raw.alias.as_str(self.reader.source())
     }
     pub fn expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.expr)
+        DialectNodeType::from_arena(self.reader, self.raw.expr)
     }
 }
 
-impl<'a> FromArena<'a> for ResultColumn<'a> {
+impl<'a> DialectNodeType<'a> for ResultColumn<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ResultColumn>(id)?;
         Some(ResultColumn { raw, reader, id })
@@ -2103,32 +2104,32 @@ impl<'a> SelectStmt<'a> {
         self.raw.flags
     }
     pub fn columns(&self) -> Option<ResultColumnList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.columns)
+        DialectNodeType::from_arena(self.reader, self.raw.columns)
     }
     pub fn from_clause(&self) -> Option<TableSource<'a>> {
-        FromArena::from_arena(self.reader, self.raw.from_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.from_clause)
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.where_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.where_clause)
     }
     pub fn groupby(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.groupby)
+        DialectNodeType::from_arena(self.reader, self.raw.groupby)
     }
     pub fn having(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.having)
+        DialectNodeType::from_arena(self.reader, self.raw.having)
     }
     pub fn orderby(&self) -> Option<OrderByList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.orderby)
+        DialectNodeType::from_arena(self.reader, self.raw.orderby)
     }
     pub fn limit_clause(&self) -> Option<LimitClause<'a>> {
-        FromArena::from_arena(self.reader, self.raw.limit_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.limit_clause)
     }
     pub fn window_clause(&self) -> Option<NamedWindowDefList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.window_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.window_clause)
     }
 }
 
-impl<'a> FromArena<'a> for SelectStmt<'a> {
+impl<'a> DialectNodeType<'a> for SelectStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::SelectStmt>(id)?;
         Some(SelectStmt { raw, reader, id })
@@ -2162,7 +2163,7 @@ impl<'a> OrderingTerm<'a> {
         self.id
     }
     pub fn expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.expr)
+        DialectNodeType::from_arena(self.reader, self.raw.expr)
     }
     pub fn sort_order(&self) -> SortOrder {
         self.raw.sort_order
@@ -2172,7 +2173,7 @@ impl<'a> OrderingTerm<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for OrderingTerm<'a> {
+impl<'a> DialectNodeType<'a> for OrderingTerm<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::OrderingTerm>(id)?;
         Some(OrderingTerm { raw, reader, id })
@@ -2206,14 +2207,14 @@ impl<'a> LimitClause<'a> {
         self.id
     }
     pub fn limit(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.limit)
+        DialectNodeType::from_arena(self.reader, self.raw.limit)
     }
     pub fn offset(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.offset)
+        DialectNodeType::from_arena(self.reader, self.raw.offset)
     }
 }
 
-impl<'a> FromArena<'a> for LimitClause<'a> {
+impl<'a> DialectNodeType<'a> for LimitClause<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::LimitClause>(id)?;
         Some(LimitClause { raw, reader, id })
@@ -2257,7 +2258,7 @@ impl<'a> TableRef<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for TableRef<'a> {
+impl<'a> DialectNodeType<'a> for TableRef<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::TableRef>(id)?;
         Some(TableRef { raw, reader, id })
@@ -2291,14 +2292,14 @@ impl<'a> SubqueryTableSource<'a> {
         self.id
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        FromArena::from_arena(self.reader, self.raw.select)
+        DialectNodeType::from_arena(self.reader, self.raw.select)
     }
     pub fn alias(&self) -> &'a str {
         self.raw.alias.as_str(self.reader.source())
     }
 }
 
-impl<'a> FromArena<'a> for SubqueryTableSource<'a> {
+impl<'a> DialectNodeType<'a> for SubqueryTableSource<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::SubqueryTableSource>(id)?;
         Some(SubqueryTableSource { raw, reader, id })
@@ -2335,20 +2336,20 @@ impl<'a> JoinClause<'a> {
         self.raw.join_type
     }
     pub fn left(&self) -> Option<TableSource<'a>> {
-        FromArena::from_arena(self.reader, self.raw.left)
+        DialectNodeType::from_arena(self.reader, self.raw.left)
     }
     pub fn right(&self) -> Option<TableSource<'a>> {
-        FromArena::from_arena(self.reader, self.raw.right)
+        DialectNodeType::from_arena(self.reader, self.raw.right)
     }
     pub fn on_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.on_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.on_expr)
     }
     pub fn using_columns(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.using_columns)
+        DialectNodeType::from_arena(self.reader, self.raw.using_columns)
     }
 }
 
-impl<'a> FromArena<'a> for JoinClause<'a> {
+impl<'a> DialectNodeType<'a> for JoinClause<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::JoinClause>(id)?;
         Some(JoinClause { raw, reader, id })
@@ -2382,14 +2383,14 @@ impl<'a> JoinPrefix<'a> {
         self.id
     }
     pub fn source(&self) -> Option<TableSource<'a>> {
-        FromArena::from_arena(self.reader, self.raw.source)
+        DialectNodeType::from_arena(self.reader, self.raw.source)
     }
     pub fn join_type(&self) -> JoinType {
         self.raw.join_type
     }
 }
 
-impl<'a> FromArena<'a> for JoinPrefix<'a> {
+impl<'a> DialectNodeType<'a> for JoinPrefix<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::JoinPrefix>(id)?;
         Some(JoinPrefix { raw, reader, id })
@@ -2426,11 +2427,11 @@ impl<'a> TriggerEvent<'a> {
         self.raw.event_type
     }
     pub fn columns(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.columns)
+        DialectNodeType::from_arena(self.reader, self.raw.columns)
     }
 }
 
-impl<'a> FromArena<'a> for TriggerEvent<'a> {
+impl<'a> DialectNodeType<'a> for TriggerEvent<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::TriggerEvent>(id)?;
         Some(TriggerEvent { raw, reader, id })
@@ -2479,20 +2480,20 @@ impl<'a> CreateTriggerStmt<'a> {
         self.raw.timing
     }
     pub fn event(&self) -> Option<TriggerEvent<'a>> {
-        FromArena::from_arena(self.reader, self.raw.event)
+        DialectNodeType::from_arena(self.reader, self.raw.event)
     }
     pub fn table(&self) -> Option<QualifiedName<'a>> {
-        FromArena::from_arena(self.reader, self.raw.table)
+        DialectNodeType::from_arena(self.reader, self.raw.table)
     }
     pub fn when_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.when_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.when_expr)
     }
     pub fn body(&self) -> Option<TriggerCmdList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.body)
+        DialectNodeType::from_arena(self.reader, self.raw.body)
     }
 }
 
-impl<'a> FromArena<'a> for CreateTriggerStmt<'a> {
+impl<'a> DialectNodeType<'a> for CreateTriggerStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CreateTriggerStmt>(id)?;
         Some(CreateTriggerStmt { raw, reader, id })
@@ -2542,7 +2543,7 @@ impl<'a> CreateVirtualTableStmt<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for CreateVirtualTableStmt<'a> {
+impl<'a> DialectNodeType<'a> for CreateVirtualTableStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CreateVirtualTableStmt>(id)?;
         Some(CreateVirtualTableStmt { raw, reader, id })
@@ -2589,7 +2590,7 @@ impl<'a> PragmaStmt<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for PragmaStmt<'a> {
+impl<'a> DialectNodeType<'a> for PragmaStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::PragmaStmt>(id)?;
         Some(PragmaStmt { raw, reader, id })
@@ -2633,7 +2634,7 @@ impl<'a> AnalyzeStmt<'a> {
     }
 }
 
-impl<'a> FromArena<'a> for AnalyzeStmt<'a> {
+impl<'a> DialectNodeType<'a> for AnalyzeStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::AnalyzeStmt>(id)?;
         Some(AnalyzeStmt { raw, reader, id })
@@ -2667,17 +2668,17 @@ impl<'a> AttachStmt<'a> {
         self.id
     }
     pub fn filename(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.filename)
+        DialectNodeType::from_arena(self.reader, self.raw.filename)
     }
     pub fn db_name(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.db_name)
+        DialectNodeType::from_arena(self.reader, self.raw.db_name)
     }
     pub fn key(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.key)
+        DialectNodeType::from_arena(self.reader, self.raw.key)
     }
 }
 
-impl<'a> FromArena<'a> for AttachStmt<'a> {
+impl<'a> DialectNodeType<'a> for AttachStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::AttachStmt>(id)?;
         Some(AttachStmt { raw, reader, id })
@@ -2711,11 +2712,11 @@ impl<'a> DetachStmt<'a> {
         self.id
     }
     pub fn db_name(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.db_name)
+        DialectNodeType::from_arena(self.reader, self.raw.db_name)
     }
 }
 
-impl<'a> FromArena<'a> for DetachStmt<'a> {
+impl<'a> DialectNodeType<'a> for DetachStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::DetachStmt>(id)?;
         Some(DetachStmt { raw, reader, id })
@@ -2752,11 +2753,11 @@ impl<'a> VacuumStmt<'a> {
         self.raw.schema.as_str(self.reader.source())
     }
     pub fn into_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.into_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.into_expr)
     }
 }
 
-impl<'a> FromArena<'a> for VacuumStmt<'a> {
+impl<'a> DialectNodeType<'a> for VacuumStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::VacuumStmt>(id)?;
         Some(VacuumStmt { raw, reader, id })
@@ -2793,11 +2794,11 @@ impl<'a> ExplainStmt<'a> {
         self.raw.explain_mode
     }
     pub fn stmt(&self) -> Option<Stmt<'a>> {
-        FromArena::from_arena(self.reader, self.raw.stmt)
+        DialectNodeType::from_arena(self.reader, self.raw.stmt)
     }
 }
 
-impl<'a> FromArena<'a> for ExplainStmt<'a> {
+impl<'a> DialectNodeType<'a> for ExplainStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ExplainStmt>(id)?;
         Some(ExplainStmt { raw, reader, id })
@@ -2846,14 +2847,14 @@ impl<'a> CreateIndexStmt<'a> {
         self.raw.if_not_exists == crate::ffi::Bool::True
     }
     pub fn columns(&self) -> Option<OrderByList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.columns)
+        DialectNodeType::from_arena(self.reader, self.raw.columns)
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.where_clause)
+        DialectNodeType::from_arena(self.reader, self.raw.where_clause)
     }
 }
 
-impl<'a> FromArena<'a> for CreateIndexStmt<'a> {
+impl<'a> DialectNodeType<'a> for CreateIndexStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CreateIndexStmt>(id)?;
         Some(CreateIndexStmt { raw, reader, id })
@@ -2899,14 +2900,14 @@ impl<'a> CreateViewStmt<'a> {
         self.raw.if_not_exists == crate::ffi::Bool::True
     }
     pub fn column_names(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.column_names)
+        DialectNodeType::from_arena(self.reader, self.raw.column_names)
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        FromArena::from_arena(self.reader, self.raw.select)
+        DialectNodeType::from_arena(self.reader, self.raw.select)
     }
 }
 
-impl<'a> FromArena<'a> for CreateViewStmt<'a> {
+impl<'a> DialectNodeType<'a> for CreateViewStmt<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CreateViewStmt>(id)?;
         Some(CreateViewStmt { raw, reader, id })
@@ -2940,11 +2941,11 @@ impl<'a> ValuesClause<'a> {
         self.id
     }
     pub fn rows(&self) -> Option<ValuesRowList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.rows)
+        DialectNodeType::from_arena(self.reader, self.raw.rows)
     }
 }
 
-impl<'a> FromArena<'a> for ValuesClause<'a> {
+impl<'a> DialectNodeType<'a> for ValuesClause<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ValuesClause>(id)?;
         Some(ValuesClause { raw, reader, id })
@@ -2981,11 +2982,11 @@ impl<'a> FrameBound<'a> {
         self.raw.bound_type
     }
     pub fn expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.expr)
+        DialectNodeType::from_arena(self.reader, self.raw.expr)
     }
 }
 
-impl<'a> FromArena<'a> for FrameBound<'a> {
+impl<'a> DialectNodeType<'a> for FrameBound<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::FrameBound>(id)?;
         Some(FrameBound { raw, reader, id })
@@ -3025,14 +3026,14 @@ impl<'a> FrameSpec<'a> {
         self.raw.exclude
     }
     pub fn start_bound(&self) -> Option<FrameBound<'a>> {
-        FromArena::from_arena(self.reader, self.raw.start_bound)
+        DialectNodeType::from_arena(self.reader, self.raw.start_bound)
     }
     pub fn end_bound(&self) -> Option<FrameBound<'a>> {
-        FromArena::from_arena(self.reader, self.raw.end_bound)
+        DialectNodeType::from_arena(self.reader, self.raw.end_bound)
     }
 }
 
-impl<'a> FromArena<'a> for FrameSpec<'a> {
+impl<'a> DialectNodeType<'a> for FrameSpec<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::FrameSpec>(id)?;
         Some(FrameSpec { raw, reader, id })
@@ -3069,17 +3070,17 @@ impl<'a> WindowDef<'a> {
         self.raw.base_window_name.as_str(self.reader.source())
     }
     pub fn partition_by(&self) -> Option<ExprList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.partition_by)
+        DialectNodeType::from_arena(self.reader, self.raw.partition_by)
     }
     pub fn orderby(&self) -> Option<OrderByList<'a>> {
-        FromArena::from_arena(self.reader, self.raw.orderby)
+        DialectNodeType::from_arena(self.reader, self.raw.orderby)
     }
     pub fn frame(&self) -> Option<FrameSpec<'a>> {
-        FromArena::from_arena(self.reader, self.raw.frame)
+        DialectNodeType::from_arena(self.reader, self.raw.frame)
     }
 }
 
-impl<'a> FromArena<'a> for WindowDef<'a> {
+impl<'a> DialectNodeType<'a> for WindowDef<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::WindowDef>(id)?;
         Some(WindowDef { raw, reader, id })
@@ -3116,11 +3117,11 @@ impl<'a> NamedWindowDef<'a> {
         self.raw.window_name.as_str(self.reader.source())
     }
     pub fn window_def(&self) -> Option<WindowDef<'a>> {
-        FromArena::from_arena(self.reader, self.raw.window_def)
+        DialectNodeType::from_arena(self.reader, self.raw.window_def)
     }
 }
 
-impl<'a> FromArena<'a> for NamedWindowDef<'a> {
+impl<'a> DialectNodeType<'a> for NamedWindowDef<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::NamedWindowDef>(id)?;
         Some(NamedWindowDef { raw, reader, id })
@@ -3154,17 +3155,17 @@ impl<'a> FilterOver<'a> {
         self.id
     }
     pub fn filter_expr(&self) -> Option<Expr<'a>> {
-        FromArena::from_arena(self.reader, self.raw.filter_expr)
+        DialectNodeType::from_arena(self.reader, self.raw.filter_expr)
     }
     pub fn over_def(&self) -> Option<WindowDef<'a>> {
-        FromArena::from_arena(self.reader, self.raw.over_def)
+        DialectNodeType::from_arena(self.reader, self.raw.over_def)
     }
     pub fn over_name(&self) -> &'a str {
         self.raw.over_name.as_str(self.reader.source())
     }
 }
 
-impl<'a> FromArena<'a> for FilterOver<'a> {
+impl<'a> DialectNodeType<'a> for FilterOver<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::FilterOver>(id)?;
         Some(FilterOver { raw, reader, id })
@@ -3835,7 +3836,7 @@ impl std::fmt::Display for Node<'_> {
     }
 }
 
-impl<'a> FromArena<'a> for Node<'a> {
+impl<'a> DialectNodeType<'a> for Node<'a> {
     fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         Node::resolve(reader, id)
     }

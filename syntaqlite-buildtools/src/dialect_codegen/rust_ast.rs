@@ -65,7 +65,7 @@ fn rust_view_accessor_body(field: &Field, ffi_path: &str) -> String {
     let fname = rust_field_name(&field.name);
     match field.storage {
         Storage::Index => {
-            format!("FromArena::from_arena(self.reader, self.raw.{})", fname)
+            format!("DialectNodeType::from_arena(self.reader, self.raw.{})", fname)
         }
         Storage::Inline => {
             let t = &field.type_name;
@@ -357,6 +357,13 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     w.line("t as u32");
     w.close_block("}");
     w.close_block("}");
+    w.newline();
+
+    w.open_block("impl syntaqlite_parser::dialect_traits::DialectTokenType for TokenType {");
+    w.open_block("fn from_token_type(raw: u32) -> Option<Self> {");
+    w.line("Self::from_raw(raw)");
+    w.close_block("}");
+    w.close_block("}");
 
     w.finish()
 }
@@ -450,7 +457,8 @@ impl AstModel<'_> {
         pub use {crate_prefix}::parser::ffi::{{Comment, CommentKind}};
         pub use {crate_prefix}::parser::nodes::{{NodeId, SourceSpan}};
         pub use {crate_prefix}::parser::session::RawNodeReader;
-        pub use {crate_prefix}::parser::typed_list::{{FromArena, TypedList}};
+        use {crate_prefix}::dialect_traits::DialectNodeType;
+        use {crate_prefix}::typed_list::TypedList;
     "
         ));
         w.newline();
@@ -487,7 +495,7 @@ impl AstModel<'_> {
             w.newline();
 
             // FromArena impl
-            w.line(&format!("impl<'a> FromArena<'a> for {}<'a> {{", abs_name));
+            w.line(&format!("impl<'a> DialectNodeType<'a> for {}<'a> {{", abs_name));
             w.indent();
             w.line("fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {");
             w.indent();
@@ -583,7 +591,7 @@ impl AstModel<'_> {
             w.newline();
 
             // FromArena impl — resolve from arena by NodeId (tag-checked, no unsafe)
-            w.line(&format!("impl<'a> FromArena<'a> for {}<'a> {{", name));
+            w.line(&format!("impl<'a> DialectNodeType<'a> for {}<'a> {{", name));
             w.indent();
             w.line("fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {");
             w.indent();
@@ -731,7 +739,7 @@ impl AstModel<'_> {
         // FromArena impl for Node
         w.lines(
             "
-        impl<'a> FromArena<'a> for Node<'a> {
+        impl<'a> DialectNodeType<'a> for Node<'a> {
             fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
                 Node::resolve(reader, id)
             }
@@ -953,7 +961,9 @@ impl AstModel<'_> {
             "
         #![allow(clippy::type_complexity)]
 
-        use crate::parser::{FromArena, NodeId, TypedList};
+        use crate::nodes::NodeId;
+        use crate::dialect_traits::DialectNodeType;
+        use crate::typed_list::TypedList;
     ",
         );
         w.newline();
@@ -1043,16 +1053,16 @@ impl AstModel<'_> {
         // ── AstTypes supertrait ──
         w.doc_comment("Bundle trait associating all AST types for a dialect.");
         w.open_block("pub trait AstTypes<'a>: 'a {");
-        w.line("type Node: NodeLike<'a, Ast = Self> + Copy + FromArena<'a>;");
+        w.line("type Node: NodeLike<'a, Ast = Self> + Copy + DialectNodeType<'a>;");
         for &(abs_name, _) in abstract_items {
             w.line(&format!(
-                "type {abs_name}: {abs_name}Like<'a, Ast = Self> + Copy + FromArena<'a>;"
+                "type {abs_name}: {abs_name}Like<'a, Ast = Self> + Copy + DialectNodeType<'a>;"
             ));
         }
         for node in self.nodes() {
             let name = node.name;
             w.line(&format!(
-                "type {name}: {name}View<'a, Ast = Self> + Copy + FromArena<'a>;"
+                "type {name}: {name}View<'a, Ast = Self> + Copy + DialectNodeType<'a>;"
             ));
         }
         w.close_block("}");
