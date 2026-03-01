@@ -4,7 +4,7 @@
 //! Parser and tokenizer FFI declarations.
 //!
 //! All `#[repr(C)]` types and `extern "C"` functions live in
-//! `syntaqlite_sys::parser` and are re-exported here for
+//! `syntaqlite_parser::parser` and are re-exported here for
 //! crate-internal use.
 
-pub use syntaqlite_sys::parser::*;
+pub use syntaqlite_parser::parser::*;

@@ -47,7 +47,7 @@ pub fn assemble(
     let get_token_name = format!("Synq{}GetToken", pascal_case(dialect));
     let output = CTransformer::new(&combined)
         .add_array_static("sqlite3CtypeMap")
-        .insert_after_includes(&format!("#include \"{pp}syntaqlite/dialect_config.h\""))
+        .insert_after_includes(&format!("#include \"{pp}syntaqlite/dialect.h\""))
         .replace_in_function(
             "sqlite3GetToken",
             "keywordCode((char*)",

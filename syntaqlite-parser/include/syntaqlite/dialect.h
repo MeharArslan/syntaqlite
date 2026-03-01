@@ -7,19 +7,46 @@
 //
 // Entry-point convention:
 //   const SyntaqliteDialect* syntaqlite_<name>_dialect(void);
+//
+// ── Custom include ──────────────────────────────────────────────────────
+//
+// Define SYNTAQLITE_CUSTOM_INCLUDE to a filename to have it included before
+// any macro decisions. This follows the SQLite SQLITE_CUSTOM_INCLUDE pattern.
+//
+//   cc -DSYNTAQLITE_CUSTOM_INCLUDE=synq_config.h -I. ...
+//
+// The config file can set SYNTAQLITE_SQLITE_VERSION, SYNTAQLITE_SQLITE_CFLAGS,
+// and individual SYNTAQLITE_CFLAG_* defines.
 
 #ifndef SYNTAQLITE_DIALECT_H
 #define SYNTAQLITE_DIALECT_H
+
+#ifdef SYNTAQLITE_CUSTOM_INCLUDE
+#define SYNQ_STRINGIFY_(x) #x
+#define SYNQ_STRINGIFY(x) SYNQ_STRINGIFY_(x)
+#include SYNQ_STRINGIFY(SYNTAQLITE_CUSTOM_INCLUDE)
+#endif
 
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 
-#include "syntaqlite/dialect_config.h"
+#include "syntaqlite/sqlite_cflags.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// ── Dialect configuration ────────────────────────────────────────────────
+
+typedef struct SyntaqliteDialectConfig {
+  int32_t
+      sqlite_version;  // Target version (e.g., 3035000). INT32_MAX = latest.
+  SyntaqliteCflags cflags;  // Active compile-time flags.
+} SyntaqliteDialectConfig;
+
+// Default config: latest version, no cflags.
+#define SYNQ_DIALECT_CONFIG_DEFAULT {INT32_MAX, SYNQ_CFLAGS_DEFAULT}
 
 // ── Types used by the parser vtable ─────────────────────────────────────
 

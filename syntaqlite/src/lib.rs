@@ -78,7 +78,7 @@
 //!   TypeScript template literals.
 //! - [`lsp`] — [`AnalysisHost`](lsp::AnalysisHost) for editor integrations.
 
-pub(crate) mod ast_traits;
+pub(crate) use syntaqlite_parser::ast_traits;
 pub mod parser;
 
 // ── Top-level API ─────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ pub use fmt::formatter::Formatter;
 pub(crate) mod catalog;
 
 pub mod dialect;
-pub(crate) use dialect::Dialect;
+pub use dialect::Dialect;
 
 // ── Validation ───────────────────────────────────────────────────────────
 
@@ -137,11 +137,11 @@ pub(crate) mod sqlite;
 /// accessors. The top-level enum is [`Stmt`](ast::Stmt).
 #[cfg(feature = "sqlite")]
 pub mod ast {
-    pub use crate::sqlite::ast::*;
+    pub use syntaqlite_parser_sqlite::ast::*;
 }
 
 #[cfg(feature = "sqlite")]
-pub use crate::sqlite::tokens::TokenType;
+pub use syntaqlite_parser_sqlite::tokens::TokenType;
 
 // ── Raw (dialect-agnostic) API ───────────────────────────────────────────
 //

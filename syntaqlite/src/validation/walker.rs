@@ -4,7 +4,8 @@
 use std::marker::PhantomData;
 
 use crate::ast_traits::*;
-use crate::parser::{FromArena, RawNodeReader, TypedList};
+use crate::parser::session::RawNodeReader;
+use crate::parser::typed_list::{FromArena, TypedList};
 
 use super::ValidationConfig;
 use super::checks::{check_column_ref, check_function_call, check_table_ref};

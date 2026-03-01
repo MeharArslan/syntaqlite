@@ -9,7 +9,7 @@ pub enum OutputBucket {
     Include,
     /// C source files for the dialect `csrc/` directory.
     DialectCsrc,
-    /// Generated Rust dialect modules (ast.rs).
+    /// Generated Rust dialect modules (ffi.rs, tokens.rs, ast.rs).
     /// For internal crate: `src/sqlite/`. For external crates: `src/`.
     RustDialectSrc,
     /// Files that belong under `src/sqlite/` (e.g. generated catalogs).
@@ -23,10 +23,6 @@ pub enum OutputBucket {
     /// Files that belong in the crate root (e.g. `build.rs`, `Cargo.toml`).
     /// Only used by external dialect crates.
     CrateRoot,
-    /// Low-level Rust files for `syntaqlite-sys/src/sqlite/` (ffi.rs, tokens.rs).
-    /// These are the raw C-adjacent types; they live in the sys crate so that
-    /// syntaqlite can re-export them without circular dependencies.
-    RustParserSysSqliteSrc,
 }
 
 #[derive(Debug, Clone)]

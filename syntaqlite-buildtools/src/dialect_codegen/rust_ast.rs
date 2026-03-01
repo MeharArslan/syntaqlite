@@ -34,28 +34,6 @@ fn rust_ffi_field_type(
     }
 }
 
-/// Map a field to its Rust type name for a self-contained ffi.rs (no `super::ast::` prefix).
-///
-/// Used when `pub_visibility = true` (sys crate), where enum/flags types are defined
-/// inline in the same file rather than referenced via `super::ast`.
-fn rust_ffi_field_type_bare(
-    field: &Field,
-    _enum_names: &HashSet<&str>,
-    _flags_names: &HashSet<&str>,
-) -> String {
-    match field.storage {
-        Storage::Index => "NodeId".into(),
-        Storage::Inline => {
-            let t = &field.type_name;
-            if t == "SyntaqliteSourceSpan" {
-                "SourceSpan".into()
-            } else {
-                t.clone() // Bool, enums, flags — all defined inline in this file
-            }
-        }
-    }
-}
-
 /// Map a field to its ergonomic return type for view struct accessors.
 fn rust_view_return_type(
     field: &Field,
@@ -390,15 +368,8 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
 ///
 /// `crate_prefix` controls import paths: `"crate"` for the internal syntaqlite
 /// crate, `"syntaqlite"` for external dialect crates.
-///
-/// `pub_visibility` controls struct/field visibility and whether enum/flag types
-/// are emitted inline:
-/// - `true` (sys crate): emit `pub struct`, `pub enum Bool`, and inline all enum/flag
-///   definitions so the file is self-contained (no `super::ast::` references).
-/// - `false` (internal or external dialect crate): emit `pub(crate)` structs/enums
-///   and reference enum/flag types via `super::ast::`.
 impl AstModel<'_> {
-    pub fn generate_rust_ffi_nodes(&self, crate_prefix: &str, pub_visibility: bool) -> String {
+    pub fn generate_rust_ffi_nodes(&self, crate_prefix: &str) -> String {
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
 
@@ -413,31 +384,14 @@ impl AstModel<'_> {
         ));
         w.newline();
 
-        let vis = if pub_visibility { "pub" } else { "pub(crate)" };
-
         // Bool enum
         w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
         w.line("#[repr(u32)]");
-        w.open_block(&format!("{vis} enum Bool {{"));
+        w.open_block("pub(crate) enum Bool {");
         w.line("False = 0,");
         w.line("True = 1,");
         w.close_block("}");
         w.newline();
-
-        if pub_visibility {
-            // Emit all value enums and flags inline so ffi.rs is self-contained.
-            // This avoids `super::ast::` references that would create circular deps
-            // when ffi.rs lives in the sys crate.
-            for item in self.enums() {
-                if item.name == "Bool" {
-                    continue;
-                }
-                emit_rust_value_enum(&mut w, item.name, item.variants);
-            }
-            for item in self.flags() {
-                emit_rust_flags_type(&mut w, item.name, item.flags);
-            }
-        }
 
         // Node structs with ArenaNode impls
         emit_rust_node_structs(
@@ -445,13 +399,9 @@ impl AstModel<'_> {
             self,
             enum_names,
             flags_names,
-            vis,
-            vis,
-            if pub_visibility {
-                rust_ffi_field_type_bare
-            } else {
-                rust_ffi_field_type
-            },
+            "pub(crate)",
+            "pub(crate)",
+            rust_ffi_field_type,
         );
 
         // ArenaNode impls — declare tag constant for each node struct
@@ -987,13 +937,8 @@ fn trait_field_return_type(
 ///
 /// This module is always compiled (no feature gate) and lives in the syntaqlite crate.
 /// Dialect crates import traits from `syntaqlite::ast_traits`.
-///
-/// `ffi_reexport_path`: when `Some(path)`, re-export enum/flags types from the given
-/// path (e.g. `"syntaqlite_sys::sqlite::ffi"`) instead of defining them inline.
-/// This is used for the internal syntaqlite crate where the types are defined in the
-/// sys crate's `ffi.rs` and re-exported here to avoid duplication.
 impl AstModel<'_> {
-    pub fn generate_ast_traits(&self, ffi_reexport_path: Option<&str>) -> String {
+    pub fn generate_ast_traits(&self) -> String {
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
         let node_names = self.node_names();
@@ -1014,29 +959,14 @@ impl AstModel<'_> {
         w.newline();
 
         // ── Shared value enums and flags ──
-        if let Some(path) = ffi_reexport_path {
-            // Re-export from the sys crate's ffi.rs instead of defining inline.
-            for item in self.enums() {
-                if item.name == "Bool" {
-                    continue;
-                }
-                w.line(&format!("pub use {}::{};", path, item.name));
+        for item in self.enums() {
+            if item.name == "Bool" {
+                continue;
             }
-            for item in self.flags() {
-                w.line(&format!("pub use {}::{};", path, item.name));
-            }
-            w.newline();
-        } else {
-            // Define enums and flags inline (external dialect crates never generate ast_traits).
-            for item in self.enums() {
-                if item.name == "Bool" {
-                    continue;
-                }
-                emit_rust_value_enum(&mut w, item.name, item.variants);
-            }
-            for item in self.flags() {
-                emit_rust_flags_type(&mut w, item.name, item.flags);
-            }
+            emit_rust_value_enum(&mut w, item.name, item.variants);
+        }
+        for item in self.flags() {
+            emit_rust_flags_type(&mut w, item.name, item.flags);
         }
 
         // ── NodeLike trait ──

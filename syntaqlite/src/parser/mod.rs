@@ -17,15 +17,3 @@ pub(crate) mod tokenizer;
 pub(crate) mod typed_list;
 
 pub mod typed;
-
-// ── Crate-internal convenience re-exports ────────────────────────────────
-//
-// These keep internal `use crate::parser::Foo` paths working without
-// exposing the types as `syntaqlite::parser::Foo` to downstream users.
-
-pub(crate) use ffi::{Comment, CommentKind};
-pub(crate) use nodes::{ArenaNode, FieldVal, Fields, NodeId, SourceSpan};
-pub(crate) use session::{NodeRef, ParseError, RawNodeReader, RawParser};
-pub(crate) use token_parser::RawIncrementalParser;
-pub(crate) use tokenizer::RawTokenizer;
-pub(crate) use typed_list::{FromArena, TypedList};

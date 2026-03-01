@@ -571,7 +571,7 @@ pub fn generate_tokenize_h(dialect: &str, includes: &DialectCIncludes<'_>) -> St
     w.file_header();
     w.header_guard_start(&guard);
     w.include_local(&format!("{pp}syntaqlite_dialect/sqlite_compat.h"));
-    w.include_local(&format!("{pp}syntaqlite/dialect_config.h"));
+    w.include_local(&format!("{pp}syntaqlite/dialect.h"));
     w.newline();
     w.line(&format!(
         "i64 Synq{pascal}GetToken(const SyntaqliteDialectConfig* config, const unsigned char* z, int* tokenType);"

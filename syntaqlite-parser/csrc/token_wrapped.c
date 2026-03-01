@@ -10,7 +10,8 @@
 #include "csrc/token_wrapped.h"
 #include "csrc/dialect_dispatch.h"
 #include "syntaqlite/dialect.h"
-#include "syntaqlite_sqlite/sqlite_tokens.h"
+#include "syntaqlite_dialect/dialect_macros.h"
+#include "syntaqlite/sqlite_tokens.h"
 
 int64_t SynqSqliteGetTokenVersionWrapped(const SyntaqliteDialect* d,
                                          const SyntaqliteDialectConfig* config,

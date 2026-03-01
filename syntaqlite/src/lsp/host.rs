@@ -7,8 +7,10 @@ use crate::dialect::Dialect;
 use crate::dialect::TokenCategory;
 use crate::fmt::FormatConfig;
 use crate::fmt::formatter::Formatter;
-use crate::parser::ParseError;
-use crate::parser::{RawIncrementalParser, RawParser, RawTokenizer};
+use crate::parser::session::ParseError;
+use crate::parser::session::RawParser;
+use crate::parser::token_parser::RawIncrementalParser;
+use crate::parser::tokenizer::RawTokenizer;
 
 use crate::lsp::SemanticToken;
 use crate::validation::types::{Diagnostic, Severity};
@@ -169,7 +171,7 @@ impl<'d> AnalysisHost<'d> {
         uri: &str,
         config: &crate::validation::ValidationConfig,
     ) -> Vec<Diagnostic> {
-        self.validate_dialect::<crate::sqlite::ast::SqliteAst>(uri, config)
+        self.validate_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(uri, config)
     }
 
     /// Run parse + semantic validation and return all diagnostics combined.
@@ -451,7 +453,9 @@ impl<'d> AnalysisHost<'d> {
 
         let mut expects_identifier = false;
         for &tok in &expected_set {
-            if self.dialect.token_category(tok) == TokenCategory::Identifier {
+            if TokenCategory::from_u8(self.dialect.token_category_raw(tok))
+                == TokenCategory::Identifier
+            {
                 expects_identifier = true;
                 break;
             }
@@ -497,7 +501,7 @@ impl<'d> AnalysisHost<'d> {
 /// Convert the SQLite function catalog into `FunctionDef` values filtered by config.
 #[cfg(feature = "sqlite")]
 fn catalog_to_function_defs(config: &crate::dialect::ffi::DialectConfig) -> Vec<FunctionDef> {
-    crate::sqlite::functions::available_functions(config)
+    syntaqlite_parser::sqlite::functions::available_functions(config)
         .into_iter()
         .flat_map(|info| crate::validation::expand_function_info(info))
         .collect()
@@ -524,7 +528,7 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
     let mut semantic_tokens = Vec::new();
 
     for tp in cursor.state().tokens() {
-        let cat = dialect.classify_token(tp.type_, tp.flags);
+        let cat = TokenCategory::from_u8(dialect.classify_token_raw(tp.type_, tp.flags));
         if cat == TokenCategory::Other {
             continue;
         }
@@ -671,8 +675,8 @@ impl std::error::Error for FormatError {}
 #[cfg(feature = "sqlite")]
 mod tests {
     use super::AnalysisHost;
-    use crate::parser::RawParser;
-    use crate::sqlite::tokens::TokenType;
+    use crate::parser::session::RawParser;
+    use syntaqlite_parser_sqlite::tokens::TokenType;
     use crate::validation::SessionContext;
     use crate::validation::types::FunctionDef;
 

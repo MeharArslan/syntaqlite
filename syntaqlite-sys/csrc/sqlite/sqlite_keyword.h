@@ -12,11 +12,9 @@
 #ifndef SYNTAQLITE_SQLITE_KEYWORD_H
 #define SYNTAQLITE_SQLITE_KEYWORD_H
 
-#include "syntaqlite/dialect_config.h"
 
-int synq_sqlite3_keywordCode(const SyntaqliteDialectConfig* config,
-                             const char* z,
-                             int n,
-                             int* pType);
+#include "syntaqlite/dialect.h"
+
+int synq_sqlite3_keywordCode(const SyntaqliteDialectConfig *config, const char* z, int n, int* pType);
 
 #endif  // SYNTAQLITE_SQLITE_KEYWORD_H

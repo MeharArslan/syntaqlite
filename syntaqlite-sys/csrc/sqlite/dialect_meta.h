@@ -16,13 +16,35 @@ static const char* const display_bool[] = {
 };
 
 static const char* const display_literal_type[] = {
-    "INTEGER", "FLOAT", "STRING", "BLOB", "NULL", "CURRENT", "QNUMBER",
+    "INTEGER",
+    "FLOAT",
+    "STRING",
+    "BLOB",
+    "NULL",
+    "CURRENT",
+    "QNUMBER",
 };
 
 static const char* const display_binary_op[] = {
-    "PLUS",  "MINUS",  "STAR",   "SLASH",  "REM", "LT", "GT",
-    "LE",    "GE",     "EQ",     "NE",     "AND", "OR", "BITAND",
-    "BITOR", "LSHIFT", "RSHIFT", "CONCAT", "PTR",
+    "PLUS",
+    "MINUS",
+    "STAR",
+    "SLASH",
+    "REM",
+    "LT",
+    "GT",
+    "LE",
+    "GE",
+    "EQ",
+    "NE",
+    "AND",
+    "OR",
+    "BITAND",
+    "BITOR",
+    "LSHIFT",
+    "RSHIFT",
+    "CONCAT",
+    "PTR",
 };
 
 static const char* const display_unary_op[] = {
@@ -40,11 +62,20 @@ static const char* const display_compound_op[] = {
 };
 
 static const char* const display_is_op[] = {
-    "IS", "IS_NOT", "ISNULL", "NOTNULL", "IS_NOT_DISTINCT", "IS_DISTINCT",
+    "IS",
+    "IS_NOT",
+    "ISNULL",
+    "NOTNULL",
+    "IS_NOT_DISTINCT",
+    "IS_DISTINCT",
 };
 
 static const char* const display_foreign_key_action[] = {
-    "NO_ACTION", "SET_NULL", "SET_DEFAULT", "CASCADE", "RESTRICT",
+    "NO_ACTION",
+    "SET_NULL",
+    "SET_DEFAULT",
+    "CASCADE",
+    "RESTRICT",
 };
 
 static const char* const display_generated_column_storage[] = {
@@ -53,8 +84,15 @@ static const char* const display_generated_column_storage[] = {
 };
 
 static const char* const display_column_constraint_kind[] = {
-    "DEFAULT",    "NOT_NULL", "PRIMARY_KEY", "UNIQUE", "CHECK",
-    "REFERENCES", "COLLATE",  "GENERATED",   "NULL",
+    "DEFAULT",
+    "NOT_NULL",
+    "PRIMARY_KEY",
+    "UNIQUE",
+    "CHECK",
+    "REFERENCES",
+    "COLLATE",
+    "GENERATED",
+    "NULL",
 };
 
 static const char* const display_table_constraint_kind[] = {
@@ -71,7 +109,12 @@ static const char* const display_materialized[] = {
 };
 
 static const char* const display_conflict_action[] = {
-    "DEFAULT", "ROLLBACK", "ABORT", "FAIL", "IGNORE", "REPLACE",
+    "DEFAULT",
+    "ROLLBACK",
+    "ABORT",
+    "FAIL",
+    "IGNORE",
+    "REPLACE",
 };
 
 static const char* const display_raise_type[] = {
@@ -125,8 +168,16 @@ static const char* const display_nulls_order[] = {
 };
 
 static const char* const display_join_type[] = {
-    "COMMA", "INNER",         "LEFT",         "RIGHT",         "FULL",
-    "CROSS", "NATURAL_INNER", "NATURAL_LEFT", "NATURAL_RIGHT", "NATURAL_FULL",
+    "COMMA",
+    "INNER",
+    "LEFT",
+    "RIGHT",
+    "FULL",
+    "CROSS",
+    "NATURAL_INNER",
+    "NATURAL_LEFT",
+    "NATURAL_RIGHT",
+    "NATURAL_FULL",
 };
 
 static const char* const display_trigger_timing[] = {
@@ -165,12 +216,19 @@ static const char* const display_frame_type[] = {
 };
 
 static const char* const display_frame_bound_type[] = {
-    "UNBOUNDED_PRECEDING", "EXPR_PRECEDING",      "CURRENT_ROW",
-    "EXPR_FOLLOWING",      "UNBOUNDED_FOLLOWING",
+    "UNBOUNDED_PRECEDING",
+    "EXPR_PRECEDING",
+    "CURRENT_ROW",
+    "EXPR_FOLLOWING",
+    "UNBOUNDED_FOLLOWING",
 };
 
 static const char* const display_frame_exclude[] = {
-    "NONE", "NO_OTHERS", "CURRENT_ROW", "GROUP", "TIES",
+    "NONE",
+    "NO_OTHERS",
+    "CURRENT_ROW",
+    "GROUP",
+    "TIES",
 };
 
 static const char* const display_aggregate_function_call_flags[] = {
@@ -196,683 +254,406 @@ static const char* const display_select_stmt_flags[] = {
 };
 
 static const SyntaqliteFieldMeta field_meta_aggregate_function_call[] = {
-    {offsetof(SyntaqliteAggregateFunctionCall, func_name),
-     SYNTAQLITE_FIELD_SPAN, "func_name", NULL, 0},
-    {offsetof(SyntaqliteAggregateFunctionCall, flags), SYNTAQLITE_FIELD_FLAGS,
-     "flags", display_aggregate_function_call_flags,
-     sizeof(display_aggregate_function_call_flags) /
-         sizeof(display_aggregate_function_call_flags[0])},
-    {offsetof(SyntaqliteAggregateFunctionCall, args), SYNTAQLITE_FIELD_NODE_ID,
-     "args", NULL, 0},
-    {offsetof(SyntaqliteAggregateFunctionCall, orderby),
-     SYNTAQLITE_FIELD_NODE_ID, "orderby", NULL, 0},
-    {offsetof(SyntaqliteAggregateFunctionCall, filter_clause),
-     SYNTAQLITE_FIELD_NODE_ID, "filter_clause", NULL, 0},
-    {offsetof(SyntaqliteAggregateFunctionCall, over_clause),
-     SYNTAQLITE_FIELD_NODE_ID, "over_clause", NULL, 0},
+    {offsetof(SyntaqliteAggregateFunctionCall, func_name), SYNTAQLITE_FIELD_SPAN, "func_name", NULL, 0},
+    {offsetof(SyntaqliteAggregateFunctionCall, flags), SYNTAQLITE_FIELD_FLAGS, "flags", display_aggregate_function_call_flags, sizeof(display_aggregate_function_call_flags) / sizeof(display_aggregate_function_call_flags[0])},
+    {offsetof(SyntaqliteAggregateFunctionCall, args), SYNTAQLITE_FIELD_NODE_ID, "args", NULL, 0},
+    {offsetof(SyntaqliteAggregateFunctionCall, orderby), SYNTAQLITE_FIELD_NODE_ID, "orderby", NULL, 0},
+    {offsetof(SyntaqliteAggregateFunctionCall, filter_clause), SYNTAQLITE_FIELD_NODE_ID, "filter_clause", NULL, 0},
+    {offsetof(SyntaqliteAggregateFunctionCall, over_clause), SYNTAQLITE_FIELD_NODE_ID, "over_clause", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_ordered_set_function_call[] = {
-    {offsetof(SyntaqliteOrderedSetFunctionCall, func_name),
-     SYNTAQLITE_FIELD_SPAN, "func_name", NULL, 0},
-    {offsetof(SyntaqliteOrderedSetFunctionCall, flags), SYNTAQLITE_FIELD_FLAGS,
-     "flags", display_aggregate_function_call_flags,
-     sizeof(display_aggregate_function_call_flags) /
-         sizeof(display_aggregate_function_call_flags[0])},
-    {offsetof(SyntaqliteOrderedSetFunctionCall, args), SYNTAQLITE_FIELD_NODE_ID,
-     "args", NULL, 0},
-    {offsetof(SyntaqliteOrderedSetFunctionCall, orderby_expr),
-     SYNTAQLITE_FIELD_NODE_ID, "orderby_expr", NULL, 0},
-    {offsetof(SyntaqliteOrderedSetFunctionCall, filter_clause),
-     SYNTAQLITE_FIELD_NODE_ID, "filter_clause", NULL, 0},
-    {offsetof(SyntaqliteOrderedSetFunctionCall, over_clause),
-     SYNTAQLITE_FIELD_NODE_ID, "over_clause", NULL, 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, func_name), SYNTAQLITE_FIELD_SPAN, "func_name", NULL, 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, flags), SYNTAQLITE_FIELD_FLAGS, "flags", display_aggregate_function_call_flags, sizeof(display_aggregate_function_call_flags) / sizeof(display_aggregate_function_call_flags[0])},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, args), SYNTAQLITE_FIELD_NODE_ID, "args", NULL, 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, orderby_expr), SYNTAQLITE_FIELD_NODE_ID, "orderby_expr", NULL, 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, filter_clause), SYNTAQLITE_FIELD_NODE_ID, "filter_clause", NULL, 0},
+    {offsetof(SyntaqliteOrderedSetFunctionCall, over_clause), SYNTAQLITE_FIELD_NODE_ID, "over_clause", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_cast_expr[] = {
-    {offsetof(SyntaqliteCastExpr, expr), SYNTAQLITE_FIELD_NODE_ID, "expr", NULL,
-     0},
-    {offsetof(SyntaqliteCastExpr, type_name), SYNTAQLITE_FIELD_SPAN,
-     "type_name", NULL, 0},
+    {offsetof(SyntaqliteCastExpr, expr), SYNTAQLITE_FIELD_NODE_ID, "expr", NULL, 0},
+    {offsetof(SyntaqliteCastExpr, type_name), SYNTAQLITE_FIELD_SPAN, "type_name", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_column_ref[] = {
-    {offsetof(SyntaqliteColumnRef, column), SYNTAQLITE_FIELD_SPAN, "column",
-     NULL, 0},
-    {offsetof(SyntaqliteColumnRef, table), SYNTAQLITE_FIELD_SPAN, "table", NULL,
-     0},
-    {offsetof(SyntaqliteColumnRef, schema), SYNTAQLITE_FIELD_SPAN, "schema",
-     NULL, 0},
+    {offsetof(SyntaqliteColumnRef, column), SYNTAQLITE_FIELD_SPAN, "column", NULL, 0},
+    {offsetof(SyntaqliteColumnRef, table), SYNTAQLITE_FIELD_SPAN, "table", NULL, 0},
+    {offsetof(SyntaqliteColumnRef, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_compound_select[] = {
-    {offsetof(SyntaqliteCompoundSelect, op), SYNTAQLITE_FIELD_ENUM, "op",
-     display_compound_op,
-     sizeof(display_compound_op) / sizeof(display_compound_op[0])},
-    {offsetof(SyntaqliteCompoundSelect, left), SYNTAQLITE_FIELD_NODE_ID, "left",
-     NULL, 0},
-    {offsetof(SyntaqliteCompoundSelect, right), SYNTAQLITE_FIELD_NODE_ID,
-     "right", NULL, 0},
+    {offsetof(SyntaqliteCompoundSelect, op), SYNTAQLITE_FIELD_ENUM, "op", display_compound_op, sizeof(display_compound_op) / sizeof(display_compound_op[0])},
+    {offsetof(SyntaqliteCompoundSelect, left), SYNTAQLITE_FIELD_NODE_ID, "left", NULL, 0},
+    {offsetof(SyntaqliteCompoundSelect, right), SYNTAQLITE_FIELD_NODE_ID, "right", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_subquery_expr[] = {
-    {offsetof(SyntaqliteSubqueryExpr, select), SYNTAQLITE_FIELD_NODE_ID,
-     "select", NULL, 0},
+    {offsetof(SyntaqliteSubqueryExpr, select), SYNTAQLITE_FIELD_NODE_ID, "select", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_exists_expr[] = {
-    {offsetof(SyntaqliteExistsExpr, select), SYNTAQLITE_FIELD_NODE_ID, "select",
-     NULL, 0},
+    {offsetof(SyntaqliteExistsExpr, select), SYNTAQLITE_FIELD_NODE_ID, "select", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_in_expr[] = {
-    {offsetof(SyntaqliteInExpr, negated), SYNTAQLITE_FIELD_BOOL, "negated",
-     display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteInExpr, operand), SYNTAQLITE_FIELD_NODE_ID, "operand",
-     NULL, 0},
-    {offsetof(SyntaqliteInExpr, source), SYNTAQLITE_FIELD_NODE_ID, "source",
-     NULL, 0},
+    {offsetof(SyntaqliteInExpr, negated), SYNTAQLITE_FIELD_BOOL, "negated", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteInExpr, operand), SYNTAQLITE_FIELD_NODE_ID, "operand", NULL, 0},
+    {offsetof(SyntaqliteInExpr, source), SYNTAQLITE_FIELD_NODE_ID, "source", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_is_expr[] = {
-    {offsetof(SyntaqliteIsExpr, op), SYNTAQLITE_FIELD_ENUM, "op", display_is_op,
-     sizeof(display_is_op) / sizeof(display_is_op[0])},
-    {offsetof(SyntaqliteIsExpr, left), SYNTAQLITE_FIELD_NODE_ID, "left", NULL,
-     0},
-    {offsetof(SyntaqliteIsExpr, right), SYNTAQLITE_FIELD_NODE_ID, "right", NULL,
-     0},
+    {offsetof(SyntaqliteIsExpr, op), SYNTAQLITE_FIELD_ENUM, "op", display_is_op, sizeof(display_is_op) / sizeof(display_is_op[0])},
+    {offsetof(SyntaqliteIsExpr, left), SYNTAQLITE_FIELD_NODE_ID, "left", NULL, 0},
+    {offsetof(SyntaqliteIsExpr, right), SYNTAQLITE_FIELD_NODE_ID, "right", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_between_expr[] = {
-    {offsetof(SyntaqliteBetweenExpr, negated), SYNTAQLITE_FIELD_BOOL, "negated",
-     display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteBetweenExpr, operand), SYNTAQLITE_FIELD_NODE_ID,
-     "operand", NULL, 0},
-    {offsetof(SyntaqliteBetweenExpr, low), SYNTAQLITE_FIELD_NODE_ID, "low",
-     NULL, 0},
-    {offsetof(SyntaqliteBetweenExpr, high), SYNTAQLITE_FIELD_NODE_ID, "high",
-     NULL, 0},
+    {offsetof(SyntaqliteBetweenExpr, negated), SYNTAQLITE_FIELD_BOOL, "negated", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteBetweenExpr, operand), SYNTAQLITE_FIELD_NODE_ID, "operand", NULL, 0},
+    {offsetof(SyntaqliteBetweenExpr, low), SYNTAQLITE_FIELD_NODE_ID, "low", NULL, 0},
+    {offsetof(SyntaqliteBetweenExpr, high), SYNTAQLITE_FIELD_NODE_ID, "high", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_like_expr[] = {
-    {offsetof(SyntaqliteLikeExpr, negated), SYNTAQLITE_FIELD_BOOL, "negated",
-     display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteLikeExpr, operand), SYNTAQLITE_FIELD_NODE_ID, "operand",
-     NULL, 0},
-    {offsetof(SyntaqliteLikeExpr, pattern), SYNTAQLITE_FIELD_NODE_ID, "pattern",
-     NULL, 0},
-    {offsetof(SyntaqliteLikeExpr, escape), SYNTAQLITE_FIELD_NODE_ID, "escape",
-     NULL, 0},
+    {offsetof(SyntaqliteLikeExpr, negated), SYNTAQLITE_FIELD_BOOL, "negated", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteLikeExpr, operand), SYNTAQLITE_FIELD_NODE_ID, "operand", NULL, 0},
+    {offsetof(SyntaqliteLikeExpr, pattern), SYNTAQLITE_FIELD_NODE_ID, "pattern", NULL, 0},
+    {offsetof(SyntaqliteLikeExpr, escape), SYNTAQLITE_FIELD_NODE_ID, "escape", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_case_expr[] = {
-    {offsetof(SyntaqliteCaseExpr, operand), SYNTAQLITE_FIELD_NODE_ID, "operand",
-     NULL, 0},
-    {offsetof(SyntaqliteCaseExpr, else_expr), SYNTAQLITE_FIELD_NODE_ID,
-     "else_expr", NULL, 0},
-    {offsetof(SyntaqliteCaseExpr, whens), SYNTAQLITE_FIELD_NODE_ID, "whens",
-     NULL, 0},
+    {offsetof(SyntaqliteCaseExpr, operand), SYNTAQLITE_FIELD_NODE_ID, "operand", NULL, 0},
+    {offsetof(SyntaqliteCaseExpr, else_expr), SYNTAQLITE_FIELD_NODE_ID, "else_expr", NULL, 0},
+    {offsetof(SyntaqliteCaseExpr, whens), SYNTAQLITE_FIELD_NODE_ID, "whens", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_case_when[] = {
-    {offsetof(SyntaqliteCaseWhen, when_expr), SYNTAQLITE_FIELD_NODE_ID,
-     "when_expr", NULL, 0},
-    {offsetof(SyntaqliteCaseWhen, then_expr), SYNTAQLITE_FIELD_NODE_ID,
-     "then_expr", NULL, 0},
+    {offsetof(SyntaqliteCaseWhen, when_expr), SYNTAQLITE_FIELD_NODE_ID, "when_expr", NULL, 0},
+    {offsetof(SyntaqliteCaseWhen, then_expr), SYNTAQLITE_FIELD_NODE_ID, "then_expr", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_foreign_key_clause[] = {
-    {offsetof(SyntaqliteForeignKeyClause, ref_table), SYNTAQLITE_FIELD_SPAN,
-     "ref_table", NULL, 0},
-    {offsetof(SyntaqliteForeignKeyClause, ref_columns),
-     SYNTAQLITE_FIELD_NODE_ID, "ref_columns", NULL, 0},
-    {offsetof(SyntaqliteForeignKeyClause, on_delete), SYNTAQLITE_FIELD_ENUM,
-     "on_delete", display_foreign_key_action,
-     sizeof(display_foreign_key_action) /
-         sizeof(display_foreign_key_action[0])},
-    {offsetof(SyntaqliteForeignKeyClause, on_update), SYNTAQLITE_FIELD_ENUM,
-     "on_update", display_foreign_key_action,
-     sizeof(display_foreign_key_action) /
-         sizeof(display_foreign_key_action[0])},
-    {offsetof(SyntaqliteForeignKeyClause, is_deferred), SYNTAQLITE_FIELD_BOOL,
-     "is_deferred", display_bool,
-     sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteForeignKeyClause, ref_table), SYNTAQLITE_FIELD_SPAN, "ref_table", NULL, 0},
+    {offsetof(SyntaqliteForeignKeyClause, ref_columns), SYNTAQLITE_FIELD_NODE_ID, "ref_columns", NULL, 0},
+    {offsetof(SyntaqliteForeignKeyClause, on_delete), SYNTAQLITE_FIELD_ENUM, "on_delete", display_foreign_key_action, sizeof(display_foreign_key_action) / sizeof(display_foreign_key_action[0])},
+    {offsetof(SyntaqliteForeignKeyClause, on_update), SYNTAQLITE_FIELD_ENUM, "on_update", display_foreign_key_action, sizeof(display_foreign_key_action) / sizeof(display_foreign_key_action[0])},
+    {offsetof(SyntaqliteForeignKeyClause, is_deferred), SYNTAQLITE_FIELD_BOOL, "is_deferred", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
 };
 
 static const SyntaqliteFieldMeta field_meta_column_constraint[] = {
-    {offsetof(SyntaqliteColumnConstraint, kind), SYNTAQLITE_FIELD_ENUM, "kind",
-     display_column_constraint_kind,
-     sizeof(display_column_constraint_kind) /
-         sizeof(display_column_constraint_kind[0])},
-    {offsetof(SyntaqliteColumnConstraint, constraint_name),
-     SYNTAQLITE_FIELD_SPAN, "constraint_name", NULL, 0},
-    {offsetof(SyntaqliteColumnConstraint, onconf), SYNTAQLITE_FIELD_ENUM,
-     "onconf", display_conflict_action,
-     sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
-    {offsetof(SyntaqliteColumnConstraint, sort_order), SYNTAQLITE_FIELD_ENUM,
-     "sort_order", display_sort_order,
-     sizeof(display_sort_order) / sizeof(display_sort_order[0])},
-    {offsetof(SyntaqliteColumnConstraint, is_autoincrement),
-     SYNTAQLITE_FIELD_BOOL, "is_autoincrement", display_bool,
-     sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteColumnConstraint, collation_name),
-     SYNTAQLITE_FIELD_SPAN, "collation_name", NULL, 0},
-    {offsetof(SyntaqliteColumnConstraint, generated_storage),
-     SYNTAQLITE_FIELD_ENUM, "generated_storage",
-     display_generated_column_storage,
-     sizeof(display_generated_column_storage) /
-         sizeof(display_generated_column_storage[0])},
-    {offsetof(SyntaqliteColumnConstraint, default_expr),
-     SYNTAQLITE_FIELD_NODE_ID, "default_expr", NULL, 0},
-    {offsetof(SyntaqliteColumnConstraint, check_expr), SYNTAQLITE_FIELD_NODE_ID,
-     "check_expr", NULL, 0},
-    {offsetof(SyntaqliteColumnConstraint, generated_expr),
-     SYNTAQLITE_FIELD_NODE_ID, "generated_expr", NULL, 0},
-    {offsetof(SyntaqliteColumnConstraint, fk_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "fk_clause", NULL, 0},
+    {offsetof(SyntaqliteColumnConstraint, kind), SYNTAQLITE_FIELD_ENUM, "kind", display_column_constraint_kind, sizeof(display_column_constraint_kind) / sizeof(display_column_constraint_kind[0])},
+    {offsetof(SyntaqliteColumnConstraint, constraint_name), SYNTAQLITE_FIELD_SPAN, "constraint_name", NULL, 0},
+    {offsetof(SyntaqliteColumnConstraint, onconf), SYNTAQLITE_FIELD_ENUM, "onconf", display_conflict_action, sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
+    {offsetof(SyntaqliteColumnConstraint, sort_order), SYNTAQLITE_FIELD_ENUM, "sort_order", display_sort_order, sizeof(display_sort_order) / sizeof(display_sort_order[0])},
+    {offsetof(SyntaqliteColumnConstraint, is_autoincrement), SYNTAQLITE_FIELD_BOOL, "is_autoincrement", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteColumnConstraint, collation_name), SYNTAQLITE_FIELD_SPAN, "collation_name", NULL, 0},
+    {offsetof(SyntaqliteColumnConstraint, generated_storage), SYNTAQLITE_FIELD_ENUM, "generated_storage", display_generated_column_storage, sizeof(display_generated_column_storage) / sizeof(display_generated_column_storage[0])},
+    {offsetof(SyntaqliteColumnConstraint, default_expr), SYNTAQLITE_FIELD_NODE_ID, "default_expr", NULL, 0},
+    {offsetof(SyntaqliteColumnConstraint, check_expr), SYNTAQLITE_FIELD_NODE_ID, "check_expr", NULL, 0},
+    {offsetof(SyntaqliteColumnConstraint, generated_expr), SYNTAQLITE_FIELD_NODE_ID, "generated_expr", NULL, 0},
+    {offsetof(SyntaqliteColumnConstraint, fk_clause), SYNTAQLITE_FIELD_NODE_ID, "fk_clause", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_column_def[] = {
-    {offsetof(SyntaqliteColumnDef, column_name), SYNTAQLITE_FIELD_SPAN,
-     "column_name", NULL, 0},
-    {offsetof(SyntaqliteColumnDef, type_name), SYNTAQLITE_FIELD_SPAN,
-     "type_name", NULL, 0},
-    {offsetof(SyntaqliteColumnDef, constraints), SYNTAQLITE_FIELD_NODE_ID,
-     "constraints", NULL, 0},
+    {offsetof(SyntaqliteColumnDef, column_name), SYNTAQLITE_FIELD_SPAN, "column_name", NULL, 0},
+    {offsetof(SyntaqliteColumnDef, type_name), SYNTAQLITE_FIELD_SPAN, "type_name", NULL, 0},
+    {offsetof(SyntaqliteColumnDef, constraints), SYNTAQLITE_FIELD_NODE_ID, "constraints", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_table_constraint[] = {
-    {offsetof(SyntaqliteTableConstraint, kind), SYNTAQLITE_FIELD_ENUM, "kind",
-     display_table_constraint_kind,
-     sizeof(display_table_constraint_kind) /
-         sizeof(display_table_constraint_kind[0])},
-    {offsetof(SyntaqliteTableConstraint, constraint_name),
-     SYNTAQLITE_FIELD_SPAN, "constraint_name", NULL, 0},
-    {offsetof(SyntaqliteTableConstraint, onconf), SYNTAQLITE_FIELD_ENUM,
-     "onconf", display_conflict_action,
-     sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
-    {offsetof(SyntaqliteTableConstraint, is_autoincrement),
-     SYNTAQLITE_FIELD_BOOL, "is_autoincrement", display_bool,
-     sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteTableConstraint, pk_columns), SYNTAQLITE_FIELD_NODE_ID,
-     "pk_columns", NULL, 0},
-    {offsetof(SyntaqliteTableConstraint, fk_columns), SYNTAQLITE_FIELD_NODE_ID,
-     "fk_columns", NULL, 0},
-    {offsetof(SyntaqliteTableConstraint, check_expr), SYNTAQLITE_FIELD_NODE_ID,
-     "check_expr", NULL, 0},
-    {offsetof(SyntaqliteTableConstraint, fk_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "fk_clause", NULL, 0},
+    {offsetof(SyntaqliteTableConstraint, kind), SYNTAQLITE_FIELD_ENUM, "kind", display_table_constraint_kind, sizeof(display_table_constraint_kind) / sizeof(display_table_constraint_kind[0])},
+    {offsetof(SyntaqliteTableConstraint, constraint_name), SYNTAQLITE_FIELD_SPAN, "constraint_name", NULL, 0},
+    {offsetof(SyntaqliteTableConstraint, onconf), SYNTAQLITE_FIELD_ENUM, "onconf", display_conflict_action, sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
+    {offsetof(SyntaqliteTableConstraint, is_autoincrement), SYNTAQLITE_FIELD_BOOL, "is_autoincrement", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteTableConstraint, pk_columns), SYNTAQLITE_FIELD_NODE_ID, "pk_columns", NULL, 0},
+    {offsetof(SyntaqliteTableConstraint, fk_columns), SYNTAQLITE_FIELD_NODE_ID, "fk_columns", NULL, 0},
+    {offsetof(SyntaqliteTableConstraint, check_expr), SYNTAQLITE_FIELD_NODE_ID, "check_expr", NULL, 0},
+    {offsetof(SyntaqliteTableConstraint, fk_clause), SYNTAQLITE_FIELD_NODE_ID, "fk_clause", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_create_table_stmt[] = {
-    {offsetof(SyntaqliteCreateTableStmt, table_name), SYNTAQLITE_FIELD_SPAN,
-     "table_name", NULL, 0},
-    {offsetof(SyntaqliteCreateTableStmt, schema), SYNTAQLITE_FIELD_SPAN,
-     "schema", NULL, 0},
-    {offsetof(SyntaqliteCreateTableStmt, is_temp), SYNTAQLITE_FIELD_BOOL,
-     "is_temp", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteCreateTableStmt, if_not_exists), SYNTAQLITE_FIELD_BOOL,
-     "if_not_exists", display_bool,
-     sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteCreateTableStmt, flags), SYNTAQLITE_FIELD_FLAGS,
-     "flags", display_create_table_stmt_flags,
-     sizeof(display_create_table_stmt_flags) /
-         sizeof(display_create_table_stmt_flags[0])},
-    {offsetof(SyntaqliteCreateTableStmt, columns), SYNTAQLITE_FIELD_NODE_ID,
-     "columns", NULL, 0},
-    {offsetof(SyntaqliteCreateTableStmt, table_constraints),
-     SYNTAQLITE_FIELD_NODE_ID, "table_constraints", NULL, 0},
-    {offsetof(SyntaqliteCreateTableStmt, as_select), SYNTAQLITE_FIELD_NODE_ID,
-     "as_select", NULL, 0},
+    {offsetof(SyntaqliteCreateTableStmt, table_name), SYNTAQLITE_FIELD_SPAN, "table_name", NULL, 0},
+    {offsetof(SyntaqliteCreateTableStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
+    {offsetof(SyntaqliteCreateTableStmt, is_temp), SYNTAQLITE_FIELD_BOOL, "is_temp", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteCreateTableStmt, if_not_exists), SYNTAQLITE_FIELD_BOOL, "if_not_exists", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteCreateTableStmt, flags), SYNTAQLITE_FIELD_FLAGS, "flags", display_create_table_stmt_flags, sizeof(display_create_table_stmt_flags) / sizeof(display_create_table_stmt_flags[0])},
+    {offsetof(SyntaqliteCreateTableStmt, columns), SYNTAQLITE_FIELD_NODE_ID, "columns", NULL, 0},
+    {offsetof(SyntaqliteCreateTableStmt, table_constraints), SYNTAQLITE_FIELD_NODE_ID, "table_constraints", NULL, 0},
+    {offsetof(SyntaqliteCreateTableStmt, as_select), SYNTAQLITE_FIELD_NODE_ID, "as_select", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_cte_definition[] = {
-    {offsetof(SyntaqliteCteDefinition, cte_name), SYNTAQLITE_FIELD_SPAN,
-     "cte_name", NULL, 0},
-    {offsetof(SyntaqliteCteDefinition, materialized), SYNTAQLITE_FIELD_ENUM,
-     "materialized", display_materialized,
-     sizeof(display_materialized) / sizeof(display_materialized[0])},
-    {offsetof(SyntaqliteCteDefinition, columns), SYNTAQLITE_FIELD_NODE_ID,
-     "columns", NULL, 0},
-    {offsetof(SyntaqliteCteDefinition, select), SYNTAQLITE_FIELD_NODE_ID,
-     "select", NULL, 0},
+    {offsetof(SyntaqliteCteDefinition, cte_name), SYNTAQLITE_FIELD_SPAN, "cte_name", NULL, 0},
+    {offsetof(SyntaqliteCteDefinition, materialized), SYNTAQLITE_FIELD_ENUM, "materialized", display_materialized, sizeof(display_materialized) / sizeof(display_materialized[0])},
+    {offsetof(SyntaqliteCteDefinition, columns), SYNTAQLITE_FIELD_NODE_ID, "columns", NULL, 0},
+    {offsetof(SyntaqliteCteDefinition, select), SYNTAQLITE_FIELD_NODE_ID, "select", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_with_clause[] = {
-    {offsetof(SyntaqliteWithClause, recursive), SYNTAQLITE_FIELD_BOOL,
-     "recursive", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteWithClause, ctes), SYNTAQLITE_FIELD_NODE_ID, "ctes",
-     NULL, 0},
-    {offsetof(SyntaqliteWithClause, select), SYNTAQLITE_FIELD_NODE_ID, "select",
-     NULL, 0},
+    {offsetof(SyntaqliteWithClause, recursive), SYNTAQLITE_FIELD_BOOL, "recursive", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteWithClause, ctes), SYNTAQLITE_FIELD_NODE_ID, "ctes", NULL, 0},
+    {offsetof(SyntaqliteWithClause, select), SYNTAQLITE_FIELD_NODE_ID, "select", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_delete_stmt[] = {
-    {offsetof(SyntaqliteDeleteStmt, table), SYNTAQLITE_FIELD_NODE_ID, "table",
-     NULL, 0},
-    {offsetof(SyntaqliteDeleteStmt, where_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "where_clause", NULL, 0},
-    {offsetof(SyntaqliteDeleteStmt, orderby), SYNTAQLITE_FIELD_NODE_ID,
-     "orderby", NULL, 0},
-    {offsetof(SyntaqliteDeleteStmt, limit_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "limit_clause", NULL, 0},
+    {offsetof(SyntaqliteDeleteStmt, table), SYNTAQLITE_FIELD_NODE_ID, "table", NULL, 0},
+    {offsetof(SyntaqliteDeleteStmt, where_clause), SYNTAQLITE_FIELD_NODE_ID, "where_clause", NULL, 0},
+    {offsetof(SyntaqliteDeleteStmt, orderby), SYNTAQLITE_FIELD_NODE_ID, "orderby", NULL, 0},
+    {offsetof(SyntaqliteDeleteStmt, limit_clause), SYNTAQLITE_FIELD_NODE_ID, "limit_clause", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_set_clause[] = {
-    {offsetof(SyntaqliteSetClause, column), SYNTAQLITE_FIELD_SPAN, "column",
-     NULL, 0},
-    {offsetof(SyntaqliteSetClause, columns), SYNTAQLITE_FIELD_NODE_ID,
-     "columns", NULL, 0},
-    {offsetof(SyntaqliteSetClause, value), SYNTAQLITE_FIELD_NODE_ID, "value",
-     NULL, 0},
+    {offsetof(SyntaqliteSetClause, column), SYNTAQLITE_FIELD_SPAN, "column", NULL, 0},
+    {offsetof(SyntaqliteSetClause, columns), SYNTAQLITE_FIELD_NODE_ID, "columns", NULL, 0},
+    {offsetof(SyntaqliteSetClause, value), SYNTAQLITE_FIELD_NODE_ID, "value", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_update_stmt[] = {
-    {offsetof(SyntaqliteUpdateStmt, conflict_action), SYNTAQLITE_FIELD_ENUM,
-     "conflict_action", display_conflict_action,
-     sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
-    {offsetof(SyntaqliteUpdateStmt, table), SYNTAQLITE_FIELD_NODE_ID, "table",
-     NULL, 0},
-    {offsetof(SyntaqliteUpdateStmt, setlist), SYNTAQLITE_FIELD_NODE_ID,
-     "setlist", NULL, 0},
-    {offsetof(SyntaqliteUpdateStmt, from_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "from_clause", NULL, 0},
-    {offsetof(SyntaqliteUpdateStmt, where_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "where_clause", NULL, 0},
-    {offsetof(SyntaqliteUpdateStmt, orderby), SYNTAQLITE_FIELD_NODE_ID,
-     "orderby", NULL, 0},
-    {offsetof(SyntaqliteUpdateStmt, limit_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "limit_clause", NULL, 0},
+    {offsetof(SyntaqliteUpdateStmt, conflict_action), SYNTAQLITE_FIELD_ENUM, "conflict_action", display_conflict_action, sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
+    {offsetof(SyntaqliteUpdateStmt, table), SYNTAQLITE_FIELD_NODE_ID, "table", NULL, 0},
+    {offsetof(SyntaqliteUpdateStmt, setlist), SYNTAQLITE_FIELD_NODE_ID, "setlist", NULL, 0},
+    {offsetof(SyntaqliteUpdateStmt, from_clause), SYNTAQLITE_FIELD_NODE_ID, "from_clause", NULL, 0},
+    {offsetof(SyntaqliteUpdateStmt, where_clause), SYNTAQLITE_FIELD_NODE_ID, "where_clause", NULL, 0},
+    {offsetof(SyntaqliteUpdateStmt, orderby), SYNTAQLITE_FIELD_NODE_ID, "orderby", NULL, 0},
+    {offsetof(SyntaqliteUpdateStmt, limit_clause), SYNTAQLITE_FIELD_NODE_ID, "limit_clause", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_insert_stmt[] = {
-    {offsetof(SyntaqliteInsertStmt, conflict_action), SYNTAQLITE_FIELD_ENUM,
-     "conflict_action", display_conflict_action,
-     sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
-    {offsetof(SyntaqliteInsertStmt, table), SYNTAQLITE_FIELD_NODE_ID, "table",
-     NULL, 0},
-    {offsetof(SyntaqliteInsertStmt, columns), SYNTAQLITE_FIELD_NODE_ID,
-     "columns", NULL, 0},
-    {offsetof(SyntaqliteInsertStmt, source), SYNTAQLITE_FIELD_NODE_ID, "source",
-     NULL, 0},
+    {offsetof(SyntaqliteInsertStmt, conflict_action), SYNTAQLITE_FIELD_ENUM, "conflict_action", display_conflict_action, sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
+    {offsetof(SyntaqliteInsertStmt, table), SYNTAQLITE_FIELD_NODE_ID, "table", NULL, 0},
+    {offsetof(SyntaqliteInsertStmt, columns), SYNTAQLITE_FIELD_NODE_ID, "columns", NULL, 0},
+    {offsetof(SyntaqliteInsertStmt, source), SYNTAQLITE_FIELD_NODE_ID, "source", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_binary_expr[] = {
-    {offsetof(SyntaqliteBinaryExpr, op), SYNTAQLITE_FIELD_ENUM, "op",
-     display_binary_op,
-     sizeof(display_binary_op) / sizeof(display_binary_op[0])},
-    {offsetof(SyntaqliteBinaryExpr, left), SYNTAQLITE_FIELD_NODE_ID, "left",
-     NULL, 0},
-    {offsetof(SyntaqliteBinaryExpr, right), SYNTAQLITE_FIELD_NODE_ID, "right",
-     NULL, 0},
+    {offsetof(SyntaqliteBinaryExpr, op), SYNTAQLITE_FIELD_ENUM, "op", display_binary_op, sizeof(display_binary_op) / sizeof(display_binary_op[0])},
+    {offsetof(SyntaqliteBinaryExpr, left), SYNTAQLITE_FIELD_NODE_ID, "left", NULL, 0},
+    {offsetof(SyntaqliteBinaryExpr, right), SYNTAQLITE_FIELD_NODE_ID, "right", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_unary_expr[] = {
-    {offsetof(SyntaqliteUnaryExpr, op), SYNTAQLITE_FIELD_ENUM, "op",
-     display_unary_op, sizeof(display_unary_op) / sizeof(display_unary_op[0])},
-    {offsetof(SyntaqliteUnaryExpr, operand), SYNTAQLITE_FIELD_NODE_ID,
-     "operand", NULL, 0},
+    {offsetof(SyntaqliteUnaryExpr, op), SYNTAQLITE_FIELD_ENUM, "op", display_unary_op, sizeof(display_unary_op) / sizeof(display_unary_op[0])},
+    {offsetof(SyntaqliteUnaryExpr, operand), SYNTAQLITE_FIELD_NODE_ID, "operand", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_literal[] = {
-    {offsetof(SyntaqliteLiteral, literal_type), SYNTAQLITE_FIELD_ENUM,
-     "literal_type", display_literal_type,
-     sizeof(display_literal_type) / sizeof(display_literal_type[0])},
-    {offsetof(SyntaqliteLiteral, source), SYNTAQLITE_FIELD_SPAN, "source", NULL,
-     0},
+    {offsetof(SyntaqliteLiteral, literal_type), SYNTAQLITE_FIELD_ENUM, "literal_type", display_literal_type, sizeof(display_literal_type) / sizeof(display_literal_type[0])},
+    {offsetof(SyntaqliteLiteral, source), SYNTAQLITE_FIELD_SPAN, "source", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_function_call[] = {
-    {offsetof(SyntaqliteFunctionCall, func_name), SYNTAQLITE_FIELD_SPAN,
-     "func_name", NULL, 0},
-    {offsetof(SyntaqliteFunctionCall, flags), SYNTAQLITE_FIELD_FLAGS, "flags",
-     display_function_call_flags,
-     sizeof(display_function_call_flags) /
-         sizeof(display_function_call_flags[0])},
-    {offsetof(SyntaqliteFunctionCall, args), SYNTAQLITE_FIELD_NODE_ID, "args",
-     NULL, 0},
-    {offsetof(SyntaqliteFunctionCall, filter_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "filter_clause", NULL, 0},
-    {offsetof(SyntaqliteFunctionCall, over_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "over_clause", NULL, 0},
+    {offsetof(SyntaqliteFunctionCall, func_name), SYNTAQLITE_FIELD_SPAN, "func_name", NULL, 0},
+    {offsetof(SyntaqliteFunctionCall, flags), SYNTAQLITE_FIELD_FLAGS, "flags", display_function_call_flags, sizeof(display_function_call_flags) / sizeof(display_function_call_flags[0])},
+    {offsetof(SyntaqliteFunctionCall, args), SYNTAQLITE_FIELD_NODE_ID, "args", NULL, 0},
+    {offsetof(SyntaqliteFunctionCall, filter_clause), SYNTAQLITE_FIELD_NODE_ID, "filter_clause", NULL, 0},
+    {offsetof(SyntaqliteFunctionCall, over_clause), SYNTAQLITE_FIELD_NODE_ID, "over_clause", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_variable[] = {
-    {offsetof(SyntaqliteVariable, source), SYNTAQLITE_FIELD_SPAN, "source",
-     NULL, 0},
+    {offsetof(SyntaqliteVariable, source), SYNTAQLITE_FIELD_SPAN, "source", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_collate_expr[] = {
-    {offsetof(SyntaqliteCollateExpr, expr), SYNTAQLITE_FIELD_NODE_ID, "expr",
-     NULL, 0},
-    {offsetof(SyntaqliteCollateExpr, collation), SYNTAQLITE_FIELD_SPAN,
-     "collation", NULL, 0},
+    {offsetof(SyntaqliteCollateExpr, expr), SYNTAQLITE_FIELD_NODE_ID, "expr", NULL, 0},
+    {offsetof(SyntaqliteCollateExpr, collation), SYNTAQLITE_FIELD_SPAN, "collation", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_raise_expr[] = {
-    {offsetof(SyntaqliteRaiseExpr, raise_type), SYNTAQLITE_FIELD_ENUM,
-     "raise_type", display_raise_type,
-     sizeof(display_raise_type) / sizeof(display_raise_type[0])},
-    {offsetof(SyntaqliteRaiseExpr, error_message), SYNTAQLITE_FIELD_NODE_ID,
-     "error_message", NULL, 0},
+    {offsetof(SyntaqliteRaiseExpr, raise_type), SYNTAQLITE_FIELD_ENUM, "raise_type", display_raise_type, sizeof(display_raise_type) / sizeof(display_raise_type[0])},
+    {offsetof(SyntaqliteRaiseExpr, error_message), SYNTAQLITE_FIELD_NODE_ID, "error_message", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_qualified_name[] = {
-    {offsetof(SyntaqliteQualifiedName, object_name), SYNTAQLITE_FIELD_SPAN,
-     "object_name", NULL, 0},
-    {offsetof(SyntaqliteQualifiedName, schema), SYNTAQLITE_FIELD_SPAN, "schema",
-     NULL, 0},
+    {offsetof(SyntaqliteQualifiedName, object_name), SYNTAQLITE_FIELD_SPAN, "object_name", NULL, 0},
+    {offsetof(SyntaqliteQualifiedName, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_drop_stmt[] = {
-    {offsetof(SyntaqliteDropStmt, object_type), SYNTAQLITE_FIELD_ENUM,
-     "object_type", display_drop_object_type,
-     sizeof(display_drop_object_type) / sizeof(display_drop_object_type[0])},
-    {offsetof(SyntaqliteDropStmt, if_exists), SYNTAQLITE_FIELD_BOOL,
-     "if_exists", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteDropStmt, target), SYNTAQLITE_FIELD_NODE_ID, "target",
-     NULL, 0},
+    {offsetof(SyntaqliteDropStmt, object_type), SYNTAQLITE_FIELD_ENUM, "object_type", display_drop_object_type, sizeof(display_drop_object_type) / sizeof(display_drop_object_type[0])},
+    {offsetof(SyntaqliteDropStmt, if_exists), SYNTAQLITE_FIELD_BOOL, "if_exists", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteDropStmt, target), SYNTAQLITE_FIELD_NODE_ID, "target", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_alter_table_stmt[] = {
-    {offsetof(SyntaqliteAlterTableStmt, op), SYNTAQLITE_FIELD_ENUM, "op",
-     display_alter_op, sizeof(display_alter_op) / sizeof(display_alter_op[0])},
-    {offsetof(SyntaqliteAlterTableStmt, target), SYNTAQLITE_FIELD_NODE_ID,
-     "target", NULL, 0},
-    {offsetof(SyntaqliteAlterTableStmt, new_name), SYNTAQLITE_FIELD_SPAN,
-     "new_name", NULL, 0},
-    {offsetof(SyntaqliteAlterTableStmt, old_name), SYNTAQLITE_FIELD_SPAN,
-     "old_name", NULL, 0},
+    {offsetof(SyntaqliteAlterTableStmt, op), SYNTAQLITE_FIELD_ENUM, "op", display_alter_op, sizeof(display_alter_op) / sizeof(display_alter_op[0])},
+    {offsetof(SyntaqliteAlterTableStmt, target), SYNTAQLITE_FIELD_NODE_ID, "target", NULL, 0},
+    {offsetof(SyntaqliteAlterTableStmt, new_name), SYNTAQLITE_FIELD_SPAN, "new_name", NULL, 0},
+    {offsetof(SyntaqliteAlterTableStmt, old_name), SYNTAQLITE_FIELD_SPAN, "old_name", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_transaction_stmt[] = {
-    {offsetof(SyntaqliteTransactionStmt, op), SYNTAQLITE_FIELD_ENUM, "op",
-     display_transaction_op,
-     sizeof(display_transaction_op) / sizeof(display_transaction_op[0])},
-    {offsetof(SyntaqliteTransactionStmt, trans_type), SYNTAQLITE_FIELD_ENUM,
-     "trans_type", display_transaction_type,
-     sizeof(display_transaction_type) / sizeof(display_transaction_type[0])},
+    {offsetof(SyntaqliteTransactionStmt, op), SYNTAQLITE_FIELD_ENUM, "op", display_transaction_op, sizeof(display_transaction_op) / sizeof(display_transaction_op[0])},
+    {offsetof(SyntaqliteTransactionStmt, trans_type), SYNTAQLITE_FIELD_ENUM, "trans_type", display_transaction_type, sizeof(display_transaction_type) / sizeof(display_transaction_type[0])},
 };
 
 static const SyntaqliteFieldMeta field_meta_savepoint_stmt[] = {
-    {offsetof(SyntaqliteSavepointStmt, op), SYNTAQLITE_FIELD_ENUM, "op",
-     display_savepoint_op,
-     sizeof(display_savepoint_op) / sizeof(display_savepoint_op[0])},
-    {offsetof(SyntaqliteSavepointStmt, savepoint_name), SYNTAQLITE_FIELD_SPAN,
-     "savepoint_name", NULL, 0},
+    {offsetof(SyntaqliteSavepointStmt, op), SYNTAQLITE_FIELD_ENUM, "op", display_savepoint_op, sizeof(display_savepoint_op) / sizeof(display_savepoint_op[0])},
+    {offsetof(SyntaqliteSavepointStmt, savepoint_name), SYNTAQLITE_FIELD_SPAN, "savepoint_name", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_result_column[] = {
-    {offsetof(SyntaqliteResultColumn, flags), SYNTAQLITE_FIELD_FLAGS, "flags",
-     display_result_column_flags,
-     sizeof(display_result_column_flags) /
-         sizeof(display_result_column_flags[0])},
-    {offsetof(SyntaqliteResultColumn, alias), SYNTAQLITE_FIELD_SPAN, "alias",
-     NULL, 0},
-    {offsetof(SyntaqliteResultColumn, expr), SYNTAQLITE_FIELD_NODE_ID, "expr",
-     NULL, 0},
+    {offsetof(SyntaqliteResultColumn, flags), SYNTAQLITE_FIELD_FLAGS, "flags", display_result_column_flags, sizeof(display_result_column_flags) / sizeof(display_result_column_flags[0])},
+    {offsetof(SyntaqliteResultColumn, alias), SYNTAQLITE_FIELD_SPAN, "alias", NULL, 0},
+    {offsetof(SyntaqliteResultColumn, expr), SYNTAQLITE_FIELD_NODE_ID, "expr", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_select_stmt[] = {
-    {offsetof(SyntaqliteSelectStmt, flags), SYNTAQLITE_FIELD_FLAGS, "flags",
-     display_select_stmt_flags,
-     sizeof(display_select_stmt_flags) / sizeof(display_select_stmt_flags[0])},
-    {offsetof(SyntaqliteSelectStmt, columns), SYNTAQLITE_FIELD_NODE_ID,
-     "columns", NULL, 0},
-    {offsetof(SyntaqliteSelectStmt, from_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "from_clause", NULL, 0},
-    {offsetof(SyntaqliteSelectStmt, where_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "where_clause", NULL, 0},
-    {offsetof(SyntaqliteSelectStmt, groupby), SYNTAQLITE_FIELD_NODE_ID,
-     "groupby", NULL, 0},
-    {offsetof(SyntaqliteSelectStmt, having), SYNTAQLITE_FIELD_NODE_ID, "having",
-     NULL, 0},
-    {offsetof(SyntaqliteSelectStmt, orderby), SYNTAQLITE_FIELD_NODE_ID,
-     "orderby", NULL, 0},
-    {offsetof(SyntaqliteSelectStmt, limit_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "limit_clause", NULL, 0},
-    {offsetof(SyntaqliteSelectStmt, window_clause), SYNTAQLITE_FIELD_NODE_ID,
-     "window_clause", NULL, 0},
+    {offsetof(SyntaqliteSelectStmt, flags), SYNTAQLITE_FIELD_FLAGS, "flags", display_select_stmt_flags, sizeof(display_select_stmt_flags) / sizeof(display_select_stmt_flags[0])},
+    {offsetof(SyntaqliteSelectStmt, columns), SYNTAQLITE_FIELD_NODE_ID, "columns", NULL, 0},
+    {offsetof(SyntaqliteSelectStmt, from_clause), SYNTAQLITE_FIELD_NODE_ID, "from_clause", NULL, 0},
+    {offsetof(SyntaqliteSelectStmt, where_clause), SYNTAQLITE_FIELD_NODE_ID, "where_clause", NULL, 0},
+    {offsetof(SyntaqliteSelectStmt, groupby), SYNTAQLITE_FIELD_NODE_ID, "groupby", NULL, 0},
+    {offsetof(SyntaqliteSelectStmt, having), SYNTAQLITE_FIELD_NODE_ID, "having", NULL, 0},
+    {offsetof(SyntaqliteSelectStmt, orderby), SYNTAQLITE_FIELD_NODE_ID, "orderby", NULL, 0},
+    {offsetof(SyntaqliteSelectStmt, limit_clause), SYNTAQLITE_FIELD_NODE_ID, "limit_clause", NULL, 0},
+    {offsetof(SyntaqliteSelectStmt, window_clause), SYNTAQLITE_FIELD_NODE_ID, "window_clause", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_ordering_term[] = {
-    {offsetof(SyntaqliteOrderingTerm, expr), SYNTAQLITE_FIELD_NODE_ID, "expr",
-     NULL, 0},
-    {offsetof(SyntaqliteOrderingTerm, sort_order), SYNTAQLITE_FIELD_ENUM,
-     "sort_order", display_sort_order,
-     sizeof(display_sort_order) / sizeof(display_sort_order[0])},
-    {offsetof(SyntaqliteOrderingTerm, nulls_order), SYNTAQLITE_FIELD_ENUM,
-     "nulls_order", display_nulls_order,
-     sizeof(display_nulls_order) / sizeof(display_nulls_order[0])},
+    {offsetof(SyntaqliteOrderingTerm, expr), SYNTAQLITE_FIELD_NODE_ID, "expr", NULL, 0},
+    {offsetof(SyntaqliteOrderingTerm, sort_order), SYNTAQLITE_FIELD_ENUM, "sort_order", display_sort_order, sizeof(display_sort_order) / sizeof(display_sort_order[0])},
+    {offsetof(SyntaqliteOrderingTerm, nulls_order), SYNTAQLITE_FIELD_ENUM, "nulls_order", display_nulls_order, sizeof(display_nulls_order) / sizeof(display_nulls_order[0])},
 };
 
 static const SyntaqliteFieldMeta field_meta_limit_clause[] = {
-    {offsetof(SyntaqliteLimitClause, limit), SYNTAQLITE_FIELD_NODE_ID, "limit",
-     NULL, 0},
-    {offsetof(SyntaqliteLimitClause, offset), SYNTAQLITE_FIELD_NODE_ID,
-     "offset", NULL, 0},
+    {offsetof(SyntaqliteLimitClause, limit), SYNTAQLITE_FIELD_NODE_ID, "limit", NULL, 0},
+    {offsetof(SyntaqliteLimitClause, offset), SYNTAQLITE_FIELD_NODE_ID, "offset", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_table_ref[] = {
-    {offsetof(SyntaqliteTableRef, table_name), SYNTAQLITE_FIELD_SPAN,
-     "table_name", NULL, 0},
-    {offsetof(SyntaqliteTableRef, schema), SYNTAQLITE_FIELD_SPAN, "schema",
-     NULL, 0},
-    {offsetof(SyntaqliteTableRef, alias), SYNTAQLITE_FIELD_SPAN, "alias", NULL,
-     0},
+    {offsetof(SyntaqliteTableRef, table_name), SYNTAQLITE_FIELD_SPAN, "table_name", NULL, 0},
+    {offsetof(SyntaqliteTableRef, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
+    {offsetof(SyntaqliteTableRef, alias), SYNTAQLITE_FIELD_SPAN, "alias", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_subquery_table_source[] = {
-    {offsetof(SyntaqliteSubqueryTableSource, select), SYNTAQLITE_FIELD_NODE_ID,
-     "select", NULL, 0},
-    {offsetof(SyntaqliteSubqueryTableSource, alias), SYNTAQLITE_FIELD_SPAN,
-     "alias", NULL, 0},
+    {offsetof(SyntaqliteSubqueryTableSource, select), SYNTAQLITE_FIELD_NODE_ID, "select", NULL, 0},
+    {offsetof(SyntaqliteSubqueryTableSource, alias), SYNTAQLITE_FIELD_SPAN, "alias", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_join_clause[] = {
-    {offsetof(SyntaqliteJoinClause, join_type), SYNTAQLITE_FIELD_ENUM,
-     "join_type", display_join_type,
-     sizeof(display_join_type) / sizeof(display_join_type[0])},
-    {offsetof(SyntaqliteJoinClause, left), SYNTAQLITE_FIELD_NODE_ID, "left",
-     NULL, 0},
-    {offsetof(SyntaqliteJoinClause, right), SYNTAQLITE_FIELD_NODE_ID, "right",
-     NULL, 0},
-    {offsetof(SyntaqliteJoinClause, on_expr), SYNTAQLITE_FIELD_NODE_ID,
-     "on_expr", NULL, 0},
-    {offsetof(SyntaqliteJoinClause, using_columns), SYNTAQLITE_FIELD_NODE_ID,
-     "using_columns", NULL, 0},
+    {offsetof(SyntaqliteJoinClause, join_type), SYNTAQLITE_FIELD_ENUM, "join_type", display_join_type, sizeof(display_join_type) / sizeof(display_join_type[0])},
+    {offsetof(SyntaqliteJoinClause, left), SYNTAQLITE_FIELD_NODE_ID, "left", NULL, 0},
+    {offsetof(SyntaqliteJoinClause, right), SYNTAQLITE_FIELD_NODE_ID, "right", NULL, 0},
+    {offsetof(SyntaqliteJoinClause, on_expr), SYNTAQLITE_FIELD_NODE_ID, "on_expr", NULL, 0},
+    {offsetof(SyntaqliteJoinClause, using_columns), SYNTAQLITE_FIELD_NODE_ID, "using_columns", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_join_prefix[] = {
-    {offsetof(SyntaqliteJoinPrefix, source), SYNTAQLITE_FIELD_NODE_ID, "source",
-     NULL, 0},
-    {offsetof(SyntaqliteJoinPrefix, join_type), SYNTAQLITE_FIELD_ENUM,
-     "join_type", display_join_type,
-     sizeof(display_join_type) / sizeof(display_join_type[0])},
+    {offsetof(SyntaqliteJoinPrefix, source), SYNTAQLITE_FIELD_NODE_ID, "source", NULL, 0},
+    {offsetof(SyntaqliteJoinPrefix, join_type), SYNTAQLITE_FIELD_ENUM, "join_type", display_join_type, sizeof(display_join_type) / sizeof(display_join_type[0])},
 };
 
 static const SyntaqliteFieldMeta field_meta_trigger_event[] = {
-    {offsetof(SyntaqliteTriggerEvent, event_type), SYNTAQLITE_FIELD_ENUM,
-     "event_type", display_trigger_event_type,
-     sizeof(display_trigger_event_type) /
-         sizeof(display_trigger_event_type[0])},
-    {offsetof(SyntaqliteTriggerEvent, columns), SYNTAQLITE_FIELD_NODE_ID,
-     "columns", NULL, 0},
+    {offsetof(SyntaqliteTriggerEvent, event_type), SYNTAQLITE_FIELD_ENUM, "event_type", display_trigger_event_type, sizeof(display_trigger_event_type) / sizeof(display_trigger_event_type[0])},
+    {offsetof(SyntaqliteTriggerEvent, columns), SYNTAQLITE_FIELD_NODE_ID, "columns", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_create_trigger_stmt[] = {
-    {offsetof(SyntaqliteCreateTriggerStmt, trigger_name), SYNTAQLITE_FIELD_SPAN,
-     "trigger_name", NULL, 0},
-    {offsetof(SyntaqliteCreateTriggerStmt, schema), SYNTAQLITE_FIELD_SPAN,
-     "schema", NULL, 0},
-    {offsetof(SyntaqliteCreateTriggerStmt, is_temp), SYNTAQLITE_FIELD_BOOL,
-     "is_temp", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteCreateTriggerStmt, if_not_exists),
-     SYNTAQLITE_FIELD_BOOL, "if_not_exists", display_bool,
-     sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteCreateTriggerStmt, timing), SYNTAQLITE_FIELD_ENUM,
-     "timing", display_trigger_timing,
-     sizeof(display_trigger_timing) / sizeof(display_trigger_timing[0])},
-    {offsetof(SyntaqliteCreateTriggerStmt, event), SYNTAQLITE_FIELD_NODE_ID,
-     "event", NULL, 0},
-    {offsetof(SyntaqliteCreateTriggerStmt, table), SYNTAQLITE_FIELD_NODE_ID,
-     "table", NULL, 0},
-    {offsetof(SyntaqliteCreateTriggerStmt, when_expr), SYNTAQLITE_FIELD_NODE_ID,
-     "when_expr", NULL, 0},
-    {offsetof(SyntaqliteCreateTriggerStmt, body), SYNTAQLITE_FIELD_NODE_ID,
-     "body", NULL, 0},
+    {offsetof(SyntaqliteCreateTriggerStmt, trigger_name), SYNTAQLITE_FIELD_SPAN, "trigger_name", NULL, 0},
+    {offsetof(SyntaqliteCreateTriggerStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
+    {offsetof(SyntaqliteCreateTriggerStmt, is_temp), SYNTAQLITE_FIELD_BOOL, "is_temp", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteCreateTriggerStmt, if_not_exists), SYNTAQLITE_FIELD_BOOL, "if_not_exists", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteCreateTriggerStmt, timing), SYNTAQLITE_FIELD_ENUM, "timing", display_trigger_timing, sizeof(display_trigger_timing) / sizeof(display_trigger_timing[0])},
+    {offsetof(SyntaqliteCreateTriggerStmt, event), SYNTAQLITE_FIELD_NODE_ID, "event", NULL, 0},
+    {offsetof(SyntaqliteCreateTriggerStmt, table), SYNTAQLITE_FIELD_NODE_ID, "table", NULL, 0},
+    {offsetof(SyntaqliteCreateTriggerStmt, when_expr), SYNTAQLITE_FIELD_NODE_ID, "when_expr", NULL, 0},
+    {offsetof(SyntaqliteCreateTriggerStmt, body), SYNTAQLITE_FIELD_NODE_ID, "body", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_create_virtual_table_stmt[] = {
-    {offsetof(SyntaqliteCreateVirtualTableStmt, table_name),
-     SYNTAQLITE_FIELD_SPAN, "table_name", NULL, 0},
-    {offsetof(SyntaqliteCreateVirtualTableStmt, schema), SYNTAQLITE_FIELD_SPAN,
-     "schema", NULL, 0},
-    {offsetof(SyntaqliteCreateVirtualTableStmt, module_name),
-     SYNTAQLITE_FIELD_SPAN, "module_name", NULL, 0},
-    {offsetof(SyntaqliteCreateVirtualTableStmt, if_not_exists),
-     SYNTAQLITE_FIELD_BOOL, "if_not_exists", display_bool,
-     sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteCreateVirtualTableStmt, module_args),
-     SYNTAQLITE_FIELD_SPAN, "module_args", NULL, 0},
+    {offsetof(SyntaqliteCreateVirtualTableStmt, table_name), SYNTAQLITE_FIELD_SPAN, "table_name", NULL, 0},
+    {offsetof(SyntaqliteCreateVirtualTableStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
+    {offsetof(SyntaqliteCreateVirtualTableStmt, module_name), SYNTAQLITE_FIELD_SPAN, "module_name", NULL, 0},
+    {offsetof(SyntaqliteCreateVirtualTableStmt, if_not_exists), SYNTAQLITE_FIELD_BOOL, "if_not_exists", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteCreateVirtualTableStmt, module_args), SYNTAQLITE_FIELD_SPAN, "module_args", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_pragma_stmt[] = {
-    {offsetof(SyntaqlitePragmaStmt, pragma_name), SYNTAQLITE_FIELD_SPAN,
-     "pragma_name", NULL, 0},
-    {offsetof(SyntaqlitePragmaStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema",
-     NULL, 0},
-    {offsetof(SyntaqlitePragmaStmt, value), SYNTAQLITE_FIELD_SPAN, "value",
-     NULL, 0},
-    {offsetof(SyntaqlitePragmaStmt, pragma_form), SYNTAQLITE_FIELD_ENUM,
-     "pragma_form", display_pragma_form,
-     sizeof(display_pragma_form) / sizeof(display_pragma_form[0])},
+    {offsetof(SyntaqlitePragmaStmt, pragma_name), SYNTAQLITE_FIELD_SPAN, "pragma_name", NULL, 0},
+    {offsetof(SyntaqlitePragmaStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
+    {offsetof(SyntaqlitePragmaStmt, value), SYNTAQLITE_FIELD_SPAN, "value", NULL, 0},
+    {offsetof(SyntaqlitePragmaStmt, pragma_form), SYNTAQLITE_FIELD_ENUM, "pragma_form", display_pragma_form, sizeof(display_pragma_form) / sizeof(display_pragma_form[0])},
 };
 
 static const SyntaqliteFieldMeta field_meta_analyze_stmt[] = {
-    {offsetof(SyntaqliteAnalyzeStmt, target_name), SYNTAQLITE_FIELD_SPAN,
-     "target_name", NULL, 0},
-    {offsetof(SyntaqliteAnalyzeStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema",
-     NULL, 0},
-    {offsetof(SyntaqliteAnalyzeStmt, kind), SYNTAQLITE_FIELD_ENUM, "kind",
-     display_analyze_kind,
-     sizeof(display_analyze_kind) / sizeof(display_analyze_kind[0])},
+    {offsetof(SyntaqliteAnalyzeStmt, target_name), SYNTAQLITE_FIELD_SPAN, "target_name", NULL, 0},
+    {offsetof(SyntaqliteAnalyzeStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
+    {offsetof(SyntaqliteAnalyzeStmt, kind), SYNTAQLITE_FIELD_ENUM, "kind", display_analyze_kind, sizeof(display_analyze_kind) / sizeof(display_analyze_kind[0])},
 };
 
 static const SyntaqliteFieldMeta field_meta_attach_stmt[] = {
-    {offsetof(SyntaqliteAttachStmt, filename), SYNTAQLITE_FIELD_NODE_ID,
-     "filename", NULL, 0},
-    {offsetof(SyntaqliteAttachStmt, db_name), SYNTAQLITE_FIELD_NODE_ID,
-     "db_name", NULL, 0},
-    {offsetof(SyntaqliteAttachStmt, key), SYNTAQLITE_FIELD_NODE_ID, "key", NULL,
-     0},
+    {offsetof(SyntaqliteAttachStmt, filename), SYNTAQLITE_FIELD_NODE_ID, "filename", NULL, 0},
+    {offsetof(SyntaqliteAttachStmt, db_name), SYNTAQLITE_FIELD_NODE_ID, "db_name", NULL, 0},
+    {offsetof(SyntaqliteAttachStmt, key), SYNTAQLITE_FIELD_NODE_ID, "key", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_detach_stmt[] = {
-    {offsetof(SyntaqliteDetachStmt, db_name), SYNTAQLITE_FIELD_NODE_ID,
-     "db_name", NULL, 0},
+    {offsetof(SyntaqliteDetachStmt, db_name), SYNTAQLITE_FIELD_NODE_ID, "db_name", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_vacuum_stmt[] = {
-    {offsetof(SyntaqliteVacuumStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema",
-     NULL, 0},
-    {offsetof(SyntaqliteVacuumStmt, into_expr), SYNTAQLITE_FIELD_NODE_ID,
-     "into_expr", NULL, 0},
+    {offsetof(SyntaqliteVacuumStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
+    {offsetof(SyntaqliteVacuumStmt, into_expr), SYNTAQLITE_FIELD_NODE_ID, "into_expr", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_explain_stmt[] = {
-    {offsetof(SyntaqliteExplainStmt, explain_mode), SYNTAQLITE_FIELD_ENUM,
-     "explain_mode", display_explain_mode,
-     sizeof(display_explain_mode) / sizeof(display_explain_mode[0])},
-    {offsetof(SyntaqliteExplainStmt, stmt), SYNTAQLITE_FIELD_NODE_ID, "stmt",
-     NULL, 0},
+    {offsetof(SyntaqliteExplainStmt, explain_mode), SYNTAQLITE_FIELD_ENUM, "explain_mode", display_explain_mode, sizeof(display_explain_mode) / sizeof(display_explain_mode[0])},
+    {offsetof(SyntaqliteExplainStmt, stmt), SYNTAQLITE_FIELD_NODE_ID, "stmt", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_create_index_stmt[] = {
-    {offsetof(SyntaqliteCreateIndexStmt, index_name), SYNTAQLITE_FIELD_SPAN,
-     "index_name", NULL, 0},
-    {offsetof(SyntaqliteCreateIndexStmt, schema), SYNTAQLITE_FIELD_SPAN,
-     "schema", NULL, 0},
-    {offsetof(SyntaqliteCreateIndexStmt, table_name), SYNTAQLITE_FIELD_SPAN,
-     "table_name", NULL, 0},
-    {offsetof(SyntaqliteCreateIndexStmt, is_unique), SYNTAQLITE_FIELD_BOOL,
-     "is_unique", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteCreateIndexStmt, if_not_exists), SYNTAQLITE_FIELD_BOOL,
-     "if_not_exists", display_bool,
-     sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteCreateIndexStmt, columns), SYNTAQLITE_FIELD_NODE_ID,
-     "columns", NULL, 0},
-    {offsetof(SyntaqliteCreateIndexStmt, where_clause),
-     SYNTAQLITE_FIELD_NODE_ID, "where_clause", NULL, 0},
+    {offsetof(SyntaqliteCreateIndexStmt, index_name), SYNTAQLITE_FIELD_SPAN, "index_name", NULL, 0},
+    {offsetof(SyntaqliteCreateIndexStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
+    {offsetof(SyntaqliteCreateIndexStmt, table_name), SYNTAQLITE_FIELD_SPAN, "table_name", NULL, 0},
+    {offsetof(SyntaqliteCreateIndexStmt, is_unique), SYNTAQLITE_FIELD_BOOL, "is_unique", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteCreateIndexStmt, if_not_exists), SYNTAQLITE_FIELD_BOOL, "if_not_exists", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteCreateIndexStmt, columns), SYNTAQLITE_FIELD_NODE_ID, "columns", NULL, 0},
+    {offsetof(SyntaqliteCreateIndexStmt, where_clause), SYNTAQLITE_FIELD_NODE_ID, "where_clause", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_create_view_stmt[] = {
-    {offsetof(SyntaqliteCreateViewStmt, view_name), SYNTAQLITE_FIELD_SPAN,
-     "view_name", NULL, 0},
-    {offsetof(SyntaqliteCreateViewStmt, schema), SYNTAQLITE_FIELD_SPAN,
-     "schema", NULL, 0},
-    {offsetof(SyntaqliteCreateViewStmt, is_temp), SYNTAQLITE_FIELD_BOOL,
-     "is_temp", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteCreateViewStmt, if_not_exists), SYNTAQLITE_FIELD_BOOL,
-     "if_not_exists", display_bool,
-     sizeof(display_bool) / sizeof(display_bool[0])},
-    {offsetof(SyntaqliteCreateViewStmt, column_names), SYNTAQLITE_FIELD_NODE_ID,
-     "column_names", NULL, 0},
-    {offsetof(SyntaqliteCreateViewStmt, select), SYNTAQLITE_FIELD_NODE_ID,
-     "select", NULL, 0},
+    {offsetof(SyntaqliteCreateViewStmt, view_name), SYNTAQLITE_FIELD_SPAN, "view_name", NULL, 0},
+    {offsetof(SyntaqliteCreateViewStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
+    {offsetof(SyntaqliteCreateViewStmt, is_temp), SYNTAQLITE_FIELD_BOOL, "is_temp", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteCreateViewStmt, if_not_exists), SYNTAQLITE_FIELD_BOOL, "if_not_exists", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
+    {offsetof(SyntaqliteCreateViewStmt, column_names), SYNTAQLITE_FIELD_NODE_ID, "column_names", NULL, 0},
+    {offsetof(SyntaqliteCreateViewStmt, select), SYNTAQLITE_FIELD_NODE_ID, "select", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_values_clause[] = {
-    {offsetof(SyntaqliteValuesClause, rows), SYNTAQLITE_FIELD_NODE_ID, "rows",
-     NULL, 0},
+    {offsetof(SyntaqliteValuesClause, rows), SYNTAQLITE_FIELD_NODE_ID, "rows", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_frame_bound[] = {
-    {offsetof(SyntaqliteFrameBound, bound_type), SYNTAQLITE_FIELD_ENUM,
-     "bound_type", display_frame_bound_type,
-     sizeof(display_frame_bound_type) / sizeof(display_frame_bound_type[0])},
-    {offsetof(SyntaqliteFrameBound, expr), SYNTAQLITE_FIELD_NODE_ID, "expr",
-     NULL, 0},
+    {offsetof(SyntaqliteFrameBound, bound_type), SYNTAQLITE_FIELD_ENUM, "bound_type", display_frame_bound_type, sizeof(display_frame_bound_type) / sizeof(display_frame_bound_type[0])},
+    {offsetof(SyntaqliteFrameBound, expr), SYNTAQLITE_FIELD_NODE_ID, "expr", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_frame_spec[] = {
-    {offsetof(SyntaqliteFrameSpec, frame_type), SYNTAQLITE_FIELD_ENUM,
-     "frame_type", display_frame_type,
-     sizeof(display_frame_type) / sizeof(display_frame_type[0])},
-    {offsetof(SyntaqliteFrameSpec, exclude), SYNTAQLITE_FIELD_ENUM, "exclude",
-     display_frame_exclude,
-     sizeof(display_frame_exclude) / sizeof(display_frame_exclude[0])},
-    {offsetof(SyntaqliteFrameSpec, start_bound), SYNTAQLITE_FIELD_NODE_ID,
-     "start_bound", NULL, 0},
-    {offsetof(SyntaqliteFrameSpec, end_bound), SYNTAQLITE_FIELD_NODE_ID,
-     "end_bound", NULL, 0},
+    {offsetof(SyntaqliteFrameSpec, frame_type), SYNTAQLITE_FIELD_ENUM, "frame_type", display_frame_type, sizeof(display_frame_type) / sizeof(display_frame_type[0])},
+    {offsetof(SyntaqliteFrameSpec, exclude), SYNTAQLITE_FIELD_ENUM, "exclude", display_frame_exclude, sizeof(display_frame_exclude) / sizeof(display_frame_exclude[0])},
+    {offsetof(SyntaqliteFrameSpec, start_bound), SYNTAQLITE_FIELD_NODE_ID, "start_bound", NULL, 0},
+    {offsetof(SyntaqliteFrameSpec, end_bound), SYNTAQLITE_FIELD_NODE_ID, "end_bound", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_window_def[] = {
-    {offsetof(SyntaqliteWindowDef, base_window_name), SYNTAQLITE_FIELD_SPAN,
-     "base_window_name", NULL, 0},
-    {offsetof(SyntaqliteWindowDef, partition_by), SYNTAQLITE_FIELD_NODE_ID,
-     "partition_by", NULL, 0},
-    {offsetof(SyntaqliteWindowDef, orderby), SYNTAQLITE_FIELD_NODE_ID,
-     "orderby", NULL, 0},
-    {offsetof(SyntaqliteWindowDef, frame), SYNTAQLITE_FIELD_NODE_ID, "frame",
-     NULL, 0},
+    {offsetof(SyntaqliteWindowDef, base_window_name), SYNTAQLITE_FIELD_SPAN, "base_window_name", NULL, 0},
+    {offsetof(SyntaqliteWindowDef, partition_by), SYNTAQLITE_FIELD_NODE_ID, "partition_by", NULL, 0},
+    {offsetof(SyntaqliteWindowDef, orderby), SYNTAQLITE_FIELD_NODE_ID, "orderby", NULL, 0},
+    {offsetof(SyntaqliteWindowDef, frame), SYNTAQLITE_FIELD_NODE_ID, "frame", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_named_window_def[] = {
-    {offsetof(SyntaqliteNamedWindowDef, window_name), SYNTAQLITE_FIELD_SPAN,
-     "window_name", NULL, 0},
-    {offsetof(SyntaqliteNamedWindowDef, window_def), SYNTAQLITE_FIELD_NODE_ID,
-     "window_def", NULL, 0},
+    {offsetof(SyntaqliteNamedWindowDef, window_name), SYNTAQLITE_FIELD_SPAN, "window_name", NULL, 0},
+    {offsetof(SyntaqliteNamedWindowDef, window_def), SYNTAQLITE_FIELD_NODE_ID, "window_def", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_filter_over[] = {
-    {offsetof(SyntaqliteFilterOver, filter_expr), SYNTAQLITE_FIELD_NODE_ID,
-     "filter_expr", NULL, 0},
-    {offsetof(SyntaqliteFilterOver, over_def), SYNTAQLITE_FIELD_NODE_ID,
-     "over_def", NULL, 0},
-    {offsetof(SyntaqliteFilterOver, over_name), SYNTAQLITE_FIELD_SPAN,
-     "over_name", NULL, 0},
+    {offsetof(SyntaqliteFilterOver, filter_expr), SYNTAQLITE_FIELD_NODE_ID, "filter_expr", NULL, 0},
+    {offsetof(SyntaqliteFilterOver, over_def), SYNTAQLITE_FIELD_NODE_ID, "over_def", NULL, 0},
+    {offsetof(SyntaqliteFilterOver, over_name), SYNTAQLITE_FIELD_SPAN, "over_name", NULL, 0},
 };
 
 // ============ Node Names ============
@@ -958,159 +739,159 @@ static const char* const ast_meta_node_names[] = {
 // ============ Field Meta Dispatch ============
 
 static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {
-    NULL,                                 /* Null */
-    field_meta_aggregate_function_call,   /* AggregateFunctionCall */
+    NULL, /* Null */
+    field_meta_aggregate_function_call, /* AggregateFunctionCall */
     field_meta_ordered_set_function_call, /* OrderedSetFunctionCall */
-    field_meta_cast_expr,                 /* CastExpr */
-    field_meta_column_ref,                /* ColumnRef */
-    field_meta_compound_select,           /* CompoundSelect */
-    field_meta_subquery_expr,             /* SubqueryExpr */
-    field_meta_exists_expr,               /* ExistsExpr */
-    field_meta_in_expr,                   /* InExpr */
-    field_meta_is_expr,                   /* IsExpr */
-    field_meta_between_expr,              /* BetweenExpr */
-    field_meta_like_expr,                 /* LikeExpr */
-    field_meta_case_expr,                 /* CaseExpr */
-    field_meta_case_when,                 /* CaseWhen */
-    NULL,                                 /* CaseWhenList */
-    field_meta_foreign_key_clause,        /* ForeignKeyClause */
-    field_meta_column_constraint,         /* ColumnConstraint */
-    NULL,                                 /* ColumnConstraintList */
-    field_meta_column_def,                /* ColumnDef */
-    NULL,                                 /* ColumnDefList */
-    field_meta_table_constraint,          /* TableConstraint */
-    NULL,                                 /* TableConstraintList */
-    field_meta_create_table_stmt,         /* CreateTableStmt */
-    field_meta_cte_definition,            /* CteDefinition */
-    NULL,                                 /* CteList */
-    field_meta_with_clause,               /* WithClause */
-    field_meta_delete_stmt,               /* DeleteStmt */
-    field_meta_set_clause,                /* SetClause */
-    NULL,                                 /* SetClauseList */
-    field_meta_update_stmt,               /* UpdateStmt */
-    field_meta_insert_stmt,               /* InsertStmt */
-    field_meta_binary_expr,               /* BinaryExpr */
-    field_meta_unary_expr,                /* UnaryExpr */
-    field_meta_literal,                   /* Literal */
-    NULL,                                 /* ExprList */
-    field_meta_function_call,             /* FunctionCall */
-    field_meta_variable,                  /* Variable */
-    field_meta_collate_expr,              /* CollateExpr */
-    field_meta_raise_expr,                /* RaiseExpr */
-    field_meta_qualified_name,            /* QualifiedName */
-    field_meta_drop_stmt,                 /* DropStmt */
-    field_meta_alter_table_stmt,          /* AlterTableStmt */
-    field_meta_transaction_stmt,          /* TransactionStmt */
-    field_meta_savepoint_stmt,            /* SavepointStmt */
-    field_meta_result_column,             /* ResultColumn */
-    NULL,                                 /* ResultColumnList */
-    field_meta_select_stmt,               /* SelectStmt */
-    field_meta_ordering_term,             /* OrderingTerm */
-    NULL,                                 /* OrderByList */
-    field_meta_limit_clause,              /* LimitClause */
-    field_meta_table_ref,                 /* TableRef */
-    field_meta_subquery_table_source,     /* SubqueryTableSource */
-    field_meta_join_clause,               /* JoinClause */
-    field_meta_join_prefix,               /* JoinPrefix */
-    field_meta_trigger_event,             /* TriggerEvent */
-    NULL,                                 /* TriggerCmdList */
-    field_meta_create_trigger_stmt,       /* CreateTriggerStmt */
+    field_meta_cast_expr, /* CastExpr */
+    field_meta_column_ref, /* ColumnRef */
+    field_meta_compound_select, /* CompoundSelect */
+    field_meta_subquery_expr, /* SubqueryExpr */
+    field_meta_exists_expr, /* ExistsExpr */
+    field_meta_in_expr, /* InExpr */
+    field_meta_is_expr, /* IsExpr */
+    field_meta_between_expr, /* BetweenExpr */
+    field_meta_like_expr, /* LikeExpr */
+    field_meta_case_expr, /* CaseExpr */
+    field_meta_case_when, /* CaseWhen */
+    NULL, /* CaseWhenList */
+    field_meta_foreign_key_clause, /* ForeignKeyClause */
+    field_meta_column_constraint, /* ColumnConstraint */
+    NULL, /* ColumnConstraintList */
+    field_meta_column_def, /* ColumnDef */
+    NULL, /* ColumnDefList */
+    field_meta_table_constraint, /* TableConstraint */
+    NULL, /* TableConstraintList */
+    field_meta_create_table_stmt, /* CreateTableStmt */
+    field_meta_cte_definition, /* CteDefinition */
+    NULL, /* CteList */
+    field_meta_with_clause, /* WithClause */
+    field_meta_delete_stmt, /* DeleteStmt */
+    field_meta_set_clause, /* SetClause */
+    NULL, /* SetClauseList */
+    field_meta_update_stmt, /* UpdateStmt */
+    field_meta_insert_stmt, /* InsertStmt */
+    field_meta_binary_expr, /* BinaryExpr */
+    field_meta_unary_expr, /* UnaryExpr */
+    field_meta_literal, /* Literal */
+    NULL, /* ExprList */
+    field_meta_function_call, /* FunctionCall */
+    field_meta_variable, /* Variable */
+    field_meta_collate_expr, /* CollateExpr */
+    field_meta_raise_expr, /* RaiseExpr */
+    field_meta_qualified_name, /* QualifiedName */
+    field_meta_drop_stmt, /* DropStmt */
+    field_meta_alter_table_stmt, /* AlterTableStmt */
+    field_meta_transaction_stmt, /* TransactionStmt */
+    field_meta_savepoint_stmt, /* SavepointStmt */
+    field_meta_result_column, /* ResultColumn */
+    NULL, /* ResultColumnList */
+    field_meta_select_stmt, /* SelectStmt */
+    field_meta_ordering_term, /* OrderingTerm */
+    NULL, /* OrderByList */
+    field_meta_limit_clause, /* LimitClause */
+    field_meta_table_ref, /* TableRef */
+    field_meta_subquery_table_source, /* SubqueryTableSource */
+    field_meta_join_clause, /* JoinClause */
+    field_meta_join_prefix, /* JoinPrefix */
+    field_meta_trigger_event, /* TriggerEvent */
+    NULL, /* TriggerCmdList */
+    field_meta_create_trigger_stmt, /* CreateTriggerStmt */
     field_meta_create_virtual_table_stmt, /* CreateVirtualTableStmt */
-    field_meta_pragma_stmt,               /* PragmaStmt */
-    field_meta_analyze_stmt,              /* AnalyzeStmt */
-    field_meta_attach_stmt,               /* AttachStmt */
-    field_meta_detach_stmt,               /* DetachStmt */
-    field_meta_vacuum_stmt,               /* VacuumStmt */
-    field_meta_explain_stmt,              /* ExplainStmt */
-    field_meta_create_index_stmt,         /* CreateIndexStmt */
-    field_meta_create_view_stmt,          /* CreateViewStmt */
-    NULL,                                 /* ValuesRowList */
-    field_meta_values_clause,             /* ValuesClause */
-    field_meta_frame_bound,               /* FrameBound */
-    field_meta_frame_spec,                /* FrameSpec */
-    field_meta_window_def,                /* WindowDef */
-    NULL,                                 /* WindowDefList */
-    field_meta_named_window_def,          /* NamedWindowDef */
-    NULL,                                 /* NamedWindowDefList */
-    field_meta_filter_over,               /* FilterOver */
+    field_meta_pragma_stmt, /* PragmaStmt */
+    field_meta_analyze_stmt, /* AnalyzeStmt */
+    field_meta_attach_stmt, /* AttachStmt */
+    field_meta_detach_stmt, /* DetachStmt */
+    field_meta_vacuum_stmt, /* VacuumStmt */
+    field_meta_explain_stmt, /* ExplainStmt */
+    field_meta_create_index_stmt, /* CreateIndexStmt */
+    field_meta_create_view_stmt, /* CreateViewStmt */
+    NULL, /* ValuesRowList */
+    field_meta_values_clause, /* ValuesClause */
+    field_meta_frame_bound, /* FrameBound */
+    field_meta_frame_spec, /* FrameSpec */
+    field_meta_window_def, /* WindowDef */
+    NULL, /* WindowDefList */
+    field_meta_named_window_def, /* NamedWindowDef */
+    NULL, /* NamedWindowDefList */
+    field_meta_filter_over, /* FilterOver */
 };
 
 static const uint8_t ast_meta_field_meta_counts[] = {
-    0,  /* Null */
-    6,  /* AggregateFunctionCall */
-    6,  /* OrderedSetFunctionCall */
-    2,  /* CastExpr */
-    3,  /* ColumnRef */
-    3,  /* CompoundSelect */
-    1,  /* SubqueryExpr */
-    1,  /* ExistsExpr */
-    3,  /* InExpr */
-    3,  /* IsExpr */
-    4,  /* BetweenExpr */
-    4,  /* LikeExpr */
-    3,  /* CaseExpr */
-    2,  /* CaseWhen */
-    0,  /* CaseWhenList */
-    5,  /* ForeignKeyClause */
+    0, /* Null */
+    6, /* AggregateFunctionCall */
+    6, /* OrderedSetFunctionCall */
+    2, /* CastExpr */
+    3, /* ColumnRef */
+    3, /* CompoundSelect */
+    1, /* SubqueryExpr */
+    1, /* ExistsExpr */
+    3, /* InExpr */
+    3, /* IsExpr */
+    4, /* BetweenExpr */
+    4, /* LikeExpr */
+    3, /* CaseExpr */
+    2, /* CaseWhen */
+    0, /* CaseWhenList */
+    5, /* ForeignKeyClause */
     11, /* ColumnConstraint */
-    0,  /* ColumnConstraintList */
-    3,  /* ColumnDef */
-    0,  /* ColumnDefList */
-    8,  /* TableConstraint */
-    0,  /* TableConstraintList */
-    8,  /* CreateTableStmt */
-    4,  /* CteDefinition */
-    0,  /* CteList */
-    3,  /* WithClause */
-    4,  /* DeleteStmt */
-    3,  /* SetClause */
-    0,  /* SetClauseList */
-    7,  /* UpdateStmt */
-    4,  /* InsertStmt */
-    3,  /* BinaryExpr */
-    2,  /* UnaryExpr */
-    2,  /* Literal */
-    0,  /* ExprList */
-    5,  /* FunctionCall */
-    1,  /* Variable */
-    2,  /* CollateExpr */
-    2,  /* RaiseExpr */
-    2,  /* QualifiedName */
-    3,  /* DropStmt */
-    4,  /* AlterTableStmt */
-    2,  /* TransactionStmt */
-    2,  /* SavepointStmt */
-    3,  /* ResultColumn */
-    0,  /* ResultColumnList */
-    9,  /* SelectStmt */
-    3,  /* OrderingTerm */
-    0,  /* OrderByList */
-    2,  /* LimitClause */
-    3,  /* TableRef */
-    2,  /* SubqueryTableSource */
-    5,  /* JoinClause */
-    2,  /* JoinPrefix */
-    2,  /* TriggerEvent */
-    0,  /* TriggerCmdList */
-    9,  /* CreateTriggerStmt */
-    5,  /* CreateVirtualTableStmt */
-    4,  /* PragmaStmt */
-    3,  /* AnalyzeStmt */
-    3,  /* AttachStmt */
-    1,  /* DetachStmt */
-    2,  /* VacuumStmt */
-    2,  /* ExplainStmt */
-    7,  /* CreateIndexStmt */
-    6,  /* CreateViewStmt */
-    0,  /* ValuesRowList */
-    1,  /* ValuesClause */
-    2,  /* FrameBound */
-    4,  /* FrameSpec */
-    4,  /* WindowDef */
-    0,  /* WindowDefList */
-    2,  /* NamedWindowDef */
-    0,  /* NamedWindowDefList */
-    3,  /* FilterOver */
+    0, /* ColumnConstraintList */
+    3, /* ColumnDef */
+    0, /* ColumnDefList */
+    8, /* TableConstraint */
+    0, /* TableConstraintList */
+    8, /* CreateTableStmt */
+    4, /* CteDefinition */
+    0, /* CteList */
+    3, /* WithClause */
+    4, /* DeleteStmt */
+    3, /* SetClause */
+    0, /* SetClauseList */
+    7, /* UpdateStmt */
+    4, /* InsertStmt */
+    3, /* BinaryExpr */
+    2, /* UnaryExpr */
+    2, /* Literal */
+    0, /* ExprList */
+    5, /* FunctionCall */
+    1, /* Variable */
+    2, /* CollateExpr */
+    2, /* RaiseExpr */
+    2, /* QualifiedName */
+    3, /* DropStmt */
+    4, /* AlterTableStmt */
+    2, /* TransactionStmt */
+    2, /* SavepointStmt */
+    3, /* ResultColumn */
+    0, /* ResultColumnList */
+    9, /* SelectStmt */
+    3, /* OrderingTerm */
+    0, /* OrderByList */
+    2, /* LimitClause */
+    3, /* TableRef */
+    2, /* SubqueryTableSource */
+    5, /* JoinClause */
+    2, /* JoinPrefix */
+    2, /* TriggerEvent */
+    0, /* TriggerCmdList */
+    9, /* CreateTriggerStmt */
+    5, /* CreateVirtualTableStmt */
+    4, /* PragmaStmt */
+    3, /* AnalyzeStmt */
+    3, /* AttachStmt */
+    1, /* DetachStmt */
+    2, /* VacuumStmt */
+    2, /* ExplainStmt */
+    7, /* CreateIndexStmt */
+    6, /* CreateViewStmt */
+    0, /* ValuesRowList */
+    1, /* ValuesClause */
+    2, /* FrameBound */
+    4, /* FrameSpec */
+    4, /* WindowDef */
+    0, /* WindowDefList */
+    2, /* NamedWindowDef */
+    0, /* NamedWindowDefList */
+    3, /* FilterOver */
 };
 
 // ============ List Tags ============
@@ -1192,6 +973,7 @@ static const uint8_t ast_meta_list_tags[] = {
     1, /* NamedWindowDefList */
     0, /* FilterOver */
 };
+
 
 // ============ Schema Contributions ============
 

@@ -11,7 +11,7 @@ fmt = []                     # formatter (bytecode interpreter)
 validation = []              # semantic validation (schema checks, fuzzy suggestions)
 embedded = ["validation"]    # embedded SQL extraction from host languages (Python f-strings, etc.)
 lsp = ["fmt", "validation"]  # LSP analysis host (needs fmt for formatting)
-sqlite = ["syntaqlite-sys/sqlite"]  # SQLite dialect (grammar, tokens, cflags, functions)
+sqlite = ["dep:syntaqlite-parser-sqlite"]  # SQLite dialect (grammar, tokens, cflags, functions)
 json = ["dep:serde", "dep:serde_json"]   # JSON serialization for diagnostics and related types
 
 # Pin version/cflags at compile time for dead-code elimination.
@@ -23,10 +23,11 @@ json = ["dep:serde", "dep:serde_json"]   # JSON serialization for diagnostics an
 #   SYNTAQLITE_CFLAG_SQLITE_ENABLE_FTS5=1 \
 #   cargo build --features pin-cflags
 #
-pin-version = ["sqlite", "syntaqlite-sys/pin-version"]   # Pin SQLite version via SYNTAQLITE_SQLITE_VERSION env var
-pin-cflags = ["sqlite", "syntaqlite-sys/pin-cflags"]    # Pin compile-time flags via SYNTAQLITE_CFLAG_* env vars
+pin-version = ["sqlite", "syntaqlite-parser-sqlite/pin-version"]   # Pin SQLite version via SYNTAQLITE_SQLITE_VERSION env var
+pin-cflags = ["sqlite", "syntaqlite-parser-sqlite/pin-cflags"]    # Pin compile-time flags via SYNTAQLITE_CFLAG_* env vars
 
 [dependencies]
-syntaqlite-sys = { path = "../syntaqlite-sys", default-features = false }
+syntaqlite-parser = { path = "../syntaqlite-parser", default-features = false }
+syntaqlite-parser-sqlite = { path = "../syntaqlite-parser-sqlite", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }

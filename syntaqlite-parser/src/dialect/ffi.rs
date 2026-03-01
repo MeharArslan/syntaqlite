@@ -72,7 +72,7 @@ impl std::fmt::Debug for Cflags {
     }
 }
 
-/// Mirrors C `SyntaqliteDialectConfig` from `include/syntaqlite/dialect_config.h`.
+/// Mirrors C `SyntaqliteDialectConfig` from `include/syntaqlite/dialect.h`.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct DialectConfig {
@@ -185,6 +185,26 @@ impl FieldMeta {
             Some(cstr.to_str().unwrap_or("?"))
         }
     }
+}
+
+// ── Cflag metadata (pure Rust, no C dependency) ──────────────────────
+
+/// Metadata for a single compile-time flag.
+#[derive(Debug, Clone)]
+pub struct CflagInfo {
+    /// The suffix shared across C and Rust (e.g. `"SQLITE_OMIT_WINDOWFUNC"`).
+    ///
+    /// - C define: `SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC`
+    /// - Rust env var: `SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC=1`
+    pub suffix: String,
+    /// Bit index in [`Cflags`] (matches `SYNQ_CFLAG_IDX_*` constants).
+    pub index: u32,
+    /// Minimum SQLite version (encoded integer) at which this cflag has any
+    /// observable effect on keyword recognition. Zero means baseline (all versions).
+    pub min_version: i32,
+    /// Feature-area category for UI grouping:
+    /// `"parser"`, `"functions"`, `"vtable"`, or `"extensions"`.
+    pub category: String,
 }
 
 /// Mirrors the C `Dialect` struct defined in `include/syntaqlite/dialect.h`.

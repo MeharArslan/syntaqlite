@@ -26,7 +26,7 @@
 #include <stdint.h>
 
 #include "syntaqlite/config.h"
-#include "syntaqlite/dialect_config.h"
+#include "syntaqlite/dialect.h"
 
 #ifdef __cplusplus
 extern "C" {

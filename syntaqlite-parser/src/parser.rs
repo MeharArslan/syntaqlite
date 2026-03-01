@@ -3,8 +3,8 @@
 
 use std::ffi::{c_char, c_int, c_void};
 
-use crate::dialect::Dialect;
 use crate::dialect::DialectConfig;
+use crate::dialect::ffi::Dialect;
 
 // Opaque C types
 pub enum Parser {}

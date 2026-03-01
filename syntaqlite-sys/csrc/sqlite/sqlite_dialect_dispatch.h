@@ -6,12 +6,12 @@
 #ifndef SYNTAQLITE_SQLITE_DIALECT_DISPATCH_H
 #define SYNTAQLITE_SQLITE_DIALECT_DISPATCH_H
 
-#define SYNQ_PARSER_ALLOC(d, m) SynqSqliteParseAlloc(m)
-#define SYNQ_PARSER_INIT(d, p) SynqSqliteParseInit(p)
-#define SYNQ_PARSER_FINALIZE(d, p) SynqSqliteParseFinalize(p)
-#define SYNQ_PARSER_FREE(d, p, f) SynqSqliteParseFree(p, f)
-#define SYNQ_PARSER_FEED(d, p, t, m, c) SynqSqliteParse(p, t, m, c)
-#define SYNQ_PARSER_TRACE(d, f, s) SynqSqliteParseTrace(f, s)
-#define SYNQ_GET_TOKEN(d, cfg, z, t) SynqSqliteGetToken(cfg, z, t)
+#define SYNQ_PARSER_ALLOC(d, m)          SynqSqliteParseAlloc(m)
+#define SYNQ_PARSER_INIT(d, p)           SynqSqliteParseInit(p)
+#define SYNQ_PARSER_FINALIZE(d, p)       SynqSqliteParseFinalize(p)
+#define SYNQ_PARSER_FREE(d, p, f)        SynqSqliteParseFree(p, f)
+#define SYNQ_PARSER_FEED(d, p, t, m, c)  SynqSqliteParse(p, t, m, c)
+#define SYNQ_PARSER_TRACE(d, f, s)       SynqSqliteParseTrace(f, s)
+#define SYNQ_GET_TOKEN(d, cfg, z, t)     SynqSqliteGetToken(cfg, z, t)
 
 #endif  // SYNTAQLITE_SQLITE_DIALECT_DISPATCH_H

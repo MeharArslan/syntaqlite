@@ -23,8 +23,9 @@ use std::ops::Range;
 
 use crate::dialect::Dialect;
 use crate::dialect::TokenCategory;
-use crate::parser::ParseError;
-use crate::parser::{RawIncrementalParser, RawTokenizer};
+use crate::parser::session::ParseError;
+use crate::parser::token_parser::RawIncrementalParser;
+use crate::parser::tokenizer::RawTokenizer;
 use crate::validation::{Diagnostic, DiagnosticMessage, FunctionDef, ValidationConfig};
 
 use offset_map::OffsetMap;
@@ -162,7 +163,7 @@ pub fn validate_embedded(
 #[cfg(feature = "sqlite")]
 pub fn sqlite_function_defs() -> Vec<FunctionDef> {
     let config = crate::dialect::ffi::DialectConfig::default();
-    crate::sqlite::functions::available_functions(&config)
+    syntaqlite_parser::sqlite::functions::available_functions(&config)
         .into_iter()
         .flat_map(|info| crate::validation::expand_function_info(info))
         .collect()
@@ -221,7 +222,7 @@ pub fn fragment_semantic_tokens(
 
     // Classify non-whitespace, non-comment tokens using parser flags.
     for tp in cursor.state().tokens() {
-        let cat = dialect.classify_token(tp.type_, tp.flags);
+        let cat = TokenCategory::from_u8(dialect.classify_token_raw(tp.type_, tp.flags));
         if cat == TokenCategory::Other {
             continue;
         }
@@ -261,7 +262,7 @@ fn validate_fragment(
 
     // Feed tokens to the low-level parser, collecting results.
     let mut cursor = parser.feed(&fragment.sql_text);
-    let mut results: Vec<Result<crate::parser::NodeId, ParseError>> = Vec::new();
+    let mut results: Vec<Result<crate::parser::nodes::NodeId, ParseError>> = Vec::new();
 
     for &(token_type, offset, length) in &tokens {
         let hole = fragment

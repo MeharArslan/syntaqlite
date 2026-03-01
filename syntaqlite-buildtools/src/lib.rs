@@ -428,7 +428,7 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
             };
             Some(RustCodegenArtifacts {
                 tokens_rs: dialect_codegen::generate_rust_tokens(&token_defines[..]),
-                ffi_rs: ast_model.generate_rust_ffi_nodes(crate_prefix, is_internal),
+                ffi_rs: ast_model.generate_rust_ffi_nodes(crate_prefix),
                 ast_rs: ast_model.generate_rust_ast(
                     crate_prefix,
                     ffi_path,
@@ -436,7 +436,7 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
                     request.open_for_extension,
                 ),
                 ast_traits_rs: if is_internal {
-                    Some(ast_model.generate_ast_traits(Some("syntaqlite_sys::sqlite::ffi")))
+                    Some(ast_model.generate_ast_traits())
                 } else {
                     None
                 },

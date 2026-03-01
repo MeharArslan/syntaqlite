@@ -20,7 +20,9 @@ mod scope;
 mod walker;
 
 use crate::ast_traits::AstTypes;
-use crate::parser::{FromArena, NodeId, ParseError, RawNodeReader};
+use crate::parser::nodes::NodeId;
+use crate::parser::session::{ParseError, RawNodeReader};
+use crate::parser::typed_list::FromArena;
 
 use scope::ScopeStack;
 
@@ -101,7 +103,7 @@ pub fn validate_statement<'a>(
     config: &ValidationConfig,
 ) -> Vec<Diagnostic> {
     let dialect = *crate::sqlite::DIALECT;
-    validate_statement_dialect::<crate::sqlite::ast::SqliteAst>(
+    validate_statement_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(
         reader, stmt_id, dialect, session, document, functions, config,
     )
 }
@@ -121,7 +123,7 @@ pub fn validate_document(
     let mut doc_ctx = DocumentContext::new();
     let mut all_diags = Vec::new();
     for &stmt_id in stmt_ids {
-        let diags = validate_statement_dialect::<crate::sqlite::ast::SqliteAst>(
+        let diags = validate_statement_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(
             reader,
             stmt_id,
             *dialect,
@@ -185,7 +187,7 @@ fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
 /// assert!(!diags.is_empty());
 /// ```
 pub struct Validator<'d> {
-    parser: crate::parser::RawParser<'d>,
+    parser: crate::parser::session::RawParser<'d>,
     dialect: crate::Dialect<'d>,
     functions: Vec<FunctionDef>,
 }
@@ -201,7 +203,7 @@ impl<'d> Validator<'d> {
     #[cfg(feature = "sqlite")]
     pub fn new() -> Validator<'static> {
         let dc = crate::dialect::ffi::DialectConfig::default();
-        let functions: Vec<FunctionDef> = crate::sqlite::functions::available_functions(&dc)
+        let functions: Vec<FunctionDef> = syntaqlite_parser::sqlite::functions::available_functions(&dc)
             .into_iter()
             .flat_map(|info| expand_function_info(info))
             .collect();
@@ -276,7 +278,7 @@ impl<'d> ValidatorBuilder<'d> {
 
     /// Build the validator.
     pub fn build(self) -> Validator<'d> {
-        let mut builder = crate::parser::RawParser::builder(self.dialect);
+        let mut builder = crate::parser::session::RawParser::builder(self.dialect);
         if let Some(dc) = self.dialect_config {
             builder = builder.dialect_config(dc);
         }

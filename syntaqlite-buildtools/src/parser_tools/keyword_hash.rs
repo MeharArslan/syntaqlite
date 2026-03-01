@@ -251,8 +251,8 @@ pub fn generate(
     w.sqlite_file_header();
     w.include_local("syntaqlite_dialect/sqlite_compat.h");
     w.include_local(&format!("syntaqlite_{dialect}/{dialect}_tokens.h"));
-    w.include_local("syntaqlite/dialect_config.h");
-    w.include_local("syntaqlite/sqlite_cflags.h");
+    w.include_local("syntaqlite/dialect.h");
+    w.include_local("syntaqlite_dialect/dialect_macros.h");
     w.newline();
 
     w.fragment(&extract_result.upper_to_lower);
@@ -276,7 +276,7 @@ pub fn generate_keyword_h() -> String {
     w.sqlite_file_header();
     w.header_guard_start("SYNTAQLITE_SQLITE_KEYWORD_H");
     w.newline();
-    w.line("#include \"syntaqlite/dialect_config.h\"");
+    w.line("#include \"syntaqlite/dialect.h\"");
     w.newline();
     w.line("int synq_sqlite3_keywordCode(const SyntaqliteDialectConfig *config, const char* z, int n, int* pType);");
     w.newline();

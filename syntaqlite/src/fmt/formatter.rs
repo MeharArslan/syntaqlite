@@ -6,8 +6,10 @@ use super::comment::CommentCtx;
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
 use crate::dialect::Dialect;
+use crate::parser::ffi::CommentKind;
 use crate::parser::ffi::MacroRegion;
-use crate::parser::{CommentKind, Fields, RawParser};
+use crate::parser::nodes::Fields;
+use crate::parser::session::RawParser;
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {
@@ -56,7 +58,7 @@ impl<'d> Formatter<'d> {
     }
 
     /// Format SQL source text. Handles multiple statements and preserves comments.
-    pub fn format(&mut self, source: &str) -> Result<String, crate::parser::ParseError> {
+    pub fn format(&mut self, source: &str) -> Result<String, crate::parser::session::ParseError> {
         let mut cursor = self.parser.parse(source);
 
         let mut roots = Vec::new();
@@ -142,7 +144,7 @@ impl<'d> Formatter<'d> {
 
     /// Format a single pre-parsed AST node. This is the low-level entry point
     /// for cases where the caller controls parsing (e.g. macro expansion).
-    pub fn format_node(&self, node: crate::parser::NodeRef<'_>) -> String {
+    pub fn format_node(&self, node: crate::parser::session::NodeRef<'_>) -> String {
         let reader = node.reader();
         let mut arena = DocArena::new();
         let tokens = reader.tokens();

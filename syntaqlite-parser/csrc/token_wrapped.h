@@ -12,7 +12,7 @@
 
 #include <stdint.h>
 
-#include "syntaqlite/dialect_config.h"
+#include "syntaqlite/dialect.h"
 
 typedef struct SyntaqliteDialect SyntaqliteDialect;
 

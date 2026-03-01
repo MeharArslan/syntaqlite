@@ -945,16 +945,9 @@ impl AggregateFunctionCallFlags {
     }
 
     pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
+        if self.0 == 0 { return "(none)".into(); }
         let mut s = String::new();
-        if self.distinct() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("DISTINCT");
-        }
+        if self.distinct() { if !s.is_empty() { s.push(' '); } s.push_str("DISTINCT"); }
         s
     }
 }
@@ -972,22 +965,10 @@ impl CreateTableStmtFlags {
     }
 
     pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
+        if self.0 == 0 { return "(none)".into(); }
         let mut s = String::new();
-        if self.without_rowid() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("WITHOUT_ROWID");
-        }
-        if self.strict() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("STRICT");
-        }
+        if self.without_rowid() { if !s.is_empty() { s.push(' '); } s.push_str("WITHOUT_ROWID"); }
+        if self.strict() { if !s.is_empty() { s.push(' '); } s.push_str("STRICT"); }
         s
     }
 }
@@ -1005,22 +986,10 @@ impl FunctionCallFlags {
     }
 
     pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
+        if self.0 == 0 { return "(none)".into(); }
         let mut s = String::new();
-        if self.distinct() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("DISTINCT");
-        }
-        if self.star() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("STAR");
-        }
+        if self.distinct() { if !s.is_empty() { s.push(' '); } s.push_str("DISTINCT"); }
+        if self.star() { if !s.is_empty() { s.push(' '); } s.push_str("STAR"); }
         s
     }
 }
@@ -1035,16 +1004,9 @@ impl ResultColumnFlags {
     }
 
     pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
+        if self.0 == 0 { return "(none)".into(); }
         let mut s = String::new();
-        if self.star() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("STAR");
-        }
+        if self.star() { if !s.is_empty() { s.push(' '); } s.push_str("STAR"); }
         s
     }
 }
@@ -1059,16 +1021,9 @@ impl SelectStmtFlags {
     }
 
     pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
+        if self.0 == 0 { return "(none)".into(); }
         let mut s = String::new();
-        if self.distinct() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("DISTINCT");
-        }
+        if self.distinct() { if !s.is_empty() { s.push(' '); } s.push_str("DISTINCT"); }
         s
     }
 }
@@ -1259,9 +1214,7 @@ pub trait CreateTableStmtView<'a>: Copy {
     fn if_not_exists(&self) -> bool;
     fn flags(&self) -> CreateTableStmtFlags;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::ColumnDef>>;
-    fn table_constraints(
-        &self,
-    ) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::TableConstraint>>;
+    fn table_constraints(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::TableConstraint>>;
     fn as_select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
 
@@ -1850,3 +1803,4 @@ pub trait AstTypes<'a>: 'a {
     type NamedWindowDef: NamedWindowDefView<'a, Ast = Self> + Copy + FromArena<'a>;
     type FilterOver: FilterOverView<'a, Ast = Self> + Copy + FromArena<'a>;
 }
+

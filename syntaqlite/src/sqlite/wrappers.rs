@@ -6,8 +6,8 @@
 //! Thin wrappers around the generic parser/tokenizer types, pre-bound to the
 //! SQLite dialect.
 
-use super::ast::Stmt;
-use super::tokens::TokenType;
+use syntaqlite_parser_sqlite::ast::Stmt;
+use syntaqlite_parser_sqlite::tokens::TokenType;
 use crate::parser::typed::{
     TypedParser, TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor,
     TypedTokenizer, TypedTokenizerBuilder,

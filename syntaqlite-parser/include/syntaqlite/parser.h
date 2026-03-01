@@ -33,7 +33,7 @@
 #include <stdio.h>
 
 #include "syntaqlite/config.h"
-#include "syntaqlite/dialect_config.h"
+#include "syntaqlite/dialect.h"
 #include "syntaqlite/types.h"
 
 #ifdef __cplusplus

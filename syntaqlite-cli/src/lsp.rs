@@ -167,7 +167,7 @@ fn completion_items_for_expected(
     let mut expects_identifier = false;
 
     for &tok in expected {
-        let category = dialect.token_category(tok);
+        let category = TokenCategory::from_u8(dialect.token_category_raw(tok));
         if category == TokenCategory::Identifier {
             expects_identifier = true;
         }
