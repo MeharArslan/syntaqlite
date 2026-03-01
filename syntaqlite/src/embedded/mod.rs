@@ -21,9 +21,11 @@ pub use typescript::extract_typescript;
 
 use std::ops::Range;
 
-use crate::Dialect;
+use crate::{Dialect, ParseError};
 use crate::parser::{LowLevelParser, Tokenizer};
-use crate::validation::{Diagnostic, DiagnosticMessage, ValidationConfig, validate_document};
+use crate::validation::{
+    Diagnostic, DiagnosticMessage, Severity, ValidationConfig, validate_document,
+};
 
 use offset_map::OffsetMap;
 
@@ -150,9 +152,10 @@ fn validate_fragment(
             .collect()
     };
 
-    // Feed tokens to the low-level parser.
+    // Feed tokens to the low-level parser, collecting parse errors.
     let mut cursor = parser.feed(&fragment.sql_text);
     let mut stmt_ids = Vec::new();
+    let mut parse_errors = Vec::new();
 
     for &(token_type, offset, length) in &tokens {
         let hole = fragment.holes.iter().find(|h| {
@@ -170,6 +173,7 @@ fn validate_fragment(
                 if let Some(root) = e.root {
                     stmt_ids.push(root);
                 }
+                parse_errors.push(e);
             }
         }
 
@@ -185,11 +189,49 @@ fn validate_fragment(
             if let Some(root) = e.root {
                 stmt_ids.push(root);
             }
+            parse_errors.push(e);
         }
     }
 
+    // Convert parse errors to diagnostics.
+    let sql = &fragment.sql_text;
+    let mut diags: Vec<Diagnostic> = parse_errors
+        .into_iter()
+        .map(|err| {
+            let (start_offset, end_offset) = parse_error_span(&err, sql);
+            Diagnostic {
+                start_offset,
+                end_offset,
+                message: DiagnosticMessage::Other(err.message),
+                severity: Severity::Error,
+                help: None,
+            }
+        })
+        .collect();
+
     // After finish(), the cursor's reader still points at valid arena data.
-    validate_document(cursor.base().reader(), &stmt_ids, dialect, None, &[], config)
+    let semantic = validate_document(cursor.base().reader(), &stmt_ids, dialect, None, &[], config);
+    diags.extend(semantic);
+    diags
+}
+
+/// Compute the byte range for a parse error in the source text.
+fn parse_error_span(err: &ParseError, source: &str) -> (usize, usize) {
+    match (err.offset, err.length) {
+        (Some(offset), Some(length)) if length > 0 => (offset, offset + length),
+        (Some(offset), _) => {
+            if offset >= source.len() && !source.is_empty() {
+                (source.len() - 1, source.len())
+            } else {
+                (offset, (offset + 1).min(source.len()))
+            }
+        }
+        _ => {
+            let end = source.len();
+            let start = if end > 0 { end - 1 } else { 0 };
+            (start, end)
+        }
+    }
 }
 
 /// Check if a diagnostic message references a hole placeholder name.
@@ -203,5 +245,173 @@ fn is_hole_diagnostic(diag: &Diagnostic, fragment: &EmbeddedFragment) -> bool {
             fragment.holes.iter().any(|h| h.placeholder == *column)
         }
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn dialect() -> Dialect<'static> {
+        *crate::sqlite::low_level::dialect()
+    }
+
+    fn default_config() -> ValidationConfig {
+        ValidationConfig::default()
+    }
+
+    /// Helper: extract Python fragments then validate, returning only parse errors.
+    fn parse_errors_python(source: &str) -> Vec<Diagnostic> {
+        let d = dialect();
+        let fragments = extract_python(source);
+        let all = validate_embedded(&d, &fragments, &default_config());
+        all.into_iter()
+            .filter(|d| d.message.is_parse_error())
+            .collect()
+    }
+
+    /// Helper: extract TypeScript fragments then validate, returning only parse errors.
+    fn parse_errors_typescript(source: &str) -> Vec<Diagnostic> {
+        let d = dialect();
+        let fragments = extract_typescript(source);
+        let all = validate_embedded(&d, &fragments, &default_config());
+        all.into_iter()
+            .filter(|d| d.message.is_parse_error())
+            .collect()
+    }
+
+    // ── Python syntax error tests ────────────────────────────────────
+
+    #[test]
+    fn python_valid_sql_no_errors() {
+        let source = r#"db.execute(f"SELECT id, name FROM users WHERE id = {uid}")"#;
+        let diags = parse_errors_python(source);
+        assert!(diags.is_empty(), "expected no parse errors, got: {diags:?}");
+    }
+
+    #[test]
+    fn python_syntax_error_missing_expr_list() {
+        // "SELECT FROM t" is a syntax error — missing expression list.
+        let source = r#"db.execute(f"SELECT FROM t")"#;
+        let diags = parse_errors_python(source);
+        assert!(!diags.is_empty(), "expected parse error for 'SELECT FROM'");
+        assert!(diags.iter().all(|d| d.severity == Severity::Error));
+    }
+
+    #[test]
+    fn python_syntax_error_misspelled_from() {
+        // "SELECT * FORM t" — FORM is not a keyword after *.
+        let source = r#"db.execute(f"SELECT * FORM t")"#;
+        let diags = parse_errors_python(source);
+        assert!(!diags.is_empty(), "expected parse error for 'FORM'");
+    }
+
+    #[test]
+    fn python_syntax_error_double_where() {
+        let source = r#"db.execute(f"SELECT id FROM t WHERE x = 1 WHERE y = 2")"#;
+        let diags = parse_errors_python(source);
+        assert!(!diags.is_empty(), "expected parse error for double WHERE");
+    }
+
+    #[test]
+    fn python_syntax_error_offset_in_host() {
+        // The error offset should be mapped to the host file position,
+        // not the raw SQL fragment position.
+        let source = r#"prefix = 1; db.execute(f"SELECT FROM t")"#;
+        let fragments = extract_python(source);
+        assert_eq!(fragments.len(), 1);
+        let d = dialect();
+        let diags = validate_embedded(&d, &fragments, &default_config());
+        let parse_diags: Vec<_> = diags.into_iter().filter(|d| d.message.is_parse_error()).collect();
+        assert!(!parse_diags.is_empty(), "expected parse error");
+        // The diagnostic offset should be within the f-string region, not at 0.
+        let fstring_start = source.find("SELECT").unwrap();
+        assert!(
+            parse_diags[0].start_offset >= fstring_start,
+            "expected offset >= {fstring_start}, got {}",
+            parse_diags[0].start_offset,
+        );
+    }
+
+    #[test]
+    fn python_multiple_fragments_only_second_errors() {
+        let source = concat!(
+            "a = f\"SELECT id FROM t\"\n",
+            "b = f\"SELECT FROM t\"\n",
+        );
+        let diags = parse_errors_python(source);
+        assert!(!diags.is_empty(), "expected parse error in second fragment");
+        // First fragment is valid, so all errors should be in the second f-string.
+        let second_select = source.rfind("SELECT").unwrap();
+        for d in &diags {
+            assert!(
+                d.start_offset >= second_select,
+                "error at offset {} is before second fragment start {second_select}",
+                d.start_offset,
+            );
+        }
+    }
+
+    #[test]
+    fn python_valid_with_hole_no_errors() {
+        let source = r#"db.execute(f"INSERT INTO t (a, b) VALUES ({x}, {y})")"#;
+        let diags = parse_errors_python(source);
+        assert!(diags.is_empty(), "expected no parse errors, got: {diags:?}");
+    }
+
+    // ── TypeScript syntax error tests ────────────────────────────────
+
+    #[test]
+    fn typescript_valid_sql_no_errors() {
+        let source = "db.prepare(`SELECT id, name FROM users WHERE id = ${uid}`).all();";
+        let diags = parse_errors_typescript(source);
+        assert!(diags.is_empty(), "expected no parse errors, got: {diags:?}");
+    }
+
+    #[test]
+    fn typescript_syntax_error_missing_expr_list() {
+        let source = "db.prepare(`SELECT FROM users`).all();";
+        let diags = parse_errors_typescript(source);
+        assert!(!diags.is_empty(), "expected parse error for 'SELECT FROM'");
+        assert!(diags.iter().all(|d| d.severity == Severity::Error));
+    }
+
+    #[test]
+    fn typescript_syntax_error_double_where() {
+        let source = "db.prepare(`SELECT id FROM t WHERE x = 1 WHERE y = 2`).all();";
+        let diags = parse_errors_typescript(source);
+        assert!(!diags.is_empty(), "expected parse error for double WHERE");
+    }
+
+    // ── Semantic diagnostics are included but separable ──────────────
+
+    #[test]
+    fn semantic_diagnostics_present_for_unknown_table() {
+        let source = r#"db.execute(f"SELECT id FROM unknown_tbl")"#;
+        let d = dialect();
+        let fragments = extract_python(source);
+        let all = validate_embedded(&d, &fragments, &default_config());
+        // Should have semantic diagnostics (unknown table) but no parse errors.
+        let parse: Vec<_> = all.iter().filter(|d| d.message.is_parse_error()).collect();
+        let semantic: Vec<_> = all.iter().filter(|d| !d.message.is_parse_error()).collect();
+        assert!(parse.is_empty(), "no parse errors expected");
+        assert!(!semantic.is_empty(), "expected semantic diagnostic for unknown table");
+    }
+
+    #[test]
+    fn hole_diagnostics_filtered_out() {
+        // Holes should not produce unknown-table/column diagnostics.
+        let source = r#"db.execute(f"SELECT {col} FROM {tbl}")"#;
+        let d = dialect();
+        let fragments = extract_python(source);
+        let all = validate_embedded(&d, &fragments, &default_config());
+        // Hole placeholders should be filtered — no diagnostics about __hole_N__.
+        for diag in &all {
+            let msg = format!("{}", diag.message);
+            assert!(
+                !msg.contains("__hole_"),
+                "hole placeholder leaked into diagnostics: {msg}",
+            );
+        }
     }
 }
