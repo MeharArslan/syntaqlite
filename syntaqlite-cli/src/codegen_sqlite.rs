@@ -207,7 +207,7 @@ fn write_amalgamation_outputs(
     write_file(&out.join(header_name), &result.header)?;
     write_file(&out.join(source_name), &result.source)?;
     if let Some(ext) = &result.ext_header {
-        write_file(&out.join("syntaqlite_ext.h"), ext)?;
+        write_file(&out.join("syntaqlite_dialect.h"), ext)?;
     }
     Ok(())
 }

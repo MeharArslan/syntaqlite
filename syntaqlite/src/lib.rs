@@ -154,17 +154,17 @@ pub use crate::sqlite::tokens::TokenType;
 /// blocks that external dialect crates need.
 pub mod raw {
     // ── Parser types ─────────────────────────────────────────────────────
+    pub use crate::parser::session::ErrorSpan;
+    pub use crate::parser::session::RawNodeReader;
     pub use crate::parser::session::RawParser;
     pub use crate::parser::session::RawStatementCursor;
-    pub use crate::parser::session::RawNodeReader;
-    pub use crate::parser::session::ErrorSpan;
 
-    pub use crate::parser::tokenizer::RawTokenizer;
-    pub use crate::parser::tokenizer::RawTokenCursor;
     pub use crate::parser::tokenizer::RawToken;
+    pub use crate::parser::tokenizer::RawTokenCursor;
+    pub use crate::parser::tokenizer::RawTokenizer;
 
-    pub use crate::parser::token_parser::RawIncrementalParser;
     pub use crate::parser::token_parser::RawIncrementalCursor;
+    pub use crate::parser::token_parser::RawIncrementalParser;
 
     // ── Node / field types ───────────────────────────────────────────────
     pub use crate::parser::nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
@@ -178,10 +178,8 @@ pub mod raw {
 
     // ── Typed wrappers (for external dialect crates) ─────────────────────
     pub use crate::parser::typed::{
-        DialectTokenType,
-        TypedParser, TypedParserBuilder,
-        TypedStatementCursor, TypedToken,
-        TypedTokenizer, TypedTokenizerBuilder, TypedTokenCursor,
+        DialectTokenType, TypedParser, TypedParserBuilder, TypedStatementCursor, TypedToken,
+        TypedTokenCursor, TypedTokenizer, TypedTokenizerBuilder,
     };
 
     // ── AST trait definitions ────────────────────────────────────────────
@@ -192,8 +190,8 @@ pub mod raw {
     /// Builder types for dialect-agnostic APIs.
     pub mod builders {
         pub use crate::parser::session::RawParserBuilder;
-        pub use crate::parser::tokenizer::RawTokenizerBuilder;
         pub use crate::parser::token_parser::RawIncrementalParserBuilder;
+        pub use crate::parser::tokenizer::RawTokenizerBuilder;
 
         #[cfg(feature = "fmt")]
         pub use crate::fmt::formatter::FormatterBuilder;
@@ -207,4 +205,3 @@ pub mod raw {
     pub use crate::dialect::Dialect;
     pub use crate::dialect::ffi::Dialect as FfiDialect;
 }
-

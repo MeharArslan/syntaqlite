@@ -63,7 +63,10 @@ fn macro_multi_node_emitted_once() {
 
     let root = cursor.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(cursor.node_ref(root)), "SELECT macro!(a, b)");
+    assert_eq!(
+        fmt.format_node(cursor.node_ref(root)),
+        "SELECT macro!(a, b)"
+    );
 }
 
 #[test]
@@ -87,7 +90,10 @@ fn macro_multi_node_no_extra_separator() {
 
     let root = cursor.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(cursor.node_ref(root)), "SELECT foo!(a, b), c");
+    assert_eq!(
+        fmt.format_node(cursor.node_ref(root)),
+        "SELECT foo!(a, b), c"
+    );
 }
 
 #[test]

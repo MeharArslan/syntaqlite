@@ -155,6 +155,10 @@ mod tests {
         // `datetime` at sql_offset 32 must map correctly and not overlap
         // with any hole token.
         let datetime_host = map.to_host(32);
-        assert_eq!(datetime_host, Some(36), "datetime must map to host offset 36");
+        assert_eq!(
+            datetime_host,
+            Some(36),
+            "datetime must map to host offset 36"
+        );
     }
 }

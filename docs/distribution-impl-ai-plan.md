@@ -69,7 +69,7 @@ The command already exists — update it to produce distribution-ready output:
 ### 2.2 Add dialect amalgamation variant
 
 - Flag like `--no-sqlite` that excludes the SQLite dialect files
-- Produces a core-only amalgamation + `syntaqlite_ext.h`
+- Produces a core-only amalgamation + `syntaqlite_dialect.h`
 
 ### 2.3 Verify
 

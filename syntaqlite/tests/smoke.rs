@@ -1,8 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite::raw::RawParser;
 use syntaqlite::ast::{FromArena, Stmt};
+use syntaqlite::raw::RawParser;
 
 #[test]
 fn parse_select_1() {

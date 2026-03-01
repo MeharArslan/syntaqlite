@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "syntaqlite_ext/ast_builder.h"
+#include "syntaqlite_dialect/ast_builder.h"
 
 #ifdef __cplusplus
 extern "C" {

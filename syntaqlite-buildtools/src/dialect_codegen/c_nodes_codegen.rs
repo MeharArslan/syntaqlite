@@ -219,7 +219,7 @@ pub fn generate_ast_builder_header(model: &AstModel<'_>, dialect: &str) -> Strin
     let guard = format!("SYNTAQLITE_{}_DIALECT_BUILDER_H", dialect.to_uppercase());
     w.file_header();
     w.header_guard_start(&guard);
-    w.include_local("syntaqlite_ext/ast_builder.h");
+    w.include_local("syntaqlite_dialect/ast_builder.h");
     w.include_local(&format!("syntaqlite_{dialect}/{dialect}_node.h"));
     w.newline();
     w.extern_c_start();

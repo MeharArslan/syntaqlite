@@ -60,7 +60,11 @@ fn multiline_fstring() {
     let fragments = extract_python(source);
     assert_eq!(fragments.len(), 1);
     assert_eq!(fragments[0].holes.len(), 1);
-    assert!(fragments[0].sql_text.contains("SELECT *\nFROM users\nWHERE id = "));
+    assert!(
+        fragments[0]
+            .sql_text
+            .contains("SELECT *\nFROM users\nWHERE id = ")
+    );
 }
 
 #[test]
@@ -106,10 +110,7 @@ fn validate_multiple_holes_no_placeholder_leaks() {
 
     for d in &diags {
         let msg = d.message.to_string();
-        assert!(
-            !msg.contains("__hole_"),
-            "hole placeholder leaked: {msg}"
-        );
+        assert!(!msg.contains("__hole_"), "hole placeholder leaked: {msg}");
     }
 }
 
@@ -130,10 +131,7 @@ query = f"SELECT id, name FROM users WHERE id = {uid}"
 
     for d in &diags {
         let msg = d.message.to_string();
-        assert!(
-            !msg.contains("__hole_"),
-            "hole placeholder leaked: {msg}"
-        );
+        assert!(!msg.contains("__hole_"), "hole placeholder leaked: {msg}");
     }
 }
 
@@ -147,9 +145,9 @@ fn validate_offsets_mapped_to_host_file() {
     let diags = validate_embedded(dialect(), &fragments, &[], &config);
 
     // Should have a diagnostic about 'nonexistent'.
-    let table_diag = diags.iter().find(|d| {
-        d.message.to_string().contains("nonexistent")
-    });
+    let table_diag = diags
+        .iter()
+        .find(|d| d.message.to_string().contains("nonexistent"));
     if let Some(d) = table_diag {
         // The word "nonexistent" starts at offset 20 in the host source
         // (after `q = f"SELECT * FROM `).
@@ -197,7 +195,11 @@ fn ts_multiline_template_literal() {
     let fragments = extract_typescript(source);
     assert_eq!(fragments.len(), 1);
     assert_eq!(fragments[0].holes.len(), 1);
-    assert!(fragments[0].sql_text.contains("SELECT *\nFROM users\nWHERE id = "));
+    assert!(
+        fragments[0]
+            .sql_text
+            .contains("SELECT *\nFROM users\nWHERE id = ")
+    );
 }
 
 #[test]
@@ -258,10 +260,7 @@ fn ts_validate_multiple_holes_no_placeholder_leaks() {
 
     for d in &diags {
         let msg = d.message.to_string();
-        assert!(
-            !msg.contains("__hole_"),
-            "hole placeholder leaked: {msg}"
-        );
+        assert!(!msg.contains("__hole_"), "hole placeholder leaked: {msg}");
     }
 }
 
@@ -272,9 +271,9 @@ fn ts_validate_offsets_mapped_to_host_file() {
     let config = ValidationConfig::default();
     let diags = validate_embedded(dialect(), &fragments, &[], &config);
 
-    let table_diag = diags.iter().find(|d| {
-        d.message.to_string().contains("nonexistent")
-    });
+    let table_diag = diags
+        .iter()
+        .find(|d| d.message.to_string().contains("nonexistent"));
     if let Some(d) = table_diag {
         let referenced = &source[d.start_offset..d.end_offset];
         assert_eq!(referenced, "nonexistent");

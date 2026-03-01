@@ -23,8 +23,8 @@
 //! The saw_subquery tests verify the OMIT_SUBQUERY detection mechanism,
 //! which uses a parser flag rather than keyword suppression.
 
-use syntaqlite::dialect::DialectConfig;
 use syntaqlite::TokenType;
+use syntaqlite::dialect::DialectConfig;
 
 const fn tk(t: TokenType) -> u32 {
     t as u32

@@ -210,7 +210,11 @@ mod tests {
         assert_eq!(fragments.len(), 1);
         assert_eq!(fragments[0].holes.len(), 1);
         assert_eq!(fragments[0].holes[0].placeholder, "__hole_0__");
-        assert!(fragments[0].sql_text.starts_with("SELECT * FROM users WHERE id = "));
+        assert!(
+            fragments[0]
+                .sql_text
+                .starts_with("SELECT * FROM users WHERE id = ")
+        );
     }
 
     #[test]

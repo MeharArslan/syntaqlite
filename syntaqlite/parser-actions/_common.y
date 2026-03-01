@@ -22,7 +22,7 @@
 %include {
 #include <string.h>
 
-#include "syntaqlite_ext/ast_builder.h"
+#include "syntaqlite_dialect/ast_builder.h"
 #include "syntaqlite/types.h"
 #include "csrc/sqlite/dialect_builder.h"
 #include "syntaqlite_sqlite/sqlite_tokens.h"

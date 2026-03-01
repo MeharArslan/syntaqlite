@@ -100,10 +100,7 @@ fn find_string_end(
         }
         if bytes[j] == quote_char {
             if quote_len == 3 {
-                if j + 2 < len
-                    && bytes[j + 1] == quote_char
-                    && bytes[j + 2] == quote_char
-                {
+                if j + 2 < len && bytes[j + 1] == quote_char && bytes[j + 2] == quote_char {
                     return Some((j, j + 3));
                 }
             } else {
@@ -215,11 +212,7 @@ fn skip_python_string(bytes: &[u8], pos: usize, end: usize) -> usize {
                 j += 2;
                 continue;
             }
-            if j + 2 < end
-                && bytes[j] == quote
-                && bytes[j + 1] == quote
-                && bytes[j + 2] == quote
-            {
+            if j + 2 < end && bytes[j] == quote && bytes[j + 1] == quote && bytes[j + 2] == quote {
                 return j + 3;
             }
             j += 1;

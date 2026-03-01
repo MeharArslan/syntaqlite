@@ -262,9 +262,7 @@ pub fn discover_versions(amalgamation_dir: &Path) -> Result<Vec<String>, String>
     for entry in entries.flatten() {
         if entry.path().is_dir() {
             let name = entry.file_name().to_string_lossy().to_string();
-            if Version::parse(&name).is_ok()
-                && entry.path().join("sqlite3.c").exists()
-            {
+            if Version::parse(&name).is_ok() && entry.path().join("sqlite3.c").exists() {
                 versions.push(name);
             }
         }
@@ -387,7 +385,9 @@ pub fn generate_cflag_versions_rs(availability: &CflagAvailability) -> String {
     out.push('\n');
     out.push_str("/// Cflag metadata: (name, index, min_version, category).\n");
     out.push_str("///\n");
-    out.push_str("/// `index` is the bit index in `Cflags` (matches `SYNQ_CFLAG_IDX_*` constants).\n");
+    out.push_str(
+        "/// `index` is the bit index in `Cflags` (matches `SYNQ_CFLAG_IDX_*` constants).\n",
+    );
     out.push_str("///\n");
     out.push_str("/// `min_version` is the encoded SQLite version integer at which this cflag\n");
     out.push_str("/// first appears in the amalgamation source. Zero = not observed.\n");

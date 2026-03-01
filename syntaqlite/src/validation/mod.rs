@@ -20,17 +20,17 @@ mod scope;
 mod walker;
 
 use crate::ast_traits::AstTypes;
-use crate::parser::{FromArena, NodeId, RawNodeReader, ParseError};
+use crate::parser::{FromArena, NodeId, ParseError, RawNodeReader};
 
 use scope::ScopeStack;
 
 // ── Public re-exports ────────────────────────────────────────────────────
 
+pub(crate) use types::expand_function_info;
 pub use types::{
     ColumnDef, Diagnostic, DiagnosticMessage, DocumentContext, FunctionDef, Help, RelationDef,
     RelationKind, SessionContext, Severity,
 };
-pub(crate) use types::expand_function_info;
 
 /// Configuration for semantic validation.
 pub struct ValidationConfig {
@@ -201,11 +201,10 @@ impl<'d> Validator<'d> {
     #[cfg(feature = "sqlite")]
     pub fn new() -> Validator<'static> {
         let dc = crate::dialect::ffi::DialectConfig::default();
-        let functions: Vec<FunctionDef> =
-            crate::sqlite::functions::available_functions(&dc)
-                .into_iter()
-                .flat_map(|info| expand_function_info(info))
-                .collect();
+        let functions: Vec<FunctionDef> = crate::sqlite::functions::available_functions(&dc)
+            .into_iter()
+            .flat_map(|info| expand_function_info(info))
+            .collect();
         Validator::builder(&crate::sqlite::DIALECT)
             .functions(functions)
             .build()
@@ -230,9 +229,8 @@ impl<'d> Validator<'d> {
     ) -> Vec<Diagnostic> {
         let mut cursor = self.parser.parse(source);
         // Collect NodeRef results and convert to NodeId results for validate_parse_results.
-        let results: Vec<Result<NodeId, ParseError>> = (&mut cursor)
-            .map(|r| r.map(|nr| nr.id()))
-            .collect();
+        let results: Vec<Result<NodeId, ParseError>> =
+            (&mut cursor).map(|r| r.map(|nr| nr.id())).collect();
         validate_parse_results(
             cursor.reader(),
             &results,

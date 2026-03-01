@@ -6,12 +6,12 @@
 //! Thin wrappers around the generic parser/tokenizer types, pre-bound to the
 //! SQLite dialect.
 
+use super::ast::Stmt;
+use super::tokens::TokenType;
 use crate::parser::typed::{
     TypedParser, TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor,
     TypedTokenizer, TypedTokenizerBuilder,
 };
-use super::ast::Stmt;
-use super::tokens::TokenType;
 
 // ── Type aliases ─────────────────────────────────────────────────────────
 
@@ -114,6 +114,8 @@ impl ParserBuilder {
 
     /// Build the parser.
     pub fn build(self) -> Parser {
-        Parser { inner: self.inner.build() }
+        Parser {
+            inner: self.inner.build(),
+        }
     }
 }

@@ -10,7 +10,7 @@
 #include "csrc/dialect_dispatch.h"
 #include "csrc/token_wrapped.h"
 #include "syntaqlite/dialect.h"
-#include "syntaqlite_ext/ast_builder.h"
+#include "syntaqlite_dialect/ast_builder.h"
 
 // ---------------------------------------------------------------------------
 // Parser struct

@@ -272,10 +272,10 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
                 "#include \"syntaqlite/config.h\"\n#include \"syntaqlite/types.h\"\n"
                 "#include \"syntaqlite/dialect.h\"\n#include \"syntaqlite/parser.h\"\n"
                 "#include \"syntaqlite/tokenizer.h\"\n#endif\n")
-    with open(os.path.join(perfetto_csrc_dir, "syntaqlite_ext.h"), "w", encoding="utf-8") as f:
+    with open(os.path.join(perfetto_csrc_dir, "syntaqlite_dialect.h"), "w", encoding="utf-8") as f:
         f.write("#ifndef SYNTAQLITE_EXT_H\n#define SYNTAQLITE_EXT_H\n"
-                "#include \"syntaqlite_ext/sqlite_compat.h\"\n#include \"syntaqlite_ext/arena.h\"\n"
-                "#include \"syntaqlite_ext/vec.h\"\n#include \"syntaqlite_ext/ast_builder.h\"\n"
+                "#include \"syntaqlite_dialect/sqlite_compat.h\"\n#include \"syntaqlite_dialect/arena.h\"\n"
+                "#include \"syntaqlite_dialect/vec.h\"\n#include \"syntaqlite_dialect/ast_builder.h\"\n"
                 "#endif\n")
 
     out_perfetto = os.path.join(ROOT_DIR, "web/playground", "public", "syntaqlite-perfetto.wasm")

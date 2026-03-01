@@ -6,14 +6,14 @@ use std::slice;
 
 use serde::Serialize;
 
-use syntaqlite::dialect::{Cflags, DialectConfig, Dialect};
+use syntaqlite::Formatter;
+use syntaqlite::dialect::{Cflags, Dialect, DialectConfig};
 use syntaqlite::dialect::{cflag_table, parse_cflag_name, parse_sqlite_version};
 use syntaqlite::embedded::{self, EmbeddedFragment};
-use syntaqlite::raw::FfiDialect;
 use syntaqlite::fmt::FormatConfig;
+use syntaqlite::raw::FfiDialect;
 use syntaqlite::raw::RawParser;
 use syntaqlite::validation::ValidationConfig;
-use syntaqlite::Formatter;
 
 thread_local! {
     static RESULT_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
@@ -106,7 +106,9 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut parser = RawParser::builder(&dialect).dialect_config(get_dialect_config()).build();
+    let mut parser = RawParser::builder(&dialect)
+        .dialect_config(get_dialect_config())
+        .build();
     let mut cursor = parser.parse(&source);
 
     let mut nodes = Vec::new();
@@ -151,7 +153,9 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut parser = RawParser::builder(&dialect).dialect_config(get_dialect_config()).build();
+    let mut parser = RawParser::builder(&dialect)
+        .dialect_config(get_dialect_config())
+        .build();
     let mut cursor = parser.parse(&source);
     let mut out = String::new();
     let mut count = 0;
@@ -547,7 +551,10 @@ pub extern "C" fn wasm_get_available_functions() -> i32 {
     let lsp = take_or_create_lsp_host(dialect_ptr);
     let names = lsp.host.available_function_names();
     let count = names.len() as i32;
-    let items: Vec<AvailableFunction> = names.into_iter().map(|name| AvailableFunction { name }).collect();
+    let items: Vec<AvailableFunction> = names
+        .into_iter()
+        .map(|name| AvailableFunction { name })
+        .collect();
     set_result(&serde_json::to_string(&items).unwrap());
 
     store_lsp_host(lsp);
@@ -576,7 +583,9 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host
         .update_document(WASM_DOC_URI, version as i32, source);
-    let all_diags = lsp.host.all_diagnostics(WASM_DOC_URI, &ValidationConfig::default());
+    let all_diags = lsp
+        .host
+        .all_diagnostics(WASM_DOC_URI, &ValidationConfig::default());
     let total_count = all_diags.len();
     set_result(&serde_json::to_string(&all_diags).expect("diagnostic serialization failed"));
 
@@ -868,12 +877,7 @@ pub extern "C" fn wasm_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn wasm_embedded_diagnostics(
-    lang: u32,
-    ptr: u32,
-    len: u32,
-    version: u32,
-) -> i32 {
+pub extern "C" fn wasm_embedded_diagnostics(lang: u32, ptr: u32, len: u32, version: u32) -> i32 {
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         run_embedded_diagnostics(lang, ptr, len, version)
     })) {

@@ -7,7 +7,7 @@ use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
 use crate::dialect::Dialect;
 use crate::parser::ffi::MacroRegion;
-use crate::parser::{RawParser, CommentKind, Fields};
+use crate::parser::{CommentKind, Fields, RawParser};
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {

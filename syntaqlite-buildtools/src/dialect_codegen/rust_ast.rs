@@ -378,7 +378,7 @@ pub fn generate_rust_ffi_nodes(model: &AstModel<'_>, crate_prefix: &str) -> Stri
         "
         #![allow(dead_code)]
 
-        use {crate_prefix}::generic::{{ArenaNode, NodeId, SourceSpan}};
+        use {crate_prefix}::parser::{{ArenaNode, NodeId, SourceSpan}};
     ",
     ));
     w.newline();
@@ -447,14 +447,19 @@ pub fn generate_rust_ast(
     if !open_for_extension {
         w.line("use std::marker::PhantomData;");
     }
-    w.lines(&format!("
-        pub(crate) use {crate_prefix}::generic::NodeList;
-        pub use {crate_prefix}::generic::{{Comment, CommentKind, FromArena, NodeId, NodeReader, SourceSpan, TypedList}};
-    "));
+    w.lines(&format!(
+        "
+        pub(crate) use {crate_prefix}::parser::nodes::NodeList;
+        pub use {crate_prefix}::parser::ffi::{{Comment, CommentKind}};
+        pub use {crate_prefix}::parser::nodes::{{NodeId, SourceSpan}};
+        pub use {crate_prefix}::parser::session::RawNodeReader;
+        pub use {crate_prefix}::parser::typed_list::{{FromArena, TypedList}};
+    "
+    ));
     w.newline();
 
     // Re-export shared enums, flags, and trait types from the ast_traits module.
-    let traits_path = format!("{crate_prefix}::generic");
+    let traits_path = format!("{crate_prefix}::ast_traits");
     w.line(&format!("pub use {traits_path}::*;"));
     w.newline();
 
@@ -487,7 +492,7 @@ pub fn generate_rust_ast(
         // FromArena impl
         w.line(&format!("impl<'a> FromArena<'a> for {}<'a> {{", abs_name));
         w.indent();
-        w.line("fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {");
+        w.line("fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {");
         w.indent();
         w.line("let node = Node::resolve(reader, id)?;");
         w.line("Some(match node {");
@@ -526,7 +531,7 @@ pub fn generate_rust_ast(
         if !uses_reader {
             w.line("#[allow(dead_code)]");
         }
-        w.line("reader: &'a NodeReader<'a>,");
+        w.line("reader: &'a RawNodeReader<'a>,");
         w.line("id: NodeId,");
         w.dedent();
         w.line("}");
@@ -583,7 +588,7 @@ pub fn generate_rust_ast(
         // FromArena impl — resolve from arena by NodeId (tag-checked, no unsafe)
         w.line(&format!("impl<'a> FromArena<'a> for {}<'a> {{", name));
         w.indent();
-        w.line("fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {");
+        w.line("fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {");
         w.indent();
         w.line(&format!(
             "let raw = reader.resolve_as::<{ffi_path}::{name}>(id)?;"
@@ -650,7 +655,7 @@ pub fn generate_rust_ast(
     w.doc_comment("# Safety");
     w.doc_comment("`ptr` must be non-null, well-aligned, and valid for `'a`.");
     w.doc_comment("Its first `u32` must be a valid `NodeTag` discriminant.");
-    w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, reader: &'a NodeReader<'a>, id: NodeId) -> Node<'a> {");
+    w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, reader: &'a RawNodeReader<'a>, id: NodeId) -> Node<'a> {");
     w.indent();
     w.line("// SAFETY: caller guarantees ptr is valid for 'a with a valid tag.");
     w.line("unsafe {");
@@ -685,7 +690,7 @@ pub fn generate_rust_ast(
     w.doc_comment("Resolve a `NodeId` into a typed `Node`, or `None` if null/invalid.");
     w.lines(
         "
-        pub(crate) fn resolve(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Node<'a>> {
+        pub(crate) fn resolve(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Node<'a>> {
             let (ptr, _tag) = reader.node_ptr(id)?;
             Some(unsafe { Node::from_raw(ptr as *const u32, reader, id) })
         }
@@ -730,7 +735,7 @@ pub fn generate_rust_ast(
     w.lines(
         "
         impl<'a> FromArena<'a> for Node<'a> {
-            fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+            fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
                 Node::resolve(reader, id)
             }
         }

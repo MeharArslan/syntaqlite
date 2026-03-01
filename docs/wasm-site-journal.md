@@ -113,12 +113,12 @@ Date: 2026-02-20
 ## Entry 12
 
 - Moved small runtime helper implementations to headers to reduce standalone dialect build friction:
-  - `synq_arena_*` moved into `include/syntaqlite_ext/arena.h` as `static inline`.
-  - `synq_parse_ctx_*`, `synq_parse_build`, `synq_parse_list_append`, `synq_parse_list_flush` moved into `include/syntaqlite_ext/ast_builder.h` as `static inline`.
+  - `synq_arena_*` moved into `include/syntaqlite_dialect/arena.h` as `static inline`.
+  - `synq_parse_ctx_*`, `synq_parse_build`, `synq_parse_list_append`, `synq_parse_list_flush` moved into `include/syntaqlite_dialect/ast_builder.h` as `static inline`.
 - Removed now-redundant runtime C split files:
   - deleted `syntaqlite-runtime/csrc/arena.c`
   - deleted `syntaqlite-runtime/csrc/parse_ctx.h`
-- Updated `syntaqlite-runtime/csrc/parser.c` to use header-provided helpers and include `syntaqlite_ext/ast_builder.h` directly.
+- Updated `syntaqlite-runtime/csrc/parser.c` to use header-provided helpers and include `syntaqlite_dialect/ast_builder.h` directly.
 - Updated `syntaqlite-runtime/build.rs` to stop compiling `arena.c`.
 - Updated `python/tools/build_web_playground.py` dialect wasm compilation to use dialect-only C inputs again (plus tiny shim), no runtime C objects required.
 
@@ -183,7 +183,7 @@ Date: 2026-02-20
   - `tools/build-perfetto-wasm` wrapper
 - Script flow:
   - generates Perfetto amalgamated C via `syntaqlite-cli dialect --name perfetto ... csrc`
-  - writes shim headers (`syntaqlite_runtime.h`, `syntaqlite_ext.h`) into the generated csrc dir
+  - writes shim headers (`syntaqlite_runtime.h`, `syntaqlite_dialect.h`) into the generated csrc dir
   - compiles `syntaqlite_perfetto.c` with `emcc` as a side module (`-sSIDE_MODULE=1`)
 - Default output is `web-playground/syntaqlite-perfetto.wasm`.
 - Validation:

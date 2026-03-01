@@ -18,9 +18,9 @@ use crate::dialect::CflagInfo;
 /// returned by [`StatementCursor::next_statement`](crate::parser::typed::StatementCursor) and
 /// [`RawIncrementalCursor::finish`](crate::parser::token_parser::RawIncrementalCursor::finish).
 pub mod ast;
+mod cflag_versions_table;
 mod ffi;
 pub(crate) mod functions;
-mod cflag_versions_table;
 #[cfg(feature = "sqlite")]
 pub(crate) mod wrappers;
 

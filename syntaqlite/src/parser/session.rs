@@ -678,11 +678,7 @@ impl<'a> NodeRef<'a> {
 
 /// Recursive JSON dump for a single node ID, returning a `serde_json::Value`.
 #[cfg(feature = "json")]
-fn dump_json_id(
-    id: NodeId,
-    reader: RawNodeReader<'_>,
-    dialect: Dialect<'_>,
-) -> serde_json::Value {
+fn dump_json_id(id: NodeId, reader: RawNodeReader<'_>, dialect: Dialect<'_>) -> serde_json::Value {
     if id.is_null() {
         return serde_json::Value::Null;
     }

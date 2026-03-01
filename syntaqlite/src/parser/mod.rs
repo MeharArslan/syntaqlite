@@ -25,7 +25,7 @@ pub mod typed;
 
 pub(crate) use ffi::{Comment, CommentKind};
 pub(crate) use nodes::{ArenaNode, FieldVal, Fields, NodeId, SourceSpan};
-pub(crate) use session::{RawParser, RawNodeReader, NodeRef, ParseError};
+pub(crate) use session::{NodeRef, ParseError, RawNodeReader, RawParser};
 pub(crate) use token_parser::RawIncrementalParser;
 pub(crate) use tokenizer::RawTokenizer;
 pub(crate) use typed_list::{FromArena, TypedList};

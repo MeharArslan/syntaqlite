@@ -6,7 +6,7 @@ use std::ops::Range;
 
 use super::ffi;
 use super::nodes::NodeId;
-use super::session::{RawNodeReader, NodeRef, ParseError, CursorState};
+use super::session::{CursorState, NodeRef, ParseError, RawNodeReader};
 use crate::dialect::Dialect;
 use crate::dialect::ffi::DialectConfig;
 
@@ -126,10 +126,7 @@ impl<'a> RawIncrementalParserBuilder<'a> {
             // SAFETY: raw is valid; boxed pointer is stable and lives as long
             // as the LowLevelParser.
             unsafe {
-                ffi::syntaqlite_parser_set_dialect_config(
-                    raw,
-                    &*boxed as *const DialectConfig,
-                );
+                ffi::syntaqlite_parser_set_dialect_config(raw, &*boxed as *const DialectConfig);
             }
             Some(boxed)
         } else {

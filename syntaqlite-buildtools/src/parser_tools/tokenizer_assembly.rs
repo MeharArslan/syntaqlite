@@ -26,7 +26,7 @@ pub fn assemble(
     let combined = {
         let mut w = CWriter::new();
         w.sqlite_file_header();
-        w.include_local(&format!("{pp}syntaqlite_ext/sqlite_compat.h"));
+        w.include_local(&format!("{pp}syntaqlite_dialect/sqlite_compat.h"));
         w.include_local(&format!("{pp}syntaqlite_{dialect}/{dialect}_tokens.h"));
         w.include_local(&format!("{ip}sqlite_keyword.h"))
             .newline()

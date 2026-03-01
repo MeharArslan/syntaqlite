@@ -63,7 +63,7 @@ pub(crate) enum DialectCommand {
         runtime_header: String,
         /// Default path for the syntaqlite extension header in the amalgamated output.
         /// Baked into the #ifndef SYNTAQLITE_EXT_HEADER guard.
-        #[arg(long, default_value = "syntaqlite_ext.h")]
+        #[arg(long, default_value = "syntaqlite_dialect.h")]
         ext_header: String,
         /// Prefix for internal dialect headers (dialect_builder.h, dialect_meta.h, etc.).
         /// Only used with --no-amalgamate.

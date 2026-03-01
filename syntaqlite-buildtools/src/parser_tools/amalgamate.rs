@@ -5,7 +5,7 @@
 //! runtime and dialect source trees.
 //!
 //! Three modes:
-//! - **Runtime only** — engine (`syntaqlite_runtime.{h,c}`) + extension header (`syntaqlite_ext.h`)
+//! - **Runtime only** — engine (`syntaqlite_runtime.{h,c}`) + extension header (`syntaqlite_dialect.h`)
 //! - **Dialect only** — dialect sources that `#include` the runtime header and ext header
 //! - **Full** — runtime + dialect inlined into one pair of files
 
@@ -24,7 +24,7 @@ pub struct AmalgamateOutput {
     pub ext_header: Option<String>,
 }
 
-/// Produce `syntaqlite_runtime.{h,c}` and `syntaqlite_ext.h`.
+/// Produce `syntaqlite_runtime.{h,c}` and `syntaqlite_dialect.h`.
 pub fn amalgamate_runtime(runtime_dir: &Path) -> Result<AmalgamateOutput, String> {
     let csrc = runtime_dir.join("csrc");
     let include = runtime_dir.join("include");
@@ -34,7 +34,7 @@ pub fn amalgamate_runtime(runtime_dir: &Path) -> Result<AmalgamateOutput, String
 }
 
 /// Produce `syntaqlite_<dialect>.{h,c}` that references `syntaqlite_runtime.h`
-/// and `syntaqlite_ext.h`.
+/// and `syntaqlite_dialect.h`.
 ///
 /// Runtime-style `#include "..."` directives that don't resolve to a file in
 /// the dialect tree are stripped — the emitted `.c` file includes the runtime
@@ -43,7 +43,7 @@ pub fn amalgamate_runtime(runtime_dir: &Path) -> Result<AmalgamateOutput, String
 ///
 /// `runtime_header` and `ext_header` control the default values baked into
 /// the `#ifndef` guards. Pass `None` for the defaults (`"syntaqlite_runtime.h"`
-/// and `"syntaqlite_ext.h"`).
+/// and `"syntaqlite_dialect.h"`).
 pub fn amalgamate_dialect(
     dialect: &str,
     dialect_dir: &Path,
@@ -59,7 +59,7 @@ pub fn amalgamate_dialect(
         EmitMode::DialectOnly {
             dialect,
             runtime_header: runtime_header.unwrap_or("syntaqlite_runtime.h"),
-            ext_header: ext_header.unwrap_or("syntaqlite_ext.h"),
+            ext_header: ext_header.unwrap_or("syntaqlite_dialect.h"),
         },
     )
 }
@@ -104,7 +104,7 @@ struct SourceFile {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum FileKind {
     PublicHeader,   // under include/ (key starts with `syntaqlite/`)
-    ExtHeader,      // under include/ (key starts with `syntaqlite_ext/`)
+    ExtHeader,      // under include/ (key starts with `syntaqlite_dialect/`)
     InternalHeader, // under csrc/, extension .h
     Source,         // extension .c
 }
@@ -127,7 +127,7 @@ fn collect_files(dirs: &[&Path]) -> Result<FileGraph, String> {
         let dir_name = dir.file_name().and_then(|n| n.to_str()).unwrap_or("");
         // For `include/` directories, start with empty prefix so
         // `include/syntaqlite/foo.h` → key `syntaqlite/foo.h`.
-        // `include/syntaqlite_ext/foo.h` → key `syntaqlite_ext/foo.h`.
+        // `include/syntaqlite_dialect/foo.h` → key `syntaqlite_dialect/foo.h`.
         // For `csrc/` directories, prefix is `csrc` → key `csrc/foo.h`.
         let prefix = if dir_name == "include" { "" } else { dir_name };
         walk_dir(dir, prefix, &mut path_map)?;
@@ -201,12 +201,12 @@ fn walk_dir(dir: &Path, prefix: &str, map: &mut BTreeMap<String, PathBuf>) -> Re
 }
 
 fn classify(include_key: &str) -> FileKind {
-    if include_key.starts_with("syntaqlite_ext/") {
+    if include_key.starts_with("syntaqlite_dialect/") {
         FileKind::ExtHeader
     } else if include_key.starts_with("syntaqlite/") || include_key.starts_with("syntaqlite_") {
         // Matches runtime headers (syntaqlite/types.h) and dialect headers
         // (syntaqlite_sqlite/sqlite.h, syntaqlite_perfetto/perfetto.h, etc.).
-        // syntaqlite_ext/ is handled above.
+        // syntaqlite_dialect/ is handled above.
         FileKind::PublicHeader
     } else if include_key.ends_with(".h") {
         FileKind::InternalHeader
@@ -328,7 +328,7 @@ fn toposort_visit(
 
 /// Amalgamation mode — determines output structure and naming.
 enum EmitMode<'a> {
-    /// Runtime only: `syntaqlite_runtime.{h,c}` + `syntaqlite_ext.h`.
+    /// Runtime only: `syntaqlite_runtime.{h,c}` + `syntaqlite_dialect.h`.
     RuntimeOnly,
     /// Dialect only: `syntaqlite_<name>.{h,c}`, expects external runtime/ext headers.
     DialectOnly {
@@ -612,7 +612,7 @@ fn should_strip_quoted_include(path: &str, inlined_keys: &HashSet<&str>) -> bool
     // headers and rely on SYNTAQLITE_RUNTIME_HEADER / SYNTAQLITE_EXT_HEADER.
     path.starts_with("syntaqlite/")
         || path.starts_with("syntaqlite_")
-        || path.starts_with("syntaqlite_ext/")
+        || path.starts_with("syntaqlite_dialect/")
         || path.starts_with("csrc/")
 }
 

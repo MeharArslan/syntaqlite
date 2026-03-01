@@ -10,7 +10,7 @@
 */
 
 #include "csrc/sqlite/sqlite_keyword.h"
-#include "syntaqlite_ext/sqlite_compat.h"
+#include "syntaqlite_dialect/sqlite_compat.h"
 #include "syntaqlite_sqlite/sqlite_tokens.h"
 
 #include "syntaqlite/dialect_config.h"

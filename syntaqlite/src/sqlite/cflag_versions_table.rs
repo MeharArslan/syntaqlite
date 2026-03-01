@@ -46,7 +46,12 @@ pub(crate) const CFLAG_TABLE: &[(&str, u32, i32, &str)] = &[
     ("SQLITE_ENABLE_JSON1", 33, 3030001, "functions"),
     ("SQLITE_ENABLE_MATH_FUNCTIONS", 34, 3035005, "functions"),
     ("SQLITE_ENABLE_OFFSET_SQL_FUNC", 35, 3030001, "functions"),
-    ("SQLITE_ENABLE_ORDERED_SET_AGGREGATES", 36, 3047002, "functions"),
+    (
+        "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
+        36,
+        3047002,
+        "functions",
+    ),
     ("SQLITE_ENABLE_PERCENTILE", 37, 3051002, "functions"),
     ("SQLITE_ENABLE_RTREE", 38, 0, "extensions"),
     ("SQLITE_ENABLE_STMTVTAB", 39, 0, "vtable"),

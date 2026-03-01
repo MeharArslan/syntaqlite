@@ -53,14 +53,14 @@ def _write_runtime_shims(csrc_dir: Path) -> None:
 """,
         encoding="utf-8",
     )
-    (csrc_dir / "syntaqlite_ext.h").write_text(
+    (csrc_dir / "syntaqlite_dialect.h").write_text(
         """\
 #ifndef SYNTAQLITE_EXT_H
 #define SYNTAQLITE_EXT_H
-#include \"syntaqlite_ext/sqlite_compat.h\"
-#include \"syntaqlite_ext/arena.h\"
-#include \"syntaqlite_ext/vec.h\"
-#include \"syntaqlite_ext/ast_builder.h\"
+#include \"syntaqlite_dialect/sqlite_compat.h\"
+#include \"syntaqlite_dialect/arena.h\"
+#include \"syntaqlite_dialect/vec.h\"
+#include \"syntaqlite_dialect/ast_builder.h\"
 #endif
 """,
         encoding="utf-8",

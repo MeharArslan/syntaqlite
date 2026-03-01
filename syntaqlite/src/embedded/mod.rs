@@ -21,10 +21,10 @@ pub use typescript::extract_typescript;
 
 use std::ops::Range;
 
-use crate::dialect::TokenCategory;
 use crate::dialect::Dialect;
+use crate::dialect::TokenCategory;
 use crate::parser::ParseError;
-use crate::parser::{RawTokenizer, RawIncrementalParser};
+use crate::parser::{RawIncrementalParser, RawTokenizer};
 use crate::validation::{Diagnostic, DiagnosticMessage, FunctionDef, ValidationConfig};
 
 use offset_map::OffsetMap;
@@ -57,9 +57,25 @@ pub struct Hole {
 
 /// SQL keywords that identify a string as containing SQL.
 const SQL_KEYWORDS: &[&str] = &[
-    "SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "ALTER", "DROP", "WITH",
-    "EXPLAIN", "PRAGMA", "ATTACH", "DETACH", "REINDEX", "VACUUM", "BEGIN",
-    "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE",
+    "SELECT",
+    "INSERT",
+    "UPDATE",
+    "DELETE",
+    "CREATE",
+    "ALTER",
+    "DROP",
+    "WITH",
+    "EXPLAIN",
+    "PRAGMA",
+    "ATTACH",
+    "DETACH",
+    "REINDEX",
+    "VACUUM",
+    "BEGIN",
+    "COMMIT",
+    "ROLLBACK",
+    "SAVEPOINT",
+    "RELEASE",
 ];
 
 /// Check if the given text starts with a SQL keyword (case-insensitive).
@@ -68,8 +84,7 @@ fn starts_with_sql_keyword(text: &str) -> bool {
     for kw in SQL_KEYWORDS {
         if trimmed.len() >= kw.len()
             && trimmed[..kw.len()].eq_ignore_ascii_case(kw)
-            && (trimmed.len() == kw.len()
-                || !trimmed.as_bytes()[kw.len()].is_ascii_alphanumeric())
+            && (trimmed.len() == kw.len() || !trimmed.as_bytes()[kw.len()].is_ascii_alphanumeric())
         {
             return true;
         }
@@ -130,9 +145,7 @@ pub fn validate_embedded(
             let Some(start) = offset_map.to_host(d.start_offset) else {
                 continue;
             };
-            let end = offset_map
-                .to_host(d.end_offset)
-                .unwrap_or(start);
+            let end = offset_map.to_host(d.end_offset).unwrap_or(start);
             d.start_offset = start;
             d.end_offset = end;
             all_diags.push(d);
@@ -175,8 +188,7 @@ pub fn fragment_semantic_tokens(
         let cursor = tokenizer.tokenize(&fragment.sql_text);
         cursor
             .map(|tok| {
-                let offset =
-                    tok.text.as_ptr() as usize - fragment.sql_text.as_ptr() as usize;
+                let offset = tok.text.as_ptr() as usize - fragment.sql_text.as_ptr() as usize;
                 (tok.token_type, offset, tok.text.len())
             })
             .collect()
@@ -186,9 +198,10 @@ pub fn fragment_semantic_tokens(
     let mut cursor = parser.feed(&fragment.sql_text);
 
     for &(token_type, offset, length) in &tokens {
-        let hole = fragment.holes.iter().find(|h| {
-            offset >= h.sql_offset && offset < h.sql_offset + h.placeholder.len()
-        });
+        let hole = fragment
+            .holes
+            .iter()
+            .find(|h| offset >= h.sql_offset && offset < h.sql_offset + h.placeholder.len());
 
         if let Some(hole) = hole {
             cursor.begin_macro(hole.host_range.start as u32, hole.host_range.len() as u32);
@@ -240,8 +253,7 @@ fn validate_fragment(
         let cursor = tokenizer.tokenize(&fragment.sql_text);
         cursor
             .map(|tok| {
-                let offset =
-                    tok.text.as_ptr() as usize - fragment.sql_text.as_ptr() as usize;
+                let offset = tok.text.as_ptr() as usize - fragment.sql_text.as_ptr() as usize;
                 (tok.token_type, offset, tok.text.len())
             })
             .collect()
@@ -252,9 +264,10 @@ fn validate_fragment(
     let mut results: Vec<Result<crate::parser::NodeId, ParseError>> = Vec::new();
 
     for &(token_type, offset, length) in &tokens {
-        let hole = fragment.holes.iter().find(|h| {
-            offset >= h.sql_offset && offset < h.sql_offset + h.placeholder.len()
-        });
+        let hole = fragment
+            .holes
+            .iter()
+            .find(|h| offset >= h.sql_offset && offset < h.sql_offset + h.placeholder.len());
 
         if let Some(hole) = hole {
             cursor.begin_macro(hole.host_range.start as u32, hole.host_range.len() as u32);
@@ -292,8 +305,7 @@ fn validate_fragment(
 /// Check if a diagnostic message references a hole placeholder name.
 fn is_hole_diagnostic(diag: &Diagnostic, fragment: &EmbeddedFragment) -> bool {
     match &diag.message {
-        DiagnosticMessage::UnknownTable { name }
-        | DiagnosticMessage::UnknownFunction { name } => {
+        DiagnosticMessage::UnknownTable { name } | DiagnosticMessage::UnknownFunction { name } => {
             fragment.holes.iter().any(|h| h.placeholder == *name)
         }
         DiagnosticMessage::UnknownColumn { column, .. } => {
@@ -361,7 +373,11 @@ pub fn embedded_semantic_tokens_encoded(
             src_pos += 1;
         }
         let delta_line = cur_line - prev_line;
-        let delta_start = if delta_line == 0 { cur_col - prev_col } else { cur_col };
+        let delta_start = if delta_line == 0 {
+            cur_col - prev_col
+        } else {
+            cur_col
+        };
         result.push(delta_line);
         result.push(delta_start);
         result.push(host_len as u32);
@@ -453,7 +469,10 @@ mod tests {
         assert_eq!(fragments.len(), 1);
         let d = dialect();
         let diags = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
-        let parse_diags: Vec<_> = diags.into_iter().filter(|d| d.message.is_parse_error()).collect();
+        let parse_diags: Vec<_> = diags
+            .into_iter()
+            .filter(|d| d.message.is_parse_error())
+            .collect();
         assert!(!parse_diags.is_empty(), "expected parse error");
         // The diagnostic offset should be within the f-string region, not at 0.
         let fstring_start = source.find("SELECT").unwrap();
@@ -466,10 +485,7 @@ mod tests {
 
     #[test]
     fn python_multiple_fragments_only_second_errors() {
-        let source = concat!(
-            "a = f\"SELECT id FROM t\"\n",
-            "b = f\"SELECT FROM t\"\n",
-        );
+        let source = concat!("a = f\"SELECT id FROM t\"\n", "b = f\"SELECT FROM t\"\n",);
         let diags = parse_errors_python(source);
         assert!(!diags.is_empty(), "expected parse error in second fragment");
         // First fragment is valid, so all errors should be in the second f-string.
@@ -526,21 +542,25 @@ mod tests {
         let parse: Vec<_> = all.iter().filter(|d| d.message.is_parse_error()).collect();
         let semantic: Vec<_> = all.iter().filter(|d| !d.message.is_parse_error()).collect();
         assert!(parse.is_empty(), "no parse errors expected");
-        assert!(!semantic.is_empty(), "expected semantic diagnostic for unknown table");
+        assert!(
+            !semantic.is_empty(),
+            "expected semantic diagnostic for unknown table"
+        );
     }
 
     #[test]
     fn python_syntax_error_offset_points_to_typo() {
         // "VALUS" is a typo for "VALUES" — the error span should point to
         // VALUS, not to INSERT (the start of the statement).
-        let source =
-            r#"conn.execute(f"INSERT INTO orders (a, b) VALUS ({x}, {y})")"#;
+        let source = r#"conn.execute(f"INSERT INTO orders (a, b) VALUS ({x}, {y})")"#;
         let fragments = extract_python(source);
         assert_eq!(fragments.len(), 1);
         let d = dialect();
         let diags = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
-        let parse_diags: Vec<_> =
-            diags.into_iter().filter(|d| d.message.is_parse_error()).collect();
+        let parse_diags: Vec<_> = diags
+            .into_iter()
+            .filter(|d| d.message.is_parse_error())
+            .collect();
         assert!(!parse_diags.is_empty(), "expected parse error for VALUS");
         let valus_start = source.find("VALUS").unwrap();
         let valus_end = valus_start + "VALUS".len();
@@ -560,8 +580,7 @@ mod tests {
     fn python_builtin_function_not_flagged() {
         // datetime() is a built-in SQLite function — should not produce
         // an "unknown function" diagnostic.
-        let source =
-            r#"db.execute(f"INSERT INTO t (a) VALUES (datetime('now'))")"#;
+        let source = r#"db.execute(f"INSERT INTO t (a) VALUES (datetime('now'))")"#;
         let d = dialect();
         let fragments = extract_python(source);
         let all = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
@@ -586,9 +605,7 @@ mod tests {
         let tokens = fragment_semantic_tokens(&d, &fragments[0]);
         let datetime_tokens: Vec<_> = tokens
             .iter()
-            .filter(|(off, len, _)| {
-                &fragments[0].sql_text[*off..*off + *len] == "datetime"
-            })
+            .filter(|(off, len, _)| &fragments[0].sql_text[*off..*off + *len] == "datetime")
             .collect();
         assert_eq!(
             datetime_tokens.len(),

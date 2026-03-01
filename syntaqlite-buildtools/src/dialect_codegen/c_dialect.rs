@@ -122,7 +122,6 @@ pub fn generate_dialect_c(
     if tokens.is_some() {
         w.include_local(&format!("{ip}dialect_tokens.h"));
     }
-    w.include_local(&format!("{ip}sqlite_keyword.h"));
     w.include_local(&format!("{ip}sqlite_parse.h"));
     w.include_local(&format!("{ip}sqlite_tokenize.h"));
     w.newline();
@@ -522,7 +521,7 @@ pub fn generate_parse_h(dialect: &str, includes: &DialectCIncludes<'_>) -> Strin
     w.line("#include <stdint.h>");
     w.line("#include <stdio.h>");
     w.newline();
-    w.include_local(&format!("{pp}syntaqlite_ext/ast_builder.h"));
+    w.include_local(&format!("{pp}syntaqlite_dialect/ast_builder.h"));
     w.newline();
     w.line("#ifdef __cplusplus");
     w.line("extern \"C\" {");
@@ -572,7 +571,7 @@ pub fn generate_tokenize_h(dialect: &str, includes: &DialectCIncludes<'_>) -> St
     let mut w = CWriter::new();
     w.file_header();
     w.header_guard_start(&guard);
-    w.include_local(&format!("{pp}syntaqlite_ext/sqlite_compat.h"));
+    w.include_local(&format!("{pp}syntaqlite_dialect/sqlite_compat.h"));
     w.include_local(&format!("{pp}syntaqlite/dialect_config.h"));
     w.newline();
     w.line(&format!(

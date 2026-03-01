@@ -27,7 +27,7 @@
 
 #include "csrc/sqlite/dialect_builder.h"
 #include "syntaqlite/types.h"
-#include "syntaqlite_ext/ast_builder.h"
+#include "syntaqlite_dialect/ast_builder.h"
 #include "syntaqlite_sqlite/sqlite_tokens.h"
 
 /* BEGIN GRAMMAR_TYPES */
@@ -9994,7 +9994,7 @@ static void yy_syntax_error(
   SynqSqliteParseARG_FETCH SynqSqliteParseCTX_FETCH
 #define TOKEN yyminor
       /************ Begin %syntax_error code
-         ****************************************/
+       ****************************************/
 
       (void) yymajor;
   (void)TOKEN;

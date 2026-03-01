@@ -21,8 +21,8 @@
 #include "syntaqlite/dialect.h"
 #include "syntaqlite/parser.h"
 #include "syntaqlite/types.h"
-#include "syntaqlite_ext/arena.h"
-#include "syntaqlite_ext/vec.h"
+#include "syntaqlite_dialect/arena.h"
+#include "syntaqlite_dialect/vec.h"
 
 #ifdef __cplusplus
 extern "C" {

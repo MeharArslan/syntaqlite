@@ -8,7 +8,6 @@
 #include "csrc/sqlite/dialect_fmt.h"
 #include "csrc/sqlite/dialect_meta.h"
 #include "csrc/sqlite/dialect_tokens.h"
-#include "csrc/sqlite/sqlite_keyword.h"
 #include "csrc/sqlite/sqlite_parse.h"
 #include "csrc/sqlite/sqlite_tokenize.h"
 #include "syntaqlite/parser.h"

@@ -415,7 +415,9 @@ mod tests {
         let dialect = &crate::sqlite::DIALECT;
         let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let mut cursor = parser.parse(sql);
-        let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok().map(|nr| nr.id())).collect();
+        let stmt_ids: Vec<_> = (&mut cursor)
+            .map_while(|r| r.ok().map(|nr| nr.id()))
+            .collect();
         stmt_ids
             .iter()
             .flat_map(|&id| {

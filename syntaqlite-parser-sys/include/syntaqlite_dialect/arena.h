@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 #include "syntaqlite/config.h"
-#include "syntaqlite_ext/vec.h"
+#include "syntaqlite_dialect/vec.h"
 
 #ifdef __cplusplus
 extern "C" {

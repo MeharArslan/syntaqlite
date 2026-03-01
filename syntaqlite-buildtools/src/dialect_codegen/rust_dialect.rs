@@ -334,7 +334,7 @@ fn main() {{
         .file(csrc.join("{dialect_name}_keyword.c"))
         .include(&manifest_dir) // for dialect csrc/ headers
         .include(manifest_dir.join("include")) // for dialect include/ headers
-        .include(&runtime_include) // for shared syntaqlite/*.h and syntaqlite_ext/*.h
+        .include(&runtime_include) // for shared syntaqlite/*.h and syntaqlite_dialect/*.h
         .flag("-Wno-int-conversion")
         .flag("-Wno-void-pointer-to-int-cast")
         .flag("-Wno-unused-variable")

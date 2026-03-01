@@ -28,9 +28,9 @@
 //! pub type Token<'a> = crate::parser::typed::TypedToken<'a, MyTokenType>;
 //! ```
 
-use super::session::{RawParser, RawParserBuilder, RawStatementCursor, RawNodeReader, ParseError};
-use super::tokenizer::{RawTokenCursor, RawTokenizer};
 use super::nodes::NodeId;
+use super::session::{ParseError, RawNodeReader, RawParser, RawParserBuilder, RawStatementCursor};
+use super::tokenizer::{RawTokenCursor, RawTokenizer};
 use super::typed_list::FromArena;
 
 // ── TypedParser ──────────────────────────────────────────────────────────
@@ -49,9 +49,7 @@ unsafe impl Send for TypedParser {}
 impl TypedParser {
     /// Create a parser bound to the given static dialect.
     pub fn new(dialect: &'static crate::dialect::Dialect<'static>) -> Self {
-        TypedParser {
-            inner: RawParser::builder(dialect).build(),
-        }
+        Self::builder(dialect).build()
     }
 
     /// Create a builder for more detailed configuration.
@@ -64,12 +62,18 @@ impl TypedParser {
     /// Bind source text and return a [`TypedStatementCursor`].
     ///
     /// `N` is inferred from the return type (e.g. the dialect's `Stmt<'a>`).
-    pub fn parse<'a, N: FromArena<'a>>(&'a mut self, source: &'a str) -> TypedStatementCursor<'a, N> {
+    pub fn parse<'a, N: FromArena<'a>>(
+        &'a mut self,
+        source: &'a str,
+    ) -> TypedStatementCursor<'a, N> {
         TypedStatementCursor::new(self.inner.parse(source))
     }
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn parse_cstr<'a, N: FromArena<'a>>(&'a mut self, source: &'a std::ffi::CStr) -> TypedStatementCursor<'a, N> {
+    pub fn parse_cstr<'a, N: FromArena<'a>>(
+        &'a mut self,
+        source: &'a std::ffi::CStr,
+    ) -> TypedStatementCursor<'a, N> {
         TypedStatementCursor::new(self.inner.parse_cstr(source))
     }
 }
@@ -102,7 +106,9 @@ impl TypedParserBuilder {
 
     /// Build the parser.
     pub fn build(self) -> TypedParser {
-        TypedParser { inner: self.inner.build() }
+        TypedParser {
+            inner: self.inner.build(),
+        }
     }
 }
 
@@ -245,11 +251,8 @@ unsafe impl<T: DialectTokenType> Send for TypedTokenizer<T> {}
 
 impl<T: DialectTokenType> TypedTokenizer<T> {
     /// Create a tokenizer with default configuration.
-    pub fn new() -> Self {
-        TypedTokenizer {
-            inner: RawTokenizer::new(),
-            _phantom: std::marker::PhantomData,
-        }
+    pub fn new(dialect: crate::dialect::Dialect<'static>) -> Self {
+        Self::builder(dialect).build()
     }
 
     /// Create a builder for configuring the tokenizer before construction.
@@ -274,12 +277,6 @@ impl<T: DialectTokenType> TypedTokenizer<T> {
             inner: self.inner.tokenize_cstr(source),
             _phantom: std::marker::PhantomData,
         }
-    }
-}
-
-impl<T: DialectTokenType> Default for TypedTokenizer<T> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

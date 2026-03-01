@@ -3,12 +3,12 @@
 
 use std::collections::HashMap;
 
-use crate::dialect::TokenCategory;
-use crate::fmt::formatter::Formatter;
-use crate::fmt::FormatConfig;
-use crate::parser::{RawParser, RawTokenizer, RawIncrementalParser};
 use crate::dialect::Dialect;
+use crate::dialect::TokenCategory;
+use crate::fmt::FormatConfig;
+use crate::fmt::formatter::Formatter;
 use crate::parser::ParseError;
+use crate::parser::{RawIncrementalParser, RawParser, RawTokenizer};
 
 use crate::lsp::SemanticToken;
 use crate::validation::types::{Diagnostic, Severity};
@@ -569,7 +569,9 @@ fn ensure_document_state<'a>(dialect: &Dialect, doc: &'a mut Document) -> &'a Do
     if doc.state.is_none() {
         doc.state = Some(compute_document_state(dialect, &doc.source));
     }
-    doc.state.as_ref().expect("state populated by preceding is_none check")
+    doc.state
+        .as_ref()
+        .expect("state populated by preceding is_none check")
 }
 
 fn replay_completion_info(
@@ -625,7 +627,10 @@ fn replay_completion_info(
     // that follow, so keywords like JOIN are suggested too.
     if backtracked {
         let extra_tok = &tokens[boundary];
-        if cursor.feed_token(extra_tok.type_, extra_tok.start..extra_tok.end).is_ok() {
+        if cursor
+            .feed_token(extra_tok.type_, extra_tok.start..extra_tok.end)
+            .is_ok()
+        {
             let after = cursor.expected_tokens();
             let mut seen: std::collections::HashSet<u32> = last_expected.iter().copied().collect();
             for tok in after {
@@ -668,8 +673,8 @@ mod tests {
     use super::AnalysisHost;
     use crate::parser::RawParser;
     use crate::sqlite::tokens::TokenType;
-    use crate::validation::types::FunctionDef;
     use crate::validation::SessionContext;
+    use crate::validation::types::FunctionDef;
 
     #[test]
     fn completions_fall_back_to_last_good_state_on_parse_error() {
@@ -1052,7 +1057,12 @@ mod tests {
         let validation_diags = host.validate(uri, &config);
         let table_diags: Vec<_> = validation_diags
             .iter()
-            .filter(|d| matches!(&d.message, crate::validation::DiagnosticMessage::UnknownTable { .. }))
+            .filter(|d| {
+                matches!(
+                    &d.message,
+                    crate::validation::DiagnosticMessage::UnknownTable { .. }
+                )
+            })
             .collect();
         assert_eq!(
             table_diags.len(),
@@ -1081,7 +1091,8 @@ mod tests {
         // The second 'where' starts at byte offset 32.
         let second_where_offset = sql[31..].find("where").map(|i| i + 31).unwrap();
         assert_eq!(
-            diag.start_offset, second_where_offset,
+            diag.start_offset,
+            second_where_offset,
             "error offset should point at the second 'where' (offset {}), not at '{}' (offset {})",
             second_where_offset,
             &sql[diag.start_offset..diag.start_offset + 1],
@@ -1110,7 +1121,8 @@ mod tests {
         let offset = err.offset.expect("error should have an offset");
         let second_where_offset = sql[31..].find("where").map(|i| i + 31).unwrap();
         assert_eq!(
-            offset, second_where_offset,
+            offset,
+            second_where_offset,
             "ParseError offset should point at the second 'where' (offset {}), got offset {} which is '{}'",
             second_where_offset,
             offset,
@@ -1124,20 +1136,13 @@ mod tests {
         // should not produce duplicates for parse errors.
         let mut host = AnalysisHost::new();
         let uri = "file:///test.sql";
-        host.open_document(
-            uri,
-            1,
-            "SELECT ;\nSELECT * FROM no_such_table;".to_string(),
-        );
+        host.open_document(uri, 1, "SELECT ;\nSELECT * FROM no_such_table;".to_string());
 
         let parse_diags: Vec<_> = host.diagnostics(uri).to_vec();
         let config = crate::validation::ValidationConfig::default();
         let validation_diags = host.validate(uri, &config);
 
-        let all_diags: Vec<_> = parse_diags
-            .iter()
-            .chain(validation_diags.iter())
-            .collect();
+        let all_diags: Vec<_> = parse_diags.iter().chain(validation_diags.iter()).collect();
 
         // 1 parse error for "SELECT ;" + 1 semantic warning for no_such_table = 2 total
         let error_count = all_diags

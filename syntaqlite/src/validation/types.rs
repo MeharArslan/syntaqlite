@@ -87,9 +87,7 @@ impl DiagnosticMessage {
     /// `"message"` with the [`fmt::Display`](std::fmt::Display) string alongside it.
     #[cfg(feature = "json")]
     pub fn write_json(&self, out: &mut String) {
-        out.push_str(
-            &serde_json::to_string(self).expect("DiagnosticMessage serialization failed"),
-        );
+        out.push_str(&serde_json::to_string(self).expect("DiagnosticMessage serialization failed"));
     }
 }
 
@@ -391,8 +389,8 @@ impl SessionContext {
             args: Option<usize>,
         }
 
-        let root: Root = serde_json::from_str(s)
-            .map_err(|e| format!("invalid session context JSON: {e}"))?;
+        let root: Root =
+            serde_json::from_str(s).map_err(|e| format!("invalid session context JSON: {e}"))?;
 
         let make_columns = |cols: Vec<String>| -> Vec<ColumnDef> {
             cols.into_iter()

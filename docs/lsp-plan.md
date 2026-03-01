@@ -241,7 +241,7 @@ if (count > 0) {
 
 | File | Change |
 |------|--------|
-| `include/syntaqlite_ext/ast_builder.h` | Added `uint32_t error_length` to `SynqParseCtx` |
+| `include/syntaqlite_dialect/ast_builder.h` | Added `uint32_t error_length` to `SynqParseCtx` |
 | `include/syntaqlite/parser.h` | Added `uint32_t error_offset` and `uint32_t error_length` to `SyntaqliteParseResult` |
 | `csrc/parser.c` — `feed_one_token()` | Sets `ctx.error_offset = tok.z - source`, `ctx.error_length = tok.n` on error |
 | `csrc/parser.c` — `finish_input()` | Sets `error_offset = p->offset` (end of input), `error_length = 0` for incomplete statements |

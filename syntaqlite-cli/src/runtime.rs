@@ -8,12 +8,12 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 
 use clap::ValueEnum;
+use syntaqlite::Formatter;
 use syntaqlite::dialect::Dialect;
 use syntaqlite::fmt::{FormatConfig, KeywordCase};
-use syntaqlite::raw::{FfiDialect, ParseError};
 use syntaqlite::raw::RawParser;
+use syntaqlite::raw::{FfiDialect, ParseError};
 use syntaqlite::validation::{Severity, ValidationConfig};
-use syntaqlite::Formatter;
 
 use super::{Cli, Command};
 

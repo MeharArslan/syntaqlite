@@ -134,7 +134,7 @@ syntaqlite-parser-sys/           ← all C code lives here
 │   │   ├── dialect.h
 │   │   ├── types.h
 │   │   └── config.h
-│   ├── syntaqlite_ext/          ← dialect extension SPI
+│   ├── syntaqlite_dialect/          ← dialect extension SPI
 │   │   ├── arena.h
 │   │   ├── ast_builder.h
 │   │   └── vec.h
@@ -175,7 +175,7 @@ Key design choices:
   crate. `cargo check`/`clippy` only type-check (no link overhead). `cargo build`
   produces all three but only the relevant one gets used by consumers.
 - **External dialect crates** depend on `syntaqlite-parser-sys` (for C headers
-  and `syntaqlite_ext.h`) and on `syntaqlite` (for Rust types). They compile
+  and `syntaqlite_dialect.h`) and on `syntaqlite` (for Rust types). They compile
   their own generated dialect C in their own `build.rs`.
 
 ## The Three Use Cases
@@ -281,7 +281,7 @@ The low-level parser functions are the same as the amalgamation header.
 
 Dialects always live out-of-tree. A dialect crate needs:
 
-1. `syntaqlite_ext.h` — the dialect SPI contract (what tables/functions a
+1. `syntaqlite_dialect.h` — the dialect SPI contract (what tables/functions a
    dialect must provide). This is a small header from `syntaqlite-parser-sys`
    and could even be auto-generated into the dialect crate by a build
    dependency.
@@ -303,7 +303,7 @@ For C-only dialect users:
 syntaqlite-amalgamation-dialect-{version}.zip
 ├── syntaqlite_parser.h       ← parser/tokenizer API
 ├── syntaqlite_parser.c       ← core engine (WITHOUT SQLite baked in)
-├── syntaqlite_ext.h          ← dialect SPI
+├── syntaqlite_dialect.h          ← dialect SPI
 └── USAGE.md
 ```
 
@@ -322,7 +322,7 @@ most users want the high-level thing; the amalgamation is the specialized path.
 | `syntaqlite.h`         | High-level API (superset)         | Devtool authors (all languages) |
 | `syntaqlite_parser.h`  | Low-level parser/tokenizer API    | Embedders, dialect authors      |
 | `syntaqlite_parser.c`  | Core engine amalgamation          | Embedders, dialect authors      |
-| `syntaqlite_ext.h`     | Dialect extension SPI             | Dialect authors only            |
+| `syntaqlite_dialect.h`     | Dialect extension SPI             | Dialect authors only            |
 
 ### Release artifact naming
 
@@ -542,7 +542,7 @@ capability without creating symbol conflicts with the amalgamation.
 ### 5. Headers are hand-written
 
 **Decision:** All public headers (`syntaqlite.h`, `syntaqlite_parser.h`,
-`syntaqlite_ext.h`) are hand-written and treated as stable API contracts. No
+`syntaqlite_dialect.h`) are hand-written and treated as stable API contracts. No
 cbindgen or other generation. This gives full control over naming, layout, and
 documentation in the headers.
 
@@ -562,7 +562,7 @@ Node.js addon. WASM is fast enough and avoids platform-specific binaries.
 **Decision:** Amalgamation, library, CLI, WASM, and language packages all share
 the same version number and release together. No independent versioning.
 
-### 9. `syntaqlite_ext.h` has no cross-version compatibility
+### 9. `syntaqlite_dialect.h` has no cross-version compatibility
 
 **Decision:** Dialect code must be compiled against the exact same version of
 `syntaqlite_parser.c` it will link with. No ABI stability promise across
@@ -590,7 +590,7 @@ the extra crate types (no linking). Downstream Rust crates that depend on
 
 **Decision:** Dialect crates live in their own repos. They depend on
 `syntaqlite-parser-sys` for C headers/ext SPI and `syntaqlite` for Rust types.
-The `syntaqlite_ext.h` header is small and could even be auto-generated into
+The `syntaqlite_dialect.h` header is small and could even be auto-generated into
 dialect crates by a build dependency if needed.
 
 ## Open Questions

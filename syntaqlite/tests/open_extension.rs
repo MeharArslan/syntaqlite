@@ -1,8 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite::raw::{FromArena, RawParser};
 use syntaqlite::ast::{Node, Stmt};
+use syntaqlite::raw::{FromArena, RawParser};
 
 #[test]
 fn pure_sqlite_never_produces_node_other() {
