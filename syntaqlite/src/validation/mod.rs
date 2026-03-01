@@ -10,6 +10,7 @@ mod walker;
 
 use crate::ast_traits::AstTypes;
 use crate::parser::{FromArena, NodeId, NodeReader};
+use crate::ParseError;
 
 use scope::ScopeStack;
 pub use types::{
@@ -119,4 +120,69 @@ pub fn validate_document(
         doc_ctx.accumulate(reader, stmt_id, dialect, session);
     }
     all_diags
+}
+
+/// Compute the byte range for a parse error in the source text.
+pub fn parse_error_span(err: &ParseError, source: &str) -> (usize, usize) {
+    match (err.offset, err.length) {
+        (Some(offset), Some(length)) if length > 0 => (offset, offset + length),
+        (Some(offset), _) => {
+            if offset >= source.len() && !source.is_empty() {
+                (source.len() - 1, source.len())
+            } else {
+                (offset, (offset + 1).min(source.len()))
+            }
+        }
+        _ => {
+            let end = source.len();
+            let start = if end > 0 { end - 1 } else { 0 };
+            (start, end)
+        }
+    }
+}
+
+/// Convert a [`ParseError`] into a [`Diagnostic`].
+pub fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
+    let (start_offset, end_offset) = parse_error_span(err, source);
+    Diagnostic {
+        start_offset,
+        end_offset,
+        message: DiagnosticMessage::Other(err.message.clone()),
+        severity: Severity::Error,
+        help: None,
+    }
+}
+
+/// Validate a mix of successful and failed parse results.
+///
+/// Converts each `Err` into a parse-error diagnostic, collects all valid
+/// roots (from `Ok` values and from recovered roots in `Err` values),
+/// then runs [`validate_document`] on the collected roots.
+pub fn validate_parse_results(
+    reader: &NodeReader<'_>,
+    results: &[Result<NodeId, ParseError>],
+    source: &str,
+    dialect: &crate::Dialect<'_>,
+    session: Option<&SessionContext>,
+    functions: &[FunctionDef],
+    config: &ValidationConfig,
+) -> Vec<Diagnostic> {
+    let mut diags = Vec::new();
+    let mut stmt_ids = Vec::new();
+
+    for result in results {
+        match result {
+            Ok(id) => stmt_ids.push(*id),
+            Err(err) => {
+                if let Some(root) = err.root {
+                    stmt_ids.push(root);
+                }
+                diags.push(parse_error_to_diagnostic(err, source));
+            }
+        }
+    }
+
+    let semantic = validate_document(reader, &stmt_ids, dialect, session, functions, config);
+    diags.extend(semantic);
+    diags
 }

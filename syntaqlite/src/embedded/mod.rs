@@ -23,9 +23,7 @@ use std::ops::Range;
 
 use crate::{Dialect, ParseError};
 use crate::parser::{LowLevelParser, Tokenizer};
-use crate::validation::{
-    Diagnostic, DiagnosticMessage, FunctionDef, Severity, ValidationConfig, validate_document,
-};
+use crate::validation::{Diagnostic, DiagnosticMessage, FunctionDef, ValidationConfig};
 
 use offset_map::OffsetMap;
 
@@ -188,10 +186,9 @@ fn validate_fragment(
             .collect()
     };
 
-    // Feed tokens to the low-level parser, collecting parse errors.
+    // Feed tokens to the low-level parser, collecting results.
     let mut cursor = parser.feed(&fragment.sql_text);
-    let mut stmt_ids = Vec::new();
-    let mut parse_errors = Vec::new();
+    let mut results: Vec<Result<crate::parser::NodeId, ParseError>> = Vec::new();
 
     for &(token_type, offset, length) in &tokens {
         let hole = fragment.holes.iter().find(|h| {
@@ -203,14 +200,9 @@ fn validate_fragment(
         }
 
         match cursor.feed_token(token_type, offset..offset + length) {
-            Ok(Some(root)) => stmt_ids.push(root),
+            Ok(Some(root)) => results.push(Ok(root)),
             Ok(None) => {}
-            Err(e) => {
-                if let Some(root) = e.root {
-                    stmt_ids.push(root);
-                }
-                parse_errors.push(e);
-            }
+            Err(e) => results.push(Err(e)),
         }
 
         if hole.is_some() {
@@ -219,55 +211,21 @@ fn validate_fragment(
     }
 
     match cursor.finish() {
-        Ok(Some(root)) => stmt_ids.push(root),
+        Ok(Some(root)) => results.push(Ok(root)),
         Ok(None) => {}
-        Err(e) => {
-            if let Some(root) = e.root {
-                stmt_ids.push(root);
-            }
-            parse_errors.push(e);
-        }
+        Err(e) => results.push(Err(e)),
     }
-
-    // Convert parse errors to diagnostics.
-    let sql = &fragment.sql_text;
-    let mut diags: Vec<Diagnostic> = parse_errors
-        .into_iter()
-        .map(|err| {
-            let (start_offset, end_offset) = parse_error_span(&err, sql);
-            Diagnostic {
-                start_offset,
-                end_offset,
-                message: DiagnosticMessage::Other(err.message),
-                severity: Severity::Error,
-                help: None,
-            }
-        })
-        .collect();
 
     // After finish(), the cursor's reader still points at valid arena data.
-    let semantic = validate_document(cursor.base().reader(), &stmt_ids, dialect, None, functions, config);
-    diags.extend(semantic);
-    diags
-}
-
-/// Compute the byte range for a parse error in the source text.
-fn parse_error_span(err: &ParseError, source: &str) -> (usize, usize) {
-    match (err.offset, err.length) {
-        (Some(offset), Some(length)) if length > 0 => (offset, offset + length),
-        (Some(offset), _) => {
-            if offset >= source.len() && !source.is_empty() {
-                (source.len() - 1, source.len())
-            } else {
-                (offset, (offset + 1).min(source.len()))
-            }
-        }
-        _ => {
-            let end = source.len();
-            let start = if end > 0 { end - 1 } else { 0 };
-            (start, end)
-        }
-    }
+    crate::validation::validate_parse_results(
+        cursor.base().reader(),
+        &results,
+        &fragment.sql_text,
+        dialect,
+        None,
+        functions,
+        config,
+    )
 }
 
 /// Check if a diagnostic message references a hole placeholder name.
@@ -287,6 +245,7 @@ fn is_hole_diagnostic(diag: &Diagnostic, fragment: &EmbeddedFragment) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::validation::Severity;
 
     fn dialect() -> Dialect<'static> {
         *crate::sqlite::low_level::dialect()

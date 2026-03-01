@@ -396,24 +396,14 @@ fn cmd_validate(
     Ok(())
 }
 
-/// Validate a source string and print diagnostics. Returns `true` if any errors were found.
-fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &ValidationConfig) -> bool {
-    let mut parser = RuntimeParser::with_dialect(dialect);
-    let mut cursor = parser.parse(source);
-
-    let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok()).collect();
-    let functions = syntaqlite::embedded::sqlite_function_defs();
-    let diags = syntaqlite::validation::validate_document(
-        cursor.reader(),
-        &stmt_ids,
-        dialect,
-        None,
-        &functions,
-        config,
-    );
-
+/// Render a list of diagnostics and return `true` if any are errors.
+fn render_diagnostics(
+    source: &str,
+    file: &str,
+    diags: &[syntaqlite::validation::Diagnostic],
+) -> bool {
     let mut has_errors = false;
-    for d in &diags {
+    for d in diags {
         let severity = match d.severity {
             Severity::Error => {
                 has_errors = true;
@@ -435,8 +425,27 @@ fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &Validat
             help.as_deref(),
         );
     }
-
     has_errors
+}
+
+/// Validate a source string and print diagnostics. Returns `true` if any errors were found.
+fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &ValidationConfig) -> bool {
+    let mut parser = RuntimeParser::with_dialect(dialect);
+    let mut cursor = parser.parse(source);
+
+    let results: Vec<_> = (&mut cursor).collect();
+    let functions = syntaqlite::embedded::sqlite_function_defs();
+    let diags = syntaqlite::validation::validate_parse_results(
+        cursor.reader(),
+        &results,
+        source,
+        dialect,
+        None,
+        &functions,
+        config,
+    );
+
+    render_diagnostics(source, file, &diags)
 }
 
 /// Validate embedded SQL in a host-language source and print diagnostics.
@@ -460,29 +469,5 @@ fn validate_embedded_source(
     let functions = syntaqlite::embedded::sqlite_function_defs();
     let diags = syntaqlite::embedded::validate_embedded(dialect, &fragments, &functions, config);
 
-    let mut has_errors = false;
-    for d in &diags {
-        let severity = match d.severity {
-            Severity::Error => {
-                has_errors = true;
-                "error"
-            }
-            Severity::Warning => "warning",
-            Severity::Info => "info",
-            Severity::Hint => "hint",
-        };
-        let message = d.message.to_string();
-        let help = d.help.as_ref().map(|h| h.to_string());
-        render_diagnostic(
-            source,
-            file,
-            severity,
-            &message,
-            d.start_offset,
-            d.end_offset,
-            help.as_deref(),
-        );
-    }
-
-    has_errors
+    render_diagnostics(source, file, &diags)
 }
