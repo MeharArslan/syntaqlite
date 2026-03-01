@@ -11,7 +11,7 @@ fmt = []                     # formatter (bytecode interpreter)
 validation = []              # semantic validation (schema checks, fuzzy suggestions)
 embedded = ["validation"]    # embedded SQL extraction from host languages (Python f-strings, etc.)
 lsp = ["fmt", "validation"]  # LSP analysis host (needs fmt for formatting)
-sqlite = []                  # SQLite dialect (grammar, tokens, cflags, functions)
+sqlite = ["syntaqlite-parser-sys/sqlite"]  # SQLite dialect (grammar, tokens, cflags, functions)
 
 # Pin version/cflags at compile time for dead-code elimination.
 # Values come from env vars, using the same names as the C defines:
@@ -22,10 +22,8 @@ sqlite = []                  # SQLite dialect (grammar, tokens, cflags, function
 #   SYNTAQLITE_CFLAG_SQLITE_ENABLE_FTS5=1 \
 #   cargo build --features pin-cflags
 #
-pin-version = ["sqlite"]   # Pin SQLite version via SYNTAQLITE_SQLITE_VERSION env var
-pin-cflags = ["sqlite"]    # Pin compile-time flags via SYNTAQLITE_CFLAG_* env vars
-
-[build-dependencies]
-cc = "1.0"
+pin-version = ["sqlite", "syntaqlite-parser-sys/pin-version"]   # Pin SQLite version via SYNTAQLITE_SQLITE_VERSION env var
+pin-cflags = ["sqlite", "syntaqlite-parser-sys/pin-cflags"]    # Pin compile-time flags via SYNTAQLITE_CFLAG_* env vars
 
 [dependencies]
+syntaqlite-parser-sys = { path = "../syntaqlite-parser-sys", default-features = false }

@@ -752,7 +752,7 @@ dependencies = [
 name = "syntaqlite"
 version = "0.1.0"
 dependencies = [
- "cc",
+ "syntaqlite-parser-sys",
 ]
 
 [[package]]
@@ -781,6 +781,13 @@ dependencies = [
  "syntaqlite",
  "syntaqlite-buildtools",
  "tempfile",
+]
+
+[[package]]
+name = "syntaqlite-parser-sys"
+version = "0.1.0"
+dependencies = [
+ "cc",
 ]
 
 [[package]]

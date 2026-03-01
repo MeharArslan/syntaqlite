@@ -1,6 +1,9 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+// Force-link the sys crate so the linker includes its native C libraries.
+extern crate syntaqlite_parser_sys;
+
 pub mod ast_traits;
 pub mod parser;
 

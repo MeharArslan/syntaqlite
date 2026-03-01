@@ -321,7 +321,7 @@ use std::path::PathBuf;
 fn main() {{
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let csrc = manifest_dir.join("csrc");
-    let runtime_include = manifest_dir.join("../syntaqlite/include");
+    let runtime_include = manifest_dir.join("../syntaqlite-parser-sys/include");
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
 
     // Dialect sources — Lemon parser, tokenizer, keyword lookup, and dialect glue.
@@ -387,7 +387,7 @@ fn main() {{
     println!("cargo:rerun-if-changed=csrc");
     println!("cargo:rerun-if-changed=include");
     // Dialect C files #include syntaqlite headers.
-    println!("cargo:rerun-if-changed=../syntaqlite/include");
+    println!("cargo:rerun-if-changed=../syntaqlite-parser-sys/include");
     // Re-run when pinning env vars change.
     println!("cargo:rerun-if-env-changed=SYNTAQLITE_SQLITE_VERSION");
 }}

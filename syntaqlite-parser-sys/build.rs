@@ -7,7 +7,16 @@ use std::path::PathBuf;
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let csrc = manifest_dir.join("csrc");
+    let include_dir = manifest_dir.join("include");
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+
+    // Expose include directory so downstream crates can find headers.
+    println!("cargo:include={}", include_dir.display());
+
+    if env::var("CARGO_FEATURE_NO_BUNDLED_PARSER").is_ok() {
+        // Skip C compilation — caller links a pre-built library.
+        return;
+    }
 
     // ── Grammar-agnostic engine sources ─────────────────────────────────
     //
@@ -18,7 +27,7 @@ fn main() {
         .file(csrc.join("parser.c"))
         .file(csrc.join("token_wrapped.c"))
         .include(&manifest_dir) // for csrc/*.h internal headers
-        .include(manifest_dir.join("include")); // for public syntaqlite/*.h and syntaqlite_ext/*.h
+        .include(&include_dir); // for public syntaqlite/*.h and syntaqlite_ext/*.h
     if target_os == "emscripten" {
         engine_build.flag("-fPIC");
     }
@@ -36,7 +45,7 @@ fn main() {
             .file(sqlite_csrc.join("sqlite_tokenize.c"))
             .file(sqlite_csrc.join("sqlite_keyword.c"))
             .include(&manifest_dir) // for csrc/sqlite/*.h internal headers
-            .include(manifest_dir.join("include")) // for public syntaqlite/*.h headers
+            .include(&include_dir) // for public syntaqlite/*.h headers
             .flag("-Wno-int-conversion")
             .flag("-Wno-void-pointer-to-int-cast")
             .flag("-Wno-unused-variable")
@@ -66,7 +75,7 @@ fn main() {
         if env::var("CARGO_FEATURE_PIN_CFLAGS").is_ok() {
             // Parse the cflags header for the SYNQ_CFLAG_IDX_* defines.
             let cflags_header =
-                std::fs::read_to_string(manifest_dir.join("include/syntaqlite/sqlite_cflags.h"))
+                std::fs::read_to_string(include_dir.join("syntaqlite/sqlite_cflags.h"))
                     .expect("failed to read sqlite_cflags.h");
 
             // Pass the master switch.

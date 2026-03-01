@@ -19,8 +19,13 @@ pub(crate) enum CodegenCommand {
         actions_dir: String,
         #[arg(long, required = true)]
         nodes_dir: String,
-        #[arg(long, default_value = "syntaqlite/csrc/sqlite")]
+        #[arg(long, default_value = "syntaqlite-parser-sys/csrc/sqlite")]
         output_dir: String,
+        /// Directory for generated Rust outputs. When provided, Rust files are
+        /// written relative to this path instead of being inferred from
+        /// --output-dir. Use when C and Rust outputs live in different crates.
+        #[arg(long)]
+        rust_dir: Option<String>,
     },
     /// Produce C amalgamation files (single-file compilation units).
     Amalgamate {
@@ -65,7 +70,8 @@ pub(crate) fn dispatch(command: CodegenCommand) -> Result<(), String> {
             actions_dir,
             nodes_dir,
             output_dir,
-        } => handle_codegen(&actions_dir, &nodes_dir, &output_dir),
+            rust_dir,
+        } => handle_codegen(&actions_dir, &nodes_dir, &output_dir, rust_dir.as_deref()),
         CodegenCommand::Amalgamate {
             dialect,
             runtime_dir,
@@ -109,7 +115,12 @@ fn clean_generated_files(dir: &Path) {
     }
 }
 
-fn handle_codegen(actions_dir: &str, nodes_dir: &str, output_dir: &str) -> Result<(), String> {
+fn handle_codegen(
+    actions_dir: &str,
+    nodes_dir: &str,
+    output_dir: &str,
+    rust_dir: Option<&str>,
+) -> Result<(), String> {
     let dialect = syntaqlite_buildtools::DialectNaming::new("sqlite");
 
     let y_files = syntaqlite_buildtools::read_named_files_from_dir(actions_dir, "y")?;
@@ -137,15 +148,19 @@ fn handle_codegen(actions_dir: &str, nodes_dir: &str, output_dir: &str) -> Resul
         &dialect, artifacts,
     )?;
 
-    // Step 4: Clean stale generated files, then write outputs
+    // output_dir is csrc/sqlite/ — C crate root is two levels up.
     let out = Path::new(output_dir);
-    // output_dir is csrc/sqlite/ — crate root is two levels up.
-    let crate_root = out
+    let c_crate_root = out
         .parent()
         .and_then(|p| p.parent())
         .unwrap_or(Path::new("."));
-    let include_dir = crate_root.join(format!("include/{}", dialect.include_dir_name()));
+    let include_dir = c_crate_root.join(format!("include/{}", dialect.include_dir_name()));
 
+    // When --rust-dir is provided, Rust outputs go to a separate crate root.
+    // Otherwise, they are inferred from the C output directory (backward compatible).
+    let rust_crate_root = rust_dir.map_or_else(|| c_crate_root.to_path_buf(), PathBuf::from);
+
+    // Clean stale generated files
     for dir in [out, include_dir.as_path()] {
         if dir.is_dir() {
             clean_generated_files(dir);
@@ -154,7 +169,7 @@ fn handle_codegen(actions_dir: &str, nodes_dir: &str, output_dir: &str) -> Resul
 
     // For the internal syntaqlite crate, generated Rust dialect modules
     // (tokens.rs, ffi.rs, ast.rs) live under src/sqlite/.
-    let rust_sqlite_dir = crate_root.join("src/sqlite");
+    let rust_sqlite_dir = rust_crate_root.join("src/sqlite");
 
     ensure_dir(out, "output directory")?;
     ensure_dir(&include_dir, "include directory")?;
@@ -162,7 +177,7 @@ fn handle_codegen(actions_dir: &str, nodes_dir: &str, output_dir: &str) -> Resul
 
     use syntaqlite_buildtools::sqlite::output_manifest::OutputBucket;
 
-    let rust_src_dir = crate_root.join("src");
+    let rust_src_dir = rust_crate_root.join("src");
 
     for output in outputs {
         let dir: &Path = match output.bucket {
