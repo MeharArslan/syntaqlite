@@ -1217,7 +1217,10 @@ fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32, _version: u32) ->
             };
 
             let sql_offset = tok.text.as_ptr() as usize - fragment.sql_text.as_ptr() as usize;
-            let host_offset = offset_map.to_host(sql_offset);
+            let Some(host_offset) = offset_map.to_host(sql_offset) else {
+                // Inside a hole placeholder — skip, not real SQL.
+                continue;
+            };
 
             // Clamp length to not exceed host source bounds.
             let host_len = tok.text.len().min(source.len().saturating_sub(host_offset));

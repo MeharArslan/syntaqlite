@@ -16,8 +16,6 @@ struct Segment {
     sql_start: usize,
     /// Length of this segment in SQL text.
     sql_len: usize,
-    /// Start offset in host file.
-    host_start: usize,
     /// Length of this segment in host file.
     host_len: usize,
 }
@@ -39,7 +37,6 @@ impl OffsetMap {
             .map(|h| Segment {
                 sql_start: h.sql_offset,
                 sql_len: h.placeholder.len(),
-                host_start: h.host_range.start,
                 host_len: h.host_range.len(),
             })
             .collect();
@@ -51,7 +48,10 @@ impl OffsetMap {
     }
 
     /// Convert a SQL-text byte offset to a host-file byte offset.
-    pub fn to_host(&self, sql_offset: usize) -> usize {
+    ///
+    /// Returns `None` if the offset falls inside a hole placeholder, since
+    /// those regions correspond to host-language expressions, not SQL.
+    pub fn to_host(&self, sql_offset: usize) -> Option<usize> {
         // Walk through segments to compute the cumulative drift.
         let mut drift: isize = 0;
 
@@ -60,15 +60,15 @@ impl OffsetMap {
                 break;
             }
             if sql_offset < seg.sql_start + seg.sql_len {
-                // Inside a hole — clamp to the hole's host range.
-                return seg.host_start;
+                // Inside a hole placeholder — no meaningful host mapping.
+                return None;
             }
             // Past this hole: accumulate the difference in lengths.
             drift += seg.host_len as isize - seg.sql_len as isize;
         }
 
         // Apply base offset and accumulated drift.
-        ((sql_offset as isize) + (self.base_offset as isize) + drift) as usize
+        Some(((sql_offset as isize) + (self.base_offset as isize) + drift) as usize)
     }
 }
 
@@ -86,8 +86,8 @@ mod tests {
         };
         let map = OffsetMap::new(&fragment);
         // Offset 0 in SQL → offset 10 in host.
-        assert_eq!(map.to_host(0), 10);
-        assert_eq!(map.to_host(7), 17);
+        assert_eq!(map.to_host(0), Some(10));
+        assert_eq!(map.to_host(7), Some(17));
     }
 
     #[test]
@@ -107,11 +107,54 @@ mod tests {
         let map = OffsetMap::new(&fragment);
 
         // Before hole: offset 0 → 10, offset 13 → 23.
-        assert_eq!(map.to_host(0), 10);
-        assert_eq!(map.to_host(13), 23);
+        assert_eq!(map.to_host(0), Some(10));
+        assert_eq!(map.to_host(13), Some(23));
 
-        // Inside hole: maps to start of hole in host.
-        assert_eq!(map.to_host(14), 24);
-        assert_eq!(map.to_host(20), 24);
+        // Inside hole: returns None (host-language expression, not SQL).
+        assert_eq!(map.to_host(14), None);
+        assert_eq!(map.to_host(20), None);
+    }
+
+    #[test]
+    fn placeholder_longer_than_host_hole_no_overlap() {
+        // Reproduces the datetime('now') highlighting bug:
+        // When a placeholder (__hole_1__, 10 bytes) is longer than the host
+        // hole ({total}, 7 bytes), an emitted semantic token using the
+        // placeholder length would extend past the hole boundary, overlapping
+        // with subsequent tokens like `datetime`.
+        //
+        // Host content (starting at offset 2):
+        //   "VALUES ({customer_id}, {total}, datetime('now'))"
+        //   offset:  2         15  17  24  26          38
+        //
+        // SQL text:
+        //   "VALUES (__hole_0__, __hole_1__, datetime('now'))"
+        let fragment = EmbeddedFragment {
+            sql_range: 2..50,
+            sql_text: "VALUES (__hole_0__, __hole_1__, datetime('now'))".to_string(),
+            holes: vec![
+                Hole {
+                    host_range: 10..25, // {customer_id} = 15 bytes
+                    sql_offset: 8,
+                    placeholder: "__hole_0__".to_string(),
+                },
+                Hole {
+                    host_range: 27..34, // {total} = 7 bytes
+                    sql_offset: 20,
+                    placeholder: "__hole_1__".to_string(),
+                },
+            ],
+        };
+        let map = OffsetMap::new(&fragment);
+
+        // Inside holes: must return None so no semantic token is emitted.
+        assert_eq!(map.to_host(8), None, "__hole_0__ start");
+        assert_eq!(map.to_host(20), None, "__hole_1__ start");
+        assert_eq!(map.to_host(25), None, "__hole_1__ mid");
+
+        // `datetime` at sql_offset 32 must map correctly and not overlap
+        // with any hole token.
+        let datetime_host = map.to_host(32);
+        assert_eq!(datetime_host, Some(36), "datetime must map to host offset 36");
     }
 }

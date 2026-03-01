@@ -123,8 +123,16 @@ pub fn validate_embedded(
             if is_hole_diagnostic(&d, fragment) {
                 continue;
             }
-            d.start_offset = offset_map.to_host(d.start_offset);
-            d.end_offset = offset_map.to_host(d.end_offset);
+            // Map offsets back to host positions; skip diagnostics that
+            // fall entirely inside a hole placeholder.
+            let Some(start) = offset_map.to_host(d.start_offset) else {
+                continue;
+            };
+            let end = offset_map
+                .to_host(d.end_offset)
+                .unwrap_or(start);
+            d.start_offset = start;
+            d.end_offset = end;
             all_diags.push(d);
         }
     }
