@@ -11,7 +11,7 @@ use syntaqlite::dialect::ffi::{self as dialect_ffi, DialectConfig};
 use syntaqlite::embedded::{self, EmbeddedFragment};
 use syntaqlite::embedded::offset_map::OffsetMap;
 use syntaqlite::fmt::{FormatConfig, Formatter, KeywordCase};
-use syntaqlite::parser::{CursorBase, FieldVal, Tokenizer};
+use syntaqlite::parser::{CursorBase, FieldVal};
 use syntaqlite::validation::ValidationConfig;
 use syntaqlite::{Dialect, NodeId, Parser};
 
@@ -1203,27 +1203,23 @@ fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32, _version: u32) ->
     let source_bytes = source.as_bytes();
     let mut all_tokens: Vec<(usize, usize, u32)> = Vec::new(); // (host_offset, length, legend_idx)
 
-    let mut tokenizer = Tokenizer::with_dialect(dialect);
-
     for fragment in &fragments {
         let offset_map = OffsetMap::new(fragment);
-        let cursor = tokenizer.tokenize(&fragment.sql_text);
+        let tokens = embedded::fragment_semantic_tokens(&dialect, fragment);
 
-        for tok in cursor {
-            let cat = dialect.token_category(tok.token_type);
+        for (sql_offset, length, cat) in tokens {
             let legend_idx = match cat.legend_index() {
                 Some(idx) => idx,
                 None => continue,
             };
 
-            let sql_offset = tok.text.as_ptr() as usize - fragment.sql_text.as_ptr() as usize;
             let Some(host_offset) = offset_map.to_host(sql_offset) else {
                 // Inside a hole placeholder — skip, not real SQL.
                 continue;
             };
 
             // Clamp length to not exceed host source bounds.
-            let host_len = tok.text.len().min(source.len().saturating_sub(host_offset));
+            let host_len = length.min(source.len().saturating_sub(host_offset));
             if host_len == 0 {
                 continue;
             }

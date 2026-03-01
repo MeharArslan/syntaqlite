@@ -21,6 +21,7 @@ pub use typescript::extract_typescript;
 
 use std::ops::Range;
 
+use crate::dialect::TokenCategory;
 use crate::{Dialect, ParseError};
 use crate::parser::{LowLevelParser, Tokenizer};
 use crate::validation::{Diagnostic, DiagnosticMessage, FunctionDef, ValidationConfig};
@@ -151,6 +152,74 @@ pub fn sqlite_function_defs() -> Vec<FunctionDef> {
         .into_iter()
         .flat_map(|info| crate::validation::expand_function_info(info))
         .collect()
+}
+
+/// Compute semantic tokens for a single embedded SQL fragment.
+///
+/// Uses the full parser (with `collect_tokens`) to get accurate flag-based
+/// token classification (e.g. `datetime` → Function when used as a callee).
+///
+/// Returns `(sql_offset, length, category)` tuples with byte offsets into
+/// `fragment.sql_text`. The caller is responsible for mapping these through
+/// an [`OffsetMap`] to host-file positions.
+pub fn fragment_semantic_tokens(
+    dialect: &Dialect,
+    fragment: &EmbeddedFragment,
+) -> Vec<(usize, usize, TokenCategory)> {
+    let mut parser = LowLevelParser::with_dialect(dialect);
+    let mut tokenizer = Tokenizer::with_dialect(*dialect);
+
+    // Tokenize the processed SQL text.
+    let tokens: Vec<(u32, usize, usize)> = {
+        let cursor = tokenizer.tokenize(&fragment.sql_text);
+        cursor
+            .map(|tok| {
+                let offset =
+                    tok.text.as_ptr() as usize - fragment.sql_text.as_ptr() as usize;
+                (tok.token_type, offset, tok.text.len())
+            })
+            .collect()
+    };
+
+    // Feed tokens to the parser with hole wrapping (same loop as validate_fragment).
+    let mut cursor = parser.feed(&fragment.sql_text);
+
+    for &(token_type, offset, length) in &tokens {
+        let hole = fragment.holes.iter().find(|h| {
+            offset >= h.sql_offset && offset < h.sql_offset + h.placeholder.len()
+        });
+
+        if let Some(hole) = hole {
+            cursor.begin_macro(hole.host_range.start as u32, hole.host_range.len() as u32);
+        }
+
+        // Ignore parse results — we only need the collected tokens.
+        let _ = cursor.feed_token(token_type, offset..offset + length);
+
+        if hole.is_some() {
+            cursor.end_macro();
+        }
+    }
+
+    let _ = cursor.finish();
+
+    let mut result = Vec::new();
+
+    // Classify non-whitespace, non-comment tokens using parser flags.
+    for tp in cursor.base().tokens() {
+        let cat = dialect.classify_token(tp.type_, tp.flags);
+        if cat == TokenCategory::Other {
+            continue;
+        }
+        result.push((tp.offset as usize, tp.length as usize, cat));
+    }
+
+    // Add comments as Comment tokens.
+    for c in cursor.base().comments() {
+        result.push((c.offset as usize, c.length as usize, TokenCategory::Comment));
+    }
+
+    result
 }
 
 /// Tokenize, parse (with hole wrapping), and validate a single fragment.
@@ -431,6 +500,34 @@ mod tests {
         assert!(
             unknown_fn.is_empty(),
             "datetime should not be flagged as unknown, got: {unknown_fn:?}",
+        );
+    }
+
+    #[test]
+    fn semantic_tokens_classify_function_callee() {
+        // datetime('now') should classify `datetime` as Function, not Identifier.
+        // This was broken when the embedded path used a raw Tokenizer (no parser flags).
+        let source = r#"db.execute(f"INSERT INTO t (a) VALUES (datetime('now'))")"#;
+        let d = dialect();
+        let fragments = extract_python(source);
+        assert_eq!(fragments.len(), 1);
+        let tokens = fragment_semantic_tokens(&d, &fragments[0]);
+        let datetime_tokens: Vec<_> = tokens
+            .iter()
+            .filter(|(off, len, _)| {
+                &fragments[0].sql_text[*off..*off + *len] == "datetime"
+            })
+            .collect();
+        assert_eq!(
+            datetime_tokens.len(),
+            1,
+            "expected exactly one 'datetime' token, got: {datetime_tokens:?}",
+        );
+        assert_eq!(
+            datetime_tokens[0].2,
+            TokenCategory::Function,
+            "datetime should be classified as Function, got {:?}",
+            datetime_tokens[0].2,
         );
     }
 

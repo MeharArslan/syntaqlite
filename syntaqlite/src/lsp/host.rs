@@ -5,10 +5,7 @@ use std::collections::HashMap;
 
 use crate::dialect::TokenCategory;
 use crate::fmt::{FormatConfig, Formatter};
-use crate::parser::{
-    LowLevelParser, ParserConfig, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID,
-    TOKEN_FLAG_AS_TYPE, Tokenizer,
-};
+use crate::parser::{LowLevelParser, ParserConfig, Tokenizer};
 use crate::{Dialect, ParseError, Parser};
 
 use crate::lsp::{Diagnostic, SemanticToken, Severity};
@@ -435,15 +432,7 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
     let mut semantic_tokens = Vec::new();
 
     for tp in cursor.base().tokens() {
-        let cat = if tp.flags & TOKEN_FLAG_AS_FUNCTION != 0 {
-            TokenCategory::Function
-        } else if tp.flags & TOKEN_FLAG_AS_TYPE != 0 {
-            TokenCategory::Type
-        } else if tp.flags & TOKEN_FLAG_AS_ID != 0 {
-            TokenCategory::Identifier
-        } else {
-            dialect.token_category(tp.type_)
-        };
+        let cat = dialect.classify_token(tp.type_, tp.flags);
         if cat == TokenCategory::Other {
             continue;
         }

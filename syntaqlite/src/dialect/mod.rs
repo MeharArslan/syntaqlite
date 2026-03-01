@@ -220,6 +220,26 @@ impl<'d> Dialect<'d> {
         !self.raw.fmt_strings.is_null() && self.raw.fmt_string_count > 0
     }
 
+    /// Classify a collected token using parser flags, falling back to the
+    /// static token-category table.
+    ///
+    /// The parser annotates tokens with flags like `TOKEN_FLAG_AS_FUNCTION`
+    /// when grammar actions identify a keyword used as a function name, type
+    /// name, or plain identifier. This method checks those flags first, then
+    /// falls back to [`Self::token_category`].
+    pub fn classify_token(&self, token_type: u32, flags: u32) -> TokenCategory {
+        use crate::parser::ffi::{TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE};
+        if flags & TOKEN_FLAG_AS_FUNCTION != 0 {
+            TokenCategory::Function
+        } else if flags & TOKEN_FLAG_AS_TYPE != 0 {
+            TokenCategory::Type
+        } else if flags & TOKEN_FLAG_AS_ID != 0 {
+            TokenCategory::Identifier
+        } else {
+            self.token_category(token_type)
+        }
+    }
+
     /// Classify a token type ordinal into a semantic category.
     pub fn token_category(&self, token_type: u32) -> TokenCategory {
         if self.raw.token_categories.is_null() || token_type >= self.raw.token_type_count {
