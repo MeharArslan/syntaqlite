@@ -231,21 +231,41 @@ fn read_stdin() -> Result<String, String> {
     Ok(buf)
 }
 
-fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
+/// Expand file patterns and dispatch to `on_stdin` (no files) or `on_file` (each file).
+///
+/// Handles glob expansion and reading each file. The `on_file` closure receives
+/// `(source, path, multi)` where `multi` is `true` when processing multiple files.
+fn process_files(
+    files: Vec<String>,
+    on_stdin: impl FnOnce(&str) -> Result<(), String>,
+    mut on_file: impl FnMut(&str, &PathBuf, bool) -> Result<(), String>,
+) -> Result<(), String> {
     let paths = expand_paths(&files)?;
 
     if paths.is_empty() {
-        return cmd_ast_source(dialect, &read_stdin()?, "<stdin>");
+        return on_stdin(&read_stdin()?);
     }
 
+    let multi = paths.len() > 1;
     for path in &paths {
         let source = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-        if paths.len() > 1 {
-            println!("==> {} <==", path.display());
-        }
-        cmd_ast_source(dialect, &source, &path.display().to_string())?;
+        on_file(&source, path, multi)?;
     }
     Ok(())
+}
+
+fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
+    process_files(
+        files,
+        |source| cmd_ast_source(dialect, source, "<stdin>"),
+        |source, path, multi| {
+            let file = path.display().to_string();
+            if multi {
+                println!("==> {file} <==");
+            }
+            cmd_ast_source(dialect, source, &file)
+        },
+    )
 }
 
 fn cmd_ast_source(dialect: &Dialect, source: &str, file: &str) -> Result<(), String> {
@@ -273,40 +293,40 @@ fn cmd_fmt(
     let mut config = config;
     config.semicolons = semicolons;
 
-    let paths = expand_paths(&files)?;
-
-    if paths.is_empty() {
-        if in_place {
-            return Err("--in-place requires file arguments".to_string());
-        }
-        let source = read_stdin()?;
-        let out = format_source(dialect, &source, config.clone()).map_err(|e| format!("{e}"))?;
-        print!("{out}");
-        return Ok(());
-    }
-
     let mut errors = Vec::new();
-    for path in &paths {
-        let source = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-        match format_source(dialect, &source, config.clone()) {
-            Ok(out) => {
-                if in_place {
-                    if out != source {
-                        fs::write(path, &out).map_err(|e| format!("{}: {e}", path.display()))?;
-                        eprintln!("formatted {}", path.display());
+    process_files(
+        files,
+        |source| {
+            if in_place {
+                return Err("--in-place requires file arguments".to_string());
+            }
+            let out = format_source(dialect, source, config.clone()).map_err(|e| format!("{e}"))?;
+            print!("{out}");
+            Ok(())
+        },
+        |source, path, multi| {
+            match format_source(dialect, source, config.clone()) {
+                Ok(out) => {
+                    if in_place {
+                        if out != source {
+                            fs::write(path, &out)
+                                .map_err(|e| format!("{}: {e}", path.display()))?;
+                            eprintln!("formatted {}", path.display());
+                        }
+                    } else {
+                        if multi {
+                            println!("==> {} <==", path.display());
+                        }
+                        print!("{out}");
                     }
-                } else {
-                    if paths.len() > 1 {
-                        println!("==> {} <==", path.display());
-                    }
-                    print!("{out}");
+                }
+                Err(e) => {
+                    errors.push(format!("{}: {e}", path.display()));
                 }
             }
-            Err(e) => {
-                errors.push(format!("{}: {e}", path.display()));
-            }
-        }
-    }
+            Ok(())
+        },
+    )?;
 
     if !errors.is_empty() {
         return Err(errors.join("\n"));
@@ -357,39 +377,36 @@ fn cmd_validate(
     files: Vec<String>,
     lang: Option<HostLanguage>,
 ) -> Result<(), String> {
-    let paths = expand_paths(&files)?;
     let config = ValidationConfig::default();
-
-    if paths.is_empty() {
-        let source = read_stdin()?;
-        let has_errors = match lang {
-            Some(lang) => {
-                validate_embedded_source(dialect, &source, "<stdin>", &config, lang)
-            }
-            None => validate_source(dialect, &source, "<stdin>", &config),
-        };
-        if has_errors {
-            std::process::exit(1);
-        }
-        return Ok(());
-    }
-
     let mut any_errors = false;
-    for path in &paths {
-        let source = fs::read_to_string(path).map_err(|e| format!("{}: {e}", path.display()))?;
-        if paths.len() > 1 {
-            println!("==> {} <==", path.display());
+
+    let validate = |source: &str, file: &str| -> bool {
+        match lang {
+            Some(lang) => validate_embedded_source(dialect, source, file, &config, lang),
+            None => validate_source(dialect, source, file, &config),
         }
-        let has_errors = match lang {
-            Some(lang) => {
-                validate_embedded_source(dialect, &source, &path.display().to_string(), &config, lang)
+    };
+
+    process_files(
+        files,
+        |source| {
+            if validate(source, "<stdin>") {
+                std::process::exit(1);
             }
-            None => validate_source(dialect, &source, &path.display().to_string(), &config),
-        };
-        if has_errors {
-            any_errors = true;
-        }
-    }
+            Ok(())
+        },
+        |source, path, multi| {
+            let file = path.display().to_string();
+            if multi {
+                println!("==> {file} <==");
+            }
+            if validate(source, &file) {
+                any_errors = true;
+            }
+            Ok(())
+        },
+    )?;
+
     if any_errors {
         std::process::exit(1);
     }

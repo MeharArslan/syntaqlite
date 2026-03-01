@@ -64,8 +64,8 @@ def print_failure_details(result: TestResult, rebaseline: bool = False) -> None:
 def main(argv: Optional[List[str]] = None) -> int:
     """Main entry point for the test runner."""
     parser = argparse.ArgumentParser(description='Run AST diff tests')
-    parser.add_argument('--binary', default='out/mac_debug/synq',
-                        help='Path to synq binary')
+    parser.add_argument('--binary', default='target/debug/syntaqlite',
+                        help='Path to syntaqlite binary')
     parser.add_argument('--subcommand', default=None,
                         help='Subcommand to pass to binary (e.g., ast, fmt)')
     parser.add_argument('--filter', help='Run only tests matching pattern')

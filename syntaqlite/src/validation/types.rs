@@ -255,6 +255,30 @@ pub struct FunctionDef {
     pub description: Option<String>,
 }
 
+/// Expand a [`FunctionInfo`] into one [`FunctionDef`] per arity.
+pub fn expand_function_info(info: &crate::catalog::FunctionInfo<'_>) -> Vec<FunctionDef> {
+    if info.arities.is_empty() {
+        vec![FunctionDef {
+            name: info.name.to_string(),
+            args: None,
+            description: None,
+        }]
+    } else {
+        info.arities
+            .iter()
+            .map(|&arity| FunctionDef {
+                name: info.name.to_string(),
+                args: if arity < 0 {
+                    None
+                } else {
+                    Some(arity as usize)
+                },
+                description: None,
+            })
+            .collect()
+    }
+}
+
 /// Database schema context for analysis.
 ///
 /// Callers populate it however they want: introspecting a live DB,

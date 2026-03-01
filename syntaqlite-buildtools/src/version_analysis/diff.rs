@@ -32,11 +32,11 @@ pub fn group_variants(entries: &[(SqliteVersion, String, String)]) -> Vec<Varian
     let mut variant_counter = 0u32;
 
     for (version, hash, text) in entries {
-        if let Some(last) = groups.last_mut() {
-            if last.hash == *hash {
-                last.versions.push(version.clone());
-                continue;
-            }
+        if let Some(last) = groups.last_mut()
+            && last.hash == *hash
+        {
+            last.versions.push(version.clone());
+            continue;
         }
 
         variant_counter += 1;

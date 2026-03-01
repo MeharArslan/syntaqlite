@@ -19,6 +19,8 @@ use std::fmt::{Display, Formatter};
 use super::AstModel;
 use crate::util::synq_parser::{Field, Fmt, Item};
 
+const DEFAULT_NEST_INDENT: u16 = 2;
+
 use syntaqlite::fmt::bytecode::RawOp;
 use syntaqlite::fmt::bytecode::opcodes;
 
@@ -312,7 +314,7 @@ fn compile_one(
             ops.push(op0(opcodes::GROUP_END));
         }
         Fmt::Nest(body) => {
-            ops.push(opab(opcodes::NEST_START, 0, 2));
+            ops.push(opab(opcodes::NEST_START, 0, DEFAULT_NEST_INDENT));
             compile_seq(body, ctx, ops)?;
             ops.push(op0(opcodes::NEST_END));
         }

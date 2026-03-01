@@ -190,97 +190,89 @@ fn sorted_diff<T: Ord + ToString>(a: &BTreeSet<T>, b: &BTreeSet<T>) -> Vec<Strin
 pub fn format_grammar_report(analysis: &GrammarAnalysis) -> String {
     let mut out = String::new();
 
-    writeln!(out, "## Grammar (`parse.y`)").unwrap();
-    writeln!(out).unwrap();
+    let _ = writeln!(out, "## Grammar (`parse.y`)");
+    let _ = writeln!(out);
 
     // Summary table.
-    if let Some((first_ver, first_sum)) = analysis.per_version.first() {
-        if let Some((last_ver, last_sum)) = analysis.per_version.last() {
-            writeln!(
-                out,
-                "Analyzed {} versions ({} through {}).",
-                analysis.per_version.len(),
-                first_ver,
-                last_ver
-            )
-            .unwrap();
-            writeln!(out).unwrap();
+    if let Some((first_ver, first_sum)) = analysis.per_version.first()
+        && let Some((last_ver, last_sum)) = analysis.per_version.last()
+    {
+        let _ = writeln!(
+            out,
+            "Analyzed {} versions ({} through {}).",
+            analysis.per_version.len(),
+            first_ver,
+            last_ver
+        );
+        let _ = writeln!(out);
 
-            writeln!(out, "| Metric | {} | {} |", first_ver, last_ver).unwrap();
-            writeln!(out, "| --- | --- | --- |").unwrap();
-            writeln!(
-                out,
-                "| Rules | {} | {} |",
-                first_sum.rule_signatures.len(),
-                last_sum.rule_signatures.len()
-            )
-            .unwrap();
-            writeln!(
-                out,
-                "| Nonterminals | {} | {} |",
-                first_sum.nonterminals.len(),
-                last_sum.nonterminals.len()
-            )
-            .unwrap();
-            writeln!(
-                out,
-                "| Token declarations | {} | {} |",
-                first_sum.token_decls.len(),
-                last_sum.token_decls.len()
-            )
-            .unwrap();
-            writeln!(
-                out,
-                "| Token classes | {} | {} |",
-                first_sum.token_classes.len(),
-                last_sum.token_classes.len()
-            )
-            .unwrap();
-            writeln!(
-                out,
-                "| Fallback decls | {} | {} |",
-                first_sum.fallbacks.len(),
-                last_sum.fallbacks.len()
-            )
-            .unwrap();
-            writeln!(
-                out,
-                "| Precedence decls | {} | {} |",
-                first_sum.precedences.len(),
-                last_sum.precedences.len()
-            )
-            .unwrap();
-            writeln!(out).unwrap();
-        }
+        let _ = writeln!(out, "| Metric | {} | {} |", first_ver, last_ver);
+        let _ = writeln!(out, "| --- | --- | --- |");
+        let _ = writeln!(
+            out,
+            "| Rules | {} | {} |",
+            first_sum.rule_signatures.len(),
+            last_sum.rule_signatures.len()
+        );
+        let _ = writeln!(
+            out,
+            "| Nonterminals | {} | {} |",
+            first_sum.nonterminals.len(),
+            last_sum.nonterminals.len()
+        );
+        let _ = writeln!(
+            out,
+            "| Token declarations | {} | {} |",
+            first_sum.token_decls.len(),
+            last_sum.token_decls.len()
+        );
+        let _ = writeln!(
+            out,
+            "| Token classes | {} | {} |",
+            first_sum.token_classes.len(),
+            last_sum.token_classes.len()
+        );
+        let _ = writeln!(
+            out,
+            "| Fallback decls | {} | {} |",
+            first_sum.fallbacks.len(),
+            last_sum.fallbacks.len()
+        );
+        let _ = writeln!(
+            out,
+            "| Precedence decls | {} | {} |",
+            first_sum.precedences.len(),
+            last_sum.precedences.len()
+        );
+        let _ = writeln!(out);
     }
 
     // Errors.
     if !analysis.errors.is_empty() {
-        writeln!(out, "### Parse errors").unwrap();
-        writeln!(out).unwrap();
+        let _ = writeln!(out, "### Parse errors");
+        let _ = writeln!(out);
         for (ver, err) in &analysis.errors {
-            writeln!(out, "- **{ver}**: {err}").unwrap();
+            let _ = writeln!(out, "- **{ver}**: {err}");
         }
-        writeln!(out).unwrap();
+        let _ = writeln!(out);
     }
 
     // Transition details.
     if analysis.diffs.is_empty() {
-        writeln!(out, "No grammar changes detected across all versions.").unwrap();
+        let _ = writeln!(out, "No grammar changes detected across all versions.");
         return out;
     }
 
-    writeln!(
+    let _ = writeln!(
         out,
         "### Transitions ({} change points)",
         analysis.diffs.len()
-    )
-    .unwrap();
-    writeln!(out).unwrap();
+    );
+    let _ = writeln!(out);
 
     for diff in &analysis.diffs {
-        writeln!(out, "#### {} → {}", diff.from_version, diff.to_version).unwrap();
-        writeln!(out).unwrap();
+        let _ = writeln!(out, "#### {} → {}", diff.from_version, diff.to_version);
+        let _ = writeln!(out);
 
         format_diff_section(&mut out, "Rules added", &diff.rules_added);
         format_diff_section(&mut out, "Rules removed", &diff.rules_removed);
@@ -307,11 +299,11 @@ fn format_diff_section(out: &mut String, label: &str, items: &[String]) {
     if items.is_empty() {
         return;
     }
-    writeln!(out, "**{label}** ({}):", items.len()).unwrap();
+    let _ = writeln!(out, "**{label}** ({}):", items.len());
     for item in items {
-        writeln!(out, "- `{item}`").unwrap();
+        let _ = writeln!(out, "- `{item}`");
     }
-    writeln!(out).unwrap();
+    let _ = writeln!(out);
 }
 
 #[cfg(test)]

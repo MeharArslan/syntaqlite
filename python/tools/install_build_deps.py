@@ -236,7 +236,7 @@ def install_rust(dep, target_dir):
             curl_args.insert(2, "--progress-bar")
         result = subprocess.run(curl_args)
         if result.returncode != 0:
-            print(f"Download failed", file=sys.stderr)
+            print("Download failed", file=sys.stderr)
             return False
 
         vprint(1, "Verifying checksum...")
@@ -360,7 +360,7 @@ def install_binary_dep(dep, target_dir):
             curl_args.insert(2, "--progress-bar")
         result = subprocess.run(curl_args)
         if result.returncode != 0:
-            print(f"Download failed", file=sys.stderr)
+            print("Download failed", file=sys.stderr)
             return False
 
         actual_sha256 = sha256_file(tmp_path)
@@ -425,7 +425,7 @@ def install_source_dep(dep, target_dir):
             curl_args.insert(2, "--progress-bar")
         result = subprocess.run(curl_args)
         if result.returncode != 0:
-            print(f"Download failed", file=sys.stderr)
+            print("Download failed", file=sys.stderr)
             return False
 
         if dep.hash_type == "sha256":

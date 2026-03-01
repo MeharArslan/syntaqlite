@@ -15,7 +15,7 @@ use crate::ParseError;
 use scope::ScopeStack;
 pub use types::{
     ColumnDef, Diagnostic, DiagnosticMessage, DocumentContext, FunctionDef, Help, RelationDef,
-    RelationKind, SessionContext, Severity,
+    RelationKind, SessionContext, Severity, expand_function_info,
 };
 
 /// Configuration for semantic validation.

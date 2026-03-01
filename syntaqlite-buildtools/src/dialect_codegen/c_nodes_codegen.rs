@@ -216,8 +216,9 @@ pub fn generate_ast_builder_header(model: &AstModel<'_>, dialect: &str) -> Strin
 
     let mut w = CWriter::new();
 
+    let guard = format!("SYNTAQLITE_{}_DIALECT_BUILDER_H", dialect.to_uppercase());
     w.file_header();
-    w.header_guard_start("SYNTAQLITE_DIALECT_BUILDER_H");
+    w.header_guard_start(&guard);
     w.include_local("syntaqlite_ext/ast_builder.h");
     w.include_local(&format!("syntaqlite_{dialect}/{dialect}_node.h"));
     w.newline();
@@ -237,7 +238,7 @@ pub fn generate_ast_builder_header(model: &AstModel<'_>, dialect: &str) -> Strin
 
     w.extern_c_end();
     w.newline();
-    w.header_guard_end("SYNTAQLITE_DIALECT_BUILDER_H");
+    w.header_guard_end(&guard);
 
     w.finish()
 }

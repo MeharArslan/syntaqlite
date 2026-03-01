@@ -196,7 +196,7 @@ impl<'d> AnalysisHost<'d> {
         // Layer 2: Dialect extensions (filtered by config)
         for ext in self.dialect.function_extensions() {
             if crate::catalog::is_available(&ext, config) {
-                result.extend(expand_function_info(&ext.info));
+                result.extend(crate::validation::expand_function_info(&ext.info));
             }
         }
 
@@ -254,7 +254,11 @@ impl<'d> AnalysisHost<'d> {
         ensure_document_state(&self.dialect, doc);
         let version = doc.version;
         let source = doc.source.as_str();
-        let diagnostics = &doc.state.as_ref().unwrap().diagnostics;
+        let diagnostics = &doc
+            .state
+            .as_ref()
+            .expect("state populated by ensure_document_state")
+            .diagnostics;
         Some((version, source, diagnostics))
     }
 
@@ -299,7 +303,11 @@ impl<'d> AnalysisHost<'d> {
         };
         ensure_document_state(&self.dialect, doc);
         let source = doc.source.as_bytes();
-        let tokens = &doc.state.as_ref().unwrap().semantic_tokens;
+        let tokens = &doc
+            .state
+            .as_ref()
+            .expect("state populated by ensure_document_state")
+            .semantic_tokens;
 
         let (range_start, range_end) = range.unwrap_or((0, source.len()));
 
@@ -385,32 +393,11 @@ impl<'d> AnalysisHost<'d> {
             };
         };
         ensure_document_state(&self.dialect, doc);
-        let state = doc.state.as_ref().unwrap();
+        let state = doc
+            .state
+            .as_ref()
+            .expect("state populated by ensure_document_state");
         replay_completion_info(&self.dialect, &doc.source, &state.tokens, offset)
-    }
-}
-
-/// Expand a `FunctionInfo` into one `FunctionDef` per arity.
-fn expand_function_info(info: &crate::catalog::FunctionInfo<'_>) -> Vec<FunctionDef> {
-    if info.arities.is_empty() {
-        vec![FunctionDef {
-            name: info.name.to_string(),
-            args: None,
-            description: None,
-        }]
-    } else {
-        info.arities
-            .iter()
-            .map(|&arity| FunctionDef {
-                name: info.name.to_string(),
-                args: if arity < 0 {
-                    None
-                } else {
-                    Some(arity as usize)
-                },
-                description: None,
-            })
-            .collect()
     }
 }
 
@@ -419,7 +406,7 @@ fn expand_function_info(info: &crate::catalog::FunctionInfo<'_>) -> Vec<Function
 fn catalog_to_function_defs(config: &crate::dialect::ffi::DialectConfig) -> Vec<FunctionDef> {
     crate::sqlite::functions::available_functions(config)
         .into_iter()
-        .flat_map(|info| expand_function_info(info))
+        .flat_map(|info| crate::validation::expand_function_info(info))
         .collect()
 }
 
@@ -434,7 +421,7 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
 
     while let Some(result) = cursor.next_statement() {
         if let Err(err) = result {
-            let (start_offset, end_offset) = error_span(&err, source);
+            let (start_offset, end_offset) = crate::validation::parse_error_span(&err, source);
             diagnostics.push(Diagnostic {
                 start_offset,
                 end_offset,
@@ -501,7 +488,7 @@ fn ensure_document_state<'a>(dialect: &Dialect, doc: &'a mut Document) -> &'a Do
     if doc.state.is_none() {
         doc.state = Some(compute_document_state(dialect, &doc.source));
     }
-    doc.state.as_ref().unwrap()
+    doc.state.as_ref().expect("state populated by preceding is_none check")
 }
 
 fn replay_completion_info(
@@ -571,26 +558,6 @@ fn replay_completion_info(
     CompletionInfo {
         tokens: last_expected,
         context,
-    }
-}
-
-fn error_span(err: &ParseError, source: &str) -> (usize, usize) {
-    match (err.offset, err.length) {
-        (Some(offset), Some(length)) if length > 0 => (offset, offset + length),
-        (Some(offset), _) => {
-            // Point at the error offset; if at end of input, highlight last char.
-            if offset >= source.len() && !source.is_empty() {
-                (source.len() - 1, source.len())
-            } else {
-                (offset, (offset + 1).min(source.len()))
-            }
-        }
-        _ => {
-            // No offset info — highlight end of source.
-            let end = source.len();
-            let start = if end > 0 { end - 1 } else { 0 };
-            (start, end)
-        }
     }
 }
 

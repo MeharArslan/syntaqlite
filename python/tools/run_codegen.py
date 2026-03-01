@@ -16,12 +16,23 @@ Usage:
     tools/run-codegen --extract                   # Stage 1 + 1b + 2
 """
 
+import argparse
 import subprocess
 import sys
 from pathlib import Path
 
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Build and run syntaqlite-cli codegen to generate parser and tokenizer."
+    )
+    parser.add_argument(
+        "--extract",
+        action="store_true",
+        help="Run Stage 1: extract C fragments from raw SQLite source",
+    )
+    args = parser.parse_args()
+
     project_root = Path(__file__).parent.parent.parent
     sqlite_src = project_root / "third_party" / "src" / "sqlite"
     dialect_crate = project_root / "syntaqlite"
@@ -31,7 +42,7 @@ def main():
     rust_dir = project_root / "syntaqlite"
     vendored_dir = project_root / "syntaqlite-buildtools" / "sqlite-vendored"
 
-    do_extract = "--extract" in sys.argv
+    do_extract = args.extract
 
     # Validate input files
     if not actions_dir.is_dir():

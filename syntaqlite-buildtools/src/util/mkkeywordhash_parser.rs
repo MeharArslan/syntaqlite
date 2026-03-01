@@ -175,10 +175,10 @@ fn parse_mask_defines(source: &str) -> Vec<MaskDefine> {
         // OMIT pattern: #ifdef SQLITE_OMIT_*
         if let Some(rest) = trimmed.strip_prefix("#ifdef ") {
             let flag = rest.trim();
-            if flag.starts_with("SQLITE_OMIT_") {
-                if let Some(mask) = parse_ifdef_mask_block(&lines[i..], flag, 0) {
-                    masks.push(mask);
-                }
+            if flag.starts_with("SQLITE_OMIT_")
+                && let Some(mask) = parse_ifdef_mask_block(&lines[i..], flag, 0)
+            {
+                masks.push(mask);
             }
         }
 
@@ -218,18 +218,17 @@ fn parse_ifdef_mask_block(lines: &[&str], flag: &str, polarity: u8) -> Option<Ma
             break;
         }
 
-        if in_else {
-            if let Some(rest) = trimmed
+        if in_else
+            && let Some(rest) = trimmed
                 .strip_prefix("#")
                 .and_then(|s| s.trim_start().strip_prefix("define"))
-            {
-                let rest = rest.trim_start();
-                let parts: Vec<&str> = rest.split_whitespace().collect();
-                if parts.len() >= 2 {
-                    name = Some(parts[0].to_string());
-                    if let Some(hex) = parts[1].strip_prefix("0x") {
-                        bit_value = u64::from_str_radix(hex, 16).ok();
-                    }
+        {
+            let rest = rest.trim_start();
+            let parts: Vec<&str> = rest.split_whitespace().collect();
+            if parts.len() >= 2 {
+                name = Some(parts[0].to_string());
+                if let Some(hex) = parts[1].strip_prefix("0x") {
+                    bit_value = u64::from_str_radix(hex, 16).ok();
                 }
             }
         }

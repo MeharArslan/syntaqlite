@@ -146,10 +146,10 @@ pub fn extract_keyword_cflags(
             continue;
         }
         // Look up the mask symbol in the defines.
-        if let Some(&(omit_flag, polarity)) = mask_lookup.get(kw.mask_expr.as_str()) {
-            if let Some(cflag_val) = super::synq_cflag_for_sqlite_flag(omit_flag) {
-                map.insert(kw.name.clone(), (cflag_val, polarity));
-            }
+        if let Some(&(omit_flag, polarity)) = mask_lookup.get(kw.mask_expr.as_str())
+            && let Some(cflag_val) = super::synq_cflag_for_sqlite_flag(omit_flag)
+        {
+            map.insert(kw.name.clone(), (cflag_val, polarity));
         }
     }
 

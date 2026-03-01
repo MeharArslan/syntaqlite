@@ -10,6 +10,9 @@ use crate::util::synq_parser::{Field, Storage};
 
 use super::{AstModel, NodeLikeRef, c_type_name};
 
+/// Sentinel value indicating a field is absent in the schema metadata table.
+const FIELD_ABSENT: u8 = 0xFF;
+
 #[derive(Debug, Clone)]
 pub enum CMetaCodegenError {
     UnknownInlineType(String),
@@ -228,27 +231,39 @@ pub fn generate_c_field_metadata(
     w.line("};");
     w.newline();
 
-    w.section("Field Meta Dispatch");
-    w.line("static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {");
-    w.indent();
-    w.line("NULL, /* Null */");
+    // Build field_meta, field_meta_counts, and list_tags arrays in a single pass.
+    let mut field_meta_entries = vec!["NULL, /* Null */".to_string()];
+    let mut field_count_entries = vec!["0, /* Null */".to_string()];
+    let mut list_tag_entries = vec!["0, /* Null */".to_string()];
+
     for item in model.node_like_items() {
         match item {
             NodeLikeRef::Node(node) => {
                 if node.fields.is_empty() {
-                    w.line(&format!("NULL, /* {} */", node.name));
+                    field_meta_entries.push(format!("NULL, /* {} */", node.name));
                 } else {
-                    w.line(&format!(
+                    field_meta_entries.push(format!(
                         "field_meta_{}, /* {} */",
                         pascal_to_snake(node.name),
                         node.name
                     ));
                 }
+                field_count_entries.push(format!("{}, /* {} */", node.fields.len(), node.name));
+                list_tag_entries.push(format!("0, /* {} */", node.name));
             }
             NodeLikeRef::List(list) => {
-                w.line(&format!("NULL, /* {} */", list.name));
+                field_meta_entries.push(format!("NULL, /* {} */", list.name));
+                field_count_entries.push(format!("0, /* {} */", list.name));
+                list_tag_entries.push(format!("1, /* {} */", list.name));
             }
         }
+    }
+
+    w.section("Field Meta Dispatch");
+    w.line("static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {");
+    w.indent();
+    for entry in &field_meta_entries {
+        w.line(entry);
     }
     w.dedent();
     w.line("};");
@@ -256,16 +271,8 @@ pub fn generate_c_field_metadata(
 
     w.line("static const uint8_t ast_meta_field_meta_counts[] = {");
     w.indent();
-    w.line("0, /* Null */");
-    for item in model.node_like_items() {
-        match item {
-            NodeLikeRef::Node(node) => {
-                w.line(&format!("{}, /* {} */", node.fields.len(), node.name));
-            }
-            NodeLikeRef::List(list) => {
-                w.line(&format!("0, /* {} */", list.name));
-            }
-        }
+    for entry in &field_count_entries {
+        w.line(entry);
     }
     w.dedent();
     w.line("};");
@@ -274,16 +281,8 @@ pub fn generate_c_field_metadata(
     w.section("List Tags");
     w.line("static const uint8_t ast_meta_list_tags[] = {");
     w.indent();
-    w.line("0, /* Null */");
-    for item in model.node_like_items() {
-        match item {
-            NodeLikeRef::Node(node) => {
-                w.line(&format!("0, /* {} */", node.name));
-            }
-            NodeLikeRef::List(list) => {
-                w.line(&format!("1, /* {} */", list.name));
-            }
-        }
+    for entry in &list_tag_entries {
+        w.line(entry);
     }
     w.dedent();
     w.line("};");
@@ -369,8 +368,8 @@ pub fn generate_c_schema_contributions(model: &AstModel<'_>) -> String {
                     .iter()
                     .position(|f| f.name == field_name)
                     .map(|i| i as u8)
-                    .unwrap_or(0xFF),
-                None => 0xFF,
+                    .unwrap_or(FIELD_ABSENT),
+                None => FIELD_ABSENT,
             }
         };
 

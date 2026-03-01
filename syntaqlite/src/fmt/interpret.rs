@@ -182,7 +182,8 @@ pub(crate) fn interpret_node<'a>(
             continue;
         }
 
-        match op_at(ops, ip) {
+        let op = op_at(ops, ip);
+        match op {
             FmtOp::Keyword(sid) => {
                 let kw_text = ctx.dialect.fmt_string(sid);
 
@@ -200,6 +201,7 @@ pub(crate) fn interpret_node<'a>(
                 running = arena.cat(running, kw);
             }
             FmtOp::Span(idx) => {
+                // INVARIANT: bytecode is compiled from .synq at build time; Span ops only target Span fields.
                 let FieldVal::Span(s, offset) = fields[idx as usize] else {
                     panic!("Span: field {} is not a Span", idx);
                 };
@@ -215,21 +217,19 @@ pub(crate) fn interpret_node<'a>(
                 }
             }
             FmtOp::Child(idx) => {
+                // INVARIANT: bytecode is compiled from .synq at build time; Child ops only target NodeId fields.
                 let FieldVal::NodeId(child_id) = fields[idx as usize] else {
                     panic!("Child: field {} is not a NodeId", idx);
                 };
 
                 if !child_id.is_null() {
-                    // Drain comments before this child.
-                    if let Some(cctx) = ctx.comment_ctx {
-                        if let Some((offset, _)) = cctx.peek_next_token() {
-                            let drain = cctx.drain_before(offset, source, arena);
-                            flush_drain(drain, &mut pending, &mut running, arena);
-                        } else {
-                            running = arena.cat(running, pending);
-                            pending = NIL_DOC;
-                        }
-                    }
+                    drain_comments_before_child(
+                        ctx.comment_ctx,
+                        source,
+                        &mut pending,
+                        &mut running,
+                        arena,
+                    );
 
                     // Check macro verbatim for non-list children.
                     let mut return_action = ReturnAction::CatOntoRunning;
@@ -269,28 +269,17 @@ pub(crate) fn interpret_node<'a>(
                     }
                 }
             }
-            FmtOp::Line => {
-                let l = arena.line();
+            FmtOp::Line | FmtOp::SoftLine | FmtOp::HardLine => {
+                let doc = match op {
+                    FmtOp::Line => arena.line(),
+                    FmtOp::SoftLine => arena.softline(),
+                    FmtOp::HardLine => arena.hardline(),
+                    _ => unreachable!(),
+                };
                 if has_comments {
-                    pending = arena.cat(pending, l);
+                    pending = arena.cat(pending, doc);
                 } else {
-                    running = arena.cat(running, l);
-                }
-            }
-            FmtOp::SoftLine => {
-                let sl = arena.softline();
-                if has_comments {
-                    pending = arena.cat(pending, sl);
-                } else {
-                    running = arena.cat(running, sl);
-                }
-            }
-            FmtOp::HardLine => {
-                let hl = arena.hardline();
-                if has_comments {
-                    pending = arena.cat(pending, hl);
-                } else {
-                    running = arena.cat(running, hl);
+                    running = arena.cat(running, doc);
                 }
             }
             FmtOp::GroupStart => {
@@ -306,6 +295,7 @@ pub(crate) fn interpret_node<'a>(
                         let g = arena.group(inner);
                         running = arena.cat(parent, g);
                     }
+                    // INVARIANT: GroupStart always pushes GNFrame::Group; bytecode is well-formed.
                     _ => panic!("expected Group frame"),
                 }
             }
@@ -322,10 +312,12 @@ pub(crate) fn interpret_node<'a>(
                         let n = arena.nest(indent, inner);
                         running = arena.cat(parent, n);
                     }
+                    // INVARIANT: NestStart always pushes GNFrame::Nest; bytecode is well-formed.
                     _ => panic!("expected Nest frame"),
                 }
             }
             FmtOp::IfSet(idx, skip) => {
+                // INVARIANT: bytecode is compiled from .synq at build time; IfSet ops only target NodeId fields.
                 let FieldVal::NodeId(id) = fields[idx as usize] else {
                     panic!("IfSet: field {} is not a NodeId", idx);
                 };
@@ -338,6 +330,7 @@ pub(crate) fn interpret_node<'a>(
             }
             FmtOp::EndIf => {}
             FmtOp::ForEachStart(idx) => {
+                // INVARIANT: bytecode is compiled from .synq at build time; ForEachStart ops only target NodeId fields.
                 let FieldVal::NodeId(list_id) = fields[idx as usize] else {
                     panic!("ForEachStart: field {} is not a NodeId", idx);
                 };
@@ -392,16 +385,13 @@ pub(crate) fn interpret_node<'a>(
                     }
                     return_action = ReturnAction::Discard;
                 } else {
-                    // Drain comments before this child.
-                    if let Some(cctx) = ctx.comment_ctx {
-                        if let Some((offset, _)) = cctx.peek_next_token() {
-                            let drain = cctx.drain_before(offset, source, arena);
-                            flush_drain(drain, &mut pending, &mut running, arena);
-                        } else {
-                            running = arena.cat(running, pending);
-                            pending = NIL_DOC;
-                        }
-                    }
+                    drain_comments_before_child(
+                        ctx.comment_ctx,
+                        source,
+                        &mut pending,
+                        &mut running,
+                        arena,
+                    );
 
                     if let Some(verbatim) = macro_doc {
                         // Macro-verbatim: add verbatim text, still "call" child to
@@ -462,6 +452,7 @@ pub(crate) fn interpret_node<'a>(
                 }
             }
             FmtOp::IfBool(idx, skip) => {
+                // INVARIANT: bytecode is compiled from .synq at build time; IfBool ops only target Bool fields.
                 let FieldVal::Bool(val) = fields[idx as usize] else {
                     panic!("IfBool: field {} is not a Bool", idx);
                 };
@@ -470,6 +461,7 @@ pub(crate) fn interpret_node<'a>(
                 }
             }
             FmtOp::IfFlag(idx, mask, skip) => {
+                // INVARIANT: bytecode is compiled from .synq at build time; IfFlag ops only target Flags fields.
                 let FieldVal::Flags(f) = fields[idx as usize] else {
                     panic!("IfFlag: field {} is not Flags", idx);
                 };
@@ -478,6 +470,7 @@ pub(crate) fn interpret_node<'a>(
                 }
             }
             FmtOp::IfEnum(idx, ordinal, skip) => {
+                // INVARIANT: bytecode is compiled from .synq at build time; IfEnum ops only target Enum fields.
                 let FieldVal::Enum(val) = fields[idx as usize] else {
                     panic!("IfEnum: field {} is not an Enum", idx);
                 };
@@ -486,6 +479,7 @@ pub(crate) fn interpret_node<'a>(
                 }
             }
             FmtOp::IfSpan(idx, skip) => {
+                // INVARIANT: bytecode is compiled from .synq at build time; IfSpan ops only target Span fields.
                 let FieldVal::Span(s, _) = fields[idx as usize] else {
                     panic!("IfSpan: field {} is not a Span", idx);
                 };
@@ -494,6 +488,7 @@ pub(crate) fn interpret_node<'a>(
                 }
             }
             FmtOp::EnumDisplay(idx, base) => {
+                // INVARIANT: bytecode is compiled from .synq at build time; EnumDisplay ops only target Enum fields.
                 let FieldVal::Enum(ordinal) = fields[idx as usize] else {
                     panic!("EnumDisplay: field {} is not an Enum", idx);
                 };
@@ -547,6 +542,26 @@ fn flush_drain(drain: DrainResult, pending: &mut DocId, running: &mut DocId, are
     } else {
         *running = arena.cat(*running, *pending);
         *pending = NIL_DOC;
+    }
+}
+
+/// Drain comments before the next child token, flushing into running/pending.
+#[inline]
+fn drain_comments_before_child<'a>(
+    comment_ctx: Option<&CommentCtx<'a>>,
+    source: &'a str,
+    pending: &mut DocId,
+    running: &mut DocId,
+    arena: &mut DocArena<'a>,
+) {
+    if let Some(cctx) = comment_ctx {
+        if let Some((offset, _)) = cctx.peek_next_token() {
+            let drain = cctx.drain_before(offset, source, arena);
+            flush_drain(drain, pending, running, arena);
+        } else {
+            *running = arena.cat(*running, *pending);
+            *pending = NIL_DOC;
+        }
     }
 }
 

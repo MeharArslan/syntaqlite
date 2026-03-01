@@ -36,86 +36,83 @@ pub fn sqlite_output_manifest(
     dialect: &DialectNaming,
     artifacts: CodegenArtifacts,
 ) -> Result<Vec<OutputArtifact>, String> {
-    let mut out = Vec::new();
-
-    out.push(OutputArtifact {
-        bucket: OutputBucket::Include,
-        file_name: dialect.tokens_header_name(),
-        content: dialect.guarded_tokens_header(&artifacts.parse_h),
-    });
-    out.push(OutputArtifact {
-        bucket: OutputBucket::Include,
-        file_name: dialect.node_header_name(),
-        content: artifacts.ast_nodes_h,
-    });
-    out.push(OutputArtifact {
-        bucket: OutputBucket::Include,
-        file_name: dialect.dialect_header_name(),
-        content: artifacts.dialect_h,
-    });
-
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: "dialect_builder.h".to_string(),
-        content: artifacts.ast_builder_h,
-    });
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: "sqlite_parse.h".to_string(),
-        content: artifacts.parse_api_h,
-    });
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: "dialect_meta.h".to_string(),
-        content: artifacts.dialect_meta_h,
-    });
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: "dialect_fmt.h".to_string(),
-        content: artifacts.dialect_fmt_h,
-    });
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: "dialect_tokens.h".to_string(),
-        content: artifacts.dialect_tokens_h,
-    });
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: "dialect.c".to_string(),
-        content: artifacts.dialect_c,
-    });
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: dialect.dialect_dispatch_header_name(),
-        content: artifacts.dialect_dispatch_h,
-    });
-
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: "sqlite_tokenize.h".to_string(),
-        content: artifacts.tokenize_h,
-    });
-
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: "sqlite_parse.c".to_string(),
-        content: artifacts.parse_c,
-    });
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: "sqlite_tokenize.c".to_string(),
-        content: artifacts.tokenize_c,
-    });
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: "sqlite_keyword.c".to_string(),
-        content: artifacts.keyword_c,
-    });
-    out.push(OutputArtifact {
-        bucket: OutputBucket::DialectCsrc,
-        file_name: "sqlite_keyword.h".to_string(),
-        content: artifacts.keyword_h,
-    });
+    let mut out = vec![
+        OutputArtifact {
+            bucket: OutputBucket::Include,
+            file_name: dialect.tokens_header_name(),
+            content: dialect.guarded_tokens_header(&artifacts.parse_h),
+        },
+        OutputArtifact {
+            bucket: OutputBucket::Include,
+            file_name: dialect.node_header_name(),
+            content: artifacts.ast_nodes_h,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::Include,
+            file_name: dialect.dialect_header_name(),
+            content: artifacts.dialect_h,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: "dialect_builder.h".to_string(),
+            content: artifacts.ast_builder_h,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: "sqlite_parse.h".to_string(),
+            content: artifacts.parse_api_h,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: "dialect_meta.h".to_string(),
+            content: artifacts.dialect_meta_h,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: "dialect_fmt.h".to_string(),
+            content: artifacts.dialect_fmt_h,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: "dialect_tokens.h".to_string(),
+            content: artifacts.dialect_tokens_h,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: "dialect.c".to_string(),
+            content: artifacts.dialect_c,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: dialect.dialect_dispatch_header_name(),
+            content: artifacts.dialect_dispatch_h,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: "sqlite_tokenize.h".to_string(),
+            content: artifacts.tokenize_h,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: "sqlite_parse.c".to_string(),
+            content: artifacts.parse_c,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: "sqlite_tokenize.c".to_string(),
+            content: artifacts.tokenize_c,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: "sqlite_keyword.c".to_string(),
+            content: artifacts.keyword_c,
+        },
+        OutputArtifact {
+            bucket: OutputBucket::DialectCsrc,
+            file_name: "sqlite_keyword.h".to_string(),
+            content: artifacts.keyword_h,
+        },
+    ];
 
     let rust = artifacts
         .rust

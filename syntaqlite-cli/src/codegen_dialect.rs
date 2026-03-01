@@ -137,7 +137,6 @@ fn cmd_generate_dialect(
     ext_header: &str,
 ) -> Result<(), String> {
     use syntaqlite_buildtools::amalgamate;
-    use syntaqlite_buildtools::base_files;
 
     // Run codegen into a temp directory.  The includes use `csrc/` prefix
     // to match the temp dir layout so the amalgamator can resolve and
@@ -155,19 +154,7 @@ fn cmd_generate_dialect(
         dialect_include_dir: "",
     };
 
-    // Load extension files from user dirs (if provided).
-    let ext_y = match actions_dir {
-        Some(dir) => syntaqlite_buildtools::read_named_files_from_dir(dir, "y")?,
-        None => Vec::new(),
-    };
-    let ext_synq = match nodes_dir {
-        Some(dir) => syntaqlite_buildtools::read_named_files_from_dir(dir, "synq")?,
-        None => Vec::new(),
-    };
-
-    // Merge base + extensions.
-    let merged_y = base_files::merge_file_sets(base_files::base_y_files(), &ext_y);
-    let merged_synq = base_files::merge_file_sets(base_files::base_synq_files(), &ext_synq);
+    let (merged_y, merged_synq) = load_extensions(actions_dir, nodes_dir)?;
 
     codegen_to_dir_with_base(
         dialect,
@@ -195,15 +182,29 @@ fn cmd_generate_dialect_raw(
     output_dir: &str,
     includes: &syntaqlite_buildtools::dialect_codegen::DialectCIncludes<'_>,
 ) -> Result<(), String> {
-    use syntaqlite_buildtools::base_files;
-
     let out = Path::new(output_dir);
     let csrc = out.join("csrc");
     let include = out.join("include").join(format!("syntaqlite_{dialect}"));
     ensure_dir(&csrc, "csrc dir")?;
     ensure_dir(&include, "include dir")?;
 
-    // Load extension files from user dirs (if provided).
+    let (merged_y, merged_synq) = load_extensions(actions_dir, nodes_dir)?;
+
+    codegen_to_dir_with_base(dialect, &merged_y, &merged_synq, &csrc, &include, includes)?;
+    eprintln!("wrote raw dialect files to {}", out.display());
+    Ok(())
+}
+
+/// A set of named files: `(filename, content)` pairs.
+type NamedFiles = Vec<(String, String)>;
+
+/// Load extension `.y` and `.synq` files and merge them with the base file sets.
+fn load_extensions(
+    actions_dir: Option<&str>,
+    nodes_dir: Option<&str>,
+) -> Result<(NamedFiles, NamedFiles), String> {
+    use syntaqlite_buildtools::base_files;
+
     let ext_y = match actions_dir {
         Some(dir) => syntaqlite_buildtools::read_named_files_from_dir(dir, "y")?,
         None => Vec::new(),
@@ -213,13 +214,9 @@ fn cmd_generate_dialect_raw(
         None => Vec::new(),
     };
 
-    // Merge base + extensions.
     let merged_y = base_files::merge_file_sets(base_files::base_y_files(), &ext_y);
     let merged_synq = base_files::merge_file_sets(base_files::base_synq_files(), &ext_synq);
-
-    codegen_to_dir_with_base(dialect, &merged_y, &merged_synq, &csrc, &include, includes)?;
-    eprintln!("wrote raw dialect files to {}", out.display());
-    Ok(())
+    Ok((merged_y, merged_synq))
 }
 
 /// Run the codegen pipeline from merged in-memory file sets.

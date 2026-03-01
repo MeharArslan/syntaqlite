@@ -149,24 +149,7 @@ pub fn sqlite_function_defs() -> Vec<FunctionDef> {
     let config = crate::dialect::ffi::DialectConfig::default();
     crate::sqlite::functions::available_functions(&config)
         .into_iter()
-        .flat_map(|info| {
-            if info.arities.is_empty() {
-                vec![FunctionDef {
-                    name: info.name.to_string(),
-                    args: None,
-                    description: None,
-                }]
-            } else {
-                info.arities
-                    .iter()
-                    .map(|&arity| FunctionDef {
-                        name: info.name.to_string(),
-                        args: if arity < 0 { None } else { Some(arity as usize) },
-                        description: None,
-                    })
-                    .collect()
-            }
-        })
+        .flat_map(|info| crate::validation::expand_function_info(info))
         .collect()
 }
 
