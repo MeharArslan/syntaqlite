@@ -7,8 +7,8 @@
 ///
 /// Each SQL statement type (e.g. `SELECT`, `INSERT`) has a corresponding struct
 /// with typed accessors for its fields. The top-level enum is [`ast::Stmt`],
-/// returned by [`StatementCursor::next_statement`] and
-/// [`LowLevelCursor::finish`](low_level::LowLevelCursor::finish).
+/// returned by [`StatementCursor::next_statement`](crate::StatementCursor::next_statement) and
+/// [`LowLevelCursor::finish`](crate::parser::LowLevelCursor::finish).
 pub mod ast;
 mod ffi;
 pub mod functions;

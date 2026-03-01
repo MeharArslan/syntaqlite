@@ -19,7 +19,7 @@ pub struct Diagnostic {
 /// Structured diagnostic message.
 ///
 /// Each variant carries the identifiers needed for machine-readable
-/// consumption; [`Display`] produces the human-readable form.
+/// consumption; [`fmt::Display`](std::fmt::Display) produces the human-readable form.
 #[derive(Debug, Clone)]
 pub enum DiagnosticMessage {
     UnknownTable {
@@ -84,7 +84,7 @@ impl DiagnosticMessage {
     /// Write the structured JSON representation into `out`.
     ///
     /// This is the machine-readable detail object; callers also emit
-    /// `"message"` with the [`Display`] string alongside it.
+    /// `"message"` with the [`fmt::Display`](std::fmt::Display) string alongside it.
     pub fn write_json(&self, out: &mut String) {
         match self {
             Self::UnknownTable { name } => {
@@ -255,7 +255,7 @@ pub struct FunctionDef {
     pub description: Option<String>,
 }
 
-/// Expand a [`FunctionInfo`] into one [`FunctionDef`] per arity.
+/// Expand a [`FunctionInfo`](crate::catalog::FunctionInfo) into one [`FunctionDef`] per arity.
 pub fn expand_function_info(info: &crate::catalog::FunctionInfo<'_>) -> Vec<FunctionDef> {
     if info.arities.is_empty() {
         vec![FunctionDef {
@@ -328,7 +328,7 @@ impl SessionContext {
 /// Schema accumulated from DDL statements earlier in the document being validated.
 ///
 /// Built incrementally (one statement at a time) so forward references are rejected.
-/// Pass to [`validate_statement`] alongside the session context so each statement only
+/// Pass to [`validate_statement`](super::validate_statement) alongside the session context so each statement only
 /// sees tables/views that were *defined before it* in the document.
 pub struct DocumentContext {
     pub relations: Vec<RelationDef>,

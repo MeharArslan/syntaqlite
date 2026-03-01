@@ -9,8 +9,8 @@
 //! host-file positions.
 //!
 //! Language-specific extractors live in submodules:
-//! - [`python`] — Python f-string extraction
-//! - [`typescript`] — TypeScript/JavaScript template literal extraction
+//! - [`extract_python`] — Python f-string extraction
+//! - [`extract_typescript`] — TypeScript/JavaScript template literal extraction
 
 pub mod offset_map;
 mod python;

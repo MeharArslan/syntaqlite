@@ -36,7 +36,7 @@ pub mod virtual_tables;
 /// SYNQ cflag index table, mirroring `sqlite_cflags.h`.
 ///
 /// This is the authoritative Rust-side table. It is the union of all cflags
-/// across [`keywords_and_parser::PARSER_CFLAGS`], [`functions::FUNCTION_CFLAGS`],
+/// across [`keywords_and_parser::PARSER_CFLAGS`], `functions::FUNCTION_CFLAGS`,
 /// and [`virtual_tables::VIRTUAL_TABLE_CFLAGS`].
 ///
 /// Each entry is (sqlite_flag_name, synq_index_constant_name, index, category).
