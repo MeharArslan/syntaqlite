@@ -1,0 +1,39 @@
+#!/bin/sh
+# Copyright 2025 The syntaqlite Authors. All rights reserved.
+# Licensed under the Apache License, Version 2.0.
+
+# Check for dead code across all workspace crates and feature combinations.
+#
+# rustc only flags dead code on private items by default (public items in
+# libraries are assumed reachable by external crates). Running with
+# --all-targets surfaces dead code in binaries, tests, and examples, where
+# the full reachability graph is known. We also check each major feature
+# combination so that code gated behind a feature is not silently unused.
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+
+cd "$ROOT_DIR"
+
+step() {
+    printf '\n\033[1;34m==> %s\033[0m\n' "$*"
+}
+
+DEAD_CODE_FLAGS="-D dead_code -D unused_imports -D unused_variables -D unused_mut"
+
+# Default features — covers the common runtime path.
+step "dead code check: default features"
+RUSTFLAGS="$DEAD_CODE_FLAGS" cargo check --all-targets 2>&1
+
+# All features — exercises every feature-gated code path.
+step "dead code check: all features"
+RUSTFLAGS="$DEAD_CODE_FLAGS" cargo check --all-targets --all-features 2>&1
+
+# No default features — ensures feature-gated modules compile cleanly in
+# isolation (e.g. grammar-agnostic engine without the sqlite feature).
+step "dead code check: no default features"
+RUSTFLAGS="$DEAD_CODE_FLAGS" cargo check --all-targets --no-default-features 2>&1
+
+printf '\n\033[1;32mDead code check passed.\033[0m\n'

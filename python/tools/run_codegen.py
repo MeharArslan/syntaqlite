@@ -38,7 +38,7 @@ def main():
     dialect_crate = project_root / "syntaqlite"
     actions_dir = dialect_crate / "parser-actions"
     nodes_dir = dialect_crate / "parser-nodes"
-    output_dir = project_root / "syntaqlite-sys" / "csrc" / "sqlite"
+    output_dir = project_root / "syntaqlite-parser-sqlite" / "csrc" / "sqlite"
     rust_dir = project_root / "syntaqlite"
     vendored_dir = project_root / "syntaqlite-buildtools" / "sqlite-vendored"
 
