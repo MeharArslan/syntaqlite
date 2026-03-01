@@ -19,7 +19,7 @@ pub(crate) enum CodegenCommand {
         actions_dir: String,
         #[arg(long, required = true)]
         nodes_dir: String,
-        #[arg(long, default_value = "syntaqlite-parser-sys/csrc/sqlite")]
+        #[arg(long, default_value = "syntaqlite-sys/csrc/sqlite")]
         output_dir: String,
         /// Directory for generated Rust outputs. When provided, Rust files are
         /// written relative to this path instead of being inferred from

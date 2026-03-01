@@ -2,7 +2,7 @@
 [workspace]
 members = [
     "syntaqlite",
-    "syntaqlite-parser-sys",
+    "syntaqlite-sys",
     "syntaqlite-wasm",
     "syntaqlite-buildtools",
     "syntaqlite-cli",

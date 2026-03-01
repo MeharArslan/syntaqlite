@@ -5,27 +5,27 @@ Parent: [distribution-ai-plan.md](distribution-ai-plan.md)
 This document breaks the distribution plan into concrete implementation phases
 with steps, verification gates, and a recommended execution order.
 
-## Phase 1: Extract `syntaqlite-parser-sys` crate
+## Phase 1: Extract `syntaqlite-sys` crate
 
 The foundational change — all subsequent work depends on it.
 
 ### 1.1 Create the crate skeleton
 
-- Create `syntaqlite-parser-sys/Cargo.toml` with `links = "syntaqlite_parser"`,
+- Create `syntaqlite-sys/Cargo.toml` with `links = "syntaqlite_parser"`,
   `cc` build dependency
 - Add it to the workspace `Cargo.toml`
-- Create `syntaqlite-parser-sys/src/lib.rs` — empty or minimal (this is a `-sys`
+- Create `syntaqlite-sys/src/lib.rs` — empty or minimal (this is a `-sys`
   crate; Rust consumers use `syntaqlite`)
 
 ### 1.2 Move C sources and headers
 
-- Move `syntaqlite/csrc/` → `syntaqlite-parser-sys/csrc/`
-- Move `syntaqlite/include/` → `syntaqlite-parser-sys/include/`
+- Move `syntaqlite/csrc/` → `syntaqlite-sys/csrc/`
+- Move `syntaqlite/include/` → `syntaqlite-sys/include/`
 - Update any internal `#include` paths if needed
 
 ### 1.3 Move `build.rs` logic
 
-- Create `syntaqlite-parser-sys/build.rs` with the two `cc::Build` invocations
+- Create `syntaqlite-sys/build.rs` with the two `cc::Build` invocations
   (engine + SQLite dialect) currently in `syntaqlite/build.rs`
 - Emit `cargo:include=...` so downstream crates can find headers
 - Support `no-bundled-parser` feature: skip engine compilation when set
@@ -33,15 +33,15 @@ The foundational change — all subsequent work depends on it.
 
 ### 1.4 Update `syntaqlite/Cargo.toml`
 
-- Add `syntaqlite-parser-sys = { path = "../syntaqlite-parser-sys" }` dependency
+- Add `syntaqlite-sys = { path = "../syntaqlite-sys" }` dependency
 - Remove `cc` from build-dependencies
 - Replace `syntaqlite/build.rs` with a minimal one (or remove it) — C
   compilation now happens in the sys crate
 
 ### 1.5 Update codegen output paths
 
-- `tools/run-codegen` must write C outputs to `syntaqlite-parser-sys/csrc/` and
-  headers to `syntaqlite-parser-sys/include/`
+- `tools/run-codegen` must write C outputs to `syntaqlite-sys/csrc/` and
+  headers to `syntaqlite-sys/include/`
 - Verify the codegen pipeline round-trips cleanly
 
 ### 1.6 Verify
@@ -82,7 +82,7 @@ Small, self-contained. Can be tested with amalgamation + library side-by-side.
 
 ### 3.1 Add sentinel symbol
 
-- In `syntaqlite-parser-sys/csrc/parser.c` (or a new `sentinel.c`), define
+- In `syntaqlite-sys/csrc/parser.c` (or a new `sentinel.c`), define
   `syntaqlite_parser_sentinel_`
 - Guard it with `#ifndef SYNTAQLITE_ALLOW_DUPLICATE_PARSER`
 
@@ -101,7 +101,7 @@ Small, self-contained. Can be tested with amalgamation + library side-by-side.
 
 ### 3.4 Add `no-bundled-parser` feature
 
-- In `syntaqlite-parser-sys/Cargo.toml`: `no-bundled-parser = []`
+- In `syntaqlite-sys/Cargo.toml`: `no-bundled-parser = []`
 - In `build.rs`: skip `cc::Build` when feature is active
 - Verify that `syntaqlite` still compiles (FFI externs resolve at link time, not
   compile time)

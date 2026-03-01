@@ -16,7 +16,7 @@ Regenerate all generated code from `.synq` definitions and SQLite grammar.
    ```
 
    This regenerates:
-   - C headers in `syntaqlite-parser-sys/csrc/`
+   - C headers in `syntaqlite-sys/csrc/`
    - Rust node types, token types, and fmt bytecode in `syntaqlite/src/generated/`
 
 2. **Verify the result**:

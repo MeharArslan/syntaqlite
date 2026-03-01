@@ -1,6 +1,6 @@
 ROOT := $(shell cd .. && pwd)
-RUNTIME := $(ROOT)/syntaqlite-parser-sys
-DIALECT := $(ROOT)/syntaqlite-parser-sys
+RUNTIME := $(ROOT)/syntaqlite-sys
+DIALECT := $(ROOT)/syntaqlite-sys
 
 CC := cc
 CXX := c++

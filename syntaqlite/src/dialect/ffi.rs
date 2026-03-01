@@ -3,10 +3,10 @@
 
 //! C ABI mirror structs for the dialect.
 //!
-//! All `#[repr(C)]` FFI types live in `syntaqlite_parser_sys::dialect` and
+//! All `#[repr(C)]` FFI types live in `syntaqlite_sys::dialect` and
 //! are re-exported here for crate-internal use.
 
-pub use syntaqlite_parser_sys::dialect::*;
+pub use syntaqlite_sys::dialect::*;
 
 // ── Cflag metadata table ─────────────────────────────────────────────
 

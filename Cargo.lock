@@ -754,7 +754,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
- "syntaqlite-parser-sys",
+ "syntaqlite-sys",
 ]
 
 [[package]]
@@ -786,7 +786,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "syntaqlite-parser-sys"
+name = "syntaqlite-sys"
 version = "0.1.0"
 dependencies = [
  "cc",

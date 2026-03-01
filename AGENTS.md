@@ -57,7 +57,7 @@ The `.synq` DSL defines the AST node types, enums, flags, and formatter instruct
 
 - **Location**: `syntaqlite/parser-nodes/*.synq`
 - **Defines**: enums, flags, nodes (with `inline`/`index` fields), lists, and `fmt` blocks
-- **Codegen produces**: C headers (`syntaqlite-parser-sys/csrc/`) + Rust node/token types (`syntaqlite/src/generated/`) + fmt bytecode
+- **Codegen produces**: C headers (`syntaqlite-sys/csrc/`) + Rust node/token types (`syntaqlite/src/generated/`) + fmt bytecode
 - **After editing**: run `tools/run-codegen`, then verify with `cargo check && cargo clippy`
 
 ## Development Tools

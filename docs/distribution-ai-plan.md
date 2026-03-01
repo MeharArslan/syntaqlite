@@ -112,7 +112,7 @@ with it and how you compile it.
 Two workspace crates:
 
 ```
-syntaqlite-parser-sys/           ← all C code lives here
+syntaqlite-sys/           ← all C code lives here
 ├── csrc/
 │   ├── parser.c                 ← core engine
 │   ├── tokenizer.c              ← core tokenizer
@@ -167,14 +167,14 @@ syntaqlite/                      ← all Rust code + C API + WASM
 
 Key design choices:
 - **All C in one crate, all Rust in another.** Clean separation. One-way
-  dependency: `syntaqlite` → `syntaqlite-parser-sys`.
+  dependency: `syntaqlite` → `syntaqlite-sys`.
 - **C API is a feature flag, not a separate crate.** `syntaqlite` with
   `--features capi` produces the `cdylib`/`staticlib` with `extern "C"` exports.
   Without `capi`, it's a normal Rust library.
 - **Multiple crate types coexist.** `rlib` + `cdylib` + `staticlib` in the same
   crate. `cargo check`/`clippy` only type-check (no link overhead). `cargo build`
   produces all three but only the relevant one gets used by consumers.
-- **External dialect crates** depend on `syntaqlite-parser-sys` (for C headers
+- **External dialect crates** depend on `syntaqlite-sys` (for C headers
   and `syntaqlite_dialect.h`) and on `syntaqlite` (for Rust types). They compile
   their own generated dialect C in their own `build.rs`.
 
@@ -282,7 +282,7 @@ The low-level parser functions are the same as the amalgamation header.
 Dialects always live out-of-tree. A dialect crate needs:
 
 1. `syntaqlite_dialect.h` — the dialect SPI contract (what tables/functions a
-   dialect must provide). This is a small header from `syntaqlite-parser-sys`
+   dialect must provide). This is a small header from `syntaqlite-sys`
    and could even be auto-generated into the dialect crate by a build
    dependency.
 2. `.synq` files describing the dialect's AST nodes, enums, flags, fmt
@@ -292,7 +292,7 @@ Dialects always live out-of-tree. A dialect crate needs:
 For Rust dialect crates:
 ```toml
 [build-dependencies]
-syntaqlite-parser-sys = "1"   # for include/ headers and ext SPI
+syntaqlite-sys = "1"   # for include/ headers and ext SPI
 
 [dependencies]
 syntaqlite = "1"              # for Rust types
@@ -364,7 +364,7 @@ same binary — e.g. one team vendors the amalgamation for parsing, another
 depends on the library for formatting, and a shared test binary pulls in both.
 
 The library contains a copy of the C parser internally (compiled via
-`syntaqlite-parser-sys`'s `build.rs` using the `cc` crate). If both copies
+`syntaqlite-sys`'s `build.rs` using the `cc` crate). If both copies
 export the same symbols, you get duplicate symbol errors at link time. Worse, if
 they're different versions, you get silent ABI mismatches and mysterious crashes.
 
@@ -385,7 +385,7 @@ causing a conflict). This is too fragile to rely on.
 Both the library and the amalgamation define a sentinel symbol:
 
 ```c
-// In syntaqlite-parser-sys's internal parser compilation
+// In syntaqlite-sys's internal parser compilation
 const char syntaqlite_parser_sentinel_ __attribute__((used)) = 1;
 
 // In syntaqlite_parser.c (the amalgamation)
@@ -423,7 +423,7 @@ make it link."
 
 #### Mode 3: `no-bundled-parser` — library uses external parser
 
-A Cargo feature on `syntaqlite-parser-sys` that tells its `build.rs` to skip
+A Cargo feature on `syntaqlite-sys` that tells its `build.rs` to skip
 compiling the C parser entirely. The Rust code still declares `extern "C"` FFI
 imports for the parser functions, but provides no definitions — they become
 undefined symbols that the linker must resolve from elsewhere.
@@ -431,14 +431,14 @@ undefined symbols that the linker must resolve from elsewhere.
 The user links `libsyntaqlite.a` (no parser inside) + `syntaqlite_parser.c`
 (provides the parser). One copy of everything, zero duplication.
 
-In `syntaqlite-parser-sys/Cargo.toml`:
+In `syntaqlite-sys/Cargo.toml`:
 
 ```toml
 [features]
 no-bundled-parser = []
 ```
 
-In `syntaqlite-parser-sys/build.rs`:
+In `syntaqlite-sys/build.rs`:
 
 ```rust
 if env::var("CARGO_FEATURE_NO_BUNDLED_PARSER").is_err() {
@@ -577,7 +577,7 @@ This is acceptable because:
 
 **Decision:** Two workspace crates with a one-way dependency:
 
-- `syntaqlite-parser-sys` — all C code (core engine + SQLite dialect)
+- `syntaqlite-sys` — all C code (core engine + SQLite dialect)
 - `syntaqlite` — all Rust code + C API (feature-gated) + WASM target
 
 The C API (`capi` feature) and WASM target both live in `syntaqlite` rather than
@@ -589,7 +589,7 @@ the extra crate types (no linking). Downstream Rust crates that depend on
 ### 11. Dialects are always out-of-tree
 
 **Decision:** Dialect crates live in their own repos. They depend on
-`syntaqlite-parser-sys` for C headers/ext SPI and `syntaqlite` for Rust types.
+`syntaqlite-sys` for C headers/ext SPI and `syntaqlite` for Rust types.
 The `syntaqlite_dialect.h` header is small and could even be auto-generated into
 dialect crates by a build dependency if needed.
 
