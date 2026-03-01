@@ -31,7 +31,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "syntaqlite/sqlite_cflags.h"
+#include "syntaqlite/cflags.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,72 +61,22 @@ typedef struct SynqParseToken {
                        // collecting)
 } SynqParseToken;
 
-typedef struct SyntaqliteFieldRangeMeta {
-  uint16_t offset;
-  uint8_t kind;
-} SyntaqliteFieldRangeMeta;
+// ── Forward declarations (full definitions in syntaqlite_dialect/dialect_types.h)
 
-typedef struct SyntaqliteRangeMetaEntry {
-  const SyntaqliteFieldRangeMeta* fields;
-  uint8_t count;
-} SyntaqliteRangeMetaEntry;
+// Range metadata — used by pointer in SyntaqliteDialect.range_meta.
+typedef struct SyntaqliteFieldRangeMeta SyntaqliteFieldRangeMeta;
+typedef struct SyntaqliteRangeMetaEntry SyntaqliteRangeMetaEntry;
 
-// ── Field metadata (for AST dump / dynamic dialect loading) ─────────────
+// Field metadata — used by pointer in SyntaqliteDialect.field_meta.
+typedef struct SyntaqliteFieldMeta SyntaqliteFieldMeta;
 
-#define SYNTAQLITE_FIELD_NODE_ID 0
-#define SYNTAQLITE_FIELD_SPAN 1
-#define SYNTAQLITE_FIELD_BOOL 2
-#define SYNTAQLITE_FIELD_FLAGS 3
-#define SYNTAQLITE_FIELD_ENUM 4
+// Schema contributions — used by pointer in SyntaqliteDialect.schema_contributions.
+typedef struct SyntaqliteSchemaContribution SyntaqliteSchemaContribution;
 
-typedef struct SyntaqliteFieldMeta {
-  uint16_t offset;             // byte offset in node struct
-  uint8_t kind;                // SYNTAQLITE_FIELD_*
-  const char* name;            // field name for AST dump
-  const char* const* display;  // enum: indexed by ordinal; flags: indexed by
-                               // bit pos; else NULL
-  uint8_t display_count;       // number of entries in display[]
-} SyntaqliteFieldMeta;
-
-// ── Schema contribution types ──────────────────────────────────────────
-
-#define SYNTAQLITE_SCHEMA_TABLE 0
-#define SYNTAQLITE_SCHEMA_VIEW 1
-#define SYNTAQLITE_SCHEMA_FUNCTION 2
-#define SYNTAQLITE_SCHEMA_IMPORT 3
-
-typedef struct SyntaqliteSchemaContribution {
-  uint32_t node_tag;
-  uint8_t kind;        // SYNTAQLITE_SCHEMA_*
-  uint8_t name_field;  // field index -> must be SPAN
-  uint8_t
-      columns_field;  // field index -> NODE_ID to column list (0xFF = absent)
-  uint8_t select_field;  // field index -> NODE_ID to Select (0xFF = absent)
-  uint8_t args_field;    // field index -> NODE_ID to args list (0xFF = absent)
-  uint8_t _pad[3];
-} SyntaqliteSchemaContribution;
-
-// ── Function extension types ────────────────────────────────────────────
-
-typedef struct SyntaqliteFunctionInfo {
-  const char* name;
-  const int16_t* arities;
-  uint16_t arity_count;
-  uint8_t category;  // 0=Scalar, 1=Aggregate, 2=Window
-} SyntaqliteFunctionInfo;
-
-typedef struct SyntaqliteAvailabilityRule {
-  int32_t since;
-  int32_t until;
-  uint32_t cflag_index;
-  uint8_t cflag_polarity;  // 0=Enable, 1=Omit
-} SyntaqliteAvailabilityRule;
-
-typedef struct SyntaqliteFunctionEntry {
-  SyntaqliteFunctionInfo info;
-  const SyntaqliteAvailabilityRule* availability;
-  uint16_t availability_count;
-} SyntaqliteFunctionEntry;
+// Function extensions — used by pointer in SyntaqliteDialect.function_extensions.
+typedef struct SyntaqliteFunctionInfo SyntaqliteFunctionInfo;
+typedef struct SyntaqliteAvailabilityRule SyntaqliteAvailabilityRule;
+typedef struct SyntaqliteFunctionEntry SyntaqliteFunctionEntry;
 
 // ── The dialect descriptor ──────────────────────────────────────────────
 

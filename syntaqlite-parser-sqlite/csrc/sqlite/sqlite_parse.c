@@ -29,7 +29,7 @@
 #include "syntaqlite/types.h"
 #include "syntaqlite_dialect/ast_builder.h"
 #include "syntaqlite_dialect/dialect_macros.h"
-#include "syntaqlite/sqlite_tokens.h"
+#include "syntaqlite/tokens.h"
 
 /* BEGIN GRAMMAR_TYPES */
 // Grammar-specific struct types for multi-valued grammar nonterminals.

@@ -16,4 +16,6 @@ pub mod parser;
 pub mod session;
 pub mod typed_list;
 
+pub mod cflag_versions;
+pub mod functions_catalog;
 pub mod sqlite;

@@ -8,7 +8,7 @@
 //! file are evaluated at compile time, so cargo automatically tracks
 //! changes to the actual .y/.synq files.
 
-include!("base_files_tables.rs");
+use super::base_files_tables::{BASE_SYNQ_FILES, BASE_Y_FILES};
 
 /// Returns all base `.y` action files (filename, contents) in alphabetical order.
 pub fn base_y_files() -> &'static [(&'static str, &'static str)] {

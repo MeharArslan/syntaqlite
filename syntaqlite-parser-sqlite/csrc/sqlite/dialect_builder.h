@@ -7,6 +7,7 @@
 #define SYNTAQLITE_SQLITE_DIALECT_BUILDER_H
 
 #include "syntaqlite_dialect/ast_builder.h"
+#include "syntaqlite_dialect/dialect_types.h"
 #include "syntaqlite_sqlite/sqlite_node.h"
 
 #ifdef __cplusplus

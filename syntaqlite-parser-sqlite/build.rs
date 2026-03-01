@@ -29,7 +29,7 @@ fn main() {
         .file(sqlite_csrc.join("sqlite_keyword.c"))
         .include(&manifest_dir) // for csrc/sqlite/*.h internal headers (resolved as csrc/sqlite/X.h)
         .include(&include_dir) // for public syntaqlite_sqlite/*.h headers (if any)
-        .include(&engine_include_dir) // for syntaqlite/*.h engine headers (incl. sqlite_tokens.h)
+        .include(&engine_include_dir) // for syntaqlite/*.h engine headers (incl. tokens.h)
         .flag("-Wno-int-conversion")
         .flag("-Wno-void-pointer-to-int-cast")
         .flag("-Wno-unused-variable")
@@ -56,11 +56,9 @@ fn main() {
     // ── Cflag pinning ────────────────────────────────────────────────────
     if env::var("CARGO_FEATURE_PIN_CFLAGS").is_ok() {
         // Parse the cflags header for the SYNQ_CFLAG_IDX_* defines.
-        // sqlite_cflags.h lives in syntaqlite-parser/include/syntaqlite/.
-        let cflags_header = std::fs::read_to_string(
-            engine_include_dir.join("syntaqlite/sqlite_cflags.h"),
-        )
-        .expect("failed to read sqlite_cflags.h from syntaqlite-parser/include/syntaqlite/");
+        // cflags.h lives in syntaqlite-parser/include/syntaqlite/.
+        let cflags_header = std::fs::read_to_string(engine_include_dir.join("syntaqlite/cflags.h"))
+            .expect("failed to read cflags.h from syntaqlite-parser/include/syntaqlite/");
 
         // Pass the master switch.
         build.define("SYNTAQLITE_SQLITE_CFLAGS", None);

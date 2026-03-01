@@ -28,7 +28,7 @@ pub struct DialectCIncludes<'a> {
     pub internal: &'a str,
     /// Prefix for public headers (`syntaqlite/parser.h`, `syntaqlite/dialect.h`, etc.).
     pub public: &'a str,
-    /// Directory name for dialect public headers (`sqlite_tokens.h`, `sqlite_node.h`, etc.)
+    /// Directory name for dialect public headers (`tokens.h`, `sqlite_node.h`, etc.)
     /// in `#include` directives. E.g., `"syntaqlite"` (internal crate, merged with runtime)
     /// or `"syntaqlite_mydialect"` (external dialect crate, separate directory).
     pub dialect_include_dir: &'a str,
@@ -114,7 +114,7 @@ pub fn generate_dialect_c(
     let mut w = CWriter::new();
     w.file_header();
     w.include_local(&format!("{pp}syntaqlite/parser.h"));
-    w.include_local(&format!("{pp}syntaqlite_{dialect}/{dialect}_tokens.h"));
+    w.include_local(&format!("{pp}syntaqlite_{dialect}/tokens.h"));
     w.include_local(&format!("{pp}syntaqlite/dialect.h"));
     w.include_local(&format!("{ip}dialect_builder.h"));
     w.include_local(&format!("{ip}dialect_meta.h"));

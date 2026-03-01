@@ -203,11 +203,10 @@ impl<'d> Validator<'d> {
     #[cfg(feature = "sqlite")]
     pub fn new() -> Validator<'static> {
         let dc = crate::dialect::ffi::DialectConfig::default();
-        let functions: Vec<FunctionDef> =
-            syntaqlite_parser::sqlite::functions::available_functions(&dc)
-                .into_iter()
-                .flat_map(|info| expand_function_info(info))
-                .collect();
+        let functions: Vec<FunctionDef> = syntaqlite_parser::sqlite::available_functions(&dc)
+            .into_iter()
+            .flat_map(|info| expand_function_info(info))
+            .collect();
         Validator::builder(&crate::sqlite::DIALECT)
             .functions(functions)
             .build()

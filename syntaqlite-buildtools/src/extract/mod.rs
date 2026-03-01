@@ -33,7 +33,7 @@ pub mod virtual_tables;
 // SYNQ cflag table — the union of all cflag lists
 // ---------------------------------------------------------------------------
 
-/// SYNQ cflag index table, mirroring `sqlite_cflags.h`.
+/// SYNQ cflag index table, mirroring `cflags.h`.
 ///
 /// This is the authoritative Rust-side table. It is the union of all cflags
 /// across [`keywords_and_parser::PARSER_CFLAGS`], `functions::FUNCTION_CFLAGS`,
@@ -291,12 +291,12 @@ pub fn synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> Option<u32> {
 
 #[cfg(test)]
 mod tests {
-    /// Parse sqlite_cflags.h and verify every entry in SYNQ_CFLAG_TABLE matches.
+    /// Parse cflags.h and verify every entry in SYNQ_CFLAG_TABLE matches.
     #[test]
     fn synq_cflag_table_matches_header() {
         let header = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-parser-sys/include/syntaqlite/sqlite_cflags.h"
+            "/../syntaqlite-parser/include/syntaqlite/cflags.h"
         ));
 
         // Parse "#define SYNQ_CFLAG_FOO  N" lines from the header.
@@ -320,7 +320,7 @@ mod tests {
             assert_eq!(
                 header_val,
                 Some(index),
-                "SYNQ_CFLAG_TABLE entry {synq_name}={index} does not match sqlite_cflags.h (got {:?})",
+                "SYNQ_CFLAG_TABLE entry {synq_name}={index} does not match cflags.h (got {:?})",
                 header_val
             );
         }
@@ -335,7 +335,7 @@ mod tests {
             }
             assert!(
                 table_names.contains(name.as_str()),
-                "sqlite_cflags.h defines {name}={val} but it is missing from SYNQ_CFLAG_TABLE"
+                "cflags.h defines {name}={val} but it is missing from SYNQ_CFLAG_TABLE"
             );
         }
     }

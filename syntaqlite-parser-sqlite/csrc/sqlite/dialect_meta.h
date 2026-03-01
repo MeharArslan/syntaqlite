@@ -8,6 +8,7 @@
 
 #include <stddef.h>
 #include "syntaqlite/dialect.h"
+#include "syntaqlite_dialect/dialect_types.h"
 #include "syntaqlite_sqlite/sqlite_node.h"
 
 static const char* const display_bool[] = {

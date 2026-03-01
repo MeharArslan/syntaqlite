@@ -71,7 +71,9 @@ The `.synq` DSL defines the AST node types, enums, flags, and formatter instruct
 | `tools/run-amalg-tests` | Run amalgamation integration tests (`tests/amalg_tests/`) |
 | `tools/run-perfetto-fmt-diff-tests` | Run Perfetto dialect formatter tests (`tests/perfetto_fmt_diff_tests/`) |
 | `tools/run-perfetto-validation-diff-tests` | Run Perfetto dialect validation tests (`tests/perfetto_validation_diff_tests/`) |
-| `tools/format-c` | Run clang-format on C sources |
+| `tools/format-c` | Run clang-format on C sources (`--check` to verify without modifying) |
+| `tools/check-c-deps` | Verify C header dependency boundaries between crates |
+| `tools/pre-push` | Run all pre-push checks (formatting, clippy, deps, unit tests, diff tests) |
 | `tools/install-build-deps` | Install platform-specific build deps (clang-format, SQLite sources) |
 | `tools/build-web-playground` | Build WASM web playground |
 
@@ -80,10 +82,16 @@ The `.synq` DSL defines the AST node types, enums, flags, and formatter instruct
 Before marking any task as done, run:
 
 ```sh
-cargo check && cargo clippy
+tools/pre-push
 ```
 
-Both must pass with **zero warnings**. Do not use `cargo build` (unnecessary linking overhead for verification).
+This runs all checks in sequence: Rust/C formatting, `cargo check`, `cargo clippy` (zero warnings), C header dependency boundaries, unit tests, and all diff test suites.
+
+For a faster mid-task check (no diff tests), run:
+
+```sh
+cargo check && cargo clippy -- -D warnings
+```
 
 ## Testing
 

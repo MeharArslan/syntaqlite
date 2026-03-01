@@ -501,7 +501,7 @@ impl<'d> AnalysisHost<'d> {
 /// Convert the SQLite function catalog into `FunctionDef` values filtered by config.
 #[cfg(feature = "sqlite")]
 fn catalog_to_function_defs(config: &crate::dialect::ffi::DialectConfig) -> Vec<FunctionDef> {
-    syntaqlite_parser::sqlite::functions::available_functions(config)
+    syntaqlite_parser::sqlite::available_functions(config)
         .into_iter()
         .flat_map(|info| crate::validation::expand_function_info(info))
         .collect()

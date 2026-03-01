@@ -12,7 +12,7 @@
 #include "syntaqlite/dialect.h"
 #include "syntaqlite_dialect/dialect_macros.h"
 #include "syntaqlite_dialect/sqlite_compat.h"
-#include "syntaqlite/sqlite_tokens.h"
+#include "syntaqlite/tokens.h"
 
 /*
 ** The author disclaims copyright to this source code.  In place of

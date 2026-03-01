@@ -5,6 +5,7 @@
 
 pub mod amalgamate;
 pub mod base_files;
+mod base_files_tables;
 pub(crate) mod grammar_codegen;
 pub(crate) mod keyword_hash;
 #[allow(dead_code)]

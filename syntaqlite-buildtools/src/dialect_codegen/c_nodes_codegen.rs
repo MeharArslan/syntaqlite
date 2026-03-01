@@ -221,6 +221,7 @@ impl AstModel<'_> {
         w.file_header();
         w.header_guard_start(&guard);
         w.include_local("syntaqlite_dialect/ast_builder.h");
+        w.include_local("syntaqlite_dialect/dialect_types.h");
         w.include_local(&format!("syntaqlite_{dialect}/{dialect}_node.h"));
         w.newline();
         w.extern_c_start();

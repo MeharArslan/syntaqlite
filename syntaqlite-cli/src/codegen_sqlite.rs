@@ -184,7 +184,7 @@ fn handle_codegen(
             OutputBucket::Include => &include_dir,
             OutputBucket::DialectCsrc => out,
             // Generated dialect modules go into src/sqlite/ for the internal crate.
-            OutputBucket::RustDialectSrc | OutputBucket::RustSqliteSrc => &rust_sqlite_dir,
+            OutputBucket::RustDialectSrc => &rust_sqlite_dir,
             // Shared crate-level Rust modules (e.g. ast_traits.rs) go into src/.
             OutputBucket::RustCrateSrc => &rust_src_dir,
             // Scaffolding files (lib.rs, wrappers.rs) and crate-root files

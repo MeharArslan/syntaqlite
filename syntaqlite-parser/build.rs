@@ -27,7 +27,7 @@ fn main() {
         .file(csrc.join("parser.c"))
         .file(csrc.join("token_wrapped.c"))
         .include(&manifest_dir) // for csrc/*.h internal headers
-        .include(&include_dir); // for public syntaqlite/*.h headers (incl. sqlite_tokens.h)
+        .include(&include_dir); // for public syntaqlite/*.h headers (incl. tokens.h)
     if target_os == "emscripten" {
         engine_build.flag("-fPIC");
     }

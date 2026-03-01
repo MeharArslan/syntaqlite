@@ -66,7 +66,7 @@ mod codegen_api {
         }
 
         pub fn tokens_header_name(&self) -> String {
-            format!("{}_tokens.h", self.name)
+            "tokens.h".to_string()
         }
 
         pub fn node_header_name(&self) -> String {

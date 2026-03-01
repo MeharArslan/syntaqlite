@@ -163,7 +163,7 @@ pub fn validate_embedded(
 #[cfg(feature = "sqlite")]
 pub fn sqlite_function_defs() -> Vec<FunctionDef> {
     let config = crate::dialect::ffi::DialectConfig::default();
-    syntaqlite_parser::sqlite::functions::available_functions(&config)
+    syntaqlite_parser::sqlite::available_functions(&config)
         .into_iter()
         .flat_map(|info| crate::validation::expand_function_info(info))
         .collect()

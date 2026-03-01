@@ -11,6 +11,7 @@
 #include "csrc/token_wrapped.h"
 #include "syntaqlite/dialect.h"
 #include "syntaqlite_dialect/ast_builder.h"
+#include "syntaqlite_dialect/dialect_types.h"
 
 // ---------------------------------------------------------------------------
 // Parser struct

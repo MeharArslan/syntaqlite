@@ -1,37 +1,23 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! SQLite built-in function catalog with version/cflag-aware filtering.
+//! SQLite-dialect-specific data that lives in the parser crate.
 //!
-//! The catalog is generated from SQLite's source and contains all 179 built-in
-//! functions with their arity, category, and availability constraints.
-//!
-//! # Example
-//!
-//! ```ignore
-//! use syntaqlite::dialect::DialectConfig;
-//!
-//! // Default config (latest version, no cflags) — baseline functions only.
-//! let config = DialectConfig::default();
-//! let funcs = functions::available_functions(&config);
-//! assert!(funcs.len() > 60);
-//! ```
-
-#[path = "functions_catalog.rs"]
-mod functions_catalog;
-
-pub use crate::catalog::FunctionInfo;
-pub(crate) use functions_catalog::SQLITE_FUNCTIONS;
+//! This includes compile-flag metadata, function catalogs, and helper
+//! functions for cflag/version parsing.
 
 use crate::catalog;
-use crate::dialect::ffi::DialectConfig;
+pub use crate::catalog::FunctionInfo;
+use crate::dialect::ffi::{CflagInfo, DialectConfig};
+
+// ── Built-in function catalog ────────────────────────────────────────────────
 
 /// Returns all SQLite built-in functions available for the given config.
 ///
 /// Filters the full catalog by version and cflags. A function is included
 /// if at least one of its availability rules matches the config.
 pub fn available_functions(config: &DialectConfig) -> Vec<&'static FunctionInfo<'static>> {
-    SQLITE_FUNCTIONS
+    crate::functions_catalog::SQLITE_FUNCTIONS
         .iter()
         .filter(|entry| catalog::is_available(entry, config))
         .map(|entry| &entry.info)
@@ -41,7 +27,7 @@ pub fn available_functions(config: &DialectConfig) -> Vec<&'static FunctionInfo<
 /// Returns the full unfiltered catalog of all SQLite built-in functions.
 #[cfg(test)]
 pub(crate) fn catalog() -> &'static [crate::catalog::FunctionEntry<'static>] {
-    SQLITE_FUNCTIONS
+    crate::functions_catalog::SQLITE_FUNCTIONS
 }
 
 #[cfg(test)]
@@ -59,10 +45,6 @@ mod tests {
     fn default_config_returns_baseline_functions() {
         let config = DialectConfig::default();
         let funcs = available_functions(&config);
-        // Default config has latest version and no cflags set.
-        // Functions with no cflag requirement should be available.
-        // Functions with ENABLE cflags should NOT be available (cflags not set).
-        // Functions with OMIT cflags SHOULD be available (omit flag not set).
         let names: Vec<&str> = funcs.iter().map(|f| f.name).collect();
         assert!(names.contains(&"abs"), "abs should be baseline");
         assert!(names.contains(&"count"), "count should be baseline");
@@ -108,11 +90,75 @@ mod tests {
         let funcs = available_functions(&config);
         let names: Vec<&str> = funcs.iter().map(|f| f.name).collect();
         assert!(names.contains(&"abs"), "abs available since 3.30.1");
-        // json_array requires >= 3.38.5 with default (omit polarity)
-        // At 3.30.1, only the ENABLE_JSON1 rule applies, which needs cflag set
         assert!(
             !names.contains(&"json_array"),
             "json_array not available at 3.30.1 without ENABLE_JSON1"
         );
     }
+}
+
+// ── Cflag table and helpers ──────────────────────────────────────────────────
+
+/// All known compile-time flags, built once from the generated table.
+///
+/// Returns a static slice of [`CflagInfo`] entries in index order.
+pub fn cflag_table() -> &'static [CflagInfo] {
+    use std::sync::LazyLock;
+    static TABLE: LazyLock<Vec<CflagInfo>> = LazyLock::new(|| {
+        crate::cflag_versions::CFLAG_TABLE
+            .iter()
+            .map(|(suffix, index, min_version, category)| CflagInfo {
+                suffix: suffix.to_string(),
+                index: *index,
+                min_version: *min_version,
+                category: category.to_string(),
+            })
+            .collect()
+    });
+    &TABLE
+}
+
+/// Parse a dotted SQLite version string (e.g. `"3.35.0"`) into an integer
+/// using SQLite's encoding: `major * 1_000_000 + minor * 1_000 + patch`.
+/// The string `"latest"` maps to `i32::MAX`.
+pub fn parse_sqlite_version(s: &str) -> Result<i32, String> {
+    let s = s.trim();
+    if s.eq_ignore_ascii_case("latest") {
+        return Ok(i32::MAX);
+    }
+    let parts: Vec<&str> = s.split('.').collect();
+    if parts.len() != 3 {
+        return Err(format!("expected 'major.minor.patch', got '{s}'"));
+    }
+    let major: i32 = parts[0]
+        .parse()
+        .map_err(|_| format!("invalid major version: '{}'", parts[0]))?;
+    let minor: i32 = parts[1]
+        .parse()
+        .map_err(|_| format!("invalid minor version: '{}'", parts[1]))?;
+    let patch: i32 = parts[2]
+        .parse()
+        .map_err(|_| format!("invalid patch version: '{}'", parts[2]))?;
+    Ok(major * 1_000_000 + minor * 1_000 + patch)
+}
+
+/// Look up a cflag by its full canonical name
+/// (e.g. `"SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC"`).
+///
+/// Returns the bit index on success.
+pub fn parse_cflag_name(s: &str) -> Result<u32, String> {
+    let suffix = s
+        .strip_prefix("SYNTAQLITE_CFLAG_")
+        .ok_or_else(|| format!("cflag name must start with 'SYNTAQLITE_CFLAG_', got '{s}'"))?;
+    for entry in cflag_table() {
+        if entry.suffix == suffix {
+            return Ok(entry.index);
+        }
+    }
+    Err(format!("unknown cflag: '{s}'"))
+}
+
+/// Returns all known cflag suffixes (e.g. `"SQLITE_OMIT_WINDOWFUNC"`).
+pub fn cflag_names() -> Vec<&'static str> {
+    cflag_table().iter().map(|e| e.suffix.as_str()).collect()
 }

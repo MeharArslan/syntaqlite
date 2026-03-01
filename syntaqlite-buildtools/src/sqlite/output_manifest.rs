@@ -12,8 +12,6 @@ pub enum OutputBucket {
     /// Generated Rust dialect modules (ffi.rs, tokens.rs, ast.rs).
     /// For internal crate: `src/sqlite/`. For external crates: `src/`.
     RustDialectSrc,
-    /// Files that belong under `src/sqlite/` (e.g. generated catalogs).
-    RustSqliteSrc,
     /// Files that belong under `src/` (e.g. `ast_traits.rs`).
     /// Only used by the internal syntaqlite crate.
     RustCrateSrc,
@@ -155,7 +153,7 @@ pub fn sqlite_output_manifest(
 
     if let Some(functions_catalog_rs) = rust.functions_catalog_rs {
         out.push(OutputArtifact {
-            bucket: OutputBucket::RustSqliteSrc,
+            bucket: OutputBucket::RustCrateSrc,
             file_name: "functions_catalog.rs".to_string(),
             content: functions_catalog_rs,
         });

@@ -11,7 +11,7 @@
 
 #include "csrc/sqlite/sqlite_keyword.h"
 #include "syntaqlite_dialect/sqlite_compat.h"
-#include "syntaqlite/sqlite_tokens.h"
+#include "syntaqlite/tokens.h"
 
 #include "syntaqlite/dialect.h"
 
