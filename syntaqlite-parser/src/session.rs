@@ -4,9 +4,9 @@
 use std::ffi::CStr;
 
 use crate::dialect::Dialect;
+use crate::dialect_traits::DialectNodeType;
 use crate::nodes::{ArenaNode, NodeId, NodeList};
 use crate::parser as ffi;
-use crate::dialect_traits::DialectNodeType;
 
 /// A source span describing where an error node was recorded in the arena.
 ///
@@ -173,7 +173,10 @@ impl<'a> RawNodeReader<'a> {
     /// Resolve an optional node field: returns `Ok(None)` if `id` is null,
     /// `Err(ErrorSpan)` if the arena node is an error placeholder, or
     /// `Ok(Some(T))` on success.
-    pub fn optional_node<T: DialectNodeType<'a>>(&self, id: NodeId) -> Result<Option<T>, ErrorSpan> {
+    pub fn optional_node<T: DialectNodeType<'a>>(
+        &self,
+        id: NodeId,
+    ) -> Result<Option<T>, ErrorSpan> {
         if id.is_null() {
             return Ok(None);
         }

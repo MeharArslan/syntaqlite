@@ -7,9 +7,9 @@ use crate::dialect::Dialect;
 use crate::dialect::TokenCategory;
 use crate::fmt::FormatConfig;
 use crate::fmt::formatter::Formatter;
+use crate::parser::incremental::RawIncrementalParser;
 use crate::parser::session::ParseError;
 use crate::parser::session::RawParser;
-use crate::parser::token_parser::RawIncrementalParser;
 use crate::parser::tokenizer::RawTokenizer;
 
 use crate::lsp::SemanticToken;
@@ -500,7 +500,9 @@ impl<'d> AnalysisHost<'d> {
 
 /// Convert the SQLite function catalog into `FunctionDef` values filtered by config.
 #[cfg(feature = "sqlite")]
-fn catalog_to_function_defs(config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Vec<FunctionDef> {
+fn catalog_to_function_defs(
+    config: &syntaqlite_parser::dialect::ffi::DialectConfig,
+) -> Vec<FunctionDef> {
     syntaqlite_parser::sqlite::available_functions(config)
         .into_iter()
         .flat_map(|info| crate::validation::expand_function_info(info))

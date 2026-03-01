@@ -32,6 +32,10 @@ pub struct DialectCIncludes<'a> {
     /// in `#include` directives. E.g., `"syntaqlite"` (internal crate, merged with runtime)
     /// or `"syntaqlite_mydialect"` (external dialect crate, separate directory).
     pub dialect_include_dir: &'a str,
+    /// Path to the tokens header (the `SYNTAQLITE_TK_*` defines) relative to the
+    /// include root, e.g. `"syntaqlite/tokens.h"` for the internal SQLite dialect
+    /// or `"syntaqlite_mydialect/mydialect_tokens.h"` for an external dialect crate.
+    pub tokens_header: &'a str,
 }
 
 /// Classify a token name into a `TokenCategory` byte value.
@@ -114,7 +118,7 @@ pub fn generate_dialect_c(
     let mut w = CWriter::new();
     w.file_header();
     w.include_local(&format!("{pp}syntaqlite/parser.h"));
-    w.include_local(&format!("{pp}syntaqlite_{dialect}/tokens.h"));
+    w.include_local(&format!("{pp}{}", includes.tokens_header));
     w.include_local(&format!("{pp}syntaqlite/dialect.h"));
     w.include_local(&format!("{ip}dialect_builder.h"));
     w.include_local(&format!("{ip}dialect_meta.h"));
@@ -285,6 +289,7 @@ mod tests {
         internal: "",
         public: "",
         dialect_include_dir: "",
+        tokens_header: "syntaqlite_sqlite/sqlite_tokens.h",
     };
 
     #[test]
@@ -445,6 +450,7 @@ mod tests {
             internal: "csrc/sqlite/",
             public: "",
             dialect_include_dir: "syntaqlite",
+            tokens_header: "syntaqlite/tokens.h",
         };
         let c = generate_dialect_c("sqlite", None, &includes);
         // Internal headers use the internal prefix
@@ -453,6 +459,7 @@ mod tests {
         assert!(c.contains("\"csrc/sqlite/dialect_fmt.h\""));
         // Public headers use the public prefix (empty → bare path)
         assert!(c.contains("\"syntaqlite/parser.h\""));
+        assert!(c.contains("\"syntaqlite/tokens.h\""));
         assert!(c.contains("\"syntaqlite/dialect.h\""));
     }
 
@@ -462,6 +469,7 @@ mod tests {
         // Default: both prefixes empty — bare header names
         assert!(c.contains("\"dialect_builder.h\""));
         assert!(c.contains("\"syntaqlite/parser.h\""));
+        assert!(c.contains("\"syntaqlite/tokens.h\""));
     }
 }
 

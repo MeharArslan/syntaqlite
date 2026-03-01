@@ -19,7 +19,7 @@ pub(crate) enum Bool {
 pub(crate) struct AggregateFunctionCall {
     pub(crate) tag: u32,
     pub(crate) func_name: SourceSpan,
-    pub(crate) flags: crate::ast::AggregateFunctionCallFlags,
+    pub(crate) flags: super::ast::AggregateFunctionCallFlags,
     pub(crate) args: NodeId,
     pub(crate) orderby: NodeId,
     pub(crate) filter_clause: NodeId,
@@ -31,7 +31,7 @@ pub(crate) struct AggregateFunctionCall {
 pub(crate) struct OrderedSetFunctionCall {
     pub(crate) tag: u32,
     pub(crate) func_name: SourceSpan,
-    pub(crate) flags: crate::ast::AggregateFunctionCallFlags,
+    pub(crate) flags: super::ast::AggregateFunctionCallFlags,
     pub(crate) args: NodeId,
     pub(crate) orderby_expr: NodeId,
     pub(crate) filter_clause: NodeId,
@@ -59,7 +59,7 @@ pub(crate) struct ColumnRef {
 #[repr(C)]
 pub(crate) struct CompoundSelect {
     pub(crate) tag: u32,
-    pub(crate) op: crate::ast::CompoundOp,
+    pub(crate) op: super::ast::CompoundOp,
     pub(crate) left: NodeId,
     pub(crate) right: NodeId,
 }
@@ -91,7 +91,7 @@ pub(crate) struct InExpr {
 #[repr(C)]
 pub(crate) struct IsExpr {
     pub(crate) tag: u32,
-    pub(crate) op: crate::ast::IsOp,
+    pub(crate) op: super::ast::IsOp,
     pub(crate) left: NodeId,
     pub(crate) right: NodeId,
 }
@@ -139,8 +139,8 @@ pub(crate) struct ForeignKeyClause {
     pub(crate) tag: u32,
     pub(crate) ref_table: SourceSpan,
     pub(crate) ref_columns: NodeId,
-    pub(crate) on_delete: crate::ast::ForeignKeyAction,
-    pub(crate) on_update: crate::ast::ForeignKeyAction,
+    pub(crate) on_delete: super::ast::ForeignKeyAction,
+    pub(crate) on_update: super::ast::ForeignKeyAction,
     pub(crate) is_deferred: Bool,
 }
 
@@ -148,13 +148,13 @@ pub(crate) struct ForeignKeyClause {
 #[repr(C)]
 pub(crate) struct ColumnConstraint {
     pub(crate) tag: u32,
-    pub(crate) kind: crate::ast::ColumnConstraintKind,
+    pub(crate) kind: super::ast::ColumnConstraintKind,
     pub(crate) constraint_name: SourceSpan,
-    pub(crate) onconf: crate::ast::ConflictAction,
-    pub(crate) sort_order: crate::ast::SortOrder,
+    pub(crate) onconf: super::ast::ConflictAction,
+    pub(crate) sort_order: super::ast::SortOrder,
     pub(crate) is_autoincrement: Bool,
     pub(crate) collation_name: SourceSpan,
-    pub(crate) generated_storage: crate::ast::GeneratedColumnStorage,
+    pub(crate) generated_storage: super::ast::GeneratedColumnStorage,
     pub(crate) default_expr: NodeId,
     pub(crate) check_expr: NodeId,
     pub(crate) generated_expr: NodeId,
@@ -174,9 +174,9 @@ pub(crate) struct ColumnDef {
 #[repr(C)]
 pub(crate) struct TableConstraint {
     pub(crate) tag: u32,
-    pub(crate) kind: crate::ast::TableConstraintKind,
+    pub(crate) kind: super::ast::TableConstraintKind,
     pub(crate) constraint_name: SourceSpan,
-    pub(crate) onconf: crate::ast::ConflictAction,
+    pub(crate) onconf: super::ast::ConflictAction,
     pub(crate) is_autoincrement: Bool,
     pub(crate) pk_columns: NodeId,
     pub(crate) fk_columns: NodeId,
@@ -192,7 +192,7 @@ pub(crate) struct CreateTableStmt {
     pub(crate) schema: SourceSpan,
     pub(crate) is_temp: Bool,
     pub(crate) if_not_exists: Bool,
-    pub(crate) flags: crate::ast::CreateTableStmtFlags,
+    pub(crate) flags: super::ast::CreateTableStmtFlags,
     pub(crate) columns: NodeId,
     pub(crate) table_constraints: NodeId,
     pub(crate) as_select: NodeId,
@@ -203,7 +203,7 @@ pub(crate) struct CreateTableStmt {
 pub(crate) struct CteDefinition {
     pub(crate) tag: u32,
     pub(crate) cte_name: SourceSpan,
-    pub(crate) materialized: crate::ast::Materialized,
+    pub(crate) materialized: super::ast::Materialized,
     pub(crate) columns: NodeId,
     pub(crate) select: NodeId,
 }
@@ -240,7 +240,7 @@ pub(crate) struct SetClause {
 #[repr(C)]
 pub(crate) struct UpdateStmt {
     pub(crate) tag: u32,
-    pub(crate) conflict_action: crate::ast::ConflictAction,
+    pub(crate) conflict_action: super::ast::ConflictAction,
     pub(crate) table: NodeId,
     pub(crate) setlist: NodeId,
     pub(crate) from_clause: NodeId,
@@ -253,7 +253,7 @@ pub(crate) struct UpdateStmt {
 #[repr(C)]
 pub(crate) struct InsertStmt {
     pub(crate) tag: u32,
-    pub(crate) conflict_action: crate::ast::ConflictAction,
+    pub(crate) conflict_action: super::ast::ConflictAction,
     pub(crate) table: NodeId,
     pub(crate) columns: NodeId,
     pub(crate) source: NodeId,
@@ -263,7 +263,7 @@ pub(crate) struct InsertStmt {
 #[repr(C)]
 pub(crate) struct BinaryExpr {
     pub(crate) tag: u32,
-    pub(crate) op: crate::ast::BinaryOp,
+    pub(crate) op: super::ast::BinaryOp,
     pub(crate) left: NodeId,
     pub(crate) right: NodeId,
 }
@@ -272,7 +272,7 @@ pub(crate) struct BinaryExpr {
 #[repr(C)]
 pub(crate) struct UnaryExpr {
     pub(crate) tag: u32,
-    pub(crate) op: crate::ast::UnaryOp,
+    pub(crate) op: super::ast::UnaryOp,
     pub(crate) operand: NodeId,
 }
 
@@ -280,7 +280,7 @@ pub(crate) struct UnaryExpr {
 #[repr(C)]
 pub(crate) struct Literal {
     pub(crate) tag: u32,
-    pub(crate) literal_type: crate::ast::LiteralType,
+    pub(crate) literal_type: super::ast::LiteralType,
     pub(crate) source: SourceSpan,
 }
 
@@ -289,7 +289,7 @@ pub(crate) struct Literal {
 pub(crate) struct FunctionCall {
     pub(crate) tag: u32,
     pub(crate) func_name: SourceSpan,
-    pub(crate) flags: crate::ast::FunctionCallFlags,
+    pub(crate) flags: super::ast::FunctionCallFlags,
     pub(crate) args: NodeId,
     pub(crate) filter_clause: NodeId,
     pub(crate) over_clause: NodeId,
@@ -314,7 +314,7 @@ pub(crate) struct CollateExpr {
 #[repr(C)]
 pub(crate) struct RaiseExpr {
     pub(crate) tag: u32,
-    pub(crate) raise_type: crate::ast::RaiseType,
+    pub(crate) raise_type: super::ast::RaiseType,
     pub(crate) error_message: NodeId,
 }
 
@@ -330,7 +330,7 @@ pub(crate) struct QualifiedName {
 #[repr(C)]
 pub(crate) struct DropStmt {
     pub(crate) tag: u32,
-    pub(crate) object_type: crate::ast::DropObjectType,
+    pub(crate) object_type: super::ast::DropObjectType,
     pub(crate) if_exists: Bool,
     pub(crate) target: NodeId,
 }
@@ -339,7 +339,7 @@ pub(crate) struct DropStmt {
 #[repr(C)]
 pub(crate) struct AlterTableStmt {
     pub(crate) tag: u32,
-    pub(crate) op: crate::ast::AlterOp,
+    pub(crate) op: super::ast::AlterOp,
     pub(crate) target: NodeId,
     pub(crate) new_name: SourceSpan,
     pub(crate) old_name: SourceSpan,
@@ -349,15 +349,15 @@ pub(crate) struct AlterTableStmt {
 #[repr(C)]
 pub(crate) struct TransactionStmt {
     pub(crate) tag: u32,
-    pub(crate) op: crate::ast::TransactionOp,
-    pub(crate) trans_type: crate::ast::TransactionType,
+    pub(crate) op: super::ast::TransactionOp,
+    pub(crate) trans_type: super::ast::TransactionType,
 }
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub(crate) struct SavepointStmt {
     pub(crate) tag: u32,
-    pub(crate) op: crate::ast::SavepointOp,
+    pub(crate) op: super::ast::SavepointOp,
     pub(crate) savepoint_name: SourceSpan,
 }
 
@@ -365,7 +365,7 @@ pub(crate) struct SavepointStmt {
 #[repr(C)]
 pub(crate) struct ResultColumn {
     pub(crate) tag: u32,
-    pub(crate) flags: crate::ast::ResultColumnFlags,
+    pub(crate) flags: super::ast::ResultColumnFlags,
     pub(crate) alias: SourceSpan,
     pub(crate) expr: NodeId,
 }
@@ -374,7 +374,7 @@ pub(crate) struct ResultColumn {
 #[repr(C)]
 pub(crate) struct SelectStmt {
     pub(crate) tag: u32,
-    pub(crate) flags: crate::ast::SelectStmtFlags,
+    pub(crate) flags: super::ast::SelectStmtFlags,
     pub(crate) columns: NodeId,
     pub(crate) from_clause: NodeId,
     pub(crate) where_clause: NodeId,
@@ -390,8 +390,8 @@ pub(crate) struct SelectStmt {
 pub(crate) struct OrderingTerm {
     pub(crate) tag: u32,
     pub(crate) expr: NodeId,
-    pub(crate) sort_order: crate::ast::SortOrder,
-    pub(crate) nulls_order: crate::ast::NullsOrder,
+    pub(crate) sort_order: super::ast::SortOrder,
+    pub(crate) nulls_order: super::ast::NullsOrder,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -423,7 +423,7 @@ pub(crate) struct SubqueryTableSource {
 #[repr(C)]
 pub(crate) struct JoinClause {
     pub(crate) tag: u32,
-    pub(crate) join_type: crate::ast::JoinType,
+    pub(crate) join_type: super::ast::JoinType,
     pub(crate) left: NodeId,
     pub(crate) right: NodeId,
     pub(crate) on_expr: NodeId,
@@ -435,14 +435,14 @@ pub(crate) struct JoinClause {
 pub(crate) struct JoinPrefix {
     pub(crate) tag: u32,
     pub(crate) source: NodeId,
-    pub(crate) join_type: crate::ast::JoinType,
+    pub(crate) join_type: super::ast::JoinType,
 }
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
 pub(crate) struct TriggerEvent {
     pub(crate) tag: u32,
-    pub(crate) event_type: crate::ast::TriggerEventType,
+    pub(crate) event_type: super::ast::TriggerEventType,
     pub(crate) columns: NodeId,
 }
 
@@ -454,7 +454,7 @@ pub(crate) struct CreateTriggerStmt {
     pub(crate) schema: SourceSpan,
     pub(crate) is_temp: Bool,
     pub(crate) if_not_exists: Bool,
-    pub(crate) timing: crate::ast::TriggerTiming,
+    pub(crate) timing: super::ast::TriggerTiming,
     pub(crate) event: NodeId,
     pub(crate) table: NodeId,
     pub(crate) when_expr: NodeId,
@@ -479,7 +479,7 @@ pub(crate) struct PragmaStmt {
     pub(crate) pragma_name: SourceSpan,
     pub(crate) schema: SourceSpan,
     pub(crate) value: SourceSpan,
-    pub(crate) pragma_form: crate::ast::PragmaForm,
+    pub(crate) pragma_form: super::ast::PragmaForm,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -488,7 +488,7 @@ pub(crate) struct AnalyzeStmt {
     pub(crate) tag: u32,
     pub(crate) target_name: SourceSpan,
     pub(crate) schema: SourceSpan,
-    pub(crate) kind: crate::ast::AnalyzeKind,
+    pub(crate) kind: super::ast::AnalyzeKind,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -519,7 +519,7 @@ pub(crate) struct VacuumStmt {
 #[repr(C)]
 pub(crate) struct ExplainStmt {
     pub(crate) tag: u32,
-    pub(crate) explain_mode: crate::ast::ExplainMode,
+    pub(crate) explain_mode: super::ast::ExplainMode,
     pub(crate) stmt: NodeId,
 }
 
@@ -559,7 +559,7 @@ pub(crate) struct ValuesClause {
 #[repr(C)]
 pub(crate) struct FrameBound {
     pub(crate) tag: u32,
-    pub(crate) bound_type: crate::ast::FrameBoundType,
+    pub(crate) bound_type: super::ast::FrameBoundType,
     pub(crate) expr: NodeId,
 }
 
@@ -567,8 +567,8 @@ pub(crate) struct FrameBound {
 #[repr(C)]
 pub(crate) struct FrameSpec {
     pub(crate) tag: u32,
-    pub(crate) frame_type: crate::ast::FrameType,
-    pub(crate) exclude: crate::ast::FrameExclude,
+    pub(crate) frame_type: super::ast::FrameType,
+    pub(crate) exclude: super::ast::FrameExclude,
     pub(crate) start_bound: NodeId,
     pub(crate) end_bound: NodeId,
 }

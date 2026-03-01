@@ -259,7 +259,9 @@ pub struct FunctionDef {
 }
 
 /// Expand a [`FunctionInfo`](syntaqlite_parser::catalog::FunctionInfo) into one [`FunctionDef`] per arity.
-pub(crate) fn expand_function_info(info: &syntaqlite_parser::catalog::FunctionInfo<'_>) -> Vec<FunctionDef> {
+pub(crate) fn expand_function_info(
+    info: &syntaqlite_parser::catalog::FunctionInfo<'_>,
+) -> Vec<FunctionDef> {
     if info.arities.is_empty() {
         vec![FunctionDef {
             name: info.name.to_string(),
@@ -524,8 +526,8 @@ impl DocumentContext {
         session: Option<&SessionContext>,
     ) {
         use crate::dialect::SchemaKind;
-        use syntaqlite_parser::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
         use crate::parser::typed_list::DialectNodeType;
+        use syntaqlite_parser::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
 
         let Some((ptr, tag)) = reader.node_ptr(stmt_id) else {
             return;
@@ -632,8 +634,8 @@ fn columns_from_column_list(
     dialect: &crate::Dialect<'_>,
     out: &mut Vec<ColumnDef>,
 ) {
-    use syntaqlite_parser::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
     use crate::parser::nodes::NodeId;
+    use syntaqlite_parser::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
 
     let Some(list) = reader.resolve_list(list_id) else {
         return;

@@ -99,10 +99,12 @@ pub(crate) fn dispatch(command: CodegenCommand) -> Result<(), String> {
                 dialect_include_dir,
             } => {
                 if no_amalgamate {
+                    let tokens_header_owned = format!("syntaqlite_{name}/{name}_tokens.h");
                     let includes = syntaqlite_buildtools::dialect_codegen::DialectCIncludes {
                         internal: &internal_prefix,
                         public: &public_prefix,
                         dialect_include_dir: &dialect_include_dir,
+                        tokens_header: &tokens_header_owned,
                     };
                     cmd_generate_dialect_raw(
                         &name,
@@ -148,10 +150,12 @@ fn cmd_generate_dialect(
     ensure_dir(&csrc, "csrc dir")?;
     ensure_dir(&include, "include dir")?;
 
+    let tokens_header_owned = format!("syntaqlite_{dialect}/{dialect}_tokens.h");
     let amalg_includes = syntaqlite_buildtools::dialect_codegen::DialectCIncludes {
         internal: "csrc/",
         public: "",
         dialect_include_dir: "",
+        tokens_header: &tokens_header_owned,
     };
 
     let (merged_y, merged_synq) = load_extensions(actions_dir, nodes_dir)?;

@@ -61,7 +61,8 @@ typedef struct SynqParseToken {
                        // collecting)
 } SynqParseToken;
 
-// ── Forward declarations (full definitions in syntaqlite_dialect/dialect_types.h)
+// ── Forward declarations (full definitions in
+// syntaqlite_dialect/dialect_types.h)
 
 // Range metadata — used by pointer in SyntaqliteDialect.range_meta.
 typedef struct SyntaqliteFieldRangeMeta SyntaqliteFieldRangeMeta;
@@ -70,10 +71,12 @@ typedef struct SyntaqliteRangeMetaEntry SyntaqliteRangeMetaEntry;
 // Field metadata — used by pointer in SyntaqliteDialect.field_meta.
 typedef struct SyntaqliteFieldMeta SyntaqliteFieldMeta;
 
-// Schema contributions — used by pointer in SyntaqliteDialect.schema_contributions.
+// Schema contributions — used by pointer in
+// SyntaqliteDialect.schema_contributions.
 typedef struct SyntaqliteSchemaContribution SyntaqliteSchemaContribution;
 
-// Function extensions — used by pointer in SyntaqliteDialect.function_extensions.
+// Function extensions — used by pointer in
+// SyntaqliteDialect.function_extensions.
 typedef struct SyntaqliteFunctionInfo SyntaqliteFunctionInfo;
 typedef struct SyntaqliteAvailabilityRule SyntaqliteAvailabilityRule;
 typedef struct SyntaqliteFunctionEntry SyntaqliteFunctionEntry;

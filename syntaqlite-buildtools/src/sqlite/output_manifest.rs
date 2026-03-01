@@ -37,11 +37,6 @@ pub fn sqlite_output_manifest(
     let mut out = vec![
         OutputArtifact {
             bucket: OutputBucket::Include,
-            file_name: dialect.tokens_header_name(),
-            content: dialect.guarded_tokens_header(&artifacts.parse_h),
-        },
-        OutputArtifact {
-            bucket: OutputBucket::Include,
             file_name: dialect.node_header_name(),
             content: artifacts.ast_nodes_h,
         },

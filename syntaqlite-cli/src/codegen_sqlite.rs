@@ -155,13 +155,14 @@ fn handle_codegen(
         extra_keywords: &no_keywords,
         parser_symbol_prefix: None,
         include_rust: true,
-        crate_name: Some("syntaqlite"),
+        crate_name: Some("syntaqlite_parser"),
         base_synq_files: None,
         open_for_extension: true,
         dialect_c_includes: syntaqlite_buildtools::dialect_codegen::DialectCIncludes {
             internal: "csrc/sqlite/",
             public: "",
             dialect_include_dir: "syntaqlite",
+            tokens_header: "syntaqlite/tokens.h",
         },
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;

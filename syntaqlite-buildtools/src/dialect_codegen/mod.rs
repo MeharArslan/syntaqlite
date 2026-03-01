@@ -17,7 +17,7 @@ pub use c_dialect::{
     generate_parse_h, generate_token_categories_header, generate_tokenize_h,
 };
 pub use c_meta_codegen::{CFmtCodegenError, CMetaCodegenError};
-pub use rust_ast::generate_rust_tokens;
+pub use rust_ast::{RustAstPaths, generate_rust_tokens};
 pub use rust_dialect::{
     generate_cargo_toml, generate_internal_sqlite_wrappers, generate_rust_build_rs,
     generate_rust_lib, generate_rust_wrappers,

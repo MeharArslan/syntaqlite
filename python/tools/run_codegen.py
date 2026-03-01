@@ -79,7 +79,7 @@ def main():
     # crate doesn't need to compile yet — avoids the bootstrap cycle where
     # syntaqlite/src/sqlite/functions.rs depends on the generated file.
     functions_json = vendored_dir / "data" / "functions.json"
-    functions_catalog_rs = dialect_crate / "src" / "sqlite" / "functions_catalog.rs"
+    functions_catalog_rs = rust_crate_src_dir / "src" / "functions_catalog.rs"
 
     print("Stage 1b: Generating functions catalog...")
     result = subprocess.run(

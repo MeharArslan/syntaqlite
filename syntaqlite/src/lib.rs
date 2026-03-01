@@ -88,10 +88,9 @@ pub mod parser;
 
 #[cfg(feature = "sqlite")]
 pub use sqlite::wrappers::{
-    Parser, ParserBuilder, StatementCursor, Token, TokenCursor, Tokenizer, TokenizerBuilder,
+    IncrementalCursor, IncrementalParser, IncrementalParserBuilder, Parser, ParserBuilder,
+    StatementCursor, Token, TokenCursor, Tokenizer, TokenizerBuilder,
 };
-
-pub use parser::token_parser::RawIncrementalParser as IncrementalParser;
 
 // ── Formatter ────────────────────────────────────────────────────────────
 
@@ -102,7 +101,6 @@ pub mod fmt;
 pub use fmt::formatter::Formatter;
 
 // ── Dialect ──────────────────────────────────────────────────────────────
-
 
 pub mod dialect;
 pub use dialect::Dialect;
@@ -162,8 +160,8 @@ pub mod raw {
     pub use crate::parser::tokenizer::RawTokenCursor;
     pub use crate::parser::tokenizer::RawTokenizer;
 
-    pub use crate::parser::token_parser::RawIncrementalCursor;
-    pub use crate::parser::token_parser::RawIncrementalParser;
+    pub use crate::parser::incremental::RawIncrementalCursor;
+    pub use crate::parser::incremental::RawIncrementalParser;
 
     // ── Node / field types ───────────────────────────────────────────────
     pub use crate::parser::nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
@@ -177,9 +175,9 @@ pub mod raw {
 
     // ── Typed wrappers (for external dialect crates) ─────────────────────
     pub use crate::parser::typed::{
-        TypedIncrementalCursor, TypedIncrementalParser, TypedIncrementalParserBuilder,
-        TypedParser, TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor,
-        TypedTokenizer, TypedTokenizerBuilder,
+        TypedIncrementalCursor, TypedIncrementalParser, TypedIncrementalParserBuilder, TypedParser,
+        TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor, TypedTokenizer,
+        TypedTokenizerBuilder,
     };
 
     // ── AST trait definitions ────────────────────────────────────────────
@@ -189,8 +187,8 @@ pub mod raw {
 
     /// Builder types for dialect-agnostic APIs.
     pub mod builders {
+        pub use crate::parser::incremental::RawIncrementalParserBuilder;
         pub use crate::parser::session::RawParserBuilder;
-        pub use crate::parser::token_parser::RawIncrementalParserBuilder;
         pub use crate::parser::tokenizer::RawTokenizerBuilder;
 
         #[cfg(feature = "fmt")]

@@ -44,7 +44,8 @@ typedef struct SyntaqliteFieldMeta {
   uint8_t display_count;       // number of entries in display[]
 } SyntaqliteFieldMeta;
 
-// ── Schema contribution types ─────────────────────────────────────────────────
+// ── Schema contribution types
+// ─────────────────────────────────────────────────
 
 #define SYNTAQLITE_SCHEMA_TABLE 0
 #define SYNTAQLITE_SCHEMA_VIEW 1
@@ -62,7 +63,8 @@ typedef struct SyntaqliteSchemaContribution {
   uint8_t _pad[3];
 } SyntaqliteSchemaContribution;
 
-// ── Function extension types ──────────────────────────────────────────────────
+// ── Function extension types
+// ──────────────────────────────────────────────────
 
 typedef struct SyntaqliteFunctionInfo {
   const char* name;

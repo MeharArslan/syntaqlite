@@ -9,9 +9,9 @@
 
 use std::ops::Range;
 
+use super::incremental::{RawIncrementalCursor, RawIncrementalParser, RawIncrementalParserBuilder};
 use super::nodes::NodeId;
 use super::session::{ParseError, RawNodeReader, RawParser, RawParserBuilder, RawStatementCursor};
-use super::token_parser::{RawIncrementalCursor, RawIncrementalParser, RawIncrementalParserBuilder};
 use super::tokenizer::{RawTokenCursor, RawTokenizer};
 pub use super::typed_list::{DialectNodeType, DialectTokenType};
 
@@ -81,7 +81,10 @@ impl<'d> TypedParserBuilder<'d> {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
+    pub fn dialect_config(
+        mut self,
+        config: syntaqlite_parser::dialect::ffi::DialectConfig,
+    ) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }
@@ -93,7 +96,6 @@ impl<'d> TypedParserBuilder<'d> {
         }
     }
 }
-
 
 // ── TypedStatementCursor ────────────────────────────────────────────────
 
@@ -252,7 +254,10 @@ pub struct TypedTokenizerBuilder<'d, T: DialectTokenType> {
 
 impl<'d, T: DialectTokenType> TypedTokenizerBuilder<'d, T> {
     /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
+    pub fn dialect_config(
+        mut self,
+        config: syntaqlite_parser::dialect::ffi::DialectConfig,
+    ) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }
@@ -316,9 +321,7 @@ impl<'d> TypedIncrementalParser<'d> {
     }
 
     /// Create a builder for more detailed configuration.
-    pub fn builder(
-        dialect: &'d crate::dialect::Dialect<'d>,
-    ) -> TypedIncrementalParserBuilder<'d> {
+    pub fn builder(dialect: &'d crate::dialect::Dialect<'d>) -> TypedIncrementalParserBuilder<'d> {
         TypedIncrementalParserBuilder {
             inner: RawIncrementalParser::builder(dialect),
         }
@@ -375,7 +378,10 @@ impl<'d> TypedIncrementalParserBuilder<'d> {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
+    pub fn dialect_config(
+        mut self,
+        config: syntaqlite_parser::dialect::ffi::DialectConfig,
+    ) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }
@@ -418,7 +424,10 @@ where
         match self.inner.feed_token(token_type.into(), span)? {
             None => Ok(None),
             Some(id) => {
-                let node = self.inner.node_ref(id).as_typed::<N>()
+                let node = self
+                    .inner
+                    .node_ref(id)
+                    .as_typed::<N>()
                     .ok_or_else(|| ParseError {
                         message: "failed to resolve typed AST node".to_string(),
                         offset: None,
@@ -440,7 +449,10 @@ where
         match self.inner.finish()? {
             None => Ok(None),
             Some(id) => {
-                let node = self.inner.node_ref(id).as_typed::<N>()
+                let node = self
+                    .inner
+                    .node_ref(id)
+                    .as_typed::<N>()
                     .ok_or_else(|| ParseError {
                         message: "failed to resolve typed AST node".to_string(),
                         offset: None,

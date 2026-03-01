@@ -159,6 +159,7 @@ pub fn generate(
     fragments: &SqliteFragments,
     dialect: &str,
     extra_keywords: &[String],
+    includes: &crate::dialect_codegen::DialectCIncludes<'_>,
 ) -> Result<String, String> {
     let cflag_map = parse_keyword_cflags(fragments.keyword_cflags);
 
@@ -250,7 +251,7 @@ pub fn generate(
     let mut w = CWriter::new();
     w.sqlite_file_header();
     w.include_local("syntaqlite_dialect/sqlite_compat.h");
-    w.include_local(&format!("syntaqlite_{dialect}/{dialect}_tokens.h"));
+    w.include_local(includes.tokens_header);
     w.include_local("syntaqlite/dialect.h");
     w.include_local("syntaqlite_dialect/dialect_macros.h");
     w.newline();

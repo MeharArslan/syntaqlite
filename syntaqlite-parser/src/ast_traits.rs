@@ -5,8 +5,8 @@
 
 #![allow(clippy::type_complexity)]
 
-use crate::nodes::NodeId;
 use crate::dialect_traits::DialectNodeType;
+use crate::nodes::NodeId;
 use crate::typed_list::TypedList;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1790,8 +1790,12 @@ pub trait AstTypes<'a>: 'a {
     type Expr: ExprLike<'a, Ast = Self> + Copy + DialectNodeType<'a>;
     type Stmt: StmtLike<'a, Ast = Self> + Copy + DialectNodeType<'a>;
     type TableSource: TableSourceLike<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type AggregateFunctionCall: AggregateFunctionCallView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type OrderedSetFunctionCall: OrderedSetFunctionCallView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
+    type AggregateFunctionCall: AggregateFunctionCallView<'a, Ast = Self>
+        + Copy
+        + DialectNodeType<'a>;
+    type OrderedSetFunctionCall: OrderedSetFunctionCallView<'a, Ast = Self>
+        + Copy
+        + DialectNodeType<'a>;
     type CastExpr: CastExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
     type ColumnRef: ColumnRefView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
     type CompoundSelect: CompoundSelectView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
@@ -1836,7 +1840,9 @@ pub trait AstTypes<'a>: 'a {
     type JoinPrefix: JoinPrefixView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
     type TriggerEvent: TriggerEventView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
     type CreateTriggerStmt: CreateTriggerStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type CreateVirtualTableStmt: CreateVirtualTableStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
+    type CreateVirtualTableStmt: CreateVirtualTableStmtView<'a, Ast = Self>
+        + Copy
+        + DialectNodeType<'a>;
     type PragmaStmt: PragmaStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
     type AnalyzeStmt: AnalyzeStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
     type AttachStmt: AttachStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;

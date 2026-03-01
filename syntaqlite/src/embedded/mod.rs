@@ -23,8 +23,8 @@ use std::ops::Range;
 
 use crate::dialect::Dialect;
 use crate::dialect::TokenCategory;
+use crate::parser::incremental::RawIncrementalParser;
 use crate::parser::session::ParseError;
-use crate::parser::token_parser::RawIncrementalParser;
 use crate::parser::tokenizer::RawTokenizer;
 use crate::validation::{Diagnostic, DiagnosticMessage, FunctionDef, ValidationConfig};
 

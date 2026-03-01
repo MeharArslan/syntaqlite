@@ -65,7 +65,10 @@ fn rust_view_accessor_body(field: &Field, ffi_path: &str) -> String {
     let fname = rust_field_name(&field.name);
     match field.storage {
         Storage::Index => {
-            format!("DialectNodeType::from_arena(self.reader, self.raw.{})", fname)
+            format!(
+                "DialectNodeType::from_arena(self.reader, self.raw.{})",
+                fname
+            )
         }
         Storage::Inline => {
             let t = &field.type_name;
@@ -368,6 +371,21 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     w.finish()
 }
 
+/// Module paths used by the Rust AST/FFI codegen.
+pub struct RustAstPaths<'a> {
+    /// Import prefix for the dialect crate, e.g. `"crate"` (internal) or
+    /// `"syntaqlite"` (external).
+    pub crate_prefix: &'a str,
+    /// Path to FFI node structs, e.g. `"crate::ffi"`.
+    pub ffi_path: &'a str,
+    /// Path to `Comment`/`CommentKind`, e.g. `"syntaqlite_parser::parser"`.
+    pub comment_path: &'a str,
+    /// Path to `NodeId`/`SourceSpan`/`NodeList`, e.g. `"syntaqlite_parser::nodes"`.
+    pub nodes_path: &'a str,
+    /// Path to `RawNodeReader`, e.g. `"syntaqlite_parser::session"`.
+    pub session_path: &'a str,
+}
+
 /// Generate Rust source for the FFI layer (`ffi.rs`).
 ///
 /// Emits `#[repr(C)]` node structs, the `Bool` enum, and `ArenaNode` impls
@@ -376,7 +394,8 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
 /// `crate_prefix` controls import paths: `"crate"` for the internal syntaqlite
 /// crate, `"syntaqlite"` for external dialect crates.
 impl AstModel<'_> {
-    pub fn generate_rust_ffi_nodes(&self, crate_prefix: &str) -> String {
+    pub fn generate_rust_ffi_nodes(&self, paths: &RustAstPaths<'_>) -> String {
+        let nodes_path = paths.nodes_path;
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
 
@@ -386,7 +405,7 @@ impl AstModel<'_> {
             "
         #![allow(dead_code)]
 
-        use {crate_prefix}::parser::{{ArenaNode, NodeId, SourceSpan}};
+        use {nodes_path}::{{ArenaNode, NodeId, SourceSpan}};
     ",
         ));
         w.newline();
@@ -430,16 +449,20 @@ impl AstModel<'_> {
     /// Emits enums, flags, `NodeTag`, view structs with ergonomic accessors,
     /// and the `Node<'a>` enum that wraps them.
     ///
-    /// - `crate_prefix`: `"crate"` for internal syntaqlite, `"syntaqlite"` for external.
-    /// - `ffi_path`: module path to the FFI types, e.g. `"crate::sqlite::ffi"` (internal)
-    ///   or `"crate::ffi"` (external).
+    /// - `crate_prefix`: `"syntaqlite_parser"` for the internal SQLite dialect,
+    ///   `"syntaqlite"` for external dialect crates.
+    /// - `ffi_path`: module path to the dialect FFI structs (`crate::ffi` for both cases).
     pub fn generate_rust_ast(
         &self,
-        crate_prefix: &str,
-        ffi_path: &str,
+        paths: &RustAstPaths<'_>,
         dialect_name: &str,
         open_for_extension: bool,
     ) -> String {
+        let crate_prefix = paths.crate_prefix;
+        let ffi_path = paths.ffi_path;
+        let comment_path = paths.comment_path;
+        let nodes_path = paths.nodes_path;
+        let session_path = paths.session_path;
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
         let node_names = self.node_names();
@@ -453,10 +476,10 @@ impl AstModel<'_> {
         }
         w.lines(&format!(
             "
-        pub(crate) use {crate_prefix}::parser::nodes::NodeList;
-        pub use {crate_prefix}::parser::ffi::{{Comment, CommentKind}};
-        pub use {crate_prefix}::parser::nodes::{{NodeId, SourceSpan}};
-        pub use {crate_prefix}::parser::session::RawNodeReader;
+        pub(crate) use {nodes_path}::NodeList;
+        pub use {comment_path}::{{Comment, CommentKind}};
+        pub use {nodes_path}::{{NodeId, SourceSpan}};
+        pub use {session_path}::RawNodeReader;
         use {crate_prefix}::dialect_traits::DialectNodeType;
         use {crate_prefix}::typed_list::TypedList;
     "
@@ -495,7 +518,10 @@ impl AstModel<'_> {
             w.newline();
 
             // FromArena impl
-            w.line(&format!("impl<'a> DialectNodeType<'a> for {}<'a> {{", abs_name));
+            w.line(&format!(
+                "impl<'a> DialectNodeType<'a> for {}<'a> {{",
+                abs_name
+            ));
             w.indent();
             w.line("fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {");
             w.indent();

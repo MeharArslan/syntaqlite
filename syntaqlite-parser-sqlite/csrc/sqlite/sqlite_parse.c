@@ -26,10 +26,10 @@
 #include <string.h>
 
 #include "csrc/sqlite/dialect_builder.h"
+#include "syntaqlite/tokens.h"
 #include "syntaqlite/types.h"
 #include "syntaqlite_dialect/ast_builder.h"
 #include "syntaqlite_dialect/dialect_macros.h"
-#include "syntaqlite/tokens.h"
 
 /* BEGIN GRAMMAR_TYPES */
 // Grammar-specific struct types for multi-valued grammar nonterminals.
@@ -4985,6 +4985,8 @@ typedef struct yyParser yyParser;
 #include <assert.h>
 #ifndef NDEBUG
 #include <stdio.h>
+
+#include "syntaqlite_dialect/dialect_macros.h"
 static FILE* yyTraceFILE = 0;
 static char* yyTracePrompt = 0;
 #endif /* NDEBUG */
@@ -9995,7 +9997,7 @@ static void yy_syntax_error(
   SynqSqliteParseARG_FETCH SynqSqliteParseCTX_FETCH
 #define TOKEN yyminor
       /************ Begin %syntax_error code
-       ****************************************/
+         ****************************************/
 
       (void) yymajor;
   (void)TOKEN;

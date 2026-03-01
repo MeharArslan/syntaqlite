@@ -7,8 +7,9 @@
 //! SQLite dialect.
 
 use crate::parser::typed::{
-    TypedParser, TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor,
-    TypedTokenizer, TypedTokenizerBuilder,
+    TypedIncrementalCursor, TypedIncrementalParser, TypedIncrementalParserBuilder, TypedParser,
+    TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor, TypedTokenizer,
+    TypedTokenizerBuilder,
 };
 // The SQLite dialect is a `'static` singleton, so all dialect-parameterized
 // types are concretized to `'static` in this module.
@@ -31,6 +32,13 @@ pub type Tokenizer = TypedTokenizer<'static, TokenType>;
 
 /// Builder for [`Tokenizer`].
 pub type TokenizerBuilder = TypedTokenizerBuilder<'static, TokenType>;
+
+/// A cursor for token-by-token incremental parsing of SQLite SQL.
+///
+/// Obtained from [`IncrementalParser::feed`] or [`IncrementalParser::feed_cstr`].
+/// Feed tokens via [`feed_token`](IncrementalCursor::feed_token) and signal
+/// end-of-input via [`finish`](IncrementalCursor::finish).
+pub type IncrementalCursor<'a> = TypedIncrementalCursor<'a, Stmt<'a>, TokenType>;
 
 // ── Parser ───────────────────────────────────────────────────────────────
 
@@ -109,7 +117,10 @@ impl ParserBuilder {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
+    pub fn dialect_config(
+        mut self,
+        config: syntaqlite_parser::dialect::ffi::DialectConfig,
+    ) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }
@@ -117,6 +128,88 @@ impl ParserBuilder {
     /// Build the parser.
     pub fn build(self) -> Parser {
         Parser {
+            inner: self.inner.build(),
+        }
+    }
+}
+
+// ── IncrementalParser ────────────────────────────────────────────────────
+
+/// An incremental SQL parser for the built-in SQLite dialect.
+///
+/// Wraps [`TypedIncrementalParser`] and feeds tokens one at a time via
+/// [`IncrementalCursor`], yielding typed [`Stmt`] nodes.
+pub struct IncrementalParser {
+    inner: TypedIncrementalParser<'static>,
+}
+
+// SAFETY: TypedIncrementalParser is Send.
+unsafe impl Send for IncrementalParser {}
+
+impl IncrementalParser {
+    /// Create an incremental parser for the built-in SQLite dialect with default configuration.
+    pub fn new() -> Self {
+        IncrementalParser {
+            inner: TypedIncrementalParser::new(&crate::sqlite::DIALECT),
+        }
+    }
+
+    /// Create a builder for configuring the parser before construction.
+    pub fn builder() -> IncrementalParserBuilder {
+        IncrementalParserBuilder {
+            inner: TypedIncrementalParser::builder(&crate::sqlite::DIALECT),
+        }
+    }
+
+    /// Bind source text and return an [`IncrementalCursor`] for token feeding.
+    pub fn feed<'a>(&'a mut self, source: &'a str) -> IncrementalCursor<'a> {
+        self.inner.feed(source)
+    }
+
+    /// Zero-copy variant: bind a null-terminated source.
+    pub fn feed_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> IncrementalCursor<'a> {
+        self.inner.feed_cstr(source)
+    }
+}
+
+impl Default for IncrementalParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ── IncrementalParserBuilder ─────────────────────────────────────────────
+
+/// Builder for [`IncrementalParser`].
+pub struct IncrementalParserBuilder {
+    inner: TypedIncrementalParserBuilder<'static>,
+}
+
+impl IncrementalParserBuilder {
+    /// Enable parser trace output.
+    pub fn trace(mut self, enable: bool) -> Self {
+        self.inner = self.inner.trace(enable);
+        self
+    }
+
+    /// Collect non-whitespace token positions during parsing.
+    pub fn collect_tokens(mut self, enable: bool) -> Self {
+        self.inner = self.inner.collect_tokens(enable);
+        self
+    }
+
+    /// Set dialect config for version/cflag-gated parsing.
+    pub fn dialect_config(
+        mut self,
+        config: syntaqlite_parser::dialect::ffi::DialectConfig,
+    ) -> Self {
+        self.inner = self.inner.dialect_config(config);
+        self
+    }
+
+    /// Build the parser.
+    pub fn build(self) -> IncrementalParser {
+        IncrementalParser {
             inner: self.inner.build(),
         }
     }

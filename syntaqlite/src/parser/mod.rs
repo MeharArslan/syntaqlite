@@ -10,9 +10,9 @@
 //! internals directly.
 
 pub(crate) mod ffi;
+pub(crate) mod incremental;
 pub(crate) mod nodes;
 pub(crate) mod session;
-pub(crate) mod token_parser;
 pub(crate) mod tokenizer;
 pub(crate) mod typed_list;
 

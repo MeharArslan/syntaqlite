@@ -271,7 +271,10 @@ impl<'d> ValidatorBuilder<'d> {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
+    pub fn dialect_config(
+        mut self,
+        config: syntaqlite_parser::dialect::ffi::DialectConfig,
+    ) -> Self {
         self.dialect_config = Some(config);
         self
     }
