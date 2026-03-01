@@ -75,7 +75,7 @@ impl std::fmt::Debug for Cflags {
 // ── Cflag metadata table ─────────────────────────────────────────────
 
 /// The raw content of `sqlite_cflags.h`, embedded at compile time.
-const CFLAGS_HEADER: &str = include_str!("../../include/syntaqlite/sqlite_cflags.h");
+const CFLAGS_HEADER: &str = include_str!("../../../syntaqlite-parser-sys/include/syntaqlite/sqlite_cflags.h");
 
 /// Metadata for a single compile-time flag.
 #[derive(Debug, Clone)]
