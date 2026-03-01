@@ -402,12 +402,13 @@ fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &Validat
     let mut cursor = parser.parse(source);
 
     let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok()).collect();
+    let functions = syntaqlite::embedded::sqlite_function_defs();
     let diags = syntaqlite::validation::validate_document(
         cursor.reader(),
         &stmt_ids,
         dialect,
         None,
-        &[],
+        &functions,
         config,
     );
 
@@ -456,7 +457,8 @@ fn validate_embedded_source(
         return false;
     }
 
-    let diags = syntaqlite::embedded::validate_embedded(dialect, &fragments, config);
+    let functions = syntaqlite::embedded::sqlite_function_defs();
+    let diags = syntaqlite::embedded::validate_embedded(dialect, &fragments, &functions, config);
 
     let mut has_errors = false;
     for d in &diags {

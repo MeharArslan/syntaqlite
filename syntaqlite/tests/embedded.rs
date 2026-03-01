@@ -83,7 +83,7 @@ fn validate_simple_select_with_hole() {
     let source = r#"query = f"SELECT * FROM users WHERE id = {uid}""#;
     let fragments = extract_python(source);
     let config = ValidationConfig::default();
-    let diags = validate_embedded(dialect(), &fragments, &config);
+    let diags = validate_embedded(dialect(), &fragments, &[], &config);
 
     // "users" is unknown (no schema), but hole placeholder "__hole_0__" should
     // be suppressed. We expect a warning about "unknown table 'users'".
@@ -102,7 +102,7 @@ fn validate_multiple_holes_no_placeholder_leaks() {
     let source = r#"q = f"SELECT {cols} FROM {table} WHERE {col} = {val}""#;
     let fragments = extract_python(source);
     let config = ValidationConfig::default();
-    let diags = validate_embedded(dialect(), &fragments, &config);
+    let diags = validate_embedded(dialect(), &fragments, &[], &config);
 
     for d in &diags {
         let msg = d.message.to_string();
@@ -126,7 +126,7 @@ query = f"SELECT id, name FROM users WHERE id = {uid}"
     // Each fragment is validated independently — the CREATE TABLE in one
     // f-string doesn't carry over to the SELECT in another. This is expected
     // for the prototype.
-    let diags = validate_embedded(dialect(), &fragments, &config);
+    let diags = validate_embedded(dialect(), &fragments, &[], &config);
 
     for d in &diags {
         let msg = d.message.to_string();
@@ -144,7 +144,7 @@ fn validate_offsets_mapped_to_host_file() {
     let source = r#"q = f"SELECT * FROM nonexistent""#;
     let fragments = extract_python(source);
     let config = ValidationConfig::default();
-    let diags = validate_embedded(dialect(), &fragments, &config);
+    let diags = validate_embedded(dialect(), &fragments, &[], &config);
 
     // Should have a diagnostic about 'nonexistent'.
     let table_diag = diags.iter().find(|d| {
@@ -238,7 +238,7 @@ fn ts_validate_simple_select_with_hole() {
     let source = r#"const q = `SELECT * FROM users WHERE id = ${uid}`;"#;
     let fragments = extract_typescript(source);
     let config = ValidationConfig::default();
-    let diags = validate_embedded(dialect(), &fragments, &config);
+    let diags = validate_embedded(dialect(), &fragments, &[], &config);
 
     for d in &diags {
         let msg = d.message.to_string();
@@ -254,7 +254,7 @@ fn ts_validate_multiple_holes_no_placeholder_leaks() {
     let source = r#"const q = `SELECT ${cols} FROM ${table} WHERE ${col} = ${val}`;"#;
     let fragments = extract_typescript(source);
     let config = ValidationConfig::default();
-    let diags = validate_embedded(dialect(), &fragments, &config);
+    let diags = validate_embedded(dialect(), &fragments, &[], &config);
 
     for d in &diags {
         let msg = d.message.to_string();
@@ -270,7 +270,7 @@ fn ts_validate_offsets_mapped_to_host_file() {
     let source = r#"const q = `SELECT * FROM nonexistent`;"#;
     let fragments = extract_typescript(source);
     let config = ValidationConfig::default();
-    let diags = validate_embedded(dialect(), &fragments, &config);
+    let diags = validate_embedded(dialect(), &fragments, &[], &config);
 
     let table_diag = diags.iter().find(|d| {
         d.message.to_string().contains("nonexistent")

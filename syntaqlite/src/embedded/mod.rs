@@ -24,7 +24,7 @@ use std::ops::Range;
 use crate::{Dialect, ParseError};
 use crate::parser::{LowLevelParser, Tokenizer};
 use crate::validation::{
-    Diagnostic, DiagnosticMessage, Severity, ValidationConfig, validate_document,
+    Diagnostic, DiagnosticMessage, FunctionDef, Severity, ValidationConfig, validate_document,
 };
 
 use offset_map::OffsetMap;
@@ -104,16 +104,21 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 
 /// Validate all SQL fragments extracted from a host source file.
 ///
+/// `functions` is the list of known built-in and user-defined functions.
+/// Pass `&[]` to skip function validation, or use
+/// [`sqlite_function_defs`] to get the SQLite built-in catalog.
+///
 /// Returns diagnostics with offsets mapped back to host-file positions.
 pub fn validate_embedded(
     dialect: &Dialect,
     fragments: &[EmbeddedFragment],
+    functions: &[FunctionDef],
     config: &ValidationConfig,
 ) -> Vec<Diagnostic> {
     let mut all_diags = Vec::new();
 
     for fragment in fragments {
-        let diags = validate_fragment(dialect, fragment, config);
+        let diags = validate_fragment(dialect, fragment, functions, config);
         let offset_map = OffsetMap::new(fragment);
 
         for mut d in diags {
@@ -129,12 +134,43 @@ pub fn validate_embedded(
     all_diags
 }
 
+/// Build `FunctionDef` entries from the SQLite built-in function catalog.
+///
+/// Uses default `DialectConfig` (latest version, no cflags) to determine
+/// which functions are available.
+#[cfg(feature = "sqlite")]
+pub fn sqlite_function_defs() -> Vec<FunctionDef> {
+    let config = crate::dialect::ffi::DialectConfig::default();
+    crate::sqlite::functions::available_functions(&config)
+        .into_iter()
+        .flat_map(|info| {
+            if info.arities.is_empty() {
+                vec![FunctionDef {
+                    name: info.name.to_string(),
+                    args: None,
+                    description: None,
+                }]
+            } else {
+                info.arities
+                    .iter()
+                    .map(|&arity| FunctionDef {
+                        name: info.name.to_string(),
+                        args: if arity < 0 { None } else { Some(arity as usize) },
+                        description: None,
+                    })
+                    .collect()
+            }
+        })
+        .collect()
+}
+
 /// Tokenize, parse (with hole wrapping), and validate a single fragment.
 ///
 /// Returns diagnostics with SQL-text byte offsets (not yet mapped to host).
 fn validate_fragment(
     dialect: &Dialect,
     fragment: &EmbeddedFragment,
+    functions: &[FunctionDef],
     config: &ValidationConfig,
 ) -> Vec<Diagnostic> {
     let mut parser = LowLevelParser::with_dialect(dialect);
@@ -210,7 +246,7 @@ fn validate_fragment(
         .collect();
 
     // After finish(), the cursor's reader still points at valid arena data.
-    let semantic = validate_document(cursor.base().reader(), &stmt_ids, dialect, None, &[], config);
+    let semantic = validate_document(cursor.base().reader(), &stmt_ids, dialect, None, functions, config);
     diags.extend(semantic);
     diags
 }
@@ -260,11 +296,15 @@ mod tests {
         ValidationConfig::default()
     }
 
+    fn builtin_functions() -> Vec<FunctionDef> {
+        sqlite_function_defs()
+    }
+
     /// Helper: extract Python fragments then validate, returning only parse errors.
     fn parse_errors_python(source: &str) -> Vec<Diagnostic> {
         let d = dialect();
         let fragments = extract_python(source);
-        let all = validate_embedded(&d, &fragments, &default_config());
+        let all = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
         all.into_iter()
             .filter(|d| d.message.is_parse_error())
             .collect()
@@ -274,7 +314,7 @@ mod tests {
     fn parse_errors_typescript(source: &str) -> Vec<Diagnostic> {
         let d = dialect();
         let fragments = extract_typescript(source);
-        let all = validate_embedded(&d, &fragments, &default_config());
+        let all = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
         all.into_iter()
             .filter(|d| d.message.is_parse_error())
             .collect()
@@ -321,7 +361,7 @@ mod tests {
         let fragments = extract_python(source);
         assert_eq!(fragments.len(), 1);
         let d = dialect();
-        let diags = validate_embedded(&d, &fragments, &default_config());
+        let diags = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
         let parse_diags: Vec<_> = diags.into_iter().filter(|d| d.message.is_parse_error()).collect();
         assert!(!parse_diags.is_empty(), "expected parse error");
         // The diagnostic offset should be within the f-string region, not at 0.
@@ -390,7 +430,7 @@ mod tests {
         let source = r#"db.execute(f"SELECT id FROM unknown_tbl")"#;
         let d = dialect();
         let fragments = extract_python(source);
-        let all = validate_embedded(&d, &fragments, &default_config());
+        let all = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
         // Should have semantic diagnostics (unknown table) but no parse errors.
         let parse: Vec<_> = all.iter().filter(|d| d.message.is_parse_error()).collect();
         let semantic: Vec<_> = all.iter().filter(|d| !d.message.is_parse_error()).collect();
@@ -399,12 +439,58 @@ mod tests {
     }
 
     #[test]
+    fn python_syntax_error_offset_points_to_typo() {
+        // "VALUS" is a typo for "VALUES" — the error span should point to
+        // VALUS, not to INSERT (the start of the statement).
+        let source =
+            r#"conn.execute(f"INSERT INTO orders (a, b) VALUS ({x}, {y})")"#;
+        let fragments = extract_python(source);
+        assert_eq!(fragments.len(), 1);
+        let d = dialect();
+        let diags = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
+        let parse_diags: Vec<_> =
+            diags.into_iter().filter(|d| d.message.is_parse_error()).collect();
+        assert!(!parse_diags.is_empty(), "expected parse error for VALUS");
+        let valus_start = source.find("VALUS").unwrap();
+        let valus_end = valus_start + "VALUS".len();
+        assert_eq!(
+            parse_diags[0].start_offset, valus_start,
+            "error start should point to VALUS (offset {valus_start}), got {}",
+            parse_diags[0].start_offset,
+        );
+        assert_eq!(
+            parse_diags[0].end_offset, valus_end,
+            "error end should span VALUS (offset {valus_end}), got {}",
+            parse_diags[0].end_offset,
+        );
+    }
+
+    #[test]
+    fn python_builtin_function_not_flagged() {
+        // datetime() is a built-in SQLite function — should not produce
+        // an "unknown function" diagnostic.
+        let source =
+            r#"db.execute(f"INSERT INTO t (a) VALUES (datetime('now'))")"#;
+        let d = dialect();
+        let fragments = extract_python(source);
+        let all = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
+        let unknown_fn: Vec<_> = all
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownFunction { .. }))
+            .collect();
+        assert!(
+            unknown_fn.is_empty(),
+            "datetime should not be flagged as unknown, got: {unknown_fn:?}",
+        );
+    }
+
+    #[test]
     fn hole_diagnostics_filtered_out() {
         // Holes should not produce unknown-table/column diagnostics.
         let source = r#"db.execute(f"SELECT {col} FROM {tbl}")"#;
         let d = dialect();
         let fragments = extract_python(source);
-        let all = validate_embedded(&d, &fragments, &default_config());
+        let all = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
         // Hole placeholders should be filtered — no diagnostics about __hole_N__.
         for diag in &all {
             let msg = format!("{}", diag.message);

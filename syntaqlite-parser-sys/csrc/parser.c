@@ -238,8 +238,10 @@ static int finish_input(SyntaqliteParser* p) {
 
   if (p->ctx.error) {
     p->had_error = 1;
-    p->ctx.error_offset = p->offset;
-    p->ctx.error_length = 0;
+    // Only set the offset if we don't already have one from an earlier error.
+    if (p->ctx.error_offset == 0xFFFFFFFF) {
+      p->ctx.error_offset = p->offset;
+    }
     if (p->error_msg[0] == '\0') {
       snprintf(p->error_msg, sizeof(p->error_msg), "incomplete SQL statement");
     }

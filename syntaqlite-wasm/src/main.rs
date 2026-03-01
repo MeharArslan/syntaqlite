@@ -1151,7 +1151,7 @@ fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32, _version: u32) -> i32
     // Syntax errors only — no session context means every table/column/function
     // would be flagged as unknown, so filter out semantic diagnostics entirely.
     let config = ValidationConfig::default();
-    let all_diags = embedded::validate_embedded(&dialect, &fragments, &config);
+    let all_diags = embedded::validate_embedded(&dialect, &fragments, &[], &config);
     let diags: Vec<_> = all_diags
         .into_iter()
         .filter(|d| d.message.is_parse_error())
