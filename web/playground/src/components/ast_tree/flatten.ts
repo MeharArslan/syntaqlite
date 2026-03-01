@@ -16,6 +16,10 @@ function isFieldEmpty(f: AstField): boolean {
       return f.value === undefined;
     case "flags":
       return f.value.length === 0;
+    default: {
+      const _exhaustive: never = f;
+      return _exhaustive;
+    }
   }
 }
 
