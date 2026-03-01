@@ -255,7 +255,6 @@ pub fn generate_dialect_h(dialect: &str) -> String {
     let mut w = CWriter::new();
     w.file_header();
     w.header_guard_start(&guard);
-    w.include_local("syntaqlite/config.h");
     w.newline();
     w.line("#ifdef __cplusplus");
     w.line("extern \"C\" {");

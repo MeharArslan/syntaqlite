@@ -6,8 +6,6 @@
 #ifndef SYNTAQLITE_SQLITE_H
 #define SYNTAQLITE_SQLITE_H
 
-#include "syntaqlite/config.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

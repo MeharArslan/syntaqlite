@@ -368,15 +368,13 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
         )?;
         let keyword_h = keyword_hash::generate_keyword_h();
 
-        let ast_nodes_h =
-            dialect_codegen::generate_ast_nodes_header(&ast_model, request.dialect.name());
-        let ast_builder_h =
-            dialect_codegen::generate_ast_builder_header(&ast_model, request.dialect.name());
+        let ast_nodes_h = ast_model.generate_ast_nodes_header(request.dialect.name());
+        let ast_builder_h = ast_model.generate_ast_builder_header(request.dialect.name());
         let dialect_meta_h = {
-            let mut meta =
-                dialect_codegen::generate_c_field_metadata(&ast_model, request.dialect.name())
-                    .map_err(|e| e.to_string())?;
-            let schema = dialect_codegen::generate_c_schema_contributions(&ast_model);
+            let mut meta = ast_model
+                .generate_c_field_metadata(request.dialect.name())
+                .map_err(|e: dialect_codegen::CMetaCodegenError| e.to_string())?;
+            let schema = ast_model.generate_c_schema_contributions();
             if !schema.is_empty() {
                 // Insert schema contributions before the header guard end.
                 let guard_end = "#endif  // SYNTAQLITE_DIALECT_META_H";
@@ -388,8 +386,9 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
             }
             meta
         };
-        let dialect_fmt_h =
-            dialect_codegen::generate_c_fmt_tables(&ast_model).map_err(|e| e.to_string())?;
+        let dialect_fmt_h = ast_model
+            .generate_c_fmt_tables()
+            .map_err(|e: dialect_codegen::CFmtCodegenError| e.to_string())?;
         let token_defines = extract_token_defines(&parse_h);
         // Build keyword set from the base mkkeywordhash table + dialect extra keywords.
         let mut keyword_names = base_keyword_token_names();
@@ -429,16 +428,15 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
             };
             Some(RustCodegenArtifacts {
                 tokens_rs: dialect_codegen::generate_rust_tokens(&token_defines[..]),
-                ffi_rs: dialect_codegen::generate_rust_ffi_nodes(&ast_model, crate_prefix),
-                ast_rs: dialect_codegen::generate_rust_ast(
-                    &ast_model,
+                ffi_rs: ast_model.generate_rust_ffi_nodes(crate_prefix, is_internal),
+                ast_rs: ast_model.generate_rust_ast(
                     crate_prefix,
                     ffi_path,
                     request.dialect.name(),
                     request.open_for_extension,
                 ),
                 ast_traits_rs: if is_internal {
-                    Some(dialect_codegen::generate_ast_traits(&ast_model))
+                    Some(ast_model.generate_ast_traits(Some("syntaqlite_sys::sqlite::ffi")))
                 } else {
                     None
                 },
