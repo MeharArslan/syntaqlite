@@ -23,7 +23,7 @@
 //! - 3.25.0: same query (with OVER) → success
 
 use syntaqlite::dialect::DialectConfig;
-use syntaqlite::sqlite::low_level::TokenType;
+use syntaqlite::TokenType;
 
 /// Shorthand: convert a TokenType variant to its raw u32 value.
 const fn tk(t: TokenType) -> u32 {
@@ -37,7 +37,7 @@ const fn tk(t: TokenType) -> u32 {
 /// Tokenize SQL with a specific SQLite version and return (token_type, text) pairs,
 /// filtering out whitespace.
 fn tokenize_at_version(sql: &str, version: i32) -> Vec<(u32, String)> {
-    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let dialect = syntaqlite::dialect::sqlite();
     let mut tok = syntaqlite::raw::RawTokenizer::builder(*dialect)
         .dialect_config(DialectConfig {
             sqlite_version: version,
@@ -57,7 +57,7 @@ fn tokenize_latest(sql: &str) -> Vec<(u32, String)> {
 
 /// Parse SQL with a specific SQLite version and return whether it succeeded.
 fn parses_ok_at_version(sql: &str, version: i32) -> bool {
-    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let dialect = syntaqlite::dialect::sqlite();
     let mut parser = syntaqlite::raw::RawParser::builder(dialect)
         .dialect_config(DialectConfig {
             sqlite_version: version,

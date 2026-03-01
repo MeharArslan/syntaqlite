@@ -24,7 +24,7 @@ use std::ops::Range;
 use crate::dialect::TokenCategory;
 use crate::dialect::Dialect;
 use crate::parser::ParseError;
-use crate::parser::{BaseTokenizer, LowLevelParser};
+use crate::parser::{RawTokenizer, RawIncrementalParser};
 use crate::validation::{Diagnostic, DiagnosticMessage, FunctionDef, ValidationConfig};
 
 use offset_map::OffsetMap;
@@ -167,8 +167,8 @@ pub fn fragment_semantic_tokens(
     dialect: &Dialect,
     fragment: &EmbeddedFragment,
 ) -> Vec<(usize, usize, TokenCategory)> {
-    let mut parser = LowLevelParser::builder(dialect).build();
-    let mut tokenizer = BaseTokenizer::builder(*dialect).build();
+    let mut parser = RawIncrementalParser::builder(dialect).build();
+    let mut tokenizer = RawTokenizer::builder(*dialect).build();
 
     // Tokenize the processed SQL text.
     let tokens: Vec<(u32, usize, usize)> = {
@@ -207,7 +207,7 @@ pub fn fragment_semantic_tokens(
     let mut result = Vec::new();
 
     // Classify non-whitespace, non-comment tokens using parser flags.
-    for tp in cursor.base().tokens() {
+    for tp in cursor.state().tokens() {
         let cat = dialect.classify_token(tp.type_, tp.flags);
         if cat == TokenCategory::Other {
             continue;
@@ -216,7 +216,7 @@ pub fn fragment_semantic_tokens(
     }
 
     // Add comments as Comment tokens.
-    for c in cursor.base().comments() {
+    for c in cursor.state().comments() {
         result.push((c.offset as usize, c.length as usize, TokenCategory::Comment));
     }
 
@@ -232,8 +232,8 @@ fn validate_fragment(
     functions: &[FunctionDef],
     config: &ValidationConfig,
 ) -> Vec<Diagnostic> {
-    let mut parser = LowLevelParser::builder(dialect).build();
-    let mut tokenizer = BaseTokenizer::builder(*dialect).build();
+    let mut parser = RawIncrementalParser::builder(dialect).build();
+    let mut tokenizer = RawTokenizer::builder(*dialect).build();
 
     // Tokenize the processed SQL text.
     let tokens: Vec<(u32, usize, usize)> = {
@@ -279,7 +279,7 @@ fn validate_fragment(
 
     // After finish(), the cursor's reader still points at valid arena data.
     crate::validation::validate_parse_results(
-        cursor.base().reader(),
+        cursor.state().reader(),
         &results,
         &fragment.sql_text,
         dialect,
@@ -309,7 +309,7 @@ mod tests {
     use crate::validation::Severity;
 
     fn dialect() -> Dialect<'static> {
-        *crate::sqlite::low_level::dialect()
+        *crate::sqlite::DIALECT
     }
 
     fn default_config() -> ValidationConfig {

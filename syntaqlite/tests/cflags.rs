@@ -24,7 +24,7 @@
 //! which uses a parser flag rather than keyword suppression.
 
 use syntaqlite::dialect::DialectConfig;
-use syntaqlite::sqlite::low_level::TokenType;
+use syntaqlite::TokenType;
 
 const fn tk(t: TokenType) -> u32 {
     t as u32
@@ -36,7 +36,7 @@ const fn tk(t: TokenType) -> u32 {
 
 /// Tokenize SQL with cflags set (latest version).
 fn tokenize_with_cflags(sql: &str, cflag_indices: &[u32]) -> Vec<(u32, String)> {
-    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let dialect = syntaqlite::dialect::sqlite();
     let mut config = DialectConfig {
         sqlite_version: i32::MAX,
         ..Default::default()
@@ -64,7 +64,7 @@ fn tokenize_at_version_cflags(
     version: i32,
     cflag_indices: &[u32],
 ) -> Vec<(u32, String)> {
-    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let dialect = syntaqlite::dialect::sqlite();
     let mut config = DialectConfig {
         sqlite_version: version,
         ..Default::default()
@@ -83,7 +83,7 @@ fn tokenize_at_version_cflags(
 
 /// Parse SQL with cflags set (latest version) and return whether it succeeded.
 fn parses_ok_with_cflags(sql: &str, cflag_indices: &[u32]) -> bool {
-    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let dialect = syntaqlite::dialect::sqlite();
     let mut config = DialectConfig {
         sqlite_version: i32::MAX,
         ..Default::default()

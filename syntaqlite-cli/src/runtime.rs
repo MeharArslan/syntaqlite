@@ -11,7 +11,7 @@ use clap::ValueEnum;
 use syntaqlite::dialect::Dialect;
 use syntaqlite::fmt::{FormatConfig, KeywordCase};
 use syntaqlite::raw::{FfiDialect, ParseError};
-use syntaqlite::raw::RawParser as BaseParser;
+use syntaqlite::raw::RawParser;
 use syntaqlite::validation::{Severity, ValidationConfig};
 use syntaqlite::Formatter;
 
@@ -337,7 +337,7 @@ fn cmd_fmt(
 }
 
 fn dump_ast_source(dialect: &Dialect, source: &str) -> (String, Vec<ParseError>) {
-    let mut parser = BaseParser::builder(dialect).build();
+    let mut parser = RawParser::builder(dialect).build();
     let mut cursor = parser.parse(source);
     let mut out = String::new();
     let mut errors = Vec::new();
@@ -443,7 +443,7 @@ fn render_diagnostics(
 
 /// Validate a source string and print diagnostics. Returns `true` if any errors were found.
 fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &ValidationConfig) -> bool {
-    let mut parser = BaseParser::builder(dialect).build();
+    let mut parser = RawParser::builder(dialect).build();
     let mut cursor = parser.parse(source);
 
     let results: Vec<_> = (&mut cursor).map(|r| r.map(|nr| nr.id())).collect();

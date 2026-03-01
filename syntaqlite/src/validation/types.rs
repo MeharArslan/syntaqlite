@@ -85,51 +85,11 @@ impl DiagnosticMessage {
     ///
     /// This is the machine-readable detail object; callers also emit
     /// `"message"` with the [`fmt::Display`](std::fmt::Display) string alongside it.
+    #[cfg(feature = "json")]
     pub fn write_json(&self, out: &mut String) {
-        match self {
-            Self::UnknownTable { name } => {
-                out.push_str("{\"kind\":\"unknown_table\",\"name\":\"");
-                json_escape(out, name);
-                out.push_str("\"}");
-            }
-            Self::UnknownColumn { column, table } => {
-                out.push_str("{\"kind\":\"unknown_column\",\"column\":\"");
-                json_escape(out, column);
-                out.push('"');
-                if let Some(t) = table {
-                    out.push_str(",\"table\":\"");
-                    json_escape(out, t);
-                    out.push('"');
-                }
-                out.push('}');
-            }
-            Self::UnknownFunction { name } => {
-                out.push_str("{\"kind\":\"unknown_function\",\"name\":\"");
-                json_escape(out, name);
-                out.push_str("\"}");
-            }
-            Self::FunctionArity {
-                name,
-                expected,
-                got,
-            } => {
-                out.push_str("{\"kind\":\"function_arity\",\"name\":\"");
-                json_escape(out, name);
-                out.push_str("\",\"expected\":[");
-                for (i, n) in expected.iter().enumerate() {
-                    if i > 0 {
-                        out.push(',');
-                    }
-                    out.push_str(&n.to_string());
-                }
-                out.push_str("],\"got\":");
-                out.push_str(&got.to_string());
-                out.push('}');
-            }
-            Self::Other(_) => {
-                out.push_str("null");
-            }
-        }
+        out.push_str(
+            &serde_json::to_string(self).expect("DiagnosticMessage serialization failed"),
+        );
     }
 }
 
@@ -150,55 +110,112 @@ impl std::fmt::Display for Help {
 
 impl Help {
     /// Write the structured JSON representation into `out`.
+    #[cfg(feature = "json")]
     pub fn write_json(&self, out: &mut String) {
-        match self {
-            Help::Suggestion(s) => {
-                out.push_str("{\"kind\":\"suggestion\",\"value\":\"");
-                json_escape(out, s);
-                out.push_str("\"}");
-            }
-        }
-    }
-}
-
-/// Escape a string for JSON output (no serde in WASM).
-fn json_escape(out: &mut String, s: &str) {
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if c < '\x20' => {
-                out.push_str(&format!("\\u{:04x}", c as u32));
-            }
-            c => out.push(c),
-        }
+        out.push_str(&serde_json::to_string(self).expect("Help serialization failed"));
     }
 }
 
 impl Diagnostic {
     /// Write the full diagnostic as a JSON object into `out`.
+    #[cfg(feature = "json")]
     pub fn write_json(&self, out: &mut String) {
-        out.push_str("{\"startOffset\":");
-        out.push_str(&self.start_offset.to_string());
-        out.push_str(",\"endOffset\":");
-        out.push_str(&self.end_offset.to_string());
-        out.push_str(",\"message\":\"");
-        json_escape(out, &self.message.to_string());
-        out.push_str("\",\"detail\":");
-        self.message.write_json(out);
-        out.push_str(",\"severity\":\"");
-        out.push_str(self.severity.json_key());
-        out.push('"');
-        if let Some(ref help) = self.help {
-            out.push_str(",\"help\":\"");
-            json_escape(out, &help.to_string());
-            out.push_str("\",\"helpDetail\":");
-            help.write_json(out);
+        out.push_str(&serde_json::to_string(self).expect("Diagnostic serialization failed"));
+    }
+}
+
+// ── JSON serialization (feature = "json") ────────────────────────────
+
+#[cfg(feature = "json")]
+impl serde::Serialize for DiagnosticMessage {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        match self {
+            Self::Other(_) => serializer.serialize_none(),
+            Self::UnknownTable { name } => {
+                let mut m = serializer.serialize_map(Some(2))?;
+                m.serialize_entry("kind", "unknown_table")?;
+                m.serialize_entry("name", name)?;
+                m.end()
+            }
+            Self::UnknownColumn { column, table } => {
+                let len = if table.is_some() { 3 } else { 2 };
+                let mut m = serializer.serialize_map(Some(len))?;
+                m.serialize_entry("kind", "unknown_column")?;
+                m.serialize_entry("column", column)?;
+                if let Some(t) = table {
+                    m.serialize_entry("table", t)?;
+                }
+                m.end()
+            }
+            Self::UnknownFunction { name } => {
+                let mut m = serializer.serialize_map(Some(2))?;
+                m.serialize_entry("kind", "unknown_function")?;
+                m.serialize_entry("name", name)?;
+                m.end()
+            }
+            Self::FunctionArity {
+                name,
+                expected,
+                got,
+            } => {
+                let mut m = serializer.serialize_map(Some(4))?;
+                m.serialize_entry("kind", "function_arity")?;
+                m.serialize_entry("name", name)?;
+                m.serialize_entry("expected", expected)?;
+                m.serialize_entry("got", got)?;
+                m.end()
+            }
         }
-        out.push('}');
+    }
+}
+
+#[cfg(feature = "json")]
+impl serde::Serialize for Help {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        match self {
+            Self::Suggestion(value) => {
+                let mut m = serializer.serialize_map(Some(2))?;
+                m.serialize_entry("kind", "suggestion")?;
+                m.serialize_entry("value", value)?;
+                m.end()
+            }
+        }
+    }
+}
+
+/// Serializes as a lowercase string (e.g. `"error"`, `"warning"`).
+#[cfg(feature = "json")]
+impl serde::Serialize for Severity {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(match self {
+            Self::Error => "error",
+            Self::Warning => "warning",
+            Self::Info => "info",
+            Self::Hint => "hint",
+        })
+    }
+}
+
+/// Serializes with a distinct `"message"` (Display) and `"detail"` (structured)
+/// field, matching the shape expected by LSP and WASM consumers.
+#[cfg(feature = "json")]
+impl serde::Serialize for Diagnostic {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeMap;
+        let len = if self.help.is_some() { 7 } else { 5 };
+        let mut m = serializer.serialize_map(Some(len))?;
+        m.serialize_entry("startOffset", &self.start_offset)?;
+        m.serialize_entry("endOffset", &self.end_offset)?;
+        m.serialize_entry("message", &self.message.to_string())?;
+        m.serialize_entry("detail", &self.message)?;
+        m.serialize_entry("severity", &self.severity)?;
+        if let Some(ref help) = self.help {
+            m.serialize_entry("help", &help.to_string())?;
+            m.serialize_entry("helpDetail", help)?;
+        }
+        m.end()
     }
 }
 
@@ -209,18 +226,6 @@ pub enum Severity {
     Warning,
     Info,
     Hint,
-}
-
-impl Severity {
-    /// JSON string key for this severity.
-    pub fn json_key(self) -> &'static str {
-        match self {
-            Self::Error => "error",
-            Self::Warning => "warning",
-            Self::Info => "info",
-            Self::Hint => "hint",
-        }
-    }
 }
 
 /// Whether a [`RelationDef`] represents a base table or a view.
@@ -310,7 +315,7 @@ impl SessionContext {
     /// `CREATE VIEW … AS SELECT` are expanded using tables/views defined
     /// by earlier statements in the same input.
     pub fn from_stmts<'a>(
-        reader: &'a crate::parser::NodeReader<'a>,
+        reader: &'a crate::parser::RawNodeReader<'a>,
         stmt_ids: &[crate::parser::NodeId],
         dialect: &crate::Dialect<'_>,
     ) -> Self {
@@ -334,7 +339,7 @@ impl SessionContext {
         source: &str,
         dialect_config: Option<crate::dialect::ffi::DialectConfig>,
     ) -> Self {
-        let mut builder = crate::parser::BaseParser::builder(dialect);
+        let mut builder = crate::parser::RawParser::builder(dialect);
         if let Some(dc) = dialect_config {
             builder = builder.dialect_config(dc);
         }
@@ -437,7 +442,7 @@ impl DocumentContext {
     /// `db_table` lives in the session (live DB) context.
     pub fn accumulate(
         &mut self,
-        reader: &crate::parser::NodeReader<'_>,
+        reader: &crate::parser::RawNodeReader<'_>,
         stmt_id: crate::parser::NodeId,
         dialect: &crate::Dialect<'_>,
         session: Option<&SessionContext>,
@@ -545,7 +550,7 @@ impl DocumentContext {
 /// Walks list children, extracting `column_name`, `type_name`, and constraint
 /// information (PRIMARY KEY, NOT NULL) from each child node's field metadata.
 fn columns_from_column_list(
-    reader: &crate::parser::NodeReader<'_>,
+    reader: &crate::parser::RawNodeReader<'_>,
     list_id: crate::parser::NodeId,
     dialect: &crate::Dialect<'_>,
     out: &mut Vec<ColumnDef>,
@@ -624,7 +629,7 @@ fn columns_from_column_list(
 
 /// Walk a constraint list to detect PRIMARY KEY and NOT NULL constraints.
 fn extract_column_constraints(
-    reader: &crate::parser::NodeReader<'_>,
+    reader: &crate::parser::RawNodeReader<'_>,
     list_id: crate::parser::NodeId,
     dialect: &crate::Dialect<'_>,
     is_primary_key: &mut bool,
@@ -820,8 +825,8 @@ mod tests {
 
     #[test]
     fn from_stmts_creates_session_context() {
-        let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
+        let dialect = &crate::sqlite::DIALECT;
+        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let sql = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);";
         let mut cursor = parser.parse(sql);
 
@@ -855,8 +860,8 @@ mod tests {
 
     #[test]
     fn from_stmts_create_table_as_select() {
-        let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
+        let dialect = &crate::sqlite::DIALECT;
+        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let sql = "CREATE TABLE orders AS SELECT order_id, total AS amount FROM src;";
         let mut cursor = parser.parse(sql);
 
@@ -877,8 +882,8 @@ mod tests {
 
     #[test]
     fn from_stmts_star_expands_from_earlier_table() {
-        let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
+        let dialect = &crate::sqlite::DIALECT;
+        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let sql = "\
             CREATE TABLE slice (order_id INTEGER, status TEXT);\n\
             CREATE TABLE orders AS SELECT * FROM slice;\n";
@@ -901,8 +906,8 @@ mod tests {
 
     #[test]
     fn from_stmts_qualified_star_expands_correct_table() {
-        let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
+        let dialect = &crate::sqlite::DIALECT;
+        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let sql = "\
             CREATE TABLE a (x INTEGER);\n\
             CREATE TABLE b (y TEXT);\n\
@@ -924,8 +929,8 @@ mod tests {
 
     #[test]
     fn from_stmts_star_with_alias() {
-        let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
+        let dialect = &crate::sqlite::DIALECT;
+        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let sql = "\
             CREATE TABLE src (id INTEGER, val TEXT);\n\
             CREATE TABLE dst AS SELECT t.* FROM src AS t;\n";
@@ -947,8 +952,8 @@ mod tests {
 
     #[test]
     fn from_stmts_star_through_subquery() {
-        let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
+        let dialect = &crate::sqlite::DIALECT;
+        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let sql = "\
             CREATE TABLE slice (order_id INTEGER, customer_id TEXT);\n\
             CREATE TABLE orders AS SELECT * FROM (SELECT * FROM slice);\n";
@@ -971,8 +976,8 @@ mod tests {
 
     #[test]
     fn from_stmts_handles_views() {
-        let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
+        let dialect = &crate::sqlite::DIALECT;
+        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let sql = "CREATE VIEW active_users AS SELECT id, name FROM users WHERE active = 1;";
         let mut cursor = parser.parse(sql);
 
@@ -993,8 +998,8 @@ mod tests {
 
     #[test]
     fn from_stmts_view_star_expands_from_table() {
-        let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
+        let dialect = &crate::sqlite::DIALECT;
+        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let sql = "\
             CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\n\
             CREATE VIEW all_users AS SELECT * FROM users;\n";

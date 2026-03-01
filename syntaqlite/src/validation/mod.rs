@@ -20,7 +20,7 @@ mod scope;
 mod walker;
 
 use crate::ast_traits::AstTypes;
-use crate::parser::{FromArena, NodeId, NodeReader, ParseError};
+use crate::parser::{FromArena, NodeId, RawNodeReader, ParseError};
 
 use scope::ScopeStack;
 
@@ -69,7 +69,7 @@ impl ValidationConfig {
 /// Resolution order: SQL scope stack → `document` (DDL from earlier in the
 /// document) → `session` (externally-provided ambient schema).
 pub fn validate_statement_dialect<'a, A: AstTypes<'a>>(
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     stmt_id: NodeId,
     dialect: crate::Dialect<'_>,
     session: Option<&SessionContext>,
@@ -93,16 +93,16 @@ pub fn validate_statement_dialect<'a, A: AstTypes<'a>>(
 /// the SQLite AST types and dialect.
 #[cfg(feature = "sqlite")]
 pub fn validate_statement<'a>(
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     stmt_id: NodeId,
     session: Option<&SessionContext>,
     document: Option<&DocumentContext>,
     functions: &[FunctionDef],
     config: &ValidationConfig,
 ) -> Vec<Diagnostic> {
-    let dialect = crate::sqlite::low_level::dialect();
+    let dialect = *crate::sqlite::DIALECT;
     validate_statement_dialect::<crate::sqlite::ast::SqliteAst>(
-        reader, stmt_id, *dialect, session, document, functions, config,
+        reader, stmt_id, dialect, session, document, functions, config,
     )
 }
 
@@ -111,7 +111,7 @@ pub fn validate_statement<'a>(
 /// Each statement is validated against the schema accumulated from prior
 /// statements, then contributes its own DDL to the document context.
 pub fn validate_document(
-    reader: &NodeReader<'_>,
+    reader: &RawNodeReader<'_>,
     stmt_ids: &[NodeId],
     dialect: &crate::Dialect<'_>,
     session: Option<&SessionContext>,
@@ -171,7 +171,7 @@ fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
 
 /// High-level SQL validator. Created from a `Dialect`, reusable across inputs.
 ///
-/// Owns a [`BaseParser`](crate::parser::session::BaseParser) internally and builds the function catalog
+/// Owns a [`RawParser`](crate::parser::session::RawParser) internally and builds the function catalog
 /// once at construction. Call [`validate`](Validator::validate) to parse and
 /// validate SQL in a single step.
 ///
@@ -185,7 +185,7 @@ fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
 /// assert!(!diags.is_empty());
 /// ```
 pub struct Validator<'d> {
-    parser: crate::parser::BaseParser<'d>,
+    parser: crate::parser::RawParser<'d>,
     dialect: crate::Dialect<'d>,
     functions: Vec<FunctionDef>,
 }
@@ -263,7 +263,7 @@ impl<'d> ValidatorBuilder<'d> {
     /// Set the function catalog used for function-name/arity validation.
     ///
     /// By default the list is empty. Use
-    /// [`sqlite::functions::available_functions`](crate::sqlite::functions::available_functions)
+    /// [`sqlite_function_defs`](crate::embedded::sqlite_function_defs)
     /// to populate it with the SQLite built-in catalog.
     pub fn functions(mut self, functions: Vec<FunctionDef>) -> Self {
         self.functions = functions;
@@ -278,7 +278,7 @@ impl<'d> ValidatorBuilder<'d> {
 
     /// Build the validator.
     pub fn build(self) -> Validator<'d> {
-        let mut builder = crate::parser::BaseParser::builder(self.dialect);
+        let mut builder = crate::parser::RawParser::builder(self.dialect);
         if let Some(dc) = self.dialect_config {
             builder = builder.dialect_config(dc);
         }
@@ -297,7 +297,7 @@ impl<'d> ValidatorBuilder<'d> {
 /// roots (from `Ok` values and from recovered roots in `Err` values),
 /// then runs [`validate_document`] on the collected roots.
 pub fn validate_parse_results(
-    reader: &NodeReader<'_>,
+    reader: &RawNodeReader<'_>,
     results: &[Result<NodeId, ParseError>],
     source: &str,
     dialect: &crate::Dialect<'_>,

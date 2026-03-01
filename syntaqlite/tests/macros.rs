@@ -10,7 +10,7 @@ fn formatter() -> syntaqlite::Formatter<'static> {
 
 // Token type constants (raw u32 values for the runtime API).
 mod tk {
-    use syntaqlite::sqlite::low_level::TokenType;
+    use syntaqlite::TokenType;
     pub const SELECT: u32 = TokenType::Select as u32;
     pub const INTEGER: u32 = TokenType::Integer as u32;
     pub const PLUS: u32 = TokenType::Plus as u32;

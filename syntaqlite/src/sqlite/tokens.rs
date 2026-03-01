@@ -403,3 +403,9 @@ impl TryFrom<u32> for TokenType {
         Self::from_raw(raw).ok_or(())
     }
 }
+
+impl crate::parser::typed::DialectTokenType for TokenType {
+    fn from_token_type(raw: u32) -> Option<Self> {
+        Self::from_raw(raw)
+    }
+}

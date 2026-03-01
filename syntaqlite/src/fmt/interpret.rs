@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use crate::dialect::Dialect;
-use crate::parser::{FieldVal, Fields, NodeId, NodeReader};
+use crate::parser::{FieldVal, Fields, NodeId, RawNodeReader};
 
 use super::bytecode::opcodes;
 use super::comment::{CommentCtx, DrainResult};
@@ -12,7 +12,7 @@ use super::doc::{DocArena, DocId, NIL_DOC};
 /// Bundles the state that is constant across all nodes in a single format call.
 pub(crate) struct FmtCtx<'a> {
     pub dialect: Dialect<'a>,
-    pub reader: NodeReader<'a>,
+    pub reader: RawNodeReader<'a>,
     pub comment_ctx: Option<&'a CommentCtx<'a>>,
 }
 

@@ -13,7 +13,7 @@ use syntaqlite::embedded::{self, EmbeddedFragment};
 use syntaqlite::embedded::offset_map::OffsetMap;
 use syntaqlite::raw::FfiDialect;
 use syntaqlite::fmt::{FormatConfig, KeywordCase};
-use syntaqlite::raw::RawParser as BaseParser;
+use syntaqlite::raw::RawParser;
 use syntaqlite::validation::ValidationConfig;
 use syntaqlite::Formatter;
 
@@ -92,23 +92,6 @@ fn resolve_dialect() -> Result<Dialect<'static>, String> {
 
 // ── JSON AST dump ────────────────────────────────────────────────────
 
-fn json_escape(out: &mut String, s: &str) {
-    for ch in s.chars() {
-        match ch {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if c < '\x20' => {
-                use std::fmt::Write;
-                let _ = write!(out, "\\u{:04x}", c as u32);
-            }
-            c => out.push(c),
-        }
-    }
-}
-
 fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let dialect = match resolve_dialect() {
         Ok(d) => d,
@@ -125,7 +108,7 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut parser = BaseParser::builder(&dialect).dialect_config(get_dialect_config()).build();
+    let mut parser = RawParser::builder(&dialect).dialect_config(get_dialect_config()).build();
     let mut cursor = parser.parse(&source);
 
     let mut nodes = Vec::new();
@@ -139,6 +122,8 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
         }
     }
 
+    // dump_json writes a raw JSON fragment per node; wrap in a JSON array manually
+    // since the node dump format is not serde-based.
     let mut out = String::new();
     out.push('[');
     for (i, node) in nodes.iter().enumerate() {
@@ -168,7 +153,7 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut parser = BaseParser::builder(&dialect).dialect_config(get_dialect_config()).build();
+    let mut parser = RawParser::builder(&dialect).dialect_config(get_dialect_config()).build();
     let mut cursor = parser.parse(&source);
     let mut out = String::new();
     let mut count = 0;
@@ -611,25 +596,26 @@ pub extern "C" fn wasm_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
     }
 }
 
+#[derive(serde::Serialize)]
+struct CflagJson<'a> {
+    name: &'a str,
+    #[serde(rename = "minVersion")]
+    min_version: i32,
+    category: &'a str,
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_get_cflag_list() -> i32 {
     let table = cflag_table();
-    let mut out = String::new();
-    out.push('[');
-    for (i, entry) in table.iter().enumerate() {
-        if i > 0 {
-            out.push(',');
-        }
-        out.push_str("{\"name\":\"");
-        json_escape(&mut out, &entry.suffix);
-        out.push_str("\",\"minVersion\":");
-        out.push_str(&entry.min_version.to_string());
-        out.push_str(",\"category\":\"");
-        json_escape(&mut out, &entry.category);
-        out.push_str("\"}");
-    }
-    out.push(']');
-    set_result(&out);
+    let items: Vec<CflagJson> = table
+        .iter()
+        .map(|e| CflagJson {
+            name: &e.suffix,
+            min_version: e.min_version,
+            category: &e.category,
+        })
+        .collect();
+    set_result(&serde_json::to_string(&items).expect("cflag list serialization failed"));
     0
 }
 
@@ -693,21 +679,9 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
     let validation_config = ValidationConfig::default();
     let validation_diags = lsp.host.validate(WASM_DOC_URI, &validation_config);
 
-    let total_count = parse_diags.len() + validation_diags.len();
-
-    // Serialize diagnostics as JSON array.
-    let mut out = String::new();
-    out.push('[');
-    let mut first = true;
-    for d in parse_diags.iter().chain(validation_diags.iter()) {
-        if !first {
-            out.push(',');
-        }
-        first = false;
-        d.write_json(&mut out);
-    }
-    out.push(']');
-    set_result(&out);
+    let all_diags: Vec<_> = parse_diags.iter().chain(validation_diags.iter()).collect();
+    let total_count = all_diags.len();
+    set_result(&serde_json::to_string(&all_diags).expect("diagnostic serialization failed"));
 
     // Put the host back for reuse.
     store_lsp_host(lsp);
@@ -931,38 +905,39 @@ fn run_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
 
     let count = fragments.len() as i32;
 
-    // Serialize as JSON array.
-    let mut out = String::new();
-    out.push('[');
-    for (i, f) in fragments.iter().enumerate() {
-        if i > 0 {
-            out.push(',');
-        }
-        out.push_str("{\"sqlRange\":[");
-        out.push_str(&f.sql_range.start.to_string());
-        out.push(',');
-        out.push_str(&f.sql_range.end.to_string());
-        out.push_str("],\"sqlText\":\"");
-        json_escape(&mut out, &f.sql_text);
-        out.push_str("\",\"holes\":[");
-        for (j, h) in f.holes.iter().enumerate() {
-            if j > 0 {
-                out.push(',');
-            }
-            out.push_str("{\"hostRange\":[");
-            out.push_str(&h.host_range.start.to_string());
-            out.push(',');
-            out.push_str(&h.host_range.end.to_string());
-            out.push_str("],\"sqlOffset\":");
-            out.push_str(&h.sql_offset.to_string());
-            out.push_str(",\"placeholder\":\"");
-            json_escape(&mut out, &h.placeholder);
-            out.push_str("\"}");
-        }
-        out.push_str("]}");
+    #[derive(serde::Serialize)]
+    struct HoleJson {
+        #[serde(rename = "hostRange")]
+        host_range: [usize; 2],
+        sql_offset: usize,
+        placeholder: String,
     }
-    out.push(']');
-    set_result(&out);
+
+    #[derive(serde::Serialize)]
+    struct FragmentJson {
+        #[serde(rename = "sqlRange")]
+        sql_range: [usize; 2],
+        sql_text: String,
+        holes: Vec<HoleJson>,
+    }
+
+    let items: Vec<FragmentJson> = fragments
+        .iter()
+        .map(|f| FragmentJson {
+            sql_range: [f.sql_range.start, f.sql_range.end],
+            sql_text: f.sql_text.clone(),
+            holes: f
+                .holes
+                .iter()
+                .map(|h| HoleJson {
+                    host_range: [h.host_range.start, h.host_range.end],
+                    sql_offset: h.sql_offset,
+                    placeholder: h.placeholder.clone(),
+                })
+                .collect(),
+        })
+        .collect();
+    set_result(&serde_json::to_string(&items).expect("fragment serialization failed"));
 
     count
 }
@@ -1001,20 +976,7 @@ fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32, _version: u32) -> i32
         .collect();
 
     let total = diags.len() as i32;
-
-    let mut out = String::new();
-    out.push('[');
-    let mut first = true;
-    for d in &diags {
-        if !first {
-            out.push(',');
-        }
-        first = false;
-        d.write_json(&mut out);
-    }
-    out.push(']');
-    set_result(&out);
-
+    set_result(&serde_json::to_string(&diags).expect("diagnostic serialization failed"));
     total
 }
 

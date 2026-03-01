@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite::IncrementalParser;
-use syntaqlite::sqlite::ast::{FromArena, Stmt};
-use syntaqlite::sqlite::low_level::TokenType;
+use syntaqlite::ast::{FromArena, Stmt};
+use syntaqlite::TokenType;
 
 /// Feed tokens for "SELECT 1" via the low-level API and verify same AST
 /// as the high-level parse.
@@ -253,7 +253,7 @@ fn sqlite_type_tokens_are_marked_as_type() {
     use syntaqlite::raw::{RawParser, TOKEN_FLAG_AS_TYPE};
 
     let source = "CREATE TABLE t(a int, b TEXT); SELECT CAST(a AS varchar(10)) FROM t";
-    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let dialect = syntaqlite::dialect::sqlite();
     let mut parser = RawParser::builder(dialect)
         .collect_tokens(true)
         .build();

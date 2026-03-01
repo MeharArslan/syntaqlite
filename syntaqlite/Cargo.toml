@@ -12,6 +12,7 @@ validation = []              # semantic validation (schema checks, fuzzy suggest
 embedded = ["validation"]    # embedded SQL extraction from host languages (Python f-strings, etc.)
 lsp = ["fmt", "validation"]  # LSP analysis host (needs fmt for formatting)
 sqlite = ["syntaqlite-parser-sys/sqlite"]  # SQLite dialect (grammar, tokens, cflags, functions)
+json = ["dep:serde", "dep:serde_json"]   # JSON serialization for diagnostics and related types
 
 # Pin version/cflags at compile time for dead-code elimination.
 # Values come from env vars, using the same names as the C defines:
@@ -27,3 +28,5 @@ pin-cflags = ["sqlite", "syntaqlite-parser-sys/pin-cflags"]    # Pin compile-tim
 
 [dependencies]
 syntaqlite-parser-sys = { path = "../syntaqlite-parser-sys", default-features = false }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_json = { version = "1", optional = true }

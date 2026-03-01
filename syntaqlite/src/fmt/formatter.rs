@@ -7,12 +7,12 @@ use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
 use crate::dialect::Dialect;
 use crate::parser::ffi::MacroRegion;
-use crate::parser::{BaseParser, CommentKind, Fields};
+use crate::parser::{RawParser, CommentKind, Fields};
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {
     dialect: Dialect<'d>,
-    parser: BaseParser<'d>,
+    parser: RawParser<'d>,
     config: FormatConfig,
     /// Reusable scratch arena — cleared between format calls to avoid
     /// re-allocating the backing Vec.
@@ -64,10 +64,10 @@ impl<'d> Formatter<'d> {
             roots.push(result?.id());
         }
 
-        let base = cursor.base();
-        let comments = base.comments();
-        let tokens = base.tokens();
-        let source = base.source();
+        let state = cursor.state();
+        let comments = state.comments();
+        let tokens = state.tokens();
+        let source = state.source();
 
         if roots.is_empty() {
             return Ok(String::new());
@@ -97,7 +97,7 @@ impl<'d> Formatter<'d> {
 
             let ctx = FmtCtx {
                 dialect: self.dialect,
-                reader: base.reader,
+                reader: state.reader,
                 comment_ctx: comment_ctx_ref,
             };
             let mut consumed = 0u64;
@@ -192,7 +192,7 @@ impl<'d> FormatterBuilder<'d> {
             self.dialect.has_fmt_data(),
             "dialect has no formatter bytecode — ensure .synq definitions include fmt blocks",
         );
-        let mut parser_builder = BaseParser::builder(self.dialect).collect_tokens(true);
+        let mut parser_builder = RawParser::builder(self.dialect).collect_tokens(true);
         if let Some(dc) = self.dialect_config {
             parser_builder = parser_builder.dialect_config(dc);
         }
@@ -346,5 +346,5 @@ pub(crate) fn extract_fields<'a>(
 ) -> Fields<'a> {
     // SAFETY: caller guarantees ptr is a valid arena pointer for a node with
     // the given tag; delegating to the shared implementation.
-    unsafe { crate::extract_fields(dialect, ptr, tag, source) }
+    unsafe { crate::dialect::extract_fields(dialect, ptr, tag, source) }
 }

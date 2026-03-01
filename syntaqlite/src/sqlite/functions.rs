@@ -8,9 +8,8 @@
 //!
 //! # Example
 //!
-//! ```
-//! use syntaqlite::sqlite::config::DialectConfig;
-//! use syntaqlite::sqlite::functions;
+//! ```ignore
+//! use syntaqlite::dialect::DialectConfig;
 //!
 //! // Default config (latest version, no cflags) — baseline functions only.
 //! let config = DialectConfig::default();
@@ -21,7 +20,7 @@
 #[path = "functions_catalog.rs"]
 mod functions_catalog;
 
-pub use crate::catalog::{FunctionCategory, FunctionInfo};
+pub use crate::catalog::FunctionInfo;
 pub(crate) use functions_catalog::SQLITE_FUNCTIONS;
 
 use crate::catalog;

@@ -1,13 +1,13 @@
 /// Integration tests exercising the generated dispatch table + ctx
 /// with the hand-written format_node and renderer.
-use syntaqlite::sqlite::config::{FormatConfig, KeywordCase};
+use syntaqlite::fmt::{FormatConfig, KeywordCase};
 
 fn format_sql(sql: &str) -> String {
     format_sql_with(sql, FormatConfig::default())
 }
 
 fn format_sql_with(sql: &str, config: FormatConfig) -> String {
-    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let dialect = syntaqlite::dialect::sqlite();
     let mut f = syntaqlite::Formatter::builder(dialect)
         .format_config(config)
         .build();
@@ -77,7 +77,7 @@ fn format_sql_with_cflags(sql: &str, config: FormatConfig, cflag_indices: &[u32]
     for &idx in cflag_indices {
         dc.cflags.set(idx);
     }
-    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let dialect = syntaqlite::dialect::sqlite();
     let mut f = syntaqlite::Formatter::builder(dialect)
         .format_config(config)
         .dialect_config(dc)

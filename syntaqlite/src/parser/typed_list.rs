@@ -4,7 +4,7 @@
 use std::marker::PhantomData;
 
 use super::nodes::{NodeId, NodeList};
-use super::session::NodeReader;
+use super::session::RawNodeReader;
 
 /// Resolve a value from the parser arena by `NodeId`.
 ///
@@ -12,7 +12,7 @@ use super::session::NodeReader;
 /// generic containers like `TypedList` can resolve children without
 /// dialect-specific code.
 pub trait FromArena<'a>: Sized {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self>;
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self>;
 }
 
 /// A typed, read-only view over a `NodeList` in the parser arena.
@@ -22,7 +22,7 @@ pub trait FromArena<'a>: Sized {
 #[derive(Clone, Copy)]
 pub struct TypedList<'a, T> {
     raw: &'a NodeList,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     _phantom: PhantomData<fn() -> T>,
 }
 
@@ -36,7 +36,7 @@ impl<T> std::fmt::Debug for TypedList<'_, T> {
 
 impl<'a, T> TypedList<'a, T> {
     /// Construct a `TypedList` from a raw `NodeList` reference and reader.
-    pub fn new(raw: &'a NodeList, reader: &'a NodeReader<'a>) -> Self {
+    pub fn new(raw: &'a NodeList, reader: &'a RawNodeReader<'a>) -> Self {
         TypedList {
             raw,
             reader,
@@ -74,7 +74,7 @@ impl<'a, T: FromArena<'a>> TypedList<'a, T> {
 
 /// Blanket `FromArena` for `TypedList` — resolves the `NodeId` as a list node.
 impl<'a, T> FromArena<'a> for TypedList<'a, T> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_list(id)?;
         Some(TypedList::new(raw, reader))
     }

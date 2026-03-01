@@ -6,7 +6,7 @@
 pub(crate) use crate::parser::nodes::NodeList;
 pub use crate::parser::ffi::{Comment, CommentKind};
 pub use crate::parser::nodes::{NodeId, SourceSpan};
-pub use crate::parser::session::NodeReader;
+pub use crate::parser::session::RawNodeReader;
 pub use crate::parser::typed_list::{FromArena, TypedList};
 
 pub use crate::ast_traits::*;
@@ -207,7 +207,7 @@ pub enum Select<'a> {
 }
 
 impl<'a> FromArena<'a> for Select<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::SelectStmt(n) => Select::SelectStmt(n),
@@ -229,7 +229,7 @@ pub enum InExprSource<'a> {
 }
 
 impl<'a> FromArena<'a> for InExprSource<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::ExprList(n) => InExprSource::ExprList(n),
@@ -265,7 +265,7 @@ pub enum Expr<'a> {
 }
 
 impl<'a> FromArena<'a> for Expr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::BinaryExpr(n) => Expr::BinaryExpr(n),
@@ -321,7 +321,7 @@ pub enum Stmt<'a> {
 }
 
 impl<'a> FromArena<'a> for Stmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::SelectStmt(n) => Stmt::SelectStmt(n),
@@ -363,7 +363,7 @@ pub enum TableSource<'a> {
 }
 
 impl<'a> FromArena<'a> for TableSource<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::TableRef(n) => TableSource::TableRef(n),
@@ -378,7 +378,7 @@ impl<'a> FromArena<'a> for TableSource<'a> {
 #[derive(Clone, Copy)]
 pub struct AggregateFunctionCall<'a> {
     raw: &'a crate::sqlite::ffi::AggregateFunctionCall,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -422,7 +422,7 @@ impl<'a> AggregateFunctionCall<'a> {
 }
 
 impl<'a> FromArena<'a> for AggregateFunctionCall<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::AggregateFunctionCall>(id)?;
         Some(AggregateFunctionCall { raw, reader, id })
     }
@@ -431,7 +431,7 @@ impl<'a> FromArena<'a> for AggregateFunctionCall<'a> {
 #[derive(Clone, Copy)]
 pub struct OrderedSetFunctionCall<'a> {
     raw: &'a crate::sqlite::ffi::OrderedSetFunctionCall,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -475,7 +475,7 @@ impl<'a> OrderedSetFunctionCall<'a> {
 }
 
 impl<'a> FromArena<'a> for OrderedSetFunctionCall<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::OrderedSetFunctionCall>(id)?;
         Some(OrderedSetFunctionCall { raw, reader, id })
     }
@@ -484,7 +484,7 @@ impl<'a> FromArena<'a> for OrderedSetFunctionCall<'a> {
 #[derive(Clone, Copy)]
 pub struct CastExpr<'a> {
     raw: &'a crate::sqlite::ffi::CastExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -516,7 +516,7 @@ impl<'a> CastExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for CastExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::CastExpr>(id)?;
         Some(CastExpr { raw, reader, id })
     }
@@ -525,7 +525,7 @@ impl<'a> FromArena<'a> for CastExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct ColumnRef<'a> {
     raw: &'a crate::sqlite::ffi::ColumnRef,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -560,7 +560,7 @@ impl<'a> ColumnRef<'a> {
 }
 
 impl<'a> FromArena<'a> for ColumnRef<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::ColumnRef>(id)?;
         Some(ColumnRef { raw, reader, id })
     }
@@ -569,7 +569,7 @@ impl<'a> FromArena<'a> for ColumnRef<'a> {
 #[derive(Clone, Copy)]
 pub struct CompoundSelect<'a> {
     raw: &'a crate::sqlite::ffi::CompoundSelect,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -604,7 +604,7 @@ impl<'a> CompoundSelect<'a> {
 }
 
 impl<'a> FromArena<'a> for CompoundSelect<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::CompoundSelect>(id)?;
         Some(CompoundSelect { raw, reader, id })
     }
@@ -613,7 +613,7 @@ impl<'a> FromArena<'a> for CompoundSelect<'a> {
 #[derive(Clone, Copy)]
 pub struct SubqueryExpr<'a> {
     raw: &'a crate::sqlite::ffi::SubqueryExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -642,7 +642,7 @@ impl<'a> SubqueryExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for SubqueryExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::SubqueryExpr>(id)?;
         Some(SubqueryExpr { raw, reader, id })
     }
@@ -651,7 +651,7 @@ impl<'a> FromArena<'a> for SubqueryExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct ExistsExpr<'a> {
     raw: &'a crate::sqlite::ffi::ExistsExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -680,7 +680,7 @@ impl<'a> ExistsExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for ExistsExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::ExistsExpr>(id)?;
         Some(ExistsExpr { raw, reader, id })
     }
@@ -689,7 +689,7 @@ impl<'a> FromArena<'a> for ExistsExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct InExpr<'a> {
     raw: &'a crate::sqlite::ffi::InExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -724,7 +724,7 @@ impl<'a> InExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for InExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::InExpr>(id)?;
         Some(InExpr { raw, reader, id })
     }
@@ -733,7 +733,7 @@ impl<'a> FromArena<'a> for InExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct IsExpr<'a> {
     raw: &'a crate::sqlite::ffi::IsExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -768,7 +768,7 @@ impl<'a> IsExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for IsExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::IsExpr>(id)?;
         Some(IsExpr { raw, reader, id })
     }
@@ -777,7 +777,7 @@ impl<'a> FromArena<'a> for IsExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct BetweenExpr<'a> {
     raw: &'a crate::sqlite::ffi::BetweenExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -815,7 +815,7 @@ impl<'a> BetweenExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for BetweenExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::BetweenExpr>(id)?;
         Some(BetweenExpr { raw, reader, id })
     }
@@ -824,7 +824,7 @@ impl<'a> FromArena<'a> for BetweenExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct LikeExpr<'a> {
     raw: &'a crate::sqlite::ffi::LikeExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -862,7 +862,7 @@ impl<'a> LikeExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for LikeExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::LikeExpr>(id)?;
         Some(LikeExpr { raw, reader, id })
     }
@@ -871,7 +871,7 @@ impl<'a> FromArena<'a> for LikeExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct CaseExpr<'a> {
     raw: &'a crate::sqlite::ffi::CaseExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -906,7 +906,7 @@ impl<'a> CaseExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for CaseExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::CaseExpr>(id)?;
         Some(CaseExpr { raw, reader, id })
     }
@@ -915,7 +915,7 @@ impl<'a> FromArena<'a> for CaseExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct CaseWhen<'a> {
     raw: &'a crate::sqlite::ffi::CaseWhen,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -947,7 +947,7 @@ impl<'a> CaseWhen<'a> {
 }
 
 impl<'a> FromArena<'a> for CaseWhen<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::CaseWhen>(id)?;
         Some(CaseWhen { raw, reader, id })
     }
@@ -956,7 +956,7 @@ impl<'a> FromArena<'a> for CaseWhen<'a> {
 #[derive(Clone, Copy)]
 pub struct ForeignKeyClause<'a> {
     raw: &'a crate::sqlite::ffi::ForeignKeyClause,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -997,7 +997,7 @@ impl<'a> ForeignKeyClause<'a> {
 }
 
 impl<'a> FromArena<'a> for ForeignKeyClause<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::ForeignKeyClause>(id)?;
         Some(ForeignKeyClause { raw, reader, id })
     }
@@ -1006,7 +1006,7 @@ impl<'a> FromArena<'a> for ForeignKeyClause<'a> {
 #[derive(Clone, Copy)]
 pub struct ColumnConstraint<'a> {
     raw: &'a crate::sqlite::ffi::ColumnConstraint,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1065,7 +1065,7 @@ impl<'a> ColumnConstraint<'a> {
 }
 
 impl<'a> FromArena<'a> for ColumnConstraint<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::ColumnConstraint>(id)?;
         Some(ColumnConstraint { raw, reader, id })
     }
@@ -1074,7 +1074,7 @@ impl<'a> FromArena<'a> for ColumnConstraint<'a> {
 #[derive(Clone, Copy)]
 pub struct ColumnDef<'a> {
     raw: &'a crate::sqlite::ffi::ColumnDef,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1109,7 +1109,7 @@ impl<'a> ColumnDef<'a> {
 }
 
 impl<'a> FromArena<'a> for ColumnDef<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::ColumnDef>(id)?;
         Some(ColumnDef { raw, reader, id })
     }
@@ -1118,7 +1118,7 @@ impl<'a> FromArena<'a> for ColumnDef<'a> {
 #[derive(Clone, Copy)]
 pub struct TableConstraint<'a> {
     raw: &'a crate::sqlite::ffi::TableConstraint,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1168,7 +1168,7 @@ impl<'a> TableConstraint<'a> {
 }
 
 impl<'a> FromArena<'a> for TableConstraint<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::TableConstraint>(id)?;
         Some(TableConstraint { raw, reader, id })
     }
@@ -1177,7 +1177,7 @@ impl<'a> FromArena<'a> for TableConstraint<'a> {
 #[derive(Clone, Copy)]
 pub struct CreateTableStmt<'a> {
     raw: &'a crate::sqlite::ffi::CreateTableStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1227,7 +1227,7 @@ impl<'a> CreateTableStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for CreateTableStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::CreateTableStmt>(id)?;
         Some(CreateTableStmt { raw, reader, id })
     }
@@ -1236,7 +1236,7 @@ impl<'a> FromArena<'a> for CreateTableStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct CteDefinition<'a> {
     raw: &'a crate::sqlite::ffi::CteDefinition,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1274,7 +1274,7 @@ impl<'a> CteDefinition<'a> {
 }
 
 impl<'a> FromArena<'a> for CteDefinition<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::CteDefinition>(id)?;
         Some(CteDefinition { raw, reader, id })
     }
@@ -1283,7 +1283,7 @@ impl<'a> FromArena<'a> for CteDefinition<'a> {
 #[derive(Clone, Copy)]
 pub struct WithClause<'a> {
     raw: &'a crate::sqlite::ffi::WithClause,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1318,7 +1318,7 @@ impl<'a> WithClause<'a> {
 }
 
 impl<'a> FromArena<'a> for WithClause<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::WithClause>(id)?;
         Some(WithClause { raw, reader, id })
     }
@@ -1327,7 +1327,7 @@ impl<'a> FromArena<'a> for WithClause<'a> {
 #[derive(Clone, Copy)]
 pub struct DeleteStmt<'a> {
     raw: &'a crate::sqlite::ffi::DeleteStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1365,7 +1365,7 @@ impl<'a> DeleteStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for DeleteStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::DeleteStmt>(id)?;
         Some(DeleteStmt { raw, reader, id })
     }
@@ -1374,7 +1374,7 @@ impl<'a> FromArena<'a> for DeleteStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct SetClause<'a> {
     raw: &'a crate::sqlite::ffi::SetClause,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1409,7 +1409,7 @@ impl<'a> SetClause<'a> {
 }
 
 impl<'a> FromArena<'a> for SetClause<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::SetClause>(id)?;
         Some(SetClause { raw, reader, id })
     }
@@ -1418,7 +1418,7 @@ impl<'a> FromArena<'a> for SetClause<'a> {
 #[derive(Clone, Copy)]
 pub struct UpdateStmt<'a> {
     raw: &'a crate::sqlite::ffi::UpdateStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1465,7 +1465,7 @@ impl<'a> UpdateStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for UpdateStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::UpdateStmt>(id)?;
         Some(UpdateStmt { raw, reader, id })
     }
@@ -1474,7 +1474,7 @@ impl<'a> FromArena<'a> for UpdateStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct InsertStmt<'a> {
     raw: &'a crate::sqlite::ffi::InsertStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1512,7 +1512,7 @@ impl<'a> InsertStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for InsertStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::InsertStmt>(id)?;
         Some(InsertStmt { raw, reader, id })
     }
@@ -1521,7 +1521,7 @@ impl<'a> FromArena<'a> for InsertStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct BinaryExpr<'a> {
     raw: &'a crate::sqlite::ffi::BinaryExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1556,7 +1556,7 @@ impl<'a> BinaryExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for BinaryExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::BinaryExpr>(id)?;
         Some(BinaryExpr { raw, reader, id })
     }
@@ -1565,7 +1565,7 @@ impl<'a> FromArena<'a> for BinaryExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct UnaryExpr<'a> {
     raw: &'a crate::sqlite::ffi::UnaryExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1597,7 +1597,7 @@ impl<'a> UnaryExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for UnaryExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::UnaryExpr>(id)?;
         Some(UnaryExpr { raw, reader, id })
     }
@@ -1606,7 +1606,7 @@ impl<'a> FromArena<'a> for UnaryExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct Literal<'a> {
     raw: &'a crate::sqlite::ffi::Literal,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1638,7 +1638,7 @@ impl<'a> Literal<'a> {
 }
 
 impl<'a> FromArena<'a> for Literal<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::Literal>(id)?;
         Some(Literal { raw, reader, id })
     }
@@ -1647,7 +1647,7 @@ impl<'a> FromArena<'a> for Literal<'a> {
 #[derive(Clone, Copy)]
 pub struct FunctionCall<'a> {
     raw: &'a crate::sqlite::ffi::FunctionCall,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1688,7 +1688,7 @@ impl<'a> FunctionCall<'a> {
 }
 
 impl<'a> FromArena<'a> for FunctionCall<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::FunctionCall>(id)?;
         Some(FunctionCall { raw, reader, id })
     }
@@ -1697,7 +1697,7 @@ impl<'a> FromArena<'a> for FunctionCall<'a> {
 #[derive(Clone, Copy)]
 pub struct Variable<'a> {
     raw: &'a crate::sqlite::ffi::Variable,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1726,7 +1726,7 @@ impl<'a> Variable<'a> {
 }
 
 impl<'a> FromArena<'a> for Variable<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::Variable>(id)?;
         Some(Variable { raw, reader, id })
     }
@@ -1735,7 +1735,7 @@ impl<'a> FromArena<'a> for Variable<'a> {
 #[derive(Clone, Copy)]
 pub struct CollateExpr<'a> {
     raw: &'a crate::sqlite::ffi::CollateExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1767,7 +1767,7 @@ impl<'a> CollateExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for CollateExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::CollateExpr>(id)?;
         Some(CollateExpr { raw, reader, id })
     }
@@ -1776,7 +1776,7 @@ impl<'a> FromArena<'a> for CollateExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct RaiseExpr<'a> {
     raw: &'a crate::sqlite::ffi::RaiseExpr,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1808,7 +1808,7 @@ impl<'a> RaiseExpr<'a> {
 }
 
 impl<'a> FromArena<'a> for RaiseExpr<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::RaiseExpr>(id)?;
         Some(RaiseExpr { raw, reader, id })
     }
@@ -1817,7 +1817,7 @@ impl<'a> FromArena<'a> for RaiseExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct QualifiedName<'a> {
     raw: &'a crate::sqlite::ffi::QualifiedName,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1849,7 +1849,7 @@ impl<'a> QualifiedName<'a> {
 }
 
 impl<'a> FromArena<'a> for QualifiedName<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::QualifiedName>(id)?;
         Some(QualifiedName { raw, reader, id })
     }
@@ -1858,7 +1858,7 @@ impl<'a> FromArena<'a> for QualifiedName<'a> {
 #[derive(Clone, Copy)]
 pub struct DropStmt<'a> {
     raw: &'a crate::sqlite::ffi::DropStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1893,7 +1893,7 @@ impl<'a> DropStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for DropStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::DropStmt>(id)?;
         Some(DropStmt { raw, reader, id })
     }
@@ -1902,7 +1902,7 @@ impl<'a> FromArena<'a> for DropStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct AlterTableStmt<'a> {
     raw: &'a crate::sqlite::ffi::AlterTableStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1940,7 +1940,7 @@ impl<'a> AlterTableStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for AlterTableStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::AlterTableStmt>(id)?;
         Some(AlterTableStmt { raw, reader, id })
     }
@@ -1950,7 +1950,7 @@ impl<'a> FromArena<'a> for AlterTableStmt<'a> {
 pub struct TransactionStmt<'a> {
     raw: &'a crate::sqlite::ffi::TransactionStmt,
     #[allow(dead_code)]
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -1982,7 +1982,7 @@ impl<'a> TransactionStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for TransactionStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::TransactionStmt>(id)?;
         Some(TransactionStmt { raw, reader, id })
     }
@@ -1991,7 +1991,7 @@ impl<'a> FromArena<'a> for TransactionStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct SavepointStmt<'a> {
     raw: &'a crate::sqlite::ffi::SavepointStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2023,7 +2023,7 @@ impl<'a> SavepointStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for SavepointStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::SavepointStmt>(id)?;
         Some(SavepointStmt { raw, reader, id })
     }
@@ -2032,7 +2032,7 @@ impl<'a> FromArena<'a> for SavepointStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct ResultColumn<'a> {
     raw: &'a crate::sqlite::ffi::ResultColumn,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2067,7 +2067,7 @@ impl<'a> ResultColumn<'a> {
 }
 
 impl<'a> FromArena<'a> for ResultColumn<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::ResultColumn>(id)?;
         Some(ResultColumn { raw, reader, id })
     }
@@ -2076,7 +2076,7 @@ impl<'a> FromArena<'a> for ResultColumn<'a> {
 #[derive(Clone, Copy)]
 pub struct SelectStmt<'a> {
     raw: &'a crate::sqlite::ffi::SelectStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2129,7 +2129,7 @@ impl<'a> SelectStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for SelectStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::SelectStmt>(id)?;
         Some(SelectStmt { raw, reader, id })
     }
@@ -2138,7 +2138,7 @@ impl<'a> FromArena<'a> for SelectStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct OrderingTerm<'a> {
     raw: &'a crate::sqlite::ffi::OrderingTerm,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2173,7 +2173,7 @@ impl<'a> OrderingTerm<'a> {
 }
 
 impl<'a> FromArena<'a> for OrderingTerm<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::OrderingTerm>(id)?;
         Some(OrderingTerm { raw, reader, id })
     }
@@ -2182,7 +2182,7 @@ impl<'a> FromArena<'a> for OrderingTerm<'a> {
 #[derive(Clone, Copy)]
 pub struct LimitClause<'a> {
     raw: &'a crate::sqlite::ffi::LimitClause,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2214,7 +2214,7 @@ impl<'a> LimitClause<'a> {
 }
 
 impl<'a> FromArena<'a> for LimitClause<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::LimitClause>(id)?;
         Some(LimitClause { raw, reader, id })
     }
@@ -2223,7 +2223,7 @@ impl<'a> FromArena<'a> for LimitClause<'a> {
 #[derive(Clone, Copy)]
 pub struct TableRef<'a> {
     raw: &'a crate::sqlite::ffi::TableRef,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2258,7 +2258,7 @@ impl<'a> TableRef<'a> {
 }
 
 impl<'a> FromArena<'a> for TableRef<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::TableRef>(id)?;
         Some(TableRef { raw, reader, id })
     }
@@ -2267,7 +2267,7 @@ impl<'a> FromArena<'a> for TableRef<'a> {
 #[derive(Clone, Copy)]
 pub struct SubqueryTableSource<'a> {
     raw: &'a crate::sqlite::ffi::SubqueryTableSource,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2299,7 +2299,7 @@ impl<'a> SubqueryTableSource<'a> {
 }
 
 impl<'a> FromArena<'a> for SubqueryTableSource<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::SubqueryTableSource>(id)?;
         Some(SubqueryTableSource { raw, reader, id })
     }
@@ -2308,7 +2308,7 @@ impl<'a> FromArena<'a> for SubqueryTableSource<'a> {
 #[derive(Clone, Copy)]
 pub struct JoinClause<'a> {
     raw: &'a crate::sqlite::ffi::JoinClause,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2349,7 +2349,7 @@ impl<'a> JoinClause<'a> {
 }
 
 impl<'a> FromArena<'a> for JoinClause<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::JoinClause>(id)?;
         Some(JoinClause { raw, reader, id })
     }
@@ -2358,7 +2358,7 @@ impl<'a> FromArena<'a> for JoinClause<'a> {
 #[derive(Clone, Copy)]
 pub struct JoinPrefix<'a> {
     raw: &'a crate::sqlite::ffi::JoinPrefix,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2390,7 +2390,7 @@ impl<'a> JoinPrefix<'a> {
 }
 
 impl<'a> FromArena<'a> for JoinPrefix<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::JoinPrefix>(id)?;
         Some(JoinPrefix { raw, reader, id })
     }
@@ -2399,7 +2399,7 @@ impl<'a> FromArena<'a> for JoinPrefix<'a> {
 #[derive(Clone, Copy)]
 pub struct TriggerEvent<'a> {
     raw: &'a crate::sqlite::ffi::TriggerEvent,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2431,7 +2431,7 @@ impl<'a> TriggerEvent<'a> {
 }
 
 impl<'a> FromArena<'a> for TriggerEvent<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::TriggerEvent>(id)?;
         Some(TriggerEvent { raw, reader, id })
     }
@@ -2440,7 +2440,7 @@ impl<'a> FromArena<'a> for TriggerEvent<'a> {
 #[derive(Clone, Copy)]
 pub struct CreateTriggerStmt<'a> {
     raw: &'a crate::sqlite::ffi::CreateTriggerStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2493,7 +2493,7 @@ impl<'a> CreateTriggerStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for CreateTriggerStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::CreateTriggerStmt>(id)?;
         Some(CreateTriggerStmt { raw, reader, id })
     }
@@ -2502,7 +2502,7 @@ impl<'a> FromArena<'a> for CreateTriggerStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct CreateVirtualTableStmt<'a> {
     raw: &'a crate::sqlite::ffi::CreateVirtualTableStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2543,7 +2543,7 @@ impl<'a> CreateVirtualTableStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for CreateVirtualTableStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::CreateVirtualTableStmt>(id)?;
         Some(CreateVirtualTableStmt { raw, reader, id })
     }
@@ -2552,7 +2552,7 @@ impl<'a> FromArena<'a> for CreateVirtualTableStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct PragmaStmt<'a> {
     raw: &'a crate::sqlite::ffi::PragmaStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2590,7 +2590,7 @@ impl<'a> PragmaStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for PragmaStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::PragmaStmt>(id)?;
         Some(PragmaStmt { raw, reader, id })
     }
@@ -2599,7 +2599,7 @@ impl<'a> FromArena<'a> for PragmaStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct AnalyzeStmt<'a> {
     raw: &'a crate::sqlite::ffi::AnalyzeStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2634,7 +2634,7 @@ impl<'a> AnalyzeStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for AnalyzeStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::AnalyzeStmt>(id)?;
         Some(AnalyzeStmt { raw, reader, id })
     }
@@ -2643,7 +2643,7 @@ impl<'a> FromArena<'a> for AnalyzeStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct AttachStmt<'a> {
     raw: &'a crate::sqlite::ffi::AttachStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2678,7 +2678,7 @@ impl<'a> AttachStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for AttachStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::AttachStmt>(id)?;
         Some(AttachStmt { raw, reader, id })
     }
@@ -2687,7 +2687,7 @@ impl<'a> FromArena<'a> for AttachStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct DetachStmt<'a> {
     raw: &'a crate::sqlite::ffi::DetachStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2716,7 +2716,7 @@ impl<'a> DetachStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for DetachStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::DetachStmt>(id)?;
         Some(DetachStmt { raw, reader, id })
     }
@@ -2725,7 +2725,7 @@ impl<'a> FromArena<'a> for DetachStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct VacuumStmt<'a> {
     raw: &'a crate::sqlite::ffi::VacuumStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2757,7 +2757,7 @@ impl<'a> VacuumStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for VacuumStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::VacuumStmt>(id)?;
         Some(VacuumStmt { raw, reader, id })
     }
@@ -2766,7 +2766,7 @@ impl<'a> FromArena<'a> for VacuumStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct ExplainStmt<'a> {
     raw: &'a crate::sqlite::ffi::ExplainStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2798,7 +2798,7 @@ impl<'a> ExplainStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for ExplainStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::ExplainStmt>(id)?;
         Some(ExplainStmt { raw, reader, id })
     }
@@ -2807,7 +2807,7 @@ impl<'a> FromArena<'a> for ExplainStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct CreateIndexStmt<'a> {
     raw: &'a crate::sqlite::ffi::CreateIndexStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2854,7 +2854,7 @@ impl<'a> CreateIndexStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for CreateIndexStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::CreateIndexStmt>(id)?;
         Some(CreateIndexStmt { raw, reader, id })
     }
@@ -2863,7 +2863,7 @@ impl<'a> FromArena<'a> for CreateIndexStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct CreateViewStmt<'a> {
     raw: &'a crate::sqlite::ffi::CreateViewStmt,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2907,7 +2907,7 @@ impl<'a> CreateViewStmt<'a> {
 }
 
 impl<'a> FromArena<'a> for CreateViewStmt<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::CreateViewStmt>(id)?;
         Some(CreateViewStmt { raw, reader, id })
     }
@@ -2916,7 +2916,7 @@ impl<'a> FromArena<'a> for CreateViewStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct ValuesClause<'a> {
     raw: &'a crate::sqlite::ffi::ValuesClause,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2945,7 +2945,7 @@ impl<'a> ValuesClause<'a> {
 }
 
 impl<'a> FromArena<'a> for ValuesClause<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::ValuesClause>(id)?;
         Some(ValuesClause { raw, reader, id })
     }
@@ -2954,7 +2954,7 @@ impl<'a> FromArena<'a> for ValuesClause<'a> {
 #[derive(Clone, Copy)]
 pub struct FrameBound<'a> {
     raw: &'a crate::sqlite::ffi::FrameBound,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -2986,7 +2986,7 @@ impl<'a> FrameBound<'a> {
 }
 
 impl<'a> FromArena<'a> for FrameBound<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::FrameBound>(id)?;
         Some(FrameBound { raw, reader, id })
     }
@@ -2995,7 +2995,7 @@ impl<'a> FromArena<'a> for FrameBound<'a> {
 #[derive(Clone, Copy)]
 pub struct FrameSpec<'a> {
     raw: &'a crate::sqlite::ffi::FrameSpec,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -3033,7 +3033,7 @@ impl<'a> FrameSpec<'a> {
 }
 
 impl<'a> FromArena<'a> for FrameSpec<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::FrameSpec>(id)?;
         Some(FrameSpec { raw, reader, id })
     }
@@ -3042,7 +3042,7 @@ impl<'a> FromArena<'a> for FrameSpec<'a> {
 #[derive(Clone, Copy)]
 pub struct WindowDef<'a> {
     raw: &'a crate::sqlite::ffi::WindowDef,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -3080,7 +3080,7 @@ impl<'a> WindowDef<'a> {
 }
 
 impl<'a> FromArena<'a> for WindowDef<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::WindowDef>(id)?;
         Some(WindowDef { raw, reader, id })
     }
@@ -3089,7 +3089,7 @@ impl<'a> FromArena<'a> for WindowDef<'a> {
 #[derive(Clone, Copy)]
 pub struct NamedWindowDef<'a> {
     raw: &'a crate::sqlite::ffi::NamedWindowDef,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -3121,7 +3121,7 @@ impl<'a> NamedWindowDef<'a> {
 }
 
 impl<'a> FromArena<'a> for NamedWindowDef<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::NamedWindowDef>(id)?;
         Some(NamedWindowDef { raw, reader, id })
     }
@@ -3130,7 +3130,7 @@ impl<'a> FromArena<'a> for NamedWindowDef<'a> {
 #[derive(Clone, Copy)]
 pub struct FilterOver<'a> {
     raw: &'a crate::sqlite::ffi::FilterOver,
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     id: NodeId,
 }
 
@@ -3165,7 +3165,7 @@ impl<'a> FilterOver<'a> {
 }
 
 impl<'a> FromArena<'a> for FilterOver<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::sqlite::ffi::FilterOver>(id)?;
         Some(FilterOver { raw, reader, id })
     }
@@ -3315,7 +3315,7 @@ impl<'a> Node<'a> {
     /// Its first `u32` must be a valid `NodeTag` discriminant.
     pub(crate) unsafe fn from_raw(
         ptr: *const u32,
-        reader: &'a NodeReader<'a>,
+        reader: &'a RawNodeReader<'a>,
         id: NodeId,
     ) -> Node<'a> {
         // SAFETY: caller guarantees ptr is valid for 'a with a valid tag.
@@ -3678,7 +3678,7 @@ impl<'a> Node<'a> {
     }
 
     /// Resolve a `NodeId` into a typed `Node`, or `None` if null/invalid.
-    pub(crate) fn resolve(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Node<'a>> {
+    pub(crate) fn resolve(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Node<'a>> {
         let (ptr, _tag) = reader.node_ptr(id)?;
         Some(unsafe { Node::from_raw(ptr as *const u32, reader, id) })
     }
@@ -3836,7 +3836,7 @@ impl std::fmt::Display for Node<'_> {
 }
 
 impl<'a> FromArena<'a> for Node<'a> {
-    fn from_arena(reader: &'a NodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         Node::resolve(reader, id)
     }
 }

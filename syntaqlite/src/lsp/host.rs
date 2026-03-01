@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use crate::dialect::TokenCategory;
 use crate::fmt::formatter::Formatter;
 use crate::fmt::FormatConfig;
-use crate::parser::{BaseParser, BaseTokenizer, LowLevelParser};
+use crate::parser::{RawParser, RawTokenizer, RawIncrementalParser};
 use crate::dialect::Dialect;
 use crate::parser::ParseError;
 
@@ -113,7 +113,7 @@ impl<'d> AnalysisHost<'d> {
         };
 
         let functions = self.available_functions();
-        let mut parser = BaseParser::builder(&self.dialect).build();
+        let mut parser = RawParser::builder(&self.dialect).build();
         let mut cursor = parser.parse(&doc.source);
 
         // Collect all statement IDs, continuing past parse errors.
@@ -412,7 +412,7 @@ fn catalog_to_function_defs(config: &crate::dialect::ffi::DialectConfig) -> Vec<
 }
 
 fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
-    let mut parser = BaseParser::builder(dialect).collect_tokens(true).build();
+    let mut parser = RawParser::builder(dialect).collect_tokens(true).build();
     let mut cursor = parser.parse(source);
     let mut diagnostics = Vec::new();
 
@@ -431,7 +431,7 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
 
     let mut semantic_tokens = Vec::new();
 
-    for tp in cursor.base().tokens() {
+    for tp in cursor.state().tokens() {
         let cat = dialect.classify_token(tp.type_, tp.flags);
         if cat == TokenCategory::Other {
             continue;
@@ -443,7 +443,7 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
         });
     }
 
-    for c in cursor.base().comments() {
+    for c in cursor.state().comments() {
         semantic_tokens.push(SemanticToken {
             offset: c.offset as usize,
             length: c.length as usize,
@@ -453,7 +453,7 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
     semantic_tokens.sort_by_key(|t| t.offset);
 
     let mut tokens = Vec::new();
-    let mut tokenizer = BaseTokenizer::builder(*dialect).build();
+    let mut tokenizer = RawTokenizer::builder(*dialect).build();
     let source_base = source.as_ptr() as usize;
     for tok in tokenizer.tokenize(source) {
         let start = tok.text.as_ptr() as usize - source_base;
@@ -511,7 +511,7 @@ fn replay_completion_info(
 
     let stmt_tokens = &tokens[start..boundary];
 
-    let mut parser = LowLevelParser::builder(dialect).build();
+    let mut parser = RawIncrementalParser::builder(dialect).build();
     let mut cursor = parser.feed(source);
     let mut last_expected = cursor.expected_tokens();
 
@@ -574,8 +574,8 @@ impl std::error::Error for FormatError {}
 #[cfg(feature = "sqlite")]
 mod tests {
     use super::AnalysisHost;
-    use crate::parser::BaseParser;
-    use crate::sqlite::low_level::TokenType;
+    use crate::parser::RawParser;
+    use crate::sqlite::tokens::TokenType;
     use crate::validation::types::FunctionDef;
     use crate::validation::SessionContext;
 
@@ -1001,7 +1001,7 @@ mod tests {
     fn syntax_error_offset_via_parser_directly() {
         // Same regression tested at the Parser level.
         let sql = "select 1 from slice where foo = where x = y;";
-        let mut parser = BaseParser::new();
+        let mut parser = RawParser::new();
         let mut cursor = parser.parse(sql);
 
         let result = cursor.next_statement();

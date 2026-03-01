@@ -13,7 +13,7 @@
 use syntaqlite::IncrementalParser;
 
 mod tk {
-    use syntaqlite::sqlite::low_level::TokenType;
+    use syntaqlite::TokenType;
     pub const SELECT: u32 = TokenType::Select as u32;
     pub const STAR: u32 = TokenType::Star as u32;
     pub const FROM: u32 = TokenType::From as u32;

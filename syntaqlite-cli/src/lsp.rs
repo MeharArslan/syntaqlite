@@ -452,7 +452,7 @@ mod tests {
 
     #[test]
     fn join_kw_uses_dialect_token_keyword_mapping() {
-        let dialect = *syntaqlite::sqlite::low_level::dialect();
+        let dialect = *syntaqlite::dialect::sqlite();
         let mut host = AnalysisHost::with_dialect(dialect);
         let uri = "file:///test.sql";
         let sql = "SELECT * FROM s AS x J";
@@ -462,7 +462,7 @@ mod tests {
         let items = completion_items_for_expected(&dialect, &host, &expected);
 
         let labels: Vec<&str> = items.iter().map(|i| i.label.as_str()).collect();
-        let join_kw = syntaqlite::sqlite::low_level::TokenType::JoinKw as u32;
+        let join_kw = syntaqlite::TokenType::JoinKw as u32;
         let join_kw_labels: Vec<&str> = (0..dialect.keyword_count())
             .filter_map(|i| dialect.keyword_entry(i))
             .filter_map(|(code, kw)| (code == join_kw).then_some(kw))
@@ -476,7 +476,7 @@ mod tests {
 
     #[test]
     fn function_completions_include_builtin_functions() {
-        let dialect = *syntaqlite::sqlite::low_level::dialect();
+        let dialect = *syntaqlite::dialect::sqlite();
         let mut host = AnalysisHost::with_dialect(dialect);
         let uri = "file:///test.sql";
         // After SELECT, an identifier (including function names) is expected.
@@ -502,7 +502,7 @@ mod tests {
 
     #[test]
     fn function_completions_respect_dialect_config() {
-        let dialect = *syntaqlite::sqlite::low_level::dialect();
+        let dialect = *syntaqlite::dialect::sqlite();
         let mut host = AnalysisHost::with_dialect(dialect);
         let mut config = syntaqlite::dialect::DialectConfig::default();
         // Enable math functions
@@ -524,7 +524,7 @@ mod tests {
 
     #[test]
     fn function_completions_not_offered_where_identifiers_not_expected() {
-        let dialect = *syntaqlite::sqlite::low_level::dialect();
+        let dialect = *syntaqlite::dialect::sqlite();
         let mut host = AnalysisHost::with_dialect(dialect);
         let uri = "file:///test.sql";
         // After FROM + table + trailing space, only keywords like JOIN/WHERE expected, not identifiers for functions.
@@ -549,7 +549,7 @@ mod tests {
 
     #[test]
     fn keyword_completion_items_use_keyword_kind() {
-        let dialect = *syntaqlite::sqlite::low_level::dialect();
+        let dialect = *syntaqlite::dialect::sqlite();
         let mut host = AnalysisHost::with_dialect(dialect);
         let uri = "file:///test.sql";
         let sql = "SELECT a FROM t WH";

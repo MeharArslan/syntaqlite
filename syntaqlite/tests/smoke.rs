@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite::raw::RawParser;
-use syntaqlite::sqlite::ast::{FromArena, Stmt};
+use syntaqlite::ast::{FromArena, Stmt};
 
 #[test]
 fn parse_select_1() {
@@ -157,7 +157,7 @@ fn parser_reuse() {
 
 fn parser_with_update_delete_limit() -> RawParser<'static> {
     use syntaqlite::dialect::DialectConfig;
-    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let dialect = syntaqlite::dialect::sqlite();
     let mut config = DialectConfig::default();
     config.cflags.set(40); // SQLITE_ENABLE_UPDATE_DELETE_LIMIT
     RawParser::builder(dialect).dialect_config(config).build()

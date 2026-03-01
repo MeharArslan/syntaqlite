@@ -4,7 +4,7 @@
 use std::marker::PhantomData;
 
 use crate::ast_traits::*;
-use crate::parser::{FromArena, NodeReader, TypedList};
+use crate::parser::{FromArena, RawNodeReader, TypedList};
 
 use super::ValidationConfig;
 use super::checks::{check_column_ref, check_function_call, check_table_ref};
@@ -12,7 +12,7 @@ use super::scope::ScopeStack;
 use super::types::{Diagnostic, FunctionDef};
 
 pub(super) struct Walker<'a, 'd, A: AstTypes<'a>> {
-    reader: &'a NodeReader<'a>,
+    reader: &'a RawNodeReader<'a>,
     dialect: crate::Dialect<'d>,
     functions: &'a [FunctionDef],
     config: &'a ValidationConfig,
@@ -22,7 +22,7 @@ pub(super) struct Walker<'a, 'd, A: AstTypes<'a>> {
 
 impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
     pub(super) fn run(
-        reader: &'a NodeReader<'a>,
+        reader: &'a RawNodeReader<'a>,
         stmt: A::Stmt,
         dialect: crate::Dialect<'d>,
         scope: &mut ScopeStack,
@@ -412,8 +412,8 @@ mod tests {
     use crate::validation::{ValidationConfig, validate_statement};
 
     fn validate_sql(sql: &str) -> Vec<super::super::types::Diagnostic> {
-        let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
+        let dialect = &crate::sqlite::DIALECT;
+        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let mut cursor = parser.parse(sql);
         let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok().map(|nr| nr.id())).collect();
         stmt_ids
@@ -442,8 +442,8 @@ mod tests {
 
     #[test]
     fn create_table_as_select_known_table_no_diags() {
-        let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
+        let dialect = &crate::sqlite::DIALECT;
+        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let sql = "CREATE TABLE src (id INTEGER);\nCREATE TABLE t AS SELECT * FROM src;";
         let mut cursor = parser.parse(sql);
         let stmt_ids: Vec<_> = (&mut cursor)
@@ -497,8 +497,8 @@ mod tests {
     fn create_table_as_select_literal_column_mismatch_warns() {
         // CREATE TABLE slice AS SELECT 2 → table has no named columns.
         // Referencing slice."1" should warn about unknown column.
-        let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
+        let dialect = &crate::sqlite::DIALECT;
+        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let sql = "CREATE TABLE slice AS SELECT 2;\nSELECT slice.\"1\" FROM slice;";
         let mut cursor = parser.parse(sql);
         let stmt_ids: Vec<_> = (&mut cursor)

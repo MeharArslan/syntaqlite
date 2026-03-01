@@ -10,7 +10,7 @@ mod ffi;
 /// Each SQL statement type (e.g. `SELECT`, `INSERT`) has a corresponding struct
 /// with typed accessors for its fields. The top-level enum is [`ast::Stmt`],
 /// returned by [`StatementCursor::next_statement`] and
-/// [`LowLevelCursor::finish`](low_level::LowLevelCursor::finish).
+/// [`RawIncrementalCursor::finish`](low_level::RawIncrementalCursor::finish).
 pub mod ast;
 mod wrappers;
 "#;
@@ -18,7 +18,7 @@ mod wrappers;
 const LIB_LOW_LEVEL_MOD: &str = r#"
 /// Low-level APIs for advanced use cases (e.g. custom token feeding/tokenizing).
 pub mod low_level {
-    pub use crate::wrappers::{LowLevelCursor, LowLevelParser, Tokenizer, TokenCursor};
+    pub use crate::wrappers::{RawIncrementalCursor, LowLevelParser, Tokenizer, TokenCursor};
     pub use crate::tokens::TokenType;
 
     /// Access the dialect handle (for use with `syntaqlite` APIs).
@@ -106,7 +106,7 @@ impl<'a> StatementCursor<'a> {
 const WRAPPER_LOW_LEVEL_PARSER: &str = r#"
 /// A low-level parser for token-by-token feeding.
 ///
-/// Feed tokens one at a time via `LowLevelCursor`.
+/// Feed tokens one at a time via `RawIncrementalCursor`.
 pub struct LowLevelParser {
     inner: syntaqlite::generic::GenericIncrementalParser,
 }
@@ -126,9 +126,9 @@ impl LowLevelParser {
         }
     }
 
-    /// Bind source text and return a `LowLevelCursor` for token feeding.
-    pub fn feed<'a>(&'a mut self, source: &'a str) -> LowLevelCursor<'a> {
-        LowLevelCursor { inner: self.inner.feed(source) }
+    /// Bind source text and return a `RawIncrementalCursor` for token feeding.
+    pub fn feed<'a>(&'a mut self, source: &'a str) -> RawIncrementalCursor<'a> {
+        RawIncrementalCursor { inner: self.inner.feed(source) }
     }
 }
 "#;
@@ -137,11 +137,11 @@ const WRAPPER_LOW_LEVEL_CURSOR: &str = r#"
 /// A low-level cursor for feeding tokens one at a time.
 ///
 /// After calling `finish()`, no further feeding methods may be called.
-pub struct LowLevelCursor<'a> {
+pub struct RawIncrementalCursor<'a> {
     inner: syntaqlite::generic::GenericIncrementalCursor<'a>,
 }
 
-impl<'a> LowLevelCursor<'a> {
+impl<'a> RawIncrementalCursor<'a> {
     /// Feed a typed token to the parser.
     ///
     /// Returns `Ok(Some(stmt))` when a statement completes,

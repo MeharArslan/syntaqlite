@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite::raw::{FromArena, RawParser, RawStatementCursor, NodeId};
-use syntaqlite::sqlite::ast::{Node, NodeTag};
-use syntaqlite::sqlite::low_level::dialect;
+use syntaqlite::ast::{Node, NodeTag};
+use syntaqlite::dialect::sqlite as dialect;
 
 /// Helper: resolve a NodeId to its Node variant and return its tag.
 fn node_tag(cursor: &RawStatementCursor, id: NodeId) -> NodeTag {

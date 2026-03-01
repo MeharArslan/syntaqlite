@@ -15,7 +15,7 @@ pub struct RawToken<'a> {
 }
 
 /// Owns a tokenizer instance. Reusable across inputs via `tokenize()`.
-pub struct BaseTokenizer {
+pub struct RawTokenizer {
     raw: *mut ffi::Tokenizer,
     /// Null-terminated copy of the source text.
     source_buf: Vec<u8>,
@@ -26,9 +26,9 @@ pub struct BaseTokenizer {
 // SAFETY: The C tokenizer is self-contained (no thread-local or shared mutable
 // state). Moving it between threads is safe; concurrent access is prevented
 // by &mut borrowing in tokenize().
-unsafe impl Send for BaseTokenizer {}
+unsafe impl Send for RawTokenizer {}
 
-impl BaseTokenizer {
+impl RawTokenizer {
     /// Create a new tokenizer for the built-in SQLite dialect.
     #[cfg(feature = "sqlite")]
     pub fn new() -> Self {
@@ -36,19 +36,19 @@ impl BaseTokenizer {
     }
 
     /// Create a builder for a tokenizer bound to the given dialect.
-    pub fn builder(dialect: crate::dialect::Dialect<'_>) -> BaseTokenizerBuilder<'_> {
-        BaseTokenizerBuilder {
+    pub fn builder(dialect: crate::dialect::Dialect<'_>) -> RawTokenizerBuilder<'_> {
+        RawTokenizerBuilder {
             dialect,
             dialect_config: None,
         }
     }
 
-    /// Bind source text and return a `BaseTokenCursor` for iterating tokens.
+    /// Bind source text and return a `RawTokenCursor` for iterating tokens.
     ///
     /// Copies the source into an internal buffer to add a null terminator
     /// (required by the C tokenizer). For zero-copy tokenization, use
     /// [`tokenize_cstr`](Self::tokenize_cstr).
-    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> BaseTokenCursor<'a> {
+    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> RawTokenCursor<'a> {
         self.source_buf.clear();
         self.source_buf.reserve(source.len() + 1);
         self.source_buf.extend_from_slice(source.as_bytes());
@@ -64,7 +64,7 @@ impl BaseTokenizer {
                 source.len() as u32,
             );
         }
-        BaseTokenCursor {
+        RawTokenCursor {
             raw: self.raw,
             source,
             c_source_base: c_source_ptr,
@@ -72,11 +72,11 @@ impl BaseTokenizer {
     }
 
     /// Zero-copy variant: bind a null-terminated source and return a
-    /// `BaseTokenCursor`.
+    /// `RawTokenCursor`.
     ///
     /// The `&CStr` already guarantees a trailing `\0`, so no copy is needed.
     /// The source must be valid UTF-8 (panics otherwise).
-    pub fn tokenize_cstr<'a>(&'a mut self, source: &'a CStr) -> BaseTokenCursor<'a> {
+    pub fn tokenize_cstr<'a>(&'a mut self, source: &'a CStr) -> RawTokenCursor<'a> {
         let bytes = source.to_bytes();
         let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 
@@ -84,7 +84,7 @@ impl BaseTokenizer {
         unsafe {
             ffi::syntaqlite_tokenizer_reset(self.raw, source.as_ptr(), bytes.len() as u32);
         }
-        BaseTokenCursor {
+        RawTokenCursor {
             raw: self.raw,
             source: source_str,
             c_source_base: source.as_ptr() as *const u8,
@@ -93,13 +93,13 @@ impl BaseTokenizer {
 }
 
 #[cfg(feature = "sqlite")]
-impl Default for BaseTokenizer {
+impl Default for RawTokenizer {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Drop for BaseTokenizer {
+impl Drop for RawTokenizer {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_tokenizer_create and has
         // not been freed (Drop runs exactly once).
@@ -107,15 +107,15 @@ impl Drop for BaseTokenizer {
     }
 }
 
-// ── BaseTokenizerBuilder ────────────────────────────────────────────────
+// ── RawTokenizerBuilder ────────────────────────────────────────────────
 
-/// Builder for configuring a [`BaseTokenizer`] before construction.
-pub struct BaseTokenizerBuilder<'a> {
+/// Builder for configuring a [`RawTokenizer`] before construction.
+pub struct RawTokenizerBuilder<'a> {
     dialect: crate::dialect::Dialect<'a>,
     dialect_config: Option<crate::dialect::ffi::DialectConfig>,
 }
 
-impl BaseTokenizerBuilder<'_> {
+impl RawTokenizerBuilder<'_> {
     /// Set dialect config for version/cflag-gated tokenization.
     pub fn dialect_config(mut self, config: crate::dialect::ffi::DialectConfig) -> Self {
         self.dialect_config = Some(config);
@@ -123,7 +123,7 @@ impl BaseTokenizerBuilder<'_> {
     }
 
     /// Build the tokenizer.
-    pub fn build(self) -> BaseTokenizer {
+    pub fn build(self) -> RawTokenizer {
         // SAFETY: syntaqlite_tokenizer_create(NULL, dialect) allocates a new
         // tokenizer with default malloc/free. dialect.raw is valid for the call.
         let raw = unsafe {
@@ -131,7 +131,7 @@ impl BaseTokenizerBuilder<'_> {
         };
         assert!(!raw.is_null(), "tokenizer allocation failed");
 
-        let mut tok = BaseTokenizer {
+        let mut tok = RawTokenizer {
             raw,
             source_buf: Vec::new(),
             dialect_config: crate::dialect::ffi::DialectConfig::default(),
@@ -154,7 +154,7 @@ impl BaseTokenizerBuilder<'_> {
 }
 
 /// An active tokenizer cursor. Iterates raw tokens from the bound source.
-pub struct BaseTokenCursor<'a> {
+pub struct RawTokenCursor<'a> {
     raw: *mut ffi::Tokenizer,
     source: &'a str,
     /// Base pointer of the C source buffer. Used to compute offsets back
@@ -162,7 +162,7 @@ pub struct BaseTokenCursor<'a> {
     c_source_base: *const u8,
 }
 
-impl<'a> Iterator for BaseTokenCursor<'a> {
+impl<'a> Iterator for RawTokenCursor<'a> {
     type Item = RawToken<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -171,8 +171,8 @@ impl<'a> Iterator for BaseTokenCursor<'a> {
             length: 0,
             type_: 0,
         };
-        // SAFETY: self.raw is valid (owned by BaseTokenizer which outlives this
-        // BaseTokenCursor via the 'a borrow); &mut token is a valid output parameter.
+        // SAFETY: self.raw is valid (owned by RawTokenizer which outlives this
+        // RawTokenCursor via the 'a borrow); &mut token is a valid output parameter.
         let rc = unsafe { ffi::syntaqlite_tokenizer_next(self.raw, &mut token) };
         if rc == 0 {
             return None;

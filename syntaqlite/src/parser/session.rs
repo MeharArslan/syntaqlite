@@ -11,7 +11,7 @@ use crate::dialect::ffi::DialectConfig;
 
 /// A source span describing where an error node was recorded in the arena.
 ///
-/// Returned by [`NodeReader::required_node`] and [`NodeReader::optional_node`]
+/// Returned by [`RawNodeReader::required_node`] and [`RawNodeReader::optional_node`]
 /// when the resolved arena node is an `ErrorNode` (tag 0) rather than the
 /// expected typed node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,7 +48,7 @@ impl std::fmt::Display for ParseError {
 impl std::error::Error for ParseError {}
 
 /// Owns a parser instance. Reusable across inputs via `parse()`.
-pub struct BaseParser<'d> {
+pub struct RawParser<'d> {
     pub(crate) raw: *mut ffi::Parser,
     /// Null-terminated copy of the source text. The C tokenizer (SQLite's
     /// `SynqSqliteGetToken`) reads until it hits a null byte, so we must
@@ -66,18 +66,18 @@ pub struct BaseParser<'d> {
 // SAFETY: The C parser is self-contained (no thread-local or shared mutable
 // state). Moving it between threads is safe; concurrent access is prevented
 // by &mut borrowing in parse().
-unsafe impl Send for BaseParser<'_> {}
+unsafe impl Send for RawParser<'_> {}
 
-impl<'d> BaseParser<'d> {
+impl<'d> RawParser<'d> {
     /// Create a parser for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
-    pub fn new() -> BaseParser<'static> {
-        BaseParser::builder(&crate::sqlite::DIALECT).build()
+    pub fn new() -> RawParser<'static> {
+        RawParser::builder(&crate::sqlite::DIALECT).build()
     }
 
     /// Create a builder for a parser bound to the given dialect.
-    pub fn builder<'a>(dialect: &'a Dialect) -> BaseParserBuilder<'a> {
-        BaseParserBuilder {
+    pub fn builder<'a>(dialect: &'a Dialect) -> RawParserBuilder<'a> {
+        RawParserBuilder {
             dialect,
             trace: false,
             collect_tokens: false,
@@ -90,10 +90,10 @@ impl<'d> BaseParser<'d> {
     /// Copies the source into an internal buffer to add a null terminator
     /// (required by the C tokenizer). For zero-copy parsing, use
     /// [`parse_cstr`](Self::parse_cstr).
-    pub fn parse<'a>(&'a mut self, source: &'a str) -> BaseStatementCursor<'a> {
-        let base = CursorBase::new(self.raw, &mut self.source_buf, source, self.dialect);
-        BaseStatementCursor {
-            base,
+    pub fn parse<'a>(&'a mut self, source: &'a str) -> RawStatementCursor<'a> {
+        let state = CursorState::new(self.raw, &mut self.source_buf, source, self.dialect);
+        RawStatementCursor {
+            state,
             last_saw_subquery: false,
             last_saw_update_delete_limit: false,
         }
@@ -104,10 +104,10 @@ impl<'d> BaseParser<'d> {
     ///
     /// The `&CStr` already guarantees a trailing `\0`, so no copy is needed.
     /// The source must be valid UTF-8 (panics otherwise).
-    pub fn parse_cstr<'a>(&'a mut self, source: &'a CStr) -> BaseStatementCursor<'a> {
-        let base = CursorBase::new_cstr(self.raw, source, self.dialect);
-        BaseStatementCursor {
-            base,
+    pub fn parse_cstr<'a>(&'a mut self, source: &'a CStr) -> RawStatementCursor<'a> {
+        let state = CursorState::new_cstr(self.raw, source, self.dialect);
+        RawStatementCursor {
+            state,
             last_saw_subquery: false,
             last_saw_update_delete_limit: false,
         }
@@ -115,13 +115,13 @@ impl<'d> BaseParser<'d> {
 }
 
 #[cfg(feature = "sqlite")]
-impl Default for BaseParser<'static> {
+impl Default for RawParser<'static> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Drop for BaseParser<'_> {
+impl Drop for RawParser<'_> {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_parser_create and has
         // not been freed (Drop runs exactly once). The C function is no-op
@@ -130,17 +130,17 @@ impl Drop for BaseParser<'_> {
     }
 }
 
-// ── BaseParserBuilder ───────────────────────────────────────────────────────
+// ── RawParserBuilder ───────────────────────────────────────────────────────
 
-/// Builder for configuring a [`BaseParser`] before construction.
-pub struct BaseParserBuilder<'a> {
+/// Builder for configuring a [`RawParser`] before construction.
+pub struct RawParserBuilder<'a> {
     dialect: &'a Dialect<'a>,
     trace: bool,
     collect_tokens: bool,
     dialect_config: Option<DialectConfig>,
 }
 
-impl<'a> BaseParserBuilder<'a> {
+impl<'a> RawParserBuilder<'a> {
     /// Enable parser trace output (Lemon debug trace).
     pub fn trace(mut self, enable: bool) -> Self {
         self.trace = enable;
@@ -160,7 +160,7 @@ impl<'a> BaseParserBuilder<'a> {
     }
 
     /// Build the parser.
-    pub fn build(self) -> BaseParser<'a> {
+    pub fn build(self) -> RawParser<'a> {
         // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
         // a new parser with default malloc/free.
         let raw = unsafe {
@@ -175,7 +175,7 @@ impl<'a> BaseParserBuilder<'a> {
             ffi::syntaqlite_parser_set_collect_tokens(raw, self.collect_tokens as c_int);
         }
 
-        let mut parser = BaseParser {
+        let mut parser = RawParser {
             raw,
             source_buf: Vec::new(),
             dialect_config: DialectConfig::default(),
@@ -185,7 +185,7 @@ impl<'a> BaseParserBuilder<'a> {
         if let Some(config) = self.dialect_config {
             parser.dialect_config = config;
             // SAFETY: We pass a pointer to parser.dialect_config which lives
-            // in the BaseParser struct. The C side copies the config value.
+            // in the RawParser struct. The C side copies the config value.
             unsafe {
                 ffi::syntaqlite_parser_set_dialect_config(
                     parser.raw,
@@ -202,21 +202,21 @@ impl<'a> BaseParserBuilder<'a> {
 
 /// A lightweight, `Copy` handle for reading nodes from the parser arena.
 ///
-/// This is the read-only half of `CursorBase`. Dialect crates embed it in
+/// This is the read-only half of `CursorState`. Dialect crates embed it in
 /// view structs so that accessor methods can resolve `NodeId` children
 /// without requiring a back-reference to the full cursor.
 ///
 /// # Safety invariant
 /// The raw pointer must remain valid for `'a`. This is guaranteed when
-/// `NodeReader` is obtained from a `CursorBase` (which borrows the parser
+/// `RawNodeReader` is obtained from a `CursorState` (which borrows the parser
 /// exclusively for `'a`).
 #[derive(Clone, Copy)]
-pub struct NodeReader<'a> {
+pub struct RawNodeReader<'a> {
     raw: *mut ffi::Parser,
     source: &'a str,
 }
 
-impl<'a> NodeReader<'a> {
+impl<'a> RawNodeReader<'a> {
     /// Enumerate all child NodeIds of a node using dialect metadata.
     ///
     /// For regular nodes, returns all `Index`-typed (child node) fields.
@@ -351,7 +351,7 @@ impl<'a> NodeReader<'a> {
         // reference) is valid for 'a. Re-casting &self to &'a NodeReader<'a>
         // extends the borrow lifetime to 'a, which is safe because the
         // underlying parser arena lives for 'a (same pattern as resolve_as).
-        let reader: &'a NodeReader<'a> = unsafe { &*(self as *const NodeReader<'a>) };
+        let reader: &'a RawNodeReader<'a> = unsafe { &*(self as *const RawNodeReader<'a>) };
         T::from_arena(reader, id).ok_or(ErrorSpan {
             offset: 0,
             length: 0,
@@ -371,7 +371,7 @@ impl<'a> NodeReader<'a> {
         let (ptr, tag) = self.node_ptr(id)?;
         // SAFETY: ptr is a valid arena pointer from node_ptr(); tag matches
         // the node's type, so dialect.field_meta(tag) is correct.
-        let fields = unsafe { crate::extract_fields(dialect, ptr, tag, self.source) };
+        let fields = unsafe { crate::dialect::extract_fields(dialect, ptr, tag, self.source) };
         Some((tag, fields))
     }
 
@@ -430,12 +430,13 @@ impl<'a> NodeReader<'a> {
     }
 }
 
-// ── CursorBase ──────────────────────────────────────────────────────────
+// ── CursorState ────────────────────────────────────────────────────────
 
-/// Shared read-only cursor state. Both `BaseStatementCursor` and `LowLevelCursor`
-/// wrap this.
-pub struct CursorBase<'a> {
-    pub(crate) reader: NodeReader<'a>,
+/// Internal state shared between cursor implementations (`RawStatementCursor`,
+/// `RawIncrementalCursor`). Holds the node reader, source pointer tracking,
+/// and dialect handle.
+pub(crate) struct CursorState<'a> {
+    pub(crate) reader: RawNodeReader<'a>,
     /// The pointer that the C parser uses as its source base. This may differ
     /// from `source.as_ptr()` when `parse()` copies into an internal buffer.
     /// `feed_token` translates user text pointers through this so that the C
@@ -446,8 +447,8 @@ pub struct CursorBase<'a> {
     pub(crate) dialect: Dialect<'a>,
 }
 
-impl<'a> CursorBase<'a> {
-    /// Construct a CursorBase from a raw parser pointer and source text.
+impl<'a> CursorState<'a> {
+    /// Construct a CursorState from a raw parser pointer and source text.
     /// Copies the source into `source_buf` to null-terminate it, then resets
     /// the C parser.
     pub(crate) fn new(
@@ -467,14 +468,14 @@ impl<'a> CursorBase<'a> {
         unsafe {
             ffi::syntaqlite_parser_reset(raw, c_source_ptr as *const _, source.len() as u32);
         }
-        CursorBase {
-            reader: NodeReader { raw, source },
+        CursorState {
+            reader: RawNodeReader { raw, source },
             c_source_ptr,
             dialect,
         }
     }
 
-    /// Construct a CursorBase from a raw parser pointer and a CStr (zero-copy).
+    /// Construct a CursorState from a raw parser pointer and a CStr (zero-copy).
     pub(crate) fn new_cstr(raw: *mut ffi::Parser, source: &'a CStr, dialect: Dialect<'a>) -> Self {
         let bytes = source.to_bytes();
         let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
@@ -483,8 +484,8 @@ impl<'a> CursorBase<'a> {
         unsafe {
             ffi::syntaqlite_parser_reset(raw, source.as_ptr(), bytes.len() as u32);
         }
-        CursorBase {
-            reader: NodeReader {
+        CursorState {
+            reader: RawNodeReader {
                 raw,
                 source: source_str,
             },
@@ -497,7 +498,7 @@ impl<'a> CursorBase<'a> {
     ///
     /// The returned reference borrows `self`, so nodes resolved through it
     /// cannot outlive this cursor.
-    pub fn reader(&self) -> &NodeReader<'a> {
+    pub(crate) fn reader(&self) -> &RawNodeReader<'a> {
         &self.reader
     }
 
@@ -558,7 +559,7 @@ unsafe fn ffi_slice<'a, T>(
 #[derive(Clone, Copy)]
 pub struct NodeRef<'a> {
     id: NodeId,
-    reader: NodeReader<'a>,
+    reader: RawNodeReader<'a>,
     dialect: Dialect<'a>,
 }
 
@@ -570,7 +571,7 @@ impl std::fmt::Debug for NodeRef<'_> {
 
 impl<'a> NodeRef<'a> {
     /// Create a `NodeRef` from its constituent parts.
-    pub fn new(id: NodeId, reader: NodeReader<'a>, dialect: Dialect<'a>) -> Self {
+    pub fn new(id: NodeId, reader: RawNodeReader<'a>, dialect: Dialect<'a>) -> Self {
         NodeRef {
             id,
             reader,
@@ -584,7 +585,7 @@ impl<'a> NodeRef<'a> {
     }
 
     /// Reader for typed access via `FromArena`.
-    pub fn reader(&self) -> NodeReader<'a> {
+    pub fn reader(&self) -> RawNodeReader<'a> {
         self.reader
     }
 
@@ -651,8 +652,10 @@ impl<'a> NodeRef<'a> {
     }
 
     /// Dump as JSON matching the WASM AST JSON format.
+    #[cfg(feature = "json")]
     pub fn dump_json(&self, out: &mut String) {
-        dump_json_id(self.id, self.reader, self.dialect, out);
+        let value = dump_json_id(self.id, self.reader, self.dialect);
+        out.push_str(&serde_json::to_string(&value).expect("AST dump serialization failed"));
     }
 
     /// Resolve as a typed AST node.
@@ -661,7 +664,7 @@ impl<'a> NodeRef<'a> {
         // reference) is valid for 'a. Re-casting to &'a NodeReader<'a> extends
         // the borrow lifetime to 'a, which is safe because the underlying
         // parser arena lives for 'a (same pattern as NodeReader::resolve_or_error).
-        let reader: &'a NodeReader<'a> = unsafe { &*(&self.reader as *const NodeReader<'a>) };
+        let reader: &'a RawNodeReader<'a> = unsafe { &*(&self.reader as *const RawNodeReader<'a>) };
         T::from_arena(reader, self.id)
     }
 
@@ -671,156 +674,104 @@ impl<'a> NodeRef<'a> {
     }
 }
 
-// ── JSON dump helpers ───────────────────────────────────────────────────────
+// ── JSON dump helpers ────────────────────────────────────────────────────────
 
-/// Escape a string for JSON output.
-fn json_escape(out: &mut String, s: &str) {
-    for c in s.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            c if c < '\x20' => {
-                use std::fmt::Write;
-                let _ = write!(out, "\\u{:04x}", c as u32);
-            }
-            c => out.push(c),
-        }
-    }
-}
-
-/// Recursive JSON dump for a single node ID.
-fn dump_json_id(id: NodeId, reader: NodeReader<'_>, dialect: Dialect<'_>, out: &mut String) {
+/// Recursive JSON dump for a single node ID, returning a `serde_json::Value`.
+#[cfg(feature = "json")]
+fn dump_json_id(
+    id: NodeId,
+    reader: RawNodeReader<'_>,
+    dialect: Dialect<'_>,
+) -> serde_json::Value {
     if id.is_null() {
-        out.push_str("null");
-        return;
+        return serde_json::Value::Null;
     }
     let Some(tag) = reader.node_tag(id) else {
-        out.push_str("null");
-        return;
+        return serde_json::Value::Null;
     };
 
     let name = dialect.node_name(tag);
 
     if dialect.is_list(tag) {
-        let children = reader
-            .list_children(id, &dialect)
-            .unwrap_or(&[]);
-        out.push_str("{\"type\":\"list\",\"name\":\"");
-        json_escape(out, name);
-        out.push_str("\",\"count\":");
-        out.push_str(&children.len().to_string());
-        out.push_str(",\"children\":[");
-        for (i, &child_id) in children.iter().enumerate() {
-            if i > 0 {
-                out.push(',');
-            }
-            if child_id.is_null() || reader.node_tag(child_id).is_none() {
-                out.push_str("{\"type\":\"node\",\"name\":\"null\",\"fields\":[]}");
-            } else {
-                dump_json_id(child_id, reader, dialect, out);
-            }
-        }
-        out.push_str("]}");
-        return;
+        let children = reader.list_children(id, &dialect).unwrap_or(&[]);
+        let child_values: Vec<serde_json::Value> = children
+            .iter()
+            .map(|&child_id| {
+                if child_id.is_null() || reader.node_tag(child_id).is_none() {
+                    serde_json::json!({"type": "node", "name": "null", "fields": []})
+                } else {
+                    dump_json_id(child_id, reader, dialect)
+                }
+            })
+            .collect();
+        return serde_json::json!({
+            "type": "list",
+            "name": name,
+            "count": children.len(),
+            "children": child_values,
+        });
     }
 
     let meta = dialect.field_meta(tag);
     let Some((_, fields)) = reader.extract_fields(id, &dialect) else {
-        out.push_str("null");
-        return;
+        return serde_json::Value::Null;
     };
 
-    out.push_str("{\"type\":\"node\",\"name\":\"");
-    json_escape(out, name);
-    out.push_str("\",\"fields\":[");
-
-    for (i, (m, fv)) in meta.iter().zip(fields.iter()).enumerate() {
-        if i > 0 {
-            out.push(',');
-        }
-        // SAFETY: m.name is a valid NUL-terminated C string from codegen.
-        let label = unsafe { m.name_str() };
-
-        match fv {
-            super::nodes::FieldVal::NodeId(child_id) => {
-                out.push_str("{\"kind\":\"node\",\"label\":\"");
-                json_escape(out, label);
-                out.push_str("\",\"child\":");
-                if child_id.is_null() {
-                    out.push_str("null");
-                } else {
-                    dump_json_id(*child_id, reader, dialect, out);
+    let field_values: Vec<serde_json::Value> = meta
+        .iter()
+        .zip(fields.iter())
+        .map(|(m, fv)| {
+            // SAFETY: m.name is a valid NUL-terminated C string from codegen.
+            let label = unsafe { m.name_str() };
+            match fv {
+                super::nodes::FieldVal::NodeId(child_id) => {
+                    let child = if child_id.is_null() {
+                        serde_json::Value::Null
+                    } else {
+                        dump_json_id(*child_id, reader, dialect)
+                    };
+                    serde_json::json!({"kind": "node", "label": label, "child": child})
                 }
-                out.push('}');
-            }
-            super::nodes::FieldVal::Span(text, _) => {
-                out.push_str("{\"kind\":\"span\",\"label\":\"");
-                json_escape(out, label);
-                out.push_str("\",\"value\":");
-                if text.is_empty() {
-                    out.push_str("null");
-                } else {
-                    out.push('"');
-                    json_escape(out, text);
-                    out.push('"');
+                super::nodes::FieldVal::Span(text, _) => {
+                    let value = if text.is_empty() {
+                        serde_json::Value::Null
+                    } else {
+                        serde_json::Value::String(text.to_string())
+                    };
+                    serde_json::json!({"kind": "span", "label": label, "value": value})
                 }
-                out.push('}');
-            }
-            super::nodes::FieldVal::Bool(val) => {
-                out.push_str("{\"kind\":\"bool\",\"label\":\"");
-                json_escape(out, label);
-                out.push_str("\",\"value\":");
-                out.push_str(if *val { "true" } else { "false" });
-                out.push('}');
-            }
-            super::nodes::FieldVal::Enum(val) => {
-                out.push_str("{\"kind\":\"enum\",\"label\":\"");
-                json_escape(out, label);
-                out.push_str("\",\"value\":");
-                // SAFETY: m.display is a valid C array from codegen.
-                match unsafe { m.display_name(*val as usize) } {
-                    Some(s) => {
-                        out.push('"');
-                        json_escape(out, s);
-                        out.push('"');
-                    }
-                    None => out.push_str("null"),
+                super::nodes::FieldVal::Bool(val) => {
+                    serde_json::json!({"kind": "bool", "label": label, "value": val})
                 }
-                out.push('}');
-            }
-            super::nodes::FieldVal::Flags(val) => {
-                out.push_str("{\"kind\":\"flags\",\"label\":\"");
-                json_escape(out, label);
-                out.push_str("\",\"value\":[");
-                let mut first = true;
-                for bit in 0..8u8 {
-                    if val & (1 << bit) != 0 {
-                        if !first {
-                            out.push(',');
-                        }
-                        first = false;
-                        // SAFETY: m.display is a valid C array from codegen.
-                        match unsafe { m.display_name(bit as usize) } {
-                            Some(s) => {
-                                out.push('"');
-                                json_escape(out, s);
-                                out.push('"');
+                super::nodes::FieldVal::Enum(val) => {
+                    // SAFETY: m.display is a valid C array from codegen.
+                    let value = unsafe { m.display_name(*val as usize) }
+                        .map(|s| serde_json::Value::String(s.to_string()))
+                        .unwrap_or(serde_json::Value::Null);
+                    serde_json::json!({"kind": "enum", "label": label, "value": value})
+                }
+                super::nodes::FieldVal::Flags(val) => {
+                    let flag_values: Vec<serde_json::Value> = (0..8u8)
+                        .filter(|&bit| val & (1 << bit) != 0)
+                        .map(|bit| {
+                            // SAFETY: m.display is a valid C array from codegen.
+                            match unsafe { m.display_name(bit as usize) } {
+                                Some(s) => serde_json::Value::String(s.to_string()),
+                                None => serde_json::json!(1u32 << bit),
                             }
-                            None => {
-                                out.push_str(&(1u32 << bit).to_string());
-                            }
-                        }
-                    }
+                        })
+                        .collect();
+                    serde_json::json!({"kind": "flags", "label": label, "value": flag_values})
                 }
-                out.push_str("]}");
             }
-        }
-    }
+        })
+        .collect();
 
-    out.push_str("]}");
+    serde_json::json!({
+        "type": "node",
+        "name": name,
+        "fields": field_values,
+    })
 }
 
 // ── BaseStatementCursor (high-level) ────────────────────────────────────────
@@ -832,15 +783,15 @@ fn dump_json_id(id: NodeId, reader: NodeReader<'_>, dialect: Dialect<'_>, out: &
 /// statement, then continues parsing subsequent statements (Lemon's built-in
 /// error recovery synchronises on `;`). Call `next_statement()` again to
 /// retrieve the next valid statement.
-pub struct BaseStatementCursor<'a> {
-    pub(crate) base: CursorBase<'a>,
+pub struct RawStatementCursor<'a> {
+    pub(crate) state: CursorState<'a>,
     /// Value of `saw_subquery` from the last successful `next_statement()` call.
     last_saw_subquery: bool,
     /// Value of `saw_update_delete_limit` from the last successful `next_statement()` call.
     last_saw_update_delete_limit: bool,
 }
 
-impl<'a> BaseStatementCursor<'a> {
+impl<'a> RawStatementCursor<'a> {
     /// Parse the next SQL statement.
     ///
     /// Returns:
@@ -852,7 +803,7 @@ impl<'a> BaseStatementCursor<'a> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         // When error is set, error_msg is a NUL-terminated string in the
         // parser's buffer (valid for parser lifetime).
-        let result = unsafe { ffi::syntaqlite_parser_next(self.base.reader.raw()) };
+        let result = unsafe { ffi::syntaqlite_parser_next(self.state.reader.raw()) };
 
         let id = NodeId(result.root);
         let has_root = !id.is_null();
@@ -894,8 +845,8 @@ impl<'a> BaseStatementCursor<'a> {
             self.last_saw_update_delete_limit = result.saw_update_delete_limit != 0;
             return Some(Ok(NodeRef {
                 id,
-                reader: self.base.reader,
-                dialect: self.base.dialect,
+                reader: self.state.reader,
+                dialect: self.state.dialect,
             }));
         }
 
@@ -919,37 +870,37 @@ impl<'a> BaseStatementCursor<'a> {
         self.last_saw_update_delete_limit
     }
 
-    /// Access the underlying `CursorBase` for read-only operations.
-    pub(crate) fn base(&self) -> &CursorBase<'a> {
-        &self.base
+    /// Access the underlying `CursorState` for read-only operations.
+    pub(crate) fn state(&self) -> &CursorState<'a> {
+        &self.state
     }
 
     // Delegate read-only methods for convenience
 
     /// Get a reference to the embedded `NodeReader`.
-    pub fn reader(&self) -> &NodeReader<'a> {
-        self.base.reader()
+    pub fn reader(&self) -> &RawNodeReader<'a> {
+        self.state.reader()
     }
 
     /// The source text bound to this cursor.
     pub fn source(&self) -> &'a str {
-        self.base.source()
+        self.state.source()
     }
 
     /// Return all non-whitespace, non-comment token positions captured
     /// during parsing.
     pub fn tokens(&self) -> &[ffi::TokenPos] {
-        self.base.tokens()
+        self.state.tokens()
     }
 
     /// Return all comments captured during parsing.
     pub fn comments(&self) -> &[Comment] {
-        self.base.comments()
+        self.state.comments()
     }
 
     /// Dump an AST node tree as indented text.
     pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
-        self.base.dump_node(id, out, indent)
+        self.state.dump_node(id, out, indent)
     }
 
     /// Wrap a `NodeId` (e.g. from a `ParseError::root`) into a `NodeRef`
@@ -957,13 +908,13 @@ impl<'a> BaseStatementCursor<'a> {
     pub fn node_ref(&self, id: NodeId) -> NodeRef<'a> {
         NodeRef {
             id,
-            reader: self.base.reader,
-            dialect: self.base.dialect,
+            reader: self.state.reader,
+            dialect: self.state.dialect,
         }
     }
 }
 
-impl<'a> Iterator for BaseStatementCursor<'a> {
+impl<'a> Iterator for RawStatementCursor<'a> {
     type Item = Result<NodeRef<'a>, ParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -977,7 +928,7 @@ mod tests {
     use super::*;
 
     fn parse_saw_subquery(sql: &str) -> (bool, bool) {
-        let mut parser = BaseParser::new();
+        let mut parser = RawParser::new();
         let mut cursor = parser.parse(sql);
         let ok = matches!(cursor.next_statement(), Some(Ok(_)));
         let saw = cursor.saw_subquery();
@@ -986,7 +937,7 @@ mod tests {
 
     #[test]
     fn node_ref_accessors() {
-        let mut parser = BaseParser::new();
+        let mut parser = RawParser::new();
         let mut cursor = parser.parse("SELECT 1;");
         let node = cursor.next_statement().unwrap().unwrap();
         assert!(!node.name().is_empty());
@@ -995,9 +946,10 @@ mod tests {
         assert!(!node.id().is_null());
     }
 
+    #[cfg(feature = "json")]
     #[test]
     fn node_ref_dump_json_produces_valid_json() {
-        let mut parser = BaseParser::new();
+        let mut parser = RawParser::new();
         let mut cursor = parser.parse("SELECT 1;");
         let node = cursor.next_statement().unwrap().unwrap();
         let mut out = String::new();
