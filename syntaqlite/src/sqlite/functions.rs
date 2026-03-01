@@ -21,10 +21,8 @@
 #[path = "functions_catalog.rs"]
 mod functions_catalog;
 
-pub use crate::catalog::{
-    AvailabilityRule, CflagPolarity, FunctionCategory, FunctionEntry, FunctionInfo,
-};
-pub use functions_catalog::SQLITE_FUNCTIONS;
+pub use crate::catalog::{FunctionCategory, FunctionInfo};
+pub(crate) use functions_catalog::SQLITE_FUNCTIONS;
 
 use crate::catalog;
 use crate::dialect::ffi::DialectConfig;
@@ -42,7 +40,8 @@ pub fn available_functions(config: &DialectConfig) -> Vec<&'static FunctionInfo<
 }
 
 /// Returns the full unfiltered catalog of all SQLite built-in functions.
-pub fn catalog() -> &'static [FunctionEntry<'static>] {
+#[cfg(test)]
+pub(crate) fn catalog() -> &'static [crate::catalog::FunctionEntry<'static>] {
     SQLITE_FUNCTIONS
 }
 

@@ -23,7 +23,7 @@ pub enum FunctionCategory {
 /// which allows [`AvailabilityRule`] to be cast directly from C data.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CflagPolarity {
+pub(crate) enum CflagPolarity {
     /// Function requires the cflag to be set (SQLITE_ENABLE_*).
     Enable = 0,
     /// Function is omitted when the cflag is set (SQLITE_OMIT_*).
@@ -49,15 +49,15 @@ pub struct FunctionInfo<'a> {
 /// reinterpreted as `&[AvailabilityRule]` without copying.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct AvailabilityRule {
+pub(crate) struct AvailabilityRule {
     /// Minimum SQLite version (encoded: major*1_000_000 + minor*1_000 + patch).
-    pub since: i32,
+    pub(crate) since: i32,
     /// Maximum SQLite version (exclusive). 0 means no upper bound.
-    pub until: i32,
+    pub(crate) until: i32,
     /// Cflag bit index in `Cflags`, or `u32::MAX` if no cflag required.
-    pub cflag_index: u32,
+    pub(crate) cflag_index: u32,
     /// Polarity of the cflag constraint.
-    pub cflag_polarity: CflagPolarity,
+    pub(crate) cflag_polarity: CflagPolarity,
 }
 
 const _: () = {
@@ -74,9 +74,9 @@ const _: () = {
 
 /// A function entry combining metadata with availability rules.
 #[derive(Debug, Clone, Copy)]
-pub struct FunctionEntry<'a> {
-    pub info: FunctionInfo<'a>,
-    pub availability: &'a [AvailabilityRule],
+pub(crate) struct FunctionEntry<'a> {
+    pub(crate) info: FunctionInfo<'a>,
+    pub(crate) availability: &'a [AvailabilityRule],
 }
 
 /// Check whether a function entry is available for the given dialect config.
@@ -87,7 +87,7 @@ pub struct FunctionEntry<'a> {
 /// - The config version is < `until` (if `until` is non-zero)
 /// - If a cflag is required: for `Enable` polarity, the cflag must be set;
 ///   for `Omit` polarity, the cflag must NOT be set.
-pub fn is_available(entry: &FunctionEntry<'_>, config: &DialectConfig) -> bool {
+pub(crate) fn is_available(entry: &FunctionEntry<'_>, config: &DialectConfig) -> bool {
     entry.availability.iter().any(|rule| {
         if config.sqlite_version < rule.since {
             return false;

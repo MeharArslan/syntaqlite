@@ -295,17 +295,19 @@ impl<'d> Dialect<'d> {
     }
 
     /// The well-known `TK_SPACE` token type ordinal.
-    pub fn tk_space(&self) -> u32 {
+    #[allow(dead_code)]
+    pub(crate) fn tk_space(&self) -> u32 {
         self.raw.tk_space as u32
     }
 
     /// The well-known `TK_SEMI` token type ordinal.
-    pub fn tk_semi(&self) -> u32 {
+    pub(crate) fn tk_semi(&self) -> u32 {
         self.raw.tk_semi as u32
     }
 
     /// The well-known `TK_COMMENT` token type ordinal.
-    pub fn tk_comment(&self) -> u32 {
+    #[allow(dead_code)]
+    pub(crate) fn tk_comment(&self) -> u32 {
         self.raw.tk_comment as u32
     }
 
@@ -322,7 +324,7 @@ impl<'d> Dialect<'d> {
     ///   identical layout (`i32+i32+u32+u8+3pad = 16 bytes`), and
     ///   `CflagPolarity` is `#[repr(u8)]` with `Enable=0, Omit=1` matching
     ///   the C convention.
-    pub fn function_extensions(&self) -> Vec<crate::catalog::FunctionEntry<'d>> {
+    pub(crate) fn function_extensions(&self) -> Vec<crate::catalog::FunctionEntry<'d>> {
         if self.raw.function_extensions.is_null() || self.raw.function_extension_count == 0 {
             return Vec::new();
         }
