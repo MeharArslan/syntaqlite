@@ -84,3 +84,121 @@ For Python, start with a hand-rolled extractor. F-string brace matching is well-
 For JS/TS, use the TS plugin for editor contexts. For CLI, a hand-rolled template literal tokenizer is straightforward — `${}` hole detection is simpler than Python's `{}` (no ambiguity with dict literals).
 
 Tree-sitter is the insurance policy: if hand-rolled extractors accumulate too many edge cases, swap to tree-sitter for both languages with one shared runtime dependency.
+
+## Formatting Embedded SQL
+
+### The problem
+
+Formatting SQL inside host language strings requires three steps:
+1. **Format the SQL** — the existing formatter handles this, with `begin_macro`/`end_macro` emitting holes verbatim
+2. **Re-embed** — splice the formatted SQL back into the host string, handling indentation, quoting, and escapes
+3. **Coexist** — don't fight the user's existing host language formatter (Black, Ruff, Prettier)
+
+### Re-embedding challenges
+
+**Indentation context.** The SQL lives inside an indented host string. Formatted output must align to the string's column:
+
+```python
+# Before
+def get_users():
+    query = f"SELECT * FROM {table} WHERE id = {user_id} AND active = 1"
+
+# After — lines aligned to string indentation
+def get_users():
+    query = f"""
+        SELECT
+            *
+        FROM
+            {table}
+        WHERE
+            id = {user_id}
+            AND active = 1
+    """
+```
+
+**String delimiter transformation.** A single-line string may need to become multi-line after formatting: `f"..."` → `f"""..."""` (Python), while JS template literals are already multi-line.
+
+**Escape sequences.** The formatter output must be re-escaped for the host string type. Triple-quoted strings need fewer escapes than single-quoted ones.
+
+### Editor integration: who calls the formatter?
+
+There is no LSP primitive for embedded language formatting. Projects that format embedded languages use one of two approaches:
+
+| Approach | How it works | Examples |
+|----------|-------------|----------|
+| **Formatter owns everything** | One formatter handles the whole file, calling sub-formatters for embedded regions internally | Prettier (HTML → CSS/JS), VS Code HTML extension |
+| **Virtual document projection** | Language server creates virtual documents per embedded region, dispatches formatting to other servers | Volar (Vue), Astro language server |
+
+syntaqlite is in the "owns everything" position for SQL — it IS the SQL formatter. But it can't own the host file (Python/JS). So the question is: can the host formatter delegate to syntaqlite?
+
+### Delegation from host formatters
+
+| Formatter | Can delegate? | Mechanism |
+|-----------|--------------|-----------|
+| **Prettier** | **Yes** | Plugins define `embed()` function for embedded languages. First-class feature. |
+| **dprint** | **Yes** | Plugin system supports embedded formatting |
+| **Black** | No | Doesn't touch string contents, no plugin hook |
+| **Ruff** | No | Same as Black |
+
+For **JS/TS**, a Prettier plugin is the natural distribution path — ~50 lines of glue, users already have Prettier, and Prettier handles all re-embedding (indentation, template literal syntax).
+
+For **Python**, no formatter will delegate. The only options are the syntaqlite **CLI** (`syntaqlite fmt --lang python`) or an **LSP Code Action** ("Format embedded SQL").
+
+## Distribution Strategy: TypeScript vs. Everything Else
+
+### Key insight
+
+TypeScript has a rich plugin ecosystem (TS Language Service Plugins, Prettier plugins) that runs inside the user's existing toolchain. Other languages (Python, Go, Rust, etc.) don't have equivalents — they need a standalone LSP server or CLI.
+
+This means two different distribution strategies:
+
+### TypeScript/JavaScript: embed into existing toolchain
+
+```
+@syntaqlite/wasm                  ← the engine (parser, formatter, validator)
+     │
+     ├── @syntaqlite/ts-plugin     ← TS Language Service Plugin
+     │     runs inside tsserver
+     │     provides: validation, completions, diagnostics
+     │     works in: VS Code, Neovim, JetBrains — anywhere tsserver runs
+     │
+     └── prettier-plugin-syntaqlite ← Prettier plugin
+           runs inside prettier
+           provides: formatting of SQL in tagged template literals
+           coexists with user's existing Prettier config
+```
+
+Both packages call into the WASM build. The TS plugin handles validation + completions. The Prettier plugin handles formatting. Users install both and get the full experience with zero extra processes.
+
+**TS Language Service Plugin advantages:**
+- Runs inside tsserver — zero extra processes
+- Sees tagged template literals with full type information
+- Diagnostics appear as native TypeScript errors
+- Works in any editor that uses tsserver (VS Code, Neovim, JetBrains, etc.)
+
+### Python/Go/Rust/everything else: standalone LSP + CLI
+
+```
+syntaqlite LSP server             ← standalone server process
+     provides: validation, completions, diagnostics, Code Actions
+     server-side string extraction (Rust)
+
+syntaqlite CLI
+     provides: validation, formatting
+     syntaqlite validate myapp.py
+     syntaqlite fmt --lang python myapp.py
+     usable in: pre-commit hooks, CI, editor save hooks
+```
+
+These languages have no equivalent of tsserver plugins. The syntaqlite LSP server handles everything: string extraction, parsing, validation, formatting (via Code Actions).
+
+### Summary
+
+| Concern | JS/TS path | Python/other path |
+|---------|-----------|-------------------|
+| **Validation** | `@syntaqlite/ts-plugin` (inside tsserver) | syntaqlite LSP server |
+| **Formatting** | `prettier-plugin-syntaqlite` (inside Prettier) | CLI (`syntaqlite fmt --lang python`) or LSP Code Action |
+| **Completions** | `@syntaqlite/ts-plugin` (inside tsserver) | syntaqlite LSP server |
+| **CI/pre-commit** | CLI fallback | CLI |
+
+The LSP server should focus on non-TS languages. The TS packages are the primary path for JS/TS users.
