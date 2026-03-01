@@ -4,7 +4,7 @@
 
 """Autoformat all project C source files using clang-format.
 
-Formats .c and .h files under syntaqlite-sys/csrc/ and syntaqlite-sys/include/,
+Formats .c and .h files under syntaqlite-parser/ and syntaqlite-parser-sqlite/,
 skipping third_party/ and any other non-project directories.
 
 Usage:
@@ -28,8 +28,10 @@ from python.tools.run_rust_binary import get_platform_dir
 
 # Directories containing project-owned C code (relative to ROOT_DIR).
 C_SOURCE_DIRS = [
-    "syntaqlite-sys/csrc",
-    "syntaqlite-sys/include",
+    "syntaqlite-parser/csrc",
+    "syntaqlite-parser/include",
+    "syntaqlite-parser-sqlite/csrc",
+    "syntaqlite-parser-sqlite/include",
 ]
 
 

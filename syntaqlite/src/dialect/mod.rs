@@ -23,7 +23,9 @@ pub(crate) use syntaqlite_parser::dialect::extract_fields;
 pub use syntaqlite_parser::dialect::{Dialect, SchemaContribution, SchemaKind};
 
 #[cfg(feature = "sqlite")]
-pub use syntaqlite_parser::sqlite::{cflag_names, cflag_table, parse_cflag_name, parse_sqlite_version};
+pub use syntaqlite_parser::sqlite::{
+    cflag_names, cflag_table, parse_cflag_name, parse_sqlite_version,
+};
 
 // ── Token category ─────────────────────────────────────────────────────
 

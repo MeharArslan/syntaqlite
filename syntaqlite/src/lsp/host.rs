@@ -676,9 +676,9 @@ impl std::error::Error for FormatError {}
 mod tests {
     use super::AnalysisHost;
     use crate::parser::session::RawParser;
-    use syntaqlite_parser_sqlite::tokens::TokenType;
     use crate::validation::SessionContext;
     use crate::validation::types::FunctionDef;
+    use syntaqlite_parser_sqlite::tokens::TokenType;
 
     #[test]
     fn completions_fall_back_to_last_good_state_on_parse_error() {

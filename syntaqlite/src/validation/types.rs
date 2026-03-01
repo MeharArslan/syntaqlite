@@ -580,7 +580,8 @@ impl DocumentContext {
                     // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
                     let sel_id = unsafe { read_node_id(ptr, sel_meta) };
                     if !sel_id.is_null()
-                        && let Some(select) = syntaqlite_parser_sqlite::ast::Select::from_arena(reader, sel_id)
+                        && let Some(select) =
+                            syntaqlite_parser_sqlite::ast::Select::from_arena(reader, sel_id)
                     {
                         columns_from_select(&select, &self.known, session, &mut columns);
                     }
