@@ -21,11 +21,16 @@ pub(crate) enum CodegenCommand {
         nodes_dir: String,
         #[arg(long, default_value = "syntaqlite-parser-sqlite/csrc/sqlite")]
         output_dir: String,
-        /// Directory for generated Rust outputs. When provided, Rust files are
-        /// written relative to this path instead of being inferred from
-        /// --output-dir. Use when C and Rust outputs live in different crates.
+        /// Crate root for generated Rust dialect modules (ast.rs, ffi.rs,
+        /// tokens.rs). Outputs land in `<rust_dir>/src/`. Inferred from
+        /// --output-dir when omitted.
         #[arg(long)]
         rust_dir: Option<String>,
+        /// Crate root for generated crate-level Rust modules
+        /// (functions_catalog.rs, ast_traits.rs). Outputs land in
+        /// `<rust_crate_src_dir>/src/`. Defaults to --rust-dir when omitted.
+        #[arg(long)]
+        rust_crate_src_dir: Option<String>,
     },
     /// Produce C amalgamation files (single-file compilation units).
     Amalgamate {
@@ -71,7 +76,14 @@ pub(crate) fn dispatch(command: CodegenCommand) -> Result<(), String> {
             nodes_dir,
             output_dir,
             rust_dir,
-        } => handle_codegen(&actions_dir, &nodes_dir, &output_dir, rust_dir.as_deref()),
+            rust_crate_src_dir,
+        } => handle_codegen(
+            &actions_dir,
+            &nodes_dir,
+            &output_dir,
+            rust_dir.as_deref(),
+            rust_crate_src_dir.as_deref(),
+        ),
         CodegenCommand::Amalgamate {
             dialect,
             runtime_dir,
@@ -120,6 +132,7 @@ fn handle_codegen(
     nodes_dir: &str,
     output_dir: &str,
     rust_dir: Option<&str>,
+    rust_crate_src_dir: Option<&str>,
 ) -> Result<(), String> {
     let dialect = syntaqlite_buildtools::DialectNaming::new("sqlite");
 
@@ -156,9 +169,18 @@ fn handle_codegen(
         .unwrap_or(Path::new("."));
     let include_dir = c_crate_root.join(format!("include/{}", dialect.include_dir_name()));
 
-    // When --rust-dir is provided, Rust outputs go to a separate crate root.
-    // Otherwise, they are inferred from the C output directory (backward compatible).
-    let rust_crate_root = rust_dir.map_or_else(|| c_crate_root.to_path_buf(), PathBuf::from);
+    // Rust dialect modules (ast.rs, ffi.rs, tokens.rs) go into <rust_dir>/src/.
+    // When --rust-dir is omitted, infer from the C crate root.
+    let rust_dialect_crate_root =
+        rust_dir.map_or_else(|| c_crate_root.to_path_buf(), PathBuf::from);
+    let rust_dialect_src_dir = rust_dialect_crate_root.join("src");
+
+    // Crate-level Rust modules (functions_catalog.rs, ast_traits.rs) go into
+    // <rust_crate_src_dir>/src/. Defaults to the same root as --rust-dir.
+    let rust_crate_src_root = rust_crate_src_dir
+        .map(PathBuf::from)
+        .unwrap_or_else(|| rust_dialect_crate_root.clone());
+    let rust_src_dir = rust_crate_src_root.join("src");
 
     // Clean stale generated files
     for dir in [out, include_dir.as_path()] {
@@ -167,25 +189,21 @@ fn handle_codegen(
         }
     }
 
-    // For the internal syntaqlite crate, generated Rust dialect modules
-    // (tokens.rs, ffi.rs, ast.rs) live under src/sqlite/.
-    let rust_sqlite_dir = rust_crate_root.join("src/sqlite");
-
     ensure_dir(out, "output directory")?;
     ensure_dir(&include_dir, "include directory")?;
-    ensure_dir(&rust_sqlite_dir, "Rust sqlite src directory")?;
+    ensure_dir(&rust_dialect_src_dir, "Rust dialect src directory")?;
 
     use syntaqlite_buildtools::sqlite::output_manifest::OutputBucket;
-
-    let rust_src_dir = rust_crate_root.join("src");
 
     for output in outputs {
         let dir: &Path = match output.bucket {
             OutputBucket::Include => &include_dir,
             OutputBucket::DialectCsrc => out,
-            // Generated dialect modules go into src/sqlite/ for the internal crate.
-            OutputBucket::RustDialectSrc => &rust_sqlite_dir,
-            // Shared crate-level Rust modules (e.g. ast_traits.rs) go into src/.
+            // Generated dialect modules (ast.rs, ffi.rs, tokens.rs) go into
+            // <rust_dir>/src/.
+            OutputBucket::RustDialectSrc => &rust_dialect_src_dir,
+            // Crate-level modules (functions_catalog.rs, ast_traits.rs) go into
+            // <rust_crate_src_dir>/src/.
             OutputBucket::RustCrateSrc => &rust_src_dir,
             // Scaffolding files (lib.rs, wrappers.rs) and crate-root files
             // (build.rs, Cargo.toml) are hand-maintained for the internal crate.

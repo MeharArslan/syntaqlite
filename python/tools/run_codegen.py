@@ -39,7 +39,8 @@ def main():
     actions_dir = dialect_crate / "parser-actions"
     nodes_dir = dialect_crate / "parser-nodes"
     output_dir = project_root / "syntaqlite-parser-sqlite" / "csrc" / "sqlite"
-    rust_dir = project_root / "syntaqlite"
+    rust_dir = project_root / "syntaqlite-parser-sqlite"
+    rust_crate_src_dir = project_root / "syntaqlite-parser"
     vendored_dir = project_root / "syntaqlite-buildtools" / "sqlite-vendored"
 
     do_extract = args.extract
@@ -115,6 +116,7 @@ def main():
             "--nodes-dir", str(nodes_dir),
             "--output-dir", str(output_dir),
             "--rust-dir", str(rust_dir),
+            "--rust-crate-src-dir", str(rust_crate_src_dir),
         ],
     )
 
