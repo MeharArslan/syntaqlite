@@ -6,12 +6,13 @@ use super::comment::CommentCtx;
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
 use crate::dialect::Dialect;
-use crate::parser::{CommentKind, CursorBase, Fields, MacroRegion, NodeId, Parser, ParserConfig};
+use crate::parser::ffi::MacroRegion;
+use crate::parser::{BaseParser, CommentKind, Fields};
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {
     dialect: Dialect<'d>,
-    parser: Parser,
+    parser: BaseParser<'d>,
     config: FormatConfig,
     /// Reusable scratch arena — cleared between format calls to avoid
     /// re-allocating the backing Vec.
@@ -26,55 +27,32 @@ pub struct Formatter<'d> {
 // SAFETY: Dialect is Send+Sync, Parser is Send.
 unsafe impl Send for Formatter<'_> {}
 
+#[cfg(feature = "sqlite")]
+impl Default for Formatter<'static> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'d> Formatter<'d> {
-    /// Create a formatter for the given dialect with default configuration.
-    pub fn with_dialect(dialect: &Dialect<'d>) -> Result<Self, &'static str> {
-        Self::with_dialect_config(dialect, FormatConfig::default())
-    }
-
-    /// Create a formatter with the given dialect and configuration.
-    pub fn with_dialect_config(
-        dialect: &Dialect<'d>,
-        config: FormatConfig,
-    ) -> Result<Self, &'static str> {
-        if !dialect.has_fmt_data() {
-            return Err("C dialect has no fmt data");
-        }
-        let parser_config = ParserConfig {
-            collect_tokens: true,
-            ..Default::default()
-        };
-        let parser = Parser::with_dialect_config(dialect, &parser_config);
-        Ok(Formatter {
-            dialect: *dialect,
-            parser,
-            config,
-            arena: DocArena::with_capacity(256),
-            interpret_scratch: InterpretScratch::new(),
-            render_bufs: RenderBuffers::new(),
-        })
-    }
-
     /// Create a formatter for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
-    pub fn new() -> Result<Formatter<'static>, &'static str> {
-        Formatter::with_dialect(&crate::sqlite::DIALECT)
+    pub fn new() -> Formatter<'static> {
+        Formatter::builder(&crate::sqlite::DIALECT).build()
     }
 
-    /// Create a formatter for the built-in SQLite dialect with the given configuration.
-    #[cfg(feature = "sqlite")]
-    pub fn with_config(config: FormatConfig) -> Result<Formatter<'static>, &'static str> {
-        Formatter::with_dialect_config(&crate::sqlite::DIALECT, config)
+    /// Create a builder for a formatter bound to the given dialect.
+    pub fn builder(dialect: &'d Dialect<'d>) -> FormatterBuilder<'d> {
+        FormatterBuilder {
+            dialect,
+            format_config: FormatConfig::default(),
+            dialect_config: None,
+        }
     }
 
     /// Access the current configuration.
     pub fn config(&self) -> &FormatConfig {
         &self.config
-    }
-
-    /// Set dialect config (version/cflags) on the underlying parser.
-    pub fn set_dialect_config(&mut self, config: &crate::dialect::ffi::DialectConfig) {
-        self.parser.set_dialect_config(config);
     }
 
     /// Format SQL source text. Handles multiple statements and preserves comments.
@@ -83,7 +61,7 @@ impl<'d> Formatter<'d> {
 
         let mut roots = Vec::new();
         while let Some(result) = cursor.next_statement() {
-            roots.push(result?);
+            roots.push(result?.id());
         }
 
         let base = cursor.base();
@@ -119,7 +97,7 @@ impl<'d> Formatter<'d> {
 
             let ctx = FmtCtx {
                 dialect: self.dialect,
-                cursor: base,
+                reader: base.reader,
                 comment_ctx: comment_ctx_ref,
             };
             let mut consumed = 0u64;
@@ -164,19 +142,69 @@ impl<'d> Formatter<'d> {
 
     /// Format a single pre-parsed AST node. This is the low-level entry point
     /// for cases where the caller controls parsing (e.g. macro expansion).
-    pub fn format_node<'a>(&self, cursor: &'a CursorBase<'a>, node_id: NodeId) -> String {
+    pub fn format_node(&self, node: crate::parser::NodeRef<'_>) -> String {
+        let reader = node.reader();
         let mut arena = DocArena::new();
-        let tokens = cursor.tokens();
+        let tokens = reader.tokens();
         let comment_ctx = CommentCtx::new(&[], tokens);
         let ctx = FmtCtx {
             dialect: self.dialect,
-            cursor,
+            reader,
             comment_ctx: Some(&comment_ctx),
         };
         let mut consumed = 0u64;
         let mut scratch = InterpretScratch::new();
-        let doc = interpret_node(&ctx, node_id, &mut consumed, &mut arena, &mut scratch);
+        let doc = interpret_node(&ctx, node.id(), &mut consumed, &mut arena, &mut scratch);
         arena.render(doc, self.config.line_width, self.config.keyword_case)
+    }
+}
+
+// ── FormatterBuilder ────────────────────────────────────────────────────
+
+/// Builder for configuring a [`Formatter`] before construction.
+pub struct FormatterBuilder<'d> {
+    dialect: &'d Dialect<'d>,
+    format_config: FormatConfig,
+    dialect_config: Option<crate::dialect::ffi::DialectConfig>,
+}
+
+impl<'d> FormatterBuilder<'d> {
+    /// Set the format configuration (line width, keyword case, etc.).
+    pub fn format_config(mut self, config: FormatConfig) -> Self {
+        self.format_config = config;
+        self
+    }
+
+    /// Set dialect config for version/cflag-gated tokenization.
+    pub fn dialect_config(mut self, config: crate::dialect::ffi::DialectConfig) -> Self {
+        self.dialect_config = Some(config);
+        self
+    }
+
+    /// Build the formatter.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the dialect was not compiled with formatter bytecode
+    /// (i.e. the `.synq` definitions have no `fmt` blocks).
+    pub fn build(self) -> Formatter<'d> {
+        assert!(
+            self.dialect.has_fmt_data(),
+            "dialect has no formatter bytecode — ensure .synq definitions include fmt blocks",
+        );
+        let mut parser_builder = BaseParser::builder(self.dialect).collect_tokens(true);
+        if let Some(dc) = self.dialect_config {
+            parser_builder = parser_builder.dialect_config(dc);
+        }
+        let parser = parser_builder.build();
+        Formatter {
+            dialect: *self.dialect,
+            parser,
+            config: self.format_config,
+            arena: DocArena::with_capacity(256),
+            interpret_scratch: InterpretScratch::new(),
+            render_bufs: RenderBuffers::new(),
+        }
     }
 }
 

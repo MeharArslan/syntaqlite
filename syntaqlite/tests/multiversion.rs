@@ -22,7 +22,7 @@
 //! - 3.24.0: `FILTER (WHERE ...)` → error near "("
 //! - 3.25.0: same query (with OVER) → success
 
-use syntaqlite::dialect::ffi::DialectConfig;
+use syntaqlite::dialect::DialectConfig;
 use syntaqlite::sqlite::low_level::TokenType;
 
 /// Shorthand: convert a TokenType variant to its raw u32 value.
@@ -38,11 +38,12 @@ const fn tk(t: TokenType) -> u32 {
 /// filtering out whitespace.
 fn tokenize_at_version(sql: &str, version: i32) -> Vec<(u32, String)> {
     let dialect = syntaqlite::sqlite::low_level::dialect();
-    let mut tok = syntaqlite::parser::Tokenizer::with_dialect(*dialect);
-    tok.set_dialect_config(&DialectConfig {
-        sqlite_version: version,
-        ..Default::default()
-    });
+    let mut tok = syntaqlite::raw::RawTokenizer::builder(*dialect)
+        .dialect_config(DialectConfig {
+            sqlite_version: version,
+            ..Default::default()
+        })
+        .build();
     tok.tokenize(sql)
         .filter(|raw| raw.token_type != tk(TokenType::Space))
         .map(|raw| (raw.token_type, raw.text.to_string()))
@@ -57,12 +58,12 @@ fn tokenize_latest(sql: &str) -> Vec<(u32, String)> {
 /// Parse SQL with a specific SQLite version and return whether it succeeded.
 fn parses_ok_at_version(sql: &str, version: i32) -> bool {
     let dialect = syntaqlite::sqlite::low_level::dialect();
-    let mut parser = syntaqlite::Parser::with_dialect(dialect);
-    let config = DialectConfig {
-        sqlite_version: version,
-        ..Default::default()
-    };
-    parser.set_dialect_config(&config);
+    let mut parser = syntaqlite::raw::RawParser::builder(dialect)
+        .dialect_config(DialectConfig {
+            sqlite_version: version,
+            ..Default::default()
+        })
+        .build();
     let mut cursor = parser.parse(sql);
     matches!(cursor.next_statement(), Some(Ok(_)))
 }

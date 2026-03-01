@@ -1,12 +1,23 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-#[doc(hidden)]
+//! SQL formatter.
+//!
+//! Formats SQL source text using a bytecode interpreter driven by
+//! per-node formatting instructions compiled from `.synq` definitions.
+//! The high-level entry point is [`Formatter`](crate::Formatter); this
+//! module also exposes [`FormatConfig`] and [`KeywordCase`] for
+//! controlling output style.
+
 pub mod bytecode;
 mod comment;
 mod doc;
-mod formatter;
+pub(crate) mod formatter;
 mod interpret;
+
+// ── Public re-exports ────────────────────────────────────────────────────
+
+pub use formatter::FormatterBuilder;
 
 // ── Config types (formerly config.rs) ────────────────────────────────────
 
@@ -45,6 +56,3 @@ impl Default for FormatConfig {
         }
     }
 }
-
-// ── Primary public API ─────────────────────────────────────────────────
-pub use formatter::Formatter;

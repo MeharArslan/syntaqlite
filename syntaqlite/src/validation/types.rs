@@ -256,7 +256,7 @@ pub struct FunctionDef {
 }
 
 /// Expand a [`FunctionInfo`](crate::catalog::FunctionInfo) into one [`FunctionDef`] per arity.
-pub fn expand_function_info(info: &crate::catalog::FunctionInfo<'_>) -> Vec<FunctionDef> {
+pub(crate) fn expand_function_info(info: &crate::catalog::FunctionInfo<'_>) -> Vec<FunctionDef> {
     if info.arities.is_empty() {
         vec![FunctionDef {
             name: info.name.to_string(),
@@ -322,6 +322,33 @@ impl SessionContext {
             relations: doc.relations,
             functions: doc.functions,
         }
+    }
+
+    /// Build a `SessionContext` from a DDL source string.
+    ///
+    /// Creates a temporary parser, parses the source, and builds the schema
+    /// from the resulting DDL statements. This is a convenience wrapper for
+    /// cases like WASM where you have raw DDL text.
+    pub fn from_ddl(
+        dialect: &crate::Dialect<'_>,
+        source: &str,
+        dialect_config: Option<crate::dialect::ffi::DialectConfig>,
+    ) -> Self {
+        let mut builder = crate::parser::BaseParser::builder(dialect);
+        if let Some(dc) = dialect_config {
+            builder = builder.dialect_config(dc);
+        }
+        let mut parser = builder.build();
+        let mut cursor = parser.parse(source);
+
+        let mut stmt_ids = Vec::new();
+        while let Some(result) = cursor.next_statement() {
+            if let Ok(node_ref) = result {
+                stmt_ids.push(node_ref.id());
+            }
+        }
+
+        Self::from_stmts(cursor.reader(), &stmt_ids, dialect)
     }
 }
 
@@ -794,11 +821,12 @@ mod tests {
     #[test]
     fn from_stmts_creates_session_context() {
         let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
         let sql = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);";
         let mut cursor = parser.parse(sql);
 
         let stmt_ids: Vec<_> = (&mut cursor)
+            .map(|r| r.map(|nr| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
@@ -828,11 +856,12 @@ mod tests {
     #[test]
     fn from_stmts_create_table_as_select() {
         let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
         let sql = "CREATE TABLE orders AS SELECT order_id, total AS amount FROM src;";
         let mut cursor = parser.parse(sql);
 
         let stmt_ids: Vec<_> = (&mut cursor)
+            .map(|r| r.map(|nr| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
@@ -849,13 +878,14 @@ mod tests {
     #[test]
     fn from_stmts_star_expands_from_earlier_table() {
         let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
         let sql = "\
             CREATE TABLE slice (order_id INTEGER, status TEXT);\n\
             CREATE TABLE orders AS SELECT * FROM slice;\n";
         let mut cursor = parser.parse(sql);
 
         let stmt_ids: Vec<_> = (&mut cursor)
+            .map(|r| r.map(|nr| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
@@ -872,7 +902,7 @@ mod tests {
     #[test]
     fn from_stmts_qualified_star_expands_correct_table() {
         let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
         let sql = "\
             CREATE TABLE a (x INTEGER);\n\
             CREATE TABLE b (y TEXT);\n\
@@ -880,6 +910,7 @@ mod tests {
         let mut cursor = parser.parse(sql);
 
         let stmt_ids: Vec<_> = (&mut cursor)
+            .map(|r| r.map(|nr| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
@@ -894,13 +925,14 @@ mod tests {
     #[test]
     fn from_stmts_star_with_alias() {
         let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
         let sql = "\
             CREATE TABLE src (id INTEGER, val TEXT);\n\
             CREATE TABLE dst AS SELECT t.* FROM src AS t;\n";
         let mut cursor = parser.parse(sql);
 
         let stmt_ids: Vec<_> = (&mut cursor)
+            .map(|r| r.map(|nr| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
@@ -916,13 +948,14 @@ mod tests {
     #[test]
     fn from_stmts_star_through_subquery() {
         let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
         let sql = "\
             CREATE TABLE slice (order_id INTEGER, customer_id TEXT);\n\
             CREATE TABLE orders AS SELECT * FROM (SELECT * FROM slice);\n";
         let mut cursor = parser.parse(sql);
 
         let stmt_ids: Vec<_> = (&mut cursor)
+            .map(|r| r.map(|nr| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
@@ -939,11 +972,12 @@ mod tests {
     #[test]
     fn from_stmts_handles_views() {
         let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
         let sql = "CREATE VIEW active_users AS SELECT id, name FROM users WHERE active = 1;";
         let mut cursor = parser.parse(sql);
 
         let stmt_ids: Vec<_> = (&mut cursor)
+            .map(|r| r.map(|nr| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
@@ -960,13 +994,14 @@ mod tests {
     #[test]
     fn from_stmts_view_star_expands_from_table() {
         let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
         let sql = "\
             CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\n\
             CREATE VIEW all_users AS SELECT * FROM users;\n";
         let mut cursor = parser.parse(sql);
 
         let stmt_ids: Vec<_> = (&mut cursor)
+            .map(|r| r.map(|nr| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let ctx = SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);

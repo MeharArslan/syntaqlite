@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use crate::dialect::Dialect;
-use crate::parser::{CursorBase, FieldVal, Fields, NodeId};
+use crate::parser::{FieldVal, Fields, NodeId, NodeReader};
 
 use super::bytecode::opcodes;
 use super::comment::{CommentCtx, DrainResult};
@@ -12,13 +12,13 @@ use super::doc::{DocArena, DocId, NIL_DOC};
 /// Bundles the state that is constant across all nodes in a single format call.
 pub(crate) struct FmtCtx<'a> {
     pub dialect: Dialect<'a>,
-    pub cursor: &'a CursorBase<'a>,
+    pub reader: NodeReader<'a>,
     pub comment_ctx: Option<&'a CommentCtx<'a>>,
 }
 
 impl<'a> FmtCtx<'a> {
     pub fn source(&self) -> &'a str {
-        self.cursor.source()
+        self.reader.source()
     }
 }
 
@@ -86,13 +86,13 @@ pub(crate) fn interpret_node<'a>(
     }
 
     // Look up root node.
-    let Some((ptr, tag)) = ctx.cursor.node_ptr(root_id) else {
+    let Some((ptr, tag)) = ctx.reader.node_ptr(root_id) else {
         return NIL_DOC;
     };
     let Some((ops_bytes, ops_len)) = ctx.dialect.fmt_dispatch(tag) else {
         return NIL_DOC;
     };
-    let children = ctx.cursor.list_children(root_id, &ctx.dialect);
+    let children = ctx.reader.list_children(root_id, &ctx.dialect);
     let source = ctx.source();
     let fields = super::formatter::extract_fields(&ctx.dialect, ptr, tag, source);
 
@@ -165,7 +165,7 @@ pub(crate) fn interpret_node<'a>(
             ops_count = frame.ops_count;
             ip = frame.ip;
             // Re-extract fields from the saved node_id — cheap lookups.
-            let (rptr, rtag) = ctx.cursor.node_ptr(cur_node_id).unwrap();
+            let (rptr, rtag) = ctx.reader.node_ptr(cur_node_id).unwrap();
             fields = super::formatter::extract_fields(&ctx.dialect, rptr, rtag, source);
             list_children = frame.list_children;
             running = frame.running;
@@ -233,9 +233,9 @@ pub(crate) fn interpret_node<'a>(
 
                     // Check macro verbatim for non-list children.
                     let mut return_action = ReturnAction::CatOntoRunning;
-                    let macro_regions = ctx.cursor.macro_regions();
+                    let macro_regions = ctx.reader.macro_regions();
                     if !macro_regions.is_empty()
-                        && ctx.cursor.list_children(child_id, &ctx.dialect).is_none()
+                        && ctx.reader.list_children(child_id, &ctx.dialect).is_none()
                         && let Some(doc) = super::formatter::try_macro_verbatim(
                             ctx,
                             macro_regions,
@@ -251,11 +251,11 @@ pub(crate) fn interpret_node<'a>(
                     }
 
                     // "Call" child: push parent frame, set up child state.
-                    if let Some((cptr, ctag)) = ctx.cursor.node_ptr(child_id)
+                    if let Some((cptr, ctag)) = ctx.reader.node_ptr(child_id)
                         && let Some((child_ops_bytes, child_ops_len)) =
                             ctx.dialect.fmt_dispatch(ctag)
                     {
-                        let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
+                        let child_children = ctx.reader.list_children(child_id, &ctx.dialect);
                         let child_fields =
                             super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
                         push_call_frame!(
@@ -338,7 +338,7 @@ pub(crate) fn interpret_node<'a>(
                     ip = skip_to_foreach_end(ops, ops_count, ip);
                 } else {
                     let children = ctx
-                        .cursor
+                        .reader
                         .list_children(list_id, &ctx.dialect)
                         .unwrap_or(&[]);
                     if children.is_empty() {
@@ -359,9 +359,9 @@ pub(crate) fn interpret_node<'a>(
                 let child_id = state.children[state.index];
 
                 // Check macro suppression BEFORE draining comments.
-                let macro_regions = ctx.cursor.macro_regions();
+                let macro_regions = ctx.reader.macro_regions();
                 let macro_doc = if !macro_regions.is_empty()
-                    && ctx.cursor.list_children(child_id, &ctx.dialect).is_none()
+                    && ctx.reader.list_children(child_id, &ctx.dialect).is_none()
                 {
                     super::formatter::try_macro_verbatim(
                         ctx,
@@ -404,10 +404,10 @@ pub(crate) fn interpret_node<'a>(
                 }
 
                 // "Call" child: push parent frame, set up child state.
-                if let Some((cptr, ctag)) = ctx.cursor.node_ptr(child_id)
+                if let Some((cptr, ctag)) = ctx.reader.node_ptr(child_id)
                     && let Some((child_ops_bytes, child_ops_len)) = ctx.dialect.fmt_dispatch(ctag)
                 {
-                    let child_children = ctx.cursor.list_children(child_id, &ctx.dialect);
+                    let child_children = ctx.reader.list_children(child_id, &ctx.dialect);
                     let child_fields =
                         super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
                     push_call_frame!(

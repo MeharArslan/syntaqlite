@@ -1,6 +1,17 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+//! Semantic validation of parsed SQL.
+//!
+//! Walks the AST and checks that table names, column references, and
+//! function calls resolve against a provided schema context. Produces
+//! [`Diagnostic`] values with byte-offset spans and optional "did you
+//! mean?" suggestions.
+//!
+//! The high-level entry point is [`Validator`], which owns a parser and
+//! validates SQL in a single call. For finer control, use
+//! [`validate_document`] or [`validate_statement`] directly.
+
 pub(crate) mod types;
 
 mod checks;
@@ -9,14 +20,17 @@ mod scope;
 mod walker;
 
 use crate::ast_traits::AstTypes;
-use crate::parser::{FromArena, NodeId, NodeReader};
-use crate::ParseError;
+use crate::parser::{FromArena, NodeId, NodeReader, ParseError};
 
 use scope::ScopeStack;
+
+// ── Public re-exports ────────────────────────────────────────────────────
+
 pub use types::{
     ColumnDef, Diagnostic, DiagnosticMessage, DocumentContext, FunctionDef, Help, RelationDef,
-    RelationKind, SessionContext, Severity, expand_function_info,
+    RelationKind, SessionContext, Severity,
 };
+pub(crate) use types::expand_function_info;
 
 /// Configuration for semantic validation.
 pub struct ValidationConfig {
@@ -123,7 +137,7 @@ pub fn validate_document(
 }
 
 /// Compute the byte range for a parse error in the source text.
-pub fn parse_error_span(err: &ParseError, source: &str) -> (usize, usize) {
+pub(crate) fn parse_error_span(err: &ParseError, source: &str) -> (usize, usize) {
     match (err.offset, err.length) {
         (Some(offset), Some(length)) if length > 0 => (offset, offset + length),
         (Some(offset), _) => {
@@ -142,7 +156,7 @@ pub fn parse_error_span(err: &ParseError, source: &str) -> (usize, usize) {
 }
 
 /// Convert a [`ParseError`] into a [`Diagnostic`].
-pub fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
+fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
     let (start_offset, end_offset) = parse_error_span(err, source);
     Diagnostic {
         start_offset,
@@ -150,6 +164,130 @@ pub fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
         message: DiagnosticMessage::Other(err.message.clone()),
         severity: Severity::Error,
         help: None,
+    }
+}
+
+// ── Validator (high-level, reusable) ─────────────────────────────────────
+
+/// High-level SQL validator. Created from a `Dialect`, reusable across inputs.
+///
+/// Owns a [`BaseParser`](crate::parser::session::BaseParser) internally and builds the function catalog
+/// once at construction. Call [`validate`](Validator::validate) to parse and
+/// validate SQL in a single step.
+///
+/// # Example
+///
+/// ```
+/// use syntaqlite::validation::{Validator, ValidationConfig};
+///
+/// let mut validator = Validator::new();
+/// let diags = validator.validate("SELEC 1", None, &ValidationConfig::default());
+/// assert!(!diags.is_empty());
+/// ```
+pub struct Validator<'d> {
+    parser: crate::parser::BaseParser<'d>,
+    dialect: crate::Dialect<'d>,
+    functions: Vec<FunctionDef>,
+}
+
+// SAFETY: Dialect is Send+Sync, Parser is Send.
+unsafe impl Send for Validator<'_> {}
+
+impl<'d> Validator<'d> {
+    /// Create a validator for the built-in SQLite dialect with default configuration.
+    ///
+    /// Pre-populates the function catalog with all SQLite built-in functions
+    /// available under the default [`DialectConfig`](crate::dialect::ffi::DialectConfig).
+    #[cfg(feature = "sqlite")]
+    pub fn new() -> Validator<'static> {
+        let dc = crate::dialect::ffi::DialectConfig::default();
+        let functions: Vec<FunctionDef> =
+            crate::sqlite::functions::available_functions(&dc)
+                .into_iter()
+                .flat_map(|info| expand_function_info(info))
+                .collect();
+        Validator::builder(&crate::sqlite::DIALECT)
+            .functions(functions)
+            .build()
+    }
+
+    /// Create a builder for a validator bound to the given dialect.
+    pub fn builder(dialect: &'d crate::Dialect<'d>) -> ValidatorBuilder<'d> {
+        ValidatorBuilder {
+            dialect,
+            functions: Vec::new(),
+            dialect_config: None,
+        }
+    }
+
+    /// Validate SQL source text. Parses and returns all diagnostics
+    /// (both parse errors and semantic issues).
+    pub fn validate(
+        &mut self,
+        source: &str,
+        session: Option<&SessionContext>,
+        config: &ValidationConfig,
+    ) -> Vec<Diagnostic> {
+        let mut cursor = self.parser.parse(source);
+        // Collect NodeRef results and convert to NodeId results for validate_parse_results.
+        let results: Vec<Result<NodeId, ParseError>> = (&mut cursor)
+            .map(|r| r.map(|nr| nr.id()))
+            .collect();
+        validate_parse_results(
+            cursor.reader(),
+            &results,
+            source,
+            &self.dialect,
+            session,
+            &self.functions,
+            config,
+        )
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl Default for Validator<'static> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Builder for configuring a [`Validator`] before construction.
+pub struct ValidatorBuilder<'d> {
+    dialect: &'d crate::Dialect<'d>,
+    functions: Vec<FunctionDef>,
+    dialect_config: Option<crate::dialect::ffi::DialectConfig>,
+}
+
+impl<'d> ValidatorBuilder<'d> {
+    /// Set the function catalog used for function-name/arity validation.
+    ///
+    /// By default the list is empty. Use
+    /// [`sqlite::functions::available_functions`](crate::sqlite::functions::available_functions)
+    /// to populate it with the SQLite built-in catalog.
+    pub fn functions(mut self, functions: Vec<FunctionDef>) -> Self {
+        self.functions = functions;
+        self
+    }
+
+    /// Set dialect config for version/cflag-gated parsing.
+    pub fn dialect_config(mut self, config: crate::dialect::ffi::DialectConfig) -> Self {
+        self.dialect_config = Some(config);
+        self
+    }
+
+    /// Build the validator.
+    pub fn build(self) -> Validator<'d> {
+        let mut builder = crate::parser::BaseParser::builder(self.dialect);
+        if let Some(dc) = self.dialect_config {
+            builder = builder.dialect_config(dc);
+        }
+
+        Validator {
+            parser: builder.build(),
+            dialect: *self.dialect,
+            functions: self.functions,
+        }
     }
 }
 

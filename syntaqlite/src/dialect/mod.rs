@@ -1,10 +1,23 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Dialect types: the opaque handle and C ABI mirror structs.
+//! Dialect handle and token classification.
+//!
+//! A [`Dialect`] is an opaque, `Copy` handle wrapping a pointer to a C
+//! dialect descriptor produced by codegen. It provides metadata about
+//! node names, field layouts, token categories, keyword tables, and
+//! formatter bytecode — everything a parser, formatter, or validator needs
+//! to operate on a particular SQL grammar.
+//!
+//! Most users will never construct a `Dialect` directly; the built-in
+//! SQLite dialect is available via [`crate::sqlite::low_level::dialect()`].
+//! External dialect crates obtain their handle through the generated
+//! [`crate::raw::DialectDef`] trait.
 
-#[doc(hidden)]
-pub mod ffi;
+pub(crate) mod ffi;
+
+pub use ffi::{CflagInfo, Cflags, DialectConfig, FieldMeta};
+pub use ffi::{cflag_names, cflag_table, parse_cflag_name, parse_sqlite_version};
 
 // ── Token category ─────────────────────────────────────────────────────
 

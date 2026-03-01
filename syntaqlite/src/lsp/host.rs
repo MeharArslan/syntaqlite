@@ -4,11 +4,14 @@
 use std::collections::HashMap;
 
 use crate::dialect::TokenCategory;
-use crate::fmt::{FormatConfig, Formatter};
-use crate::parser::{LowLevelParser, ParserConfig, Tokenizer};
-use crate::{Dialect, ParseError, Parser};
+use crate::fmt::formatter::Formatter;
+use crate::fmt::FormatConfig;
+use crate::parser::{BaseParser, BaseTokenizer, LowLevelParser};
+use crate::dialect::Dialect;
+use crate::parser::ParseError;
 
-use crate::lsp::{Diagnostic, SemanticToken, Severity};
+use crate::lsp::SemanticToken;
+use crate::validation::types::{Diagnostic, Severity};
 use crate::validation::types::{FunctionDef, SessionContext};
 
 /// Semantic completion context derived from parser stack state.
@@ -110,7 +113,7 @@ impl<'d> AnalysisHost<'d> {
         };
 
         let functions = self.available_functions();
-        let mut parser = crate::Parser::with_dialect(&self.dialect);
+        let mut parser = BaseParser::builder(&self.dialect).build();
         let mut cursor = parser.parse(&doc.source);
 
         // Collect all statement IDs, continuing past parse errors.
@@ -120,7 +123,7 @@ impl<'d> AnalysisHost<'d> {
         let mut stmt_ids = Vec::new();
         while let Some(result) = cursor.next_statement() {
             match result {
-                Ok(id) => stmt_ids.push(id),
+                Ok(node_ref) => stmt_ids.push(node_ref.id()),
                 Err(err) => {
                     if let Some(id) = err.root {
                         stmt_ids.push(id);
@@ -367,8 +370,9 @@ impl<'d> AnalysisHost<'d> {
             .documents
             .get(uri)
             .ok_or(FormatError::UnknownDocument)?;
-        let mut formatter = Formatter::with_dialect_config(&self.dialect, config.clone())
-            .map_err(FormatError::Setup)?;
+        let mut formatter = Formatter::builder(&self.dialect)
+            .format_config(config.clone())
+            .build();
         formatter.format(&doc.source).map_err(FormatError::Parse)
     }
 
@@ -408,16 +412,12 @@ fn catalog_to_function_defs(config: &crate::dialect::ffi::DialectConfig) -> Vec<
 }
 
 fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
-    let config = ParserConfig {
-        collect_tokens: true,
-        ..Default::default()
-    };
-    let mut parser = Parser::with_dialect_config(dialect, &config);
+    let mut parser = BaseParser::builder(dialect).collect_tokens(true).build();
     let mut cursor = parser.parse(source);
     let mut diagnostics = Vec::new();
 
     while let Some(result) = cursor.next_statement() {
-        if let Err(err) = result {
+        if let Err(err) = result.map(|nr| nr.id()) {
             let (start_offset, end_offset) = crate::validation::parse_error_span(&err, source);
             diagnostics.push(Diagnostic {
                 start_offset,
@@ -453,7 +453,7 @@ fn compute_document_state(dialect: &Dialect, source: &str) -> DocumentState {
     semantic_tokens.sort_by_key(|t| t.offset);
 
     let mut tokens = Vec::new();
-    let mut tokenizer = Tokenizer::with_dialect(*dialect);
+    let mut tokenizer = BaseTokenizer::builder(*dialect).build();
     let source_base = source.as_ptr() as usize;
     for tok in tokenizer.tokenize(source) {
         let start = tok.text.as_ptr() as usize - source_base;
@@ -511,7 +511,7 @@ fn replay_completion_info(
 
     let stmt_tokens = &tokens[start..boundary];
 
-    let mut parser = LowLevelParser::with_dialect(dialect);
+    let mut parser = LowLevelParser::builder(dialect).build();
     let mut cursor = parser.feed(source);
     let mut last_expected = cursor.expected_tokens();
 
@@ -555,8 +555,6 @@ fn replay_completion_info(
 pub enum FormatError {
     /// The document URI was not found.
     UnknownDocument,
-    /// Formatter setup failed (e.g., dialect has no fmt data).
-    Setup(&'static str),
     /// Parse error during formatting.
     Parse(ParseError),
 }
@@ -565,7 +563,6 @@ impl std::fmt::Display for FormatError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             FormatError::UnknownDocument => write!(f, "unknown document"),
-            FormatError::Setup(msg) => write!(f, "formatter setup: {msg}"),
             FormatError::Parse(err) => write!(f, "parse error: {err}"),
         }
     }
@@ -577,8 +574,9 @@ impl std::error::Error for FormatError {}
 #[cfg(feature = "sqlite")]
 mod tests {
     use super::AnalysisHost;
-    use crate::lsp::FunctionDef;
+    use crate::parser::BaseParser;
     use crate::sqlite::low_level::TokenType;
+    use crate::validation::types::FunctionDef;
     use crate::validation::SessionContext;
 
     #[test]
@@ -1003,7 +1001,7 @@ mod tests {
     fn syntax_error_offset_via_parser_directly() {
         // Same regression tested at the Parser level.
         let sql = "select 1 from slice where foo = where x = y;";
-        let mut parser = crate::Parser::new();
+        let mut parser = BaseParser::new();
         let mut cursor = parser.parse(sql);
 
         let result = cursor.next_statement();

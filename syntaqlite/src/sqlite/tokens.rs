@@ -196,7 +196,6 @@ pub enum TokenType {
 }
 
 impl TokenType {
-    #[doc(hidden)]
     pub fn from_raw(raw: u32) -> Option<TokenType> {
         match raw {
             1 => Some(TokenType::Abort),
@@ -394,5 +393,13 @@ impl TokenType {
 impl From<TokenType> for u32 {
     fn from(t: TokenType) -> u32 {
         t as u32
+    }
+}
+
+impl TryFrom<u32> for TokenType {
+    type Error = ();
+
+    fn try_from(raw: u32) -> Result<Self, ()> {
+        Self::from_raw(raw).ok_or(())
     }
 }

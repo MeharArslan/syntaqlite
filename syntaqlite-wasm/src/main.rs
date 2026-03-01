@@ -7,13 +7,15 @@ use std::slice;
 
 use serde::Serialize;
 
-use syntaqlite::dialect::ffi::{self as dialect_ffi, DialectConfig};
+use syntaqlite::dialect::{Cflags, DialectConfig, Dialect};
+use syntaqlite::dialect::{cflag_table, parse_cflag_name, parse_sqlite_version};
 use syntaqlite::embedded::{self, EmbeddedFragment};
 use syntaqlite::embedded::offset_map::OffsetMap;
-use syntaqlite::fmt::{FormatConfig, Formatter, KeywordCase};
-use syntaqlite::parser::{CursorBase, FieldVal};
+use syntaqlite::raw::FfiDialect;
+use syntaqlite::fmt::{FormatConfig, KeywordCase};
+use syntaqlite::raw::RawParser as BaseParser;
 use syntaqlite::validation::ValidationConfig;
-use syntaqlite::{Dialect, NodeId, Parser};
+use syntaqlite::Formatter;
 
 thread_local! {
     static RESULT_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
@@ -22,7 +24,7 @@ thread_local! {
     /// Recreated when the dialect pointer changes.
     static LSP_HOST: RefCell<Option<LspHost>> = const { RefCell::new(None) };
     /// Dialect config (version/cflags) applied to parser/formatter before each parse.
-    static DIALECT_CONFIG: Cell<DialectConfig> = const { Cell::new(DialectConfig { sqlite_version: i32::MAX, cflags: dialect_ffi::Cflags::new() }) };
+    static DIALECT_CONFIG: Cell<DialectConfig> = const { Cell::new(DialectConfig { sqlite_version: i32::MAX, cflags: Cflags::new() }) };
 }
 
 struct LspHost {
@@ -33,7 +35,7 @@ struct LspHost {
 fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
     let mut lsp = LSP_HOST.with(|cell| cell.borrow_mut().take());
     if lsp.as_ref().is_none_or(|h| h.dialect_ptr != dialect_ptr) {
-        let raw = dialect_ptr as *const dialect_ffi::Dialect;
+        let raw = dialect_ptr as *const FfiDialect;
         // SAFETY: the caller set a valid dialect pointer via wasm_set_dialect.
         let dialect = unsafe { Dialect::from_raw(raw) };
         let mut host = syntaqlite::lsp::AnalysisHost::with_dialect(dialect);
@@ -83,7 +85,7 @@ fn resolve_dialect() -> Result<Dialect<'static>, String> {
         return Err("dialect pointer is not set; call wasm_set_dialect first".to_string());
     }
 
-    let raw = ptr as *const dialect_ffi::Dialect;
+    let raw = ptr as *const FfiDialect;
     // SAFETY: the caller must provide a valid pointer to a dialect descriptor.
     Ok(unsafe { Dialect::from_raw(raw) })
 }
@@ -107,138 +109,6 @@ fn json_escape(out: &mut String, s: &str) {
     }
 }
 
-/// Serde-serializable AST node for JSON output.
-#[derive(Serialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
-enum AstNode<'a> {
-    #[serde(rename = "list")]
-    List {
-        name: &'a str,
-        count: usize,
-        children: Vec<AstNode<'a>>,
-    },
-    #[serde(rename = "node")]
-    Node {
-        name: &'a str,
-        fields: Vec<AstField<'a>>,
-    },
-}
-
-#[derive(Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
-enum AstField<'a> {
-    #[serde(rename = "node")]
-    Node {
-        label: &'a str,
-        child: Option<AstNode<'a>>,
-    },
-    #[serde(rename = "span")]
-    Span {
-        label: &'a str,
-        value: Option<&'a str>,
-    },
-    #[serde(rename = "bool")]
-    Bool { label: &'a str, value: bool },
-    #[serde(rename = "enum")]
-    Enum {
-        label: &'a str,
-        value: Option<&'a str>,
-    },
-    #[serde(rename = "flags")]
-    Flags {
-        label: &'a str,
-        value: Vec<FlagValue<'a>>,
-    },
-}
-
-#[derive(Serialize)]
-#[serde(untagged)]
-enum FlagValue<'a> {
-    Named(&'a str),
-    Numeric(u32),
-}
-
-fn build_ast_node<'a>(
-    dialect: &'a Dialect,
-    cursor: &'a CursorBase,
-    id: NodeId,
-) -> Option<AstNode<'a>> {
-    let tag = cursor.reader().node_tag(id)?;
-    let name = dialect.node_name(tag);
-
-    if dialect.is_list(tag) {
-        let children = cursor.list_children(id, dialect).unwrap_or(&[]);
-        let child_nodes: Vec<_> = children
-            .iter()
-            .map(|&child_id| {
-                build_ast_node(dialect, cursor, child_id).unwrap_or(AstNode::Node {
-                    name: "null",
-                    fields: vec![],
-                })
-            })
-            .collect();
-        return Some(AstNode::List {
-            name,
-            count: child_nodes.len(),
-            children: child_nodes,
-        });
-    }
-
-    let meta = dialect.field_meta(tag);
-    let (_, fields) = cursor.reader().extract_fields(id, dialect)?;
-
-    let ast_fields: Vec<_> = meta
-        .iter()
-        .zip(fields.iter())
-        .map(|(m, fv)| {
-            // SAFETY: m.name is a valid NUL-terminated C string from codegen.
-            let label = unsafe { m.name_str() };
-
-            match fv {
-                FieldVal::NodeId(child_id) => AstField::Node {
-                    label,
-                    child: if child_id.is_null() {
-                        None
-                    } else {
-                        build_ast_node(dialect, cursor, *child_id)
-                    },
-                },
-                FieldVal::Span(text, _) => AstField::Span {
-                    label,
-                    value: if text.is_empty() { None } else { Some(text) },
-                },
-                FieldVal::Bool(val) => AstField::Bool { label, value: *val },
-                FieldVal::Enum(val) => AstField::Enum {
-                    label,
-                    // SAFETY: m.display is a valid C array from codegen.
-                    value: unsafe { m.display_name(*val as usize) },
-                },
-                FieldVal::Flags(val) => {
-                    let mut flags = Vec::new();
-                    for bit in 0..8u8 {
-                        if val & (1 << bit) != 0 {
-                            // SAFETY: m.display is a valid C array from codegen.
-                            match unsafe { m.display_name(bit as usize) } {
-                                Some(s) => flags.push(FlagValue::Named(s)),
-                                None => flags.push(FlagValue::Numeric(1u32 << bit)),
-                            }
-                        }
-                    }
-                    AstField::Flags {
-                        label,
-                        value: flags,
-                    }
-                }
-            }
-        })
-        .collect();
-
-    Some(AstNode::Node {
-        name,
-        fields: ast_fields,
-    })
-}
-
 fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let dialect = match resolve_dialect() {
         Ok(d) => d,
@@ -255,15 +125,13 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut parser = Parser::with_dialect(&dialect);
-    let config = get_dialect_config();
-    parser.set_dialect_config(&config);
+    let mut parser = BaseParser::builder(&dialect).dialect_config(get_dialect_config()).build();
     let mut cursor = parser.parse(&source);
 
-    let mut root_ids = Vec::new();
+    let mut nodes = Vec::new();
     while let Some(result) = cursor.next_statement() {
         match result {
-            Ok(root_id) => root_ids.push(root_id),
+            Ok(node_ref) => nodes.push(node_ref),
             Err(e) => {
                 set_result(&e.to_string());
                 return 1;
@@ -271,21 +139,17 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
         }
     }
 
-    let nodes: Vec<_> = root_ids
-        .iter()
-        .map(|&id| build_ast_node(&dialect, cursor.base(), id))
-        .collect();
-
-    match serde_json::to_string(&nodes) {
-        Ok(json) => {
-            set_result(&json);
-            0
+    let mut out = String::new();
+    out.push('[');
+    for (i, node) in nodes.iter().enumerate() {
+        if i > 0 {
+            out.push(',');
         }
-        Err(e) => {
-            set_result(&e.to_string());
-            1
-        }
+        node.dump_json(&mut out);
     }
+    out.push(']');
+    set_result(&out);
+    0
 }
 
 fn run_ast(ptr: u32, len: u32) -> i32 {
@@ -304,20 +168,18 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut parser = Parser::with_dialect(&dialect);
-    let config = get_dialect_config();
-    parser.set_dialect_config(&config);
+    let mut parser = BaseParser::builder(&dialect).dialect_config(get_dialect_config()).build();
     let mut cursor = parser.parse(&source);
     let mut out = String::new();
     let mut count = 0;
 
     while let Some(result) = cursor.next_statement() {
         match result {
-            Ok(root_id) => {
+            Ok(node) => {
                 if count > 0 {
                     out.push_str("----\n");
                 }
-                cursor.dump_node(root_id, &mut out, 0);
+                node.dump(&mut out, 0);
                 count += 1;
             }
             Err(e) => {
@@ -362,16 +224,10 @@ fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u
         ..Default::default()
     };
 
-    let mut formatter = match Formatter::with_dialect_config(&dialect, config) {
-        Ok(formatter) => formatter,
-        Err(e) => {
-            set_result(e);
-            return 1;
-        }
-    };
-
-    let dialect_config = get_dialect_config();
-    formatter.set_dialect_config(&dialect_config);
+    let mut formatter = Formatter::builder(&dialect)
+        .format_config(config)
+        .dialect_config(get_dialect_config())
+        .build();
 
     match formatter.format(&source) {
         Ok(sql) => {
@@ -503,7 +359,7 @@ pub extern "C" fn wasm_set_sqlite_version(ptr: u32, len: u32) -> i32 {
             return 1;
         }
     };
-    match dialect_ffi::parse_sqlite_version(&s) {
+    match parse_sqlite_version(&s) {
         Ok(ver) => {
             DIALECT_CONFIG.with(|c| {
                 let mut config = c.get();
@@ -529,7 +385,7 @@ pub extern "C" fn wasm_set_cflag(ptr: u32, len: u32) -> i32 {
             return 1;
         }
     };
-    match dialect_ffi::parse_cflag_name(&s) {
+    match parse_cflag_name(&s) {
         Ok(idx) => {
             DIALECT_CONFIG.with(|c| {
                 let mut config = c.get();
@@ -555,7 +411,7 @@ pub extern "C" fn wasm_clear_cflag(ptr: u32, len: u32) -> i32 {
             return 1;
         }
     };
-    match dialect_ffi::parse_cflag_name(&s) {
+    match parse_cflag_name(&s) {
         Ok(idx) => {
             DIALECT_CONFIG.with(|c| {
                 let mut config = c.get();
@@ -725,24 +581,11 @@ fn run_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut parser = Parser::with_dialect(&dialect);
-    let config = get_dialect_config();
-    parser.set_dialect_config(&config);
-    let mut cursor = parser.parse(&source);
-
-    let mut stmt_ids = Vec::new();
-    while let Some(result) = cursor.next_statement() {
-        match result {
-            Ok(id) => stmt_ids.push(id),
-            Err(e) => {
-                set_result(&e.to_string());
-                return 1;
-            }
-        }
-    }
-
-    let ctx =
-        syntaqlite::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids, &dialect);
+    let ctx = syntaqlite::validation::SessionContext::from_ddl(
+        &dialect,
+        &source,
+        Some(get_dialect_config()),
+    );
 
     let dialect_ptr = DIALECT_PTR.with(|p| p.get());
     if dialect_ptr == 0 {
@@ -770,7 +613,7 @@ pub extern "C" fn wasm_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_get_cflag_list() -> i32 {
-    let table = dialect_ffi::cflag_table();
+    let table = cflag_table();
     let mut out = String::new();
     out.push('[');
     for (i, entry) in table.iter().enumerate() {
@@ -847,7 +690,7 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
     let parse_diags: Vec<_> = lsp.host.diagnostics(WASM_DOC_URI).to_vec();
 
     // Run semantic validation (function name/arity, table/column checks).
-    let validation_config = syntaqlite::validation::ValidationConfig::default();
+    let validation_config = ValidationConfig::default();
     let validation_diags = lsp.host.validate(WASM_DOC_URI, &validation_config);
 
     let total_count = parse_diags.len() + validation_diags.len();

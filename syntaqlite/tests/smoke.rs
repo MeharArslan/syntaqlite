@@ -1,15 +1,16 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+use syntaqlite::raw::RawParser;
 use syntaqlite::sqlite::ast::{FromArena, Stmt};
 
 #[test]
 fn parse_select_1() {
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = RawParser::new();
     let mut session = parser.parse("SELECT 1;");
 
-    let id = session.next_statement().unwrap().unwrap();
-    let stmt = Stmt::from_arena(session.reader(), id).unwrap();
+    let node = session.next_statement().unwrap().unwrap();
+    let stmt = Stmt::from_arena(session.reader(), node.id()).unwrap();
     let Stmt::SelectStmt(_select) = stmt else {
         panic!("expected SelectStmt")
     };
@@ -20,15 +21,15 @@ fn parse_select_1() {
 
 #[test]
 fn parse_multiple_statements() {
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = RawParser::new();
     let mut session = parser.parse("SELECT 1; SELECT 2;");
 
-    let id1 = session.next_statement().unwrap().unwrap();
-    let stmt1 = Stmt::from_arena(session.reader(), id1).unwrap();
+    let node1 = session.next_statement().unwrap().unwrap();
+    let stmt1 = Stmt::from_arena(session.reader(), node1.id()).unwrap();
     assert!(matches!(stmt1, Stmt::SelectStmt(_)));
 
-    let id2 = session.next_statement().unwrap().unwrap();
-    let stmt2 = Stmt::from_arena(session.reader(), id2).unwrap();
+    let node2 = session.next_statement().unwrap().unwrap();
+    let stmt2 = Stmt::from_arena(session.reader(), node2.id()).unwrap();
     assert!(matches!(stmt2, Stmt::SelectStmt(_)));
 
     assert!(session.next_statement().is_none());
@@ -36,7 +37,7 @@ fn parse_multiple_statements() {
 
 #[test]
 fn parse_error() {
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = RawParser::new();
     let mut session = parser.parse("SELECT");
 
     let result = session.next_statement().unwrap();
@@ -47,7 +48,7 @@ fn parse_error() {
 fn parse_error_select_bare() {
     // "SELECT " with trailing space — no column list, no semicolon.
     // Should return an error with a non-empty message, not silently return None.
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = RawParser::new();
     let mut session = parser.parse("SELECT ");
 
     let result = session.next_statement().unwrap();
@@ -62,7 +63,7 @@ fn parse_error_select_bare() {
 #[test]
 fn parse_error_has_message_and_offset() {
     // A syntax error should carry a non-empty message.
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = RawParser::new();
     let mut session = parser.parse("NOT VALID SQL;");
 
     let err = session
@@ -76,7 +77,7 @@ fn parse_error_has_message_and_offset() {
 fn parse_error_recovery() {
     // After a parse error, the cursor continues parsing subsequent statements.
     // Lemon's built-in error recovery synchronises on `;`.
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = RawParser::new();
     let mut session = parser.parse("NOT VALID SQL; SELECT 1;");
 
     let first = session.next_statement().unwrap();
@@ -86,7 +87,7 @@ fn parse_error_recovery() {
     let second = session.next_statement().unwrap().unwrap();
     assert!(
         matches!(
-            Stmt::from_arena(session.reader(), second).unwrap(),
+            Stmt::from_arena(session.reader(), second.id()).unwrap(),
             Stmt::SelectStmt(_)
         ),
         "expected SelectStmt after recovery"
@@ -99,7 +100,7 @@ fn parse_error_recovery() {
 fn parse_error_recovery_at_eof() {
     // An unterminated statement (no trailing `;`) reports an error and then
     // next_statement() returns None.
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = RawParser::new();
     let mut session = parser.parse("SELECT * FROM");
 
     let result = session.next_statement().unwrap();
@@ -111,12 +112,12 @@ fn parse_error_recovery_at_eof() {
 fn parse_error_mid_batch() {
     // Good → bad → good: the cursor recovers from a mid-batch error and
     // continues to parse subsequent valid statements.
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = RawParser::new();
     let mut session = parser.parse("SELECT 1; SELECT * FROM; SELECT 2;");
 
     let r1 = session.next_statement().unwrap().unwrap();
     assert!(matches!(
-        Stmt::from_arena(session.reader(), r1).unwrap(),
+        Stmt::from_arena(session.reader(), r1.id()).unwrap(),
         Stmt::SelectStmt(_)
     ));
 
@@ -124,7 +125,7 @@ fn parse_error_mid_batch() {
 
     let r3 = session.next_statement().unwrap().unwrap();
     assert!(matches!(
-        Stmt::from_arena(session.reader(), r3).unwrap(),
+        Stmt::from_arena(session.reader(), r3.id()).unwrap(),
         Stmt::SelectStmt(_)
     ));
 
@@ -133,35 +134,33 @@ fn parse_error_mid_batch() {
 
 #[test]
 fn parser_reuse() {
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = RawParser::new();
 
     // First parse
     {
         let mut session = parser.parse("SELECT 1");
-        let id = session.next_statement().unwrap().unwrap();
-        let stmt = Stmt::from_arena(session.reader(), id).unwrap();
+        let node = session.next_statement().unwrap().unwrap();
+        let stmt = Stmt::from_arena(session.reader(), node.id()).unwrap();
         assert!(matches!(stmt, Stmt::SelectStmt(_)));
     }
 
     // Reuse with different input
     {
         let mut session = parser.parse("DELETE FROM t");
-        let id = session.next_statement().unwrap().unwrap();
-        let stmt = Stmt::from_arena(session.reader(), id).unwrap();
+        let node = session.next_statement().unwrap().unwrap();
+        let stmt = Stmt::from_arena(session.reader(), node.id()).unwrap();
         assert!(matches!(stmt, Stmt::DeleteStmt(_)));
     }
 }
 
 // -- DELETE / UPDATE with ORDER BY and LIMIT --
 
-fn parser_with_update_delete_limit() -> syntaqlite::Parser {
-    use syntaqlite::dialect::ffi::DialectConfig;
+fn parser_with_update_delete_limit() -> RawParser<'static> {
+    use syntaqlite::dialect::DialectConfig;
     let dialect = syntaqlite::sqlite::low_level::dialect();
-    let mut parser = syntaqlite::Parser::with_dialect(dialect);
     let mut config = DialectConfig::default();
     config.cflags.set(40); // SQLITE_ENABLE_UPDATE_DELETE_LIMIT
-    parser.set_dialect_config(&config);
-    parser
+    RawParser::builder(dialect).dialect_config(config).build()
 }
 
 #[test]
@@ -169,8 +168,8 @@ fn parse_delete_with_order_by_limit() {
     let mut parser = parser_with_update_delete_limit();
     let mut cursor = parser.parse("DELETE FROM t ORDER BY id LIMIT 5;");
 
-    let id = cursor.next_statement().unwrap().unwrap();
-    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
+    let node = cursor.next_statement().unwrap().unwrap();
+    let stmt = Stmt::from_arena(cursor.reader(), node.id()).unwrap();
     let Stmt::DeleteStmt(del) = stmt else {
         panic!("expected DeleteStmt, got {stmt:?}");
     };
@@ -183,8 +182,8 @@ fn parse_update_with_order_by_limit() {
     let mut parser = parser_with_update_delete_limit();
     let mut cursor = parser.parse("UPDATE t SET a = 1 ORDER BY id LIMIT 3;");
 
-    let id = cursor.next_statement().unwrap().unwrap();
-    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
+    let node = cursor.next_statement().unwrap().unwrap();
+    let stmt = Stmt::from_arena(cursor.reader(), node.id()).unwrap();
     let Stmt::UpdateStmt(upd) = stmt else {
         panic!("expected UpdateStmt, got {stmt:?}");
     };

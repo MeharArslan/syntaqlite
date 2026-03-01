@@ -6,65 +6,45 @@ use std::ops::Range;
 
 use super::ffi;
 use super::nodes::NodeId;
-use super::session::{CursorBase, ParseError, ParserConfig};
+use super::session::{CursorBase, NodeReader, NodeRef, ParseError};
 use crate::dialect::Dialect;
+use crate::dialect::ffi::DialectConfig;
 
 /// A low-level parser for token-by-token feeding. Owns its own C parser
 /// handle and source buffer, independent of `Parser`.
-pub struct LowLevelParser {
+pub struct LowLevelParser<'d> {
     raw: *mut ffi::Parser,
     source_buf: Vec<u8>,
+    /// Owned dialect config, kept alive so the C pointer remains valid.
+    _dialect_config: Option<Box<DialectConfig>>,
+    dialect: Dialect<'d>,
 }
 
 // SAFETY: Same reasoning as Parser — the C parser is self-contained.
-unsafe impl Send for LowLevelParser {}
+unsafe impl Send for LowLevelParser<'_> {}
 
-impl LowLevelParser {
-    /// Create a new low-level parser for the given dialect.
-    /// Token collection is enabled by default (required for formatting).
-    pub fn with_dialect(dialect: &Dialect) -> Self {
-        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
-        // a new parser with default malloc/free. dialect.raw is valid for the call.
-        let raw =
-            unsafe { ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw) };
-        assert!(!raw.is_null(), "parser allocation failed");
-        // SAFETY: raw is freshly created (not sealed), so this always succeeds.
-        unsafe {
-            ffi::syntaqlite_parser_set_collect_tokens(raw, 1);
-        }
-        LowLevelParser {
-            raw,
-            source_buf: Vec::new(),
-        }
-    }
-
-    /// Create a low-level parser with the given dialect and configuration.
-    pub fn with_dialect_config(dialect: &Dialect, config: &ParserConfig) -> Self {
-        let tp = Self::with_dialect(dialect);
-        // SAFETY: tp.raw is freshly created (not sealed), so these calls
-        // always succeed.
-        unsafe {
-            ffi::syntaqlite_parser_set_trace(tp.raw, config.trace as c_int);
-            ffi::syntaqlite_parser_set_collect_tokens(tp.raw, config.collect_tokens as c_int);
-        }
-        tp
-    }
-
+impl<'d> LowLevelParser<'d> {
     /// Create a low-level parser for the built-in SQLite dialect.
+    /// Token collection is enabled by default (required for formatting).
     #[cfg(feature = "sqlite")]
-    pub fn new() -> Self {
-        Self::with_dialect(&crate::sqlite::DIALECT)
+    pub fn new() -> LowLevelParser<'static> {
+        LowLevelParser::builder(&crate::sqlite::DIALECT).build()
     }
 
-    /// Create a low-level parser for the built-in SQLite dialect with the given configuration.
-    #[cfg(feature = "sqlite")]
-    pub fn with_config(config: &ParserConfig) -> Self {
-        Self::with_dialect_config(&crate::sqlite::DIALECT, config)
+    /// Create a builder for a low-level parser bound to the given dialect.
+    /// Token collection is enabled by default (required for formatting).
+    pub fn builder<'a>(dialect: &'a Dialect) -> LowLevelParserBuilder<'a> {
+        LowLevelParserBuilder {
+            dialect,
+            trace: false,
+            collect_tokens: true,
+            dialect_config: None,
+        }
     }
 
     /// Bind source text and return a `LowLevelCursor` for token feeding.
     pub fn feed<'a>(&'a mut self, source: &'a str) -> LowLevelCursor<'a> {
-        let base = CursorBase::new(self.raw, &mut self.source_buf, source);
+        let base = CursorBase::new(self.raw, &mut self.source_buf, source, self.dialect);
         LowLevelCursor {
             base,
             finished: false,
@@ -73,7 +53,7 @@ impl LowLevelParser {
 
     /// Zero-copy variant: bind a null-terminated source and return a `LowLevelCursor`.
     pub fn feed_cstr<'a>(&'a mut self, source: &'a CStr) -> LowLevelCursor<'a> {
-        let base = CursorBase::new_cstr(self.raw, source);
+        let base = CursorBase::new_cstr(self.raw, source, self.dialect);
         LowLevelCursor {
             base,
             finished: false,
@@ -82,17 +62,86 @@ impl LowLevelParser {
 }
 
 #[cfg(feature = "sqlite")]
-impl Default for LowLevelParser {
+impl Default for LowLevelParser<'static> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Drop for LowLevelParser {
+impl Drop for LowLevelParser<'_> {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_dialect
         // and has not been freed (Drop runs exactly once).
         unsafe { ffi::syntaqlite_parser_destroy(self.raw) }
+    }
+}
+
+// ── LowLevelParserBuilder ───────────────────────────────────────────────
+
+/// Builder for configuring a [`LowLevelParser`] before construction.
+pub struct LowLevelParserBuilder<'a> {
+    dialect: &'a Dialect<'a>,
+    trace: bool,
+    collect_tokens: bool,
+    dialect_config: Option<DialectConfig>,
+}
+
+impl<'a> LowLevelParserBuilder<'a> {
+    /// Enable parser trace output (Lemon debug trace).
+    pub fn trace(mut self, enable: bool) -> Self {
+        self.trace = enable;
+        self
+    }
+
+    /// Collect non-whitespace token positions during parsing.
+    /// Enabled by default for LowLevelParser (required for formatting).
+    pub fn collect_tokens(mut self, enable: bool) -> Self {
+        self.collect_tokens = enable;
+        self
+    }
+
+    /// Set dialect config for version/cflag-gated tokenization.
+    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
+        self.dialect_config = Some(config);
+        self
+    }
+
+    /// Build the low-level parser.
+    pub fn build(self) -> LowLevelParser<'a> {
+        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
+        // a new parser with default malloc/free. dialect.raw is valid for the call.
+        let raw = unsafe {
+            ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw)
+        };
+        assert!(!raw.is_null(), "parser allocation failed");
+
+        // SAFETY: raw is freshly created (not sealed), so these calls always succeed.
+        unsafe {
+            ffi::syntaqlite_parser_set_trace(raw, self.trace as c_int);
+            ffi::syntaqlite_parser_set_collect_tokens(raw, self.collect_tokens as c_int);
+        }
+
+        let dialect_config = if let Some(config) = self.dialect_config {
+            let boxed = Box::new(config);
+            // SAFETY: raw is valid; boxed pointer is stable and lives as long
+            // as the LowLevelParser.
+            unsafe {
+                ffi::syntaqlite_parser_set_dialect_config(
+                    raw,
+                    &*boxed as *const DialectConfig,
+                );
+            }
+            Some(boxed)
+        } else {
+            None
+        };
+
+        LowLevelParser {
+            raw,
+            source_buf: Vec::new(),
+            _dialect_config: dialect_config,
+            dialect: *self.dialect,
+        }
     }
 }
 
@@ -307,8 +356,28 @@ impl<'a> LowLevelCursor<'a> {
         }
     }
 
+    /// Wrap a [`NodeId`] as a [`NodeRef`] using this cursor's reader and dialect.
+    pub fn node_ref(&self, id: NodeId) -> NodeRef<'a> {
+        NodeRef::new(id, self.base.reader, self.base.dialect)
+    }
+
+    /// Get a reference to the embedded `NodeReader`.
+    pub fn reader(&self) -> &NodeReader<'a> {
+        self.base.reader()
+    }
+
+    /// Return all comments captured during parsing.
+    pub fn comments(&self) -> &[super::ffi::Comment] {
+        self.base.comments()
+    }
+
+    /// Return all macro regions recorded via `begin_macro`/`end_macro`.
+    pub fn macro_regions(&self) -> &[super::ffi::MacroRegion] {
+        self.base.reader.macro_regions()
+    }
+
     /// Access the underlying `CursorBase` for read-only operations.
-    pub fn base(&self) -> &CursorBase<'a> {
+    pub(crate) fn base(&self) -> &CursorBase<'a> {
         &self.base
     }
 }

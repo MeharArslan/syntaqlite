@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite::parser::LowLevelParser;
+use syntaqlite::IncrementalParser;
 use syntaqlite::sqlite::ast::{FromArena, Stmt};
 use syntaqlite::sqlite::low_level::TokenType;
 
@@ -10,7 +10,7 @@ use syntaqlite::sqlite::low_level::TokenType;
 #[test]
 fn feed_tokens_select_1() {
     let source = "SELECT 1";
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     // Feed SELECT token.
@@ -23,7 +23,7 @@ fn feed_tokens_select_1() {
 
     // finish() synthesizes SEMI + EOF, triggering the ecmd reduction.
     let id = cursor.finish().unwrap().expect("expected a statement");
-    let stmt = Stmt::from_arena(cursor.base().reader(), id).unwrap();
+    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
     assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
@@ -32,7 +32,7 @@ fn feed_tokens_select_1() {
 #[test]
 fn feed_tokens_with_semicolon() {
     let source = "SELECT 1;";
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
@@ -44,7 +44,7 @@ fn feed_tokens_with_semicolon() {
 
     // finish() sends EOF which provides the lookahead.
     let id = cursor.finish().unwrap().expect("expected a statement");
-    let stmt = Stmt::from_arena(cursor.base().reader(), id).unwrap();
+    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
     assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
@@ -53,7 +53,7 @@ fn feed_tokens_with_semicolon() {
 #[test]
 fn feed_tokens_multi_statement() {
     let source = "SELECT 1; SELECT 2";
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     // First statement: SELECT 1 ;
@@ -82,7 +82,7 @@ fn feed_tokens_multi_statement() {
 #[test]
 fn feed_token_skips_space() {
     let source = "SELECT 1";
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
@@ -94,21 +94,15 @@ fn feed_token_skips_space() {
     cursor.feed_token(TokenType::Integer as u32, 7..8).unwrap();
 
     let id = cursor.finish().unwrap().expect("expected a statement");
-    let stmt = Stmt::from_arena(cursor.base().reader(), id).unwrap();
+    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
     assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
 /// TK_COMMENT should be recorded as a comment.
 #[test]
 fn feed_token_records_comment() {
-    use syntaqlite::parser::ParserConfig;
-
     let source = "SELECT -- hello\n1";
-    let config = ParserConfig {
-        trace: false,
-        collect_tokens: true,
-    };
-    let mut tp = LowLevelParser::with_config(&config);
+    let mut tp = IncrementalParser::new(); // collect_tokens is true by default
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
@@ -119,7 +113,7 @@ fn feed_token_records_comment() {
 
     cursor.finish().unwrap().expect("expected a statement");
 
-    let comments = cursor.base().comments();
+    let comments = cursor.comments();
     assert_eq!(comments.len(), 1);
     assert_eq!(comments[0].length, 8);
 }
@@ -128,7 +122,7 @@ fn feed_token_records_comment() {
 #[test]
 fn macro_regions_recorded() {
     let source = "SELECT 1";
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.begin_macro(7, 13);
@@ -138,7 +132,7 @@ fn macro_regions_recorded() {
 
     cursor.finish().unwrap();
 
-    let regions = cursor.base().macro_regions();
+    let regions = cursor.macro_regions();
     assert_eq!(regions.len(), 1);
     assert_eq!(regions[0].call_offset, 7);
     assert_eq!(regions[0].call_length, 13);
@@ -148,7 +142,7 @@ fn macro_regions_recorded() {
 #[test]
 fn nested_macro_regions() {
     let source = "SELECT 1";
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.begin_macro(0, 30);
@@ -160,7 +154,7 @@ fn nested_macro_regions() {
 
     cursor.finish().unwrap();
 
-    let regions = cursor.base().macro_regions();
+    let regions = cursor.macro_regions();
     assert_eq!(regions.len(), 2);
     assert_eq!(regions[0].call_offset, 0);
     assert_eq!(regions[0].call_length, 30);
@@ -173,7 +167,7 @@ fn nested_macro_regions() {
 #[test]
 fn macro_well_aligned_complete_expression() {
     let source = "SELECT foo!(1 + 2), 3";
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
@@ -194,7 +188,7 @@ fn macro_well_aligned_complete_expression() {
         .unwrap();
 
     let id = cursor.finish().unwrap().expect("expected a statement");
-    let stmt = Stmt::from_arena(cursor.base().reader(), id).unwrap();
+    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
     assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
@@ -204,7 +198,7 @@ fn macro_well_aligned_complete_expression() {
 #[test]
 fn macro_straddle_rejected_by_parser() {
     let source = "SELECT 1 FROM foo!(x) y";
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
@@ -228,7 +222,7 @@ fn macro_straddle_rejected_by_parser() {
 #[test]
 fn finish_with_no_tokens() {
     let source = "";
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     let r = cursor.finish().unwrap();
@@ -238,15 +232,15 @@ fn finish_with_no_tokens() {
 /// High-level API still works after the refactor.
 #[test]
 fn high_level_api_still_works() {
-    let mut parser = syntaqlite::Parser::new();
+    let mut parser = syntaqlite::raw::RawParser::new();
     let mut cursor = parser.parse("SELECT 1; SELECT 2");
 
-    let id1 = cursor.next_statement().unwrap().unwrap();
-    let r1 = Stmt::from_arena(cursor.reader(), id1).unwrap();
+    let node1 = cursor.next_statement().unwrap().unwrap();
+    let r1 = Stmt::from_arena(cursor.reader(), node1.id()).unwrap();
     assert!(matches!(r1, Stmt::SelectStmt(_)));
 
-    let id2 = cursor.next_statement().unwrap().unwrap();
-    let r2 = Stmt::from_arena(cursor.reader(), id2).unwrap();
+    let node2 = cursor.next_statement().unwrap().unwrap();
+    let r2 = Stmt::from_arena(cursor.reader(), node2.id()).unwrap();
     assert!(matches!(r2, Stmt::SelectStmt(_)));
 
     assert!(cursor.next_statement().is_none());
@@ -256,14 +250,13 @@ fn high_level_api_still_works() {
 /// semantic highlighting can render them as `type`.
 #[test]
 fn sqlite_type_tokens_are_marked_as_type() {
-    use syntaqlite::parser::{Parser, ParserConfig, TOKEN_FLAG_AS_TYPE};
+    use syntaqlite::raw::{RawParser, TOKEN_FLAG_AS_TYPE};
 
     let source = "CREATE TABLE t(a int, b TEXT); SELECT CAST(a AS varchar(10)) FROM t";
-    let config = ParserConfig {
-        trace: false,
-        collect_tokens: true,
-    };
-    let mut parser = Parser::with_config(&config);
+    let dialect = syntaqlite::sqlite::low_level::dialect();
+    let mut parser = RawParser::builder(dialect)
+        .collect_tokens(true)
+        .build();
     let mut cursor = parser.parse(source);
 
     while let Some(stmt) = cursor.next_statement() {
@@ -271,7 +264,6 @@ fn sqlite_type_tokens_are_marked_as_type() {
     }
 
     let marked: Vec<&str> = cursor
-        .base()
         .tokens()
         .iter()
         .filter(|tp| tp.flags & TOKEN_FLAG_AS_TYPE != 0)

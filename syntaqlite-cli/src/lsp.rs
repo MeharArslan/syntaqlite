@@ -17,10 +17,10 @@ use lsp_types::{
     SemanticTokensServerCapabilities, ServerCapabilities, TextDocumentSyncCapability,
     TextDocumentSyncKind, TextEdit, Uri,
 };
-use syntaqlite::Dialect;
-use syntaqlite::dialect::{SEMANTIC_TOKEN_LEGEND, TokenCategory};
+use syntaqlite::dialect::{Dialect, SEMANTIC_TOKEN_LEGEND, TokenCategory};
 use syntaqlite::fmt::FormatConfig;
-use syntaqlite::lsp::{AnalysisHost, Severity};
+use syntaqlite::lsp::AnalysisHost;
+use syntaqlite::validation::Severity;
 
 pub(crate) fn cmd_lsp(dialect: &Dialect) -> Result<(), String> {
     run_lsp(dialect).map_err(|e| format!("LSP error: {e}"))
@@ -504,7 +504,7 @@ mod tests {
     fn function_completions_respect_dialect_config() {
         let dialect = *syntaqlite::sqlite::low_level::dialect();
         let mut host = AnalysisHost::with_dialect(dialect);
-        let mut config = syntaqlite::dialect::ffi::DialectConfig::default();
+        let mut config = syntaqlite::dialect::DialectConfig::default();
         // Enable math functions
         config.cflags.set(34);
         host.set_dialect_config(config);

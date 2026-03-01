@@ -413,9 +413,9 @@ mod tests {
 
     fn validate_sql(sql: &str) -> Vec<super::super::types::Diagnostic> {
         let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
         let mut cursor = parser.parse(sql);
-        let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok()).collect();
+        let stmt_ids: Vec<_> = (&mut cursor).map_while(|r| r.ok().map(|nr| nr.id())).collect();
         stmt_ids
             .iter()
             .flat_map(|&id| {
@@ -443,10 +443,11 @@ mod tests {
     #[test]
     fn create_table_as_select_known_table_no_diags() {
         let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
         let sql = "CREATE TABLE src (id INTEGER);\nCREATE TABLE t AS SELECT * FROM src;";
         let mut cursor = parser.parse(sql);
         let stmt_ids: Vec<_> = (&mut cursor)
+            .map(|r| r.map(|nr| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let ctx =
@@ -497,10 +498,11 @@ mod tests {
         // CREATE TABLE slice AS SELECT 2 → table has no named columns.
         // Referencing slice."1" should warn about unknown column.
         let dialect = crate::sqlite::low_level::dialect();
-        let mut parser = crate::Parser::with_dialect(&dialect);
+        let mut parser = crate::parser::BaseParser::builder(&dialect).build();
         let sql = "CREATE TABLE slice AS SELECT 2;\nSELECT slice.\"1\" FROM slice;";
         let mut cursor = parser.parse(sql);
         let stmt_ids: Vec<_> = (&mut cursor)
+            .map(|r| r.map(|nr| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let diags = crate::validation::validate_document(

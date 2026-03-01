@@ -9,6 +9,7 @@ homepage = "https://github.com/LalitMaganti/syntaqlite"
 [[bin]]
 name = "syntaqlite"
 path = "src/main.rs"
+doc = false
 
 [features]
 default = ["builtin-sqlite", "codegen-dialect"]

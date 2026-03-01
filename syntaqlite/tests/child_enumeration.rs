@@ -1,13 +1,12 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite::Parser;
-use syntaqlite::parser::{FromArena, NodeId};
+use syntaqlite::raw::{FromArena, RawParser, RawStatementCursor, NodeId};
 use syntaqlite::sqlite::ast::{Node, NodeTag};
 use syntaqlite::sqlite::low_level::dialect;
 
 /// Helper: resolve a NodeId to its Node variant and return its tag.
-fn node_tag(cursor: &syntaqlite::StatementCursor, id: NodeId) -> NodeTag {
+fn node_tag(cursor: &RawStatementCursor, id: NodeId) -> NodeTag {
     let reader = cursor.reader();
     let node: Node = FromArena::from_arena(reader, id).expect("should resolve to a Node");
     node.tag()
@@ -16,9 +15,9 @@ fn node_tag(cursor: &syntaqlite::StatementCursor, id: NodeId) -> NodeTag {
 #[test]
 fn select_children_include_result_column_list_and_table_ref() {
     let dialect = dialect();
-    let mut parser = Parser::new();
+    let mut parser = RawParser::new();
     let mut cursor = parser.parse("SELECT a, b FROM t");
-    let stmt_id = cursor.next_statement().unwrap().unwrap();
+    let stmt_id = cursor.next_statement().unwrap().unwrap().id();
 
     let children = cursor.reader().child_node_ids(stmt_id, dialect);
     // SelectStmt("SELECT a, b FROM t") should have exactly 2 non-null children:
@@ -43,9 +42,9 @@ fn select_children_include_result_column_list_and_table_ref() {
 #[test]
 fn null_id_returns_empty() {
     let dialect = dialect();
-    let mut parser = Parser::new();
+    let mut parser = RawParser::new();
     let mut cursor = parser.parse("SELECT 1");
-    let _stmt_id = cursor.next_statement().unwrap().unwrap();
+    let _stmt_id = cursor.next_statement().unwrap().unwrap().id();
 
     assert!(
         cursor
@@ -58,9 +57,9 @@ fn null_id_returns_empty() {
 #[test]
 fn list_node_enumerates_its_elements() {
     let dialect = dialect();
-    let mut parser = Parser::new();
+    let mut parser = RawParser::new();
     let mut cursor = parser.parse("SELECT a, b, c");
-    let stmt_id = cursor.next_statement().unwrap().unwrap();
+    let stmt_id = cursor.next_statement().unwrap().unwrap().id();
 
     // Find the ResultColumnList child of SelectStmt.
     let children = cursor.reader().child_node_ids(stmt_id, dialect);

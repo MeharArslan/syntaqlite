@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0.
 
 /// Integration tests: macro regions are emitted verbatim by the formatter.
-use syntaqlite::parser::LowLevelParser;
+use syntaqlite::IncrementalParser;
 
-fn formatter() -> syntaqlite::fmt::Formatter<'static> {
-    syntaqlite::fmt::Formatter::new().unwrap()
+fn formatter() -> syntaqlite::Formatter<'static> {
+    syntaqlite::Formatter::new()
 }
 
 // Token type constants (raw u32 values for the runtime API).
@@ -23,7 +23,7 @@ fn macro_call_emitted_verbatim() {
     let source = "SELECT foo!(1 + 2), 3";
     let fmt = formatter();
 
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -40,7 +40,7 @@ fn macro_call_emitted_verbatim() {
     let root = cursor.finish().unwrap().expect("expected a statement");
 
     assert_eq!(
-        fmt.format_node(cursor.base(), root),
+        fmt.format_node(cursor.node_ref(root)),
         "SELECT foo!(1 + 2), 3"
     );
 }
@@ -50,7 +50,7 @@ fn macro_multi_node_emitted_once() {
     let source = "SELECT macro!(a, b)";
     let fmt = formatter();
 
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -63,7 +63,7 @@ fn macro_multi_node_emitted_once() {
 
     let root = cursor.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(cursor.base(), root), "SELECT macro!(a, b)");
+    assert_eq!(fmt.format_node(cursor.node_ref(root)), "SELECT macro!(a, b)");
 }
 
 #[test]
@@ -71,7 +71,7 @@ fn macro_multi_node_no_extra_separator() {
     let source = "SELECT foo!(a, b), c";
     let fmt = formatter();
 
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -87,7 +87,7 @@ fn macro_multi_node_no_extra_separator() {
 
     let root = cursor.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(cursor.base(), root), "SELECT foo!(a, b), c");
+    assert_eq!(fmt.format_node(cursor.node_ref(root)), "SELECT foo!(a, b), c");
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn no_macro_regions_formats_normally() {
     let source = "SELECT  1+2,  3";
     let fmt = formatter();
 
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -107,5 +107,5 @@ fn no_macro_regions_formats_normally() {
 
     let root = cursor.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(cursor.base(), root), "SELECT 1 + 2, 3");
+    assert_eq!(fmt.format_node(cursor.node_ref(root)), "SELECT 1 + 2, 3");
 }

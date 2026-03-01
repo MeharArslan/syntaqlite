@@ -10,7 +10,7 @@
 /// it calls begin_macro/end_macro around a TK_ILLEGAL token. The parser's
 /// error recovery should create an ErrorNode, and the rest of the statement
 /// should still parse correctly.
-use syntaqlite::parser::LowLevelParser;
+use syntaqlite::IncrementalParser;
 
 mod tk {
     use syntaqlite::sqlite::low_level::TokenType;
@@ -36,7 +36,7 @@ fn hole_in_expr_position() {
     //        0123456789...
     let source = "SELECT * FROM users WHERE id = {user_id}";
 
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     // SELECT
@@ -83,7 +83,7 @@ fn hole_in_expr_position() {
 fn hole_in_table_name_position() {
     let source = "SELECT * FROM {table}";
 
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -115,7 +115,7 @@ fn hole_in_table_name_position() {
 fn hole_in_table_name_with_trailing_clause() {
     let source = "SELECT * FROM {table} WHERE id = 1";
 
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -169,7 +169,7 @@ fn hole_in_table_name_with_trailing_clause() {
 fn multiple_holes() {
     let source = "SELECT {cols} FROM {table} WHERE {col} = {val}";
 
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -216,7 +216,7 @@ fn multiple_holes() {
 fn hole_as_trailing_clause() {
     let source = "SELECT * FROM users {extra}";
 
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -245,7 +245,7 @@ fn hole_as_trailing_clause() {
 fn baseline_id_in_macro_region() {
     let source = "SELECT * FROM {table} WHERE id = 1";
 
-    let mut tp = LowLevelParser::new();
+    let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -266,8 +266,8 @@ fn baseline_id_in_macro_region() {
     eprintln!("baseline: got root node {:?}", root);
 
     // Format it to see the macro region preserved
-    let fmt = syntaqlite::fmt::Formatter::new().unwrap();
-    let formatted = fmt.format_node(cursor.base(), root);
+    let fmt = syntaqlite::Formatter::new();
+    let formatted = fmt.format_node(cursor.node_ref(root));
     eprintln!("baseline formatted: {}", formatted);
 
     assert_eq!(formatted, "SELECT * FROM {table} WHERE id = 1");

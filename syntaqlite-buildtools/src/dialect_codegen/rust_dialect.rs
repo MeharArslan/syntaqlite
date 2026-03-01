@@ -36,9 +36,9 @@ pub use syntaqlite::ParseError;
 const LIB_CONFIG_MOD: &str = r#"
 /// Configuration types for parsers and formatters.
 pub mod config {
-    pub use syntaqlite::dialect::ffi::{CflagInfo, Cflags, DialectConfig, cflag_table};
+    pub use syntaqlite::dialect::{CflagInfo, Cflags, DialectConfig, cflag_table};
     pub use syntaqlite::fmt::{FormatConfig, KeywordCase};
-    pub use syntaqlite::parser::ParserConfig;
+    pub use syntaqlite::generic::builders::GenericParserBuilder as ParserConfig;
 }
 "#;
 
@@ -55,18 +55,18 @@ const WRAPPER_PARSER: &str = r#"
 ///
 /// Returns typed `StatementCursor` wrappers from `parse()`.
 pub struct Parser {
-    inner: syntaqlite::Parser,
+    inner: syntaqlite::generic::GenericParser,
 }
 
 impl Parser {
     /// Create a new parser with default configuration.
     pub fn new() -> Self {
-        Parser { inner: syntaqlite::Parser::with_dialect(&crate::DIALECT) }
+        Parser { inner: syntaqlite::generic::GenericParser::with_dialect(&crate::DIALECT) }
     }
 
     /// Create a parser with the given configuration.
     pub fn with_config(config: &crate::config::ParserConfig) -> Self {
-        Parser { inner: syntaqlite::Parser::with_dialect_config(&crate::DIALECT, config) }
+        Parser { inner: syntaqlite::generic::GenericParser::with_dialect_config(&crate::DIALECT, config) }
     }
 
     /// Access the current configuration.
@@ -84,7 +84,7 @@ impl Parser {
 const WRAPPER_STATEMENT_CURSOR: &str = r#"
 /// A high-level parsing cursor with typed node access.
 pub struct StatementCursor<'a> {
-    inner: syntaqlite::StatementCursor<'a>,
+    inner: syntaqlite::generic::GenericStatementCursor<'a>,
 }
 
 impl<'a> StatementCursor<'a> {
@@ -108,21 +108,21 @@ const WRAPPER_LOW_LEVEL_PARSER: &str = r#"
 ///
 /// Feed tokens one at a time via `LowLevelCursor`.
 pub struct LowLevelParser {
-    inner: syntaqlite::parser::LowLevelParser,
+    inner: syntaqlite::generic::GenericIncrementalParser,
 }
 
 impl LowLevelParser {
     /// Create a new low-level parser with default configuration.
     pub fn new() -> Self {
         LowLevelParser {
-            inner: syntaqlite::parser::LowLevelParser::with_dialect(&crate::DIALECT),
+            inner: syntaqlite::generic::GenericIncrementalParser::with_dialect(&crate::DIALECT),
         }
     }
 
     /// Create a low-level parser with the given configuration.
     pub fn with_config(config: &crate::config::ParserConfig) -> Self {
         LowLevelParser {
-            inner: syntaqlite::parser::LowLevelParser::with_dialect_config(&crate::DIALECT, config),
+            inner: syntaqlite::generic::GenericIncrementalParser::with_dialect_config(&crate::DIALECT, config),
         }
     }
 
@@ -138,7 +138,7 @@ const WRAPPER_LOW_LEVEL_CURSOR: &str = r#"
 ///
 /// After calling `finish()`, no further feeding methods may be called.
 pub struct LowLevelCursor<'a> {
-    inner: syntaqlite::parser::LowLevelCursor<'a>,
+    inner: syntaqlite::generic::GenericIncrementalCursor<'a>,
 }
 
 impl<'a> LowLevelCursor<'a> {
@@ -196,19 +196,19 @@ impl<'a> LowLevelCursor<'a> {
 const WRAPPER_FORMATTER: &str = r#"
 /// SQL formatter pre-configured for this dialect.
 pub struct Formatter {
-    inner: syntaqlite::fmt::Formatter<'static>,
+    inner: syntaqlite::Formatter<'static>,
 }
 
 impl Formatter {
     /// Create a formatter with default configuration.
     pub fn new() -> Result<Self, &'static str> {
-        let inner = syntaqlite::fmt::Formatter::with_dialect(&crate::DIALECT)?;
+        let inner = syntaqlite::Formatter::with_dialect(&crate::DIALECT)?;
         Ok(Formatter { inner })
     }
 
     /// Create a formatter with the given configuration.
     pub fn with_config(config: crate::config::FormatConfig) -> Result<Self, &'static str> {
-        let inner = syntaqlite::fmt::Formatter::with_dialect_config(&crate::DIALECT, config)?;
+        let inner = syntaqlite::Formatter::with_dialect_config(&crate::DIALECT, config)?;
         Ok(Formatter { inner })
     }
 
@@ -230,14 +230,14 @@ impl Formatter {
 const WRAPPER_TOKENIZER: &str = r#"
 /// A tokenizer for SQL.
 pub struct Tokenizer {
-    inner: syntaqlite::parser::Tokenizer,
+    inner: syntaqlite::generic::GenericTokenizer,
 }
 
 impl Tokenizer {
     /// Create a new tokenizer.
     pub fn new() -> Self {
         Tokenizer {
-            inner: syntaqlite::parser::Tokenizer::with_dialect(*crate::DIALECT),
+            inner: syntaqlite::generic::GenericTokenizer::with_dialect(*crate::DIALECT),
         }
     }
 
@@ -261,7 +261,7 @@ impl Tokenizer {
 const WRAPPER_TOKEN_CURSOR: &str = r#"
 /// An active tokenizer session yielding typed tokens.
 pub struct TokenCursor<'a> {
-    inner: syntaqlite::parser::TokenCursor<'a>,
+    inner: syntaqlite::generic::GenericTokenCursor<'a>,
 }
 
 impl<'a> Iterator for TokenCursor<'a> {
@@ -289,9 +289,9 @@ pub fn generate_rust_lib(dialect_fn: &str) -> String {
         r#"
 use std::sync::LazyLock;
 
-use syntaqlite::dialect::ffi as dialect_ffi;
+use syntaqlite::raw::FfiDialect;
 unsafe extern "C" {{
-    fn {dialect_fn}() -> *const dialect_ffi::Dialect;
+    fn {dialect_fn}() -> *const FfiDialect;
 }}
 
 static DIALECT: LazyLock<syntaqlite::Dialect<'static>> =
@@ -366,7 +366,7 @@ fn main() {{
     // With --features pin-cflags, scans for SYNTAQLITE_CFLAG_* env vars
     // and passes the same -D flags to cc.
     if env::var("CARGO_FEATURE_PIN_CFLAGS").is_ok() {{
-        let all_entries = syntaqlite::dialect::ffi::cflag_table();
+        let all_entries = syntaqlite::dialect::cflag_table();
 
         // Pass the master switch.
         build.define("SYNTAQLITE_SQLITE_CFLAGS", None);

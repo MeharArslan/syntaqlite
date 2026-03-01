@@ -80,7 +80,7 @@ fn bench_tokenizer(c: &mut Criterion) {
     for f in &fixtures {
         group.throughput(Throughput::Bytes(f.sql.len() as u64));
         group.bench_with_input(BenchmarkId::from_parameter(f.name), &f.sql, |b, sql| {
-            let mut tok = syntaqlite::parser::Tokenizer::new();
+            let mut tok = syntaqlite::raw::RawTokenizer::new();
             b.iter(|| {
                 let cursor = tok.tokenize(black_box(sql));
                 for item in cursor {
@@ -102,7 +102,7 @@ fn bench_parser(c: &mut Criterion) {
     for f in &fixtures {
         group.throughput(Throughput::Bytes(f.sql.len() as u64));
         group.bench_with_input(BenchmarkId::from_parameter(f.name), &f.sql, |b, sql| {
-            let mut parser = syntaqlite::Parser::new();
+            let mut parser = syntaqlite::raw::RawParser::new();
             b.iter(|| {
                 let mut cursor = parser.parse(black_box(sql));
                 while let Some(stmt) = cursor.next_statement() {
@@ -124,7 +124,7 @@ fn bench_formatter(c: &mut Criterion) {
     for f in &fixtures {
         group.throughput(Throughput::Bytes(f.sql.len() as u64));
         group.bench_with_input(BenchmarkId::from_parameter(f.name), &f.sql, |b, sql| {
-            let mut fmt = syntaqlite::fmt::Formatter::new().unwrap();
+            let mut fmt = syntaqlite::Formatter::new();
             b.iter(|| {
                 black_box(fmt.format(black_box(sql)).unwrap());
             });

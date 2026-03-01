@@ -4,7 +4,7 @@
 use std::ffi::{CStr, c_int};
 
 use super::ffi;
-use super::ffi::{Comment, MacroRegion};
+use super::ffi::Comment;
 use super::nodes::{NodeId, NodeList};
 use crate::dialect::Dialect;
 use crate::dialect::ffi::DialectConfig;
@@ -47,15 +47,8 @@ impl std::fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-/// Configuration for a parser. Must be set before first use (before `parse()`).
-#[derive(Debug, Clone, Default)]
-pub struct ParserConfig {
-    pub trace: bool,
-    pub collect_tokens: bool,
-}
-
 /// Owns a parser instance. Reusable across inputs via `parse()`.
-pub struct Parser {
+pub struct BaseParser<'d> {
     pub(crate) raw: *mut ffi::Parser,
     /// Null-terminated copy of the source text. The C tokenizer (SQLite's
     /// `SynqSqliteGetToken`) reads until it hits a null byte, so we must
@@ -63,93 +56,43 @@ pub struct Parser {
     /// this. The buffer is reused across `parse()` calls to avoid repeated
     /// allocations.
     pub(crate) source_buf: Vec<u8>,
-    config: ParserConfig,
     /// Owned dialect config, kept alive so the C pointer remains valid.
     dialect_config: DialectConfig,
+    /// The dialect used for this parser. Propagated to cursors and `NodeRef`s
+    /// so consumers don't need to thread it manually.
+    pub(crate) dialect: Dialect<'d>,
 }
 
 // SAFETY: The C parser is self-contained (no thread-local or shared mutable
 // state). Moving it between threads is safe; concurrent access is prevented
 // by &mut borrowing in parse().
-unsafe impl Send for Parser {}
+unsafe impl Send for BaseParser<'_> {}
 
-impl Parser {
-    /// Create a parser for the given dialect.
-    pub fn with_dialect(dialect: &Dialect) -> Self {
-        Self::try_with_dialect(dialect).expect("parser allocation failed")
-    }
-
-    /// Fallible constructor — returns `None` if the C-side allocation fails.
-    pub fn try_with_dialect(dialect: &Dialect) -> Option<Self> {
-        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
-        // a new parser with default malloc/free.
-        let raw =
-            unsafe { ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw) };
-        if raw.is_null() {
-            return None;
-        }
-        Some(Parser {
-            raw,
-            source_buf: Vec::new(),
-            config: ParserConfig::default(),
-            dialect_config: DialectConfig::default(),
-        })
-    }
-
-    /// Create a parser with the given dialect and configuration.
-    pub fn with_dialect_config(dialect: &Dialect, config: &ParserConfig) -> Self {
-        let mut parser = Self::with_dialect(dialect);
-        // SAFETY: Parser is freshly created (not sealed), so these calls
-        // always return 0.
-        unsafe {
-            ffi::syntaqlite_parser_set_trace(parser.raw, config.trace as c_int);
-            ffi::syntaqlite_parser_set_collect_tokens(parser.raw, config.collect_tokens as c_int);
-        }
-        parser.config = config.clone();
-        parser
-    }
-
+impl<'d> BaseParser<'d> {
     /// Create a parser for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
-    pub fn new() -> Self {
-        Self::with_dialect(&crate::sqlite::DIALECT)
+    pub fn new() -> BaseParser<'static> {
+        BaseParser::builder(&crate::sqlite::DIALECT).build()
     }
 
-    /// Create a parser for the built-in SQLite dialect with the given configuration.
-    #[cfg(feature = "sqlite")]
-    pub fn with_config(config: &ParserConfig) -> Self {
-        Self::with_dialect_config(&crate::sqlite::DIALECT, config)
-    }
-
-    /// Access the current configuration.
-    pub fn config(&self) -> &ParserConfig {
-        &self.config
-    }
-
-    /// Set the dialect config for version/cflag-gated tokenization.
-    ///
-    /// Must be called before first `parse()`. The config is copied and
-    /// owned by this parser; the C side receives a pointer to the owned copy.
-    pub fn set_dialect_config(&mut self, config: &DialectConfig) {
-        self.dialect_config = *config;
-        // SAFETY: We pass a pointer to self.dialect_config which is pinned
-        // by &mut self. The C side copies the config value.
-        unsafe {
-            ffi::syntaqlite_parser_set_dialect_config(
-                self.raw,
-                &self.dialect_config as *const DialectConfig,
-            );
+    /// Create a builder for a parser bound to the given dialect.
+    pub fn builder<'a>(dialect: &'a Dialect) -> BaseParserBuilder<'a> {
+        BaseParserBuilder {
+            dialect,
+            trace: false,
+            collect_tokens: false,
+            dialect_config: None,
         }
     }
 
-    /// Bind source text and return a `StatementCursor` for iterating statements.
+    /// Bind source text and return a `BaseStatementCursor` for iterating statements.
     ///
     /// Copies the source into an internal buffer to add a null terminator
     /// (required by the C tokenizer). For zero-copy parsing, use
     /// [`parse_cstr`](Self::parse_cstr).
-    pub fn parse<'a>(&'a mut self, source: &'a str) -> StatementCursor<'a> {
-        let base = CursorBase::new(self.raw, &mut self.source_buf, source);
-        StatementCursor {
+    pub fn parse<'a>(&'a mut self, source: &'a str) -> BaseStatementCursor<'a> {
+        let base = CursorBase::new(self.raw, &mut self.source_buf, source, self.dialect);
+        BaseStatementCursor {
             base,
             last_saw_subquery: false,
             last_saw_update_delete_limit: false,
@@ -157,13 +100,13 @@ impl Parser {
     }
 
     /// Zero-copy variant: bind a null-terminated source and return a
-    /// `StatementCursor`.
+    /// `BaseStatementCursor`.
     ///
     /// The `&CStr` already guarantees a trailing `\0`, so no copy is needed.
     /// The source must be valid UTF-8 (panics otherwise).
-    pub fn parse_cstr<'a>(&'a mut self, source: &'a CStr) -> StatementCursor<'a> {
-        let base = CursorBase::new_cstr(self.raw, source);
-        StatementCursor {
+    pub fn parse_cstr<'a>(&'a mut self, source: &'a CStr) -> BaseStatementCursor<'a> {
+        let base = CursorBase::new_cstr(self.raw, source, self.dialect);
+        BaseStatementCursor {
             base,
             last_saw_subquery: false,
             last_saw_update_delete_limit: false,
@@ -172,18 +115,86 @@ impl Parser {
 }
 
 #[cfg(feature = "sqlite")]
-impl Default for Parser {
+impl Default for BaseParser<'static> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Drop for Parser {
+impl Drop for BaseParser<'_> {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_parser_create and has
         // not been freed (Drop runs exactly once). The C function is no-op
         // on NULL.
         unsafe { ffi::syntaqlite_parser_destroy(self.raw) }
+    }
+}
+
+// ── BaseParserBuilder ───────────────────────────────────────────────────────
+
+/// Builder for configuring a [`BaseParser`] before construction.
+pub struct BaseParserBuilder<'a> {
+    dialect: &'a Dialect<'a>,
+    trace: bool,
+    collect_tokens: bool,
+    dialect_config: Option<DialectConfig>,
+}
+
+impl<'a> BaseParserBuilder<'a> {
+    /// Enable parser trace output (Lemon debug trace).
+    pub fn trace(mut self, enable: bool) -> Self {
+        self.trace = enable;
+        self
+    }
+
+    /// Collect non-whitespace token positions during parsing.
+    pub fn collect_tokens(mut self, enable: bool) -> Self {
+        self.collect_tokens = enable;
+        self
+    }
+
+    /// Set dialect config for version/cflag-gated tokenization.
+    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
+        self.dialect_config = Some(config);
+        self
+    }
+
+    /// Build the parser.
+    pub fn build(self) -> BaseParser<'a> {
+        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
+        // a new parser with default malloc/free.
+        let raw = unsafe {
+            ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw)
+        };
+        assert!(!raw.is_null(), "parser allocation failed");
+
+        // SAFETY: raw is freshly created (not sealed), so these calls
+        // always return 0.
+        unsafe {
+            ffi::syntaqlite_parser_set_trace(raw, self.trace as c_int);
+            ffi::syntaqlite_parser_set_collect_tokens(raw, self.collect_tokens as c_int);
+        }
+
+        let mut parser = BaseParser {
+            raw,
+            source_buf: Vec::new(),
+            dialect_config: DialectConfig::default(),
+            dialect: *self.dialect,
+        };
+
+        if let Some(config) = self.dialect_config {
+            parser.dialect_config = config;
+            // SAFETY: We pass a pointer to parser.dialect_config which lives
+            // in the BaseParser struct. The C side copies the config value.
+            unsafe {
+                ffi::syntaqlite_parser_set_dialect_config(
+                    parser.raw,
+                    &parser.dialect_config as *const DialectConfig,
+                );
+            }
+        }
+
+        parser
     }
 }
 
@@ -369,9 +380,35 @@ impl<'a> NodeReader<'a> {
         self.source
     }
 
+    /// Return all non-whitespace, non-comment token positions captured
+    /// during parsing. Requires `collect_tokens: true` in `ParserConfig`.
+    pub(crate) fn tokens(&self) -> &[ffi::TokenPos] {
+        // SAFETY: raw is valid; syntaqlite_parser_tokens returns a pointer valid
+        // for the lifetime of &self (until the next reset/destroy, which need &mut).
+        unsafe { ffi_slice(self.raw, ffi::syntaqlite_parser_tokens) }
+    }
+
+    /// Return all macro regions captured during parsing.
+    pub(crate) fn macro_regions(&self) -> &[super::ffi::MacroRegion] {
+        // SAFETY: raw is valid; syntaqlite_parser_macro_regions returns a pointer
+        // valid for the lifetime of &self.
+        unsafe { ffi_slice(self.raw, ffi::syntaqlite_parser_macro_regions) }
+    }
+
     /// Access the raw C parser pointer (crate-internal).
     pub(crate) fn raw(&self) -> *mut ffi::Parser {
         self.raw
+    }
+
+    /// If `id` refers to a list node (per the dialect), return its child node IDs.
+    pub fn list_children(&self, id: NodeId, dialect: &crate::Dialect) -> Option<&'a [NodeId]> {
+        let (ptr, tag) = self.node_ptr(id)?;
+        if !dialect.is_list(tag) {
+            return None;
+        }
+        // SAFETY: ptr is a valid arena pointer and the tag confirms it is a
+        // list node, so it has NodeList layout (tag, count, children[count]).
+        Some(unsafe { &*(ptr as *const NodeList) }.children())
     }
 
     /// Dump an AST node tree as indented text. Uses C-side metadata (field
@@ -395,7 +432,7 @@ impl<'a> NodeReader<'a> {
 
 // ── CursorBase ──────────────────────────────────────────────────────────
 
-/// Shared read-only cursor state. Both `StatementCursor` and `LowLevelCursor`
+/// Shared read-only cursor state. Both `BaseStatementCursor` and `LowLevelCursor`
 /// wrap this.
 pub struct CursorBase<'a> {
     pub(crate) reader: NodeReader<'a>,
@@ -405,13 +442,20 @@ pub struct CursorBase<'a> {
     /// code's `tok.z - ctx->source` offset arithmetic is correct regardless
     /// of whether the copying or zero-copy path was used.
     pub(crate) c_source_ptr: *const u8,
+    /// The dialect handle, propagated from the parser that created this cursor.
+    pub(crate) dialect: Dialect<'a>,
 }
 
 impl<'a> CursorBase<'a> {
     /// Construct a CursorBase from a raw parser pointer and source text.
     /// Copies the source into `source_buf` to null-terminate it, then resets
     /// the C parser.
-    pub(crate) fn new(raw: *mut ffi::Parser, source_buf: &'a mut Vec<u8>, source: &'a str) -> Self {
+    pub(crate) fn new(
+        raw: *mut ffi::Parser,
+        source_buf: &'a mut Vec<u8>,
+        source: &'a str,
+        dialect: Dialect<'a>,
+    ) -> Self {
         source_buf.clear();
         source_buf.reserve(source.len() + 1);
         source_buf.extend_from_slice(source.as_bytes());
@@ -426,11 +470,12 @@ impl<'a> CursorBase<'a> {
         CursorBase {
             reader: NodeReader { raw, source },
             c_source_ptr,
+            dialect,
         }
     }
 
     /// Construct a CursorBase from a raw parser pointer and a CStr (zero-copy).
-    pub(crate) fn new_cstr(raw: *mut ffi::Parser, source: &'a CStr) -> Self {
+    pub(crate) fn new_cstr(raw: *mut ffi::Parser, source: &'a CStr, dialect: Dialect<'a>) -> Self {
         let bytes = source.to_bytes();
         let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 
@@ -444,6 +489,7 @@ impl<'a> CursorBase<'a> {
                 source: source_str,
             },
             c_source_ptr: source.as_ptr() as *const u8,
+            dialect,
         }
     }
 
@@ -455,36 +501,15 @@ impl<'a> CursorBase<'a> {
         &self.reader
     }
 
-    /// Get a raw pointer to a node in the arena. Returns (pointer, tag).
-    ///
-    /// This is the dialect-agnostic primitive. Dialect crates wrap this to
-    /// return a typed `Node` enum.
-    pub(crate) fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
-        self.reader.node_ptr(id)
-    }
-
     /// The source text bound to this cursor.
-    pub fn source(&self) -> &'a str {
+    pub(crate) fn source(&self) -> &'a str {
         self.reader.source()
-    }
-
-    /// If `id` refers to a list node, return its child node IDs.
-    pub fn list_children(&self, id: NodeId, dialect: &Dialect) -> Option<&[NodeId]> {
-        let (ptr, tag) = self.node_ptr(id)?;
-        if !dialect.is_list(tag) {
-            return None;
-        }
-        // SAFETY: ptr is a valid arena pointer and the tag confirms it is a
-        // list node, so it has NodeList layout (tag, count, children[count]).
-        Some(unsafe { &*(ptr as *const NodeList) }.children())
     }
 
     /// Return all non-whitespace, non-comment token positions captured
     /// during parsing. Requires `collect_tokens: true` in `ParserConfig`.
-    pub fn tokens(&self) -> &[ffi::TokenPos] {
-        // SAFETY: raw is valid; syntaqlite_parser_tokens returns a pointer valid
-        // for the lifetime of &self (until the next reset/destroy, which need &mut).
-        unsafe { ffi_slice(self.reader.raw(), ffi::syntaqlite_parser_tokens) }
+    pub(crate) fn tokens(&self) -> &[ffi::TokenPos] {
+        self.reader.tokens()
     }
 
     /// Return all comments captured during parsing.
@@ -492,7 +517,7 @@ impl<'a> CursorBase<'a> {
     ///
     /// Returns a slice into the parser's internal buffer — valid until
     /// the parser is reset or destroyed (which requires `&mut`).
-    pub fn comments(&self) -> &[Comment] {
+    pub(crate) fn comments(&self) -> &[Comment] {
         // SAFETY: raw is valid; syntaqlite_parser_comments returns a pointer valid
         // for the lifetime of &self (until the next reset/destroy, which need &mut).
         unsafe { ffi_slice(self.reader.raw(), ffi::syntaqlite_parser_comments) }
@@ -500,15 +525,8 @@ impl<'a> CursorBase<'a> {
 
     /// Dump an AST node tree as indented text. Uses C-side metadata (field
     /// names, display strings) so no Rust-side string tables are needed.
-    pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
+    pub(crate) fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
         self.reader.dump_node(id, out, indent)
-    }
-
-    /// Return all macro regions recorded via `begin_macro`/`end_macro`.
-    pub fn macro_regions(&self) -> &[MacroRegion] {
-        // SAFETY: raw is valid; syntaqlite_parser_macro_regions returns a pointer valid
-        // for the lifetime of &self (until the next reset/destroy, which need &mut).
-        unsafe { ffi_slice(self.reader.raw(), ffi::syntaqlite_parser_macro_regions) }
     }
 }
 
@@ -530,7 +548,282 @@ unsafe fn ffi_slice<'a, T>(
     unsafe { std::slice::from_raw_parts(ptr, count as usize) }
 }
 
-// ── StatementCursor (high-level) ────────────────────────────────────────
+// ── NodeRef ─────────────────────────────────────────────────────────────────
+
+/// A grammar-agnostic handle to a parsed AST node.
+///
+/// Bundles a node's arena ID with the reader and dialect needed to
+/// inspect it, enabling ergonomic methods like `name()`, `children()`,
+/// and `dump_json()` without threading three arguments everywhere.
+#[derive(Clone, Copy)]
+pub struct NodeRef<'a> {
+    id: NodeId,
+    reader: NodeReader<'a>,
+    dialect: Dialect<'a>,
+}
+
+impl std::fmt::Debug for NodeRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NodeRef").field("id", &self.id).finish()
+    }
+}
+
+impl<'a> NodeRef<'a> {
+    /// Create a `NodeRef` from its constituent parts.
+    pub fn new(id: NodeId, reader: NodeReader<'a>, dialect: Dialect<'a>) -> Self {
+        NodeRef {
+            id,
+            reader,
+            dialect,
+        }
+    }
+
+    /// Raw arena ID (escape hatch for FFI/codegen).
+    pub fn id(&self) -> NodeId {
+        self.id
+    }
+
+    /// Reader for typed access via `FromArena`.
+    pub fn reader(&self) -> NodeReader<'a> {
+        self.reader
+    }
+
+    /// Dialect handle.
+    pub fn dialect(&self) -> Dialect<'a> {
+        self.dialect
+    }
+
+    /// Node type tag, or `None` if null/invalid.
+    pub fn tag(&self) -> Option<u32> {
+        self.reader.node_tag(self.id)
+    }
+
+    /// Node type name (e.g. `"SelectStmt"`).
+    pub fn name(&self) -> &str {
+        match self.tag() {
+            Some(tag) => self.dialect.node_name(tag),
+            None => "",
+        }
+    }
+
+    /// Whether this is a list node.
+    pub fn is_list(&self) -> bool {
+        match self.tag() {
+            Some(tag) => self.dialect.is_list(tag),
+            None => false,
+        }
+    }
+
+    /// Child nodes: list children (for lists) or node-typed fields (for nodes).
+    pub fn children(&self) -> Vec<NodeRef<'a>> {
+        self.reader
+            .child_node_ids(self.id, &self.dialect)
+            .into_iter()
+            .map(|child_id| NodeRef {
+                id: child_id,
+                reader: self.reader,
+                dialect: self.dialect,
+            })
+            .collect()
+    }
+
+    /// Raw list children slice (for list nodes only).
+    pub fn list_children(&self) -> Option<&'a [NodeId]> {
+        self.reader.list_children(self.id, &self.dialect)
+    }
+
+    /// Dialect field metadata for this node type.
+    pub fn field_meta(&self) -> &[crate::dialect::ffi::FieldMeta] {
+        match self.tag() {
+            Some(tag) => self.dialect.field_meta(tag),
+            None => &[],
+        }
+    }
+
+    /// Extract typed field values.
+    pub fn extract_fields(&self) -> Option<(u32, super::nodes::Fields<'a>)> {
+        self.reader.extract_fields(self.id, &self.dialect)
+    }
+
+    /// Dump as indented text (delegates to existing C-side `dump_node`).
+    pub fn dump(&self, out: &mut String, indent: usize) {
+        self.reader.dump_node(self.id, out, indent)
+    }
+
+    /// Dump as JSON matching the WASM AST JSON format.
+    pub fn dump_json(&self, out: &mut String) {
+        dump_json_id(self.id, self.reader, self.dialect, out);
+    }
+
+    /// Resolve as a typed AST node.
+    pub fn as_typed<T: crate::parser::typed_list::FromArena<'a>>(&self) -> Option<T> {
+        // SAFETY: NodeReader<'a> is Copy and all its data (raw pointer, source
+        // reference) is valid for 'a. Re-casting to &'a NodeReader<'a> extends
+        // the borrow lifetime to 'a, which is safe because the underlying
+        // parser arena lives for 'a (same pattern as NodeReader::resolve_or_error).
+        let reader: &'a NodeReader<'a> = unsafe { &*(&self.reader as *const NodeReader<'a>) };
+        T::from_arena(reader, self.id)
+    }
+
+    /// The source text bound to this node's reader.
+    pub fn source(&self) -> &'a str {
+        self.reader.source()
+    }
+}
+
+// ── JSON dump helpers ───────────────────────────────────────────────────────
+
+/// Escape a string for JSON output.
+fn json_escape(out: &mut String, s: &str) {
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c if c < '\x20' => {
+                use std::fmt::Write;
+                let _ = write!(out, "\\u{:04x}", c as u32);
+            }
+            c => out.push(c),
+        }
+    }
+}
+
+/// Recursive JSON dump for a single node ID.
+fn dump_json_id(id: NodeId, reader: NodeReader<'_>, dialect: Dialect<'_>, out: &mut String) {
+    if id.is_null() {
+        out.push_str("null");
+        return;
+    }
+    let Some(tag) = reader.node_tag(id) else {
+        out.push_str("null");
+        return;
+    };
+
+    let name = dialect.node_name(tag);
+
+    if dialect.is_list(tag) {
+        let children = reader
+            .list_children(id, &dialect)
+            .unwrap_or(&[]);
+        out.push_str("{\"type\":\"list\",\"name\":\"");
+        json_escape(out, name);
+        out.push_str("\",\"count\":");
+        out.push_str(&children.len().to_string());
+        out.push_str(",\"children\":[");
+        for (i, &child_id) in children.iter().enumerate() {
+            if i > 0 {
+                out.push(',');
+            }
+            if child_id.is_null() || reader.node_tag(child_id).is_none() {
+                out.push_str("{\"type\":\"node\",\"name\":\"null\",\"fields\":[]}");
+            } else {
+                dump_json_id(child_id, reader, dialect, out);
+            }
+        }
+        out.push_str("]}");
+        return;
+    }
+
+    let meta = dialect.field_meta(tag);
+    let Some((_, fields)) = reader.extract_fields(id, &dialect) else {
+        out.push_str("null");
+        return;
+    };
+
+    out.push_str("{\"type\":\"node\",\"name\":\"");
+    json_escape(out, name);
+    out.push_str("\",\"fields\":[");
+
+    for (i, (m, fv)) in meta.iter().zip(fields.iter()).enumerate() {
+        if i > 0 {
+            out.push(',');
+        }
+        // SAFETY: m.name is a valid NUL-terminated C string from codegen.
+        let label = unsafe { m.name_str() };
+
+        match fv {
+            super::nodes::FieldVal::NodeId(child_id) => {
+                out.push_str("{\"kind\":\"node\",\"label\":\"");
+                json_escape(out, label);
+                out.push_str("\",\"child\":");
+                if child_id.is_null() {
+                    out.push_str("null");
+                } else {
+                    dump_json_id(*child_id, reader, dialect, out);
+                }
+                out.push('}');
+            }
+            super::nodes::FieldVal::Span(text, _) => {
+                out.push_str("{\"kind\":\"span\",\"label\":\"");
+                json_escape(out, label);
+                out.push_str("\",\"value\":");
+                if text.is_empty() {
+                    out.push_str("null");
+                } else {
+                    out.push('"');
+                    json_escape(out, text);
+                    out.push('"');
+                }
+                out.push('}');
+            }
+            super::nodes::FieldVal::Bool(val) => {
+                out.push_str("{\"kind\":\"bool\",\"label\":\"");
+                json_escape(out, label);
+                out.push_str("\",\"value\":");
+                out.push_str(if *val { "true" } else { "false" });
+                out.push('}');
+            }
+            super::nodes::FieldVal::Enum(val) => {
+                out.push_str("{\"kind\":\"enum\",\"label\":\"");
+                json_escape(out, label);
+                out.push_str("\",\"value\":");
+                // SAFETY: m.display is a valid C array from codegen.
+                match unsafe { m.display_name(*val as usize) } {
+                    Some(s) => {
+                        out.push('"');
+                        json_escape(out, s);
+                        out.push('"');
+                    }
+                    None => out.push_str("null"),
+                }
+                out.push('}');
+            }
+            super::nodes::FieldVal::Flags(val) => {
+                out.push_str("{\"kind\":\"flags\",\"label\":\"");
+                json_escape(out, label);
+                out.push_str("\",\"value\":[");
+                let mut first = true;
+                for bit in 0..8u8 {
+                    if val & (1 << bit) != 0 {
+                        if !first {
+                            out.push(',');
+                        }
+                        first = false;
+                        // SAFETY: m.display is a valid C array from codegen.
+                        match unsafe { m.display_name(bit as usize) } {
+                            Some(s) => {
+                                out.push('"');
+                                json_escape(out, s);
+                                out.push('"');
+                            }
+                            None => {
+                                out.push_str(&(1u32 << bit).to_string());
+                            }
+                        }
+                    }
+                }
+                out.push_str("]}");
+            }
+        }
+    }
+
+    out.push_str("]}");
+}
+
+// ── BaseStatementCursor (high-level) ────────────────────────────────────────
 
 /// A streaming cursor over parsed SQL statements. Iterate with
 /// `next_statement()` or the `Iterator` impl.
@@ -539,7 +832,7 @@ unsafe fn ffi_slice<'a, T>(
 /// statement, then continues parsing subsequent statements (Lemon's built-in
 /// error recovery synchronises on `;`). Call `next_statement()` again to
 /// retrieve the next valid statement.
-pub struct StatementCursor<'a> {
+pub struct BaseStatementCursor<'a> {
     pub(crate) base: CursorBase<'a>,
     /// Value of `saw_subquery` from the last successful `next_statement()` call.
     last_saw_subquery: bool,
@@ -547,15 +840,15 @@ pub struct StatementCursor<'a> {
     last_saw_update_delete_limit: bool,
 }
 
-impl<'a> StatementCursor<'a> {
+impl<'a> BaseStatementCursor<'a> {
     /// Parse the next SQL statement.
     ///
     /// Returns:
-    /// - `Some(Ok(id))` — successfully parsed statement root node.
+    /// - `Some(Ok(node))` — successfully parsed statement root as a [`NodeRef`].
     /// - `Some(Err(e))` — syntax error for one statement; call again to
     ///   continue with subsequent statements (Lemon recovers on `;`).
     /// - `None` — all input has been consumed.
-    pub fn next_statement(&mut self) -> Option<Result<NodeId, ParseError>> {
+    pub fn next_statement(&mut self) -> Option<Result<NodeRef<'a>, ParseError>> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         // When error is set, error_msg is a NUL-terminated string in the
         // parser's buffer (valid for parser lifetime).
@@ -599,7 +892,11 @@ impl<'a> StatementCursor<'a> {
         if has_root {
             self.last_saw_subquery = result.saw_subquery != 0;
             self.last_saw_update_delete_limit = result.saw_update_delete_limit != 0;
-            return Some(Ok(id));
+            return Some(Ok(NodeRef {
+                id,
+                reader: self.base.reader,
+                dialect: self.base.dialect,
+            }));
         }
 
         None
@@ -608,19 +905,22 @@ impl<'a> StatementCursor<'a> {
     /// Returns `true` if the last successfully parsed statement contained a
     /// subquery (e.g. `SELECT * FROM (SELECT 1)`, `EXISTS (SELECT ...)`,
     /// or `IN (SELECT ...)`). Reset before each statement.
-    pub fn saw_subquery(&self) -> bool {
+    #[cfg(test)]
+    pub(crate) fn saw_subquery(&self) -> bool {
         self.last_saw_subquery
     }
 
     /// Returns `true` if the last successfully parsed DELETE or UPDATE statement
     /// used ORDER BY or LIMIT clauses. These clauses require the
     /// `SQLITE_ENABLE_UPDATE_DELETE_LIMIT` compile-time option.
-    pub fn saw_update_delete_limit(&self) -> bool {
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) fn saw_update_delete_limit(&self) -> bool {
         self.last_saw_update_delete_limit
     }
 
     /// Access the underlying `CursorBase` for read-only operations.
-    pub fn base(&self) -> &CursorBase<'a> {
+    pub(crate) fn base(&self) -> &CursorBase<'a> {
         &self.base
     }
 
@@ -636,16 +936,115 @@ impl<'a> StatementCursor<'a> {
         self.base.source()
     }
 
+    /// Return all non-whitespace, non-comment token positions captured
+    /// during parsing.
+    pub fn tokens(&self) -> &[ffi::TokenPos] {
+        self.base.tokens()
+    }
+
+    /// Return all comments captured during parsing.
+    pub fn comments(&self) -> &[Comment] {
+        self.base.comments()
+    }
+
     /// Dump an AST node tree as indented text.
     pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
         self.base.dump_node(id, out, indent)
     }
+
+    /// Wrap a `NodeId` (e.g. from a `ParseError::root`) into a `NodeRef`
+    /// using this cursor's reader and dialect.
+    pub fn node_ref(&self, id: NodeId) -> NodeRef<'a> {
+        NodeRef {
+            id,
+            reader: self.base.reader,
+            dialect: self.base.dialect,
+        }
+    }
 }
 
-impl Iterator for StatementCursor<'_> {
-    type Item = Result<NodeId, ParseError>;
+impl<'a> Iterator for BaseStatementCursor<'a> {
+    type Item = Result<NodeRef<'a>, ParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_statement()
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "sqlite")]
+mod tests {
+    use super::*;
+
+    fn parse_saw_subquery(sql: &str) -> (bool, bool) {
+        let mut parser = BaseParser::new();
+        let mut cursor = parser.parse(sql);
+        let ok = matches!(cursor.next_statement(), Some(Ok(_)));
+        let saw = cursor.saw_subquery();
+        (ok, saw)
+    }
+
+    #[test]
+    fn node_ref_accessors() {
+        let mut parser = BaseParser::new();
+        let mut cursor = parser.parse("SELECT 1;");
+        let node = cursor.next_statement().unwrap().unwrap();
+        assert!(!node.name().is_empty());
+        assert!(node.tag().is_some());
+        assert!(!node.is_list());
+        assert!(!node.id().is_null());
+    }
+
+    #[test]
+    fn node_ref_dump_json_produces_valid_json() {
+        let mut parser = BaseParser::new();
+        let mut cursor = parser.parse("SELECT 1;");
+        let node = cursor.next_statement().unwrap().unwrap();
+        let mut out = String::new();
+        node.dump_json(&mut out);
+        assert!(out.starts_with("{\"type\":\"node\""));
+        assert!(out.ends_with('}'));
+    }
+
+    #[test]
+    fn subquery_detected_in_from() {
+        let (ok, saw) = parse_saw_subquery("SELECT * FROM (SELECT 1);");
+        assert!(ok, "Should parse successfully");
+        assert!(saw, "Should detect subquery in FROM clause");
+    }
+
+    #[test]
+    fn subquery_detected_in_exists() {
+        let (ok, saw) = parse_saw_subquery("SELECT EXISTS (SELECT 1);");
+        assert!(ok, "Should parse successfully");
+        assert!(saw, "Should detect subquery in EXISTS expression");
+    }
+
+    #[test]
+    fn subquery_detected_in_scalar_subquery() {
+        let (ok, saw) = parse_saw_subquery("SELECT (SELECT 1);");
+        assert!(ok, "Should parse successfully");
+        assert!(saw, "Should detect scalar subquery expression");
+    }
+
+    #[test]
+    fn subquery_detected_in_in_select() {
+        let (ok, saw) = parse_saw_subquery("SELECT 1 WHERE 1 IN (SELECT 2);");
+        assert!(ok, "Should parse successfully");
+        assert!(saw, "Should detect subquery in IN (SELECT ...) expression");
+    }
+
+    #[test]
+    fn no_subquery_in_simple_select() {
+        let (ok, saw) = parse_saw_subquery("SELECT 1;");
+        assert!(ok, "Should parse successfully");
+        assert!(!saw, "Simple SELECT should NOT set saw_subquery");
+    }
+
+    #[test]
+    fn no_subquery_in_in_list() {
+        let (ok, saw) = parse_saw_subquery("SELECT 1 WHERE 1 IN (1, 2, 3);");
+        assert!(ok, "Should parse successfully");
+        assert!(!saw, "IN with literal list should NOT set saw_subquery");
     }
 }

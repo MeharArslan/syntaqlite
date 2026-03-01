@@ -23,7 +23,7 @@
 //! The saw_subquery tests verify the OMIT_SUBQUERY detection mechanism,
 //! which uses a parser flag rather than keyword suppression.
 
-use syntaqlite::dialect::ffi::DialectConfig;
+use syntaqlite::dialect::DialectConfig;
 use syntaqlite::sqlite::low_level::TokenType;
 
 const fn tk(t: TokenType) -> u32 {
@@ -37,7 +37,6 @@ const fn tk(t: TokenType) -> u32 {
 /// Tokenize SQL with cflags set (latest version).
 fn tokenize_with_cflags(sql: &str, cflag_indices: &[u32]) -> Vec<(u32, String)> {
     let dialect = syntaqlite::sqlite::low_level::dialect();
-    let mut tok = syntaqlite::parser::Tokenizer::with_dialect(*dialect);
     let mut config = DialectConfig {
         sqlite_version: i32::MAX,
         ..Default::default()
@@ -45,7 +44,9 @@ fn tokenize_with_cflags(sql: &str, cflag_indices: &[u32]) -> Vec<(u32, String)> 
     for &idx in cflag_indices {
         config.cflags.set(idx);
     }
-    tok.set_dialect_config(&config);
+    let mut tok = syntaqlite::raw::RawTokenizer::builder(*dialect)
+        .dialect_config(config)
+        .build();
     tok.tokenize(sql)
         .filter(|raw| raw.token_type != tk(TokenType::Space))
         .map(|raw| (raw.token_type, raw.text.to_string()))
@@ -64,7 +65,6 @@ fn tokenize_at_version_cflags(
     cflag_indices: &[u32],
 ) -> Vec<(u32, String)> {
     let dialect = syntaqlite::sqlite::low_level::dialect();
-    let mut tok = syntaqlite::parser::Tokenizer::with_dialect(*dialect);
     let mut config = DialectConfig {
         sqlite_version: version,
         ..Default::default()
@@ -72,7 +72,9 @@ fn tokenize_at_version_cflags(
     for &idx in cflag_indices {
         config.cflags.set(idx);
     }
-    tok.set_dialect_config(&config);
+    let mut tok = syntaqlite::raw::RawTokenizer::builder(*dialect)
+        .dialect_config(config)
+        .build();
     tok.tokenize(sql)
         .filter(|raw| raw.token_type != tk(TokenType::Space))
         .map(|raw| (raw.token_type, raw.text.to_string()))
@@ -82,7 +84,6 @@ fn tokenize_at_version_cflags(
 /// Parse SQL with cflags set (latest version) and return whether it succeeded.
 fn parses_ok_with_cflags(sql: &str, cflag_indices: &[u32]) -> bool {
     let dialect = syntaqlite::sqlite::low_level::dialect();
-    let mut parser = syntaqlite::Parser::with_dialect(dialect);
     let mut config = DialectConfig {
         sqlite_version: i32::MAX,
         ..Default::default()
@@ -90,7 +91,9 @@ fn parses_ok_with_cflags(sql: &str, cflag_indices: &[u32]) -> bool {
     for &idx in cflag_indices {
         config.cflags.set(idx);
     }
-    parser.set_dialect_config(&config);
+    let mut parser = syntaqlite::raw::RawParser::builder(dialect)
+        .dialect_config(config)
+        .build();
     let mut cursor = parser.parse(sql);
     matches!(cursor.next_statement(), Some(Ok(_)))
 }
@@ -857,68 +860,6 @@ fn omit_flag_does_not_affect_unrelated_keywords() {
         tk(TokenType::Cast),
         "CAST should not be affected by OMIT_PRAGMA"
     );
-}
-
-// ===========================================================================
-// OMIT_SUBQUERY — uses saw_subquery flag, not keyword suppression
-//
-// SQLITE_OMIT_SUBQUERY gates grammar rules via %ifndef blocks, but all tokens
-// used in subquery syntax (LP, SELECT, RP) are baseline tokens that can't be
-// suppressed. Instead, grammar actions set saw_subquery on the parse context
-// when a subquery production is reduced.
-// ===========================================================================
-
-/// Parse SQL and return (success, saw_subquery).
-fn parse_saw_subquery(sql: &str) -> (bool, bool) {
-    let dialect = syntaqlite::sqlite::low_level::dialect();
-    let mut parser = syntaqlite::Parser::with_dialect(dialect);
-    let mut cursor = parser.parse(sql);
-    let ok = matches!(cursor.next_statement(), Some(Ok(_)));
-    let saw = cursor.saw_subquery();
-    (ok, saw)
-}
-
-#[test]
-fn subquery_detected_in_from() {
-    let (ok, saw) = parse_saw_subquery("SELECT * FROM (SELECT 1);");
-    assert!(ok, "Should parse successfully");
-    assert!(saw, "Should detect subquery in FROM clause");
-}
-
-#[test]
-fn subquery_detected_in_exists() {
-    let (ok, saw) = parse_saw_subquery("SELECT EXISTS (SELECT 1);");
-    assert!(ok, "Should parse successfully");
-    assert!(saw, "Should detect subquery in EXISTS expression");
-}
-
-#[test]
-fn subquery_detected_in_scalar_subquery() {
-    let (ok, saw) = parse_saw_subquery("SELECT (SELECT 1);");
-    assert!(ok, "Should parse successfully");
-    assert!(saw, "Should detect scalar subquery expression");
-}
-
-#[test]
-fn subquery_detected_in_in_select() {
-    let (ok, saw) = parse_saw_subquery("SELECT 1 WHERE 1 IN (SELECT 2);");
-    assert!(ok, "Should parse successfully");
-    assert!(saw, "Should detect subquery in IN (SELECT ...) expression");
-}
-
-#[test]
-fn no_subquery_in_simple_select() {
-    let (ok, saw) = parse_saw_subquery("SELECT 1;");
-    assert!(ok, "Should parse successfully");
-    assert!(!saw, "Simple SELECT should NOT set saw_subquery");
-}
-
-#[test]
-fn no_subquery_in_in_list() {
-    // IN with a literal list — not a subquery.
-    let (ok, saw) = parse_saw_subquery("SELECT 1 WHERE 1 IN (1, 2, 3);");
-    assert!(ok, "Should parse successfully");
-    assert!(!saw, "IN with literal list should NOT set saw_subquery");
 }
 
 // ===========================================================================

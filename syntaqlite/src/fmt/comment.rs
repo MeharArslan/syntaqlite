@@ -3,7 +3,8 @@
 
 use std::cell::Cell;
 
-use crate::parser::{Comment, CommentKind, TokenPos};
+use crate::parser::ffi::TokenPos;
+use crate::parser::{Comment, CommentKind};
 
 use super::doc::{DocArena, DocId, NIL_DOC};
 

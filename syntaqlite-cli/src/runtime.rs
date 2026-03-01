@@ -8,10 +8,12 @@ use std::io::{self, Read};
 use std::path::PathBuf;
 
 use clap::ValueEnum;
-use syntaqlite::dialect::ffi as dialect_ffi;
-use syntaqlite::fmt::{FormatConfig, Formatter, KeywordCase};
+use syntaqlite::dialect::Dialect;
+use syntaqlite::fmt::{FormatConfig, KeywordCase};
+use syntaqlite::raw::{FfiDialect, ParseError};
+use syntaqlite::raw::RawParser as BaseParser;
 use syntaqlite::validation::{Severity, ValidationConfig};
-use syntaqlite::{Dialect, ParseError, Parser as RuntimeParser};
+use syntaqlite::Formatter;
 
 use super::{Cli, Command};
 
@@ -152,7 +154,7 @@ unsafe fn load_dynamic_dialect(
     };
 
     let symbol_name = dialect_symbol_name(name);
-    let func: libloading::Symbol<unsafe extern "C" fn() -> *const dialect_ffi::Dialect> = unsafe {
+    let func: libloading::Symbol<unsafe extern "C" fn() -> *const FfiDialect> = unsafe {
         lib.get(symbol_name.as_bytes())
             .map_err(|e| format!("symbol {symbol_name} not found in {path}: {e}"))?
     };
@@ -335,7 +337,7 @@ fn cmd_fmt(
 }
 
 fn dump_ast_source(dialect: &Dialect, source: &str) -> (String, Vec<ParseError>) {
-    let mut parser = RuntimeParser::with_dialect(dialect);
+    let mut parser = BaseParser::builder(dialect).build();
     let mut cursor = parser.parse(source);
     let mut out = String::new();
     let mut errors = Vec::new();
@@ -343,11 +345,11 @@ fn dump_ast_source(dialect: &Dialect, source: &str) -> (String, Vec<ParseError>)
 
     while let Some(result) = cursor.next_statement() {
         match result {
-            Ok(root_id) => {
+            Ok(node) => {
                 if count > 0 {
                     out.push_str("----\n");
                 }
-                cursor.dump_node(root_id, &mut out, 0);
+                node.dump(&mut out, 0);
                 count += 1;
             }
             Err(err) => errors.push(err),
@@ -362,13 +364,7 @@ fn format_source(
     source: &str,
     config: FormatConfig,
 ) -> Result<String, ParseError> {
-    let mut formatter =
-        Formatter::with_dialect_config(dialect, config).map_err(|e| ParseError {
-            message: e.to_string(),
-            offset: None,
-            length: None,
-            root: None,
-        })?;
+    let mut formatter = Formatter::builder(dialect).format_config(config).build();
     formatter.format(source)
 }
 
@@ -447,10 +443,10 @@ fn render_diagnostics(
 
 /// Validate a source string and print diagnostics. Returns `true` if any errors were found.
 fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &ValidationConfig) -> bool {
-    let mut parser = RuntimeParser::with_dialect(dialect);
+    let mut parser = BaseParser::builder(dialect).build();
     let mut cursor = parser.parse(source);
 
-    let results: Vec<_> = (&mut cursor).collect();
+    let results: Vec<_> = (&mut cursor).map(|r| r.map(|nr| nr.id())).collect();
     let functions = syntaqlite::embedded::sqlite_function_defs();
     let diags = syntaqlite::validation::validate_parse_results(
         cursor.reader(),

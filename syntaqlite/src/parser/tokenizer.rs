@@ -15,7 +15,7 @@ pub struct RawToken<'a> {
 }
 
 /// Owns a tokenizer instance. Reusable across inputs via `tokenize()`.
-pub struct Tokenizer {
+pub struct BaseTokenizer {
     raw: *mut ffi::Tokenizer,
     /// Null-terminated copy of the source text.
     source_buf: Vec<u8>,
@@ -26,51 +26,29 @@ pub struct Tokenizer {
 // SAFETY: The C tokenizer is self-contained (no thread-local or shared mutable
 // state). Moving it between threads is safe; concurrent access is prevented
 // by &mut borrowing in tokenize().
-unsafe impl Send for Tokenizer {}
+unsafe impl Send for BaseTokenizer {}
 
-impl Tokenizer {
-    /// Create a new tokenizer bound to the given dialect.
-    pub fn with_dialect(dialect: crate::dialect::Dialect<'_>) -> Self {
-        // SAFETY: syntaqlite_tokenizer_create(NULL, dialect) allocates a new
-        // tokenizer with default malloc/free. dialect.raw is valid for the call.
-        let raw =
-            unsafe { ffi::syntaqlite_tokenizer_create(std::ptr::null(), dialect.raw as *const _) };
-        assert!(!raw.is_null(), "tokenizer allocation failed");
-        Tokenizer {
-            raw,
-            source_buf: Vec::new(),
-            dialect_config: crate::dialect::ffi::DialectConfig::default(),
-        }
-    }
-
+impl BaseTokenizer {
     /// Create a new tokenizer for the built-in SQLite dialect.
     #[cfg(feature = "sqlite")]
     pub fn new() -> Self {
-        Self::with_dialect(*crate::sqlite::DIALECT)
+        Self::builder(*crate::sqlite::DIALECT).build()
     }
 
-    /// Set the dialect config for version/cflag-gated tokenization.
-    ///
-    /// The config is copied and owned by this tokenizer; the C side receives
-    /// a pointer to the owned copy.
-    pub fn set_dialect_config(&mut self, config: &crate::dialect::ffi::DialectConfig) {
-        self.dialect_config = *config;
-        // SAFETY: self.raw is valid; we pass a pointer to self.dialect_config
-        // which is pinned by &mut self. The C side copies the config value.
-        unsafe {
-            ffi::syntaqlite_tokenizer_set_dialect_config(
-                self.raw,
-                &self.dialect_config as *const crate::dialect::ffi::DialectConfig,
-            );
+    /// Create a builder for a tokenizer bound to the given dialect.
+    pub fn builder(dialect: crate::dialect::Dialect<'_>) -> BaseTokenizerBuilder<'_> {
+        BaseTokenizerBuilder {
+            dialect,
+            dialect_config: None,
         }
     }
 
-    /// Bind source text and return a `TokenCursor` for iterating tokens.
+    /// Bind source text and return a `BaseTokenCursor` for iterating tokens.
     ///
     /// Copies the source into an internal buffer to add a null terminator
     /// (required by the C tokenizer). For zero-copy tokenization, use
     /// [`tokenize_cstr`](Self::tokenize_cstr).
-    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> TokenCursor<'a> {
+    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> BaseTokenCursor<'a> {
         self.source_buf.clear();
         self.source_buf.reserve(source.len() + 1);
         self.source_buf.extend_from_slice(source.as_bytes());
@@ -86,7 +64,7 @@ impl Tokenizer {
                 source.len() as u32,
             );
         }
-        TokenCursor {
+        BaseTokenCursor {
             raw: self.raw,
             source,
             c_source_base: c_source_ptr,
@@ -94,11 +72,11 @@ impl Tokenizer {
     }
 
     /// Zero-copy variant: bind a null-terminated source and return a
-    /// `TokenCursor`.
+    /// `BaseTokenCursor`.
     ///
     /// The `&CStr` already guarantees a trailing `\0`, so no copy is needed.
     /// The source must be valid UTF-8 (panics otherwise).
-    pub fn tokenize_cstr<'a>(&'a mut self, source: &'a CStr) -> TokenCursor<'a> {
+    pub fn tokenize_cstr<'a>(&'a mut self, source: &'a CStr) -> BaseTokenCursor<'a> {
         let bytes = source.to_bytes();
         let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 
@@ -106,7 +84,7 @@ impl Tokenizer {
         unsafe {
             ffi::syntaqlite_tokenizer_reset(self.raw, source.as_ptr(), bytes.len() as u32);
         }
-        TokenCursor {
+        BaseTokenCursor {
             raw: self.raw,
             source: source_str,
             c_source_base: source.as_ptr() as *const u8,
@@ -115,13 +93,13 @@ impl Tokenizer {
 }
 
 #[cfg(feature = "sqlite")]
-impl Default for Tokenizer {
+impl Default for BaseTokenizer {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Drop for Tokenizer {
+impl Drop for BaseTokenizer {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_tokenizer_create and has
         // not been freed (Drop runs exactly once).
@@ -129,8 +107,54 @@ impl Drop for Tokenizer {
     }
 }
 
-/// An active tokenizer cursor. Iterates tokens from the bound source.
-pub struct TokenCursor<'a> {
+// ── BaseTokenizerBuilder ────────────────────────────────────────────────
+
+/// Builder for configuring a [`BaseTokenizer`] before construction.
+pub struct BaseTokenizerBuilder<'a> {
+    dialect: crate::dialect::Dialect<'a>,
+    dialect_config: Option<crate::dialect::ffi::DialectConfig>,
+}
+
+impl BaseTokenizerBuilder<'_> {
+    /// Set dialect config for version/cflag-gated tokenization.
+    pub fn dialect_config(mut self, config: crate::dialect::ffi::DialectConfig) -> Self {
+        self.dialect_config = Some(config);
+        self
+    }
+
+    /// Build the tokenizer.
+    pub fn build(self) -> BaseTokenizer {
+        // SAFETY: syntaqlite_tokenizer_create(NULL, dialect) allocates a new
+        // tokenizer with default malloc/free. dialect.raw is valid for the call.
+        let raw = unsafe {
+            ffi::syntaqlite_tokenizer_create(std::ptr::null(), self.dialect.raw as *const _)
+        };
+        assert!(!raw.is_null(), "tokenizer allocation failed");
+
+        let mut tok = BaseTokenizer {
+            raw,
+            source_buf: Vec::new(),
+            dialect_config: crate::dialect::ffi::DialectConfig::default(),
+        };
+
+        if let Some(config) = self.dialect_config {
+            tok.dialect_config = config;
+            // SAFETY: tok.raw is valid; we pass a pointer to tok.dialect_config.
+            // The C side copies the config value.
+            unsafe {
+                ffi::syntaqlite_tokenizer_set_dialect_config(
+                    tok.raw,
+                    &tok.dialect_config as *const crate::dialect::ffi::DialectConfig,
+                );
+            }
+        }
+
+        tok
+    }
+}
+
+/// An active tokenizer cursor. Iterates raw tokens from the bound source.
+pub struct BaseTokenCursor<'a> {
     raw: *mut ffi::Tokenizer,
     source: &'a str,
     /// Base pointer of the C source buffer. Used to compute offsets back
@@ -138,7 +162,7 @@ pub struct TokenCursor<'a> {
     c_source_base: *const u8,
 }
 
-impl<'a> Iterator for TokenCursor<'a> {
+impl<'a> Iterator for BaseTokenCursor<'a> {
     type Item = RawToken<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -147,8 +171,8 @@ impl<'a> Iterator for TokenCursor<'a> {
             length: 0,
             type_: 0,
         };
-        // SAFETY: self.raw is valid (owned by Tokenizer which outlives this
-        // TokenCursor via the 'a borrow); &mut token is a valid output parameter.
+        // SAFETY: self.raw is valid (owned by BaseTokenizer which outlives this
+        // BaseTokenCursor via the 'a borrow); &mut token is a valid output parameter.
         let rc = unsafe { ffi::syntaqlite_tokenizer_next(self.raw, &mut token) };
         if rc == 0 {
             return None;

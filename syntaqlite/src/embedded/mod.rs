@@ -22,8 +22,9 @@ pub use typescript::extract_typescript;
 use std::ops::Range;
 
 use crate::dialect::TokenCategory;
-use crate::{Dialect, ParseError};
-use crate::parser::{LowLevelParser, Tokenizer};
+use crate::dialect::Dialect;
+use crate::parser::ParseError;
+use crate::parser::{BaseTokenizer, LowLevelParser};
 use crate::validation::{Diagnostic, DiagnosticMessage, FunctionDef, ValidationConfig};
 
 use offset_map::OffsetMap;
@@ -166,8 +167,8 @@ pub fn fragment_semantic_tokens(
     dialect: &Dialect,
     fragment: &EmbeddedFragment,
 ) -> Vec<(usize, usize, TokenCategory)> {
-    let mut parser = LowLevelParser::with_dialect(dialect);
-    let mut tokenizer = Tokenizer::with_dialect(*dialect);
+    let mut parser = LowLevelParser::builder(dialect).build();
+    let mut tokenizer = BaseTokenizer::builder(*dialect).build();
 
     // Tokenize the processed SQL text.
     let tokens: Vec<(u32, usize, usize)> = {
@@ -231,8 +232,8 @@ fn validate_fragment(
     functions: &[FunctionDef],
     config: &ValidationConfig,
 ) -> Vec<Diagnostic> {
-    let mut parser = LowLevelParser::with_dialect(dialect);
-    let mut tokenizer = Tokenizer::with_dialect(*dialect);
+    let mut parser = LowLevelParser::builder(dialect).build();
+    let mut tokenizer = BaseTokenizer::builder(*dialect).build();
 
     // Tokenize the processed SQL text.
     let tokens: Vec<(u32, usize, usize)> = {

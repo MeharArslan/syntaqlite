@@ -340,7 +340,6 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
 
     // from_raw conversion
     w.open_block("impl TokenType {");
-    w.line("#[doc(hidden)]");
     w.open_block("pub fn from_raw(raw: u32) -> Option<TokenType> {");
     w.open_block("match raw {");
     for (name, value) in tokens {
@@ -379,7 +378,7 @@ pub fn generate_rust_ffi_nodes(model: &AstModel<'_>, crate_prefix: &str) -> Stri
         "
         #![allow(dead_code)]
 
-        use {crate_prefix}::parser::{{ArenaNode, NodeId, SourceSpan}};
+        use {crate_prefix}::generic::{{ArenaNode, NodeId, SourceSpan}};
     ",
     ));
     w.newline();
@@ -449,13 +448,13 @@ pub fn generate_rust_ast(
         w.line("use std::marker::PhantomData;");
     }
     w.lines(&format!("
-        pub(crate) use {crate_prefix}::parser::NodeList;
-        pub use {crate_prefix}::parser::{{Comment, CommentKind, FromArena, NodeId, NodeReader, SourceSpan, TypedList}};
+        pub(crate) use {crate_prefix}::generic::NodeList;
+        pub use {crate_prefix}::generic::{{Comment, CommentKind, FromArena, NodeId, NodeReader, SourceSpan, TypedList}};
     "));
     w.newline();
 
     // Re-export shared enums, flags, and trait types from the ast_traits module.
-    let traits_path = format!("{crate_prefix}::ast_traits");
+    let traits_path = format!("{crate_prefix}::generic");
     w.line(&format!("pub use {traits_path}::*;"));
     w.newline();
 
@@ -636,7 +635,6 @@ pub fn generate_rust_ast(
         w.line("Other { id: NodeId, tag: u32 },");
     } else {
         w.doc_comment("Placeholder for PhantomData lifetime — never constructed.");
-        w.line("#[doc(hidden)]");
         w.line("__Phantom(PhantomData<&'a ()>),");
     }
     w.dedent();
