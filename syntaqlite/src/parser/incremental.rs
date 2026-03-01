@@ -372,4 +372,9 @@ impl<'a> RawIncrementalCursor<'a> {
     pub fn macro_regions(&self) -> &[super::ffi::MacroRegion] {
         self.state.reader.macro_regions()
     }
+
+    /// Access the underlying `CursorState` for read-only operations.
+    pub(crate) fn state(&self) -> &CursorState<'a> {
+        &self.state
+    }
 }
