@@ -56,3 +56,23 @@ impl Default for FormatConfig {
         }
     }
 }
+
+impl FormatConfig {
+    /// Build a `FormatConfig` from raw integer parameters, as used by FFI/WASM callers.
+    ///
+    /// - `line_width`: 0 → default 80.
+    /// - `keyword_case`: 1 → Upper, 2 → Lower, anything else → Preserve.
+    /// - `semicolons`: 0 → false, anything else → true.
+    pub fn from_raw_params(line_width: u32, keyword_case: u32, semicolons: u32) -> Self {
+        FormatConfig {
+            line_width: if line_width == 0 { 80 } else { line_width as usize },
+            keyword_case: match keyword_case {
+                1 => KeywordCase::Upper,
+                2 => KeywordCase::Lower,
+                _ => KeywordCase::Preserve,
+            },
+            semicolons: semicolons != 0,
+            ..Default::default()
+        }
+    }
+}

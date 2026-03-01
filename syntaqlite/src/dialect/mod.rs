@@ -12,7 +12,7 @@
 //! Most users will never construct a `Dialect` directly; the built-in
 //! SQLite dialect is available via [`sqlite()`].
 //! External dialect crates obtain their handle through the generated
-//! [`crate::raw::DialectDef`] trait.
+//! [`crate::raw::Dialect`] handle.
 
 pub(crate) mod ffi;
 
@@ -307,6 +307,19 @@ impl<'d> Dialect<'d> {
             let value = std::str::from_utf8_unchecked(bytes);
             Some((code, value))
         }
+    }
+
+    /// Return `true` if `name` looks like a completable keyword symbol.
+    ///
+    /// Keyword entries are considered completable if they consist entirely of
+    /// ASCII uppercase letters, digits, and underscores — i.e., they are
+    /// written as plain ALL-CAPS tokens in SQL source, not punctuation or
+    /// mixed-case internal identifiers.
+    pub fn is_suggestable_keyword(name: &str) -> bool {
+        !name.is_empty()
+            && name
+                .bytes()
+                .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
     }
 
     /// The well-known `TK_SPACE` token type ordinal.

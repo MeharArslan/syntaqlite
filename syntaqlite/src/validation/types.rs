@@ -355,6 +355,84 @@ impl SessionContext {
 
         Self::from_stmts(cursor.reader(), &stmt_ids, dialect)
     }
+
+    /// Build a `SessionContext` from a JSON string.
+    ///
+    /// The JSON format is:
+    /// ```json
+    /// {
+    ///   "tables": [{"name": "t", "columns": ["id", "name"]}],
+    ///   "views":  [{"name": "v", "columns": ["id"]}],
+    ///   "functions": [{"name": "my_func", "args": 2}]
+    /// }
+    /// ```
+    /// All top-level keys are optional and default to empty.
+    /// Column entries are bare strings; function `args` is `null` for variadic.
+    #[cfg(feature = "json")]
+    pub fn from_json(s: &str) -> Result<Self, String> {
+        #[derive(serde::Deserialize)]
+        struct Root {
+            #[serde(default)]
+            tables: Vec<TableInput>,
+            #[serde(default)]
+            views: Vec<TableInput>,
+            #[serde(default)]
+            functions: Vec<FunctionInput>,
+        }
+        #[derive(serde::Deserialize)]
+        struct TableInput {
+            name: String,
+            #[serde(default)]
+            columns: Vec<String>,
+        }
+        #[derive(serde::Deserialize)]
+        struct FunctionInput {
+            name: String,
+            args: Option<usize>,
+        }
+
+        let root: Root = serde_json::from_str(s)
+            .map_err(|e| format!("invalid session context JSON: {e}"))?;
+
+        let make_columns = |cols: Vec<String>| -> Vec<ColumnDef> {
+            cols.into_iter()
+                .map(|c| ColumnDef {
+                    name: c,
+                    type_name: None,
+                    is_primary_key: false,
+                    is_nullable: true,
+                })
+                .collect()
+        };
+
+        let relations = root
+            .tables
+            .into_iter()
+            .map(|t| RelationDef {
+                name: t.name,
+                columns: make_columns(t.columns),
+                kind: RelationKind::Table,
+            })
+            .chain(root.views.into_iter().map(|v| RelationDef {
+                name: v.name,
+                columns: make_columns(v.columns),
+                kind: RelationKind::View,
+            }))
+            .collect();
+
+        Ok(SessionContext {
+            relations,
+            functions: root
+                .functions
+                .into_iter()
+                .map(|f| FunctionDef {
+                    name: f.name,
+                    args: f.args,
+                    description: None,
+                })
+                .collect(),
+        })
+    }
 }
 
 /// Schema accumulated from DDL statements earlier in the document being validated.

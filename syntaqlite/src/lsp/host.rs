@@ -172,6 +172,21 @@ impl<'d> AnalysisHost<'d> {
         self.validate_dialect::<crate::sqlite::ast::SqliteAst>(uri, config)
     }
 
+    /// Run parse + semantic validation and return all diagnostics combined.
+    ///
+    /// Merges the parse diagnostics from [`diagnostics`](Self::diagnostics) and the
+    /// semantic diagnostics from [`validate`](Self::validate) into a single `Vec`.
+    #[cfg(feature = "sqlite")]
+    pub fn all_diagnostics(
+        &mut self,
+        uri: &str,
+        config: &crate::validation::ValidationConfig,
+    ) -> Vec<Diagnostic> {
+        let mut result = self.diagnostics(uri).to_vec();
+        result.extend(self.validate(uri, config));
+        result
+    }
+
     /// Set the dialect configuration for filtering built-in functions.
     pub fn set_dialect_config(&mut self, config: crate::dialect::ffi::DialectConfig) {
         self.dialect_config = Some(config);
@@ -206,6 +221,19 @@ impl<'d> AnalysisHost<'d> {
         }
 
         result
+    }
+
+    /// Returns the unique function names available in the current configuration.
+    ///
+    /// Unlike [`available_functions`](Self::available_functions), which returns one entry per arity,
+    /// this deduplicates by name so each function appears exactly once.
+    pub fn available_function_names(&self) -> Vec<String> {
+        let mut seen = std::collections::HashSet::new();
+        self.available_functions()
+            .into_iter()
+            .filter(|f| seen.insert(f.name.clone()))
+            .map(|f| f.name)
+            .collect()
     }
 
     /// Register a newly opened document.
@@ -399,6 +427,70 @@ impl<'d> AnalysisHost<'d> {
             .as_ref()
             .expect("state populated by ensure_document_state");
         replay_completion_info(&self.dialect, &doc.source, &state.tokens, offset)
+    }
+
+    /// Return completion items at a byte offset.
+    ///
+    /// Collects keyword completions from expected parser tokens, then adds
+    /// function completions when the cursor is in an expression context.
+    /// Keywords are filtered to all-uppercase names (punctuation and
+    /// internal tokens are excluded). Functions are deduplicated by name.
+    pub fn completion_items(
+        &mut self,
+        uri: &str,
+        offset: usize,
+    ) -> Vec<crate::lsp::CompletionEntry> {
+        use crate::lsp::{CompletionEntry, CompletionKind};
+        use std::collections::HashSet;
+
+        let info = self.completion_info_at_offset(uri, offset);
+        let expected_set: HashSet<u32> = info.tokens.into_iter().collect();
+
+        let mut seen: HashSet<String> = HashSet::new();
+        let mut items: Vec<CompletionEntry> = Vec::new();
+
+        let mut expects_identifier = false;
+        for &tok in &expected_set {
+            if self.dialect.token_category(tok) == TokenCategory::Identifier {
+                expects_identifier = true;
+                break;
+            }
+        }
+
+        for i in 0..self.dialect.keyword_count() {
+            let Some((code, name)) = self.dialect.keyword_entry(i) else {
+                continue;
+            };
+            if !expected_set.contains(&code) || !Dialect::is_suggestable_keyword(name) {
+                continue;
+            }
+            if seen.insert(name.to_string()) {
+                items.push(CompletionEntry {
+                    label: name.to_string(),
+                    kind: CompletionKind::Keyword,
+                });
+            }
+        }
+
+        // Function completions — only in expression or unknown context.
+        let show_functions = expects_identifier
+            && matches!(
+                info.context,
+                CompletionContext::Expression | CompletionContext::Unknown
+            );
+
+        if show_functions {
+            for name in self.available_function_names() {
+                if seen.insert(name.clone()) {
+                    items.push(CompletionEntry {
+                        label: name,
+                        kind: CompletionKind::Function,
+                    });
+                }
+            }
+        }
+
+        items
     }
 }
 

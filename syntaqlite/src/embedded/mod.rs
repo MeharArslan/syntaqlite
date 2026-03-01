@@ -303,6 +303,77 @@ fn is_hole_diagnostic(diag: &Diagnostic, fragment: &EmbeddedFragment) -> bool {
     }
 }
 
+/// Produce LSP-encoded semantic tokens for a host-language source containing embedded SQL.
+///
+/// Gathers per-fragment semantic tokens via [`fragment_semantic_tokens`], maps each token
+/// to its host-file byte offset via [`OffsetMap`], and delta-encodes the result into
+/// the `[deltaLine, deltaStart, length, tokenType, modifiers]` 5-tuple format consumed
+/// by LSP `textDocument/semanticTokens` responses.
+///
+/// This is the embedded analogue of `AnalysisHost::semantic_tokens_encoded`.
+pub fn embedded_semantic_tokens_encoded(
+    dialect: &Dialect,
+    fragments: &[EmbeddedFragment],
+    source: &str,
+) -> Vec<u32> {
+    let source_bytes = source.as_bytes();
+
+    // Collect (host_offset, length, legend_idx) for all fragments.
+    let mut all_tokens: Vec<(usize, usize, u32)> = Vec::new();
+    for fragment in fragments {
+        let offset_map = OffsetMap::new(fragment);
+        for (sql_offset, length, cat) in fragment_semantic_tokens(dialect, fragment) {
+            let Some(legend_idx) = cat.legend_index() else {
+                continue;
+            };
+            let Some(host_offset) = offset_map.to_host(sql_offset) else {
+                // Inside a hole placeholder — not real SQL text.
+                continue;
+            };
+            let host_len = length.min(source.len().saturating_sub(host_offset));
+            if host_len == 0 {
+                continue;
+            }
+            all_tokens.push((host_offset, host_len, legend_idx));
+        }
+    }
+
+    // Sort by host offset before delta-encoding.
+    all_tokens.sort_by_key(|t| t.0);
+
+    // Delta-encode: advance a line/col cursor through the source and emit
+    // deltas relative to the previous token's start position.
+    let mut result: Vec<u32> = Vec::with_capacity(all_tokens.len() * 5);
+    let mut prev_line: u32 = 0;
+    let mut prev_col: u32 = 0;
+    let mut cur_line: u32 = 0;
+    let mut cur_col: u32 = 0;
+    let mut src_pos: usize = 0;
+
+    for (host_offset, host_len, legend_idx) in all_tokens {
+        while src_pos < host_offset && src_pos < source_bytes.len() {
+            if source_bytes[src_pos] == b'\n' {
+                cur_line += 1;
+                cur_col = 0;
+            } else {
+                cur_col += 1;
+            }
+            src_pos += 1;
+        }
+        let delta_line = cur_line - prev_line;
+        let delta_start = if delta_line == 0 { cur_col - prev_col } else { cur_col };
+        result.push(delta_line);
+        result.push(delta_start);
+        result.push(host_len as u32);
+        result.push(legend_idx);
+        result.push(0); // modifiers
+        prev_line = cur_line;
+        prev_col = cur_col;
+    }
+
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

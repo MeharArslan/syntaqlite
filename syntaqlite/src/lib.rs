@@ -68,8 +68,8 @@
 //!   [`sqlite()`](dialect::sqlite) dialect accessor, and
 //!   semantic [`TokenCategory`](dialect::TokenCategory) enum.
 //! - [`raw`] — Dialect-agnostic building blocks for external dialect crates
-//!   (raw parsers, tokenizers, node types, and the [`DialectDef`](raw::DialectDef)
-//!   trait).
+//!   (raw parsers, tokenizers, node types, and the [`Dialect`]
+//!   handle).
 //! - [`fmt`] — Formatter configuration ([`FormatConfig`](fmt::FormatConfig),
 //!   [`KeywordCase`](fmt::KeywordCase)).
 //! - [`validation`] — Validator configuration, diagnostic types, and

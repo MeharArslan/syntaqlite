@@ -12,6 +12,22 @@ pub mod host;
 
 pub use host::{AnalysisHost, CompletionContext, CompletionInfo, FormatError};
 
+/// A completion item returned by [`AnalysisHost::completion_items`].
+#[derive(Debug, Clone)]
+pub struct CompletionEntry {
+    /// The label to display and insert.
+    pub label: String,
+    /// What kind of thing is being completed.
+    pub kind: CompletionKind,
+}
+
+/// The kind of a [`CompletionEntry`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompletionKind {
+    Keyword,
+    Function,
+}
+
 /// A semantic token for syntax highlighting.
 #[derive(Debug, Clone)]
 pub struct SemanticToken {

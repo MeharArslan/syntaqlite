@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0.
 
 use std::cell::{Cell, RefCell};
-use std::collections::HashSet;
 use std::slice;
 
 use serde::Serialize;
@@ -10,9 +9,8 @@ use serde::Serialize;
 use syntaqlite::dialect::{Cflags, DialectConfig, Dialect};
 use syntaqlite::dialect::{cflag_table, parse_cflag_name, parse_sqlite_version};
 use syntaqlite::embedded::{self, EmbeddedFragment};
-use syntaqlite::embedded::offset_map::OffsetMap;
 use syntaqlite::raw::FfiDialect;
-use syntaqlite::fmt::{FormatConfig, KeywordCase};
+use syntaqlite::fmt::FormatConfig;
 use syntaqlite::raw::RawParser;
 use syntaqlite::validation::ValidationConfig;
 use syntaqlite::Formatter;
@@ -194,20 +192,7 @@ fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u
         }
     };
 
-    let config = FormatConfig {
-        line_width: if line_width == 0 {
-            80
-        } else {
-            line_width as usize
-        },
-        keyword_case: match keyword_case {
-            1 => KeywordCase::Upper,
-            2 => KeywordCase::Lower,
-            _ => KeywordCase::Preserve,
-        },
-        semicolons: semicolons != 0,
-        ..Default::default()
-    };
+    let config = FormatConfig::from_raw_params(line_width, keyword_case, semicolons);
 
     let mut formatter = Formatter::builder(&dialect)
         .format_config(config)
@@ -426,78 +411,6 @@ pub extern "C" fn wasm_clear_all_cflags() -> i32 {
 
 // ── Session context WASM exports ─────────────────────────────────────
 
-#[derive(serde::Deserialize)]
-struct SessionContextJson {
-    #[serde(default)]
-    tables: Vec<TableJson>,
-    #[serde(default)]
-    views: Vec<ViewJson>,
-    #[serde(default)]
-    functions: Vec<FunctionJson>,
-}
-
-#[derive(serde::Deserialize)]
-struct TableJson {
-    name: String,
-    #[serde(default)]
-    columns: Vec<String>,
-}
-
-#[derive(serde::Deserialize)]
-struct ViewJson {
-    name: String,
-    #[serde(default)]
-    columns: Vec<String>,
-}
-
-#[derive(serde::Deserialize)]
-struct FunctionJson {
-    name: String,
-    args: Option<usize>,
-}
-
-impl From<SessionContextJson> for syntaqlite::validation::SessionContext {
-    fn from(json: SessionContextJson) -> Self {
-        use syntaqlite::validation::{ColumnDef, RelationDef, RelationKind};
-        let make_columns = |cols: Vec<String>| -> Vec<ColumnDef> {
-            cols.into_iter()
-                .map(|c| ColumnDef {
-                    name: c,
-                    type_name: None,
-                    is_primary_key: false,
-                    is_nullable: true,
-                })
-                .collect()
-        };
-        let relations = json
-            .tables
-            .into_iter()
-            .map(|t| RelationDef {
-                name: t.name,
-                columns: make_columns(t.columns),
-                kind: RelationKind::Table,
-            })
-            .chain(json.views.into_iter().map(|v| RelationDef {
-                name: v.name,
-                columns: make_columns(v.columns),
-                kind: RelationKind::View,
-            }))
-            .collect();
-        syntaqlite::validation::SessionContext {
-            relations,
-            functions: json
-                .functions
-                .into_iter()
-                .map(|f| syntaqlite::validation::FunctionDef {
-                    name: f.name,
-                    args: f.args,
-                    description: None,
-                })
-                .collect(),
-        }
-    }
-}
-
 fn run_set_session_context(ptr: u32, len: u32) -> i32 {
     let input = match decode_input(ptr, len) {
         Ok(s) => s,
@@ -506,14 +419,13 @@ fn run_set_session_context(ptr: u32, len: u32) -> i32 {
             return 1;
         }
     };
-    let json: SessionContextJson = match serde_json::from_str(&input) {
-        Ok(v) => v,
+    let ctx = match syntaqlite::validation::SessionContext::from_json(&input) {
+        Ok(ctx) => ctx,
         Err(e) => {
-            set_result(&format!("invalid session context JSON: {e}"));
+            set_result(&e);
             return 1;
         }
     };
-    let ctx: syntaqlite::validation::SessionContext = json.into();
 
     let dialect_ptr = DIALECT_PTR.with(|p| p.get());
     if dialect_ptr == 0 {
@@ -633,18 +545,9 @@ pub extern "C" fn wasm_get_available_functions() -> i32 {
     }
 
     let lsp = take_or_create_lsp_host(dialect_ptr);
-    let funcs = lsp.host.available_functions();
-
-    // Deduplicate by name (multiple arities collapse to one entry).
-    let mut seen = HashSet::new();
-    let items: Vec<AvailableFunction> = funcs
-        .iter()
-        .filter(|f| seen.insert(f.name.clone()))
-        .map(|f| AvailableFunction {
-            name: f.name.clone(),
-        })
-        .collect();
-    let count = items.len() as i32;
+    let names = lsp.host.available_function_names();
+    let count = names.len() as i32;
+    let items: Vec<AvailableFunction> = names.into_iter().map(|name| AvailableFunction { name }).collect();
     set_result(&serde_json::to_string(&items).unwrap());
 
     store_lsp_host(lsp);
@@ -673,13 +576,7 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host
         .update_document(WASM_DOC_URI, version as i32, source);
-    let parse_diags: Vec<_> = lsp.host.diagnostics(WASM_DOC_URI).to_vec();
-
-    // Run semantic validation (function name/arity, table/column checks).
-    let validation_config = ValidationConfig::default();
-    let validation_diags = lsp.host.validate(WASM_DOC_URI, &validation_config);
-
-    let all_diags: Vec<_> = parse_diags.iter().chain(validation_diags.iter()).collect();
+    let all_diags = lsp.host.all_diagnostics(WASM_DOC_URI, &ValidationConfig::default());
     let total_count = all_diags.len();
     set_result(&serde_json::to_string(&all_diags).expect("diagnostic serialization failed"));
 
@@ -730,32 +627,12 @@ fn run_semantic_tokens(ptr: u32, len: u32, range_start: u32, range_end: u32, ver
     token_count
 }
 
-fn is_keyword_symbol(name: &str) -> bool {
-    !name.is_empty()
-        && name
-            .bytes()
-            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
-}
-
-#[derive(Serialize)]
-struct CompletionItem<'a> {
-    label: &'a str,
-    kind: &'a str,
-}
-
 fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
     let dialect_ptr = DIALECT_PTR.with(|p| p.get());
     if dialect_ptr == 0 {
         set_result("dialect pointer is not set; call wasm_set_dialect first");
         return -1;
     }
-    let dialect = match resolve_dialect() {
-        Ok(d) => d,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
     let source = match decode_input(ptr, len) {
         Ok(source) => source,
         Err(e) => {
@@ -764,68 +641,27 @@ fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
         }
     };
 
+    #[derive(Serialize)]
+    struct CompletionItem {
+        label: String,
+        kind: &'static str,
+    }
+
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host
         .update_document(WASM_DOC_URI, version as i32, source);
-    let info = lsp
-        .host
-        .completion_info_at_offset(WASM_DOC_URI, offset as usize);
-    let expected_set: HashSet<u32> = info.tokens.into_iter().collect();
-
-    let mut seen = HashSet::new();
-    let mut items: Vec<CompletionItem> = Vec::new();
-
-    let mut expects_identifier = false;
-    for &tok in &expected_set {
-        if dialect.token_category(tok) == syntaqlite::dialect::TokenCategory::Identifier {
-            expects_identifier = true;
-            break;
-        }
-    }
-
-    for i in 0..dialect.keyword_count() {
-        let Some((code, name)) = dialect.keyword_entry(i) else {
-            continue;
-        };
-        if !expected_set.contains(&code) || !is_keyword_symbol(name) {
-            continue;
-        }
-        if seen.insert(name.to_string()) {
-            items.push(CompletionItem {
-                label: name,
-                kind: "keyword",
-            });
-        }
-    }
-
-    // Only show functions in Expression or Unknown context — not in TableRef.
-    let show_functions = expects_identifier
-        && matches!(
-            info.context,
-            syntaqlite::lsp::CompletionContext::Expression
-                | syntaqlite::lsp::CompletionContext::Unknown
-        );
-
-    // When identifiers are expected in an expression context, include built-in functions.
-    // Collect owned names first since available_functions() returns owned Strings.
-    let func_names: Vec<String> = if show_functions {
-        lsp.host
-            .available_functions()
-            .into_iter()
-            .filter(|f| seen.insert(f.name.clone()))
-            .map(|f| f.name)
-            .collect()
-    } else {
-        Vec::new()
-    };
-    for name in &func_names {
-        items.push(CompletionItem {
-            label: name,
-            kind: "function",
-        });
-    }
-
-    let count = items.len() as i32;
+    let entries = lsp.host.completion_items(WASM_DOC_URI, offset as usize);
+    let count = entries.len() as i32;
+    let items: Vec<CompletionItem> = entries
+        .into_iter()
+        .map(|e| CompletionItem {
+            label: e.label,
+            kind: match e.kind {
+                syntaqlite::lsp::CompletionKind::Keyword => "keyword",
+                syntaqlite::lsp::CompletionKind::Function => "function",
+            },
+        })
+        .collect();
     set_result(&serde_json::to_string(&items).unwrap());
     store_lsp_host(lsp);
     count
@@ -1004,78 +840,9 @@ fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32, _version: u32) ->
         }
     };
 
-    // Collect semantic tokens from all fragments, mapping offsets to host positions.
-    let source_bytes = source.as_bytes();
-    let mut all_tokens: Vec<(usize, usize, u32)> = Vec::new(); // (host_offset, length, legend_idx)
-
-    for fragment in &fragments {
-        let offset_map = OffsetMap::new(fragment);
-        let tokens = embedded::fragment_semantic_tokens(&dialect, fragment);
-
-        for (sql_offset, length, cat) in tokens {
-            let legend_idx = match cat.legend_index() {
-                Some(idx) => idx,
-                None => continue,
-            };
-
-            let Some(host_offset) = offset_map.to_host(sql_offset) else {
-                // Inside a hole placeholder — skip, not real SQL.
-                continue;
-            };
-
-            // Clamp length to not exceed host source bounds.
-            let host_len = length.min(source.len().saturating_sub(host_offset));
-            if host_len == 0 {
-                continue;
-            }
-
-            all_tokens.push((host_offset, host_len, legend_idx));
-        }
-    }
-
-    // Sort by host offset.
-    all_tokens.sort_by_key(|t| t.0);
-
-    // Delta-encode for Monaco (same format as semantic_tokens_encoded).
-    let mut result: Vec<u32> = Vec::with_capacity(all_tokens.len() * 5);
-    let mut prev_line: u32 = 0;
-    let mut prev_col: u32 = 0;
-    let mut cur_line: u32 = 0;
-    let mut cur_col: u32 = 0;
-    let mut src_pos: usize = 0;
-
-    for &(host_offset, host_len, legend_idx) in &all_tokens {
-        // Advance to token position, tracking line/col.
-        while src_pos < host_offset && src_pos < source_bytes.len() {
-            if source_bytes[src_pos] == b'\n' {
-                cur_line += 1;
-                cur_col = 0;
-            } else {
-                cur_col += 1;
-            }
-            src_pos += 1;
-        }
-
-        let delta_line = cur_line - prev_line;
-        let delta_start = if delta_line == 0 {
-            cur_col - prev_col
-        } else {
-            cur_col
-        };
-
-        result.push(delta_line);
-        result.push(delta_start);
-        result.push(host_len as u32);
-        result.push(legend_idx);
-        result.push(0); // modifiers
-
-        prev_line = cur_line;
-        prev_col = cur_col;
-    }
-
+    let result = embedded::embedded_semantic_tokens_encoded(&dialect, &fragments, &source);
     let token_count = (result.len() / 5) as i32;
 
-    // Write raw bytes into RESULT_BUF.
     RESULT_BUF.with(|buf| {
         let mut buf = buf.borrow_mut();
         buf.clear();
