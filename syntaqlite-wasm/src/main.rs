@@ -813,9 +813,8 @@ fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32, _version: u32) -> i32
 
     // Syntax errors only — no session context means every table/column/function
     // would be flagged as unknown, so filter out semantic diagnostics entirely.
-    let config = ValidationConfig::default();
-    let all_diags = embedded::validate_embedded(dialect, &fragments, &[], &config);
-    let diags: Vec<_> = all_diags
+    let diags: Vec<_> = embedded::EmbeddedAnalyzer::new(dialect)
+        .validate(&fragments)
         .into_iter()
         .filter(|d| d.message.is_parse_error())
         .collect();
@@ -849,7 +848,8 @@ fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32, _version: u32) ->
         }
     };
 
-    let result = embedded::embedded_semantic_tokens_encoded(dialect, &fragments, &source);
+    let result =
+        embedded::EmbeddedAnalyzer::new(dialect).semantic_tokens_encoded(&fragments, &source);
     let token_count = (result.len() / 5) as i32;
 
     RESULT_BUF.with(|buf| {

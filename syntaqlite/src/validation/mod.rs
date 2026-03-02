@@ -36,6 +36,7 @@ pub use types::{
 };
 
 /// Configuration for semantic validation.
+#[derive(Clone, Copy)]
 pub struct ValidationConfig {
     /// When `true`, unresolved names are reported as errors.
     /// When `false`, they are reported as warnings.

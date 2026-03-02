@@ -470,8 +470,10 @@ fn validate_embedded_source(
         return false;
     }
 
-    let functions = syntaqlite::embedded::sqlite_function_defs();
-    let diags = syntaqlite::embedded::validate_embedded(dialect, &fragments, &functions, config);
+    let diags = syntaqlite::embedded::EmbeddedAnalyzer::new(dialect)
+        .with_functions(syntaqlite::embedded::sqlite_function_defs())
+        .with_config(config.clone())
+        .validate(&fragments);
 
     render_diagnostics(source, file, &diags)
 }
