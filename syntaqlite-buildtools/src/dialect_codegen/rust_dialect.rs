@@ -3,6 +3,52 @@
 
 use crate::util::rust_writer::RustWriter;
 
+// ── WrapperContext ────────────────────────────────────────────────────────
+
+/// Controls import paths for the unified wrappers.rs generator.
+pub struct WrapperContext<'a> {
+    /// Path to the `parser::typed` module, e.g. `"crate::parser::typed"`
+    /// (internal) or `"syntaqlite::parser::typed"` (external).
+    pub typed_mod: &'a str,
+    /// Path to the ast module, e.g. `"syntaqlite_parser_sqlite::ast"`
+    /// (internal) or `"crate::ast"` (external).
+    pub ast_mod: &'a str,
+    /// Path to the tokens module, e.g. `"syntaqlite_parser_sqlite::tokens"`
+    /// (internal) or `"crate::tokens"` (external).
+    pub tokens_mod: &'a str,
+    /// Dialect accessor expression, e.g. `"crate::sqlite::dialect()"`
+    /// (internal) or `"crate::dialect()"` (external).
+    pub dialect_fn: &'a str,
+    /// When `true`, include a `Formatter` wrapper struct that delegates to
+    /// `syntaqlite::Formatter`. The internal SQLite crate exports Formatter
+    /// directly from `syntaqlite::fmt`, so it doesn't need the wrapper.
+    pub include_formatter: bool,
+}
+
+impl WrapperContext<'_> {
+    pub fn internal_sqlite() -> Self {
+        WrapperContext {
+            typed_mod: "crate::parser::typed",
+            ast_mod: "syntaqlite_parser_sqlite::ast",
+            tokens_mod: "syntaqlite_parser_sqlite::tokens",
+            dialect_fn: "crate::sqlite::dialect()",
+            include_formatter: false,
+        }
+    }
+
+    pub fn external_dialect() -> Self {
+        WrapperContext {
+            typed_mod: "syntaqlite::parser::typed",
+            ast_mod: "crate::ast",
+            tokens_mod: "crate::tokens",
+            dialect_fn: "crate::dialect()",
+            include_formatter: true,
+        }
+    }
+}
+
+// ── External dialect lib.rs ───────────────────────────────────────────────
+
 const LIB_MODULE_DECLS: &str = r#"
 mod ffi;
 /// Typed AST nodes for this dialect.
@@ -13,261 +59,30 @@ mod ffi;
 /// [`RawIncrementalCursor::finish`](low_level::RawIncrementalCursor::finish).
 pub mod ast;
 mod wrappers;
+mod tokens;
 "#;
 
 const LIB_LOW_LEVEL_MOD: &str = r#"
 /// Low-level APIs for advanced use cases (e.g. custom token feeding/tokenizing).
 pub mod low_level {
-    pub use crate::wrappers::{RawIncrementalCursor, LowLevelParser, Tokenizer, TokenCursor};
+    pub use crate::wrappers::{IncrementalCursor, IncrementalParser, Token, TokenCursor, Tokenizer};
     pub use crate::tokens::TokenType;
 }
 "#;
 
 const LIB_EXPORTS: &str = r#"
-pub use wrappers::{Formatter, Parser, StatementCursor};
+pub use wrappers::{
+    Formatter, IncrementalCursor, IncrementalParser, IncrementalParserBuilder, Parser,
+    ParserBuilder, StatementCursor, Token, TokenCursor, Tokenizer, TokenizerBuilder,
+};
 pub use syntaqlite::ParseError;
 "#;
 
 const LIB_CONFIG_MOD: &str = r#"
 /// Configuration types for parsers and formatters.
 pub mod config {
-    pub use syntaqlite::dialect::{CflagInfo, Cflags, DialectConfig, cflag_table};
-    pub use syntaqlite::fmt::{FormatConfig, KeywordCase};
-    pub use syntaqlite::generic::builders::GenericParserBuilder as ParserConfig;
-}
-"#;
-
-const WRAPPERS_PRELUDE: &str = r#"
-use std::ops::Range;
-
-use crate::ast::{DialectNodeType, Stmt};
-use crate::low_level::TokenType;
-use crate::ParseError;
-"#;
-
-const WRAPPER_PARSER: &str = r#"
-/// A parser pre-configured for this dialect.
-///
-/// Returns typed `StatementCursor` wrappers from `parse()`.
-pub struct Parser {
-    inner: syntaqlite::generic::GenericParser,
-}
-
-impl Parser {
-    /// Create a new parser with default configuration.
-    pub fn new() -> Self {
-        Parser { inner: syntaqlite::generic::GenericParser::with_dialect(&crate::dialect()) }
-    }
-
-    /// Create a parser with the given configuration.
-    pub fn with_config(config: &crate::config::ParserConfig) -> Self {
-        Parser { inner: syntaqlite::generic::GenericParser::with_dialect_config(&crate::dialect(), config) }
-    }
-
-    /// Access the current configuration.
-    pub fn config(&self) -> &crate::config::ParserConfig {
-        self.inner.config()
-    }
-
-    /// Parse source text and return a `StatementCursor` for iterating statements.
-    pub fn parse<'a>(&'a mut self, source: &'a str) -> StatementCursor<'a> {
-        StatementCursor { inner: self.inner.parse(source) }
-    }
-}
-"#;
-
-const WRAPPER_STATEMENT_CURSOR: &str = r#"
-/// A high-level parsing cursor with typed node access.
-pub struct StatementCursor<'a> {
-    inner: syntaqlite::generic::GenericStatementCursor<'a>,
-}
-
-impl<'a> StatementCursor<'a> {
-    /// Parse and return the next SQL statement as a typed `Stmt`.
-    ///
-    /// The returned `Stmt` borrows this cursor, so it cannot outlive it.
-    /// Returns `None` when all statements have been consumed.
-    pub fn next_statement(&mut self) -> Option<Result<Stmt<'_>, ParseError>> {
-        let id = match self.inner.next_statement()? {
-            Ok(id) => id,
-            Err(e) => return Some(Err(e)),
-        };
-        let reader = self.inner.reader();
-        Some(Ok(Stmt::from_arena(reader, id).expect("parser returned invalid node")))
-    }
-}
-"#;
-
-const WRAPPER_LOW_LEVEL_PARSER: &str = r#"
-/// A low-level parser for token-by-token feeding.
-///
-/// Feed tokens one at a time via `RawIncrementalCursor`.
-pub struct LowLevelParser {
-    inner: syntaqlite::generic::GenericIncrementalParser,
-}
-
-impl LowLevelParser {
-    /// Create a new low-level parser with default configuration.
-    pub fn new() -> Self {
-        LowLevelParser {
-            inner: syntaqlite::generic::GenericIncrementalParser::with_dialect(&crate::dialect()),
-        }
-    }
-
-    /// Create a low-level parser with the given configuration.
-    pub fn with_config(config: &crate::config::ParserConfig) -> Self {
-        LowLevelParser {
-            inner: syntaqlite::generic::GenericIncrementalParser::with_dialect_config(&crate::dialect(), config),
-        }
-    }
-
-    /// Bind source text and return a `RawIncrementalCursor` for token feeding.
-    pub fn feed<'a>(&'a mut self, source: &'a str) -> RawIncrementalCursor<'a> {
-        RawIncrementalCursor { inner: self.inner.feed(source) }
-    }
-}
-"#;
-
-const WRAPPER_LOW_LEVEL_CURSOR: &str = r#"
-/// A low-level cursor for feeding tokens one at a time.
-///
-/// After calling `finish()`, no further feeding methods may be called.
-pub struct RawIncrementalCursor<'a> {
-    inner: syntaqlite::generic::GenericIncrementalCursor<'a>,
-}
-
-impl<'a> RawIncrementalCursor<'a> {
-    /// Feed a typed token to the parser.
-    ///
-    /// Returns `Ok(Some(stmt))` when a statement completes,
-    /// `Ok(None)` to keep going, or `Err` on parse error.
-    ///
-    /// The returned `Stmt` borrows this cursor, so it cannot be held
-    /// across further `feed_token` calls.
-    ///
-    /// `span` is a byte range into the source text bound by this cursor.
-    pub fn feed_token(
-        &mut self,
-        token_type: TokenType,
-        span: Range<usize>,
-    ) -> Result<Option<Stmt<'_>>, ParseError> {
-        match self.inner.feed_token(token_type.into(), span)? {
-            None => Ok(None),
-            Some(id) => {
-                let reader = self.inner.base().reader();
-                Ok(Some(Stmt::from_arena(reader, id).expect("parser returned invalid node")))
-            }
-        }
-    }
-
-    /// Signal end of input.
-    ///
-    /// Returns `Ok(Some(stmt))` if a final statement completed,
-    /// `Ok(None)` if there was nothing pending, or `Err` on parse error.
-    ///
-    /// After calling `finish()`, no further feeding methods may be called.
-    pub fn finish(&mut self) -> Result<Option<Stmt<'_>>, ParseError> {
-        match self.inner.finish()? {
-            None => Ok(None),
-            Some(id) => {
-                let reader = self.inner.base().reader();
-                Ok(Some(Stmt::from_arena(reader, id).expect("parser returned invalid node")))
-            }
-        }
-    }
-
-    /// Mark subsequent fed tokens as being inside a macro expansion.
-    pub fn begin_macro(&mut self, call_offset: u32, call_length: u32) {
-        self.inner.begin_macro(call_offset, call_length)
-    }
-
-    /// End the innermost macro expansion region.
-    pub fn end_macro(&mut self) {
-        self.inner.end_macro()
-    }
-}
-"#;
-
-const WRAPPER_FORMATTER: &str = r#"
-/// SQL formatter pre-configured for this dialect.
-pub struct Formatter {
-    inner: syntaqlite::Formatter<'static>,
-}
-
-impl Formatter {
-    /// Create a formatter with default configuration.
-    pub fn new() -> Result<Self, &'static str> {
-        let inner = syntaqlite::Formatter::with_dialect(&crate::dialect())?;
-        Ok(Formatter { inner })
-    }
-
-    /// Create a formatter with the given configuration.
-    pub fn with_config(config: crate::config::FormatConfig) -> Result<Self, &'static str> {
-        let inner = syntaqlite::Formatter::with_dialect_config(&crate::dialect(), config)?;
-        Ok(Formatter { inner })
-    }
-
-    /// Access the current configuration.
-    pub fn config(&self) -> &crate::config::FormatConfig {
-        self.inner.config()
-    }
-
-    /// Format SQL source text.
-    pub fn format(
-        &mut self,
-        source: &str,
-    ) -> Result<String, ParseError> {
-        self.inner.format(source)
-    }
-}
-"#;
-
-const WRAPPER_TOKENIZER: &str = r#"
-/// A tokenizer for SQL.
-pub struct Tokenizer {
-    inner: syntaqlite::generic::GenericTokenizer,
-}
-
-impl Tokenizer {
-    /// Create a new tokenizer.
-    pub fn new() -> Self {
-        Tokenizer {
-            inner: syntaqlite::generic::GenericTokenizer::with_dialect(crate::dialect()),
-        }
-    }
-
-    /// Bind source text and return a cursor for iterating typed tokens.
-    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> TokenCursor<'a> {
-        TokenCursor {
-            inner: self.inner.tokenize(source),
-        }
-    }
-
-    /// Zero-copy variant: bind a null-terminated source and return a
-    /// `TokenCursor`. The source must be valid UTF-8 (panics otherwise).
-    pub fn tokenize_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> TokenCursor<'a> {
-        TokenCursor {
-            inner: self.inner.tokenize_cstr(source),
-        }
-    }
-}
-"#;
-
-const WRAPPER_TOKEN_CURSOR: &str = r#"
-/// An active tokenizer session yielding typed tokens.
-pub struct TokenCursor<'a> {
-    inner: syntaqlite::generic::GenericTokenCursor<'a>,
-}
-
-impl<'a> Iterator for TokenCursor<'a> {
-    type Item = (TokenType, &'a str);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let raw = self.inner.next()?;
-        let tt = TokenType::from_raw(raw.token_type)
-            .unwrap_or(TokenType::Illegal);
-        Some((tt, raw.text))
-    }
+    pub use syntaqlite::fmt::FormatConfig;
+    pub use syntaqlite_parser::dialect::ffi::DialectConfig;
 }
 "#;
 
@@ -302,7 +117,6 @@ pub fn dialect() -> syntaqlite::Dialect<'static> {{
     emit_section(&mut w, LIB_LOW_LEVEL_MOD);
     emit_section(&mut w, LIB_EXPORTS);
     emit_section(&mut w, LIB_CONFIG_MOD);
-    w.line("mod tokens;");
     w.finish()
 }
 
@@ -436,259 +250,278 @@ syntaqlite-parser = {{ path = "../syntaqlite-parser" }}
     )
 }
 
-// ── Internal SQLite wrappers (for the syntaqlite crate itself) ────────────
-//
-// The internal SQLite wrappers use `TypedParser`/`TypedTokenizer` (private
-// crate-internal types) bound to `'static` (the SQLite dialect singleton).
-// This is different from external dialect crate wrappers, which use the
-// `Generic*` types from `syntaqlite::generic`.
+// ── Unified wrappers.rs generator ────────────────────────────────────────
 
-const INTERNAL_WRAPPERS_PRELUDE: &str = r#"
-use crate::parser::typed::{
+/// Generate `wrappers.rs` for a dialect crate.
+///
+/// The same template serves both the internal SQLite crate and external dialect
+/// crates — only the import paths and dialect accessor differ, as controlled by
+/// [`WrapperContext`].
+pub fn generate_rust_wrappers(ctx: &WrapperContext<'_>) -> String {
+    let typed_mod = ctx.typed_mod;
+    let ast_mod = ctx.ast_mod;
+    let tokens_mod = ctx.tokens_mod;
+    let dialect_fn = ctx.dialect_fn;
+
+    let mut w = RustWriter::new();
+    w.file_header();
+
+    if !ctx.include_formatter {
+        w.lines(
+            r#"//! Thin wrappers around the generic parser/tokenizer types, pre-bound to the
+//! SQLite dialect."#,
+        );
+        w.newline();
+    }
+
+    // ── Imports ──────────────────────────────────────────────────────────
+
+    w.lines(&format!(
+        r#"
+use {typed_mod}::{{
     TypedIncrementalCursor, TypedIncrementalParser, TypedIncrementalParserBuilder, TypedParser,
     TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor, TypedTokenizer,
     TypedTokenizerBuilder,
-};
-// The SQLite dialect is a `'static` singleton, so all dialect-parameterized
+}};
+// The dialect is a `'static` singleton, so all dialect-parameterized
 // types are concretized to `'static` in this module.
-use syntaqlite_parser_sqlite::ast::Stmt;
-use syntaqlite_parser_sqlite::tokens::TokenType;
-"#;
+use {ast_mod}::Stmt;
+use {tokens_mod}::TokenType;
+"#
+    ));
 
-const INTERNAL_WRAPPER_TYPE_ALIASES: &str = r#"
+    // ── Type aliases ─────────────────────────────────────────────────────
+
+    w.lines(
+        r#"
 // ── Type aliases ─────────────────────────────────────────────────────────
 
 /// A cursor over parsed SQL statements, yielding typed [`Stmt`] nodes.
 pub type StatementCursor<'a> = TypedStatementCursor<'a, Stmt<'a>>;
 
-/// A typed SQLite token with kind and source text.
+/// A typed SQL token with kind and source text.
 pub type Token<'a> = TypedToken<'a, TokenType>;
 
 /// A cursor yielding typed [`Token`]s.
 pub type TokenCursor<'a> = TypedTokenCursor<'a, TokenType>;
 
-/// A tokenizer for SQLite SQL.
+/// A tokenizer for SQL.
 pub type Tokenizer = TypedTokenizer<'static, TokenType>;
 
 /// Builder for [`Tokenizer`].
 pub type TokenizerBuilder = TypedTokenizerBuilder<'static, TokenType>;
 
-/// A cursor for token-by-token incremental parsing of SQLite SQL.
+/// A cursor for token-by-token incremental parsing.
 ///
 /// Obtained from [`IncrementalParser::feed`] or [`IncrementalParser::feed_cstr`].
 /// Feed tokens via [`feed_token`](IncrementalCursor::feed_token) and signal
 /// end-of-input via [`finish`](IncrementalCursor::finish).
 pub type IncrementalCursor<'a> = TypedIncrementalCursor<'a, Stmt<'a>, TokenType>;
-"#;
+"#,
+    );
 
-const INTERNAL_WRAPPER_PARSER: &str = r#"
+    // ── Formatter (external only) ─────────────────────────────────────────
+
+    if ctx.include_formatter {
+        w.lines(&format!(
+            r#"
+// ── Formatter ────────────────────────────────────────────────────────────
+
+/// SQL formatter pre-configured for this dialect.
+pub struct Formatter {{
+    inner: syntaqlite::Formatter<'static>,
+}}
+
+impl Formatter {{
+    /// Create a formatter with default configuration.
+    pub fn new() -> Self {{
+        Formatter {{ inner: syntaqlite::Formatter::builder({dialect_fn}).build() }}
+    }}
+
+    /// Create a formatter with the given configuration.
+    pub fn with_config(config: syntaqlite::fmt::FormatConfig) -> Self {{
+        Formatter {{ inner: syntaqlite::Formatter::builder({dialect_fn}).format_config(config).build() }}
+    }}
+
+    /// Access the current configuration.
+    pub fn config(&self) -> &syntaqlite::fmt::FormatConfig {{
+        self.inner.config()
+    }}
+
+    /// Format SQL source text.
+    pub fn format(&mut self, source: &str) -> Result<String, syntaqlite::ParseError> {{
+        self.inner.format(source)
+    }}
+}}
+
+impl Default for Formatter {{
+    fn default() -> Self {{
+        Self::new()
+    }}
+}}
+"#
+        ));
+    }
+
+    // ── Parser ────────────────────────────────────────────────────────────
+
+    w.lines(&format!(
+        r#"
 // ── Parser ───────────────────────────────────────────────────────────────
 
-/// A SQL parser for the built-in SQLite dialect.
+/// A SQL parser pre-configured for this dialect.
 ///
 /// Wraps [`TypedParser`] and yields typed [`Stmt`] nodes.
-///
-/// # Example
-///
-/// ```
-/// use syntaqlite::Parser;
-///
-/// let mut parser = Parser::new();
-/// for stmt in parser.parse("SELECT 1; CREATE TABLE t(x)") {
-///     let stmt = stmt.expect("parse error");
-///     println!("{stmt:?}");
-/// }
-/// ```
-pub struct Parser {
+pub struct Parser {{
     inner: TypedParser<'static>,
-}
+}}
 
 // SAFETY: TypedParser is Send.
-unsafe impl Send for Parser {}
+unsafe impl Send for Parser {{}}
 
-impl Parser {
-    /// Create a parser for the built-in SQLite dialect with default configuration.
-    pub fn new() -> Self {
-        Parser {
-            inner: TypedParser::new(crate::sqlite::dialect()),
-        }
-    }
+impl Parser {{
+    /// Create a parser with default configuration.
+    pub fn new() -> Self {{
+        Parser {{ inner: TypedParser::new({dialect_fn}) }}
+    }}
 
     /// Create a builder for configuring the parser before construction.
-    pub fn builder() -> ParserBuilder {
-        ParserBuilder {
-            inner: TypedParser::builder(crate::sqlite::dialect()),
-        }
-    }
+    pub fn builder() -> ParserBuilder {{
+        ParserBuilder {{ inner: TypedParser::builder({dialect_fn}) }}
+    }}
 
     /// Bind source text and return a [`StatementCursor`] for iterating typed statements.
-    pub fn parse<'a>(&'a mut self, source: &'a str) -> StatementCursor<'a> {
+    pub fn parse<'a>(&'a mut self, source: &'a str) -> StatementCursor<'a> {{
         self.inner.parse(source)
-    }
+    }}
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn parse_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> StatementCursor<'a> {
+    pub fn parse_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> StatementCursor<'a> {{
         self.inner.parse_cstr(source)
-    }
-}
+    }}
+}}
 
-impl Default for Parser {
-    fn default() -> Self {
+impl Default for Parser {{
+    fn default() -> Self {{
         Self::new()
-    }
-}
+    }}
+}}
 
 // ── ParserBuilder ────────────────────────────────────────────────────────
 
 /// Builder for [`Parser`].
-pub struct ParserBuilder {
+pub struct ParserBuilder {{
     inner: TypedParserBuilder<'static>,
-}
+}}
 
-impl ParserBuilder {
+impl ParserBuilder {{
     /// Enable parser trace output.
-    pub fn trace(mut self, enable: bool) -> Self {
+    pub fn trace(mut self, enable: bool) -> Self {{
         self.inner = self.inner.trace(enable);
         self
-    }
+    }}
 
     /// Collect token positions during parsing.
-    pub fn collect_tokens(mut self, enable: bool) -> Self {
+    pub fn collect_tokens(mut self, enable: bool) -> Self {{
         self.inner = self.inner.collect_tokens(enable);
         self
-    }
+    }}
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {
+    pub fn dialect_config(mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self {{
         self.inner = self.inner.dialect_config(config);
         self
-    }
+    }}
 
     /// Build the parser.
-    pub fn build(self) -> Parser {
-        Parser {
-            inner: self.inner.build(),
-        }
-    }
-}
-"#;
+    pub fn build(self) -> Parser {{
+        Parser {{ inner: self.inner.build() }}
+    }}
+}}
+"#
+    ));
 
-const INTERNAL_WRAPPER_INCREMENTAL_PARSER: &str = r#"
+    // ── IncrementalParser ─────────────────────────────────────────────────
+
+    w.lines(&format!(
+        r#"
 // ── IncrementalParser ────────────────────────────────────────────────────
 
-/// An incremental SQL parser for the built-in SQLite dialect.
+/// An incremental SQL parser pre-configured for this dialect.
 ///
 /// Wraps [`TypedIncrementalParser`] and feeds tokens one at a time via
 /// [`IncrementalCursor`], yielding typed [`Stmt`] nodes.
-pub struct IncrementalParser {
+pub struct IncrementalParser {{
     inner: TypedIncrementalParser<'static>,
-}
+}}
 
 // SAFETY: TypedIncrementalParser is Send.
-unsafe impl Send for IncrementalParser {}
+unsafe impl Send for IncrementalParser {{}}
 
-impl IncrementalParser {
-    /// Create an incremental parser for the built-in SQLite dialect with default configuration.
-    pub fn new() -> Self {
-        IncrementalParser {
-            inner: TypedIncrementalParser::new(crate::sqlite::dialect()),
-        }
-    }
+impl IncrementalParser {{
+    /// Create an incremental parser with default configuration.
+    pub fn new() -> Self {{
+        IncrementalParser {{ inner: TypedIncrementalParser::new({dialect_fn}) }}
+    }}
 
     /// Create a builder for configuring the parser before construction.
-    pub fn builder() -> IncrementalParserBuilder {
-        IncrementalParserBuilder {
-            inner: TypedIncrementalParser::builder(crate::sqlite::dialect()),
-        }
-    }
+    pub fn builder() -> IncrementalParserBuilder {{
+        IncrementalParserBuilder {{ inner: TypedIncrementalParser::builder({dialect_fn}) }}
+    }}
 
     /// Bind source text and return an [`IncrementalCursor`] for token feeding.
-    pub fn feed<'a>(&'a mut self, source: &'a str) -> IncrementalCursor<'a> {
+    pub fn feed<'a>(&'a mut self, source: &'a str) -> IncrementalCursor<'a> {{
         self.inner.feed(source)
-    }
+    }}
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn feed_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> IncrementalCursor<'a> {
+    pub fn feed_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> IncrementalCursor<'a> {{
         self.inner.feed_cstr(source)
-    }
-}
+    }}
+}}
 
-impl Default for IncrementalParser {
-    fn default() -> Self {
+impl Default for IncrementalParser {{
+    fn default() -> Self {{
         Self::new()
-    }
-}
+    }}
+}}
 
 // ── IncrementalParserBuilder ─────────────────────────────────────────────
 
 /// Builder for [`IncrementalParser`].
-pub struct IncrementalParserBuilder {
+pub struct IncrementalParserBuilder {{
     inner: TypedIncrementalParserBuilder<'static>,
-}
+}}
 
-impl IncrementalParserBuilder {
+impl IncrementalParserBuilder {{
     /// Enable parser trace output.
-    pub fn trace(mut self, enable: bool) -> Self {
+    pub fn trace(mut self, enable: bool) -> Self {{
         self.inner = self.inner.trace(enable);
         self
-    }
+    }}
 
     /// Collect non-whitespace token positions during parsing.
-    pub fn collect_tokens(mut self, enable: bool) -> Self {
+    pub fn collect_tokens(mut self, enable: bool) -> Self {{
         self.inner = self.inner.collect_tokens(enable);
         self
-    }
+    }}
 
     /// Set dialect config for version/cflag-gated parsing.
     pub fn dialect_config(
         mut self,
         config: syntaqlite_parser::dialect::ffi::DialectConfig,
-    ) -> Self {
+    ) -> Self {{
         self.inner = self.inner.dialect_config(config);
         self
-    }
+    }}
 
     /// Build the parser.
-    pub fn build(self) -> IncrementalParser {
-        IncrementalParser {
-            inner: self.inner.build(),
-        }
-    }
-}
-"#;
+    pub fn build(self) -> IncrementalParser {{
+        IncrementalParser {{ inner: self.inner.build() }}
+    }}
+}}
+"#
+    ));
 
-/// Generate `wrappers.rs` for the internal `syntaqlite` crate's SQLite dialect module.
-///
-/// Unlike [`generate_rust_wrappers`] (which targets external dialect crates and uses
-/// `syntaqlite::generic::*`), this generates wrappers using the crate-internal
-/// `TypedParser`/`TypedTokenizer` types, concretized to `'static` for the SQLite
-/// dialect singleton.
-pub fn generate_internal_sqlite_wrappers() -> String {
-    let mut w = RustWriter::new();
-    w.file_header();
-    w.lines(
-        r#"//! Thin wrappers around the generic parser/tokenizer types, pre-bound to the
-//! SQLite dialect."#,
-    );
-    w.newline();
-    emit_section(&mut w, INTERNAL_WRAPPERS_PRELUDE);
-    emit_section(&mut w, INTERNAL_WRAPPER_TYPE_ALIASES);
-    emit_section(&mut w, INTERNAL_WRAPPER_PARSER);
-    w.lines(INTERNAL_WRAPPER_INCREMENTAL_PARSER);
-    w.finish()
-}
-
-/// Generate `wrappers.rs` for a dialect crate.
-pub fn generate_rust_wrappers() -> String {
-    let mut w = RustWriter::new();
-    w.file_header();
-    emit_section(&mut w, WRAPPERS_PRELUDE);
-    emit_section(&mut w, WRAPPER_PARSER);
-    emit_section(&mut w, WRAPPER_STATEMENT_CURSOR);
-    emit_section(&mut w, WRAPPER_LOW_LEVEL_PARSER);
-    emit_section(&mut w, WRAPPER_LOW_LEVEL_CURSOR);
-    emit_section(&mut w, WRAPPER_FORMATTER);
-    emit_section(&mut w, WRAPPER_TOKENIZER);
-    w.lines(WRAPPER_TOKEN_CURSOR);
     w.finish()
 }
