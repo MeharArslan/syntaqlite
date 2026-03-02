@@ -63,7 +63,7 @@ pub struct OutputLayout {
 }
 
 impl OutputLayout {
-    /// Return a [`DialectCIncludes`] borrowing the include strings from this layout.
+    /// Return a `DialectCIncludes` borrowing the include strings from this layout.
     pub fn c_includes(&self) -> DialectCIncludes<'_> {
         DialectCIncludes {
             ast_builder_h: &self.ast_builder_h.include,

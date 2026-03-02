@@ -163,7 +163,7 @@ fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
 
 /// High-level SQL validator. Created from a `Dialect`, reusable across inputs.
 ///
-/// Owns a [`RawParser`](syntaqlite_parser::RawParser) internally and builds the function catalog
+/// Owns a [`RawParser`] internally and builds the function catalog
 /// once at construction. Call [`validate`](Validator::validate) to parse and
 /// validate SQL in a single step.
 ///
@@ -186,7 +186,7 @@ impl<'d> Validator<'d> {
     /// Create a validator for the built-in SQLite dialect with default configuration.
     ///
     /// Pre-populates the function catalog with all SQLite built-in functions
-    /// available under the default [`DialectConfig`](syntaqlite_parser::DialectConfig).
+    /// available under the default [`DialectConfig`].
     #[cfg(feature = "sqlite")]
     pub fn new() -> Validator<'static> {
         let dc = DialectConfig::default();

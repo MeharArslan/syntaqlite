@@ -34,7 +34,7 @@ pub struct AmalgamateOutput {
 /// Produce `syntaqlite_runtime.{h,c}` and `syntaqlite_dialect.h`.
 ///
 /// `runtime_dir` must contain **only** runtime files (written by
-/// [`write_runtime_headers_to_dir`]) — no dialect-specific code.
+/// [`write_runtime_headers_to_dir`](super::base_files::write_runtime_headers_to_dir)) — no dialect-specific code.
 /// Scans `csrc/` and `include/` subdirectories of the given directory.
 pub fn amalgamate_runtime(runtime_dir: &Path) -> Result<AmalgamateOutput, String> {
     let files = collect_files(&[&runtime_dir.join("csrc"), &runtime_dir.join("include")])?;

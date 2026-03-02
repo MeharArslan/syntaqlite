@@ -3,7 +3,7 @@
 
 //! Dialect handle and token classification.
 //!
-//! A [`Dialect`] is an opaque, `Copy` handle wrapping a pointer to a C
+//! A `Dialect` is an opaque, `Copy` handle wrapping a pointer to a C
 //! dialect descriptor produced by codegen. It provides metadata about
 //! node names, field layouts, token categories, keyword tables, and
 //! formatter bytecode — everything a parser, formatter, or validator needs
@@ -88,7 +88,7 @@ impl TokenCategory {
     }
 }
 
-/// Extension methods on [`Dialect`] that return typed [`TokenCategory`] values.
+/// Extension methods on `Dialect` that return typed [`TokenCategory`] values.
 ///
 /// This trait bridges `syntaqlite-parser`'s `Dialect` (which returns raw `u8`
 /// for crate-boundary reasons) to `syntaqlite`'s `TokenCategory` enum.

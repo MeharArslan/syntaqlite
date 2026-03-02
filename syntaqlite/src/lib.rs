@@ -67,11 +67,11 @@
 //!
 //! - [`ast`] — SQLite-specific typed AST nodes and the top-level
 //!   [`Stmt`](ast::Stmt) enum.
-//! - [`dialect`] — The opaque [`Dialect`] handle, the
+//! - [`dialect`] — The opaque `Dialect` handle, the
 //!   [`sqlite()`](dialect::sqlite) dialect accessor, and
 //!   semantic [`TokenCategory`](dialect::TokenCategory) enum.
 //! - [`ext`] — Dialect-agnostic building blocks for external dialect crates
-//!   (raw parsers, tokenizers, node types, and the [`Dialect`]
+//!   (raw parsers, tokenizers, node types, and the `Dialect`
 //!   handle).
 //! - [`fmt`] — Formatter configuration ([`FormatConfig`](fmt::FormatConfig),
 //!   [`KeywordCase`](fmt::KeywordCase)).

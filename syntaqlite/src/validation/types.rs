@@ -440,7 +440,7 @@ impl SessionContext {
 /// Schema accumulated from DDL statements earlier in the document being validated.
 ///
 /// Built incrementally (one statement at a time) so forward references are rejected.
-/// Pass to [`validate_statement`](super::validate_statement) alongside the session context so each statement only
+/// Pass to [`Validator::validate`](super::Validator::validate) alongside the session context so each statement only
 /// sees tables/views that were *defined before it* in the document.
 pub struct DocumentContext {
     pub relations: Vec<RelationDef>,
