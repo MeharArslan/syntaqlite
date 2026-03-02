@@ -40,7 +40,7 @@ check_crate() {
         printf 'Rebaselining %s ... ' "$crate_name"
         # shellcheck disable=SC2086
         cargo public-api -p "$crate_name" $features_flag \
-            --omit blanket-impls --omit auto-trait-impls 2>/dev/null \
+            --omit blanket-impls --omit auto-trait-impls --omit auto-derived-impls 2>/dev/null \
             | sort > "$golden"
         printf 'done (%s lines)\n' "$(wc -l < "$golden" | tr -d ' ')"
         return
@@ -56,7 +56,7 @@ check_crate() {
     actual=$(mktemp)
     # shellcheck disable=SC2086
     cargo public-api -p "$crate_name" $features_flag \
-        --omit blanket-impls --omit auto-trait-impls 2>/dev/null \
+        --omit blanket-impls --omit auto-trait-impls --omit auto-derived-impls 2>/dev/null \
         | sort > "$actual"
 
     if ! diff -u "$golden" "$actual" > /dev/null 2>&1; then

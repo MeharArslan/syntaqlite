@@ -13,244 +13,15 @@
 #[repr(C)] pub struct syntaqlite_parser::TokenPos
 #[repr(transparent)] pub struct syntaqlite_parser::NodeId(pub u32)
 #[repr(u8)] pub enum syntaqlite_parser::CommentKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::AlterOpKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::AnalyzeKindKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::BinaryOpKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::ColumnConstraintKindKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::CompoundOpKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::ConflictActionKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::DropObjectTypeKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::ExplainModeKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::ForeignKeyActionKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::FrameBoundTypeKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::FrameExcludeKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::FrameTypeKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::GeneratedColumnStorageKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::IsOpKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::JoinTypeKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::LiteralTypeKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::MaterializedKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::NullsOrderKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::PragmaFormKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::RaiseTypeKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::SavepointOpKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::SortOrderKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::TableConstraintKindKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::TransactionOpKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::TransactionTypeKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::TriggerEventTypeKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::TriggerTimingKind
-impl core::clone::Clone for syntaqlite_parser::ast_traits::UnaryOpKind
-impl core::clone::Clone for syntaqlite_parser::CflagInfo
-impl core::clone::Clone for syntaqlite_parser::Cflags
-impl core::clone::Clone for syntaqlite_parser::Comment
-impl core::clone::Clone for syntaqlite_parser::CommentKind
-impl core::clone::Clone for syntaqlite_parser::DialectConfig
-impl core::clone::Clone for syntaqlite_parser::ErrorNode
-impl core::clone::Clone for syntaqlite_parser::ErrorSpan
-impl core::clone::Clone for syntaqlite_parser::MacroRegion
-impl core::clone::Clone for syntaqlite_parser::NodeId
-impl core::clone::Clone for syntaqlite_parser::ParseError
-impl core::clone::Clone for syntaqlite_parser::ParserConfig
-impl core::clone::Clone for syntaqlite_parser::SchemaContribution
-impl core::clone::Clone for syntaqlite_parser::SchemaKind
-impl core::clone::Clone for syntaqlite_parser::SourceSpan
-impl core::clone::Clone for syntaqlite_parser::TokenPos
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::AlterOpKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::AnalyzeKindKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::BinaryOpKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::ColumnConstraintKindKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::CompoundOpKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::ConflictActionKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::DropObjectTypeKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::ExplainModeKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::ForeignKeyActionKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::FrameBoundTypeKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::FrameExcludeKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::FrameTypeKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::GeneratedColumnStorageKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::IsOpKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::JoinTypeKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::LiteralTypeKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::MaterializedKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::NullsOrderKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::PragmaFormKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::RaiseTypeKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::SavepointOpKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::SortOrderKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::TableConstraintKindKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::TransactionOpKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::TransactionTypeKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::TriggerEventTypeKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::TriggerTimingKind
-impl core::cmp::Eq for syntaqlite_parser::ast_traits::UnaryOpKind
-impl core::cmp::Eq for syntaqlite_parser::CommentKind
-impl core::cmp::Eq for syntaqlite_parser::ErrorSpan
-impl core::cmp::Eq for syntaqlite_parser::NodeId
-impl core::cmp::Eq for syntaqlite_parser::SchemaKind
-impl core::cmp::Eq for syntaqlite_parser::SourceSpan
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::AlterOpKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::AnalyzeKindKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::BinaryOpKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::ColumnConstraintKindKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::CompoundOpKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::ConflictActionKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::DropObjectTypeKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::ExplainModeKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::ForeignKeyActionKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::FrameBoundTypeKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::FrameExcludeKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::FrameTypeKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::GeneratedColumnStorageKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::IsOpKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::JoinTypeKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::LiteralTypeKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::MaterializedKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::NullsOrderKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::PragmaFormKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::RaiseTypeKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::SavepointOpKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::SortOrderKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::TableConstraintKindKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::TransactionOpKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::TransactionTypeKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::TriggerEventTypeKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::TriggerTimingKind
-impl core::cmp::PartialEq for syntaqlite_parser::ast_traits::UnaryOpKind
-impl core::cmp::PartialEq for syntaqlite_parser::CommentKind
-impl core::cmp::PartialEq for syntaqlite_parser::ErrorSpan
-impl core::cmp::PartialEq for syntaqlite_parser::NodeId
-impl core::cmp::PartialEq for syntaqlite_parser::SchemaKind
-impl core::cmp::PartialEq for syntaqlite_parser::SourceSpan
 impl core::default::Default for syntaqlite_parser::Cflags
 impl core::default::Default for syntaqlite_parser::DialectConfig
-impl core::default::Default for syntaqlite_parser::ParserConfig
-impl core::default::Default for syntaqlite_parser::SourceSpan
 impl core::error::Error for syntaqlite_parser::ParseError
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::AlterOpKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::AnalyzeKindKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::BinaryOpKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::ColumnConstraintKindKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::CompoundOpKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::ConflictActionKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::DropObjectTypeKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::ExplainModeKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::ForeignKeyActionKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::FrameBoundTypeKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::FrameExcludeKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::FrameTypeKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::GeneratedColumnStorageKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::IsOpKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::JoinTypeKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::LiteralTypeKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::MaterializedKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::NullsOrderKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::PragmaFormKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::RaiseTypeKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::SavepointOpKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::SortOrderKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::TableConstraintKindKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::TransactionOpKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::TransactionTypeKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::TriggerEventTypeKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::TriggerTimingKind
-impl core::fmt::Debug for syntaqlite_parser::ast_traits::UnaryOpKind
-impl core::fmt::Debug for syntaqlite_parser::CflagInfo
 impl core::fmt::Debug for syntaqlite_parser::Cflags
-impl core::fmt::Debug for syntaqlite_parser::Comment
-impl core::fmt::Debug for syntaqlite_parser::CommentKind
-impl core::fmt::Debug for syntaqlite_parser::DialectConfig
-impl core::fmt::Debug for syntaqlite_parser::ErrorNode
-impl core::fmt::Debug for syntaqlite_parser::ErrorSpan
-impl core::fmt::Debug for syntaqlite_parser::MacroRegion
-impl core::fmt::Debug for syntaqlite_parser::NodeId
-impl core::fmt::Debug for syntaqlite_parser::NodeList
 impl core::fmt::Debug for syntaqlite_parser::NodeRef<'_>
-impl core::fmt::Debug for syntaqlite_parser::ParseError
-impl core::fmt::Debug for syntaqlite_parser::ParserConfig
-impl core::fmt::Debug for syntaqlite_parser::SchemaContribution
-impl core::fmt::Debug for syntaqlite_parser::SchemaKind
-impl core::fmt::Debug for syntaqlite_parser::SourceSpan
-impl core::fmt::Debug for syntaqlite_parser::TokenPos
 impl core::fmt::Display for syntaqlite_parser::ParseError
-impl core::hash::Hash for syntaqlite_parser::NodeId
-impl core::marker::Copy for syntaqlite_parser::ast_traits::AlterOpKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::AnalyzeKindKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::BinaryOpKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::ColumnConstraintKindKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::CompoundOpKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::ConflictActionKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::DropObjectTypeKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::ExplainModeKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::ForeignKeyActionKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::FrameBoundTypeKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::FrameExcludeKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::FrameTypeKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::GeneratedColumnStorageKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::IsOpKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::JoinTypeKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::LiteralTypeKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::MaterializedKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::NullsOrderKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::PragmaFormKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::RaiseTypeKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::SavepointOpKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::SortOrderKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::TableConstraintKindKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::TransactionOpKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::TransactionTypeKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::TriggerEventTypeKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::TriggerTimingKind
-impl core::marker::Copy for syntaqlite_parser::ast_traits::UnaryOpKind
-impl core::marker::Copy for syntaqlite_parser::Cflags
-impl core::marker::Copy for syntaqlite_parser::Comment
-impl core::marker::Copy for syntaqlite_parser::CommentKind
-impl core::marker::Copy for syntaqlite_parser::DialectConfig
-impl core::marker::Copy for syntaqlite_parser::ErrorNode
-impl core::marker::Copy for syntaqlite_parser::ErrorSpan
-impl core::marker::Copy for syntaqlite_parser::MacroRegion
-impl core::marker::Copy for syntaqlite_parser::NodeId
-impl core::marker::Copy for syntaqlite_parser::ParserConfig
-impl core::marker::Copy for syntaqlite_parser::SchemaContribution
-impl core::marker::Copy for syntaqlite_parser::SchemaKind
-impl core::marker::Copy for syntaqlite_parser::SourceSpan
-impl core::marker::Copy for syntaqlite_parser::TokenPos
 impl core::marker::Send for syntaqlite_parser::RawDialect<'_>
 impl core::marker::Send for syntaqlite_parser::RawIncrementalParser<'_>
 impl core::marker::Send for syntaqlite_parser::RawParser<'_>
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::AlterOpKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::AnalyzeKindKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::BinaryOpKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::ColumnConstraintKindKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::CompoundOpKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::ConflictActionKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::DropObjectTypeKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::ExplainModeKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::ForeignKeyActionKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::FrameBoundTypeKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::FrameExcludeKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::FrameTypeKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::GeneratedColumnStorageKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::IsOpKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::JoinTypeKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::LiteralTypeKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::MaterializedKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::NullsOrderKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::PragmaFormKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::RaiseTypeKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::SavepointOpKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::SortOrderKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::TableConstraintKindKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::TransactionOpKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::TransactionTypeKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::TriggerEventTypeKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::TriggerTimingKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ast_traits::UnaryOpKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::CommentKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::ErrorSpan
-impl core::marker::StructuralPartialEq for syntaqlite_parser::NodeId
-impl core::marker::StructuralPartialEq for syntaqlite_parser::SchemaKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser::SourceSpan
 impl core::marker::Sync for syntaqlite_parser::RawDialect<'_>
 impl core::ops::drop::Drop for syntaqlite_parser::RawIncrementalParser<'_>
 impl core::ops::drop::Drop for syntaqlite_parser::RawParser<'_>
@@ -260,51 +31,22 @@ impl syntaqlite_parser::FieldMeta
 impl syntaqlite_parser::NodeId
 impl syntaqlite_parser::NodeList
 impl syntaqlite_parser::SourceSpan
-impl<'a, A: core::clone::Clone + syntaqlite_parser::ast_traits::AstTypes<'a>> core::clone::Clone for syntaqlite_parser::ast_traits::ExprKind<'a, A> where <A as syntaqlite_parser::ast_traits::AstTypes>::BinaryExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::UnaryExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::Literal: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::ColumnRef: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::Variable: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::FunctionCall: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::AggregateFunctionCall: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::OrderedSetFunctionCall: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::CastExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::CollateExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::CaseExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::IsExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::BetweenExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::LikeExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::InExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::SubqueryExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::ExistsExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::RaiseExpr: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::Node: core::clone::Clone
-impl<'a, A: core::clone::Clone + syntaqlite_parser::ast_traits::AstTypes<'a>> core::clone::Clone for syntaqlite_parser::ast_traits::InExprSourceKind<'a, A> where <A as syntaqlite_parser::ast_traits::AstTypes>::Node: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::SubqueryExpr: core::clone::Clone
-impl<'a, A: core::clone::Clone + syntaqlite_parser::ast_traits::AstTypes<'a>> core::clone::Clone for syntaqlite_parser::ast_traits::SelectKind<'a, A> where <A as syntaqlite_parser::ast_traits::AstTypes>::SelectStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::CompoundSelect: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::WithClause: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::ValuesClause: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::Node: core::clone::Clone
-impl<'a, A: core::clone::Clone + syntaqlite_parser::ast_traits::AstTypes<'a>> core::clone::Clone for syntaqlite_parser::ast_traits::StmtKind<'a, A> where <A as syntaqlite_parser::ast_traits::AstTypes>::SelectStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::CompoundSelect: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::ValuesClause: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::WithClause: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::InsertStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::UpdateStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::DeleteStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::CreateTableStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::CreateIndexStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::CreateViewStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::CreateTriggerStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::CreateVirtualTableStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::DropStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::AlterTableStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::TransactionStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::SavepointStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::PragmaStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::AnalyzeStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::AttachStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::DetachStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::VacuumStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::ExplainStmt: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::Node: core::clone::Clone
-impl<'a, A: core::clone::Clone + syntaqlite_parser::ast_traits::AstTypes<'a>> core::clone::Clone for syntaqlite_parser::ast_traits::TableSourceKind<'a, A> where <A as syntaqlite_parser::ast_traits::AstTypes>::TableRef: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::SubqueryTableSource: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::JoinClause: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::JoinPrefix: core::clone::Clone, <A as syntaqlite_parser::ast_traits::AstTypes>::Node: core::clone::Clone
-impl<'a, A: core::marker::Copy + syntaqlite_parser::ast_traits::AstTypes<'a>> core::marker::Copy for syntaqlite_parser::ast_traits::ExprKind<'a, A> where <A as syntaqlite_parser::ast_traits::AstTypes>::BinaryExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::UnaryExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::Literal: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::ColumnRef: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::Variable: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::FunctionCall: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::AggregateFunctionCall: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::OrderedSetFunctionCall: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::CastExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::CollateExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::CaseExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::IsExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::BetweenExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::LikeExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::InExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::SubqueryExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::ExistsExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::RaiseExpr: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::Node: core::marker::Copy
-impl<'a, A: core::marker::Copy + syntaqlite_parser::ast_traits::AstTypes<'a>> core::marker::Copy for syntaqlite_parser::ast_traits::InExprSourceKind<'a, A> where <A as syntaqlite_parser::ast_traits::AstTypes>::Node: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::SubqueryExpr: core::marker::Copy
-impl<'a, A: core::marker::Copy + syntaqlite_parser::ast_traits::AstTypes<'a>> core::marker::Copy for syntaqlite_parser::ast_traits::SelectKind<'a, A> where <A as syntaqlite_parser::ast_traits::AstTypes>::SelectStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::CompoundSelect: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::WithClause: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::ValuesClause: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::Node: core::marker::Copy
-impl<'a, A: core::marker::Copy + syntaqlite_parser::ast_traits::AstTypes<'a>> core::marker::Copy for syntaqlite_parser::ast_traits::StmtKind<'a, A> where <A as syntaqlite_parser::ast_traits::AstTypes>::SelectStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::CompoundSelect: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::ValuesClause: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::WithClause: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::InsertStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::UpdateStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::DeleteStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::CreateTableStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::CreateIndexStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::CreateViewStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::CreateTriggerStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::CreateVirtualTableStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::DropStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::AlterTableStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::TransactionStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::SavepointStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::PragmaStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::AnalyzeStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::AttachStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::DetachStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::VacuumStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::ExplainStmt: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::Node: core::marker::Copy
-impl<'a, A: core::marker::Copy + syntaqlite_parser::ast_traits::AstTypes<'a>> core::marker::Copy for syntaqlite_parser::ast_traits::TableSourceKind<'a, A> where <A as syntaqlite_parser::ast_traits::AstTypes>::TableRef: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::SubqueryTableSource: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::JoinClause: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::JoinPrefix: core::marker::Copy, <A as syntaqlite_parser::ast_traits::AstTypes>::Node: core::marker::Copy
-impl<'a, T: core::clone::Clone> core::clone::Clone for syntaqlite_parser::TypedList<'a, T>
-impl<'a, T: core::marker::Copy> core::marker::Copy for syntaqlite_parser::TypedList<'a, T>
 impl<'a, T: syntaqlite_parser::DialectNodeType<'a>> syntaqlite_parser::TypedList<'a, T>
 impl<'a, T> syntaqlite_parser::DialectNodeType<'a> for syntaqlite_parser::TypedList<'a, T>
 impl<'a, T> syntaqlite_parser::DialectNodeType<'a> for syntaqlite_parser::TypedList<'a, T>
 impl<'a, T> syntaqlite_parser::TypedList<'a, T>
-impl<'a> core::clone::Clone for syntaqlite_parser::FieldVal<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser::FunctionInfo<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser::NodeRef<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser::RawNodeReader<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser::RawToken<'a>
 impl<'a> core::default::Default for syntaqlite_parser::Fields<'a>
-impl<'a> core::fmt::Debug for syntaqlite_parser::FieldVal<'a>
-impl<'a> core::fmt::Debug for syntaqlite_parser::FunctionInfo<'a>
-impl<'a> core::fmt::Debug for syntaqlite_parser::RawToken<'a>
 impl<'a> core::iter::traits::iterator::Iterator for syntaqlite_parser::RawStatementCursor<'a>
 impl<'a> core::iter::traits::iterator::Iterator for syntaqlite_parser::RawTokenCursor<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser::FieldVal<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser::FunctionInfo<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser::NodeRef<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser::RawNodeReader<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser::RawToken<'a>
 impl<'a> core::ops::deref::Deref for syntaqlite_parser::Fields<'a>
 impl<'a> syntaqlite_parser::Fields<'a>
 impl<'a> syntaqlite_parser::NodeRef<'a>
 impl<'a> syntaqlite_parser::RawIncrementalCursor<'a>
 impl<'a> syntaqlite_parser::RawNodeReader<'a>
 impl<'a> syntaqlite_parser::RawStatementCursor<'a>
-impl<'d, N: core::clone::Clone + syntaqlite_parser::NodeFamily> core::clone::Clone for syntaqlite_parser::Dialect<'d, N>
-impl<'d, N: core::marker::Copy + syntaqlite_parser::NodeFamily> core::marker::Copy for syntaqlite_parser::Dialect<'d, N>
 impl<'d, N: syntaqlite_parser::NodeFamily> core::convert::From<syntaqlite_parser::Dialect<'d, N>> for syntaqlite_parser::RawDialect<'d>
 impl<'d, N: syntaqlite_parser::NodeFamily> core::convert::From<syntaqlite_parser::Dialect<'d, N>> for syntaqlite_parser::RawDialect<'d>
 impl<'d, N: syntaqlite_parser::NodeFamily> syntaqlite_parser::Dialect<'d, N>
-impl<'d> core::clone::Clone for syntaqlite_parser::RawDialect<'d>
-impl<'d> core::marker::Copy for syntaqlite_parser::RawDialect<'d>
 impl<'d> core::marker::Send for syntaqlite_parser::RawTokenizer<'d>
 impl<'d> syntaqlite_parser::RawDialect<'d>
 impl<'d> syntaqlite_parser::RawIncrementalParser<'d>
@@ -369,9 +111,6 @@ pub fn syntaqlite_parser::ast_traits::AggregateFunctionCallView::func_name(&self
 pub fn syntaqlite_parser::ast_traits::AggregateFunctionCallView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::AggregateFunctionCallView::orderby(&self) -> core::option::Option<syntaqlite_parser::TypedList<'a, <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::OrderingTerm>>
 pub fn syntaqlite_parser::ast_traits::AggregateFunctionCallView::over_clause(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::WindowDef>
-pub fn syntaqlite_parser::ast_traits::AlterOpKind::clone(&self) -> syntaqlite_parser::ast_traits::AlterOpKind
-pub fn syntaqlite_parser::ast_traits::AlterOpKind::eq(&self, other: &syntaqlite_parser::ast_traits::AlterOpKind) -> bool
-pub fn syntaqlite_parser::ast_traits::AlterOpKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::AlterOpLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::AlterOpLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::AlterOpKind>
 pub fn syntaqlite_parser::ast_traits::AlterTableStmtView::new_name(&self) -> &'a str
@@ -379,9 +118,6 @@ pub fn syntaqlite_parser::ast_traits::AlterTableStmtView::node_id(&self) -> synt
 pub fn syntaqlite_parser::ast_traits::AlterTableStmtView::old_name(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::AlterTableStmtView::op(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::AlterOp
 pub fn syntaqlite_parser::ast_traits::AlterTableStmtView::target(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::QualifiedName>
-pub fn syntaqlite_parser::ast_traits::AnalyzeKindKind::clone(&self) -> syntaqlite_parser::ast_traits::AnalyzeKindKind
-pub fn syntaqlite_parser::ast_traits::AnalyzeKindKind::eq(&self, other: &syntaqlite_parser::ast_traits::AnalyzeKindKind) -> bool
-pub fn syntaqlite_parser::ast_traits::AnalyzeKindKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::AnalyzeKindLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::AnalyzeKindLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::AnalyzeKindKind>
 pub fn syntaqlite_parser::ast_traits::AnalyzeStmtView::kind(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::AnalyzeKind
@@ -401,9 +137,6 @@ pub fn syntaqlite_parser::ast_traits::BinaryExprView::left(&self) -> core::optio
 pub fn syntaqlite_parser::ast_traits::BinaryExprView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::BinaryExprView::op(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::BinaryOp
 pub fn syntaqlite_parser::ast_traits::BinaryExprView::right(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
-pub fn syntaqlite_parser::ast_traits::BinaryOpKind::clone(&self) -> syntaqlite_parser::ast_traits::BinaryOpKind
-pub fn syntaqlite_parser::ast_traits::BinaryOpKind::eq(&self, other: &syntaqlite_parser::ast_traits::BinaryOpKind) -> bool
-pub fn syntaqlite_parser::ast_traits::BinaryOpKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::BinaryOpLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::BinaryOpLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::BinaryOpKind>
 pub fn syntaqlite_parser::ast_traits::CaseExprView::else_expr(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
@@ -419,9 +152,6 @@ pub fn syntaqlite_parser::ast_traits::CastExprView::type_name(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::CollateExprView::collation(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::CollateExprView::expr(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
 pub fn syntaqlite_parser::ast_traits::CollateExprView::node_id(&self) -> syntaqlite_parser::NodeId
-pub fn syntaqlite_parser::ast_traits::ColumnConstraintKindKind::clone(&self) -> syntaqlite_parser::ast_traits::ColumnConstraintKindKind
-pub fn syntaqlite_parser::ast_traits::ColumnConstraintKindKind::eq(&self, other: &syntaqlite_parser::ast_traits::ColumnConstraintKindKind) -> bool
-pub fn syntaqlite_parser::ast_traits::ColumnConstraintKindKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::ColumnConstraintKindLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::ColumnConstraintKindLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::ColumnConstraintKindKind>
 pub fn syntaqlite_parser::ast_traits::ColumnConstraintView::check_expr(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
@@ -444,18 +174,12 @@ pub fn syntaqlite_parser::ast_traits::ColumnRefView::column(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::ColumnRefView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::ColumnRefView::schema(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::ColumnRefView::table(&self) -> &'a str
-pub fn syntaqlite_parser::ast_traits::CompoundOpKind::clone(&self) -> syntaqlite_parser::ast_traits::CompoundOpKind
-pub fn syntaqlite_parser::ast_traits::CompoundOpKind::eq(&self, other: &syntaqlite_parser::ast_traits::CompoundOpKind) -> bool
-pub fn syntaqlite_parser::ast_traits::CompoundOpKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::CompoundOpLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::CompoundOpLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::CompoundOpKind>
 pub fn syntaqlite_parser::ast_traits::CompoundSelectView::left(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Select>
 pub fn syntaqlite_parser::ast_traits::CompoundSelectView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::CompoundSelectView::op(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::CompoundOp
 pub fn syntaqlite_parser::ast_traits::CompoundSelectView::right(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Select>
-pub fn syntaqlite_parser::ast_traits::ConflictActionKind::clone(&self) -> syntaqlite_parser::ast_traits::ConflictActionKind
-pub fn syntaqlite_parser::ast_traits::ConflictActionKind::eq(&self, other: &syntaqlite_parser::ast_traits::ConflictActionKind) -> bool
-pub fn syntaqlite_parser::ast_traits::ConflictActionKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::ConflictActionLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::ConflictActionLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::ConflictActionKind>
 pub fn syntaqlite_parser::ast_traits::CreateIndexStmtView::columns(&self) -> core::option::Option<syntaqlite_parser::TypedList<'a, <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::OrderingTerm>>
@@ -512,9 +236,6 @@ pub fn syntaqlite_parser::ast_traits::DeleteStmtView::table(&self) -> core::opti
 pub fn syntaqlite_parser::ast_traits::DeleteStmtView::where_clause(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
 pub fn syntaqlite_parser::ast_traits::DetachStmtView::db_name(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
 pub fn syntaqlite_parser::ast_traits::DetachStmtView::node_id(&self) -> syntaqlite_parser::NodeId
-pub fn syntaqlite_parser::ast_traits::DropObjectTypeKind::clone(&self) -> syntaqlite_parser::ast_traits::DropObjectTypeKind
-pub fn syntaqlite_parser::ast_traits::DropObjectTypeKind::eq(&self, other: &syntaqlite_parser::ast_traits::DropObjectTypeKind) -> bool
-pub fn syntaqlite_parser::ast_traits::DropObjectTypeKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::DropObjectTypeLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::DropObjectTypeLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::DropObjectTypeKind>
 pub fn syntaqlite_parser::ast_traits::DropStmtView::if_exists(&self) -> bool
@@ -523,23 +244,16 @@ pub fn syntaqlite_parser::ast_traits::DropStmtView::object_type(&self) -> <Self:
 pub fn syntaqlite_parser::ast_traits::DropStmtView::target(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::QualifiedName>
 pub fn syntaqlite_parser::ast_traits::ExistsExprView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::ExistsExprView::select(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Select>
-pub fn syntaqlite_parser::ast_traits::ExplainModeKind::clone(&self) -> syntaqlite_parser::ast_traits::ExplainModeKind
-pub fn syntaqlite_parser::ast_traits::ExplainModeKind::eq(&self, other: &syntaqlite_parser::ast_traits::ExplainModeKind) -> bool
-pub fn syntaqlite_parser::ast_traits::ExplainModeKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::ExplainModeLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::ExplainModeLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::ExplainModeKind>
 pub fn syntaqlite_parser::ast_traits::ExplainStmtView::explain_mode(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::ExplainMode
 pub fn syntaqlite_parser::ast_traits::ExplainStmtView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::ExplainStmtView::stmt(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Stmt>
-pub fn syntaqlite_parser::ast_traits::ExprKind<'a, A>::clone(&self) -> syntaqlite_parser::ast_traits::ExprKind<'a, A>
 pub fn syntaqlite_parser::ast_traits::ExprLike::kind(&self) -> syntaqlite_parser::ast_traits::ExprKind<'a, Self::Ast>
 pub fn syntaqlite_parser::ast_traits::FilterOverView::filter_expr(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
 pub fn syntaqlite_parser::ast_traits::FilterOverView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::FilterOverView::over_def(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::WindowDef>
 pub fn syntaqlite_parser::ast_traits::FilterOverView::over_name(&self) -> &'a str
-pub fn syntaqlite_parser::ast_traits::ForeignKeyActionKind::clone(&self) -> syntaqlite_parser::ast_traits::ForeignKeyActionKind
-pub fn syntaqlite_parser::ast_traits::ForeignKeyActionKind::eq(&self, other: &syntaqlite_parser::ast_traits::ForeignKeyActionKind) -> bool
-pub fn syntaqlite_parser::ast_traits::ForeignKeyActionKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::ForeignKeyActionLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::ForeignKeyActionLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::ForeignKeyActionKind>
 pub fn syntaqlite_parser::ast_traits::ForeignKeyClauseView::is_deferred(&self) -> bool
@@ -548,17 +262,11 @@ pub fn syntaqlite_parser::ast_traits::ForeignKeyClauseView::on_delete(&self) -> 
 pub fn syntaqlite_parser::ast_traits::ForeignKeyClauseView::on_update(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::ForeignKeyAction
 pub fn syntaqlite_parser::ast_traits::ForeignKeyClauseView::ref_columns(&self) -> core::option::Option<syntaqlite_parser::TypedList<'a, <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Node>>
 pub fn syntaqlite_parser::ast_traits::ForeignKeyClauseView::ref_table(&self) -> &'a str
-pub fn syntaqlite_parser::ast_traits::FrameBoundTypeKind::clone(&self) -> syntaqlite_parser::ast_traits::FrameBoundTypeKind
-pub fn syntaqlite_parser::ast_traits::FrameBoundTypeKind::eq(&self, other: &syntaqlite_parser::ast_traits::FrameBoundTypeKind) -> bool
-pub fn syntaqlite_parser::ast_traits::FrameBoundTypeKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::FrameBoundTypeLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::FrameBoundTypeLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::FrameBoundTypeKind>
 pub fn syntaqlite_parser::ast_traits::FrameBoundView::bound_type(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::FrameBoundType
 pub fn syntaqlite_parser::ast_traits::FrameBoundView::expr(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
 pub fn syntaqlite_parser::ast_traits::FrameBoundView::node_id(&self) -> syntaqlite_parser::NodeId
-pub fn syntaqlite_parser::ast_traits::FrameExcludeKind::clone(&self) -> syntaqlite_parser::ast_traits::FrameExcludeKind
-pub fn syntaqlite_parser::ast_traits::FrameExcludeKind::eq(&self, other: &syntaqlite_parser::ast_traits::FrameExcludeKind) -> bool
-pub fn syntaqlite_parser::ast_traits::FrameExcludeKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::FrameExcludeLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::FrameExcludeLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::FrameExcludeKind>
 pub fn syntaqlite_parser::ast_traits::FrameSpecView::end_bound(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::FrameBound>
@@ -566,9 +274,6 @@ pub fn syntaqlite_parser::ast_traits::FrameSpecView::exclude(&self) -> <Self::As
 pub fn syntaqlite_parser::ast_traits::FrameSpecView::frame_type(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::FrameType
 pub fn syntaqlite_parser::ast_traits::FrameSpecView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::FrameSpecView::start_bound(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::FrameBound>
-pub fn syntaqlite_parser::ast_traits::FrameTypeKind::clone(&self) -> syntaqlite_parser::ast_traits::FrameTypeKind
-pub fn syntaqlite_parser::ast_traits::FrameTypeKind::eq(&self, other: &syntaqlite_parser::ast_traits::FrameTypeKind) -> bool
-pub fn syntaqlite_parser::ast_traits::FrameTypeKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::FrameTypeLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::FrameTypeLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::FrameTypeKind>
 pub fn syntaqlite_parser::ast_traits::FunctionCallFlagsLike::distinct(&self) -> bool
@@ -579,12 +284,8 @@ pub fn syntaqlite_parser::ast_traits::FunctionCallView::flags(&self) -> <Self::A
 pub fn syntaqlite_parser::ast_traits::FunctionCallView::func_name(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::FunctionCallView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::FunctionCallView::over_clause(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::WindowDef>
-pub fn syntaqlite_parser::ast_traits::GeneratedColumnStorageKind::clone(&self) -> syntaqlite_parser::ast_traits::GeneratedColumnStorageKind
-pub fn syntaqlite_parser::ast_traits::GeneratedColumnStorageKind::eq(&self, other: &syntaqlite_parser::ast_traits::GeneratedColumnStorageKind) -> bool
-pub fn syntaqlite_parser::ast_traits::GeneratedColumnStorageKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::GeneratedColumnStorageLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::GeneratedColumnStorageLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::GeneratedColumnStorageKind>
-pub fn syntaqlite_parser::ast_traits::InExprSourceKind<'a, A>::clone(&self) -> syntaqlite_parser::ast_traits::InExprSourceKind<'a, A>
 pub fn syntaqlite_parser::ast_traits::InExprSourceLike::kind(&self) -> syntaqlite_parser::ast_traits::InExprSourceKind<'a, Self::Ast>
 pub fn syntaqlite_parser::ast_traits::InExprView::negated(&self) -> bool
 pub fn syntaqlite_parser::ast_traits::InExprView::node_id(&self) -> syntaqlite_parser::NodeId
@@ -599,9 +300,6 @@ pub fn syntaqlite_parser::ast_traits::IsExprView::left(&self) -> core::option::O
 pub fn syntaqlite_parser::ast_traits::IsExprView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::IsExprView::op(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::IsOp
 pub fn syntaqlite_parser::ast_traits::IsExprView::right(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
-pub fn syntaqlite_parser::ast_traits::IsOpKind::clone(&self) -> syntaqlite_parser::ast_traits::IsOpKind
-pub fn syntaqlite_parser::ast_traits::IsOpKind::eq(&self, other: &syntaqlite_parser::ast_traits::IsOpKind) -> bool
-pub fn syntaqlite_parser::ast_traits::IsOpKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::IsOpLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::IsOpLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::IsOpKind>
 pub fn syntaqlite_parser::ast_traits::JoinClauseView::join_type(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::JoinType
@@ -613,9 +311,6 @@ pub fn syntaqlite_parser::ast_traits::JoinClauseView::using_columns(&self) -> co
 pub fn syntaqlite_parser::ast_traits::JoinPrefixView::join_type(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::JoinType
 pub fn syntaqlite_parser::ast_traits::JoinPrefixView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::JoinPrefixView::source(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::TableSource>
-pub fn syntaqlite_parser::ast_traits::JoinTypeKind::clone(&self) -> syntaqlite_parser::ast_traits::JoinTypeKind
-pub fn syntaqlite_parser::ast_traits::JoinTypeKind::eq(&self, other: &syntaqlite_parser::ast_traits::JoinTypeKind) -> bool
-pub fn syntaqlite_parser::ast_traits::JoinTypeKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::JoinTypeLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::JoinTypeLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::JoinTypeKind>
 pub fn syntaqlite_parser::ast_traits::LikeExprView::escape(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
@@ -626,26 +321,17 @@ pub fn syntaqlite_parser::ast_traits::LikeExprView::pattern(&self) -> core::opti
 pub fn syntaqlite_parser::ast_traits::LimitClauseView::limit(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
 pub fn syntaqlite_parser::ast_traits::LimitClauseView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::LimitClauseView::offset(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
-pub fn syntaqlite_parser::ast_traits::LiteralTypeKind::clone(&self) -> syntaqlite_parser::ast_traits::LiteralTypeKind
-pub fn syntaqlite_parser::ast_traits::LiteralTypeKind::eq(&self, other: &syntaqlite_parser::ast_traits::LiteralTypeKind) -> bool
-pub fn syntaqlite_parser::ast_traits::LiteralTypeKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::LiteralTypeLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::LiteralTypeLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::LiteralTypeKind>
 pub fn syntaqlite_parser::ast_traits::LiteralView::literal_type(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::LiteralType
 pub fn syntaqlite_parser::ast_traits::LiteralView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::LiteralView::source(&self) -> &'a str
-pub fn syntaqlite_parser::ast_traits::MaterializedKind::clone(&self) -> syntaqlite_parser::ast_traits::MaterializedKind
-pub fn syntaqlite_parser::ast_traits::MaterializedKind::eq(&self, other: &syntaqlite_parser::ast_traits::MaterializedKind) -> bool
-pub fn syntaqlite_parser::ast_traits::MaterializedKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::MaterializedLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::MaterializedLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::MaterializedKind>
 pub fn syntaqlite_parser::ast_traits::NamedWindowDefView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::NamedWindowDefView::window_def(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::WindowDef>
 pub fn syntaqlite_parser::ast_traits::NamedWindowDefView::window_name(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::NodeLike::node_id(&self) -> syntaqlite_parser::NodeId
-pub fn syntaqlite_parser::ast_traits::NullsOrderKind::clone(&self) -> syntaqlite_parser::ast_traits::NullsOrderKind
-pub fn syntaqlite_parser::ast_traits::NullsOrderKind::eq(&self, other: &syntaqlite_parser::ast_traits::NullsOrderKind) -> bool
-pub fn syntaqlite_parser::ast_traits::NullsOrderKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::NullsOrderLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::NullsOrderLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::NullsOrderKind>
 pub fn syntaqlite_parser::ast_traits::OrderedSetFunctionCallView::args(&self) -> core::option::Option<syntaqlite_parser::TypedList<'a, <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Node>>
@@ -659,9 +345,6 @@ pub fn syntaqlite_parser::ast_traits::OrderingTermView::expr(&self) -> core::opt
 pub fn syntaqlite_parser::ast_traits::OrderingTermView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::OrderingTermView::nulls_order(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::NullsOrder
 pub fn syntaqlite_parser::ast_traits::OrderingTermView::sort_order(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::SortOrder
-pub fn syntaqlite_parser::ast_traits::PragmaFormKind::clone(&self) -> syntaqlite_parser::ast_traits::PragmaFormKind
-pub fn syntaqlite_parser::ast_traits::PragmaFormKind::eq(&self, other: &syntaqlite_parser::ast_traits::PragmaFormKind) -> bool
-pub fn syntaqlite_parser::ast_traits::PragmaFormKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::PragmaFormLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::PragmaFormLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::PragmaFormKind>
 pub fn syntaqlite_parser::ast_traits::PragmaStmtView::node_id(&self) -> syntaqlite_parser::NodeId
@@ -675,9 +358,6 @@ pub fn syntaqlite_parser::ast_traits::QualifiedNameView::schema(&self) -> &'a st
 pub fn syntaqlite_parser::ast_traits::RaiseExprView::error_message(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
 pub fn syntaqlite_parser::ast_traits::RaiseExprView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::RaiseExprView::raise_type(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::RaiseType
-pub fn syntaqlite_parser::ast_traits::RaiseTypeKind::clone(&self) -> syntaqlite_parser::ast_traits::RaiseTypeKind
-pub fn syntaqlite_parser::ast_traits::RaiseTypeKind::eq(&self, other: &syntaqlite_parser::ast_traits::RaiseTypeKind) -> bool
-pub fn syntaqlite_parser::ast_traits::RaiseTypeKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::RaiseTypeLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::RaiseTypeLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::RaiseTypeKind>
 pub fn syntaqlite_parser::ast_traits::ResultColumnFlagsLike::star(&self) -> bool
@@ -685,15 +365,11 @@ pub fn syntaqlite_parser::ast_traits::ResultColumnView::alias(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::ResultColumnView::expr(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
 pub fn syntaqlite_parser::ast_traits::ResultColumnView::flags(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::ResultColumnFlags
 pub fn syntaqlite_parser::ast_traits::ResultColumnView::node_id(&self) -> syntaqlite_parser::NodeId
-pub fn syntaqlite_parser::ast_traits::SavepointOpKind::clone(&self) -> syntaqlite_parser::ast_traits::SavepointOpKind
-pub fn syntaqlite_parser::ast_traits::SavepointOpKind::eq(&self, other: &syntaqlite_parser::ast_traits::SavepointOpKind) -> bool
-pub fn syntaqlite_parser::ast_traits::SavepointOpKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::SavepointOpLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::SavepointOpLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::SavepointOpKind>
 pub fn syntaqlite_parser::ast_traits::SavepointStmtView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::SavepointStmtView::op(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::SavepointOp
 pub fn syntaqlite_parser::ast_traits::SavepointStmtView::savepoint_name(&self) -> &'a str
-pub fn syntaqlite_parser::ast_traits::SelectKind<'a, A>::clone(&self) -> syntaqlite_parser::ast_traits::SelectKind<'a, A>
 pub fn syntaqlite_parser::ast_traits::SelectLike::kind(&self) -> syntaqlite_parser::ast_traits::SelectKind<'a, Self::Ast>
 pub fn syntaqlite_parser::ast_traits::SelectStmtFlagsLike::distinct(&self) -> bool
 pub fn syntaqlite_parser::ast_traits::SelectStmtView::columns(&self) -> core::option::Option<syntaqlite_parser::TypedList<'a, <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::ResultColumn>>
@@ -710,21 +386,14 @@ pub fn syntaqlite_parser::ast_traits::SetClauseView::column(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::SetClauseView::columns(&self) -> core::option::Option<syntaqlite_parser::TypedList<'a, <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Node>>
 pub fn syntaqlite_parser::ast_traits::SetClauseView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::SetClauseView::value(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
-pub fn syntaqlite_parser::ast_traits::SortOrderKind::clone(&self) -> syntaqlite_parser::ast_traits::SortOrderKind
-pub fn syntaqlite_parser::ast_traits::SortOrderKind::eq(&self, other: &syntaqlite_parser::ast_traits::SortOrderKind) -> bool
-pub fn syntaqlite_parser::ast_traits::SortOrderKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::SortOrderLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::SortOrderLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::SortOrderKind>
-pub fn syntaqlite_parser::ast_traits::StmtKind<'a, A>::clone(&self) -> syntaqlite_parser::ast_traits::StmtKind<'a, A>
 pub fn syntaqlite_parser::ast_traits::StmtLike::kind(&self) -> syntaqlite_parser::ast_traits::StmtKind<'a, Self::Ast>
 pub fn syntaqlite_parser::ast_traits::SubqueryExprView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::SubqueryExprView::select(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Select>
 pub fn syntaqlite_parser::ast_traits::SubqueryTableSourceView::alias(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::SubqueryTableSourceView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::SubqueryTableSourceView::select(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Select>
-pub fn syntaqlite_parser::ast_traits::TableConstraintKindKind::clone(&self) -> syntaqlite_parser::ast_traits::TableConstraintKindKind
-pub fn syntaqlite_parser::ast_traits::TableConstraintKindKind::eq(&self, other: &syntaqlite_parser::ast_traits::TableConstraintKindKind) -> bool
-pub fn syntaqlite_parser::ast_traits::TableConstraintKindKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::TableConstraintKindLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::TableConstraintKindLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::TableConstraintKindKind>
 pub fn syntaqlite_parser::ast_traits::TableConstraintView::check_expr(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
@@ -740,40 +409,24 @@ pub fn syntaqlite_parser::ast_traits::TableRefView::alias(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::TableRefView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::TableRefView::schema(&self) -> &'a str
 pub fn syntaqlite_parser::ast_traits::TableRefView::table_name(&self) -> &'a str
-pub fn syntaqlite_parser::ast_traits::TableSourceKind<'a, A>::clone(&self) -> syntaqlite_parser::ast_traits::TableSourceKind<'a, A>
 pub fn syntaqlite_parser::ast_traits::TableSourceLike::kind(&self) -> syntaqlite_parser::ast_traits::TableSourceKind<'a, Self::Ast>
-pub fn syntaqlite_parser::ast_traits::TransactionOpKind::clone(&self) -> syntaqlite_parser::ast_traits::TransactionOpKind
-pub fn syntaqlite_parser::ast_traits::TransactionOpKind::eq(&self, other: &syntaqlite_parser::ast_traits::TransactionOpKind) -> bool
-pub fn syntaqlite_parser::ast_traits::TransactionOpKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::TransactionOpLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::TransactionOpLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::TransactionOpKind>
 pub fn syntaqlite_parser::ast_traits::TransactionStmtView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::TransactionStmtView::op(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::TransactionOp
 pub fn syntaqlite_parser::ast_traits::TransactionStmtView::trans_type(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::TransactionType
-pub fn syntaqlite_parser::ast_traits::TransactionTypeKind::clone(&self) -> syntaqlite_parser::ast_traits::TransactionTypeKind
-pub fn syntaqlite_parser::ast_traits::TransactionTypeKind::eq(&self, other: &syntaqlite_parser::ast_traits::TransactionTypeKind) -> bool
-pub fn syntaqlite_parser::ast_traits::TransactionTypeKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::TransactionTypeLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::TransactionTypeLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::TransactionTypeKind>
-pub fn syntaqlite_parser::ast_traits::TriggerEventTypeKind::clone(&self) -> syntaqlite_parser::ast_traits::TriggerEventTypeKind
-pub fn syntaqlite_parser::ast_traits::TriggerEventTypeKind::eq(&self, other: &syntaqlite_parser::ast_traits::TriggerEventTypeKind) -> bool
-pub fn syntaqlite_parser::ast_traits::TriggerEventTypeKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::TriggerEventTypeLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::TriggerEventTypeLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::TriggerEventTypeKind>
 pub fn syntaqlite_parser::ast_traits::TriggerEventView::columns(&self) -> core::option::Option<syntaqlite_parser::TypedList<'a, <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Node>>
 pub fn syntaqlite_parser::ast_traits::TriggerEventView::event_type(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::TriggerEventType
 pub fn syntaqlite_parser::ast_traits::TriggerEventView::node_id(&self) -> syntaqlite_parser::NodeId
-pub fn syntaqlite_parser::ast_traits::TriggerTimingKind::clone(&self) -> syntaqlite_parser::ast_traits::TriggerTimingKind
-pub fn syntaqlite_parser::ast_traits::TriggerTimingKind::eq(&self, other: &syntaqlite_parser::ast_traits::TriggerTimingKind) -> bool
-pub fn syntaqlite_parser::ast_traits::TriggerTimingKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::TriggerTimingLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::TriggerTimingLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::TriggerTimingKind>
 pub fn syntaqlite_parser::ast_traits::UnaryExprView::node_id(&self) -> syntaqlite_parser::NodeId
 pub fn syntaqlite_parser::ast_traits::UnaryExprView::op(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::UnaryOp
 pub fn syntaqlite_parser::ast_traits::UnaryExprView::operand(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Expr>
-pub fn syntaqlite_parser::ast_traits::UnaryOpKind::clone(&self) -> syntaqlite_parser::ast_traits::UnaryOpKind
-pub fn syntaqlite_parser::ast_traits::UnaryOpKind::eq(&self, other: &syntaqlite_parser::ast_traits::UnaryOpKind) -> bool
-pub fn syntaqlite_parser::ast_traits::UnaryOpKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::ast_traits::UnaryOpLike::as_str(&self) -> &'static str
 pub fn syntaqlite_parser::ast_traits::UnaryOpLike::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::UnaryOpKind>
 pub fn syntaqlite_parser::ast_traits::UpdateStmtView::conflict_action(&self) -> <Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::ConflictAction
@@ -802,57 +455,29 @@ pub fn syntaqlite_parser::ast_traits::WithClauseView::recursive(&self) -> bool
 pub fn syntaqlite_parser::ast_traits::WithClauseView::select(&self) -> core::option::Option<<Self::Ast as syntaqlite_parser::ast_traits::AstTypes<'a>>::Select>
 pub fn syntaqlite_parser::available_functions(config: &syntaqlite_parser::DialectConfig) -> alloc::vec::Vec<&'static syntaqlite_parser::FunctionInfo<'static>>
 pub fn syntaqlite_parser::cflag_table() -> &'static [syntaqlite_parser::CflagInfo]
-pub fn syntaqlite_parser::CflagInfo::clone(&self) -> syntaqlite_parser::CflagInfo
-pub fn syntaqlite_parser::CflagInfo::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::Cflags::clear_all(&mut self)
 pub fn syntaqlite_parser::Cflags::clear(&mut self, idx: u32)
-pub fn syntaqlite_parser::Cflags::clone(&self) -> syntaqlite_parser::Cflags
 pub fn syntaqlite_parser::Cflags::default() -> Self
 pub fn syntaqlite_parser::Cflags::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::Cflags::has(&self, idx: u32) -> bool
 pub fn syntaqlite_parser::Cflags::set(&mut self, idx: u32)
-pub fn syntaqlite_parser::Comment::clone(&self) -> syntaqlite_parser::Comment
-pub fn syntaqlite_parser::Comment::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser::CommentKind::clone(&self) -> syntaqlite_parser::CommentKind
-pub fn syntaqlite_parser::CommentKind::eq(&self, other: &syntaqlite_parser::CommentKind) -> bool
-pub fn syntaqlite_parser::CommentKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser::Dialect<'d, N>::clone(&self) -> syntaqlite_parser::Dialect<'d, N>
 pub fn syntaqlite_parser::Dialect<'d, N>::from_raw_dialect(raw: syntaqlite_parser::RawDialect<'d>) -> Self
 pub fn syntaqlite_parser::Dialect<'d, N>::raw(&self) -> syntaqlite_parser::RawDialect<'d>
-pub fn syntaqlite_parser::DialectConfig::clone(&self) -> syntaqlite_parser::DialectConfig
 pub fn syntaqlite_parser::DialectConfig::default() -> Self
-pub fn syntaqlite_parser::DialectConfig::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::DialectNodeType::from_arena(reader: syntaqlite_parser::RawNodeReader<'a>, id: syntaqlite_parser::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser::DialectTokenType::from_token_type(raw: u32) -> core::option::Option<Self>
-pub fn syntaqlite_parser::ErrorNode::clone(&self) -> syntaqlite_parser::ErrorNode
-pub fn syntaqlite_parser::ErrorNode::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser::ErrorSpan::clone(&self) -> syntaqlite_parser::ErrorSpan
-pub fn syntaqlite_parser::ErrorSpan::eq(&self, other: &syntaqlite_parser::ErrorSpan) -> bool
-pub fn syntaqlite_parser::ErrorSpan::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::Fields<'a>::default() -> Self
 pub fn syntaqlite_parser::Fields<'a>::deref(&self) -> &[syntaqlite_parser::FieldVal<'a>]
 pub fn syntaqlite_parser::Fields<'a>::is_empty(&self) -> bool
 pub fn syntaqlite_parser::Fields<'a>::len(&self) -> usize
 pub fn syntaqlite_parser::Fields<'a>::new() -> Self
 pub fn syntaqlite_parser::Fields<'a>::push(&mut self, val: syntaqlite_parser::FieldVal<'a>)
-pub fn syntaqlite_parser::FieldVal<'a>::clone(&self) -> syntaqlite_parser::FieldVal<'a>
-pub fn syntaqlite_parser::FieldVal<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser::FunctionInfo<'a>::clone(&self) -> syntaqlite_parser::FunctionInfo<'a>
-pub fn syntaqlite_parser::FunctionInfo<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::is_function_available(entry: &syntaqlite_parser::catalog::FunctionEntry<'_>, config: &syntaqlite_parser::DialectConfig) -> bool
-pub fn syntaqlite_parser::MacroRegion::clone(&self) -> syntaqlite_parser::MacroRegion
-pub fn syntaqlite_parser::MacroRegion::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser::NodeId::clone(&self) -> syntaqlite_parser::NodeId
-pub fn syntaqlite_parser::NodeId::eq(&self, other: &syntaqlite_parser::NodeId) -> bool
-pub fn syntaqlite_parser::NodeId::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser::NodeId::hash<__H: core::hash::Hasher>(&self, state: &mut __H)
 pub fn syntaqlite_parser::NodeId::is_null(&self) -> bool
 pub fn syntaqlite_parser::NodeList::children(&self) -> &[syntaqlite_parser::NodeId]
-pub fn syntaqlite_parser::NodeList::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::NodeRef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::NodeRef<'a>::as_typed<T: syntaqlite_parser::DialectNodeType<'a>>(self) -> core::option::Option<T>
 pub fn syntaqlite_parser::NodeRef<'a>::children(&self) -> alloc::vec::Vec<syntaqlite_parser::NodeRef<'a>>
-pub fn syntaqlite_parser::NodeRef<'a>::clone(&self) -> syntaqlite_parser::NodeRef<'a>
 pub fn syntaqlite_parser::NodeRef<'a>::dialect(&self) -> syntaqlite_parser::RawDialect<'a>
 pub fn syntaqlite_parser::NodeRef<'a>::dump(&self, out: &mut alloc::string::String, indent: usize)
 pub fn syntaqlite_parser::NodeRef<'a>::extract_fields(&self) -> core::option::Option<(u32, syntaqlite_parser::Fields<'a>)>
@@ -867,14 +492,8 @@ pub fn syntaqlite_parser::NodeRef<'a>::source(&self) -> &'a str
 pub fn syntaqlite_parser::NodeRef<'a>::tag(&self) -> core::option::Option<u32>
 pub fn syntaqlite_parser::parse_cflag_name(s: &str) -> core::result::Result<u32, alloc::string::String>
 pub fn syntaqlite_parser::parse_sqlite_version(s: &str) -> core::result::Result<i32, alloc::string::String>
-pub fn syntaqlite_parser::ParseError::clone(&self) -> syntaqlite_parser::ParseError
 pub fn syntaqlite_parser::ParseError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser::ParseError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser::ParserConfig::clone(&self) -> syntaqlite_parser::ParserConfig
-pub fn syntaqlite_parser::ParserConfig::default() -> syntaqlite_parser::ParserConfig
-pub fn syntaqlite_parser::ParserConfig::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::RawDialect<'d>::classify_token_raw(&self, token_type: u32, flags: u32) -> u8
-pub fn syntaqlite_parser::RawDialect<'d>::clone(&self) -> syntaqlite_parser::RawDialect<'d>
 pub fn syntaqlite_parser::RawDialect<'d>::field_meta(&self, tag: u32) -> &'d [syntaqlite_parser::FieldMeta]
 pub fn syntaqlite_parser::RawDialect<'d>::fmt_dispatch(&self, tag: u32) -> core::option::Option<(&'d [u8], usize)>
 pub fn syntaqlite_parser::RawDialect<'d>::fmt_enum_display_val(&self, idx: usize) -> u16
@@ -911,7 +530,6 @@ pub fn syntaqlite_parser::RawIncrementalParser<'d>::feed<'a>(&'a mut self, sourc
 pub fn syntaqlite_parser::RawIncrementalParser<'d>::new(dialect: impl core::convert::Into<syntaqlite_parser::RawDialect<'d>>) -> Self
 pub fn syntaqlite_parser::RawIncrementalParser<'d>::with_config(dialect: impl core::convert::Into<syntaqlite_parser::RawDialect<'d>>, config: &syntaqlite_parser::ParserConfig) -> Self
 pub fn syntaqlite_parser::RawNodeReader<'a>::child_node_ids(&self, id: syntaqlite_parser::NodeId, dialect: &syntaqlite_parser::RawDialect<'_>) -> alloc::vec::Vec<syntaqlite_parser::NodeId>
-pub fn syntaqlite_parser::RawNodeReader<'a>::clone(&self) -> syntaqlite_parser::RawNodeReader<'a>
 pub fn syntaqlite_parser::RawNodeReader<'a>::dump_node(&self, id: syntaqlite_parser::NodeId, out: &mut alloc::string::String, indent: usize)
 pub fn syntaqlite_parser::RawNodeReader<'a>::extract_fields(&self, id: syntaqlite_parser::NodeId, dialect: &syntaqlite_parser::RawDialect<'_>) -> core::option::Option<(u32, syntaqlite_parser::Fields<'a>)>
 pub fn syntaqlite_parser::RawNodeReader<'a>::list_children(&self, id: syntaqlite_parser::NodeId, dialect: &syntaqlite_parser::RawDialect<'_>) -> core::option::Option<&'a [syntaqlite_parser::NodeId]>
@@ -937,29 +555,15 @@ pub fn syntaqlite_parser::RawStatementCursor<'a>::node_ref(&self, id: syntaqlite
 pub fn syntaqlite_parser::RawStatementCursor<'a>::reader(&self) -> syntaqlite_parser::RawNodeReader<'a>
 pub fn syntaqlite_parser::RawStatementCursor<'a>::source(&self) -> &'a str
 pub fn syntaqlite_parser::RawStatementCursor<'a>::tokens(&self) -> &[syntaqlite_parser::TokenPos]
-pub fn syntaqlite_parser::RawToken<'a>::clone(&self) -> syntaqlite_parser::RawToken<'a>
-pub fn syntaqlite_parser::RawToken<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::RawTokenCursor<'a>::next(&mut self) -> core::option::Option<Self::Item>
 pub fn syntaqlite_parser::RawTokenizer<'_>::drop(&mut self)
 pub fn syntaqlite_parser::RawTokenizer<'d>::new(dialect: impl core::convert::Into<syntaqlite_parser::RawDialect<'d>>) -> Self
 pub fn syntaqlite_parser::RawTokenizer<'d>::tokenize_cstr<'a>(&'a mut self, source: &'a core::ffi::c_str::CStr) -> syntaqlite_parser::RawTokenCursor<'a>
 pub fn syntaqlite_parser::RawTokenizer<'d>::tokenize<'a>(&'a mut self, source: &'a str) -> syntaqlite_parser::RawTokenCursor<'a>
 pub fn syntaqlite_parser::RawTokenizer<'d>::with_dialect_config(dialect: impl core::convert::Into<syntaqlite_parser::RawDialect<'d>>, config: syntaqlite_parser::DialectConfig) -> Self
-pub fn syntaqlite_parser::SchemaContribution::clone(&self) -> syntaqlite_parser::SchemaContribution
-pub fn syntaqlite_parser::SchemaContribution::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser::SchemaKind::clone(&self) -> syntaqlite_parser::SchemaKind
-pub fn syntaqlite_parser::SchemaKind::eq(&self, other: &syntaqlite_parser::SchemaKind) -> bool
-pub fn syntaqlite_parser::SchemaKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::SourceSpan::as_str<'a>(&self, source: &'a str) -> &'a str
-pub fn syntaqlite_parser::SourceSpan::clone(&self) -> syntaqlite_parser::SourceSpan
-pub fn syntaqlite_parser::SourceSpan::default() -> syntaqlite_parser::SourceSpan
-pub fn syntaqlite_parser::SourceSpan::eq(&self, other: &syntaqlite_parser::SourceSpan) -> bool
-pub fn syntaqlite_parser::SourceSpan::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::SourceSpan::is_empty(&self) -> bool
-pub fn syntaqlite_parser::TokenPos::clone(&self) -> syntaqlite_parser::TokenPos
-pub fn syntaqlite_parser::TokenPos::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::TypedList<'_, T>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser::TypedList<'a, T>::clone(&self) -> syntaqlite_parser::TypedList<'a, T>
 pub fn syntaqlite_parser::TypedList<'a, T>::from_arena(reader: syntaqlite_parser::RawNodeReader<'a>, id: syntaqlite_parser::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser::TypedList<'a, T>::from_arena(reader: syntaqlite_parser::RawNodeReader<'a>, id: syntaqlite_parser::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser::TypedList<'a, T>::get(&self, index: usize) -> core::option::Option<T>

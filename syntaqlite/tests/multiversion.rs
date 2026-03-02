@@ -38,7 +38,7 @@ const fn tk(t: TokenType) -> u32 {
 /// filtering out whitespace.
 fn tokenize_at_version(sql: &str, version: i32) -> Vec<(u32, String)> {
     let dialect = syntaqlite::dialect::sqlite();
-    let mut tok = syntaqlite::ext::RawTokenizer::with_dialect_config(
+    let mut tok = syntaqlite_parser::RawTokenizer::with_dialect_config(
         dialect,
         DialectConfig {
             sqlite_version: version,
@@ -59,7 +59,7 @@ fn tokenize_latest(sql: &str) -> Vec<(u32, String)> {
 /// Parse SQL with a specific SQLite version and return whether it succeeded.
 fn parses_ok_at_version(sql: &str, version: i32) -> bool {
     let dialect = syntaqlite::dialect::sqlite();
-    let mut parser = syntaqlite::ext::RawParser::with_config(
+    let mut parser = syntaqlite_parser::RawParser::with_config(
         dialect,
         &syntaqlite::ParserConfig {
             dialect_config: Some(DialectConfig {

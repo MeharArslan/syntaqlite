@@ -9,15 +9,13 @@ use std::slice;
 use serde::Serialize;
 
 use syntaqlite::Formatter;
-use syntaqlite::dialect::{Cflags, DialectConfig, RawDialect};
-use syntaqlite::dialect::{cflag_table, parse_cflag_name, parse_sqlite_version};
 use syntaqlite::embedded::{self, EmbeddedFragment};
-use syntaqlite::ext::FfiDialect;
-use syntaqlite::ext::NodeRefJsonExt;
-use syntaqlite::ext::RawParser;
-use syntaqlite::ParserConfig;
-use syntaqlite::fmt::FormatConfig;
 use syntaqlite::validation::ValidationConfig;
+use syntaqlite::{FormatConfig, NodeRefJsonExt, ParserConfig};
+use syntaqlite_parser::{
+    Cflags, DialectConfig, FfiDialect, RawDialect, RawParser, cflag_table, parse_cflag_name,
+    parse_sqlite_version,
+};
 
 thread_local! {
     static RESULT_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
@@ -135,7 +133,10 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
 
     let mut parser = RawParser::with_config(
         dialect,
-        &ParserConfig { dialect_config: Some(get_dialect_config()), ..ParserConfig::default() },
+        &ParserConfig {
+            dialect_config: Some(get_dialect_config()),
+            ..ParserConfig::default()
+        },
     );
     let mut cursor = parser.parse(&source);
 
@@ -164,7 +165,10 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
 
     let mut parser = RawParser::with_config(
         dialect,
-        &ParserConfig { dialect_config: Some(get_dialect_config()), ..ParserConfig::default() },
+        &ParserConfig {
+            dialect_config: Some(get_dialect_config()),
+            ..ParserConfig::default()
+        },
     );
     let mut cursor = parser.parse(&source);
     let mut out = String::new();

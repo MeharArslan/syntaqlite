@@ -79,6 +79,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "syntaqlite",
+ "syntaqlite-parser",
 ]
 
 [[package]]
@@ -809,6 +810,7 @@ dependencies = [
  "serde",
  "serde_json",
  "syntaqlite",
+ "syntaqlite-parser",
 ]
 
 [[package]]

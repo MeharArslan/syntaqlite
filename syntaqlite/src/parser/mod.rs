@@ -10,6 +10,6 @@
 //! internals directly.
 
 #[cfg(feature = "json")]
-pub mod node_ref_json;
+pub(crate) mod node_ref_json;
 
-pub mod typed;
+pub(crate) mod typed;

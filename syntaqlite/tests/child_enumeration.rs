@@ -3,7 +3,7 @@
 
 use syntaqlite::ast::{Node, NodeTag};
 use syntaqlite::dialect::sqlite as dialect;
-use syntaqlite::ext::{DialectNodeType, NodeId, RawParser, RawStatementCursor};
+use syntaqlite_parser::{DialectNodeType, NodeId, RawParser, RawStatementCursor};
 
 fn new_parser() -> RawParser<'static> {
     RawParser::new(dialect())

@@ -9,6 +9,7 @@
 //! module also exposes [`FormatConfig`] and [`KeywordCase`] for
 //! controlling output style.
 
+#[doc(hidden)]
 pub mod bytecode;
 mod comment;
 mod doc;

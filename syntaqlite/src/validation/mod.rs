@@ -11,15 +11,18 @@
 //! The entry point is [`Validator`], which owns a parser and validates SQL
 //! in a single call.
 
-// Public API starts here.
 pub use catalog::FunctionCatalog;
 pub use render::SourceContext;
 pub use types::Diagnostic;
 pub use types::DiagnosticMessage;
 pub use types::DocumentContext;
+pub use types::FunctionDef;
+pub use types::Help;
+pub use types::RelationDef;
+pub use types::RelationKind;
+pub use types::ColumnDef;
 pub use types::SessionContext;
 pub use types::Severity;
-// Public API ends here.
 
 pub(crate) mod types;
 
@@ -37,7 +40,6 @@ use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::RawParser;
 use syntaqlite_parser::ast_traits::AstTypes;
 use syntaqlite_parser::{ParseError, RawNodeReader};
-use types::FunctionDef;
 
 use scope::ScopeStack;
 use types::expand_function_info;

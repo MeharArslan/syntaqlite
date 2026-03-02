@@ -33,213 +33,68 @@
 #[repr(u32)] pub enum syntaqlite_parser_sqlite::ast::TriggerTiming
 #[repr(u32)] pub enum syntaqlite_parser_sqlite::ast::UnaryOp
 #[repr(u32)] pub enum syntaqlite_parser_sqlite::tokens::TokenType
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::AlterOp
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::AnalyzeKind
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::BinaryOp
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::ColumnConstraintKind
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::CompoundOp
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::ConflictAction
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::CreateTableStmtFlags
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::DropObjectType
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::ExplainMode
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::ForeignKeyAction
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::FrameBoundType
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::FrameExclude
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::FrameType
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::FunctionCallFlags
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::GeneratedColumnStorage
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::IsOp
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::JoinType
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::LiteralType
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::Materialized
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::NodeTag
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::NullsOrder
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::PragmaForm
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::RaiseType
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::ResultColumnFlags
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::SavepointOp
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::SelectStmtFlags
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::SortOrder
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::TableConstraintKind
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::TransactionOp
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::TransactionType
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::TriggerEventType
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::TriggerTiming
-impl core::clone::Clone for syntaqlite_parser_sqlite::ast::UnaryOp
-impl core::clone::Clone for syntaqlite_parser_sqlite::tokens::TokenType
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::AlterOp
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::AnalyzeKind
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::BinaryOp
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::ColumnConstraintKind
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::CompoundOp
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::ConflictAction
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::CreateTableStmtFlags
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::DropObjectType
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::ExplainMode
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::ForeignKeyAction
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::FrameBoundType
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::FrameExclude
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::FrameType
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::FunctionCallFlags
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::GeneratedColumnStorage
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::IsOp
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::JoinType
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::LiteralType
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::Materialized
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::NodeTag
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::NullsOrder
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::PragmaForm
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::RaiseType
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::ResultColumnFlags
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::SavepointOp
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::SelectStmtFlags
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::SortOrder
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::TableConstraintKind
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::TransactionOp
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::TransactionType
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::TriggerEventType
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::TriggerTiming
-impl core::cmp::Eq for syntaqlite_parser_sqlite::ast::UnaryOp
-impl core::cmp::Eq for syntaqlite_parser_sqlite::tokens::TokenType
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::AlterOp
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::AnalyzeKind
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::BinaryOp
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::ColumnConstraintKind
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::CompoundOp
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::ConflictAction
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::CreateTableStmtFlags
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::DropObjectType
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::ExplainMode
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::ForeignKeyAction
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::FrameBoundType
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::FrameExclude
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::FrameType
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::FunctionCallFlags
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::GeneratedColumnStorage
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::IsOp
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::JoinType
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::LiteralType
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::Materialized
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::NodeTag
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::NullsOrder
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::PragmaForm
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::RaiseType
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::ResultColumnFlags
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::SavepointOp
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::SelectStmtFlags
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::SortOrder
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::TableConstraintKind
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::TransactionOp
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::TransactionType
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::TriggerEventType
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::TriggerTiming
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::ast::UnaryOp
-impl core::cmp::PartialEq for syntaqlite_parser_sqlite::tokens::TokenType
 impl core::convert::From<syntaqlite_parser_sqlite::tokens::TokenType> for u32
-impl core::default::Default for syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
-impl core::default::Default for syntaqlite_parser_sqlite::ast::CreateTableStmtFlags
-impl core::default::Default for syntaqlite_parser_sqlite::ast::FunctionCallFlags
-impl core::default::Default for syntaqlite_parser_sqlite::ast::ResultColumnFlags
-impl core::default::Default for syntaqlite_parser_sqlite::ast::SelectStmtFlags
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::AlterOp
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::AlterTableStmt<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::AnalyzeKind
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::AnalyzeStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::AttachStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::BetweenExpr<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::BinaryExpr<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::BinaryOp
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CaseExpr<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CaseWhen<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CastExpr<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CollateExpr<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ColumnConstraint<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ColumnConstraintKind
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ColumnDef<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ColumnRef<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CompoundOp
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CompoundSelect<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ConflictAction
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CreateIndexStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CreateTableStmt<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CreateTableStmtFlags
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CreateViewStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::CteDefinition<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::DeleteStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::DetachStmt<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::DropObjectType
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::DropStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ExistsExpr<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ExplainMode
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ExplainStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::FilterOver<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ForeignKeyAction
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ForeignKeyClause<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::FrameBound<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::FrameBoundType
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::FrameExclude
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::FrameSpec<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::FrameType
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::FunctionCall<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::FunctionCallFlags
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::GeneratedColumnStorage
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::InExpr<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::InsertStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::IsExpr<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::IsOp
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::JoinClause<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::JoinPrefix<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::JoinType
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::LikeExpr<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::LimitClause<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::Literal<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::LiteralType
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::Materialized
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::NamedWindowDef<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::NodeTag
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::NullsOrder
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::OrderingTerm<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::PragmaForm
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::PragmaStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::QualifiedName<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::RaiseExpr<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::RaiseType
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ResultColumn<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ResultColumnFlags
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::SavepointOp
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::SavepointStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::SelectStmt<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::SelectStmtFlags
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::SetClause<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::SortOrder
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::SubqueryExpr<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::SubqueryTableSource<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::TableConstraint<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::TableConstraintKind
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::TableRef<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::TransactionOp
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::TransactionStmt<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::TransactionType
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::TriggerEvent<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::TriggerEventType
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::TriggerTiming
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::UnaryExpr<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::UnaryOp
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::UpdateStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::VacuumStmt<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::ValuesClause<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::Variable<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::WindowDef<'_>
 impl core::fmt::Debug for syntaqlite_parser_sqlite::ast::WithClause<'_>
-impl core::fmt::Debug for syntaqlite_parser_sqlite::tokens::TokenType
 impl core::fmt::Display for syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'_>
 impl core::fmt::Display for syntaqlite_parser_sqlite::ast::AlterTableStmt<'_>
 impl core::fmt::Display for syntaqlite_parser_sqlite::ast::AnalyzeStmt<'_>
@@ -301,77 +156,6 @@ impl core::fmt::Display for syntaqlite_parser_sqlite::ast::ValuesClause<'_>
 impl core::fmt::Display for syntaqlite_parser_sqlite::ast::Variable<'_>
 impl core::fmt::Display for syntaqlite_parser_sqlite::ast::WindowDef<'_>
 impl core::fmt::Display for syntaqlite_parser_sqlite::ast::WithClause<'_>
-impl core::hash::Hash for syntaqlite_parser_sqlite::tokens::TokenType
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::AlterOp
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::AnalyzeKind
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::BinaryOp
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::ColumnConstraintKind
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::CompoundOp
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::ConflictAction
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::CreateTableStmtFlags
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::DropObjectType
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::ExplainMode
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::ForeignKeyAction
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::FrameBoundType
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::FrameExclude
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::FrameType
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::FunctionCallFlags
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::GeneratedColumnStorage
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::IsOp
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::JoinType
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::LiteralType
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::Materialized
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::NodeTag
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::NullsOrder
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::PragmaForm
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::RaiseType
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::ResultColumnFlags
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::SavepointOp
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::SelectStmtFlags
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::SortOrder
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::TableConstraintKind
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::TransactionOp
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::TransactionType
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::TriggerEventType
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::TriggerTiming
-impl core::marker::Copy for syntaqlite_parser_sqlite::ast::UnaryOp
-impl core::marker::Copy for syntaqlite_parser_sqlite::tokens::TokenType
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::AlterOp
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::AnalyzeKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::BinaryOp
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::ColumnConstraintKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::CompoundOp
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::ConflictAction
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::CreateTableStmtFlags
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::DropObjectType
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::ExplainMode
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::ForeignKeyAction
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::FrameBoundType
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::FrameExclude
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::FrameType
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::FunctionCallFlags
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::GeneratedColumnStorage
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::IsOp
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::JoinType
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::LiteralType
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::Materialized
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::NodeTag
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::NullsOrder
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::PragmaForm
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::RaiseType
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::ResultColumnFlags
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::SavepointOp
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::SelectStmtFlags
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::SortOrder
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::TableConstraintKind
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::TransactionOp
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::TransactionType
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::TriggerEventType
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::TriggerTiming
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::ast::UnaryOp
-impl core::marker::StructuralPartialEq for syntaqlite_parser_sqlite::tokens::TokenType
 impl syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
 impl syntaqlite_parser_sqlite::ast::AlterOp
 impl syntaqlite_parser_sqlite::ast::AnalyzeKind
@@ -441,146 +225,6 @@ impl syntaqlite_parser::ast_traits::TriggerTimingLike for syntaqlite_parser_sqli
 impl syntaqlite_parser::ast_traits::UnaryOpLike for syntaqlite_parser_sqlite::ast::UnaryOp
 impl syntaqlite_parser::dialect_traits::DialectTokenType for syntaqlite_parser_sqlite::tokens::TokenType
 impl syntaqlite_parser::dialect_traits::NodeFamily for syntaqlite_parser_sqlite::SqliteNodeFamily
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::AlterTableStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::AnalyzeStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::AttachStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::BetweenExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::BinaryExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::CaseExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::CaseWhen<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::CastExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::CollateExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::ColumnConstraint<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::ColumnDef<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::ColumnRef<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::CompoundSelect<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::CreateIndexStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::CreateViewStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::CteDefinition<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::DeleteStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::DetachStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::DropStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::ExistsExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::ExplainStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::Expr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::FilterOver<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::ForeignKeyClause<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::FrameBound<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::FrameSpec<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::FunctionCall<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::InExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::InExprSource<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::InsertStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::IsExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::JoinClause<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::JoinPrefix<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::LikeExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::LimitClause<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::Literal<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::NamedWindowDef<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::Node<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::OrderingTerm<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::PragmaStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::QualifiedName<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::RaiseExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::ResultColumn<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::SavepointStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::Select<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::SelectStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::SetClause<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::Stmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::SubqueryExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::SubqueryTableSource<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::TableConstraint<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::TableRef<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::TableSource<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::TransactionStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::TriggerEvent<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::UnaryExpr<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::UpdateStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::VacuumStmt<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::ValuesClause<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::Variable<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::WindowDef<'a>
-impl<'a> core::clone::Clone for syntaqlite_parser_sqlite::ast::WithClause<'a>
-impl<'a> core::fmt::Debug for syntaqlite_parser_sqlite::ast::Expr<'a>
-impl<'a> core::fmt::Debug for syntaqlite_parser_sqlite::ast::InExprSource<'a>
-impl<'a> core::fmt::Debug for syntaqlite_parser_sqlite::ast::Node<'a>
-impl<'a> core::fmt::Debug for syntaqlite_parser_sqlite::ast::Select<'a>
-impl<'a> core::fmt::Debug for syntaqlite_parser_sqlite::ast::Stmt<'a>
-impl<'a> core::fmt::Debug for syntaqlite_parser_sqlite::ast::TableSource<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::AlterTableStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::AnalyzeStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::AttachStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::BetweenExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::BinaryExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::CaseExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::CaseWhen<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::CastExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::CollateExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::ColumnConstraint<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::ColumnDef<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::ColumnRef<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::CompoundSelect<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::CreateIndexStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::CreateViewStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::CteDefinition<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::DeleteStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::DetachStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::DropStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::ExistsExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::ExplainStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::Expr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::FilterOver<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::ForeignKeyClause<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::FrameBound<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::FrameSpec<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::FunctionCall<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::InExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::InExprSource<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::InsertStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::IsExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::JoinClause<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::JoinPrefix<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::LikeExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::LimitClause<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::Literal<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::NamedWindowDef<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::Node<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::OrderingTerm<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::PragmaStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::QualifiedName<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::RaiseExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::ResultColumn<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::SavepointStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::Select<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::SelectStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::SetClause<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::Stmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::SubqueryExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::SubqueryTableSource<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::TableConstraint<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::TableRef<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::TableSource<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::TransactionStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::TriggerEvent<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::UnaryExpr<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::UpdateStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::VacuumStmt<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::ValuesClause<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::Variable<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::WindowDef<'a>
-impl<'a> core::marker::Copy for syntaqlite_parser_sqlite::ast::WithClause<'a>
 impl<'a> syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>
 impl<'a> syntaqlite_parser_sqlite::ast::AlterTableStmt<'a>
 impl<'a> syntaqlite_parser_sqlite::ast::AnalyzeStmt<'a>
@@ -789,7 +433,6 @@ pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'_>::fmt(&self, f: &
 pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>::args(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>::args(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
-pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>
 pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>::filter_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>::filter_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>::flags(&self) -> syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
@@ -803,21 +446,13 @@ pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>::orderby(&self) 
 pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>::orderby(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::OrderByList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>::over_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::WindowDef<'a>>
 pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCall<'a>::over_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::WindowDef<'a>>
-pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags::clone(&self) -> syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
-pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags::default() -> syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
 pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags::distinct(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags::distinct(&self) -> bool
-pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags::eq(&self, other: &syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags) -> bool
-pub fn syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::AlterOp::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::AlterOp::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::AlterOp::clone(&self) -> syntaqlite_parser_sqlite::ast::AlterOp
-pub fn syntaqlite_parser_sqlite::ast::AlterOp::eq(&self, other: &syntaqlite_parser_sqlite::ast::AlterOp) -> bool
-pub fn syntaqlite_parser_sqlite::ast::AlterOp::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::AlterOp::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::AlterOpKind>
 pub fn syntaqlite_parser_sqlite::ast::AlterTableStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::AlterTableStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::AlterTableStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::AlterTableStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::AlterTableStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::AlterTableStmt<'a>::new_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::AlterTableStmt<'a>::new_name(&self) -> &'a str
@@ -831,13 +466,9 @@ pub fn syntaqlite_parser_sqlite::ast::AlterTableStmt<'a>::target(&self) -> core:
 pub fn syntaqlite_parser_sqlite::ast::AlterTableStmt<'a>::target(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::QualifiedName<'a>>
 pub fn syntaqlite_parser_sqlite::ast::AnalyzeKind::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::AnalyzeKind::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::AnalyzeKind::clone(&self) -> syntaqlite_parser_sqlite::ast::AnalyzeKind
-pub fn syntaqlite_parser_sqlite::ast::AnalyzeKind::eq(&self, other: &syntaqlite_parser_sqlite::ast::AnalyzeKind) -> bool
-pub fn syntaqlite_parser_sqlite::ast::AnalyzeKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::AnalyzeKind::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::AnalyzeKindKind>
 pub fn syntaqlite_parser_sqlite::ast::AnalyzeStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::AnalyzeStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::AnalyzeStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::AnalyzeStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::AnalyzeStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::AnalyzeStmt<'a>::kind(&self) -> syntaqlite_parser_sqlite::ast::AnalyzeKind
 pub fn syntaqlite_parser_sqlite::ast::AnalyzeStmt<'a>::kind(&self) -> syntaqlite_parser_sqlite::ast::AnalyzeKind
@@ -849,7 +480,6 @@ pub fn syntaqlite_parser_sqlite::ast::AnalyzeStmt<'a>::target_name(&self) -> &'a
 pub fn syntaqlite_parser_sqlite::ast::AnalyzeStmt<'a>::target_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::AttachStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::AttachStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::AttachStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::AttachStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::AttachStmt<'a>::db_name(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::AttachStmt<'a>::db_name(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::AttachStmt<'a>::filename(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
@@ -861,7 +491,6 @@ pub fn syntaqlite_parser_sqlite::ast::AttachStmt<'a>::node_id(&self) -> syntaqli
 pub fn syntaqlite_parser_sqlite::ast::AttachStmt<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::BetweenExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::BetweenExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::BetweenExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::BetweenExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::BetweenExpr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::BetweenExpr<'a>::high(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::BetweenExpr<'a>::high(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
@@ -875,7 +504,6 @@ pub fn syntaqlite_parser_sqlite::ast::BetweenExpr<'a>::operand(&self) -> core::o
 pub fn syntaqlite_parser_sqlite::ast::BetweenExpr<'a>::operand(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::BinaryExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::BinaryExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::BinaryExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::BinaryExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::BinaryExpr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::BinaryExpr<'a>::left(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::BinaryExpr<'a>::left(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
@@ -887,13 +515,9 @@ pub fn syntaqlite_parser_sqlite::ast::BinaryExpr<'a>::right(&self) -> core::opti
 pub fn syntaqlite_parser_sqlite::ast::BinaryExpr<'a>::right(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::BinaryOp::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::BinaryOp::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::BinaryOp::clone(&self) -> syntaqlite_parser_sqlite::ast::BinaryOp
-pub fn syntaqlite_parser_sqlite::ast::BinaryOp::eq(&self, other: &syntaqlite_parser_sqlite::ast::BinaryOp) -> bool
-pub fn syntaqlite_parser_sqlite::ast::BinaryOp::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::BinaryOp::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::BinaryOpKind>
 pub fn syntaqlite_parser_sqlite::ast::CaseExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CaseExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::CaseExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::CaseExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::CaseExpr<'a>::else_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CaseExpr<'a>::else_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CaseExpr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -905,7 +529,6 @@ pub fn syntaqlite_parser_sqlite::ast::CaseExpr<'a>::whens(&self) -> core::option
 pub fn syntaqlite_parser_sqlite::ast::CaseExpr<'a>::whens(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::CaseWhenList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CaseWhen<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CaseWhen<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::CaseWhen<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::CaseWhen<'a>
 pub fn syntaqlite_parser_sqlite::ast::CaseWhen<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::CaseWhen<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::CaseWhen<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -915,7 +538,6 @@ pub fn syntaqlite_parser_sqlite::ast::CaseWhen<'a>::when_expr(&self) -> core::op
 pub fn syntaqlite_parser_sqlite::ast::CaseWhen<'a>::when_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CastExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CastExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::CastExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::CastExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::CastExpr<'a>::expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CastExpr<'a>::expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CastExpr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -925,7 +547,6 @@ pub fn syntaqlite_parser_sqlite::ast::CastExpr<'a>::type_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::CastExpr<'a>::type_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::CollateExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CollateExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::CollateExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::CollateExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::CollateExpr<'a>::collation(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::CollateExpr<'a>::collation(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::CollateExpr<'a>::expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
@@ -937,7 +558,6 @@ pub fn syntaqlite_parser_sqlite::ast::ColumnConstraint<'_>::fmt(&self, f: &mut c
 pub fn syntaqlite_parser_sqlite::ast::ColumnConstraint<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ColumnConstraint<'a>::check_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::ColumnConstraint<'a>::check_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
-pub fn syntaqlite_parser_sqlite::ast::ColumnConstraint<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::ColumnConstraint<'a>
 pub fn syntaqlite_parser_sqlite::ast::ColumnConstraint<'a>::collation_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ColumnConstraint<'a>::collation_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ColumnConstraint<'a>::constraint_name(&self) -> &'a str
@@ -963,13 +583,9 @@ pub fn syntaqlite_parser_sqlite::ast::ColumnConstraint<'a>::sort_order(&self) ->
 pub fn syntaqlite_parser_sqlite::ast::ColumnConstraint<'a>::sort_order(&self) -> syntaqlite_parser_sqlite::ast::SortOrder
 pub fn syntaqlite_parser_sqlite::ast::ColumnConstraintKind::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::ColumnConstraintKind::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::ColumnConstraintKind::clone(&self) -> syntaqlite_parser_sqlite::ast::ColumnConstraintKind
-pub fn syntaqlite_parser_sqlite::ast::ColumnConstraintKind::eq(&self, other: &syntaqlite_parser_sqlite::ast::ColumnConstraintKind) -> bool
-pub fn syntaqlite_parser_sqlite::ast::ColumnConstraintKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ColumnConstraintKind::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::ColumnConstraintKindKind>
 pub fn syntaqlite_parser_sqlite::ast::ColumnDef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ColumnDef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::ColumnDef<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::ColumnDef<'a>
 pub fn syntaqlite_parser_sqlite::ast::ColumnDef<'a>::column_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ColumnDef<'a>::column_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ColumnDef<'a>::constraints(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ColumnConstraintList<'a>>
@@ -981,7 +597,6 @@ pub fn syntaqlite_parser_sqlite::ast::ColumnDef<'a>::type_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ColumnDef<'a>::type_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ColumnRef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ColumnRef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::ColumnRef<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::ColumnRef<'a>
 pub fn syntaqlite_parser_sqlite::ast::ColumnRef<'a>::column(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ColumnRef<'a>::column(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ColumnRef<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -993,13 +608,9 @@ pub fn syntaqlite_parser_sqlite::ast::ColumnRef<'a>::table(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ColumnRef<'a>::table(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::CompoundOp::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::CompoundOp::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::CompoundOp::clone(&self) -> syntaqlite_parser_sqlite::ast::CompoundOp
-pub fn syntaqlite_parser_sqlite::ast::CompoundOp::eq(&self, other: &syntaqlite_parser_sqlite::ast::CompoundOp) -> bool
-pub fn syntaqlite_parser_sqlite::ast::CompoundOp::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CompoundOp::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::CompoundOpKind>
 pub fn syntaqlite_parser_sqlite::ast::CompoundSelect<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CompoundSelect<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::CompoundSelect<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::CompoundSelect<'a>
 pub fn syntaqlite_parser_sqlite::ast::CompoundSelect<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::CompoundSelect<'a>::left(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Select<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CompoundSelect<'a>::left(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Select<'a>>
@@ -1011,13 +622,9 @@ pub fn syntaqlite_parser_sqlite::ast::CompoundSelect<'a>::right(&self) -> core::
 pub fn syntaqlite_parser_sqlite::ast::CompoundSelect<'a>::right(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Select<'a>>
 pub fn syntaqlite_parser_sqlite::ast::ConflictAction::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::ConflictAction::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::ConflictAction::clone(&self) -> syntaqlite_parser_sqlite::ast::ConflictAction
-pub fn syntaqlite_parser_sqlite::ast::ConflictAction::eq(&self, other: &syntaqlite_parser_sqlite::ast::ConflictAction) -> bool
-pub fn syntaqlite_parser_sqlite::ast::ConflictAction::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ConflictAction::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::ConflictActionKind>
 pub fn syntaqlite_parser_sqlite::ast::CreateIndexStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CreateIndexStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::CreateIndexStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::CreateIndexStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::CreateIndexStmt<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::OrderByList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateIndexStmt<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::OrderByList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateIndexStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1039,7 +646,6 @@ pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'_>::fmt(&self, f: &mut co
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>::as_select(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Select<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>::as_select(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Select<'a>>
-pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ColumnDefList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ColumnDefList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>::flags(&self) -> syntaqlite_parser_sqlite::ast::CreateTableStmtFlags
@@ -1057,10 +663,6 @@ pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>::table_constraints(&se
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>::table_constraints(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::TableConstraintList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>::table_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmt<'a>::table_name(&self) -> &'a str
-pub fn syntaqlite_parser_sqlite::ast::CreateTableStmtFlags::clone(&self) -> syntaqlite_parser_sqlite::ast::CreateTableStmtFlags
-pub fn syntaqlite_parser_sqlite::ast::CreateTableStmtFlags::default() -> syntaqlite_parser_sqlite::ast::CreateTableStmtFlags
-pub fn syntaqlite_parser_sqlite::ast::CreateTableStmtFlags::eq(&self, other: &syntaqlite_parser_sqlite::ast::CreateTableStmtFlags) -> bool
-pub fn syntaqlite_parser_sqlite::ast::CreateTableStmtFlags::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmtFlags::strict(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmtFlags::strict(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::CreateTableStmtFlags::without_rowid(&self) -> bool
@@ -1069,7 +671,6 @@ pub fn syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'_>::fmt(&self, f: &mut 
 pub fn syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'a>::body(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::TriggerCmdList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'a>::body(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::TriggerCmdList<'a>>
-pub fn syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'a>::event(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::TriggerEvent<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'a>::event(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::TriggerEvent<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1091,7 +692,6 @@ pub fn syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'a>::when_expr(&self) ->
 pub fn syntaqlite_parser_sqlite::ast::CreateTriggerStmt<'a>::when_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateViewStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CreateViewStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::CreateViewStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::CreateViewStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::CreateViewStmt<'a>::column_names(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateViewStmt<'a>::column_names(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CreateViewStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1109,7 +709,6 @@ pub fn syntaqlite_parser_sqlite::ast::CreateViewStmt<'a>::view_name(&self) -> &'
 pub fn syntaqlite_parser_sqlite::ast::CreateViewStmt<'a>::view_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'a>::if_not_exists(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'a>::if_not_exists(&self) -> bool
@@ -1125,7 +724,6 @@ pub fn syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'a>::table_name(&se
 pub fn syntaqlite_parser_sqlite::ast::CreateVirtualTableStmt<'a>::table_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::CteDefinition<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::CteDefinition<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::CteDefinition<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::CteDefinition<'a>
 pub fn syntaqlite_parser_sqlite::ast::CteDefinition<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CteDefinition<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::CteDefinition<'a>::cte_name(&self) -> &'a str
@@ -1139,7 +737,6 @@ pub fn syntaqlite_parser_sqlite::ast::CteDefinition<'a>::select(&self) -> core::
 pub fn syntaqlite_parser_sqlite::ast::CteDefinition<'a>::select(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Select<'a>>
 pub fn syntaqlite_parser_sqlite::ast::DeleteStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::DeleteStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::DeleteStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::DeleteStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::DeleteStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::DeleteStmt<'a>::limit_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::LimitClause<'a>>
 pub fn syntaqlite_parser_sqlite::ast::DeleteStmt<'a>::limit_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::LimitClause<'a>>
@@ -1153,7 +750,6 @@ pub fn syntaqlite_parser_sqlite::ast::DeleteStmt<'a>::where_clause(&self) -> cor
 pub fn syntaqlite_parser_sqlite::ast::DeleteStmt<'a>::where_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::DetachStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::DetachStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::DetachStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::DetachStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::DetachStmt<'a>::db_name(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::DetachStmt<'a>::db_name(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::DetachStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1161,13 +757,9 @@ pub fn syntaqlite_parser_sqlite::ast::DetachStmt<'a>::node_id(&self) -> syntaqli
 pub fn syntaqlite_parser_sqlite::ast::DetachStmt<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::DropObjectType::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::DropObjectType::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::DropObjectType::clone(&self) -> syntaqlite_parser_sqlite::ast::DropObjectType
-pub fn syntaqlite_parser_sqlite::ast::DropObjectType::eq(&self, other: &syntaqlite_parser_sqlite::ast::DropObjectType) -> bool
-pub fn syntaqlite_parser_sqlite::ast::DropObjectType::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::DropObjectType::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::DropObjectTypeKind>
 pub fn syntaqlite_parser_sqlite::ast::DropStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::DropStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::DropStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::DropStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::DropStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::DropStmt<'a>::if_exists(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::DropStmt<'a>::if_exists(&self) -> bool
@@ -1179,7 +771,6 @@ pub fn syntaqlite_parser_sqlite::ast::DropStmt<'a>::target(&self) -> core::optio
 pub fn syntaqlite_parser_sqlite::ast::DropStmt<'a>::target(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::QualifiedName<'a>>
 pub fn syntaqlite_parser_sqlite::ast::ExistsExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ExistsExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::ExistsExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::ExistsExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::ExistsExpr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::ExistsExpr<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::ExistsExpr<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1187,13 +778,9 @@ pub fn syntaqlite_parser_sqlite::ast::ExistsExpr<'a>::select(&self) -> core::opt
 pub fn syntaqlite_parser_sqlite::ast::ExistsExpr<'a>::select(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Select<'a>>
 pub fn syntaqlite_parser_sqlite::ast::ExplainMode::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::ExplainMode::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::ExplainMode::clone(&self) -> syntaqlite_parser_sqlite::ast::ExplainMode
-pub fn syntaqlite_parser_sqlite::ast::ExplainMode::eq(&self, other: &syntaqlite_parser_sqlite::ast::ExplainMode) -> bool
-pub fn syntaqlite_parser_sqlite::ast::ExplainMode::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ExplainMode::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::ExplainModeKind>
 pub fn syntaqlite_parser_sqlite::ast::ExplainStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ExplainStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::ExplainStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::ExplainStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::ExplainStmt<'a>::explain_mode(&self) -> syntaqlite_parser_sqlite::ast::ExplainMode
 pub fn syntaqlite_parser_sqlite::ast::ExplainStmt<'a>::explain_mode(&self) -> syntaqlite_parser_sqlite::ast::ExplainMode
 pub fn syntaqlite_parser_sqlite::ast::ExplainStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1201,13 +788,10 @@ pub fn syntaqlite_parser_sqlite::ast::ExplainStmt<'a>::node_id(&self) -> syntaql
 pub fn syntaqlite_parser_sqlite::ast::ExplainStmt<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::ExplainStmt<'a>::stmt(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Stmt<'a>>
 pub fn syntaqlite_parser_sqlite::ast::ExplainStmt<'a>::stmt(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Stmt<'a>>
-pub fn syntaqlite_parser_sqlite::ast::Expr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::Expr<'a>
-pub fn syntaqlite_parser_sqlite::ast::Expr<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::Expr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::Expr<'a>::kind(&self) -> syntaqlite_parser::ast_traits::ExprKind<'a, syntaqlite_parser_sqlite::ast::SqliteAst>
 pub fn syntaqlite_parser_sqlite::ast::FilterOver<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::FilterOver<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::FilterOver<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::FilterOver<'a>
 pub fn syntaqlite_parser_sqlite::ast::FilterOver<'a>::filter_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::FilterOver<'a>::filter_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::FilterOver<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1219,13 +803,9 @@ pub fn syntaqlite_parser_sqlite::ast::FilterOver<'a>::over_name(&self) -> &'a st
 pub fn syntaqlite_parser_sqlite::ast::FilterOver<'a>::over_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ForeignKeyAction::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::ForeignKeyAction::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::ForeignKeyAction::clone(&self) -> syntaqlite_parser_sqlite::ast::ForeignKeyAction
-pub fn syntaqlite_parser_sqlite::ast::ForeignKeyAction::eq(&self, other: &syntaqlite_parser_sqlite::ast::ForeignKeyAction) -> bool
-pub fn syntaqlite_parser_sqlite::ast::ForeignKeyAction::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ForeignKeyAction::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::ForeignKeyActionKind>
 pub fn syntaqlite_parser_sqlite::ast::ForeignKeyClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ForeignKeyClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::ForeignKeyClause<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::ForeignKeyClause<'a>
 pub fn syntaqlite_parser_sqlite::ast::ForeignKeyClause<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::ForeignKeyClause<'a>::is_deferred(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::ForeignKeyClause<'a>::is_deferred(&self) -> bool
@@ -1243,7 +823,6 @@ pub fn syntaqlite_parser_sqlite::ast::FrameBound<'_>::fmt(&self, f: &mut core::f
 pub fn syntaqlite_parser_sqlite::ast::FrameBound<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::FrameBound<'a>::bound_type(&self) -> syntaqlite_parser_sqlite::ast::FrameBoundType
 pub fn syntaqlite_parser_sqlite::ast::FrameBound<'a>::bound_type(&self) -> syntaqlite_parser_sqlite::ast::FrameBoundType
-pub fn syntaqlite_parser_sqlite::ast::FrameBound<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::FrameBound<'a>
 pub fn syntaqlite_parser_sqlite::ast::FrameBound<'a>::expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::FrameBound<'a>::expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::FrameBound<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1251,19 +830,12 @@ pub fn syntaqlite_parser_sqlite::ast::FrameBound<'a>::node_id(&self) -> syntaqli
 pub fn syntaqlite_parser_sqlite::ast::FrameBound<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::FrameBoundType::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::FrameBoundType::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::FrameBoundType::clone(&self) -> syntaqlite_parser_sqlite::ast::FrameBoundType
-pub fn syntaqlite_parser_sqlite::ast::FrameBoundType::eq(&self, other: &syntaqlite_parser_sqlite::ast::FrameBoundType) -> bool
-pub fn syntaqlite_parser_sqlite::ast::FrameBoundType::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::FrameBoundType::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::FrameBoundTypeKind>
 pub fn syntaqlite_parser_sqlite::ast::FrameExclude::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::FrameExclude::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::FrameExclude::clone(&self) -> syntaqlite_parser_sqlite::ast::FrameExclude
-pub fn syntaqlite_parser_sqlite::ast::FrameExclude::eq(&self, other: &syntaqlite_parser_sqlite::ast::FrameExclude) -> bool
-pub fn syntaqlite_parser_sqlite::ast::FrameExclude::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::FrameExclude::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::FrameExcludeKind>
 pub fn syntaqlite_parser_sqlite::ast::FrameSpec<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::FrameSpec<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::FrameSpec<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::FrameSpec<'a>
 pub fn syntaqlite_parser_sqlite::ast::FrameSpec<'a>::end_bound(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::FrameBound<'a>>
 pub fn syntaqlite_parser_sqlite::ast::FrameSpec<'a>::end_bound(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::FrameBound<'a>>
 pub fn syntaqlite_parser_sqlite::ast::FrameSpec<'a>::exclude(&self) -> syntaqlite_parser_sqlite::ast::FrameExclude
@@ -1277,15 +849,11 @@ pub fn syntaqlite_parser_sqlite::ast::FrameSpec<'a>::start_bound(&self) -> core:
 pub fn syntaqlite_parser_sqlite::ast::FrameSpec<'a>::start_bound(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::FrameBound<'a>>
 pub fn syntaqlite_parser_sqlite::ast::FrameType::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::FrameType::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::FrameType::clone(&self) -> syntaqlite_parser_sqlite::ast::FrameType
-pub fn syntaqlite_parser_sqlite::ast::FrameType::eq(&self, other: &syntaqlite_parser_sqlite::ast::FrameType) -> bool
-pub fn syntaqlite_parser_sqlite::ast::FrameType::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::FrameType::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::FrameTypeKind>
 pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'a>::args(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'a>::args(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
-pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::FunctionCall<'a>
 pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'a>::filter_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'a>::filter_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'a>::flags(&self) -> syntaqlite_parser_sqlite::ast::FunctionCallFlags
@@ -1297,23 +865,15 @@ pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'a>::node_id(&self) -> syntaq
 pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'a>::over_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::WindowDef<'a>>
 pub fn syntaqlite_parser_sqlite::ast::FunctionCall<'a>::over_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::WindowDef<'a>>
-pub fn syntaqlite_parser_sqlite::ast::FunctionCallFlags::clone(&self) -> syntaqlite_parser_sqlite::ast::FunctionCallFlags
-pub fn syntaqlite_parser_sqlite::ast::FunctionCallFlags::default() -> syntaqlite_parser_sqlite::ast::FunctionCallFlags
 pub fn syntaqlite_parser_sqlite::ast::FunctionCallFlags::distinct(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::FunctionCallFlags::distinct(&self) -> bool
-pub fn syntaqlite_parser_sqlite::ast::FunctionCallFlags::eq(&self, other: &syntaqlite_parser_sqlite::ast::FunctionCallFlags) -> bool
-pub fn syntaqlite_parser_sqlite::ast::FunctionCallFlags::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::FunctionCallFlags::star(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::FunctionCallFlags::star(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::GeneratedColumnStorage::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::GeneratedColumnStorage::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::GeneratedColumnStorage::clone(&self) -> syntaqlite_parser_sqlite::ast::GeneratedColumnStorage
-pub fn syntaqlite_parser_sqlite::ast::GeneratedColumnStorage::eq(&self, other: &syntaqlite_parser_sqlite::ast::GeneratedColumnStorage) -> bool
-pub fn syntaqlite_parser_sqlite::ast::GeneratedColumnStorage::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::GeneratedColumnStorage::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::GeneratedColumnStorageKind>
 pub fn syntaqlite_parser_sqlite::ast::InExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::InExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::InExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::InExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::InExpr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::InExpr<'a>::negated(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::InExpr<'a>::negated(&self) -> bool
@@ -1323,13 +883,10 @@ pub fn syntaqlite_parser_sqlite::ast::InExpr<'a>::operand(&self) -> core::option
 pub fn syntaqlite_parser_sqlite::ast::InExpr<'a>::operand(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::InExpr<'a>::source(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::InExprSource<'a>>
 pub fn syntaqlite_parser_sqlite::ast::InExpr<'a>::source(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::InExprSource<'a>>
-pub fn syntaqlite_parser_sqlite::ast::InExprSource<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::InExprSource<'a>
-pub fn syntaqlite_parser_sqlite::ast::InExprSource<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::InExprSource<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::InExprSource<'a>::kind(&self) -> syntaqlite_parser::ast_traits::InExprSourceKind<'a, syntaqlite_parser_sqlite::ast::SqliteAst>
 pub fn syntaqlite_parser_sqlite::ast::InsertStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::InsertStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::InsertStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::InsertStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::InsertStmt<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::InsertStmt<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::InsertStmt<'a>::conflict_action(&self) -> syntaqlite_parser_sqlite::ast::ConflictAction
@@ -1343,7 +900,6 @@ pub fn syntaqlite_parser_sqlite::ast::InsertStmt<'a>::table(&self) -> core::opti
 pub fn syntaqlite_parser_sqlite::ast::InsertStmt<'a>::table(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::TableRef<'a>>
 pub fn syntaqlite_parser_sqlite::ast::IsExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::IsExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::IsExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::IsExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::IsExpr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::IsExpr<'a>::left(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::IsExpr<'a>::left(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
@@ -1355,13 +911,9 @@ pub fn syntaqlite_parser_sqlite::ast::IsExpr<'a>::right(&self) -> core::option::
 pub fn syntaqlite_parser_sqlite::ast::IsExpr<'a>::right(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::IsOp::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::IsOp::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::IsOp::clone(&self) -> syntaqlite_parser_sqlite::ast::IsOp
-pub fn syntaqlite_parser_sqlite::ast::IsOp::eq(&self, other: &syntaqlite_parser_sqlite::ast::IsOp) -> bool
-pub fn syntaqlite_parser_sqlite::ast::IsOp::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::IsOp::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::IsOpKind>
 pub fn syntaqlite_parser_sqlite::ast::JoinClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::JoinClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::JoinClause<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::JoinClause<'a>
 pub fn syntaqlite_parser_sqlite::ast::JoinClause<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::JoinClause<'a>::join_type(&self) -> syntaqlite_parser_sqlite::ast::JoinType
 pub fn syntaqlite_parser_sqlite::ast::JoinClause<'a>::join_type(&self) -> syntaqlite_parser_sqlite::ast::JoinType
@@ -1377,7 +929,6 @@ pub fn syntaqlite_parser_sqlite::ast::JoinClause<'a>::using_columns(&self) -> co
 pub fn syntaqlite_parser_sqlite::ast::JoinClause<'a>::using_columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::JoinPrefix<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::JoinPrefix<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::JoinPrefix<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::JoinPrefix<'a>
 pub fn syntaqlite_parser_sqlite::ast::JoinPrefix<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::JoinPrefix<'a>::join_type(&self) -> syntaqlite_parser_sqlite::ast::JoinType
 pub fn syntaqlite_parser_sqlite::ast::JoinPrefix<'a>::join_type(&self) -> syntaqlite_parser_sqlite::ast::JoinType
@@ -1387,13 +938,9 @@ pub fn syntaqlite_parser_sqlite::ast::JoinPrefix<'a>::source(&self) -> core::opt
 pub fn syntaqlite_parser_sqlite::ast::JoinPrefix<'a>::source(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::TableSource<'a>>
 pub fn syntaqlite_parser_sqlite::ast::JoinType::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::JoinType::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::JoinType::clone(&self) -> syntaqlite_parser_sqlite::ast::JoinType
-pub fn syntaqlite_parser_sqlite::ast::JoinType::eq(&self, other: &syntaqlite_parser_sqlite::ast::JoinType) -> bool
-pub fn syntaqlite_parser_sqlite::ast::JoinType::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::JoinType::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::JoinTypeKind>
 pub fn syntaqlite_parser_sqlite::ast::LikeExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::LikeExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::LikeExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::LikeExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::LikeExpr<'a>::escape(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::LikeExpr<'a>::escape(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::LikeExpr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1407,7 +954,6 @@ pub fn syntaqlite_parser_sqlite::ast::LikeExpr<'a>::pattern(&self) -> core::opti
 pub fn syntaqlite_parser_sqlite::ast::LikeExpr<'a>::pattern(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::LimitClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::LimitClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::LimitClause<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::LimitClause<'a>
 pub fn syntaqlite_parser_sqlite::ast::LimitClause<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::LimitClause<'a>::limit(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::LimitClause<'a>::limit(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
@@ -1417,7 +963,6 @@ pub fn syntaqlite_parser_sqlite::ast::LimitClause<'a>::offset(&self) -> core::op
 pub fn syntaqlite_parser_sqlite::ast::LimitClause<'a>::offset(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::Literal<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::Literal<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::Literal<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::Literal<'a>
 pub fn syntaqlite_parser_sqlite::ast::Literal<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::Literal<'a>::literal_type(&self) -> syntaqlite_parser_sqlite::ast::LiteralType
 pub fn syntaqlite_parser_sqlite::ast::Literal<'a>::literal_type(&self) -> syntaqlite_parser_sqlite::ast::LiteralType
@@ -1427,19 +972,12 @@ pub fn syntaqlite_parser_sqlite::ast::Literal<'a>::source(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::Literal<'a>::source(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::LiteralType::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::LiteralType::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::LiteralType::clone(&self) -> syntaqlite_parser_sqlite::ast::LiteralType
-pub fn syntaqlite_parser_sqlite::ast::LiteralType::eq(&self, other: &syntaqlite_parser_sqlite::ast::LiteralType) -> bool
-pub fn syntaqlite_parser_sqlite::ast::LiteralType::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::LiteralType::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::LiteralTypeKind>
 pub fn syntaqlite_parser_sqlite::ast::Materialized::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::Materialized::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::Materialized::clone(&self) -> syntaqlite_parser_sqlite::ast::Materialized
-pub fn syntaqlite_parser_sqlite::ast::Materialized::eq(&self, other: &syntaqlite_parser_sqlite::ast::Materialized) -> bool
-pub fn syntaqlite_parser_sqlite::ast::Materialized::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::Materialized::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::MaterializedKind>
 pub fn syntaqlite_parser_sqlite::ast::NamedWindowDef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::NamedWindowDef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::NamedWindowDef<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::NamedWindowDef<'a>
 pub fn syntaqlite_parser_sqlite::ast::NamedWindowDef<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::NamedWindowDef<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::NamedWindowDef<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1447,25 +985,16 @@ pub fn syntaqlite_parser_sqlite::ast::NamedWindowDef<'a>::window_def(&self) -> c
 pub fn syntaqlite_parser_sqlite::ast::NamedWindowDef<'a>::window_def(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::WindowDef<'a>>
 pub fn syntaqlite_parser_sqlite::ast::NamedWindowDef<'a>::window_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::NamedWindowDef<'a>::window_name(&self) -> &'a str
-pub fn syntaqlite_parser_sqlite::ast::Node<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::Node<'a>
-pub fn syntaqlite_parser_sqlite::ast::Node<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::Node<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::Node<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::Node<'a>::tag(&self) -> syntaqlite_parser_sqlite::ast::NodeTag
-pub fn syntaqlite_parser_sqlite::ast::NodeTag::clone(&self) -> syntaqlite_parser_sqlite::ast::NodeTag
-pub fn syntaqlite_parser_sqlite::ast::NodeTag::eq(&self, other: &syntaqlite_parser_sqlite::ast::NodeTag) -> bool
-pub fn syntaqlite_parser_sqlite::ast::NodeTag::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::NullsOrder::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::NullsOrder::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::NullsOrder::clone(&self) -> syntaqlite_parser_sqlite::ast::NullsOrder
-pub fn syntaqlite_parser_sqlite::ast::NullsOrder::eq(&self, other: &syntaqlite_parser_sqlite::ast::NullsOrder) -> bool
-pub fn syntaqlite_parser_sqlite::ast::NullsOrder::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::NullsOrder::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::NullsOrderKind>
 pub fn syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'a>::args(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'a>::args(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
-pub fn syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'a>
 pub fn syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'a>::filter_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'a>::filter_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'a>::flags(&self) -> syntaqlite_parser_sqlite::ast::AggregateFunctionCallFlags
@@ -1481,7 +1010,6 @@ pub fn syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'a>::over_clause(&s
 pub fn syntaqlite_parser_sqlite::ast::OrderedSetFunctionCall<'a>::over_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::WindowDef<'a>>
 pub fn syntaqlite_parser_sqlite::ast::OrderingTerm<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::OrderingTerm<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::OrderingTerm<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::OrderingTerm<'a>
 pub fn syntaqlite_parser_sqlite::ast::OrderingTerm<'a>::expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::OrderingTerm<'a>::expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::OrderingTerm<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1493,13 +1021,9 @@ pub fn syntaqlite_parser_sqlite::ast::OrderingTerm<'a>::sort_order(&self) -> syn
 pub fn syntaqlite_parser_sqlite::ast::OrderingTerm<'a>::sort_order(&self) -> syntaqlite_parser_sqlite::ast::SortOrder
 pub fn syntaqlite_parser_sqlite::ast::PragmaForm::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::PragmaForm::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::PragmaForm::clone(&self) -> syntaqlite_parser_sqlite::ast::PragmaForm
-pub fn syntaqlite_parser_sqlite::ast::PragmaForm::eq(&self, other: &syntaqlite_parser_sqlite::ast::PragmaForm) -> bool
-pub fn syntaqlite_parser_sqlite::ast::PragmaForm::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::PragmaForm::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::PragmaFormKind>
 pub fn syntaqlite_parser_sqlite::ast::PragmaStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::PragmaStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::PragmaStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::PragmaStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::PragmaStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::PragmaStmt<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::PragmaStmt<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1513,7 +1037,6 @@ pub fn syntaqlite_parser_sqlite::ast::PragmaStmt<'a>::value(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::PragmaStmt<'a>::value(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::QualifiedName<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::QualifiedName<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::QualifiedName<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::QualifiedName<'a>
 pub fn syntaqlite_parser_sqlite::ast::QualifiedName<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::QualifiedName<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::QualifiedName<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1523,7 +1046,6 @@ pub fn syntaqlite_parser_sqlite::ast::QualifiedName<'a>::schema(&self) -> &'a st
 pub fn syntaqlite_parser_sqlite::ast::QualifiedName<'a>::schema(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::RaiseExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::RaiseExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::RaiseExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::RaiseExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::RaiseExpr<'a>::error_message(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::RaiseExpr<'a>::error_message(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::RaiseExpr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1533,15 +1055,11 @@ pub fn syntaqlite_parser_sqlite::ast::RaiseExpr<'a>::raise_type(&self) -> syntaq
 pub fn syntaqlite_parser_sqlite::ast::RaiseExpr<'a>::raise_type(&self) -> syntaqlite_parser_sqlite::ast::RaiseType
 pub fn syntaqlite_parser_sqlite::ast::RaiseType::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::RaiseType::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::RaiseType::clone(&self) -> syntaqlite_parser_sqlite::ast::RaiseType
-pub fn syntaqlite_parser_sqlite::ast::RaiseType::eq(&self, other: &syntaqlite_parser_sqlite::ast::RaiseType) -> bool
-pub fn syntaqlite_parser_sqlite::ast::RaiseType::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::RaiseType::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::RaiseTypeKind>
 pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'a>::alias(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'a>::alias(&self) -> &'a str
-pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::ResultColumn<'a>
 pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'a>::expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'a>::expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'a>::flags(&self) -> syntaqlite_parser_sqlite::ast::ResultColumnFlags
@@ -1549,21 +1067,13 @@ pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'a>::flags(&self) -> syntaqli
 pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::ResultColumn<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
-pub fn syntaqlite_parser_sqlite::ast::ResultColumnFlags::clone(&self) -> syntaqlite_parser_sqlite::ast::ResultColumnFlags
-pub fn syntaqlite_parser_sqlite::ast::ResultColumnFlags::default() -> syntaqlite_parser_sqlite::ast::ResultColumnFlags
-pub fn syntaqlite_parser_sqlite::ast::ResultColumnFlags::eq(&self, other: &syntaqlite_parser_sqlite::ast::ResultColumnFlags) -> bool
-pub fn syntaqlite_parser_sqlite::ast::ResultColumnFlags::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ResultColumnFlags::star(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::ResultColumnFlags::star(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::SavepointOp::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::SavepointOp::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::SavepointOp::clone(&self) -> syntaqlite_parser_sqlite::ast::SavepointOp
-pub fn syntaqlite_parser_sqlite::ast::SavepointOp::eq(&self, other: &syntaqlite_parser_sqlite::ast::SavepointOp) -> bool
-pub fn syntaqlite_parser_sqlite::ast::SavepointOp::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::SavepointOp::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::SavepointOpKind>
 pub fn syntaqlite_parser_sqlite::ast::SavepointStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::SavepointStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::SavepointStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::SavepointStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::SavepointStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::SavepointStmt<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::SavepointStmt<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1571,13 +1081,10 @@ pub fn syntaqlite_parser_sqlite::ast::SavepointStmt<'a>::op(&self) -> syntaqlite
 pub fn syntaqlite_parser_sqlite::ast::SavepointStmt<'a>::op(&self) -> syntaqlite_parser_sqlite::ast::SavepointOp
 pub fn syntaqlite_parser_sqlite::ast::SavepointStmt<'a>::savepoint_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::SavepointStmt<'a>::savepoint_name(&self) -> &'a str
-pub fn syntaqlite_parser_sqlite::ast::Select<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::Select<'a>
-pub fn syntaqlite_parser_sqlite::ast::Select<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::Select<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::Select<'a>::kind(&self) -> syntaqlite_parser::ast_traits::SelectKind<'a, syntaqlite_parser_sqlite::ast::SqliteAst>
 pub fn syntaqlite_parser_sqlite::ast::SelectStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::SelectStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::SelectStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::SelectStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::SelectStmt<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ResultColumnList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::SelectStmt<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ResultColumnList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::SelectStmt<'a>::flags(&self) -> syntaqlite_parser_sqlite::ast::SelectStmtFlags
@@ -1599,15 +1106,10 @@ pub fn syntaqlite_parser_sqlite::ast::SelectStmt<'a>::where_clause(&self) -> cor
 pub fn syntaqlite_parser_sqlite::ast::SelectStmt<'a>::where_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::SelectStmt<'a>::window_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::NamedWindowDefList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::SelectStmt<'a>::window_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::NamedWindowDefList<'a>>
-pub fn syntaqlite_parser_sqlite::ast::SelectStmtFlags::clone(&self) -> syntaqlite_parser_sqlite::ast::SelectStmtFlags
-pub fn syntaqlite_parser_sqlite::ast::SelectStmtFlags::default() -> syntaqlite_parser_sqlite::ast::SelectStmtFlags
 pub fn syntaqlite_parser_sqlite::ast::SelectStmtFlags::distinct(&self) -> bool
 pub fn syntaqlite_parser_sqlite::ast::SelectStmtFlags::distinct(&self) -> bool
-pub fn syntaqlite_parser_sqlite::ast::SelectStmtFlags::eq(&self, other: &syntaqlite_parser_sqlite::ast::SelectStmtFlags) -> bool
-pub fn syntaqlite_parser_sqlite::ast::SelectStmtFlags::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::SetClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::SetClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::SetClause<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::SetClause<'a>
 pub fn syntaqlite_parser_sqlite::ast::SetClause<'a>::column(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::SetClause<'a>::column(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::SetClause<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
@@ -1619,17 +1121,11 @@ pub fn syntaqlite_parser_sqlite::ast::SetClause<'a>::value(&self) -> core::optio
 pub fn syntaqlite_parser_sqlite::ast::SetClause<'a>::value(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::SortOrder::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::SortOrder::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::SortOrder::clone(&self) -> syntaqlite_parser_sqlite::ast::SortOrder
-pub fn syntaqlite_parser_sqlite::ast::SortOrder::eq(&self, other: &syntaqlite_parser_sqlite::ast::SortOrder) -> bool
-pub fn syntaqlite_parser_sqlite::ast::SortOrder::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::SortOrder::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::SortOrderKind>
-pub fn syntaqlite_parser_sqlite::ast::Stmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::Stmt<'a>
-pub fn syntaqlite_parser_sqlite::ast::Stmt<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::Stmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::Stmt<'a>::kind(&self) -> syntaqlite_parser::ast_traits::StmtKind<'a, syntaqlite_parser_sqlite::ast::SqliteAst>
 pub fn syntaqlite_parser_sqlite::ast::SubqueryExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::SubqueryExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::SubqueryExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::SubqueryExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::SubqueryExpr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::SubqueryExpr<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::SubqueryExpr<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1639,7 +1135,6 @@ pub fn syntaqlite_parser_sqlite::ast::SubqueryTableSource<'_>::fmt(&self, f: &mu
 pub fn syntaqlite_parser_sqlite::ast::SubqueryTableSource<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::SubqueryTableSource<'a>::alias(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::SubqueryTableSource<'a>::alias(&self) -> &'a str
-pub fn syntaqlite_parser_sqlite::ast::SubqueryTableSource<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::SubqueryTableSource<'a>
 pub fn syntaqlite_parser_sqlite::ast::SubqueryTableSource<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::SubqueryTableSource<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::SubqueryTableSource<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1649,7 +1144,6 @@ pub fn syntaqlite_parser_sqlite::ast::TableConstraint<'_>::fmt(&self, f: &mut co
 pub fn syntaqlite_parser_sqlite::ast::TableConstraint<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::TableConstraint<'a>::check_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::TableConstraint<'a>::check_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
-pub fn syntaqlite_parser_sqlite::ast::TableConstraint<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::TableConstraint<'a>
 pub fn syntaqlite_parser_sqlite::ast::TableConstraint<'a>::constraint_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::TableConstraint<'a>::constraint_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::TableConstraint<'a>::fk_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ForeignKeyClause<'a>>
@@ -1669,15 +1163,11 @@ pub fn syntaqlite_parser_sqlite::ast::TableConstraint<'a>::pk_columns(&self) -> 
 pub fn syntaqlite_parser_sqlite::ast::TableConstraint<'a>::pk_columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::OrderByList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::TableConstraintKind::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::TableConstraintKind::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::TableConstraintKind::clone(&self) -> syntaqlite_parser_sqlite::ast::TableConstraintKind
-pub fn syntaqlite_parser_sqlite::ast::TableConstraintKind::eq(&self, other: &syntaqlite_parser_sqlite::ast::TableConstraintKind) -> bool
-pub fn syntaqlite_parser_sqlite::ast::TableConstraintKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::TableConstraintKind::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::TableConstraintKindKind>
 pub fn syntaqlite_parser_sqlite::ast::TableRef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::TableRef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::TableRef<'a>::alias(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::TableRef<'a>::alias(&self) -> &'a str
-pub fn syntaqlite_parser_sqlite::ast::TableRef<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::TableRef<'a>
 pub fn syntaqlite_parser_sqlite::ast::TableRef<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::TableRef<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::TableRef<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1685,19 +1175,13 @@ pub fn syntaqlite_parser_sqlite::ast::TableRef<'a>::schema(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::TableRef<'a>::schema(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::TableRef<'a>::table_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::TableRef<'a>::table_name(&self) -> &'a str
-pub fn syntaqlite_parser_sqlite::ast::TableSource<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::TableSource<'a>
-pub fn syntaqlite_parser_sqlite::ast::TableSource<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::TableSource<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::TableSource<'a>::kind(&self) -> syntaqlite_parser::ast_traits::TableSourceKind<'a, syntaqlite_parser_sqlite::ast::SqliteAst>
 pub fn syntaqlite_parser_sqlite::ast::TransactionOp::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::TransactionOp::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::TransactionOp::clone(&self) -> syntaqlite_parser_sqlite::ast::TransactionOp
-pub fn syntaqlite_parser_sqlite::ast::TransactionOp::eq(&self, other: &syntaqlite_parser_sqlite::ast::TransactionOp) -> bool
-pub fn syntaqlite_parser_sqlite::ast::TransactionOp::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::TransactionOp::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::TransactionOpKind>
 pub fn syntaqlite_parser_sqlite::ast::TransactionStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::TransactionStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::TransactionStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::TransactionStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::TransactionStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::TransactionStmt<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::TransactionStmt<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1707,13 +1191,9 @@ pub fn syntaqlite_parser_sqlite::ast::TransactionStmt<'a>::trans_type(&self) -> 
 pub fn syntaqlite_parser_sqlite::ast::TransactionStmt<'a>::trans_type(&self) -> syntaqlite_parser_sqlite::ast::TransactionType
 pub fn syntaqlite_parser_sqlite::ast::TransactionType::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::TransactionType::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::TransactionType::clone(&self) -> syntaqlite_parser_sqlite::ast::TransactionType
-pub fn syntaqlite_parser_sqlite::ast::TransactionType::eq(&self, other: &syntaqlite_parser_sqlite::ast::TransactionType) -> bool
-pub fn syntaqlite_parser_sqlite::ast::TransactionType::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::TransactionType::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::TransactionTypeKind>
 pub fn syntaqlite_parser_sqlite::ast::TriggerEvent<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::TriggerEvent<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::TriggerEvent<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::TriggerEvent<'a>
 pub fn syntaqlite_parser_sqlite::ast::TriggerEvent<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::TriggerEvent<'a>::columns(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::TriggerEvent<'a>::event_type(&self) -> syntaqlite_parser_sqlite::ast::TriggerEventType
@@ -1723,19 +1203,12 @@ pub fn syntaqlite_parser_sqlite::ast::TriggerEvent<'a>::node_id(&self) -> syntaq
 pub fn syntaqlite_parser_sqlite::ast::TriggerEvent<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::TriggerEventType::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::TriggerEventType::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::TriggerEventType::clone(&self) -> syntaqlite_parser_sqlite::ast::TriggerEventType
-pub fn syntaqlite_parser_sqlite::ast::TriggerEventType::eq(&self, other: &syntaqlite_parser_sqlite::ast::TriggerEventType) -> bool
-pub fn syntaqlite_parser_sqlite::ast::TriggerEventType::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::TriggerEventType::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::TriggerEventTypeKind>
 pub fn syntaqlite_parser_sqlite::ast::TriggerTiming::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::TriggerTiming::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::TriggerTiming::clone(&self) -> syntaqlite_parser_sqlite::ast::TriggerTiming
-pub fn syntaqlite_parser_sqlite::ast::TriggerTiming::eq(&self, other: &syntaqlite_parser_sqlite::ast::TriggerTiming) -> bool
-pub fn syntaqlite_parser_sqlite::ast::TriggerTiming::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::TriggerTiming::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::TriggerTimingKind>
 pub fn syntaqlite_parser_sqlite::ast::UnaryExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::UnaryExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::UnaryExpr<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::UnaryExpr<'a>
 pub fn syntaqlite_parser_sqlite::ast::UnaryExpr<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::UnaryExpr<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::UnaryExpr<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1745,13 +1218,9 @@ pub fn syntaqlite_parser_sqlite::ast::UnaryExpr<'a>::operand(&self) -> core::opt
 pub fn syntaqlite_parser_sqlite::ast::UnaryExpr<'a>::operand(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::UnaryOp::as_str(&self) -> &'static str
 pub fn syntaqlite_parser_sqlite::ast::UnaryOp::as_str(&self) -> &'static str
-pub fn syntaqlite_parser_sqlite::ast::UnaryOp::clone(&self) -> syntaqlite_parser_sqlite::ast::UnaryOp
-pub fn syntaqlite_parser_sqlite::ast::UnaryOp::eq(&self, other: &syntaqlite_parser_sqlite::ast::UnaryOp) -> bool
-pub fn syntaqlite_parser_sqlite::ast::UnaryOp::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::UnaryOp::kind(&self) -> core::option::Option<syntaqlite_parser::ast_traits::UnaryOpKind>
 pub fn syntaqlite_parser_sqlite::ast::UpdateStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::UpdateStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::UpdateStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::UpdateStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::UpdateStmt<'a>::conflict_action(&self) -> syntaqlite_parser_sqlite::ast::ConflictAction
 pub fn syntaqlite_parser_sqlite::ast::UpdateStmt<'a>::conflict_action(&self) -> syntaqlite_parser_sqlite::ast::ConflictAction
 pub fn syntaqlite_parser_sqlite::ast::UpdateStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1771,7 +1240,6 @@ pub fn syntaqlite_parser_sqlite::ast::UpdateStmt<'a>::where_clause(&self) -> cor
 pub fn syntaqlite_parser_sqlite::ast::UpdateStmt<'a>::where_clause(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::VacuumStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::VacuumStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::VacuumStmt<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::VacuumStmt<'a>
 pub fn syntaqlite_parser_sqlite::ast::VacuumStmt<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::VacuumStmt<'a>::into_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
 pub fn syntaqlite_parser_sqlite::ast::VacuumStmt<'a>::into_expr(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Expr<'a>>
@@ -1781,7 +1249,6 @@ pub fn syntaqlite_parser_sqlite::ast::VacuumStmt<'a>::schema(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::VacuumStmt<'a>::schema(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::ValuesClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::ValuesClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::ValuesClause<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::ValuesClause<'a>
 pub fn syntaqlite_parser_sqlite::ast::ValuesClause<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::ValuesClause<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::ValuesClause<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1789,7 +1256,6 @@ pub fn syntaqlite_parser_sqlite::ast::ValuesClause<'a>::rows(&self) -> core::opt
 pub fn syntaqlite_parser_sqlite::ast::ValuesClause<'a>::rows(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ValuesRowList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::Variable<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::Variable<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::Variable<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::Variable<'a>
 pub fn syntaqlite_parser_sqlite::ast::Variable<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
 pub fn syntaqlite_parser_sqlite::ast::Variable<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
 pub fn syntaqlite_parser_sqlite::ast::Variable<'a>::node_id(&self) -> syntaqlite_parser::nodes::NodeId
@@ -1799,7 +1265,6 @@ pub fn syntaqlite_parser_sqlite::ast::WindowDef<'_>::fmt(&self, f: &mut core::fm
 pub fn syntaqlite_parser_sqlite::ast::WindowDef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::WindowDef<'a>::base_window_name(&self) -> &'a str
 pub fn syntaqlite_parser_sqlite::ast::WindowDef<'a>::base_window_name(&self) -> &'a str
-pub fn syntaqlite_parser_sqlite::ast::WindowDef<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::WindowDef<'a>
 pub fn syntaqlite_parser_sqlite::ast::WindowDef<'a>::frame(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::FrameSpec<'a>>
 pub fn syntaqlite_parser_sqlite::ast::WindowDef<'a>::frame(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::FrameSpec<'a>>
 pub fn syntaqlite_parser_sqlite::ast::WindowDef<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1811,7 +1276,6 @@ pub fn syntaqlite_parser_sqlite::ast::WindowDef<'a>::partition_by(&self) -> core
 pub fn syntaqlite_parser_sqlite::ast::WindowDef<'a>::partition_by(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::ExprList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::WithClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::ast::WithClause<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_parser_sqlite::ast::WithClause<'a>::clone(&self) -> syntaqlite_parser_sqlite::ast::WithClause<'a>
 pub fn syntaqlite_parser_sqlite::ast::WithClause<'a>::ctes(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::CteList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::WithClause<'a>::ctes(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::CteList<'a>>
 pub fn syntaqlite_parser_sqlite::ast::WithClause<'a>::from_arena(reader: syntaqlite_parser::session::RawNodeReader<'a>, id: syntaqlite_parser::nodes::NodeId) -> core::option::Option<Self>
@@ -1823,12 +1287,8 @@ pub fn syntaqlite_parser_sqlite::ast::WithClause<'a>::select(&self) -> core::opt
 pub fn syntaqlite_parser_sqlite::ast::WithClause<'a>::select(&self) -> core::option::Option<syntaqlite_parser_sqlite::ast::Select<'a>>
 pub fn syntaqlite_parser_sqlite::dialect() -> syntaqlite_parser::dialect::RawDialect<'static>
 pub fn syntaqlite_parser_sqlite::tagged_dialect() -> syntaqlite_parser::dialect::Dialect<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
-pub fn syntaqlite_parser_sqlite::tokens::TokenType::clone(&self) -> syntaqlite_parser_sqlite::tokens::TokenType
-pub fn syntaqlite_parser_sqlite::tokens::TokenType::eq(&self, other: &syntaqlite_parser_sqlite::tokens::TokenType) -> bool
-pub fn syntaqlite_parser_sqlite::tokens::TokenType::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser_sqlite::tokens::TokenType::from_raw(raw: u32) -> core::option::Option<syntaqlite_parser_sqlite::tokens::TokenType>
 pub fn syntaqlite_parser_sqlite::tokens::TokenType::from_token_type(raw: u32) -> core::option::Option<Self>
-pub fn syntaqlite_parser_sqlite::tokens::TokenType::hash<__H: core::hash::Hasher>(&self, state: &mut __H)
 pub fn u32::from(t: syntaqlite_parser_sqlite::tokens::TokenType) -> u32
 pub mod syntaqlite_parser_sqlite
 pub mod syntaqlite_parser_sqlite::ast

@@ -70,9 +70,6 @@
 //! - [`dialect`] — The opaque `Dialect` handle, the
 //!   [`sqlite()`](dialect::sqlite) dialect accessor, and
 //!   semantic [`TokenCategory`](dialect::TokenCategory) enum.
-//! - [`ext`] — Dialect-agnostic building blocks for external dialect crates
-//!   (raw parsers, tokenizers, node types, and the `Dialect`
-//!   handle).
 //! - [`fmt`] — Formatter configuration ([`FormatConfig`](fmt::FormatConfig),
 //!   [`KeywordCase`](fmt::KeywordCase)).
 //! - [`validation`] — Validator configuration, diagnostic types, and
@@ -81,7 +78,7 @@
 //!   TypeScript template literals.
 //! - [`lsp`] — [`AnalysisHost`](lsp::AnalysisHost) for editor integrations.
 
-pub mod parser;
+pub(crate) mod parser;
 
 // ── Top-level API ─────────────────────────────────────────────────────
 //
@@ -134,50 +131,19 @@ pub mod ast {
 #[cfg(feature = "sqlite")]
 pub use syntaqlite_parser_sqlite::tokens::TokenType;
 
-// ── Raw (dialect-agnostic) API ───────────────────────────────────────────
-//
-// Lower-level building blocks for external dialect crates and advanced use.
+// ── Types that appear in public signatures ────────────────────────────────
 
-/// Dialect-agnostic ("ext") API for building custom dialect integrations.
-///
-/// Most users should prefer the top-level SQLite types ([`Parser`],
-/// [`Formatter`], etc.). This module exposes the lower-level building
-/// blocks that external dialect crates need.
-pub mod ext {
-    // ── Parser types ─────────────────────────────────────────────────────
-    pub use syntaqlite_parser::RawParser;
-    pub use syntaqlite_parser::RawStatementCursor;
+pub use syntaqlite_parser::NodeId;
+pub use syntaqlite_parser::NodeRef;
+pub use syntaqlite_parser::ParseError;
+pub use syntaqlite_parser::RawNodeReader;
+pub use syntaqlite_parser::SourceSpan;
+pub use syntaqlite_parser::{Comment, CommentKind};
 
-    pub use syntaqlite_parser::RawToken;
-    pub use syntaqlite_parser::RawTokenCursor;
-    pub use syntaqlite_parser::RawTokenizer;
+#[cfg(feature = "fmt")]
+pub use fmt::{FormatConfig, KeywordCase};
+#[cfg(feature = "validation")]
+pub use validation::ValidationConfig;
 
-    pub use syntaqlite_parser::RawIncrementalCursor;
-    pub use syntaqlite_parser::RawIncrementalParser;
-
-    // ── Node / field types ───────────────────────────────────────────────
-    pub use syntaqlite_parser::ErrorSpan;
-    pub use syntaqlite_parser::NodeRef;
-    pub use syntaqlite_parser::ParseError;
-    pub use syntaqlite_parser::TypedList;
-    pub use syntaqlite_parser::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
-    pub use syntaqlite_parser::{DialectNodeType, DialectTokenType};
-
-    #[cfg(feature = "json")]
-    pub use crate::parser::node_ref_json::NodeRefJsonExt;
-
-    // ── Token metadata ───────────────────────────────────────────────────
-    pub use syntaqlite_parser::{
-        Comment, CommentKind, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE,
-    };
-
-    // ── AST trait definitions ────────────────────────────────────────────
-    pub use syntaqlite_parser::ast_traits::*;
-
-    // ── Dialect handle ────────────────────────────────────────────────────
-
-    pub use syntaqlite_parser::Dialect;
-    pub use syntaqlite_parser::FfiDialect;
-    pub use syntaqlite_parser::NodeFamily;
-    pub use syntaqlite_parser::RawDialect;
-}
+#[cfg(feature = "json")]
+pub use crate::parser::node_ref_json::NodeRefJsonExt;

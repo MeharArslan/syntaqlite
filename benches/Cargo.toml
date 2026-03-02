@@ -10,6 +10,7 @@ harness = false
 
 [dependencies]
 syntaqlite = { path = "../syntaqlite", features = ["lsp"] }
+syntaqlite-parser = { path = "../syntaqlite-parser", default-features = false }
 
 [dev-dependencies]
 criterion = "0.5"

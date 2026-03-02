@@ -9,11 +9,9 @@ use std::path::PathBuf;
 
 use clap::ValueEnum;
 use syntaqlite::Formatter;
-use syntaqlite::dialect::RawDialect;
-use syntaqlite::ext::RawParser;
-use syntaqlite::fmt::{FormatConfig, KeywordCase};
+use syntaqlite::{FormatConfig, KeywordCase};
 use syntaqlite::validation::{SourceContext, ValidationConfig};
-use syntaqlite_parser::{FfiDialect, ParseError};
+use syntaqlite_parser::{FfiDialect, ParseError, RawDialect, RawParser};
 
 use super::{Cli, Command};
 

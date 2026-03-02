@@ -12,15 +12,13 @@
 //! Most users will never construct a `Dialect` directly; the built-in
 //! SQLite dialect is available via [`sqlite()`].
 //! External dialect crates obtain their handle through the generated
-//! [`crate::ext::Dialect`] handle.
+//! dialect descriptor.
 
 // ── Token category ─────────────────────────────────────────────────────
 
 #[cfg(feature = "sqlite")]
 pub use syntaqlite_parser::RawDialect;
-pub use syntaqlite_parser::{CflagInfo, Cflags, DialectConfig};
-pub use syntaqlite_parser::{SchemaContribution, SchemaKind};
-pub use syntaqlite_parser::{cflag_table, parse_cflag_name, parse_sqlite_version};
+pub use syntaqlite_parser::DialectConfig;
 
 /// Semantic category for a token type, used for syntax highlighting.
 ///
