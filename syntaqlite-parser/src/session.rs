@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use std::ffi::CStr;
+use std::ptr::NonNull;
 
 use crate::dialect::Dialect;
 use crate::dialect_traits::DialectNodeType;
@@ -60,7 +61,7 @@ impl std::error::Error for ParseError {}
 /// exclusively for `'a`).
 #[derive(Clone, Copy)]
 pub struct RawNodeReader<'a> {
-    pub(crate) raw: *mut ffi::Parser,
+    pub(crate) raw: NonNull<ffi::Parser>,
     pub(crate) source: &'a str,
 }
 
@@ -71,7 +72,11 @@ impl<'a> RawNodeReader<'a> {
     /// `raw` must be a valid, non-null parser pointer that remains valid
     /// for the lifetime `'a`.
     pub unsafe fn new(raw: *mut ffi::Parser, source: &'a str) -> Self {
-        RawNodeReader { raw, source }
+        // SAFETY: caller guarantees raw is non-null and valid for 'a.
+        RawNodeReader {
+            raw: unsafe { NonNull::new_unchecked(raw) },
+            source,
+        }
     }
 
     /// Enumerate all child NodeIds of a node using dialect metadata.
@@ -148,7 +153,7 @@ impl<'a> RawNodeReader<'a> {
         // from a live parser). The returned pointer is null-checked; all arena nodes
         // start with a u32 tag, so the dereference is valid and aligned.
         unsafe {
-            let ptr = ffi::syntaqlite_parser_node(self.raw, id.0);
+            let ptr = ffi::syntaqlite_parser_node(self.raw.as_ptr(), id.0);
             if ptr.is_null() {
                 return None;
             }
@@ -231,19 +236,19 @@ impl<'a> RawNodeReader<'a> {
     pub fn tokens(&self) -> &[ffi::TokenPos] {
         // SAFETY: raw is valid; syntaqlite_parser_tokens returns a pointer valid
         // for the lifetime of &self (until the next reset/destroy, which need &mut).
-        unsafe { ffi_slice(self.raw, ffi::syntaqlite_parser_tokens) }
+        unsafe { ffi_slice(self.raw.as_ptr(), ffi::syntaqlite_parser_tokens) }
     }
 
     /// Return all macro regions captured during parsing.
     pub fn macro_regions(&self) -> &[ffi::MacroRegion] {
         // SAFETY: raw is valid; syntaqlite_parser_macro_regions returns a pointer
         // valid for the lifetime of &self.
-        unsafe { ffi_slice(self.raw, ffi::syntaqlite_parser_macro_regions) }
+        unsafe { ffi_slice(self.raw.as_ptr(), ffi::syntaqlite_parser_macro_regions) }
     }
 
     /// Access the raw C parser pointer.
     pub fn raw(&self) -> *mut ffi::Parser {
-        self.raw
+        self.raw.as_ptr()
     }
 
     /// If `id` refers to a list node (per the dialect), return its child node IDs.
@@ -266,7 +271,7 @@ impl<'a> RawNodeReader<'a> {
         // SAFETY: raw is valid; dump_node returns a malloc'd NUL-terminated
         // string (or null). We free the C string after copying.
         unsafe {
-            let ptr = ffi::syntaqlite_dump_node(self.raw, id.0, indent as u32);
+            let ptr = ffi::syntaqlite_dump_node(self.raw.as_ptr(), id.0, indent as u32);
             if !ptr.is_null() {
                 let cstr = CStr::from_ptr(ptr);
                 out.push_str(&cstr.to_string_lossy());

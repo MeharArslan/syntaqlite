@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use std::ffi::{CStr, c_int};
+use std::ptr::NonNull;
 
 use crate::dialect::Dialect;
 use syntaqlite_parser::dialect::ffi::DialectConfig;
@@ -17,7 +18,7 @@ pub use syntaqlite_parser::session::{ErrorSpan, ParseError, RawNodeReader};
 
 /// Owns a parser instance. Reusable across inputs via `parse()`.
 pub struct RawParser<'d> {
-    pub(crate) raw: *mut Parser,
+    pub(crate) raw: NonNull<Parser>,
     /// Null-terminated copy of the source text. The C tokenizer (SQLite's
     /// `SynqSqliteGetToken`) reads until it hits a null byte, so we must
     /// ensure the source is null-terminated. Rust `&str` does not guarantee
@@ -59,7 +60,12 @@ impl<'d> RawParser<'d> {
     /// (required by the C tokenizer). For zero-copy parsing, use
     /// [`parse_cstr`](Self::parse_cstr).
     pub fn parse<'a>(&'a mut self, source: &'a str) -> RawStatementCursor<'a> {
-        let state = CursorState::new(self.raw, &mut self.source_buf, source, self.dialect);
+        let state = CursorState::new(
+            self.raw.as_ptr(),
+            &mut self.source_buf,
+            source,
+            self.dialect,
+        );
         RawStatementCursor {
             state,
             last_saw_subquery: false,
@@ -73,7 +79,7 @@ impl<'d> RawParser<'d> {
     /// The `&CStr` already guarantees a trailing `\0`, so no copy is needed.
     /// The source must be valid UTF-8 (panics otherwise).
     pub fn parse_cstr<'a>(&'a mut self, source: &'a CStr) -> RawStatementCursor<'a> {
-        let state = CursorState::new_cstr(self.raw, source, self.dialect);
+        let state = CursorState::new_cstr(self.raw.as_ptr(), source, self.dialect);
         RawStatementCursor {
             state,
             last_saw_subquery: false,
@@ -92,9 +98,8 @@ impl Default for RawParser<'static> {
 impl Drop for RawParser<'_> {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_parser_create and has
-        // not been freed (Drop runs exactly once). The C function is no-op
-        // on NULL.
-        unsafe { syntaqlite_parser_destroy(self.raw) }
+        // not been freed (Drop runs exactly once).
+        unsafe { syntaqlite_parser_destroy(self.raw.as_ptr()) }
     }
 }
 
@@ -131,15 +136,16 @@ impl<'a> RawParserBuilder<'a> {
     pub fn build(self) -> RawParser<'a> {
         // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
         // a new parser with default malloc/free.
-        let raw =
-            unsafe { syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw) };
-        assert!(!raw.is_null(), "parser allocation failed");
+        let raw = NonNull::new(unsafe {
+            syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw)
+        })
+        .expect("parser allocation failed");
 
         // SAFETY: raw is freshly created (not sealed), so these calls
         // always return 0.
         unsafe {
-            syntaqlite_parser_set_trace(raw, self.trace as c_int);
-            syntaqlite_parser_set_collect_tokens(raw, self.collect_tokens as c_int);
+            syntaqlite_parser_set_trace(raw.as_ptr(), self.trace as c_int);
+            syntaqlite_parser_set_collect_tokens(raw.as_ptr(), self.collect_tokens as c_int);
         }
 
         let mut parser = RawParser {
@@ -155,7 +161,7 @@ impl<'a> RawParserBuilder<'a> {
             // in the RawParser struct. The C side copies the config value.
             unsafe {
                 syntaqlite_parser_set_dialect_config(
-                    parser.raw,
+                    parser.raw.as_ptr(),
                     &parser.dialect_config as *const DialectConfig,
                 );
             }
@@ -177,7 +183,7 @@ pub(crate) struct CursorState<'a> {
     /// `feed_token` translates user text pointers through this so that the C
     /// code's `tok.z - ctx->source` offset arithmetic is correct regardless
     /// of whether the copying or zero-copy path was used.
-    pub(crate) c_source_ptr: *const u8,
+    pub(crate) c_source_ptr: NonNull<u8>,
     /// The dialect handle, propagated from the parser that created this cursor.
     pub(crate) dialect: Dialect<'a>,
 }
@@ -197,11 +203,12 @@ impl<'a> CursorState<'a> {
         source_buf.extend_from_slice(source.as_bytes());
         source_buf.push(0);
 
-        let c_source_ptr = source_buf.as_ptr();
+        // source_buf has at least one byte (the null terminator just pushed).
+        let c_source_ptr = NonNull::new(source_buf.as_mut_ptr()).expect("source_buf is non-empty");
         // SAFETY: raw is valid (caller owns it via &mut); c_source_ptr points to
         // source_buf which is null-terminated and lives for 'a.
         unsafe {
-            syntaqlite_parser_reset(raw, c_source_ptr as *const _, source.len() as u32);
+            syntaqlite_parser_reset(raw, c_source_ptr.as_ptr() as *const _, source.len() as u32);
         }
         CursorState {
             // SAFETY: raw is valid for 'a (caller owns it via &mut); source
@@ -225,7 +232,7 @@ impl<'a> CursorState<'a> {
             // SAFETY: raw is valid for 'a; source_str borrows the CStr bytes
             // which live for 'a.
             reader: unsafe { RawNodeReader::new(raw, source_str) },
-            c_source_ptr: source.as_ptr() as *const u8,
+            c_source_ptr: NonNull::new(source.as_ptr() as *mut u8).expect("CStr is non-null"),
             dialect,
         }
     }

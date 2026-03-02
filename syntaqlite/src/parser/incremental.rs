@@ -3,6 +3,7 @@
 
 use std::ffi::{CStr, c_int};
 use std::ops::Range;
+use std::ptr::NonNull;
 
 use super::session::{CursorState, NodeRef, ParseError, RawNodeReader};
 use crate::dialect::Dialect;
@@ -20,7 +21,7 @@ use syntaqlite_parser::parser::{
 /// A low-level parser for token-by-token feeding. Owns its own C parser
 /// handle and source buffer, independent of `Parser`.
 pub struct RawIncrementalParser<'d> {
-    raw: *mut Parser,
+    raw: NonNull<Parser>,
     source_buf: Vec<u8>,
     /// Owned dialect config, kept alive so the C pointer remains valid.
     _dialect_config: Option<Box<DialectConfig>>,
@@ -51,7 +52,12 @@ impl<'d> RawIncrementalParser<'d> {
 
     /// Bind source text and return a `RawIncrementalCursor` for token feeding.
     pub fn feed<'a>(&'a mut self, source: &'a str) -> RawIncrementalCursor<'a> {
-        let state = CursorState::new(self.raw, &mut self.source_buf, source, self.dialect);
+        let state = CursorState::new(
+            self.raw.as_ptr(),
+            &mut self.source_buf,
+            source,
+            self.dialect,
+        );
         RawIncrementalCursor {
             state,
             finished: false,
@@ -60,7 +66,7 @@ impl<'d> RawIncrementalParser<'d> {
 
     /// Zero-copy variant: bind a null-terminated source and return a `RawIncrementalCursor`.
     pub fn feed_cstr<'a>(&'a mut self, source: &'a CStr) -> RawIncrementalCursor<'a> {
-        let state = CursorState::new_cstr(self.raw, source, self.dialect);
+        let state = CursorState::new_cstr(self.raw.as_ptr(), source, self.dialect);
         RawIncrementalCursor {
             state,
             finished: false,
@@ -79,7 +85,7 @@ impl Drop for RawIncrementalParser<'_> {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_dialect
         // and has not been freed (Drop runs exactly once).
-        unsafe { syntaqlite_parser_destroy(self.raw) }
+        unsafe { syntaqlite_parser_destroy(self.raw.as_ptr()) }
     }
 }
 
@@ -117,14 +123,15 @@ impl<'a> RawIncrementalParserBuilder<'a> {
     pub fn build(self) -> RawIncrementalParser<'a> {
         // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
         // a new parser with default malloc/free. dialect.raw is valid for the call.
-        let raw =
-            unsafe { syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw) };
-        assert!(!raw.is_null(), "parser allocation failed");
+        let raw = NonNull::new(unsafe {
+            syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw)
+        })
+        .expect("parser allocation failed");
 
         // SAFETY: raw is freshly created (not sealed), so these calls always succeed.
         unsafe {
-            syntaqlite_parser_set_trace(raw, self.trace as c_int);
-            syntaqlite_parser_set_collect_tokens(raw, self.collect_tokens as c_int);
+            syntaqlite_parser_set_trace(raw.as_ptr(), self.trace as c_int);
+            syntaqlite_parser_set_collect_tokens(raw.as_ptr(), self.collect_tokens as c_int);
         }
 
         let dialect_config = if let Some(config) = self.dialect_config {
@@ -132,7 +139,7 @@ impl<'a> RawIncrementalParserBuilder<'a> {
             // SAFETY: raw is valid; boxed pointer is stable and lives as long
             // as the LowLevelParser.
             unsafe {
-                syntaqlite_parser_set_dialect_config(raw, &*boxed as *const DialectConfig);
+                syntaqlite_parser_set_dialect_config(raw.as_ptr(), &*boxed as *const DialectConfig);
             }
             Some(boxed)
         } else {
@@ -247,7 +254,7 @@ impl<'a> RawIncrementalCursor<'a> {
         // SAFETY: c_source_ptr is valid for the source length; raw is valid.
         let raw = self.state.reader.raw();
         let rc = unsafe {
-            let c_text = self.state.c_source_ptr.add(span.start);
+            let c_text = self.state.c_source_ptr.as_ptr().add(span.start);
             syntaqlite_parser_feed_token(
                 raw,
                 token_type as c_int,

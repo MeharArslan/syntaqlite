@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use std::ffi::CStr;
+use std::ptr::NonNull;
 
 use crate::dialect::Dialect;
 use syntaqlite_parser::parser::{
@@ -20,7 +21,7 @@ pub struct RawToken<'a> {
 
 /// Owns a tokenizer instance. Reusable across inputs via `tokenize()`.
 pub struct RawTokenizer<'d> {
-    raw: *mut Tokenizer,
+    raw: NonNull<Tokenizer>,
     /// Null-terminated copy of the source text.
     source_buf: Vec<u8>,
     /// Owned dialect config, kept alive so the C pointer remains valid.
@@ -62,11 +63,17 @@ impl<'d> RawTokenizer<'d> {
         self.source_buf.extend_from_slice(source.as_bytes());
         self.source_buf.push(0);
 
-        let c_source_ptr = self.source_buf.as_ptr();
+        // source_buf has at least one byte (the null terminator just pushed).
+        let c_source_ptr =
+            NonNull::new(self.source_buf.as_mut_ptr()).expect("source_buf is non-empty");
         // SAFETY: self.raw is valid; c_source_ptr points to source_buf which is
         // null-terminated and lives for 'a (borrowed via &'a mut self).
         unsafe {
-            syntaqlite_tokenizer_reset(self.raw, c_source_ptr as *const _, source.len() as u32);
+            syntaqlite_tokenizer_reset(
+                self.raw.as_ptr(),
+                c_source_ptr.as_ptr() as *const _,
+                source.len() as u32,
+            );
         }
         RawTokenCursor {
             raw: self.raw,
@@ -86,12 +93,12 @@ impl<'d> RawTokenizer<'d> {
 
         // SAFETY: self.raw is valid; source is a CStr (null-terminated, valid for 'a).
         unsafe {
-            syntaqlite_tokenizer_reset(self.raw, source.as_ptr(), bytes.len() as u32);
+            syntaqlite_tokenizer_reset(self.raw.as_ptr(), source.as_ptr(), bytes.len() as u32);
         }
         RawTokenCursor {
             raw: self.raw,
             source: source_str,
-            c_source_base: source.as_ptr() as *const u8,
+            c_source_base: NonNull::new(source.as_ptr() as *mut u8).expect("CStr is non-null"),
         }
     }
 }
@@ -107,7 +114,7 @@ impl Drop for RawTokenizer<'_> {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_tokenizer_create and has
         // not been freed (Drop runs exactly once).
-        unsafe { syntaqlite_tokenizer_destroy(self.raw) }
+        unsafe { syntaqlite_tokenizer_destroy(self.raw.as_ptr()) }
     }
 }
 
@@ -133,9 +140,10 @@ impl<'d> RawTokenizerBuilder<'d> {
     pub fn build(self) -> RawTokenizer<'d> {
         // SAFETY: syntaqlite_tokenizer_create(NULL, dialect) allocates a new
         // tokenizer with default malloc/free. dialect.raw is valid for the call.
-        let raw =
-            unsafe { syntaqlite_tokenizer_create(std::ptr::null(), self.dialect.raw as *const _) };
-        assert!(!raw.is_null(), "tokenizer allocation failed");
+        let raw = NonNull::new(unsafe {
+            syntaqlite_tokenizer_create(std::ptr::null(), self.dialect.raw as *const _)
+        })
+        .expect("tokenizer allocation failed");
 
         let mut tok = RawTokenizer {
             raw,
@@ -150,7 +158,7 @@ impl<'d> RawTokenizerBuilder<'d> {
             // The C side copies the config value.
             unsafe {
                 syntaqlite_tokenizer_set_dialect_config(
-                    tok.raw,
+                    tok.raw.as_ptr(),
                     &tok.dialect_config as *const syntaqlite_parser::dialect::ffi::DialectConfig,
                 );
             }
@@ -162,11 +170,11 @@ impl<'d> RawTokenizerBuilder<'d> {
 
 /// An active tokenizer cursor. Iterates raw tokens from the bound source.
 pub struct RawTokenCursor<'a> {
-    raw: *mut Tokenizer,
+    raw: NonNull<Tokenizer>,
     source: &'a str,
     /// Base pointer of the C source buffer. Used to compute offsets back
     /// into the Rust `source` slice.
-    c_source_base: *const u8,
+    c_source_base: NonNull<u8>,
 }
 
 impl<'a> Iterator for RawTokenCursor<'a> {
@@ -180,13 +188,13 @@ impl<'a> Iterator for RawTokenCursor<'a> {
         };
         // SAFETY: self.raw is valid (owned by RawTokenizer which outlives this
         // RawTokenCursor via the 'a borrow); &mut token is a valid output parameter.
-        let rc = unsafe { syntaqlite_tokenizer_next(self.raw, &mut token) };
+        let rc = unsafe { syntaqlite_tokenizer_next(self.raw.as_ptr(), &mut token) };
         if rc == 0 {
             return None;
         }
 
         // Compute offset into the source string from the C pointer.
-        let offset = token.text as usize - self.c_source_base as usize;
+        let offset = token.text as usize - self.c_source_base.as_ptr() as usize;
         let len = token.length as usize;
         let text = &self.source[offset..offset + len];
 
