@@ -14,14 +14,14 @@ use syntaqlite::IncrementalParser;
 
 mod tk {
     use syntaqlite::TokenType;
-    pub const SELECT: TokenType = TokenType::SELECT;
-    pub const STAR: TokenType = TokenType::STAR;
-    pub const FROM: TokenType = TokenType::FROM;
-    pub const WHERE: TokenType = TokenType::WHERE;
-    pub const ID: TokenType = TokenType::ID;
-    pub const EQ: TokenType = TokenType::EQ;
-    pub const INTEGER: TokenType = TokenType::INTEGER;
-    pub const ILLEGAL: TokenType = TokenType::ILLEGAL;
+    pub(crate) const SELECT: TokenType = TokenType::SELECT;
+    pub(crate) const STAR: TokenType = TokenType::STAR;
+    pub(crate) const FROM: TokenType = TokenType::FROM;
+    pub(crate) const WHERE: TokenType = TokenType::WHERE;
+    pub(crate) const ID: TokenType = TokenType::ID;
+    pub(crate) const EQ: TokenType = TokenType::EQ;
+    pub(crate) const INTEGER: TokenType = TokenType::INTEGER;
+    pub(crate) const ILLEGAL: TokenType = TokenType::ILLEGAL;
 }
 
 // ---------------------------------------------------------------------------

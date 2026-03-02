@@ -18,14 +18,14 @@ use syntaqlite_parser::{FfiDialect, ParseError};
 use super::{Cli, Command};
 
 #[derive(Clone, Copy, ValueEnum)]
-pub enum KeywordCasing {
+pub(crate) enum KeywordCasing {
     Preserve,
     Upper,
     Lower,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
-pub enum HostLanguage {
+pub(crate) enum HostLanguage {
     Python,
     Typescript,
 }
@@ -60,7 +60,7 @@ fn require_dialect(dialect: Option<RawDialect<'_>>) -> Result<RawDialect<'_>, St
 
 const DEFAULT_DIALECT_SYMBOL: &str = "syntaqlite_dialect";
 
-pub fn dialect_symbol_name(name: Option<&str>) -> String {
+pub(crate) fn dialect_symbol_name(name: Option<&str>) -> String {
     match name {
         Some(name) => format!("syntaqlite_{name}_dialect"),
         None => DEFAULT_DIALECT_SYMBOL.to_string(),
@@ -89,7 +89,7 @@ unsafe fn dialect_from_library<'lib>(
     Ok(unsafe { RawDialect::from_raw(raw) })
 }
 
-pub fn dispatch(cli: Cli, dialect: Option<RawDialect<'_>>) -> Result<(), String> {
+pub(crate) fn dispatch(cli: Cli, dialect: Option<RawDialect<'_>>) -> Result<(), String> {
     if let Some(path) = &cli.dialect_path {
         // lib must be declared before dyn_dialect so Rust's reverse drop order
         // ensures dyn_dialect is dropped before lib (which would unload the library).
@@ -261,7 +261,7 @@ fn cmd_fmt(
 }
 
 fn dump_ast_source(dialect: RawDialect<'_>, source: &str) -> (String, Vec<ParseError>) {
-    let mut parser = RawParser::builder(dialect).build();
+    let mut parser = RawParser::new(dialect);
     let mut cursor = parser.parse(source);
     let mut out = String::new();
     let mut errors = Vec::new();
@@ -288,7 +288,7 @@ fn format_source(
     source: &str,
     config: FormatConfig,
 ) -> Result<String, ParseError> {
-    let mut formatter = Formatter::builder(dialect).format_config(config).build();
+    let mut formatter = Formatter::with_config(dialect, &config, None);
     formatter.format(source)
 }
 
@@ -340,9 +340,7 @@ fn validate_source(
     config: &ValidationConfig,
 ) -> bool {
     let functions = syntaqlite::embedded::sqlite_function_defs();
-    let mut validator = syntaqlite::Validator::builder(dialect)
-        .functions(functions)
-        .build();
+    let mut validator = syntaqlite::Validator::with_config(dialect, functions, None);
     let diags = validator.validate(source, None, config);
     SourceContext::new(source, file).render_diagnostics(&diags)
 }

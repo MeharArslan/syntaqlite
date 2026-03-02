@@ -218,7 +218,7 @@ fn finish_with_no_tokens() {
 /// High-level API still works after the refactor.
 #[test]
 fn high_level_api_still_works() {
-    let mut parser = syntaqlite::ext::RawParser::builder(syntaqlite::dialect::sqlite()).build();
+    let mut parser = syntaqlite::ext::RawParser::new(syntaqlite::dialect::sqlite());
     let mut cursor = parser.parse("SELECT 1; SELECT 2");
 
     let node1 = cursor.next_statement().unwrap().unwrap();
@@ -244,7 +244,13 @@ fn sqlite_type_tokens_are_marked_as_type() {
 
     let source = "CREATE TABLE t(a int, b TEXT); SELECT CAST(a AS varchar(10)) FROM t";
     let dialect = syntaqlite::dialect::sqlite();
-    let mut parser = RawParser::builder(dialect).collect_tokens(true).build();
+    let mut parser = RawParser::with_config(
+        dialect,
+        &syntaqlite::ParserConfig {
+            collect_tokens: true,
+            ..syntaqlite::ParserConfig::default()
+        },
+    );
     let mut cursor = parser.parse(source);
 
     while let Some(stmt) = cursor.next_statement() {

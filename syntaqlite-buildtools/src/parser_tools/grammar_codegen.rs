@@ -6,7 +6,7 @@ use std::fs;
 use crate::util::c_writer::CWriter;
 use crate::util::grammar_parser;
 
-pub fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<(), String> {
+pub(crate) fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<(), String> {
     let input_text =
         fs::read_to_string(input_path).map_err(|e| format!("Failed to read {input_path}: {e}"))?;
 

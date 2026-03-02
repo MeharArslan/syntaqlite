@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn node_ref_dump_json_produces_valid_json() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = RawParser::builder(dialect).build();
+        let mut parser = RawParser::new(dialect);
         let mut cursor = parser.parse("SELECT 1;");
         let node = cursor.next_statement().unwrap().unwrap();
         let mut out = String::new();

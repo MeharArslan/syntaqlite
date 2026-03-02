@@ -18,7 +18,7 @@ const RUST_FILE_HEADER: &str = "\
 ";
 
 /// Simple Rust code writer with single-buffer output and indentation tracking
-pub struct RustWriter {
+pub(crate) struct RustWriter {
     core: TextWriterCore,
 }
 

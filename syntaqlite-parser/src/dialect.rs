@@ -9,13 +9,13 @@
 //! formatter bytecode — everything a parser, formatter, or validator needs
 //! to operate on a particular SQL grammar.
 
-pub mod ffi {
+pub(crate) mod ffi {
     //! C ABI mirror structs for the dialect.
 
     pub const FIELD_NODE_ID: u8 = 0;
     pub const FIELD_SPAN: u8 = 1;
     pub const FIELD_BOOL: u8 = 2;
-    pub const FIELD_FLAGS: u8 = 3;
+    pub(crate) const FIELD_FLAGS: u8 = 3;
     pub const FIELD_ENUM: u8 = 4;
 
     /// Mirrors C `SyntaqliteCflags` from `include/syntaqlite/cflags.h`.
@@ -283,9 +283,8 @@ pub mod ffi {
 
 // Re-export the C types (excluding the `Dialect` C struct to avoid
 // naming collision with the safe Rust wrapper below).
-pub use ffi::{
-    DialectConfig, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldMeta,
-};
+pub(crate) use ffi::FIELD_FLAGS;
+pub use ffi::{DialectConfig, FIELD_BOOL, FIELD_ENUM, FIELD_NODE_ID, FIELD_SPAN, FieldMeta};
 // Re-export the C `Dialect` struct under a distinct name for external callers
 // that need to declare FFI functions returning a raw dialect pointer.
 pub use ffi::Dialect as FfiDialect;
@@ -713,7 +712,7 @@ pub struct SchemaContribution {
 ///
 /// # Safety
 /// `ptr` must point to a valid node struct matching `tag`'s metadata in `dialect`.
-pub unsafe fn extract_fields<'a>(
+pub(crate) unsafe fn extract_fields<'a>(
     dialect: &RawDialect<'_>,
     ptr: *const u8,
     tag: u32,
@@ -732,7 +731,7 @@ pub unsafe fn extract_fields<'a>(
 /// # Safety
 /// `ptr` must point to a valid node struct whose field at `m.offset` has
 /// the type indicated by `m.kind`.
-pub unsafe fn extract_field_val<'a>(
+pub(crate) unsafe fn extract_field_val<'a>(
     ptr: *const u8,
     m: &FieldMeta,
     source: &'a str,

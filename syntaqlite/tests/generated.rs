@@ -8,9 +8,7 @@ fn format_sql(sql: &str) -> String {
 
 fn format_sql_with(sql: &str, config: FormatConfig) -> String {
     let dialect = syntaqlite::dialect::sqlite();
-    let mut f = syntaqlite::Formatter::builder(dialect)
-        .format_config(config)
-        .build();
+    let mut f = syntaqlite::Formatter::with_config(dialect, &config, None);
     let result = f.format(sql).unwrap();
     // Strip the trailing semicolon + newline that Formatter appends
     result
@@ -78,10 +76,7 @@ fn format_sql_with_cflags(sql: &str, config: FormatConfig, cflag_indices: &[u32]
         dc.cflags.set(idx);
     }
     let dialect = syntaqlite::dialect::sqlite();
-    let mut f = syntaqlite::Formatter::builder(dialect)
-        .format_config(config)
-        .dialect_config(dc)
-        .build();
+    let mut f = syntaqlite::Formatter::with_config(dialect, &config, Some(dc));
     let result = f.format(sql).unwrap();
     result
         .trim_end_matches('\n')

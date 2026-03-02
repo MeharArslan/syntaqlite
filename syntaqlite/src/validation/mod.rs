@@ -194,17 +194,27 @@ impl<'d> Validator<'d> {
             .into_iter()
             .flat_map(|info| expand_function_info(info))
             .collect();
-        Validator::builder(crate::dialect::sqlite())
-            .functions(functions)
-            .build()
+        Validator::with_config(crate::dialect::sqlite(), functions, None)
     }
 
-    /// Create a builder for a validator bound to the given dialect.
-    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> ValidatorBuilder<'d> {
-        ValidatorBuilder {
-            dialect: dialect.into(),
-            functions: Vec::new(),
-            dialect_config: None,
+    /// Create a validator bound to the given dialect with custom configuration.
+    pub fn with_config(
+        dialect: impl Into<RawDialect<'d>>,
+        functions: Vec<FunctionDef>,
+        dialect_config: Option<syntaqlite_parser::DialectConfig>,
+    ) -> Self {
+        let dialect = dialect.into();
+        let parser = RawParser::with_config(
+            dialect,
+            &syntaqlite_parser::ParserConfig {
+                dialect_config,
+                ..syntaqlite_parser::ParserConfig::default()
+            },
+        );
+        Validator {
+            parser,
+            dialect,
+            functions,
         }
     }
 
@@ -236,45 +246,6 @@ impl<'d> Validator<'d> {
 impl Default for Validator<'static> {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// Builder for configuring a [`Validator`] before construction.
-pub struct ValidatorBuilder<'d> {
-    dialect: RawDialect<'d>,
-    functions: Vec<FunctionDef>,
-    dialect_config: Option<syntaqlite_parser::DialectConfig>,
-}
-
-impl<'d> ValidatorBuilder<'d> {
-    /// Set the function catalog used for function-name/arity validation.
-    ///
-    /// By default the list is empty. Use
-    /// [`sqlite_function_defs`](crate::embedded::sqlite_function_defs)
-    /// to populate it with the SQLite built-in catalog.
-    pub fn functions(mut self, functions: Vec<FunctionDef>) -> Self {
-        self.functions = functions;
-        self
-    }
-
-    /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(mut self, config: syntaqlite_parser::DialectConfig) -> Self {
-        self.dialect_config = Some(config);
-        self
-    }
-
-    /// Build the validator.
-    pub fn build(self) -> Validator<'d> {
-        let mut builder = RawParser::builder(self.dialect);
-        if let Some(dc) = self.dialect_config {
-            builder = builder.dialect_config(dc);
-        }
-
-        Validator {
-            parser: builder.build(),
-            dialect: self.dialect,
-            functions: self.functions,
-        }
     }
 }
 

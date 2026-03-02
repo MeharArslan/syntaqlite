@@ -1,6 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+#![warn(unreachable_pub)]
+
 // Shared modules (needed by both stage 1 and stage 2/3).
 pub mod util;
 

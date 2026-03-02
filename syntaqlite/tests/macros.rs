@@ -10,11 +10,11 @@ fn formatter() -> syntaqlite::Formatter<'static> {
 
 mod tk {
     use syntaqlite::TokenType;
-    pub const SELECT: TokenType = TokenType::SELECT;
-    pub const INTEGER: TokenType = TokenType::INTEGER;
-    pub const PLUS: TokenType = TokenType::PLUS;
-    pub const COMMA: TokenType = TokenType::COMMA;
-    pub const ID: TokenType = TokenType::ID;
+    pub(crate) const SELECT: TokenType = TokenType::SELECT;
+    pub(crate) const INTEGER: TokenType = TokenType::INTEGER;
+    pub(crate) const PLUS: TokenType = TokenType::PLUS;
+    pub(crate) const COMMA: TokenType = TokenType::COMMA;
+    pub(crate) const ID: TokenType = TokenType::ID;
 }
 
 #[test]

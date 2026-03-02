@@ -11,7 +11,7 @@ use super::doc::{DocArena, DocId, NIL_DOC};
 
 /// Shared context threaded through the recursive formatting tree.
 /// Bundles the state that is constant across all nodes in a single format call.
-pub struct FmtCtx<'a> {
+pub(crate) struct FmtCtx<'a> {
     pub dialect: RawDialect<'a>,
     pub reader: RawNodeReader<'a>,
     pub comment_ctx: Option<&'a CommentCtx<'a>>,

@@ -465,7 +465,7 @@ mod tests {
         // CREATE TABLE slice AS SELECT 2 → table has no named columns.
         // Referencing slice."1" should warn about unknown column.
         let dialect = syntaqlite_parser_sqlite::dialect();
-        let mut parser = crate::ext::RawParser::builder(dialect).build();
+        let mut parser = crate::ext::RawParser::new(dialect);
         let sql = "CREATE TABLE slice AS SELECT 2;\nSELECT slice.\"1\" FROM slice;";
         let mut cursor = parser.parse(sql);
         let stmt_ids: Vec<_> = (&mut cursor)

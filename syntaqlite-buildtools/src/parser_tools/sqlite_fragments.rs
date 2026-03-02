@@ -7,7 +7,7 @@
 //! and writes them to `data/sqlite_fragments/`. Stage 3 (always compiled)
 //! loads them here via `include_str!` for dialect-specific assembly.
 
-pub struct SqliteFragments {
+pub(crate) struct SqliteFragments {
     pub cc_defines: &'static str,
     pub ai_class: &'static str,
     pub ctype_map: &'static str,
@@ -19,7 +19,7 @@ pub struct SqliteFragments {
     pub keyword_cflags: &'static str,
 }
 
-pub fn load() -> SqliteFragments {
+pub(crate) fn load() -> SqliteFragments {
     SqliteFragments {
         cc_defines: include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),

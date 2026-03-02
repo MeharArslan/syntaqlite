@@ -6,12 +6,12 @@
 pub mod amalgamate;
 pub mod base_files;
 mod base_files_tables;
-pub mod grammar_codegen;
-pub mod keyword_hash;
+pub(crate) mod grammar_codegen;
+pub(crate) mod keyword_hash;
 #[cfg(feature = "codegen-pipeline")]
-pub mod lemon;
+pub(crate) mod lemon;
 #[cfg(feature = "codegen-pipeline")]
-pub mod mkkeyword;
-pub mod parser_pipeline;
-pub mod sqlite_fragments;
-pub mod tokenizer_assembly;
+pub(crate) mod mkkeyword;
+pub(crate) mod parser_pipeline;
+pub(crate) mod sqlite_fragments;
+pub(crate) mod tokenizer_assembly;

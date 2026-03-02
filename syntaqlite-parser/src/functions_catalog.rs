@@ -1385,7 +1385,7 @@ static AVAIL_ZEROBLOB: &[AvailabilityRule] = &[AvailabilityRule {
 }];
 
 /// All 179 SQLite built-in functions.
-pub static SQLITE_FUNCTIONS: &[FunctionEntry<'static>] = &[
+pub(crate) static SQLITE_FUNCTIONS: &[FunctionEntry<'static>] = &[
     FunctionEntry {
         info: FunctionInfo {
             name: "->",

@@ -5,7 +5,7 @@ use syntaqlite::ast::{Node, Stmt};
 use syntaqlite::ext::RawParser;
 
 fn new_parser() -> RawParser<'static> {
-    RawParser::builder(syntaqlite::dialect::sqlite()).build()
+    RawParser::new(syntaqlite::dialect::sqlite())
 }
 
 #[test]

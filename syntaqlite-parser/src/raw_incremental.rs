@@ -17,6 +17,7 @@ use crate::parser::{
     syntaqlite_parser_set_dialect_config, syntaqlite_parser_set_trace,
 };
 use crate::raw_session::CursorState;
+use crate::raw_session::ParserConfig;
 use crate::{Comment, MacroRegion, ParseResult, Parser};
 use crate::{ParseError, RawNodeReader};
 
@@ -34,14 +35,52 @@ pub struct RawIncrementalParser<'d> {
 unsafe impl Send for RawIncrementalParser<'_> {}
 
 impl<'d> RawIncrementalParser<'d> {
-    /// Create a builder for a low-level parser bound to the given dialect.
-    /// Token collection is enabled by default (required for formatting).
-    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> RawIncrementalParserBuilder<'d> {
-        RawIncrementalParserBuilder {
-            dialect: dialect.into(),
-            trace: false,
-            collect_tokens: true,
-            dialect_config: None,
+    /// Create an incremental parser bound to the given dialect with default
+    /// configuration (token collection enabled).
+    pub fn new(dialect: impl Into<RawDialect<'d>>) -> Self {
+        Self::with_config(
+            dialect,
+            &ParserConfig {
+                collect_tokens: true,
+                ..ParserConfig::default()
+            },
+        )
+    }
+
+    /// Create an incremental parser bound to the given dialect with custom
+    /// configuration.
+    pub fn with_config(dialect: impl Into<RawDialect<'d>>, config: &ParserConfig) -> Self {
+        let dialect = dialect.into();
+        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
+        // a new parser with default malloc/free. dialect.raw is valid for the call.
+        let raw = NonNull::new(unsafe {
+            syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw)
+        })
+        .expect("parser allocation failed");
+
+        // SAFETY: raw is freshly created (not sealed), so these calls always succeed.
+        unsafe {
+            syntaqlite_parser_set_trace(raw.as_ptr(), config.trace as c_int);
+            syntaqlite_parser_set_collect_tokens(raw.as_ptr(), config.collect_tokens as c_int);
+        }
+
+        let dialect_config = if let Some(dc) = config.dialect_config {
+            let boxed = Box::new(dc);
+            // SAFETY: raw is valid; boxed pointer is stable and lives as long
+            // as the RawIncrementalParser.
+            unsafe {
+                syntaqlite_parser_set_dialect_config(raw.as_ptr(), &*boxed as *const DialectConfig);
+            }
+            Some(boxed)
+        } else {
+            None
+        };
+
+        RawIncrementalParser {
+            raw,
+            source_buf: Vec::new(),
+            _dialect_config: dialect_config,
+            dialect,
         }
     }
 
@@ -74,72 +113,6 @@ impl Drop for RawIncrementalParser<'_> {
         // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_dialect
         // and has not been freed (Drop runs exactly once).
         unsafe { syntaqlite_parser_destroy(self.raw.as_ptr()) }
-    }
-}
-
-// ── RawIncrementalParserBuilder ───────────────────────────────────────────────
-
-/// Builder for configuring a [`RawIncrementalParser`] before construction.
-pub struct RawIncrementalParserBuilder<'a> {
-    dialect: RawDialect<'a>,
-    trace: bool,
-    collect_tokens: bool,
-    dialect_config: Option<DialectConfig>,
-}
-
-impl<'a> RawIncrementalParserBuilder<'a> {
-    /// Enable parser trace output (Lemon debug trace).
-    pub fn trace(mut self, enable: bool) -> Self {
-        self.trace = enable;
-        self
-    }
-
-    /// Collect non-whitespace token positions during parsing.
-    /// Enabled by default for LowLevelParser (required for formatting).
-    pub fn collect_tokens(mut self, enable: bool) -> Self {
-        self.collect_tokens = enable;
-        self
-    }
-
-    /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
-        self.dialect_config = Some(config);
-        self
-    }
-
-    /// Build the low-level parser.
-    pub fn build(self) -> RawIncrementalParser<'a> {
-        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
-        // a new parser with default malloc/free. dialect.raw is valid for the call.
-        let raw = NonNull::new(unsafe {
-            syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw)
-        })
-        .expect("parser allocation failed");
-
-        // SAFETY: raw is freshly created (not sealed), so these calls always succeed.
-        unsafe {
-            syntaqlite_parser_set_trace(raw.as_ptr(), self.trace as c_int);
-            syntaqlite_parser_set_collect_tokens(raw.as_ptr(), self.collect_tokens as c_int);
-        }
-
-        let dialect_config = if let Some(config) = self.dialect_config {
-            let boxed = Box::new(config);
-            // SAFETY: raw is valid; boxed pointer is stable and lives as long
-            // as the LowLevelParser.
-            unsafe {
-                syntaqlite_parser_set_dialect_config(raw.as_ptr(), &*boxed as *const DialectConfig);
-            }
-            Some(boxed)
-        } else {
-            None
-        };
-
-        RawIncrementalParser {
-            raw,
-            source_buf: Vec::new(),
-            _dialect_config: dialect_config,
-            dialect: self.dialect,
-        }
     }
 }
 

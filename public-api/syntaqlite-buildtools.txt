@@ -1,0 +1,744 @@
+impl core::clone::Clone for syntaqlite_buildtools::codegen_api::DialectNaming
+impl core::clone::Clone for syntaqlite_buildtools::extract::functions::AvailabilityRule
+impl core::clone::Clone for syntaqlite_buildtools::extract::functions::CflagAvailability
+impl core::clone::Clone for syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry
+impl core::clone::Clone for syntaqlite_buildtools::extract::functions::CflagEffect
+impl core::clone::Clone for syntaqlite_buildtools::extract::functions::FunctionCatalog
+impl core::clone::Clone for syntaqlite_buildtools::extract::functions::FunctionCatalogEntry
+impl core::clone::Clone for syntaqlite_buildtools::extract::functions::FunctionEntry
+impl core::clone::Clone for syntaqlite_buildtools::extract::functions::FunctionSet
+impl core::clone::Clone for syntaqlite_buildtools::extract::functions::VersionCflagAudit
+impl core::clone::Clone for syntaqlite_buildtools::util::c_extractor::CDefines
+impl core::clone::Clone for syntaqlite_buildtools::util::c_extractor::CFunction
+impl core::clone::Clone for syntaqlite_buildtools::util::c_extractor::CStaticArray
+impl core::clone::Clone for syntaqlite_buildtools::util::synq_parser::SchemaAnnotation
+impl core::clone::Clone for syntaqlite_buildtools::util::synq_parser::SchemaKind
+impl core::clone::Clone for syntaqlite_buildtools::util::synq_parser::SchemaParam
+impl core::clone::Clone for syntaqlite_buildtools::util::synq_parser::Storage
+impl core::clone::Clone for syntaqlite_buildtools::util::synq_parser::SynqParseError
+impl core::clone::Clone for syntaqlite_buildtools::version_analysis::FragmentAnalysis
+impl core::clone::Clone for syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis
+impl core::clone::Clone for syntaqlite_buildtools::version_analysis::grammar::GrammarDiff
+impl core::clone::Clone for syntaqlite_buildtools::version_analysis::grammar::GrammarSummary
+impl core::clone::Clone for syntaqlite_buildtools::version_analysis::KeywordAddition
+impl core::clone::Clone for syntaqlite_buildtools::version_analysis::KeywordAnalysis
+impl core::clone::Clone for syntaqlite_buildtools::version_analysis::SqliteVersion
+impl core::clone::Clone for syntaqlite_buildtools::version_analysis::VariantGroup
+impl core::cmp::Eq for syntaqlite_buildtools::extract::functions::FunctionEntry
+impl core::cmp::Eq for syntaqlite_buildtools::util::synq_parser::SchemaKind
+impl core::cmp::Eq for syntaqlite_buildtools::version_analysis::SqliteVersion
+impl core::cmp::Ord for syntaqlite_buildtools::extract::functions::FunctionEntry
+impl core::cmp::Ord for syntaqlite_buildtools::version_analysis::SqliteVersion
+impl core::cmp::PartialEq for syntaqlite_buildtools::extract::functions::FunctionEntry
+impl core::cmp::PartialEq for syntaqlite_buildtools::util::synq_parser::SchemaKind
+impl core::cmp::PartialEq for syntaqlite_buildtools::util::synq_parser::Storage
+impl core::cmp::PartialEq for syntaqlite_buildtools::version_analysis::SqliteVersion
+impl core::cmp::PartialOrd for syntaqlite_buildtools::extract::functions::FunctionEntry
+impl core::cmp::PartialOrd for syntaqlite_buildtools::version_analysis::SqliteVersion
+impl core::convert::From<syntaqlite_buildtools::version_analysis::SqliteVersion> for alloc::string::String
+impl core::fmt::Debug for syntaqlite_buildtools::codegen_api::DialectNaming
+impl core::fmt::Debug for syntaqlite_buildtools::extract::functions::AvailabilityRule
+impl core::fmt::Debug for syntaqlite_buildtools::extract::functions::CflagAvailability
+impl core::fmt::Debug for syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry
+impl core::fmt::Debug for syntaqlite_buildtools::extract::functions::CflagEffect
+impl core::fmt::Debug for syntaqlite_buildtools::extract::functions::FunctionCatalog
+impl core::fmt::Debug for syntaqlite_buildtools::extract::functions::FunctionCatalogEntry
+impl core::fmt::Debug for syntaqlite_buildtools::extract::functions::FunctionEntry
+impl core::fmt::Debug for syntaqlite_buildtools::extract::functions::FunctionSet
+impl core::fmt::Debug for syntaqlite_buildtools::extract::functions::VersionCflagAudit
+impl core::fmt::Debug for syntaqlite_buildtools::util::c_extractor::CDefines
+impl core::fmt::Debug for syntaqlite_buildtools::util::c_extractor::CFunction
+impl core::fmt::Debug for syntaqlite_buildtools::util::c_extractor::CStaticArray
+impl core::fmt::Debug for syntaqlite_buildtools::util::grammar_parser::ParseError
+impl core::fmt::Debug for syntaqlite_buildtools::util::synq_parser::Field
+impl core::fmt::Debug for syntaqlite_buildtools::util::synq_parser::Fmt
+impl core::fmt::Debug for syntaqlite_buildtools::util::synq_parser::Item
+impl core::fmt::Debug for syntaqlite_buildtools::util::synq_parser::SchemaAnnotation
+impl core::fmt::Debug for syntaqlite_buildtools::util::synq_parser::SchemaKind
+impl core::fmt::Debug for syntaqlite_buildtools::util::synq_parser::SchemaParam
+impl core::fmt::Debug for syntaqlite_buildtools::util::synq_parser::Storage
+impl core::fmt::Debug for syntaqlite_buildtools::util::synq_parser::SynqParseError
+impl core::fmt::Debug for syntaqlite_buildtools::version_analysis::FragmentAnalysis
+impl core::fmt::Debug for syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis
+impl core::fmt::Debug for syntaqlite_buildtools::version_analysis::grammar::GrammarDiff
+impl core::fmt::Debug for syntaqlite_buildtools::version_analysis::grammar::GrammarSummary
+impl core::fmt::Debug for syntaqlite_buildtools::version_analysis::KeywordAddition
+impl core::fmt::Debug for syntaqlite_buildtools::version_analysis::KeywordAnalysis
+impl core::fmt::Debug for syntaqlite_buildtools::version_analysis::SqliteVersion
+impl core::fmt::Debug for syntaqlite_buildtools::version_analysis::VariantGroup
+impl core::fmt::Debug for syntaqlite_buildtools::version_analysis::VersionAnalysis
+impl core::fmt::Display for syntaqlite_buildtools::util::c_extractor::CDefines
+impl core::fmt::Display for syntaqlite_buildtools::util::c_extractor::CFunction
+impl core::fmt::Display for syntaqlite_buildtools::util::c_extractor::CStaticArray
+impl core::fmt::Display for syntaqlite_buildtools::util::synq_parser::SynqParseError
+impl core::fmt::Display for syntaqlite_buildtools::version_analysis::SqliteVersion
+impl core::hash::Hash for syntaqlite_buildtools::extract::functions::FunctionEntry
+impl core::hash::Hash for syntaqlite_buildtools::version_analysis::SqliteVersion
+impl core::marker::Copy for syntaqlite_buildtools::util::synq_parser::SchemaKind
+impl core::marker::StructuralPartialEq for syntaqlite_buildtools::extract::functions::FunctionEntry
+impl core::marker::StructuralPartialEq for syntaqlite_buildtools::util::synq_parser::SchemaKind
+impl core::marker::StructuralPartialEq for syntaqlite_buildtools::util::synq_parser::Storage
+impl core::marker::StructuralPartialEq for syntaqlite_buildtools::version_analysis::SqliteVersion
+impl serde_core::ser::Serialize for syntaqlite_buildtools::extract::functions::AvailabilityRule
+impl serde_core::ser::Serialize for syntaqlite_buildtools::extract::functions::CflagAvailability
+impl serde_core::ser::Serialize for syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry
+impl serde_core::ser::Serialize for syntaqlite_buildtools::extract::functions::FunctionCatalog
+impl serde_core::ser::Serialize for syntaqlite_buildtools::extract::functions::FunctionCatalogEntry
+impl serde_core::ser::Serialize for syntaqlite_buildtools::extract::functions::VersionCflagAudit
+impl serde_core::ser::Serialize for syntaqlite_buildtools::version_analysis::FragmentAnalysis
+impl serde_core::ser::Serialize for syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis
+impl serde_core::ser::Serialize for syntaqlite_buildtools::version_analysis::grammar::GrammarDiff
+impl serde_core::ser::Serialize for syntaqlite_buildtools::version_analysis::grammar::GrammarSummary
+impl serde_core::ser::Serialize for syntaqlite_buildtools::version_analysis::KeywordAddition
+impl serde_core::ser::Serialize for syntaqlite_buildtools::version_analysis::KeywordAnalysis
+impl serde_core::ser::Serialize for syntaqlite_buildtools::version_analysis::SqliteVersion
+impl serde_core::ser::Serialize for syntaqlite_buildtools::version_analysis::VariantGroup
+impl serde_core::ser::Serialize for syntaqlite_buildtools::version_analysis::VersionAnalysis
+impl syntaqlite_buildtools::codegen_api::DialectNaming
+impl syntaqlite_buildtools::dialect_codegen::AstModel<'_>
+impl syntaqlite_buildtools::dialect_codegen::AstModel<'_>
+impl syntaqlite_buildtools::dialect_codegen::AstModel<'_>
+impl syntaqlite_buildtools::dialect_codegen::AstModel<'_>
+impl syntaqlite_buildtools::output_resolver::OutputLayout
+impl syntaqlite_buildtools::util::c_extractor::CDefines
+impl syntaqlite_buildtools::util::c_extractor::CExtractor
+impl syntaqlite_buildtools::util::c_extractor::CFunction
+impl syntaqlite_buildtools::util::c_extractor::CStaticArray
+impl syntaqlite_buildtools::util::c_transformer::CTransformer
+impl syntaqlite_buildtools::util::synq_parser::SchemaAnnotation
+impl syntaqlite_buildtools::version_analysis::grammar::GrammarDiff
+impl syntaqlite_buildtools::version_analysis::SqliteVersion
+impl syntaqlite_buildtools::version_analysis::VariantGroup
+impl<'a> core::clone::Clone for syntaqlite_buildtools::dialect_codegen::EnumRef<'a>
+impl<'a> core::clone::Clone for syntaqlite_buildtools::dialect_codegen::FlagsRef<'a>
+impl<'a> core::clone::Clone for syntaqlite_buildtools::dialect_codegen::ListRef<'a>
+impl<'a> core::clone::Clone for syntaqlite_buildtools::dialect_codegen::NodeLikeRef<'a>
+impl<'a> core::clone::Clone for syntaqlite_buildtools::dialect_codegen::NodeRef<'a>
+impl<'a> core::clone::Clone for syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>
+impl<'a> core::clone::Clone for syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>
+impl<'a> core::clone::Clone for syntaqlite_buildtools::util::grammar_parser::LemonGrammar<'a>
+impl<'a> core::clone::Clone for syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>
+impl<'a> core::clone::Clone for syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>
+impl<'a> core::clone::Clone for syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>
+impl<'a> core::clone::Clone for syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>
+impl<'a> core::cmp::Eq for syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>
+impl<'a> core::cmp::Eq for syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>
+impl<'a> core::cmp::Eq for syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>
+impl<'a> core::cmp::Eq for syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>
+impl<'a> core::cmp::Eq for syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>
+impl<'a> core::cmp::Eq for syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>
+impl<'a> core::cmp::PartialEq for syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>
+impl<'a> core::cmp::PartialEq for syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>
+impl<'a> core::cmp::PartialEq for syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>
+impl<'a> core::cmp::PartialEq for syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>
+impl<'a> core::cmp::PartialEq for syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>
+impl<'a> core::cmp::PartialEq for syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>
+impl<'a> core::fmt::Debug for syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>
+impl<'a> core::fmt::Debug for syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>
+impl<'a> core::fmt::Debug for syntaqlite_buildtools::util::grammar_parser::LemonGrammar<'a>
+impl<'a> core::fmt::Debug for syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>
+impl<'a> core::fmt::Debug for syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>
+impl<'a> core::fmt::Debug for syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>
+impl<'a> core::fmt::Debug for syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>
+impl<'a> core::fmt::Display for syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>
+impl<'a> core::fmt::Display for syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>
+impl<'a> core::fmt::Display for syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>
+impl<'a> core::marker::Copy for syntaqlite_buildtools::dialect_codegen::EnumRef<'a>
+impl<'a> core::marker::Copy for syntaqlite_buildtools::dialect_codegen::FlagsRef<'a>
+impl<'a> core::marker::Copy for syntaqlite_buildtools::dialect_codegen::ListRef<'a>
+impl<'a> core::marker::Copy for syntaqlite_buildtools::dialect_codegen::NodeLikeRef<'a>
+impl<'a> core::marker::Copy for syntaqlite_buildtools::dialect_codegen::NodeRef<'a>
+impl<'a> core::marker::StructuralPartialEq for syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>
+impl<'a> core::marker::StructuralPartialEq for syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>
+impl<'a> core::marker::StructuralPartialEq for syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>
+impl<'a> core::marker::StructuralPartialEq for syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>
+impl<'a> core::marker::StructuralPartialEq for syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>
+impl<'a> core::marker::StructuralPartialEq for syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>
+impl<'a> syntaqlite_buildtools::codegen_api::DialectCodegenJob<'a>
+impl<'a> syntaqlite_buildtools::dialect_codegen::AstModel<'a>
+impl<'a> syntaqlite_buildtools::dialect_codegen::NodeLikeRef<'a>
+impl<'a> syntaqlite_buildtools::util::grammar_parser::LemonGrammar<'a>
+impl<'de> serde_core::de::Deserialize<'de> for syntaqlite_buildtools::extract::functions::CflagAvailability
+impl<'de> serde_core::de::Deserialize<'de> for syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry
+impl<'de> serde_core::de::Deserialize<'de> for syntaqlite_buildtools::extract::functions::VersionCflagAudit
+pub const syntaqlite_buildtools::codegen_api::AUTOGENERATED_MARKER: &str
+pub const syntaqlite_buildtools::extract::keywords_and_parser::PARSER_CFLAGS: &[(&str, &str, &str)]
+pub const syntaqlite_buildtools::extract::SQLITE_BLESSING: &str
+pub const syntaqlite_buildtools::extract::SYNQ_CFLAG_TABLE: &[(&str, &str, u32, &str)]
+pub const syntaqlite_buildtools::extract::virtual_tables::VIRTUAL_TABLE_CFLAGS: &[(&str, &str, &[&str])]
+pub const syntaqlite_buildtools::util::AUTOGENERATED_MARKER: &str
+pub enum syntaqlite_buildtools::dialect_codegen::NodeLikeRef<'a>
+pub enum syntaqlite_buildtools::util::synq_parser::Fmt
+pub enum syntaqlite_buildtools::util::synq_parser::Item
+pub enum syntaqlite_buildtools::util::synq_parser::SchemaKind
+pub enum syntaqlite_buildtools::util::synq_parser::Storage
+pub fn alloc::string::String::from(v: syntaqlite_buildtools::version_analysis::SqliteVersion) -> Self
+pub fn syntaqlite_buildtools::amalgamate::amalgamate_dialect(dialect: &str, dialect_dir: &std::path::Path, runtime_header: core::option::Option<&str>, ext_header: core::option::Option<&str>) -> core::result::Result<syntaqlite_buildtools::amalgamate::AmalgamateOutput, alloc::string::String>
+pub fn syntaqlite_buildtools::amalgamate::amalgamate_full(dialect: &str, runtime_dir: &std::path::Path, dialect_dir: &std::path::Path) -> core::result::Result<syntaqlite_buildtools::amalgamate::AmalgamateOutput, alloc::string::String>
+pub fn syntaqlite_buildtools::amalgamate::amalgamate_runtime(runtime_dir: &std::path::Path) -> core::result::Result<syntaqlite_buildtools::amalgamate::AmalgamateOutput, alloc::string::String>
+pub fn syntaqlite_buildtools::base_files::base_synq_files() -> &'static [(&'static str, &'static str)]
+pub fn syntaqlite_buildtools::base_files::base_y_files() -> &'static [(&'static str, &'static str)]
+pub fn syntaqlite_buildtools::base_files::merge_file_sets(base: &[(&str, &str)], extensions: &[(alloc::string::String, alloc::string::String)]) -> alloc::vec::Vec<(alloc::string::String, alloc::string::String)>
+pub fn syntaqlite_buildtools::base_files::write_runtime_headers_to_dir(dir: &std::path::Path) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::codegen_api::base_keyword_token_names() -> std::collections::hash::set::HashSet<alloc::string::String>
+pub fn syntaqlite_buildtools::codegen_api::concatenate_y_contents(files: &[(alloc::string::String, alloc::string::String)]) -> core::result::Result<alloc::vec::Vec<u8>, alloc::string::String>
+pub fn syntaqlite_buildtools::codegen_api::DialectCodegenJob<'a>::new(dialect: &'a syntaqlite_buildtools::codegen_api::DialectNaming, y_files: &'a [(alloc::string::String, alloc::string::String)], synq_files: &'a [(alloc::string::String, alloc::string::String)]) -> Self
+pub fn syntaqlite_buildtools::codegen_api::DialectCodegenJob<'a>::with_base_synq(self, files: &'a [(&'a str, &'a str)]) -> Self
+pub fn syntaqlite_buildtools::codegen_api::DialectCodegenJob<'a>::write_to(&self, layout: &syntaqlite_buildtools::output_resolver::OutputLayout, ensure_dir: &impl core::ops::function::Fn(&std::path::Path) -> core::result::Result<(), alloc::string::String>, write_file: &impl core::ops::function::Fn(&std::path::Path, &str) -> core::result::Result<(), alloc::string::String>) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::clone(&self) -> syntaqlite_buildtools::codegen_api::DialectNaming
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::dialect_dispatch_header_name(&self) -> alloc::string::String
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::dialect_header_name(&self) -> alloc::string::String
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::dialect_symbol_fn_name(&self) -> alloc::string::String
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::guarded_tokens_header(&self, parse_h: &str) -> alloc::string::String
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::include_dir_name(&self) -> alloc::string::String
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::name(&self) -> &str
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::new(name: impl core::convert::Into<alloc::string::String>) -> Self
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::node_header_name(&self) -> alloc::string::String
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::parser_symbol_prefix(&self) -> alloc::string::String
+pub fn syntaqlite_buildtools::codegen_api::DialectNaming::tokens_header_name(&self) -> alloc::string::String
+pub fn syntaqlite_buildtools::codegen_api::extract_grammar(input_path: &str, output_path: core::option::Option<&str>) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::codegen_api::extract_terminals_from_y(extension_y_contents: &[&str]) -> alloc::vec::Vec<alloc::string::String>
+pub fn syntaqlite_buildtools::codegen_api::extract_token_defines(parse_h: &str) -> alloc::vec::Vec<(alloc::string::String, u32)>
+pub fn syntaqlite_buildtools::codegen_api::generate_codegen_artifacts(request: &syntaqlite_buildtools::codegen_api::CodegenRequest<'_>) -> core::result::Result<syntaqlite_buildtools::codegen_api::CodegenArtifacts, alloc::string::String>
+pub fn syntaqlite_buildtools::codegen_api::generate_parser_from_contents(y_files: &[(alloc::string::String, alloc::string::String)], parser_name: &str, output_dir: &str, tokens_header: core::option::Option<&str>) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::codegen_api::generate_parser(actions_dir: &str, parser_name: &str, output_dir: &str, tokens_header: core::option::Option<&str>) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::codegen_api::generate_runtime_tokens_header(token_defines: &[(alloc::string::String, u32)]) -> alloc::string::String
+pub fn syntaqlite_buildtools::codegen_api::read_named_files_from_dir(dir: &str, ext: &str) -> core::result::Result<alloc::vec::Vec<(alloc::string::String, alloc::string::String)>, alloc::string::String>
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'_>::generate_ast_builder_header(&self, dialect: &str) -> alloc::string::String
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'_>::generate_ast_nodes_header(&self, dialect: &str) -> alloc::string::String
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'_>::generate_ast_traits(&self) -> alloc::string::String
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'_>::generate_c_field_metadata(&self, dialect: &str) -> core::result::Result<alloc::string::String, syntaqlite_buildtools::dialect_codegen::c_meta_codegen::CMetaCodegenError>
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'_>::generate_c_fmt_tables(&self) -> core::result::Result<alloc::string::String, syntaqlite_buildtools::dialect_codegen::c_meta_codegen::CFmtCodegenError>
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'_>::generate_c_schema_contributions(&self) -> alloc::string::String
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'_>::generate_rust_ast(&self, paths: &syntaqlite_buildtools::dialect_codegen::rust_ast::RustAstPaths<'_>, dialect_name: &str, open_for_extension: bool) -> alloc::string::String
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'_>::generate_rust_ffi_nodes(&self, paths: &syntaqlite_buildtools::dialect_codegen::rust_ast::RustAstPaths<'_>) -> alloc::string::String
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::abstract_items(&self) -> &[(&'a str, &'a [alloc::string::String])]
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::all_items(&self) -> impl core::iter::traits::iterator::Iterator<Item = &'a syntaqlite_buildtools::util::synq_parser::Item>
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::base_tag_count(&self) -> u32
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::enum_names(&self) -> &std::collections::hash::set::HashSet<&'a str>
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::enums(&self) -> &[syntaqlite_buildtools::dialect_codegen::EnumRef<'a>]
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::flags_names(&self) -> &std::collections::hash::set::HashSet<&'a str>
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::flags(&self) -> &[syntaqlite_buildtools::dialect_codegen::FlagsRef<'a>]
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::items(&self) -> &'a [syntaqlite_buildtools::util::synq_parser::Item]
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::list_names(&self) -> &std::collections::hash::set::HashSet<&'a str>
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::lists(&self) -> &[syntaqlite_buildtools::dialect_codegen::ListRef<'a>]
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::new_with_extensions(base_items: &'a [syntaqlite_buildtools::util::synq_parser::Item], extension_items: &'a [syntaqlite_buildtools::util::synq_parser::Item]) -> core::result::Result<Self, alloc::string::String>
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::new(items: &'a [syntaqlite_buildtools::util::synq_parser::Item]) -> Self
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::node_like_items(&self) -> &[syntaqlite_buildtools::dialect_codegen::NodeLikeRef<'a>]
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::node_names(&self) -> &std::collections::hash::set::HashSet<&'a str>
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::nodes(&self) -> &[syntaqlite_buildtools::dialect_codegen::NodeRef<'a>]
+pub fn syntaqlite_buildtools::dialect_codegen::AstModel<'a>::tag_for(&self, name: &str) -> u32
+pub fn syntaqlite_buildtools::dialect_codegen::EnumRef<'a>::clone(&self) -> syntaqlite_buildtools::dialect_codegen::EnumRef<'a>
+pub fn syntaqlite_buildtools::dialect_codegen::FlagsRef<'a>::clone(&self) -> syntaqlite_buildtools::dialect_codegen::FlagsRef<'a>
+pub fn syntaqlite_buildtools::dialect_codegen::ListRef<'a>::clone(&self) -> syntaqlite_buildtools::dialect_codegen::ListRef<'a>
+pub fn syntaqlite_buildtools::dialect_codegen::NodeLikeRef<'a>::clone(&self) -> syntaqlite_buildtools::dialect_codegen::NodeLikeRef<'a>
+pub fn syntaqlite_buildtools::dialect_codegen::NodeLikeRef<'a>::name(&self) -> &'a str
+pub fn syntaqlite_buildtools::dialect_codegen::NodeRef<'a>::clone(&self) -> syntaqlite_buildtools::dialect_codegen::NodeRef<'a>
+pub fn syntaqlite_buildtools::extract::amalgamation_probe::compile_probe(amalgamation_dir: &std::path::Path, build_dir: &std::path::Path, defines: &[&str], probe_source: &str, label: &str) -> core::result::Result<std::path::PathBuf, alloc::string::String>
+pub fn syntaqlite_buildtools::extract::amalgamation_probe::run_probe(binary_path: &std::path::Path) -> core::result::Result<alloc::string::String, alloc::string::String>
+pub fn syntaqlite_buildtools::extract::base_files::generate_base_files_tables(actions_dir: &std::path::Path, nodes_dir: &std::path::Path, codegen_crate_dir: &std::path::Path) -> core::result::Result<alloc::string::String, alloc::string::String>
+pub fn syntaqlite_buildtools::extract::base_files::write_base_files_tables(actions_dir: &std::path::Path, nodes_dir: &std::path::Path, codegen_crate_dir: &std::path::Path, output_path: &std::path::Path) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::extract::functions::audit_version_cflags(amalgamation_dir: &std::path::Path, output_path: &std::path::Path) -> core::result::Result<syntaqlite_buildtools::extract::functions::CflagAvailability, alloc::string::String>
+pub fn syntaqlite_buildtools::extract::functions::AvailabilityRule::clone(&self) -> syntaqlite_buildtools::extract::functions::AvailabilityRule
+pub fn syntaqlite_buildtools::extract::functions::AvailabilityRule::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::extract::functions::AvailabilityRule::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::extract::functions::CflagAvailability::clone(&self) -> syntaqlite_buildtools::extract::functions::CflagAvailability
+pub fn syntaqlite_buildtools::extract::functions::CflagAvailability::deserialize<__D>(__deserializer: __D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+pub fn syntaqlite_buildtools::extract::functions::CflagAvailability::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::extract::functions::CflagAvailability::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry::clone(&self) -> syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry
+pub fn syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry::deserialize<__D>(__deserializer: __D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+pub fn syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::extract::functions::CflagEffect::clone(&self) -> syntaqlite_buildtools::extract::functions::CflagEffect
+pub fn syntaqlite_buildtools::extract::functions::CflagEffect::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::extract::functions::discover_versions(amalgamation_dir: &std::path::Path) -> core::result::Result<alloc::vec::Vec<alloc::string::String>, alloc::string::String>
+pub fn syntaqlite_buildtools::extract::functions::extract_function_catalog(amalgamation_dir: &std::path::Path, audit_path: &std::path::Path, output_path: &std::path::Path) -> core::result::Result<syntaqlite_buildtools::extract::functions::FunctionCatalog, alloc::string::String>
+pub fn syntaqlite_buildtools::extract::functions::FunctionCatalog::clone(&self) -> syntaqlite_buildtools::extract::functions::FunctionCatalog
+pub fn syntaqlite_buildtools::extract::functions::FunctionCatalog::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::extract::functions::FunctionCatalog::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::extract::functions::FunctionCatalogEntry::clone(&self) -> syntaqlite_buildtools::extract::functions::FunctionCatalogEntry
+pub fn syntaqlite_buildtools::extract::functions::FunctionCatalogEntry::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::extract::functions::FunctionCatalogEntry::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::extract::functions::FunctionEntry::clone(&self) -> syntaqlite_buildtools::extract::functions::FunctionEntry
+pub fn syntaqlite_buildtools::extract::functions::FunctionEntry::cmp(&self, other: &syntaqlite_buildtools::extract::functions::FunctionEntry) -> core::cmp::Ordering
+pub fn syntaqlite_buildtools::extract::functions::FunctionEntry::eq(&self, other: &syntaqlite_buildtools::extract::functions::FunctionEntry) -> bool
+pub fn syntaqlite_buildtools::extract::functions::FunctionEntry::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::extract::functions::FunctionEntry::hash<__H: core::hash::Hasher>(&self, state: &mut __H)
+pub fn syntaqlite_buildtools::extract::functions::FunctionEntry::partial_cmp(&self, other: &syntaqlite_buildtools::extract::functions::FunctionEntry) -> core::option::Option<core::cmp::Ordering>
+pub fn syntaqlite_buildtools::extract::functions::FunctionSet::clone(&self) -> syntaqlite_buildtools::extract::functions::FunctionSet
+pub fn syntaqlite_buildtools::extract::functions::FunctionSet::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::extract::functions::generate_cflag_versions_rs(availability: &syntaqlite_buildtools::extract::functions::CflagAvailability) -> alloc::string::String
+pub fn syntaqlite_buildtools::extract::functions::VersionCflagAudit::clone(&self) -> syntaqlite_buildtools::extract::functions::VersionCflagAudit
+pub fn syntaqlite_buildtools::extract::functions::VersionCflagAudit::deserialize<__D>(__deserializer: __D) -> core::result::Result<Self, <__D as serde_core::de::Deserializer>::Error> where __D: serde_core::de::Deserializer<'de>
+pub fn syntaqlite_buildtools::extract::functions::VersionCflagAudit::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::extract::functions::VersionCflagAudit::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::extract::functions::write_cflag_versions_rs(availability: &syntaqlite_buildtools::extract::functions::CflagAvailability, output_path: &std::path::Path) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::extract::keywords_and_parser::extract_keyword_cflags(mkkeywordhash_source: &str) -> core::result::Result<std::collections::hash::map::HashMap<alloc::string::String, (u32, u8)>, alloc::string::String>
+pub fn syntaqlite_buildtools::extract::keywords_and_parser::write_keyword_cflags(cflags: &std::collections::hash::map::HashMap<alloc::string::String, (u32, u8)>, output_path: &std::path::Path) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::extract::mkkeywordhash::transform_mkkeywordhash(source: &str) -> alloc::string::String
+pub fn syntaqlite_buildtools::extract::mkkeywordhash::write_modified_mkkeywordhash(source: &str, output_path: &std::path::Path) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::extract::synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> core::option::Option<u32>
+pub fn syntaqlite_buildtools::extract::tokenizer::extract_fragments(tokenize_content: &str, global_content: &str, sqliteint_content: &str) -> core::result::Result<syntaqlite_buildtools::extract::tokenizer::TokenizerFragments, alloc::string::String>
+pub fn syntaqlite_buildtools::extract::tokenizer::write_fragments(fragments: &syntaqlite_buildtools::extract::tokenizer::TokenizerFragments, output_dir: &std::path::Path) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::output_resolver::OutputLayout::c_includes(&self) -> syntaqlite_buildtools::dialect_codegen::c_dialect::DialectCIncludes<'_>
+pub fn syntaqlite_buildtools::output_resolver::OutputLayout::for_amalg_temp(root: &std::path::Path, dialect_name: &str, include_dir_name: &str) -> Self
+pub fn syntaqlite_buildtools::output_resolver::OutputLayout::for_external(root: &std::path::Path, dialect_name: &str, include_dir_name: &str) -> Self
+pub fn syntaqlite_buildtools::output_resolver::OutputLayout::for_sqlite(root: &std::path::Path, dialect_crate: &str, shared_crate: &str, dialect_name: &str, include_dir_name: &str) -> Self
+pub fn syntaqlite_buildtools::output_resolver::OutputLayout::write_codegen_artifacts(&self, dialect: &syntaqlite_buildtools::codegen_api::DialectNaming, artifacts: syntaqlite_buildtools::codegen_api::CodegenArtifacts, ensure_dir_fn: &impl core::ops::function::Fn(&std::path::Path) -> core::result::Result<(), alloc::string::String>, write_file_fn: &impl core::ops::function::Fn(&std::path::Path, &str) -> core::result::Result<(), alloc::string::String>) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::run_lemon(args: &[alloc::string::String]) -> never
+pub fn syntaqlite_buildtools::run_mkkeyword(args: &[alloc::string::String]) -> never
+pub fn syntaqlite_buildtools::util::c_extractor::CDefines::clone(&self) -> syntaqlite_buildtools::util::c_extractor::CDefines
+pub fn syntaqlite_buildtools::util::c_extractor::CDefines::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::c_extractor::CDefines::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::c_extractor::CDefines::new(text: alloc::string::String) -> Self
+pub fn syntaqlite_buildtools::util::c_extractor::CExtractor::extract_between_markers(&self, start_marker: &str, end_marker: &str) -> core::result::Result<alloc::string::String, alloc::string::String>
+pub fn syntaqlite_buildtools::util::c_extractor::CExtractor::extract_defines_with_ifdef_context(&self, names: &[&str]) -> core::result::Result<syntaqlite_buildtools::util::c_extractor::CDefines, alloc::string::String>
+pub fn syntaqlite_buildtools::util::c_extractor::CExtractor::extract_enclosing_ifdef(&self, inner_marker: &str) -> core::result::Result<alloc::string::String, alloc::string::String>
+pub fn syntaqlite_buildtools::util::c_extractor::CExtractor::extract_function(&self, name: &str) -> core::result::Result<syntaqlite_buildtools::util::c_extractor::CFunction, alloc::string::String>
+pub fn syntaqlite_buildtools::util::c_extractor::CExtractor::extract_specific_defines(&self, names: &[&str]) -> core::result::Result<syntaqlite_buildtools::util::c_extractor::CDefines, alloc::string::String>
+pub fn syntaqlite_buildtools::util::c_extractor::CExtractor::extract_static_array(&self, name: &str) -> core::result::Result<syntaqlite_buildtools::util::c_extractor::CStaticArray, alloc::string::String>
+pub fn syntaqlite_buildtools::util::c_extractor::CExtractor::new(content: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_extractor::CExtractor::split_by_function(&self, name: &str) -> core::result::Result<syntaqlite_buildtools::util::c_extractor::SplitByFunction, alloc::string::String>
+pub fn syntaqlite_buildtools::util::c_extractor::CFunction::clone(&self) -> syntaqlite_buildtools::util::c_extractor::CFunction
+pub fn syntaqlite_buildtools::util::c_extractor::CFunction::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::c_extractor::CFunction::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::c_extractor::CFunction::new(text: alloc::string::String, name: alloc::string::String) -> Self
+pub fn syntaqlite_buildtools::util::c_extractor::CStaticArray::clone(&self) -> syntaqlite_buildtools::util::c_extractor::CStaticArray
+pub fn syntaqlite_buildtools::util::c_extractor::CStaticArray::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::c_extractor::CStaticArray::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::c_extractor::CStaticArray::new(text: alloc::string::String) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::add_array_static(self, name: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::add_const(self, type_and_name: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::add_function_parameters(self, name: &str, additional_params: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::add_include(self, header: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::add_system_include(self, header: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::append(self, content: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::finish(self) -> alloc::string::String
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::insert_after_includes(self, content: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::new(content: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::remove_block_comment_containing(self, needle: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::remove_function(self, name: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::remove_lines_matching(self, pattern: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::remove_static_first(self, name: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::remove_text(self, text: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::rename_function(self, old_name: &str, new_name: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::replace_all(self, from: &str, to: &str) -> Self
+pub fn syntaqlite_buildtools::util::c_transformer::CTransformer::replace_in_function(self, name: &str, from: &str, to: &str) -> Self
+pub fn syntaqlite_buildtools::util::functions_codegen::generate_functions_catalog(json_content: &str) -> core::result::Result<alloc::string::String, alloc::string::String>
+pub fn syntaqlite_buildtools::util::functions_codegen::write_functions_catalog_file(json_path: &str, output_path: &str) -> core::result::Result<(), alloc::string::String>
+pub fn syntaqlite_buildtools::util::grammar_parser::default_defines() -> std::collections::hash::set::HashSet<&'static str>
+pub fn syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>::clone(&self) -> syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>
+pub fn syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>::eq(&self, other: &syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>) -> bool
+pub fn syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>::clone(&self) -> syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>
+pub fn syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>::eq(&self, other: &syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>) -> bool
+pub fn syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::grammar_parser::LemonGrammar<'a>::clone(&self) -> syntaqlite_buildtools::util::grammar_parser::LemonGrammar<'a>
+pub fn syntaqlite_buildtools::util::grammar_parser::LemonGrammar<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::grammar_parser::LemonGrammar<'a>::parse_with_defines(input: &'a str, defines: &std::collections::hash::set::HashSet<&str>) -> syntaqlite_buildtools::util::grammar_parser::Result<Self>
+pub fn syntaqlite_buildtools::util::grammar_parser::LemonGrammar<'a>::parse(input: &'a str) -> syntaqlite_buildtools::util::grammar_parser::Result<Self>
+pub fn syntaqlite_buildtools::util::grammar_parser::ParseError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>::clone(&self) -> syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>
+pub fn syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>::eq(&self, other: &syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>) -> bool
+pub fn syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>::clone(&self) -> syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>
+pub fn syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>::eq(&self, other: &syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>) -> bool
+pub fn syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>::clone(&self) -> syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>
+pub fn syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>::eq(&self, other: &syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>) -> bool
+pub fn syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>::clone(&self) -> syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>
+pub fn syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>::eq(&self, other: &syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>) -> bool
+pub fn syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::pascal_case(s: &str) -> alloc::string::String
+pub fn syntaqlite_buildtools::util::pascal_to_snake(name: &str) -> alloc::string::String
+pub fn syntaqlite_buildtools::util::synq_parser::Field::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::synq_parser::Fmt::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::synq_parser::Item::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::synq_parser::parse_synq_file(input: &str) -> core::result::Result<alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Item>, syntaqlite_buildtools::util::synq_parser::SynqParseError>
+pub fn syntaqlite_buildtools::util::synq_parser::SchemaAnnotation::clone(&self) -> syntaqlite_buildtools::util::synq_parser::SchemaAnnotation
+pub fn syntaqlite_buildtools::util::synq_parser::SchemaAnnotation::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::synq_parser::SchemaAnnotation::param(&self, key: &str) -> core::option::Option<&str>
+pub fn syntaqlite_buildtools::util::synq_parser::SchemaKind::clone(&self) -> syntaqlite_buildtools::util::synq_parser::SchemaKind
+pub fn syntaqlite_buildtools::util::synq_parser::SchemaKind::eq(&self, other: &syntaqlite_buildtools::util::synq_parser::SchemaKind) -> bool
+pub fn syntaqlite_buildtools::util::synq_parser::SchemaKind::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::synq_parser::SchemaParam::clone(&self) -> syntaqlite_buildtools::util::synq_parser::SchemaParam
+pub fn syntaqlite_buildtools::util::synq_parser::SchemaParam::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::synq_parser::Storage::clone(&self) -> syntaqlite_buildtools::util::synq_parser::Storage
+pub fn syntaqlite_buildtools::util::synq_parser::Storage::eq(&self, other: &syntaqlite_buildtools::util::synq_parser::Storage) -> bool
+pub fn syntaqlite_buildtools::util::synq_parser::Storage::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::synq_parser::SynqParseError::clone(&self) -> syntaqlite_buildtools::util::synq_parser::SynqParseError
+pub fn syntaqlite_buildtools::util::synq_parser::SynqParseError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::synq_parser::SynqParseError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::util::upper_snake(name: &str) -> alloc::string::String
+pub fn syntaqlite_buildtools::version_analysis::analyze_versions(sqlite_source_dir: &std::path::Path, output_dir: &std::path::Path) -> core::result::Result<syntaqlite_buildtools::version_analysis::VersionAnalysis, alloc::string::String>
+pub fn syntaqlite_buildtools::version_analysis::FragmentAnalysis::clone(&self) -> syntaqlite_buildtools::version_analysis::FragmentAnalysis
+pub fn syntaqlite_buildtools::version_analysis::FragmentAnalysis::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::version_analysis::FragmentAnalysis::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::version_analysis::grammar::compute_grammar_diffs(versions: &[(syntaqlite_buildtools::version_analysis::SqliteVersion, syntaqlite_buildtools::version_analysis::grammar::GrammarSummary)]) -> alloc::vec::Vec<syntaqlite_buildtools::version_analysis::grammar::GrammarDiff>
+pub fn syntaqlite_buildtools::version_analysis::grammar::extract_grammar_summary(parse_y: &str) -> core::result::Result<syntaqlite_buildtools::version_analysis::grammar::GrammarSummary, alloc::string::String>
+pub fn syntaqlite_buildtools::version_analysis::grammar::format_grammar_report(analysis: &syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis) -> alloc::string::String
+pub fn syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis::clone(&self) -> syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis
+pub fn syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::clone(&self) -> syntaqlite_buildtools::version_analysis::grammar::GrammarDiff
+pub fn syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::is_empty(&self) -> bool
+pub fn syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::version_analysis::grammar::GrammarSummary::clone(&self) -> syntaqlite_buildtools::version_analysis::grammar::GrammarSummary
+pub fn syntaqlite_buildtools::version_analysis::grammar::GrammarSummary::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::version_analysis::grammar::GrammarSummary::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::version_analysis::KeywordAddition::clone(&self) -> syntaqlite_buildtools::version_analysis::KeywordAddition
+pub fn syntaqlite_buildtools::version_analysis::KeywordAddition::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::version_analysis::KeywordAddition::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::version_analysis::KeywordAnalysis::clone(&self) -> syntaqlite_buildtools::version_analysis::KeywordAnalysis
+pub fn syntaqlite_buildtools::version_analysis::KeywordAnalysis::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::version_analysis::KeywordAnalysis::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::version_analysis::SqliteVersion::clone(&self) -> syntaqlite_buildtools::version_analysis::SqliteVersion
+pub fn syntaqlite_buildtools::version_analysis::SqliteVersion::cmp(&self, other: &syntaqlite_buildtools::version_analysis::SqliteVersion) -> core::cmp::Ordering
+pub fn syntaqlite_buildtools::version_analysis::SqliteVersion::eq(&self, other: &syntaqlite_buildtools::version_analysis::SqliteVersion) -> bool
+pub fn syntaqlite_buildtools::version_analysis::SqliteVersion::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::version_analysis::SqliteVersion::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::version_analysis::SqliteVersion::hash<__H: core::hash::Hasher>(&self, state: &mut __H)
+pub fn syntaqlite_buildtools::version_analysis::SqliteVersion::parse(s: &str) -> core::result::Result<Self, alloc::string::String>
+pub fn syntaqlite_buildtools::version_analysis::SqliteVersion::partial_cmp(&self, other: &syntaqlite_buildtools::version_analysis::SqliteVersion) -> core::option::Option<core::cmp::Ordering>
+pub fn syntaqlite_buildtools::version_analysis::SqliteVersion::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::version_analysis::SqliteVersion::version_int(&self) -> u32
+pub fn syntaqlite_buildtools::version_analysis::VariantGroup::clone(&self) -> syntaqlite_buildtools::version_analysis::VariantGroup
+pub fn syntaqlite_buildtools::version_analysis::VariantGroup::first(&self) -> &syntaqlite_buildtools::version_analysis::SqliteVersion
+pub fn syntaqlite_buildtools::version_analysis::VariantGroup::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::version_analysis::VariantGroup::last(&self) -> &syntaqlite_buildtools::version_analysis::SqliteVersion
+pub fn syntaqlite_buildtools::version_analysis::VariantGroup::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub fn syntaqlite_buildtools::version_analysis::VersionAnalysis::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_buildtools::version_analysis::VersionAnalysis::serialize<__S>(&self, __serializer: __S) -> core::result::Result<<__S as serde_core::ser::Serializer>::Ok, <__S as serde_core::ser::Serializer>::Error> where __S: serde_core::ser::Serializer
+pub mod syntaqlite_buildtools
+pub mod syntaqlite_buildtools::amalgamate
+pub mod syntaqlite_buildtools::base_files
+pub mod syntaqlite_buildtools::codegen_api
+pub mod syntaqlite_buildtools::dialect_codegen
+pub mod syntaqlite_buildtools::extract
+pub mod syntaqlite_buildtools::extract::amalgamation_probe
+pub mod syntaqlite_buildtools::extract::base_files
+pub mod syntaqlite_buildtools::extract::functions
+pub mod syntaqlite_buildtools::extract::keywords_and_parser
+pub mod syntaqlite_buildtools::extract::mkkeywordhash
+pub mod syntaqlite_buildtools::extract::tokenizer
+pub mod syntaqlite_buildtools::extract::virtual_tables
+pub mod syntaqlite_buildtools::output_resolver
+pub mod syntaqlite_buildtools::util
+pub mod syntaqlite_buildtools::util::c_extractor
+pub mod syntaqlite_buildtools::util::c_transformer
+pub mod syntaqlite_buildtools::util::functions_codegen
+pub mod syntaqlite_buildtools::util::grammar_parser
+pub mod syntaqlite_buildtools::util::synq_parser
+pub mod syntaqlite_buildtools::version_analysis
+pub mod syntaqlite_buildtools::version_analysis::grammar
+pub struct syntaqlite_buildtools::amalgamate::AmalgamateOutput
+pub struct syntaqlite_buildtools::codegen_api::CodegenArtifacts
+pub struct syntaqlite_buildtools::codegen_api::CodegenRequest<'a>
+pub struct syntaqlite_buildtools::codegen_api::DialectCodegenJob<'a>
+pub struct syntaqlite_buildtools::codegen_api::DialectNaming
+pub struct syntaqlite_buildtools::codegen_api::RustCodegenArtifacts
+pub struct syntaqlite_buildtools::codegen_api::TokenizerExtractResult
+pub struct syntaqlite_buildtools::dialect_codegen::AstModel<'a>
+pub struct syntaqlite_buildtools::dialect_codegen::EnumRef<'a>
+pub struct syntaqlite_buildtools::dialect_codegen::FlagsRef<'a>
+pub struct syntaqlite_buildtools::dialect_codegen::ListRef<'a>
+pub struct syntaqlite_buildtools::dialect_codegen::NodeRef<'a>
+pub struct syntaqlite_buildtools::extract::functions::AvailabilityRule
+pub struct syntaqlite_buildtools::extract::functions::CflagAvailability
+pub struct syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry
+pub struct syntaqlite_buildtools::extract::functions::CflagEffect
+pub struct syntaqlite_buildtools::extract::functions::FunctionCatalog
+pub struct syntaqlite_buildtools::extract::functions::FunctionCatalogEntry
+pub struct syntaqlite_buildtools::extract::functions::FunctionEntry
+pub struct syntaqlite_buildtools::extract::functions::FunctionSet
+pub struct syntaqlite_buildtools::extract::functions::VersionCflagAudit
+pub struct syntaqlite_buildtools::extract::tokenizer::TokenizerFragments
+pub struct syntaqlite_buildtools::output_resolver::CHeader
+pub struct syntaqlite_buildtools::output_resolver::OutputLayout
+pub struct syntaqlite_buildtools::util::c_extractor::CDefines
+pub struct syntaqlite_buildtools::util::c_extractor::CExtractor
+pub struct syntaqlite_buildtools::util::c_extractor::CFunction
+pub struct syntaqlite_buildtools::util::c_extractor::CStaticArray
+pub struct syntaqlite_buildtools::util::c_extractor::SplitByFunction
+pub struct syntaqlite_buildtools::util::c_transformer::CTransformer
+pub struct syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>
+pub struct syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>
+pub struct syntaqlite_buildtools::util::grammar_parser::LemonGrammar<'a>
+pub struct syntaqlite_buildtools::util::grammar_parser::ParseError
+pub struct syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>
+pub struct syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>
+pub struct syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>
+pub struct syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>
+pub struct syntaqlite_buildtools::util::synq_parser::Field
+pub struct syntaqlite_buildtools::util::synq_parser::SchemaAnnotation
+pub struct syntaqlite_buildtools::util::synq_parser::SchemaParam
+pub struct syntaqlite_buildtools::util::synq_parser::SynqParseError
+pub struct syntaqlite_buildtools::version_analysis::FragmentAnalysis
+pub struct syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis
+pub struct syntaqlite_buildtools::version_analysis::grammar::GrammarDiff
+pub struct syntaqlite_buildtools::version_analysis::grammar::GrammarSummary
+pub struct syntaqlite_buildtools::version_analysis::KeywordAddition
+pub struct syntaqlite_buildtools::version_analysis::KeywordAnalysis
+pub struct syntaqlite_buildtools::version_analysis::SqliteVersion
+pub struct syntaqlite_buildtools::version_analysis::VariantGroup
+pub struct syntaqlite_buildtools::version_analysis::VersionAnalysis
+pub syntaqlite_buildtools::amalgamate::AmalgamateOutput::ext_header: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::amalgamate::AmalgamateOutput::header: alloc::string::String
+pub syntaqlite_buildtools::amalgamate::AmalgamateOutput::source: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::ast_builder_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::ast_nodes_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::dialect_c: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::dialect_dispatch_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::dialect_fmt_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::dialect_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::dialect_meta_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::dialect_tokens_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::keyword_c: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::keyword_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::parse_api_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::parse_c: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::parse_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::runtime_tokens_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::rust: core::option::Option<syntaqlite_buildtools::codegen_api::RustCodegenArtifacts>
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::tokenize_c: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenArtifacts::tokenize_h: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::CodegenRequest::base_synq_files: core::option::Option<&'a [(&'a str, &'a str)]>
+pub syntaqlite_buildtools::codegen_api::CodegenRequest::crate_name: core::option::Option<&'a str>
+pub syntaqlite_buildtools::codegen_api::CodegenRequest::dialect_c_includes: syntaqlite_buildtools::dialect_codegen::c_dialect::DialectCIncludes<'a>
+pub syntaqlite_buildtools::codegen_api::CodegenRequest::dialect: &'a syntaqlite_buildtools::codegen_api::DialectNaming
+pub syntaqlite_buildtools::codegen_api::CodegenRequest::extra_keywords: &'a [alloc::string::String]
+pub syntaqlite_buildtools::codegen_api::CodegenRequest::include_rust: bool
+pub syntaqlite_buildtools::codegen_api::CodegenRequest::open_for_extension: bool
+pub syntaqlite_buildtools::codegen_api::CodegenRequest::parser_symbol_prefix: core::option::Option<&'a str>
+pub syntaqlite_buildtools::codegen_api::CodegenRequest::synq_files: &'a [(alloc::string::String, alloc::string::String)]
+pub syntaqlite_buildtools::codegen_api::CodegenRequest::y_files: &'a [(alloc::string::String, alloc::string::String)]
+pub syntaqlite_buildtools::codegen_api::RustCodegenArtifacts::ast_rs: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::RustCodegenArtifacts::ast_traits_rs: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::codegen_api::RustCodegenArtifacts::build_rs: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::RustCodegenArtifacts::cargo_toml: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::RustCodegenArtifacts::ffi_rs: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::RustCodegenArtifacts::functions_catalog_rs: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::codegen_api::RustCodegenArtifacts::lib_rs: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::RustCodegenArtifacts::tokens_rs: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::TokenizerExtractResult::char_map: alloc::string::String
+pub syntaqlite_buildtools::codegen_api::TokenizerExtractResult::upper_to_lower: alloc::string::String
+pub syntaqlite_buildtools::dialect_codegen::EnumRef::name: &'a str
+pub syntaqlite_buildtools::dialect_codegen::EnumRef::variants: &'a [alloc::string::String]
+pub syntaqlite_buildtools::dialect_codegen::FlagsRef::flags: &'a [(alloc::string::String, u32)]
+pub syntaqlite_buildtools::dialect_codegen::FlagsRef::name: &'a str
+pub syntaqlite_buildtools::dialect_codegen::ListRef::child_type: &'a str
+pub syntaqlite_buildtools::dialect_codegen::ListRef::fmt: core::option::Option<&'a [syntaqlite_buildtools::util::synq_parser::Fmt]>
+pub syntaqlite_buildtools::dialect_codegen::ListRef::name: &'a str
+pub syntaqlite_buildtools::dialect_codegen::NodeLikeRef::List(syntaqlite_buildtools::dialect_codegen::ListRef<'a>)
+pub syntaqlite_buildtools::dialect_codegen::NodeLikeRef::Node(syntaqlite_buildtools::dialect_codegen::NodeRef<'a>)
+pub syntaqlite_buildtools::dialect_codegen::NodeRef::fields: &'a [syntaqlite_buildtools::util::synq_parser::Field]
+pub syntaqlite_buildtools::dialect_codegen::NodeRef::fmt: core::option::Option<&'a [syntaqlite_buildtools::util::synq_parser::Fmt]>
+pub syntaqlite_buildtools::dialect_codegen::NodeRef::name: &'a str
+pub syntaqlite_buildtools::dialect_codegen::NodeRef::schema: core::option::Option<&'a syntaqlite_buildtools::util::synq_parser::SchemaAnnotation>
+pub syntaqlite_buildtools::extract::functions::AvailabilityRule::cflag: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::extract::functions::AvailabilityRule::polarity: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::extract::functions::AvailabilityRule::since: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::extract::functions::AvailabilityRule::until: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::extract::functions::CflagAvailability::cflags: alloc::vec::Vec<syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry>
+pub syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry::category: alloc::string::String
+pub syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry::name: alloc::string::String
+pub syntaqlite_buildtools::extract::functions::CflagAvailabilityEntry::since: alloc::string::String
+pub syntaqlite_buildtools::extract::functions::CflagEffect::affected_functions: alloc::collections::btree::set::BTreeSet<alloc::string::String>
+pub syntaqlite_buildtools::extract::functions::CflagEffect::flag: alloc::string::String
+pub syntaqlite_buildtools::extract::functions::CflagEffect::polarity: alloc::string::String
+pub syntaqlite_buildtools::extract::functions::FunctionCatalog::functions: alloc::vec::Vec<syntaqlite_buildtools::extract::functions::FunctionCatalogEntry>
+pub syntaqlite_buildtools::extract::functions::FunctionCatalogEntry::arities: alloc::vec::Vec<i32>
+pub syntaqlite_buildtools::extract::functions::FunctionCatalogEntry::availability: alloc::vec::Vec<syntaqlite_buildtools::extract::functions::AvailabilityRule>
+pub syntaqlite_buildtools::extract::functions::FunctionCatalogEntry::category: alloc::string::String
+pub syntaqlite_buildtools::extract::functions::FunctionCatalogEntry::name: alloc::string::String
+pub syntaqlite_buildtools::extract::functions::FunctionEntry::builtin: bool
+pub syntaqlite_buildtools::extract::functions::FunctionEntry::func_type: alloc::string::String
+pub syntaqlite_buildtools::extract::functions::FunctionEntry::name: alloc::string::String
+pub syntaqlite_buildtools::extract::functions::FunctionEntry::narg: i32
+pub syntaqlite_buildtools::extract::functions::FunctionSet::functions: alloc::collections::btree::set::BTreeSet<syntaqlite_buildtools::extract::functions::FunctionEntry>
+pub syntaqlite_buildtools::extract::functions::VersionCflagAudit::versions: alloc::collections::btree::map::BTreeMap<alloc::string::String, alloc::vec::Vec<alloc::string::String>>
+pub syntaqlite_buildtools::extract::tokenizer::TokenizerFragments::ai_class: alloc::string::String
+pub syntaqlite_buildtools::extract::tokenizer::TokenizerFragments::cc_defines: alloc::string::String
+pub syntaqlite_buildtools::extract::tokenizer::TokenizerFragments::char_map: alloc::string::String
+pub syntaqlite_buildtools::extract::tokenizer::TokenizerFragments::ctype_map: alloc::string::String
+pub syntaqlite_buildtools::extract::tokenizer::TokenizerFragments::get_token_fn: alloc::string::String
+pub syntaqlite_buildtools::extract::tokenizer::TokenizerFragments::id_char: alloc::string::String
+pub syntaqlite_buildtools::extract::tokenizer::TokenizerFragments::is_macros: alloc::string::String
+pub syntaqlite_buildtools::extract::tokenizer::TokenizerFragments::upper_to_lower: alloc::string::String
+pub syntaqlite_buildtools::output_resolver::CHeader::include: alloc::string::String
+pub syntaqlite_buildtools::output_resolver::CHeader::write: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::ast_builder_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::ast_nodes_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::ast_rs: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::ast_traits_rs: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::build_rs: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::cargo_toml: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_c: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_dispatch_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_fmt_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_meta_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::dialect_tokens_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::ffi_rs: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::functions_catalog_rs: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::keyword_c: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::keyword_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::lib_rs: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::parse_api_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::parse_c: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::root: std::path::PathBuf
+pub syntaqlite_buildtools::output_resolver::OutputLayout::runtime_tokens_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::tokenize_c: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::output_resolver::OutputLayout::tokenize_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::tokens_h: syntaqlite_buildtools::output_resolver::CHeader
+pub syntaqlite_buildtools::output_resolver::OutputLayout::tokens_rs: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::util::c_extractor::CDefines::text: alloc::string::String
+pub syntaqlite_buildtools::util::c_extractor::CFunction::name: alloc::string::String
+pub syntaqlite_buildtools::util::c_extractor::CFunction::text: alloc::string::String
+pub syntaqlite_buildtools::util::c_extractor::CStaticArray::text: alloc::string::String
+pub syntaqlite_buildtools::util::c_extractor::SplitByFunction::after: alloc::string::String
+pub syntaqlite_buildtools::util::c_extractor::SplitByFunction::before: alloc::string::String
+pub syntaqlite_buildtools::util::c_extractor::SplitByFunction::function: syntaqlite_buildtools::util::c_extractor::CFunction
+pub syntaqlite_buildtools::util::grammar_parser::FallbackDecl::target: &'a str
+pub syntaqlite_buildtools::util::grammar_parser::FallbackDecl::tokens: alloc::vec::Vec<&'a str>
+pub syntaqlite_buildtools::util::grammar_parser::GrammarRule::lhs: &'a str
+pub syntaqlite_buildtools::util::grammar_parser::GrammarRule::precedence_override: core::option::Option<&'a str>
+pub syntaqlite_buildtools::util::grammar_parser::GrammarRule::rhs: alloc::vec::Vec<syntaqlite_buildtools::util::grammar_parser::RhsSymbol<'a>>
+pub syntaqlite_buildtools::util::grammar_parser::LemonGrammar::fallbacks: alloc::vec::Vec<syntaqlite_buildtools::util::grammar_parser::FallbackDecl<'a>>
+pub syntaqlite_buildtools::util::grammar_parser::LemonGrammar::precedences: alloc::vec::Vec<syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl<'a>>
+pub syntaqlite_buildtools::util::grammar_parser::LemonGrammar::rules: alloc::vec::Vec<syntaqlite_buildtools::util::grammar_parser::GrammarRule<'a>>
+pub syntaqlite_buildtools::util::grammar_parser::LemonGrammar::token_classes: alloc::vec::Vec<syntaqlite_buildtools::util::grammar_parser::TokenClass<'a>>
+pub syntaqlite_buildtools::util::grammar_parser::LemonGrammar::tokens: alloc::vec::Vec<syntaqlite_buildtools::util::grammar_parser::TokenDecl<'a>>
+pub syntaqlite_buildtools::util::grammar_parser::ParseError::column: usize
+pub syntaqlite_buildtools::util::grammar_parser::ParseError::line: usize
+pub syntaqlite_buildtools::util::grammar_parser::ParseError::message: alloc::string::String
+pub syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl::assoc: &'a str
+pub syntaqlite_buildtools::util::grammar_parser::PrecedenceDecl::tokens: alloc::vec::Vec<&'a str>
+pub syntaqlite_buildtools::util::grammar_parser::RhsSymbol::alias: core::option::Option<&'a str>
+pub syntaqlite_buildtools::util::grammar_parser::RhsSymbol::name: &'a str
+pub syntaqlite_buildtools::util::grammar_parser::TokenClass::name: &'a str
+pub syntaqlite_buildtools::util::grammar_parser::TokenClass::tokens: &'a str
+pub syntaqlite_buildtools::util::grammar_parser::TokenDecl::name: &'a str
+pub syntaqlite_buildtools::util::synq_parser::Field::name: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Field::storage: syntaqlite_buildtools::util::synq_parser::Storage
+pub syntaqlite_buildtools::util::synq_parser::Field::type_name: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Child(alloc::string::String)
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Clause
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Clause::field: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Clause::keyword: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Fmt::EnumDisplay
+pub syntaqlite_buildtools::util::synq_parser::Fmt::EnumDisplay::field: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Fmt::EnumDisplay::mappings: alloc::vec::Vec<(alloc::string::String, alloc::string::String)>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::ForEach
+pub syntaqlite_buildtools::util::synq_parser::Fmt::ForEach::body: alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::ForEach::sep: core::option::Option<alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Group(alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>)
+pub syntaqlite_buildtools::util::synq_parser::Fmt::HardLine
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfEnum
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfEnum::els: core::option::Option<alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfEnum::field: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfEnum::then: alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfEnum::variant: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfFlag
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfFlag::bit: core::option::Option<alloc::string::String>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfFlag::els: core::option::Option<alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfFlag::field: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfFlag::then: alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfSet
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfSet::els: core::option::Option<alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfSet::field: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfSet::then: alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfSpan
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfSpan::els: core::option::Option<alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfSpan::field: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Fmt::IfSpan::then: alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Line
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Nest(alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>)
+pub syntaqlite_buildtools::util::synq_parser::Fmt::SoftLine
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Span(alloc::string::String)
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Switch
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Switch::cases: alloc::vec::Vec<(alloc::string::String, alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>)>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Switch::default: core::option::Option<alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>>
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Switch::field: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Fmt::Text(alloc::string::String)
+pub syntaqlite_buildtools::util::synq_parser::Item::Abstract
+pub syntaqlite_buildtools::util::synq_parser::Item::Abstract::members: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::util::synq_parser::Item::Abstract::name: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Item::Enum
+pub syntaqlite_buildtools::util::synq_parser::Item::Enum::name: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Item::Enum::variants: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::util::synq_parser::Item::Flags
+pub syntaqlite_buildtools::util::synq_parser::Item::Flags::flags: alloc::vec::Vec<(alloc::string::String, u32)>
+pub syntaqlite_buildtools::util::synq_parser::Item::Flags::name: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Item::List
+pub syntaqlite_buildtools::util::synq_parser::Item::List::child_type: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Item::List::fmt: core::option::Option<alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>>
+pub syntaqlite_buildtools::util::synq_parser::Item::List::name: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Item::Node
+pub syntaqlite_buildtools::util::synq_parser::Item::Node::fields: alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Field>
+pub syntaqlite_buildtools::util::synq_parser::Item::Node::fmt: core::option::Option<alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::Fmt>>
+pub syntaqlite_buildtools::util::synq_parser::Item::Node::name: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Item::Node::schema: core::option::Option<syntaqlite_buildtools::util::synq_parser::SchemaAnnotation>
+pub syntaqlite_buildtools::util::synq_parser::SchemaAnnotation::kind: syntaqlite_buildtools::util::synq_parser::SchemaKind
+pub syntaqlite_buildtools::util::synq_parser::SchemaAnnotation::params: alloc::vec::Vec<syntaqlite_buildtools::util::synq_parser::SchemaParam>
+pub syntaqlite_buildtools::util::synq_parser::SchemaKind::Function
+pub syntaqlite_buildtools::util::synq_parser::SchemaKind::Import
+pub syntaqlite_buildtools::util::synq_parser::SchemaKind::Table
+pub syntaqlite_buildtools::util::synq_parser::SchemaKind::View
+pub syntaqlite_buildtools::util::synq_parser::SchemaParam::field: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::SchemaParam::key: alloc::string::String
+pub syntaqlite_buildtools::util::synq_parser::Storage::Index
+pub syntaqlite_buildtools::util::synq_parser::Storage::Inline
+pub syntaqlite_buildtools::util::synq_parser::SynqParseError::message: alloc::string::String
+pub syntaqlite_buildtools::version_analysis::FragmentAnalysis::diffs: alloc::vec::Vec<syntaqlite_buildtools::version_analysis::diff::VariantDiff>
+pub syntaqlite_buildtools::version_analysis::FragmentAnalysis::errors: alloc::vec::Vec<(syntaqlite_buildtools::version_analysis::SqliteVersion, alloc::string::String)>
+pub syntaqlite_buildtools::version_analysis::FragmentAnalysis::fragment_name: alloc::string::String
+pub syntaqlite_buildtools::version_analysis::FragmentAnalysis::variants: alloc::vec::Vec<syntaqlite_buildtools::version_analysis::VariantGroup>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis::diffs: alloc::vec::Vec<syntaqlite_buildtools::version_analysis::grammar::GrammarDiff>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis::errors: alloc::vec::Vec<(syntaqlite_buildtools::version_analysis::SqliteVersion, alloc::string::String)>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis::per_version: alloc::vec::Vec<(syntaqlite_buildtools::version_analysis::SqliteVersion, syntaqlite_buildtools::version_analysis::grammar::GrammarSummary)>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::fallbacks_added: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::fallbacks_removed: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::from_version: syntaqlite_buildtools::version_analysis::SqliteVersion
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::nonterminals_added: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::nonterminals_removed: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::precedences_added: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::precedences_removed: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::rules_added: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::rules_removed: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::to_version: syntaqlite_buildtools::version_analysis::SqliteVersion
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::token_classes_added: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::token_classes_removed: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::tokens_added: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarDiff::tokens_removed: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarSummary::fallbacks: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarSummary::nonterminals: alloc::collections::btree::set::BTreeSet<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarSummary::precedences: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarSummary::rule_signatures: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarSummary::token_classes: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::grammar::GrammarSummary::token_decls: alloc::collections::btree::set::BTreeSet<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::KeywordAddition::added: alloc::vec::Vec<alloc::string::String>
+pub syntaqlite_buildtools::version_analysis::KeywordAddition::version: syntaqlite_buildtools::version_analysis::SqliteVersion
+pub syntaqlite_buildtools::version_analysis::KeywordAnalysis::additions: alloc::vec::Vec<syntaqlite_buildtools::version_analysis::KeywordAddition>
+pub syntaqlite_buildtools::version_analysis::KeywordAnalysis::per_version: alloc::vec::Vec<(syntaqlite_buildtools::version_analysis::SqliteVersion, crate::util::mkkeywordhash_parser::KeywordTable)>
+pub syntaqlite_buildtools::version_analysis::KeywordAnalysis::total_keywords_latest: usize
+pub syntaqlite_buildtools::version_analysis::SqliteVersion::major: u32
+pub syntaqlite_buildtools::version_analysis::SqliteVersion::minor: u32
+pub syntaqlite_buildtools::version_analysis::SqliteVersion::patch: u32
+pub syntaqlite_buildtools::version_analysis::SqliteVersion::sub_patch: u32
+pub syntaqlite_buildtools::version_analysis::VariantGroup::hash: alloc::string::String
+pub syntaqlite_buildtools::version_analysis::VariantGroup::id: alloc::string::String
+pub syntaqlite_buildtools::version_analysis::VariantGroup::text: alloc::string::String
+pub syntaqlite_buildtools::version_analysis::VariantGroup::versions: alloc::vec::Vec<syntaqlite_buildtools::version_analysis::SqliteVersion>
+pub syntaqlite_buildtools::version_analysis::VersionAnalysis::fragments: alloc::collections::btree::map::BTreeMap<alloc::string::String, syntaqlite_buildtools::version_analysis::FragmentAnalysis>
+pub syntaqlite_buildtools::version_analysis::VersionAnalysis::grammar: core::option::Option<syntaqlite_buildtools::version_analysis::grammar::GrammarAnalysis>
+pub syntaqlite_buildtools::version_analysis::VersionAnalysis::keywords: syntaqlite_buildtools::version_analysis::KeywordAnalysis
+pub syntaqlite_buildtools::version_analysis::VersionAnalysis::versions: alloc::vec::Vec<syntaqlite_buildtools::version_analysis::SqliteVersion>
+pub type syntaqlite_buildtools::util::grammar_parser::Result<T> = core::result::Result<T, syntaqlite_buildtools::util::grammar_parser::ParseError>

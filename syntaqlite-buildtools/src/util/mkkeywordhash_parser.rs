@@ -9,7 +9,7 @@
 /// A single keyword entry from the keyword table array.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-pub struct KeywordEntry {
+pub(crate) struct KeywordEntry {
     /// The keyword name, e.g. "RETURNING".
     pub name: String,
     /// The token constant, e.g. "TK_RETURNING".
@@ -23,7 +23,7 @@ pub struct KeywordEntry {
 /// A mask `#define` block mapping an SQLITE_OMIT_* or SQLITE_ENABLE_* flag to a bitmask value.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-pub struct MaskDefine {
+pub(crate) struct MaskDefine {
     /// The mask symbol name, e.g. "RETURNING".
     pub name: String,
     /// The SQLITE_OMIT_* or SQLITE_ENABLE_* flag, e.g. "SQLITE_OMIT_RETURNING".
@@ -36,13 +36,13 @@ pub struct MaskDefine {
 
 /// The full keyword table for a single SQLite version.
 #[derive(Debug, Clone)]
-pub struct KeywordTable {
+pub(crate) struct KeywordTable {
     pub keywords: Vec<KeywordEntry>,
     pub masks: Vec<MaskDefine>,
 }
 
 /// Parse the keyword table and mask defines from `mkkeywordhash.c` source.
-pub fn parse_keyword_table(source: &str) -> Result<KeywordTable, String> {
+pub(crate) fn parse_keyword_table(source: &str) -> Result<KeywordTable, String> {
     let keywords = parse_keyword_array(source)?;
     let masks = parse_mask_defines(source);
     Ok(KeywordTable { keywords, masks })

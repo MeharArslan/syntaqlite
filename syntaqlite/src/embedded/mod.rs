@@ -209,8 +209,8 @@ impl<'d> EmbeddedAnalyzer<'d> {
         fragment: &EmbeddedFragment,
     ) -> Vec<(usize, usize, TokenCategory)> {
         let dialect = self.dialect;
-        let mut parser = RawIncrementalParser::builder(dialect).build();
-        let mut tokenizer = RawTokenizer::builder(dialect).build();
+        let mut parser = RawIncrementalParser::new(dialect);
+        let mut tokenizer = RawTokenizer::new(dialect);
 
         // Tokenize the processed SQL text.
         let tokens: Vec<(u32, usize, usize)> = {
@@ -344,8 +344,8 @@ impl<'d> EmbeddedAnalyzer<'d> {
     /// Returns diagnostics with SQL-text byte offsets (not yet mapped to host).
     fn validate_fragment(&self, fragment: &EmbeddedFragment) -> Vec<Diagnostic> {
         let dialect = self.dialect;
-        let mut parser = RawIncrementalParser::builder(dialect).build();
-        let mut tokenizer = RawTokenizer::builder(dialect).build();
+        let mut parser = RawIncrementalParser::new(dialect);
+        let mut tokenizer = RawTokenizer::new(dialect);
 
         // Tokenize the processed SQL text.
         let tokens: Vec<(u32, usize, usize)> = {

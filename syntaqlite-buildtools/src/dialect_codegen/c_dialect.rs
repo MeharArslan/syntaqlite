@@ -70,7 +70,7 @@ fn classify_token(name: &str, keyword_names: Option<&HashSet<String>>) -> u8 {
 ///
 /// When `keyword_names` is provided, tokens whose names appear in the set
 /// are classified as Keyword (1), overriding the default heuristic.
-pub fn generate_token_categories_header(
+pub(crate) fn generate_token_categories_header(
     tokens: &[(String, u32)],
     keyword_names: Option<&HashSet<String>>,
 ) -> String {
@@ -101,7 +101,7 @@ pub fn generate_token_categories_header(
     w.finish()
 }
 
-pub fn generate_dialect_c(
+pub(crate) fn generate_dialect_c(
     dialect: &str,
     tokens: Option<&[(String, u32)]>,
     includes: &DialectCIncludes<'_>,
@@ -246,7 +246,7 @@ pub fn generate_dialect_c(
 ///
 /// Callers create a parser via the runtime's `syntaqlite_create_parser_with_dialect()`
 /// using the dialect handle returned by the accessor.
-pub fn generate_dialect_h(dialect: &str) -> String {
+pub(crate) fn generate_dialect_h(dialect: &str) -> String {
     let upper = dialect.to_uppercase();
     let guard = format!("SYNTAQLITE_{upper}_DIALECT_H");
     let mut w = CWriter::new();
@@ -277,7 +277,7 @@ pub fn generate_dialect_h(dialect: &str) -> String {
 /// Produces a header like `sqlite_dialect_dispatch.h` that defines the
 /// `SYNQ_PARSER_ALLOC`, etc. macros to call the dialect's parser/tokenizer
 /// functions directly (bypassing function pointer indirection).
-pub fn generate_dialect_dispatch_h(dialect: &str) -> String {
+pub(crate) fn generate_dialect_dispatch_h(dialect: &str) -> String {
     let upper = dialect.to_uppercase();
     let guard = format!("SYNTAQLITE_{upper}_DIALECT_DISPATCH_H");
     let mut w = CWriter::new();
@@ -315,7 +315,7 @@ pub fn generate_dialect_dispatch_h(dialect: &str) -> String {
 /// Produces `sqlite_parse.h` with declarations for `SynqSqliteParseAlloc`,
 /// `SynqSqliteParseFree`, etc.  Needed by the amalgamation so that
 /// `dialect.c` (emitted before `sqlite_parse.c`) can reference the symbols.
-pub fn generate_parse_h(dialect: &str) -> String {
+pub(crate) fn generate_parse_h(dialect: &str) -> String {
     let pascal = pascal_case(dialect);
     let upper = dialect.to_uppercase();
     let guard = format!("SYNTAQLITE_{upper}_PARSE_H");
@@ -368,7 +368,7 @@ pub fn generate_parse_h(dialect: &str) -> String {
 }
 
 /// Generate forward declaration for the tokenizer function.
-pub fn generate_tokenize_h(dialect: &str) -> String {
+pub(crate) fn generate_tokenize_h(dialect: &str) -> String {
     let pascal = pascal_case(dialect);
     let upper = dialect.to_uppercase();
     let guard = format!("SYNTAQLITE_INTERNAL_{upper}_TOKENIZE_H");

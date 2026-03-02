@@ -1,6 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+#![warn(unreachable_pub)]
+
 use std::cell::{Cell, RefCell};
 use std::slice;
 
@@ -13,6 +15,7 @@ use syntaqlite::embedded::{self, EmbeddedFragment};
 use syntaqlite::ext::FfiDialect;
 use syntaqlite::ext::NodeRefJsonExt;
 use syntaqlite::ext::RawParser;
+use syntaqlite::ParserConfig;
 use syntaqlite::fmt::FormatConfig;
 use syntaqlite::validation::ValidationConfig;
 
@@ -130,9 +133,10 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let dialect = try_wasm!(resolve_dialect());
     let source = try_wasm!(decode_input(ptr, len));
 
-    let mut parser = RawParser::builder(dialect)
-        .dialect_config(get_dialect_config())
-        .build();
+    let mut parser = RawParser::with_config(
+        dialect,
+        &ParserConfig { dialect_config: Some(get_dialect_config()), ..ParserConfig::default() },
+    );
     let mut cursor = parser.parse(&source);
 
     let mut nodes = Vec::new();
@@ -158,9 +162,10 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
     let dialect = try_wasm!(resolve_dialect());
     let source = try_wasm!(decode_input(ptr, len));
 
-    let mut parser = RawParser::builder(dialect)
-        .dialect_config(get_dialect_config())
-        .build();
+    let mut parser = RawParser::with_config(
+        dialect,
+        &ParserConfig { dialect_config: Some(get_dialect_config()), ..ParserConfig::default() },
+    );
     let mut cursor = parser.parse(&source);
     let mut out = String::new();
     let mut count = 0;
@@ -183,10 +188,7 @@ fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u
     let source = try_wasm!(decode_input(ptr, len));
 
     let config = FormatConfig::from_raw_params(line_width, keyword_case, semicolons);
-    let mut formatter = Formatter::builder(dialect)
-        .format_config(config)
-        .dialect_config(get_dialect_config())
-        .build();
+    let mut formatter = Formatter::with_config(dialect, &config, Some(get_dialect_config()));
 
     let sql = try_wasm!(formatter.format(&source));
     set_result(&sql);

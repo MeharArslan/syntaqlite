@@ -39,12 +39,41 @@ pub struct RawTokenizer<'d> {
 unsafe impl<'d> Send for RawTokenizer<'d> {}
 
 impl<'d> RawTokenizer<'d> {
-    /// Create a builder for a tokenizer bound to the given dialect.
-    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> RawTokenizerBuilder<'d> {
-        RawTokenizerBuilder {
-            dialect: dialect.into(),
-            dialect_config: None,
+    /// Create a tokenizer bound to the given dialect with default configuration.
+    pub fn new(dialect: impl Into<RawDialect<'d>>) -> Self {
+        let dialect = dialect.into();
+        // SAFETY: syntaqlite_tokenizer_create(NULL, dialect) allocates a new
+        // tokenizer with default malloc/free. dialect.raw is valid for the call.
+        let raw = NonNull::new(unsafe {
+            syntaqlite_tokenizer_create(std::ptr::null(), dialect.raw as *const _)
+        })
+        .expect("tokenizer allocation failed");
+
+        RawTokenizer {
+            raw,
+            source_buf: Vec::new(),
+            dialect_config: crate::DialectConfig::default(),
+            _dialect: dialect,
         }
+    }
+
+    /// Create a tokenizer with a specific dialect config for version/cflag-gated
+    /// tokenization.
+    pub fn with_dialect_config(
+        dialect: impl Into<RawDialect<'d>>,
+        config: crate::DialectConfig,
+    ) -> Self {
+        let mut tok = Self::new(dialect);
+        tok.dialect_config = config;
+        // SAFETY: tok.raw is valid; we pass a pointer to tok.dialect_config.
+        // The C side copies the config value.
+        unsafe {
+            syntaqlite_tokenizer_set_dialect_config(
+                tok.raw.as_ptr(),
+                &tok.dialect_config as *const crate::DialectConfig,
+            );
+        }
+        tok
     }
 
     /// Bind source text and return a `RawTokenCursor` for iterating tokens.
@@ -103,53 +132,6 @@ impl Drop for RawTokenizer<'_> {
         // SAFETY: self.raw was allocated by syntaqlite_tokenizer_create and has
         // not been freed (Drop runs exactly once).
         unsafe { syntaqlite_tokenizer_destroy(self.raw.as_ptr()) }
-    }
-}
-
-// ── RawTokenizerBuilder ────────────────────────────────────────────────
-
-/// Builder for configuring a [`RawTokenizer`] before construction.
-pub struct RawTokenizerBuilder<'d> {
-    dialect: RawDialect<'d>,
-    dialect_config: Option<crate::DialectConfig>,
-}
-
-impl<'d> RawTokenizerBuilder<'d> {
-    /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(mut self, config: crate::DialectConfig) -> Self {
-        self.dialect_config = Some(config);
-        self
-    }
-
-    /// Build the tokenizer.
-    pub fn build(self) -> RawTokenizer<'d> {
-        // SAFETY: syntaqlite_tokenizer_create(NULL, dialect) allocates a new
-        // tokenizer with default malloc/free. dialect.raw is valid for the call.
-        let raw = NonNull::new(unsafe {
-            syntaqlite_tokenizer_create(std::ptr::null(), self.dialect.raw as *const _)
-        })
-        .expect("tokenizer allocation failed");
-
-        let mut tok = RawTokenizer {
-            raw,
-            source_buf: Vec::new(),
-            dialect_config: crate::DialectConfig::default(),
-            _dialect: self.dialect,
-        };
-
-        if let Some(config) = self.dialect_config {
-            tok.dialect_config = config;
-            // SAFETY: tok.raw is valid; we pass a pointer to tok.dialect_config.
-            // The C side copies the config value.
-            unsafe {
-                syntaqlite_tokenizer_set_dialect_config(
-                    tok.raw.as_ptr(),
-                    &tok.dialect_config as *const crate::DialectConfig,
-                );
-            }
-        }
-
-        tok
     }
 }
 

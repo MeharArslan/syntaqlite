@@ -261,7 +261,7 @@ pub struct FunctionDef {
 }
 
 /// Expand a [`FunctionInfo`](syntaqlite_parser::catalog::FunctionInfo) into one [`FunctionDef`] per arity.
-pub fn expand_function_info(info: &FunctionInfo<'_>) -> Vec<FunctionDef> {
+pub(crate) fn expand_function_info(info: &FunctionInfo<'_>) -> Vec<FunctionDef> {
     if info.arities.is_empty() {
         vec![FunctionDef {
             name: info.name.to_string(),
@@ -339,11 +339,13 @@ impl SessionContext {
         source: &str,
         dialect_config: Option<syntaqlite_parser::DialectConfig>,
     ) -> Self {
-        let mut builder = syntaqlite_parser::RawParser::builder(dialect);
-        if let Some(dc) = dialect_config {
-            builder = builder.dialect_config(dc);
-        }
-        let mut parser = builder.build();
+        let mut parser = syntaqlite_parser::RawParser::with_config(
+            dialect,
+            &syntaqlite_parser::ParserConfig {
+                dialect_config,
+                ..syntaqlite_parser::ParserConfig::default()
+            },
+        );
         let mut cursor = parser.parse(source);
 
         let mut stmt_ids = Vec::new();
@@ -905,7 +907,7 @@ mod tests {
     #[test]
     fn from_stmts_creates_session_context() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::new(dialect);
         let sql = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);";
         let mut cursor = parser.parse(sql);
 
@@ -940,7 +942,7 @@ mod tests {
     #[test]
     fn from_stmts_create_table_as_select() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::new(dialect);
         let sql = "CREATE TABLE orders AS SELECT order_id, total AS amount FROM src;";
         let mut cursor = parser.parse(sql);
 
@@ -962,7 +964,7 @@ mod tests {
     #[test]
     fn from_stmts_star_expands_from_earlier_table() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::new(dialect);
         let sql = "\
             CREATE TABLE slice (order_id INTEGER, status TEXT);\n\
             CREATE TABLE orders AS SELECT * FROM slice;\n";
@@ -986,7 +988,7 @@ mod tests {
     #[test]
     fn from_stmts_qualified_star_expands_correct_table() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::new(dialect);
         let sql = "\
             CREATE TABLE a (x INTEGER);\n\
             CREATE TABLE b (y TEXT);\n\
@@ -1009,7 +1011,7 @@ mod tests {
     #[test]
     fn from_stmts_star_with_alias() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::new(dialect);
         let sql = "\
             CREATE TABLE src (id INTEGER, val TEXT);\n\
             CREATE TABLE dst AS SELECT t.* FROM src AS t;\n";
@@ -1032,7 +1034,7 @@ mod tests {
     #[test]
     fn from_stmts_star_through_subquery() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::new(dialect);
         let sql = "\
             CREATE TABLE slice (order_id INTEGER, customer_id TEXT);\n\
             CREATE TABLE orders AS SELECT * FROM (SELECT * FROM slice);\n";
@@ -1056,7 +1058,7 @@ mod tests {
     #[test]
     fn from_stmts_handles_views() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::new(dialect);
         let sql = "CREATE VIEW active_users AS SELECT id, name FROM users WHERE active = 1;";
         let mut cursor = parser.parse(sql);
 
@@ -1078,7 +1080,7 @@ mod tests {
     #[test]
     fn from_stmts_view_star_expands_from_table() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::new(dialect);
         let sql = "\
             CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\n\
             CREATE VIEW all_users AS SELECT * FROM users;\n";

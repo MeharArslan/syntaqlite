@@ -89,9 +89,9 @@ pub mod parser;
 // Everything else lives in its host module (parser::*, fmt::*, validation::*).
 
 pub use crate::parser::typed::{
-    IncrementalCursor, IncrementalParser, IncrementalParserBuilder, Parser, ParserBuilder,
-    StatementCursor, Token, TokenCursor, Tokenizer, TokenizerBuilder,
+    IncrementalCursor, IncrementalParser, Parser, StatementCursor, Token, TokenCursor, Tokenizer,
 };
+pub use syntaqlite_parser::ParserConfig;
 
 // ── Formatter ────────────────────────────────────────────────────────────
 
@@ -146,7 +146,6 @@ pub use syntaqlite_parser_sqlite::tokens::TokenType;
 pub mod ext {
     // ── Parser types ─────────────────────────────────────────────────────
     pub use syntaqlite_parser::RawParser;
-    pub use syntaqlite_parser::RawParserBuilder;
     pub use syntaqlite_parser::RawStatementCursor;
 
     pub use syntaqlite_parser::RawToken;
@@ -155,7 +154,6 @@ pub mod ext {
 
     pub use syntaqlite_parser::RawIncrementalCursor;
     pub use syntaqlite_parser::RawIncrementalParser;
-    pub use syntaqlite_parser::RawIncrementalParserBuilder;
 
     // ── Node / field types ───────────────────────────────────────────────
     pub use syntaqlite_parser::ErrorSpan;
@@ -175,17 +173,6 @@ pub mod ext {
 
     // ── AST trait definitions ────────────────────────────────────────────
     pub use syntaqlite_parser::ast_traits::*;
-
-    /// Builder types for dialect-agnostic APIs.
-    pub mod builders {
-        pub use syntaqlite_parser::RawTokenizerBuilder;
-
-        #[cfg(feature = "fmt")]
-        pub use crate::fmt::formatter::FormatterBuilder;
-
-        #[cfg(feature = "validation")]
-        pub use crate::validation::ValidatorBuilder;
-    }
 
     // ── Dialect handle ────────────────────────────────────────────────────
 

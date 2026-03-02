@@ -122,65 +122,68 @@ pub struct Token {
 
 unsafe extern "C" {
     // Parser lifecycle
-    pub fn syntaqlite_create_parser_with_dialect(
+    pub(crate) fn syntaqlite_create_parser_with_dialect(
         mem: *const MemMethods,
         dialect: *const Dialect,
     ) -> *mut Parser;
-    pub fn syntaqlite_parser_reset(p: *mut Parser, source: *const c_char, len: u32);
-    pub fn syntaqlite_parser_next(p: *mut Parser) -> ParseResult;
-    pub fn syntaqlite_parser_destroy(p: *mut Parser);
+    pub(crate) fn syntaqlite_parser_reset(p: *mut Parser, source: *const c_char, len: u32);
+    pub(crate) fn syntaqlite_parser_next(p: *mut Parser) -> ParseResult;
+    pub(crate) fn syntaqlite_parser_destroy(p: *mut Parser);
 
     // Parser accessors
-    pub fn syntaqlite_parser_node(p: *mut Parser, node_id: u32) -> *const u32;
-    pub fn syntaqlite_parser_node_count(p: *mut Parser) -> u32;
+    pub(crate) fn syntaqlite_parser_node(p: *mut Parser, node_id: u32) -> *const u32;
+    pub(crate) fn syntaqlite_parser_node_count(p: *mut Parser) -> u32;
 
     // Parser configuration
-    pub fn syntaqlite_parser_set_trace(p: *mut Parser, enable: c_int) -> c_int;
-    pub fn syntaqlite_parser_set_collect_tokens(p: *mut Parser, enable: c_int) -> c_int;
-    pub fn syntaqlite_parser_set_dialect_config(
+    pub(crate) fn syntaqlite_parser_set_trace(p: *mut Parser, enable: c_int) -> c_int;
+    pub(crate) fn syntaqlite_parser_set_collect_tokens(p: *mut Parser, enable: c_int) -> c_int;
+    pub(crate) fn syntaqlite_parser_set_dialect_config(
         p: *mut Parser,
         config: *const DialectConfig,
     ) -> c_int;
 
     // Comments
-    pub fn syntaqlite_parser_comments(p: *mut Parser, count: *mut u32) -> *const Comment;
+    pub(crate) fn syntaqlite_parser_comments(p: *mut Parser, count: *mut u32) -> *const Comment;
 
     // Token positions
-    pub fn syntaqlite_parser_tokens(p: *mut Parser, count: *mut u32) -> *const TokenPos;
+    pub(crate) fn syntaqlite_parser_tokens(p: *mut Parser, count: *mut u32) -> *const TokenPos;
 
     // Low-level token-feeding API
-    pub fn syntaqlite_parser_feed_token(
+    pub(crate) fn syntaqlite_parser_feed_token(
         p: *mut Parser,
         token_type: c_int,
         text: *const c_char,
         len: c_int,
     ) -> c_int;
-    pub fn syntaqlite_parser_result(p: *mut Parser) -> ParseResult;
-    pub fn syntaqlite_parser_expected_tokens(
+    pub(crate) fn syntaqlite_parser_result(p: *mut Parser) -> ParseResult;
+    pub(crate) fn syntaqlite_parser_expected_tokens(
         p: *mut Parser,
         out_tokens: *mut c_int,
         out_cap: c_int,
     ) -> c_int;
-    pub fn syntaqlite_parser_completion_context(p: *mut Parser) -> u32;
-    pub fn syntaqlite_parser_finish(p: *mut Parser) -> c_int;
+    pub(crate) fn syntaqlite_parser_completion_context(p: *mut Parser) -> u32;
+    pub(crate) fn syntaqlite_parser_finish(p: *mut Parser) -> c_int;
 
     // Macro region tracking
-    pub fn syntaqlite_parser_begin_macro(p: *mut Parser, call_offset: u32, call_length: u32);
-    pub fn syntaqlite_parser_end_macro(p: *mut Parser);
-    pub fn syntaqlite_parser_macro_regions(p: *mut Parser, count: *mut u32) -> *const MacroRegion;
+    pub(crate) fn syntaqlite_parser_begin_macro(p: *mut Parser, call_offset: u32, call_length: u32);
+    pub(crate) fn syntaqlite_parser_end_macro(p: *mut Parser);
+    pub(crate) fn syntaqlite_parser_macro_regions(
+        p: *mut Parser,
+        count: *mut u32,
+    ) -> *const MacroRegion;
 
     // AST dump
     pub(crate) fn syntaqlite_dump_node(p: *mut Parser, node_id: u32, indent: u32) -> *mut c_char;
 
     // Tokenizer
-    pub fn syntaqlite_tokenizer_create(
+    pub(crate) fn syntaqlite_tokenizer_create(
         mem: *const MemMethods,
         dialect: *const Dialect,
     ) -> *mut Tokenizer;
-    pub fn syntaqlite_tokenizer_reset(tok: *mut Tokenizer, source: *const c_char, len: u32);
-    pub fn syntaqlite_tokenizer_next(tok: *mut Tokenizer, out: *mut Token) -> c_int;
-    pub fn syntaqlite_tokenizer_destroy(tok: *mut Tokenizer);
-    pub fn syntaqlite_tokenizer_set_dialect_config(
+    pub(crate) fn syntaqlite_tokenizer_reset(tok: *mut Tokenizer, source: *const c_char, len: u32);
+    pub(crate) fn syntaqlite_tokenizer_next(tok: *mut Tokenizer, out: *mut Token) -> c_int;
+    pub(crate) fn syntaqlite_tokenizer_destroy(tok: *mut Tokenizer);
+    pub(crate) fn syntaqlite_tokenizer_set_dialect_config(
         tok: *mut Tokenizer,
         config: *const DialectConfig,
     ) -> c_int;

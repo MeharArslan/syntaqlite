@@ -11,7 +11,7 @@ use crate::util::grammar_parser::LemonGrammar;
 
 /// A mismatch between upstream grammar and our action files.
 #[derive(Debug)]
-pub struct GrammarMismatch {
+pub(crate) struct GrammarMismatch {
     pub rules_missing: Vec<String>,
     pub rules_extra: Vec<String>,
     pub fallbacks_missing: Vec<String>,

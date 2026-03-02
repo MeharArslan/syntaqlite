@@ -16,6 +16,17 @@ use crate::{Comment, Parser, TokenPos};
 
 use crate::{NodeRef, ParseError, RawNodeReader};
 
+/// Configuration for parser construction.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct ParserConfig {
+    /// Enable parser trace output (Lemon debug trace). Default: `false`.
+    pub trace: bool,
+    /// Collect non-whitespace token positions during parsing. Default: `false`.
+    pub collect_tokens: bool,
+    /// Dialect config for version/cflag-gated tokenization. Default: `None`.
+    pub dialect_config: Option<DialectConfig>,
+}
+
 /// Owns a parser instance. Reusable across inputs via `parse()`.
 pub struct RawParser<'d> {
     pub(crate) raw: NonNull<Parser>,
@@ -38,14 +49,48 @@ pub struct RawParser<'d> {
 unsafe impl Send for RawParser<'_> {}
 
 impl<'d> RawParser<'d> {
-    /// Create a builder for a parser bound to the given dialect.
-    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> RawParserBuilder<'d> {
-        RawParserBuilder {
-            dialect: dialect.into(),
-            trace: false,
-            collect_tokens: false,
-            dialect_config: None,
+    /// Create a parser bound to the given dialect with default configuration.
+    pub fn new(dialect: impl Into<RawDialect<'d>>) -> Self {
+        Self::with_config(dialect, &ParserConfig::default())
+    }
+
+    /// Create a parser bound to the given dialect with custom configuration.
+    pub fn with_config(dialect: impl Into<RawDialect<'d>>, config: &ParserConfig) -> Self {
+        let dialect = dialect.into();
+        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
+        // a new parser with default malloc/free.
+        let raw = NonNull::new(unsafe {
+            syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw)
+        })
+        .expect("parser allocation failed");
+
+        // SAFETY: raw is freshly created (not sealed), so these calls
+        // always return 0.
+        unsafe {
+            syntaqlite_parser_set_trace(raw.as_ptr(), config.trace as c_int);
+            syntaqlite_parser_set_collect_tokens(raw.as_ptr(), config.collect_tokens as c_int);
         }
+
+        let mut parser = RawParser {
+            raw,
+            source_buf: Vec::new(),
+            dialect_config: DialectConfig::default(),
+            dialect,
+        };
+
+        if let Some(dc) = config.dialect_config {
+            parser.dialect_config = dc;
+            // SAFETY: We pass a pointer to parser.dialect_config which lives
+            // in the RawParser struct. The C side copies the config value.
+            unsafe {
+                syntaqlite_parser_set_dialect_config(
+                    parser.raw.as_ptr(),
+                    &parser.dialect_config as *const DialectConfig,
+                );
+            }
+        }
+
+        parser
     }
 
     /// Bind source text and return a `BaseStatementCursor` for iterating statements.
@@ -90,80 +135,12 @@ impl Drop for RawParser<'_> {
     }
 }
 
-// ── RawParserBuilder ───────────────────────────────────────────────────────
-
-/// Builder for configuring a [`RawParser`] before construction.
-pub struct RawParserBuilder<'a> {
-    dialect: RawDialect<'a>,
-    trace: bool,
-    collect_tokens: bool,
-    dialect_config: Option<DialectConfig>,
-}
-
-impl<'a> RawParserBuilder<'a> {
-    /// Enable parser trace output (Lemon debug trace).
-    pub fn trace(mut self, enable: bool) -> Self {
-        self.trace = enable;
-        self
-    }
-
-    /// Collect non-whitespace token positions during parsing.
-    pub fn collect_tokens(mut self, enable: bool) -> Self {
-        self.collect_tokens = enable;
-        self
-    }
-
-    /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
-        self.dialect_config = Some(config);
-        self
-    }
-
-    /// Build the parser.
-    pub fn build(self) -> RawParser<'a> {
-        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
-        // a new parser with default malloc/free.
-        let raw = NonNull::new(unsafe {
-            syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw)
-        })
-        .expect("parser allocation failed");
-
-        // SAFETY: raw is freshly created (not sealed), so these calls
-        // always return 0.
-        unsafe {
-            syntaqlite_parser_set_trace(raw.as_ptr(), self.trace as c_int);
-            syntaqlite_parser_set_collect_tokens(raw.as_ptr(), self.collect_tokens as c_int);
-        }
-
-        let mut parser = RawParser {
-            raw,
-            source_buf: Vec::new(),
-            dialect_config: DialectConfig::default(),
-            dialect: self.dialect,
-        };
-
-        if let Some(config) = self.dialect_config {
-            parser.dialect_config = config;
-            // SAFETY: We pass a pointer to parser.dialect_config which lives
-            // in the RawParser struct. The C side copies the config value.
-            unsafe {
-                syntaqlite_parser_set_dialect_config(
-                    parser.raw.as_ptr(),
-                    &parser.dialect_config as *const DialectConfig,
-                );
-            }
-        }
-
-        parser
-    }
-}
-
 // ── CursorState ────────────────────────────────────────────────────────
 
 /// Internal state shared between cursor implementations (`RawStatementCursor`,
 /// `RawIncrementalCursor`). Holds the node reader, source pointer tracking,
 /// and dialect handle.
-pub struct CursorState<'a> {
+pub(crate) struct CursorState<'a> {
     pub(crate) reader: RawNodeReader<'a>,
     /// The pointer that the C parser uses as its source base. This may differ
     /// from `source.as_ptr()` when `parse()` copies into an internal buffer.

@@ -8,10 +8,9 @@ use std::marker::PhantomData;
 use std::ops::Range;
 
 use syntaqlite_parser::{
-    Comment, Dialect, DialectConfig, MacroRegion, NodeFamily, NodeRef, ParseError,
-    RawIncrementalCursor, RawIncrementalParser, RawIncrementalParserBuilder, RawNodeReader,
-    RawParser, RawParserBuilder, RawStatementCursor, RawTokenCursor, RawTokenizer,
-    RawTokenizerBuilder,
+    Comment, Dialect, MacroRegion, NodeFamily, NodeRef, ParseError, ParserConfig,
+    RawIncrementalCursor, RawIncrementalParser, RawNodeReader, RawParser, RawStatementCursor,
+    RawTokenCursor, RawTokenizer,
 };
 
 // ── Parser ───────────────────────────────────────────────────────────────
@@ -29,8 +28,7 @@ pub struct Parser<'d, N: NodeFamily> {
 impl Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily> {
     /// Create a parser for the built-in SQLite dialect with default configuration.
     pub fn new() -> Self {
-        let dialect = Dialect::from_raw_dialect(crate::dialect::sqlite());
-        Self::builder(dialect).build()
+        Self::from_dialect(Dialect::from_raw_dialect(crate::dialect::sqlite()))
     }
 }
 
@@ -42,10 +40,18 @@ impl Default for Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily> {
 }
 
 impl<'d, N: NodeFamily> Parser<'d, N> {
-    /// Create a builder for a parser bound to the given dialect.
-    pub fn builder(dialect: Dialect<'d, N>) -> ParserBuilder<'d, N> {
-        ParserBuilder {
-            inner: RawParser::builder(dialect.raw()),
+    /// Create a parser bound to the given dialect with default configuration.
+    pub fn from_dialect(dialect: Dialect<'d, N>) -> Self {
+        Parser {
+            inner: RawParser::new(dialect.raw()),
+            _marker: PhantomData,
+        }
+    }
+
+    /// Create a parser bound to the given dialect with custom configuration.
+    pub fn with_config(dialect: Dialect<'d, N>, config: &ParserConfig) -> Self {
+        Parser {
+            inner: RawParser::with_config(dialect.raw(), config),
             _marker: PhantomData,
         }
     }
@@ -62,42 +68,6 @@ impl<'d, N: NodeFamily> Parser<'d, N> {
     pub fn parse_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> StatementCursor<'a, N> {
         StatementCursor {
             inner: self.inner.parse_cstr(source),
-            _marker: PhantomData,
-        }
-    }
-}
-
-// ── ParserBuilder ────────────────────────────────────────────────────────
-
-/// Builder for [`Parser`].
-pub struct ParserBuilder<'d, N: NodeFamily> {
-    inner: RawParserBuilder<'d>,
-    _marker: PhantomData<N>,
-}
-
-impl<'d, N: NodeFamily> ParserBuilder<'d, N> {
-    /// Enable parser trace output.
-    pub fn trace(mut self, enable: bool) -> Self {
-        self.inner = self.inner.trace(enable);
-        self
-    }
-
-    /// Collect token positions during parsing.
-    pub fn collect_tokens(mut self, enable: bool) -> Self {
-        self.inner = self.inner.collect_tokens(enable);
-        self
-    }
-
-    /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
-        self.inner = self.inner.dialect_config(config);
-        self
-    }
-
-    /// Build the parser.
-    pub fn build(self) -> Parser<'d, N> {
-        Parser {
-            inner: self.inner.build(),
             _marker: PhantomData,
         }
     }
@@ -176,8 +146,7 @@ pub struct Tokenizer<'d, N: NodeFamily> {
 impl Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily> {
     /// Create a tokenizer for the built-in SQLite dialect with default configuration.
     pub fn new() -> Self {
-        let dialect = Dialect::from_raw_dialect(crate::dialect::sqlite());
-        Self::builder(dialect).build()
+        Self::from_dialect(Dialect::from_raw_dialect(crate::dialect::sqlite()))
     }
 }
 
@@ -189,10 +158,21 @@ impl Default for Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily> 
 }
 
 impl<'d, N: NodeFamily> Tokenizer<'d, N> {
-    /// Create a builder for a tokenizer bound to the given dialect.
-    pub fn builder(dialect: Dialect<'d, N>) -> TokenizerBuilder<'d, N> {
-        TokenizerBuilder {
-            inner: RawTokenizer::builder(dialect.raw()),
+    /// Create a tokenizer bound to the given dialect with default configuration.
+    pub fn from_dialect(dialect: Dialect<'d, N>) -> Self {
+        Tokenizer {
+            inner: RawTokenizer::new(dialect.raw()),
+            _marker: PhantomData,
+        }
+    }
+
+    /// Create a tokenizer with a specific dialect config.
+    pub fn with_dialect_config(
+        dialect: Dialect<'d, N>,
+        config: syntaqlite_parser::DialectConfig,
+    ) -> Self {
+        Tokenizer {
+            inner: RawTokenizer::with_dialect_config(dialect.raw(), config),
             _marker: PhantomData,
         }
     }
@@ -209,30 +189,6 @@ impl<'d, N: NodeFamily> Tokenizer<'d, N> {
     pub fn tokenize_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> TokenCursor<'a, N> {
         TokenCursor {
             inner: self.inner.tokenize_cstr(source),
-            _marker: PhantomData,
-        }
-    }
-}
-
-// ── TokenizerBuilder ─────────────────────────────────────────────────────
-
-/// Builder for [`Tokenizer`].
-pub struct TokenizerBuilder<'d, N: NodeFamily> {
-    inner: RawTokenizerBuilder<'d>,
-    _marker: PhantomData<N>,
-}
-
-impl<'d, N: NodeFamily> TokenizerBuilder<'d, N> {
-    /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
-        self.inner = self.inner.dialect_config(config);
-        self
-    }
-
-    /// Build the tokenizer.
-    pub fn build(self) -> Tokenizer<'d, N> {
-        Tokenizer {
-            inner: self.inner.build(),
             _marker: PhantomData,
         }
     }
@@ -280,8 +236,7 @@ pub struct IncrementalParser<'d, N: NodeFamily> {
 impl IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily> {
     /// Create an incremental parser for the built-in SQLite dialect.
     pub fn new() -> Self {
-        let dialect = Dialect::from_raw_dialect(crate::dialect::sqlite());
-        Self::builder(dialect).build()
+        Self::from_dialect(Dialect::from_raw_dialect(crate::dialect::sqlite()))
     }
 }
 
@@ -293,10 +248,20 @@ impl Default for IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNode
 }
 
 impl<'d, N: NodeFamily> IncrementalParser<'d, N> {
-    /// Create a builder for an incremental parser bound to the given dialect.
-    pub fn builder(dialect: Dialect<'d, N>) -> IncrementalParserBuilder<'d, N> {
-        IncrementalParserBuilder {
-            inner: RawIncrementalParser::builder(dialect.raw()),
+    /// Create an incremental parser bound to the given dialect with default
+    /// configuration (token collection enabled).
+    pub fn from_dialect(dialect: Dialect<'d, N>) -> Self {
+        IncrementalParser {
+            inner: RawIncrementalParser::new(dialect.raw()),
+            _marker: PhantomData,
+        }
+    }
+
+    /// Create an incremental parser bound to the given dialect with custom
+    /// configuration.
+    pub fn with_config(dialect: Dialect<'d, N>, config: &ParserConfig) -> Self {
+        IncrementalParser {
+            inner: RawIncrementalParser::with_config(dialect.raw(), config),
             _marker: PhantomData,
         }
     }
@@ -315,42 +280,6 @@ impl<'d, N: NodeFamily> IncrementalParser<'d, N> {
         IncrementalCursor {
             inner: self.inner.feed_cstr(source),
             last_root: None,
-            _marker: PhantomData,
-        }
-    }
-}
-
-// ── IncrementalParserBuilder ─────────────────────────────────────────────
-
-/// Builder for [`IncrementalParser`].
-pub struct IncrementalParserBuilder<'d, N: NodeFamily> {
-    inner: RawIncrementalParserBuilder<'d>,
-    _marker: PhantomData<N>,
-}
-
-impl<'d, N: NodeFamily> IncrementalParserBuilder<'d, N> {
-    /// Enable parser trace output.
-    pub fn trace(mut self, enable: bool) -> Self {
-        self.inner = self.inner.trace(enable);
-        self
-    }
-
-    /// Collect non-whitespace token positions during parsing.
-    pub fn collect_tokens(mut self, enable: bool) -> Self {
-        self.inner = self.inner.collect_tokens(enable);
-        self
-    }
-
-    /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
-        self.inner = self.inner.dialect_config(config);
-        self
-    }
-
-    /// Build the incremental parser.
-    pub fn build(self) -> IncrementalParser<'d, N> {
-        IncrementalParser {
-            inner: self.inner.build(),
             _marker: PhantomData,
         }
     }

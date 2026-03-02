@@ -6,7 +6,7 @@ use syntaqlite::dialect::sqlite as dialect;
 use syntaqlite::ext::{DialectNodeType, NodeId, RawParser, RawStatementCursor};
 
 fn new_parser() -> RawParser<'static> {
-    RawParser::builder(dialect()).build()
+    RawParser::new(dialect())
 }
 
 /// Helper: resolve a NodeId to its Node variant and return its tag.

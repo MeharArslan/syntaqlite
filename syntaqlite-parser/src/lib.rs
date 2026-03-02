@@ -1,6 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+#![warn(unreachable_pub)]
+
 //! Raw FFI bindings and dialect-agnostic arena infrastructure for the
 //! syntaqlite C parser engine.
 //!
@@ -36,11 +38,9 @@ pub use crate::parser::{
 
 // ── Raw (grammar-agnostic) parsers and tokenizer ──────────────────────────────
 
-pub use crate::raw_incremental::{
-    RawIncrementalCursor, RawIncrementalParser, RawIncrementalParserBuilder,
-};
-pub use crate::raw_session::{RawParser, RawParserBuilder, RawStatementCursor};
-pub use crate::raw_tokenizer::{RawToken, RawTokenCursor, RawTokenizer, RawTokenizerBuilder};
+pub use crate::raw_incremental::{RawIncrementalCursor, RawIncrementalParser};
+pub use crate::raw_session::{ParserConfig, RawParser, RawStatementCursor};
+pub use crate::raw_tokenizer::{RawToken, RawTokenCursor, RawTokenizer};
 
 // ── Function availability catalog ─────────────────────────────────────────────
 

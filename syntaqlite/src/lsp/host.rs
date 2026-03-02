@@ -237,9 +237,7 @@ impl<'d> AnalysisHost<'d> {
             .documents
             .get(uri)
             .ok_or(FormatError::UnknownDocument)?;
-        let mut formatter = Formatter::builder(self.dialect)
-            .format_config(config.clone())
-            .build();
+        let mut formatter = Formatter::with_config(self.dialect, config, None);
         formatter.format(&doc.source).map_err(FormatError::Parse)
     }
 
@@ -256,7 +254,7 @@ impl<'d> AnalysisHost<'d> {
         };
 
         let catalog = self.function_catalog();
-        let mut parser = syntaqlite_parser::RawParser::builder(self.dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::new(self.dialect);
         let mut cursor = parser.parse(&doc.source);
 
         let mut stmt_ids = Vec::new();
@@ -669,7 +667,7 @@ mod tests {
     #[test]
     fn syntax_error_offset_via_parser_directly() {
         let sql = "select 1 from slice where foo = where x = y;";
-        let mut parser = RawParser::builder(crate::dialect::sqlite()).build();
+        let mut parser = RawParser::new(crate::dialect::sqlite());
         let mut cursor = parser.parse(sql);
         let err = cursor
             .next_statement()

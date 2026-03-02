@@ -11,7 +11,7 @@ use crate::{DialectConfig, FunctionInfo, catalog::is_function_available, dialect
 ///
 /// `category` groups flags by feature area for UI presentation:
 /// "parser", "functions", "vtable", "extensions".
-pub const CFLAG_TABLE: &[(&str, u32, i32, &str)] = &[
+pub(crate) const CFLAG_TABLE: &[(&str, u32, i32, &str)] = &[
     ("SQLITE_OMIT_ALTERTABLE", 0, 0, "parser"),
     ("SQLITE_OMIT_ANALYZE", 1, 0, "parser"),
     ("SQLITE_OMIT_ATTACH", 2, 0, "parser"),

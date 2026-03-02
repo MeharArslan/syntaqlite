@@ -6,6 +6,7 @@
 use crate::dialect::{DialectExt, RawDialect, TokenCategory};
 use crate::lsp::{CompletionContext, CompletionInfo, SemanticToken};
 use crate::validation::types::{Diagnostic, DiagnosticMessage, Severity};
+use syntaqlite_parser::ParserConfig;
 use syntaqlite_parser::RawIncrementalParser;
 use syntaqlite_parser::RawParser;
 use syntaqlite_parser::RawTokenizer;
@@ -33,7 +34,13 @@ pub struct DocumentAnalysis {
 impl DocumentAnalysis {
     /// Parse `source` against `dialect` and collect all analysis results.
     pub fn compute(dialect: RawDialect<'_>, source: &str) -> Self {
-        let mut parser = RawParser::builder(dialect).collect_tokens(true).build();
+        let mut parser = RawParser::with_config(
+            dialect,
+            &ParserConfig {
+                collect_tokens: true,
+                ..ParserConfig::default()
+            },
+        );
         let mut cursor = parser.parse(source);
         let mut diagnostics = Vec::new();
 
@@ -74,7 +81,7 @@ impl DocumentAnalysis {
         semantic_tokens.sort_by_key(|t| t.offset);
 
         let mut tokens = Vec::new();
-        let mut tokenizer = RawTokenizer::builder(dialect).build();
+        let mut tokenizer = RawTokenizer::new(dialect);
         let source_base = source.as_ptr() as usize;
         for tok in tokenizer.tokenize(source) {
             let start = tok.text.as_ptr() as usize - source_base;
@@ -202,7 +209,7 @@ impl DocumentAnalysis {
 
         let stmt_tokens = &self.tokens[start..boundary];
 
-        let mut parser = RawIncrementalParser::builder(dialect).build();
+        let mut parser = RawIncrementalParser::new(dialect);
         let mut cursor = parser.feed(source);
         let mut last_expected = cursor.expected_tokens();
 

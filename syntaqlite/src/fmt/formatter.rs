@@ -6,7 +6,7 @@ use super::comment::CommentCtx;
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
 use syntaqlite_parser::RawParser;
-use syntaqlite_parser::{CommentKind, MacroRegion};
+use syntaqlite_parser::{CommentKind, MacroRegion, ParserConfig};
 use syntaqlite_parser::{DialectConfig, NodeRef, RawDialect};
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
@@ -35,15 +35,35 @@ impl<'d> Formatter<'d> {
     /// Create a formatter for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
     pub fn new() -> Formatter<'static> {
-        Formatter::builder(crate::dialect::sqlite()).build()
+        Formatter::with_config(crate::dialect::sqlite(), &FormatConfig::default(), None)
     }
 
-    /// Create a builder for a formatter bound to the given dialect.
-    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> FormatterBuilder<'d> {
-        FormatterBuilder {
-            dialect: dialect.into(),
-            format_config: FormatConfig::default(),
-            dialect_config: None,
+    /// Create a formatter bound to the given dialect with custom configuration.
+    pub fn with_config(
+        dialect: impl Into<RawDialect<'d>>,
+        format_config: &FormatConfig,
+        dialect_config: Option<DialectConfig>,
+    ) -> Self {
+        let dialect = dialect.into();
+        assert!(
+            dialect.has_fmt_data(),
+            "dialect has no formatter bytecode — ensure .synq definitions include fmt blocks",
+        );
+        let parser = RawParser::with_config(
+            dialect,
+            &ParserConfig {
+                collect_tokens: true,
+                dialect_config,
+                ..ParserConfig::default()
+            },
+        );
+        Formatter {
+            dialect,
+            parser,
+            config: format_config.clone(),
+            arena: DocArena::with_capacity(256),
+            interpret_scratch: InterpretScratch::new(),
+            render_bufs: RenderBuffers::new(),
         }
     }
 
@@ -174,55 +194,6 @@ impl<'d> Formatter<'d> {
     }
 }
 
-// ── FormatterBuilder ────────────────────────────────────────────────────
-
-/// Builder for configuring a [`Formatter`] before construction.
-pub struct FormatterBuilder<'d> {
-    dialect: RawDialect<'d>,
-    format_config: FormatConfig,
-    dialect_config: Option<DialectConfig>,
-}
-
-impl<'d> FormatterBuilder<'d> {
-    /// Set the format configuration (line width, keyword case, etc.).
-    pub fn format_config(mut self, config: FormatConfig) -> Self {
-        self.format_config = config;
-        self
-    }
-
-    /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
-        self.dialect_config = Some(config);
-        self
-    }
-
-    /// Build the formatter.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the dialect was not compiled with formatter bytecode
-    /// (i.e. the `.synq` definitions have no `fmt` blocks).
-    pub fn build(self) -> Formatter<'d> {
-        assert!(
-            self.dialect.has_fmt_data(),
-            "dialect has no formatter bytecode — ensure .synq definitions include fmt blocks",
-        );
-        let mut parser_builder = RawParser::builder(self.dialect).collect_tokens(true);
-        if let Some(dc) = self.dialect_config {
-            parser_builder = parser_builder.dialect_config(dc);
-        }
-        let parser = parser_builder.build();
-        Formatter {
-            dialect: self.dialect,
-            parser,
-            config: self.format_config,
-            arena: DocArena::with_capacity(256),
-            interpret_scratch: InterpretScratch::new(),
-            render_bufs: RenderBuffers::new(),
-        }
-    }
-}
-
 // ── Multi-statement helpers ─────────────────────────────────────────────
 
 fn emit_stmt_separator<'a>(
@@ -319,7 +290,7 @@ fn drain_gap_comments<'a>(
 ///
 /// Does NOT advance the token cursor — the caller is responsible for
 /// advancing it (typically by "calling" into the child node).
-pub fn try_macro_verbatim<'a>(
+pub(crate) fn try_macro_verbatim<'a>(
     ctx: &FmtCtx<'a>,
     regions: &[MacroRegion],
     arena: &mut DocArena<'a>,
