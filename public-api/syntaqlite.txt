@@ -41,6 +41,7 @@ impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> core::iter::traits::i
 impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> core::iter::traits::iterator::Iterator for syntaqlite::TokenCursor<'a, N>
 impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::incremental::IncrementalCursor<'a, N>
 impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::StatementCursor<'a, N>
+impl<'a> syntaqlite::semantic::relations::RelationCatalog<'a>
 impl<'a> syntaqlite::validation::SourceContext<'a>
 impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::incremental::IncrementalParser<'d, N>
 impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::Parser<'d, N>
@@ -55,6 +56,7 @@ pub enum syntaqlite::fmt::KeywordCase
 pub enum syntaqlite::KeywordCase
 pub enum syntaqlite::lsp::CompletionKind
 pub enum syntaqlite::semantic::functions::FunctionCheckResult
+pub enum syntaqlite::semantic::relations::RelationKind
 pub enum syntaqlite::validation::DiagnosticMessage
 pub enum syntaqlite::validation::Help
 pub enum syntaqlite::validation::RelationKind
@@ -148,6 +150,13 @@ pub fn syntaqlite::semantic::functions::FunctionCatalog::for_dialect(dialect: &s
 pub fn syntaqlite::semantic::functions::FunctionCatalog::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&str, syntaqlite_parser::catalog::FunctionCategory)>
 pub fn syntaqlite::semantic::functions::FunctionCatalog::lookup(&self, name: &str) -> core::option::Option<syntaqlite::semantic::functions::FunctionLookup<'_>>
 pub fn syntaqlite::semantic::functions::FunctionCatalog::unique_names(&self) -> impl core::iter::traits::iterator::Iterator<Item = &str>
+pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::all_column_names(&self, table: core::option::Option<&str>) -> alloc::vec::Vec<alloc::string::String>
+pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::all_names(&self) -> alloc::vec::Vec<alloc::string::String>
+pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::columns_for(&self, name: &str) -> core::option::Option<&'a [syntaqlite::validation::ColumnDef]>
+pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = &'a syntaqlite::validation::RelationDef>
+pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::lookup(&self, name: &str) -> core::option::Option<&'a syntaqlite::validation::RelationDef>
+pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::new(session: &'a [syntaqlite::validation::RelationDef], document: &'a [syntaqlite::validation::RelationDef]) -> Self
+pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::resolve(&self, name: &str) -> bool
 pub fn syntaqlite::StatementCursor<'a, N>::next_statement(&mut self) -> core::option::Option<core::result::Result<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node, syntaqlite_parser::session::ParseError>>
 pub fn syntaqlite::StatementCursor<'a, N>::next(&mut self) -> core::option::Option<Self::Item>
 pub fn syntaqlite::StatementCursor<'a, N>::reader(&self) -> syntaqlite_parser::session::RawNodeReader<'a>
@@ -202,6 +211,7 @@ pub mod syntaqlite::incremental
 pub mod syntaqlite::lsp
 pub mod syntaqlite::semantic
 pub mod syntaqlite::semantic::functions
+pub mod syntaqlite::semantic::relations
 pub mod syntaqlite::validation
 pub struct syntaqlite::embedded::EmbeddedAnalyzer<'d>
 pub struct syntaqlite::embedded::EmbeddedFragment
@@ -222,6 +232,9 @@ pub struct syntaqlite::Parser<'d, N: syntaqlite_parser::dialect_traits::NodeFami
 pub struct syntaqlite::semantic::functions::FunctionCatalog
 pub struct syntaqlite::semantic::functions::FunctionLookup<'a>
 pub struct syntaqlite::semantic::functions::SessionFunction
+pub struct syntaqlite::semantic::relations::ColumnDef
+pub struct syntaqlite::semantic::relations::RelationCatalog<'a>
+pub struct syntaqlite::semantic::relations::RelationDef
 pub struct syntaqlite::StatementCursor<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::Token<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::TokenCursor<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
@@ -289,6 +302,15 @@ pub syntaqlite::semantic::functions::FunctionLookup::is_variadic: bool
 pub syntaqlite::semantic::functions::FunctionLookup::name: &'a str
 pub syntaqlite::semantic::functions::SessionFunction::args: core::option::Option<usize>
 pub syntaqlite::semantic::functions::SessionFunction::name: alloc::string::String
+pub syntaqlite::semantic::relations::ColumnDef::is_nullable: bool
+pub syntaqlite::semantic::relations::ColumnDef::is_primary_key: bool
+pub syntaqlite::semantic::relations::ColumnDef::name: alloc::string::String
+pub syntaqlite::semantic::relations::ColumnDef::type_name: core::option::Option<alloc::string::String>
+pub syntaqlite::semantic::relations::RelationDef::columns: alloc::vec::Vec<syntaqlite::validation::ColumnDef>
+pub syntaqlite::semantic::relations::RelationDef::kind: syntaqlite::validation::RelationKind
+pub syntaqlite::semantic::relations::RelationDef::name: alloc::string::String
+pub syntaqlite::semantic::relations::RelationKind::Table
+pub syntaqlite::semantic::relations::RelationKind::View
 pub syntaqlite::Token::kind: <N as syntaqlite_parser::dialect_traits::NodeFamily>::Token
 pub syntaqlite::Token::text: &'a str
 pub syntaqlite::validation::ColumnDef::is_nullable: bool

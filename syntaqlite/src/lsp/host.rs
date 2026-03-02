@@ -7,6 +7,7 @@ use crate::fmt::FormatConfig;
 use crate::fmt::formatter::Formatter;
 use crate::lsp::analysis::DocumentAnalysis;
 use crate::semantic::functions::FunctionCatalog;
+use crate::semantic::relations::RelationCatalog;
 use crate::validation::types::{Diagnostic, SessionContext};
 use crate::validation::{DocumentContext, ValidationConfig, validate_statement_dialect};
 use syntaqlite_parser::ParseError;
@@ -271,14 +272,15 @@ impl<'d> AnalysisHost<'d> {
         let mut doc_ctx = DocumentContext::new();
         let reader = cursor.reader();
         let mut diagnostics = Vec::new();
+        let session_relations = self.context.as_ref().map_or(&[] as &[_], |s| &s.relations);
 
         for &stmt_id in &stmt_ids {
+            let rel_catalog = RelationCatalog::new(session_relations, &doc_ctx.relations);
             let stmt_diags = validate_statement_dialect::<A>(
                 reader,
                 stmt_id,
                 self.dialect,
-                self.context.as_ref(),
-                Some(&doc_ctx),
+                rel_catalog,
                 &catalog,
                 config,
             );

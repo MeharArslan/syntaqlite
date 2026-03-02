@@ -4,6 +4,7 @@
 use syntaqlite_parser::RawDialect;
 
 use crate::semantic::functions::SessionFunction;
+use crate::semantic::relations::{ColumnDef, RelationDef, RelationKind};
 
 /// A diagnostic message associated with a source range.
 #[derive(Debug, Clone)]
@@ -228,30 +229,6 @@ pub enum Severity {
     Warning,
     Info,
     Hint,
-}
-
-/// Whether a [`RelationDef`] represents a base table or a view.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RelationKind {
-    Table,
-    View,
-}
-
-/// A table or view in the schema.
-#[derive(Clone)]
-pub struct RelationDef {
-    pub name: String,
-    pub columns: Vec<ColumnDef>,
-    pub kind: RelationKind,
-}
-
-#[derive(Clone)]
-pub struct ColumnDef {
-    pub name: String,
-    /// SQLite is flexible with types.
-    pub type_name: Option<String>,
-    pub is_primary_key: bool,
-    pub is_nullable: bool,
 }
 
 /// Database schema context for analysis.

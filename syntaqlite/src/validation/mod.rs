@@ -11,14 +11,12 @@
 //! The entry point is [`Validator`], which owns a parser and validates SQL
 //! in a single call.
 
+pub use crate::semantic::relations::{ColumnDef, RelationDef, RelationKind};
 pub use render::SourceContext;
-pub use types::ColumnDef;
 pub use types::Diagnostic;
 pub use types::DiagnosticMessage;
 pub use types::DocumentContext;
 pub use types::Help;
-pub use types::RelationDef;
-pub use types::RelationKind;
 pub use types::SessionContext;
 pub use types::Severity;
 
@@ -31,6 +29,7 @@ mod scope;
 mod walker;
 
 use crate::semantic::functions::FunctionCatalog;
+use crate::semantic::relations::RelationCatalog;
 use syntaqlite_parser::DialectNodeType;
 use syntaqlite_parser::NodeId;
 use syntaqlite_parser::RawDialect;
@@ -81,8 +80,7 @@ pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
     reader: RawNodeReader<'a>,
     stmt_id: NodeId,
     dialect: RawDialect<'_>,
-    session: Option<&SessionContext>,
-    document: Option<&DocumentContext>,
+    relations: RelationCatalog<'_>,
     catalog: &'a FunctionCatalog,
     config: &'a ValidationConfig,
 ) -> Vec<Diagnostic> {
@@ -91,7 +89,7 @@ pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
         return Vec::new();
     };
 
-    let mut scope = ScopeStack::new(session, document);
+    let mut scope = ScopeStack::new(relations);
 
     walker::Walker::<A>::run(reader, stmt, dialect, &mut scope, catalog, config)
 }
@@ -110,13 +108,14 @@ pub(crate) fn validate_document(
 ) -> Vec<Diagnostic> {
     let mut doc_ctx = DocumentContext::new();
     let mut all_diags = Vec::new();
+    let session_relations = session.map_or(&[] as &[_], |s| &s.relations);
     for &stmt_id in stmt_ids {
+        let rel_catalog = RelationCatalog::new(session_relations, &doc_ctx.relations);
         let diags = validate_statement_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(
             reader,
             stmt_id,
             dialect,
-            session,
-            Some(&doc_ctx),
+            rel_catalog,
             catalog,
             config,
         );

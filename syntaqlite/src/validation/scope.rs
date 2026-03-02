@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use super::types::{DocumentContext, RelationDef, SessionContext};
+use crate::semantic::relations::{RelationCatalog, RelationDef};
 
 /// A single scope level (e.g., one SELECT or subquery).
 #[derive(Debug, Default)]
@@ -17,19 +17,14 @@ struct Scope {
 ///
 /// Resolution order for names: SQL scope stack → document → session.
 pub(super) struct ScopeStack<'ctx> {
-    session: Option<&'ctx SessionContext>,
-    document: Option<&'ctx DocumentContext>,
+    catalog: RelationCatalog<'ctx>,
     stack: Vec<Scope>,
 }
 
 impl<'ctx> ScopeStack<'ctx> {
-    pub(super) fn new(
-        session: Option<&'ctx SessionContext>,
-        document: Option<&'ctx DocumentContext>,
-    ) -> Self {
+    pub(super) fn new(catalog: RelationCatalog<'ctx>) -> Self {
         ScopeStack {
-            session,
-            document,
+            catalog,
             stack: vec![Scope::default()],
         }
     }
@@ -54,12 +49,9 @@ impl<'ctx> ScopeStack<'ctx> {
             .insert(name.to_ascii_lowercase(), columns);
     }
 
-    /// Iterate all relations from document context then session context.
+    /// Iterate all relations from the catalog (document then session).
     fn ambient_relations(&self) -> impl Iterator<Item = &RelationDef> + '_ {
-        self.document
-            .into_iter()
-            .flat_map(|d| d.relations.iter())
-            .chain(self.session.into_iter().flat_map(|s| s.relations.iter()))
+        self.catalog.iter()
     }
 
     /// Look up column names for a table from the ambient schema context.
@@ -67,17 +59,14 @@ impl<'ctx> ScopeStack<'ctx> {
     /// could be inferred), `None` if the table is not found.
     /// Searches document context first, then session context.
     pub(super) fn ambient_columns_for_table(&self, name: &str) -> Option<Vec<String>> {
-        self.ambient_relations()
-            .find(|r| r.name.eq_ignore_ascii_case(name))
-            .map(|r| r.columns.iter().map(|c| c.name.clone()).collect())
+        self.catalog
+            .columns_for(name)
+            .map(|cols| cols.iter().map(|c| c.name.clone()).collect())
     }
 
     pub(super) fn resolve_table(&self, name: &str) -> bool {
         let lower = name.to_ascii_lowercase();
-        self.stack.iter().any(|s| s.tables.contains_key(&lower))
-            || self
-                .ambient_relations()
-                .any(|r| r.name.eq_ignore_ascii_case(name))
+        self.stack.iter().any(|s| s.tables.contains_key(&lower)) || self.catalog.resolve(name)
     }
 
     /// Resolve a column reference.
@@ -127,10 +116,7 @@ impl<'ctx> ScopeStack<'ctx> {
             .stack
             .iter()
             .flat_map(|s| s.tables.keys().cloned())
-            .chain(
-                self.ambient_relations()
-                    .map(|r| r.name.to_ascii_lowercase()),
-            )
+            .chain(self.catalog.all_names())
             .collect();
         names.sort_unstable();
         names.dedup();
@@ -152,11 +138,7 @@ impl<'ctx> ScopeStack<'ctx> {
             }
         }
 
-        for r in self.ambient_relations() {
-            if table.is_none_or(|tbl| r.name.eq_ignore_ascii_case(tbl)) {
-                names.extend(r.columns.iter().map(|c| c.name.to_ascii_lowercase()));
-            }
-        }
+        names.extend(self.catalog.all_column_names(table));
 
         names.sort_unstable();
         names.dedup();
