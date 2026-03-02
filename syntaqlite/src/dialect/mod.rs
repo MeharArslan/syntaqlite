@@ -16,9 +16,9 @@
 
 // ── Token category ─────────────────────────────────────────────────────
 
+pub use syntaqlite_parser::DialectConfig;
 #[cfg(feature = "sqlite")]
 pub use syntaqlite_parser::RawDialect;
-pub use syntaqlite_parser::DialectConfig;
 
 /// Semantic category for a token type, used for syntax highlighting.
 ///

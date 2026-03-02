@@ -527,8 +527,8 @@ impl DocumentContext {
         dialect: RawDialect<'_>,
         session: Option<&SessionContext>,
     ) {
-        use syntaqlite_parser::SchemaKind;
         use syntaqlite_parser::DialectNodeType;
+        use syntaqlite_parser::SchemaKind;
         use syntaqlite_parser::{FIELD_NODE_ID, FIELD_SPAN};
 
         let Some((ptr, tag)) = reader.node_ptr(stmt_id) else {

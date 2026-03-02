@@ -13,6 +13,7 @@
 
 pub use catalog::FunctionCatalog;
 pub use render::SourceContext;
+pub use types::ColumnDef;
 pub use types::Diagnostic;
 pub use types::DiagnosticMessage;
 pub use types::DocumentContext;
@@ -20,7 +21,6 @@ pub use types::FunctionDef;
 pub use types::Help;
 pub use types::RelationDef;
 pub use types::RelationKind;
-pub use types::ColumnDef;
 pub use types::SessionContext;
 pub use types::Severity;
 
