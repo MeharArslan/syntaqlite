@@ -1,0 +1,84 @@
+#!/bin/sh
+# Copyright 2025 The syntaqlite Authors. All rights reserved.
+# Licensed under the Apache License, Version 2.0.
+
+# Verify that the public API of each library crate matches the golden files
+# in public-api/. Exits non-zero with a diff if any crate's API changed.
+#
+# Usage:
+#   tools/check-public-api               — check all crates
+#   tools/check-public-api --rebaseline  — regenerate all golden files
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+GOLDEN_DIR="$ROOT_DIR/public-api"
+
+REBASELINE=0
+for arg in "$@"; do
+    case "$arg" in
+        --rebaseline) REBASELINE=1 ;;
+    esac
+done
+
+FAILED=0
+
+# check_crate CRATE_NAME [FEATURES]
+#   FEATURES is a comma-separated list (no spaces) passed to --features.
+check_crate() {
+    crate_name="$1"
+    features="$2"
+    golden="$GOLDEN_DIR/$crate_name.txt"
+
+    features_flag=""
+    if [ -n "$features" ]; then
+        features_flag="--features $features"
+    fi
+
+    if [ "$REBASELINE" = "1" ]; then
+        printf 'Rebaselining %s ... ' "$crate_name"
+        # shellcheck disable=SC2086
+        cargo public-api -p "$crate_name" $features_flag \
+            --omit blanket-impls --omit auto-trait-impls 2>/dev/null \
+            | sort > "$golden"
+        printf 'done (%s lines)\n' "$(wc -l < "$golden" | tr -d ' ')"
+        return
+    fi
+
+    if [ ! -f "$golden" ]; then
+        printf '\033[1;31mMISSING golden file: %s\033[0m\n' "$golden"
+        printf '  Run: tools/check-public-api --rebaseline\n'
+        FAILED=1
+        return
+    fi
+
+    actual=$(mktemp)
+    # shellcheck disable=SC2086
+    cargo public-api -p "$crate_name" $features_flag \
+        --omit blanket-impls --omit auto-trait-impls 2>/dev/null \
+        | sort > "$actual"
+
+    if ! diff -u "$golden" "$actual" > /dev/null 2>&1; then
+        printf '\033[1;31mPublic API changed: %s\033[0m\n' "$crate_name"
+        diff -u "$golden" "$actual" || true
+        printf '\n  If intentional, run: tools/check-public-api --rebaseline\n\n'
+        FAILED=1
+    fi
+    rm -f "$actual"
+}
+
+check_crate syntaqlite "fmt,validation,sqlite,lsp,embedded,json"
+check_crate syntaqlite-parser
+check_crate syntaqlite-parser-sqlite
+check_crate syntaqlite-buildtools
+check_crate syntaqlite-cli
+
+if [ "$REBASELINE" = "1" ]; then
+    printf '\033[1;32mAll golden files rebaselined.\033[0m\n'
+    exit 0
+fi
+
+if [ "$FAILED" != "0" ]; then
+    exit 1
+fi

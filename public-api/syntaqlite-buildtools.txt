@@ -727,7 +727,7 @@ pub syntaqlite_buildtools::version_analysis::grammar::GrammarSummary::token_decl
 pub syntaqlite_buildtools::version_analysis::KeywordAddition::added: alloc::vec::Vec<alloc::string::String>
 pub syntaqlite_buildtools::version_analysis::KeywordAddition::version: syntaqlite_buildtools::version_analysis::SqliteVersion
 pub syntaqlite_buildtools::version_analysis::KeywordAnalysis::additions: alloc::vec::Vec<syntaqlite_buildtools::version_analysis::KeywordAddition>
-pub syntaqlite_buildtools::version_analysis::KeywordAnalysis::per_version: alloc::vec::Vec<(syntaqlite_buildtools::version_analysis::SqliteVersion, crate::util::mkkeywordhash_parser::KeywordTable)>
+pub syntaqlite_buildtools::version_analysis::KeywordAnalysis::per_version: alloc::vec::Vec<(syntaqlite_buildtools::version_analysis::SqliteVersion, syntaqlite_buildtools::util::mkkeywordhash_parser::KeywordTable)>
 pub syntaqlite_buildtools::version_analysis::KeywordAnalysis::total_keywords_latest: usize
 pub syntaqlite_buildtools::version_analysis::SqliteVersion::major: u32
 pub syntaqlite_buildtools::version_analysis::SqliteVersion::minor: u32

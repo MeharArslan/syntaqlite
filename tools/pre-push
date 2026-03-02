@@ -25,14 +25,15 @@
 #   4. cargo clippy --no-default-features        — dead code: no default features
 #   5. tools/format-c (--check or apply)         — C formatting
 #   6. tools/check-c-deps                        — C header dependency boundaries
-#   7. tools/run-unit-tests                      — Rust unit tests
-#   8. cargo build -p syntaqlite-cli             — build CLI for diff tests
-#   9. tools/run-ast-diff-tests                  — AST diff tests
-#  10. tools/run-fmt-diff-tests                  — formatter diff tests
-#  11. tools/run-amalg-tests                     — amalgamation integration tests
-#  12. tools/run-perfetto-fmt-diff-tests          — Perfetto formatter diff tests
-#  13. tools/run-perfetto-validation-diff-tests   — Perfetto validation diff tests
-#  14. tools/build-web-playground                — WASM playground (if emscripten installed)
+#   7. tools/check-public-api                    — public API golden file gate
+#   8. tools/run-unit-tests                      — Rust unit tests
+#   9. cargo build -p syntaqlite-cli             — build CLI for diff tests
+#  10. tools/run-ast-diff-tests                  — AST diff tests
+#  11. tools/run-fmt-diff-tests                  — formatter diff tests
+#  12. tools/run-amalg-tests                     — amalgamation integration tests
+#  13. tools/run-perfetto-fmt-diff-tests          — Perfetto formatter diff tests
+#  14. tools/run-perfetto-validation-diff-tests   — Perfetto validation diff tests
+#  15. tools/build-web-playground                — WASM playground (if emscripten installed)
 
 set -e
 
@@ -129,13 +130,16 @@ fi
 # 6. C header dependency boundaries
 run_step "tools/check-c-deps" "$SCRIPT_DIR/check-c-deps"
 
-# 7. Unit tests
+# 7. Public API golden file gate
+run_step "tools/check-public-api" "$SCRIPT_DIR/check-public-api"
+
+# 8. Unit tests
 run_step "tools/run-unit-tests" "$SCRIPT_DIR/run-unit-tests"
 
-# 8. Build CLI for diff tests
+# 9. Build CLI for diff tests
 run_step "cargo build -p syntaqlite-cli" "$CARGO" build -p syntaqlite-cli
 
-# 9-13. Diff test suites
+# 10-14. Diff test suites
 run_step "tools/run-ast-diff-tests" "$SCRIPT_DIR/run-ast-diff-tests"
 
 run_step "tools/run-fmt-diff-tests" "$SCRIPT_DIR/run-fmt-diff-tests"
@@ -146,7 +150,7 @@ run_step "tools/run-perfetto-fmt-diff-tests" "$SCRIPT_DIR/run-perfetto-fmt-diff-
 
 run_step "tools/run-perfetto-validation-diff-tests" "$SCRIPT_DIR/run-perfetto-validation-diff-tests"
 
-# 14. Web playground WASM build (requires emscripten)
+# 15. Web playground WASM build (requires emscripten)
 case "$(uname -s)-$(uname -m)" in
     Darwin-arm64|Darwin-aarch64) _PLAT_DIR="mac-arm64" ;;
     Darwin-x86_64)               _PLAT_DIR="mac-amd64" ;;
