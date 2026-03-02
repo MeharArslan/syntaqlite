@@ -72,7 +72,7 @@ fn long_select_breaks() {
 // -- Formatting transformations (input != output) --
 
 fn format_sql_with_cflags(sql: &str, config: FormatConfig, cflag_indices: &[u32]) -> String {
-    use syntaqlite::dialect::DialectConfig;
+    use syntaqlite_parser::DialectConfig;
     let mut dc = DialectConfig::default();
     for &idx in cflag_indices {
         dc.cflags.set(idx);

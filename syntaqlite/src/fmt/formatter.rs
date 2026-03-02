@@ -5,10 +5,9 @@ use super::FormatConfig;
 use super::comment::CommentCtx;
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
-use crate::dialect::Dialect;
-use crate::parser::session::RawParser;
-use syntaqlite_parser::nodes::Fields;
-use syntaqlite_parser::parser::{CommentKind, MacroRegion};
+use syntaqlite_parser::RawParser;
+use syntaqlite_parser::{CommentKind, MacroRegion};
+use syntaqlite_parser::{Dialect, DialectConfig, NodeRef};
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {
@@ -24,9 +23,6 @@ pub struct Formatter<'d> {
     /// Reusable render buffers — recycled between format calls.
     render_bufs: RenderBuffers,
 }
-
-// SAFETY: Dialect is Send+Sync, Parser is Send.
-unsafe impl Send for Formatter<'_> {}
 
 #[cfg(feature = "sqlite")]
 impl Default for Formatter<'static> {
@@ -57,10 +53,7 @@ impl<'d> Formatter<'d> {
     }
 
     /// Format SQL source text. Handles multiple statements and preserves comments.
-    pub fn format(
-        &mut self,
-        source: &str,
-    ) -> Result<String, syntaqlite_parser::session::ParseError> {
+    pub fn format(&mut self, source: &str) -> Result<String, syntaqlite_parser::ParseError> {
         let mut cursor = self.parser.parse(source);
 
         let mut roots = Vec::new();
@@ -68,10 +61,9 @@ impl<'d> Formatter<'d> {
             roots.push(result?.id());
         }
 
-        let state = cursor.state();
-        let comments = state.comments();
-        let tokens = state.tokens();
-        let source = state.source();
+        let comments = cursor.comments();
+        let tokens = cursor.tokens();
+        let source = cursor.source();
 
         if roots.is_empty() {
             return Ok(String::new());
@@ -101,7 +93,7 @@ impl<'d> Formatter<'d> {
 
             let ctx = FmtCtx {
                 dialect: self.dialect,
-                reader: state.reader,
+                reader: cursor.reader(),
                 comment_ctx: comment_ctx_ref,
             };
             let mut consumed = vec![false; ctx.reader.macro_regions().len()];
@@ -146,7 +138,7 @@ impl<'d> Formatter<'d> {
 
     /// Format a single pre-parsed AST node. This is the low-level entry point
     /// for cases where the caller controls parsing (e.g. macro expansion).
-    pub fn format_node(&mut self, node: crate::parser::session::NodeRef<'_>) -> String {
+    pub fn format_node(&mut self, node: NodeRef<'_>) -> String {
         let reader = node.reader();
         let tokens = reader.tokens();
         let comment_ctx = CommentCtx::new(&[], tokens);
@@ -188,7 +180,7 @@ impl<'d> Formatter<'d> {
 pub struct FormatterBuilder<'d> {
     dialect: Dialect<'d>,
     format_config: FormatConfig,
-    dialect_config: Option<syntaqlite_parser::dialect::ffi::DialectConfig>,
+    dialect_config: Option<DialectConfig>,
 }
 
 impl<'d> FormatterBuilder<'d> {
@@ -199,10 +191,7 @@ impl<'d> FormatterBuilder<'d> {
     }
 
     /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(
-        mut self,
-        config: syntaqlite_parser::dialect::ffi::DialectConfig,
-    ) -> Self {
+    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
         self.dialect_config = Some(config);
         self
     }
@@ -354,19 +343,4 @@ pub(crate) fn try_macro_verbatim<'a>(
         }
     }
     None
-}
-
-// ── Field extraction ────────────────────────────────────────────────────
-
-/// Extract typed field values from a raw node pointer.
-#[inline]
-pub(crate) fn extract_fields<'a>(
-    dialect: &Dialect<'_>,
-    ptr: *const u8,
-    tag: u32,
-    source: &'a str,
-) -> Fields<'a> {
-    // SAFETY: caller guarantees ptr is a valid arena pointer for a node with
-    // the given tag; delegating to the shared implementation.
-    unsafe { syntaqlite_parser::dialect::extract_fields(dialect, ptr, tag, source) }
 }

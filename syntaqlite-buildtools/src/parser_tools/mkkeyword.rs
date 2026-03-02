@@ -12,7 +12,7 @@ use crate::util::tool_run;
 /// Layout is verified against the C definition in tests below.
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub struct Keyword {
+pub(crate) struct Keyword {
     pub z_name: *mut c_char,
     pub z_token_type: *mut c_char,
     pub mask: c_int,
@@ -32,10 +32,10 @@ pub struct Keyword {
 // External symbols from compiled C code
 unsafe extern "C" {
     // The keyword table array (static removed, const added by build.rs)
-    pub static aKeywordTable: [Keyword; 148];
+    pub(crate) static aKeywordTable: [Keyword; 148];
 
     // The keyword count variable (static removed, const added by build.rs)
-    pub static nKeyword: c_int;
+    pub(crate) static nKeyword: c_int;
 
     // The main function (renamed from main to mkkeyword_main)
     fn mkkeyword_main(
@@ -51,7 +51,7 @@ unsafe extern "C" {
 /// Reads the compiled-in `aKeywordTable` and strips the `TK_` prefix from
 /// each entry's `z_token_type` field, yielding names like `"SELECT"`,
 /// `"FUNCTION"`, etc.
-pub fn base_keyword_token_names() -> std::collections::HashSet<String> {
+pub(crate) fn base_keyword_token_names() -> std::collections::HashSet<String> {
     let table_ptr = std::ptr::addr_of!(aKeywordTable);
     let n_keyword_ptr = std::ptr::addr_of!(nKeyword);
     unsafe {
@@ -81,7 +81,7 @@ pub fn base_keyword_token_names() -> std::collections::HashSet<String> {
 /// Without `--extra-file`, uses only the compiled-in base table.
 ///
 /// **Warning: This function ALWAYS exits the process and never returns!**
-pub fn run_mkkeyword(args: &[String]) -> ! {
+pub(crate) fn run_mkkeyword(args: &[String]) -> ! {
     use std::ffi::CString;
 
     // Parse --extra-file from args.

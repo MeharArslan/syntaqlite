@@ -13,12 +13,9 @@
 //! - [`LspServer`] — stdio JSON-RPC server that drives an `AnalysisHost`
 //!   in response to LSP messages from an editor.
 
-pub mod analysis;
-pub mod host;
-pub mod server;
-
+// Public API starts here.
 pub use analysis::DocumentAnalysis;
-pub use host::{AnalysisHost, FormatError};
+pub use host::AnalysisHost;
 pub use server::LspServer;
 
 // ── Shared LSP types ──────────────────────────────────────────────────────
@@ -89,3 +86,8 @@ pub struct SemanticToken {
     /// Token category.
     pub category: crate::dialect::TokenCategory,
 }
+// Public API ends here.
+
+mod analysis;
+mod host;
+mod server;

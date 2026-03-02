@@ -21,12 +21,13 @@ pub use typescript::extract_typescript;
 
 use std::ops::Range;
 
-use crate::dialect::Dialect;
-use crate::dialect::TokenCategory;
-use crate::parser::incremental::RawIncrementalParser;
-use crate::parser::tokenizer::RawTokenizer;
-use crate::validation::{Diagnostic, DiagnosticMessage, FunctionDef, ValidationConfig};
-use syntaqlite_parser::session::ParseError;
+use crate::dialect::{DialectExt, TokenCategory};
+use crate::validation::ValidationConfig;
+use crate::validation::types::{Diagnostic, DiagnosticMessage, FunctionDef};
+use syntaqlite_parser::Dialect;
+use syntaqlite_parser::ParseError;
+use syntaqlite_parser::RawIncrementalParser;
+use syntaqlite_parser::RawTokenizer;
 
 use offset_map::OffsetMap;
 
@@ -127,6 +128,8 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 ///
 /// ```rust,no_run
 /// # use syntaqlite::embedded::{EmbeddedAnalyzer, extract_python, sqlite_function_defs};
+/// # let source = "";
+/// # let dialect = syntaqlite::dialect::sqlite();
 /// let fragments = extract_python(source);
 /// let diags = EmbeddedAnalyzer::new(dialect)
 ///     .with_functions(sqlite_function_defs())
@@ -247,7 +250,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
 
         // Classify non-whitespace, non-comment tokens using parser flags.
         for tp in cursor.tokens() {
-            let cat = TokenCategory::from_u8(dialect.classify_token_raw(tp.type_, tp.flags));
+            let cat = dialect.classify_token(tp.type_, tp.flags);
             if cat == TokenCategory::Other {
                 continue;
             }
@@ -281,7 +284,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
         for fragment in fragments {
             let offset_map = OffsetMap::new(fragment);
             for (sql_offset, length, cat) in self.fragment_semantic_tokens(fragment) {
-                if cat == crate::dialect::TokenCategory::Other {
+                if cat == TokenCategory::Other {
                     continue;
                 }
                 let legend_idx = cat as u32;
@@ -357,7 +360,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
 
         // Feed tokens to the low-level parser, collecting results.
         let mut cursor = parser.feed(&fragment.sql_text);
-        let mut results: Vec<Result<syntaqlite_parser::nodes::NodeId, ParseError>> = Vec::new();
+        let mut results: Vec<Result<syntaqlite_parser::NodeId, ParseError>> = Vec::new();
 
         for &(token_type, offset, length) in &tokens {
             let hole = fragment
@@ -406,8 +409,8 @@ impl<'d> EmbeddedAnalyzer<'d> {
 /// which functions are available.
 #[cfg(feature = "sqlite")]
 pub fn sqlite_function_defs() -> Vec<FunctionDef> {
-    let config = syntaqlite_parser::dialect::ffi::DialectConfig::default();
-    syntaqlite_parser::sqlite::available_functions(&config)
+    let config = syntaqlite_parser::DialectConfig::default();
+    syntaqlite_parser::available_functions(&config)
         .into_iter()
         .flat_map(|info| crate::validation::types::expand_function_info(info))
         .collect()
@@ -429,7 +432,10 @@ fn is_hole_diagnostic(diag: &Diagnostic, fragment: &EmbeddedFragment) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::validation::Severity;
+    use crate::{
+        embedded::{python::extract_python, typescript::extract_typescript},
+        validation::Severity,
+    };
 
     fn analyzer() -> EmbeddedAnalyzer<'static> {
         EmbeddedAnalyzer::new(crate::dialect::sqlite()).with_functions(sqlite_function_defs())

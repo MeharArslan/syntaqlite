@@ -18,31 +18,31 @@ const RUST_FILE_HEADER: &str = "\
 ";
 
 /// Simple Rust code writer with single-buffer output and indentation tracking
-pub struct RustWriter {
+pub(crate) struct RustWriter {
     core: TextWriterCore,
 }
 
 impl RustWriter {
     // ========== Public API ==========
 
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             core: TextWriterCore::new(),
         }
     }
 
-    pub fn finish(self) -> String {
+    pub(crate) fn finish(self) -> String {
         self.core.finish()
     }
 
     // Basic output
 
-    pub fn newline(&mut self) -> &mut Self {
+    pub(crate) fn newline(&mut self) -> &mut Self {
         self.core.newline();
         self
     }
 
-    pub fn line(&mut self, text: &str) -> &mut Self {
+    pub(crate) fn line(&mut self, text: &str) -> &mut Self {
         self.core.line(text);
         self
     }
@@ -50,7 +50,7 @@ impl RustWriter {
     /// Emit a block opener and increase indentation.
     ///
     /// Example: `open_block("impl Foo {")`.
-    pub fn open_block(&mut self, header: &str) -> &mut Self {
+    pub(crate) fn open_block(&mut self, header: &str) -> &mut Self {
         self.line(header);
         self.indent()
     }
@@ -58,7 +58,7 @@ impl RustWriter {
     /// Decrease indentation and emit a block closer.
     ///
     /// Example: `close_block("}")`.
-    pub fn close_block(&mut self, footer: &str) -> &mut Self {
+    pub(crate) fn close_block(&mut self, footer: &str) -> &mut Self {
         self.dedent();
         self.line(footer)
     }
@@ -76,7 +76,7 @@ impl RustWriter {
     ///     }
     /// ");
     /// ```
-    pub fn lines(&mut self, text: &str) -> &mut Self {
+    pub(crate) fn lines(&mut self, text: &str) -> &mut Self {
         let raw_lines: Vec<&str> = text.lines().collect();
 
         // Trim leading/trailing empty lines
@@ -114,24 +114,24 @@ impl RustWriter {
     }
 
     /// Start a block (increase indentation)
-    pub fn indent(&mut self) -> &mut Self {
+    pub(crate) fn indent(&mut self) -> &mut Self {
         self.core.indent();
         self
     }
 
     /// End a block (decrease indentation)
-    pub fn dedent(&mut self) -> &mut Self {
+    pub(crate) fn dedent(&mut self) -> &mut Self {
         self.core.dedent();
         self
     }
 
     /// Emit the syntaqlite copyright + @generated header.
-    pub fn file_header(&mut self) {
+    pub(crate) fn file_header(&mut self) {
         self.core.push_raw(RUST_FILE_HEADER);
     }
 
     /// Emit a doc comment line: `/// text` (or just `///` if text is empty)
-    pub fn doc_comment(&mut self, text: &str) -> &mut Self {
+    pub(crate) fn doc_comment(&mut self, text: &str) -> &mut Self {
         if text.is_empty() {
             self.line("///");
         } else {

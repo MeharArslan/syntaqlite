@@ -15,10 +15,6 @@ mod doc;
 pub(crate) mod formatter;
 mod interpret;
 
-// ── Public re-exports ────────────────────────────────────────────────────
-
-pub use formatter::FormatterBuilder;
-
 // ── Config types (formerly config.rs) ────────────────────────────────────
 
 /// Controls how SQL keywords are cased in formatted output.

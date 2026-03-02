@@ -6,7 +6,7 @@ use super::fuzzy::best_suggestion;
 use super::scope::{ColumnResolution, ScopeStack};
 use super::types::{Diagnostic, DiagnosticMessage, FunctionDef, Help};
 
-pub fn check_table_ref(
+pub(super) fn check_table_ref(
     name: &str,
     offset: usize,
     length: usize,
@@ -29,7 +29,7 @@ pub fn check_table_ref(
     ))
 }
 
-pub fn check_column_ref(
+pub(super) fn check_column_ref(
     table: Option<&str>,
     column: &str,
     offset: usize,
@@ -80,7 +80,7 @@ pub fn check_column_ref(
     }
 }
 
-pub fn check_function_call(
+pub(super) fn check_function_call(
     name: &str,
     arg_count: usize,
     offset: usize,

@@ -5,6 +5,10 @@ use syntaqlite::ast::{Node, NodeTag};
 use syntaqlite::dialect::sqlite as dialect;
 use syntaqlite::ext::{DialectNodeType, NodeId, RawParser, RawStatementCursor};
 
+fn new_parser() -> RawParser<'static> {
+    RawParser::builder(dialect()).build()
+}
+
 /// Helper: resolve a NodeId to its Node variant and return its tag.
 fn node_tag(cursor: &RawStatementCursor, id: NodeId) -> NodeTag {
     let node: Node =
@@ -15,7 +19,7 @@ fn node_tag(cursor: &RawStatementCursor, id: NodeId) -> NodeTag {
 #[test]
 fn select_children_include_result_column_list_and_table_ref() {
     let dialect = dialect();
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let mut cursor = parser.parse("SELECT a, b FROM t");
     let stmt_id = cursor.next_statement().unwrap().unwrap().id();
 
@@ -42,7 +46,7 @@ fn select_children_include_result_column_list_and_table_ref() {
 #[test]
 fn null_id_returns_empty() {
     let dialect = dialect();
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let mut cursor = parser.parse("SELECT 1");
     let _stmt_id = cursor.next_statement().unwrap().unwrap().id();
 
@@ -57,7 +61,7 @@ fn null_id_returns_empty() {
 #[test]
 fn list_node_enumerates_its_elements() {
     let dialect = dialect();
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let mut cursor = parser.parse("SELECT a, b, c");
     let stmt_id = cursor.next_statement().unwrap().unwrap().id();
 

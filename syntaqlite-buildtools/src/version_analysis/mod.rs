@@ -22,10 +22,10 @@ use std::path::Path;
 
 use serde::Serialize;
 
-pub use crate::util::mkkeywordhash_parser::{KeywordEntry, KeywordTable, MaskDefine};
-pub use diff::VariantDiff;
-pub use extract::ExtractedFragments;
-pub use grammar::GrammarAnalysis;
+use crate::util::mkkeywordhash_parser::KeywordTable;
+use diff::VariantDiff;
+use extract::ExtractedFragments;
+use grammar::GrammarAnalysis;
 
 /// A parsed SQLite version number (e.g. 3.35.0 or 3.8.11.1).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]

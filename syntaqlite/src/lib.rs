@@ -86,7 +86,7 @@ pub mod parser;
 // Everything else lives in its host module (parser::*, fmt::*, validation::*).
 
 #[cfg(feature = "sqlite")]
-pub use parser::sqlite_wrappers::{
+pub use syntaqlite_parser_sqlite::wrappers::{
     IncrementalCursor, IncrementalParser, IncrementalParserBuilder, Parser, ParserBuilder,
     StatementCursor, Token, TokenCursor, Tokenizer, TokenizerBuilder,
 };
@@ -98,11 +98,6 @@ pub mod fmt;
 #[doc(inline)]
 #[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
-
-// ── Dialect ──────────────────────────────────────────────────────────────
-
-pub mod dialect;
-pub use dialect::Dialect;
 
 // ── Validation ───────────────────────────────────────────────────────────
 
@@ -121,6 +116,8 @@ pub mod embedded;
 
 #[cfg(feature = "lsp")]
 pub mod lsp;
+
+pub mod dialect;
 
 /// Typed AST nodes for the SQLite dialect.
 ///
@@ -146,40 +143,40 @@ pub use syntaqlite_parser_sqlite::tokens::TokenType;
 /// blocks that external dialect crates need.
 pub mod ext {
     // ── Parser types ─────────────────────────────────────────────────────
-    pub use crate::parser::session::RawParser;
-    pub use crate::parser::session::RawStatementCursor;
-    pub use syntaqlite_parser::session::ErrorSpan;
-    pub use syntaqlite_parser::session::RawNodeReader;
+    pub use syntaqlite_parser::RawParser;
+    pub use syntaqlite_parser::RawParserBuilder;
+    pub use syntaqlite_parser::RawStatementCursor;
 
-    pub use crate::parser::tokenizer::RawToken;
-    pub use crate::parser::tokenizer::RawTokenCursor;
-    pub use crate::parser::tokenizer::RawTokenizer;
+    pub use syntaqlite_parser::RawToken;
+    pub use syntaqlite_parser::RawTokenCursor;
+    pub use syntaqlite_parser::RawTokenizer;
 
-    pub use crate::parser::incremental::RawIncrementalCursor;
-    pub use crate::parser::incremental::RawIncrementalParser;
+    pub use syntaqlite_parser::RawIncrementalCursor;
+    pub use syntaqlite_parser::RawIncrementalParser;
+    pub use syntaqlite_parser::RawIncrementalParserBuilder;
 
     // ── Node / field types ───────────────────────────────────────────────
-    pub use crate::parser::session::NodeRef;
-    pub use syntaqlite_parser::dialect_traits::{DialectNodeType, DialectTokenType};
-    pub use syntaqlite_parser::nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
-    pub use syntaqlite_parser::session::ParseError;
-    pub use syntaqlite_parser::typed_list::TypedList;
+    pub use syntaqlite_parser::ErrorSpan;
+    pub use syntaqlite_parser::NodeRef;
+    pub use syntaqlite_parser::ParseError;
+    pub use syntaqlite_parser::TypedList;
+    pub use syntaqlite_parser::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
+    pub use syntaqlite_parser::{DialectNodeType, DialectTokenType};
+
+    #[cfg(feature = "json")]
+    pub use crate::parser::node_ref_json::NodeRefJsonExt;
 
     // ── Token metadata ───────────────────────────────────────────────────
-    pub use syntaqlite_parser::parser::{
+    pub use syntaqlite_parser::{
         Comment, CommentKind, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE,
     };
 
     // ── AST trait definitions ────────────────────────────────────────────
     pub use syntaqlite_parser::ast_traits::*;
 
-    // ── Builders ─────────────────────────────────────────────────────────
-
     /// Builder types for dialect-agnostic APIs.
     pub mod builders {
-        pub use crate::parser::incremental::RawIncrementalParserBuilder;
-        pub use crate::parser::session::RawParserBuilder;
-        pub use crate::parser::tokenizer::RawTokenizerBuilder;
+        pub use syntaqlite_parser::RawTokenizerBuilder;
 
         #[cfg(feature = "fmt")]
         pub use crate::fmt::formatter::FormatterBuilder;
@@ -190,6 +187,6 @@ pub mod ext {
 
     // ── Dialect handle ────────────────────────────────────────────────────
 
-    pub use crate::dialect::Dialect;
-    pub use syntaqlite_parser::dialect::ffi::Dialect as FfiDialect;
+    pub use syntaqlite_parser::Dialect;
+    pub use syntaqlite_parser::FfiDialect;
 }

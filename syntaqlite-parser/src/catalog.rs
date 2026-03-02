@@ -88,7 +88,7 @@ pub struct FunctionEntry<'a> {
 /// - The config version is < `until` (if `until` is non-zero)
 /// - If a cflag is required: for `Enable` polarity, the cflag must be set;
 ///   for `Omit` polarity, the cflag must NOT be set.
-pub fn is_available(entry: &FunctionEntry<'_>, config: &DialectConfig) -> bool {
+pub fn is_function_available(entry: &FunctionEntry<'_>, config: &DialectConfig) -> bool {
     entry.availability.iter().any(|rule| {
         if config.sqlite_version < rule.since {
             return false;

@@ -5,7 +5,7 @@
 
 #![allow(dead_code)]
 
-use syntaqlite_parser::nodes::{ArenaNode, NodeId, SourceSpan};
+use syntaqlite_parser::{ArenaNode, NodeId, SourceSpan};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]

@@ -11,6 +11,7 @@ use syntaqlite::dialect::{Cflags, Dialect, DialectConfig};
 use syntaqlite::dialect::{cflag_table, parse_cflag_name, parse_sqlite_version};
 use syntaqlite::embedded::{self, EmbeddedFragment};
 use syntaqlite::ext::FfiDialect;
+use syntaqlite::ext::NodeRefJsonExt;
 use syntaqlite::ext::RawParser;
 use syntaqlite::fmt::FormatConfig;
 use syntaqlite::validation::ValidationConfig;

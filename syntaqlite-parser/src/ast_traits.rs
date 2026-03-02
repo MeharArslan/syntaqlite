@@ -9,1070 +9,529 @@ use crate::dialect_traits::DialectNodeType;
 use crate::nodes::NodeId;
 use crate::typed_list::TypedList;
 
+/// Base variants of `LiteralType`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `LiteralTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum LiteralType {
-    INTEGER = 0,
-    FLOAT = 1,
-    STRING = 2,
-    BLOB = 3,
-    NULL = 4,
-    CURRENT = 5,
-    QNUMBER = 6,
+pub enum LiteralTypeKind {
+    INTEGER,
+    FLOAT,
+    STRING,
+    BLOB,
+    NULL,
+    CURRENT,
+    QNUMBER,
 }
 
-impl LiteralType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<LiteralType> {
-        match raw {
-            0 => Some(LiteralType::INTEGER),
-            1 => Some(LiteralType::FLOAT),
-            2 => Some(LiteralType::STRING),
-            3 => Some(LiteralType::BLOB),
-            4 => Some(LiteralType::NULL),
-            5 => Some(LiteralType::CURRENT),
-            6 => Some(LiteralType::QNUMBER),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            LiteralType::INTEGER => "INTEGER",
-            LiteralType::FLOAT => "FLOAT",
-            LiteralType::STRING => "STRING",
-            LiteralType::BLOB => "BLOB",
-            LiteralType::NULL => "NULL",
-            LiteralType::CURRENT => "CURRENT",
-            LiteralType::QNUMBER => "QNUMBER",
-        }
-    }
+/// Trait for `LiteralType`-compatible values. Dialects may define their own type and implement this.
+pub trait LiteralTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `LiteralTypeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<LiteralTypeKind>;
 }
 
+/// Base variants of `BinaryOp`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `BinaryOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum BinaryOp {
-    PLUS = 0,
-    MINUS = 1,
-    STAR = 2,
-    SLASH = 3,
-    REM = 4,
-    LT = 5,
-    GT = 6,
-    LE = 7,
-    GE = 8,
-    EQ = 9,
-    NE = 10,
-    AND = 11,
-    OR = 12,
-    BITAND = 13,
-    BITOR = 14,
-    LSHIFT = 15,
-    RSHIFT = 16,
-    CONCAT = 17,
-    PTR = 18,
+pub enum BinaryOpKind {
+    PLUS,
+    MINUS,
+    STAR,
+    SLASH,
+    REM,
+    LT,
+    GT,
+    LE,
+    GE,
+    EQ,
+    NE,
+    AND,
+    OR,
+    BITAND,
+    BITOR,
+    LSHIFT,
+    RSHIFT,
+    CONCAT,
+    PTR,
 }
 
-impl BinaryOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<BinaryOp> {
-        match raw {
-            0 => Some(BinaryOp::PLUS),
-            1 => Some(BinaryOp::MINUS),
-            2 => Some(BinaryOp::STAR),
-            3 => Some(BinaryOp::SLASH),
-            4 => Some(BinaryOp::REM),
-            5 => Some(BinaryOp::LT),
-            6 => Some(BinaryOp::GT),
-            7 => Some(BinaryOp::LE),
-            8 => Some(BinaryOp::GE),
-            9 => Some(BinaryOp::EQ),
-            10 => Some(BinaryOp::NE),
-            11 => Some(BinaryOp::AND),
-            12 => Some(BinaryOp::OR),
-            13 => Some(BinaryOp::BITAND),
-            14 => Some(BinaryOp::BITOR),
-            15 => Some(BinaryOp::LSHIFT),
-            16 => Some(BinaryOp::RSHIFT),
-            17 => Some(BinaryOp::CONCAT),
-            18 => Some(BinaryOp::PTR),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            BinaryOp::PLUS => "PLUS",
-            BinaryOp::MINUS => "MINUS",
-            BinaryOp::STAR => "STAR",
-            BinaryOp::SLASH => "SLASH",
-            BinaryOp::REM => "REM",
-            BinaryOp::LT => "LT",
-            BinaryOp::GT => "GT",
-            BinaryOp::LE => "LE",
-            BinaryOp::GE => "GE",
-            BinaryOp::EQ => "EQ",
-            BinaryOp::NE => "NE",
-            BinaryOp::AND => "AND",
-            BinaryOp::OR => "OR",
-            BinaryOp::BITAND => "BITAND",
-            BinaryOp::BITOR => "BITOR",
-            BinaryOp::LSHIFT => "LSHIFT",
-            BinaryOp::RSHIFT => "RSHIFT",
-            BinaryOp::CONCAT => "CONCAT",
-            BinaryOp::PTR => "PTR",
-        }
-    }
+/// Trait for `BinaryOp`-compatible values. Dialects may define their own type and implement this.
+pub trait BinaryOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `BinaryOpKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<BinaryOpKind>;
 }
 
+/// Base variants of `UnaryOp`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `UnaryOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum UnaryOp {
-    MINUS = 0,
-    PLUS = 1,
-    BITNOT = 2,
-    NOT = 3,
+pub enum UnaryOpKind {
+    MINUS,
+    PLUS,
+    BITNOT,
+    NOT,
 }
 
-impl UnaryOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<UnaryOp> {
-        match raw {
-            0 => Some(UnaryOp::MINUS),
-            1 => Some(UnaryOp::PLUS),
-            2 => Some(UnaryOp::BITNOT),
-            3 => Some(UnaryOp::NOT),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            UnaryOp::MINUS => "MINUS",
-            UnaryOp::PLUS => "PLUS",
-            UnaryOp::BITNOT => "BITNOT",
-            UnaryOp::NOT => "NOT",
-        }
-    }
+/// Trait for `UnaryOp`-compatible values. Dialects may define their own type and implement this.
+pub trait UnaryOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `UnaryOpKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<UnaryOpKind>;
 }
 
+/// Base variants of `CompoundOp`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `CompoundOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum CompoundOp {
-    UNION = 0,
-    UNIONALL = 1,
-    INTERSECT = 2,
-    EXCEPT = 3,
+pub enum CompoundOpKind {
+    UNION,
+    UNIONALL,
+    INTERSECT,
+    EXCEPT,
 }
 
-impl CompoundOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<CompoundOp> {
-        match raw {
-            0 => Some(CompoundOp::UNION),
-            1 => Some(CompoundOp::UNIONALL),
-            2 => Some(CompoundOp::INTERSECT),
-            3 => Some(CompoundOp::EXCEPT),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            CompoundOp::UNION => "UNION",
-            CompoundOp::UNIONALL => "UNION_ALL",
-            CompoundOp::INTERSECT => "INTERSECT",
-            CompoundOp::EXCEPT => "EXCEPT",
-        }
-    }
+/// Trait for `CompoundOp`-compatible values. Dialects may define their own type and implement this.
+pub trait CompoundOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `CompoundOpKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<CompoundOpKind>;
 }
 
+/// Base variants of `IsOp`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `IsOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum IsOp {
-    IS = 0,
-    ISNOT = 1,
-    ISNULL = 2,
-    NOTNULL = 3,
-    ISNOTDISTINCT = 4,
-    ISDISTINCT = 5,
+pub enum IsOpKind {
+    IS,
+    ISNOT,
+    ISNULL,
+    NOTNULL,
+    ISNOTDISTINCT,
+    ISDISTINCT,
 }
 
-impl IsOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<IsOp> {
-        match raw {
-            0 => Some(IsOp::IS),
-            1 => Some(IsOp::ISNOT),
-            2 => Some(IsOp::ISNULL),
-            3 => Some(IsOp::NOTNULL),
-            4 => Some(IsOp::ISNOTDISTINCT),
-            5 => Some(IsOp::ISDISTINCT),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            IsOp::IS => "IS",
-            IsOp::ISNOT => "IS_NOT",
-            IsOp::ISNULL => "ISNULL",
-            IsOp::NOTNULL => "NOTNULL",
-            IsOp::ISNOTDISTINCT => "IS_NOT_DISTINCT",
-            IsOp::ISDISTINCT => "IS_DISTINCT",
-        }
-    }
+/// Trait for `IsOp`-compatible values. Dialects may define their own type and implement this.
+pub trait IsOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `IsOpKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<IsOpKind>;
 }
 
+/// Base variants of `ForeignKeyAction`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `ForeignKeyActionLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum ForeignKeyAction {
-    NOACTION = 0,
-    SETNULL = 1,
-    SETDEFAULT = 2,
-    CASCADE = 3,
-    RESTRICT = 4,
+pub enum ForeignKeyActionKind {
+    NOACTION,
+    SETNULL,
+    SETDEFAULT,
+    CASCADE,
+    RESTRICT,
 }
 
-impl ForeignKeyAction {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ForeignKeyAction> {
-        match raw {
-            0 => Some(ForeignKeyAction::NOACTION),
-            1 => Some(ForeignKeyAction::SETNULL),
-            2 => Some(ForeignKeyAction::SETDEFAULT),
-            3 => Some(ForeignKeyAction::CASCADE),
-            4 => Some(ForeignKeyAction::RESTRICT),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ForeignKeyAction::NOACTION => "NO_ACTION",
-            ForeignKeyAction::SETNULL => "SET_NULL",
-            ForeignKeyAction::SETDEFAULT => "SET_DEFAULT",
-            ForeignKeyAction::CASCADE => "CASCADE",
-            ForeignKeyAction::RESTRICT => "RESTRICT",
-        }
-    }
+/// Trait for `ForeignKeyAction`-compatible values. Dialects may define their own type and implement this.
+pub trait ForeignKeyActionLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `ForeignKeyActionKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<ForeignKeyActionKind>;
 }
 
+/// Base variants of `GeneratedColumnStorage`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `GeneratedColumnStorageLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum GeneratedColumnStorage {
-    VIRTUAL = 0,
-    STORED = 1,
+pub enum GeneratedColumnStorageKind {
+    VIRTUAL,
+    STORED,
 }
 
-impl GeneratedColumnStorage {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<GeneratedColumnStorage> {
-        match raw {
-            0 => Some(GeneratedColumnStorage::VIRTUAL),
-            1 => Some(GeneratedColumnStorage::STORED),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            GeneratedColumnStorage::VIRTUAL => "VIRTUAL",
-            GeneratedColumnStorage::STORED => "STORED",
-        }
-    }
+/// Trait for `GeneratedColumnStorage`-compatible values. Dialects may define their own type and implement this.
+pub trait GeneratedColumnStorageLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `GeneratedColumnStorageKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<GeneratedColumnStorageKind>;
 }
 
+/// Base variants of `ColumnConstraintKind`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `ColumnConstraintKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum ColumnConstraintKind {
-    DEFAULT = 0,
-    NOTNULL = 1,
-    PRIMARYKEY = 2,
-    UNIQUE = 3,
-    CHECK = 4,
-    REFERENCES = 5,
-    COLLATE = 6,
-    GENERATED = 7,
-    NULL = 8,
+pub enum ColumnConstraintKindKind {
+    DEFAULT,
+    NOTNULL,
+    PRIMARYKEY,
+    UNIQUE,
+    CHECK,
+    REFERENCES,
+    COLLATE,
+    GENERATED,
+    NULL,
 }
 
-impl ColumnConstraintKind {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ColumnConstraintKind> {
-        match raw {
-            0 => Some(ColumnConstraintKind::DEFAULT),
-            1 => Some(ColumnConstraintKind::NOTNULL),
-            2 => Some(ColumnConstraintKind::PRIMARYKEY),
-            3 => Some(ColumnConstraintKind::UNIQUE),
-            4 => Some(ColumnConstraintKind::CHECK),
-            5 => Some(ColumnConstraintKind::REFERENCES),
-            6 => Some(ColumnConstraintKind::COLLATE),
-            7 => Some(ColumnConstraintKind::GENERATED),
-            8 => Some(ColumnConstraintKind::NULL),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ColumnConstraintKind::DEFAULT => "DEFAULT",
-            ColumnConstraintKind::NOTNULL => "NOT_NULL",
-            ColumnConstraintKind::PRIMARYKEY => "PRIMARY_KEY",
-            ColumnConstraintKind::UNIQUE => "UNIQUE",
-            ColumnConstraintKind::CHECK => "CHECK",
-            ColumnConstraintKind::REFERENCES => "REFERENCES",
-            ColumnConstraintKind::COLLATE => "COLLATE",
-            ColumnConstraintKind::GENERATED => "GENERATED",
-            ColumnConstraintKind::NULL => "NULL",
-        }
-    }
+/// Trait for `ColumnConstraintKind`-compatible values. Dialects may define their own type and implement this.
+pub trait ColumnConstraintKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `ColumnConstraintKindKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<ColumnConstraintKindKind>;
 }
 
+/// Base variants of `TableConstraintKind`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `TableConstraintKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TableConstraintKind {
-    PRIMARYKEY = 0,
-    UNIQUE = 1,
-    CHECK = 2,
-    FOREIGNKEY = 3,
+pub enum TableConstraintKindKind {
+    PRIMARYKEY,
+    UNIQUE,
+    CHECK,
+    FOREIGNKEY,
 }
 
-impl TableConstraintKind {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TableConstraintKind> {
-        match raw {
-            0 => Some(TableConstraintKind::PRIMARYKEY),
-            1 => Some(TableConstraintKind::UNIQUE),
-            2 => Some(TableConstraintKind::CHECK),
-            3 => Some(TableConstraintKind::FOREIGNKEY),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TableConstraintKind::PRIMARYKEY => "PRIMARY_KEY",
-            TableConstraintKind::UNIQUE => "UNIQUE",
-            TableConstraintKind::CHECK => "CHECK",
-            TableConstraintKind::FOREIGNKEY => "FOREIGN_KEY",
-        }
-    }
+/// Trait for `TableConstraintKind`-compatible values. Dialects may define their own type and implement this.
+pub trait TableConstraintKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `TableConstraintKindKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<TableConstraintKindKind>;
 }
 
+/// Base variants of `Materialized`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `MaterializedLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum Materialized {
-    DEFAULT = 0,
-    MATERIALIZED = 1,
-    NOTMATERIALIZED = 2,
+pub enum MaterializedKind {
+    DEFAULT,
+    MATERIALIZED,
+    NOTMATERIALIZED,
 }
 
-impl Materialized {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<Materialized> {
-        match raw {
-            0 => Some(Materialized::DEFAULT),
-            1 => Some(Materialized::MATERIALIZED),
-            2 => Some(Materialized::NOTMATERIALIZED),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Materialized::DEFAULT => "DEFAULT",
-            Materialized::MATERIALIZED => "MATERIALIZED",
-            Materialized::NOTMATERIALIZED => "NOT_MATERIALIZED",
-        }
-    }
+/// Trait for `Materialized`-compatible values. Dialects may define their own type and implement this.
+pub trait MaterializedLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `MaterializedKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<MaterializedKind>;
 }
 
+/// Base variants of `ConflictAction`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `ConflictActionLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum ConflictAction {
-    DEFAULT = 0,
-    ROLLBACK = 1,
-    ABORT = 2,
-    FAIL = 3,
-    IGNORE = 4,
-    REPLACE = 5,
+pub enum ConflictActionKind {
+    DEFAULT,
+    ROLLBACK,
+    ABORT,
+    FAIL,
+    IGNORE,
+    REPLACE,
 }
 
-impl ConflictAction {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ConflictAction> {
-        match raw {
-            0 => Some(ConflictAction::DEFAULT),
-            1 => Some(ConflictAction::ROLLBACK),
-            2 => Some(ConflictAction::ABORT),
-            3 => Some(ConflictAction::FAIL),
-            4 => Some(ConflictAction::IGNORE),
-            5 => Some(ConflictAction::REPLACE),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ConflictAction::DEFAULT => "DEFAULT",
-            ConflictAction::ROLLBACK => "ROLLBACK",
-            ConflictAction::ABORT => "ABORT",
-            ConflictAction::FAIL => "FAIL",
-            ConflictAction::IGNORE => "IGNORE",
-            ConflictAction::REPLACE => "REPLACE",
-        }
-    }
+/// Trait for `ConflictAction`-compatible values. Dialects may define their own type and implement this.
+pub trait ConflictActionLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `ConflictActionKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<ConflictActionKind>;
 }
 
+/// Base variants of `RaiseType`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `RaiseTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum RaiseType {
-    IGNORE = 0,
-    ROLLBACK = 1,
-    ABORT = 2,
-    FAIL = 3,
+pub enum RaiseTypeKind {
+    IGNORE,
+    ROLLBACK,
+    ABORT,
+    FAIL,
 }
 
-impl RaiseType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<RaiseType> {
-        match raw {
-            0 => Some(RaiseType::IGNORE),
-            1 => Some(RaiseType::ROLLBACK),
-            2 => Some(RaiseType::ABORT),
-            3 => Some(RaiseType::FAIL),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            RaiseType::IGNORE => "IGNORE",
-            RaiseType::ROLLBACK => "ROLLBACK",
-            RaiseType::ABORT => "ABORT",
-            RaiseType::FAIL => "FAIL",
-        }
-    }
+/// Trait for `RaiseType`-compatible values. Dialects may define their own type and implement this.
+pub trait RaiseTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `RaiseTypeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<RaiseTypeKind>;
 }
 
+/// Base variants of `DropObjectType`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `DropObjectTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum DropObjectType {
-    TABLE = 0,
-    INDEX = 1,
-    VIEW = 2,
-    TRIGGER = 3,
+pub enum DropObjectTypeKind {
+    TABLE,
+    INDEX,
+    VIEW,
+    TRIGGER,
 }
 
-impl DropObjectType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<DropObjectType> {
-        match raw {
-            0 => Some(DropObjectType::TABLE),
-            1 => Some(DropObjectType::INDEX),
-            2 => Some(DropObjectType::VIEW),
-            3 => Some(DropObjectType::TRIGGER),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            DropObjectType::TABLE => "TABLE",
-            DropObjectType::INDEX => "INDEX",
-            DropObjectType::VIEW => "VIEW",
-            DropObjectType::TRIGGER => "TRIGGER",
-        }
-    }
+/// Trait for `DropObjectType`-compatible values. Dialects may define their own type and implement this.
+pub trait DropObjectTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `DropObjectTypeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<DropObjectTypeKind>;
 }
 
+/// Base variants of `AlterOp`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `AlterOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum AlterOp {
-    RENAMETABLE = 0,
-    RENAMECOLUMN = 1,
-    DROPCOLUMN = 2,
-    ADDCOLUMN = 3,
+pub enum AlterOpKind {
+    RENAMETABLE,
+    RENAMECOLUMN,
+    DROPCOLUMN,
+    ADDCOLUMN,
 }
 
-impl AlterOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<AlterOp> {
-        match raw {
-            0 => Some(AlterOp::RENAMETABLE),
-            1 => Some(AlterOp::RENAMECOLUMN),
-            2 => Some(AlterOp::DROPCOLUMN),
-            3 => Some(AlterOp::ADDCOLUMN),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            AlterOp::RENAMETABLE => "RENAME_TABLE",
-            AlterOp::RENAMECOLUMN => "RENAME_COLUMN",
-            AlterOp::DROPCOLUMN => "DROP_COLUMN",
-            AlterOp::ADDCOLUMN => "ADD_COLUMN",
-        }
-    }
+/// Trait for `AlterOp`-compatible values. Dialects may define their own type and implement this.
+pub trait AlterOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `AlterOpKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<AlterOpKind>;
 }
 
+/// Base variants of `TransactionType`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `TransactionTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TransactionType {
-    DEFERRED = 0,
-    IMMEDIATE = 1,
-    EXCLUSIVE = 2,
+pub enum TransactionTypeKind {
+    DEFERRED,
+    IMMEDIATE,
+    EXCLUSIVE,
 }
 
-impl TransactionType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TransactionType> {
-        match raw {
-            0 => Some(TransactionType::DEFERRED),
-            1 => Some(TransactionType::IMMEDIATE),
-            2 => Some(TransactionType::EXCLUSIVE),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TransactionType::DEFERRED => "DEFERRED",
-            TransactionType::IMMEDIATE => "IMMEDIATE",
-            TransactionType::EXCLUSIVE => "EXCLUSIVE",
-        }
-    }
+/// Trait for `TransactionType`-compatible values. Dialects may define their own type and implement this.
+pub trait TransactionTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `TransactionTypeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<TransactionTypeKind>;
 }
 
+/// Base variants of `TransactionOp`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `TransactionOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TransactionOp {
-    BEGIN = 0,
-    COMMIT = 1,
-    ROLLBACK = 2,
+pub enum TransactionOpKind {
+    BEGIN,
+    COMMIT,
+    ROLLBACK,
 }
 
-impl TransactionOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TransactionOp> {
-        match raw {
-            0 => Some(TransactionOp::BEGIN),
-            1 => Some(TransactionOp::COMMIT),
-            2 => Some(TransactionOp::ROLLBACK),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TransactionOp::BEGIN => "BEGIN",
-            TransactionOp::COMMIT => "COMMIT",
-            TransactionOp::ROLLBACK => "ROLLBACK",
-        }
-    }
+/// Trait for `TransactionOp`-compatible values. Dialects may define their own type and implement this.
+pub trait TransactionOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `TransactionOpKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<TransactionOpKind>;
 }
 
+/// Base variants of `SavepointOp`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `SavepointOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum SavepointOp {
-    SAVEPOINT = 0,
-    RELEASE = 1,
-    ROLLBACKTO = 2,
+pub enum SavepointOpKind {
+    SAVEPOINT,
+    RELEASE,
+    ROLLBACKTO,
 }
 
-impl SavepointOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<SavepointOp> {
-        match raw {
-            0 => Some(SavepointOp::SAVEPOINT),
-            1 => Some(SavepointOp::RELEASE),
-            2 => Some(SavepointOp::ROLLBACKTO),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            SavepointOp::SAVEPOINT => "SAVEPOINT",
-            SavepointOp::RELEASE => "RELEASE",
-            SavepointOp::ROLLBACKTO => "ROLLBACK_TO",
-        }
-    }
+/// Trait for `SavepointOp`-compatible values. Dialects may define their own type and implement this.
+pub trait SavepointOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `SavepointOpKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<SavepointOpKind>;
 }
 
+/// Base variants of `SortOrder`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `SortOrderLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum SortOrder {
-    ASC = 0,
-    DESC = 1,
+pub enum SortOrderKind {
+    ASC,
+    DESC,
 }
 
-impl SortOrder {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<SortOrder> {
-        match raw {
-            0 => Some(SortOrder::ASC),
-            1 => Some(SortOrder::DESC),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            SortOrder::ASC => "ASC",
-            SortOrder::DESC => "DESC",
-        }
-    }
+/// Trait for `SortOrder`-compatible values. Dialects may define their own type and implement this.
+pub trait SortOrderLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `SortOrderKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<SortOrderKind>;
 }
 
+/// Base variants of `NullsOrder`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `NullsOrderLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum NullsOrder {
-    NONE = 0,
-    FIRST = 1,
-    LAST = 2,
+pub enum NullsOrderKind {
+    NONE,
+    FIRST,
+    LAST,
 }
 
-impl NullsOrder {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<NullsOrder> {
-        match raw {
-            0 => Some(NullsOrder::NONE),
-            1 => Some(NullsOrder::FIRST),
-            2 => Some(NullsOrder::LAST),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            NullsOrder::NONE => "NONE",
-            NullsOrder::FIRST => "FIRST",
-            NullsOrder::LAST => "LAST",
-        }
-    }
+/// Trait for `NullsOrder`-compatible values. Dialects may define their own type and implement this.
+pub trait NullsOrderLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `NullsOrderKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<NullsOrderKind>;
 }
 
+/// Base variants of `JoinType`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `JoinTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum JoinType {
-    COMMA = 0,
-    INNER = 1,
-    LEFT = 2,
-    RIGHT = 3,
-    FULL = 4,
-    CROSS = 5,
-    NATURALINNER = 6,
-    NATURALLEFT = 7,
-    NATURALRIGHT = 8,
-    NATURALFULL = 9,
+pub enum JoinTypeKind {
+    COMMA,
+    INNER,
+    LEFT,
+    RIGHT,
+    FULL,
+    CROSS,
+    NATURALINNER,
+    NATURALLEFT,
+    NATURALRIGHT,
+    NATURALFULL,
 }
 
-impl JoinType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<JoinType> {
-        match raw {
-            0 => Some(JoinType::COMMA),
-            1 => Some(JoinType::INNER),
-            2 => Some(JoinType::LEFT),
-            3 => Some(JoinType::RIGHT),
-            4 => Some(JoinType::FULL),
-            5 => Some(JoinType::CROSS),
-            6 => Some(JoinType::NATURALINNER),
-            7 => Some(JoinType::NATURALLEFT),
-            8 => Some(JoinType::NATURALRIGHT),
-            9 => Some(JoinType::NATURALFULL),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            JoinType::COMMA => "COMMA",
-            JoinType::INNER => "INNER",
-            JoinType::LEFT => "LEFT",
-            JoinType::RIGHT => "RIGHT",
-            JoinType::FULL => "FULL",
-            JoinType::CROSS => "CROSS",
-            JoinType::NATURALINNER => "NATURAL_INNER",
-            JoinType::NATURALLEFT => "NATURAL_LEFT",
-            JoinType::NATURALRIGHT => "NATURAL_RIGHT",
-            JoinType::NATURALFULL => "NATURAL_FULL",
-        }
-    }
+/// Trait for `JoinType`-compatible values. Dialects may define their own type and implement this.
+pub trait JoinTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `JoinTypeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<JoinTypeKind>;
 }
 
+/// Base variants of `TriggerTiming`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `TriggerTimingLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TriggerTiming {
-    BEFORE = 0,
-    AFTER = 1,
-    INSTEADOF = 2,
+pub enum TriggerTimingKind {
+    BEFORE,
+    AFTER,
+    INSTEADOF,
 }
 
-impl TriggerTiming {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TriggerTiming> {
-        match raw {
-            0 => Some(TriggerTiming::BEFORE),
-            1 => Some(TriggerTiming::AFTER),
-            2 => Some(TriggerTiming::INSTEADOF),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TriggerTiming::BEFORE => "BEFORE",
-            TriggerTiming::AFTER => "AFTER",
-            TriggerTiming::INSTEADOF => "INSTEAD_OF",
-        }
-    }
+/// Trait for `TriggerTiming`-compatible values. Dialects may define their own type and implement this.
+pub trait TriggerTimingLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `TriggerTimingKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<TriggerTimingKind>;
 }
 
+/// Base variants of `TriggerEventType`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `TriggerEventTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum TriggerEventType {
-    DELETE = 0,
-    INSERT = 1,
-    UPDATE = 2,
+pub enum TriggerEventTypeKind {
+    DELETE,
+    INSERT,
+    UPDATE,
 }
 
-impl TriggerEventType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TriggerEventType> {
-        match raw {
-            0 => Some(TriggerEventType::DELETE),
-            1 => Some(TriggerEventType::INSERT),
-            2 => Some(TriggerEventType::UPDATE),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TriggerEventType::DELETE => "DELETE",
-            TriggerEventType::INSERT => "INSERT",
-            TriggerEventType::UPDATE => "UPDATE",
-        }
-    }
+/// Trait for `TriggerEventType`-compatible values. Dialects may define their own type and implement this.
+pub trait TriggerEventTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `TriggerEventTypeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<TriggerEventTypeKind>;
 }
 
+/// Base variants of `ExplainMode`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `ExplainModeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum ExplainMode {
-    EXPLAIN = 0,
-    QUERYPLAN = 1,
+pub enum ExplainModeKind {
+    EXPLAIN,
+    QUERYPLAN,
 }
 
-impl ExplainMode {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ExplainMode> {
-        match raw {
-            0 => Some(ExplainMode::EXPLAIN),
-            1 => Some(ExplainMode::QUERYPLAN),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            ExplainMode::EXPLAIN => "EXPLAIN",
-            ExplainMode::QUERYPLAN => "QUERY_PLAN",
-        }
-    }
+/// Trait for `ExplainMode`-compatible values. Dialects may define their own type and implement this.
+pub trait ExplainModeLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `ExplainModeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<ExplainModeKind>;
 }
 
+/// Base variants of `PragmaForm`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `PragmaFormLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum PragmaForm {
-    BARE = 0,
-    EQ = 1,
-    CALL = 2,
+pub enum PragmaFormKind {
+    BARE,
+    EQ,
+    CALL,
 }
 
-impl PragmaForm {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<PragmaForm> {
-        match raw {
-            0 => Some(PragmaForm::BARE),
-            1 => Some(PragmaForm::EQ),
-            2 => Some(PragmaForm::CALL),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            PragmaForm::BARE => "BARE",
-            PragmaForm::EQ => "EQ",
-            PragmaForm::CALL => "CALL",
-        }
-    }
+/// Trait for `PragmaForm`-compatible values. Dialects may define their own type and implement this.
+pub trait PragmaFormLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `PragmaFormKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<PragmaFormKind>;
 }
 
+/// Base variants of `AnalyzeKind`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `AnalyzeKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum AnalyzeKind {
-    ANALYZE = 0,
-    REINDEX = 1,
+pub enum AnalyzeKindKind {
+    ANALYZE,
+    REINDEX,
 }
 
-impl AnalyzeKind {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<AnalyzeKind> {
-        match raw {
-            0 => Some(AnalyzeKind::ANALYZE),
-            1 => Some(AnalyzeKind::REINDEX),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            AnalyzeKind::ANALYZE => "ANALYZE",
-            AnalyzeKind::REINDEX => "REINDEX",
-        }
-    }
+/// Trait for `AnalyzeKind`-compatible values. Dialects may define their own type and implement this.
+pub trait AnalyzeKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `AnalyzeKindKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<AnalyzeKindKind>;
 }
 
+/// Base variants of `FrameType`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `FrameTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum FrameType {
-    NONE = 0,
-    RANGE = 1,
-    ROWS = 2,
-    GROUPS = 3,
+pub enum FrameTypeKind {
+    NONE,
+    RANGE,
+    ROWS,
+    GROUPS,
 }
 
-impl FrameType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<FrameType> {
-        match raw {
-            0 => Some(FrameType::NONE),
-            1 => Some(FrameType::RANGE),
-            2 => Some(FrameType::ROWS),
-            3 => Some(FrameType::GROUPS),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            FrameType::NONE => "NONE",
-            FrameType::RANGE => "RANGE",
-            FrameType::ROWS => "ROWS",
-            FrameType::GROUPS => "GROUPS",
-        }
-    }
+/// Trait for `FrameType`-compatible values. Dialects may define their own type and implement this.
+pub trait FrameTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `FrameTypeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<FrameTypeKind>;
 }
 
+/// Base variants of `FrameBoundType`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `FrameBoundTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum FrameBoundType {
-    UNBOUNDEDPRECEDING = 0,
-    EXPRPRECEDING = 1,
-    CURRENTROW = 2,
-    EXPRFOLLOWING = 3,
-    UNBOUNDEDFOLLOWING = 4,
+pub enum FrameBoundTypeKind {
+    UNBOUNDEDPRECEDING,
+    EXPRPRECEDING,
+    CURRENTROW,
+    EXPRFOLLOWING,
+    UNBOUNDEDFOLLOWING,
 }
 
-impl FrameBoundType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<FrameBoundType> {
-        match raw {
-            0 => Some(FrameBoundType::UNBOUNDEDPRECEDING),
-            1 => Some(FrameBoundType::EXPRPRECEDING),
-            2 => Some(FrameBoundType::CURRENTROW),
-            3 => Some(FrameBoundType::EXPRFOLLOWING),
-            4 => Some(FrameBoundType::UNBOUNDEDFOLLOWING),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            FrameBoundType::UNBOUNDEDPRECEDING => "UNBOUNDED_PRECEDING",
-            FrameBoundType::EXPRPRECEDING => "EXPR_PRECEDING",
-            FrameBoundType::CURRENTROW => "CURRENT_ROW",
-            FrameBoundType::EXPRFOLLOWING => "EXPR_FOLLOWING",
-            FrameBoundType::UNBOUNDEDFOLLOWING => "UNBOUNDED_FOLLOWING",
-        }
-    }
+/// Trait for `FrameBoundType`-compatible values. Dialects may define their own type and implement this.
+pub trait FrameBoundTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `FrameBoundTypeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<FrameBoundTypeKind>;
 }
 
+/// Base variants of `FrameExclude`. Used for exhaustive pattern matching in generic code.
+/// Dialect extensions that add variants beyond this set return `None` from `FrameExcludeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[repr(u32)]
-pub enum FrameExclude {
-    NONE = 0,
-    NOOTHERS = 1,
-    CURRENTROW = 2,
-    GROUP = 3,
-    TIES = 4,
+pub enum FrameExcludeKind {
+    NONE,
+    NOOTHERS,
+    CURRENTROW,
+    GROUP,
+    TIES,
 }
 
-impl FrameExclude {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<FrameExclude> {
-        match raw {
-            0 => Some(FrameExclude::NONE),
-            1 => Some(FrameExclude::NOOTHERS),
-            2 => Some(FrameExclude::CURRENTROW),
-            3 => Some(FrameExclude::GROUP),
-            4 => Some(FrameExclude::TIES),
-            _ => None,
-        }
-    }
-
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            FrameExclude::NONE => "NONE",
-            FrameExclude::NOOTHERS => "NO_OTHERS",
-            FrameExclude::CURRENTROW => "CURRENT_ROW",
-            FrameExclude::GROUP => "GROUP",
-            FrameExclude::TIES => "TIES",
-        }
-    }
+/// Trait for `FrameExclude`-compatible values. Dialects may define their own type and implement this.
+pub trait FrameExcludeLike: Copy + PartialEq + Eq + std::fmt::Debug {
+    fn as_str(&self) -> &'static str;
+    /// Match against base `FrameExcludeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<FrameExcludeKind>;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct AggregateFunctionCallFlags(pub u8);
-
-impl AggregateFunctionCallFlags {
-    pub fn distinct(&self) -> bool {
-        self.0 & 1 != 0
-    }
-
-    pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
-        let mut s = String::new();
-        if self.distinct() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("DISTINCT");
-        }
-        s
-    }
+/// Trait for `AggregateFunctionCallFlags`-compatible flags. Dialects may define their own type and implement this.
+pub trait AggregateFunctionCallFlagsLike:
+    Copy + PartialEq + Eq + Default + std::fmt::Debug
+{
+    fn distinct(&self) -> bool;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct CreateTableStmtFlags(pub u8);
-
-impl CreateTableStmtFlags {
-    pub fn without_rowid(&self) -> bool {
-        self.0 & 1 != 0
-    }
-    pub fn strict(&self) -> bool {
-        self.0 & 2 != 0
-    }
-
-    pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
-        let mut s = String::new();
-        if self.without_rowid() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("WITHOUT_ROWID");
-        }
-        if self.strict() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("STRICT");
-        }
-        s
-    }
+/// Trait for `CreateTableStmtFlags`-compatible flags. Dialects may define their own type and implement this.
+pub trait CreateTableStmtFlagsLike: Copy + PartialEq + Eq + Default + std::fmt::Debug {
+    fn without_rowid(&self) -> bool;
+    fn strict(&self) -> bool;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct FunctionCallFlags(pub u8);
-
-impl FunctionCallFlags {
-    pub fn distinct(&self) -> bool {
-        self.0 & 1 != 0
-    }
-    pub fn star(&self) -> bool {
-        self.0 & 2 != 0
-    }
-
-    pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
-        let mut s = String::new();
-        if self.distinct() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("DISTINCT");
-        }
-        if self.star() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("STAR");
-        }
-        s
-    }
+/// Trait for `FunctionCallFlags`-compatible flags. Dialects may define their own type and implement this.
+pub trait FunctionCallFlagsLike: Copy + PartialEq + Eq + Default + std::fmt::Debug {
+    fn distinct(&self) -> bool;
+    fn star(&self) -> bool;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct ResultColumnFlags(pub u8);
-
-impl ResultColumnFlags {
-    pub fn star(&self) -> bool {
-        self.0 & 1 != 0
-    }
-
-    pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
-        let mut s = String::new();
-        if self.star() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("STAR");
-        }
-        s
-    }
+/// Trait for `ResultColumnFlags`-compatible flags. Dialects may define their own type and implement this.
+pub trait ResultColumnFlagsLike: Copy + PartialEq + Eq + Default + std::fmt::Debug {
+    fn star(&self) -> bool;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(transparent)]
-pub struct SelectStmtFlags(pub u8);
-
-impl SelectStmtFlags {
-    pub fn distinct(&self) -> bool {
-        self.0 & 1 != 0
-    }
-
-    pub fn dump_str(&self) -> String {
-        if self.0 == 0 {
-            return "(none)".into();
-        }
-        let mut s = String::new();
-        if self.distinct() {
-            if !s.is_empty() {
-                s.push(' ');
-            }
-            s.push_str("DISTINCT");
-        }
-        s
-    }
+/// Trait for `SelectStmtFlags`-compatible flags. Dialects may define their own type and implement this.
+pub trait SelectStmtFlagsLike: Copy + PartialEq + Eq + Default + std::fmt::Debug {
+    fn distinct(&self) -> bool;
 }
 
 /// Trait for the generic `Node` enum wrapper.
@@ -1086,7 +545,7 @@ pub trait AggregateFunctionCallView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
     fn func_name(&self) -> &'a str;
-    fn flags(&self) -> AggregateFunctionCallFlags;
+    fn flags(&self) -> <Self::Ast as AstTypes<'a>>::AggregateFunctionCallFlags;
     fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
     fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
     fn filter_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -1098,7 +557,7 @@ pub trait OrderedSetFunctionCallView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
     fn func_name(&self) -> &'a str;
-    fn flags(&self) -> AggregateFunctionCallFlags;
+    fn flags(&self) -> <Self::Ast as AstTypes<'a>>::AggregateFunctionCallFlags;
     fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
     fn orderby_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn filter_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -1126,7 +585,7 @@ pub trait ColumnRefView<'a>: Copy {
 pub trait CompoundSelectView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn op(&self) -> CompoundOp;
+    fn op(&self) -> <Self::Ast as AstTypes<'a>>::CompoundOp;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
@@ -1158,7 +617,7 @@ pub trait InExprView<'a>: Copy {
 pub trait IsExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn op(&self) -> IsOp;
+    fn op(&self) -> <Self::Ast as AstTypes<'a>>::IsOp;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -1206,8 +665,8 @@ pub trait ForeignKeyClauseView<'a>: Copy {
     fn node_id(&self) -> NodeId;
     fn ref_table(&self) -> &'a str;
     fn ref_columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
-    fn on_delete(&self) -> ForeignKeyAction;
-    fn on_update(&self) -> ForeignKeyAction;
+    fn on_delete(&self) -> <Self::Ast as AstTypes<'a>>::ForeignKeyAction;
+    fn on_update(&self) -> <Self::Ast as AstTypes<'a>>::ForeignKeyAction;
     fn is_deferred(&self) -> bool;
 }
 
@@ -1215,13 +674,13 @@ pub trait ForeignKeyClauseView<'a>: Copy {
 pub trait ColumnConstraintView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn kind(&self) -> ColumnConstraintKind;
+    fn kind(&self) -> <Self::Ast as AstTypes<'a>>::ColumnConstraintKind;
     fn constraint_name(&self) -> &'a str;
-    fn onconf(&self) -> ConflictAction;
-    fn sort_order(&self) -> SortOrder;
+    fn onconf(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
+    fn sort_order(&self) -> <Self::Ast as AstTypes<'a>>::SortOrder;
     fn is_autoincrement(&self) -> bool;
     fn collation_name(&self) -> &'a str;
-    fn generated_storage(&self) -> GeneratedColumnStorage;
+    fn generated_storage(&self) -> <Self::Ast as AstTypes<'a>>::GeneratedColumnStorage;
     fn default_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn check_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn generated_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -1241,9 +700,9 @@ pub trait ColumnDefView<'a>: Copy {
 pub trait TableConstraintView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn kind(&self) -> TableConstraintKind;
+    fn kind(&self) -> <Self::Ast as AstTypes<'a>>::TableConstraintKind;
     fn constraint_name(&self) -> &'a str;
-    fn onconf(&self) -> ConflictAction;
+    fn onconf(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn is_autoincrement(&self) -> bool;
     fn pk_columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
     fn fk_columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
@@ -1259,7 +718,7 @@ pub trait CreateTableStmtView<'a>: Copy {
     fn schema(&self) -> &'a str;
     fn is_temp(&self) -> bool;
     fn if_not_exists(&self) -> bool;
-    fn flags(&self) -> CreateTableStmtFlags;
+    fn flags(&self) -> <Self::Ast as AstTypes<'a>>::CreateTableStmtFlags;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::ColumnDef>>;
     fn table_constraints(
         &self,
@@ -1272,7 +731,7 @@ pub trait CteDefinitionView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
     fn cte_name(&self) -> &'a str;
-    fn materialized(&self) -> Materialized;
+    fn materialized(&self) -> <Self::Ast as AstTypes<'a>>::Materialized;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
@@ -1310,7 +769,7 @@ pub trait SetClauseView<'a>: Copy {
 pub trait UpdateStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn conflict_action(&self) -> ConflictAction;
+    fn conflict_action(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
     fn setlist(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::SetClause>>;
     fn from_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
@@ -1323,7 +782,7 @@ pub trait UpdateStmtView<'a>: Copy {
 pub trait InsertStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn conflict_action(&self) -> ConflictAction;
+    fn conflict_action(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
     fn source(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
@@ -1333,7 +792,7 @@ pub trait InsertStmtView<'a>: Copy {
 pub trait BinaryExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn op(&self) -> BinaryOp;
+    fn op(&self) -> <Self::Ast as AstTypes<'a>>::BinaryOp;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -1342,7 +801,7 @@ pub trait BinaryExprView<'a>: Copy {
 pub trait UnaryExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn op(&self) -> UnaryOp;
+    fn op(&self) -> <Self::Ast as AstTypes<'a>>::UnaryOp;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
 
@@ -1350,7 +809,7 @@ pub trait UnaryExprView<'a>: Copy {
 pub trait LiteralView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn literal_type(&self) -> LiteralType;
+    fn literal_type(&self) -> <Self::Ast as AstTypes<'a>>::LiteralType;
     fn source(&self) -> &'a str;
 }
 
@@ -1359,7 +818,7 @@ pub trait FunctionCallView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
     fn func_name(&self) -> &'a str;
-    fn flags(&self) -> FunctionCallFlags;
+    fn flags(&self) -> <Self::Ast as AstTypes<'a>>::FunctionCallFlags;
     fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
     fn filter_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn over_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::WindowDef>;
@@ -1384,7 +843,7 @@ pub trait CollateExprView<'a>: Copy {
 pub trait RaiseExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn raise_type(&self) -> RaiseType;
+    fn raise_type(&self) -> <Self::Ast as AstTypes<'a>>::RaiseType;
     fn error_message(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
 
@@ -1400,7 +859,7 @@ pub trait QualifiedNameView<'a>: Copy {
 pub trait DropStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn object_type(&self) -> DropObjectType;
+    fn object_type(&self) -> <Self::Ast as AstTypes<'a>>::DropObjectType;
     fn if_exists(&self) -> bool;
     fn target(&self) -> Option<<Self::Ast as AstTypes<'a>>::QualifiedName>;
 }
@@ -1409,7 +868,7 @@ pub trait DropStmtView<'a>: Copy {
 pub trait AlterTableStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn op(&self) -> AlterOp;
+    fn op(&self) -> <Self::Ast as AstTypes<'a>>::AlterOp;
     fn target(&self) -> Option<<Self::Ast as AstTypes<'a>>::QualifiedName>;
     fn new_name(&self) -> &'a str;
     fn old_name(&self) -> &'a str;
@@ -1419,15 +878,15 @@ pub trait AlterTableStmtView<'a>: Copy {
 pub trait TransactionStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn op(&self) -> TransactionOp;
-    fn trans_type(&self) -> TransactionType;
+    fn op(&self) -> <Self::Ast as AstTypes<'a>>::TransactionOp;
+    fn trans_type(&self) -> <Self::Ast as AstTypes<'a>>::TransactionType;
 }
 
 /// Accessor trait for `SavepointStmt` nodes.
 pub trait SavepointStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn op(&self) -> SavepointOp;
+    fn op(&self) -> <Self::Ast as AstTypes<'a>>::SavepointOp;
     fn savepoint_name(&self) -> &'a str;
 }
 
@@ -1435,7 +894,7 @@ pub trait SavepointStmtView<'a>: Copy {
 pub trait ResultColumnView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn flags(&self) -> ResultColumnFlags;
+    fn flags(&self) -> <Self::Ast as AstTypes<'a>>::ResultColumnFlags;
     fn alias(&self) -> &'a str;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -1445,7 +904,7 @@ pub trait ResultColumnView<'a>: Copy {
 pub trait SelectStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn flags(&self) -> SelectStmtFlags;
+    fn flags(&self) -> <Self::Ast as AstTypes<'a>>::SelectStmtFlags;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::ResultColumn>>;
     fn from_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn where_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -1461,8 +920,8 @@ pub trait OrderingTermView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
-    fn sort_order(&self) -> SortOrder;
-    fn nulls_order(&self) -> NullsOrder;
+    fn sort_order(&self) -> <Self::Ast as AstTypes<'a>>::SortOrder;
+    fn nulls_order(&self) -> <Self::Ast as AstTypes<'a>>::NullsOrder;
 }
 
 /// Accessor trait for `LimitClause` nodes.
@@ -1494,7 +953,7 @@ pub trait SubqueryTableSourceView<'a>: Copy {
 pub trait JoinClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn join_type(&self) -> JoinType;
+    fn join_type(&self) -> <Self::Ast as AstTypes<'a>>::JoinType;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn on_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -1506,14 +965,14 @@ pub trait JoinPrefixView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
     fn source(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
-    fn join_type(&self) -> JoinType;
+    fn join_type(&self) -> <Self::Ast as AstTypes<'a>>::JoinType;
 }
 
 /// Accessor trait for `TriggerEvent` nodes.
 pub trait TriggerEventView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn event_type(&self) -> TriggerEventType;
+    fn event_type(&self) -> <Self::Ast as AstTypes<'a>>::TriggerEventType;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
 }
 
@@ -1525,7 +984,7 @@ pub trait CreateTriggerStmtView<'a>: Copy {
     fn schema(&self) -> &'a str;
     fn is_temp(&self) -> bool;
     fn if_not_exists(&self) -> bool;
-    fn timing(&self) -> TriggerTiming;
+    fn timing(&self) -> <Self::Ast as AstTypes<'a>>::TriggerTiming;
     fn event(&self) -> Option<<Self::Ast as AstTypes<'a>>::TriggerEvent>;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::QualifiedName>;
     fn when_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -1550,7 +1009,7 @@ pub trait PragmaStmtView<'a>: Copy {
     fn pragma_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn value(&self) -> &'a str;
-    fn pragma_form(&self) -> PragmaForm;
+    fn pragma_form(&self) -> <Self::Ast as AstTypes<'a>>::PragmaForm;
 }
 
 /// Accessor trait for `AnalyzeStmt` nodes.
@@ -1559,7 +1018,7 @@ pub trait AnalyzeStmtView<'a>: Copy {
     fn node_id(&self) -> NodeId;
     fn target_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
-    fn kind(&self) -> AnalyzeKind;
+    fn kind(&self) -> <Self::Ast as AstTypes<'a>>::AnalyzeKind;
 }
 
 /// Accessor trait for `AttachStmt` nodes.
@@ -1591,7 +1050,7 @@ pub trait VacuumStmtView<'a>: Copy {
 pub trait ExplainStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn explain_mode(&self) -> ExplainMode;
+    fn explain_mode(&self) -> <Self::Ast as AstTypes<'a>>::ExplainMode;
     fn stmt(&self) -> Option<<Self::Ast as AstTypes<'a>>::Stmt>;
 }
 
@@ -1631,7 +1090,7 @@ pub trait ValuesClauseView<'a>: Copy {
 pub trait FrameBoundView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn bound_type(&self) -> FrameBoundType;
+    fn bound_type(&self) -> <Self::Ast as AstTypes<'a>>::FrameBoundType;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
 
@@ -1639,8 +1098,8 @@ pub trait FrameBoundView<'a>: Copy {
 pub trait FrameSpecView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> NodeId;
-    fn frame_type(&self) -> FrameType;
-    fn exclude(&self) -> FrameExclude;
+    fn frame_type(&self) -> <Self::Ast as AstTypes<'a>>::FrameType;
+    fn exclude(&self) -> <Self::Ast as AstTypes<'a>>::FrameExclude;
     fn start_bound(&self) -> Option<<Self::Ast as AstTypes<'a>>::FrameBound>;
     fn end_bound(&self) -> Option<<Self::Ast as AstTypes<'a>>::FrameBound>;
 }
@@ -1857,4 +1316,37 @@ pub trait AstTypes<'a>: 'a {
     type WindowDef: WindowDefView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
     type NamedWindowDef: NamedWindowDefView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
     type FilterOver: FilterOverView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
+    type LiteralType: LiteralTypeLike;
+    type BinaryOp: BinaryOpLike;
+    type UnaryOp: UnaryOpLike;
+    type CompoundOp: CompoundOpLike;
+    type IsOp: IsOpLike;
+    type ForeignKeyAction: ForeignKeyActionLike;
+    type GeneratedColumnStorage: GeneratedColumnStorageLike;
+    type ColumnConstraintKind: ColumnConstraintKindLike;
+    type TableConstraintKind: TableConstraintKindLike;
+    type Materialized: MaterializedLike;
+    type ConflictAction: ConflictActionLike;
+    type RaiseType: RaiseTypeLike;
+    type DropObjectType: DropObjectTypeLike;
+    type AlterOp: AlterOpLike;
+    type TransactionType: TransactionTypeLike;
+    type TransactionOp: TransactionOpLike;
+    type SavepointOp: SavepointOpLike;
+    type SortOrder: SortOrderLike;
+    type NullsOrder: NullsOrderLike;
+    type JoinType: JoinTypeLike;
+    type TriggerTiming: TriggerTimingLike;
+    type TriggerEventType: TriggerEventTypeLike;
+    type ExplainMode: ExplainModeLike;
+    type PragmaForm: PragmaFormLike;
+    type AnalyzeKind: AnalyzeKindLike;
+    type FrameType: FrameTypeLike;
+    type FrameBoundType: FrameBoundTypeLike;
+    type FrameExclude: FrameExcludeLike;
+    type AggregateFunctionCallFlags: AggregateFunctionCallFlagsLike;
+    type CreateTableStmtFlags: CreateTableStmtFlagsLike;
+    type FunctionCallFlags: FunctionCallFlagsLike;
+    type ResultColumnFlags: ResultColumnFlagsLike;
+    type SelectStmtFlags: SelectStmtFlagsLike;
 }

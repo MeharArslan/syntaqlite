@@ -5,23 +5,12 @@ use std::collections::{HashMap, HashSet};
 
 use crate::util::synq_parser::{Field, Fmt, Item, SchemaAnnotation};
 
-mod c_dialect;
-mod c_meta_codegen;
-mod c_nodes_codegen;
+pub(crate) mod c_dialect;
+pub(crate) mod c_meta_codegen;
+pub(crate) mod c_nodes_codegen;
 pub(crate) mod fmt_compiler;
-mod rust_ast;
-mod rust_dialect;
-
-pub use c_dialect::{
-    DialectCIncludes, generate_dialect_c, generate_dialect_dispatch_h, generate_dialect_h,
-    generate_parse_h, generate_token_categories_header, generate_tokenize_h,
-};
-pub use c_meta_codegen::{CFmtCodegenError, CMetaCodegenError};
-pub use rust_ast::{RustAstPaths, generate_rust_tokens};
-pub use rust_dialect::{
-    WrapperContext, generate_cargo_toml, generate_rust_build_rs, generate_rust_lib,
-    generate_rust_wrappers,
-};
+pub(crate) mod rust_ast;
+pub(crate) mod rust_dialect;
 
 pub(super) fn c_type_name(name: &str) -> String {
     format!("Syntaqlite{}", name)

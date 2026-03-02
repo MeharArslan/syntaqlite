@@ -74,14 +74,13 @@ def _compile_perfetto_dialect(cli_binary: Path, work_dir: Path) -> Path:
     subprocess.run(
         [
             str(cli_binary),
-            "dialect",
+            "codegen-dialect",
             "--name",
             "perfetto",
             "--actions-dir",
             str(ROOT_DIR / "dialects" / "perfetto" / "actions"),
             "--nodes-dir",
             str(ROOT_DIR / "dialects" / "perfetto" / "nodes"),
-            "csrc",
             "--output-dir",
             str(csrc_dir),
         ],

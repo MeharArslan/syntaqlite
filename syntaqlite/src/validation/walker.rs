@@ -3,10 +3,11 @@
 
 use std::marker::PhantomData;
 
+use syntaqlite_parser::Dialect;
+use syntaqlite_parser::DialectNodeType;
+use syntaqlite_parser::RawNodeReader;
+use syntaqlite_parser::TypedList;
 use syntaqlite_parser::ast_traits::*;
-use syntaqlite_parser::dialect_traits::DialectNodeType;
-use syntaqlite_parser::session::RawNodeReader;
-use syntaqlite_parser::typed_list::TypedList;
 
 use super::ValidationConfig;
 use super::checks::{check_column_ref, check_function_call, check_table_ref};
@@ -15,7 +16,7 @@ use super::types::{Diagnostic, FunctionDef};
 
 pub(super) struct Walker<'a, 'd, A: AstTypes<'a>> {
     reader: RawNodeReader<'a>,
-    dialect: crate::Dialect<'d>,
+    dialect: Dialect<'d>,
     functions: &'a [FunctionDef],
     config: &'a ValidationConfig,
     diagnostics: Vec<Diagnostic>,
@@ -26,7 +27,7 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
     pub(super) fn run(
         reader: RawNodeReader<'a>,
         stmt: A::Stmt,
-        dialect: crate::Dialect<'d>,
+        dialect: Dialect<'d>,
         scope: &mut ScopeStack,
         functions: &'a [FunctionDef],
         config: &'a ValidationConfig,
@@ -463,12 +464,12 @@ mod tests {
     fn create_table_as_select_literal_column_mismatch_warns() {
         // CREATE TABLE slice AS SELECT 2 → table has no named columns.
         // Referencing slice."1" should warn about unknown column.
-        let dialect = crate::dialect::sqlite();
+        let dialect = syntaqlite_parser_sqlite::dialect();
         let mut parser = crate::ext::RawParser::builder(dialect).build();
         let sql = "CREATE TABLE slice AS SELECT 2;\nSELECT slice.\"1\" FROM slice;";
         let mut cursor = parser.parse(sql);
         let stmt_ids: Vec<_> = (&mut cursor)
-            .map(|r| r.map(|nr: crate::parser::session::NodeRef<'_>| nr.id()))
+            .map(|r| r.map(|nr: syntaqlite_parser::NodeRef<'_>| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let diags = crate::validation::validate_document(

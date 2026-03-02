@@ -11,29 +11,36 @@
 //! The entry point is [`Validator`], which owns a parser and validates SQL
 //! in a single call.
 
+// Public API starts here.
+pub use catalog::FunctionCatalog;
+pub use render::SourceContext;
+pub use types::Diagnostic;
+pub use types::DiagnosticMessage;
+pub use types::DocumentContext;
+pub use types::SessionContext;
+pub use types::Severity;
+// Public API ends here.
+
 pub(crate) mod types;
 
 mod catalog;
 mod checks;
 mod fuzzy;
+mod render;
 mod scope;
 mod walker;
 
+use syntaqlite_parser::Dialect;
+use syntaqlite_parser::DialectConfig;
+use syntaqlite_parser::DialectNodeType;
+use syntaqlite_parser::NodeId;
+use syntaqlite_parser::RawParser;
 use syntaqlite_parser::ast_traits::AstTypes;
-use syntaqlite_parser::dialect_traits::DialectNodeType;
-use syntaqlite_parser::nodes::NodeId;
-use syntaqlite_parser::session::{ParseError, RawNodeReader};
+use syntaqlite_parser::{ParseError, RawNodeReader};
+use types::FunctionDef;
 
 use scope::ScopeStack;
 use types::expand_function_info;
-
-// ── Public re-exports ────────────────────────────────────────────────────
-
-pub use catalog::FunctionCatalog;
-pub use types::{
-    ColumnDef, Diagnostic, DiagnosticMessage, DocumentContext, FunctionDef, Help, RelationDef,
-    RelationKind, SessionContext, Severity,
-};
 
 /// Configuration for semantic validation.
 #[derive(Clone, Copy)]
@@ -75,7 +82,7 @@ impl ValidationConfig {
 pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
     reader: RawNodeReader<'a>,
     stmt_id: NodeId,
-    dialect: crate::Dialect<'_>,
+    dialect: Dialect<'_>,
     session: Option<&SessionContext>,
     document: Option<&DocumentContext>,
     functions: &'a [FunctionDef],
@@ -98,7 +105,7 @@ pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
 pub(crate) fn validate_document(
     reader: RawNodeReader<'_>,
     stmt_ids: &[NodeId],
-    dialect: crate::Dialect<'_>,
+    dialect: Dialect<'_>,
     session: Option<&SessionContext>,
     functions: &[FunctionDef],
     config: &ValidationConfig,
@@ -156,7 +163,7 @@ fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
 
 /// High-level SQL validator. Created from a `Dialect`, reusable across inputs.
 ///
-/// Owns a [`RawParser`](crate::parser::session::RawParser) internally and builds the function catalog
+/// Owns a [`RawParser`](syntaqlite_parser::RawParser) internally and builds the function catalog
 /// once at construction. Call [`validate`](Validator::validate) to parse and
 /// validate SQL in a single step.
 ///
@@ -170,23 +177,20 @@ fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
 /// assert!(!diags.is_empty());
 /// ```
 pub struct Validator<'d> {
-    parser: crate::parser::session::RawParser<'d>,
-    dialect: crate::Dialect<'d>,
+    parser: RawParser<'d>,
+    dialect: Dialect<'d>,
     functions: Vec<FunctionDef>,
 }
-
-// SAFETY: Dialect is Send+Sync, Parser is Send.
-unsafe impl Send for Validator<'_> {}
 
 impl<'d> Validator<'d> {
     /// Create a validator for the built-in SQLite dialect with default configuration.
     ///
     /// Pre-populates the function catalog with all SQLite built-in functions
-    /// available under the default [`DialectConfig`](syntaqlite_parser::dialect::ffi::DialectConfig).
+    /// available under the default [`DialectConfig`](syntaqlite_parser::DialectConfig).
     #[cfg(feature = "sqlite")]
     pub fn new() -> Validator<'static> {
-        let dc = syntaqlite_parser::dialect::ffi::DialectConfig::default();
-        let functions: Vec<FunctionDef> = syntaqlite_parser::sqlite::available_functions(&dc)
+        let dc = DialectConfig::default();
+        let functions: Vec<FunctionDef> = syntaqlite_parser::available_functions(&dc)
             .into_iter()
             .flat_map(|info| expand_function_info(info))
             .collect();
@@ -196,7 +200,7 @@ impl<'d> Validator<'d> {
     }
 
     /// Create a builder for a validator bound to the given dialect.
-    pub fn builder(dialect: crate::Dialect<'d>) -> ValidatorBuilder<'d> {
+    pub fn builder(dialect: Dialect<'d>) -> ValidatorBuilder<'d> {
         ValidatorBuilder {
             dialect,
             functions: Vec::new(),
@@ -237,9 +241,9 @@ impl Default for Validator<'static> {
 
 /// Builder for configuring a [`Validator`] before construction.
 pub struct ValidatorBuilder<'d> {
-    dialect: crate::Dialect<'d>,
+    dialect: Dialect<'d>,
     functions: Vec<FunctionDef>,
-    dialect_config: Option<syntaqlite_parser::dialect::ffi::DialectConfig>,
+    dialect_config: Option<syntaqlite_parser::DialectConfig>,
 }
 
 impl<'d> ValidatorBuilder<'d> {
@@ -254,17 +258,14 @@ impl<'d> ValidatorBuilder<'d> {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(
-        mut self,
-        config: syntaqlite_parser::dialect::ffi::DialectConfig,
-    ) -> Self {
+    pub fn dialect_config(mut self, config: syntaqlite_parser::DialectConfig) -> Self {
         self.dialect_config = Some(config);
         self
     }
 
     /// Build the validator.
     pub fn build(self) -> Validator<'d> {
-        let mut builder = crate::parser::session::RawParser::builder(self.dialect);
+        let mut builder = RawParser::builder(self.dialect);
         if let Some(dc) = self.dialect_config {
             builder = builder.dialect_config(dc);
         }
@@ -286,7 +287,7 @@ pub(crate) fn validate_parse_results(
     reader: RawNodeReader<'_>,
     results: &[Result<NodeId, ParseError>],
     source: &str,
-    dialect: crate::Dialect<'_>,
+    dialect: Dialect<'_>,
     session: Option<&SessionContext>,
     functions: &[FunctionDef],
     config: &ValidationConfig,

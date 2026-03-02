@@ -23,7 +23,7 @@ pub struct VariantDiff {
 ///
 /// Versions must be sorted. Consecutive versions with the same hash
 /// are merged into one group.
-pub fn group_variants(entries: &[(SqliteVersion, String, String)]) -> Vec<VariantGroup> {
+pub(super) fn group_variants(entries: &[(SqliteVersion, String, String)]) -> Vec<VariantGroup> {
     if entries.is_empty() {
         return Vec::new();
     }
@@ -52,7 +52,7 @@ pub fn group_variants(entries: &[(SqliteVersion, String, String)]) -> Vec<Varian
 }
 
 /// Compute unified diffs between consecutive variant groups.
-pub fn compute_diffs(variants: &[VariantGroup]) -> Vec<VariantDiff> {
+pub(super) fn compute_diffs(variants: &[VariantGroup]) -> Vec<VariantDiff> {
     let mut diffs = Vec::new();
 
     for pair in variants.windows(2) {

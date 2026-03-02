@@ -9,6 +9,119 @@ use crate::dialect_traits::DialectNodeType;
 use crate::nodes::{ArenaNode, NodeId, NodeList};
 use crate::parser as ffi;
 
+// ── NodeRef ─────────────────────────────────────────────────────────────────
+
+/// A grammar-agnostic handle to a parsed AST node.
+///
+/// Bundles a node's arena ID with the reader and dialect needed to
+/// inspect it, enabling ergonomic methods like `name()`, `children()`,
+/// and `dump()` without threading three arguments everywhere.
+#[derive(Clone, Copy)]
+pub struct NodeRef<'a> {
+    id: NodeId,
+    reader: RawNodeReader<'a>,
+    dialect: Dialect<'a>,
+}
+
+impl std::fmt::Debug for NodeRef<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("NodeRef").field("id", &self.id).finish()
+    }
+}
+
+impl<'a> NodeRef<'a> {
+    /// Create a `NodeRef` from its constituent parts.
+    pub fn new(id: NodeId, reader: RawNodeReader<'a>, dialect: Dialect<'a>) -> Self {
+        NodeRef {
+            id,
+            reader,
+            dialect,
+        }
+    }
+
+    /// Raw arena ID (escape hatch for FFI/codegen).
+    pub fn id(&self) -> NodeId {
+        self.id
+    }
+
+    /// Reader for typed access via `DialectNodeType`.
+    pub fn reader(&self) -> RawNodeReader<'a> {
+        self.reader
+    }
+
+    /// Dialect handle.
+    pub fn dialect(&self) -> Dialect<'a> {
+        self.dialect
+    }
+
+    /// Node type tag, or `None` if null/invalid.
+    pub fn tag(&self) -> Option<u32> {
+        self.reader.node_tag(self.id)
+    }
+
+    /// Node type name (e.g. `"SelectStmt"`).
+    pub fn name(&self) -> &str {
+        match self.tag() {
+            Some(tag) => self.dialect.node_name(tag),
+            None => "",
+        }
+    }
+
+    /// Whether this is a list node.
+    pub fn is_list(&self) -> bool {
+        match self.tag() {
+            Some(tag) => self.dialect.is_list(tag),
+            None => false,
+        }
+    }
+
+    /// Child nodes: list children (for lists) or node-typed fields (for nodes).
+    pub fn children(&self) -> Vec<NodeRef<'a>> {
+        self.reader
+            .child_node_ids(self.id, &self.dialect)
+            .into_iter()
+            .map(|child_id| NodeRef {
+                id: child_id,
+                reader: self.reader,
+                dialect: self.dialect,
+            })
+            .collect()
+    }
+
+    /// Raw list children slice (for list nodes only).
+    pub fn list_children(&self) -> Option<&'a [NodeId]> {
+        self.reader.list_children(self.id, &self.dialect)
+    }
+
+    /// Dialect field metadata for this node type.
+    pub fn field_meta(&self) -> &[crate::dialect::FieldMeta] {
+        match self.tag() {
+            Some(tag) => self.dialect.field_meta(tag),
+            None => &[],
+        }
+    }
+
+    /// Extract typed field values.
+    pub fn extract_fields(&self) -> Option<(u32, crate::nodes::Fields<'a>)> {
+        self.reader.extract_fields(self.id, &self.dialect)
+    }
+
+    /// Dump as indented text.
+    pub fn dump(&self, out: &mut String, indent: usize) {
+        self.reader.dump_node(self.id, out, indent)
+    }
+
+    /// Resolve as a typed AST node.
+    pub fn as_typed<T: DialectNodeType<'a>>(self) -> Option<T> {
+        T::from_arena(self.reader, self.id)
+    }
+
+    /// The source text bound to this node's reader.
+    pub fn source(&self) -> &'a str {
+        self.reader.source()
+    }
+}
+
 /// A source span describing where an error node was recorded in the arena.
 ///
 /// Returned by [`RawNodeReader::required_node`] and [`RawNodeReader::optional_node`]
@@ -251,6 +364,22 @@ impl<'a> RawNodeReader<'a> {
         self.raw.as_ptr()
     }
 
+    /// Dump an AST node tree as indented text into `out`.
+    pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
+        unsafe extern "C" {
+            fn free(ptr: *mut std::ffi::c_void);
+        }
+        // SAFETY: raw is valid; syntaqlite_dump_node returns a malloc'd
+        // NUL-terminated string (or null). We free it after copying.
+        unsafe {
+            let ptr = ffi::syntaqlite_dump_node(self.raw.as_ptr(), id.0, indent as u32);
+            if !ptr.is_null() {
+                out.push_str(&CStr::from_ptr(ptr).to_string_lossy());
+                free(ptr as *mut std::ffi::c_void);
+            }
+        }
+    }
+
     /// If `id` refers to a list node (per the dialect), return its child node IDs.
     pub fn list_children(&self, id: NodeId, dialect: &Dialect) -> Option<&'a [NodeId]> {
         let (ptr, tag) = self.node_ptr(id)?;
@@ -260,24 +389,6 @@ impl<'a> RawNodeReader<'a> {
         // SAFETY: ptr is a valid arena pointer and the tag confirms it is a
         // list node, so it has NodeList layout (tag, count, children[count]).
         Some(unsafe { &*(ptr as *const NodeList) }.children())
-    }
-
-    /// Dump an AST node tree as indented text. Uses C-side metadata (field
-    /// names, display strings) so no Rust-side string tables are needed.
-    pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
-        unsafe extern "C" {
-            fn free(ptr: *mut std::ffi::c_void);
-        }
-        // SAFETY: raw is valid; dump_node returns a malloc'd NUL-terminated
-        // string (or null). We free the C string after copying.
-        unsafe {
-            let ptr = ffi::syntaqlite_dump_node(self.raw.as_ptr(), id.0, indent as u32);
-            if !ptr.is_null() {
-                let cstr = CStr::from_ptr(ptr);
-                out.push_str(&cstr.to_string_lossy());
-                free(ptr as *mut std::ffi::c_void);
-            }
-        }
     }
 }
 

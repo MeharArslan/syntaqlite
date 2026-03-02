@@ -341,7 +341,7 @@ impl DiagnosticPublisher {
 /// for a fixed source string.
 ///
 /// Both directions use a single O(n) walk over the source bytes.
-pub(crate) struct SourcePositionMap<'a> {
+pub(super) struct SourcePositionMap<'a> {
     src: &'a [u8],
 }
 

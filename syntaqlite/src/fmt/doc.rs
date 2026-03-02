@@ -4,11 +4,11 @@
 use super::KeywordCase;
 
 /// A handle into the `DocArena`. `NIL_DOC` represents an empty/absent document.
-pub type DocId = u32;
+pub(super) type DocId = u32;
 
 /// Sentinel value meaning "no document". Builder methods treat NIL_DOC operands
 /// as identity elements (e.g. `cat(NIL_DOC, x) == x`).
-pub const NIL_DOC: DocId = u32::MAX;
+pub(super) const NIL_DOC: DocId = u32::MAX;
 
 /// A node in the document algebra. Lifetime `'a` covers borrowed text slices.
 #[derive(Debug, Clone)]
@@ -37,17 +37,17 @@ enum Doc<'a> {
 
 /// Arena-based storage for `Doc` nodes. Push-to-allocate, indexed by `DocId`.
 #[derive(Debug)]
-pub struct DocArena<'a> {
+pub(crate) struct DocArena<'a> {
     docs: Vec<Doc<'a>>,
 }
 
 impl<'a> DocArena<'a> {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         DocArena { docs: Vec::new() }
     }
 
     /// Create a new arena with pre-allocated capacity.
-    pub fn with_capacity(cap: usize) -> Self {
+    pub(crate) fn with_capacity(cap: usize) -> Self {
         DocArena {
             docs: Vec::with_capacity(cap),
         }
@@ -57,7 +57,7 @@ impl<'a> DocArena<'a> {
     ///
     /// The old arena is consumed. The new arena has the same capacity but
     /// a fresh (possibly different) lifetime parameter.
-    pub fn recycle<'b>(old: DocArena<'b>) -> Self {
+    pub(crate) fn recycle<'b>(old: DocArena<'b>) -> Self {
         let cap = old.docs.capacity();
         drop(old);
         DocArena::with_capacity(cap)
@@ -76,28 +76,28 @@ impl<'a> DocArena<'a> {
 
     // -- Builder methods --
 
-    pub fn text(&mut self, s: &'a str) -> DocId {
+    pub(crate) fn text(&mut self, s: &'a str) -> DocId {
         self.push(Doc::Text(s))
     }
 
-    pub fn keyword(&mut self, s: &'a str) -> DocId {
+    pub(crate) fn keyword(&mut self, s: &'a str) -> DocId {
         self.push(Doc::Keyword(s))
     }
 
-    pub fn line(&mut self) -> DocId {
+    pub(crate) fn line(&mut self) -> DocId {
         self.push(Doc::Line)
     }
 
-    pub fn softline(&mut self) -> DocId {
+    pub(crate) fn softline(&mut self) -> DocId {
         self.push(Doc::SoftLine)
     }
 
-    pub fn hardline(&mut self) -> DocId {
+    pub(crate) fn hardline(&mut self) -> DocId {
         self.push(Doc::HardLine)
     }
 
     /// Concatenate two documents. If either operand is `NIL_DOC`, returns the other.
-    pub fn cat(&mut self, left: DocId, right: DocId) -> DocId {
+    pub(crate) fn cat(&mut self, left: DocId, right: DocId) -> DocId {
         if left == NIL_DOC {
             return right;
         }
@@ -108,7 +108,7 @@ impl<'a> DocArena<'a> {
     }
 
     /// Concatenate a slice of documents left-to-right. Skips `NIL_DOC` entries.
-    pub fn cats(&mut self, ids: &[DocId]) -> DocId {
+    pub(crate) fn cats(&mut self, ids: &[DocId]) -> DocId {
         let mut result = NIL_DOC;
         for &id in ids {
             result = self.cat(result, id);
@@ -117,7 +117,7 @@ impl<'a> DocArena<'a> {
     }
 
     /// Nest (indent) `child` by `indent` spaces. Returns `NIL_DOC` if child is nil.
-    pub fn nest(&mut self, indent: i16, child: DocId) -> DocId {
+    pub(crate) fn nest(&mut self, indent: i16, child: DocId) -> DocId {
         if child == NIL_DOC {
             return NIL_DOC;
         }
@@ -125,21 +125,21 @@ impl<'a> DocArena<'a> {
     }
 
     /// Group `child` — try flat first, break if it doesn't fit. Returns `NIL_DOC` if child is nil.
-    pub fn group(&mut self, child: DocId) -> DocId {
+    pub(crate) fn group(&mut self, child: DocId) -> DocId {
         if child == NIL_DOC {
             return NIL_DOC;
         }
         self.push(Doc::Group { child })
     }
 
-    pub fn line_suffix(&mut self, child: DocId) -> DocId {
+    pub(crate) fn line_suffix(&mut self, child: DocId) -> DocId {
         if child == NIL_DOC {
             return NIL_DOC;
         }
         self.push(Doc::LineSuffix { child })
     }
 
-    pub fn break_parent(&mut self) -> DocId {
+    pub(crate) fn break_parent(&mut self) -> DocId {
         self.push(Doc::BreakParent)
     }
 
@@ -156,7 +156,7 @@ impl<'a> DocArena<'a> {
     /// Render into caller-provided buffers, reusing their allocations.
     /// This avoids re-allocating the render stack, fits stack, and output
     /// string on every format call.
-    pub fn render_into(
+    pub(crate) fn render_into(
         &self,
         root: DocId,
         line_width: usize,
@@ -313,7 +313,7 @@ pub(crate) enum Mode {
 /// Reusable buffers for `DocArena::render_into`. Keeping these across
 /// format calls avoids re-allocating the render stack, fits stack, and
 /// output string on every invocation.
-pub struct RenderBuffers {
+pub(crate) struct RenderBuffers {
     pub out: String,
     pub stack: Vec<(i32, Mode, DocId)>,
     pub fits_stack: Vec<(i32, DocId)>,
@@ -321,7 +321,7 @@ pub struct RenderBuffers {
 }
 
 impl RenderBuffers {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             out: String::new(),
             stack: Vec::new(),
@@ -330,7 +330,7 @@ impl RenderBuffers {
         }
     }
 
-    pub fn clear(&mut self) {
+    pub(crate) fn clear(&mut self) {
         self.out.clear();
         self.stack.clear();
         self.fits_stack.clear();

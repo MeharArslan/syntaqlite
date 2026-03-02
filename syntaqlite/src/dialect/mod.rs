@@ -14,15 +14,13 @@
 //! External dialect crates obtain their handle through the generated
 //! [`crate::ext::Dialect`] handle.
 
-pub use syntaqlite_parser::dialect::ffi::{CflagInfo, Cflags, DialectConfig, FieldMeta};
-
-// Re-export Dialect and schema types from the sys crate.
-pub use syntaqlite_parser::dialect::{Dialect, SchemaContribution, SchemaKind};
-pub use syntaqlite_parser::sqlite::{
-    cflag_names, cflag_table, parse_cflag_name, parse_sqlite_version,
-};
-
 // ── Token category ─────────────────────────────────────────────────────
+
+#[cfg(feature = "sqlite")]
+pub use syntaqlite_parser::Dialect;
+pub use syntaqlite_parser::{CflagInfo, Cflags, DialectConfig};
+pub use syntaqlite_parser::{SchemaContribution, SchemaKind};
+pub use syntaqlite_parser::{cflag_table, parse_cflag_name, parse_sqlite_version};
 
 /// Semantic category for a token type, used for syntax highlighting.
 ///
@@ -87,6 +85,35 @@ impl TokenCategory {
         } else {
             Some(SEMANTIC_TOKEN_LEGEND[self as usize])
         }
+    }
+}
+
+/// Extension methods on [`Dialect`] that return typed [`TokenCategory`] values.
+///
+/// This trait bridges `syntaqlite-parser`'s `Dialect` (which returns raw `u8`
+/// for crate-boundary reasons) to `syntaqlite`'s `TokenCategory` enum.
+/// Import this trait to call [`classify_token`](DialectExt::classify_token) and
+/// [`token_category`](DialectExt::token_category) directly on a `Dialect`.
+pub trait DialectExt {
+    /// Classify a token using its type and parser-assigned flags.
+    ///
+    /// The parser annotates tokens with flags (e.g. `TOKEN_FLAG_AS_FUNCTION`)
+    /// when grammar actions identify a keyword used as a function name, type
+    /// name, or plain identifier. This checks those flags first, then falls
+    /// back to the static per-token-type category table.
+    fn classify_token(&self, token_type: u32, flags: u32) -> TokenCategory;
+
+    /// Return the static [`TokenCategory`] for a token type ordinal, ignoring parser flags.
+    fn token_category(&self, token_type: u32) -> TokenCategory;
+}
+
+impl DialectExt for syntaqlite_parser::Dialect<'_> {
+    fn classify_token(&self, token_type: u32, flags: u32) -> TokenCategory {
+        TokenCategory::from_u8(self.classify_token_raw(token_type, flags))
+    }
+
+    fn token_category(&self, token_type: u32) -> TokenCategory {
+        TokenCategory::from_u8(self.token_category_raw(token_type))
     }
 }
 

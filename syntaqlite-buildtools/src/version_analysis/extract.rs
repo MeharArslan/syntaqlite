@@ -10,7 +10,7 @@
 use crate::util::c_extractor::CExtractor;
 
 /// The names of extractable fragments (excluding keywords, handled separately).
-pub const FRAGMENT_NAMES: &[&str] = &[
+pub(super) const FRAGMENT_NAMES: &[&str] = &[
     "cc_defines",
     "ai_class",
     "id_char",
@@ -58,7 +58,7 @@ const CC_DEFINE_NAMES: &[&str] = &[
 
 /// All extracted fragments from a single SQLite version's source files.
 #[derive(Debug)]
-pub struct ExtractedFragments {
+pub(super) struct ExtractedFragments {
     pub cc_defines: Result<String, String>,
     pub ai_class: Result<String, String>,
     pub id_char: Result<String, String>,
@@ -71,7 +71,7 @@ pub struct ExtractedFragments {
 
 impl ExtractedFragments {
     /// Look up a fragment by name.
-    pub fn get(&self, name: &str) -> Result<&str, String> {
+    pub(super) fn get(&self, name: &str) -> Result<&str, String> {
         let field = match name {
             "cc_defines" => &self.cc_defines,
             "ai_class" => &self.ai_class,
@@ -91,7 +91,7 @@ impl ExtractedFragments {
 ///
 /// Individual extraction failures are captured per-field rather than
 /// short-circuiting, so the caller can report partial results.
-pub fn extract_fragments(
+pub(super) fn extract_fragments(
     tokenize_c: &str,
     global_c: &str,
     sqliteint_h: &str,

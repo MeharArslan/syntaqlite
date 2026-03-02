@@ -10,7 +10,7 @@
 use sha2::{Digest, Sha256};
 
 /// Normalize a C source fragment and return its SHA-256 hex digest.
-pub fn normalized_hash(text: &str) -> String {
+pub(super) fn normalized_hash(text: &str) -> String {
     let normalized = normalize(text);
     let mut hasher = Sha256::new();
     hasher.update(normalized.as_bytes());

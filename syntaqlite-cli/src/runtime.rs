@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Runtime SQL commands (ast, fmt, lsp) that require the `syntaqlite` crate.
+//! Runtime SQL commands (ast, fmt, lsp, validate) that require the `syntaqlite` crate.
 
 use std::fs;
 use std::io::{self, Read};
@@ -11,88 +11,11 @@ use clap::ValueEnum;
 use syntaqlite::Formatter;
 use syntaqlite::dialect::Dialect;
 use syntaqlite::ext::RawParser;
-use syntaqlite::ext::{FfiDialect, ParseError};
 use syntaqlite::fmt::{FormatConfig, KeywordCase};
-use syntaqlite::validation::{Severity, ValidationConfig};
+use syntaqlite::validation::{SourceContext, ValidationConfig};
+use syntaqlite_parser::{FfiDialect, ParseError};
 
 use super::{Cli, Command};
-
-/// Convert a byte offset in `source` to a 1-based (line, column) pair.
-fn offset_to_line_col(source: &str, offset: usize) -> (usize, usize) {
-    let mut line = 1;
-    let mut col = 1;
-    for (i, ch) in source.char_indices() {
-        if i >= offset {
-            break;
-        }
-        if ch == '\n' {
-            line += 1;
-            col = 1;
-        } else {
-            col += 1;
-        }
-    }
-    (line, col)
-}
-
-/// Extract the source line containing `offset` (without trailing newline).
-fn source_line_at(source: &str, offset: usize) -> &str {
-    let start = source[..offset].rfind('\n').map_or(0, |i| i + 1);
-    let end = source[offset..]
-        .find('\n')
-        .map_or(source.len(), |i| offset + i);
-    &source[start..end]
-}
-
-/// Render a diagnostic in rustc style:
-///
-/// ```text
-/// error: syntax error near 'include'
-///  --> file.sql:1:1
-///   |
-/// 1 | include ;
-///   | ^~~~~~~
-/// ```
-fn render_diagnostic(
-    source: &str,
-    file: &str,
-    severity: &str,
-    message: &str,
-    start_offset: usize,
-    end_offset: usize,
-    help: Option<&str>,
-) {
-    let (line, col) = offset_to_line_col(source, start_offset);
-    let line_text = source_line_at(source, start_offset);
-    let gutter_width = line.to_string().len();
-
-    // Header.
-    eprintln!("{severity}: {message}");
-    eprintln!("{:>gutter_width$}--> {file}:{line}:{col}", " ");
-    eprintln!("{:>gutter_width$} |", " ");
-
-    // Source line.
-    eprintln!("{line} | {line_text}");
-
-    // Underline.
-    let underline_len = if end_offset > start_offset {
-        // Clamp to the current line.
-        let line_end_offset = start_offset + (line_text.len() - (col - 1));
-        (end_offset.min(line_end_offset) - start_offset).max(1)
-    } else {
-        1
-    };
-    let padding = col - 1;
-    eprintln!(
-        "{:>gutter_width$} | {:padding$}^{}",
-        " ",
-        "",
-        "~".repeat(underline_len.saturating_sub(1))
-    );
-    if let Some(help) = help {
-        eprintln!("{:>gutter_width$} = help: {help}", " ");
-    }
-}
 
 #[derive(Clone, Copy, ValueEnum)]
 pub(crate) enum KeywordCasing {
@@ -194,7 +117,9 @@ fn dispatch_commands(command: Command, dialect: Option<Dialect<'_>>) -> Result<(
         Command::Validate { files, lang } => {
             require_dialect(dialect).and_then(|d| cmd_validate(d, files, lang))
         }
-        Command::Lsp => require_dialect(dialect).and_then(|d| crate::lsp::cmd_lsp(d)),
+        Command::Lsp => require_dialect(dialect).and_then(|d| {
+            syntaqlite::lsp::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))
+        }),
         Command::Fmt {
             files,
             line_width,
@@ -215,15 +140,15 @@ fn dispatch_commands(command: Command, dialect: Option<Dialect<'_>>) -> Result<(
             require_dialect(dialect).and_then(|d| cmd_fmt(d, files, config, in_place))
         }
         #[cfg(feature = "codegen-dialect")]
-        Command::CodegenDialect(args) => crate::codegen_dialect::dispatch_dialect(args),
+        Command::CodegenDialect(args) => crate::codegen::dispatch_dialect(args),
         #[cfg(feature = "codegen-dialect")]
-        Command::DialectTool(cmd) => crate::codegen_dialect::dispatch_tool(cmd),
+        Command::DialectTool(cmd) => crate::codegen::dispatch_tool(cmd),
         #[cfg(feature = "internal")]
-        Command::CodegenSqliteParser(args) => crate::codegen_sqlite_parser::dispatch(args),
+        Command::CodegenSqliteParser(args) => crate::codegen::dispatch_sqlite_parser(args),
         #[cfg(feature = "sqlite-extract")]
-        Command::Extract(cmd) => crate::sqlite_extract::dispatch(cmd),
+        Command::Extract(cmd) => crate::extract::dispatch_extract(cmd),
         #[cfg(feature = "version-analysis")]
-        Command::VersionAnalysis(cmd) => crate::version_analysis::dispatch(cmd),
+        Command::VersionAnalysis(cmd) => crate::extract::dispatch_version_analysis(cmd),
     }
 }
 
@@ -278,10 +203,11 @@ fn cmd_ast_source(dialect: Dialect<'_>, source: &str, file: &str) -> Result<(), 
     if errors.is_empty() {
         Ok(())
     } else {
+        let ctx = SourceContext::new(source, file);
         for e in &errors {
             let start = e.offset.unwrap_or(0);
             let end = start + e.length.unwrap_or(0);
-            render_diagnostic(source, file, "error", &e.message, start, end, None);
+            ctx.render_diagnostic("error", &e.message, start, end, None);
         }
         Err(format!("{} syntax error(s)", errors.len()))
     }
@@ -407,39 +333,6 @@ fn cmd_validate(
     Ok(())
 }
 
-/// Render a list of diagnostics and return `true` if any are errors.
-fn render_diagnostics(
-    source: &str,
-    file: &str,
-    diags: &[syntaqlite::validation::Diagnostic],
-) -> bool {
-    let mut has_errors = false;
-    for d in diags {
-        let severity = match d.severity {
-            Severity::Error => {
-                has_errors = true;
-                "error"
-            }
-            Severity::Warning => "warning",
-            Severity::Info => "info",
-            Severity::Hint => "hint",
-        };
-        let message = d.message.to_string();
-        let help = d.help.as_ref().map(|h| h.to_string());
-        render_diagnostic(
-            source,
-            file,
-            severity,
-            &message,
-            d.start_offset,
-            d.end_offset,
-            help.as_deref(),
-        );
-    }
-    has_errors
-}
-
-/// Validate a source string and print diagnostics. Returns `true` if any errors were found.
 fn validate_source(
     dialect: Dialect<'_>,
     source: &str,
@@ -451,11 +344,9 @@ fn validate_source(
         .functions(functions)
         .build();
     let diags = validator.validate(source, None, config);
-    render_diagnostics(source, file, &diags)
+    SourceContext::new(source, file).render_diagnostics(&diags)
 }
 
-/// Validate embedded SQL in a host-language source and print diagnostics.
-/// Returns `true` if any errors were found.
 fn validate_embedded_source(
     dialect: Dialect<'_>,
     source: &str,
@@ -477,5 +368,5 @@ fn validate_embedded_source(
         .with_config(*config)
         .validate(&fragments);
 
-    render_diagnostics(source, file, &diags)
+    SourceContext::new(source, file).render_diagnostics(&diags)
 }

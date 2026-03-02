@@ -9,14 +9,63 @@
 //! and the grammar-agnostic arena / session machinery.
 
 pub mod ast_traits;
-pub mod catalog;
-pub mod dialect;
-pub mod dialect_traits;
-pub mod nodes;
-pub mod parser;
-pub mod session;
-pub mod typed_list;
 
-pub mod cflag_versions;
-pub mod functions_catalog;
-pub mod sqlite;
+// ── Dialect ──────────────────────────────────────────────────────────────────
+
+pub use crate::dialect::{Dialect, DialectConfig, FfiDialect, SchemaContribution, SchemaKind};
+// TODO(lalitm): FieldMeta should be deleted entirely; callers should use the
+// safe field accessors on Dialect instead of reading C metadata structs directly.
+pub use crate::dialect::FieldMeta;
+pub use crate::dialect::{FIELD_BOOL, FIELD_ENUM, FIELD_NODE_ID, FIELD_SPAN};
+pub use crate::dialect_traits::{DialectNodeType, DialectTokenType};
+
+// ── Core node/arena types ─────────────────────────────────────────────────────
+
+pub use crate::nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
+pub use crate::session::{ErrorSpan, NodeRef, ParseError, RawNodeReader};
+pub use crate::typed_list::TypedList;
+
+// ── C parser FFI types ────────────────────────────────────────────────────────
+
+pub use crate::parser::{
+    Comment, CommentKind, ErrorNode, MacroRegion, MemMethods, ParseResult, Parser,
+    SYNTAQLITE_ERROR_NODE_TAG, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE, Token,
+    TokenPos, Tokenizer,
+};
+
+// ── Raw (grammar-agnostic) parsers and tokenizer ──────────────────────────────
+
+pub use crate::raw_incremental::{
+    RawIncrementalCursor, RawIncrementalParser, RawIncrementalParserBuilder,
+};
+pub use crate::raw_session::{RawParser, RawParserBuilder, RawStatementCursor};
+pub use crate::raw_tokenizer::{RawToken, RawTokenCursor, RawTokenizer, RawTokenizerBuilder};
+
+// ── Typed (dialect-parameterized) parsers and tokenizer ──────────────────────
+
+pub use crate::typed::{
+    TypedIncrementalCursor, TypedIncrementalParser, TypedIncrementalParserBuilder, TypedParser,
+    TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor, TypedTokenizer,
+    TypedTokenizerBuilder,
+};
+
+// ── Function availability catalog ─────────────────────────────────────────────
+
+pub use crate::catalog::{FunctionInfo, is_function_available};
+pub use crate::cflag_versions::available_functions;
+pub use crate::cflag_versions::{cflag_table, parse_cflag_name, parse_sqlite_version};
+pub use crate::dialect::ffi::{CflagInfo, Cflags};
+
+pub(crate) mod catalog;
+pub(crate) mod cflag_versions;
+pub(crate) mod dialect;
+pub(crate) mod dialect_traits;
+pub(crate) mod functions_catalog;
+pub(crate) mod nodes;
+pub(crate) mod parser;
+pub(crate) mod raw_incremental;
+pub(crate) mod raw_session;
+pub(crate) mod raw_tokenizer;
+pub(crate) mod session;
+pub(crate) mod typed;
+pub(crate) mod typed_list;

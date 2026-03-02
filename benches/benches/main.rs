@@ -80,7 +80,8 @@ fn bench_tokenizer(c: &mut Criterion) {
     for f in &fixtures {
         group.throughput(Throughput::Bytes(f.sql.len() as u64));
         group.bench_with_input(BenchmarkId::from_parameter(f.name), &f.sql, |b, sql| {
-            let mut tok = syntaqlite::ext::RawTokenizer::new();
+            let mut tok =
+                syntaqlite::ext::RawTokenizer::builder(syntaqlite::dialect::sqlite()).build();
             b.iter(|| {
                 let cursor = tok.tokenize(black_box(sql));
                 for item in cursor {
@@ -102,11 +103,12 @@ fn bench_parser(c: &mut Criterion) {
     for f in &fixtures {
         group.throughput(Throughput::Bytes(f.sql.len() as u64));
         group.bench_with_input(BenchmarkId::from_parameter(f.name), &f.sql, |b, sql| {
-            let mut parser = syntaqlite::ext::RawParser::new();
+            let mut parser =
+                syntaqlite::ext::RawParser::builder(syntaqlite::dialect::sqlite()).build();
             b.iter(|| {
                 let mut cursor = parser.parse(black_box(sql));
                 while let Some(stmt) = cursor.next_statement() {
-                    black_box(stmt).ok();
+                    black_box(stmt.ok());
                 }
             });
         });

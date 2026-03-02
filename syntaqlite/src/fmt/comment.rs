@@ -3,14 +3,14 @@
 
 use std::cell::Cell;
 
-use syntaqlite_parser::parser::{Comment, CommentKind, TokenPos};
+use syntaqlite_parser::{Comment, CommentKind, TokenPos};
 
 use super::doc::{DocArena, DocId, NIL_DOC};
 
 /// Result of draining comment items. Trailing docs (e.g. LineSuffix for
 /// end-of-line comments) go BEFORE any pending line break. Leading docs
 /// (comments on their own line) go AFTER any pending line break.
-pub struct DrainResult {
+pub(crate) struct DrainResult {
     pub trailing: DocId,
     pub leading: DocId,
 }
@@ -18,7 +18,7 @@ pub struct DrainResult {
 /// Two cursors advancing monotonically through sorted comment and token arrays.
 /// Shared via `&` across recursive format calls; interior mutability is required
 /// because the recursive `format_child` closure captures `&CommentCtx`.
-pub struct CommentCtx<'a> {
+pub(crate) struct CommentCtx<'a> {
     comments: &'a [Comment],
     tokens: &'a [TokenPos],
     cursor: Cell<usize>,
@@ -26,7 +26,7 @@ pub struct CommentCtx<'a> {
 }
 
 impl<'a> CommentCtx<'a> {
-    pub fn new(comments: &'a [Comment], tokens: &'a [TokenPos]) -> Self {
+    pub(crate) fn new(comments: &'a [Comment], tokens: &'a [TokenPos]) -> Self {
         CommentCtx {
             comments,
             tokens,
@@ -37,7 +37,7 @@ impl<'a> CommentCtx<'a> {
 
     /// End offset of the token just before the current token cursor position.
     /// Returns 0 if the cursor is at the start.
-    pub fn prev_token_end(&self) -> u32 {
+    pub(crate) fn prev_token_end(&self) -> u32 {
         let idx = self.token_cursor.get();
         if idx > 0 {
             let tp = &self.tokens[idx - 1];
@@ -53,7 +53,7 @@ impl<'a> CommentCtx<'a> {
     /// between a comment and `before`. This prevents comments that precede
     /// an intervening keyword from being attributed to the child after the
     /// keyword.
-    pub fn drain_before(
+    pub(crate) fn drain_before(
         &self,
         before: u32,
         source: &'a str,
@@ -151,7 +151,7 @@ impl<'a> CommentCtx<'a> {
 
     /// Peek at the next N tokens (one per whitespace-separated word in the keyword)
     /// without advancing the token cursor.
-    pub fn peek_keyword_tokens(&self, kw_text: &str) -> Option<(u32, usize)> {
+    pub(crate) fn peek_keyword_tokens(&self, kw_text: &str) -> Option<(u32, usize)> {
         let word_count = kw_text.split_whitespace().count();
         if word_count == 0 {
             return None;
@@ -165,12 +165,12 @@ impl<'a> CommentCtx<'a> {
     }
 
     /// Advance the token cursor by `n` positions.
-    pub fn advance_token_cursor(&self, n: usize) {
+    pub(crate) fn advance_token_cursor(&self, n: usize) {
         self.token_cursor.set(self.token_cursor.get() + n);
     }
 
     /// Advance the token cursor past all tokens whose offset < end_offset.
-    pub fn advance_past(&self, end_offset: u32) {
+    pub(crate) fn advance_past(&self, end_offset: u32) {
         let mut idx = self.token_cursor.get();
         while idx < self.tokens.len() && self.tokens[idx].offset < end_offset {
             idx += 1;
@@ -179,7 +179,7 @@ impl<'a> CommentCtx<'a> {
     }
 
     /// Peek at the next undrained comment without advancing the cursor.
-    pub fn peek_comment(&self) -> Option<&Comment> {
+    pub(crate) fn peek_comment(&self) -> Option<&Comment> {
         let idx = self.cursor.get();
         if idx < self.comments.len() {
             Some(&self.comments[idx])
@@ -189,7 +189,7 @@ impl<'a> CommentCtx<'a> {
     }
 
     /// Advance the comment cursor by one.
-    pub fn advance_comment(&self) {
+    pub(crate) fn advance_comment(&self) {
         let idx = self.cursor.get();
         if idx < self.comments.len() {
             self.cursor.set(idx + 1);
@@ -197,7 +197,7 @@ impl<'a> CommentCtx<'a> {
     }
 
     /// Peek at the next token's offset without advancing the token cursor.
-    pub fn peek_next_token(&self) -> Option<(u32, u32)> {
+    pub(crate) fn peek_next_token(&self) -> Option<(u32, u32)> {
         let idx = self.token_cursor.get();
         if idx < self.tokens.len() {
             let tp = &self.tokens[idx];
@@ -208,7 +208,7 @@ impl<'a> CommentCtx<'a> {
     }
 
     /// Flush all remaining comments.
-    pub fn drain_remaining(&self, source: &'a str, arena: &mut DocArena<'a>) -> DocId {
+    pub(crate) fn drain_remaining(&self, source: &'a str, arena: &mut DocArena<'a>) -> DocId {
         let drain = self.drain_before(u32::MAX, source, arena);
         arena.cat(drain.trailing, drain.leading)
     }

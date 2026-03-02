@@ -4,11 +4,12 @@
 use std::ffi::CStr;
 use std::ptr::NonNull;
 
-use crate::dialect::Dialect;
-use syntaqlite_parser::parser::{
-    Token, Tokenizer, syntaqlite_tokenizer_create, syntaqlite_tokenizer_destroy,
-    syntaqlite_tokenizer_next, syntaqlite_tokenizer_reset, syntaqlite_tokenizer_set_dialect_config,
+use crate::Dialect;
+use crate::parser::{
+    syntaqlite_tokenizer_create, syntaqlite_tokenizer_destroy, syntaqlite_tokenizer_next,
+    syntaqlite_tokenizer_reset, syntaqlite_tokenizer_set_dialect_config,
 };
+use crate::{Token, Tokenizer};
 
 /// A raw token: (token_type ordinal, text slice).
 #[derive(Debug, Clone, Copy)]
@@ -25,7 +26,7 @@ pub struct RawTokenizer<'d> {
     /// Null-terminated copy of the source text.
     source_buf: Vec<u8>,
     /// Owned dialect config, kept alive so the C pointer remains valid.
-    dialect_config: syntaqlite_parser::dialect::ffi::DialectConfig,
+    dialect_config: crate::DialectConfig,
     /// Keeps the dialect alive for the lifetime of the tokenizer. The C
     /// tokenizer stores the dialect pointer internally and uses it during
     /// tokenization, so the dialect must outlive this struct.
@@ -38,12 +39,6 @@ pub struct RawTokenizer<'d> {
 unsafe impl<'d> Send for RawTokenizer<'d> {}
 
 impl<'d> RawTokenizer<'d> {
-    /// Create a new tokenizer for the built-in SQLite dialect.
-    #[cfg(feature = "sqlite")]
-    pub fn new() -> RawTokenizer<'static> {
-        RawTokenizer::builder(crate::dialect::sqlite()).build()
-    }
-
     /// Create a builder for a tokenizer bound to the given dialect.
     pub fn builder(dialect: Dialect<'d>) -> RawTokenizerBuilder<'d> {
         RawTokenizerBuilder {
@@ -103,13 +98,6 @@ impl<'d> RawTokenizer<'d> {
     }
 }
 
-#[cfg(feature = "sqlite")]
-impl Default for RawTokenizer<'static> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Drop for RawTokenizer<'_> {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_tokenizer_create and has
@@ -123,15 +111,12 @@ impl Drop for RawTokenizer<'_> {
 /// Builder for configuring a [`RawTokenizer`] before construction.
 pub struct RawTokenizerBuilder<'d> {
     dialect: Dialect<'d>,
-    dialect_config: Option<syntaqlite_parser::dialect::ffi::DialectConfig>,
+    dialect_config: Option<crate::DialectConfig>,
 }
 
 impl<'d> RawTokenizerBuilder<'d> {
     /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(
-        mut self,
-        config: syntaqlite_parser::dialect::ffi::DialectConfig,
-    ) -> Self {
+    pub fn dialect_config(mut self, config: crate::DialectConfig) -> Self {
         self.dialect_config = Some(config);
         self
     }
@@ -148,7 +133,7 @@ impl<'d> RawTokenizerBuilder<'d> {
         let mut tok = RawTokenizer {
             raw,
             source_buf: Vec::new(),
-            dialect_config: syntaqlite_parser::dialect::ffi::DialectConfig::default(),
+            dialect_config: crate::DialectConfig::default(),
             _dialect: self.dialect,
         };
 
@@ -159,7 +144,7 @@ impl<'d> RawTokenizerBuilder<'d> {
             unsafe {
                 syntaqlite_tokenizer_set_dialect_config(
                     tok.raw.as_ptr(),
-                    &tok.dialect_config as *const syntaqlite_parser::dialect::ffi::DialectConfig,
+                    &tok.dialect_config as *const crate::DialectConfig,
                 );
             }
         }

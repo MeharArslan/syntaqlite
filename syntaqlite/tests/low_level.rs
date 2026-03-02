@@ -218,7 +218,7 @@ fn finish_with_no_tokens() {
 /// High-level API still works after the refactor.
 #[test]
 fn high_level_api_still_works() {
-    let mut parser = syntaqlite::ext::RawParser::new();
+    let mut parser = syntaqlite::ext::RawParser::builder(syntaqlite::dialect::sqlite()).build();
     let mut cursor = parser.parse("SELECT 1; SELECT 2");
 
     let node1 = cursor.next_statement().unwrap().unwrap();

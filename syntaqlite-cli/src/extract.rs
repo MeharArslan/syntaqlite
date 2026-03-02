@@ -1,12 +1,17 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+//! SQLite source extraction and version analysis subcommands.
+
 use std::fs;
 use std::path::Path;
 
 use clap::Subcommand;
 
+// ── sqlite-extract ────────────────────────────────────────────────────────────
+
 /// SQLite fragment extraction CLI subcommands.
+#[cfg(feature = "sqlite-extract")]
 #[derive(Subcommand)]
 pub(crate) enum ExtractCommand {
     /// Extract C fragments from raw SQLite source for use by the codegen pipeline.
@@ -74,8 +79,8 @@ pub(crate) enum ExtractCommand {
     },
 }
 
-/// Dispatch an extraction subcommand.
-pub(crate) fn dispatch(command: ExtractCommand) -> Result<(), String> {
+#[cfg(feature = "sqlite-extract")]
+pub(crate) fn dispatch_extract(command: ExtractCommand) -> Result<(), String> {
     match command {
         ExtractCommand::SqliteExtract {
             sqlite_src,
@@ -86,42 +91,45 @@ pub(crate) fn dispatch(command: ExtractCommand) -> Result<(), String> {
         ExtractCommand::GenerateFunctionsCatalog {
             functions_json,
             output,
-        } => handle_generate_functions_catalog(&functions_json, &output),
+        } => syntaqlite_buildtools::util::functions_codegen::write_functions_catalog_file(
+            &functions_json,
+            &output,
+        ),
         ExtractCommand::AuditCflags {
             amalgamation_dir,
             output,
             rust_output,
-        } => handle_audit_cflags(&amalgamation_dir, &output, &rust_output),
+        } => {
+            use syntaqlite_buildtools::extract;
+            let amal_path = Path::new(&amalgamation_dir);
+            if !amal_path.is_dir() {
+                return Err(format!("{amalgamation_dir} is not a directory"));
+            }
+            let availability =
+                extract::functions::audit_version_cflags(amal_path, Path::new(&output))?;
+            extract::functions::write_cflag_versions_rs(&availability, Path::new(&rust_output))
+        }
         ExtractCommand::ExtractFunctions {
             amalgamation_dir,
             audit,
             output,
-        } => handle_extract_functions(&amalgamation_dir, &audit, &output),
+        } => {
+            use syntaqlite_buildtools::extract;
+            let amal_path = Path::new(&amalgamation_dir);
+            if !amal_path.is_dir() {
+                return Err(format!("{amalgamation_dir} is not a directory"));
+            }
+            extract::functions::extract_function_catalog(
+                amal_path,
+                Path::new(&audit),
+                Path::new(&output),
+            )
+            .map(|_| ())
+        }
     }
 }
 
-fn read_source(dir: &Path, name: &str) -> Result<String, String> {
-    let path = dir.join(name);
-    fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))
-}
-
-fn handle_generate_functions_catalog(
-    functions_json_path: &str,
-    output_path: &str,
-) -> Result<(), String> {
-    let json = fs::read_to_string(functions_json_path)
-        .map_err(|e| format!("reading {functions_json_path}: {e}"))?;
-    let content =
-        syntaqlite_buildtools::util::functions_codegen::generate_functions_catalog(&json)?;
-    let out = Path::new(output_path);
-    if let Some(parent) = out.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("creating output directory: {e}"))?;
-    }
-    fs::write(out, content).map_err(|e| format!("writing {}: {e}", out.display()))?;
-    eprintln!("wrote {output_path}");
-    Ok(())
-}
-
+#[cfg(feature = "sqlite-extract")]
 fn handle_sqlite_extract(
     sqlite_src: &str,
     output_dir: &str,
@@ -137,19 +145,15 @@ fn handle_sqlite_extract(
 
     let src = root.join("src");
     let tool_dir = root.join("tool");
-
     let out = Path::new(output_dir);
     let sources_dir = out.join("sources");
     let fragments_dir = sources_dir.join("fragments");
     let data_dir = out.join("data");
 
-    fs::create_dir_all(&sources_dir)
-        .map_err(|e| format!("creating {}: {e}", sources_dir.display()))?;
-    fs::create_dir_all(&fragments_dir)
-        .map_err(|e| format!("creating {}: {e}", fragments_dir.display()))?;
-    fs::create_dir_all(&data_dir).map_err(|e| format!("creating {}: {e}", data_dir.display()))?;
+    for dir in [&sources_dir, &fragments_dir, &data_dir] {
+        fs::create_dir_all(dir).map_err(|e| format!("creating {}: {e}", dir.display()))?;
+    }
 
-    // Step 1: Vendor sources — copy lemon.c, lempar.c, mkkeywordhash.c
     eprintln!("Vendoring SQLite tool sources...");
     for filename in &["lemon.c", "lempar.c", "mkkeywordhash.c"] {
         let src_path = tool_dir.join(filename);
@@ -164,7 +168,6 @@ fn handle_sqlite_extract(
         eprintln!("  {}", filename);
     }
 
-    // Step 2: Transform mkkeywordhash.c → mkkeywordhash_modified.c
     eprintln!("Transforming mkkeywordhash.c...");
     let mkkeywordhash_c = read_source(&tool_dir, "mkkeywordhash.c")?;
     extract::mkkeywordhash::write_modified_mkkeywordhash(
@@ -172,16 +175,13 @@ fn handle_sqlite_extract(
         &sources_dir.join("mkkeywordhash_modified.c"),
     )?;
 
-    // Step 3: Extract tokenizer fragments
     eprintln!("Extracting tokenizer fragments...");
     let tokenize_c = read_source(&src, "tokenize.c")?;
     let global_c = read_source(&src, "global.c")?;
     let sqliteint_h = read_source(&src, "sqliteInt.h")?;
-
     let fragments = extract::tokenizer::extract_fragments(&tokenize_c, &global_c, &sqliteint_h)?;
     extract::tokenizer::write_fragments(&fragments, &fragments_dir)?;
 
-    // Step 4: Extract keyword cflags
     eprintln!("Extracting keyword cflag data...");
     let cflags = extract::keywords_and_parser::extract_keyword_cflags(&mkkeywordhash_c)?;
     extract::keywords_and_parser::write_keyword_cflags(
@@ -189,7 +189,6 @@ fn handle_sqlite_extract(
         &data_dir.join("keyword_cflags.json"),
     )?;
 
-    // Step 5: Generate base_files_tables.rs
     eprintln!("Generating base_files_tables.rs...");
     let codegen_crate_dir = Path::new(output_dir)
         .parent()
@@ -206,36 +205,93 @@ fn handle_sqlite_extract(
     Ok(())
 }
 
-fn handle_audit_cflags(
-    amalgamation_dir: &str,
-    output: &str,
-    rust_output: &str,
-) -> Result<(), String> {
-    use syntaqlite_buildtools::extract;
-
-    let amal_path = Path::new(amalgamation_dir);
-    if !amal_path.is_dir() {
-        return Err(format!("{amalgamation_dir} is not a directory"));
-    }
-
-    let availability = extract::functions::audit_version_cflags(amal_path, Path::new(output))?;
-    extract::functions::write_cflag_versions_rs(&availability, Path::new(rust_output))?;
-
-    Ok(())
+#[cfg(feature = "sqlite-extract")]
+fn read_source(dir: &Path, name: &str) -> Result<String, String> {
+    let path = dir.join(name);
+    fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))
 }
 
-fn handle_extract_functions(
-    amalgamation_dir: &str,
-    audit: &str,
-    output: &str,
-) -> Result<(), String> {
-    use syntaqlite_buildtools::extract;
+// ── version-analysis ──────────────────────────────────────────────────────────
 
-    let amal_path = Path::new(amalgamation_dir);
-    if !amal_path.is_dir() {
-        return Err(format!("{amalgamation_dir} is not a directory"));
+/// Version analysis CLI subcommands.
+#[cfg(feature = "version-analysis")]
+#[derive(Subcommand)]
+pub(crate) enum VersionAnalysisCommand {
+    /// Analyze multiple SQLite source versions to find fragment variants.
+    ///
+    /// Reads pre-downloaded SQLite sources, extracts code fragments,
+    /// hashes them to identify distinct variants, and writes JSON
+    /// analysis to stdout plus raw variant files to the output directory.
+    AnalyzeVersions {
+        /// Directory containing per-version SQLite source trees.
+        /// Expected layout: <dir>/3.35.0/src/tokenize.c, etc.
+        #[arg(long, required = true)]
+        sqlite_source_dir: String,
+        /// Output directory for variant files.
+        #[arg(long, required = true)]
+        output_dir: String,
+    },
+}
+
+#[cfg(feature = "version-analysis")]
+pub(crate) fn dispatch_version_analysis(command: VersionAnalysisCommand) -> Result<(), String> {
+    match command {
+        VersionAnalysisCommand::AnalyzeVersions {
+            sqlite_source_dir,
+            output_dir,
+        } => handle_analyze_versions(&sqlite_source_dir, &output_dir),
+    }
+}
+
+#[cfg(feature = "version-analysis")]
+fn handle_analyze_versions(sqlite_source_dir: &str, output_dir: &str) -> Result<(), String> {
+    let source_dir = Path::new(sqlite_source_dir);
+    let out_dir = Path::new(output_dir);
+
+    fs::create_dir_all(out_dir).map_err(|e| format!("failed to create output dir: {e}"))?;
+
+    let analysis = syntaqlite_buildtools::version_analysis::analyze_versions(source_dir, out_dir)?;
+
+    let json = serde_json::to_string_pretty(&analysis)
+        .map_err(|e| format!("JSON serialization failed: {e}"))?;
+    println!("{json}");
+
+    eprintln!(
+        "Analysis complete: {} versions, {} fragments analyzed",
+        analysis.versions.len(),
+        analysis.fragments.len()
+    );
+    for (name, frag) in &analysis.fragments {
+        let errors = if frag.errors.is_empty() {
+            String::new()
+        } else {
+            format!(", {} errors", frag.errors.len())
+        };
+        eprintln!("  {name}: {} variant(s){errors}", frag.variants.len());
+    }
+    eprintln!(
+        "  keywords: {} total, {} addition points",
+        analysis.keywords.total_keywords_latest,
+        analysis.keywords.additions.len()
+    );
+    if let Some(ref grammar) = analysis.grammar {
+        eprintln!(
+            "  grammar: {} versions parsed, {} change points, {} errors",
+            grammar.per_version.len(),
+            grammar.diffs.len(),
+            grammar.errors.len()
+        );
+    }
+    eprintln!("Variant files written to {}", out_dir.display());
+
+    if let Some(ref grammar) = analysis.grammar {
+        let report =
+            syntaqlite_buildtools::version_analysis::grammar::format_grammar_report(grammar);
+        let report_path = out_dir.join("grammar_report.md");
+        fs::write(&report_path, &report)
+            .map_err(|e| format!("write {}: {e}", report_path.display()))?;
+        eprintln!("Grammar report written to {}", report_path.display());
     }
 
-    extract::functions::extract_function_catalog(amal_path, Path::new(audit), Path::new(output))?;
     Ok(())
 }

@@ -49,8 +49,8 @@ pub unsafe trait ArenaNode {
 #[derive(Debug)]
 #[repr(C)]
 pub struct NodeList {
-    pub tag: u32,
-    pub count: u32,
+    pub(crate) tag: u32,
+    pub(crate) count: u32,
 }
 
 impl NodeList {

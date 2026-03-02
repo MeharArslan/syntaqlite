@@ -4,9 +4,13 @@
 use syntaqlite::ast::Stmt;
 use syntaqlite::ext::RawParser;
 
+fn new_parser() -> RawParser<'static> {
+    RawParser::builder(syntaqlite::dialect::sqlite()).build()
+}
+
 #[test]
 fn parse_select_1() {
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let mut session = parser.parse("SELECT 1;");
 
     let node = session.next_statement().unwrap().unwrap();
@@ -21,7 +25,7 @@ fn parse_select_1() {
 
 #[test]
 fn parse_multiple_statements() {
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let mut session = parser.parse("SELECT 1; SELECT 2;");
 
     let node1 = session.next_statement().unwrap().unwrap();
@@ -37,7 +41,7 @@ fn parse_multiple_statements() {
 
 #[test]
 fn parse_error() {
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let mut session = parser.parse("SELECT");
 
     let result = session.next_statement().unwrap();
@@ -48,7 +52,7 @@ fn parse_error() {
 fn parse_error_select_bare() {
     // "SELECT " with trailing space — no column list, no semicolon.
     // Should return an error with a non-empty message, not silently return None.
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let mut session = parser.parse("SELECT ");
 
     let result = session.next_statement().unwrap();
@@ -63,7 +67,7 @@ fn parse_error_select_bare() {
 #[test]
 fn parse_error_has_message_and_offset() {
     // A syntax error should carry a non-empty message.
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let mut session = parser.parse("NOT VALID SQL;");
 
     let err = session
@@ -77,7 +81,7 @@ fn parse_error_has_message_and_offset() {
 fn parse_error_recovery() {
     // After a parse error, the cursor continues parsing subsequent statements.
     // Lemon's built-in error recovery synchronises on `;`.
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let mut session = parser.parse("NOT VALID SQL; SELECT 1;");
 
     let first = session.next_statement().unwrap();
@@ -97,7 +101,7 @@ fn parse_error_recovery() {
 fn parse_error_recovery_at_eof() {
     // An unterminated statement (no trailing `;`) reports an error and then
     // next_statement() returns None.
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let mut session = parser.parse("SELECT * FROM");
 
     let result = session.next_statement().unwrap();
@@ -109,7 +113,7 @@ fn parse_error_recovery_at_eof() {
 fn parse_error_mid_batch() {
     // Good → bad → good: the cursor recovers from a mid-batch error and
     // continues to parse subsequent valid statements.
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let mut session = parser.parse("SELECT 1; SELECT * FROM; SELECT 2;");
 
     let r1 = session.next_statement().unwrap().unwrap();
@@ -131,7 +135,7 @@ fn parse_error_mid_batch() {
 
 #[test]
 fn parser_reuse() {
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
 
     // First parse
     {
@@ -153,7 +157,7 @@ fn parser_reuse() {
 // -- DELETE / UPDATE with ORDER BY and LIMIT --
 
 fn parser_with_update_delete_limit() -> RawParser<'static> {
-    use syntaqlite::dialect::DialectConfig;
+    use syntaqlite_parser::DialectConfig;
     let dialect = syntaqlite::dialect::sqlite();
     let mut config = DialectConfig::default();
     config.cflags.set(40); // SQLITE_ENABLE_UPDATE_DELETE_LIMIT

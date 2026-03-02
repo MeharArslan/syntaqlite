@@ -8,15 +8,15 @@
 
 use std::ops::Range;
 
-use crate::parser::typed::{
+use syntaqlite_parser::{
     TypedIncrementalCursor, TypedIncrementalParser, TypedIncrementalParserBuilder, TypedParser,
     TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor, TypedTokenizer,
     TypedTokenizerBuilder,
 };
 // The dialect is a `'static` singleton, so all dialect-parameterized
 // types are concretized to `'static` in this module.
-use syntaqlite_parser_sqlite::ast::Stmt;
-use syntaqlite_parser_sqlite::tokens::TokenType;
+use crate::ast::Stmt;
+use crate::tokens::TokenType;
 // ── StatementCursor ──────────────────────────────────────────────────────
 
 /// A cursor over parsed SQL statements, yielding typed [`Stmt`] nodes.
@@ -35,14 +35,12 @@ impl<'a> StatementCursor<'a> {
     /// - `Some(Ok(node))` — successfully parsed statement.
     /// - `Some(Err(e))` — syntax error; call again to continue with subsequent statements.
     /// - `None` — all input has been consumed.
-    pub fn next_statement(
-        &mut self,
-    ) -> Option<Result<Stmt<'a>, syntaqlite_parser::session::ParseError>> {
+    pub fn next_statement(&mut self) -> Option<Result<Stmt<'a>, syntaqlite_parser::ParseError>> {
         self.inner.next_statement()
     }
 
     /// Get a reference to the embedded node reader.
-    pub fn reader(&self) -> syntaqlite_parser::session::RawNodeReader<'a> {
+    pub fn reader(&self) -> syntaqlite_parser::RawNodeReader<'a> {
         self.inner.reader()
     }
 
@@ -50,15 +48,10 @@ impl<'a> StatementCursor<'a> {
     pub fn source(&self) -> &'a str {
         self.inner.source()
     }
-
-    /// Dump an AST node tree as indented text.
-    pub fn dump_node(&self, id: syntaqlite_parser::nodes::NodeId, out: &mut String, indent: usize) {
-        self.inner.dump_node(id, out, indent)
-    }
 }
 
 impl<'a> Iterator for StatementCursor<'a> {
-    type Item = Result<Stmt<'a>, syntaqlite_parser::session::ParseError>;
+    type Item = Result<Stmt<'a>, syntaqlite_parser::ParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_statement()
@@ -110,21 +103,18 @@ pub struct Tokenizer {
     inner: TypedTokenizer<'static, TokenType>,
 }
 
-// SAFETY: TypedTokenizer is Send.
-unsafe impl Send for Tokenizer {}
-
 impl Tokenizer {
     /// Create a tokenizer with default configuration.
     pub fn new() -> Self {
         Tokenizer {
-            inner: TypedTokenizer::new(crate::dialect::sqlite()),
+            inner: TypedTokenizer::new(crate::dialect()),
         }
     }
 
     /// Create a builder for configuring the tokenizer before construction.
     pub fn builder() -> TokenizerBuilder {
         TokenizerBuilder {
-            inner: TypedTokenizer::builder(crate::dialect::sqlite()),
+            inner: TypedTokenizer::builder(crate::dialect()),
         }
     }
 
@@ -154,10 +144,7 @@ pub struct TokenizerBuilder {
 
 impl TokenizerBuilder {
     /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(
-        mut self,
-        config: syntaqlite_parser::dialect::ffi::DialectConfig,
-    ) -> Self {
+    pub fn dialect_config(mut self, config: syntaqlite_parser::DialectConfig) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }
@@ -193,7 +180,7 @@ impl<'a> IncrementalCursor<'a> {
         &mut self,
         token_type: TokenType,
         span: Range<usize>,
-    ) -> Result<Option<Stmt<'a>>, syntaqlite_parser::session::ParseError> {
+    ) -> Result<Option<Stmt<'a>>, syntaqlite_parser::ParseError> {
         self.inner.feed_token(token_type, span)
     }
 
@@ -203,12 +190,12 @@ impl<'a> IncrementalCursor<'a> {
     /// if there was nothing pending, or `Err` on parse error.
     ///
     /// No further methods may be called after `finish()`.
-    pub fn finish(&mut self) -> Result<Option<Stmt<'a>>, syntaqlite_parser::session::ParseError> {
+    pub fn finish(&mut self) -> Result<Option<Stmt<'a>>, syntaqlite_parser::ParseError> {
         self.inner.finish()
     }
 
     /// Return the [`NodeRef`] for the last completed statement.
-    pub fn root(&self) -> Option<crate::parser::session::NodeRef<'a>> {
+    pub fn root(&self) -> Option<syntaqlite_parser::NodeRef<'a>> {
         self.inner.root()
     }
 
@@ -238,17 +225,17 @@ impl<'a> IncrementalCursor<'a> {
     }
 
     /// Get the embedded node reader.
-    pub fn reader(&self) -> syntaqlite_parser::session::RawNodeReader<'a> {
+    pub fn reader(&self) -> syntaqlite_parser::RawNodeReader<'a> {
         self.inner.reader()
     }
 
     /// Return all comments captured during parsing.
-    pub fn comments(&self) -> &[syntaqlite_parser::parser::Comment] {
+    pub fn comments(&self) -> &[syntaqlite_parser::Comment] {
         self.inner.comments()
     }
 
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
-    pub fn macro_regions(&self) -> &[syntaqlite_parser::parser::MacroRegion] {
+    pub fn macro_regions(&self) -> &[syntaqlite_parser::MacroRegion] {
         self.inner.macro_regions()
     }
 }
@@ -259,21 +246,18 @@ pub struct Parser {
     inner: TypedParser<'static>,
 }
 
-// SAFETY: TypedParser is Send.
-unsafe impl Send for Parser {}
-
 impl Parser {
     /// Create a parser with default configuration.
     pub fn new() -> Self {
         Parser {
-            inner: TypedParser::new(crate::dialect::sqlite()),
+            inner: TypedParser::new(crate::dialect()),
         }
     }
 
     /// Create a builder for configuring the parser before construction.
     pub fn builder() -> ParserBuilder {
         ParserBuilder {
-            inner: TypedParser::builder(crate::dialect::sqlite()),
+            inner: TypedParser::builder(crate::dialect()),
         }
     }
 
@@ -315,10 +299,7 @@ impl ParserBuilder {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(
-        mut self,
-        config: syntaqlite_parser::dialect::ffi::DialectConfig,
-    ) -> Self {
+    pub fn dialect_config(mut self, config: syntaqlite_parser::DialectConfig) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }
@@ -339,21 +320,18 @@ pub struct IncrementalParser {
     inner: TypedIncrementalParser<'static>,
 }
 
-// SAFETY: TypedIncrementalParser is Send.
-unsafe impl Send for IncrementalParser {}
-
 impl IncrementalParser {
     /// Create an incremental parser with default configuration.
     pub fn new() -> Self {
         IncrementalParser {
-            inner: TypedIncrementalParser::new(crate::dialect::sqlite()),
+            inner: TypedIncrementalParser::new(crate::dialect()),
         }
     }
 
     /// Create a builder for configuring the parser before construction.
     pub fn builder() -> IncrementalParserBuilder {
         IncrementalParserBuilder {
-            inner: TypedIncrementalParser::builder(crate::dialect::sqlite()),
+            inner: TypedIncrementalParser::builder(crate::dialect()),
         }
     }
 
@@ -395,10 +373,7 @@ impl IncrementalParserBuilder {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(
-        mut self,
-        config: syntaqlite_parser::dialect::ffi::DialectConfig,
-    ) -> Self {
+    pub fn dialect_config(mut self, config: syntaqlite_parser::DialectConfig) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }

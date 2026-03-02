@@ -4,9 +4,13 @@
 use syntaqlite::ast::{Node, Stmt};
 use syntaqlite::ext::RawParser;
 
+fn new_parser() -> RawParser<'static> {
+    RawParser::builder(syntaqlite::dialect::sqlite()).build()
+}
+
 #[test]
 fn pure_sqlite_never_produces_node_other() {
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let sqls = [
         "SELECT 1 + 2",
         "INSERT INTO t VALUES(1)",
@@ -28,7 +32,7 @@ fn pure_sqlite_never_produces_node_other() {
 
 #[test]
 fn pure_sqlite_never_produces_stmt_other() {
-    let mut parser = RawParser::new();
+    let mut parser = new_parser();
     let sqls = [
         "SELECT 1",
         "INSERT INTO t VALUES(1)",

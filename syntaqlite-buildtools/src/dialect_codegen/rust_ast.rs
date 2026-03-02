@@ -204,18 +204,110 @@ fn emit_rust_flags_type(w: &mut RustWriter, name: &str, flags: &[(String, u32)])
         w.close_block("}");
     }
     w.newline();
-    w.open_block("pub fn dump_str(&self) -> String {");
-    w.line("if self.0 == 0 { return \"(none)\".into(); }");
-    w.line("let mut s = String::new();");
+    w.close_block("}");
+    w.newline();
+}
+
+/// Emit the `FooKind` plain enum and `FooLike` trait for a value enum (base crate, `ast_traits.rs`).
+///
+/// `FooKind` holds only the base variants. Dialect extensions that add new variants return
+/// `None` from `kind()`, allowing generic code to degrade gracefully.
+fn emit_rust_value_enum_like_trait(w: &mut RustWriter, name: &str, variants: &[String]) {
+    // ── FooKind enum ──
+    w.doc_comment(&format!(
+        "Base variants of `{name}`. Used for exhaustive pattern matching in generic code."
+    ));
+    w.doc_comment(&format!(
+        "Dialect extensions that add variants beyond this set return `None` from `{name}Like::kind`."
+    ));
+    w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
+    w.open_block(&format!("pub enum {name}Kind {{"));
+    for v in variants {
+        w.line(&format!("{},", pascal_case(v)));
+    }
+    w.close_block("}");
+    w.newline();
+
+    // ── FooLike trait ──
+    w.doc_comment(&format!(
+        "Trait for `{name}`-compatible values. Dialects may define their own type and implement this."
+    ));
+    w.open_block(&format!(
+        "pub trait {name}Like: Copy + PartialEq + Eq + std::fmt::Debug {{"
+    ));
+    w.line("fn as_str(&self) -> &'static str;");
+    w.doc_comment(&format!(
+        "Match against base `{name}Kind` variants. Returns `None` for dialect-specific extensions."
+    ));
+    w.line(&format!("fn kind(&self) -> Option<{name}Kind>;"));
+    w.close_block("}");
+    w.newline();
+}
+
+/// Emit the `FooLike` trait for a flags type (base crate, `ast_traits.rs`).
+fn emit_rust_flags_like_trait(w: &mut RustWriter, name: &str, flags: &[(String, u32)]) {
+    w.doc_comment(&format!(
+        "Trait for `{name}`-compatible flags. Dialects may define their own type and implement this."
+    ));
+    w.open_block(&format!(
+        "pub trait {name}Like: Copy + PartialEq + Eq + Default + std::fmt::Debug {{"
+    ));
+    let mut sorted: Vec<_> = flags.iter().collect();
+    sorted.sort_by_key(|(_, v)| *v);
     for (flag_name, _) in &sorted {
         let method = flag_name.to_lowercase();
+        w.line(&format!("fn {method}(&self) -> bool;"));
+    }
+    w.close_block("}");
+    w.newline();
+}
+
+/// Emit `impl FooLike for Foo` for a value enum (dialect crate, `ast.rs`).
+fn emit_rust_value_enum_like_impl(
+    w: &mut RustWriter,
+    traits_path: &str,
+    name: &str,
+    variants: &[String],
+) {
+    w.open_block(&format!("impl {traits_path}::{name}Like for {name} {{"));
+
+    w.open_block("fn as_str(&self) -> &'static str {");
+    w.line("self.as_str()");
+    w.close_block("}");
+
+    w.open_block(&format!(
+        "fn kind(&self) -> Option<{traits_path}::{name}Kind> {{"
+    ));
+    w.open_block("Some(match self {");
+    for v in variants {
+        let variant_name = pascal_case(v);
         w.line(&format!(
-            "if self.{}() {{ if !s.is_empty() {{ s.push(' '); }} s.push_str(\"{}\"); }}",
-            method, flag_name
+            "{name}::{variant_name} => {traits_path}::{name}Kind::{variant_name},"
         ));
     }
-    w.line("s");
+    w.close_block("})");
     w.close_block("}");
+
+    w.close_block("}");
+    w.newline();
+}
+
+/// Emit `impl FooLike for Foo` for a flags type (dialect crate, `ast.rs`).
+fn emit_rust_flags_like_impl(
+    w: &mut RustWriter,
+    traits_path: &str,
+    name: &str,
+    flags: &[(String, u32)],
+) {
+    w.open_block(&format!("impl {traits_path}::{name}Like for {name} {{"));
+    let mut sorted: Vec<_> = flags.iter().collect();
+    sorted.sort_by_key(|(_, v)| *v);
+    for (flag_name, _) in &sorted {
+        let method = flag_name.to_lowercase();
+        w.open_block(&format!("fn {method}(&self) -> bool {{"));
+        w.line(&format!("self.{method}()"));
+        w.close_block("}");
+    }
     w.close_block("}");
     w.newline();
 }
@@ -326,7 +418,7 @@ fn emit_rust_node_tag_accessor(
 }
 
 /// Generate Rust source for token type enum.
-pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
+pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     let mut w = RustWriter::new();
     w.file_header();
 
@@ -362,7 +454,7 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     w.close_block("}");
     w.newline();
 
-    w.open_block("impl syntaqlite_parser::dialect_traits::DialectTokenType for TokenType {");
+    w.open_block("impl syntaqlite_parser::DialectTokenType for TokenType {");
     w.open_block("fn from_token_type(raw: u32) -> Option<Self> {");
     w.line("Self::from_raw(raw)");
     w.close_block("}");
@@ -384,6 +476,9 @@ pub struct RustAstPaths<'a> {
     pub nodes_path: &'a str,
     /// Path to `RawNodeReader`, e.g. `"syntaqlite_parser::session"`.
     pub session_path: &'a str,
+    /// Path to the zero-argument function that returns `Dialect<'static>`,
+    /// e.g. `"crate::dialect::dialect"`. Used in generated `Display` impls.
+    pub dialect_fn_path: &'a str,
 }
 
 /// Generate Rust source for the FFI layer (`ffi.rs`).
@@ -463,6 +558,8 @@ impl AstModel<'_> {
         let comment_path = paths.comment_path;
         let nodes_path = paths.nodes_path;
         let session_path = paths.session_path;
+        let dialect_fn_path = paths.dialect_fn_path;
+        let traits_path = format!("{crate_prefix}::ast_traits");
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
         let node_names = self.node_names();
@@ -476,23 +573,41 @@ impl AstModel<'_> {
         }
         w.lines(&format!(
             "
-        pub(crate) use {nodes_path}::NodeList;
-        pub use {comment_path}::{{Comment, CommentKind}};
-        pub use {nodes_path}::{{NodeId, SourceSpan}};
-        pub use {session_path}::RawNodeReader;
-        use {crate_prefix}::dialect_traits::DialectNodeType;
-        use {crate_prefix}::typed_list::TypedList;
+        use {nodes_path}::NodeList;
+        use {comment_path}::{{Comment, CommentKind}};
+        use {nodes_path}::{{NodeId, SourceSpan}};
+        use {session_path}::RawNodeReader;
+        use {crate_prefix}::NodeRef;
+        use {crate_prefix}::DialectNodeType;
+        use {crate_prefix}::TypedList;
     "
         ));
         w.newline();
 
-        // Re-export shared enums, flags, and trait types from the ast_traits module.
-        let traits_path = format!("{crate_prefix}::ast_traits");
-        w.line(&format!("pub use {traits_path}::*;"));
-        w.newline();
-
         // NodeTag enum
         emit_rust_node_tag_type(&mut w, self);
+
+        // Concrete value enums and flags — one per dialect, implementing the Like traits.
+        for item in self.enums() {
+            if item.name == "Bool" {
+                continue;
+            }
+            emit_rust_value_enum(&mut w, item.name, item.variants);
+        }
+        for item in self.flags() {
+            emit_rust_flags_type(&mut w, item.name, item.flags);
+        }
+
+        // Like-trait impls for the concrete types above.
+        for item in self.enums() {
+            if item.name == "Bool" {
+                continue;
+            }
+            emit_rust_value_enum_like_impl(&mut w, &traits_path, item.name, item.variants);
+        }
+        for item in self.flags() {
+            emit_rust_flags_like_impl(&mut w, &traits_path, item.name, item.flags);
+        }
 
         // Abstract type enums (Expr, Stmt, etc.)
         for &(abs_name, members) in abstract_items {
@@ -580,18 +695,18 @@ impl AstModel<'_> {
             w.line("}");
             w.newline();
 
-            // Display impl — dump AST via NodeReader
+            // Display impl — dump via NodeRef to avoid exposing RawNodeReader internals
             w.line(&format!("impl std::fmt::Display for {}<'_> {{", name));
             w.indent();
-            w.lines(
-                "
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                let mut buf = String::new();
-                self.reader.dump_node(self.id, &mut buf, 0);
-                f.write_str(&buf)
-            }
-        ",
-            );
+            w.line("fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {");
+            w.indent();
+            w.line("let mut buf = String::new();");
+            w.line(&format!(
+                "NodeRef::new(self.id, self.reader, {dialect_fn_path}()).dump(&mut buf, 0);"
+            ));
+            w.line("f.write_str(&buf)");
+            w.dedent();
+            w.line("}");
             w.dedent();
             w.line("}");
             w.newline();
@@ -736,32 +851,6 @@ impl AstModel<'_> {
         w.line("}");
         w.newline();
 
-        // Display impl for Node
-        w.line("impl std::fmt::Display for Node<'_> {");
-        w.indent();
-        w.line("fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {");
-        w.indent();
-        w.line("match self {");
-        w.indent();
-        for node in self.nodes() {
-            w.line(&format!(
-                "Node::{n}(n) => std::fmt::Display::fmt(n, f),",
-                n = node.name
-            ));
-        }
-        if open_for_extension {
-            w.line("Node::Other { tag, .. } => write!(f, \"Other(tag={tag})\"),");
-        }
-        // Fallback for list variants and phantom
-        w.line("_ => std::fmt::Debug::fmt(self, f),");
-        w.dedent();
-        w.line("}");
-        w.dedent();
-        w.line("}");
-        w.dedent();
-        w.line("}");
-        w.newline();
-
         // FromArena impl for Node
         w.lines(
             "
@@ -796,6 +885,15 @@ impl AstModel<'_> {
         }
         for node in self.nodes() {
             w.line(&format!("type {n} = {n}<'a>;", n = node.name));
+        }
+        for item in self.enums() {
+            if item.name == "Bool" {
+                continue;
+            }
+            w.line(&format!("type {n} = {n};", n = item.name));
+        }
+        for item in self.flags() {
+            w.line(&format!("type {n} = {n};", n = item.name));
         }
         w.close_block("}");
         w.newline();
@@ -928,8 +1026,8 @@ fn resolve_generic_element_type(
 /// Map a `.synq` field to its generic return type for use in trait accessor methods.
 fn trait_field_return_type(
     field: &Field,
-    _enum_names: &HashSet<&str>,
-    _flags_names: &HashSet<&str>,
+    enum_names: &HashSet<&str>,
+    flags_names: &HashSet<&str>,
     node_names: &HashSet<&str>,
     list_names: &HashSet<&str>,
     lists: &[super::ListRef<'_>],
@@ -956,8 +1054,10 @@ fn trait_field_return_type(
                 "bool".into()
             } else if t == "SyntaqliteSourceSpan" {
                 "&'a str".into()
+            } else if enum_names.contains(t.as_str()) || flags_names.contains(t.as_str()) {
+                // Enum or flags — use dialect associated type for extensibility
+                format!("<Self::Ast as AstTypes<'a>>::{t}")
             } else {
-                // Enum or flags — concrete shared type
                 t.clone()
             }
         }
@@ -994,15 +1094,17 @@ impl AstModel<'_> {
         );
         w.newline();
 
-        // ── Shared value enums and flags ──
+        // ── Like-traits for value enums and flags ──
+        // Concrete types live in each dialect's ast.rs; these traits let generic
+        // code (and future dialects) work with their own extended types.
         for item in self.enums() {
             if item.name == "Bool" {
                 continue;
             }
-            emit_rust_value_enum(&mut w, item.name, item.variants);
+            emit_rust_value_enum_like_trait(&mut w, item.name, item.variants);
         }
         for item in self.flags() {
-            emit_rust_flags_type(&mut w, item.name, item.flags);
+            emit_rust_flags_like_trait(&mut w, item.name, item.flags);
         }
 
         // ── NodeLike trait ──
@@ -1090,6 +1192,18 @@ impl AstModel<'_> {
             w.line(&format!(
                 "type {name}: {name}View<'a, Ast = Self> + Copy + DialectNodeType<'a>;"
             ));
+        }
+        // Enum and flags associated types — dialects provide their own concrete types.
+        for item in self.enums() {
+            if item.name == "Bool" {
+                continue;
+            }
+            let name = item.name;
+            w.line(&format!("type {name}: {name}Like;"));
+        }
+        for item in self.flags() {
+            let name = item.name;
+            w.line(&format!("type {name}: {name}Like;"));
         }
         w.close_block("}");
         w.newline();

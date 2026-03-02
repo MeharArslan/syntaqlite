@@ -3,13 +3,15 @@
 
 use std::collections::HashMap;
 
-use crate::dialect::Dialect;
 use crate::fmt::FormatConfig;
 use crate::fmt::formatter::Formatter;
 use crate::lsp::analysis::DocumentAnalysis;
 use crate::validation::types::{Diagnostic, FunctionDef, SessionContext};
-use crate::validation::{FunctionCatalog, ValidationConfig};
-use syntaqlite_parser::session::ParseError;
+use crate::validation::{
+    DocumentContext, FunctionCatalog, ValidationConfig, validate_statement_dialect,
+};
+use syntaqlite_parser::Dialect;
+use syntaqlite_parser::ParseError;
 
 use super::{CompletionEntry, CompletionInfo, CompletionKind, SemanticToken};
 
@@ -42,7 +44,7 @@ pub struct AnalysisHost<'d> {
     dialect: Dialect<'d>,
     documents: HashMap<String, Document>,
     context: Option<SessionContext>,
-    dialect_config: Option<syntaqlite_parser::dialect::ffi::DialectConfig>,
+    dialect_config: Option<syntaqlite_parser::DialectConfig>,
 }
 
 impl<'d> AnalysisHost<'d> {
@@ -75,7 +77,7 @@ impl<'d> AnalysisHost<'d> {
     }
 
     /// Set the dialect configuration for version/cflag-gated function filtering.
-    pub fn set_dialect_config(&mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig) {
+    pub fn set_dialect_config(&mut self, config: syntaqlite_parser::DialectConfig) {
         self.dialect_config = Some(config);
     }
 
@@ -180,7 +182,7 @@ impl<'d> AnalysisHost<'d> {
 
     /// Completion items (keywords + functions) at a byte offset.
     pub fn completion_items(&mut self, uri: &str, offset: usize) -> Vec<CompletionEntry> {
-        use crate::dialect::TokenCategory;
+        use crate::dialect::{DialectExt, TokenCategory};
         use std::collections::HashSet;
 
         let info = self.completion_info_at_offset(uri, offset);
@@ -189,10 +191,9 @@ impl<'d> AnalysisHost<'d> {
         let mut seen: HashSet<String> = HashSet::new();
         let mut items: Vec<CompletionEntry> = Vec::new();
 
-        let expects_identifier = expected_set.iter().any(|&tok| {
-            TokenCategory::from_u8(self.dialect.token_category_raw(tok))
-                == TokenCategory::Identifier
-        });
+        let expects_identifier = expected_set
+            .iter()
+            .any(|&tok| self.dialect.token_category(tok) == TokenCategory::Identifier);
 
         for i in 0..self.dialect.keyword_count() {
             let Some((code, name)) = self.dialect.keyword_entry(i) else {
@@ -255,7 +256,7 @@ impl<'d> AnalysisHost<'d> {
         };
 
         let catalog = self.function_catalog();
-        let mut parser = crate::parser::session::RawParser::builder(self.dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::builder(self.dialect).build();
         let mut cursor = parser.parse(&doc.source);
 
         let mut stmt_ids = Vec::new();
@@ -270,12 +271,12 @@ impl<'d> AnalysisHost<'d> {
             }
         }
 
-        let mut doc_ctx = crate::validation::DocumentContext::new();
+        let mut doc_ctx = DocumentContext::new();
         let reader = cursor.reader();
         let mut diagnostics = Vec::new();
 
         for &stmt_id in &stmt_ids {
-            let stmt_diags = crate::validation::validate_statement_dialect::<A>(
+            let stmt_diags = validate_statement_dialect::<A>(
                 reader,
                 stmt_id,
                 self.dialect,
@@ -312,7 +313,7 @@ impl<'d> AnalysisHost<'d> {
     /// Build the function catalog for the current dialect configuration and
     /// session context.
     pub fn function_catalog(&self) -> FunctionCatalog {
-        let default_config = syntaqlite_parser::dialect::ffi::DialectConfig::default();
+        let default_config = syntaqlite_parser::DialectConfig::default();
         let config = self.dialect_config.as_ref().unwrap_or(&default_config);
         let catalog = FunctionCatalog::for_dialect(&self.dialect, config);
         match self.context.as_ref() {
@@ -363,9 +364,9 @@ impl std::error::Error for FormatError {}
 #[cfg(feature = "sqlite")]
 mod tests {
     use super::AnalysisHost;
-    use crate::parser::session::RawParser;
     use crate::validation::SessionContext;
     use crate::validation::types::FunctionDef;
+    use syntaqlite_parser::RawParser;
     use syntaqlite_parser_sqlite::tokens::TokenType;
 
     #[test]
@@ -451,7 +452,7 @@ mod tests {
     #[test]
     fn available_functions_with_config_filters_by_cflags() {
         let mut host = AnalysisHost::new();
-        let mut config = syntaqlite_parser::dialect::ffi::DialectConfig::default();
+        let mut config = syntaqlite_parser::DialectConfig::default();
         config.cflags.set(34);
         host.set_dialect_config(config);
         let funcs = host.available_functions();
@@ -668,7 +669,7 @@ mod tests {
     #[test]
     fn syntax_error_offset_via_parser_directly() {
         let sql = "select 1 from slice where foo = where x = y;";
-        let mut parser = RawParser::new();
+        let mut parser = RawParser::builder(crate::dialect::sqlite()).build();
         let mut cursor = parser.parse(sql);
         let err = cursor
             .next_statement()

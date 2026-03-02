@@ -9,13 +9,14 @@
 
 use std::ops::Range;
 
-use super::incremental::{RawIncrementalCursor, RawIncrementalParser, RawIncrementalParserBuilder};
-use super::session::{RawParser, RawParserBuilder, RawStatementCursor};
-use super::tokenizer::{RawTokenCursor, RawTokenizer};
-use crate::dialect::Dialect;
-use syntaqlite_parser::dialect_traits::{DialectNodeType, DialectTokenType};
-use syntaqlite_parser::nodes::NodeId;
-use syntaqlite_parser::session::{ParseError, RawNodeReader};
+use crate::raw_incremental::{
+    RawIncrementalCursor, RawIncrementalParser, RawIncrementalParserBuilder,
+};
+use crate::raw_session::{RawParser, RawParserBuilder, RawStatementCursor};
+use crate::raw_tokenizer::{RawTokenCursor, RawTokenizer};
+use crate::{Dialect, DialectConfig};
+use crate::{DialectNodeType, DialectTokenType};
+use crate::{NodeRef, ParseError, RawNodeReader};
 
 // ── TypedParser ──────────────────────────────────────────────────────────
 
@@ -27,9 +28,6 @@ use syntaqlite_parser::session::{ParseError, RawNodeReader};
 pub struct TypedParser<'d> {
     inner: RawParser<'d>,
 }
-
-// SAFETY: RawParser is Send; TypedParser is a thin wrapper.
-unsafe impl<'d> Send for TypedParser<'d> {}
 
 impl<'d> TypedParser<'d> {
     /// Create a parser bound to the given dialect.
@@ -85,10 +83,7 @@ impl<'d> TypedParserBuilder<'d> {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(
-        mut self,
-        config: syntaqlite_parser::dialect::ffi::DialectConfig,
-    ) -> Self {
+    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }
@@ -164,11 +159,6 @@ impl<'a, N: DialectNodeType<'a>> TypedStatementCursor<'a, N> {
     /// The source text bound to this cursor.
     pub fn source(&self) -> &'a str {
         self.inner.source()
-    }
-
-    /// Dump an AST node tree as indented text.
-    pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
-        self.inner.dump_node(id, out, indent)
     }
 }
 
@@ -256,16 +246,13 @@ impl<'d, T: DialectTokenType> TypedTokenizer<'d, T> {
 /// Builder for configuring a [`TypedTokenizer<'d, T>`] before construction.
 #[doc(hidden)]
 pub struct TypedTokenizerBuilder<'d, T: DialectTokenType> {
-    inner: crate::parser::tokenizer::RawTokenizerBuilder<'d>,
+    inner: crate::raw_tokenizer::RawTokenizerBuilder<'d>,
     _phantom: std::marker::PhantomData<T>,
 }
 
 impl<'d, T: DialectTokenType> TypedTokenizerBuilder<'d, T> {
     /// Set dialect config for version/cflag-gated tokenization.
-    pub fn dialect_config(
-        mut self,
-        config: syntaqlite_parser::dialect::ffi::DialectConfig,
-    ) -> Self {
+    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }
@@ -319,9 +306,6 @@ impl<'a, T: DialectTokenType> Iterator for TypedTokenCursor<'a, T> {
 pub struct TypedIncrementalParser<'d> {
     inner: RawIncrementalParser<'d>,
 }
-
-// SAFETY: RawIncrementalParser is Send; TypedIncrementalParser is a thin wrapper.
-unsafe impl<'d> Send for TypedIncrementalParser<'d> {}
 
 impl<'d> TypedIncrementalParser<'d> {
     /// Create a parser bound to the given dialect.
@@ -390,10 +374,7 @@ impl<'d> TypedIncrementalParserBuilder<'d> {
     }
 
     /// Set dialect config for version/cflag-gated parsing.
-    pub fn dialect_config(
-        mut self,
-        config: syntaqlite_parser::dialect::ffi::DialectConfig,
-    ) -> Self {
+    pub fn dialect_config(mut self, config: DialectConfig) -> Self {
         self.inner = self.inner.dialect_config(config);
         self
     }
@@ -417,7 +398,7 @@ impl<'d> TypedIncrementalParserBuilder<'d> {
 #[doc(hidden)]
 pub struct TypedIncrementalCursor<'a, N, T> {
     inner: RawIncrementalCursor<'a>,
-    last_root: Option<crate::parser::session::NodeRef<'a>>,
+    last_root: Option<NodeRef<'a>>,
     _phantom: std::marker::PhantomData<fn(T) -> N>,
 }
 
@@ -476,7 +457,7 @@ where
 
     /// Return the [`NodeRef`] for the last completed statement (from the most
     /// recent successful `feed_token` or `finish` call).
-    pub fn root(&self) -> Option<crate::parser::session::NodeRef<'a>> {
+    pub fn root(&self) -> Option<NodeRef<'a>> {
         self.last_root
     }
 
@@ -511,12 +492,12 @@ where
     }
 
     /// Return all comments captured during parsing.
-    pub fn comments(&self) -> &[syntaqlite_parser::parser::Comment] {
+    pub fn comments(&self) -> &[crate::Comment] {
         self.inner.comments()
     }
 
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
-    pub fn macro_regions(&self) -> &[syntaqlite_parser::parser::MacroRegion] {
+    pub fn macro_regions(&self) -> &[crate::MacroRegion] {
         self.inner.macro_regions()
     }
 }

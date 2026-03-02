@@ -154,12 +154,12 @@ fn keyword_check_code() -> &'static str {
 ///
 /// Uses pre-extracted cflag data from `fragments.keyword_cflags` instead of
 /// parsing `mkkeywordhash.c` at codegen time.
-pub fn generate(
+pub(crate) fn generate(
     extract_result: &TokenizerExtractResult,
     fragments: &SqliteFragments,
     dialect: &str,
     extra_keywords: &[String],
-    includes: &crate::dialect_codegen::DialectCIncludes<'_>,
+    includes: &crate::dialect_codegen::c_dialect::DialectCIncludes<'_>,
 ) -> Result<String, String> {
     let cflag_map = parse_keyword_cflags(fragments.keyword_cflags);
 
@@ -272,7 +272,7 @@ pub fn generate(
 }
 
 /// Generate the `sqlite_keyword.h` header.
-pub fn generate_keyword_h() -> String {
+pub(crate) fn generate_keyword_h() -> String {
     let mut w = CWriter::new();
     w.sqlite_file_header();
     w.header_guard_start("SYNTAQLITE_SQLITE_KEYWORD_H");

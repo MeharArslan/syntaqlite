@@ -9,6 +9,7 @@
 pub mod ast;
 pub mod ffi;
 pub mod tokens;
+pub mod wrappers;
 
 pub(crate) mod dialect;
 

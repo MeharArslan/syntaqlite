@@ -5,19 +5,20 @@ use std::ffi::{CStr, c_int};
 use std::ops::Range;
 use std::ptr::NonNull;
 
-use super::session::{CursorState, NodeRef};
-use crate::dialect::Dialect;
-use syntaqlite_parser::dialect::ffi::DialectConfig;
-use syntaqlite_parser::nodes::NodeId;
-use syntaqlite_parser::parser::{
-    Comment, MacroRegion, ParseResult, Parser, syntaqlite_create_parser_with_dialect,
-    syntaqlite_parser_begin_macro, syntaqlite_parser_completion_context, syntaqlite_parser_destroy,
-    syntaqlite_parser_end_macro, syntaqlite_parser_expected_tokens, syntaqlite_parser_feed_token,
-    syntaqlite_parser_finish, syntaqlite_parser_node_count, syntaqlite_parser_result,
-    syntaqlite_parser_set_collect_tokens, syntaqlite_parser_set_dialect_config,
-    syntaqlite_parser_set_trace,
+use crate::Dialect;
+use crate::DialectConfig;
+use crate::NodeId;
+use crate::NodeRef;
+use crate::parser::{
+    syntaqlite_create_parser_with_dialect, syntaqlite_parser_begin_macro,
+    syntaqlite_parser_completion_context, syntaqlite_parser_destroy, syntaqlite_parser_end_macro,
+    syntaqlite_parser_expected_tokens, syntaqlite_parser_feed_token, syntaqlite_parser_finish,
+    syntaqlite_parser_node_count, syntaqlite_parser_result, syntaqlite_parser_set_collect_tokens,
+    syntaqlite_parser_set_dialect_config, syntaqlite_parser_set_trace,
 };
-use syntaqlite_parser::session::{ParseError, RawNodeReader};
+use crate::raw_session::CursorState;
+use crate::{Comment, MacroRegion, ParseResult, Parser};
+use crate::{ParseError, RawNodeReader};
 
 /// A low-level parser for token-by-token feeding. Owns its own C parser
 /// handle and source buffer, independent of `Parser`.
@@ -33,13 +34,6 @@ pub struct RawIncrementalParser<'d> {
 unsafe impl Send for RawIncrementalParser<'_> {}
 
 impl<'d> RawIncrementalParser<'d> {
-    /// Create a low-level parser for the built-in SQLite dialect.
-    /// Token collection is enabled by default (required for formatting).
-    #[cfg(feature = "sqlite")]
-    pub fn new() -> RawIncrementalParser<'static> {
-        RawIncrementalParser::builder(crate::dialect::sqlite()).build()
-    }
-
     /// Create a builder for a low-level parser bound to the given dialect.
     /// Token collection is enabled by default (required for formatting).
     pub fn builder(dialect: Dialect<'d>) -> RawIncrementalParserBuilder<'d> {
@@ -72,13 +66,6 @@ impl<'d> RawIncrementalParser<'d> {
             state,
             finished: false,
         }
-    }
-}
-
-#[cfg(feature = "sqlite")]
-impl Default for RawIncrementalParser<'static> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -381,7 +368,7 @@ impl<'a> RawIncrementalCursor<'a> {
     /// Return all token positions collected during parsing.
     ///
     /// Only populated when the parser was built with `collect_tokens(true)`.
-    pub fn tokens(&self) -> &[syntaqlite_parser::parser::TokenPos] {
+    pub fn tokens(&self) -> &[crate::TokenPos] {
         self.state.tokens()
     }
 

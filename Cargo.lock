@@ -783,6 +783,7 @@ dependencies = [
  "serde_json",
  "syntaqlite",
  "syntaqlite-buildtools",
+ "syntaqlite-parser",
  "tempfile",
 ]
 

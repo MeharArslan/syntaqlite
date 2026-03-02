@@ -1,6 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+use syntaqlite_parser::{Dialect, FunctionInfo};
+
 /// A diagnostic message associated with a source range.
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
@@ -259,9 +261,7 @@ pub struct FunctionDef {
 }
 
 /// Expand a [`FunctionInfo`](syntaqlite_parser::catalog::FunctionInfo) into one [`FunctionDef`] per arity.
-pub(crate) fn expand_function_info(
-    info: &syntaqlite_parser::catalog::FunctionInfo<'_>,
-) -> Vec<FunctionDef> {
+pub(crate) fn expand_function_info(info: &FunctionInfo<'_>) -> Vec<FunctionDef> {
     if info.arities.is_empty() {
         vec![FunctionDef {
             name: info.name.to_string(),
@@ -315,9 +315,9 @@ impl SessionContext {
     /// `CREATE VIEW … AS SELECT` are expanded using tables/views defined
     /// by earlier statements in the same input.
     pub fn from_stmts<'a>(
-        reader: syntaqlite_parser::session::RawNodeReader<'a>,
-        stmt_ids: &[syntaqlite_parser::nodes::NodeId],
-        dialect: crate::Dialect<'_>,
+        reader: syntaqlite_parser::RawNodeReader<'a>,
+        stmt_ids: &[syntaqlite_parser::NodeId],
+        dialect: Dialect<'_>,
     ) -> Self {
         let mut doc = DocumentContext::new();
         for &id in stmt_ids {
@@ -335,11 +335,11 @@ impl SessionContext {
     /// from the resulting DDL statements. This is a convenience wrapper for
     /// cases like WASM where you have raw DDL text.
     pub fn from_ddl(
-        dialect: crate::Dialect<'_>,
+        dialect: Dialect<'_>,
         source: &str,
-        dialect_config: Option<syntaqlite_parser::dialect::ffi::DialectConfig>,
+        dialect_config: Option<syntaqlite_parser::DialectConfig>,
     ) -> Self {
-        let mut builder = crate::parser::session::RawParser::builder(dialect);
+        let mut builder = syntaqlite_parser::RawParser::builder(dialect);
         if let Some(dc) = dialect_config {
             builder = builder.dialect_config(dc);
         }
@@ -481,9 +481,9 @@ impl Default for DocumentContext {
 /// offset to a `u32` (NodeId) field within that struct.
 unsafe fn read_node_id(
     ptr: *const u8,
-    meta: &syntaqlite_parser::dialect::ffi::FieldMeta,
-) -> syntaqlite_parser::nodes::NodeId {
-    unsafe { syntaqlite_parser::nodes::NodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
+    meta: &syntaqlite_parser::FieldMeta,
+) -> syntaqlite_parser::NodeId {
+    unsafe { syntaqlite_parser::NodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
 }
 
 /// Read a `SourceSpan` field from a raw node pointer, returning its text
@@ -494,11 +494,11 @@ unsafe fn read_node_id(
 /// offset to a `SourceSpan` field within that struct.
 unsafe fn read_span<'a>(
     ptr: *const u8,
-    meta: &syntaqlite_parser::dialect::ffi::FieldMeta,
+    meta: &syntaqlite_parser::FieldMeta,
     source: &'a str,
 ) -> &'a str {
     unsafe {
-        let span = &*(ptr.add(meta.offset as usize) as *const syntaqlite_parser::nodes::SourceSpan);
+        let span = &*(ptr.add(meta.offset as usize) as *const syntaqlite_parser::SourceSpan);
         if span.is_empty() {
             ""
         } else {
@@ -520,14 +520,14 @@ impl DocumentContext {
     /// `db_table` lives in the session (live DB) context.
     pub fn accumulate(
         &mut self,
-        reader: syntaqlite_parser::session::RawNodeReader<'_>,
-        stmt_id: syntaqlite_parser::nodes::NodeId,
-        dialect: crate::Dialect<'_>,
+        reader: syntaqlite_parser::RawNodeReader<'_>,
+        stmt_id: syntaqlite_parser::NodeId,
+        dialect: Dialect<'_>,
         session: Option<&SessionContext>,
     ) {
         use crate::dialect::SchemaKind;
-        use syntaqlite_parser::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
-        use syntaqlite_parser::dialect_traits::DialectNodeType;
+        use syntaqlite_parser::DialectNodeType;
+        use syntaqlite_parser::{FIELD_NODE_ID, FIELD_SPAN};
 
         let Some((ptr, tag)) = reader.node_ptr(stmt_id) else {
             return;
@@ -629,13 +629,13 @@ impl DocumentContext {
 /// Walks list children, extracting `column_name`, `type_name`, and constraint
 /// information (PRIMARY KEY, NOT NULL) from each child node's field metadata.
 fn columns_from_column_list(
-    reader: &syntaqlite_parser::session::RawNodeReader<'_>,
-    list_id: syntaqlite_parser::nodes::NodeId,
-    dialect: &crate::Dialect<'_>,
+    reader: &syntaqlite_parser::RawNodeReader<'_>,
+    list_id: syntaqlite_parser::NodeId,
+    dialect: &Dialect<'_>,
     out: &mut Vec<ColumnDef>,
 ) {
-    use syntaqlite_parser::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
-    use syntaqlite_parser::nodes::NodeId;
+    use syntaqlite_parser::NodeId;
+    use syntaqlite_parser::{FIELD_NODE_ID, FIELD_SPAN};
 
     let Some(list) = reader.resolve_list(list_id) else {
         return;
@@ -708,13 +708,13 @@ fn columns_from_column_list(
 
 /// Walk a constraint list to detect PRIMARY KEY and NOT NULL constraints.
 fn extract_column_constraints(
-    reader: &syntaqlite_parser::session::RawNodeReader<'_>,
-    list_id: syntaqlite_parser::nodes::NodeId,
-    dialect: &crate::Dialect<'_>,
+    reader: &syntaqlite_parser::RawNodeReader<'_>,
+    list_id: syntaqlite_parser::NodeId,
+    dialect: &Dialect<'_>,
     is_primary_key: &mut bool,
     is_nullable: &mut bool,
 ) {
-    use syntaqlite_parser::dialect::ffi::FIELD_ENUM;
+    use syntaqlite_parser::FIELD_ENUM;
 
     let Some(list) = reader.resolve_list(list_id) else {
         return;
@@ -905,7 +905,7 @@ mod tests {
     #[test]
     fn from_stmts_creates_session_context() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = crate::parser::session::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
         let sql = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);";
         let mut cursor = parser.parse(sql);
 
@@ -940,7 +940,7 @@ mod tests {
     #[test]
     fn from_stmts_create_table_as_select() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = crate::parser::session::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
         let sql = "CREATE TABLE orders AS SELECT order_id, total AS amount FROM src;";
         let mut cursor = parser.parse(sql);
 
@@ -962,7 +962,7 @@ mod tests {
     #[test]
     fn from_stmts_star_expands_from_earlier_table() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = crate::parser::session::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
         let sql = "\
             CREATE TABLE slice (order_id INTEGER, status TEXT);\n\
             CREATE TABLE orders AS SELECT * FROM slice;\n";
@@ -986,7 +986,7 @@ mod tests {
     #[test]
     fn from_stmts_qualified_star_expands_correct_table() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = crate::parser::session::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
         let sql = "\
             CREATE TABLE a (x INTEGER);\n\
             CREATE TABLE b (y TEXT);\n\
@@ -1009,7 +1009,7 @@ mod tests {
     #[test]
     fn from_stmts_star_with_alias() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = crate::parser::session::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
         let sql = "\
             CREATE TABLE src (id INTEGER, val TEXT);\n\
             CREATE TABLE dst AS SELECT t.* FROM src AS t;\n";
@@ -1032,7 +1032,7 @@ mod tests {
     #[test]
     fn from_stmts_star_through_subquery() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = crate::parser::session::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
         let sql = "\
             CREATE TABLE slice (order_id INTEGER, customer_id TEXT);\n\
             CREATE TABLE orders AS SELECT * FROM (SELECT * FROM slice);\n";
@@ -1056,7 +1056,7 @@ mod tests {
     #[test]
     fn from_stmts_handles_views() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = crate::parser::session::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
         let sql = "CREATE VIEW active_users AS SELECT id, name FROM users WHERE active = 1;";
         let mut cursor = parser.parse(sql);
 
@@ -1078,7 +1078,7 @@ mod tests {
     #[test]
     fn from_stmts_view_star_expands_from_table() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = crate::parser::session::RawParser::builder(dialect).build();
+        let mut parser = syntaqlite_parser::RawParser::builder(dialect).build();
         let sql = "\
             CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);\n\
             CREATE VIEW all_users AS SELECT * FROM users;\n";

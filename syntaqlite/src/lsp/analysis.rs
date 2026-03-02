@@ -3,15 +3,15 @@
 
 //! Per-document analysis: parse, diagnostics, semantic tokens, completions.
 
-use crate::dialect::{Dialect, TokenCategory};
+use crate::dialect::{Dialect, DialectExt, TokenCategory};
 use crate::lsp::{CompletionContext, CompletionInfo, SemanticToken};
-use crate::parser::incremental::RawIncrementalParser;
-use crate::parser::session::RawParser;
-use crate::parser::tokenizer::RawTokenizer;
 use crate::validation::types::{Diagnostic, DiagnosticMessage, Severity};
+use syntaqlite_parser::RawIncrementalParser;
+use syntaqlite_parser::RawParser;
+use syntaqlite_parser::RawTokenizer;
 
 /// A raw token position cached for completion replay.
-pub(crate) struct CachedToken {
+pub(super) struct CachedToken {
     pub(crate) type_: u32,
     pub(crate) start: usize,
     pub(crate) end: usize,
@@ -52,8 +52,8 @@ impl DocumentAnalysis {
 
         let mut semantic_tokens = Vec::new();
 
-        for tp in cursor.state().tokens() {
-            let cat = TokenCategory::from_u8(dialect.classify_token_raw(tp.type_, tp.flags));
+        for tp in cursor.tokens() {
+            let cat = dialect.classify_token(tp.type_, tp.flags);
             if cat == TokenCategory::Other {
                 continue;
             }
@@ -64,7 +64,7 @@ impl DocumentAnalysis {
             });
         }
 
-        for c in cursor.state().comments() {
+        for c in cursor.comments() {
             semantic_tokens.push(SemanticToken {
                 offset: c.offset as usize,
                 length: c.length as usize,

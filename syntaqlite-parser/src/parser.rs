@@ -170,7 +170,7 @@ unsafe extern "C" {
     pub fn syntaqlite_parser_macro_regions(p: *mut Parser, count: *mut u32) -> *const MacroRegion;
 
     // AST dump
-    pub fn syntaqlite_dump_node(p: *mut Parser, node_id: u32, indent: u32) -> *mut c_char;
+    pub(crate) fn syntaqlite_dump_node(p: *mut Parser, node_id: u32, indent: u32) -> *mut c_char;
 
     // Tokenizer
     pub fn syntaqlite_tokenizer_create(

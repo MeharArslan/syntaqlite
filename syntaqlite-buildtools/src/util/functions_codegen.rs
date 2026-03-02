@@ -113,6 +113,23 @@ fn cflag_index(name: &str) -> Option<u32> {
 
 // ── Code generation ─────────────────────────────────────────────────
 
+/// Read `functions.json` from `json_path`, generate the catalog Rust source, and
+/// write it to `output_path` (creating parent directories as needed).
+pub fn write_functions_catalog_file(json_path: &str, output_path: &str) -> Result<(), String> {
+    use std::fs;
+    use std::path::Path;
+
+    let json = fs::read_to_string(json_path).map_err(|e| format!("reading {json_path}: {e}"))?;
+    let content = generate_functions_catalog(&json)?;
+    let out = Path::new(output_path);
+    if let Some(parent) = out.parent() {
+        fs::create_dir_all(parent).map_err(|e| format!("creating output directory: {e}"))?;
+    }
+    fs::write(out, content).map_err(|e| format!("writing {}: {e}", out.display()))?;
+    eprintln!("wrote {output_path}");
+    Ok(())
+}
+
 /// Generate the `functions_catalog.rs` Rust source from `functions.json` content.
 pub fn generate_functions_catalog(json_content: &str) -> Result<String, String> {
     let file: FunctionsFile =

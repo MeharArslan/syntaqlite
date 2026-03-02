@@ -8,10 +8,17 @@
 //! - **Runtime only** — engine (`syntaqlite_runtime.{h,c}`) + extension header (`syntaqlite_dialect.h`)
 //! - **Dialect only** — dialect sources that `#include` the runtime header and ext header
 //! - **Full** — runtime + dialect inlined into one pair of files
+//!
+//! The amalgamator uses a single-pass recursive include expansion: starting from
+//! root files (public headers for `.h`, source files for `.c`), it follows
+//! `#include "..."` directives and inlines referenced files in encounter order,
+//! using a `seen` set to deduplicate. Include guards from the original files are
+//! preserved and re-emitted so the same file can safely appear in multiple
+//! amalgamation products without double-definition.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -25,21 +32,22 @@ pub struct AmalgamateOutput {
 }
 
 /// Produce `syntaqlite_runtime.{h,c}` and `syntaqlite_dialect.h`.
+///
+/// Scans `csrc/` and the entire `include/` tree (including any
+/// dialect-specific subdirectories such as `include/syntaqlite_sqlite/`
+/// whose node types are referenced by the generated builder and meta headers).
 pub fn amalgamate_runtime(runtime_dir: &Path) -> Result<AmalgamateOutput, String> {
-    let csrc = runtime_dir.join("csrc");
-    let include = runtime_dir.join("include");
-    let graph = collect_files(&[&csrc, &include])?;
-    validate_graph(&graph)?;
-    emit(&graph, EmitMode::RuntimeOnly)
+    let files = collect_files(&[&runtime_dir.join("csrc"), &runtime_dir.join("include")])?;
+    emit(&files, EmitMode::RuntimeOnly)
 }
 
 /// Produce `syntaqlite_<dialect>.{h,c}` that references `syntaqlite_runtime.h`
 /// and `syntaqlite_dialect.h`.
 ///
-/// Runtime-style `#include "..."` directives that don't resolve to a file in
-/// the dialect tree are stripped — the emitted `.c` file includes the runtime
-/// amalgamation header via `SYNTAQLITE_RUNTIME_HEADER` and the extension
-/// header via `SYNTAQLITE_EXT_HEADER`.
+/// Quoted `#include` directives that don't resolve to a file in the dialect
+/// tree are stripped if they look like runtime headers; the emitted `.c` file
+/// includes the runtime amalgamation header via `SYNTAQLITE_RUNTIME_HEADER`
+/// and the extension header via `SYNTAQLITE_EXT_HEADER`.
 ///
 /// `runtime_header` and `ext_header` control the default values baked into
 /// the `#ifndef` guards. Pass `None` for the defaults (`"syntaqlite_runtime.h"`
@@ -50,12 +58,9 @@ pub fn amalgamate_dialect(
     runtime_header: Option<&str>,
     ext_header: Option<&str>,
 ) -> Result<AmalgamateOutput, String> {
-    let csrc = dialect_dir.join("csrc");
-    let include = dialect_dir.join("include");
-    let graph = collect_files(&[&csrc, &include])?;
-    validate_graph(&graph)?;
+    let files = collect_files(&[&dialect_dir.join("csrc"), &dialect_dir.join("include")])?;
     emit(
-        &graph,
+        &files,
         EmitMode::DialectOnly {
             dialect,
             runtime_header: runtime_header.unwrap_or("syntaqlite_runtime.h"),
@@ -70,118 +75,75 @@ pub fn amalgamate_full(
     runtime_dir: &Path,
     dialect_dir: &Path,
 ) -> Result<AmalgamateOutput, String> {
-    let dialect_csrc = dialect_dir.join("csrc");
-    let dialect_include = dialect_dir.join("include");
-    let runtime_csrc = runtime_dir.join("csrc");
-    let runtime_include = runtime_dir.join("include");
-
-    let graph = collect_files(&[
-        &runtime_csrc,
-        &runtime_include,
-        &dialect_csrc,
-        &dialect_include,
+    let files = collect_files(&[
+        &runtime_dir.join("csrc"),
+        &runtime_dir.join("include"),
+        &dialect_dir.join("csrc"),
+        &dialect_dir.join("include"),
     ])?;
-    validate_graph(&graph)?;
-    emit(&graph, EmitMode::Full(dialect))
+    emit(&files, EmitMode::Full(dialect))
 }
 
 // ---------------------------------------------------------------------------
 // Internal types
 // ---------------------------------------------------------------------------
 
-#[derive(Debug)]
-struct SourceFile {
-    /// Keys in the include-path map that resolve to this file (e.g. `"csrc/arena.h"`).
-    include_key: String,
-    /// Classification.
-    kind: FileKind,
-    /// Raw file content.
-    content: String,
-    /// Indices of other SourceFiles this file depends on (resolved local includes).
-    deps: Vec<usize>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+/// Classification of a file based on its include key.
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum FileKind {
-    PublicHeader,   // under include/ (key starts with `syntaqlite/`)
-    ExtHeader,      // under include/ (key starts with `syntaqlite_dialect/`)
-    InternalHeader, // under csrc/, extension .h
-    Source,         // extension .c
+    PublicHeader,   // include/syntaqlite/ or include/syntaqlite_<name>/
+    ExtHeader,      // include/syntaqlite_dialect/
+    InternalHeader, // csrc/*.h
+    Source,         // *.c
 }
 
-struct FileGraph {
-    files: Vec<SourceFile>,
+/// Map from include key (e.g. `"syntaqlite/parser.h"`) to raw file content.
+/// BTreeMap gives deterministic iteration order.
+type FileMap = BTreeMap<String, String>;
+
+fn classify(key: &str) -> FileKind {
+    if key.starts_with("syntaqlite_dialect/") {
+        FileKind::ExtHeader
+    } else if key.starts_with("syntaqlite/") || key.starts_with("syntaqlite_") {
+        FileKind::PublicHeader
+    } else if key.ends_with(".h") {
+        FileKind::InternalHeader
+    } else {
+        FileKind::Source
+    }
 }
 
 // ---------------------------------------------------------------------------
-// Step 1: Collect files
+// File collection
 // ---------------------------------------------------------------------------
 
-fn collect_files(dirs: &[&Path]) -> Result<FileGraph, String> {
-    let mut path_map: BTreeMap<String, PathBuf> = BTreeMap::new();
-
+fn collect_files(dirs: &[&Path]) -> Result<FileMap, String> {
+    let mut map = FileMap::new();
     for &dir in dirs {
         if !dir.is_dir() {
             continue;
         }
         let dir_name = dir.file_name().and_then(|n| n.to_str()).unwrap_or("");
-        // For `include/` directories, start with empty prefix so
-        // `include/syntaqlite/foo.h` → key `syntaqlite/foo.h`.
-        // `include/syntaqlite_dialect/foo.h` → key `syntaqlite_dialect/foo.h`.
-        // For `csrc/` directories, prefix is `csrc` → key `csrc/foo.h`.
+        // include/ dirs: strip the "include" prefix so keys start with the
+        // subdirectory (e.g. "syntaqlite/parser.h", "syntaqlite_dialect/arena.h").
+        // csrc/ dirs: keep "csrc" as prefix (e.g. "csrc/parser.c").
         let prefix = if dir_name == "include" { "" } else { dir_name };
-        walk_dir(dir, prefix, &mut path_map)?;
+        walk_dir(dir, prefix, &mut map)?;
     }
-
-    // Build SourceFile entries.
-    let mut files: Vec<SourceFile> = Vec::new();
-    let mut key_to_idx: HashMap<String, usize> = HashMap::new();
-
-    for (include_key, abs_path) in &path_map {
-        let content = fs::read_to_string(abs_path)
-            .map_err(|e| format!("reading {}: {e}", abs_path.display()))?;
-        let kind = classify(include_key);
-        let idx = files.len();
-        key_to_idx.insert(include_key.clone(), idx);
-        files.push(SourceFile {
-            include_key: include_key.clone(),
-            kind,
-            content,
-            deps: Vec::new(),
-        });
-    }
-
-    // Resolve includes.
-    for (i, file) in files.iter_mut().enumerate() {
-        let local_incs = parse_local_includes(&file.content);
-        let mut deps = Vec::new();
-        for inc in local_incs {
-            if let Some(&idx) = key_to_idx.get(&inc)
-                && idx != i
-            {
-                deps.push(idx);
-            }
-            // Unresolved local includes are simply not tracked — they'll be
-            // stripped during emit (assumed to be runtime headers).
-        }
-        file.deps = deps;
-    }
-
-    Ok(FileGraph { files })
+    Ok(map)
 }
 
-fn walk_dir(dir: &Path, prefix: &str, map: &mut BTreeMap<String, PathBuf>) -> Result<(), String> {
+fn walk_dir(dir: &Path, prefix: &str, map: &mut FileMap) -> Result<(), String> {
     let entries =
         fs::read_dir(dir).map_err(|e| format!("reading directory {}: {e}", dir.display()))?;
     for entry in entries {
-        let entry = entry.map_err(|e| format!("reading entry: {e}"))?;
-        let path = entry.path();
+        let path = entry.map_err(|e| format!("reading entry: {e}"))?.path();
         if path.is_dir() {
-            let sub_name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            let sub = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
             let sub_prefix = if prefix.is_empty() {
-                sub_name.to_string()
+                sub.to_string()
             } else {
-                format!("{prefix}/{sub_name}")
+                format!("{prefix}/{sub}")
             };
             walk_dir(&path, &sub_prefix, map)?;
         } else {
@@ -193,30 +155,19 @@ fn walk_dir(dir: &Path, prefix: &str, map: &mut BTreeMap<String, PathBuf>) -> Re
                 } else {
                     format!("{prefix}/{name}")
                 };
-                map.entry(key).or_insert_with(|| path.clone());
+                if let std::collections::btree_map::Entry::Vacant(e) = map.entry(key) {
+                    let content = fs::read_to_string(&path)
+                        .map_err(|e| format!("reading {}: {e}", path.display()))?;
+                    e.insert(content);
+                }
             }
         }
     }
     Ok(())
 }
 
-fn classify(include_key: &str) -> FileKind {
-    if include_key.starts_with("syntaqlite_dialect/") {
-        FileKind::ExtHeader
-    } else if include_key.starts_with("syntaqlite/") || include_key.starts_with("syntaqlite_") {
-        // Matches runtime headers (syntaqlite/types.h) and dialect headers
-        // (syntaqlite_sqlite/sqlite.h, syntaqlite_perfetto/perfetto.h, etc.).
-        // syntaqlite_dialect/ is handled above.
-        FileKind::PublicHeader
-    } else if include_key.ends_with(".h") {
-        FileKind::InternalHeader
-    } else {
-        FileKind::Source
-    }
-}
-
 // ---------------------------------------------------------------------------
-// Step 2: Parse #include directives
+// Include directive parsing
 // ---------------------------------------------------------------------------
 
 enum IncludeDirective<'a> {
@@ -225,9 +176,7 @@ enum IncludeDirective<'a> {
     Other,
 }
 
-/// Parse an include directive and return the include target shape.
-///
-/// Handles both `#include "x"` and `# include "x"` forms.
+/// Parse an `#include` directive, handling the `# include "x"` spaced form.
 fn parse_include_directive(line: &str) -> Option<IncludeDirective<'_>> {
     let trimmed = line.trim_start();
     if !trimmed.starts_with('#') {
@@ -235,7 +184,6 @@ fn parse_include_directive(line: &str) -> Option<IncludeDirective<'_>> {
     }
     let after_hash = trimmed[1..].trim_start();
     let after_kw = after_hash.strip_prefix("include")?.trim_start();
-
     if let Some(rest) = after_kw.strip_prefix('"') {
         let end = rest.find('"')?;
         return Some(IncludeDirective::Quoted(&rest[..end]));
@@ -247,86 +195,10 @@ fn parse_include_directive(line: &str) -> Option<IncludeDirective<'_>> {
     Some(IncludeDirective::Other)
 }
 
-/// Extract `#include "..."` paths from file content.
-fn parse_local_includes(content: &str) -> Vec<String> {
-    let mut local = Vec::new();
-    for line in content.lines() {
-        if let Some(IncludeDirective::Quoted(path)) = parse_include_directive(line) {
-            local.push(path.to_string());
-        }
-    }
-    local
-}
-
 // ---------------------------------------------------------------------------
-// Step 3: Validate graph (cycle check)
+// Emit modes
 // ---------------------------------------------------------------------------
 
-fn validate_graph(graph: &FileGraph) -> Result<(), String> {
-    let n = graph.files.len();
-    let mut visited = vec![0u8; n]; // 0=unvisited, 1=in-progress, 2=done
-    for i in 0..n {
-        if visited[i] == 0 {
-            check_cycle(i, &graph.files, &mut visited)?;
-        }
-    }
-    Ok(())
-}
-
-fn check_cycle(i: usize, files: &[SourceFile], visited: &mut [u8]) -> Result<(), String> {
-    visited[i] = 1;
-    for &dep in &files[i].deps {
-        match visited[dep] {
-            0 => check_cycle(dep, files, visited)?,
-            1 => {
-                return Err(format!(
-                    "include cycle detected: {} -> {}",
-                    files[i].include_key, files[dep].include_key
-                ));
-            }
-            _ => {}
-        }
-    }
-    visited[i] = 2;
-    Ok(())
-}
-
-// ---------------------------------------------------------------------------
-// Step 4: Topological sort
-// ---------------------------------------------------------------------------
-
-fn toposort(indices: &[usize], files: &[SourceFile]) -> Vec<usize> {
-    let index_set: HashSet<usize> = indices.iter().copied().collect();
-    let mut visited: HashSet<usize> = HashSet::new();
-    let mut order: Vec<usize> = Vec::new();
-
-    for &i in indices {
-        toposort_visit(i, files, &index_set, &mut visited, &mut order);
-    }
-    order
-}
-
-fn toposort_visit(
-    i: usize,
-    files: &[SourceFile],
-    set: &HashSet<usize>,
-    visited: &mut HashSet<usize>,
-    order: &mut Vec<usize>,
-) {
-    if !set.contains(&i) || !visited.insert(i) {
-        return;
-    }
-    for &dep in &files[i].deps {
-        toposort_visit(dep, files, set, visited, order);
-    }
-    order.push(i);
-}
-
-// ---------------------------------------------------------------------------
-// Step 5: Emit amalgamated output
-// ---------------------------------------------------------------------------
-
-/// Amalgamation mode — determines output structure and naming.
 enum EmitMode<'a> {
     /// Runtime only: `syntaqlite_runtime.{h,c}` + `syntaqlite_dialect.h`.
     RuntimeOnly,
@@ -340,150 +212,177 @@ enum EmitMode<'a> {
     Full(&'a str),
 }
 
-/// Emit the amalgamated header and source files.
-fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
-    let files = &graph.files;
-    let all_indices: Vec<usize> = (0..files.len()).collect();
+// ---------------------------------------------------------------------------
+// Recursive emitter
+// ---------------------------------------------------------------------------
 
-    // Partition by kind.
-    let mut public_headers: Vec<usize> = Vec::new();
-    let mut ext_headers: Vec<usize> = Vec::new();
-    let mut internal_headers: Vec<usize> = Vec::new();
-    let mut sources: Vec<usize> = Vec::new();
-
-    for &i in &all_indices {
-        match files[i].kind {
-            FileKind::PublicHeader => public_headers.push(i),
-            FileKind::ExtHeader => ext_headers.push(i),
-            FileKind::InternalHeader => internal_headers.push(i),
-            FileKind::Source => sources.push(i),
-        }
-    }
-
-    // Toposort within each class.
-    let public_headers = toposort(&public_headers, files);
-    let ext_headers = toposort(&ext_headers, files);
-    let internal_headers = toposort(&internal_headers, files);
-    let sources = toposort(&sources, files);
-
-    // The set of include keys being inlined (all collected files).
-    let inlined_keys: HashSet<&str> = files.iter().map(|f| f.include_key.as_str()).collect();
-
-    // Determine naming from mode.
-    let (guard, header_filename) = match &mode {
-        EmitMode::DialectOnly { dialect: d, .. } | EmitMode::Full(d) => (
-            format!("SYNTAQLITE_{}_H", d.to_uppercase()),
-            format!("syntaqlite_{d}.h"),
-        ),
-        EmitMode::RuntimeOnly => (
-            "SYNTAQLITE_RUNTIME_H".to_string(),
-            "syntaqlite_runtime.h".to_string(),
-        ),
-    };
-
-    // ── Build .h ──
-    let mut header = String::new();
-    header.push_str("/*\n");
-    header.push_str("** syntaqlite amalgamation — machine generated, do not edit.\n");
-    header.push_str("*/\n");
-    header.push_str(&format!("#ifndef {guard}\n#define {guard}\n\n"));
-
-    // Dialect-only mode: the dialect node headers reference types from the
-    // runtime (e.g. SyntaqliteSourceSpan). Include the runtime header here
-    // so those types are available when the dialect public headers are processed.
-    if let EmitMode::DialectOnly { runtime_header, .. } = &mode {
-        header.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
-        header.push_str(&format!(
-            "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\"\n"
-        ));
-        header.push_str("#endif\n");
-        header.push_str("#include SYNTAQLITE_RUNTIME_HEADER\n\n");
-    }
-
-    for &i in &public_headers {
-        emit_file(&files[i], &inlined_keys, &mut header);
-    }
-
-    header.push_str(&format!("\n#endif  /* {guard} */\n"));
-
-    // ── Build ext header (runtime-only mode) ──
-    let ext_header = if matches!(mode, EmitMode::RuntimeOnly) && !ext_headers.is_empty() {
-        let mut ext = String::new();
-        ext.push_str("/*\n");
-        ext.push_str("** syntaqlite amalgamation — machine generated, do not edit.\n");
-        ext.push_str("** Extension header for dialect authors.\n");
-        ext.push_str("*/\n");
-        ext.push_str("#ifndef SYNTAQLITE_EXT_H\n#define SYNTAQLITE_EXT_H\n\n");
-        ext.push_str("#include \"syntaqlite_runtime.h\"\n\n");
-
-        for &i in &ext_headers {
-            emit_file(&files[i], &inlined_keys, &mut ext);
-        }
-
-        ext.push_str("\n#endif  /* SYNTAQLITE_EXT_H */\n");
-        Some(ext)
-    } else {
-        None
-    };
-
-    // ── Build .c ──
-    let mut source = String::new();
-    source.push_str("/*\n");
-    source.push_str("** syntaqlite amalgamation — machine generated, do not edit.\n");
-    source.push_str("*/\n\n");
-
-    // Dialect-only mode: include external runtime/ext headers.
-    if let EmitMode::DialectOnly {
-        runtime_header,
-        ext_header,
-        ..
-    } = &mode
-    {
-        source.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
-        source.push_str(&format!(
-            "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\"\n"
-        ));
-        source.push_str("#endif\n");
-        source.push_str("#include SYNTAQLITE_RUNTIME_HEADER\n\n");
-        source.push_str("#ifndef SYNTAQLITE_EXT_HEADER\n");
-        source.push_str(&format!("#define SYNTAQLITE_EXT_HEADER \"{ext_header}\"\n"));
-        source.push_str("#endif\n");
-        source.push_str("#include SYNTAQLITE_EXT_HEADER\n\n");
-    }
-    source.push_str(&format!("#include \"{header_filename}\"\n\n"));
-
-    source.push('\n');
-
-    // Full and RuntimeOnly modes: extension headers go into the .c so that
-    // generated sources (dialect.c) can see synq_parse_build etc.
-    if matches!(mode, EmitMode::Full(_) | EmitMode::RuntimeOnly) {
-        for &i in &ext_headers {
-            emit_file(&files[i], &inlined_keys, &mut source);
-        }
-    }
-
-    // Emit dialect dispatch headers before other internal headers so that
-    // the direct-call macros are defined before dialect_dispatch.h is
-    // processed (its fallback is guarded by `#elif !defined(SYNQ_PARSER_ALLOC)`).
-    let (dispatch_headers, other_headers): (Vec<usize>, Vec<usize>) = internal_headers
-        .iter()
-        .partition(|&&i| files[i].include_key.ends_with("_dialect_dispatch.h"));
-    for &i in &dispatch_headers {
-        emit_file(&files[i], &inlined_keys, &mut source);
-    }
-    for &i in &other_headers {
-        emit_file(&files[i], &inlined_keys, &mut source);
-    }
-    for &i in &sources {
-        emit_file(&files[i], &inlined_keys, &mut source);
-    }
-
-    Ok(AmalgamateOutput {
-        header,
-        source,
-        ext_header,
-    })
+/// Which file kinds to recursively expand in the current output section.
+///
+/// When a resolved include doesn't match the expansion rule for the current
+/// section, the include directive is silently dropped — the content either
+/// lives in a different output section or is already provided by an explicit
+/// `#include` at the top of the file.
+///
+/// Unresolved quoted includes that look like runtime paths (see
+/// [`is_runtime_path`]) are always stripped, regardless of section. In
+/// Full/RuntimeOnly modes all runtime files are in the map so there are no
+/// unresolved runtime paths to speak of. In DialectOnly mode the runtime
+/// files are absent from the map and must be stripped — they are provided
+/// by the explicit `#include SYNTAQLITE_RUNTIME_HEADER` at the top.
+#[derive(Clone, Copy)]
+enum Section {
+    /// `.h` output: expand `PublicHeader` includes only.
+    Header,
+    /// Extension `.h` output: expand `ExtHeader` includes only.
+    ExtHeader,
+    /// `.c` output: expand `InternalHeader` and `ExtHeader` includes.
+    /// `PublicHeader` includes are stripped (they live in the `.h` output).
+    Source,
 }
+
+struct Emitter<'a> {
+    files: &'a FileMap,
+    seen: HashSet<String>,
+}
+
+impl<'a> Emitter<'a> {
+    fn new(files: &'a FileMap) -> Self {
+        Self {
+            files,
+            seen: HashSet::new(),
+        }
+    }
+
+    /// Emit one file, recursively expanding local `#include "..."` directives
+    /// according to `section`. Already-seen files are skipped (deduplication).
+    fn emit_file(&mut self, key: &str, out: &mut String, section: Section) {
+        if !self.seen.insert(key.to_string()) {
+            return;
+        }
+        let content = match self.files.get(key) {
+            Some(c) => c.clone(),
+            None => return,
+        };
+
+        out.push_str(&format!("/* ======== begin: {key} ======== */\n"));
+
+        let guard = detect_include_guard(&content);
+        if let Some(ref g) = guard {
+            out.push_str(&format!("#ifndef {g}\n#define {g}\n"));
+        }
+
+        let mut lines: Vec<&str> = content.lines().collect();
+
+        // Strip the trailing `#endif` of the original guard so we can re-emit
+        // our own below (prevents the guard from spanning the end-marker comment).
+        if guard.is_some() {
+            for i in (0..lines.len()).rev() {
+                let t = lines[i].trim();
+                if t.is_empty() {
+                    continue;
+                }
+                if t.starts_with("#endif") {
+                    lines[i] = "";
+                    break;
+                }
+                break;
+            }
+        }
+
+        let mut guard_ifndef_seen = false;
+        let mut guard_define_seen = false;
+
+        for line in &lines {
+            let trimmed = line.trim();
+
+            // Strip the original `#ifndef GUARD` / `#define GUARD` pair — we
+            // re-emitted them above, before the content block.
+            if let Some(ref g) = guard {
+                if !guard_ifndef_seen {
+                    if let Some(rest) = trimmed.strip_prefix("#ifndef")
+                        && rest.trim() == g.as_str()
+                    {
+                        guard_ifndef_seen = true;
+                        continue;
+                    }
+                } else if !guard_define_seen
+                    && let Some(rest) = trimmed.strip_prefix("#define")
+                    && rest.trim() == g.as_str()
+                {
+                    guard_define_seen = true;
+                    continue;
+                }
+            }
+
+            if let Some(directive) = parse_include_directive(trimmed) {
+                match directive {
+                    IncludeDirective::Quoted(path) => {
+                        if self.files.contains_key(path) {
+                            // Resolved: inline it if appropriate for this section,
+                            // otherwise silently drop the directive.
+                            let kind = classify(path);
+                            let should_expand = match section {
+                                Section::Header => kind == FileKind::PublicHeader,
+                                Section::ExtHeader => kind == FileKind::ExtHeader,
+                                Section::Source => {
+                                    matches!(kind, FileKind::InternalHeader | FileKind::ExtHeader)
+                                }
+                            };
+                            if should_expand {
+                                self.emit_file(path, out, section);
+                            }
+                            continue;
+                        }
+                        // Unresolved: strip runtime-style paths in all sections.
+                        // In Full/RuntimeOnly modes these never arise (all runtime
+                        // files are in the map). In DialectOnly mode they must be
+                        // stripped since the runtime header is included explicitly.
+                        if is_runtime_path(path) {
+                            continue;
+                        }
+                    }
+                    // System includes (`<...>`) and macro includes are always kept.
+                    IncludeDirective::System | IncludeDirective::Other => {}
+                }
+            }
+
+            out.push_str(line);
+            out.push('\n');
+        }
+
+        if let Some(ref g) = guard {
+            out.push_str(&format!("#endif  /* {g} */\n"));
+        }
+        out.push_str(&format!("/* ======== end: {key} ======== */\n\n"));
+    }
+
+    /// Emit all files of `kind` (in sorted key order), each recursively.
+    fn emit_kind(&mut self, kind: FileKind, out: &mut String, section: Section) {
+        let keys: Vec<String> = self
+            .files
+            .keys()
+            .filter(|k| classify(k) == kind)
+            .cloned()
+            .collect();
+        for key in keys {
+            self.emit_file(&key, out, section);
+        }
+    }
+}
+
+/// Returns true if `path` is a runtime/dialect-SPI include that should be
+/// stripped in dialect-only source output (provided by `SYNTAQLITE_RUNTIME_HEADER`
+/// / `SYNTAQLITE_EXT_HEADER` at the top of the file instead).
+fn is_runtime_path(path: &str) -> bool {
+    path.starts_with("syntaqlite/")
+        || path.starts_with("syntaqlite_")
+        || path.starts_with("syntaqlite_dialect/")
+        || path.starts_with("csrc/")
+}
+
+// ---------------------------------------------------------------------------
+// Include guard detection
+// ---------------------------------------------------------------------------
 
 /// Detect the include-guard macro of a header file, if any.
 ///
@@ -510,7 +409,6 @@ fn detect_include_guard(content: &str) -> Option<String> {
                 break;
             }
         } else {
-            // Non-preprocessor, non-blank/comment content before two directives → no guard.
             return None;
         }
     }
@@ -518,7 +416,6 @@ fn detect_include_guard(content: &str) -> Option<String> {
     if pp.len() < 2 {
         return None;
     }
-
     let guard = pp[0].strip_prefix("#ifndef")?.trim().to_string();
     if guard.is_empty() {
         return None;
@@ -528,7 +425,7 @@ fn detect_include_guard(content: &str) -> Option<String> {
         return None;
     }
 
-    // Verify there's a trailing `#endif` (with optional comment).
+    // Verify there's a trailing `#endif`.
     for &line in lines.iter().rev() {
         let t = line.trim();
         if t.is_empty() {
@@ -542,107 +439,100 @@ fn detect_include_guard(content: &str) -> Option<String> {
     None
 }
 
-/// Emit a single file's content, stripping include guards and only those quoted
-/// includes that are already inlined or known runtime-style headers.
-///
-/// Include guards from the original file are **retained** (re-emitted) around
-/// the inlined content. This protects against double-definition when the same
-/// file is inlined into multiple amalgamation units (e.g. both
-/// `syntaqlite_runtime.h` and `syntaqlite_perfetto.h` inline `sqlite_node.h`
-/// content — the guard ensures C only sees it once per translation unit).
-fn emit_file(file: &SourceFile, inlined_keys: &HashSet<&str>, out: &mut String) {
-    out.push_str(&format!(
-        "/* ======== begin: {} ======== */\n",
-        file.include_key
-    ));
+// ---------------------------------------------------------------------------
+// Emit
+// ---------------------------------------------------------------------------
 
-    let guard = detect_include_guard(&file.content);
+fn emit(files: &FileMap, mode: EmitMode) -> Result<AmalgamateOutput, String> {
+    let (guard, header_filename) = match &mode {
+        EmitMode::DialectOnly { dialect: d, .. } | EmitMode::Full(d) => (
+            format!("SYNTAQLITE_{}_H", d.to_uppercase()),
+            format!("syntaqlite_{d}.h"),
+        ),
+        EmitMode::RuntimeOnly => (
+            "SYNTAQLITE_RUNTIME_H".to_string(),
+            "syntaqlite_runtime.h".to_string(),
+        ),
+    };
 
-    // Re-emit the include guard around the inlined content so that if the
-    // same logical file appears in more than one amalgamation (e.g. runtime
-    // and dialect-only), the C preprocessor skips the second occurrence.
-    if let Some(ref g) = guard {
-        out.push_str(&format!("#ifndef {g}\n#define {g}\n"));
+    // ── Build .h ──
+    let mut header = String::new();
+    header.push_str("/*\n");
+    header.push_str("** syntaqlite amalgamation — machine generated, do not edit.\n");
+    header.push_str("*/\n");
+    header.push_str(&format!("#ifndef {guard}\n#define {guard}\n\n"));
+
+    if let EmitMode::DialectOnly { runtime_header, .. } = &mode {
+        header.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
+        header.push_str(&format!(
+            "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\"\n"
+        ));
+        header.push_str("#endif\n");
+        header.push_str("#include SYNTAQLITE_RUNTIME_HEADER\n\n");
     }
 
-    let mut guard_ifndef_seen = false;
-    let mut guard_define_seen = false;
-    let mut lines: Vec<&str> = file.content.lines().collect();
+    let mut h_emitter = Emitter::new(files);
+    h_emitter.emit_kind(FileKind::PublicHeader, &mut header, Section::Header);
+    header.push_str(&format!("\n#endif  /* {guard} */\n"));
 
-    // Strip the trailing `#endif` of the original guard (we'll re-emit it).
-    if guard.is_some() {
-        for i in (0..lines.len()).rev() {
-            let t = lines[i].trim();
-            if t.is_empty() {
-                continue;
-            }
-            if t.starts_with("#endif") {
-                lines[i] = "";
-                break;
-            }
-            break;
+    // ── Build ext header (runtime-only mode) ──
+    let ext_header = if matches!(mode, EmitMode::RuntimeOnly) {
+        let has_ext = files.keys().any(|k| classify(k) == FileKind::ExtHeader);
+        if has_ext {
+            let mut ext = String::new();
+            ext.push_str("/*\n");
+            ext.push_str("** syntaqlite amalgamation — machine generated, do not edit.\n");
+            ext.push_str("** Extension header for dialect authors.\n");
+            ext.push_str("*/\n");
+            ext.push_str("#ifndef SYNTAQLITE_EXT_H\n#define SYNTAQLITE_EXT_H\n\n");
+            ext.push_str("#include \"syntaqlite_runtime.h\"\n\n");
+            let mut e_emitter = Emitter::new(files);
+            e_emitter.emit_kind(FileKind::ExtHeader, &mut ext, Section::ExtHeader);
+            ext.push_str("\n#endif  /* SYNTAQLITE_EXT_H */\n");
+            Some(ext)
+        } else {
+            None
         }
+    } else {
+        None
+    };
+
+    // ── Build .c ──
+
+    let mut source = String::new();
+    source.push_str("/*\n");
+    source.push_str("** syntaqlite amalgamation — machine generated, do not edit.\n");
+    source.push_str("*/\n\n");
+
+    if let EmitMode::DialectOnly {
+        runtime_header,
+        ext_header,
+        ..
+    } = &mode
+    {
+        source.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
+        source.push_str(&format!(
+            "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\"\n"
+        ));
+        source.push_str("#endif\n");
+        source.push_str("#include SYNTAQLITE_RUNTIME_HEADER\n\n");
+        source.push_str("#ifndef SYNTAQLITE_EXT_HEADER\n");
+        source.push_str(&format!("#define SYNTAQLITE_EXT_HEADER \"{ext_header}\"\n"));
+        source.push_str("#endif\n");
+        source.push_str("#include SYNTAQLITE_EXT_HEADER\n\n");
     }
+    source.push_str(&format!("#include \"{header_filename}\"\n\n"));
 
-    for line in &lines {
-        let trimmed = line.trim();
+    // Emit sources. They recursively pull in their internal and ext-header
+    // dependencies in encounter order (driven by the include graph).
+    let mut s_emitter = Emitter::new(files);
+    s_emitter.emit_kind(FileKind::Source, &mut source, Section::Source);
 
-        // Strip the original `#ifndef GUARD` / `#define GUARD` pair (we
-        // re-emitted them above, before the content).
-        if let Some(ref g) = guard {
-            if !guard_ifndef_seen {
-                if let Some(rest) = trimmed.strip_prefix("#ifndef")
-                    && rest.trim() == g
-                {
-                    guard_ifndef_seen = true;
-                    continue;
-                }
-            } else if !guard_define_seen
-                && let Some(rest) = trimmed.strip_prefix("#define")
-                && rest.trim() == g
-            {
-                guard_define_seen = true;
-                continue;
-            }
-        }
-
-        if let Some(include) = parse_include_directive(trimmed) {
-            match include {
-                IncludeDirective::Quoted(path) => {
-                    if should_strip_quoted_include(path, inlined_keys) {
-                        continue;
-                    }
-                }
-                IncludeDirective::System | IncludeDirective::Other => {
-                    // System and macro includes are preserved.
-                }
-            }
-        }
-
-        out.push_str(line);
-        out.push('\n');
-    }
-
-    if let Some(ref g) = guard {
-        out.push_str(&format!("#endif  /* {g} */\n"));
-    }
-
-    out.push_str(&format!(
-        "/* ======== end: {} ======== */\n\n",
-        file.include_key
-    ));
-}
-
-fn should_strip_quoted_include(path: &str, inlined_keys: &HashSet<&str>) -> bool {
-    if inlined_keys.contains(path) {
-        return true;
-    }
-    // Dialect-only amalgamations intentionally drop runtime-supplied local
-    // headers and rely on SYNTAQLITE_RUNTIME_HEADER / SYNTAQLITE_EXT_HEADER.
-    path.starts_with("syntaqlite/")
-        || path.starts_with("syntaqlite_")
-        || path.starts_with("syntaqlite_dialect/")
-        || path.starts_with("csrc/")
+    Ok(AmalgamateOutput {
+        header,
+        source,
+        ext_header,
+    })
 }
 
 #[cfg(test)]
@@ -668,11 +558,10 @@ mod tests {
     }
 
     #[test]
-    fn strip_quoted_include_only_for_inlined_or_runtime_paths() {
-        let mut inlined = HashSet::new();
-        inlined.insert("foo/bar.h");
-        assert!(should_strip_quoted_include("foo/bar.h", &inlined));
-        assert!(should_strip_quoted_include("syntaqlite/parser.h", &inlined));
-        assert!(!should_strip_quoted_include("vendor/custom.h", &inlined));
+    fn is_runtime_path_identifies_known_prefixes() {
+        assert!(is_runtime_path("syntaqlite/parser.h"));
+        assert!(is_runtime_path("syntaqlite_dialect/arena.h"));
+        assert!(is_runtime_path("csrc/dialect_dispatch.h"));
+        assert!(!is_runtime_path("vendor/custom.h"));
     }
 }

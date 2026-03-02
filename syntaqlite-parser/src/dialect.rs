@@ -284,9 +284,11 @@ pub mod ffi {
 // Re-export the C types (excluding the `Dialect` C struct to avoid
 // naming collision with the safe Rust wrapper below).
 pub use ffi::{
-    AvailabilityRuleC, CflagInfo, Cflags, DialectConfig, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS,
-    FIELD_NODE_ID, FIELD_SPAN, FieldMeta, FunctionEntryC, FunctionInfoC, SchemaContributionC,
+    DialectConfig, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldMeta,
 };
+// Re-export the C `Dialect` struct under a distinct name for external callers
+// that need to declare FFI functions returning a raw dialect pointer.
+pub use ffi::Dialect as FfiDialect;
 
 use crate::catalog::{AvailabilityRule, FunctionCategory, FunctionEntry, FunctionInfo};
 use crate::nodes::{FieldVal, Fields, NodeId, SourceSpan};
@@ -300,7 +302,7 @@ use crate::nodes::{FieldVal, Fields, NodeId, SourceSpan};
 /// freely through parser, formatter, and validator internals.
 #[derive(Clone, Copy)]
 pub struct Dialect<'d> {
-    pub raw: &'d ffi::Dialect,
+    pub(crate) raw: &'d ffi::Dialect,
 }
 
 impl<'d> Dialect<'d> {

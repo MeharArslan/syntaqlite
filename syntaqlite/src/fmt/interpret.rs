@@ -1,9 +1,9 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use crate::dialect::Dialect;
-use syntaqlite_parser::nodes::{FieldVal, Fields, NodeId};
-use syntaqlite_parser::session::RawNodeReader;
+use syntaqlite_parser::Dialect;
+use syntaqlite_parser::RawNodeReader;
+use syntaqlite_parser::{FieldVal, Fields, NodeId};
 
 use super::bytecode::opcodes;
 use super::comment::{CommentCtx, DrainResult};
@@ -18,7 +18,7 @@ pub(crate) struct FmtCtx<'a> {
 }
 
 impl<'a> FmtCtx<'a> {
-    pub fn source(&self) -> &'a str {
+    pub(crate) fn source(&self) -> &'a str {
         self.reader.source()
     }
 }
@@ -26,12 +26,12 @@ impl<'a> FmtCtx<'a> {
 /// Reusable scratch buffers for the iterative interpret loop, allocated
 /// once per `Formatter`. The `gn_stack` is shared across all nodes within
 /// a single format call.
-pub(crate) struct InterpretScratch {
+pub(super) struct InterpretScratch {
     gn_stack: Vec<GNFrame>,
 }
 
 impl InterpretScratch {
-    pub fn new() -> Self {
+    pub(super) fn new() -> Self {
         InterpretScratch {
             gn_stack: Vec::new(),
         }
@@ -45,7 +45,7 @@ impl InterpretScratch {
 ///
 /// Stores `node_id` instead of the full `Fields<'a>` array (392 bytes)
 /// to keep the frame small (~80 bytes). Fields are cheaply re-extracted
-/// via `cursor.node_ptr(node_id)` when the parent frame is restored.
+/// via `reader.extract_fields(node_id, dialect)` when the parent frame is restored.
 struct CallFrame<'a> {
     ops: &'a [u8],
     ops_count: usize,
@@ -75,7 +75,7 @@ enum ReturnAction {
 /// recursion. Each `Child(idx)` or `ChildItem` op pushes a `CallFrame`
 /// and sets up the child's execution state; when a node finishes
 /// (`ip >= ops_count`), the parent's state is restored from the stack.
-pub(crate) fn interpret_node<'a>(
+pub(super) fn interpret_node<'a>(
     ctx: &FmtCtx<'a>,
     root_id: NodeId,
     consumed_regions: &mut [bool],
@@ -87,15 +87,14 @@ pub(crate) fn interpret_node<'a>(
     }
 
     // Look up root node.
-    let Some((ptr, tag)) = ctx.reader.node_ptr(root_id) else {
+    let source = ctx.source();
+    let Some((tag, fields)) = ctx.reader.extract_fields(root_id, &ctx.dialect) else {
         return NIL_DOC;
     };
     let Some((ops_bytes, ops_len)) = ctx.dialect.fmt_dispatch(tag) else {
         return NIL_DOC;
     };
     let children = ctx.reader.list_children(root_id, &ctx.dialect);
-    let source = ctx.source();
-    let fields = super::formatter::extract_fields(&ctx.dialect, ptr, tag, source);
 
     // Local stacks with correct lifetime 'a — no transmute needed.
     let mut call_stack: Vec<CallFrame<'a>> = Vec::new();
@@ -166,8 +165,11 @@ pub(crate) fn interpret_node<'a>(
             ops_count = frame.ops_count;
             ip = frame.ip;
             // Re-extract fields from the saved node_id — cheap lookups.
-            let (rptr, rtag) = ctx.reader.node_ptr(cur_node_id).unwrap();
-            fields = super::formatter::extract_fields(&ctx.dialect, rptr, rtag, source);
+            fields = ctx
+                .reader
+                .extract_fields(cur_node_id, &ctx.dialect)
+                .unwrap()
+                .1;
             list_children = frame.list_children;
             running = frame.running;
             pending = frame.pending;
@@ -252,13 +254,12 @@ pub(crate) fn interpret_node<'a>(
                     }
 
                     // "Call" child: push parent frame, set up child state.
-                    if let Some((cptr, ctag)) = ctx.reader.node_ptr(child_id)
+                    if let Some((ctag, child_fields)) =
+                        ctx.reader.extract_fields(child_id, &ctx.dialect)
                         && let Some((child_ops_bytes, child_ops_len)) =
                             ctx.dialect.fmt_dispatch(ctag)
                     {
                         let child_children = ctx.reader.list_children(child_id, &ctx.dialect);
-                        let child_fields =
-                            super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
                         push_call_frame!(
                             child_id,
                             child_ops_bytes,
@@ -405,12 +406,11 @@ pub(crate) fn interpret_node<'a>(
                 }
 
                 // "Call" child: push parent frame, set up child state.
-                if let Some((cptr, ctag)) = ctx.reader.node_ptr(child_id)
+                if let Some((ctag, child_fields)) =
+                    ctx.reader.extract_fields(child_id, &ctx.dialect)
                     && let Some((child_ops_bytes, child_ops_len)) = ctx.dialect.fmt_dispatch(ctag)
                 {
                     let child_children = ctx.reader.list_children(child_id, &ctx.dialect);
-                    let child_fields =
-                        super::formatter::extract_fields(&ctx.dialect, cptr, ctag, source);
                     push_call_frame!(
                         child_id,
                         child_ops_bytes,
@@ -666,7 +666,7 @@ enum FmtOp {
 impl FmtOp {
     /// Decode a raw opcode tuple into a typed `FmtOp`.
     #[inline(always)]
-    pub const fn decode(opcode: u8, a: u8, b: u16, c: u16) -> Self {
+    pub(crate) const fn decode(opcode: u8, a: u8, b: u16, c: u16) -> Self {
         match opcode {
             opcodes::KEYWORD => FmtOp::Keyword(b),
             opcodes::SPAN => FmtOp::Span(a as u16),

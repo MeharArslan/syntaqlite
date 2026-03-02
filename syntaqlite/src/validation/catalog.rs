@@ -1,10 +1,10 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_parser::dialect::ffi::DialectConfig;
+use syntaqlite_parser::DialectConfig;
 
 use super::types::{FunctionDef, SessionContext, expand_function_info};
-use crate::dialect::Dialect;
+use syntaqlite_parser::Dialect;
 
 /// Resolved function catalog for a dialect configuration.
 ///
@@ -24,17 +24,16 @@ impl FunctionCatalog {
     /// merge in user-defined functions from a session context.
     pub fn for_dialect(dialect: &Dialect<'_>, config: &DialectConfig) -> Self {
         #[cfg(feature = "sqlite")]
-        let mut functions: Vec<FunctionDef> =
-            syntaqlite_parser::sqlite::available_functions(config)
-                .into_iter()
-                .flat_map(|info| expand_function_info(info))
-                .collect();
+        let mut functions: Vec<FunctionDef> = syntaqlite_parser::available_functions(config)
+            .into_iter()
+            .flat_map(|info| expand_function_info(info))
+            .collect();
 
         #[cfg(not(feature = "sqlite"))]
         let mut functions: Vec<FunctionDef> = Vec::new();
 
         for ext in dialect.function_extensions() {
-            if syntaqlite_parser::catalog::is_available(&ext, config) {
+            if syntaqlite_parser::is_function_available(&ext, config) {
                 functions.extend(expand_function_info(&ext.info));
             }
         }

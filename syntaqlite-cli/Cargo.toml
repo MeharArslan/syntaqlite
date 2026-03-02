@@ -27,5 +27,6 @@ glob = { version = "0.3", optional = true }
 libloading = { version = "0.8", optional = true }
 serde_json = "1"
 syntaqlite = { path = "../syntaqlite", optional = true, features = ["fmt", "lsp"] }
+syntaqlite-parser = { path = "../syntaqlite-parser" }
 syntaqlite-buildtools = { path = "../syntaqlite-buildtools", optional = true, default-features = false }
 tempfile = "3.8"

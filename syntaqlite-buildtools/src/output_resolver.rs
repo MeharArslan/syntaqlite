@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use crate::codegen_api::{CodegenArtifacts, DialectNaming};
-use crate::dialect_codegen::DialectCIncludes;
+use crate::dialect_codegen::c_dialect::DialectCIncludes;
 
 /// A C header artifact: where to write it and what `#include "..."` string references it.
 pub struct CHeader {

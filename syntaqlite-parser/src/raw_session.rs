@@ -4,17 +4,17 @@
 use std::ffi::{CStr, c_int};
 use std::ptr::NonNull;
 
-use crate::dialect::Dialect;
-use syntaqlite_parser::dialect::ffi::DialectConfig;
-use syntaqlite_parser::nodes::NodeId;
-use syntaqlite_parser::parser::{
-    Comment, Parser, TokenPos, syntaqlite_create_parser_with_dialect, syntaqlite_parser_comments,
-    syntaqlite_parser_destroy, syntaqlite_parser_next, syntaqlite_parser_reset,
-    syntaqlite_parser_set_collect_tokens, syntaqlite_parser_set_dialect_config,
-    syntaqlite_parser_set_trace,
+use crate::Dialect;
+use crate::DialectConfig;
+use crate::NodeId;
+use crate::parser::{
+    syntaqlite_create_parser_with_dialect, syntaqlite_parser_comments, syntaqlite_parser_destroy,
+    syntaqlite_parser_next, syntaqlite_parser_reset, syntaqlite_parser_set_collect_tokens,
+    syntaqlite_parser_set_dialect_config, syntaqlite_parser_set_trace,
 };
+use crate::{Comment, Parser, TokenPos};
 
-use syntaqlite_parser::session::{ParseError, RawNodeReader};
+use crate::{NodeRef, ParseError, RawNodeReader};
 
 /// Owns a parser instance. Reusable across inputs via `parse()`.
 pub struct RawParser<'d> {
@@ -38,12 +38,6 @@ pub struct RawParser<'d> {
 unsafe impl Send for RawParser<'_> {}
 
 impl<'d> RawParser<'d> {
-    /// Create a parser for the built-in SQLite dialect with default configuration.
-    #[cfg(feature = "sqlite")]
-    pub fn new() -> RawParser<'static> {
-        RawParser::builder(crate::dialect::sqlite()).build()
-    }
-
     /// Create a builder for a parser bound to the given dialect.
     pub fn builder(dialect: Dialect<'d>) -> RawParserBuilder<'d> {
         RawParserBuilder {
@@ -85,13 +79,6 @@ impl<'d> RawParser<'d> {
             last_saw_subquery: false,
             last_saw_update_delete_limit: false,
         }
-    }
-}
-
-#[cfg(feature = "sqlite")]
-impl Default for RawParser<'static> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -176,7 +163,7 @@ impl<'a> RawParserBuilder<'a> {
 /// Internal state shared between cursor implementations (`RawStatementCursor`,
 /// `RawIncrementalCursor`). Holds the node reader, source pointer tracking,
 /// and dialect handle.
-pub(crate) struct CursorState<'a> {
+pub struct CursorState<'a> {
     pub(crate) reader: RawNodeReader<'a>,
     /// The pointer that the C parser uses as its source base. This may differ
     /// from `source.as_ptr()` when `parse()` copies into an internal buffer.
@@ -266,12 +253,6 @@ impl<'a> CursorState<'a> {
         // for the lifetime of &self (until the next reset/destroy, which need &mut).
         unsafe { ffi_slice(self.reader.raw(), syntaqlite_parser_comments) }
     }
-
-    /// Dump an AST node tree as indented text. Uses C-side metadata (field
-    /// names, display strings) so no Rust-side string tables are needed.
-    pub(crate) fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
-        self.reader.dump_node(id, out, indent)
-    }
 }
 
 /// Build a slice from an FFI function that returns a pointer and writes a count.
@@ -290,222 +271,6 @@ unsafe fn ffi_slice<'a, T>(
         return &[];
     }
     unsafe { std::slice::from_raw_parts(ptr, count as usize) }
-}
-
-// ── NodeRef ─────────────────────────────────────────────────────────────────
-
-/// A grammar-agnostic handle to a parsed AST node.
-///
-/// Bundles a node's arena ID with the reader and dialect needed to
-/// inspect it, enabling ergonomic methods like `name()`, `children()`,
-/// and `dump_json()` without threading three arguments everywhere.
-#[derive(Clone, Copy)]
-pub struct NodeRef<'a> {
-    id: NodeId,
-    reader: RawNodeReader<'a>,
-    dialect: Dialect<'a>,
-}
-
-impl std::fmt::Debug for NodeRef<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("NodeRef").field("id", &self.id).finish()
-    }
-}
-
-impl<'a> NodeRef<'a> {
-    /// Create a `NodeRef` from its constituent parts.
-    pub fn new(id: NodeId, reader: RawNodeReader<'a>, dialect: Dialect<'a>) -> Self {
-        NodeRef {
-            id,
-            reader,
-            dialect,
-        }
-    }
-
-    /// Raw arena ID (escape hatch for FFI/codegen).
-    pub fn id(&self) -> NodeId {
-        self.id
-    }
-
-    /// Reader for typed access via `DialectNodeType`.
-    pub fn reader(&self) -> RawNodeReader<'a> {
-        self.reader
-    }
-
-    /// Dialect handle.
-    pub fn dialect(&self) -> Dialect<'a> {
-        self.dialect
-    }
-
-    /// Node type tag, or `None` if null/invalid.
-    pub fn tag(&self) -> Option<u32> {
-        self.reader.node_tag(self.id)
-    }
-
-    /// Node type name (e.g. `"SelectStmt"`).
-    pub fn name(&self) -> &str {
-        match self.tag() {
-            Some(tag) => self.dialect.node_name(tag),
-            None => "",
-        }
-    }
-
-    /// Whether this is a list node.
-    pub fn is_list(&self) -> bool {
-        match self.tag() {
-            Some(tag) => self.dialect.is_list(tag),
-            None => false,
-        }
-    }
-
-    /// Child nodes: list children (for lists) or node-typed fields (for nodes).
-    pub fn children(&self) -> Vec<NodeRef<'a>> {
-        self.reader
-            .child_node_ids(self.id, &self.dialect)
-            .into_iter()
-            .map(|child_id| NodeRef {
-                id: child_id,
-                reader: self.reader,
-                dialect: self.dialect,
-            })
-            .collect()
-    }
-
-    /// Raw list children slice (for list nodes only).
-    pub fn list_children(&self) -> Option<&'a [NodeId]> {
-        self.reader.list_children(self.id, &self.dialect)
-    }
-
-    /// Dialect field metadata for this node type.
-    pub fn field_meta(&self) -> &[syntaqlite_parser::dialect::ffi::FieldMeta] {
-        match self.tag() {
-            Some(tag) => self.dialect.field_meta(tag),
-            None => &[],
-        }
-    }
-
-    /// Extract typed field values.
-    pub fn extract_fields(&self) -> Option<(u32, syntaqlite_parser::nodes::Fields<'a>)> {
-        self.reader.extract_fields(self.id, &self.dialect)
-    }
-
-    /// Dump as indented text (delegates to existing C-side `dump_node`).
-    pub fn dump(&self, out: &mut String, indent: usize) {
-        self.reader.dump_node(self.id, out, indent)
-    }
-
-    /// Dump as JSON matching the WASM AST JSON format.
-    #[cfg(feature = "json")]
-    pub fn dump_json(&self, out: &mut String) {
-        let value = dump_json_id(self.id, self.reader, self.dialect);
-        out.push_str(&serde_json::to_string(&value).expect("AST dump serialization failed"));
-    }
-
-    /// Resolve as a typed AST node.
-    pub fn as_typed<T: syntaqlite_parser::dialect_traits::DialectNodeType<'a>>(self) -> Option<T> {
-        T::from_arena(self.reader, self.id)
-    }
-
-    /// The source text bound to this node's reader.
-    pub fn source(&self) -> &'a str {
-        self.reader.source()
-    }
-}
-
-// ── JSON dump helpers ────────────────────────────────────────────────────────
-
-/// Recursive JSON dump for a single node ID, returning a `serde_json::Value`.
-#[cfg(feature = "json")]
-fn dump_json_id(id: NodeId, reader: RawNodeReader<'_>, dialect: Dialect<'_>) -> serde_json::Value {
-    if id.is_null() {
-        return serde_json::Value::Null;
-    }
-    let Some(tag) = reader.node_tag(id) else {
-        return serde_json::Value::Null;
-    };
-
-    let name = dialect.node_name(tag);
-
-    if dialect.is_list(tag) {
-        let children = reader.list_children(id, &dialect).unwrap_or(&[]);
-        let child_values: Vec<serde_json::Value> = children
-            .iter()
-            .map(|&child_id| {
-                if child_id.is_null() || reader.node_tag(child_id).is_none() {
-                    serde_json::json!({"type": "node", "name": "null", "fields": []})
-                } else {
-                    dump_json_id(child_id, reader, dialect)
-                }
-            })
-            .collect();
-        return serde_json::json!({
-            "type": "list",
-            "name": name,
-            "count": children.len(),
-            "children": child_values,
-        });
-    }
-
-    let meta = dialect.field_meta(tag);
-    let Some((_, fields)) = reader.extract_fields(id, &dialect) else {
-        return serde_json::Value::Null;
-    };
-
-    let field_values: Vec<serde_json::Value> = meta
-        .iter()
-        .zip(fields.iter())
-        .map(|(m, fv)| {
-            // SAFETY: m.name is a valid NUL-terminated C string from codegen.
-            let label = unsafe { m.name_str() };
-            match fv {
-                syntaqlite_parser::nodes::FieldVal::NodeId(child_id) => {
-                    let child = if child_id.is_null() {
-                        serde_json::Value::Null
-                    } else {
-                        dump_json_id(*child_id, reader, dialect)
-                    };
-                    serde_json::json!({"kind": "node", "label": label, "child": child})
-                }
-                syntaqlite_parser::nodes::FieldVal::Span(text, _) => {
-                    let value = if text.is_empty() {
-                        serde_json::Value::Null
-                    } else {
-                        serde_json::Value::String(text.to_string())
-                    };
-                    serde_json::json!({"kind": "span", "label": label, "value": value})
-                }
-                syntaqlite_parser::nodes::FieldVal::Bool(val) => {
-                    serde_json::json!({"kind": "bool", "label": label, "value": val})
-                }
-                syntaqlite_parser::nodes::FieldVal::Enum(val) => {
-                    // SAFETY: m.display is a valid C array from codegen.
-                    let value = unsafe { m.display_name(*val as usize) }
-                        .map(|s| serde_json::Value::String(s.to_string()))
-                        .unwrap_or(serde_json::Value::Null);
-                    serde_json::json!({"kind": "enum", "label": label, "value": value})
-                }
-                syntaqlite_parser::nodes::FieldVal::Flags(val) => {
-                    let flag_values: Vec<serde_json::Value> = (0..8u8)
-                        .filter(|&bit| val & (1 << bit) != 0)
-                        .map(|bit| {
-                            // SAFETY: m.display is a valid C array from codegen.
-                            match unsafe { m.display_name(bit as usize) } {
-                                Some(s) => serde_json::Value::String(s.to_string()),
-                                None => serde_json::json!(1u32 << bit),
-                            }
-                        })
-                        .collect();
-                    serde_json::json!({"kind": "flags", "label": label, "value": flag_values})
-                }
-            }
-        })
-        .collect();
-
-    serde_json::json!({
-        "type": "node",
-        "name": name,
-        "fields": field_values,
-    })
 }
 
 // ── BaseStatementCursor (high-level) ────────────────────────────────────────
@@ -577,22 +342,10 @@ impl<'a> RawStatementCursor<'a> {
         if has_root {
             self.last_saw_subquery = result.saw_subquery != 0;
             self.last_saw_update_delete_limit = result.saw_update_delete_limit != 0;
-            return Some(Ok(NodeRef {
-                id,
-                reader: self.state.reader,
-                dialect: self.state.dialect,
-            }));
+            return Some(Ok(NodeRef::new(id, self.state.reader, self.state.dialect)));
         }
 
         None
-    }
-
-    /// Returns `true` if the last successfully parsed statement contained a
-    /// subquery (e.g. `SELECT * FROM (SELECT 1)`, `EXISTS (SELECT ...)`,
-    /// or `IN (SELECT ...)`). Reset before each statement.
-    #[cfg(test)]
-    pub(crate) fn saw_subquery(&self) -> bool {
-        self.last_saw_subquery
     }
 
     /// Returns `true` if the last successfully parsed DELETE or UPDATE statement
@@ -603,13 +356,6 @@ impl<'a> RawStatementCursor<'a> {
     pub(crate) fn saw_update_delete_limit(&self) -> bool {
         self.last_saw_update_delete_limit
     }
-
-    /// Access the underlying `CursorState` for read-only operations.
-    pub(crate) fn state(&self) -> &CursorState<'a> {
-        &self.state
-    }
-
-    // Delegate read-only methods for convenience
 
     /// Get a reference to the embedded `NodeReader`.
     pub fn reader(&self) -> RawNodeReader<'a> {
@@ -632,19 +378,10 @@ impl<'a> RawStatementCursor<'a> {
         self.state.comments()
     }
 
-    /// Dump an AST node tree as indented text.
-    pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
-        self.state.dump_node(id, out, indent)
-    }
-
     /// Wrap a `NodeId` (e.g. from a `ParseError::root`) into a `NodeRef`
     /// using this cursor's reader and dialect.
     pub fn node_ref(&self, id: NodeId) -> NodeRef<'a> {
-        NodeRef {
-            id,
-            reader: self.state.reader,
-            dialect: self.state.dialect,
-        }
+        NodeRef::new(id, self.state.reader, self.state.dialect)
     }
 }
 
@@ -653,87 +390,5 @@ impl<'a> Iterator for RawStatementCursor<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_statement()
-    }
-}
-
-#[cfg(test)]
-#[cfg(feature = "sqlite")]
-mod tests {
-    use super::*;
-
-    fn parse_saw_subquery(sql: &str) -> (bool, bool) {
-        let mut parser = RawParser::new();
-        let mut cursor = parser.parse(sql);
-        let ok = matches!(cursor.next_statement(), Some(Ok(_)));
-        let saw = cursor.saw_subquery();
-        (ok, saw)
-    }
-
-    #[test]
-    fn node_ref_accessors() {
-        let mut parser = RawParser::new();
-        let mut cursor = parser.parse("SELECT 1;");
-        let node = cursor.next_statement().unwrap().unwrap();
-        assert!(!node.name().is_empty());
-        assert!(node.tag().is_some());
-        assert!(!node.is_list());
-        assert!(!node.id().is_null());
-    }
-
-    #[cfg(feature = "json")]
-    #[test]
-    fn node_ref_dump_json_produces_valid_json() {
-        let mut parser = RawParser::new();
-        let mut cursor = parser.parse("SELECT 1;");
-        let node = cursor.next_statement().unwrap().unwrap();
-        let mut out = String::new();
-        node.dump_json(&mut out);
-        assert!(
-            out.contains("\"type\":\"node\""),
-            "expected node type in JSON"
-        );
-        assert!(out.ends_with('}'));
-    }
-
-    #[test]
-    fn subquery_detected_in_from() {
-        let (ok, saw) = parse_saw_subquery("SELECT * FROM (SELECT 1);");
-        assert!(ok, "Should parse successfully");
-        assert!(saw, "Should detect subquery in FROM clause");
-    }
-
-    #[test]
-    fn subquery_detected_in_exists() {
-        let (ok, saw) = parse_saw_subquery("SELECT EXISTS (SELECT 1);");
-        assert!(ok, "Should parse successfully");
-        assert!(saw, "Should detect subquery in EXISTS expression");
-    }
-
-    #[test]
-    fn subquery_detected_in_scalar_subquery() {
-        let (ok, saw) = parse_saw_subquery("SELECT (SELECT 1);");
-        assert!(ok, "Should parse successfully");
-        assert!(saw, "Should detect scalar subquery expression");
-    }
-
-    #[test]
-    fn subquery_detected_in_in_select() {
-        let (ok, saw) = parse_saw_subquery("SELECT 1 WHERE 1 IN (SELECT 2);");
-        assert!(ok, "Should parse successfully");
-        assert!(saw, "Should detect subquery in IN (SELECT ...) expression");
-    }
-
-    #[test]
-    fn no_subquery_in_simple_select() {
-        let (ok, saw) = parse_saw_subquery("SELECT 1;");
-        assert!(ok, "Should parse successfully");
-        assert!(!saw, "Simple SELECT should NOT set saw_subquery");
-    }
-
-    #[test]
-    fn no_subquery_in_in_list() {
-        let (ok, saw) = parse_saw_subquery("SELECT 1 WHERE 1 IN (1, 2, 3);");
-        assert!(ok, "Should parse successfully");
-        assert!(!saw, "IN with literal list should NOT set saw_subquery");
     }
 }
