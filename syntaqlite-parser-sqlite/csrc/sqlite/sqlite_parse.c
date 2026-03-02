@@ -26,7 +26,6 @@
 #include <string.h>
 
 #include "csrc/sqlite/dialect_builder.h"
-#include "syntaqlite/tokens.h"
 #include "syntaqlite/types.h"
 #include "syntaqlite_dialect/ast_builder.h"
 #include "syntaqlite_dialect/dialect_macros.h"
@@ -4985,6 +4984,8 @@ typedef struct yyParser yyParser;
 #include <assert.h>
 #ifndef NDEBUG
 #include <stdio.h>
+
+#include "syntaqlite_sqlite/sqlite_tokens.h"
 
 #include "syntaqlite_dialect/dialect_macros.h"
 static FILE* yyTraceFILE = 0;

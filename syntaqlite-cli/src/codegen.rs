@@ -21,7 +21,6 @@ fn write_file(path: &Path, content: impl AsRef<[u8]>) -> Result<(), String> {
 const SQLITE_DIALECT_CRATE: &str = "syntaqlite-parser-sqlite";
 const SQLITE_SHARED_CRATE: &str = "syntaqlite-parser";
 
-
 /// Output type for the dialect codegen command.
 #[cfg(feature = "codegen-dialect")]
 #[derive(clap::ValueEnum, Clone)]
@@ -273,7 +272,6 @@ fn cmd_generate_sqlite(actions_dir: Option<&str>, nodes_dir: Option<&str>) -> Re
         SQLITE_SHARED_CRATE,
         dialect.name(),
         &dialect.include_dir_name(),
-        None, // wrappers.rs no longer generated for internal sqlite crate
     );
     // ast_traits_rs is written separately by codegen-sqlite-parser
     layout.ast_traits_rs = None;
@@ -291,7 +289,6 @@ fn cmd_generate_sqlite(actions_dir: Option<&str>, nodes_dir: Option<&str>) -> Re
             base_synq_files: None,
             open_for_extension: true,
             dialect_c_includes: layout.c_includes(),
-            internal_wrappers: true,
         };
         generate_codegen_artifacts(&request)?
     };
@@ -492,7 +489,6 @@ fn generate_ast_traits(
         SQLITE_SHARED_CRATE,
         dialect.name(),
         &dialect.include_dir_name(),
-        None,
     );
 
     let no_keywords: Vec<String> = Vec::new();
@@ -507,7 +503,6 @@ fn generate_ast_traits(
         base_synq_files: None,
         open_for_extension: true,
         dialect_c_includes: layout.c_includes(),
-        internal_wrappers: true,
     };
 
     let artifacts = generate_codegen_artifacts(&request)?;

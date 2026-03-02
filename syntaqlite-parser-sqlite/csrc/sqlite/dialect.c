@@ -11,7 +11,7 @@
 #include "csrc/sqlite/sqlite_parse.h"
 #include "csrc/sqlite/sqlite_tokenize.h"
 #include "syntaqlite/parser.h"
-#include "syntaqlite/tokens.h"
+#include "syntaqlite_sqlite/sqlite_tokens.h"
 
 extern const char synq_sqlite_zKWText[];
 extern const unsigned short int synq_sqlite_aKWOffset[];

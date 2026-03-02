@@ -12,8 +12,7 @@ use crate::dialect_codegen::c_dialect::{
 use crate::dialect_codegen::c_meta_codegen::{CFmtCodegenError, CMetaCodegenError};
 use crate::dialect_codegen::rust_ast::{RustAstPaths, generate_rust_tokens};
 use crate::dialect_codegen::rust_dialect::{
-    WrapperContext, generate_cargo_toml, generate_rust_build_rs, generate_rust_lib,
-    generate_rust_wrappers,
+    generate_cargo_toml, generate_rust_build_rs, generate_rust_lib,
 };
 use crate::parser_tools::{
     grammar_codegen, keyword_hash, mkkeyword, parser_pipeline, sqlite_fragments, tokenizer_assembly,
@@ -82,7 +81,6 @@ pub struct RustCodegenArtifacts {
     /// crate; external dialect crates import from `syntaqlite::ast_traits`.
     pub ast_traits_rs: Option<String>,
     pub lib_rs: String,
-    pub wrappers_rs: String,
     pub build_rs: String,
     pub cargo_toml: String,
     pub functions_catalog_rs: Option<String>,
@@ -104,6 +102,9 @@ pub struct CodegenArtifacts {
     pub dialect_c: String,
     pub dialect_h: String,
     pub dialect_dispatch_h: String,
+    /// Minimal runtime tokens header containing only the tokens needed by
+    /// `token_wrapped.c` in the grammar-agnostic engine crate.
+    pub runtime_tokens_h: String,
     pub rust: Option<RustCodegenArtifacts>,
 }
 
@@ -123,6 +124,27 @@ pub fn extract_token_defines(parse_h: &str) -> Vec<(String, u32)> {
         }
     }
     tokens
+}
+
+/// Token names needed by the grammar-agnostic runtime (`token_wrapped.c`).
+const RUNTIME_TOKEN_NAMES: &[&str] = &["PTR", "MINUS", "QNUMBER", "FLOAT", "INTEGER"];
+
+/// Generate a minimal tokens header containing only the runtime-required tokens.
+pub fn generate_runtime_tokens_header(token_defines: &[(String, u32)]) -> String {
+    use crate::util::c_writer::CWriter;
+
+    let mut w = CWriter::new();
+    w.file_header();
+    w.header_guard_start("SYNTAQLITE_TOKENS_H");
+    w.newline();
+    for (name, value) in token_defines {
+        if RUNTIME_TOKEN_NAMES.contains(&name.as_str()) {
+            w.line(&format!("#define SYNTAQLITE_TK_{name} {value}"));
+        }
+    }
+    w.newline();
+    w.header_guard_end("SYNTAQLITE_TOKENS_H");
+    w.finish()
 }
 
 pub struct TokenizerExtractResult {
@@ -152,10 +174,6 @@ pub struct CodegenRequest<'a> {
     /// internal and public — suitable for external dialect crates where
     /// all headers live in a single output directory.
     pub dialect_c_includes: DialectCIncludes<'a>,
-    /// When `true`, generate `wrappers.rs` using internal import paths
-    /// (for the `syntaqlite` crate itself). When `false`, generate the
-    /// external dialect crate template with `syntaqlite::parser::typed::*`.
-    pub internal_wrappers: bool,
 }
 
 /// A prepared codegen job for an external or amalgamated dialect.
@@ -228,7 +246,6 @@ impl<'a> DialectCodegenJob<'a> {
             base_synq_files: self.base_synq_files,
             open_for_extension: false,
             dialect_c_includes: layout.c_includes(),
-            internal_wrappers: false,
         };
         let artifacts = generate_codegen_artifacts(&request)?;
         layout.write_codegen_artifacts(self.dialect, artifacts, ensure_dir, write_file)
@@ -312,24 +329,33 @@ pub fn concatenate_y_contents(files: &[(String, String)]) -> Result<Vec<u8>, Str
 }
 
 /// Generate parser from in-memory .y file contents (merged base + extensions).
+///
+/// `tokens_header` is an optional include path (e.g. `"syntaqlite_sqlite/sqlite_tokens.h"`)
+/// to inject into the generated `parse.c` after the Lemon template includes.
 pub fn generate_parser_from_contents(
     y_files: &[(String, String)],
     parser_name: &str,
     output_dir: &str,
+    tokens_header: Option<&str>,
 ) -> Result<(), String> {
-    parser_pipeline::generate_parser_from_contents(y_files, parser_name, output_dir)
+    parser_pipeline::generate_parser_from_contents(y_files, parser_name, output_dir, tokens_header)
 }
 
 pub fn extract_grammar(input_path: &str, output_path: Option<&str>) -> Result<(), String> {
     grammar_codegen::extract_grammar(input_path, output_path)
 }
 
+/// Generate parser from `.y` files in `actions_dir`.
+///
+/// `tokens_header` is an optional include path to inject into the generated
+/// `parse.c` after the Lemon template includes.
 pub fn generate_parser(
     actions_dir: &str,
     parser_name: &str,
     output_dir: &str,
+    tokens_header: Option<&str>,
 ) -> Result<(), String> {
-    parser_pipeline::generate_parser(actions_dir, parser_name, output_dir)
+    parser_pipeline::generate_parser(actions_dir, parser_name, output_dir, tokens_header)
 }
 
 fn parse_synq_items(
@@ -389,6 +415,7 @@ pub fn generate_codegen_artifacts(
         request.y_files,
         parser_name,
         work_dir.path().to_string_lossy().as_ref(),
+        Some(request.dialect_c_includes.tokens_header),
     )?;
     let parse_h = fs::read_to_string(work_dir.path().join("parse.h"))
         .map_err(|e| format!("Failed to read parse.h: {e}"))?;
@@ -472,14 +499,6 @@ pub fn generate_codegen_artifacts(
             ),
             ast_traits_rs: Some(ast_model.generate_ast_traits()),
             lib_rs: generate_rust_lib(&request.dialect.dialect_symbol_fn_name()),
-            wrappers_rs: {
-                let ctx = if request.internal_wrappers {
-                    WrapperContext::internal_sqlite()
-                } else {
-                    WrapperContext::external_dialect()
-                };
-                generate_rust_wrappers(&ctx)
-            },
             build_rs: generate_rust_build_rs(request.dialect.name()),
             cargo_toml: generate_cargo_toml(request.crate_name.unwrap_or(request.dialect.name())),
             functions_catalog_rs: None,
@@ -487,6 +506,8 @@ pub fn generate_codegen_artifacts(
     } else {
         None
     };
+
+    let runtime_tokens_h = generate_runtime_tokens_header(&token_defines);
 
     Ok(CodegenArtifacts {
         parse_h,
@@ -504,6 +525,7 @@ pub fn generate_codegen_artifacts(
         dialect_c,
         dialect_h,
         dialect_dispatch_h,
+        runtime_tokens_h,
         rust,
     })
 }

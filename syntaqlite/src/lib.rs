@@ -100,16 +100,13 @@ pub type Tokenizer =
 pub type TokenizerBuilder =
     crate::parser::typed::TokenizerBuilder<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
 #[cfg(feature = "sqlite")]
-pub type Token<'a> =
-    crate::parser::typed::Token<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+pub type Token<'a> = crate::parser::typed::Token<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
 #[cfg(feature = "sqlite")]
 pub type TokenCursor<'a> =
     crate::parser::typed::TokenCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
 #[cfg(feature = "sqlite")]
-pub type IncrementalParser = crate::parser::typed::IncrementalParser<
-    'static,
-    syntaqlite_parser_sqlite::SqliteNodeFamily,
->;
+pub type IncrementalParser =
+    crate::parser::typed::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
 #[cfg(feature = "sqlite")]
 pub type IncrementalParserBuilder = crate::parser::typed::IncrementalParserBuilder<
     'static,

@@ -10,9 +10,9 @@
 */
 
 #include "syntaqlite/dialect.h"
-#include "syntaqlite/tokens.h"
 #include "syntaqlite_dialect/dialect_macros.h"
 #include "syntaqlite_dialect/sqlite_compat.h"
+#include "syntaqlite_sqlite/sqlite_tokens.h"
 
 /*
 ** The author disclaims copyright to this source code.  In place of

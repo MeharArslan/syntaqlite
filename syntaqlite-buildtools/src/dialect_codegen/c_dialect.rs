@@ -248,7 +248,7 @@ pub(crate) fn generate_dialect_c(
 /// using the dialect handle returned by the accessor.
 pub(crate) fn generate_dialect_h(dialect: &str) -> String {
     let upper = dialect.to_uppercase();
-    let guard = format!("SYNTAQLITE_{upper}_H");
+    let guard = format!("SYNTAQLITE_{upper}_DIALECT_H");
     let mut w = CWriter::new();
     w.file_header();
     w.header_guard_start(&guard);
@@ -287,7 +287,7 @@ mod tests {
             parse_api_h: "sqlite_parse.h",
             tokenize_h: "sqlite_tokenize.h",
             keyword_h: "sqlite_keyword.h",
-            tokens_header: "syntaqlite/tokens.h",
+            tokens_header: "syntaqlite_sqlite/sqlite_tokens.h",
         }
     }
 
@@ -453,7 +453,7 @@ mod tests {
             parse_api_h: "csrc/sqlite/sqlite_parse.h",
             tokenize_h: "csrc/sqlite/sqlite_tokenize.h",
             keyword_h: "csrc/sqlite/sqlite_keyword.h",
-            tokens_header: "syntaqlite/tokens.h",
+            tokens_header: "syntaqlite_sqlite/sqlite_tokens.h",
         };
         let c = generate_dialect_c("sqlite", None, &includes);
         // Internal headers use the full csrc/sqlite/ path
@@ -462,17 +462,17 @@ mod tests {
         assert!(c.contains("\"csrc/sqlite/dialect_fmt.h\""));
         // Public headers are hardcoded
         assert!(c.contains("\"syntaqlite/parser.h\""));
-        assert!(c.contains("\"syntaqlite/tokens.h\""));
+        assert!(c.contains("\"syntaqlite_sqlite/sqlite_tokens.h\""));
         assert!(c.contains("\"syntaqlite/dialect.h\""));
     }
 
     #[test]
     fn dialect_c_default_includes_no_prefix() {
         let c = generate_dialect_c("sqlite", None, &default_includes());
-        // Default: bare header names
+        // Default: bare header names for internal, dialect-specific for tokens
         assert!(c.contains("\"dialect_builder.h\""));
         assert!(c.contains("\"syntaqlite/parser.h\""));
-        assert!(c.contains("\"syntaqlite/tokens.h\""));
+        assert!(c.contains("\"syntaqlite_sqlite/sqlite_tokens.h\""));
     }
 }
 

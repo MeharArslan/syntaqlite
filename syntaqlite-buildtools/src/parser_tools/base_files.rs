@@ -63,10 +63,13 @@ const RUNTIME_HEADERS: &[(&str, &str)] = &[
             "/../syntaqlite-parser/include/syntaqlite/tokenizer.h",
         )),
     ),
-    // Note: tokens.h is dialect-specific (defines SYNTAQLITE_TK_* values for
-    // a particular token set) and is regenerated per dialect by the codegen
-    // pipeline. It must NOT be embedded here or it will conflict with the
-    // dialect-specific tokens emitted in the amalgamation.
+    (
+        "tokens.h",
+        include_str!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../syntaqlite-parser/include/syntaqlite/tokens.h",
+        )),
+    ),
     (
         "types.h",
         include_str!(concat!(

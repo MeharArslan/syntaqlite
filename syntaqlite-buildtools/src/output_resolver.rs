@@ -43,8 +43,10 @@ pub struct OutputLayout {
     // ── C public headers (include/<dialect>/) ───────────────────────────────
     pub ast_nodes_h: CHeader,
     pub dialect_h: CHeader,
-    /// Tokens header: the guarded `SYNTAQLITE_TK_*` defines (from lemon parse.h).
+    /// Dialect tokens header: all `SYNTAQLITE_TK_*` defines (from lemon parse.h).
     pub tokens_h: CHeader,
+    /// Runtime tokens header: minimal subset of tokens needed by `token_wrapped.c`.
+    pub runtime_tokens_h: CHeader,
 
     // ── Rust sources (src/) ─────────────────────────────────────────────────
     pub tokens_rs: Option<String>,
@@ -53,7 +55,6 @@ pub struct OutputLayout {
     /// Shared AST trait definitions. Only written for the internal SQLite crate.
     pub ast_traits_rs: Option<String>,
     pub lib_rs: Option<String>,
-    pub wrappers_rs: Option<String>,
     pub functions_catalog_rs: Option<String>,
 
     // ── Crate root ───────────────────────────────────────────────────────────
@@ -83,14 +84,12 @@ impl OutputLayout {
     /// - `shared_crate`: shared crate directory name, e.g. `"syntaqlite-parser"`.
     /// - `dialect_name`: e.g. `"sqlite"`.
     /// - `include_dir_name`: subdirectory under `include/`, e.g. `"syntaqlite_sqlite"`.
-    /// - `wrappers_path`: optional workspace-relative path for `wrappers.rs`.
     pub fn for_sqlite(
         root: &Path,
         dialect_crate: &str,
         shared_crate: &str,
         dialect_name: &str,
         include_dir_name: &str,
-        wrappers_path: Option<&str>,
     ) -> Self {
         let dc = dialect_crate;
         let sc = shared_crate;
@@ -149,9 +148,12 @@ impl OutputLayout {
                 write: Some(format!("{dc}/include/{id}/{dn}.h")),
                 include: format!("syntaqlite/{dn}.h"),
             },
-            // The tokens.h in syntaqlite-parser/include/syntaqlite/ is hand-maintained.
             tokens_h: CHeader {
-                write: None,
+                write: Some(format!("{dc}/include/{id}/{dn}_tokens.h")),
+                include: format!("{id}/{dn}_tokens.h"),
+            },
+            runtime_tokens_h: CHeader {
+                write: Some(format!("{sc}/include/syntaqlite/tokens.h")),
                 include: "syntaqlite/tokens.h".to_string(),
             },
             // Rust: dialect-specific in dialect_crate/src/, shared in shared_crate/src/
@@ -160,7 +162,6 @@ impl OutputLayout {
             ast_rs: Some(format!("{dc}/src/ast.rs")),
             ast_traits_rs: Some(format!("{sc}/src/ast_traits.rs")),
             lib_rs: None, // hand-maintained
-            wrappers_rs: wrappers_path.map(str::to_string),
             functions_catalog_rs: None,
             // Crate root: hand-maintained for the internal crate
             build_rs: None,
@@ -228,12 +229,15 @@ impl OutputLayout {
                 write: Some(format!("include/{id}/{dn}_tokens.h")),
                 include: format!("{id}/{dn}_tokens.h"),
             },
+            runtime_tokens_h: CHeader {
+                write: None,
+                include: "syntaqlite/tokens.h".to_string(),
+            },
             tokens_rs: Some("src/tokens.rs".to_string()),
             ffi_rs: Some("src/ffi.rs".to_string()),
             ast_rs: Some("src/ast.rs".to_string()),
             ast_traits_rs: None,
             lib_rs: Some("src/lib.rs".to_string()),
-            wrappers_rs: Some("src/wrappers.rs".to_string()),
             functions_catalog_rs: None,
             build_rs: Some("build.rs".to_string()),
             cargo_toml: Some("Cargo.toml".to_string()),
@@ -302,12 +306,15 @@ impl OutputLayout {
                 write: Some(format!("include/{id}/{dn}_tokens.h")),
                 include: format!("{id}/{dn}_tokens.h"),
             },
+            runtime_tokens_h: CHeader {
+                write: None,
+                include: "syntaqlite/tokens.h".to_string(),
+            },
             tokens_rs: None,
             ffi_rs: None,
             ast_rs: None,
             ast_traits_rs: None,
             lib_rs: None,
-            wrappers_rs: None,
             functions_catalog_rs: None,
             build_rs: None,
             cargo_toml: None,
@@ -363,6 +370,7 @@ impl OutputLayout {
             let guarded = dialect.guarded_tokens_header(&artifacts.parse_h);
             write(&self.tokens_h.write, &guarded)?;
         }
+        write(&self.runtime_tokens_h.write, &artifacts.runtime_tokens_h)?;
 
         // Rust
         if let Some(rust) = artifacts.rust {
@@ -373,7 +381,6 @@ impl OutputLayout {
                 write(&self.ast_traits_rs, content)?;
             }
             write(&self.lib_rs, &rust.lib_rs)?;
-            write(&self.wrappers_rs, &rust.wrappers_rs)?;
             if let Some(ref content) = rust.functions_catalog_rs {
                 write(&self.functions_catalog_rs, content)?;
             }

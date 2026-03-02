@@ -252,9 +252,9 @@ impl<'a, N: NodeFamily> Iterator for TokenCursor<'a, N> {
     fn next(&mut self) -> Option<Self::Item> {
         loop {
             let raw = self.inner.next()?;
-            if let Some(kind) = <N::Token as syntaqlite_parser::DialectTokenType>::from_token_type(
-                raw.token_type,
-            ) {
+            if let Some(kind) =
+                <N::Token as syntaqlite_parser::DialectTokenType>::from_token_type(raw.token_type)
+            {
                 return Some(Token {
                     kind,
                     text: raw.text,
@@ -383,15 +383,14 @@ impl<'a, N: NodeFamily> IncrementalCursor<'a, N> {
             Some(id) => {
                 let node_ref = self.inner.node_ref(id);
                 self.last_root = Some(node_ref);
-                let node =
-                    node_ref
-                        .as_typed::<N::Node<'a>>()
-                        .ok_or_else(|| ParseError {
-                            message: "failed to resolve typed AST node".to_string(),
-                            offset: None,
-                            length: None,
-                            root: Some(id),
-                        })?;
+                let node = node_ref
+                    .as_typed::<N::Node<'a>>()
+                    .ok_or_else(|| ParseError {
+                        message: "failed to resolve typed AST node".to_string(),
+                        offset: None,
+                        length: None,
+                        root: Some(id),
+                    })?;
                 Ok(Some(node))
             }
         }
@@ -409,15 +408,14 @@ impl<'a, N: NodeFamily> IncrementalCursor<'a, N> {
             Some(id) => {
                 let node_ref = self.inner.node_ref(id);
                 self.last_root = Some(node_ref);
-                let node =
-                    node_ref
-                        .as_typed::<N::Node<'a>>()
-                        .ok_or_else(|| ParseError {
-                            message: "failed to resolve typed AST node".to_string(),
-                            offset: None,
-                            length: None,
-                            root: Some(id),
-                        })?;
+                let node = node_ref
+                    .as_typed::<N::Node<'a>>()
+                    .ok_or_else(|| ParseError {
+                        message: "failed to resolve typed AST node".to_string(),
+                        offset: None,
+                        length: None,
+                        root: Some(id),
+                    })?;
                 Ok(Some(node))
             }
         }

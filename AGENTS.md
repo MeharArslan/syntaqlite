@@ -79,18 +79,10 @@ The `.synq` DSL defines the AST node types, enums, flags, and formatter instruct
 
 ## Verification
 
-Before marking any task as done, run:
+For a mid-task check (no diff tests), run:
 
 ```sh
-tools/pre-push
-```
-
-This runs all checks in sequence: Rust/C formatting, `cargo check`, `cargo clippy` (zero warnings), C header dependency boundaries, unit tests, and all diff test suites.
-
-For a faster mid-task check (no diff tests), run:
-
-```sh
-cargo check --tests --all-features --all-targets && cargo clippy -- -D warnings
+cargo check --tests --all-features --all-targets && cargo clippy --tests --all-features --all-targets -- -D warnings
 ```
 
 ## Testing

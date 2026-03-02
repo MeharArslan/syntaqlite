@@ -42,14 +42,6 @@ pub use crate::raw_incremental::{
 pub use crate::raw_session::{RawParser, RawParserBuilder, RawStatementCursor};
 pub use crate::raw_tokenizer::{RawToken, RawTokenCursor, RawTokenizer, RawTokenizerBuilder};
 
-// ── Typed (dialect-parameterized) parsers and tokenizer ──────────────────────
-
-pub use crate::typed::{
-    TypedIncrementalCursor, TypedIncrementalParser, TypedIncrementalParserBuilder, TypedParser,
-    TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor, TypedTokenizer,
-    TypedTokenizerBuilder,
-};
-
 // ── Function availability catalog ─────────────────────────────────────────────
 
 pub use crate::catalog::{FunctionInfo, is_function_available};
@@ -68,5 +60,4 @@ pub(crate) mod raw_incremental;
 pub(crate) mod raw_session;
 pub(crate) mod raw_tokenizer;
 pub(crate) mod session;
-pub(crate) mod typed;
 pub(crate) mod typed_list;
