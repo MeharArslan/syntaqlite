@@ -215,9 +215,11 @@ fn dispatch_commands(command: Command, dialect: Option<Dialect<'_>>) -> Result<(
             require_dialect(dialect).and_then(|d| cmd_fmt(d, files, config, in_place))
         }
         #[cfg(feature = "codegen-dialect")]
-        Command::Dialect(cmd) => crate::codegen_dialect::dispatch(cmd),
-        #[cfg(feature = "codegen-sqlite")]
-        Command::Sqlite(cmd) => crate::codegen_sqlite::dispatch(cmd),
+        Command::CodegenDialect(args) => crate::codegen_dialect::dispatch_dialect(args),
+        #[cfg(feature = "codegen-dialect")]
+        Command::DialectTool(cmd) => crate::codegen_dialect::dispatch_tool(cmd),
+        #[cfg(feature = "internal")]
+        Command::CodegenSqliteParser(args) => crate::codegen_sqlite_parser::dispatch(args),
         #[cfg(feature = "sqlite-extract")]
         Command::Extract(cmd) => crate::sqlite_extract::dispatch(cmd),
         #[cfg(feature = "version-analysis")]

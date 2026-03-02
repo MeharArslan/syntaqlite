@@ -24,9 +24,9 @@ use std::ops::Range;
 use crate::dialect::Dialect;
 use crate::dialect::TokenCategory;
 use crate::parser::incremental::RawIncrementalParser;
-use crate::parser::session::ParseError;
 use crate::parser::tokenizer::RawTokenizer;
 use crate::validation::{Diagnostic, DiagnosticMessage, FunctionDef, ValidationConfig};
+use syntaqlite_parser::session::ParseError;
 
 use offset_map::OffsetMap;
 
@@ -409,7 +409,7 @@ pub fn sqlite_function_defs() -> Vec<FunctionDef> {
     let config = syntaqlite_parser::dialect::ffi::DialectConfig::default();
     syntaqlite_parser::sqlite::available_functions(&config)
         .into_iter()
-        .flat_map(|info| crate::validation::expand_function_info(info))
+        .flat_map(|info| crate::validation::types::expand_function_info(info))
         .collect()
 }
 
@@ -431,12 +431,8 @@ mod tests {
     use super::*;
     use crate::validation::Severity;
 
-    fn dialect() -> Dialect<'static> {
-        crate::sqlite::dialect()
-    }
-
     fn analyzer() -> EmbeddedAnalyzer<'static> {
-        EmbeddedAnalyzer::new(dialect()).with_functions(sqlite_function_defs())
+        EmbeddedAnalyzer::new(crate::dialect::sqlite()).with_functions(sqlite_function_defs())
     }
 
     // ── Python syntax error tests ────────────────────────────────────
@@ -630,7 +626,8 @@ mod tests {
         let source = r#"db.execute(f"INSERT INTO t (a) VALUES (datetime('now'))")"#;
         let fragments = extract_python(source);
         assert_eq!(fragments.len(), 1);
-        let tokens = EmbeddedAnalyzer::new(dialect()).fragment_semantic_tokens(&fragments[0]);
+        let tokens =
+            EmbeddedAnalyzer::new(crate::dialect::sqlite()).fragment_semantic_tokens(&fragments[0]);
         let datetime_tokens: Vec<_> = tokens
             .iter()
             .filter(|(off, len, _)| &fragments[0].sql_text[*off..*off + *len] == "datetime")

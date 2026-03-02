@@ -1,38 +1,75 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+use std::fs;
 use std::path::Path;
 
-use clap::Subcommand;
+use clap::Parser;
 
 use crate::fs_util::{ensure_dir, write_file};
 
-/// Dialect codegen CLI subcommands.
+// Hardcoded workspace paths for --output-type=sqlite
+const SQLITE_DIALECT_CRATE: &str = "syntaqlite-parser-sqlite";
+const SQLITE_SHARED_CRATE: &str = "syntaqlite-parser";
+const SQLITE_WRAPPERS_OUT: &str = "syntaqlite/src/parser/sqlite_wrappers.rs";
+
+/// Output type for the dialect codegen command.
+#[derive(clap::ValueEnum, Clone)]
+pub(crate) enum OutputType {
+    /// Dialect-only amalgamation (default).
+    Dialect,
+    /// Raw C/H/Rust files, flat layout.
+    Raw,
+    /// Runtime + dialect inlined into one self-contained file pair.
+    Full,
+    /// Runtime amalgamation only.
+    RuntimeOnly,
+    /// Internal workspace layout (hardcoded paths).
+    Sqlite,
+}
+
+/// Generate dialect C sources and Rust bindings.
 ///
-/// Flattened into the top-level `Command` enum so the CLI interface is unchanged.
-#[derive(Subcommand)]
-pub(crate) enum CodegenCommand {
-    /// Generate amalgamated dialect C sources for embedding.
-    ///
-    /// Base SQLite grammar and node files are embedded in the binary.
-    /// When `--actions-dir` / `--nodes-dir` are provided, those extension
-    /// files are merged with the base (same-name files replace the base).
-    Dialect {
-        /// Dialect identifier (e.g. "sqlite").
-        #[arg(long, required = true)]
-        name: String,
-        /// Directory containing .y grammar action files (extensions only; base is embedded).
-        #[arg(long)]
-        actions_dir: Option<String>,
-        /// Directory containing .synq node definitions (extensions only; base is embedded).
-        #[arg(long)]
-        nodes_dir: Option<String>,
-        #[command(subcommand)]
-        command: DialectCommand,
-    },
-    // Hidden subcommands for codegen subprocess support.
-    // generate_codegen_artifacts() spawns current_exe() with these subcommands.
-    // They must be present in any binary that calls the codegen pipeline.
+/// Base SQLite grammar and node files are embedded in the binary.
+/// When `--actions-dir` / `--nodes-dir` are provided, those extension
+/// files are merged with the base (same-name files replace the base).
+#[derive(Parser)]
+pub(crate) struct CodegenDialectArgs {
+    /// Dialect identifier (e.g. "sqlite").
+    #[arg(long, required = true)]
+    name: String,
+
+    /// Output directory for generated files (not used with --output-type=sqlite).
+    #[arg(long)]
+    output_dir: Option<String>,
+
+    /// Directory containing .y grammar action files.
+    #[arg(long)]
+    actions_dir: Option<String>,
+
+    /// Directory containing .synq node definitions.
+    #[arg(long)]
+    nodes_dir: Option<String>,
+
+    /// Output type.
+    #[arg(long, value_enum, default_value_t = OutputType::Dialect)]
+    output_type: OutputType,
+
+    /// Default path for the runtime header (dialect-only mode only).
+    #[arg(long, default_value = "syntaqlite_runtime.h")]
+    runtime_header: String,
+
+    /// Default path for the extension header (dialect-only mode only).
+    #[arg(long, default_value = "syntaqlite_dialect.h")]
+    ext_header: String,
+}
+
+/// Hidden subcommands forwarded to the lemon/mkkeyword subprocess invocations.
+///
+/// These must be present in any binary that calls the codegen pipeline;
+/// `generate_codegen_artifacts()` spawns the current executable with these.
+#[derive(clap::Subcommand)]
+pub(crate) enum ToolCommand {
     #[command(hide = true)]
     Lemon {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -45,104 +82,64 @@ pub(crate) enum CodegenCommand {
     },
 }
 
-#[derive(Subcommand)]
-pub(crate) enum DialectCommand {
-    /// Emit amalgamated C/H files.
-    Csrc {
-        /// Output directory for generated files.
-        #[arg(long, required = true)]
-        output_dir: String,
-        /// Skip amalgamation and write raw C/H files instead.
-        /// Use with --internal-prefix / --public-prefix / --dialect-include-dir
-        /// to control the #include paths in the generated code.
-        #[arg(long)]
-        no_amalgamate: bool,
-        /// Inline the runtime into the dialect amalgamation (produces a fully
-        /// self-contained syntaqlite_<name>.{h,c} that needs no external runtime).
-        /// Mutually exclusive with --no-amalgamate.
-        #[arg(long, conflicts_with = "no_amalgamate")]
-        full: bool,
-        /// Default path for the syntaqlite runtime header in the amalgamated output.
-        /// Baked into the #ifndef SYNTAQLITE_RUNTIME_HEADER guard.
-        /// Only used in dialect-only mode (without --full).
-        #[arg(long, default_value = "syntaqlite_runtime.h")]
-        runtime_header: String,
-        /// Default path for the syntaqlite extension header in the amalgamated output.
-        /// Baked into the #ifndef SYNTAQLITE_EXT_HEADER guard.
-        /// Only used in dialect-only mode (without --full).
-        #[arg(long, default_value = "syntaqlite_dialect.h")]
-        ext_header: String,
-        /// Prefix for internal dialect headers (dialect_builder.h, dialect_meta.h, etc.).
-        /// Only used with --no-amalgamate.
-        #[arg(long, default_value = "")]
-        internal_prefix: String,
-        /// Prefix for public headers (syntaqlite/parser.h, syntaqlite/dialect.h, etc.).
-        /// Only used with --no-amalgamate.
-        #[arg(long, default_value = "")]
-        public_prefix: String,
-        /// Directory name for dialect public headers in #include directives.
-        /// E.g. "syntaqlite_mydialect". Only used with --no-amalgamate.
-        #[arg(long, default_value = "")]
-        dialect_include_dir: String,
-    },
-    /// Emit the runtime-only amalgamation (syntaqlite_runtime.{h,c} +
-    /// syntaqlite_dialect.h).  The output is dialect-independent and can
-    /// be paired with any dialect-only amalgamation produced by `csrc`.
-    Runtime {
-        /// Output directory for generated files.
-        #[arg(long, required = true)]
-        output_dir: String,
-    },
+pub(crate) fn dispatch_dialect(args: CodegenDialectArgs) -> Result<(), String> {
+    match args.output_type {
+        OutputType::Dialect => {
+            let output_dir = args
+                .output_dir
+                .ok_or("--output-dir is required for --output-type=dialect")?;
+            cmd_generate_dialect(
+                &args.name,
+                args.actions_dir.as_deref(),
+                args.nodes_dir.as_deref(),
+                &output_dir,
+                &args.runtime_header,
+                &args.ext_header,
+            )
+        }
+        OutputType::Raw => {
+            let output_dir = args
+                .output_dir
+                .ok_or("--output-dir is required for --output-type=raw")?;
+            cmd_generate_dialect_raw(
+                &args.name,
+                args.actions_dir.as_deref(),
+                args.nodes_dir.as_deref(),
+                &output_dir,
+            )
+        }
+        OutputType::Full => {
+            let output_dir = args
+                .output_dir
+                .ok_or("--output-dir is required for --output-type=full")?;
+            cmd_generate_dialect_full(
+                &args.name,
+                args.actions_dir.as_deref(),
+                args.nodes_dir.as_deref(),
+                &output_dir,
+            )
+        }
+        OutputType::RuntimeOnly => {
+            let output_dir = args
+                .output_dir
+                .ok_or("--output-dir is required for --output-type=runtime-only")?;
+            cmd_generate_runtime(&output_dir)
+        }
+        OutputType::Sqlite => {
+            if args.output_dir.is_some() {
+                return Err(
+                    "--output-dir must not be provided with --output-type=sqlite (uses hardcoded workspace paths)".to_string()
+                );
+            }
+            cmd_generate_sqlite(args.actions_dir.as_deref(), args.nodes_dir.as_deref())
+        }
+    }
 }
 
-/// Dispatch a dialect codegen subcommand. Called from `run()` in lib.rs.
-pub(crate) fn dispatch(command: CodegenCommand) -> Result<(), String> {
-    match command {
-        CodegenCommand::Dialect {
-            name,
-            actions_dir,
-            nodes_dir,
-            command,
-        } => match command {
-            DialectCommand::Csrc {
-                output_dir,
-                no_amalgamate,
-                full,
-                runtime_header,
-                ext_header,
-                internal_prefix: _,
-                public_prefix: _,
-                dialect_include_dir: _,
-            } => {
-                if no_amalgamate {
-                    cmd_generate_dialect_raw(
-                        &name,
-                        actions_dir.as_deref(),
-                        nodes_dir.as_deref(),
-                        &output_dir,
-                    )
-                } else if full {
-                    cmd_generate_dialect_full(
-                        &name,
-                        actions_dir.as_deref(),
-                        nodes_dir.as_deref(),
-                        &output_dir,
-                    )
-                } else {
-                    cmd_generate_dialect(
-                        &name,
-                        actions_dir.as_deref(),
-                        nodes_dir.as_deref(),
-                        &output_dir,
-                        &runtime_header,
-                        &ext_header,
-                    )
-                }
-            }
-            DialectCommand::Runtime { output_dir } => cmd_generate_runtime(&output_dir),
-        },
-        CodegenCommand::Lemon { args } => syntaqlite_buildtools::run_lemon(&args),
-        CodegenCommand::Mkkeyword { args } => syntaqlite_buildtools::run_mkkeyword(&args),
+pub(crate) fn dispatch_tool(cmd: ToolCommand) -> Result<(), String> {
+    match cmd {
+        ToolCommand::Lemon { args } => syntaqlite_buildtools::run_lemon(&args),
+        ToolCommand::Mkkeyword { args } => syntaqlite_buildtools::run_mkkeyword(&args),
     }
 }
 
@@ -156,9 +153,6 @@ fn cmd_generate_dialect(
 ) -> Result<(), String> {
     use syntaqlite_buildtools::amalgamate;
 
-    // Run codegen into a temp directory.  The includes use `csrc/` prefix
-    // to match the temp dir layout so the amalgamator can resolve and
-    // inline all internal headers.
     let temp_dir = tempfile::TempDir::new().map_err(|e| format!("creating temp directory: {e}"))?;
     let temp = temp_dir.path();
 
@@ -192,10 +186,11 @@ fn cmd_generate_dialect_full(
 
     let include_dir_name = format!("syntaqlite_{dialect}");
     codegen_to_dir_with_base(&merged_y, &merged_synq, temp, dialect, &include_dir_name)?;
+    syntaqlite_buildtools::base_files::write_runtime_headers_to_dir(temp)
+        .map_err(|e| format!("writing runtime headers: {e}"))?;
 
     let out = std::path::Path::new(output_dir);
     ensure_dir(out, "output dir")?;
-    // Full mode: inline runtime + dialect into one self-contained file pair.
     let result = amalgamate::amalgamate_full(dialect, temp, temp)?;
     write_file(&out.join(format!("syntaqlite_{dialect}.h")), &result.header)?;
     write_file(&out.join(format!("syntaqlite_{dialect}.c")), &result.source)?;
@@ -209,14 +204,13 @@ fn cmd_generate_dialect_full(
 fn cmd_generate_runtime(output_dir: &str) -> Result<(), String> {
     use syntaqlite_buildtools::amalgamate;
 
-    // Run the base SQLite codegen to get all C sources into a temp dir, then
-    // extract just the runtime portion (engine + extension SPI header).
     let temp_dir = tempfile::TempDir::new().map_err(|e| format!("creating temp directory: {e}"))?;
     let temp = temp_dir.path();
 
-    // Use the base SQLite grammar/nodes (no extensions) to populate the temp dir.
     let (merged_y, merged_synq) = load_extensions(None, None)?;
     codegen_to_dir_with_base(&merged_y, &merged_synq, temp, "sqlite", "syntaqlite_sqlite")?;
+    syntaqlite_buildtools::base_files::write_runtime_headers_to_dir(temp)
+        .map_err(|e| format!("writing runtime headers: {e}"))?;
 
     let out = std::path::Path::new(output_dir);
     ensure_dir(out, "output dir")?;
@@ -287,6 +281,97 @@ fn cmd_generate_dialect_raw(
 
     eprintln!("wrote raw dialect files to {}", out.display());
     Ok(())
+}
+
+fn cmd_generate_sqlite(
+    actions_dir: Option<&str>,
+    nodes_dir: Option<&str>,
+) -> Result<(), String> {
+    use syntaqlite_buildtools::codegen_api::{
+        CodegenRequest, DialectNaming, generate_codegen_artifacts, read_named_files_from_dir,
+    };
+    use syntaqlite_buildtools::output_resolver::OutputLayout;
+
+    let dialect = DialectNaming::new("sqlite");
+    let y_files = match actions_dir {
+        Some(dir) => read_named_files_from_dir(dir, "y")?,
+        None => return Err("--actions-dir is required for --output-type=sqlite".to_string()),
+    };
+    let synq_files = match nodes_dir {
+        Some(dir) => read_named_files_from_dir(dir, "synq")?,
+        None => return Err("--nodes-dir is required for --output-type=sqlite".to_string()),
+    };
+
+    let mut layout = OutputLayout::for_sqlite(
+        Path::new("."),
+        SQLITE_DIALECT_CRATE,
+        SQLITE_SHARED_CRATE,
+        dialect.name(),
+        &dialect.include_dir_name(),
+        Some(SQLITE_WRAPPERS_OUT),
+    );
+    // ast_traits_rs is written separately by codegen-sqlite-parser
+    layout.ast_traits_rs = None;
+
+    let artifacts = {
+        let no_keywords: Vec<String> = Vec::new();
+        let request = CodegenRequest {
+            dialect: &dialect,
+            y_files: &y_files,
+            synq_files: &synq_files,
+            extra_keywords: &no_keywords,
+            parser_symbol_prefix: None,
+            include_rust: true,
+            crate_name: Some("syntaqlite_parser"),
+            base_synq_files: None,
+            open_for_extension: true,
+            dialect_c_includes: layout.c_includes(),
+            internal_wrappers: true,
+        };
+        generate_codegen_artifacts(&request)?
+    };
+
+    // Clean stale generated C/H files from C output directories.
+    let csrc_dir = Path::new(SQLITE_DIALECT_CRATE).join("csrc/sqlite");
+    let include_dir = Path::new(SQLITE_DIALECT_CRATE)
+        .join(format!("include/{}", dialect.include_dir_name()));
+    let shared_include_dir =
+        Path::new(SQLITE_SHARED_CRATE).join(format!("include/{}", dialect.include_dir_name()));
+    for dir in [&csrc_dir, &include_dir, &shared_include_dir] {
+        if dir.is_dir() {
+            clean_generated_files(dir);
+        }
+    }
+
+    layout.write_codegen_artifacts(
+        &dialect,
+        artifacts,
+        &|dir| ensure_dir(dir, "output directory"),
+        &|path, content| write_file(path, content),
+    )?;
+
+    Ok(())
+}
+
+/// Delete any .c/.h files in `dir` whose first 512 bytes contain the autogenerated marker.
+fn clean_generated_files(dir: &Path) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        if ext != "c" && ext != "h" {
+            continue;
+        }
+        let Ok(content) = fs::read_to_string(&path) else {
+            continue;
+        };
+        let prefix = &content[..content.len().min(512)];
+        if prefix.contains(syntaqlite_buildtools::codegen_api::AUTOGENERATED_MARKER) {
+            let _ = fs::remove_file(&path);
+        }
+    }
 }
 
 /// A set of named files: `(filename, content)` pairs.

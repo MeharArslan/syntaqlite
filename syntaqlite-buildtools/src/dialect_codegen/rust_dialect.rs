@@ -16,7 +16,7 @@ pub struct WrapperContext<'a> {
     /// Path to the tokens module, e.g. `"syntaqlite_parser_sqlite::tokens"`
     /// (internal) or `"crate::tokens"` (external).
     pub tokens_mod: &'a str,
-    /// Dialect accessor expression, e.g. `"crate::sqlite::dialect()"`
+    /// Dialect accessor expression, e.g. `"crate::dialect::sqlite()"`
     /// (internal) or `"crate::dialect()"` (external).
     pub dialect_fn: &'a str,
     /// When `true`, include a `Formatter` wrapper struct that delegates to
@@ -31,7 +31,7 @@ impl WrapperContext<'_> {
             typed_mod: "crate::parser::typed",
             ast_mod: "syntaqlite_parser_sqlite::ast",
             tokens_mod: "syntaqlite_parser_sqlite::tokens",
-            dialect_fn: "crate::sqlite::dialect()",
+            dialect_fn: "crate::dialect::sqlite()",
             include_formatter: false,
         }
     }
@@ -55,19 +55,10 @@ mod ffi;
 ///
 /// Each SQL statement type (e.g. `SELECT`, `INSERT`) has a corresponding struct
 /// with typed accessors for its fields. The top-level enum is [`ast::Stmt`],
-/// returned by [`StatementCursor::next_statement`] and
-/// [`RawIncrementalCursor::finish`](low_level::RawIncrementalCursor::finish).
+/// returned by [`StatementCursor::next_statement`].
 pub mod ast;
 mod wrappers;
-mod tokens;
-"#;
-
-const LIB_LOW_LEVEL_MOD: &str = r#"
-/// Low-level APIs for advanced use cases (e.g. custom token feeding/tokenizing).
-pub mod low_level {
-    pub use crate::wrappers::{IncrementalCursor, IncrementalParser, Token, TokenCursor, Tokenizer};
-    pub use crate::tokens::TokenType;
-}
+pub mod tokens;
 "#;
 
 const LIB_EXPORTS: &str = r#"
@@ -75,15 +66,6 @@ pub use wrappers::{
     Formatter, IncrementalCursor, IncrementalParser, IncrementalParserBuilder, Parser,
     ParserBuilder, StatementCursor, Token, TokenCursor, Tokenizer, TokenizerBuilder,
 };
-pub use syntaqlite::ParseError;
-"#;
-
-const LIB_CONFIG_MOD: &str = r#"
-/// Configuration types for parsers and formatters.
-pub mod config {
-    pub use syntaqlite::fmt::FormatConfig;
-    pub use syntaqlite_parser::dialect::ffi::DialectConfig;
-}
 "#;
 
 fn emit_section(w: &mut RustWriter, section: &str) {
@@ -114,9 +96,7 @@ pub fn dialect() -> syntaqlite::Dialect<'static> {{
 "#
     ));
     w.newline();
-    emit_section(&mut w, LIB_LOW_LEVEL_MOD);
     emit_section(&mut w, LIB_EXPORTS);
-    emit_section(&mut w, LIB_CONFIG_MOD);
     w.finish()
 }
 

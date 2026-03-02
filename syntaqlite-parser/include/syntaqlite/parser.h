@@ -11,7 +11,7 @@
 // A single parser can be reused across inputs by calling reset() again.
 //
 // Usage:
-//   SyntaqliteParser* p = syntaqlite_parser_create(NULL);
+//   SyntaqliteParser* p = syntaqlite_create_sqlite_parser(NULL);
 //   syntaqlite_parser_reset(p, sql, len);
 //   SyntaqliteParseResult r;
 //   while ((r = syntaqlite_parser_next(p)).root != SYNTAQLITE_NULL_NODE) {
@@ -21,10 +21,10 @@
 //   if (r.error) { /* handle r.error_msg */ }
 //   syntaqlite_parser_destroy(p);
 //
-// With token collection (required for formatting):
-//   SyntaqliteParser* p = syntaqlite_parser_create(NULL);
-//   syntaqlite_parser_set_collect_tokens(p, 1);
-//   // ... parse as above, then pass to formatter ...
+// For token collection (required for formatting), call
+// syntaqlite_parser_set_collect_tokens() before the first reset().
+// For custom dialects, see the "Advanced" section below.
+// For macro-aware or incremental token feeding, see incremental_parser.h.
 
 #ifndef SYNTAQLITE_PARSER_H
 #define SYNTAQLITE_PARSER_H
@@ -47,31 +47,6 @@ extern "C" {
 // Opaque parser handle (heap-allocated, reusable across inputs).
 typedef struct SyntaqliteParser SyntaqliteParser;
 
-// Opaque dialect handle — produced by dialect crates (e.g.
-// syntaqlite_sqlite_dialect()).
-typedef struct SyntaqliteDialect SyntaqliteDialect;
-
-// A comment captured during parsing.
-typedef struct SyntaqliteComment {
-  uint32_t offset;  // Byte offset in source.
-  uint32_t length;  // Byte length.
-  uint8_t kind;     // 0 = line comment (--), 1 = block comment (/* */).
-} SyntaqliteComment;
-
-// Token flags bitfield.
-#define SYNQ_TOKEN_FLAG_AS_ID \
-  1  // Token was consumed as identifier (fallback from keyword).
-#define SYNQ_TOKEN_FLAG_AS_FUNCTION 2  // Token was consumed as function name.
-#define SYNQ_TOKEN_FLAG_AS_TYPE 4      // Token was consumed as a type name.
-
-// A non-whitespace, non-comment token position captured during parsing.
-typedef struct SyntaqliteTokenPos {
-  uint32_t offset;  // Byte offset in source.
-  uint32_t length;  // Byte length.
-  uint32_t type;    // Original token type from tokenizer (pre-fallback).
-  uint32_t flags;   // Bitfield: SYNQ_TOKEN_FLAG_AS_ID / AS_FUNCTION / AS_TYPE.
-} SyntaqliteTokenPos;
-
 // Result of parsing one statement via syntaqlite_parser_next().
 //
 // Check root first: if it is SYNTAQLITE_NULL_NODE, parsing is done — then
@@ -88,40 +63,15 @@ typedef struct SyntaqliteParseResult {
                                     // LIMIT.
 } SyntaqliteParseResult;
 
-// A recorded macro invocation region, populated via the low-level API
-// (begin_macro / end_macro). The formatter uses these to reconstruct macro
-// calls from the expanded AST.
-typedef struct SyntaqliteMacroRegion {
-  uint32_t call_offset;  // Byte offset of macro call in original source.
-  uint32_t call_length;  // Byte length of entire macro call.
-} SyntaqliteMacroRegion;
-
-// Error node tag — stored as the first uint32_t of a SyntaqliteErrorNode.
-// Tag 0 is the sentinel for error nodes; it is never used as a real node tag
-// in generated code (NodeTag::Null = 0 is a codegen sentinel, not stored in
-// the arena under normal operation).
-#define SYNTAQLITE_ERROR_NODE_TAG 0u
-
-// An error placeholder node stored in the arena when a parse error occurs.
-// Written by grammar actions via synq_parse_error_node() and recognised by
-// NodeReader::required_node / optional_node before dispatching on the tag.
-typedef struct SyntaqliteErrorNode {
-  uint32_t tag;     // Always SYNTAQLITE_ERROR_NODE_TAG (0).
-  uint32_t offset;  // Byte offset of the error in source.
-  uint32_t length;  // Byte length of the error token (0 = unknown).
-} SyntaqliteErrorNode;
-
 // ---------------------------------------------------------------------------
-// Lifecycle
+// Core API
 // ---------------------------------------------------------------------------
 
-// Allocate a parser for a specific dialect. The parser is inert until reset()
-// is called. The mem methods are copied — the caller's struct does not need
-// to outlive the parser. Pass NULL for mem defaults (malloc/free). The dialect
-// pointer must remain valid for the lifetime of the parser.
-SyntaqliteParser* syntaqlite_create_parser_with_dialect(
-    const SyntaqliteMemMethods* mem,
-    const SyntaqliteDialect* dialect);
+// Allocate a parser for the SQLite dialect. The parser is inert until
+// reset() is called. Pass NULL for mem to use malloc/free.
+// (For custom dialects, see syntaqlite_create_parser_with_dialect() below.)
+SyntaqliteParser* syntaqlite_create_sqlite_parser(
+    const SyntaqliteMemMethods* mem);
 
 // Bind a source buffer and reset all internal state. The source must remain
 // valid until the next reset() or destroy(). Can be called again to parse a
@@ -148,10 +98,6 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p);
 // and use the tag field to determine which member to read.
 const void* syntaqlite_parser_node(SyntaqliteParser* p, uint32_t node_id);
 
-// Return the number of nodes currently in the arena. Flushes any pending
-// list nodes first, so the returned count and all node data are consistent.
-uint32_t syntaqlite_parser_node_count(SyntaqliteParser* p);
-
 // Return a pointer to the source text bound by the last reset() call.
 // Useful for extracting token text via SyntaqliteSourceSpan offsets:
 //   syntaqlite_parser_source(p) + span.offset
@@ -160,24 +106,9 @@ const char* syntaqlite_parser_source(SyntaqliteParser* p);
 // Return the byte length of the source text bound by the last reset() call.
 uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p);
 
-// Return the comments captured during parsing. The returned pointer
-// is valid until the next reset() or destroy(). Requires collect_tokens to be
-// enabled. Sets *count to the number of comments.
-const SyntaqliteComment* syntaqlite_parser_comments(SyntaqliteParser* p,
-                                                    uint32_t* count);
-
-// Return the non-whitespace, non-comment token positions captured during
-// parsing. Requires collect_tokens to be enabled. Sets *count to the number
-// of tokens. The returned pointer is valid until the next reset() or destroy().
-const SyntaqliteTokenPos* syntaqlite_parser_tokens(SyntaqliteParser* p,
-                                                   uint32_t* count);
-
-// Return the macro regions recorded via begin_macro/end_macro. The returned
-// pointer is valid until the next reset() or destroy(). Sets *count to the
-// number of regions.
-const SyntaqliteMacroRegion* syntaqlite_parser_macro_regions(
-    SyntaqliteParser* p,
-    uint32_t* count);
+// Return the number of nodes currently in the arena. Flushes any pending
+// list nodes first, so the returned count and all node data are consistent.
+uint32_t syntaqlite_parser_node_count(SyntaqliteParser* p);
 
 // ---------------------------------------------------------------------------
 // Source span helpers
@@ -209,8 +140,13 @@ static inline int syntaqlite_span_is_present(SyntaqliteSourceSpan span) {
 }
 
 // ---------------------------------------------------------------------------
-// List node helpers
+// Node and list helpers
 // ---------------------------------------------------------------------------
+
+// Test whether a node ID field is present (not SYNTAQLITE_NULL_NODE).
+static inline int syntaqlite_node_is_present(uint32_t node_id) {
+  return node_id != SYNTAQLITE_NULL_NODE;
+}
 
 // Return the number of children in a list node. The node pointer must point
 // to a list node (one whose struct has tag + count + children[] layout).
@@ -236,15 +172,6 @@ static inline const void* syntaqlite_list_child(SyntaqliteParser* p,
   if (child_id == SYNTAQLITE_NULL_NODE)
     return NULL;
   return syntaqlite_parser_node(p, child_id);
-}
-
-// ---------------------------------------------------------------------------
-// Optional node field helpers
-// ---------------------------------------------------------------------------
-
-// Test whether a node ID field is present (not SYNTAQLITE_NULL_NODE).
-static inline int syntaqlite_node_is_present(uint32_t node_id) {
-  return node_id != SYNTAQLITE_NULL_NODE;
 }
 
 // ---------------------------------------------------------------------------
@@ -290,26 +217,9 @@ static inline int syntaqlite_node_is_present(uint32_t node_id) {
                SYNTAQLITE_LIST_ITEM(p, Type, _sqlist_##var, _sqi_##var);  \
            var; var = 0)
 
-// ---------------------------------------------------------------------------
-// AST dump
-// ---------------------------------------------------------------------------
-
-// Dump an AST node tree as indented text. Returns a malloc'd NUL-terminated
-// string. The caller must free() the result. Returns NULL on allocation
-// failure.
-char* syntaqlite_dump_node(SyntaqliteParser* p,
-                           uint32_t node_id,
-                           uint32_t indent);
-
-// ---------------------------------------------------------------------------
-// Configuration (call after create, before first reset)
-// ---------------------------------------------------------------------------
-
-// Enable parser trace output (debug builds only). When enabled, the parser
-// prints shift/reduce actions to stderr. Useful for diagnosing grammar
-// conflicts or unexpected parses. Default: off (0).
-// Returns 0 on success, -1 if the parser has already been used.
-int syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable);
+// ============================================================================
+// Configuration — call after create(), before first reset()
+// ============================================================================
 
 // Enable token collection. When enabled, the parser records every token
 // (including whitespace and comments) so the formatter can reproduce the
@@ -325,83 +235,104 @@ int syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable);
 int syntaqlite_parser_set_dialect_config(SyntaqliteParser* p,
                                          const SyntaqliteDialectConfig* config);
 
-// ---------------------------------------------------------------------------
-// Low-level token-feeding API
-// ---------------------------------------------------------------------------
-//
-// Alternative to syntaqlite_parser_next() for embedders that perform their
-// own tokenization (e.g. macro expansion). Call reset() first to bind a
-// source buffer, then feed tokens one at a time.
-//
-// Usage:
-//   syntaqlite_parser_reset(p, source, len);
-//   while (has_more_tokens) {
-//     int rc = syntaqlite_parser_feed_token(p, type, text, tlen);
-//     if (rc == 1) { /* statement complete, read result */ }
-//     if (rc < 0) { /* error */ }
-//   }
-//   int rc = syntaqlite_parser_finish(p);
-//   if (rc == 1) { /* final statement complete */ }
+// Enable parser trace output (debug builds only). When enabled, the parser
+// prints shift/reduce actions to stderr. Useful for diagnosing grammar
+// conflicts or unexpected parses. Default: off (0).
+// Returns 0 on success, -1 if the parser has already been used.
+int syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable);
 
-// Feed a single token. TK_SPACE is silently skipped. TK_COMMENT is recorded
-// as a comment (when collect_tokens is enabled) but not fed to the parser.
-// Returns: 0 = keep going, 1 = statement completed, -1 = error.
-int syntaqlite_parser_feed_token(SyntaqliteParser* p,
-                                 int token_type,
-                                 const char* text,
-                                 int len);
+// ============================================================================
+// Token and comment collection — requires set_collect_tokens(p, 1)
+// ============================================================================
 
-// Retrieve the parse result after feed_token returns 1 or after finish().
-SyntaqliteParseResult syntaqlite_parser_result(SyntaqliteParser* p);
+// A comment captured during parsing.
+typedef struct SyntaqliteComment {
+  uint32_t offset;  // Byte offset in source.
+  uint32_t length;  // Byte length.
+  uint8_t kind;     // 0 = line comment (--), 1 = block comment (/* */).
+} SyntaqliteComment;
 
-// Enumerate terminal tokens that are valid next lookaheads at the parser's
-// current state. Returns the total number of expected tokens.
-//
-// If out_tokens is non-NULL, up to out_cap token IDs are written.
-// This API is intended for grammar-aware completion engines.
-int syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
-                                      int* out_tokens,
-                                      int out_cap);
+// Token flags bitfield.
+#define SYNQ_TOKEN_FLAG_AS_ID \
+  1  // Token was consumed as identifier (fallback from keyword).
+#define SYNQ_TOKEN_FLAG_AS_FUNCTION 2  // Token was consumed as function name.
+#define SYNQ_TOKEN_FLAG_AS_TYPE 4      // Token was consumed as a type name.
 
-// Return the semantic completion context at the parser's current state.
-// 0 = Unknown, 1 = Expression, 2 = TableRef.
-uint32_t syntaqlite_parser_completion_context(SyntaqliteParser* p);
+// A non-whitespace, non-comment token position captured during parsing.
+typedef struct SyntaqliteTokenPos {
+  uint32_t offset;  // Byte offset in source.
+  uint32_t length;  // Byte length.
+  uint32_t type;    // Original token type from tokenizer (pre-fallback).
+  uint32_t flags;   // Bitfield: SYNQ_TOKEN_FLAG_AS_ID / AS_FUNCTION / AS_TYPE.
+} SyntaqliteTokenPos;
 
-// Signal end-of-input. Synthesizes a SEMI if needed and sends EOF to the
-// parser. Returns: 0 = done (no pending statement), 1 = final statement
-// completed, -1 = error.
-int syntaqlite_parser_finish(SyntaqliteParser* p);
+// Return the comments captured during parsing. The returned pointer is valid
+// until the next reset() or destroy(). Sets *count to the number of comments.
+const SyntaqliteComment* syntaqlite_parser_comments(SyntaqliteParser* p,
+                                                    uint32_t* count);
 
-// Mark subsequent fed tokens as being inside a macro expansion.
-// call_offset/call_length describe the macro call's byte range in the
-// original source. Calls may nest (for nested macro expansions).
-void syntaqlite_parser_begin_macro(SyntaqliteParser* p,
-                                   uint32_t call_offset,
-                                   uint32_t call_length);
+// Return the non-whitespace, non-comment token positions captured during
+// parsing. Sets *count to the number of tokens. The returned pointer is valid
+// until the next reset() or destroy().
+const SyntaqliteTokenPos* syntaqlite_parser_tokens(SyntaqliteParser* p,
+                                                   uint32_t* count);
 
-// End the innermost macro expansion region.
-void syntaqlite_parser_end_macro(SyntaqliteParser* p);
+// ============================================================================
+// Debugging
+// ============================================================================
 
-// ---------------------------------------------------------------------------
-// SQLite dialect convenience (opt-out: -DSYNTAQLITE_OMIT_SQLITE_API)
-// ---------------------------------------------------------------------------
+// Error node tag — stored as the first uint32_t of a SyntaqliteErrorNode.
+// Tag 0 is the sentinel for error nodes; it is never used as a real node tag
+// in generated code (NodeTag::Null = 0 is a codegen sentinel, not stored in
+// the arena under normal operation).
+#define SYNTAQLITE_ERROR_NODE_TAG 0u
 
+// An error placeholder node stored in the arena when a parse error occurs.
+// Written by grammar actions via synq_parse_error_node() and recognised by
+// NodeReader::required_node / optional_node before dispatching on the tag.
+typedef struct SyntaqliteErrorNode {
+  uint32_t tag;     // Always SYNTAQLITE_ERROR_NODE_TAG (0).
+  uint32_t offset;  // Byte offset of the error in source.
+  uint32_t length;  // Byte length of the error token (0 = unknown).
+} SyntaqliteErrorNode;
+
+// Dump an AST node tree as indented text. Returns a malloc'd NUL-terminated
+// string. The caller must free() the result. Returns NULL on allocation
+// failure.
+char* syntaqlite_dump_node(SyntaqliteParser* p,
+                           uint32_t node_id,
+                           uint32_t indent);
+
+// ============================================================================
+// Advanced: custom dialects
+// ============================================================================
+
+// Opaque dialect handle — produced by dialect crates. Most callers do not
+// need this; use syntaqlite_create_sqlite_parser() instead.
+typedef struct SyntaqliteDialect SyntaqliteDialect;
+
+// Allocate a parser for a specific dialect. The dialect pointer must remain
+// valid for the lifetime of the parser. The mem methods are copied — the
+// caller's struct does not need to outlive the parser. Pass NULL for mem to
+// use malloc/free.
+SyntaqliteParser* syntaqlite_create_parser_with_dialect(
+    const SyntaqliteMemMethods* mem,
+    const SyntaqliteDialect* dialect);
+
+// Return the built-in SQLite dialect handle (opt-out:
+// -DSYNTAQLITE_OMIT_SQLITE_API). Useful when constructing a parser via
+// syntaqlite_create_parser_with_dialect().
 #ifndef SYNTAQLITE_OMIT_SQLITE_API
 const SyntaqliteDialect* syntaqlite_sqlite_dialect(void);
-static inline SyntaqliteParser* syntaqlite_create_sqlite_parser(
-    const SyntaqliteMemMethods* mem) {
-  return syntaqlite_create_parser_with_dialect(mem,
-                                               syntaqlite_sqlite_dialect());
-}
 #endif
 
 #ifdef __cplusplus
 }
 #endif
 
-// ---------------------------------------------------------------------------
+// ============================================================================
 // C++ convenience wrappers (requires C++17)
-// ---------------------------------------------------------------------------
+// ============================================================================
 
 #if defined(__cplusplus) && __cplusplus >= 201703L
 #include <string_view>

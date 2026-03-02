@@ -23,10 +23,6 @@ pub use rust_dialect::{
     generate_rust_wrappers,
 };
 
-pub use crate::util::functions_codegen::generate_functions_catalog;
-
-pub use crate::util::pascal_case;
-
 pub(super) fn c_type_name(name: &str) -> String {
     format!("Syntaqlite{}", name)
 }

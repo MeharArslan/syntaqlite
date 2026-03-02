@@ -19,17 +19,17 @@ mod fuzzy;
 mod scope;
 mod walker;
 
-use crate::ast_traits::AstTypes;
-use crate::parser::session::{ParseError, RawNodeReader};
+use syntaqlite_parser::ast_traits::AstTypes;
 use syntaqlite_parser::dialect_traits::DialectNodeType;
 use syntaqlite_parser::nodes::NodeId;
+use syntaqlite_parser::session::{ParseError, RawNodeReader};
 
 use scope::ScopeStack;
+use types::expand_function_info;
 
 // ── Public re-exports ────────────────────────────────────────────────────
 
 pub use catalog::FunctionCatalog;
-pub(crate) use types::expand_function_info;
 pub use types::{
     ColumnDef, Diagnostic, DiagnosticMessage, DocumentContext, FunctionDef, Help, RelationDef,
     RelationKind, SessionContext, Severity,
@@ -190,7 +190,7 @@ impl<'d> Validator<'d> {
             .into_iter()
             .flat_map(|info| expand_function_info(info))
             .collect();
-        Validator::builder(crate::sqlite::dialect())
+        Validator::builder(crate::dialect::sqlite())
             .functions(functions)
             .build()
     }

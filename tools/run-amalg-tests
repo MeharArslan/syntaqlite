@@ -8,8 +8,10 @@ Generates amalgamated C files for each dialect configuration, compiles
 test binaries, and runs AST diff tests against them.
 
 Dialect configurations:
-  - sqlite: base grammar only (no extensions)
-  - perfetto: base + extension .y/.synq files
+  - sqlite_full:         base grammar, runtime inlined (self-contained)
+  - sqlite_dialect_only: base grammar, external runtime
+  - sqlite_runtime_only: runtime-only amalgamation, no dialect extension
+  - perfetto_full:       perfetto extension, runtime inlined
 
 Usage:
     tools/run-amalg-tests [-v] [--filter PATTERN]
@@ -26,6 +28,7 @@ sys.path.insert(0, ROOT_DIR)
 from pathlib import Path
 
 from python.syntaqlite.diff_tests.amalg_executor import (
+    AmalgMode,
     AmalgTestContext,
     DialectConfig,
 )
@@ -35,24 +38,43 @@ from python.syntaqlite.diff_tests.utils import Colors, colorize, format_diff
 
 
 # Map test file names to dialect configurations.
+# Key is the prefix used in test class names (lower-cased suite name).
 DIALECT_CONFIGS = {
-    "sqlite": DialectConfig(name="sqlite"),
-    "perfetto": DialectConfig(
+    "sqliteamalgfull": DialectConfig(name="sqlite", mode=AmalgMode.FULL),
+    "sqliteamalgruntimeonly": DialectConfig(name="sqlite", mode=AmalgMode.RUNTIME_ONLY),
+    "perfettoamalgfull": DialectConfig(
         name="perfetto",
+        mode=AmalgMode.FULL,
+        actions_dir=os.path.join(ROOT_DIR, "dialects/perfetto/actions"),
+        nodes_dir=os.path.join(ROOT_DIR, "dialects/perfetto/nodes"),
+    ),
+    "perfettoamalgdialectonly": DialectConfig(
+        name="perfetto",
+        mode=AmalgMode.DIALECT_ONLY,
         actions_dir=os.path.join(ROOT_DIR, "dialects/perfetto/actions"),
         nodes_dir=os.path.join(ROOT_DIR, "dialects/perfetto/nodes"),
     ),
 }
 
+# Legacy aliases kept for backwards compatibility with existing test class names.
+_LEGACY_ALIASES = {
+    "sqliteamalg": "sqliteamalgfull",
+    "perfettoextension": "perfettoamalgfull",
+}
+
 
 def dialect_for_test(test_name: str) -> str:
-    """Infer dialect from test suite class name."""
-    suite_name = test_name.split(".")[0]
-    lower = suite_name.lower()
-    for dialect in DIALECT_CONFIGS:
-        if dialect in lower:
-            return dialect
-    return "sqlite"
+    """Infer dialect config key from test suite class name."""
+    suite_name = test_name.split(".")[0].lower()
+    if suite_name in DIALECT_CONFIGS:
+        return suite_name
+    if suite_name in _LEGACY_ALIASES:
+        return _LEGACY_ALIASES[suite_name]
+    # Fallback: match by prefix
+    for key in DIALECT_CONFIGS:
+        if suite_name.startswith(key) or key.startswith(suite_name):
+            return key
+    return "sqliteamalgfull"
 
 
 def main():
@@ -86,20 +108,20 @@ def main():
         for name, _ in tests:
             needed_dialects.add(dialect_for_test(name))
 
-        for dialect_name in sorted(needed_dialects):
-            config = DIALECT_CONFIGS.get(dialect_name)
+        for dialect_key in sorted(needed_dialects):
+            config = DIALECT_CONFIGS.get(dialect_key)
             if not config:
-                print(f"Unknown dialect: {dialect_name}", file=sys.stderr)
+                print(f"Unknown dialect key: {dialect_key}", file=sys.stderr)
                 return 1
             if args.verbose >= 1:
-                print(f"Building {dialect_name} amalgamation...")
+                print(f"Building {config.name} ({config.mode.value}) amalgamation...")
             try:
                 ctx.get_binary(config)
             except RuntimeError as e:
                 print(f"Error: {e}", file=sys.stderr)
                 return 1
             if args.verbose >= 1:
-                print(f"  {dialect_name}: OK")
+                print(f"  {config.name} ({config.mode.value}): OK")
 
         # Run tests.
         start_time = time.time()
@@ -110,8 +132,8 @@ def main():
             print(f"[==========] Running {len(tests)} tests from {len(suites)} test suites.")
 
         for name, blueprint in tests:
-            dialect_name = dialect_for_test(name)
-            config = DIALECT_CONFIGS[dialect_name]
+            dialect_key = dialect_for_test(name)
+            config = DIALECT_CONFIGS[dialect_key]
             binary = ctx.get_binary(config)
 
             result = execute_test(binary, name, blueprint)

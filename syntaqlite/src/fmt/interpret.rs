@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0.
 
 use crate::dialect::Dialect;
-use crate::parser::session::RawNodeReader;
 use syntaqlite_parser::nodes::{FieldVal, Fields, NodeId};
+use syntaqlite_parser::session::RawNodeReader;
 
 use super::bytecode::opcodes;
 use super::comment::{CommentCtx, DrainResult};

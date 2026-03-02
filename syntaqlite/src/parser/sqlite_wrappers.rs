@@ -11,52 +11,38 @@ use crate::parser::typed::{
     TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor, TypedTokenizer,
     TypedTokenizerBuilder,
 };
-// The SQLite dialect is a `'static` singleton, so all dialect-parameterized
+// The dialect is a `'static` singleton, so all dialect-parameterized
 // types are concretized to `'static` in this module.
 use syntaqlite_parser_sqlite::ast::Stmt;
 use syntaqlite_parser_sqlite::tokens::TokenType;
-
 // ── Type aliases ─────────────────────────────────────────────────────────
 
 /// A cursor over parsed SQL statements, yielding typed [`Stmt`] nodes.
 pub type StatementCursor<'a> = TypedStatementCursor<'a, Stmt<'a>>;
 
-/// A typed SQLite token with kind and source text.
+/// A typed SQL token with kind and source text.
 pub type Token<'a> = TypedToken<'a, TokenType>;
 
 /// A cursor yielding typed [`Token`]s.
 pub type TokenCursor<'a> = TypedTokenCursor<'a, TokenType>;
 
-/// A tokenizer for SQLite SQL.
+/// A tokenizer for SQL.
 pub type Tokenizer = TypedTokenizer<'static, TokenType>;
 
 /// Builder for [`Tokenizer`].
 pub type TokenizerBuilder = TypedTokenizerBuilder<'static, TokenType>;
 
-/// A cursor for token-by-token incremental parsing of SQLite SQL.
+/// A cursor for token-by-token incremental parsing.
 ///
 /// Obtained from [`IncrementalParser::feed`] or [`IncrementalParser::feed_cstr`].
 /// Feed tokens via [`feed_token`](IncrementalCursor::feed_token) and signal
 /// end-of-input via [`finish`](IncrementalCursor::finish).
 pub type IncrementalCursor<'a> = TypedIncrementalCursor<'a, Stmt<'a>, TokenType>;
-
 // ── Parser ───────────────────────────────────────────────────────────────
 
-/// A SQL parser for the built-in SQLite dialect.
+/// A SQL parser pre-configured for this dialect.
 ///
 /// Wraps [`TypedParser`] and yields typed [`Stmt`] nodes.
-///
-/// # Example
-///
-/// ```
-/// use syntaqlite::Parser;
-///
-/// let mut parser = Parser::new();
-/// for stmt in parser.parse("SELECT 1; CREATE TABLE t(x)") {
-///     let stmt = stmt.expect("parse error");
-///     println!("{stmt:?}");
-/// }
-/// ```
 pub struct Parser {
     inner: TypedParser<'static>,
 }
@@ -65,17 +51,17 @@ pub struct Parser {
 unsafe impl Send for Parser {}
 
 impl Parser {
-    /// Create a parser for the built-in SQLite dialect with default configuration.
+    /// Create a parser with default configuration.
     pub fn new() -> Self {
         Parser {
-            inner: TypedParser::new(crate::sqlite::dialect()),
+            inner: TypedParser::new(crate::dialect::sqlite()),
         }
     }
 
     /// Create a builder for configuring the parser before construction.
     pub fn builder() -> ParserBuilder {
         ParserBuilder {
-            inner: TypedParser::builder(crate::sqlite::dialect()),
+            inner: TypedParser::builder(crate::dialect::sqlite()),
         }
     }
 
@@ -132,10 +118,9 @@ impl ParserBuilder {
         }
     }
 }
-
 // ── IncrementalParser ────────────────────────────────────────────────────
 
-/// An incremental SQL parser for the built-in SQLite dialect.
+/// An incremental SQL parser pre-configured for this dialect.
 ///
 /// Wraps [`TypedIncrementalParser`] and feeds tokens one at a time via
 /// [`IncrementalCursor`], yielding typed [`Stmt`] nodes.
@@ -147,17 +132,17 @@ pub struct IncrementalParser {
 unsafe impl Send for IncrementalParser {}
 
 impl IncrementalParser {
-    /// Create an incremental parser for the built-in SQLite dialect with default configuration.
+    /// Create an incremental parser with default configuration.
     pub fn new() -> Self {
         IncrementalParser {
-            inner: TypedIncrementalParser::new(crate::sqlite::dialect()),
+            inner: TypedIncrementalParser::new(crate::dialect::sqlite()),
         }
     }
 
     /// Create a builder for configuring the parser before construction.
     pub fn builder() -> IncrementalParserBuilder {
         IncrementalParserBuilder {
-            inner: TypedIncrementalParser::builder(crate::sqlite::dialect()),
+            inner: TypedIncrementalParser::builder(crate::dialect::sqlite()),
         }
     }
 

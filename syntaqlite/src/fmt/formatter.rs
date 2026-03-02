@@ -39,7 +39,7 @@ impl<'d> Formatter<'d> {
     /// Create a formatter for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
     pub fn new() -> Formatter<'static> {
-        Formatter::builder(crate::sqlite::dialect()).build()
+        Formatter::builder(crate::dialect::sqlite()).build()
     }
 
     /// Create a builder for a formatter bound to the given dialect.
@@ -57,7 +57,10 @@ impl<'d> Formatter<'d> {
     }
 
     /// Format SQL source text. Handles multiple statements and preserves comments.
-    pub fn format(&mut self, source: &str) -> Result<String, crate::parser::session::ParseError> {
+    pub fn format(
+        &mut self,
+        source: &str,
+    ) -> Result<String, syntaqlite_parser::session::ParseError> {
         let mut cursor = self.parser.parse(source);
 
         let mut roots = Vec::new();
@@ -365,5 +368,5 @@ pub(crate) fn extract_fields<'a>(
 ) -> Fields<'a> {
     // SAFETY: caller guarantees ptr is a valid arena pointer for a node with
     // the given tag; delegating to the shared implementation.
-    unsafe { crate::dialect::extract_fields(dialect, ptr, tag, source) }
+    unsafe { syntaqlite_parser::dialect::extract_fields(dialect, ptr, tag, source) }
 }

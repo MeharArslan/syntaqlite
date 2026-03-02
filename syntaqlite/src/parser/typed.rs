@@ -10,11 +10,12 @@
 use std::ops::Range;
 
 use super::incremental::{RawIncrementalCursor, RawIncrementalParser, RawIncrementalParserBuilder};
-use super::session::{ParseError, RawNodeReader, RawParser, RawParserBuilder, RawStatementCursor};
+use super::session::{RawParser, RawParserBuilder, RawStatementCursor};
 use super::tokenizer::{RawTokenCursor, RawTokenizer};
 use crate::dialect::Dialect;
-pub use syntaqlite_parser::dialect_traits::{DialectNodeType, DialectTokenType};
+use syntaqlite_parser::dialect_traits::{DialectNodeType, DialectTokenType};
 use syntaqlite_parser::nodes::NodeId;
+use syntaqlite_parser::session::{ParseError, RawNodeReader};
 
 // ── TypedParser ──────────────────────────────────────────────────────────
 

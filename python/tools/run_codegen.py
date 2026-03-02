@@ -6,7 +6,7 @@
 
 Multi-stage bootstrap pipeline:
   Stage 1  (--extract): Extract C fragments from raw SQLite source.
-  Stage 1b (always):    Generate functions catalog Rust module from functions.json.
+  Stage 1b (always):    Generate functions catalog and ast_traits Rust modules.
   Stage 2  (always):    Generate base syntaqlite crate C + Rust code.
 
 Usage:
@@ -73,33 +73,13 @@ def main():
             print("Stage 1 extraction failed", file=sys.stderr)
             return result.returncode
 
-    # Stage 1b: Generate functions catalog from extracted functions.json.
-    # Uses sqlite-extract feature (no runtime dependency) so the syntaqlite
-    # crate doesn't need to compile yet — avoids the bootstrap cycle where
-    # syntaqlite/src/sqlite/functions.rs depends on the generated file.
-    functions_json = vendored_dir / "data" / "functions.json"
-    functions_catalog_rs = dialect_crate_dir / "src" / "functions_catalog.rs"
-
-    print("Stage 1b: Generating functions catalog...")
+    # Build once with internal,codegen-dialect features for stages 1b and 2.
+    print("Building CLI with internal,codegen-dialect features...")
     result = subprocess.run(
         [
-            "cargo", "run", "--release", "-p", "syntaqlite-cli",
-            "--no-default-features", "--features", "sqlite-extract",
-            "--",
-            "generate-functions-catalog",
-            "--functions-json", str(functions_json),
-            "--output", str(functions_catalog_rs),
+            "cargo", "build", "--release", "-p", "syntaqlite-cli",
+            "--no-default-features", "--features", "internal,codegen-dialect",
         ],
-        cwd=project_root,
-    )
-    if result.returncode != 0:
-        print("Functions catalog generation failed", file=sys.stderr)
-        return result.returncode
-
-    # Stage 2: Build CLI with codegen-sqlite feature and run full codegen
-    print("Stage 2: Generating base SQLite dialect...")
-    result = subprocess.run(
-        ["cargo", "build", "--release", "-p", "syntaqlite-cli", "--no-default-features", "--features", "codegen-sqlite"],
         cwd=project_root,
     )
     if result.returncode != 0:
@@ -107,16 +87,38 @@ def main():
         return result.returncode
 
     cli_bin = project_root / "target" / "release" / "syntaqlite"
-    wrappers_out = dialect_crate / "src" / "sqlite" / "wrappers.rs"
+
+    # Stage 1b: Generate functions catalog and ast_traits from synq files.
+    functions_json = vendored_dir / "data" / "functions.json"
+    functions_catalog_rs = dialect_crate_dir / "src" / "functions_catalog.rs"
+    ast_traits_out = shared_crate_dir / "src" / "ast_traits.rs"
+
+    print("Stage 1b: Generating functions catalog and ast_traits...")
     result = subprocess.run(
         [
             str(cli_bin),
-            "codegen",
+            "codegen-sqlite-parser",
+            "--functions-json", str(functions_json),
+            "--functions-catalog-out", str(functions_catalog_rs),
             "--actions-dir", str(actions_dir),
             "--nodes-dir", str(nodes_dir),
-            "--dialect-crate", str(dialect_crate_dir),
-            "--shared-crate", str(shared_crate_dir),
-            "--wrappers-out", str(wrappers_out),
+            "--ast-traits-out", str(ast_traits_out),
+        ],
+    )
+    if result.returncode != 0:
+        print("Stage 1b codegen-sqlite-parser failed", file=sys.stderr)
+        return result.returncode
+
+    # Stage 2: Generate base SQLite dialect C + Rust code.
+    print("Stage 2: Generating base SQLite dialect...")
+    result = subprocess.run(
+        [
+            str(cli_bin),
+            "codegen-dialect",
+            "--name", "sqlite",
+            "--output-type", "sqlite",
+            "--actions-dir", str(actions_dir),
+            "--nodes-dir", str(nodes_dir),
         ],
     )
 

@@ -14,3 +14,6 @@ pub(crate) mod session;
 pub(crate) mod tokenizer;
 
 pub mod typed;
+
+#[cfg(feature = "sqlite")]
+pub(crate) mod sqlite_wrappers;

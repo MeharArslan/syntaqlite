@@ -454,8 +454,9 @@ fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
 
     source.push('\n');
 
-    // Full mode: extension headers go into the .c alongside internal headers.
-    if matches!(mode, EmitMode::Full(_)) {
+    // Full and RuntimeOnly modes: extension headers go into the .c so that
+    // generated sources (dialect.c) can see synq_parse_build etc.
+    if matches!(mode, EmitMode::Full(_) | EmitMode::RuntimeOnly) {
         for &i in &ext_headers {
             emit_file(&files[i], &inlined_keys, &mut source);
         }
@@ -543,6 +544,12 @@ fn detect_include_guard(content: &str) -> Option<String> {
 
 /// Emit a single file's content, stripping include guards and only those quoted
 /// includes that are already inlined or known runtime-style headers.
+///
+/// Include guards from the original file are **retained** (re-emitted) around
+/// the inlined content. This protects against double-definition when the same
+/// file is inlined into multiple amalgamation units (e.g. both
+/// `syntaqlite_runtime.h` and `syntaqlite_perfetto.h` inline `sqlite_node.h`
+/// content — the guard ensures C only sees it once per translation unit).
 fn emit_file(file: &SourceFile, inlined_keys: &HashSet<&str>, out: &mut String) {
     out.push_str(&format!(
         "/* ======== begin: {} ======== */\n",
@@ -551,13 +558,18 @@ fn emit_file(file: &SourceFile, inlined_keys: &HashSet<&str>, out: &mut String) 
 
     let guard = detect_include_guard(&file.content);
 
-    // Track whether we've seen the `#ifndef GUARD` / `#define GUARD` pair
-    // and whether we need to strip the final `#endif`.
+    // Re-emit the include guard around the inlined content so that if the
+    // same logical file appears in more than one amalgamation (e.g. runtime
+    // and dialect-only), the C preprocessor skips the second occurrence.
+    if let Some(ref g) = guard {
+        out.push_str(&format!("#ifndef {g}\n#define {g}\n"));
+    }
+
     let mut guard_ifndef_seen = false;
     let mut guard_define_seen = false;
     let mut lines: Vec<&str> = file.content.lines().collect();
 
-    // If we have a guard, strip the trailing `#endif` (search from end).
+    // Strip the trailing `#endif` of the original guard (we'll re-emit it).
     if guard.is_some() {
         for i in (0..lines.len()).rev() {
             let t = lines[i].trim();
@@ -575,7 +587,8 @@ fn emit_file(file: &SourceFile, inlined_keys: &HashSet<&str>, out: &mut String) 
     for line in &lines {
         let trimmed = line.trim();
 
-        // Strip include guard directives.
+        // Strip the original `#ifndef GUARD` / `#define GUARD` pair (we
+        // re-emitted them above, before the content).
         if let Some(ref g) = guard {
             if !guard_ifndef_seen {
                 if let Some(rest) = trimmed.strip_prefix("#ifndef")
@@ -608,6 +621,10 @@ fn emit_file(file: &SourceFile, inlined_keys: &HashSet<&str>, out: &mut String) 
 
         out.push_str(line);
         out.push('\n');
+    }
+
+    if let Some(ref g) = guard {
+        out.push_str(&format!("#endif  /* {g} */\n"));
     }
 
     out.push_str(&format!(

@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 #include "syntaqlite/parser.h"
+#include "syntaqlite/incremental_parser.h"
 
 #include <stdarg.h>
 #include <stdio.h>

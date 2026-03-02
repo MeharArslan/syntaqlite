@@ -6,14 +6,14 @@ use clap::{Parser, Subcommand};
 #[cfg(feature = "runtime")]
 mod runtime;
 
-#[cfg(any(feature = "codegen-dialect", feature = "codegen-sqlite"))]
+#[cfg(any(feature = "codegen-dialect", feature = "internal"))]
 mod fs_util;
 
 #[cfg(feature = "codegen-dialect")]
 mod codegen_dialect;
 
-#[cfg(feature = "codegen-sqlite")]
-mod codegen_sqlite;
+#[cfg(feature = "internal")]
+mod codegen_sqlite_parser;
 
 #[cfg(feature = "runtime")]
 mod lsp;
@@ -81,12 +81,18 @@ enum Command {
     /// Start the language server (stdio)
     #[cfg(feature = "runtime")]
     Lsp,
+    /// Generate dialect C sources and Rust bindings.
+    #[cfg(feature = "codegen-dialect")]
+    #[command(name = "codegen-dialect")]
+    CodegenDialect(codegen_dialect::CodegenDialectArgs),
+    /// Hidden lemon/mkkeyword subcommands for codegen subprocess support.
     #[cfg(feature = "codegen-dialect")]
     #[command(flatten)]
-    Dialect(codegen_dialect::CodegenCommand),
-    #[cfg(feature = "codegen-sqlite")]
-    #[command(flatten)]
-    Sqlite(codegen_sqlite::CodegenCommand),
+    DialectTool(codegen_dialect::ToolCommand),
+    /// Generate internal Rust artifacts for the SQLite parser crate.
+    #[cfg(feature = "internal")]
+    #[command(name = "codegen-sqlite-parser")]
+    CodegenSqliteParser(codegen_sqlite_parser::Args),
     #[cfg(feature = "sqlite-extract")]
     #[command(flatten)]
     Extract(sqlite_extract::ExtractCommand),
@@ -119,7 +125,7 @@ pub fn run(name: &str, dialect: Option<syntaqlite::dialect::Dialect<'_>>) {
 pub fn run(name: &str, _dialect: Option<()>) {
     #[cfg(any(
         feature = "codegen-dialect",
-        feature = "codegen-sqlite",
+        feature = "internal",
         feature = "sqlite-extract",
         feature = "version-analysis",
     ))]
@@ -130,9 +136,11 @@ pub fn run(name: &str, _dialect: Option<()>) {
 
         let result: Result<(), String> = match cli.command {
             #[cfg(feature = "codegen-dialect")]
-            Command::Dialect(cmd) => codegen_dialect::dispatch(cmd),
-            #[cfg(feature = "codegen-sqlite")]
-            Command::Sqlite(cmd) => codegen_sqlite::dispatch(cmd),
+            Command::CodegenDialect(args) => codegen_dialect::dispatch_dialect(args),
+            #[cfg(feature = "codegen-dialect")]
+            Command::DialectTool(cmd) => codegen_dialect::dispatch_tool(cmd),
+            #[cfg(feature = "internal")]
+            Command::CodegenSqliteParser(args) => codegen_sqlite_parser::dispatch(args),
             #[cfg(feature = "sqlite-extract")]
             Command::Extract(cmd) => sqlite_extract::dispatch(cmd),
             #[cfg(feature = "version-analysis")]

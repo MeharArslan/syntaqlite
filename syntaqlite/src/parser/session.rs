@@ -14,7 +14,7 @@ use syntaqlite_parser::parser::{
     syntaqlite_parser_set_trace,
 };
 
-pub use syntaqlite_parser::session::{ErrorSpan, ParseError, RawNodeReader};
+use syntaqlite_parser::session::{ParseError, RawNodeReader};
 
 /// Owns a parser instance. Reusable across inputs via `parse()`.
 pub struct RawParser<'d> {
@@ -41,7 +41,7 @@ impl<'d> RawParser<'d> {
     /// Create a parser for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
     pub fn new() -> RawParser<'static> {
-        RawParser::builder(crate::sqlite::dialect()).build()
+        RawParser::builder(crate::dialect::sqlite()).build()
     }
 
     /// Create a builder for a parser bound to the given dialect.

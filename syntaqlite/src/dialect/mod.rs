@@ -16,11 +16,8 @@
 
 pub use syntaqlite_parser::dialect::ffi::{CflagInfo, Cflags, DialectConfig, FieldMeta};
 
-// Re-export Dialect, schema types, and field extraction from the sys crate.
-pub(crate) use syntaqlite_parser::dialect::extract_fields;
+// Re-export Dialect and schema types from the sys crate.
 pub use syntaqlite_parser::dialect::{Dialect, SchemaContribution, SchemaKind};
-
-#[cfg(feature = "sqlite")]
 pub use syntaqlite_parser::sqlite::{
     cflag_names, cflag_table, parse_cflag_name, parse_sqlite_version,
 };
@@ -96,5 +93,5 @@ impl TokenCategory {
 /// Return the built-in SQLite dialect handle.
 #[cfg(feature = "sqlite")]
 pub fn sqlite() -> Dialect<'static> {
-    crate::sqlite::dialect()
+    syntaqlite_parser_sqlite::dialect()
 }

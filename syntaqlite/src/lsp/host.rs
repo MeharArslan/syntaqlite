@@ -7,9 +7,9 @@ use crate::dialect::Dialect;
 use crate::fmt::FormatConfig;
 use crate::fmt::formatter::Formatter;
 use crate::lsp::analysis::DocumentAnalysis;
-use crate::parser::session::ParseError;
 use crate::validation::types::{Diagnostic, FunctionDef, SessionContext};
 use crate::validation::{FunctionCatalog, ValidationConfig};
+use syntaqlite_parser::session::ParseError;
 
 use super::{CompletionEntry, CompletionInfo, CompletionKind, SemanticToken};
 
@@ -59,7 +59,7 @@ impl<'d> AnalysisHost<'d> {
     /// Create a host for the built-in SQLite dialect.
     #[cfg(feature = "sqlite")]
     pub fn new() -> AnalysisHost<'static> {
-        AnalysisHost::with_dialect(crate::sqlite::dialect())
+        AnalysisHost::with_dialect(crate::dialect::sqlite())
     }
 
     // ── Configuration ─────────────────────────────────────────────────────
@@ -245,7 +245,7 @@ impl<'d> AnalysisHost<'d> {
     // ── Semantic validation ────────────────────────────────────────────────
 
     /// Semantic validation diagnostics for a document, generic over dialect AST types.
-    pub fn validate_dialect<A: for<'a> crate::ast_traits::AstTypes<'a>>(
+    pub fn validate_dialect<A: for<'a> syntaqlite_parser::ast_traits::AstTypes<'a>>(
         &self,
         uri: &str,
         config: &ValidationConfig,

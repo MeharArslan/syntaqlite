@@ -5,7 +5,7 @@ use std::ffi::{CStr, c_int};
 use std::ops::Range;
 use std::ptr::NonNull;
 
-use super::session::{CursorState, NodeRef, ParseError, RawNodeReader};
+use super::session::{CursorState, NodeRef};
 use crate::dialect::Dialect;
 use syntaqlite_parser::dialect::ffi::DialectConfig;
 use syntaqlite_parser::nodes::NodeId;
@@ -17,6 +17,7 @@ use syntaqlite_parser::parser::{
     syntaqlite_parser_set_collect_tokens, syntaqlite_parser_set_dialect_config,
     syntaqlite_parser_set_trace,
 };
+use syntaqlite_parser::session::{ParseError, RawNodeReader};
 
 /// A low-level parser for token-by-token feeding. Owns its own C parser
 /// handle and source buffer, independent of `Parser`.
@@ -36,7 +37,7 @@ impl<'d> RawIncrementalParser<'d> {
     /// Token collection is enabled by default (required for formatting).
     #[cfg(feature = "sqlite")]
     pub fn new() -> RawIncrementalParser<'static> {
-        RawIncrementalParser::builder(crate::sqlite::dialect()).build()
+        RawIncrementalParser::builder(crate::dialect::sqlite()).build()
     }
 
     /// Create a builder for a low-level parser bound to the given dialect.

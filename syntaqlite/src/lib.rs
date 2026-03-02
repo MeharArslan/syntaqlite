@@ -78,7 +78,6 @@
 //!   TypeScript template literals.
 //! - [`lsp`] — [`AnalysisHost`](lsp::AnalysisHost) for editor integrations.
 
-pub(crate) use syntaqlite_parser::ast_traits;
 pub mod parser;
 
 // ── Top-level API ─────────────────────────────────────────────────────
@@ -87,7 +86,7 @@ pub mod parser;
 // Everything else lives in its host module (parser::*, fmt::*, validation::*).
 
 #[cfg(feature = "sqlite")]
-pub use sqlite::wrappers::{
+pub use parser::sqlite_wrappers::{
     IncrementalCursor, IncrementalParser, IncrementalParserBuilder, Parser, ParserBuilder,
     StatementCursor, Token, TokenCursor, Tokenizer, TokenizerBuilder,
 };
@@ -123,10 +122,6 @@ pub mod embedded;
 #[cfg(feature = "lsp")]
 pub mod lsp;
 
-// ── SQLite dialect ───────────────────────────────────────────────────────
-
-pub(crate) mod sqlite;
-
 /// Typed AST nodes for the SQLite dialect.
 ///
 /// Re-exports from the internal SQLite dialect module. Each SQL statement
@@ -151,10 +146,10 @@ pub use syntaqlite_parser_sqlite::tokens::TokenType;
 /// blocks that external dialect crates need.
 pub mod ext {
     // ── Parser types ─────────────────────────────────────────────────────
-    pub use crate::parser::session::ErrorSpan;
-    pub use crate::parser::session::RawNodeReader;
     pub use crate::parser::session::RawParser;
     pub use crate::parser::session::RawStatementCursor;
+    pub use syntaqlite_parser::session::ErrorSpan;
+    pub use syntaqlite_parser::session::RawNodeReader;
 
     pub use crate::parser::tokenizer::RawToken;
     pub use crate::parser::tokenizer::RawTokenCursor;
@@ -164,9 +159,10 @@ pub mod ext {
     pub use crate::parser::incremental::RawIncrementalParser;
 
     // ── Node / field types ───────────────────────────────────────────────
-    pub use crate::parser::session::{NodeRef, ParseError};
+    pub use crate::parser::session::NodeRef;
     pub use syntaqlite_parser::dialect_traits::{DialectNodeType, DialectTokenType};
     pub use syntaqlite_parser::nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
+    pub use syntaqlite_parser::session::ParseError;
     pub use syntaqlite_parser::typed_list::TypedList;
 
     // ── Token metadata ───────────────────────────────────────────────────
@@ -175,7 +171,7 @@ pub mod ext {
     };
 
     // ── AST trait definitions ────────────────────────────────────────────
-    pub use crate::ast_traits::*;
+    pub use syntaqlite_parser::ast_traits::*;
 
     // ── Builders ─────────────────────────────────────────────────────────
 
