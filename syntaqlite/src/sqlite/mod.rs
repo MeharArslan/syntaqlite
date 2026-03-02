@@ -11,4 +11,4 @@
 pub(crate) mod wrappers;
 
 #[cfg(feature = "sqlite")]
-pub(crate) use syntaqlite_parser_sqlite::DIALECT;
+pub(crate) use syntaqlite_parser_sqlite::dialect;

@@ -432,7 +432,7 @@ mod tests {
     use crate::validation::Severity;
 
     fn dialect() -> Dialect<'static> {
-        *crate::sqlite::DIALECT
+        crate::sqlite::dialect()
     }
 
     fn analyzer() -> EmbeddedAnalyzer<'static> {

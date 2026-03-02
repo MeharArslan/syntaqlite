@@ -472,7 +472,7 @@ fn validate_embedded_source(
 
     let diags = syntaqlite::embedded::EmbeddedAnalyzer::new(dialect)
         .with_functions(syntaqlite::embedded::sqlite_function_defs())
-        .with_config(config.clone())
+        .with_config(*config)
         .validate(&fragments);
 
     render_diagnostics(source, file, &diags)

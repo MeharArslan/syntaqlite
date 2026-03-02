@@ -6,35 +6,29 @@ use std::collections::HashSet;
 use crate::util::c_writer::CWriter;
 use crate::util::pascal_case;
 
-/// Controls the `#include` paths emitted by `generate_dialect_c()`.
+/// Controls the `#include` paths emitted by codegen functions.
 ///
-/// Two kinds of headers are included:
-/// - **Internal**: dialect-private headers (`dialect_builder.h`, `dialect_meta.h`, …).
-/// - **Public**: runtime/API headers (`syntaqlite/parser.h`, `syntaqlite/dialect.h`, …).
-///
-/// Each prefix is prepended verbatim, so include `"/"` if the prefix is a directory.
-///
-/// **Default** (external dialect crates): both prefixes `""`, `dialect_include_dir`
-/// set to `"syntaqlite_{dialect}"` — all headers assumed discoverable from a
-/// single root.
-///
-/// **Internal syntaqlite crate**: `internal = "csrc/sqlite/"`, `public = ""`,
-/// `dialect_include_dir = "syntaqlite"` because private headers live in
-/// `csrc/sqlite/` while public headers (including dialect-specific ones) are
-/// all under `include/syntaqlite/`.
+/// Each field is a verbatim `#include "..."` path for the corresponding
+/// generated C header. The paths are set by the output layout and vary
+/// depending on whether we are building the internal SQLite dialect crate,
+/// an external dialect crate, or an amalgamation temp directory.
 #[derive(Debug, Clone, Default)]
 pub struct DialectCIncludes<'a> {
-    /// Prefix for internal dialect headers (`dialect_builder.h`, `dialect_meta.h`, etc.).
-    pub internal: &'a str,
-    /// Prefix for public headers (`syntaqlite/parser.h`, `syntaqlite/dialect.h`, etc.).
-    pub public: &'a str,
-    /// Directory name for dialect public headers (`tokens.h`, `sqlite_node.h`, etc.)
-    /// in `#include` directives. E.g., `"syntaqlite"` (internal crate, merged with runtime)
-    /// or `"syntaqlite_mydialect"` (external dialect crate, separate directory).
-    pub dialect_include_dir: &'a str,
-    /// Path to the tokens header (the `SYNTAQLITE_TK_*` defines) relative to the
-    /// include root, e.g. `"syntaqlite/tokens.h"` for the internal SQLite dialect
-    /// or `"syntaqlite_mydialect/mydialect_tokens.h"` for an external dialect crate.
+    /// Include path for `dialect_builder.h`.
+    pub ast_builder_h: &'a str,
+    /// Include path for `dialect_meta.h`.
+    pub dialect_meta_h: &'a str,
+    /// Include path for `dialect_fmt.h`.
+    pub dialect_fmt_h: &'a str,
+    /// Include path for `dialect_tokens.h`.
+    pub dialect_tokens_h: &'a str,
+    /// Include path for `sqlite_parse.h` (parser API forward declarations).
+    pub parse_api_h: &'a str,
+    /// Include path for `sqlite_tokenize.h` (tokenizer API forward declarations).
+    pub tokenize_h: &'a str,
+    /// Include path for `sqlite_keyword.h` (keyword lookup).
+    pub keyword_h: &'a str,
+    /// Include path for the tokens header (the `SYNTAQLITE_TK_*` defines).
     pub tokens_header: &'a str,
 }
 
@@ -113,21 +107,19 @@ pub fn generate_dialect_c(
     includes: &DialectCIncludes<'_>,
 ) -> String {
     let upper = dialect.to_uppercase();
-    let ip = includes.internal;
-    let pp = includes.public;
     let mut w = CWriter::new();
     w.file_header();
-    w.include_local(&format!("{pp}syntaqlite/parser.h"));
-    w.include_local(&format!("{pp}{}", includes.tokens_header));
-    w.include_local(&format!("{pp}syntaqlite/dialect.h"));
-    w.include_local(&format!("{ip}dialect_builder.h"));
-    w.include_local(&format!("{ip}dialect_meta.h"));
-    w.include_local(&format!("{ip}dialect_fmt.h"));
+    w.include_local("syntaqlite/parser.h");
+    w.include_local(includes.tokens_header);
+    w.include_local("syntaqlite/dialect.h");
+    w.include_local(includes.ast_builder_h);
+    w.include_local(includes.dialect_meta_h);
+    w.include_local(includes.dialect_fmt_h);
     if tokens.is_some() {
-        w.include_local(&format!("{ip}dialect_tokens.h"));
+        w.include_local(includes.dialect_tokens_h);
     }
-    w.include_local(&format!("{ip}sqlite_parse.h"));
-    w.include_local(&format!("{ip}sqlite_tokenize.h"));
+    w.include_local(includes.parse_api_h);
+    w.include_local(includes.tokenize_h);
     w.newline();
 
     if tokens.is_some() {
@@ -285,16 +277,22 @@ mod tests {
         DialectCIncludes, generate_dialect_c, generate_dialect_h, generate_token_categories_header,
     };
 
-    const DEFAULT_INCLUDES: DialectCIncludes<'static> = DialectCIncludes {
-        internal: "",
-        public: "",
-        dialect_include_dir: "",
-        tokens_header: "syntaqlite/tokens.h",
-    };
+    fn default_includes() -> DialectCIncludes<'static> {
+        DialectCIncludes {
+            ast_builder_h: "dialect_builder.h",
+            dialect_meta_h: "dialect_meta.h",
+            dialect_fmt_h: "dialect_fmt.h",
+            dialect_tokens_h: "dialect_tokens.h",
+            parse_api_h: "sqlite_parse.h",
+            tokenize_h: "sqlite_tokenize.h",
+            keyword_h: "sqlite_keyword.h",
+            tokens_header: "syntaqlite/tokens.h",
+        }
+    }
 
     #[test]
     fn c_source_exposes_dialect_function() {
-        let c = generate_dialect_c("sqlite", None, &DEFAULT_INCLUDES);
+        let c = generate_dialect_c("sqlite", None, &default_includes());
         assert!(c.contains("const SyntaqliteDialect* syntaqlite_sqlite_dialect(void)"));
         // No default-alias or create-parser wrappers
         assert!(!c.contains("syntaqlite_dialect(void)"));
@@ -396,7 +394,7 @@ mod tests {
     #[test]
     fn dialect_c_with_tokens_includes_categories() {
         let tokens = vec![("SELECT".to_string(), 0)];
-        let c = generate_dialect_c("sqlite", Some(&tokens), &DEFAULT_INCLUDES);
+        let c = generate_dialect_c("sqlite", Some(&tokens), &default_includes());
         assert!(c.contains(".parser_expected_tokens = SynqSqliteParseExpectedTokens,"));
         assert!(c.contains(".keyword_text = synq_sqlite_zKWText,"));
         assert!(c.contains(".keyword_offsets = synq_sqlite_aKWOffset,"));
@@ -410,7 +408,7 @@ mod tests {
 
     #[test]
     fn dialect_c_without_tokens_uses_null() {
-        let c = generate_dialect_c("sqlite", None, &DEFAULT_INCLUDES);
+        let c = generate_dialect_c("sqlite", None, &default_includes());
         assert!(c.contains(".keyword_text = 0,"));
         assert!(c.contains(".keyword_offsets = 0,"));
         assert!(c.contains(".keyword_lens = 0,"));
@@ -445,19 +443,23 @@ mod tests {
     }
 
     #[test]
-    fn dialect_c_includes_respect_prefixes() {
+    fn dialect_c_includes_respect_paths() {
         let includes = DialectCIncludes {
-            internal: "csrc/sqlite/",
-            public: "",
-            dialect_include_dir: "syntaqlite",
+            ast_builder_h: "csrc/sqlite/dialect_builder.h",
+            dialect_meta_h: "csrc/sqlite/dialect_meta.h",
+            dialect_fmt_h: "csrc/sqlite/dialect_fmt.h",
+            dialect_tokens_h: "csrc/sqlite/dialect_tokens.h",
+            parse_api_h: "csrc/sqlite/sqlite_parse.h",
+            tokenize_h: "csrc/sqlite/sqlite_tokenize.h",
+            keyword_h: "csrc/sqlite/sqlite_keyword.h",
             tokens_header: "syntaqlite/tokens.h",
         };
         let c = generate_dialect_c("sqlite", None, &includes);
-        // Internal headers use the internal prefix
+        // Internal headers use the full csrc/sqlite/ path
         assert!(c.contains("\"csrc/sqlite/dialect_builder.h\""));
         assert!(c.contains("\"csrc/sqlite/dialect_meta.h\""));
         assert!(c.contains("\"csrc/sqlite/dialect_fmt.h\""));
-        // Public headers use the public prefix (empty → bare path)
+        // Public headers are hardcoded
         assert!(c.contains("\"syntaqlite/parser.h\""));
         assert!(c.contains("\"syntaqlite/tokens.h\""));
         assert!(c.contains("\"syntaqlite/dialect.h\""));
@@ -465,8 +467,8 @@ mod tests {
 
     #[test]
     fn dialect_c_default_includes_no_prefix() {
-        let c = generate_dialect_c("sqlite", None, &DEFAULT_INCLUDES);
-        // Default: both prefixes empty — bare header names
+        let c = generate_dialect_c("sqlite", None, &default_includes());
+        // Default: bare header names
         assert!(c.contains("\"dialect_builder.h\""));
         assert!(c.contains("\"syntaqlite/parser.h\""));
         assert!(c.contains("\"syntaqlite/tokens.h\""));
@@ -516,10 +518,9 @@ pub fn generate_dialect_dispatch_h(dialect: &str) -> String {
 /// Produces `sqlite_parse.h` with declarations for `SynqSqliteParseAlloc`,
 /// `SynqSqliteParseFree`, etc.  Needed by the amalgamation so that
 /// `dialect.c` (emitted before `sqlite_parse.c`) can reference the symbols.
-pub fn generate_parse_h(dialect: &str, includes: &DialectCIncludes<'_>) -> String {
+pub fn generate_parse_h(dialect: &str) -> String {
     let pascal = pascal_case(dialect);
     let upper = dialect.to_uppercase();
-    let pp = includes.public;
     let guard = format!("SYNTAQLITE_{upper}_PARSE_H");
     let mut w = CWriter::new();
     w.file_header();
@@ -528,7 +529,7 @@ pub fn generate_parse_h(dialect: &str, includes: &DialectCIncludes<'_>) -> Strin
     w.line("#include <stdint.h>");
     w.line("#include <stdio.h>");
     w.newline();
-    w.include_local(&format!("{pp}syntaqlite_dialect/ast_builder.h"));
+    w.include_local("syntaqlite_dialect/ast_builder.h");
     w.newline();
     w.line("#ifdef __cplusplus");
     w.line("extern \"C\" {");
@@ -570,16 +571,15 @@ pub fn generate_parse_h(dialect: &str, includes: &DialectCIncludes<'_>) -> Strin
 }
 
 /// Generate forward declaration for the tokenizer function.
-pub fn generate_tokenize_h(dialect: &str, includes: &DialectCIncludes<'_>) -> String {
+pub fn generate_tokenize_h(dialect: &str) -> String {
     let pascal = pascal_case(dialect);
     let upper = dialect.to_uppercase();
-    let pp = includes.public;
     let guard = format!("SYNTAQLITE_INTERNAL_{upper}_TOKENIZE_H");
     let mut w = CWriter::new();
     w.file_header();
     w.header_guard_start(&guard);
-    w.include_local(&format!("{pp}syntaqlite_dialect/sqlite_compat.h"));
-    w.include_local(&format!("{pp}syntaqlite/dialect.h"));
+    w.include_local("syntaqlite_dialect/sqlite_compat.h");
+    w.include_local("syntaqlite/dialect.h");
     w.newline();
     w.line(&format!(
         "i64 Synq{pascal}GetToken(const SyntaqliteDialectConfig* config, const unsigned char* z, int* tokenType);"

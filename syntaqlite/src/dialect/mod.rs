@@ -96,5 +96,5 @@ impl TokenCategory {
 /// Return the built-in SQLite dialect handle.
 #[cfg(feature = "sqlite")]
 pub fn sqlite() -> Dialect<'static> {
-    *crate::sqlite::DIALECT
+    crate::sqlite::dialect()
 }

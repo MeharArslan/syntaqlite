@@ -20,11 +20,6 @@ const LIB_LOW_LEVEL_MOD: &str = r#"
 pub mod low_level {
     pub use crate::wrappers::{RawIncrementalCursor, LowLevelParser, Tokenizer, TokenCursor};
     pub use crate::tokens::TokenType;
-
-    /// Access the dialect handle (for use with `syntaqlite` APIs).
-    pub fn dialect() -> &'static syntaqlite::Dialect<'static> {
-        &crate::DIALECT
-    }
 }
 "#;
 
@@ -61,12 +56,12 @@ pub struct Parser {
 impl Parser {
     /// Create a new parser with default configuration.
     pub fn new() -> Self {
-        Parser { inner: syntaqlite::generic::GenericParser::with_dialect(&crate::DIALECT) }
+        Parser { inner: syntaqlite::generic::GenericParser::with_dialect(&crate::dialect()) }
     }
 
     /// Create a parser with the given configuration.
     pub fn with_config(config: &crate::config::ParserConfig) -> Self {
-        Parser { inner: syntaqlite::generic::GenericParser::with_dialect_config(&crate::DIALECT, config) }
+        Parser { inner: syntaqlite::generic::GenericParser::with_dialect_config(&crate::dialect(), config) }
     }
 
     /// Access the current configuration.
@@ -115,14 +110,14 @@ impl LowLevelParser {
     /// Create a new low-level parser with default configuration.
     pub fn new() -> Self {
         LowLevelParser {
-            inner: syntaqlite::generic::GenericIncrementalParser::with_dialect(&crate::DIALECT),
+            inner: syntaqlite::generic::GenericIncrementalParser::with_dialect(&crate::dialect()),
         }
     }
 
     /// Create a low-level parser with the given configuration.
     pub fn with_config(config: &crate::config::ParserConfig) -> Self {
         LowLevelParser {
-            inner: syntaqlite::generic::GenericIncrementalParser::with_dialect_config(&crate::DIALECT, config),
+            inner: syntaqlite::generic::GenericIncrementalParser::with_dialect_config(&crate::dialect(), config),
         }
     }
 
@@ -202,13 +197,13 @@ pub struct Formatter {
 impl Formatter {
     /// Create a formatter with default configuration.
     pub fn new() -> Result<Self, &'static str> {
-        let inner = syntaqlite::Formatter::with_dialect(&crate::DIALECT)?;
+        let inner = syntaqlite::Formatter::with_dialect(&crate::dialect())?;
         Ok(Formatter { inner })
     }
 
     /// Create a formatter with the given configuration.
     pub fn with_config(config: crate::config::FormatConfig) -> Result<Self, &'static str> {
-        let inner = syntaqlite::Formatter::with_dialect_config(&crate::DIALECT, config)?;
+        let inner = syntaqlite::Formatter::with_dialect_config(&crate::dialect(), config)?;
         Ok(Formatter { inner })
     }
 
@@ -237,7 +232,7 @@ impl Tokenizer {
     /// Create a new tokenizer.
     pub fn new() -> Self {
         Tokenizer {
-            inner: syntaqlite::generic::GenericTokenizer::with_dialect(*crate::DIALECT),
+            inner: syntaqlite::generic::GenericTokenizer::with_dialect(crate::dialect()),
         }
     }
 
@@ -296,6 +291,11 @@ unsafe extern "C" {{
 
 static DIALECT: LazyLock<syntaqlite::Dialect<'static>> =
     LazyLock::new(|| unsafe {{ syntaqlite::Dialect::from_raw({dialect_fn}()) }});
+
+/// Returns the dialect handle.
+pub fn dialect() -> syntaqlite::Dialect<'static> {{
+    *DIALECT
+}}
 "#
     ));
     w.newline();
@@ -510,14 +510,14 @@ impl Parser {
     /// Create a parser for the built-in SQLite dialect with default configuration.
     pub fn new() -> Self {
         Parser {
-            inner: TypedParser::new(&crate::sqlite::DIALECT),
+            inner: TypedParser::new(crate::sqlite::dialect()),
         }
     }
 
     /// Create a builder for configuring the parser before construction.
     pub fn builder() -> ParserBuilder {
         ParserBuilder {
-            inner: TypedParser::builder(&crate::sqlite::DIALECT),
+            inner: TypedParser::builder(crate::sqlite::dialect()),
         }
     }
 
@@ -591,14 +591,14 @@ impl IncrementalParser {
     /// Create an incremental parser for the built-in SQLite dialect with default configuration.
     pub fn new() -> Self {
         IncrementalParser {
-            inner: TypedIncrementalParser::new(&crate::sqlite::DIALECT),
+            inner: TypedIncrementalParser::new(crate::sqlite::dialect()),
         }
     }
 
     /// Create a builder for configuring the parser before construction.
     pub fn builder() -> IncrementalParserBuilder {
         IncrementalParserBuilder {
-            inner: TypedIncrementalParser::builder(&crate::sqlite::DIALECT),
+            inner: TypedIncrementalParser::builder(crate::sqlite::dialect()),
         }
     }
 

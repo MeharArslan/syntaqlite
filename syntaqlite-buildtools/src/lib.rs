@@ -19,12 +19,8 @@ pub(crate) mod parser_tools;
 #[cfg(feature = "codegen-pipeline")]
 pub use parser_tools::{amalgamate, base_files};
 
-// SQLite-specific output routing (feature-gated).
-#[cfg(feature = "sqlite-codegen")]
-pub mod sqlite;
-
-// Output resolver trait + impls (depends on sqlite output_manifest types).
-#[cfg(feature = "sqlite-codegen")]
+// Output resolver: OutputLayout + write_codegen_artifacts.
+#[cfg(feature = "codegen-pipeline")]
 pub mod output_resolver;
 
 #[cfg(feature = "version-analysis")]

@@ -63,6 +63,16 @@ fn set_result(text: &str) {
     });
 }
 
+fn set_result_u32s(data: &[u32]) {
+    RESULT_BUF.with(|buf| {
+        let mut buf = buf.borrow_mut();
+        buf.clear();
+        // SAFETY: u32 has no invalid bit patterns; reinterpreting as bytes is safe.
+        let bytes = unsafe { slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4) };
+        buf.extend_from_slice(bytes);
+    });
+}
+
 fn decode_input(ptr: u32, len: u32) -> Result<String, String> {
     if len == 0 {
         return Ok(String::new());
@@ -70,7 +80,6 @@ fn decode_input(ptr: u32, len: u32) -> Result<String, String> {
     if ptr == 0 {
         return Err("null input pointer".to_string());
     }
-
     // SAFETY: caller provides pointer/length in this module's linear memory.
     let bytes = unsafe { slice::from_raw_parts(ptr as *const u8, len as usize) };
     let source = std::str::from_utf8(bytes).map_err(|e| format!("invalid UTF-8 input: {e}"))?;
@@ -82,29 +91,43 @@ fn resolve_dialect() -> Result<Dialect<'static>, String> {
     if ptr == 0 {
         return Err("dialect pointer is not set; call wasm_set_dialect first".to_string());
     }
-
     let raw = ptr as *const FfiDialect;
     // SAFETY: the caller must provide a valid pointer to a dialect descriptor.
     Ok(unsafe { Dialect::from_raw(raw) })
 }
 
+/// Runs `f`, catching any panic and writing `msg` to the result buffer on failure.
+fn catch_unwind<F: FnOnce() -> i32>(f: F, msg: &'static str) -> i32 {
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
+        Ok(result) => result,
+        Err(_) => {
+            set_result(msg);
+            -1
+        }
+    }
+}
+
+/// Unwraps a `Result`, writing the error to the result buffer and returning `$code` on failure.
+macro_rules! try_wasm {
+    ($expr:expr) => {
+        try_wasm!($expr, 1)
+    };
+    ($expr:expr, $code:expr) => {
+        match $expr {
+            Ok(val) => val,
+            Err(e) => {
+                set_result(&e.to_string());
+                return $code;
+            }
+        }
+    };
+}
+
 // ── JSON AST dump ────────────────────────────────────────────────────
 
 fn run_ast_json(ptr: u32, len: u32) -> i32 {
-    let dialect = match resolve_dialect() {
-        Ok(d) => d,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
-    let source = match decode_input(ptr, len) {
-        Ok(source) => source,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
+    let dialect = try_wasm!(resolve_dialect());
+    let source = try_wasm!(decode_input(ptr, len));
 
     let mut parser = RawParser::builder(dialect)
         .dialect_config(get_dialect_config())
@@ -113,19 +136,12 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
 
     let mut nodes = Vec::new();
     while let Some(result) = cursor.next_statement() {
-        match result {
-            Ok(node_ref) => nodes.push(node_ref),
-            Err(e) => {
-                set_result(&e.to_string());
-                return 1;
-            }
-        }
+        nodes.push(try_wasm!(result));
     }
 
     // dump_json writes a raw JSON fragment per node; wrap in a JSON array manually
     // since the node dump format is not serde-based.
-    let mut out = String::new();
-    out.push('[');
+    let mut out = String::from('[');
     for (i, node) in nodes.iter().enumerate() {
         if i > 0 {
             out.push(',');
@@ -138,20 +154,8 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
 }
 
 fn run_ast(ptr: u32, len: u32) -> i32 {
-    let dialect = match resolve_dialect() {
-        Ok(d) => d,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
-    let source = match decode_input(ptr, len) {
-        Ok(source) => source,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
+    let dialect = try_wasm!(resolve_dialect());
+    let source = try_wasm!(decode_input(ptr, len));
 
     let mut parser = RawParser::builder(dialect)
         .dialect_config(get_dialect_config())
@@ -161,19 +165,12 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
     let mut count = 0;
 
     while let Some(result) = cursor.next_statement() {
-        match result {
-            Ok(node) => {
-                if count > 0 {
-                    out.push_str("----\n");
-                }
-                node.dump(&mut out, 0);
-                count += 1;
-            }
-            Err(e) => {
-                set_result(&e.to_string());
-                return 1;
-            }
+        let node = try_wasm!(result);
+        if count > 0 {
+            out.push_str("----\n");
         }
+        node.dump(&mut out, 0);
+        count += 1;
     }
 
     set_result(&out);
@@ -181,38 +178,18 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
 }
 
 fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u32) -> i32 {
-    let dialect = match resolve_dialect() {
-        Ok(d) => d,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
-    let source = match decode_input(ptr, len) {
-        Ok(source) => source,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
+    let dialect = try_wasm!(resolve_dialect());
+    let source = try_wasm!(decode_input(ptr, len));
 
     let config = FormatConfig::from_raw_params(line_width, keyword_case, semicolons);
-
     let mut formatter = Formatter::builder(dialect)
         .format_config(config)
         .dialect_config(get_dialect_config())
         .build();
 
-    match formatter.format(&source) {
-        Ok(sql) => {
-            set_result(&sql);
-            0
-        }
-        Err(e) => {
-            set_result(&e.to_string());
-            1
-        }
-    }
+    let sql = try_wasm!(formatter.format(&source));
+    set_result(&sql);
+    0
 }
 
 fn alloc(len: u32) -> u32 {
@@ -265,15 +242,14 @@ pub extern "C" fn wasm_set_dialect(dialect_ptr: u32) -> i32 {
         return 1;
     }
     DIALECT_PTR.with(|p| p.set(dialect_ptr));
-    // Invalidate the cached LSP host so it's recreated with the new dialect.
-    LSP_HOST.with(|h| h.borrow_mut().take());
+    invalidate_lsp_host();
     0
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_clear_dialect() {
     DIALECT_PTR.with(|p| p.set(0));
-    LSP_HOST.with(|h| h.borrow_mut().take());
+    invalidate_lsp_host();
 }
 
 #[unsafe(no_mangle)]
@@ -326,80 +302,41 @@ pub extern "C" fn wasm_result_free() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_set_sqlite_version(ptr: u32, len: u32) -> i32 {
-    let s = match decode_input(ptr, len) {
-        Ok(s) => s,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
-    match parse_sqlite_version(&s) {
-        Ok(ver) => {
-            DIALECT_CONFIG.with(|c| {
-                let mut config = c.get();
-                config.sqlite_version = ver;
-                c.set(config);
-            });
-            invalidate_lsp_host();
-            0
-        }
-        Err(e) => {
-            set_result(&e);
-            1
-        }
-    }
+    let s = try_wasm!(decode_input(ptr, len));
+    let ver = try_wasm!(parse_sqlite_version(&s));
+    DIALECT_CONFIG.with(|c| {
+        let mut config = c.get();
+        config.sqlite_version = ver;
+        c.set(config);
+    });
+    invalidate_lsp_host();
+    0
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_set_cflag(ptr: u32, len: u32) -> i32 {
-    let s = match decode_input(ptr, len) {
-        Ok(s) => s,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
-    match parse_cflag_name(&s) {
-        Ok(idx) => {
-            DIALECT_CONFIG.with(|c| {
-                let mut config = c.get();
-                config.cflags.set(idx);
-                c.set(config);
-            });
-            invalidate_lsp_host();
-            0
-        }
-        Err(e) => {
-            set_result(&e);
-            1
-        }
-    }
+    let s = try_wasm!(decode_input(ptr, len));
+    let idx = try_wasm!(parse_cflag_name(&s));
+    DIALECT_CONFIG.with(|c| {
+        let mut config = c.get();
+        config.cflags.set(idx);
+        c.set(config);
+    });
+    invalidate_lsp_host();
+    0
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_clear_cflag(ptr: u32, len: u32) -> i32 {
-    let s = match decode_input(ptr, len) {
-        Ok(s) => s,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
-    match parse_cflag_name(&s) {
-        Ok(idx) => {
-            DIALECT_CONFIG.with(|c| {
-                let mut config = c.get();
-                config.cflags.clear(idx);
-                c.set(config);
-            });
-            invalidate_lsp_host();
-            0
-        }
-        Err(e) => {
-            set_result(&e);
-            1
-        }
-    }
+    let s = try_wasm!(decode_input(ptr, len));
+    let idx = try_wasm!(parse_cflag_name(&s));
+    DIALECT_CONFIG.with(|c| {
+        let mut config = c.get();
+        config.cflags.clear(idx);
+        c.set(config);
+    });
+    invalidate_lsp_host();
+    0
 }
 
 #[unsafe(no_mangle)]
@@ -416,83 +353,24 @@ pub extern "C" fn wasm_clear_all_cflags() -> i32 {
 // ── Session context WASM exports ─────────────────────────────────────
 
 fn run_set_session_context(ptr: u32, len: u32) -> i32 {
-    let input = match decode_input(ptr, len) {
-        Ok(s) => s,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
-    let ctx = match syntaqlite::validation::SessionContext::from_json(&input) {
-        Ok(ctx) => ctx,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
-
-    let dialect_ptr = DIALECT_PTR.with(|p| p.get());
-    if dialect_ptr == 0 {
-        set_result("dialect pointer is not set; call wasm_set_dialect first");
-        return 1;
-    }
+    let input = try_wasm!(decode_input(ptr, len));
+    let ctx = try_wasm!(syntaqlite::validation::SessionContext::from_json(&input));
+    let dialect_ptr = try_wasm!(resolve_dialect().map(|_| DIALECT_PTR.with(|p| p.get())));
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host.set_session_context(ctx);
     store_lsp_host(lsp);
     0
 }
 
-fn run_clear_session_context() -> i32 {
-    // Invalidate the LSP host so it's recreated without context.
-    invalidate_lsp_host();
-    0
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn wasm_set_session_context(ptr: u32, len: u32) -> i32 {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        run_set_session_context(ptr, len)
-    })) {
-        Ok(result) => result,
-        Err(_) => {
-            set_result("wasm_set_session_context panicked");
-            1
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn wasm_clear_session_context() -> i32 {
-    run_clear_session_context()
-}
-
 fn run_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
-    let dialect = match resolve_dialect() {
-        Ok(d) => d,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
-    let source = match decode_input(ptr, len) {
-        Ok(s) => s,
-        Err(e) => {
-            set_result(&e);
-            return 1;
-        }
-    };
-
+    let dialect = try_wasm!(resolve_dialect());
+    let source = try_wasm!(decode_input(ptr, len));
     let ctx = syntaqlite::validation::SessionContext::from_ddl(
         dialect,
         &source,
         Some(get_dialect_config()),
     );
-
     let dialect_ptr = DIALECT_PTR.with(|p| p.get());
-    if dialect_ptr == 0 {
-        set_result("dialect pointer is not set; call wasm_set_dialect first");
-        return 1;
-    }
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host.set_session_context(ctx);
     store_lsp_host(lsp);
@@ -500,19 +378,30 @@ fn run_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn wasm_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        run_set_session_context_ddl(ptr, len)
-    })) {
-        Ok(result) => result,
-        Err(_) => {
-            set_result("wasm_set_session_context_ddl panicked");
-            1
-        }
-    }
+pub extern "C" fn wasm_set_session_context(ptr: u32, len: u32) -> i32 {
+    catch_unwind(
+        || run_set_session_context(ptr, len),
+        "wasm_set_session_context panicked",
+    )
 }
 
-#[derive(serde::Serialize)]
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_clear_session_context() -> i32 {
+    invalidate_lsp_host();
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
+    catch_unwind(
+        || run_set_session_context_ddl(ptr, len),
+        "wasm_set_session_context_ddl panicked",
+    )
+}
+
+// ── Cflag list ───────────────────────────────────────────────────────
+
+#[derive(Serialize)]
 struct CflagJson<'a> {
     name: &'a str,
     #[serde(rename = "minVersion")]
@@ -535,6 +424,8 @@ pub extern "C" fn wasm_get_cflag_list() -> i32 {
     0
 }
 
+// ── Available functions ──────────────────────────────────────────────
+
 #[derive(Serialize)]
 struct AvailableFunction {
     name: String,
@@ -542,12 +433,7 @@ struct AvailableFunction {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_get_available_functions() -> i32 {
-    let dialect_ptr = DIALECT_PTR.with(|p| p.get());
-    if dialect_ptr == 0 {
-        set_result("dialect pointer is not set; call wasm_set_dialect first");
-        return -1;
-    }
-
+    let dialect_ptr = try_wasm!(resolve_dialect().map(|_| DIALECT_PTR.with(|p| p.get())), -1);
     let lsp = take_or_create_lsp_host(dialect_ptr);
     let names = lsp.host.available_function_names();
     let count = names.len() as i32;
@@ -555,27 +441,18 @@ pub extern "C" fn wasm_get_available_functions() -> i32 {
         .into_iter()
         .map(|name| AvailableFunction { name })
         .collect();
-    set_result(&serde_json::to_string(&items).unwrap());
-
+    set_result(&serde_json::to_string(&items).expect("available functions serialization failed"));
     store_lsp_host(lsp);
     count
 }
 
+// ── Diagnostics / semantic tokens / completions ──────────────────────
+
 const WASM_DOC_URI: &str = "wasm://input";
 
 fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
-    let dialect_ptr = DIALECT_PTR.with(|p| p.get());
-    if dialect_ptr == 0 {
-        set_result("dialect pointer is not set; call wasm_set_dialect first");
-        return -1;
-    }
-    let source = match decode_input(ptr, len) {
-        Ok(source) => source,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
+    let dialect_ptr = try_wasm!(resolve_dialect().map(|_| DIALECT_PTR.with(|p| p.get())), -1);
+    let source = try_wasm!(decode_input(ptr, len), -1);
 
     // Take the host out of the RefCell so we don't hold the borrow during
     // work that might panic. If it panics, we lose the host but don't poison
@@ -588,26 +465,13 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
         .all_diagnostics(WASM_DOC_URI, &ValidationConfig::default());
     let total_count = all_diags.len();
     set_result(&serde_json::to_string(&all_diags).expect("diagnostic serialization failed"));
-
-    // Put the host back for reuse.
     store_lsp_host(lsp);
-
     total_count as i32
 }
 
 fn run_semantic_tokens(ptr: u32, len: u32, range_start: u32, range_end: u32, version: u32) -> i32 {
-    let dialect_ptr = DIALECT_PTR.with(|p| p.get());
-    if dialect_ptr == 0 {
-        set_result("dialect pointer is not set; call wasm_set_dialect first");
-        return -1;
-    }
-    let source = match decode_input(ptr, len) {
-        Ok(source) => source,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
+    let dialect_ptr = try_wasm!(resolve_dialect().map(|_| DIALECT_PTR.with(|p| p.get())), -1);
+    let source = try_wasm!(decode_input(ptr, len), -1);
 
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host
@@ -619,42 +483,21 @@ fn run_semantic_tokens(ptr: u32, len: u32, range_start: u32, range_end: u32, ver
         Some((range_start as usize, range_end as usize))
     };
     let encoded = lsp.host.semantic_tokens_encoded(WASM_DOC_URI, range);
-
     let token_count = (encoded.len() / 5) as i32;
-
-    // Write the Vec<u32> as raw bytes into RESULT_BUF.
-    RESULT_BUF.with(|buf| {
-        let mut buf = buf.borrow_mut();
-        buf.clear();
-        let bytes: &[u8] =
-            unsafe { slice::from_raw_parts(encoded.as_ptr() as *const u8, encoded.len() * 4) };
-        buf.extend_from_slice(bytes);
-    });
-
+    set_result_u32s(&encoded);
     store_lsp_host(lsp);
-
     token_count
 }
 
-fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
-    let dialect_ptr = DIALECT_PTR.with(|p| p.get());
-    if dialect_ptr == 0 {
-        set_result("dialect pointer is not set; call wasm_set_dialect first");
-        return -1;
-    }
-    let source = match decode_input(ptr, len) {
-        Ok(source) => source,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
+#[derive(Serialize)]
+struct CompletionItem {
+    label: String,
+    kind: &'static str,
+}
 
-    #[derive(Serialize)]
-    struct CompletionItem {
-        label: String,
-        kind: &'static str,
-    }
+fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
+    let dialect_ptr = try_wasm!(resolve_dialect().map(|_| DIALECT_PTR.with(|p| p.get())), -1);
+    let source = try_wasm!(decode_input(ptr, len), -1);
 
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host
@@ -665,15 +508,20 @@ fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
         .into_iter()
         .map(|e| CompletionItem {
             label: e.label,
-            kind: match e.kind {
-                syntaqlite::lsp::CompletionKind::Keyword => "keyword",
-                syntaqlite::lsp::CompletionKind::Function => "function",
-            },
+            kind: e.kind.as_str(),
         })
         .collect();
-    set_result(&serde_json::to_string(&items).unwrap());
+    set_result(&serde_json::to_string(&items).expect("completions serialization failed"));
     store_lsp_host(lsp);
     count
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
+    catch_unwind(
+        || run_diagnostics(ptr, len, version),
+        "wasm_diagnostics panicked",
+    )
 }
 
 #[unsafe(no_mangle)]
@@ -684,46 +532,23 @@ pub extern "C" fn wasm_semantic_tokens(
     range_end: u32,
     version: u32,
 ) -> i32 {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        run_semantic_tokens(ptr, len, range_start, range_end, version)
-    })) {
-        Ok(result) => result,
-        Err(_) => {
-            set_result("wasm_semantic_tokens panicked");
-            -1
-        }
-    }
+    catch_unwind(
+        || run_semantic_tokens(ptr, len, range_start, range_end, version),
+        "wasm_semantic_tokens panicked",
+    )
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        run_completions(ptr, len, offset, version)
-    })) {
-        Ok(result) => result,
-        Err(_) => {
-            set_result("wasm_completions panicked");
-            -1
-        }
-    }
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn wasm_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        run_diagnostics(ptr, len, version)
-    })) {
-        Ok(result) => result,
-        Err(_) => {
-            set_result("wasm_diagnostics panicked");
-            -1
-        }
-    }
+    catch_unwind(
+        || run_completions(ptr, len, offset, version),
+        "wasm_completions panicked",
+    )
 }
 
 // ── Embedded SQL WASM exports ────────────────────────────────────────
 
-fn extract_fragments(lang: u32, source: &str) -> Result<Vec<EmbeddedFragment>, String> {
+fn lang_to_fragments(lang: u32, source: &str) -> Result<Vec<EmbeddedFragment>, String> {
     match lang {
         0 => Ok(embedded::extract_python(source)),
         1 => Ok(embedded::extract_typescript(source)),
@@ -731,40 +556,26 @@ fn extract_fragments(lang: u32, source: &str) -> Result<Vec<EmbeddedFragment>, S
     }
 }
 
+#[derive(Serialize)]
+struct HoleJson {
+    #[serde(rename = "hostRange")]
+    host_range: [usize; 2],
+    sql_offset: usize,
+    placeholder: String,
+}
+
+#[derive(Serialize)]
+struct FragmentJson {
+    #[serde(rename = "sqlRange")]
+    sql_range: [usize; 2],
+    sql_text: String,
+    holes: Vec<HoleJson>,
+}
+
 fn run_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
-    let source = match decode_input(ptr, len) {
-        Ok(s) => s,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
-
-    let fragments = match extract_fragments(lang, &source) {
-        Ok(f) => f,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
-
+    let source = try_wasm!(decode_input(ptr, len), -1);
+    let fragments = try_wasm!(lang_to_fragments(lang, &source), -1);
     let count = fragments.len() as i32;
-
-    #[derive(serde::Serialize)]
-    struct HoleJson {
-        #[serde(rename = "hostRange")]
-        host_range: [usize; 2],
-        sql_offset: usize,
-        placeholder: String,
-    }
-
-    #[derive(serde::Serialize)]
-    struct FragmentJson {
-        #[serde(rename = "sqlRange")]
-        sql_range: [usize; 2],
-        sql_text: String,
-        holes: Vec<HoleJson>,
-    }
 
     let items: Vec<FragmentJson> = fragments
         .iter()
@@ -783,33 +594,13 @@ fn run_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
         })
         .collect();
     set_result(&serde_json::to_string(&items).expect("fragment serialization failed"));
-
     count
 }
 
 fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32, _version: u32) -> i32 {
-    let dialect = match resolve_dialect() {
-        Ok(d) => d,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
-    let source = match decode_input(ptr, len) {
-        Ok(s) => s,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
-
-    let fragments = match extract_fragments(lang, &source) {
-        Ok(f) => f,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
+    let dialect = try_wasm!(resolve_dialect(), -1);
+    let source = try_wasm!(decode_input(ptr, len), -1);
+    let fragments = try_wasm!(lang_to_fragments(lang, &source), -1);
 
     // Syntax errors only — no session context means every table/column/function
     // would be flagged as unknown, so filter out semantic diagnostics entirely.
@@ -825,68 +616,31 @@ fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32, _version: u32) -> i32
 }
 
 fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32, _version: u32) -> i32 {
-    let dialect = match resolve_dialect() {
-        Ok(d) => d,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
-    let source = match decode_input(ptr, len) {
-        Ok(s) => s,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
+    let dialect = try_wasm!(resolve_dialect(), -1);
+    let source = try_wasm!(decode_input(ptr, len), -1);
+    let fragments = try_wasm!(lang_to_fragments(lang, &source), -1);
 
-    let fragments = match extract_fragments(lang, &source) {
-        Ok(f) => f,
-        Err(e) => {
-            set_result(&e);
-            return -1;
-        }
-    };
-
-    let result =
+    let encoded =
         embedded::EmbeddedAnalyzer::new(dialect).semantic_tokens_encoded(&fragments, &source);
-    let token_count = (result.len() / 5) as i32;
-
-    RESULT_BUF.with(|buf| {
-        let mut buf = buf.borrow_mut();
-        buf.clear();
-        let bytes: &[u8] =
-            unsafe { slice::from_raw_parts(result.as_ptr() as *const u8, result.len() * 4) };
-        buf.extend_from_slice(bytes);
-    });
-
+    let token_count = (encoded.len() / 5) as i32;
+    set_result_u32s(&encoded);
     token_count
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        run_embedded_extract(lang, ptr, len)
-    })) {
-        Ok(result) => result,
-        Err(_) => {
-            set_result("wasm_embedded_extract panicked");
-            -1
-        }
-    }
+    catch_unwind(
+        || run_embedded_extract(lang, ptr, len),
+        "wasm_embedded_extract panicked",
+    )
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_embedded_diagnostics(lang: u32, ptr: u32, len: u32, version: u32) -> i32 {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        run_embedded_diagnostics(lang, ptr, len, version)
-    })) {
-        Ok(result) => result,
-        Err(_) => {
-            set_result("wasm_embedded_diagnostics panicked");
-            -1
-        }
-    }
+    catch_unwind(
+        || run_embedded_diagnostics(lang, ptr, len, version),
+        "wasm_embedded_diagnostics panicked",
+    )
 }
 
 #[unsafe(no_mangle)]
@@ -896,15 +650,10 @@ pub extern "C" fn wasm_embedded_semantic_tokens(
     len: u32,
     version: u32,
 ) -> i32 {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        run_embedded_semantic_tokens(lang, ptr, len, version)
-    })) {
-        Ok(result) => result,
-        Err(_) => {
-            set_result("wasm_embedded_semantic_tokens panicked");
-            -1
-        }
-    }
+    catch_unwind(
+        || run_embedded_semantic_tokens(lang, ptr, len, version),
+        "wasm_embedded_semantic_tokens panicked",
+    )
 }
 
 fn main() {}

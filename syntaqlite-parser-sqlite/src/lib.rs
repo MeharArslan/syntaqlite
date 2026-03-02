@@ -4,7 +4,7 @@
 //! SQLite dialect: generated C/Rust artifacts and the dialect handle.
 //!
 //! Compiles the SQLite Lemon parser, tokenizer, and keyword tables and
-//! exports the typed AST nodes, token types, and the `DIALECT` static.
+//! exports the typed AST nodes, token types, and the [`dialect()`] accessor.
 
 pub mod ast;
 pub mod ffi;
@@ -12,7 +12,5 @@ pub mod tokens;
 
 pub(crate) mod dialect;
 
-/// The SQLite dialect handle.
-///
-/// Use `syntaqlite_parser_sqlite::DIALECT` to get the static dialect handle.
-pub use dialect::DIALECT;
+/// Returns the SQLite dialect handle.
+pub use dialect::dialect;

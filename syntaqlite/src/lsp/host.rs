@@ -59,7 +59,7 @@ impl<'d> AnalysisHost<'d> {
     /// Create a host for the built-in SQLite dialect.
     #[cfg(feature = "sqlite")]
     pub fn new() -> AnalysisHost<'static> {
-        AnalysisHost::with_dialect(*crate::sqlite::DIALECT)
+        AnalysisHost::with_dialect(crate::sqlite::dialect())
     }
 
     // ── Configuration ─────────────────────────────────────────────────────

@@ -70,6 +70,15 @@ pub enum CompletionKind {
     Function,
 }
 
+impl CompletionKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Keyword => "keyword",
+            Self::Function => "function",
+        }
+    }
+}
+
 /// A semantic token for syntax highlighting.
 #[derive(Debug, Clone)]
 pub struct SemanticToken {

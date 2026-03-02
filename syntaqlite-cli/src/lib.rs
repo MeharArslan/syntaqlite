@@ -117,24 +117,32 @@ pub fn run(name: &str, dialect: Option<syntaqlite::dialect::Dialect<'_>>) {
 #[cfg(not(feature = "runtime"))]
 #[allow(unused_variables)]
 pub fn run(name: &str, _dialect: Option<()>) {
-    let cli =
-        Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
-            .unwrap_or_else(|e| e.exit());
+    #[cfg(any(
+        feature = "codegen-dialect",
+        feature = "codegen-sqlite",
+        feature = "sqlite-extract",
+        feature = "version-analysis",
+    ))]
+    {
+        let cli =
+            Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
+                .unwrap_or_else(|e| e.exit());
 
-    let result: Result<(), String> = match cli.command {
-        #[cfg(feature = "codegen-dialect")]
-        Command::Dialect(cmd) => codegen_dialect::dispatch(cmd),
-        #[cfg(feature = "codegen-sqlite")]
-        Command::Sqlite(cmd) => codegen_sqlite::dispatch(cmd),
-        #[cfg(feature = "sqlite-extract")]
-        Command::Extract(cmd) => sqlite_extract::dispatch(cmd),
-        #[cfg(feature = "version-analysis")]
-        Command::VersionAnalysis(cmd) => version_analysis::dispatch(cmd),
-    };
+        let result: Result<(), String> = match cli.command {
+            #[cfg(feature = "codegen-dialect")]
+            Command::Dialect(cmd) => codegen_dialect::dispatch(cmd),
+            #[cfg(feature = "codegen-sqlite")]
+            Command::Sqlite(cmd) => codegen_sqlite::dispatch(cmd),
+            #[cfg(feature = "sqlite-extract")]
+            Command::Extract(cmd) => sqlite_extract::dispatch(cmd),
+            #[cfg(feature = "version-analysis")]
+            Command::VersionAnalysis(cmd) => version_analysis::dispatch(cmd),
+        };
 
-    if let Err(e) = result {
-        eprintln!("error: {e}");
-        std::process::exit(1);
+        if let Err(e) = result {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        }
     }
 }
 

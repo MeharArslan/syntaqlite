@@ -463,7 +463,7 @@ mod tests {
     fn create_table_as_select_literal_column_mismatch_warns() {
         // CREATE TABLE slice AS SELECT 2 → table has no named columns.
         // Referencing slice."1" should warn about unknown column.
-        let dialect = *crate::sqlite::DIALECT;
+        let dialect = crate::sqlite::dialect();
         let mut parser = crate::ext::RawParser::builder(dialect).build();
         let sql = "CREATE TABLE slice AS SELECT 2;\nSELECT slice.\"1\" FROM slice;";
         let mut cursor = parser.parse(sql);

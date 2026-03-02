@@ -21,14 +21,12 @@ pub fn assemble(
     dialect: &str,
     includes: &DialectCIncludes<'_>,
 ) -> Result<(String, TokenizerExtractResult), String> {
-    let ip = includes.internal;
-    let pp = includes.public;
     let combined = {
         let mut w = CWriter::new();
         w.sqlite_file_header();
-        w.include_local(&format!("{pp}syntaqlite_dialect/sqlite_compat.h"));
-        w.include_local(&format!("{pp}{}", includes.tokens_header));
-        w.include_local(&format!("{ip}sqlite_keyword.h"))
+        w.include_local("syntaqlite_dialect/sqlite_compat.h");
+        w.include_local(includes.tokens_header);
+        w.include_local(includes.keyword_h)
             .newline()
             .fragment(&fragments.cc_defines)
             .newline()
@@ -47,7 +45,7 @@ pub fn assemble(
     let get_token_name = format!("Synq{}GetToken", pascal_case(dialect));
     let output = CTransformer::new(&combined)
         .add_array_static("sqlite3CtypeMap")
-        .insert_after_includes(&format!("#include \"{pp}syntaqlite/dialect.h\""))
+        .insert_after_includes("#include \"syntaqlite/dialect.h\"")
         .replace_in_function(
             "sqlite3GetToken",
             "keywordCode((char*)",

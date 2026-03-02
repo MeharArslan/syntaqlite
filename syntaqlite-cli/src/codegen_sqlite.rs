@@ -2,8 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use std::fs;
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use clap::Subcommand;
 
@@ -137,65 +136,59 @@ fn handle_codegen(
     shared_crate_dir: &str,
     wrappers_out: Option<&str>,
 ) -> Result<(), String> {
-    let dialect = syntaqlite_buildtools::codegen_api::DialectNaming::new("sqlite");
-
-    let y_files = syntaqlite_buildtools::codegen_api::read_named_files_from_dir(actions_dir, "y")?;
-    let synq_files =
-        syntaqlite_buildtools::codegen_api::read_named_files_from_dir(nodes_dir, "synq")?;
-
-    let dialect_crate = Path::new(dialect_crate_dir);
-    let shared_crate = Path::new(shared_crate_dir);
-
-    let csrc_dir = dialect_crate.join("csrc/sqlite");
-    let include_dir = dialect_crate.join(format!("include/{}", dialect.include_dir_name()));
-    let shared_include_dir = shared_crate.join(format!("include/{}", dialect.include_dir_name()));
-
-    let no_keywords: Vec<String> = Vec::new();
-    let request = syntaqlite_buildtools::codegen_api::CodegenRequest {
-        dialect: &dialect,
-        y_files: &y_files,
-        synq_files: &synq_files,
-        extra_keywords: &no_keywords,
-        parser_symbol_prefix: None,
-        include_rust: true,
-        crate_name: Some("syntaqlite_parser"),
-        base_synq_files: None,
-        open_for_extension: true,
-        dialect_c_includes: syntaqlite_buildtools::dialect_codegen::DialectCIncludes {
-            internal: "csrc/sqlite/",
-            public: "",
-            dialect_include_dir: "syntaqlite",
-            tokens_header: "syntaqlite/tokens.h",
-        },
-        internal_wrappers: true,
+    use syntaqlite_buildtools::codegen_api::{
+        CodegenRequest, DialectNaming, generate_codegen_artifacts, read_named_files_from_dir,
     };
-    let artifacts = syntaqlite_buildtools::codegen_api::generate_codegen_artifacts(&request)?;
-    let outputs =
-        syntaqlite_buildtools::sqlite::output_manifest::output_manifest(&dialect, artifacts)?;
+    use syntaqlite_buildtools::output_resolver::OutputLayout;
 
-    // Clean stale generated files from C output directories.
+    let dialect = DialectNaming::new("sqlite");
+    let y_files = read_named_files_from_dir(actions_dir, "y")?;
+    let synq_files = read_named_files_from_dir(nodes_dir, "synq")?;
+
+    let layout = OutputLayout::for_sqlite(
+        Path::new("."),
+        dialect_crate_dir,
+        shared_crate_dir,
+        dialect.name(),
+        &dialect.include_dir_name(),
+        wrappers_out,
+    );
+
+    let artifacts = {
+        let no_keywords: Vec<String> = Vec::new();
+        let request = CodegenRequest {
+            dialect: &dialect,
+            y_files: &y_files,
+            synq_files: &synq_files,
+            extra_keywords: &no_keywords,
+            parser_symbol_prefix: None,
+            include_rust: true,
+            crate_name: Some("syntaqlite_parser"),
+            base_synq_files: None,
+            open_for_extension: true,
+            dialect_c_includes: layout.c_includes(),
+            internal_wrappers: true,
+        };
+        generate_codegen_artifacts(&request)?
+    };
+
+    // Clean stale generated C/H files from C output directories.
+    let csrc_dir = Path::new(dialect_crate_dir).join("csrc/sqlite");
+    let include_dir =
+        Path::new(dialect_crate_dir).join(format!("include/{}", dialect.include_dir_name()));
+    let shared_include_dir =
+        Path::new(shared_crate_dir).join(format!("include/{}", dialect.include_dir_name()));
     for dir in [&csrc_dir, &include_dir, &shared_include_dir] {
         if dir.is_dir() {
             clean_generated_files(dir);
         }
     }
 
-    use syntaqlite_buildtools::output_resolver::{SqliteDialectResolver, write_artifacts};
-
-    let resolver = SqliteDialectResolver {
-        csrc_dir,
-        include_dir,
-        shared_include_dir,
-        dialect_rust_src: dialect_crate.join("src"),
-        shared_rust_src: shared_crate.join("src"),
-        wrappers_path: wrappers_out.map(PathBuf::from),
-    };
-
-    write_artifacts(
-        outputs,
-        &resolver,
-        |dir| ensure_dir(dir, "output directory"),
-        |path, content| write_file(path, content),
+    layout.write_codegen_artifacts(
+        &dialect,
+        artifacts,
+        &|dir| ensure_dir(dir, "output directory"),
+        &|path, content| write_file(path, content),
     )?;
 
     Ok(())

@@ -190,7 +190,7 @@ impl<'d> Validator<'d> {
             .into_iter()
             .flat_map(|info| expand_function_info(info))
             .collect();
-        Validator::builder(*crate::sqlite::DIALECT)
+        Validator::builder(crate::sqlite::dialect())
             .functions(functions)
             .build()
     }

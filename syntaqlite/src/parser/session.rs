@@ -41,7 +41,7 @@ impl<'d> RawParser<'d> {
     /// Create a parser for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
     pub fn new() -> RawParser<'static> {
-        RawParser::builder(*crate::sqlite::DIALECT).build()
+        RawParser::builder(crate::sqlite::dialect()).build()
     }
 
     /// Create a builder for a parser bound to the given dialect.

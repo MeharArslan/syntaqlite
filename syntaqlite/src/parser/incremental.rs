@@ -36,7 +36,7 @@ impl<'d> RawIncrementalParser<'d> {
     /// Token collection is enabled by default (required for formatting).
     #[cfg(feature = "sqlite")]
     pub fn new() -> RawIncrementalParser<'static> {
-        RawIncrementalParser::builder(*crate::sqlite::DIALECT).build()
+        RawIncrementalParser::builder(crate::sqlite::dialect()).build()
     }
 
     /// Create a builder for a low-level parser bound to the given dialect.

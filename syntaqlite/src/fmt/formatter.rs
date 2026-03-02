@@ -39,7 +39,7 @@ impl<'d> Formatter<'d> {
     /// Create a formatter for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
     pub fn new() -> Formatter<'static> {
-        Formatter::builder(*crate::sqlite::DIALECT).build()
+        Formatter::builder(crate::sqlite::dialect()).build()
     }
 
     /// Create a builder for a formatter bound to the given dialect.

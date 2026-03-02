@@ -41,7 +41,7 @@ impl<'d> RawTokenizer<'d> {
     /// Create a new tokenizer for the built-in SQLite dialect.
     #[cfg(feature = "sqlite")]
     pub fn new() -> RawTokenizer<'static> {
-        RawTokenizer::builder(*crate::sqlite::DIALECT).build()
+        RawTokenizer::builder(crate::sqlite::dialect()).build()
     }
 
     /// Create a builder for a tokenizer bound to the given dialect.
