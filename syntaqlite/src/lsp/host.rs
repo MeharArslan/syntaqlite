@@ -376,7 +376,7 @@ mod tests {
         host.open_document(uri, 1, sql.to_string());
         let expected = host.expected_tokens_at_offset(uri, sql.len());
         assert!(
-            expected.contains(&(TokenType::From as u32)),
+            expected.contains(&(TokenType::FROM as u32)),
             "expected TK_FROM after SELECT *, got {:?}",
             expected
         );
@@ -390,7 +390,7 @@ mod tests {
         host.open_document(uri, 1, sql.to_string());
         let expected = host.expected_tokens_at_offset(uri, sql.len());
         assert!(
-            expected.contains(&(TokenType::From as u32)),
+            expected.contains(&(TokenType::FROM as u32)),
             "expected TK_FROM in second statement context, got {:?}",
             expected
         );
@@ -404,7 +404,7 @@ mod tests {
         host.open_document(uri, 1, sql.to_string());
         let expected = host.expected_tokens_at_offset(uri, sql.len());
         assert!(
-            expected.contains(&(TokenType::JoinKw as u32)),
+            expected.contains(&(TokenType::JOINKW as u32)),
             "expected TK_JOIN_KW after FROM alias, got {:?}",
             expected
         );
@@ -418,19 +418,19 @@ mod tests {
         host.open_document(uri, 1, sql.to_string());
         let expected = host.expected_tokens_at_offset(uri, sql.len());
         assert!(
-            expected.contains(&(TokenType::Join as u32)),
+            expected.contains(&(TokenType::JOIN as u32)),
             "expected TK_JOIN"
         );
         assert!(
-            !expected.contains(&(TokenType::Create as u32)),
+            !expected.contains(&(TokenType::CREATE as u32)),
             "TK_CREATE should not appear"
         );
         assert!(
-            !expected.contains(&(TokenType::Select as u32)),
+            !expected.contains(&(TokenType::SELECT as u32)),
             "TK_SELECT should not appear"
         );
         assert!(
-            !expected.contains(&(TokenType::Virtual as u32)),
+            !expected.contains(&(TokenType::VIRTUAL as u32)),
             "TK_VIRTUAL should not appear"
         );
     }
@@ -516,7 +516,7 @@ mod tests {
         let sql = "SELECT * FROM slice";
         host.open_document(uri, 1, sql.to_string());
         let expected = host.expected_tokens_at_offset(uri, sql.len());
-        assert!(expected.contains(&(TokenType::Join as u32)));
+        assert!(expected.contains(&(TokenType::JOIN as u32)));
     }
 
     #[test]
