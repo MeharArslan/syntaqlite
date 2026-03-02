@@ -14,14 +14,14 @@ use syntaqlite::IncrementalParser;
 
 mod tk {
     use syntaqlite::TokenType;
-    pub const SELECT: u32 = TokenType::Select as u32;
-    pub const STAR: u32 = TokenType::Star as u32;
-    pub const FROM: u32 = TokenType::From as u32;
-    pub const WHERE: u32 = TokenType::Where as u32;
-    pub const ID: u32 = TokenType::Id as u32;
-    pub const EQ: u32 = TokenType::Eq as u32;
-    pub const INTEGER: u32 = TokenType::Integer as u32;
-    pub const ILLEGAL: u32 = TokenType::Illegal as u32;
+    pub const SELECT: TokenType = TokenType::SELECT;
+    pub const STAR: TokenType = TokenType::STAR;
+    pub const FROM: TokenType = TokenType::FROM;
+    pub const WHERE: TokenType = TokenType::WHERE;
+    pub const ID: TokenType = TokenType::ID;
+    pub const EQ: TokenType = TokenType::EQ;
+    pub const INTEGER: TokenType = TokenType::INTEGER;
+    pub const ILLEGAL: TokenType = TokenType::ILLEGAL;
 }
 
 // ---------------------------------------------------------------------------
@@ -267,7 +267,7 @@ fn baseline_id_in_macro_region() {
 
     // Format it to see the macro region preserved
     let fmt = syntaqlite::Formatter::new();
-    let formatted = fmt.format_node(cursor.node_ref(root));
+    let formatted = fmt.format_node(cursor.root().unwrap());
     eprintln!("baseline formatted: {}", formatted);
 
     assert_eq!(formatted, "SELECT * FROM {table} WHERE id = 1");

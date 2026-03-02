@@ -48,7 +48,7 @@ fn tokenize_with_cflags(sql: &str, cflag_indices: &[u32]) -> Vec<(u32, String)> 
         .dialect_config(config)
         .build();
     tok.tokenize(sql)
-        .filter(|raw| raw.token_type != tk(TokenType::Space))
+        .filter(|raw| raw.token_type != tk(TokenType::SPACE))
         .map(|raw| (raw.token_type, raw.text.to_string()))
         .collect()
 }
@@ -76,7 +76,7 @@ fn tokenize_at_version_cflags(
         .dialect_config(config)
         .build();
     tok.tokenize(sql)
-        .filter(|raw| raw.token_type != tk(TokenType::Space))
+        .filter(|raw| raw.token_type != tk(TokenType::SPACE))
         .map(|raw| (raw.token_type, raw.text.to_string()))
         .collect()
 }
@@ -152,7 +152,7 @@ fn within_keyword_not_recognized_without_cflag() {
     let tokens = tokenize_with_cflags("WITHIN", &[]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Within),
+        tk(TokenType::WITHIN),
         "WITHIN should not be a keyword without ENABLE_ORDERED_SET_AGGREGATES"
     );
 }
@@ -163,7 +163,7 @@ fn within_keyword_recognized_with_cflag() {
     let tokens = tokenize_with_cflags("WITHIN", &[CFLAG_ENABLE_ORDERED_SET_AGGREGATES]);
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Within),
+        tk(TokenType::WITHIN),
         "WITHIN should be a keyword when ENABLE_ORDERED_SET_AGGREGATES is set"
     );
 }
@@ -178,7 +178,7 @@ fn within_keyword_not_recognized_before_3_47() {
     );
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Within),
+        tk(TokenType::WITHIN),
         "WITHIN should not be a keyword before 3.47 even with cflag"
     );
 }
@@ -222,7 +222,7 @@ fn omit_windowfunc_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("OVER", &[CFLAG_OMIT_WINDOWFUNC]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Over),
+        tk(TokenType::OVER),
         "OVER should fall back to ID with OMIT_WINDOWFUNC"
     );
 }
@@ -252,7 +252,7 @@ fn omit_cte_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("WITH", &[CFLAG_OMIT_CTE]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::With),
+        tk(TokenType::WITH),
         "WITH should fall back to ID with OMIT_CTE"
     );
 }
@@ -282,7 +282,7 @@ fn omit_returning_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("RETURNING", &[CFLAG_OMIT_RETURNING]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Returning),
+        tk(TokenType::RETURNING),
         "RETURNING should fall back to ID with OMIT_RETURNING"
     );
 }
@@ -315,7 +315,7 @@ fn omit_compound_select_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("UNION", &[CFLAG_OMIT_COMPOUND_SELECT]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Union),
+        tk(TokenType::UNION),
         "UNION should fall back to ID with OMIT_COMPOUND_SELECT"
     );
 }
@@ -345,7 +345,7 @@ fn omit_view_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("VIEW", &[CFLAG_OMIT_VIEW]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::View),
+        tk(TokenType::VIEW),
         "VIEW should fall back to ID with OMIT_VIEW"
     );
 }
@@ -376,7 +376,7 @@ fn omit_trigger_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("TRIGGER", &[CFLAG_OMIT_TRIGGER]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Trigger),
+        tk(TokenType::TRIGGER),
         "TRIGGER should fall back to ID with OMIT_TRIGGER"
     );
 }
@@ -409,13 +409,13 @@ fn omit_trigger_parse_succeeds_without_flag() {
 fn omit_foreign_key_keywords_fall_back_to_id() {
     let cflags = &[CFLAG_OMIT_FOREIGN_KEY];
     for (sql, expected_tt, name) in [
-        ("FOREIGN", tk(TokenType::Foreign), "FOREIGN"),
-        ("REFERENCES", tk(TokenType::References), "REFERENCES"),
-        ("CASCADE", tk(TokenType::Cascade), "CASCADE"),
-        ("RESTRICT", tk(TokenType::Restrict), "RESTRICT"),
-        ("DEFERRABLE", tk(TokenType::Deferrable), "DEFERRABLE"),
-        ("INITIALLY", tk(TokenType::Initially), "INITIALLY"),
-        ("ACTION", tk(TokenType::Action), "ACTION"),
+        ("FOREIGN", tk(TokenType::FOREIGN), "FOREIGN"),
+        ("REFERENCES", tk(TokenType::REFERENCES), "REFERENCES"),
+        ("CASCADE", tk(TokenType::CASCADE), "CASCADE"),
+        ("RESTRICT", tk(TokenType::RESTRICT), "RESTRICT"),
+        ("DEFERRABLE", tk(TokenType::DEFERRABLE), "DEFERRABLE"),
+        ("INITIALLY", tk(TokenType::INITIALLY), "INITIALLY"),
+        ("ACTION", tk(TokenType::ACTION), "ACTION"),
     ] {
         let tokens = tokenize_with_cflags(sql, cflags);
         assert_ne!(
@@ -428,8 +428,8 @@ fn omit_foreign_key_keywords_fall_back_to_id() {
 #[test]
 fn omit_foreign_key_keywords_recognized_without_flag() {
     for (sql, expected_tt, name) in [
-        ("FOREIGN", tk(TokenType::Foreign), "FOREIGN"),
-        ("REFERENCES", tk(TokenType::References), "REFERENCES"),
+        ("FOREIGN", tk(TokenType::FOREIGN), "FOREIGN"),
+        ("REFERENCES", tk(TokenType::REFERENCES), "REFERENCES"),
     ] {
         let tokens = tokenize_default(sql);
         assert_eq!(
@@ -467,7 +467,7 @@ fn omit_generated_columns_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("ALWAYS", &[CFLAG_OMIT_GENERATED_COLUMNS]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Always),
+        tk(TokenType::ALWAYS),
         "ALWAYS should fall back to ID with OMIT_GENERATED_COLUMNS"
     );
 }
@@ -477,7 +477,7 @@ fn omit_generated_columns_keyword_recognized_without_flag() {
     let tokens = tokenize_default("ALWAYS");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Always),
+        tk(TokenType::ALWAYS),
         "ALWAYS should be recognized without OMIT_GENERATED_COLUMNS"
     );
 }
@@ -490,8 +490,8 @@ fn omit_generated_columns_keyword_recognized_without_flag() {
 fn omit_explain_keywords_fall_back_to_id() {
     let cflags = &[CFLAG_OMIT_EXPLAIN];
     for (sql, expected_tt, name) in [
-        ("EXPLAIN", tk(TokenType::Explain), "EXPLAIN"),
-        ("QUERY", tk(TokenType::Query), "QUERY"),
+        ("EXPLAIN", tk(TokenType::EXPLAIN), "EXPLAIN"),
+        ("QUERY", tk(TokenType::QUERY), "QUERY"),
     ] {
         let tokens = tokenize_with_cflags(sql, cflags);
         assert_ne!(
@@ -506,7 +506,7 @@ fn omit_explain_keywords_recognized_without_flag() {
     let tokens = tokenize_default("EXPLAIN");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Explain),
+        tk(TokenType::EXPLAIN),
         "EXPLAIN should be recognized without OMIT_EXPLAIN"
     );
 }
@@ -551,9 +551,9 @@ fn omit_explain_query_plan_parse_succeeds_without_flag() {
 fn omit_attach_keywords_fall_back_to_id() {
     let cflags = &[CFLAG_OMIT_ATTACH];
     for (sql, expected_tt, name) in [
-        ("ATTACH", tk(TokenType::Attach), "ATTACH"),
-        ("DATABASE", tk(TokenType::Database), "DATABASE"),
-        ("DETACH", tk(TokenType::Detach), "DETACH"),
+        ("ATTACH", tk(TokenType::ATTACH), "ATTACH"),
+        ("DATABASE", tk(TokenType::DATABASE), "DATABASE"),
+        ("DETACH", tk(TokenType::DETACH), "DETACH"),
     ] {
         let tokens = tokenize_with_cflags(sql, cflags);
         assert_ne!(
@@ -566,9 +566,9 @@ fn omit_attach_keywords_fall_back_to_id() {
 #[test]
 fn omit_attach_keywords_recognized_without_flag() {
     for (sql, expected_tt, name) in [
-        ("ATTACH", tk(TokenType::Attach), "ATTACH"),
-        ("DETACH", tk(TokenType::Detach), "DETACH"),
-        ("DATABASE", tk(TokenType::Database), "DATABASE"),
+        ("ATTACH", tk(TokenType::ATTACH), "ATTACH"),
+        ("DETACH", tk(TokenType::DETACH), "DETACH"),
+        ("DATABASE", tk(TokenType::DATABASE), "DATABASE"),
     ] {
         let tokens = tokenize_default(sql);
         assert_eq!(
@@ -619,7 +619,7 @@ fn omit_autoincrement_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("AUTOINCREMENT", &[CFLAG_OMIT_AUTOINCREMENT]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Autoincr),
+        tk(TokenType::AUTOINCR),
         "AUTOINCREMENT should fall back to ID with OMIT_AUTOINCREMENT"
     );
 }
@@ -629,7 +629,7 @@ fn omit_autoincrement_keyword_recognized_without_flag() {
     let tokens = tokenize_default("AUTOINCREMENT");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Autoincr),
+        tk(TokenType::AUTOINCR),
         "AUTOINCREMENT should be recognized without OMIT_AUTOINCREMENT"
     );
 }
@@ -662,7 +662,7 @@ fn omit_cast_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("CAST", &[CFLAG_OMIT_CAST]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Cast),
+        tk(TokenType::CAST),
         "CAST should fall back to ID with OMIT_CAST"
     );
 }
@@ -672,7 +672,7 @@ fn omit_cast_keyword_recognized_without_flag() {
     let tokens = tokenize_default("CAST");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Cast),
+        tk(TokenType::CAST),
         "CAST should be recognized without OMIT_CAST"
     );
 }
@@ -702,7 +702,7 @@ fn omit_pragma_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("PRAGMA", &[CFLAG_OMIT_PRAGMA]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Pragma),
+        tk(TokenType::PRAGMA),
         "PRAGMA should fall back to ID with OMIT_PRAGMA"
     );
 }
@@ -712,7 +712,7 @@ fn omit_pragma_keyword_recognized_without_flag() {
     let tokens = tokenize_default("PRAGMA");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Pragma),
+        tk(TokenType::PRAGMA),
         "PRAGMA should be recognized without OMIT_PRAGMA"
     );
 }
@@ -742,7 +742,7 @@ fn omit_reindex_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("REINDEX", &[CFLAG_OMIT_REINDEX]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Reindex),
+        tk(TokenType::REINDEX),
         "REINDEX should fall back to ID with OMIT_REINDEX"
     );
 }
@@ -752,7 +752,7 @@ fn omit_reindex_keyword_recognized_without_flag() {
     let tokens = tokenize_default("REINDEX");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Reindex),
+        tk(TokenType::REINDEX),
         "REINDEX should be recognized without OMIT_REINDEX"
     );
 }
@@ -782,7 +782,7 @@ fn omit_virtualtable_keyword_falls_back_to_id() {
     let tokens = tokenize_with_cflags("VIRTUAL", &[CFLAG_OMIT_VIRTUALTABLE]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Virtual),
+        tk(TokenType::VIRTUAL),
         "VIRTUAL should fall back to ID with OMIT_VIRTUALTABLE"
     );
 }
@@ -792,7 +792,7 @@ fn omit_virtualtable_keyword_recognized_without_flag() {
     let tokens = tokenize_default("VIRTUAL");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Virtual),
+        tk(TokenType::VIRTUAL),
         "VIRTUAL should be recognized without OMIT_VIRTUALTABLE"
     );
 }
@@ -830,11 +830,11 @@ fn multiple_omit_flags_suppress_independently() {
 
     // EXPLAIN suppressed
     let tokens = tokenize_with_cflags("EXPLAIN", cflags);
-    assert_ne!(tokens[0].0, tk(TokenType::Explain));
+    assert_ne!(tokens[0].0, tk(TokenType::EXPLAIN));
 
     // ATTACH suppressed
     let tokens = tokenize_with_cflags("ATTACH", cflags);
-    assert_ne!(tokens[0].0, tk(TokenType::Attach));
+    assert_ne!(tokens[0].0, tk(TokenType::ATTACH));
 
     // SELECT still works (not gated by either flag)
     assert!(
@@ -849,7 +849,7 @@ fn omit_flag_does_not_affect_unrelated_keywords() {
     let tokens = tokenize_with_cflags("PRAGMA", &[CFLAG_OMIT_CAST]);
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Pragma),
+        tk(TokenType::PRAGMA),
         "PRAGMA should not be affected by OMIT_CAST"
     );
 
@@ -857,7 +857,7 @@ fn omit_flag_does_not_affect_unrelated_keywords() {
     let tokens = tokenize_with_cflags("CAST", &[CFLAG_OMIT_PRAGMA]);
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Cast),
+        tk(TokenType::CAST),
         "CAST should not be affected by OMIT_PRAGMA"
     );
 }

@@ -464,11 +464,11 @@ mod tests {
         // CREATE TABLE slice AS SELECT 2 → table has no named columns.
         // Referencing slice."1" should warn about unknown column.
         let dialect = &crate::sqlite::DIALECT;
-        let mut parser = crate::parser::RawParser::builder(&dialect).build();
+        let mut parser = crate::ext::RawParser::builder(dialect).build();
         let sql = "CREATE TABLE slice AS SELECT 2;\nSELECT slice.\"1\" FROM slice;";
         let mut cursor = parser.parse(sql);
         let stmt_ids: Vec<_> = (&mut cursor)
-            .map(|r| r.map(|nr| nr.id()))
+            .map(|r| r.map(|nr: crate::parser::session::NodeRef<'_>| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
         let diags = crate::validation::validate_document(

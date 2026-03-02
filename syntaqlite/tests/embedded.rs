@@ -4,6 +4,8 @@
 //! Integration tests for embedded SQL validation in Python f-strings and
 //! TypeScript template literals.
 
+#![cfg(feature = "embedded")]
+
 use syntaqlite::embedded::{extract_python, extract_typescript, validate_embedded};
 use syntaqlite::validation::ValidationConfig;
 

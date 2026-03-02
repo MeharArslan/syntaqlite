@@ -4,7 +4,6 @@
 use syntaqlite::IncrementalParser;
 use syntaqlite::TokenType;
 use syntaqlite::ast::Stmt;
-use syntaqlite::ext::DialectNodeType;
 
 /// Feed tokens for "SELECT 1" via the low-level API and verify same AST
 /// as the high-level parse.
@@ -15,16 +14,15 @@ fn feed_tokens_select_1() {
     let mut cursor = tp.feed(source);
 
     // Feed SELECT token.
-    let r = cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
+    let r = cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
     assert!(r.is_none());
 
     // Feed integer literal token.
-    let r = cursor.feed_token(TokenType::Integer as u32, 7..8).unwrap();
+    let r = cursor.feed_token(TokenType::INTEGER, 7..8).unwrap();
     assert!(r.is_none());
 
     // finish() synthesizes SEMI + EOF, triggering the ecmd reduction.
-    let id = cursor.finish().unwrap().expect("expected a statement");
-    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
+    let stmt = cursor.finish().unwrap().expect("expected a statement");
     assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
@@ -36,16 +34,15 @@ fn feed_tokens_with_semicolon() {
     let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
-    cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
-    cursor.feed_token(TokenType::Integer as u32, 7..8).unwrap();
+    cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
+    cursor.feed_token(TokenType::INTEGER, 7..8).unwrap();
 
     // SEMI is shifted but the ecmd reduction hasn't fired yet (needs lookahead).
-    let r = cursor.feed_token(TokenType::Semi as u32, 8..9).unwrap();
+    let r = cursor.feed_token(TokenType::SEMI, 8..9).unwrap();
     assert!(r.is_none());
 
     // finish() sends EOF which provides the lookahead.
-    let id = cursor.finish().unwrap().expect("expected a statement");
-    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
+    let stmt = cursor.finish().unwrap().expect("expected a statement");
     assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
@@ -58,22 +55,20 @@ fn feed_tokens_multi_statement() {
     let mut cursor = tp.feed(source);
 
     // First statement: SELECT 1 ;
-    cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
-    cursor.feed_token(TokenType::Integer as u32, 7..8).unwrap();
-    let r = cursor.feed_token(TokenType::Semi as u32, 8..9).unwrap();
+    cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
+    cursor.feed_token(TokenType::INTEGER, 7..8).unwrap();
+    let r = cursor.feed_token(TokenType::SEMI, 8..9).unwrap();
     assert!(r.is_none()); // SEMI shifted, not reduced yet.
 
     // Second statement's first token provides the lookahead that completes stmt 1.
-    let stmt1 = cursor.feed_token(TokenType::Select as u32, 10..16).unwrap();
+    let stmt1 = cursor.feed_token(TokenType::SELECT, 10..16).unwrap();
     assert!(
         stmt1.is_some(),
         "first statement should complete on next SELECT"
     );
 
     // Continue second statement.
-    cursor
-        .feed_token(TokenType::Integer as u32, 17..18)
-        .unwrap();
+    cursor.feed_token(TokenType::INTEGER, 17..18).unwrap();
 
     let stmt2 = cursor.finish().unwrap();
     assert!(stmt2.is_some(), "second statement should complete");
@@ -86,16 +81,15 @@ fn feed_token_skips_space() {
     let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
-    cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
+    cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
 
     // Feed a space — should be silently skipped.
-    let r = cursor.feed_token(TokenType::Space as u32, 6..7).unwrap();
+    let r = cursor.feed_token(TokenType::SPACE, 6..7).unwrap();
     assert!(r.is_none());
 
-    cursor.feed_token(TokenType::Integer as u32, 7..8).unwrap();
+    cursor.feed_token(TokenType::INTEGER, 7..8).unwrap();
 
-    let id = cursor.finish().unwrap().expect("expected a statement");
-    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
+    let stmt = cursor.finish().unwrap().expect("expected a statement");
     assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
@@ -106,11 +100,9 @@ fn feed_token_records_comment() {
     let mut tp = IncrementalParser::new(); // collect_tokens is true by default
     let mut cursor = tp.feed(source);
 
-    cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
-    cursor.feed_token(TokenType::Comment as u32, 7..15).unwrap();
-    cursor
-        .feed_token(TokenType::Integer as u32, 16..17)
-        .unwrap();
+    cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
+    cursor.feed_token(TokenType::COMMENT, 7..15).unwrap();
+    cursor.feed_token(TokenType::INTEGER, 16..17).unwrap();
 
     cursor.finish().unwrap().expect("expected a statement");
 
@@ -127,8 +119,8 @@ fn macro_regions_recorded() {
     let mut cursor = tp.feed(source);
 
     cursor.begin_macro(7, 13);
-    cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
-    cursor.feed_token(TokenType::Integer as u32, 7..8).unwrap();
+    cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
+    cursor.feed_token(TokenType::INTEGER, 7..8).unwrap();
     cursor.end_macro();
 
     cursor.finish().unwrap();
@@ -148,8 +140,8 @@ fn nested_macro_regions() {
 
     cursor.begin_macro(0, 30);
     cursor.begin_macro(10, 5);
-    cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
-    cursor.feed_token(TokenType::Integer as u32, 7..8).unwrap();
+    cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
+    cursor.feed_token(TokenType::INTEGER, 7..8).unwrap();
     cursor.end_macro();
     cursor.end_macro();
 
@@ -171,25 +163,18 @@ fn macro_well_aligned_complete_expression() {
     let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
-    cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
+    cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
 
     cursor.begin_macro(7, 11);
-    cursor
-        .feed_token(TokenType::Integer as u32, 12..13)
-        .unwrap();
-    cursor.feed_token(TokenType::Plus as u32, 14..15).unwrap();
-    cursor
-        .feed_token(TokenType::Integer as u32, 16..17)
-        .unwrap();
+    cursor.feed_token(TokenType::INTEGER, 12..13).unwrap();
+    cursor.feed_token(TokenType::PLUS, 14..15).unwrap();
+    cursor.feed_token(TokenType::INTEGER, 16..17).unwrap();
     cursor.end_macro();
 
-    cursor.feed_token(TokenType::Comma as u32, 18..19).unwrap();
-    cursor
-        .feed_token(TokenType::Integer as u32, 20..21)
-        .unwrap();
+    cursor.feed_token(TokenType::COMMA, 18..19).unwrap();
+    cursor.feed_token(TokenType::INTEGER, 20..21).unwrap();
 
-    let id = cursor.finish().unwrap().expect("expected a statement");
-    let stmt = Stmt::from_arena(cursor.reader(), id).unwrap();
+    let stmt = cursor.finish().unwrap().expect("expected a statement");
     assert!(matches!(stmt, Stmt::SelectStmt(_)));
 }
 
@@ -202,15 +187,15 @@ fn macro_straddle_rejected_by_parser() {
     let mut tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
-    cursor.feed_token(TokenType::Select as u32, 0..6).unwrap();
-    cursor.feed_token(TokenType::Integer as u32, 7..8).unwrap();
-    cursor.feed_token(TokenType::From as u32, 9..13).unwrap();
+    cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
+    cursor.feed_token(TokenType::INTEGER, 7..8).unwrap();
+    cursor.feed_token(TokenType::FROM, 9..13).unwrap();
 
     cursor.begin_macro(14, 7);
-    cursor.feed_token(TokenType::Id as u32, 19..20).unwrap();
+    cursor.feed_token(TokenType::ID, 19..20).unwrap();
     cursor.end_macro();
 
-    cursor.feed_token(TokenType::Id as u32, 22..23).unwrap();
+    cursor.feed_token(TokenType::ID, 22..23).unwrap();
     let err = cursor.finish().unwrap_err();
     assert!(
         err.message.contains("straddle"),
@@ -237,12 +222,16 @@ fn high_level_api_still_works() {
     let mut cursor = parser.parse("SELECT 1; SELECT 2");
 
     let node1 = cursor.next_statement().unwrap().unwrap();
-    let r1 = Stmt::from_arena(cursor.reader(), node1.id()).unwrap();
-    assert!(matches!(r1, Stmt::SelectStmt(_)));
+    assert!(matches!(
+        node1.as_typed::<Stmt>().unwrap(),
+        Stmt::SelectStmt(_)
+    ));
 
     let node2 = cursor.next_statement().unwrap().unwrap();
-    let r2 = Stmt::from_arena(cursor.reader(), node2.id()).unwrap();
-    assert!(matches!(r2, Stmt::SelectStmt(_)));
+    assert!(matches!(
+        node2.as_typed::<Stmt>().unwrap(),
+        Stmt::SelectStmt(_)
+    ));
 
     assert!(cursor.next_statement().is_none());
 }

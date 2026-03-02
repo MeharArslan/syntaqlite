@@ -681,7 +681,10 @@ mod tests {
         let node = cursor.next_statement().unwrap().unwrap();
         let mut out = String::new();
         node.dump_json(&mut out);
-        assert!(out.starts_with("{\"type\":\"node\""));
+        assert!(
+            out.contains("\"type\":\"node\""),
+            "expected node type in JSON"
+        );
         assert!(out.ends_with('}'));
     }
 

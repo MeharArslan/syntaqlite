@@ -90,7 +90,7 @@ This runs all checks in sequence: Rust/C formatting, `cargo check`, `cargo clipp
 For a faster mid-task check (no diff tests), run:
 
 ```sh
-cargo check && cargo clippy -- -D warnings
+cargo check --tests --all-features --all-targets && cargo clippy -- -D warnings
 ```
 
 ## Testing

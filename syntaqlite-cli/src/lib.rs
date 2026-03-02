@@ -115,12 +115,13 @@ pub fn run(name: &str, dialect: Option<&syntaqlite::dialect::Dialect>) {
 
 /// Run the CLI without runtime dialect support (extract/codegen only).
 #[cfg(not(feature = "runtime"))]
+#[allow(unused_variables)]
 pub fn run(name: &str, _dialect: Option<()>) {
     let cli =
         Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
             .unwrap_or_else(|e| e.exit());
 
-    let result = match cli.command {
+    let result: Result<(), String> = match cli.command {
         #[cfg(feature = "codegen-dialect")]
         Command::Dialect(cmd) => codegen_dialect::dispatch(cmd),
         #[cfg(feature = "codegen-sqlite")]

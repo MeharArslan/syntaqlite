@@ -344,6 +344,7 @@ impl<'d> TypedIncrementalParser<'d> {
     {
         TypedIncrementalCursor {
             inner: self.inner.feed(source),
+            last_root: None,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -359,6 +360,7 @@ impl<'d> TypedIncrementalParser<'d> {
     {
         TypedIncrementalCursor {
             inner: self.inner.feed_cstr(source),
+            last_root: None,
             _phantom: std::marker::PhantomData,
         }
     }
@@ -413,6 +415,7 @@ impl<'d> TypedIncrementalParserBuilder<'d> {
 #[doc(hidden)]
 pub struct TypedIncrementalCursor<'a, N, T> {
     inner: RawIncrementalCursor<'a>,
+    last_root: Option<crate::parser::session::NodeRef<'a>>,
     _phantom: std::marker::PhantomData<fn(T) -> N>,
 }
 
@@ -433,16 +436,14 @@ where
         match self.inner.feed_token(token_type.into(), span)? {
             None => Ok(None),
             Some(id) => {
-                let node = self
-                    .inner
-                    .node_ref(id)
-                    .as_typed::<N>()
-                    .ok_or_else(|| ParseError {
-                        message: "failed to resolve typed AST node".to_string(),
-                        offset: None,
-                        length: None,
-                        root: Some(id),
-                    })?;
+                let node_ref = self.inner.node_ref(id);
+                self.last_root = Some(node_ref);
+                let node = node_ref.as_typed::<N>().ok_or_else(|| ParseError {
+                    message: "failed to resolve typed AST node".to_string(),
+                    offset: None,
+                    length: None,
+                    root: Some(id),
+                })?;
                 Ok(Some(node))
             }
         }
@@ -458,19 +459,23 @@ where
         match self.inner.finish()? {
             None => Ok(None),
             Some(id) => {
-                let node = self
-                    .inner
-                    .node_ref(id)
-                    .as_typed::<N>()
-                    .ok_or_else(|| ParseError {
-                        message: "failed to resolve typed AST node".to_string(),
-                        offset: None,
-                        length: None,
-                        root: Some(id),
-                    })?;
+                let node_ref = self.inner.node_ref(id);
+                self.last_root = Some(node_ref);
+                let node = node_ref.as_typed::<N>().ok_or_else(|| ParseError {
+                    message: "failed to resolve typed AST node".to_string(),
+                    offset: None,
+                    length: None,
+                    root: Some(id),
+                })?;
                 Ok(Some(node))
             }
         }
+    }
+
+    /// Return the [`NodeRef`] for the last completed statement (from the most
+    /// recent successful `feed_token` or `finish` call).
+    pub fn root(&self) -> Option<crate::parser::session::NodeRef<'a>> {
+        self.last_root
     }
 
     /// Return terminal token IDs valid at the current parser state, as raw u32 ordinals.

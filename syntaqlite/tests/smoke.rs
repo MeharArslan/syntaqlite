@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite::ast::Stmt;
-use syntaqlite::ext::DialectNodeType;
 use syntaqlite::ext::RawParser;
 
 #[test]
@@ -11,7 +10,7 @@ fn parse_select_1() {
     let mut session = parser.parse("SELECT 1;");
 
     let node = session.next_statement().unwrap().unwrap();
-    let stmt = Stmt::from_arena(session.reader(), node.id()).unwrap();
+    let stmt = node.as_typed::<Stmt>().unwrap();
     let Stmt::SelectStmt(_select) = stmt else {
         panic!("expected SelectStmt")
     };
@@ -26,11 +25,11 @@ fn parse_multiple_statements() {
     let mut session = parser.parse("SELECT 1; SELECT 2;");
 
     let node1 = session.next_statement().unwrap().unwrap();
-    let stmt1 = Stmt::from_arena(session.reader(), node1.id()).unwrap();
+    let stmt1 = node1.as_typed::<Stmt>().unwrap();
     assert!(matches!(stmt1, Stmt::SelectStmt(_)));
 
     let node2 = session.next_statement().unwrap().unwrap();
-    let stmt2 = Stmt::from_arena(session.reader(), node2.id()).unwrap();
+    let stmt2 = node2.as_typed::<Stmt>().unwrap();
     assert!(matches!(stmt2, Stmt::SelectStmt(_)));
 
     assert!(session.next_statement().is_none());
@@ -87,10 +86,7 @@ fn parse_error_recovery() {
     // Recovery: cursor should continue and return the next valid statement.
     let second = session.next_statement().unwrap().unwrap();
     assert!(
-        matches!(
-            Stmt::from_arena(session.reader(), second.id()).unwrap(),
-            Stmt::SelectStmt(_)
-        ),
+        matches!(second.as_typed::<Stmt>().unwrap(), Stmt::SelectStmt(_)),
         "expected SelectStmt after recovery"
     );
 
@@ -118,7 +114,7 @@ fn parse_error_mid_batch() {
 
     let r1 = session.next_statement().unwrap().unwrap();
     assert!(matches!(
-        Stmt::from_arena(session.reader(), r1.id()).unwrap(),
+        r1.as_typed::<Stmt>().unwrap(),
         Stmt::SelectStmt(_)
     ));
 
@@ -126,7 +122,7 @@ fn parse_error_mid_batch() {
 
     let r3 = session.next_statement().unwrap().unwrap();
     assert!(matches!(
-        Stmt::from_arena(session.reader(), r3.id()).unwrap(),
+        r3.as_typed::<Stmt>().unwrap(),
         Stmt::SelectStmt(_)
     ));
 
@@ -141,7 +137,7 @@ fn parser_reuse() {
     {
         let mut session = parser.parse("SELECT 1");
         let node = session.next_statement().unwrap().unwrap();
-        let stmt = Stmt::from_arena(session.reader(), node.id()).unwrap();
+        let stmt = node.as_typed::<Stmt>().unwrap();
         assert!(matches!(stmt, Stmt::SelectStmt(_)));
     }
 
@@ -149,7 +145,7 @@ fn parser_reuse() {
     {
         let mut session = parser.parse("DELETE FROM t");
         let node = session.next_statement().unwrap().unwrap();
-        let stmt = Stmt::from_arena(session.reader(), node.id()).unwrap();
+        let stmt = node.as_typed::<Stmt>().unwrap();
         assert!(matches!(stmt, Stmt::DeleteStmt(_)));
     }
 }
@@ -170,7 +166,7 @@ fn parse_delete_with_order_by_limit() {
     let mut cursor = parser.parse("DELETE FROM t ORDER BY id LIMIT 5;");
 
     let node = cursor.next_statement().unwrap().unwrap();
-    let stmt = Stmt::from_arena(cursor.reader(), node.id()).unwrap();
+    let stmt = node.as_typed::<Stmt>().unwrap();
     let Stmt::DeleteStmt(del) = stmt else {
         panic!("expected DeleteStmt, got {stmt:?}");
     };
@@ -184,7 +180,7 @@ fn parse_update_with_order_by_limit() {
     let mut cursor = parser.parse("UPDATE t SET a = 1 ORDER BY id LIMIT 3;");
 
     let node = cursor.next_statement().unwrap().unwrap();
-    let stmt = Stmt::from_arena(cursor.reader(), node.id()).unwrap();
+    let stmt = node.as_typed::<Stmt>().unwrap();
     let Stmt::UpdateStmt(upd) = stmt else {
         panic!("expected UpdateStmt, got {stmt:?}");
     };

@@ -8,14 +8,13 @@ fn formatter() -> syntaqlite::Formatter<'static> {
     syntaqlite::Formatter::new()
 }
 
-// Token type constants (raw u32 values for the runtime API).
 mod tk {
     use syntaqlite::TokenType;
-    pub const SELECT: u32 = TokenType::Select as u32;
-    pub const INTEGER: u32 = TokenType::Integer as u32;
-    pub const PLUS: u32 = TokenType::Plus as u32;
-    pub const COMMA: u32 = TokenType::Comma as u32;
-    pub const ID: u32 = TokenType::Id as u32;
+    pub const SELECT: TokenType = TokenType::SELECT;
+    pub const INTEGER: TokenType = TokenType::INTEGER;
+    pub const PLUS: TokenType = TokenType::PLUS;
+    pub const COMMA: TokenType = TokenType::COMMA;
+    pub const ID: TokenType = TokenType::ID;
 }
 
 #[test]
@@ -37,10 +36,10 @@ fn macro_call_emitted_verbatim() {
     cursor.feed_token(tk::COMMA, 18..19).unwrap();
     cursor.feed_token(tk::INTEGER, 20..21).unwrap();
 
-    let root = cursor.finish().unwrap().expect("expected a statement");
+    cursor.finish().unwrap().expect("expected a statement");
 
     assert_eq!(
-        fmt.format_node(cursor.node_ref(root)),
+        fmt.format_node(cursor.root().unwrap()),
         "SELECT foo!(1 + 2), 3"
     );
 }
@@ -61,10 +60,10 @@ fn macro_multi_node_emitted_once() {
     cursor.feed_token(tk::ID, 17..18).unwrap();
     cursor.end_macro();
 
-    let root = cursor.finish().unwrap().expect("expected a statement");
+    cursor.finish().unwrap().expect("expected a statement");
 
     assert_eq!(
-        fmt.format_node(cursor.node_ref(root)),
+        fmt.format_node(cursor.root().unwrap()),
         "SELECT macro!(a, b)"
     );
 }
@@ -88,10 +87,10 @@ fn macro_multi_node_no_extra_separator() {
     cursor.feed_token(tk::COMMA, 17..18).unwrap();
     cursor.feed_token(tk::ID, 19..20).unwrap();
 
-    let root = cursor.finish().unwrap().expect("expected a statement");
+    cursor.finish().unwrap().expect("expected a statement");
 
     assert_eq!(
-        fmt.format_node(cursor.node_ref(root)),
+        fmt.format_node(cursor.root().unwrap()),
         "SELECT foo!(a, b), c"
     );
 }
@@ -111,7 +110,7 @@ fn no_macro_regions_formats_normally() {
     cursor.feed_token(tk::COMMA, 11..12).unwrap();
     cursor.feed_token(tk::INTEGER, 14..15).unwrap();
 
-    let root = cursor.finish().unwrap().expect("expected a statement");
+    cursor.finish().unwrap().expect("expected a statement");
 
-    assert_eq!(fmt.format_node(cursor.node_ref(root)), "SELECT 1 + 2, 3");
+    assert_eq!(fmt.format_node(cursor.root().unwrap()), "SELECT 1 + 2, 3");
 }

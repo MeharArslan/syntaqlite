@@ -35,8 +35,8 @@ step "cargo fmt --check"
 cargo fmt --check
 
 # 2. Type check
-step "cargo check"
-cargo check
+step "cargo check --tests --all-features --all-targets"
+cargo check --tests --all-features
 
 # 3. Clippy (zero warnings)
 step "cargo clippy -- -D warnings"

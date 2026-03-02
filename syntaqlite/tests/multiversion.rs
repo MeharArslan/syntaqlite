@@ -45,7 +45,7 @@ fn tokenize_at_version(sql: &str, version: i32) -> Vec<(u32, String)> {
         })
         .build();
     tok.tokenize(sql)
-        .filter(|raw| raw.token_type != tk(TokenType::Space))
+        .filter(|raw| raw.token_type != tk(TokenType::SPACE))
         .map(|raw| (raw.token_type, raw.text.to_string()))
         .collect()
 }
@@ -88,9 +88,9 @@ fn ptr_operator_tokenizes_as_ptr_on_latest() {
     assert_eq!(
         types,
         vec![
-            tk(TokenType::Integer),
-            tk(TokenType::Ptr),
-            tk(TokenType::Integer)
+            tk(TokenType::INTEGER),
+            tk(TokenType::PTR),
+            tk(TokenType::INTEGER)
         ]
     );
 }
@@ -104,10 +104,10 @@ fn ptr_operator_reclassified_to_minus_before_3_38() {
     assert_eq!(
         types,
         vec![
-            tk(TokenType::Integer),
-            tk(TokenType::Minus),
-            tk(TokenType::Gt),
-            tk(TokenType::Integer)
+            tk(TokenType::INTEGER),
+            tk(TokenType::MINUS),
+            tk(TokenType::GT),
+            tk(TokenType::INTEGER)
         ],
         "Before 3.38, '->' should split into MINUS + GT"
     );
@@ -122,9 +122,9 @@ fn ptr_operator_works_at_3_38() {
     assert_eq!(
         types,
         vec![
-            tk(TokenType::Integer),
-            tk(TokenType::Ptr),
-            tk(TokenType::Integer)
+            tk(TokenType::INTEGER),
+            tk(TokenType::PTR),
+            tk(TokenType::INTEGER)
         ]
     );
 }
@@ -137,10 +137,10 @@ fn double_ptr_reclassified_before_3_38() {
     assert_eq!(
         types,
         vec![
-            tk(TokenType::Integer),
-            tk(TokenType::Minus),
-            tk(TokenType::Rshift),
-            tk(TokenType::Integer)
+            tk(TokenType::INTEGER),
+            tk(TokenType::MINUS),
+            tk(TokenType::RSHIFT),
+            tk(TokenType::INTEGER)
         ],
         "Before 3.38, '->>' should split into MINUS + RSHIFT"
     );
@@ -176,7 +176,7 @@ fn ptr_reclassification_parse_succeeds_at_3_38() {
 fn digit_separator_tokenizes_as_qnumber_on_latest() {
     let tokens = tokenize_latest("1_000");
     let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
-    assert_eq!(types, vec![tk(TokenType::Qnumber)]);
+    assert_eq!(types, vec![tk(TokenType::QNUMBER)]);
     assert_eq!(tokens[0].1, "1_000");
 }
 
@@ -186,7 +186,7 @@ fn digit_separator_reclassified_to_integer_before_3_46() {
     let tokens = tokenize_at_version("1_000", ver(3, 45, 0));
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Integer),
+        tk(TokenType::INTEGER),
         "Should be INTEGER, not QNUMBER"
     );
     assert_eq!(
@@ -201,7 +201,7 @@ fn digit_separator_float_reclassified_before_3_46() {
     let tokens = tokenize_at_version("1.5_0", ver(3, 45, 0));
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::Float),
+        tk(TokenType::FLOAT),
         "Should be FLOAT, not QNUMBER"
     );
     assert_eq!(
@@ -213,7 +213,7 @@ fn digit_separator_float_reclassified_before_3_46() {
 #[test]
 fn digit_separator_works_at_3_46() {
     let tokens = tokenize_at_version("1_000", ver(3, 46, 0));
-    assert_eq!(tokens[0].0, tk(TokenType::Qnumber));
+    assert_eq!(tokens[0].0, tk(TokenType::QNUMBER));
     assert_eq!(tokens[0].1, "1_000");
 }
 
@@ -230,10 +230,10 @@ fn basic_tokens_unaffected_by_version() {
         assert_eq!(
             types,
             vec![
-                tk(TokenType::Select),
-                tk(TokenType::Integer),
-                tk(TokenType::Plus),
-                tk(TokenType::Integer)
+                tk(TokenType::SELECT),
+                tk(TokenType::INTEGER),
+                tk(TokenType::PLUS),
+                tk(TokenType::INTEGER)
             ],
             "Basic tokens should be stable at version {}",
             version
@@ -269,7 +269,7 @@ fn returning_keyword_not_recognized_before_3_35() {
     let tokens = tokenize_at_version("RETURNING", ver(3, 34, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Returning),
+        tk(TokenType::RETURNING),
         "RETURNING should not be a keyword before 3.35"
     );
 }
@@ -277,7 +277,7 @@ fn returning_keyword_not_recognized_before_3_35() {
 #[test]
 fn returning_keyword_recognized_at_3_35() {
     let tokens = tokenize_at_version("RETURNING", ver(3, 35, 0));
-    assert_eq!(tokens[0].0, tk(TokenType::Returning));
+    assert_eq!(tokens[0].0, tk(TokenType::RETURNING));
 }
 
 #[test]
@@ -285,7 +285,7 @@ fn materialized_keyword_not_recognized_before_3_35() {
     let tokens = tokenize_at_version("MATERIALIZED", ver(3, 34, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Materialized),
+        tk(TokenType::MATERIALIZED),
         "MATERIALIZED should not be a keyword before 3.35"
     );
 }
@@ -296,7 +296,7 @@ fn window_keyword_not_recognized_before_3_25() {
     let tokens = tokenize_at_version("WINDOW", ver(3, 24, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Window),
+        tk(TokenType::WINDOW),
         "WINDOW should not be a keyword before 3.25"
     );
 }
@@ -306,7 +306,7 @@ fn over_keyword_not_recognized_before_3_25() {
     let tokens = tokenize_at_version("OVER", ver(3, 24, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Over),
+        tk(TokenType::OVER),
         "OVER should not be a keyword before 3.25"
     );
 }
@@ -317,7 +317,7 @@ fn do_keyword_not_recognized_before_3_24() {
     let tokens = tokenize_at_version("DO", ver(3, 23, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Do),
+        tk(TokenType::DO),
         "DO should not be a keyword before 3.24"
     );
 }
@@ -328,7 +328,7 @@ fn filter_keyword_not_recognized_before_3_25() {
     let tokens = tokenize_at_version("FILTER", ver(3, 24, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::Filter),
+        tk(TokenType::FILTER),
         "FILTER should not be a keyword before 3.25"
     );
 }
