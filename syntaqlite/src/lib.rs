@@ -1,6 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+#![warn(unreachable_pub)]
+
 //! Fast, accurate SQL tooling for SQLite and its dialects.
 //!
 //! syntaqlite tokenizes, parses, formats, and validates SQLite SQL using
@@ -57,8 +59,9 @@
 //! # Crate layout
 //!
 //! The primary user-facing types — [`Parser`], [`Tokenizer`], [`Formatter`],
-//! and [`Validator`] — are re-exported at the crate root and operate on the
-//! built-in SQLite dialect.
+//! and [`Validator`] — are re-exported at the crate root. With the `sqlite`
+//! feature (enabled by default), each provides a `::new()` constructor for
+//! the built-in SQLite dialect.
 //!
 //! For lower-level or dialect-agnostic access, see:
 //!
@@ -82,39 +85,13 @@ pub mod parser;
 
 // ── Top-level API ─────────────────────────────────────────────────────
 //
-// Only the 5 primary user-facing types are re-exported at the crate root.
+// Typed parser/tokenizer wrappers re-exported at the crate root.
 // Everything else lives in its host module (parser::*, fmt::*, validation::*).
 
-#[cfg(feature = "sqlite")]
-pub type Parser = crate::parser::typed::Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type ParserBuilder =
-    crate::parser::typed::ParserBuilder<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type StatementCursor<'a> =
-    crate::parser::typed::StatementCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type Tokenizer =
-    crate::parser::typed::Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type TokenizerBuilder =
-    crate::parser::typed::TokenizerBuilder<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type Token<'a> = crate::parser::typed::Token<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type TokenCursor<'a> =
-    crate::parser::typed::TokenCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type IncrementalParser =
-    crate::parser::typed::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type IncrementalParserBuilder = crate::parser::typed::IncrementalParserBuilder<
-    'static,
-    syntaqlite_parser_sqlite::SqliteNodeFamily,
->;
-#[cfg(feature = "sqlite")]
-pub type IncrementalCursor<'a> =
-    crate::parser::typed::IncrementalCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+pub use crate::parser::typed::{
+    IncrementalCursor, IncrementalParser, IncrementalParserBuilder, Parser, ParserBuilder,
+    StatementCursor, Token, TokenCursor, Tokenizer, TokenizerBuilder,
+};
 
 // ── Formatter ────────────────────────────────────────────────────────────
 
