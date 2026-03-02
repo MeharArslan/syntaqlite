@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tools/pre-push || exit 2",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  }
+}
