@@ -11,9 +11,9 @@ pass before committing.
 
 ## Instructions
 
-1. **Run pre-push checks with auto-fix**:
+1. **Run pre-push checks with auto-fix** (quiet mode suppresses output on success):
    ```sh
-   tools/pre-push --fix
+   tools/pre-push --fix -q
    ```
    If this fails, fix the issues and re-run until it passes.
    Do NOT skip this step — it is the project's only gate against broken code.
