@@ -35,12 +35,12 @@ impl<'d> RawIncrementalParser<'d> {
     /// Token collection is enabled by default (required for formatting).
     #[cfg(feature = "sqlite")]
     pub fn new() -> RawIncrementalParser<'static> {
-        RawIncrementalParser::builder(&crate::sqlite::DIALECT).build()
+        RawIncrementalParser::builder(*crate::sqlite::DIALECT).build()
     }
 
     /// Create a builder for a low-level parser bound to the given dialect.
     /// Token collection is enabled by default (required for formatting).
-    pub fn builder<'a>(dialect: &'a Dialect) -> RawIncrementalParserBuilder<'a> {
+    pub fn builder(dialect: Dialect<'d>) -> RawIncrementalParserBuilder<'d> {
         RawIncrementalParserBuilder {
             dialect,
             trace: false,
@@ -87,7 +87,7 @@ impl Drop for RawIncrementalParser<'_> {
 
 /// Builder for configuring a [`RawIncrementalParser`] before construction.
 pub struct RawIncrementalParserBuilder<'a> {
-    dialect: &'a Dialect<'a>,
+    dialect: Dialect<'a>,
     trace: bool,
     collect_tokens: bool,
     dialect_config: Option<DialectConfig>,
@@ -143,7 +143,7 @@ impl<'a> RawIncrementalParserBuilder<'a> {
             raw,
             source_buf: Vec::new(),
             _dialect_config: dialect_config,
-            dialect: *self.dialect,
+            dialect: self.dialect,
         }
     }
 }
@@ -361,7 +361,7 @@ impl<'a> RawIncrementalCursor<'a> {
     }
 
     /// Get a reference to the embedded `NodeReader`.
-    pub fn reader(&self) -> &RawNodeReader<'a> {
+    pub fn reader(&self) -> RawNodeReader<'a> {
         self.state.reader()
     }
 

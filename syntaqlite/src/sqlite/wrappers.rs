@@ -68,14 +68,14 @@ impl Parser {
     /// Create a parser for the built-in SQLite dialect with default configuration.
     pub fn new() -> Self {
         Parser {
-            inner: TypedParser::new(&crate::sqlite::DIALECT),
+            inner: TypedParser::new(*crate::sqlite::DIALECT),
         }
     }
 
     /// Create a builder for configuring the parser before construction.
     pub fn builder() -> ParserBuilder {
         ParserBuilder {
-            inner: TypedParser::builder(&crate::sqlite::DIALECT),
+            inner: TypedParser::builder(*crate::sqlite::DIALECT),
         }
     }
 
@@ -150,14 +150,14 @@ impl IncrementalParser {
     /// Create an incremental parser for the built-in SQLite dialect with default configuration.
     pub fn new() -> Self {
         IncrementalParser {
-            inner: TypedIncrementalParser::new(&crate::sqlite::DIALECT),
+            inner: TypedIncrementalParser::new(*crate::sqlite::DIALECT),
         }
     }
 
     /// Create a builder for configuring the parser before construction.
     pub fn builder() -> IncrementalParserBuilder {
         IncrementalParserBuilder {
-            inner: TypedIncrementalParser::builder(&crate::sqlite::DIALECT),
+            inner: TypedIncrementalParser::builder(*crate::sqlite::DIALECT),
         }
     }
 

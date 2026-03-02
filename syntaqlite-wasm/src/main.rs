@@ -106,7 +106,7 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut parser = RawParser::builder(&dialect)
+    let mut parser = RawParser::builder(dialect)
         .dialect_config(get_dialect_config())
         .build();
     let mut cursor = parser.parse(&source);
@@ -153,7 +153,7 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
         }
     };
 
-    let mut parser = RawParser::builder(&dialect)
+    let mut parser = RawParser::builder(dialect)
         .dialect_config(get_dialect_config())
         .build();
     let mut cursor = parser.parse(&source);
@@ -198,7 +198,7 @@ fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u
 
     let config = FormatConfig::from_raw_params(line_width, keyword_case, semicolons);
 
-    let mut formatter = Formatter::builder(&dialect)
+    let mut formatter = Formatter::builder(dialect)
         .format_config(config)
         .dialect_config(get_dialect_config())
         .build();
@@ -483,7 +483,7 @@ fn run_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
     };
 
     let ctx = syntaqlite::validation::SessionContext::from_ddl(
-        &dialect,
+        dialect,
         &source,
         Some(get_dialect_config()),
     );
@@ -814,7 +814,7 @@ fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32, _version: u32) -> i32
     // Syntax errors only — no session context means every table/column/function
     // would be flagged as unknown, so filter out semantic diagnostics entirely.
     let config = ValidationConfig::default();
-    let all_diags = embedded::validate_embedded(&dialect, &fragments, &[], &config);
+    let all_diags = embedded::validate_embedded(dialect, &fragments, &[], &config);
     let diags: Vec<_> = all_diags
         .into_iter()
         .filter(|d| d.message.is_parse_error())
@@ -849,7 +849,7 @@ fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32, _version: u32) ->
         }
     };
 
-    let result = embedded::embedded_semantic_tokens_encoded(&dialect, &fragments, &source);
+    let result = embedded::embedded_semantic_tokens_encoded(dialect, &fragments, &source);
     let token_count = (result.len() / 5) as i32;
 
     RESULT_BUF.with(|buf| {

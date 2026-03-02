@@ -4,6 +4,6 @@
 use syntaqlite::dialect::Dialect;
 use syntaqlite::lsp::LspServer;
 
-pub(crate) fn cmd_lsp(dialect: &Dialect) -> Result<(), String> {
-    LspServer::run(*dialect).map_err(|e| format!("LSP error: {e}"))
+pub(crate) fn cmd_lsp(dialect: Dialect<'_>) -> Result<(), String> {
+    LspServer::run(dialect).map_err(|e| format!("LSP error: {e}"))
 }

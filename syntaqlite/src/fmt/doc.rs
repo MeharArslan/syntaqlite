@@ -146,7 +146,7 @@ impl<'a> DocArena<'a> {
     // -- Render --
 
     /// Render the document tree rooted at `root` to a string.
-    /// Convenience wrapper around `render_into` that allocates fresh buffers.
+    #[cfg(test)]
     pub fn render(&self, root: DocId, line_width: usize, keyword_case: KeywordCase) -> String {
         let mut bufs = RenderBuffers::new();
         self.render_into(root, line_width, keyword_case, &mut bufs);

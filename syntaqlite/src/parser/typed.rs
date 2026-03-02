@@ -12,6 +12,7 @@ use std::ops::Range;
 use super::incremental::{RawIncrementalCursor, RawIncrementalParser, RawIncrementalParserBuilder};
 use super::session::{ParseError, RawNodeReader, RawParser, RawParserBuilder, RawStatementCursor};
 use super::tokenizer::{RawTokenCursor, RawTokenizer};
+use crate::dialect::Dialect;
 pub use syntaqlite_parser::dialect_traits::{DialectNodeType, DialectTokenType};
 use syntaqlite_parser::nodes::NodeId;
 
@@ -31,12 +32,12 @@ unsafe impl<'d> Send for TypedParser<'d> {}
 
 impl<'d> TypedParser<'d> {
     /// Create a parser bound to the given dialect.
-    pub fn new(dialect: &'d crate::dialect::Dialect<'d>) -> Self {
+    pub fn new(dialect: Dialect<'d>) -> Self {
         Self::builder(dialect).build()
     }
 
     /// Create a builder for more detailed configuration.
-    pub fn builder(dialect: &'d crate::dialect::Dialect<'d>) -> TypedParserBuilder<'d> {
+    pub fn builder(dialect: Dialect<'d>) -> TypedParserBuilder<'d> {
         TypedParserBuilder {
             inner: RawParser::builder(dialect),
         }
@@ -155,7 +156,7 @@ impl<'a, N: DialectNodeType<'a>> TypedStatementCursor<'a, N> {
     }
 
     /// Get a reference to the embedded [`RawNodeReader`].
-    pub fn reader(&self) -> &RawNodeReader<'a> {
+    pub fn reader(&self) -> RawNodeReader<'a> {
         self.inner.reader()
     }
 
@@ -220,14 +221,14 @@ unsafe impl<'d, T: DialectTokenType> Send for TypedTokenizer<'d, T> {}
 
 impl<'d, T: DialectTokenType> TypedTokenizer<'d, T> {
     /// Create a tokenizer with default configuration.
-    pub fn new(dialect: &'d crate::dialect::Dialect<'d>) -> Self {
+    pub fn new(dialect: Dialect<'d>) -> Self {
         Self::builder(dialect).build()
     }
 
     /// Create a builder for configuring the tokenizer before construction.
-    pub fn builder(dialect: &'d crate::dialect::Dialect<'d>) -> TypedTokenizerBuilder<'d, T> {
+    pub fn builder(dialect: Dialect<'d>) -> TypedTokenizerBuilder<'d, T> {
         TypedTokenizerBuilder {
-            inner: RawTokenizer::builder(*dialect),
+            inner: RawTokenizer::builder(dialect),
             _phantom: std::marker::PhantomData,
         }
     }
@@ -323,12 +324,12 @@ unsafe impl<'d> Send for TypedIncrementalParser<'d> {}
 
 impl<'d> TypedIncrementalParser<'d> {
     /// Create a parser bound to the given dialect.
-    pub fn new(dialect: &'d crate::dialect::Dialect<'d>) -> Self {
+    pub fn new(dialect: Dialect<'d>) -> Self {
         Self::builder(dialect).build()
     }
 
     /// Create a builder for more detailed configuration.
-    pub fn builder(dialect: &'d crate::dialect::Dialect<'d>) -> TypedIncrementalParserBuilder<'d> {
+    pub fn builder(dialect: Dialect<'d>) -> TypedIncrementalParserBuilder<'d> {
         TypedIncrementalParserBuilder {
             inner: RawIncrementalParser::builder(dialect),
         }
@@ -503,8 +504,8 @@ where
         self.inner.end_macro()
     }
 
-    /// Get a reference to the embedded [`RawNodeReader`].
-    pub fn reader(&self) -> &RawNodeReader<'a> {
+    /// Get the embedded [`RawNodeReader`].
+    pub fn reader(&self) -> RawNodeReader<'a> {
         self.inner.reader()
     }
 

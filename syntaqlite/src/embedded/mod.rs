@@ -126,7 +126,7 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 ///
 /// Returns diagnostics with offsets mapped back to host-file positions.
 pub fn validate_embedded(
-    dialect: &Dialect,
+    dialect: Dialect<'_>,
     fragments: &[EmbeddedFragment],
     functions: &[FunctionDef],
     config: &ValidationConfig,
@@ -178,11 +178,11 @@ pub fn sqlite_function_defs() -> Vec<FunctionDef> {
 /// `fragment.sql_text`. The caller is responsible for mapping these through
 /// an [`OffsetMap`] to host-file positions.
 pub fn fragment_semantic_tokens(
-    dialect: &Dialect,
+    dialect: Dialect<'_>,
     fragment: &EmbeddedFragment,
 ) -> Vec<(usize, usize, TokenCategory)> {
     let mut parser = RawIncrementalParser::builder(dialect).build();
-    let mut tokenizer = RawTokenizer::builder(*dialect).build();
+    let mut tokenizer = RawTokenizer::builder(dialect).build();
 
     // Tokenize the processed SQL text.
     let tokens: Vec<(u32, usize, usize)> = {
@@ -241,13 +241,13 @@ pub fn fragment_semantic_tokens(
 ///
 /// Returns diagnostics with SQL-text byte offsets (not yet mapped to host).
 fn validate_fragment(
-    dialect: &Dialect,
+    dialect: Dialect<'_>,
     fragment: &EmbeddedFragment,
     functions: &[FunctionDef],
     config: &ValidationConfig,
 ) -> Vec<Diagnostic> {
     let mut parser = RawIncrementalParser::builder(dialect).build();
-    let mut tokenizer = RawTokenizer::builder(*dialect).build();
+    let mut tokenizer = RawTokenizer::builder(dialect).build();
 
     // Tokenize the processed SQL text.
     let tokens: Vec<(u32, usize, usize)> = {
@@ -325,7 +325,7 @@ fn is_hole_diagnostic(diag: &Diagnostic, fragment: &EmbeddedFragment) -> bool {
 ///
 /// This is the embedded analogue of `AnalysisHost::semantic_tokens_encoded`.
 pub fn embedded_semantic_tokens_encoded(
-    dialect: &Dialect,
+    dialect: Dialect<'_>,
     fragments: &[EmbeddedFragment],
     source: &str,
 ) -> Vec<u32> {
@@ -413,7 +413,7 @@ mod tests {
     fn parse_errors_python(source: &str) -> Vec<Diagnostic> {
         let d = dialect();
         let fragments = extract_python(source);
-        let all = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
+        let all = validate_embedded(d, &fragments, &builtin_functions(), &default_config());
         all.into_iter()
             .filter(|d| d.message.is_parse_error())
             .collect()
@@ -423,7 +423,7 @@ mod tests {
     fn parse_errors_typescript(source: &str) -> Vec<Diagnostic> {
         let d = dialect();
         let fragments = extract_typescript(source);
-        let all = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
+        let all = validate_embedded(d, &fragments, &builtin_functions(), &default_config());
         all.into_iter()
             .filter(|d| d.message.is_parse_error())
             .collect()
@@ -470,7 +470,7 @@ mod tests {
         let fragments = extract_python(source);
         assert_eq!(fragments.len(), 1);
         let d = dialect();
-        let diags = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
+        let diags = validate_embedded(d, &fragments, &builtin_functions(), &default_config());
         let parse_diags: Vec<_> = diags
             .into_iter()
             .filter(|d| d.message.is_parse_error())
@@ -539,7 +539,7 @@ mod tests {
         let source = r#"db.execute(f"SELECT id FROM unknown_tbl")"#;
         let d = dialect();
         let fragments = extract_python(source);
-        let all = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
+        let all = validate_embedded(d, &fragments, &builtin_functions(), &default_config());
         // Should have semantic diagnostics (unknown table) but no parse errors.
         let parse: Vec<_> = all.iter().filter(|d| d.message.is_parse_error()).collect();
         let semantic: Vec<_> = all.iter().filter(|d| !d.message.is_parse_error()).collect();
@@ -558,7 +558,7 @@ mod tests {
         let fragments = extract_python(source);
         assert_eq!(fragments.len(), 1);
         let d = dialect();
-        let diags = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
+        let diags = validate_embedded(d, &fragments, &builtin_functions(), &default_config());
         let parse_diags: Vec<_> = diags
             .into_iter()
             .filter(|d| d.message.is_parse_error())
@@ -585,7 +585,7 @@ mod tests {
         let source = r#"db.execute(f"INSERT INTO t (a) VALUES (datetime('now'))")"#;
         let d = dialect();
         let fragments = extract_python(source);
-        let all = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
+        let all = validate_embedded(d, &fragments, &builtin_functions(), &default_config());
         let unknown_fn: Vec<_> = all
             .iter()
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownFunction { .. }))
@@ -604,7 +604,7 @@ mod tests {
         let d = dialect();
         let fragments = extract_python(source);
         assert_eq!(fragments.len(), 1);
-        let tokens = fragment_semantic_tokens(&d, &fragments[0]);
+        let tokens = fragment_semantic_tokens(d, &fragments[0]);
         let datetime_tokens: Vec<_> = tokens
             .iter()
             .filter(|(off, len, _)| &fragments[0].sql_text[*off..*off + *len] == "datetime")
@@ -628,7 +628,7 @@ mod tests {
         let source = r#"db.execute(f"SELECT {col} FROM {tbl}")"#;
         let d = dialect();
         let fragments = extract_python(source);
-        let all = validate_embedded(&d, &fragments, &builtin_functions(), &default_config());
+        let all = validate_embedded(d, &fragments, &builtin_functions(), &default_config());
         // Hole placeholders should be filtered — no diagnostics about __hole_N__.
         for diag in &all {
             let msg = format!("{}", diag.message);

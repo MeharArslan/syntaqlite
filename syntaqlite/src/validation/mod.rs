@@ -72,7 +72,7 @@ impl ValidationConfig {
 /// Resolution order: SQL scope stack → `document` (DDL from earlier in the
 /// document) → `session` (externally-provided ambient schema).
 pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
-    reader: &'a RawNodeReader<'a>,
+    reader: RawNodeReader<'a>,
     stmt_id: NodeId,
     dialect: crate::Dialect<'_>,
     session: Option<&SessionContext>,
@@ -80,7 +80,7 @@ pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
     functions: &'a [FunctionDef],
     config: &'a ValidationConfig,
 ) -> Vec<Diagnostic> {
-    let stmt: Option<A::Stmt> = DialectNodeType::from_arena(*reader, stmt_id);
+    let stmt: Option<A::Stmt> = DialectNodeType::from_arena(reader, stmt_id);
     let Some(stmt) = stmt else {
         return Vec::new();
     };
@@ -95,9 +95,9 @@ pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
 /// Each statement is validated against the schema accumulated from prior
 /// statements, then contributes its own DDL to the document context.
 pub(crate) fn validate_document(
-    reader: &RawNodeReader<'_>,
+    reader: RawNodeReader<'_>,
     stmt_ids: &[NodeId],
-    dialect: &crate::Dialect<'_>,
+    dialect: crate::Dialect<'_>,
     session: Option<&SessionContext>,
     functions: &[FunctionDef],
     config: &ValidationConfig,
@@ -108,7 +108,7 @@ pub(crate) fn validate_document(
         let diags = validate_statement_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(
             reader,
             stmt_id,
-            *dialect,
+            dialect,
             session,
             Some(&doc_ctx),
             functions,
@@ -189,13 +189,13 @@ impl<'d> Validator<'d> {
             .into_iter()
             .flat_map(|info| expand_function_info(info))
             .collect();
-        Validator::builder(&crate::sqlite::DIALECT)
+        Validator::builder(*crate::sqlite::DIALECT)
             .functions(functions)
             .build()
     }
 
     /// Create a builder for a validator bound to the given dialect.
-    pub fn builder(dialect: &'d crate::Dialect<'d>) -> ValidatorBuilder<'d> {
+    pub fn builder(dialect: crate::Dialect<'d>) -> ValidatorBuilder<'d> {
         ValidatorBuilder {
             dialect,
             functions: Vec::new(),
@@ -219,7 +219,7 @@ impl<'d> Validator<'d> {
             cursor.reader(),
             &results,
             source,
-            &self.dialect,
+            self.dialect,
             session,
             &self.functions,
             config,
@@ -236,7 +236,7 @@ impl Default for Validator<'static> {
 
 /// Builder for configuring a [`Validator`] before construction.
 pub struct ValidatorBuilder<'d> {
-    dialect: &'d crate::Dialect<'d>,
+    dialect: crate::Dialect<'d>,
     functions: Vec<FunctionDef>,
     dialect_config: Option<syntaqlite_parser::dialect::ffi::DialectConfig>,
 }
@@ -270,7 +270,7 @@ impl<'d> ValidatorBuilder<'d> {
 
         Validator {
             parser: builder.build(),
-            dialect: *self.dialect,
+            dialect: self.dialect,
             functions: self.functions,
         }
     }
@@ -282,10 +282,10 @@ impl<'d> ValidatorBuilder<'d> {
 /// roots (from `Ok` values and from recovered roots in `Err` values),
 /// then runs [`validate_document`] on the collected roots.
 pub(crate) fn validate_parse_results(
-    reader: &RawNodeReader<'_>,
+    reader: RawNodeReader<'_>,
     results: &[Result<NodeId, ParseError>],
     source: &str,
-    dialect: &crate::Dialect<'_>,
+    dialect: crate::Dialect<'_>,
     session: Option<&SessionContext>,
     functions: &[FunctionDef],
     config: &ValidationConfig,

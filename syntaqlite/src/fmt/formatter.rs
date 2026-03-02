@@ -39,11 +39,11 @@ impl<'d> Formatter<'d> {
     /// Create a formatter for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
     pub fn new() -> Formatter<'static> {
-        Formatter::builder(&crate::sqlite::DIALECT).build()
+        Formatter::builder(*crate::sqlite::DIALECT).build()
     }
 
     /// Create a builder for a formatter bound to the given dialect.
-    pub fn builder(dialect: &'d Dialect<'d>) -> FormatterBuilder<'d> {
+    pub fn builder(dialect: Dialect<'d>) -> FormatterBuilder<'d> {
         FormatterBuilder {
             dialect,
             format_config: FormatConfig::default(),
@@ -183,7 +183,7 @@ impl<'d> Formatter<'d> {
 
 /// Builder for configuring a [`Formatter`] before construction.
 pub struct FormatterBuilder<'d> {
-    dialect: &'d Dialect<'d>,
+    dialect: Dialect<'d>,
     format_config: FormatConfig,
     dialect_config: Option<syntaqlite_parser::dialect::ffi::DialectConfig>,
 }
@@ -221,7 +221,7 @@ impl<'d> FormatterBuilder<'d> {
         }
         let parser = parser_builder.build();
         Formatter {
-            dialect: *self.dialect,
+            dialect: self.dialect,
             parser,
             config: self.format_config,
             arena: DocArena::with_capacity(256),

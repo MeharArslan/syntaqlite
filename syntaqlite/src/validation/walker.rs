@@ -14,7 +14,7 @@ use super::scope::ScopeStack;
 use super::types::{Diagnostic, FunctionDef};
 
 pub(super) struct Walker<'a, 'd, A: AstTypes<'a>> {
-    reader: &'a RawNodeReader<'a>,
+    reader: RawNodeReader<'a>,
     dialect: crate::Dialect<'d>,
     functions: &'a [FunctionDef],
     config: &'a ValidationConfig,
@@ -24,7 +24,7 @@ pub(super) struct Walker<'a, 'd, A: AstTypes<'a>> {
 
 impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
     pub(super) fn run(
-        reader: &'a RawNodeReader<'a>,
+        reader: RawNodeReader<'a>,
         stmt: A::Stmt,
         dialect: crate::Dialect<'d>,
         scope: &mut ScopeStack,
@@ -193,7 +193,7 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
         if let Some(body) = trigger.body() {
             for node in body.iter() {
                 let id = node.node_id();
-                if let Some(stmt) = A::Stmt::from_arena(*self.reader, id) {
+                if let Some(stmt) = A::Stmt::from_arena(self.reader, id) {
                     self.walk_stmt(stmt, scope);
                 }
             }
@@ -391,9 +391,9 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
             // variant that matches any node (including SelectStmt), so checking
             // Expr first would route statement children through walk_expr
             // instead of walk_stmt, skipping FROM-clause table resolution.
-            if let Some(stmt) = A::Stmt::from_arena(*self.reader, child_id) {
+            if let Some(stmt) = A::Stmt::from_arena(self.reader, child_id) {
                 self.walk_stmt(stmt, scope);
-            } else if let Some(expr) = A::Expr::from_arena(*self.reader, child_id) {
+            } else if let Some(expr) = A::Expr::from_arena(self.reader, child_id) {
                 self.walk_expr(expr, scope);
             }
         }
@@ -402,7 +402,7 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
     fn walk_expr_list(&mut self, list: TypedList<'a, A::Node>, scope: &mut ScopeStack) {
         for node in list.iter() {
             let id = node.node_id();
-            if let Some(expr) = A::Expr::from_arena(*self.reader, id) {
+            if let Some(expr) = A::Expr::from_arena(self.reader, id) {
                 self.walk_expr(expr, scope);
             }
         }
@@ -463,7 +463,7 @@ mod tests {
     fn create_table_as_select_literal_column_mismatch_warns() {
         // CREATE TABLE slice AS SELECT 2 → table has no named columns.
         // Referencing slice."1" should warn about unknown column.
-        let dialect = &crate::sqlite::DIALECT;
+        let dialect = *crate::sqlite::DIALECT;
         let mut parser = crate::ext::RawParser::builder(dialect).build();
         let sql = "CREATE TABLE slice AS SELECT 2;\nSELECT slice.\"1\" FROM slice;";
         let mut cursor = parser.parse(sql);

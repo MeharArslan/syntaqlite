@@ -40,11 +40,11 @@ impl<'d> RawParser<'d> {
     /// Create a parser for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
     pub fn new() -> RawParser<'static> {
-        RawParser::builder(&crate::sqlite::DIALECT).build()
+        RawParser::builder(*crate::sqlite::DIALECT).build()
     }
 
     /// Create a builder for a parser bound to the given dialect.
-    pub fn builder<'a>(dialect: &'a Dialect) -> RawParserBuilder<'a> {
+    pub fn builder(dialect: Dialect<'d>) -> RawParserBuilder<'d> {
         RawParserBuilder {
             dialect,
             trace: false,
@@ -102,7 +102,7 @@ impl Drop for RawParser<'_> {
 
 /// Builder for configuring a [`RawParser`] before construction.
 pub struct RawParserBuilder<'a> {
-    dialect: &'a Dialect<'a>,
+    dialect: Dialect<'a>,
     trace: bool,
     collect_tokens: bool,
     dialect_config: Option<DialectConfig>,
@@ -146,7 +146,7 @@ impl<'a> RawParserBuilder<'a> {
             raw,
             source_buf: Vec::new(),
             dialect_config: DialectConfig::default(),
-            dialect: *self.dialect,
+            dialect: self.dialect,
         };
 
         if let Some(config) = self.dialect_config {
@@ -234,8 +234,8 @@ impl<'a> CursorState<'a> {
     ///
     /// The returned reference borrows `self`, so nodes resolved through it
     /// cannot outlive this cursor.
-    pub(crate) fn reader(&self) -> &RawNodeReader<'a> {
-        &self.reader
+    pub(crate) fn reader(&self) -> RawNodeReader<'a> {
+        self.reader
     }
 
     /// The source text bound to this cursor.
@@ -605,7 +605,7 @@ impl<'a> RawStatementCursor<'a> {
     // Delegate read-only methods for convenience
 
     /// Get a reference to the embedded `NodeReader`.
-    pub fn reader(&self) -> &RawNodeReader<'a> {
+    pub fn reader(&self) -> RawNodeReader<'a> {
         self.state.reader()
     }
 

@@ -22,7 +22,7 @@ struct Document {
 }
 
 impl Document {
-    fn analysis(&mut self, dialect: &Dialect<'_>) -> &DocumentAnalysis {
+    fn analysis(&mut self, dialect: Dialect<'_>) -> &DocumentAnalysis {
         if self.analysis.is_none() {
             self.analysis = Some(DocumentAnalysis::compute(dialect, &self.source));
         }
@@ -119,7 +119,7 @@ impl<'d> AnalysisHost<'d> {
     /// Parse-error diagnostics for a document, lazily computed.
     pub fn diagnostics(&mut self, uri: &str) -> &[Diagnostic] {
         match self.documents.get_mut(uri) {
-            Some(doc) => doc.analysis(&self.dialect).diagnostics(),
+            Some(doc) => doc.analysis(self.dialect).diagnostics(),
             None => &[],
         }
     }
@@ -127,7 +127,7 @@ impl<'d> AnalysisHost<'d> {
     /// Version, source text, and parse-error diagnostics in one borrow.
     pub fn document_diagnostics(&mut self, uri: &str) -> Option<(i32, &str, &[Diagnostic])> {
         let doc = self.documents.get_mut(uri)?;
-        doc.analysis(&self.dialect);
+        doc.analysis(self.dialect);
         let version = doc.version;
         let source = doc.source.as_str();
         let diagnostics = doc.analysis.as_ref().expect("just computed").diagnostics();
@@ -137,7 +137,7 @@ impl<'d> AnalysisHost<'d> {
     /// Semantic tokens for syntax highlighting, lazily computed.
     pub fn semantic_tokens(&mut self, uri: &str) -> &[SemanticToken] {
         match self.documents.get_mut(uri) {
-            Some(doc) => doc.analysis(&self.dialect).semantic_tokens(),
+            Some(doc) => doc.analysis(self.dialect).semantic_tokens(),
             None => &[],
         }
     }
@@ -151,7 +151,7 @@ impl<'d> AnalysisHost<'d> {
         match self.documents.get_mut(uri) {
             Some(doc) => {
                 let source = doc.source.clone();
-                doc.analysis(&self.dialect)
+                doc.analysis(self.dialect)
                     .semantic_tokens_encoded(&source, range)
             }
             None => Vec::new(),
@@ -163,8 +163,8 @@ impl<'d> AnalysisHost<'d> {
         match self.documents.get_mut(uri) {
             Some(doc) => {
                 let source = doc.source.clone();
-                doc.analysis(&self.dialect)
-                    .completion_info_at(&self.dialect, &source, offset)
+                doc.analysis(self.dialect)
+                    .completion_info_at(self.dialect, &source, offset)
             }
             None => CompletionInfo {
                 tokens: Vec::new(),
@@ -236,7 +236,7 @@ impl<'d> AnalysisHost<'d> {
             .documents
             .get(uri)
             .ok_or(FormatError::UnknownDocument)?;
-        let mut formatter = Formatter::builder(&self.dialect)
+        let mut formatter = Formatter::builder(self.dialect)
             .format_config(config.clone())
             .build();
         formatter.format(&doc.source).map_err(FormatError::Parse)
@@ -255,7 +255,7 @@ impl<'d> AnalysisHost<'d> {
         };
 
         let catalog = self.function_catalog();
-        let mut parser = crate::parser::session::RawParser::builder(&self.dialect).build();
+        let mut parser = crate::parser::session::RawParser::builder(self.dialect).build();
         let mut cursor = parser.parse(&doc.source);
 
         let mut stmt_ids = Vec::new();
@@ -287,7 +287,7 @@ impl<'d> AnalysisHost<'d> {
             diagnostics.extend(stmt_diags);
 
             #[cfg(feature = "sqlite")]
-            doc_ctx.accumulate(reader, stmt_id, &self.dialect, self.context.as_ref());
+            doc_ctx.accumulate(reader, stmt_id, self.dialect, self.context.as_ref());
         }
 
         diagnostics

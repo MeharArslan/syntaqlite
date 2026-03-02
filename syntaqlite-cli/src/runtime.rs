@@ -128,7 +128,7 @@ fn expand_paths(patterns: &[String]) -> Result<Vec<PathBuf>, String> {
     Ok(out)
 }
 
-fn require_dialect<'a>(dialect: Option<&'a Dialect<'a>>) -> Result<&'a Dialect<'a>, String> {
+fn require_dialect(dialect: Option<Dialect<'_>>) -> Result<Dialect<'_>, String> {
     dialect.ok_or_else(|| {
         "this command requires a dialect; build with --features=builtin-sqlite or use --dialect"
             .to_string()
@@ -166,7 +166,7 @@ unsafe fn dialect_from_library<'lib>(
     Ok(unsafe { Dialect::from_raw(raw) })
 }
 
-pub(crate) fn dispatch(cli: Cli, dialect: Option<&Dialect>) -> Result<(), String> {
+pub(crate) fn dispatch(cli: Cli, dialect: Option<Dialect<'_>>) -> Result<(), String> {
     if let Some(path) = &cli.dialect_path {
         // lib must be declared before dyn_dialect so Rust's reverse drop order
         // ensures dyn_dialect is dropped before lib (which would unload the library).
@@ -182,13 +182,13 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<&Dialect>) -> Result<(), String
                 eprintln!("error: {e}");
                 std::process::exit(1);
             });
-        dispatch_commands(cli.command, Some(&dyn_dialect))
+        dispatch_commands(cli.command, Some(dyn_dialect))
     } else {
         dispatch_commands(cli.command, dialect)
     }
 }
 
-fn dispatch_commands(command: Command, dialect: Option<&Dialect>) -> Result<(), String> {
+fn dispatch_commands(command: Command, dialect: Option<Dialect<'_>>) -> Result<(), String> {
     match command {
         Command::Ast { files } => require_dialect(dialect).and_then(|d| cmd_ast(d, files)),
         Command::Validate { files, lang } => {
@@ -256,7 +256,7 @@ fn process_files(
     Ok(())
 }
 
-fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
+fn cmd_ast(dialect: Dialect<'_>, files: Vec<String>) -> Result<(), String> {
     process_files(
         files,
         |source| cmd_ast_source(dialect, source, "<stdin>"),
@@ -270,7 +270,7 @@ fn cmd_ast(dialect: &Dialect, files: Vec<String>) -> Result<(), String> {
     )
 }
 
-fn cmd_ast_source(dialect: &Dialect, source: &str, file: &str) -> Result<(), String> {
+fn cmd_ast_source(dialect: Dialect<'_>, source: &str, file: &str) -> Result<(), String> {
     let (buf, errors) = dump_ast_source(dialect, source);
     print!("{buf}");
     if errors.is_empty() {
@@ -286,7 +286,7 @@ fn cmd_ast_source(dialect: &Dialect, source: &str, file: &str) -> Result<(), Str
 }
 
 fn cmd_fmt(
-    dialect: &Dialect,
+    dialect: Dialect<'_>,
     files: Vec<String>,
     config: FormatConfig,
     in_place: bool,
@@ -332,7 +332,7 @@ fn cmd_fmt(
     Ok(())
 }
 
-fn dump_ast_source(dialect: &Dialect, source: &str) -> (String, Vec<ParseError>) {
+fn dump_ast_source(dialect: Dialect<'_>, source: &str) -> (String, Vec<ParseError>) {
     let mut parser = RawParser::builder(dialect).build();
     let mut cursor = parser.parse(source);
     let mut out = String::new();
@@ -356,7 +356,7 @@ fn dump_ast_source(dialect: &Dialect, source: &str) -> (String, Vec<ParseError>)
 }
 
 fn format_source(
-    dialect: &Dialect,
+    dialect: Dialect<'_>,
     source: &str,
     config: FormatConfig,
 ) -> Result<String, ParseError> {
@@ -365,7 +365,7 @@ fn format_source(
 }
 
 fn cmd_validate(
-    dialect: &Dialect,
+    dialect: Dialect<'_>,
     files: Vec<String>,
     lang: Option<HostLanguage>,
 ) -> Result<(), String> {
@@ -438,7 +438,12 @@ fn render_diagnostics(
 }
 
 /// Validate a source string and print diagnostics. Returns `true` if any errors were found.
-fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &ValidationConfig) -> bool {
+fn validate_source(
+    dialect: Dialect<'_>,
+    source: &str,
+    file: &str,
+    config: &ValidationConfig,
+) -> bool {
     let functions = syntaqlite::embedded::sqlite_function_defs();
     let mut validator = syntaqlite::Validator::builder(dialect)
         .functions(functions)
@@ -450,7 +455,7 @@ fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &Validat
 /// Validate embedded SQL in a host-language source and print diagnostics.
 /// Returns `true` if any errors were found.
 fn validate_embedded_source(
-    dialect: &Dialect,
+    dialect: Dialect<'_>,
     source: &str,
     file: &str,
     config: &ValidationConfig,

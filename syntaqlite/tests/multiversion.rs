@@ -38,7 +38,7 @@ const fn tk(t: TokenType) -> u32 {
 /// filtering out whitespace.
 fn tokenize_at_version(sql: &str, version: i32) -> Vec<(u32, String)> {
     let dialect = syntaqlite::dialect::sqlite();
-    let mut tok = syntaqlite::ext::RawTokenizer::builder(*dialect)
+    let mut tok = syntaqlite::ext::RawTokenizer::builder(dialect)
         .dialect_config(DialectConfig {
             sqlite_version: version,
             ..Default::default()

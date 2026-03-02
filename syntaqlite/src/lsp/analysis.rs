@@ -32,7 +32,7 @@ pub struct DocumentAnalysis {
 
 impl DocumentAnalysis {
     /// Parse `source` against `dialect` and collect all analysis results.
-    pub fn compute(dialect: &Dialect<'_>, source: &str) -> Self {
+    pub fn compute(dialect: Dialect<'_>, source: &str) -> Self {
         let mut parser = RawParser::builder(dialect).collect_tokens(true).build();
         let mut cursor = parser.parse(source);
         let mut diagnostics = Vec::new();
@@ -74,7 +74,7 @@ impl DocumentAnalysis {
         semantic_tokens.sort_by_key(|t| t.offset);
 
         let mut tokens = Vec::new();
-        let mut tokenizer = RawTokenizer::builder(*dialect).build();
+        let mut tokenizer = RawTokenizer::builder(dialect).build();
         let source_base = source.as_ptr() as usize;
         for tok in tokenizer.tokenize(source) {
             let start = tok.text.as_ptr() as usize - source_base;
@@ -169,7 +169,7 @@ impl DocumentAnalysis {
     /// parser to determine what terminal tokens are valid at that point.
     pub fn completion_info_at(
         &self,
-        dialect: &Dialect<'_>,
+        dialect: Dialect<'_>,
         source: &str,
         offset: usize,
     ) -> CompletionInfo {

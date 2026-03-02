@@ -9,7 +9,7 @@
 use syntaqlite::embedded::{extract_python, extract_typescript, validate_embedded};
 use syntaqlite::validation::ValidationConfig;
 
-fn dialect() -> &'static syntaqlite::Dialect<'static> {
+fn dialect() -> syntaqlite::Dialect<'static> {
     syntaqlite::dialect::sqlite()
 }
 

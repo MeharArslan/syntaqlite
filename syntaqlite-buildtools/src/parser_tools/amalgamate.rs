@@ -388,6 +388,18 @@ fn emit(graph: &FileGraph, mode: EmitMode) -> Result<AmalgamateOutput, String> {
     header.push_str("*/\n");
     header.push_str(&format!("#ifndef {guard}\n#define {guard}\n\n"));
 
+    // Dialect-only mode: the dialect node headers reference types from the
+    // runtime (e.g. SyntaqliteSourceSpan). Include the runtime header here
+    // so those types are available when the dialect public headers are processed.
+    if let EmitMode::DialectOnly { runtime_header, .. } = &mode {
+        header.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
+        header.push_str(&format!(
+            "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\"\n"
+        ));
+        header.push_str("#endif\n");
+        header.push_str("#include SYNTAQLITE_RUNTIME_HEADER\n\n");
+    }
+
     for &i in &public_headers {
         emit_file(&files[i], &inlined_keys, &mut header);
     }
