@@ -37,13 +37,15 @@ def build_amalgamation(
     cmd = [
         str(cli_binary), "dialect",
         "--name", dialect.name,
-        "csrc",
-        "--output-dir", str(output_dir),
     ]
     if dialect.actions_dir:
         cmd += ["--actions-dir", dialect.actions_dir]
     if dialect.nodes_dir:
         cmd += ["--nodes-dir", dialect.nodes_dir]
+    cmd += [
+        "csrc",
+        "--output-dir", str(output_dir),
+    ]
 
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:

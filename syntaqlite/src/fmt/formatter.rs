@@ -143,9 +143,8 @@ impl<'d> Formatter<'d> {
 
     /// Format a single pre-parsed AST node. This is the low-level entry point
     /// for cases where the caller controls parsing (e.g. macro expansion).
-    pub fn format_node(&self, node: crate::parser::session::NodeRef<'_>) -> String {
+    pub fn format_node(&mut self, node: crate::parser::session::NodeRef<'_>) -> String {
         let reader = node.reader();
-        let mut arena = DocArena::new();
         let tokens = reader.tokens();
         let comment_ctx = CommentCtx::new(&[], tokens);
         let ctx = FmtCtx {
@@ -153,10 +152,20 @@ impl<'d> Formatter<'d> {
             reader,
             comment_ctx: Some(&comment_ctx),
         };
+
+        let prev_arena = std::mem::replace(&mut self.arena, DocArena::new());
+        let mut arena = DocArena::recycle(prev_arena);
         let mut consumed = vec![false; reader.macro_regions().len()];
-        let mut scratch = InterpretScratch::new();
-        let doc = interpret_node(&ctx, node.id(), &mut consumed, &mut arena, &mut scratch);
-        arena.render(doc, self.config.line_width, self.config.keyword_case)
+        let doc =
+            interpret_node(&ctx, node.id(), &mut consumed, &mut arena, &mut self.interpret_scratch);
+
+        let mut bufs = std::mem::take(&mut self.render_bufs);
+        bufs.clear();
+        arena.render_into(doc, self.config.line_width, self.config.keyword_case, &mut bufs);
+        self.arena = DocArena::recycle(arena);
+        let result = std::mem::take(&mut bufs.out);
+        self.render_bufs = bufs;
+        result
     }
 }
 

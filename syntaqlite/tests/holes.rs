@@ -266,7 +266,7 @@ fn baseline_id_in_macro_region() {
     eprintln!("baseline: got root node {:?}", root);
 
     // Format it to see the macro region preserved
-    let fmt = syntaqlite::Formatter::new();
+    let mut fmt = syntaqlite::Formatter::new();
     let formatted = fmt.format_node(cursor.root().unwrap());
     eprintln!("baseline formatted: {}", formatted);
 
