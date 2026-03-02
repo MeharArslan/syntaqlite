@@ -6,28 +6,36 @@ user_invocable: true
 
 # commit-and-push
 
-Commit all current changes and push to the remote.
+Commit all current changes and push to the remote. All pre-push checks must
+pass before committing.
 
 ## Instructions
 
-1. **Check for changes**:
+1. **Run pre-push checks with auto-fix**:
+   ```sh
+   tools/pre-push --fix
+   ```
+   If this fails, fix the issues and re-run until it passes.
+   Do NOT skip this step — it is the project's only gate against broken code.
+
+2. **Check for changes**:
    ```sh
    git status
    git diff --stat
    git log --oneline -5
    ```
 
-2. **Stage all changes**:
+3. **Stage all changes** (including any fixes from step 1):
    ```sh
    git add -A
    ```
 
-3. **Write a commit message** following the project convention:
+4. **Write a commit message** following the project convention:
    - Prefix with `synq: ` (lowercase)
    - Concise summary line describing the "why"
    - Add detail in the body for non-trivial changes
 
-4. **Commit using a HEREDOC**:
+5. **Commit using a HEREDOC**:
    ```sh
    git commit -m "$(cat <<'EOF'
    synq: <summary>
@@ -37,9 +45,9 @@ Commit all current changes and push to the remote.
    )"
    ```
 
-5. **Push to remote**:
+6. **Push to remote**:
    ```sh
    git push
    ```
 
-6. **Report the commit hash and branch** to the user.
+7. **Report the commit hash and branch** to the user.

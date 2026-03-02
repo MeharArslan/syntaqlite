@@ -210,13 +210,14 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
         "-fPIC",
         "-g",
         "-gseparate-dwarf=" + out_dialect_debug,
-        os.path.join(ROOT_DIR, "syntaqlite-parser-sys", "csrc", "sqlite", "dialect.c"),
-        os.path.join(ROOT_DIR, "syntaqlite-parser-sys", "csrc", "sqlite", "sqlite_parse.c"),
-        os.path.join(ROOT_DIR, "syntaqlite-parser-sys", "csrc", "sqlite", "sqlite_tokenize.c"),
-        os.path.join(ROOT_DIR, "syntaqlite-parser-sys", "csrc", "sqlite", "sqlite_keyword.c"),
+        os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite", "csrc", "sqlite", "dialect.c"),
+        os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite", "csrc", "sqlite", "sqlite_parse.c"),
+        os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite", "csrc", "sqlite", "sqlite_tokenize.c"),
+        os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite", "csrc", "sqlite", "sqlite_keyword.c"),
         wrapper_path,
-        "-I", os.path.join(ROOT_DIR, "syntaqlite-parser-sys"),
-        "-I", os.path.join(ROOT_DIR, "syntaqlite-parser-sys", "include"),
+        "-I", os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite"),
+        "-I", os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite", "include"),
+        "-I", os.path.join(ROOT_DIR, "syntaqlite-parser", "include"),
         "-DSYNTAQLITE_OMIT_SQLITE_API",
         "-sWASM_BIGINT",
         "-sSIDE_MODULE=1",
@@ -255,10 +256,10 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
         [
             sys.executable, cargo, "--no-sysroot",
             "run", "-p", "syntaqlite-cli", "--",
-            "dialect", "--name", "perfetto",
+            "codegen-dialect", "--name", "perfetto",
             "--actions-dir", os.path.join(ROOT_DIR, "dialects", "perfetto", "actions"),
             "--nodes-dir", os.path.join(ROOT_DIR, "dialects", "perfetto", "nodes"),
-            "csrc", "--output-dir", perfetto_csrc_dir,
+            "--output-dir", perfetto_csrc_dir,
         ],
         cwd=ROOT_DIR, env=env,
     )
@@ -275,7 +276,9 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
     with open(os.path.join(perfetto_csrc_dir, "syntaqlite_dialect.h"), "w", encoding="utf-8") as f:
         f.write("#ifndef SYNTAQLITE_EXT_H\n#define SYNTAQLITE_EXT_H\n"
                 "#include \"syntaqlite_dialect/sqlite_compat.h\"\n#include \"syntaqlite_dialect/arena.h\"\n"
-                "#include \"syntaqlite_dialect/vec.h\"\n#include \"syntaqlite_dialect/ast_builder.h\"\n"
+                "#include \"syntaqlite_dialect/vec.h\"\n#include \"syntaqlite_dialect/dialect_types.h\"\n"
+                "#include \"syntaqlite_dialect/dialect_macros.h\"\n"
+                "#include \"syntaqlite_dialect/ast_builder.h\"\n"
                 "#endif\n")
 
     out_perfetto = os.path.join(ROOT_DIR, "web/playground", "public", "syntaqlite-perfetto.wasm")
@@ -286,7 +289,7 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
             "-g", "-gseparate-dwarf=" + out_perfetto_debug,
             os.path.join(perfetto_csrc_dir, "syntaqlite_perfetto.c"),
             "-I", perfetto_csrc_dir,
-            "-I", os.path.join(ROOT_DIR, "syntaqlite-parser-sys", "include"),
+            "-I", os.path.join(ROOT_DIR, "syntaqlite-parser", "include"),
             "-sWASM_BIGINT", "-sSIDE_MODULE=1", "--no-entry",
             "-o", out_perfetto,
         ],
