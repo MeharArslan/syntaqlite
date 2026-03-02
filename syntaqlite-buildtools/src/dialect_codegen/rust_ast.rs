@@ -418,7 +418,7 @@ fn emit_rust_node_tag_accessor(
 }
 
 /// Generate Rust source for token type enum.
-pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
+pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     let mut w = RustWriter::new();
     w.file_header();
 

@@ -4,7 +4,7 @@
 use std::fmt::{Display, Write as _};
 
 /// Shared single-buffer text writer with indentation tracking.
-pub(crate) struct TextWriterCore {
+pub struct TextWriterCore {
     buffer: String,
     indent: usize,
     at_line_start: bool,

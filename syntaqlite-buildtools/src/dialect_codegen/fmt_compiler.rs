@@ -590,12 +590,12 @@ fn compile_switch(
 
 // ── Shared compilation ──────────────────────────────────────────────────
 
-pub(crate) struct CompiledNode {
+pub struct CompiledNode {
     pub name: String,
     pub ops: Vec<RawOp>,
 }
 
-pub(crate) struct CompiledFmt {
+pub struct CompiledFmt {
     pub strings: Vec<String>,
     pub enum_display: Vec<u16>,
     pub nodes: Vec<CompiledNode>,
@@ -605,7 +605,7 @@ pub(crate) struct CompiledFmt {
 /// Compile all items into the intermediate representation shared by both emitters.
 /// Uses the model's `all_items()` to include both base and extension items, and
 /// `node_like_items()` for the correct total tag count.
-pub(crate) fn try_compile_all(model: &AstModel<'_>) -> Result<CompiledFmt, FmtCompileError> {
+pub fn try_compile_all(model: &AstModel<'_>) -> Result<CompiledFmt, FmtCompileError> {
     let items: Vec<&Item> = model.all_items().collect();
 
     let enum_items: HashMap<String, Vec<String>> = items

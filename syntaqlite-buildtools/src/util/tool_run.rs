@@ -11,7 +11,7 @@ use std::os::raw::{c_char, c_int};
 /// This struct holds the converted CStrings and pointers needed to call
 /// a C function with argc/argv signature. The CStrings must be kept alive
 /// for the duration of the C function call.
-pub(crate) struct CArgs {
+pub struct CArgs {
     /// The CStrings that must be kept alive
     _strings: Vec<CString>,
     /// The argv array (null-terminated)
@@ -41,7 +41,7 @@ impl CArgs {
 ///
 /// # Panics
 /// Panics if any string contains null bytes (invalid for C strings)
-pub(crate) fn prepare_c_args(program_name: &str, args: &[String]) -> CArgs {
+pub fn prepare_c_args(program_name: &str, args: &[String]) -> CArgs {
     // Convert program name to C string
     let program_cstring = CString::new(program_name).unwrap_or_else(|e| {
         eprintln!("Invalid program name '{}': {}", program_name, e);

@@ -319,7 +319,7 @@ fn drain_gap_comments<'a>(
 ///
 /// Does NOT advance the token cursor — the caller is responsible for
 /// advancing it (typically by "calling" into the child node).
-pub(crate) fn try_macro_verbatim<'a>(
+pub fn try_macro_verbatim<'a>(
     ctx: &FmtCtx<'a>,
     regions: &[MacroRegion],
     arena: &mut DocArena<'a>,

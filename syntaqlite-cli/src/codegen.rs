@@ -24,7 +24,7 @@ const SQLITE_SHARED_CRATE: &str = "syntaqlite-parser";
 /// Output type for the dialect codegen command.
 #[cfg(feature = "codegen-dialect")]
 #[derive(clap::ValueEnum, Clone)]
-pub(crate) enum OutputType {
+pub enum OutputType {
     /// Dialect-only amalgamation (default).
     Dialect,
     /// Raw C/H/Rust files, flat layout.
@@ -44,7 +44,7 @@ pub(crate) enum OutputType {
 /// files are merged with the base (same-name files replace the base).
 #[cfg(feature = "codegen-dialect")]
 #[derive(clap::Parser)]
-pub(crate) struct CodegenDialectArgs {
+pub struct CodegenDialectArgs {
     /// Dialect identifier (e.g. "sqlite").
     #[arg(long, required = true)]
     name: String,
@@ -80,7 +80,7 @@ pub(crate) struct CodegenDialectArgs {
 /// `generate_codegen_artifacts()` spawns the current executable with these.
 #[cfg(feature = "codegen-dialect")]
 #[derive(clap::Subcommand)]
-pub(crate) enum ToolCommand {
+pub enum ToolCommand {
     #[command(hide = true)]
     Lemon {
         #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -94,7 +94,7 @@ pub(crate) enum ToolCommand {
 }
 
 #[cfg(feature = "codegen-dialect")]
-pub(crate) fn dispatch_dialect(args: CodegenDialectArgs) -> Result<(), String> {
+pub fn dispatch_dialect(args: CodegenDialectArgs) -> Result<(), String> {
     let name = &args.name;
     let actions_dir = args.actions_dir.as_deref();
     let nodes_dir = args.nodes_dir.as_deref();
@@ -132,7 +132,7 @@ pub(crate) fn dispatch_dialect(args: CodegenDialectArgs) -> Result<(), String> {
 }
 
 #[cfg(feature = "codegen-dialect")]
-pub(crate) fn dispatch_tool(cmd: ToolCommand) -> Result<(), String> {
+pub fn dispatch_tool(cmd: ToolCommand) -> Result<(), String> {
     match cmd {
         ToolCommand::Lemon { args } => syntaqlite_buildtools::run_lemon(&args),
         ToolCommand::Mkkeyword { args } => syntaqlite_buildtools::run_mkkeyword(&args),

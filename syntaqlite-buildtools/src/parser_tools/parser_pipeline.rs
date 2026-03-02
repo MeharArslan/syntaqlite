@@ -9,7 +9,7 @@ use crate::util::c_transformer::CTransformer;
 // Embed lempar.c template (needed by the library)
 const LEMPAR_C: &[u8] = include_bytes!("../../sqlite-vendored/sources/lempar.c");
 
-pub(crate) fn generate_parser(
+pub fn generate_parser(
     actions_dir: &str,
     parser_name: &str,
     output_dir: &str,
@@ -23,7 +23,7 @@ pub(crate) fn generate_parser(
 }
 
 /// Concatenate in-memory .y file contents (already sorted by caller).
-pub(crate) fn concatenate_y_contents(files: &[(String, String)]) -> Result<Vec<u8>, String> {
+pub fn concatenate_y_contents(files: &[(String, String)]) -> Result<Vec<u8>, String> {
     if files.is_empty() {
         return Err("no .y files provided".to_string());
     }
@@ -39,7 +39,7 @@ pub(crate) fn concatenate_y_contents(files: &[(String, String)]) -> Result<Vec<u
 ///
 /// `parser_name` is the Lemon `%name` directive value (e.g. `"SynqSqliteParse"`),
 /// prepended to the concatenated grammar so each dialect gets its own symbol prefix.
-pub(crate) fn generate_parser_from_contents(
+pub fn generate_parser_from_contents(
     y_files: &[(String, String)],
     parser_name: &str,
     output_dir: &str,
@@ -52,7 +52,7 @@ pub(crate) fn generate_parser_from_contents(
     generate_parser_with_grammar_bytes(&grammar_bytes, parser_name, output_dir, tokens_header)
 }
 
-pub(crate) fn generate_parser_with_grammar_bytes(
+pub fn generate_parser_with_grammar_bytes(
     grammar_bytes: &[u8],
     parser_name: &str,
     output_dir: &str,

@@ -26,7 +26,7 @@ unsafe extern "C" {
 ///
 /// # Arguments
 /// * `args` - Arguments to pass to lemon (not including program name)
-pub(crate) fn run_lemon(args: &[String]) -> ! {
+pub fn run_lemon(args: &[String]) -> ! {
     let c_args = tool_run::prepare_c_args("lemon", args);
 
     // SAFETY:

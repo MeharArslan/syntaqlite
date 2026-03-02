@@ -18,14 +18,14 @@ use syntaqlite_parser::{FfiDialect, ParseError};
 use super::{Cli, Command};
 
 #[derive(Clone, Copy, ValueEnum)]
-pub(crate) enum KeywordCasing {
+pub enum KeywordCasing {
     Preserve,
     Upper,
     Lower,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
-pub(crate) enum HostLanguage {
+pub enum HostLanguage {
     Python,
     Typescript,
 }
@@ -60,7 +60,7 @@ fn require_dialect(dialect: Option<RawDialect<'_>>) -> Result<RawDialect<'_>, St
 
 const DEFAULT_DIALECT_SYMBOL: &str = "syntaqlite_dialect";
 
-pub(crate) fn dialect_symbol_name(name: Option<&str>) -> String {
+pub fn dialect_symbol_name(name: Option<&str>) -> String {
     match name {
         Some(name) => format!("syntaqlite_{name}_dialect"),
         None => DEFAULT_DIALECT_SYMBOL.to_string(),
@@ -89,7 +89,7 @@ unsafe fn dialect_from_library<'lib>(
     Ok(unsafe { RawDialect::from_raw(raw) })
 }
 
-pub(crate) fn dispatch(cli: Cli, dialect: Option<RawDialect<'_>>) -> Result<(), String> {
+pub fn dispatch(cli: Cli, dialect: Option<RawDialect<'_>>) -> Result<(), String> {
     if let Some(path) = &cli.dialect_path {
         // lib must be declared before dyn_dialect so Rust's reverse drop order
         // ensures dyn_dialect is dropped before lib (which would unload the library).

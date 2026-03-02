@@ -261,7 +261,7 @@ pub struct FunctionDef {
 }
 
 /// Expand a [`FunctionInfo`](syntaqlite_parser::catalog::FunctionInfo) into one [`FunctionDef`] per arity.
-pub(crate) fn expand_function_info(info: &FunctionInfo<'_>) -> Vec<FunctionDef> {
+pub fn expand_function_info(info: &FunctionInfo<'_>) -> Vec<FunctionDef> {
     if info.arities.is_empty() {
         vec![FunctionDef {
             name: info.name.to_string(),

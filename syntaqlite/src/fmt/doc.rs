@@ -37,7 +37,7 @@ enum Doc<'a> {
 
 /// Arena-based storage for `Doc` nodes. Push-to-allocate, indexed by `DocId`.
 #[derive(Debug)]
-pub(crate) struct DocArena<'a> {
+pub struct DocArena<'a> {
     docs: Vec<Doc<'a>>,
 }
 
@@ -305,7 +305,7 @@ impl<'a> DocArena<'a> {
 // ── Private helpers ──────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Mode {
+pub enum Mode {
     Flat,
     Break,
 }
@@ -313,7 +313,7 @@ pub(crate) enum Mode {
 /// Reusable buffers for `DocArena::render_into`. Keeping these across
 /// format calls avoids re-allocating the render stack, fits stack, and
 /// output string on every invocation.
-pub(crate) struct RenderBuffers {
+pub struct RenderBuffers {
     pub out: String,
     pub stack: Vec<(i32, Mode, DocId)>,
     pub fits_stack: Vec<(i32, DocId)>,

@@ -10,7 +10,7 @@ use super::doc::{DocArena, DocId, NIL_DOC};
 /// Result of draining comment items. Trailing docs (e.g. LineSuffix for
 /// end-of-line comments) go BEFORE any pending line break. Leading docs
 /// (comments on their own line) go AFTER any pending line break.
-pub(crate) struct DrainResult {
+pub struct DrainResult {
     pub trailing: DocId,
     pub leading: DocId,
 }
@@ -18,7 +18,7 @@ pub(crate) struct DrainResult {
 /// Two cursors advancing monotonically through sorted comment and token arrays.
 /// Shared via `&` across recursive format calls; interior mutability is required
 /// because the recursive `format_child` closure captures `&CommentCtx`.
-pub(crate) struct CommentCtx<'a> {
+pub struct CommentCtx<'a> {
     comments: &'a [Comment],
     tokens: &'a [TokenPos],
     cursor: Cell<usize>,

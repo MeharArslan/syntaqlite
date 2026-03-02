@@ -42,7 +42,7 @@ pub struct KeywordTable {
 }
 
 /// Parse the keyword table and mask defines from `mkkeywordhash.c` source.
-pub(crate) fn parse_keyword_table(source: &str) -> Result<KeywordTable, String> {
+pub fn parse_keyword_table(source: &str) -> Result<KeywordTable, String> {
     let keywords = parse_keyword_array(source)?;
     let masks = parse_mask_defines(source);
     Ok(KeywordTable { keywords, masks })

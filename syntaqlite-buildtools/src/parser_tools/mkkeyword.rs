@@ -12,7 +12,7 @@ use crate::util::tool_run;
 /// Layout is verified against the C definition in tests below.
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
-pub(crate) struct Keyword {
+pub struct Keyword {
     pub z_name: *mut c_char,
     pub z_token_type: *mut c_char,
     pub mask: c_int,
@@ -51,7 +51,7 @@ unsafe extern "C" {
 /// Reads the compiled-in `aKeywordTable` and strips the `TK_` prefix from
 /// each entry's `z_token_type` field, yielding names like `"SELECT"`,
 /// `"FUNCTION"`, etc.
-pub(crate) fn base_keyword_token_names() -> std::collections::HashSet<String> {
+pub fn base_keyword_token_names() -> std::collections::HashSet<String> {
     let table_ptr = std::ptr::addr_of!(aKeywordTable);
     let n_keyword_ptr = std::ptr::addr_of!(nKeyword);
     unsafe {
@@ -81,7 +81,7 @@ pub(crate) fn base_keyword_token_names() -> std::collections::HashSet<String> {
 /// Without `--extra-file`, uses only the compiled-in base table.
 ///
 /// **Warning: This function ALWAYS exits the process and never returns!**
-pub(crate) fn run_mkkeyword(args: &[String]) -> ! {
+pub fn run_mkkeyword(args: &[String]) -> ! {
     use std::ffi::CString;
 
     // Parse --extra-file from args.
