@@ -1,9 +1,9 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite::IncrementalParser;
 use syntaqlite::TokenType;
 use syntaqlite::ast::Stmt;
+use syntaqlite::incremental::IncrementalParser;
 
 /// Feed tokens for "SELECT 1" via the low-level API and verify same AST
 /// as the high-level parse.
@@ -246,9 +246,9 @@ fn sqlite_type_tokens_are_marked_as_type() {
     let dialect = syntaqlite::dialect::sqlite();
     let mut parser = RawParser::with_config(
         dialect,
-        &syntaqlite::ParserConfig {
+        &syntaqlite_parser::ParserConfig {
             collect_tokens: true,
-            ..syntaqlite::ParserConfig::default()
+            ..syntaqlite_parser::ParserConfig::default()
         },
     );
     let mut cursor = parser.parse(source);

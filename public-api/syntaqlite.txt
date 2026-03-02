@@ -3,7 +3,7 @@
 impl core::default::Default for syntaqlite::fmt::FormatConfig
 impl core::default::Default for syntaqlite::fmt::FormatConfig
 impl core::default::Default for syntaqlite::Formatter<'static>
-impl core::default::Default for syntaqlite::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
+impl core::default::Default for syntaqlite::incremental::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
 impl core::default::Default for syntaqlite::Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
 impl core::default::Default for syntaqlite::Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
 impl core::default::Default for syntaqlite::validation::DocumentContext
@@ -22,7 +22,7 @@ impl syntaqlite::dialect::TokenCategory
 impl syntaqlite::embedded::offset_map::OffsetMap
 impl syntaqlite::fmt::FormatConfig
 impl syntaqlite::fmt::FormatConfig
-impl syntaqlite::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
+impl syntaqlite::incremental::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
 impl syntaqlite::lsp::CompletionKind
 impl syntaqlite::lsp::DocumentAnalysis
 impl syntaqlite::lsp::LspServer
@@ -39,10 +39,10 @@ impl syntaqlite::validation::SessionContext
 impl syntaqlite::validation::SessionContext
 impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> core::iter::traits::iterator::Iterator for syntaqlite::StatementCursor<'a, N>
 impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> core::iter::traits::iterator::Iterator for syntaqlite::TokenCursor<'a, N>
-impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::IncrementalCursor<'a, N>
+impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::incremental::IncrementalCursor<'a, N>
 impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::StatementCursor<'a, N>
 impl<'a> syntaqlite::validation::SourceContext<'a>
-impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::IncrementalParser<'d, N>
+impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::incremental::IncrementalParser<'d, N>
 impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::Parser<'d, N>
 impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::Tokenizer<'d, N>
 impl<'d> syntaqlite::embedded::EmbeddedAnalyzer<'d>
@@ -87,23 +87,23 @@ pub fn syntaqlite::Formatter<'d>::format(&mut self, source: &str) -> core::resul
 pub fn syntaqlite::Formatter<'d>::new() -> syntaqlite::Formatter<'static>
 pub fn syntaqlite::Formatter<'d>::with_config(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, format_config: &syntaqlite::fmt::FormatConfig, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
 pub fn syntaqlite::Formatter<'static>::default() -> Self
-pub fn syntaqlite::IncrementalCursor<'a, N>::begin_macro(&mut self, call_offset: u32, call_length: u32)
-pub fn syntaqlite::IncrementalCursor<'a, N>::comments(&self) -> &[syntaqlite_parser::parser::Comment]
-pub fn syntaqlite::IncrementalCursor<'a, N>::completion_context(&self) -> u32
-pub fn syntaqlite::IncrementalCursor<'a, N>::end_macro(&mut self)
-pub fn syntaqlite::IncrementalCursor<'a, N>::expected_tokens(&self) -> alloc::vec::Vec<u32>
-pub fn syntaqlite::IncrementalCursor<'a, N>::feed_token(&mut self, token_type: <N as syntaqlite_parser::dialect_traits::NodeFamily>::Token, span: core::ops::range::Range<usize>) -> core::result::Result<core::option::Option<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node>, syntaqlite_parser::session::ParseError>
-pub fn syntaqlite::IncrementalCursor<'a, N>::finish(&mut self) -> core::result::Result<core::option::Option<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node>, syntaqlite_parser::session::ParseError>
-pub fn syntaqlite::IncrementalCursor<'a, N>::macro_regions(&self) -> &[syntaqlite_parser::parser::MacroRegion]
-pub fn syntaqlite::IncrementalCursor<'a, N>::node_count(&self) -> u32
-pub fn syntaqlite::IncrementalCursor<'a, N>::reader(&self) -> syntaqlite_parser::session::RawNodeReader<'a>
-pub fn syntaqlite::IncrementalCursor<'a, N>::root(&self) -> core::option::Option<syntaqlite_parser::session::NodeRef<'a>>
-pub fn syntaqlite::IncrementalParser<'d, N>::feed_cstr<'a>(&'a mut self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::IncrementalCursor<'a, N>
-pub fn syntaqlite::IncrementalParser<'d, N>::feed<'a>(&'a mut self, source: &'a str) -> syntaqlite::IncrementalCursor<'a, N>
-pub fn syntaqlite::IncrementalParser<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::Dialect<'d, N>) -> Self
-pub fn syntaqlite::IncrementalParser<'d, N>::with_config(dialect: syntaqlite_parser::dialect::Dialect<'d, N>, config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
-pub fn syntaqlite::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>::default() -> Self
-pub fn syntaqlite::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>::new() -> Self
+pub fn syntaqlite::incremental::IncrementalCursor<'a, N>::begin_macro(&mut self, call_offset: u32, call_length: u32)
+pub fn syntaqlite::incremental::IncrementalCursor<'a, N>::comments(&self) -> &[syntaqlite_parser::parser::Comment]
+pub fn syntaqlite::incremental::IncrementalCursor<'a, N>::completion_context(&self) -> u32
+pub fn syntaqlite::incremental::IncrementalCursor<'a, N>::end_macro(&mut self)
+pub fn syntaqlite::incremental::IncrementalCursor<'a, N>::expected_tokens(&self) -> alloc::vec::Vec<u32>
+pub fn syntaqlite::incremental::IncrementalCursor<'a, N>::feed_token(&mut self, token_type: <N as syntaqlite_parser::dialect_traits::NodeFamily>::Token, span: core::ops::range::Range<usize>) -> core::result::Result<core::option::Option<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node>, syntaqlite_parser::session::ParseError>
+pub fn syntaqlite::incremental::IncrementalCursor<'a, N>::finish(&mut self) -> core::result::Result<core::option::Option<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node>, syntaqlite_parser::session::ParseError>
+pub fn syntaqlite::incremental::IncrementalCursor<'a, N>::macro_regions(&self) -> &[syntaqlite_parser::parser::MacroRegion]
+pub fn syntaqlite::incremental::IncrementalCursor<'a, N>::node_count(&self) -> u32
+pub fn syntaqlite::incremental::IncrementalCursor<'a, N>::reader(&self) -> syntaqlite_parser::session::RawNodeReader<'a>
+pub fn syntaqlite::incremental::IncrementalCursor<'a, N>::root(&self) -> core::option::Option<syntaqlite_parser::session::NodeRef<'a>>
+pub fn syntaqlite::incremental::IncrementalParser<'d, N>::feed_cstr<'a>(&'a mut self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::incremental::IncrementalCursor<'a, N>
+pub fn syntaqlite::incremental::IncrementalParser<'d, N>::feed<'a>(&'a mut self, source: &'a str) -> syntaqlite::incremental::IncrementalCursor<'a, N>
+pub fn syntaqlite::incremental::IncrementalParser<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::Dialect<'d, N>) -> Self
+pub fn syntaqlite::incremental::IncrementalParser<'d, N>::with_config(dialect: syntaqlite_parser::dialect::Dialect<'d, N>, config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
+pub fn syntaqlite::incremental::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>::default() -> Self
+pub fn syntaqlite::incremental::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>::new() -> Self
 pub fn syntaqlite::lsp::AnalysisHost<'d>::all_diagnostics(&mut self, uri: &str, config: &syntaqlite::validation::ValidationConfig) -> alloc::vec::Vec<syntaqlite::validation::Diagnostic>
 pub fn syntaqlite::lsp::AnalysisHost<'d>::available_function_names(&self) -> alloc::vec::Vec<alloc::string::String>
 pub fn syntaqlite::lsp::AnalysisHost<'d>::available_functions(&self) -> alloc::vec::Vec<syntaqlite::validation::FunctionDef>
@@ -195,6 +195,7 @@ pub mod syntaqlite::dialect
 pub mod syntaqlite::embedded
 pub mod syntaqlite::embedded::offset_map
 pub mod syntaqlite::fmt
+pub mod syntaqlite::incremental
 pub mod syntaqlite::lsp
 pub mod syntaqlite::validation
 pub struct syntaqlite::embedded::EmbeddedAnalyzer<'d>
@@ -204,8 +205,8 @@ pub struct syntaqlite::embedded::offset_map::OffsetMap
 pub struct syntaqlite::fmt::FormatConfig
 pub struct syntaqlite::FormatConfig
 pub struct syntaqlite::Formatter<'d>
-pub struct syntaqlite::IncrementalCursor<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
-pub struct syntaqlite::IncrementalParser<'d, N: syntaqlite_parser::dialect_traits::NodeFamily>
+pub struct syntaqlite::incremental::IncrementalCursor<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
+pub struct syntaqlite::incremental::IncrementalParser<'d, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::lsp::AnalysisHost<'d>
 pub struct syntaqlite::lsp::CompletionEntry
 pub struct syntaqlite::lsp::CompletionInfo
@@ -318,17 +319,10 @@ pub syntaqlite::ValidationConfig::strict_schema: bool
 pub syntaqlite::ValidationConfig::suggestion_threshold: usize
 pub trait syntaqlite::dialect::DialectExt
 pub trait syntaqlite::NodeRefJsonExt
+pub type syntaqlite::incremental::SqliteIncrementalParser = syntaqlite::incremental::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
+pub type syntaqlite::SqliteParser = syntaqlite::Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
+pub type syntaqlite::SqliteTokenizer = syntaqlite::Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
 pub type syntaqlite::StatementCursor<'a, N>::Item = core::result::Result<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node, syntaqlite_parser::session::ParseError>
 pub type syntaqlite::TokenCursor<'a, N>::Item = syntaqlite::Token<'a, N>
 pub use syntaqlite::ast::<<syntaqlite_parser_sqlite::ast::*>>
-pub use syntaqlite::Comment
-pub use syntaqlite::CommentKind
-pub use syntaqlite::dialect::DialectConfig
-pub use syntaqlite::dialect::RawDialect
-pub use syntaqlite::NodeId
-pub use syntaqlite::NodeRef
-pub use syntaqlite::ParseError
-pub use syntaqlite::ParserConfig
-pub use syntaqlite::RawNodeReader
-pub use syntaqlite::SourceSpan
 pub use syntaqlite::TokenType

@@ -172,7 +172,7 @@ fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
 /// # Example
 ///
 /// ```
-/// use syntaqlite::validation::{Validator, ValidationConfig};
+/// use syntaqlite::{Validator, ValidationConfig};
 ///
 /// let mut validator = Validator::new();
 /// let diags = validator.validate("SELEC 1", None, &ValidationConfig::default());

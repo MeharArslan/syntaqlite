@@ -3,10 +3,11 @@
 
 //! Per-document analysis: parse, diagnostics, semantic tokens, completions.
 
-use crate::dialect::{DialectExt, RawDialect, TokenCategory};
+use crate::dialect::{DialectExt, TokenCategory};
 use crate::lsp::{CompletionContext, CompletionInfo, SemanticToken};
 use crate::validation::types::{Diagnostic, DiagnosticMessage, Severity};
 use syntaqlite_parser::ParserConfig;
+use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::RawIncrementalParser;
 use syntaqlite_parser::RawParser;
 use syntaqlite_parser::RawTokenizer;

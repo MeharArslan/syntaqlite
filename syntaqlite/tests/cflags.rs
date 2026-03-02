@@ -89,9 +89,9 @@ fn parses_ok_with_cflags(sql: &str, cflag_indices: &[u32]) -> bool {
     }
     let mut parser = syntaqlite_parser::RawParser::with_config(
         dialect,
-        &syntaqlite::ParserConfig {
+        &syntaqlite_parser::ParserConfig {
             dialect_config: Some(config),
-            ..syntaqlite::ParserConfig::default()
+            ..syntaqlite_parser::ParserConfig::default()
         },
     );
     let mut cursor = parser.parse(sql);

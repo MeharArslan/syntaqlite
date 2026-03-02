@@ -5,9 +5,10 @@
 //!
 //! Formats SQL source text using a bytecode interpreter driven by
 //! per-node formatting instructions compiled from `.synq` definitions.
-//! The high-level entry point is [`Formatter`](crate::Formatter); this
-//! module also exposes [`FormatConfig`] and [`KeywordCase`] for
-//! controlling output style.
+//! The high-level entry point is [`Formatter`](crate::Formatter);
+//! configuration types are re-exported at the crate root as
+//! [`FormatConfig`](crate::FormatConfig) and
+//! [`KeywordCase`](crate::KeywordCase).
 
 #[doc(hidden)]
 pub mod bytecode;

@@ -61,12 +61,12 @@ fn parses_ok_at_version(sql: &str, version: i32) -> bool {
     let dialect = syntaqlite::dialect::sqlite();
     let mut parser = syntaqlite_parser::RawParser::with_config(
         dialect,
-        &syntaqlite::ParserConfig {
+        &syntaqlite_parser::ParserConfig {
             dialect_config: Some(DialectConfig {
                 sqlite_version: version,
                 ..Default::default()
             }),
-            ..syntaqlite::ParserConfig::default()
+            ..syntaqlite_parser::ParserConfig::default()
         },
     );
     let mut cursor = parser.parse(sql);

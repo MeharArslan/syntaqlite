@@ -96,7 +96,7 @@ enum Command {
 /// `dialect` is `None` when built without `builtin-sqlite` — runtime commands
 /// (ast, fmt, lsp) will error, but codegen commands work fine.
 #[cfg(feature = "runtime")]
-pub fn run(name: &str, dialect: Option<syntaqlite::dialect::RawDialect<'_>>) {
+pub fn run(name: &str, dialect: Option<syntaqlite_parser::RawDialect<'_>>) {
     let cli =
         Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
             .unwrap_or_else(|e| e.exit());

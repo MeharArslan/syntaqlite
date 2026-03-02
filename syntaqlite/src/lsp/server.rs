@@ -20,10 +20,11 @@ use lsp_types::{
     TextDocumentSyncKind, TextEdit, Uri,
 };
 
-use crate::dialect::{RawDialect, SEMANTIC_TOKEN_LEGEND};
+use crate::dialect::SEMANTIC_TOKEN_LEGEND;
 use crate::fmt::FormatConfig;
 use crate::lsp::{AnalysisHost, CompletionKind};
 use crate::validation::Severity;
+use syntaqlite_parser::RawDialect;
 
 // ── LspServer ─────────────────────────────────────────────────────────────
 

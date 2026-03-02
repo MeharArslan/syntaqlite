@@ -1,6 +1,6 @@
 /// Integration tests exercising the generated dispatch table + ctx
 /// with the hand-written format_node and renderer.
-use syntaqlite::fmt::{FormatConfig, KeywordCase};
+use syntaqlite::{FormatConfig, KeywordCase};
 
 fn format_sql(sql: &str) -> String {
     format_sql_with(sql, FormatConfig::default())

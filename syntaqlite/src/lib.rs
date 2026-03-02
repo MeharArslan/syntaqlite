@@ -37,7 +37,7 @@
 //!
 //! ```
 //! use syntaqlite::Validator;
-//! use syntaqlite::validation::ValidationConfig;
+//! use syntaqlite::ValidationConfig;
 //!
 //! let mut v = Validator::new();
 //! let diags = v.validate("SELEC 1", None, &ValidationConfig::default());
@@ -85,10 +85,9 @@ pub(crate) mod parser;
 // Typed parser/tokenizer wrappers re-exported at the crate root.
 // Everything else lives in its host module (parser::*, fmt::*, validation::*).
 
-pub use crate::parser::typed::{
-    IncrementalCursor, IncrementalParser, Parser, StatementCursor, Token, TokenCursor, Tokenizer,
-};
-pub use syntaqlite_parser::ParserConfig;
+pub use crate::parser::typed::{Parser, StatementCursor, Token, TokenCursor, Tokenizer};
+
+pub mod incremental;
 
 // ── Formatter ────────────────────────────────────────────────────────────
 
@@ -102,9 +101,6 @@ pub use fmt::formatter::Formatter;
 
 #[cfg(feature = "validation")]
 pub mod validation;
-#[doc(inline)]
-#[cfg(feature = "validation")]
-pub use validation::Validator;
 
 // ── Embedded SQL ─────────────────────────────────────────────────────────
 
@@ -131,19 +127,15 @@ pub mod ast {
 #[cfg(feature = "sqlite")]
 pub use syntaqlite_parser_sqlite::tokens::TokenType;
 
-// ── Types that appear in public signatures ────────────────────────────────
-
-pub use syntaqlite_parser::NodeId;
-pub use syntaqlite_parser::NodeRef;
-pub use syntaqlite_parser::ParseError;
-pub use syntaqlite_parser::RawNodeReader;
-pub use syntaqlite_parser::SourceSpan;
-pub use syntaqlite_parser::{Comment, CommentKind};
-
 #[cfg(feature = "fmt")]
 pub use fmt::{FormatConfig, KeywordCase};
 #[cfg(feature = "validation")]
-pub use validation::ValidationConfig;
+pub use validation::{ValidationConfig, Validator};
+
+#[cfg(feature = "sqlite")]
+pub type SqliteParser = Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+#[cfg(feature = "sqlite")]
+pub type SqliteTokenizer = Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
 
 #[cfg(feature = "json")]
 pub use crate::parser::node_ref_json::NodeRefJsonExt;

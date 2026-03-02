@@ -10,7 +10,7 @@
 /// it calls begin_macro/end_macro around a TK_ILLEGAL token. The parser's
 /// error recovery should create an ErrorNode, and the rest of the statement
 /// should still parse correctly.
-use syntaqlite::IncrementalParser;
+use syntaqlite::incremental::IncrementalParser;
 
 mod tk {
     use syntaqlite::TokenType;

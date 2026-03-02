@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 /// Integration tests: macro regions are emitted verbatim by the formatter.
-use syntaqlite::IncrementalParser;
+use syntaqlite::incremental::IncrementalParser;
 
 fn formatter() -> syntaqlite::Formatter<'static> {
     syntaqlite::Formatter::new()

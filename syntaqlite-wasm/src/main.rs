@@ -10,11 +10,10 @@ use serde::Serialize;
 
 use syntaqlite::Formatter;
 use syntaqlite::embedded::{self, EmbeddedFragment};
-use syntaqlite::validation::ValidationConfig;
-use syntaqlite::{FormatConfig, NodeRefJsonExt, ParserConfig};
+use syntaqlite::{FormatConfig, NodeRefJsonExt, ValidationConfig};
 use syntaqlite_parser::{
-    Cflags, DialectConfig, FfiDialect, RawDialect, RawParser, cflag_table, parse_cflag_name,
-    parse_sqlite_version,
+    Cflags, DialectConfig, FfiDialect, ParserConfig, RawDialect, RawParser, cflag_table,
+    parse_cflag_name, parse_sqlite_version,
 };
 
 thread_local! {
