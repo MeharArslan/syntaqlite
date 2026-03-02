@@ -156,12 +156,22 @@ impl<'d> Formatter<'d> {
         let prev_arena = std::mem::replace(&mut self.arena, DocArena::new());
         let mut arena = DocArena::recycle(prev_arena);
         let mut consumed = vec![false; reader.macro_regions().len()];
-        let doc =
-            interpret_node(&ctx, node.id(), &mut consumed, &mut arena, &mut self.interpret_scratch);
+        let doc = interpret_node(
+            &ctx,
+            node.id(),
+            &mut consumed,
+            &mut arena,
+            &mut self.interpret_scratch,
+        );
 
         let mut bufs = std::mem::take(&mut self.render_bufs);
         bufs.clear();
-        arena.render_into(doc, self.config.line_width, self.config.keyword_case, &mut bufs);
+        arena.render_into(
+            doc,
+            self.config.line_width,
+            self.config.keyword_case,
+            &mut bufs,
+        );
         self.arena = DocArena::recycle(arena);
         let result = std::mem::take(&mut bufs.out);
         self.render_bufs = bufs;
