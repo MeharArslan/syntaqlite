@@ -283,10 +283,7 @@ fn cmd_generate_dialect_raw(
     Ok(())
 }
 
-fn cmd_generate_sqlite(
-    actions_dir: Option<&str>,
-    nodes_dir: Option<&str>,
-) -> Result<(), String> {
+fn cmd_generate_sqlite(actions_dir: Option<&str>, nodes_dir: Option<&str>) -> Result<(), String> {
     use syntaqlite_buildtools::codegen_api::{
         CodegenRequest, DialectNaming, generate_codegen_artifacts, read_named_files_from_dir,
     };
@@ -333,8 +330,8 @@ fn cmd_generate_sqlite(
 
     // Clean stale generated C/H files from C output directories.
     let csrc_dir = Path::new(SQLITE_DIALECT_CRATE).join("csrc/sqlite");
-    let include_dir = Path::new(SQLITE_DIALECT_CRATE)
-        .join(format!("include/{}", dialect.include_dir_name()));
+    let include_dir =
+        Path::new(SQLITE_DIALECT_CRATE).join(format!("include/{}", dialect.include_dir_name()));
     let shared_include_dir =
         Path::new(SQLITE_SHARED_CRATE).join(format!("include/{}", dialect.include_dir_name()));
     for dir in [&csrc_dir, &include_dir, &shared_include_dir] {

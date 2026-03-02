@@ -91,7 +91,11 @@ fn generate_functions_catalog(functions_json_path: &str, output_path: &str) -> R
     Ok(())
 }
 
-fn generate_ast_traits(actions_dir: &str, nodes_dir: &str, output_path: &str) -> Result<(), String> {
+fn generate_ast_traits(
+    actions_dir: &str,
+    nodes_dir: &str,
+    output_path: &str,
+) -> Result<(), String> {
     use syntaqlite_buildtools::codegen_api::{
         CodegenRequest, DialectNaming, generate_codegen_artifacts, read_named_files_from_dir,
     };
@@ -149,8 +153,8 @@ fn generate_cflag_versions(audit_json_path: &str, output_path: &str) -> Result<(
 
     let audit_json = fs::read_to_string(audit_json_path)
         .map_err(|e| format!("reading {audit_json_path}: {e}"))?;
-    let availability: CflagAvailability = serde_json::from_str(&audit_json)
-        .map_err(|e| format!("parsing cflag audit JSON: {e}"))?;
+    let availability: CflagAvailability =
+        serde_json::from_str(&audit_json).map_err(|e| format!("parsing cflag audit JSON: {e}"))?;
     write_cflag_versions_rs(&availability, Path::new(output_path))?;
     eprintln!("wrote {output_path}");
     Ok(())

@@ -6,6 +6,8 @@
 //! Thin wrappers around the generic parser/tokenizer types, pre-bound to the
 //! SQLite dialect.
 
+use std::ops::Range;
+
 use crate::parser::typed::{
     TypedIncrementalCursor, TypedIncrementalParser, TypedIncrementalParserBuilder, TypedParser,
     TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor, TypedTokenizer,
@@ -15,34 +17,244 @@ use crate::parser::typed::{
 // types are concretized to `'static` in this module.
 use syntaqlite_parser_sqlite::ast::Stmt;
 use syntaqlite_parser_sqlite::tokens::TokenType;
-// ── Type aliases ─────────────────────────────────────────────────────────
+// ── StatementCursor ──────────────────────────────────────────────────────
 
 /// A cursor over parsed SQL statements, yielding typed [`Stmt`] nodes.
-pub type StatementCursor<'a> = TypedStatementCursor<'a, Stmt<'a>>;
+pub struct StatementCursor<'a> {
+    inner: TypedStatementCursor<'a, Stmt<'a>>,
+}
+
+impl<'a> StatementCursor<'a> {
+    pub(crate) fn new(inner: TypedStatementCursor<'a, Stmt<'a>>) -> Self {
+        StatementCursor { inner }
+    }
+
+    /// Parse the next SQL statement and return a typed AST node.
+    ///
+    /// Returns:
+    /// - `Some(Ok(node))` — successfully parsed statement.
+    /// - `Some(Err(e))` — syntax error; call again to continue with subsequent statements.
+    /// - `None` — all input has been consumed.
+    pub fn next_statement(
+        &mut self,
+    ) -> Option<Result<Stmt<'a>, syntaqlite_parser::session::ParseError>> {
+        self.inner.next_statement()
+    }
+
+    /// Get a reference to the embedded node reader.
+    pub fn reader(&self) -> syntaqlite_parser::session::RawNodeReader<'a> {
+        self.inner.reader()
+    }
+
+    /// The source text bound to this cursor.
+    pub fn source(&self) -> &'a str {
+        self.inner.source()
+    }
+
+    /// Dump an AST node tree as indented text.
+    pub fn dump_node(&self, id: syntaqlite_parser::nodes::NodeId, out: &mut String, indent: usize) {
+        self.inner.dump_node(id, out, indent)
+    }
+}
+
+impl<'a> Iterator for StatementCursor<'a> {
+    type Item = Result<Stmt<'a>, syntaqlite_parser::session::ParseError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next_statement()
+    }
+}
+// ── Token ────────────────────────────────────────────────────────────────
 
 /// A typed SQL token with kind and source text.
-pub type Token<'a> = TypedToken<'a, TokenType>;
+#[derive(Debug, Clone, Copy)]
+pub struct Token<'a> {
+    /// The typed token kind.
+    pub kind: TokenType,
+    /// The text of the token (a slice of the source).
+    pub text: &'a str,
+}
+
+impl<'a> From<TypedToken<'a, TokenType>> for Token<'a> {
+    fn from(t: TypedToken<'a, TokenType>) -> Self {
+        Token {
+            kind: t.kind,
+            text: t.text,
+        }
+    }
+}
+// ── TokenCursor ──────────────────────────────────────────────────────────
 
 /// A cursor yielding typed [`Token`]s.
-pub type TokenCursor<'a> = TypedTokenCursor<'a, TokenType>;
+pub struct TokenCursor<'a> {
+    inner: TypedTokenCursor<'a, TokenType>,
+}
 
-/// A tokenizer for SQL.
-pub type Tokenizer = TypedTokenizer<'static, TokenType>;
+impl<'a> TokenCursor<'a> {
+    pub(crate) fn new(inner: TypedTokenCursor<'a, TokenType>) -> Self {
+        TokenCursor { inner }
+    }
+}
+
+impl<'a> Iterator for TokenCursor<'a> {
+    type Item = Token<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next().map(Token::from)
+    }
+}
+// ── Tokenizer ────────────────────────────────────────────────────────────
+
+/// A tokenizer for SQL, pre-configured for this dialect.
+pub struct Tokenizer {
+    inner: TypedTokenizer<'static, TokenType>,
+}
+
+// SAFETY: TypedTokenizer is Send.
+unsafe impl Send for Tokenizer {}
+
+impl Tokenizer {
+    /// Create a tokenizer with default configuration.
+    pub fn new() -> Self {
+        Tokenizer {
+            inner: TypedTokenizer::new(crate::dialect::sqlite()),
+        }
+    }
+
+    /// Create a builder for configuring the tokenizer before construction.
+    pub fn builder() -> TokenizerBuilder {
+        TokenizerBuilder {
+            inner: TypedTokenizer::builder(crate::dialect::sqlite()),
+        }
+    }
+
+    /// Bind source text and return a [`TokenCursor`] for iterating typed tokens.
+    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> TokenCursor<'a> {
+        TokenCursor::new(self.inner.tokenize(source))
+    }
+
+    /// Zero-copy variant: bind a null-terminated source.
+    pub fn tokenize_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> TokenCursor<'a> {
+        TokenCursor::new(self.inner.tokenize_cstr(source))
+    }
+}
+
+impl Default for Tokenizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ── TokenizerBuilder ─────────────────────────────────────────────────────
 
 /// Builder for [`Tokenizer`].
-pub type TokenizerBuilder = TypedTokenizerBuilder<'static, TokenType>;
+pub struct TokenizerBuilder {
+    inner: TypedTokenizerBuilder<'static, TokenType>,
+}
+
+impl TokenizerBuilder {
+    /// Set dialect config for version/cflag-gated tokenization.
+    pub fn dialect_config(
+        mut self,
+        config: syntaqlite_parser::dialect::ffi::DialectConfig,
+    ) -> Self {
+        self.inner = self.inner.dialect_config(config);
+        self
+    }
+
+    /// Build the tokenizer.
+    pub fn build(self) -> Tokenizer {
+        Tokenizer {
+            inner: self.inner.build(),
+        }
+    }
+}
+// ── IncrementalCursor ────────────────────────────────────────────────────
 
 /// A cursor for token-by-token incremental parsing.
 ///
 /// Obtained from [`IncrementalParser::feed`] or [`IncrementalParser::feed_cstr`].
 /// Feed tokens via [`feed_token`](IncrementalCursor::feed_token) and signal
 /// end-of-input via [`finish`](IncrementalCursor::finish).
-pub type IncrementalCursor<'a> = TypedIncrementalCursor<'a, Stmt<'a>, TokenType>;
+pub struct IncrementalCursor<'a> {
+    inner: TypedIncrementalCursor<'a, Stmt<'a>, TokenType>,
+}
+
+impl<'a> IncrementalCursor<'a> {
+    pub(crate) fn new(inner: TypedIncrementalCursor<'a, Stmt<'a>, TokenType>) -> Self {
+        IncrementalCursor { inner }
+    }
+
+    /// Feed a typed token to the parser.
+    ///
+    /// Returns `Ok(Some(node))` when a statement completes, `Ok(None)` to
+    /// keep going, or `Err` on parse error.
+    pub fn feed_token(
+        &mut self,
+        token_type: TokenType,
+        span: Range<usize>,
+    ) -> Result<Option<Stmt<'a>>, syntaqlite_parser::session::ParseError> {
+        self.inner.feed_token(token_type, span)
+    }
+
+    /// Signal end of input.
+    ///
+    /// Returns `Ok(Some(node))` if a final statement completed, `Ok(None)`
+    /// if there was nothing pending, or `Err` on parse error.
+    ///
+    /// No further methods may be called after `finish()`.
+    pub fn finish(&mut self) -> Result<Option<Stmt<'a>>, syntaqlite_parser::session::ParseError> {
+        self.inner.finish()
+    }
+
+    /// Return the [`NodeRef`] for the last completed statement.
+    pub fn root(&self) -> Option<crate::parser::session::NodeRef<'a>> {
+        self.inner.root()
+    }
+
+    /// Return terminal token IDs valid at the current parser state, as raw u32 ordinals.
+    pub fn expected_tokens(&self) -> Vec<u32> {
+        self.inner.expected_tokens()
+    }
+
+    /// Return the semantic completion context at the current parser state.
+    pub fn completion_context(&self) -> u32 {
+        self.inner.completion_context()
+    }
+
+    /// Return the number of nodes currently in the parser arena.
+    pub fn node_count(&self) -> u32 {
+        self.inner.node_count()
+    }
+
+    /// Mark subsequent fed tokens as inside a macro expansion.
+    pub fn begin_macro(&mut self, call_offset: u32, call_length: u32) {
+        self.inner.begin_macro(call_offset, call_length)
+    }
+
+    /// End the innermost macro expansion region.
+    pub fn end_macro(&mut self) {
+        self.inner.end_macro()
+    }
+
+    /// Get the embedded node reader.
+    pub fn reader(&self) -> syntaqlite_parser::session::RawNodeReader<'a> {
+        self.inner.reader()
+    }
+
+    /// Return all comments captured during parsing.
+    pub fn comments(&self) -> &[syntaqlite_parser::parser::Comment] {
+        self.inner.comments()
+    }
+
+    /// Return all macro regions recorded via `begin_macro`/`end_macro`.
+    pub fn macro_regions(&self) -> &[syntaqlite_parser::parser::MacroRegion] {
+        self.inner.macro_regions()
+    }
+}
 // ── Parser ───────────────────────────────────────────────────────────────
 
 /// A SQL parser pre-configured for this dialect.
-///
-/// Wraps [`TypedParser`] and yields typed [`Stmt`] nodes.
 pub struct Parser {
     inner: TypedParser<'static>,
 }
@@ -67,12 +279,12 @@ impl Parser {
 
     /// Bind source text and return a [`StatementCursor`] for iterating typed statements.
     pub fn parse<'a>(&'a mut self, source: &'a str) -> StatementCursor<'a> {
-        self.inner.parse(source)
+        StatementCursor::new(self.inner.parse(source))
     }
 
     /// Zero-copy variant: bind a null-terminated source.
     pub fn parse_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> StatementCursor<'a> {
-        self.inner.parse_cstr(source)
+        StatementCursor::new(self.inner.parse_cstr(source))
     }
 }
 
@@ -122,8 +334,7 @@ impl ParserBuilder {
 
 /// An incremental SQL parser pre-configured for this dialect.
 ///
-/// Wraps [`TypedIncrementalParser`] and feeds tokens one at a time via
-/// [`IncrementalCursor`], yielding typed [`Stmt`] nodes.
+/// Feeds tokens one at a time via [`IncrementalCursor`], yielding typed [`Stmt`] nodes.
 pub struct IncrementalParser {
     inner: TypedIncrementalParser<'static>,
 }
@@ -148,12 +359,12 @@ impl IncrementalParser {
 
     /// Bind source text and return an [`IncrementalCursor`] for token feeding.
     pub fn feed<'a>(&'a mut self, source: &'a str) -> IncrementalCursor<'a> {
-        self.inner.feed(source)
+        IncrementalCursor::new(self.inner.feed(source))
     }
 
     /// Zero-copy variant: bind a null-terminated source.
     pub fn feed_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> IncrementalCursor<'a> {
-        self.inner.feed_cstr(source)
+        IncrementalCursor::new(self.inner.feed_cstr(source))
     }
 }
 
