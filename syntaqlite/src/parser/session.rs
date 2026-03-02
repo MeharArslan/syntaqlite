@@ -3,17 +3,21 @@
 
 use std::ffi::{CStr, c_int};
 
-use super::ffi;
-use super::ffi::Comment;
-use super::nodes::NodeId;
 use crate::dialect::Dialect;
 use syntaqlite_parser::dialect::ffi::DialectConfig;
+use syntaqlite_parser::nodes::NodeId;
+use syntaqlite_parser::parser::{
+    Comment, Parser, TokenPos, syntaqlite_create_parser_with_dialect, syntaqlite_parser_comments,
+    syntaqlite_parser_destroy, syntaqlite_parser_next, syntaqlite_parser_reset,
+    syntaqlite_parser_set_collect_tokens, syntaqlite_parser_set_dialect_config,
+    syntaqlite_parser_set_trace,
+};
 
 pub use syntaqlite_parser::session::{ErrorSpan, ParseError, RawNodeReader};
 
 /// Owns a parser instance. Reusable across inputs via `parse()`.
 pub struct RawParser<'d> {
-    pub(crate) raw: *mut ffi::Parser,
+    pub(crate) raw: *mut Parser,
     /// Null-terminated copy of the source text. The C tokenizer (SQLite's
     /// `SynqSqliteGetToken`) reads until it hits a null byte, so we must
     /// ensure the source is null-terminated. Rust `&str` does not guarantee
@@ -90,7 +94,7 @@ impl Drop for RawParser<'_> {
         // SAFETY: self.raw was allocated by syntaqlite_parser_create and has
         // not been freed (Drop runs exactly once). The C function is no-op
         // on NULL.
-        unsafe { ffi::syntaqlite_parser_destroy(self.raw) }
+        unsafe { syntaqlite_parser_destroy(self.raw) }
     }
 }
 
@@ -127,16 +131,15 @@ impl<'a> RawParserBuilder<'a> {
     pub fn build(self) -> RawParser<'a> {
         // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
         // a new parser with default malloc/free.
-        let raw = unsafe {
-            ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw)
-        };
+        let raw =
+            unsafe { syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw) };
         assert!(!raw.is_null(), "parser allocation failed");
 
         // SAFETY: raw is freshly created (not sealed), so these calls
         // always return 0.
         unsafe {
-            ffi::syntaqlite_parser_set_trace(raw, self.trace as c_int);
-            ffi::syntaqlite_parser_set_collect_tokens(raw, self.collect_tokens as c_int);
+            syntaqlite_parser_set_trace(raw, self.trace as c_int);
+            syntaqlite_parser_set_collect_tokens(raw, self.collect_tokens as c_int);
         }
 
         let mut parser = RawParser {
@@ -151,7 +154,7 @@ impl<'a> RawParserBuilder<'a> {
             // SAFETY: We pass a pointer to parser.dialect_config which lives
             // in the RawParser struct. The C side copies the config value.
             unsafe {
-                ffi::syntaqlite_parser_set_dialect_config(
+                syntaqlite_parser_set_dialect_config(
                     parser.raw,
                     &parser.dialect_config as *const DialectConfig,
                 );
@@ -184,7 +187,7 @@ impl<'a> CursorState<'a> {
     /// Copies the source into `source_buf` to null-terminate it, then resets
     /// the C parser.
     pub(crate) fn new(
-        raw: *mut ffi::Parser,
+        raw: *mut Parser,
         source_buf: &'a mut Vec<u8>,
         source: &'a str,
         dialect: Dialect<'a>,
@@ -198,7 +201,7 @@ impl<'a> CursorState<'a> {
         // SAFETY: raw is valid (caller owns it via &mut); c_source_ptr points to
         // source_buf which is null-terminated and lives for 'a.
         unsafe {
-            ffi::syntaqlite_parser_reset(raw, c_source_ptr as *const _, source.len() as u32);
+            syntaqlite_parser_reset(raw, c_source_ptr as *const _, source.len() as u32);
         }
         CursorState {
             // SAFETY: raw is valid for 'a (caller owns it via &mut); source
@@ -210,13 +213,13 @@ impl<'a> CursorState<'a> {
     }
 
     /// Construct a CursorState from a raw parser pointer and a CStr (zero-copy).
-    pub(crate) fn new_cstr(raw: *mut ffi::Parser, source: &'a CStr, dialect: Dialect<'a>) -> Self {
+    pub(crate) fn new_cstr(raw: *mut Parser, source: &'a CStr, dialect: Dialect<'a>) -> Self {
         let bytes = source.to_bytes();
         let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 
         // SAFETY: raw is valid; source is a CStr (null-terminated, valid for 'a).
         unsafe {
-            ffi::syntaqlite_parser_reset(raw, source.as_ptr(), bytes.len() as u32);
+            syntaqlite_parser_reset(raw, source.as_ptr(), bytes.len() as u32);
         }
         CursorState {
             // SAFETY: raw is valid for 'a; source_str borrows the CStr bytes
@@ -242,7 +245,7 @@ impl<'a> CursorState<'a> {
 
     /// Return all non-whitespace, non-comment token positions captured
     /// during parsing. Requires `collect_tokens: true` in `ParserConfig`.
-    pub(crate) fn tokens(&self) -> &[ffi::TokenPos] {
+    pub(crate) fn tokens(&self) -> &[TokenPos] {
         self.reader.tokens()
     }
 
@@ -254,7 +257,7 @@ impl<'a> CursorState<'a> {
     pub(crate) fn comments(&self) -> &[Comment] {
         // SAFETY: raw is valid; syntaqlite_parser_comments returns a pointer valid
         // for the lifetime of &self (until the next reset/destroy, which need &mut).
-        unsafe { ffi_slice(self.reader.raw(), ffi::syntaqlite_parser_comments) }
+        unsafe { ffi_slice(self.reader.raw(), syntaqlite_parser_comments) }
     }
 
     /// Dump an AST node tree as indented text. Uses C-side metadata (field
@@ -271,8 +274,8 @@ impl<'a> CursorState<'a> {
 /// for the caller's borrow of the parser, and write the element count into the
 /// provided `*mut u32`.
 unsafe fn ffi_slice<'a, T>(
-    raw: *mut ffi::Parser,
-    f: unsafe extern "C" fn(*mut ffi::Parser, *mut u32) -> *const T,
+    raw: *mut Parser,
+    f: unsafe extern "C" fn(*mut Parser, *mut u32) -> *const T,
 ) -> &'a [T] {
     let mut count: u32 = 0;
     let ptr = unsafe { f(raw, &mut count) };
@@ -375,7 +378,7 @@ impl<'a> NodeRef<'a> {
     }
 
     /// Extract typed field values.
-    pub fn extract_fields(&self) -> Option<(u32, super::nodes::Fields<'a>)> {
+    pub fn extract_fields(&self) -> Option<(u32, syntaqlite_parser::nodes::Fields<'a>)> {
         self.reader.extract_fields(self.id, &self.dialect)
     }
 
@@ -392,13 +395,8 @@ impl<'a> NodeRef<'a> {
     }
 
     /// Resolve as a typed AST node.
-    pub fn as_typed<T: crate::parser::typed_list::DialectNodeType<'a>>(&self) -> Option<T> {
-        // SAFETY: NodeReader<'a> is Copy and all its data (raw pointer, source
-        // reference) is valid for 'a. Re-casting to &'a NodeReader<'a> extends
-        // the borrow lifetime to 'a, which is safe because the underlying
-        // parser arena lives for 'a (same pattern as NodeReader::resolve_or_error).
-        let reader: &'a RawNodeReader<'a> = unsafe { &*(&self.reader as *const RawNodeReader<'a>) };
-        T::from_arena(reader, self.id)
+    pub fn as_typed<T: syntaqlite_parser::dialect_traits::DialectNodeType<'a>>(self) -> Option<T> {
+        T::from_arena(self.reader, self.id)
     }
 
     /// The source text bound to this node's reader.
@@ -453,7 +451,7 @@ fn dump_json_id(id: NodeId, reader: RawNodeReader<'_>, dialect: Dialect<'_>) -> 
             // SAFETY: m.name is a valid NUL-terminated C string from codegen.
             let label = unsafe { m.name_str() };
             match fv {
-                super::nodes::FieldVal::NodeId(child_id) => {
+                syntaqlite_parser::nodes::FieldVal::NodeId(child_id) => {
                     let child = if child_id.is_null() {
                         serde_json::Value::Null
                     } else {
@@ -461,7 +459,7 @@ fn dump_json_id(id: NodeId, reader: RawNodeReader<'_>, dialect: Dialect<'_>) -> 
                     };
                     serde_json::json!({"kind": "node", "label": label, "child": child})
                 }
-                super::nodes::FieldVal::Span(text, _) => {
+                syntaqlite_parser::nodes::FieldVal::Span(text, _) => {
                     let value = if text.is_empty() {
                         serde_json::Value::Null
                     } else {
@@ -469,17 +467,17 @@ fn dump_json_id(id: NodeId, reader: RawNodeReader<'_>, dialect: Dialect<'_>) -> 
                     };
                     serde_json::json!({"kind": "span", "label": label, "value": value})
                 }
-                super::nodes::FieldVal::Bool(val) => {
+                syntaqlite_parser::nodes::FieldVal::Bool(val) => {
                     serde_json::json!({"kind": "bool", "label": label, "value": val})
                 }
-                super::nodes::FieldVal::Enum(val) => {
+                syntaqlite_parser::nodes::FieldVal::Enum(val) => {
                     // SAFETY: m.display is a valid C array from codegen.
                     let value = unsafe { m.display_name(*val as usize) }
                         .map(|s| serde_json::Value::String(s.to_string()))
                         .unwrap_or(serde_json::Value::Null);
                     serde_json::json!({"kind": "enum", "label": label, "value": value})
                 }
-                super::nodes::FieldVal::Flags(val) => {
+                syntaqlite_parser::nodes::FieldVal::Flags(val) => {
                     let flag_values: Vec<serde_json::Value> = (0..8u8)
                         .filter(|&bit| val & (1 << bit) != 0)
                         .map(|bit| {
@@ -532,7 +530,7 @@ impl<'a> RawStatementCursor<'a> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         // When error is set, error_msg is a NUL-terminated string in the
         // parser's buffer (valid for parser lifetime).
-        let result = unsafe { ffi::syntaqlite_parser_next(self.state.reader.raw()) };
+        let result = unsafe { syntaqlite_parser_next(self.state.reader.raw()) };
 
         let id = NodeId(result.root);
         let has_root = !id.is_null();
@@ -618,7 +616,7 @@ impl<'a> RawStatementCursor<'a> {
 
     /// Return all non-whitespace, non-comment token positions captured
     /// during parsing.
-    pub fn tokens(&self) -> &[ffi::TokenPos] {
+    pub fn tokens(&self) -> &[TokenPos] {
         self.state.tokens()
     }
 

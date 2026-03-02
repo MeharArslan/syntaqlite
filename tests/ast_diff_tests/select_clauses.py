@@ -3,14 +3,14 @@
 
 """SELECT clause AST tests: WHERE, GROUP BY, HAVING, ORDER BY, LIMIT."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class SelectWhere(TestSuite):
     """SELECT with WHERE clause tests."""
 
     def test_where_simple(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 WHERE 1 > 0",
             out="""\
             SelectStmt
@@ -49,7 +49,7 @@ class SelectGroupBy(TestSuite):
     """SELECT with GROUP BY clause tests."""
 
     def test_groupby_single(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 GROUP BY 1",
             out="""\
             SelectStmt
@@ -78,7 +78,7 @@ class SelectGroupBy(TestSuite):
         )
 
     def test_groupby_having(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 GROUP BY 1 HAVING 1 > 0",
             out="""\
             SelectStmt
@@ -121,7 +121,7 @@ class SelectOrderBy(TestSuite):
     """SELECT with ORDER BY clause tests."""
 
     def test_orderby_simple(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 ORDER BY 1",
             out="""\
             SelectStmt
@@ -154,7 +154,7 @@ class SelectOrderBy(TestSuite):
         )
 
     def test_orderby_desc(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 ORDER BY 1 DESC",
             out="""\
             SelectStmt
@@ -187,7 +187,7 @@ class SelectOrderBy(TestSuite):
         )
 
     def test_orderby_nulls_first(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 ORDER BY 1 NULLS FIRST",
             out="""\
             SelectStmt
@@ -220,7 +220,7 @@ class SelectOrderBy(TestSuite):
         )
 
     def test_orderby_desc_nulls_last(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 ORDER BY 1 DESC NULLS LAST",
             out="""\
             SelectStmt
@@ -253,7 +253,7 @@ class SelectOrderBy(TestSuite):
         )
 
     def test_orderby_multiple(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 ORDER BY 1 ASC, 2 DESC",
             out="""\
             SelectStmt
@@ -297,7 +297,7 @@ class SelectLimit(TestSuite):
     """SELECT with LIMIT clause tests."""
 
     def test_limit_simple(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 LIMIT 10",
             out="""\
             SelectStmt
@@ -328,7 +328,7 @@ class SelectLimit(TestSuite):
         )
 
     def test_limit_offset(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 LIMIT 10 OFFSET 5",
             out="""\
             SelectStmt
@@ -362,7 +362,7 @@ class SelectLimit(TestSuite):
         )
 
     def test_limit_comma(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 LIMIT 5, 10",
             out="""\
             SelectStmt
@@ -400,7 +400,7 @@ class SelectCombined(TestSuite):
     """SELECT with multiple clauses combined."""
 
     def test_where_orderby_limit(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 WHERE 1 > 0 ORDER BY 1 LIMIT 10",
             out="""\
             SelectStmt

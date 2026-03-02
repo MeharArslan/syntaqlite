@@ -368,7 +368,7 @@ uint32_t {parser_name}CompletionContext(void* parser) {{\n\
 
 /// Read all .y files from a directory, sort by name, and concatenate their contents.
 fn concatenate_y_files(dir: &str) -> Result<Vec<u8>, String> {
-    let y_files = crate::read_named_files_from_dir(dir, "y")?;
+    let y_files = crate::codegen_api::read_named_files_from_dir(dir, "y")?;
     if y_files.is_empty() {
         return Err(format!("No .y files found in {dir}"));
     }

@@ -16,14 +16,14 @@ use std::path::Path;
 pub fn transform_mkkeywordhash(source: &str) -> String {
     let mut s = source.to_string();
 
-    // remove_static("aKeywordTable") + add_const("Keyword aKeywordTable")
+    // remove_static_first("aKeywordTable") + add_const("Keyword aKeywordTable")
     s = s.replacen(
         "static Keyword aKeywordTable",
         "const Keyword aKeywordTable",
         1,
     );
 
-    // remove_static("nKeyword") + add_const("int nKeyword")
+    // remove_static_first("nKeyword") + add_const("int nKeyword")
     s = s.replacen("static int nKeyword", "const int nKeyword", 1);
 
     // add_function_parameters: findById, reorder, main

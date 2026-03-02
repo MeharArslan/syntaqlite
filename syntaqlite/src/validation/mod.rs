@@ -8,26 +8,27 @@
 //! [`Diagnostic`] values with byte-offset spans and optional "did you
 //! mean?" suggestions.
 //!
-//! The high-level entry point is [`Validator`], which owns a parser and
-//! validates SQL in a single call. For finer control, use
-//! [`validate_document`] or [`validate_statement`] directly.
+//! The entry point is [`Validator`], which owns a parser and validates SQL
+//! in a single call.
 
 pub(crate) mod types;
 
+mod catalog;
 mod checks;
 mod fuzzy;
 mod scope;
 mod walker;
 
 use crate::ast_traits::AstTypes;
-use crate::parser::nodes::NodeId;
 use crate::parser::session::{ParseError, RawNodeReader};
-use crate::parser::typed_list::DialectNodeType;
+use syntaqlite_parser::dialect_traits::DialectNodeType;
+use syntaqlite_parser::nodes::NodeId;
 
 use scope::ScopeStack;
 
 // ── Public re-exports ────────────────────────────────────────────────────
 
+pub use catalog::FunctionCatalog;
 pub(crate) use types::expand_function_info;
 pub use types::{
     ColumnDef, Diagnostic, DiagnosticMessage, DocumentContext, FunctionDef, Help, RelationDef,
@@ -70,7 +71,7 @@ impl ValidationConfig {
 ///
 /// Resolution order: SQL scope stack → `document` (DDL from earlier in the
 /// document) → `session` (externally-provided ambient schema).
-pub fn validate_statement_dialect<'a, A: AstTypes<'a>>(
+pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
     reader: &'a RawNodeReader<'a>,
     stmt_id: NodeId,
     dialect: crate::Dialect<'_>,
@@ -79,7 +80,7 @@ pub fn validate_statement_dialect<'a, A: AstTypes<'a>>(
     functions: &'a [FunctionDef],
     config: &'a ValidationConfig,
 ) -> Vec<Diagnostic> {
-    let stmt: Option<A::Stmt> = DialectNodeType::from_arena(reader, stmt_id);
+    let stmt: Option<A::Stmt> = DialectNodeType::from_arena(*reader, stmt_id);
     let Some(stmt) = stmt else {
         return Vec::new();
     };
@@ -89,30 +90,11 @@ pub fn validate_statement_dialect<'a, A: AstTypes<'a>>(
     walker::Walker::<A>::run(reader, stmt, dialect, &mut scope, functions, config)
 }
 
-/// Validate a single parsed statement using the built-in SQLite dialect.
-///
-/// Convenience wrapper around [`validate_statement_dialect`] that uses
-/// the SQLite AST types and dialect.
-#[cfg(feature = "sqlite")]
-pub fn validate_statement<'a>(
-    reader: &'a RawNodeReader<'a>,
-    stmt_id: NodeId,
-    session: Option<&SessionContext>,
-    document: Option<&DocumentContext>,
-    functions: &[FunctionDef],
-    config: &ValidationConfig,
-) -> Vec<Diagnostic> {
-    let dialect = *crate::sqlite::DIALECT;
-    validate_statement_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(
-        reader, stmt_id, dialect, session, document, functions, config,
-    )
-}
-
 /// Validate all statements in a document incrementally.
 ///
 /// Each statement is validated against the schema accumulated from prior
 /// statements, then contributes its own DDL to the document context.
-pub fn validate_document(
+pub(crate) fn validate_document(
     reader: &RawNodeReader<'_>,
     stmt_ids: &[NodeId],
     dialect: &crate::Dialect<'_>,
@@ -299,7 +281,7 @@ impl<'d> ValidatorBuilder<'d> {
 /// Converts each `Err` into a parse-error diagnostic, collects all valid
 /// roots (from `Ok` values and from recovered roots in `Err` values),
 /// then runs [`validate_document`] on the collected roots.
-pub fn validate_parse_results(
+pub(crate) fn validate_parse_results(
     reader: &RawNodeReader<'_>,
     results: &[Result<NodeId, ParseError>],
     source: &str,

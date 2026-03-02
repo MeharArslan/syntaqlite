@@ -3,14 +3,14 @@
 
 """SELECT statement AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class SelectBasic(TestSuite):
     """Basic SELECT statement tests."""
 
     def test_integer_literal(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1",
             out="""\
             SelectStmt
@@ -35,7 +35,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_float_literal(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 3.14",
             out="""\
             SelectStmt
@@ -60,7 +60,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_string_literal(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 'hello'",
             out="""\
             SelectStmt
@@ -85,7 +85,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_null_literal(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT NULL",
             out="""\
             SelectStmt
@@ -110,7 +110,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_binary_plus(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 + 2",
             out="""\
             SelectStmt
@@ -142,7 +142,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_binary_star(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 3 * 4",
             out="""\
             SelectStmt
@@ -174,7 +174,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_binary_lt(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 < 2",
             out="""\
             SelectStmt
@@ -206,7 +206,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_binary_eq(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 = 2",
             out="""\
             SelectStmt
@@ -238,7 +238,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_binary_and(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 AND 0",
             out="""\
             SelectStmt
@@ -270,7 +270,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_binary_or(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 OR 0",
             out="""\
             SelectStmt
@@ -302,7 +302,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_binary_concat(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 'a' || 'b'",
             out="""\
             SelectStmt
@@ -334,7 +334,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_unary_minus(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT -5",
             out="""\
             SelectStmt
@@ -362,7 +362,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_unary_not(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT NOT 1",
             out="""\
             SelectStmt
@@ -390,7 +390,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_column_alias_as(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT a AS x, b AS y FROM t",
             out="""\
             SelectStmt
@@ -428,7 +428,7 @@ class SelectBasic(TestSuite):
         )
 
     def test_column_alias_implicit(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT a x FROM t",
             out="""\
             SelectStmt

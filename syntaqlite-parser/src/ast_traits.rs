@@ -12,39 +12,39 @@ use crate::typed_list::TypedList;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum LiteralType {
-    Integer = 0,
-    Float = 1,
-    String = 2,
-    Blob = 3,
-    Null = 4,
-    Current = 5,
-    Qnumber = 6,
+    INTEGER = 0,
+    FLOAT = 1,
+    STRING = 2,
+    BLOB = 3,
+    NULL = 4,
+    CURRENT = 5,
+    QNUMBER = 6,
 }
 
 impl LiteralType {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<LiteralType> {
         match raw {
-            0 => Some(LiteralType::Integer),
-            1 => Some(LiteralType::Float),
-            2 => Some(LiteralType::String),
-            3 => Some(LiteralType::Blob),
-            4 => Some(LiteralType::Null),
-            5 => Some(LiteralType::Current),
-            6 => Some(LiteralType::Qnumber),
+            0 => Some(LiteralType::INTEGER),
+            1 => Some(LiteralType::FLOAT),
+            2 => Some(LiteralType::STRING),
+            3 => Some(LiteralType::BLOB),
+            4 => Some(LiteralType::NULL),
+            5 => Some(LiteralType::CURRENT),
+            6 => Some(LiteralType::QNUMBER),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            LiteralType::Integer => "INTEGER",
-            LiteralType::Float => "FLOAT",
-            LiteralType::String => "STRING",
-            LiteralType::Blob => "BLOB",
-            LiteralType::Null => "NULL",
-            LiteralType::Current => "CURRENT",
-            LiteralType::Qnumber => "QNUMBER",
+            LiteralType::INTEGER => "INTEGER",
+            LiteralType::FLOAT => "FLOAT",
+            LiteralType::STRING => "STRING",
+            LiteralType::BLOB => "BLOB",
+            LiteralType::NULL => "NULL",
+            LiteralType::CURRENT => "CURRENT",
+            LiteralType::QNUMBER => "QNUMBER",
         }
     }
 }
@@ -52,75 +52,75 @@ impl LiteralType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum BinaryOp {
-    Plus = 0,
-    Minus = 1,
-    Star = 2,
-    Slash = 3,
-    Rem = 4,
-    Lt = 5,
-    Gt = 6,
-    Le = 7,
-    Ge = 8,
-    Eq = 9,
-    Ne = 10,
-    And = 11,
-    Or = 12,
-    Bitand = 13,
-    Bitor = 14,
-    Lshift = 15,
-    Rshift = 16,
-    Concat = 17,
-    Ptr = 18,
+    PLUS = 0,
+    MINUS = 1,
+    STAR = 2,
+    SLASH = 3,
+    REM = 4,
+    LT = 5,
+    GT = 6,
+    LE = 7,
+    GE = 8,
+    EQ = 9,
+    NE = 10,
+    AND = 11,
+    OR = 12,
+    BITAND = 13,
+    BITOR = 14,
+    LSHIFT = 15,
+    RSHIFT = 16,
+    CONCAT = 17,
+    PTR = 18,
 }
 
 impl BinaryOp {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<BinaryOp> {
         match raw {
-            0 => Some(BinaryOp::Plus),
-            1 => Some(BinaryOp::Minus),
-            2 => Some(BinaryOp::Star),
-            3 => Some(BinaryOp::Slash),
-            4 => Some(BinaryOp::Rem),
-            5 => Some(BinaryOp::Lt),
-            6 => Some(BinaryOp::Gt),
-            7 => Some(BinaryOp::Le),
-            8 => Some(BinaryOp::Ge),
-            9 => Some(BinaryOp::Eq),
-            10 => Some(BinaryOp::Ne),
-            11 => Some(BinaryOp::And),
-            12 => Some(BinaryOp::Or),
-            13 => Some(BinaryOp::Bitand),
-            14 => Some(BinaryOp::Bitor),
-            15 => Some(BinaryOp::Lshift),
-            16 => Some(BinaryOp::Rshift),
-            17 => Some(BinaryOp::Concat),
-            18 => Some(BinaryOp::Ptr),
+            0 => Some(BinaryOp::PLUS),
+            1 => Some(BinaryOp::MINUS),
+            2 => Some(BinaryOp::STAR),
+            3 => Some(BinaryOp::SLASH),
+            4 => Some(BinaryOp::REM),
+            5 => Some(BinaryOp::LT),
+            6 => Some(BinaryOp::GT),
+            7 => Some(BinaryOp::LE),
+            8 => Some(BinaryOp::GE),
+            9 => Some(BinaryOp::EQ),
+            10 => Some(BinaryOp::NE),
+            11 => Some(BinaryOp::AND),
+            12 => Some(BinaryOp::OR),
+            13 => Some(BinaryOp::BITAND),
+            14 => Some(BinaryOp::BITOR),
+            15 => Some(BinaryOp::LSHIFT),
+            16 => Some(BinaryOp::RSHIFT),
+            17 => Some(BinaryOp::CONCAT),
+            18 => Some(BinaryOp::PTR),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            BinaryOp::Plus => "PLUS",
-            BinaryOp::Minus => "MINUS",
-            BinaryOp::Star => "STAR",
-            BinaryOp::Slash => "SLASH",
-            BinaryOp::Rem => "REM",
-            BinaryOp::Lt => "LT",
-            BinaryOp::Gt => "GT",
-            BinaryOp::Le => "LE",
-            BinaryOp::Ge => "GE",
-            BinaryOp::Eq => "EQ",
-            BinaryOp::Ne => "NE",
-            BinaryOp::And => "AND",
-            BinaryOp::Or => "OR",
-            BinaryOp::Bitand => "BITAND",
-            BinaryOp::Bitor => "BITOR",
-            BinaryOp::Lshift => "LSHIFT",
-            BinaryOp::Rshift => "RSHIFT",
-            BinaryOp::Concat => "CONCAT",
-            BinaryOp::Ptr => "PTR",
+            BinaryOp::PLUS => "PLUS",
+            BinaryOp::MINUS => "MINUS",
+            BinaryOp::STAR => "STAR",
+            BinaryOp::SLASH => "SLASH",
+            BinaryOp::REM => "REM",
+            BinaryOp::LT => "LT",
+            BinaryOp::GT => "GT",
+            BinaryOp::LE => "LE",
+            BinaryOp::GE => "GE",
+            BinaryOp::EQ => "EQ",
+            BinaryOp::NE => "NE",
+            BinaryOp::AND => "AND",
+            BinaryOp::OR => "OR",
+            BinaryOp::BITAND => "BITAND",
+            BinaryOp::BITOR => "BITOR",
+            BinaryOp::LSHIFT => "LSHIFT",
+            BinaryOp::RSHIFT => "RSHIFT",
+            BinaryOp::CONCAT => "CONCAT",
+            BinaryOp::PTR => "PTR",
         }
     }
 }
@@ -128,30 +128,30 @@ impl BinaryOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum UnaryOp {
-    Minus = 0,
-    Plus = 1,
-    Bitnot = 2,
-    Not = 3,
+    MINUS = 0,
+    PLUS = 1,
+    BITNOT = 2,
+    NOT = 3,
 }
 
 impl UnaryOp {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<UnaryOp> {
         match raw {
-            0 => Some(UnaryOp::Minus),
-            1 => Some(UnaryOp::Plus),
-            2 => Some(UnaryOp::Bitnot),
-            3 => Some(UnaryOp::Not),
+            0 => Some(UnaryOp::MINUS),
+            1 => Some(UnaryOp::PLUS),
+            2 => Some(UnaryOp::BITNOT),
+            3 => Some(UnaryOp::NOT),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            UnaryOp::Minus => "MINUS",
-            UnaryOp::Plus => "PLUS",
-            UnaryOp::Bitnot => "BITNOT",
-            UnaryOp::Not => "NOT",
+            UnaryOp::MINUS => "MINUS",
+            UnaryOp::PLUS => "PLUS",
+            UnaryOp::BITNOT => "BITNOT",
+            UnaryOp::NOT => "NOT",
         }
     }
 }
@@ -159,30 +159,30 @@ impl UnaryOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum CompoundOp {
-    Union = 0,
-    UnionAll = 1,
-    Intersect = 2,
-    Except = 3,
+    UNION = 0,
+    UNIONALL = 1,
+    INTERSECT = 2,
+    EXCEPT = 3,
 }
 
 impl CompoundOp {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<CompoundOp> {
         match raw {
-            0 => Some(CompoundOp::Union),
-            1 => Some(CompoundOp::UnionAll),
-            2 => Some(CompoundOp::Intersect),
-            3 => Some(CompoundOp::Except),
+            0 => Some(CompoundOp::UNION),
+            1 => Some(CompoundOp::UNIONALL),
+            2 => Some(CompoundOp::INTERSECT),
+            3 => Some(CompoundOp::EXCEPT),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            CompoundOp::Union => "UNION",
-            CompoundOp::UnionAll => "UNION_ALL",
-            CompoundOp::Intersect => "INTERSECT",
-            CompoundOp::Except => "EXCEPT",
+            CompoundOp::UNION => "UNION",
+            CompoundOp::UNIONALL => "UNION_ALL",
+            CompoundOp::INTERSECT => "INTERSECT",
+            CompoundOp::EXCEPT => "EXCEPT",
         }
     }
 }
@@ -190,36 +190,36 @@ impl CompoundOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum IsOp {
-    Is = 0,
-    IsNot = 1,
-    Isnull = 2,
-    Notnull = 3,
-    IsNotDistinct = 4,
-    IsDistinct = 5,
+    IS = 0,
+    ISNOT = 1,
+    ISNULL = 2,
+    NOTNULL = 3,
+    ISNOTDISTINCT = 4,
+    ISDISTINCT = 5,
 }
 
 impl IsOp {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<IsOp> {
         match raw {
-            0 => Some(IsOp::Is),
-            1 => Some(IsOp::IsNot),
-            2 => Some(IsOp::Isnull),
-            3 => Some(IsOp::Notnull),
-            4 => Some(IsOp::IsNotDistinct),
-            5 => Some(IsOp::IsDistinct),
+            0 => Some(IsOp::IS),
+            1 => Some(IsOp::ISNOT),
+            2 => Some(IsOp::ISNULL),
+            3 => Some(IsOp::NOTNULL),
+            4 => Some(IsOp::ISNOTDISTINCT),
+            5 => Some(IsOp::ISDISTINCT),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            IsOp::Is => "IS",
-            IsOp::IsNot => "IS_NOT",
-            IsOp::Isnull => "ISNULL",
-            IsOp::Notnull => "NOTNULL",
-            IsOp::IsNotDistinct => "IS_NOT_DISTINCT",
-            IsOp::IsDistinct => "IS_DISTINCT",
+            IsOp::IS => "IS",
+            IsOp::ISNOT => "IS_NOT",
+            IsOp::ISNULL => "ISNULL",
+            IsOp::NOTNULL => "NOTNULL",
+            IsOp::ISNOTDISTINCT => "IS_NOT_DISTINCT",
+            IsOp::ISDISTINCT => "IS_DISTINCT",
         }
     }
 }
@@ -227,33 +227,33 @@ impl IsOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ForeignKeyAction {
-    NoAction = 0,
-    SetNull = 1,
-    SetDefault = 2,
-    Cascade = 3,
-    Restrict = 4,
+    NOACTION = 0,
+    SETNULL = 1,
+    SETDEFAULT = 2,
+    CASCADE = 3,
+    RESTRICT = 4,
 }
 
 impl ForeignKeyAction {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<ForeignKeyAction> {
         match raw {
-            0 => Some(ForeignKeyAction::NoAction),
-            1 => Some(ForeignKeyAction::SetNull),
-            2 => Some(ForeignKeyAction::SetDefault),
-            3 => Some(ForeignKeyAction::Cascade),
-            4 => Some(ForeignKeyAction::Restrict),
+            0 => Some(ForeignKeyAction::NOACTION),
+            1 => Some(ForeignKeyAction::SETNULL),
+            2 => Some(ForeignKeyAction::SETDEFAULT),
+            3 => Some(ForeignKeyAction::CASCADE),
+            4 => Some(ForeignKeyAction::RESTRICT),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            ForeignKeyAction::NoAction => "NO_ACTION",
-            ForeignKeyAction::SetNull => "SET_NULL",
-            ForeignKeyAction::SetDefault => "SET_DEFAULT",
-            ForeignKeyAction::Cascade => "CASCADE",
-            ForeignKeyAction::Restrict => "RESTRICT",
+            ForeignKeyAction::NOACTION => "NO_ACTION",
+            ForeignKeyAction::SETNULL => "SET_NULL",
+            ForeignKeyAction::SETDEFAULT => "SET_DEFAULT",
+            ForeignKeyAction::CASCADE => "CASCADE",
+            ForeignKeyAction::RESTRICT => "RESTRICT",
         }
     }
 }
@@ -261,24 +261,24 @@ impl ForeignKeyAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum GeneratedColumnStorage {
-    Virtual = 0,
-    Stored = 1,
+    VIRTUAL = 0,
+    STORED = 1,
 }
 
 impl GeneratedColumnStorage {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<GeneratedColumnStorage> {
         match raw {
-            0 => Some(GeneratedColumnStorage::Virtual),
-            1 => Some(GeneratedColumnStorage::Stored),
+            0 => Some(GeneratedColumnStorage::VIRTUAL),
+            1 => Some(GeneratedColumnStorage::STORED),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            GeneratedColumnStorage::Virtual => "VIRTUAL",
-            GeneratedColumnStorage::Stored => "STORED",
+            GeneratedColumnStorage::VIRTUAL => "VIRTUAL",
+            GeneratedColumnStorage::STORED => "STORED",
         }
     }
 }
@@ -286,45 +286,45 @@ impl GeneratedColumnStorage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ColumnConstraintKind {
-    Default = 0,
-    NotNull = 1,
-    PrimaryKey = 2,
-    Unique = 3,
-    Check = 4,
-    References = 5,
-    Collate = 6,
-    Generated = 7,
-    Null = 8,
+    DEFAULT = 0,
+    NOTNULL = 1,
+    PRIMARYKEY = 2,
+    UNIQUE = 3,
+    CHECK = 4,
+    REFERENCES = 5,
+    COLLATE = 6,
+    GENERATED = 7,
+    NULL = 8,
 }
 
 impl ColumnConstraintKind {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<ColumnConstraintKind> {
         match raw {
-            0 => Some(ColumnConstraintKind::Default),
-            1 => Some(ColumnConstraintKind::NotNull),
-            2 => Some(ColumnConstraintKind::PrimaryKey),
-            3 => Some(ColumnConstraintKind::Unique),
-            4 => Some(ColumnConstraintKind::Check),
-            5 => Some(ColumnConstraintKind::References),
-            6 => Some(ColumnConstraintKind::Collate),
-            7 => Some(ColumnConstraintKind::Generated),
-            8 => Some(ColumnConstraintKind::Null),
+            0 => Some(ColumnConstraintKind::DEFAULT),
+            1 => Some(ColumnConstraintKind::NOTNULL),
+            2 => Some(ColumnConstraintKind::PRIMARYKEY),
+            3 => Some(ColumnConstraintKind::UNIQUE),
+            4 => Some(ColumnConstraintKind::CHECK),
+            5 => Some(ColumnConstraintKind::REFERENCES),
+            6 => Some(ColumnConstraintKind::COLLATE),
+            7 => Some(ColumnConstraintKind::GENERATED),
+            8 => Some(ColumnConstraintKind::NULL),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            ColumnConstraintKind::Default => "DEFAULT",
-            ColumnConstraintKind::NotNull => "NOT_NULL",
-            ColumnConstraintKind::PrimaryKey => "PRIMARY_KEY",
-            ColumnConstraintKind::Unique => "UNIQUE",
-            ColumnConstraintKind::Check => "CHECK",
-            ColumnConstraintKind::References => "REFERENCES",
-            ColumnConstraintKind::Collate => "COLLATE",
-            ColumnConstraintKind::Generated => "GENERATED",
-            ColumnConstraintKind::Null => "NULL",
+            ColumnConstraintKind::DEFAULT => "DEFAULT",
+            ColumnConstraintKind::NOTNULL => "NOT_NULL",
+            ColumnConstraintKind::PRIMARYKEY => "PRIMARY_KEY",
+            ColumnConstraintKind::UNIQUE => "UNIQUE",
+            ColumnConstraintKind::CHECK => "CHECK",
+            ColumnConstraintKind::REFERENCES => "REFERENCES",
+            ColumnConstraintKind::COLLATE => "COLLATE",
+            ColumnConstraintKind::GENERATED => "GENERATED",
+            ColumnConstraintKind::NULL => "NULL",
         }
     }
 }
@@ -332,30 +332,30 @@ impl ColumnConstraintKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TableConstraintKind {
-    PrimaryKey = 0,
-    Unique = 1,
-    Check = 2,
-    ForeignKey = 3,
+    PRIMARYKEY = 0,
+    UNIQUE = 1,
+    CHECK = 2,
+    FOREIGNKEY = 3,
 }
 
 impl TableConstraintKind {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<TableConstraintKind> {
         match raw {
-            0 => Some(TableConstraintKind::PrimaryKey),
-            1 => Some(TableConstraintKind::Unique),
-            2 => Some(TableConstraintKind::Check),
-            3 => Some(TableConstraintKind::ForeignKey),
+            0 => Some(TableConstraintKind::PRIMARYKEY),
+            1 => Some(TableConstraintKind::UNIQUE),
+            2 => Some(TableConstraintKind::CHECK),
+            3 => Some(TableConstraintKind::FOREIGNKEY),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            TableConstraintKind::PrimaryKey => "PRIMARY_KEY",
-            TableConstraintKind::Unique => "UNIQUE",
-            TableConstraintKind::Check => "CHECK",
-            TableConstraintKind::ForeignKey => "FOREIGN_KEY",
+            TableConstraintKind::PRIMARYKEY => "PRIMARY_KEY",
+            TableConstraintKind::UNIQUE => "UNIQUE",
+            TableConstraintKind::CHECK => "CHECK",
+            TableConstraintKind::FOREIGNKEY => "FOREIGN_KEY",
         }
     }
 }
@@ -363,27 +363,27 @@ impl TableConstraintKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Materialized {
-    Default = 0,
-    Materialized = 1,
-    NotMaterialized = 2,
+    DEFAULT = 0,
+    MATERIALIZED = 1,
+    NOTMATERIALIZED = 2,
 }
 
 impl Materialized {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<Materialized> {
         match raw {
-            0 => Some(Materialized::Default),
-            1 => Some(Materialized::Materialized),
-            2 => Some(Materialized::NotMaterialized),
+            0 => Some(Materialized::DEFAULT),
+            1 => Some(Materialized::MATERIALIZED),
+            2 => Some(Materialized::NOTMATERIALIZED),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            Materialized::Default => "DEFAULT",
-            Materialized::Materialized => "MATERIALIZED",
-            Materialized::NotMaterialized => "NOT_MATERIALIZED",
+            Materialized::DEFAULT => "DEFAULT",
+            Materialized::MATERIALIZED => "MATERIALIZED",
+            Materialized::NOTMATERIALIZED => "NOT_MATERIALIZED",
         }
     }
 }
@@ -391,36 +391,36 @@ impl Materialized {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ConflictAction {
-    Default = 0,
-    Rollback = 1,
-    Abort = 2,
-    Fail = 3,
-    Ignore = 4,
-    Replace = 5,
+    DEFAULT = 0,
+    ROLLBACK = 1,
+    ABORT = 2,
+    FAIL = 3,
+    IGNORE = 4,
+    REPLACE = 5,
 }
 
 impl ConflictAction {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<ConflictAction> {
         match raw {
-            0 => Some(ConflictAction::Default),
-            1 => Some(ConflictAction::Rollback),
-            2 => Some(ConflictAction::Abort),
-            3 => Some(ConflictAction::Fail),
-            4 => Some(ConflictAction::Ignore),
-            5 => Some(ConflictAction::Replace),
+            0 => Some(ConflictAction::DEFAULT),
+            1 => Some(ConflictAction::ROLLBACK),
+            2 => Some(ConflictAction::ABORT),
+            3 => Some(ConflictAction::FAIL),
+            4 => Some(ConflictAction::IGNORE),
+            5 => Some(ConflictAction::REPLACE),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            ConflictAction::Default => "DEFAULT",
-            ConflictAction::Rollback => "ROLLBACK",
-            ConflictAction::Abort => "ABORT",
-            ConflictAction::Fail => "FAIL",
-            ConflictAction::Ignore => "IGNORE",
-            ConflictAction::Replace => "REPLACE",
+            ConflictAction::DEFAULT => "DEFAULT",
+            ConflictAction::ROLLBACK => "ROLLBACK",
+            ConflictAction::ABORT => "ABORT",
+            ConflictAction::FAIL => "FAIL",
+            ConflictAction::IGNORE => "IGNORE",
+            ConflictAction::REPLACE => "REPLACE",
         }
     }
 }
@@ -428,30 +428,30 @@ impl ConflictAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum RaiseType {
-    Ignore = 0,
-    Rollback = 1,
-    Abort = 2,
-    Fail = 3,
+    IGNORE = 0,
+    ROLLBACK = 1,
+    ABORT = 2,
+    FAIL = 3,
 }
 
 impl RaiseType {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<RaiseType> {
         match raw {
-            0 => Some(RaiseType::Ignore),
-            1 => Some(RaiseType::Rollback),
-            2 => Some(RaiseType::Abort),
-            3 => Some(RaiseType::Fail),
+            0 => Some(RaiseType::IGNORE),
+            1 => Some(RaiseType::ROLLBACK),
+            2 => Some(RaiseType::ABORT),
+            3 => Some(RaiseType::FAIL),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            RaiseType::Ignore => "IGNORE",
-            RaiseType::Rollback => "ROLLBACK",
-            RaiseType::Abort => "ABORT",
-            RaiseType::Fail => "FAIL",
+            RaiseType::IGNORE => "IGNORE",
+            RaiseType::ROLLBACK => "ROLLBACK",
+            RaiseType::ABORT => "ABORT",
+            RaiseType::FAIL => "FAIL",
         }
     }
 }
@@ -459,30 +459,30 @@ impl RaiseType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum DropObjectType {
-    Table = 0,
-    Index = 1,
-    View = 2,
-    Trigger = 3,
+    TABLE = 0,
+    INDEX = 1,
+    VIEW = 2,
+    TRIGGER = 3,
 }
 
 impl DropObjectType {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<DropObjectType> {
         match raw {
-            0 => Some(DropObjectType::Table),
-            1 => Some(DropObjectType::Index),
-            2 => Some(DropObjectType::View),
-            3 => Some(DropObjectType::Trigger),
+            0 => Some(DropObjectType::TABLE),
+            1 => Some(DropObjectType::INDEX),
+            2 => Some(DropObjectType::VIEW),
+            3 => Some(DropObjectType::TRIGGER),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            DropObjectType::Table => "TABLE",
-            DropObjectType::Index => "INDEX",
-            DropObjectType::View => "VIEW",
-            DropObjectType::Trigger => "TRIGGER",
+            DropObjectType::TABLE => "TABLE",
+            DropObjectType::INDEX => "INDEX",
+            DropObjectType::VIEW => "VIEW",
+            DropObjectType::TRIGGER => "TRIGGER",
         }
     }
 }
@@ -490,30 +490,30 @@ impl DropObjectType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum AlterOp {
-    RenameTable = 0,
-    RenameColumn = 1,
-    DropColumn = 2,
-    AddColumn = 3,
+    RENAMETABLE = 0,
+    RENAMECOLUMN = 1,
+    DROPCOLUMN = 2,
+    ADDCOLUMN = 3,
 }
 
 impl AlterOp {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<AlterOp> {
         match raw {
-            0 => Some(AlterOp::RenameTable),
-            1 => Some(AlterOp::RenameColumn),
-            2 => Some(AlterOp::DropColumn),
-            3 => Some(AlterOp::AddColumn),
+            0 => Some(AlterOp::RENAMETABLE),
+            1 => Some(AlterOp::RENAMECOLUMN),
+            2 => Some(AlterOp::DROPCOLUMN),
+            3 => Some(AlterOp::ADDCOLUMN),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            AlterOp::RenameTable => "RENAME_TABLE",
-            AlterOp::RenameColumn => "RENAME_COLUMN",
-            AlterOp::DropColumn => "DROP_COLUMN",
-            AlterOp::AddColumn => "ADD_COLUMN",
+            AlterOp::RENAMETABLE => "RENAME_TABLE",
+            AlterOp::RENAMECOLUMN => "RENAME_COLUMN",
+            AlterOp::DROPCOLUMN => "DROP_COLUMN",
+            AlterOp::ADDCOLUMN => "ADD_COLUMN",
         }
     }
 }
@@ -521,27 +521,27 @@ impl AlterOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TransactionType {
-    Deferred = 0,
-    Immediate = 1,
-    Exclusive = 2,
+    DEFERRED = 0,
+    IMMEDIATE = 1,
+    EXCLUSIVE = 2,
 }
 
 impl TransactionType {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<TransactionType> {
         match raw {
-            0 => Some(TransactionType::Deferred),
-            1 => Some(TransactionType::Immediate),
-            2 => Some(TransactionType::Exclusive),
+            0 => Some(TransactionType::DEFERRED),
+            1 => Some(TransactionType::IMMEDIATE),
+            2 => Some(TransactionType::EXCLUSIVE),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            TransactionType::Deferred => "DEFERRED",
-            TransactionType::Immediate => "IMMEDIATE",
-            TransactionType::Exclusive => "EXCLUSIVE",
+            TransactionType::DEFERRED => "DEFERRED",
+            TransactionType::IMMEDIATE => "IMMEDIATE",
+            TransactionType::EXCLUSIVE => "EXCLUSIVE",
         }
     }
 }
@@ -549,27 +549,27 @@ impl TransactionType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TransactionOp {
-    Begin = 0,
-    Commit = 1,
-    Rollback = 2,
+    BEGIN = 0,
+    COMMIT = 1,
+    ROLLBACK = 2,
 }
 
 impl TransactionOp {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<TransactionOp> {
         match raw {
-            0 => Some(TransactionOp::Begin),
-            1 => Some(TransactionOp::Commit),
-            2 => Some(TransactionOp::Rollback),
+            0 => Some(TransactionOp::BEGIN),
+            1 => Some(TransactionOp::COMMIT),
+            2 => Some(TransactionOp::ROLLBACK),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            TransactionOp::Begin => "BEGIN",
-            TransactionOp::Commit => "COMMIT",
-            TransactionOp::Rollback => "ROLLBACK",
+            TransactionOp::BEGIN => "BEGIN",
+            TransactionOp::COMMIT => "COMMIT",
+            TransactionOp::ROLLBACK => "ROLLBACK",
         }
     }
 }
@@ -577,27 +577,27 @@ impl TransactionOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum SavepointOp {
-    Savepoint = 0,
-    Release = 1,
-    RollbackTo = 2,
+    SAVEPOINT = 0,
+    RELEASE = 1,
+    ROLLBACKTO = 2,
 }
 
 impl SavepointOp {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<SavepointOp> {
         match raw {
-            0 => Some(SavepointOp::Savepoint),
-            1 => Some(SavepointOp::Release),
-            2 => Some(SavepointOp::RollbackTo),
+            0 => Some(SavepointOp::SAVEPOINT),
+            1 => Some(SavepointOp::RELEASE),
+            2 => Some(SavepointOp::ROLLBACKTO),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            SavepointOp::Savepoint => "SAVEPOINT",
-            SavepointOp::Release => "RELEASE",
-            SavepointOp::RollbackTo => "ROLLBACK_TO",
+            SavepointOp::SAVEPOINT => "SAVEPOINT",
+            SavepointOp::RELEASE => "RELEASE",
+            SavepointOp::ROLLBACKTO => "ROLLBACK_TO",
         }
     }
 }
@@ -605,24 +605,24 @@ impl SavepointOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum SortOrder {
-    Asc = 0,
-    Desc = 1,
+    ASC = 0,
+    DESC = 1,
 }
 
 impl SortOrder {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<SortOrder> {
         match raw {
-            0 => Some(SortOrder::Asc),
-            1 => Some(SortOrder::Desc),
+            0 => Some(SortOrder::ASC),
+            1 => Some(SortOrder::DESC),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            SortOrder::Asc => "ASC",
-            SortOrder::Desc => "DESC",
+            SortOrder::ASC => "ASC",
+            SortOrder::DESC => "DESC",
         }
     }
 }
@@ -630,27 +630,27 @@ impl SortOrder {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum NullsOrder {
-    None = 0,
-    First = 1,
-    Last = 2,
+    NONE = 0,
+    FIRST = 1,
+    LAST = 2,
 }
 
 impl NullsOrder {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<NullsOrder> {
         match raw {
-            0 => Some(NullsOrder::None),
-            1 => Some(NullsOrder::First),
-            2 => Some(NullsOrder::Last),
+            0 => Some(NullsOrder::NONE),
+            1 => Some(NullsOrder::FIRST),
+            2 => Some(NullsOrder::LAST),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            NullsOrder::None => "NONE",
-            NullsOrder::First => "FIRST",
-            NullsOrder::Last => "LAST",
+            NullsOrder::NONE => "NONE",
+            NullsOrder::FIRST => "FIRST",
+            NullsOrder::LAST => "LAST",
         }
     }
 }
@@ -658,48 +658,48 @@ impl NullsOrder {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum JoinType {
-    Comma = 0,
-    Inner = 1,
-    Left = 2,
-    Right = 3,
-    Full = 4,
-    Cross = 5,
-    NaturalInner = 6,
-    NaturalLeft = 7,
-    NaturalRight = 8,
-    NaturalFull = 9,
+    COMMA = 0,
+    INNER = 1,
+    LEFT = 2,
+    RIGHT = 3,
+    FULL = 4,
+    CROSS = 5,
+    NATURALINNER = 6,
+    NATURALLEFT = 7,
+    NATURALRIGHT = 8,
+    NATURALFULL = 9,
 }
 
 impl JoinType {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<JoinType> {
         match raw {
-            0 => Some(JoinType::Comma),
-            1 => Some(JoinType::Inner),
-            2 => Some(JoinType::Left),
-            3 => Some(JoinType::Right),
-            4 => Some(JoinType::Full),
-            5 => Some(JoinType::Cross),
-            6 => Some(JoinType::NaturalInner),
-            7 => Some(JoinType::NaturalLeft),
-            8 => Some(JoinType::NaturalRight),
-            9 => Some(JoinType::NaturalFull),
+            0 => Some(JoinType::COMMA),
+            1 => Some(JoinType::INNER),
+            2 => Some(JoinType::LEFT),
+            3 => Some(JoinType::RIGHT),
+            4 => Some(JoinType::FULL),
+            5 => Some(JoinType::CROSS),
+            6 => Some(JoinType::NATURALINNER),
+            7 => Some(JoinType::NATURALLEFT),
+            8 => Some(JoinType::NATURALRIGHT),
+            9 => Some(JoinType::NATURALFULL),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            JoinType::Comma => "COMMA",
-            JoinType::Inner => "INNER",
-            JoinType::Left => "LEFT",
-            JoinType::Right => "RIGHT",
-            JoinType::Full => "FULL",
-            JoinType::Cross => "CROSS",
-            JoinType::NaturalInner => "NATURAL_INNER",
-            JoinType::NaturalLeft => "NATURAL_LEFT",
-            JoinType::NaturalRight => "NATURAL_RIGHT",
-            JoinType::NaturalFull => "NATURAL_FULL",
+            JoinType::COMMA => "COMMA",
+            JoinType::INNER => "INNER",
+            JoinType::LEFT => "LEFT",
+            JoinType::RIGHT => "RIGHT",
+            JoinType::FULL => "FULL",
+            JoinType::CROSS => "CROSS",
+            JoinType::NATURALINNER => "NATURAL_INNER",
+            JoinType::NATURALLEFT => "NATURAL_LEFT",
+            JoinType::NATURALRIGHT => "NATURAL_RIGHT",
+            JoinType::NATURALFULL => "NATURAL_FULL",
         }
     }
 }
@@ -707,27 +707,27 @@ impl JoinType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TriggerTiming {
-    Before = 0,
-    After = 1,
-    InsteadOf = 2,
+    BEFORE = 0,
+    AFTER = 1,
+    INSTEADOF = 2,
 }
 
 impl TriggerTiming {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<TriggerTiming> {
         match raw {
-            0 => Some(TriggerTiming::Before),
-            1 => Some(TriggerTiming::After),
-            2 => Some(TriggerTiming::InsteadOf),
+            0 => Some(TriggerTiming::BEFORE),
+            1 => Some(TriggerTiming::AFTER),
+            2 => Some(TriggerTiming::INSTEADOF),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            TriggerTiming::Before => "BEFORE",
-            TriggerTiming::After => "AFTER",
-            TriggerTiming::InsteadOf => "INSTEAD_OF",
+            TriggerTiming::BEFORE => "BEFORE",
+            TriggerTiming::AFTER => "AFTER",
+            TriggerTiming::INSTEADOF => "INSTEAD_OF",
         }
     }
 }
@@ -735,27 +735,27 @@ impl TriggerTiming {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TriggerEventType {
-    Delete = 0,
-    Insert = 1,
-    Update = 2,
+    DELETE = 0,
+    INSERT = 1,
+    UPDATE = 2,
 }
 
 impl TriggerEventType {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<TriggerEventType> {
         match raw {
-            0 => Some(TriggerEventType::Delete),
-            1 => Some(TriggerEventType::Insert),
-            2 => Some(TriggerEventType::Update),
+            0 => Some(TriggerEventType::DELETE),
+            1 => Some(TriggerEventType::INSERT),
+            2 => Some(TriggerEventType::UPDATE),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            TriggerEventType::Delete => "DELETE",
-            TriggerEventType::Insert => "INSERT",
-            TriggerEventType::Update => "UPDATE",
+            TriggerEventType::DELETE => "DELETE",
+            TriggerEventType::INSERT => "INSERT",
+            TriggerEventType::UPDATE => "UPDATE",
         }
     }
 }
@@ -763,24 +763,24 @@ impl TriggerEventType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ExplainMode {
-    Explain = 0,
-    QueryPlan = 1,
+    EXPLAIN = 0,
+    QUERYPLAN = 1,
 }
 
 impl ExplainMode {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<ExplainMode> {
         match raw {
-            0 => Some(ExplainMode::Explain),
-            1 => Some(ExplainMode::QueryPlan),
+            0 => Some(ExplainMode::EXPLAIN),
+            1 => Some(ExplainMode::QUERYPLAN),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            ExplainMode::Explain => "EXPLAIN",
-            ExplainMode::QueryPlan => "QUERY_PLAN",
+            ExplainMode::EXPLAIN => "EXPLAIN",
+            ExplainMode::QUERYPLAN => "QUERY_PLAN",
         }
     }
 }
@@ -788,27 +788,27 @@ impl ExplainMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum PragmaForm {
-    Bare = 0,
-    Eq = 1,
-    Call = 2,
+    BARE = 0,
+    EQ = 1,
+    CALL = 2,
 }
 
 impl PragmaForm {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<PragmaForm> {
         match raw {
-            0 => Some(PragmaForm::Bare),
-            1 => Some(PragmaForm::Eq),
-            2 => Some(PragmaForm::Call),
+            0 => Some(PragmaForm::BARE),
+            1 => Some(PragmaForm::EQ),
+            2 => Some(PragmaForm::CALL),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            PragmaForm::Bare => "BARE",
-            PragmaForm::Eq => "EQ",
-            PragmaForm::Call => "CALL",
+            PragmaForm::BARE => "BARE",
+            PragmaForm::EQ => "EQ",
+            PragmaForm::CALL => "CALL",
         }
     }
 }
@@ -816,24 +816,24 @@ impl PragmaForm {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum AnalyzeKind {
-    Analyze = 0,
-    Reindex = 1,
+    ANALYZE = 0,
+    REINDEX = 1,
 }
 
 impl AnalyzeKind {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<AnalyzeKind> {
         match raw {
-            0 => Some(AnalyzeKind::Analyze),
-            1 => Some(AnalyzeKind::Reindex),
+            0 => Some(AnalyzeKind::ANALYZE),
+            1 => Some(AnalyzeKind::REINDEX),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            AnalyzeKind::Analyze => "ANALYZE",
-            AnalyzeKind::Reindex => "REINDEX",
+            AnalyzeKind::ANALYZE => "ANALYZE",
+            AnalyzeKind::REINDEX => "REINDEX",
         }
     }
 }
@@ -841,30 +841,30 @@ impl AnalyzeKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum FrameType {
-    None = 0,
-    Range = 1,
-    Rows = 2,
-    Groups = 3,
+    NONE = 0,
+    RANGE = 1,
+    ROWS = 2,
+    GROUPS = 3,
 }
 
 impl FrameType {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<FrameType> {
         match raw {
-            0 => Some(FrameType::None),
-            1 => Some(FrameType::Range),
-            2 => Some(FrameType::Rows),
-            3 => Some(FrameType::Groups),
+            0 => Some(FrameType::NONE),
+            1 => Some(FrameType::RANGE),
+            2 => Some(FrameType::ROWS),
+            3 => Some(FrameType::GROUPS),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            FrameType::None => "NONE",
-            FrameType::Range => "RANGE",
-            FrameType::Rows => "ROWS",
-            FrameType::Groups => "GROUPS",
+            FrameType::NONE => "NONE",
+            FrameType::RANGE => "RANGE",
+            FrameType::ROWS => "ROWS",
+            FrameType::GROUPS => "GROUPS",
         }
     }
 }
@@ -872,33 +872,33 @@ impl FrameType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum FrameBoundType {
-    UnboundedPreceding = 0,
-    ExprPreceding = 1,
-    CurrentRow = 2,
-    ExprFollowing = 3,
-    UnboundedFollowing = 4,
+    UNBOUNDEDPRECEDING = 0,
+    EXPRPRECEDING = 1,
+    CURRENTROW = 2,
+    EXPRFOLLOWING = 3,
+    UNBOUNDEDFOLLOWING = 4,
 }
 
 impl FrameBoundType {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<FrameBoundType> {
         match raw {
-            0 => Some(FrameBoundType::UnboundedPreceding),
-            1 => Some(FrameBoundType::ExprPreceding),
-            2 => Some(FrameBoundType::CurrentRow),
-            3 => Some(FrameBoundType::ExprFollowing),
-            4 => Some(FrameBoundType::UnboundedFollowing),
+            0 => Some(FrameBoundType::UNBOUNDEDPRECEDING),
+            1 => Some(FrameBoundType::EXPRPRECEDING),
+            2 => Some(FrameBoundType::CURRENTROW),
+            3 => Some(FrameBoundType::EXPRFOLLOWING),
+            4 => Some(FrameBoundType::UNBOUNDEDFOLLOWING),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            FrameBoundType::UnboundedPreceding => "UNBOUNDED_PRECEDING",
-            FrameBoundType::ExprPreceding => "EXPR_PRECEDING",
-            FrameBoundType::CurrentRow => "CURRENT_ROW",
-            FrameBoundType::ExprFollowing => "EXPR_FOLLOWING",
-            FrameBoundType::UnboundedFollowing => "UNBOUNDED_FOLLOWING",
+            FrameBoundType::UNBOUNDEDPRECEDING => "UNBOUNDED_PRECEDING",
+            FrameBoundType::EXPRPRECEDING => "EXPR_PRECEDING",
+            FrameBoundType::CURRENTROW => "CURRENT_ROW",
+            FrameBoundType::EXPRFOLLOWING => "EXPR_FOLLOWING",
+            FrameBoundType::UNBOUNDEDFOLLOWING => "UNBOUNDED_FOLLOWING",
         }
     }
 }
@@ -906,33 +906,33 @@ impl FrameBoundType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum FrameExclude {
-    None = 0,
-    NoOthers = 1,
-    CurrentRow = 2,
-    Group = 3,
-    Ties = 4,
+    NONE = 0,
+    NOOTHERS = 1,
+    CURRENTROW = 2,
+    GROUP = 3,
+    TIES = 4,
 }
 
 impl FrameExclude {
     #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<FrameExclude> {
         match raw {
-            0 => Some(FrameExclude::None),
-            1 => Some(FrameExclude::NoOthers),
-            2 => Some(FrameExclude::CurrentRow),
-            3 => Some(FrameExclude::Group),
-            4 => Some(FrameExclude::Ties),
+            0 => Some(FrameExclude::NONE),
+            1 => Some(FrameExclude::NOOTHERS),
+            2 => Some(FrameExclude::CURRENTROW),
+            3 => Some(FrameExclude::GROUP),
+            4 => Some(FrameExclude::TIES),
             _ => None,
         }
     }
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            FrameExclude::None => "NONE",
-            FrameExclude::NoOthers => "NO_OTHERS",
-            FrameExclude::CurrentRow => "CURRENT_ROW",
-            FrameExclude::Group => "GROUP",
-            FrameExclude::Ties => "TIES",
+            FrameExclude::NONE => "NONE",
+            FrameExclude::NOOTHERS => "NO_OTHERS",
+            FrameExclude::CURRENTROW => "CURRENT_ROW",
+            FrameExclude::GROUP => "GROUP",
+            FrameExclude::TIES => "TIES",
         }
     }
 }

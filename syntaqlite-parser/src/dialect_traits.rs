@@ -20,7 +20,7 @@ use crate::session::RawNodeReader;
 ///
 /// See also the symmetric [`DialectTokenType`] for token enums.
 pub trait DialectNodeType<'a>: Sized {
-    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self>;
+    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self>;
 }
 
 /// A token type that can be resolved from a raw token integer, and converted

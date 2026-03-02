@@ -3,14 +3,14 @@
 
 """CREATE VIRTUAL TABLE AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class CreateVirtualTable(TestSuite):
     """CREATE VIRTUAL TABLE tests."""
 
     def test_basic(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE VIRTUAL TABLE vt USING fts5(content)",
             out="""\
 CreateVirtualTableStmt
@@ -23,7 +23,7 @@ CreateVirtualTableStmt
         )
 
     def test_no_args(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE VIRTUAL TABLE vt USING mod",
             out="""\
 CreateVirtualTableStmt
@@ -36,7 +36,7 @@ CreateVirtualTableStmt
         )
 
     def test_if_not_exists(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE VIRTUAL TABLE IF NOT EXISTS vt USING fts5(content)",
             out="""\
 CreateVirtualTableStmt
@@ -49,7 +49,7 @@ CreateVirtualTableStmt
         )
 
     def test_schema_qualified(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE VIRTUAL TABLE main.vt USING fts5",
             out="""\
 CreateVirtualTableStmt
@@ -62,7 +62,7 @@ CreateVirtualTableStmt
         )
 
     def test_multiple_args(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE VIRTUAL TABLE vt USING fts5(content, detail=column)",
             out="""\
 CreateVirtualTableStmt
@@ -75,7 +75,7 @@ CreateVirtualTableStmt
         )
 
     def test_schema_if_not_exists(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE VIRTUAL TABLE IF NOT EXISTS main.vt USING fts5(content)",
             out="""\
 CreateVirtualTableStmt

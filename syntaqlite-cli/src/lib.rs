@@ -60,8 +60,8 @@ enum Command {
         #[arg(short = 'w', long, default_value_t = 80)]
         line_width: usize,
         /// Keyword casing
-        #[arg(short = 'k', long, value_enum, default_value_t = runtime::CasingArg::Upper)]
-        keyword_case: runtime::CasingArg,
+        #[arg(short = 'k', long, value_enum, default_value_t = runtime::KeywordCasing::Upper)]
+        keyword_case: runtime::KeywordCasing,
         /// Write formatted output back to file(s) in place
         #[arg(short = 'i', long)]
         in_place: bool,

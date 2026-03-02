@@ -3,14 +3,14 @@
 
 """Utility statement AST tests (PRAGMA, ANALYZE, ATTACH, DETACH, VACUUM, REINDEX, EXPLAIN, CREATE INDEX, CREATE VIEW)."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class PragmaStmts(TestSuite):
     """PRAGMA statement tests."""
 
     def test_pragma_bare(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="PRAGMA journal_mode",
             out="""\
 PragmaStmt
@@ -22,7 +22,7 @@ PragmaStmt
         )
 
     def test_pragma_with_schema(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="PRAGMA main.journal_mode",
             out="""\
 PragmaStmt
@@ -34,7 +34,7 @@ PragmaStmt
         )
 
     def test_pragma_eq_value(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="PRAGMA journal_mode = wal",
             out="""\
 PragmaStmt
@@ -46,7 +46,7 @@ PragmaStmt
         )
 
     def test_pragma_function_form(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="PRAGMA table_info(t)",
             out="""\
 PragmaStmt
@@ -58,7 +58,7 @@ PragmaStmt
         )
 
     def test_pragma_negative_value(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="PRAGMA cache_size = -2000",
             out="""\
 PragmaStmt
@@ -74,7 +74,7 @@ class AnalyzeReindexStmts(TestSuite):
     """ANALYZE and REINDEX statement tests."""
 
     def test_analyze_bare(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ANALYZE",
             out="""\
 AnalyzeStmt
@@ -85,7 +85,7 @@ AnalyzeStmt
         )
 
     def test_analyze_table(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ANALYZE t",
             out="""\
 AnalyzeStmt
@@ -96,7 +96,7 @@ AnalyzeStmt
         )
 
     def test_analyze_with_schema(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ANALYZE main.t",
             out="""\
 AnalyzeStmt
@@ -107,7 +107,7 @@ AnalyzeStmt
         )
 
     def test_reindex_bare(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="REINDEX",
             out="""\
 AnalyzeStmt
@@ -118,7 +118,7 @@ AnalyzeStmt
         )
 
     def test_reindex_table(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="REINDEX t",
             out="""\
 AnalyzeStmt
@@ -133,7 +133,7 @@ class AttachDetachStmts(TestSuite):
     """ATTACH and DETACH statement tests."""
 
     def test_attach(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ATTACH 'file.db' AS db2",
             out="""\
             AttachStmt
@@ -151,7 +151,7 @@ class AttachDetachStmts(TestSuite):
         )
 
     def test_attach_database(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ATTACH DATABASE 'file.db' AS db2",
             out="""\
             AttachStmt
@@ -169,7 +169,7 @@ class AttachDetachStmts(TestSuite):
         )
 
     def test_detach(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DETACH db2",
             out="""\
             DetachStmt
@@ -182,7 +182,7 @@ class AttachDetachStmts(TestSuite):
         )
 
     def test_detach_database(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DETACH DATABASE db2",
             out="""\
             DetachStmt
@@ -199,7 +199,7 @@ class VacuumStmts(TestSuite):
     """VACUUM statement tests."""
 
     def test_vacuum_bare(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="VACUUM",
             out="""\
             VacuumStmt
@@ -209,7 +209,7 @@ class VacuumStmts(TestSuite):
         )
 
     def test_vacuum_into(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="VACUUM INTO 'backup.db'",
             out="""\
             VacuumStmt
@@ -222,7 +222,7 @@ class VacuumStmts(TestSuite):
         )
 
     def test_vacuum_schema(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="VACUUM main",
             out="""\
             VacuumStmt
@@ -236,7 +236,7 @@ class ExplainStmts(TestSuite):
     """EXPLAIN statement tests."""
 
     def test_explain(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="EXPLAIN SELECT 1",
             out="""\
             ExplainStmt
@@ -264,7 +264,7 @@ class ExplainStmts(TestSuite):
         )
 
     def test_explain_query_plan(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="EXPLAIN QUERY PLAN SELECT * FROM t",
             out="""\
             ExplainStmt
@@ -297,7 +297,7 @@ class CreateIndexStmts(TestSuite):
     """CREATE INDEX statement tests."""
 
     def test_create_index(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE INDEX idx ON t(x)",
             out="""\
             CreateIndexStmt
@@ -321,7 +321,7 @@ class CreateIndexStmts(TestSuite):
         )
 
     def test_create_unique_index(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE UNIQUE INDEX idx ON t(x)",
             out="""\
             CreateIndexStmt
@@ -345,7 +345,7 @@ class CreateIndexStmts(TestSuite):
         )
 
     def test_create_index_if_not_exists(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE INDEX IF NOT EXISTS idx ON t(x)",
             out="""\
             CreateIndexStmt
@@ -369,7 +369,7 @@ class CreateIndexStmts(TestSuite):
         )
 
     def test_create_index_with_where(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE INDEX idx ON t(x) WHERE x > 0",
             out="""\
             CreateIndexStmt
@@ -404,7 +404,7 @@ class CreateIndexStmts(TestSuite):
         )
 
     def test_create_index_with_schema(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE INDEX main.idx ON t(x)",
             out="""\
             CreateIndexStmt
@@ -428,7 +428,7 @@ class CreateIndexStmts(TestSuite):
         )
 
     def test_create_index_multi_column(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE INDEX idx ON t(x, y DESC)",
             out="""\
             CreateIndexStmt
@@ -464,7 +464,7 @@ class CreateViewStmts(TestSuite):
     """CREATE VIEW statement tests."""
 
     def test_create_view(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE VIEW v AS SELECT * FROM t",
             out="""\
             CreateViewStmt
@@ -497,7 +497,7 @@ class CreateViewStmts(TestSuite):
         )
 
     def test_create_temp_view(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TEMP VIEW v AS SELECT * FROM t",
             out="""\
             CreateViewStmt
@@ -530,7 +530,7 @@ class CreateViewStmts(TestSuite):
         )
 
     def test_create_view_if_not_exists(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE VIEW IF NOT EXISTS v AS SELECT * FROM t",
             out="""\
             CreateViewStmt
@@ -563,7 +563,7 @@ class CreateViewStmts(TestSuite):
         )
 
     def test_create_view_with_columns(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE VIEW v(a, b) AS SELECT x, y FROM t",
             out="""\
             CreateViewStmt

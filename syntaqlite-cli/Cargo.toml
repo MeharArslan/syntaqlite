@@ -14,9 +14,9 @@ doc = false
 [features]
 default = ["builtin-sqlite", "codegen-dialect"]
 # Runtime SQL commands (ast, fmt, lsp) — requires the syntaqlite crate.
-runtime = ["dep:syntaqlite", "dep:libloading", "dep:lsp-server", "dep:lsp-types", "dep:glob"]
+runtime = ["dep:syntaqlite", "dep:libloading", "dep:glob"]
 builtin-sqlite = ["runtime", "syntaqlite/sqlite", "syntaqlite/lsp", "syntaqlite/embedded"]
-codegen-dialect = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/codegen-pipeline"]
+codegen-dialect = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/codegen-pipeline", "syntaqlite-buildtools/sqlite-codegen"]
 codegen-sqlite = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/sqlite-codegen"]
 sqlite-extract = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/sqlite-extract"]
 version-analysis = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/version-analysis"]
@@ -25,8 +25,6 @@ version-analysis = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/version-
 clap = { version = "4.5", features = ["derive"] }
 glob = { version = "0.3", optional = true }
 libloading = { version = "0.8", optional = true }
-lsp-server = { version = "0.7", optional = true }
-lsp-types = { version = "0.97", optional = true }
 serde_json = "1"
 syntaqlite = { path = "../syntaqlite", optional = true, features = ["fmt", "lsp"] }
 syntaqlite-buildtools = { path = "../syntaqlite-buildtools", optional = true, default-features = false }

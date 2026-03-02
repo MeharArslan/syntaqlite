@@ -198,12 +198,7 @@ impl<'a> RawNodeReader<'a> {
                 length: e.length,
             });
         }
-        // SAFETY: NodeReader<'a> is Copy and all its data (raw pointer, source
-        // reference) is valid for 'a. Re-casting &self to &'a NodeReader<'a>
-        // extends the borrow lifetime to 'a, which is safe because the
-        // underlying parser arena lives for 'a (same pattern as resolve_as).
-        let reader: &'a RawNodeReader<'a> = unsafe { &*(self as *const RawNodeReader<'a>) };
-        T::from_arena(reader, id).ok_or(ErrorSpan {
+        T::from_arena(*self, id).ok_or(ErrorSpan {
             offset: 0,
             length: 0,
         })

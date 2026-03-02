@@ -3,14 +3,14 @@
 
 """Conditional expression AST tests: IS, BETWEEN, LIKE, CASE."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class IsExprBasic(TestSuite):
     """IS/ISNULL/NOTNULL expression tests."""
 
     def test_isnull(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 ISNULL",
             out="""\
             SelectStmt
@@ -39,7 +39,7 @@ class IsExprBasic(TestSuite):
         )
 
     def test_notnull(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 NOTNULL",
             out="""\
             SelectStmt
@@ -68,7 +68,7 @@ class IsExprBasic(TestSuite):
         )
 
     def test_not_null(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 NOT NULL",
             out="""\
             SelectStmt
@@ -97,7 +97,7 @@ class IsExprBasic(TestSuite):
         )
 
     def test_is_null(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 IS NULL",
             out="""\
             SelectStmt
@@ -129,7 +129,7 @@ class IsExprBasic(TestSuite):
         )
 
     def test_is_not_null(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 IS NOT NULL",
             out="""\
             SelectStmt
@@ -161,7 +161,7 @@ class IsExprBasic(TestSuite):
         )
 
     def test_is_expr(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 IS 2",
             out="""\
             SelectStmt
@@ -193,7 +193,7 @@ class IsExprBasic(TestSuite):
         )
 
     def test_is_not_expr(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 IS NOT 2",
             out="""\
             SelectStmt
@@ -225,7 +225,7 @@ class IsExprBasic(TestSuite):
         )
 
     def test_is_not_distinct_from(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 IS NOT DISTINCT FROM 2",
             out="""\
             SelectStmt
@@ -257,7 +257,7 @@ class IsExprBasic(TestSuite):
         )
 
     def test_is_distinct_from(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 IS DISTINCT FROM 2",
             out="""\
             SelectStmt
@@ -293,7 +293,7 @@ class BetweenExprBasic(TestSuite):
     """BETWEEN expression tests."""
 
     def test_between(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 BETWEEN 0 AND 10",
             out="""\
             SelectStmt
@@ -329,7 +329,7 @@ class BetweenExprBasic(TestSuite):
         )
 
     def test_not_between(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 NOT BETWEEN 0 AND 10",
             out="""\
             SelectStmt
@@ -369,7 +369,7 @@ class LikeExprBasic(TestSuite):
     """LIKE expression tests."""
 
     def test_like(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 'abc' LIKE 'a%'",
             out="""\
             SelectStmt
@@ -402,7 +402,7 @@ class LikeExprBasic(TestSuite):
         )
 
     def test_not_like(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 'abc' NOT LIKE 'a%'",
             out="""\
             SelectStmt
@@ -435,7 +435,7 @@ class LikeExprBasic(TestSuite):
         )
 
     def test_like_escape(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 'abc' LIKE 'a%' ESCAPE '\\'",
             out="""\
             SelectStmt
@@ -475,7 +475,7 @@ class CaseExprBasic(TestSuite):
     """CASE expression tests."""
 
     def test_simple_case(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CASE WHEN 1 THEN 'a' ELSE 'b' END",
             out="""\
             SelectStmt
@@ -514,7 +514,7 @@ class CaseExprBasic(TestSuite):
         )
 
     def test_case_with_operand(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CASE 1 WHEN 1 THEN 'yes' WHEN 2 THEN 'no' END",
             out="""\
             SelectStmt
@@ -562,7 +562,7 @@ class CaseExprBasic(TestSuite):
         )
 
     def test_case_no_else(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CASE WHEN 1 THEN 'a' END",
             out="""\
             SelectStmt

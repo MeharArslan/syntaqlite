@@ -3,14 +3,14 @@
 
 """CREATE TABLE AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class CreateTableBasic(TestSuite):
     """Basic CREATE TABLE tests."""
 
     def test_simple_one_column(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT)",
             out="""\
             CreateTableStmt
@@ -31,7 +31,7 @@ class CreateTableBasic(TestSuite):
         )
 
     def test_multiple_columns(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT, b TEXT, c REAL)",
             out="""\
             CreateTableStmt
@@ -60,7 +60,7 @@ class CreateTableBasic(TestSuite):
         )
 
     def test_no_type(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a, b, c)",
             out="""\
             CreateTableStmt
@@ -89,7 +89,7 @@ class CreateTableBasic(TestSuite):
         )
 
     def test_compound_type(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a VARCHAR(255), b DECIMAL(10, 2))",
             out="""\
             CreateTableStmt
@@ -118,7 +118,7 @@ class CreateTableModifiers(TestSuite):
     """CREATE TABLE with TEMP, IF NOT EXISTS, schema prefix."""
 
     def test_temp(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TEMP TABLE t(a INT)",
             out="""\
             CreateTableStmt
@@ -139,7 +139,7 @@ class CreateTableModifiers(TestSuite):
         )
 
     def test_if_not_exists(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE IF NOT EXISTS t(a INT)",
             out="""\
             CreateTableStmt
@@ -160,7 +160,7 @@ class CreateTableModifiers(TestSuite):
         )
 
     def test_schema_prefix(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE main.t(a INT)",
             out="""\
             CreateTableStmt
@@ -185,7 +185,7 @@ class CreateTableOptions(TestSuite):
     """Table options: WITHOUT ROWID, STRICT."""
 
     def test_without_rowid(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT PRIMARY KEY) WITHOUT ROWID",
             out="""\
             CreateTableStmt
@@ -219,7 +219,7 @@ class CreateTableOptions(TestSuite):
         )
 
     def test_strict(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT) STRICT",
             out="""\
             CreateTableStmt
@@ -240,7 +240,7 @@ class CreateTableOptions(TestSuite):
         )
 
     def test_without_rowid_strict(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT PRIMARY KEY) WITHOUT ROWID, STRICT",
             out="""\
             CreateTableStmt
@@ -278,7 +278,7 @@ class CreateTableAsSelect(TestSuite):
     """CREATE TABLE AS SELECT."""
 
     def test_as_select(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t2 AS SELECT * FROM t1",
             out="""\
             CreateTableStmt
@@ -317,7 +317,7 @@ class ColumnConstraintDefault(TestSuite):
     """Column DEFAULT constraint tests."""
 
     def test_default_integer(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT DEFAULT 42)",
             out="""\
             CreateTableStmt
@@ -354,7 +354,7 @@ class ColumnConstraintDefault(TestSuite):
         )
 
     def test_default_string(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a TEXT DEFAULT 'hello')",
             out="""\
             CreateTableStmt
@@ -391,7 +391,7 @@ class ColumnConstraintDefault(TestSuite):
         )
 
     def test_default_negative(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT DEFAULT -1)",
             out="""\
             CreateTableStmt
@@ -431,7 +431,7 @@ class ColumnConstraintDefault(TestSuite):
         )
 
     def test_default_expr(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT DEFAULT (1 + 2))",
             out="""\
             CreateTableStmt
@@ -475,7 +475,7 @@ class ColumnConstraintDefault(TestSuite):
         )
 
     def test_default_true(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT DEFAULT TRUE)",
             out="""\
             CreateTableStmt
@@ -516,7 +516,7 @@ class ColumnConstraintKeys(TestSuite):
     """PRIMARY KEY, UNIQUE, NOT NULL column constraints."""
 
     def test_primary_key(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT PRIMARY KEY)",
             out="""\
             CreateTableStmt
@@ -550,7 +550,7 @@ class ColumnConstraintKeys(TestSuite):
         )
 
     def test_primary_key_autoincrement(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INTEGER PRIMARY KEY AUTOINCREMENT)",
             out="""\
             CreateTableStmt
@@ -584,7 +584,7 @@ class ColumnConstraintKeys(TestSuite):
         )
 
     def test_primary_key_desc(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT PRIMARY KEY DESC)",
             out="""\
             CreateTableStmt
@@ -618,7 +618,7 @@ class ColumnConstraintKeys(TestSuite):
         )
 
     def test_not_null(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a TEXT NOT NULL)",
             out="""\
             CreateTableStmt
@@ -652,7 +652,7 @@ class ColumnConstraintKeys(TestSuite):
         )
 
     def test_unique(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a TEXT UNIQUE)",
             out="""\
             CreateTableStmt
@@ -690,7 +690,7 @@ class ColumnConstraintCheck(TestSuite):
     """CHECK column constraint."""
 
     def test_check(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT CHECK(a > 0))",
             out="""\
             CreateTableStmt
@@ -739,7 +739,7 @@ class ColumnConstraintReferences(TestSuite):
     """REFERENCES (foreign key) column constraint."""
 
     def test_references_simple(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT REFERENCES other(id))",
             out="""\
             CreateTableStmt
@@ -784,7 +784,7 @@ class ColumnConstraintReferences(TestSuite):
         )
 
     def test_references_on_delete_cascade(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT REFERENCES other(id) ON DELETE CASCADE)",
             out="""\
             CreateTableStmt
@@ -829,7 +829,7 @@ class ColumnConstraintReferences(TestSuite):
         )
 
     def test_references_on_update_set_null(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT REFERENCES other(id) ON UPDATE SET NULL)",
             out="""\
             CreateTableStmt
@@ -878,7 +878,7 @@ class ColumnConstraintCollate(TestSuite):
     """COLLATE column constraint."""
 
     def test_collate(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a TEXT COLLATE NOCASE)",
             out="""\
             CreateTableStmt
@@ -916,7 +916,7 @@ class ColumnConstraintGenerated(TestSuite):
     """Generated column constraints."""
 
     def test_generated_always_stored(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT, b INT AS (a * 2) STORED)",
             out="""\
             CreateTableStmt
@@ -965,7 +965,7 @@ class ColumnConstraintGenerated(TestSuite):
         )
 
     def test_generated_virtual(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT, b INT AS (a + 1))",
             out="""\
             CreateTableStmt
@@ -1018,7 +1018,7 @@ class ColumnConstraintName(TestSuite):
     """Named column constraints."""
 
     def test_named_not_null(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT CONSTRAINT nn NOT NULL)",
             out="""\
             CreateTableStmt
@@ -1056,7 +1056,7 @@ class TableConstraintPrimaryKey(TestSuite):
     """Table-level PRIMARY KEY constraint."""
 
     def test_table_pk(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT, b INT, PRIMARY KEY(a, b))",
             out="""\
             CreateTableStmt
@@ -1108,7 +1108,7 @@ class TableConstraintPrimaryKey(TestSuite):
         )
 
     def test_named_table_pk(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT, CONSTRAINT pk PRIMARY KEY(a))",
             out="""\
             CreateTableStmt
@@ -1152,7 +1152,7 @@ class TableConstraintUnique(TestSuite):
     """Table-level UNIQUE constraint."""
 
     def test_table_unique(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT, b INT, UNIQUE(a, b))",
             out="""\
             CreateTableStmt
@@ -1208,7 +1208,7 @@ class TableConstraintCheck(TestSuite):
     """Table-level CHECK constraint."""
 
     def test_table_check(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT, b INT, CHECK(a > b))",
             out="""\
             CreateTableStmt
@@ -1259,7 +1259,7 @@ class TableConstraintForeignKey(TestSuite):
     """Table-level FOREIGN KEY constraint."""
 
     def test_table_fk(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT, FOREIGN KEY(a) REFERENCES other(id))",
             out="""\
             CreateTableStmt
@@ -1306,7 +1306,7 @@ class TableConstraintForeignKey(TestSuite):
         )
 
     def test_table_fk_with_actions(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT, FOREIGN KEY(a) REFERENCES other(id) ON DELETE CASCADE ON UPDATE SET NULL)",
             out="""\
             CreateTableStmt
@@ -1353,7 +1353,7 @@ class TableConstraintForeignKey(TestSuite):
         )
 
     def test_table_fk_deferred(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t(a INT, FOREIGN KEY(a) REFERENCES other(id) DEFERRABLE INITIALLY DEFERRED)",
             out="""\
             CreateTableStmt

@@ -6,11 +6,7 @@ fn main() {
     {
         syntaqlite_cli::run("syntaqlite", Some(syntaqlite::dialect::sqlite()));
     }
-    #[cfg(all(feature = "runtime", not(feature = "builtin-sqlite")))]
-    {
-        syntaqlite_cli::run("syntaqlite", None);
-    }
-    #[cfg(not(feature = "runtime"))]
+    #[cfg(not(feature = "builtin-sqlite"))]
     {
         syntaqlite_cli::run("syntaqlite", None);
     }

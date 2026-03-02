@@ -11,7 +11,7 @@ from glob import glob
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 def _discover_test_suites(root_dir: Path, test_dir: str = "tests/ast_diff_tests") -> List[TestSuite]:
@@ -53,7 +53,7 @@ def load_all_tests(
     root_dir: Path,
     filter_pattern: Optional[str] = None,
     test_dir: str = "tests/ast_diff_tests"
-) -> List[Tuple[str, AstTestBlueprint]]:
+) -> List[Tuple[str, DiffTestBlueprint]]:
     """Load all tests from the test directory.
 
     Auto-discovers test suites by scanning the given test directory

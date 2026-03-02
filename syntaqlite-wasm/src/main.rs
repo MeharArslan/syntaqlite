@@ -10,9 +10,9 @@ use syntaqlite::Formatter;
 use syntaqlite::dialect::{Cflags, Dialect, DialectConfig};
 use syntaqlite::dialect::{cflag_table, parse_cflag_name, parse_sqlite_version};
 use syntaqlite::embedded::{self, EmbeddedFragment};
+use syntaqlite::ext::FfiDialect;
+use syntaqlite::ext::RawParser;
 use syntaqlite::fmt::FormatConfig;
-use syntaqlite::raw::FfiDialect;
-use syntaqlite::raw::RawParser;
 use syntaqlite::validation::ValidationConfig;
 
 thread_local! {

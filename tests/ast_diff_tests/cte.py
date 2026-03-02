@@ -3,14 +3,14 @@
 
 """WITH/CTE (Common Table Expression) AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class WithClause(TestSuite):
     """WITH clause tests."""
 
     def test_simple_cte(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="WITH t AS (SELECT 1) SELECT * FROM t",
             out="""\
             WithClause
@@ -64,7 +64,7 @@ class WithClause(TestSuite):
         )
 
     def test_cte_with_columns(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="WITH t(a, b) AS (SELECT 1, 2) SELECT * FROM t",
             out="""\
             WithClause
@@ -134,7 +134,7 @@ class WithClause(TestSuite):
         )
 
     def test_recursive_cte(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="WITH RECURSIVE cnt(x) AS (SELECT 1 UNION ALL SELECT x+1 FROM cnt) SELECT x FROM cnt",
             out="""\
             WithClause
@@ -231,7 +231,7 @@ class WithClause(TestSuite):
         )
 
     def test_multiple_ctes(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="WITH a AS (SELECT 1), b AS (SELECT 2) SELECT * FROM a",
             out="""\
             WithClause
@@ -308,7 +308,7 @@ class WithClause(TestSuite):
         )
 
     def test_materialized(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="WITH t AS MATERIALIZED (SELECT 1) SELECT * FROM t",
             out="""\
             WithClause
@@ -362,7 +362,7 @@ class WithClause(TestSuite):
         )
 
     def test_not_materialized(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="WITH t AS NOT MATERIALIZED (SELECT 1) SELECT * FROM t",
             out="""\
             WithClause

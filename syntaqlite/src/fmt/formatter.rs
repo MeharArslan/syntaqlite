@@ -6,10 +6,9 @@ use super::comment::CommentCtx;
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
 use crate::dialect::Dialect;
-use crate::parser::ffi::CommentKind;
-use crate::parser::ffi::MacroRegion;
-use crate::parser::nodes::Fields;
 use crate::parser::session::RawParser;
+use syntaqlite_parser::nodes::Fields;
+use syntaqlite_parser::parser::{CommentKind, MacroRegion};
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {
@@ -102,7 +101,7 @@ impl<'d> Formatter<'d> {
                 reader: state.reader,
                 comment_ctx: comment_ctx_ref,
             };
-            let mut consumed = 0u64;
+            let mut consumed = vec![false; ctx.reader.macro_regions().len()];
             parts.push(interpret_node(
                 &ctx,
                 root_id,
@@ -154,7 +153,7 @@ impl<'d> Formatter<'d> {
             reader,
             comment_ctx: Some(&comment_ctx),
         };
-        let mut consumed = 0u64;
+        let mut consumed = vec![false; reader.macro_regions().len()];
         let mut scratch = InterpretScratch::new();
         let doc = interpret_node(&ctx, node.id(), &mut consumed, &mut arena, &mut scratch);
         arena.render(doc, self.config.line_width, self.config.keyword_case)
@@ -313,26 +312,22 @@ pub(crate) fn try_macro_verbatim<'a>(
     ctx: &FmtCtx<'a>,
     regions: &[MacroRegion],
     arena: &mut DocArena<'a>,
-    consumed: &mut u64,
+    consumed: &mut [bool],
 ) -> Option<DocId> {
     let cctx = ctx.comment_ctx?;
     let (tok_offset, _) = cctx.peek_next_token()?;
     let source = ctx.source();
 
     for (i, r) in regions.iter().enumerate() {
-        if i >= 64 {
-            break;
-        }
         let r_start = r.call_offset;
         let r_end = r_start + r.call_length;
 
         if tok_offset >= r_start && tok_offset < r_end {
-            let bit = 1u64 << i;
-            if *consumed & bit != 0 {
+            if consumed[i] {
                 // Already consumed — suppress this child.
                 return Some(NIL_DOC);
             }
-            *consumed |= bit;
+            consumed[i] = true;
             return Some(arena.text(&source[r_start as usize..r_end as usize]));
         }
     }

@@ -262,7 +262,7 @@ fn validate_fragment(
 
     // Feed tokens to the low-level parser, collecting results.
     let mut cursor = parser.feed(&fragment.sql_text);
-    let mut results: Vec<Result<crate::parser::nodes::NodeId, ParseError>> = Vec::new();
+    let mut results: Vec<Result<syntaqlite_parser::nodes::NodeId, ParseError>> = Vec::new();
 
     for &(token_type, offset, length) in &tokens {
         let hole = fragment
@@ -336,9 +336,10 @@ pub fn embedded_semantic_tokens_encoded(
     for fragment in fragments {
         let offset_map = OffsetMap::new(fragment);
         for (sql_offset, length, cat) in fragment_semantic_tokens(dialect, fragment) {
-            let Some(legend_idx) = cat.legend_index() else {
+            if cat == crate::dialect::TokenCategory::Other {
                 continue;
-            };
+            }
+            let legend_idx = cat as u32;
             let Some(host_offset) = offset_map.to_host(sql_offset) else {
                 // Inside a hole placeholder — not real SQL text.
                 continue;

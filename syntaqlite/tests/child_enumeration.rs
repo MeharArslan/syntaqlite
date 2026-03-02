@@ -3,7 +3,7 @@
 
 use syntaqlite::ast::{Node, NodeTag};
 use syntaqlite::dialect::sqlite as dialect;
-use syntaqlite::raw::{DialectNodeType, NodeId, RawParser, RawStatementCursor};
+use syntaqlite::ext::{DialectNodeType, NodeId, RawParser, RawStatementCursor};
 
 /// Helper: resolve a NodeId to its Node variant and return its tag.
 fn node_tag(cursor: &RawStatementCursor, id: NodeId) -> NodeTag {

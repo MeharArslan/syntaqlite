@@ -5,7 +5,7 @@
 //! dialect-specific naming to produce the final `tokenize.c`.
 
 use super::sqlite_fragments::SqliteFragments;
-use crate::TokenizerExtractResult;
+use crate::codegen_api::TokenizerExtractResult;
 use crate::dialect_codegen::DialectCIncludes;
 use crate::util::c_transformer::CTransformer;
 use crate::util::c_writer::CWriter;

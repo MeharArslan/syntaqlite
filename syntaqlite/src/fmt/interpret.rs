@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0.
 
 use crate::dialect::Dialect;
-use crate::parser::nodes::{FieldVal, Fields, NodeId};
 use crate::parser::session::RawNodeReader;
+use syntaqlite_parser::nodes::{FieldVal, Fields, NodeId};
 
 use super::bytecode::opcodes;
 use super::comment::{CommentCtx, DrainResult};
@@ -78,7 +78,7 @@ enum ReturnAction {
 pub(crate) fn interpret_node<'a>(
     ctx: &FmtCtx<'a>,
     root_id: NodeId,
-    consumed_regions: &mut u64,
+    consumed_regions: &mut [bool],
     arena: &mut DocArena<'a>,
     scratch: &mut InterpretScratch,
 ) -> DocId {

@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use crate::{CodegenArtifacts, DialectNaming};
+use crate::codegen_api::{CodegenArtifacts, DialectNaming};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OutputKind {
@@ -44,11 +44,6 @@ pub fn output_manifest(
             kind: OutputKind::CPublicHeader,
             file_name: dialect.dialect_header_name(),
             content: artifacts.dialect_h,
-        },
-        OutputArtifact {
-            kind: OutputKind::CSharedHeader,
-            file_name: dialect.tokens_header_name(),
-            content: dialect.guarded_tokens_header(&artifacts.parse_h),
         },
         OutputArtifact {
             kind: OutputKind::CCsrc,

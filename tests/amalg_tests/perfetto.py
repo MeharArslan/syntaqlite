@@ -8,7 +8,7 @@ are correctly merged with the base SQLite grammar and produce a working
 amalgamated parser.
 """
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class PerfettoExtension(TestSuite):
@@ -18,7 +18,7 @@ class PerfettoExtension(TestSuite):
 
     def test_create_perfetto_table_simple(self):
         """Bare CREATE PERFETTO TABLE without AS select."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE PERFETTO TABLE foo",
             out="""\
             CreatePerfettoTableStmt
@@ -32,7 +32,7 @@ class PerfettoExtension(TestSuite):
 
     def test_create_perfetto_table_as_select(self):
         """CREATE PERFETTO TABLE with AS select."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE PERFETTO TABLE foo AS SELECT 1",
             out="""\
             CreatePerfettoTableStmt
@@ -64,7 +64,7 @@ class PerfettoExtension(TestSuite):
 
     def test_create_or_replace_perfetto_table(self):
         """CREATE OR REPLACE PERFETTO TABLE."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE OR REPLACE PERFETTO TABLE foo AS SELECT 1",
             out="""\
             CreatePerfettoTableStmt
@@ -98,7 +98,7 @@ class PerfettoExtension(TestSuite):
 
     def test_create_perfetto_view(self):
         """CREATE PERFETTO VIEW with AS select."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE PERFETTO VIEW v AS SELECT 1",
             out="""\
             CreatePerfettoViewStmt
@@ -131,7 +131,7 @@ class PerfettoExtension(TestSuite):
 
     def test_create_perfetto_function_scalar(self):
         """CREATE PERFETTO FUNCTION returning a scalar type."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE PERFETTO FUNCTION f(x INT) RETURNS BOOL AS SELECT 1",
             out="""\
             CreatePerfettoFunctionStmt
@@ -172,7 +172,7 @@ class PerfettoExtension(TestSuite):
 
     def test_create_perfetto_function_no_args(self):
         """CREATE PERFETTO FUNCTION with no arguments."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE PERFETTO FUNCTION f() RETURNS INT AS SELECT 42",
             out="""\
             CreatePerfettoFunctionStmt
@@ -210,7 +210,7 @@ class PerfettoExtension(TestSuite):
 
     def test_create_perfetto_index(self):
         """CREATE PERFETTO INDEX on a single column."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE PERFETTO INDEX idx ON t(col)",
             out="""\
             CreatePerfettoIndexStmt
@@ -226,7 +226,7 @@ class PerfettoExtension(TestSuite):
 
     def test_create_perfetto_index_multi_column(self):
         """CREATE PERFETTO INDEX on multiple columns."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE PERFETTO INDEX idx ON t(a, b, c)",
             out="""\
             CreatePerfettoIndexStmt
@@ -248,7 +248,7 @@ class PerfettoExtension(TestSuite):
 
     def test_create_perfetto_macro(self):
         """CREATE PERFETTO MACRO with arguments and body."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE PERFETTO MACRO m(x TableOrSubquery) RETURNS TableOrSubquery AS x",
             out="""\
             CreatePerfettoMacroStmt
@@ -267,7 +267,7 @@ class PerfettoExtension(TestSuite):
 
     def test_include_perfetto_module(self):
         """INCLUDE PERFETTO MODULE with dotted path."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="INCLUDE PERFETTO MODULE foo.bar",
             out="""\
             IncludePerfettoModuleStmt
@@ -277,7 +277,7 @@ class PerfettoExtension(TestSuite):
 
     def test_include_perfetto_module_simple(self):
         """INCLUDE PERFETTO MODULE single name."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="INCLUDE PERFETTO MODULE metrics",
             out="""\
             IncludePerfettoModuleStmt
@@ -289,7 +289,7 @@ class PerfettoExtension(TestSuite):
 
     def test_drop_perfetto_index(self):
         """DROP PERFETTO INDEX on a table."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DROP PERFETTO INDEX idx ON t",
             out="""\
             DropPerfettoIndexStmt
@@ -302,7 +302,7 @@ class PerfettoExtension(TestSuite):
 
     def test_base_select_still_works(self):
         """Base SQLite syntax must still work in an extended dialect."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1",
             out="""\
             SelectStmt
@@ -328,7 +328,7 @@ class PerfettoExtension(TestSuite):
 
     def test_base_create_table_still_works(self):
         """Regular CREATE TABLE must coexist with CREATE PERFETTO TABLE."""
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t (id INTEGER)",
             out="""\
             CreateTableStmt

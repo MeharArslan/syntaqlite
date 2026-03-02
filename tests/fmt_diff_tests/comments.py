@@ -1,18 +1,18 @@
 # Copyright 2025 The syntaqlite Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0.
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class TrailingLineComment(TestSuite):
     def test_end_of_statement(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT a FROM t -- trailing",
             out="SELECT a FROM t -- trailing;",
         )
 
     def test_after_column(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="""\
                 SELECT
                   a, -- first col
@@ -28,7 +28,7 @@ class TrailingLineComment(TestSuite):
         )
 
     def test_after_where(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT a FROM t WHERE x = 1 -- filter active",
             out="SELECT a FROM t WHERE x = 1 -- filter active;",
         )
@@ -36,7 +36,7 @@ class TrailingLineComment(TestSuite):
 
 class LeadingLineComment(TestSuite):
     def test_before_statement(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="""\
                 -- main query
                 SELECT a FROM t
@@ -48,7 +48,7 @@ class LeadingLineComment(TestSuite):
         )
 
     def test_before_clause(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="""\
                 SELECT a
                 -- apply filter
@@ -67,7 +67,7 @@ class LeadingLineComment(TestSuite):
 
 class BlockComment(TestSuite):
     def test_before_statement(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="/* count */ SELECT count(*) FROM t",
             out="""\
                 /* count */
@@ -76,7 +76,7 @@ class BlockComment(TestSuite):
         )
 
     def test_trailing_block(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT a /* col */ FROM t",
             out="SELECT a /* col */ FROM t;",
         )
@@ -84,7 +84,7 @@ class BlockComment(TestSuite):
 
 class MultipleComments(TestSuite):
     def test_two_trailing(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="""\
                 SELECT
                   a, -- first

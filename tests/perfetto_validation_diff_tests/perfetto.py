@@ -1,7 +1,7 @@
 # Copyright 2025 The syntaqlite Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0.
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class PerfettoTableValidation(TestSuite):
@@ -14,7 +14,7 @@ class PerfettoTableValidation(TestSuite):
         The result should be a single 'unknown table' warning, NOT an
         'unknown column' diagnostic.
         """
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE PERFETTO TABLE t AS SELECT dur FROM slice",
             out="""\
                 warning: unknown table 'slice'
@@ -25,7 +25,7 @@ class PerfettoTableValidation(TestSuite):
         )
 
     def test_create_perfetto_table_known_table(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE slice(dur INT); CREATE PERFETTO TABLE t AS SELECT dur FROM slice",
             out="",
         )
@@ -33,7 +33,7 @@ class PerfettoTableValidation(TestSuite):
 
 class PerfettoViewValidation(TestSuite):
     def test_create_perfetto_view_unknown_table(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE PERFETTO VIEW v AS SELECT dur FROM slice",
             out="""\
                 warning: unknown table 'slice'
@@ -46,7 +46,7 @@ class PerfettoViewValidation(TestSuite):
 
 class PerfettoFunctionValidation(TestSuite):
     def test_create_perfetto_function_unknown_table(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE PERFETTO FUNCTION f() RETURNS INT AS SELECT dur FROM slice",
             out="""\
                 warning: unknown table 'slice'
@@ -59,7 +59,7 @@ class PerfettoFunctionValidation(TestSuite):
 
 class BaselineValidation(TestSuite):
     def test_plain_select_unknown_table(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT dur FROM slice",
             out="""\
                 warning: unknown table 'slice'
@@ -70,7 +70,7 @@ class BaselineValidation(TestSuite):
         )
 
     def test_known_table_no_warnings(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE slice(dur INT); SELECT dur FROM slice",
             out="",
         )

@@ -3,14 +3,14 @@
 
 """DML (INSERT/UPDATE/DELETE) AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class DeleteBasic(TestSuite):
     """Basic DELETE statement tests."""
 
     def test_simple_delete(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DELETE FROM t",
             out="""\
             DeleteStmt
@@ -26,7 +26,7 @@ class DeleteBasic(TestSuite):
         )
 
     def test_delete_with_where(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DELETE FROM t WHERE x = 1",
             out="""\
             DeleteStmt
@@ -53,7 +53,7 @@ class DeleteBasic(TestSuite):
         )
 
     def test_delete_with_schema(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DELETE FROM main.t",
             out="""\
             DeleteStmt
@@ -73,7 +73,7 @@ class InsertBasic(TestSuite):
     """Basic INSERT statement tests."""
 
     def test_insert_values(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="INSERT INTO t VALUES (1, 2, 3)",
             out="""\
             InsertStmt
@@ -102,7 +102,7 @@ class InsertBasic(TestSuite):
         )
 
     def test_insert_with_columns(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="INSERT INTO t(a, b) VALUES (1, 2)",
             out="""\
             InsertStmt
@@ -137,7 +137,7 @@ class InsertBasic(TestSuite):
         )
 
     def test_insert_from_select(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="INSERT INTO t SELECT * FROM s",
             out="""\
             InsertStmt
@@ -172,7 +172,7 @@ class InsertBasic(TestSuite):
         )
 
     def test_insert_default_values(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="INSERT INTO t DEFAULT VALUES",
             out="""\
             InsertStmt
@@ -192,7 +192,7 @@ class InsertConflict(TestSuite):
     """INSERT with conflict resolution tests."""
 
     def test_insert_or_replace(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="INSERT OR REPLACE INTO t VALUES (1)",
             out="""\
             InsertStmt
@@ -215,7 +215,7 @@ class InsertConflict(TestSuite):
         )
 
     def test_replace_into(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="REPLACE INTO t VALUES (1)",
             out="""\
             InsertStmt
@@ -238,7 +238,7 @@ class InsertConflict(TestSuite):
         )
 
     def test_insert_or_rollback(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="INSERT OR ROLLBACK INTO t VALUES (1)",
             out="""\
             InsertStmt
@@ -261,7 +261,7 @@ class InsertConflict(TestSuite):
         )
 
     def test_insert_or_abort(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="INSERT OR ABORT INTO t VALUES (1)",
             out="""\
             InsertStmt
@@ -284,7 +284,7 @@ class InsertConflict(TestSuite):
         )
 
     def test_insert_or_fail(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="INSERT OR FAIL INTO t VALUES (1)",
             out="""\
             InsertStmt
@@ -307,7 +307,7 @@ class InsertConflict(TestSuite):
         )
 
     def test_insert_or_ignore(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="INSERT OR IGNORE INTO t VALUES (1)",
             out="""\
             InsertStmt
@@ -334,7 +334,7 @@ class UpdateBasic(TestSuite):
     """Basic UPDATE statement tests."""
 
     def test_simple_update(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="UPDATE t SET x = 1",
             out="""\
             UpdateStmt
@@ -361,7 +361,7 @@ class UpdateBasic(TestSuite):
         )
 
     def test_update_with_where(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="UPDATE t SET x = 1, y = 2 WHERE id = 3",
             out="""\
             UpdateStmt
@@ -406,7 +406,7 @@ class UpdateBasic(TestSuite):
         )
 
     def test_update_or_ignore(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="UPDATE OR IGNORE t SET x = 1",
             out="""\
             UpdateStmt
@@ -437,7 +437,7 @@ class DmlWithCte(TestSuite):
     """DML statements with CTEs."""
 
     def test_insert_with_cte(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="WITH cte AS (SELECT 1) INSERT INTO t SELECT * FROM cte",
             out="""\
             WithClause

@@ -316,7 +316,7 @@ impl SessionContext {
     /// by earlier statements in the same input.
     pub fn from_stmts<'a>(
         reader: &'a crate::parser::session::RawNodeReader<'a>,
-        stmt_ids: &[crate::parser::nodes::NodeId],
+        stmt_ids: &[syntaqlite_parser::nodes::NodeId],
         dialect: &crate::Dialect<'_>,
     ) -> Self {
         let mut doc = DocumentContext::new();
@@ -482,8 +482,8 @@ impl Default for DocumentContext {
 unsafe fn read_node_id(
     ptr: *const u8,
     meta: &syntaqlite_parser::dialect::ffi::FieldMeta,
-) -> crate::parser::nodes::NodeId {
-    unsafe { crate::parser::nodes::NodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
+) -> syntaqlite_parser::nodes::NodeId {
+    unsafe { syntaqlite_parser::nodes::NodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
 }
 
 /// Read a `SourceSpan` field from a raw node pointer, returning its text
@@ -498,7 +498,7 @@ unsafe fn read_span<'a>(
     source: &'a str,
 ) -> &'a str {
     unsafe {
-        let span = &*(ptr.add(meta.offset as usize) as *const crate::parser::nodes::SourceSpan);
+        let span = &*(ptr.add(meta.offset as usize) as *const syntaqlite_parser::nodes::SourceSpan);
         if span.is_empty() {
             ""
         } else {
@@ -521,13 +521,13 @@ impl DocumentContext {
     pub fn accumulate(
         &mut self,
         reader: &crate::parser::session::RawNodeReader<'_>,
-        stmt_id: crate::parser::nodes::NodeId,
+        stmt_id: syntaqlite_parser::nodes::NodeId,
         dialect: &crate::Dialect<'_>,
         session: Option<&SessionContext>,
     ) {
         use crate::dialect::SchemaKind;
-        use crate::parser::typed_list::DialectNodeType;
         use syntaqlite_parser::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
+        use syntaqlite_parser::dialect_traits::DialectNodeType;
 
         let Some((ptr, tag)) = reader.node_ptr(stmt_id) else {
             return;
@@ -583,7 +583,7 @@ impl DocumentContext {
                     let sel_id = unsafe { read_node_id(ptr, sel_meta) };
                     if !sel_id.is_null()
                         && let Some(select) =
-                            syntaqlite_parser_sqlite::ast::Select::from_arena(reader, sel_id)
+                            syntaqlite_parser_sqlite::ast::Select::from_arena(*reader, sel_id)
                     {
                         columns_from_select(&select, &self.known, session, &mut columns);
                     }
@@ -630,12 +630,12 @@ impl DocumentContext {
 /// information (PRIMARY KEY, NOT NULL) from each child node's field metadata.
 fn columns_from_column_list(
     reader: &crate::parser::session::RawNodeReader<'_>,
-    list_id: crate::parser::nodes::NodeId,
+    list_id: syntaqlite_parser::nodes::NodeId,
     dialect: &crate::Dialect<'_>,
     out: &mut Vec<ColumnDef>,
 ) {
-    use crate::parser::nodes::NodeId;
     use syntaqlite_parser::dialect::ffi::{FIELD_NODE_ID, FIELD_SPAN};
+    use syntaqlite_parser::nodes::NodeId;
 
     let Some(list) = reader.resolve_list(list_id) else {
         return;
@@ -709,7 +709,7 @@ fn columns_from_column_list(
 /// Walk a constraint list to detect PRIMARY KEY and NOT NULL constraints.
 fn extract_column_constraints(
     reader: &crate::parser::session::RawNodeReader<'_>,
-    list_id: crate::parser::nodes::NodeId,
+    list_id: syntaqlite_parser::nodes::NodeId,
     dialect: &crate::Dialect<'_>,
     is_primary_key: &mut bool,
     is_nullable: &mut bool,

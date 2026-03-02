@@ -1,16 +1,58 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Language-server analysis host.
+//! Language-server support: analysis host, document management, and
+//! protocol server.
 //!
-//! [`AnalysisHost`] manages a set of open documents and provides
-//! diagnostics, semantic tokens, completions, and formatting in a
-//! single interface suitable for driving an LSP server or in-editor
-//! extension.
+//! # Overview
+//!
+//! - [`AnalysisHost`] — stateful document store with lazy per-document
+//!   analysis (diagnostics, semantic tokens, completions, formatting).
+//! - [`DocumentAnalysis`] — the result of analysing a single document;
+//!   produced by [`DocumentAnalysis::compute`] and cached inside the host.
+//! - [`LspServer`] — stdio JSON-RPC server that drives an `AnalysisHost`
+//!   in response to LSP messages from an editor.
 
+pub mod analysis;
 pub mod host;
+pub mod server;
 
-pub use host::{AnalysisHost, CompletionContext, CompletionInfo, FormatError};
+pub use analysis::DocumentAnalysis;
+pub use host::{AnalysisHost, FormatError};
+pub use server::LspServer;
+
+// ── Shared LSP types ──────────────────────────────────────────────────────
+
+/// Semantic completion context derived from parser stack state.
+#[repr(u32)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CompletionContext {
+    /// Could not determine context.
+    Unknown = 0,
+    /// Cursor is in an expression position (functions/values expected).
+    Expression = 1,
+    /// Cursor is in a table-reference position (table/view names expected).
+    TableRef = 2,
+}
+
+impl CompletionContext {
+    pub(crate) fn from_raw(v: u32) -> Self {
+        match v {
+            1 => Self::Expression,
+            2 => Self::TableRef,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+/// Expected tokens and semantic context at a cursor position.
+#[derive(Debug)]
+pub struct CompletionInfo {
+    /// Terminal token IDs valid at the cursor.
+    pub tokens: Vec<u32>,
+    /// Semantic context (expression vs table-ref).
+    pub context: CompletionContext,
+}
 
 /// A completion item returned by [`AnalysisHost::completion_items`].
 #[derive(Debug, Clone)]

@@ -3,14 +3,14 @@
 
 """CAST, PTR, QNUMBER, and row value AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class CastExpr(TestSuite):
     """CAST expression tests."""
 
     def test_cast_integer(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CAST(1 AS INTEGER)",
             out="""\
             SelectStmt
@@ -38,7 +38,7 @@ class CastExpr(TestSuite):
         )
 
     def test_cast_text(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CAST('hello' AS TEXT)",
             out="""\
             SelectStmt
@@ -66,7 +66,7 @@ class CastExpr(TestSuite):
         )
 
     def test_cast_real(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CAST(3.14 AS REAL)",
             out="""\
             SelectStmt
@@ -94,7 +94,7 @@ class CastExpr(TestSuite):
         )
 
     def test_cast_varchar_precision(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CAST(x AS VARCHAR(100))",
             out="""\
             SelectStmt
@@ -123,7 +123,7 @@ class CastExpr(TestSuite):
         )
 
     def test_cast_decimal_scale(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CAST(x AS DECIMAL(10,2))",
             out="""\
             SelectStmt
@@ -152,7 +152,7 @@ class CastExpr(TestSuite):
         )
 
     def test_cast_multi_word_type(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CAST(x AS DOUBLE PRECISION)",
             out="""\
             SelectStmt
@@ -181,7 +181,7 @@ class CastExpr(TestSuite):
         )
 
     def test_cast_empty_type(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CAST(1 AS )",
             out="""\
             SelectStmt
@@ -213,7 +213,7 @@ class PtrExpr(TestSuite):
     """PTR (JSON ->) operator tests."""
 
     def test_ptr_strings(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT '{\"a\":1}' -> '$.a'",
             out="""\
             SelectStmt
@@ -245,7 +245,7 @@ class PtrExpr(TestSuite):
         )
 
     def test_ptr_column(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT j -> '$.name'",
             out="""\
             SelectStmt
@@ -282,7 +282,7 @@ class QnumberLiteral(TestSuite):
     """QNUMBER (digit-separated number) literal tests."""
 
     def test_qnumber_integer(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1_000_000",
             out="""\
             SelectStmt
@@ -307,7 +307,7 @@ class QnumberLiteral(TestSuite):
         )
 
     def test_qnumber_float(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1_000.50",
             out="""\
             SelectStmt
@@ -336,7 +336,7 @@ class RowValue(TestSuite):
     """Row value tuple tests."""
 
     def test_two_elements(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT (1, 2)",
             out="""\
             SelectStmt
@@ -365,7 +365,7 @@ class RowValue(TestSuite):
         )
 
     def test_three_elements(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT (1, 2, 3)",
             out="""\
             SelectStmt

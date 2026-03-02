@@ -3,14 +3,14 @@
 
 """Aggregate function ORDER BY and RAISE expression AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class AggregateFunctionOrderBy(TestSuite):
     """Aggregate function calls with ORDER BY clause."""
 
     def test_basic_order_by(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT GROUP_CONCAT(name ORDER BY name) FROM t",
             out="""\
             SelectStmt
@@ -57,7 +57,7 @@ class AggregateFunctionOrderBy(TestSuite):
         )
 
     def test_order_by_desc(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT GROUP_CONCAT(name, ',' ORDER BY name DESC) FROM t",
             out="""\
             SelectStmt
@@ -107,7 +107,7 @@ class AggregateFunctionOrderBy(TestSuite):
         )
 
     def test_distinct_order_by(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT GROUP_CONCAT(DISTINCT name ORDER BY name) FROM t",
             out="""\
             SelectStmt
@@ -158,7 +158,7 @@ class RaiseExpression(TestSuite):
     """RAISE expression tests."""
 
     def test_raise_ignore(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT RAISE(IGNORE)",
             out="""\
             SelectStmt
@@ -183,7 +183,7 @@ class RaiseExpression(TestSuite):
         )
 
     def test_raise_rollback(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT RAISE(ROLLBACK, 'error message')",
             out="""\
             SelectStmt
@@ -211,7 +211,7 @@ class RaiseExpression(TestSuite):
         )
 
     def test_raise_abort(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT RAISE(ABORT, 'constraint failed')",
             out="""\
             SelectStmt
@@ -239,7 +239,7 @@ class RaiseExpression(TestSuite):
         )
 
     def test_raise_fail(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT RAISE(FAIL, 'error')",
             out="""\
             SelectStmt

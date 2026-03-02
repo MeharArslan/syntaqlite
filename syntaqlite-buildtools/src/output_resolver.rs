@@ -30,9 +30,9 @@ impl OutputResolver for ExternalDialectResolver {
                 Some(self.include_dir.join(filename))
             }
             OutputKind::CCsrc => Some(self.csrc_dir.join(filename)),
-            OutputKind::RustDialect
-            | OutputKind::RustShared
-            | OutputKind::RustScaffold => Some(self.rust_src_dir.join(filename)),
+            OutputKind::RustDialect | OutputKind::RustShared | OutputKind::RustScaffold => {
+                Some(self.rust_src_dir.join(filename))
+            }
             OutputKind::CrateRoot => Some(self.crate_root.join(filename)),
         }
     }
@@ -95,10 +95,8 @@ pub fn write_artifacts(
         let Some(dest) = resolver.resolve(artifact.kind, &artifact.file_name) else {
             continue;
         };
-        if let Some(dir) = dest.parent() {
-            if seen_dirs.insert(dir.to_path_buf()) {
-                ensure_dir_fn(dir)?;
-            }
+        if let Some(dir) = dest.parent().filter(|d| seen_dirs.insert(d.to_path_buf())) {
+            ensure_dir_fn(dir)?;
         }
         write_file_fn(&dest, &artifact.content)?;
     }

@@ -289,7 +289,7 @@ pub fn generate_rust_lib(dialect_fn: &str) -> String {
         r#"
 use std::sync::LazyLock;
 
-use syntaqlite::raw::FfiDialect;
+use syntaqlite::ext::FfiDialect;
 unsafe extern "C" {{
     fn {dialect_fn}() -> *const FfiDialect;
 }}

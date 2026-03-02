@@ -12,7 +12,7 @@
 //! Most users will never construct a `Dialect` directly; the built-in
 //! SQLite dialect is available via [`sqlite()`].
 //! External dialect crates obtain their handle through the generated
-//! [`crate::raw::Dialect`] handle.
+//! [`crate::ext::Dialect`] handle.
 
 pub use syntaqlite_parser::dialect::ffi::{CflagInfo, Cflags, DialectConfig, FieldMeta};
 
@@ -28,20 +28,24 @@ pub use syntaqlite_parser::sqlite::{
 // ── Token category ─────────────────────────────────────────────────────
 
 /// Semantic category for a token type, used for syntax highlighting.
+///
+/// Discriminant values match the corresponding index in [`SEMANTIC_TOKEN_LEGEND`],
+/// so `self as u32` directly gives the legend index for non-`Other` variants.
+/// `Other` (discriminant 10) is not in the legend and is never emitted as a token.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenCategory {
-    Other = 0,
-    Keyword = 1,
-    Identifier = 2,
-    String = 3,
-    Number = 4,
-    Operator = 5,
+    Keyword = 0,
+    Variable = 1,
+    String = 2,
+    Number = 3,
+    Operator = 4,
+    Comment = 5,
     Punctuation = 6,
-    Comment = 7,
-    Variable = 8,
-    Function = 9,
-    Type = 10,
+    Identifier = 7,
+    Function = 8,
+    Type = 9,
+    Other = 10,
 }
 
 /// The semantic token legend: LSP/Monaco token type names in legend-index order.
@@ -81,25 +85,10 @@ impl TokenCategory {
     /// The LSP semantic token type name for this category.
     /// Returns `None` for `Other` (not emitted as a semantic token).
     pub fn legend_name(self) -> Option<&'static str> {
-        let idx = self.legend_index()?;
-        Some(SEMANTIC_TOKEN_LEGEND[idx as usize])
-    }
-
-    /// Index into [`SEMANTIC_TOKEN_LEGEND`] for this category.
-    /// Returns `None` for `Other`.
-    pub fn legend_index(self) -> Option<u32> {
-        match self {
-            Self::Keyword => Some(0),
-            Self::Variable => Some(1),
-            Self::String => Some(2),
-            Self::Number => Some(3),
-            Self::Operator => Some(4),
-            Self::Comment => Some(5),
-            Self::Punctuation => Some(6),
-            Self::Identifier => Some(7),
-            Self::Function => Some(8),
-            Self::Type => Some(9),
-            Self::Other => None,
+        if self == Self::Other {
+            None
+        } else {
+            Some(SEMANTIC_TOKEN_LEGEND[self as usize])
         }
     }
 }

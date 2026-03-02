@@ -14,7 +14,7 @@ use crate::session::RawNodeReader;
 #[derive(Clone, Copy)]
 pub struct TypedList<'a, T> {
     raw: &'a NodeList,
-    reader: &'a RawNodeReader<'a>,
+    reader: RawNodeReader<'a>,
     _phantom: PhantomData<fn() -> T>,
 }
 
@@ -28,7 +28,7 @@ impl<T> std::fmt::Debug for TypedList<'_, T> {
 
 impl<'a, T> TypedList<'a, T> {
     /// Construct a `TypedList` from a raw `NodeList` reference and reader.
-    pub fn new(raw: &'a NodeList, reader: &'a RawNodeReader<'a>) -> Self {
+    pub fn new(raw: &'a NodeList, reader: RawNodeReader<'a>) -> Self {
         TypedList {
             raw,
             reader,
@@ -56,7 +56,7 @@ impl<'a, T: DialectNodeType<'a>> TypedList<'a, T> {
 
     /// Iterate over children.
     pub fn iter(&self) -> impl Iterator<Item = T> + 'a {
-        let reader = self.reader;
+        let reader = self.reader; // Copy
         let children = self.raw.children();
         children
             .iter()
@@ -66,7 +66,7 @@ impl<'a, T: DialectNodeType<'a>> TypedList<'a, T> {
 
 /// Blanket `DialectNodeType` for `TypedList` — resolves the `NodeId` as a list node.
 impl<'a, T> DialectNodeType<'a> for TypedList<'a, T> {
-    fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_list(id)?;
         Some(TypedList::new(raw, reader))
     }

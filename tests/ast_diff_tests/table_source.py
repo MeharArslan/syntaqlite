@@ -3,14 +3,14 @@
 
 """FROM clause table source AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class TableRefBasic(TestSuite):
     """Basic table reference tests."""
 
     def test_simple_table(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM t",
             out="""\
             SelectStmt
@@ -36,7 +36,7 @@ class TableRefBasic(TestSuite):
         )
 
     def test_table_with_alias(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM t AS x",
             out="""\
             SelectStmt
@@ -62,7 +62,7 @@ class TableRefBasic(TestSuite):
         )
 
     def test_schema_qualified(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM main.t",
             out="""\
             SelectStmt
@@ -88,7 +88,7 @@ class TableRefBasic(TestSuite):
         )
 
     def test_schema_qualified_with_alias(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM main.t AS x",
             out="""\
             SelectStmt
@@ -118,7 +118,7 @@ class JoinBasic(TestSuite):
     """Basic JOIN tests."""
 
     def test_comma_join(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a, b",
             out="""\
             SelectStmt
@@ -154,7 +154,7 @@ class JoinBasic(TestSuite):
         )
 
     def test_inner_join(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a JOIN b ON a.id = b.id",
             out="""\
             SelectStmt
@@ -202,7 +202,7 @@ class JoinBasic(TestSuite):
         )
 
     def test_left_join(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a LEFT JOIN b ON a.id = b.id",
             out="""\
             SelectStmt
@@ -250,7 +250,7 @@ class JoinBasic(TestSuite):
         )
 
     def test_right_join(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a RIGHT JOIN b ON a.id = b.id",
             out="""\
             SelectStmt
@@ -298,7 +298,7 @@ class JoinBasic(TestSuite):
         )
 
     def test_cross_join(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a CROSS JOIN b",
             out="""\
             SelectStmt
@@ -334,7 +334,7 @@ class JoinBasic(TestSuite):
         )
 
     def test_full_join(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a FULL JOIN b ON a.id = b.id",
             out="""\
             SelectStmt
@@ -382,7 +382,7 @@ class JoinBasic(TestSuite):
         )
 
     def test_left_outer_join(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a LEFT OUTER JOIN b ON a.id = b.id",
             out="""\
             SelectStmt
@@ -434,7 +434,7 @@ class JoinNatural(TestSuite):
     """NATURAL JOIN tests."""
 
     def test_natural_join(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a NATURAL JOIN b",
             out="""\
             SelectStmt
@@ -470,7 +470,7 @@ class JoinNatural(TestSuite):
         )
 
     def test_natural_left_join(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a NATURAL LEFT JOIN b",
             out="""\
             SelectStmt
@@ -510,7 +510,7 @@ class JoinUsing(TestSuite):
     """JOIN with USING clause tests."""
 
     def test_join_using(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a JOIN b USING(id)",
             out="""\
             SelectStmt
@@ -551,7 +551,7 @@ class JoinUsing(TestSuite):
         )
 
     def test_join_using_multiple(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a JOIN b USING(id, name)",
             out="""\
             SelectStmt
@@ -600,7 +600,7 @@ class JoinMultiple(TestSuite):
     """Multiple JOIN tests."""
 
     def test_multiple_joins(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM a JOIN b ON a.id = b.id LEFT JOIN c ON b.id = c.id",
             out="""\
             SelectStmt
@@ -674,7 +674,7 @@ class SubqueryTableSource(TestSuite):
     """Subquery table source tests."""
 
     def test_subquery_source(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM (SELECT 1) AS t",
             out="""\
             SelectStmt

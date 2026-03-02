@@ -3,14 +3,14 @@
 
 """Column reference expression AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class ColumnRefBasic(TestSuite):
     """Column reference tests."""
 
     def test_simple_column(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT x",
             out="""\
             SelectStmt
@@ -36,7 +36,7 @@ class ColumnRefBasic(TestSuite):
         )
 
     def test_qualified_column(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT t.x",
             out="""\
             SelectStmt
@@ -62,7 +62,7 @@ class ColumnRefBasic(TestSuite):
         )
 
     def test_fully_qualified_column(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT s.t.x",
             out="""\
             SelectStmt
@@ -88,7 +88,7 @@ class ColumnRefBasic(TestSuite):
         )
 
     def test_multiple_columns(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT a, b, c",
             out="""\
             SelectStmt
@@ -130,7 +130,7 @@ class ColumnRefBasic(TestSuite):
         )
 
     def test_table_star(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT t.*",
             out="""\
             SelectStmt
@@ -152,7 +152,7 @@ class ColumnRefBasic(TestSuite):
         )
 
     def test_mixed_expressions(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT a, t.b, 1 + x",
             out="""\
             SelectStmt

@@ -752,6 +752,8 @@ dependencies = [
 name = "syntaqlite"
 version = "0.1.0"
 dependencies = [
+ "lsp-server",
+ "lsp-types",
  "serde",
  "serde_json",
  "syntaqlite-parser",
@@ -778,8 +780,6 @@ dependencies = [
  "clap",
  "glob",
  "libloading",
- "lsp-server",
- "lsp-types",
  "serde_json",
  "syntaqlite",
  "syntaqlite-buildtools",

@@ -3,10 +3,24 @@
 
 // ── Public API ───────────────────────────────────────────────────────────
 
+/// A structured parse error from a `.synq` file.
+#[derive(Debug, Clone)]
+pub struct SynqParseError {
+    pub message: String,
+}
+
+impl std::fmt::Display for SynqParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
 /// Parse a single .synq file's contents into a list of items.
-pub fn parse_synq_file(input: &str) -> Result<Vec<Item>, String> {
-    let tokens = tokenize(input)?;
-    Parser::new(tokens).parse_file()
+pub fn parse_synq_file(input: &str) -> Result<Vec<Item>, SynqParseError> {
+    let tokens = tokenize(input).map_err(|message| SynqParseError { message })?;
+    Parser::new(tokens)
+        .parse_file()
+        .map_err(|message| SynqParseError { message })
 }
 
 // ── AST ──────────────────────────────────────────────────────────────────

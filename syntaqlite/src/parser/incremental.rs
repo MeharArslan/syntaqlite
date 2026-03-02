@@ -4,16 +4,23 @@
 use std::ffi::{CStr, c_int};
 use std::ops::Range;
 
-use super::ffi;
-use super::nodes::NodeId;
 use super::session::{CursorState, NodeRef, ParseError, RawNodeReader};
 use crate::dialect::Dialect;
 use syntaqlite_parser::dialect::ffi::DialectConfig;
+use syntaqlite_parser::nodes::NodeId;
+use syntaqlite_parser::parser::{
+    Comment, MacroRegion, ParseResult, Parser, syntaqlite_create_parser_with_dialect,
+    syntaqlite_parser_begin_macro, syntaqlite_parser_completion_context, syntaqlite_parser_destroy,
+    syntaqlite_parser_end_macro, syntaqlite_parser_expected_tokens, syntaqlite_parser_feed_token,
+    syntaqlite_parser_finish, syntaqlite_parser_node_count, syntaqlite_parser_result,
+    syntaqlite_parser_set_collect_tokens, syntaqlite_parser_set_dialect_config,
+    syntaqlite_parser_set_trace,
+};
 
 /// A low-level parser for token-by-token feeding. Owns its own C parser
 /// handle and source buffer, independent of `Parser`.
 pub struct RawIncrementalParser<'d> {
-    raw: *mut ffi::Parser,
+    raw: *mut Parser,
     source_buf: Vec<u8>,
     /// Owned dialect config, kept alive so the C pointer remains valid.
     _dialect_config: Option<Box<DialectConfig>>,
@@ -72,7 +79,7 @@ impl Drop for RawIncrementalParser<'_> {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_dialect
         // and has not been freed (Drop runs exactly once).
-        unsafe { ffi::syntaqlite_parser_destroy(self.raw) }
+        unsafe { syntaqlite_parser_destroy(self.raw) }
     }
 }
 
@@ -110,15 +117,14 @@ impl<'a> RawIncrementalParserBuilder<'a> {
     pub fn build(self) -> RawIncrementalParser<'a> {
         // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
         // a new parser with default malloc/free. dialect.raw is valid for the call.
-        let raw = unsafe {
-            ffi::syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw)
-        };
+        let raw =
+            unsafe { syntaqlite_create_parser_with_dialect(std::ptr::null(), self.dialect.raw) };
         assert!(!raw.is_null(), "parser allocation failed");
 
         // SAFETY: raw is freshly created (not sealed), so these calls always succeed.
         unsafe {
-            ffi::syntaqlite_parser_set_trace(raw, self.trace as c_int);
-            ffi::syntaqlite_parser_set_collect_tokens(raw, self.collect_tokens as c_int);
+            syntaqlite_parser_set_trace(raw, self.trace as c_int);
+            syntaqlite_parser_set_collect_tokens(raw, self.collect_tokens as c_int);
         }
 
         let dialect_config = if let Some(config) = self.dialect_config {
@@ -126,7 +132,7 @@ impl<'a> RawIncrementalParserBuilder<'a> {
             // SAFETY: raw is valid; boxed pointer is stable and lives as long
             // as the LowLevelParser.
             unsafe {
-                ffi::syntaqlite_parser_set_dialect_config(raw, &*boxed as *const DialectConfig);
+                syntaqlite_parser_set_dialect_config(raw, &*boxed as *const DialectConfig);
             }
             Some(boxed)
         } else {
@@ -168,7 +174,7 @@ impl<'a> RawIncrementalCursor<'a> {
         // for the lifetime of the parser.
         unsafe {
             let raw = self.state.reader.raw();
-            let result = ffi::syntaqlite_parser_result(raw);
+            let result = syntaqlite_parser_result(raw);
             if rc == 1 {
                 return Ok(NodeId(result.root));
             }
@@ -194,7 +200,7 @@ impl<'a> RawIncrementalCursor<'a> {
     ///
     /// # Safety
     /// `result.error_msg` must be null or a valid C string.
-    unsafe fn extract_error(result: &ffi::ParseResult) -> ParseError {
+    unsafe fn extract_error(result: &ParseResult) -> ParseError {
         let msg = if result.error_msg.is_null() {
             "parse error".to_string()
         } else {
@@ -242,7 +248,7 @@ impl<'a> RawIncrementalCursor<'a> {
         let raw = self.state.reader.raw();
         let rc = unsafe {
             let c_text = self.state.c_source_ptr.add(span.start);
-            ffi::syntaqlite_parser_feed_token(
+            syntaqlite_parser_feed_token(
                 raw,
                 token_type as c_int,
                 c_text as *const _,
@@ -268,7 +274,7 @@ impl<'a> RawIncrementalCursor<'a> {
         self.assert_not_finished();
         self.finished = true;
         // SAFETY: raw is valid.
-        let rc = unsafe { ffi::syntaqlite_parser_finish(self.state.reader.raw()) };
+        let rc = unsafe { syntaqlite_parser_finish(self.state.reader.raw()) };
         match rc {
             0 => Ok(None),
             _ => self.parse_result(rc).map(Some),
@@ -289,11 +295,7 @@ impl<'a> RawIncrementalCursor<'a> {
         // SAFETY: raw is valid and exclusively borrowed via &self; stack_buf is
         // a valid output buffer.
         let total = unsafe {
-            ffi::syntaqlite_parser_expected_tokens(
-                raw,
-                stack_buf.as_mut_ptr(),
-                stack_buf.len() as c_int,
-            )
+            syntaqlite_parser_expected_tokens(raw, stack_buf.as_mut_ptr(), stack_buf.len() as c_int)
         };
         if total <= 0 {
             return Vec::new();
@@ -307,7 +309,7 @@ impl<'a> RawIncrementalCursor<'a> {
             let mut heap_buf = vec![0 as c_int; count];
             // SAFETY: raw is valid; heap_buf is sized to hold `total` entries.
             let written = unsafe {
-                ffi::syntaqlite_parser_expected_tokens(raw, heap_buf.as_mut_ptr(), total as c_int)
+                syntaqlite_parser_expected_tokens(raw, heap_buf.as_mut_ptr(), total as c_int)
             };
             let len = written.clamp(0, total) as usize;
             heap_buf.truncate(len);
@@ -321,7 +323,7 @@ impl<'a> RawIncrementalCursor<'a> {
     pub fn completion_context(&self) -> u32 {
         self.assert_not_finished();
         // SAFETY: raw is valid and exclusively borrowed via &self.
-        unsafe { ffi::syntaqlite_parser_completion_context(self.state.reader.raw()) }
+        unsafe { syntaqlite_parser_completion_context(self.state.reader.raw()) }
     }
 
     /// Return the number of nodes currently in the parser arena.
@@ -329,7 +331,7 @@ impl<'a> RawIncrementalCursor<'a> {
     /// Flushes any pending list nodes first, so all node data is consistent.
     pub fn node_count(&self) -> u32 {
         // SAFETY: raw is valid and exclusively borrowed via &self.
-        unsafe { ffi::syntaqlite_parser_node_count(self.state.reader.raw()) }
+        unsafe { syntaqlite_parser_node_count(self.state.reader.raw()) }
     }
 
     /// Mark subsequent fed tokens as being inside a macro expansion.
@@ -340,7 +342,7 @@ impl<'a> RawIncrementalCursor<'a> {
         self.assert_not_finished();
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         unsafe {
-            ffi::syntaqlite_parser_begin_macro(self.state.reader.raw(), call_offset, call_length);
+            syntaqlite_parser_begin_macro(self.state.reader.raw(), call_offset, call_length);
         }
     }
 
@@ -349,7 +351,7 @@ impl<'a> RawIncrementalCursor<'a> {
         self.assert_not_finished();
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         unsafe {
-            ffi::syntaqlite_parser_end_macro(self.state.reader.raw());
+            syntaqlite_parser_end_macro(self.state.reader.raw());
         }
     }
 
@@ -364,12 +366,12 @@ impl<'a> RawIncrementalCursor<'a> {
     }
 
     /// Return all comments captured during parsing.
-    pub fn comments(&self) -> &[super::ffi::Comment] {
+    pub fn comments(&self) -> &[Comment] {
         self.state.comments()
     }
 
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
-    pub fn macro_regions(&self) -> &[super::ffi::MacroRegion] {
+    pub fn macro_regions(&self) -> &[MacroRegion] {
         self.state.reader.macro_regions()
     }
 

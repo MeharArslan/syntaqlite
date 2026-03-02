@@ -3,14 +3,14 @@
 
 """Function call expression AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class FunctionCallBasic(TestSuite):
     """Basic function call tests."""
 
     def test_no_args(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT random()",
             out="""\
             SelectStmt
@@ -38,7 +38,7 @@ class FunctionCallBasic(TestSuite):
         )
 
     def test_one_arg(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT abs(1)",
             out="""\
             SelectStmt
@@ -70,7 +70,7 @@ class FunctionCallBasic(TestSuite):
         )
 
     def test_multiple_args(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT max(1, 2, 3)",
             out="""\
             SelectStmt
@@ -108,7 +108,7 @@ class FunctionCallBasic(TestSuite):
         )
 
     def test_count_star(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT count(*)",
             out="""\
             SelectStmt
@@ -136,7 +136,7 @@ class FunctionCallBasic(TestSuite):
         )
 
     def test_distinct(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT count(DISTINCT 1)",
             out="""\
             SelectStmt
@@ -168,7 +168,7 @@ class FunctionCallBasic(TestSuite):
         )
 
     def test_nested(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT abs(max(1, 2))",
             out="""\
             SelectStmt

@@ -3,14 +3,14 @@
 
 """Compound SELECT, subquery, and IN expression AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class CompoundSelect(TestSuite):
     """Compound SELECT statement tests."""
 
     def test_union(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 UNION SELECT 2",
             out="""\
             CompoundSelect
@@ -57,7 +57,7 @@ class CompoundSelect(TestSuite):
         )
 
     def test_union_all(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 UNION ALL SELECT 2",
             out="""\
             CompoundSelect
@@ -104,7 +104,7 @@ class CompoundSelect(TestSuite):
         )
 
     def test_intersect(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 INTERSECT SELECT 2",
             out="""\
             CompoundSelect
@@ -151,7 +151,7 @@ class CompoundSelect(TestSuite):
         )
 
     def test_except(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 EXCEPT SELECT 2",
             out="""\
             CompoundSelect
@@ -202,7 +202,7 @@ class SubqueryExpr(TestSuite):
     """Subquery expression tests."""
 
     def test_scalar_subquery(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT (SELECT 1)",
             out="""\
             SelectStmt
@@ -244,7 +244,7 @@ class SubqueryExpr(TestSuite):
         )
 
     def test_exists(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT EXISTS (SELECT 1)",
             out="""\
             SelectStmt
@@ -290,7 +290,7 @@ class InExpr(TestSuite):
     """IN expression tests."""
 
     def test_in_list(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 IN (1, 2, 3)",
             out="""\
             SelectStmt
@@ -329,7 +329,7 @@ class InExpr(TestSuite):
         )
 
     def test_not_in_list(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 NOT IN (1, 2, 3)",
             out="""\
             SelectStmt
@@ -368,7 +368,7 @@ class InExpr(TestSuite):
         )
 
     def test_in_subquery(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 IN (SELECT 1)",
             out="""\
             SelectStmt

@@ -3,14 +3,14 @@
 
 """VALUES clause AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class ValuesClause(TestSuite):
     """VALUES clause tests."""
 
     def test_single_row(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="VALUES (1, 2, 3)",
             out="""\
             ValuesClause
@@ -30,7 +30,7 @@ class ValuesClause(TestSuite):
         )
 
     def test_multi_row(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="VALUES (1, 2), (3, 4)",
             out="""\
             ValuesClause
@@ -54,7 +54,7 @@ class ValuesClause(TestSuite):
         )
 
     def test_three_rows(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="VALUES (1), (2), (3)",
             out="""\
             ValuesClause
@@ -76,7 +76,7 @@ class ValuesClause(TestSuite):
         )
 
     def test_with_expressions(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="VALUES (1+2, 'hello')",
             out="""\
             ValuesClause
@@ -100,7 +100,7 @@ class ValuesClause(TestSuite):
         )
 
     def test_in_compound(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 UNION VALUES (2)",
             out="""\
             CompoundSelect

@@ -24,7 +24,7 @@ impl CTransformer {
     /// This works for array declarations like `static int foo[]`,
     /// variable declarations like `static int bar = 42`,
     /// and function declarations like `static int baz(...)`
-    pub fn remove_static(mut self, name: &str) -> Self {
+    pub fn remove_static_first(mut self, name: &str) -> Self {
         let lines: Vec<String> = self.content.lines().map(|s| s.to_string()).collect();
 
         // Try to find the declaration line

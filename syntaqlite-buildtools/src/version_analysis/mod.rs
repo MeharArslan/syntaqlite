@@ -14,7 +14,6 @@ mod diff;
 mod extract;
 pub mod grammar;
 mod hash;
-mod keywords;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -23,10 +22,10 @@ use std::path::Path;
 
 use serde::Serialize;
 
+pub use crate::util::mkkeywordhash_parser::{KeywordEntry, KeywordTable, MaskDefine};
 pub use diff::VariantDiff;
 pub use extract::ExtractedFragments;
 pub use grammar::GrammarAnalysis;
-pub use keywords::{KeywordEntry, KeywordTable, MaskDefine};
 
 /// A parsed SQLite version number (e.g. 3.35.0 or 3.8.11.1).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
@@ -209,7 +208,7 @@ pub fn analyze_versions(
         );
         per_version_fragments.push((version.clone(), fragments));
 
-        let kw = keywords::parse_keyword_table(&sources.mkkeywordhash_c);
+        let kw = crate::util::mkkeywordhash_parser::parse_keyword_table(&sources.mkkeywordhash_c);
         per_version_keywords.push((version.clone(), kw));
 
         per_version_grammar.push((version.clone(), sources.parse_y));

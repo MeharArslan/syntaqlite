@@ -67,7 +67,7 @@
 //! - [`dialect`] — The opaque [`Dialect`] handle, the
 //!   [`sqlite()`](dialect::sqlite) dialect accessor, and
 //!   semantic [`TokenCategory`](dialect::TokenCategory) enum.
-//! - [`raw`] — Dialect-agnostic building blocks for external dialect crates
+//! - [`ext`] — Dialect-agnostic building blocks for external dialect crates
 //!   (raw parsers, tokenizers, node types, and the [`Dialect`]
 //!   handle).
 //! - [`fmt`] — Formatter configuration ([`FormatConfig`](fmt::FormatConfig),
@@ -144,12 +144,12 @@ pub use syntaqlite_parser_sqlite::tokens::TokenType;
 //
 // Lower-level building blocks for external dialect crates and advanced use.
 
-/// Dialect-agnostic ("raw") API for building custom dialect integrations.
+/// Dialect-agnostic ("ext") API for building custom dialect integrations.
 ///
 /// Most users should prefer the top-level SQLite types ([`Parser`],
 /// [`Formatter`], etc.). This module exposes the lower-level building
 /// blocks that external dialect crates need.
-pub mod raw {
+pub mod ext {
     // ── Parser types ─────────────────────────────────────────────────────
     pub use crate::parser::session::ErrorSpan;
     pub use crate::parser::session::RawNodeReader;
@@ -164,20 +164,14 @@ pub mod raw {
     pub use crate::parser::incremental::RawIncrementalParser;
 
     // ── Node / field types ───────────────────────────────────────────────
-    pub use crate::parser::nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
     pub use crate::parser::session::{NodeRef, ParseError};
-    pub use crate::parser::typed_list::{DialectNodeType, DialectTokenType, TypedList};
+    pub use syntaqlite_parser::dialect_traits::{DialectNodeType, DialectTokenType};
+    pub use syntaqlite_parser::nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
+    pub use syntaqlite_parser::typed_list::TypedList;
 
     // ── Token metadata ───────────────────────────────────────────────────
-    pub use crate::parser::ffi::{
+    pub use syntaqlite_parser::parser::{
         Comment, CommentKind, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE,
-    };
-
-    // ── Typed wrappers (for external dialect crates) ─────────────────────
-    pub use crate::parser::typed::{
-        TypedIncrementalCursor, TypedIncrementalParser, TypedIncrementalParserBuilder, TypedParser,
-        TypedParserBuilder, TypedStatementCursor, TypedToken, TypedTokenCursor, TypedTokenizer,
-        TypedTokenizerBuilder,
     };
 
     // ── AST trait definitions ────────────────────────────────────────────

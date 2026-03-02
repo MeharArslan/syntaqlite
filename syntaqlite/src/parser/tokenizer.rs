@@ -3,8 +3,11 @@
 
 use std::ffi::CStr;
 
-use super::ffi;
 use crate::dialect::Dialect;
+use syntaqlite_parser::parser::{
+    Token, Tokenizer, syntaqlite_tokenizer_create, syntaqlite_tokenizer_destroy,
+    syntaqlite_tokenizer_next, syntaqlite_tokenizer_reset, syntaqlite_tokenizer_set_dialect_config,
+};
 
 /// A raw token: (token_type ordinal, text slice).
 #[derive(Debug, Clone, Copy)]
@@ -17,7 +20,7 @@ pub struct RawToken<'a> {
 
 /// Owns a tokenizer instance. Reusable across inputs via `tokenize()`.
 pub struct RawTokenizer<'d> {
-    raw: *mut ffi::Tokenizer,
+    raw: *mut Tokenizer,
     /// Null-terminated copy of the source text.
     source_buf: Vec<u8>,
     /// Owned dialect config, kept alive so the C pointer remains valid.
@@ -63,11 +66,7 @@ impl<'d> RawTokenizer<'d> {
         // SAFETY: self.raw is valid; c_source_ptr points to source_buf which is
         // null-terminated and lives for 'a (borrowed via &'a mut self).
         unsafe {
-            ffi::syntaqlite_tokenizer_reset(
-                self.raw,
-                c_source_ptr as *const _,
-                source.len() as u32,
-            );
+            syntaqlite_tokenizer_reset(self.raw, c_source_ptr as *const _, source.len() as u32);
         }
         RawTokenCursor {
             raw: self.raw,
@@ -87,7 +86,7 @@ impl<'d> RawTokenizer<'d> {
 
         // SAFETY: self.raw is valid; source is a CStr (null-terminated, valid for 'a).
         unsafe {
-            ffi::syntaqlite_tokenizer_reset(self.raw, source.as_ptr(), bytes.len() as u32);
+            syntaqlite_tokenizer_reset(self.raw, source.as_ptr(), bytes.len() as u32);
         }
         RawTokenCursor {
             raw: self.raw,
@@ -108,7 +107,7 @@ impl Drop for RawTokenizer<'_> {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_tokenizer_create and has
         // not been freed (Drop runs exactly once).
-        unsafe { ffi::syntaqlite_tokenizer_destroy(self.raw) }
+        unsafe { syntaqlite_tokenizer_destroy(self.raw) }
     }
 }
 
@@ -134,9 +133,8 @@ impl<'d> RawTokenizerBuilder<'d> {
     pub fn build(self) -> RawTokenizer<'d> {
         // SAFETY: syntaqlite_tokenizer_create(NULL, dialect) allocates a new
         // tokenizer with default malloc/free. dialect.raw is valid for the call.
-        let raw = unsafe {
-            ffi::syntaqlite_tokenizer_create(std::ptr::null(), self.dialect.raw as *const _)
-        };
+        let raw =
+            unsafe { syntaqlite_tokenizer_create(std::ptr::null(), self.dialect.raw as *const _) };
         assert!(!raw.is_null(), "tokenizer allocation failed");
 
         let mut tok = RawTokenizer {
@@ -151,7 +149,7 @@ impl<'d> RawTokenizerBuilder<'d> {
             // SAFETY: tok.raw is valid; we pass a pointer to tok.dialect_config.
             // The C side copies the config value.
             unsafe {
-                ffi::syntaqlite_tokenizer_set_dialect_config(
+                syntaqlite_tokenizer_set_dialect_config(
                     tok.raw,
                     &tok.dialect_config as *const syntaqlite_parser::dialect::ffi::DialectConfig,
                 );
@@ -164,7 +162,7 @@ impl<'d> RawTokenizerBuilder<'d> {
 
 /// An active tokenizer cursor. Iterates raw tokens from the bound source.
 pub struct RawTokenCursor<'a> {
-    raw: *mut ffi::Tokenizer,
+    raw: *mut Tokenizer,
     source: &'a str,
     /// Base pointer of the C source buffer. Used to compute offsets back
     /// into the Rust `source` slice.
@@ -175,14 +173,14 @@ impl<'a> Iterator for RawTokenCursor<'a> {
     type Item = RawToken<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut token = ffi::Token {
+        let mut token = Token {
             text: std::ptr::null(),
             length: 0,
             type_: 0,
         };
         // SAFETY: self.raw is valid (owned by RawTokenizer which outlives this
         // RawTokenCursor via the 'a borrow); &mut token is a valid output parameter.
-        let rc = unsafe { ffi::syntaqlite_tokenizer_next(self.raw, &mut token) };
+        let rc = unsafe { syntaqlite_tokenizer_next(self.raw, &mut token) };
         if rc == 0 {
             return None;
         }

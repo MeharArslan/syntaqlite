@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite::ast::Stmt;
-use syntaqlite::raw::DialectNodeType;
-use syntaqlite::raw::RawParser;
+use syntaqlite::ext::DialectNodeType;
+use syntaqlite::ext::RawParser;
 
 #[test]
 fn parse_select_1() {

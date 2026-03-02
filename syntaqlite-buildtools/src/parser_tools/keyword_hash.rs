@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::fs;
 
 use super::sqlite_fragments::SqliteFragments;
-use crate::TokenizerExtractResult;
+use crate::codegen_api::TokenizerExtractResult;
 use crate::util::c_transformer::CTransformer;
 use crate::util::c_writer::CWriter;
 
@@ -208,7 +208,7 @@ pub fn generate(
         .remove_function("sqlite3_keyword_check")
         .remove_lines_matching("#define SQLITE_N_KEYWORD")
         .rename_function("keywordCode", "synq_sqlite3_keywordCode")
-        .remove_static("synq_sqlite3_keywordCode")
+        .remove_static_first("synq_sqlite3_keywordCode")
         // Add config parameter to keywordCode signature.
         .replace_in_function(
             "synq_sqlite3_keywordCode",
@@ -221,10 +221,10 @@ pub fn generate(
             "*pType = aKWCode[i];\n    break;",
             keyword_check_code(),
         )
-        .remove_static("zKWText")
-        .remove_static("aKWOffset")
-        .remove_static("aKWLen")
-        .remove_static("aKWCode")
+        .remove_static_first("zKWText")
+        .remove_static_first("aKWOffset")
+        .remove_static_first("aKWLen")
+        .remove_static_first("aKWCode")
         .replace_all("zKWText", &kw_text_sym)
         .replace_all("aKWOffset", &kw_offset_sym)
         .replace_all("aKWLen", &kw_len_sym)

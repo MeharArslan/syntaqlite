@@ -44,7 +44,7 @@ fn tokenize_with_cflags(sql: &str, cflag_indices: &[u32]) -> Vec<(u32, String)> 
     for &idx in cflag_indices {
         config.cflags.set(idx);
     }
-    let mut tok = syntaqlite::raw::RawTokenizer::builder(*dialect)
+    let mut tok = syntaqlite::ext::RawTokenizer::builder(*dialect)
         .dialect_config(config)
         .build();
     tok.tokenize(sql)
@@ -72,7 +72,7 @@ fn tokenize_at_version_cflags(
     for &idx in cflag_indices {
         config.cflags.set(idx);
     }
-    let mut tok = syntaqlite::raw::RawTokenizer::builder(*dialect)
+    let mut tok = syntaqlite::ext::RawTokenizer::builder(*dialect)
         .dialect_config(config)
         .build();
     tok.tokenize(sql)
@@ -91,7 +91,7 @@ fn parses_ok_with_cflags(sql: &str, cflag_indices: &[u32]) -> bool {
     for &idx in cflag_indices {
         config.cflags.set(idx);
     }
-    let mut parser = syntaqlite::raw::RawParser::builder(dialect)
+    let mut parser = syntaqlite::ext::RawParser::builder(dialect)
         .dialect_config(config)
         .build();
     let mut cursor = parser.parse(sql);

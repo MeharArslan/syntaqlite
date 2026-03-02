@@ -3,14 +3,14 @@
 
 """Window function AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class WindowFunctionBasic(TestSuite):
     """Basic window function tests."""
 
     def test_row_number_over_order(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT row_number() OVER (ORDER BY id) FROM t",
             out="""\
             SelectStmt
@@ -56,7 +56,7 @@ class WindowFunctionBasic(TestSuite):
         )
 
     def test_count_star_over(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT count(*) OVER (PARTITION BY a) FROM t",
             out="""\
             SelectStmt
@@ -98,7 +98,7 @@ class WindowFunctionBasic(TestSuite):
         )
 
     def test_over_named_window(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT sum(x) OVER w FROM t WINDOW w AS (ORDER BY x)",
             out="""\
             SelectStmt
@@ -162,7 +162,7 @@ class FilterClause(TestSuite):
     """FILTER clause tests."""
 
     def test_filter_only(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT sum(x) FILTER (WHERE x > 0) FROM t",
             out="""\
             SelectStmt
@@ -210,7 +210,7 @@ class FilterClause(TestSuite):
         )
 
     def test_filter_and_over(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT sum(x) FILTER (WHERE x > 0) OVER (ORDER BY y) FROM t",
             out="""\
             SelectStmt
@@ -276,7 +276,7 @@ class FrameSpecification(TestSuite):
     """Frame specification tests."""
 
     def test_rows_between(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT sum(x) OVER (ORDER BY y ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) FROM t",
             out="""\
             SelectStmt
@@ -344,7 +344,7 @@ class FrameSpecification(TestSuite):
         )
 
     def test_range_unbounded(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT sum(x) OVER (ORDER BY y RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) FROM t",
             out="""\
             SelectStmt
@@ -406,7 +406,7 @@ class FrameSpecification(TestSuite):
         )
 
     def test_groups_with_exclude(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT sum(x) OVER (ORDER BY y GROUPS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING EXCLUDE TIES) FROM t",
             out="""\
             SelectStmt
@@ -468,7 +468,7 @@ class FrameSpecification(TestSuite):
         )
 
     def test_rows_single_bound(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT sum(x) OVER (ORDER BY y ROWS 2 PRECEDING) FROM t",
             out="""\
             SelectStmt
@@ -537,7 +537,7 @@ class WindowClause(TestSuite):
     """WINDOW clause tests."""
 
     def test_window_clause_basic(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT * FROM t WINDOW w AS (ORDER BY x)",
             out="""\
             SelectStmt
@@ -581,7 +581,7 @@ class WindowClause(TestSuite):
         )
 
     def test_multiple_named_windows(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT sum(x) OVER w1, avg(y) OVER w2 FROM t WINDOW w1 AS (ORDER BY a), w2 AS (PARTITION BY b ORDER BY c)",
             out="""\
             SelectStmt
@@ -687,7 +687,7 @@ class AggregateWithWindowFunction(TestSuite):
     """Aggregate function calls with FILTER/OVER."""
 
     def test_aggregate_with_filter_over(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT group_concat(x, ',' ORDER BY y) FILTER (WHERE z > 0) OVER (PARTITION BY a) FROM t",
             out="""\
             SelectStmt

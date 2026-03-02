@@ -7,14 +7,14 @@ These tests verify that the amalgamated syntaqlite_sqlite.{h,c} compiles
 and produces correct AST output — the same as the non-amalgamated CLI.
 """
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class SqliteAmalgBasic(TestSuite):
     """Basic parsing through amalgamated sqlite dialect."""
 
     def test_select_literal(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1",
             out="""\
             SelectStmt
@@ -39,7 +39,7 @@ class SqliteAmalgBasic(TestSuite):
         )
 
     def test_select_from_where(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT a FROM t WHERE x = 1",
             out="""\
             SelectStmt
@@ -80,7 +80,7 @@ class SqliteAmalgBasic(TestSuite):
         )
 
     def test_create_table(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT NOT NULL)",
             out="""\
             CreateTableStmt
@@ -131,7 +131,7 @@ class SqliteAmalgBasic(TestSuite):
         )
 
     def test_multiple_statements(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1; SELECT 2",
             out="""\
             SelectStmt

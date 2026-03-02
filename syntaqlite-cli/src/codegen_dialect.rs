@@ -195,7 +195,7 @@ fn cmd_generate_dialect_raw(
 
     let (merged_y, merged_synq) = load_extensions(actions_dir, nodes_dir)?;
 
-    let dialect_spec = syntaqlite_buildtools::DialectNaming::new(dialect);
+    let dialect_spec = syntaqlite_buildtools::codegen_api::DialectNaming::new(dialect);
     let parser_prefix = dialect_spec.parser_symbol_prefix();
     let ext_y_contents: Vec<&str> = merged_y
         .iter()
@@ -206,9 +206,10 @@ fn cmd_generate_dialect_raw(
         })
         .map(|(_, content)| content.as_str())
         .collect();
-    let extra_keywords = syntaqlite_buildtools::extract_terminals_from_y(&ext_y_contents);
+    let extra_keywords =
+        syntaqlite_buildtools::codegen_api::extract_terminals_from_y(&ext_y_contents);
 
-    let request = syntaqlite_buildtools::CodegenRequest {
+    let request = syntaqlite_buildtools::codegen_api::CodegenRequest {
         dialect: &dialect_spec,
         y_files: &merged_y,
         synq_files: &merged_synq,
@@ -219,8 +220,9 @@ fn cmd_generate_dialect_raw(
         base_synq_files: Some(syntaqlite_buildtools::base_files::base_synq_files()),
         open_for_extension: false,
         dialect_c_includes: includes.clone(),
+        internal_wrappers: false,
     };
-    let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
+    let artifacts = syntaqlite_buildtools::codegen_api::generate_codegen_artifacts(&request)?;
     let outputs = output_manifest(&dialect_spec, artifacts)?;
 
     let resolver = ExternalDialectResolver {
@@ -229,7 +231,12 @@ fn cmd_generate_dialect_raw(
         rust_src_dir: out.join("src"),
         crate_root: out.to_path_buf(),
     };
-    write_artifacts(outputs, &resolver, |dir| ensure_dir(dir, "output directory"), |path, content| write_file(path, content))?;
+    write_artifacts(
+        outputs,
+        &resolver,
+        |dir| ensure_dir(dir, "output directory"),
+        |path, content| write_file(path, content),
+    )?;
 
     eprintln!("wrote raw dialect files to {}", out.display());
     Ok(())
@@ -246,11 +253,11 @@ fn load_extensions(
     use syntaqlite_buildtools::base_files;
 
     let ext_y = match actions_dir {
-        Some(dir) => syntaqlite_buildtools::read_named_files_from_dir(dir, "y")?,
+        Some(dir) => syntaqlite_buildtools::codegen_api::read_named_files_from_dir(dir, "y")?,
         None => Vec::new(),
     };
     let ext_synq = match nodes_dir {
-        Some(dir) => syntaqlite_buildtools::read_named_files_from_dir(dir, "synq")?,
+        Some(dir) => syntaqlite_buildtools::codegen_api::read_named_files_from_dir(dir, "synq")?,
         None => Vec::new(),
     };
 
@@ -268,7 +275,7 @@ fn codegen_to_dir_with_base(
     include_dir: &Path,
     includes: &syntaqlite_buildtools::dialect_codegen::DialectCIncludes<'_>,
 ) -> Result<(), String> {
-    let dialect_spec = syntaqlite_buildtools::DialectNaming::new(dialect);
+    let dialect_spec = syntaqlite_buildtools::codegen_api::DialectNaming::new(dialect);
     let parser_prefix = dialect_spec.parser_symbol_prefix();
 
     // Extract extra keywords from extension .y files (terminals not in
@@ -284,9 +291,10 @@ fn codegen_to_dir_with_base(
         })
         .map(|(_, content)| content.as_str())
         .collect();
-    let extra_keywords = syntaqlite_buildtools::extract_terminals_from_y(&ext_y_contents);
+    let extra_keywords =
+        syntaqlite_buildtools::codegen_api::extract_terminals_from_y(&ext_y_contents);
 
-    let request = syntaqlite_buildtools::CodegenRequest {
+    let request = syntaqlite_buildtools::codegen_api::CodegenRequest {
         dialect: &dialect_spec,
         y_files,
         synq_files,
@@ -297,8 +305,9 @@ fn codegen_to_dir_with_base(
         base_synq_files: Some(syntaqlite_buildtools::base_files::base_synq_files()),
         open_for_extension: false,
         dialect_c_includes: includes.clone(),
+        internal_wrappers: false,
     };
-    let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
+    let artifacts = syntaqlite_buildtools::codegen_api::generate_codegen_artifacts(&request)?;
 
     // Write token header.
     write_file(

@@ -4,7 +4,7 @@
 use syntaqlite::IncrementalParser;
 use syntaqlite::TokenType;
 use syntaqlite::ast::Stmt;
-use syntaqlite::raw::DialectNodeType;
+use syntaqlite::ext::DialectNodeType;
 
 /// Feed tokens for "SELECT 1" via the low-level API and verify same AST
 /// as the high-level parse.
@@ -233,7 +233,7 @@ fn finish_with_no_tokens() {
 /// High-level API still works after the refactor.
 #[test]
 fn high_level_api_still_works() {
-    let mut parser = syntaqlite::raw::RawParser::new();
+    let mut parser = syntaqlite::ext::RawParser::new();
     let mut cursor = parser.parse("SELECT 1; SELECT 2");
 
     let node1 = cursor.next_statement().unwrap().unwrap();
@@ -251,7 +251,7 @@ fn high_level_api_still_works() {
 /// semantic highlighting can render them as `type`.
 #[test]
 fn sqlite_type_tokens_are_marked_as_type() {
-    use syntaqlite::raw::{RawParser, TOKEN_FLAG_AS_TYPE};
+    use syntaqlite::ext::{RawParser, TOKEN_FLAG_AS_TYPE};
 
     let source = "CREATE TABLE t(a int, b TEXT); SELECT CAST(a AS varchar(10)) FROM t";
     let dialect = syntaqlite::dialect::sqlite();

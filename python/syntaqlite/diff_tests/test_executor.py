@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint
 
 
 def normalize_output(text: str) -> str:
@@ -37,7 +37,7 @@ class TestResult:
 def execute_test(
     binary: Path,
     name: str,
-    blueprint: AstTestBlueprint,
+    blueprint: DiffTestBlueprint,
     timeout: Optional[float] = 30.0,
     subcommand: Optional[str] = None,
     use_stderr: bool = False,

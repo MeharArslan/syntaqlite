@@ -3,14 +3,14 @@
 
 """DROP, ALTER TABLE, and transaction control AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class DropTable(TestSuite):
     """DROP TABLE tests."""
 
     def test_drop_table(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DROP TABLE t",
             out="""\
             DropStmt
@@ -24,7 +24,7 @@ class DropTable(TestSuite):
         )
 
     def test_drop_table_if_exists(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DROP TABLE IF EXISTS t",
             out="""\
             DropStmt
@@ -38,7 +38,7 @@ class DropTable(TestSuite):
         )
 
     def test_drop_table_schema(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DROP TABLE main.t",
             out="""\
             DropStmt
@@ -56,7 +56,7 @@ class DropOther(TestSuite):
     """DROP INDEX/VIEW/TRIGGER tests."""
 
     def test_drop_index(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DROP INDEX idx",
             out="""\
             DropStmt
@@ -70,7 +70,7 @@ class DropOther(TestSuite):
         )
 
     def test_drop_view(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DROP VIEW v",
             out="""\
             DropStmt
@@ -84,7 +84,7 @@ class DropOther(TestSuite):
         )
 
     def test_drop_trigger(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="DROP TRIGGER tr",
             out="""\
             DropStmt
@@ -102,7 +102,7 @@ class AlterTableRename(TestSuite):
     """ALTER TABLE RENAME tests."""
 
     def test_rename_table(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ALTER TABLE t RENAME TO t2",
             out="""\
             AlterTableStmt
@@ -117,7 +117,7 @@ class AlterTableRename(TestSuite):
         )
 
     def test_rename_column(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ALTER TABLE t RENAME COLUMN c1 TO c2",
             out="""\
             AlterTableStmt
@@ -132,7 +132,7 @@ class AlterTableRename(TestSuite):
         )
 
     def test_rename_column_no_keyword(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ALTER TABLE t RENAME c1 TO c2",
             out="""\
             AlterTableStmt
@@ -151,7 +151,7 @@ class AlterTableDropAdd(TestSuite):
     """ALTER TABLE DROP/ADD COLUMN tests."""
 
     def test_drop_column(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ALTER TABLE t DROP COLUMN c1",
             out="""\
             AlterTableStmt
@@ -166,7 +166,7 @@ class AlterTableDropAdd(TestSuite):
         )
 
     def test_add_column(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ALTER TABLE t ADD COLUMN c1",
             out="""\
             AlterTableStmt
@@ -182,7 +182,7 @@ class TransactionControl(TestSuite):
     """BEGIN/COMMIT/ROLLBACK tests."""
 
     def test_begin(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="BEGIN",
             out="""\
 TransactionStmt
@@ -192,7 +192,7 @@ TransactionStmt
         )
 
     def test_begin_deferred(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="BEGIN DEFERRED",
             out="""\
 TransactionStmt
@@ -202,7 +202,7 @@ TransactionStmt
         )
 
     def test_begin_immediate(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="BEGIN IMMEDIATE TRANSACTION",
             out="""\
 TransactionStmt
@@ -212,7 +212,7 @@ TransactionStmt
         )
 
     def test_begin_exclusive(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="BEGIN EXCLUSIVE",
             out="""\
 TransactionStmt
@@ -222,7 +222,7 @@ TransactionStmt
         )
 
     def test_commit(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="COMMIT",
             out="""\
 TransactionStmt
@@ -232,7 +232,7 @@ TransactionStmt
         )
 
     def test_end(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="END",
             out="""\
 TransactionStmt
@@ -242,7 +242,7 @@ TransactionStmt
         )
 
     def test_rollback(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ROLLBACK",
             out="""\
 TransactionStmt
@@ -256,7 +256,7 @@ class SavepointControl(TestSuite):
     """SAVEPOINT/RELEASE/ROLLBACK TO tests."""
 
     def test_savepoint(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SAVEPOINT sp1",
             out="""\
 SavepointStmt
@@ -266,7 +266,7 @@ SavepointStmt
         )
 
     def test_release(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="RELEASE sp1",
             out="""\
 SavepointStmt
@@ -276,7 +276,7 @@ SavepointStmt
         )
 
     def test_release_savepoint(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="RELEASE SAVEPOINT sp1",
             out="""\
 SavepointStmt
@@ -286,7 +286,7 @@ SavepointStmt
         )
 
     def test_rollback_to(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ROLLBACK TO sp1",
             out="""\
 SavepointStmt
@@ -296,7 +296,7 @@ SavepointStmt
         )
 
     def test_rollback_to_savepoint(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="ROLLBACK TO SAVEPOINT sp1",
             out="""\
 SavepointStmt

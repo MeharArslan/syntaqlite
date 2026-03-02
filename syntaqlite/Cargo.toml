@@ -10,7 +10,7 @@ default = ["sqlite", "fmt", "validation"]
 fmt = []                     # formatter (bytecode interpreter)
 validation = []              # semantic validation (schema checks, fuzzy suggestions)
 embedded = ["validation"]    # embedded SQL extraction from host languages (Python f-strings, etc.)
-lsp = ["fmt", "validation"]  # LSP analysis host (needs fmt for formatting)
+lsp = ["fmt", "validation", "dep:lsp-server", "dep:lsp-types", "dep:serde_json"]  # LSP analysis host + protocol server
 sqlite = ["dep:syntaqlite-parser-sqlite"]  # SQLite dialect (grammar, tokens, cflags, functions)
 json = ["dep:serde", "dep:serde_json"]   # JSON serialization for diagnostics and related types
 
@@ -31,3 +31,5 @@ syntaqlite-parser = { path = "../syntaqlite-parser", default-features = false }
 syntaqlite-parser-sqlite = { path = "../syntaqlite-parser-sqlite", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
+lsp-server = { version = "0.7", optional = true }
+lsp-types = { version = "0.97", optional = true }

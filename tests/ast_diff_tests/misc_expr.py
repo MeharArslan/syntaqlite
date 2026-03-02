@@ -3,14 +3,14 @@
 
 """Miscellaneous expression AST tests: variables, COLLATE, CTIME_KW."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class BindParameters(TestSuite):
     """Bind parameter (VARIABLE) tests."""
 
     def test_question_mark(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT ?",
             out="""\
             SelectStmt
@@ -34,7 +34,7 @@ class BindParameters(TestSuite):
         )
 
     def test_numbered_parameter(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT ?1",
             out="""\
             SelectStmt
@@ -58,7 +58,7 @@ class BindParameters(TestSuite):
         )
 
     def test_named_colon(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT :name",
             out="""\
             SelectStmt
@@ -82,7 +82,7 @@ class BindParameters(TestSuite):
         )
 
     def test_named_at(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT @name",
             out="""\
             SelectStmt
@@ -106,7 +106,7 @@ class BindParameters(TestSuite):
         )
 
     def test_named_dollar(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT $name",
             out="""\
             SelectStmt
@@ -134,7 +134,7 @@ class CollateExpressions(TestSuite):
     """COLLATE expression tests."""
 
     def test_collate_nocase(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 1 COLLATE NOCASE",
             out="""\
             SelectStmt
@@ -162,7 +162,7 @@ class CollateExpressions(TestSuite):
         )
 
     def test_collate_binary(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT 'hello' COLLATE BINARY",
             out="""\
             SelectStmt
@@ -194,7 +194,7 @@ class DateTimeKeywords(TestSuite):
     """CTIME_KW (CURRENT_TIME, CURRENT_DATE, CURRENT_TIMESTAMP) tests."""
 
     def test_current_time(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CURRENT_TIME",
             out="""\
             SelectStmt
@@ -219,7 +219,7 @@ class DateTimeKeywords(TestSuite):
         )
 
     def test_current_date(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CURRENT_DATE",
             out="""\
             SelectStmt
@@ -244,7 +244,7 @@ class DateTimeKeywords(TestSuite):
         )
 
     def test_current_timestamp(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="SELECT CURRENT_TIMESTAMP",
             out="""\
             SelectStmt

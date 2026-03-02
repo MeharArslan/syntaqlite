@@ -289,7 +289,7 @@ mod tests {
         internal: "",
         public: "",
         dialect_include_dir: "",
-        tokens_header: "syntaqlite_sqlite/sqlite_tokens.h",
+        tokens_header: "syntaqlite/tokens.h",
     };
 
     #[test]

@@ -3,14 +3,14 @@
 
 """CREATE TRIGGER AST tests."""
 
-from python.syntaqlite.diff_tests.testing import AstTestBlueprint, TestSuite
+from python.syntaqlite.diff_tests.testing import DiffTestBlueprint, TestSuite
 
 
 class CreateTriggerBasic(TestSuite):
     """Basic CREATE TRIGGER tests."""
 
     def test_before_insert(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr BEFORE INSERT ON t BEGIN SELECT 1; END",
             out="""\
             CreateTriggerStmt
@@ -52,7 +52,7 @@ class CreateTriggerBasic(TestSuite):
         )
 
     def test_after_delete(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr AFTER DELETE ON t BEGIN SELECT 1; END",
             out="""\
             CreateTriggerStmt
@@ -94,7 +94,7 @@ class CreateTriggerBasic(TestSuite):
         )
 
     def test_instead_of(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr INSTEAD OF INSERT ON v BEGIN SELECT 1; END",
             out="""\
             CreateTriggerStmt
@@ -136,7 +136,7 @@ class CreateTriggerBasic(TestSuite):
         )
 
     def test_default_timing(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr INSERT ON t BEGIN SELECT 1; END",
             out="""\
             CreateTriggerStmt
@@ -182,7 +182,7 @@ class CreateTriggerOptions(TestSuite):
     """CREATE TRIGGER with options (TEMP, IF NOT EXISTS, schema, UPDATE OF)."""
 
     def test_temp_trigger(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TEMP TRIGGER tr BEFORE INSERT ON t BEGIN SELECT 1; END",
             out="""\
             CreateTriggerStmt
@@ -224,7 +224,7 @@ class CreateTriggerOptions(TestSuite):
         )
 
     def test_if_not_exists(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER IF NOT EXISTS tr BEFORE INSERT ON t BEGIN SELECT 1; END",
             out="""\
             CreateTriggerStmt
@@ -266,7 +266,7 @@ class CreateTriggerOptions(TestSuite):
         )
 
     def test_schema_qualified(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER main.tr BEFORE INSERT ON t BEGIN SELECT 1; END",
             out="""\
             CreateTriggerStmt
@@ -308,7 +308,7 @@ class CreateTriggerOptions(TestSuite):
         )
 
     def test_update_of_columns(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr BEFORE UPDATE OF col1, col2 ON t BEGIN SELECT 1; END",
             out="""\
             CreateTriggerStmt
@@ -359,7 +359,7 @@ class CreateTriggerOptions(TestSuite):
         )
 
     def test_update_no_of(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr BEFORE UPDATE ON t BEGIN SELECT 1; END",
             out="""\
             CreateTriggerStmt
@@ -405,7 +405,7 @@ class CreateTriggerWhen(TestSuite):
     """CREATE TRIGGER with WHEN clause and FOR EACH ROW."""
 
     def test_when_clause(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr BEFORE INSERT ON t WHEN new.x > 0 BEGIN SELECT 1; END",
             out="""\
             CreateTriggerStmt
@@ -458,7 +458,7 @@ class CreateTriggerWhen(TestSuite):
         )
 
     def test_for_each_row(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr BEFORE INSERT ON t FOR EACH ROW BEGIN SELECT 1; END",
             out="""\
             CreateTriggerStmt
@@ -504,7 +504,7 @@ class CreateTriggerBody(TestSuite):
     """Trigger body commands."""
 
     def test_update_body(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr BEFORE INSERT ON t BEGIN UPDATE t2 SET a = 1; END",
             out="""\
             CreateTriggerStmt
@@ -548,7 +548,7 @@ class CreateTriggerBody(TestSuite):
         )
 
     def test_insert_body(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr BEFORE DELETE ON t BEGIN INSERT INTO t2 VALUES (1); END",
             out="""\
             CreateTriggerStmt
@@ -588,7 +588,7 @@ class CreateTriggerBody(TestSuite):
         )
 
     def test_delete_body(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr BEFORE INSERT ON t BEGIN DELETE FROM t2 WHERE x = 1; END",
             out="""\
             CreateTriggerStmt
@@ -632,7 +632,7 @@ class CreateTriggerBody(TestSuite):
         )
 
     def test_multiple_commands(self):
-        return AstTestBlueprint(
+        return DiffTestBlueprint(
             sql="CREATE TRIGGER tr BEFORE INSERT ON t BEGIN SELECT 1; SELECT 2; END",
             out="""\
             CreateTriggerStmt

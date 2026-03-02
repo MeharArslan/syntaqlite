@@ -8,7 +8,7 @@ from typing import List, Tuple
 
 
 @dataclass
-class AstTestBlueprint:
+class DiffTestBlueprint:
     """Defines a single AST diff test.
 
     Attributes:
@@ -23,19 +23,19 @@ class TestSuite:
     """Base class for test suites.
 
     Subclass this and add methods prefixed with `test_` that return
-    AstTestBlueprint instances. The fetch() method will automatically
+    DiffTestBlueprint instances. The fetch() method will automatically
     discover and collect all test methods.
 
     Example:
         class SelectTests(TestSuite):
             def test_simple(self):
-                return AstTestBlueprint(
+                return DiffTestBlueprint(
                     sql="SELECT 1",
                     out="SelectStmt\\n  ..."
                 )
     """
 
-    def fetch(self) -> List[Tuple[str, AstTestBlueprint]]:
+    def fetch(self) -> List[Tuple[str, DiffTestBlueprint]]:
         """Discover and return all test methods.
 
         Returns:
@@ -49,7 +49,7 @@ class TestSuite:
                 method = getattr(self, name)
                 if callable(method):
                     blueprint = method()
-                    if isinstance(blueprint, AstTestBlueprint):
+                    if isinstance(blueprint, DiffTestBlueprint):
                         # Format: ClassName.method_name (without test_ prefix)
                         test_name = f"{self.__class__.__name__}.{name[5:]}"
                         tests.append((test_name, blueprint))

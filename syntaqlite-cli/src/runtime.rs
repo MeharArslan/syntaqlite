@@ -10,9 +10,9 @@ use std::path::PathBuf;
 use clap::ValueEnum;
 use syntaqlite::Formatter;
 use syntaqlite::dialect::Dialect;
+use syntaqlite::ext::RawParser;
+use syntaqlite::ext::{FfiDialect, ParseError};
 use syntaqlite::fmt::{FormatConfig, KeywordCase};
-use syntaqlite::raw::RawParser;
-use syntaqlite::raw::{FfiDialect, ParseError};
 use syntaqlite::validation::{Severity, ValidationConfig};
 
 use super::{Cli, Command};
@@ -95,7 +95,7 @@ fn render_diagnostic(
 }
 
 #[derive(Clone, Copy, ValueEnum)]
-pub(crate) enum CasingArg {
+pub(crate) enum KeywordCasing {
     Preserve,
     Upper,
     Lower,
@@ -144,57 +144,57 @@ pub(crate) fn dialect_symbol_name(name: Option<&str>) -> String {
     }
 }
 
-/// Load an extension dialect from a shared library.
-unsafe fn load_dynamic_dialect(
-    path: &str,
+/// Load a dialect symbol from an already-open shared library.
+///
+/// The returned `Dialect<'lib>` borrows from `lib` and must not outlive it.
+///
+/// # Safety
+/// `lib` must remain valid for the lifetime `'lib` of the returned dialect.
+unsafe fn dialect_from_library<'lib>(
+    lib: &'lib libloading::Library,
     name: Option<&str>,
-) -> Result<(libloading::Library, Dialect<'static>), String> {
-    let lib = unsafe {
-        libloading::Library::new(path).map_err(|e| format!("failed to load {path}: {e}"))?
-    };
-
+) -> Result<Dialect<'lib>, String> {
     let symbol_name = dialect_symbol_name(name);
     let func: libloading::Symbol<unsafe extern "C" fn() -> *const FfiDialect> = unsafe {
         lib.get(symbol_name.as_bytes())
-            .map_err(|e| format!("symbol {symbol_name} not found in {path}: {e}"))?
+            .map_err(|e| format!("symbol {symbol_name} not found in library: {e}"))?
     };
-
     let raw = unsafe { func() };
     if raw.is_null() {
         return Err(format!("{symbol_name} returned null"));
     }
-    let dialect = unsafe { Dialect::from_raw(raw) };
-
-    Ok((lib, dialect))
+    Ok(unsafe { Dialect::from_raw(raw) })
 }
 
 pub(crate) fn dispatch(cli: Cli, dialect: Option<&Dialect>) -> Result<(), String> {
-    // Load a dynamic dialect if requested. The library handle must stay alive
-    // until after the command finishes.
-    let _dialect_lib;
-    let dyn_dialect;
-    let active_dialect: Option<&Dialect>;
-
     if let Some(path) = &cli.dialect_path {
-        let (lib, d) = unsafe { load_dynamic_dialect(path, cli.dialect_name.as_deref()) }
+        // lib must be declared before dyn_dialect so Rust's reverse drop order
+        // ensures dyn_dialect is dropped before lib (which would unload the library).
+        let lib = unsafe {
+            libloading::Library::new(path).map_err(|e| format!("failed to load {path}: {e}"))
+        }
+        .unwrap_or_else(|e| {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        });
+        let dyn_dialect = unsafe { dialect_from_library(&lib, cli.dialect_name.as_deref()) }
             .unwrap_or_else(|e| {
                 eprintln!("error: {e}");
                 std::process::exit(1);
             });
-        _dialect_lib = Some(lib);
-        dyn_dialect = d;
-        active_dialect = Some(&dyn_dialect);
+        dispatch_commands(cli.command, Some(&dyn_dialect))
     } else {
-        _dialect_lib = None;
-        active_dialect = dialect;
+        dispatch_commands(cli.command, dialect)
     }
+}
 
-    match cli.command {
-        Command::Ast { files } => require_dialect(active_dialect).and_then(|d| cmd_ast(d, files)),
+fn dispatch_commands(command: Command, dialect: Option<&Dialect>) -> Result<(), String> {
+    match command {
+        Command::Ast { files } => require_dialect(dialect).and_then(|d| cmd_ast(d, files)),
         Command::Validate { files, lang } => {
-            require_dialect(active_dialect).and_then(|d| cmd_validate(d, files, lang))
+            require_dialect(dialect).and_then(|d| cmd_validate(d, files, lang))
         }
-        Command::Lsp => require_dialect(active_dialect).and_then(|d| crate::lsp::cmd_lsp(d)),
+        Command::Lsp => require_dialect(dialect).and_then(|d| crate::lsp::cmd_lsp(d)),
         Command::Fmt {
             files,
             line_width,
@@ -205,14 +205,14 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<&Dialect>) -> Result<(), String
             let config = FormatConfig {
                 line_width,
                 keyword_case: match keyword_case {
-                    CasingArg::Preserve => KeywordCase::Preserve,
-                    CasingArg::Upper => KeywordCase::Upper,
-                    CasingArg::Lower => KeywordCase::Lower,
+                    KeywordCasing::Preserve => KeywordCase::Preserve,
+                    KeywordCasing::Upper => KeywordCase::Upper,
+                    KeywordCasing::Lower => KeywordCase::Lower,
                 },
+                semicolons,
                 ..Default::default()
             };
-            require_dialect(active_dialect)
-                .and_then(|d| cmd_fmt(d, files, config, in_place, semicolons))
+            require_dialect(dialect).and_then(|d| cmd_fmt(d, files, config, in_place))
         }
         #[cfg(feature = "codegen-dialect")]
         Command::Dialect(cmd) => crate::codegen_dialect::dispatch(cmd),
@@ -290,11 +290,7 @@ fn cmd_fmt(
     files: Vec<String>,
     config: FormatConfig,
     in_place: bool,
-    semicolons: bool,
 ) -> Result<(), String> {
-    let mut config = config;
-    config.semicolons = semicolons;
-
     let mut errors = Vec::new();
     process_files(
         files,
@@ -443,21 +439,11 @@ fn render_diagnostics(
 
 /// Validate a source string and print diagnostics. Returns `true` if any errors were found.
 fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &ValidationConfig) -> bool {
-    let mut parser = RawParser::builder(dialect).build();
-    let mut cursor = parser.parse(source);
-
-    let results: Vec<_> = (&mut cursor).map(|r| r.map(|nr| nr.id())).collect();
     let functions = syntaqlite::embedded::sqlite_function_defs();
-    let diags = syntaqlite::validation::validate_parse_results(
-        cursor.reader(),
-        &results,
-        source,
-        dialect,
-        None,
-        &functions,
-        config,
-    );
-
+    let mut validator = syntaqlite::Validator::builder(dialect)
+        .functions(functions)
+        .build();
+    let diags = validator.validate(source, None, config);
     render_diagnostics(source, file, &diags)
 }
 

@@ -5,7 +5,8 @@ use std::marker::PhantomData;
 
 use crate::ast_traits::*;
 use crate::parser::session::RawNodeReader;
-use crate::parser::typed_list::{DialectNodeType, TypedList};
+use syntaqlite_parser::dialect_traits::DialectNodeType;
+use syntaqlite_parser::typed_list::TypedList;
 
 use super::ValidationConfig;
 use super::checks::{check_column_ref, check_function_call, check_table_ref};
@@ -192,7 +193,7 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
         if let Some(body) = trigger.body() {
             for node in body.iter() {
                 let id = node.node_id();
-                if let Some(stmt) = A::Stmt::from_arena(self.reader, id) {
+                if let Some(stmt) = A::Stmt::from_arena(*self.reader, id) {
                     self.walk_stmt(stmt, scope);
                 }
             }
@@ -390,9 +391,9 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
             // variant that matches any node (including SelectStmt), so checking
             // Expr first would route statement children through walk_expr
             // instead of walk_stmt, skipping FROM-clause table resolution.
-            if let Some(stmt) = A::Stmt::from_arena(self.reader, child_id) {
+            if let Some(stmt) = A::Stmt::from_arena(*self.reader, child_id) {
                 self.walk_stmt(stmt, scope);
-            } else if let Some(expr) = A::Expr::from_arena(self.reader, child_id) {
+            } else if let Some(expr) = A::Expr::from_arena(*self.reader, child_id) {
                 self.walk_expr(expr, scope);
             }
         }
@@ -401,7 +402,7 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
     fn walk_expr_list(&mut self, list: TypedList<'a, A::Node>, scope: &mut ScopeStack) {
         for node in list.iter() {
             let id = node.node_id();
-            if let Some(expr) = A::Expr::from_arena(self.reader, id) {
+            if let Some(expr) = A::Expr::from_arena(*self.reader, id) {
                 self.walk_expr(expr, scope);
             }
         }
@@ -410,28 +411,11 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
 
 #[cfg(test)]
 mod tests {
-    use crate::validation::{ValidationConfig, validate_statement};
+    use crate::validation::{ValidationConfig, Validator};
 
     fn validate_sql(sql: &str) -> Vec<super::super::types::Diagnostic> {
-        let dialect = &crate::sqlite::DIALECT;
-        let mut parser = crate::parser::RawParser::builder(&dialect).build();
-        let mut cursor = parser.parse(sql);
-        let stmt_ids: Vec<_> = (&mut cursor)
-            .map_while(|r| r.ok().map(|nr| nr.id()))
-            .collect();
-        stmt_ids
-            .iter()
-            .flat_map(|&id| {
-                validate_statement(
-                    cursor.reader(),
-                    id,
-                    None,
-                    None,
-                    &[],
-                    &ValidationConfig::default(),
-                )
-            })
-            .collect()
+        let mut validator = Validator::new();
+        validator.validate(sql, None, &ValidationConfig::default())
     }
 
     #[test]
@@ -445,29 +429,8 @@ mod tests {
 
     #[test]
     fn create_table_as_select_known_table_no_diags() {
-        let dialect = &crate::sqlite::DIALECT;
-        let mut parser = crate::parser::RawParser::builder(&dialect).build();
         let sql = "CREATE TABLE src (id INTEGER);\nCREATE TABLE t AS SELECT * FROM src;";
-        let mut cursor = parser.parse(sql);
-        let stmt_ids: Vec<_> = (&mut cursor)
-            .map(|r| r.map(|nr| nr.id()))
-            .collect::<Result<Vec<_>, _>>()
-            .expect("parse failed");
-        let ctx =
-            crate::validation::SessionContext::from_stmts(cursor.reader(), &stmt_ids, dialect);
-        let diags: Vec<_> = stmt_ids
-            .iter()
-            .flat_map(|&id| {
-                validate_statement(
-                    cursor.reader(),
-                    id,
-                    Some(&ctx),
-                    None,
-                    &[],
-                    &ValidationConfig::default(),
-                )
-            })
-            .collect();
+        let diags = validate_sql(sql);
         assert!(
             diags.is_empty(),
             "expected no diagnostics when source table is known: {:?}",

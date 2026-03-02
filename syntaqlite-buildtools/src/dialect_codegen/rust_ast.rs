@@ -3,9 +3,9 @@
 
 use std::collections::HashSet;
 
+use crate::util::pascal_case;
 use crate::util::rust_writer::RustWriter;
 use crate::util::synq_parser::{Field, Storage};
-use crate::util::{pascal_case, upper_snake_to_pascal};
 
 use super::{AstModel, NodeLikeRef};
 
@@ -154,7 +154,7 @@ fn emit_rust_value_enum(w: &mut RustWriter, name: &str, variants: &[String]) {
     w.line("#[repr(u32)]");
     w.open_block(&format!("pub enum {} {{", name));
     for (i, v) in variants.iter().enumerate() {
-        let variant_name = upper_snake_to_pascal(v);
+        let variant_name = pascal_case(v);
         w.line(&format!("{} = {},", variant_name, i));
     }
     w.close_block("}");
@@ -168,7 +168,7 @@ fn emit_rust_value_enum(w: &mut RustWriter, name: &str, variants: &[String]) {
     ));
     w.open_block("match raw {");
     for (i, v) in variants.iter().enumerate() {
-        let variant_name = upper_snake_to_pascal(v);
+        let variant_name = pascal_case(v);
         w.line(&format!("{} => Some({}::{}),", i, name, variant_name));
     }
     w.line("_ => None,");
@@ -179,7 +179,7 @@ fn emit_rust_value_enum(w: &mut RustWriter, name: &str, variants: &[String]) {
     w.open_block("pub fn as_str(&self) -> &'static str {");
     w.open_block("match self {");
     for v in variants {
-        let variant_name = upper_snake_to_pascal(v);
+        let variant_name = pascal_case(v);
         w.line(&format!("{}::{} => \"{}\",", name, variant_name, v));
     }
     w.close_block("}");
@@ -335,7 +335,7 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     w.line("#[repr(u32)]");
     w.open_block("pub enum TokenType {");
     for (name, value) in tokens {
-        let variant = upper_snake_to_pascal(name);
+        let variant = pascal_case(name);
         w.line(&format!("{} = {},", variant, value));
     }
     w.close_block("}");
@@ -346,7 +346,7 @@ pub fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     w.open_block("pub fn from_raw(raw: u32) -> Option<TokenType> {");
     w.open_block("match raw {");
     for (name, value) in tokens {
-        let variant = upper_snake_to_pascal(name);
+        let variant = pascal_case(name);
         w.line(&format!("{} => Some(TokenType::{}),", value, variant));
     }
     w.line("_ => None,");
@@ -523,7 +523,7 @@ impl AstModel<'_> {
                 abs_name
             ));
             w.indent();
-            w.line("fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {");
+            w.line("fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {");
             w.indent();
             w.line("let node = Node::resolve(reader, id)?;");
             w.line("Some(match node {");
@@ -562,7 +562,7 @@ impl AstModel<'_> {
             if !uses_reader {
                 w.line("#[allow(dead_code)]");
             }
-            w.line("reader: &'a RawNodeReader<'a>,");
+            w.line("reader: RawNodeReader<'a>,");
             w.line("id: NodeId,");
             w.dedent();
             w.line("}");
@@ -619,7 +619,7 @@ impl AstModel<'_> {
             // FromArena impl — resolve from arena by NodeId (tag-checked, no unsafe)
             w.line(&format!("impl<'a> DialectNodeType<'a> for {}<'a> {{", name));
             w.indent();
-            w.line("fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {");
+            w.line("fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {");
             w.indent();
             w.line(&format!(
                 "let raw = reader.resolve_as::<{ffi_path}::{name}>(id)?;"
@@ -686,7 +686,7 @@ impl AstModel<'_> {
         w.doc_comment("# Safety");
         w.doc_comment("`ptr` must be non-null, well-aligned, and valid for `'a`.");
         w.doc_comment("Its first `u32` must be a valid `NodeTag` discriminant.");
-        w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, reader: &'a RawNodeReader<'a>, id: NodeId) -> Node<'a> {");
+        w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, reader: RawNodeReader<'a>, id: NodeId) -> Node<'a> {");
         w.indent();
         w.line("// SAFETY: caller guarantees ptr is valid for 'a with a valid tag.");
         w.line("unsafe {");
@@ -721,7 +721,7 @@ impl AstModel<'_> {
         w.doc_comment("Resolve a `NodeId` into a typed `Node`, or `None` if null/invalid.");
         w.lines(
             "
-        pub(crate) fn resolve(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Node<'a>> {
+        pub(crate) fn resolve(reader: RawNodeReader<'a>, id: NodeId) -> Option<Node<'a>> {
             let (ptr, _tag) = reader.node_ptr(id)?;
             Some(unsafe { Node::from_raw(ptr as *const u32, reader, id) })
         }
@@ -766,7 +766,7 @@ impl AstModel<'_> {
         w.lines(
             "
         impl<'a> DialectNodeType<'a> for Node<'a> {
-            fn from_arena(reader: &'a RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+            fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
                 Node::resolve(reader, id)
             }
         }
