@@ -90,11 +90,17 @@ def main():
     os.makedirs(em_cache_dir, exist_ok=True)
     env["EM_CACHE"] = em_cache_dir
 
-    runtime_debug_relpath = os.path.join(
-        "target",
-        "wasm32-unknown-emscripten",
-        "release",
-        "syntaqlite-runtime.debug.wasm",
+    # Use a separate target directory so WASM builds don't invalidate native
+    # cargo caches (different RUSTFLAGS, different toolchain).
+    cargo_target_dir = os.path.join(ROOT_DIR, "target", "wasm-playground")
+    env["CARGO_TARGET_DIR"] = cargo_target_dir
+
+    wasm_release_dir = os.path.join(
+        cargo_target_dir, "wasm32-unknown-emscripten", "release",
+    )
+    runtime_debug_relpath = os.path.relpath(
+        os.path.join(wasm_release_dir, "syntaqlite-runtime.debug.wasm"),
+        ROOT_DIR,
     )
 
     # Point rustc at the wasm32 standard library installed by install-build-deps --ui.
@@ -137,7 +143,7 @@ def main():
         return rc
 
     # Copy the built wasm to web/playground/.
-    wasm_target_dir = os.path.join(ROOT_DIR, "target", "wasm32-unknown-emscripten", "release")
+    wasm_target_dir = wasm_release_dir
     out_public_dir = os.path.join(ROOT_DIR, "web/playground", "public")
     os.makedirs(out_public_dir, exist_ok=True)
     out_runtime_js = os.path.join(ROOT_DIR, "web/playground", "public", "syntaqlite-runtime.js")

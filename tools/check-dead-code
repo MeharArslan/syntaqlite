@@ -11,6 +11,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
+CARGO="$SCRIPT_DIR/cargo"
 
 cd "$ROOT_DIR"
 
@@ -22,15 +23,15 @@ DEAD_CODE_LINTS="-D dead_code -D unused_imports -D unused_variables -D unused_mu
 
 # Default features — covers the common runtime path.
 step "dead code check: default features"
-cargo clippy --all-targets -- $DEAD_CODE_LINTS
+"$CARGO" clippy --all-targets -- $DEAD_CODE_LINTS
 
 # All features — exercises every feature-gated code path.
 step "dead code check: all features"
-cargo clippy --all-targets --all-features -- $DEAD_CODE_LINTS
+"$CARGO" clippy --all-targets --all-features -- $DEAD_CODE_LINTS
 
 # No default features — ensures feature-gated modules compile cleanly in
 # isolation (e.g. grammar-agnostic engine without the sqlite feature).
 step "dead code check: no default features"
-cargo clippy --all-targets --no-default-features -- $DEAD_CODE_LINTS
+"$CARGO" clippy --all-targets --no-default-features -- $DEAD_CODE_LINTS
 
 printf '\n\033[1;32mDead code check passed.\033[0m\n'
