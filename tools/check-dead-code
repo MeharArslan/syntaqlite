@@ -4,11 +4,8 @@
 
 # Check for dead code across all workspace crates and feature combinations.
 #
-# rustc only flags dead code on private items by default (public items in
-# libraries are assumed reachable by external crates). Running with
-# --all-targets surfaces dead code in binaries, tests, and examples, where
-# the full reachability graph is known. We also check each major feature
-# combination so that code gated behind a feature is not silently unused.
+# Uses clippy instead of RUSTFLAGS so that artifacts stay in the normal clippy
+# cache and don't invalidate the build cache for subsequent cargo test/build.
 
 set -e
 
@@ -21,19 +18,19 @@ step() {
     printf '\n\033[1;34m==> %s\033[0m\n' "$*"
 }
 
-DEAD_CODE_FLAGS="-D dead_code -D unused_imports -D unused_variables -D unused_mut"
+DEAD_CODE_LINTS="-D dead_code -D unused_imports -D unused_variables -D unused_mut"
 
 # Default features — covers the common runtime path.
 step "dead code check: default features"
-RUSTFLAGS="$DEAD_CODE_FLAGS" cargo check --all-targets 2>&1
+cargo clippy --all-targets -- $DEAD_CODE_LINTS
 
 # All features — exercises every feature-gated code path.
 step "dead code check: all features"
-RUSTFLAGS="$DEAD_CODE_FLAGS" cargo check --all-targets --all-features 2>&1
+cargo clippy --all-targets --all-features -- $DEAD_CODE_LINTS
 
 # No default features — ensures feature-gated modules compile cleanly in
 # isolation (e.g. grammar-agnostic engine without the sqlite feature).
 step "dead code check: no default features"
-RUSTFLAGS="$DEAD_CODE_FLAGS" cargo check --all-targets --no-default-features 2>&1
+cargo clippy --all-targets --no-default-features -- $DEAD_CODE_LINTS
 
 printf '\n\033[1;32mDead code check passed.\033[0m\n'

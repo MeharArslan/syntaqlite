@@ -23,9 +23,8 @@ fn pure_sqlite_never_produces_node_other() {
         let node_ref = cursor.next_statement().unwrap().unwrap();
         let node: Option<Node> = node_ref.as_typed();
         assert!(node.is_some(), "should resolve: {sql}");
-        match node.unwrap() {
-            Node::Other { .. } => panic!("unexpected Node::Other for pure SQLite: {sql}"),
-            _ => {}
+        if let Node::Other { .. } = node.unwrap() {
+            panic!("unexpected Node::Other for pure SQLite: {sql}")
         }
     }
 }
@@ -44,9 +43,8 @@ fn pure_sqlite_never_produces_stmt_other() {
         let node_ref = cursor.next_statement().unwrap().unwrap();
         let stmt: Option<Stmt> = node_ref.as_typed();
         assert!(stmt.is_some(), "should resolve as Stmt: {sql}");
-        match stmt.unwrap() {
-            Stmt::Other(_) => panic!("unexpected Stmt::Other for pure SQLite: {sql}"),
-            _ => {}
+        if let Stmt::Other(_) = stmt.unwrap() {
+            panic!("unexpected Stmt::Other for pure SQLite: {sql}")
         }
     }
 }

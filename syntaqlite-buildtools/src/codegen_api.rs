@@ -299,30 +299,6 @@ fn is_keyword_like(name: &str) -> bool {
     name.len() >= 2 && name.chars().all(|c| c.is_ascii_uppercase())
 }
 
-#[cfg(test)]
-mod tests {
-    use std::collections::BTreeSet;
-
-    #[test]
-    fn extract_terminals_collects_rhs_tokens_but_excludes_id() {
-        let y = r#"
-%token PERFETTO MACRO.
-%fallback ID PERFETTO MODULE.
-cmd ::= INCLUDE PERFETTO MODULE ID DOT ID.
-cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
-"#;
-        let got: BTreeSet<String> = super::extract_terminals_from_y(&[y]).into_iter().collect();
-        let want: BTreeSet<String> = [
-            "ANY", "AS", "CREATE", "DOT", "INCLUDE", "LP", "MACRO", "MODULE", "PERFETTO", "RP",
-        ]
-        .into_iter()
-        .map(str::to_string)
-        .collect();
-        assert_eq!(got, want);
-        assert!(!got.contains("ID"));
-    }
-}
-
 /// Concatenate in-memory .y file contents (already sorted by caller).
 pub fn concatenate_y_contents(files: &[(String, String)]) -> Result<Vec<u8>, String> {
     parser_pipeline::concatenate_y_contents(files)
@@ -551,4 +527,28 @@ pub fn read_named_files_from_dir(dir: &str, ext: &str) -> Result<Vec<(String, St
         .collect();
     files.sort_by(|a, b| a.0.cmp(&b.0));
     Ok(files)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    #[test]
+    fn extract_terminals_collects_rhs_tokens_but_excludes_id() {
+        let y = r#"
+%token PERFETTO MACRO.
+%fallback ID PERFETTO MODULE.
+cmd ::= INCLUDE PERFETTO MODULE ID DOT ID.
+cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
+"#;
+        let got: BTreeSet<String> = super::extract_terminals_from_y(&[y]).into_iter().collect();
+        let want: BTreeSet<String> = [
+            "ANY", "AS", "CREATE", "DOT", "INCLUDE", "LP", "MACRO", "MODULE", "PERFETTO", "RP",
+        ]
+        .into_iter()
+        .map(str::to_string)
+        .collect();
+        assert_eq!(got, want);
+        assert!(!got.contains("ID"));
+    }
 }

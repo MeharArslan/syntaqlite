@@ -105,9 +105,9 @@ const ALLOWED_EXTRA_RULES: &[&str] = &[
 pub(crate) fn verify_grammar(
     upstream_parse_y: &str,
     action_files: &[(&str, &str)], // (filename, contents)
-) -> Result<(), GrammarMismatch> {
+) -> Result<(), Box<GrammarMismatch>> {
     let upstream = LemonGrammar::parse(upstream_parse_y)
-        .map_err(|e| panic!("Failed to parse upstream parse.y: {e:?}"))?;
+        .unwrap_or_else(|e| panic!("Failed to parse upstream parse.y: {e:?}"));
 
     // Concatenate action files sorted by name (matching concatenate_y_contents ordering).
     let mut sorted_actions: Vec<(&str, &str)> = action_files.to_vec();
@@ -119,7 +119,7 @@ pub(crate) fn verify_grammar(
         .join("\n");
 
     let actions = LemonGrammar::parse(&combined)
-        .map_err(|e| panic!("Failed to parse action files: {e:?}"))?;
+        .unwrap_or_else(|e| panic!("Failed to parse action files: {e:?}"));
 
     // Compare rules.
     let upstream_rules: BTreeSet<String> = upstream.rules.iter().map(|r| r.to_string()).collect();
@@ -182,7 +182,7 @@ pub(crate) fn verify_grammar(
     if mismatch.is_empty() {
         Ok(())
     } else {
-        Err(mismatch)
+        Err(Box::new(mismatch))
     }
 }
 
@@ -191,7 +191,7 @@ fn collect_fallbacks(grammar: &LemonGrammar<'_>) -> BTreeSet<String> {
         .fallbacks
         .iter()
         .map(|fb| {
-            let mut tokens: Vec<&str> = fb.tokens.iter().copied().collect();
+            let mut tokens: Vec<&str> = fb.tokens.to_vec();
             tokens.sort();
             format!("{} <- {}", fb.target, tokens.join(" "))
         })
@@ -207,7 +207,7 @@ fn collect_precedences(grammar: &LemonGrammar<'_>) -> BTreeSet<String> {
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            let mut tokens: Vec<&str> = p.tokens.iter().copied().collect();
+            let mut tokens: Vec<&str> = p.tokens.to_vec();
             tokens.sort();
             format!("[{}] {} {}", i, p.assoc, tokens.join(" "))
         })

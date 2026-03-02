@@ -272,6 +272,120 @@ pub(crate) fn generate_dialect_h(dialect: &str) -> String {
     w.finish()
 }
 
+/// Generate the dialect dispatch header for amalgamation builds.
+///
+/// Produces a header like `sqlite_dialect_dispatch.h` that defines the
+/// `SYNQ_PARSER_ALLOC`, etc. macros to call the dialect's parser/tokenizer
+/// functions directly (bypassing function pointer indirection).
+pub(crate) fn generate_dialect_dispatch_h(dialect: &str) -> String {
+    let upper = dialect.to_uppercase();
+    let guard = format!("SYNTAQLITE_{upper}_DIALECT_DISPATCH_H");
+    let mut w = CWriter::new();
+    w.file_header();
+    w.header_guard_start(&guard);
+    let pascal = pascal_case(dialect);
+    w.line(&format!(
+        "#define SYNQ_PARSER_ALLOC(d, m)          Synq{pascal}ParseAlloc(m)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_PARSER_INIT(d, p)           Synq{pascal}ParseInit(p)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_PARSER_FINALIZE(d, p)       Synq{pascal}ParseFinalize(p)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_PARSER_FREE(d, p, f)        Synq{pascal}ParseFree(p, f)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_PARSER_FEED(d, p, t, m, c)  Synq{pascal}Parse(p, t, m, c)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_PARSER_TRACE(d, f, s)       Synq{pascal}ParseTrace(f, s)"
+    ));
+    w.line(&format!(
+        "#define SYNQ_GET_TOKEN(d, cfg, z, t)     Synq{pascal}GetToken(cfg, z, t)"
+    ));
+    w.newline();
+    w.header_guard_end(&guard);
+    w.finish()
+}
+
+/// Generate forward declarations for the Lemon-generated parser functions.
+///
+/// Produces `sqlite_parse.h` with declarations for `SynqSqliteParseAlloc`,
+/// `SynqSqliteParseFree`, etc.  Needed by the amalgamation so that
+/// `dialect.c` (emitted before `sqlite_parse.c`) can reference the symbols.
+pub(crate) fn generate_parse_h(dialect: &str) -> String {
+    let pascal = pascal_case(dialect);
+    let upper = dialect.to_uppercase();
+    let guard = format!("SYNTAQLITE_{upper}_PARSE_H");
+    let mut w = CWriter::new();
+    w.file_header();
+    w.header_guard_start(&guard);
+    w.line("#include <stddef.h>");
+    w.line("#include <stdint.h>");
+    w.line("#include <stdio.h>");
+    w.newline();
+    w.include_local("syntaqlite_dialect/ast_builder.h");
+    w.newline();
+    w.line("#ifdef __cplusplus");
+    w.line("extern \"C\" {");
+    w.line("#endif");
+    w.newline();
+    w.line(&format!(
+        "void* Synq{pascal}ParseAlloc(void* (*mallocProc)(size_t));"
+    ));
+    w.line(&format!("void Synq{pascal}ParseInit(void* parser);"));
+    w.line(&format!("void Synq{pascal}ParseFinalize(void* parser);"));
+    w.line(&format!(
+        "void Synq{pascal}ParseFree(void* parser, void (*freeProc)(void*));"
+    ));
+    w.line(&format!(
+        "void Synq{pascal}Parse(void* parser, int token_type, SynqParseToken minor,"
+    ));
+    w.line(&format!(
+        "{}SynqParseCtx* pCtx);",
+        " ".repeat(5 + 4 + pascal.len() + 5 + 1)
+    ));
+    w.line(&format!(
+        "int Synq{pascal}ParseExpectedTokens(void* parser, int* out_tokens, int out_cap);"
+    ));
+    w.line(&format!(
+        "uint32_t Synq{pascal}ParseCompletionContext(void* parser);"
+    ));
+    w.line("#ifndef NDEBUG");
+    w.line(&format!(
+        "void Synq{pascal}ParseTrace(FILE* trace_file, char* prompt);"
+    ));
+    w.line("#endif");
+    w.newline();
+    w.line("#ifdef __cplusplus");
+    w.line("}");
+    w.line("#endif");
+    w.newline();
+    w.header_guard_end(&guard);
+    w.finish()
+}
+
+/// Generate forward declaration for the tokenizer function.
+pub(crate) fn generate_tokenize_h(dialect: &str) -> String {
+    let pascal = pascal_case(dialect);
+    let upper = dialect.to_uppercase();
+    let guard = format!("SYNTAQLITE_INTERNAL_{upper}_TOKENIZE_H");
+    let mut w = CWriter::new();
+    w.file_header();
+    w.header_guard_start(&guard);
+    w.include_local("syntaqlite_dialect/sqlite_compat.h");
+    w.include_local("syntaqlite/dialect.h");
+    w.newline();
+    w.line(&format!(
+        "i64 Synq{pascal}GetToken(const SyntaqliteDialectConfig* config, const unsigned char* z, int* tokenType);"
+    ));
+    w.newline();
+    w.header_guard_end(&guard);
+    w.finish()
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -474,118 +588,4 @@ mod tests {
         assert!(c.contains("\"syntaqlite/parser.h\""));
         assert!(c.contains("\"syntaqlite_sqlite/sqlite_tokens.h\""));
     }
-}
-
-/// Generate the dialect dispatch header for amalgamation builds.
-///
-/// Produces a header like `sqlite_dialect_dispatch.h` that defines the
-/// `SYNQ_PARSER_ALLOC`, etc. macros to call the dialect's parser/tokenizer
-/// functions directly (bypassing function pointer indirection).
-pub(crate) fn generate_dialect_dispatch_h(dialect: &str) -> String {
-    let upper = dialect.to_uppercase();
-    let guard = format!("SYNTAQLITE_{upper}_DIALECT_DISPATCH_H");
-    let mut w = CWriter::new();
-    w.file_header();
-    w.header_guard_start(&guard);
-    let pascal = pascal_case(dialect);
-    w.line(&format!(
-        "#define SYNQ_PARSER_ALLOC(d, m)          Synq{pascal}ParseAlloc(m)"
-    ));
-    w.line(&format!(
-        "#define SYNQ_PARSER_INIT(d, p)           Synq{pascal}ParseInit(p)"
-    ));
-    w.line(&format!(
-        "#define SYNQ_PARSER_FINALIZE(d, p)       Synq{pascal}ParseFinalize(p)"
-    ));
-    w.line(&format!(
-        "#define SYNQ_PARSER_FREE(d, p, f)        Synq{pascal}ParseFree(p, f)"
-    ));
-    w.line(&format!(
-        "#define SYNQ_PARSER_FEED(d, p, t, m, c)  Synq{pascal}Parse(p, t, m, c)"
-    ));
-    w.line(&format!(
-        "#define SYNQ_PARSER_TRACE(d, f, s)       Synq{pascal}ParseTrace(f, s)"
-    ));
-    w.line(&format!(
-        "#define SYNQ_GET_TOKEN(d, cfg, z, t)     Synq{pascal}GetToken(cfg, z, t)"
-    ));
-    w.newline();
-    w.header_guard_end(&guard);
-    w.finish()
-}
-
-/// Generate forward declarations for the Lemon-generated parser functions.
-///
-/// Produces `sqlite_parse.h` with declarations for `SynqSqliteParseAlloc`,
-/// `SynqSqliteParseFree`, etc.  Needed by the amalgamation so that
-/// `dialect.c` (emitted before `sqlite_parse.c`) can reference the symbols.
-pub(crate) fn generate_parse_h(dialect: &str) -> String {
-    let pascal = pascal_case(dialect);
-    let upper = dialect.to_uppercase();
-    let guard = format!("SYNTAQLITE_{upper}_PARSE_H");
-    let mut w = CWriter::new();
-    w.file_header();
-    w.header_guard_start(&guard);
-    w.line("#include <stddef.h>");
-    w.line("#include <stdint.h>");
-    w.line("#include <stdio.h>");
-    w.newline();
-    w.include_local("syntaqlite_dialect/ast_builder.h");
-    w.newline();
-    w.line("#ifdef __cplusplus");
-    w.line("extern \"C\" {");
-    w.line("#endif");
-    w.newline();
-    w.line(&format!(
-        "void* Synq{pascal}ParseAlloc(void* (*mallocProc)(size_t));"
-    ));
-    w.line(&format!("void Synq{pascal}ParseInit(void* parser);"));
-    w.line(&format!("void Synq{pascal}ParseFinalize(void* parser);"));
-    w.line(&format!(
-        "void Synq{pascal}ParseFree(void* parser, void (*freeProc)(void*));"
-    ));
-    w.line(&format!(
-        "void Synq{pascal}Parse(void* parser, int token_type, SynqParseToken minor,"
-    ));
-    w.line(&format!(
-        "{}SynqParseCtx* pCtx);",
-        " ".repeat(5 + 4 + pascal.len() + 5 + 1)
-    ));
-    w.line(&format!(
-        "int Synq{pascal}ParseExpectedTokens(void* parser, int* out_tokens, int out_cap);"
-    ));
-    w.line(&format!(
-        "uint32_t Synq{pascal}ParseCompletionContext(void* parser);"
-    ));
-    w.line("#ifndef NDEBUG");
-    w.line(&format!(
-        "void Synq{pascal}ParseTrace(FILE* trace_file, char* prompt);"
-    ));
-    w.line("#endif");
-    w.newline();
-    w.line("#ifdef __cplusplus");
-    w.line("}");
-    w.line("#endif");
-    w.newline();
-    w.header_guard_end(&guard);
-    w.finish()
-}
-
-/// Generate forward declaration for the tokenizer function.
-pub(crate) fn generate_tokenize_h(dialect: &str) -> String {
-    let pascal = pascal_case(dialect);
-    let upper = dialect.to_uppercase();
-    let guard = format!("SYNTAQLITE_INTERNAL_{upper}_TOKENIZE_H");
-    let mut w = CWriter::new();
-    w.file_header();
-    w.header_guard_start(&guard);
-    w.include_local("syntaqlite_dialect/sqlite_compat.h");
-    w.include_local("syntaqlite/dialect.h");
-    w.newline();
-    w.line(&format!(
-        "i64 Synq{pascal}GetToken(const SyntaqliteDialectConfig* config, const unsigned char* z, int* tokenType);"
-    ));
-    w.newline();
-    w.header_guard_end(&guard);
-    w.finish()
 }

@@ -4,20 +4,29 @@
 
 # Pre-push verification: all checks must pass before marking work done.
 #
+# Usage:
+#   tools/pre-push          — run all checks (read-only)
+#   tools/pre-push --fix    — auto-fix what's possible, then run remaining checks
+#
+# Build cache strategy: steps are ordered so that each cargo invocation reuses
+# the previous one's artifacts. Clippy (via clippy-driver) runs first for all
+# feature combos, then test/build (via rustc) runs second. RUSTFLAGS are never
+# changed mid-script, avoiding full-workspace cache invalidation.
+#
 # Steps:
-#   1. cargo fmt --check                       — Rust formatting
-#   2. cargo check                             — type-check all crates
-#   3. cargo clippy --all-features --all-targets — lint (warnings = hard errors)
-#   4. tools/check-dead-code                   — dead code across all feature combos
-#   5. tools/format-c --check                  — C formatting
-#   6. tools/check-c-deps                      — C header dependency boundaries
-#   7. tools/run-unit-tests                    — Rust unit tests
-#   8. cargo build -p syntaqlite-cli           — build CLI for diff tests
-#   9. tools/run-ast-diff-tests                — AST diff tests
-#  10. tools/run-fmt-diff-tests                — formatter diff tests
-#  11. tools/run-amalg-tests                   — amalgamation integration tests
-#  12. tools/run-perfetto-fmt-diff-tests        — Perfetto formatter diff tests
-#  13. tools/run-perfetto-validation-diff-tests — Perfetto validation diff tests
+#   1. cargo fmt (--check or apply)              — Rust formatting
+#   2. cargo clippy --all-features               — lint + type-check (all features)
+#   3. cargo clippy (default features)           — dead code: default features
+#   4. cargo clippy --no-default-features        — dead code: no default features
+#   5. tools/format-c (--check or apply)         — C formatting
+#   6. tools/check-c-deps                        — C header dependency boundaries
+#   7. tools/run-unit-tests                      — Rust unit tests
+#   8. cargo build -p syntaqlite-cli             — build CLI for diff tests
+#   9. tools/run-ast-diff-tests                  — AST diff tests
+#  10. tools/run-fmt-diff-tests                  — formatter diff tests
+#  11. tools/run-amalg-tests                     — amalgamation integration tests
+#  12. tools/run-perfetto-fmt-diff-tests          — Perfetto formatter diff tests
+#  13. tools/run-perfetto-validation-diff-tests   — Perfetto validation diff tests
 
 set -e
 
@@ -26,29 +35,54 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$ROOT_DIR"
 
+FIX=0
+if [ "$1" = "--fix" ]; then
+    FIX=1
+fi
+
 step() {
     printf '\n\033[1;34m==> %s\033[0m\n' "$*"
 }
 
+DEAD_CODE_LINTS="-D dead_code -D unused_imports -D unused_variables -D unused_mut"
+
 # 1. Rust formatting
-step "cargo fmt --check"
-cargo fmt --check
+if [ "$FIX" = "1" ]; then
+    step "cargo fmt"
+    cargo fmt
+else
+    step "cargo fmt --check"
+    cargo fmt --check
+fi
 
-# 2. Type check
-step "cargo check --tests --all-features --all-targets"
-cargo check --tests --all-features
+# 2. Clippy — all features (type-check + lint; -D warnings covers dead_code etc.)
+if [ "$FIX" = "1" ]; then
+    step "cargo clippy --tests --all-features --all-targets --fix --allow-dirty --allow-staged -- -D warnings"
+    cargo clippy --tests --all-features --all-targets --fix --allow-dirty --allow-staged -- -D warnings
+    # Re-format after clippy --fix may have changed code
+    step "cargo fmt (post-clippy-fix)"
+    cargo fmt
+else
+    step "cargo clippy --tests --all-features --all-targets -- -D warnings"
+    cargo clippy --tests --all-features --all-targets -- -D warnings
+fi
 
-# 3. Clippy (zero warnings — hard error on any warning)
-step "cargo clippy --tests --all-features --all-targets -- -D warnings"
-cargo clippy --tests --all-features --all-targets -- -D warnings
+# 3-4. Dead code for remaining feature combos (clippy reuses its own cache —
+#       no RUSTFLAGS change, no full rebuild).
+step "dead code check: default features"
+cargo clippy --all-targets -- $DEAD_CODE_LINTS
 
-# 4. Dead code check
-step "tools/check-dead-code"
-"$SCRIPT_DIR/check-dead-code"
+step "dead code check: no default features"
+cargo clippy --all-targets --no-default-features -- $DEAD_CODE_LINTS
 
 # 5. C formatting
-step "tools/format-c --check"
-"$SCRIPT_DIR/format-c" --check
+if [ "$FIX" = "1" ]; then
+    step "tools/format-c"
+    "$SCRIPT_DIR/format-c"
+else
+    step "tools/format-c --check"
+    "$SCRIPT_DIR/format-c" --check
+fi
 
 # 6. C header dependency boundaries
 step "tools/check-c-deps"

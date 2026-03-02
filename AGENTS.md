@@ -73,13 +73,15 @@ The `.synq` DSL defines the AST node types, enums, flags, and formatter instruct
 | `tools/run-perfetto-validation-diff-tests` | Run Perfetto dialect validation tests (`tests/perfetto_validation_diff_tests/`) |
 | `tools/format-c` | Run clang-format on C sources (`--check` to verify without modifying) |
 | `tools/check-c-deps` | Verify C header dependency boundaries between crates |
-| `tools/pre-push` | Run all pre-push checks (formatting, clippy, deps, unit tests, diff tests) |
+| `tools/pre-push` | Run all pre-push checks (formatting, clippy, deps, unit tests, diff tests). Use `--fix` to auto-fix formatting and clippy warnings before running remaining checks. |
 | `tools/install-build-deps` | Install platform-specific build deps (clang-format, SQLite sources) |
 | `tools/build-web-playground` | Build WASM web playground |
 
 ## Verification
 
-For a mid-task check (no diff tests), run:
+When checks fail on formatting or clippy warnings, run `tools/pre-push --fix` first — it auto-applies `cargo fmt`, `cargo clippy --fix`, and `tools/format-c` before running the remaining checks. Only fix issues manually if `--fix` can't resolve them.
+
+For a faster mid-task check (no diff tests):
 
 ```sh
 cargo check --tests --all-features --all-targets && cargo clippy --tests --all-features --all-targets -- -D warnings
