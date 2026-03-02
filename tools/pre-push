@@ -10,10 +10,10 @@
 #   tools/pre-push -q       — quiet: no output unless a step fails (for agents)
 #   tools/pre-push -v       — verbose: step headers + full command output
 #
-# Build cache strategy: steps are ordered so that each cargo invocation reuses
-# the previous one's artifacts. Clippy (via clippy-driver) runs first for all
-# feature combos, then test/build (via rustc) runs second. RUSTFLAGS are never
-# changed mid-script, avoiding full-workspace cache invalidation.
+# Build cache strategy: the --all-features clippy step uses an isolated target
+# directory (target/clippy-all-features) so it doesn't invalidate the cache for
+# subsequent steps that run with default/no-default features. RUSTFLAGS are
+# never changed mid-script, avoiding full-workspace cache invalidation.
 #
 # All cargo invocations go through tools/cargo (hermetic toolchain) to keep
 # RUSTFLAGS consistent and avoid cross-tool cache invalidation.
@@ -95,14 +95,20 @@ else
 fi
 
 # 2. Clippy — all features (type-check + lint; -D warnings covers dead_code etc.)
+#    Isolated target dir: --all-features enables a different feature set for
+#    build deps (e.g. syntaqlite-buildtools), which would invalidate the cache
+#    used by subsequent default-features steps.
+CLIPPY_ALL_TARGET_DIR="$ROOT_DIR/target/clippy-all-features"
 if [ "$FIX" = "1" ]; then
     run_step "cargo clippy --fix --all-features" \
-        "$CARGO" clippy --tests --all-features --all-targets --fix --allow-dirty --allow-staged -- -D warnings
+        "$CARGO" clippy --tests --all-features --all-targets --fix --allow-dirty --allow-staged \
+        --target-dir "$CLIPPY_ALL_TARGET_DIR" -- -D warnings
     # Re-format after clippy --fix may have changed code
     run_step "cargo fmt (post-clippy-fix)" "$CARGO" fmt
 else
     run_step "cargo clippy --all-features" \
-        "$CARGO" clippy --tests --all-features --all-targets -- -D warnings
+        "$CARGO" clippy --tests --all-features --all-targets \
+        --target-dir "$CLIPPY_ALL_TARGET_DIR" -- -D warnings
 fi
 
 # 3-4. Dead code for remaining feature combos (clippy reuses its own cache —
