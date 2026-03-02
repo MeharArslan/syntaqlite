@@ -142,9 +142,9 @@ pub struct CodegenRequest<'a> {
     /// internal and public — suitable for external dialect crates where
     /// all headers live in a single output directory.
     pub dialect_c_includes: dialect_codegen::DialectCIncludes<'a>,
-    /// When `true`, generate `wrappers.rs` using the internal
-    /// `TypedParser`/`TypedTokenizer` template (for the `syntaqlite` crate
-    /// itself). When `false`, generate the external dialect crate template.
+    /// When `true`, generate `wrappers.rs` using internal import paths
+    /// (for the `syntaqlite` crate itself). When `false`, generate the
+    /// external dialect crate template with `syntaqlite::parser::typed::*`.
     pub internal_wrappers: bool,
 }
 
@@ -385,10 +385,13 @@ pub fn generate_codegen_artifacts(
             ),
             ast_traits_rs: Some(ast_model.generate_ast_traits()),
             lib_rs: dialect_codegen::generate_rust_lib(&request.dialect.dialect_symbol_fn_name()),
-            wrappers_rs: if request.internal_wrappers {
-                dialect_codegen::generate_internal_sqlite_wrappers()
-            } else {
-                dialect_codegen::generate_rust_wrappers()
+            wrappers_rs: {
+                let ctx = if request.internal_wrappers {
+                    dialect_codegen::WrapperContext::internal_sqlite()
+                } else {
+                    dialect_codegen::WrapperContext::external_dialect()
+                };
+                dialect_codegen::generate_rust_wrappers(&ctx)
             },
             build_rs: dialect_codegen::generate_rust_build_rs(request.dialect.name()),
             cargo_toml: dialect_codegen::generate_cargo_toml(

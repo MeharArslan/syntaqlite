@@ -19,8 +19,8 @@ pub use c_dialect::{
 pub use c_meta_codegen::{CFmtCodegenError, CMetaCodegenError};
 pub use rust_ast::{RustAstPaths, generate_rust_tokens};
 pub use rust_dialect::{
-    generate_cargo_toml, generate_internal_sqlite_wrappers, generate_rust_build_rs,
-    generate_rust_lib, generate_rust_wrappers,
+    WrapperContext, generate_cargo_toml, generate_rust_build_rs, generate_rust_lib,
+    generate_rust_wrappers,
 };
 
 pub use crate::util::functions_codegen::generate_functions_catalog;

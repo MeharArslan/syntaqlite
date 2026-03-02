@@ -246,7 +246,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
         let mut result = Vec::new();
 
         // Classify non-whitespace, non-comment tokens using parser flags.
-        for tp in cursor.state().tokens() {
+        for tp in cursor.tokens() {
             let cat = TokenCategory::from_u8(dialect.classify_token_raw(tp.type_, tp.flags));
             if cat == TokenCategory::Other {
                 continue;
@@ -255,7 +255,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
         }
 
         // Add comments as Comment tokens.
-        for c in cursor.state().comments() {
+        for c in cursor.comments() {
             result.push((c.offset as usize, c.length as usize, TokenCategory::Comment));
         }
 
@@ -387,7 +387,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
         }
 
         crate::validation::validate_parse_results(
-            cursor.state().reader(),
+            cursor.reader(),
             &results,
             &fragment.sql_text,
             dialect,

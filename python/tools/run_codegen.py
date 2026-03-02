@@ -124,6 +124,13 @@ def main():
         print("Codegen failed", file=sys.stderr)
         return result.returncode
 
+    # Format generated C code
+    format_c = project_root / "tools" / "format-c"
+    result = subprocess.run([str(format_c)], cwd=project_root)
+    if result.returncode != 0:
+        print("format-c failed", file=sys.stderr)
+        return result.returncode
+
     # Format generated Rust code
     result = subprocess.run(
         ["cargo", "fmt", "--all"],

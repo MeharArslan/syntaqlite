@@ -377,13 +377,15 @@ impl<'a> RawIncrementalCursor<'a> {
         self.state.comments()
     }
 
+    /// Return all token positions collected during parsing.
+    ///
+    /// Only populated when the parser was built with `collect_tokens(true)`.
+    pub fn tokens(&self) -> &[syntaqlite_parser::parser::TokenPos] {
+        self.state.tokens()
+    }
+
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
     pub fn macro_regions(&self) -> &[MacroRegion] {
         self.state.reader.macro_regions()
-    }
-
-    /// Access the underlying `CursorState` for read-only operations.
-    pub(crate) fn state(&self) -> &CursorState<'a> {
-        &self.state
     }
 }
