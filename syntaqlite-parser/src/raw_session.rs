@@ -4,9 +4,9 @@
 use std::ffi::{CStr, c_int};
 use std::ptr::NonNull;
 
-use crate::Dialect;
 use crate::DialectConfig;
 use crate::NodeId;
+use crate::RawDialect;
 use crate::parser::{
     syntaqlite_create_parser_with_dialect, syntaqlite_parser_comments, syntaqlite_parser_destroy,
     syntaqlite_parser_next, syntaqlite_parser_reset, syntaqlite_parser_set_collect_tokens,
@@ -29,7 +29,7 @@ pub struct RawParser<'d> {
     dialect_config: DialectConfig,
     /// The dialect used for this parser. Propagated to cursors and `NodeRef`s
     /// so consumers don't need to thread it manually.
-    pub(crate) dialect: Dialect<'d>,
+    pub(crate) dialect: RawDialect<'d>,
 }
 
 // SAFETY: The C parser is self-contained (no thread-local or shared mutable
@@ -39,9 +39,9 @@ unsafe impl Send for RawParser<'_> {}
 
 impl<'d> RawParser<'d> {
     /// Create a builder for a parser bound to the given dialect.
-    pub fn builder(dialect: Dialect<'d>) -> RawParserBuilder<'d> {
+    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> RawParserBuilder<'d> {
         RawParserBuilder {
-            dialect,
+            dialect: dialect.into(),
             trace: false,
             collect_tokens: false,
             dialect_config: None,
@@ -94,7 +94,7 @@ impl Drop for RawParser<'_> {
 
 /// Builder for configuring a [`RawParser`] before construction.
 pub struct RawParserBuilder<'a> {
-    dialect: Dialect<'a>,
+    dialect: RawDialect<'a>,
     trace: bool,
     collect_tokens: bool,
     dialect_config: Option<DialectConfig>,
@@ -172,7 +172,7 @@ pub struct CursorState<'a> {
     /// of whether the copying or zero-copy path was used.
     pub(crate) c_source_ptr: NonNull<u8>,
     /// The dialect handle, propagated from the parser that created this cursor.
-    pub(crate) dialect: Dialect<'a>,
+    pub(crate) dialect: RawDialect<'a>,
 }
 
 impl<'a> CursorState<'a> {
@@ -183,7 +183,7 @@ impl<'a> CursorState<'a> {
         raw: *mut Parser,
         source_buf: &'a mut Vec<u8>,
         source: &'a str,
-        dialect: Dialect<'a>,
+        dialect: RawDialect<'a>,
     ) -> Self {
         source_buf.clear();
         source_buf.reserve(source.len() + 1);
@@ -207,7 +207,7 @@ impl<'a> CursorState<'a> {
     }
 
     /// Construct a CursorState from a raw parser pointer and a CStr (zero-copy).
-    pub(crate) fn new_cstr(raw: *mut Parser, source: &'a CStr, dialect: Dialect<'a>) -> Self {
+    pub(crate) fn new_cstr(raw: *mut Parser, source: &'a CStr, dialect: RawDialect<'a>) -> Self {
         let bytes = source.to_bytes();
         let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 

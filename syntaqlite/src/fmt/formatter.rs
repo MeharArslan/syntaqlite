@@ -7,11 +7,11 @@ use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
 use syntaqlite_parser::RawParser;
 use syntaqlite_parser::{CommentKind, MacroRegion};
-use syntaqlite_parser::{Dialect, DialectConfig, NodeRef};
+use syntaqlite_parser::{DialectConfig, NodeRef, RawDialect};
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {
-    dialect: Dialect<'d>,
+    dialect: RawDialect<'d>,
     parser: RawParser<'d>,
     config: FormatConfig,
     /// Reusable scratch arena — cleared between format calls to avoid
@@ -39,9 +39,9 @@ impl<'d> Formatter<'d> {
     }
 
     /// Create a builder for a formatter bound to the given dialect.
-    pub fn builder(dialect: Dialect<'d>) -> FormatterBuilder<'d> {
+    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> FormatterBuilder<'d> {
         FormatterBuilder {
-            dialect,
+            dialect: dialect.into(),
             format_config: FormatConfig::default(),
             dialect_config: None,
         }
@@ -178,7 +178,7 @@ impl<'d> Formatter<'d> {
 
 /// Builder for configuring a [`Formatter`] before construction.
 pub struct FormatterBuilder<'d> {
-    dialect: Dialect<'d>,
+    dialect: RawDialect<'d>,
     format_config: FormatConfig,
     dialect_config: Option<DialectConfig>,
 }

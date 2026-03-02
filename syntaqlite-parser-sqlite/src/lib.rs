@@ -9,9 +9,20 @@
 pub mod ast;
 pub mod ffi;
 pub mod tokens;
-pub mod wrappers;
 
 pub(crate) mod dialect;
 
-/// Returns the SQLite dialect handle.
+/// Returns the raw (untagged) SQLite dialect handle.
 pub use dialect::dialect;
+
+/// Returns the tagged SQLite dialect handle carrying [`SqliteNodeFamily`] type info.
+pub use dialect::tagged_dialect;
+
+/// Marker type bundling the SQLite AST node and token types for use with
+/// [`syntaqlite_parser::Dialect<'d, N>`].
+pub struct SqliteNodeFamily;
+
+impl syntaqlite_parser::NodeFamily for SqliteNodeFamily {
+    type Node<'a> = ast::Stmt<'a>;
+    type Token = tokens::TokenType;
+}

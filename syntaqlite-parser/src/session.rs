@@ -4,7 +4,7 @@
 use std::ffi::CStr;
 use std::ptr::NonNull;
 
-use crate::dialect::Dialect;
+use crate::dialect::RawDialect;
 use crate::dialect_traits::DialectNodeType;
 use crate::nodes::{ArenaNode, NodeId, NodeList};
 use crate::parser as ffi;
@@ -20,7 +20,7 @@ use crate::parser as ffi;
 pub struct NodeRef<'a> {
     id: NodeId,
     reader: RawNodeReader<'a>,
-    dialect: Dialect<'a>,
+    dialect: RawDialect<'a>,
 }
 
 impl std::fmt::Debug for NodeRef<'_> {
@@ -31,7 +31,7 @@ impl std::fmt::Debug for NodeRef<'_> {
 
 impl<'a> NodeRef<'a> {
     /// Create a `NodeRef` from its constituent parts.
-    pub fn new(id: NodeId, reader: RawNodeReader<'a>, dialect: Dialect<'a>) -> Self {
+    pub fn new(id: NodeId, reader: RawNodeReader<'a>, dialect: RawDialect<'a>) -> Self {
         NodeRef {
             id,
             reader,
@@ -50,7 +50,7 @@ impl<'a> NodeRef<'a> {
     }
 
     /// Dialect handle.
-    pub fn dialect(&self) -> Dialect<'a> {
+    pub fn dialect(&self) -> RawDialect<'a> {
         self.dialect
     }
 
@@ -197,7 +197,7 @@ impl<'a> RawNodeReader<'a> {
     /// For regular nodes, returns all `Index`-typed (child node) fields.
     /// For list nodes, returns the list's children.
     /// Null child IDs are omitted from the result.
-    pub fn child_node_ids(&self, id: NodeId, dialect: &Dialect) -> Vec<NodeId> {
+    pub fn child_node_ids(&self, id: NodeId, dialect: &RawDialect) -> Vec<NodeId> {
         let Some((ptr, tag)) = self.node_ptr(id) else {
             return vec![];
         };
@@ -330,7 +330,7 @@ impl<'a> RawNodeReader<'a> {
     pub fn extract_fields(
         &self,
         id: NodeId,
-        dialect: &Dialect,
+        dialect: &RawDialect,
     ) -> Option<(u32, crate::nodes::Fields<'a>)> {
         let (ptr, tag) = self.node_ptr(id)?;
         // SAFETY: ptr is a valid arena pointer from node_ptr(); tag matches
@@ -381,7 +381,7 @@ impl<'a> RawNodeReader<'a> {
     }
 
     /// If `id` refers to a list node (per the dialect), return its child node IDs.
-    pub fn list_children(&self, id: NodeId, dialect: &Dialect) -> Option<&'a [NodeId]> {
+    pub fn list_children(&self, id: NodeId, dialect: &RawDialect) -> Option<&'a [NodeId]> {
         let (ptr, tag) = self.node_ptr(id)?;
         if !dialect.is_list(tag) {
             return None;

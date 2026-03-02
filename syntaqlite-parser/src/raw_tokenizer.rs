@@ -4,7 +4,7 @@
 use std::ffi::CStr;
 use std::ptr::NonNull;
 
-use crate::Dialect;
+use crate::RawDialect;
 use crate::parser::{
     syntaqlite_tokenizer_create, syntaqlite_tokenizer_destroy, syntaqlite_tokenizer_next,
     syntaqlite_tokenizer_reset, syntaqlite_tokenizer_set_dialect_config,
@@ -30,7 +30,7 @@ pub struct RawTokenizer<'d> {
     /// Keeps the dialect alive for the lifetime of the tokenizer. The C
     /// tokenizer stores the dialect pointer internally and uses it during
     /// tokenization, so the dialect must outlive this struct.
-    _dialect: Dialect<'d>,
+    _dialect: RawDialect<'d>,
 }
 
 // SAFETY: The C tokenizer is self-contained (no thread-local or shared mutable
@@ -40,9 +40,9 @@ unsafe impl<'d> Send for RawTokenizer<'d> {}
 
 impl<'d> RawTokenizer<'d> {
     /// Create a builder for a tokenizer bound to the given dialect.
-    pub fn builder(dialect: Dialect<'d>) -> RawTokenizerBuilder<'d> {
+    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> RawTokenizerBuilder<'d> {
         RawTokenizerBuilder {
-            dialect,
+            dialect: dialect.into(),
             dialect_config: None,
         }
     }
@@ -110,7 +110,7 @@ impl Drop for RawTokenizer<'_> {
 
 /// Builder for configuring a [`RawTokenizer`] before construction.
 pub struct RawTokenizerBuilder<'d> {
-    dialect: Dialect<'d>,
+    dialect: RawDialect<'d>,
     dialect_config: Option<crate::DialectConfig>,
 }
 

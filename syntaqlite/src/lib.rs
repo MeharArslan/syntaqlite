@@ -86,10 +86,38 @@ pub mod parser;
 // Everything else lives in its host module (parser::*, fmt::*, validation::*).
 
 #[cfg(feature = "sqlite")]
-pub use syntaqlite_parser_sqlite::wrappers::{
-    IncrementalCursor, IncrementalParser, IncrementalParserBuilder, Parser, ParserBuilder,
-    StatementCursor, Token, TokenCursor, Tokenizer, TokenizerBuilder,
-};
+pub type Parser = crate::parser::typed::Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+#[cfg(feature = "sqlite")]
+pub type ParserBuilder =
+    crate::parser::typed::ParserBuilder<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+#[cfg(feature = "sqlite")]
+pub type StatementCursor<'a> =
+    crate::parser::typed::StatementCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+#[cfg(feature = "sqlite")]
+pub type Tokenizer =
+    crate::parser::typed::Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+#[cfg(feature = "sqlite")]
+pub type TokenizerBuilder =
+    crate::parser::typed::TokenizerBuilder<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+#[cfg(feature = "sqlite")]
+pub type Token<'a> =
+    crate::parser::typed::Token<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+#[cfg(feature = "sqlite")]
+pub type TokenCursor<'a> =
+    crate::parser::typed::TokenCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+#[cfg(feature = "sqlite")]
+pub type IncrementalParser = crate::parser::typed::IncrementalParser<
+    'static,
+    syntaqlite_parser_sqlite::SqliteNodeFamily,
+>;
+#[cfg(feature = "sqlite")]
+pub type IncrementalParserBuilder = crate::parser::typed::IncrementalParserBuilder<
+    'static,
+    syntaqlite_parser_sqlite::SqliteNodeFamily,
+>;
+#[cfg(feature = "sqlite")]
+pub type IncrementalCursor<'a> =
+    crate::parser::typed::IncrementalCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
 
 // ── Formatter ────────────────────────────────────────────────────────────
 
@@ -189,4 +217,6 @@ pub mod ext {
 
     pub use syntaqlite_parser::Dialect;
     pub use syntaqlite_parser::FfiDialect;
+    pub use syntaqlite_parser::NodeFamily;
+    pub use syntaqlite_parser::RawDialect;
 }

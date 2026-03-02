@@ -41,7 +41,7 @@ from python.syntaqlite.diff_tests.utils import Colors, colorize, format_diff
 # Key is the prefix used in test class names (lower-cased suite name).
 DIALECT_CONFIGS = {
     "sqliteamalgfull": DialectConfig(name="sqlite", mode=AmalgMode.FULL),
-    "sqliteamalgruntimeonly": DialectConfig(name="sqlite", mode=AmalgMode.RUNTIME_ONLY),
+    "sqliteamalgruntimeonly": DialectConfig(name="sqlite", mode=AmalgMode.DIALECT_ONLY),
     "perfettoamalgfull": DialectConfig(
         name="perfetto",
         mode=AmalgMode.FULL,

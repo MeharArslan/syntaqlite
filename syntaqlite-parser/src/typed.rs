@@ -14,7 +14,7 @@ use crate::raw_incremental::{
 };
 use crate::raw_session::{RawParser, RawParserBuilder, RawStatementCursor};
 use crate::raw_tokenizer::{RawTokenCursor, RawTokenizer};
-use crate::{Dialect, DialectConfig};
+use crate::{DialectConfig, RawDialect};
 use crate::{DialectNodeType, DialectTokenType};
 use crate::{NodeRef, ParseError, RawNodeReader};
 
@@ -31,12 +31,12 @@ pub struct TypedParser<'d> {
 
 impl<'d> TypedParser<'d> {
     /// Create a parser bound to the given dialect.
-    pub fn new(dialect: Dialect<'d>) -> Self {
+    pub fn new(dialect: impl Into<RawDialect<'d>>) -> Self {
         Self::builder(dialect).build()
     }
 
     /// Create a builder for more detailed configuration.
-    pub fn builder(dialect: Dialect<'d>) -> TypedParserBuilder<'d> {
+    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> TypedParserBuilder<'d> {
         TypedParserBuilder {
             inner: RawParser::builder(dialect),
         }
@@ -212,12 +212,12 @@ unsafe impl<'d, T: DialectTokenType> Send for TypedTokenizer<'d, T> {}
 
 impl<'d, T: DialectTokenType> TypedTokenizer<'d, T> {
     /// Create a tokenizer with default configuration.
-    pub fn new(dialect: Dialect<'d>) -> Self {
+    pub fn new(dialect: impl Into<RawDialect<'d>>) -> Self {
         Self::builder(dialect).build()
     }
 
     /// Create a builder for configuring the tokenizer before construction.
-    pub fn builder(dialect: Dialect<'d>) -> TypedTokenizerBuilder<'d, T> {
+    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> TypedTokenizerBuilder<'d, T> {
         TypedTokenizerBuilder {
             inner: RawTokenizer::builder(dialect),
             _phantom: std::marker::PhantomData,
@@ -309,12 +309,12 @@ pub struct TypedIncrementalParser<'d> {
 
 impl<'d> TypedIncrementalParser<'d> {
     /// Create a parser bound to the given dialect.
-    pub fn new(dialect: Dialect<'d>) -> Self {
+    pub fn new(dialect: impl Into<RawDialect<'d>>) -> Self {
         Self::builder(dialect).build()
     }
 
     /// Create a builder for more detailed configuration.
-    pub fn builder(dialect: Dialect<'d>) -> TypedIncrementalParserBuilder<'d> {
+    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> TypedIncrementalParserBuilder<'d> {
         TypedIncrementalParserBuilder {
             inner: RawIncrementalParser::builder(dialect),
         }

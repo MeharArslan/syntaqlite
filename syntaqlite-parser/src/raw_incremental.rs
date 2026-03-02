@@ -5,10 +5,10 @@ use std::ffi::{CStr, c_int};
 use std::ops::Range;
 use std::ptr::NonNull;
 
-use crate::Dialect;
 use crate::DialectConfig;
 use crate::NodeId;
 use crate::NodeRef;
+use crate::RawDialect;
 use crate::parser::{
     syntaqlite_create_parser_with_dialect, syntaqlite_parser_begin_macro,
     syntaqlite_parser_completion_context, syntaqlite_parser_destroy, syntaqlite_parser_end_macro,
@@ -27,7 +27,7 @@ pub struct RawIncrementalParser<'d> {
     source_buf: Vec<u8>,
     /// Owned dialect config, kept alive so the C pointer remains valid.
     _dialect_config: Option<Box<DialectConfig>>,
-    dialect: Dialect<'d>,
+    dialect: RawDialect<'d>,
 }
 
 // SAFETY: Same reasoning as Parser — the C parser is self-contained.
@@ -36,9 +36,9 @@ unsafe impl Send for RawIncrementalParser<'_> {}
 impl<'d> RawIncrementalParser<'d> {
     /// Create a builder for a low-level parser bound to the given dialect.
     /// Token collection is enabled by default (required for formatting).
-    pub fn builder(dialect: Dialect<'d>) -> RawIncrementalParserBuilder<'d> {
+    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> RawIncrementalParserBuilder<'d> {
         RawIncrementalParserBuilder {
-            dialect,
+            dialect: dialect.into(),
             trace: false,
             collect_tokens: true,
             dialect_config: None,
@@ -81,7 +81,7 @@ impl Drop for RawIncrementalParser<'_> {
 
 /// Builder for configuring a [`RawIncrementalParser`] before construction.
 pub struct RawIncrementalParserBuilder<'a> {
-    dialect: Dialect<'a>,
+    dialect: RawDialect<'a>,
     trace: bool,
     collect_tokens: bool,
     dialect_config: Option<DialectConfig>,

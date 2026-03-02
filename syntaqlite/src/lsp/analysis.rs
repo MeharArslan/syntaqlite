@@ -3,7 +3,7 @@
 
 //! Per-document analysis: parse, diagnostics, semantic tokens, completions.
 
-use crate::dialect::{Dialect, DialectExt, TokenCategory};
+use crate::dialect::{DialectExt, RawDialect, TokenCategory};
 use crate::lsp::{CompletionContext, CompletionInfo, SemanticToken};
 use crate::validation::types::{Diagnostic, DiagnosticMessage, Severity};
 use syntaqlite_parser::RawIncrementalParser;
@@ -32,7 +32,7 @@ pub struct DocumentAnalysis {
 
 impl DocumentAnalysis {
     /// Parse `source` against `dialect` and collect all analysis results.
-    pub fn compute(dialect: Dialect<'_>, source: &str) -> Self {
+    pub fn compute(dialect: RawDialect<'_>, source: &str) -> Self {
         let mut parser = RawParser::builder(dialect).collect_tokens(true).build();
         let mut cursor = parser.parse(source);
         let mut diagnostics = Vec::new();
@@ -169,7 +169,7 @@ impl DocumentAnalysis {
     /// parser to determine what terminal tokens are valid at that point.
     pub fn completion_info_at(
         &self,
-        dialect: Dialect<'_>,
+        dialect: RawDialect<'_>,
         source: &str,
         offset: usize,
     ) -> CompletionInfo {

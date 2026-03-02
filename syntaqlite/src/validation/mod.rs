@@ -30,10 +30,10 @@ mod render;
 mod scope;
 mod walker;
 
-use syntaqlite_parser::Dialect;
 use syntaqlite_parser::DialectConfig;
 use syntaqlite_parser::DialectNodeType;
 use syntaqlite_parser::NodeId;
+use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::RawParser;
 use syntaqlite_parser::ast_traits::AstTypes;
 use syntaqlite_parser::{ParseError, RawNodeReader};
@@ -82,7 +82,7 @@ impl ValidationConfig {
 pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
     reader: RawNodeReader<'a>,
     stmt_id: NodeId,
-    dialect: Dialect<'_>,
+    dialect: RawDialect<'_>,
     session: Option<&SessionContext>,
     document: Option<&DocumentContext>,
     functions: &'a [FunctionDef],
@@ -105,7 +105,7 @@ pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
 pub(crate) fn validate_document(
     reader: RawNodeReader<'_>,
     stmt_ids: &[NodeId],
-    dialect: Dialect<'_>,
+    dialect: RawDialect<'_>,
     session: Option<&SessionContext>,
     functions: &[FunctionDef],
     config: &ValidationConfig,
@@ -178,7 +178,7 @@ fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
 /// ```
 pub struct Validator<'d> {
     parser: RawParser<'d>,
-    dialect: Dialect<'d>,
+    dialect: RawDialect<'d>,
     functions: Vec<FunctionDef>,
 }
 
@@ -200,9 +200,9 @@ impl<'d> Validator<'d> {
     }
 
     /// Create a builder for a validator bound to the given dialect.
-    pub fn builder(dialect: Dialect<'d>) -> ValidatorBuilder<'d> {
+    pub fn builder(dialect: impl Into<RawDialect<'d>>) -> ValidatorBuilder<'d> {
         ValidatorBuilder {
-            dialect,
+            dialect: dialect.into(),
             functions: Vec::new(),
             dialect_config: None,
         }
@@ -241,7 +241,7 @@ impl Default for Validator<'static> {
 
 /// Builder for configuring a [`Validator`] before construction.
 pub struct ValidatorBuilder<'d> {
-    dialect: Dialect<'d>,
+    dialect: RawDialect<'d>,
     functions: Vec<FunctionDef>,
     dialect_config: Option<syntaqlite_parser::DialectConfig>,
 }
@@ -287,7 +287,7 @@ pub(crate) fn validate_parse_results(
     reader: RawNodeReader<'_>,
     results: &[Result<NodeId, ParseError>],
     source: &str,
-    dialect: Dialect<'_>,
+    dialect: RawDialect<'_>,
     session: Option<&SessionContext>,
     functions: &[FunctionDef],
     config: &ValidationConfig,

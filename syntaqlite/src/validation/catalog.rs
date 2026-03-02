@@ -4,7 +4,7 @@
 use syntaqlite_parser::DialectConfig;
 
 use super::types::{FunctionDef, SessionContext, expand_function_info};
-use syntaqlite_parser::Dialect;
+use syntaqlite_parser::RawDialect;
 
 /// Resolved function catalog for a dialect configuration.
 ///
@@ -22,7 +22,7 @@ impl FunctionCatalog {
     /// Includes the SQLite built-in catalog and dialect extensions, both
     /// filtered by `config`. Call [`with_session`](Self::with_session) to
     /// merge in user-defined functions from a session context.
-    pub fn for_dialect(dialect: &Dialect<'_>, config: &DialectConfig) -> Self {
+    pub fn for_dialect(dialect: &RawDialect<'_>, config: &DialectConfig) -> Self {
         #[cfg(feature = "sqlite")]
         let mut functions: Vec<FunctionDef> = syntaqlite_parser::available_functions(config)
             .into_iter()

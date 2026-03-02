@@ -20,7 +20,7 @@ use lsp_types::{
     TextDocumentSyncKind, TextEdit, Uri,
 };
 
-use crate::dialect::{Dialect, SEMANTIC_TOKEN_LEGEND};
+use crate::dialect::{RawDialect, SEMANTIC_TOKEN_LEGEND};
 use crate::fmt::FormatConfig;
 use crate::lsp::{AnalysisHost, CompletionKind};
 use crate::validation::Severity;
@@ -36,7 +36,7 @@ pub struct LspServer;
 
 impl LspServer {
     /// Start the LSP server bound to `dialect` and block until shutdown.
-    pub fn run(dialect: Dialect<'_>) -> Result<(), Box<dyn Error + Sync + Send>> {
+    pub fn run(dialect: RawDialect<'_>) -> Result<(), Box<dyn Error + Sync + Send>> {
         let (connection, io_threads) = Connection::stdio();
 
         let server_capabilities = serde_json::to_value(ServerCapabilities {

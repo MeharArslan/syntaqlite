@@ -5,16 +5,21 @@
 
 use std::sync::LazyLock;
 
-use syntaqlite_parser::Dialect;
+use syntaqlite_parser::RawDialect;
 
 unsafe extern "C" {
     fn syntaqlite_sqlite_dialect() -> *const syntaqlite_parser::FfiDialect;
 }
 
-static DIALECT: LazyLock<Dialect<'static>> =
-    LazyLock::new(|| unsafe { Dialect::from_raw(syntaqlite_sqlite_dialect()) });
+static DIALECT: LazyLock<RawDialect<'static>> =
+    LazyLock::new(|| unsafe { RawDialect::from_raw(syntaqlite_sqlite_dialect()) });
 
-/// Returns the SQLite dialect handle.
-pub fn dialect() -> Dialect<'static> {
+/// Returns the raw (untagged) SQLite dialect handle.
+pub fn dialect() -> RawDialect<'static> {
     *DIALECT
+}
+
+/// Returns the SQLite dialect handle tagged with [`SqliteNodeFamily`](crate::SqliteNodeFamily).
+pub fn tagged_dialect() -> syntaqlite_parser::Dialect<'static, crate::SqliteNodeFamily> {
+    syntaqlite_parser::Dialect::from_raw_dialect(*DIALECT)
 }

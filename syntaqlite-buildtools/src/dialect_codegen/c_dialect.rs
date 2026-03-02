@@ -242,10 +242,10 @@ pub(crate) fn generate_dialect_c(
 /// `dialect` is a short name like `"sqlite"` or `"perfetto"`.
 ///
 /// The generated header is minimal: it forward-declares `SyntaqliteDialect`
-/// and declares the `syntaqlite_<dialect>_dialect()` accessor. Convenience
-/// The generated header includes `syntaqlite_{dialect}_dialect()` and, for
-/// non-sqlite dialects, a `syntaqlite_create_{dialect}_parser()` convenience
-/// wrapper analogous to `syntaqlite_create_sqlite_parser()` in `parser.h`.
+/// Generates the dialect public header declaring `syntaqlite_<dialect>_dialect()`.
+///
+/// Callers create a parser via the runtime's `syntaqlite_create_parser_with_dialect()`
+/// using the dialect handle returned by the accessor.
 pub(crate) fn generate_dialect_h(dialect: &str) -> String {
     let upper = dialect.to_uppercase();
     let guard = format!("SYNTAQLITE_{upper}_H");
@@ -263,33 +263,9 @@ pub(crate) fn generate_dialect_h(dialect: &str) -> String {
         "const SyntaqliteDialect* syntaqlite_{dialect}_dialect(void);"
     ));
     w.newline();
-
-    // For non-sqlite dialects, emit a convenience wrapper analogous to
-    // `syntaqlite_create_sqlite_parser` in `parser.h`. The sqlite dialect
-    // already gets its wrapper from the runtime `parser.h`.
-    if dialect != "sqlite" {
-        w.line("typedef struct SyntaqliteMemMethods SyntaqliteMemMethods;");
-        w.line("typedef struct SyntaqliteParser SyntaqliteParser;");
-        w.line("SyntaqliteParser* syntaqlite_create_parser_with_dialect(");
-        w.line("    const SyntaqliteMemMethods*, const SyntaqliteDialect*);");
-        w.newline();
-        w.line("#ifdef __cplusplus");
-        w.line("}");
-        w.line("#endif");
-        w.newline();
-        w.line(&format!(
-            "static inline SyntaqliteParser* syntaqlite_create_{dialect}_parser("
-        ));
-        w.line("    const SyntaqliteMemMethods* mem) {");
-        w.line(&format!(
-            "  return syntaqlite_create_parser_with_dialect(mem, syntaqlite_{dialect}_dialect());"
-        ));
-        w.line("}");
-    } else {
-        w.line("#ifdef __cplusplus");
-        w.line("}");
-        w.line("#endif");
-    }
+    w.line("#ifdef __cplusplus");
+    w.line("}");
+    w.line("#endif");
     w.newline();
     w.header_guard_end(&guard);
 

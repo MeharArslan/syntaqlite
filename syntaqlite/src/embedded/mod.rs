@@ -24,8 +24,8 @@ use std::ops::Range;
 use crate::dialect::{DialectExt, TokenCategory};
 use crate::validation::ValidationConfig;
 use crate::validation::types::{Diagnostic, DiagnosticMessage, FunctionDef};
-use syntaqlite_parser::Dialect;
 use syntaqlite_parser::ParseError;
+use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::RawIncrementalParser;
 use syntaqlite_parser::RawTokenizer;
 
@@ -136,7 +136,7 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 ///     .validate(&fragments);
 /// ```
 pub struct EmbeddedAnalyzer<'d> {
-    dialect: Dialect<'d>,
+    dialect: RawDialect<'d>,
     functions: Vec<FunctionDef>,
     config: ValidationConfig,
 }
@@ -144,7 +144,7 @@ pub struct EmbeddedAnalyzer<'d> {
 impl<'d> EmbeddedAnalyzer<'d> {
     /// Create a new analyzer with an empty function catalog and default
     /// validation config.
-    pub fn new(dialect: Dialect<'d>) -> Self {
+    pub fn new(dialect: RawDialect<'d>) -> Self {
         Self {
             dialect,
             functions: Vec::new(),

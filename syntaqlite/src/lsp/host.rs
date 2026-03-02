@@ -10,8 +10,8 @@ use crate::validation::types::{Diagnostic, FunctionDef, SessionContext};
 use crate::validation::{
     DocumentContext, FunctionCatalog, ValidationConfig, validate_statement_dialect,
 };
-use syntaqlite_parser::Dialect;
 use syntaqlite_parser::ParseError;
+use syntaqlite_parser::RawDialect;
 
 use super::{CompletionEntry, CompletionInfo, CompletionKind, SemanticToken};
 
@@ -24,7 +24,7 @@ struct Document {
 }
 
 impl Document {
-    fn analysis(&mut self, dialect: Dialect<'_>) -> &DocumentAnalysis {
+    fn analysis(&mut self, dialect: RawDialect<'_>) -> &DocumentAnalysis {
         if self.analysis.is_none() {
             self.analysis = Some(DocumentAnalysis::compute(dialect, &self.source));
         }
@@ -41,7 +41,7 @@ impl Document {
 /// access after each edit.  Heavy analysis is delegated to
 /// [`DocumentAnalysis`] and [`FunctionCatalog`].
 pub struct AnalysisHost<'d> {
-    dialect: Dialect<'d>,
+    dialect: RawDialect<'d>,
     documents: HashMap<String, Document>,
     context: Option<SessionContext>,
     dialect_config: Option<syntaqlite_parser::DialectConfig>,
@@ -49,9 +49,9 @@ pub struct AnalysisHost<'d> {
 
 impl<'d> AnalysisHost<'d> {
     /// Create a host bound to `dialect`.
-    pub fn with_dialect(dialect: Dialect<'d>) -> Self {
+    pub fn with_dialect(dialect: impl Into<RawDialect<'d>>) -> Self {
         AnalysisHost {
-            dialect,
+            dialect: dialect.into(),
             documents: HashMap::new(),
             context: None,
             dialect_config: None,
@@ -199,7 +199,7 @@ impl<'d> AnalysisHost<'d> {
             let Some((code, name)) = self.dialect.keyword_entry(i) else {
                 continue;
             };
-            if !expected_set.contains(&code) || !Dialect::is_suggestable_keyword(name) {
+            if !expected_set.contains(&code) || !RawDialect::is_suggestable_keyword(name) {
                 continue;
             }
             if seen.insert(name.to_string()) {

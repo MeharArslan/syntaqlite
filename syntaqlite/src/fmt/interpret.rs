@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_parser::Dialect;
+use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::RawNodeReader;
 use syntaqlite_parser::{FieldVal, Fields, NodeId};
 
@@ -12,7 +12,7 @@ use super::doc::{DocArena, DocId, NIL_DOC};
 /// Shared context threaded through the recursive formatting tree.
 /// Bundles the state that is constant across all nodes in a single format call.
 pub(crate) struct FmtCtx<'a> {
-    pub dialect: Dialect<'a>,
+    pub dialect: RawDialect<'a>,
     pub reader: RawNodeReader<'a>,
     pub comment_ctx: Option<&'a CommentCtx<'a>>,
 }

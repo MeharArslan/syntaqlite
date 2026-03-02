@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_parser::{Dialect, FunctionInfo};
+use syntaqlite_parser::{FunctionInfo, RawDialect};
 
 /// A diagnostic message associated with a source range.
 #[derive(Debug, Clone)]
@@ -317,7 +317,7 @@ impl SessionContext {
     pub fn from_stmts<'a>(
         reader: syntaqlite_parser::RawNodeReader<'a>,
         stmt_ids: &[syntaqlite_parser::NodeId],
-        dialect: Dialect<'_>,
+        dialect: RawDialect<'_>,
     ) -> Self {
         let mut doc = DocumentContext::new();
         for &id in stmt_ids {
@@ -335,7 +335,7 @@ impl SessionContext {
     /// from the resulting DDL statements. This is a convenience wrapper for
     /// cases like WASM where you have raw DDL text.
     pub fn from_ddl(
-        dialect: Dialect<'_>,
+        dialect: RawDialect<'_>,
         source: &str,
         dialect_config: Option<syntaqlite_parser::DialectConfig>,
     ) -> Self {
@@ -522,7 +522,7 @@ impl DocumentContext {
         &mut self,
         reader: syntaqlite_parser::RawNodeReader<'_>,
         stmt_id: syntaqlite_parser::NodeId,
-        dialect: Dialect<'_>,
+        dialect: RawDialect<'_>,
         session: Option<&SessionContext>,
     ) {
         use crate::dialect::SchemaKind;
@@ -631,7 +631,7 @@ impl DocumentContext {
 fn columns_from_column_list(
     reader: &syntaqlite_parser::RawNodeReader<'_>,
     list_id: syntaqlite_parser::NodeId,
-    dialect: &Dialect<'_>,
+    dialect: &RawDialect<'_>,
     out: &mut Vec<ColumnDef>,
 ) {
     use syntaqlite_parser::NodeId;
@@ -710,7 +710,7 @@ fn columns_from_column_list(
 fn extract_column_constraints(
     reader: &syntaqlite_parser::RawNodeReader<'_>,
     list_id: syntaqlite_parser::NodeId,
-    dialect: &Dialect<'_>,
+    dialect: &RawDialect<'_>,
     is_primary_key: &mut bool,
     is_nullable: &mut bool,
 ) {

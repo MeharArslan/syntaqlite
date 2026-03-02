@@ -6,7 +6,7 @@
 //! Gated on `feature = "json"`. Import [`NodeRefJsonExt`] to call
 //! [`dump_json`](NodeRefJsonExt::dump_json) on a [`NodeRef`].
 
-use syntaqlite_parser::Dialect;
+use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::{FieldVal, NodeId};
 use syntaqlite_parser::{NodeRef, RawNodeReader};
 
@@ -27,7 +27,11 @@ impl NodeRefJsonExt for NodeRef<'_> {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-fn dump_json_id(id: NodeId, reader: RawNodeReader<'_>, dialect: Dialect<'_>) -> serde_json::Value {
+fn dump_json_id(
+    id: NodeId,
+    reader: RawNodeReader<'_>,
+    dialect: RawDialect<'_>,
+) -> serde_json::Value {
     if id.is_null() {
         return serde_json::Value::Null;
     }

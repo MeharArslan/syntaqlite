@@ -17,7 +17,7 @@
 // ── Token category ─────────────────────────────────────────────────────
 
 #[cfg(feature = "sqlite")]
-pub use syntaqlite_parser::Dialect;
+pub use syntaqlite_parser::RawDialect;
 pub use syntaqlite_parser::{CflagInfo, Cflags, DialectConfig};
 pub use syntaqlite_parser::{SchemaContribution, SchemaKind};
 pub use syntaqlite_parser::{cflag_table, parse_cflag_name, parse_sqlite_version};
@@ -107,7 +107,7 @@ pub trait DialectExt {
     fn token_category(&self, token_type: u32) -> TokenCategory;
 }
 
-impl DialectExt for syntaqlite_parser::Dialect<'_> {
+impl DialectExt for syntaqlite_parser::RawDialect<'_> {
     fn classify_token(&self, token_type: u32, flags: u32) -> TokenCategory {
         TokenCategory::from_u8(self.classify_token_raw(token_type, flags))
     }
@@ -119,6 +119,6 @@ impl DialectExt for syntaqlite_parser::Dialect<'_> {
 
 /// Return the built-in SQLite dialect handle.
 #[cfg(feature = "sqlite")]
-pub fn sqlite() -> Dialect<'static> {
+pub fn sqlite() -> RawDialect<'static> {
     syntaqlite_parser_sqlite::dialect()
 }

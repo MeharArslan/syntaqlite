@@ -5,8 +5,8 @@
 //
 // Compiled against a generated syntaqlite_<dialect>.{h,c} amalgamation.
 // Reads SQL from stdin, parses each statement, and dumps the AST.
-// The DIALECT_HEADER and DIALECT_CREATE_PARSER macros are set at compile
-// time to select the dialect.
+// The DIALECT_HEADER and DIALECT_FN macros are set at compile time to
+// select the dialect header and dialect accessor function.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,7 +19,8 @@ int main(void) {
   size_t n = fread(buf, 1, sizeof(buf) - 1, stdin);
   buf[n] = '\0';
 
-  SyntaqliteParser* p = DIALECT_CREATE_PARSER(NULL);
+  SyntaqliteParser* p =
+      syntaqlite_create_parser_with_dialect(NULL, DIALECT_FN());
   syntaqlite_parser_reset(p, buf, (uint32_t)n);
 
   SyntaqliteParseResult result;

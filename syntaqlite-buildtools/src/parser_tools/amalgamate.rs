@@ -33,9 +33,9 @@ pub struct AmalgamateOutput {
 
 /// Produce `syntaqlite_runtime.{h,c}` and `syntaqlite_dialect.h`.
 ///
-/// Scans `csrc/` and the entire `include/` tree (including any
-/// dialect-specific subdirectories such as `include/syntaqlite_sqlite/`
-/// whose node types are referenced by the generated builder and meta headers).
+/// `runtime_dir` must contain **only** runtime files (written by
+/// [`write_runtime_headers_to_dir`]) — no dialect-specific code.
+/// Scans `csrc/` and `include/` subdirectories of the given directory.
 pub fn amalgamate_runtime(runtime_dir: &Path) -> Result<AmalgamateOutput, String> {
     let files = collect_files(&[&runtime_dir.join("csrc"), &runtime_dir.join("include")])?;
     emit(&files, EmitMode::RuntimeOnly)

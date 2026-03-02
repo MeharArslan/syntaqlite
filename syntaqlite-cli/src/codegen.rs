@@ -20,7 +20,7 @@ fn write_file(path: &Path, content: impl AsRef<[u8]>) -> Result<(), String> {
 // Hardcoded workspace paths for --output-type=sqlite
 const SQLITE_DIALECT_CRATE: &str = "syntaqlite-parser-sqlite";
 const SQLITE_SHARED_CRATE: &str = "syntaqlite-parser";
-const SQLITE_WRAPPERS_OUT: &str = "syntaqlite-parser-sqlite/src/wrappers.rs";
+
 
 /// Output type for the dialect codegen command.
 #[cfg(feature = "codegen-dialect")]
@@ -175,16 +175,19 @@ fn cmd_generate_dialect_full(
 ) -> Result<(), String> {
     use syntaqlite_buildtools::amalgamate;
 
-    let temp_dir = tempfile::TempDir::new().map_err(|e| format!("creating temp directory: {e}"))?;
-    let temp = temp_dir.path();
-    let (merged_y, merged_synq) = load_extensions(actions_dir, nodes_dir)?;
-    codegen_to_dir_with_base(&merged_y, &merged_synq, temp, dialect)?;
-    syntaqlite_buildtools::base_files::write_runtime_headers_to_dir(temp)
+    let runtime_temp =
+        tempfile::TempDir::new().map_err(|e| format!("creating runtime temp directory: {e}"))?;
+    syntaqlite_buildtools::base_files::write_runtime_headers_to_dir(runtime_temp.path())
         .map_err(|e| format!("writing runtime headers: {e}"))?;
+
+    let dialect_temp =
+        tempfile::TempDir::new().map_err(|e| format!("creating dialect temp directory: {e}"))?;
+    let (merged_y, merged_synq) = load_extensions(actions_dir, nodes_dir)?;
+    codegen_to_dir_with_base(&merged_y, &merged_synq, dialect_temp.path(), dialect)?;
 
     let out = Path::new(output_dir);
     ensure_dir(out, "output dir")?;
-    let result = amalgamate::amalgamate_full(dialect, temp, temp)?;
+    let result = amalgamate::amalgamate_full(dialect, runtime_temp.path(), dialect_temp.path())?;
     write_file(&out.join(format!("syntaqlite_{dialect}.h")), &result.header)?;
     write_file(&out.join(format!("syntaqlite_{dialect}.c")), &result.source)?;
     eprintln!(
@@ -200,8 +203,7 @@ fn cmd_generate_runtime(output_dir: &str) -> Result<(), String> {
 
     let temp_dir = tempfile::TempDir::new().map_err(|e| format!("creating temp directory: {e}"))?;
     let temp = temp_dir.path();
-    let (merged_y, merged_synq) = load_extensions(None, None)?;
-    codegen_to_dir_with_base(&merged_y, &merged_synq, temp, "sqlite")?;
+    // Only runtime base files — no dialect codegen.
     syntaqlite_buildtools::base_files::write_runtime_headers_to_dir(temp)
         .map_err(|e| format!("writing runtime headers: {e}"))?;
 
@@ -271,7 +273,7 @@ fn cmd_generate_sqlite(actions_dir: Option<&str>, nodes_dir: Option<&str>) -> Re
         SQLITE_SHARED_CRATE,
         dialect.name(),
         &dialect.include_dir_name(),
-        Some(SQLITE_WRAPPERS_OUT),
+        None, // wrappers.rs no longer generated for internal sqlite crate
     );
     // ast_traits_rs is written separately by codegen-sqlite-parser
     layout.ast_traits_rs = None;

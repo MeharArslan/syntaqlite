@@ -91,11 +91,11 @@ unsafe extern "C" {{
     fn {dialect_fn}() -> *const FfiDialect;
 }}
 
-static DIALECT: LazyLock<syntaqlite::Dialect<'static>> =
-    LazyLock::new(|| unsafe {{ syntaqlite::Dialect::from_raw({dialect_fn}()) }});
+static DIALECT: LazyLock<syntaqlite_parser::RawDialect<'static>> =
+    LazyLock::new(|| unsafe {{ syntaqlite_parser::RawDialect::from_raw({dialect_fn}()) }});
 
 /// Returns the dialect handle.
-pub fn dialect() -> syntaqlite::Dialect<'static> {{
+pub fn dialect() -> syntaqlite_parser::RawDialect<'static> {{
     *DIALECT
 }}
 "#

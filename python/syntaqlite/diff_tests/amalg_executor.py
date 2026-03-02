@@ -6,21 +6,18 @@
 Generates dialect amalgamations, compiles test binaries, and runs
 diff tests against them.
 
-Three amalgamation modes are supported:
+Two amalgamation modes are supported:
 
   FULL         -- runtime inlined into dialect amalgam; self-contained
                   syntaqlite_<name>.{h,c} that compiles with no extra deps.
   DIALECT_ONLY -- dialect references an external syntaqlite_runtime.h;
                   runtime must be compiled and linked separately.
-  RUNTIME_ONLY -- just the engine (syntaqlite_runtime.{h,c} +
-                  syntaqlite_dialect.h); used to verify the runtime itself.
 """
 
 import enum
-import os
 import subprocess
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -30,7 +27,6 @@ from python.syntaqlite.diff_tests.testing import DiffTestBlueprint
 class AmalgMode(enum.Enum):
     FULL = "full"
     DIALECT_ONLY = "dialect_only"
-    RUNTIME_ONLY = "runtime_only"
 
 
 @dataclass
@@ -100,14 +96,14 @@ def _compile_full_binary(
 ) -> None:
     """Compile test_ast.c against a self-contained full amalgamation."""
     header = f'"syntaqlite_{dialect_name}.h"'
-    create_fn = f"syntaqlite_create_{dialect_name}_parser"
+    dialect_fn = f"syntaqlite_{dialect_name}_dialect"
     source = amalg_dir / f"syntaqlite_{dialect_name}.c"
     cmd = [
         "cc", "-o", str(output_binary),
         str(test_c), str(source),
         f"-I{amalg_dir}",
         f"-DDIALECT_HEADER={header}",
-        f"-DDIALECT_CREATE_PARSER={create_fn}",
+        f"-DDIALECT_FN={dialect_fn}",
         "-Werror",
     ]
     proc = subprocess.run(cmd, capture_output=True, text=True)
@@ -126,7 +122,7 @@ def _compile_dialect_only_binary(
 ) -> None:
     """Compile test_ast.c against dialect-only + separate runtime."""
     header = f'"syntaqlite_{dialect_name}.h"'
-    create_fn = f"syntaqlite_create_{dialect_name}_parser"
+    dialect_fn = f"syntaqlite_{dialect_name}_dialect"
     dialect_src = amalg_dir / f"syntaqlite_{dialect_name}.c"
     runtime_src = runtime_dir / "syntaqlite_runtime.c"
     cmd = [
@@ -135,36 +131,13 @@ def _compile_dialect_only_binary(
         f"-I{amalg_dir}",
         f"-I{runtime_dir}",
         f"-DDIALECT_HEADER={header}",
-        f"-DDIALECT_CREATE_PARSER={create_fn}",
+        f"-DDIALECT_FN={dialect_fn}",
         "-Werror",
     ]
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
         raise RuntimeError(
             f"Compilation failed (dialect-only) for {dialect_name}:\n{proc.stderr}"
-        )
-
-
-def _compile_runtime_only_binary(
-    test_c: Path, runtime_dir: Path, output_binary: Path
-) -> None:
-    """Compile test_ast.c against the runtime-only amalgamation using the
-    built-in sqlite dialect that ships inside the runtime."""
-    header = '"syntaqlite_runtime.h"'
-    create_fn = "syntaqlite_create_sqlite_parser"
-    runtime_src = runtime_dir / "syntaqlite_runtime.c"
-    cmd = [
-        "cc", "-o", str(output_binary),
-        str(test_c), str(runtime_src),
-        f"-I{runtime_dir}",
-        f"-DDIALECT_HEADER={header}",
-        f"-DDIALECT_CREATE_PARSER={create_fn}",
-        "-Werror",
-    ]
-    proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise RuntimeError(
-            f"Compilation failed (runtime-only):\n{proc.stderr}"
         )
 
 
@@ -224,11 +197,6 @@ class AmalgTestContext:
             _compile_dialect_only_binary(
                 self.test_c, amalg_dir, runtime_dir, dialect.name, binary
             )
-
-        elif dialect.mode == AmalgMode.RUNTIME_ONLY:
-            runtime_dir = self._ensure_runtime()
-            binary = temp / f"test_{key}"
-            _compile_runtime_only_binary(self.test_c, runtime_dir, binary)
 
         else:
             raise ValueError(f"Unknown AmalgMode: {dialect.mode}")

@@ -300,20 +300,24 @@ use crate::nodes::{FieldVal, Fields, NodeId, SourceSpan};
 /// Provides metadata about node names, field layouts, token categories,
 /// keyword tables, and formatter bytecode. `Copy` so it can be threaded
 /// freely through parser, formatter, and validator internals.
+///
+/// This is the untagged handle used by infrastructure code (formatter,
+/// validator, raw parser). For a handle tagged with node/token types,
+/// see [`Dialect<'d, N>`].
 #[derive(Clone, Copy)]
-pub struct Dialect<'d> {
+pub struct RawDialect<'d> {
     pub(crate) raw: &'d ffi::Dialect,
 }
 
-impl<'d> Dialect<'d> {
-    /// Create a `Dialect` from a raw C pointer returned by a dialect's
+impl<'d> RawDialect<'d> {
+    /// Create a `RawDialect` from a raw C pointer returned by a dialect's
     /// FFI function (e.g. `syntaqlite_sqlite_dialect`).
     ///
     /// # Safety
     /// The pointer must point to a valid `ffi::Dialect` whose data lives
     /// at least as long as `'d`.
     pub unsafe fn from_raw(raw: *const ffi::Dialect) -> Self {
-        unsafe { Dialect { raw: &*raw } }
+        unsafe { RawDialect { raw: &*raw } }
     }
 
     /// Return the node name for the given tag.
@@ -623,8 +627,64 @@ impl<'d> Dialect<'d> {
 
 // SAFETY: The dialect wraps a reference to a C struct with no mutable state.
 // The raw pointers inside ffi::Dialect all point to immutable static data.
-unsafe impl Send for Dialect<'_> {}
-unsafe impl Sync for Dialect<'_> {}
+unsafe impl Send for RawDialect<'_> {}
+unsafe impl Sync for RawDialect<'_> {}
+
+// ── Tagged Dialect handle ────────────────────────────────────────────────────
+
+use std::marker::PhantomData;
+
+use crate::dialect_traits::NodeFamily;
+
+/// A dialect handle tagged with a [`NodeFamily`], carrying both the raw
+/// C dialect pointer and the knowledge of which node/token types it produces.
+///
+/// Use this at construction boundaries (`Parser::new`, etc.) so the
+/// node type parameter `N` can be inferred automatically.
+///
+/// Dereferences to [`RawDialect`] via [`raw()`](Self::raw) for passing into
+/// untyped infrastructure (formatter, validator).
+#[derive(Clone, Copy)]
+pub struct Dialect<'d, N: NodeFamily> {
+    inner: RawDialect<'d>,
+    _marker: PhantomData<N>,
+}
+
+// SAFETY: same reasoning as RawDialect — wraps immutable static C data.
+unsafe impl<N: NodeFamily> Send for Dialect<'_, N> {}
+unsafe impl<N: NodeFamily> Sync for Dialect<'_, N> {}
+
+impl<'d, N: NodeFamily> Dialect<'d, N> {
+    /// Create a tagged `Dialect` from a raw C pointer.
+    ///
+    /// # Safety
+    /// Same requirements as [`RawDialect::from_raw`].
+    pub unsafe fn from_raw(raw: *const ffi::Dialect) -> Self {
+        Dialect {
+            inner: unsafe { RawDialect::from_raw(raw) },
+            _marker: PhantomData,
+        }
+    }
+
+    /// Wrap an existing [`RawDialect`] with a node-family tag.
+    pub fn from_raw_dialect(raw: RawDialect<'d>) -> Self {
+        Dialect {
+            inner: raw,
+            _marker: PhantomData,
+        }
+    }
+
+    /// Return the untagged [`RawDialect`] handle.
+    pub fn raw(&self) -> RawDialect<'d> {
+        self.inner
+    }
+}
+
+impl<'d, N: NodeFamily> From<Dialect<'d, N>> for RawDialect<'d> {
+    fn from(d: Dialect<'d, N>) -> Self {
+        d.inner
+    }
+}
 
 // ── Schema contribution types ────────────────────────────────────────────────
 
@@ -654,7 +714,7 @@ pub struct SchemaContribution {
 /// # Safety
 /// `ptr` must point to a valid node struct matching `tag`'s metadata in `dialect`.
 pub unsafe fn extract_fields<'a>(
-    dialect: &Dialect<'_>,
+    dialect: &RawDialect<'_>,
     ptr: *const u8,
     tag: u32,
     source: &'a str,

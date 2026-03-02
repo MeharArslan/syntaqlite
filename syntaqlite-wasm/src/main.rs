@@ -7,7 +7,7 @@ use std::slice;
 use serde::Serialize;
 
 use syntaqlite::Formatter;
-use syntaqlite::dialect::{Cflags, Dialect, DialectConfig};
+use syntaqlite::dialect::{Cflags, DialectConfig, RawDialect};
 use syntaqlite::dialect::{cflag_table, parse_cflag_name, parse_sqlite_version};
 use syntaqlite::embedded::{self, EmbeddedFragment};
 use syntaqlite::ext::FfiDialect;
@@ -36,7 +36,7 @@ fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
     if lsp.as_ref().is_none_or(|h| h.dialect_ptr != dialect_ptr) {
         let raw = dialect_ptr as *const FfiDialect;
         // SAFETY: the caller set a valid dialect pointer via wasm_set_dialect.
-        let dialect = unsafe { Dialect::from_raw(raw) };
+        let dialect = unsafe { RawDialect::from_raw(raw) };
         let mut host = syntaqlite::lsp::AnalysisHost::with_dialect(dialect);
         host.set_dialect_config(get_dialect_config());
         lsp = Some(LspHost { dialect_ptr, host });
@@ -87,14 +87,14 @@ fn decode_input(ptr: u32, len: u32) -> Result<String, String> {
     Ok(source.to_string())
 }
 
-fn resolve_dialect() -> Result<Dialect<'static>, String> {
+fn resolve_dialect() -> Result<RawDialect<'static>, String> {
     let ptr = DIALECT_PTR.with(|p| p.get());
     if ptr == 0 {
         return Err("dialect pointer is not set; call wasm_set_dialect first".to_string());
     }
     let raw = ptr as *const FfiDialect;
     // SAFETY: the caller must provide a valid pointer to a dialect descriptor.
-    Ok(unsafe { Dialect::from_raw(raw) })
+    Ok(unsafe { RawDialect::from_raw(raw) })
 }
 
 /// Runs `f`, catching any panic and writing `msg` to the result buffer on failure.
