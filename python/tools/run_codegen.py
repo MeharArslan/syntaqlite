@@ -38,9 +38,8 @@ def main():
     dialect_crate = project_root / "syntaqlite"
     actions_dir = dialect_crate / "parser-actions"
     nodes_dir = dialect_crate / "parser-nodes"
-    output_dir = project_root / "syntaqlite-parser-sqlite" / "csrc" / "sqlite"
-    rust_dir = project_root / "syntaqlite-parser-sqlite"
-    rust_crate_src_dir = project_root / "syntaqlite-parser"
+    dialect_crate_dir = project_root / "syntaqlite-parser-sqlite"
+    shared_crate_dir = project_root / "syntaqlite-parser"
     vendored_dir = project_root / "syntaqlite-buildtools" / "sqlite-vendored"
 
     do_extract = args.extract
@@ -108,17 +107,16 @@ def main():
         return result.returncode
 
     cli_bin = project_root / "target" / "release" / "syntaqlite"
-    internal_sqlite_wrappers = dialect_crate / "src" / "sqlite" / "wrappers.rs"
+    wrappers_out = dialect_crate / "src" / "sqlite" / "wrappers.rs"
     result = subprocess.run(
         [
             str(cli_bin),
             "codegen",
             "--actions-dir", str(actions_dir),
             "--nodes-dir", str(nodes_dir),
-            "--output-dir", str(output_dir),
-            "--rust-dir", str(rust_dir),
-            "--rust-crate-src-dir", str(rust_crate_src_dir),
-            "--internal-sqlite-wrappers", str(internal_sqlite_wrappers),
+            "--dialect-crate", str(dialect_crate_dir),
+            "--shared-crate", str(shared_crate_dir),
+            "--wrappers-out", str(wrappers_out),
         ],
     )
 

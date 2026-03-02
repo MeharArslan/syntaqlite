@@ -23,6 +23,10 @@ pub use parser_tools::{amalgamate, base_files};
 #[cfg(feature = "sqlite-codegen")]
 pub mod sqlite;
 
+// Output resolver trait + impls (depends on sqlite output_manifest types).
+#[cfg(feature = "sqlite-codegen")]
+pub mod output_resolver;
+
 #[cfg(feature = "version-analysis")]
 pub mod version_analysis;
 
@@ -398,40 +402,16 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
             dialect_codegen::generate_dialect_dispatch_h(request.dialect.name());
 
         let rust = if request.include_rust {
-            // For the internal SQLite dialect (syntaqlite-parser-sqlite), generated
-            // files live at src/ and import from `syntaqlite_parser::`.
-            // For external dialect crates, they use `syntaqlite::` as an external dep.
-            let is_internal = request.crate_name == Some("syntaqlite_parser");
-            let crate_prefix = if is_internal {
-                "syntaqlite_parser"
-            } else {
-                "syntaqlite"
-            };
-            // ffi_path: path to the dialect-specific FFI structs (ArenaNode layout types).
-            // These always live in `crate::ffi` of the dialect crate.
-            let ffi_path = "crate::ffi";
-            // comment_path: path to Comment/CommentKind (from syntaqlite-parser).
-            let comment_path = if is_internal {
-                "syntaqlite_parser::parser"
-            } else {
-                "crate::ffi"
-            };
-            let nodes_path = if is_internal {
-                "syntaqlite_parser::nodes"
-            } else {
-                "syntaqlite::parser::nodes"
-            };
-            let session_path = if is_internal {
-                "syntaqlite_parser::session"
-            } else {
-                "syntaqlite::parser::session"
-            };
+            // All generated Rust files import from `syntaqlite_parser` directly.
+            // Both the internal SQLite dialect crate (syntaqlite-parser-sqlite) and
+            // external dialect crates declare `syntaqlite-parser` as a dependency.
             let rust_paths = dialect_codegen::RustAstPaths {
-                crate_prefix,
-                ffi_path,
-                comment_path,
-                nodes_path,
-                session_path,
+                crate_prefix: "syntaqlite_parser",
+                // ffi_path: dialect-specific FFI structs always live in crate::ffi.
+                ffi_path: "crate::ffi",
+                comment_path: "syntaqlite_parser::parser",
+                nodes_path: "syntaqlite_parser::nodes",
+                session_path: "syntaqlite_parser::session",
             };
             Some(RustCodegenArtifacts {
                 tokens_rs: dialect_codegen::generate_rust_tokens(&token_defines[..]),
@@ -441,11 +421,7 @@ cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
                     request.dialect.name(),
                     request.open_for_extension,
                 ),
-                ast_traits_rs: if is_internal {
-                    Some(ast_model.generate_ast_traits())
-                } else {
-                    None
-                },
+                ast_traits_rs: Some(ast_model.generate_ast_traits()),
                 lib_rs: dialect_codegen::generate_rust_lib(
                     &request.dialect.dialect_symbol_fn_name(),
                 ),

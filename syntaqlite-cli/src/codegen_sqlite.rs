@@ -19,23 +19,21 @@ pub(crate) enum CodegenCommand {
         actions_dir: String,
         #[arg(long, required = true)]
         nodes_dir: String,
-        #[arg(long, default_value = "syntaqlite-parser-sqlite/csrc/sqlite")]
-        output_dir: String,
-        /// Crate root for generated Rust dialect modules (ast.rs, ffi.rs,
-        /// tokens.rs). Outputs land in `<rust_dir>/src/`. Inferred from
-        /// --output-dir when omitted.
-        #[arg(long)]
-        rust_dir: Option<String>,
-        /// Crate root for generated crate-level Rust modules
-        /// (functions_catalog.rs, ast_traits.rs). Outputs land in
-        /// `<rust_crate_src_dir>/src/`. Defaults to --rust-dir when omitted.
-        #[arg(long)]
-        rust_crate_src_dir: Option<String>,
+        /// Crate root for the dialect crate (e.g. `syntaqlite-parser-sqlite`).
+        /// C sources land in `<dialect-crate>/csrc/sqlite/` and Rust dialect
+        /// modules in `<dialect-crate>/src/`.
+        #[arg(long, default_value = "syntaqlite-parser-sqlite")]
+        dialect_crate: String,
+        /// Crate root for the shared parser crate (e.g. `syntaqlite-parser`).
+        /// Shared Rust modules (ast_traits.rs, functions_catalog.rs) and the
+        /// shared C tokens header land here.
+        #[arg(long, default_value = "syntaqlite-parser")]
+        shared_crate: String,
         /// Path to write the internal SQLite wrappers.rs (e.g.
         /// `syntaqlite/src/sqlite/wrappers.rs`). When omitted, the file is
         /// not written (preserving the previous hand-edited copy).
         #[arg(long)]
-        internal_sqlite_wrappers: Option<String>,
+        wrappers_out: Option<String>,
     },
     /// Produce C amalgamation files (single-file compilation units).
     Amalgamate {
@@ -79,17 +77,15 @@ pub(crate) fn dispatch(command: CodegenCommand) -> Result<(), String> {
         CodegenCommand::Codegen {
             actions_dir,
             nodes_dir,
-            output_dir,
-            rust_dir,
-            rust_crate_src_dir,
-            internal_sqlite_wrappers,
+            dialect_crate,
+            shared_crate,
+            wrappers_out,
         } => handle_codegen(
             &actions_dir,
             &nodes_dir,
-            &output_dir,
-            rust_dir.as_deref(),
-            rust_crate_src_dir.as_deref(),
-            internal_sqlite_wrappers.as_deref(),
+            &dialect_crate,
+            &shared_crate,
+            wrappers_out.as_deref(),
         ),
         CodegenCommand::Amalgamate {
             dialect,
@@ -137,15 +133,21 @@ fn clean_generated_files(dir: &Path) {
 fn handle_codegen(
     actions_dir: &str,
     nodes_dir: &str,
-    output_dir: &str,
-    rust_dir: Option<&str>,
-    rust_crate_src_dir: Option<&str>,
-    internal_sqlite_wrappers: Option<&str>,
+    dialect_crate_dir: &str,
+    shared_crate_dir: &str,
+    wrappers_out: Option<&str>,
 ) -> Result<(), String> {
     let dialect = syntaqlite_buildtools::DialectNaming::new("sqlite");
 
     let y_files = syntaqlite_buildtools::read_named_files_from_dir(actions_dir, "y")?;
     let synq_files = syntaqlite_buildtools::read_named_files_from_dir(nodes_dir, "synq")?;
+
+    let dialect_crate = Path::new(dialect_crate_dir);
+    let shared_crate = Path::new(shared_crate_dir);
+
+    let csrc_dir = dialect_crate.join("csrc/sqlite");
+    let include_dir = dialect_crate.join(format!("include/{}", dialect.include_dir_name()));
+    let shared_include_dir = shared_crate.join(format!("include/{}", dialect.include_dir_name()));
 
     let no_keywords: Vec<String> = Vec::new();
     let request = syntaqlite_buildtools::CodegenRequest {
@@ -162,71 +164,32 @@ fn handle_codegen(
             internal: "csrc/sqlite/",
             public: "",
             dialect_include_dir: "syntaqlite",
-            tokens_header: "syntaqlite/tokens.h",
+            tokens_header: "syntaqlite/sqlite_tokens.h",
         },
     };
     let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
-    let outputs = syntaqlite_buildtools::sqlite::output_manifest::sqlite_output_manifest(
-        &dialect, artifacts,
-    )?;
+    let outputs =
+        syntaqlite_buildtools::sqlite::output_manifest::output_manifest(&dialect, artifacts)?;
 
-    // output_dir is csrc/sqlite/ — C crate root is two levels up.
-    let out = Path::new(output_dir);
-    let c_crate_root = out
-        .parent()
-        .and_then(|p| p.parent())
-        .unwrap_or(Path::new("."));
-    let include_dir = c_crate_root.join(format!("include/{}", dialect.include_dir_name()));
-
-    // Rust dialect modules (ast.rs, ffi.rs, tokens.rs) go into <rust_dir>/src/.
-    // When --rust-dir is omitted, infer from the C crate root.
-    let rust_dialect_crate_root =
-        rust_dir.map_or_else(|| c_crate_root.to_path_buf(), PathBuf::from);
-    let rust_dialect_src_dir = rust_dialect_crate_root.join("src");
-
-    // Crate-level Rust modules (functions_catalog.rs, ast_traits.rs) go into
-    // <rust_crate_src_dir>/src/. Defaults to the same root as --rust-dir.
-    let rust_crate_src_root = rust_crate_src_dir
-        .map(PathBuf::from)
-        .unwrap_or_else(|| rust_dialect_crate_root.clone());
-    let rust_src_dir = rust_crate_src_root.join("src");
-
-    // Clean stale generated files
-    for dir in [out, include_dir.as_path()] {
+    // Clean stale generated files from C output directories.
+    for dir in [&csrc_dir, &include_dir, &shared_include_dir] {
         if dir.is_dir() {
             clean_generated_files(dir);
         }
     }
 
-    ensure_dir(out, "output directory")?;
-    ensure_dir(&include_dir, "include directory")?;
-    ensure_dir(&rust_dialect_src_dir, "Rust dialect src directory")?;
+    use syntaqlite_buildtools::output_resolver::{SqliteDialectResolver, write_artifacts};
 
-    use syntaqlite_buildtools::sqlite::output_manifest::OutputBucket;
+    let resolver = SqliteDialectResolver {
+        csrc_dir,
+        include_dir,
+        shared_include_dir,
+        dialect_rust_src: dialect_crate.join("src"),
+        shared_rust_src: shared_crate.join("src"),
+        wrappers_path: wrappers_out.map(PathBuf::from),
+    };
 
-    for output in outputs {
-        let dir: &Path = match output.bucket {
-            OutputBucket::Include => &include_dir,
-            OutputBucket::DialectCsrc => out,
-            // Generated dialect modules (ast.rs, ffi.rs, tokens.rs) go into
-            // <rust_dir>/src/.
-            OutputBucket::RustDialectSrc => &rust_dialect_src_dir,
-            // Crate-level modules (functions_catalog.rs, ast_traits.rs) go into
-            // <rust_crate_src_dir>/src/.
-            OutputBucket::RustCrateSrc => &rust_src_dir,
-            // Scaffolding files (lib.rs, wrappers.rs) and crate-root files
-            // (build.rs, Cargo.toml) are hand-maintained for the internal crate.
-            // These are only used when generating external dialect crates.
-            OutputBucket::RustCrateScaffold | OutputBucket::CrateRoot => continue,
-        };
-        write_file(&dir.join(output.file_name), output.content)?;
-    }
-
-    // Write the internal SQLite wrappers if a path was provided.
-    if let Some(wrappers_path) = internal_sqlite_wrappers {
-        let content = syntaqlite_buildtools::dialect_codegen::generate_internal_sqlite_wrappers();
-        write_file(Path::new(wrappers_path), content)?;
-    }
+    write_artifacts(outputs, &resolver, |dir| ensure_dir(dir, "output directory"), |path, content| write_file(path, content))?;
 
     Ok(())
 }

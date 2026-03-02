@@ -186,15 +186,51 @@ fn cmd_generate_dialect_raw(
     output_dir: &str,
     includes: &syntaqlite_buildtools::dialect_codegen::DialectCIncludes<'_>,
 ) -> Result<(), String> {
+    use syntaqlite_buildtools::output_resolver::{ExternalDialectResolver, write_artifacts};
+    use syntaqlite_buildtools::sqlite::output_manifest::output_manifest;
+
     let out = Path::new(output_dir);
-    let csrc = out.join("csrc");
-    let include = out.join("include").join(format!("syntaqlite_{dialect}"));
-    ensure_dir(&csrc, "csrc dir")?;
-    ensure_dir(&include, "include dir")?;
+    let csrc_dir = out.join("csrc");
+    let include_dir = out.join("include").join(format!("syntaqlite_{dialect}"));
 
     let (merged_y, merged_synq) = load_extensions(actions_dir, nodes_dir)?;
 
-    codegen_to_dir_with_base(dialect, &merged_y, &merged_synq, &csrc, &include, includes)?;
+    let dialect_spec = syntaqlite_buildtools::DialectNaming::new(dialect);
+    let parser_prefix = dialect_spec.parser_symbol_prefix();
+    let ext_y_contents: Vec<&str> = merged_y
+        .iter()
+        .filter(|(name, _)| {
+            !syntaqlite_buildtools::base_files::base_y_files()
+                .iter()
+                .any(|(base_name, _)| *base_name == name.as_str())
+        })
+        .map(|(_, content)| content.as_str())
+        .collect();
+    let extra_keywords = syntaqlite_buildtools::extract_terminals_from_y(&ext_y_contents);
+
+    let request = syntaqlite_buildtools::CodegenRequest {
+        dialect: &dialect_spec,
+        y_files: &merged_y,
+        synq_files: &merged_synq,
+        extra_keywords: &extra_keywords,
+        parser_symbol_prefix: Some(&parser_prefix),
+        include_rust: false,
+        crate_name: None,
+        base_synq_files: Some(syntaqlite_buildtools::base_files::base_synq_files()),
+        open_for_extension: false,
+        dialect_c_includes: includes.clone(),
+    };
+    let artifacts = syntaqlite_buildtools::generate_codegen_artifacts(&request)?;
+    let outputs = output_manifest(&dialect_spec, artifacts)?;
+
+    let resolver = ExternalDialectResolver {
+        csrc_dir,
+        include_dir,
+        rust_src_dir: out.join("src"),
+        crate_root: out.to_path_buf(),
+    };
+    write_artifacts(outputs, &resolver, |dir| ensure_dir(dir, "output directory"), |path, content| write_file(path, content))?;
+
     eprintln!("wrote raw dialect files to {}", out.display());
     Ok(())
 }

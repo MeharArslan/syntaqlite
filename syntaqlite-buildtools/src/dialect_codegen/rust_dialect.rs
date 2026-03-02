@@ -431,6 +431,7 @@ syntaqlite = {{ path = "../syntaqlite", default-features = false }}
 
 [dependencies]
 syntaqlite = {{ path = "../syntaqlite", default-features = false }}
+syntaqlite-parser = {{ path = "../syntaqlite-parser" }}
 "#
     )
 }
