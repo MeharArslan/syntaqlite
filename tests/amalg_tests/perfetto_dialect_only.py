@@ -43,13 +43,30 @@ class PerfettoAmalgDialectOnly(TestSuite):
 
     def test_create_perfetto_table(self):
         return DiffTestBlueprint(
-            sql="CREATE PERFETTO TABLE foo",
+            sql="CREATE PERFETTO TABLE foo AS SELECT 1",
             out="""\
             CreatePerfettoTableStmt
               table_name: "foo"
               or_replace: FALSE
-              table_impl: null
               schema: (none)
-              select: (none)
+              select:
+                SelectStmt
+                  flags: (none)
+                  columns:
+                    ResultColumnList [1 items]
+                      ResultColumn
+                        flags: (none)
+                        alias: null
+                        expr:
+                          Literal
+                            literal_type: INTEGER
+                            source: "1"
+                  from_clause: (none)
+                  where_clause: (none)
+                  groupby: (none)
+                  having: (none)
+                  orderby: (none)
+                  limit_clause: (none)
+                  window_clause: (none)
 """,
         )

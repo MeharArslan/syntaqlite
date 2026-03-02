@@ -58,6 +58,8 @@ def _write_runtime_shims(csrc_dir: Path) -> None:
 #ifndef SYNTAQLITE_EXT_H
 #define SYNTAQLITE_EXT_H
 #include \"syntaqlite_dialect/sqlite_compat.h\"
+#include \"syntaqlite_dialect/dialect_types.h\"
+#include \"syntaqlite_dialect/dialect_macros.h\"
 #include \"syntaqlite_dialect/arena.h\"
 #include \"syntaqlite_dialect/vec.h\"
 #include \"syntaqlite_dialect/ast_builder.h\"
@@ -99,7 +101,7 @@ def _compile_perfetto_dialect(cli_binary: Path, work_dir: Path) -> Path:
     else:
         cc_cmd += ["-shared", "-fPIC"]
 
-    parser_sys = ROOT_DIR / "syntaqlite-parser-sys"
+    parser_sys = ROOT_DIR / "syntaqlite-parser"
     cc_cmd += [
         str(csrc_dir / "syntaqlite_perfetto.c"),
         str(parser_sys / "csrc" / "parser.c"),

@@ -16,20 +16,6 @@ class PerfettoExtension(TestSuite):
 
     # -- CREATE PERFETTO TABLE --
 
-    def test_create_perfetto_table_simple(self):
-        """Bare CREATE PERFETTO TABLE without AS select."""
-        return DiffTestBlueprint(
-            sql="CREATE PERFETTO TABLE foo",
-            out="""\
-            CreatePerfettoTableStmt
-              table_name: "foo"
-              or_replace: FALSE
-              table_impl: null
-              schema: (none)
-              select: (none)
-""",
-        )
-
     def test_create_perfetto_table_as_select(self):
         """CREATE PERFETTO TABLE with AS select."""
         return DiffTestBlueprint(
@@ -38,7 +24,6 @@ class PerfettoExtension(TestSuite):
             CreatePerfettoTableStmt
               table_name: "foo"
               or_replace: FALSE
-              table_impl: null
               schema: (none)
               select:
                 SelectStmt
@@ -70,7 +55,6 @@ class PerfettoExtension(TestSuite):
             CreatePerfettoTableStmt
               table_name: "foo"
               or_replace: TRUE
-              table_impl: null
               schema: (none)
               select:
                 SelectStmt
