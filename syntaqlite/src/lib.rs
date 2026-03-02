@@ -70,8 +70,8 @@
 //! - [`dialect`] — The opaque `Dialect` handle, the
 //!   [`sqlite()`](dialect::sqlite) dialect accessor, and
 //!   semantic [`TokenCategory`](dialect::TokenCategory) enum.
-//! - [`fmt`] — Formatter configuration ([`FormatConfig`](fmt::FormatConfig),
-//!   [`KeywordCase`](fmt::KeywordCase)).
+//! - [`fmt`] — Formatter configuration ([`FormatConfig`],
+//!   [`KeywordCase`]).
 //! - [`validation`] — Validator configuration, diagnostic types, and
 //!   schema context.
 //! - [`embedded`] — Extract and validate SQL from Python f-strings and
