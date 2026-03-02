@@ -1,7 +1,9 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_parser::{FunctionInfo, RawDialect};
+use syntaqlite_parser::RawDialect;
+
+use crate::semantic::functions::SessionFunction;
 
 /// A diagnostic message associated with a source range.
 #[derive(Debug, Clone)]
@@ -252,45 +254,13 @@ pub struct ColumnDef {
     pub is_nullable: bool,
 }
 
-#[derive(Clone)]
-pub struct FunctionDef {
-    pub name: String,
-    /// None = variadic.
-    pub args: Option<usize>,
-    pub description: Option<String>,
-}
-
-/// Expand a [`FunctionInfo`](syntaqlite_parser::catalog::FunctionInfo) into one [`FunctionDef`] per arity.
-pub(crate) fn expand_function_info(info: &FunctionInfo<'_>) -> Vec<FunctionDef> {
-    if info.arities.is_empty() {
-        vec![FunctionDef {
-            name: info.name.to_string(),
-            args: None,
-            description: None,
-        }]
-    } else {
-        info.arities
-            .iter()
-            .map(|&arity| FunctionDef {
-                name: info.name.to_string(),
-                args: if arity < 0 {
-                    None
-                } else {
-                    Some(arity as usize)
-                },
-                description: None,
-            })
-            .collect()
-    }
-}
-
 /// Database schema context for analysis.
 ///
 /// Callers populate it however they want: introspecting a live DB,
 /// parsing CREATE statements, loading from a config file, etc.
 pub struct SessionContext {
     pub relations: Vec<RelationDef>,
-    pub functions: Vec<FunctionDef>,
+    pub functions: Vec<SessionFunction>,
 }
 
 impl SessionContext {
@@ -427,10 +397,9 @@ impl SessionContext {
             functions: root
                 .functions
                 .into_iter()
-                .map(|f| FunctionDef {
+                .map(|f| SessionFunction {
                     name: f.name,
                     args: f.args,
-                    description: None,
                 })
                 .collect(),
         })
@@ -444,7 +413,7 @@ impl SessionContext {
 /// sees tables/views that were *defined before it* in the document.
 pub struct DocumentContext {
     pub relations: Vec<RelationDef>,
-    pub functions: Vec<FunctionDef>,
+    pub functions: Vec<SessionFunction>,
     known: KnownSchema,
 }
 
@@ -613,11 +582,7 @@ impl DocumentContext {
                     let list = reader.resolve_list(args_id)?;
                     Some(list.children().len())
                 });
-                self.functions.push(FunctionDef {
-                    name,
-                    args,
-                    description: None,
-                });
+                self.functions.push(SessionFunction { name, args });
             }
             SchemaKind::Import => {
                 // Future: resolve from SessionContext.modules

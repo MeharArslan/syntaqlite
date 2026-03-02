@@ -337,8 +337,8 @@ fn validate_source(
     file: &str,
     config: &ValidationConfig,
 ) -> bool {
-    let functions = syntaqlite::embedded::sqlite_function_defs();
-    let mut validator = syntaqlite::Validator::with_config(dialect, functions, None);
+    let catalog = syntaqlite::semantic::functions::FunctionCatalog::for_default_dialect(&dialect);
+    let mut validator = syntaqlite::Validator::with_catalog(dialect, catalog, None);
     let diags = validator.validate(source, None, config);
     SourceContext::new(source, file).render_diagnostics(&diags)
 }
@@ -359,8 +359,9 @@ fn validate_embedded_source(
         return false;
     }
 
+    let catalog = syntaqlite::semantic::functions::FunctionCatalog::for_default_dialect(&dialect);
     let diags = syntaqlite::embedded::EmbeddedAnalyzer::new(dialect)
-        .with_functions(syntaqlite::embedded::sqlite_function_defs())
+        .with_catalog(catalog)
         .with_config(*config)
         .validate(&fragments);
 

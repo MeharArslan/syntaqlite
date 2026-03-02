@@ -6,10 +6,9 @@ use std::collections::HashMap;
 use crate::fmt::FormatConfig;
 use crate::fmt::formatter::Formatter;
 use crate::lsp::analysis::DocumentAnalysis;
-use crate::validation::types::{Diagnostic, FunctionDef, SessionContext};
-use crate::validation::{
-    DocumentContext, FunctionCatalog, ValidationConfig, validate_statement_dialect,
-};
+use crate::semantic::functions::FunctionCatalog;
+use crate::validation::types::{Diagnostic, SessionContext};
+use crate::validation::{DocumentContext, ValidationConfig, validate_statement_dialect};
 use syntaqlite_parser::ParseError;
 use syntaqlite_parser::RawDialect;
 
@@ -280,7 +279,7 @@ impl<'d> AnalysisHost<'d> {
                 self.dialect,
                 self.context.as_ref(),
                 Some(&doc_ctx),
-                catalog.functions(),
+                &catalog,
                 config,
             );
             diagnostics.extend(stmt_diags);
@@ -313,16 +312,11 @@ impl<'d> AnalysisHost<'d> {
     pub fn function_catalog(&self) -> FunctionCatalog {
         let default_config = syntaqlite_parser::DialectConfig::default();
         let config = self.dialect_config.as_ref().unwrap_or(&default_config);
-        let catalog = FunctionCatalog::for_dialect(&self.dialect, config);
-        match self.context.as_ref() {
-            Some(ctx) => catalog.with_session(ctx),
-            None => catalog,
+        let mut catalog = FunctionCatalog::for_dialect(&self.dialect, config);
+        if let Some(ctx) = self.context.as_ref() {
+            catalog.add_session_functions(&ctx.functions);
         }
-    }
-
-    /// All function definitions for the current configuration.
-    pub fn available_functions(&self) -> Vec<FunctionDef> {
-        self.function_catalog().functions().to_vec()
+        catalog
     }
 
     /// Unique function names for the current configuration.
@@ -362,8 +356,8 @@ impl std::error::Error for FormatError {}
 #[cfg(feature = "sqlite")]
 mod tests {
     use super::AnalysisHost;
+    use crate::semantic::functions::SessionFunction;
     use crate::validation::SessionContext;
-    use crate::validation::types::FunctionDef;
     use syntaqlite_parser::RawParser;
     use syntaqlite_parser_sqlite::tokens::TokenType;
 
@@ -437,12 +431,11 @@ mod tests {
     #[test]
     fn available_functions_default_config_includes_baseline() {
         let host = AnalysisHost::new();
-        let funcs = host.available_functions();
-        let names: Vec<&str> = funcs.iter().map(|f| f.name.as_str()).collect();
-        assert!(names.contains(&"abs"));
-        assert!(names.contains(&"count"));
+        let names = host.available_function_names();
+        assert!(names.iter().any(|n| n == "abs"));
+        assert!(names.iter().any(|n| n == "count"));
         assert!(
-            !names.contains(&"acos"),
+            !names.iter().any(|n| n == "acos"),
             "acos requires ENABLE_MATH_FUNCTIONS"
         );
     }
@@ -453,10 +446,9 @@ mod tests {
         let mut config = syntaqlite_parser::DialectConfig::default();
         config.cflags.set(34);
         host.set_dialect_config(config);
-        let funcs = host.available_functions();
-        let names: Vec<&str> = funcs.iter().map(|f| f.name.as_str()).collect();
+        let names = host.available_function_names();
         assert!(
-            names.contains(&"acos"),
+            names.iter().any(|n| n == "acos"),
             "acos should appear with ENABLE_MATH_FUNCTIONS"
         );
     }
@@ -466,16 +458,14 @@ mod tests {
         let mut host = AnalysisHost::new();
         host.set_session_context(SessionContext {
             relations: vec![],
-            functions: vec![FunctionDef {
+            functions: vec![SessionFunction {
                 name: "my_custom_func".to_string(),
                 args: Some(2),
-                description: None,
             }],
         });
-        let funcs = host.available_functions();
-        let names: Vec<&str> = funcs.iter().map(|f| f.name.as_str()).collect();
-        assert!(names.contains(&"my_custom_func"));
-        assert!(names.contains(&"abs"));
+        let names = host.available_function_names();
+        assert!(names.iter().any(|n| n == "my_custom_func"));
+        assert!(names.iter().any(|n| n == "abs"));
     }
 
     #[test]

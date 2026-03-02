@@ -97,6 +97,11 @@ pub mod fmt;
 #[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
 
+// ── Semantic analysis ────────────────────────────────────────────────────
+
+#[cfg(feature = "validation")]
+pub mod semantic;
+
 // ── Validation ───────────────────────────────────────────────────────────
 
 #[cfg(feature = "validation")]
@@ -136,6 +141,13 @@ pub use validation::{ValidationConfig, Validator};
 pub type SqliteParser = Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
 #[cfg(feature = "sqlite")]
 pub type SqliteTokenizer = Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+#[cfg(feature = "sqlite")]
+pub type SqliteStatementCursor<'a> =
+    StatementCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+#[cfg(feature = "sqlite")]
+pub type SqliteTokenCursor<'a> = TokenCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+#[cfg(feature = "sqlite")]
+pub type SqliteToken<'a> = Token<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
 
 #[cfg(feature = "json")]
 pub use crate::parser::node_ref_json::NodeRefJsonExt;

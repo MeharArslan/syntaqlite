@@ -9,15 +9,18 @@ use syntaqlite_parser::RawNodeReader;
 use syntaqlite_parser::TypedList;
 use syntaqlite_parser::ast_traits::*;
 
+use crate::semantic::functions::{FunctionCatalog, FunctionCheckResult};
+
 use super::ValidationConfig;
-use super::checks::{check_column_ref, check_function_call, check_table_ref};
+use super::checks::{check_column_ref, check_table_ref};
+use super::fuzzy::best_suggestion;
 use super::scope::ScopeStack;
-use super::types::{Diagnostic, FunctionDef};
+use super::types::{Diagnostic, DiagnosticMessage, Help};
 
 pub(super) struct Walker<'a, 'd, A: AstTypes<'a>> {
     reader: RawNodeReader<'a>,
     dialect: RawDialect<'d>,
-    functions: &'a [FunctionDef],
+    catalog: &'a FunctionCatalog,
     config: &'a ValidationConfig,
     diagnostics: Vec<Diagnostic>,
     _ast: PhantomData<A>,
@@ -29,13 +32,13 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
         stmt: A::Stmt,
         dialect: RawDialect<'d>,
         scope: &mut ScopeStack,
-        functions: &'a [FunctionDef],
+        catalog: &'a FunctionCatalog,
         config: &'a ValidationConfig,
     ) -> Vec<Diagnostic> {
         let mut walker: Walker<'_, '_, A> = Walker {
             reader,
             dialect,
-            functions,
+            catalog,
             config,
             diagnostics: Vec::new(),
             _ast: PhantomData,
@@ -365,15 +368,35 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
         if !name.is_empty() {
             let offset = self.str_offset(name);
             let arg_count = args.as_ref().map_or(0, |a| a.len());
-            if let Some(diag) = check_function_call(
-                name,
-                arg_count,
-                offset,
-                name.len(),
-                self.functions,
-                self.config,
-            ) {
-                self.diagnostics.push(diag);
+            match self.catalog.check_call(name, arg_count) {
+                FunctionCheckResult::Ok => {}
+                FunctionCheckResult::Unknown => {
+                    let all_names = self.catalog.all_names();
+                    let suggestion =
+                        best_suggestion(name, &all_names, self.config.suggestion_threshold);
+                    self.diagnostics.push(Diagnostic {
+                        start_offset: offset,
+                        end_offset: offset + name.len(),
+                        message: DiagnosticMessage::UnknownFunction {
+                            name: name.to_string(),
+                        },
+                        severity: self.config.severity(),
+                        help: suggestion.map(Help::Suggestion),
+                    });
+                }
+                FunctionCheckResult::WrongArity { expected } => {
+                    self.diagnostics.push(Diagnostic {
+                        start_offset: offset,
+                        end_offset: offset + name.len(),
+                        message: DiagnosticMessage::FunctionArity {
+                            name: name.to_string(),
+                            expected,
+                            got: arg_count,
+                        },
+                        severity: self.config.severity(),
+                        help: None,
+                    });
+                }
             }
         }
         if let Some(args) = args {
@@ -472,12 +495,13 @@ mod tests {
             .map(|r| r.map(|nr: syntaqlite_parser::NodeRef<'_>| nr.id()))
             .collect::<Result<Vec<_>, _>>()
             .expect("parse failed");
+        let catalog = crate::semantic::functions::FunctionCatalog::for_default_dialect(&dialect);
         let diags = crate::validation::validate_document(
             cursor.reader(),
             &stmt_ids,
             dialect,
             None,
-            &[],
+            &catalog,
             &ValidationConfig::default(),
         );
         let col_diags: Vec<_> = diags

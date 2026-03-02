@@ -11,13 +11,11 @@
 //! The entry point is [`Validator`], which owns a parser and validates SQL
 //! in a single call.
 
-pub use catalog::FunctionCatalog;
 pub use render::SourceContext;
 pub use types::ColumnDef;
 pub use types::Diagnostic;
 pub use types::DiagnosticMessage;
 pub use types::DocumentContext;
-pub use types::FunctionDef;
 pub use types::Help;
 pub use types::RelationDef;
 pub use types::RelationKind;
@@ -26,14 +24,13 @@ pub use types::Severity;
 
 pub(crate) mod types;
 
-mod catalog;
 mod checks;
-mod fuzzy;
+pub(super) mod fuzzy;
 mod render;
 mod scope;
 mod walker;
 
-use syntaqlite_parser::DialectConfig;
+use crate::semantic::functions::FunctionCatalog;
 use syntaqlite_parser::DialectNodeType;
 use syntaqlite_parser::NodeId;
 use syntaqlite_parser::RawDialect;
@@ -42,7 +39,6 @@ use syntaqlite_parser::ast_traits::AstTypes;
 use syntaqlite_parser::{ParseError, RawNodeReader};
 
 use scope::ScopeStack;
-use types::expand_function_info;
 
 /// Configuration for semantic validation.
 #[derive(Clone, Copy)]
@@ -87,7 +83,7 @@ pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
     dialect: RawDialect<'_>,
     session: Option<&SessionContext>,
     document: Option<&DocumentContext>,
-    functions: &'a [FunctionDef],
+    catalog: &'a FunctionCatalog,
     config: &'a ValidationConfig,
 ) -> Vec<Diagnostic> {
     let stmt: Option<A::Stmt> = DialectNodeType::from_arena(reader, stmt_id);
@@ -97,7 +93,7 @@ pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
 
     let mut scope = ScopeStack::new(session, document);
 
-    walker::Walker::<A>::run(reader, stmt, dialect, &mut scope, functions, config)
+    walker::Walker::<A>::run(reader, stmt, dialect, &mut scope, catalog, config)
 }
 
 /// Validate all statements in a document incrementally.
@@ -109,7 +105,7 @@ pub(crate) fn validate_document(
     stmt_ids: &[NodeId],
     dialect: RawDialect<'_>,
     session: Option<&SessionContext>,
-    functions: &[FunctionDef],
+    catalog: &FunctionCatalog,
     config: &ValidationConfig,
 ) -> Vec<Diagnostic> {
     let mut doc_ctx = DocumentContext::new();
@@ -121,7 +117,7 @@ pub(crate) fn validate_document(
             dialect,
             session,
             Some(&doc_ctx),
-            functions,
+            catalog,
             config,
         );
         all_diags.extend(diags);
@@ -181,7 +177,7 @@ fn parse_error_to_diagnostic(err: &ParseError, source: &str) -> Diagnostic {
 pub struct Validator<'d> {
     parser: RawParser<'d>,
     dialect: RawDialect<'d>,
-    functions: Vec<FunctionDef>,
+    catalog: FunctionCatalog,
 }
 
 impl<'d> Validator<'d> {
@@ -191,18 +187,15 @@ impl<'d> Validator<'d> {
     /// available under the default [`DialectConfig`].
     #[cfg(feature = "sqlite")]
     pub fn new() -> Validator<'static> {
-        let dc = DialectConfig::default();
-        let functions: Vec<FunctionDef> = syntaqlite_parser::available_functions(&dc)
-            .into_iter()
-            .flat_map(|info| expand_function_info(info))
-            .collect();
-        Validator::with_config(crate::dialect::sqlite(), functions, None)
+        let dialect = crate::dialect::sqlite();
+        let catalog = FunctionCatalog::for_default_dialect(&dialect);
+        Validator::with_catalog(dialect, catalog, None)
     }
 
-    /// Create a validator bound to the given dialect with custom configuration.
-    pub fn with_config(
+    /// Create a validator bound to the given dialect with a pre-built function catalog.
+    pub fn with_catalog(
         dialect: impl Into<RawDialect<'d>>,
-        functions: Vec<FunctionDef>,
+        catalog: FunctionCatalog,
         dialect_config: Option<syntaqlite_parser::DialectConfig>,
     ) -> Self {
         let dialect = dialect.into();
@@ -216,7 +209,7 @@ impl<'d> Validator<'d> {
         Validator {
             parser,
             dialect,
-            functions,
+            catalog,
         }
     }
 
@@ -238,7 +231,7 @@ impl<'d> Validator<'d> {
             source,
             self.dialect,
             session,
-            &self.functions,
+            &self.catalog,
             config,
         )
     }
@@ -262,7 +255,7 @@ pub(crate) fn validate_parse_results(
     source: &str,
     dialect: RawDialect<'_>,
     session: Option<&SessionContext>,
-    functions: &[FunctionDef],
+    catalog: &FunctionCatalog,
     config: &ValidationConfig,
 ) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
@@ -280,7 +273,7 @@ pub(crate) fn validate_parse_results(
         }
     }
 
-    let semantic = validate_document(reader, &stmt_ids, dialect, session, functions, config);
+    let semantic = validate_document(reader, &stmt_ids, dialect, session, catalog, config);
     diags.extend(semantic);
     diags
 }

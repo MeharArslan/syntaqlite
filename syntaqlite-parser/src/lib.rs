@@ -44,7 +44,7 @@ pub use crate::raw_tokenizer::{RawToken, RawTokenCursor, RawTokenizer};
 
 // ── Function availability catalog ─────────────────────────────────────────────
 
-pub use crate::catalog::{FunctionInfo, is_function_available};
+pub use crate::catalog::{FunctionCategory, FunctionInfo, is_function_available};
 pub use crate::cflag_versions::available_functions;
 pub use crate::cflag_versions::{cflag_table, parse_cflag_name, parse_sqlite_version};
 pub use crate::dialect::ffi::{CflagInfo, Cflags};

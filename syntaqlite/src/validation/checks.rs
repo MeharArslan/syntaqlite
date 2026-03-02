@@ -4,7 +4,7 @@
 use super::ValidationConfig;
 use super::fuzzy::best_suggestion;
 use super::scope::{ColumnResolution, ScopeStack};
-use super::types::{Diagnostic, DiagnosticMessage, FunctionDef, Help};
+use super::types::{Diagnostic, DiagnosticMessage, Help};
 
 pub(super) fn check_table_ref(
     name: &str,
@@ -78,65 +78,6 @@ pub(super) fn check_column_ref(
             ))
         }
     }
-}
-
-pub(super) fn check_function_call(
-    name: &str,
-    arg_count: usize,
-    offset: usize,
-    length: usize,
-    functions: &[FunctionDef],
-    config: &ValidationConfig,
-) -> Option<Diagnostic> {
-    if name.is_empty() {
-        return None;
-    }
-
-    let mut by_name = functions
-        .iter()
-        .filter(|f| f.name.eq_ignore_ascii_case(name));
-
-    let Some(first_match) = by_name.next() else {
-        let mut all_names: Vec<String> = functions.iter().map(|f| f.name.clone()).collect();
-        all_names.sort_unstable();
-        all_names.dedup();
-        let suggestion = best_suggestion(name, &all_names, config.suggestion_threshold);
-        return Some(make_diagnostic(
-            offset,
-            length,
-            DiagnosticMessage::UnknownFunction {
-                name: name.to_string(),
-            },
-            suggestion.map(Help::Suggestion),
-            config,
-        ));
-    };
-
-    // If any definition accepts this arg count (or is variadic), it's OK.
-    let arity_ok = std::iter::once(first_match)
-        .chain(by_name)
-        .any(|f| f.args.is_none_or(|n| n == arg_count));
-
-    if !arity_ok {
-        let expected: Vec<usize> = functions
-            .iter()
-            .filter(|f| f.name.eq_ignore_ascii_case(name))
-            .filter_map(|f| f.args)
-            .collect();
-        return Some(make_diagnostic(
-            offset,
-            length,
-            DiagnosticMessage::FunctionArity {
-                name: name.to_string(),
-                expected,
-                got: arg_count,
-            },
-            None,
-            config,
-        ));
-    }
-
-    None
 }
 
 fn make_diagnostic(

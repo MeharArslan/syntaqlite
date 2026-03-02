@@ -28,12 +28,12 @@ impl syntaqlite::lsp::DocumentAnalysis
 impl syntaqlite::lsp::LspServer
 impl syntaqlite::NodeRefJsonExt for syntaqlite_parser::session::NodeRef<'_>
 impl syntaqlite::Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
+impl syntaqlite::semantic::functions::FunctionCatalog
 impl syntaqlite::Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
 impl syntaqlite::validation::Diagnostic
 impl syntaqlite::validation::DiagnosticMessage
 impl syntaqlite::validation::DocumentContext
 impl syntaqlite::validation::DocumentContext
-impl syntaqlite::validation::FunctionCatalog
 impl syntaqlite::validation::Help
 impl syntaqlite::validation::SessionContext
 impl syntaqlite::validation::SessionContext
@@ -54,6 +54,7 @@ pub const syntaqlite::dialect::SEMANTIC_TOKEN_LEGEND: &[&str]
 pub enum syntaqlite::fmt::KeywordCase
 pub enum syntaqlite::KeywordCase
 pub enum syntaqlite::lsp::CompletionKind
+pub enum syntaqlite::semantic::functions::FunctionCheckResult
 pub enum syntaqlite::validation::DiagnosticMessage
 pub enum syntaqlite::validation::Help
 pub enum syntaqlite::validation::RelationKind
@@ -70,13 +71,12 @@ pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::fragment_semantic_tokens(&sel
 pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::new(dialect: syntaqlite_parser::dialect::RawDialect<'d>) -> Self
 pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::semantic_tokens_encoded(&self, fragments: &[syntaqlite::embedded::EmbeddedFragment], source: &str) -> alloc::vec::Vec<u32>
 pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::validate(&self, fragments: &[syntaqlite::embedded::EmbeddedFragment]) -> alloc::vec::Vec<syntaqlite::validation::Diagnostic>
+pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::with_catalog(self, catalog: syntaqlite::semantic::functions::FunctionCatalog) -> Self
 pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::with_config(self, config: syntaqlite::validation::ValidationConfig) -> Self
-pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::with_functions(self, functions: alloc::vec::Vec<syntaqlite::validation::FunctionDef>) -> Self
 pub fn syntaqlite::embedded::extract_python(source: &str) -> alloc::vec::Vec<syntaqlite::embedded::EmbeddedFragment>
 pub fn syntaqlite::embedded::extract_typescript(source: &str) -> alloc::vec::Vec<syntaqlite::embedded::EmbeddedFragment>
 pub fn syntaqlite::embedded::offset_map::OffsetMap::new(fragment: &syntaqlite::embedded::EmbeddedFragment) -> Self
 pub fn syntaqlite::embedded::offset_map::OffsetMap::to_host(&self, sql_offset: usize) -> core::option::Option<usize>
-pub fn syntaqlite::embedded::sqlite_function_defs() -> alloc::vec::Vec<syntaqlite::validation::FunctionDef>
 pub fn syntaqlite::fmt::FormatConfig::default() -> Self
 pub fn syntaqlite::fmt::FormatConfig::default() -> Self
 pub fn syntaqlite::fmt::FormatConfig::from_raw_params(line_width: u32, keyword_case: u32, semicolons: u32) -> Self
@@ -106,7 +106,6 @@ pub fn syntaqlite::incremental::IncrementalParser<'static, syntaqlite_parser_sql
 pub fn syntaqlite::incremental::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>::new() -> Self
 pub fn syntaqlite::lsp::AnalysisHost<'d>::all_diagnostics(&mut self, uri: &str, config: &syntaqlite::validation::ValidationConfig) -> alloc::vec::Vec<syntaqlite::validation::Diagnostic>
 pub fn syntaqlite::lsp::AnalysisHost<'d>::available_function_names(&self) -> alloc::vec::Vec<alloc::string::String>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::available_functions(&self) -> alloc::vec::Vec<syntaqlite::validation::FunctionDef>
 pub fn syntaqlite::lsp::AnalysisHost<'d>::close_document(&mut self, uri: &str)
 pub fn syntaqlite::lsp::AnalysisHost<'d>::completion_info_at_offset(&mut self, uri: &str, offset: usize) -> syntaqlite::lsp::CompletionInfo
 pub fn syntaqlite::lsp::AnalysisHost<'d>::completion_items(&mut self, uri: &str, offset: usize) -> alloc::vec::Vec<syntaqlite::lsp::CompletionEntry>
@@ -115,7 +114,7 @@ pub fn syntaqlite::lsp::AnalysisHost<'d>::document_diagnostics(&mut self, uri: &
 pub fn syntaqlite::lsp::AnalysisHost<'d>::document_source(&self, uri: &str) -> core::option::Option<&str>
 pub fn syntaqlite::lsp::AnalysisHost<'d>::expected_tokens_at_offset(&mut self, uri: &str, offset: usize) -> alloc::vec::Vec<u32>
 pub fn syntaqlite::lsp::AnalysisHost<'d>::format(&self, uri: &str, config: &syntaqlite::fmt::FormatConfig) -> core::result::Result<alloc::string::String, syntaqlite::lsp::host::FormatError>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::function_catalog(&self) -> syntaqlite::validation::FunctionCatalog
+pub fn syntaqlite::lsp::AnalysisHost<'d>::function_catalog(&self) -> syntaqlite::semantic::functions::FunctionCatalog
 pub fn syntaqlite::lsp::AnalysisHost<'d>::new() -> syntaqlite::lsp::AnalysisHost<'static>
 pub fn syntaqlite::lsp::AnalysisHost<'d>::open_document(&mut self, uri: &str, version: i32, text: alloc::string::String)
 pub fn syntaqlite::lsp::AnalysisHost<'d>::semantic_tokens_encoded(&mut self, uri: &str, range: core::option::Option<(usize, usize)>) -> alloc::vec::Vec<u32>
@@ -141,6 +140,14 @@ pub fn syntaqlite::Parser<'d, N>::parse<'a>(&'a mut self, source: &'a str) -> sy
 pub fn syntaqlite::Parser<'d, N>::with_config(dialect: syntaqlite_parser::dialect::Dialect<'d, N>, config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
 pub fn syntaqlite::Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>::default() -> Self
 pub fn syntaqlite::Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>::new() -> Self
+pub fn syntaqlite::semantic::functions::FunctionCatalog::add_session_functions(&mut self, functions: &[syntaqlite::semantic::functions::SessionFunction])
+pub fn syntaqlite::semantic::functions::FunctionCatalog::all_names(&self) -> alloc::vec::Vec<alloc::string::String>
+pub fn syntaqlite::semantic::functions::FunctionCatalog::check_call(&self, name: &str, arg_count: usize) -> syntaqlite::semantic::functions::FunctionCheckResult
+pub fn syntaqlite::semantic::functions::FunctionCatalog::for_default_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>) -> Self
+pub fn syntaqlite::semantic::functions::FunctionCatalog::for_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>, config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
+pub fn syntaqlite::semantic::functions::FunctionCatalog::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&str, syntaqlite_parser::catalog::FunctionCategory)>
+pub fn syntaqlite::semantic::functions::FunctionCatalog::lookup(&self, name: &str) -> core::option::Option<syntaqlite::semantic::functions::FunctionLookup<'_>>
+pub fn syntaqlite::semantic::functions::FunctionCatalog::unique_names(&self) -> impl core::iter::traits::iterator::Iterator<Item = &str>
 pub fn syntaqlite::StatementCursor<'a, N>::next_statement(&mut self) -> core::option::Option<core::result::Result<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node, syntaqlite_parser::session::ParseError>>
 pub fn syntaqlite::StatementCursor<'a, N>::next(&mut self) -> core::option::Option<Self::Item>
 pub fn syntaqlite::StatementCursor<'a, N>::reader(&self) -> syntaqlite_parser::session::RawNodeReader<'a>
@@ -163,10 +170,6 @@ pub fn syntaqlite::validation::DocumentContext::default() -> Self
 pub fn syntaqlite::validation::DocumentContext::new() -> Self
 pub fn syntaqlite::validation::DocumentContext::tables(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::validation::RelationDef> + '_
 pub fn syntaqlite::validation::DocumentContext::views(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::validation::RelationDef> + '_
-pub fn syntaqlite::validation::FunctionCatalog::for_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>, config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
-pub fn syntaqlite::validation::FunctionCatalog::functions(&self) -> &[syntaqlite::validation::FunctionDef]
-pub fn syntaqlite::validation::FunctionCatalog::unique_names(&self) -> impl core::iter::traits::iterator::Iterator<Item = &str>
-pub fn syntaqlite::validation::FunctionCatalog::with_session(self, session: &syntaqlite::validation::SessionContext) -> Self
 pub fn syntaqlite::validation::Help::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite::validation::Help::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
 pub fn syntaqlite::validation::Help::write_json(&self, out: &mut alloc::string::String)
@@ -185,8 +188,8 @@ pub fn syntaqlite::validation::Validator<'d>::new() -> syntaqlite::validation::V
 pub fn syntaqlite::validation::Validator<'d>::new() -> syntaqlite::validation::Validator<'static>
 pub fn syntaqlite::validation::Validator<'d>::validate(&mut self, source: &str, session: core::option::Option<&syntaqlite::validation::SessionContext>, config: &syntaqlite::validation::ValidationConfig) -> alloc::vec::Vec<syntaqlite::validation::Diagnostic>
 pub fn syntaqlite::validation::Validator<'d>::validate(&mut self, source: &str, session: core::option::Option<&syntaqlite::validation::SessionContext>, config: &syntaqlite::validation::ValidationConfig) -> alloc::vec::Vec<syntaqlite::validation::Diagnostic>
-pub fn syntaqlite::validation::Validator<'d>::with_config(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, functions: alloc::vec::Vec<syntaqlite::validation::FunctionDef>, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
-pub fn syntaqlite::validation::Validator<'d>::with_config(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, functions: alloc::vec::Vec<syntaqlite::validation::FunctionDef>, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
+pub fn syntaqlite::validation::Validator<'d>::with_catalog(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, catalog: syntaqlite::semantic::functions::FunctionCatalog, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
+pub fn syntaqlite::validation::Validator<'d>::with_catalog(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, catalog: syntaqlite::semantic::functions::FunctionCatalog, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
 pub fn syntaqlite::validation::Validator<'static>::default() -> Self
 pub fn syntaqlite::validation::Validator<'static>::default() -> Self
 pub mod syntaqlite
@@ -197,6 +200,8 @@ pub mod syntaqlite::embedded::offset_map
 pub mod syntaqlite::fmt
 pub mod syntaqlite::incremental
 pub mod syntaqlite::lsp
+pub mod syntaqlite::semantic
+pub mod syntaqlite::semantic::functions
 pub mod syntaqlite::validation
 pub struct syntaqlite::embedded::EmbeddedAnalyzer<'d>
 pub struct syntaqlite::embedded::EmbeddedFragment
@@ -214,6 +219,9 @@ pub struct syntaqlite::lsp::DocumentAnalysis
 pub struct syntaqlite::lsp::LspServer
 pub struct syntaqlite::lsp::SemanticToken
 pub struct syntaqlite::Parser<'d, N: syntaqlite_parser::dialect_traits::NodeFamily>
+pub struct syntaqlite::semantic::functions::FunctionCatalog
+pub struct syntaqlite::semantic::functions::FunctionLookup<'a>
+pub struct syntaqlite::semantic::functions::SessionFunction
 pub struct syntaqlite::StatementCursor<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::Token<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::TokenCursor<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
@@ -221,8 +229,6 @@ pub struct syntaqlite::Tokenizer<'d, N: syntaqlite_parser::dialect_traits::NodeF
 pub struct syntaqlite::validation::ColumnDef
 pub struct syntaqlite::validation::Diagnostic
 pub struct syntaqlite::validation::DocumentContext
-pub struct syntaqlite::validation::FunctionCatalog
-pub struct syntaqlite::validation::FunctionDef
 pub struct syntaqlite::validation::RelationDef
 pub struct syntaqlite::validation::SessionContext
 pub struct syntaqlite::validation::SourceContext<'a>
@@ -273,6 +279,16 @@ pub syntaqlite::lsp::CompletionKind::Keyword
 pub syntaqlite::lsp::SemanticToken::category: syntaqlite::dialect::TokenCategory
 pub syntaqlite::lsp::SemanticToken::length: usize
 pub syntaqlite::lsp::SemanticToken::offset: usize
+pub syntaqlite::semantic::functions::FunctionCheckResult::Ok
+pub syntaqlite::semantic::functions::FunctionCheckResult::Unknown
+pub syntaqlite::semantic::functions::FunctionCheckResult::WrongArity
+pub syntaqlite::semantic::functions::FunctionCheckResult::WrongArity::expected: alloc::vec::Vec<usize>
+pub syntaqlite::semantic::functions::FunctionLookup::category: syntaqlite_parser::catalog::FunctionCategory
+pub syntaqlite::semantic::functions::FunctionLookup::fixed_arities: alloc::vec::Vec<usize>
+pub syntaqlite::semantic::functions::FunctionLookup::is_variadic: bool
+pub syntaqlite::semantic::functions::FunctionLookup::name: &'a str
+pub syntaqlite::semantic::functions::SessionFunction::args: core::option::Option<usize>
+pub syntaqlite::semantic::functions::SessionFunction::name: alloc::string::String
 pub syntaqlite::Token::kind: <N as syntaqlite_parser::dialect_traits::NodeFamily>::Token
 pub syntaqlite::Token::text: &'a str
 pub syntaqlite::validation::ColumnDef::is_nullable: bool
@@ -296,18 +312,15 @@ pub syntaqlite::validation::DiagnosticMessage::UnknownFunction
 pub syntaqlite::validation::DiagnosticMessage::UnknownFunction::name: alloc::string::String
 pub syntaqlite::validation::DiagnosticMessage::UnknownTable
 pub syntaqlite::validation::DiagnosticMessage::UnknownTable::name: alloc::string::String
-pub syntaqlite::validation::DocumentContext::functions: alloc::vec::Vec<syntaqlite::validation::FunctionDef>
+pub syntaqlite::validation::DocumentContext::functions: alloc::vec::Vec<syntaqlite::semantic::functions::SessionFunction>
 pub syntaqlite::validation::DocumentContext::relations: alloc::vec::Vec<syntaqlite::validation::RelationDef>
-pub syntaqlite::validation::FunctionDef::args: core::option::Option<usize>
-pub syntaqlite::validation::FunctionDef::description: core::option::Option<alloc::string::String>
-pub syntaqlite::validation::FunctionDef::name: alloc::string::String
 pub syntaqlite::validation::Help::Suggestion(alloc::string::String)
 pub syntaqlite::validation::RelationDef::columns: alloc::vec::Vec<syntaqlite::validation::ColumnDef>
 pub syntaqlite::validation::RelationDef::kind: syntaqlite::validation::RelationKind
 pub syntaqlite::validation::RelationDef::name: alloc::string::String
 pub syntaqlite::validation::RelationKind::Table
 pub syntaqlite::validation::RelationKind::View
-pub syntaqlite::validation::SessionContext::functions: alloc::vec::Vec<syntaqlite::validation::FunctionDef>
+pub syntaqlite::validation::SessionContext::functions: alloc::vec::Vec<syntaqlite::semantic::functions::SessionFunction>
 pub syntaqlite::validation::SessionContext::relations: alloc::vec::Vec<syntaqlite::validation::RelationDef>
 pub syntaqlite::validation::Severity::Error
 pub syntaqlite::validation::Severity::Hint
@@ -321,6 +334,9 @@ pub trait syntaqlite::dialect::DialectExt
 pub trait syntaqlite::NodeRefJsonExt
 pub type syntaqlite::incremental::SqliteIncrementalParser = syntaqlite::incremental::IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
 pub type syntaqlite::SqliteParser = syntaqlite::Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
+pub type syntaqlite::SqliteStatementCursor<'a> = syntaqlite::StatementCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>
+pub type syntaqlite::SqliteToken<'a> = syntaqlite::Token<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>
+pub type syntaqlite::SqliteTokenCursor<'a> = syntaqlite::TokenCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>
 pub type syntaqlite::SqliteTokenizer = syntaqlite::Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
 pub type syntaqlite::StatementCursor<'a, N>::Item = core::result::Result<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node, syntaqlite_parser::session::ParseError>
 pub type syntaqlite::TokenCursor<'a, N>::Item = syntaqlite::Token<'a, N>

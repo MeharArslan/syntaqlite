@@ -100,6 +100,7 @@ pub enum syntaqlite_parser::ast_traits::TriggerEventTypeKind
 pub enum syntaqlite_parser::ast_traits::TriggerTimingKind
 pub enum syntaqlite_parser::ast_traits::UnaryOpKind
 pub enum syntaqlite_parser::FieldVal<'a>
+pub enum syntaqlite_parser::FunctionCategory
 pub enum syntaqlite_parser::Parser
 pub enum syntaqlite_parser::SchemaKind
 pub enum syntaqlite_parser::Tokenizer
@@ -844,8 +845,11 @@ pub syntaqlite_parser::FieldVal::Enum(u32)
 pub syntaqlite_parser::FieldVal::Flags(u8)
 pub syntaqlite_parser::FieldVal::NodeId(syntaqlite_parser::NodeId)
 pub syntaqlite_parser::FieldVal::Span(&'a str, u32)
+pub syntaqlite_parser::FunctionCategory::Aggregate
+pub syntaqlite_parser::FunctionCategory::Scalar
+pub syntaqlite_parser::FunctionCategory::Window
 pub syntaqlite_parser::FunctionInfo::arities: &'a [i16]
-pub syntaqlite_parser::FunctionInfo::category: syntaqlite_parser::catalog::FunctionCategory
+pub syntaqlite_parser::FunctionInfo::category: syntaqlite_parser::FunctionCategory
 pub syntaqlite_parser::FunctionInfo::name: &'a str
 pub syntaqlite_parser::MacroRegion::call_length: u32
 pub syntaqlite_parser::MacroRegion::call_offset: u32

@@ -22,8 +22,9 @@ pub use typescript::extract_typescript;
 use std::ops::Range;
 
 use crate::dialect::{DialectExt, TokenCategory};
+use crate::semantic::functions::FunctionCatalog;
 use crate::validation::ValidationConfig;
-use crate::validation::types::{Diagnostic, DiagnosticMessage, FunctionDef};
+use crate::validation::types::{Diagnostic, DiagnosticMessage};
 use syntaqlite_parser::ParseError;
 use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::RawIncrementalParser;
@@ -127,17 +128,19 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 /// # Example
 ///
 /// ```rust,no_run
-/// # use syntaqlite::embedded::{EmbeddedAnalyzer, extract_python, sqlite_function_defs};
+/// # use syntaqlite::embedded::{EmbeddedAnalyzer, extract_python};
+/// # use syntaqlite::semantic::functions::FunctionCatalog;
 /// # let source = "";
 /// # let dialect = syntaqlite::dialect::sqlite();
+/// let catalog = FunctionCatalog::for_default_dialect(&dialect);
 /// let fragments = extract_python(source);
 /// let diags = EmbeddedAnalyzer::new(dialect)
-///     .with_functions(sqlite_function_defs())
+///     .with_catalog(catalog)
 ///     .validate(&fragments);
 /// ```
 pub struct EmbeddedAnalyzer<'d> {
     dialect: RawDialect<'d>,
-    functions: Vec<FunctionDef>,
+    catalog: FunctionCatalog,
     config: ValidationConfig,
 }
 
@@ -147,16 +150,17 @@ impl<'d> EmbeddedAnalyzer<'d> {
     pub fn new(dialect: RawDialect<'d>) -> Self {
         Self {
             dialect,
-            functions: Vec::new(),
+            catalog: FunctionCatalog::for_dialect(
+                &dialect,
+                &syntaqlite_parser::DialectConfig::default(),
+            ),
             config: ValidationConfig::default(),
         }
     }
 
     /// Attach a function catalog to enable function-existence validation.
-    ///
-    /// Use [`sqlite_function_defs`] to get the SQLite built-in catalog.
-    pub fn with_functions(mut self, functions: Vec<FunctionDef>) -> Self {
-        self.functions = functions;
+    pub fn with_catalog(mut self, catalog: FunctionCatalog) -> Self {
+        self.catalog = catalog;
         self
     }
 
@@ -395,26 +399,13 @@ impl<'d> EmbeddedAnalyzer<'d> {
             &fragment.sql_text,
             dialect,
             None,
-            &self.functions,
+            &self.catalog,
             &self.config,
         )
     }
 }
 
 // ── Utilities ────────────────────────────────────────────────────────────
-
-/// Build `FunctionDef` entries from the SQLite built-in function catalog.
-///
-/// Uses default `DialectConfig` (latest version, no cflags) to determine
-/// which functions are available.
-#[cfg(feature = "sqlite")]
-pub fn sqlite_function_defs() -> Vec<FunctionDef> {
-    let config = syntaqlite_parser::DialectConfig::default();
-    syntaqlite_parser::available_functions(&config)
-        .into_iter()
-        .flat_map(|info| crate::validation::types::expand_function_info(info))
-        .collect()
-}
 
 /// Check if a diagnostic message references a hole placeholder name.
 fn is_hole_diagnostic(diag: &Diagnostic, fragment: &EmbeddedFragment) -> bool {
@@ -438,7 +429,9 @@ mod tests {
     };
 
     fn analyzer() -> EmbeddedAnalyzer<'static> {
-        EmbeddedAnalyzer::new(crate::dialect::sqlite()).with_functions(sqlite_function_defs())
+        let dialect = crate::dialect::sqlite();
+        let catalog = FunctionCatalog::for_default_dialect(&dialect);
+        EmbeddedAnalyzer::new(dialect).with_catalog(catalog)
     }
 
     // ── Python syntax error tests ────────────────────────────────────
