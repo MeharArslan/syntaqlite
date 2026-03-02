@@ -10,7 +10,7 @@ use serde::Serialize;
 
 use syntaqlite::Formatter;
 use syntaqlite::embedded::{self, EmbeddedFragment};
-use syntaqlite::{FormatConfig, NodeRefJsonExt, ValidationConfig};
+use syntaqlite::{FormatConfig, KeywordCase, NodeRefJsonExt, ValidationConfig};
 use syntaqlite_parser::{
     Cflags, DialectConfig, FfiDialect, ParserConfig, RawDialect, RawParser, cflag_table,
     parse_cflag_name, parse_sqlite_version,
@@ -190,7 +190,16 @@ fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u
     let dialect = try_wasm!(resolve_dialect());
     let source = try_wasm!(decode_input(ptr, len));
 
-    let config = FormatConfig::from_raw_params(line_width, keyword_case, semicolons);
+    let config = FormatConfig {
+        line_width: if line_width == 0 { 80 } else { line_width as usize },
+        keyword_case: match keyword_case {
+            1 => KeywordCase::Upper,
+            2 => KeywordCase::Lower,
+            _ => KeywordCase::Preserve,
+        },
+        semicolons: semicolons != 0,
+        ..Default::default()
+    };
     let mut formatter = Formatter::with_config(dialect, &config, Some(get_dialect_config()));
 
     let sql = try_wasm!(formatter.format(&source));

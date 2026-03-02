@@ -1,48 +1,37 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Typed wrappers parameterized over [`NodeFamily`], providing clean
-//! type-inferred construction from a tagged [`Dialect`].
+//! Dialect-generic typed wrappers parameterized over [`NodeFamily`].
+//!
+//! These types provide clean type-inferred construction from a tagged
+//! [`Dialect`].  For the built-in SQLite dialect, use the concrete
+//! wrappers at the crate root ([`crate::Parser`], [`crate::Tokenizer`],
+//! etc.) instead.
 
 use std::marker::PhantomData;
 use std::ops::Range;
 
 use syntaqlite_parser::{
     Comment, Dialect, MacroRegion, NodeFamily, NodeRef, ParseError, ParserConfig,
-    RawIncrementalCursor, RawIncrementalParser, RawNodeReader, RawParser, RawStatementCursor,
-    RawTokenCursor, RawTokenizer,
+    RawIncrementalCursor, RawIncrementalParser, RawParser, RawStatementCursor, RawTokenCursor,
+    RawTokenizer,
 };
 
-// ── Parser ───────────────────────────────────────────────────────────────
+// ── DialectParser ───────────────────────────────────────────────────────
 
 /// A SQL parser bound to a specific dialect.
 ///
 /// Constructed from a tagged [`Dialect<'d, N>`] so that `N` (the node
 /// family) is inferred automatically.
-pub struct Parser<'d, N: NodeFamily> {
+pub struct DialectParser<'d, N: NodeFamily> {
     inner: RawParser<'d>,
     _marker: PhantomData<N>,
 }
 
-#[cfg(feature = "sqlite")]
-impl Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily> {
-    /// Create a parser for the built-in SQLite dialect with default configuration.
-    pub fn new() -> Self {
-        Self::from_dialect(Dialect::from_raw_dialect(crate::dialect::sqlite()))
-    }
-}
-
-#[cfg(feature = "sqlite")]
-impl Default for Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<'d, N: NodeFamily> Parser<'d, N> {
+impl<'d, N: NodeFamily> DialectParser<'d, N> {
     /// Create a parser bound to the given dialect with default configuration.
     pub fn from_dialect(dialect: Dialect<'d, N>) -> Self {
-        Parser {
+        DialectParser {
             inner: RawParser::new(dialect.raw()),
             _marker: PhantomData,
         }
@@ -50,38 +39,41 @@ impl<'d, N: NodeFamily> Parser<'d, N> {
 
     /// Create a parser bound to the given dialect with custom configuration.
     pub fn with_config(dialect: Dialect<'d, N>, config: &ParserConfig) -> Self {
-        Parser {
+        DialectParser {
             inner: RawParser::with_config(dialect.raw(), config),
             _marker: PhantomData,
         }
     }
 
-    /// Bind source text and return a [`StatementCursor`] for iterating typed statements.
-    pub fn parse<'a>(&'a mut self, source: &'a str) -> StatementCursor<'a, N> {
-        StatementCursor {
+    /// Bind source text and return a [`DialectStatementCursor`] for iterating typed statements.
+    pub fn parse<'a>(&'a mut self, source: &'a str) -> DialectStatementCursor<'a, N> {
+        DialectStatementCursor {
             inner: self.inner.parse(source),
             _marker: PhantomData,
         }
     }
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn parse_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> StatementCursor<'a, N> {
-        StatementCursor {
+    pub fn parse_cstr<'a>(
+        &'a mut self,
+        source: &'a std::ffi::CStr,
+    ) -> DialectStatementCursor<'a, N> {
+        DialectStatementCursor {
             inner: self.inner.parse_cstr(source),
             _marker: PhantomData,
         }
     }
 }
 
-// ── StatementCursor ──────────────────────────────────────────────────────
+// ── DialectStatementCursor ──────────────────────────────────────────────
 
 /// A streaming cursor over parsed SQL statements, yielding typed nodes.
-pub struct StatementCursor<'a, N: NodeFamily> {
+pub struct DialectStatementCursor<'a, N: NodeFamily> {
     inner: RawStatementCursor<'a>,
     _marker: PhantomData<N>,
 }
 
-impl<'a, N: NodeFamily> StatementCursor<'a, N> {
+impl<'a, N: NodeFamily> DialectStatementCursor<'a, N> {
     /// Parse the next SQL statement and return a typed AST node.
     ///
     /// Returns:
@@ -104,18 +96,13 @@ impl<'a, N: NodeFamily> StatementCursor<'a, N> {
         })
     }
 
-    /// Get a reference to the embedded node reader.
-    pub fn reader(&self) -> RawNodeReader<'a> {
-        self.inner.reader()
-    }
-
     /// The source text bound to this cursor.
     pub fn source(&self) -> &'a str {
         self.inner.source()
     }
 }
 
-impl<'a, N: NodeFamily> Iterator for StatementCursor<'a, N> {
+impl<'a, N: NodeFamily> Iterator for DialectStatementCursor<'a, N> {
     type Item = Result<N::Node<'a>, ParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -123,44 +110,29 @@ impl<'a, N: NodeFamily> Iterator for StatementCursor<'a, N> {
     }
 }
 
-// ── Token ────────────────────────────────────────────────────────────────
+// ── DialectToken ────────────────────────────────────────────────────────
 
 /// A typed SQL token with kind and source text.
 #[derive(Debug, Clone, Copy)]
-pub struct Token<'a, N: NodeFamily> {
+pub struct DialectToken<'a, N: NodeFamily> {
     /// The typed token kind.
     pub kind: N::Token,
     /// The text of the token (a slice of the source).
     pub text: &'a str,
 }
 
-// ── Tokenizer ────────────────────────────────────────────────────────────
+// ── DialectTokenizer ────────────────────────────────────────────────────
 
 /// A SQL tokenizer bound to a specific dialect.
-pub struct Tokenizer<'d, N: NodeFamily> {
+pub struct DialectTokenizer<'d, N: NodeFamily> {
     inner: RawTokenizer<'d>,
     _marker: PhantomData<N>,
 }
 
-#[cfg(feature = "sqlite")]
-impl Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily> {
-    /// Create a tokenizer for the built-in SQLite dialect with default configuration.
-    pub fn new() -> Self {
-        Self::from_dialect(Dialect::from_raw_dialect(crate::dialect::sqlite()))
-    }
-}
-
-#[cfg(feature = "sqlite")]
-impl Default for Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<'d, N: NodeFamily> Tokenizer<'d, N> {
+impl<'d, N: NodeFamily> DialectTokenizer<'d, N> {
     /// Create a tokenizer bound to the given dialect with default configuration.
     pub fn from_dialect(dialect: Dialect<'d, N>) -> Self {
-        Tokenizer {
+        DialectTokenizer {
             inner: RawTokenizer::new(dialect.raw()),
             _marker: PhantomData,
         }
@@ -171,39 +143,42 @@ impl<'d, N: NodeFamily> Tokenizer<'d, N> {
         dialect: Dialect<'d, N>,
         config: syntaqlite_parser::DialectConfig,
     ) -> Self {
-        Tokenizer {
+        DialectTokenizer {
             inner: RawTokenizer::with_dialect_config(dialect.raw(), config),
             _marker: PhantomData,
         }
     }
 
-    /// Bind source text and return a [`TokenCursor`] for iterating typed tokens.
-    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> TokenCursor<'a, N> {
-        TokenCursor {
+    /// Bind source text and return a [`DialectTokenCursor`] for iterating typed tokens.
+    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> DialectTokenCursor<'a, N> {
+        DialectTokenCursor {
             inner: self.inner.tokenize(source),
             _marker: PhantomData,
         }
     }
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn tokenize_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> TokenCursor<'a, N> {
-        TokenCursor {
+    pub fn tokenize_cstr<'a>(
+        &'a mut self,
+        source: &'a std::ffi::CStr,
+    ) -> DialectTokenCursor<'a, N> {
+        DialectTokenCursor {
             inner: self.inner.tokenize_cstr(source),
             _marker: PhantomData,
         }
     }
 }
 
-// ── TokenCursor ──────────────────────────────────────────────────────────
+// ── DialectTokenCursor ──────────────────────────────────────────────────
 
 /// A cursor yielding typed tokens.
-pub struct TokenCursor<'a, N: NodeFamily> {
+pub struct DialectTokenCursor<'a, N: NodeFamily> {
     inner: RawTokenCursor<'a>,
     _marker: PhantomData<N>,
 }
 
-impl<'a, N: NodeFamily> Iterator for TokenCursor<'a, N> {
-    type Item = Token<'a, N>;
+impl<'a, N: NodeFamily> Iterator for DialectTokenCursor<'a, N> {
+    type Item = DialectToken<'a, N>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -211,7 +186,7 @@ impl<'a, N: NodeFamily> Iterator for TokenCursor<'a, N> {
             if let Some(kind) =
                 <N::Token as syntaqlite_parser::DialectTokenType>::from_token_type(raw.token_type)
             {
-                return Some(Token {
+                return Some(DialectToken {
                     kind,
                     text: raw.text,
                 });
@@ -221,37 +196,22 @@ impl<'a, N: NodeFamily> Iterator for TokenCursor<'a, N> {
     }
 }
 
-// ── IncrementalParser ────────────────────────────────────────────────────
+// ── DialectIncrementalParser ────────────────────────────────────────────
 
 /// An incremental SQL parser bound to a specific dialect.
 ///
-/// Feeds tokens one at a time via [`IncrementalCursor`], yielding typed
-/// AST nodes.
-pub struct IncrementalParser<'d, N: NodeFamily> {
+/// Feeds tokens one at a time via [`DialectIncrementalCursor`], yielding
+/// typed AST nodes.
+pub struct DialectIncrementalParser<'d, N: NodeFamily> {
     inner: RawIncrementalParser<'d>,
     _marker: PhantomData<N>,
 }
 
-#[cfg(feature = "sqlite")]
-impl IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily> {
-    /// Create an incremental parser for the built-in SQLite dialect.
-    pub fn new() -> Self {
-        Self::from_dialect(Dialect::from_raw_dialect(crate::dialect::sqlite()))
-    }
-}
-
-#[cfg(feature = "sqlite")]
-impl Default for IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<'d, N: NodeFamily> IncrementalParser<'d, N> {
+impl<'d, N: NodeFamily> DialectIncrementalParser<'d, N> {
     /// Create an incremental parser bound to the given dialect with default
     /// configuration (token collection enabled).
     pub fn from_dialect(dialect: Dialect<'d, N>) -> Self {
-        IncrementalParser {
+        DialectIncrementalParser {
             inner: RawIncrementalParser::new(dialect.raw()),
             _marker: PhantomData,
         }
@@ -260,15 +220,15 @@ impl<'d, N: NodeFamily> IncrementalParser<'d, N> {
     /// Create an incremental parser bound to the given dialect with custom
     /// configuration.
     pub fn with_config(dialect: Dialect<'d, N>, config: &ParserConfig) -> Self {
-        IncrementalParser {
+        DialectIncrementalParser {
             inner: RawIncrementalParser::with_config(dialect.raw(), config),
             _marker: PhantomData,
         }
     }
 
-    /// Bind source text and return an [`IncrementalCursor`] for token feeding.
-    pub fn feed<'a>(&'a mut self, source: &'a str) -> IncrementalCursor<'a, N> {
-        IncrementalCursor {
+    /// Bind source text and return a [`DialectIncrementalCursor`] for token feeding.
+    pub fn feed<'a>(&'a mut self, source: &'a str) -> DialectIncrementalCursor<'a, N> {
+        DialectIncrementalCursor {
             inner: self.inner.feed(source),
             last_root: None,
             _marker: PhantomData,
@@ -276,8 +236,11 @@ impl<'d, N: NodeFamily> IncrementalParser<'d, N> {
     }
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn feed_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> IncrementalCursor<'a, N> {
-        IncrementalCursor {
+    pub fn feed_cstr<'a>(
+        &'a mut self,
+        source: &'a std::ffi::CStr,
+    ) -> DialectIncrementalCursor<'a, N> {
+        DialectIncrementalCursor {
             inner: self.inner.feed_cstr(source),
             last_root: None,
             _marker: PhantomData,
@@ -285,19 +248,19 @@ impl<'d, N: NodeFamily> IncrementalParser<'d, N> {
     }
 }
 
-// ── IncrementalCursor ────────────────────────────────────────────────────
+// ── DialectIncrementalCursor ────────────────────────────────────────────
 
 /// A cursor for token-by-token incremental parsing.
 ///
 /// Feed tokens via [`feed_token`](Self::feed_token) and signal end-of-input
 /// via [`finish`](Self::finish).
-pub struct IncrementalCursor<'a, N: NodeFamily> {
+pub struct DialectIncrementalCursor<'a, N: NodeFamily> {
     inner: RawIncrementalCursor<'a>,
     last_root: Option<NodeRef<'a>>,
     _marker: PhantomData<N>,
 }
 
-impl<'a, N: NodeFamily> IncrementalCursor<'a, N> {
+impl<'a, N: NodeFamily> DialectIncrementalCursor<'a, N> {
     /// Feed a typed token to the parser.
     ///
     /// Returns `Ok(Some(node))` when a statement completes, `Ok(None)` to
@@ -355,16 +318,6 @@ impl<'a, N: NodeFamily> IncrementalCursor<'a, N> {
         self.last_root
     }
 
-    /// Return terminal token IDs valid at the current parser state, as raw u32 ordinals.
-    pub fn expected_tokens(&self) -> Vec<u32> {
-        self.inner.expected_tokens()
-    }
-
-    /// Return the semantic completion context at the current parser state.
-    pub fn completion_context(&self) -> u32 {
-        self.inner.completion_context()
-    }
-
     /// Return the number of nodes currently in the parser arena.
     pub fn node_count(&self) -> u32 {
         self.inner.node_count()
@@ -378,11 +331,6 @@ impl<'a, N: NodeFamily> IncrementalCursor<'a, N> {
     /// End the innermost macro expansion region.
     pub fn end_macro(&mut self) {
         self.inner.end_macro()
-    }
-
-    /// Get the embedded node reader.
-    pub fn reader(&self) -> RawNodeReader<'a> {
-        self.inner.reader()
     }
 
     /// Return all comments captured during parsing.

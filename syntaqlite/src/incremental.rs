@@ -3,8 +3,7 @@
 
 //! Incremental (token-by-token) SQL parsing.
 
-pub use crate::parser::typed::{IncrementalCursor, IncrementalParser};
-
 #[cfg(feature = "sqlite")]
-pub type SqliteIncrementalParser =
-    IncrementalParser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
+pub use crate::sqlite_api::{IncrementalCursor, IncrementalParser};
+
+pub use syntaqlite_parser::{Comment, MacroRegion};

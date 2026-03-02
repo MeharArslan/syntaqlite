@@ -80,12 +80,16 @@
 
 pub(crate) mod parser;
 
-// ── Top-level API ─────────────────────────────────────────────────────
+// ── Concrete SQLite API ─────────────────────────────────────────────────
 //
-// Typed parser/tokenizer wrappers re-exported at the crate root.
-// Everything else lives in its host module (parser::*, fmt::*, validation::*).
+// The concrete types — `Parser`, `Tokenizer`, `StatementCursor`, etc. —
+// bake in the SQLite dialect so call sites never need type parameters.
+// Dialect-generic versions live in the `dialect` module.
 
-pub use crate::parser::typed::{Parser, StatementCursor, Token, TokenCursor, Tokenizer};
+#[cfg(feature = "sqlite")]
+mod sqlite_api;
+#[cfg(feature = "sqlite")]
+pub use sqlite_api::{Parser, StatementCursor, Token, TokenCursor, Tokenizer};
 
 pub mod incremental;
 
@@ -137,17 +141,6 @@ pub use fmt::{FormatConfig, KeywordCase};
 #[cfg(feature = "validation")]
 pub use validation::{ValidationConfig, Validator};
 
-#[cfg(feature = "sqlite")]
-pub type SqliteParser = Parser<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type SqliteTokenizer = Tokenizer<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type SqliteStatementCursor<'a> =
-    StatementCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type SqliteTokenCursor<'a> = TokenCursor<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
-#[cfg(feature = "sqlite")]
-pub type SqliteToken<'a> = Token<'a, syntaqlite_parser_sqlite::SqliteNodeFamily>;
 
 #[cfg(feature = "json")]
 pub use crate::parser::node_ref_json::NodeRefJsonExt;

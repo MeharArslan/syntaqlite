@@ -18,6 +18,18 @@
 
 use syntaqlite_parser::RawDialect;
 
+// ── Dialect-generic typed wrappers ──────────────────────────────────────
+//
+// Re-exported from the internal `parser::typed` module so that dialect
+// authors can reach them as `syntaqlite::dialect::DialectParser`, etc.
+
+pub use crate::parser::typed::{
+    DialectIncrementalCursor, DialectIncrementalParser, DialectParser, DialectStatementCursor,
+    DialectToken, DialectTokenCursor, DialectTokenizer,
+};
+
+pub use syntaqlite_parser::{Dialect, NodeFamily};
+
 /// Semantic category for a token type, used for syntax highlighting.
 ///
 /// Discriminant values match the corresponding index in [`SEMANTIC_TOKEN_LEGEND`],

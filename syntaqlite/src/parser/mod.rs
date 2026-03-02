@@ -12,4 +12,5 @@
 #[cfg(feature = "json")]
 pub(crate) mod node_ref_json;
 
+#[allow(unreachable_pub)]
 pub(crate) mod typed;
