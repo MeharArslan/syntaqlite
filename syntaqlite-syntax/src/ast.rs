@@ -1,6 +1,12 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+pub(crate) const FIELD_NODE_ID: u8 = 0;
+pub(crate) const FIELD_SPAN: u8 = 1;
+pub(crate) const FIELD_BOOL: u8 = 2;
+pub(crate) const FIELD_FLAGS: u8 = 3;
+pub(crate) const FIELD_ENUM: u8 = 4;
+
 /// A raw arena node index. Identifies a node in the parser arena.
 ///
 /// This is the untyped, lifetime-free handle. For typed handles see the
@@ -347,4 +353,51 @@ impl<'a, T> GrammarNodeType<'a> for TypedList<'a, T> {
             _phantom: PhantomData,
         })
     }
+}
+
+/// A node type that can be resolved from the parser arena by [`NodeId`].
+///
+/// Implemented by generated view structs (node views, `Node` enum) so that
+/// generic containers like `TypedList` can resolve children without
+/// dialect-specific code.
+///
+/// See also the symmetric [`GrammarTokenType`] for token enums.
+pub trait GrammarNodeType<'a>: Sized {
+    fn from_arena(reader: ParseResult<'a>, id: NodeId) -> Option<Self>;
+}
+
+/// A token type that can be resolved from a raw token integer, and converted
+/// back to one.
+///
+/// Each dialect's token enum must implement this trait to enable generic typed
+/// tokenizer and cursor usage.
+///
+/// See also the symmetric [`GrammarNodeType`] for AST node types.
+pub trait GrammarTokenType: Sized + Clone + Copy + std::fmt::Debug + Into<u32> {
+    /// Attempt to resolve a raw token type code into this dialect's token variant.
+    fn from_token_type(raw: u32) -> Option<Self>;
+}
+
+/// Bundles the node and token types for a dialect into a single type parameter.
+///
+/// Implementing this trait for a zero-sized marker type (e.g. `SqliteNodeFamily`)
+/// allows the tagged [`TypedDialectEnv<'d, N>`](crate::TypedDialectEnv) handle to infer both
+/// the node and token types at construction.
+pub trait NodeFamily {
+    /// The top-level typed AST node (e.g. `Stmt<'a>`).
+    type Node<'a>: GrammarNodeType<'a>;
+    /// The typed token enum (e.g. `TokenType`).
+    type Token: GrammarTokenType;
+}
+
+/// A typed node identifier: a lifetime-free handle to a specific AST node.
+///
+/// Generated as `XxxId` for each concrete view struct (e.g. `SelectStmtId`).
+/// Can be stored freely without holding the parser arena alive.
+///
+/// Use [`cursor.resolve(id)`](crate::StatementCursor::node_ref) to
+/// convert back to a typed view when a cursor is available.
+pub trait TypedNodeId: Copy + Into<NodeId> {
+    /// The typed view produced when this ID is resolved against an arena.
+    type Node<'a>: GrammarNodeType<'a>;
 }

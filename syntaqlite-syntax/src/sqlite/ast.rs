@@ -828,441 +828,441 @@ impl SelectStmtFlags {
     }
 }
 
-impl crate::ast_traits::LiteralTypeLike for LiteralType {
+impl crate::node_traits::LiteralTypeLike for LiteralType {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::LiteralTypeKind> {
+    fn kind(&self) -> Option<crate::node_traits::LiteralTypeKind> {
         Some(match self {
-            LiteralType::INTEGER => crate::ast_traits::LiteralTypeKind::INTEGER,
-            LiteralType::FLOAT => crate::ast_traits::LiteralTypeKind::FLOAT,
-            LiteralType::STRING => crate::ast_traits::LiteralTypeKind::STRING,
-            LiteralType::BLOB => crate::ast_traits::LiteralTypeKind::BLOB,
-            LiteralType::NULL => crate::ast_traits::LiteralTypeKind::NULL,
-            LiteralType::CURRENT => crate::ast_traits::LiteralTypeKind::CURRENT,
-            LiteralType::QNUMBER => crate::ast_traits::LiteralTypeKind::QNUMBER,
+            LiteralType::INTEGER => crate::node_traits::LiteralTypeKind::INTEGER,
+            LiteralType::FLOAT => crate::node_traits::LiteralTypeKind::FLOAT,
+            LiteralType::STRING => crate::node_traits::LiteralTypeKind::STRING,
+            LiteralType::BLOB => crate::node_traits::LiteralTypeKind::BLOB,
+            LiteralType::NULL => crate::node_traits::LiteralTypeKind::NULL,
+            LiteralType::CURRENT => crate::node_traits::LiteralTypeKind::CURRENT,
+            LiteralType::QNUMBER => crate::node_traits::LiteralTypeKind::QNUMBER,
         })
     }
 }
 
-impl crate::ast_traits::BinaryOpLike for BinaryOp {
+impl crate::node_traits::BinaryOpLike for BinaryOp {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::BinaryOpKind> {
+    fn kind(&self) -> Option<crate::node_traits::BinaryOpKind> {
         Some(match self {
-            BinaryOp::PLUS => crate::ast_traits::BinaryOpKind::PLUS,
-            BinaryOp::MINUS => crate::ast_traits::BinaryOpKind::MINUS,
-            BinaryOp::STAR => crate::ast_traits::BinaryOpKind::STAR,
-            BinaryOp::SLASH => crate::ast_traits::BinaryOpKind::SLASH,
-            BinaryOp::REM => crate::ast_traits::BinaryOpKind::REM,
-            BinaryOp::LT => crate::ast_traits::BinaryOpKind::LT,
-            BinaryOp::GT => crate::ast_traits::BinaryOpKind::GT,
-            BinaryOp::LE => crate::ast_traits::BinaryOpKind::LE,
-            BinaryOp::GE => crate::ast_traits::BinaryOpKind::GE,
-            BinaryOp::EQ => crate::ast_traits::BinaryOpKind::EQ,
-            BinaryOp::NE => crate::ast_traits::BinaryOpKind::NE,
-            BinaryOp::AND => crate::ast_traits::BinaryOpKind::AND,
-            BinaryOp::OR => crate::ast_traits::BinaryOpKind::OR,
-            BinaryOp::BITAND => crate::ast_traits::BinaryOpKind::BITAND,
-            BinaryOp::BITOR => crate::ast_traits::BinaryOpKind::BITOR,
-            BinaryOp::LSHIFT => crate::ast_traits::BinaryOpKind::LSHIFT,
-            BinaryOp::RSHIFT => crate::ast_traits::BinaryOpKind::RSHIFT,
-            BinaryOp::CONCAT => crate::ast_traits::BinaryOpKind::CONCAT,
-            BinaryOp::PTR => crate::ast_traits::BinaryOpKind::PTR,
+            BinaryOp::PLUS => crate::node_traits::BinaryOpKind::PLUS,
+            BinaryOp::MINUS => crate::node_traits::BinaryOpKind::MINUS,
+            BinaryOp::STAR => crate::node_traits::BinaryOpKind::STAR,
+            BinaryOp::SLASH => crate::node_traits::BinaryOpKind::SLASH,
+            BinaryOp::REM => crate::node_traits::BinaryOpKind::REM,
+            BinaryOp::LT => crate::node_traits::BinaryOpKind::LT,
+            BinaryOp::GT => crate::node_traits::BinaryOpKind::GT,
+            BinaryOp::LE => crate::node_traits::BinaryOpKind::LE,
+            BinaryOp::GE => crate::node_traits::BinaryOpKind::GE,
+            BinaryOp::EQ => crate::node_traits::BinaryOpKind::EQ,
+            BinaryOp::NE => crate::node_traits::BinaryOpKind::NE,
+            BinaryOp::AND => crate::node_traits::BinaryOpKind::AND,
+            BinaryOp::OR => crate::node_traits::BinaryOpKind::OR,
+            BinaryOp::BITAND => crate::node_traits::BinaryOpKind::BITAND,
+            BinaryOp::BITOR => crate::node_traits::BinaryOpKind::BITOR,
+            BinaryOp::LSHIFT => crate::node_traits::BinaryOpKind::LSHIFT,
+            BinaryOp::RSHIFT => crate::node_traits::BinaryOpKind::RSHIFT,
+            BinaryOp::CONCAT => crate::node_traits::BinaryOpKind::CONCAT,
+            BinaryOp::PTR => crate::node_traits::BinaryOpKind::PTR,
         })
     }
 }
 
-impl crate::ast_traits::UnaryOpLike for UnaryOp {
+impl crate::node_traits::UnaryOpLike for UnaryOp {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::UnaryOpKind> {
+    fn kind(&self) -> Option<crate::node_traits::UnaryOpKind> {
         Some(match self {
-            UnaryOp::MINUS => crate::ast_traits::UnaryOpKind::MINUS,
-            UnaryOp::PLUS => crate::ast_traits::UnaryOpKind::PLUS,
-            UnaryOp::BITNOT => crate::ast_traits::UnaryOpKind::BITNOT,
-            UnaryOp::NOT => crate::ast_traits::UnaryOpKind::NOT,
+            UnaryOp::MINUS => crate::node_traits::UnaryOpKind::MINUS,
+            UnaryOp::PLUS => crate::node_traits::UnaryOpKind::PLUS,
+            UnaryOp::BITNOT => crate::node_traits::UnaryOpKind::BITNOT,
+            UnaryOp::NOT => crate::node_traits::UnaryOpKind::NOT,
         })
     }
 }
 
-impl crate::ast_traits::CompoundOpLike for CompoundOp {
+impl crate::node_traits::CompoundOpLike for CompoundOp {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::CompoundOpKind> {
+    fn kind(&self) -> Option<crate::node_traits::CompoundOpKind> {
         Some(match self {
-            CompoundOp::UNION => crate::ast_traits::CompoundOpKind::UNION,
-            CompoundOp::UNIONALL => crate::ast_traits::CompoundOpKind::UNIONALL,
-            CompoundOp::INTERSECT => crate::ast_traits::CompoundOpKind::INTERSECT,
-            CompoundOp::EXCEPT => crate::ast_traits::CompoundOpKind::EXCEPT,
+            CompoundOp::UNION => crate::node_traits::CompoundOpKind::UNION,
+            CompoundOp::UNIONALL => crate::node_traits::CompoundOpKind::UNIONALL,
+            CompoundOp::INTERSECT => crate::node_traits::CompoundOpKind::INTERSECT,
+            CompoundOp::EXCEPT => crate::node_traits::CompoundOpKind::EXCEPT,
         })
     }
 }
 
-impl crate::ast_traits::IsOpLike for IsOp {
+impl crate::node_traits::IsOpLike for IsOp {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::IsOpKind> {
+    fn kind(&self) -> Option<crate::node_traits::IsOpKind> {
         Some(match self {
-            IsOp::IS => crate::ast_traits::IsOpKind::IS,
-            IsOp::ISNOT => crate::ast_traits::IsOpKind::ISNOT,
-            IsOp::ISNULL => crate::ast_traits::IsOpKind::ISNULL,
-            IsOp::NOTNULL => crate::ast_traits::IsOpKind::NOTNULL,
-            IsOp::ISNOTDISTINCT => crate::ast_traits::IsOpKind::ISNOTDISTINCT,
-            IsOp::ISDISTINCT => crate::ast_traits::IsOpKind::ISDISTINCT,
+            IsOp::IS => crate::node_traits::IsOpKind::IS,
+            IsOp::ISNOT => crate::node_traits::IsOpKind::ISNOT,
+            IsOp::ISNULL => crate::node_traits::IsOpKind::ISNULL,
+            IsOp::NOTNULL => crate::node_traits::IsOpKind::NOTNULL,
+            IsOp::ISNOTDISTINCT => crate::node_traits::IsOpKind::ISNOTDISTINCT,
+            IsOp::ISDISTINCT => crate::node_traits::IsOpKind::ISDISTINCT,
         })
     }
 }
 
-impl crate::ast_traits::ForeignKeyActionLike for ForeignKeyAction {
+impl crate::node_traits::ForeignKeyActionLike for ForeignKeyAction {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::ForeignKeyActionKind> {
+    fn kind(&self) -> Option<crate::node_traits::ForeignKeyActionKind> {
         Some(match self {
-            ForeignKeyAction::NOACTION => crate::ast_traits::ForeignKeyActionKind::NOACTION,
-            ForeignKeyAction::SETNULL => crate::ast_traits::ForeignKeyActionKind::SETNULL,
-            ForeignKeyAction::SETDEFAULT => crate::ast_traits::ForeignKeyActionKind::SETDEFAULT,
-            ForeignKeyAction::CASCADE => crate::ast_traits::ForeignKeyActionKind::CASCADE,
-            ForeignKeyAction::RESTRICT => crate::ast_traits::ForeignKeyActionKind::RESTRICT,
+            ForeignKeyAction::NOACTION => crate::node_traits::ForeignKeyActionKind::NOACTION,
+            ForeignKeyAction::SETNULL => crate::node_traits::ForeignKeyActionKind::SETNULL,
+            ForeignKeyAction::SETDEFAULT => crate::node_traits::ForeignKeyActionKind::SETDEFAULT,
+            ForeignKeyAction::CASCADE => crate::node_traits::ForeignKeyActionKind::CASCADE,
+            ForeignKeyAction::RESTRICT => crate::node_traits::ForeignKeyActionKind::RESTRICT,
         })
     }
 }
 
-impl crate::ast_traits::GeneratedColumnStorageLike for GeneratedColumnStorage {
+impl crate::node_traits::GeneratedColumnStorageLike for GeneratedColumnStorage {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::GeneratedColumnStorageKind> {
+    fn kind(&self) -> Option<crate::node_traits::GeneratedColumnStorageKind> {
         Some(match self {
             GeneratedColumnStorage::VIRTUAL => {
-                crate::ast_traits::GeneratedColumnStorageKind::VIRTUAL
+                crate::node_traits::GeneratedColumnStorageKind::VIRTUAL
             }
-            GeneratedColumnStorage::STORED => crate::ast_traits::GeneratedColumnStorageKind::STORED,
+            GeneratedColumnStorage::STORED => crate::node_traits::GeneratedColumnStorageKind::STORED,
         })
     }
 }
 
-impl crate::ast_traits::ColumnConstraintKindLike for ColumnConstraintKind {
+impl crate::node_traits::ColumnConstraintKindLike for ColumnConstraintKind {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::ColumnConstraintKindKind> {
+    fn kind(&self) -> Option<crate::node_traits::ColumnConstraintKindKind> {
         Some(match self {
-            ColumnConstraintKind::DEFAULT => crate::ast_traits::ColumnConstraintKindKind::DEFAULT,
-            ColumnConstraintKind::NOTNULL => crate::ast_traits::ColumnConstraintKindKind::NOTNULL,
+            ColumnConstraintKind::DEFAULT => crate::node_traits::ColumnConstraintKindKind::DEFAULT,
+            ColumnConstraintKind::NOTNULL => crate::node_traits::ColumnConstraintKindKind::NOTNULL,
             ColumnConstraintKind::PRIMARYKEY => {
-                crate::ast_traits::ColumnConstraintKindKind::PRIMARYKEY
+                crate::node_traits::ColumnConstraintKindKind::PRIMARYKEY
             }
-            ColumnConstraintKind::UNIQUE => crate::ast_traits::ColumnConstraintKindKind::UNIQUE,
-            ColumnConstraintKind::CHECK => crate::ast_traits::ColumnConstraintKindKind::CHECK,
+            ColumnConstraintKind::UNIQUE => crate::node_traits::ColumnConstraintKindKind::UNIQUE,
+            ColumnConstraintKind::CHECK => crate::node_traits::ColumnConstraintKindKind::CHECK,
             ColumnConstraintKind::REFERENCES => {
-                crate::ast_traits::ColumnConstraintKindKind::REFERENCES
+                crate::node_traits::ColumnConstraintKindKind::REFERENCES
             }
-            ColumnConstraintKind::COLLATE => crate::ast_traits::ColumnConstraintKindKind::COLLATE,
+            ColumnConstraintKind::COLLATE => crate::node_traits::ColumnConstraintKindKind::COLLATE,
             ColumnConstraintKind::GENERATED => {
-                crate::ast_traits::ColumnConstraintKindKind::GENERATED
+                crate::node_traits::ColumnConstraintKindKind::GENERATED
             }
-            ColumnConstraintKind::NULL => crate::ast_traits::ColumnConstraintKindKind::NULL,
+            ColumnConstraintKind::NULL => crate::node_traits::ColumnConstraintKindKind::NULL,
         })
     }
 }
 
-impl crate::ast_traits::TableConstraintKindLike for TableConstraintKind {
+impl crate::node_traits::TableConstraintKindLike for TableConstraintKind {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::TableConstraintKindKind> {
+    fn kind(&self) -> Option<crate::node_traits::TableConstraintKindKind> {
         Some(match self {
             TableConstraintKind::PRIMARYKEY => {
-                crate::ast_traits::TableConstraintKindKind::PRIMARYKEY
+                crate::node_traits::TableConstraintKindKind::PRIMARYKEY
             }
-            TableConstraintKind::UNIQUE => crate::ast_traits::TableConstraintKindKind::UNIQUE,
-            TableConstraintKind::CHECK => crate::ast_traits::TableConstraintKindKind::CHECK,
+            TableConstraintKind::UNIQUE => crate::node_traits::TableConstraintKindKind::UNIQUE,
+            TableConstraintKind::CHECK => crate::node_traits::TableConstraintKindKind::CHECK,
             TableConstraintKind::FOREIGNKEY => {
-                crate::ast_traits::TableConstraintKindKind::FOREIGNKEY
+                crate::node_traits::TableConstraintKindKind::FOREIGNKEY
             }
         })
     }
 }
 
-impl crate::ast_traits::MaterializedLike for Materialized {
+impl crate::node_traits::MaterializedLike for Materialized {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::MaterializedKind> {
+    fn kind(&self) -> Option<crate::node_traits::MaterializedKind> {
         Some(match self {
-            Materialized::DEFAULT => crate::ast_traits::MaterializedKind::DEFAULT,
-            Materialized::MATERIALIZED => crate::ast_traits::MaterializedKind::MATERIALIZED,
-            Materialized::NOTMATERIALIZED => crate::ast_traits::MaterializedKind::NOTMATERIALIZED,
+            Materialized::DEFAULT => crate::node_traits::MaterializedKind::DEFAULT,
+            Materialized::MATERIALIZED => crate::node_traits::MaterializedKind::MATERIALIZED,
+            Materialized::NOTMATERIALIZED => crate::node_traits::MaterializedKind::NOTMATERIALIZED,
         })
     }
 }
 
-impl crate::ast_traits::ConflictActionLike for ConflictAction {
+impl crate::node_traits::ConflictActionLike for ConflictAction {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::ConflictActionKind> {
+    fn kind(&self) -> Option<crate::node_traits::ConflictActionKind> {
         Some(match self {
-            ConflictAction::DEFAULT => crate::ast_traits::ConflictActionKind::DEFAULT,
-            ConflictAction::ROLLBACK => crate::ast_traits::ConflictActionKind::ROLLBACK,
-            ConflictAction::ABORT => crate::ast_traits::ConflictActionKind::ABORT,
-            ConflictAction::FAIL => crate::ast_traits::ConflictActionKind::FAIL,
-            ConflictAction::IGNORE => crate::ast_traits::ConflictActionKind::IGNORE,
-            ConflictAction::REPLACE => crate::ast_traits::ConflictActionKind::REPLACE,
+            ConflictAction::DEFAULT => crate::node_traits::ConflictActionKind::DEFAULT,
+            ConflictAction::ROLLBACK => crate::node_traits::ConflictActionKind::ROLLBACK,
+            ConflictAction::ABORT => crate::node_traits::ConflictActionKind::ABORT,
+            ConflictAction::FAIL => crate::node_traits::ConflictActionKind::FAIL,
+            ConflictAction::IGNORE => crate::node_traits::ConflictActionKind::IGNORE,
+            ConflictAction::REPLACE => crate::node_traits::ConflictActionKind::REPLACE,
         })
     }
 }
 
-impl crate::ast_traits::RaiseTypeLike for RaiseType {
+impl crate::node_traits::RaiseTypeLike for RaiseType {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::RaiseTypeKind> {
+    fn kind(&self) -> Option<crate::node_traits::RaiseTypeKind> {
         Some(match self {
-            RaiseType::IGNORE => crate::ast_traits::RaiseTypeKind::IGNORE,
-            RaiseType::ROLLBACK => crate::ast_traits::RaiseTypeKind::ROLLBACK,
-            RaiseType::ABORT => crate::ast_traits::RaiseTypeKind::ABORT,
-            RaiseType::FAIL => crate::ast_traits::RaiseTypeKind::FAIL,
+            RaiseType::IGNORE => crate::node_traits::RaiseTypeKind::IGNORE,
+            RaiseType::ROLLBACK => crate::node_traits::RaiseTypeKind::ROLLBACK,
+            RaiseType::ABORT => crate::node_traits::RaiseTypeKind::ABORT,
+            RaiseType::FAIL => crate::node_traits::RaiseTypeKind::FAIL,
         })
     }
 }
 
-impl crate::ast_traits::DropObjectTypeLike for DropObjectType {
+impl crate::node_traits::DropObjectTypeLike for DropObjectType {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::DropObjectTypeKind> {
+    fn kind(&self) -> Option<crate::node_traits::DropObjectTypeKind> {
         Some(match self {
-            DropObjectType::TABLE => crate::ast_traits::DropObjectTypeKind::TABLE,
-            DropObjectType::INDEX => crate::ast_traits::DropObjectTypeKind::INDEX,
-            DropObjectType::VIEW => crate::ast_traits::DropObjectTypeKind::VIEW,
-            DropObjectType::TRIGGER => crate::ast_traits::DropObjectTypeKind::TRIGGER,
+            DropObjectType::TABLE => crate::node_traits::DropObjectTypeKind::TABLE,
+            DropObjectType::INDEX => crate::node_traits::DropObjectTypeKind::INDEX,
+            DropObjectType::VIEW => crate::node_traits::DropObjectTypeKind::VIEW,
+            DropObjectType::TRIGGER => crate::node_traits::DropObjectTypeKind::TRIGGER,
         })
     }
 }
 
-impl crate::ast_traits::AlterOpLike for AlterOp {
+impl crate::node_traits::AlterOpLike for AlterOp {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::AlterOpKind> {
+    fn kind(&self) -> Option<crate::node_traits::AlterOpKind> {
         Some(match self {
-            AlterOp::RENAMETABLE => crate::ast_traits::AlterOpKind::RENAMETABLE,
-            AlterOp::RENAMECOLUMN => crate::ast_traits::AlterOpKind::RENAMECOLUMN,
-            AlterOp::DROPCOLUMN => crate::ast_traits::AlterOpKind::DROPCOLUMN,
-            AlterOp::ADDCOLUMN => crate::ast_traits::AlterOpKind::ADDCOLUMN,
+            AlterOp::RENAMETABLE => crate::node_traits::AlterOpKind::RENAMETABLE,
+            AlterOp::RENAMECOLUMN => crate::node_traits::AlterOpKind::RENAMECOLUMN,
+            AlterOp::DROPCOLUMN => crate::node_traits::AlterOpKind::DROPCOLUMN,
+            AlterOp::ADDCOLUMN => crate::node_traits::AlterOpKind::ADDCOLUMN,
         })
     }
 }
 
-impl crate::ast_traits::TransactionTypeLike for TransactionType {
+impl crate::node_traits::TransactionTypeLike for TransactionType {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::TransactionTypeKind> {
+    fn kind(&self) -> Option<crate::node_traits::TransactionTypeKind> {
         Some(match self {
-            TransactionType::DEFERRED => crate::ast_traits::TransactionTypeKind::DEFERRED,
-            TransactionType::IMMEDIATE => crate::ast_traits::TransactionTypeKind::IMMEDIATE,
-            TransactionType::EXCLUSIVE => crate::ast_traits::TransactionTypeKind::EXCLUSIVE,
+            TransactionType::DEFERRED => crate::node_traits::TransactionTypeKind::DEFERRED,
+            TransactionType::IMMEDIATE => crate::node_traits::TransactionTypeKind::IMMEDIATE,
+            TransactionType::EXCLUSIVE => crate::node_traits::TransactionTypeKind::EXCLUSIVE,
         })
     }
 }
 
-impl crate::ast_traits::TransactionOpLike for TransactionOp {
+impl crate::node_traits::TransactionOpLike for TransactionOp {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::TransactionOpKind> {
+    fn kind(&self) -> Option<crate::node_traits::TransactionOpKind> {
         Some(match self {
-            TransactionOp::BEGIN => crate::ast_traits::TransactionOpKind::BEGIN,
-            TransactionOp::COMMIT => crate::ast_traits::TransactionOpKind::COMMIT,
-            TransactionOp::ROLLBACK => crate::ast_traits::TransactionOpKind::ROLLBACK,
+            TransactionOp::BEGIN => crate::node_traits::TransactionOpKind::BEGIN,
+            TransactionOp::COMMIT => crate::node_traits::TransactionOpKind::COMMIT,
+            TransactionOp::ROLLBACK => crate::node_traits::TransactionOpKind::ROLLBACK,
         })
     }
 }
 
-impl crate::ast_traits::SavepointOpLike for SavepointOp {
+impl crate::node_traits::SavepointOpLike for SavepointOp {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::SavepointOpKind> {
+    fn kind(&self) -> Option<crate::node_traits::SavepointOpKind> {
         Some(match self {
-            SavepointOp::SAVEPOINT => crate::ast_traits::SavepointOpKind::SAVEPOINT,
-            SavepointOp::RELEASE => crate::ast_traits::SavepointOpKind::RELEASE,
-            SavepointOp::ROLLBACKTO => crate::ast_traits::SavepointOpKind::ROLLBACKTO,
+            SavepointOp::SAVEPOINT => crate::node_traits::SavepointOpKind::SAVEPOINT,
+            SavepointOp::RELEASE => crate::node_traits::SavepointOpKind::RELEASE,
+            SavepointOp::ROLLBACKTO => crate::node_traits::SavepointOpKind::ROLLBACKTO,
         })
     }
 }
 
-impl crate::ast_traits::SortOrderLike for SortOrder {
+impl crate::node_traits::SortOrderLike for SortOrder {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::SortOrderKind> {
+    fn kind(&self) -> Option<crate::node_traits::SortOrderKind> {
         Some(match self {
-            SortOrder::ASC => crate::ast_traits::SortOrderKind::ASC,
-            SortOrder::DESC => crate::ast_traits::SortOrderKind::DESC,
+            SortOrder::ASC => crate::node_traits::SortOrderKind::ASC,
+            SortOrder::DESC => crate::node_traits::SortOrderKind::DESC,
         })
     }
 }
 
-impl crate::ast_traits::NullsOrderLike for NullsOrder {
+impl crate::node_traits::NullsOrderLike for NullsOrder {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::NullsOrderKind> {
+    fn kind(&self) -> Option<crate::node_traits::NullsOrderKind> {
         Some(match self {
-            NullsOrder::NONE => crate::ast_traits::NullsOrderKind::NONE,
-            NullsOrder::FIRST => crate::ast_traits::NullsOrderKind::FIRST,
-            NullsOrder::LAST => crate::ast_traits::NullsOrderKind::LAST,
+            NullsOrder::NONE => crate::node_traits::NullsOrderKind::NONE,
+            NullsOrder::FIRST => crate::node_traits::NullsOrderKind::FIRST,
+            NullsOrder::LAST => crate::node_traits::NullsOrderKind::LAST,
         })
     }
 }
 
-impl crate::ast_traits::JoinTypeLike for JoinType {
+impl crate::node_traits::JoinTypeLike for JoinType {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::JoinTypeKind> {
+    fn kind(&self) -> Option<crate::node_traits::JoinTypeKind> {
         Some(match self {
-            JoinType::COMMA => crate::ast_traits::JoinTypeKind::COMMA,
-            JoinType::INNER => crate::ast_traits::JoinTypeKind::INNER,
-            JoinType::LEFT => crate::ast_traits::JoinTypeKind::LEFT,
-            JoinType::RIGHT => crate::ast_traits::JoinTypeKind::RIGHT,
-            JoinType::FULL => crate::ast_traits::JoinTypeKind::FULL,
-            JoinType::CROSS => crate::ast_traits::JoinTypeKind::CROSS,
-            JoinType::NATURALINNER => crate::ast_traits::JoinTypeKind::NATURALINNER,
-            JoinType::NATURALLEFT => crate::ast_traits::JoinTypeKind::NATURALLEFT,
-            JoinType::NATURALRIGHT => crate::ast_traits::JoinTypeKind::NATURALRIGHT,
-            JoinType::NATURALFULL => crate::ast_traits::JoinTypeKind::NATURALFULL,
+            JoinType::COMMA => crate::node_traits::JoinTypeKind::COMMA,
+            JoinType::INNER => crate::node_traits::JoinTypeKind::INNER,
+            JoinType::LEFT => crate::node_traits::JoinTypeKind::LEFT,
+            JoinType::RIGHT => crate::node_traits::JoinTypeKind::RIGHT,
+            JoinType::FULL => crate::node_traits::JoinTypeKind::FULL,
+            JoinType::CROSS => crate::node_traits::JoinTypeKind::CROSS,
+            JoinType::NATURALINNER => crate::node_traits::JoinTypeKind::NATURALINNER,
+            JoinType::NATURALLEFT => crate::node_traits::JoinTypeKind::NATURALLEFT,
+            JoinType::NATURALRIGHT => crate::node_traits::JoinTypeKind::NATURALRIGHT,
+            JoinType::NATURALFULL => crate::node_traits::JoinTypeKind::NATURALFULL,
         })
     }
 }
 
-impl crate::ast_traits::TriggerTimingLike for TriggerTiming {
+impl crate::node_traits::TriggerTimingLike for TriggerTiming {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::TriggerTimingKind> {
+    fn kind(&self) -> Option<crate::node_traits::TriggerTimingKind> {
         Some(match self {
-            TriggerTiming::BEFORE => crate::ast_traits::TriggerTimingKind::BEFORE,
-            TriggerTiming::AFTER => crate::ast_traits::TriggerTimingKind::AFTER,
-            TriggerTiming::INSTEADOF => crate::ast_traits::TriggerTimingKind::INSTEADOF,
+            TriggerTiming::BEFORE => crate::node_traits::TriggerTimingKind::BEFORE,
+            TriggerTiming::AFTER => crate::node_traits::TriggerTimingKind::AFTER,
+            TriggerTiming::INSTEADOF => crate::node_traits::TriggerTimingKind::INSTEADOF,
         })
     }
 }
 
-impl crate::ast_traits::TriggerEventTypeLike for TriggerEventType {
+impl crate::node_traits::TriggerEventTypeLike for TriggerEventType {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::TriggerEventTypeKind> {
+    fn kind(&self) -> Option<crate::node_traits::TriggerEventTypeKind> {
         Some(match self {
-            TriggerEventType::DELETE => crate::ast_traits::TriggerEventTypeKind::DELETE,
-            TriggerEventType::INSERT => crate::ast_traits::TriggerEventTypeKind::INSERT,
-            TriggerEventType::UPDATE => crate::ast_traits::TriggerEventTypeKind::UPDATE,
+            TriggerEventType::DELETE => crate::node_traits::TriggerEventTypeKind::DELETE,
+            TriggerEventType::INSERT => crate::node_traits::TriggerEventTypeKind::INSERT,
+            TriggerEventType::UPDATE => crate::node_traits::TriggerEventTypeKind::UPDATE,
         })
     }
 }
 
-impl crate::ast_traits::ExplainModeLike for ExplainMode {
+impl crate::node_traits::ExplainModeLike for ExplainMode {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::ExplainModeKind> {
+    fn kind(&self) -> Option<crate::node_traits::ExplainModeKind> {
         Some(match self {
-            ExplainMode::EXPLAIN => crate::ast_traits::ExplainModeKind::EXPLAIN,
-            ExplainMode::QUERYPLAN => crate::ast_traits::ExplainModeKind::QUERYPLAN,
+            ExplainMode::EXPLAIN => crate::node_traits::ExplainModeKind::EXPLAIN,
+            ExplainMode::QUERYPLAN => crate::node_traits::ExplainModeKind::QUERYPLAN,
         })
     }
 }
 
-impl crate::ast_traits::PragmaFormLike for PragmaForm {
+impl crate::node_traits::PragmaFormLike for PragmaForm {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::PragmaFormKind> {
+    fn kind(&self) -> Option<crate::node_traits::PragmaFormKind> {
         Some(match self {
-            PragmaForm::BARE => crate::ast_traits::PragmaFormKind::BARE,
-            PragmaForm::EQ => crate::ast_traits::PragmaFormKind::EQ,
-            PragmaForm::CALL => crate::ast_traits::PragmaFormKind::CALL,
+            PragmaForm::BARE => crate::node_traits::PragmaFormKind::BARE,
+            PragmaForm::EQ => crate::node_traits::PragmaFormKind::EQ,
+            PragmaForm::CALL => crate::node_traits::PragmaFormKind::CALL,
         })
     }
 }
 
-impl crate::ast_traits::AnalyzeKindLike for AnalyzeKind {
+impl crate::node_traits::AnalyzeKindLike for AnalyzeKind {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::AnalyzeKindKind> {
+    fn kind(&self) -> Option<crate::node_traits::AnalyzeKindKind> {
         Some(match self {
-            AnalyzeKind::ANALYZE => crate::ast_traits::AnalyzeKindKind::ANALYZE,
-            AnalyzeKind::REINDEX => crate::ast_traits::AnalyzeKindKind::REINDEX,
+            AnalyzeKind::ANALYZE => crate::node_traits::AnalyzeKindKind::ANALYZE,
+            AnalyzeKind::REINDEX => crate::node_traits::AnalyzeKindKind::REINDEX,
         })
     }
 }
 
-impl crate::ast_traits::FrameTypeLike for FrameType {
+impl crate::node_traits::FrameTypeLike for FrameType {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::FrameTypeKind> {
+    fn kind(&self) -> Option<crate::node_traits::FrameTypeKind> {
         Some(match self {
-            FrameType::NONE => crate::ast_traits::FrameTypeKind::NONE,
-            FrameType::RANGE => crate::ast_traits::FrameTypeKind::RANGE,
-            FrameType::ROWS => crate::ast_traits::FrameTypeKind::ROWS,
-            FrameType::GROUPS => crate::ast_traits::FrameTypeKind::GROUPS,
+            FrameType::NONE => crate::node_traits::FrameTypeKind::NONE,
+            FrameType::RANGE => crate::node_traits::FrameTypeKind::RANGE,
+            FrameType::ROWS => crate::node_traits::FrameTypeKind::ROWS,
+            FrameType::GROUPS => crate::node_traits::FrameTypeKind::GROUPS,
         })
     }
 }
 
-impl crate::ast_traits::FrameBoundTypeLike for FrameBoundType {
+impl crate::node_traits::FrameBoundTypeLike for FrameBoundType {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::FrameBoundTypeKind> {
+    fn kind(&self) -> Option<crate::node_traits::FrameBoundTypeKind> {
         Some(match self {
             FrameBoundType::UNBOUNDEDPRECEDING => {
-                crate::ast_traits::FrameBoundTypeKind::UNBOUNDEDPRECEDING
+                crate::node_traits::FrameBoundTypeKind::UNBOUNDEDPRECEDING
             }
-            FrameBoundType::EXPRPRECEDING => crate::ast_traits::FrameBoundTypeKind::EXPRPRECEDING,
-            FrameBoundType::CURRENTROW => crate::ast_traits::FrameBoundTypeKind::CURRENTROW,
-            FrameBoundType::EXPRFOLLOWING => crate::ast_traits::FrameBoundTypeKind::EXPRFOLLOWING,
+            FrameBoundType::EXPRPRECEDING => crate::node_traits::FrameBoundTypeKind::EXPRPRECEDING,
+            FrameBoundType::CURRENTROW => crate::node_traits::FrameBoundTypeKind::CURRENTROW,
+            FrameBoundType::EXPRFOLLOWING => crate::node_traits::FrameBoundTypeKind::EXPRFOLLOWING,
             FrameBoundType::UNBOUNDEDFOLLOWING => {
-                crate::ast_traits::FrameBoundTypeKind::UNBOUNDEDFOLLOWING
+                crate::node_traits::FrameBoundTypeKind::UNBOUNDEDFOLLOWING
             }
         })
     }
 }
 
-impl crate::ast_traits::FrameExcludeLike for FrameExclude {
+impl crate::node_traits::FrameExcludeLike for FrameExclude {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::FrameExcludeKind> {
+    fn kind(&self) -> Option<crate::node_traits::FrameExcludeKind> {
         Some(match self {
-            FrameExclude::NONE => crate::ast_traits::FrameExcludeKind::NONE,
-            FrameExclude::NOOTHERS => crate::ast_traits::FrameExcludeKind::NOOTHERS,
-            FrameExclude::CURRENTROW => crate::ast_traits::FrameExcludeKind::CURRENTROW,
-            FrameExclude::GROUP => crate::ast_traits::FrameExcludeKind::GROUP,
-            FrameExclude::TIES => crate::ast_traits::FrameExcludeKind::TIES,
+            FrameExclude::NONE => crate::node_traits::FrameExcludeKind::NONE,
+            FrameExclude::NOOTHERS => crate::node_traits::FrameExcludeKind::NOOTHERS,
+            FrameExclude::CURRENTROW => crate::node_traits::FrameExcludeKind::CURRENTROW,
+            FrameExclude::GROUP => crate::node_traits::FrameExcludeKind::GROUP,
+            FrameExclude::TIES => crate::node_traits::FrameExcludeKind::TIES,
         })
     }
 }
 
-impl crate::ast_traits::AggregateFunctionCallFlagsLike for AggregateFunctionCallFlags {
+impl crate::node_traits::AggregateFunctionCallFlagsLike for AggregateFunctionCallFlags {
     fn distinct(&self) -> bool {
         self.distinct()
     }
 }
 
-impl crate::ast_traits::CreateTableStmtFlagsLike for CreateTableStmtFlags {
+impl crate::node_traits::CreateTableStmtFlagsLike for CreateTableStmtFlags {
     fn without_rowid(&self) -> bool {
         self.without_rowid()
     }
@@ -1271,7 +1271,7 @@ impl crate::ast_traits::CreateTableStmtFlagsLike for CreateTableStmtFlags {
     }
 }
 
-impl crate::ast_traits::FunctionCallFlagsLike for FunctionCallFlags {
+impl crate::node_traits::FunctionCallFlagsLike for FunctionCallFlags {
     fn distinct(&self) -> bool {
         self.distinct()
     }
@@ -1280,13 +1280,13 @@ impl crate::ast_traits::FunctionCallFlagsLike for FunctionCallFlags {
     }
 }
 
-impl crate::ast_traits::ResultColumnFlagsLike for ResultColumnFlags {
+impl crate::node_traits::ResultColumnFlagsLike for ResultColumnFlags {
     fn star(&self) -> bool {
         self.star()
     }
 }
 
-impl crate::ast_traits::SelectStmtFlagsLike for SelectStmtFlags {
+impl crate::node_traits::SelectStmtFlagsLike for SelectStmtFlags {
     fn distinct(&self) -> bool {
         self.distinct()
     }
@@ -6566,7 +6566,7 @@ impl crate::TypedNodeId for AnyNodeId {
 /// Marker type for the sqlite dialect's AST. Implements `AstTypes`.
 pub enum SqliteAst {}
 
-impl<'a> crate::ast_traits::AstTypes<'a> for SqliteAst {
+impl<'a> crate::node_traits::AstTypes<'a> for SqliteAst {
     type Node = Node<'a>;
     type Select = Select<'a>;
     type InExprSource = InExprSource<'a>;
@@ -6669,7 +6669,7 @@ impl<'a> crate::ast_traits::AstTypes<'a> for SqliteAst {
     type SelectStmtFlags = SelectStmtFlags;
 }
 
-impl<'a> crate::ast_traits::NodeLike<'a> for Node<'a> {
+impl<'a> crate::node_traits::NodeLike<'a> for Node<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         match self {
@@ -6752,108 +6752,108 @@ impl<'a> crate::ast_traits::NodeLike<'a> for Node<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::SelectLike<'a> for Select<'a> {
+impl<'a> crate::node_traits::SelectLike<'a> for Select<'a> {
     type Ast = SqliteAst;
-    fn kind(&self) -> crate::ast_traits::SelectKind<'a, SqliteAst> {
+    fn kind(&self) -> crate::node_traits::SelectKind<'a, SqliteAst> {
         match *self {
-            Select::SelectStmt(n) => crate::ast_traits::SelectKind::SelectStmt(n),
-            Select::CompoundSelect(n) => crate::ast_traits::SelectKind::CompoundSelect(n),
-            Select::WithClause(n) => crate::ast_traits::SelectKind::WithClause(n),
-            Select::ValuesClause(n) => crate::ast_traits::SelectKind::ValuesClause(n),
-            Select::Other(n) => crate::ast_traits::SelectKind::Other(n),
+            Select::SelectStmt(n) => crate::node_traits::SelectKind::SelectStmt(n),
+            Select::CompoundSelect(n) => crate::node_traits::SelectKind::CompoundSelect(n),
+            Select::WithClause(n) => crate::node_traits::SelectKind::WithClause(n),
+            Select::ValuesClause(n) => crate::node_traits::SelectKind::ValuesClause(n),
+            Select::Other(n) => crate::node_traits::SelectKind::Other(n),
         }
     }
 }
 
-impl<'a> crate::ast_traits::InExprSourceLike<'a> for InExprSource<'a> {
+impl<'a> crate::node_traits::InExprSourceLike<'a> for InExprSource<'a> {
     type Ast = SqliteAst;
-    fn kind(&self) -> crate::ast_traits::InExprSourceKind<'a, SqliteAst> {
+    fn kind(&self) -> crate::node_traits::InExprSourceKind<'a, SqliteAst> {
         match *self {
-            InExprSource::ExprList(n) => crate::ast_traits::InExprSourceKind::ExprList(n),
-            InExprSource::SubqueryExpr(n) => crate::ast_traits::InExprSourceKind::SubqueryExpr(n),
-            InExprSource::Other(n) => crate::ast_traits::InExprSourceKind::Other(n),
+            InExprSource::ExprList(n) => crate::node_traits::InExprSourceKind::ExprList(n),
+            InExprSource::SubqueryExpr(n) => crate::node_traits::InExprSourceKind::SubqueryExpr(n),
+            InExprSource::Other(n) => crate::node_traits::InExprSourceKind::Other(n),
         }
     }
 }
 
-impl<'a> crate::ast_traits::ExprLike<'a> for Expr<'a> {
+impl<'a> crate::node_traits::ExprLike<'a> for Expr<'a> {
     type Ast = SqliteAst;
-    fn kind(&self) -> crate::ast_traits::ExprKind<'a, SqliteAst> {
+    fn kind(&self) -> crate::node_traits::ExprKind<'a, SqliteAst> {
         match *self {
-            Expr::BinaryExpr(n) => crate::ast_traits::ExprKind::BinaryExpr(n),
-            Expr::UnaryExpr(n) => crate::ast_traits::ExprKind::UnaryExpr(n),
-            Expr::Literal(n) => crate::ast_traits::ExprKind::Literal(n),
-            Expr::ColumnRef(n) => crate::ast_traits::ExprKind::ColumnRef(n),
-            Expr::Variable(n) => crate::ast_traits::ExprKind::Variable(n),
-            Expr::FunctionCall(n) => crate::ast_traits::ExprKind::FunctionCall(n),
-            Expr::AggregateFunctionCall(n) => crate::ast_traits::ExprKind::AggregateFunctionCall(n),
+            Expr::BinaryExpr(n) => crate::node_traits::ExprKind::BinaryExpr(n),
+            Expr::UnaryExpr(n) => crate::node_traits::ExprKind::UnaryExpr(n),
+            Expr::Literal(n) => crate::node_traits::ExprKind::Literal(n),
+            Expr::ColumnRef(n) => crate::node_traits::ExprKind::ColumnRef(n),
+            Expr::Variable(n) => crate::node_traits::ExprKind::Variable(n),
+            Expr::FunctionCall(n) => crate::node_traits::ExprKind::FunctionCall(n),
+            Expr::AggregateFunctionCall(n) => crate::node_traits::ExprKind::AggregateFunctionCall(n),
             Expr::OrderedSetFunctionCall(n) => {
-                crate::ast_traits::ExprKind::OrderedSetFunctionCall(n)
+                crate::node_traits::ExprKind::OrderedSetFunctionCall(n)
             }
-            Expr::CastExpr(n) => crate::ast_traits::ExprKind::CastExpr(n),
-            Expr::CollateExpr(n) => crate::ast_traits::ExprKind::CollateExpr(n),
-            Expr::CaseExpr(n) => crate::ast_traits::ExprKind::CaseExpr(n),
-            Expr::IsExpr(n) => crate::ast_traits::ExprKind::IsExpr(n),
-            Expr::BetweenExpr(n) => crate::ast_traits::ExprKind::BetweenExpr(n),
-            Expr::LikeExpr(n) => crate::ast_traits::ExprKind::LikeExpr(n),
-            Expr::InExpr(n) => crate::ast_traits::ExprKind::InExpr(n),
-            Expr::SubqueryExpr(n) => crate::ast_traits::ExprKind::SubqueryExpr(n),
-            Expr::ExistsExpr(n) => crate::ast_traits::ExprKind::ExistsExpr(n),
-            Expr::RaiseExpr(n) => crate::ast_traits::ExprKind::RaiseExpr(n),
-            Expr::Other(n) => crate::ast_traits::ExprKind::Other(n),
+            Expr::CastExpr(n) => crate::node_traits::ExprKind::CastExpr(n),
+            Expr::CollateExpr(n) => crate::node_traits::ExprKind::CollateExpr(n),
+            Expr::CaseExpr(n) => crate::node_traits::ExprKind::CaseExpr(n),
+            Expr::IsExpr(n) => crate::node_traits::ExprKind::IsExpr(n),
+            Expr::BetweenExpr(n) => crate::node_traits::ExprKind::BetweenExpr(n),
+            Expr::LikeExpr(n) => crate::node_traits::ExprKind::LikeExpr(n),
+            Expr::InExpr(n) => crate::node_traits::ExprKind::InExpr(n),
+            Expr::SubqueryExpr(n) => crate::node_traits::ExprKind::SubqueryExpr(n),
+            Expr::ExistsExpr(n) => crate::node_traits::ExprKind::ExistsExpr(n),
+            Expr::RaiseExpr(n) => crate::node_traits::ExprKind::RaiseExpr(n),
+            Expr::Other(n) => crate::node_traits::ExprKind::Other(n),
         }
     }
 }
 
-impl<'a> crate::ast_traits::StmtLike<'a> for Stmt<'a> {
+impl<'a> crate::node_traits::StmtLike<'a> for Stmt<'a> {
     type Ast = SqliteAst;
-    fn kind(&self) -> crate::ast_traits::StmtKind<'a, SqliteAst> {
+    fn kind(&self) -> crate::node_traits::StmtKind<'a, SqliteAst> {
         match *self {
-            Stmt::SelectStmt(n) => crate::ast_traits::StmtKind::SelectStmt(n),
-            Stmt::CompoundSelect(n) => crate::ast_traits::StmtKind::CompoundSelect(n),
-            Stmt::ValuesClause(n) => crate::ast_traits::StmtKind::ValuesClause(n),
-            Stmt::WithClause(n) => crate::ast_traits::StmtKind::WithClause(n),
-            Stmt::InsertStmt(n) => crate::ast_traits::StmtKind::InsertStmt(n),
-            Stmt::UpdateStmt(n) => crate::ast_traits::StmtKind::UpdateStmt(n),
-            Stmt::DeleteStmt(n) => crate::ast_traits::StmtKind::DeleteStmt(n),
-            Stmt::CreateTableStmt(n) => crate::ast_traits::StmtKind::CreateTableStmt(n),
-            Stmt::CreateIndexStmt(n) => crate::ast_traits::StmtKind::CreateIndexStmt(n),
-            Stmt::CreateViewStmt(n) => crate::ast_traits::StmtKind::CreateViewStmt(n),
-            Stmt::CreateTriggerStmt(n) => crate::ast_traits::StmtKind::CreateTriggerStmt(n),
+            Stmt::SelectStmt(n) => crate::node_traits::StmtKind::SelectStmt(n),
+            Stmt::CompoundSelect(n) => crate::node_traits::StmtKind::CompoundSelect(n),
+            Stmt::ValuesClause(n) => crate::node_traits::StmtKind::ValuesClause(n),
+            Stmt::WithClause(n) => crate::node_traits::StmtKind::WithClause(n),
+            Stmt::InsertStmt(n) => crate::node_traits::StmtKind::InsertStmt(n),
+            Stmt::UpdateStmt(n) => crate::node_traits::StmtKind::UpdateStmt(n),
+            Stmt::DeleteStmt(n) => crate::node_traits::StmtKind::DeleteStmt(n),
+            Stmt::CreateTableStmt(n) => crate::node_traits::StmtKind::CreateTableStmt(n),
+            Stmt::CreateIndexStmt(n) => crate::node_traits::StmtKind::CreateIndexStmt(n),
+            Stmt::CreateViewStmt(n) => crate::node_traits::StmtKind::CreateViewStmt(n),
+            Stmt::CreateTriggerStmt(n) => crate::node_traits::StmtKind::CreateTriggerStmt(n),
             Stmt::CreateVirtualTableStmt(n) => {
-                crate::ast_traits::StmtKind::CreateVirtualTableStmt(n)
+                crate::node_traits::StmtKind::CreateVirtualTableStmt(n)
             }
-            Stmt::DropStmt(n) => crate::ast_traits::StmtKind::DropStmt(n),
-            Stmt::AlterTableStmt(n) => crate::ast_traits::StmtKind::AlterTableStmt(n),
-            Stmt::TransactionStmt(n) => crate::ast_traits::StmtKind::TransactionStmt(n),
-            Stmt::SavepointStmt(n) => crate::ast_traits::StmtKind::SavepointStmt(n),
-            Stmt::PragmaStmt(n) => crate::ast_traits::StmtKind::PragmaStmt(n),
-            Stmt::AnalyzeStmt(n) => crate::ast_traits::StmtKind::AnalyzeStmt(n),
-            Stmt::AttachStmt(n) => crate::ast_traits::StmtKind::AttachStmt(n),
-            Stmt::DetachStmt(n) => crate::ast_traits::StmtKind::DetachStmt(n),
-            Stmt::VacuumStmt(n) => crate::ast_traits::StmtKind::VacuumStmt(n),
-            Stmt::ExplainStmt(n) => crate::ast_traits::StmtKind::ExplainStmt(n),
-            Stmt::Other(n) => crate::ast_traits::StmtKind::Other(n),
+            Stmt::DropStmt(n) => crate::node_traits::StmtKind::DropStmt(n),
+            Stmt::AlterTableStmt(n) => crate::node_traits::StmtKind::AlterTableStmt(n),
+            Stmt::TransactionStmt(n) => crate::node_traits::StmtKind::TransactionStmt(n),
+            Stmt::SavepointStmt(n) => crate::node_traits::StmtKind::SavepointStmt(n),
+            Stmt::PragmaStmt(n) => crate::node_traits::StmtKind::PragmaStmt(n),
+            Stmt::AnalyzeStmt(n) => crate::node_traits::StmtKind::AnalyzeStmt(n),
+            Stmt::AttachStmt(n) => crate::node_traits::StmtKind::AttachStmt(n),
+            Stmt::DetachStmt(n) => crate::node_traits::StmtKind::DetachStmt(n),
+            Stmt::VacuumStmt(n) => crate::node_traits::StmtKind::VacuumStmt(n),
+            Stmt::ExplainStmt(n) => crate::node_traits::StmtKind::ExplainStmt(n),
+            Stmt::Other(n) => crate::node_traits::StmtKind::Other(n),
         }
     }
 }
 
-impl<'a> crate::ast_traits::TableSourceLike<'a> for TableSource<'a> {
+impl<'a> crate::node_traits::TableSourceLike<'a> for TableSource<'a> {
     type Ast = SqliteAst;
-    fn kind(&self) -> crate::ast_traits::TableSourceKind<'a, SqliteAst> {
+    fn kind(&self) -> crate::node_traits::TableSourceKind<'a, SqliteAst> {
         match *self {
-            TableSource::TableRef(n) => crate::ast_traits::TableSourceKind::TableRef(n),
+            TableSource::TableRef(n) => crate::node_traits::TableSourceKind::TableRef(n),
             TableSource::SubqueryTableSource(n) => {
-                crate::ast_traits::TableSourceKind::SubqueryTableSource(n)
+                crate::node_traits::TableSourceKind::SubqueryTableSource(n)
             }
-            TableSource::JoinClause(n) => crate::ast_traits::TableSourceKind::JoinClause(n),
-            TableSource::JoinPrefix(n) => crate::ast_traits::TableSourceKind::JoinPrefix(n),
-            TableSource::Other(n) => crate::ast_traits::TableSourceKind::Other(n),
+            TableSource::JoinClause(n) => crate::node_traits::TableSourceKind::JoinClause(n),
+            TableSource::JoinPrefix(n) => crate::node_traits::TableSourceKind::JoinPrefix(n),
+            TableSource::Other(n) => crate::node_traits::TableSourceKind::Other(n),
         }
     }
 }
 
-impl<'a> crate::ast_traits::AggregateFunctionCallView<'a> for AggregateFunctionCall<'a> {
+impl<'a> crate::node_traits::AggregateFunctionCallView<'a> for AggregateFunctionCall<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -6878,7 +6878,7 @@ impl<'a> crate::ast_traits::AggregateFunctionCallView<'a> for AggregateFunctionC
     }
 }
 
-impl<'a> crate::ast_traits::OrderedSetFunctionCallView<'a> for OrderedSetFunctionCall<'a> {
+impl<'a> crate::node_traits::OrderedSetFunctionCallView<'a> for OrderedSetFunctionCall<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -6903,7 +6903,7 @@ impl<'a> crate::ast_traits::OrderedSetFunctionCallView<'a> for OrderedSetFunctio
     }
 }
 
-impl<'a> crate::ast_traits::CastExprView<'a> for CastExpr<'a> {
+impl<'a> crate::node_traits::CastExprView<'a> for CastExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -6916,7 +6916,7 @@ impl<'a> crate::ast_traits::CastExprView<'a> for CastExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::ColumnRefView<'a> for ColumnRef<'a> {
+impl<'a> crate::node_traits::ColumnRefView<'a> for ColumnRef<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -6932,7 +6932,7 @@ impl<'a> crate::ast_traits::ColumnRefView<'a> for ColumnRef<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::CompoundSelectView<'a> for CompoundSelect<'a> {
+impl<'a> crate::node_traits::CompoundSelectView<'a> for CompoundSelect<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -6948,7 +6948,7 @@ impl<'a> crate::ast_traits::CompoundSelectView<'a> for CompoundSelect<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::SubqueryExprView<'a> for SubqueryExpr<'a> {
+impl<'a> crate::node_traits::SubqueryExprView<'a> for SubqueryExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -6958,7 +6958,7 @@ impl<'a> crate::ast_traits::SubqueryExprView<'a> for SubqueryExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::ExistsExprView<'a> for ExistsExpr<'a> {
+impl<'a> crate::node_traits::ExistsExprView<'a> for ExistsExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -6968,7 +6968,7 @@ impl<'a> crate::ast_traits::ExistsExprView<'a> for ExistsExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::InExprView<'a> for InExpr<'a> {
+impl<'a> crate::node_traits::InExprView<'a> for InExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -6984,7 +6984,7 @@ impl<'a> crate::ast_traits::InExprView<'a> for InExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::IsExprView<'a> for IsExpr<'a> {
+impl<'a> crate::node_traits::IsExprView<'a> for IsExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7000,7 +7000,7 @@ impl<'a> crate::ast_traits::IsExprView<'a> for IsExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::BetweenExprView<'a> for BetweenExpr<'a> {
+impl<'a> crate::node_traits::BetweenExprView<'a> for BetweenExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7019,7 +7019,7 @@ impl<'a> crate::ast_traits::BetweenExprView<'a> for BetweenExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::LikeExprView<'a> for LikeExpr<'a> {
+impl<'a> crate::node_traits::LikeExprView<'a> for LikeExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7038,7 +7038,7 @@ impl<'a> crate::ast_traits::LikeExprView<'a> for LikeExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::CaseExprView<'a> for CaseExpr<'a> {
+impl<'a> crate::node_traits::CaseExprView<'a> for CaseExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7054,7 +7054,7 @@ impl<'a> crate::ast_traits::CaseExprView<'a> for CaseExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::CaseWhenView<'a> for CaseWhen<'a> {
+impl<'a> crate::node_traits::CaseWhenView<'a> for CaseWhen<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7067,7 +7067,7 @@ impl<'a> crate::ast_traits::CaseWhenView<'a> for CaseWhen<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::ForeignKeyClauseView<'a> for ForeignKeyClause<'a> {
+impl<'a> crate::node_traits::ForeignKeyClauseView<'a> for ForeignKeyClause<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7089,7 +7089,7 @@ impl<'a> crate::ast_traits::ForeignKeyClauseView<'a> for ForeignKeyClause<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::ColumnConstraintView<'a> for ColumnConstraint<'a> {
+impl<'a> crate::node_traits::ColumnConstraintView<'a> for ColumnConstraint<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7129,7 +7129,7 @@ impl<'a> crate::ast_traits::ColumnConstraintView<'a> for ColumnConstraint<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::ColumnDefView<'a> for ColumnDef<'a> {
+impl<'a> crate::node_traits::ColumnDefView<'a> for ColumnDef<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7145,7 +7145,7 @@ impl<'a> crate::ast_traits::ColumnDefView<'a> for ColumnDef<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::TableConstraintView<'a> for TableConstraint<'a> {
+impl<'a> crate::node_traits::TableConstraintView<'a> for TableConstraint<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7176,7 +7176,7 @@ impl<'a> crate::ast_traits::TableConstraintView<'a> for TableConstraint<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::CreateTableStmtView<'a> for CreateTableStmt<'a> {
+impl<'a> crate::node_traits::CreateTableStmtView<'a> for CreateTableStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7207,7 +7207,7 @@ impl<'a> crate::ast_traits::CreateTableStmtView<'a> for CreateTableStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::CteDefinitionView<'a> for CteDefinition<'a> {
+impl<'a> crate::node_traits::CteDefinitionView<'a> for CteDefinition<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7226,7 +7226,7 @@ impl<'a> crate::ast_traits::CteDefinitionView<'a> for CteDefinition<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::WithClauseView<'a> for WithClause<'a> {
+impl<'a> crate::node_traits::WithClauseView<'a> for WithClause<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7242,7 +7242,7 @@ impl<'a> crate::ast_traits::WithClauseView<'a> for WithClause<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::DeleteStmtView<'a> for DeleteStmt<'a> {
+impl<'a> crate::node_traits::DeleteStmtView<'a> for DeleteStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7261,7 +7261,7 @@ impl<'a> crate::ast_traits::DeleteStmtView<'a> for DeleteStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::SetClauseView<'a> for SetClause<'a> {
+impl<'a> crate::node_traits::SetClauseView<'a> for SetClause<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7277,7 +7277,7 @@ impl<'a> crate::ast_traits::SetClauseView<'a> for SetClause<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::UpdateStmtView<'a> for UpdateStmt<'a> {
+impl<'a> crate::node_traits::UpdateStmtView<'a> for UpdateStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7305,7 +7305,7 @@ impl<'a> crate::ast_traits::UpdateStmtView<'a> for UpdateStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::InsertStmtView<'a> for InsertStmt<'a> {
+impl<'a> crate::node_traits::InsertStmtView<'a> for InsertStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7324,7 +7324,7 @@ impl<'a> crate::ast_traits::InsertStmtView<'a> for InsertStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::BinaryExprView<'a> for BinaryExpr<'a> {
+impl<'a> crate::node_traits::BinaryExprView<'a> for BinaryExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7340,7 +7340,7 @@ impl<'a> crate::ast_traits::BinaryExprView<'a> for BinaryExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::UnaryExprView<'a> for UnaryExpr<'a> {
+impl<'a> crate::node_traits::UnaryExprView<'a> for UnaryExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7353,7 +7353,7 @@ impl<'a> crate::ast_traits::UnaryExprView<'a> for UnaryExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::LiteralView<'a> for Literal<'a> {
+impl<'a> crate::node_traits::LiteralView<'a> for Literal<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7366,7 +7366,7 @@ impl<'a> crate::ast_traits::LiteralView<'a> for Literal<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::FunctionCallView<'a> for FunctionCall<'a> {
+impl<'a> crate::node_traits::FunctionCallView<'a> for FunctionCall<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7388,7 +7388,7 @@ impl<'a> crate::ast_traits::FunctionCallView<'a> for FunctionCall<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::VariableView<'a> for Variable<'a> {
+impl<'a> crate::node_traits::VariableView<'a> for Variable<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7398,7 +7398,7 @@ impl<'a> crate::ast_traits::VariableView<'a> for Variable<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::CollateExprView<'a> for CollateExpr<'a> {
+impl<'a> crate::node_traits::CollateExprView<'a> for CollateExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7411,7 +7411,7 @@ impl<'a> crate::ast_traits::CollateExprView<'a> for CollateExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::RaiseExprView<'a> for RaiseExpr<'a> {
+impl<'a> crate::node_traits::RaiseExprView<'a> for RaiseExpr<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7424,7 +7424,7 @@ impl<'a> crate::ast_traits::RaiseExprView<'a> for RaiseExpr<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::QualifiedNameView<'a> for QualifiedName<'a> {
+impl<'a> crate::node_traits::QualifiedNameView<'a> for QualifiedName<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7437,7 +7437,7 @@ impl<'a> crate::ast_traits::QualifiedNameView<'a> for QualifiedName<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::DropStmtView<'a> for DropStmt<'a> {
+impl<'a> crate::node_traits::DropStmtView<'a> for DropStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7453,7 +7453,7 @@ impl<'a> crate::ast_traits::DropStmtView<'a> for DropStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::AlterTableStmtView<'a> for AlterTableStmt<'a> {
+impl<'a> crate::node_traits::AlterTableStmtView<'a> for AlterTableStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7472,7 +7472,7 @@ impl<'a> crate::ast_traits::AlterTableStmtView<'a> for AlterTableStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::TransactionStmtView<'a> for TransactionStmt<'a> {
+impl<'a> crate::node_traits::TransactionStmtView<'a> for TransactionStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7485,7 +7485,7 @@ impl<'a> crate::ast_traits::TransactionStmtView<'a> for TransactionStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::SavepointStmtView<'a> for SavepointStmt<'a> {
+impl<'a> crate::node_traits::SavepointStmtView<'a> for SavepointStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7498,7 +7498,7 @@ impl<'a> crate::ast_traits::SavepointStmtView<'a> for SavepointStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::ResultColumnView<'a> for ResultColumn<'a> {
+impl<'a> crate::node_traits::ResultColumnView<'a> for ResultColumn<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7514,7 +7514,7 @@ impl<'a> crate::ast_traits::ResultColumnView<'a> for ResultColumn<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::SelectStmtView<'a> for SelectStmt<'a> {
+impl<'a> crate::node_traits::SelectStmtView<'a> for SelectStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7548,7 +7548,7 @@ impl<'a> crate::ast_traits::SelectStmtView<'a> for SelectStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::OrderingTermView<'a> for OrderingTerm<'a> {
+impl<'a> crate::node_traits::OrderingTermView<'a> for OrderingTerm<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7564,7 +7564,7 @@ impl<'a> crate::ast_traits::OrderingTermView<'a> for OrderingTerm<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::LimitClauseView<'a> for LimitClause<'a> {
+impl<'a> crate::node_traits::LimitClauseView<'a> for LimitClause<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7577,7 +7577,7 @@ impl<'a> crate::ast_traits::LimitClauseView<'a> for LimitClause<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::TableRefView<'a> for TableRef<'a> {
+impl<'a> crate::node_traits::TableRefView<'a> for TableRef<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7593,7 +7593,7 @@ impl<'a> crate::ast_traits::TableRefView<'a> for TableRef<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::SubqueryTableSourceView<'a> for SubqueryTableSource<'a> {
+impl<'a> crate::node_traits::SubqueryTableSourceView<'a> for SubqueryTableSource<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7606,7 +7606,7 @@ impl<'a> crate::ast_traits::SubqueryTableSourceView<'a> for SubqueryTableSource<
     }
 }
 
-impl<'a> crate::ast_traits::JoinClauseView<'a> for JoinClause<'a> {
+impl<'a> crate::node_traits::JoinClauseView<'a> for JoinClause<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7628,7 +7628,7 @@ impl<'a> crate::ast_traits::JoinClauseView<'a> for JoinClause<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::JoinPrefixView<'a> for JoinPrefix<'a> {
+impl<'a> crate::node_traits::JoinPrefixView<'a> for JoinPrefix<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7641,7 +7641,7 @@ impl<'a> crate::ast_traits::JoinPrefixView<'a> for JoinPrefix<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::TriggerEventView<'a> for TriggerEvent<'a> {
+impl<'a> crate::node_traits::TriggerEventView<'a> for TriggerEvent<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7654,7 +7654,7 @@ impl<'a> crate::ast_traits::TriggerEventView<'a> for TriggerEvent<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::CreateTriggerStmtView<'a> for CreateTriggerStmt<'a> {
+impl<'a> crate::node_traits::CreateTriggerStmtView<'a> for CreateTriggerStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7688,7 +7688,7 @@ impl<'a> crate::ast_traits::CreateTriggerStmtView<'a> for CreateTriggerStmt<'a> 
     }
 }
 
-impl<'a> crate::ast_traits::CreateVirtualTableStmtView<'a> for CreateVirtualTableStmt<'a> {
+impl<'a> crate::node_traits::CreateVirtualTableStmtView<'a> for CreateVirtualTableStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7710,7 +7710,7 @@ impl<'a> crate::ast_traits::CreateVirtualTableStmtView<'a> for CreateVirtualTabl
     }
 }
 
-impl<'a> crate::ast_traits::PragmaStmtView<'a> for PragmaStmt<'a> {
+impl<'a> crate::node_traits::PragmaStmtView<'a> for PragmaStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7729,7 +7729,7 @@ impl<'a> crate::ast_traits::PragmaStmtView<'a> for PragmaStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::AnalyzeStmtView<'a> for AnalyzeStmt<'a> {
+impl<'a> crate::node_traits::AnalyzeStmtView<'a> for AnalyzeStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7745,7 +7745,7 @@ impl<'a> crate::ast_traits::AnalyzeStmtView<'a> for AnalyzeStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::AttachStmtView<'a> for AttachStmt<'a> {
+impl<'a> crate::node_traits::AttachStmtView<'a> for AttachStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7761,7 +7761,7 @@ impl<'a> crate::ast_traits::AttachStmtView<'a> for AttachStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::DetachStmtView<'a> for DetachStmt<'a> {
+impl<'a> crate::node_traits::DetachStmtView<'a> for DetachStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7771,7 +7771,7 @@ impl<'a> crate::ast_traits::DetachStmtView<'a> for DetachStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::VacuumStmtView<'a> for VacuumStmt<'a> {
+impl<'a> crate::node_traits::VacuumStmtView<'a> for VacuumStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7784,7 +7784,7 @@ impl<'a> crate::ast_traits::VacuumStmtView<'a> for VacuumStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::ExplainStmtView<'a> for ExplainStmt<'a> {
+impl<'a> crate::node_traits::ExplainStmtView<'a> for ExplainStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7797,7 +7797,7 @@ impl<'a> crate::ast_traits::ExplainStmtView<'a> for ExplainStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::CreateIndexStmtView<'a> for CreateIndexStmt<'a> {
+impl<'a> crate::node_traits::CreateIndexStmtView<'a> for CreateIndexStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7825,7 +7825,7 @@ impl<'a> crate::ast_traits::CreateIndexStmtView<'a> for CreateIndexStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::CreateViewStmtView<'a> for CreateViewStmt<'a> {
+impl<'a> crate::node_traits::CreateViewStmtView<'a> for CreateViewStmt<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7850,7 +7850,7 @@ impl<'a> crate::ast_traits::CreateViewStmtView<'a> for CreateViewStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::ValuesClauseView<'a> for ValuesClause<'a> {
+impl<'a> crate::node_traits::ValuesClauseView<'a> for ValuesClause<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7860,7 +7860,7 @@ impl<'a> crate::ast_traits::ValuesClauseView<'a> for ValuesClause<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::FrameBoundView<'a> for FrameBound<'a> {
+impl<'a> crate::node_traits::FrameBoundView<'a> for FrameBound<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7873,7 +7873,7 @@ impl<'a> crate::ast_traits::FrameBoundView<'a> for FrameBound<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::FrameSpecView<'a> for FrameSpec<'a> {
+impl<'a> crate::node_traits::FrameSpecView<'a> for FrameSpec<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7892,7 +7892,7 @@ impl<'a> crate::ast_traits::FrameSpecView<'a> for FrameSpec<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::WindowDefView<'a> for WindowDef<'a> {
+impl<'a> crate::node_traits::WindowDefView<'a> for WindowDef<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7911,7 +7911,7 @@ impl<'a> crate::ast_traits::WindowDefView<'a> for WindowDef<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::NamedWindowDefView<'a> for NamedWindowDef<'a> {
+impl<'a> crate::node_traits::NamedWindowDefView<'a> for NamedWindowDef<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id
@@ -7924,7 +7924,7 @@ impl<'a> crate::ast_traits::NamedWindowDefView<'a> for NamedWindowDef<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::FilterOverView<'a> for FilterOver<'a> {
+impl<'a> crate::node_traits::FilterOverView<'a> for FilterOver<'a> {
     type Ast = SqliteAst;
     fn node_id(&self) -> NodeId {
         self.id

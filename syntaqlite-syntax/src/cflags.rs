@@ -1,16 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! C ABI mirror structs for the grammar descriptor.
-//!
-//! Mirrors `SyntaqliteGrammarTemplate` and `SyntaqliteGrammar` from
-//! `include/syntaqlite/abstract_grammar.h`.
-
-pub const FIELD_NODE_ID: u8 = 0;
-pub const FIELD_SPAN: u8 = 1;
-pub const FIELD_BOOL: u8 = 2;
-pub(crate) const FIELD_FLAGS: u8 = 3;
-pub const FIELD_ENUM: u8 = 4;
+//! TODO(claude) - add documentation
 
 /// Mirrors C `SyntaqliteCflags` from `include/syntaqlite/cflags.h`.
 ///

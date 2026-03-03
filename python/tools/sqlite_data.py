@@ -260,7 +260,7 @@ def cmd_extract_functions(args: argparse.Namespace) -> int:
 
     # Phase 1: Audit cflags per version.
     rust_output = str(
-        PROJECT_ROOT / "syntaqlite-parser" / "src" / "cflag_versions.rs"
+        PROJECT_ROOT / "syntaqlite-syntax" / "src" / "sqlite" / "cflags.rs"
     )
     print()
     print("Phase 1: Auditing cflags per version...")

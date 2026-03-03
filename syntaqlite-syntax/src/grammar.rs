@@ -5,68 +5,6 @@
 
 use std::marker::PhantomData;
 
-mod ffi {
-    /// Mirrors C `SyntaqliteGrammarTemplate` struct defined in
-    /// `include/syntaqlite/grammar.h`.
-    #[repr(C)]
-    pub(crate) struct GrammarTemplate {
-        pub(crate) name: *const std::ffi::c_char,
-
-        // Range metadata
-        pub(crate) range_meta: *const std::ffi::c_void,
-
-        // AST metadata
-        pub(crate) node_count: u32,
-        pub(crate) node_names: *const *const std::ffi::c_char,
-        pub(crate) field_meta: *const *const FieldMeta,
-        pub(crate) field_meta_counts: *const u8,
-        pub(crate) list_tags: *const u8,
-
-        // Parser lifecycle (function pointers provided by grammar)
-        pub(crate) parser_alloc: *const std::ffi::c_void,
-        pub(crate) parser_init: *const std::ffi::c_void,
-        pub(crate) parser_finalize: *const std::ffi::c_void,
-        pub(crate) parser_free: *const std::ffi::c_void,
-        pub(crate) parser_feed: *const std::ffi::c_void,
-        pub(crate) parser_trace: *const std::ffi::c_void,
-        pub(crate) parser_expected_tokens: *const std::ffi::c_void,
-        pub(crate) parser_completion_context: *const std::ffi::c_void,
-
-        // Tokenizer (function pointer provided by grammar)
-        pub(crate) get_token: *const std::ffi::c_void,
-
-        // Keyword table metadata
-        pub(crate) keyword_text: *const std::ffi::c_char,
-        pub(crate) keyword_offsets: *const u16,
-        pub(crate) keyword_lens: *const u8,
-        pub(crate) keyword_codes: *const u8,
-        pub(crate) keyword_count: *const u32,
-
-        // Token metadata (indexed by token type ordinal)
-        pub(crate) token_categories: *const u8,
-        pub(crate) token_type_count: u32,
-    }
-
-    /// Mirrors C `SyntaqliteGrammar` from `include/syntaqlite/grammar.h`.
-    #[repr(C)]
-    #[derive(Debug, Clone, Copy)]
-    pub(crate) struct Grammar {
-        pub(crate) template: *const GrammarTemplate,
-        pub(crate) sqlite_version: i32,
-        pub(crate) cflags: Cflags,
-    }
-
-    /// Mirrors C `SyntaqliteFieldMeta` from `include/syntaqlite_dialect/dialect_types.h`.
-    #[repr(C)]
-    pub struct FieldMeta {
-        pub offset: u16,
-        pub kind: u8,
-        pub name: *const std::ffi::c_char,
-        pub display: *const *const std::ffi::c_char,
-        pub display_count: u8,
-    }
-}
-
 // TODO(claude): add documentation.
 #[derive(Clone, Copy)]
 pub struct Grammar {
@@ -241,5 +179,67 @@ impl Grammar {
             && name
                 .bytes()
                 .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
+    }
+}
+
+mod ffi {
+    /// Mirrors C `SyntaqliteGrammarTemplate` struct defined in
+    /// `include/syntaqlite/grammar.h`.
+    #[repr(C)]
+    pub(crate) struct GrammarTemplate {
+        pub(crate) name: *const std::ffi::c_char,
+
+        // Range metadata
+        pub(crate) range_meta: *const std::ffi::c_void,
+
+        // AST metadata
+        pub(crate) node_count: u32,
+        pub(crate) node_names: *const *const std::ffi::c_char,
+        pub(crate) field_meta: *const *const FieldMeta,
+        pub(crate) field_meta_counts: *const u8,
+        pub(crate) list_tags: *const u8,
+
+        // Parser lifecycle (function pointers provided by grammar)
+        pub(crate) parser_alloc: *const std::ffi::c_void,
+        pub(crate) parser_init: *const std::ffi::c_void,
+        pub(crate) parser_finalize: *const std::ffi::c_void,
+        pub(crate) parser_free: *const std::ffi::c_void,
+        pub(crate) parser_feed: *const std::ffi::c_void,
+        pub(crate) parser_trace: *const std::ffi::c_void,
+        pub(crate) parser_expected_tokens: *const std::ffi::c_void,
+        pub(crate) parser_completion_context: *const std::ffi::c_void,
+
+        // Tokenizer (function pointer provided by grammar)
+        pub(crate) get_token: *const std::ffi::c_void,
+
+        // Keyword table metadata
+        pub(crate) keyword_text: *const std::ffi::c_char,
+        pub(crate) keyword_offsets: *const u16,
+        pub(crate) keyword_lens: *const u8,
+        pub(crate) keyword_codes: *const u8,
+        pub(crate) keyword_count: *const u32,
+
+        // Token metadata (indexed by token type ordinal)
+        pub(crate) token_categories: *const u8,
+        pub(crate) token_type_count: u32,
+    }
+
+    /// Mirrors C `SyntaqliteGrammar` from `include/syntaqlite/grammar.h`.
+    #[repr(C)]
+    #[derive(Debug, Clone, Copy)]
+    pub(crate) struct Grammar {
+        pub(crate) template: *const GrammarTemplate,
+        pub(crate) sqlite_version: i32,
+        pub(crate) cflags: Cflags,
+    }
+
+    /// Mirrors C `SyntaqliteFieldMeta` from `include/syntaqlite_dialect/dialect_types.h`.
+    #[repr(C)]
+    pub struct FieldMeta {
+        pub offset: u16,
+        pub kind: u8,
+        pub name: *const std::ffi::c_char,
+        pub display: *const *const std::ffi::c_char,
+        pub display_count: u8,
     }
 }

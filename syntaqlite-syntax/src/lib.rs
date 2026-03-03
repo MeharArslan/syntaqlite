@@ -9,16 +9,13 @@ pub use grammar::Grammar;
 
 // ==== Internal modules ====
 
+mod ast;
 mod ast_traits;
 mod cflags;
-mod dialect_traits;
 mod grammar;
 mod incremental;
-mod node;
 mod parser;
-mod raw_session;
-mod raw_tokenizer;
-mod session;
+mod tokenizer;
 
 #[cfg(feature = "sqlite")]
 mod sqlite;
