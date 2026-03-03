@@ -29,6 +29,28 @@ A key design goal is supporting SQLite-based dialects (e.g., databases that exte
 
 This allows projects like libSQL, rqlite, or custom embedded databases to use syntaqlite with their extended syntax.
 
+## Key APIs
+
+- `Dialect<'d>` — opaque handle wrapping `&'d ffi::Dialect`. Copy + Send + Sync.
+  - Safe accessors: `is_list`, `field_meta`, `extract_fields`, `fmt_string`, `fmt_enum_display_val`, `fmt_dispatch`, `first_source_offset`, `last_source_offset`
+- `Formatter<'d>` — high-level formatter: `Formatter::new(&dialect)?.format(sql)` or `.format_node(session, id)`
+  - Owns `Parser` internally; stores `Dialect<'d>` by value (Copy)
+  - Builder: `.with_config(config)`, `.with_semicolons(true)`
+- `Interpreter<'a, 'b>` — bytecode interpreter, takes `Dialect<'a>` by value + ops byte slice
+- `DialectTypes` trait — dialect crates implement: `Node<'a>`, `TokenType`, `node_from_raw()`
+- `SessionExt<'a, D>` — blanket impl for typed node/feed access
+- `syntaqlite::sqlite::ast::SessionExt<'a>` — concrete trait hardcoding Sqlite (no turbofish needed)
+- `Session::dump_node()` — calls C-side `syntaqlite_dump_node()` via FFI
+
+## Coding Conventions
+
+- **Feature flags at module boundary**: `#[cfg(feature = "...")]` goes on `mod` and `pub use` declarations, NOT on individual imports/functions/statements inside modules
+- FFI types in `dialect/ffi.rs` and `parser/ffi.rs` — no `Syntaqlite` prefix in Rust, always accessed via `ffi::` module path
+- Compile-time layout checks (`const _: () = { assert!(...) }`) beside every `#[repr(C)]` struct
+- `Dialect<'d>` parameterized on lifetime — no `'static` requirement, enables stack-allocated test dialects
+- Unsafe minimized: `Dialect` safe accessors wrap all raw pointer access; `Interpreter` has zero unsafe
+- AST dump is in C (`syntaqlite_dump_node`), not Rust — single source of truth for metadata
+
 ## Key Directories
 
 - `syntaqlite-common/` - Shared primitives with no generated-file dependencies (e.g. fmt bytecode types). Safe for the bootstrap tool to depend on.
@@ -100,6 +122,12 @@ The `.synq` DSL defines the AST node types, enums, flags, and formatter instruct
 | `tools/pre-push` | Run all pre-push checks (formatting, clippy, deps, unit tests, diff tests). Use `--fix` to auto-fix formatting and clippy warnings before running remaining checks. |
 | `tools/install-build-deps` | Install platform-specific build deps (clang-format, SQLite sources) |
 | `tools/build-web-playground` | Build WASM web playground |
+
+## Parser Debugging
+
+- `SyntaqliteParserConfig config = {.trace = 1}` enables Lemon parser trace
+- CLI: `syntaqlite ast --trace < input.sql`
+- Lemon `.out` file shows all states and conflicts
 
 ## Verification
 
