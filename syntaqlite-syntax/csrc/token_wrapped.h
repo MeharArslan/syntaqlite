@@ -12,7 +12,7 @@
 
 #include <stdint.h>
 
-#include "syntaqlite/abstract_grammar.h"
+#include "syntaqlite/grammar.h"
 
 int64_t SynqSqliteGetTokenVersionWrapped(const SyntaqliteGrammar* env,
                                          const unsigned char* z,

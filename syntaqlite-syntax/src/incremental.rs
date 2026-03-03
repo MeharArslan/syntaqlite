@@ -13,7 +13,7 @@ use crate::NodeRef;
 use crate::ast::NodeId;
 use crate::parser::{ParseResult as CParseResult, Parser as CParser};
 use crate::parser::{
-    syntaqlite_create_parser_with_dialect, syntaqlite_parser_begin_macro,
+    syntaqlite_create_parser_with_grammar, syntaqlite_parser_begin_macro,
     syntaqlite_parser_completion_context, syntaqlite_parser_destroy, syntaqlite_parser_end_macro,
     syntaqlite_parser_expected_tokens, syntaqlite_parser_feed_token, syntaqlite_parser_finish,
     syntaqlite_parser_node_count, syntaqlite_parser_result, syntaqlite_parser_set_collect_tokens,
@@ -32,7 +32,7 @@ pub(crate) struct IncrementalInner {
 
 impl Drop for IncrementalInner {
     fn drop(&mut self) {
-        // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_dialect
+        // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_grammar
         // and has not been freed (Drop runs exactly once).
         unsafe { syntaqlite_parser_destroy(self.raw.as_ptr()) }
     }
@@ -65,10 +65,10 @@ impl<'d> IncrementalParser<'d> {
     pub fn with_config(dialect: impl Into<DialectEnv<'d>>, config: &ParserConfig) -> Self {
         let env = dialect.into();
         let ffi_env = env.to_ffi();
-        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, &ffi_env) allocates
+        // SAFETY: syntaqlite_create_parser_with_grammar(NULL, &ffi_env) allocates
         // a new parser with default malloc/free. The C side copies the env.
         let raw = NonNull::new(unsafe {
-            syntaqlite_create_parser_with_dialect(std::ptr::null(), &ffi_env)
+            syntaqlite_create_parser_with_grammar(std::ptr::null(), &ffi_env)
         })
         .expect("parser allocation failed");
 

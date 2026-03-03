@@ -18,8 +18,8 @@
 // The config file can set SYNTAQLITE_SQLITE_VERSION, SYNTAQLITE_SQLITE_CFLAGS,
 // and individual SYNTAQLITE_CFLAG_* defines.
 
-#ifndef SYNTAQLITE_ABSTRACT_GRAMMAR_H
-#define SYNTAQLITE_ABSTRACT_GRAMMAR_H
+#ifndef SYNTAQLITE_GRAMMAR_H
+#define SYNTAQLITE_GRAMMAR_H
 
 #ifdef SYNTAQLITE_CUSTOM_INCLUDE
 #define SYNQ_STRINGIFY_(x) #x
@@ -100,7 +100,7 @@ typedef struct SyntaqliteGrammarTemplate {
 // ── Configured grammar handle ─────────────────────────────────────────────
 
 typedef struct SyntaqliteGrammar {
-  const SyntaqliteGrammarTemplate* template;
+  const SyntaqliteGrammarTemplate* tmpl;
   int32_t sqlite_version;   // Target version (e.g., 3035000). INT32_MAX =
                             // latest.
   SyntaqliteCflags cflags;  // Active compile-time flags.
@@ -109,18 +109,8 @@ typedef struct SyntaqliteGrammar {
 // Default env: latest version, no cflags.
 #define SYNQ_GRAMMAR_DEFAULT(g) {(g), INT32_MAX, SYNQ_CFLAGS_DEFAULT}
 
-#if UINTPTR_MAX == 0xFFFFFFFFu
-_Static_assert(sizeof(SyntaqliteGrammarTemplate) == 104,
-               "SyntaqliteGrammarTemplate size changed — update Rust mirror in "
-               "ffi.rs");
-#else
-_Static_assert(sizeof(SyntaqliteGrammarTemplate) == 192,
-               "SyntaqliteGrammarTemplate size changed — update Rust mirror in "
-               "ffi.rs");
-#endif
-
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // SYNTAQLITE_ABSTRACT_GRAMMAR_H
+#endif  // SYNTAQLITE_GRAMMAR_H

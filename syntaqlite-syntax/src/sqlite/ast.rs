@@ -8,6 +8,7 @@ use crate::NodeId;
 use crate::NodeRef;
 use crate::ParseResult;
 use crate::TypedList;
+use crate::dialect_traits::NodeFamily;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
@@ -7938,4 +7939,12 @@ impl<'a> crate::ast_traits::FilterOverView<'a> for FilterOver<'a> {
     fn over_name(&self) -> &'a str {
         self.over_name()
     }
+}
+
+/// Marker type bundling the sqlite AST node and token types for use with `TypedGrammar`.
+pub struct SqliteNodeFamily;
+
+impl NodeFamily for SqliteNodeFamily {
+    type Node<'a> = Select<'a>;
+    type Token = super::tokens::TokenType;
 }

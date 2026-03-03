@@ -14,5 +14,8 @@ no-bundled-parser = []
 [dependencies]
 syntaqlite-common = { path = "../syntaqlite-common" }
 
+[lints]
+workspace = true
+
 [build-dependencies]
 cc = "1.0"

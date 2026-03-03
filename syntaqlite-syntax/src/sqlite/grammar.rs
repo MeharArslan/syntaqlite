@@ -9,7 +9,7 @@ use crate::cflags;
 use crate::grammar::Grammar;
 use crate::typed_grammar::TypedGrammar;
 
-use super::dialect::SqliteNodeFamily;
+use super::ast::SqliteNodeFamily;
 
 unsafe extern "C" {
     fn syntaqlite_sqlite_grammar() -> cflags::Grammar;

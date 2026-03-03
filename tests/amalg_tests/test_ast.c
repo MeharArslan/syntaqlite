@@ -21,7 +21,7 @@ int main(void) {
 
   SyntaqliteDialectEnv env = SYNQ_DIALECT_ENV_DEFAULT(DIALECT_FN());
   SyntaqliteParser* p =
-      syntaqlite_create_parser_with_dialect(NULL, &env);
+      syntaqlite_create_parser_with_grammar(NULL, &env);
   syntaqlite_parser_reset(p, buf, (uint32_t)n);
 
   SyntaqliteParseResult result;

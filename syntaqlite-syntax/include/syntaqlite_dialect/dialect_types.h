@@ -4,7 +4,7 @@
 // Dialect-implementation types: full definitions of structs that appear in
 // SyntaqliteGrammarTemplate by pointer and are only needed when building a dialect
 // descriptor. Consumer code (code that merely *uses* a dialect) needs only the
-// forward declarations in syntaqlite/abstract_grammar.h.
+// forward declarations in syntaqlite/grammar.h.
 
 #ifndef SYNTAQLITE_DIALECT_TYPES_H
 #define SYNTAQLITE_DIALECT_TYPES_H

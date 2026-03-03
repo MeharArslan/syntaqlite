@@ -90,9 +90,8 @@ def main():
     tools_bin = project_root / "target" / "release" / "syntaqlite-buildtools"
 
     # Stage 1b: Generate functions catalog and ast_traits from synq files.
+    # Output paths are hardcoded in the Rust binary.
     functions_json = vendored_dir / "data" / "functions.json"
-    functions_catalog_rs = project_root / "syntaqlite" / "src" / "sqlite" / "functions_catalog.rs"
-    ast_traits_out = shared_crate_dir / "src" / "sqlite" / "ast_traits.rs"
 
     print("Stage 1b: Generating functions catalog and ast_traits...")
     result = subprocess.run(
@@ -100,11 +99,10 @@ def main():
             str(tools_bin),
             "codegen-sqlite-parser",
             "--functions-json", str(functions_json),
-            "--functions-catalog-out", str(functions_catalog_rs),
             "--actions-dir", str(actions_dir),
             "--nodes-dir", str(nodes_dir),
-            "--ast-traits-out", str(ast_traits_out),
         ],
+        cwd=project_root,
     )
     if result.returncode != 0:
         print("Stage 1b codegen-sqlite-parser failed", file=sys.stderr)

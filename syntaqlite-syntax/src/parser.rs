@@ -26,7 +26,7 @@ pub(crate) struct ParserInner {
 
 impl Drop for ParserInner {
     fn drop(&mut self) {
-        // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_dialect
+        // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_grammar
         // and has not been freed (Drop runs exactly once).
         unsafe { syntaqlite_parser_destroy(self.raw.as_ptr()) }
     }
@@ -54,10 +54,10 @@ impl<'d> Parser<'d> {
     pub fn with_config(dialect: impl Into<DialectEnv<'d>>, config: &ParserConfig) -> Self {
         let env = dialect.into();
         let ffi_env = env.to_ffi();
-        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, &ffi_env) allocates
+        // SAFETY: syntaqlite_create_parser_with_grammar(NULL, &ffi_env) allocates
         // a new parser with default malloc/free. The C side copies the env.
         let raw = NonNull::new(unsafe {
-            syntaqlite_create_parser_with_dialect(std::ptr::null(), &ffi_env)
+            syntaqlite_create_parser_with_grammar(std::ptr::null(), &ffi_env)
         })
         .expect("parser allocation failed");
 
@@ -397,7 +397,7 @@ pub(crate) struct Token {
 
 unsafe extern "C" {
     // Parser lifecycle
-    pub(crate) fn syntaqlite_create_parser_with_dialect(
+    pub(crate) fn syntaqlite_create_parser_with_grammar(
         mem: *const MemMethods,
         env: *const ffi::DialectEnv,
     ) -> *mut Parser;

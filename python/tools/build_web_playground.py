@@ -190,7 +190,7 @@ def main():
     wrapper_path = os.path.join(wrapper_dir, "dialect_alias.c")
     with open(wrapper_path, "w", encoding="utf-8") as f:
         f.write("""\
-#include "syntaqlite/dialect.h"
+#include "syntaqlite/grammar.h"
 #include "syntaqlite/parser.h"
 
 const SyntaqliteDialect* syntaqlite_sqlite_dialect(void);
@@ -199,7 +199,7 @@ const SyntaqliteDialect* syntaqlite_dialect(void) {
     return syntaqlite_sqlite_dialect();
 }
 
-SyntaqliteParser* syntaqlite_create_parser_with_dialect(
+SyntaqliteParser* syntaqlite_create_parser_with_grammar(
     const SyntaqliteMemMethods* mem,
     const SyntaqliteDialectEnv* env
 ) {
@@ -277,7 +277,7 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
     with open(os.path.join(perfetto_csrc_dir, "syntaqlite_runtime.h"), "w", encoding="utf-8") as f:
         f.write("#ifndef SYNTAQLITE_RUNTIME_H\n#define SYNTAQLITE_RUNTIME_H\n"
                 "#include \"syntaqlite/config.h\"\n#include \"syntaqlite/types.h\"\n"
-                "#include \"syntaqlite/dialect.h\"\n#include \"syntaqlite/parser.h\"\n"
+                "#include \"syntaqlite/grammar.h\"\n#include \"syntaqlite/parser.h\"\n"
                 "#include \"syntaqlite/tokenizer.h\"\n#endif\n")
     with open(os.path.join(perfetto_csrc_dir, "syntaqlite_dialect.h"), "w", encoding="utf-8") as f:
         f.write("#ifndef SYNTAQLITE_EXT_H\n#define SYNTAQLITE_EXT_H\n"

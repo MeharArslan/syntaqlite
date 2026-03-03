@@ -7,7 +7,7 @@
 #define SYNTAQLITE_DIALECT_META_H
 
 #include <stddef.h>
-#include "syntaqlite/dialect.h"
+#include "syntaqlite/grammar.h"
 #include "syntaqlite_dialect/dialect_types.h"
 #include "syntaqlite_sqlite/sqlite_node.h"
 
@@ -973,15 +973,6 @@ static const uint8_t ast_meta_list_tags[] = {
     0, /* NamedWindowDef */
     1, /* NamedWindowDefList */
     0, /* FilterOver */
-};
-
-
-// ============ Schema Contributions ============
-
-#define SYNTAQLITE_HAS_SCHEMA_CONTRIBUTIONS
-static const SyntaqliteSchemaContribution schema_contributions[] = {
-    {22, 0, 0, 5, 7, 255, {0}},
-    {65, 1, 0, 255, 5, 255, {0}},
 };
 
 #endif  // SYNTAQLITE_DIALECT_META_H

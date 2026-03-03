@@ -18,7 +18,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "syntaqlite/abstract_grammar.h"
+#include "syntaqlite/grammar.h"
 #include "syntaqlite/parser.h"
 #include "syntaqlite/types.h"
 #include "syntaqlite_dialect/arena.h"
@@ -246,7 +246,7 @@ static inline void synq_mark_as_type(SynqParseCtx* ctx, SynqParseToken tok) {
 }
 
 // Range field metadata types (SyntaqliteFieldRangeMeta,
-// SyntaqliteRangeMetaEntry) are defined in syntaqlite/dialect.h.
+// SyntaqliteRangeMetaEntry) are defined in syntaqlite/grammar.h.
 
 #ifdef __cplusplus
 }

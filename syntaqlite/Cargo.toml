@@ -26,6 +26,9 @@ json = ["dep:serde", "dep:serde_json"]   # JSON serialization for diagnostics an
 pin-version = ["sqlite", "syntaqlite-syntax/pin-version"]   # Pin SQLite version via SYNTAQLITE_SQLITE_VERSION env var
 pin-cflags = ["sqlite", "syntaqlite-syntax/pin-cflags"]    # Pin compile-time flags via SYNTAQLITE_CFLAG_* env vars
 
+[lints]
+workspace = true
+
 [dependencies]
 syntaqlite-common = { path = "../syntaqlite-common" }
 syntaqlite-syntax = { path = "../syntaqlite-syntax", default-features = false }

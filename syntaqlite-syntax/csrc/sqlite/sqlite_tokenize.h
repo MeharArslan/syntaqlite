@@ -7,7 +7,7 @@
 #define SYNTAQLITE_INTERNAL_SQLITE_TOKENIZE_H
 
 #include "syntaqlite_dialect/sqlite_compat.h"
-#include "syntaqlite/abstract_grammar.h"
+#include "syntaqlite/grammar.h"
 
 i64 SynqSqliteGetToken(const SyntaqliteGrammar* env, const unsigned char* z, int* tokenType);
 

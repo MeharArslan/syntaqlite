@@ -5,7 +5,6 @@
 
 pub(crate) mod ast;
 pub(crate) mod cflags;
-pub(crate) mod dialect;
 pub(crate) mod ffi;
 pub(crate) mod grammar;
 pub(crate) mod tokens;

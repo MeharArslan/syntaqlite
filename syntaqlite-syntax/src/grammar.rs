@@ -1,9 +1,9 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! TODO(claude): write documentation.
+// TODO(claude): write documentation.
 
-use std::marker::PhantomData;
+use crate::cflags::Cflags;
 
 // TODO(claude): add documentation.
 #[derive(Clone, Copy)]
@@ -48,9 +48,9 @@ impl Grammar {
 
     // ── Internal helper ──────────────────────────────────────────────────
 
-    /// Return a reference to the abstract grammar, tied to `'g`.
+    /// Return a reference to the abstract grammar template.
     #[inline]
-    fn template(&self) -> &'g ffi::GrammarTemplate {
+    fn template(&self) -> &'static ffi::GrammarTemplate {
         // SAFETY: `inner.template` was set from a valid pointer whose lifetime
         // is at least `'g`, as required by the constructors.
         unsafe { &*self.inner.template }
@@ -183,6 +183,8 @@ impl Grammar {
 }
 
 mod ffi {
+    use crate::cflags::Cflags;
+
     /// Mirrors C `SyntaqliteGrammarTemplate` struct defined in
     /// `include/syntaqlite/grammar.h`.
     #[repr(C)]

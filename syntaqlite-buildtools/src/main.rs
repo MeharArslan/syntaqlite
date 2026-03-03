@@ -31,6 +31,7 @@ fn ensure_dir(path: &Path, label: &str) -> Result<(), String> {
 // Hardcoded workspace paths for the internal SQLite dialect.
 const SQLITE_DIALECT_CRATE: &str = "syntaqlite-syntax";
 const SQLITE_SHARED_CRATE: &str = "syntaqlite-syntax";
+const SQLITE_FUNCTIONS_CATALOG: &str = "syntaqlite/src/sqlite/functions_catalog.rs";
 
 #[derive(Parser)]
 #[command(about = "Internal bootstrap and code generation tool for syntaqlite")]
@@ -192,6 +193,7 @@ fn clean_generated_files(dir: &Path) {
 #[derive(clap::Args)]
 struct CodegenSqliteParserArgs {
     /// Path to functions.json (from sqlite-vendored/data/functions.json).
+    /// When provided, generates functions_catalog.rs at its hardcoded workspace path.
     #[arg(long)]
     functions_json: Option<String>,
 
@@ -199,21 +201,15 @@ struct CodegenSqliteParserArgs {
     #[arg(long)]
     cflag_audit_json: Option<String>,
 
-    /// Directory containing .y grammar action files (needed for --ast-traits-out).
+    /// Directory containing .y grammar action files.
+    /// When provided together with --nodes-dir, generates ast_traits.rs.
     #[arg(long)]
     actions_dir: Option<String>,
 
-    /// Directory containing .synq node definitions (needed for --ast-traits-out).
+    /// Directory containing .synq node definitions.
+    /// When provided together with --actions-dir, generates ast_traits.rs.
     #[arg(long)]
     nodes_dir: Option<String>,
-
-    /// Output path for the generated ast_traits.rs.
-    #[arg(long)]
-    ast_traits_out: Option<String>,
-
-    /// Output path for the generated functions_catalog.rs.
-    #[arg(long)]
-    functions_catalog_out: Option<String>,
 
     /// Output path for the generated cflag versions table Rust file.
     /// Requires --cflag-audit-json.
@@ -222,27 +218,17 @@ struct CodegenSqliteParserArgs {
 }
 
 fn cmd_codegen_sqlite_parser(args: CodegenSqliteParserArgs) -> Result<(), String> {
-    if let Some(catalog_out) = &args.functions_catalog_out {
-        let json_path = args
-            .functions_json
-            .as_deref()
-            .ok_or("--functions-json is required when --functions-catalog-out is given")?;
+    if let Some(json_path) = &args.functions_json {
         syntaqlite_buildtools::util::functions_codegen::write_functions_catalog_file(
             json_path,
-            catalog_out,
+            SQLITE_FUNCTIONS_CATALOG,
         )?;
     }
 
-    if let Some(traits_out) = &args.ast_traits_out {
-        let actions_dir = args
-            .actions_dir
-            .as_deref()
-            .ok_or("--actions-dir is required when --ast-traits-out is given")?;
-        let nodes_dir = args
-            .nodes_dir
-            .as_deref()
-            .ok_or("--nodes-dir is required when --ast-traits-out is given")?;
-        cmd_generate_ast_traits(actions_dir, nodes_dir, traits_out)?;
+    if let (Some(actions_dir), Some(nodes_dir)) =
+        (args.actions_dir.as_deref(), args.nodes_dir.as_deref())
+    {
+        cmd_generate_ast_traits(actions_dir, nodes_dir)?;
     }
 
     if let Some(cflag_out) = &args.cflag_versions_out {
@@ -256,11 +242,7 @@ fn cmd_codegen_sqlite_parser(args: CodegenSqliteParserArgs) -> Result<(), String
     Ok(())
 }
 
-fn cmd_generate_ast_traits(
-    actions_dir: &str,
-    nodes_dir: &str,
-    output_path: &str,
-) -> Result<(), String> {
+fn cmd_generate_ast_traits(actions_dir: &str, nodes_dir: &str) -> Result<(), String> {
     use syntaqlite_buildtools::codegen_api::{
         CodegenRequest, DialectNaming, generate_codegen_artifacts, read_named_files_from_dir,
     };
@@ -300,6 +282,10 @@ fn cmd_generate_ast_traits(
         .and_then(|r| r.ast_traits_rs.as_deref())
         .ok_or("codegen did not produce ast_traits_rs")?;
 
+    let output_path = layout
+        .ast_traits_rs
+        .as_deref()
+        .ok_or("layout has no ast_traits_rs path")?;
     let out = Path::new(output_path);
     if let Some(parent) = out.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("creating output directory: {e}"))?;

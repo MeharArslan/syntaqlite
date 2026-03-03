@@ -22,7 +22,7 @@ use super::base_files_tables::{BASE_SYNQ_FILES, BASE_Y_FILES};
 /// can collect and inline them into `syntaqlite_runtime.h` / full amalgams.
 const RUNTIME_HEADERS: &[(&str, &str)] = &[
     (
-        "abstract_grammar.h",
+        "grammar.h",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../syntaqlite-syntax/include/syntaqlite/grammar.h",
@@ -50,7 +50,7 @@ const RUNTIME_HEADERS: &[(&str, &str)] = &[
         )),
     ),
     (
-        "incremental_parser.h",
+        "incremental.h",
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../syntaqlite-syntax/include/syntaqlite/incremental.h",

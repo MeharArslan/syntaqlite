@@ -7,7 +7,7 @@
 #define SYNTAQLITE_SQLITE_GRAMMAR_H
 
 
-#include "syntaqlite/abstract_grammar.h"
+#include "syntaqlite/grammar.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -6,7 +6,7 @@
 #include <string.h>
 
 #include "csrc/token_wrapped.h"
-#include "syntaqlite/abstract_grammar.h"
+#include "syntaqlite/grammar.h"
 
 struct SyntaqliteTokenizer {
   SyntaqliteMemMethods mem;

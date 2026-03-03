@@ -139,11 +139,6 @@ pub(crate) fn generate_dialect_c(
     ));
     w.line(&format!("    .name = \"{dialect}\","));
     w.newline();
-    w.line("    .range_meta = range_meta_table,");
-    w.line("    .tk_space = SYNTAQLITE_TK_SPACE,");
-    w.line("    .tk_semi = SYNTAQLITE_TK_SEMI,");
-    w.line("    .tk_comment = SYNTAQLITE_TK_COMMENT,");
-    w.newline();
     w.line("    // AST metadata");
     w.line("    .node_count = sizeof(ast_meta_node_names) / sizeof(ast_meta_node_names[0]),");
     w.line("    .node_names = ast_meta_node_names,");
@@ -225,7 +220,7 @@ pub(crate) fn generate_dialect_c(
 /// The generated header is minimal: it forward-declares `SyntaqliteDialect`
 /// Generates the dialect public header declaring `syntaqlite_<dialect>_dialect()`.
 ///
-/// Callers create a parser via the runtime's `syntaqlite_create_parser_with_dialect()`
+/// Callers create a parser via the runtime's `syntaqlite_create_parser_with_grammar()`
 /// using the dialect handle returned by the accessor.
 pub(crate) fn generate_dialect_h(dialect: &str) -> String {
     let upper = dialect.to_uppercase();
@@ -234,7 +229,7 @@ pub(crate) fn generate_dialect_h(dialect: &str) -> String {
     w.file_header();
     w.header_guard_start(&guard);
     w.newline();
-    w.include_local("syntaqlite/abstract_grammar.h");
+    w.include_local("syntaqlite/grammar.h");
     w.newline();
     w.line("#ifdef __cplusplus");
     w.line("extern \"C\" {");
@@ -357,7 +352,7 @@ pub(crate) fn generate_tokenize_h(dialect: &str) -> String {
     w.file_header();
     w.header_guard_start(&guard);
     w.include_local("syntaqlite_dialect/sqlite_compat.h");
-    w.include_local("syntaqlite/abstract_grammar.h");
+    w.include_local("syntaqlite/grammar.h");
     w.newline();
     w.line(&format!(
         "i64 Synq{pascal}GetToken(const SyntaqliteGrammar* env, const unsigned char* z, int* tokenType);"
@@ -404,7 +399,7 @@ mod tests {
     fn header_exposes_grammar_function() {
         let h = generate_dialect_h("sqlite");
         assert!(h.contains("SyntaqliteGrammar syntaqlite_sqlite_grammar(void);"));
-        assert!(h.contains("syntaqlite/abstract_grammar.h"));
+        assert!(h.contains("syntaqlite/grammar.h"));
         // No old-style dialect type or function
         assert!(!h.contains("SyntaqliteDialect"));
         assert!(!h.contains("syntaqlite_sqlite_dialect"));
@@ -557,7 +552,7 @@ mod tests {
         assert!(c.contains("\"syntaqlite/parser.h\""));
         assert!(c.contains("\"syntaqlite_sqlite/sqlite_tokens.h\""));
         // No old dialect.h
-        assert!(!c.contains("\"syntaqlite/dialect.h\""));
+        assert!(!c.contains("\"syntaqlite/grammar.h\""));
     }
 
     #[test]

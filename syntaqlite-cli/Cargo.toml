@@ -6,6 +6,9 @@ repository.workspace = true
 description = "Fast, accurate SQLite SQL formatter and parser"
 homepage = "https://github.com/LalitMaganti/syntaqlite"
 
+[lints]
+workspace = true
+
 [[bin]]
 name = "syntaqlite"
 path = "src/main.rs"

@@ -161,7 +161,7 @@ impl OutputLayout {
             tokens_rs: Some(format!("{dc}/src/sqlite/tokens.rs")),
             ffi_rs: Some(format!("{dc}/src/sqlite/ffi.rs")),
             ast_rs: Some(format!("{dc}/src/sqlite/ast.rs")),
-            ast_traits_rs: Some(format!("{sc}/src/sqlite/ast_traits.rs")),
+            ast_traits_rs: Some(format!("{sc}/src/ast_traits.rs")),
             lib_rs: None, // hand-maintained
             functions_catalog_rs: None,
             // Crate root: hand-maintained for the internal crate

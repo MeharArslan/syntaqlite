@@ -540,6 +540,7 @@ impl AstModel<'_> {
             "
         use {nodes_path}::NodeId;
         use {session_path}::ParseResult;
+        use {crate_prefix}::dialect_traits::NodeFamily;
         use {crate_prefix}::NodeRef;
         use {crate_prefix}::DialectNodeType;
         use {crate_prefix}::TypedList;
@@ -1046,6 +1047,20 @@ impl AstModel<'_> {
             w.close_block("}");
             w.newline();
         }
+
+        // NodeFamily marker
+        let pascal = pascal_case(dialect_name);
+        let root_node = abstract_items.first().map(|(n, _)| *n).unwrap_or("Stmt");
+        w.doc_comment(&format!(
+            "Marker type bundling the {dialect_name} AST node and token types for use with `TypedGrammar`."
+        ));
+        w.line(&format!("pub struct {pascal}NodeFamily;"));
+        w.newline();
+        w.open_block(&format!("impl NodeFamily for {pascal}NodeFamily {{"));
+        w.line(&format!("type Node<'a> = {root_node}<'a>;"));
+        w.line("type Token = super::tokens::TokenType;");
+        w.close_block("}");
+        w.newline();
 
         w.finish()
     }

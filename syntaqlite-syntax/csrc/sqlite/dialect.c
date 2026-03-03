@@ -22,11 +22,6 @@ extern const unsigned int synq_sqlite_nKeyword;
 static const SyntaqliteGrammarTemplate SQLITE_GRAMMAR = {
     .name = "sqlite",
 
-    .range_meta = range_meta_table,
-    .tk_space = SYNTAQLITE_TK_SPACE,
-    .tk_semi = SYNTAQLITE_TK_SEMI,
-    .tk_comment = SYNTAQLITE_TK_COMMENT,
-
     // AST metadata
     .node_count = sizeof(ast_meta_node_names) / sizeof(ast_meta_node_names[0]),
     .node_names = ast_meta_node_names,

@@ -1,8 +1,6 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-#![warn(unreachable_pub)]
-
 use clap::{Parser, Subcommand};
 
 #[cfg(feature = "builtin-sqlite")]

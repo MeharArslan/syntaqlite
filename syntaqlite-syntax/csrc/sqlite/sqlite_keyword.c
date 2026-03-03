@@ -11,7 +11,7 @@
 
 #include "syntaqlite_dialect/sqlite_compat.h"
 #include "syntaqlite_sqlite/sqlite_tokens.h"
-#include "syntaqlite/dialect.h"
+#include "syntaqlite/grammar.h"
 #include "syntaqlite_dialect/dialect_macros.h"
 
 /*
@@ -455,7 +455,7 @@ static const uint8_t synq_sqlite_aKWCFlagPolarity[149] = {
   0,0,0,0,0,0
 };
 
-int synq_sqlite3_keywordCode(const SyntaqliteDialectEnv *env, const char *z, int n, int *pType){
+int synq_sqlite3_keywordCode(const SyntaqliteGrammar *env, const char *z, int n, int *pType){
   int i, j;
   const char *zKW;
   assert( n>=2 );

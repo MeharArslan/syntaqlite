@@ -24,7 +24,7 @@
 // For token collection (required for formatting), call
 // syntaqlite_parser_set_collect_tokens() before the first reset().
 // For custom dialects, see the "Advanced" section below.
-// For macro-aware or incremental token feeding, see incremental_parser.h.
+// For macro-aware or incremental token feeding, see incremental.h.
 
 #ifndef SYNTAQLITE_PARSER_H
 #define SYNTAQLITE_PARSER_H
@@ -67,9 +67,9 @@ typedef struct SyntaqliteParseResult {
 // Core API
 // ---------------------------------------------------------------------------
 
-// Allocate a parser for the SQLite dialect. The parser is inert until
+// Allocate a parser for the SQLite grammar. The parser is inert until
 // reset() is called. Pass NULL for mem to use malloc/free.
-// (For custom dialects, see syntaqlite_create_parser_with_dialect() below.)
+// (For custom grammars, see syntaqlite_create_parser_with_grammar() below.)
 SyntaqliteParser* syntaqlite_create_sqlite_parser(
     const SyntaqliteMemMethods* mem);
 
@@ -301,16 +301,16 @@ char* syntaqlite_dump_node(SyntaqliteParser* p,
 // ============================================================================
 
 // Allocate a parser for a specific dialect environment. The env is copied —
-// the caller's struct does not need to outlive the parser, but the dialect
+// the caller's struct does not need to outlive the parser, but the grammar
 // pointer inside must remain valid for the parser's lifetime. Pass NULL for
 // mem to use malloc/free.
-SyntaqliteParser* syntaqlite_create_parser_with_dialect(
+SyntaqliteParser* syntaqlite_create_parser_with_grammar(
     const SyntaqliteMemMethods* mem,
     SyntaqliteGrammar env);
 
 // Return the built-in SQLite dialect handle (opt-out:
 // -DSYNTAQLITE_OMIT_SQLITE_API). Useful when constructing a parser via
-// syntaqlite_create_parser_with_dialect().
+// syntaqlite_create_parser_with_grammar().
 #ifndef SYNTAQLITE_OMIT_SQLITE_API
 SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
 #endif

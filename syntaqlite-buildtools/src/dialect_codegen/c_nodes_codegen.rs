@@ -235,9 +235,6 @@ impl AstModel<'_> {
             emit_list_builder_inline(&mut w, list.name);
         }
 
-        // Range field metadata (used by synq_parse_build in ast.c)
-        emit_range_metadata(&mut w, self);
-
         w.extern_c_end();
         w.newline();
         w.header_guard_end(&guard);
@@ -321,51 +318,6 @@ fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
     w.newline();
 }
 
-fn emit_range_metadata(w: &mut CWriter, model: &AstModel<'_>) {
-    w.section("Range Field Metadata");
-    w.newline();
-
-    for node in model.nodes() {
-        let rf = range_fields(node.fields);
-        if rf.is_empty() {
-            continue;
-        }
-        let sn = c_type_name(node.name);
-        let var = format!("range_meta_{}", pascal_to_snake(node.name));
-        w.line(&format!(
-            "static const SyntaqliteFieldRangeMeta {}[] = {{",
-            var
-        ));
-        w.indent();
-        for (fname, kind) in &rf {
-            w.line(&format!("{{offsetof({}, {}), {}}},", sn, fname, kind));
-        }
-        w.dedent();
-        w.line("};");
-        w.newline();
-    }
-
-    w.line("static const SyntaqliteRangeMetaEntry range_meta_table[] = {");
-    w.indent();
-    w.line("[SYNTAQLITE_NODE_NULL] = {NULL, 0},");
-    for node in model.nodes() {
-        let tag = tag_name(node.name);
-        let rf = range_fields(node.fields);
-        if rf.is_empty() {
-            w.line(&format!("[{}] = {{NULL, 0}},", tag));
-        } else {
-            let var = format!("range_meta_{}", pascal_to_snake(node.name));
-            w.line(&format!("[{}] = {{{}, {}}},", tag, var, rf.len()));
-        }
-    }
-    for list in model.lists() {
-        w.line(&format!("[{}] = {{NULL, 0}},", tag_name(list.name)));
-    }
-    w.dedent();
-    w.line("};");
-    w.newline();
-}
-
 fn tag_name(name: &str) -> String {
     format!("SYNTAQLITE_NODE_{}", upper_snake(name))
 }
@@ -390,15 +342,4 @@ fn field_c_type(field: &Field, enum_names: &HashSet<&str>, flags_names: &HashSet
 
 fn refs_i32(owned: &[(String, Option<i32>)]) -> Vec<(&str, Option<i32>)> {
     owned.iter().map(|(s, v)| (s.as_str(), *v)).collect()
-}
-
-fn range_fields(fields: &[Field]) -> Vec<(&str, u8)> {
-    fields
-        .iter()
-        .filter_map(|f| match f.storage {
-            Storage::Index => Some((f.name.as_str(), 0)),
-            Storage::Inline if f.type_name == "SyntaqliteSourceSpan" => Some((f.name.as_str(), 1)),
-            _ => None,
-        })
-        .collect()
 }

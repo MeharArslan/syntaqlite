@@ -127,7 +127,9 @@ pub fn extract_token_defines(parse_h: &str) -> Vec<(String, u32)> {
 }
 
 /// Token names needed by the grammar-agnostic runtime (`token_wrapped.c`).
-const RUNTIME_TOKEN_NAMES: &[&str] = &["PTR", "MINUS", "QNUMBER", "FLOAT", "INTEGER"];
+const RUNTIME_TOKEN_NAMES: &[&str] = &[
+    "PTR", "MINUS", "QNUMBER", "FLOAT", "INTEGER", "SPACE", "SEMI", "COMMENT",
+];
 
 /// Generate a minimal tokens header containing only the runtime-required tokens.
 pub fn generate_runtime_tokens_header(token_defines: &[(String, u32)]) -> String {
@@ -416,22 +418,9 @@ pub fn generate_codegen_artifacts(
 
     let ast_nodes_h = ast_model.generate_ast_nodes_header(request.dialect.name());
     let ast_builder_h = ast_model.generate_ast_builder_header(request.dialect.name());
-    let dialect_meta_h = {
-        let mut meta = ast_model
-            .generate_c_field_metadata(request.dialect.name())
-            .map_err(|e: CMetaCodegenError| e.to_string())?;
-        let schema = ast_model.generate_c_schema_contributions();
-        if !schema.is_empty() {
-            // Insert schema contributions before the header guard end.
-            let guard_end = "#endif  // SYNTAQLITE_DIALECT_META_H";
-            if let Some(pos) = meta.find(guard_end) {
-                meta.insert_str(pos, &schema);
-            } else {
-                meta.push_str(&schema);
-            }
-        }
-        meta
-    };
+    let dialect_meta_h = ast_model
+        .generate_c_field_metadata(request.dialect.name())
+        .map_err(|e: CMetaCodegenError| e.to_string())?;
     let dialect_fmt_h = ast_model
         .generate_c_fmt_tables()
         .map_err(|e: CFmtCodegenError| e.to_string())?;

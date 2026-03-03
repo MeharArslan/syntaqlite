@@ -26,7 +26,7 @@
 #include <stdint.h>
 
 #include "syntaqlite/config.h"
-#include "syntaqlite/abstract_grammar.h"
+#include "syntaqlite/grammar.h"
 
 #ifdef __cplusplus
 extern "C" {
