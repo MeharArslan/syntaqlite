@@ -469,9 +469,9 @@ def main():
         help="Increase verbosity (can be repeated: -v, -vv, -vvv)"
     )
     parser.add_argument(
-        "--rust",
+        "--no-rust",
         action="store_true",
-        help="Install Rust toolchain (optional, for Rust rewrite)"
+        help="Skip Rust toolchain installation"
     )
     parser.add_argument(
         "--ui",
@@ -489,7 +489,7 @@ def main():
     def install_deps(deps, subdir=False):
         nonlocal success
         for dep in deps:
-            if dep.name == "rust" and not args.rust:
+            if dep.name == "rust" and args.no_rust:
                 continue
             os_match = dep.target_os == "all" or dep.target_os == host_os
             arch_match = dep.target_arch == "all" or dep.target_arch == host_arch
