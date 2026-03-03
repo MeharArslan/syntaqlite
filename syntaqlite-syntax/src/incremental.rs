@@ -10,7 +10,7 @@ use std::rc::Rc;
 use crate::DialectEnv;
 use crate::NodeId;
 use crate::NodeRef;
-use crate::node::NodeId;
+use crate::ast::NodeId;
 use crate::parser::{ParseResult as CParseResult, Parser as CParser};
 use crate::parser::{
     syntaqlite_create_parser_with_dialect, syntaqlite_parser_begin_macro,

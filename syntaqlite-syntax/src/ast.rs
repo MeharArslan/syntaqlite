@@ -107,7 +107,7 @@ impl<'a> Node<'a> {
     }
 
     /// Extract typed field values.
-    pub fn extract_fields(&self) -> Option<(u32, crate::node::Fields<'a>)> {
+    pub fn extract_fields(&self) -> Option<(u32, crate::ast::Fields<'a>)> {
         self.result.extract_fields(self.id, &self.dialect)
     }
 

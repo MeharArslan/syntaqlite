@@ -666,7 +666,7 @@ impl<'a> ParseResult<'a> {
         &self,
         id: NodeId,
         dialect: &DialectEnv,
-    ) -> Option<(u32, crate::node::Fields<'a>)> {
+    ) -> Option<(u32, crate::ast::Fields<'a>)> {
         let (ptr, tag) = self.node_ptr(id)?;
         // SAFETY: ptr is a valid arena pointer from node_ptr(); tag matches
         // the node's type, so dialect.field_meta(tag) is correct.
