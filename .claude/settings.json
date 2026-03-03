@@ -1,4 +1,30 @@
 {
+  "permissions": {
+    "deny": [
+      "Write(syntaqlite-parser/csrc/**)",
+      "Edit(syntaqlite-parser/csrc/**)",
+      "Write(syntaqlite-parser-sqlite/csrc/**)",
+      "Edit(syntaqlite-parser-sqlite/csrc/**)",
+      "Write(syntaqlite-parser/include/**)",
+      "Edit(syntaqlite-parser/include/**)",
+      "Write(syntaqlite-parser-sqlite/include/**)",
+      "Edit(syntaqlite-parser-sqlite/include/**)",
+      "Write(syntaqlite-parser/src/ast_traits.rs)",
+      "Edit(syntaqlite-parser/src/ast_traits.rs)",
+      "Write(syntaqlite-parser/src/cflag_versions.rs)",
+      "Edit(syntaqlite-parser/src/cflag_versions.rs)",
+      "Write(syntaqlite-parser/src/functions_catalog.rs)",
+      "Edit(syntaqlite-parser/src/functions_catalog.rs)",
+      "Write(syntaqlite-parser-sqlite/src/ast.rs)",
+      "Edit(syntaqlite-parser-sqlite/src/ast.rs)",
+      "Write(syntaqlite-parser-sqlite/src/tokens.rs)",
+      "Edit(syntaqlite-parser-sqlite/src/tokens.rs)",
+      "Write(syntaqlite-parser-sqlite/src/functions_catalog.rs)",
+      "Edit(syntaqlite-parser-sqlite/src/functions_catalog.rs)",
+      "Write(syntaqlite-parser-sqlite/src/ffi.rs)",
+      "Edit(syntaqlite-parser-sqlite/src/ffi.rs)"
+    ]
+  },
   "hooks": {
     "WorktreeCreate": [
       {
