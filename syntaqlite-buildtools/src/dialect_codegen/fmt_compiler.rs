@@ -21,8 +21,8 @@ use crate::util::synq_parser::{Field, Fmt, Item};
 
 const DEFAULT_NEST_INDENT: u16 = 2;
 
-use syntaqlite::fmt::bytecode::RawOp;
-use syntaqlite::fmt::bytecode::opcodes;
+use syntaqlite_common::fmt::bytecode::RawOp;
+use syntaqlite_common::fmt::bytecode::opcodes;
 
 #[derive(Debug, Clone)]
 pub enum FmtCompileError {

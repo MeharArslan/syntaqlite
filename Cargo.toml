@@ -1,6 +1,7 @@
 # Cargo.toml
 [workspace]
 members = [
+    "syntaqlite-common",
     "syntaqlite",
     "syntaqlite-parser",
     "syntaqlite-parser-sqlite",

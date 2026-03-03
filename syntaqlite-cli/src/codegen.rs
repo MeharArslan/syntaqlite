@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Codegen subcommands: dialect codegen and internal SQLite-parser artifacts.
+//! The `dialect` subcommand: generate C sources and Rust bindings for external dialects.
 
 use std::fs;
 use std::io::Read;
@@ -15,14 +15,7 @@ fn write_file(path: &Path, content: impl AsRef<[u8]>) -> Result<(), String> {
     fs::write(path, content).map_err(|e| format!("Failed to write {}: {}", path.display(), e))
 }
 
-// ── dialect codegen ──────────────────────────────────────────────────────────
-
-// Hardcoded workspace paths for --output-type=sqlite
-const SQLITE_DIALECT_CRATE: &str = "syntaqlite-parser-sqlite";
-const SQLITE_SHARED_CRATE: &str = "syntaqlite-parser";
-
-/// Output type for the dialect codegen command.
-#[cfg(feature = "codegen-dialect")]
+/// Output type for the dialect command.
 #[derive(clap::ValueEnum, Clone)]
 pub(crate) enum OutputType {
     /// Dialect-only amalgamation (default).
@@ -33,23 +26,20 @@ pub(crate) enum OutputType {
     Full,
     /// Runtime amalgamation only.
     RuntimeOnly,
-    /// Internal workspace layout (hardcoded paths).
-    Sqlite,
 }
 
-/// Generate dialect C sources and Rust bindings.
+/// Generate dialect C sources and Rust bindings for external dialects.
 ///
 /// Base SQLite grammar and node files are embedded in the binary.
 /// When `--actions-dir` / `--nodes-dir` are provided, those extension
 /// files are merged with the base (same-name files replace the base).
-#[cfg(feature = "codegen-dialect")]
 #[derive(clap::Parser)]
-pub(crate) struct CodegenDialectArgs {
-    /// Dialect identifier (e.g. "sqlite").
+pub(crate) struct DialectArgs {
+    /// Dialect identifier (e.g. "mydialect").
     #[arg(long, required = true)]
     name: String,
 
-    /// Output directory for generated files (not used with --output-type=sqlite).
+    /// Output directory for generated files.
     #[arg(long)]
     output_dir: Option<String>,
 
@@ -78,7 +68,6 @@ pub(crate) struct CodegenDialectArgs {
 ///
 /// These must be present in any binary that calls the codegen pipeline;
 /// `generate_codegen_artifacts()` spawns the current executable with these.
-#[cfg(feature = "codegen-dialect")]
 #[derive(clap::Subcommand)]
 pub(crate) enum ToolCommand {
     #[command(hide = true)]
@@ -93,8 +82,7 @@ pub(crate) enum ToolCommand {
     },
 }
 
-#[cfg(feature = "codegen-dialect")]
-pub(crate) fn dispatch_dialect(args: CodegenDialectArgs) -> Result<(), String> {
+pub(crate) fn dispatch_dialect(args: DialectArgs) -> Result<(), String> {
     let name = &args.name;
     let actions_dir = args.actions_dir.as_deref();
     let nodes_dir = args.nodes_dir.as_deref();
@@ -120,18 +108,9 @@ pub(crate) fn dispatch_dialect(args: CodegenDialectArgs) -> Result<(), String> {
             cmd_generate_dialect_full(name, actions_dir, nodes_dir, &require_output_dir("full")?)
         }
         OutputType::RuntimeOnly => cmd_generate_runtime(&require_output_dir("runtime-only")?),
-        OutputType::Sqlite => {
-            if args.output_dir.is_some() {
-                return Err(
-                    "--output-dir must not be provided with --output-type=sqlite (uses hardcoded workspace paths)".to_string()
-                );
-            }
-            cmd_generate_sqlite(actions_dir, nodes_dir)
-        }
     }
 }
 
-#[cfg(feature = "codegen-dialect")]
 pub(crate) fn dispatch_tool(cmd: ToolCommand) -> Result<(), String> {
     match cmd {
         ToolCommand::Lemon { args } => syntaqlite_buildtools::run_lemon(&args),
@@ -139,7 +118,6 @@ pub(crate) fn dispatch_tool(cmd: ToolCommand) -> Result<(), String> {
     }
 }
 
-#[cfg(feature = "codegen-dialect")]
 fn cmd_generate_dialect(
     dialect: &str,
     actions_dir: Option<&str>,
@@ -165,7 +143,6 @@ fn cmd_generate_dialect(
     Ok(())
 }
 
-#[cfg(feature = "codegen-dialect")]
 fn cmd_generate_dialect_full(
     dialect: &str,
     actions_dir: Option<&str>,
@@ -196,13 +173,11 @@ fn cmd_generate_dialect_full(
     Ok(())
 }
 
-#[cfg(feature = "codegen-dialect")]
 fn cmd_generate_runtime(output_dir: &str) -> Result<(), String> {
     use syntaqlite_buildtools::amalgamate;
 
     let temp_dir = tempfile::TempDir::new().map_err(|e| format!("creating temp directory: {e}"))?;
     let temp = temp_dir.path();
-    // Only runtime base files — no dialect codegen.
     syntaqlite_buildtools::base_files::write_runtime_headers_to_dir(temp)
         .map_err(|e| format!("writing runtime headers: {e}"))?;
 
@@ -221,7 +196,6 @@ fn cmd_generate_runtime(output_dir: &str) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(feature = "codegen-dialect")]
 fn cmd_generate_dialect_raw(
     dialect: &str,
     actions_dir: Option<&str>,
@@ -249,102 +223,10 @@ fn cmd_generate_dialect_raw(
     Ok(())
 }
 
-#[cfg(feature = "codegen-dialect")]
-fn cmd_generate_sqlite(actions_dir: Option<&str>, nodes_dir: Option<&str>) -> Result<(), String> {
-    use syntaqlite_buildtools::codegen_api::{
-        CodegenRequest, DialectNaming, generate_codegen_artifacts, read_named_files_from_dir,
-    };
-    use syntaqlite_buildtools::output_resolver::OutputLayout;
-
-    let dialect = DialectNaming::new("sqlite");
-    let y_files = match actions_dir {
-        Some(dir) => read_named_files_from_dir(dir, "y")?,
-        None => return Err("--actions-dir is required for --output-type=sqlite".to_string()),
-    };
-    let synq_files = match nodes_dir {
-        Some(dir) => read_named_files_from_dir(dir, "synq")?,
-        None => return Err("--nodes-dir is required for --output-type=sqlite".to_string()),
-    };
-
-    let mut layout = OutputLayout::for_sqlite(
-        Path::new("."),
-        SQLITE_DIALECT_CRATE,
-        SQLITE_SHARED_CRATE,
-        dialect.name(),
-        &dialect.include_dir_name(),
-    );
-    // ast_traits_rs is written separately by codegen-sqlite-parser
-    layout.ast_traits_rs = None;
-
-    let artifacts = {
-        let no_keywords: Vec<String> = Vec::new();
-        let request = CodegenRequest {
-            dialect: &dialect,
-            y_files: &y_files,
-            synq_files: &synq_files,
-            extra_keywords: &no_keywords,
-            parser_symbol_prefix: None,
-            include_rust: true,
-            crate_name: Some("syntaqlite_parser"),
-            base_synq_files: None,
-            open_for_extension: true,
-            dialect_c_includes: layout.c_includes(),
-        };
-        generate_codegen_artifacts(&request)?
-    };
-
-    // Clean stale generated C/H files from C output directories.
-    let csrc_dir = Path::new(SQLITE_DIALECT_CRATE).join("csrc/sqlite");
-    let include_dir =
-        Path::new(SQLITE_DIALECT_CRATE).join(format!("include/{}", dialect.include_dir_name()));
-    let shared_include_dir =
-        Path::new(SQLITE_SHARED_CRATE).join(format!("include/{}", dialect.include_dir_name()));
-    for dir in [&csrc_dir, &include_dir, &shared_include_dir] {
-        if dir.is_dir() {
-            clean_generated_files(dir);
-        }
-    }
-
-    layout.write_codegen_artifacts(
-        &dialect,
-        artifacts,
-        &|dir| ensure_dir(dir, "output directory"),
-        &|path, content| write_file(path, content),
-    )?;
-
-    Ok(())
-}
-
-/// Delete any .c/.h files in `dir` whose first 512 bytes contain the autogenerated marker.
-#[cfg(feature = "codegen-dialect")]
-fn clean_generated_files(dir: &Path) {
-    let Ok(entries) = fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-        if ext != "c" && ext != "h" {
-            continue;
-        }
-        let Ok(mut file) = fs::File::open(&path) else {
-            continue;
-        };
-        let mut buf = [0u8; 512];
-        let n = file.read(&mut buf).unwrap_or(0);
-        let prefix = std::str::from_utf8(&buf[..n]).unwrap_or("");
-        if prefix.contains(syntaqlite_buildtools::codegen_api::AUTOGENERATED_MARKER) {
-            let _ = fs::remove_file(&path);
-        }
-    }
-}
-
 /// A set of named files: `(filename, content)` pairs.
-#[cfg(feature = "codegen-dialect")]
 type NamedFiles = Vec<(String, String)>;
 
 /// Load extension `.y` and `.synq` files and merge them with the base file sets.
-#[cfg(feature = "codegen-dialect")]
 fn load_extensions(
     actions_dir: Option<&str>,
     nodes_dir: Option<&str>,
@@ -366,7 +248,6 @@ fn load_extensions(
 }
 
 /// Run the codegen pipeline from merged in-memory file sets into a temp directory.
-#[cfg(feature = "codegen-dialect")]
 fn codegen_to_dir_with_base(
     y_files: &NamedFiles,
     synq_files: &NamedFiles,
@@ -388,149 +269,26 @@ fn codegen_to_dir_with_base(
         )
 }
 
-// ── internal SQLite-parser artifacts ─────────────────────────────────────────
-
-/// Generate internal Rust artifacts for the SQLite parser crate.
-///
-/// This is a flat (non-subcommand) command. It generates three internal-only
-/// Rust artifacts from pre-existing inputs:
-///   - functions catalog (from functions.json)
-///   - ast_traits.rs (from synq + actions files via the full codegen pipeline)
-///   - cflag versions table (from a pre-computed cflag audit JSON)
-#[cfg(feature = "internal")]
-#[derive(clap::Parser)]
-pub(crate) struct SqliteParserArgs {
-    /// Path to functions.json (from sqlite-vendored/data/functions.json).
-    #[arg(long)]
-    functions_json: Option<String>,
-
-    /// Path to the cflag audit JSON (optional; required if --cflag-versions-out is given).
-    #[arg(long)]
-    cflag_audit_json: Option<String>,
-
-    /// Directory containing .y grammar action files (needed for --ast-traits-out).
-    #[arg(long)]
-    actions_dir: Option<String>,
-
-    /// Directory containing .synq node definitions (needed for --ast-traits-out).
-    #[arg(long)]
-    nodes_dir: Option<String>,
-
-    /// Output path for the generated ast_traits.rs.
-    #[arg(long)]
-    ast_traits_out: Option<String>,
-
-    /// Output path for the generated functions_catalog.rs.
-    #[arg(long)]
-    functions_catalog_out: Option<String>,
-
-    /// Output path for the generated cflag versions table Rust file.
-    /// Requires --cflag-audit-json.
-    #[arg(long, requires = "cflag_audit_json")]
-    cflag_versions_out: Option<String>,
-}
-
-#[cfg(feature = "internal")]
-pub(crate) fn dispatch_sqlite_parser(args: SqliteParserArgs) -> Result<(), String> {
-    if let Some(catalog_out) = &args.functions_catalog_out {
-        let json_path = args
-            .functions_json
-            .as_deref()
-            .ok_or("--functions-json is required when --functions-catalog-out is given")?;
-        syntaqlite_buildtools::util::functions_codegen::write_functions_catalog_file(
-            json_path,
-            catalog_out,
-        )?;
-    }
-
-    if let Some(traits_out) = &args.ast_traits_out {
-        let actions_dir = args
-            .actions_dir
-            .as_deref()
-            .ok_or("--actions-dir is required when --ast-traits-out is given")?;
-        let nodes_dir = args
-            .nodes_dir
-            .as_deref()
-            .ok_or("--nodes-dir is required when --ast-traits-out is given")?;
-        generate_ast_traits(actions_dir, nodes_dir, traits_out)?;
-    }
-
-    if let Some(cflag_out) = &args.cflag_versions_out {
-        let audit_path = args
-            .cflag_audit_json
-            .as_deref()
-            .ok_or("--cflag-audit-json is required when --cflag-versions-out is given")?;
-        generate_cflag_versions(audit_path, cflag_out)?;
-    }
-
-    Ok(())
-}
-
-#[cfg(feature = "internal")]
-fn generate_ast_traits(
-    actions_dir: &str,
-    nodes_dir: &str,
-    output_path: &str,
-) -> Result<(), String> {
-    use syntaqlite_buildtools::codegen_api::{
-        CodegenRequest, DialectNaming, generate_codegen_artifacts, read_named_files_from_dir,
+/// Delete any .c/.h files in `dir` whose first 512 bytes contain the autogenerated marker.
+#[allow(dead_code)]
+fn clean_generated_files(dir: &Path) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
     };
-    use syntaqlite_buildtools::output_resolver::OutputLayout;
-
-    let dialect = DialectNaming::new("sqlite");
-    let y_files = read_named_files_from_dir(actions_dir, "y")?;
-    let synq_files = read_named_files_from_dir(nodes_dir, "synq")?;
-
-    // We need a layout just to get the c_includes; use the same sqlite layout but
-    // we only care about extracting the ast_traits field.
-    let layout = OutputLayout::for_sqlite(
-        Path::new("."),
-        SQLITE_DIALECT_CRATE,
-        SQLITE_SHARED_CRATE,
-        dialect.name(),
-        &dialect.include_dir_name(),
-    );
-
-    let no_keywords: Vec<String> = Vec::new();
-    let request = CodegenRequest {
-        dialect: &dialect,
-        y_files: &y_files,
-        synq_files: &synq_files,
-        extra_keywords: &no_keywords,
-        parser_symbol_prefix: None,
-        include_rust: true,
-        crate_name: Some("syntaqlite_parser"),
-        base_synq_files: None,
-        open_for_extension: true,
-        dialect_c_includes: layout.c_includes(),
-    };
-
-    let artifacts = generate_codegen_artifacts(&request)?;
-
-    let ast_traits_content = artifacts
-        .rust
-        .as_ref()
-        .and_then(|r| r.ast_traits_rs.as_deref())
-        .ok_or("codegen did not produce ast_traits_rs")?;
-
-    let out = Path::new(output_path);
-    if let Some(parent) = out.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("creating output directory: {e}"))?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        if ext != "c" && ext != "h" {
+            continue;
+        }
+        let Ok(mut file) = fs::File::open(&path) else {
+            continue;
+        };
+        let mut buf = [0u8; 512];
+        let n = file.read(&mut buf).unwrap_or(0);
+        let prefix = std::str::from_utf8(&buf[..n]).unwrap_or("");
+        if prefix.contains(syntaqlite_buildtools::codegen_api::AUTOGENERATED_MARKER) {
+            let _ = fs::remove_file(&path);
+        }
     }
-    fs::write(out, ast_traits_content).map_err(|e| format!("writing {}: {e}", out.display()))?;
-    eprintln!("wrote {output_path}");
-    Ok(())
-}
-
-#[cfg(feature = "internal")]
-fn generate_cflag_versions(audit_json_path: &str, output_path: &str) -> Result<(), String> {
-    use syntaqlite_buildtools::extract::functions::{CflagAvailability, write_cflag_versions_rs};
-
-    let audit_json = fs::read_to_string(audit_json_path)
-        .map_err(|e| format!("reading {audit_json_path}: {e}"))?;
-    let availability: CflagAvailability =
-        serde_json::from_str(&audit_json).map_err(|e| format!("parsing cflag audit JSON: {e}"))?;
-    write_cflag_versions_rs(&availability, Path::new(output_path))?;
-    eprintln!("wrote {output_path}");
-    Ok(())
 }

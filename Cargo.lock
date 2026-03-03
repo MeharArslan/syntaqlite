@@ -757,6 +757,7 @@ dependencies = [
  "lsp-types",
  "serde",
  "serde_json",
+ "syntaqlite-common",
  "syntaqlite-parser",
  "syntaqlite-parser-sqlite",
 ]
@@ -766,11 +767,12 @@ name = "syntaqlite-buildtools"
 version = "0.1.0"
 dependencies = [
  "cc",
+ "clap",
  "serde",
  "serde_json",
  "sha2",
  "similar",
- "syntaqlite",
+ "syntaqlite-common",
  "tempfile",
 ]
 
@@ -787,6 +789,10 @@ dependencies = [
  "syntaqlite-parser",
  "tempfile",
 ]
+
+[[package]]
+name = "syntaqlite-common"
+version = "0.1.0"
 
 [[package]]
 name = "syntaqlite-parser"

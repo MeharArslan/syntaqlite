@@ -27,6 +27,7 @@ pin-version = ["sqlite", "syntaqlite-parser-sqlite/pin-version"]   # Pin SQLite 
 pin-cflags = ["sqlite", "syntaqlite-parser-sqlite/pin-cflags"]    # Pin compile-time flags via SYNTAQLITE_CFLAG_* env vars
 
 [dependencies]
+syntaqlite-common = { path = "../syntaqlite-common" }
 syntaqlite-parser = { path = "../syntaqlite-parser", default-features = false }
 syntaqlite-parser-sqlite = { path = "../syntaqlite-parser-sqlite", optional = true }
 serde = { version = "1", features = ["derive"], optional = true }

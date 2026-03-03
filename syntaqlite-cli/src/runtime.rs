@@ -137,16 +137,8 @@ fn dispatch_commands(command: Command, dialect: Option<DialectEnv<'_>>) -> Resul
             };
             require_dialect(dialect).and_then(|d| cmd_fmt(d, files, config, in_place))
         }
-        #[cfg(feature = "codegen-dialect")]
-        Command::CodegenDialect(args) => crate::codegen::dispatch_dialect(args),
-        #[cfg(feature = "codegen-dialect")]
+        Command::Dialect(args) => crate::codegen::dispatch_dialect(args),
         Command::DialectTool(cmd) => crate::codegen::dispatch_tool(cmd),
-        #[cfg(feature = "internal")]
-        Command::CodegenSqliteParser(args) => crate::codegen::dispatch_sqlite_parser(args),
-        #[cfg(feature = "sqlite-extract")]
-        Command::Extract(cmd) => crate::extract::dispatch_extract(cmd),
-        #[cfg(feature = "version-analysis")]
-        Command::VersionAnalysis(cmd) => crate::extract::dispatch_version_analysis(cmd),
     }
 }
 

@@ -5,44 +5,41 @@
 
 use clap::{Parser, Subcommand};
 
-#[cfg(feature = "runtime")]
+#[cfg(feature = "builtin-sqlite")]
 mod runtime;
 
-#[cfg(any(feature = "codegen-dialect", feature = "internal"))]
+#[cfg(feature = "builtin-sqlite")]
 mod codegen;
-
-#[cfg(any(feature = "sqlite-extract", feature = "version-analysis"))]
-mod extract;
 
 #[derive(Parser)]
 #[command(about = "SQL formatting and analysis tools")]
-struct Cli {
+pub(crate) struct Cli {
     /// Path to a shared library (.so/.dylib/.dll) providing a dialect.
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "builtin-sqlite")]
     #[arg(long = "dialect")]
-    dialect_path: Option<String>,
+    pub(crate) dialect_path: Option<String>,
 
     /// Dialect name for symbol lookup.
     /// When omitted, the loader resolves `syntaqlite_dialect`.
     /// With a name, it resolves `syntaqlite_<name>_dialect`.
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "builtin-sqlite")]
     #[arg(long, requires = "dialect_path")]
-    dialect_name: Option<String>,
+    pub(crate) dialect_name: Option<String>,
 
     #[command(subcommand)]
-    command: Command,
+    pub(crate) command: Command,
 }
 
 #[derive(Subcommand)]
-enum Command {
+pub(crate) enum Command {
     /// Parse SQL and print the AST
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "builtin-sqlite")]
     Ast {
         /// SQL files or glob patterns (reads stdin if omitted)
         files: Vec<String>,
     },
     /// Format SQL
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "builtin-sqlite")]
     Fmt {
         /// SQL files or glob patterns (reads stdin if omitted)
         files: Vec<String>,
@@ -60,7 +57,7 @@ enum Command {
         semicolons: bool,
     },
     /// Validate SQL and report diagnostics
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "builtin-sqlite")]
     Validate {
         /// SQL files or glob patterns (reads stdin if omitted)
         files: Vec<String>,
@@ -69,33 +66,19 @@ enum Command {
         lang: Option<runtime::HostLanguage>,
     },
     /// Start the language server (stdio)
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "builtin-sqlite")]
     Lsp,
-    /// Generate dialect C sources and Rust bindings.
-    #[cfg(feature = "codegen-dialect")]
-    #[command(name = "codegen-dialect")]
-    CodegenDialect(codegen::CodegenDialectArgs),
+    /// Generate dialect C sources and Rust bindings for external dialects.
+    #[cfg(feature = "builtin-sqlite")]
+    Dialect(codegen::DialectArgs),
     /// Hidden lemon/mkkeyword subcommands for codegen subprocess support.
-    #[cfg(feature = "codegen-dialect")]
+    #[cfg(feature = "builtin-sqlite")]
     #[command(flatten)]
     DialectTool(codegen::ToolCommand),
-    /// Generate internal Rust artifacts for the SQLite parser crate.
-    #[cfg(feature = "internal")]
-    #[command(name = "codegen-sqlite-parser")]
-    CodegenSqliteParser(codegen::SqliteParserArgs),
-    #[cfg(feature = "sqlite-extract")]
-    #[command(flatten)]
-    Extract(extract::ExtractCommand),
-    #[cfg(feature = "version-analysis")]
-    #[command(flatten)]
-    VersionAnalysis(extract::VersionAnalysisCommand),
 }
 
-/// Run the CLI with the given dialect configuration.
-///
-/// `dialect` is `None` when built without `builtin-sqlite` — runtime commands
-/// (ast, fmt, lsp) will error, but codegen commands work fine.
-#[cfg(feature = "runtime")]
+/// Run the CLI.
+#[cfg(feature = "builtin-sqlite")]
 pub fn run(name: &str, dialect: Option<syntaqlite_parser::DialectEnv<'_>>) {
     let cli =
         Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
@@ -109,54 +92,19 @@ pub fn run(name: &str, dialect: Option<syntaqlite_parser::DialectEnv<'_>>) {
     }
 }
 
-/// Run the CLI without runtime dialect support (extract/codegen only).
-#[cfg(not(feature = "runtime"))]
-#[allow(unused_variables)]
-pub fn run(name: &str, _dialect: Option<()>) {
-    #[cfg(any(
-        feature = "codegen-dialect",
-        feature = "internal",
-        feature = "sqlite-extract",
-        feature = "version-analysis",
-    ))]
-    {
-        let cli =
-            Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
-                .unwrap_or_else(|e| e.exit());
-
-        let result: Result<(), String> = match cli.command {
-            #[cfg(feature = "codegen-dialect")]
-            Command::CodegenDialect(args) => codegen::dispatch_dialect(args),
-            #[cfg(feature = "codegen-dialect")]
-            Command::DialectTool(cmd) => codegen::dispatch_tool(cmd),
-            #[cfg(feature = "internal")]
-            Command::CodegenSqliteParser(args) => codegen::dispatch_sqlite_parser(args),
-            #[cfg(feature = "sqlite-extract")]
-            Command::Extract(cmd) => extract::dispatch_extract(cmd),
-            #[cfg(feature = "version-analysis")]
-            Command::VersionAnalysis(cmd) => extract::dispatch_version_analysis(cmd),
-        };
-
-        if let Err(e) = result {
-            eprintln!("error: {e}");
-            std::process::exit(1);
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "builtin-sqlite")]
     use super::runtime::dialect_symbol_name;
 
     #[test]
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "builtin-sqlite")]
     fn picks_default_symbol_when_name_missing() {
         assert_eq!(dialect_symbol_name(None), "syntaqlite_dialect");
     }
 
     #[test]
-    #[cfg(feature = "runtime")]
+    #[cfg(feature = "builtin-sqlite")]
     fn uses_named_symbol_when_name_given() {
         assert_eq!(
             dialect_symbol_name(Some("sqlite")),

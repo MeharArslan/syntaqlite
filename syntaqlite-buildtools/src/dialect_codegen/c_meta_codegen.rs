@@ -89,7 +89,7 @@ impl AstModel<'_> {
         w.line("};");
         w.newline();
 
-        let mut op_pool: Vec<syntaqlite::fmt::bytecode::RawOp> = Vec::new();
+        let mut op_pool: Vec<syntaqlite_common::fmt::bytecode::RawOp> = Vec::new();
         let mut node_ranges: Vec<(&str, u16, u16)> = Vec::new();
 
         for cn in &compiled.nodes {

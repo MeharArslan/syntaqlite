@@ -2,12 +2,15 @@
 # Copyright 2025 The syntaqlite Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0.
 
-"""Build and run syntaqlite-cli codegen to generate parser and tokenizer.
+"""Build and run syntaqlite-buildtools to generate parser and tokenizer.
 
 Multi-stage bootstrap pipeline:
   Stage 1  (--extract): Extract C fragments from raw SQLite source.
   Stage 1b (always):    Generate functions catalog and ast_traits Rust modules.
   Stage 2  (always):    Generate base syntaqlite crate C + Rust code.
+
+The bootstrap tool (syntaqlite-buildtools) has no dependency on any generated
+files, so it can be built from a completely clean checkout.
 
 Usage:
     python3 python/tools/run_codegen.py              # Stage 1b + 2
@@ -24,7 +27,7 @@ from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Build and run syntaqlite-cli codegen to generate parser and tokenizer."
+        description="Build and run syntaqlite-buildtools to generate parser and tokenizer."
     )
     parser.add_argument(
         "--extract",
@@ -58,8 +61,7 @@ def main():
         print("Stage 1: Extracting SQLite fragments and vendoring sources...")
         result = subprocess.run(
             [
-                "cargo", "run", "--release", "-p", "syntaqlite-cli",
-                "--no-default-features", "--features", "sqlite-extract",
+                "cargo", "run", "--release", "-p", "syntaqlite-buildtools",
                 "--",
                 "sqlite-extract",
                 "--sqlite-src", str(sqlite_src),
@@ -73,20 +75,19 @@ def main():
             print("Stage 1 extraction failed", file=sys.stderr)
             return result.returncode
 
-    # Build once with internal,codegen-dialect features for stages 1b and 2.
-    print("Building CLI with internal,codegen-dialect features...")
+    # Build the bootstrap tool for stages 1b and 2.
+    # syntaqlite-buildtools has no dependency on any generated files, so this
+    # works even from a completely clean checkout.
+    print("Building syntaqlite-buildtools...")
     result = subprocess.run(
-        [
-            "cargo", "build", "--release", "-p", "syntaqlite-cli",
-            "--no-default-features", "--features", "internal,codegen-dialect",
-        ],
+        ["cargo", "build", "--release", "-p", "syntaqlite-buildtools"],
         cwd=project_root,
     )
     if result.returncode != 0:
         print("Build failed", file=sys.stderr)
         return result.returncode
 
-    cli_bin = project_root / "target" / "release" / "syntaqlite"
+    tools_bin = project_root / "target" / "release" / "syntaqlite-buildtools"
 
     # Stage 1b: Generate functions catalog and ast_traits from synq files.
     functions_json = vendored_dir / "data" / "functions.json"
@@ -96,7 +97,7 @@ def main():
     print("Stage 1b: Generating functions catalog and ast_traits...")
     result = subprocess.run(
         [
-            str(cli_bin),
+            str(tools_bin),
             "codegen-sqlite-parser",
             "--functions-json", str(functions_json),
             "--functions-catalog-out", str(functions_catalog_rs),
@@ -113,10 +114,8 @@ def main():
     print("Stage 2: Generating base SQLite dialect...")
     result = subprocess.run(
         [
-            str(cli_bin),
-            "codegen-dialect",
-            "--name", "sqlite",
-            "--output-type", "sqlite",
+            str(tools_bin),
+            "codegen-sqlite",
             "--actions-dir", str(actions_dir),
             "--nodes-dir", str(nodes_dir),
         ],

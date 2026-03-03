@@ -12,14 +12,8 @@ path = "src/main.rs"
 doc = false
 
 [features]
-default = ["builtin-sqlite", "codegen-dialect"]
-# Runtime SQL commands (ast, fmt, lsp) — requires the syntaqlite crate.
-runtime = ["dep:syntaqlite", "dep:libloading", "dep:glob"]
-builtin-sqlite = ["runtime", "syntaqlite/sqlite", "syntaqlite/lsp", "syntaqlite/embedded"]
-codegen-dialect = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/codegen-pipeline", "syntaqlite-buildtools/sqlite-codegen"]
-internal = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/sqlite-codegen", "syntaqlite-buildtools/sqlite-extract"]
-sqlite-extract = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/sqlite-extract"]
-version-analysis = ["dep:syntaqlite-buildtools", "syntaqlite-buildtools/version-analysis"]
+default = ["builtin-sqlite"]
+builtin-sqlite = ["dep:syntaqlite", "dep:libloading", "dep:glob", "syntaqlite/sqlite", "syntaqlite/lsp", "syntaqlite/embedded", "dep:syntaqlite-buildtools", "syntaqlite-buildtools/codegen-pipeline", "syntaqlite-buildtools/sqlite-codegen"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
