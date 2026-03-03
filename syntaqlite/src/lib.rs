@@ -33,14 +33,14 @@
 //! assert_eq!(pretty, "SELECT a, b FROM t WHERE x > 1;\n");
 //! ```
 //!
-//! **Validate** SQL against a schema:
+//! **Validate** SQL:
 //!
 //! ```
-//! use syntaqlite::Validator;
-//! use syntaqlite::ValidationConfig;
+//! use syntaqlite::{SemanticAnalyzer, DatabaseCatalog};
 //!
-//! let mut v = Validator::new();
-//! let diags = v.validate("SELEC 1", None, &ValidationConfig::default());
+//! let catalog = DatabaseCatalog::default();
+//! let mut analyzer = SemanticAnalyzer::new();
+//! let diags = analyzer.diagnostics("SELEC 1", &catalog);
 //! assert!(!diags.is_empty());
 //! ```
 //!
@@ -59,9 +59,9 @@
 //! # Crate layout
 //!
 //! The primary user-facing types — [`Parser`], [`Tokenizer`], [`Formatter`],
-//! and [`Validator`] — are re-exported at the crate root. With the `sqlite`
-//! feature (enabled by default), each provides a `::new()` constructor for
-//! the built-in SQLite dialect.
+//! and [`SemanticAnalyzer`] — are re-exported at the crate root. With the
+//! `sqlite` feature (enabled by default), each provides a `::new()` constructor
+//! for the built-in SQLite dialect.
 //!
 //! For lower-level or dialect-agnostic access, see:
 //!
@@ -72,11 +72,10 @@
 //!   semantic [`TokenCategory`](dialect::TokenCategory) enum.
 //! - [`fmt`] — Formatter configuration ([`FormatConfig`],
 //!   [`KeywordCase`]).
-//! - [`validation`] — Validator configuration, diagnostic types, and
-//!   schema context.
+//! - [`semantic`] — Semantic analysis: diagnostics, catalog, validation config.
 //! - [`embedded`] — Extract and validate SQL from Python f-strings and
 //!   TypeScript template literals.
-//! - [`lsp`] — [`AnalysisHost`](lsp::AnalysisHost) for editor integrations.
+//! - [`lsp`] — [`LspHost`](lsp::LspHost) for editor integrations.
 
 pub(crate) mod parser;
 
@@ -106,10 +105,15 @@ pub use fmt::formatter::Formatter;
 #[cfg(feature = "validation")]
 pub mod semantic;
 
-// ── Validation ───────────────────────────────────────────────────────────
-
+// ── Semantic re-exports at crate root ────────────────────────────────
 #[cfg(feature = "validation")]
-pub mod validation;
+pub use semantic::DatabaseCatalog;
+#[cfg(feature = "validation")]
+pub use semantic::SemanticAnalyzer;
+#[cfg(feature = "validation")]
+pub use semantic::SemanticModel;
+#[cfg(feature = "validation")]
+pub use semantic::ValidationConfig;
 
 // ── Embedded SQL ─────────────────────────────────────────────────────────
 
@@ -138,8 +142,6 @@ pub use syntaqlite_parser_sqlite::tokens::TokenType;
 
 #[cfg(feature = "fmt")]
 pub use fmt::{FormatConfig, KeywordCase};
-#[cfg(feature = "validation")]
-pub use validation::{ValidationConfig, Validator};
 
 #[cfg(feature = "json")]
 pub use crate::parser::node_ref_json::NodeRefJsonExt;

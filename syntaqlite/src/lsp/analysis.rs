@@ -5,7 +5,7 @@
 
 use crate::dialect::{DialectExt, TokenCategory};
 use crate::lsp::{CompletionContext, CompletionInfo, SemanticToken};
-use crate::validation::types::{Diagnostic, DiagnosticMessage, Severity};
+use crate::semantic::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
 use syntaqlite_parser::ParserConfig;
 use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::RawIncrementalParser;
@@ -47,7 +47,8 @@ impl DocumentAnalysis {
 
         while let Some(result) = cursor.next_statement() {
             if let Err(err) = result.map(|nr| nr.id()) {
-                let (start_offset, end_offset) = crate::validation::parse_error_span(&err, source);
+                let (start_offset, end_offset) =
+                    crate::semantic::analyzer::parse_error_span(&err, source);
                 diagnostics.push(Diagnostic {
                     start_offset,
                     end_offset,

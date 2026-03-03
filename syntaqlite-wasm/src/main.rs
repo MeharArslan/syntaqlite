@@ -10,7 +10,7 @@ use serde::Serialize;
 
 use syntaqlite::Formatter;
 use syntaqlite::embedded::{self, EmbeddedFragment};
-use syntaqlite::{FormatConfig, KeywordCase, NodeRefJsonExt, ValidationConfig};
+use syntaqlite::{DatabaseCatalog, FormatConfig, KeywordCase, NodeRefJsonExt, ValidationConfig};
 use syntaqlite_parser::{
     Cflags, DialectConfig, FfiDialect, ParserConfig, RawDialect, RawParser, cflag_table,
     parse_cflag_name, parse_sqlite_version,
@@ -19,7 +19,7 @@ use syntaqlite_parser::{
 thread_local! {
     static RESULT_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
     static DIALECT_PTR: Cell<u32> = const { Cell::new(0) };
-    /// Global AnalysisHost reused across wasm_diagnostics calls.
+    /// Global LspHost reused across wasm_diagnostics calls.
     /// Recreated when the dialect pointer changes.
     static LSP_HOST: RefCell<Option<LspHost>> = const { RefCell::new(None) };
     /// Dialect config (version/cflags) applied to parser/formatter before each parse.
@@ -28,7 +28,7 @@ thread_local! {
 
 struct LspHost {
     dialect_ptr: u32,
-    host: syntaqlite::lsp::AnalysisHost<'static>,
+    host: syntaqlite::lsp::LspHost<'static>,
 }
 
 fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
@@ -37,7 +37,7 @@ fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
         let raw = dialect_ptr as *const FfiDialect;
         // SAFETY: the caller set a valid dialect pointer via wasm_set_dialect.
         let dialect = unsafe { RawDialect::from_raw(raw) };
-        let mut host = syntaqlite::lsp::AnalysisHost::with_dialect(dialect);
+        let mut host = syntaqlite::lsp::LspHost::with_dialect(dialect);
         host.set_dialect_config(get_dialect_config());
         lsp = Some(LspHost { dialect_ptr, host });
     }
@@ -373,7 +373,7 @@ pub extern "C" fn wasm_clear_all_cflags() -> i32 {
 
 fn run_set_session_context(ptr: u32, len: u32) -> i32 {
     let input = try_wasm!(decode_input(ptr, len));
-    let ctx = try_wasm!(syntaqlite::validation::SessionContext::from_json(&input));
+    let ctx = try_wasm!(DatabaseCatalog::from_json(&input));
     let dialect_ptr = try_wasm!(resolve_dialect().map(|_| DIALECT_PTR.with(|p| p.get())));
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host.set_session_context(ctx);
@@ -384,11 +384,7 @@ fn run_set_session_context(ptr: u32, len: u32) -> i32 {
 fn run_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
     let dialect = try_wasm!(resolve_dialect());
     let source = try_wasm!(decode_input(ptr, len));
-    let ctx = syntaqlite::validation::SessionContext::from_ddl(
-        dialect,
-        &source,
-        Some(get_dialect_config()),
-    );
+    let ctx = DatabaseCatalog::from_ddl(dialect, &source, Some(get_dialect_config()));
     let dialect_ptr = DIALECT_PTR.with(|p| p.get());
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host.set_session_context(ctx);

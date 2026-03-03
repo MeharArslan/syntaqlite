@@ -6,16 +6,17 @@
 //!
 //! # Overview
 //!
-//! - [`AnalysisHost`] — stateful document store with lazy per-document
+//! - [`LspHost`] — stateful document store with lazy per-document
 //!   analysis (diagnostics, semantic tokens, completions, formatting).
+//!   Delegates semantic validation to [`SemanticAnalyzer`](crate::semantic::SemanticAnalyzer).
 //! - [`DocumentAnalysis`] — the result of analysing a single document;
 //!   produced by [`DocumentAnalysis::compute`] and cached inside the host.
-//! - [`LspServer`] — stdio JSON-RPC server that drives an `AnalysisHost`
+//! - [`LspServer`] — stdio JSON-RPC server that drives an `LspHost`
 //!   in response to LSP messages from an editor.
 
 // Public API starts here.
 pub use analysis::DocumentAnalysis;
-pub use host::AnalysisHost;
+pub use host::LspHost;
 pub use server::LspServer;
 
 // ── Shared LSP types ──────────────────────────────────────────────────────
@@ -51,7 +52,7 @@ pub struct CompletionInfo {
     pub context: CompletionContext,
 }
 
-/// A completion item returned by [`AnalysisHost::completion_items`].
+/// A completion item returned by [`LspHost::completion_items`].
 #[derive(Debug, Clone)]
 pub struct CompletionEntry {
     /// The label to display and insert.

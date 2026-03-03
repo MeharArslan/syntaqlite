@@ -3,7 +3,7 @@
 
 //! Rustc-style diagnostic rendering.
 
-use super::types::{Diagnostic, Severity};
+use super::diagnostics::{Diagnostic, Severity};
 
 /// A source string paired with a display label (file path or `"<stdin>"`).
 ///
@@ -16,12 +16,12 @@ use super::types::{Diagnostic, Severity};
 /// 1 | include ;
 ///   | ^~~~~~~
 /// ```
-pub struct SourceContext<'a> {
+pub struct DiagnosticRenderer<'a> {
     source: &'a str,
     file: &'a str,
 }
 
-impl<'a> SourceContext<'a> {
+impl<'a> DiagnosticRenderer<'a> {
     pub fn new(source: &'a str, file: &'a str) -> Self {
         Self { source, file }
     }
@@ -114,3 +114,6 @@ impl<'a> SourceContext<'a> {
         has_errors
     }
 }
+
+/// Backward-compatible alias.
+pub type SourceContext<'a> = DiagnosticRenderer<'a>;

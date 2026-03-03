@@ -147,7 +147,7 @@ fn bench_lsp_host(c: &mut Criterion) {
             &f.sql,
             |b, sql| {
                 b.iter(|| {
-                    let mut host = syntaqlite::lsp::AnalysisHost::new();
+                    let mut host = syntaqlite::lsp::LspHost::new();
                     host.open_document("test://file.sql", 1, sql.clone());
                     black_box(host.diagnostics("test://file.sql"));
                     black_box(host.semantic_tokens_encoded("test://file.sql", None));
@@ -162,7 +162,7 @@ fn bench_lsp_host(c: &mut Criterion) {
             BenchmarkId::new("update_cycle", f.name),
             &f.sql,
             |b, sql| {
-                let mut host = syntaqlite::lsp::AnalysisHost::new();
+                let mut host = syntaqlite::lsp::LspHost::new();
                 host.open_document("test://file.sql", 1, sql.clone());
                 host.diagnostics("test://file.sql");
                 let mut version = 2;

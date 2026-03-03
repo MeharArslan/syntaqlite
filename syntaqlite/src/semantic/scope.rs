@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use crate::semantic::relations::{RelationCatalog, RelationDef};
+use super::catalog::CatalogStack;
 
 /// A single scope level (e.g., one SELECT or subquery).
 #[derive(Debug, Default)]
@@ -13,27 +13,27 @@ struct Scope {
     tables: HashMap<String, Option<Vec<String>>>,
 }
 
-/// A stack of scopes for name resolution, with optional ambient schema.
+/// A stack of scopes for name resolution, with ambient catalog.
 ///
-/// Resolution order for names: SQL scope stack → document → session.
-pub(super) struct ScopeStack<'ctx> {
-    catalog: RelationCatalog<'ctx>,
+/// Resolution order for names: SQL scope stack → document → database → static.
+pub(crate) struct ScopeStack<'ctx> {
+    catalog: CatalogStack<'ctx>,
     stack: Vec<Scope>,
 }
 
 impl<'ctx> ScopeStack<'ctx> {
-    pub(super) fn new(catalog: RelationCatalog<'ctx>) -> Self {
+    pub(crate) fn new(catalog: CatalogStack<'ctx>) -> Self {
         ScopeStack {
             catalog,
             stack: vec![Scope::default()],
         }
     }
 
-    pub(super) fn push(&mut self) {
+    pub(crate) fn push(&mut self) {
         self.stack.push(Scope::default());
     }
 
-    pub(super) fn pop(&mut self) {
+    pub(crate) fn pop(&mut self) {
         if self.stack.len() > 1 {
             self.stack.pop();
         }
@@ -41,7 +41,7 @@ impl<'ctx> ScopeStack<'ctx> {
 
     /// Add a table or alias to the current scope.
     /// `columns` is `None` if column info is not available.
-    pub(super) fn add_table(&mut self, name: &str, columns: Option<Vec<String>>) {
+    pub(crate) fn add_table(&mut self, name: &str, columns: Option<Vec<String>>) {
         self.stack
             .last_mut()
             .unwrap()
@@ -49,31 +49,24 @@ impl<'ctx> ScopeStack<'ctx> {
             .insert(name.to_ascii_lowercase(), columns);
     }
 
-    /// Iterate all relations from the catalog (document then session).
-    fn ambient_relations(&self) -> impl Iterator<Item = &RelationDef> + '_ {
-        self.catalog.iter()
-    }
-
-    /// Look up column names for a table from the ambient schema context.
+    /// Look up column names for a table from the ambient catalog.
     /// Returns `Some(columns)` if the table exists (may be empty if no columns
     /// could be inferred), `None` if the table is not found.
-    /// Searches document context first, then session context.
-    pub(super) fn ambient_columns_for_table(&self, name: &str) -> Option<Vec<String>> {
-        self.catalog
-            .columns_for(name)
-            .map(|cols| cols.iter().map(|c| c.name.clone()).collect())
+    pub(crate) fn ambient_columns_for_table(&self, name: &str) -> Option<Vec<String>> {
+        self.catalog.columns_for(name)
     }
 
-    pub(super) fn resolve_table(&self, name: &str) -> bool {
+    pub(crate) fn resolve_table(&self, name: &str) -> bool {
         let lower = name.to_ascii_lowercase();
-        self.stack.iter().any(|s| s.tables.contains_key(&lower)) || self.catalog.resolve(name)
+        self.stack.iter().any(|s| s.tables.contains_key(&lower))
+            || self.catalog.resolve_relation(name)
     }
 
     /// Resolve a column reference.
     ///
     /// Qualified (`table.column`): look up the specific table's columns.
     /// Unqualified (`column`): search all tables in scope + ambient.
-    pub(super) fn resolve_column(&self, table: Option<&str>, column: &str) -> ColumnResolution {
+    pub(crate) fn resolve_column(&self, table: Option<&str>, column: &str) -> ColumnResolution {
         if let Some(tbl) = table {
             return self.resolve_qualified_column(tbl, column);
         }
@@ -93,11 +86,12 @@ impl<'ctx> ScopeStack<'ctx> {
             }
         }
 
-        let ambient_found = self.ambient_relations().any(|r| {
-            r.columns
-                .iter()
-                .any(|c| c.name.eq_ignore_ascii_case(column))
-        });
+        // Check ambient catalog columns.
+        let ambient_found = self
+            .catalog
+            .all_column_names(None)
+            .iter()
+            .any(|c| c.eq_ignore_ascii_case(column));
         if ambient_found {
             return ColumnResolution::Found;
         }
@@ -111,12 +105,12 @@ impl<'ctx> ScopeStack<'ctx> {
         ColumnResolution::NotFound
     }
 
-    pub(super) fn all_table_names(&self) -> Vec<String> {
+    pub(crate) fn all_table_names(&self) -> Vec<String> {
         let mut names: Vec<String> = self
             .stack
             .iter()
             .flat_map(|s| s.tables.keys().cloned())
-            .chain(self.catalog.all_names())
+            .chain(self.catalog.all_relation_names())
             .collect();
         names.sort_unstable();
         names.dedup();
@@ -125,7 +119,7 @@ impl<'ctx> ScopeStack<'ctx> {
 
     /// Collect all column names visible in scope (for fuzzy matching).
     /// If `table` is given, only return columns from that table.
-    pub(super) fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
+    pub(crate) fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
         let mut names = Vec::new();
 
         for scope in &self.stack {
@@ -163,7 +157,7 @@ impl<'ctx> ScopeStack<'ctx> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum ColumnResolution {
+pub(crate) enum ColumnResolution {
     Found,
     TableFoundColumnMissing,
     TableNotFound,

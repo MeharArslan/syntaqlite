@@ -2,11 +2,11 @@
 // Licensed under the Apache License, Version 2.0.
 
 use super::ValidationConfig;
+use super::diagnostics::{Diagnostic, DiagnosticMessage, Help};
 use super::fuzzy::best_suggestion;
 use super::scope::{ColumnResolution, ScopeStack};
-use super::types::{Diagnostic, DiagnosticMessage, Help};
 
-pub(super) fn check_table_ref(
+pub(crate) fn check_table_ref(
     name: &str,
     offset: usize,
     length: usize,
@@ -29,7 +29,7 @@ pub(super) fn check_table_ref(
     ))
 }
 
-pub(super) fn check_column_ref(
+pub(crate) fn check_column_ref(
     table: Option<&str>,
     column: &str,
     offset: usize,

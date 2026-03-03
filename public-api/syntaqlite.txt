@@ -5,18 +5,25 @@ impl core::default::Default for syntaqlite::fmt::FormatConfig
 impl core::default::Default for syntaqlite::Formatter<'static>
 impl core::default::Default for syntaqlite::incremental::IncrementalParser
 impl core::default::Default for syntaqlite::Parser
+impl core::default::Default for syntaqlite::semantic::ValidationConfig
+impl core::default::Default for syntaqlite::semantic::ValidationConfig
+impl core::default::Default for syntaqlite::SemanticAnalyzer<'static>
+impl core::default::Default for syntaqlite::SemanticAnalyzer<'static>
 impl core::default::Default for syntaqlite::Tokenizer
-impl core::default::Default for syntaqlite::validation::DocumentContext
-impl core::default::Default for syntaqlite::validation::ValidationConfig
-impl core::default::Default for syntaqlite::validation::ValidationConfig
-impl core::default::Default for syntaqlite::validation::Validator<'static>
-impl core::default::Default for syntaqlite::validation::Validator<'static>
-impl core::fmt::Display for syntaqlite::validation::DiagnosticMessage
-impl core::fmt::Display for syntaqlite::validation::Help
-impl serde_core::ser::Serialize for syntaqlite::validation::Diagnostic
-impl serde_core::ser::Serialize for syntaqlite::validation::DiagnosticMessage
-impl serde_core::ser::Serialize for syntaqlite::validation::Help
-impl serde_core::ser::Serialize for syntaqlite::validation::Severity
+impl core::fmt::Display for syntaqlite::semantic::diagnostics::DiagnosticMessage
+impl core::fmt::Display for syntaqlite::semantic::diagnostics::DiagnosticMessage
+impl core::fmt::Display for syntaqlite::semantic::diagnostics::Help
+impl core::fmt::Display for syntaqlite::semantic::diagnostics::Help
+impl serde_core::ser::Serialize for syntaqlite::semantic::diagnostics::Diagnostic
+impl serde_core::ser::Serialize for syntaqlite::semantic::diagnostics::Diagnostic
+impl serde_core::ser::Serialize for syntaqlite::semantic::diagnostics::DiagnosticMessage
+impl serde_core::ser::Serialize for syntaqlite::semantic::diagnostics::DiagnosticMessage
+impl serde_core::ser::Serialize for syntaqlite::semantic::diagnostics::Help
+impl serde_core::ser::Serialize for syntaqlite::semantic::diagnostics::Help
+impl serde_core::ser::Serialize for syntaqlite::semantic::diagnostics::Severity
+impl serde_core::ser::Serialize for syntaqlite::semantic::diagnostics::Severity
+impl syntaqlite::DatabaseCatalog
+impl syntaqlite::DatabaseCatalog
 impl syntaqlite::dialect::DialectExt for syntaqlite_parser::dialect::RawDialect<'_>
 impl syntaqlite::dialect::TokenCategory
 impl syntaqlite::embedded::offset_map::OffsetMap
@@ -26,15 +33,15 @@ impl syntaqlite::lsp::DocumentAnalysis
 impl syntaqlite::lsp::LspServer
 impl syntaqlite::NodeRefJsonExt for syntaqlite_parser::session::NodeRef<'_>
 impl syntaqlite::Parser
-impl syntaqlite::semantic::functions::FunctionCatalog
+impl syntaqlite::semantic::diagnostics::Diagnostic
+impl syntaqlite::semantic::diagnostics::Diagnostic
+impl syntaqlite::semantic::diagnostics::DiagnosticMessage
+impl syntaqlite::semantic::diagnostics::DiagnosticMessage
+impl syntaqlite::semantic::diagnostics::Help
+impl syntaqlite::semantic::diagnostics::Help
+impl syntaqlite::semantic::FunctionCatalog
+impl syntaqlite::semantic::FunctionCatalog
 impl syntaqlite::Tokenizer
-impl syntaqlite::validation::Diagnostic
-impl syntaqlite::validation::DiagnosticMessage
-impl syntaqlite::validation::DocumentContext
-impl syntaqlite::validation::DocumentContext
-impl syntaqlite::validation::Help
-impl syntaqlite::validation::SessionContext
-impl syntaqlite::validation::SessionContext
 impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> core::iter::traits::iterator::Iterator for syntaqlite::dialect::DialectStatementCursor<'a, N>
 impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> core::iter::traits::iterator::Iterator for syntaqlite::dialect::DialectTokenCursor<'a, N>
 impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::DialectIncrementalCursor<'a, N>
@@ -42,30 +49,46 @@ impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::
 impl<'a> core::iter::traits::iterator::Iterator for syntaqlite::StatementCursor<'a>
 impl<'a> core::iter::traits::iterator::Iterator for syntaqlite::TokenCursor<'a>
 impl<'a> syntaqlite::incremental::IncrementalCursor<'a>
-impl<'a> syntaqlite::semantic::relations::RelationCatalog<'a>
+impl<'a> syntaqlite::semantic::RelationCatalog<'a>
+impl<'a> syntaqlite::semantic::RelationCatalog<'a>
+impl<'a> syntaqlite::semantic::render::DiagnosticRenderer<'a>
+impl<'a> syntaqlite::semantic::render::DiagnosticRenderer<'a>
 impl<'a> syntaqlite::StatementCursor<'a>
-impl<'a> syntaqlite::validation::SourceContext<'a>
 impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::DialectIncrementalParser<'d, N>
 impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::DialectParser<'d, N>
 impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::DialectTokenizer<'d, N>
 impl<'d> syntaqlite::embedded::EmbeddedAnalyzer<'d>
 impl<'d> syntaqlite::Formatter<'d>
-impl<'d> syntaqlite::lsp::AnalysisHost<'d>
-impl<'d> syntaqlite::validation::Validator<'d>
-impl<'d> syntaqlite::validation::Validator<'d>
+impl<'d> syntaqlite::lsp::LspHost<'d>
+impl<'d> syntaqlite::SemanticAnalyzer<'d>
+impl<'d> syntaqlite::SemanticAnalyzer<'d>
 pub const syntaqlite::dialect::SEMANTIC_TOKEN_LEGEND: &[&str]
 pub enum syntaqlite::fmt::KeywordCase
 pub enum syntaqlite::KeywordCase
 pub enum syntaqlite::lsp::CompletionKind
+pub enum syntaqlite::semantic::DiagnosticMessage
+pub enum syntaqlite::semantic::diagnostics::DiagnosticMessage
+pub enum syntaqlite::semantic::diagnostics::Help
+pub enum syntaqlite::semantic::diagnostics::Severity
+pub enum syntaqlite::semantic::FunctionCheckResult
 pub enum syntaqlite::semantic::functions::FunctionCheckResult
+pub enum syntaqlite::semantic::Help
+pub enum syntaqlite::semantic::RelationKind
 pub enum syntaqlite::semantic::relations::RelationKind
-pub enum syntaqlite::validation::DiagnosticMessage
-pub enum syntaqlite::validation::Help
-pub enum syntaqlite::validation::RelationKind
-pub enum syntaqlite::validation::Severity
+pub enum syntaqlite::semantic::Severity
 pub fn syntaqlite_parser::dialect::RawDialect<'_>::classify_token(&self, token_type: u32, flags: u32) -> syntaqlite::dialect::TokenCategory
 pub fn syntaqlite_parser::dialect::RawDialect<'_>::token_category(&self, token_type: u32) -> syntaqlite::dialect::TokenCategory
 pub fn syntaqlite_parser::session::NodeRef<'_>::dump_json(&self, out: &mut alloc::string::String)
+pub fn syntaqlite::DatabaseCatalog::from_ddl(dialect: syntaqlite_parser::dialect::RawDialect<'_>, source: &str, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
+pub fn syntaqlite::DatabaseCatalog::from_ddl(dialect: syntaqlite_parser::dialect::RawDialect<'_>, source: &str, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
+pub fn syntaqlite::DatabaseCatalog::from_json(s: &str) -> core::result::Result<Self, alloc::string::String>
+pub fn syntaqlite::DatabaseCatalog::from_json(s: &str) -> core::result::Result<Self, alloc::string::String>
+pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawNodeReader<'a>, stmt_ids: &[syntaqlite_parser::nodes::NodeId], dialect: syntaqlite_parser::dialect::RawDialect<'_>) -> Self
+pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawNodeReader<'a>, stmt_ids: &[syntaqlite_parser::nodes::NodeId], dialect: syntaqlite_parser::dialect::RawDialect<'_>) -> Self
+pub fn syntaqlite::DatabaseCatalog::tables(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
+pub fn syntaqlite::DatabaseCatalog::tables(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
+pub fn syntaqlite::DatabaseCatalog::views(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
+pub fn syntaqlite::DatabaseCatalog::views(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
 pub fn syntaqlite::dialect::DialectExt::classify_token(&self, token_type: u32, flags: u32) -> syntaqlite::dialect::TokenCategory
 pub fn syntaqlite::dialect::DialectExt::token_category(&self, token_type: u32) -> syntaqlite::dialect::TokenCategory
 pub fn syntaqlite::dialect::DialectIncrementalCursor<'a, N>::begin_macro(&mut self, call_offset: u32, call_length: u32)
@@ -98,9 +121,9 @@ pub fn syntaqlite::dialect::TokenCategory::legend_name(self) -> core::option::Op
 pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::fragment_semantic_tokens(&self, fragment: &syntaqlite::embedded::EmbeddedFragment) -> alloc::vec::Vec<(usize, usize, syntaqlite::dialect::TokenCategory)>
 pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::new(dialect: syntaqlite_parser::dialect::RawDialect<'d>) -> Self
 pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::semantic_tokens_encoded(&self, fragments: &[syntaqlite::embedded::EmbeddedFragment], source: &str) -> alloc::vec::Vec<u32>
-pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::validate(&self, fragments: &[syntaqlite::embedded::EmbeddedFragment]) -> alloc::vec::Vec<syntaqlite::validation::Diagnostic>
-pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::with_catalog(self, catalog: syntaqlite::semantic::functions::FunctionCatalog) -> Self
-pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::with_config(self, config: syntaqlite::validation::ValidationConfig) -> Self
+pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::validate(&self, fragments: &[syntaqlite::embedded::EmbeddedFragment]) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::with_catalog(self, catalog: syntaqlite::semantic::FunctionCatalog) -> Self
+pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::with_config(self, config: syntaqlite::semantic::ValidationConfig) -> Self
 pub fn syntaqlite::embedded::extract_python(source: &str) -> alloc::vec::Vec<syntaqlite::embedded::EmbeddedFragment>
 pub fn syntaqlite::embedded::extract_typescript(source: &str) -> alloc::vec::Vec<syntaqlite::embedded::EmbeddedFragment>
 pub fn syntaqlite::embedded::offset_map::OffsetMap::new(fragment: &syntaqlite::embedded::EmbeddedFragment) -> Self
@@ -125,34 +148,33 @@ pub fn syntaqlite::incremental::IncrementalParser::default() -> Self
 pub fn syntaqlite::incremental::IncrementalParser::feed_cstr<'a>(&'a mut self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::incremental::IncrementalCursor<'a>
 pub fn syntaqlite::incremental::IncrementalParser::feed<'a>(&'a mut self, source: &'a str) -> syntaqlite::incremental::IncrementalCursor<'a>
 pub fn syntaqlite::incremental::IncrementalParser::new() -> Self
-pub fn syntaqlite::lsp::AnalysisHost<'d>::all_diagnostics(&mut self, uri: &str, config: &syntaqlite::validation::ValidationConfig) -> alloc::vec::Vec<syntaqlite::validation::Diagnostic>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::available_function_names(&self) -> alloc::vec::Vec<alloc::string::String>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::close_document(&mut self, uri: &str)
-pub fn syntaqlite::lsp::AnalysisHost<'d>::completion_info_at_offset(&mut self, uri: &str, offset: usize) -> syntaqlite::lsp::CompletionInfo
-pub fn syntaqlite::lsp::AnalysisHost<'d>::completion_items(&mut self, uri: &str, offset: usize) -> alloc::vec::Vec<syntaqlite::lsp::CompletionEntry>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::diagnostics(&mut self, uri: &str) -> &[syntaqlite::validation::Diagnostic]
-pub fn syntaqlite::lsp::AnalysisHost<'d>::document_diagnostics(&mut self, uri: &str) -> core::option::Option<(i32, &str, &[syntaqlite::validation::Diagnostic])>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::document_source(&self, uri: &str) -> core::option::Option<&str>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::expected_tokens_at_offset(&mut self, uri: &str, offset: usize) -> alloc::vec::Vec<u32>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::format(&self, uri: &str, config: &syntaqlite::fmt::FormatConfig) -> core::result::Result<alloc::string::String, syntaqlite::lsp::host::FormatError>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::function_catalog(&self) -> syntaqlite::semantic::functions::FunctionCatalog
-pub fn syntaqlite::lsp::AnalysisHost<'d>::new() -> syntaqlite::lsp::AnalysisHost<'static>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::open_document(&mut self, uri: &str, version: i32, text: alloc::string::String)
-pub fn syntaqlite::lsp::AnalysisHost<'d>::semantic_tokens_encoded(&mut self, uri: &str, range: core::option::Option<(usize, usize)>) -> alloc::vec::Vec<u32>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::semantic_tokens(&mut self, uri: &str) -> &[syntaqlite::lsp::SemanticToken]
-pub fn syntaqlite::lsp::AnalysisHost<'d>::session_context(&self) -> core::option::Option<&syntaqlite::validation::SessionContext>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::set_dialect_config(&mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig)
-pub fn syntaqlite::lsp::AnalysisHost<'d>::set_session_context(&mut self, ctx: syntaqlite::validation::SessionContext)
-pub fn syntaqlite::lsp::AnalysisHost<'d>::update_document(&mut self, uri: &str, version: i32, text: alloc::string::String)
-pub fn syntaqlite::lsp::AnalysisHost<'d>::validate_dialect<A: for<'a> syntaqlite_parser::ast_traits::AstTypes<'a>>(&self, uri: &str, config: &syntaqlite::validation::ValidationConfig) -> alloc::vec::Vec<syntaqlite::validation::Diagnostic>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::validate(&self, uri: &str, config: &syntaqlite::validation::ValidationConfig) -> alloc::vec::Vec<syntaqlite::validation::Diagnostic>
-pub fn syntaqlite::lsp::AnalysisHost<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>) -> Self
 pub fn syntaqlite::lsp::CompletionKind::as_str(self) -> &'static str
 pub fn syntaqlite::lsp::DocumentAnalysis::completion_info_at(&self, dialect: syntaqlite_parser::dialect::RawDialect<'_>, source: &str, offset: usize) -> syntaqlite::lsp::CompletionInfo
 pub fn syntaqlite::lsp::DocumentAnalysis::compute(dialect: syntaqlite_parser::dialect::RawDialect<'_>, source: &str) -> Self
-pub fn syntaqlite::lsp::DocumentAnalysis::diagnostics(&self) -> &[syntaqlite::validation::Diagnostic]
+pub fn syntaqlite::lsp::DocumentAnalysis::diagnostics(&self) -> &[syntaqlite::semantic::diagnostics::Diagnostic]
 pub fn syntaqlite::lsp::DocumentAnalysis::semantic_tokens_encoded(&self, source: &str, range: core::option::Option<(usize, usize)>) -> alloc::vec::Vec<u32>
 pub fn syntaqlite::lsp::DocumentAnalysis::semantic_tokens(&self) -> &[syntaqlite::lsp::SemanticToken]
+pub fn syntaqlite::lsp::LspHost<'d>::all_diagnostics(&mut self, uri: &str, config: &syntaqlite::semantic::ValidationConfig) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::lsp::LspHost<'d>::available_function_names(&self) -> alloc::vec::Vec<alloc::string::String>
+pub fn syntaqlite::lsp::LspHost<'d>::close_document(&mut self, uri: &str)
+pub fn syntaqlite::lsp::LspHost<'d>::completion_info_at_offset(&mut self, uri: &str, offset: usize) -> syntaqlite::lsp::CompletionInfo
+pub fn syntaqlite::lsp::LspHost<'d>::completion_items(&mut self, uri: &str, offset: usize) -> alloc::vec::Vec<syntaqlite::lsp::CompletionEntry>
+pub fn syntaqlite::lsp::LspHost<'d>::diagnostics(&mut self, uri: &str) -> &[syntaqlite::semantic::diagnostics::Diagnostic]
+pub fn syntaqlite::lsp::LspHost<'d>::document_diagnostics(&mut self, uri: &str) -> core::option::Option<(i32, &str, &[syntaqlite::semantic::diagnostics::Diagnostic])>
+pub fn syntaqlite::lsp::LspHost<'d>::document_source(&self, uri: &str) -> core::option::Option<&str>
+pub fn syntaqlite::lsp::LspHost<'d>::expected_tokens_at_offset(&mut self, uri: &str, offset: usize) -> alloc::vec::Vec<u32>
+pub fn syntaqlite::lsp::LspHost<'d>::format(&self, uri: &str, config: &syntaqlite::fmt::FormatConfig) -> core::result::Result<alloc::string::String, syntaqlite::lsp::host::FormatError>
+pub fn syntaqlite::lsp::LspHost<'d>::function_catalog(&self) -> syntaqlite::semantic::FunctionCatalog
+pub fn syntaqlite::lsp::LspHost<'d>::new() -> syntaqlite::lsp::LspHost<'static>
+pub fn syntaqlite::lsp::LspHost<'d>::open_document(&mut self, uri: &str, version: i32, text: alloc::string::String)
+pub fn syntaqlite::lsp::LspHost<'d>::semantic_tokens_encoded(&mut self, uri: &str, range: core::option::Option<(usize, usize)>) -> alloc::vec::Vec<u32>
+pub fn syntaqlite::lsp::LspHost<'d>::semantic_tokens(&mut self, uri: &str) -> &[syntaqlite::lsp::SemanticToken]
+pub fn syntaqlite::lsp::LspHost<'d>::session_context(&self) -> core::option::Option<&syntaqlite::DatabaseCatalog>
+pub fn syntaqlite::lsp::LspHost<'d>::set_dialect_config(&mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig)
+pub fn syntaqlite::lsp::LspHost<'d>::set_session_context(&mut self, ctx: syntaqlite::DatabaseCatalog)
+pub fn syntaqlite::lsp::LspHost<'d>::update_document(&mut self, uri: &str, version: i32, text: alloc::string::String)
+pub fn syntaqlite::lsp::LspHost<'d>::validate(&mut self, uri: &str, config: &syntaqlite::semantic::ValidationConfig) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::lsp::LspHost<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>) -> Self
 pub fn syntaqlite::lsp::LspServer::run(dialect: syntaqlite_parser::dialect::RawDialect<'_>) -> core::result::Result<(), alloc::boxed::Box<(dyn core::error::Error + core::marker::Sync + core::marker::Send)>>
 pub fn syntaqlite::NodeRefJsonExt::dump_json(&self, out: &mut alloc::string::String)
 pub fn syntaqlite::Parser::default() -> Self
@@ -160,21 +182,84 @@ pub fn syntaqlite::Parser::new() -> Self
 pub fn syntaqlite::Parser::parse_cstr<'a>(&'a mut self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::StatementCursor<'a>
 pub fn syntaqlite::Parser::parse<'a>(&'a mut self, source: &'a str) -> syntaqlite::StatementCursor<'a>
 pub fn syntaqlite::Parser::with_config(config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
-pub fn syntaqlite::semantic::functions::FunctionCatalog::add_session_functions(&mut self, functions: &[syntaqlite::semantic::functions::SessionFunction])
-pub fn syntaqlite::semantic::functions::FunctionCatalog::all_names(&self) -> alloc::vec::Vec<alloc::string::String>
-pub fn syntaqlite::semantic::functions::FunctionCatalog::check_call(&self, name: &str, arg_count: usize) -> syntaqlite::semantic::functions::FunctionCheckResult
-pub fn syntaqlite::semantic::functions::FunctionCatalog::for_default_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>) -> Self
-pub fn syntaqlite::semantic::functions::FunctionCatalog::for_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>, config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
-pub fn syntaqlite::semantic::functions::FunctionCatalog::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&str, syntaqlite_parser::catalog::FunctionCategory)>
-pub fn syntaqlite::semantic::functions::FunctionCatalog::lookup(&self, name: &str) -> core::option::Option<syntaqlite::semantic::functions::FunctionLookup<'_>>
-pub fn syntaqlite::semantic::functions::FunctionCatalog::unique_names(&self) -> impl core::iter::traits::iterator::Iterator<Item = &str>
-pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::all_column_names(&self, table: core::option::Option<&str>) -> alloc::vec::Vec<alloc::string::String>
-pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::all_names(&self) -> alloc::vec::Vec<alloc::string::String>
-pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::columns_for(&self, name: &str) -> core::option::Option<&'a [syntaqlite::validation::ColumnDef]>
-pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = &'a syntaqlite::validation::RelationDef>
-pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::lookup(&self, name: &str) -> core::option::Option<&'a syntaqlite::validation::RelationDef>
-pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::new(session: &'a [syntaqlite::validation::RelationDef], document: &'a [syntaqlite::validation::RelationDef]) -> Self
-pub fn syntaqlite::semantic::relations::RelationCatalog<'a>::resolve(&self, name: &str) -> bool
+pub fn syntaqlite::semantic::diagnostics::Diagnostic::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
+pub fn syntaqlite::semantic::diagnostics::Diagnostic::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
+pub fn syntaqlite::semantic::diagnostics::Diagnostic::write_json(&self, out: &mut alloc::string::String)
+pub fn syntaqlite::semantic::diagnostics::Diagnostic::write_json(&self, out: &mut alloc::string::String)
+pub fn syntaqlite::semantic::diagnostics::DiagnosticMessage::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite::semantic::diagnostics::DiagnosticMessage::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite::semantic::diagnostics::DiagnosticMessage::is_parse_error(&self) -> bool
+pub fn syntaqlite::semantic::diagnostics::DiagnosticMessage::is_parse_error(&self) -> bool
+pub fn syntaqlite::semantic::diagnostics::DiagnosticMessage::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
+pub fn syntaqlite::semantic::diagnostics::DiagnosticMessage::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
+pub fn syntaqlite::semantic::diagnostics::DiagnosticMessage::write_json(&self, out: &mut alloc::string::String)
+pub fn syntaqlite::semantic::diagnostics::DiagnosticMessage::write_json(&self, out: &mut alloc::string::String)
+pub fn syntaqlite::semantic::diagnostics::Help::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite::semantic::diagnostics::Help::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite::semantic::diagnostics::Help::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
+pub fn syntaqlite::semantic::diagnostics::Help::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
+pub fn syntaqlite::semantic::diagnostics::Help::write_json(&self, out: &mut alloc::string::String)
+pub fn syntaqlite::semantic::diagnostics::Help::write_json(&self, out: &mut alloc::string::String)
+pub fn syntaqlite::semantic::diagnostics::Severity::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
+pub fn syntaqlite::semantic::diagnostics::Severity::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
+pub fn syntaqlite::semantic::FunctionCatalog::add_session_functions(&mut self, functions: &[syntaqlite::semantic::FunctionDef])
+pub fn syntaqlite::semantic::FunctionCatalog::add_session_functions(&mut self, functions: &[syntaqlite::semantic::FunctionDef])
+pub fn syntaqlite::semantic::FunctionCatalog::all_names(&self) -> alloc::vec::Vec<alloc::string::String>
+pub fn syntaqlite::semantic::FunctionCatalog::all_names(&self) -> alloc::vec::Vec<alloc::string::String>
+pub fn syntaqlite::semantic::FunctionCatalog::check_call(&self, name: &str, arg_count: usize) -> syntaqlite::semantic::FunctionCheckResult
+pub fn syntaqlite::semantic::FunctionCatalog::check_call(&self, name: &str, arg_count: usize) -> syntaqlite::semantic::FunctionCheckResult
+pub fn syntaqlite::semantic::FunctionCatalog::for_default_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>) -> Self
+pub fn syntaqlite::semantic::FunctionCatalog::for_default_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>) -> Self
+pub fn syntaqlite::semantic::FunctionCatalog::for_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>, config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
+pub fn syntaqlite::semantic::FunctionCatalog::for_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>, config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
+pub fn syntaqlite::semantic::FunctionCatalog::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&str, syntaqlite_parser::catalog::FunctionCategory)>
+pub fn syntaqlite::semantic::FunctionCatalog::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&str, syntaqlite_parser::catalog::FunctionCategory)>
+pub fn syntaqlite::semantic::FunctionCatalog::lookup(&self, name: &str) -> core::option::Option<syntaqlite::semantic::FunctionLookup<'_>>
+pub fn syntaqlite::semantic::FunctionCatalog::lookup(&self, name: &str) -> core::option::Option<syntaqlite::semantic::FunctionLookup<'_>>
+pub fn syntaqlite::semantic::FunctionCatalog::unique_names(&self) -> impl core::iter::traits::iterator::Iterator<Item = &str>
+pub fn syntaqlite::semantic::FunctionCatalog::unique_names(&self) -> impl core::iter::traits::iterator::Iterator<Item = &str>
+pub fn syntaqlite::semantic::RelationCatalog<'a>::all_column_names(&self, table: core::option::Option<&str>) -> alloc::vec::Vec<alloc::string::String>
+pub fn syntaqlite::semantic::RelationCatalog<'a>::all_column_names(&self, table: core::option::Option<&str>) -> alloc::vec::Vec<alloc::string::String>
+pub fn syntaqlite::semantic::RelationCatalog<'a>::all_names(&self) -> alloc::vec::Vec<alloc::string::String>
+pub fn syntaqlite::semantic::RelationCatalog<'a>::all_names(&self) -> alloc::vec::Vec<alloc::string::String>
+pub fn syntaqlite::semantic::RelationCatalog<'a>::columns_for(&self, name: &str) -> core::option::Option<&'a [syntaqlite::semantic::ColumnDef]>
+pub fn syntaqlite::semantic::RelationCatalog<'a>::columns_for(&self, name: &str) -> core::option::Option<&'a [syntaqlite::semantic::ColumnDef]>
+pub fn syntaqlite::semantic::RelationCatalog<'a>::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = &'a syntaqlite::semantic::RelationDef>
+pub fn syntaqlite::semantic::RelationCatalog<'a>::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = &'a syntaqlite::semantic::RelationDef>
+pub fn syntaqlite::semantic::RelationCatalog<'a>::lookup(&self, name: &str) -> core::option::Option<&'a syntaqlite::semantic::RelationDef>
+pub fn syntaqlite::semantic::RelationCatalog<'a>::lookup(&self, name: &str) -> core::option::Option<&'a syntaqlite::semantic::RelationDef>
+pub fn syntaqlite::semantic::RelationCatalog<'a>::new(session: &'a [syntaqlite::semantic::RelationDef], document: &'a [syntaqlite::semantic::RelationDef]) -> Self
+pub fn syntaqlite::semantic::RelationCatalog<'a>::new(session: &'a [syntaqlite::semantic::RelationDef], document: &'a [syntaqlite::semantic::RelationDef]) -> Self
+pub fn syntaqlite::semantic::RelationCatalog<'a>::resolve(&self, name: &str) -> bool
+pub fn syntaqlite::semantic::RelationCatalog<'a>::resolve(&self, name: &str) -> bool
+pub fn syntaqlite::semantic::render::DiagnosticRenderer<'a>::new(source: &'a str, file: &'a str) -> Self
+pub fn syntaqlite::semantic::render::DiagnosticRenderer<'a>::new(source: &'a str, file: &'a str) -> Self
+pub fn syntaqlite::semantic::render::DiagnosticRenderer<'a>::render_diagnostic(&self, severity: &str, message: &str, start_offset: usize, end_offset: usize, help: core::option::Option<&str>)
+pub fn syntaqlite::semantic::render::DiagnosticRenderer<'a>::render_diagnostic(&self, severity: &str, message: &str, start_offset: usize, end_offset: usize, help: core::option::Option<&str>)
+pub fn syntaqlite::semantic::render::DiagnosticRenderer<'a>::render_diagnostics(&self, diags: &[syntaqlite::semantic::diagnostics::Diagnostic]) -> bool
+pub fn syntaqlite::semantic::render::DiagnosticRenderer<'a>::render_diagnostics(&self, diags: &[syntaqlite::semantic::diagnostics::Diagnostic]) -> bool
+pub fn syntaqlite::semantic::ValidationConfig::default() -> Self
+pub fn syntaqlite::semantic::ValidationConfig::default() -> Self
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared_dialect<A: for<'a> syntaqlite_parser::ast_traits::AstTypes<'a>>(&mut self, model: &syntaqlite::SemanticModel<'d>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared_dialect<A: for<'a> syntaqlite_parser::ast_traits::AstTypes<'a>>(&mut self, model: &syntaqlite::SemanticModel<'d>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared(&mut self, model: &syntaqlite::SemanticModel<'d>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared(&mut self, model: &syntaqlite::SemanticModel<'d>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_with_config(&mut self, source: &str, catalog: &syntaqlite::DatabaseCatalog, config: &syntaqlite::semantic::ValidationConfig) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_with_config(&mut self, source: &str, catalog: &syntaqlite::DatabaseCatalog, config: &syntaqlite::semantic::ValidationConfig) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics(&mut self, source: &str, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics(&mut self, source: &str, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::dialect(&self) -> syntaqlite_parser::dialect::RawDialect<'d>
+pub fn syntaqlite::SemanticAnalyzer<'d>::dialect(&self) -> syntaqlite_parser::dialect::RawDialect<'d>
+pub fn syntaqlite::SemanticAnalyzer<'d>::new() -> syntaqlite::SemanticAnalyzer<'static>
+pub fn syntaqlite::SemanticAnalyzer<'d>::new() -> syntaqlite::SemanticAnalyzer<'static>
+pub fn syntaqlite::SemanticAnalyzer<'d>::prepare(&mut self, source: &str) -> syntaqlite::SemanticModel<'d>
+pub fn syntaqlite::SemanticAnalyzer<'d>::prepare(&mut self, source: &str) -> syntaqlite::SemanticModel<'d>
+pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect_config(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
+pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect_config(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
+pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>) -> Self
+pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>) -> Self
+pub fn syntaqlite::SemanticAnalyzer<'static>::default() -> Self
+pub fn syntaqlite::SemanticAnalyzer<'static>::default() -> Self
 pub fn syntaqlite::StatementCursor<'a>::next_statement(&mut self) -> core::option::Option<core::result::Result<syntaqlite_parser_sqlite::ast::Stmt<'a>, syntaqlite_parser::session::ParseError>>
 pub fn syntaqlite::StatementCursor<'a>::next(&mut self) -> core::option::Option<Self::Item>
 pub fn syntaqlite::StatementCursor<'a>::source(&self) -> &'a str
@@ -183,39 +268,6 @@ pub fn syntaqlite::Tokenizer::default() -> Self
 pub fn syntaqlite::Tokenizer::new() -> Self
 pub fn syntaqlite::Tokenizer::tokenize_cstr<'a>(&'a mut self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::TokenCursor<'a>
 pub fn syntaqlite::Tokenizer::tokenize<'a>(&'a mut self, source: &'a str) -> syntaqlite::TokenCursor<'a>
-pub fn syntaqlite::validation::Diagnostic::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
-pub fn syntaqlite::validation::Diagnostic::write_json(&self, out: &mut alloc::string::String)
-pub fn syntaqlite::validation::DiagnosticMessage::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite::validation::DiagnosticMessage::is_parse_error(&self) -> bool
-pub fn syntaqlite::validation::DiagnosticMessage::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
-pub fn syntaqlite::validation::DiagnosticMessage::write_json(&self, out: &mut alloc::string::String)
-pub fn syntaqlite::validation::DocumentContext::accumulate(&mut self, reader: syntaqlite_parser::session::RawNodeReader<'_>, stmt_id: syntaqlite_parser::nodes::NodeId, dialect: syntaqlite_parser::dialect::RawDialect<'_>, session: core::option::Option<&syntaqlite::validation::SessionContext>)
-pub fn syntaqlite::validation::DocumentContext::default() -> Self
-pub fn syntaqlite::validation::DocumentContext::new() -> Self
-pub fn syntaqlite::validation::DocumentContext::tables(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::validation::RelationDef> + '_
-pub fn syntaqlite::validation::DocumentContext::views(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::validation::RelationDef> + '_
-pub fn syntaqlite::validation::Help::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite::validation::Help::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
-pub fn syntaqlite::validation::Help::write_json(&self, out: &mut alloc::string::String)
-pub fn syntaqlite::validation::SessionContext::from_ddl(dialect: syntaqlite_parser::dialect::RawDialect<'_>, source: &str, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
-pub fn syntaqlite::validation::SessionContext::from_json(s: &str) -> core::result::Result<Self, alloc::string::String>
-pub fn syntaqlite::validation::SessionContext::from_stmts<'a>(reader: syntaqlite_parser::session::RawNodeReader<'a>, stmt_ids: &[syntaqlite_parser::nodes::NodeId], dialect: syntaqlite_parser::dialect::RawDialect<'_>) -> Self
-pub fn syntaqlite::validation::SessionContext::tables(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::validation::RelationDef> + '_
-pub fn syntaqlite::validation::SessionContext::views(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::validation::RelationDef> + '_
-pub fn syntaqlite::validation::Severity::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
-pub fn syntaqlite::validation::SourceContext<'a>::new(source: &'a str, file: &'a str) -> Self
-pub fn syntaqlite::validation::SourceContext<'a>::render_diagnostic(&self, severity: &str, message: &str, start_offset: usize, end_offset: usize, help: core::option::Option<&str>)
-pub fn syntaqlite::validation::SourceContext<'a>::render_diagnostics(&self, diags: &[syntaqlite::validation::Diagnostic]) -> bool
-pub fn syntaqlite::validation::ValidationConfig::default() -> Self
-pub fn syntaqlite::validation::ValidationConfig::default() -> Self
-pub fn syntaqlite::validation::Validator<'d>::new() -> syntaqlite::validation::Validator<'static>
-pub fn syntaqlite::validation::Validator<'d>::new() -> syntaqlite::validation::Validator<'static>
-pub fn syntaqlite::validation::Validator<'d>::validate(&mut self, source: &str, session: core::option::Option<&syntaqlite::validation::SessionContext>, config: &syntaqlite::validation::ValidationConfig) -> alloc::vec::Vec<syntaqlite::validation::Diagnostic>
-pub fn syntaqlite::validation::Validator<'d>::validate(&mut self, source: &str, session: core::option::Option<&syntaqlite::validation::SessionContext>, config: &syntaqlite::validation::ValidationConfig) -> alloc::vec::Vec<syntaqlite::validation::Diagnostic>
-pub fn syntaqlite::validation::Validator<'d>::with_catalog(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, catalog: syntaqlite::semantic::functions::FunctionCatalog, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
-pub fn syntaqlite::validation::Validator<'d>::with_catalog(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, catalog: syntaqlite::semantic::functions::FunctionCatalog, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
-pub fn syntaqlite::validation::Validator<'static>::default() -> Self
-pub fn syntaqlite::validation::Validator<'static>::default() -> Self
 pub mod syntaqlite
 pub mod syntaqlite::ast
 pub mod syntaqlite::dialect
@@ -225,9 +277,11 @@ pub mod syntaqlite::fmt
 pub mod syntaqlite::incremental
 pub mod syntaqlite::lsp
 pub mod syntaqlite::semantic
+pub mod syntaqlite::semantic::diagnostics
 pub mod syntaqlite::semantic::functions
 pub mod syntaqlite::semantic::relations
-pub mod syntaqlite::validation
+pub mod syntaqlite::semantic::render
+pub struct syntaqlite::DatabaseCatalog
 pub struct syntaqlite::dialect::DialectIncrementalCursor<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::dialect::DialectIncrementalParser<'d, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::dialect::DialectParser<'d, N: syntaqlite_parser::dialect_traits::NodeFamily>
@@ -244,33 +298,42 @@ pub struct syntaqlite::FormatConfig
 pub struct syntaqlite::Formatter<'d>
 pub struct syntaqlite::incremental::IncrementalCursor<'a>
 pub struct syntaqlite::incremental::IncrementalParser
-pub struct syntaqlite::lsp::AnalysisHost<'d>
 pub struct syntaqlite::lsp::CompletionEntry
 pub struct syntaqlite::lsp::CompletionInfo
 pub struct syntaqlite::lsp::DocumentAnalysis
+pub struct syntaqlite::lsp::LspHost<'d>
 pub struct syntaqlite::lsp::LspServer
 pub struct syntaqlite::lsp::SemanticToken
 pub struct syntaqlite::Parser
+pub struct syntaqlite::semantic::ColumnDef
+pub struct syntaqlite::semantic::DatabaseCatalog
+pub struct syntaqlite::semantic::Diagnostic
+pub struct syntaqlite::semantic::DiagnosticRenderer<'a>
+pub struct syntaqlite::semantic::diagnostics::Diagnostic
+pub struct syntaqlite::semantic::FunctionCatalog
+pub struct syntaqlite::semantic::FunctionDef
+pub struct syntaqlite::semantic::FunctionLookup<'a>
 pub struct syntaqlite::semantic::functions::FunctionCatalog
+pub struct syntaqlite::semantic::functions::FunctionDef
 pub struct syntaqlite::semantic::functions::FunctionLookup<'a>
-pub struct syntaqlite::semantic::functions::SessionFunction
+pub struct syntaqlite::semantic::RelationCatalog<'a>
+pub struct syntaqlite::semantic::RelationDef
 pub struct syntaqlite::semantic::relations::ColumnDef
 pub struct syntaqlite::semantic::relations::RelationCatalog<'a>
 pub struct syntaqlite::semantic::relations::RelationDef
+pub struct syntaqlite::semantic::render::DiagnosticRenderer<'a>
+pub struct syntaqlite::semantic::SemanticAnalyzer<'d>
+pub struct syntaqlite::semantic::SemanticModel<'d>
+pub struct syntaqlite::semantic::ValidationConfig
+pub struct syntaqlite::SemanticAnalyzer<'d>
+pub struct syntaqlite::SemanticModel<'d>
 pub struct syntaqlite::StatementCursor<'a>
 pub struct syntaqlite::Token<'a>
 pub struct syntaqlite::TokenCursor<'a>
 pub struct syntaqlite::Tokenizer
-pub struct syntaqlite::validation::ColumnDef
-pub struct syntaqlite::validation::Diagnostic
-pub struct syntaqlite::validation::DocumentContext
-pub struct syntaqlite::validation::RelationDef
-pub struct syntaqlite::validation::SessionContext
-pub struct syntaqlite::validation::SourceContext<'a>
-pub struct syntaqlite::validation::ValidationConfig
-pub struct syntaqlite::validation::Validator<'d>
 pub struct syntaqlite::ValidationConfig
-pub struct syntaqlite::Validator<'d>
+pub syntaqlite::DatabaseCatalog::functions: alloc::vec::Vec<syntaqlite::semantic::FunctionDef>
+pub syntaqlite::DatabaseCatalog::relations: alloc::vec::Vec<syntaqlite::semantic::RelationDef>
 pub syntaqlite::dialect::DialectToken::kind: <N as syntaqlite_parser::dialect_traits::NodeFamily>::Token
 pub syntaqlite::dialect::DialectToken::text: &'a str
 pub syntaqlite::dialect::TokenCategory::Comment = 5
@@ -316,70 +379,104 @@ pub syntaqlite::lsp::CompletionKind::Keyword
 pub syntaqlite::lsp::SemanticToken::category: syntaqlite::dialect::TokenCategory
 pub syntaqlite::lsp::SemanticToken::length: usize
 pub syntaqlite::lsp::SemanticToken::offset: usize
+pub syntaqlite::semantic::ColumnDef::is_nullable: bool
+pub syntaqlite::semantic::ColumnDef::is_primary_key: bool
+pub syntaqlite::semantic::ColumnDef::name: alloc::string::String
+pub syntaqlite::semantic::ColumnDef::type_name: core::option::Option<alloc::string::String>
+pub syntaqlite::semantic::DatabaseCatalog::functions: alloc::vec::Vec<syntaqlite::semantic::FunctionDef>
+pub syntaqlite::semantic::DatabaseCatalog::relations: alloc::vec::Vec<syntaqlite::semantic::RelationDef>
+pub syntaqlite::semantic::Diagnostic::end_offset: usize
+pub syntaqlite::semantic::Diagnostic::help: core::option::Option<syntaqlite::semantic::diagnostics::Help>
+pub syntaqlite::semantic::Diagnostic::message: syntaqlite::semantic::diagnostics::DiagnosticMessage
+pub syntaqlite::semantic::Diagnostic::severity: syntaqlite::semantic::diagnostics::Severity
+pub syntaqlite::semantic::Diagnostic::start_offset: usize
+pub syntaqlite::semantic::DiagnosticMessage::FunctionArity
+pub syntaqlite::semantic::DiagnosticMessage::FunctionArity::expected: alloc::vec::Vec<usize>
+pub syntaqlite::semantic::DiagnosticMessage::FunctionArity::got: usize
+pub syntaqlite::semantic::DiagnosticMessage::FunctionArity::name: alloc::string::String
+pub syntaqlite::semantic::DiagnosticMessage::Other(alloc::string::String)
+pub syntaqlite::semantic::DiagnosticMessage::UnknownColumn
+pub syntaqlite::semantic::DiagnosticMessage::UnknownColumn::column: alloc::string::String
+pub syntaqlite::semantic::DiagnosticMessage::UnknownColumn::table: core::option::Option<alloc::string::String>
+pub syntaqlite::semantic::DiagnosticMessage::UnknownFunction
+pub syntaqlite::semantic::DiagnosticMessage::UnknownFunction::name: alloc::string::String
+pub syntaqlite::semantic::DiagnosticMessage::UnknownTable
+pub syntaqlite::semantic::DiagnosticMessage::UnknownTable::name: alloc::string::String
+pub syntaqlite::semantic::diagnostics::Diagnostic::end_offset: usize
+pub syntaqlite::semantic::diagnostics::Diagnostic::help: core::option::Option<syntaqlite::semantic::diagnostics::Help>
+pub syntaqlite::semantic::diagnostics::Diagnostic::message: syntaqlite::semantic::diagnostics::DiagnosticMessage
+pub syntaqlite::semantic::diagnostics::Diagnostic::severity: syntaqlite::semantic::diagnostics::Severity
+pub syntaqlite::semantic::diagnostics::Diagnostic::start_offset: usize
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::FunctionArity
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::FunctionArity::expected: alloc::vec::Vec<usize>
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::FunctionArity::got: usize
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::FunctionArity::name: alloc::string::String
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::Other(alloc::string::String)
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::UnknownColumn
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::UnknownColumn::column: alloc::string::String
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::UnknownColumn::table: core::option::Option<alloc::string::String>
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::UnknownFunction
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::UnknownFunction::name: alloc::string::String
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::UnknownTable
+pub syntaqlite::semantic::diagnostics::DiagnosticMessage::UnknownTable::name: alloc::string::String
+pub syntaqlite::semantic::diagnostics::Help::Suggestion(alloc::string::String)
+pub syntaqlite::semantic::diagnostics::Severity::Error
+pub syntaqlite::semantic::diagnostics::Severity::Hint
+pub syntaqlite::semantic::diagnostics::Severity::Info
+pub syntaqlite::semantic::diagnostics::Severity::Warning
+pub syntaqlite::semantic::FunctionCheckResult::Ok
+pub syntaqlite::semantic::FunctionCheckResult::Unknown
+pub syntaqlite::semantic::FunctionCheckResult::WrongArity
+pub syntaqlite::semantic::FunctionCheckResult::WrongArity::expected: alloc::vec::Vec<usize>
+pub syntaqlite::semantic::FunctionDef::args: core::option::Option<usize>
+pub syntaqlite::semantic::FunctionDef::name: alloc::string::String
+pub syntaqlite::semantic::FunctionLookup::category: syntaqlite_parser::catalog::FunctionCategory
+pub syntaqlite::semantic::FunctionLookup::fixed_arities: alloc::vec::Vec<usize>
+pub syntaqlite::semantic::FunctionLookup::is_variadic: bool
+pub syntaqlite::semantic::FunctionLookup::name: &'a str
 pub syntaqlite::semantic::functions::FunctionCheckResult::Ok
 pub syntaqlite::semantic::functions::FunctionCheckResult::Unknown
 pub syntaqlite::semantic::functions::FunctionCheckResult::WrongArity
 pub syntaqlite::semantic::functions::FunctionCheckResult::WrongArity::expected: alloc::vec::Vec<usize>
+pub syntaqlite::semantic::functions::FunctionDef::args: core::option::Option<usize>
+pub syntaqlite::semantic::functions::FunctionDef::name: alloc::string::String
 pub syntaqlite::semantic::functions::FunctionLookup::category: syntaqlite_parser::catalog::FunctionCategory
 pub syntaqlite::semantic::functions::FunctionLookup::fixed_arities: alloc::vec::Vec<usize>
 pub syntaqlite::semantic::functions::FunctionLookup::is_variadic: bool
 pub syntaqlite::semantic::functions::FunctionLookup::name: &'a str
-pub syntaqlite::semantic::functions::SessionFunction::args: core::option::Option<usize>
-pub syntaqlite::semantic::functions::SessionFunction::name: alloc::string::String
+pub syntaqlite::semantic::Help::Suggestion(alloc::string::String)
+pub syntaqlite::semantic::RelationDef::columns: alloc::vec::Vec<syntaqlite::semantic::ColumnDef>
+pub syntaqlite::semantic::RelationDef::kind: syntaqlite::semantic::RelationKind
+pub syntaqlite::semantic::RelationDef::name: alloc::string::String
+pub syntaqlite::semantic::RelationKind::Table
+pub syntaqlite::semantic::RelationKind::View
 pub syntaqlite::semantic::relations::ColumnDef::is_nullable: bool
 pub syntaqlite::semantic::relations::ColumnDef::is_primary_key: bool
 pub syntaqlite::semantic::relations::ColumnDef::name: alloc::string::String
 pub syntaqlite::semantic::relations::ColumnDef::type_name: core::option::Option<alloc::string::String>
-pub syntaqlite::semantic::relations::RelationDef::columns: alloc::vec::Vec<syntaqlite::validation::ColumnDef>
-pub syntaqlite::semantic::relations::RelationDef::kind: syntaqlite::validation::RelationKind
+pub syntaqlite::semantic::relations::RelationDef::columns: alloc::vec::Vec<syntaqlite::semantic::ColumnDef>
+pub syntaqlite::semantic::relations::RelationDef::kind: syntaqlite::semantic::RelationKind
 pub syntaqlite::semantic::relations::RelationDef::name: alloc::string::String
 pub syntaqlite::semantic::relations::RelationKind::Table
 pub syntaqlite::semantic::relations::RelationKind::View
+pub syntaqlite::semantic::Severity::Error
+pub syntaqlite::semantic::Severity::Hint
+pub syntaqlite::semantic::Severity::Info
+pub syntaqlite::semantic::Severity::Warning
+pub syntaqlite::semantic::ValidationConfig::strict_schema: bool
+pub syntaqlite::semantic::ValidationConfig::suggestion_threshold: usize
 pub syntaqlite::Token::kind: syntaqlite_parser_sqlite::tokens::TokenType
 pub syntaqlite::Token::text: &'a str
-pub syntaqlite::validation::ColumnDef::is_nullable: bool
-pub syntaqlite::validation::ColumnDef::is_primary_key: bool
-pub syntaqlite::validation::ColumnDef::name: alloc::string::String
-pub syntaqlite::validation::ColumnDef::type_name: core::option::Option<alloc::string::String>
-pub syntaqlite::validation::Diagnostic::end_offset: usize
-pub syntaqlite::validation::Diagnostic::help: core::option::Option<syntaqlite::validation::Help>
-pub syntaqlite::validation::Diagnostic::message: syntaqlite::validation::DiagnosticMessage
-pub syntaqlite::validation::Diagnostic::severity: syntaqlite::validation::Severity
-pub syntaqlite::validation::Diagnostic::start_offset: usize
-pub syntaqlite::validation::DiagnosticMessage::FunctionArity
-pub syntaqlite::validation::DiagnosticMessage::FunctionArity::expected: alloc::vec::Vec<usize>
-pub syntaqlite::validation::DiagnosticMessage::FunctionArity::got: usize
-pub syntaqlite::validation::DiagnosticMessage::FunctionArity::name: alloc::string::String
-pub syntaqlite::validation::DiagnosticMessage::Other(alloc::string::String)
-pub syntaqlite::validation::DiagnosticMessage::UnknownColumn
-pub syntaqlite::validation::DiagnosticMessage::UnknownColumn::column: alloc::string::String
-pub syntaqlite::validation::DiagnosticMessage::UnknownColumn::table: core::option::Option<alloc::string::String>
-pub syntaqlite::validation::DiagnosticMessage::UnknownFunction
-pub syntaqlite::validation::DiagnosticMessage::UnknownFunction::name: alloc::string::String
-pub syntaqlite::validation::DiagnosticMessage::UnknownTable
-pub syntaqlite::validation::DiagnosticMessage::UnknownTable::name: alloc::string::String
-pub syntaqlite::validation::DocumentContext::functions: alloc::vec::Vec<syntaqlite::semantic::functions::SessionFunction>
-pub syntaqlite::validation::DocumentContext::relations: alloc::vec::Vec<syntaqlite::validation::RelationDef>
-pub syntaqlite::validation::Help::Suggestion(alloc::string::String)
-pub syntaqlite::validation::RelationDef::columns: alloc::vec::Vec<syntaqlite::validation::ColumnDef>
-pub syntaqlite::validation::RelationDef::kind: syntaqlite::validation::RelationKind
-pub syntaqlite::validation::RelationDef::name: alloc::string::String
-pub syntaqlite::validation::RelationKind::Table
-pub syntaqlite::validation::RelationKind::View
-pub syntaqlite::validation::SessionContext::functions: alloc::vec::Vec<syntaqlite::semantic::functions::SessionFunction>
-pub syntaqlite::validation::SessionContext::relations: alloc::vec::Vec<syntaqlite::validation::RelationDef>
-pub syntaqlite::validation::Severity::Error
-pub syntaqlite::validation::Severity::Hint
-pub syntaqlite::validation::Severity::Info
-pub syntaqlite::validation::Severity::Warning
-pub syntaqlite::validation::ValidationConfig::strict_schema: bool
-pub syntaqlite::validation::ValidationConfig::suggestion_threshold: usize
 pub syntaqlite::ValidationConfig::strict_schema: bool
 pub syntaqlite::ValidationConfig::suggestion_threshold: usize
 pub trait syntaqlite::dialect::DialectExt
 pub trait syntaqlite::NodeRefJsonExt
 pub type syntaqlite::dialect::DialectStatementCursor<'a, N>::Item = core::result::Result<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node, syntaqlite_parser::session::ParseError>
 pub type syntaqlite::dialect::DialectTokenCursor<'a, N>::Item = syntaqlite::dialect::DialectToken<'a, N>
+pub type syntaqlite::semantic::functions::SessionFunction = syntaqlite::semantic::FunctionDef
+pub type syntaqlite::semantic::render::SourceContext<'a> = syntaqlite::semantic::render::DiagnosticRenderer<'a>
+pub type syntaqlite::semantic::SessionFunction = syntaqlite::semantic::FunctionDef
+pub type syntaqlite::semantic::SourceContext<'a> = syntaqlite::semantic::render::DiagnosticRenderer<'a>
 pub type syntaqlite::StatementCursor<'a>::Item = core::result::Result<syntaqlite_parser_sqlite::ast::Stmt<'a>, syntaqlite_parser::session::ParseError>
 pub type syntaqlite::TokenCursor<'a>::Item = syntaqlite::Token<'a>
 pub use syntaqlite::ast::<<syntaqlite_parser_sqlite::ast::*>>

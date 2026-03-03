@@ -5,7 +5,7 @@ use syntaqlite_parser::DialectConfig;
 use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::{FunctionCategory, FunctionInfo};
 
-use super::types::{FunctionCheckResult, FunctionLookup, SessionFunction};
+use super::types::{FunctionCheckResult, FunctionDef, FunctionLookup};
 
 /// Resolved function catalog for a dialect + config combination.
 ///
@@ -17,16 +17,18 @@ use super::types::{FunctionCheckResult, FunctionLookup, SessionFunction};
 /// Unlike the old `Vec<FunctionDef>` approach, this does **not** expand
 /// one entry per arity — arity checking works directly on the compact
 /// `&[i16]` representation from `FunctionInfo`.
+#[derive(Clone)]
 pub struct FunctionCatalog {
     /// Built-in functions (borrowed from static catalog, NOT expanded per-arity).
     builtins: Vec<&'static FunctionInfo<'static>>,
     /// Dialect extension functions (owned, copied from C data at construction).
     extensions: Vec<OwnedFunctionInfo>,
     /// User/session-defined functions.
-    session: Vec<SessionFunction>,
+    session: Vec<FunctionDef>,
 }
 
 /// Internal owned version for dialect extensions whose lifetime doesn't match `'static`.
+#[derive(Clone)]
 struct OwnedFunctionInfo {
     name: String,
     arities: Vec<i16>,
@@ -72,7 +74,7 @@ impl FunctionCatalog {
     }
 
     /// Append user-defined functions from a list of session functions.
-    pub fn add_session_functions(&mut self, functions: &[SessionFunction]) {
+    pub fn add_session_functions(&mut self, functions: &[FunctionDef]) {
         self.session.extend(functions.iter().cloned());
     }
 
@@ -365,7 +367,7 @@ mod tests {
     fn catalog_check_call_session_function() {
         let dialect = syntaqlite_parser_sqlite::dialect();
         let mut catalog = FunctionCatalog::for_default_dialect(&dialect);
-        catalog.add_session_functions(&[SessionFunction {
+        catalog.add_session_functions(&[FunctionDef {
             name: "my_func".to_string(),
             args: Some(2),
         }]);

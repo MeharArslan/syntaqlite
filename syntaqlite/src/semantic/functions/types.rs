@@ -3,13 +3,19 @@
 
 use syntaqlite_parser::FunctionCategory;
 
-/// A user/session-defined function (from DDL parsing, JSON config, or runtime).
+/// A user-defined or database function (from DDL parsing, JSON config, or runtime).
+///
+/// Symmetric with [`RelationDef`](crate::semantic::relations::RelationDef) —
+/// both represent externally-defined schema objects.
 #[derive(Debug, Clone)]
-pub struct SessionFunction {
+pub struct FunctionDef {
     pub name: String,
     /// `None` = variadic (any number of arguments).
     pub args: Option<usize>,
 }
+
+/// Backward-compatible alias.
+pub type SessionFunction = FunctionDef;
 
 /// Result of checking a function call against the catalog.
 pub enum FunctionCheckResult {

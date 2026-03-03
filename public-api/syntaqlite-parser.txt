@@ -548,6 +548,7 @@ pub fn syntaqlite_parser::RawParser<'_>::drop(&mut self)
 pub fn syntaqlite_parser::RawParser<'d>::new(dialect: impl core::convert::Into<syntaqlite_parser::RawDialect<'d>>) -> Self
 pub fn syntaqlite_parser::RawParser<'d>::parse_cstr<'a>(&'a mut self, source: &'a core::ffi::c_str::CStr) -> syntaqlite_parser::RawStatementCursor<'a>
 pub fn syntaqlite_parser::RawParser<'d>::parse<'a>(&'a mut self, source: &'a str) -> syntaqlite_parser::RawStatementCursor<'a>
+pub fn syntaqlite_parser::RawParser<'d>::reader(&self) -> syntaqlite_parser::RawNodeReader<'_>
 pub fn syntaqlite_parser::RawParser<'d>::with_config(dialect: impl core::convert::Into<syntaqlite_parser::RawDialect<'d>>, config: &syntaqlite_parser::ParserConfig) -> Self
 pub fn syntaqlite_parser::RawStatementCursor<'a>::comments(&self) -> &[syntaqlite_parser::Comment]
 pub fn syntaqlite_parser::RawStatementCursor<'a>::next_statement(&mut self) -> core::option::Option<core::result::Result<syntaqlite_parser::NodeRef<'a>, syntaqlite_parser::ParseError>>

@@ -6,10 +6,11 @@ use std::collections::HashMap;
 use crate::fmt::FormatConfig;
 use crate::fmt::formatter::Formatter;
 use crate::lsp::analysis::DocumentAnalysis;
+use crate::semantic::DatabaseCatalog;
+use crate::semantic::ValidationConfig;
+use crate::semantic::analyzer::SemanticAnalyzer;
+use crate::semantic::diagnostics::Diagnostic;
 use crate::semantic::functions::FunctionCatalog;
-use crate::semantic::relations::RelationCatalog;
-use crate::validation::types::{Diagnostic, SessionContext};
-use crate::validation::{DocumentContext, ValidationConfig, validate_statement_dialect};
 use syntaqlite_parser::ParseError;
 use syntaqlite_parser::RawDialect;
 
@@ -32,53 +33,59 @@ impl Document {
     }
 }
 
-// ── AnalysisHost ──────────────────────────────────────────────────────────
+// ── LspHost ──────────────────────────────────────────────────────────────
 
 /// Manages open documents and answers analysis queries.
 ///
-/// The host stores documents by URI and lazily computes per-document
-/// analysis (diagnostics, semantic tokens, completion tokens) on first
-/// access after each edit.  Heavy analysis is delegated to
-/// [`DocumentAnalysis`] and [`FunctionCatalog`].
-pub struct AnalysisHost<'d> {
+/// Stores documents by URI and lazily computes per-document analysis
+/// (diagnostics, semantic tokens, completion tokens) on first access after
+/// each edit. Semantic validation delegates to [`SemanticAnalyzer`].
+pub struct LspHost<'d> {
     dialect: RawDialect<'d>,
     documents: HashMap<String, Document>,
-    context: Option<SessionContext>,
+    context: Option<DatabaseCatalog>,
     dialect_config: Option<syntaqlite_parser::DialectConfig>,
+    analyzer: SemanticAnalyzer<'d>,
 }
 
-impl<'d> AnalysisHost<'d> {
+impl<'d> LspHost<'d> {
     /// Create a host bound to `dialect`.
     pub fn with_dialect(dialect: impl Into<RawDialect<'d>>) -> Self {
-        AnalysisHost {
-            dialect: dialect.into(),
+        let dialect = dialect.into();
+        let analyzer = SemanticAnalyzer::with_dialect(dialect);
+        LspHost {
+            dialect,
             documents: HashMap::new(),
             context: None,
             dialect_config: None,
+            analyzer,
         }
     }
 
     /// Create a host for the built-in SQLite dialect.
     #[cfg(feature = "sqlite")]
-    pub fn new() -> AnalysisHost<'static> {
-        AnalysisHost::with_dialect(crate::dialect::sqlite())
+    pub fn new() -> LspHost<'static> {
+        LspHost::with_dialect(crate::dialect::sqlite())
     }
 
     // ── Configuration ─────────────────────────────────────────────────────
 
     /// Set the session context (user-provided schema and functions).
-    pub fn set_session_context(&mut self, ctx: SessionContext) {
+    pub fn set_session_context(&mut self, ctx: DatabaseCatalog) {
         self.context = Some(ctx);
     }
 
     /// Access the current session context.
-    pub fn session_context(&self) -> Option<&SessionContext> {
+    pub fn session_context(&self) -> Option<&DatabaseCatalog> {
         self.context.as_ref()
     }
 
     /// Set the dialect configuration for version/cflag-gated function filtering.
     pub fn set_dialect_config(&mut self, config: syntaqlite_parser::DialectConfig) {
         self.dialect_config = Some(config);
+        // Rebuild the analyzer with the new config so its static catalog
+        // reflects the version/cflag filtering.
+        self.analyzer = SemanticAnalyzer::with_dialect_config(self.dialect, &config);
     }
 
     // ── Document lifecycle ─────────────────────────────────────────────────
@@ -243,60 +250,23 @@ impl<'d> AnalysisHost<'d> {
 
     // ── Semantic validation ────────────────────────────────────────────────
 
-    /// Semantic validation diagnostics for a document, generic over dialect AST types.
-    pub fn validate_dialect<A: for<'a> syntaqlite_parser::ast_traits::AstTypes<'a>>(
-        &self,
-        uri: &str,
-        config: &ValidationConfig,
-    ) -> Vec<Diagnostic> {
+    /// Semantic validation diagnostics for a document.
+    ///
+    /// Returns only semantic diagnostics (unknown tables, columns, functions,
+    /// wrong arity). Parse-error diagnostics come from [`diagnostics()`](Self::diagnostics).
+    #[cfg(feature = "sqlite")]
+    pub fn validate(&mut self, uri: &str, config: &ValidationConfig) -> Vec<Diagnostic> {
         let Some(doc) = self.documents.get(uri) else {
             return Vec::new();
         };
-
-        let catalog = self.function_catalog();
-        let mut parser = syntaqlite_parser::RawParser::new(self.dialect);
-        let mut cursor = parser.parse(&doc.source);
-
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            match result {
-                Ok(node_ref) => stmt_ids.push(node_ref.id()),
-                Err(err) => {
-                    if let Some(id) = err.root {
-                        stmt_ids.push(id);
-                    }
-                }
-            }
-        }
-
-        let mut doc_ctx = DocumentContext::new();
-        let reader = cursor.reader();
-        let mut diagnostics = Vec::new();
-        let session_relations = self.context.as_ref().map_or(&[] as &[_], |s| &s.relations);
-
-        for &stmt_id in &stmt_ids {
-            let rel_catalog = RelationCatalog::new(session_relations, &doc_ctx.relations);
-            let stmt_diags = validate_statement_dialect::<A>(
-                reader,
-                stmt_id,
-                self.dialect,
-                rel_catalog,
-                &catalog,
-                config,
-            );
-            diagnostics.extend(stmt_diags);
-
-            #[cfg(feature = "sqlite")]
-            doc_ctx.accumulate(reader, stmt_id, self.dialect, self.context.as_ref());
-        }
-
-        diagnostics
-    }
-
-    /// Semantic validation using the built-in SQLite dialect.
-    #[cfg(feature = "sqlite")]
-    pub fn validate(&self, uri: &str, config: &ValidationConfig) -> Vec<Diagnostic> {
-        self.validate_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(uri, config)
+        let source = doc.source.clone();
+        let empty_db = DatabaseCatalog::default();
+        let catalog = self.context.as_ref().unwrap_or(&empty_db);
+        self.analyzer
+            .diagnostics_with_config(&source, catalog, config)
+            .into_iter()
+            .filter(|d| !d.message.is_parse_error())
+            .collect()
     }
 
     /// Parse + semantic diagnostics combined.
@@ -357,15 +327,17 @@ impl std::error::Error for FormatError {}
 #[cfg(test)]
 #[cfg(feature = "sqlite")]
 mod tests {
-    use super::AnalysisHost;
-    use crate::semantic::functions::SessionFunction;
-    use crate::validation::SessionContext;
+    use super::LspHost;
+    use crate::semantic::DatabaseCatalog;
+    use crate::semantic::ValidationConfig;
+    use crate::semantic::diagnostics::{DiagnosticMessage, Severity};
+    use crate::semantic::functions::FunctionDef;
     use syntaqlite_parser::RawParser;
     use syntaqlite_parser_sqlite::tokens::TokenType;
 
     #[test]
     fn completions_fall_back_to_last_good_state_on_parse_error() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         let sql = "SELECT * FR";
         host.open_document(uri, 1, sql.to_string());
@@ -379,7 +351,7 @@ mod tests {
 
     #[test]
     fn completions_ignore_prior_statement_errors_after_semicolon() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         let sql = "SELEC 1; SELECT * FR";
         host.open_document(uri, 1, sql.to_string());
@@ -393,7 +365,7 @@ mod tests {
 
     #[test]
     fn completions_include_join_after_from_alias_with_partial_next_token() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         let sql = "SELECT * FROM s AS x J";
         host.open_document(uri, 1, sql.to_string());
@@ -407,7 +379,7 @@ mod tests {
 
     #[test]
     fn completions_include_join_after_from_table_with_trailing_space() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         let sql = "SELECT * FROM slice ";
         host.open_document(uri, 1, sql.to_string());
@@ -432,7 +404,7 @@ mod tests {
 
     #[test]
     fn available_functions_default_config_includes_baseline() {
-        let host = AnalysisHost::new();
+        let host = LspHost::new();
         let names = host.available_function_names();
         assert!(names.iter().any(|n| n == "abs"));
         assert!(names.iter().any(|n| n == "count"));
@@ -444,7 +416,7 @@ mod tests {
 
     #[test]
     fn available_functions_with_config_filters_by_cflags() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let mut config = syntaqlite_parser::DialectConfig::default();
         config.cflags.set(34);
         host.set_dialect_config(config);
@@ -457,10 +429,10 @@ mod tests {
 
     #[test]
     fn available_functions_merges_ambient_context() {
-        let mut host = AnalysisHost::new();
-        host.set_session_context(SessionContext {
+        let mut host = LspHost::new();
+        host.set_session_context(DatabaseCatalog {
             relations: vec![],
-            functions: vec![SessionFunction {
+            functions: vec![FunctionDef {
                 name: "my_custom_func".to_string(),
                 args: Some(2),
             }],
@@ -472,7 +444,7 @@ mod tests {
 
     #[test]
     fn completion_context_after_from_is_table_ref() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         let sql = "SELECT acos() as foo FROM ";
         host.open_document(uri, 1, sql.to_string());
@@ -482,7 +454,7 @@ mod tests {
 
     #[test]
     fn completion_context_after_select_is_not_table_ref() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         let sql = "SELECT ";
         host.open_document(uri, 1, sql.to_string());
@@ -492,7 +464,7 @@ mod tests {
 
     #[test]
     fn completion_context_after_where_is_expression() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         let sql = "SELECT * FROM t WHERE ";
         host.open_document(uri, 1, sql.to_string());
@@ -502,7 +474,7 @@ mod tests {
 
     #[test]
     fn completions_include_join_after_from_table_no_trailing_space() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         let sql = "SELECT * FROM slice";
         host.open_document(uri, 1, sql.to_string());
@@ -512,7 +484,7 @@ mod tests {
 
     #[test]
     fn validate_select_after_create_table_as_select_no_diags() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(
             uri,
@@ -520,45 +492,45 @@ mod tests {
             "CREATE TABLE orders AS SELECT 1 AS order_id;\nSELECT o.order_id FROM orders o;"
                 .to_string(),
         );
-        let diags = host.validate(uri, &crate::validation::ValidationConfig::default());
+        let diags = host.validate(uri, &ValidationConfig::default());
         assert!(diags.is_empty(), "unexpected diagnostics: {:?}", diags);
     }
 
     #[test]
     fn validate_select_from_unknown_table_still_warns() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "SELECT * FROM nonexistent;".to_string());
-        let diags = host.validate(uri, &crate::validation::ValidationConfig::default());
+        let diags = host.validate(uri, &ValidationConfig::default());
         assert!(!diags.is_empty());
     }
 
     #[test]
     fn validate_forward_reference_warns() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(
             uri,
             1,
             "SELECT * FROM t;\nCREATE TABLE t (id INTEGER);".to_string(),
         );
-        let diags = host.validate(uri, &crate::validation::ValidationConfig::default());
+        let diags = host.validate(uri, &ValidationConfig::default());
         assert!(!diags.is_empty());
     }
 
     #[test]
     fn syntax_error_produces_diagnostic_for_bare_select() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "SELECT ".to_string());
         let (_, _, diags) = host.document_diagnostics(uri).unwrap();
         assert!(!diags.is_empty());
-        assert_eq!(diags[0].severity, crate::validation::Severity::Error);
+        assert_eq!(diags[0].severity, Severity::Error);
     }
 
     #[test]
     fn syntax_error_produces_diagnostic_for_incomplete_from() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "SELECT * FROM".to_string());
         let (_, _, diags) = host.document_diagnostics(uri).unwrap();
@@ -567,7 +539,7 @@ mod tests {
 
     #[test]
     fn validation_returns_error_for_syntax_invalid_sql() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "NOT VALID SQL;".to_string());
         let (_, _, diags) = host.document_diagnostics(uri).unwrap();
@@ -576,20 +548,20 @@ mod tests {
 
     #[test]
     fn multiple_syntax_errors_all_reported() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "include ;\ninclude ;\nSELECT 1;".to_string());
         let (_, _, diags) = host.document_diagnostics(uri).unwrap();
         let errors: Vec<_> = diags
             .iter()
-            .filter(|d| d.severity == crate::validation::Severity::Error)
+            .filter(|d| d.severity == Severity::Error)
             .collect();
         assert_eq!(errors.len(), 2, "got {}: {:?}", errors.len(), errors);
     }
 
     #[test]
     fn syntax_errors_do_not_suppress_later_valid_statements() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "NOT VALID;\nSELECT 1;".to_string());
         let (_, _, diags) = host.document_diagnostics(uri).unwrap();
@@ -598,7 +570,7 @@ mod tests {
 
     #[test]
     fn syntax_error_after_valid_statement_is_reported() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "SELECT 1;\nNOT VALID;".to_string());
         let (_, _, diags) = host.document_diagnostics(uri).unwrap();
@@ -607,45 +579,40 @@ mod tests {
 
     #[test]
     fn validate_does_not_duplicate_parse_error_diagnostics() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "SELECT ;\nSELECT 1;".to_string());
-        let diags = host.validate(uri, &crate::validation::ValidationConfig::default());
+        let diags = host.validate(uri, &ValidationConfig::default());
         assert_eq!(diags.len(), 0, "got: {:?}", diags);
     }
 
     #[test]
     fn validate_continues_past_errors_to_check_later_statements() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(
             uri,
             1,
             "SELECT ;\nSELECT ;\nSELECT * FROM no_such_table;".to_string(),
         );
-        let diags = host.validate(uri, &crate::validation::ValidationConfig::default());
+        let diags = host.validate(uri, &ValidationConfig::default());
         let table_diags: Vec<_> = diags
             .iter()
-            .filter(|d| {
-                matches!(
-                    &d.message,
-                    crate::validation::DiagnosticMessage::UnknownTable { .. }
-                )
-            })
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { .. }))
             .collect();
         assert_eq!(table_diags.len(), 1, "got: {:?}", diags);
     }
 
     #[test]
     fn syntax_error_offset_points_at_error_token_not_following_token() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         let sql = "select 1 from slice where foo = where x = y;";
         host.open_document(uri, 1, sql.to_string());
         let (_, _, diags) = host.document_diagnostics(uri).unwrap();
         assert!(!diags.is_empty());
         let diag = &diags[0];
-        assert_eq!(diag.severity, crate::validation::Severity::Error);
+        assert_eq!(diag.severity, Severity::Error);
         let second_where = sql[31..].find("where").map(|i| i + 31).unwrap();
         assert_eq!(
             diag.start_offset,
@@ -679,19 +646,16 @@ mod tests {
 
     #[test]
     fn parse_and_validate_combined_no_duplicates() {
-        let mut host = AnalysisHost::new();
+        let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "SELECT ;\nSELECT * FROM no_such_table;".to_string());
         let parse_diags = host.diagnostics(uri).to_vec();
-        let val_diags = host.validate(uri, &crate::validation::ValidationConfig::default());
+        let val_diags = host.validate(uri, &ValidationConfig::default());
         let all: Vec<_> = parse_diags.iter().chain(val_diags.iter()).collect();
-        let errors = all
-            .iter()
-            .filter(|d| d.severity == crate::validation::Severity::Error)
-            .count();
+        let errors = all.iter().filter(|d| d.severity == Severity::Error).count();
         let warnings = all
             .iter()
-            .filter(|d| d.severity == crate::validation::Severity::Warning)
+            .filter(|d| d.severity == Severity::Warning)
             .count();
         assert_eq!(errors, 1, "got {}: {:?}", errors, all);
         assert_eq!(warnings, 1, "got {}: {:?}", warnings, all);

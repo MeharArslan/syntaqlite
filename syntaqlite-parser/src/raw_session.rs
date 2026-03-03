@@ -125,6 +125,24 @@ impl<'d> RawParser<'d> {
             last_saw_update_delete_limit: false,
         }
     }
+
+    /// Get a node reader for the parser's current arena state.
+    ///
+    /// Valid after a `parse()` call has completed (cursor iterated to
+    /// completion or dropped). The returned reader borrows the parser and
+    /// the internal source buffer.
+    pub fn reader(&self) -> RawNodeReader<'_> {
+        let source = if self.source_buf.is_empty() {
+            ""
+        } else {
+            // source_buf is the original source + null terminator.
+            let len = self.source_buf.len() - 1;
+            std::str::from_utf8(&self.source_buf[..len]).expect("source was valid UTF-8")
+        };
+        // SAFETY: self.raw is valid for the lifetime of &self. The source
+        // borrows from source_buf which is also valid for &self.
+        unsafe { RawNodeReader::new(self.raw.as_ptr(), source) }
+    }
 }
 
 impl Drop for RawParser<'_> {

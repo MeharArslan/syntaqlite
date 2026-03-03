@@ -12,4 +12,4 @@ mod catalog;
 mod types;
 
 pub use catalog::FunctionCatalog;
-pub use types::{FunctionCheckResult, FunctionLookup, SessionFunction};
+pub use types::{FunctionCheckResult, FunctionDef, FunctionLookup, SessionFunction};

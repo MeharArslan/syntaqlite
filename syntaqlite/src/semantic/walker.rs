@@ -9,30 +9,31 @@ use syntaqlite_parser::RawNodeReader;
 use syntaqlite_parser::TypedList;
 use syntaqlite_parser::ast_traits::*;
 
-use crate::semantic::functions::{FunctionCatalog, FunctionCheckResult};
-
 use super::ValidationConfig;
+use super::catalog::CatalogStack;
 use super::checks::{check_column_ref, check_table_ref};
+use super::diagnostics::{Diagnostic, DiagnosticMessage, Help};
 use super::fuzzy::best_suggestion;
 use super::scope::ScopeStack;
-use super::types::{Diagnostic, DiagnosticMessage, Help};
 
-pub(super) struct Walker<'a, 'd, A: AstTypes<'a>> {
+use super::functions::FunctionCheckResult;
+
+pub(crate) struct Walker<'a, 'd, A: AstTypes<'a>> {
     reader: RawNodeReader<'a>,
     dialect: RawDialect<'d>,
-    catalog: &'a FunctionCatalog,
+    catalog: &'a CatalogStack<'a>,
     config: &'a ValidationConfig,
     diagnostics: Vec<Diagnostic>,
     _ast: PhantomData<A>,
 }
 
 impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
-    pub(super) fn run(
+    pub(crate) fn run(
         reader: RawNodeReader<'a>,
         stmt: A::Stmt,
         dialect: RawDialect<'d>,
         scope: &mut ScopeStack,
-        catalog: &'a FunctionCatalog,
+        catalog: &'a CatalogStack<'a>,
         config: &'a ValidationConfig,
     ) -> Vec<Diagnostic> {
         let mut walker: Walker<'_, '_, A> = Walker {
@@ -368,10 +369,10 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
         if !name.is_empty() {
             let offset = self.str_offset(name);
             let arg_count = args.as_ref().map_or(0, |a| a.len());
-            match self.catalog.check_call(name, arg_count) {
+            match self.catalog.check_function(name, arg_count) {
                 FunctionCheckResult::Ok => {}
                 FunctionCheckResult::Unknown => {
-                    let all_names = self.catalog.all_names();
+                    let all_names = self.catalog.all_function_names();
                     let suggestion =
                         best_suggestion(name, &all_names, self.config.suggestion_threshold);
                     self.diagnostics.push(Diagnostic {
@@ -430,108 +431,5 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
                 self.walk_expr(expr, scope);
             }
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::validation::{ValidationConfig, Validator};
-
-    fn validate_sql(sql: &str) -> Vec<super::super::types::Diagnostic> {
-        let mut validator = Validator::new();
-        validator.validate(sql, None, &ValidationConfig::default())
-    }
-
-    #[test]
-    fn create_table_as_select_unknown_table_warns() {
-        let diags = validate_sql("CREATE TABLE t AS SELECT * FROM nonexistent;");
-        assert!(
-            !diags.is_empty(),
-            "expected a diagnostic for unknown table in CREATE TABLE AS SELECT"
-        );
-    }
-
-    #[test]
-    fn create_table_as_select_known_table_no_diags() {
-        let sql = "CREATE TABLE src (id INTEGER);\nCREATE TABLE t AS SELECT * FROM src;";
-        let diags = validate_sql(sql);
-        assert!(
-            diags.is_empty(),
-            "expected no diagnostics when source table is known: {:?}",
-            diags
-        );
-    }
-
-    #[test]
-    fn create_view_as_select_unknown_table_warns() {
-        let diags = validate_sql("CREATE VIEW v AS SELECT * FROM nonexistent;");
-        assert!(
-            !diags.is_empty(),
-            "expected a diagnostic for unknown table in CREATE VIEW AS SELECT"
-        );
-    }
-
-    #[test]
-    fn create_trigger_body_unknown_table_warns() {
-        let diags = validate_sql(
-            "CREATE TRIGGER trg AFTER INSERT ON t \
-             BEGIN SELECT * FROM nonexistent; END;",
-        );
-        assert!(
-            !diags.is_empty(),
-            "expected a diagnostic for unknown table in trigger body"
-        );
-    }
-
-    #[test]
-    fn create_table_as_select_literal_column_mismatch_warns() {
-        // CREATE TABLE slice AS SELECT 2 → table has no named columns.
-        // Referencing slice."1" should warn about unknown column.
-        let dialect = syntaqlite_parser_sqlite::dialect();
-        let mut parser = syntaqlite_parser::RawParser::new(dialect);
-        let sql = "CREATE TABLE slice AS SELECT 2;\nSELECT slice.\"1\" FROM slice;";
-        let mut cursor = parser.parse(sql);
-        let stmt_ids: Vec<_> = (&mut cursor)
-            .map(|r| r.map(|nr: syntaqlite_parser::NodeRef<'_>| nr.id()))
-            .collect::<Result<Vec<_>, _>>()
-            .expect("parse failed");
-        let catalog = crate::semantic::functions::FunctionCatalog::for_default_dialect(&dialect);
-        let diags = crate::validation::validate_document(
-            cursor.reader(),
-            &stmt_ids,
-            dialect,
-            None,
-            &catalog,
-            &ValidationConfig::default(),
-        );
-        let col_diags: Vec<_> = diags
-            .iter()
-            .filter(|d| d.message.to_string().contains("column"))
-            .collect();
-        assert!(
-            !col_diags.is_empty(),
-            "expected a diagnostic for unknown column '1' in table 'slice'"
-        );
-    }
-
-    #[test]
-    fn create_trigger_body_old_new_no_diags() {
-        // OLD and NEW should be available in trigger body without warnings.
-        let diags = validate_sql(
-            "CREATE TRIGGER trg AFTER UPDATE ON t \
-             BEGIN SELECT NEW.x, OLD.y FROM t; END;",
-        );
-        let old_new_diags: Vec<_> = diags
-            .iter()
-            .filter(|d| {
-                let s = d.message.to_string();
-                s.contains("OLD") || s.contains("NEW")
-            })
-            .collect();
-        assert!(
-            old_new_diags.is_empty(),
-            "OLD/NEW should not produce diagnostics in trigger body: {:?}",
-            old_new_diags
-        );
     }
 }

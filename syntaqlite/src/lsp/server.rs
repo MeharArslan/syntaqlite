@@ -22,15 +22,15 @@ use lsp_types::{
 
 use crate::dialect::SEMANTIC_TOKEN_LEGEND;
 use crate::fmt::FormatConfig;
-use crate::lsp::{AnalysisHost, CompletionKind};
-use crate::validation::Severity;
+use crate::lsp::{CompletionKind, LspHost};
+use crate::semantic::diagnostics::Severity;
 use syntaqlite_parser::RawDialect;
 
 // ── LspServer ─────────────────────────────────────────────────────────────
 
 /// Stdio LSP server for a syntaqlite dialect.
 ///
-/// Runs a JSON-RPC message loop on stdin/stdout, driving an [`AnalysisHost`]
+/// Runs a JSON-RPC message loop on stdin/stdout, driving an [`LspHost`]
 /// for all analysis requests.  Exits cleanly when the client sends a
 /// `shutdown` request.
 pub struct LspServer;
@@ -71,7 +71,7 @@ impl LspServer {
             eprintln!("syntaqlite-lsp: workspace root: {}", root.display());
         }
 
-        let mut host = AnalysisHost::with_dialect(dialect);
+        let mut host = LspHost::with_dialect(dialect);
 
         for msg in &connection.receiver {
             match msg {
@@ -96,7 +96,7 @@ impl LspServer {
 
     fn handle_request(
         connection: &Connection,
-        host: &mut AnalysisHost<'_>,
+        host: &mut LspHost<'_>,
         req: Request,
     ) -> Result<(), Box<dyn Error + Sync + Send>> {
         let response = match req.method.as_str() {
@@ -113,7 +113,7 @@ impl LspServer {
         Ok(())
     }
 
-    fn handle_completion(req: Request, host: &mut AnalysisHost<'_>) -> Response {
+    fn handle_completion(req: Request, host: &mut LspHost<'_>) -> Response {
         let params: lsp_types::CompletionParams = match serde_json::from_value(req.params) {
             Ok(p) => p,
             Err(e) => {
@@ -153,7 +153,7 @@ impl LspServer {
         }
     }
 
-    fn handle_formatting(req: Request, host: &mut AnalysisHost<'_>) -> Response {
+    fn handle_formatting(req: Request, host: &mut LspHost<'_>) -> Response {
         let params: lsp_types::DocumentFormattingParams = match serde_json::from_value(req.params) {
             Ok(p) => p,
             Err(e) => {
@@ -181,7 +181,7 @@ impl LspServer {
         }
     }
 
-    fn handle_semantic_tokens(req: Request, host: &mut AnalysisHost<'_>) -> Response {
+    fn handle_semantic_tokens(req: Request, host: &mut LspHost<'_>) -> Response {
         let params: lsp_types::SemanticTokensParams = match serde_json::from_value(req.params) {
             Ok(p) => p,
             Err(e) => {
@@ -217,7 +217,7 @@ impl LspServer {
 
     fn handle_notification(
         connection: &Connection,
-        host: &mut AnalysisHost<'_>,
+        host: &mut LspHost<'_>,
         notif: Notification,
     ) -> Result<(), Box<dyn Error + Sync + Send>> {
         match notif.method.as_str() {
@@ -287,7 +287,7 @@ struct DiagnosticPublisher;
 impl DiagnosticPublisher {
     fn publish(
         connection: &Connection,
-        host: &mut AnalysisHost<'_>,
+        host: &mut LspHost<'_>,
         uri: &Uri,
     ) -> Result<(), Box<dyn Error + Sync + Send>> {
         let uri_str = uri.as_str();

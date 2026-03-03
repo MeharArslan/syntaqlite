@@ -22,9 +22,10 @@ pub use typescript::extract_typescript;
 use std::ops::Range;
 
 use crate::dialect::{DialectExt, TokenCategory};
+use crate::semantic::ValidationConfig;
+use crate::semantic::catalog::{CatalogStack, DocumentCatalog, StaticCatalog};
+use crate::semantic::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
 use crate::semantic::functions::FunctionCatalog;
-use crate::validation::ValidationConfig;
-use crate::validation::types::{Diagnostic, DiagnosticMessage};
 use syntaqlite_parser::ParseError;
 use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::RawIncrementalParser;
@@ -393,15 +394,52 @@ impl<'d> EmbeddedAnalyzer<'d> {
             Err(e) => results.push(Err(e)),
         }
 
-        crate::validation::validate_parse_results(
-            cursor.reader(),
-            &results,
-            &fragment.sql_text,
-            dialect,
-            None,
-            &self.catalog,
-            &self.config,
-        )
+        let reader = cursor.reader();
+        let static_catalog = StaticCatalog {
+            functions: self.catalog.clone(),
+            relations: Vec::new(),
+        };
+        let db_catalog = crate::semantic::DatabaseCatalog::default();
+        let mut doc_catalog = DocumentCatalog::new();
+        let mut diags = Vec::new();
+
+        let mut stmt_ids = Vec::new();
+        for result in &results {
+            match result {
+                Ok(id) => stmt_ids.push(*id),
+                Err(err) => {
+                    if let Some(root) = err.root {
+                        stmt_ids.push(root);
+                    }
+                    let (start_offset, end_offset) =
+                        crate::semantic::analyzer::parse_error_span(err, &fragment.sql_text);
+                    diags.push(Diagnostic {
+                        start_offset,
+                        end_offset,
+                        message: DiagnosticMessage::Other(err.message.clone()),
+                        severity: Severity::Error,
+                        help: None,
+                    });
+                }
+            }
+        }
+
+        for &stmt_id in &stmt_ids {
+            let catalog_stack = CatalogStack {
+                static_: &static_catalog,
+                database: &db_catalog,
+                document: &doc_catalog,
+            };
+            let stmt_diags = crate::semantic::analyzer::validate_statement_dialect::<
+                syntaqlite_parser_sqlite::ast::SqliteAst,
+            >(reader, stmt_id, dialect, &catalog_stack, &self.config);
+            diags.extend(stmt_diags);
+
+            #[cfg(feature = "sqlite")]
+            doc_catalog.accumulate(reader, stmt_id, dialect, Some(&db_catalog));
+        }
+
+        diags
     }
 }
 
@@ -423,10 +461,7 @@ fn is_hole_diagnostic(diag: &Diagnostic, fragment: &EmbeddedFragment) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        embedded::{python::extract_python, typescript::extract_typescript},
-        validation::Severity,
-    };
+    use crate::embedded::{python::extract_python, typescript::extract_typescript};
 
     fn analyzer() -> EmbeddedAnalyzer<'static> {
         let dialect = crate::dialect::sqlite();

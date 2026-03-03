@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use clap::ValueEnum;
 use syntaqlite::Formatter;
-use syntaqlite::validation::{SourceContext, ValidationConfig};
+use syntaqlite::semantic::{SourceContext, ValidationConfig};
 use syntaqlite::{FormatConfig, KeywordCase};
 use syntaqlite_parser::{FfiDialect, ParseError, RawDialect, RawParser};
 
@@ -337,9 +337,9 @@ fn validate_source(
     file: &str,
     config: &ValidationConfig,
 ) -> bool {
-    let catalog = syntaqlite::semantic::functions::FunctionCatalog::for_default_dialect(&dialect);
-    let mut validator = syntaqlite::Validator::with_catalog(dialect, catalog, None);
-    let diags = validator.validate(source, None, config);
+    let catalog = syntaqlite::DatabaseCatalog::default();
+    let mut analyzer = syntaqlite::SemanticAnalyzer::with_dialect(dialect);
+    let diags = analyzer.diagnostics_with_config(source, &catalog, config);
     SourceContext::new(source, file).render_diagnostics(&diags)
 }
 
