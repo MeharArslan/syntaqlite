@@ -11,7 +11,7 @@ use clap::ValueEnum;
 use syntaqlite::Formatter;
 use syntaqlite::semantic::{SourceContext, ValidationConfig};
 use syntaqlite::{FormatConfig, KeywordCase};
-use syntaqlite_parser::{Dialect, DialectEnv, ParseError, RawParser};
+use syntaqlite_parser::{Dialect, DialectEnv, ParseError, Parser};
 
 use super::{Cli, Command};
 
@@ -251,7 +251,7 @@ fn cmd_fmt(
 }
 
 fn dump_ast_source(dialect: DialectEnv<'_>, source: &str) -> (String, Vec<ParseError>) {
-    let parser = RawParser::new(dialect);
+    let parser = Parser::new(dialect);
     let mut cursor = parser.parse(source);
     let mut out = String::new();
     let mut errors = Vec::new();

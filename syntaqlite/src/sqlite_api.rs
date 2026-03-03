@@ -10,7 +10,7 @@
 use std::ops::Range;
 
 use syntaqlite_parser::{
-    Comment, MacroRegion, NodeRef, ParseError, ParserConfig, RawNodeId,
+    Comment, MacroRegion, NodeId, NodeRef, ParseError, ParserConfig,
     TypedDialectEnv as TaggedDialect,
 };
 use syntaqlite_parser_sqlite::SqliteNodeFamily;
@@ -111,12 +111,12 @@ impl StatementCursor {
     ///
     /// Returns `Some(node)` if the ID refers to a valid arena node of the
     /// correct type, or `None` if the ID is null, invalid, or mismatched.
-    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'_>> {
+    pub fn resolve<I: syntaqlite_parser::TypedNodeId>(&self, id: I) -> Option<I::Node<'_>> {
         self.inner.resolve(id)
     }
 
-    /// Wrap a [`RawNodeId`] into a [`NodeRef`] using this cursor's reader and dialect.
-    pub fn node_ref(&self, id: RawNodeId) -> NodeRef<'_> {
+    /// Wrap a [`NodeId`] into a [`NodeRef`] using this cursor's reader and dialect.
+    pub fn node_ref(&self, id: NodeId) -> NodeRef<'_> {
         self.inner.node_ref(id)
     }
 }
@@ -290,7 +290,7 @@ impl IncrementalCursor {
     ///
     /// Returns `Some(node)` if the ID refers to a valid arena node of the
     /// correct type, or `None` if the ID is null, invalid, or mismatched.
-    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'_>> {
+    pub fn resolve<I: syntaqlite_parser::TypedNodeId>(&self, id: I) -> Option<I::Node<'_>> {
         self.inner.resolve(id)
     }
 }

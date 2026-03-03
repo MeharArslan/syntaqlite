@@ -4,8 +4,8 @@
 use std::marker::PhantomData;
 
 use crate::dialect_traits::DialectNodeType;
-use crate::nodes::{NodeList, RawNodeId};
-use crate::session::RawParseResult;
+use crate::nodes::{NodeId, NodeList};
+use crate::session::ParseResult;
 
 /// A typed, read-only view over a `NodeList` in the parser arena.
 ///
@@ -14,8 +14,8 @@ use crate::session::RawParseResult;
 #[derive(Clone, Copy)]
 pub struct TypedList<'a, T> {
     raw: &'a NodeList,
-    reader: RawParseResult<'a>,
-    id: RawNodeId,
+    reader: ParseResult<'a>,
+    id: NodeId,
     _phantom: PhantomData<fn() -> T>,
 }
 
@@ -29,7 +29,7 @@ impl<T> std::fmt::Debug for TypedList<'_, T> {
 
 impl<'a, T> TypedList<'a, T> {
     /// The arena node ID of this list.
-    pub fn node_id(&self) -> RawNodeId {
+    pub fn node_id(&self) -> NodeId {
         self.id
     }
 
@@ -61,9 +61,9 @@ impl<'a, T: DialectNodeType<'a>> TypedList<'a, T> {
     }
 }
 
-/// Blanket `DialectNodeType` for `TypedList` — resolves the `RawNodeId` as a list node.
+/// Blanket `DialectNodeType` for `TypedList` — resolves the `NodeId` as a list node.
 impl<'a, T> DialectNodeType<'a> for TypedList<'a, T> {
-    fn from_arena(reader: RawParseResult<'a>, id: RawNodeId) -> Option<Self> {
+    fn from_arena(reader: ParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_list(id)?;
         Some(TypedList {
             raw,

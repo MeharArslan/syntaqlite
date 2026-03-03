@@ -27,9 +27,9 @@ use crate::semantic::catalog::{CatalogStack, DocumentCatalog, StaticCatalog};
 use crate::semantic::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
 use crate::semantic::functions::FunctionCatalog;
 use syntaqlite_parser::DialectEnv;
+use syntaqlite_parser::IncrementalParser;
 use syntaqlite_parser::ParseError;
-use syntaqlite_parser::RawIncrementalParser;
-use syntaqlite_parser::RawTokenizer;
+use syntaqlite_parser::Tokenizer;
 
 use offset_map::OffsetMap;
 
@@ -211,8 +211,8 @@ impl<'d> EmbeddedAnalyzer<'d> {
         fragment: &EmbeddedFragment,
     ) -> Vec<(usize, usize, TokenCategory)> {
         let dialect = self.dialect;
-        let parser = RawIncrementalParser::new(dialect);
-        let tokenizer = RawTokenizer::new(dialect);
+        let parser = IncrementalParser::new(dialect);
+        let tokenizer = Tokenizer::new(dialect);
 
         // Tokenize the processed SQL text.
         let tokens: Vec<(u32, usize, usize)> = {
@@ -346,8 +346,8 @@ impl<'d> EmbeddedAnalyzer<'d> {
     /// Returns diagnostics with SQL-text byte offsets (not yet mapped to host).
     fn validate_fragment(&self, fragment: &EmbeddedFragment) -> Vec<Diagnostic> {
         let dialect = self.dialect;
-        let parser = RawIncrementalParser::new(dialect);
-        let tokenizer = RawTokenizer::new(dialect);
+        let parser = IncrementalParser::new(dialect);
+        let tokenizer = Tokenizer::new(dialect);
 
         // Tokenize the processed SQL text.
         let tokens: Vec<(u32, usize, usize)> = {
@@ -362,7 +362,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
 
         // Feed tokens to the low-level parser, collecting results.
         let mut cursor = parser.feed(&fragment.sql_text);
-        let mut results: Vec<Result<syntaqlite_parser::RawNodeId, ParseError>> = Vec::new();
+        let mut results: Vec<Result<syntaqlite_parser::NodeId, ParseError>> = Vec::new();
 
         for &(token_type, offset, length) in &tokens {
             let hole = fragment

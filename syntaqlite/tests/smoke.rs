@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite::ast::Stmt;
-use syntaqlite_parser::RawParser;
+use syntaqlite_parser::Parser;
 
-fn new_parser() -> RawParser<'static> {
-    RawParser::new(syntaqlite::dialect::sqlite())
+fn new_parser() -> Parser<'static> {
+    Parser::new(syntaqlite::dialect::sqlite())
 }
 
 #[test]
@@ -164,9 +164,9 @@ fn parser_reuse() {
 
 // -- DELETE / UPDATE with ORDER BY and LIMIT --
 
-fn parser_with_update_delete_limit() -> RawParser<'static> {
+fn parser_with_update_delete_limit() -> Parser<'static> {
     let env = syntaqlite::dialect::sqlite().with_cflag(40); // SQLITE_ENABLE_UPDATE_DELETE_LIMIT
-    RawParser::new(env)
+    Parser::new(env)
 }
 
 #[test]

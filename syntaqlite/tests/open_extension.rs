@@ -2,10 +2,10 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite::ast::{Node, Stmt};
-use syntaqlite_parser::RawParser;
+use syntaqlite_parser::Parser;
 
-fn new_parser() -> RawParser<'static> {
-    RawParser::new(syntaqlite::dialect::sqlite())
+fn new_parser() -> Parser<'static> {
+    Parser::new(syntaqlite::dialect::sqlite())
 }
 
 #[test]

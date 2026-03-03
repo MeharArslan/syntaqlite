@@ -315,7 +315,7 @@ impl<'d> Dialect<'d> {
 }
 
 use crate::catalog::{AvailabilityRule, FunctionCategory, FunctionEntry, FunctionInfo};
-use crate::nodes::{FieldVal, Fields, RawNodeId, SourceSpan};
+use crate::nodes::{FieldVal, Fields, NodeId, SourceSpan};
 
 // ── Safe DialectEnv handle ───────────────────────────────────────────────────────────
 
@@ -821,7 +821,7 @@ pub(crate) unsafe fn extract_field_val<'a>(
     unsafe {
         let field_ptr = ptr.add(m.offset as usize);
         match m.kind {
-            FIELD_NODE_ID => FieldVal::NodeId(RawNodeId(*(field_ptr as *const u32))),
+            FIELD_NODE_ID => FieldVal::NodeId(NodeId(*(field_ptr as *const u32))),
             FIELD_SPAN => {
                 let span = &*(field_ptr as *const SourceSpan);
                 if span.length == 0 {

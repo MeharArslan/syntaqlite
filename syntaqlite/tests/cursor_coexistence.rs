@@ -14,8 +14,9 @@ use syntaqlite::dialect::{
 use syntaqlite::incremental::{IncrementalCursor, IncrementalParser};
 use syntaqlite::{Parser, StatementCursor, TokenCursor, Tokenizer};
 use syntaqlite_parser::{
-    RawIncrementalCursor, RawIncrementalParser, RawParser, RawStatementCursor, RawTokenCursor,
-    RawTokenizer, TypedDialectEnv as TaggedDialect,
+    IncrementalCursor as RawIncrementalCursor, IncrementalParser as RawIncrementalParser,
+    Parser as RawParser, StatementCursor as RawStatementCursor, TokenCursor as RawTokenCursor,
+    Tokenizer as RawTokenizer, TypedDialectEnv as TaggedDialect,
 };
 use syntaqlite_parser_sqlite::SqliteNodeFamily;
 

@@ -20,27 +20,26 @@ pub use crate::dialect::{SchemaContribution, SchemaKind};
 // safe field accessors on DialectEnv instead of reading C metadata structs directly.
 pub use crate::dialect::FieldMeta;
 pub use crate::dialect::{FIELD_BOOL, FIELD_ENUM, FIELD_NODE_ID, FIELD_SPAN};
-pub use crate::dialect_traits::{DialectNodeType, DialectTokenType, NodeFamily, NodeId};
+pub use crate::dialect_traits::{DialectNodeType, DialectTokenType, NodeFamily, TypedNodeId};
 
 // ── Core node/arena types ─────────────────────────────────────────────────────
 
-pub use crate::nodes::{ArenaNode, FieldVal, Fields, NodeList, RawNodeId, SourceSpan};
-pub use crate::session::{ErrorSpan, NodeRef, ParseError, RawParseResult};
+pub use crate::nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
+pub use crate::session::{ErrorSpan, NodeRef, ParseError, ParseResult};
 pub use crate::typed_list::TypedList;
 
 // ── C parser FFI types ────────────────────────────────────────────────────────
 
 pub use crate::parser::{
-    Comment, CommentKind, ErrorNode, MacroRegion, MemMethods, ParseResult, Parser,
-    SYNTAQLITE_ERROR_NODE_TAG, TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE, Token,
-    TokenPos, Tokenizer,
+    Comment, CommentKind, ErrorNode, MacroRegion, MemMethods, SYNTAQLITE_ERROR_NODE_TAG,
+    TOKEN_FLAG_AS_FUNCTION, TOKEN_FLAG_AS_ID, TOKEN_FLAG_AS_TYPE, TokenPos,
 };
 
-// ── Raw (grammar-agnostic) parsers and tokenizer ──────────────────────────────
+// ── Grammar-agnostic parsers and tokenizer ────────────────────────────────────
 
-pub use crate::raw_incremental::{RawIncrementalCursor, RawIncrementalParser};
-pub use crate::raw_session::{ParserConfig, RawParser, RawStatementCursor};
-pub use crate::raw_tokenizer::{RawToken, RawTokenCursor, RawTokenizer};
+pub use crate::raw_incremental::{IncrementalCursor, IncrementalParser};
+pub use crate::raw_session::{Parser, ParserConfig, StatementCursor};
+pub use crate::raw_tokenizer::{Token, TokenCursor, Tokenizer};
 
 // ── Function availability catalog ─────────────────────────────────────────────
 

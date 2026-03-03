@@ -7,8 +7,8 @@
 //! [`dump_json`](NodeRefJsonExt::dump_json) on a [`NodeRef`].
 
 use syntaqlite_parser::DialectEnv;
-use syntaqlite_parser::{FieldVal, RawNodeId};
-use syntaqlite_parser::{NodeRef, RawParseResult};
+use syntaqlite_parser::{FieldVal, NodeId};
+use syntaqlite_parser::{NodeRef, ParseResult};
 
 /// Extension trait that adds JSON serialization to [`NodeRef`].
 ///
@@ -27,11 +27,7 @@ impl NodeRefJsonExt for NodeRef<'_> {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-fn dump_json_id(
-    id: RawNodeId,
-    reader: RawParseResult<'_>,
-    dialect: DialectEnv<'_>,
-) -> serde_json::Value {
+fn dump_json_id(id: NodeId, reader: ParseResult<'_>, dialect: DialectEnv<'_>) -> serde_json::Value {
     if id.is_null() {
         return serde_json::Value::Null;
     }
@@ -127,12 +123,12 @@ fn dump_json_id(
 #[cfg(feature = "sqlite")]
 mod tests {
     use super::*;
-    use syntaqlite_parser::RawParser;
+    use syntaqlite_parser::Parser;
 
     #[test]
     fn node_ref_dump_json_produces_valid_json() {
         let dialect = crate::dialect::sqlite();
-        let parser = RawParser::new(dialect);
+        let parser = Parser::new(dialect);
         let mut cursor = parser.parse("SELECT 1;");
         let node = cursor.next_statement().unwrap().unwrap();
         let mut out = String::new();

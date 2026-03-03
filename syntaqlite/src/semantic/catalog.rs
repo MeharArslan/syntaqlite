@@ -50,8 +50,8 @@ impl DatabaseCatalog {
     /// `CREATE VIEW … AS SELECT` are expanded using tables/views defined
     /// by earlier statements in the same input.
     pub fn from_stmts<'a>(
-        reader: syntaqlite_parser::RawParseResult<'a>,
-        stmt_ids: &[syntaqlite_parser::RawNodeId],
+        reader: syntaqlite_parser::ParseResult<'a>,
+        stmt_ids: &[syntaqlite_parser::NodeId],
         dialect: DialectEnv<'_>,
     ) -> Self {
         let mut doc = DocumentCatalog::new();
@@ -70,7 +70,7 @@ impl DatabaseCatalog {
     /// from the resulting DDL statements. This is a convenience wrapper for
     /// cases like WASM where you have raw DDL text.
     pub fn from_ddl(dialect: DialectEnv<'_>, source: &str) -> Self {
-        let parser = syntaqlite_parser::RawParser::new(dialect);
+        let parser = syntaqlite_parser::Parser::new(dialect);
         let mut cursor = parser.parse(source);
 
         let mut stmt_ids = Vec::new();
@@ -236,8 +236,8 @@ impl DocumentCatalog {
 unsafe fn read_node_id(
     ptr: *const u8,
     meta: &syntaqlite_parser::FieldMeta,
-) -> syntaqlite_parser::RawNodeId {
-    unsafe { syntaqlite_parser::RawNodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
+) -> syntaqlite_parser::NodeId {
+    unsafe { syntaqlite_parser::NodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
 }
 
 /// Read a `SourceSpan` field from a raw node pointer, returning its text
@@ -274,8 +274,8 @@ impl DocumentCatalog {
     /// `db_table` lives in the database (live DB) context.
     pub(crate) fn accumulate(
         &mut self,
-        reader: syntaqlite_parser::RawParseResult<'_>,
-        stmt_id: syntaqlite_parser::RawNodeId,
+        reader: syntaqlite_parser::ParseResult<'_>,
+        stmt_id: syntaqlite_parser::NodeId,
         dialect: DialectEnv<'_>,
         database: Option<&DatabaseCatalog>,
     ) {
@@ -376,12 +376,12 @@ impl DocumentCatalog {
 
 /// Extract column definitions from a column definition list node.
 fn columns_from_column_list(
-    reader: &syntaqlite_parser::RawParseResult<'_>,
-    list_id: syntaqlite_parser::RawNodeId,
+    reader: &syntaqlite_parser::ParseResult<'_>,
+    list_id: syntaqlite_parser::NodeId,
     dialect: &DialectEnv<'_>,
     out: &mut Vec<ColumnDef>,
 ) {
-    use syntaqlite_parser::RawNodeId;
+    use syntaqlite_parser::NodeId;
     use syntaqlite_parser::{FIELD_NODE_ID, FIELD_SPAN};
 
     let Some(list) = reader.resolve_list(list_id) else {
@@ -400,7 +400,7 @@ fn columns_from_column_list(
 
         let mut col_name = None;
         let mut type_name = None;
-        let mut constraints_id = RawNodeId::NULL;
+        let mut constraints_id = NodeId::NULL;
 
         for fm in child_meta {
             // SAFETY: fm is from dialect.field_meta() which returns static
@@ -455,8 +455,8 @@ fn columns_from_column_list(
 
 /// Walk a constraint list to detect PRIMARY KEY and NOT NULL constraints.
 fn extract_column_constraints(
-    reader: &syntaqlite_parser::RawParseResult<'_>,
-    list_id: syntaqlite_parser::RawNodeId,
+    reader: &syntaqlite_parser::ParseResult<'_>,
+    list_id: syntaqlite_parser::NodeId,
     dialect: &DialectEnv<'_>,
     is_primary_key: &mut bool,
     is_nullable: &mut bool,
@@ -786,7 +786,7 @@ mod tests {
     #[test]
     fn from_stmts_creates_database_catalog() {
         let dialect = crate::dialect::sqlite();
-        let parser = syntaqlite_parser::RawParser::new(dialect);
+        let parser = syntaqlite_parser::Parser::new(dialect);
         let sql = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);";
         let mut cursor = parser.parse(sql);
 
@@ -821,7 +821,7 @@ mod tests {
     #[test]
     fn from_stmts_star_expands_from_earlier_table() {
         let dialect = crate::dialect::sqlite();
-        let parser = syntaqlite_parser::RawParser::new(dialect);
+        let parser = syntaqlite_parser::Parser::new(dialect);
         let sql = "\
             CREATE TABLE slice (order_id INTEGER, status TEXT);\n\
             CREATE TABLE orders AS SELECT * FROM slice;\n";

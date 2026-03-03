@@ -5,14 +5,14 @@
 ///
 /// This is the untyped, lifetime-free handle. For typed handles see the
 /// `XxxId` newtypes generated for each AST node (e.g. `SelectStmtId`),
-/// which implement the [`crate::NodeId`] trait.
+/// which implement the [`crate::TypedNodeId`] trait.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct RawNodeId(pub u32);
+pub struct NodeId(pub u32);
 
-impl RawNodeId {
+impl NodeId {
     /// Sentinel value representing a missing/null node.
-    pub const NULL: RawNodeId = RawNodeId(0xFFFF_FFFF);
+    pub const NULL: NodeId = NodeId(0xFFFF_FFFF);
 
     /// Returns `true` if this is the null sentinel.
     pub fn is_null(&self) -> bool {
@@ -58,14 +58,14 @@ pub struct NodeList {
 }
 
 impl NodeList {
-    pub fn children(&self) -> &[RawNodeId] {
+    pub fn children(&self) -> &[NodeId] {
         // SAFETY: The arena allocates list nodes as { tag, count, children[count] }
         // contiguously, so `count` u32 values immediately follow this header.
         // NodeList is only constructed via Node::from_raw() which validates the
-        // tag from a valid arena pointer. RawNodeId is #[repr(transparent)] over u32,
-        // so &[RawNodeId] has the same layout as &[u32].
+        // tag from a valid arena pointer. NodeId is #[repr(transparent)] over u32,
+        // so &[NodeId] has the same layout as &[u32].
         unsafe {
-            let base = (self as *const NodeList).add(1) as *const RawNodeId;
+            let base = (self as *const NodeList).add(1) as *const NodeId;
             std::slice::from_raw_parts(base, self.count as usize)
         }
     }
@@ -122,7 +122,7 @@ impl<'a> std::ops::Deref for Fields<'a> {
 #[derive(Clone, Copy, Debug)]
 pub enum FieldVal<'a> {
     /// Node ID (child node or list reference).
-    NodeId(RawNodeId),
+    NodeId(NodeId),
     /// Source text from a SourceSpan field, with its source offset.
     Span(&'a str, u32),
     /// Boolean value.

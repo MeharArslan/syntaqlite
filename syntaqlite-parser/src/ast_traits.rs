@@ -6,7 +6,7 @@
 #![allow(clippy::type_complexity)]
 
 use crate::dialect_traits::DialectNodeType;
-use crate::nodes::RawNodeId;
+use crate::nodes::NodeId;
 use crate::typed_list::TypedList;
 
 /// Base variants of `LiteralType`. Used for exhaustive pattern matching in generic code.
@@ -537,13 +537,13 @@ pub trait SelectStmtFlagsLike: Copy + PartialEq + Eq + Default + std::fmt::Debug
 /// Trait for the generic `Node` enum wrapper.
 pub trait NodeLike<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
 }
 
 /// Accessor trait for `AggregateFunctionCall` nodes.
 pub trait AggregateFunctionCallView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn func_name(&self) -> &'a str;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::AggregateFunctionCallFlags;
     fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
@@ -555,7 +555,7 @@ pub trait AggregateFunctionCallView<'a>: Copy {
 /// Accessor trait for `OrderedSetFunctionCall` nodes.
 pub trait OrderedSetFunctionCallView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn func_name(&self) -> &'a str;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::AggregateFunctionCallFlags;
     fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
@@ -567,7 +567,7 @@ pub trait OrderedSetFunctionCallView<'a>: Copy {
 /// Accessor trait for `CastExpr` nodes.
 pub trait CastExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn type_name(&self) -> &'a str;
 }
@@ -575,7 +575,7 @@ pub trait CastExprView<'a>: Copy {
 /// Accessor trait for `ColumnRef` nodes.
 pub trait ColumnRefView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn column(&self) -> &'a str;
     fn table(&self) -> &'a str;
     fn schema(&self) -> &'a str;
@@ -584,7 +584,7 @@ pub trait ColumnRefView<'a>: Copy {
 /// Accessor trait for `CompoundSelect` nodes.
 pub trait CompoundSelectView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::CompoundOp;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
@@ -593,21 +593,21 @@ pub trait CompoundSelectView<'a>: Copy {
 /// Accessor trait for `SubqueryExpr` nodes.
 pub trait SubqueryExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
 
 /// Accessor trait for `ExistsExpr` nodes.
 pub trait ExistsExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
 
 /// Accessor trait for `InExpr` nodes.
 pub trait InExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn negated(&self) -> bool;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn source(&self) -> Option<<Self::Ast as AstTypes<'a>>::InExprSource>;
@@ -616,7 +616,7 @@ pub trait InExprView<'a>: Copy {
 /// Accessor trait for `IsExpr` nodes.
 pub trait IsExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::IsOp;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -625,7 +625,7 @@ pub trait IsExprView<'a>: Copy {
 /// Accessor trait for `BetweenExpr` nodes.
 pub trait BetweenExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn negated(&self) -> bool;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn low(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -635,7 +635,7 @@ pub trait BetweenExprView<'a>: Copy {
 /// Accessor trait for `LikeExpr` nodes.
 pub trait LikeExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn negated(&self) -> bool;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn pattern(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -645,7 +645,7 @@ pub trait LikeExprView<'a>: Copy {
 /// Accessor trait for `CaseExpr` nodes.
 pub trait CaseExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn else_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn whens(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::CaseWhen>>;
@@ -654,7 +654,7 @@ pub trait CaseExprView<'a>: Copy {
 /// Accessor trait for `CaseWhen` nodes.
 pub trait CaseWhenView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn when_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn then_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -662,7 +662,7 @@ pub trait CaseWhenView<'a>: Copy {
 /// Accessor trait for `ForeignKeyClause` nodes.
 pub trait ForeignKeyClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn ref_table(&self) -> &'a str;
     fn ref_columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
     fn on_delete(&self) -> <Self::Ast as AstTypes<'a>>::ForeignKeyAction;
@@ -673,7 +673,7 @@ pub trait ForeignKeyClauseView<'a>: Copy {
 /// Accessor trait for `ColumnConstraint` nodes.
 pub trait ColumnConstraintView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn kind(&self) -> <Self::Ast as AstTypes<'a>>::ColumnConstraintKind;
     fn constraint_name(&self) -> &'a str;
     fn onconf(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
@@ -690,7 +690,7 @@ pub trait ColumnConstraintView<'a>: Copy {
 /// Accessor trait for `ColumnDef` nodes.
 pub trait ColumnDefView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn column_name(&self) -> &'a str;
     fn type_name(&self) -> &'a str;
     fn constraints(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::ColumnConstraint>>;
@@ -699,7 +699,7 @@ pub trait ColumnDefView<'a>: Copy {
 /// Accessor trait for `TableConstraint` nodes.
 pub trait TableConstraintView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn kind(&self) -> <Self::Ast as AstTypes<'a>>::TableConstraintKind;
     fn constraint_name(&self) -> &'a str;
     fn onconf(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
@@ -713,7 +713,7 @@ pub trait TableConstraintView<'a>: Copy {
 /// Accessor trait for `CreateTableStmt` nodes.
 pub trait CreateTableStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn table_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn is_temp(&self) -> bool;
@@ -729,7 +729,7 @@ pub trait CreateTableStmtView<'a>: Copy {
 /// Accessor trait for `CteDefinition` nodes.
 pub trait CteDefinitionView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn cte_name(&self) -> &'a str;
     fn materialized(&self) -> <Self::Ast as AstTypes<'a>>::Materialized;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
@@ -739,7 +739,7 @@ pub trait CteDefinitionView<'a>: Copy {
 /// Accessor trait for `WithClause` nodes.
 pub trait WithClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn recursive(&self) -> bool;
     fn ctes(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::CteDefinition>>;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
@@ -748,7 +748,7 @@ pub trait WithClauseView<'a>: Copy {
 /// Accessor trait for `DeleteStmt` nodes.
 pub trait DeleteStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
     fn where_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
@@ -758,7 +758,7 @@ pub trait DeleteStmtView<'a>: Copy {
 /// Accessor trait for `SetClause` nodes.
 pub trait SetClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn column(&self) -> &'a str;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
     fn value(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -768,7 +768,7 @@ pub trait SetClauseView<'a>: Copy {
 #[allow(clippy::wrong_self_convention)]
 pub trait UpdateStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn conflict_action(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
     fn setlist(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::SetClause>>;
@@ -781,7 +781,7 @@ pub trait UpdateStmtView<'a>: Copy {
 /// Accessor trait for `InsertStmt` nodes.
 pub trait InsertStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn conflict_action(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
@@ -791,7 +791,7 @@ pub trait InsertStmtView<'a>: Copy {
 /// Accessor trait for `BinaryExpr` nodes.
 pub trait BinaryExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::BinaryOp;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -800,7 +800,7 @@ pub trait BinaryExprView<'a>: Copy {
 /// Accessor trait for `UnaryExpr` nodes.
 pub trait UnaryExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::UnaryOp;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -808,7 +808,7 @@ pub trait UnaryExprView<'a>: Copy {
 /// Accessor trait for `Literal` nodes.
 pub trait LiteralView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn literal_type(&self) -> <Self::Ast as AstTypes<'a>>::LiteralType;
     fn source(&self) -> &'a str;
 }
@@ -816,7 +816,7 @@ pub trait LiteralView<'a>: Copy {
 /// Accessor trait for `FunctionCall` nodes.
 pub trait FunctionCallView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn func_name(&self) -> &'a str;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::FunctionCallFlags;
     fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
@@ -827,14 +827,14 @@ pub trait FunctionCallView<'a>: Copy {
 /// Accessor trait for `Variable` nodes.
 pub trait VariableView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn source(&self) -> &'a str;
 }
 
 /// Accessor trait for `CollateExpr` nodes.
 pub trait CollateExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn collation(&self) -> &'a str;
 }
@@ -842,7 +842,7 @@ pub trait CollateExprView<'a>: Copy {
 /// Accessor trait for `RaiseExpr` nodes.
 pub trait RaiseExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn raise_type(&self) -> <Self::Ast as AstTypes<'a>>::RaiseType;
     fn error_message(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -850,7 +850,7 @@ pub trait RaiseExprView<'a>: Copy {
 /// Accessor trait for `QualifiedName` nodes.
 pub trait QualifiedNameView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn object_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
 }
@@ -858,7 +858,7 @@ pub trait QualifiedNameView<'a>: Copy {
 /// Accessor trait for `DropStmt` nodes.
 pub trait DropStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn object_type(&self) -> <Self::Ast as AstTypes<'a>>::DropObjectType;
     fn if_exists(&self) -> bool;
     fn target(&self) -> Option<<Self::Ast as AstTypes<'a>>::QualifiedName>;
@@ -867,7 +867,7 @@ pub trait DropStmtView<'a>: Copy {
 /// Accessor trait for `AlterTableStmt` nodes.
 pub trait AlterTableStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::AlterOp;
     fn target(&self) -> Option<<Self::Ast as AstTypes<'a>>::QualifiedName>;
     fn new_name(&self) -> &'a str;
@@ -877,7 +877,7 @@ pub trait AlterTableStmtView<'a>: Copy {
 /// Accessor trait for `TransactionStmt` nodes.
 pub trait TransactionStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::TransactionOp;
     fn trans_type(&self) -> <Self::Ast as AstTypes<'a>>::TransactionType;
 }
@@ -885,7 +885,7 @@ pub trait TransactionStmtView<'a>: Copy {
 /// Accessor trait for `SavepointStmt` nodes.
 pub trait SavepointStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::SavepointOp;
     fn savepoint_name(&self) -> &'a str;
 }
@@ -893,7 +893,7 @@ pub trait SavepointStmtView<'a>: Copy {
 /// Accessor trait for `ResultColumn` nodes.
 pub trait ResultColumnView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::ResultColumnFlags;
     fn alias(&self) -> &'a str;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -903,7 +903,7 @@ pub trait ResultColumnView<'a>: Copy {
 #[allow(clippy::wrong_self_convention)]
 pub trait SelectStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::SelectStmtFlags;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::ResultColumn>>;
     fn from_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
@@ -918,7 +918,7 @@ pub trait SelectStmtView<'a>: Copy {
 /// Accessor trait for `OrderingTerm` nodes.
 pub trait OrderingTermView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn sort_order(&self) -> <Self::Ast as AstTypes<'a>>::SortOrder;
     fn nulls_order(&self) -> <Self::Ast as AstTypes<'a>>::NullsOrder;
@@ -927,7 +927,7 @@ pub trait OrderingTermView<'a>: Copy {
 /// Accessor trait for `LimitClause` nodes.
 pub trait LimitClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn limit(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn offset(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -935,7 +935,7 @@ pub trait LimitClauseView<'a>: Copy {
 /// Accessor trait for `TableRef` nodes.
 pub trait TableRefView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn table_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn alias(&self) -> &'a str;
@@ -944,7 +944,7 @@ pub trait TableRefView<'a>: Copy {
 /// Accessor trait for `SubqueryTableSource` nodes.
 pub trait SubqueryTableSourceView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
     fn alias(&self) -> &'a str;
 }
@@ -952,7 +952,7 @@ pub trait SubqueryTableSourceView<'a>: Copy {
 /// Accessor trait for `JoinClause` nodes.
 pub trait JoinClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn join_type(&self) -> <Self::Ast as AstTypes<'a>>::JoinType;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
@@ -963,7 +963,7 @@ pub trait JoinClauseView<'a>: Copy {
 /// Accessor trait for `JoinPrefix` nodes.
 pub trait JoinPrefixView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn source(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn join_type(&self) -> <Self::Ast as AstTypes<'a>>::JoinType;
 }
@@ -971,7 +971,7 @@ pub trait JoinPrefixView<'a>: Copy {
 /// Accessor trait for `TriggerEvent` nodes.
 pub trait TriggerEventView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn event_type(&self) -> <Self::Ast as AstTypes<'a>>::TriggerEventType;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
 }
@@ -979,7 +979,7 @@ pub trait TriggerEventView<'a>: Copy {
 /// Accessor trait for `CreateTriggerStmt` nodes.
 pub trait CreateTriggerStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn trigger_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn is_temp(&self) -> bool;
@@ -994,7 +994,7 @@ pub trait CreateTriggerStmtView<'a>: Copy {
 /// Accessor trait for `CreateVirtualTableStmt` nodes.
 pub trait CreateVirtualTableStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn table_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn module_name(&self) -> &'a str;
@@ -1005,7 +1005,7 @@ pub trait CreateVirtualTableStmtView<'a>: Copy {
 /// Accessor trait for `PragmaStmt` nodes.
 pub trait PragmaStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn pragma_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn value(&self) -> &'a str;
@@ -1015,7 +1015,7 @@ pub trait PragmaStmtView<'a>: Copy {
 /// Accessor trait for `AnalyzeStmt` nodes.
 pub trait AnalyzeStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn target_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn kind(&self) -> <Self::Ast as AstTypes<'a>>::AnalyzeKind;
@@ -1024,7 +1024,7 @@ pub trait AnalyzeStmtView<'a>: Copy {
 /// Accessor trait for `AttachStmt` nodes.
 pub trait AttachStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn filename(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn db_name(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn key(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -1033,7 +1033,7 @@ pub trait AttachStmtView<'a>: Copy {
 /// Accessor trait for `DetachStmt` nodes.
 pub trait DetachStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn db_name(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
 
@@ -1041,7 +1041,7 @@ pub trait DetachStmtView<'a>: Copy {
 #[allow(clippy::wrong_self_convention)]
 pub trait VacuumStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn schema(&self) -> &'a str;
     fn into_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -1049,7 +1049,7 @@ pub trait VacuumStmtView<'a>: Copy {
 /// Accessor trait for `ExplainStmt` nodes.
 pub trait ExplainStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn explain_mode(&self) -> <Self::Ast as AstTypes<'a>>::ExplainMode;
     fn stmt(&self) -> Option<<Self::Ast as AstTypes<'a>>::Stmt>;
 }
@@ -1057,7 +1057,7 @@ pub trait ExplainStmtView<'a>: Copy {
 /// Accessor trait for `CreateIndexStmt` nodes.
 pub trait CreateIndexStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn index_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn table_name(&self) -> &'a str;
@@ -1070,7 +1070,7 @@ pub trait CreateIndexStmtView<'a>: Copy {
 /// Accessor trait for `CreateViewStmt` nodes.
 pub trait CreateViewStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn view_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn is_temp(&self) -> bool;
@@ -1082,14 +1082,14 @@ pub trait CreateViewStmtView<'a>: Copy {
 /// Accessor trait for `ValuesClause` nodes.
 pub trait ValuesClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn rows(&self) -> Option<TypedList<'a, TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>>;
 }
 
 /// Accessor trait for `FrameBound` nodes.
 pub trait FrameBoundView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn bound_type(&self) -> <Self::Ast as AstTypes<'a>>::FrameBoundType;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -1097,7 +1097,7 @@ pub trait FrameBoundView<'a>: Copy {
 /// Accessor trait for `FrameSpec` nodes.
 pub trait FrameSpecView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn frame_type(&self) -> <Self::Ast as AstTypes<'a>>::FrameType;
     fn exclude(&self) -> <Self::Ast as AstTypes<'a>>::FrameExclude;
     fn start_bound(&self) -> Option<<Self::Ast as AstTypes<'a>>::FrameBound>;
@@ -1107,7 +1107,7 @@ pub trait FrameSpecView<'a>: Copy {
 /// Accessor trait for `WindowDef` nodes.
 pub trait WindowDefView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn base_window_name(&self) -> &'a str;
     fn partition_by(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
     fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
@@ -1117,7 +1117,7 @@ pub trait WindowDefView<'a>: Copy {
 /// Accessor trait for `NamedWindowDef` nodes.
 pub trait NamedWindowDefView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn window_name(&self) -> &'a str;
     fn window_def(&self) -> Option<<Self::Ast as AstTypes<'a>>::WindowDef>;
 }
@@ -1125,7 +1125,7 @@ pub trait NamedWindowDefView<'a>: Copy {
 /// Accessor trait for `FilterOver` nodes.
 pub trait FilterOverView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> RawNodeId;
+    fn node_id(&self) -> NodeId;
     fn filter_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn over_def(&self) -> Option<<Self::Ast as AstTypes<'a>>::WindowDef>;
     fn over_name(&self) -> &'a str;

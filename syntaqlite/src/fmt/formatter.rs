@@ -5,14 +5,14 @@ use super::FormatConfig;
 use super::comment::CommentCtx;
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
-use syntaqlite_parser::RawParser;
+use syntaqlite_parser::Parser;
 use syntaqlite_parser::{CommentKind, MacroRegion, ParserConfig};
 use syntaqlite_parser::{DialectEnv, NodeRef};
 
 /// High-level SQL formatter. Created from a `TypedDialectEnv`, reusable across inputs.
 pub struct Formatter<'d> {
     dialect: DialectEnv<'d>,
-    parser: RawParser<'d>,
+    parser: Parser<'d>,
     config: FormatConfig,
     /// Reusable scratch arena — cleared between format calls to avoid
     /// re-allocating the backing Vec.
@@ -45,7 +45,7 @@ impl<'d> Formatter<'d> {
             dialect.has_fmt_data(),
             "dialect has no formatter bytecode — ensure .synq definitions include fmt blocks",
         );
-        let parser = RawParser::with_config(
+        let parser = Parser::with_config(
             dialect,
             &ParserConfig {
                 collect_tokens: true,

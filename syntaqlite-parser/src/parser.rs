@@ -6,11 +6,11 @@ use std::ffi::{c_char, c_int, c_void};
 use crate::dialect::ffi;
 
 // Opaque C types
-pub enum Parser {}
+pub(crate) enum Parser {}
 
 /// Mirrors C `SyntaqliteParseResult` from `include/syntaqlite/parser.h`.
 #[repr(C)]
-pub struct ParseResult {
+pub(crate) struct ParseResult {
     pub root: u32,
     pub error: i32,
     pub error_msg: *const c_char,
@@ -103,13 +103,13 @@ pub struct ErrorNode {
 const _: () = assert!(std::mem::size_of::<ErrorNode>() == 12);
 
 // Opaque C tokenizer type
-pub enum Tokenizer {}
+pub(crate) enum Tokenizer {}
 
 /// A single token produced by the C tokenizer.
 ///
 /// Mirrors C `SyntaqliteToken` from `include/syntaqlite/tokenizer.h`.
 #[repr(C)]
-pub struct Token {
+pub(crate) struct Token {
     pub text: *const c_char,
     pub length: u32,
     pub type_: u32,

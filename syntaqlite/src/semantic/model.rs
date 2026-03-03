@@ -8,10 +8,10 @@
 //! It has no public methods — callers pass it to `_prepared` methods on the
 //! analyzer.
 
-use syntaqlite_parser::{ParseError, RawNodeId, RawParseResult, RawParser, RawStatementCursor};
+use syntaqlite_parser::{NodeId, ParseError, ParseResult, Parser, StatementCursor};
 
-// ── Re-export `RawStatementCursor` lifetime change ───────────────────
-// `RawStatementCursor<'d>` no longer borrows source text — it copies
+// ── Re-export `StatementCursor` lifetime change ──────────────────────
+// `StatementCursor<'d>` no longer borrows source text — it copies
 // source internally.  `SemanticModel<'d>` therefore has a single
 // lifetime (the dialect), making it trivially cacheable.
 
@@ -71,19 +71,19 @@ pub struct SemanticToken {
 /// - `'a` — the source text passed to `prepare()`.
 /// - `'d` — the dialect (for the common SQLite case this is `'static`).
 pub struct SemanticModel<'d> {
-    /// Keeps the C parser alive (via the Rc inside RawParser).
-    _parser: RawParser<'d>,
+    /// Keeps the C parser alive (via the Rc inside Parser).
+    _parser: Parser<'d>,
     /// Exhausted cursor — kept alive for its reader (arena access).
-    cursor: RawStatementCursor<'d>,
-    pub(crate) stmts: Vec<Result<RawNodeId, ParseError>>,
+    cursor: StatementCursor<'d>,
+    pub(crate) stmts: Vec<Result<NodeId, ParseError>>,
 }
 
 impl<'d> SemanticModel<'d> {
     /// Construct a new model from a parser, its cursor, and collected results.
     pub(crate) fn new(
-        parser: RawParser<'d>,
-        cursor: RawStatementCursor<'d>,
-        stmts: Vec<Result<RawNodeId, ParseError>>,
+        parser: Parser<'d>,
+        cursor: StatementCursor<'d>,
+        stmts: Vec<Result<NodeId, ParseError>>,
     ) -> Self {
         SemanticModel {
             _parser: parser,
@@ -92,8 +92,8 @@ impl<'d> SemanticModel<'d> {
         }
     }
 
-    /// Get a [`RawParseResult`] for the parser's arena state.
-    pub(crate) fn reader(&self) -> RawParseResult<'_> {
+    /// Get a [`ParseResult`] for the parser's arena state.
+    pub(crate) fn reader(&self) -> ParseResult<'_> {
         self.cursor.reader()
     }
 

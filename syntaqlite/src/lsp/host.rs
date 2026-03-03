@@ -419,7 +419,7 @@ mod tests {
     use crate::semantic::ValidationConfig;
     use crate::semantic::diagnostics::{DiagnosticMessage, Severity};
     use crate::semantic::functions::FunctionDef;
-    use syntaqlite_parser::RawParser;
+    use syntaqlite_parser::Parser;
     use syntaqlite_parser_sqlite::tokens::TokenType;
 
     #[test]
@@ -712,7 +712,7 @@ mod tests {
     #[test]
     fn syntax_error_offset_via_parser_directly() {
         let sql = "select 1 from slice where foo = where x = y;";
-        let parser = RawParser::new(crate::dialect::sqlite());
+        let parser = Parser::new(crate::dialect::sqlite());
         let mut cursor = parser.parse(sql);
         let err = cursor
             .next_statement()

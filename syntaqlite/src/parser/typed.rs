@@ -12,9 +12,9 @@ use std::marker::PhantomData;
 use std::ops::Range;
 
 use syntaqlite_parser::{
-    Comment, DialectNodeType, MacroRegion, NodeFamily, NodeRef, ParseError, ParserConfig,
-    RawIncrementalCursor, RawIncrementalParser, RawNodeId, RawParseResult, RawParser,
-    RawStatementCursor, RawTokenCursor, RawTokenizer, TypedDialectEnv,
+    Comment, DialectNodeType, IncrementalCursor, IncrementalParser, MacroRegion, NodeFamily,
+    NodeId, NodeRef, ParseError, ParseResult, Parser, ParserConfig, StatementCursor, TokenCursor,
+    Tokenizer, TypedDialectEnv,
 };
 
 // ── DialectParser ───────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ use syntaqlite_parser::{
 /// Constructed from a tagged [`TypedDialectEnv<'d, N>`] so that `N` (the node
 /// family) is inferred automatically.
 pub struct DialectParser<'d, N: NodeFamily> {
-    inner: RawParser<'d>,
+    inner: Parser<'d>,
     _marker: PhantomData<N>,
 }
 
@@ -32,7 +32,7 @@ impl<'d, N: NodeFamily> DialectParser<'d, N> {
     /// Create a parser bound to the given dialect with default configuration.
     pub fn from_dialect(dialect: TypedDialectEnv<'d, N>) -> Self {
         DialectParser {
-            inner: RawParser::new(dialect.raw()),
+            inner: Parser::new(dialect.raw()),
             _marker: PhantomData,
         }
     }
@@ -40,7 +40,7 @@ impl<'d, N: NodeFamily> DialectParser<'d, N> {
     /// Create a parser bound to the given dialect with custom configuration.
     pub fn with_config(dialect: TypedDialectEnv<'d, N>, config: &ParserConfig) -> Self {
         DialectParser {
-            inner: RawParser::with_config(dialect.raw(), config),
+            inner: Parser::with_config(dialect.raw(), config),
             _marker: PhantomData,
         }
     }
@@ -58,7 +58,7 @@ impl<'d, N: NodeFamily> DialectParser<'d, N> {
 
 /// A streaming cursor over parsed SQL statements, yielding typed nodes.
 pub struct DialectStatementCursor<'d, N: NodeFamily> {
-    pub(crate) inner: RawStatementCursor<'d>,
+    pub(crate) inner: StatementCursor<'d>,
     _marker: PhantomData<N>,
 }
 
@@ -104,17 +104,17 @@ impl<'d, N: NodeFamily> DialectStatementCursor<'d, N> {
     ///
     /// Returns `Some(node)` if the ID refers to a valid arena node of the
     /// correct type, or `None` if the ID is null, invalid, or mismatched.
-    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'_>> {
+    pub fn resolve<I: syntaqlite_parser::TypedNodeId>(&self, id: I) -> Option<I::Node<'_>> {
         I::Node::from_arena(self.inner.reader(), id.into())
     }
 
-    /// Build a [`RawParseResult`] for the parser arena.
-    pub fn reader(&self) -> RawParseResult<'_> {
+    /// Build a [`ParseResult`] for the parser arena.
+    pub fn reader(&self) -> ParseResult<'_> {
         self.inner.reader()
     }
 
-    /// Wrap a [`RawNodeId`] into a [`NodeRef`] using this cursor's reader and dialect.
-    pub fn node_ref(&self, id: RawNodeId) -> NodeRef<'_> {
+    /// Wrap a [`NodeId`] into a [`NodeRef`] using this cursor's reader and dialect.
+    pub fn node_ref(&self, id: NodeId) -> NodeRef<'_> {
         self.inner.node_ref(id)
     }
 }
@@ -134,7 +134,7 @@ pub struct DialectToken<'a, N: NodeFamily> {
 
 /// A SQL tokenizer bound to a specific dialect.
 pub struct DialectTokenizer<'d, N: NodeFamily> {
-    inner: RawTokenizer<'d>,
+    inner: Tokenizer<'d>,
     _marker: PhantomData<N>,
 }
 
@@ -142,7 +142,7 @@ impl<'d, N: NodeFamily> DialectTokenizer<'d, N> {
     /// Create a tokenizer bound to the given dialect with default configuration.
     pub fn from_dialect(dialect: TypedDialectEnv<'d, N>) -> Self {
         DialectTokenizer {
-            inner: RawTokenizer::new(dialect.raw()),
+            inner: Tokenizer::new(dialect.raw()),
             _marker: PhantomData,
         }
     }
@@ -174,7 +174,7 @@ impl<'d, N: NodeFamily> DialectTokenizer<'d, N> {
 
 /// A cursor yielding typed tokens.
 pub struct DialectTokenCursor<'a, N: NodeFamily> {
-    inner: RawTokenCursor<'a>,
+    inner: TokenCursor<'a>,
     _marker: PhantomData<N>,
 }
 
@@ -204,7 +204,7 @@ impl<'a, N: NodeFamily> Iterator for DialectTokenCursor<'a, N> {
 /// Feeds tokens one at a time via [`DialectIncrementalCursor`], yielding
 /// typed AST nodes.
 pub struct DialectIncrementalParser<'d, N: NodeFamily> {
-    inner: RawIncrementalParser<'d>,
+    inner: IncrementalParser<'d>,
     _marker: PhantomData<N>,
 }
 
@@ -213,7 +213,7 @@ impl<'d, N: NodeFamily> DialectIncrementalParser<'d, N> {
     /// configuration (token collection enabled).
     pub fn from_dialect(dialect: TypedDialectEnv<'d, N>) -> Self {
         DialectIncrementalParser {
-            inner: RawIncrementalParser::new(dialect.raw()),
+            inner: IncrementalParser::new(dialect.raw()),
             _marker: PhantomData,
         }
     }
@@ -222,7 +222,7 @@ impl<'d, N: NodeFamily> DialectIncrementalParser<'d, N> {
     /// configuration.
     pub fn with_config(dialect: TypedDialectEnv<'d, N>, config: &ParserConfig) -> Self {
         DialectIncrementalParser {
-            inner: RawIncrementalParser::with_config(dialect.raw(), config),
+            inner: IncrementalParser::with_config(dialect.raw(), config),
             _marker: PhantomData,
         }
     }
@@ -244,8 +244,8 @@ impl<'d, N: NodeFamily> DialectIncrementalParser<'d, N> {
 /// Feed tokens via [`feed_token`](Self::feed_token) and signal end-of-input
 /// via [`finish`](Self::finish).
 pub struct DialectIncrementalCursor<'d, N: NodeFamily> {
-    inner: RawIncrementalCursor<'d>,
-    last_root: Option<RawNodeId>,
+    inner: IncrementalCursor<'d>,
+    last_root: Option<NodeId>,
     _marker: PhantomData<N>,
 }
 
@@ -337,7 +337,7 @@ impl<'d, N: NodeFamily> DialectIncrementalCursor<'d, N> {
     ///
     /// Returns `Some(node)` if the ID refers to a valid arena node of the
     /// correct type, or `None` if the ID is null, invalid, or mismatched.
-    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'_>> {
+    pub fn resolve<I: syntaqlite_parser::TypedNodeId>(&self, id: I) -> Option<I::Node<'_>> {
         I::Node::from_arena(self.inner.reader(), id.into())
     }
 }

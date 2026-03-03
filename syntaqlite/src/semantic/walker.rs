@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 
 use syntaqlite_parser::DialectEnv;
 use syntaqlite_parser::DialectNodeType;
-use syntaqlite_parser::RawParseResult;
+use syntaqlite_parser::ParseResult;
 use syntaqlite_parser::TypedList;
 use syntaqlite_parser::ast_traits::*;
 
@@ -19,7 +19,7 @@ use super::scope::ScopeStack;
 use super::functions::FunctionCheckResult;
 
 pub(crate) struct Walker<'a, 'd, A: AstTypes<'a>> {
-    reader: RawParseResult<'a>,
+    reader: ParseResult<'a>,
     dialect: DialectEnv<'d>,
     catalog: &'a CatalogStack<'a>,
     config: &'a ValidationConfig,
@@ -29,7 +29,7 @@ pub(crate) struct Walker<'a, 'd, A: AstTypes<'a>> {
 
 impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
     pub(crate) fn run(
-        reader: RawParseResult<'a>,
+        reader: ParseResult<'a>,
         stmt: A::Stmt,
         dialect: DialectEnv<'d>,
         scope: &mut ScopeStack,

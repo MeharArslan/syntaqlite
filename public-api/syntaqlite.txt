@@ -81,8 +81,8 @@ pub fn syntaqlite::DatabaseCatalog::from_ddl(dialect: syntaqlite_parser::dialect
 pub fn syntaqlite::DatabaseCatalog::from_ddl(dialect: syntaqlite_parser::dialect::DialectEnv<'_>, source: &str) -> Self
 pub fn syntaqlite::DatabaseCatalog::from_json(s: &str) -> core::result::Result<Self, alloc::string::String>
 pub fn syntaqlite::DatabaseCatalog::from_json(s: &str) -> core::result::Result<Self, alloc::string::String>
-pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawParseResult<'a>, stmt_ids: &[syntaqlite_parser::nodes::RawNodeId], dialect: syntaqlite_parser::dialect::DialectEnv<'_>) -> Self
-pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawParseResult<'a>, stmt_ids: &[syntaqlite_parser::nodes::RawNodeId], dialect: syntaqlite_parser::dialect::DialectEnv<'_>) -> Self
+pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::ParseResult<'a>, stmt_ids: &[syntaqlite_parser::nodes::NodeId], dialect: syntaqlite_parser::dialect::DialectEnv<'_>) -> Self
+pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::ParseResult<'a>, stmt_ids: &[syntaqlite_parser::nodes::NodeId], dialect: syntaqlite_parser::dialect::DialectEnv<'_>) -> Self
 pub fn syntaqlite::DatabaseCatalog::tables(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
 pub fn syntaqlite::DatabaseCatalog::tables(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
 pub fn syntaqlite::DatabaseCatalog::views(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
@@ -96,7 +96,7 @@ pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::feed_token(&mut sel
 pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::finish(&mut self) -> core::result::Result<core::option::Option<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node>, syntaqlite_parser::session::ParseError>
 pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::macro_regions(&self) -> &[syntaqlite_parser::parser::MacroRegion]
 pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::node_count(&self) -> u32
-pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
+pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::resolve<I: syntaqlite_parser::dialect_traits::TypedNodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::TypedNodeId>::Node>
 pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::root(&self) -> core::option::Option<syntaqlite_parser::session::NodeRef<'_>>
 pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::feed(&self, source: &str) -> syntaqlite::dialect::DialectIncrementalCursor<'d, N>
 pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::TypedDialectEnv<'d, N>) -> Self
@@ -105,9 +105,9 @@ pub fn syntaqlite::dialect::DialectParser<'d, N>::from_dialect(dialect: syntaqli
 pub fn syntaqlite::dialect::DialectParser<'d, N>::parse(&self, source: &str) -> syntaqlite::dialect::DialectStatementCursor<'d, N>
 pub fn syntaqlite::dialect::DialectParser<'d, N>::with_config(dialect: syntaqlite_parser::dialect::TypedDialectEnv<'d, N>, config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
 pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::next_statement(&mut self) -> core::option::Option<core::result::Result<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node, syntaqlite_parser::session::ParseError>>
-pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::node_ref(&self, id: syntaqlite_parser::nodes::RawNodeId) -> syntaqlite_parser::session::NodeRef<'_>
-pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::reader(&self) -> syntaqlite_parser::session::RawParseResult<'_>
-pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
+pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::node_ref(&self, id: syntaqlite_parser::nodes::NodeId) -> syntaqlite_parser::session::NodeRef<'_>
+pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::reader(&self) -> syntaqlite_parser::session::ParseResult<'_>
+pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::resolve<I: syntaqlite_parser::dialect_traits::TypedNodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::TypedNodeId>::Node>
 pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::source(&self) -> &str
 pub fn syntaqlite::dialect::DialectTokenCursor<'a, N>::next(&mut self) -> core::option::Option<Self::Item>
 pub fn syntaqlite::dialect::DialectTokenizer<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::TypedDialectEnv<'d, N>) -> Self
@@ -141,7 +141,7 @@ pub fn syntaqlite::incremental::IncrementalCursor::feed_token(&mut self, token_t
 pub fn syntaqlite::incremental::IncrementalCursor::finish(&mut self) -> core::result::Result<core::option::Option<syntaqlite_parser_sqlite::ast::Stmt<'_>>, syntaqlite_parser::session::ParseError>
 pub fn syntaqlite::incremental::IncrementalCursor::macro_regions(&self) -> &[syntaqlite_parser::parser::MacroRegion]
 pub fn syntaqlite::incremental::IncrementalCursor::node_count(&self) -> u32
-pub fn syntaqlite::incremental::IncrementalCursor::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
+pub fn syntaqlite::incremental::IncrementalCursor::resolve<I: syntaqlite_parser::dialect_traits::TypedNodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::TypedNodeId>::Node>
 pub fn syntaqlite::incremental::IncrementalCursor::root(&self) -> core::option::Option<syntaqlite_parser::session::NodeRef<'_>>
 pub fn syntaqlite::incremental::IncrementalParser::default() -> Self
 pub fn syntaqlite::incremental::IncrementalParser::feed(&self, source: &str) -> syntaqlite::incremental::IncrementalCursor
@@ -257,8 +257,8 @@ pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect(dialect: impl core::conver
 pub fn syntaqlite::SemanticAnalyzer<'static>::default() -> Self
 pub fn syntaqlite::SemanticAnalyzer<'static>::default() -> Self
 pub fn syntaqlite::StatementCursor::next_statement(&mut self) -> core::option::Option<core::result::Result<syntaqlite_parser_sqlite::ast::Stmt<'_>, syntaqlite_parser::session::ParseError>>
-pub fn syntaqlite::StatementCursor::node_ref(&self, id: syntaqlite_parser::nodes::RawNodeId) -> syntaqlite_parser::session::NodeRef<'_>
-pub fn syntaqlite::StatementCursor::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
+pub fn syntaqlite::StatementCursor::node_ref(&self, id: syntaqlite_parser::nodes::NodeId) -> syntaqlite_parser::session::NodeRef<'_>
+pub fn syntaqlite::StatementCursor::resolve<I: syntaqlite_parser::dialect_traits::TypedNodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::TypedNodeId>::Node>
 pub fn syntaqlite::StatementCursor::source(&self) -> &str
 pub fn syntaqlite::TokenCursor<'a>::next(&mut self) -> core::option::Option<Self::Item>
 pub fn syntaqlite::Tokenizer::default() -> Self
@@ -488,4 +488,13 @@ pub use syntaqlite::dialect::NodeFamily
 pub use syntaqlite::dialect::TypedDialectEnv
 pub use syntaqlite::incremental::Comment
 pub use syntaqlite::incremental::MacroRegion
+pub use syntaqlite::RawIncrementalCursor
+pub use syntaqlite::RawIncrementalParser
+pub use syntaqlite::RawNodeId
+pub use syntaqlite::RawParser
+pub use syntaqlite::RawParseResult
+pub use syntaqlite::RawStatementCursor
+pub use syntaqlite::RawToken
+pub use syntaqlite::RawTokenCursor
+pub use syntaqlite::RawTokenizer
 pub use syntaqlite::TokenType

@@ -7,14 +7,15 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 
 use crate::DialectEnv;
-use crate::RawNodeId;
+use crate::NodeId;
+use crate::parser::Parser as CParser;
 use crate::parser::{
     syntaqlite_create_parser_with_dialect, syntaqlite_parser_destroy, syntaqlite_parser_next,
     syntaqlite_parser_reset, syntaqlite_parser_set_collect_tokens, syntaqlite_parser_set_trace,
 };
-use crate::{Comment, Parser, TokenPos};
+use crate::{Comment, TokenPos};
 
-use crate::{ParseError, RawParseResult};
+use crate::{ParseError, ParseResult};
 
 /// Configuration for parser construction.
 #[derive(Debug, Default, Clone, Copy)]
@@ -28,7 +29,7 @@ pub struct ParserConfig {
 /// Holds the C parser handle and mutable state. Checked out by cursors at
 /// runtime and returned on [`Drop`].
 pub(crate) struct ParserInner {
-    pub(crate) raw: NonNull<Parser>,
+    pub(crate) raw: NonNull<CParser>,
     pub(crate) source_buf: Vec<u8>,
 }
 
@@ -45,14 +46,14 @@ impl Drop for ParserInner {
 /// The parser uses an interior-mutability pattern: calling `parse()` checks
 /// out the C parser state at runtime, and the returned cursor returns it on
 /// drop. This allows `parse()` to take `&self` instead of `&mut self`.
-pub struct RawParser<'d> {
+pub struct Parser<'d> {
     inner: Rc<RefCell<Option<ParserInner>>>,
     /// The dialect environment used for this parser. Propagated to cursors
     /// and `NodeRef`s so consumers don't need to thread it manually.
     pub(crate) dialect: DialectEnv<'d>,
 }
 
-impl<'d> RawParser<'d> {
+impl<'d> Parser<'d> {
     /// Create a parser bound to the given dialect with default configuration.
     pub fn new(dialect: impl Into<DialectEnv<'d>>) -> Self {
         Self::with_config(dialect, &ParserConfig::default())
@@ -81,13 +82,13 @@ impl<'d> RawParser<'d> {
             source_buf: Vec::new(),
         };
 
-        RawParser {
+        Parser {
             inner: Rc::new(RefCell::new(Some(inner))),
             dialect: env,
         }
     }
 
-    /// Bind source text and return a `RawStatementCursor` for iterating
+    /// Bind source text and return a `StatementCursor` for iterating
     /// statements.
     ///
     /// Copies the source into an internal buffer to add a null terminator
@@ -97,16 +98,16 @@ impl<'d> RawParser<'d> {
     /// # Panics
     ///
     /// Panics if a cursor from a previous `parse()` call is still alive.
-    pub fn parse(&self, source: &str) -> RawStatementCursor<'d> {
+    pub fn parse(&self, source: &str) -> StatementCursor<'d> {
         let mut inner = self
             .inner
             .borrow_mut()
             .take()
-            .expect("RawParser::parse called while a cursor is still active");
+            .expect("Parser::parse called while a cursor is still active");
         // SAFETY: inner.raw is valid (owned via ParserInner); source is
         // copied into source_buf which will be owned by the cursor.
         unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
-        RawStatementCursor {
+        StatementCursor {
             dialect: self.dialect,
             inner: Some(inner),
             slot: Rc::clone(&self.inner),
@@ -121,7 +122,7 @@ impl<'d> RawParser<'d> {
 ///
 /// # Safety
 /// `raw` must be a valid parser pointer owned by the caller.
-pub(crate) unsafe fn reset_parser(raw: *mut Parser, source_buf: &mut Vec<u8>, source: &str) {
+pub(crate) unsafe fn reset_parser(raw: *mut CParser, source_buf: &mut Vec<u8>, source: &str) {
     source_buf.clear();
     source_buf.reserve(source.len() + 1);
     source_buf.extend_from_slice(source.as_bytes());
@@ -136,7 +137,7 @@ pub(crate) unsafe fn reset_parser(raw: *mut Parser, source_buf: &mut Vec<u8>, so
     }
 }
 
-// ── RawStatementCursor ──────────────────────────────────────────────────────
+// ── StatementCursor ──────────────────────────────────────────────────────────
 
 /// A streaming cursor over parsed SQL statements.
 ///
@@ -146,8 +147,8 @@ pub(crate) unsafe fn reset_parser(raw: *mut Parser, source_buf: &mut Vec<u8>, so
 /// retrieve the next valid statement.
 ///
 /// On drop, the checked-out parser state is returned to the parent
-/// [`RawParser`].
-pub struct RawStatementCursor<'d> {
+/// [`Parser`].
+pub struct StatementCursor<'d> {
     dialect: DialectEnv<'d>,
     /// Checked-out parser state. Returned to `slot` on drop.
     inner: Option<ParserInner>,
@@ -159,7 +160,7 @@ pub struct RawStatementCursor<'d> {
     last_saw_update_delete_limit: bool,
 }
 
-impl Drop for RawStatementCursor<'_> {
+impl Drop for StatementCursor<'_> {
     fn drop(&mut self) {
         if let Some(inner) = self.inner.take() {
             *self.slot.borrow_mut() = Some(inner);
@@ -167,9 +168,9 @@ impl Drop for RawStatementCursor<'_> {
     }
 }
 
-impl<'d> RawStatementCursor<'d> {
+impl<'d> StatementCursor<'d> {
     /// The raw C parser pointer from the checked-out inner state.
-    fn raw_ptr(&self) -> *mut Parser {
+    fn raw_ptr(&self) -> *mut CParser {
         self.inner.as_ref().unwrap().raw.as_ptr()
     }
 
@@ -195,7 +196,7 @@ impl<'d> RawStatementCursor<'d> {
         // parser's buffer (valid for parser lifetime).
         let result = unsafe { syntaqlite_parser_next(self.raw_ptr()) };
 
-        let id = RawNodeId(result.root);
+        let id = NodeId(result.root);
         let has_root = !id.is_null();
         let has_error = result.error != 0;
 
@@ -239,19 +240,19 @@ impl<'d> RawStatementCursor<'d> {
         None
     }
 
-    /// Build a [`RawParseResult`] for the parser arena, borrowing source
+    /// Build a [`ParseResult`] for the parser arena, borrowing source
     /// text from the internal buffer.
     ///
     /// This is lightweight (no allocation) — it packages the raw parser
     /// pointer with a `&str` view of the owned source buffer.
-    pub fn reader(&self) -> RawParseResult<'_> {
+    pub fn reader(&self) -> ParseResult<'_> {
         let inner = self.inner.as_ref().unwrap();
         let source_len = inner.source_buf.len().saturating_sub(1);
         // SAFETY: source_buf was populated from valid UTF-8 (&str) in
         // reset_parser. The first source_len bytes are the original source.
         let source = unsafe { std::str::from_utf8_unchecked(&inner.source_buf[..source_len]) };
         // SAFETY: inner.raw is valid (owned via ParserInner, not yet destroyed).
-        unsafe { RawParseResult::new(inner.raw.as_ptr(), source) }
+        unsafe { ParseResult::new(inner.raw.as_ptr(), source) }
     }
 
     /// The source text bound to this cursor.
@@ -285,9 +286,9 @@ impl<'d> RawStatementCursor<'d> {
         }
     }
 
-    /// Wrap a `RawNodeId` (e.g. from a `ParseError::root`) into a `NodeRef`
+    /// Wrap a `NodeId` (e.g. from a `ParseError::root`) into a `NodeRef`
     /// using this cursor's reader and dialect.
-    pub fn node_ref(&self, id: RawNodeId) -> crate::NodeRef<'_> {
+    pub fn node_ref(&self, id: NodeId) -> crate::NodeRef<'_> {
         crate::NodeRef::new(id, self.reader(), self.dialect)
     }
 }

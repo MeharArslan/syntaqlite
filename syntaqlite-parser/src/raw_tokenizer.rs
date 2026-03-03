@@ -7,15 +7,15 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 
 use crate::DialectEnv;
+use crate::parser::{Token as CToken, Tokenizer as CTokenizer};
 use crate::parser::{
     syntaqlite_tokenizer_create, syntaqlite_tokenizer_destroy, syntaqlite_tokenizer_next,
     syntaqlite_tokenizer_reset,
 };
-use crate::{Token, Tokenizer};
 
 /// A raw token: (token_type ordinal, text slice).
 #[derive(Debug, Clone, Copy)]
-pub struct RawToken<'a> {
+pub struct Token<'a> {
     /// The token type as a raw `u32` ordinal (dialect-specific).
     pub token_type: u32,
     /// The text of the token (a slice of the source).
@@ -25,7 +25,7 @@ pub struct RawToken<'a> {
 /// Holds the C tokenizer handle and mutable state. Checked out by cursors
 /// at runtime and returned on [`Drop`].
 pub(crate) struct TokenizerInner {
-    raw: NonNull<Tokenizer>,
+    raw: NonNull<CTokenizer>,
     source_buf: Vec<u8>,
 }
 
@@ -39,8 +39,8 @@ impl Drop for TokenizerInner {
 
 /// Owns a tokenizer instance. Reusable across inputs via `tokenize()`.
 ///
-/// Uses the same interior-mutability checkout pattern as [`super::RawParser`].
-pub struct RawTokenizer<'d> {
+/// Uses the same interior-mutability checkout pattern as [`super::Parser`].
+pub struct Tokenizer<'d> {
     inner: Rc<RefCell<Option<TokenizerInner>>>,
     /// Keeps the dialect environment alive for the lifetime of the tokenizer.
     /// The C tokenizer stores the env pointer internally and uses it during
@@ -48,7 +48,7 @@ pub struct RawTokenizer<'d> {
     _dialect: DialectEnv<'d>,
 }
 
-impl<'d> RawTokenizer<'d> {
+impl<'d> Tokenizer<'d> {
     /// Create a tokenizer bound to the given dialect environment.
     pub fn new(dialect: impl Into<DialectEnv<'d>>) -> Self {
         let env = dialect.into();
@@ -63,13 +63,13 @@ impl<'d> RawTokenizer<'d> {
             source_buf: Vec::new(),
         };
 
-        RawTokenizer {
+        Tokenizer {
             inner: Rc::new(RefCell::new(Some(inner))),
             _dialect: env,
         }
     }
 
-    /// Bind source text and return a `RawTokenCursor` for iterating tokens.
+    /// Bind source text and return a `TokenCursor` for iterating tokens.
     ///
     /// Copies the source into an internal buffer to add a null terminator
     /// (required by the C tokenizer). For zero-copy tokenization, use
@@ -78,7 +78,7 @@ impl<'d> RawTokenizer<'d> {
     /// # Panics
     ///
     /// Panics if a cursor from a previous `tokenize()` call is still alive.
-    pub fn tokenize<'a>(&self, source: &'a str) -> RawTokenCursor<'a>
+    pub fn tokenize<'a>(&self, source: &'a str) -> TokenCursor<'a>
     where
         'd: 'a,
     {
@@ -86,7 +86,7 @@ impl<'d> RawTokenizer<'d> {
             .inner
             .borrow_mut()
             .take()
-            .expect("RawTokenizer::tokenize called while a cursor is still active");
+            .expect("Tokenizer::tokenize called while a cursor is still active");
 
         inner.source_buf.clear();
         inner.source_buf.reserve(source.len() + 1);
@@ -106,7 +106,7 @@ impl<'d> RawTokenizer<'d> {
                 source.len() as u32,
             );
         }
-        RawTokenCursor {
+        TokenCursor {
             raw: inner.raw,
             source,
             c_source_base: c_source_ptr,
@@ -116,7 +116,7 @@ impl<'d> RawTokenizer<'d> {
     }
 
     /// Zero-copy variant: bind a null-terminated source and return a
-    /// `RawTokenCursor`.
+    /// `TokenCursor`.
     ///
     /// The `&CStr` already guarantees a trailing `\0`, so no copy is needed.
     /// The source must be valid UTF-8 (panics otherwise).
@@ -124,7 +124,7 @@ impl<'d> RawTokenizer<'d> {
     /// # Panics
     ///
     /// Panics if a cursor from a previous `tokenize()` call is still alive.
-    pub fn tokenize_cstr<'a>(&self, source: &'a CStr) -> RawTokenCursor<'a>
+    pub fn tokenize_cstr<'a>(&self, source: &'a CStr) -> TokenCursor<'a>
     where
         'd: 'a,
     {
@@ -132,7 +132,7 @@ impl<'d> RawTokenizer<'d> {
             .inner
             .borrow_mut()
             .take()
-            .expect("RawTokenizer::tokenize_cstr called while a cursor is still active");
+            .expect("Tokenizer::tokenize_cstr called while a cursor is still active");
 
         let bytes = source.to_bytes();
         let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
@@ -141,7 +141,7 @@ impl<'d> RawTokenizer<'d> {
         unsafe {
             syntaqlite_tokenizer_reset(inner.raw.as_ptr(), source.as_ptr(), bytes.len() as u32);
         }
-        RawTokenCursor {
+        TokenCursor {
             raw: inner.raw,
             source: source_str,
             c_source_base: NonNull::new(source.as_ptr() as *mut u8).expect("CStr is non-null"),
@@ -154,9 +154,9 @@ impl<'d> RawTokenizer<'d> {
 /// An active tokenizer cursor. Iterates raw tokens from the bound source.
 ///
 /// On drop, the checked-out tokenizer state is returned to the parent
-/// [`RawTokenizer`].
-pub struct RawTokenCursor<'a> {
-    raw: NonNull<Tokenizer>,
+/// [`Tokenizer`].
+pub struct TokenCursor<'a> {
+    raw: NonNull<CTokenizer>,
     source: &'a str,
     /// Base pointer of the C source buffer. Used to compute offsets back
     /// into the Rust `source` slice.
@@ -167,7 +167,7 @@ pub struct RawTokenCursor<'a> {
     slot: Rc<RefCell<Option<TokenizerInner>>>,
 }
 
-impl Drop for RawTokenCursor<'_> {
+impl Drop for TokenCursor<'_> {
     fn drop(&mut self) {
         if let Some(inner) = self.inner.take() {
             *self.slot.borrow_mut() = Some(inner);
@@ -175,11 +175,11 @@ impl Drop for RawTokenCursor<'_> {
     }
 }
 
-impl<'a> Iterator for RawTokenCursor<'a> {
-    type Item = RawToken<'a>;
+impl<'a> Iterator for TokenCursor<'a> {
+    type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut token = Token {
+        let mut token = CToken {
             text: std::ptr::null(),
             length: 0,
             type_: 0,
@@ -196,7 +196,7 @@ impl<'a> Iterator for RawTokenCursor<'a> {
         let len = token.length as usize;
         let text = &self.source[offset..offset + len];
 
-        Some(RawToken {
+        Some(Token {
             token_type: token.type_,
             text,
         })

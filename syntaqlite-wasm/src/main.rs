@@ -12,7 +12,7 @@ use syntaqlite::Formatter;
 use syntaqlite::embedded::{self, EmbeddedFragment};
 use syntaqlite::{DatabaseCatalog, FormatConfig, KeywordCase, NodeRefJsonExt, ValidationConfig};
 use syntaqlite_parser::{
-    Cflags, Dialect, DialectEnv, RawParser, cflag_table, parse_cflag_name, parse_sqlite_version,
+    Cflags, Dialect, DialectEnv, Parser, cflag_table, parse_cflag_name, parse_sqlite_version,
 };
 
 thread_local! {
@@ -132,7 +132,7 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let dialect = try_wasm!(resolve_dialect());
     let source = try_wasm!(decode_input(ptr, len));
 
-    let parser = RawParser::new(dialect);
+    let parser = Parser::new(dialect);
     let mut cursor = parser.parse(&source);
 
     let mut ids = Vec::new();
@@ -158,7 +158,7 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
     let dialect = try_wasm!(resolve_dialect());
     let source = try_wasm!(decode_input(ptr, len));
 
-    let parser = RawParser::new(dialect);
+    let parser = Parser::new(dialect);
     let mut cursor = parser.parse(&source);
     let mut out = String::new();
     let mut count = 0;

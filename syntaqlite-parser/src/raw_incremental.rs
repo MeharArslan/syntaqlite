@@ -8,8 +8,9 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 
 use crate::DialectEnv;
+use crate::NodeId;
 use crate::NodeRef;
-use crate::RawNodeId;
+use crate::parser::{ParseResult as CParseResult, Parser as CParser};
 use crate::parser::{
     syntaqlite_create_parser_with_dialect, syntaqlite_parser_begin_macro,
     syntaqlite_parser_completion_context, syntaqlite_parser_destroy, syntaqlite_parser_end_macro,
@@ -18,13 +19,13 @@ use crate::parser::{
     syntaqlite_parser_set_trace,
 };
 use crate::raw_session::{ParserConfig, reset_parser};
-use crate::{Comment, MacroRegion, ParseResult, Parser};
-use crate::{ParseError, RawParseResult};
+use crate::{Comment, MacroRegion};
+use crate::{ParseError, ParseResult};
 
 /// Holds the C parser handle and mutable state for incremental parsing.
 /// Checked out by cursors at runtime and returned on [`Drop`].
 pub(crate) struct IncrementalInner {
-    raw: NonNull<Parser>,
+    raw: NonNull<CParser>,
     source_buf: Vec<u8>,
 }
 
@@ -37,15 +38,15 @@ impl Drop for IncrementalInner {
 }
 
 /// A low-level parser for token-by-token feeding. Owns its own C parser
-/// handle and source buffer, independent of `RawParser`.
+/// handle and source buffer, independent of `Parser`.
 ///
-/// Uses the same interior-mutability checkout pattern as [`super::RawParser`].
-pub struct RawIncrementalParser<'d> {
+/// Uses the same interior-mutability checkout pattern as [`super::Parser`].
+pub struct IncrementalParser<'d> {
     inner: Rc<RefCell<Option<IncrementalInner>>>,
     dialect: DialectEnv<'d>,
 }
 
-impl<'d> RawIncrementalParser<'d> {
+impl<'d> IncrementalParser<'d> {
     /// Create an incremental parser bound to the given dialect with default
     /// configuration (token collection enabled).
     pub fn new(dialect: impl Into<DialectEnv<'d>>) -> Self {
@@ -81,13 +82,13 @@ impl<'d> RawIncrementalParser<'d> {
             source_buf: Vec::new(),
         };
 
-        RawIncrementalParser {
+        IncrementalParser {
             inner: Rc::new(RefCell::new(Some(inner))),
             dialect: env,
         }
     }
 
-    /// Bind source text and return a `RawIncrementalCursor` for token feeding.
+    /// Bind source text and return an `IncrementalCursor` for token feeding.
     ///
     /// Copies the source into an internal buffer to add a null terminator
     /// (required by the C tokenizer). The cursor owns the copy, so the
@@ -96,18 +97,18 @@ impl<'d> RawIncrementalParser<'d> {
     /// # Panics
     ///
     /// Panics if a cursor from a previous `feed()` call is still alive.
-    pub fn feed(&self, source: &str) -> RawIncrementalCursor<'d> {
+    pub fn feed(&self, source: &str) -> IncrementalCursor<'d> {
         let mut inner = self
             .inner
             .borrow_mut()
             .take()
-            .expect("RawIncrementalParser::feed called while a cursor is still active");
+            .expect("IncrementalParser::feed called while a cursor is still active");
         // SAFETY: inner.raw is valid (owned via IncrementalInner); source is
         // copied into source_buf.
         unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
         let c_source_ptr =
             NonNull::new(inner.source_buf.as_mut_ptr()).expect("source_buf is non-empty");
-        RawIncrementalCursor {
+        IncrementalCursor {
             c_source_ptr,
             dialect: self.dialect,
             inner: Some(inner),
@@ -117,15 +118,15 @@ impl<'d> RawIncrementalParser<'d> {
     }
 }
 
-// ── RawIncrementalCursor ──────────────────────────────────────────────────────
+// ── IncrementalCursor ──────────────────────────────────────────────────────────
 
 /// A low-level cursor for feeding tokens one at a time.
 ///
 /// After calling `finish()`, no further methods may be called.
 ///
 /// On drop, the checked-out parser state is returned to the parent
-/// [`RawIncrementalParser`].
-pub struct RawIncrementalCursor<'d> {
+/// [`IncrementalParser`].
+pub struct IncrementalCursor<'d> {
     /// Base pointer into the internal source buffer. `feed_token` uses this
     /// to compute the C-side token pointer from byte-offset spans.
     c_source_ptr: NonNull<u8>,
@@ -137,7 +138,7 @@ pub struct RawIncrementalCursor<'d> {
     finished: bool,
 }
 
-impl Drop for RawIncrementalCursor<'_> {
+impl Drop for IncrementalCursor<'_> {
     fn drop(&mut self) {
         if let Some(inner) = self.inner.take() {
             *self.slot.borrow_mut() = Some(inner);
@@ -145,13 +146,13 @@ impl Drop for RawIncrementalCursor<'_> {
     }
 }
 
-impl<'d> RawIncrementalCursor<'d> {
+impl<'d> IncrementalCursor<'d> {
     fn assert_not_finished(&self) {
-        assert!(!self.finished, "RawIncrementalCursor used after finish()");
+        assert!(!self.finished, "IncrementalCursor used after finish()");
     }
 
     /// The raw C parser pointer from the checked-out inner state.
-    fn raw_ptr(&self) -> *mut Parser {
+    fn raw_ptr(&self) -> *mut CParser {
         self.inner.as_ref().unwrap().raw.as_ptr()
     }
 
@@ -161,25 +162,25 @@ impl<'d> RawIncrementalCursor<'d> {
     /// - `1` = clean success
     /// - `2` = success with error recovery (tree has ErrorNode holes)
     /// - `-1` = unrecoverable error
-    fn parse_result(&self, rc: c_int) -> Result<RawNodeId, ParseError> {
+    fn parse_result(&self, rc: c_int) -> Result<NodeId, ParseError> {
         // SAFETY: raw is valid; result struct and error_msg pointer are valid
         // for the lifetime of the parser.
         unsafe {
             let result = syntaqlite_parser_result(self.raw_ptr());
             if rc == 1 {
-                return Ok(RawNodeId(result.root));
+                return Ok(NodeId(result.root));
             }
             let err = Self::extract_error(&result);
             if rc == 2 {
                 // Error recovery succeeded — tree is valid but has ErrorNode holes.
                 return Err(ParseError {
-                    root: Some(RawNodeId(result.root)),
+                    root: Some(NodeId(result.root)),
                     ..err
                 });
             }
             // rc == -1: unrecoverable error, root may be NULL.
             let root = if result.root != u32::MAX && result.root != 0 {
-                Some(RawNodeId(result.root))
+                Some(NodeId(result.root))
             } else {
                 None
             };
@@ -191,7 +192,7 @@ impl<'d> RawIncrementalCursor<'d> {
     ///
     /// # Safety
     /// `result.error_msg` must be null or a valid C string.
-    unsafe fn extract_error(result: &ParseResult) -> ParseError {
+    unsafe fn extract_error(result: &CParseResult) -> ParseError {
         let msg = if result.error_msg.is_null() {
             "parse error".to_string()
         } else {
@@ -233,7 +234,7 @@ impl<'d> RawIncrementalCursor<'d> {
         &mut self,
         token_type: u32,
         span: Range<usize>,
-    ) -> Result<Option<RawNodeId>, ParseError> {
+    ) -> Result<Option<NodeId>, ParseError> {
         self.assert_not_finished();
         // SAFETY: c_source_ptr is valid for the source length; raw is valid.
         let rc = unsafe {
@@ -260,7 +261,7 @@ impl<'d> RawIncrementalCursor<'d> {
     /// field contains the partial tree.
     ///
     /// No further methods may be called after `finish()`.
-    pub fn finish(&mut self) -> Result<Option<RawNodeId>, ParseError> {
+    pub fn finish(&mut self) -> Result<Option<NodeId>, ParseError> {
         self.assert_not_finished();
         self.finished = true;
         // SAFETY: raw is valid.
@@ -345,23 +346,23 @@ impl<'d> RawIncrementalCursor<'d> {
         }
     }
 
-    /// Build a [`RawParseResult`] for the parser arena, borrowing source
+    /// Build a [`ParseResult`] for the parser arena, borrowing source
     /// text from the internal buffer.
     ///
     /// This is lightweight (no allocation) — it packages the raw parser
     /// pointer with a `&str` view of the owned source buffer.
-    pub fn reader(&self) -> RawParseResult<'_> {
+    pub fn reader(&self) -> ParseResult<'_> {
         let inner = self.inner.as_ref().unwrap();
         let source_len = inner.source_buf.len().saturating_sub(1);
         // SAFETY: source_buf was populated from valid UTF-8 (&str) in
         // reset_parser. The first source_len bytes are the original source.
         let source = unsafe { std::str::from_utf8_unchecked(&inner.source_buf[..source_len]) };
         // SAFETY: inner.raw is valid (owned via IncrementalInner, not yet destroyed).
-        unsafe { RawParseResult::new(inner.raw.as_ptr(), source) }
+        unsafe { ParseResult::new(inner.raw.as_ptr(), source) }
     }
 
-    /// Wrap a [`RawNodeId`] as a [`NodeRef`] using this cursor's reader and dialect.
-    pub fn node_ref(&self, id: RawNodeId) -> NodeRef<'_> {
+    /// Wrap a [`NodeId`] as a [`NodeRef`] using this cursor's reader and dialect.
+    pub fn node_ref(&self, id: NodeId) -> NodeRef<'_> {
         NodeRef::new(id, self.reader(), self.dialect)
     }
 

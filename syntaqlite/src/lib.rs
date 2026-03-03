@@ -146,3 +146,19 @@ pub use fmt::{FormatConfig, KeywordCase};
 
 #[cfg(feature = "json")]
 pub use crate::parser::node_ref_json::NodeRefJsonExt;
+
+// ── Grammar-agnostic parser types (Raw* aliases) ─────────────────────────
+//
+// `syntaqlite_parser` now uses clean names (`Parser`, `Tokenizer`, …).
+// These `Raw*` re-exports preserve the old qualified path for callers that
+// previously wrote `syntaqlite::RawParser` or `syntaqlite_parser::RawParser`.
+
+pub use syntaqlite_parser::IncrementalCursor as RawIncrementalCursor;
+pub use syntaqlite_parser::IncrementalParser as RawIncrementalParser;
+pub use syntaqlite_parser::NodeId as RawNodeId;
+pub use syntaqlite_parser::ParseResult as RawParseResult;
+pub use syntaqlite_parser::Parser as RawParser;
+pub use syntaqlite_parser::StatementCursor as RawStatementCursor;
+pub use syntaqlite_parser::Token as RawToken;
+pub use syntaqlite_parser::TokenCursor as RawTokenCursor;
+pub use syntaqlite_parser::Tokenizer as RawTokenizer;

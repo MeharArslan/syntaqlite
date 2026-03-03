@@ -9,10 +9,10 @@
 //! - [`DialectNodeType`] — resolve a typed AST node from the parser arena.
 //! - [`DialectTokenType`] — resolve a typed token from a raw token code.
 
-use crate::nodes::RawNodeId;
-use crate::session::RawParseResult;
+use crate::nodes::NodeId;
+use crate::session::ParseResult;
 
-/// A node type that can be resolved from the parser arena by [`RawNodeId`].
+/// A node type that can be resolved from the parser arena by [`NodeId`].
 ///
 /// Implemented by generated view structs (node views, `Node` enum) so that
 /// generic containers like `TypedList` can resolve children without
@@ -20,7 +20,7 @@ use crate::session::RawParseResult;
 ///
 /// See also the symmetric [`DialectTokenType`] for token enums.
 pub trait DialectNodeType<'a>: Sized {
-    fn from_arena(reader: RawParseResult<'a>, id: RawNodeId) -> Option<Self>;
+    fn from_arena(reader: ParseResult<'a>, id: NodeId) -> Option<Self>;
 }
 
 /// A token type that can be resolved from a raw token integer, and converted
@@ -52,9 +52,9 @@ pub trait NodeFamily {
 /// Generated as `XxxId` for each concrete view struct (e.g. `SelectStmtId`).
 /// Can be stored freely without holding the parser arena alive.
 ///
-/// Use [`cursor.resolve(id)`](crate::RawStatementCursor::node_ref) to
+/// Use [`cursor.resolve(id)`](crate::StatementCursor::node_ref) to
 /// convert back to a typed view when a cursor is available.
-pub trait NodeId: Copy + Into<RawNodeId> {
+pub trait TypedNodeId: Copy + Into<NodeId> {
     /// The typed view produced when this ID is resolved against an arena.
     type Node<'a>: DialectNodeType<'a>;
 }

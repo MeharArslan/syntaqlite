@@ -9,8 +9,8 @@
 
 use syntaqlite_parser::ast_traits::AstTypes;
 use syntaqlite_parser::{
-    DialectEnv, DialectNodeType, ParseError, ParserConfig, RawIncrementalParser, RawNodeId,
-    RawParseResult, RawParser,
+    DialectEnv, DialectNodeType, IncrementalParser, NodeId, ParseError, ParseResult, Parser,
+    ParserConfig,
 };
 
 use crate::dialect::{DialectExt, TokenCategory};
@@ -98,7 +98,7 @@ impl<'d> SemanticAnalyzer<'d> {
 
     /// Parse SQL and produce an opaque model for repeated queries.
     pub fn prepare(&mut self, source: &str) -> SemanticModel<'d> {
-        let parser = RawParser::with_config(
+        let parser = Parser::with_config(
             self.dialect,
             &ParserConfig {
                 collect_tokens: true,
@@ -232,7 +232,7 @@ impl<'d> SemanticAnalyzer<'d> {
 
         let stmt_tokens = &tokens[start..boundary];
 
-        let inc_parser = RawIncrementalParser::new(self.dialect);
+        let inc_parser = IncrementalParser::new(self.dialect);
         let mut cursor = inc_parser.feed(source);
         let mut last_expected = cursor.expected_tokens();
 
@@ -341,8 +341,8 @@ impl Default for SemanticAnalyzer<'static> {
 
 /// Validate a single parsed statement against the catalog stack.
 pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
-    reader: RawParseResult<'a>,
-    stmt_id: RawNodeId,
+    reader: ParseResult<'a>,
+    stmt_id: NodeId,
     dialect: DialectEnv<'_>,
     catalog: &'a CatalogStack<'a>,
     config: &'a ValidationConfig,
