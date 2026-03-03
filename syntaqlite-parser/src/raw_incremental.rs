@@ -16,8 +16,7 @@ use crate::parser::{
     syntaqlite_parser_node_count, syntaqlite_parser_result, syntaqlite_parser_set_collect_tokens,
     syntaqlite_parser_set_dialect_config, syntaqlite_parser_set_trace,
 };
-use crate::raw_session::CursorState;
-use crate::raw_session::ParserConfig;
+use crate::raw_session::{ParserConfig, reset_parser, reset_parser_cstr};
 use crate::{Comment, MacroRegion, ParseResult, Parser};
 use crate::{ParseError, RawNodeReader};
 
@@ -86,23 +85,25 @@ impl<'d> RawIncrementalParser<'d> {
 
     /// Bind source text and return a `RawIncrementalCursor` for token feeding.
     pub fn feed<'a>(&'a mut self, source: &'a str) -> RawIncrementalCursor<'a> {
-        let state = CursorState::new(
-            self.raw.as_ptr(),
-            &mut self.source_buf,
-            source,
-            self.dialect,
-        );
+        // SAFETY: raw is valid (owned by self); source_buf lives for 'a.
+        let (reader, c_source_ptr) =
+            unsafe { reset_parser(self.raw.as_ptr(), &mut self.source_buf, source) };
         RawIncrementalCursor {
-            state,
+            reader,
+            c_source_ptr,
+            dialect: self.dialect,
             finished: false,
         }
     }
 
     /// Zero-copy variant: bind a null-terminated source and return a `RawIncrementalCursor`.
     pub fn feed_cstr<'a>(&'a mut self, source: &'a CStr) -> RawIncrementalCursor<'a> {
-        let state = CursorState::new_cstr(self.raw.as_ptr(), source, self.dialect);
+        // SAFETY: raw is valid (owned by self); source is a CStr (null-terminated, valid for 'a).
+        let (reader, c_source_ptr) = unsafe { reset_parser_cstr(self.raw.as_ptr(), source) };
         RawIncrementalCursor {
-            state,
+            reader,
+            c_source_ptr,
+            dialect: self.dialect,
             finished: false,
         }
     }
@@ -122,7 +123,14 @@ impl Drop for RawIncrementalParser<'_> {
 ///
 /// After calling `finish()`, no further methods may be called.
 pub struct RawIncrementalCursor<'a> {
-    pub(crate) state: CursorState<'a>,
+    reader: RawNodeReader<'a>,
+    /// The pointer that the C parser uses as its source base. This may differ
+    /// from `source.as_ptr()` when `feed()` copies into an internal buffer.
+    /// `feed_token` translates user text pointers through this so that the C
+    /// code's `tok.z - ctx->source` offset arithmetic is correct regardless
+    /// of whether the copying or zero-copy path was used.
+    c_source_ptr: NonNull<u8>,
+    dialect: RawDialect<'a>,
     finished: bool,
 }
 
@@ -141,7 +149,7 @@ impl<'a> RawIncrementalCursor<'a> {
         // SAFETY: raw is valid; result struct and error_msg pointer are valid
         // for the lifetime of the parser.
         unsafe {
-            let raw = self.state.reader.raw();
+            let raw = self.reader.raw();
             let result = syntaqlite_parser_result(raw);
             if rc == 1 {
                 return Ok(NodeId(result.root));
@@ -213,9 +221,9 @@ impl<'a> RawIncrementalCursor<'a> {
     ) -> Result<Option<NodeId>, ParseError> {
         self.assert_not_finished();
         // SAFETY: c_source_ptr is valid for the source length; raw is valid.
-        let raw = self.state.reader.raw();
+        let raw = self.reader.raw();
         let rc = unsafe {
-            let c_text = self.state.c_source_ptr.as_ptr().add(span.start);
+            let c_text = self.c_source_ptr.as_ptr().add(span.start);
             syntaqlite_parser_feed_token(
                 raw,
                 token_type as c_int,
@@ -242,7 +250,7 @@ impl<'a> RawIncrementalCursor<'a> {
         self.assert_not_finished();
         self.finished = true;
         // SAFETY: raw is valid.
-        let rc = unsafe { syntaqlite_parser_finish(self.state.reader.raw()) };
+        let rc = unsafe { syntaqlite_parser_finish(self.reader.raw()) };
         match rc {
             0 => Ok(None),
             _ => self.parse_result(rc).map(Some),
@@ -258,7 +266,7 @@ impl<'a> RawIncrementalCursor<'a> {
         self.assert_not_finished();
         // Use a stack buffer to avoid the count-then-allocate double FFI call.
         // 256 covers virtually all parser states; fall back to heap for outliers.
-        let raw = self.state.reader.raw();
+        let raw = self.reader.raw();
         let mut stack_buf = [0 as c_int; 256];
         // SAFETY: raw is valid and exclusively borrowed via &self; stack_buf is
         // a valid output buffer.
@@ -291,7 +299,7 @@ impl<'a> RawIncrementalCursor<'a> {
     pub fn completion_context(&self) -> u32 {
         self.assert_not_finished();
         // SAFETY: raw is valid and exclusively borrowed via &self.
-        unsafe { syntaqlite_parser_completion_context(self.state.reader.raw()) }
+        unsafe { syntaqlite_parser_completion_context(self.reader.raw()) }
     }
 
     /// Return the number of nodes currently in the parser arena.
@@ -299,7 +307,7 @@ impl<'a> RawIncrementalCursor<'a> {
     /// Flushes any pending list nodes first, so all node data is consistent.
     pub fn node_count(&self) -> u32 {
         // SAFETY: raw is valid and exclusively borrowed via &self.
-        unsafe { syntaqlite_parser_node_count(self.state.reader.raw()) }
+        unsafe { syntaqlite_parser_node_count(self.reader.raw()) }
     }
 
     /// Mark subsequent fed tokens as being inside a macro expansion.
@@ -310,7 +318,7 @@ impl<'a> RawIncrementalCursor<'a> {
         self.assert_not_finished();
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         unsafe {
-            syntaqlite_parser_begin_macro(self.state.reader.raw(), call_offset, call_length);
+            syntaqlite_parser_begin_macro(self.reader.raw(), call_offset, call_length);
         }
     }
 
@@ -319,34 +327,34 @@ impl<'a> RawIncrementalCursor<'a> {
         self.assert_not_finished();
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         unsafe {
-            syntaqlite_parser_end_macro(self.state.reader.raw());
+            syntaqlite_parser_end_macro(self.reader.raw());
         }
     }
 
     /// Wrap a [`NodeId`] as a [`NodeRef`] using this cursor's reader and dialect.
     pub fn node_ref(&self, id: NodeId) -> NodeRef<'a> {
-        NodeRef::new(id, self.state.reader, self.state.dialect)
+        NodeRef::new(id, self.reader, self.dialect)
     }
 
     /// Get a reference to the embedded `NodeReader`.
     pub fn reader(&self) -> RawNodeReader<'a> {
-        self.state.reader()
+        self.reader
     }
 
     /// Return all comments captured during parsing.
     pub fn comments(&self) -> &[Comment] {
-        self.state.comments()
+        self.reader.comments()
     }
 
     /// Return all token positions collected during parsing.
     ///
     /// Only populated when the parser was built with `collect_tokens(true)`.
     pub fn tokens(&self) -> &[crate::TokenPos] {
-        self.state.tokens()
+        self.reader.tokens()
     }
 
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
     pub fn macro_regions(&self) -> &[MacroRegion] {
-        self.state.reader.macro_regions()
+        self.reader.macro_regions()
     }
 }

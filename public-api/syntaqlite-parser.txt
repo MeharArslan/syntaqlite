@@ -531,6 +531,7 @@ pub fn syntaqlite_parser::RawIncrementalParser<'d>::feed<'a>(&'a mut self, sourc
 pub fn syntaqlite_parser::RawIncrementalParser<'d>::new(dialect: impl core::convert::Into<syntaqlite_parser::RawDialect<'d>>) -> Self
 pub fn syntaqlite_parser::RawIncrementalParser<'d>::with_config(dialect: impl core::convert::Into<syntaqlite_parser::RawDialect<'d>>, config: &syntaqlite_parser::ParserConfig) -> Self
 pub fn syntaqlite_parser::RawNodeReader<'a>::child_node_ids(&self, id: syntaqlite_parser::NodeId, dialect: &syntaqlite_parser::RawDialect<'_>) -> alloc::vec::Vec<syntaqlite_parser::NodeId>
+pub fn syntaqlite_parser::RawNodeReader<'a>::comments(&self) -> &[syntaqlite_parser::Comment]
 pub fn syntaqlite_parser::RawNodeReader<'a>::dump_node(&self, id: syntaqlite_parser::NodeId, out: &mut alloc::string::String, indent: usize)
 pub fn syntaqlite_parser::RawNodeReader<'a>::extract_fields(&self, id: syntaqlite_parser::NodeId, dialect: &syntaqlite_parser::RawDialect<'_>) -> core::option::Option<(u32, syntaqlite_parser::Fields<'a>)>
 pub fn syntaqlite_parser::RawNodeReader<'a>::list_children(&self, id: syntaqlite_parser::NodeId, dialect: &syntaqlite_parser::RawDialect<'_>) -> core::option::Option<&'a [syntaqlite_parser::NodeId]>

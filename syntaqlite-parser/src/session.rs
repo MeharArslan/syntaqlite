@@ -352,6 +352,14 @@ impl<'a> RawNodeReader<'a> {
         unsafe { ffi_slice(self.raw.as_ptr(), ffi::syntaqlite_parser_tokens) }
     }
 
+    /// Return all comments captured during parsing.
+    /// Requires `collect_tokens: true` in `ParserConfig`.
+    pub fn comments(&self) -> &[ffi::Comment] {
+        // SAFETY: raw is valid; syntaqlite_parser_comments returns a pointer valid
+        // for the lifetime of &self (until the next reset/destroy, which need &mut).
+        unsafe { ffi_slice(self.raw.as_ptr(), ffi::syntaqlite_parser_comments) }
+    }
+
     /// Return all macro regions captured during parsing.
     pub fn macro_regions(&self) -> &[ffi::MacroRegion] {
         // SAFETY: raw is valid; syntaqlite_parser_macro_regions returns a pointer

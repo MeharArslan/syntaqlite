@@ -26,8 +26,8 @@
 #   5. tools/format-c (--check or apply)         — C formatting
 #   6. tools/check-c-deps                        — C header dependency boundaries
 #   7. tools/check-public-api                    — public API golden file gate
-#   8. tools/run-unit-tests                      — Rust unit tests
-#   9. cargo build -p syntaqlite-cli             — build CLI for diff tests
+#   8. cargo build -p syntaqlite-cli             — build CLI (early, for diff tests)
+#   9. tools/run-unit-tests                      — Rust unit tests
 #  10. tools/run-ast-diff-tests                  — AST diff tests
 #  11. tools/run-fmt-diff-tests                  — formatter diff tests
 #  12. tools/run-amalg-tests                     — amalgamation integration tests
@@ -133,11 +133,11 @@ run_step "tools/check-c-deps" "$SCRIPT_DIR/check-c-deps"
 # 7. Public API golden file gate
 run_step "tools/check-public-api" "$SCRIPT_DIR/check-public-api"
 
-# 8. Unit tests
-run_step "tools/run-unit-tests" "$SCRIPT_DIR/run-unit-tests"
-
-# 9. Build CLI for diff tests
+# 8. Build CLI (needed by diff tests; done early so the binary is always available)
 run_step "cargo build -p syntaqlite-cli" "$CARGO" build -p syntaqlite-cli
+
+# 9. Unit tests
+run_step "tools/run-unit-tests" "$SCRIPT_DIR/run-unit-tests"
 
 # 10-14. Diff test suites
 run_step "tools/run-ast-diff-tests" "$SCRIPT_DIR/run-ast-diff-tests"
