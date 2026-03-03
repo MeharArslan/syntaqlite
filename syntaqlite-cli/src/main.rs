@@ -3,11 +3,5 @@
 
 fn main() {
     #[cfg(feature = "builtin-sqlite")]
-    {
-        syntaqlite_cli::run("syntaqlite", Some(syntaqlite::dialect::sqlite()));
-    }
-    #[cfg(not(feature = "builtin-sqlite"))]
-    {
-        syntaqlite_cli::run("syntaqlite", None);
-    }
+    syntaqlite_cli::run("syntaqlite", Some(syntaqlite::dialect::sqlite()));
 }

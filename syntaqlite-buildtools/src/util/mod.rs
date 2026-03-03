@@ -7,25 +7,18 @@ pub mod c_extractor;
 pub mod c_transformer;
 pub mod grammar_parser;
 
-#[cfg(feature = "codegen-pipeline")]
 pub mod synq_parser;
 
-#[cfg(feature = "codegen-pipeline")]
 pub(crate) mod self_subcommand;
 
-#[cfg(feature = "codegen-pipeline")]
 pub(crate) mod text_writer;
 
-#[cfg(feature = "codegen-pipeline")]
 pub(crate) mod c_writer;
 
-#[cfg(feature = "codegen-pipeline")]
 pub(crate) mod rust_writer;
 
-#[cfg(feature = "codegen-pipeline")]
 pub(crate) mod tool_run;
 
-#[cfg(any(feature = "sqlite-extract", feature = "version-analysis"))]
 pub(crate) mod mkkeywordhash_parser;
 
 /// Convert PascalCase to snake_case.

@@ -12,12 +12,10 @@ pub(crate) struct KeywordEntry {
     /// The keyword name, e.g. "RETURNING".
     pub(crate) name: String,
     /// The token constant, e.g. "TK_RETURNING".
-    #[cfg(feature = "version-analysis")]
     pub(crate) token: String,
     /// The mask expression (symbol names ORed together), e.g. "RETURNING".
     pub(crate) mask_expr: String,
     /// Priority value.
-    #[cfg(feature = "version-analysis")]
     pub(crate) priority: u32,
 }
 
@@ -130,10 +128,8 @@ fn parse_keyword_line(line: &str) -> Option<KeywordEntry> {
 
     Some(KeywordEntry {
         name,
-        #[cfg(feature = "version-analysis")]
         token: token.to_string(),
         mask_expr,
-        #[cfg(feature = "version-analysis")]
         priority: if fields.len() >= 4 {
             fields[3].trim().parse().unwrap_or(0)
         } else {

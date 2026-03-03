@@ -3,18 +3,11 @@
 
 //! Minimal build script: compile vendored C tools into the binary.
 //!
-//! Only active when the `codegen-pipeline` feature is enabled (stage 2/3).
-//! Stage 1 (`sqlite-extract`) does not need any C compilation.
-
 use std::env;
 use std::path::PathBuf;
 
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
-
-    if env::var("CARGO_FEATURE_CODEGEN_PIPELINE").is_err() {
-        return;
-    }
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let sources_dir = PathBuf::from(&manifest_dir).join("sqlite-vendored/sources");

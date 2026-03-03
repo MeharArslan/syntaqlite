@@ -31,16 +31,13 @@ This allows projects like libSQL, rqlite, or custom embedded databases to use sy
 
 ## Key APIs
 
-- `Dialect<'d>` — opaque handle wrapping `&'d ffi::Dialect`. Copy + Send + Sync.
-  - Safe accessors: `is_list`, `field_meta`, `extract_fields`, `fmt_string`, `fmt_enum_display_val`, `fmt_dispatch`, `first_source_offset`, `last_source_offset`
-- `Formatter<'d>` — high-level formatter: `Formatter::new(&dialect)?.format(sql)` or `.format_node(session, id)`
-  - Owns `Parser` internally; stores `Dialect<'d>` by value (Copy)
-  - Builder: `.with_config(config)`, `.with_semicolons(true)`
-- `Interpreter<'a, 'b>` — bytecode interpreter, takes `Dialect<'a>` by value + ops byte slice
-- `DialectTypes` trait — dialect crates implement: `Node<'a>`, `TokenType`, `node_from_raw()`
-- `SessionExt<'a, D>` — blanket impl for typed node/feed access
-- `syntaqlite::sqlite::ast::SessionExt<'a>` — concrete trait hardcoding Sqlite (no turbofish needed)
-- `Session::dump_node()` — calls C-side `syntaqlite_dump_node()` via FFI
+- `DialectEnv<'d>` (`syntaqlite_parser::dialect`) — the primary dialect handle with safe accessors: `is_list`, `field_meta`, `node_name`, `fmt_dispatch`, `fmt_string`, `fmt_enum_display_val`, token/keyword helpers. Copy.
+- `Dialect<'d, N: NodeFamily>` — wraps `DialectEnv<'d>` and adds typed node access; obtained via `Dialect::from_raw_dialect(env)`.
+- `Formatter` (in `syntaqlite::fmt`) — high-level formatter:
+  - `Formatter::new()` — default SQLite dialect
+  - `Formatter::with_config(dialect, &FormatConfig)` — custom dialect/config
+  - `.format(&mut self, source: &str)` and `.format_node(&mut self, node: NodeRef<'_>)`
+- `Interpreter<'a, 'b>` — bytecode interpreter, takes `DialectEnv<'a>` + ops byte slice
 
 ## Coding Conventions
 
@@ -101,7 +98,7 @@ The `.synq` DSL defines the AST node types, enums, flags, and formatter instruct
 
 - **Location**: `syntaqlite/parser-nodes/*.synq`
 - **Defines**: enums, flags, nodes (with `inline`/`index` fields), lists, and `fmt` blocks
-- **Codegen produces**: C headers (`syntaqlite-sys/csrc/`) + Rust node/token types (`syntaqlite/src/generated/`) + fmt bytecode
+- **Codegen produces**: C headers + Rust node/token types + fmt bytecode (see `tools/generated-files.txt` for exact output paths)
 - **After editing**: run `tools/run-codegen`, then verify with `cargo check && cargo clippy`
 
 ## Development Tools
@@ -119,14 +116,13 @@ The `.synq` DSL defines the AST node types, enums, flags, and formatter instruct
 | `tools/run-perfetto-validation-diff-tests` | Run Perfetto dialect validation tests (`tests/perfetto_validation_diff_tests/`) |
 | `tools/format-c` | Run clang-format on C sources (`--check` to verify without modifying) |
 | `tools/check-c-deps` | Verify C header dependency boundaries between crates |
-| `tools/pre-push` | Run all pre-push checks (formatting, clippy, deps, unit tests, diff tests). Use `--fix` to auto-fix formatting and clippy warnings before running remaining checks. |
+| `tools/pre-push` | Run pre-push checks, skipping anything not affected by changed files. Use `--fix` to auto-fix formatting and clippy warnings. Use `--all` to run all checks unconditionally. |
 | `tools/install-build-deps` | Install platform-specific build deps (clang-format, SQLite sources) |
 | `tools/build-web-playground` | Build WASM web playground |
 
 ## Parser Debugging
 
-- `SyntaqliteParserConfig config = {.trace = 1}` enables Lemon parser trace
-- CLI: `syntaqlite ast --trace < input.sql`
+- `SyntaqliteParserConfig config = {.trace = 1}` enables Lemon parser trace (C-level only)
 - Lemon `.out` file shows all states and conflicts
 
 ## Verification

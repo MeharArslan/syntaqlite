@@ -8,9 +8,7 @@ pub mod base_files;
 mod base_files_tables;
 pub(crate) mod grammar_codegen;
 pub(crate) mod keyword_hash;
-#[cfg(feature = "codegen-pipeline")]
 pub(crate) mod lemon;
-#[cfg(feature = "codegen-pipeline")]
 pub(crate) mod mkkeyword;
 pub(crate) mod parser_pipeline;
 pub(crate) mod sqlite_fragments;
