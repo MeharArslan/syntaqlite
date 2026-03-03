@@ -15,6 +15,9 @@ BRANCH_NAME="claude/$NAME"
 # Create the worktree.
 git worktree add "$WORKTREE_PATH" -b "$BRANCH_NAME" HEAD >&2
 
+# Track origin/main so `git push` goes directly to main.
+git -C "$WORKTREE_PATH" branch --set-upstream-to=origin/main "$BRANCH_NAME" >&2
+
 # Symlink third_party/ so build deps are available without copying.
 if [ -d "$CWD/third_party" ] && [ ! -e "$WORKTREE_PATH/third_party" ]; then
   ln -s "$CWD/third_party" "$WORKTREE_PATH/third_party" >&2
