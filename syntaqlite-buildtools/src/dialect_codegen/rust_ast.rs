@@ -421,7 +421,7 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     w.close_block("}");
     w.newline();
 
-    w.open_block("impl syntaqlite_parser::DialectTokenType for TokenType {");
+    w.open_block("impl crate::GrammarTokenType for TokenType {");
     w.open_block("fn from_token_type(raw: u32) -> Option<Self> {");
     w.line("Self::from_raw(raw)");
     w.close_block("}");

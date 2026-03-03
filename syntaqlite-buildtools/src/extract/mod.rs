@@ -296,7 +296,7 @@ mod tests {
     fn synq_cflag_table_matches_header() {
         let header = include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-parser/include/syntaqlite/cflags.h"
+            "/../syntaqlite-syntax/include/syntaqlite/cflags.h"
         ));
 
         // Parse "#define SYNQ_CFLAG_FOO  N" lines from the header.

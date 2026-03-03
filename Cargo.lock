@@ -79,7 +79,7 @@ version = "0.1.0"
 dependencies = [
  "criterion",
  "syntaqlite",
- "syntaqlite-parser",
+ "syntaqlite-syntax",
 ]
 
 [[package]]
@@ -758,8 +758,7 @@ dependencies = [
  "serde",
  "serde_json",
  "syntaqlite-common",
- "syntaqlite-parser",
- "syntaqlite-parser-sqlite",
+ "syntaqlite-syntax",
 ]
 
 [[package]]
@@ -786,7 +785,7 @@ dependencies = [
  "serde_json",
  "syntaqlite",
  "syntaqlite-buildtools",
- "syntaqlite-parser",
+ "syntaqlite-syntax",
  "tempfile",
 ]
 
@@ -795,18 +794,11 @@ name = "syntaqlite-common"
 version = "0.1.0"
 
 [[package]]
-name = "syntaqlite-parser"
+name = "syntaqlite-syntax"
 version = "0.1.0"
 dependencies = [
  "cc",
-]
-
-[[package]]
-name = "syntaqlite-parser-sqlite"
-version = "0.1.0"
-dependencies = [
- "cc",
- "syntaqlite-parser",
+ "syntaqlite-common",
 ]
 
 [[package]]
@@ -816,7 +808,7 @@ dependencies = [
  "serde",
  "serde_json",
  "syntaqlite",
- "syntaqlite-parser",
+ "syntaqlite-syntax",
 ]
 
 [[package]]

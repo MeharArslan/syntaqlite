@@ -453,17 +453,16 @@ pub fn generate_codegen_artifacts(
     let dialect_dispatch_h = generate_dialect_dispatch_h(request.dialect.name());
 
     let rust = if request.include_rust {
-        // All generated Rust files import from `syntaqlite_parser` directly.
-        // Both the internal SQLite dialect crate (syntaqlite-parser-sqlite) and
-        // external dialect crates declare `syntaqlite-parser` as a dependency.
+        // All generated Rust files import from `crate` directly (they live
+        // inside syntaqlite-syntax/src/sqlite/).
         let rust_paths = RustAstPaths {
-            crate_prefix: "syntaqlite_parser",
-            // ffi_path: dialect-specific FFI structs always live in crate::ffi.
-            ffi_path: "crate::ffi",
-            comment_path: "syntaqlite_parser",
-            nodes_path: "syntaqlite_parser",
-            session_path: "syntaqlite_parser",
-            dialect_fn_path: "crate::dialect::dialect",
+            crate_prefix: "crate",
+            // ffi_path: dialect-specific FFI structs live in the sibling ffi module.
+            ffi_path: "super::ffi",
+            comment_path: "crate",
+            nodes_path: "crate",
+            session_path: "crate",
+            dialect_fn_path: "super::grammar::typed_grammar",
         };
         Some(RustCodegenArtifacts {
             tokens_rs: generate_rust_tokens(&token_defines[..]),

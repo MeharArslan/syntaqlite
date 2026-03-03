@@ -110,8 +110,9 @@ impl OutputLayout {
                 write: Some(format!("{csrc}/dialect_meta.h")),
                 include: format!("{ip}dialect_meta.h"),
             },
+            // fmt data moved to Rust statics; do not generate dialect_fmt.h for SQLite
             dialect_fmt_h: CHeader {
-                write: Some(format!("{csrc}/dialect_fmt.h")),
+                write: None,
                 include: format!("{ip}dialect_fmt.h"),
             },
             dialect_tokens_h: CHeader {
@@ -156,11 +157,11 @@ impl OutputLayout {
                 write: Some(format!("{sc}/include/syntaqlite/tokens.h")),
                 include: "syntaqlite/tokens.h".to_string(),
             },
-            // Rust: dialect-specific in dialect_crate/src/, shared in shared_crate/src/
-            tokens_rs: Some(format!("{dc}/src/tokens.rs")),
-            ffi_rs: Some(format!("{dc}/src/ffi.rs")),
-            ast_rs: Some(format!("{dc}/src/ast.rs")),
-            ast_traits_rs: Some(format!("{sc}/src/ast_traits.rs")),
+            // Rust: all in dialect_crate/src/sqlite/ subdirectory
+            tokens_rs: Some(format!("{dc}/src/sqlite/tokens.rs")),
+            ffi_rs: Some(format!("{dc}/src/sqlite/ffi.rs")),
+            ast_rs: Some(format!("{dc}/src/sqlite/ast.rs")),
+            ast_traits_rs: Some(format!("{sc}/src/sqlite/ast_traits.rs")),
             lib_rs: None, // hand-maintained
             functions_catalog_rs: None,
             // Crate root: hand-maintained for the internal crate

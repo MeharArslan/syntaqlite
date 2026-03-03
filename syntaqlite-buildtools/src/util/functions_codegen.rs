@@ -153,7 +153,7 @@ pub fn generate_functions_catalog(json_content: &str) -> Result<String, String> 
     let _ = writeln!(out);
     let _ = writeln!(
         out,
-        "use crate::catalog::{{AvailabilityRule, CflagPolarity, FunctionCategory, FunctionEntry, FunctionInfo}};"
+        "use crate::dialect::catalog::{{AvailabilityRule, CflagPolarity, FunctionCategory, FunctionEntry, FunctionInfo}};"
     );
     let _ = writeln!(out);
 
@@ -296,7 +296,7 @@ mod tests {
         assert!(result.contains("SQLITE_FUNCTIONS"));
         assert!(result.contains("\"abs\""));
         assert!(result.contains("FunctionCategory::Scalar"));
-        assert!(result.contains("use crate::catalog::"));
+        assert!(result.contains("use crate::dialect::catalog::"));
     }
 
     #[test]

@@ -41,8 +41,8 @@ def main():
     dialect_crate = project_root / "syntaqlite"
     actions_dir = dialect_crate / "parser-actions"
     nodes_dir = dialect_crate / "parser-nodes"
-    dialect_crate_dir = project_root / "syntaqlite-parser-sqlite"
-    shared_crate_dir = project_root / "syntaqlite-parser"
+    dialect_crate_dir = project_root / "syntaqlite-syntax"
+    shared_crate_dir = project_root / "syntaqlite-syntax"
     vendored_dir = project_root / "syntaqlite-buildtools" / "sqlite-vendored"
 
     do_extract = args.extract
@@ -91,8 +91,8 @@ def main():
 
     # Stage 1b: Generate functions catalog and ast_traits from synq files.
     functions_json = vendored_dir / "data" / "functions.json"
-    functions_catalog_rs = dialect_crate_dir / "src" / "functions_catalog.rs"
-    ast_traits_out = shared_crate_dir / "src" / "ast_traits.rs"
+    functions_catalog_rs = project_root / "syntaqlite" / "src" / "sqlite" / "functions_catalog.rs"
+    ast_traits_out = shared_crate_dir / "src" / "sqlite" / "ast_traits.rs"
 
     print("Stage 1b: Generating functions catalog and ast_traits...")
     result = subprocess.run(

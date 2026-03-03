@@ -29,8 +29,8 @@ fn ensure_dir(path: &Path, label: &str) -> Result<(), String> {
 }
 
 // Hardcoded workspace paths for the internal SQLite dialect.
-const SQLITE_DIALECT_CRATE: &str = "syntaqlite-parser-sqlite";
-const SQLITE_SHARED_CRATE: &str = "syntaqlite-parser";
+const SQLITE_DIALECT_CRATE: &str = "syntaqlite-syntax";
+const SQLITE_SHARED_CRATE: &str = "syntaqlite-syntax";
 
 #[derive(Parser)]
 #[command(about = "Internal bootstrap and code generation tool for syntaqlite")]
@@ -44,7 +44,7 @@ enum Command {
     /// Regenerate the internal SQLite dialect C sources and Rust bindings (stage 2).
     ///
     /// Writes generated files to the hardcoded workspace paths in
-    /// syntaqlite-parser-sqlite/ and syntaqlite-parser/.
+    /// syntaqlite-syntax/.
     #[command(name = "codegen-sqlite")]
     CodegenSqlite(CodegenSqliteArgs),
 
@@ -132,7 +132,7 @@ fn cmd_codegen_sqlite(args: CodegenSqliteArgs) -> Result<(), String> {
             extra_keywords: &no_keywords,
             parser_symbol_prefix: None,
             include_rust: true,
-            crate_name: Some("syntaqlite_parser"),
+            crate_name: Some("crate"),
             base_synq_files: None,
             open_for_extension: true,
             dialect_c_includes: layout.c_includes(),
@@ -286,7 +286,7 @@ fn cmd_generate_ast_traits(
         extra_keywords: &no_keywords,
         parser_symbol_prefix: None,
         include_rust: true,
-        crate_name: Some("syntaqlite_parser"),
+        crate_name: Some("syntaqlite_syntax"),
         base_synq_files: None,
         open_for_extension: true,
         dialect_c_includes: layout.c_includes(),

@@ -1,0 +1,18 @@
+[package]
+name = "syntaqlite-syntax"
+version = "0.1.0"
+edition = "2024"
+links = "syntaqlite_syntax"
+
+[features]
+default = ["sqlite"]
+sqlite = []
+pin-version = ["sqlite"]
+pin-cflags = ["sqlite"]
+no-bundled-parser = []
+
+[dependencies]
+syntaqlite-common = { path = "../syntaqlite-common" }
+
+[build-dependencies]
+cc = "1.0"
