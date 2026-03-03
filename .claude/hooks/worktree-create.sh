@@ -23,5 +23,9 @@ if [ -d "$CWD/third_party" ] && [ ! -e "$WORKTREE_PATH/third_party" ]; then
   ln -s "$CWD/third_party" "$WORKTREE_PATH/third_party" >&2
 fi
 
+# Set up sparse-checkout to exclude shared instruction files.
+git -C "$WORKTREE_PATH" sparse-checkout init --no-cone >&2
+git -C "$WORKTREE_PATH" sparse-checkout set '/*' '!/.claude/rules/' '!/CLAUDE.md' '!/AGENTS.md' >&2
+
 # Print path for Claude Code.
 echo "$WORKTREE_PATH"
