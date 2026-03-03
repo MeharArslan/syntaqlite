@@ -60,9 +60,9 @@ pass before committing.
    )"
    ```
 
-7. **Push to remote**:
+7. **Push to main**:
    ```sh
-   git push
+   git push origin HEAD:main
    ```
 
-8. **Report the commit hash and branch** to the user.
+8. **Report the commit hash** to the user.
