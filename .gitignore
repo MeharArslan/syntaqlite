@@ -1,5 +1,4 @@
-/third_party/bin/
-/third_party/src/
+/third_party/
 /out/
 /.cache/
 /compile_commands.json
