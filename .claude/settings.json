@@ -1,25 +1,6 @@
 {
   "hooks": {
     "WorktreeCreate": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 .claude/hooks/create-worktree.py",
-            "timeout": 120
-          }
-        ]
-      }
-    ],
-    "WorktreeRemove": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 .claude/hooks/remove-worktree.py"
-          }
-        ]
-      }
     ]
   }
 }

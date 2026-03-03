@@ -191,7 +191,11 @@ fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u
     let source = try_wasm!(decode_input(ptr, len));
 
     let config = FormatConfig {
-        line_width: if line_width == 0 { 80 } else { line_width as usize },
+        line_width: if line_width == 0 {
+            80
+        } else {
+            line_width as usize
+        },
         keyword_case: match keyword_case {
             1 => KeywordCase::Upper,
             2 => KeywordCase::Lower,

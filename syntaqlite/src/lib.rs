@@ -141,6 +141,5 @@ pub use fmt::{FormatConfig, KeywordCase};
 #[cfg(feature = "validation")]
 pub use validation::{ValidationConfig, Validator};
 
-
 #[cfg(feature = "json")]
 pub use crate::parser::node_ref_json::NodeRefJsonExt;
