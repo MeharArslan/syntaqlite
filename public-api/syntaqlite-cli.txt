@@ -1,2 +1,2 @@
-pub fn syntaqlite_cli::run(name: &str, dialect: core::option::Option<syntaqlite_parser::dialect::RawDialect<'_>>)
+pub fn syntaqlite_cli::run(name: &str, dialect: core::option::Option<syntaqlite_parser::dialect::DialectEnv<'_>>)
 pub mod syntaqlite_cli

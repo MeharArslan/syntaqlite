@@ -9,7 +9,7 @@
 
 use syntaqlite_parser::ast_traits::AstTypes;
 use syntaqlite_parser::{
-    DialectNodeType, ParseError, ParserConfig, RawDialect, RawNodeId, RawParseResult, RawParser,
+    DialectEnv, DialectNodeType, ParseError, ParserConfig, RawNodeId, RawParseResult, RawParser,
 };
 
 use super::ValidationConfig;
@@ -35,8 +35,7 @@ use super::walker::Walker;
 /// assert!(diags.is_empty());
 /// ```
 pub struct SemanticAnalyzer<'d> {
-    dialect: RawDialect<'d>,
-    dialect_config: Option<syntaqlite_parser::DialectConfig>,
+    dialect: DialectEnv<'d>,
 
     /// Built once from dialect at construction — dialect builtins.
     static_catalog: StaticCatalog,
@@ -55,29 +54,11 @@ impl<'d> SemanticAnalyzer<'d> {
     }
 
     /// Create an analyzer bound to a specific dialect.
-    pub fn with_dialect(dialect: impl Into<RawDialect<'d>>) -> Self {
+    pub fn with_dialect(dialect: impl Into<DialectEnv<'d>>) -> Self {
         let dialect = dialect.into();
-        let static_catalog =
-            StaticCatalog::for_dialect(&dialect, &syntaqlite_parser::DialectConfig::default());
+        let static_catalog = StaticCatalog::for_dialect(&dialect);
         SemanticAnalyzer {
             dialect,
-            dialect_config: None,
-            static_catalog,
-            diag_buf: Vec::new(),
-            doc_catalog: DocumentCatalog::new(),
-        }
-    }
-
-    /// Create an analyzer with a specific dialect configuration.
-    pub fn with_dialect_config(
-        dialect: impl Into<RawDialect<'d>>,
-        config: &syntaqlite_parser::DialectConfig,
-    ) -> Self {
-        let dialect = dialect.into();
-        let static_catalog = StaticCatalog::for_dialect(&dialect, config);
-        SemanticAnalyzer {
-            dialect,
-            dialect_config: Some(*config),
             static_catalog,
             diag_buf: Vec::new(),
             doc_catalog: DocumentCatalog::new(),
@@ -85,7 +66,7 @@ impl<'d> SemanticAnalyzer<'d> {
     }
 
     /// Access the underlying dialect.
-    pub fn dialect(&self) -> RawDialect<'d> {
+    pub fn dialect(&self) -> DialectEnv<'d> {
         self.dialect
     }
 
@@ -121,7 +102,6 @@ impl<'d> SemanticAnalyzer<'d> {
             self.dialect,
             &ParserConfig {
                 collect_tokens: true,
-                dialect_config: self.dialect_config,
                 ..ParserConfig::default()
             },
         );
@@ -225,7 +205,7 @@ impl Default for SemanticAnalyzer<'static> {
 pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
     reader: RawParseResult<'a>,
     stmt_id: RawNodeId,
-    dialect: RawDialect<'_>,
+    dialect: DialectEnv<'_>,
     catalog: &'a CatalogStack<'a>,
     config: &'a ValidationConfig,
 ) -> Vec<Diagnostic> {

@@ -201,10 +201,10 @@ const SyntaqliteDialect* syntaqlite_dialect(void) {
 
 SyntaqliteParser* syntaqlite_create_parser_with_dialect(
     const SyntaqliteMemMethods* mem,
-    const SyntaqliteDialect* dialect
+    const SyntaqliteDialectEnv* env
 ) {
     (void)mem;
-    (void)dialect;
+    (void)env;
     return 0;
 }
 """)

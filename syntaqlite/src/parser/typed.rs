@@ -149,17 +149,6 @@ impl<'d, N: NodeFamily> DialectTokenizer<'d, N> {
         }
     }
 
-    /// Create a tokenizer with a specific dialect config.
-    pub fn with_dialect_config(
-        dialect: Dialect<'d, N>,
-        config: syntaqlite_parser::DialectConfig,
-    ) -> Self {
-        DialectTokenizer {
-            inner: RawTokenizer::with_dialect_config(dialect.raw(), config),
-            _marker: PhantomData,
-        }
-    }
-
     /// Bind source text and return a [`DialectTokenCursor`] for iterating typed tokens.
     pub fn tokenize<'a>(&self, source: &'a str) -> DialectTokenCursor<'a, N>
     where

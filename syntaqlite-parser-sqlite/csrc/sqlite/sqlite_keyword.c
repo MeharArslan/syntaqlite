@@ -575,7 +575,7 @@ static const uint8_t synq_sqlite_aKWCFlagPolarity[149] = {
     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-int synq_sqlite3_keywordCode(const SyntaqliteDialectConfig* config,
+int synq_sqlite3_keywordCode(const SyntaqliteDialectEnv* env,
                              const char* z,
                              int n,
                              int* pType) {
@@ -759,12 +759,12 @@ int synq_sqlite3_keywordCode(const SyntaqliteDialectConfig* config,
     testcase(i == 148); /* PRIMARY */
     /* Version check: skip keywords newer than target version. */
     if (synq_sqlite_aKWSince[i] != 0 &&
-        SYNQ_VER_LT(config, synq_sqlite_aKWSince[i])) {
+        SYNQ_VER_LT(env, synq_sqlite_aKWSince[i])) {
       break;
     }
     /* CFlag check with polarity. */
     if (synq_sqlite_aKWCFlag[i] >= 0) {
-      int flag_set = SYNQ_HAS_CFLAG(config, synq_sqlite_aKWCFlag[i]);
+      int flag_set = SYNQ_HAS_CFLAG(env, synq_sqlite_aKWCFlag[i]);
       int is_enable = synq_sqlite_aKWCFlagPolarity[i];
       if (flag_set != is_enable) {
         break;

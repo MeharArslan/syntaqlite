@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 // SQLite compile-time flag constants for use with
-// SyntaqliteDialectConfig.cflags.
+// SyntaqliteDialectEnv.cflags.
 //
 // This is the union of all cflags that affect parser keywords, SQL functions,
 // and virtual table modules.

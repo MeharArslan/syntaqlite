@@ -7,16 +7,15 @@ use std::ops::Range;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::DialectConfig;
+use crate::DialectEnv;
 use crate::NodeRef;
-use crate::RawDialect;
 use crate::RawNodeId;
 use crate::parser::{
     syntaqlite_create_parser_with_dialect, syntaqlite_parser_begin_macro,
     syntaqlite_parser_completion_context, syntaqlite_parser_destroy, syntaqlite_parser_end_macro,
     syntaqlite_parser_expected_tokens, syntaqlite_parser_feed_token, syntaqlite_parser_finish,
     syntaqlite_parser_node_count, syntaqlite_parser_result, syntaqlite_parser_set_collect_tokens,
-    syntaqlite_parser_set_dialect_config, syntaqlite_parser_set_trace,
+    syntaqlite_parser_set_trace,
 };
 use crate::raw_session::{ParserConfig, reset_parser, reset_parser_cstr};
 use crate::{Comment, MacroRegion, ParseResult, Parser};
@@ -43,13 +42,13 @@ impl Drop for IncrementalInner {
 /// Uses the same interior-mutability checkout pattern as [`super::RawParser`].
 pub struct RawIncrementalParser<'d> {
     inner: Rc<RefCell<Option<IncrementalInner>>>,
-    dialect: RawDialect<'d>,
+    dialect: DialectEnv<'d>,
 }
 
 impl<'d> RawIncrementalParser<'d> {
     /// Create an incremental parser bound to the given dialect with default
     /// configuration (token collection enabled).
-    pub fn new(dialect: impl Into<RawDialect<'d>>) -> Self {
+    pub fn new(dialect: impl Into<DialectEnv<'d>>) -> Self {
         Self::with_config(
             dialect,
             &ParserConfig {
@@ -61,12 +60,13 @@ impl<'d> RawIncrementalParser<'d> {
 
     /// Create an incremental parser bound to the given dialect with custom
     /// configuration.
-    pub fn with_config(dialect: impl Into<RawDialect<'d>>, config: &ParserConfig) -> Self {
-        let dialect = dialect.into();
-        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
-        // a new parser with default malloc/free. dialect.raw is valid for the call.
+    pub fn with_config(dialect: impl Into<DialectEnv<'d>>, config: &ParserConfig) -> Self {
+        let env = dialect.into();
+        let ffi_env = env.to_ffi();
+        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, &ffi_env) allocates
+        // a new parser with default malloc/free. The C side copies the env.
         let raw = NonNull::new(unsafe {
-            syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw)
+            syntaqlite_create_parser_with_dialect(std::ptr::null(), &ffi_env)
         })
         .expect("parser allocation failed");
 
@@ -76,14 +76,6 @@ impl<'d> RawIncrementalParser<'d> {
             syntaqlite_parser_set_collect_tokens(raw.as_ptr(), config.collect_tokens as c_int);
         }
 
-        if let Some(dc) = config.dialect_config {
-            // SAFETY: raw is valid. The C side copies the config value during
-            // this call.
-            unsafe {
-                syntaqlite_parser_set_dialect_config(raw.as_ptr(), &dc as *const DialectConfig);
-            }
-        }
-
         let inner = IncrementalInner {
             raw,
             source_buf: Vec::new(),
@@ -91,7 +83,7 @@ impl<'d> RawIncrementalParser<'d> {
 
         RawIncrementalParser {
             inner: Rc::new(RefCell::new(Some(inner))),
-            dialect,
+            dialect: env,
         }
     }
 
@@ -167,7 +159,7 @@ pub struct RawIncrementalCursor<'a> {
     /// code's `tok.z - ctx->source` offset arithmetic is correct regardless
     /// of whether the copying or zero-copy path was used.
     c_source_ptr: NonNull<u8>,
-    dialect: RawDialect<'a>,
+    dialect: DialectEnv<'a>,
     /// Checked-out parser state. Returned to `slot` on drop.
     inner: Option<IncrementalInner>,
     /// Slot to return `inner` to when this cursor is dropped.

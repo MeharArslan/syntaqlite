@@ -6,7 +6,7 @@
 //! These types are used by the generated `functions_catalog.rs` and by
 //! dialect extensions to describe function availability.
 
-use crate::dialect::DialectConfig;
+use crate::dialect::DialectEnv;
 
 /// Category of a built-in function.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -87,16 +87,16 @@ pub struct FunctionEntry<'a> {
 /// - The config version is < `until` (if `until` is non-zero)
 /// - If a cflag is required: for `Enable` polarity, the cflag must be set;
 ///   for `Omit` polarity, the cflag must NOT be set.
-pub fn is_function_available(entry: &FunctionEntry<'_>, config: &DialectConfig) -> bool {
+pub fn is_function_available(entry: &FunctionEntry<'_>, env: &DialectEnv<'_>) -> bool {
     entry.availability.iter().any(|rule| {
-        if config.sqlite_version < rule.since {
+        if env.version() < rule.since {
             return false;
         }
-        if rule.until != 0 && config.sqlite_version >= rule.until {
+        if rule.until != 0 && env.version() >= rule.until {
             return false;
         }
         if rule.cflag_index != u32::MAX {
-            let flag_set = config.cflags.has(rule.cflag_index);
+            let flag_set = env.cflags().has(rule.cflag_index);
             match rule.cflag_polarity {
                 CflagPolarity::Enable => flag_set,
                 CflagPolarity::Omit => !flag_set,

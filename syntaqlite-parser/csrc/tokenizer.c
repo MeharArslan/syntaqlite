@@ -10,8 +10,7 @@
 
 struct SyntaqliteTokenizer {
   SyntaqliteMemMethods mem;
-  const SyntaqliteDialect* dialect;
-  SyntaqliteDialectConfig dialect_config;
+  SyntaqliteDialectEnv env;
   const char* source;
   uint32_t len;
   uint32_t offset;
@@ -19,14 +18,12 @@ struct SyntaqliteTokenizer {
 
 SyntaqliteTokenizer* syntaqlite_tokenizer_create(
     const SyntaqliteMemMethods* mem,
-    const SyntaqliteDialect* dialect) {
+    const SyntaqliteDialectEnv* env) {
   SyntaqliteMemMethods m = mem ? *mem : SYNTAQLITE_MEM_METHODS_DEFAULT;
   SyntaqliteTokenizer* tok = m.xMalloc(sizeof(SyntaqliteTokenizer));
   memset(tok, 0, sizeof(*tok));
   tok->mem = m;
-  tok->dialect = dialect;
-  SyntaqliteDialectConfig default_config = SYNQ_DIALECT_CONFIG_DEFAULT;
-  tok->dialect_config = default_config;
+  tok->env = *env;
   return tok;
 }
 
@@ -45,8 +42,7 @@ int syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out) {
 
   int token_type = 0;
   int64_t token_len = SynqSqliteGetTokenVersionWrapped(
-      tok->dialect, &tok->dialect_config,
-      (const unsigned char*)tok->source + tok->offset, &token_type);
+      &tok->env, (const unsigned char*)tok->source + tok->offset, &token_type);
 
   out->text = tok->source + tok->offset;
   out->length = (uint32_t)token_len;
@@ -60,11 +56,4 @@ void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok) {
   if (tok) {
     tok->mem.xFree(tok);
   }
-}
-
-int syntaqlite_tokenizer_set_dialect_config(
-    SyntaqliteTokenizer* tok,
-    const SyntaqliteDialectConfig* config) {
-  tok->dialect_config = *config;
-  return 0;
 }

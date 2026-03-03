@@ -8,7 +8,8 @@
 
 use crate::catalog;
 use crate::catalog::FunctionInfo;
-use crate::dialect::ffi::{CflagInfo, DialectConfig};
+use crate::dialect::ffi::CflagInfo;
+use crate::DialectEnv;
 
 // ── Built-in function catalog ────────────────────────────────────────────────
 
@@ -16,10 +17,10 @@ use crate::dialect::ffi::{CflagInfo, DialectConfig};
 ///
 /// Filters the full catalog by version and cflags. A function is included
 /// if at least one of its availability rules matches the config.
-pub fn available_functions(config: &DialectConfig) -> Vec<&'static FunctionInfo<'static>> {
+pub fn available_functions(env: &DialectEnv<'_>) -> Vec<&'static FunctionInfo<'static>> {
     crate::functions_catalog::SQLITE_FUNCTIONS
         .iter()
-        .filter(|entry| catalog::is_available(entry, config))
+        .filter(|entry| catalog::is_function_available(entry, env))
         .map(|entry| &entry.info)
         .collect()
 }
@@ -33,7 +34,8 @@ pub(crate) fn catalog() -> &'static [crate::catalog::FunctionEntry<'static>] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dialect::ffi::{Cflags, DialectConfig};
+    use crate::dialect::ffi::Cflags;
+    use crate::dialect::DialectEnv;
 
     #[test]
     fn catalog_is_not_empty() {
@@ -43,8 +45,8 @@ mod tests {
 
     #[test]
     fn default_config_returns_baseline_functions() {
-        let config = DialectConfig::default();
-        let funcs = available_functions(&config);
+        let env = DialectEnv::for_testing(i32::MAX, Cflags::new());
+        let funcs = available_functions(&env);
         let names: Vec<&str> = funcs.iter().map(|f| f.name).collect();
         assert!(names.contains(&"abs"), "abs should be baseline");
         assert!(names.contains(&"count"), "count should be baseline");
@@ -56,10 +58,11 @@ mod tests {
 
     #[test]
     fn enable_math_functions_adds_math() {
-        let mut config = DialectConfig::default();
+        let mut cflags = Cflags::new();
         // SQLITE_ENABLE_MATH_FUNCTIONS is cflag index 34
-        config.cflags.set(34);
-        let funcs = available_functions(&config);
+        cflags.set(34);
+        let env = DialectEnv::for_testing(i32::MAX, cflags);
+        let funcs = available_functions(&env);
         let names: Vec<&str> = funcs.iter().map(|f| f.name).collect();
         assert!(
             names.contains(&"acos"),
@@ -70,10 +73,11 @@ mod tests {
 
     #[test]
     fn omit_json_removes_json_functions() {
-        let mut config = DialectConfig::default();
+        let mut cflags = Cflags::new();
         // SQLITE_OMIT_JSON is cflag index 13
-        config.cflags.set(13);
-        let funcs = available_functions(&config);
+        cflags.set(13);
+        let env = DialectEnv::for_testing(i32::MAX, cflags);
+        let funcs = available_functions(&env);
         let names: Vec<&str> = funcs.iter().map(|f| f.name).collect();
         assert!(
             !names.contains(&"json_array"),
@@ -83,11 +87,8 @@ mod tests {
 
     #[test]
     fn version_filtering_works() {
-        let config = DialectConfig {
-            sqlite_version: 3_030_001, // 3.30.1
-            cflags: Cflags::new(),
-        };
-        let funcs = available_functions(&config);
+        let env = DialectEnv::for_testing(3_030_001, Cflags::new()); // 3.30.1
+        let funcs = available_functions(&env);
         let names: Vec<&str> = funcs.iter().map(|f| f.name).collect();
         assert!(names.contains(&"abs"), "abs available since 3.30.1");
         assert!(

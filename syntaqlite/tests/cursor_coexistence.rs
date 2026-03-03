@@ -19,7 +19,7 @@ use syntaqlite_parser::{
 };
 use syntaqlite_parser_sqlite::SqliteNodeFamily;
 
-fn raw_dialect() -> syntaqlite_parser::RawDialect<'static> {
+fn raw_dialect() -> syntaqlite_parser::DialectEnv<'static> {
     syntaqlite::dialect::sqlite()
 }
 

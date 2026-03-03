@@ -303,7 +303,7 @@ pub(crate) fn generate_dialect_dispatch_h(dialect: &str) -> String {
         "#define SYNQ_PARSER_TRACE(d, f, s)       Synq{pascal}ParseTrace(f, s)"
     ));
     w.line(&format!(
-        "#define SYNQ_GET_TOKEN(d, cfg, z, t)     Synq{pascal}GetToken(cfg, z, t)"
+        "#define SYNQ_GET_TOKEN(env, z, t)        Synq{pascal}GetToken(env, z, t)"
     ));
     w.newline();
     w.header_guard_end(&guard);
@@ -379,7 +379,7 @@ pub(crate) fn generate_tokenize_h(dialect: &str) -> String {
     w.include_local("syntaqlite/dialect.h");
     w.newline();
     w.line(&format!(
-        "i64 Synq{pascal}GetToken(const SyntaqliteDialectConfig* config, const unsigned char* z, int* tokenType);"
+        "i64 Synq{pascal}GetToken(const SyntaqliteDialectEnv* env, const unsigned char* z, int* tokenType);"
     ));
     w.newline();
     w.header_guard_end(&guard);

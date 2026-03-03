@@ -52,15 +52,13 @@ typedef struct SyntaqliteToken {
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-// Forward declaration.
-typedef struct SyntaqliteDialect SyntaqliteDialect;
-
-// Allocate a tokenizer bound to a dialect. The tokenizer is inert until
-// reset() is called. The dialect must outlive the tokenizer.
+// Allocate a tokenizer bound to a dialect environment. The env is copied —
+// the caller's struct does not need to outlive the tokenizer, but the dialect
+// pointer inside must remain valid for the tokenizer's lifetime.
 // The mem methods are copied — pass NULL for all defaults (malloc/free).
 SyntaqliteTokenizer* syntaqlite_tokenizer_create(
     const SyntaqliteMemMethods* mem,
-    const SyntaqliteDialect* dialect);
+    const SyntaqliteDialectEnv* env);
 
 // Bind a source buffer and start tokenizing from the beginning. The source
 // must remain valid until the next reset() or destroy(). Can be called
@@ -77,14 +75,6 @@ int syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out);
 // Free the tokenizer and all its memory. No-op if tok is NULL.
 void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok);
 
-// Set the dialect config for version/cflag-gated tokenization.
-// The config is copied — the caller's struct does not need to outlive the
-// tokenizer. Default: latest version (INT32_MAX), no cflags.
-// Returns 0 on success.
-int syntaqlite_tokenizer_set_dialect_config(
-    SyntaqliteTokenizer* tok,
-    const SyntaqliteDialectConfig* config);
-
 // ---------------------------------------------------------------------------
 // SQLite dialect convenience (opt-out: -DSYNTAQLITE_OMIT_SQLITE_API)
 // ---------------------------------------------------------------------------
@@ -93,7 +83,9 @@ int syntaqlite_tokenizer_set_dialect_config(
 const SyntaqliteDialect* syntaqlite_sqlite_dialect(void);
 static inline SyntaqliteTokenizer* syntaqlite_create_sqlite_tokenizer(
     const SyntaqliteMemMethods* mem) {
-  return syntaqlite_tokenizer_create(mem, syntaqlite_sqlite_dialect());
+  SyntaqliteDialectEnv env =
+      SYNQ_DIALECT_ENV_DEFAULT(syntaqlite_sqlite_dialect());
+  return syntaqlite_tokenizer_create(mem, &env);
 }
 #endif
 

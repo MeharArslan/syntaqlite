@@ -1,8 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_parser::DialectConfig;
-use syntaqlite_parser::RawDialect;
+use syntaqlite_parser::DialectEnv;
+
 use syntaqlite_parser::{FunctionCategory, FunctionInfo};
 
 use super::types::{FunctionCheckResult, FunctionDef, FunctionLookup};
@@ -10,8 +10,8 @@ use super::types::{FunctionCheckResult, FunctionDef, FunctionLookup};
 /// Resolved function catalog for a dialect + config combination.
 ///
 /// Merges three sources with the following priority:
-/// 1. SQLite built-in catalog (filtered by [`DialectConfig`])
-/// 2. Dialect extension functions (filtered by [`DialectConfig`])
+/// 1. SQLite built-in catalog (filtered by [`DialectEnv`])
+/// 2. Dialect extension functions (filtered by [`DialectEnv`])
 /// 3. Session/document user-defined functions
 ///
 /// Unlike the old `Vec<FunctionDef>` approach, this does **not** expand
@@ -41,18 +41,18 @@ impl FunctionCatalog {
     /// Includes the SQLite built-in catalog and dialect extensions, both
     /// filtered by `config`. Call [`with_session_functions`](Self::with_session_functions)
     /// to merge in user-defined functions.
-    pub fn for_dialect(dialect: &RawDialect<'_>, config: &DialectConfig) -> Self {
+    pub fn for_dialect(env: &DialectEnv<'_>) -> Self {
         #[cfg(feature = "sqlite")]
         let builtins: Vec<&'static FunctionInfo<'static>> =
-            syntaqlite_parser::available_functions(config);
+            syntaqlite_parser::available_functions(env);
 
         #[cfg(not(feature = "sqlite"))]
         let builtins: Vec<&'static FunctionInfo<'static>> = Vec::new();
 
-        let extensions: Vec<OwnedFunctionInfo> = dialect
+        let extensions: Vec<OwnedFunctionInfo> = env
             .function_extensions()
             .into_iter()
-            .filter(|ext| syntaqlite_parser::is_function_available(ext, config))
+            .filter(|ext| syntaqlite_parser::is_function_available(ext, env))
             .map(|ext| OwnedFunctionInfo {
                 name: ext.info.name.to_string(),
                 arities: ext.info.arities.to_vec(),
@@ -69,8 +69,8 @@ impl FunctionCatalog {
 
     /// Build the catalog using default configuration. Convenience for SQLite.
     #[cfg(feature = "sqlite")]
-    pub fn for_default_dialect(dialect: &RawDialect<'_>) -> Self {
-        Self::for_dialect(dialect, &DialectConfig::default())
+    pub fn for_default_dialect(env: &DialectEnv<'_>) -> Self {
+        Self::for_dialect(env)
     }
 
     /// Append user-defined functions from a list of session functions.

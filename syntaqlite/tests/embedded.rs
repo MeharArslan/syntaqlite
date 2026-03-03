@@ -8,7 +8,7 @@
 
 use syntaqlite::embedded::{EmbeddedAnalyzer, extract_python, extract_typescript};
 
-fn dialect() -> syntaqlite_parser::RawDialect<'static> {
+fn dialect() -> syntaqlite_parser::DialectEnv<'static> {
     syntaqlite::dialect::sqlite()
 }
 

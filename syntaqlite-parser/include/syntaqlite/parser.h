@@ -228,13 +228,6 @@ static inline const void* syntaqlite_list_child(SyntaqliteParser* p,
 // Returns 0 on success, -1 if the parser has already been used.
 int syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable);
 
-// Set the dialect config for version/cflag-gated tokenization.
-// The config is copied — the caller's struct does not need to outlive the
-// parser. Default: latest version (INT32_MAX), no cflags.
-// Returns 0 on success, -1 if the parser has already been used.
-int syntaqlite_parser_set_dialect_config(SyntaqliteParser* p,
-                                         const SyntaqliteDialectConfig* config);
-
 // Enable parser trace output (debug builds only). When enabled, the parser
 // prints shift/reduce actions to stderr. Useful for diagnosing grammar
 // conflicts or unexpected parses. Default: off (0).
@@ -307,17 +300,13 @@ char* syntaqlite_dump_node(SyntaqliteParser* p,
 // Advanced: custom dialects
 // ============================================================================
 
-// Opaque dialect handle — produced by dialect crates. Most callers do not
-// need this; use syntaqlite_create_sqlite_parser() instead.
-typedef struct SyntaqliteDialect SyntaqliteDialect;
-
-// Allocate a parser for a specific dialect. The dialect pointer must remain
-// valid for the lifetime of the parser. The mem methods are copied — the
-// caller's struct does not need to outlive the parser. Pass NULL for mem to
-// use malloc/free.
+// Allocate a parser for a specific dialect environment. The env is copied —
+// the caller's struct does not need to outlive the parser, but the dialect
+// pointer inside must remain valid for the parser's lifetime. Pass NULL for
+// mem to use malloc/free.
 SyntaqliteParser* syntaqlite_create_parser_with_dialect(
     const SyntaqliteMemMethods* mem,
-    const SyntaqliteDialect* dialect);
+    const SyntaqliteDialectEnv* env);
 
 // Return the built-in SQLite dialect handle (opt-out:
 // -DSYNTAQLITE_OMIT_SQLITE_API). Useful when constructing a parser via

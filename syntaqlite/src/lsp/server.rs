@@ -24,7 +24,7 @@ use crate::dialect::SEMANTIC_TOKEN_LEGEND;
 use crate::fmt::FormatConfig;
 use crate::lsp::{CompletionKind, LspHost};
 use crate::semantic::diagnostics::Severity;
-use syntaqlite_parser::RawDialect;
+use syntaqlite_parser::DialectEnv;
 
 // ── LspServer ─────────────────────────────────────────────────────────────
 
@@ -37,7 +37,7 @@ pub struct LspServer;
 
 impl LspServer {
     /// Start the LSP server bound to `dialect` and block until shutdown.
-    pub fn run(dialect: RawDialect<'_>) -> Result<(), Box<dyn Error + Sync + Send>> {
+    pub fn run(dialect: DialectEnv<'_>) -> Result<(), Box<dyn Error + Sync + Send>> {
         let (connection, io_threads) = Connection::stdio();
 
         let server_capabilities = serde_json::to_value(ServerCapabilities {

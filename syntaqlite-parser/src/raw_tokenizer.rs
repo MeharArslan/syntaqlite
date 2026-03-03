@@ -6,10 +6,10 @@ use std::ffi::CStr;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::RawDialect;
+use crate::DialectEnv;
 use crate::parser::{
     syntaqlite_tokenizer_create, syntaqlite_tokenizer_destroy, syntaqlite_tokenizer_next,
-    syntaqlite_tokenizer_reset, syntaqlite_tokenizer_set_dialect_config,
+    syntaqlite_tokenizer_reset,
 };
 use crate::{Token, Tokenizer};
 
@@ -27,7 +27,6 @@ pub struct RawToken<'a> {
 pub(crate) struct TokenizerInner {
     raw: NonNull<Tokenizer>,
     source_buf: Vec<u8>,
-    dialect_config: crate::DialectConfig,
 }
 
 impl Drop for TokenizerInner {
@@ -43,55 +42,31 @@ impl Drop for TokenizerInner {
 /// Uses the same interior-mutability checkout pattern as [`super::RawParser`].
 pub struct RawTokenizer<'d> {
     inner: Rc<RefCell<Option<TokenizerInner>>>,
-    /// Keeps the dialect alive for the lifetime of the tokenizer. The C
-    /// tokenizer stores the dialect pointer internally and uses it during
-    /// tokenization, so the dialect must outlive this struct.
-    _dialect: RawDialect<'d>,
+    /// Keeps the dialect environment alive for the lifetime of the tokenizer.
+    /// The C tokenizer stores the env pointer internally and uses it during
+    /// tokenization, so the env must outlive this struct.
+    _dialect: DialectEnv<'d>,
 }
 
 impl<'d> RawTokenizer<'d> {
-    /// Create a tokenizer bound to the given dialect with default configuration.
-    pub fn new(dialect: impl Into<RawDialect<'d>>) -> Self {
-        let dialect = dialect.into();
-        // SAFETY: syntaqlite_tokenizer_create(NULL, dialect) allocates a new
-        // tokenizer with default malloc/free. dialect.raw is valid for the call.
-        let raw = NonNull::new(unsafe {
-            syntaqlite_tokenizer_create(std::ptr::null(), dialect.raw as *const _)
-        })
-        .expect("tokenizer allocation failed");
+    /// Create a tokenizer bound to the given dialect environment.
+    pub fn new(dialect: impl Into<DialectEnv<'d>>) -> Self {
+        let env = dialect.into();
+        let ffi_env = env.to_ffi();
+        // SAFETY: syntaqlite_tokenizer_create(NULL, &ffi_env) allocates a new
+        // tokenizer with default malloc/free. The C side copies the env.
+        let raw = NonNull::new(unsafe { syntaqlite_tokenizer_create(std::ptr::null(), &ffi_env) })
+            .expect("tokenizer allocation failed");
 
         let inner = TokenizerInner {
             raw,
             source_buf: Vec::new(),
-            dialect_config: crate::DialectConfig::default(),
         };
 
         RawTokenizer {
             inner: Rc::new(RefCell::new(Some(inner))),
-            _dialect: dialect,
+            _dialect: env,
         }
-    }
-
-    /// Create a tokenizer with a specific dialect config for version/cflag-gated
-    /// tokenization.
-    pub fn with_dialect_config(
-        dialect: impl Into<RawDialect<'d>>,
-        config: crate::DialectConfig,
-    ) -> Self {
-        let tok = Self::new(dialect);
-        // Update the config inside the inner.
-        if let Some(inner) = tok.inner.borrow_mut().as_mut() {
-            inner.dialect_config = config;
-            // SAFETY: inner.raw is valid; we pass a pointer to inner.dialect_config.
-            // The C side copies the config value.
-            unsafe {
-                syntaqlite_tokenizer_set_dialect_config(
-                    inner.raw.as_ptr(),
-                    &inner.dialect_config as *const crate::DialectConfig,
-                );
-            }
-        }
-        tok
     }
 
     /// Bind source text and return a `RawTokenCursor` for iterating tokens.

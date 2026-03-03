@@ -19,8 +19,9 @@ int main(void) {
   size_t n = fread(buf, 1, sizeof(buf) - 1, stdin);
   buf[n] = '\0';
 
+  SyntaqliteDialectEnv env = SYNQ_DIALECT_ENV_DEFAULT(DIALECT_FN());
   SyntaqliteParser* p =
-      syntaqlite_create_parser_with_dialect(NULL, DIALECT_FN());
+      syntaqlite_create_parser_with_dialect(NULL, &env);
   syntaqlite_parser_reset(p, buf, (uint32_t)n);
 
   SyntaqliteParseResult result;

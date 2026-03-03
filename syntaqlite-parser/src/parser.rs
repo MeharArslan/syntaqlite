@@ -3,8 +3,7 @@
 
 use std::ffi::{c_char, c_int, c_void};
 
-use crate::dialect::DialectConfig;
-use crate::dialect::ffi::Dialect;
+use crate::dialect::ffi;
 
 // Opaque C types
 pub enum Parser {}
@@ -124,7 +123,7 @@ unsafe extern "C" {
     // Parser lifecycle
     pub(crate) fn syntaqlite_create_parser_with_dialect(
         mem: *const MemMethods,
-        dialect: *const Dialect,
+        env: *const ffi::DialectEnv,
     ) -> *mut Parser;
     pub(crate) fn syntaqlite_parser_reset(p: *mut Parser, source: *const c_char, len: u32);
     pub(crate) fn syntaqlite_parser_next(p: *mut Parser) -> ParseResult;
@@ -137,11 +136,6 @@ unsafe extern "C" {
     // Parser configuration
     pub(crate) fn syntaqlite_parser_set_trace(p: *mut Parser, enable: c_int) -> c_int;
     pub(crate) fn syntaqlite_parser_set_collect_tokens(p: *mut Parser, enable: c_int) -> c_int;
-    pub(crate) fn syntaqlite_parser_set_dialect_config(
-        p: *mut Parser,
-        config: *const DialectConfig,
-    ) -> c_int;
-
     // Comments
     pub(crate) fn syntaqlite_parser_comments(p: *mut Parser, count: *mut u32) -> *const Comment;
 
@@ -178,14 +172,10 @@ unsafe extern "C" {
     // Tokenizer
     pub(crate) fn syntaqlite_tokenizer_create(
         mem: *const MemMethods,
-        dialect: *const Dialect,
+        env: *const ffi::DialectEnv,
     ) -> *mut Tokenizer;
     pub(crate) fn syntaqlite_tokenizer_reset(tok: *mut Tokenizer, source: *const c_char, len: u32);
     pub(crate) fn syntaqlite_tokenizer_next(tok: *mut Tokenizer, out: *mut Token) -> c_int;
     pub(crate) fn syntaqlite_tokenizer_destroy(tok: *mut Tokenizer);
-    pub(crate) fn syntaqlite_tokenizer_set_dialect_config(
-        tok: *mut Tokenizer,
-        config: *const DialectConfig,
-    ) -> c_int;
 
 }

@@ -5,7 +5,7 @@
 //!
 //! Reads `functions.json` (extracted from SQLite source) and emits a static
 //! array of `FunctionEntry` values with availability rules that can be filtered
-//! at runtime by `DialectConfig`.
+//! at runtime by `DialectEnv`.
 
 use std::fmt::Write;
 

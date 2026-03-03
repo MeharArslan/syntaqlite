@@ -6,8 +6,8 @@
 use crate::dialect::{DialectExt, TokenCategory};
 use crate::lsp::{CompletionContext, CompletionInfo, SemanticToken};
 use crate::semantic::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
+use syntaqlite_parser::DialectEnv;
 use syntaqlite_parser::ParserConfig;
-use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::RawIncrementalParser;
 use syntaqlite_parser::RawParser;
 use syntaqlite_parser::RawTokenizer;
@@ -34,7 +34,7 @@ pub struct DocumentAnalysis {
 
 impl DocumentAnalysis {
     /// Parse `source` against `dialect` and collect all analysis results.
-    pub fn compute(dialect: RawDialect<'_>, source: &str) -> Self {
+    pub fn compute(dialect: DialectEnv<'_>, source: &str) -> Self {
         let parser = RawParser::with_config(
             dialect,
             &ParserConfig {
@@ -178,7 +178,7 @@ impl DocumentAnalysis {
     /// parser to determine what terminal tokens are valid at that point.
     pub fn completion_info_at(
         &self,
-        dialect: RawDialect<'_>,
+        dialect: DialectEnv<'_>,
         source: &str,
         offset: usize,
     ) -> CompletionInfo {

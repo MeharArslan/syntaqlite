@@ -157,18 +157,8 @@ fn parser_reuse() {
 // -- DELETE / UPDATE with ORDER BY and LIMIT --
 
 fn parser_with_update_delete_limit() -> RawParser<'static> {
-    use syntaqlite_parser::DialectConfig;
-    use syntaqlite_parser::ParserConfig;
-    let dialect = syntaqlite::dialect::sqlite();
-    let mut config = DialectConfig::default();
-    config.cflags.set(40); // SQLITE_ENABLE_UPDATE_DELETE_LIMIT
-    RawParser::with_config(
-        dialect,
-        &ParserConfig {
-            dialect_config: Some(config),
-            ..ParserConfig::default()
-        },
-    )
+    let env = syntaqlite::dialect::sqlite().with_cflag(40); // SQLITE_ENABLE_UPDATE_DELETE_LIMIT
+    RawParser::new(env)
 }
 
 #[test]

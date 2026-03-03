@@ -24,7 +24,6 @@
 //! which uses a parser flag rather than keyword suppression.
 
 use syntaqlite::TokenType;
-use syntaqlite_parser::DialectConfig;
 
 const fn tk(t: TokenType) -> u32 {
     t as u32
@@ -36,15 +35,11 @@ const fn tk(t: TokenType) -> u32 {
 
 /// Tokenize SQL with cflags set (latest version).
 fn tokenize_with_cflags(sql: &str, cflag_indices: &[u32]) -> Vec<(u32, String)> {
-    let dialect = syntaqlite::dialect::sqlite();
-    let mut config = DialectConfig {
-        sqlite_version: i32::MAX,
-        ..Default::default()
-    };
+    let mut env = syntaqlite::dialect::sqlite();
     for &idx in cflag_indices {
-        config.cflags.set(idx);
+        env = env.with_cflag(idx);
     }
-    let tok = syntaqlite_parser::RawTokenizer::with_dialect_config(dialect, config);
+    let tok = syntaqlite_parser::RawTokenizer::new(env);
     tok.tokenize(sql)
         .filter(|raw| raw.token_type != tk(TokenType::SPACE))
         .map(|raw| (raw.token_type, raw.text.to_string()))
@@ -62,15 +57,11 @@ fn tokenize_at_version_cflags(
     version: i32,
     cflag_indices: &[u32],
 ) -> Vec<(u32, String)> {
-    let dialect = syntaqlite::dialect::sqlite();
-    let mut config = DialectConfig {
-        sqlite_version: version,
-        ..Default::default()
-    };
+    let mut env = syntaqlite::dialect::sqlite().with_version(version);
     for &idx in cflag_indices {
-        config.cflags.set(idx);
+        env = env.with_cflag(idx);
     }
-    let tok = syntaqlite_parser::RawTokenizer::with_dialect_config(dialect, config);
+    let tok = syntaqlite_parser::RawTokenizer::new(env);
     tok.tokenize(sql)
         .filter(|raw| raw.token_type != tk(TokenType::SPACE))
         .map(|raw| (raw.token_type, raw.text.to_string()))
@@ -79,21 +70,11 @@ fn tokenize_at_version_cflags(
 
 /// Parse SQL with cflags set (latest version) and return whether it succeeded.
 fn parses_ok_with_cflags(sql: &str, cflag_indices: &[u32]) -> bool {
-    let dialect = syntaqlite::dialect::sqlite();
-    let mut config = DialectConfig {
-        sqlite_version: i32::MAX,
-        ..Default::default()
-    };
+    let mut env = syntaqlite::dialect::sqlite();
     for &idx in cflag_indices {
-        config.cflags.set(idx);
+        env = env.with_cflag(idx);
     }
-    let parser = syntaqlite_parser::RawParser::with_config(
-        dialect,
-        &syntaqlite_parser::ParserConfig {
-            dialect_config: Some(config),
-            ..syntaqlite_parser::ParserConfig::default()
-        },
-    );
+    let parser = syntaqlite_parser::RawParser::new(env);
     let mut cursor = parser.parse(sql);
     matches!(cursor.next_statement(), Some(Ok(_)))
 }

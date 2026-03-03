@@ -9,7 +9,7 @@
 #include "syntaqlite/dialect.h"
 #include "syntaqlite_dialect/sqlite_compat.h"
 
-i64 SynqSqliteGetToken(const SyntaqliteDialectConfig* config,
+i64 SynqSqliteGetToken(const SyntaqliteDialectEnv* env,
                        const unsigned char* z,
                        int* tokenType);
 

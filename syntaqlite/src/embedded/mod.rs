@@ -26,8 +26,8 @@ use crate::semantic::ValidationConfig;
 use crate::semantic::catalog::{CatalogStack, DocumentCatalog, StaticCatalog};
 use crate::semantic::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
 use crate::semantic::functions::FunctionCatalog;
+use syntaqlite_parser::DialectEnv;
 use syntaqlite_parser::ParseError;
-use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::RawIncrementalParser;
 use syntaqlite_parser::RawTokenizer;
 
@@ -140,7 +140,7 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 ///     .validate(&fragments);
 /// ```
 pub struct EmbeddedAnalyzer<'d> {
-    dialect: RawDialect<'d>,
+    dialect: DialectEnv<'d>,
     catalog: FunctionCatalog,
     config: ValidationConfig,
 }
@@ -148,13 +148,10 @@ pub struct EmbeddedAnalyzer<'d> {
 impl<'d> EmbeddedAnalyzer<'d> {
     /// Create a new analyzer with an empty function catalog and default
     /// validation config.
-    pub fn new(dialect: RawDialect<'d>) -> Self {
+    pub fn new(dialect: DialectEnv<'d>) -> Self {
         Self {
             dialect,
-            catalog: FunctionCatalog::for_dialect(
-                &dialect,
-                &syntaqlite_parser::DialectConfig::default(),
-            ),
+            catalog: FunctionCatalog::for_dialect(&dialect),
             config: ValidationConfig::default(),
         }
     }

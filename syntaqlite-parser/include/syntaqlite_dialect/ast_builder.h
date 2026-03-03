@@ -51,8 +51,8 @@ typedef struct SynqParseCtx {
 
   // Parser state
   const char* source;  // Source text base pointer (for offset computation).
-  const SyntaqliteDialectConfig*
-      config;             // Dialect config (for cflag checks in actions).
+  const SyntaqliteDialectEnv*
+      env;                // Dialect env (for cflag checks in actions).
   uint32_t root;          // Root node ID of the current statement.
   int stmt_completed;     // Set by grammar actions when ecmd reduces.
   int error;              // Set when a syntax error occurs.

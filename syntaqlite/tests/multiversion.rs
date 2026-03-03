@@ -23,7 +23,6 @@
 //! - 3.25.0: same query (with OVER) → success
 
 use syntaqlite::TokenType;
-use syntaqlite_parser::DialectConfig;
 
 /// Shorthand: convert a TokenType variant to its raw u32 value.
 const fn tk(t: TokenType) -> u32 {
@@ -37,14 +36,8 @@ const fn tk(t: TokenType) -> u32 {
 /// Tokenize SQL with a specific SQLite version and return (token_type, text) pairs,
 /// filtering out whitespace.
 fn tokenize_at_version(sql: &str, version: i32) -> Vec<(u32, String)> {
-    let dialect = syntaqlite::dialect::sqlite();
-    let tok = syntaqlite_parser::RawTokenizer::with_dialect_config(
-        dialect,
-        DialectConfig {
-            sqlite_version: version,
-            ..Default::default()
-        },
-    );
+    let env = syntaqlite::dialect::sqlite().with_version(version);
+    let tok = syntaqlite_parser::RawTokenizer::new(env);
     tok.tokenize(sql)
         .filter(|raw| raw.token_type != tk(TokenType::SPACE))
         .map(|raw| (raw.token_type, raw.text.to_string()))
@@ -58,17 +51,8 @@ fn tokenize_latest(sql: &str) -> Vec<(u32, String)> {
 
 /// Parse SQL with a specific SQLite version and return whether it succeeded.
 fn parses_ok_at_version(sql: &str, version: i32) -> bool {
-    let dialect = syntaqlite::dialect::sqlite();
-    let parser = syntaqlite_parser::RawParser::with_config(
-        dialect,
-        &syntaqlite_parser::ParserConfig {
-            dialect_config: Some(DialectConfig {
-                sqlite_version: version,
-                ..Default::default()
-            }),
-            ..syntaqlite_parser::ParserConfig::default()
-        },
-    );
+    let env = syntaqlite::dialect::sqlite().with_version(version);
+    let parser = syntaqlite_parser::RawParser::new(env);
     let mut cursor = parser.parse(sql);
     matches!(cursor.next_statement(), Some(Ok(_)))
 }

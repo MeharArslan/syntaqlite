@@ -15,7 +15,7 @@ pub mod ast_traits;
 // ── Dialect ──────────────────────────────────────────────────────────────────
 
 pub use crate::dialect::Dialect;
-pub use crate::dialect::{DialectConfig, FfiDialect, RawDialect, SchemaContribution, SchemaKind};
+pub use crate::dialect::{DialectEnv, FfiDialect, SchemaContribution, SchemaKind};
 // TODO(lalitm): FieldMeta should be deleted entirely; callers should use the
 // safe field accessors on Dialect instead of reading C metadata structs directly.
 pub use crate::dialect::FieldMeta;

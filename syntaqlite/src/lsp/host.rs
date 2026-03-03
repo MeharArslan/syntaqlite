@@ -11,8 +11,8 @@ use crate::semantic::ValidationConfig;
 use crate::semantic::analyzer::SemanticAnalyzer;
 use crate::semantic::diagnostics::Diagnostic;
 use crate::semantic::functions::FunctionCatalog;
+use syntaqlite_parser::DialectEnv;
 use syntaqlite_parser::ParseError;
-use syntaqlite_parser::RawDialect;
 
 use super::{CompletionEntry, CompletionInfo, CompletionKind, SemanticToken};
 
@@ -25,7 +25,7 @@ struct Document {
 }
 
 impl Document {
-    fn analysis(&mut self, dialect: RawDialect<'_>) -> &DocumentAnalysis {
+    fn analysis(&mut self, dialect: DialectEnv<'_>) -> &DocumentAnalysis {
         if self.analysis.is_none() {
             self.analysis = Some(DocumentAnalysis::compute(dialect, &self.source));
         }
@@ -41,23 +41,21 @@ impl Document {
 /// (diagnostics, semantic tokens, completion tokens) on first access after
 /// each edit. Semantic validation delegates to [`SemanticAnalyzer`].
 pub struct LspHost<'d> {
-    dialect: RawDialect<'d>,
+    dialect: DialectEnv<'d>,
     documents: HashMap<String, Document>,
     context: Option<DatabaseCatalog>,
-    dialect_config: Option<syntaqlite_parser::DialectConfig>,
     analyzer: SemanticAnalyzer<'d>,
 }
 
 impl<'d> LspHost<'d> {
     /// Create a host bound to `dialect`.
-    pub fn with_dialect(dialect: impl Into<RawDialect<'d>>) -> Self {
+    pub fn with_dialect(dialect: impl Into<DialectEnv<'d>>) -> Self {
         let dialect = dialect.into();
         let analyzer = SemanticAnalyzer::with_dialect(dialect);
         LspHost {
             dialect,
             documents: HashMap::new(),
             context: None,
-            dialect_config: None,
             analyzer,
         }
     }
@@ -80,12 +78,10 @@ impl<'d> LspHost<'d> {
         self.context.as_ref()
     }
 
-    /// Set the dialect configuration for version/cflag-gated function filtering.
-    pub fn set_dialect_config(&mut self, config: syntaqlite_parser::DialectConfig) {
-        self.dialect_config = Some(config);
-        // Rebuild the analyzer with the new config so its static catalog
-        // reflects the version/cflag filtering.
-        self.analyzer = SemanticAnalyzer::with_dialect_config(self.dialect, &config);
+    /// Update the dialect environment (version/cflags). Rebuilds the analyzer.
+    pub fn set_dialect_env(&mut self, env: DialectEnv<'d>) {
+        self.dialect = env;
+        self.analyzer = SemanticAnalyzer::with_dialect(env);
     }
 
     // ── Document lifecycle ─────────────────────────────────────────────────
@@ -206,7 +202,7 @@ impl<'d> LspHost<'d> {
             let Some((code, name)) = self.dialect.keyword_entry(i) else {
                 continue;
             };
-            if !expected_set.contains(&code) || !RawDialect::is_suggestable_keyword(name) {
+            if !expected_set.contains(&code) || !DialectEnv::is_suggestable_keyword(name) {
                 continue;
             }
             if seen.insert(name.to_string()) {
@@ -244,7 +240,7 @@ impl<'d> LspHost<'d> {
             .documents
             .get(uri)
             .ok_or(FormatError::UnknownDocument)?;
-        let mut formatter = Formatter::with_config(self.dialect, config, None);
+        let mut formatter = Formatter::with_config(self.dialect, config);
         formatter.format(&doc.source).map_err(FormatError::Parse)
     }
 
@@ -282,9 +278,7 @@ impl<'d> LspHost<'d> {
     /// Build the function catalog for the current dialect configuration and
     /// session context.
     pub fn function_catalog(&self) -> FunctionCatalog {
-        let default_config = syntaqlite_parser::DialectConfig::default();
-        let config = self.dialect_config.as_ref().unwrap_or(&default_config);
-        let mut catalog = FunctionCatalog::for_dialect(&self.dialect, config);
+        let mut catalog = FunctionCatalog::for_dialect(&self.dialect);
         if let Some(ctx) = self.context.as_ref() {
             catalog.add_session_functions(&ctx.functions);
         }
@@ -417,9 +411,8 @@ mod tests {
     #[test]
     fn available_functions_with_config_filters_by_cflags() {
         let mut host = LspHost::new();
-        let mut config = syntaqlite_parser::DialectConfig::default();
-        config.cflags.set(34);
-        host.set_dialect_config(config);
+        let env = crate::dialect::sqlite().with_cflag(34);
+        host.set_dialect_env(env);
         let names = host.available_function_names();
         assert!(
             names.iter().any(|n| n == "acos"),

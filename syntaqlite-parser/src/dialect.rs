@@ -81,21 +81,16 @@ pub(crate) mod ffi {
         }
     }
 
-    /// Mirrors C `SyntaqliteDialectConfig` from `include/syntaqlite/dialect.h`.
+    /// Mirrors C `SyntaqliteDialectEnv` from `include/syntaqlite/dialect.h`.
+    ///
+    /// Used as the FFI struct passed to C functions. The safe Rust wrapper
+    /// is [`super::DialectEnv`] which stores a reference instead of a raw pointer.
     #[repr(C)]
     #[derive(Debug, Clone, Copy)]
-    pub struct DialectConfig {
-        pub sqlite_version: i32,
-        pub cflags: Cflags,
-    }
-
-    impl Default for DialectConfig {
-        fn default() -> Self {
-            Self {
-                sqlite_version: i32::MAX,
-                cflags: Cflags::new(),
-            }
-        }
+    pub(crate) struct DialectEnv {
+        pub(crate) dialect: *const Dialect,
+        pub(crate) sqlite_version: i32,
+        pub(crate) cflags: Cflags,
     }
 
     // ── Function extension FFI mirrors ─────────────────────────────────────
@@ -284,7 +279,7 @@ pub(crate) mod ffi {
 // Re-export the C types (excluding the `Dialect` C struct to avoid
 // naming collision with the safe Rust wrapper below).
 pub(crate) use ffi::FIELD_FLAGS;
-pub use ffi::{DialectConfig, FIELD_BOOL, FIELD_ENUM, FIELD_NODE_ID, FIELD_SPAN, FieldMeta};
+pub use ffi::{FIELD_BOOL, FIELD_ENUM, FIELD_NODE_ID, FIELD_SPAN, FieldMeta};
 // Re-export the C `Dialect` struct under a distinct name for external callers
 // that need to declare FFI functions returning a raw dialect pointer.
 pub use ffi::Dialect as FfiDialect;
@@ -294,29 +289,93 @@ use crate::nodes::{FieldVal, Fields, RawNodeId, SourceSpan};
 
 // ── Safe Dialect handle ──────────────────────────────────────────────────────
 
-/// An opaque dialect handle wrapping a pointer to a C dialect descriptor.
+/// A configured dialect handle: grammar pointer + version/cflag configuration.
 ///
-/// Provides metadata about node names, field layouts, token categories,
-/// keyword tables, and formatter bytecode. `Copy` so it can be threaded
-/// freely through parser, formatter, and validator internals.
+/// Bundles a pointer to a C dialect descriptor with version and cflag
+/// configuration. `Copy` and lightweight (~18 bytes). The primary type
+/// passed throughout the system (parser, formatter, validator).
 ///
-/// This is the untagged handle used by infrastructure code (formatter,
-/// validator, raw parser). For a handle tagged with node/token types,
-/// see [`Dialect<'d, N>`].
+/// For a handle tagged with node/token types, see [`Dialect<'d, N>`].
 #[derive(Clone, Copy)]
-pub struct RawDialect<'d> {
+pub struct DialectEnv<'d> {
     pub(crate) raw: &'d ffi::Dialect,
+    sqlite_version: i32,
+    cflags: ffi::Cflags,
 }
 
-impl<'d> RawDialect<'d> {
-    /// Create a `RawDialect` from a raw C pointer returned by a dialect's
+impl<'d> DialectEnv<'d> {
+    /// Create a `DialectEnv` from a raw C pointer returned by a dialect's
     /// FFI function (e.g. `syntaqlite_sqlite_dialect`).
+    ///
+    /// Uses the default configuration (latest version, no cflags).
     ///
     /// # Safety
     /// The pointer must point to a valid `ffi::Dialect` whose data lives
     /// at least as long as `'d`.
     pub unsafe fn from_raw(raw: *const ffi::Dialect) -> Self {
-        unsafe { RawDialect { raw: &*raw } }
+        unsafe {
+            DialectEnv {
+                raw: &*raw,
+                sqlite_version: i32::MAX,
+                cflags: ffi::Cflags::new(),
+            }
+        }
+    }
+
+    /// Set the target SQLite version.
+    pub fn with_version(mut self, version: i32) -> Self {
+        self.sqlite_version = version;
+        self
+    }
+
+    /// Set a compile-time flag by index.
+    pub fn with_cflag(mut self, idx: u32) -> Self {
+        self.cflags.set(idx);
+        self
+    }
+
+    /// Replace the entire cflags bitfield.
+    pub fn with_cflags(mut self, cflags: ffi::Cflags) -> Self {
+        self.cflags = cflags;
+        self
+    }
+
+    /// The target SQLite version.
+    pub fn version(&self) -> i32 {
+        self.sqlite_version
+    }
+
+    /// The active compile-time flags.
+    pub fn cflags(&self) -> &ffi::Cflags {
+        &self.cflags
+    }
+
+    /// Create a `DialectEnv` for testing version/cflag filtering only.
+    ///
+    /// The dialect pointer is a zeroed stub — do not call dialect metadata
+    /// methods (`node_name`, `field_meta`, etc.) on the returned handle.
+    #[cfg(test)]
+    pub(crate) fn for_testing(version: i32, cflags: ffi::Cflags) -> Self {
+        // Wrapper to satisfy Send+Sync for the static. The raw pointers inside
+        // ffi::Dialect are never dereferenced from this dummy.
+        struct SyncDialect(ffi::Dialect);
+        // SAFETY: The dummy is never dereferenced; only used for its address.
+        unsafe impl Sync for SyncDialect {}
+        static DUMMY: SyncDialect = SyncDialect(unsafe { std::mem::zeroed() });
+        DialectEnv {
+            raw: &DUMMY.0,
+            sqlite_version: version,
+            cflags,
+        }
+    }
+
+    /// Build an `ffi::DialectEnv` for passing to C functions.
+    pub(crate) fn to_ffi(self) -> ffi::DialectEnv {
+        ffi::DialectEnv {
+            dialect: self.raw as *const ffi::Dialect,
+            sqlite_version: self.sqlite_version,
+            cflags: self.cflags,
+        }
     }
 
     /// Return the node name for the given tag.
@@ -626,8 +685,8 @@ impl<'d> RawDialect<'d> {
 
 // SAFETY: The dialect wraps a reference to a C struct with no mutable state.
 // The raw pointers inside ffi::Dialect all point to immutable static data.
-unsafe impl Send for RawDialect<'_> {}
-unsafe impl Sync for RawDialect<'_> {}
+unsafe impl Send for DialectEnv<'_> {}
+unsafe impl Sync for DialectEnv<'_> {}
 
 // ── Tagged Dialect handle ────────────────────────────────────────────────────
 
@@ -641,15 +700,15 @@ use crate::dialect_traits::NodeFamily;
 /// Use this at construction boundaries (`Parser::new`, etc.) so the
 /// node type parameter `N` can be inferred automatically.
 ///
-/// Dereferences to [`RawDialect`] via [`raw()`](Self::raw) for passing into
+/// Dereferences to [`DialectEnv`] via [`raw()`](Self::raw) for passing into
 /// untyped infrastructure (formatter, validator).
 #[derive(Clone, Copy)]
 pub struct Dialect<'d, N: NodeFamily> {
-    inner: RawDialect<'d>,
+    inner: DialectEnv<'d>,
     _marker: PhantomData<N>,
 }
 
-// SAFETY: same reasoning as RawDialect — wraps immutable static C data.
+// SAFETY: same reasoning as DialectEnv — wraps immutable static C data.
 unsafe impl<N: NodeFamily> Send for Dialect<'_, N> {}
 unsafe impl<N: NodeFamily> Sync for Dialect<'_, N> {}
 
@@ -657,29 +716,29 @@ impl<'d, N: NodeFamily> Dialect<'d, N> {
     /// Create a tagged `Dialect` from a raw C pointer.
     ///
     /// # Safety
-    /// Same requirements as [`RawDialect::from_raw`].
+    /// Same requirements as [`DialectEnv::from_raw`].
     pub unsafe fn from_raw(raw: *const ffi::Dialect) -> Self {
         Dialect {
-            inner: unsafe { RawDialect::from_raw(raw) },
+            inner: unsafe { DialectEnv::from_raw(raw) },
             _marker: PhantomData,
         }
     }
 
-    /// Wrap an existing [`RawDialect`] with a node-family tag.
-    pub fn from_raw_dialect(raw: RawDialect<'d>) -> Self {
+    /// Wrap an existing [`DialectEnv`] with a node-family tag.
+    pub fn from_raw_dialect(raw: DialectEnv<'d>) -> Self {
         Dialect {
             inner: raw,
             _marker: PhantomData,
         }
     }
 
-    /// Return the untagged [`RawDialect`] handle.
-    pub fn raw(&self) -> RawDialect<'d> {
+    /// Return the untagged [`DialectEnv`] handle.
+    pub fn raw(&self) -> DialectEnv<'d> {
         self.inner
     }
 }
 
-impl<'d, N: NodeFamily> From<Dialect<'d, N>> for RawDialect<'d> {
+impl<'d, N: NodeFamily> From<Dialect<'d, N>> for DialectEnv<'d> {
     fn from(d: Dialect<'d, N>) -> Self {
         d.inner
     }
@@ -713,7 +772,7 @@ pub struct SchemaContribution {
 /// # Safety
 /// `ptr` must point to a valid node struct matching `tag`'s metadata in `dialect`.
 pub(crate) unsafe fn extract_fields<'a>(
-    dialect: &RawDialect<'_>,
+    dialect: &DialectEnv<'_>,
     ptr: *const u8,
     tag: u32,
     source: &'a str,

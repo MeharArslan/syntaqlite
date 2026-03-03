@@ -8304,7 +8304,7 @@ static YYACTIONTYPE yy_reduce(
       if (yymsp[-1].minor.yy213 != SYNTAQLITE_NULL_NODE ||
           yymsp[0].minor.yy213 != SYNTAQLITE_NULL_NODE) {
         pCtx->saw_update_delete_limit = 1;
-        if (!SYNQ_HAS_CFLAG(pCtx->config,
+        if (!SYNQ_HAS_CFLAG(pCtx->env,
                             SYNQ_CFLAG_IDX_ENABLE_UPDATE_DELETE_LIMIT)) {
           pCtx->error = 1;
         }
@@ -8329,7 +8329,7 @@ static YYACTIONTYPE yy_reduce(
       if (yymsp[-1].minor.yy213 != SYNTAQLITE_NULL_NODE ||
           yymsp[0].minor.yy213 != SYNTAQLITE_NULL_NODE) {
         pCtx->saw_update_delete_limit = 1;
-        if (!SYNQ_HAS_CFLAG(pCtx->config,
+        if (!SYNQ_HAS_CFLAG(pCtx->env,
                             SYNQ_CFLAG_IDX_ENABLE_UPDATE_DELETE_LIMIT)) {
           pCtx->error = 1;
         }

@@ -7,11 +7,11 @@ use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
 use syntaqlite_parser::RawParser;
 use syntaqlite_parser::{CommentKind, MacroRegion, ParserConfig};
-use syntaqlite_parser::{DialectConfig, NodeRef, RawDialect};
+use syntaqlite_parser::{DialectEnv, NodeRef};
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {
-    dialect: RawDialect<'d>,
+    dialect: DialectEnv<'d>,
     parser: RawParser<'d>,
     config: FormatConfig,
     /// Reusable scratch arena — cleared between format calls to avoid
@@ -35,15 +35,11 @@ impl<'d> Formatter<'d> {
     /// Create a formatter for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
     pub fn new() -> Formatter<'static> {
-        Formatter::with_config(crate::dialect::sqlite(), &FormatConfig::default(), None)
+        Formatter::with_config(crate::dialect::sqlite(), &FormatConfig::default())
     }
 
     /// Create a formatter bound to the given dialect with custom configuration.
-    pub fn with_config(
-        dialect: impl Into<RawDialect<'d>>,
-        format_config: &FormatConfig,
-        dialect_config: Option<DialectConfig>,
-    ) -> Self {
+    pub fn with_config(dialect: impl Into<DialectEnv<'d>>, format_config: &FormatConfig) -> Self {
         let dialect = dialect.into();
         assert!(
             dialect.has_fmt_data(),
@@ -53,7 +49,6 @@ impl<'d> Formatter<'d> {
             dialect,
             &ParserConfig {
                 collect_tokens: true,
-                dialect_config,
                 ..ParserConfig::default()
             },
         );

@@ -14,7 +14,7 @@
 
 #include "syntaqlite/dialect.h"
 
-int synq_sqlite3_keywordCode(const SyntaqliteDialectConfig* config,
+int synq_sqlite3_keywordCode(const SyntaqliteDialectEnv* env,
                              const char* z,
                              int n,
                              int* pType);

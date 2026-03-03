@@ -8,7 +8,7 @@ fn format_sql(sql: &str) -> String {
 
 fn format_sql_with(sql: &str, config: FormatConfig) -> String {
     let dialect = syntaqlite::dialect::sqlite();
-    let mut f = syntaqlite::Formatter::with_config(dialect, &config, None);
+    let mut f = syntaqlite::Formatter::with_config(dialect, &config);
     let result = f.format(sql).unwrap();
     // Strip the trailing semicolon + newline that Formatter appends
     result
@@ -70,13 +70,11 @@ fn long_select_breaks() {
 // -- Formatting transformations (input != output) --
 
 fn format_sql_with_cflags(sql: &str, config: FormatConfig, cflag_indices: &[u32]) -> String {
-    use syntaqlite_parser::DialectConfig;
-    let mut dc = DialectConfig::default();
+    let mut env = syntaqlite::dialect::sqlite();
     for &idx in cflag_indices {
-        dc.cflags.set(idx);
+        env = env.with_cflag(idx);
     }
-    let dialect = syntaqlite::dialect::sqlite();
-    let mut f = syntaqlite::Formatter::with_config(dialect, &config, Some(dc));
+    let mut f = syntaqlite::Formatter::with_config(env, &config);
     let result = f.format(sql).unwrap();
     result
         .trim_end_matches('\n')

@@ -135,12 +135,12 @@ fn generate_keyword_arrays(
 /// the caller replaces with the actual dialect prefix (e.g. `synq_perfetto`).
 fn keyword_check_code() -> &'static str {
     r#"/* Version check: skip keywords newer than target version. */
-    if( __SYNQ_DIALECT___aKWSince[i] != 0 && SYNQ_VER_LT(config, __SYNQ_DIALECT___aKWSince[i]) ){
+    if( __SYNQ_DIALECT___aKWSince[i] != 0 && SYNQ_VER_LT(env, __SYNQ_DIALECT___aKWSince[i]) ){
       break;
     }
     /* CFlag check with polarity. */
     if( __SYNQ_DIALECT___aKWCFlag[i] >= 0 ){
-      int flag_set = SYNQ_HAS_CFLAG(config, __SYNQ_DIALECT___aKWCFlag[i]);
+      int flag_set = SYNQ_HAS_CFLAG(env, __SYNQ_DIALECT___aKWCFlag[i]);
       int is_enable = __SYNQ_DIALECT___aKWCFlagPolarity[i];
       if( flag_set != is_enable ){
         break;
@@ -213,7 +213,7 @@ pub(crate) fn generate(
         .replace_in_function(
             "synq_sqlite3_keywordCode",
             "synq_sqlite3_keywordCode(const char *z",
-            "synq_sqlite3_keywordCode(const SyntaqliteDialectConfig *config, const char *z",
+            "synq_sqlite3_keywordCode(const SyntaqliteDialectEnv *env, const char *z",
         )
         // Replace the simple assignment with version/cflag checks.
         .replace_in_function(
@@ -279,7 +279,7 @@ pub(crate) fn generate_keyword_h() -> String {
     w.newline();
     w.line("#include \"syntaqlite/dialect.h\"");
     w.newline();
-    w.line("int synq_sqlite3_keywordCode(const SyntaqliteDialectConfig *config, const char* z, int n, int* pType);");
+    w.line("int synq_sqlite3_keywordCode(const SyntaqliteDialectEnv *env, const char* z, int n, int* pType);");
     w.newline();
     w.header_guard_end("SYNTAQLITE_SQLITE_KEYWORD_H");
     w.finish()

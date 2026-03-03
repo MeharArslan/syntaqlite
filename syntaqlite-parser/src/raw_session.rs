@@ -6,13 +6,11 @@ use std::ffi::{CStr, c_int};
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::DialectConfig;
-use crate::RawDialect;
+use crate::DialectEnv;
 use crate::RawNodeId;
 use crate::parser::{
     syntaqlite_create_parser_with_dialect, syntaqlite_parser_destroy, syntaqlite_parser_next,
-    syntaqlite_parser_reset, syntaqlite_parser_set_collect_tokens,
-    syntaqlite_parser_set_dialect_config, syntaqlite_parser_set_trace,
+    syntaqlite_parser_reset, syntaqlite_parser_set_collect_tokens, syntaqlite_parser_set_trace,
 };
 use crate::{Comment, Parser, TokenPos};
 
@@ -25,8 +23,6 @@ pub struct ParserConfig {
     pub trace: bool,
     /// Collect non-whitespace token positions during parsing. Default: `false`.
     pub collect_tokens: bool,
-    /// Dialect config for version/cflag-gated tokenization. Default: `None`.
-    pub dialect_config: Option<DialectConfig>,
 }
 
 /// Holds the C parser handle and mutable state. Checked out by cursors at
@@ -51,24 +47,25 @@ impl Drop for ParserInner {
 /// drop. This allows `parse()` to take `&self` instead of `&mut self`.
 pub struct RawParser<'d> {
     inner: Rc<RefCell<Option<ParserInner>>>,
-    /// The dialect used for this parser. Propagated to cursors and `NodeRef`s
-    /// so consumers don't need to thread it manually.
-    pub(crate) dialect: RawDialect<'d>,
+    /// The dialect environment used for this parser. Propagated to cursors
+    /// and `NodeRef`s so consumers don't need to thread it manually.
+    pub(crate) dialect: DialectEnv<'d>,
 }
 
 impl<'d> RawParser<'d> {
     /// Create a parser bound to the given dialect with default configuration.
-    pub fn new(dialect: impl Into<RawDialect<'d>>) -> Self {
+    pub fn new(dialect: impl Into<DialectEnv<'d>>) -> Self {
         Self::with_config(dialect, &ParserConfig::default())
     }
 
     /// Create a parser bound to the given dialect with custom configuration.
-    pub fn with_config(dialect: impl Into<RawDialect<'d>>, config: &ParserConfig) -> Self {
-        let dialect = dialect.into();
-        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, dialect) allocates
-        // a new parser with default malloc/free.
+    pub fn with_config(dialect: impl Into<DialectEnv<'d>>, config: &ParserConfig) -> Self {
+        let env = dialect.into();
+        let ffi_env = env.to_ffi();
+        // SAFETY: syntaqlite_create_parser_with_dialect(NULL, &ffi_env) allocates
+        // a new parser with default malloc/free. The C side copies the env.
         let raw = NonNull::new(unsafe {
-            syntaqlite_create_parser_with_dialect(std::ptr::null(), dialect.raw)
+            syntaqlite_create_parser_with_dialect(std::ptr::null(), &ffi_env)
         })
         .expect("parser allocation failed");
 
@@ -79,14 +76,6 @@ impl<'d> RawParser<'d> {
             syntaqlite_parser_set_collect_tokens(raw.as_ptr(), config.collect_tokens as c_int);
         }
 
-        if let Some(dc) = config.dialect_config {
-            // SAFETY: We pass a pointer to dc. The C side copies the config
-            // value during this call.
-            unsafe {
-                syntaqlite_parser_set_dialect_config(raw.as_ptr(), &dc as *const DialectConfig);
-            }
-        }
-
         let inner = ParserInner {
             raw,
             source_buf: Vec::new(),
@@ -94,7 +83,7 @@ impl<'d> RawParser<'d> {
 
         RawParser {
             inner: Rc::new(RefCell::new(Some(inner))),
-            dialect,
+            dialect: env,
         }
     }
 
@@ -225,7 +214,7 @@ pub(crate) unsafe fn reset_parser_cstr<'a>(
 /// [`RawParser`].
 pub struct RawStatementCursor<'a> {
     reader: RawParseResult<'a>,
-    dialect: RawDialect<'a>,
+    dialect: DialectEnv<'a>,
     /// Checked-out parser state. Returned to `slot` on drop.
     inner: Option<ParserInner>,
     /// Slot to return `inner` to when this cursor is dropped.

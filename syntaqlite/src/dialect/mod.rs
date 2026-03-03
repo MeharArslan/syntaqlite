@@ -16,7 +16,7 @@
 
 // ── Token category ─────────────────────────────────────────────────────
 
-use syntaqlite_parser::RawDialect;
+use syntaqlite_parser::DialectEnv;
 
 // ── Dialect-generic typed wrappers ──────────────────────────────────────
 //
@@ -115,7 +115,7 @@ pub trait DialectExt {
     fn token_category(&self, token_type: u32) -> TokenCategory;
 }
 
-impl DialectExt for syntaqlite_parser::RawDialect<'_> {
+impl DialectExt for syntaqlite_parser::DialectEnv<'_> {
     fn classify_token(&self, token_type: u32, flags: u32) -> TokenCategory {
         TokenCategory::from_u8(self.classify_token_raw(token_type, flags))
     }
@@ -127,6 +127,6 @@ impl DialectExt for syntaqlite_parser::RawDialect<'_> {
 
 /// Return the built-in SQLite dialect handle.
 #[cfg(feature = "sqlite")]
-pub fn sqlite() -> RawDialect<'static> {
+pub fn sqlite() -> DialectEnv<'static> {
     syntaqlite_parser_sqlite::dialect()
 }

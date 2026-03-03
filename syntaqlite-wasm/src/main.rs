@@ -12,8 +12,7 @@ use syntaqlite::Formatter;
 use syntaqlite::embedded::{self, EmbeddedFragment};
 use syntaqlite::{DatabaseCatalog, FormatConfig, KeywordCase, NodeRefJsonExt, ValidationConfig};
 use syntaqlite_parser::{
-    Cflags, DialectConfig, FfiDialect, ParserConfig, RawDialect, RawParser, cflag_table,
-    parse_cflag_name, parse_sqlite_version,
+    Cflags, DialectEnv, FfiDialect, RawParser, cflag_table, parse_cflag_name, parse_sqlite_version,
 };
 
 thread_local! {
@@ -22,8 +21,10 @@ thread_local! {
     /// Global LspHost reused across wasm_diagnostics calls.
     /// Recreated when the dialect pointer changes.
     static LSP_HOST: RefCell<Option<LspHost>> = const { RefCell::new(None) };
-    /// Dialect config (version/cflags) applied to parser/formatter before each parse.
-    static DIALECT_CONFIG: Cell<DialectConfig> = const { Cell::new(DialectConfig { sqlite_version: i32::MAX, cflags: Cflags::new() }) };
+    /// SQLite version applied to parser/formatter.
+    static SQLITE_VERSION: Cell<i32> = const { Cell::new(i32::MAX) };
+    /// Compile-time flags applied to parser/formatter.
+    static SQLITE_CFLAGS: Cell<Cflags> = const { Cell::new(Cflags::new()) };
 }
 
 struct LspHost {
@@ -36,9 +37,9 @@ fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
     if lsp.as_ref().is_none_or(|h| h.dialect_ptr != dialect_ptr) {
         let raw = dialect_ptr as *const FfiDialect;
         // SAFETY: the caller set a valid dialect pointer via wasm_set_dialect.
-        let dialect = unsafe { RawDialect::from_raw(raw) };
-        let mut host = syntaqlite::lsp::LspHost::with_dialect(dialect);
-        host.set_dialect_config(get_dialect_config());
+        let env = unsafe { DialectEnv::from_raw(raw) };
+        let env = apply_config(env);
+        let host = syntaqlite::lsp::LspHost::with_dialect(env);
         lsp = Some(LspHost { dialect_ptr, host });
     }
     lsp.expect("LSP host must be initialized")
@@ -48,8 +49,10 @@ fn store_lsp_host(lsp: LspHost) {
     LSP_HOST.with(|cell| *cell.borrow_mut() = Some(lsp));
 }
 
-fn get_dialect_config() -> DialectConfig {
-    DIALECT_CONFIG.with(|c| c.get())
+/// Apply the stored version/cflags to a `DialectEnv`.
+fn apply_config(env: DialectEnv<'static>) -> DialectEnv<'static> {
+    env.with_version(SQLITE_VERSION.with(|v| v.get()))
+        .with_cflags(SQLITE_CFLAGS.with(|c| c.get()))
 }
 
 fn invalidate_lsp_host() {
@@ -87,14 +90,15 @@ fn decode_input(ptr: u32, len: u32) -> Result<String, String> {
     Ok(source.to_string())
 }
 
-fn resolve_dialect() -> Result<RawDialect<'static>, String> {
+fn resolve_dialect() -> Result<DialectEnv<'static>, String> {
     let ptr = DIALECT_PTR.with(|p| p.get());
     if ptr == 0 {
         return Err("dialect pointer is not set; call wasm_set_dialect first".to_string());
     }
     let raw = ptr as *const FfiDialect;
     // SAFETY: the caller must provide a valid pointer to a dialect descriptor.
-    Ok(unsafe { RawDialect::from_raw(raw) })
+    let env = unsafe { DialectEnv::from_raw(raw) };
+    Ok(apply_config(env))
 }
 
 /// Runs `f`, catching any panic and writing `msg` to the result buffer on failure.
@@ -130,13 +134,7 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let dialect = try_wasm!(resolve_dialect());
     let source = try_wasm!(decode_input(ptr, len));
 
-    let parser = RawParser::with_config(
-        dialect,
-        &ParserConfig {
-            dialect_config: Some(get_dialect_config()),
-            ..ParserConfig::default()
-        },
-    );
+    let parser = RawParser::new(dialect);
     let mut cursor = parser.parse(&source);
 
     let mut nodes = Vec::new();
@@ -162,13 +160,7 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
     let dialect = try_wasm!(resolve_dialect());
     let source = try_wasm!(decode_input(ptr, len));
 
-    let parser = RawParser::with_config(
-        dialect,
-        &ParserConfig {
-            dialect_config: Some(get_dialect_config()),
-            ..ParserConfig::default()
-        },
-    );
+    let parser = RawParser::new(dialect);
     let mut cursor = parser.parse(&source);
     let mut out = String::new();
     let mut count = 0;
@@ -204,7 +196,7 @@ fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u
         semicolons: semicolons != 0,
         ..Default::default()
     };
-    let mut formatter = Formatter::with_config(dialect, &config, Some(get_dialect_config()));
+    let mut formatter = Formatter::with_config(dialect, &config);
 
     let sql = try_wasm!(formatter.format(&source));
     set_result(&sql);
@@ -323,11 +315,7 @@ pub extern "C" fn wasm_result_free() {
 pub extern "C" fn wasm_set_sqlite_version(ptr: u32, len: u32) -> i32 {
     let s = try_wasm!(decode_input(ptr, len));
     let ver = try_wasm!(parse_sqlite_version(&s));
-    DIALECT_CONFIG.with(|c| {
-        let mut config = c.get();
-        config.sqlite_version = ver;
-        c.set(config);
-    });
+    SQLITE_VERSION.with(|v| v.set(ver));
     invalidate_lsp_host();
     0
 }
@@ -336,10 +324,10 @@ pub extern "C" fn wasm_set_sqlite_version(ptr: u32, len: u32) -> i32 {
 pub extern "C" fn wasm_set_cflag(ptr: u32, len: u32) -> i32 {
     let s = try_wasm!(decode_input(ptr, len));
     let idx = try_wasm!(parse_cflag_name(&s));
-    DIALECT_CONFIG.with(|c| {
-        let mut config = c.get();
-        config.cflags.set(idx);
-        c.set(config);
+    SQLITE_CFLAGS.with(|c| {
+        let mut cflags = c.get();
+        cflags.set(idx);
+        c.set(cflags);
     });
     invalidate_lsp_host();
     0
@@ -349,10 +337,10 @@ pub extern "C" fn wasm_set_cflag(ptr: u32, len: u32) -> i32 {
 pub extern "C" fn wasm_clear_cflag(ptr: u32, len: u32) -> i32 {
     let s = try_wasm!(decode_input(ptr, len));
     let idx = try_wasm!(parse_cflag_name(&s));
-    DIALECT_CONFIG.with(|c| {
-        let mut config = c.get();
-        config.cflags.clear(idx);
-        c.set(config);
+    SQLITE_CFLAGS.with(|c| {
+        let mut cflags = c.get();
+        cflags.clear(idx);
+        c.set(cflags);
     });
     invalidate_lsp_host();
     0
@@ -360,10 +348,10 @@ pub extern "C" fn wasm_clear_cflag(ptr: u32, len: u32) -> i32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_clear_all_cflags() -> i32 {
-    DIALECT_CONFIG.with(|c| {
-        let mut config = c.get();
-        config.cflags.clear_all();
-        c.set(config);
+    SQLITE_CFLAGS.with(|c| {
+        let mut cflags = c.get();
+        cflags.clear_all();
+        c.set(cflags);
     });
     invalidate_lsp_host();
     0
@@ -384,7 +372,7 @@ fn run_set_session_context(ptr: u32, len: u32) -> i32 {
 fn run_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
     let dialect = try_wasm!(resolve_dialect());
     let source = try_wasm!(decode_input(ptr, len));
-    let ctx = DatabaseCatalog::from_ddl(dialect, &source, Some(get_dialect_config()));
+    let ctx = DatabaseCatalog::from_ddl(dialect, &source);
     let dialect_ptr = DIALECT_PTR.with(|p| p.get());
     let mut lsp = take_or_create_lsp_host(dialect_ptr);
     lsp.host.set_session_context(ctx);

@@ -14,10 +14,7 @@
 
 #include "syntaqlite/dialect.h"
 
-typedef struct SyntaqliteDialect SyntaqliteDialect;
-
-int64_t SynqSqliteGetTokenVersionWrapped(const SyntaqliteDialect* d,
-                                         const SyntaqliteDialectConfig* config,
+int64_t SynqSqliteGetTokenVersionWrapped(const SyntaqliteDialectEnv* env,
                                          const unsigned char* z,
                                          int* tokenType);
 

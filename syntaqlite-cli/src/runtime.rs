@@ -11,7 +11,7 @@ use clap::ValueEnum;
 use syntaqlite::Formatter;
 use syntaqlite::semantic::{SourceContext, ValidationConfig};
 use syntaqlite::{FormatConfig, KeywordCase};
-use syntaqlite_parser::{FfiDialect, ParseError, RawDialect, RawParser};
+use syntaqlite_parser::{DialectEnv, FfiDialect, ParseError, RawParser};
 
 use super::{Cli, Command};
 
@@ -49,7 +49,7 @@ fn expand_paths(patterns: &[String]) -> Result<Vec<PathBuf>, String> {
     Ok(out)
 }
 
-fn require_dialect(dialect: Option<RawDialect<'_>>) -> Result<RawDialect<'_>, String> {
+fn require_dialect(dialect: Option<DialectEnv<'_>>) -> Result<DialectEnv<'_>, String> {
     dialect.ok_or_else(|| {
         "this command requires a dialect; build with --features=builtin-sqlite or use --dialect"
             .to_string()
@@ -67,14 +67,14 @@ pub(crate) fn dialect_symbol_name(name: Option<&str>) -> String {
 
 /// Load a dialect symbol from an already-open shared library.
 ///
-/// The returned `RawDialect<'lib>` borrows from `lib` and must not outlive it.
+/// The returned `DialectEnv<'lib>` borrows from `lib` and must not outlive it.
 ///
 /// # Safety
 /// `lib` must remain valid for the lifetime `'lib` of the returned dialect.
 unsafe fn dialect_from_library<'lib>(
     lib: &'lib libloading::Library,
     name: Option<&str>,
-) -> Result<RawDialect<'lib>, String> {
+) -> Result<DialectEnv<'lib>, String> {
     let symbol_name = dialect_symbol_name(name);
     let func: libloading::Symbol<unsafe extern "C" fn() -> *const FfiDialect> = unsafe {
         lib.get(symbol_name.as_bytes())
@@ -84,10 +84,10 @@ unsafe fn dialect_from_library<'lib>(
     if raw.is_null() {
         return Err(format!("{symbol_name} returned null"));
     }
-    Ok(unsafe { RawDialect::from_raw(raw) })
+    Ok(unsafe { DialectEnv::from_raw(raw) })
 }
 
-pub(crate) fn dispatch(cli: Cli, dialect: Option<RawDialect<'_>>) -> Result<(), String> {
+pub(crate) fn dispatch(cli: Cli, dialect: Option<DialectEnv<'_>>) -> Result<(), String> {
     if let Some(path) = &cli.dialect_path {
         // lib must be declared before dyn_dialect so Rust's reverse drop order
         // ensures dyn_dialect is dropped before lib (which would unload the library).
@@ -109,7 +109,7 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<RawDialect<'_>>) -> Result<(), 
     }
 }
 
-fn dispatch_commands(command: Command, dialect: Option<RawDialect<'_>>) -> Result<(), String> {
+fn dispatch_commands(command: Command, dialect: Option<DialectEnv<'_>>) -> Result<(), String> {
     match command {
         Command::Ast { files } => require_dialect(dialect).and_then(|d| cmd_ast(d, files)),
         Command::Validate { files, lang } => {
@@ -181,7 +181,7 @@ fn process_files(
     Ok(())
 }
 
-fn cmd_ast(dialect: RawDialect<'_>, files: Vec<String>) -> Result<(), String> {
+fn cmd_ast(dialect: DialectEnv<'_>, files: Vec<String>) -> Result<(), String> {
     process_files(
         files,
         |source| cmd_ast_source(dialect, source, "<stdin>"),
@@ -195,7 +195,7 @@ fn cmd_ast(dialect: RawDialect<'_>, files: Vec<String>) -> Result<(), String> {
     )
 }
 
-fn cmd_ast_source(dialect: RawDialect<'_>, source: &str, file: &str) -> Result<(), String> {
+fn cmd_ast_source(dialect: DialectEnv<'_>, source: &str, file: &str) -> Result<(), String> {
     let (buf, errors) = dump_ast_source(dialect, source);
     print!("{buf}");
     if errors.is_empty() {
@@ -212,7 +212,7 @@ fn cmd_ast_source(dialect: RawDialect<'_>, source: &str, file: &str) -> Result<(
 }
 
 fn cmd_fmt(
-    dialect: RawDialect<'_>,
+    dialect: DialectEnv<'_>,
     files: Vec<String>,
     config: FormatConfig,
     in_place: bool,
@@ -258,7 +258,7 @@ fn cmd_fmt(
     Ok(())
 }
 
-fn dump_ast_source(dialect: RawDialect<'_>, source: &str) -> (String, Vec<ParseError>) {
+fn dump_ast_source(dialect: DialectEnv<'_>, source: &str) -> (String, Vec<ParseError>) {
     let parser = RawParser::new(dialect);
     let mut cursor = parser.parse(source);
     let mut out = String::new();
@@ -282,16 +282,16 @@ fn dump_ast_source(dialect: RawDialect<'_>, source: &str) -> (String, Vec<ParseE
 }
 
 fn format_source(
-    dialect: RawDialect<'_>,
+    dialect: DialectEnv<'_>,
     source: &str,
     config: FormatConfig,
 ) -> Result<String, ParseError> {
-    let mut formatter = Formatter::with_config(dialect, &config, None);
+    let mut formatter = Formatter::with_config(dialect, &config);
     formatter.format(source)
 }
 
 fn cmd_validate(
-    dialect: RawDialect<'_>,
+    dialect: DialectEnv<'_>,
     files: Vec<String>,
     lang: Option<HostLanguage>,
 ) -> Result<(), String> {
@@ -332,7 +332,7 @@ fn cmd_validate(
 }
 
 fn validate_source(
-    dialect: RawDialect<'_>,
+    dialect: DialectEnv<'_>,
     source: &str,
     file: &str,
     config: &ValidationConfig,
@@ -344,7 +344,7 @@ fn validate_source(
 }
 
 fn validate_embedded_source(
-    dialect: RawDialect<'_>,
+    dialect: DialectEnv<'_>,
     source: &str,
     file: &str,
     config: &ValidationConfig,

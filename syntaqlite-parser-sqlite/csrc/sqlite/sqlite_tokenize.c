@@ -680,7 +680,7 @@ static const unsigned char aiClass[] = {
 **    May you find forgiveness for yourself and forgive others.
 **    May you share freely, never taking more than you give.
 */
-i64 SynqSqliteGetToken(const SyntaqliteDialectConfig* config,
+i64 SynqSqliteGetToken(const SyntaqliteDialectEnv* env,
                        const unsigned char* z,
                        int* tokenType) {
   i64 i;
@@ -981,7 +981,7 @@ i64 SynqSqliteGetToken(const SyntaqliteDialectConfig* config,
         break;
       }
       *tokenType = SYNTAQLITE_TK_ID;
-      return synq_sqlite3_keywordCode(config, (char*)z, i, tokenType);
+      return synq_sqlite3_keywordCode(env, (char*)z, i, tokenType);
     }
     case CC_X: {
 #ifndef SQLITE_OMIT_BLOB_LITERAL

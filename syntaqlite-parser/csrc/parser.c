@@ -20,7 +20,7 @@
 
 struct SyntaqliteParser {
   SyntaqliteMemMethods mem;
-  const SyntaqliteDialect* dialect;
+  SyntaqliteDialectEnv env;
   void* lemon;
   SynqParseCtx ctx;
   const char* source;
@@ -33,7 +33,6 @@ struct SyntaqliteParser {
   int trace;
   int collect_tokens;
   int sealed;
-  SyntaqliteDialectConfig dialect_config;
   SYNQ_VEC(SyntaqliteComment) comments;
   SYNQ_VEC(SyntaqliteTokenPos) tokens;
   int macro_depth;  // Nesting depth (0 = not in macro).
@@ -46,15 +45,13 @@ struct SyntaqliteParser {
 
 SyntaqliteParser* syntaqlite_create_parser_with_dialect(
     const SyntaqliteMemMethods* mem,
-    const SyntaqliteDialect* dialect) {
+    const SyntaqliteDialectEnv* env) {
   SyntaqliteMemMethods m = mem ? *mem : SYNTAQLITE_MEM_METHODS_DEFAULT;
   SyntaqliteParser* p = m.xMalloc(sizeof(SyntaqliteParser));
   memset(p, 0, sizeof(*p));
   p->mem = m;
-  p->dialect = dialect;
-  SyntaqliteDialectConfig default_config = SYNQ_DIALECT_CONFIG_DEFAULT;
-  p->dialect_config = default_config;
-  p->lemon = SYNQ_PARSER_ALLOC(dialect, m.xMalloc);
+  p->env = *env;
+  p->lemon = SYNQ_PARSER_ALLOC(env->dialect, m.xMalloc);
   synq_parse_ctx_init(&p->ctx, m);
   syntaqlite_vec_init(&p->comments);
   syntaqlite_vec_init(&p->tokens);
@@ -72,8 +69,8 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   synq_parse_ctx_clear(&p->ctx);
 
   // Re-initialize lemon parser state (reuses allocation).
-  SYNQ_PARSER_FINALIZE(p->dialect, p->lemon);
-  SYNQ_PARSER_INIT(p->dialect, p->lemon);
+  SYNQ_PARSER_FINALIZE(p->env.dialect, p->lemon);
+  SYNQ_PARSER_INIT(p->env.dialect, p->lemon);
 
   p->source = source;
   p->source_len = len;
@@ -89,7 +86,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 
   // Reset parse context.
   p->ctx.source = source;
-  p->ctx.config = &p->dialect_config;
+  p->ctx.env = &p->env;
   p->ctx.root = SYNTAQLITE_NULL_NODE;
   p->ctx.stmt_completed = 0;
   p->ctx.error = 0;
@@ -111,7 +108,7 @@ static int feed_one_token(SyntaqliteParser* p,
                           uint32_t token_idx) {
   SynqParseToken minor = {
       .z = text, .n = len, .type = token_type, .token_idx = token_idx};
-  SYNQ_PARSER_FEED(p->dialect, p->lemon, token_type, minor, &p->ctx);
+  SYNQ_PARSER_FEED(p->env.dialect, p->lemon, token_type, minor, &p->ctx);
   p->last_token_type = token_type;
 
   if (p->ctx.error) {
@@ -147,7 +144,7 @@ static int check_macro_straddle(SyntaqliteParser* p) {
   uint32_t macro_count = syntaqlite_vec_len(&p->macros);
   if (macro_count == 0)
     return 0;
-  if (!p->dialect->range_meta)
+  if (!p->env.dialect->range_meta)
     return 0;
 
   uint32_t node_count = syntaqlite_vec_len(&p->ctx.ast.offsets);
@@ -157,10 +154,10 @@ static int check_macro_straddle(SyntaqliteParser* p) {
     const uint8_t* raw = (const uint8_t*)synq_arena_ptr(&p->ctx.ast, nid);
     uint32_t tag;
     memcpy(&tag, raw, sizeof(tag));
-    if (tag == 0 || tag >= p->dialect->node_count)
+    if (tag == 0 || tag >= p->env.dialect->node_count)
       continue;
 
-    const SyntaqliteRangeMetaEntry* entry = &p->dialect->range_meta[tag];
+    const SyntaqliteRangeMetaEntry* entry = &p->env.dialect->range_meta[tag];
     if (entry->fields == NULL || entry->count == 0)
       continue;
 
@@ -214,8 +211,8 @@ static int finish_input(SyntaqliteParser* p) {
   }
 
   // Synthesize SEMI if the last token wasn't one.
-  if (p->last_token_type != p->dialect->tk_semi) {
-    int rc = feed_one_token(p, p->dialect->tk_semi, NULL, 0, 0xFFFFFFFF);
+  if (p->last_token_type != p->env.dialect->tk_semi) {
+    int rc = feed_one_token(p, p->env.dialect->tk_semi, NULL, 0, 0xFFFFFFFF);
     if (rc == 1) {
       if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
         p->finished = 1;
@@ -235,7 +232,7 @@ static int finish_input(SyntaqliteParser* p) {
   // need one token of lookahead — the EOF provides it, triggering any
   // pending reduce (e.g. ecmd ::= cmdx SEMI).
   SynqParseToken eof = {.z = NULL, .n = 0, .type = 0, .token_idx = 0xFFFFFFFF};
-  SYNQ_PARSER_FEED(p->dialect, p->lemon, 0, eof, &p->ctx);
+  SYNQ_PARSER_FEED(p->env.dialect, p->lemon, 0, eof, &p->ctx);
   p->finished = 1;
 
   if (p->ctx.error) {
@@ -299,8 +296,8 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
 
   while (p->offset < p->source_len && z[p->offset] != '\0') {
     int token_type = 0;
-    int64_t token_len = SynqSqliteGetTokenVersionWrapped(
-        p->dialect, &p->dialect_config, z + p->offset, &token_type);
+    int64_t token_len =
+        SynqSqliteGetTokenVersionWrapped(&p->env, z + p->offset, &token_type);
     if (token_len <= 0)
       break;
 
@@ -308,12 +305,12 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
     p->offset += (uint32_t)token_len;
 
     // Skip whitespace.
-    if (token_type == p->dialect->tk_space) {
+    if (token_type == p->env.dialect->tk_space) {
       continue;
     }
 
     // Capture comments as comments when collect_tokens is enabled.
-    if (token_type == p->dialect->tk_comment) {
+    if (token_type == p->env.dialect->tk_comment) {
       if (p->collect_tokens) {
         SyntaqliteComment t = {tok_offset, (uint32_t)token_len,
                                z[tok_offset] == '-' ? (uint8_t)0 : (uint8_t)1};
@@ -326,7 +323,7 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
     // Semicolons are statement separators, not part of the AST — including
     // them would desync the token cursor with format ops.
     uint32_t tidx = 0xFFFFFFFF;
-    if (p->collect_tokens && token_type != p->dialect->tk_semi) {
+    if (p->collect_tokens && token_type != p->env.dialect->tk_semi) {
       SyntaqliteTokenPos tp = {tok_offset, (uint32_t)token_len,
                                (uint32_t)token_type, 0};
       syntaqlite_vec_push(&p->tokens, tp, p->mem);
@@ -342,9 +339,9 @@ SyntaqliteParseResult syntaqlite_parser_next(SyntaqliteParser* p) {
     // by reinitialising Lemon so the next statement starts with a clean
     // parser state.  When the triggering token is NOT a SEMI, Lemon's
     // natural `ecmd ::= error SEMI` recovery will find the real SEMI.
-    if (p->had_error && rc == 0 && token_type == p->dialect->tk_semi) {
-      SYNQ_PARSER_FINALIZE(p->dialect, p->lemon);
-      SYNQ_PARSER_INIT(p->dialect, p->lemon);
+    if (p->had_error && rc == 0 && token_type == p->env.dialect->tk_semi) {
+      SYNQ_PARSER_FINALIZE(p->env.dialect, p->lemon);
+      SYNQ_PARSER_INIT(p->env.dialect, p->lemon);
       p->last_token_type = 0;
       rc = 1;
     }
@@ -413,12 +410,12 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
                                  const char* text,
                                  int len) {
   // Skip whitespace silently.
-  if (token_type == p->dialect->tk_space) {
+  if (token_type == p->env.dialect->tk_space) {
     return 0;
   }
 
   // Record comments as comments but don't feed to Lemon.
-  if (token_type == p->dialect->tk_comment) {
+  if (token_type == p->env.dialect->tk_comment) {
     if (p->collect_tokens && text) {
       uint32_t tok_offset = (uint32_t)(text - p->source);
       SyntaqliteComment t = {tok_offset, (uint32_t)len,
@@ -430,7 +427,7 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
 
   // Capture non-whitespace, non-comment, non-semicolon token positions.
   uint32_t tidx = 0xFFFFFFFF;
-  if (p->collect_tokens && text && token_type != p->dialect->tk_semi) {
+  if (p->collect_tokens && text && token_type != p->env.dialect->tk_semi) {
     uint32_t tok_offset = (uint32_t)(text - p->source);
     SyntaqliteTokenPos tp = {tok_offset, (uint32_t)len, (uint32_t)token_type,
                              0};
@@ -483,19 +480,19 @@ SyntaqliteParseResult syntaqlite_parser_result(SyntaqliteParser* p) {
 int syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
                                       int* out_tokens,
                                       int out_cap) {
-  if (p == NULL || p->dialect == NULL ||
-      p->dialect->parser_expected_tokens == NULL) {
+  if (p == NULL || p->env.dialect == NULL ||
+      p->env.dialect->parser_expected_tokens == NULL) {
     return 0;
   }
-  return p->dialect->parser_expected_tokens(p->lemon, out_tokens, out_cap);
+  return p->env.dialect->parser_expected_tokens(p->lemon, out_tokens, out_cap);
 }
 
 uint32_t syntaqlite_parser_completion_context(SyntaqliteParser* p) {
-  if (p == NULL || p->dialect == NULL ||
-      p->dialect->parser_completion_context == NULL) {
+  if (p == NULL || p->env.dialect == NULL ||
+      p->env.dialect->parser_completion_context == NULL) {
     return 0;
   }
-  return p->dialect->parser_completion_context(p->lemon);
+  return p->env.dialect->parser_completion_context(p->lemon);
 }
 
 int syntaqlite_parser_finish(SyntaqliteParser* p) {
@@ -576,7 +573,7 @@ static void dump_node_recursive(DumpBuf* b,
   uint32_t tag;
   memcpy(&tag, raw, sizeof(tag));
 
-  const SyntaqliteDialect* d = p->dialect;
+  const SyntaqliteDialect* d = p->env.dialect;
   if (tag == SYNTAQLITE_ERROR_NODE_TAG) {
     const SyntaqliteErrorNode* e = (const SyntaqliteErrorNode*)raw;
     SyntaqliteMemMethods mem = p->mem;
@@ -705,7 +702,7 @@ char* syntaqlite_dump_node(SyntaqliteParser* p,
 
 void syntaqlite_parser_destroy(SyntaqliteParser* p) {
   if (p) {
-    SYNQ_PARSER_FREE(p->dialect, p->lemon, p->mem.xFree);
+    SYNQ_PARSER_FREE(p->env.dialect, p->lemon, p->mem.xFree);
     synq_parse_ctx_free(&p->ctx);
     syntaqlite_vec_free(&p->comments, p->mem);
     syntaqlite_vec_free(&p->tokens, p->mem);
@@ -743,9 +740,9 @@ int syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable) {
     return -1;
   p->trace = enable;
   if (enable) {
-    SYNQ_PARSER_TRACE(p->dialect, stderr, "parser> ");
+    SYNQ_PARSER_TRACE(p->env.dialect, stderr, "parser> ");
   } else {
-    SYNQ_PARSER_TRACE(p->dialect, NULL, NULL);
+    SYNQ_PARSER_TRACE(p->env.dialect, NULL, NULL);
   }
   return 0;
 }
@@ -754,15 +751,6 @@ int syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable) {
   if (p->sealed)
     return -1;
   p->collect_tokens = enable;
-  return 0;
-}
-
-int syntaqlite_parser_set_dialect_config(
-    SyntaqliteParser* p,
-    const SyntaqliteDialectConfig* config) {
-  if (p->sealed)
-    return -1;
-  p->dialect_config = *config;
   return 0;
 }
 

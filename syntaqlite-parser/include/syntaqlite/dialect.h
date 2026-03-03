@@ -37,16 +37,22 @@
 extern "C" {
 #endif
 
-// ── Dialect configuration ────────────────────────────────────────────────
+// ── Forward-declare the dialect descriptor (full definition below) ──────
 
-typedef struct SyntaqliteDialectConfig {
-  int32_t
-      sqlite_version;  // Target version (e.g., 3035000). INT32_MAX = latest.
+typedef struct SyntaqliteDialect SyntaqliteDialect;
+
+// ── Configured dialect handle ────────────────────────────────────────────
+
+typedef struct SyntaqliteDialectEnv {
+  const SyntaqliteDialect*
+      dialect;              // Grammar descriptor (must outlive the env).
+  int32_t sqlite_version;   // Target version (e.g., 3035000). INT32_MAX =
+                            // latest.
   SyntaqliteCflags cflags;  // Active compile-time flags.
-} SyntaqliteDialectConfig;
+} SyntaqliteDialectEnv;
 
-// Default config: latest version, no cflags.
-#define SYNQ_DIALECT_CONFIG_DEFAULT {INT32_MAX, SYNQ_CFLAGS_DEFAULT}
+// Default env: latest version, no cflags.
+#define SYNQ_DIALECT_ENV_DEFAULT(d) {(d), INT32_MAX, SYNQ_CFLAGS_DEFAULT}
 
 // ── Types used by the parser vtable ─────────────────────────────────────
 
@@ -130,7 +136,7 @@ typedef struct SyntaqliteDialect {
   uint32_t (*parser_completion_context)(void* parser);
 
   // Tokenizer (provided by dialect)
-  int64_t (*get_token)(const SyntaqliteDialectConfig* config,
+  int64_t (*get_token)(const SyntaqliteDialectEnv* env,
                        const unsigned char* z,
                        int* tokenType);
 

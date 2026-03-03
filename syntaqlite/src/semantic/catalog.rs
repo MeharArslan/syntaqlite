@@ -11,7 +11,7 @@
 //! - [`DocumentCatalog`] — accumulated from DDL during analysis. Internal scratch.
 //! - [`CatalogStack`] — flat composition that holds references to all three.
 
-use syntaqlite_parser::RawDialect;
+use syntaqlite_parser::DialectEnv;
 
 use super::functions::{FunctionCatalog, FunctionCheckResult, FunctionDef};
 use super::relations::{ColumnDef, RelationDef, RelationKind};
@@ -52,7 +52,7 @@ impl DatabaseCatalog {
     pub fn from_stmts<'a>(
         reader: syntaqlite_parser::RawParseResult<'a>,
         stmt_ids: &[syntaqlite_parser::RawNodeId],
-        dialect: RawDialect<'_>,
+        dialect: DialectEnv<'_>,
     ) -> Self {
         let mut doc = DocumentCatalog::new();
         for &id in stmt_ids {
@@ -69,18 +69,8 @@ impl DatabaseCatalog {
     /// Creates a temporary parser, parses the source, and builds the schema
     /// from the resulting DDL statements. This is a convenience wrapper for
     /// cases like WASM where you have raw DDL text.
-    pub fn from_ddl(
-        dialect: RawDialect<'_>,
-        source: &str,
-        dialect_config: Option<syntaqlite_parser::DialectConfig>,
-    ) -> Self {
-        let parser = syntaqlite_parser::RawParser::with_config(
-            dialect,
-            &syntaqlite_parser::ParserConfig {
-                dialect_config,
-                ..syntaqlite_parser::ParserConfig::default()
-            },
-        );
+    pub fn from_ddl(dialect: DialectEnv<'_>, source: &str) -> Self {
+        let parser = syntaqlite_parser::RawParser::new(dialect);
         let mut cursor = parser.parse(source);
 
         let mut stmt_ids = Vec::new();
@@ -182,12 +172,9 @@ pub(crate) struct StaticCatalog {
 
 impl StaticCatalog {
     /// Build from a dialect and explicit configuration.
-    pub(crate) fn for_dialect(
-        dialect: &RawDialect<'_>,
-        config: &syntaqlite_parser::DialectConfig,
-    ) -> Self {
+    pub(crate) fn for_dialect(dialect: &DialectEnv<'_>) -> Self {
         StaticCatalog {
-            functions: FunctionCatalog::for_dialect(dialect, config),
+            functions: FunctionCatalog::for_dialect(dialect),
             relations: Vec::new(), // TODO: add static relations via C FFI
         }
     }
@@ -289,7 +276,7 @@ impl DocumentCatalog {
         &mut self,
         reader: syntaqlite_parser::RawParseResult<'_>,
         stmt_id: syntaqlite_parser::RawNodeId,
-        dialect: RawDialect<'_>,
+        dialect: DialectEnv<'_>,
         database: Option<&DatabaseCatalog>,
     ) {
         use syntaqlite_parser::DialectNodeType;
@@ -391,7 +378,7 @@ impl DocumentCatalog {
 fn columns_from_column_list(
     reader: &syntaqlite_parser::RawParseResult<'_>,
     list_id: syntaqlite_parser::RawNodeId,
-    dialect: &RawDialect<'_>,
+    dialect: &DialectEnv<'_>,
     out: &mut Vec<ColumnDef>,
 ) {
     use syntaqlite_parser::RawNodeId;
@@ -470,7 +457,7 @@ fn columns_from_column_list(
 fn extract_column_constraints(
     reader: &syntaqlite_parser::RawParseResult<'_>,
     list_id: syntaqlite_parser::RawNodeId,
-    dialect: &RawDialect<'_>,
+    dialect: &DialectEnv<'_>,
     is_primary_key: &mut bool,
     is_nullable: &mut bool,
 ) {
@@ -857,10 +844,7 @@ mod tests {
 
     #[test]
     fn catalog_stack_resolves_document_first() {
-        let static_ = StaticCatalog::for_dialect(
-            &crate::dialect::sqlite(),
-            &syntaqlite_parser::DialectConfig::default(),
-        );
+        let static_ = StaticCatalog::for_dialect(&crate::dialect::sqlite());
         let database = DatabaseCatalog {
             relations: vec![RelationDef {
                 name: "users".to_string(),

@@ -49,12 +49,12 @@ pub(crate) fn assemble(
         .replace_in_function(
             "sqlite3GetToken",
             "keywordCode((char*)",
-            "synq_sqlite3_keywordCode(config, (char*)",
+            "synq_sqlite3_keywordCode(env, (char*)",
         )
         .replace_in_function(
             "sqlite3GetToken",
             "sqlite3GetToken(const unsigned char *z",
-            "sqlite3GetToken(const SyntaqliteDialectConfig* config, const unsigned char *z",
+            "sqlite3GetToken(const SyntaqliteDialectEnv* env, const unsigned char *z",
         )
         .rename_function("sqlite3GetToken", &get_token_name)
         .replace_all("TK_", "SYNTAQLITE_TK_")

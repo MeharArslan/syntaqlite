@@ -24,7 +24,7 @@ impl serde_core::ser::Serialize for syntaqlite::semantic::diagnostics::Severity
 impl serde_core::ser::Serialize for syntaqlite::semantic::diagnostics::Severity
 impl syntaqlite::DatabaseCatalog
 impl syntaqlite::DatabaseCatalog
-impl syntaqlite::dialect::DialectExt for syntaqlite_parser::dialect::RawDialect<'_>
+impl syntaqlite::dialect::DialectExt for syntaqlite_parser::dialect::DialectEnv<'_>
 impl syntaqlite::dialect::TokenCategory
 impl syntaqlite::embedded::offset_map::OffsetMap
 impl syntaqlite::incremental::IncrementalParser
@@ -76,15 +76,15 @@ pub enum syntaqlite::semantic::Help
 pub enum syntaqlite::semantic::RelationKind
 pub enum syntaqlite::semantic::relations::RelationKind
 pub enum syntaqlite::semantic::Severity
-pub fn syntaqlite_parser::dialect::RawDialect<'_>::classify_token(&self, token_type: u32, flags: u32) -> syntaqlite::dialect::TokenCategory
-pub fn syntaqlite_parser::dialect::RawDialect<'_>::token_category(&self, token_type: u32) -> syntaqlite::dialect::TokenCategory
+pub fn syntaqlite_parser::dialect::DialectEnv<'_>::classify_token(&self, token_type: u32, flags: u32) -> syntaqlite::dialect::TokenCategory
+pub fn syntaqlite_parser::dialect::DialectEnv<'_>::token_category(&self, token_type: u32) -> syntaqlite::dialect::TokenCategory
 pub fn syntaqlite_parser::session::NodeRef<'_>::dump_json(&self, out: &mut alloc::string::String)
-pub fn syntaqlite::DatabaseCatalog::from_ddl(dialect: syntaqlite_parser::dialect::RawDialect<'_>, source: &str, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
-pub fn syntaqlite::DatabaseCatalog::from_ddl(dialect: syntaqlite_parser::dialect::RawDialect<'_>, source: &str, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
+pub fn syntaqlite::DatabaseCatalog::from_ddl(dialect: syntaqlite_parser::dialect::DialectEnv<'_>, source: &str) -> Self
+pub fn syntaqlite::DatabaseCatalog::from_ddl(dialect: syntaqlite_parser::dialect::DialectEnv<'_>, source: &str) -> Self
 pub fn syntaqlite::DatabaseCatalog::from_json(s: &str) -> core::result::Result<Self, alloc::string::String>
 pub fn syntaqlite::DatabaseCatalog::from_json(s: &str) -> core::result::Result<Self, alloc::string::String>
-pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawParseResult<'a>, stmt_ids: &[syntaqlite_parser::nodes::RawNodeId], dialect: syntaqlite_parser::dialect::RawDialect<'_>) -> Self
-pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawParseResult<'a>, stmt_ids: &[syntaqlite_parser::nodes::RawNodeId], dialect: syntaqlite_parser::dialect::RawDialect<'_>) -> Self
+pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawParseResult<'a>, stmt_ids: &[syntaqlite_parser::nodes::RawNodeId], dialect: syntaqlite_parser::dialect::DialectEnv<'_>) -> Self
+pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawParseResult<'a>, stmt_ids: &[syntaqlite_parser::nodes::RawNodeId], dialect: syntaqlite_parser::dialect::DialectEnv<'_>) -> Self
 pub fn syntaqlite::DatabaseCatalog::tables(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
 pub fn syntaqlite::DatabaseCatalog::tables(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
 pub fn syntaqlite::DatabaseCatalog::views(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
@@ -116,12 +116,11 @@ pub fn syntaqlite::dialect::DialectTokenCursor<'a, N>::next(&mut self) -> core::
 pub fn syntaqlite::dialect::DialectTokenizer<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::Dialect<'d, N>) -> Self
 pub fn syntaqlite::dialect::DialectTokenizer<'d, N>::tokenize_cstr<'a>(&self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::dialect::DialectTokenCursor<'a, N> where 'd: 'a
 pub fn syntaqlite::dialect::DialectTokenizer<'d, N>::tokenize<'a>(&self, source: &'a str) -> syntaqlite::dialect::DialectTokenCursor<'a, N> where 'd: 'a
-pub fn syntaqlite::dialect::DialectTokenizer<'d, N>::with_dialect_config(dialect: syntaqlite_parser::dialect::Dialect<'d, N>, config: syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
-pub fn syntaqlite::dialect::sqlite() -> syntaqlite_parser::dialect::RawDialect<'static>
+pub fn syntaqlite::dialect::sqlite() -> syntaqlite_parser::dialect::DialectEnv<'static>
 pub fn syntaqlite::dialect::TokenCategory::from_u8(v: u8) -> Self
 pub fn syntaqlite::dialect::TokenCategory::legend_name(self) -> core::option::Option<&'static str>
 pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::fragment_semantic_tokens(&self, fragment: &syntaqlite::embedded::EmbeddedFragment) -> alloc::vec::Vec<(usize, usize, syntaqlite::dialect::TokenCategory)>
-pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::new(dialect: syntaqlite_parser::dialect::RawDialect<'d>) -> Self
+pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::new(dialect: syntaqlite_parser::dialect::DialectEnv<'d>) -> Self
 pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::semantic_tokens_encoded(&self, fragments: &[syntaqlite::embedded::EmbeddedFragment], source: &str) -> alloc::vec::Vec<u32>
 pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::validate(&self, fragments: &[syntaqlite::embedded::EmbeddedFragment]) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
 pub fn syntaqlite::embedded::EmbeddedAnalyzer<'d>::with_catalog(self, catalog: syntaqlite::semantic::FunctionCatalog) -> Self
@@ -136,7 +135,7 @@ pub fn syntaqlite::Formatter<'d>::config(&self) -> &syntaqlite::fmt::FormatConfi
 pub fn syntaqlite::Formatter<'d>::format_node(&mut self, node: syntaqlite_parser::session::NodeRef<'_>) -> alloc::string::String
 pub fn syntaqlite::Formatter<'d>::format(&mut self, source: &str) -> core::result::Result<alloc::string::String, syntaqlite_parser::session::ParseError>
 pub fn syntaqlite::Formatter<'d>::new() -> syntaqlite::Formatter<'static>
-pub fn syntaqlite::Formatter<'d>::with_config(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, format_config: &syntaqlite::fmt::FormatConfig, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
+pub fn syntaqlite::Formatter<'d>::with_config(dialect: impl core::convert::Into<syntaqlite_parser::dialect::DialectEnv<'d>>, format_config: &syntaqlite::fmt::FormatConfig) -> Self
 pub fn syntaqlite::Formatter<'static>::default() -> Self
 pub fn syntaqlite::incremental::IncrementalCursor<'a>::begin_macro(&mut self, call_offset: u32, call_length: u32)
 pub fn syntaqlite::incremental::IncrementalCursor<'a>::comments(&self) -> &[syntaqlite_parser::parser::Comment]
@@ -152,8 +151,8 @@ pub fn syntaqlite::incremental::IncrementalParser::feed_cstr<'a>(&self, source: 
 pub fn syntaqlite::incremental::IncrementalParser::feed<'a>(&self, source: &'a str) -> syntaqlite::incremental::IncrementalCursor<'a>
 pub fn syntaqlite::incremental::IncrementalParser::new() -> Self
 pub fn syntaqlite::lsp::CompletionKind::as_str(self) -> &'static str
-pub fn syntaqlite::lsp::DocumentAnalysis::completion_info_at(&self, dialect: syntaqlite_parser::dialect::RawDialect<'_>, source: &str, offset: usize) -> syntaqlite::lsp::CompletionInfo
-pub fn syntaqlite::lsp::DocumentAnalysis::compute(dialect: syntaqlite_parser::dialect::RawDialect<'_>, source: &str) -> Self
+pub fn syntaqlite::lsp::DocumentAnalysis::completion_info_at(&self, dialect: syntaqlite_parser::dialect::DialectEnv<'_>, source: &str, offset: usize) -> syntaqlite::lsp::CompletionInfo
+pub fn syntaqlite::lsp::DocumentAnalysis::compute(dialect: syntaqlite_parser::dialect::DialectEnv<'_>, source: &str) -> Self
 pub fn syntaqlite::lsp::DocumentAnalysis::diagnostics(&self) -> &[syntaqlite::semantic::diagnostics::Diagnostic]
 pub fn syntaqlite::lsp::DocumentAnalysis::semantic_tokens_encoded(&self, source: &str, range: core::option::Option<(usize, usize)>) -> alloc::vec::Vec<u32>
 pub fn syntaqlite::lsp::DocumentAnalysis::semantic_tokens(&self) -> &[syntaqlite::lsp::SemanticToken]
@@ -173,12 +172,12 @@ pub fn syntaqlite::lsp::LspHost<'d>::open_document(&mut self, uri: &str, version
 pub fn syntaqlite::lsp::LspHost<'d>::semantic_tokens_encoded(&mut self, uri: &str, range: core::option::Option<(usize, usize)>) -> alloc::vec::Vec<u32>
 pub fn syntaqlite::lsp::LspHost<'d>::semantic_tokens(&mut self, uri: &str) -> &[syntaqlite::lsp::SemanticToken]
 pub fn syntaqlite::lsp::LspHost<'d>::session_context(&self) -> core::option::Option<&syntaqlite::DatabaseCatalog>
-pub fn syntaqlite::lsp::LspHost<'d>::set_dialect_config(&mut self, config: syntaqlite_parser::dialect::ffi::DialectConfig)
+pub fn syntaqlite::lsp::LspHost<'d>::set_dialect_env(&mut self, env: syntaqlite_parser::dialect::DialectEnv<'d>)
 pub fn syntaqlite::lsp::LspHost<'d>::set_session_context(&mut self, ctx: syntaqlite::DatabaseCatalog)
 pub fn syntaqlite::lsp::LspHost<'d>::update_document(&mut self, uri: &str, version: i32, text: alloc::string::String)
 pub fn syntaqlite::lsp::LspHost<'d>::validate(&mut self, uri: &str, config: &syntaqlite::semantic::ValidationConfig) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
-pub fn syntaqlite::lsp::LspHost<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>) -> Self
-pub fn syntaqlite::lsp::LspServer::run(dialect: syntaqlite_parser::dialect::RawDialect<'_>) -> core::result::Result<(), alloc::boxed::Box<(dyn core::error::Error + core::marker::Sync + core::marker::Send)>>
+pub fn syntaqlite::lsp::LspHost<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::DialectEnv<'d>>) -> Self
+pub fn syntaqlite::lsp::LspServer::run(dialect: syntaqlite_parser::dialect::DialectEnv<'_>) -> core::result::Result<(), alloc::boxed::Box<(dyn core::error::Error + core::marker::Sync + core::marker::Send)>>
 pub fn syntaqlite::NodeRefJsonExt::dump_json(&self, out: &mut alloc::string::String)
 pub fn syntaqlite::Parser::default() -> Self
 pub fn syntaqlite::Parser::new() -> Self
@@ -211,10 +210,10 @@ pub fn syntaqlite::semantic::FunctionCatalog::all_names(&self) -> alloc::vec::Ve
 pub fn syntaqlite::semantic::FunctionCatalog::all_names(&self) -> alloc::vec::Vec<alloc::string::String>
 pub fn syntaqlite::semantic::FunctionCatalog::check_call(&self, name: &str, arg_count: usize) -> syntaqlite::semantic::FunctionCheckResult
 pub fn syntaqlite::semantic::FunctionCatalog::check_call(&self, name: &str, arg_count: usize) -> syntaqlite::semantic::FunctionCheckResult
-pub fn syntaqlite::semantic::FunctionCatalog::for_default_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>) -> Self
-pub fn syntaqlite::semantic::FunctionCatalog::for_default_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>) -> Self
-pub fn syntaqlite::semantic::FunctionCatalog::for_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>, config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
-pub fn syntaqlite::semantic::FunctionCatalog::for_dialect(dialect: &syntaqlite_parser::dialect::RawDialect<'_>, config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
+pub fn syntaqlite::semantic::FunctionCatalog::for_default_dialect(env: &syntaqlite_parser::dialect::DialectEnv<'_>) -> Self
+pub fn syntaqlite::semantic::FunctionCatalog::for_default_dialect(env: &syntaqlite_parser::dialect::DialectEnv<'_>) -> Self
+pub fn syntaqlite::semantic::FunctionCatalog::for_dialect(env: &syntaqlite_parser::dialect::DialectEnv<'_>) -> Self
+pub fn syntaqlite::semantic::FunctionCatalog::for_dialect(env: &syntaqlite_parser::dialect::DialectEnv<'_>) -> Self
 pub fn syntaqlite::semantic::FunctionCatalog::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&str, syntaqlite_parser::catalog::FunctionCategory)>
 pub fn syntaqlite::semantic::FunctionCatalog::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = (&str, syntaqlite_parser::catalog::FunctionCategory)>
 pub fn syntaqlite::semantic::FunctionCatalog::lookup(&self, name: &str) -> core::option::Option<syntaqlite::semantic::FunctionLookup<'_>>
@@ -251,16 +250,14 @@ pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_with_config(&mut self, sour
 pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_with_config(&mut self, source: &str, catalog: &syntaqlite::DatabaseCatalog, config: &syntaqlite::semantic::ValidationConfig) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
 pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics(&mut self, source: &str, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
 pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics(&mut self, source: &str, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
-pub fn syntaqlite::SemanticAnalyzer<'d>::dialect(&self) -> syntaqlite_parser::dialect::RawDialect<'d>
-pub fn syntaqlite::SemanticAnalyzer<'d>::dialect(&self) -> syntaqlite_parser::dialect::RawDialect<'d>
+pub fn syntaqlite::SemanticAnalyzer<'d>::dialect(&self) -> syntaqlite_parser::dialect::DialectEnv<'d>
+pub fn syntaqlite::SemanticAnalyzer<'d>::dialect(&self) -> syntaqlite_parser::dialect::DialectEnv<'d>
 pub fn syntaqlite::SemanticAnalyzer<'d>::new() -> syntaqlite::SemanticAnalyzer<'static>
 pub fn syntaqlite::SemanticAnalyzer<'d>::new() -> syntaqlite::SemanticAnalyzer<'static>
 pub fn syntaqlite::SemanticAnalyzer<'d>::prepare<'a>(&mut self, source: &'a str) -> syntaqlite::SemanticModel<'a, 'd> where 'd: 'a
 pub fn syntaqlite::SemanticAnalyzer<'d>::prepare<'a>(&mut self, source: &'a str) -> syntaqlite::SemanticModel<'a, 'd> where 'd: 'a
-pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect_config(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
-pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect_config(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>, config: &syntaqlite_parser::dialect::ffi::DialectConfig) -> Self
-pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>) -> Self
-pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::RawDialect<'d>>) -> Self
+pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::DialectEnv<'d>>) -> Self
+pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::DialectEnv<'d>>) -> Self
 pub fn syntaqlite::SemanticAnalyzer<'static>::default() -> Self
 pub fn syntaqlite::SemanticAnalyzer<'static>::default() -> Self
 pub fn syntaqlite::StatementCursor<'a>::next_statement(&mut self) -> core::option::Option<core::result::Result<syntaqlite_parser_sqlite::ast::Stmt<'a>, syntaqlite_parser::session::ParseError>>

@@ -13,20 +13,19 @@
 #include "syntaqlite/tokens.h"
 #include "syntaqlite_dialect/dialect_macros.h"
 
-int64_t SynqSqliteGetTokenVersionWrapped(const SyntaqliteDialect* d,
-                                         const SyntaqliteDialectConfig* config,
+int64_t SynqSqliteGetTokenVersionWrapped(const SyntaqliteDialectEnv* env,
                                          const unsigned char* z,
                                          int* tokenType) {
-  int64_t len = SYNQ_GET_TOKEN(d, config, z, tokenType);
+  int64_t len = SYNQ_GET_TOKEN(env, z, tokenType);
 
-  if (SYNQ_VER_LT(config, 3038000) && *tokenType == SYNTAQLITE_TK_PTR) {
+  if (SYNQ_VER_LT(env, 3038000) && *tokenType == SYNTAQLITE_TK_PTR) {
     /* -> and ->> operators added in 3.38.
     ** Return just the '-' as TK_MINUS; next call picks up '>' naturally. */
     *tokenType = SYNTAQLITE_TK_MINUS;
     return 1;
   }
 
-  if (SYNQ_VER_LT(config, 3046000) && *tokenType == SYNTAQLITE_TK_QNUMBER) {
+  if (SYNQ_VER_LT(env, 3046000) && *tokenType == SYNTAQLITE_TK_QNUMBER) {
     /* Digit separators added in 3.46.
     ** Truncate to the first underscore. */
     int64_t j;
