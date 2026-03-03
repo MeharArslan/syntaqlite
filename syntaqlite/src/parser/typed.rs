@@ -13,8 +13,8 @@ use std::ops::Range;
 
 use syntaqlite_parser::{
     Comment, Dialect, DialectNodeType, MacroRegion, NodeFamily, NodeRef, ParseError, ParserConfig,
-    RawIncrementalCursor, RawIncrementalParser, RawParser, RawStatementCursor, RawTokenCursor,
-    RawTokenizer,
+    RawIncrementalCursor, RawIncrementalParser, RawNodeId, RawParseResult, RawParser,
+    RawStatementCursor, RawTokenCursor, RawTokenizer,
 };
 
 // ── DialectParser ───────────────────────────────────────────────────────
@@ -46,23 +46,9 @@ impl<'d, N: NodeFamily> DialectParser<'d, N> {
     }
 
     /// Bind source text and return a [`DialectStatementCursor`] for iterating typed statements.
-    pub fn parse<'a>(&self, source: &'a str) -> DialectStatementCursor<'a, N>
-    where
-        'd: 'a,
-    {
+    pub fn parse(&self, source: &str) -> DialectStatementCursor<'d, N> {
         DialectStatementCursor {
             inner: self.inner.parse(source),
-            _marker: PhantomData,
-        }
-    }
-
-    /// Zero-copy variant: bind a null-terminated source.
-    pub fn parse_cstr<'a>(&self, source: &'a std::ffi::CStr) -> DialectStatementCursor<'a, N>
-    where
-        'd: 'a,
-    {
-        DialectStatementCursor {
-            inner: self.inner.parse_cstr(source),
             _marker: PhantomData,
         }
     }
@@ -71,36 +57,46 @@ impl<'d, N: NodeFamily> DialectParser<'d, N> {
 // ── DialectStatementCursor ──────────────────────────────────────────────
 
 /// A streaming cursor over parsed SQL statements, yielding typed nodes.
-pub struct DialectStatementCursor<'a, N: NodeFamily> {
-    inner: RawStatementCursor<'a>,
+pub struct DialectStatementCursor<'d, N: NodeFamily> {
+    pub(crate) inner: RawStatementCursor<'d>,
     _marker: PhantomData<N>,
 }
 
-impl<'a, N: NodeFamily> DialectStatementCursor<'a, N> {
+impl<'d, N: NodeFamily> DialectStatementCursor<'d, N> {
     /// Parse the next SQL statement and return a typed AST node.
     ///
     /// Returns:
     /// - `Some(Ok(node))` — successfully parsed statement.
     /// - `Some(Err(e))` — syntax error; call again to continue with subsequent statements.
     /// - `None` — all input has been consumed.
-    pub fn next_statement(&mut self) -> Option<Result<N::Node<'a>, ParseError>> {
-        self.inner.next_statement().map(|result| {
-            result.and_then(|node_ref| {
+    ///
+    /// The returned node borrows from the cursor. Use `while let` to iterate:
+    /// ```ignore
+    /// while let Some(result) = cursor.next_statement() {
+    ///     let stmt = result?;
+    ///     // use stmt...
+    /// }
+    /// ```
+    pub fn next_statement(&mut self) -> Option<Result<N::Node<'_>, ParseError>> {
+        match self.inner.next_statement()? {
+            Ok(node_ref) => {
                 let id = node_ref.id();
-                node_ref
-                    .as_typed::<N::Node<'a>>()
-                    .ok_or_else(|| ParseError {
+                match node_ref.as_typed::<N::Node<'_>>() {
+                    Some(node) => Some(Ok(node)),
+                    None => Some(Err(ParseError {
                         message: "failed to resolve typed AST node".to_string(),
                         offset: None,
                         length: None,
                         root: Some(id),
-                    })
-            })
-        })
+                    })),
+                }
+            }
+            Err(e) => Some(Err(e)),
+        }
     }
 
     /// The source text bound to this cursor.
-    pub fn source(&self) -> &'a str {
+    pub fn source(&self) -> &str {
         self.inner.source()
     }
 
@@ -108,16 +104,18 @@ impl<'a, N: NodeFamily> DialectStatementCursor<'a, N> {
     ///
     /// Returns `Some(node)` if the ID refers to a valid arena node of the
     /// correct type, or `None` if the ID is null, invalid, or mismatched.
-    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'a>> {
+    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'_>> {
         I::Node::from_arena(self.inner.reader(), id.into())
     }
-}
 
-impl<'a, N: NodeFamily> Iterator for DialectStatementCursor<'a, N> {
-    type Item = Result<N::Node<'a>, ParseError>;
+    /// Build a [`RawParseResult`] for the parser arena.
+    pub fn reader(&self) -> RawParseResult<'_> {
+        self.inner.reader()
+    }
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.next_statement()
+    /// Wrap a [`RawNodeId`] into a [`NodeRef`] using this cursor's reader and dialect.
+    pub fn node_ref(&self, id: RawNodeId) -> NodeRef<'_> {
+        self.inner.node_ref(id)
     }
 }
 
@@ -230,24 +228,9 @@ impl<'d, N: NodeFamily> DialectIncrementalParser<'d, N> {
     }
 
     /// Bind source text and return a [`DialectIncrementalCursor`] for token feeding.
-    pub fn feed<'a>(&self, source: &'a str) -> DialectIncrementalCursor<'a, N>
-    where
-        'd: 'a,
-    {
+    pub fn feed(&self, source: &str) -> DialectIncrementalCursor<'d, N> {
         DialectIncrementalCursor {
             inner: self.inner.feed(source),
-            last_root: None,
-            _marker: PhantomData,
-        }
-    }
-
-    /// Zero-copy variant: bind a null-terminated source.
-    pub fn feed_cstr<'a>(&self, source: &'a std::ffi::CStr) -> DialectIncrementalCursor<'a, N>
-    where
-        'd: 'a,
-    {
-        DialectIncrementalCursor {
-            inner: self.inner.feed_cstr(source),
             last_root: None,
             _marker: PhantomData,
         }
@@ -260,29 +243,30 @@ impl<'d, N: NodeFamily> DialectIncrementalParser<'d, N> {
 ///
 /// Feed tokens via [`feed_token`](Self::feed_token) and signal end-of-input
 /// via [`finish`](Self::finish).
-pub struct DialectIncrementalCursor<'a, N: NodeFamily> {
-    inner: RawIncrementalCursor<'a>,
-    last_root: Option<NodeRef<'a>>,
+pub struct DialectIncrementalCursor<'d, N: NodeFamily> {
+    inner: RawIncrementalCursor<'d>,
+    last_root: Option<RawNodeId>,
     _marker: PhantomData<N>,
 }
 
-impl<'a, N: NodeFamily> DialectIncrementalCursor<'a, N> {
+impl<'d, N: NodeFamily> DialectIncrementalCursor<'d, N> {
     /// Feed a typed token to the parser.
     ///
     /// Returns `Ok(Some(node))` when a statement completes, `Ok(None)` to
-    /// keep going, or `Err` on parse error.
+    /// keep going, or `Err` on parse error. The returned node borrows from
+    /// the cursor.
     pub fn feed_token(
         &mut self,
         token_type: N::Token,
         span: Range<usize>,
-    ) -> Result<Option<N::Node<'a>>, ParseError> {
+    ) -> Result<Option<N::Node<'_>>, ParseError> {
         match self.inner.feed_token(token_type.into(), span)? {
             None => Ok(None),
             Some(id) => {
+                self.last_root = Some(id);
                 let node_ref = self.inner.node_ref(id);
-                self.last_root = Some(node_ref);
                 let node = node_ref
-                    .as_typed::<N::Node<'a>>()
+                    .as_typed::<N::Node<'_>>()
                     .ok_or_else(|| ParseError {
                         message: "failed to resolve typed AST node".to_string(),
                         offset: None,
@@ -300,14 +284,14 @@ impl<'a, N: NodeFamily> DialectIncrementalCursor<'a, N> {
     /// if there was nothing pending, or `Err` on parse error.
     ///
     /// No further methods may be called after `finish()`.
-    pub fn finish(&mut self) -> Result<Option<N::Node<'a>>, ParseError> {
+    pub fn finish(&mut self) -> Result<Option<N::Node<'_>>, ParseError> {
         match self.inner.finish()? {
             None => Ok(None),
             Some(id) => {
+                self.last_root = Some(id);
                 let node_ref = self.inner.node_ref(id);
-                self.last_root = Some(node_ref);
                 let node = node_ref
-                    .as_typed::<N::Node<'a>>()
+                    .as_typed::<N::Node<'_>>()
                     .ok_or_else(|| ParseError {
                         message: "failed to resolve typed AST node".to_string(),
                         offset: None,
@@ -319,9 +303,9 @@ impl<'a, N: NodeFamily> DialectIncrementalCursor<'a, N> {
         }
     }
 
-    /// Return the [`NodeRef`] for the last completed statement.
-    pub fn root(&self) -> Option<NodeRef<'a>> {
-        self.last_root
+    /// Return a [`NodeRef`] for the last completed statement.
+    pub fn root(&self) -> Option<NodeRef<'_>> {
+        self.last_root.map(|id| self.inner.node_ref(id))
     }
 
     /// Return the number of nodes currently in the parser arena.
@@ -353,7 +337,7 @@ impl<'a, N: NodeFamily> DialectIncrementalCursor<'a, N> {
     ///
     /// Returns `Some(node)` if the ID refers to a valid arena node of the
     /// correct type, or `None` if the ID is null, invalid, or mismatched.
-    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'a>> {
+    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'_>> {
         I::Node::from_arena(self.inner.reader(), id.into())
     }
 }

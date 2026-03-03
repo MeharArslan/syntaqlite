@@ -137,19 +137,19 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let parser = RawParser::new(dialect);
     let mut cursor = parser.parse(&source);
 
-    let mut nodes = Vec::new();
+    let mut ids = Vec::new();
     while let Some(result) = cursor.next_statement() {
-        nodes.push(try_wasm!(result));
+        ids.push(try_wasm!(result).id());
     }
 
     // dump_json writes a raw JSON fragment per node; wrap in a JSON array manually
     // since the node dump format is not serde-based.
     let mut out = String::from('[');
-    for (i, node) in nodes.iter().enumerate() {
+    for (i, &id) in ids.iter().enumerate() {
         if i > 0 {
             out.push(',');
         }
-        node.dump_json(&mut out);
+        cursor.node_ref(id).dump_json(&mut out);
     }
     out.push(']');
     set_result(&out);

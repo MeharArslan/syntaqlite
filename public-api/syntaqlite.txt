@@ -1,4 +1,5 @@
 #[repr(u32)] pub enum syntaqlite::lsp::CompletionContext
+#[repr(u32)] pub enum syntaqlite::semantic::CompletionContext
 #[repr(u8)] pub enum syntaqlite::dialect::TokenCategory
 impl core::default::Default for syntaqlite::fmt::FormatConfig
 impl core::default::Default for syntaqlite::fmt::FormatConfig
@@ -27,9 +28,9 @@ impl syntaqlite::DatabaseCatalog
 impl syntaqlite::dialect::DialectExt for syntaqlite_parser::dialect::DialectEnv<'_>
 impl syntaqlite::dialect::TokenCategory
 impl syntaqlite::embedded::offset_map::OffsetMap
+impl syntaqlite::incremental::IncrementalCursor
 impl syntaqlite::incremental::IncrementalParser
 impl syntaqlite::lsp::CompletionKind
-impl syntaqlite::lsp::DocumentAnalysis
 impl syntaqlite::lsp::LspServer
 impl syntaqlite::NodeRefJsonExt for syntaqlite_parser::session::NodeRef<'_>
 impl syntaqlite::Parser
@@ -41,21 +42,18 @@ impl syntaqlite::semantic::diagnostics::Help
 impl syntaqlite::semantic::diagnostics::Help
 impl syntaqlite::semantic::FunctionCatalog
 impl syntaqlite::semantic::FunctionCatalog
+impl syntaqlite::StatementCursor
 impl syntaqlite::Tokenizer
-impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> core::iter::traits::iterator::Iterator for syntaqlite::dialect::DialectStatementCursor<'a, N>
 impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> core::iter::traits::iterator::Iterator for syntaqlite::dialect::DialectTokenCursor<'a, N>
-impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::DialectIncrementalCursor<'a, N>
-impl<'a, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::DialectStatementCursor<'a, N>
-impl<'a> core::iter::traits::iterator::Iterator for syntaqlite::StatementCursor<'a>
 impl<'a> core::iter::traits::iterator::Iterator for syntaqlite::TokenCursor<'a>
-impl<'a> syntaqlite::incremental::IncrementalCursor<'a>
 impl<'a> syntaqlite::semantic::RelationCatalog<'a>
 impl<'a> syntaqlite::semantic::RelationCatalog<'a>
 impl<'a> syntaqlite::semantic::render::DiagnosticRenderer<'a>
 impl<'a> syntaqlite::semantic::render::DiagnosticRenderer<'a>
-impl<'a> syntaqlite::StatementCursor<'a>
+impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::DialectIncrementalCursor<'d, N>
 impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::DialectIncrementalParser<'d, N>
 impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::DialectParser<'d, N>
+impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::DialectStatementCursor<'d, N>
 impl<'d, N: syntaqlite_parser::dialect_traits::NodeFamily> syntaqlite::dialect::DialectTokenizer<'d, N>
 impl<'d> syntaqlite::embedded::EmbeddedAnalyzer<'d>
 impl<'d> syntaqlite::Formatter<'d>
@@ -91,27 +89,26 @@ pub fn syntaqlite::DatabaseCatalog::views(&self) -> impl core::iter::traits::ite
 pub fn syntaqlite::DatabaseCatalog::views(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
 pub fn syntaqlite::dialect::DialectExt::classify_token(&self, token_type: u32, flags: u32) -> syntaqlite::dialect::TokenCategory
 pub fn syntaqlite::dialect::DialectExt::token_category(&self, token_type: u32) -> syntaqlite::dialect::TokenCategory
-pub fn syntaqlite::dialect::DialectIncrementalCursor<'a, N>::begin_macro(&mut self, call_offset: u32, call_length: u32)
-pub fn syntaqlite::dialect::DialectIncrementalCursor<'a, N>::comments(&self) -> &[syntaqlite_parser::parser::Comment]
-pub fn syntaqlite::dialect::DialectIncrementalCursor<'a, N>::end_macro(&mut self)
-pub fn syntaqlite::dialect::DialectIncrementalCursor<'a, N>::feed_token(&mut self, token_type: <N as syntaqlite_parser::dialect_traits::NodeFamily>::Token, span: core::ops::range::Range<usize>) -> core::result::Result<core::option::Option<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node>, syntaqlite_parser::session::ParseError>
-pub fn syntaqlite::dialect::DialectIncrementalCursor<'a, N>::finish(&mut self) -> core::result::Result<core::option::Option<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node>, syntaqlite_parser::session::ParseError>
-pub fn syntaqlite::dialect::DialectIncrementalCursor<'a, N>::macro_regions(&self) -> &[syntaqlite_parser::parser::MacroRegion]
-pub fn syntaqlite::dialect::DialectIncrementalCursor<'a, N>::node_count(&self) -> u32
-pub fn syntaqlite::dialect::DialectIncrementalCursor<'a, N>::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
-pub fn syntaqlite::dialect::DialectIncrementalCursor<'a, N>::root(&self) -> core::option::Option<syntaqlite_parser::session::NodeRef<'a>>
-pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::feed_cstr<'a>(&self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::dialect::DialectIncrementalCursor<'a, N> where 'd: 'a
-pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::feed<'a>(&self, source: &'a str) -> syntaqlite::dialect::DialectIncrementalCursor<'a, N> where 'd: 'a
+pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::begin_macro(&mut self, call_offset: u32, call_length: u32)
+pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::comments(&self) -> &[syntaqlite_parser::parser::Comment]
+pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::end_macro(&mut self)
+pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::feed_token(&mut self, token_type: <N as syntaqlite_parser::dialect_traits::NodeFamily>::Token, span: core::ops::range::Range<usize>) -> core::result::Result<core::option::Option<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node>, syntaqlite_parser::session::ParseError>
+pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::finish(&mut self) -> core::result::Result<core::option::Option<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node>, syntaqlite_parser::session::ParseError>
+pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::macro_regions(&self) -> &[syntaqlite_parser::parser::MacroRegion]
+pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::node_count(&self) -> u32
+pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
+pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::root(&self) -> core::option::Option<syntaqlite_parser::session::NodeRef<'_>>
+pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::feed(&self, source: &str) -> syntaqlite::dialect::DialectIncrementalCursor<'d, N>
 pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::Dialect<'d, N>) -> Self
 pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::with_config(dialect: syntaqlite_parser::dialect::Dialect<'d, N>, config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
 pub fn syntaqlite::dialect::DialectParser<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::Dialect<'d, N>) -> Self
-pub fn syntaqlite::dialect::DialectParser<'d, N>::parse_cstr<'a>(&self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::dialect::DialectStatementCursor<'a, N> where 'd: 'a
-pub fn syntaqlite::dialect::DialectParser<'d, N>::parse<'a>(&self, source: &'a str) -> syntaqlite::dialect::DialectStatementCursor<'a, N> where 'd: 'a
+pub fn syntaqlite::dialect::DialectParser<'d, N>::parse(&self, source: &str) -> syntaqlite::dialect::DialectStatementCursor<'d, N>
 pub fn syntaqlite::dialect::DialectParser<'d, N>::with_config(dialect: syntaqlite_parser::dialect::Dialect<'d, N>, config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
-pub fn syntaqlite::dialect::DialectStatementCursor<'a, N>::next_statement(&mut self) -> core::option::Option<core::result::Result<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node, syntaqlite_parser::session::ParseError>>
-pub fn syntaqlite::dialect::DialectStatementCursor<'a, N>::next(&mut self) -> core::option::Option<Self::Item>
-pub fn syntaqlite::dialect::DialectStatementCursor<'a, N>::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
-pub fn syntaqlite::dialect::DialectStatementCursor<'a, N>::source(&self) -> &'a str
+pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::next_statement(&mut self) -> core::option::Option<core::result::Result<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node, syntaqlite_parser::session::ParseError>>
+pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::node_ref(&self, id: syntaqlite_parser::nodes::RawNodeId) -> syntaqlite_parser::session::NodeRef<'_>
+pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::reader(&self) -> syntaqlite_parser::session::RawParseResult<'_>
+pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
+pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::source(&self) -> &str
 pub fn syntaqlite::dialect::DialectTokenCursor<'a, N>::next(&mut self) -> core::option::Option<Self::Item>
 pub fn syntaqlite::dialect::DialectTokenizer<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::Dialect<'d, N>) -> Self
 pub fn syntaqlite::dialect::DialectTokenizer<'d, N>::tokenize_cstr<'a>(&self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::dialect::DialectTokenCursor<'a, N> where 'd: 'a
@@ -137,29 +134,23 @@ pub fn syntaqlite::Formatter<'d>::format(&mut self, source: &str) -> core::resul
 pub fn syntaqlite::Formatter<'d>::new() -> syntaqlite::Formatter<'static>
 pub fn syntaqlite::Formatter<'d>::with_config(dialect: impl core::convert::Into<syntaqlite_parser::dialect::DialectEnv<'d>>, format_config: &syntaqlite::fmt::FormatConfig) -> Self
 pub fn syntaqlite::Formatter<'static>::default() -> Self
-pub fn syntaqlite::incremental::IncrementalCursor<'a>::begin_macro(&mut self, call_offset: u32, call_length: u32)
-pub fn syntaqlite::incremental::IncrementalCursor<'a>::comments(&self) -> &[syntaqlite_parser::parser::Comment]
-pub fn syntaqlite::incremental::IncrementalCursor<'a>::end_macro(&mut self)
-pub fn syntaqlite::incremental::IncrementalCursor<'a>::feed_token(&mut self, token_type: syntaqlite_parser_sqlite::tokens::TokenType, span: core::ops::range::Range<usize>) -> core::result::Result<core::option::Option<syntaqlite_parser_sqlite::ast::Stmt<'a>>, syntaqlite_parser::session::ParseError>
-pub fn syntaqlite::incremental::IncrementalCursor<'a>::finish(&mut self) -> core::result::Result<core::option::Option<syntaqlite_parser_sqlite::ast::Stmt<'a>>, syntaqlite_parser::session::ParseError>
-pub fn syntaqlite::incremental::IncrementalCursor<'a>::macro_regions(&self) -> &[syntaqlite_parser::parser::MacroRegion]
-pub fn syntaqlite::incremental::IncrementalCursor<'a>::node_count(&self) -> u32
-pub fn syntaqlite::incremental::IncrementalCursor<'a>::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
-pub fn syntaqlite::incremental::IncrementalCursor<'a>::root(&self) -> core::option::Option<syntaqlite_parser::session::NodeRef<'a>>
+pub fn syntaqlite::incremental::IncrementalCursor::begin_macro(&mut self, call_offset: u32, call_length: u32)
+pub fn syntaqlite::incremental::IncrementalCursor::comments(&self) -> &[syntaqlite_parser::parser::Comment]
+pub fn syntaqlite::incremental::IncrementalCursor::end_macro(&mut self)
+pub fn syntaqlite::incremental::IncrementalCursor::feed_token(&mut self, token_type: syntaqlite_parser_sqlite::tokens::TokenType, span: core::ops::range::Range<usize>) -> core::result::Result<core::option::Option<syntaqlite_parser_sqlite::ast::Stmt<'_>>, syntaqlite_parser::session::ParseError>
+pub fn syntaqlite::incremental::IncrementalCursor::finish(&mut self) -> core::result::Result<core::option::Option<syntaqlite_parser_sqlite::ast::Stmt<'_>>, syntaqlite_parser::session::ParseError>
+pub fn syntaqlite::incremental::IncrementalCursor::macro_regions(&self) -> &[syntaqlite_parser::parser::MacroRegion]
+pub fn syntaqlite::incremental::IncrementalCursor::node_count(&self) -> u32
+pub fn syntaqlite::incremental::IncrementalCursor::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
+pub fn syntaqlite::incremental::IncrementalCursor::root(&self) -> core::option::Option<syntaqlite_parser::session::NodeRef<'_>>
 pub fn syntaqlite::incremental::IncrementalParser::default() -> Self
-pub fn syntaqlite::incremental::IncrementalParser::feed_cstr<'a>(&self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::incremental::IncrementalCursor<'a>
-pub fn syntaqlite::incremental::IncrementalParser::feed<'a>(&self, source: &'a str) -> syntaqlite::incremental::IncrementalCursor<'a>
+pub fn syntaqlite::incremental::IncrementalParser::feed(&self, source: &str) -> syntaqlite::incremental::IncrementalCursor
 pub fn syntaqlite::incremental::IncrementalParser::new() -> Self
 pub fn syntaqlite::lsp::CompletionKind::as_str(self) -> &'static str
-pub fn syntaqlite::lsp::DocumentAnalysis::completion_info_at(&self, dialect: syntaqlite_parser::dialect::DialectEnv<'_>, source: &str, offset: usize) -> syntaqlite::lsp::CompletionInfo
-pub fn syntaqlite::lsp::DocumentAnalysis::compute(dialect: syntaqlite_parser::dialect::DialectEnv<'_>, source: &str) -> Self
-pub fn syntaqlite::lsp::DocumentAnalysis::diagnostics(&self) -> &[syntaqlite::semantic::diagnostics::Diagnostic]
-pub fn syntaqlite::lsp::DocumentAnalysis::semantic_tokens_encoded(&self, source: &str, range: core::option::Option<(usize, usize)>) -> alloc::vec::Vec<u32>
-pub fn syntaqlite::lsp::DocumentAnalysis::semantic_tokens(&self) -> &[syntaqlite::lsp::SemanticToken]
 pub fn syntaqlite::lsp::LspHost<'d>::all_diagnostics(&mut self, uri: &str, config: &syntaqlite::semantic::ValidationConfig) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
 pub fn syntaqlite::lsp::LspHost<'d>::available_function_names(&self) -> alloc::vec::Vec<alloc::string::String>
 pub fn syntaqlite::lsp::LspHost<'d>::close_document(&mut self, uri: &str)
-pub fn syntaqlite::lsp::LspHost<'d>::completion_info_at_offset(&mut self, uri: &str, offset: usize) -> syntaqlite::lsp::CompletionInfo
+pub fn syntaqlite::lsp::LspHost<'d>::completion_info_at_offset(&mut self, uri: &str, offset: usize) -> syntaqlite::semantic::CompletionInfo
 pub fn syntaqlite::lsp::LspHost<'d>::completion_items(&mut self, uri: &str, offset: usize) -> alloc::vec::Vec<syntaqlite::lsp::CompletionEntry>
 pub fn syntaqlite::lsp::LspHost<'d>::diagnostics(&mut self, uri: &str) -> &[syntaqlite::semantic::diagnostics::Diagnostic]
 pub fn syntaqlite::lsp::LspHost<'d>::document_diagnostics(&mut self, uri: &str) -> core::option::Option<(i32, &str, &[syntaqlite::semantic::diagnostics::Diagnostic])>
@@ -170,7 +161,7 @@ pub fn syntaqlite::lsp::LspHost<'d>::function_catalog(&self) -> syntaqlite::sema
 pub fn syntaqlite::lsp::LspHost<'d>::new() -> syntaqlite::lsp::LspHost<'static>
 pub fn syntaqlite::lsp::LspHost<'d>::open_document(&mut self, uri: &str, version: i32, text: alloc::string::String)
 pub fn syntaqlite::lsp::LspHost<'d>::semantic_tokens_encoded(&mut self, uri: &str, range: core::option::Option<(usize, usize)>) -> alloc::vec::Vec<u32>
-pub fn syntaqlite::lsp::LspHost<'d>::semantic_tokens(&mut self, uri: &str) -> &[syntaqlite::lsp::SemanticToken]
+pub fn syntaqlite::lsp::LspHost<'d>::semantic_tokens(&mut self, uri: &str) -> &[syntaqlite::semantic::SemanticToken]
 pub fn syntaqlite::lsp::LspHost<'d>::session_context(&self) -> core::option::Option<&syntaqlite::DatabaseCatalog>
 pub fn syntaqlite::lsp::LspHost<'d>::set_dialect_env(&mut self, env: syntaqlite_parser::dialect::DialectEnv<'d>)
 pub fn syntaqlite::lsp::LspHost<'d>::set_session_context(&mut self, ctx: syntaqlite::DatabaseCatalog)
@@ -181,8 +172,7 @@ pub fn syntaqlite::lsp::LspServer::run(dialect: syntaqlite_parser::dialect::Dial
 pub fn syntaqlite::NodeRefJsonExt::dump_json(&self, out: &mut alloc::string::String)
 pub fn syntaqlite::Parser::default() -> Self
 pub fn syntaqlite::Parser::new() -> Self
-pub fn syntaqlite::Parser::parse_cstr<'a>(&self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::StatementCursor<'a>
-pub fn syntaqlite::Parser::parse<'a>(&self, source: &'a str) -> syntaqlite::StatementCursor<'a>
+pub fn syntaqlite::Parser::parse(&self, source: &str) -> syntaqlite::StatementCursor
 pub fn syntaqlite::Parser::with_config(config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
 pub fn syntaqlite::semantic::diagnostics::Diagnostic::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
 pub fn syntaqlite::semantic::diagnostics::Diagnostic::serialize<S: serde_core::ser::Serializer>(&self, serializer: S) -> core::result::Result<<S as serde_core::ser::Serializer>::Ok, <S as serde_core::ser::Serializer>::Error>
@@ -242,10 +232,12 @@ pub fn syntaqlite::semantic::render::DiagnosticRenderer<'a>::render_diagnostics(
 pub fn syntaqlite::semantic::render::DiagnosticRenderer<'a>::render_diagnostics(&self, diags: &[syntaqlite::semantic::diagnostics::Diagnostic]) -> bool
 pub fn syntaqlite::semantic::ValidationConfig::default() -> Self
 pub fn syntaqlite::semantic::ValidationConfig::default() -> Self
-pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared_dialect<A: for<'a> syntaqlite_parser::ast_traits::AstTypes<'a>>(&mut self, model: &syntaqlite::SemanticModel<'_, 'd>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
-pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared_dialect<A: for<'a> syntaqlite_parser::ast_traits::AstTypes<'a>>(&mut self, model: &syntaqlite::SemanticModel<'_, 'd>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
-pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared(&mut self, model: &syntaqlite::SemanticModel<'_, 'd>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
-pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared(&mut self, model: &syntaqlite::SemanticModel<'_, 'd>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::completion_info(&self, model: &syntaqlite::SemanticModel<'d>, offset: usize) -> syntaqlite::semantic::CompletionInfo
+pub fn syntaqlite::SemanticAnalyzer<'d>::completion_info(&self, model: &syntaqlite::SemanticModel<'d>, offset: usize) -> syntaqlite::semantic::CompletionInfo
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared_dialect<A: for<'a> syntaqlite_parser::ast_traits::AstTypes<'a>>(&mut self, model: &syntaqlite::SemanticModel<'d>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared_dialect<A: for<'a> syntaqlite_parser::ast_traits::AstTypes<'a>>(&mut self, model: &syntaqlite::SemanticModel<'d>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared(&mut self, model: &syntaqlite::SemanticModel<'d>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_prepared(&mut self, model: &syntaqlite::SemanticModel<'d>, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
 pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_with_config(&mut self, source: &str, catalog: &syntaqlite::DatabaseCatalog, config: &syntaqlite::semantic::ValidationConfig) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
 pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics_with_config(&mut self, source: &str, catalog: &syntaqlite::DatabaseCatalog, config: &syntaqlite::semantic::ValidationConfig) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
 pub fn syntaqlite::SemanticAnalyzer<'d>::diagnostics(&mut self, source: &str, catalog: &syntaqlite::DatabaseCatalog) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
@@ -254,16 +246,20 @@ pub fn syntaqlite::SemanticAnalyzer<'d>::dialect(&self) -> syntaqlite_parser::di
 pub fn syntaqlite::SemanticAnalyzer<'d>::dialect(&self) -> syntaqlite_parser::dialect::DialectEnv<'d>
 pub fn syntaqlite::SemanticAnalyzer<'d>::new() -> syntaqlite::SemanticAnalyzer<'static>
 pub fn syntaqlite::SemanticAnalyzer<'d>::new() -> syntaqlite::SemanticAnalyzer<'static>
-pub fn syntaqlite::SemanticAnalyzer<'d>::prepare<'a>(&mut self, source: &'a str) -> syntaqlite::SemanticModel<'a, 'd> where 'd: 'a
-pub fn syntaqlite::SemanticAnalyzer<'d>::prepare<'a>(&mut self, source: &'a str) -> syntaqlite::SemanticModel<'a, 'd> where 'd: 'a
+pub fn syntaqlite::SemanticAnalyzer<'d>::parse_diagnostics(&self, model: &syntaqlite::SemanticModel<'d>) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::parse_diagnostics(&self, model: &syntaqlite::SemanticModel<'d>) -> alloc::vec::Vec<syntaqlite::semantic::diagnostics::Diagnostic>
+pub fn syntaqlite::SemanticAnalyzer<'d>::prepare(&mut self, source: &str) -> syntaqlite::SemanticModel<'d>
+pub fn syntaqlite::SemanticAnalyzer<'d>::prepare(&mut self, source: &str) -> syntaqlite::SemanticModel<'d>
+pub fn syntaqlite::SemanticAnalyzer<'d>::semantic_tokens(&self, model: &syntaqlite::SemanticModel<'d>) -> alloc::vec::Vec<syntaqlite::semantic::SemanticToken>
+pub fn syntaqlite::SemanticAnalyzer<'d>::semantic_tokens(&self, model: &syntaqlite::SemanticModel<'d>) -> alloc::vec::Vec<syntaqlite::semantic::SemanticToken>
 pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::DialectEnv<'d>>) -> Self
 pub fn syntaqlite::SemanticAnalyzer<'d>::with_dialect(dialect: impl core::convert::Into<syntaqlite_parser::dialect::DialectEnv<'d>>) -> Self
 pub fn syntaqlite::SemanticAnalyzer<'static>::default() -> Self
 pub fn syntaqlite::SemanticAnalyzer<'static>::default() -> Self
-pub fn syntaqlite::StatementCursor<'a>::next_statement(&mut self) -> core::option::Option<core::result::Result<syntaqlite_parser_sqlite::ast::Stmt<'a>, syntaqlite_parser::session::ParseError>>
-pub fn syntaqlite::StatementCursor<'a>::next(&mut self) -> core::option::Option<Self::Item>
-pub fn syntaqlite::StatementCursor<'a>::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
-pub fn syntaqlite::StatementCursor<'a>::source(&self) -> &'a str
+pub fn syntaqlite::StatementCursor::next_statement(&mut self) -> core::option::Option<core::result::Result<syntaqlite_parser_sqlite::ast::Stmt<'_>, syntaqlite_parser::session::ParseError>>
+pub fn syntaqlite::StatementCursor::node_ref(&self, id: syntaqlite_parser::nodes::RawNodeId) -> syntaqlite_parser::session::NodeRef<'_>
+pub fn syntaqlite::StatementCursor::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
+pub fn syntaqlite::StatementCursor::source(&self) -> &str
 pub fn syntaqlite::TokenCursor<'a>::next(&mut self) -> core::option::Option<Self::Item>
 pub fn syntaqlite::Tokenizer::default() -> Self
 pub fn syntaqlite::Tokenizer::new() -> Self
@@ -283,10 +279,10 @@ pub mod syntaqlite::semantic::functions
 pub mod syntaqlite::semantic::relations
 pub mod syntaqlite::semantic::render
 pub struct syntaqlite::DatabaseCatalog
-pub struct syntaqlite::dialect::DialectIncrementalCursor<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
+pub struct syntaqlite::dialect::DialectIncrementalCursor<'d, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::dialect::DialectIncrementalParser<'d, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::dialect::DialectParser<'d, N: syntaqlite_parser::dialect_traits::NodeFamily>
-pub struct syntaqlite::dialect::DialectStatementCursor<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
+pub struct syntaqlite::dialect::DialectStatementCursor<'d, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::dialect::DialectToken<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::dialect::DialectTokenCursor<'a, N: syntaqlite_parser::dialect_traits::NodeFamily>
 pub struct syntaqlite::dialect::DialectTokenizer<'d, N: syntaqlite_parser::dialect_traits::NodeFamily>
@@ -297,16 +293,16 @@ pub struct syntaqlite::embedded::offset_map::OffsetMap
 pub struct syntaqlite::fmt::FormatConfig
 pub struct syntaqlite::FormatConfig
 pub struct syntaqlite::Formatter<'d>
-pub struct syntaqlite::incremental::IncrementalCursor<'a>
+pub struct syntaqlite::incremental::IncrementalCursor
 pub struct syntaqlite::incremental::IncrementalParser
 pub struct syntaqlite::lsp::CompletionEntry
 pub struct syntaqlite::lsp::CompletionInfo
-pub struct syntaqlite::lsp::DocumentAnalysis
 pub struct syntaqlite::lsp::LspHost<'d>
 pub struct syntaqlite::lsp::LspServer
 pub struct syntaqlite::lsp::SemanticToken
 pub struct syntaqlite::Parser
 pub struct syntaqlite::semantic::ColumnDef
+pub struct syntaqlite::semantic::CompletionInfo
 pub struct syntaqlite::semantic::DatabaseCatalog
 pub struct syntaqlite::semantic::Diagnostic
 pub struct syntaqlite::semantic::DiagnosticRenderer<'a>
@@ -324,11 +320,12 @@ pub struct syntaqlite::semantic::relations::RelationCatalog<'a>
 pub struct syntaqlite::semantic::relations::RelationDef
 pub struct syntaqlite::semantic::render::DiagnosticRenderer<'a>
 pub struct syntaqlite::semantic::SemanticAnalyzer<'d>
-pub struct syntaqlite::semantic::SemanticModel<'a, 'd: 'a>
+pub struct syntaqlite::semantic::SemanticModel<'d>
+pub struct syntaqlite::semantic::SemanticToken
 pub struct syntaqlite::semantic::ValidationConfig
 pub struct syntaqlite::SemanticAnalyzer<'d>
-pub struct syntaqlite::SemanticModel<'a, 'd: 'a>
-pub struct syntaqlite::StatementCursor<'a>
+pub struct syntaqlite::SemanticModel<'d>
+pub struct syntaqlite::StatementCursor
 pub struct syntaqlite::Token<'a>
 pub struct syntaqlite::TokenCursor<'a>
 pub struct syntaqlite::Tokenizer
@@ -373,7 +370,7 @@ pub syntaqlite::lsp::CompletionContext::TableRef = 2
 pub syntaqlite::lsp::CompletionContext::Unknown = 0
 pub syntaqlite::lsp::CompletionEntry::kind: syntaqlite::lsp::CompletionKind
 pub syntaqlite::lsp::CompletionEntry::label: alloc::string::String
-pub syntaqlite::lsp::CompletionInfo::context: syntaqlite::lsp::CompletionContext
+pub syntaqlite::lsp::CompletionInfo::context: syntaqlite::semantic::CompletionContext
 pub syntaqlite::lsp::CompletionInfo::tokens: alloc::vec::Vec<u32>
 pub syntaqlite::lsp::CompletionKind::Function
 pub syntaqlite::lsp::CompletionKind::Keyword
@@ -384,6 +381,11 @@ pub syntaqlite::semantic::ColumnDef::is_nullable: bool
 pub syntaqlite::semantic::ColumnDef::is_primary_key: bool
 pub syntaqlite::semantic::ColumnDef::name: alloc::string::String
 pub syntaqlite::semantic::ColumnDef::type_name: core::option::Option<alloc::string::String>
+pub syntaqlite::semantic::CompletionContext::Expression = 1
+pub syntaqlite::semantic::CompletionContext::TableRef = 2
+pub syntaqlite::semantic::CompletionContext::Unknown = 0
+pub syntaqlite::semantic::CompletionInfo::context: syntaqlite::semantic::CompletionContext
+pub syntaqlite::semantic::CompletionInfo::tokens: alloc::vec::Vec<u32>
 pub syntaqlite::semantic::DatabaseCatalog::functions: alloc::vec::Vec<syntaqlite::semantic::FunctionDef>
 pub syntaqlite::semantic::DatabaseCatalog::relations: alloc::vec::Vec<syntaqlite::semantic::RelationDef>
 pub syntaqlite::semantic::Diagnostic::end_offset: usize
@@ -460,6 +462,9 @@ pub syntaqlite::semantic::relations::RelationDef::kind: syntaqlite::semantic::Re
 pub syntaqlite::semantic::relations::RelationDef::name: alloc::string::String
 pub syntaqlite::semantic::relations::RelationKind::Table
 pub syntaqlite::semantic::relations::RelationKind::View
+pub syntaqlite::semantic::SemanticToken::category: syntaqlite::dialect::TokenCategory
+pub syntaqlite::semantic::SemanticToken::length: usize
+pub syntaqlite::semantic::SemanticToken::offset: usize
 pub syntaqlite::semantic::Severity::Error
 pub syntaqlite::semantic::Severity::Hint
 pub syntaqlite::semantic::Severity::Info
@@ -472,13 +477,11 @@ pub syntaqlite::ValidationConfig::strict_schema: bool
 pub syntaqlite::ValidationConfig::suggestion_threshold: usize
 pub trait syntaqlite::dialect::DialectExt
 pub trait syntaqlite::NodeRefJsonExt
-pub type syntaqlite::dialect::DialectStatementCursor<'a, N>::Item = core::result::Result<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node, syntaqlite_parser::session::ParseError>
 pub type syntaqlite::dialect::DialectTokenCursor<'a, N>::Item = syntaqlite::dialect::DialectToken<'a, N>
 pub type syntaqlite::semantic::functions::SessionFunction = syntaqlite::semantic::FunctionDef
 pub type syntaqlite::semantic::render::SourceContext<'a> = syntaqlite::semantic::render::DiagnosticRenderer<'a>
 pub type syntaqlite::semantic::SessionFunction = syntaqlite::semantic::FunctionDef
 pub type syntaqlite::semantic::SourceContext<'a> = syntaqlite::semantic::render::DiagnosticRenderer<'a>
-pub type syntaqlite::StatementCursor<'a>::Item = core::result::Result<syntaqlite_parser_sqlite::ast::Stmt<'a>, syntaqlite_parser::session::ParseError>
 pub type syntaqlite::TokenCursor<'a>::Item = syntaqlite::Token<'a>
 pub use syntaqlite::ast::<<syntaqlite_parser_sqlite::ast::*>>
 pub use syntaqlite::dialect::Dialect

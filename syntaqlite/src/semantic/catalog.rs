@@ -790,10 +790,10 @@ mod tests {
         let sql = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);";
         let mut cursor = parser.parse(sql);
 
-        let stmt_ids: Vec<_> = (&mut cursor)
-            .map(|r| r.map(|nr| nr.id()))
-            .collect::<Result<Vec<_>, _>>()
-            .expect("parse failed");
+        let mut stmt_ids = Vec::new();
+        while let Some(result) = cursor.next_statement() {
+            stmt_ids.push(result.expect("parse failed").id());
+        }
         let catalog = DatabaseCatalog::from_stmts(cursor.reader(), &stmt_ids, dialect);
 
         let tables: Vec<_> = catalog.tables().collect();
@@ -827,10 +827,10 @@ mod tests {
             CREATE TABLE orders AS SELECT * FROM slice;\n";
         let mut cursor = parser.parse(sql);
 
-        let stmt_ids: Vec<_> = (&mut cursor)
-            .map(|r| r.map(|nr| nr.id()))
-            .collect::<Result<Vec<_>, _>>()
-            .expect("parse failed");
+        let mut stmt_ids = Vec::new();
+        while let Some(result) = cursor.next_statement() {
+            stmt_ids.push(result.expect("parse failed").id());
+        }
         let catalog = DatabaseCatalog::from_stmts(cursor.reader(), &stmt_ids, dialect);
 
         let tables: Vec<_> = catalog.tables().collect();

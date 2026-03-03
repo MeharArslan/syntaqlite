@@ -16,9 +16,10 @@
 //! ```
 //! use syntaqlite::Parser;
 //!
-//! let mut parser = Parser::new();
-//! for stmt in parser.parse("SELECT 1 + 2; CREATE TABLE t(x)") {
-//!     let stmt = stmt.expect("parse error");
+//! let parser = Parser::new();
+//! let mut cursor = parser.parse("SELECT 1 + 2; CREATE TABLE t(x)");
+//! while let Some(result) = cursor.next_statement() {
+//!     let stmt = result.expect("parse error");
 //!     println!("{stmt:?}");
 //! }
 //! ```

@@ -41,7 +41,7 @@ pub mod relations;
 pub use analyzer::SemanticAnalyzer;
 pub use catalog::DatabaseCatalog;
 pub use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
-pub use model::SemanticModel;
+pub use model::{CompletionContext, CompletionInfo, SemanticModel, SemanticToken};
 pub use render::{DiagnosticRenderer, SourceContext};
 
 // Re-export key types for callers.

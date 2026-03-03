@@ -10,7 +10,7 @@
 use std::ops::Range;
 
 use syntaqlite_parser::{
-    Comment, Dialect as TaggedDialect, MacroRegion, NodeRef, ParseError, ParserConfig,
+    Comment, Dialect as TaggedDialect, MacroRegion, NodeRef, ParseError, ParserConfig, RawNodeId,
 };
 use syntaqlite_parser_sqlite::SqliteNodeFamily;
 
@@ -32,8 +32,9 @@ use crate::parser::typed::{
 /// use syntaqlite::Parser;
 ///
 /// let parser = Parser::new();
-/// for stmt in parser.parse("SELECT 1 + 2; CREATE TABLE t(x)") {
-///     let stmt = stmt.expect("parse error");
+/// let mut cursor = parser.parse("SELECT 1 + 2; CREATE TABLE t(x)");
+/// while let Some(result) = cursor.next_statement() {
+///     let stmt = result.expect("parse error");
 ///     println!("{stmt:?}");
 /// }
 /// ```
@@ -62,16 +63,9 @@ impl Parser {
     }
 
     /// Bind source text and return a [`StatementCursor`] for iterating typed statements.
-    pub fn parse<'a>(&self, source: &'a str) -> StatementCursor<'a> {
+    pub fn parse(&self, source: &str) -> StatementCursor {
         StatementCursor {
             inner: self.inner.parse(source),
-        }
-    }
-
-    /// Zero-copy variant: bind a null-terminated source.
-    pub fn parse_cstr<'a>(&self, source: &'a std::ffi::CStr) -> StatementCursor<'a> {
-        StatementCursor {
-            inner: self.inner.parse_cstr(source),
         }
     }
 }
@@ -85,23 +79,30 @@ impl Default for Parser {
 // ── StatementCursor ──────────────────────────────────────────────────────
 
 /// A streaming cursor over parsed SQL statements, yielding typed SQLite AST nodes.
-pub struct StatementCursor<'a> {
-    inner: DialectStatementCursor<'a, SqliteNodeFamily>,
+pub struct StatementCursor {
+    inner: DialectStatementCursor<'static, SqliteNodeFamily>,
 }
 
-impl<'a> StatementCursor<'a> {
+impl StatementCursor {
     /// Parse the next SQL statement and return a typed AST node.
     ///
     /// Returns:
     /// - `Some(Ok(node))` — successfully parsed statement.
     /// - `Some(Err(e))` — syntax error; call again to continue with subsequent statements.
     /// - `None` — all input has been consumed.
-    pub fn next_statement(&mut self) -> Option<Result<crate::ast::Stmt<'a>, ParseError>> {
+    ///
+    /// The returned node borrows from the cursor. Use `while let` to iterate:
+    /// ```ignore
+    /// while let Some(result) = cursor.next_statement() {
+    ///     let stmt = result?;
+    /// }
+    /// ```
+    pub fn next_statement(&mut self) -> Option<Result<crate::ast::Stmt<'_>, ParseError>> {
         self.inner.next_statement()
     }
 
     /// The source text bound to this cursor.
-    pub fn source(&self) -> &'a str {
+    pub fn source(&self) -> &str {
         self.inner.source()
     }
 
@@ -109,16 +110,13 @@ impl<'a> StatementCursor<'a> {
     ///
     /// Returns `Some(node)` if the ID refers to a valid arena node of the
     /// correct type, or `None` if the ID is null, invalid, or mismatched.
-    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'a>> {
+    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'_>> {
         self.inner.resolve(id)
     }
-}
 
-impl<'a> Iterator for StatementCursor<'a> {
-    type Item = Result<crate::ast::Stmt<'a>, ParseError>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.next_statement()
+    /// Wrap a [`RawNodeId`] into a [`NodeRef`] using this cursor's reader and dialect.
+    pub fn node_ref(&self, id: RawNodeId) -> NodeRef<'_> {
+        self.inner.node_ref(id)
     }
 }
 
@@ -210,16 +208,9 @@ impl IncrementalParser {
     }
 
     /// Bind source text and return an [`IncrementalCursor`] for token feeding.
-    pub fn feed<'a>(&self, source: &'a str) -> IncrementalCursor<'a> {
+    pub fn feed(&self, source: &str) -> IncrementalCursor {
         IncrementalCursor {
             inner: self.inner.feed(source),
-        }
-    }
-
-    /// Zero-copy variant: bind a null-terminated source.
-    pub fn feed_cstr<'a>(&self, source: &'a std::ffi::CStr) -> IncrementalCursor<'a> {
-        IncrementalCursor {
-            inner: self.inner.feed_cstr(source),
         }
     }
 }
@@ -236,20 +227,21 @@ impl Default for IncrementalParser {
 ///
 /// Feed tokens via [`feed_token`](Self::feed_token) and signal end-of-input
 /// via [`finish`](Self::finish).
-pub struct IncrementalCursor<'a> {
-    inner: DialectIncrementalCursor<'a, SqliteNodeFamily>,
+pub struct IncrementalCursor {
+    inner: DialectIncrementalCursor<'static, SqliteNodeFamily>,
 }
 
-impl<'a> IncrementalCursor<'a> {
+impl IncrementalCursor {
     /// Feed a typed token to the parser.
     ///
     /// Returns `Ok(Some(node))` when a statement completes, `Ok(None)` to
-    /// keep going, or `Err` on parse error.
+    /// keep going, or `Err` on parse error. The returned node borrows from
+    /// the cursor.
     pub fn feed_token(
         &mut self,
         token_type: crate::TokenType,
         span: Range<usize>,
-    ) -> Result<Option<crate::ast::Stmt<'a>>, ParseError> {
+    ) -> Result<Option<crate::ast::Stmt<'_>>, ParseError> {
         self.inner.feed_token(token_type, span)
     }
 
@@ -259,12 +251,12 @@ impl<'a> IncrementalCursor<'a> {
     /// if there was nothing pending, or `Err` on parse error.
     ///
     /// No further methods may be called after `finish()`.
-    pub fn finish(&mut self) -> Result<Option<crate::ast::Stmt<'a>>, ParseError> {
+    pub fn finish(&mut self) -> Result<Option<crate::ast::Stmt<'_>>, ParseError> {
         self.inner.finish()
     }
 
     /// Return the [`NodeRef`] for the last completed statement.
-    pub fn root(&self) -> Option<NodeRef<'a>> {
+    pub fn root(&self) -> Option<NodeRef<'_>> {
         self.inner.root()
     }
 
@@ -297,7 +289,7 @@ impl<'a> IncrementalCursor<'a> {
     ///
     /// Returns `Some(node)` if the ID refers to a valid arena node of the
     /// correct type, or `None` if the ID is null, invalid, or mismatched.
-    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'a>> {
+    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'_>> {
         self.inner.resolve(id)
     }
 }

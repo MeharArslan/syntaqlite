@@ -3,33 +3,38 @@
 
 use std::collections::HashMap;
 
+use crate::dialect::TokenCategory;
 use crate::fmt::FormatConfig;
 use crate::fmt::formatter::Formatter;
-use crate::lsp::analysis::DocumentAnalysis;
 use crate::semantic::DatabaseCatalog;
+use crate::semantic::SemanticModel;
 use crate::semantic::ValidationConfig;
 use crate::semantic::analyzer::SemanticAnalyzer;
 use crate::semantic::diagnostics::Diagnostic;
 use crate::semantic::functions::FunctionCatalog;
+use crate::semantic::model::SemanticToken;
 use syntaqlite_parser::DialectEnv;
 use syntaqlite_parser::ParseError;
 
-use super::{CompletionEntry, CompletionInfo, CompletionKind, SemanticToken};
+use super::{CompletionEntry, CompletionInfo, CompletionKind};
 
 // ── Document store ────────────────────────────────────────────────────────
 
-struct Document {
+struct Document<'d> {
     version: i32,
     source: String,
-    analysis: Option<DocumentAnalysis>,
+    model: Option<SemanticModel<'d>>,
+    /// Lazy cache — computed on first access, invalidated with model.
+    cached_parse_diags: Option<Vec<Diagnostic>>,
+    /// Lazy cache — computed on first access, invalidated with model.
+    cached_semantic_tokens: Option<Vec<SemanticToken>>,
 }
 
-impl Document {
-    fn analysis(&mut self, dialect: DialectEnv<'_>) -> &DocumentAnalysis {
-        if self.analysis.is_none() {
-            self.analysis = Some(DocumentAnalysis::compute(dialect, &self.source));
-        }
-        self.analysis.as_ref().expect("just populated")
+/// Ensure the document has a prepared `SemanticModel`, creating one if needed.
+fn ensure_model<'d>(doc: &mut Document<'d>, analyzer: &mut SemanticAnalyzer<'d>) {
+    if doc.model.is_none() {
+        let model = analyzer.prepare(&doc.source);
+        doc.model = Some(model);
     }
 }
 
@@ -42,7 +47,7 @@ impl Document {
 /// each edit. Semantic validation delegates to [`SemanticAnalyzer`].
 pub struct LspHost<'d> {
     dialect: DialectEnv<'d>,
-    documents: HashMap<String, Document>,
+    documents: HashMap<String, Document<'d>>,
     context: Option<DatabaseCatalog>,
     analyzer: SemanticAnalyzer<'d>,
 }
@@ -93,7 +98,9 @@ impl<'d> LspHost<'d> {
             Document {
                 version,
                 source: text,
-                analysis: None,
+                model: None,
+                cached_parse_diags: None,
+                cached_semantic_tokens: None,
             },
         );
     }
@@ -103,7 +110,9 @@ impl<'d> LspHost<'d> {
         if let Some(doc) = self.documents.get_mut(uri) {
             doc.version = version;
             doc.source = text;
-            doc.analysis = None;
+            doc.model = None;
+            doc.cached_parse_diags = None;
+            doc.cached_semantic_tokens = None;
         } else {
             self.open_document(uri, version, text);
         }
@@ -123,28 +132,45 @@ impl<'d> LspHost<'d> {
 
     /// Parse-error diagnostics for a document, lazily computed.
     pub fn diagnostics(&mut self, uri: &str) -> &[Diagnostic] {
-        match self.documents.get_mut(uri) {
-            Some(doc) => doc.analysis(self.dialect).diagnostics(),
-            None => &[],
+        let Some(doc) = self.documents.get_mut(uri) else {
+            return &[];
+        };
+        ensure_model(doc, &mut self.analyzer);
+        if doc.cached_parse_diags.is_none() {
+            let model = doc.model.as_ref().unwrap();
+            let diags = self.analyzer.parse_diagnostics(model);
+            doc.cached_parse_diags = Some(diags);
         }
+        doc.cached_parse_diags.as_deref().unwrap()
     }
 
     /// Version, source text, and parse-error diagnostics in one borrow.
     pub fn document_diagnostics(&mut self, uri: &str) -> Option<(i32, &str, &[Diagnostic])> {
         let doc = self.documents.get_mut(uri)?;
-        doc.analysis(self.dialect);
+        ensure_model(doc, &mut self.analyzer);
+        if doc.cached_parse_diags.is_none() {
+            let model = doc.model.as_ref().unwrap();
+            let diags = self.analyzer.parse_diagnostics(model);
+            doc.cached_parse_diags = Some(diags);
+        }
         let version = doc.version;
         let source = doc.source.as_str();
-        let diagnostics = doc.analysis.as_ref().expect("just computed").diagnostics();
+        let diagnostics = doc.cached_parse_diags.as_deref().unwrap();
         Some((version, source, diagnostics))
     }
 
     /// Semantic tokens for syntax highlighting, lazily computed.
     pub fn semantic_tokens(&mut self, uri: &str) -> &[SemanticToken] {
-        match self.documents.get_mut(uri) {
-            Some(doc) => doc.analysis(self.dialect).semantic_tokens(),
-            None => &[],
+        let Some(doc) = self.documents.get_mut(uri) else {
+            return &[];
+        };
+        ensure_model(doc, &mut self.analyzer);
+        if doc.cached_semantic_tokens.is_none() {
+            let model = doc.model.as_ref().unwrap();
+            let tokens = self.analyzer.semantic_tokens(model);
+            doc.cached_semantic_tokens = Some(tokens);
         }
+        doc.cached_semantic_tokens.as_deref().unwrap()
     }
 
     /// Semantic tokens delta-encoded for LSP `textDocument/semanticTokens/full`.
@@ -153,29 +179,30 @@ impl<'d> LspHost<'d> {
         uri: &str,
         range: Option<(usize, usize)>,
     ) -> Vec<u32> {
-        match self.documents.get_mut(uri) {
-            Some(doc) => {
-                let source = doc.source.clone();
-                doc.analysis(self.dialect)
-                    .semantic_tokens_encoded(&source, range)
-            }
-            None => Vec::new(),
+        let Some(doc) = self.documents.get_mut(uri) else {
+            return Vec::new();
+        };
+        ensure_model(doc, &mut self.analyzer);
+        if doc.cached_semantic_tokens.is_none() {
+            let model = doc.model.as_ref().unwrap();
+            let tokens = self.analyzer.semantic_tokens(model);
+            doc.cached_semantic_tokens = Some(tokens);
         }
+        let tokens = doc.cached_semantic_tokens.as_deref().unwrap();
+        encode_semantic_tokens(&doc.source, tokens, range)
     }
 
     /// Expected parser tokens and semantic context at a byte offset.
     pub fn completion_info_at_offset(&mut self, uri: &str, offset: usize) -> CompletionInfo {
-        match self.documents.get_mut(uri) {
-            Some(doc) => {
-                let source = doc.source.clone();
-                doc.analysis(self.dialect)
-                    .completion_info_at(self.dialect, &source, offset)
-            }
-            None => CompletionInfo {
+        let Some(doc) = self.documents.get_mut(uri) else {
+            return CompletionInfo {
                 tokens: Vec::new(),
                 context: super::CompletionContext::Unknown,
-            },
-        }
+            };
+        };
+        ensure_model(doc, &mut self.analyzer);
+        let model = doc.model.as_ref().unwrap();
+        self.analyzer.completion_info(model, offset)
     }
 
     /// Expected terminal token IDs at a byte offset.
@@ -185,7 +212,7 @@ impl<'d> LspHost<'d> {
 
     /// Completion items (keywords + functions) at a byte offset.
     pub fn completion_items(&mut self, uri: &str, offset: usize) -> Vec<CompletionEntry> {
-        use crate::dialect::{DialectExt, TokenCategory};
+        use crate::dialect::DialectExt;
         use std::collections::HashSet;
 
         let info = self.completion_info_at_offset(uri, offset);
@@ -252,14 +279,17 @@ impl<'d> LspHost<'d> {
     /// wrong arity). Parse-error diagnostics come from [`diagnostics()`](Self::diagnostics).
     #[cfg(feature = "sqlite")]
     pub fn validate(&mut self, uri: &str, config: &ValidationConfig) -> Vec<Diagnostic> {
-        let Some(doc) = self.documents.get(uri) else {
+        let Some(doc) = self.documents.get_mut(uri) else {
             return Vec::new();
         };
-        let source = doc.source.clone();
+        ensure_model(doc, &mut self.analyzer);
+        let model = doc.model.as_ref().unwrap();
         let empty_db = DatabaseCatalog::default();
         let catalog = self.context.as_ref().unwrap_or(&empty_db);
         self.analyzer
-            .diagnostics_with_config(&source, catalog, config)
+            .diagnostics_prepared_with_config_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(
+                model, catalog, config,
+            )
             .into_iter()
             .filter(|d| !d.message.is_parse_error())
             .collect()
@@ -292,6 +322,69 @@ impl<'d> LspHost<'d> {
             .map(|s| s.to_string())
             .collect()
     }
+}
+
+// ── Semantic tokens encoding ──────────────────────────────────────────────
+
+/// Delta-encode semantic tokens as a flat `u32` array (5 values per token:
+/// `deltaLine`, `deltaStartChar`, `length`, `legendIndex`, `modifiers`).
+///
+/// This is the format expected by Monaco/LSP `textDocument/semanticTokens/full`.
+fn encode_semantic_tokens(
+    source: &str,
+    semantic_tokens: &[SemanticToken],
+    range: Option<(usize, usize)>,
+) -> Vec<u32> {
+    let src = source.as_bytes();
+    let (range_start, range_end) = range.unwrap_or((0, src.len()));
+
+    let mut result = Vec::with_capacity(semantic_tokens.len() * 5);
+    let mut prev_line: u32 = 0;
+    let mut prev_col: u32 = 0;
+    let mut cur_line: u32 = 0;
+    let mut cur_col: u32 = 0;
+    let mut src_pos: usize = 0;
+
+    for tok in semantic_tokens {
+        while src_pos < tok.offset && src_pos < src.len() {
+            if src[src_pos] == b'\n' {
+                cur_line += 1;
+                cur_col = 0;
+            } else {
+                cur_col += 1;
+            }
+            src_pos += 1;
+        }
+
+        if tok.offset < range_start {
+            continue;
+        }
+        if tok.offset >= range_end {
+            break;
+        }
+        if tok.category == TokenCategory::Other {
+            continue;
+        }
+
+        let legend_idx = tok.category as u32;
+        let delta_line = cur_line - prev_line;
+        let delta_start = if delta_line == 0 {
+            cur_col - prev_col
+        } else {
+            cur_col
+        };
+
+        result.push(delta_line);
+        result.push(delta_start);
+        result.push(tok.length as u32);
+        result.push(legend_idx);
+        result.push(0);
+
+        prev_line = cur_line;
+        prev_col = cur_col;
+    }
+
+    result
 }
 
 // ── FormatError ───────────────────────────────────────────────────────────

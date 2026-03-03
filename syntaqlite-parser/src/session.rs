@@ -407,7 +407,7 @@ impl<'a> RawParseResult<'a> {
 /// `raw` must be a valid parser pointer. `f` must return a pointer that is valid
 /// for the caller's borrow of the parser, and write the element count into the
 /// provided `*mut u32`.
-unsafe fn ffi_slice<'a, T>(
+pub(crate) unsafe fn ffi_slice<'a, T>(
     raw: *mut ffi::Parser,
     f: unsafe extern "C" fn(*mut ffi::Parser, *mut u32) -> *const T,
 ) -> &'a [T] {

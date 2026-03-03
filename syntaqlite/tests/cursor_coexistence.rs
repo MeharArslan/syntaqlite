@@ -31,9 +31,9 @@ fn tagged_dialect() -> TaggedDialect<'static, SqliteNodeFamily> {
 
 #[test]
 fn raw_parser_and_cursor_coexist() {
-    struct S<'a> {
+    struct S {
         _parser: RawParser<'static>,
-        cursor: RawStatementCursor<'a>,
+        cursor: RawStatementCursor<'static>,
     }
 
     let parser = RawParser::new(raw_dialect());
@@ -89,9 +89,9 @@ fn raw_tokenizer_reuse_after_cursor_drop() {
 
 #[test]
 fn raw_incremental_parser_and_cursor_coexist() {
-    struct S<'a> {
+    struct S {
         _parser: RawIncrementalParser<'static>,
-        cursor: RawIncrementalCursor<'a>,
+        cursor: RawIncrementalCursor<'static>,
     }
 
     let parser = RawIncrementalParser::new(raw_dialect());
@@ -120,9 +120,9 @@ fn raw_incremental_reuse_after_cursor_drop() {
 
 #[test]
 fn dialect_parser_and_cursor_coexist() {
-    struct S<'a> {
+    struct S {
         _parser: DialectParser<'static, SqliteNodeFamily>,
-        cursor: DialectStatementCursor<'a, SqliteNodeFamily>,
+        cursor: DialectStatementCursor<'static, SqliteNodeFamily>,
     }
 
     let parser = DialectParser::from_dialect(tagged_dialect());
@@ -152,9 +152,9 @@ fn dialect_tokenizer_and_cursor_coexist() {
 
 #[test]
 fn dialect_incremental_parser_and_cursor_coexist() {
-    struct S<'a> {
+    struct S {
         _parser: DialectIncrementalParser<'static, SqliteNodeFamily>,
-        cursor: DialectIncrementalCursor<'a, SqliteNodeFamily>,
+        cursor: DialectIncrementalCursor<'static, SqliteNodeFamily>,
     }
 
     let parser = DialectIncrementalParser::from_dialect(tagged_dialect());
@@ -170,9 +170,9 @@ fn dialect_incremental_parser_and_cursor_coexist() {
 
 #[test]
 fn sqlite_parser_and_cursor_coexist() {
-    struct S<'a> {
+    struct S {
         _parser: Parser,
-        cursor: StatementCursor<'a>,
+        cursor: StatementCursor,
     }
 
     let parser = Parser::new();
@@ -202,9 +202,9 @@ fn sqlite_tokenizer_and_cursor_coexist() {
 
 #[test]
 fn sqlite_incremental_parser_and_cursor_coexist() {
-    struct S<'a> {
+    struct S {
         _parser: IncrementalParser,
-        cursor: IncrementalCursor<'a>,
+        cursor: IncrementalCursor,
     }
 
     let parser = IncrementalParser::new();

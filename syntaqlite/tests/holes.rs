@@ -57,13 +57,12 @@ fn hole_in_expr_position() {
     // Hole: {user_id} at offset 31, length 9
     cursor.begin_macro(31, 9);
     let hole_result = cursor.feed_token(tk::ILLEGAL, 31..40);
-    cursor.end_macro();
-
     // Check what happened — did we get an error? Did the parser keep going?
     eprintln!(
         "hole_in_expr_position: feed_token(ILLEGAL) returned {:?}",
         hole_result
     );
+    cursor.end_macro();
 
     let result = cursor.finish();
     eprintln!("hole_in_expr_position: finish() returned {:?}", result);
@@ -93,12 +92,11 @@ fn hole_in_table_name_position() {
     // Hole: {table} at offset 14, length 7
     cursor.begin_macro(14, 7);
     let hole_result = cursor.feed_token(tk::ILLEGAL, 14..21);
-    cursor.end_macro();
-
     eprintln!(
         "hole_in_table_name: feed_token(ILLEGAL) returned {:?}",
         hole_result
     );
+    cursor.end_macro();
 
     let result = cursor.finish();
     eprintln!("hole_in_table_name: finish() returned {:?}", result);
@@ -125,12 +123,11 @@ fn hole_in_table_name_with_trailing_clause() {
     // Hole: {table} at offset 14, length 7
     cursor.begin_macro(14, 7);
     let hole_result = cursor.feed_token(tk::ILLEGAL, 14..21);
-    cursor.end_macro();
-
     eprintln!(
         "hole_with_trailing: feed_token(ILLEGAL) returned {:?}",
         hole_result
     );
+    cursor.end_macro();
 
     // Try to keep feeding — does the parser accept more tokens?
     let where_result = cursor.feed_token(tk::WHERE, 22..27);
@@ -177,32 +174,32 @@ fn multiple_holes() {
     // Hole 1: {cols} in select column position
     cursor.begin_macro(7, 6);
     let r1 = cursor.feed_token(tk::ILLEGAL, 7..13);
-    cursor.end_macro();
     eprintln!("multiple_holes: hole 1 (cols) = {:?}", r1);
+    cursor.end_macro();
 
     cursor.feed_token(tk::FROM, 14..18).unwrap();
 
     // Hole 2: {table} in table name position
     cursor.begin_macro(19, 7);
     let r2 = cursor.feed_token(tk::ILLEGAL, 19..26);
-    cursor.end_macro();
     eprintln!("multiple_holes: hole 2 (table) = {:?}", r2);
+    cursor.end_macro();
 
     cursor.feed_token(tk::WHERE, 27..32).unwrap();
 
     // Hole 3: {col} in column ref position
     cursor.begin_macro(33, 5);
     let r3 = cursor.feed_token(tk::ILLEGAL, 33..38);
-    cursor.end_macro();
     eprintln!("multiple_holes: hole 3 (col) = {:?}", r3);
+    cursor.end_macro();
 
     cursor.feed_token(tk::EQ, 39..40).unwrap();
 
     // Hole 4: {val} in expr position
     cursor.begin_macro(41, 5);
     let r4 = cursor.feed_token(tk::ILLEGAL, 41..46);
-    cursor.end_macro();
     eprintln!("multiple_holes: hole 4 (val) = {:?}", r4);
+    cursor.end_macro();
 
     let result = cursor.finish();
     eprintln!("multiple_holes: finish() = {:?}", result);
@@ -227,11 +224,11 @@ fn hole_as_trailing_clause() {
     // Hole: {extra} — could be WHERE, ORDER BY, or anything
     cursor.begin_macro(20, 7);
     let hole_result = cursor.feed_token(tk::ILLEGAL, 20..27);
-    cursor.end_macro();
     eprintln!(
         "trailing_clause: feed_token(ILLEGAL) returned {:?}",
         hole_result
     );
+    cursor.end_macro();
 
     let result = cursor.finish();
     eprintln!("trailing_clause: finish() returned {:?}", result);

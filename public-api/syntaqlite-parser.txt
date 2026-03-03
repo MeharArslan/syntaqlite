@@ -32,20 +32,19 @@ impl<'a, T> syntaqlite_parser::DialectNodeType<'a> for syntaqlite_parser::TypedL
 impl<'a, T> syntaqlite_parser::DialectNodeType<'a> for syntaqlite_parser::TypedList<'a, T>
 impl<'a, T> syntaqlite_parser::TypedList<'a, T>
 impl<'a> core::default::Default for syntaqlite_parser::Fields<'a>
-impl<'a> core::iter::traits::iterator::Iterator for syntaqlite_parser::RawStatementCursor<'a>
 impl<'a> core::iter::traits::iterator::Iterator for syntaqlite_parser::RawTokenCursor<'a>
 impl<'a> core::ops::deref::Deref for syntaqlite_parser::Fields<'a>
 impl<'a> syntaqlite_parser::Fields<'a>
 impl<'a> syntaqlite_parser::NodeRef<'a>
-impl<'a> syntaqlite_parser::RawIncrementalCursor<'a>
 impl<'a> syntaqlite_parser::RawParseResult<'a>
-impl<'a> syntaqlite_parser::RawStatementCursor<'a>
 impl<'d, N: syntaqlite_parser::NodeFamily> core::convert::From<syntaqlite_parser::Dialect<'d, N>> for syntaqlite_parser::DialectEnv<'d>
 impl<'d, N: syntaqlite_parser::NodeFamily> core::convert::From<syntaqlite_parser::Dialect<'d, N>> for syntaqlite_parser::DialectEnv<'d>
 impl<'d, N: syntaqlite_parser::NodeFamily> syntaqlite_parser::Dialect<'d, N>
 impl<'d> syntaqlite_parser::DialectEnv<'d>
+impl<'d> syntaqlite_parser::RawIncrementalCursor<'d>
 impl<'d> syntaqlite_parser::RawIncrementalParser<'d>
 impl<'d> syntaqlite_parser::RawParser<'d>
+impl<'d> syntaqlite_parser::RawStatementCursor<'d>
 impl<'d> syntaqlite_parser::RawTokenizer<'d>
 impl<N: syntaqlite_parser::NodeFamily> core::marker::Send for syntaqlite_parser::Dialect<'_, N>
 impl<N: syntaqlite_parser::NodeFamily> core::marker::Sync for syntaqlite_parser::Dialect<'_, N>
@@ -512,26 +511,24 @@ pub fn syntaqlite_parser::parse_cflag_name(s: &str) -> core::result::Result<u32,
 pub fn syntaqlite_parser::parse_sqlite_version(s: &str) -> core::result::Result<i32, alloc::string::String>
 pub fn syntaqlite_parser::ParseError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_parser::RawIncrementalCursor<'_>::drop(&mut self)
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::begin_macro(&mut self, call_offset: u32, call_length: u32)
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::comments(&self) -> &[syntaqlite_parser::Comment]
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::completion_context(&self) -> u32
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::end_macro(&mut self)
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::expected_tokens(&self) -> alloc::vec::Vec<u32>
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::feed_token(&mut self, token_type: u32, span: core::ops::range::Range<usize>) -> core::result::Result<core::option::Option<syntaqlite_parser::RawNodeId>, syntaqlite_parser::ParseError>
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::finish(&mut self) -> core::result::Result<core::option::Option<syntaqlite_parser::RawNodeId>, syntaqlite_parser::ParseError>
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::macro_regions(&self) -> &[syntaqlite_parser::MacroRegion]
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::node_count(&self) -> u32
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::node_ref(&self, id: syntaqlite_parser::RawNodeId) -> syntaqlite_parser::NodeRef<'a>
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::reader(&self) -> syntaqlite_parser::RawParseResult<'a>
-pub fn syntaqlite_parser::RawIncrementalCursor<'a>::tokens(&self) -> &[syntaqlite_parser::TokenPos]
-pub fn syntaqlite_parser::RawIncrementalParser<'d>::feed_cstr<'a>(&self, source: &'a core::ffi::c_str::CStr) -> syntaqlite_parser::RawIncrementalCursor<'a> where 'd: 'a
-pub fn syntaqlite_parser::RawIncrementalParser<'d>::feed<'a>(&self, source: &'a str) -> syntaqlite_parser::RawIncrementalCursor<'a> where 'd: 'a
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::begin_macro(&mut self, call_offset: u32, call_length: u32)
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::comments(&self) -> &[syntaqlite_parser::Comment]
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::completion_context(&self) -> u32
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::end_macro(&mut self)
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::expected_tokens(&self) -> alloc::vec::Vec<u32>
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::feed_token(&mut self, token_type: u32, span: core::ops::range::Range<usize>) -> core::result::Result<core::option::Option<syntaqlite_parser::RawNodeId>, syntaqlite_parser::ParseError>
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::finish(&mut self) -> core::result::Result<core::option::Option<syntaqlite_parser::RawNodeId>, syntaqlite_parser::ParseError>
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::macro_regions(&self) -> &[syntaqlite_parser::MacroRegion]
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::node_count(&self) -> u32
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::node_ref(&self, id: syntaqlite_parser::RawNodeId) -> syntaqlite_parser::NodeRef<'_>
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::reader(&self) -> syntaqlite_parser::RawParseResult<'_>
+pub fn syntaqlite_parser::RawIncrementalCursor<'d>::tokens(&self) -> &[syntaqlite_parser::TokenPos]
+pub fn syntaqlite_parser::RawIncrementalParser<'d>::feed(&self, source: &str) -> syntaqlite_parser::RawIncrementalCursor<'d>
 pub fn syntaqlite_parser::RawIncrementalParser<'d>::new(dialect: impl core::convert::Into<syntaqlite_parser::DialectEnv<'d>>) -> Self
 pub fn syntaqlite_parser::RawIncrementalParser<'d>::with_config(dialect: impl core::convert::Into<syntaqlite_parser::DialectEnv<'d>>, config: &syntaqlite_parser::ParserConfig) -> Self
 pub fn syntaqlite_parser::RawNodeId::is_null(&self) -> bool
 pub fn syntaqlite_parser::RawParser<'d>::new(dialect: impl core::convert::Into<syntaqlite_parser::DialectEnv<'d>>) -> Self
-pub fn syntaqlite_parser::RawParser<'d>::parse_cstr<'a>(&self, source: &'a core::ffi::c_str::CStr) -> syntaqlite_parser::RawStatementCursor<'a> where 'd: 'a
-pub fn syntaqlite_parser::RawParser<'d>::parse<'a>(&self, source: &'a str) -> syntaqlite_parser::RawStatementCursor<'a> where 'd: 'a
+pub fn syntaqlite_parser::RawParser<'d>::parse(&self, source: &str) -> syntaqlite_parser::RawStatementCursor<'d>
 pub fn syntaqlite_parser::RawParser<'d>::with_config(dialect: impl core::convert::Into<syntaqlite_parser::DialectEnv<'d>>, config: &syntaqlite_parser::ParserConfig) -> Self
 pub fn syntaqlite_parser::RawParseResult<'a>::child_node_ids(&self, id: syntaqlite_parser::RawNodeId, dialect: &syntaqlite_parser::DialectEnv<'_>) -> alloc::vec::Vec<syntaqlite_parser::RawNodeId>
 pub fn syntaqlite_parser::RawParseResult<'a>::comments(&self) -> &[syntaqlite_parser::Comment]
@@ -549,13 +546,13 @@ pub fn syntaqlite_parser::RawParseResult<'a>::resolve_list(&self, id: syntaqlite
 pub fn syntaqlite_parser::RawParseResult<'a>::source(&self) -> &'a str
 pub fn syntaqlite_parser::RawParseResult<'a>::tokens(&self) -> &[syntaqlite_parser::TokenPos]
 pub fn syntaqlite_parser::RawStatementCursor<'_>::drop(&mut self)
-pub fn syntaqlite_parser::RawStatementCursor<'a>::comments(&self) -> &[syntaqlite_parser::Comment]
-pub fn syntaqlite_parser::RawStatementCursor<'a>::next_statement(&mut self) -> core::option::Option<core::result::Result<syntaqlite_parser::NodeRef<'a>, syntaqlite_parser::ParseError>>
-pub fn syntaqlite_parser::RawStatementCursor<'a>::next(&mut self) -> core::option::Option<Self::Item>
-pub fn syntaqlite_parser::RawStatementCursor<'a>::node_ref(&self, id: syntaqlite_parser::RawNodeId) -> syntaqlite_parser::NodeRef<'a>
-pub fn syntaqlite_parser::RawStatementCursor<'a>::reader(&self) -> syntaqlite_parser::RawParseResult<'a>
-pub fn syntaqlite_parser::RawStatementCursor<'a>::source(&self) -> &'a str
-pub fn syntaqlite_parser::RawStatementCursor<'a>::tokens(&self) -> &[syntaqlite_parser::TokenPos]
+pub fn syntaqlite_parser::RawStatementCursor<'d>::comments(&self) -> &[syntaqlite_parser::Comment]
+pub fn syntaqlite_parser::RawStatementCursor<'d>::dialect(&self) -> syntaqlite_parser::DialectEnv<'d>
+pub fn syntaqlite_parser::RawStatementCursor<'d>::next_statement(&mut self) -> core::option::Option<core::result::Result<syntaqlite_parser::NodeRef<'_>, syntaqlite_parser::ParseError>>
+pub fn syntaqlite_parser::RawStatementCursor<'d>::node_ref(&self, id: syntaqlite_parser::RawNodeId) -> syntaqlite_parser::NodeRef<'_>
+pub fn syntaqlite_parser::RawStatementCursor<'d>::reader(&self) -> syntaqlite_parser::RawParseResult<'_>
+pub fn syntaqlite_parser::RawStatementCursor<'d>::source(&self) -> &str
+pub fn syntaqlite_parser::RawStatementCursor<'d>::tokens(&self) -> &[syntaqlite_parser::TokenPos]
 pub fn syntaqlite_parser::RawTokenCursor<'_>::drop(&mut self)
 pub fn syntaqlite_parser::RawTokenCursor<'a>::next(&mut self) -> core::option::Option<Self::Item>
 pub fn syntaqlite_parser::RawTokenizer<'d>::new(dialect: impl core::convert::Into<syntaqlite_parser::DialectEnv<'d>>) -> Self
@@ -582,11 +579,11 @@ pub struct syntaqlite_parser::FunctionInfo<'a>
 pub struct syntaqlite_parser::NodeRef<'a>
 pub struct syntaqlite_parser::ParseError
 pub struct syntaqlite_parser::ParserConfig
-pub struct syntaqlite_parser::RawIncrementalCursor<'a>
+pub struct syntaqlite_parser::RawIncrementalCursor<'d>
 pub struct syntaqlite_parser::RawIncrementalParser<'d>
 pub struct syntaqlite_parser::RawParser<'d>
 pub struct syntaqlite_parser::RawParseResult<'a>
-pub struct syntaqlite_parser::RawStatementCursor<'a>
+pub struct syntaqlite_parser::RawStatementCursor<'d>
 pub struct syntaqlite_parser::RawToken<'a>
 pub struct syntaqlite_parser::RawTokenCursor<'a>
 pub struct syntaqlite_parser::RawTokenizer<'d>
@@ -1161,7 +1158,6 @@ pub type syntaqlite_parser::Fields<'a>::Target = [syntaqlite_parser::FieldVal<'a
 pub type syntaqlite_parser::NodeFamily::Node<'a>: syntaqlite_parser::DialectNodeType<'a>
 pub type syntaqlite_parser::NodeFamily::Token: syntaqlite_parser::DialectTokenType
 pub type syntaqlite_parser::NodeId::Node<'a>: syntaqlite_parser::DialectNodeType<'a>
-pub type syntaqlite_parser::RawStatementCursor<'a>::Item = core::result::Result<syntaqlite_parser::NodeRef<'a>, syntaqlite_parser::ParseError>
 pub type syntaqlite_parser::RawTokenCursor<'a>::Item = syntaqlite_parser::RawToken<'a>
 pub unsafe fn syntaqlite_parser::Dialect<'d, N>::from_raw(raw: *const syntaqlite_parser::FfiDialect) -> Self
 pub unsafe fn syntaqlite_parser::DialectEnv<'d>::from_raw(raw: *const syntaqlite_parser::FfiDialect) -> Self
