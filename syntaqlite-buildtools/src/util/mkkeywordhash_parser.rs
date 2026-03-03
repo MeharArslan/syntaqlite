@@ -8,37 +8,35 @@
 
 /// A single keyword entry from the keyword table array.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct KeywordEntry {
+pub(crate) struct KeywordEntry {
     /// The keyword name, e.g. "RETURNING".
-    pub name: String,
+    pub(crate) name: String,
     /// The token constant, e.g. "TK_RETURNING".
-    pub token: String,
+    #[cfg(feature = "version-analysis")]
+    pub(crate) token: String,
     /// The mask expression (symbol names ORed together), e.g. "RETURNING".
-    pub mask_expr: String,
+    pub(crate) mask_expr: String,
     /// Priority value.
-    pub priority: u32,
+    #[cfg(feature = "version-analysis")]
+    pub(crate) priority: u32,
 }
 
 /// A mask `#define` block mapping an SQLITE_OMIT_* or SQLITE_ENABLE_* flag to a bitmask value.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct MaskDefine {
+pub(crate) struct MaskDefine {
     /// The mask symbol name, e.g. "RETURNING".
-    pub name: String,
+    pub(crate) name: String,
     /// The SQLITE_OMIT_* or SQLITE_ENABLE_* flag, e.g. "SQLITE_OMIT_RETURNING".
-    pub omit_flag: String,
-    /// The bitmask value when enabled, e.g. 0x00400000.
-    pub bit_value: u64,
+    pub(crate) omit_flag: String,
     /// Polarity: 0 = OMIT (keyword removed when flag set), 1 = ENABLE (keyword added when flag set).
-    pub polarity: u8,
+    pub(crate) polarity: u8,
 }
 
 /// The full keyword table for a single SQLite version.
 #[derive(Debug, Clone)]
-pub struct KeywordTable {
-    pub keywords: Vec<KeywordEntry>,
-    pub masks: Vec<MaskDefine>,
+pub(crate) struct KeywordTable {
+    pub(crate) keywords: Vec<KeywordEntry>,
+    pub(crate) masks: Vec<MaskDefine>,
 }
 
 /// Parse the keyword table and mask defines from `mkkeywordhash.c` source.
@@ -123,13 +121,8 @@ fn parse_keyword_line(line: &str) -> Option<KeywordEntry> {
     }
 
     let name = fields[0].trim_matches('"').to_string();
-    let token = fields[1].trim_matches('"').to_string();
+    let token = fields[1].trim_matches('"');
     let mask_expr = fields[2].clone();
-    let priority = if fields.len() >= 4 {
-        fields[3].trim().parse().unwrap_or(0)
-    } else {
-        0
-    };
 
     if name.is_empty() || !token.starts_with("TK_") {
         return None;
@@ -137,9 +130,15 @@ fn parse_keyword_line(line: &str) -> Option<KeywordEntry> {
 
     Some(KeywordEntry {
         name,
-        token,
+        #[cfg(feature = "version-analysis")]
+        token: token.to_string(),
         mask_expr,
-        priority,
+        #[cfg(feature = "version-analysis")]
+        priority: if fields.len() >= 4 {
+            fields[3].trim().parse().unwrap_or(0)
+        } else {
+            0
+        },
     })
 }
 
@@ -234,10 +233,11 @@ fn parse_ifdef_mask_block(lines: &[&str], flag: &str, polarity: u8) -> Option<Ma
         }
     }
 
+    // Require a valid hex bit value to confirm this is a real mask block.
+    let _ = bit_value?;
     Some(MaskDefine {
         name: name?,
         omit_flag: flag.to_string(),
-        bit_value: bit_value?,
         polarity,
     })
 }
@@ -253,9 +253,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(entry.name, "ABORT");
-        assert_eq!(entry.token, "TK_ABORT");
         assert_eq!(entry.mask_expr, "CONFLICT|TRIGGER");
-        assert_eq!(entry.priority, 0);
     }
 
     #[test]
@@ -271,7 +269,6 @@ mod tests {
         assert_eq!(masks.len(), 1);
         assert_eq!(masks[0].name, "RETURNING");
         assert_eq!(masks[0].omit_flag, "SQLITE_OMIT_RETURNING");
-        assert_eq!(masks[0].bit_value, 0x00400000);
         assert_eq!(masks[0].polarity, 0);
     }
 
@@ -288,7 +285,6 @@ mod tests {
         assert_eq!(masks.len(), 1);
         assert_eq!(masks[0].name, "ORDERSET");
         assert_eq!(masks[0].omit_flag, "SQLITE_ENABLE_ORDERED_SET_AGGREGATES");
-        assert_eq!(masks[0].bit_value, 0x00800000);
         assert_eq!(masks[0].polarity, 1);
     }
 

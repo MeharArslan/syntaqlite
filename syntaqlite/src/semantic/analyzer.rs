@@ -10,13 +10,12 @@
 use syntaqlite_parser::ast_traits::AstTypes;
 use syntaqlite_parser::{
     DialectNodeType, NodeId, ParseError, ParserConfig, RawDialect, RawNodeReader, RawParser,
-    RawTokenizer,
 };
 
 use super::ValidationConfig;
 use super::catalog::{CatalogStack, DatabaseCatalog, DocumentCatalog, StaticCatalog};
 use super::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
-use super::model::{CachedToken, SemanticModel};
+use super::model::SemanticModel;
 use super::scope::ScopeStack;
 use super::walker::Walker;
 
@@ -90,12 +89,6 @@ impl<'d> SemanticAnalyzer<'d> {
         self.dialect
     }
 
-    /// Access the static catalog (for completions, function names, etc.).
-    #[allow(dead_code)]
-    pub(crate) fn static_catalog(&self) -> &StaticCatalog {
-        &self.static_catalog
-    }
-
     // ── Primary API — string in, results out ─────────────────────────
 
     /// Parse and validate SQL, returning all diagnostics (parse + semantic).
@@ -134,25 +127,10 @@ impl<'d> SemanticAnalyzer<'d> {
         let stmts: Vec<Result<NodeId, ParseError>> =
             (&mut cursor).map(|r| r.map(|nr| nr.id())).collect();
 
-        // Collect raw token boundaries for completions.
-        let mut tokens = Vec::new();
-        let mut tokenizer = RawTokenizer::new(self.dialect);
-        let source_base = source.as_ptr() as usize;
-        for tok in tokenizer.tokenize(source) {
-            let start = tok.text.as_ptr() as usize - source_base;
-            let end = start + tok.text.len();
-            tokens.push(CachedToken {
-                type_: tok.token_type,
-                start,
-                end,
-            });
-        }
-
         SemanticModel {
             source: source.to_string(),
             parser,
             stmts,
-            tokens,
         }
     }
 
@@ -232,80 +210,6 @@ impl<'d> SemanticAnalyzer<'d> {
         }
 
         self.diag_buf.clone()
-    }
-
-    // ── Validation helpers (used by embedded and LSP) ────────────────
-
-    /// Validate parse results from an external parser (e.g., incremental parser
-    /// for embedded SQL).
-    #[allow(dead_code)]
-    pub(crate) fn validate_parse_results(
-        &mut self,
-        reader: RawNodeReader<'_>,
-        results: &[Result<NodeId, ParseError>],
-        source: &str,
-        catalog: &DatabaseCatalog,
-        config: &ValidationConfig,
-    ) -> Vec<Diagnostic> {
-        self.validate_parse_results_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(
-            reader, results, source, catalog, config,
-        )
-    }
-
-    /// Generic version of validate_parse_results.
-    #[allow(dead_code)]
-    pub(crate) fn validate_parse_results_dialect<A: for<'a> AstTypes<'a>>(
-        &mut self,
-        reader: RawNodeReader<'_>,
-        results: &[Result<NodeId, ParseError>],
-        source: &str,
-        catalog: &DatabaseCatalog,
-        config: &ValidationConfig,
-    ) -> Vec<Diagnostic> {
-        let mut diags = Vec::new();
-        let mut stmt_ids = Vec::new();
-
-        for result in results {
-            match result {
-                Ok(id) => stmt_ids.push(*id),
-                Err(err) => {
-                    if let Some(root) = err.root {
-                        stmt_ids.push(root);
-                    }
-                    let (start_offset, end_offset) = parse_error_span(err, source);
-                    diags.push(Diagnostic {
-                        start_offset,
-                        end_offset,
-                        message: DiagnosticMessage::Other(err.message.clone()),
-                        severity: Severity::Error,
-                        help: None,
-                    });
-                }
-            }
-        }
-
-        self.doc_catalog.clear();
-        for &stmt_id in &stmt_ids {
-            let catalog_stack = CatalogStack {
-                static_: &self.static_catalog,
-                database: catalog,
-                document: &self.doc_catalog,
-            };
-            let stmt_diags = validate_statement_dialect::<A>(
-                reader,
-                stmt_id,
-                self.dialect,
-                &catalog_stack,
-                config,
-            );
-            diags.extend(stmt_diags);
-
-            #[cfg(feature = "sqlite")]
-            self.doc_catalog
-                .accumulate(reader, stmt_id, self.dialect, Some(catalog));
-        }
-
-        diags
     }
 }
 

@@ -278,15 +278,6 @@ impl<'a> RawStatementCursor<'a> {
         None
     }
 
-    /// Returns `true` if the last successfully parsed DELETE or UPDATE statement
-    /// used ORDER BY or LIMIT clauses. These clauses require the
-    /// `SQLITE_ENABLE_UPDATE_DELETE_LIMIT` compile-time option.
-    #[cfg(test)]
-    #[allow(dead_code)]
-    pub(crate) fn saw_update_delete_limit(&self) -> bool {
-        self.last_saw_update_delete_limit
-    }
-
     /// Get a reference to the embedded `NodeReader`.
     pub fn reader(&self) -> RawNodeReader<'a> {
         self.reader

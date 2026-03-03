@@ -39,7 +39,6 @@ pub struct FunctionInfo<'a> {
     /// -1 = any number of args, -N = at least N-1 args.
     pub arities: &'a [i16],
     /// Function category.
-    #[allow(dead_code)]
     pub category: FunctionCategory,
 }
 

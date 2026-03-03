@@ -91,7 +91,6 @@ pub enum NodeTag {
 }
 
 impl NodeTag {
-    #[allow(dead_code)]
     pub(crate) fn from_raw(raw: u32) -> Option<NodeTag> {
         match raw {
             0 => Some(NodeTag::Null),
@@ -172,26 +171,6 @@ impl NodeTag {
             _ => None,
         }
     }
-
-    #[allow(dead_code)]
-    pub(crate) fn is_list(&self) -> bool {
-        matches!(
-            self,
-            NodeTag::CaseWhenList
-                | NodeTag::ColumnConstraintList
-                | NodeTag::ColumnDefList
-                | NodeTag::TableConstraintList
-                | NodeTag::CteList
-                | NodeTag::SetClauseList
-                | NodeTag::ExprList
-                | NodeTag::ResultColumnList
-                | NodeTag::OrderByList
-                | NodeTag::TriggerCmdList
-                | NodeTag::ValuesRowList
-                | NodeTag::WindowDefList
-                | NodeTag::NamedWindowDefList
-        )
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -207,20 +186,6 @@ pub enum LiteralType {
 }
 
 impl LiteralType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<LiteralType> {
-        match raw {
-            0 => Some(LiteralType::INTEGER),
-            1 => Some(LiteralType::FLOAT),
-            2 => Some(LiteralType::STRING),
-            3 => Some(LiteralType::BLOB),
-            4 => Some(LiteralType::NULL),
-            5 => Some(LiteralType::CURRENT),
-            6 => Some(LiteralType::QNUMBER),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             LiteralType::INTEGER => "INTEGER",
@@ -259,32 +224,6 @@ pub enum BinaryOp {
 }
 
 impl BinaryOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<BinaryOp> {
-        match raw {
-            0 => Some(BinaryOp::PLUS),
-            1 => Some(BinaryOp::MINUS),
-            2 => Some(BinaryOp::STAR),
-            3 => Some(BinaryOp::SLASH),
-            4 => Some(BinaryOp::REM),
-            5 => Some(BinaryOp::LT),
-            6 => Some(BinaryOp::GT),
-            7 => Some(BinaryOp::LE),
-            8 => Some(BinaryOp::GE),
-            9 => Some(BinaryOp::EQ),
-            10 => Some(BinaryOp::NE),
-            11 => Some(BinaryOp::AND),
-            12 => Some(BinaryOp::OR),
-            13 => Some(BinaryOp::BITAND),
-            14 => Some(BinaryOp::BITOR),
-            15 => Some(BinaryOp::LSHIFT),
-            16 => Some(BinaryOp::RSHIFT),
-            17 => Some(BinaryOp::CONCAT),
-            18 => Some(BinaryOp::PTR),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             BinaryOp::PLUS => "PLUS",
@@ -320,17 +259,6 @@ pub enum UnaryOp {
 }
 
 impl UnaryOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<UnaryOp> {
-        match raw {
-            0 => Some(UnaryOp::MINUS),
-            1 => Some(UnaryOp::PLUS),
-            2 => Some(UnaryOp::BITNOT),
-            3 => Some(UnaryOp::NOT),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             UnaryOp::MINUS => "MINUS",
@@ -351,17 +279,6 @@ pub enum CompoundOp {
 }
 
 impl CompoundOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<CompoundOp> {
-        match raw {
-            0 => Some(CompoundOp::UNION),
-            1 => Some(CompoundOp::UNIONALL),
-            2 => Some(CompoundOp::INTERSECT),
-            3 => Some(CompoundOp::EXCEPT),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             CompoundOp::UNION => "UNION",
@@ -384,19 +301,6 @@ pub enum IsOp {
 }
 
 impl IsOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<IsOp> {
-        match raw {
-            0 => Some(IsOp::IS),
-            1 => Some(IsOp::ISNOT),
-            2 => Some(IsOp::ISNULL),
-            3 => Some(IsOp::NOTNULL),
-            4 => Some(IsOp::ISNOTDISTINCT),
-            5 => Some(IsOp::ISDISTINCT),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             IsOp::IS => "IS",
@@ -420,18 +324,6 @@ pub enum ForeignKeyAction {
 }
 
 impl ForeignKeyAction {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ForeignKeyAction> {
-        match raw {
-            0 => Some(ForeignKeyAction::NOACTION),
-            1 => Some(ForeignKeyAction::SETNULL),
-            2 => Some(ForeignKeyAction::SETDEFAULT),
-            3 => Some(ForeignKeyAction::CASCADE),
-            4 => Some(ForeignKeyAction::RESTRICT),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             ForeignKeyAction::NOACTION => "NO_ACTION",
@@ -451,15 +343,6 @@ pub enum GeneratedColumnStorage {
 }
 
 impl GeneratedColumnStorage {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<GeneratedColumnStorage> {
-        match raw {
-            0 => Some(GeneratedColumnStorage::VIRTUAL),
-            1 => Some(GeneratedColumnStorage::STORED),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             GeneratedColumnStorage::VIRTUAL => "VIRTUAL",
@@ -483,22 +366,6 @@ pub enum ColumnConstraintKind {
 }
 
 impl ColumnConstraintKind {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ColumnConstraintKind> {
-        match raw {
-            0 => Some(ColumnConstraintKind::DEFAULT),
-            1 => Some(ColumnConstraintKind::NOTNULL),
-            2 => Some(ColumnConstraintKind::PRIMARYKEY),
-            3 => Some(ColumnConstraintKind::UNIQUE),
-            4 => Some(ColumnConstraintKind::CHECK),
-            5 => Some(ColumnConstraintKind::REFERENCES),
-            6 => Some(ColumnConstraintKind::COLLATE),
-            7 => Some(ColumnConstraintKind::GENERATED),
-            8 => Some(ColumnConstraintKind::NULL),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             ColumnConstraintKind::DEFAULT => "DEFAULT",
@@ -524,17 +391,6 @@ pub enum TableConstraintKind {
 }
 
 impl TableConstraintKind {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TableConstraintKind> {
-        match raw {
-            0 => Some(TableConstraintKind::PRIMARYKEY),
-            1 => Some(TableConstraintKind::UNIQUE),
-            2 => Some(TableConstraintKind::CHECK),
-            3 => Some(TableConstraintKind::FOREIGNKEY),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             TableConstraintKind::PRIMARYKEY => "PRIMARY_KEY",
@@ -554,16 +410,6 @@ pub enum Materialized {
 }
 
 impl Materialized {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<Materialized> {
-        match raw {
-            0 => Some(Materialized::DEFAULT),
-            1 => Some(Materialized::MATERIALIZED),
-            2 => Some(Materialized::NOTMATERIALIZED),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             Materialized::DEFAULT => "DEFAULT",
@@ -585,19 +431,6 @@ pub enum ConflictAction {
 }
 
 impl ConflictAction {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ConflictAction> {
-        match raw {
-            0 => Some(ConflictAction::DEFAULT),
-            1 => Some(ConflictAction::ROLLBACK),
-            2 => Some(ConflictAction::ABORT),
-            3 => Some(ConflictAction::FAIL),
-            4 => Some(ConflictAction::IGNORE),
-            5 => Some(ConflictAction::REPLACE),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             ConflictAction::DEFAULT => "DEFAULT",
@@ -620,17 +453,6 @@ pub enum RaiseType {
 }
 
 impl RaiseType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<RaiseType> {
-        match raw {
-            0 => Some(RaiseType::IGNORE),
-            1 => Some(RaiseType::ROLLBACK),
-            2 => Some(RaiseType::ABORT),
-            3 => Some(RaiseType::FAIL),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             RaiseType::IGNORE => "IGNORE",
@@ -651,17 +473,6 @@ pub enum DropObjectType {
 }
 
 impl DropObjectType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<DropObjectType> {
-        match raw {
-            0 => Some(DropObjectType::TABLE),
-            1 => Some(DropObjectType::INDEX),
-            2 => Some(DropObjectType::VIEW),
-            3 => Some(DropObjectType::TRIGGER),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             DropObjectType::TABLE => "TABLE",
@@ -682,17 +493,6 @@ pub enum AlterOp {
 }
 
 impl AlterOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<AlterOp> {
-        match raw {
-            0 => Some(AlterOp::RENAMETABLE),
-            1 => Some(AlterOp::RENAMECOLUMN),
-            2 => Some(AlterOp::DROPCOLUMN),
-            3 => Some(AlterOp::ADDCOLUMN),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             AlterOp::RENAMETABLE => "RENAME_TABLE",
@@ -712,16 +512,6 @@ pub enum TransactionType {
 }
 
 impl TransactionType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TransactionType> {
-        match raw {
-            0 => Some(TransactionType::DEFERRED),
-            1 => Some(TransactionType::IMMEDIATE),
-            2 => Some(TransactionType::EXCLUSIVE),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             TransactionType::DEFERRED => "DEFERRED",
@@ -740,16 +530,6 @@ pub enum TransactionOp {
 }
 
 impl TransactionOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TransactionOp> {
-        match raw {
-            0 => Some(TransactionOp::BEGIN),
-            1 => Some(TransactionOp::COMMIT),
-            2 => Some(TransactionOp::ROLLBACK),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             TransactionOp::BEGIN => "BEGIN",
@@ -768,16 +548,6 @@ pub enum SavepointOp {
 }
 
 impl SavepointOp {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<SavepointOp> {
-        match raw {
-            0 => Some(SavepointOp::SAVEPOINT),
-            1 => Some(SavepointOp::RELEASE),
-            2 => Some(SavepointOp::ROLLBACKTO),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             SavepointOp::SAVEPOINT => "SAVEPOINT",
@@ -795,15 +565,6 @@ pub enum SortOrder {
 }
 
 impl SortOrder {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<SortOrder> {
-        match raw {
-            0 => Some(SortOrder::ASC),
-            1 => Some(SortOrder::DESC),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             SortOrder::ASC => "ASC",
@@ -821,16 +582,6 @@ pub enum NullsOrder {
 }
 
 impl NullsOrder {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<NullsOrder> {
-        match raw {
-            0 => Some(NullsOrder::NONE),
-            1 => Some(NullsOrder::FIRST),
-            2 => Some(NullsOrder::LAST),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             NullsOrder::NONE => "NONE",
@@ -856,23 +607,6 @@ pub enum JoinType {
 }
 
 impl JoinType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<JoinType> {
-        match raw {
-            0 => Some(JoinType::COMMA),
-            1 => Some(JoinType::INNER),
-            2 => Some(JoinType::LEFT),
-            3 => Some(JoinType::RIGHT),
-            4 => Some(JoinType::FULL),
-            5 => Some(JoinType::CROSS),
-            6 => Some(JoinType::NATURALINNER),
-            7 => Some(JoinType::NATURALLEFT),
-            8 => Some(JoinType::NATURALRIGHT),
-            9 => Some(JoinType::NATURALFULL),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             JoinType::COMMA => "COMMA",
@@ -898,16 +632,6 @@ pub enum TriggerTiming {
 }
 
 impl TriggerTiming {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TriggerTiming> {
-        match raw {
-            0 => Some(TriggerTiming::BEFORE),
-            1 => Some(TriggerTiming::AFTER),
-            2 => Some(TriggerTiming::INSTEADOF),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             TriggerTiming::BEFORE => "BEFORE",
@@ -926,16 +650,6 @@ pub enum TriggerEventType {
 }
 
 impl TriggerEventType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<TriggerEventType> {
-        match raw {
-            0 => Some(TriggerEventType::DELETE),
-            1 => Some(TriggerEventType::INSERT),
-            2 => Some(TriggerEventType::UPDATE),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             TriggerEventType::DELETE => "DELETE",
@@ -953,15 +667,6 @@ pub enum ExplainMode {
 }
 
 impl ExplainMode {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<ExplainMode> {
-        match raw {
-            0 => Some(ExplainMode::EXPLAIN),
-            1 => Some(ExplainMode::QUERYPLAN),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             ExplainMode::EXPLAIN => "EXPLAIN",
@@ -979,16 +684,6 @@ pub enum PragmaForm {
 }
 
 impl PragmaForm {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<PragmaForm> {
-        match raw {
-            0 => Some(PragmaForm::BARE),
-            1 => Some(PragmaForm::EQ),
-            2 => Some(PragmaForm::CALL),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             PragmaForm::BARE => "BARE",
@@ -1006,15 +701,6 @@ pub enum AnalyzeKind {
 }
 
 impl AnalyzeKind {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<AnalyzeKind> {
-        match raw {
-            0 => Some(AnalyzeKind::ANALYZE),
-            1 => Some(AnalyzeKind::REINDEX),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             AnalyzeKind::ANALYZE => "ANALYZE",
@@ -1033,17 +719,6 @@ pub enum FrameType {
 }
 
 impl FrameType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<FrameType> {
-        match raw {
-            0 => Some(FrameType::NONE),
-            1 => Some(FrameType::RANGE),
-            2 => Some(FrameType::ROWS),
-            3 => Some(FrameType::GROUPS),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             FrameType::NONE => "NONE",
@@ -1065,18 +740,6 @@ pub enum FrameBoundType {
 }
 
 impl FrameBoundType {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<FrameBoundType> {
-        match raw {
-            0 => Some(FrameBoundType::UNBOUNDEDPRECEDING),
-            1 => Some(FrameBoundType::EXPRPRECEDING),
-            2 => Some(FrameBoundType::CURRENTROW),
-            3 => Some(FrameBoundType::EXPRFOLLOWING),
-            4 => Some(FrameBoundType::UNBOUNDEDFOLLOWING),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             FrameBoundType::UNBOUNDEDPRECEDING => "UNBOUNDED_PRECEDING",
@@ -1099,18 +762,6 @@ pub enum FrameExclude {
 }
 
 impl FrameExclude {
-    #[allow(dead_code)]
-    pub(crate) fn from_raw(raw: u32) -> Option<FrameExclude> {
-        match raw {
-            0 => Some(FrameExclude::NONE),
-            1 => Some(FrameExclude::NOOTHERS),
-            2 => Some(FrameExclude::CURRENTROW),
-            3 => Some(FrameExclude::GROUP),
-            4 => Some(FrameExclude::TIES),
-            _ => None,
-        }
-    }
-
     pub fn as_str(&self) -> &'static str {
         match self {
             FrameExclude::NONE => "NONE",
@@ -3440,7 +3091,6 @@ impl<'a> DialectNodeType<'a> for AlterTableStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct TransactionStmt<'a> {
     raw: &'a crate::ffi::TransactionStmt,
-    #[allow(dead_code)]
     reader: RawNodeReader<'a>,
     id: NodeId,
 }

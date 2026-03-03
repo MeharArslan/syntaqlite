@@ -131,8 +131,6 @@ pub struct KeywordAddition {
 pub struct KeywordAnalysis {
     pub total_keywords_latest: usize,
     pub additions: Vec<KeywordAddition>,
-    #[serde(skip)]
-    pub per_version: Vec<(SqliteVersion, KeywordTable)>,
 }
 
 /// Complete analysis result.
@@ -352,7 +350,6 @@ fn analyze_keywords(
     KeywordAnalysis {
         total_keywords_latest: total,
         additions,
-        per_version: valid_tables,
     }
 }
 

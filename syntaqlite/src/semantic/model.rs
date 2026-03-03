@@ -10,15 +10,6 @@
 
 use syntaqlite_parser::{NodeId, ParseError, RawParser};
 
-/// A raw token position cached for completion replay and semantic token
-/// computation.
-#[allow(dead_code)]
-pub(crate) struct CachedToken {
-    pub(crate) type_: u32,
-    pub(crate) start: usize,
-    pub(crate) end: usize,
-}
-
 /// Opaque precomputed representation of parsed SQL.
 ///
 /// Owns the parser arena so node IDs remain valid. Produced only by
@@ -33,6 +24,4 @@ pub struct SemanticModel<'d> {
     pub(crate) source: String,
     pub(crate) parser: RawParser<'d>,
     pub(crate) stmts: Vec<Result<NodeId, ParseError>>,
-    #[allow(dead_code)]
-    pub(crate) tokens: Vec<CachedToken>,
 }

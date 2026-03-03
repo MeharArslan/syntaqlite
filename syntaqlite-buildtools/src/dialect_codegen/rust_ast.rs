@@ -161,21 +161,6 @@ fn emit_rust_value_enum(w: &mut RustWriter, name: &str, variants: &[String]) {
     w.newline();
 
     w.open_block(&format!("impl {} {{", name));
-    w.line("#[allow(dead_code)]");
-    w.open_block(&format!(
-        "pub(crate) fn from_raw(raw: u32) -> Option<{}> {{",
-        name
-    ));
-    w.open_block("match raw {");
-    for (i, v) in variants.iter().enumerate() {
-        let variant_name = pascal_case(v);
-        w.line(&format!("{} => Some({}::{}),", i, name, variant_name));
-    }
-    w.line("_ => None,");
-    w.close_block("}");
-    w.close_block("}");
-    w.newline();
-
     w.open_block("pub fn as_str(&self) -> &'static str {");
     w.open_block("match self {");
     for v in variants {
@@ -338,7 +323,6 @@ fn emit_rust_node_tag_type(w: &mut RustWriter, model: &AstModel<'_>) {
     w.newline();
 
     w.open_block("impl NodeTag {");
-    w.line("#[allow(dead_code)]");
     w.open_block("pub(crate) fn from_raw(raw: u32) -> Option<NodeTag> {");
     w.open_block("match raw {");
     w.line("0 => Some(NodeTag::Null),");
@@ -347,23 +331,6 @@ fn emit_rust_node_tag_type(w: &mut RustWriter, model: &AstModel<'_>) {
     }
     w.line("_ => None,");
     w.close_block("}");
-    w.close_block("}");
-    w.newline();
-
-    w.line("#[allow(dead_code)]");
-    w.open_block("pub(crate) fn is_list(&self) -> bool {");
-    if list_tags.is_empty() {
-        w.line("false");
-    } else {
-        w.line(&format!(
-            "matches!(self, {})",
-            list_tags
-                .iter()
-                .map(|t| format!("NodeTag::{t}"))
-                .collect::<Vec<_>>()
-                .join(" | ")
-        ));
-    }
     w.close_block("}");
     w.close_block("}");
     w.newline();
@@ -498,17 +465,16 @@ impl AstModel<'_> {
         w.file_header();
         w.lines(&format!(
             "
-        #![allow(dead_code)]
-
         use {nodes_path}::{{ArenaNode, NodeId, SourceSpan}};
     ",
         ));
         w.newline();
 
-        // Bool enum
+        // Bool enum — variants populated from C via FFI, not constructed in Rust.
         w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
         w.line("#[repr(u32)]");
         w.open_block("pub(crate) enum Bool {");
+        w.line("#[allow(dead_code)] // Populated from C FFI");
         w.line("False = 0,");
         w.line("True = 1,");
         w.close_block("}");
@@ -555,7 +521,6 @@ impl AstModel<'_> {
     ) -> String {
         let crate_prefix = paths.crate_prefix;
         let ffi_path = paths.ffi_path;
-        let comment_path = paths.comment_path;
         let nodes_path = paths.nodes_path;
         let session_path = paths.session_path;
         let dialect_fn_path = paths.dialect_fn_path;
@@ -574,8 +539,7 @@ impl AstModel<'_> {
         w.lines(&format!(
             "
         use {nodes_path}::NodeList;
-        use {comment_path}::{{Comment, CommentKind}};
-        use {nodes_path}::{{NodeId, SourceSpan}};
+        use {nodes_path}::NodeId;
         use {session_path}::RawNodeReader;
         use {crate_prefix}::NodeRef;
         use {crate_prefix}::DialectNodeType;
@@ -667,16 +631,10 @@ impl AstModel<'_> {
             let fields = node.fields;
 
             // Struct definition
-            let uses_reader = fields
-                .iter()
-                .any(|f| f.storage == Storage::Index || f.type_name == "SyntaqliteSourceSpan");
             w.line("#[derive(Clone, Copy)]");
             w.line(&format!("pub struct {}<'a> {{", name));
             w.indent();
             w.line(&format!("raw: &'a {ffi_path}::{name},"));
-            if !uses_reader {
-                w.line("#[allow(dead_code)]");
-            }
             w.line("reader: RawNodeReader<'a>,");
             w.line("id: NodeId,");
             w.dedent();

@@ -181,16 +181,6 @@ pub(crate) struct StaticCatalog {
 }
 
 impl StaticCatalog {
-    /// Build from a dialect and its default configuration.
-    #[cfg(feature = "sqlite")]
-    #[allow(dead_code)]
-    pub(crate) fn for_default_dialect(dialect: &RawDialect<'_>) -> Self {
-        StaticCatalog {
-            functions: FunctionCatalog::for_default_dialect(dialect),
-            relations: Vec::new(), // TODO: add sqlite_master etc. via C FFI
-        }
-    }
-
     /// Build from a dialect and explicit configuration.
     pub(crate) fn for_dialect(
         dialect: &RawDialect<'_>,
@@ -199,15 +189,6 @@ impl StaticCatalog {
         StaticCatalog {
             functions: FunctionCatalog::for_dialect(dialect, config),
             relations: Vec::new(), // TODO: add static relations via C FFI
-        }
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn find_function(&self, name: &str) -> Option<FunctionCheckResult> {
-        let result = self.functions.check_call(name, 0);
-        match result {
-            FunctionCheckResult::Unknown => None,
-            _ => Some(result),
         }
     }
 
@@ -876,7 +857,10 @@ mod tests {
 
     #[test]
     fn catalog_stack_resolves_document_first() {
-        let static_ = StaticCatalog::for_default_dialect(&crate::dialect::sqlite());
+        let static_ = StaticCatalog::for_dialect(
+            &crate::dialect::sqlite(),
+            &syntaqlite_parser::DialectConfig::default(),
+        );
         let database = DatabaseCatalog {
             relations: vec![RelationDef {
                 name: "users".to_string(),
