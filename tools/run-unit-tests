@@ -2,12 +2,8 @@
 # Copyright 2025 The syntaqlite Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0.
 
-# Run workspace unit tests, preferring nextest if available.
+# Run workspace unit tests.
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CARGO="$SCRIPT_DIR/cargo"
 
-if command -v cargo-nextest >/dev/null 2>&1; then
-    exec "$CARGO" nextest run --workspace "$@"
-else
-    exec "$CARGO" test --workspace "$@"
-fi
+exec "$CARGO" test --workspace "$@"
