@@ -365,7 +365,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
 
         // Feed tokens to the low-level parser, collecting results.
         let mut cursor = parser.feed(&fragment.sql_text);
-        let mut results: Vec<Result<syntaqlite_parser::NodeId, ParseError>> = Vec::new();
+        let mut results: Vec<Result<syntaqlite_parser::RawNodeId, ParseError>> = Vec::new();
 
         for &(token_type, offset, length) in &tokens {
             let hole = fragment

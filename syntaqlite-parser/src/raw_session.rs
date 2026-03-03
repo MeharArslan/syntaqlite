@@ -7,8 +7,8 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 
 use crate::DialectConfig;
-use crate::NodeId;
 use crate::RawDialect;
+use crate::RawNodeId;
 use crate::parser::{
     syntaqlite_create_parser_with_dialect, syntaqlite_parser_destroy, syntaqlite_parser_next,
     syntaqlite_parser_reset, syntaqlite_parser_set_collect_tokens,
@@ -258,7 +258,7 @@ impl<'a> RawStatementCursor<'a> {
         // parser's buffer (valid for parser lifetime).
         let result = unsafe { syntaqlite_parser_next(self.reader.raw()) };
 
-        let id = NodeId(result.root);
+        let id = RawNodeId(result.root);
         let has_root = !id.is_null();
         let has_error = result.error != 0;
 
@@ -323,9 +323,9 @@ impl<'a> RawStatementCursor<'a> {
         self.reader.comments()
     }
 
-    /// Wrap a `NodeId` (e.g. from a `ParseError::root`) into a `NodeRef`
+    /// Wrap a `RawNodeId` (e.g. from a `ParseError::root`) into a `NodeRef`
     /// using this cursor's reader and dialect.
-    pub fn node_ref(&self, id: NodeId) -> NodeRef<'a> {
+    pub fn node_ref(&self, id: RawNodeId) -> NodeRef<'a> {
         NodeRef::new(id, self.reader, self.dialect)
     }
 }

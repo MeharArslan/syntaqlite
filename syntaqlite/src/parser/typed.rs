@@ -12,7 +12,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 
 use syntaqlite_parser::{
-    Comment, Dialect, MacroRegion, NodeFamily, NodeRef, ParseError, ParserConfig,
+    Comment, Dialect, DialectNodeType, MacroRegion, NodeFamily, NodeRef, ParseError, ParserConfig,
     RawIncrementalCursor, RawIncrementalParser, RawParser, RawStatementCursor, RawTokenCursor,
     RawTokenizer,
 };
@@ -102,6 +102,14 @@ impl<'a, N: NodeFamily> DialectStatementCursor<'a, N> {
     /// The source text bound to this cursor.
     pub fn source(&self) -> &'a str {
         self.inner.source()
+    }
+
+    /// Resolve a typed node ID back into a view struct.
+    ///
+    /// Returns `Some(node)` if the ID refers to a valid arena node of the
+    /// correct type, or `None` if the ID is null, invalid, or mismatched.
+    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'a>> {
+        I::Node::from_arena(self.inner.reader(), id.into())
     }
 }
 
@@ -350,5 +358,13 @@ impl<'a, N: NodeFamily> DialectIncrementalCursor<'a, N> {
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
     pub fn macro_regions(&self) -> &[MacroRegion] {
         self.inner.macro_regions()
+    }
+
+    /// Resolve a typed node ID back into a view struct.
+    ///
+    /// Returns `Some(node)` if the ID refers to a valid arena node of the
+    /// correct type, or `None` if the ID is null, invalid, or mismatched.
+    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'a>> {
+        I::Node::from_arena(self.inner.reader(), id.into())
     }
 }

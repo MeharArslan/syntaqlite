@@ -8,7 +8,7 @@
 //! It has no public methods — callers pass it to `_prepared` methods on the
 //! analyzer.
 
-use syntaqlite_parser::{NodeId, ParseError, RawParseResult, RawParser, RawStatementCursor};
+use syntaqlite_parser::{ParseError, RawNodeId, RawParseResult, RawParser, RawStatementCursor};
 
 /// Opaque precomputed representation of parsed SQL.
 ///
@@ -24,7 +24,7 @@ pub struct SemanticModel<'a, 'd: 'a> {
     _parser: RawParser<'d>,
     /// Exhausted cursor — kept alive for its reader (arena access).
     cursor: RawStatementCursor<'a>,
-    pub(crate) stmts: Vec<Result<NodeId, ParseError>>,
+    pub(crate) stmts: Vec<Result<RawNodeId, ParseError>>,
 }
 
 impl<'a, 'd: 'a> SemanticModel<'a, 'd> {
@@ -32,7 +32,7 @@ impl<'a, 'd: 'a> SemanticModel<'a, 'd> {
     pub(crate) fn new(
         parser: RawParser<'d>,
         cursor: RawStatementCursor<'a>,
-        stmts: Vec<Result<NodeId, ParseError>>,
+        stmts: Vec<Result<RawNodeId, ParseError>>,
     ) -> Self {
         SemanticModel {
             _parser: parser,

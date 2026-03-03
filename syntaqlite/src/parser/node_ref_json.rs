@@ -7,7 +7,7 @@
 //! [`dump_json`](NodeRefJsonExt::dump_json) on a [`NodeRef`].
 
 use syntaqlite_parser::RawDialect;
-use syntaqlite_parser::{FieldVal, NodeId};
+use syntaqlite_parser::{FieldVal, RawNodeId};
 use syntaqlite_parser::{NodeRef, RawParseResult};
 
 /// Extension trait that adds JSON serialization to [`NodeRef`].
@@ -28,7 +28,7 @@ impl NodeRefJsonExt for NodeRef<'_> {
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 fn dump_json_id(
-    id: NodeId,
+    id: RawNodeId,
     reader: RawParseResult<'_>,
     dialect: RawDialect<'_>,
 ) -> serde_json::Value {

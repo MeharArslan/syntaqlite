@@ -104,6 +104,14 @@ impl<'a> StatementCursor<'a> {
     pub fn source(&self) -> &'a str {
         self.inner.source()
     }
+
+    /// Resolve a typed node ID back into a view struct.
+    ///
+    /// Returns `Some(node)` if the ID refers to a valid arena node of the
+    /// correct type, or `None` if the ID is null, invalid, or mismatched.
+    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'a>> {
+        self.inner.resolve(id)
+    }
 }
 
 impl<'a> Iterator for StatementCursor<'a> {
@@ -283,5 +291,13 @@ impl<'a> IncrementalCursor<'a> {
     /// Return all macro regions recorded via `begin_macro`/`end_macro`.
     pub fn macro_regions(&self) -> &[MacroRegion] {
         self.inner.macro_regions()
+    }
+
+    /// Resolve a typed node ID back into a view struct.
+    ///
+    /// Returns `Some(node)` if the ID refers to a valid arena node of the
+    /// correct type, or `None` if the ID is null, invalid, or mismatched.
+    pub fn resolve<I: syntaqlite_parser::NodeId>(&self, id: I) -> Option<I::Node<'a>> {
+        self.inner.resolve(id)
     }
 }

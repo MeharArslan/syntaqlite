@@ -51,7 +51,7 @@ impl DatabaseCatalog {
     /// by earlier statements in the same input.
     pub fn from_stmts<'a>(
         reader: syntaqlite_parser::RawParseResult<'a>,
-        stmt_ids: &[syntaqlite_parser::NodeId],
+        stmt_ids: &[syntaqlite_parser::RawNodeId],
         dialect: RawDialect<'_>,
     ) -> Self {
         let mut doc = DocumentCatalog::new();
@@ -249,8 +249,8 @@ impl DocumentCatalog {
 unsafe fn read_node_id(
     ptr: *const u8,
     meta: &syntaqlite_parser::FieldMeta,
-) -> syntaqlite_parser::NodeId {
-    unsafe { syntaqlite_parser::NodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
+) -> syntaqlite_parser::RawNodeId {
+    unsafe { syntaqlite_parser::RawNodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
 }
 
 /// Read a `SourceSpan` field from a raw node pointer, returning its text
@@ -288,7 +288,7 @@ impl DocumentCatalog {
     pub(crate) fn accumulate(
         &mut self,
         reader: syntaqlite_parser::RawParseResult<'_>,
-        stmt_id: syntaqlite_parser::NodeId,
+        stmt_id: syntaqlite_parser::RawNodeId,
         dialect: RawDialect<'_>,
         database: Option<&DatabaseCatalog>,
     ) {
@@ -390,11 +390,11 @@ impl DocumentCatalog {
 /// Extract column definitions from a column definition list node.
 fn columns_from_column_list(
     reader: &syntaqlite_parser::RawParseResult<'_>,
-    list_id: syntaqlite_parser::NodeId,
+    list_id: syntaqlite_parser::RawNodeId,
     dialect: &RawDialect<'_>,
     out: &mut Vec<ColumnDef>,
 ) {
-    use syntaqlite_parser::NodeId;
+    use syntaqlite_parser::RawNodeId;
     use syntaqlite_parser::{FIELD_NODE_ID, FIELD_SPAN};
 
     let Some(list) = reader.resolve_list(list_id) else {
@@ -413,7 +413,7 @@ fn columns_from_column_list(
 
         let mut col_name = None;
         let mut type_name = None;
-        let mut constraints_id = NodeId::NULL;
+        let mut constraints_id = RawNodeId::NULL;
 
         for fm in child_meta {
             // SAFETY: fm is from dialect.field_meta() which returns static
@@ -469,7 +469,7 @@ fn columns_from_column_list(
 /// Walk a constraint list to detect PRIMARY KEY and NOT NULL constraints.
 fn extract_column_constraints(
     reader: &syntaqlite_parser::RawParseResult<'_>,
-    list_id: syntaqlite_parser::NodeId,
+    list_id: syntaqlite_parser::RawNodeId,
     dialect: &RawDialect<'_>,
     is_primary_key: &mut bool,
     is_nullable: &mut bool,

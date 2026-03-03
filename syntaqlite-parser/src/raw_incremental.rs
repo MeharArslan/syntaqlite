@@ -8,9 +8,9 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 
 use crate::DialectConfig;
-use crate::NodeId;
 use crate::NodeRef;
 use crate::RawDialect;
+use crate::RawNodeId;
 use crate::parser::{
     syntaqlite_create_parser_with_dialect, syntaqlite_parser_begin_macro,
     syntaqlite_parser_completion_context, syntaqlite_parser_destroy, syntaqlite_parser_end_macro,
@@ -194,26 +194,26 @@ impl<'a> RawIncrementalCursor<'a> {
     /// - `1` = clean success
     /// - `2` = success with error recovery (tree has ErrorNode holes)
     /// - `-1` = unrecoverable error
-    fn parse_result(&self, rc: c_int) -> Result<NodeId, ParseError> {
+    fn parse_result(&self, rc: c_int) -> Result<RawNodeId, ParseError> {
         // SAFETY: raw is valid; result struct and error_msg pointer are valid
         // for the lifetime of the parser.
         unsafe {
             let raw = self.reader.raw();
             let result = syntaqlite_parser_result(raw);
             if rc == 1 {
-                return Ok(NodeId(result.root));
+                return Ok(RawNodeId(result.root));
             }
             let err = Self::extract_error(&result);
             if rc == 2 {
                 // Error recovery succeeded — tree is valid but has ErrorNode holes.
                 return Err(ParseError {
-                    root: Some(NodeId(result.root)),
+                    root: Some(RawNodeId(result.root)),
                     ..err
                 });
             }
             // rc == -1: unrecoverable error, root may be NULL.
             let root = if result.root != u32::MAX && result.root != 0 {
-                Some(NodeId(result.root))
+                Some(RawNodeId(result.root))
             } else {
                 None
             };
@@ -267,7 +267,7 @@ impl<'a> RawIncrementalCursor<'a> {
         &mut self,
         token_type: u32,
         span: Range<usize>,
-    ) -> Result<Option<NodeId>, ParseError> {
+    ) -> Result<Option<RawNodeId>, ParseError> {
         self.assert_not_finished();
         // SAFETY: c_source_ptr is valid for the source length; raw is valid.
         let raw = self.reader.raw();
@@ -295,7 +295,7 @@ impl<'a> RawIncrementalCursor<'a> {
     /// field contains the partial tree.
     ///
     /// No further methods may be called after `finish()`.
-    pub fn finish(&mut self) -> Result<Option<NodeId>, ParseError> {
+    pub fn finish(&mut self) -> Result<Option<RawNodeId>, ParseError> {
         self.assert_not_finished();
         self.finished = true;
         // SAFETY: raw is valid.
@@ -380,8 +380,8 @@ impl<'a> RawIncrementalCursor<'a> {
         }
     }
 
-    /// Wrap a [`NodeId`] as a [`NodeRef`] using this cursor's reader and dialect.
-    pub fn node_ref(&self, id: NodeId) -> NodeRef<'a> {
+    /// Wrap a [`RawNodeId`] as a [`NodeRef`] using this cursor's reader and dialect.
+    pub fn node_ref(&self, id: RawNodeId) -> NodeRef<'a> {
         NodeRef::new(id, self.reader, self.dialect)
     }
 

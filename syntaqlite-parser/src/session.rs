@@ -6,7 +6,7 @@ use std::ptr::NonNull;
 
 use crate::dialect::RawDialect;
 use crate::dialect_traits::DialectNodeType;
-use crate::nodes::{ArenaNode, NodeId, NodeList};
+use crate::nodes::{ArenaNode, NodeList, RawNodeId};
 use crate::parser as ffi;
 
 // ── NodeRef ─────────────────────────────────────────────────────────────────
@@ -18,7 +18,7 @@ use crate::parser as ffi;
 /// and `dump()` without threading three arguments everywhere.
 #[derive(Clone, Copy)]
 pub struct NodeRef<'a> {
-    id: NodeId,
+    id: RawNodeId,
     reader: RawParseResult<'a>,
     dialect: RawDialect<'a>,
 }
@@ -31,7 +31,7 @@ impl std::fmt::Debug for NodeRef<'_> {
 
 impl<'a> NodeRef<'a> {
     /// Create a `NodeRef` from its constituent parts.
-    pub fn new(id: NodeId, reader: RawParseResult<'a>, dialect: RawDialect<'a>) -> Self {
+    pub fn new(id: RawNodeId, reader: RawParseResult<'a>, dialect: RawDialect<'a>) -> Self {
         NodeRef {
             id,
             reader,
@@ -40,7 +40,7 @@ impl<'a> NodeRef<'a> {
     }
 
     /// Raw arena ID (escape hatch for FFI/codegen).
-    pub fn id(&self) -> NodeId {
+    pub fn id(&self) -> RawNodeId {
         self.id
     }
 
@@ -89,7 +89,7 @@ impl<'a> NodeRef<'a> {
     }
 
     /// Raw list children slice (for list nodes only).
-    pub fn list_children(&self) -> Option<&'a [NodeId]> {
+    pub fn list_children(&self) -> Option<&'a [RawNodeId]> {
         self.reader.list_children(self.id, &self.dialect)
     }
 
@@ -149,7 +149,7 @@ pub struct ParseError {
     /// succeeded. The tree may contain `ErrorNode` placeholders (tag 0)
     /// in positions where the parser recovered (e.g. interpolation holes).
     /// `None` when the error was unrecoverable and no tree was produced.
-    pub root: Option<NodeId>,
+    pub root: Option<RawNodeId>,
 }
 
 impl std::fmt::Display for ParseError {
@@ -165,9 +165,9 @@ impl std::error::Error for ParseError {}
 /// A lightweight, `Copy` handle for reading the result of a parse: nodes,
 /// tokens, comments, and macro regions from the parser arena.
 ///
-/// Dialect crates embed it in view structs so that accessor methods can
-/// resolve `NodeId` children without requiring a back-reference to the
-/// full cursor.
+/// This is the read-only half of a cursor state. Dialect crates embed it in
+/// view structs so that accessor methods can resolve `RawNodeId` children
+/// without requiring a back-reference to the full cursor.
 ///
 /// # Safety invariant
 /// The raw pointer must remain valid for `'a`. This is guaranteed when
@@ -198,7 +198,7 @@ impl<'a> RawParseResult<'a> {
     /// For regular nodes, returns all `Index`-typed (child node) fields.
     /// For list nodes, returns the list's children.
     /// Null child IDs are omitted from the result.
-    pub fn child_node_ids(&self, id: NodeId, dialect: &RawDialect) -> Vec<NodeId> {
+    pub fn child_node_ids(&self, id: RawNodeId, dialect: &RawDialect) -> Vec<RawNodeId> {
         let Some((ptr, tag)) = self.node_ptr(id) else {
             return vec![];
         };
@@ -220,12 +220,12 @@ impl<'a> RawParseResult<'a> {
             if field.kind == crate::dialect::FIELD_NODE_ID {
                 // SAFETY: ptr is a valid arena pointer, field.offset is a
                 // codegen-computed offset within the node struct, and the
-                // field at that offset is a u32 (raw NodeId).
+                // field at that offset is a u32 (raw RawNodeId).
                 let child_raw = unsafe {
                     let field_ptr = ptr.add(field.offset as usize) as *const u32;
                     *field_ptr
                 };
-                let child_id = NodeId(child_raw);
+                let child_id = RawNodeId(child_raw);
                 if !child_id.is_null() {
                     children.push(child_id);
                 }
@@ -234,9 +234,9 @@ impl<'a> RawParseResult<'a> {
         children
     }
 
-    /// Resolve a `NodeId` to a typed reference, validating the tag matches.
+    /// Resolve a `RawNodeId` to a typed reference, validating the tag matches.
     /// Returns `None` if null, invalid, or tag mismatch.
-    pub fn resolve_as<T: ArenaNode>(&self, id: NodeId) -> Option<&'a T> {
+    pub fn resolve_as<T: ArenaNode>(&self, id: RawNodeId) -> Option<&'a T> {
         let (ptr, tag) = self.node_ptr(id)?;
         if tag != T::TAG {
             return None;
@@ -248,9 +248,9 @@ impl<'a> RawParseResult<'a> {
         Some(unsafe { &*(ptr as *const T) })
     }
 
-    /// Resolve a `NodeId` as a `NodeList` (for list nodes).
+    /// Resolve a `RawNodeId` as a `NodeList` (for list nodes).
     /// Returns `None` if null or invalid.
-    pub fn resolve_list(&self, id: NodeId) -> Option<&'a NodeList> {
+    pub fn resolve_list(&self, id: RawNodeId) -> Option<&'a NodeList> {
         let (ptr, _) = self.node_ptr(id)?;
         // SAFETY: ptr is valid for 'a. List nodes have NodeList layout
         // (tag, count, children[count]). The caller is responsible for
@@ -259,7 +259,7 @@ impl<'a> RawParseResult<'a> {
     }
 
     /// Get a raw pointer to a node in the arena. Returns `(pointer, tag)`.
-    pub fn node_ptr(&self, id: NodeId) -> Option<(*const u8, u32)> {
+    pub fn node_ptr(&self, id: RawNodeId) -> Option<(*const u8, u32)> {
         if id.is_null() {
             return None;
         }
@@ -277,15 +277,15 @@ impl<'a> RawParseResult<'a> {
     }
 
     /// Return the node tag for the given ID, or `None` if null/invalid.
-    pub fn node_tag(&self, id: NodeId) -> Option<u32> {
+    pub fn node_tag(&self, id: RawNodeId) -> Option<u32> {
         self.node_ptr(id).map(|(_, tag)| tag)
     }
 
     /// Resolve a required node field: panics (in debug) if `id` is null,
     /// returns `Err(ErrorSpan)` if the arena node is an error placeholder,
     /// or `Err(ErrorSpan { 0, 0 })` if the type tag mismatches.
-    pub fn required_node<T: DialectNodeType<'a>>(&self, id: NodeId) -> Result<T, ErrorSpan> {
-        debug_assert!(!id.is_null(), "required field has null NodeId");
+    pub fn required_node<T: DialectNodeType<'a>>(&self, id: RawNodeId) -> Result<T, ErrorSpan> {
+        debug_assert!(!id.is_null(), "required field has null RawNodeId");
         self.resolve_or_error(id)
     }
 
@@ -294,7 +294,7 @@ impl<'a> RawParseResult<'a> {
     /// `Ok(Some(T))` on success.
     pub fn optional_node<T: DialectNodeType<'a>>(
         &self,
-        id: NodeId,
+        id: RawNodeId,
     ) -> Result<Option<T>, ErrorSpan> {
         if id.is_null() {
             return Ok(None);
@@ -302,7 +302,7 @@ impl<'a> RawParseResult<'a> {
         self.resolve_or_error(id).map(Some)
     }
 
-    fn resolve_or_error<T: DialectNodeType<'a>>(&self, id: NodeId) -> Result<T, ErrorSpan> {
+    fn resolve_or_error<T: DialectNodeType<'a>>(&self, id: RawNodeId) -> Result<T, ErrorSpan> {
         let Some((ptr, tag)) = self.node_ptr(id) else {
             return Err(ErrorSpan {
                 offset: 0,
@@ -330,7 +330,7 @@ impl<'a> RawParseResult<'a> {
     /// the node ID is null or invalid.
     pub fn extract_fields(
         &self,
-        id: NodeId,
+        id: RawNodeId,
         dialect: &RawDialect,
     ) -> Option<(u32, crate::nodes::Fields<'a>)> {
         let (ptr, tag) = self.node_ptr(id)?;
@@ -374,7 +374,7 @@ impl<'a> RawParseResult<'a> {
     }
 
     /// Dump an AST node tree as indented text into `out`.
-    pub fn dump_node(&self, id: NodeId, out: &mut String, indent: usize) {
+    pub fn dump_node(&self, id: RawNodeId, out: &mut String, indent: usize) {
         unsafe extern "C" {
             fn free(ptr: *mut std::ffi::c_void);
         }
@@ -390,7 +390,7 @@ impl<'a> RawParseResult<'a> {
     }
 
     /// If `id` refers to a list node (per the dialect), return its child node IDs.
-    pub fn list_children(&self, id: NodeId, dialect: &RawDialect) -> Option<&'a [NodeId]> {
+    pub fn list_children(&self, id: RawNodeId, dialect: &RawDialect) -> Option<&'a [RawNodeId]> {
         let (ptr, tag) = self.node_ptr(id)?;
         if !dialect.is_list(tag) {
             return None;

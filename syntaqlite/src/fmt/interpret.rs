@@ -3,7 +3,7 @@
 
 use syntaqlite_parser::RawDialect;
 use syntaqlite_parser::RawParseResult;
-use syntaqlite_parser::{FieldVal, Fields, NodeId};
+use syntaqlite_parser::{FieldVal, Fields, RawNodeId};
 
 use super::bytecode::opcodes;
 use super::comment::{CommentCtx, DrainResult};
@@ -51,8 +51,8 @@ struct CallFrame<'a> {
     ops_count: usize,
     ip: usize,
     /// Parent node ID — used to re-derive (ptr, tag) and re-extract fields on pop.
-    node_id: NodeId,
-    list_children: Option<&'a [NodeId]>,
+    node_id: RawNodeId,
+    list_children: Option<&'a [RawNodeId]>,
     running: DocId,
     pending: DocId,
     gn_save: usize,
@@ -77,7 +77,7 @@ enum ReturnAction {
 /// (`ip >= ops_count`), the parent's state is restored from the stack.
 pub(super) fn interpret_node<'a>(
     ctx: &FmtCtx<'a>,
-    root_id: NodeId,
+    root_id: RawNodeId,
     consumed_regions: &mut [bool],
     arena: &mut DocArena<'a>,
     scratch: &mut InterpretScratch,
@@ -101,11 +101,11 @@ pub(super) fn interpret_node<'a>(
     let mut for_each_stack: Vec<ForEachState<'a>> = Vec::new();
 
     // Current node's execution state.
-    let mut cur_node_id: NodeId = root_id;
+    let mut cur_node_id: RawNodeId = root_id;
     let mut ops: &[u8] = &ops_bytes[..ops_len * 6];
     let mut ops_count: usize = ops_len;
     let mut fields: Fields<'a> = fields;
-    let mut list_children: Option<&[NodeId]> = children;
+    let mut list_children: Option<&[RawNodeId]> = children;
     let mut running: DocId = NIL_DOC;
     let mut pending: DocId = NIL_DOC;
     let mut gn_save = scratch.gn_stack.len();
@@ -220,9 +220,9 @@ pub(super) fn interpret_node<'a>(
                 }
             }
             FmtOp::Child(idx) => {
-                // INVARIANT: bytecode is compiled from .synq at build time; Child ops only target NodeId fields.
+                // INVARIANT: bytecode is compiled from .synq at build time; Child ops only target RawNodeId fields.
                 let FieldVal::NodeId(child_id) = fields[idx as usize] else {
-                    panic!("Child: field {} is not a NodeId", idx);
+                    panic!("Child: field {} is not a RawNodeId", idx);
                 };
 
                 if !child_id.is_null() {
@@ -319,9 +319,9 @@ pub(super) fn interpret_node<'a>(
                 }
             }
             FmtOp::IfSet(idx, skip) => {
-                // INVARIANT: bytecode is compiled from .synq at build time; IfSet ops only target NodeId fields.
+                // INVARIANT: bytecode is compiled from .synq at build time; IfSet ops only target RawNodeId fields.
                 let FieldVal::NodeId(id) = fields[idx as usize] else {
-                    panic!("IfSet: field {} is not a NodeId", idx);
+                    panic!("IfSet: field {} is not a RawNodeId", idx);
                 };
                 if id.is_null() {
                     ip += skip as usize;
@@ -332,9 +332,9 @@ pub(super) fn interpret_node<'a>(
             }
             FmtOp::EndIf => {}
             FmtOp::ForEachStart(idx) => {
-                // INVARIANT: bytecode is compiled from .synq at build time; ForEachStart ops only target NodeId fields.
+                // INVARIANT: bytecode is compiled from .synq at build time; ForEachStart ops only target RawNodeId fields.
                 let FieldVal::NodeId(list_id) = fields[idx as usize] else {
-                    panic!("ForEachStart: field {} is not a NodeId", idx);
+                    panic!("ForEachStart: field {} is not a RawNodeId", idx);
                 };
                 if list_id.is_null() {
                     ip = skip_to_foreach_end(ops, ops_count, ip);
@@ -618,7 +618,7 @@ enum FmtOp {
     Keyword(StringId),
     /// Emit source text from a Span field.
     Span(FieldIdx),
-    /// Recursively format the child node whose ID is in a NodeId field.
+    /// Recursively format the child node whose ID is in a RawNodeId field.
     /// Skipped if the child ID is NULL_NODE.
     Child(FieldIdx),
     /// Flat: space. Break: newline + indent.
@@ -635,13 +635,13 @@ enum FmtOp {
     NestStart(i16),
     /// End indentation nest.
     NestEnd,
-    /// If NodeId field != NULL_NODE, execute next ops; else skip.
+    /// If RawNodeId field != NULL_NODE, execute next ops; else skip.
     IfSet(FieldIdx, SkipCount),
     /// End of then-branch. If reached, skip the else-branch.
     Else(SkipCount),
     /// No-op marker ending a conditional block.
     EndIf,
-    /// Begin iterating children of the list node referenced by a NodeId field.
+    /// Begin iterating children of the list node referenced by a RawNodeId field.
     ForEachStart(FieldIdx),
     /// Format the current iteration child.
     ChildItem,
@@ -703,7 +703,7 @@ enum GNFrame {
 }
 
 struct ForEachState<'a> {
-    children: &'a [NodeId],
+    children: &'a [RawNodeId],
     index: usize,
     body_start: usize,
     /// Saved `(running, pending)` before the separator was emitted.

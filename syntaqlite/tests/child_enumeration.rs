@@ -3,14 +3,14 @@
 
 use syntaqlite::ast::{Node, NodeTag};
 use syntaqlite::dialect::sqlite as dialect;
-use syntaqlite_parser::{DialectNodeType, NodeId, RawParser, RawStatementCursor};
+use syntaqlite_parser::{DialectNodeType, RawNodeId, RawParser, RawStatementCursor};
 
 fn new_parser() -> RawParser<'static> {
     RawParser::new(dialect())
 }
 
-/// Helper: resolve a NodeId to its Node variant and return its tag.
-fn node_tag(cursor: &RawStatementCursor, id: NodeId) -> NodeTag {
+/// Helper: resolve a RawNodeId to its Node variant and return its tag.
+fn node_tag(cursor: &RawStatementCursor, id: RawNodeId) -> NodeTag {
     let node: Node =
         DialectNodeType::from_arena(cursor.reader(), id).expect("should resolve to a Node");
     node.tag()
@@ -53,7 +53,7 @@ fn null_id_returns_empty() {
     assert!(
         cursor
             .reader()
-            .child_node_ids(NodeId::NULL, &dialect)
+            .child_node_ids(RawNodeId::NULL, &dialect)
             .is_empty()
     );
 }
