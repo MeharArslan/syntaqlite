@@ -10,7 +10,7 @@ fn new_parser() -> RawParser<'static> {
 
 #[test]
 fn pure_sqlite_never_produces_node_other() {
-    let mut parser = new_parser();
+    let parser = new_parser();
     let sqls = [
         "SELECT 1 + 2",
         "INSERT INTO t VALUES(1)",
@@ -31,7 +31,7 @@ fn pure_sqlite_never_produces_node_other() {
 
 #[test]
 fn pure_sqlite_never_produces_stmt_other() {
-    let mut parser = new_parser();
+    let parser = new_parser();
     let sqls = [
         "SELECT 1",
         "INSERT INTO t VALUES(1)",

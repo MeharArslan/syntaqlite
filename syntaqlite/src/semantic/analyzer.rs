@@ -113,8 +113,11 @@ impl<'d> SemanticAnalyzer<'d> {
     // ── Advanced API — prepare once, query many ──────────────────────
 
     /// Parse SQL and produce an opaque model for repeated queries.
-    pub fn prepare(&mut self, source: &str) -> SemanticModel<'d> {
-        let mut parser = RawParser::with_config(
+    pub fn prepare<'a>(&mut self, source: &'a str) -> SemanticModel<'a, 'd>
+    where
+        'd: 'a,
+    {
+        let parser = RawParser::with_config(
             self.dialect,
             &ParserConfig {
                 collect_tokens: true,
@@ -127,17 +130,13 @@ impl<'d> SemanticAnalyzer<'d> {
         let stmts: Vec<Result<NodeId, ParseError>> =
             (&mut cursor).map(|r| r.map(|nr| nr.id())).collect();
 
-        SemanticModel {
-            source: source.to_string(),
-            parser,
-            stmts,
-        }
+        SemanticModel::new(parser, cursor, stmts)
     }
 
     /// Diagnostics from a prepared model (no re-parsing).
     pub fn diagnostics_prepared(
         &mut self,
-        model: &SemanticModel<'d>,
+        model: &SemanticModel<'_, 'd>,
         catalog: &DatabaseCatalog,
     ) -> Vec<Diagnostic> {
         self.diagnostics_prepared_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(
@@ -148,7 +147,7 @@ impl<'d> SemanticAnalyzer<'d> {
     /// Diagnostics from a prepared model, generic over dialect AST types.
     pub fn diagnostics_prepared_dialect<A: for<'a> AstTypes<'a>>(
         &mut self,
-        model: &SemanticModel<'d>,
+        model: &SemanticModel<'_, 'd>,
         catalog: &DatabaseCatalog,
     ) -> Vec<Diagnostic> {
         let config = ValidationConfig::default();
@@ -158,14 +157,14 @@ impl<'d> SemanticAnalyzer<'d> {
     /// Diagnostics with explicit config, generic over dialect AST types.
     pub(crate) fn diagnostics_prepared_with_config_dialect<A: for<'a> AstTypes<'a>>(
         &mut self,
-        model: &SemanticModel<'d>,
+        model: &SemanticModel<'_, 'd>,
         catalog: &DatabaseCatalog,
         config: &ValidationConfig,
     ) -> Vec<Diagnostic> {
         self.diag_buf.clear();
         self.doc_catalog.clear();
 
-        let reader = model.parser.reader();
+        let reader = model.reader();
 
         // Collect parse errors and valid statement roots.
         let mut stmt_ids = Vec::new();
@@ -176,7 +175,7 @@ impl<'d> SemanticAnalyzer<'d> {
                     if let Some(root) = err.root {
                         stmt_ids.push(root);
                     }
-                    let (start_offset, end_offset) = parse_error_span(err, &model.source);
+                    let (start_offset, end_offset) = parse_error_span(err, model.source());
                     self.diag_buf.push(Diagnostic {
                         start_offset,
                         end_offset,

@@ -259,7 +259,7 @@ fn cmd_fmt(
 }
 
 fn dump_ast_source(dialect: RawDialect<'_>, source: &str) -> (String, Vec<ParseError>) {
-    let mut parser = RawParser::new(dialect);
+    let parser = RawParser::new(dialect);
     let mut cursor = parser.parse(source);
     let mut out = String::new();
     let mut errors = Vec::new();

@@ -626,7 +626,7 @@ mod tests {
     #[test]
     fn syntax_error_offset_via_parser_directly() {
         let sql = "select 1 from slice where foo = where x = y;";
-        let mut parser = RawParser::new(crate::dialect::sqlite());
+        let parser = RawParser::new(crate::dialect::sqlite());
         let mut cursor = parser.parse(sql);
         let err = cursor
             .next_statement()

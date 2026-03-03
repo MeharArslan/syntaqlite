@@ -74,7 +74,7 @@ impl DatabaseCatalog {
         source: &str,
         dialect_config: Option<syntaqlite_parser::DialectConfig>,
     ) -> Self {
-        let mut parser = syntaqlite_parser::RawParser::with_config(
+        let parser = syntaqlite_parser::RawParser::with_config(
             dialect,
             &syntaqlite_parser::ParserConfig {
                 dialect_config,
@@ -799,7 +799,7 @@ mod tests {
     #[test]
     fn from_stmts_creates_database_catalog() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = syntaqlite_parser::RawParser::new(dialect);
+        let parser = syntaqlite_parser::RawParser::new(dialect);
         let sql = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);";
         let mut cursor = parser.parse(sql);
 
@@ -834,7 +834,7 @@ mod tests {
     #[test]
     fn from_stmts_star_expands_from_earlier_table() {
         let dialect = crate::dialect::sqlite();
-        let mut parser = syntaqlite_parser::RawParser::new(dialect);
+        let parser = syntaqlite_parser::RawParser::new(dialect);
         let sql = "\
             CREATE TABLE slice (order_id INTEGER, status TEXT);\n\
             CREATE TABLE orders AS SELECT * FROM slice;\n";

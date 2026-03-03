@@ -130,7 +130,7 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let dialect = try_wasm!(resolve_dialect());
     let source = try_wasm!(decode_input(ptr, len));
 
-    let mut parser = RawParser::with_config(
+    let parser = RawParser::with_config(
         dialect,
         &ParserConfig {
             dialect_config: Some(get_dialect_config()),
@@ -162,7 +162,7 @@ fn run_ast(ptr: u32, len: u32) -> i32 {
     let dialect = try_wasm!(resolve_dialect());
     let source = try_wasm!(decode_input(ptr, len));
 
-    let mut parser = RawParser::with_config(
+    let parser = RawParser::with_config(
         dialect,
         &ParserConfig {
             dialect_config: Some(get_dialect_config()),

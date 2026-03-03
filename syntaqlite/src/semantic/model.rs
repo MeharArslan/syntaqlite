@@ -8,20 +8,46 @@
 //! It has no public methods — callers pass it to `_prepared` methods on the
 //! analyzer.
 
-use syntaqlite_parser::{NodeId, ParseError, RawParser};
+use syntaqlite_parser::{NodeId, ParseError, RawNodeReader, RawParser, RawStatementCursor};
 
 /// Opaque precomputed representation of parsed SQL.
 ///
-/// Owns the parser arena so node IDs remain valid. Produced only by
+/// Owns the parser and its cursor so node IDs remain valid. Produced only by
 /// [`SemanticAnalyzer::prepare()`](super::SemanticAnalyzer::prepare).
 ///
-/// # Lifetime
+/// # Lifetimes
 ///
-/// The `'d` parameter tracks the dialect. For the common SQLite case this
-/// is `'static`. A future version may erase this lifetime since the arena
-/// is self-contained after parsing.
-pub struct SemanticModel<'d> {
-    pub(crate) source: String,
-    pub(crate) parser: RawParser<'d>,
+/// - `'a` — the source text passed to `prepare()`.
+/// - `'d` — the dialect (for the common SQLite case this is `'static`).
+pub struct SemanticModel<'a, 'd: 'a> {
+    /// Keeps the C parser alive (via the Rc inside RawParser).
+    _parser: RawParser<'d>,
+    /// Exhausted cursor — kept alive for its reader (arena access).
+    cursor: RawStatementCursor<'a>,
     pub(crate) stmts: Vec<Result<NodeId, ParseError>>,
+}
+
+impl<'a, 'd: 'a> SemanticModel<'a, 'd> {
+    /// Construct a new model from a parser, its cursor, and collected results.
+    pub(crate) fn new(
+        parser: RawParser<'d>,
+        cursor: RawStatementCursor<'a>,
+        stmts: Vec<Result<NodeId, ParseError>>,
+    ) -> Self {
+        SemanticModel {
+            _parser: parser,
+            cursor,
+            stmts,
+        }
+    }
+
+    /// Get a [`RawNodeReader`] for the parser's arena state.
+    pub(crate) fn reader(&self) -> RawNodeReader<'a> {
+        self.cursor.reader()
+    }
+
+    /// The source text bound to this model.
+    pub(crate) fn source(&self) -> &'a str {
+        self.cursor.source()
+    }
 }

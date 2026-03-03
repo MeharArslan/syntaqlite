@@ -10,7 +10,7 @@ use syntaqlite::incremental::IncrementalParser;
 #[test]
 fn feed_tokens_select_1() {
     let source = "SELECT 1";
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     // Feed SELECT token.
@@ -31,7 +31,7 @@ fn feed_tokens_select_1() {
 #[test]
 fn feed_tokens_with_semicolon() {
     let source = "SELECT 1;";
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
@@ -51,7 +51,7 @@ fn feed_tokens_with_semicolon() {
 #[test]
 fn feed_tokens_multi_statement() {
     let source = "SELECT 1; SELECT 2";
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     // First statement: SELECT 1 ;
@@ -78,7 +78,7 @@ fn feed_tokens_multi_statement() {
 #[test]
 fn feed_token_skips_space() {
     let source = "SELECT 1";
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
@@ -97,7 +97,7 @@ fn feed_token_skips_space() {
 #[test]
 fn feed_token_records_comment() {
     let source = "SELECT -- hello\n1";
-    let mut tp = IncrementalParser::new(); // collect_tokens is true by default
+    let tp = IncrementalParser::new(); // collect_tokens is true by default
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
@@ -115,7 +115,7 @@ fn feed_token_records_comment() {
 #[test]
 fn macro_regions_recorded() {
     let source = "SELECT 1";
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.begin_macro(7, 13);
@@ -135,7 +135,7 @@ fn macro_regions_recorded() {
 #[test]
 fn nested_macro_regions() {
     let source = "SELECT 1";
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.begin_macro(0, 30);
@@ -160,7 +160,7 @@ fn nested_macro_regions() {
 #[test]
 fn macro_well_aligned_complete_expression() {
     let source = "SELECT foo!(1 + 2), 3";
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
@@ -184,7 +184,7 @@ fn macro_well_aligned_complete_expression() {
 #[test]
 fn macro_straddle_rejected_by_parser() {
     let source = "SELECT 1 FROM foo!(x) y";
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(TokenType::SELECT, 0..6).unwrap();
@@ -208,7 +208,7 @@ fn macro_straddle_rejected_by_parser() {
 #[test]
 fn finish_with_no_tokens() {
     let source = "";
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     let r = cursor.finish().unwrap();
@@ -218,7 +218,7 @@ fn finish_with_no_tokens() {
 /// High-level API still works after the refactor.
 #[test]
 fn high_level_api_still_works() {
-    let mut parser = syntaqlite_parser::RawParser::new(syntaqlite::dialect::sqlite());
+    let parser = syntaqlite_parser::RawParser::new(syntaqlite::dialect::sqlite());
     let mut cursor = parser.parse("SELECT 1; SELECT 2");
 
     let node1 = cursor.next_statement().unwrap().unwrap();
@@ -244,7 +244,7 @@ fn sqlite_type_tokens_are_marked_as_type() {
 
     let source = "CREATE TABLE t(a int, b TEXT); SELECT CAST(a AS varchar(10)) FROM t";
     let dialect = syntaqlite::dialect::sqlite();
-    let mut parser = RawParser::with_config(
+    let parser = RawParser::with_config(
         dialect,
         &syntaqlite_parser::ParserConfig {
             collect_tokens: true,

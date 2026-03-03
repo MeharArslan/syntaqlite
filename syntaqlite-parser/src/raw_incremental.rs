@@ -1,9 +1,11 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+use std::cell::RefCell;
 use std::ffi::{CStr, c_int};
 use std::ops::Range;
 use std::ptr::NonNull;
+use std::rc::Rc;
 
 use crate::DialectConfig;
 use crate::NodeId;
@@ -20,18 +22,29 @@ use crate::raw_session::{ParserConfig, reset_parser, reset_parser_cstr};
 use crate::{Comment, MacroRegion, ParseResult, Parser};
 use crate::{ParseError, RawNodeReader};
 
-/// A low-level parser for token-by-token feeding. Owns its own C parser
-/// handle and source buffer, independent of `Parser`.
-pub struct RawIncrementalParser<'d> {
+/// Holds the C parser handle and mutable state for incremental parsing.
+/// Checked out by cursors at runtime and returned on [`Drop`].
+pub(crate) struct IncrementalInner {
     raw: NonNull<Parser>,
     source_buf: Vec<u8>,
-    /// Owned dialect config, kept alive so the C pointer remains valid.
-    _dialect_config: Option<Box<DialectConfig>>,
-    dialect: RawDialect<'d>,
 }
 
-// SAFETY: Same reasoning as Parser — the C parser is self-contained.
-unsafe impl Send for RawIncrementalParser<'_> {}
+impl Drop for IncrementalInner {
+    fn drop(&mut self) {
+        // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_dialect
+        // and has not been freed (Drop runs exactly once).
+        unsafe { syntaqlite_parser_destroy(self.raw.as_ptr()) }
+    }
+}
+
+/// A low-level parser for token-by-token feeding. Owns its own C parser
+/// handle and source buffer, independent of `RawParser`.
+///
+/// Uses the same interior-mutability checkout pattern as [`super::RawParser`].
+pub struct RawIncrementalParser<'d> {
+    inner: Rc<RefCell<Option<IncrementalInner>>>,
+    dialect: RawDialect<'d>,
+}
 
 impl<'d> RawIncrementalParser<'d> {
     /// Create an incremental parser bound to the given dialect with default
@@ -63,57 +76,78 @@ impl<'d> RawIncrementalParser<'d> {
             syntaqlite_parser_set_collect_tokens(raw.as_ptr(), config.collect_tokens as c_int);
         }
 
-        let dialect_config = if let Some(dc) = config.dialect_config {
-            let boxed = Box::new(dc);
-            // SAFETY: raw is valid; boxed pointer is stable and lives as long
-            // as the RawIncrementalParser.
+        if let Some(dc) = config.dialect_config {
+            // SAFETY: raw is valid. The C side copies the config value during
+            // this call.
             unsafe {
-                syntaqlite_parser_set_dialect_config(raw.as_ptr(), &*boxed as *const DialectConfig);
+                syntaqlite_parser_set_dialect_config(raw.as_ptr(), &dc as *const DialectConfig);
             }
-            Some(boxed)
-        } else {
-            None
+        }
+
+        let inner = IncrementalInner {
+            raw,
+            source_buf: Vec::new(),
         };
 
         RawIncrementalParser {
-            raw,
-            source_buf: Vec::new(),
-            _dialect_config: dialect_config,
+            inner: Rc::new(RefCell::new(Some(inner))),
             dialect,
         }
     }
 
     /// Bind source text and return a `RawIncrementalCursor` for token feeding.
-    pub fn feed<'a>(&'a mut self, source: &'a str) -> RawIncrementalCursor<'a> {
-        // SAFETY: raw is valid (owned by self); source_buf lives for 'a.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a cursor from a previous `feed()` call is still alive.
+    pub fn feed<'a>(&self, source: &'a str) -> RawIncrementalCursor<'a>
+    where
+        'd: 'a,
+    {
+        let mut inner = self
+            .inner
+            .borrow_mut()
+            .take()
+            .expect("RawIncrementalParser::feed called while a cursor is still active");
+        // SAFETY: inner.raw is valid (owned via IncrementalInner); source_buf
+        // lives inside inner which will be owned by the cursor.
         let (reader, c_source_ptr) =
-            unsafe { reset_parser(self.raw.as_ptr(), &mut self.source_buf, source) };
+            unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
         RawIncrementalCursor {
             reader,
             c_source_ptr,
             dialect: self.dialect,
+            inner: Some(inner),
+            slot: Rc::clone(&self.inner),
             finished: false,
         }
     }
 
     /// Zero-copy variant: bind a null-terminated source and return a `RawIncrementalCursor`.
-    pub fn feed_cstr<'a>(&'a mut self, source: &'a CStr) -> RawIncrementalCursor<'a> {
-        // SAFETY: raw is valid (owned by self); source is a CStr (null-terminated, valid for 'a).
-        let (reader, c_source_ptr) = unsafe { reset_parser_cstr(self.raw.as_ptr(), source) };
+    ///
+    /// # Panics
+    ///
+    /// Panics if a cursor from a previous `feed()` call is still alive.
+    pub fn feed_cstr<'a>(&self, source: &'a CStr) -> RawIncrementalCursor<'a>
+    where
+        'd: 'a,
+    {
+        let inner = self
+            .inner
+            .borrow_mut()
+            .take()
+            .expect("RawIncrementalParser::feed_cstr called while a cursor is still active");
+        // SAFETY: inner.raw is valid (owned via IncrementalInner); source is a
+        // CStr (null-terminated, valid for 'a).
+        let (reader, c_source_ptr) = unsafe { reset_parser_cstr(inner.raw.as_ptr(), source) };
         RawIncrementalCursor {
             reader,
             c_source_ptr,
             dialect: self.dialect,
+            inner: Some(inner),
+            slot: Rc::clone(&self.inner),
             finished: false,
         }
-    }
-}
-
-impl Drop for RawIncrementalParser<'_> {
-    fn drop(&mut self) {
-        // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_dialect
-        // and has not been freed (Drop runs exactly once).
-        unsafe { syntaqlite_parser_destroy(self.raw.as_ptr()) }
     }
 }
 
@@ -122,6 +156,9 @@ impl Drop for RawIncrementalParser<'_> {
 /// A low-level cursor for feeding tokens one at a time.
 ///
 /// After calling `finish()`, no further methods may be called.
+///
+/// On drop, the checked-out parser state is returned to the parent
+/// [`RawIncrementalParser`].
 pub struct RawIncrementalCursor<'a> {
     reader: RawNodeReader<'a>,
     /// The pointer that the C parser uses as its source base. This may differ
@@ -131,7 +168,19 @@ pub struct RawIncrementalCursor<'a> {
     /// of whether the copying or zero-copy path was used.
     c_source_ptr: NonNull<u8>,
     dialect: RawDialect<'a>,
+    /// Checked-out parser state. Returned to `slot` on drop.
+    inner: Option<IncrementalInner>,
+    /// Slot to return `inner` to when this cursor is dropped.
+    slot: Rc<RefCell<Option<IncrementalInner>>>,
     finished: bool,
+}
+
+impl Drop for RawIncrementalCursor<'_> {
+    fn drop(&mut self) {
+        if let Some(inner) = self.inner.take() {
+            *self.slot.borrow_mut() = Some(inner);
+        }
+    }
 }
 
 impl<'a> RawIncrementalCursor<'a> {

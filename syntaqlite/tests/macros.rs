@@ -22,7 +22,7 @@ fn macro_call_emitted_verbatim() {
     let source = "SELECT foo!(1 + 2), 3";
     let mut fmt = formatter();
 
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -49,7 +49,7 @@ fn macro_multi_node_emitted_once() {
     let source = "SELECT macro!(a, b)";
     let mut fmt = formatter();
 
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -73,7 +73,7 @@ fn macro_multi_node_no_extra_separator() {
     let source = "SELECT foo!(a, b), c";
     let mut fmt = formatter();
 
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -100,7 +100,7 @@ fn no_macro_regions_formats_normally() {
     let source = "SELECT  1+2,  3";
     let mut fmt = formatter();
 
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();

@@ -46,7 +46,10 @@ impl<'d, N: NodeFamily> DialectParser<'d, N> {
     }
 
     /// Bind source text and return a [`DialectStatementCursor`] for iterating typed statements.
-    pub fn parse<'a>(&'a mut self, source: &'a str) -> DialectStatementCursor<'a, N> {
+    pub fn parse<'a>(&self, source: &'a str) -> DialectStatementCursor<'a, N>
+    where
+        'd: 'a,
+    {
         DialectStatementCursor {
             inner: self.inner.parse(source),
             _marker: PhantomData,
@@ -54,10 +57,10 @@ impl<'d, N: NodeFamily> DialectParser<'d, N> {
     }
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn parse_cstr<'a>(
-        &'a mut self,
-        source: &'a std::ffi::CStr,
-    ) -> DialectStatementCursor<'a, N> {
+    pub fn parse_cstr<'a>(&self, source: &'a std::ffi::CStr) -> DialectStatementCursor<'a, N>
+    where
+        'd: 'a,
+    {
         DialectStatementCursor {
             inner: self.inner.parse_cstr(source),
             _marker: PhantomData,
@@ -150,7 +153,10 @@ impl<'d, N: NodeFamily> DialectTokenizer<'d, N> {
     }
 
     /// Bind source text and return a [`DialectTokenCursor`] for iterating typed tokens.
-    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> DialectTokenCursor<'a, N> {
+    pub fn tokenize<'a>(&self, source: &'a str) -> DialectTokenCursor<'a, N>
+    where
+        'd: 'a,
+    {
         DialectTokenCursor {
             inner: self.inner.tokenize(source),
             _marker: PhantomData,
@@ -158,10 +164,10 @@ impl<'d, N: NodeFamily> DialectTokenizer<'d, N> {
     }
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn tokenize_cstr<'a>(
-        &'a mut self,
-        source: &'a std::ffi::CStr,
-    ) -> DialectTokenCursor<'a, N> {
+    pub fn tokenize_cstr<'a>(&self, source: &'a std::ffi::CStr) -> DialectTokenCursor<'a, N>
+    where
+        'd: 'a,
+    {
         DialectTokenCursor {
             inner: self.inner.tokenize_cstr(source),
             _marker: PhantomData,
@@ -227,7 +233,10 @@ impl<'d, N: NodeFamily> DialectIncrementalParser<'d, N> {
     }
 
     /// Bind source text and return a [`DialectIncrementalCursor`] for token feeding.
-    pub fn feed<'a>(&'a mut self, source: &'a str) -> DialectIncrementalCursor<'a, N> {
+    pub fn feed<'a>(&self, source: &'a str) -> DialectIncrementalCursor<'a, N>
+    where
+        'd: 'a,
+    {
         DialectIncrementalCursor {
             inner: self.inner.feed(source),
             last_root: None,
@@ -236,10 +245,10 @@ impl<'d, N: NodeFamily> DialectIncrementalParser<'d, N> {
     }
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn feed_cstr<'a>(
-        &'a mut self,
-        source: &'a std::ffi::CStr,
-    ) -> DialectIncrementalCursor<'a, N> {
+    pub fn feed_cstr<'a>(&self, source: &'a std::ffi::CStr) -> DialectIncrementalCursor<'a, N>
+    where
+        'd: 'a,
+    {
         DialectIncrementalCursor {
             inner: self.inner.feed_cstr(source),
             last_root: None,

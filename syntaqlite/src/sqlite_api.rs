@@ -31,7 +31,7 @@ use crate::parser::typed::{
 /// ```
 /// use syntaqlite::Parser;
 ///
-/// let mut parser = Parser::new();
+/// let parser = Parser::new();
 /// for stmt in parser.parse("SELECT 1 + 2; CREATE TABLE t(x)") {
 ///     let stmt = stmt.expect("parse error");
 ///     println!("{stmt:?}");
@@ -62,14 +62,14 @@ impl Parser {
     }
 
     /// Bind source text and return a [`StatementCursor`] for iterating typed statements.
-    pub fn parse<'a>(&'a mut self, source: &'a str) -> StatementCursor<'a> {
+    pub fn parse<'a>(&self, source: &'a str) -> StatementCursor<'a> {
         StatementCursor {
             inner: self.inner.parse(source),
         }
     }
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn parse_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> StatementCursor<'a> {
+    pub fn parse_cstr<'a>(&self, source: &'a std::ffi::CStr) -> StatementCursor<'a> {
         StatementCursor {
             inner: self.inner.parse_cstr(source),
         }
@@ -143,14 +143,14 @@ impl Tokenizer {
     }
 
     /// Bind source text and return a [`TokenCursor`] for iterating typed tokens.
-    pub fn tokenize<'a>(&'a mut self, source: &'a str) -> TokenCursor<'a> {
+    pub fn tokenize<'a>(&self, source: &'a str) -> TokenCursor<'a> {
         TokenCursor {
             inner: self.inner.tokenize(source),
         }
     }
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn tokenize_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> TokenCursor<'a> {
+    pub fn tokenize_cstr<'a>(&self, source: &'a std::ffi::CStr) -> TokenCursor<'a> {
         TokenCursor {
             inner: self.inner.tokenize_cstr(source),
         }
@@ -202,14 +202,14 @@ impl IncrementalParser {
     }
 
     /// Bind source text and return an [`IncrementalCursor`] for token feeding.
-    pub fn feed<'a>(&'a mut self, source: &'a str) -> IncrementalCursor<'a> {
+    pub fn feed<'a>(&self, source: &'a str) -> IncrementalCursor<'a> {
         IncrementalCursor {
             inner: self.inner.feed(source),
         }
     }
 
     /// Zero-copy variant: bind a null-terminated source.
-    pub fn feed_cstr<'a>(&'a mut self, source: &'a std::ffi::CStr) -> IncrementalCursor<'a> {
+    pub fn feed_cstr<'a>(&self, source: &'a std::ffi::CStr) -> IncrementalCursor<'a> {
         IncrementalCursor {
             inner: self.inner.feed_cstr(source),
         }

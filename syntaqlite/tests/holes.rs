@@ -36,7 +36,7 @@ fn hole_in_expr_position() {
     //        0123456789...
     let source = "SELECT * FROM users WHERE id = {user_id}";
 
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     // SELECT
@@ -83,7 +83,7 @@ fn hole_in_expr_position() {
 fn hole_in_table_name_position() {
     let source = "SELECT * FROM {table}";
 
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -115,7 +115,7 @@ fn hole_in_table_name_position() {
 fn hole_in_table_name_with_trailing_clause() {
     let source = "SELECT * FROM {table} WHERE id = 1";
 
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -169,7 +169,7 @@ fn hole_in_table_name_with_trailing_clause() {
 fn multiple_holes() {
     let source = "SELECT {cols} FROM {table} WHERE {col} = {val}";
 
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -216,7 +216,7 @@ fn multiple_holes() {
 fn hole_as_trailing_clause() {
     let source = "SELECT * FROM users {extra}";
 
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
@@ -245,7 +245,7 @@ fn hole_as_trailing_clause() {
 fn baseline_id_in_macro_region() {
     let source = "SELECT * FROM {table} WHERE id = 1";
 
-    let mut tp = IncrementalParser::new();
+    let tp = IncrementalParser::new();
     let mut cursor = tp.feed(source);
 
     cursor.feed_token(tk::SELECT, 0..6).unwrap();
