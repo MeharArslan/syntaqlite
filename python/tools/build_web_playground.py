@@ -262,7 +262,7 @@ SyntaqliteParser* syntaqlite_create_parser_with_dialect(
         [
             sys.executable, cargo, "--no-sysroot",
             "run", "-p", "syntaqlite-cli", "--",
-            "codegen-dialect", "--name", "perfetto",
+            "dialect", "--name", "perfetto",
             "--actions-dir", os.path.join(ROOT_DIR, "dialects", "perfetto", "actions"),
             "--nodes-dir", os.path.join(ROOT_DIR, "dialects", "perfetto", "nodes"),
             "--output-dir", perfetto_csrc_dir,

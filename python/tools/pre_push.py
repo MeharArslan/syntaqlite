@@ -4,10 +4,23 @@
 """Pre-push verification: all checks must pass before marking work done.
 
 Usage:
-    tools/pre-push          — run all checks (headers only, output on failure)
+    tools/pre-push          — run affected checks only (smart detection)
+    tools/pre-push --all    — run all checks regardless of what changed
     tools/pre-push --fix    — auto-fix what's possible, then run remaining checks
     tools/pre-push -q       — quiet: no output unless a step fails (for agents)
     tools/pre-push -v       — verbose: step headers + full command output
+
+Smart detection compares HEAD + staged + unstaged changes against the upstream
+tracking branch (falling back to origin/main) to determine which checks are
+actually needed.  Checks that cannot be affected by the changed files are
+skipped.  Pass --all to run everything unconditionally.
+
+Examples of what gets skipped:
+  • Only syntaqlite-buildtools/ changed  → diff tests skipped
+  • Only dialects/perfetto/ changed      → only perfetto diff tests run
+  • Only syntaqlite/src/fmt/ changed     → only fmt + perfetto-fmt tests run
+  • Only *.c / *.h changed               → Rust checks skipped
+  • Only test baselines changed          → only the matching diff suite runs
 
 Build cache strategy: the --all-features clippy step uses an isolated target
 directory (target/clippy-all-features) so it doesn't invalidate the cache for
@@ -200,117 +213,361 @@ def _has_emscripten():
 
 
 # ---------------------------------------------------------------------------
+# Smart change detection
+# ---------------------------------------------------------------------------
+
+# Rust paths whose changes only affect specific diff-test domains.
+# Files not matching any of these (and not in _RUST_NO_DIFF_PATHS) are
+# treated as "core" and trigger all diff tests.
+_RUST_PARSER_PATHS = (
+    "syntaqlite-parser/",
+    "syntaqlite-parser-sqlite/",
+    "syntaqlite/src/parser/",
+    "syntaqlite/src/sqlite/",
+)
+_RUST_FMT_PATHS = ("syntaqlite/src/fmt/",)
+_RUST_SEMANTIC_PATHS = ("syntaqlite/src/semantic/",)
+_RUST_PERFETTO_PATHS = ("dialects/perfetto/",)
+_RUST_AMALG_PATHS = ("syntaqlite-wasm/",)
+
+# Rust changes in these paths don't affect any diff test suites.
+_RUST_NO_DIFF_PATHS = (
+    "syntaqlite-buildtools/",
+    "syntaqlite/src/lsp/",
+)
+
+# C/H files under these paths only affect amalgamation tests.
+_AMALG_C_PATHS = ("sqlite-amalgamations/",)
+
+
+def _get_changed_files():
+    """Return the set of file paths changed since the upstream tracking branch.
+
+    Includes committed-but-not-pushed, staged, and unstaged changes.
+    Returns None if the comparison base cannot be determined (run all checks).
+    """
+    # Find the upstream tracking branch; fall back to origin/main.
+    proc = subprocess.run(
+        ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+        cwd=ROOT_DIR, capture_output=True, text=True,
+    )
+    upstream = proc.stdout.strip() if proc.returncode == 0 else "origin/main"
+
+    # Find the common ancestor so we compare the right range.
+    proc = subprocess.run(
+        ["git", "merge-base", "HEAD", upstream],
+        cwd=ROOT_DIR, capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        return None  # No common base; run all checks.
+    merge_base = proc.stdout.strip()
+
+    changed = set()
+    for git_args in (
+        ["diff", "--name-only", merge_base, "HEAD"],  # committed since base
+        ["diff", "--name-only", "--cached"],           # staged
+        ["diff", "--name-only"],                       # unstaged
+    ):
+        proc = subprocess.run(
+            ["git"] + git_args, cwd=ROOT_DIR, capture_output=True, text=True,
+        )
+        if proc.returncode == 0:
+            changed.update(f for f in proc.stdout.strip().splitlines() if f)
+    return changed
+
+
+def _classify(changed):
+    """Map changed file paths to check-domain flags.
+
+    Returns a dict of bool flags.  If *changed* is None (unknown), all flags
+    are set True (conservative: run everything).
+    """
+    all_true = {
+        "has_rust": True, "has_c": True,
+        "run_ast": True, "run_fmt": True, "run_amalg": True,
+        "run_perfetto_fmt": True, "run_perfetto_val": True,
+    }
+    if changed is None:
+        return all_true
+
+    f = {k: False for k in all_true}
+
+    for path in changed:
+        is_rust = path.endswith(".rs") or path.endswith("Cargo.toml") or path == "Cargo.lock"
+        is_c = path.endswith(".c") or path.endswith(".h")
+        is_synq = path.endswith(".synq")
+
+        if is_rust:
+            f["has_rust"] = True
+        if is_c:
+            f["has_c"] = True
+
+        # .synq definitions drive all C and Rust codegen; touch every domain.
+        if is_synq:
+            f["has_rust"] = f["has_c"] = True
+            f["run_ast"] = f["run_fmt"] = True
+            f["run_perfetto_fmt"] = f["run_perfetto_val"] = True
+            continue
+
+        # Test-baseline changes only require running the matching suite.
+        if path.startswith("tests/ast_diff_tests/"):
+            f["run_ast"] = True
+        if path.startswith("tests/fmt_diff_tests/"):
+            f["run_fmt"] = True
+        if path.startswith("tests/amalg_tests/"):
+            f["run_amalg"] = True
+        if path.startswith("tests/perfetto_fmt_diff_tests/"):
+            f["run_perfetto_fmt"] = True
+        if path.startswith("tests/perfetto_validation_diff_tests/"):
+            f["run_perfetto_val"] = True
+
+        # C file domain: sqlite amalgamation sources → amalg only; other C
+        # files are parser sources that affect all non-amalg diff tests.
+        if is_c:
+            if path.startswith(_AMALG_C_PATHS):
+                f["run_amalg"] = True
+            else:
+                f["run_ast"] = f["run_fmt"] = True
+                f["run_perfetto_fmt"] = f["run_perfetto_val"] = True
+
+        # Rust file domain classification.
+        if is_rust:
+            if path.startswith(_RUST_PARSER_PATHS):
+                # Parser changes affect all output formats.
+                f["run_ast"] = f["run_fmt"] = True
+                f["run_perfetto_fmt"] = f["run_perfetto_val"] = True
+            elif path.startswith(_RUST_FMT_PATHS):
+                f["run_fmt"] = True
+                f["run_perfetto_fmt"] = True
+            elif path.startswith(_RUST_SEMANTIC_PATHS):
+                f["run_perfetto_val"] = True
+            elif path.startswith(_RUST_PERFETTO_PATHS):
+                f["run_perfetto_fmt"] = True
+                f["run_perfetto_val"] = True
+            elif path.startswith(_RUST_AMALG_PATHS):
+                f["run_amalg"] = True
+            elif path.startswith(_RUST_NO_DIFF_PATHS):
+                pass  # Rust change, but no diff test is affected.
+            else:
+                # Core / shared Rust (cli, common, dialect, etc.) — conservative.
+                f["run_ast"] = f["run_fmt"] = True
+                f["run_perfetto_fmt"] = f["run_perfetto_val"] = True
+
+        # Non-Rust, non-C, non-.synq files (docs, Python tools, etc.) don't
+        # affect any compiled output, so we leave the diff-test flags alone.
+
+    return f
+
+
+# ---------------------------------------------------------------------------
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
-def _main(fix, verbosity):
+def _main(fix, verbosity, run_all):
     cargo = _cargo_cmd
     clippy_all_target_dir = os.path.join(ROOT_DIR, "target", "clippy-all-features")
 
-    # ── Phase 1: Format (sequential) ──────────────────────────────────
-    if fix:
-        r = run_step("cargo fmt", cargo("fmt"), verbosity)
+    # ── Detect what changed ────────────────────────────────────────────
+    if run_all:
+        changed_files = None  # None → all flags True
     else:
-        r = run_step("cargo fmt --check", cargo("fmt", "--check"), verbosity)
-    if not r.ok:
-        return r.returncode
+        changed_files = _get_changed_files()
+
+    flags = _classify(changed_files)
+
+    need_rust = flags["has_rust"]
+    need_c = flags["has_c"]
+    need_compilation = need_rust or need_c
+    need_diff_tests = any(
+        flags[k] for k in ("run_ast", "run_fmt", "run_amalg", "run_perfetto_fmt", "run_perfetto_val")
+    )
+
+    # If diff tests are needed but no Rust/C changed, verify the CLI binary
+    # already exists; if not, force a build.
+    if need_diff_tests and not need_compilation:
+        cli_binary = os.path.join(ROOT_DIR, "target", "debug", "syntaqlite-cli")
+        if not os.path.exists(cli_binary):
+            if verbosity >= 0:
+                print(f"{_YELLOW}==> CLI binary not found — forcing build{_RESET}")
+            need_compilation = True
+            need_rust = True
+
+    # Print a brief change-detection summary (normal verbosity only).
+    if verbosity >= 0 and changed_files is not None:
+        if not changed_files:
+            print(f"\n{_GREEN}Nothing changed since upstream — skipping all checks.{_RESET}")
+            return 0
+        domains = []
+        if need_rust:
+            domains.append("Rust")
+        if need_c:
+            domains.append("C")
+        if not domains:
+            domains.append("non-code")
+        active_diffs = [
+            k.replace("run_", "") for k in
+            ("run_ast", "run_fmt", "run_amalg", "run_perfetto_fmt", "run_perfetto_val")
+            if flags[k]
+        ]
+        diff_summary = ", ".join(active_diffs) if active_diffs else "none"
+        print(f"{_BLUE}[smart] changed: {', '.join(domains)} | diff tests: {diff_summary}{_RESET}")
+
+    def _skip(desc):
+        if verbosity >= 0:
+            print(f"{_YELLOW}==> {desc} (skipped — not affected){_RESET}")
+
+    # ── Phase 1: Format (sequential) ──────────────────────────────────
+    if need_rust:
+        if fix:
+            r = run_step("cargo fmt", cargo("fmt"), verbosity)
+        else:
+            r = run_step("cargo fmt --check", cargo("fmt", "--check"), verbosity)
+        if not r.ok:
+            return r.returncode
+    else:
+        _skip("cargo fmt --check")
 
     # ── Phase 2: Lint + C checks ──────────────────────────────────────
     if fix:
-        # Fix mode: two parallel lanes, then a sequential tail.
+        # Fix mode: parallel lanes, then a sequential tail.
         #   Lane A — clippy --fix --all-features (isolated target dir)
         #   Lane B — format-c (fix) + check-c-deps (no cargo lock needed)
-        lanes = [
-            [
+        lint_lanes = []
+        if need_rust:
+            lint_lanes.append([
                 ("cargo clippy --fix --all-features",
                  cargo("clippy", "--tests", "--all-features", "--all-targets",
                        "--fix", "--allow-dirty", "--allow-staged",
                        "--target-dir", clippy_all_target_dir,
                        "--", "-D", "warnings")),
-            ],
-            [
+            ])
+        else:
+            _skip("cargo clippy --fix --all-features")
+        if need_c:
+            lint_lanes.append([
                 ("tools/format-c", [_tool("format-c")]),
                 ("tools/check-c-deps", [_tool("check-c-deps")]),
-            ],
-        ]
-        if not run_parallel_group(lanes, verbosity):
-            return 1
+            ])
+        else:
+            _skip("tools/format-c")
+
+        if lint_lanes:
+            if not run_parallel_group(lint_lanes, verbosity):
+                return 1
 
         # Sequential tail: re-format after clippy --fix, then dead-code.
-        for desc, cmd in [
-            ("cargo fmt (post-clippy-fix)", cargo("fmt")),
-            ("dead code check: default features",
-             cargo("clippy", "--all-targets", "--", *_DEAD_CODE_LINTS)),
-            ("dead code check: no default features",
-             cargo("clippy", "--all-targets", "--no-default-features",
-                   "--", *_DEAD_CODE_LINTS)),
-        ]:
-            r = run_step(desc, cmd, verbosity)
-            if not r.ok:
-                return r.returncode
-    else:
-        # Check mode: three parallel lanes.
-        #   Lane A — clippy --all-features (isolated target dir)
-        #   Lane B — clippy default → clippy no-default (shared target dir)
-        #   Lane C — format-c --check + check-c-deps (no cargo)
-        lanes = [
-            [
-                ("cargo clippy --all-features",
-                 cargo("clippy", "--tests", "--all-features", "--all-targets",
-                       "--target-dir", clippy_all_target_dir,
-                       "--", "-D", "warnings")),
-            ],
-            [
+        if need_rust:
+            for desc, cmd in [
+                ("cargo fmt (post-clippy-fix)", cargo("fmt")),
                 ("dead code check: default features",
                  cargo("clippy", "--all-targets", "--", *_DEAD_CODE_LINTS)),
                 ("dead code check: no default features",
                  cargo("clippy", "--all-targets", "--no-default-features",
                        "--", *_DEAD_CODE_LINTS)),
-            ],
-            [
+            ]:
+                r = run_step(desc, cmd, verbosity)
+                if not r.ok:
+                    return r.returncode
+        else:
+            _skip("dead code checks")
+    else:
+        # Check mode: up to three parallel lanes.
+        #   Lane A — clippy --all-features (isolated target dir)
+        #   Lane B — clippy default → clippy no-default (shared target dir)
+        #   Lane C — format-c --check + check-c-deps (no cargo)
+        lint_lanes = []
+        if need_rust:
+            lint_lanes.append([
+                ("cargo clippy --all-features",
+                 cargo("clippy", "--tests", "--all-features", "--all-targets",
+                       "--target-dir", clippy_all_target_dir,
+                       "--", "-D", "warnings")),
+            ])
+            lint_lanes.append([
+                ("dead code check: default features",
+                 cargo("clippy", "--all-targets", "--", *_DEAD_CODE_LINTS)),
+                ("dead code check: no default features",
+                 cargo("clippy", "--all-targets", "--no-default-features",
+                       "--", *_DEAD_CODE_LINTS)),
+            ])
+        else:
+            _skip("cargo clippy --all-features")
+            _skip("dead code checks")
+        if need_c:
+            lint_lanes.append([
                 ("tools/format-c --check", [_tool("format-c"), "--check"]),
                 ("tools/check-c-deps", [_tool("check-c-deps")]),
-            ],
-        ]
-        if not run_parallel_group(lanes, verbosity):
-            return 1
+            ])
+        else:
+            _skip("tools/format-c --check")
+
+        if lint_lanes:
+            if not run_parallel_group(lint_lanes, verbosity):
+                return 1
 
     # ── Phase 3: API + build + unit tests (sequential) ────────────────
-    # All three use target/ — must be sequential to avoid cargo lock
-    # contention.
-    for desc, cmd in [
-        ("tools/check-public-api", [_tool("check-public-api")]),
-        ("cargo build -p syntaqlite-cli", cargo("build", "-p", "syntaqlite-cli")),
-        ("tools/run-unit-tests", [_tool("run-unit-tests")]),
-    ]:
-        r = run_step(desc, cmd, verbosity)
+    # All three use target/ — must be sequential to avoid cargo lock contention.
+    if need_rust:
+        r = run_step("tools/check-public-api", [_tool("check-public-api")], verbosity)
         if not r.ok:
             return r.returncode
+    else:
+        _skip("tools/check-public-api")
+
+    if need_compilation:
+        r = run_step(
+            "cargo build -p syntaqlite-cli",
+            cargo("build", "-p", "syntaqlite-cli"),
+            verbosity,
+        )
+        if not r.ok:
+            return r.returncode
+    else:
+        _skip("cargo build -p syntaqlite-cli")
+
+    if need_rust:
+        r = run_step("tools/run-unit-tests", [_tool("run-unit-tests")], verbosity)
+        if not r.ok:
+            return r.returncode
+    else:
+        _skip("tools/run-unit-tests")
 
     # ── Phase 4: Diff/integration tests (parallel) ────────────────────
     # Each suite uses isolated temp directories and only reads the CLI
     # binary — safe to run concurrently.
-    lanes = [
-        [("tools/run-ast-diff-tests", [_tool("run-ast-diff-tests")])],
-        [("tools/run-fmt-diff-tests", [_tool("run-fmt-diff-tests")])],
-        [("tools/run-amalg-tests", [_tool("run-amalg-tests")])],
-        [("tools/run-perfetto-fmt-diff-tests",
-          [_tool("run-perfetto-fmt-diff-tests")])],
-        [("tools/run-perfetto-validation-diff-tests",
-          [_tool("run-perfetto-validation-diff-tests")])],
-    ]
-    if _has_emscripten():
-        lanes.append(
-            [("tools/build-web-playground", [_tool("build-web-playground")])],
-        )
-    elif verbosity >= 0:
-        print(
-            f"\n{_YELLOW}==> tools/build-web-playground "
-            f"(skipped — emscripten not installed){_RESET}",
-        )
+    diff_lanes = []
+    diff_skipped = []
 
-    if not run_parallel_group(lanes, verbosity):
-        return 1
+    for key, tool_name in (
+        ("run_ast",           "run-ast-diff-tests"),
+        ("run_fmt",           "run-fmt-diff-tests"),
+        ("run_amalg",         "run-amalg-tests"),
+        ("run_perfetto_fmt",  "run-perfetto-fmt-diff-tests"),
+        ("run_perfetto_val",  "run-perfetto-validation-diff-tests"),
+    ):
+        if flags[key]:
+            diff_lanes.append([(f"tools/{tool_name}", [_tool(tool_name)])])
+        else:
+            diff_skipped.append(f"tools/{tool_name}")
+
+    # WASM playground: only relevant when any compilation is needed.
+    run_wasm = need_compilation
+    if run_wasm and _has_emscripten():
+        diff_lanes.append([("tools/build-web-playground", [_tool("build-web-playground")])])
+    elif verbosity >= 0:
+        reason = "not affected" if not run_wasm else "emscripten not installed"
+        print(f"\n{_YELLOW}==> tools/build-web-playground (skipped — {reason}){_RESET}")
+
+    for name in diff_skipped:
+        _skip(name)
+
+    if diff_lanes:
+        if not run_parallel_group(diff_lanes, verbosity):
+            return 1
+    elif not need_rust and not need_c:
+        # Nothing ran at all — be explicit.
+        if verbosity >= 0:
+            print(f"\n{_YELLOW}No compilation or diff tests needed.{_RESET}")
 
     print(f"\n{_GREEN}All pre-push checks passed.{_RESET}")
     return 0
@@ -323,6 +580,10 @@ def main():
     parser.add_argument(
         "--fix", action="store_true",
         help="Auto-fix what's possible, then run remaining checks",
+    )
+    parser.add_argument(
+        "--all", action="store_true",
+        help="Run all checks regardless of what changed (disables smart detection)",
     )
     group = parser.add_mutually_exclusive_group()
     group.add_argument(
@@ -338,7 +599,7 @@ def main():
     verbosity = -1 if args.quiet else (1 if args.verbose else 0)
 
     try:
-        return _main(args.fix, verbosity)
+        return _main(args.fix, verbosity, args.all)
     except KeyboardInterrupt:
         print(f"\n{_RED}Interrupted.{_RESET}", file=sys.stderr)
         return 130

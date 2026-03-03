@@ -48,7 +48,7 @@ class DialectConfig:
 # ---------------------------------------------------------------------------
 
 def _build_full(cli_binary: Path, dialect: DialectConfig, output_dir: Path) -> None:
-    cmd = [str(cli_binary), "codegen-dialect", "--name", dialect.name]
+    cmd = [str(cli_binary), "dialect", "--name", dialect.name]
     if dialect.actions_dir:
         cmd += ["--actions-dir", dialect.actions_dir]
     if dialect.nodes_dir:
@@ -64,7 +64,7 @@ def _build_full(cli_binary: Path, dialect: DialectConfig, output_dir: Path) -> N
 def _build_dialect_only(
     cli_binary: Path, dialect: DialectConfig, output_dir: Path
 ) -> None:
-    cmd = [str(cli_binary), "codegen-dialect", "--name", dialect.name]
+    cmd = [str(cli_binary), "dialect", "--name", dialect.name]
     if dialect.actions_dir:
         cmd += ["--actions-dir", dialect.actions_dir]
     if dialect.nodes_dir:
@@ -78,7 +78,7 @@ def _build_dialect_only(
 
 
 def _build_runtime_only(cli_binary: Path, output_dir: Path) -> None:
-    cmd = [str(cli_binary), "codegen-dialect", "--name", "sqlite",
+    cmd = [str(cli_binary), "dialect", "--name", "sqlite",
            "--output-type", "runtime-only", "--output-dir", str(output_dir)]
     proc = subprocess.run(cmd, capture_output=True, text=True)
     if proc.returncode != 0:
