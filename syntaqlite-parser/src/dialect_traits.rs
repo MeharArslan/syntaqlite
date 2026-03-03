@@ -38,7 +38,7 @@ pub trait DialectTokenType: Sized + Clone + Copy + std::fmt::Debug + Into<u32> {
 /// Bundles the node and token types for a dialect into a single type parameter.
 ///
 /// Implementing this trait for a zero-sized marker type (e.g. `SqliteNodeFamily`)
-/// allows the tagged [`Dialect<'d, N>`](crate::Dialect) handle to infer both
+/// allows the tagged [`TypedDialectEnv<'d, N>`](crate::TypedDialectEnv) handle to infer both
 /// the node and token types at construction.
 pub trait NodeFamily {
     /// The top-level typed AST node (e.g. `Stmt<'a>`).

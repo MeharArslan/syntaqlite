@@ -11,7 +11,7 @@ use clap::ValueEnum;
 use syntaqlite::Formatter;
 use syntaqlite::semantic::{SourceContext, ValidationConfig};
 use syntaqlite::{FormatConfig, KeywordCase};
-use syntaqlite_parser::{DialectEnv, FfiDialect, ParseError, RawParser};
+use syntaqlite_parser::{Dialect, DialectEnv, ParseError, RawParser};
 
 use super::{Cli, Command};
 
@@ -76,7 +76,7 @@ unsafe fn dialect_from_library<'lib>(
     name: Option<&str>,
 ) -> Result<DialectEnv<'lib>, String> {
     let symbol_name = dialect_symbol_name(name);
-    let func: libloading::Symbol<unsafe extern "C" fn() -> *const FfiDialect> = unsafe {
+    let func: libloading::Symbol<unsafe extern "C" fn() -> *const core::ffi::c_void> = unsafe {
         lib.get(symbol_name.as_bytes())
             .map_err(|e| format!("symbol {symbol_name} not found in library: {e}"))?
     };
@@ -84,7 +84,7 @@ unsafe fn dialect_from_library<'lib>(
     if raw.is_null() {
         return Err(format!("{symbol_name} returned null"));
     }
-    Ok(unsafe { DialectEnv::from_raw(raw) })
+    Ok(unsafe { DialectEnv::new(Dialect::from_raw(raw)) })
 }
 
 pub(crate) fn dispatch(cli: Cli, dialect: Option<DialectEnv<'_>>) -> Result<(), String> {

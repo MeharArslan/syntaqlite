@@ -68,7 +68,7 @@
 //!
 //! - [`ast`] — SQLite-specific typed AST nodes and the top-level
 //!   [`Stmt`](ast::Stmt) enum.
-//! - [`dialect`] — The opaque `Dialect` handle, the
+//! - [`dialect`] — The opaque `TypedDialectEnv` handle, the
 //!   [`sqlite()`](dialect::sqlite) dialect accessor, and
 //!   semantic [`TokenCategory`](dialect::TokenCategory) enum.
 //! - [`fmt`] — Formatter configuration ([`FormatConfig`],
@@ -84,7 +84,7 @@ pub(crate) mod parser;
 //
 // The concrete types — `Parser`, `Tokenizer`, `StatementCursor`, etc. —
 // bake in the SQLite dialect so call sites never need type parameters.
-// Dialect-generic versions live in the `dialect` module.
+// TypedDialectEnv-generic versions live in the `dialect` module.
 
 #[cfg(feature = "sqlite")]
 mod sqlite_api;

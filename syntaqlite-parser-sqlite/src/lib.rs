@@ -18,10 +18,10 @@ pub(crate) mod dialect;
 pub use dialect::dialect;
 
 /// Returns the tagged SQLite dialect handle carrying [`SqliteNodeFamily`] type info.
-pub use dialect::tagged_dialect;
+pub use dialect::typed_dialect;
 
 /// Marker type bundling the SQLite AST node and token types for use with
-/// [`syntaqlite_parser::Dialect<'d, N>`].
+/// [`syntaqlite_parser::TypedDialectEnv<'d, N>`].
 pub struct SqliteNodeFamily;
 
 impl syntaqlite_parser::NodeFamily for SqliteNodeFamily {

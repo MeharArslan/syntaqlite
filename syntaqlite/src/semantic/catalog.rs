@@ -163,7 +163,7 @@ impl DatabaseCatalog {
 
 // ── StaticCatalog (internal, built from dialect) ─────────────────────
 
-/// Dialect-builtin functions and relations. Built once at
+/// TypedDialectEnv-builtin functions and relations. Built once at
 /// [`SemanticAnalyzer::new()`](super::SemanticAnalyzer::new), immutable thereafter.
 pub(crate) struct StaticCatalog {
     pub(crate) functions: FunctionCatalog,

@@ -31,8 +31,9 @@ This allows projects like libSQL, rqlite, or custom embedded databases to use sy
 
 ## Key APIs
 
+- `Dialect` (`syntaqlite_parser::Dialect`) — re-export of the C `ffi::Dialect` struct. Used in FFI declarations: `fn my_dialect() -> *const Dialect`.
 - `DialectEnv<'d>` (`syntaqlite_parser::dialect`) — the primary dialect handle with safe accessors: `is_list`, `field_meta`, `node_name`, `fmt_dispatch`, `fmt_string`, `fmt_enum_display_val`, token/keyword helpers. Copy.
-- `Dialect<'d, N: NodeFamily>` — wraps `DialectEnv<'d>` and adds typed node access; obtained via `Dialect::from_raw_dialect(env)`.
+- `TypedDialectEnv<'d, N: NodeFamily>` — wraps `DialectEnv<'d>` and adds typed node access; obtained via `TypedDialectEnv::from_raw_dialect(env)`.
 - `Formatter` (in `syntaqlite::fmt`) — high-level formatter:
   - `Formatter::new()` — default SQLite dialect
   - `Formatter::with_config(dialect, &FormatConfig)` — custom dialect/config
@@ -44,8 +45,8 @@ This allows projects like libSQL, rqlite, or custom embedded databases to use sy
 - **Feature flags at module boundary**: `#[cfg(feature = "...")]` goes on `mod` and `pub use` declarations, NOT on individual imports/functions/statements inside modules
 - FFI types in `dialect/ffi.rs` and `parser/ffi.rs` — no `Syntaqlite` prefix in Rust, always accessed via `ffi::` module path
 - Compile-time layout checks (`const _: () = { assert!(...) }`) beside every `#[repr(C)]` struct
-- `Dialect<'d>` parameterized on lifetime — no `'static` requirement, enables stack-allocated test dialects
-- Unsafe minimized: `Dialect` safe accessors wrap all raw pointer access; `Interpreter` has zero unsafe
+- `DialectEnv<'d>` parameterized on lifetime — no `'static` requirement, enables stack-allocated test dialects
+- Unsafe minimized: `DialectEnv` safe accessors wrap all raw pointer access; `Interpreter` has zero unsafe
 - AST dump is in C (`syntaqlite_dump_node`), not Rust — single source of truth for metadata
 
 ## Key Directories

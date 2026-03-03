@@ -14,8 +14,8 @@ use syntaqlite::dialect::{
 use syntaqlite::incremental::{IncrementalCursor, IncrementalParser};
 use syntaqlite::{Parser, StatementCursor, TokenCursor, Tokenizer};
 use syntaqlite_parser::{
-    Dialect as TaggedDialect, RawIncrementalCursor, RawIncrementalParser, RawParser,
-    RawStatementCursor, RawTokenCursor, RawTokenizer,
+    RawIncrementalCursor, RawIncrementalParser, RawParser, RawStatementCursor, RawTokenCursor,
+    RawTokenizer, TypedDialectEnv as TaggedDialect,
 };
 use syntaqlite_parser_sqlite::SqliteNodeFamily;
 
@@ -23,7 +23,7 @@ fn raw_dialect() -> syntaqlite_parser::DialectEnv<'static> {
     syntaqlite::dialect::sqlite()
 }
 
-fn tagged_dialect() -> TaggedDialect<'static, SqliteNodeFamily> {
+fn typed_dialect() -> TaggedDialect<'static, SqliteNodeFamily> {
     TaggedDialect::from_raw_dialect(raw_dialect())
 }
 
@@ -125,7 +125,7 @@ fn dialect_parser_and_cursor_coexist() {
         cursor: DialectStatementCursor<'static, SqliteNodeFamily>,
     }
 
-    let parser = DialectParser::from_dialect(tagged_dialect());
+    let parser = DialectParser::from_dialect(typed_dialect());
     let cursor = parser.parse("SELECT 1");
     let mut s = S {
         _parser: parser,
@@ -141,7 +141,7 @@ fn dialect_tokenizer_and_cursor_coexist() {
         cursor: DialectTokenCursor<'a, SqliteNodeFamily>,
     }
 
-    let tokenizer = DialectTokenizer::from_dialect(tagged_dialect());
+    let tokenizer = DialectTokenizer::from_dialect(typed_dialect());
     let cursor = tokenizer.tokenize("SELECT 1");
     let mut s = S {
         _tokenizer: tokenizer,
@@ -157,7 +157,7 @@ fn dialect_incremental_parser_and_cursor_coexist() {
         cursor: DialectIncrementalCursor<'static, SqliteNodeFamily>,
     }
 
-    let parser = DialectIncrementalParser::from_dialect(tagged_dialect());
+    let parser = DialectIncrementalParser::from_dialect(typed_dialect());
     let cursor = parser.feed("SELECT 1");
     let mut s = S {
         _parser: parser,

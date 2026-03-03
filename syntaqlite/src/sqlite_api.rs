@@ -10,7 +10,8 @@
 use std::ops::Range;
 
 use syntaqlite_parser::{
-    Comment, Dialect as TaggedDialect, MacroRegion, NodeRef, ParseError, ParserConfig, RawNodeId,
+    Comment, MacroRegion, NodeRef, ParseError, ParserConfig, RawNodeId,
+    TypedDialectEnv as TaggedDialect,
 };
 use syntaqlite_parser_sqlite::SqliteNodeFamily;
 

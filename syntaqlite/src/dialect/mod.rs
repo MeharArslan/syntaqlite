@@ -1,15 +1,15 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Dialect handle and token classification.
+//! TypedDialectEnv handle and token classification.
 //!
-//! A `Dialect` is an opaque, `Copy` handle wrapping a pointer to a C
+//! A `TypedDialectEnv` is an opaque, `Copy` handle wrapping a pointer to a C
 //! dialect descriptor produced by codegen. It provides metadata about
 //! node names, field layouts, token categories, keyword tables, and
 //! formatter bytecode — everything a parser, formatter, or validator needs
 //! to operate on a particular SQL grammar.
 //!
-//! Most users will never construct a `Dialect` directly; the built-in
+//! Most users will never construct a `TypedDialectEnv` directly; the built-in
 //! SQLite dialect is available via [`sqlite()`].
 //! External dialect crates obtain their handle through the generated
 //! dialect descriptor.
@@ -18,7 +18,7 @@
 
 use syntaqlite_parser::DialectEnv;
 
-// ── Dialect-generic typed wrappers ──────────────────────────────────────
+// ── TypedDialectEnv-generic typed wrappers ──────────────────────────────────────
 //
 // Re-exported from the internal `parser::typed` module so that dialect
 // authors can reach them as `syntaqlite::dialect::DialectParser`, etc.
@@ -28,7 +28,7 @@ pub use crate::parser::typed::{
     DialectToken, DialectTokenCursor, DialectTokenizer,
 };
 
-pub use syntaqlite_parser::{Dialect, NodeFamily};
+pub use syntaqlite_parser::{NodeFamily, TypedDialectEnv};
 
 /// Semantic category for a token type, used for syntax highlighting.
 ///
@@ -96,12 +96,12 @@ impl TokenCategory {
     }
 }
 
-/// Extension methods on `Dialect` that return typed [`TokenCategory`] values.
+/// Extension methods on `TypedDialectEnv` that return typed [`TokenCategory`] values.
 ///
-/// This trait bridges `syntaqlite-parser`'s `Dialect` (which returns raw `u8`
+/// This trait bridges `syntaqlite-parser`'s `TypedDialectEnv` (which returns raw `u8`
 /// for crate-boundary reasons) to `syntaqlite`'s `TokenCategory` enum.
 /// Import this trait to call [`classify_token`](DialectExt::classify_token) and
-/// [`token_category`](DialectExt::token_category) directly on a `Dialect`.
+/// [`token_category`](DialectExt::token_category) directly on a `TypedDialectEnv`.
 pub trait DialectExt {
     /// Classify a token using its type and parser-assigned flags.
     ///

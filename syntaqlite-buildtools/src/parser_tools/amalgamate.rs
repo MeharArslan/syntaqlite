@@ -6,7 +6,7 @@
 //!
 //! Three modes:
 //! - **Runtime only** — engine (`syntaqlite_runtime.{h,c}`) + extension header (`syntaqlite_dialect.h`)
-//! - **Dialect only** — dialect sources that `#include` the runtime header and ext header
+//! - **TypedDialectEnv only** — dialect sources that `#include` the runtime header and ext header
 //! - **Full** — runtime + dialect inlined into one pair of files
 //!
 //! The amalgamator uses a single-pass recursive include expansion: starting from
@@ -202,7 +202,7 @@ fn parse_include_directive(line: &str) -> Option<IncludeDirective<'_>> {
 enum EmitMode<'a> {
     /// Runtime only: `syntaqlite_runtime.{h,c}` + `syntaqlite_dialect.h`.
     RuntimeOnly,
-    /// Dialect only: `syntaqlite_<name>.{h,c}`, expects external runtime/ext headers.
+    /// TypedDialectEnv only: `syntaqlite_<name>.{h,c}`, expects external runtime/ext headers.
     DialectOnly {
         dialect: &'a str,
         runtime_header: &'a str,

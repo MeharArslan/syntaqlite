@@ -99,18 +99,18 @@ pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::node_count(&self) -
 pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
 pub fn syntaqlite::dialect::DialectIncrementalCursor<'d, N>::root(&self) -> core::option::Option<syntaqlite_parser::session::NodeRef<'_>>
 pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::feed(&self, source: &str) -> syntaqlite::dialect::DialectIncrementalCursor<'d, N>
-pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::Dialect<'d, N>) -> Self
-pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::with_config(dialect: syntaqlite_parser::dialect::Dialect<'d, N>, config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
-pub fn syntaqlite::dialect::DialectParser<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::Dialect<'d, N>) -> Self
+pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::TypedDialectEnv<'d, N>) -> Self
+pub fn syntaqlite::dialect::DialectIncrementalParser<'d, N>::with_config(dialect: syntaqlite_parser::dialect::TypedDialectEnv<'d, N>, config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
+pub fn syntaqlite::dialect::DialectParser<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::TypedDialectEnv<'d, N>) -> Self
 pub fn syntaqlite::dialect::DialectParser<'d, N>::parse(&self, source: &str) -> syntaqlite::dialect::DialectStatementCursor<'d, N>
-pub fn syntaqlite::dialect::DialectParser<'d, N>::with_config(dialect: syntaqlite_parser::dialect::Dialect<'d, N>, config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
+pub fn syntaqlite::dialect::DialectParser<'d, N>::with_config(dialect: syntaqlite_parser::dialect::TypedDialectEnv<'d, N>, config: &syntaqlite_parser::raw_session::ParserConfig) -> Self
 pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::next_statement(&mut self) -> core::option::Option<core::result::Result<<N as syntaqlite_parser::dialect_traits::NodeFamily>::Node, syntaqlite_parser::session::ParseError>>
 pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::node_ref(&self, id: syntaqlite_parser::nodes::RawNodeId) -> syntaqlite_parser::session::NodeRef<'_>
 pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::reader(&self) -> syntaqlite_parser::session::RawParseResult<'_>
 pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::resolve<I: syntaqlite_parser::dialect_traits::NodeId>(&self, id: I) -> core::option::Option<<I as syntaqlite_parser::dialect_traits::NodeId>::Node>
 pub fn syntaqlite::dialect::DialectStatementCursor<'d, N>::source(&self) -> &str
 pub fn syntaqlite::dialect::DialectTokenCursor<'a, N>::next(&mut self) -> core::option::Option<Self::Item>
-pub fn syntaqlite::dialect::DialectTokenizer<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::Dialect<'d, N>) -> Self
+pub fn syntaqlite::dialect::DialectTokenizer<'d, N>::from_dialect(dialect: syntaqlite_parser::dialect::TypedDialectEnv<'d, N>) -> Self
 pub fn syntaqlite::dialect::DialectTokenizer<'d, N>::tokenize_cstr<'a>(&self, source: &'a core::ffi::c_str::CStr) -> syntaqlite::dialect::DialectTokenCursor<'a, N> where 'd: 'a
 pub fn syntaqlite::dialect::DialectTokenizer<'d, N>::tokenize<'a>(&self, source: &'a str) -> syntaqlite::dialect::DialectTokenCursor<'a, N> where 'd: 'a
 pub fn syntaqlite::dialect::sqlite() -> syntaqlite_parser::dialect::DialectEnv<'static>
@@ -484,8 +484,8 @@ pub type syntaqlite::semantic::SessionFunction = syntaqlite::semantic::FunctionD
 pub type syntaqlite::semantic::SourceContext<'a> = syntaqlite::semantic::render::DiagnosticRenderer<'a>
 pub type syntaqlite::TokenCursor<'a>::Item = syntaqlite::Token<'a>
 pub use syntaqlite::ast::<<syntaqlite_parser_sqlite::ast::*>>
-pub use syntaqlite::dialect::Dialect
 pub use syntaqlite::dialect::NodeFamily
+pub use syntaqlite::dialect::TypedDialectEnv
 pub use syntaqlite::incremental::Comment
 pub use syntaqlite::incremental::MacroRegion
 pub use syntaqlite::TokenType

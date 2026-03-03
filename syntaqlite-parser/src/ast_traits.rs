@@ -10,7 +10,7 @@ use crate::nodes::RawNodeId;
 use crate::typed_list::TypedList;
 
 /// Base variants of `LiteralType`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `LiteralTypeLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `LiteralTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LiteralTypeKind {
     INTEGER,
@@ -30,7 +30,7 @@ pub trait LiteralTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `BinaryOp`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `BinaryOpLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `BinaryOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOpKind {
     PLUS,
@@ -62,7 +62,7 @@ pub trait BinaryOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `UnaryOp`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `UnaryOpLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `UnaryOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOpKind {
     MINUS,
@@ -79,7 +79,7 @@ pub trait UnaryOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `CompoundOp`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `CompoundOpLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `CompoundOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompoundOpKind {
     UNION,
@@ -96,7 +96,7 @@ pub trait CompoundOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `IsOp`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `IsOpLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `IsOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IsOpKind {
     IS,
@@ -115,7 +115,7 @@ pub trait IsOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `ForeignKeyAction`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `ForeignKeyActionLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `ForeignKeyActionLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ForeignKeyActionKind {
     NOACTION,
@@ -133,7 +133,7 @@ pub trait ForeignKeyActionLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `GeneratedColumnStorage`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `GeneratedColumnStorageLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `GeneratedColumnStorageLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GeneratedColumnStorageKind {
     VIRTUAL,
@@ -148,7 +148,7 @@ pub trait GeneratedColumnStorageLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `ColumnConstraintKind`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `ColumnConstraintKindLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `ColumnConstraintKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColumnConstraintKindKind {
     DEFAULT,
@@ -170,7 +170,7 @@ pub trait ColumnConstraintKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `TableConstraintKind`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `TableConstraintKindLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `TableConstraintKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TableConstraintKindKind {
     PRIMARYKEY,
@@ -187,7 +187,7 @@ pub trait TableConstraintKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `Materialized`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `MaterializedLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `MaterializedLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MaterializedKind {
     DEFAULT,
@@ -203,7 +203,7 @@ pub trait MaterializedLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `ConflictAction`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `ConflictActionLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `ConflictActionLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConflictActionKind {
     DEFAULT,
@@ -222,7 +222,7 @@ pub trait ConflictActionLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `RaiseType`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `RaiseTypeLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `RaiseTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RaiseTypeKind {
     IGNORE,
@@ -239,7 +239,7 @@ pub trait RaiseTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `DropObjectType`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `DropObjectTypeLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `DropObjectTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DropObjectTypeKind {
     TABLE,
@@ -256,7 +256,7 @@ pub trait DropObjectTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `AlterOp`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `AlterOpLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `AlterOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlterOpKind {
     RENAMETABLE,
@@ -273,7 +273,7 @@ pub trait AlterOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `TransactionType`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `TransactionTypeLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `TransactionTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionTypeKind {
     DEFERRED,
@@ -289,7 +289,7 @@ pub trait TransactionTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `TransactionOp`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `TransactionOpLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `TransactionOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionOpKind {
     BEGIN,
@@ -305,7 +305,7 @@ pub trait TransactionOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `SavepointOp`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `SavepointOpLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `SavepointOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SavepointOpKind {
     SAVEPOINT,
@@ -321,7 +321,7 @@ pub trait SavepointOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `SortOrder`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `SortOrderLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `SortOrderLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortOrderKind {
     ASC,
@@ -336,7 +336,7 @@ pub trait SortOrderLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `NullsOrder`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `NullsOrderLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `NullsOrderLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NullsOrderKind {
     NONE,
@@ -352,7 +352,7 @@ pub trait NullsOrderLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `JoinType`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `JoinTypeLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `JoinTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JoinTypeKind {
     COMMA,
@@ -375,7 +375,7 @@ pub trait JoinTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `TriggerTiming`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `TriggerTimingLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `TriggerTimingLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriggerTimingKind {
     BEFORE,
@@ -391,7 +391,7 @@ pub trait TriggerTimingLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `TriggerEventType`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `TriggerEventTypeLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `TriggerEventTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriggerEventTypeKind {
     DELETE,
@@ -407,7 +407,7 @@ pub trait TriggerEventTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `ExplainMode`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `ExplainModeLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `ExplainModeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExplainModeKind {
     EXPLAIN,
@@ -422,7 +422,7 @@ pub trait ExplainModeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `PragmaForm`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `PragmaFormLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `PragmaFormLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PragmaFormKind {
     BARE,
@@ -438,7 +438,7 @@ pub trait PragmaFormLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `AnalyzeKind`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `AnalyzeKindLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `AnalyzeKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AnalyzeKindKind {
     ANALYZE,
@@ -453,7 +453,7 @@ pub trait AnalyzeKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `FrameType`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `FrameTypeLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `FrameTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameTypeKind {
     NONE,
@@ -470,7 +470,7 @@ pub trait FrameTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `FrameBoundType`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `FrameBoundTypeLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `FrameBoundTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameBoundTypeKind {
     UNBOUNDEDPRECEDING,
@@ -488,7 +488,7 @@ pub trait FrameBoundTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `FrameExclude`. Used for exhaustive pattern matching in generic code.
-/// Dialect extensions that add variants beyond this set return `None` from `FrameExcludeLike::kind`.
+/// TypedDialectEnv extensions that add variants beyond this set return `None` from `FrameExcludeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameExcludeKind {
     NONE,

@@ -1751,9 +1751,9 @@ pub fn syntaqlite_parser_sqlite::ast::WithClause<'a>::select(&self) -> core::opt
 pub fn syntaqlite_parser_sqlite::ast::WithClauseId::from(n: syntaqlite_parser_sqlite::ast::WithClause<'a>) -> Self
 pub fn syntaqlite_parser_sqlite::ast::WithClauseId::from(n: syntaqlite_parser_sqlite::ast::WithClause<'a>) -> Self
 pub fn syntaqlite_parser_sqlite::dialect() -> syntaqlite_parser::dialect::DialectEnv<'static>
-pub fn syntaqlite_parser_sqlite::tagged_dialect() -> syntaqlite_parser::dialect::Dialect<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
 pub fn syntaqlite_parser_sqlite::tokens::TokenType::from_raw(raw: u32) -> core::option::Option<syntaqlite_parser_sqlite::tokens::TokenType>
 pub fn syntaqlite_parser_sqlite::tokens::TokenType::from_token_type(raw: u32) -> core::option::Option<Self>
+pub fn syntaqlite_parser_sqlite::typed_dialect() -> syntaqlite_parser::dialect::TypedDialectEnv<'static, syntaqlite_parser_sqlite::SqliteNodeFamily>
 pub fn syntaqlite_parser::nodes::RawNodeId::from(id: syntaqlite_parser_sqlite::ast::AggregateFunctionCallId) -> syntaqlite_parser::nodes::RawNodeId
 pub fn syntaqlite_parser::nodes::RawNodeId::from(id: syntaqlite_parser_sqlite::ast::AlterTableStmtId) -> syntaqlite_parser::nodes::RawNodeId
 pub fn syntaqlite_parser::nodes::RawNodeId::from(id: syntaqlite_parser_sqlite::ast::AnalyzeStmtId) -> syntaqlite_parser::nodes::RawNodeId

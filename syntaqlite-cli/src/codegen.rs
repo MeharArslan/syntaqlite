@@ -18,8 +18,8 @@ fn write_file(path: &Path, content: impl AsRef<[u8]>) -> Result<(), String> {
 /// Output type for the dialect command.
 #[derive(clap::ValueEnum, Clone)]
 pub(crate) enum OutputType {
-    /// Dialect-only amalgamation (default).
-    Dialect,
+    /// TypedDialectEnv-only amalgamation (default).
+    TypedDialectEnv,
     /// Raw C/H/Rust files, flat layout.
     Raw,
     /// Runtime + dialect inlined into one self-contained file pair.
@@ -35,7 +35,7 @@ pub(crate) enum OutputType {
 /// files are merged with the base (same-name files replace the base).
 #[derive(clap::Parser)]
 pub(crate) struct DialectArgs {
-    /// Dialect identifier (e.g. "mydialect").
+    /// TypedDialectEnv identifier (e.g. "mydialect").
     #[arg(long, required = true)]
     name: String,
 
@@ -52,7 +52,7 @@ pub(crate) struct DialectArgs {
     nodes_dir: Option<String>,
 
     /// Output type.
-    #[arg(long, value_enum, default_value_t = OutputType::Dialect)]
+    #[arg(long, value_enum, default_value_t = OutputType::TypedDialectEnv)]
     output_type: OutputType,
 
     /// Default path for the runtime header (dialect-only mode only).
@@ -93,7 +93,7 @@ pub(crate) fn dispatch_dialect(args: DialectArgs) -> Result<(), String> {
     };
 
     match args.output_type {
-        OutputType::Dialect => cmd_generate_dialect(
+        OutputType::TypedDialectEnv => cmd_generate_dialect(
             name,
             actions_dir,
             nodes_dir,

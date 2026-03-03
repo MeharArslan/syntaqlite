@@ -43,7 +43,7 @@ pub struct OutputLayout {
     // ── C public headers (include/<dialect>/) ───────────────────────────────
     pub ast_nodes_h: CHeader,
     pub dialect_h: CHeader,
-    /// Dialect tokens header: all `SYNTAQLITE_TK_*` defines (from lemon parse.h).
+    /// TypedDialectEnv tokens header: all `SYNTAQLITE_TK_*` defines (from lemon parse.h).
     pub tokens_h: CHeader,
     /// Runtime tokens header: minimal subset of tokens needed by `token_wrapped.c`.
     pub runtime_tokens_h: CHeader,

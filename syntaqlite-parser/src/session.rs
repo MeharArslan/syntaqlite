@@ -49,7 +49,7 @@ impl<'a> NodeRef<'a> {
         self.reader
     }
 
-    /// Dialect handle.
+    /// TypedDialectEnv handle.
     pub fn dialect(&self) -> DialectEnv<'a> {
         self.dialect
     }
@@ -93,7 +93,7 @@ impl<'a> NodeRef<'a> {
         self.reader.list_children(self.id, &self.dialect)
     }
 
-    /// Dialect field metadata for this node type.
+    /// TypedDialectEnv field metadata for this node type.
     pub fn field_meta(&self) -> &[crate::dialect::FieldMeta] {
         match self.tag() {
             Some(tag) => self.dialect.field_meta(tag),
@@ -165,7 +165,7 @@ impl std::error::Error for ParseError {}
 /// A lightweight, `Copy` handle for reading the result of a parse: nodes,
 /// tokens, comments, and macro regions from the parser arena.
 ///
-/// This is the read-only half of a cursor state. Dialect crates embed it in
+/// This is the read-only half of a cursor state. TypedDialectEnv crates embed it in
 /// view structs so that accessor methods can resolve `RawNodeId` children
 /// without requiring a back-reference to the full cursor.
 ///

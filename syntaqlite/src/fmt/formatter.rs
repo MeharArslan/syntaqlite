@@ -9,7 +9,7 @@ use syntaqlite_parser::RawParser;
 use syntaqlite_parser::{CommentKind, MacroRegion, ParserConfig};
 use syntaqlite_parser::{DialectEnv, NodeRef};
 
-/// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
+/// High-level SQL formatter. Created from a `TypedDialectEnv`, reusable across inputs.
 pub struct Formatter<'d> {
     dialect: DialectEnv<'d>,
     parser: RawParser<'d>,

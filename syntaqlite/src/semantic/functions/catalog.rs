@@ -11,7 +11,7 @@ use super::types::{FunctionCheckResult, FunctionDef, FunctionLookup};
 ///
 /// Merges three sources with the following priority:
 /// 1. SQLite built-in catalog (filtered by [`DialectEnv`])
-/// 2. Dialect extension functions (filtered by [`DialectEnv`])
+/// 2. TypedDialectEnv extension functions (filtered by [`DialectEnv`])
 /// 3. Session/document user-defined functions
 ///
 /// Unlike the old `Vec<FunctionDef>` approach, this does **not** expand
@@ -21,7 +21,7 @@ use super::types::{FunctionCheckResult, FunctionDef, FunctionLookup};
 pub struct FunctionCatalog {
     /// Built-in functions (borrowed from static catalog, NOT expanded per-arity).
     builtins: Vec<&'static FunctionInfo<'static>>,
-    /// Dialect extension functions (owned, copied from C data at construction).
+    /// TypedDialectEnv extension functions (owned, copied from C data at construction).
     extensions: Vec<OwnedFunctionInfo>,
     /// User/session-defined functions.
     session: Vec<FunctionDef>,

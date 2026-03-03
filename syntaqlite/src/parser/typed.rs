@@ -1,10 +1,10 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Dialect-generic typed wrappers parameterized over [`NodeFamily`].
+//! TypedDialectEnv-generic typed wrappers parameterized over [`NodeFamily`].
 //!
 //! These types provide clean type-inferred construction from a tagged
-//! [`Dialect`].  For the built-in SQLite dialect, use the concrete
+//! [`TypedDialectEnv`].  For the built-in SQLite dialect, use the concrete
 //! wrappers at the crate root ([`crate::Parser`], [`crate::Tokenizer`],
 //! etc.) instead.
 
@@ -12,16 +12,16 @@ use std::marker::PhantomData;
 use std::ops::Range;
 
 use syntaqlite_parser::{
-    Comment, Dialect, DialectNodeType, MacroRegion, NodeFamily, NodeRef, ParseError, ParserConfig,
+    Comment, DialectNodeType, MacroRegion, NodeFamily, NodeRef, ParseError, ParserConfig,
     RawIncrementalCursor, RawIncrementalParser, RawNodeId, RawParseResult, RawParser,
-    RawStatementCursor, RawTokenCursor, RawTokenizer,
+    RawStatementCursor, RawTokenCursor, RawTokenizer, TypedDialectEnv,
 };
 
 // ── DialectParser ───────────────────────────────────────────────────────
 
 /// A SQL parser bound to a specific dialect.
 ///
-/// Constructed from a tagged [`Dialect<'d, N>`] so that `N` (the node
+/// Constructed from a tagged [`TypedDialectEnv<'d, N>`] so that `N` (the node
 /// family) is inferred automatically.
 pub struct DialectParser<'d, N: NodeFamily> {
     inner: RawParser<'d>,
@@ -30,7 +30,7 @@ pub struct DialectParser<'d, N: NodeFamily> {
 
 impl<'d, N: NodeFamily> DialectParser<'d, N> {
     /// Create a parser bound to the given dialect with default configuration.
-    pub fn from_dialect(dialect: Dialect<'d, N>) -> Self {
+    pub fn from_dialect(dialect: TypedDialectEnv<'d, N>) -> Self {
         DialectParser {
             inner: RawParser::new(dialect.raw()),
             _marker: PhantomData,
@@ -38,7 +38,7 @@ impl<'d, N: NodeFamily> DialectParser<'d, N> {
     }
 
     /// Create a parser bound to the given dialect with custom configuration.
-    pub fn with_config(dialect: Dialect<'d, N>, config: &ParserConfig) -> Self {
+    pub fn with_config(dialect: TypedDialectEnv<'d, N>, config: &ParserConfig) -> Self {
         DialectParser {
             inner: RawParser::with_config(dialect.raw(), config),
             _marker: PhantomData,
@@ -140,7 +140,7 @@ pub struct DialectTokenizer<'d, N: NodeFamily> {
 
 impl<'d, N: NodeFamily> DialectTokenizer<'d, N> {
     /// Create a tokenizer bound to the given dialect with default configuration.
-    pub fn from_dialect(dialect: Dialect<'d, N>) -> Self {
+    pub fn from_dialect(dialect: TypedDialectEnv<'d, N>) -> Self {
         DialectTokenizer {
             inner: RawTokenizer::new(dialect.raw()),
             _marker: PhantomData,
@@ -211,7 +211,7 @@ pub struct DialectIncrementalParser<'d, N: NodeFamily> {
 impl<'d, N: NodeFamily> DialectIncrementalParser<'d, N> {
     /// Create an incremental parser bound to the given dialect with default
     /// configuration (token collection enabled).
-    pub fn from_dialect(dialect: Dialect<'d, N>) -> Self {
+    pub fn from_dialect(dialect: TypedDialectEnv<'d, N>) -> Self {
         DialectIncrementalParser {
             inner: RawIncrementalParser::new(dialect.raw()),
             _marker: PhantomData,
@@ -220,7 +220,7 @@ impl<'d, N: NodeFamily> DialectIncrementalParser<'d, N> {
 
     /// Create an incremental parser bound to the given dialect with custom
     /// configuration.
-    pub fn with_config(dialect: Dialect<'d, N>, config: &ParserConfig) -> Self {
+    pub fn with_config(dialect: TypedDialectEnv<'d, N>, config: &ParserConfig) -> Self {
         DialectIncrementalParser {
             inner: RawIncrementalParser::with_config(dialect.raw(), config),
             _marker: PhantomData,

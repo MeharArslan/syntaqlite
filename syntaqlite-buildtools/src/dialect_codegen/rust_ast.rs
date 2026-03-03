@@ -195,7 +195,7 @@ fn emit_rust_flags_type(w: &mut RustWriter, name: &str, flags: &[(String, u32)])
 
 /// Emit the `FooKind` plain enum and `FooLike` trait for a value enum (base crate, `ast_traits.rs`).
 ///
-/// `FooKind` holds only the base variants. Dialect extensions that add new variants return
+/// `FooKind` holds only the base variants. TypedDialectEnv extensions that add new variants return
 /// `None` from `kind()`, allowing generic code to degrade gracefully.
 fn emit_rust_value_enum_like_trait(w: &mut RustWriter, name: &str, variants: &[String]) {
     // ── FooKind enum ──
@@ -203,7 +203,7 @@ fn emit_rust_value_enum_like_trait(w: &mut RustWriter, name: &str, variants: &[S
         "Base variants of `{name}`. Used for exhaustive pattern matching in generic code."
     ));
     w.doc_comment(&format!(
-        "Dialect extensions that add variants beyond this set return `None` from `{name}Like::kind`."
+        "TypedDialectEnv extensions that add variants beyond this set return `None` from `{name}Like::kind`."
     ));
     w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
     w.open_block(&format!("pub enum {name}Kind {{"));
@@ -443,7 +443,7 @@ pub struct RustAstPaths<'a> {
     pub nodes_path: &'a str,
     /// Path to `RawParseResult`, e.g. `"syntaqlite_parser::session"`.
     pub session_path: &'a str,
-    /// Path to the zero-argument function that returns `Dialect<'static>`,
+    /// Path to the zero-argument function that returns `TypedDialectEnv<'static>`,
     /// e.g. `"crate::dialect::dialect"`. Used in generated `Display` impls.
     pub dialect_fn_path: &'a str,
 }
@@ -1144,7 +1144,7 @@ fn trait_field_return_type(
 /// for abstracts, abstract access traits, `NodeLike`, and the `AstTypes` supertrait.
 ///
 /// This module is always compiled (no feature gate) and lives in the syntaqlite crate.
-/// Dialect crates import traits from `syntaqlite::ast_traits`.
+/// TypedDialectEnv crates import traits from `syntaqlite::ast_traits`.
 impl AstModel<'_> {
     pub fn generate_ast_traits(&self) -> String {
         let enum_names = self.enum_names();

@@ -3,7 +3,7 @@
 
 //! Dialect handle and field extraction.
 //!
-//! A [`Dialect`] is an opaque, `Copy` handle wrapping a pointer to a C
+//! A [`DialectEnv`] is a configured dialect handle wrapping a pointer to a C
 //! dialect descriptor produced by codegen. It provides metadata about
 //! node names, field layouts, token categories, keyword tables, and
 //! formatter bytecode — everything a parser, formatter, or validator needs
@@ -97,40 +97,40 @@ pub(crate) mod ffi {
 
     /// Mirrors C `SyntaqliteFunctionInfo` from `include/syntaqlite/dialect.h`.
     #[repr(C)]
-    pub struct FunctionInfoC {
-        pub name: *const std::ffi::c_char,
-        pub arities: *const i16,
-        pub arity_count: u16,
-        pub category: u8,
+    pub(crate) struct FunctionInfoC {
+        pub(crate) name: *const std::ffi::c_char,
+        pub(crate) arities: *const i16,
+        pub(crate) arity_count: u16,
+        pub(crate) category: u8,
     }
 
     /// Mirrors C `SyntaqliteAvailabilityRule` from `include/syntaqlite/dialect.h`.
     #[repr(C)]
-    pub struct AvailabilityRuleC {
-        pub since: i32,
-        pub until: i32,
-        pub cflag_index: u32,
-        pub cflag_polarity: u8,
+    pub(crate) struct AvailabilityRuleC {
+        pub(crate) since: i32,
+        pub(crate) until: i32,
+        pub(crate) cflag_index: u32,
+        pub(crate) cflag_polarity: u8,
     }
 
     /// Mirrors C `SyntaqliteFunctionEntry` from `include/syntaqlite/dialect.h`.
     #[repr(C)]
-    pub struct FunctionEntryC {
-        pub info: FunctionInfoC,
-        pub availability: *const AvailabilityRuleC,
-        pub availability_count: u16,
+    pub(crate) struct FunctionEntryC {
+        pub(crate) info: FunctionInfoC,
+        pub(crate) availability: *const AvailabilityRuleC,
+        pub(crate) availability_count: u16,
     }
 
     /// Mirrors C `SyntaqliteSchemaContribution` from `include/syntaqlite/dialect.h`.
     #[repr(C)]
-    pub struct SchemaContributionC {
-        pub node_tag: u32,
-        pub kind: u8,
-        pub name_field: u8,
-        pub columns_field: u8,
-        pub select_field: u8,
-        pub args_field: u8,
-        pub _pad: [u8; 3],
+    pub(crate) struct SchemaContributionC {
+        pub(crate) node_tag: u32,
+        pub(crate) kind: u8,
+        pub(crate) name_field: u8,
+        pub(crate) columns_field: u8,
+        pub(crate) select_field: u8,
+        pub(crate) args_field: u8,
+        pub(crate) _pad: [u8; 3],
     }
 
     // Layout assertions for FFI mirrors.
@@ -211,91 +211,121 @@ pub(crate) mod ffi {
         pub category: String,
     }
 
-    /// Mirrors the C `Dialect` struct defined in `include/syntaqlite/dialect.h`.
+    /// Mirrors the C `SyntaqliteDialect` struct defined in `include/syntaqlite/dialect.h`.
     #[repr(C)]
-    pub struct Dialect {
-        pub name: *const std::ffi::c_char,
+    pub(crate) struct Dialect {
+        pub(crate) name: *const std::ffi::c_char,
 
         // Range metadata
-        pub range_meta: *const std::ffi::c_void,
+        pub(crate) range_meta: *const std::ffi::c_void,
 
         // Well-known token IDs (int32_t in C)
-        pub tk_space: i32,
-        pub tk_semi: i32,
-        pub tk_comment: i32,
+        pub(crate) tk_space: i32,
+        pub(crate) tk_semi: i32,
+        pub(crate) tk_comment: i32,
 
         // AST metadata
-        pub node_count: u32,
-        pub node_names: *const *const std::ffi::c_char,
-        pub field_meta: *const *const FieldMeta,
-        pub field_meta_counts: *const u8,
-        pub list_tags: *const u8,
+        pub(crate) node_count: u32,
+        pub(crate) node_names: *const *const std::ffi::c_char,
+        pub(crate) field_meta: *const *const FieldMeta,
+        pub(crate) field_meta_counts: *const u8,
+        pub(crate) list_tags: *const u8,
 
         // Formatter data
-        pub fmt_strings: *const *const std::ffi::c_char,
-        pub fmt_string_lens: *const u16,
-        pub fmt_string_count: u16,
-        pub fmt_enum_display: *const u16,
-        pub fmt_enum_display_count: u16,
-        pub fmt_ops: *const u8,
-        pub fmt_op_count: u16,
-        pub fmt_dispatch: *const u32,
-        pub fmt_dispatch_count: u16,
+        pub(crate) fmt_strings: *const *const std::ffi::c_char,
+        pub(crate) fmt_string_lens: *const u16,
+        pub(crate) fmt_string_count: u16,
+        pub(crate) fmt_enum_display: *const u16,
+        pub(crate) fmt_enum_display_count: u16,
+        pub(crate) fmt_ops: *const u8,
+        pub(crate) fmt_op_count: u16,
+        pub(crate) fmt_dispatch: *const u32,
+        pub(crate) fmt_dispatch_count: u16,
 
         // Parser lifecycle (function pointers provided by dialect)
-        pub parser_alloc: *const std::ffi::c_void,
-        pub parser_init: *const std::ffi::c_void,
-        pub parser_finalize: *const std::ffi::c_void,
-        pub parser_free: *const std::ffi::c_void,
-        pub parser_feed: *const std::ffi::c_void,
-        pub parser_trace: *const std::ffi::c_void,
-        pub parser_expected_tokens: *const std::ffi::c_void,
-        pub parser_completion_context: *const std::ffi::c_void,
+        pub(crate) parser_alloc: *const std::ffi::c_void,
+        pub(crate) parser_init: *const std::ffi::c_void,
+        pub(crate) parser_finalize: *const std::ffi::c_void,
+        pub(crate) parser_free: *const std::ffi::c_void,
+        pub(crate) parser_feed: *const std::ffi::c_void,
+        pub(crate) parser_trace: *const std::ffi::c_void,
+        pub(crate) parser_expected_tokens: *const std::ffi::c_void,
+        pub(crate) parser_completion_context: *const std::ffi::c_void,
 
         // Tokenizer (function pointer provided by dialect)
-        pub get_token: *const std::ffi::c_void,
+        pub(crate) get_token: *const std::ffi::c_void,
 
         // Keyword table metadata
-        pub keyword_text: *const std::ffi::c_char,
-        pub keyword_offsets: *const u16,
-        pub keyword_lens: *const u8,
-        pub keyword_codes: *const u8,
-        pub keyword_count: *const u32,
+        pub(crate) keyword_text: *const std::ffi::c_char,
+        pub(crate) keyword_offsets: *const u16,
+        pub(crate) keyword_lens: *const u8,
+        pub(crate) keyword_codes: *const u8,
+        pub(crate) keyword_count: *const u32,
 
         // Token metadata (indexed by token type ordinal)
-        pub token_categories: *const u8,
-        pub token_type_count: u32,
+        pub(crate) token_categories: *const u8,
+        pub(crate) token_type_count: u32,
 
         // Dialect function extensions
-        pub function_extensions: *const FunctionEntryC,
-        pub function_extension_count: u32,
+        pub(crate) function_extensions: *const FunctionEntryC,
+        pub(crate) function_extension_count: u32,
 
         // Schema contributions
-        pub schema_contributions: *const SchemaContributionC,
-        pub schema_contribution_count: u32,
+        pub(crate) schema_contributions: *const SchemaContributionC,
+        pub(crate) schema_contribution_count: u32,
     }
 }
 
-// Re-export the C types (excluding the `Dialect` C struct to avoid
-// naming collision with the safe Rust wrapper below).
 pub(crate) use ffi::FIELD_FLAGS;
 pub use ffi::{FIELD_BOOL, FIELD_ENUM, FIELD_NODE_ID, FIELD_SPAN, FieldMeta};
-// Re-export the C `Dialect` struct under a distinct name for external callers
-// that need to declare FFI functions returning a raw dialect pointer.
-pub use ffi::Dialect as FfiDialect;
+
+/// A thin, lifetime-tagged handle to a C dialect descriptor.
+///
+/// Wraps a reference to the C dialect vtable. Obtain one from a dialect
+/// crate's accessor (e.g. `syntaqlite_parser_sqlite::dialect()`), or
+/// construct directly with the unsafe [`Dialect::from_raw`].
+///
+/// `Dialect<'d>` is `Copy`. Pass it by value to [`DialectEnv::new`] or
+/// [`TypedDialectEnv::new`] to build a configured handle with the same
+/// lifetime.
+#[derive(Clone, Copy)]
+pub struct Dialect<'d> {
+    raw: &'d ffi::Dialect,
+}
+
+// SAFETY: The dialect wraps an immutable reference to static C data.
+unsafe impl Send for Dialect<'_> {}
+unsafe impl Sync for Dialect<'_> {}
+
+impl<'d> Dialect<'d> {
+    /// Wrap a raw C dialect pointer.
+    ///
+    /// # Safety
+    /// `ptr` must point to a valid C dialect descriptor whose data lives
+    /// at least as long as `'d`.
+    pub unsafe fn from_raw(ptr: *const core::ffi::c_void) -> Self {
+        Dialect {
+            raw: unsafe { &*(ptr as *const ffi::Dialect) },
+        }
+    }
+
+    pub(crate) fn as_ffi(self) -> &'d ffi::Dialect {
+        self.raw
+    }
+}
 
 use crate::catalog::{AvailabilityRule, FunctionCategory, FunctionEntry, FunctionInfo};
 use crate::nodes::{FieldVal, Fields, RawNodeId, SourceSpan};
 
-// ── Safe Dialect handle ──────────────────────────────────────────────────────
+// ── Safe DialectEnv handle ───────────────────────────────────────────────────────────
 
 /// A configured dialect handle: grammar pointer + version/cflag configuration.
 ///
-/// Bundles a pointer to a C dialect descriptor with version and cflag
-/// configuration. `Copy` and lightweight (~18 bytes). The primary type
-/// passed throughout the system (parser, formatter, validator).
+/// Bundles a reference to a [`Dialect`] with version and cflag configuration.
+/// `Copy` and lightweight (~18 bytes). The primary type passed throughout
+/// the system (parser, formatter, validator).
 ///
-/// For a handle tagged with node/token types, see [`Dialect<'d, N>`].
+/// For a handle tagged with node/token types, see [`TypedDialectEnv<'d, N>`].
 #[derive(Clone, Copy)]
 pub struct DialectEnv<'d> {
     pub(crate) raw: &'d ffi::Dialect,
@@ -304,21 +334,15 @@ pub struct DialectEnv<'d> {
 }
 
 impl<'d> DialectEnv<'d> {
-    /// Create a `DialectEnv` from a raw C pointer returned by a dialect's
-    /// FFI function (e.g. `syntaqlite_sqlite_dialect`).
+    /// Build a `DialectEnv` from a [`Dialect<'d>`] handle.
     ///
-    /// Uses the default configuration (latest version, no cflags).
-    ///
-    /// # Safety
-    /// The pointer must point to a valid `ffi::Dialect` whose data lives
-    /// at least as long as `'d`.
-    pub unsafe fn from_raw(raw: *const ffi::Dialect) -> Self {
-        unsafe {
-            DialectEnv {
-                raw: &*raw,
-                sqlite_version: i32::MAX,
-                cflags: ffi::Cflags::new(),
-            }
+    /// The lifetime `'d` flows naturally from the `Dialect`, so the returned
+    /// env cannot outlive the C data the dialect points to.
+    pub fn new(dialect: Dialect<'d>) -> Self {
+        DialectEnv {
+            raw: dialect.as_ffi(),
+            sqlite_version: i32::MAX,
+            cflags: ffi::Cflags::new(),
         }
     }
 
@@ -688,7 +712,7 @@ impl<'d> DialectEnv<'d> {
 unsafe impl Send for DialectEnv<'_> {}
 unsafe impl Sync for DialectEnv<'_> {}
 
-// ── Tagged Dialect handle ────────────────────────────────────────────────────
+// ── Tagged dialect handle (TypedDialectEnv) ──────────────────────────────────────────
 
 use std::marker::PhantomData;
 
@@ -703,30 +727,27 @@ use crate::dialect_traits::NodeFamily;
 /// Dereferences to [`DialectEnv`] via [`raw()`](Self::raw) for passing into
 /// untyped infrastructure (formatter, validator).
 #[derive(Clone, Copy)]
-pub struct Dialect<'d, N: NodeFamily> {
+pub struct TypedDialectEnv<'d, N: NodeFamily> {
     inner: DialectEnv<'d>,
     _marker: PhantomData<N>,
 }
 
 // SAFETY: same reasoning as DialectEnv — wraps immutable static C data.
-unsafe impl<N: NodeFamily> Send for Dialect<'_, N> {}
-unsafe impl<N: NodeFamily> Sync for Dialect<'_, N> {}
+unsafe impl<N: NodeFamily> Send for TypedDialectEnv<'_, N> {}
+unsafe impl<N: NodeFamily> Sync for TypedDialectEnv<'_, N> {}
 
-impl<'d, N: NodeFamily> Dialect<'d, N> {
-    /// Create a tagged `Dialect` from a raw C pointer.
-    ///
-    /// # Safety
-    /// Same requirements as [`DialectEnv::from_raw`].
-    pub unsafe fn from_raw(raw: *const ffi::Dialect) -> Self {
-        Dialect {
-            inner: unsafe { DialectEnv::from_raw(raw) },
+impl<'d, N: NodeFamily> TypedDialectEnv<'d, N> {
+    /// Build a `TypedDialectEnv` from a [`Dialect<'d>`] handle.
+    pub fn new(dialect: Dialect<'d>) -> Self {
+        TypedDialectEnv {
+            inner: DialectEnv::new(dialect),
             _marker: PhantomData,
         }
     }
 
     /// Wrap an existing [`DialectEnv`] with a node-family tag.
     pub fn from_raw_dialect(raw: DialectEnv<'d>) -> Self {
-        Dialect {
+        TypedDialectEnv {
             inner: raw,
             _marker: PhantomData,
         }
@@ -738,8 +759,8 @@ impl<'d, N: NodeFamily> Dialect<'d, N> {
     }
 }
 
-impl<'d, N: NodeFamily> From<Dialect<'d, N>> for DialectEnv<'d> {
-    fn from(d: Dialect<'d, N>) -> Self {
+impl<'d, N: NodeFamily> From<TypedDialectEnv<'d, N>> for DialectEnv<'d> {
+    fn from(d: TypedDialectEnv<'d, N>) -> Self {
         d.inner
     }
 }

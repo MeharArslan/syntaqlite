@@ -12,7 +12,7 @@ use syntaqlite::Formatter;
 use syntaqlite::embedded::{self, EmbeddedFragment};
 use syntaqlite::{DatabaseCatalog, FormatConfig, KeywordCase, NodeRefJsonExt, ValidationConfig};
 use syntaqlite_parser::{
-    Cflags, DialectEnv, FfiDialect, RawParser, cflag_table, parse_cflag_name, parse_sqlite_version,
+    Cflags, Dialect, DialectEnv, RawParser, cflag_table, parse_cflag_name, parse_sqlite_version,
 };
 
 thread_local! {
@@ -35,9 +35,8 @@ struct LspHost {
 fn take_or_create_lsp_host(dialect_ptr: u32) -> LspHost {
     let mut lsp = LSP_HOST.with(|cell| cell.borrow_mut().take());
     if lsp.as_ref().is_none_or(|h| h.dialect_ptr != dialect_ptr) {
-        let raw = dialect_ptr as *const FfiDialect;
         // SAFETY: the caller set a valid dialect pointer via wasm_set_dialect.
-        let env = unsafe { DialectEnv::from_raw(raw) };
+        let env = unsafe { DialectEnv::new(Dialect::from_raw(dialect_ptr as *const _)) };
         let env = apply_config(env);
         let host = syntaqlite::lsp::LspHost::with_dialect(env);
         lsp = Some(LspHost { dialect_ptr, host });
@@ -95,9 +94,8 @@ fn resolve_dialect() -> Result<DialectEnv<'static>, String> {
     if ptr == 0 {
         return Err("dialect pointer is not set; call wasm_set_dialect first".to_string());
     }
-    let raw = ptr as *const FfiDialect;
     // SAFETY: the caller must provide a valid pointer to a dialect descriptor.
-    let env = unsafe { DialectEnv::from_raw(raw) };
+    let env = unsafe { DialectEnv::new(Dialect::from_raw(ptr as *const _)) };
     Ok(apply_config(env))
 }
 
@@ -309,7 +307,7 @@ pub extern "C" fn wasm_result_free() {
     result_free()
 }
 
-// ── Dialect config WASM exports ──────────────────────────────────────
+// ── TypedDialectEnv config WASM exports ──────────────────────────────────────
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_set_sqlite_version(ptr: u32, len: u32) -> i32 {

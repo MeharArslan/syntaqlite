@@ -29,18 +29,16 @@ pub(crate) fn generate_rust_lib(dialect_fn: &str) -> String {
         r#"
 use std::sync::LazyLock;
 
-use syntaqlite_parser::FfiDialect;
-
 unsafe extern "C" {{
-    fn {dialect_fn}() -> *const FfiDialect;
+    fn {dialect_fn}() -> *const core::ffi::c_void;
 }}
 
-static DIALECT: LazyLock<syntaqlite_parser::DialectEnv<'static>> =
-    LazyLock::new(|| unsafe {{ syntaqlite_parser::DialectEnv::from_raw({dialect_fn}()) }});
+static DIALECT: LazyLock<syntaqlite_parser::Dialect<'static>> =
+    LazyLock::new(|| unsafe {{ syntaqlite_parser::Dialect::from_raw({dialect_fn}()) }});
 
 /// Returns the dialect handle.
 pub fn dialect() -> syntaqlite_parser::DialectEnv<'static> {{
-    *DIALECT
+    syntaqlite_parser::DialectEnv::new(*DIALECT)
 }}
 "#
     ));
@@ -66,7 +64,7 @@ fn main() {{
     let runtime_include = manifest_dir.join("../syntaqlite-sys/include");
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
 
-    // Dialect sources — Lemon parser, tokenizer, keyword lookup, and dialect glue.
+    // TypedDialectEnv sources — Lemon parser, tokenizer, keyword lookup, and dialect glue.
     // Grammar-agnostic engine C is built by the syntaqlite crate.
     let mut build = cc::Build::new();
     build
@@ -128,7 +126,7 @@ fn main() {{
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=csrc");
     println!("cargo:rerun-if-changed=include");
-    // Dialect C files #include syntaqlite headers.
+    // TypedDialectEnv C files #include syntaqlite headers.
     println!("cargo:rerun-if-changed=../syntaqlite-sys/include");
     // Re-run when pinning env vars change.
     println!("cargo:rerun-if-env-changed=SYNTAQLITE_SQLITE_VERSION");
