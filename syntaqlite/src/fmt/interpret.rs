@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite_parser::RawDialect;
-use syntaqlite_parser::RawNodeReader;
+use syntaqlite_parser::RawParseResult;
 use syntaqlite_parser::{FieldVal, Fields, NodeId};
 
 use super::bytecode::opcodes;
@@ -13,7 +13,7 @@ use super::doc::{DocArena, DocId, NIL_DOC};
 /// Bundles the state that is constant across all nodes in a single format call.
 pub(crate) struct FmtCtx<'a> {
     pub dialect: RawDialect<'a>,
-    pub reader: RawNodeReader<'a>,
+    pub reader: RawParseResult<'a>,
     pub comment_ctx: Option<&'a CommentCtx<'a>>,
 }
 

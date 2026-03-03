@@ -25,7 +25,7 @@ pub use crate::dialect_traits::{DialectNodeType, DialectTokenType, NodeFamily};
 // ── Core node/arena types ─────────────────────────────────────────────────────
 
 pub use crate::nodes::{ArenaNode, FieldVal, Fields, NodeId, NodeList, SourceSpan};
-pub use crate::session::{ErrorSpan, NodeRef, ParseError, RawNodeReader};
+pub use crate::session::{ErrorSpan, NodeRef, ParseError, RawParseResult};
 pub use crate::typed_list::TypedList;
 
 // ── C parser FFI types ────────────────────────────────────────────────────────

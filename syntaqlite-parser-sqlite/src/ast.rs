@@ -7,7 +7,7 @@ use syntaqlite_parser::DialectNodeType;
 use syntaqlite_parser::NodeId;
 use syntaqlite_parser::NodeList;
 use syntaqlite_parser::NodeRef;
-use syntaqlite_parser::RawNodeReader;
+use syntaqlite_parser::RawParseResult;
 use syntaqlite_parser::TypedList;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1349,7 +1349,7 @@ pub enum Select<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for Select<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::SelectStmt(n) => Select::SelectStmt(n),
@@ -1371,7 +1371,7 @@ pub enum InExprSource<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for InExprSource<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::ExprList(n) => InExprSource::ExprList(n),
@@ -1407,7 +1407,7 @@ pub enum Expr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for Expr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::BinaryExpr(n) => Expr::BinaryExpr(n),
@@ -1463,7 +1463,7 @@ pub enum Stmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for Stmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::SelectStmt(n) => Stmt::SelectStmt(n),
@@ -1505,7 +1505,7 @@ pub enum TableSource<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for TableSource<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let node = Node::resolve(reader, id)?;
         Some(match node {
             Node::TableRef(n) => TableSource::TableRef(n),
@@ -1520,7 +1520,7 @@ impl<'a> DialectNodeType<'a> for TableSource<'a> {
 #[derive(Clone, Copy)]
 pub struct AggregateFunctionCall<'a> {
     raw: &'a crate::ffi::AggregateFunctionCall,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -1564,7 +1564,7 @@ impl<'a> AggregateFunctionCall<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for AggregateFunctionCall<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::AggregateFunctionCall>(id)?;
         Some(AggregateFunctionCall { raw, reader, id })
     }
@@ -1573,7 +1573,7 @@ impl<'a> DialectNodeType<'a> for AggregateFunctionCall<'a> {
 #[derive(Clone, Copy)]
 pub struct OrderedSetFunctionCall<'a> {
     raw: &'a crate::ffi::OrderedSetFunctionCall,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -1617,7 +1617,7 @@ impl<'a> OrderedSetFunctionCall<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for OrderedSetFunctionCall<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::OrderedSetFunctionCall>(id)?;
         Some(OrderedSetFunctionCall { raw, reader, id })
     }
@@ -1626,7 +1626,7 @@ impl<'a> DialectNodeType<'a> for OrderedSetFunctionCall<'a> {
 #[derive(Clone, Copy)]
 pub struct CastExpr<'a> {
     raw: &'a crate::ffi::CastExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -1658,7 +1658,7 @@ impl<'a> CastExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for CastExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CastExpr>(id)?;
         Some(CastExpr { raw, reader, id })
     }
@@ -1667,7 +1667,7 @@ impl<'a> DialectNodeType<'a> for CastExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct ColumnRef<'a> {
     raw: &'a crate::ffi::ColumnRef,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -1702,7 +1702,7 @@ impl<'a> ColumnRef<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for ColumnRef<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ColumnRef>(id)?;
         Some(ColumnRef { raw, reader, id })
     }
@@ -1711,7 +1711,7 @@ impl<'a> DialectNodeType<'a> for ColumnRef<'a> {
 #[derive(Clone, Copy)]
 pub struct CompoundSelect<'a> {
     raw: &'a crate::ffi::CompoundSelect,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -1746,7 +1746,7 @@ impl<'a> CompoundSelect<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for CompoundSelect<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CompoundSelect>(id)?;
         Some(CompoundSelect { raw, reader, id })
     }
@@ -1755,7 +1755,7 @@ impl<'a> DialectNodeType<'a> for CompoundSelect<'a> {
 #[derive(Clone, Copy)]
 pub struct SubqueryExpr<'a> {
     raw: &'a crate::ffi::SubqueryExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -1784,7 +1784,7 @@ impl<'a> SubqueryExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for SubqueryExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::SubqueryExpr>(id)?;
         Some(SubqueryExpr { raw, reader, id })
     }
@@ -1793,7 +1793,7 @@ impl<'a> DialectNodeType<'a> for SubqueryExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct ExistsExpr<'a> {
     raw: &'a crate::ffi::ExistsExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -1822,7 +1822,7 @@ impl<'a> ExistsExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for ExistsExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ExistsExpr>(id)?;
         Some(ExistsExpr { raw, reader, id })
     }
@@ -1831,7 +1831,7 @@ impl<'a> DialectNodeType<'a> for ExistsExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct InExpr<'a> {
     raw: &'a crate::ffi::InExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -1866,7 +1866,7 @@ impl<'a> InExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for InExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::InExpr>(id)?;
         Some(InExpr { raw, reader, id })
     }
@@ -1875,7 +1875,7 @@ impl<'a> DialectNodeType<'a> for InExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct IsExpr<'a> {
     raw: &'a crate::ffi::IsExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -1910,7 +1910,7 @@ impl<'a> IsExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for IsExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::IsExpr>(id)?;
         Some(IsExpr { raw, reader, id })
     }
@@ -1919,7 +1919,7 @@ impl<'a> DialectNodeType<'a> for IsExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct BetweenExpr<'a> {
     raw: &'a crate::ffi::BetweenExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -1957,7 +1957,7 @@ impl<'a> BetweenExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for BetweenExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::BetweenExpr>(id)?;
         Some(BetweenExpr { raw, reader, id })
     }
@@ -1966,7 +1966,7 @@ impl<'a> DialectNodeType<'a> for BetweenExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct LikeExpr<'a> {
     raw: &'a crate::ffi::LikeExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2004,7 +2004,7 @@ impl<'a> LikeExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for LikeExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::LikeExpr>(id)?;
         Some(LikeExpr { raw, reader, id })
     }
@@ -2013,7 +2013,7 @@ impl<'a> DialectNodeType<'a> for LikeExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct CaseExpr<'a> {
     raw: &'a crate::ffi::CaseExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2048,7 +2048,7 @@ impl<'a> CaseExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for CaseExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CaseExpr>(id)?;
         Some(CaseExpr { raw, reader, id })
     }
@@ -2057,7 +2057,7 @@ impl<'a> DialectNodeType<'a> for CaseExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct CaseWhen<'a> {
     raw: &'a crate::ffi::CaseWhen,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2089,7 +2089,7 @@ impl<'a> CaseWhen<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for CaseWhen<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CaseWhen>(id)?;
         Some(CaseWhen { raw, reader, id })
     }
@@ -2098,7 +2098,7 @@ impl<'a> DialectNodeType<'a> for CaseWhen<'a> {
 #[derive(Clone, Copy)]
 pub struct ForeignKeyClause<'a> {
     raw: &'a crate::ffi::ForeignKeyClause,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2139,7 +2139,7 @@ impl<'a> ForeignKeyClause<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for ForeignKeyClause<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ForeignKeyClause>(id)?;
         Some(ForeignKeyClause { raw, reader, id })
     }
@@ -2148,7 +2148,7 @@ impl<'a> DialectNodeType<'a> for ForeignKeyClause<'a> {
 #[derive(Clone, Copy)]
 pub struct ColumnConstraint<'a> {
     raw: &'a crate::ffi::ColumnConstraint,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2207,7 +2207,7 @@ impl<'a> ColumnConstraint<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for ColumnConstraint<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ColumnConstraint>(id)?;
         Some(ColumnConstraint { raw, reader, id })
     }
@@ -2216,7 +2216,7 @@ impl<'a> DialectNodeType<'a> for ColumnConstraint<'a> {
 #[derive(Clone, Copy)]
 pub struct ColumnDef<'a> {
     raw: &'a crate::ffi::ColumnDef,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2251,7 +2251,7 @@ impl<'a> ColumnDef<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for ColumnDef<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ColumnDef>(id)?;
         Some(ColumnDef { raw, reader, id })
     }
@@ -2260,7 +2260,7 @@ impl<'a> DialectNodeType<'a> for ColumnDef<'a> {
 #[derive(Clone, Copy)]
 pub struct TableConstraint<'a> {
     raw: &'a crate::ffi::TableConstraint,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2310,7 +2310,7 @@ impl<'a> TableConstraint<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for TableConstraint<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::TableConstraint>(id)?;
         Some(TableConstraint { raw, reader, id })
     }
@@ -2319,7 +2319,7 @@ impl<'a> DialectNodeType<'a> for TableConstraint<'a> {
 #[derive(Clone, Copy)]
 pub struct CreateTableStmt<'a> {
     raw: &'a crate::ffi::CreateTableStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2369,7 +2369,7 @@ impl<'a> CreateTableStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for CreateTableStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CreateTableStmt>(id)?;
         Some(CreateTableStmt { raw, reader, id })
     }
@@ -2378,7 +2378,7 @@ impl<'a> DialectNodeType<'a> for CreateTableStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct CteDefinition<'a> {
     raw: &'a crate::ffi::CteDefinition,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2416,7 +2416,7 @@ impl<'a> CteDefinition<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for CteDefinition<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CteDefinition>(id)?;
         Some(CteDefinition { raw, reader, id })
     }
@@ -2425,7 +2425,7 @@ impl<'a> DialectNodeType<'a> for CteDefinition<'a> {
 #[derive(Clone, Copy)]
 pub struct WithClause<'a> {
     raw: &'a crate::ffi::WithClause,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2460,7 +2460,7 @@ impl<'a> WithClause<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for WithClause<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::WithClause>(id)?;
         Some(WithClause { raw, reader, id })
     }
@@ -2469,7 +2469,7 @@ impl<'a> DialectNodeType<'a> for WithClause<'a> {
 #[derive(Clone, Copy)]
 pub struct DeleteStmt<'a> {
     raw: &'a crate::ffi::DeleteStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2507,7 +2507,7 @@ impl<'a> DeleteStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for DeleteStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::DeleteStmt>(id)?;
         Some(DeleteStmt { raw, reader, id })
     }
@@ -2516,7 +2516,7 @@ impl<'a> DialectNodeType<'a> for DeleteStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct SetClause<'a> {
     raw: &'a crate::ffi::SetClause,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2551,7 +2551,7 @@ impl<'a> SetClause<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for SetClause<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::SetClause>(id)?;
         Some(SetClause { raw, reader, id })
     }
@@ -2560,7 +2560,7 @@ impl<'a> DialectNodeType<'a> for SetClause<'a> {
 #[derive(Clone, Copy)]
 pub struct UpdateStmt<'a> {
     raw: &'a crate::ffi::UpdateStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2607,7 +2607,7 @@ impl<'a> UpdateStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for UpdateStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::UpdateStmt>(id)?;
         Some(UpdateStmt { raw, reader, id })
     }
@@ -2616,7 +2616,7 @@ impl<'a> DialectNodeType<'a> for UpdateStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct InsertStmt<'a> {
     raw: &'a crate::ffi::InsertStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2654,7 +2654,7 @@ impl<'a> InsertStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for InsertStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::InsertStmt>(id)?;
         Some(InsertStmt { raw, reader, id })
     }
@@ -2663,7 +2663,7 @@ impl<'a> DialectNodeType<'a> for InsertStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct BinaryExpr<'a> {
     raw: &'a crate::ffi::BinaryExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2698,7 +2698,7 @@ impl<'a> BinaryExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for BinaryExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::BinaryExpr>(id)?;
         Some(BinaryExpr { raw, reader, id })
     }
@@ -2707,7 +2707,7 @@ impl<'a> DialectNodeType<'a> for BinaryExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct UnaryExpr<'a> {
     raw: &'a crate::ffi::UnaryExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2739,7 +2739,7 @@ impl<'a> UnaryExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for UnaryExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::UnaryExpr>(id)?;
         Some(UnaryExpr { raw, reader, id })
     }
@@ -2748,7 +2748,7 @@ impl<'a> DialectNodeType<'a> for UnaryExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct Literal<'a> {
     raw: &'a crate::ffi::Literal,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2780,7 +2780,7 @@ impl<'a> Literal<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for Literal<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::Literal>(id)?;
         Some(Literal { raw, reader, id })
     }
@@ -2789,7 +2789,7 @@ impl<'a> DialectNodeType<'a> for Literal<'a> {
 #[derive(Clone, Copy)]
 pub struct FunctionCall<'a> {
     raw: &'a crate::ffi::FunctionCall,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2830,7 +2830,7 @@ impl<'a> FunctionCall<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for FunctionCall<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::FunctionCall>(id)?;
         Some(FunctionCall { raw, reader, id })
     }
@@ -2839,7 +2839,7 @@ impl<'a> DialectNodeType<'a> for FunctionCall<'a> {
 #[derive(Clone, Copy)]
 pub struct Variable<'a> {
     raw: &'a crate::ffi::Variable,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2868,7 +2868,7 @@ impl<'a> Variable<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for Variable<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::Variable>(id)?;
         Some(Variable { raw, reader, id })
     }
@@ -2877,7 +2877,7 @@ impl<'a> DialectNodeType<'a> for Variable<'a> {
 #[derive(Clone, Copy)]
 pub struct CollateExpr<'a> {
     raw: &'a crate::ffi::CollateExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2909,7 +2909,7 @@ impl<'a> CollateExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for CollateExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CollateExpr>(id)?;
         Some(CollateExpr { raw, reader, id })
     }
@@ -2918,7 +2918,7 @@ impl<'a> DialectNodeType<'a> for CollateExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct RaiseExpr<'a> {
     raw: &'a crate::ffi::RaiseExpr,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2950,7 +2950,7 @@ impl<'a> RaiseExpr<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for RaiseExpr<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::RaiseExpr>(id)?;
         Some(RaiseExpr { raw, reader, id })
     }
@@ -2959,7 +2959,7 @@ impl<'a> DialectNodeType<'a> for RaiseExpr<'a> {
 #[derive(Clone, Copy)]
 pub struct QualifiedName<'a> {
     raw: &'a crate::ffi::QualifiedName,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -2991,7 +2991,7 @@ impl<'a> QualifiedName<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for QualifiedName<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::QualifiedName>(id)?;
         Some(QualifiedName { raw, reader, id })
     }
@@ -3000,7 +3000,7 @@ impl<'a> DialectNodeType<'a> for QualifiedName<'a> {
 #[derive(Clone, Copy)]
 pub struct DropStmt<'a> {
     raw: &'a crate::ffi::DropStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3035,7 +3035,7 @@ impl<'a> DropStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for DropStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::DropStmt>(id)?;
         Some(DropStmt { raw, reader, id })
     }
@@ -3044,7 +3044,7 @@ impl<'a> DialectNodeType<'a> for DropStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct AlterTableStmt<'a> {
     raw: &'a crate::ffi::AlterTableStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3082,7 +3082,7 @@ impl<'a> AlterTableStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for AlterTableStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::AlterTableStmt>(id)?;
         Some(AlterTableStmt { raw, reader, id })
     }
@@ -3091,7 +3091,7 @@ impl<'a> DialectNodeType<'a> for AlterTableStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct TransactionStmt<'a> {
     raw: &'a crate::ffi::TransactionStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3123,7 +3123,7 @@ impl<'a> TransactionStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for TransactionStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::TransactionStmt>(id)?;
         Some(TransactionStmt { raw, reader, id })
     }
@@ -3132,7 +3132,7 @@ impl<'a> DialectNodeType<'a> for TransactionStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct SavepointStmt<'a> {
     raw: &'a crate::ffi::SavepointStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3164,7 +3164,7 @@ impl<'a> SavepointStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for SavepointStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::SavepointStmt>(id)?;
         Some(SavepointStmt { raw, reader, id })
     }
@@ -3173,7 +3173,7 @@ impl<'a> DialectNodeType<'a> for SavepointStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct ResultColumn<'a> {
     raw: &'a crate::ffi::ResultColumn,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3208,7 +3208,7 @@ impl<'a> ResultColumn<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for ResultColumn<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ResultColumn>(id)?;
         Some(ResultColumn { raw, reader, id })
     }
@@ -3217,7 +3217,7 @@ impl<'a> DialectNodeType<'a> for ResultColumn<'a> {
 #[derive(Clone, Copy)]
 pub struct SelectStmt<'a> {
     raw: &'a crate::ffi::SelectStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3270,7 +3270,7 @@ impl<'a> SelectStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for SelectStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::SelectStmt>(id)?;
         Some(SelectStmt { raw, reader, id })
     }
@@ -3279,7 +3279,7 @@ impl<'a> DialectNodeType<'a> for SelectStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct OrderingTerm<'a> {
     raw: &'a crate::ffi::OrderingTerm,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3314,7 +3314,7 @@ impl<'a> OrderingTerm<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for OrderingTerm<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::OrderingTerm>(id)?;
         Some(OrderingTerm { raw, reader, id })
     }
@@ -3323,7 +3323,7 @@ impl<'a> DialectNodeType<'a> for OrderingTerm<'a> {
 #[derive(Clone, Copy)]
 pub struct LimitClause<'a> {
     raw: &'a crate::ffi::LimitClause,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3355,7 +3355,7 @@ impl<'a> LimitClause<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for LimitClause<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::LimitClause>(id)?;
         Some(LimitClause { raw, reader, id })
     }
@@ -3364,7 +3364,7 @@ impl<'a> DialectNodeType<'a> for LimitClause<'a> {
 #[derive(Clone, Copy)]
 pub struct TableRef<'a> {
     raw: &'a crate::ffi::TableRef,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3399,7 +3399,7 @@ impl<'a> TableRef<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for TableRef<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::TableRef>(id)?;
         Some(TableRef { raw, reader, id })
     }
@@ -3408,7 +3408,7 @@ impl<'a> DialectNodeType<'a> for TableRef<'a> {
 #[derive(Clone, Copy)]
 pub struct SubqueryTableSource<'a> {
     raw: &'a crate::ffi::SubqueryTableSource,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3440,7 +3440,7 @@ impl<'a> SubqueryTableSource<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for SubqueryTableSource<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::SubqueryTableSource>(id)?;
         Some(SubqueryTableSource { raw, reader, id })
     }
@@ -3449,7 +3449,7 @@ impl<'a> DialectNodeType<'a> for SubqueryTableSource<'a> {
 #[derive(Clone, Copy)]
 pub struct JoinClause<'a> {
     raw: &'a crate::ffi::JoinClause,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3490,7 +3490,7 @@ impl<'a> JoinClause<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for JoinClause<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::JoinClause>(id)?;
         Some(JoinClause { raw, reader, id })
     }
@@ -3499,7 +3499,7 @@ impl<'a> DialectNodeType<'a> for JoinClause<'a> {
 #[derive(Clone, Copy)]
 pub struct JoinPrefix<'a> {
     raw: &'a crate::ffi::JoinPrefix,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3531,7 +3531,7 @@ impl<'a> JoinPrefix<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for JoinPrefix<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::JoinPrefix>(id)?;
         Some(JoinPrefix { raw, reader, id })
     }
@@ -3540,7 +3540,7 @@ impl<'a> DialectNodeType<'a> for JoinPrefix<'a> {
 #[derive(Clone, Copy)]
 pub struct TriggerEvent<'a> {
     raw: &'a crate::ffi::TriggerEvent,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3572,7 +3572,7 @@ impl<'a> TriggerEvent<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for TriggerEvent<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::TriggerEvent>(id)?;
         Some(TriggerEvent { raw, reader, id })
     }
@@ -3581,7 +3581,7 @@ impl<'a> DialectNodeType<'a> for TriggerEvent<'a> {
 #[derive(Clone, Copy)]
 pub struct CreateTriggerStmt<'a> {
     raw: &'a crate::ffi::CreateTriggerStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3634,7 +3634,7 @@ impl<'a> CreateTriggerStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for CreateTriggerStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CreateTriggerStmt>(id)?;
         Some(CreateTriggerStmt { raw, reader, id })
     }
@@ -3643,7 +3643,7 @@ impl<'a> DialectNodeType<'a> for CreateTriggerStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct CreateVirtualTableStmt<'a> {
     raw: &'a crate::ffi::CreateVirtualTableStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3684,7 +3684,7 @@ impl<'a> CreateVirtualTableStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for CreateVirtualTableStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CreateVirtualTableStmt>(id)?;
         Some(CreateVirtualTableStmt { raw, reader, id })
     }
@@ -3693,7 +3693,7 @@ impl<'a> DialectNodeType<'a> for CreateVirtualTableStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct PragmaStmt<'a> {
     raw: &'a crate::ffi::PragmaStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3731,7 +3731,7 @@ impl<'a> PragmaStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for PragmaStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::PragmaStmt>(id)?;
         Some(PragmaStmt { raw, reader, id })
     }
@@ -3740,7 +3740,7 @@ impl<'a> DialectNodeType<'a> for PragmaStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct AnalyzeStmt<'a> {
     raw: &'a crate::ffi::AnalyzeStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3775,7 +3775,7 @@ impl<'a> AnalyzeStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for AnalyzeStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::AnalyzeStmt>(id)?;
         Some(AnalyzeStmt { raw, reader, id })
     }
@@ -3784,7 +3784,7 @@ impl<'a> DialectNodeType<'a> for AnalyzeStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct AttachStmt<'a> {
     raw: &'a crate::ffi::AttachStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3819,7 +3819,7 @@ impl<'a> AttachStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for AttachStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::AttachStmt>(id)?;
         Some(AttachStmt { raw, reader, id })
     }
@@ -3828,7 +3828,7 @@ impl<'a> DialectNodeType<'a> for AttachStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct DetachStmt<'a> {
     raw: &'a crate::ffi::DetachStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3857,7 +3857,7 @@ impl<'a> DetachStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for DetachStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::DetachStmt>(id)?;
         Some(DetachStmt { raw, reader, id })
     }
@@ -3866,7 +3866,7 @@ impl<'a> DialectNodeType<'a> for DetachStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct VacuumStmt<'a> {
     raw: &'a crate::ffi::VacuumStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3898,7 +3898,7 @@ impl<'a> VacuumStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for VacuumStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::VacuumStmt>(id)?;
         Some(VacuumStmt { raw, reader, id })
     }
@@ -3907,7 +3907,7 @@ impl<'a> DialectNodeType<'a> for VacuumStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct ExplainStmt<'a> {
     raw: &'a crate::ffi::ExplainStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3939,7 +3939,7 @@ impl<'a> ExplainStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for ExplainStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ExplainStmt>(id)?;
         Some(ExplainStmt { raw, reader, id })
     }
@@ -3948,7 +3948,7 @@ impl<'a> DialectNodeType<'a> for ExplainStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct CreateIndexStmt<'a> {
     raw: &'a crate::ffi::CreateIndexStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -3995,7 +3995,7 @@ impl<'a> CreateIndexStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for CreateIndexStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CreateIndexStmt>(id)?;
         Some(CreateIndexStmt { raw, reader, id })
     }
@@ -4004,7 +4004,7 @@ impl<'a> DialectNodeType<'a> for CreateIndexStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct CreateViewStmt<'a> {
     raw: &'a crate::ffi::CreateViewStmt,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -4048,7 +4048,7 @@ impl<'a> CreateViewStmt<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for CreateViewStmt<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::CreateViewStmt>(id)?;
         Some(CreateViewStmt { raw, reader, id })
     }
@@ -4057,7 +4057,7 @@ impl<'a> DialectNodeType<'a> for CreateViewStmt<'a> {
 #[derive(Clone, Copy)]
 pub struct ValuesClause<'a> {
     raw: &'a crate::ffi::ValuesClause,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -4086,7 +4086,7 @@ impl<'a> ValuesClause<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for ValuesClause<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::ValuesClause>(id)?;
         Some(ValuesClause { raw, reader, id })
     }
@@ -4095,7 +4095,7 @@ impl<'a> DialectNodeType<'a> for ValuesClause<'a> {
 #[derive(Clone, Copy)]
 pub struct FrameBound<'a> {
     raw: &'a crate::ffi::FrameBound,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -4127,7 +4127,7 @@ impl<'a> FrameBound<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for FrameBound<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::FrameBound>(id)?;
         Some(FrameBound { raw, reader, id })
     }
@@ -4136,7 +4136,7 @@ impl<'a> DialectNodeType<'a> for FrameBound<'a> {
 #[derive(Clone, Copy)]
 pub struct FrameSpec<'a> {
     raw: &'a crate::ffi::FrameSpec,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -4174,7 +4174,7 @@ impl<'a> FrameSpec<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for FrameSpec<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::FrameSpec>(id)?;
         Some(FrameSpec { raw, reader, id })
     }
@@ -4183,7 +4183,7 @@ impl<'a> DialectNodeType<'a> for FrameSpec<'a> {
 #[derive(Clone, Copy)]
 pub struct WindowDef<'a> {
     raw: &'a crate::ffi::WindowDef,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -4221,7 +4221,7 @@ impl<'a> WindowDef<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for WindowDef<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::WindowDef>(id)?;
         Some(WindowDef { raw, reader, id })
     }
@@ -4230,7 +4230,7 @@ impl<'a> DialectNodeType<'a> for WindowDef<'a> {
 #[derive(Clone, Copy)]
 pub struct NamedWindowDef<'a> {
     raw: &'a crate::ffi::NamedWindowDef,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -4262,7 +4262,7 @@ impl<'a> NamedWindowDef<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for NamedWindowDef<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::NamedWindowDef>(id)?;
         Some(NamedWindowDef { raw, reader, id })
     }
@@ -4271,7 +4271,7 @@ impl<'a> DialectNodeType<'a> for NamedWindowDef<'a> {
 #[derive(Clone, Copy)]
 pub struct FilterOver<'a> {
     raw: &'a crate::ffi::FilterOver,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     id: NodeId,
 }
 
@@ -4306,7 +4306,7 @@ impl<'a> FilterOver<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for FilterOver<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         let raw = reader.resolve_as::<crate::ffi::FilterOver>(id)?;
         Some(FilterOver { raw, reader, id })
     }
@@ -4456,7 +4456,7 @@ impl<'a> Node<'a> {
     /// Its first `u32` must be a valid `NodeTag` discriminant.
     pub(crate) unsafe fn from_raw(
         ptr: *const u32,
-        reader: RawNodeReader<'a>,
+        reader: RawParseResult<'a>,
         id: NodeId,
     ) -> Node<'a> {
         // SAFETY: caller guarantees ptr is valid for 'a with a valid tag.
@@ -4819,7 +4819,7 @@ impl<'a> Node<'a> {
     }
 
     /// Resolve a `NodeId` into a typed `Node`, or `None` if null/invalid.
-    pub(crate) fn resolve(reader: RawNodeReader<'a>, id: NodeId) -> Option<Node<'a>> {
+    pub(crate) fn resolve(reader: RawParseResult<'a>, id: NodeId) -> Option<Node<'a>> {
         let (ptr, _tag) = reader.node_ptr(id)?;
         Some(unsafe { Node::from_raw(ptr as *const u32, reader, id) })
     }
@@ -4907,7 +4907,7 @@ impl<'a> Node<'a> {
 }
 
 impl<'a> DialectNodeType<'a> for Node<'a> {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self> {
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self> {
         Node::resolve(reader, id)
     }
 }

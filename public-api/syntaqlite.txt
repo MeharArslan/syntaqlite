@@ -83,8 +83,8 @@ pub fn syntaqlite::DatabaseCatalog::from_ddl(dialect: syntaqlite_parser::dialect
 pub fn syntaqlite::DatabaseCatalog::from_ddl(dialect: syntaqlite_parser::dialect::RawDialect<'_>, source: &str, dialect_config: core::option::Option<syntaqlite_parser::dialect::ffi::DialectConfig>) -> Self
 pub fn syntaqlite::DatabaseCatalog::from_json(s: &str) -> core::result::Result<Self, alloc::string::String>
 pub fn syntaqlite::DatabaseCatalog::from_json(s: &str) -> core::result::Result<Self, alloc::string::String>
-pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawNodeReader<'a>, stmt_ids: &[syntaqlite_parser::nodes::NodeId], dialect: syntaqlite_parser::dialect::RawDialect<'_>) -> Self
-pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawNodeReader<'a>, stmt_ids: &[syntaqlite_parser::nodes::NodeId], dialect: syntaqlite_parser::dialect::RawDialect<'_>) -> Self
+pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawParseResult<'a>, stmt_ids: &[syntaqlite_parser::nodes::NodeId], dialect: syntaqlite_parser::dialect::RawDialect<'_>) -> Self
+pub fn syntaqlite::DatabaseCatalog::from_stmts<'a>(reader: syntaqlite_parser::session::RawParseResult<'a>, stmt_ids: &[syntaqlite_parser::nodes::NodeId], dialect: syntaqlite_parser::dialect::RawDialect<'_>) -> Self
 pub fn syntaqlite::DatabaseCatalog::tables(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
 pub fn syntaqlite::DatabaseCatalog::tables(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_
 pub fn syntaqlite::DatabaseCatalog::views(&self) -> impl core::iter::traits::iterator::Iterator<Item = &syntaqlite::semantic::RelationDef> + '_

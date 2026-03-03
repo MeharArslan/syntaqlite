@@ -243,7 +243,7 @@ pub struct DocumentAnalysis {
 }
 ```
 
-But `validate_document` needs a `RawNodeReader` to walk the AST, and that borrows from the parser session which is dropped at the end of `compute`. So we'd need to also keep the parser session alive.
+But `validate_document` needs a `RawParseResult` to walk the AST, and that borrows from the parser session which is dropped at the end of `compute`. So we'd need to also keep the parser session alive.
 
 ### 4. What should the core validation API look like?
 
@@ -254,7 +254,7 @@ Possible redesign:
 ```rust
 /// Core validation — borrows everything, owns nothing.
 pub fn validate_document<A: for<'a> AstTypes<'a>>(
-    reader: RawNodeReader<'_>,
+    reader: RawParseResult<'_>,
     stmt_ids: &[NodeId],
     dialect: RawDialect<'_>,
     catalog: &FunctionCatalog,

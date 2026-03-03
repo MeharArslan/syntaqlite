@@ -19,7 +19,7 @@ use crate::parser as ffi;
 #[derive(Clone, Copy)]
 pub struct NodeRef<'a> {
     id: NodeId,
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     dialect: RawDialect<'a>,
 }
 
@@ -31,7 +31,7 @@ impl std::fmt::Debug for NodeRef<'_> {
 
 impl<'a> NodeRef<'a> {
     /// Create a `NodeRef` from its constituent parts.
-    pub fn new(id: NodeId, reader: RawNodeReader<'a>, dialect: RawDialect<'a>) -> Self {
+    pub fn new(id: NodeId, reader: RawParseResult<'a>, dialect: RawDialect<'a>) -> Self {
         NodeRef {
             id,
             reader,
@@ -45,7 +45,7 @@ impl<'a> NodeRef<'a> {
     }
 
     /// Reader for typed access via `DialectNodeType`.
-    pub fn reader(&self) -> RawNodeReader<'a> {
+    pub fn reader(&self) -> RawParseResult<'a> {
         self.reader
     }
 
@@ -124,7 +124,7 @@ impl<'a> NodeRef<'a> {
 
 /// A source span describing where an error node was recorded in the arena.
 ///
-/// Returned by [`RawNodeReader::required_node`] and [`RawNodeReader::optional_node`]
+/// Returned by [`RawParseResult::required_node`] and [`RawParseResult::optional_node`]
 /// when the resolved arena node is an `ErrorNode` (tag 0) rather than the
 /// expected typed node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -160,33 +160,34 @@ impl std::fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-// ── NodeReader ──────────────────────────────────────────────────────────────
+// ── RawParseResult ──────────────────────────────────────────────────────────
 
-/// A lightweight, `Copy` handle for reading nodes from the parser arena.
+/// A lightweight, `Copy` handle for reading the result of a parse: nodes,
+/// tokens, comments, and macro regions from the parser arena.
 ///
-/// This is the read-only half of a cursor state. Dialect crates embed it in
-/// view structs so that accessor methods can resolve `NodeId` children
-/// without requiring a back-reference to the full cursor.
+/// Dialect crates embed it in view structs so that accessor methods can
+/// resolve `NodeId` children without requiring a back-reference to the
+/// full cursor.
 ///
 /// # Safety invariant
 /// The raw pointer must remain valid for `'a`. This is guaranteed when
-/// `RawNodeReader` is obtained from a cursor state (which borrows the parser
+/// `RawParseResult` is obtained from a cursor state (which borrows the parser
 /// exclusively for `'a`).
 #[derive(Clone, Copy)]
-pub struct RawNodeReader<'a> {
+pub struct RawParseResult<'a> {
     pub(crate) raw: NonNull<ffi::Parser>,
     pub(crate) source: &'a str,
 }
 
-impl<'a> RawNodeReader<'a> {
-    /// Construct a `RawNodeReader` from a raw parser pointer and source text.
+impl<'a> RawParseResult<'a> {
+    /// Construct a `RawParseResult` from a raw parser pointer and source text.
     ///
     /// # Safety
     /// `raw` must be a valid, non-null parser pointer that remains valid
     /// for the lifetime `'a`.
     pub unsafe fn new(raw: *mut ffi::Parser, source: &'a str) -> Self {
         // SAFETY: caller guarantees raw is non-null and valid for 'a.
-        RawNodeReader {
+        RawParseResult {
             raw: unsafe { NonNull::new_unchecked(raw) },
             source,
         }

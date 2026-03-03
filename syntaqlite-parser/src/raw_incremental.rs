@@ -20,7 +20,7 @@ use crate::parser::{
 };
 use crate::raw_session::{ParserConfig, reset_parser, reset_parser_cstr};
 use crate::{Comment, MacroRegion, ParseResult, Parser};
-use crate::{ParseError, RawNodeReader};
+use crate::{ParseError, RawParseResult};
 
 /// Holds the C parser handle and mutable state for incremental parsing.
 /// Checked out by cursors at runtime and returned on [`Drop`].
@@ -160,7 +160,7 @@ impl<'d> RawIncrementalParser<'d> {
 /// On drop, the checked-out parser state is returned to the parent
 /// [`RawIncrementalParser`].
 pub struct RawIncrementalCursor<'a> {
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     /// The pointer that the C parser uses as its source base. This may differ
     /// from `source.as_ptr()` when `feed()` copies into an internal buffer.
     /// `feed_token` translates user text pointers through this so that the C
@@ -386,7 +386,7 @@ impl<'a> RawIncrementalCursor<'a> {
     }
 
     /// Get a reference to the embedded `NodeReader`.
-    pub fn reader(&self) -> RawNodeReader<'a> {
+    pub fn reader(&self) -> RawParseResult<'a> {
         self.reader
     }
 

@@ -16,7 +16,7 @@ use crate::parser::{
 };
 use crate::{Comment, Parser, TokenPos};
 
-use crate::{NodeRef, ParseError, RawNodeReader};
+use crate::{NodeRef, ParseError, RawParseResult};
 
 /// Configuration for parser construction.
 #[derive(Debug, Default, Clone, Copy)]
@@ -171,7 +171,7 @@ pub(crate) unsafe fn reset_parser<'a>(
     raw: *mut Parser,
     source_buf: &mut Vec<u8>,
     source: &'a str,
-) -> (RawNodeReader<'a>, NonNull<u8>) {
+) -> (RawParseResult<'a>, NonNull<u8>) {
     source_buf.clear();
     source_buf.reserve(source.len() + 1);
     source_buf.extend_from_slice(source.as_bytes());
@@ -185,7 +185,7 @@ pub(crate) unsafe fn reset_parser<'a>(
         syntaqlite_parser_reset(raw, c_source_ptr.as_ptr() as *const _, source.len() as u32);
     }
     // SAFETY: raw is valid for 'a; source lives for 'a.
-    let reader = unsafe { RawNodeReader::new(raw, source) };
+    let reader = unsafe { RawParseResult::new(raw, source) };
     (reader, c_source_ptr)
 }
 
@@ -196,7 +196,7 @@ pub(crate) unsafe fn reset_parser<'a>(
 pub(crate) unsafe fn reset_parser_cstr<'a>(
     raw: *mut Parser,
     source: &'a CStr,
-) -> (RawNodeReader<'a>, NonNull<u8>) {
+) -> (RawParseResult<'a>, NonNull<u8>) {
     let bytes = source.to_bytes();
     let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 
@@ -206,7 +206,7 @@ pub(crate) unsafe fn reset_parser_cstr<'a>(
     }
     // SAFETY: raw is valid for 'a; source_str borrows the CStr bytes
     // which live for 'a.
-    let reader = unsafe { RawNodeReader::new(raw, source_str) };
+    let reader = unsafe { RawParseResult::new(raw, source_str) };
     let c_source_ptr = NonNull::new(source.as_ptr() as *mut u8).expect("CStr is non-null");
     (reader, c_source_ptr)
 }
@@ -224,7 +224,7 @@ pub(crate) unsafe fn reset_parser_cstr<'a>(
 /// On drop, the checked-out parser state is returned to the parent
 /// [`RawParser`].
 pub struct RawStatementCursor<'a> {
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     dialect: RawDialect<'a>,
     /// Checked-out parser state. Returned to `slot` on drop.
     inner: Option<ParserInner>,
@@ -303,7 +303,7 @@ impl<'a> RawStatementCursor<'a> {
     }
 
     /// Get a reference to the embedded `NodeReader`.
-    pub fn reader(&self) -> RawNodeReader<'a> {
+    pub fn reader(&self) -> RawParseResult<'a> {
         self.reader
     }
 

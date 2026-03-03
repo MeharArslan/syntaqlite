@@ -50,7 +50,7 @@ impl DatabaseCatalog {
     /// `CREATE VIEW … AS SELECT` are expanded using tables/views defined
     /// by earlier statements in the same input.
     pub fn from_stmts<'a>(
-        reader: syntaqlite_parser::RawNodeReader<'a>,
+        reader: syntaqlite_parser::RawParseResult<'a>,
         stmt_ids: &[syntaqlite_parser::NodeId],
         dialect: RawDialect<'_>,
     ) -> Self {
@@ -287,7 +287,7 @@ impl DocumentCatalog {
     /// `db_table` lives in the database (live DB) context.
     pub(crate) fn accumulate(
         &mut self,
-        reader: syntaqlite_parser::RawNodeReader<'_>,
+        reader: syntaqlite_parser::RawParseResult<'_>,
         stmt_id: syntaqlite_parser::NodeId,
         dialect: RawDialect<'_>,
         database: Option<&DatabaseCatalog>,
@@ -389,7 +389,7 @@ impl DocumentCatalog {
 
 /// Extract column definitions from a column definition list node.
 fn columns_from_column_list(
-    reader: &syntaqlite_parser::RawNodeReader<'_>,
+    reader: &syntaqlite_parser::RawParseResult<'_>,
     list_id: syntaqlite_parser::NodeId,
     dialect: &RawDialect<'_>,
     out: &mut Vec<ColumnDef>,
@@ -468,7 +468,7 @@ fn columns_from_column_list(
 
 /// Walk a constraint list to detect PRIMARY KEY and NOT NULL constraints.
 fn extract_column_constraints(
-    reader: &syntaqlite_parser::RawNodeReader<'_>,
+    reader: &syntaqlite_parser::RawParseResult<'_>,
     list_id: syntaqlite_parser::NodeId,
     dialect: &RawDialect<'_>,
     is_primary_key: &mut bool,

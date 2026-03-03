@@ -8,7 +8,7 @@
 //! It has no public methods — callers pass it to `_prepared` methods on the
 //! analyzer.
 
-use syntaqlite_parser::{NodeId, ParseError, RawNodeReader, RawParser, RawStatementCursor};
+use syntaqlite_parser::{NodeId, ParseError, RawParseResult, RawParser, RawStatementCursor};
 
 /// Opaque precomputed representation of parsed SQL.
 ///
@@ -41,8 +41,8 @@ impl<'a, 'd: 'a> SemanticModel<'a, 'd> {
         }
     }
 
-    /// Get a [`RawNodeReader`] for the parser's arena state.
-    pub(crate) fn reader(&self) -> RawNodeReader<'a> {
+    /// Get a [`RawParseResult`] for the parser's arena state.
+    pub(crate) fn reader(&self) -> RawParseResult<'a> {
         self.cursor.reader()
     }
 

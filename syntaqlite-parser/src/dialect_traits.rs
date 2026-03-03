@@ -10,7 +10,7 @@
 //! - [`DialectTokenType`] — resolve a typed token from a raw token code.
 
 use crate::nodes::NodeId;
-use crate::session::RawNodeReader;
+use crate::session::RawParseResult;
 
 /// A node type that can be resolved from the parser arena by [`NodeId`].
 ///
@@ -20,7 +20,7 @@ use crate::session::RawNodeReader;
 ///
 /// See also the symmetric [`DialectTokenType`] for token enums.
 pub trait DialectNodeType<'a>: Sized {
-    fn from_arena(reader: RawNodeReader<'a>, id: NodeId) -> Option<Self>;
+    fn from_arena(reader: RawParseResult<'a>, id: NodeId) -> Option<Self>;
 }
 
 /// A token type that can be resolved from a raw token integer, and converted

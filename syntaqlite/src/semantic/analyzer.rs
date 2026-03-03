@@ -9,7 +9,7 @@
 
 use syntaqlite_parser::ast_traits::AstTypes;
 use syntaqlite_parser::{
-    DialectNodeType, NodeId, ParseError, ParserConfig, RawDialect, RawNodeReader, RawParser,
+    DialectNodeType, NodeId, ParseError, ParserConfig, RawDialect, RawParseResult, RawParser,
 };
 
 use super::ValidationConfig;
@@ -223,7 +223,7 @@ impl Default for SemanticAnalyzer<'static> {
 
 /// Validate a single parsed statement against the catalog stack.
 pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
-    reader: RawNodeReader<'a>,
+    reader: RawParseResult<'a>,
     stmt_id: NodeId,
     dialect: RawDialect<'_>,
     catalog: &'a CatalogStack<'a>,
