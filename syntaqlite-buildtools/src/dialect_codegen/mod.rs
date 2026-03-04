@@ -361,9 +361,9 @@ impl<'a> AstModel<'a> {
         &self.abstract_items
     }
 
-    /// The name of the root/top-level AST node type (first abstract item).
+    /// The name of the root/top-level AST node type.
     pub(crate) fn root_node_name(&self) -> &str {
-        self.abstract_items.first().map_or("Stmt", |(n, _)| n)
+        "Stmt"
     }
 
     pub(crate) fn enums(&self) -> &[EnumRef<'a>] {

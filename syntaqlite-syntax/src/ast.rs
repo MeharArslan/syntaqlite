@@ -3,12 +3,12 @@
 
 use std::marker::PhantomData;
 
-use crate::grammar::{FieldMeta, RawGrammar};
-use crate::parser::ParseResult;
+use crate::grammar::{AnyGrammar, FieldMeta};
+use crate::parser::AnyStatementResult;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/// A node type that can be resolved from the parser arena by [`RawNodeId`].
+/// A node type that can be resolved from the parser arena by [`AnyNodeId`].
 ///
 /// Implemented by generated view structs so that generic containers like
 /// [`TypedList`] can resolve children without dialect-specific code.
@@ -16,7 +16,7 @@ use crate::parser::ParseResult;
 /// See also the symmetric [`GrammarTokenType`] for token enums.
 pub trait GrammarNodeType<'a>: Sized {
     /// Resolve `id` to `Self`, or `None` if null, invalid, or tag mismatch.
-    fn from_arena(reader: ParseResult<'a>, id: RawNodeId) -> Option<Self>;
+    fn from_arena(reader: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self>;
 }
 
 /// A token type that can be resolved from a raw ordinal and converted back.
@@ -25,9 +25,7 @@ pub trait GrammarNodeType<'a>: Sized {
 /// and cursor usage.
 ///
 /// See also the symmetric [`GrammarNodeType`] for AST node types.
-pub trait GrammarTokenType:
-    Sized + Clone + Copy + std::fmt::Debug + Into<u32>
-{
+pub trait GrammarTokenType: Sized + Clone + Copy + std::fmt::Debug + Into<u32> {
     /// Resolve a raw token type ordinal into this dialect's token variant,
     /// or `None` if out of range.
     fn from_token_type(raw: u32) -> Option<Self>;
@@ -39,27 +37,127 @@ impl GrammarTokenType for u32 {
     }
 }
 
-/// An uninhabited node type used by [`AnyDialect`]. Never constructed.
-pub enum AnyNode {}
+/// A grammar-agnostic AST node used by [`AnyDialect`].
+///
+/// Wraps the node's arena ID and parser reader so that callers can inspect
+/// the node without a grammar-specific type. Obtain via
+/// [`AnyStatementCursor::next_statement`](crate::parser::AnyStatementCursor).
+#[derive(Clone, Copy)]
+pub struct AnyNode<'a> {
+    pub(crate) id: AnyNodeId,
+    pub(crate) reader: AnyStatementResult<'a>,
+}
 
-impl<'a> GrammarNodeType<'a> for AnyNode {
-    fn from_arena(_reader: ParseResult<'a>, _id: RawNodeId) -> Option<Self> {
-        None
+impl<'a> GrammarNodeType<'a> for AnyNode<'a> {
+    fn from_arena(reader: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+        reader.node_ptr(id)?; // validate the node exists
+        Some(AnyNode { id, reader })
+    }
+}
+
+impl std::fmt::Debug for AnyNode<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Node").field("id", &self.id).finish()
+    }
+}
+
+impl<'a> AnyNode<'a> {
+    /// Raw arena ID.
+    pub(crate) fn id(&self) -> AnyNodeId {
+        self.id
+    }
+
+    /// Reader for typed access via [`GrammarNodeType`].
+    pub(crate) fn reader(&self) -> AnyStatementResult<'a> {
+        self.reader
+    }
+
+    /// Grammar handle.
+    pub(crate) fn grammar(&self) -> AnyGrammar {
+        self.reader.grammar
+    }
+
+    /// Node type tag, or `None` if null/invalid.
+    pub(crate) fn tag(&self) -> Option<u32> {
+        self.reader.node_tag(self.id)
+    }
+
+    /// Node type name (e.g. `"SelectStmt"`), or `""` if null/invalid.
+    pub(crate) fn name(&self) -> &str {
+        match self.tag() {
+            Some(tag) => self.reader.grammar.node_name(tag),
+            None => "",
+        }
+    }
+
+    /// Whether this is a list node.
+    pub(crate) fn is_list(&self) -> bool {
+        match self.tag() {
+            Some(tag) => self.reader.grammar.is_list(tag),
+            None => false,
+        }
+    }
+
+    /// Child nodes: list children (for lists) or node-typed fields (for non-lists).
+    ///
+    /// Null child IDs are omitted.
+    pub(crate) fn children(&self) -> Vec<AnyNode<'a>> {
+        self.reader
+            .child_node_ids(self.id, &self.reader.grammar)
+            .into_iter()
+            .map(|child_id| AnyNode {
+                id: child_id,
+                reader: self.reader,
+            })
+            .collect()
+    }
+
+    /// Raw list children slice (for list nodes only).
+    pub(crate) fn list_children(&self) -> Option<&'a [AnyNodeId]> {
+        self.reader.list_children(self.id, &self.reader.grammar)
+    }
+
+    /// Grammar field metadata for this node type.
+    pub(crate) fn field_meta(&self) -> &[FieldMeta] {
+        match self.tag() {
+            Some(tag) => self.reader.grammar.field_meta(tag),
+            None => &[],
+        }
+    }
+
+    /// Extract typed field values for this node.
+    pub(crate) fn extract_fields(&self) -> Option<(u32, Fields<'a>)> {
+        self.reader.extract_fields(self.id, &self.reader.grammar)
+    }
+
+    /// Dump as indented text into `out`.
+    pub(crate) fn dump(&self, out: &mut String, indent: usize) {
+        self.reader.dump_node(self.id, out, indent)
+    }
+
+    /// Resolve as a typed AST node, or `None` on tag mismatch.
+    pub(crate) fn as_typed<T: GrammarNodeType<'a>>(self) -> Option<T> {
+        T::from_arena(self.reader, self.id)
+    }
+
+    /// The source text bound to this node's reader.
+    pub(crate) fn source(&self) -> &'a str {
+        self.reader.source()
     }
 }
 
 /// A type-erasing dialect for use with [`TypedTokenizer`](crate::tokenizer::TypedTokenizer)
 /// and [`TypedParser`](crate::parser::TypedParser) when no specific dialect is
-/// needed. Wraps a [`RawGrammar`] directly.
+/// needed. Wraps a [`AnyGrammar`] directly.
 #[derive(Clone, Copy)]
 pub struct AnyDialect {
-    pub raw: crate::grammar::RawGrammar,
+    pub raw: AnyGrammar,
 }
 
 impl crate::grammar::TypedGrammar for AnyDialect {
-    type Node<'a> = AnyNode;
+    type Node<'a> = AnyNode<'a>;
     type Token = u32;
-    fn raw(&mut self) -> &mut crate::grammar::RawGrammar {
+    fn raw(&mut self) -> &mut AnyGrammar {
         &mut self.raw
     }
 }
@@ -74,123 +172,9 @@ impl crate::grammar::TypedGrammar for AnyDialect {
 /// Resolve back to a typed view with
 /// [`StatementCursor::node_ref`](crate::parser::StatementCursor::node_ref) or
 /// [`IncrementalCursor::node_ref`](crate::incremental::IncrementalCursor::node_ref).
-pub(crate) trait NodeId: Copy + Into<RawNodeId> {
+pub(crate) trait TypedNodeId: Copy + Into<AnyNodeId> {
     /// The typed view produced when this ID is resolved against an arena.
     type Node<'a>: GrammarNodeType<'a>;
-}
-
-/// A grammar-agnostic handle to a parsed AST node.
-///
-/// Bundles a node's arena ID with the [`ParseResult`] and [`RawGrammar`]
-/// needed to inspect it, enabling ergonomic methods like [`name()`](Self::name),
-/// [`children()`](Self::children), and [`dump()`](Self::dump) without threading
-/// three arguments everywhere.
-#[derive(Clone, Copy)]
-pub(crate) struct RawNode<'a> {
-    id: RawNodeId,
-    result: ParseResult<'a>,
-    grammar: RawGrammar,
-}
-
-impl std::fmt::Debug for RawNode<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Node").field("id", &self.id).finish()
-    }
-}
-
-impl<'a> RawNode<'a> {
-    /// Create a `RawNode` from its constituent parts.
-    pub(crate) fn new(id: RawNodeId, result: ParseResult<'a>, grammar: RawGrammar) -> Self {
-        RawNode {
-            id,
-            result,
-            grammar,
-        }
-    }
-
-    /// Raw arena ID (escape hatch for FFI/codegen).
-    pub(crate) fn id(&self) -> RawNodeId {
-        self.id
-    }
-
-    /// Reader for typed access via [`GrammarNodeType`].
-    pub(crate) fn reader(&self) -> ParseResult<'a> {
-        self.result
-    }
-
-    /// Grammar handle.
-    pub(crate) fn grammar(&self) -> RawGrammar {
-        self.grammar
-    }
-
-    /// Node type tag, or `None` if null/invalid.
-    pub(crate) fn tag(&self) -> Option<u32> {
-        self.result.node_tag(self.id)
-    }
-
-    /// Node type name (e.g. `"SelectStmt"`), or `""` if null/invalid.
-    pub(crate) fn name(&self) -> &str {
-        match self.tag() {
-            Some(tag) => self.grammar.node_name(tag),
-            None => "",
-        }
-    }
-
-    /// Whether this is a list node.
-    pub(crate) fn is_list(&self) -> bool {
-        match self.tag() {
-            Some(tag) => self.grammar.is_list(tag),
-            None => false,
-        }
-    }
-
-    /// Child nodes: list children (for lists) or node-typed fields (for non-lists).
-    ///
-    /// Null child IDs are omitted.
-    pub(crate) fn children(&self) -> Vec<RawNode<'a>> {
-        self.result
-            .child_node_ids(self.id, &self.grammar)
-            .into_iter()
-            .map(|child_id| RawNode {
-                id: child_id,
-                result: self.result,
-                grammar: self.grammar,
-            })
-            .collect()
-    }
-
-    /// Raw list children slice (for list nodes only).
-    pub(crate) fn list_children(&self) -> Option<&'a [RawNodeId]> {
-        self.result.list_children(self.id, &self.grammar)
-    }
-
-    /// Grammar field metadata for this node type.
-    pub(crate) fn field_meta(&self) -> &[FieldMeta] {
-        match self.tag() {
-            Some(tag) => self.grammar.field_meta(tag),
-            None => &[],
-        }
-    }
-
-    /// Extract typed field values for this node.
-    pub(crate) fn extract_fields(&self) -> Option<(u32, Fields<'a>)> {
-        self.result.extract_fields(self.id, &self.grammar)
-    }
-
-    /// Dump as indented text into `out`.
-    pub(crate) fn dump(&self, out: &mut String, indent: usize) {
-        self.result.dump_node(self.id, out, indent)
-    }
-
-    /// Resolve as a typed AST node, or `None` on tag mismatch.
-    pub(crate) fn as_typed<T: GrammarNodeType<'a>>(self) -> Option<T> {
-        T::from_arena(self.result, self.id)
-    }
-
-    /// The source text bound to this node's reader.
-    pub(crate) fn source(&self) -> &'a str {
-        self.result.source()
-    }
 }
 
 /// A typed, read-only view over a [`NodeList`] in the parser arena.
@@ -200,8 +184,8 @@ impl<'a> RawNode<'a> {
 #[derive(Clone, Copy)]
 pub(crate) struct TypedList<'a, T> {
     raw: &'a NodeList,
-    reader: ParseResult<'a>,
-    id: RawNodeId,
+    reader: AnyStatementResult<'a>,
+    id: AnyNodeId,
     _phantom: PhantomData<fn() -> T>,
 }
 
@@ -215,7 +199,7 @@ impl<T> std::fmt::Debug for TypedList<'_, T> {
 
 impl<'a, T> TypedList<'a, T> {
     /// The arena node ID of this list.
-    pub(crate) fn node_id(&self) -> RawNodeId {
+    pub(crate) fn node_id(&self) -> AnyNodeId {
         self.id
     }
 
@@ -249,7 +233,7 @@ impl<'a, T: GrammarNodeType<'a>> TypedList<'a, T> {
 
 /// Blanket [`GrammarNodeType`] impl for [`TypedList`] — resolves the ID as a list node.
 impl<'a, T> GrammarNodeType<'a> for TypedList<'a, T> {
-    fn from_arena(reader: ParseResult<'a>, id: RawNodeId) -> Option<Self> {
+    fn from_arena(reader: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = reader.resolve_list(id)?;
         Some(TypedList {
             raw,
@@ -264,7 +248,7 @@ impl<'a, T> GrammarNodeType<'a> for TypedList<'a, T> {
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum FieldVal<'a> {
     /// Child node or list reference.
-    NodeId(RawNodeId),
+    NodeId(AnyNodeId),
     /// Source text slice with its byte offset in the original source.
     Span(&'a str, u32),
     /// Boolean flag.
@@ -275,7 +259,7 @@ pub(crate) enum FieldVal<'a> {
     Enum(u32),
 }
 
-/// Extracted fields of a node. Returned by [`ParseResult::extract_fields`].
+/// Extracted fields of a node. Returned by [`AnyStatementResult::extract_fields`].
 ///
 /// Uses `MaybeUninit` internally so that construction is zero-cost — no need
 /// to initialize all 16 slots when most nodes only have 2–5 fields.
@@ -339,21 +323,21 @@ pub(crate) const FIELD_ENUM: u8 = 4;
 
 // ── ffi ───────────────────────────────────────────────────────────────────────
 
-pub(crate) use ffi::{CNodeList as NodeList, CSourceSpan as SourceSpan, RawNodeId};
+pub(crate) use ffi::{AnyNodeId, CNodeList as NodeList, CSourceSpan as SourceSpan};
 
 mod ffi {
     /// A raw arena node index. Identifies a node in the parser arena.
     ///
     /// This is the untyped, lifetime-free handle used inside the engine. Dialect
     /// crates expose typed `XxxId` newtypes (e.g. `SelectStmtId`) that implement
-    /// [`NodeId`] and convert into this.
+    /// [`TypedNodeId`] and convert into this.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     #[repr(transparent)]
-    pub(crate) struct RawNodeId(pub(crate) u32);
+    pub(crate) struct AnyNodeId(pub(crate) u32);
 
-    impl RawNodeId {
+    impl AnyNodeId {
         /// Sentinel value representing a missing/null node.
-        pub(crate) const NULL: RawNodeId = RawNodeId(0xFFFF_FFFF);
+        pub(crate) const NULL: AnyNodeId = AnyNodeId(0xFFFF_FFFF);
 
         /// Returns `true` if this is the null sentinel.
         pub(crate) fn is_null(&self) -> bool {
@@ -386,7 +370,7 @@ mod ffi {
         }
     }
 
-    /// List node header — `tag` + `count`, followed by `count` child [`RawNodeId`]s
+    /// List node header — `tag` + `count`, followed by `count` child [`AnyNodeId`]s
     /// in trailing data. The parser arena guarantees this contiguous layout.
     #[derive(Debug)]
     #[repr(C)]
@@ -397,14 +381,14 @@ mod ffi {
 
     impl CNodeList {
         /// The child node IDs stored after this header in the arena.
-        pub(crate) fn children(&self) -> &[RawNodeId] {
+        pub(crate) fn children(&self) -> &[AnyNodeId] {
             // SAFETY: The arena allocates list nodes as { tag, count, children[count] }
             // contiguously, so `count` u32 values immediately follow this header.
             // CNodeList is only constructed from valid arena pointers (validated tag).
-            // RawNodeId is #[repr(transparent)] over u32, so &[RawNodeId] is
+            // AnyNodeId is #[repr(transparent)] over u32, so &[AnyNodeId] is
             // layout-compatible with &[u32].
             unsafe {
-                let base = (self as *const CNodeList).add(1) as *const RawNodeId;
+                let base = (self as *const CNodeList).add(1) as *const AnyNodeId;
                 std::slice::from_raw_parts(base, self.count as usize)
             }
         }

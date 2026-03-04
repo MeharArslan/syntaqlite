@@ -9,7 +9,7 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
     let csrc = manifest_dir.join("csrc");
     let include_dir = manifest_dir.join("include");
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();

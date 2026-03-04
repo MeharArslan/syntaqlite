@@ -30,7 +30,7 @@ fn emit_section(w: &mut RustWriter, section: &str) {
 /// - `grammar_struct`: the generated grammar struct name, e.g. `SqliteGrammar`
 /// - `root_node`: the root AST node type name, e.g. `Select`
 /// - `token_type`: the token enum type name, e.g. `SqliteTokenType`
-/// - `syntax_crate`: crate providing `RawGrammar` and `TypedGrammar`,
+/// - `syntax_crate`: crate providing `AnyGrammar` and `TypedGrammar`,
 ///   e.g. `crate` (internal) or `syntaqlite_syntax` (external)
 pub(crate) fn generate_grammar_module(
     dialect_fn: &str,
@@ -62,8 +62,8 @@ fn emit_grammar_module(
 ) {
     w.lines(&format!(
         r#"
-use {syntax_crate}::grammar::{{RawGrammar, TypedGrammar}};
-use {syntax_crate}::version::SqliteVersion;
+use {syntax_crate}::grammar::{{AnyGrammar, TypedGrammar}};
+use {syntax_crate}::util::SqliteVersion;
 
 unsafe extern "C" {{
     fn {dialect_fn}() -> {syntax_crate}::grammar::ffi::CGrammar;
@@ -71,16 +71,16 @@ unsafe extern "C" {{
 
 /// The dialect grammar handle.
 ///
-/// Wraps a [`RawGrammar`] and implements [`TypedGrammar`]. Obtain via [`grammar()`];
+/// Wraps a [`AnyGrammar`] and implements [`TypedGrammar`]. Obtain via [`grammar()`];
 /// configure with [`with_version`](Self::with_version) and [`with_cflags`](Self::with_cflags).
 #[derive(Clone, Copy)]
 pub struct {grammar_struct} {{
-    raw: RawGrammar,
+    raw: AnyGrammar,
 }}
 
 impl {grammar_struct} {{
-    /// Return the underlying [`RawGrammar`] by value.
-    pub fn into_raw(self) -> RawGrammar {{
+    /// Return the underlying [`AnyGrammar`] by value.
+    pub fn into_raw(self) -> AnyGrammar {{
         self.raw
     }}
 
@@ -107,7 +107,7 @@ impl TypedGrammar for {grammar_struct} {{
     type Node<'a> = super::ast::{root_node}<'a>;
     type Token = super::tokens::{token_type};
 
-    fn raw(&mut self) -> &mut RawGrammar {{
+    fn raw(&mut self) -> &mut AnyGrammar {{
         &mut self.raw
     }}
 }}
@@ -115,7 +115,7 @@ impl TypedGrammar for {grammar_struct} {{
 /// Returns the dialect grammar handle.
 pub fn grammar() -> {grammar_struct} {{
     // SAFETY: {dialect_fn}() returns a valid static C grammar.
-    let raw = unsafe {{ RawGrammar::new({dialect_fn}()) }};
+    let raw = unsafe {{ AnyGrammar::new({dialect_fn}()) }};
     {grammar_struct} {{ raw }}
 }}
 "#

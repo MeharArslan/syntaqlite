@@ -68,23 +68,25 @@
 //! # Features
 //!
 //! - `sqlite` *(default)*: enables the built-in SQLite dialect
-//!   ([`Tokenizer`], [`Token`], [`TokenCursor`], and `sqlite::grammar`/`sqlite::ast`).
+//!   ([`Tokenizer`], [`Token`], and `sqlite::grammar`/`sqlite::ast`).
 
 // ==== Public API ====
 
 // Top level parser types.
 #[cfg(feature = "sqlite")]
-pub use parser::{Parser, StatementCursor, ParseError};
+pub use parser::{ParseError, ParseSession, Parser};
 
 // Top-level tokenizer types.
 #[cfg(feature = "sqlite")]
-pub use tokenizer::{Token, TokenCursor, Tokenizer};
+pub use tokenizer::{Token, Tokenizer};
+
+/// AST traits, public for grammar crates to define AST nodes and for
+/// users who want to write generic code over multiple dialects while
+/// still assuming SQLite-compatible AST node types.
+pub mod ast_traits;
 
 // TODO(claude): document this.
 pub mod tokenizer;
-
-// TODO(claude): document this.
-pub mod ast_traits;
 
 // ==== Internal modules ====
 

@@ -7,12 +7,9 @@ use std::ops::Range;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::ast::{RawNode, RawNodeId};
-use crate::grammar::RawGrammar;
-use crate::parser::{
-    CParseResult, CParser, Comment, ParseError, ParseResult, ParserInner, TokenPos, ffi_slice,
-    raw_parser_comments, raw_parser_tokens,
-};
+use crate::ast::{AnyNode, AnyNodeId};
+use crate::grammar::AnyGrammar;
+use crate::parser::{AnyParseError, AnyStatementResult, CParser, ParserInner, TypedStatementResult, ffi_slice};
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
@@ -26,7 +23,7 @@ pub struct IncrementalCursor {
     /// Base pointer into the internal source buffer. `feed_token` uses this
     /// to compute the C-side token pointer from byte-offset spans.
     c_source_ptr: NonNull<u8>,
-    grammar: RawGrammar,
+    grammar: AnyGrammar,
     /// Checked-out parser state. Returned to `slot` on drop.
     inner: Option<ParserInner>,
     /// Slot to return `inner` to when this cursor is dropped.
@@ -45,7 +42,7 @@ impl Drop for IncrementalCursor {
 impl IncrementalCursor {
     pub(crate) fn new(
         c_source_ptr: NonNull<u8>,
-        grammar: RawGrammar,
+        grammar: AnyGrammar,
         inner: ParserInner,
         slot: Rc<RefCell<Option<ParserInner>>>,
     ) -> Self {
@@ -68,64 +65,64 @@ impl IncrementalCursor {
 
     /// Read the parser result after a statement-completing or error return code.
     ///
-    /// Return codes from C:
+    /// Return codes from C (`SYNTAQLITE_PARSE_*`):
     /// - `1` = clean success
     /// - `2` = success with error recovery (tree has `CErrorNode` holes)
     /// - `-1` = unrecoverable error
-    fn parse_result(&self, rc: c_int) -> Result<RawNodeId, ParseError> {
-        // SAFETY: raw is valid; result struct and error_msg pointer are valid
-        // for the lifetime of the parser.
+    fn parse_result(&self, rc: c_int) -> Result<AnyNodeId, AnyParseError> {
+        // SAFETY: raw is valid; result accessors read directly from parser
+        // fields valid for the parser lifetime.
         unsafe {
-            let result = ffi::syntaqlite_parser_result(self.raw_ptr());
+            let raw = self.raw_ptr();
+            let root_id = AnyNodeId(ffi::syntaqlite_result_root(raw));
+
             if rc == 1 {
-                return Ok(RawNodeId(result.root));
+                return Ok(root_id);
             }
-            let err = Self::extract_error(&result);
+
+            // rc == 2 or rc == -1: build error from accessors.
+            let msg_ptr = ffi::syntaqlite_result_error_msg(raw);
+            let msg = if msg_ptr.is_null() {
+                "parse error".to_string()
+            } else {
+                // SAFETY: error_msg is a NUL-terminated string in the parser's buffer.
+                CStr::from_ptr(msg_ptr).to_string_lossy().into_owned()
+            };
+            let error_offset = ffi::syntaqlite_result_error_offset(raw);
+            let error_length = ffi::syntaqlite_result_error_length(raw);
+            let offset = if error_offset == 0xFFFF_FFFF {
+                None
+            } else {
+                Some(error_offset as usize)
+            };
+            let length = if error_length == 0 {
+                None
+            } else {
+                Some(error_length as usize)
+            };
+
             if rc == 2 {
                 // Error recovery succeeded — tree is valid but has CErrorNode holes.
-                return Err(ParseError {
-                    root: Some(RawNodeId(result.root)),
-                    ..err
+                return Err(AnyParseError {
+                    message: msg,
+                    offset,
+                    length,
+                    root: Some(root_id),
                 });
             }
+
             // rc == -1: unrecoverable error, root may be NULL.
-            let root = if result.root != u32::MAX && result.root != 0 {
-                Some(RawNodeId(result.root))
+            let root = if !root_id.is_null() {
+                Some(root_id)
             } else {
                 None
             };
-            Err(ParseError { root, ..err })
-        }
-    }
-
-    /// Extract error fields from a C parse result.
-    ///
-    /// # Safety
-    /// `result.error_msg` must be null or a valid C string.
-    unsafe fn extract_error(result: &CParseResult) -> ParseError {
-        let msg = if result.error_msg.is_null() {
-            "parse error".to_string()
-        } else {
-            // SAFETY: caller guarantees error_msg is a valid C string.
-            unsafe { CStr::from_ptr(result.error_msg) }
-                .to_string_lossy()
-                .into_owned()
-        };
-        let offset = if result.error_offset == 0xFFFFFFFF {
-            None
-        } else {
-            Some(result.error_offset as usize)
-        };
-        let length = if result.error_length == 0 {
-            None
-        } else {
-            Some(result.error_length as usize)
-        };
-        ParseError {
-            message: msg,
-            offset,
-            length,
-            root: None,
+            Err(AnyParseError {
+                message: msg,
+                offset,
+                length,
+                root,
+            })
         }
     }
 
@@ -144,7 +141,7 @@ impl IncrementalCursor {
         &mut self,
         token_type: u32,
         span: Range<usize>,
-    ) -> Result<Option<RawNodeId>, ParseError> {
+    ) -> Result<Option<AnyNodeId>, AnyParseError> {
         self.assert_not_finished();
         // SAFETY: c_source_ptr is valid for the source length; raw is valid.
         let rc = unsafe {
@@ -171,7 +168,7 @@ impl IncrementalCursor {
     /// the partial tree.
     ///
     /// No further methods may be called after `finish()`.
-    pub(crate) fn finish(&mut self) -> Result<Option<RawNodeId>, ParseError> {
+    pub(crate) fn finish(&mut self) -> Result<Option<AnyNodeId>, AnyParseError> {
         self.assert_not_finished();
         self.finished = true;
         // SAFETY: raw is valid.
@@ -265,40 +262,41 @@ impl IncrementalCursor {
     ///
     /// Lightweight (no allocation) — packages the raw parser pointer with a
     /// `&str` view of the owned source buffer.
-    pub(crate) fn reader(&self) -> ParseResult<'_> {
+    pub(crate) fn reader(&self) -> AnyStatementResult<'_> {
         let inner = self.inner.as_ref().unwrap();
         let source_len = inner.source_buf.len().saturating_sub(1);
         // SAFETY: source_buf was populated from valid UTF-8 (&str) in
         // reset_parser. The first source_len bytes are the original source.
         let source = unsafe { std::str::from_utf8_unchecked(&inner.source_buf[..source_len]) };
         // SAFETY: inner.raw is valid (owned via ParserInner, not yet destroyed).
-        unsafe { ParseResult::new(inner.raw.as_ptr(), source) }
+        unsafe { TypedStatementResult::new(inner.raw.as_ptr(), source, self.grammar) }
     }
 
-    /// Wrap a [`RawNodeId`] as a [`RawNode`] using this cursor's reader and grammar.
-    pub(crate) fn node_ref(&self, id: RawNodeId) -> RawNode<'_> {
-        RawNode::new(id, self.reader(), self.grammar)
+    /// Wrap a [`AnyNodeId`] as an [`AnyNode`] using this cursor's reader.
+    pub(crate) fn node_ref(&self, id: AnyNodeId) -> AnyNode<'_> {
+        AnyNode {
+            id,
+            reader: self.reader(),
+        }
     }
 
     /// Return all comments captured during parsing.
-    pub(crate) fn comments(&self) -> &[Comment] {
-        // SAFETY: raw is valid (owned via ParserInner, valid for &self).
-        unsafe { raw_parser_comments(self.raw_ptr()) }
+    pub(crate) fn comments(&self) -> &[crate::parser::Comment] {
+        self.reader().comments()
     }
 
     /// Return all token positions collected during parsing.
     ///
     /// Only populated when the parser was built with `collect_tokens: true`.
-    pub(crate) fn tokens(&self) -> &[TokenPos] {
-        // SAFETY: raw is valid (owned via ParserInner, valid for &self).
-        unsafe { raw_parser_tokens(self.raw_ptr()) }
+    pub(crate) fn tokens(&self) -> &[crate::parser::TokenPos] {
+        self.reader().tokens()
     }
 
     /// Return all macro regions recorded via [`begin_macro`](Self::begin_macro)
     /// / [`end_macro`](Self::end_macro).
     pub(crate) fn macro_regions(&self) -> &[MacroRegion] {
         // SAFETY: raw is valid (owned via ParserInner, valid for &self).
-        unsafe { ffi_slice(self.raw_ptr(), ffi::syntaqlite_parser_macro_regions) }
+        unsafe { ffi_slice(self.raw_ptr(), ffi::syntaqlite_result_macros) }
     }
 }
 
@@ -332,26 +330,31 @@ mod ffi {
             text: *const c_char,
             len: c_int,
         ) -> c_int;
-        pub(super) fn syntaqlite_parser_result(p: *mut super::CParser) -> super::CParseResult;
+        pub(super) fn syntaqlite_parser_finish(p: *mut super::CParser) -> c_int;
         pub(super) fn syntaqlite_parser_expected_tokens(
             p: *mut super::CParser,
             out_tokens: *mut c_int,
             out_cap: c_int,
         ) -> c_int;
         pub(super) fn syntaqlite_parser_completion_context(p: *mut super::CParser) -> u32;
-        pub(super) fn syntaqlite_parser_finish(p: *mut super::CParser) -> c_int;
         pub(super) fn syntaqlite_parser_node_count(p: *mut super::CParser) -> u32;
 
-        // Macro region tracking
+        // Result accessors (valid after feed_token/finish returns non-DONE)
+        pub(super) fn syntaqlite_result_root(p: *mut super::CParser) -> u32;
+        pub(super) fn syntaqlite_result_error_msg(p: *mut super::CParser) -> *const c_char;
+        pub(super) fn syntaqlite_result_error_offset(p: *mut super::CParser) -> u32;
+        pub(super) fn syntaqlite_result_error_length(p: *mut super::CParser) -> u32;
+        pub(super) fn syntaqlite_result_macros(
+            p: *mut super::CParser,
+            count: *mut u32,
+        ) -> *const CMacroRegion;
+
+        // Macro region tracking (input-side)
         pub(super) fn syntaqlite_parser_begin_macro(
             p: *mut super::CParser,
             call_offset: u32,
             call_length: u32,
         );
         pub(super) fn syntaqlite_parser_end_macro(p: *mut super::CParser);
-        pub(super) fn syntaqlite_parser_macro_regions(
-            p: *mut super::CParser,
-            count: *mut u32,
-        ) -> *const CMacroRegion;
     }
 }

@@ -8,35 +8,35 @@ use crate::cflags::Cflags;
 /// A typed grammar handle for a specific dialect.
 ///
 /// Implement this for a dialect's grammar struct (e.g. `SqliteGrammar`).
-/// The struct carries a [`RawGrammar`] internally and exposes it via [`raw`](Self::raw).
+/// The struct carries a [`AnyGrammar`] internally and exposes it via [`raw`](Self::raw).
 pub trait TypedGrammar: Copy {
     /// The top-level typed AST node enum for this dialect.
     type Node<'a>: crate::ast::GrammarNodeType<'a>;
     /// The typed token enum for this dialect.
     type Token: crate::ast::GrammarTokenType;
-    /// Access the underlying [`RawGrammar`] for FFI and configuration.
-    fn raw(&mut self) -> &mut RawGrammar;
+    /// Access the underlying [`AnyGrammar`] for FFI and configuration.
+    fn raw(&mut self) -> &mut AnyGrammar;
 }
 
 // TODO(claude): add documentation.
 #[derive(Clone, Copy)]
-pub struct RawGrammar {
+pub struct AnyGrammar {
     pub(crate) inner: ffi::CGrammar,
 }
 
 // SAFETY: The grammar wraps an immutable reference to static C data.
-unsafe impl Send for RawGrammar {}
-unsafe impl Sync for RawGrammar {}
+unsafe impl Send for AnyGrammar {}
+unsafe impl Sync for AnyGrammar {}
 
-impl RawGrammar {
-    /// Construct a `RawGrammar` from a raw C grammar value.
+impl AnyGrammar {
+    /// Construct a `AnyGrammar` from a raw C grammar value.
     ///
     /// # Safety
     /// The `template` pointer inside `inner` must point to valid, `'static`
     /// C grammar tables (e.g. returned by a dialect's `extern "C"` grammar
     /// accessor such as `syntaqlite_sqlite_grammar()`).
     pub unsafe fn new(inner: ffi::CGrammar) -> Self {
-        RawGrammar { inner }
+        AnyGrammar { inner }
     }
 
     /// Set the target SQLite version.

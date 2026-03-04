@@ -36,7 +36,16 @@ def main() -> int:
         action="store_true",
         help="Run Stage 1: extract C fragments from raw SQLite source",
     )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Print progress messages",
+    )
     args = parser.parse_args()
+
+    def log(msg: str) -> None:
+        if args.verbose:
+            print(msg)
 
     project_root = Path(__file__).parent.parent.parent
     sqlite_src = project_root / "third_party" / "src" / "sqlite"
@@ -60,7 +69,7 @@ def main() -> int:
             return 1
 
         # Stage 1: Extract SQLite fragments, vendor sources, generate base_files_tables.rs
-        print("Stage 1: Extracting SQLite fragments and vendoring sources...")
+        log("Stage 1: Extracting SQLite fragments and vendoring sources...")
         result = subprocess.run(
             [
                 "cargo", "run", "--release", "-p", "syntaqlite-buildtools",
@@ -72,20 +81,26 @@ def main() -> int:
                 "--nodes-dir", str(nodes_dir),
             ],
             cwd=project_root,
+            capture_output=not args.verbose,
         )
         if result.returncode != 0:
+            if not args.verbose and result.stderr:
+                sys.stderr.buffer.write(result.stderr)
             print("Stage 1 extraction failed", file=sys.stderr)
             return result.returncode
 
     # Build the bootstrap tool for stages 1b and 2.
     # syntaqlite-buildtools has no dependency on any generated files, so this
     # works even from a completely clean checkout.
-    print("Building syntaqlite-buildtools...")
+    log("Building syntaqlite-buildtools...")
     result = subprocess.run(
         ["cargo", "build", "--release", "-p", "syntaqlite-buildtools"],
         cwd=project_root,
+        capture_output=not args.verbose,
     )
     if result.returncode != 0:
+        if not args.verbose and result.stderr:
+            sys.stderr.buffer.write(result.stderr)
         print("Build failed", file=sys.stderr)
         return result.returncode
 
@@ -97,7 +112,7 @@ def main() -> int:
     cflag_audit_json = vendored_dir / "data" / "version_cflags.json"
     cflag_versions_out = dialect_crate_dir / "src" / "sqlite" / "cflags.rs"
 
-    print("Stage 1b: Generating functions catalog and ast_traits...")
+    log("Stage 1b: Generating functions catalog and ast_traits...")
     result = subprocess.run(
         [
             str(tools_bin),
@@ -109,13 +124,16 @@ def main() -> int:
             "--cflag-versions-out", str(cflag_versions_out),
         ],
         cwd=project_root,
+        capture_output=not args.verbose,
     )
     if result.returncode != 0:
+        if not args.verbose and result.stderr:
+            sys.stderr.buffer.write(result.stderr)
         print("Stage 1b codegen-sqlite-parser failed", file=sys.stderr)
         return result.returncode
 
     # Stage 2: Generate base SQLite dialect C + Rust code.
-    print("Stage 2: Generating base SQLite dialect...")
+    log("Stage 2: Generating base SQLite dialect...")
     result = subprocess.run(
         [
             str(tools_bin),
@@ -123,16 +141,21 @@ def main() -> int:
             "--actions-dir", str(actions_dir),
             "--nodes-dir", str(nodes_dir),
         ],
+        capture_output=not args.verbose,
     )
 
     if result.returncode != 0:
+        if not args.verbose and result.stderr:
+            sys.stderr.buffer.write(result.stderr)
         print("Codegen failed", file=sys.stderr)
         return result.returncode
 
     # Format generated C code
     format_c = project_root / "tools" / "format-c"
-    result = subprocess.run([str(format_c)], cwd=project_root)
+    result = subprocess.run([str(format_c)], cwd=project_root, capture_output=not args.verbose)
     if result.returncode != 0:
+        if not args.verbose and result.stderr:
+            sys.stderr.buffer.write(result.stderr)
         print("format-c failed", file=sys.stderr)
         return result.returncode
 
@@ -140,11 +163,15 @@ def main() -> int:
     result = subprocess.run(
         ["cargo", "fmt", "--all"],
         cwd=project_root,
+        capture_output=not args.verbose,
     )
     if result.returncode != 0:
+        if not args.verbose and result.stderr:
+            sys.stderr.buffer.write(result.stderr)
         print("cargo fmt failed", file=sys.stderr)
         return result.returncode
 
+    print("Codegen complete.")
     return 0
 
 

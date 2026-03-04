@@ -8,7 +8,7 @@ use std::ptr::NonNull;
 use std::rc::Rc;
 
 use crate::ast::{AnyDialect, GrammarTokenType};
-use crate::grammar::{RawGrammar, TypedGrammar};
+use crate::grammar::{AnyGrammar, TypedGrammar};
 
 #[cfg(feature = "sqlite")]
 use crate::sqlite::grammar::SqliteGrammar;
@@ -32,13 +32,13 @@ impl Tokenizer {
         Tokenizer(TypedTokenizer::new(crate::sqlite::grammar::grammar()))
     }
 
-    /// Bind source text and return a [`TokenCursor`] for iterating SQLite tokens.
+    /// Bind source text and return an iterator over SQLite tokens.
     ///
     /// # Panics
     ///
     /// Panics if a cursor from a previous `tokenize()` call is still alive.
-    pub fn tokenize<'a>(&self, source: &'a str) -> TokenCursor<'a> {
-        TokenCursor(self.0.tokenize(source))
+    pub fn tokenize<'a>(&self, source: &'a str) -> impl Iterator<Item = Token<'a>> {
+        self.0.tokenize(source).map(Token)
     }
 
     /// Zero-copy variant: bind a null-terminated source.
@@ -47,8 +47,8 @@ impl Tokenizer {
     ///
     /// Panics if a cursor from a previous `tokenize()` call is still alive,
     /// or if `source` is not valid UTF-8.
-    pub fn tokenize_cstr<'a>(&self, source: &'a CStr) -> TokenCursor<'a> {
-        TokenCursor(self.0.tokenize_cstr(source))
+    pub fn tokenize_cstr<'a>(&self, source: &'a CStr) -> impl Iterator<Item = Token<'a>> {
+        self.0.tokenize_cstr(source).map(Token)
     }
 }
 
@@ -109,10 +109,10 @@ pub struct TypedTokenizer<G: TypedGrammar> {
 impl<G: TypedGrammar> TypedTokenizer<G> {
     /// Create a tokenizer bound to the given dialect grammar.
     pub fn new(mut grammar: G) -> Self {
-        // SAFETY: syntaqlite_tokenizer_create(NULL, grammar.inner) allocates a
-        // new tokenizer with default malloc/free. The C side copies the grammar.
+        // SAFETY: create(NULL, grammar.inner) allocates a new tokenizer with
+        // default malloc/free. The C side copies the grammar.
         let raw = NonNull::new(unsafe {
-            ffi::syntaqlite_tokenizer_create(std::ptr::null(), grammar.raw().inner)
+            ffi::CTokenizer::create(std::ptr::null(), grammar.raw().inner)
         })
         .expect("tokenizer allocation failed");
 
@@ -154,11 +154,10 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
         // is null-terminated. source_buf lives inside inner which will be owned
         // by the cursor.
         unsafe {
-            ffi::syntaqlite_tokenizer_reset(
-                inner.raw.as_ptr(),
-                c_source_ptr.as_ptr() as *const _,
-                source.len() as u32,
-            );
+            inner
+                .raw
+                .as_mut()
+                .reset(c_source_ptr.as_ptr() as *const _, source.len() as u32);
         }
         TypedTokenCursor {
             raw: inner.raw,
@@ -181,7 +180,7 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
     /// Panics if a cursor from a previous `tokenize()` call is still alive,
     /// or if `source` is not valid UTF-8.
     pub fn tokenize_cstr<'a>(&self, source: &'a CStr) -> TypedTokenCursor<'a, G> {
-        let inner = self
+        let mut inner = self
             .inner
             .borrow_mut()
             .take()
@@ -191,13 +190,7 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
         let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 
         // SAFETY: inner.raw is valid; source is a CStr (null-terminated, valid for 'a).
-        unsafe {
-            ffi::syntaqlite_tokenizer_reset(
-                inner.raw.as_ptr(),
-                source.as_ptr(),
-                bytes.len() as u32,
-            );
-        }
+        unsafe { inner.raw.as_mut().reset(source.as_ptr(), bytes.len() as u32) };
         TypedTokenCursor {
             raw: inner.raw,
             source: source_str,
@@ -210,8 +203,8 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
 }
 
 impl TypedTokenizer<AnyDialect> {
-    /// Create a type-erased tokenizer from a [`RawGrammar`].
-    pub fn from_raw_grammar(grammar: RawGrammar) -> Self {
+    /// Create a type-erased tokenizer from a [`AnyGrammar`].
+    pub fn from_raw_grammar(grammar: AnyGrammar) -> Self {
         Self::new(AnyDialect { raw: grammar })
     }
 }
@@ -265,7 +258,7 @@ impl<'a, G: TypedGrammar> Iterator for TypedTokenCursor<'a, G> {
             };
             // SAFETY: self.raw is valid (owned by TokenizerInner in self.inner);
             // &mut token is a valid output parameter.
-            let rc = unsafe { ffi::syntaqlite_tokenizer_next(self.raw.as_ptr(), &mut token) };
+            let rc = unsafe { self.raw.as_mut().next(&mut token) };
             if rc == 0 {
                 return None;
             }
@@ -284,7 +277,7 @@ impl<'a, G: TypedGrammar> Iterator for TypedTokenCursor<'a, G> {
 /// ordinals, suitable for use across multiple dialects.
 ///
 /// This is a type alias for [`TypedTokenizer<AnyDialect>`]. Use
-/// [`AnyTokenizer::from_raw_grammar`] to construct from a [`RawGrammar`].
+/// [`AnyTokenizer::from_raw_grammar`] to construct from a [`AnyGrammar`].
 pub type AnyTokenizer = TypedTokenizer<AnyDialect>;
 
 /// A raw token: `u32` token type ordinal + source text slice.
@@ -306,7 +299,7 @@ impl Drop for TokenizerInner {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_tokenizer_create and has
         // not been freed (Drop runs exactly once).
-        unsafe { ffi::syntaqlite_tokenizer_destroy(self.raw.as_ptr()) }
+        unsafe { ffi::CTokenizer::destroy(self.raw.as_ptr()) }
     }
 }
 
@@ -317,6 +310,27 @@ mod ffi {
 
     /// Opaque C tokenizer type.
     pub(crate) enum CTokenizer {}
+
+    impl CTokenizer {
+        pub(crate) unsafe fn create(
+            mem: *const std::ffi::c_void,
+            grammar: crate::grammar::ffi::CGrammar,
+        ) -> *mut Self {
+            unsafe { syntaqlite_tokenizer_create(mem, grammar) }
+        }
+
+        pub(crate) unsafe fn reset(&mut self, source: *const c_char, len: u32) {
+            unsafe { syntaqlite_tokenizer_reset(self, source, len) }
+        }
+
+        pub(crate) unsafe fn next(&mut self, out: *mut CToken) -> c_int {
+            unsafe { syntaqlite_tokenizer_next(self, out) }
+        }
+
+        pub(crate) unsafe fn destroy(this: *mut Self) {
+            unsafe { syntaqlite_tokenizer_destroy(this) }
+        }
+    }
 
     /// A single token produced by the C tokenizer.
     ///
@@ -329,16 +343,12 @@ mod ffi {
     }
 
     unsafe extern "C" {
-        pub(crate) fn syntaqlite_tokenizer_create(
+        fn syntaqlite_tokenizer_create(
             mem: *const std::ffi::c_void,
             grammar: crate::grammar::ffi::CGrammar,
         ) -> *mut CTokenizer;
-        pub(crate) fn syntaqlite_tokenizer_reset(
-            tok: *mut CTokenizer,
-            source: *const c_char,
-            len: u32,
-        );
-        pub(crate) fn syntaqlite_tokenizer_next(tok: *mut CTokenizer, out: *mut CToken) -> c_int;
-        pub(crate) fn syntaqlite_tokenizer_destroy(tok: *mut CTokenizer);
+        fn syntaqlite_tokenizer_reset(tok: *mut CTokenizer, source: *const c_char, len: u32);
+        fn syntaqlite_tokenizer_next(tok: *mut CTokenizer, out: *mut CToken) -> c_int;
+        fn syntaqlite_tokenizer_destroy(tok: *mut CTokenizer);
     }
 }
