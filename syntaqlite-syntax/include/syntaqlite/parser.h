@@ -15,7 +15,7 @@
 // Usage:
 //   SyntaqliteParser* p = syntaqlite_create_sqlite_parser(NULL);
 //   syntaqlite_parser_reset(p, sql, len);
-//   int rc;
+//   int32_t rc;
 //   while ((rc = syntaqlite_parser_next(p)) != SYNTAQLITE_PARSE_DONE) {
 //     if (rc == SYNTAQLITE_PARSE_ERROR) {
 //       fprintf(stderr, "%s\n", syntaqlite_result_error_msg(p));
@@ -116,7 +116,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 // call become invalid.
 //
 // Returns one of the SYNTAQLITE_PARSE_* codes.
-int syntaqlite_parser_next(SyntaqliteParser* p);
+int32_t syntaqlite_parser_next(SyntaqliteParser* p);
 
 // Free the parser, its arena, and all its nodes. No-op if p is NULL.
 void syntaqlite_parser_destroy(SyntaqliteParser* p);
@@ -130,7 +130,7 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p);
 uint32_t syntaqlite_result_root(SyntaqliteParser* p);
 
 // Nonzero if an error occurred (rc == RECOVERED or rc == ERROR).
-int syntaqlite_result_error(SyntaqliteParser* p);
+uint32_t syntaqlite_result_error(SyntaqliteParser* p);
 
 // Human-readable error message, or NULL.
 const char* syntaqlite_result_error_msg(SyntaqliteParser* p);
@@ -140,12 +140,6 @@ uint32_t syntaqlite_result_error_offset(SyntaqliteParser* p);
 
 // Byte length of error token (0 = unknown).
 uint32_t syntaqlite_result_error_length(SyntaqliteParser* p);
-
-// Nonzero if the statement contains a subquery.
-int syntaqlite_result_saw_subquery(SyntaqliteParser* p);
-
-// Nonzero if DELETE/UPDATE uses ORDER BY or LIMIT.
-int syntaqlite_result_saw_update_delete_limit(SyntaqliteParser* p);
 
 // Per-statement token/comment/macro arrays (require collect_tokens enabled).
 const SyntaqliteComment* syntaqlite_result_comments(SyntaqliteParser* p,
@@ -189,7 +183,7 @@ static inline const char* syntaqlite_span_text(SyntaqliteParser* p,
   return syntaqlite_parser_source(p) + span.offset;
 }
 
-static inline int syntaqlite_span_is_present(SyntaqliteSourceSpan span) {
+static inline uint32_t syntaqlite_span_is_present(SyntaqliteSourceSpan span) {
   return span.length != 0;
 }
 
@@ -197,7 +191,7 @@ static inline int syntaqlite_span_is_present(SyntaqliteSourceSpan span) {
 // Node and list helpers
 // ---------------------------------------------------------------------------
 
-static inline int syntaqlite_node_is_present(uint32_t node_id) {
+static inline uint32_t syntaqlite_node_is_present(uint32_t node_id) {
   return node_id != SYNTAQLITE_NULL_NODE;
 }
 
@@ -255,11 +249,11 @@ static inline const void* syntaqlite_list_child(SyntaqliteParser* p,
 
 // Enable token collection. Default: off (0).
 // Returns 0 on success, -1 if the parser has already been used.
-int syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable);
+int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, uint32_t enable);
 
 // Enable parser trace output (debug builds only). Default: off (0).
 // Returns 0 on success, -1 if the parser has already been used.
-int syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable);
+int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p, uint32_t enable);
 
 // ============================================================================
 // Debugging
@@ -414,7 +408,7 @@ class Parser {
   }
 
   // Returns a SYNTAQLITE_PARSE_* code.
-  int Next() { return syntaqlite_parser_next(raw_); }
+  int32_t Next() { return syntaqlite_parser_next(raw_); }
 
   uint32_t    ResultRoot()     const { return syntaqlite_result_root(raw_); }
   bool        ResultError()    const { return syntaqlite_result_error(raw_) != 0; }

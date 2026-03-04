@@ -80,19 +80,19 @@ pub use parser::{ParseError, ParseSession, Parser};
 #[cfg(feature = "sqlite")]
 pub use tokenizer::{Token, Tokenizer};
 
-// TODO(claude): document this.
+/// AST accessor traits implemented by generated dialect types.
 pub mod ast_traits;
 
-// TODO(claude): document this.
+/// Tokenizer for `SQLite` SQL text.
 pub mod tokenizer;
 
-// TODO(claude): document this.
+/// Shared utilities (e.g. [`SqliteVersion`](util::SqliteVersion)).
 pub mod util;
 
-// TODO(claude): document this.
+/// Grammar-agnostic AST node types and traits.
 pub mod ast;
 
-// TODO(claude): document this.
+/// Incremental parse session types.
 pub mod incremental;
 
 // TODO(claude): document this.
@@ -103,4 +103,5 @@ pub mod sqlite;
 
 mod cflags;
 mod grammar;
-mod parser;
+/// Low-level typed parser and parse session types.
+pub mod parser;

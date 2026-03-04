@@ -21,6 +21,7 @@
 #define SYNTAQLITE_CONFIG_H
 
 #include <stddef.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,8 +43,6 @@ typedef struct SyntaqliteMemMethods {
 // explicit allocator but have no custom one:
 //   SyntaqliteParser* p =
 //   syntaqlite_parser_create(&SYNTAQLITE_MEM_METHODS_DEFAULT);
-extern void* malloc(size_t);
-extern void free(void*);
 #define SYNTAQLITE_MEM_METHODS_DEFAULT ((SyntaqliteMemMethods){malloc, free})
 
 #ifdef __cplusplus

@@ -35,18 +35,18 @@ void syntaqlite_tokenizer_reset(SyntaqliteTokenizer* tok,
   tok->offset = 0;
 }
 
-int syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out) {
+uint32_t syntaqlite_tokenizer_next(SyntaqliteTokenizer* tok, SyntaqliteToken* out) {
   if (tok->offset >= tok->len) {
     return 0;
   }
 
-  int token_type = 0;
+  uint32_t token_type = 0;
   int64_t token_len = SynqSqliteGetTokenVersionWrapped(
       &tok->env, (const unsigned char*)tok->source + tok->offset, &token_type);
 
   out->text = tok->source + tok->offset;
   out->length = (uint32_t)token_len;
-  out->type = (uint32_t)token_type;
+  out->type = token_type;
 
   tok->offset += (uint32_t)token_len;
   return 1;

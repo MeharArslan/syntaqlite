@@ -2,7 +2,6 @@
 // Licensed under the Apache License, Version 2.0.
 
 use std::cell::RefCell;
-use std::ffi::c_int;
 use std::marker::PhantomData;
 use std::ops::Range;
 use std::ptr::NonNull;
@@ -30,7 +29,9 @@ use crate::parser::{
 pub struct TypedIncrementalParseSession<G: TypedGrammar> {
     /// Base pointer into the internal source buffer. `feed_token` uses this
     /// to compute the C-side token pointer from byte-offset spans.
+    #[allow(dead_code)]
     c_source_ptr: NonNull<u8>,
+    #[allow(dead_code)]
     grammar: AnyGrammar,
     /// Checked-out parser state. Returned to `slot` on drop.
     inner: Option<ParserInner>,
@@ -48,6 +49,7 @@ impl<G: TypedGrammar> Drop for TypedIncrementalParseSession<G> {
     }
 }
 
+#[allow(dead_code)]
 impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
     pub(crate) fn new(
         c_source_ptr: NonNull<u8>,
@@ -73,12 +75,12 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
     }
 
     fn raw_ptr(&self) -> *mut CParser {
-        self.inner.as_ref().unwrap().raw.as_ptr()
+        self.inner.as_ref().expect("inner taken after finish()").raw.as_ptr()
     }
 
     /// Build a typed [`TypedStatementResult`] for the current parser arena.
     fn typed_stmt_result(&self) -> TypedStatementResult<'_, G> {
-        let inner = self.inner.as_ref().unwrap();
+        let inner = self.inner.as_ref().expect("inner taken after finish()");
         let source_len = inner.source_buf.len().saturating_sub(1);
         // SAFETY: source_buf was populated from valid UTF-8 (&str) in
         // reset_parser. The first source_len bytes are the original source.
@@ -94,7 +96,7 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
     /// - `2` or `-1` → `Some(Err(err))` (error recovery / unrecoverable)
     fn result_from_rc(
         &self,
-        rc: c_int,
+        rc: i32,
     ) -> Option<Result<TypedStatementResult<'_, G>, TypedParseError<'_, G>>> {
         if rc == 0 {
             return None;
@@ -130,11 +132,8 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
         // SAFETY: c_source_ptr is valid for the source length; raw is valid.
         let rc = unsafe {
             let c_text = self.c_source_ptr.as_ptr().add(span.start);
-            (*self.raw_ptr()).feed_token(
-                token_type as c_int,
-                c_text as *const _,
-                span.len() as c_int,
-            )
+            #[allow(clippy::cast_possible_truncation)]
+            (*self.raw_ptr()).feed_token(token_type, c_text as *const _, span.len() as u32)
         };
         self.result_from_rc(rc)
     }
@@ -169,26 +168,27 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
         // Use a stack buffer to avoid the count-then-allocate double FFI call.
         // 256 covers virtually all parser states; fall back to heap for outliers.
         let raw = self.raw_ptr();
-        let mut stack_buf = [0 as c_int; 256];
+        let mut stack_buf = [0u32; 256];
         // SAFETY: raw is valid and exclusively borrowed via &self; stack_buf is
         // a valid output buffer.
+        #[allow(clippy::cast_possible_truncation)]
         let total =
-            unsafe { (*raw).expected_tokens(stack_buf.as_mut_ptr(), stack_buf.len() as c_int) };
-        if total <= 0 {
+            unsafe { (*raw).expected_tokens(stack_buf.as_mut_ptr(), stack_buf.len() as u32) };
+        if total == 0 {
             return Vec::new();
         }
 
         let count = total as usize;
         if count <= stack_buf.len() {
-            stack_buf[..count].iter().map(|&t| t as u32).collect()
+            stack_buf[..count].to_vec()
         } else {
             // Rare: more tokens than stack buffer. Heap-allocate and re-query.
-            let mut heap_buf = vec![0 as c_int; count];
+            let mut heap_buf = vec![0u32; count];
             // SAFETY: raw is valid; heap_buf is sized to hold `total` entries.
-            let written = unsafe { (*raw).expected_tokens(heap_buf.as_mut_ptr(), total as c_int) };
+            let written = unsafe { (*raw).expected_tokens(heap_buf.as_mut_ptr(), total) };
             let len = written.clamp(0, total) as usize;
             heap_buf.truncate(len);
-            heap_buf.into_iter().map(|t| t as u32).collect()
+            heap_buf.into_iter().collect()
         }
     }
 
@@ -278,6 +278,7 @@ pub struct IncrementalParseSession(
 );
 
 #[cfg(feature = "sqlite")]
+#[allow(dead_code)]
 impl IncrementalParseSession {
     /// Feed a single token to the parser.
     ///

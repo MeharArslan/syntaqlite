@@ -6320,7 +6320,7 @@ return yy_default[stateno];
 return yy_action[i];
 }
 
-static int synq_can_lookahead(yyParser* p, int token) {
+static int synq_can_lookahead(yyParser* p, uint32_t token) {
 YYACTIONTYPE stack_states[YYSTACKDEPTH + 1];
 int top = 0;
 int i = 0;
@@ -6368,9 +6368,9 @@ return 0;
 return 0;
 }
 
-int SynqSqliteParseExpectedTokens(void* parser, int* out_tokens, int out_cap) {
-int n = 0;
-int token = 0;
+uint32_t SynqSqliteParseExpectedTokens(void* parser, uint32_t* out_tokens, uint32_t out_cap) {
+uint32_t n = 0;
+uint32_t token = 0;
 yyParser* p = (yyParser*)parser;
 
 if( p==0 || p->yytos==0 ) return 0;

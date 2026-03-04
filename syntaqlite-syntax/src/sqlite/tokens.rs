@@ -198,6 +198,7 @@ pub enum TokenType {
 }
 
 impl TokenType {
+    #[allow(clippy::too_many_lines)]
     pub fn from_raw(raw: u32) -> Option<TokenType> {
         match raw {
             1 => Some(TokenType::ABORT),

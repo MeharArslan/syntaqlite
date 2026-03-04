@@ -84,7 +84,7 @@ impl {grammar_struct} {{
         self.raw
     }}
 
-    /// Set the target SQLite version.
+    /// Set the target `SQLite` version.
     pub fn with_version(mut self, version: SqliteVersion) -> Self {{
         self.raw = self.raw.with_version(version);
         self
@@ -97,6 +97,7 @@ impl {grammar_struct} {{
     }}
 
     /// Replace the entire cflags bitfield.
+    #[allow(private_interfaces)]
     pub fn with_cflags(mut self, cflags: {syntax_crate}::cflags::Cflags) -> Self {{
         self.raw = self.raw.with_cflags(cflags);
         self
@@ -113,7 +114,7 @@ impl TypedGrammar for {grammar_struct} {{
 }}
 
 /// Returns the dialect grammar handle.
-pub fn grammar() -> {grammar_struct} {{
+pub(crate) fn grammar() -> {grammar_struct} {{
     // SAFETY: {dialect_fn}() returns a valid static C grammar.
     let raw = unsafe {{ AnyGrammar::new({dialect_fn}()) }};
     {grammar_struct} {{ raw }}

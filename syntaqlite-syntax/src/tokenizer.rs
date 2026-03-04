@@ -320,7 +320,7 @@ impl Drop for TokenizerInner {
 // ── ffi ───────────────────────────────────────────────────────────────────────
 
 mod ffi {
-    use std::ffi::{c_char, c_int};
+    use std::ffi::c_char;
 
     /// Opaque C tokenizer type.
     pub(crate) enum CTokenizer {}
@@ -341,7 +341,7 @@ mod ffi {
             unsafe { syntaqlite_tokenizer_reset(self, source, len) }
         }
 
-        pub(crate) unsafe fn next(&mut self, out: *mut CToken) -> c_int {
+        pub(crate) unsafe fn next(&mut self, out: *mut CToken) -> u32 {
             // SAFETY: caller guarantees `self` is valid after a `reset` call
             // and `out` is a valid writable pointer to a `CToken`.
             unsafe { syntaqlite_tokenizer_next(self, out) }
@@ -370,7 +370,7 @@ mod ffi {
             grammar: crate::grammar::ffi::CGrammar,
         ) -> *mut CTokenizer;
         fn syntaqlite_tokenizer_reset(tok: *mut CTokenizer, source: *const c_char, len: u32);
-        fn syntaqlite_tokenizer_next(tok: *mut CTokenizer, out: *mut CToken) -> c_int;
+        fn syntaqlite_tokenizer_next(tok: *mut CTokenizer, out: *mut CToken) -> u32;
         fn syntaqlite_tokenizer_destroy(tok: *mut CTokenizer);
     }
 }

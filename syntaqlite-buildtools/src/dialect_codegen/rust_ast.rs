@@ -402,6 +402,7 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)], type_name: &str) ->
 
     // from_raw conversion
     w.open_block(&format!("impl {type_name} {{"));
+    w.line("#[allow(clippy::too_many_lines)]");
     w.open_block(&format!(
         "pub fn from_raw(raw: u32) -> Option<{type_name}> {{"
     ));
@@ -463,6 +464,8 @@ impl AstModel<'_> {
 
         let mut w = RustWriter::new();
         w.file_header();
+        w.line("#![allow(clippy::struct_field_names)]");
+        w.newline();
         w.lines(&format!(
             "
         use {nodes_path}::{{ArenaNode, AnyNodeId, SourceSpan}};
@@ -522,7 +525,7 @@ impl AstModel<'_> {
     ) -> String {
         let crate_prefix = paths.crate_prefix;
         let ffi_path = paths.ffi_path;
-        let dialect_fn_path = paths.grammar_fn_path;
+        let _dialect_fn_path = paths.grammar_fn_path;
         let traits_path = format!("{crate_prefix}::ast_traits");
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();

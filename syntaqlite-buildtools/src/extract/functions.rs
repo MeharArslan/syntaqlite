@@ -410,6 +410,7 @@ pub(crate) fn generate_cflag_versions_rs(availability: &CflagAvailability) -> St
     out.push_str("///\n");
     out.push_str("/// `category` groups flags by feature area for UI presentation:\n");
     out.push_str("/// \"parser\", \"functions\", \"vtable\", \"extensions\".\n");
+    out.push_str("#[allow(dead_code)]\n");
     out.push_str("pub(crate) const CFLAG_TABLE: &[(&str, u32, i32, &str)] = &[\n");
 
     for entry in &availability.cflags {
@@ -469,6 +470,7 @@ pub(crate) fn generate_cflag_versions_rs_for_group(
     out.push_str("///\n");
     out.push_str("/// `category` groups flags by feature area for UI presentation:\n");
     out.push_str("/// \"parser\", \"functions\", \"vtable\", \"extensions\".\n");
+    out.push_str("#[allow(dead_code)]\n");
     out.push_str("pub(crate) const CFLAG_TABLE: &[(&str, u32, i32, &str)] = &[\n");
 
     let mut local_idx: u32 = 0;

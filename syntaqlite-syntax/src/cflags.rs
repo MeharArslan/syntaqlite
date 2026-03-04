@@ -4,6 +4,7 @@
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /// Metadata for a single compile-time flag.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct CflagInfo {
     /// The suffix shared across C and Rust (e.g. `"SQLITE_OMIT_WINDOWFUNC"`).
@@ -39,6 +40,7 @@ mod ffi {
         pub(super) bytes: [u8; 3],
     }
 
+    #[allow(dead_code)]
     impl CCflags {
         /// Create a zero-initialized (all flags off) cflags.
         pub(crate) const fn new() -> Self {
@@ -47,7 +49,7 @@ mod ffi {
 
         /// Check if cflag at `idx` is set.
         #[inline]
-        pub(crate) fn has(&self, idx: u32) -> bool {
+        pub(crate) fn has(self, idx: u32) -> bool {
             let byte = idx / 8;
             let bit = idx % 8;
             (byte < 3) && (self.bytes[byte as usize] >> bit) & 1 != 0

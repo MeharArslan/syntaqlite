@@ -15,8 +15,10 @@
 
 int64_t SynqSqliteGetTokenVersionWrapped(const SyntaqliteGrammar* g,
                                          const unsigned char* z,
-                                         int* tokenType) {
-  int64_t len = SYNQ_GET_TOKEN(g, z, tokenType);
+                                         uint32_t* tokenType) {
+  int token_type_int = 0;
+  int64_t len = SYNQ_GET_TOKEN(g, z, &token_type_int);
+  *tokenType = (uint32_t)token_type_int;
 
   if (SYNQ_VER_LT(g, 3038000) && *tokenType == SYNTAQLITE_TK_PTR) {
     /* -> and ->> operators added in 3.38.

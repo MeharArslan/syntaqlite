@@ -16,14 +16,14 @@
 //   SyntaqliteParser* p = syntaqlite_create_sqlite_parser(NULL);
 //   syntaqlite_parser_reset(p, source, len);
 //   while (has_more_tokens) {
-//     int rc = syntaqlite_parser_feed_token(p, type, text, tlen);
+//     int32_t rc = syntaqlite_parser_feed_token(p, type, text, tlen);
 //     if (rc == SYNTAQLITE_PARSE_OK || rc == SYNTAQLITE_PARSE_RECOVERED) {
 //       uint32_t root = syntaqlite_result_root(p);
 //       // read nodes ...
 //     }
 //     if (rc == SYNTAQLITE_PARSE_ERROR) { /* handle error */ break; }
 //   }
-//   int rc = syntaqlite_parser_finish(p);
+//   int32_t rc = syntaqlite_parser_finish(p);
 //   if (rc == SYNTAQLITE_PARSE_OK) { /* final statement complete */ }
 //   syntaqlite_parser_destroy(p);
 //
@@ -52,14 +52,14 @@ extern "C" {
 //   OK        = statement completed cleanly
 //   RECOVERED = statement completed with error recovery
 //   ERROR     = unrecoverable parse error
-int syntaqlite_parser_feed_token(SyntaqliteParser* p,
-                                 int token_type,
-                                 const char* text,
-                                 int len);
+int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
+                                     uint32_t token_type,
+                                     const char* text,
+                                     uint32_t len);
 
 // Signal end-of-input. Synthesizes a SEMI if needed and sends EOF to the
 // parser. Returns a SYNTAQLITE_PARSE_* code.
-int syntaqlite_parser_finish(SyntaqliteParser* p);
+int32_t syntaqlite_parser_finish(SyntaqliteParser* p);
 
 // ---------------------------------------------------------------------------
 // Completion / lookahead
@@ -68,9 +68,9 @@ int syntaqlite_parser_finish(SyntaqliteParser* p);
 // Enumerate terminal tokens that are valid next lookaheads at the parser's
 // current state. Returns the total number of expected tokens.
 // If out_tokens is non-NULL, up to out_cap token IDs are written.
-int syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
-                                      int* out_tokens,
-                                      int out_cap);
+uint32_t syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
+                                           uint32_t* out_tokens,
+                                           uint32_t out_cap);
 
 // Return the semantic completion context at the parser's current state.
 // 0 = Unknown, 1 = Expression, 2 = TableRef.

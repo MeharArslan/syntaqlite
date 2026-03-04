@@ -25,7 +25,7 @@ impl SqliteGrammar {
         self.raw
     }
 
-    /// Set the target SQLite version.
+    /// Set the target `SQLite` version.
     pub fn with_version(mut self, version: SqliteVersion) -> Self {
         self.raw = self.raw.with_version(version);
         self
@@ -38,6 +38,7 @@ impl SqliteGrammar {
     }
 
     /// Replace the entire cflags bitfield.
+    #[allow(private_interfaces)]
     pub fn with_cflags(mut self, cflags: crate::cflags::Cflags) -> Self {
         self.raw = self.raw.with_cflags(cflags);
         self
@@ -54,7 +55,7 @@ impl TypedGrammar for SqliteGrammar {
 }
 
 /// Returns the dialect grammar handle.
-pub fn grammar() -> SqliteGrammar {
+pub(crate) fn grammar() -> SqliteGrammar {
     // SAFETY: syntaqlite_sqlite_grammar() returns a valid static C grammar.
     let raw = unsafe { AnyGrammar::new(syntaqlite_sqlite_grammar()) };
     SqliteGrammar { raw }

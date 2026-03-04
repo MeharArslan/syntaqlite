@@ -26,6 +26,7 @@ pub struct AnyGrammar {
 
 // SAFETY: The grammar wraps an immutable reference to static C data.
 unsafe impl Send for AnyGrammar {}
+// SAFETY: AnyGrammar wraps a *const CGrammar to a static C grammar object; it is safe to share across threads.
 unsafe impl Sync for AnyGrammar {}
 
 impl AnyGrammar {
@@ -35,6 +36,7 @@ impl AnyGrammar {
     /// The `template` pointer inside `inner` must point to valid, `'static`
     /// C grammar tables (e.g. returned by a dialect's `extern "C"` grammar
     /// accessor such as `syntaqlite_sqlite_grammar()`).
+    #[allow(private_interfaces)]
     pub unsafe fn new(inner: ffi::CGrammar) -> Self {
         AnyGrammar { inner }
     }
@@ -52,6 +54,7 @@ impl AnyGrammar {
     }
 
     /// Replace the entire cflags bitfield.
+    #[allow(private_interfaces)]
     pub fn with_cflags(mut self, cflags: Cflags) -> Self {
         self.inner.cflags = cflags;
         self
@@ -63,6 +66,7 @@ impl AnyGrammar {
     }
 
     /// The active compile-time flags.
+    #[allow(private_interfaces)]
     pub fn cflags(&self) -> &Cflags {
         &self.inner.cflags
     }
@@ -183,10 +187,6 @@ impl AnyGrammar {
     }
 }
 
-// ── Crate-internal ───────────────────────────────────────────────────────────
-
-pub(crate) use ffi::CFieldMeta as FieldMeta;
-
 // ── ffi ───────────────────────────────────────────────────────────────────────
 
 pub(crate) mod ffi {
@@ -259,6 +259,7 @@ pub(crate) mod ffi {
         /// The `name` pointer must be valid and NUL-terminated for the lifetime
         /// of the returned `&str`.
         pub unsafe fn name_str(&self) -> &str {
+            // SAFETY: caller guarantees `self.name` is valid and NUL-terminated.
             unsafe {
                 let cstr = std::ffi::CStr::from_ptr(self.name);
                 cstr.to_str().expect("invalid UTF-8 in field name")
@@ -276,6 +277,8 @@ pub(crate) mod ffi {
             if self.display.is_null() || idx >= self.display_count as usize {
                 return None;
             }
+            // SAFETY: caller guarantees `self.display` is valid for `display_count`
+            // entries, each a NUL-terminated C string or null.
             unsafe {
                 let ptr = *self.display.add(idx);
                 if ptr.is_null() {

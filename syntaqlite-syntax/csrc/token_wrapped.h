@@ -16,6 +16,6 @@
 
 int64_t SynqSqliteGetTokenVersionWrapped(const SyntaqliteGrammar* env,
                                          const unsigned char* z,
-                                         int* tokenType);
+                                         uint32_t* tokenType);
 
 #endif  // SYNTAQLITE_INTERNAL_TOKEN_WRAPPED_H

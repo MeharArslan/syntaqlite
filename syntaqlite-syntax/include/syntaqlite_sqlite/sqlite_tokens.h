@@ -189,7 +189,7 @@
 #define SYNTAQLITE_TK_ILLEGAL                        187
 
 /* syntaqlite extension: expected terminals for current parser state. */
-int SynqSqliteParseExpectedTokens(void* parser, int* out_tokens, int out_cap);
+uint32_t SynqSqliteParseExpectedTokens(void* parser, uint32_t* out_tokens, uint32_t out_cap);
 
 /* syntaqlite extension: completion context from parser stack. */
 uint32_t SynqSqliteParseCompletionContext(void* parser);

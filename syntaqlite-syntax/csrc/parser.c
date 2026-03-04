@@ -27,18 +27,18 @@ struct SyntaqliteParser {
   const char* source;
   uint32_t source_len;
   uint32_t offset;      // Tokenizer cursor into source.
-  int last_token_type;  // Last non-whitespace token fed to Lemon.
-  int finished;         // 1 after EOF has been sent to Lemon.
-  int had_error;        // Sticky error flag for current result.
-  char error_msg[256];  // Error message buffer.
-  int trace;
-  int collect_tokens;
-  int sealed;
-  int pending_reset;    // 1 after feed_token signals completion; cleared on
-                        // the next feed_token call (arena reset deferred).
+  uint32_t last_token_type;  // Last non-whitespace token fed to Lemon.
+  uint32_t finished;         // 1 after EOF has been sent to Lemon.
+  uint32_t had_error;        // Sticky error flag for current result.
+  char error_msg[256];       // Error message buffer.
+  uint32_t trace;
+  uint32_t collect_tokens;
+  uint32_t sealed;
+  uint32_t pending_reset;  // 1 after feed_token signals completion; cleared on
+                           // the next feed_token call (arena reset deferred).
   SYNQ_VEC(SyntaqliteComment) comments;
   SYNQ_VEC(SyntaqliteTokenPos) tokens;
-  int macro_depth;      // Nesting depth (0 = not in macro).
+  uint32_t macro_depth;  // Nesting depth (0 = not in macro).
   SYNQ_VEC(SyntaqliteMacroRegion) macros;
 };
 
@@ -106,9 +106,9 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 // ---------------------------------------------------------------------------
 
 static int feed_one_token(SyntaqliteParser* p,
-                          int token_type,
+                          uint32_t token_type,
                           const char* text,
-                          int len,
+                          uint32_t len,
                           uint32_t token_idx) {
   SynqParseToken minor = {
       .z = text, .n = len, .type = token_type, .token_idx = token_idx};
@@ -263,7 +263,7 @@ static int finish_input(SyntaqliteParser* p) {
 // High-level API
 // ---------------------------------------------------------------------------
 
-int syntaqlite_parser_next(SyntaqliteParser* p) {
+int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
   // Reset previous statement's arena and per-statement vectors.
   synq_parse_ctx_clear(&p->ctx);
   syntaqlite_vec_clear(&p->comments);
@@ -289,7 +289,7 @@ int syntaqlite_parser_next(SyntaqliteParser* p) {
   const unsigned char* z = (const unsigned char*)p->source;
 
   while (p->offset < p->source_len && z[p->offset] != '\0') {
-    int token_type = 0;
+    uint32_t token_type = 0;
     int64_t token_len =
         SynqSqliteGetTokenVersionWrapped(&p->grammar, z + p->offset, &token_type);
     if (token_len <= 0)
@@ -313,14 +313,13 @@ int syntaqlite_parser_next(SyntaqliteParser* p) {
 
     uint32_t tidx = 0xFFFFFFFF;
     if (p->collect_tokens && token_type != SYNTAQLITE_TK_SEMI) {
-      SyntaqliteTokenPos tp = {tok_offset, (uint32_t)token_len,
-                               (uint32_t)token_type, 0};
+      SyntaqliteTokenPos tp = {tok_offset, (uint32_t)token_len, token_type, 0};
       syntaqlite_vec_push(&p->tokens, tp, p->mem);
       tidx = syntaqlite_vec_len(&p->tokens) - 1;
     }
 
     int rc = feed_one_token(p, token_type, p->source + tok_offset,
-                            (int)token_len, tidx);
+                            (uint32_t)token_len, tidx);
 
     // After a syntax error where SEMI is the triggering token, Lemon
     // discards it during error recovery and then keeps consuming tokens from
@@ -360,7 +359,7 @@ uint32_t syntaqlite_result_root(SyntaqliteParser* p) {
   return p->ctx.root;
 }
 
-int syntaqlite_result_error(SyntaqliteParser* p) {
+uint32_t syntaqlite_result_error(SyntaqliteParser* p) {
   return p->had_error;
 }
 
@@ -374,14 +373,6 @@ uint32_t syntaqlite_result_error_offset(SyntaqliteParser* p) {
 
 uint32_t syntaqlite_result_error_length(SyntaqliteParser* p) {
   return p->ctx.error_length;
-}
-
-int syntaqlite_result_saw_subquery(SyntaqliteParser* p) {
-  return p->ctx.saw_subquery;
-}
-
-int syntaqlite_result_saw_update_delete_limit(SyntaqliteParser* p) {
-  return p->ctx.saw_update_delete_limit;
 }
 
 const SyntaqliteComment* syntaqlite_result_comments(SyntaqliteParser* p,
@@ -406,10 +397,10 @@ const SyntaqliteMacroRegion* syntaqlite_result_macros(SyntaqliteParser* p,
 // Low-level token-feeding API
 // ---------------------------------------------------------------------------
 
-int syntaqlite_parser_feed_token(SyntaqliteParser* p,
-                                 int token_type,
-                                 const char* text,
-                                 int len) {
+int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
+                                     uint32_t token_type,
+                                     const char* text,
+                                     uint32_t len) {
   // Deferred arena reset: clear previous statement before processing the
   // first token of the next one.
   if (p->pending_reset) {
@@ -439,8 +430,7 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
   if (token_type == SYNTAQLITE_TK_COMMENT) {
     if (p->collect_tokens && text) {
       uint32_t tok_offset = (uint32_t)(text - p->source);
-      SyntaqliteComment t = {tok_offset, (uint32_t)len,
-                             (uint8_t)(text[0] == '-' ? 0 : 1)};
+      SyntaqliteComment t = {tok_offset, len, (uint8_t)(text[0] == '-' ? 0 : 1)};
       syntaqlite_vec_push(&p->comments, t, p->mem);
     }
     return SYNTAQLITE_PARSE_DONE;
@@ -450,7 +440,7 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
   uint32_t tidx = 0xFFFFFFFF;
   if (p->collect_tokens && text && token_type != SYNTAQLITE_TK_SEMI) {
     uint32_t tok_offset = (uint32_t)(text - p->source);
-    SyntaqliteTokenPos tp = {tok_offset, (uint32_t)len, (uint32_t)token_type, 0};
+    SyntaqliteTokenPos tp = {tok_offset, len, token_type, 0};
     syntaqlite_vec_push(&p->tokens, tp, p->mem);
     tidx = syntaqlite_vec_len(&p->tokens) - 1;
   }
@@ -474,9 +464,9 @@ int syntaqlite_parser_feed_token(SyntaqliteParser* p,
   return SYNTAQLITE_PARSE_DONE;
 }
 
-int syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
-                                      int* out_tokens,
-                                      int out_cap) {
+uint32_t syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
+                                           uint32_t* out_tokens,
+                                           uint32_t out_cap) {
   if (p == NULL || p->grammar.tmpl == NULL ||
       p->grammar.tmpl->parser_expected_tokens == NULL) {
     return 0;
@@ -492,7 +482,7 @@ uint32_t syntaqlite_parser_completion_context(SyntaqliteParser* p) {
   return p->grammar.tmpl->parser_completion_context(p->lemon);
 }
 
-int syntaqlite_parser_finish(SyntaqliteParser* p) {
+int32_t syntaqlite_parser_finish(SyntaqliteParser* p) {
   if (p->pending_reset) {
     // Nothing pending after a completed statement — done.
     p->pending_reset = 0;
@@ -729,7 +719,7 @@ uint32_t syntaqlite_parser_source_length(SyntaqliteParser* p) {
 // Configuration
 // ---------------------------------------------------------------------------
 
-int syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable) {
+int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p, uint32_t enable) {
   if (p->sealed)
     return -1;
   p->trace = enable;
@@ -741,7 +731,8 @@ int syntaqlite_parser_set_trace(SyntaqliteParser* p, int enable) {
   return 0;
 }
 
-int syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, int enable) {
+int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p,
+                                             uint32_t enable) {
   if (p->sealed)
     return -1;
   p->collect_tokens = enable;

@@ -138,7 +138,7 @@ fn patch_generated_parser_files(
 fn expected_tokens_h_snippet(parser_name: &str) -> String {
     format!(
         "\n/* syntaqlite extension: expected terminals for current parser state. */\n\
-int {parser_name}ExpectedTokens(void* parser, int* out_tokens, int out_cap);\n"
+uint32_t {parser_name}ExpectedTokens(void* parser, uint32_t* out_tokens, uint32_t out_cap);\n"
     )
 }
 
@@ -179,7 +179,7 @@ static YYACTIONTYPE synq_find_shift_action_strict(\n\
   return yy_action[i];\n\
 }}\n\
 \n\
-static int synq_can_lookahead(yyParser* p, int token) {{\n\
+static int synq_can_lookahead(yyParser* p, uint32_t token) {{\n\
   YYACTIONTYPE stack_states[YYSTACKDEPTH + 1];\n\
   int top = 0;\n\
   int i = 0;\n\
@@ -227,9 +227,9 @@ static int synq_can_lookahead(yyParser* p, int token) {{\n\
   return 0;\n\
 }}\n\
 \n\
-int {parser_name}ExpectedTokens(void* parser, int* out_tokens, int out_cap) {{\n\
-  int n = 0;\n\
-  int token = 0;\n\
+uint32_t {parser_name}ExpectedTokens(void* parser, uint32_t* out_tokens, uint32_t out_cap) {{\n\
+  uint32_t n = 0;\n\
+  uint32_t token = 0;\n\
   yyParser* p = (yyParser*)parser;\n\
 \n\
   if( p==0 || p->yytos==0 ) return 0;\n\
@@ -383,8 +383,8 @@ mod tests {
         let parse_c_out = fs::read_to_string(&parse_c).expect("read parse.c");
         let parse_h_out = fs::read_to_string(&parse_h).expect("read parse.h");
 
-        assert!(parse_c_out.contains("int SynqFooParseExpectedTokens("));
+        assert!(parse_c_out.contains("uint32_t SynqFooParseExpectedTokens("));
         assert!(parse_c_out.contains("yy_find_shift_action"));
-        assert!(parse_h_out.contains("int SynqFooParseExpectedTokens("));
+        assert!(parse_h_out.contains("uint32_t SynqFooParseExpectedTokens("));
     }
 }
