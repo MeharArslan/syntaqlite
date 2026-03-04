@@ -1,9 +1,9 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Grammar (parse.y) analysis across SQLite versions.
+//! Grammar (parse.y) analysis across `SQLite` versions.
 //!
-//! Uses `LemonGrammar::parse()` to extract rules, tokens, token_classes,
+//! Uses `LemonGrammar::parse()` to extract rules, tokens, `token_classes`,
 //! fallbacks, and precedences from each version's parse.y, then compares
 //! them to produce a structured diff report.
 
@@ -20,40 +20,40 @@ use super::SqliteVersion;
 #[derive(Debug, Clone, Serialize)]
 pub struct GrammarSummary {
     /// Canonical rule signatures, sorted. E.g. "cmd ::= EXPLAIN cmd"
-    pub rule_signatures: Vec<String>,
+    pub(crate) rule_signatures: Vec<String>,
     /// Set of nonterminal names (LHS of rules).
-    pub nonterminals: BTreeSet<String>,
+    pub(crate) nonterminals: BTreeSet<String>,
     /// Set of terminal/token names from %token declarations.
-    pub token_decls: BTreeSet<String>,
+    pub(crate) token_decls: BTreeSet<String>,
     /// Token class declarations as "name = tokens" strings.
-    pub token_classes: Vec<String>,
+    pub(crate) token_classes: Vec<String>,
     /// Fallback declarations as "target <- token1 token2 ..." strings.
-    pub fallbacks: Vec<String>,
+    pub(crate) fallbacks: Vec<String>,
     /// Precedence declarations as "assoc token1 token2 ..." strings.
-    pub precedences: Vec<String>,
+    pub(crate) precedences: Vec<String>,
 }
 
 /// Changes between two consecutive grammar versions.
 #[derive(Debug, Clone, Serialize)]
 pub struct GrammarDiff {
-    pub from_version: SqliteVersion,
-    pub to_version: SqliteVersion,
-    pub rules_added: Vec<String>,
-    pub rules_removed: Vec<String>,
-    pub tokens_added: Vec<String>,
-    pub tokens_removed: Vec<String>,
-    pub nonterminals_added: Vec<String>,
-    pub nonterminals_removed: Vec<String>,
-    pub token_classes_added: Vec<String>,
-    pub token_classes_removed: Vec<String>,
-    pub fallbacks_added: Vec<String>,
-    pub fallbacks_removed: Vec<String>,
-    pub precedences_added: Vec<String>,
-    pub precedences_removed: Vec<String>,
+    pub(crate) from_version: SqliteVersion,
+    pub(crate) to_version: SqliteVersion,
+    pub(crate) rules_added: Vec<String>,
+    pub(crate) rules_removed: Vec<String>,
+    pub(crate) tokens_added: Vec<String>,
+    pub(crate) tokens_removed: Vec<String>,
+    pub(crate) nonterminals_added: Vec<String>,
+    pub(crate) nonterminals_removed: Vec<String>,
+    pub(crate) token_classes_added: Vec<String>,
+    pub(crate) token_classes_removed: Vec<String>,
+    pub(crate) fallbacks_added: Vec<String>,
+    pub(crate) fallbacks_removed: Vec<String>,
+    pub(crate) precedences_added: Vec<String>,
+    pub(crate) precedences_removed: Vec<String>,
 }
 
 impl GrammarDiff {
-    pub fn is_empty(&self) -> bool {
+    pub(crate) const fn is_empty(&self) -> bool {
         self.rules_added.is_empty()
             && self.rules_removed.is_empty()
             && self.tokens_added.is_empty()
@@ -72,13 +72,16 @@ impl GrammarDiff {
 /// Full grammar analysis across all versions.
 #[derive(Debug, Clone, Serialize)]
 pub struct GrammarAnalysis {
+    /// Per-version grammar summaries, in version order.
     pub per_version: Vec<(SqliteVersion, GrammarSummary)>,
+    /// Diffs between consecutive versions where grammar changed.
     pub diffs: Vec<GrammarDiff>,
+    /// Versions where grammar parsing failed.
     pub errors: Vec<(SqliteVersion, String)>,
 }
 
 /// Extract a `GrammarSummary` from parse.y source text.
-pub fn extract_grammar_summary(parse_y: &str) -> Result<GrammarSummary, String> {
+pub(crate) fn extract_grammar_summary(parse_y: &str) -> Result<GrammarSummary, String> {
     let grammar = LemonGrammar::parse(parse_y).map_err(|e| {
         format!(
             "grammar parse error at line {}:{}: {}",
@@ -86,7 +89,7 @@ pub fn extract_grammar_summary(parse_y: &str) -> Result<GrammarSummary, String> 
         )
     })?;
 
-    let mut rule_signatures: Vec<String> = grammar.rules.iter().map(|r| r.to_string()).collect();
+    let mut rule_signatures: Vec<String> = grammar.rules.iter().map(ToString::to_string).collect();
     rule_signatures.sort();
 
     let nonterminals: BTreeSet<String> = grammar.rules.iter().map(|r| r.lhs.to_string()).collect();
@@ -130,7 +133,9 @@ pub fn extract_grammar_summary(parse_y: &str) -> Result<GrammarSummary, String> 
 }
 
 /// Compute diffs between consecutive version summaries.
-pub fn compute_grammar_diffs(versions: &[(SqliteVersion, GrammarSummary)]) -> Vec<GrammarDiff> {
+pub(crate) fn compute_grammar_diffs(
+    versions: &[(SqliteVersion, GrammarSummary)],
+) -> Vec<GrammarDiff> {
     let mut diffs = Vec::new();
 
     for pair in versions.windows(2) {
@@ -152,17 +157,17 @@ fn diff_summaries(
     to_ver: &SqliteVersion,
     to: &GrammarSummary,
 ) -> GrammarDiff {
-    let from_rules: BTreeSet<&str> = from.rule_signatures.iter().map(|s| s.as_str()).collect();
-    let to_rules: BTreeSet<&str> = to.rule_signatures.iter().map(|s| s.as_str()).collect();
+    let from_rules: BTreeSet<&str> = from.rule_signatures.iter().map(String::as_str).collect();
+    let to_rules: BTreeSet<&str> = to.rule_signatures.iter().map(String::as_str).collect();
 
-    let from_tc: BTreeSet<&str> = from.token_classes.iter().map(|s| s.as_str()).collect();
-    let to_tc: BTreeSet<&str> = to.token_classes.iter().map(|s| s.as_str()).collect();
+    let from_tc: BTreeSet<&str> = from.token_classes.iter().map(String::as_str).collect();
+    let to_tc: BTreeSet<&str> = to.token_classes.iter().map(String::as_str).collect();
 
-    let from_fb: BTreeSet<&str> = from.fallbacks.iter().map(|s| s.as_str()).collect();
-    let to_fb: BTreeSet<&str> = to.fallbacks.iter().map(|s| s.as_str()).collect();
+    let from_fb: BTreeSet<&str> = from.fallbacks.iter().map(String::as_str).collect();
+    let to_fb: BTreeSet<&str> = to.fallbacks.iter().map(String::as_str).collect();
 
-    let from_prec: BTreeSet<&str> = from.precedences.iter().map(|s| s.as_str()).collect();
-    let to_prec: BTreeSet<&str> = to.precedences.iter().map(|s| s.as_str()).collect();
+    let from_prec: BTreeSet<&str> = from.precedences.iter().map(String::as_str).collect();
+    let to_prec: BTreeSet<&str> = to.precedences.iter().map(String::as_str).collect();
 
     GrammarDiff {
         from_version: from_ver.clone(),
@@ -183,10 +188,11 @@ fn diff_summaries(
 }
 
 fn sorted_diff<T: Ord + ToString>(a: &BTreeSet<T>, b: &BTreeSet<T>) -> Vec<String> {
-    a.difference(b).map(|x| x.to_string()).collect()
+    a.difference(b).map(ToString::to_string).collect()
 }
 
 /// Format grammar analysis as a human-readable report section.
+#[must_use]
 pub fn format_grammar_report(analysis: &GrammarAnalysis) -> String {
     let mut out = String::new();
 
@@ -206,7 +212,7 @@ pub fn format_grammar_report(analysis: &GrammarAnalysis) -> String {
         );
         let _ = writeln!(out);
 
-        let _ = writeln!(out, "| Metric | {} | {} |", first_ver, last_ver);
+        let _ = writeln!(out, "| Metric | {first_ver} | {last_ver} |");
         let _ = writeln!(out, "| --- | --- | --- |");
         let _ = writeln!(
             out,

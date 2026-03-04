@@ -10,7 +10,7 @@ use crate::util::pascal_case;
 ///
 /// Each field is a verbatim `#include "..."` path for the corresponding
 /// generated C header. The paths are set by the output layout and vary
-/// depending on whether we are building the internal SQLite dialect crate,
+/// depending on whether we are building the internal `SQLite` dialect crate,
 /// an external dialect crate, or an amalgamation temp directory.
 #[derive(Debug, Clone, Default)]
 pub struct DialectCIncludes<'a> {
@@ -48,9 +48,7 @@ fn classify_token(name: &str, keyword_names: Option<&HashSet<String>>) -> u8 {
         "VARIABLE" => 8,                      // Variable
         "AGG_FUNCTION" | "AGGFUNCTION" | "FUNCTION" => 9, // Function
         "ID" => 2,                            // Identifier
-        "SPACE" | "ERROR" | "ILLEGAL" | "SPAN" | "UPLUS" | "UMINUS" | "TRUTH" | "REGISTER"
-        | "VECTOR" | "SELECT_COLUMN" | "IF_NULL_ROW" | "AGG_COLUMN" => 0, // Other
-        _ => 0,                               // Other (unknown tokens)
+        _ => 0, // Other (unknown tokens, SPACE, ERROR, ILLEGAL, SPAN, UPLUS, etc.)
     };
 
     // Keyword-set override should only affect tokens that are otherwise
@@ -132,7 +130,7 @@ pub(crate) fn generate_dialect_c(
         w.newline();
     }
 
-    w.section(&format!("{} grammar descriptor", dialect));
+    w.section(&format!("{dialect} grammar descriptor"));
     w.newline();
     w.line(&format!(
         "static const SyntaqliteGrammarTemplate {upper}_GRAMMAR = {{"

@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Stage 1 tokenizer extraction: parse raw SQLite source files and produce
+//! Stage 1 tokenizer extraction: parse raw `SQLite` source files and produce
 //! individual C fragment files.
 
 use std::fs;
@@ -11,17 +11,17 @@ use crate::util::c_extractor::CExtractor;
 
 /// All extracted tokenizer fragments.
 pub struct TokenizerFragments {
-    pub cc_defines: String,
-    pub ai_class: String,
-    pub ctype_map: String,
-    pub upper_to_lower: String,
-    pub is_macros: String,
-    pub id_char: String,
-    pub char_map: String,
-    pub get_token_fn: String,
+    pub(crate) cc_defines: String,
+    pub(crate) ai_class: String,
+    pub(crate) ctype_map: String,
+    pub(crate) upper_to_lower: String,
+    pub(crate) is_macros: String,
+    pub(crate) id_char: String,
+    pub(crate) char_map: String,
+    pub(crate) get_token_fn: String,
 }
 
-/// Extract tokenizer fragments from raw SQLite source files.
+/// Extract tokenizer fragments from raw `SQLite` source files.
 pub fn extract_fragments(
     tokenize_content: &str,
     global_content: &str,

@@ -25,7 +25,7 @@ pub(crate) struct RustWriter {
 impl RustWriter {
     // ========== Public API ==========
 
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             core: TextWriterCore::new(),
         }
@@ -87,8 +87,7 @@ impl RustWriter {
         let end = raw_lines
             .iter()
             .rposition(|l| !l.trim().is_empty())
-            .map(|i| i + 1)
-            .unwrap_or(0);
+            .map_or(0, |i| i + 1);
         if start >= end {
             return self;
         }
@@ -114,13 +113,13 @@ impl RustWriter {
     }
 
     /// Start a block (increase indentation)
-    pub(crate) fn indent(&mut self) -> &mut Self {
+    pub(crate) const fn indent(&mut self) -> &mut Self {
         self.core.indent();
         self
     }
 
     /// End a block (decrease indentation)
-    pub(crate) fn dedent(&mut self) -> &mut Self {
+    pub(crate) const fn dedent(&mut self) -> &mut Self {
         self.core.dedent();
         self
     }
@@ -135,7 +134,7 @@ impl RustWriter {
         if text.is_empty() {
             self.line("///");
         } else {
-            self.line(&format!("/// {}", text));
+            self.line(&format!("/// {text}"));
         }
         self
     }

@@ -1,14 +1,14 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Stage 1: Extract C fragments from raw SQLite source.
+//! Stage 1: Extract C fragments from raw `SQLite` source.
 //!
 //! This module is only compiled when the `sqlite-extract` feature is enabled.
-//! It reads raw SQLite source files (tokenize.c, global.c, sqliteInt.h,
+//! It reads raw `SQLite` source files (tokenize.c, global.c, sqliteInt.h,
 //! mkkeywordhash.c) and produces the committed fragment files in
 //! `data/sqlite_fragments/`.
 
-/// SQLite's public domain blessing header, prepended to all extracted fragments
+/// `SQLite`'s public domain blessing header, prepended to all extracted fragments
 /// to preserve proper attribution.
 pub const SQLITE_BLESSING: &str = "\
 /*
@@ -39,7 +39,7 @@ pub mod virtual_tables;
 /// across [`keywords_and_parser::PARSER_CFLAGS`], `functions::FUNCTION_CFLAGS`,
 /// and [`virtual_tables::VIRTUAL_TABLE_CFLAGS`].
 ///
-/// Each entry is (sqlite_flag_name, synq_index_constant_name, index, category).
+/// Each entry is (`sqlite_flag_name`, `synq_index_constant_name`, index, category).
 /// Sorted alphabetically within OMIT and ENABLE groups, indices assigned sequentially.
 ///
 /// Categories: "parser", "functions", "vtable". For flags that span multiple
@@ -282,6 +282,7 @@ pub const SYNQ_CFLAG_TABLE: &[(&str, &str, u32, &str)] = &[
 ];
 
 /// Look up the SYNQ cflag index for a `SQLITE_OMIT_*` or `SQLITE_ENABLE_*` flag.
+#[must_use]
 pub fn synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> Option<u32> {
     SYNQ_CFLAG_TABLE
         .iter()

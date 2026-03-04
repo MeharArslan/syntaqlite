@@ -104,7 +104,7 @@ struct CodegenSqliteArgs {
     nodes_dir: String,
 }
 
-fn cmd_codegen_sqlite(args: CodegenSqliteArgs) -> Result<(), String> {
+fn cmd_codegen_sqlite(args: &CodegenSqliteArgs) -> Result<(), String> {
     use syntaqlite_buildtools::codegen_api::{
         CodegenRequest, DialectNaming, generate_codegen_artifacts, read_named_files_from_dir,
     };
@@ -217,7 +217,7 @@ struct CodegenSqliteParserArgs {
     cflag_versions_out: Option<String>,
 }
 
-fn cmd_codegen_sqlite_parser(args: CodegenSqliteParserArgs) -> Result<(), String> {
+fn cmd_codegen_sqlite_parser(args: &CodegenSqliteParserArgs) -> Result<(), String> {
     if let Some(json_path) = &args.functions_json {
         syntaqlite_buildtools::util::functions_codegen::write_functions_catalog_file(
             json_path,
@@ -325,7 +325,7 @@ struct SqliteExtractArgs {
     nodes_dir: String,
 }
 
-fn cmd_sqlite_extract(args: SqliteExtractArgs) -> Result<(), String> {
+fn cmd_sqlite_extract(args: &SqliteExtractArgs) -> Result<(), String> {
     use syntaqlite_buildtools::extract;
 
     let root = Path::new(&args.sqlite_src);
@@ -415,7 +415,7 @@ struct AuditCflagsArgs {
     rust_output: String,
 }
 
-fn cmd_audit_cflags(args: AuditCflagsArgs) -> Result<(), String> {
+fn cmd_audit_cflags(args: &AuditCflagsArgs) -> Result<(), String> {
     use syntaqlite_buildtools::extract;
 
     let amal_path = Path::new(&args.amalgamation_dir);
@@ -439,7 +439,7 @@ struct GenerateFunctionsCatalogArgs {
     output: String,
 }
 
-fn cmd_generate_functions_catalog(args: GenerateFunctionsCatalogArgs) -> Result<(), String> {
+fn cmd_generate_functions_catalog(args: &GenerateFunctionsCatalogArgs) -> Result<(), String> {
     syntaqlite_buildtools::util::functions_codegen::write_functions_catalog_file(
         &args.functions_json,
         &args.output,
@@ -461,7 +461,7 @@ struct ExtractFunctionsArgs {
     output: String,
 }
 
-fn cmd_extract_functions(args: ExtractFunctionsArgs) -> Result<(), String> {
+fn cmd_extract_functions(args: &ExtractFunctionsArgs) -> Result<(), String> {
     use syntaqlite_buildtools::extract;
 
     let amal_path = Path::new(&args.amalgamation_dir);
@@ -489,7 +489,7 @@ struct AnalyzeVersionsArgs {
     output_dir: String,
 }
 
-fn cmd_analyze_versions(args: AnalyzeVersionsArgs) -> Result<(), String> {
+fn cmd_analyze_versions(args: &AnalyzeVersionsArgs) -> Result<(), String> {
     let source_dir = Path::new(&args.sqlite_source_dir);
     let out_dir = Path::new(&args.output_dir);
 
@@ -546,7 +546,7 @@ fn cmd_analyze_versions(args: AnalyzeVersionsArgs) -> Result<(), String> {
 fn main() {
     let cli = Cli::parse();
 
-    let result: Result<(), String> = match cli.command {
+    let result: Result<(), String> = match &cli.command {
         Command::CodegenSqlite(args) => cmd_codegen_sqlite(args),
         Command::CodegenSqliteParser(args) => cmd_codegen_sqlite_parser(args),
         Command::SqliteExtract(args) => cmd_sqlite_extract(args),
@@ -554,8 +554,8 @@ fn main() {
         Command::GenerateFunctionsCatalog(args) => cmd_generate_functions_catalog(args),
         Command::ExtractFunctions(args) => cmd_extract_functions(args),
         Command::AnalyzeVersions(args) => cmd_analyze_versions(args),
-        Command::Lemon { args } => syntaqlite_buildtools::run_lemon(&args),
-        Command::Mkkeyword { args } => syntaqlite_buildtools::run_mkkeyword(&args),
+        Command::Lemon { args } => syntaqlite_buildtools::run_lemon(args),
+        Command::Mkkeyword { args } => syntaqlite_buildtools::run_mkkeyword(args),
     };
 
     if let Err(e) = result {

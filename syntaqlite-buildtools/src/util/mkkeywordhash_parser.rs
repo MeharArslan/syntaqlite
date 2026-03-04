@@ -4,33 +4,33 @@
 //! Keyword table parsing from `mkkeywordhash.c`.
 //!
 //! Parses the keyword array and mask `#define` blocks to produce a
-//! structured representation of the keyword table for a given SQLite version.
+//! structured representation of the keyword table for a given `SQLite` version.
 
 /// A single keyword entry from the keyword table array.
 #[derive(Debug, Clone)]
 pub(crate) struct KeywordEntry {
     /// The keyword name, e.g. "RETURNING".
     pub(crate) name: String,
-    /// The token constant, e.g. "TK_RETURNING".
+    /// The token constant, e.g. "`TK_RETURNING`".
     pub(crate) token: String,
-    /// The mask expression (symbol names ORed together), e.g. "RETURNING".
+    /// The mask expression (symbol names `ORed` together), e.g. "RETURNING".
     pub(crate) mask_expr: String,
     /// Priority value.
     pub(crate) priority: u32,
 }
 
-/// A mask `#define` block mapping an SQLITE_OMIT_* or SQLITE_ENABLE_* flag to a bitmask value.
+/// A mask `#define` block mapping an `SQLITE_OMIT`_* or `SQLITE_ENABLE`_* flag to a bitmask value.
 #[derive(Debug, Clone)]
 pub(crate) struct MaskDefine {
     /// The mask symbol name, e.g. "RETURNING".
     pub(crate) name: String,
-    /// The SQLITE_OMIT_* or SQLITE_ENABLE_* flag, e.g. "SQLITE_OMIT_RETURNING".
+    /// The `SQLITE_OMIT`_* or `SQLITE_ENABLE`_* flag, e.g. "`SQLITE_OMIT_RETURNING`".
     pub(crate) omit_flag: String,
     /// Polarity: 0 = OMIT (keyword removed when flag set), 1 = ENABLE (keyword added when flag set).
     pub(crate) polarity: u8,
 }
 
-/// The full keyword table for a single SQLite version.
+/// The full keyword table for a single `SQLite` version.
 #[derive(Debug, Clone)]
 pub(crate) struct KeywordTable {
     pub(crate) keywords: Vec<KeywordEntry>,

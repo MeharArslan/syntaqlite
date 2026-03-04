@@ -46,7 +46,7 @@ unsafe extern "C" {
     ) -> c_int;
 }
 
-/// Return the set of token names that are keywords in the base SQLite table.
+/// Return the set of token names that are keywords in the base `SQLite` table.
 ///
 /// Reads the compiled-in `aKeywordTable` and strips the `TK_` prefix from
 /// each entry's `z_token_type` field, yielding names like `"SELECT"`,
@@ -54,7 +54,10 @@ unsafe extern "C" {
 pub(crate) fn base_keyword_token_names() -> std::collections::HashSet<String> {
     let table_ptr = std::ptr::addr_of!(aKeywordTable);
     let n_keyword_ptr = std::ptr::addr_of!(nKeyword);
+    // SAFETY: `aKeywordTable` and `nKeyword` are extern statics from compiled C
+    // code that are always valid for reads. We read them once to extract keyword data.
     unsafe {
+        #[allow(clippy::cast_sign_loss)]
         let n = n_keyword_ptr.read() as usize;
         let arr = std::ptr::read(table_ptr);
         arr[..n]
@@ -106,6 +109,8 @@ pub(crate) fn run_mkkeyword(args: &[String]) -> ! {
     // Read the compiled-in base keyword table.
     let table_ptr = std::ptr::addr_of!(aKeywordTable);
     let n_keyword_ptr = std::ptr::addr_of!(nKeyword);
+    // SAFETY: `aKeywordTable` and `nKeyword` are extern statics from compiled C
+    // code that are always valid for reads.
     let (keywords_array, n_keywords) = unsafe {
         let n = n_keyword_ptr.read();
         let arr = std::ptr::read(table_ptr);
@@ -118,10 +123,13 @@ pub(crate) fn run_mkkeyword(args: &[String]) -> ! {
     // at this point — it gets filled in later by mkkeyword_main).
     let base_names: std::collections::HashSet<String> = keywords_copy
         .iter()
-        .map(|kw| unsafe {
-            std::ffi::CStr::from_ptr(kw.z_name)
-                .to_string_lossy()
-                .to_string()
+        .map(|kw| {
+            // SAFETY: `z_name` is a valid C string pointer from the compiled-in keyword table.
+            unsafe {
+                std::ffi::CStr::from_ptr(kw.z_name)
+                    .to_string_lossy()
+                    .to_string()
+            }
         })
         .collect();
 
@@ -146,19 +154,18 @@ pub(crate) fn run_mkkeyword(args: &[String]) -> ! {
         let bytes = name_c.to_bytes();
         assert!(
             bytes.len() < 20,
-            "keyword {:?} too long for z_orig_name[20]",
-            name_c
+            "keyword {name_c:?} too long for z_orig_name[20]"
         );
 
         let mut z_orig_name = [0i8; 20];
         for (i, &b) in bytes.iter().enumerate() {
-            z_orig_name[i] = b as i8;
+            z_orig_name[i] = b.cast_signed();
         }
 
         keywords_copy.push(Keyword {
-            z_name: name_c.as_ptr() as *mut c_char,
-            z_token_type: token_c.as_ptr() as *mut c_char,
-            mask: 0x00000002, // ALWAYS
+            z_name: name_c.as_ptr().cast_mut(),
+            z_token_type: token_c.as_ptr().cast_mut(),
+            mask: 0x0000_0002, // ALWAYS
             priority: 0,
             id: 0,
             hash: 0,
@@ -173,14 +180,15 @@ pub(crate) fn run_mkkeyword(args: &[String]) -> ! {
         });
     }
 
+    #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
     let total = n_keywords + extra_cstrings.len() as c_int;
-    let argc = c_args.argc;
-    let argv = c_args.argv();
+    let arg_count = c_args.argc;
+    let arg_vec = c_args.argv();
     let keywords_ptr = keywords_copy.as_ptr();
 
     // SAFETY: mkkeyword_main is a valid C function; all pointers and CStrings
     // are kept alive in keywords_copy, extra_cstrings, and c_args.
-    let exit_code = unsafe { mkkeyword_main(argc, argv, keywords_ptr, total) };
+    let exit_code = unsafe { mkkeyword_main(arg_count, arg_vec, keywords_ptr, total) };
 
     std::process::exit(exit_code);
 }

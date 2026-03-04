@@ -1,9 +1,9 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Generates a Rust source file containing the SQLite built-in function catalog.
+//! Generates a Rust source file containing the `SQLite` built-in function catalog.
 //!
-//! Reads `functions.json` (extracted from SQLite source) and emits a static
+//! Reads `functions.json` (extracted from `SQLite` source) and emits a static
 //! array of `FunctionEntry` values with availability rules that can be filtered
 //! at runtime by `DialectEnv`.
 
@@ -115,6 +115,10 @@ fn cflag_index(name: &str) -> Option<u32> {
 
 /// Read `functions.json` from `json_path`, generate the catalog Rust source, and
 /// write it to `output_path` (creating parent directories as needed).
+///
+/// # Errors
+///
+/// Returns an error if reading, parsing, or writing fails.
 pub fn write_functions_catalog_file(json_path: &str, output_path: &str) -> Result<(), String> {
     use std::fs;
     use std::path::Path;
@@ -131,6 +135,11 @@ pub fn write_functions_catalog_file(json_path: &str, output_path: &str) -> Resul
 }
 
 /// Generate the `functions_catalog.rs` Rust source from `functions.json` content.
+///
+/// # Errors
+///
+/// Returns an error if JSON parsing fails or an unknown category/cflag is encountered.
+#[allow(clippy::too_many_lines)]
 pub fn generate_functions_catalog(json_content: &str) -> Result<String, String> {
     let file: FunctionsFile =
         serde_json::from_str(json_content).map_err(|e| format!("parsing functions.json: {e}"))?;

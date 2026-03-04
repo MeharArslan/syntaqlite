@@ -40,7 +40,10 @@ fn generate_header(grammar: &grammar_parser::LemonGrammar) -> String {
     w.section("Token Types");
     let mut token_variants: Vec<(&str, Option<i32>)> = vec![("TOKEN_INVALID", Some(0))];
     for (i, token) in grammar.tokens.iter().enumerate() {
-        token_variants.push((token.name, Some((i + 1) as i32)));
+        token_variants.push((
+            token.name,
+            Some(i32::try_from(i + 1).expect("token index exceeds i32")),
+        ));
     }
     w.typedef_enum("TokenType", &token_variants);
     w.newline();

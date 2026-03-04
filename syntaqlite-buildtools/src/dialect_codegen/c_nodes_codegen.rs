@@ -10,7 +10,8 @@ use crate::util::{pascal_to_snake, upper_snake};
 use super::{AstModel, NodeLikeRef, c_type_name};
 
 impl AstModel<'_> {
-    pub fn generate_ast_nodes_header(&self, dialect: &str) -> String {
+    #[allow(clippy::too_many_lines)]
+    pub(crate) fn generate_ast_nodes_header(&self, dialect: &str) -> String {
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
 
@@ -46,7 +47,12 @@ impl AstModel<'_> {
             let owned: Vec<_> = variants
                 .iter()
                 .enumerate()
-                .map(|(i, v)| (format!("{}_{}", prefix, v), Some(i as i32)))
+                .map(|(i, v)| {
+                    (
+                        format!("{prefix}_{v}"),
+                        Some(i32::try_from(i).expect("enum variant index fits in i32")),
+                    )
+                })
                 .collect();
             w.typedef_enum(&c_type_name(name), &refs_i32(&owned));
             w.newline();
@@ -75,7 +81,7 @@ impl AstModel<'_> {
             vec![("SYNTAQLITE_NODE_NULL".into(), Some(0))];
         for item in self.node_like_items() {
             let name = item.name();
-            tag_variants.push((tag_name(name), Some(self.tag_for(name) as i32)));
+            tag_variants.push((tag_name(name), Some(self.tag_for(name).cast_signed())));
         }
         tag_variants.push(("SYNTAQLITE_NODE_COUNT".into(), None));
         w.typedef_enum("SyntaqliteNodeTag", &refs_i32(&tag_variants));
@@ -129,7 +135,7 @@ impl AstModel<'_> {
 
         // Abstract type unions and accessors
         for &(name, members) in self.abstract_items() {
-            w.section(&format!("Abstract Type: {}", name));
+            w.section(&format!("Abstract Type: {name}"));
 
             let c_abs_name = c_type_name(name);
             let mut abs_union_members = vec![("SyntaqliteNodeTag".to_string(), "tag".to_string())];
@@ -145,8 +151,7 @@ impl AstModel<'_> {
 
             let check_fn = format!("syntaqlite_is_{}", pascal_to_snake(name));
             w.line(&format!(
-                "static inline int {}(SyntaqliteNodeTag tag) {{",
-                check_fn
+                "static inline int {check_fn}(SyntaqliteNodeTag tag) {{"
             ));
             w.indent();
             w.line("switch (tag) {");
@@ -169,8 +174,7 @@ impl AstModel<'_> {
                 );
                 let member_type = c_type_name(member);
                 w.line(&format!(
-                    "static inline const {}* {}(const {}* node) {{",
-                    member_type, accessor_fn, c_abs_name
+                    "static inline const {member_type}* {accessor_fn}(const {c_abs_name}* node) {{"
                 ));
                 w.indent();
                 w.line(&format!(
@@ -197,9 +201,9 @@ impl AstModel<'_> {
             let name = item.name();
             let cname = c_type_name(name);
             let tag = tag_name(name);
-            w.line(&format!("template <> struct NodeTag<{}> {{", cname));
+            w.line(&format!("template <> struct NodeTag<{cname}> {{"));
             w.line("  static constexpr bool kHasTag = true;");
-            w.line(&format!("  static constexpr uint32_t kValue = {};", tag));
+            w.line(&format!("  static constexpr uint32_t kValue = {tag};"));
             w.line("};");
         }
         w.newline();
@@ -211,7 +215,7 @@ impl AstModel<'_> {
         w.finish()
     }
 
-    pub fn generate_ast_builder_header(&self, dialect: &str) -> String {
+    pub(crate) fn generate_ast_builder_header(&self, dialect: &str) -> String {
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
 
@@ -262,7 +266,7 @@ fn emit_node_builder_inline(
             field.name
         ));
     }
-    let params: Vec<&str> = param_strs.iter().map(|s| s.as_str()).collect();
+    let params: Vec<&str> = param_strs.iter().map(String::as_str).collect();
     w.func_signature("static inline ", "uint32_t", &func, &params, " {");
 
     let mut init_parts = vec![format!(".tag = {}", tag)];
@@ -271,10 +275,7 @@ fn emit_node_builder_inline(
     }
 
     let literal = format!("&({}){{{}}}", sn, init_parts.join(", "));
-    let call = format!(
-        "return synq_parse_build(ctx, {}, (uint32_t)sizeof({}));",
-        literal, sn
-    );
+    let call = format!("return synq_parse_build(ctx, {literal}, (uint32_t)sizeof({sn}));");
 
     w.indent();
     if call.len() <= 80 {
@@ -282,14 +283,14 @@ fn emit_node_builder_inline(
     } else {
         w.line("return synq_parse_build(ctx,");
         w.indent();
-        w.line(&format!("&({}){{", sn));
+        w.line(&format!("&({sn}){{"));
         w.indent();
         for (i, part) in init_parts.iter().enumerate() {
             let comma = if i < init_parts.len() - 1 { "," } else { "" };
-            w.line(&format!("{}{}", part, comma));
+            w.line(&format!("{part}{comma}"));
         }
         w.dedent();
-        w.line(&format!("}}, (uint32_t)sizeof({}));", sn));
+        w.line(&format!("}}, (uint32_t)sizeof({sn}));"));
         w.dedent();
     }
     w.dedent();
@@ -310,8 +311,7 @@ fn emit_list_builder_inline(w: &mut CWriter, name: &str) {
     );
     w.indent();
     w.line(&format!(
-        "return synq_parse_list_append(ctx, {}, list_id, child);",
-        tag
+        "return synq_parse_list_append(ctx, {tag}, list_id, child);"
     ));
     w.dedent();
     w.line("}");

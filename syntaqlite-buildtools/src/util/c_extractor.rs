@@ -1,50 +1,52 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! C code extraction tailored for SQLite source code.
+//! C code extraction tailored for `SQLite` source code.
 //!
-//! Uses simple pattern matching specific to SQLite's coding conventions.
+//! Uses simple pattern matching specific to `SQLite`'s coding conventions.
 //! Not intended as a general-purpose C parser.
 
 use std::fmt;
 
 #[derive(Debug, Clone)]
-pub struct CFunction {
-    pub text: String,
-    pub name: String,
+#[allow(dead_code)]
+pub(crate) struct CFunction {
+    pub(crate) text: String,
+    pub(crate) name: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct CStaticArray {
-    pub text: String,
+pub(crate) struct CStaticArray {
+    pub(crate) text: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct CDefines {
-    pub text: String,
+pub(crate) struct CDefines {
+    pub(crate) text: String,
 }
 
 impl CFunction {
-    pub fn new(text: String, name: String) -> Self {
+    pub(crate) const fn new(text: String, name: String) -> Self {
         Self { text, name }
     }
 }
 
 /// Result of splitting source code by a function
-pub struct SplitByFunction {
-    pub before: String,
-    pub function: CFunction,
-    pub after: String,
+#[allow(dead_code)]
+pub(crate) struct SplitByFunction {
+    pub(crate) before: String,
+    pub(crate) function: CFunction,
+    pub(crate) after: String,
 }
 
 impl CStaticArray {
-    pub fn new(text: String) -> Self {
+    pub(crate) const fn new(text: String) -> Self {
         Self { text }
     }
 }
 
 impl CDefines {
-    pub fn new(text: String) -> Self {
+    pub(crate) const fn new(text: String) -> Self {
         Self { text }
     }
 }
@@ -67,23 +69,23 @@ impl fmt::Display for CDefines {
     }
 }
 
-pub struct CExtractor {
+pub(crate) struct CExtractor {
     lines: Vec<String>,
 }
 
 impl CExtractor {
-    pub fn new(content: &str) -> Self {
+    pub(crate) fn new(content: &str) -> Self {
         Self {
-            lines: content.lines().map(|s| s.to_string()).collect(),
+            lines: content.lines().map(ToString::to_string).collect(),
         }
     }
 
-    pub fn extract_function(&self, name: &str) -> Result<CFunction, String> {
+    pub(crate) fn extract_function(&self, name: &str) -> Result<CFunction, String> {
         self.split_by_function(name).map(|split| split.function)
     }
 
     /// Split source code into: before function, function, after function.
-    pub fn split_by_function(&self, name: &str) -> Result<SplitByFunction, String> {
+    pub(crate) fn split_by_function(&self, name: &str) -> Result<SplitByFunction, String> {
         let (start, end) = self.find_function_bounds(name)?;
 
         let before = self.lines[..start].join("\n");
@@ -101,8 +103,8 @@ impl CExtractor {
         })
     }
 
-    pub fn extract_static_array(&self, name: &str) -> Result<CStaticArray, String> {
-        let pattern = format!("{}[", name);
+    pub(crate) fn extract_static_array(&self, name: &str) -> Result<CStaticArray, String> {
+        let pattern = format!("{name}[");
 
         for (i, line) in self.lines.iter().enumerate() {
             if !line.contains(&pattern) {
@@ -123,10 +125,10 @@ impl CExtractor {
                 }
             }
         }
-        Err(format!("Could not find array '{}'", name))
+        Err(format!("Could not find array '{name}'"))
     }
 
-    pub fn extract_specific_defines(&self, names: &[&str]) -> Result<CDefines, String> {
+    pub(crate) fn extract_specific_defines(&self, names: &[&str]) -> Result<CDefines, String> {
         let mut lines = Vec::new();
 
         for name in names {
@@ -150,13 +152,16 @@ impl CExtractor {
     /// Extract `#define`(s) by name, including their enclosing `#ifdef`/`#endif`
     /// guards. When a macro has multiple conditional variants, adjacent blocks
     /// are merged into one contiguous region.
-    pub fn extract_defines_with_ifdef_context(&self, names: &[&str]) -> Result<CDefines, String> {
+    pub(crate) fn extract_defines_with_ifdef_context(
+        &self,
+        names: &[&str],
+    ) -> Result<CDefines, String> {
         let mut ranges: Vec<(usize, usize)> = Vec::new();
 
         for name in names {
             let lines = self.find_define_lines(name);
             if lines.is_empty() {
-                return Err(format!("Could not find #define for '{}'", name));
+                return Err(format!("Could not find #define for '{name}'"));
             }
             for idx in lines {
                 let range = self.find_enclosing_ifdef(idx).unwrap_or((idx, idx));
@@ -176,7 +181,7 @@ impl CExtractor {
     // --- Private helpers: function extraction ---
 
     fn find_function_bounds(&self, name: &str) -> Result<(usize, usize), String> {
-        let pattern = format!("{}(", name);
+        let pattern = format!("{name}(");
 
         for (i, line) in self.lines.iter().enumerate() {
             if Self::should_skip_line_for_function(line) || !line.contains(&pattern) {
@@ -188,7 +193,7 @@ impl CExtractor {
                 return Ok((i, end));
             }
         }
-        Err(format!("Could not find function definition for '{}'", name))
+        Err(format!("Could not find function definition for '{name}'"))
     }
 
     fn should_skip_line_for_function(line: &str) -> bool {
@@ -244,7 +249,7 @@ impl CExtractor {
 
     fn parse_define_name(line: &str) -> Option<&str> {
         let trimmed = line.trim_start();
-        if !trimmed.starts_with("#") {
+        if !trimmed.starts_with('#') {
             return None;
         }
 
@@ -333,7 +338,7 @@ impl CExtractor {
         ranges.sort_by_key(|&(start, _)| start);
         let mut merged = vec![ranges[0]];
         for &(start, end) in &ranges[1..] {
-            let last = merged.last_mut().unwrap();
+            let last = merged.last_mut().expect("merged is non-empty");
             if start <= last.1 + 2 {
                 last.1 = last.1.max(end);
             } else {
@@ -345,20 +350,22 @@ impl CExtractor {
 
     /// Find the ifdef/ifndef block that contains a line matching `inner_marker`,
     /// and return the full block text (from #if... through #endif).
-    pub fn extract_enclosing_ifdef(&self, inner_marker: &str) -> Result<String, String> {
+    #[allow(dead_code)]
+    pub(crate) fn extract_enclosing_ifdef(&self, inner_marker: &str) -> Result<String, String> {
         let line_idx = self
             .lines
             .iter()
             .position(|l| l.contains(inner_marker))
-            .ok_or_else(|| format!("Could not find line containing '{}'", inner_marker))?;
+            .ok_or_else(|| format!("Could not find line containing '{inner_marker}'"))?;
         let (start, end) = self
             .find_enclosing_ifdef(line_idx)
-            .ok_or_else(|| format!("No enclosing ifdef found for '{}'", inner_marker))?;
+            .ok_or_else(|| format!("No enclosing ifdef found for '{inner_marker}'"))?;
         Ok(self.lines[start..=end].join("\n"))
     }
 
     /// Extract lines between (and including) two marker strings.
-    pub fn extract_between_markers(
+    #[allow(dead_code)]
+    pub(crate) fn extract_between_markers(
         &self,
         start_marker: &str,
         end_marker: &str,
@@ -367,12 +374,12 @@ impl CExtractor {
             .lines
             .iter()
             .position(|l| l.contains(start_marker))
-            .ok_or_else(|| format!("Could not find start marker: {}", start_marker))?;
+            .ok_or_else(|| format!("Could not find start marker: {start_marker}"))?;
         let end = self.lines[start..]
             .iter()
             .position(|l| l.contains(end_marker))
             .map(|i| start + i)
-            .ok_or_else(|| format!("Could not find end marker: {}", end_marker))?;
+            .ok_or_else(|| format!("Could not find end marker: {end_marker}"))?;
         Ok(self.lines[start..=end].join("\n"))
     }
 

@@ -22,7 +22,7 @@ use crate::util::mkkeywordhash_parser;
 
 /// Cflags that affect parser grammar and/or keyword availability.
 ///
-/// Each entry is (flag_name, polarity, description).
+/// Each entry is (`flag_name`, polarity, description).
 /// - "omit": default = OFF. Turning ON removes syntax.
 /// - "enable": default = OFF. Turning ON adds syntax.
 pub const PARSER_CFLAGS: &[(&str, &str, &str)] = &[
@@ -121,7 +121,11 @@ struct KeywordCflagEntry {
 
 /// Extract keyword cflag data from mkkeywordhash.c source.
 ///
-/// Returns a map of keyword name → (cflag_index, polarity).
+/// Returns a map of keyword name → (`cflag_index`, polarity).
+///
+/// # Errors
+///
+/// Returns an error if the keyword table cannot be parsed.
 pub fn extract_keyword_cflags(
     mkkeywordhash_source: &str,
 ) -> Result<HashMap<String, (u32, u8)>, String> {
@@ -157,8 +161,12 @@ pub fn extract_keyword_cflags(
 }
 
 /// Write keyword cflag data to a JSON file.
-pub fn write_keyword_cflags(
-    cflags: &HashMap<String, (u32, u8)>,
+///
+/// # Errors
+///
+/// Returns an error if serialization or file writing fails.
+pub fn write_keyword_cflags<S: std::hash::BuildHasher>(
+    cflags: &HashMap<String, (u32, u8), S>,
     output_path: &Path,
 ) -> Result<(), String> {
     let mut entries: Vec<_> = cflags

@@ -14,7 +14,7 @@ use crate::util::pascal_case;
 /// Assemble the tokenizer C source from pre-extracted fragments.
 ///
 /// This replaces the old `extract_tokenizer()` path: instead of running
-/// `CExtractor` on raw SQLite source at codegen time, we read committed
+/// `CExtractor` on raw `SQLite` source at codegen time, we read committed
 /// fragment files and apply only the dialect-specific `CTransformer` pass.
 pub(crate) fn assemble(
     fragments: &SqliteFragments,

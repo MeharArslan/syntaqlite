@@ -1,9 +1,9 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Pre-extracted SQLite C fragments loaded from committed data files.
+//! Pre-extracted `SQLite` C fragments loaded from committed data files.
 //!
-//! Stage 1 (`sqlite-extract`) extracts these fragments from raw SQLite source
+//! Stage 1 (`sqlite-extract`) extracts these fragments from raw `SQLite` source
 //! and writes them to `data/sqlite_fragments/`. Stage 3 (always compiled)
 //! loads them here via `include_str!` for dialect-specific assembly.
 
@@ -19,7 +19,7 @@ pub(crate) struct SqliteFragments {
     pub keyword_cflags: &'static str,
 }
 
-pub(crate) fn load() -> SqliteFragments {
+pub(crate) const fn load() -> SqliteFragments {
     SqliteFragments {
         cc_defines: include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),

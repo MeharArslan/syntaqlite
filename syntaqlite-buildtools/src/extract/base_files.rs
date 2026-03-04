@@ -6,6 +6,7 @@
 //! Scans the parser-actions and parser-nodes directories and produces a Rust
 //! source file containing `include_str!` entries for each `.y` and `.synq` file.
 
+use std::fmt::Write;
 use std::fs;
 use std::path::Path;
 
@@ -14,6 +15,10 @@ use std::path::Path;
 /// `codegen_crate_dir` is the path to the `syntaqlite-buildtools` crate root
 /// (i.e. `CARGO_MANIFEST_DIR` at compile time). All `include_str!` paths
 /// are emitted relative to it.
+///
+/// # Errors
+///
+/// Returns an error if directories cannot be read or canonicalized.
 pub fn generate_base_files_tables(
     actions_dir: &Path,
     nodes_dir: &Path,
@@ -41,18 +46,20 @@ pub fn generate_base_files_tables(
     // BASE_Y_FILES
     out.push_str("pub(crate) const BASE_Y_FILES: &[(&str, &str)] = &[\n");
     for name in &y_files {
-        out.push_str(&format!(
-            "    ({name:?}, include_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/{actions_rel}/{name}\"))),\n"
-        ));
+        let _ = writeln!(
+            out,
+            "    ({name:?}, include_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/{actions_rel}/{name}\"))),"
+        );
     }
     out.push_str("];\n\n");
 
     // BASE_SYNQ_FILES
     out.push_str("pub(crate) const BASE_SYNQ_FILES: &[(&str, &str)] = &[\n");
     for name in &synq_files {
-        out.push_str(&format!(
-            "    ({name:?}, include_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/{nodes_rel}/{name}\"))),\n"
-        ));
+        let _ = writeln!(
+            out,
+            "    ({name:?}, include_str!(concat!(env!(\"CARGO_MANIFEST_DIR\"), \"/{nodes_rel}/{name}\"))),"
+        );
     }
     out.push_str("];\n");
 
@@ -113,7 +120,11 @@ fn relative_path(base: &Path, target: &Path) -> Result<String, String> {
     Ok(parts.join("/"))
 }
 
-/// Write the generated base_files_tables.rs to the output path.
+/// Write the generated `base_files_tables.rs` to the output path.
+///
+/// # Errors
+///
+/// Returns an error if generation or file writing fails.
 pub fn write_base_files_tables(
     actions_dir: &Path,
     nodes_dir: &Path,

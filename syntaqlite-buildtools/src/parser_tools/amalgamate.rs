@@ -6,7 +6,7 @@
 //!
 //! Three modes:
 //! - **Runtime only** — engine (`syntaqlite_runtime.{h,c}`) + extension header (`syntaqlite_dialect.h`)
-//! - **TypedDialectEnv only** — dialect sources that `#include` the runtime header and ext header
+//! - **`TypedDialectEnv` only** — dialect sources that `#include` the runtime header and ext header
 //! - **Full** — runtime + dialect inlined into one pair of files
 //!
 //! The amalgamator uses a single-pass recursive include expansion: starting from
@@ -17,6 +17,7 @@
 //! amalgamation products without double-definition.
 
 use std::collections::{BTreeMap, HashSet};
+use std::fmt::Write as _;
 use std::fs;
 use std::path::Path;
 
@@ -24,8 +25,11 @@ use std::path::Path;
 // Public API
 // ---------------------------------------------------------------------------
 
+/// Output of an amalgamation operation.
 pub struct AmalgamateOutput {
+    /// Amalgamated header file content.
     pub header: String,
+    /// Amalgamated source file content.
     pub source: String,
     /// Extension header (present for runtime-only amalgamation).
     pub ext_header: Option<String>,
@@ -36,9 +40,13 @@ pub struct AmalgamateOutput {
 /// `runtime_dir` must contain **only** runtime files (written by
 /// [`write_runtime_headers_to_dir`](super::base_files::write_runtime_headers_to_dir)) — no dialect-specific code.
 /// Scans `csrc/` and `include/` subdirectories of the given directory.
+///
+/// # Errors
+///
+/// Returns an error if reading source files from `runtime_dir` fails.
 pub fn amalgamate_runtime(runtime_dir: &Path) -> Result<AmalgamateOutput, String> {
     let files = collect_files(&[&runtime_dir.join("csrc"), &runtime_dir.join("include")])?;
-    emit(&files, EmitMode::RuntimeOnly)
+    Ok(emit(&files, EmitMode::RuntimeOnly))
 }
 
 /// Produce `syntaqlite_<dialect>.{h,c}` that references `syntaqlite_runtime.h`
@@ -52,6 +60,10 @@ pub fn amalgamate_runtime(runtime_dir: &Path) -> Result<AmalgamateOutput, String
 /// `runtime_header` and `ext_header` control the default values baked into
 /// the `#ifndef` guards. Pass `None` for the defaults (`"syntaqlite_runtime.h"`
 /// and `"syntaqlite_dialect.h"`).
+///
+/// # Errors
+///
+/// Returns an error if reading source files from `dialect_dir` fails.
 pub fn amalgamate_dialect(
     dialect: &str,
     dialect_dir: &Path,
@@ -59,17 +71,21 @@ pub fn amalgamate_dialect(
     ext_header: Option<&str>,
 ) -> Result<AmalgamateOutput, String> {
     let files = collect_files(&[&dialect_dir.join("csrc"), &dialect_dir.join("include")])?;
-    emit(
+    Ok(emit(
         &files,
         EmitMode::DialectOnly {
             dialect,
             runtime_header: runtime_header.unwrap_or("syntaqlite_runtime.h"),
             ext_header: ext_header.unwrap_or("syntaqlite_dialect.h"),
         },
-    )
+    ))
 }
 
 /// Produce `syntaqlite_<dialect>.{h,c}` with the runtime inlined.
+///
+/// # Errors
+///
+/// Returns an error if reading source files from `runtime_dir` or `dialect_dir` fails.
 pub fn amalgamate_full(
     dialect: &str,
     runtime_dir: &Path,
@@ -81,7 +97,7 @@ pub fn amalgamate_full(
         &dialect_dir.join("csrc"),
         &dialect_dir.join("include"),
     ])?;
-    emit(&files, EmitMode::Full(dialect))
+    Ok(emit(&files, EmitMode::Full(dialect)))
 }
 
 // ---------------------------------------------------------------------------
@@ -98,7 +114,7 @@ enum FileKind {
 }
 
 /// Map from include key (e.g. `"syntaqlite/parser.h"`) to raw file content.
-/// BTreeMap gives deterministic iteration order.
+/// `BTreeMap` gives deterministic iteration order.
 type FileMap = BTreeMap<String, String>;
 
 fn classify(key: &str) -> FileKind {
@@ -106,7 +122,10 @@ fn classify(key: &str) -> FileKind {
         FileKind::ExtHeader
     } else if key.starts_with("syntaqlite/") || key.starts_with("syntaqlite_") {
         FileKind::PublicHeader
-    } else if key.ends_with(".h") {
+    } else if Path::new(key)
+        .extension()
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("h"))
+    {
         FileKind::InternalHeader
     } else {
         FileKind::Source
@@ -199,10 +218,11 @@ fn parse_include_directive(line: &str) -> Option<IncludeDirective<'_>> {
 // Emit modes
 // ---------------------------------------------------------------------------
 
+#[derive(Clone, Copy)]
 enum EmitMode<'a> {
     /// Runtime only: `syntaqlite_runtime.{h,c}` + `syntaqlite_dialect.h`.
     RuntimeOnly,
-    /// TypedDialectEnv only: `syntaqlite_<name>.{h,c}`, expects external runtime/ext headers.
+    /// `TypedDialectEnv` only: `syntaqlite_<name>.{h,c}`, expects external runtime/ext headers.
     DialectOnly {
         dialect: &'a str,
         runtime_header: &'a str,
@@ -226,7 +246,7 @@ enum EmitMode<'a> {
 /// Unresolved quoted includes that look like runtime paths (see
 /// [`is_runtime_path`]) are always stripped, regardless of section. In
 /// Full/RuntimeOnly modes all runtime files are in the map so there are no
-/// unresolved runtime paths to speak of. In DialectOnly mode the runtime
+/// unresolved runtime paths to speak of. In `DialectOnly` mode the runtime
 /// files are absent from the map and must be stripped — they are provided
 /// by the explicit `#include SYNTAQLITE_RUNTIME_HEADER` at the top.
 #[derive(Clone, Copy)]
@@ -264,11 +284,11 @@ impl<'a> Emitter<'a> {
             None => return,
         };
 
-        out.push_str(&format!("/* ======== begin: {key} ======== */\n"));
+        let _ = writeln!(out, "/* ======== begin: {key} ======== */");
 
         let guard = detect_include_guard(&content);
         if let Some(ref g) = guard {
-            out.push_str(&format!("#ifndef {g}\n#define {g}\n"));
+            let _ = write!(out, "#ifndef {g}\n#define {g}\n");
         }
 
         let mut lines: Vec<&str> = content.lines().collect();
@@ -351,9 +371,9 @@ impl<'a> Emitter<'a> {
         }
 
         if let Some(ref g) = guard {
-            out.push_str(&format!("#endif  /* {g} */\n"));
+            let _ = writeln!(out, "#endif  /* {g} */");
         }
-        out.push_str(&format!("/* ======== end: {key} ======== */\n\n"));
+        let _ = write!(out, "/* ======== end: {key} ======== */\n\n");
     }
 
     /// Emit all files of `kind` (in sorted key order), each recursively.
@@ -443,7 +463,7 @@ fn detect_include_guard(content: &str) -> Option<String> {
 // Emit
 // ---------------------------------------------------------------------------
 
-fn emit(files: &FileMap, mode: EmitMode) -> Result<AmalgamateOutput, String> {
+fn emit(files: &FileMap, mode: EmitMode) -> AmalgamateOutput {
     let (guard, header_filename) = match &mode {
         EmitMode::DialectOnly { dialect: d, .. } | EmitMode::Full(d) => (
             format!("SYNTAQLITE_{}_H", d.to_uppercase()),
@@ -460,20 +480,21 @@ fn emit(files: &FileMap, mode: EmitMode) -> Result<AmalgamateOutput, String> {
     header.push_str("/*\n");
     header.push_str("** syntaqlite amalgamation — machine generated, do not edit.\n");
     header.push_str("*/\n");
-    header.push_str(&format!("#ifndef {guard}\n#define {guard}\n\n"));
+    let _ = write!(header, "#ifndef {guard}\n#define {guard}\n\n");
 
     if let EmitMode::DialectOnly { runtime_header, .. } = &mode {
         header.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
-        header.push_str(&format!(
-            "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\"\n"
-        ));
+        let _ = writeln!(
+            header,
+            "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\""
+        );
         header.push_str("#endif\n");
         header.push_str("#include SYNTAQLITE_RUNTIME_HEADER\n\n");
     }
 
     let mut h_emitter = Emitter::new(files);
     h_emitter.emit_kind(FileKind::PublicHeader, &mut header, Section::Header);
-    header.push_str(&format!("\n#endif  /* {guard} */\n"));
+    let _ = write!(header, "\n#endif  /* {guard} */\n");
 
     // ── Build ext header (runtime-only mode) ──
     let ext_header = if matches!(mode, EmitMode::RuntimeOnly) {
@@ -511,28 +532,29 @@ fn emit(files: &FileMap, mode: EmitMode) -> Result<AmalgamateOutput, String> {
     } = &mode
     {
         source.push_str("#ifndef SYNTAQLITE_RUNTIME_HEADER\n");
-        source.push_str(&format!(
-            "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\"\n"
-        ));
+        let _ = writeln!(
+            source,
+            "#define SYNTAQLITE_RUNTIME_HEADER \"{runtime_header}\""
+        );
         source.push_str("#endif\n");
         source.push_str("#include SYNTAQLITE_RUNTIME_HEADER\n\n");
         source.push_str("#ifndef SYNTAQLITE_EXT_HEADER\n");
-        source.push_str(&format!("#define SYNTAQLITE_EXT_HEADER \"{ext_header}\"\n"));
+        let _ = writeln!(source, "#define SYNTAQLITE_EXT_HEADER \"{ext_header}\"");
         source.push_str("#endif\n");
         source.push_str("#include SYNTAQLITE_EXT_HEADER\n\n");
     }
-    source.push_str(&format!("#include \"{header_filename}\"\n\n"));
+    let _ = write!(source, "#include \"{header_filename}\"\n\n");
 
     // Emit sources. They recursively pull in their internal and ext-header
     // dependencies in encounter order (driven by the include graph).
     let mut s_emitter = Emitter::new(files);
     s_emitter.emit_kind(FileKind::Source, &mut source, Section::Source);
 
-    Ok(AmalgamateOutput {
+    AmalgamateOutput {
         header,
         source,
         ext_header,
-    })
+    }
 }
 
 #[cfg(test)]

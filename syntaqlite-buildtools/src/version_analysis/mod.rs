@@ -1,10 +1,10 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Multi-version SQLite source analysis.
+//! Multi-version `SQLite` source analysis.
 //!
 //! Downloads are handled externally (bash script). This module:
-//! 1. Reads pre-downloaded SQLite source trees
+//! 1. Reads pre-downloaded `SQLite` source trees
 //! 2. Extracts code fragments using `CExtractor`
 //! 3. Hashes fragments to find distinct variants
 //! 4. Groups consecutive versions with identical hashes
@@ -27,18 +27,18 @@ use diff::VariantDiff;
 use extract::ExtractedFragments;
 use grammar::GrammarAnalysis;
 
-/// A parsed SQLite version number (e.g. 3.35.0 or 3.8.11.1).
+/// A parsed `SQLite` version number (e.g. 3.35.0 or 3.8.11.1).
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(into = "String")]
 pub struct SqliteVersion {
-    pub major: u32,
-    pub minor: u32,
-    pub patch: u32,
-    pub sub_patch: u32,
+    pub(crate) major: u32,
+    pub(crate) minor: u32,
+    pub(crate) patch: u32,
+    pub(crate) sub_patch: u32,
 }
 
 impl SqliteVersion {
-    pub fn parse(s: &str) -> Result<Self, String> {
+    pub(crate) fn parse(s: &str) -> Result<Self, String> {
         let parts: Vec<&str> = s.split('.').collect();
         if parts.len() < 3 || parts.len() > 4 {
             return Err(format!("invalid version: {s} (expected X.Y.Z or X.Y.Z.W)"));
@@ -63,8 +63,9 @@ impl SqliteVersion {
         })
     }
 
-    /// SQLite version integer encoding: 3.X.Y.Z -> 3XXYYZZ, 3.X.Y -> 3XXYY00.
-    pub fn version_int(&self) -> u32 {
+    /// `SQLite` version integer encoding: 3.X.Y.Z -> 3XXYYZZ, 3.X.Y -> 3XXYY00.
+    #[cfg(test)]
+    pub(crate) const fn version_int(&self) -> u32 {
         self.major * 1_000_000 + self.minor * 10_000 + self.patch * 100 + self.sub_patch
     }
 }
@@ -92,57 +93,64 @@ impl fmt::Display for SqliteVersion {
 /// A group of consecutive versions that share an identical fragment.
 #[derive(Debug, Clone, Serialize)]
 pub struct VariantGroup {
-    pub id: String,
-    pub hash: String,
-    pub versions: Vec<SqliteVersion>,
+    pub(crate) id: String,
+    pub(crate) hash: String,
+    pub(crate) versions: Vec<SqliteVersion>,
     #[serde(skip)]
-    pub text: String,
+    pub(crate) text: String,
 }
 
 impl VariantGroup {
-    pub fn first(&self) -> &SqliteVersion {
-        self.versions.first().unwrap()
+    pub(crate) fn first(&self) -> &SqliteVersion {
+        self.versions.first().expect("VariantGroup has no versions")
     }
 
-    pub fn last(&self) -> &SqliteVersion {
-        self.versions.last().unwrap()
-    }
 }
 
 /// Analysis of a single fragment across all versions.
 #[derive(Debug, Clone, Serialize)]
 pub struct FragmentAnalysis {
+    /// Name of the analyzed code fragment.
     #[serde(skip)]
     pub fragment_name: String,
+    /// Grouped consecutive versions with identical fragment text.
     pub variants: Vec<VariantGroup>,
+    /// Unified diffs between consecutive variant groups.
     pub diffs: Vec<VariantDiff>,
+    /// Versions where fragment extraction failed.
     pub errors: Vec<(SqliteVersion, String)>,
 }
 
 /// Keyword changes between consecutive versions.
 #[derive(Debug, Clone, Serialize)]
 pub struct KeywordAddition {
-    pub version: SqliteVersion,
-    pub added: Vec<String>,
+    pub(crate) version: SqliteVersion,
+    pub(crate) added: Vec<String>,
 }
 
 /// Analysis of keyword table changes across versions.
 #[derive(Debug, Clone, Serialize)]
 pub struct KeywordAnalysis {
+    /// Total keywords in the latest analyzed version.
     pub total_keywords_latest: usize,
+    /// Versions where new keywords were introduced.
     pub additions: Vec<KeywordAddition>,
 }
 
 /// Complete analysis result.
 #[derive(Debug, Serialize)]
 pub struct VersionAnalysis {
+    /// All analyzed versions, in order.
     pub versions: Vec<SqliteVersion>,
+    /// Per-fragment analysis results keyed by fragment name.
     pub fragments: BTreeMap<String, FragmentAnalysis>,
+    /// Keyword table change analysis.
     pub keywords: KeywordAnalysis,
+    /// Grammar analysis, if `parse.y` files were available.
     pub grammar: Option<GrammarAnalysis>,
 }
 
-/// Required source files for a single SQLite version.
+/// Required source files for a single `SQLite` version.
 struct VersionSources {
     tokenize_c: String,
     global_c: String,
@@ -151,7 +159,7 @@ struct VersionSources {
     parse_y: Option<String>,
 }
 
-/// Run the full analysis pipeline on a directory of pre-downloaded SQLite sources.
+/// Run the full analysis pipeline on a directory of pre-downloaded `SQLite` sources.
 ///
 /// Expected directory layout:
 /// ```text
@@ -162,6 +170,14 @@ struct VersionSources {
 ///   3.24.0/tool/mkkeywordhash.c
 ///   3.25.0/src/...
 /// ```
+///
+/// # Errors
+///
+/// Returns an error if no version directories are found or if source files cannot be read.
+///
+/// # Panics
+///
+/// Panics if an internal version list is unexpectedly empty.
 pub fn analyze_versions(
     sqlite_source_dir: &Path,
     output_dir: &Path,
@@ -176,13 +192,13 @@ pub fn analyze_versions(
 
     eprintln!("Found {} versions: {}", versions.len(), {
         let first = &versions[0];
-        let last = versions.last().unwrap();
+        let last = versions.last().expect("versions list is non-empty");
         if versions.len() > 2 {
             format!("{first} .. {last}")
         } else {
             versions
                 .iter()
-                .map(|v| v.to_string())
+                .map(ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(", ")
         }
@@ -219,7 +235,7 @@ pub fn analyze_versions(
             .iter()
             .map(|(v, res)| {
                 let text = match res {
-                    Ok(f) => f.get(name).map(|s| s.to_string()),
+                    Ok(f) => f.get(name).map(ToString::to_string),
                     Err(e) => Err(e.clone()),
                 };
                 (v.clone(), text)
@@ -342,10 +358,7 @@ fn analyze_keywords(
         }
     }
 
-    let total = valid_tables
-        .last()
-        .map(|(_, t)| t.keywords.len())
-        .unwrap_or(0);
+    let total = valid_tables.last().map_or(0, |(_, t)| t.keywords.len());
 
     KeywordAnalysis {
         total_keywords_latest: total,
@@ -410,6 +423,8 @@ fn write_keyword_files(
     output_dir: &Path,
     per_version: &[(SqliteVersion, Result<KeywordTable, String>)],
 ) -> Result<(), String> {
+    use std::fmt::Write;
+
     let dir = output_dir.join("variants").join("keywords");
     fs::create_dir_all(&dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
 
@@ -419,10 +434,12 @@ fn write_keyword_files(
             let path = dir.join(format!("keywords_{ver_str}"));
             let mut content = String::new();
             for kw in &table.keywords {
-                content.push_str(&format!(
-                    "{}\t{}\t{}\t{}\n",
+                writeln!(
+                    content,
+                    "{}\t{}\t{}\t{}",
                     kw.name, kw.token, kw.mask_expr, kw.priority
-                ));
+                )
+                .expect("write to String cannot fail");
             }
             fs::write(&path, &content).map_err(|e| format!("write {}: {e}", path.display()))?;
         }

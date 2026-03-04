@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 //! Shared infrastructure for compiling and running probe programs against
-//! SQLite amalgamations.
+//! `SQLite` amalgamations.
 //!
 //! Splits compilation into two steps:
 //!   1. Compile `sqlite3.c` → `sqlite3.o` (the expensive part, ~seconds).
@@ -109,6 +109,10 @@ fn link_probe(
 /// Uses a two-step compile: `sqlite3.c` → `.o` (cached), then link with probe.
 /// The `build_dir` should be a persistent directory so `.o` files survive
 /// across runs.
+///
+/// # Errors
+///
+/// Returns an error if creating the build directory, compiling, or linking fails.
 pub fn compile_probe(
     amalgamation_dir: &Path,
     build_dir: &Path,
@@ -123,6 +127,10 @@ pub fn compile_probe(
 }
 
 /// Run a compiled probe binary and return its stdout.
+///
+/// # Errors
+///
+/// Returns an error if the probe binary fails to execute or exits with a non-zero status.
 pub fn run_probe(binary_path: &Path) -> Result<String, String> {
     let output = Command::new(binary_path)
         .output()

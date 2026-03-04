@@ -12,18 +12,18 @@ use crate::codegen_api::TokenizerExtractResult;
 use crate::util::c_transformer::CTransformer;
 use crate::util::c_writer::CWriter;
 
-/// Return the SQLite version (as integer, e.g. 3035000) in which a keyword was
+/// Return the `SQLite` version (as integer, e.g. 3035000) in which a keyword was
 /// first introduced.  Returns 0 for baseline keywords (present in 3.12.2).
 fn keyword_since_version(name: &str) -> i32 {
     match name {
-        "DO" | "NOTHING" => 3024000,
+        "DO" | "NOTHING" => 3_024_000,
         "CURRENT" | "FILTER" | "FOLLOWING" | "OVER" | "PARTITION" | "PRECEDING" | "RANGE"
-        | "ROWS" | "UNBOUNDED" | "WINDOW" => 3025000,
-        "EXCLUDE" | "GROUPS" | "OTHERS" | "TIES" => 3028000,
-        "FIRST" | "LAST" | "NULLS" => 3030000,
-        "ALWAYS" | "GENERATED" => 3031000,
-        "MATERIALIZED" | "RETURNING" => 3035000,
-        "WITHIN" => 3047000,
+        | "ROWS" | "UNBOUNDED" | "WINDOW" => 3_025_000,
+        "EXCLUDE" | "GROUPS" | "OTHERS" | "TIES" => 3_028_000,
+        "FIRST" | "LAST" | "NULLS" => 3_030_000,
+        "ALWAYS" | "GENERATED" => 3_031_000,
+        "MATERIALIZED" | "RETURNING" => 3_035_000,
+        "WITHIN" => 3_047_000,
         _ => 0,
     }
 }
@@ -94,18 +94,15 @@ fn generate_keyword_arrays(
     for (idx, name) in keyword_indices {
         since[*idx] = keyword_since_version(name);
         if let Some(&(cflag_idx, pol)) = cflag_map.get(name) {
-            cflag[*idx] = cflag_idx as i32;
+            cflag[*idx] = cflag_idx.cast_signed();
             polarity[*idx] = pol;
         }
     }
 
-    let prefix = format!("synq_{}", dialect);
+    let prefix = format!("synq_{dialect}");
 
     let fmt_array = |values: &[String], c_type: &str, name: &str| -> String {
-        let mut s = format!(
-            "static const {} {}_{}[{}] = {{",
-            c_type, prefix, name, array_len
-        );
+        let mut s = format!("static const {c_type} {prefix}_{name}[{array_len}] = {{");
         for (i, v) in values.iter().enumerate() {
             if i % 13 == 0 {
                 s.push_str("\n  ");
@@ -119,9 +116,9 @@ fn generate_keyword_arrays(
         s
     };
 
-    let since_strs: Vec<String> = since.iter().map(|v| v.to_string()).collect();
-    let cflag_strs: Vec<String> = cflag.iter().map(|v| v.to_string()).collect();
-    let pol_strs: Vec<String> = polarity.iter().map(|v| v.to_string()).collect();
+    let since_strs: Vec<String> = since.iter().map(ToString::to_string).collect();
+    let cflag_strs: Vec<String> = cflag.iter().map(ToString::to_string).collect();
+    let pol_strs: Vec<String> = polarity.iter().map(ToString::to_string).collect();
 
     let mut out = String::new();
     out.push_str(&fmt_array(&since_strs, "int32_t", "aKWSince"));
@@ -133,8 +130,8 @@ fn generate_keyword_arrays(
 /// The version+cflag check code that replaces `*pType = aKWCode[i]; break;`
 /// in `synq_sqlite3_keywordCode`. Uses `__SYNQ_DIALECT__` placeholder which
 /// the caller replaces with the actual dialect prefix (e.g. `synq_perfetto`).
-fn keyword_check_code() -> &'static str {
-    r#"/* Version check: skip keywords newer than target version. */
+const fn keyword_check_code() -> &'static str {
+    r"/* Version check: skip keywords newer than target version. */
     if( __SYNQ_DIALECT___aKWSince[i] != 0 && SYNQ_VER_LT(env, __SYNQ_DIALECT___aKWSince[i]) ){
       break;
     }
@@ -147,7 +144,7 @@ fn keyword_check_code() -> &'static str {
       }
     }
     *pType = aKWCode[i];
-    break;"#
+    break;"
 }
 
 /// Generate keyword hash lookup as a single `.c` file.
@@ -165,15 +162,15 @@ pub(crate) fn generate(
 
     let mut cmd = crate::util::self_subcommand::self_subcommand("mkkeyword")?;
 
-    let _kw_file = if !extra_keywords.is_empty() {
+    let _kw_file = if extra_keywords.is_empty() {
+        None
+    } else {
         let f = tempfile::NamedTempFile::new()
             .map_err(|e| format!("Failed to create keyword temp file: {e}"))?;
         fs::write(f.path(), extra_keywords.join("\n"))
             .map_err(|e| format!("Failed to write keyword file: {e}"))?;
         cmd.arg("--extra-file").arg(f.path());
         Some(f)
-    } else {
-        None
     };
 
     let output = cmd
@@ -195,11 +192,11 @@ pub(crate) fn generate(
     let keyword_indices = parse_keyword_indices(&generated_code);
     let keyword_arrays = generate_keyword_arrays(&keyword_indices, &cflag_map, dialect);
 
-    let kw_text_sym = format!("synq_{}_zKWText", dialect);
-    let kw_offset_sym = format!("synq_{}_aKWOffset", dialect);
-    let kw_len_sym = format!("synq_{}_aKWLen", dialect);
-    let kw_code_sym = format!("synq_{}_aKWCode", dialect);
-    let kw_count_sym = format!("synq_{}_nKeyword", dialect);
+    let kw_text_sym = format!("synq_{dialect}_zKWText");
+    let kw_offset_sym = format!("synq_{dialect}_aKWOffset");
+    let kw_len_sym = format!("synq_{dialect}_aKWLen");
+    let kw_code_sym = format!("synq_{dialect}_aKWCode");
+    let kw_count_sym = format!("synq_{dialect}_nKeyword");
 
     let processed_code = CTransformer::new(&generated_code)
         .remove_function("sqlite3KeywordCode")
@@ -230,7 +227,7 @@ pub(crate) fn generate(
         .replace_all("aKWLen", &kw_len_sym)
         .replace_all("aKWCode", &kw_code_sym)
         .replace_all("TK_", "SYNTAQLITE_TK_")
-        .replace_all("__SYNQ_DIALECT__", &format!("synq_{}", dialect))
+        .replace_all("__SYNQ_DIALECT__", &format!("synq_{dialect}"))
         .finish();
 
     // Insert keyword arrays before the keywordCode function.

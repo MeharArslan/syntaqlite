@@ -13,7 +13,7 @@
 
 /// Cflags that affect virtual table availability.
 ///
-/// Each entry is (flag_name, polarity, compile_defines).
+/// Each entry is (`flag_name`, polarity, `compile_defines`).
 /// - OMIT flags: default = OFF. Turning ON removes virtual tables.
 /// - ENABLE flags: default = OFF. Turning ON adds virtual tables.
 pub const VIRTUAL_TABLE_CFLAGS: &[(&str, &str, &[&str])] = &[

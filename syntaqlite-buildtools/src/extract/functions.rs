@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Stage 1 function extraction: compile SQLite amalgamations with various cflag
+//! Stage 1 function extraction: compile `SQLite` amalgamations with various cflag
 //! combos and use `PRAGMA function_list` to extract the built-in function catalog.
 //!
 //! Two-phase approach:
@@ -12,6 +12,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::fmt::Write as _;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -20,7 +21,7 @@ use super::amalgamation_probe;
 
 /// All function-relevant cflags we care about.
 ///
-/// Each entry is (flag_name, polarity, compile_defines).
+/// Each entry is (`flag_name`, polarity, `compile_defines`).
 /// - OMIT flags: default = OFF. We test by turning them ON to see what disappears.
 /// - ENABLE flags: default = OFF. We test by turning them ON to see what appears.
 const FUNCTION_CFLAGS: &[(&str, &str, &[&str])] = &[
@@ -76,7 +77,7 @@ const FUNCTION_CFLAGS: &[(&str, &str, &[&str])] = &[
     ),
 ];
 
-/// The C probe program that extracts function data via PRAGMA function_list.
+/// The C probe program that extracts function data via PRAGMA `function_list`.
 const PROBE_C: &str = r#"
 #include "sqlite3.h"
 #include <stdio.h>
@@ -129,74 +130,67 @@ int main(void) {
 
 /// A single function entry from `PRAGMA function_list`.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FunctionEntry {
-    pub name: String,
-    pub narg: i32,
-    pub func_type: String,
-    pub builtin: bool,
+pub(crate) struct FunctionEntry {
+    pub(crate) name: String,
+    pub(crate) narg: i32,
+    pub(crate) func_type: String,
+    pub(crate) builtin: bool,
 }
 
 /// The set of functions available for a particular compilation.
 #[derive(Debug, Clone)]
-pub struct FunctionSet {
-    pub functions: BTreeSet<FunctionEntry>,
+pub(crate) struct FunctionSet {
+    pub(crate) functions: BTreeSet<FunctionEntry>,
 }
 
 /// Describes how a cflag affects functions for a particular version.
 #[derive(Debug, Clone)]
-pub struct CflagEffect {
-    pub flag: String,
-    pub polarity: String,
-    pub affected_functions: BTreeSet<String>,
+pub(crate) struct CflagEffect {
+    pub(crate) flag: String,
+    pub(crate) polarity: String,
+    pub(crate) affected_functions: BTreeSet<String>,
 }
 
 /// A function's availability rule.
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct AvailabilityRule {
+pub(crate) struct AvailabilityRule {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub since: Option<String>,
+    pub(crate) since: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub until: Option<String>,
+    pub(crate) until: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cflag: Option<String>,
+    pub(crate) cflag: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub polarity: Option<String>,
+    pub(crate) polarity: Option<String>,
 }
 
 /// Complete catalog entry for a function.
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct FunctionCatalogEntry {
-    pub name: String,
-    pub arities: Vec<i32>,
-    pub category: String,
-    pub availability: Vec<AvailabilityRule>,
+pub(crate) struct FunctionCatalogEntry {
+    pub(crate) name: String,
+    pub(crate) arities: Vec<i32>,
+    pub(crate) category: String,
+    pub(crate) availability: Vec<AvailabilityRule>,
 }
 
 /// The complete extracted function catalog.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct FunctionCatalog {
-    pub functions: Vec<FunctionCatalogEntry>,
-}
-
-/// Per-version cflag audit: which flags does each version's source reference?
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct VersionCflagAudit {
-    /// Map from version string → sorted list of recognized flag names.
-    pub versions: BTreeMap<String, Vec<String>>,
+    pub(crate) functions: Vec<FunctionCatalogEntry>,
 }
 
 /// A single cflag availability entry (cflag-centric format).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct CflagAvailabilityEntry {
-    pub name: String,
-    pub since: String,
-    pub category: String,
+pub(crate) struct CflagAvailabilityEntry {
+    pub(crate) name: String,
+    pub(crate) since: String,
+    pub(crate) category: String,
 }
 
 /// Complete cflag availability data (cflag-centric format).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CflagAvailability {
-    pub cflags: Vec<CflagAvailabilityEntry>,
+    pub(crate) cflags: Vec<CflagAvailabilityEntry>,
 }
 
 // ---------------------------------------------------------------------------
@@ -255,7 +249,7 @@ impl fmt::Display for Version {
 /// Discover available amalgamation versions from a directory.
 ///
 /// Expected layout: `amalgamation_dir/3.35.5/sqlite3.c`
-pub fn discover_versions(amalgamation_dir: &Path) -> Result<Vec<String>, String> {
+pub(crate) fn discover_versions(amalgamation_dir: &Path) -> Result<Vec<String>, String> {
     let entries = fs::read_dir(amalgamation_dir)
         .map_err(|e| format!("cannot read {}: {e}", amalgamation_dir.display()))?;
     let mut versions = Vec::new();
@@ -267,7 +261,11 @@ pub fn discover_versions(amalgamation_dir: &Path) -> Result<Vec<String>, String>
             }
         }
     }
-    versions.sort_by(|a, b| Version::parse(a).unwrap().cmp(&Version::parse(b).unwrap()));
+    versions.sort_by(|a, b| {
+        Version::parse(a)
+            .expect("valid version")
+            .cmp(&Version::parse(b).expect("valid version"))
+    });
     Ok(versions)
 }
 
@@ -275,7 +273,7 @@ pub fn discover_versions(amalgamation_dir: &Path) -> Result<Vec<String>, String>
 // Phase 1: Audit — scan sqlite3.c for flag references
 // ---------------------------------------------------------------------------
 
-/// All flag names we look for during audit (all 42 cflags from SYNQ_CFLAG_TABLE).
+/// All flag names we look for during audit (all 42 cflags from `SYNQ_CFLAG_TABLE`).
 fn all_flag_names() -> Vec<&'static str> {
     super::SYNQ_CFLAG_TABLE
         .iter()
@@ -298,6 +296,15 @@ fn scan_version_cflags(sqlite3_c: &str) -> Vec<String> {
 /// Audit all versions and write cflag-centric availability data to `output_path`.
 ///
 /// Returns `CflagAvailability` with each cflag's earliest observed version (`since`).
+///
+/// # Errors
+///
+/// Returns an error if no amalgamation versions are found, or if reading/writing files fails.
+///
+/// # Panics
+///
+/// Panics if the discovered versions list is non-empty but `first()`/`last()` returns `None`
+/// (should be unreachable).
 pub fn audit_version_cflags(
     amalgamation_dir: &Path,
     output_path: &Path,
@@ -313,8 +320,8 @@ pub fn audit_version_cflags(
     eprintln!(
         "Auditing cflags for {} versions: {} .. {}",
         versions.len(),
-        versions.first().unwrap(),
-        versions.last().unwrap()
+        versions.first().expect("versions is non-empty"),
+        versions.last().expect("versions is non-empty")
     );
 
     // Scan each version's sqlite3.c for flag references.
@@ -346,13 +353,17 @@ pub fn audit_version_cflags(
 
 /// Compute cflag availability from per-version scan results.
 ///
-/// For each cflag in SYNQ_CFLAG_TABLE, finds the earliest version where it
+/// For each cflag in `SYNQ_CFLAG_TABLE`, finds the earliest version where it
 /// appears in the amalgamation source. Cflags not observed in any version
 /// get `since: "0"`.
 fn compute_cflag_availability(per_version: &BTreeMap<String, Vec<String>>) -> CflagAvailability {
     // Sort versions.
     let mut sorted_versions: Vec<&String> = per_version.keys().collect();
-    sorted_versions.sort_by(|a, b| Version::parse(a).unwrap().cmp(&Version::parse(b).unwrap()));
+    sorted_versions.sort_by(|a, b| {
+        Version::parse(a)
+            .expect("valid version")
+            .cmp(&Version::parse(b).expect("valid version"))
+    });
 
     let mut entries = Vec::new();
     for (flag_name, _, _, category) in super::SYNQ_CFLAG_TABLE {
@@ -362,11 +373,9 @@ fn compute_cflag_availability(per_version: &BTreeMap<String, Vec<String>>) -> Cf
             .find(|v| {
                 per_version
                     .get(**v)
-                    .map(|flags| flags.iter().any(|f| f == flag_name))
-                    .unwrap_or(false)
+                    .is_some_and(|flags| flags.iter().any(|f| f == flag_name))
             })
-            .map(|v| (*v).clone())
-            .unwrap_or_else(|| "0".to_string());
+            .map_or_else(|| "0".to_string(), |v| (*v).clone());
 
         entries.push(CflagAvailabilityEntry {
             name: flag_name.to_string(),
@@ -379,7 +388,7 @@ fn compute_cflag_availability(per_version: &BTreeMap<String, Vec<String>>) -> Cf
 }
 
 /// Generate a Rust source file containing a const table of cflag metadata.
-pub fn generate_cflag_versions_rs(availability: &CflagAvailability) -> String {
+pub(crate) fn generate_cflag_versions_rs(availability: &CflagAvailability) -> String {
     let mut out = String::new();
     out.push_str("// Copyright 2025 The syntaqlite Authors. All rights reserved.\n");
     out.push_str("// Licensed under the Apache License, Version 2.0.\n");
@@ -403,12 +412,16 @@ pub fn generate_cflag_versions_rs(availability: &CflagAvailability) -> String {
         let index = super::SYNQ_CFLAG_TABLE
             .iter()
             .find(|(name, _, _, _)| *name == entry.name)
-            .map(|(_, _, idx, _)| *idx)
-            .unwrap_or_else(|| panic!("cflag '{}' not found in SYNQ_CFLAG_TABLE", entry.name));
-        out.push_str(&format!(
-            "    (\"{}\", {}, {}, \"{}\"),\n",
+            .map_or_else(
+                || panic!("cflag '{}' not found in SYNQ_CFLAG_TABLE", entry.name),
+                |(_, _, idx, _)| *idx,
+            );
+        writeln!(
+            out,
+            "    (\"{}\", {}, {}, \"{}\"),",
             entry.name, index, ver_int, entry.category
-        ));
+        )
+        .expect("write to String cannot fail");
     }
 
     out.push_str("];\n");
@@ -416,6 +429,10 @@ pub fn generate_cflag_versions_rs(availability: &CflagAvailability) -> String {
 }
 
 /// Write the generated Rust file to disk.
+///
+/// # Errors
+///
+/// Returns an error if creating the parent directory or writing the file fails.
 pub fn write_cflag_versions_rs(
     availability: &CflagAvailability,
     output_path: &Path,
@@ -430,7 +447,7 @@ pub fn write_cflag_versions_rs(
     Ok(())
 }
 
-/// Convert a dotted version string to SQLite's integer encoding.
+/// Convert a dotted version string to `SQLite`'s integer encoding.
 ///
 /// `"3.35.0"` → `3035000`, `"0"` → `0`.
 fn version_string_to_int(s: &str) -> i32 {
@@ -451,7 +468,7 @@ fn version_string_to_int(s: &str) -> i32 {
 // Phase 2: Extract — compile with version-appropriate flags
 // ---------------------------------------------------------------------------
 
-/// Compile and run the function probe, returning a parsed FunctionSet.
+/// Compile and run the function probe, returning a parsed `FunctionSet`.
 fn compile_and_run_probe(
     amalgamation_dir: &Path,
     build_dir: &Path,
@@ -461,11 +478,11 @@ fn compile_and_run_probe(
     let binary =
         amalgamation_probe::compile_probe(amalgamation_dir, build_dir, defines, PROBE_C, label)?;
     let stdout = amalgamation_probe::run_probe(&binary)?;
-    parse_function_output(&stdout)
+    Ok(parse_function_output(&stdout))
 }
 
-/// Parse tab-separated probe output into a FunctionSet.
-fn parse_function_output(stdout: &str) -> Result<FunctionSet, String> {
+/// Parse tab-separated probe output into a `FunctionSet`.
+fn parse_function_output(stdout: &str) -> FunctionSet {
     let mut functions = BTreeSet::new();
     for line in stdout.lines() {
         let parts: Vec<&str> = line.split('\t').collect();
@@ -479,7 +496,7 @@ fn parse_function_output(stdout: &str) -> Result<FunctionSet, String> {
             builtin: true,
         });
     }
-    Ok(FunctionSet { functions })
+    FunctionSet { functions }
 }
 
 /// Build the baseline compile defines for a version — all available ENABLE flags ON.
@@ -527,11 +544,11 @@ fn test_defines_for(
 
 /// Known-broken version × flag combinations.
 ///
-/// SQLITE_OMIT_* flags are acknowledged by the SQLite project as poorly tested
-/// (see FAQ: "I get a compiler error if I use the SQLITE_OMIT_... compile-time
+/// `SQLITE_OMIT`_* flags are acknowledged by the `SQLite` project as poorly tested
+/// (see FAQ: "I get a compiler error if I use the `SQLITE_OMIT`_... compile-time
 /// options"). These specific combos fail to compile on their respective versions.
 ///
-/// Each entry: (version_prefix, flag_name, reason).
+/// Each entry: (`version_prefix`, `flag_name`, reason).
 const KNOWN_BROKEN: &[(&str, &str, &str)] = &[
     // SQLITE_OMIT_WINDOWFUNC: parser actions reference struct members
     // (pWinDefn, etc.) that are compiled out. Broken on all tested versions
@@ -607,6 +624,16 @@ fn extract_version(
 ///
 /// Requires a pre-computed audit (`version_cflags.json`) to know which flags
 /// each version supports.
+///
+/// # Errors
+///
+/// Returns an error if reading audit data, discovering versions, compiling probes, or writing
+/// the output catalog fails.
+///
+/// # Panics
+///
+/// Panics if the discovered versions list is non-empty but `first()`/`last()` returns `None`
+/// (should be unreachable).
 pub fn extract_function_catalog(
     amalgamation_dir: &Path,
     audit_path: &Path,
@@ -629,8 +656,8 @@ pub fn extract_function_catalog(
     eprintln!(
         "Extracting functions from {} versions: {} .. {}",
         versions.len(),
-        versions.first().unwrap(),
-        versions.last().unwrap()
+        versions.first().expect("versions is non-empty"),
+        versions.last().expect("versions is non-empty")
     );
 
     // Use a persistent build directory alongside the amalgamations so that
@@ -707,7 +734,7 @@ fn build_catalog(
 ) -> FunctionCatalog {
     let all_names: BTreeSet<&str> = per_version
         .iter()
-        .flat_map(|(_, names, _)| names.iter().map(|s| s.as_str()))
+        .flat_map(|(_, names, _)| names.iter().map(String::as_str))
         .collect();
 
     let mut functions = Vec::new();
@@ -717,14 +744,14 @@ fn build_catalog(
         let arities: Vec<i32> = entries
             .map(|e| {
                 let mut a: Vec<i32> = e.iter().map(|(n, _)| *n).collect();
-                a.sort();
+                a.sort_unstable();
                 a.dedup();
                 a
             })
             .unwrap_or_default();
 
         let category = entries
-            .map(|e| {
+            .map_or("scalar", |e| {
                 if e.iter().any(|(_, t)| t == "w") {
                     "window"
                 } else if e.iter().any(|(_, t)| t == "a") {
@@ -733,7 +760,6 @@ fn build_catalog(
                     "scalar"
                 }
             })
-            .unwrap_or("scalar")
             .to_string();
 
         let availability = compute_availability(name, per_version);

@@ -24,7 +24,7 @@ fn rust_ffi_field_type(
             if t == "Bool" {
                 "Bool".into()
             } else if enum_names.contains(t.as_str()) || flags_names.contains(t.as_str()) {
-                format!("super::ast::{}", t)
+                format!("super::ast::{t}")
             } else if t == "SyntaqliteSourceSpan" {
                 "SourceSpan".into()
             } else {
@@ -45,7 +45,7 @@ fn rust_view_return_type(
     match field.storage {
         Storage::Index => {
             let t = field.type_name.as_str();
-            format!("Option<{}<'a>>", t)
+            format!("Option<{t}<'a>>")
         }
         Storage::Inline => {
             let t = &field.type_name;
@@ -65,19 +65,16 @@ fn rust_view_accessor_body(field: &Field, ffi_path: &str) -> String {
     let fname = rust_field_name(&field.name);
     match field.storage {
         Storage::Index => {
-            format!(
-                "GrammarNodeType::from_arena(self.reader, self.raw.{})",
-                fname
-            )
+            format!("GrammarNodeType::from_arena(self.reader, self.raw.{fname})")
         }
         Storage::Inline => {
             let t = &field.type_name;
             if t == "Bool" {
-                format!("self.raw.{} == {ffi_path}::Bool::True", fname)
+                format!("self.raw.{fname} == {ffi_path}::Bool::True")
             } else if t == "SyntaqliteSourceSpan" {
-                format!("self.raw.{}.as_str(self.reader.source())", fname)
+                format!("self.raw.{fname}.as_str(self.reader.source())")
             } else {
-                format!("self.raw.{}", fname)
+                format!("self.raw.{fname}")
             }
         }
     }
@@ -143,7 +140,7 @@ fn is_rust_keyword(name: &str) -> bool {
 /// Escape a name if it's a Rust keyword.
 fn rust_field_name(name: &str) -> String {
     if is_rust_keyword(name) {
-        format!("r#{}", name)
+        format!("r#{name}")
     } else {
         name.to_string()
     }
@@ -152,20 +149,20 @@ fn rust_field_name(name: &str) -> String {
 fn emit_rust_value_enum(w: &mut RustWriter, name: &str, variants: &[String]) {
     w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
     w.line("#[repr(u32)]");
-    w.open_block(&format!("pub enum {} {{", name));
+    w.open_block(&format!("pub enum {name} {{"));
     for (i, v) in variants.iter().enumerate() {
         let variant_name = pascal_case(v);
-        w.line(&format!("{} = {},", variant_name, i));
+        w.line(&format!("{variant_name} = {i},"));
     }
     w.close_block("}");
     w.newline();
 
-    w.open_block(&format!("impl {} {{", name));
+    w.open_block(&format!("impl {name} {{"));
     w.open_block("pub fn as_str(&self) -> &'static str {");
     w.open_block("match self {");
     for v in variants {
         let variant_name = pascal_case(v);
-        w.line(&format!("{}::{} => \"{}\",", name, variant_name, v));
+        w.line(&format!("{name}::{variant_name} => \"{v}\","));
     }
     w.close_block("}");
     w.close_block("}");
@@ -176,16 +173,16 @@ fn emit_rust_value_enum(w: &mut RustWriter, name: &str, variants: &[String]) {
 fn emit_rust_flags_type(w: &mut RustWriter, name: &str, flags: &[(String, u32)]) {
     w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]");
     w.line("#[repr(transparent)]");
-    w.line(&format!("pub struct {}(pub u8);", name));
+    w.line(&format!("pub struct {name}(pub u8);"));
     w.newline();
 
-    w.open_block(&format!("impl {} {{", name));
+    w.open_block(&format!("impl {name} {{"));
     let mut sorted: Vec<_> = flags.iter().collect();
     sorted.sort_by_key(|(_, v)| *v);
     for (flag_name, bit) in &sorted {
         let method = flag_name.to_lowercase();
-        w.open_block(&format!("pub fn {}(&self) -> bool {{", method));
-        w.line(&format!("self.0 & {} != 0", bit));
+        w.open_block(&format!("pub fn {method}(&self) -> bool {{"));
+        w.line(&format!("self.0 & {bit} != 0"));
         w.close_block("}");
     }
     w.newline();
@@ -195,7 +192,7 @@ fn emit_rust_flags_type(w: &mut RustWriter, name: &str, flags: &[(String, u32)])
 
 /// Emit the `FooKind` plain enum and `FooLike` trait for a value enum (base crate, `ast_traits.rs`).
 ///
-/// `FooKind` holds only the base variants. TypedDialectEnv extensions that add new variants return
+/// `FooKind` holds only the base variants. `TypedDialectEnv` extensions that add new variants return
 /// `None` from `kind()`, allowing generic code to degrade gracefully.
 fn emit_rust_value_enum_like_trait(w: &mut RustWriter, name: &str, variants: &[String]) {
     // ── FooKind enum ──
@@ -395,7 +392,7 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     w.open_block("pub enum TokenType {");
     for (name, value) in tokens {
         let variant = pascal_case(name);
-        w.line(&format!("{} = {},", variant, value));
+        w.line(&format!("{variant} = {value},"));
     }
     w.close_block("}");
     w.newline();
@@ -406,7 +403,7 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     w.open_block("match raw {");
     for (name, value) in tokens {
         let variant = pascal_case(name);
-        w.line(&format!("{} => Some(TokenType::{}),", value, variant));
+        w.line(&format!("{value} => Some(TokenType::{variant}),"));
     }
     w.line("_ => None,");
     w.close_block("}");
@@ -431,18 +428,14 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
 }
 
 /// Module paths used by the Rust AST/FFI codegen.
-pub struct RustAstPaths<'a> {
+pub(crate) struct RustAstPaths<'a> {
     /// Import prefix for the dialect crate, e.g. `"crate"` (internal) or
     /// `"syntaqlite"` (external).
     pub crate_prefix: &'a str,
     /// Path to FFI node structs, e.g. `"crate::ffi"`.
     pub ffi_path: &'a str,
-    /// Path to `Comment`/`CommentKind`, e.g. `"syntaqlite_parser::parser"`.
-    pub comment_path: &'a str,
     /// Path to `NodeId`/`SourceSpan`/`NodeList`, e.g. `"syntaqlite_parser::nodes"`.
     pub nodes_path: &'a str,
-    /// Path to `ParseResult`, e.g. `"syntaqlite_parser::session"`.
-    pub session_path: &'a str,
     /// Path to the zero-argument function that returns `TypedDialectEnv<'static>`,
     /// e.g. `"crate::dialect::dialect"`. Used in generated `Display` impls.
     pub grammar_fn_path: &'a str,
@@ -510,10 +503,11 @@ impl AstModel<'_> {
     /// Emits enums, flags, `NodeTag`, view structs with ergonomic accessors,
     /// and the `Node<'a>` enum that wraps them.
     ///
-    /// - `crate_prefix`: `"syntaqlite_parser"` for the internal SQLite dialect,
+    /// - `crate_prefix`: `"syntaqlite_parser"` for the internal `SQLite` dialect,
     ///   `"syntaqlite"` for external dialect crates.
     /// - `ffi_path`: module path to the dialect FFI structs (`crate::ffi` for both cases).
-    pub fn generate_rust_ast(
+    #[allow(clippy::too_many_lines)]
+    pub(crate) fn generate_rust_ast(
         &self,
         paths: &RustAstPaths<'_>,
         dialect_name: &str,
@@ -569,20 +563,18 @@ impl AstModel<'_> {
         // Abstract type enums (Expr, Stmt, etc.)
         for &(abs_name, members) in abstract_items {
             w.doc_comment(&format!(
-                "Abstract `{}` — pattern-match to access the concrete type.",
-                abs_name
+                "Abstract `{abs_name}` — pattern-match to access the concrete type."
             ));
             w.line("#[derive(Debug, Clone, Copy)]");
-            w.line(&format!("pub enum {}<'a> {{", abs_name));
+            w.line(&format!("pub enum {abs_name}<'a> {{"));
             w.indent();
             for member in members {
                 if node_names.contains(member.as_str()) || list_names.contains(member.as_str()) {
-                    w.line(&format!("{}({}<'a>),", member, member));
+                    w.line(&format!("{member}({member}<'a>),"));
                 }
             }
             w.doc_comment(&format!(
-                "A node that doesn't match any known `{}` variant.",
-                abs_name
+                "A node that doesn't match any known `{abs_name}` variant."
             ));
             w.line("Other(Node<'a>),");
             w.dedent();
@@ -590,7 +582,7 @@ impl AstModel<'_> {
             w.newline();
 
             // node_id() method
-            w.open_block(&format!("impl<'a> {}<'a> {{", abs_name));
+            w.open_block(&format!("impl<'a> {abs_name}<'a> {{"));
             w.doc_comment("The arena node ID of this node.");
             w.open_block("pub fn node_id(&self) -> RawNodeId {");
             w.open_block("match self {");
@@ -607,8 +599,7 @@ impl AstModel<'_> {
 
             // FromArena impl
             w.line(&format!(
-                "impl<'a> GrammarNodeType<'a> for {}<'a> {{",
-                abs_name
+                "impl<'a> GrammarNodeType<'a> for {abs_name}<'a> {{"
             ));
             w.indent();
             w.line("fn from_arena(reader: ParseResult<'a>, id: RawNodeId) -> Option<Self> {");
@@ -618,13 +609,10 @@ impl AstModel<'_> {
             w.indent();
             for member in members {
                 if node_names.contains(member.as_str()) || list_names.contains(member.as_str()) {
-                    w.line(&format!(
-                        "Node::{}(n) => {}::{}(n),",
-                        member, abs_name, member
-                    ));
+                    w.line(&format!("Node::{member}(n) => {abs_name}::{member}(n),"));
                 }
             }
-            w.line(&format!("other => {}::Other(other),", abs_name));
+            w.line(&format!("other => {abs_name}::Other(other),"));
             w.dedent();
             w.line("})");
             w.dedent();
@@ -664,7 +652,7 @@ impl AstModel<'_> {
 
             // Struct definition
             w.line("#[derive(Clone, Copy)]");
-            w.line(&format!("pub struct {}<'a> {{", name));
+            w.line(&format!("pub struct {name}<'a> {{"));
             w.indent();
             w.line(&format!("raw: &'a {ffi_path}::{name},"));
             w.line("reader: ParseResult<'a>,");
@@ -674,7 +662,7 @@ impl AstModel<'_> {
             w.newline();
 
             // Debug impl — delegate to raw FFI struct
-            w.line(&format!("impl std::fmt::Debug for {}<'_> {{", name));
+            w.line(&format!("impl std::fmt::Debug for {name}<'_> {{"));
             w.indent();
             w.line("fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {");
             w.indent();
@@ -686,7 +674,7 @@ impl AstModel<'_> {
             w.newline();
 
             // Display impl — dump via NodeRef to avoid exposing ParseResult internals
-            w.line(&format!("impl std::fmt::Display for {}<'_> {{", name));
+            w.line(&format!("impl std::fmt::Display for {name}<'_> {{"));
             w.indent();
             w.line("fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {");
             w.indent();
@@ -702,7 +690,7 @@ impl AstModel<'_> {
             w.newline();
 
             // Accessor methods
-            w.line(&format!("impl<'a> {}<'a> {{", name));
+            w.line(&format!("impl<'a> {name}<'a> {{"));
             w.indent();
             w.doc_comment("The arena node ID of this node.");
             w.line("pub fn node_id(&self) -> RawNodeId { self.id }");
@@ -711,7 +699,7 @@ impl AstModel<'_> {
                 let return_type =
                     rust_view_return_type(field, enum_names, flags_names, node_names, list_names);
                 let body = rust_view_accessor_body(field, ffi_path);
-                w.line(&format!("pub fn {}(&self) -> {} {{", fname, return_type));
+                w.line(&format!("pub fn {fname}(&self) -> {return_type} {{"));
                 w.indent();
                 w.line(&body);
                 w.dedent();
@@ -722,7 +710,7 @@ impl AstModel<'_> {
             w.newline();
 
             // FromArena impl — resolve from arena by NodeId (tag-checked, no unsafe)
-            w.line(&format!("impl<'a> GrammarNodeType<'a> for {}<'a> {{", name));
+            w.line(&format!("impl<'a> GrammarNodeType<'a> for {name}<'a> {{"));
             w.indent();
             w.line("fn from_arena(reader: ParseResult<'a>, id: RawNodeId) -> Option<Self> {");
             w.indent();
@@ -762,14 +750,13 @@ impl AstModel<'_> {
             let child_type = list.child_type;
             let ct = child_type;
             let element_type = if node_names.contains(ct) || list_names.contains(ct) {
-                format!("{}<'a>", ct)
+                format!("{ct}<'a>")
             } else {
                 "Node<'a>".into()
             };
-            w.doc_comment(&format!("Typed list of `{}`.", child_type));
+            w.doc_comment(&format!("Typed list of `{child_type}`."));
             w.line(&format!(
-                "pub type {}<'a> = TypedList<'a, {}>;",
-                name, element_type
+                "pub type {name}<'a> = TypedList<'a, {element_type}>;"
             ));
             w.newline();
 
@@ -840,11 +827,11 @@ impl AstModel<'_> {
             match item {
                 NodeLikeRef::Node(node) => {
                     let name = node.name;
-                    w.line(&format!("NodeTag::{n} => Node::{n}({n} {{ raw: &*(ptr as *const {ffi_path}::{n}), reader, id }}),", n = name));
+                    w.line(&format!("NodeTag::{name} => Node::{name}({name} {{ raw: &*(ptr as *const {ffi_path}::{name}), reader, id }}),"));
                 }
                 NodeLikeRef::List(list) => {
                     let name = list.name;
-                    w.line(&format!("NodeTag::{n} => Node::{n}(TypedList::from_arena(reader, id).expect(\"list tag invariant\")),", n = name));
+                    w.line(&format!("NodeTag::{name} => Node::{name}(TypedList::from_arena(reader, id).expect(\"list tag invariant\")),"));
                 }
             }
         }
@@ -926,7 +913,7 @@ impl AstModel<'_> {
         w.line("fn from(id: AnyNodeId) -> RawNodeId { id.0 }");
         w.close_block("}");
         w.newline();
-        w.open_block(&format!("impl NodeId for AnyNodeId {{"));
+        w.open_block("impl NodeId for AnyNodeId {");
         w.line("type Node<'a> = Node<'a>;");
         w.close_block("}");
         w.newline();
@@ -937,8 +924,7 @@ impl AstModel<'_> {
 
         // Marker type
         w.doc_comment(&format!(
-            "Marker type for the {} dialect's AST. Implements `AstTypes`.",
-            dialect_name
+            "Marker type for the {dialect_name} dialect's AST. Implements `AstTypes`."
         ));
         w.line(&format!("pub enum {marker} {{}}"));
         w.newline();
@@ -1041,7 +1027,7 @@ impl AstModel<'_> {
 
         // NodeFamily marker
         let pascal = pascal_case(dialect_name);
-        let root_node = abstract_items.first().map(|(n, _)| *n).unwrap_or("Stmt");
+        let root_node = abstract_items.first().map_or("Stmt", |(n, _)| *n);
         w.doc_comment(&format!(
             "Marker type bundling the {dialect_name} AST node and token types for use with `TypedGrammar`."
         ));
@@ -1069,7 +1055,10 @@ fn resolve_kind_enum_list_type(
     list_names: &HashSet<&str>,
     lists: &[super::ListRef<'_>],
 ) -> String {
-    let list = lists.iter().find(|l| l.name == list_name).unwrap();
+    let list = lists
+        .iter()
+        .find(|l| l.name == list_name)
+        .expect("list not found in model");
     let child = list.child_type;
     if node_names.contains(child) {
         format!("TypedList<'a, A::{child}>")
@@ -1096,7 +1085,10 @@ fn resolve_generic_element_type(
     if node_names.contains(child_type) {
         format!("<Self::Ast as AstTypes<'a>>::{child_type}")
     } else if list_names.contains(child_type) {
-        let list = lists.iter().find(|l| l.name == child_type).unwrap();
+        let list = lists
+            .iter()
+            .find(|l| l.name == child_type)
+            .expect("list not found in model");
         let inner = resolve_generic_element_type(list.child_type, node_names, list_names, lists);
         format!("TypedList<'a, {inner}>")
     } else {
@@ -1119,7 +1111,10 @@ fn trait_field_return_type(
         Storage::Index => {
             let t = field.type_name.as_str();
             if list_names.contains(t) {
-                let list = lists.iter().find(|l| l.name == t).unwrap();
+                let list = lists
+                    .iter()
+                    .find(|l| l.name == t)
+                    .expect("list not found in model");
                 let element =
                     resolve_generic_element_type(list.child_type, node_names, list_names, lists);
                 format!("Option<TypedList<'a, {element}>>")
@@ -1152,8 +1147,9 @@ fn trait_field_return_type(
 /// for abstracts, abstract access traits, `NodeLike`, and the `AstTypes` supertrait.
 ///
 /// This module is always compiled (no feature gate) and lives in the syntaqlite crate.
-/// TypedDialectEnv crates import traits from `syntaqlite::ast_traits`.
+/// `TypedDialectEnv` crates import traits from `syntaqlite::ast_traits`.
 impl AstModel<'_> {
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn generate_ast_traits(&self) -> String {
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
@@ -1169,7 +1165,7 @@ impl AstModel<'_> {
             "
         #![allow(clippy::type_complexity)]
 
-        use crate::ast::{GrammarNodeType, Node, NodeId, RawNodeId, TypedList};
+        use crate::ast::{GrammarNodeType, RawNodeId, TypedList};
     ",
         );
         w.newline();

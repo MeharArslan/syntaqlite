@@ -13,6 +13,7 @@ use std::fs;
 use std::path::Path;
 
 /// Transform raw `mkkeywordhash.c` for use as a linked library.
+#[must_use]
 pub fn transform_mkkeywordhash(source: &str) -> String {
     let mut s = source.to_string();
 
@@ -90,6 +91,10 @@ pub fn transform_mkkeywordhash(source: &str) -> String {
 }
 
 /// Write the transformed mkkeywordhash.c to the output path.
+///
+/// # Errors
+///
+/// Returns an error if writing the output file fails.
 pub fn write_modified_mkkeywordhash(source: &str, output_path: &Path) -> Result<(), String> {
     let transformed = transform_mkkeywordhash(source);
     fs::write(output_path, transformed)

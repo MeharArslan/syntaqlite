@@ -14,9 +14,9 @@ use super::{SqliteVersion, VariantGroup};
 /// A unified diff between two consecutive variants.
 #[derive(Debug, Clone, Serialize)]
 pub struct VariantDiff {
-    pub from_id: String,
-    pub to_id: String,
-    pub unified_diff: String,
+    pub(crate) from_id: String,
+    pub(crate) to_id: String,
+    pub(crate) unified_diff: String,
 }
 
 /// Group consecutive (version, hash, text) triples into variant groups.

@@ -5,8 +5,8 @@
 
 /// A structured parse error from a `.synq` file.
 #[derive(Debug, Clone)]
-pub struct SynqParseError {
-    pub message: String,
+pub(crate) struct SynqParseError {
+    pub(crate) message: String,
 }
 
 impl std::fmt::Display for SynqParseError {
@@ -16,7 +16,7 @@ impl std::fmt::Display for SynqParseError {
 }
 
 /// Parse a single .synq file's contents into a list of items.
-pub fn parse_synq_file(input: &str) -> Result<Vec<Item>, SynqParseError> {
+pub(crate) fn parse_synq_file(input: &str) -> Result<Vec<Item>, SynqParseError> {
     let tokens = tokenize(input).map_err(|message| SynqParseError { message })?;
     Parser::new(tokens)
         .parse_file()
@@ -26,7 +26,7 @@ pub fn parse_synq_file(input: &str) -> Result<Vec<Item>, SynqParseError> {
 // ── AST ──────────────────────────────────────────────────────────────────
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SchemaKind {
+pub(crate) enum SchemaKind {
     Table,
     View,
     Function,
@@ -34,20 +34,23 @@ pub enum SchemaKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct SchemaParam {
-    pub key: String,
-    pub field: String,
+#[allow(dead_code)]
+pub(crate) struct SchemaParam {
+    pub(crate) key: String,
+    pub(crate) field: String,
 }
 
 #[derive(Debug, Clone)]
-pub struct SchemaAnnotation {
-    pub kind: SchemaKind,
-    pub params: Vec<SchemaParam>,
+#[allow(dead_code)]
+pub(crate) struct SchemaAnnotation {
+    pub(crate) kind: SchemaKind,
+    pub(crate) params: Vec<SchemaParam>,
 }
 
 impl SchemaAnnotation {
     /// Look up a parameter by key name.
-    pub fn param(&self, key: &str) -> Option<&str> {
+    #[allow(dead_code)]
+    pub(crate) fn param(&self, key: &str) -> Option<&str> {
         self.params
             .iter()
             .find(|p| p.key == key)
@@ -56,7 +59,7 @@ impl SchemaAnnotation {
 }
 
 #[derive(Debug)]
-pub enum Item {
+pub(crate) enum Item {
     Node {
         name: String,
         fields: Vec<Field>,
@@ -83,49 +86,49 @@ pub enum Item {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Storage {
+pub(crate) enum Storage {
     Index,
     Inline,
 }
 
 #[derive(Debug)]
-pub struct Field {
-    pub name: String,
-    pub storage: Storage,
-    pub type_name: String,
+pub(crate) struct Field {
+    pub(crate) name: String,
+    pub(crate) storage: Storage,
+    pub(crate) type_name: String,
 }
 
 #[derive(Debug)]
-pub enum Fmt {
+pub(crate) enum Fmt {
     Text(String),
     Child(String),
     Span(String),
     Line,
     SoftLine,
     HardLine,
-    Group(Vec<Fmt>),
-    Nest(Vec<Fmt>),
+    Group(Vec<Self>),
+    Nest(Vec<Self>),
     IfSet {
         field: String,
-        then: Vec<Fmt>,
-        els: Option<Vec<Fmt>>,
+        then: Vec<Self>,
+        els: Option<Vec<Self>>,
     },
     IfFlag {
         field: String,
         bit: Option<String>,
-        then: Vec<Fmt>,
-        els: Option<Vec<Fmt>>,
+        then: Vec<Self>,
+        els: Option<Vec<Self>>,
     },
     IfEnum {
         field: String,
         variant: String,
-        then: Vec<Fmt>,
-        els: Option<Vec<Fmt>>,
+        then: Vec<Self>,
+        els: Option<Vec<Self>>,
     },
     IfSpan {
         field: String,
-        then: Vec<Fmt>,
-        els: Option<Vec<Fmt>>,
+        then: Vec<Self>,
+        els: Option<Vec<Self>>,
     },
     Clause {
         keyword: String,
@@ -133,16 +136,16 @@ pub enum Fmt {
     },
     Switch {
         field: String,
-        cases: Vec<(String, Vec<Fmt>)>,
-        default: Option<Vec<Fmt>>,
+        cases: Vec<(String, Vec<Self>)>,
+        default: Option<Vec<Self>>,
     },
     EnumDisplay {
         field: String,
         mappings: Vec<(String, String)>,
     },
     ForEach {
-        sep: Option<Vec<Fmt>>,
-        body: Vec<Fmt>,
+        sep: Option<Vec<Self>>,
+        body: Vec<Self>,
     },
 }
 
@@ -166,6 +169,7 @@ enum Token {
 
 // ── Tokenizer ────────────────────────────────────────────────────────────
 
+#[allow(clippy::too_many_lines)]
 fn tokenize(input: &str) -> Result<Vec<Token>, String> {
     let b = input.as_bytes();
     let (mut i, mut line, mut col) = (0, 1usize, 1usize);
@@ -247,10 +251,10 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
                             Some(b'"') => s.push('"'),
                             Some(b'\\') => s.push('\\'),
                             Some(b'n') => s.push('\n'),
-                            _ => return Err(format!("{}:{}: bad escape", line, col)),
+                            _ => return Err(format!("{line}:{col}: bad escape")),
                         },
                         Some(ch) => s.push(ch as char),
-                        None => return Err(format!("{}:{}: unterminated string", line, col)),
+                        None => return Err(format!("{line}:{col}: unterminated string")),
                     }
                 }
                 tokens.push(Token::Str(s));
@@ -267,10 +271,13 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
             }
             _ if ch.is_ascii_digit() => {
                 let start = i;
-                while b.get(i).is_some_and(|c| c.is_ascii_digit()) {
+                while b.get(i).is_some_and(u8::is_ascii_digit) {
                     advance(&mut i, &mut line, &mut col);
                 }
-                let n = std::str::from_utf8(&b[start..i]).unwrap().parse().unwrap();
+                let n = std::str::from_utf8(&b[start..i])
+                    .expect("digit sequence is valid UTF-8")
+                    .parse()
+                    .expect("digit sequence is a valid u32");
                 tokens.push(Token::Int(n));
             }
             _ => return Err(format!("{}:{}: unexpected '{}'", line, col, ch as char)),
@@ -287,7 +294,7 @@ struct Parser {
 }
 
 impl Parser {
-    fn new(tokens: Vec<Token>) -> Self {
+    const fn new(tokens: Vec<Token>) -> Self {
         Self { tokens, pos: 0 }
     }
     fn peek(&self) -> &Token {
@@ -311,25 +318,25 @@ impl Parser {
         if got == *t {
             Ok(())
         } else {
-            Err(format!("expected {:?}, got {:?}", t, got))
+            Err(format!("expected {t:?}, got {got:?}"))
         }
     }
     fn ident(&mut self) -> Result<String, String> {
         match self.advance() {
             Token::Ident(s) => Ok(s),
-            t => Err(format!("expected ident, got {:?}", t)),
+            t => Err(format!("expected ident, got {t:?}")),
         }
     }
     fn string(&mut self) -> Result<String, String> {
         match self.advance() {
             Token::Str(s) => Ok(s),
-            t => Err(format!("expected string, got {:?}", t)),
+            t => Err(format!("expected string, got {t:?}")),
         }
     }
     fn int(&mut self) -> Result<u32, String> {
         match self.advance() {
             Token::Int(n) => Ok(n),
-            t => Err(format!("expected int, got {:?}", t)),
+            t => Err(format!("expected int, got {t:?}")),
         }
     }
 
@@ -427,8 +434,7 @@ impl Parser {
             "import" => SchemaKind::Import,
             _ => {
                 return Err(format!(
-                    "unknown schema kind '{}' in node '{}'",
-                    kind_str, node_name
+                    "unknown schema kind '{kind_str}' in node '{node_name}'"
                 ));
             }
         };
@@ -444,8 +450,7 @@ impl Parser {
             // Validate that the referenced field exists.
             if !fields.iter().any(|f| f.name == field) {
                 return Err(format!(
-                    "schema annotation in '{}' references unknown field '{}'",
-                    node_name, field
+                    "schema annotation in '{node_name}' references unknown field '{field}'"
                 ));
             }
             params.push(SchemaParam { key, field });
@@ -537,6 +542,7 @@ impl Parser {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn parse_fmt(&mut self) -> Result<Fmt, String> {
         match self.peek().clone() {
             Token::Str(s) => {
@@ -705,7 +711,7 @@ impl Parser {
                 }
                 _ => Err(format!("unexpected in fmt: {:?}", self.peek())),
             },
-            other => Err(format!("unexpected in fmt: {:?}", other)),
+            other => Err(format!("unexpected in fmt: {other:?}")),
         }
     }
 }

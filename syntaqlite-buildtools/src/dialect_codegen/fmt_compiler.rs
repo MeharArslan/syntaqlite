@@ -1,14 +1,14 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Compiles .synq `Fmt` AST trees into FmtOp bytecode and emits them
+//! Compiles .synq `Fmt` AST trees into `FmtOp` bytecode and emits them
 //! as either generated Rust source code or binary bytecode.
 //!
 //! The generated Rust file contains:
 //! - `STRINGS: &[&str]` — interned keywords/punctuation
-//! - `ENUM_DISPLAY: &[u16]` — flat table mapping enum ordinals → StringId
+//! - `ENUM_DISPLAY: &[u16]` — flat table mapping enum ordinals → `StringId`
 //! - Per-node `FMT_XXX: &[FmtOp]` constant arrays
-//! - `DISPATCH` table indexed by NodeTag ordinal
+//! - `DISPATCH` table indexed by `NodeTag` ordinal
 //!
 //! The binary bytecode file contains the same data in a compact format
 //! loadable at runtime (see `bytecode.rs` in syntaqlite-fmt).
@@ -25,7 +25,7 @@ use syntaqlite_common::fmt::bytecode::RawOp;
 use syntaqlite_common::fmt::bytecode::opcodes;
 
 #[derive(Debug, Clone)]
-pub enum FmtCompileError {
+pub(crate) enum FmtCompileError {
     FieldIndexTooLarge(u16),
     UnknownField(String),
     NonEnumField { field: String, type_name: String },
@@ -34,7 +34,6 @@ pub enum FmtCompileError {
     UnknownFlagBit { type_name: String, bit: String },
     NonFlagsField { field: String, type_name: String },
     InvalidIfFlagField(String),
-    UnknownOpcode(u8),
 }
 
 impl Display for FmtCompileError {
@@ -63,7 +62,6 @@ impl Display for FmtCompileError {
                     "if_flag on field {field} which is neither Bool nor Flags"
                 )
             }
-            Self::UnknownOpcode(opcode) => write!(f, "unknown opcode {opcode}"),
         }
     }
 }
@@ -71,18 +69,21 @@ impl Display for FmtCompileError {
 impl std::error::Error for FmtCompileError {}
 
 /// Convert a field index (u16) to u8 for binary encoding.
-fn idx_u8(idx: u16) -> Result<u8, FmtCompileError> {
+const fn idx_u8(idx: u16) -> Result<u8, FmtCompileError> {
     if idx >= 256 {
         return Err(FmtCompileError::FieldIndexTooLarge(idx));
     }
-    Ok(idx as u8)
+    // Safety: checked above that idx < 256
+    #[allow(clippy::cast_possible_truncation)]
+    let val = idx as u8;
+    Ok(val)
 }
 
-fn op0(opcode: u8) -> RawOp {
+const fn op0(opcode: u8) -> RawOp {
     RawOp::simple(opcode)
 }
 
-fn opa(opcode: u8, a: u8) -> RawOp {
+const fn opa(opcode: u8, a: u8) -> RawOp {
     RawOp {
         opcode,
         a,
@@ -91,11 +92,11 @@ fn opa(opcode: u8, a: u8) -> RawOp {
     }
 }
 
-fn opab(opcode: u8, a: u8, b: u16) -> RawOp {
+const fn opab(opcode: u8, a: u8, b: u16) -> RawOp {
     RawOp { opcode, a, b, c: 0 }
 }
 
-fn opabc(opcode: u8, a: u8, b: u16, c: u16) -> RawOp {
+const fn opabc(opcode: u8, a: u8, b: u16, c: u16) -> RawOp {
     RawOp { opcode, a, b, c }
 }
 
@@ -108,7 +109,7 @@ struct StringTable {
 
 impl StringTable {
     fn new() -> Self {
-        StringTable {
+        Self {
             strings: Vec::new(),
             index: HashMap::new(),
         }
@@ -118,7 +119,7 @@ impl StringTable {
         if let Some(&id) = self.index.get(s) {
             return id;
         }
-        let id = self.strings.len() as u16;
+        let id = u16::try_from(self.strings.len()).expect("string table exceeds u16");
         self.index.insert(s.to_string(), id);
         self.strings.push(s.to_string());
         id
@@ -128,14 +129,14 @@ impl StringTable {
 // ── Enum display table ──────────────────────────────────────────────────
 
 struct EnumDisplayTable {
-    /// Flat array of StringId values. Each enum_display block reserves
+    /// Flat array of `StringId` values. Each `enum_display` block reserves
     /// `variant_count` consecutive slots starting at `base`.
     entries: Vec<u16>,
 }
 
 impl EnumDisplayTable {
-    fn new() -> Self {
-        EnumDisplayTable {
+    const fn new() -> Self {
+        Self {
             entries: Vec::new(),
         }
     }
@@ -149,7 +150,7 @@ impl EnumDisplayTable {
         all_variants: &[String],
         mappings: &[(String, String)],
     ) -> u16 {
-        let base = self.entries.len() as u16;
+        let base = u16::try_from(self.entries.len()).expect("enum display table exceeds u16");
         let map: HashMap<&str, &str> = mappings
             .iter()
             .map(|(k, v)| (k.as_str(), v.as_str()))
@@ -172,9 +173,9 @@ impl EnumDisplayTable {
 /// Info about a field needed during compilation.
 #[derive(Debug, Clone)]
 struct FieldInfo {
-    /// Index into the FieldVal array for this node.
+    /// Index into the `FieldVal` array for this node.
     idx: u16,
-    /// The type name (e.g. "SelectStmtFlags", "SortOrder", "SyntaqliteSourceSpan").
+    /// The type name (e.g. "`SelectStmtFlags`", "`SortOrder`", "`SyntaqliteSourceSpan`").
     type_name: String,
 }
 
@@ -185,7 +186,7 @@ fn build_field_map(fields: &[Field]) -> (Vec<FieldInfo>, HashMap<String, usize>)
     for (i, f) in fields.iter().enumerate() {
         name_to_idx.insert(f.name.clone(), i);
         infos.push(FieldInfo {
-            idx: i as u16,
+            idx: u16::try_from(i).expect("field index exceeds u16"),
             type_name: f.type_name.clone(),
         });
     }
@@ -203,7 +204,7 @@ struct CompileCtx<'a> {
     flags_items: &'a HashMap<String, Vec<(String, u32)>>,
 }
 
-impl<'a> CompileCtx<'a> {
+impl CompileCtx<'_> {
     fn field(&self, name: &str) -> Result<&FieldInfo, FmtCompileError> {
         let Some(idx) = self.field_map.get(name) else {
             return Err(FmtCompileError::UnknownField(name.to_string()));
@@ -211,7 +212,7 @@ impl<'a> CompileCtx<'a> {
         Ok(&self.field_infos[*idx])
     }
 
-    /// Resolve which enum type a field has (for enum_display, if_enum, switch).
+    /// Resolve which enum type a field has (for `enum_display`, `if_enum`, switch).
     fn enum_variants(&self, field_name: &str) -> Result<&[String], FmtCompileError> {
         let info = self.field(field_name)?;
         let Some(variants) = self.enum_items.get(&info.type_name) else {
@@ -232,7 +233,7 @@ impl<'a> CompileCtx<'a> {
                 variant: variant.to_string(),
             });
         };
-        Ok(ordinal as u16)
+        Ok(u16::try_from(ordinal).expect("enum ordinal exceeds u16"))
     }
 
     /// Find the bit mask for a flag within a flags type, or handle Bool fields.
@@ -245,7 +246,7 @@ impl<'a> CompileCtx<'a> {
             let Some(mask) = flags
                 .iter()
                 .find(|(n, _)| n.to_lowercase() == bit.to_lowercase())
-                .map(|(_, v)| *v as u8)
+                .map(|(_, v)| u8::try_from(*v).expect("flag mask exceeds u8"))
             else {
                 return Err(FmtCompileError::UnknownFlagBit {
                     type_name: info.type_name.clone(),
@@ -272,7 +273,7 @@ impl<'a> CompileCtx<'a> {
     }
 }
 
-/// Compile a sequence of Fmt nodes into RawOps.
+/// Compile a sequence of Fmt nodes into `RawOps`.
 fn compile_seq(
     fmts: &[Fmt],
     ctx: &mut CompileCtx<'_>,
@@ -284,6 +285,7 @@ fn compile_seq(
     Ok(())
 }
 
+#[allow(clippy::too_many_lines)]
 fn compile_one(
     fmt: &Fmt,
     ctx: &mut CompileCtx<'_>,
@@ -343,7 +345,7 @@ fn compile_one(
                 compile_field_conditional(
                     opcodes::IF_FLAG,
                     base_field,
-                    mask as u16,
+                    u16::from(mask),
                     then,
                     els.as_deref(),
                     ctx,
@@ -409,19 +411,15 @@ fn compile_one(
                 let mut emitted_sep = false;
                 for s in sep_items {
                     if !emitted_sep {
-                        match s {
-                            Fmt::Text(text) => {
-                                let sid = ctx.strings.intern(text);
-                                ops.push(opab(opcodes::FOR_EACH_SEP, 0, sid));
-                                emitted_sep = true;
-                                continue;
-                            }
-                            _ => {
-                                let sid = ctx.strings.intern("");
-                                ops.push(opab(opcodes::FOR_EACH_SEP, 0, sid));
-                                emitted_sep = true;
-                            }
+                        if let Fmt::Text(text) = s {
+                            let sid = ctx.strings.intern(text);
+                            ops.push(opab(opcodes::FOR_EACH_SEP, 0, sid));
+                            emitted_sep = true;
+                            continue;
                         }
+                        let sid = ctx.strings.intern("");
+                        ops.push(opab(opcodes::FOR_EACH_SEP, 0, sid));
+                        emitted_sep = true;
                     }
                     compile_foreach_body_item(s, ctx, ops)?;
                 }
@@ -449,7 +447,7 @@ fn compile_field_conditional(
     compile_conditional(opabc(opcode, idx, b, 0), then, els, ctx, ops)
 }
 
-/// Compile a single item inside a for_each body, mapping `child(_item)` to `ChildItem`.
+/// Compile a single item inside a `for_each` body, mapping `child(_item)` to `ChildItem`.
 fn compile_foreach_body_item(
     fmt: &Fmt,
     ctx: &mut CompileCtx<'_>,
@@ -464,7 +462,7 @@ fn compile_foreach_body_item(
     }
 }
 
-/// Compile a conditional (IfXxx ... Else ... EndIf) with skip-count fixup.
+/// Compile a conditional (`IfXxx` ... Else ... `EndIf`) with skip-count fixup.
 /// `head` must have `c = 0`; it will be set to the computed skip count.
 fn compile_conditional(
     head: RawOp,
@@ -495,17 +493,17 @@ fn compile_conditional(
         ops.push(op0(opcodes::END_IF));
 
         // Fix up skip counts
-        ops[head_pos].c = (then_len + 1) as u16;
-        ops[else_pos].c = (else_len + 1) as u16;
+        ops[head_pos].c = u16::try_from(then_len + 1).expect("skip count exceeds u16");
+        ops[else_pos].c = u16::try_from(else_len + 1).expect("skip count exceeds u16");
     } else {
         // No else branch
         ops.push(op0(opcodes::END_IF));
-        ops[head_pos].c = (then_len + 1) as u16;
+        ops[head_pos].c = u16::try_from(then_len + 1).expect("skip count exceeds u16");
     }
     Ok(())
 }
 
-/// Compile a switch(field) { VARIANT { ... } ... default { ... } } into chained IfEnum blocks.
+/// Compile a switch(field) { VARIANT { ... } ... default { ... } } into chained `IfEnum` blocks.
 fn compile_switch(
     field: &str,
     cases: &[(String, Vec<Fmt>)],
@@ -515,6 +513,7 @@ fn compile_switch(
 ) -> Result<(), FmtCompileError> {
     let field_idx = idx_u8(ctx.field(field)?.idx)?;
 
+    #[allow(clippy::items_after_statements)]
     struct CaseChunk {
         ordinal: u16,
         body_ops: Vec<RawOp>,
@@ -532,6 +531,7 @@ fn compile_switch(
         compile_seq(def, ctx, &mut default_ops)?;
     }
 
+    #[allow(clippy::items_after_statements)]
     fn emit_chain(
         field_idx: u8,
         chunks: &[CaseChunk],
@@ -560,12 +560,17 @@ fn compile_switch(
                 opcodes::IF_ENUM,
                 field_idx,
                 chunk.ordinal,
-                (then_len + 1) as u16,
+                u16::try_from(then_len + 1).expect("skip count exceeds u16"),
             ));
             for op in &chunk.body_ops {
                 ops.push(*op);
             }
-            ops.push(opabc(opcodes::ELSE_OP, 0, 0, (else_ops.len() + 1) as u16));
+            ops.push(opabc(
+                opcodes::ELSE_OP,
+                0,
+                0,
+                u16::try_from(else_ops.len() + 1).expect("skip count exceeds u16"),
+            ));
             for op in &else_ops {
                 ops.push(*op);
             }
@@ -575,7 +580,7 @@ fn compile_switch(
                 opcodes::IF_ENUM,
                 field_idx,
                 chunk.ordinal,
-                (then_len + 1) as u16,
+                u16::try_from(then_len + 1).expect("skip count exceeds u16"),
             ));
             for op in &chunk.body_ops {
                 ops.push(*op);
@@ -747,7 +752,7 @@ mod tests {
             opcodes::IF_SPAN => format!("FmtOp::IfSpan({}, {})", op.a, op.c),
             opcodes::ENUM_DISPLAY => format!("FmtOp::EnumDisplay({}, {})", op.a, op.b),
             opcodes::FOR_EACH_SELF_START => "FmtOp::ForEachSelfStart".to_string(),
-            _ => return Err(FmtCompileError::UnknownOpcode(op.opcode)),
+            _ => panic!("unknown opcode {}", op.opcode),
         };
         Ok(text)
     }

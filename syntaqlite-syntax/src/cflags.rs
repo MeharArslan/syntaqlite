@@ -3,15 +3,7 @@
 
 //! TODO(claude) - add documentation
 
-/// Mirrors C `SyntaqliteCflags` from `include/syntaqlite/cflags.h`.
-///
-/// A packed bitfield struct. On the Rust side we represent it as raw bytes
-/// and provide index-based accessors matching the C `SYNQ_CFLAG_IDX_*` constants.
-#[repr(C)]
-#[derive(Clone, Copy)]
-pub struct Cflags {
-    bytes: [u8; 6],
-}
+pub use ffi::Cflags;
 
 impl Cflags {
     /// Create a zero-initialized (all flags off) cflags.
@@ -67,6 +59,18 @@ impl std::fmt::Debug for Cflags {
 }
 
 use crate::grammar::ffi::FieldMeta;
+
+mod ffi {
+    /// Mirrors C `SyntaqliteCflags` from `include/syntaqlite/cflags.h`.
+    ///
+    /// A packed bitfield struct. On the Rust side we represent it as raw bytes
+    /// and provide index-based accessors matching the C `SYNQ_CFLAG_IDX_*` constants.
+    #[repr(C)]
+    #[derive(Clone, Copy)]
+    pub struct Cflags {
+        pub(super) bytes: [u8; 6],
+    }
+}
 
 impl FieldMeta {
     /// Return the field name as a `&str`.

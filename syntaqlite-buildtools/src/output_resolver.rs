@@ -25,46 +25,69 @@ pub struct OutputLayout {
     pub root: PathBuf,
 
     // ── C internal headers (csrc/) ──────────────────────────────────────────
+    /// AST builder header (`dialect_builder.h`).
     pub ast_builder_h: CHeader,
+    /// Dialect field metadata header (`dialect_meta.h`).
     pub dialect_meta_h: CHeader,
+    /// Dialect formatter tables header (`dialect_fmt.h`).
     pub dialect_fmt_h: CHeader,
+    /// Dialect token categories header (`dialect_tokens.h`).
     pub dialect_tokens_h: CHeader,
+    /// Dialect dispatch header (`*_dialect_dispatch.h`).
     pub dialect_dispatch_h: CHeader,
+    /// Parser API header (`sqlite_parse.h`).
     pub parse_api_h: CHeader,
+    /// Tokenizer header (`sqlite_tokenize.h`).
     pub tokenize_h: CHeader,
+    /// Keyword header (`sqlite_keyword.h`).
     pub keyword_h: CHeader,
 
     // ── C sources (csrc/) ───────────────────────────────────────────────────
+    /// Dialect glue C source (`dialect.c`).
     pub dialect_c: Option<String>,
+    /// Parser C source (`sqlite_parse.c`).
     pub parse_c: Option<String>,
+    /// Tokenizer C source (`sqlite_tokenize.c`).
     pub tokenize_c: Option<String>,
+    /// Keyword hash C source (`sqlite_keyword.c`).
     pub keyword_c: Option<String>,
 
     // ── C public headers (include/<dialect>/) ───────────────────────────────
+    /// AST node definitions header (`*_node.h`).
     pub ast_nodes_h: CHeader,
+    /// Dialect public header (`*.h`).
     pub dialect_h: CHeader,
-    /// TypedDialectEnv tokens header: all `SYNTAQLITE_TK_*` defines (from lemon parse.h).
+    /// `TypedDialectEnv` tokens header: all `SYNTAQLITE_TK_*` defines (from lemon parse.h).
     pub tokens_h: CHeader,
     /// Runtime tokens header: minimal subset of tokens needed by `token_wrapped.c`.
     pub runtime_tokens_h: CHeader,
 
     // ── Rust sources (src/) ─────────────────────────────────────────────────
+    /// Rust token constants (`tokens.rs`).
     pub tokens_rs: Option<String>,
+    /// Rust FFI node definitions (`ffi.rs`).
     pub ffi_rs: Option<String>,
+    /// Rust AST node types (`ast.rs`).
     pub ast_rs: Option<String>,
-    /// Shared AST trait definitions. Only written for the internal SQLite crate.
+    /// Shared AST trait definitions. Only written for the internal `SQLite` crate.
     pub ast_traits_rs: Option<String>,
+    /// Grammar module (`grammar.rs`).
     pub grammar_rs: Option<String>,
+    /// Crate root module (`lib.rs`).
     pub lib_rs: Option<String>,
+    /// Functions catalog (`functions_catalog.rs`).
     pub functions_catalog_rs: Option<String>,
 
     // ── Crate root ───────────────────────────────────────────────────────────
+    /// Build script (`build.rs`).
     pub build_rs: Option<String>,
+    /// Cargo manifest (`Cargo.toml`).
     pub cargo_toml: Option<String>,
 }
 
 impl OutputLayout {
     /// Return a `DialectCIncludes` borrowing the include strings from this layout.
+    #[must_use]
     pub fn c_includes(&self) -> DialectCIncludes<'_> {
         DialectCIncludes {
             ast_builder_h: &self.ast_builder_h.include,
@@ -78,13 +101,14 @@ impl OutputLayout {
         }
     }
 
-    /// Layout for the internal SQLite dialect spread across two crates in the workspace.
+    /// Layout for the internal `SQLite` dialect spread across two crates in the workspace.
     ///
     /// - `root`: workspace root (e.g. `Path::new(".")`).
     /// - `dialect_crate`: crate directory name, e.g. `"syntaqlite-parser-sqlite"`.
     /// - `shared_crate`: shared crate directory name, e.g. `"syntaqlite-parser"`.
     /// - `dialect_name`: e.g. `"sqlite"`.
     /// - `include_dir_name`: subdirectory under `include/`, e.g. `"syntaqlite_sqlite"`.
+    #[must_use]
     pub fn for_sqlite(
         root: &Path,
         dialect_crate: &str,
@@ -100,7 +124,7 @@ impl OutputLayout {
         // Include paths for SQLite are relative to the dialect crate root,
         // matching the -I flag in syntaqlite-parser-sqlite/build.rs (.include(&manifest_dir)).
         let ip = "csrc/sqlite/"; // internal include prefix relative to crate root
-        OutputLayout {
+        Self {
             root: root.to_path_buf(),
             // C internal headers
             ast_builder_h: CHeader {
@@ -177,12 +201,13 @@ impl OutputLayout {
     /// - `root`: the dialect crate root.
     /// - `dialect_name`: e.g. `"perfetto"`.
     /// - `include_dir_name`: subdirectory under `include/`, e.g. `"syntaqlite_perfetto"`.
+    #[must_use]
     pub fn for_external(root: &Path, dialect_name: &str, include_dir_name: &str) -> Self {
         let dn = dialect_name;
         let id = include_dir_name;
         // External dialect crates compile with -I csrc/, so internal headers
         // are included by filename only (no directory prefix).
-        OutputLayout {
+        Self {
             root: root.to_path_buf(),
             ast_builder_h: CHeader {
                 write: Some("csrc/dialect_builder.h".to_string()),
@@ -254,13 +279,14 @@ impl OutputLayout {
     /// - `root`: the temp directory.
     /// - `dialect_name`: e.g. `"sqlite"`.
     /// - `include_dir_name`: subdirectory under `include/`.
+    #[must_use]
     pub fn for_amalg_temp(root: &Path, dialect_name: &str, include_dir_name: &str) -> Self {
         let dn = dialect_name;
         let id = include_dir_name;
         // Amalg temp uses "csrc/" prefix because the amalgamator resolves
         // headers relative to the temp root, and internal headers are in csrc/.
         let ip = "csrc/";
-        OutputLayout {
+        Self {
             root: root.to_path_buf(),
             ast_builder_h: CHeader {
                 write: Some("csrc/dialect_builder.h".to_string()),
@@ -327,6 +353,10 @@ impl OutputLayout {
     }
 
     /// Write all generated artifacts to the filesystem using this layout.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if directory creation or file writing fails.
     pub fn write_codegen_artifacts(
         &self,
         dialect: &DialectNaming,

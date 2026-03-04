@@ -11,7 +11,7 @@ pub(crate) struct TextWriterCore {
 }
 
 impl TextWriterCore {
-    pub(crate) fn new() -> Self {
+    pub(crate) const fn new() -> Self {
         Self {
             buffer: String::new(),
             indent: 0,
@@ -40,15 +40,15 @@ impl TextWriterCore {
     }
 
     pub(crate) fn fragment(&mut self, fragment: &impl Display) {
-        write!(self.buffer, "{}", fragment).unwrap();
+        write!(self.buffer, "{fragment}").expect("write to String cannot fail");
         self.newline();
     }
 
-    pub(crate) fn indent(&mut self) {
+    pub(crate) const fn indent(&mut self) {
         self.indent += 1;
     }
 
-    pub(crate) fn dedent(&mut self) {
+    pub(crate) const fn dedent(&mut self) {
         self.indent = self.indent.saturating_sub(1);
     }
 

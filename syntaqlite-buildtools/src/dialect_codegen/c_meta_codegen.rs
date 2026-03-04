@@ -10,11 +10,8 @@ use crate::util::synq_parser::{Field, Storage};
 
 use super::{AstModel, NodeLikeRef, c_type_name};
 
-/// Sentinel value indicating a field is absent in the schema metadata table.
-const FIELD_ABSENT: u8 = 0xFF;
-
 #[derive(Debug, Clone)]
-pub enum CMetaCodegenError {
+pub(crate) enum CMetaCodegenError {
     UnknownInlineType(String),
 }
 
@@ -31,7 +28,7 @@ impl Display for CMetaCodegenError {
 impl std::error::Error for CMetaCodegenError {}
 
 #[derive(Debug, Clone)]
-pub enum CFmtCodegenError {
+pub(crate) enum CFmtCodegenError {
     FmtCompile(super::fmt_compiler::FmtCompileError),
 }
 
@@ -46,7 +43,7 @@ impl Display for CFmtCodegenError {
 impl std::error::Error for CFmtCodegenError {}
 
 impl AstModel<'_> {
-    pub fn generate_c_fmt_tables(&self) -> Result<String, CFmtCodegenError> {
+    pub(crate) fn generate_c_fmt_tables(&self) -> Result<String, CFmtCodegenError> {
         let compiled =
             super::fmt_compiler::try_compile_all(self).map_err(CFmtCodegenError::FmtCompile)?;
 
@@ -63,7 +60,7 @@ impl AstModel<'_> {
                 .replace('\\', "\\\\")
                 .replace('"', "\\\"")
                 .replace('\n', "\\n");
-            w.line(&format!("\"{}\",", escaped));
+            w.line(&format!("\"{escaped}\","));
         }
         w.dedent();
         w.line("};");
@@ -82,7 +79,7 @@ impl AstModel<'_> {
         w.line("static const uint16_t fmt_enum_display[] = {");
         w.indent();
         for chunk in compiled.enum_display.chunks(16) {
-            let vals: Vec<String> = chunk.iter().map(|v| format!("{}", v)).collect();
+            let vals: Vec<String> = chunk.iter().map(|v| format!("{v}")).collect();
             w.line(&format!("{},", vals.join(",")));
         }
         w.dedent();
@@ -93,8 +90,8 @@ impl AstModel<'_> {
         let mut node_ranges: Vec<(&str, u16, u16)> = Vec::new();
 
         for cn in &compiled.nodes {
-            let offset = op_pool.len() as u16;
-            let length = cn.ops.len() as u16;
+            let offset = u16::try_from(op_pool.len()).expect("fmt op pool offset fits in u16");
+            let length = u16::try_from(cn.ops.len()).expect("fmt op count fits in u16");
             op_pool.extend_from_slice(&cn.ops);
             node_ranges.push((&cn.name, offset, length));
         }
@@ -123,14 +120,14 @@ impl AstModel<'_> {
         }
         for &(name, offset, length) in &node_ranges {
             if let Some(&ordinal) = ordinal_map.get(name) {
-                dispatch_table[ordinal] = ((offset as u32) << 16) | (length as u32);
+                dispatch_table[ordinal] = (u32::from(offset) << 16) | u32::from(length);
             }
         }
 
         w.line("static const uint32_t fmt_dispatch[] = {");
         w.indent();
         for chunk in dispatch_table.chunks(8) {
-            let vals: Vec<String> = chunk.iter().map(|v| format!("0x{:08x}", v)).collect();
+            let vals: Vec<String> = chunk.iter().map(|v| format!("0x{v:08x}")).collect();
             w.line(&format!("{},", vals.join(",")));
         }
         w.dedent();
@@ -141,7 +138,11 @@ impl AstModel<'_> {
         Ok(w.finish())
     }
 
-    pub fn generate_c_field_metadata(&self, dialect: &str) -> Result<String, CMetaCodegenError> {
+    #[allow(clippy::too_many_lines)]
+    pub(crate) fn generate_c_field_metadata(
+        &self,
+        dialect: &str,
+    ) -> Result<String, CMetaCodegenError> {
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
 
@@ -158,10 +159,10 @@ impl AstModel<'_> {
             let name = item.name;
             let variants = item.variants;
             let var = format!("display_{}", pascal_to_snake(name));
-            w.line(&format!("static const char* const {}[] = {{", var));
+            w.line(&format!("static const char* const {var}[] = {{"));
             w.indent();
             for v in variants {
-                w.line(&format!("\"{}\",", v));
+                w.line(&format!("\"{v}\","));
             }
             w.dedent();
             w.line("};");
@@ -177,15 +178,14 @@ impl AstModel<'_> {
                 .max()
                 .unwrap_or(0);
             let var = format!("display_{}", pascal_to_snake(name));
-            w.line(&format!("static const char* const {}[] = {{", var));
+            w.line(&format!("static const char* const {var}[] = {{"));
             w.indent();
             for pos in 0..=max_bit_pos {
                 let label = flags
                     .iter()
                     .find(|(_, v)| bit_position(*v) == pos)
-                    .map(|(n, _)| n.as_str())
-                    .unwrap_or("");
-                w.line(&format!("\"{}\",", label));
+                    .map_or("", |(n, _)| n.as_str());
+                w.line(&format!("\"{label}\","));
             }
             w.dedent();
             w.line("};");
@@ -200,7 +200,7 @@ impl AstModel<'_> {
             }
             let sn = c_type_name(name);
             let var = format!("field_meta_{}", pascal_to_snake(name));
-            w.line(&format!("static const SyntaqliteFieldMeta {}[] = {{", var));
+            w.line(&format!("static const SyntaqliteFieldMeta {var}[] = {{"));
             w.indent();
             for field in fields {
                 let kind = c_field_kind(field, enum_names, flags_names)?;
@@ -286,69 +286,6 @@ impl AstModel<'_> {
         w.header_guard_end("SYNTAQLITE_DIALECT_META_H");
         Ok(w.finish())
     }
-
-    pub fn generate_c_schema_contributions(&self) -> String {
-        use crate::util::synq_parser::SchemaKind;
-
-        let mut entries = Vec::new();
-
-        for node in self.nodes() {
-            let Some(schema) = node.schema else {
-                continue;
-            };
-            let tag = self.tag_for(node.name);
-
-            let kind = match schema.kind {
-                SchemaKind::Table => 0,
-                SchemaKind::View => 1,
-                SchemaKind::Function => 2,
-                SchemaKind::Import => 3,
-            };
-
-            let resolve_field_index = |key: &str| -> u8 {
-                match schema.param(key) {
-                    Some(field_name) => node
-                        .fields
-                        .iter()
-                        .position(|f| f.name == field_name)
-                        .map(|i| i as u8)
-                        .unwrap_or(FIELD_ABSENT),
-                    None => FIELD_ABSENT,
-                }
-            };
-
-            entries.push((
-                tag,
-                kind,
-                resolve_field_index("name"),
-                resolve_field_index("columns"),
-                resolve_field_index("as_select"),
-                resolve_field_index("args"),
-            ));
-        }
-
-        let mut w = CWriter::new();
-        if entries.is_empty() {
-            return w.finish();
-        }
-
-        w.newline();
-        w.section("Schema Contributions");
-        w.line("#define SYNTAQLITE_HAS_SCHEMA_CONTRIBUTIONS");
-        w.line("static const SyntaqliteSchemaContribution schema_contributions[] = {");
-        w.indent();
-        for (tag, kind, name_f, cols_f, sel_f, args_f) in &entries {
-            w.line(&format!(
-                "{{{}, {}, {}, {}, {}, {}, {{0}}}},",
-                tag, kind, name_f, cols_f, sel_f, args_f
-            ));
-        }
-        w.dedent();
-        w.line("};");
-        w.newline();
-
-        w.finish()
-    }
 }
 
 fn c_field_kind(
@@ -385,17 +322,17 @@ fn c_field_display(
             let t = &field.type_name;
             if enum_names.contains(t.as_str()) || flags_names.contains(t.as_str()) {
                 let var = format!("display_{}", pascal_to_snake(t));
-                let count = format!("sizeof({}) / sizeof({}[0])", var, var);
+                let count = format!("sizeof({var}) / sizeof({var}[0])");
                 (var, count)
             } else {
                 ("NULL".into(), "0".into())
             }
         }
-        _ => ("NULL".into(), "0".into()),
+        Storage::Index => ("NULL".into(), "0".into()),
     }
 }
 
-fn bit_position(value: u32) -> u32 {
+const fn bit_position(value: u32) -> u32 {
     if value == 0 {
         return 0;
     }

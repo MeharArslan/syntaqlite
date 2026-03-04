@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Fragment extraction from SQLite source files.
+//! Fragment extraction from `SQLite` source files.
 //!
 //! Reuses `CExtractor` to pull the same fragments that the main codegen
 //! pipeline extracts, but returns them as raw strings for hashing/diffing
@@ -56,7 +56,7 @@ const CC_DEFINE_NAMES: &[&str] = &[
     "CC_BOM",
 ];
 
-/// All extracted fragments from a single SQLite version's source files.
+/// All extracted fragments from a single `SQLite` version's source files.
 #[derive(Debug)]
 pub(super) struct ExtractedFragments {
     pub cc_defines: Result<String, String>,
@@ -83,11 +83,11 @@ impl ExtractedFragments {
             "is_macros" => &self.is_macros,
             _ => return Err(format!("unknown fragment: {name}")),
         };
-        field.as_deref().map_err(|e| e.clone())
+        field.as_deref().map_err(Clone::clone)
     }
 }
 
-/// Extract all code fragments from a single SQLite version's source files.
+/// Extract all code fragments from a single `SQLite` version's source files.
 ///
 /// Individual extraction failures are captured per-field rather than
 /// short-circuiting, so the caller can report partial results.

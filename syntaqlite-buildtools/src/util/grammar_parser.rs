@@ -4,7 +4,7 @@
 //! Lemon grammar file parser
 //!
 //! **NOTE:** This is a minimal, relaxed parser designed specifically to extract
-//! tokens and rules from SQLite's parse.y grammar. It is NOT a general-purpose
+//! tokens and rules from `SQLite`'s parse.y grammar. It is NOT a general-purpose
 //! Lemon parser and makes no attempt to validate grammar correctness. It simply
 //! extracts the information we need while skipping everything else.
 
@@ -15,55 +15,55 @@ use std::fmt;
 // ============================================================================
 
 #[derive(Debug, Clone)]
-pub struct LemonGrammar<'a> {
-    pub tokens: Vec<TokenDecl<'a>>,
-    pub rules: Vec<GrammarRule<'a>>,
-    pub token_classes: Vec<TokenClass<'a>>,
-    pub fallbacks: Vec<FallbackDecl<'a>>,
-    pub precedences: Vec<PrecedenceDecl<'a>>,
+pub(crate) struct LemonGrammar<'a> {
+    pub(crate) tokens: Vec<TokenDecl<'a>>,
+    pub(crate) rules: Vec<GrammarRule<'a>>,
+    pub(crate) token_classes: Vec<TokenClass<'a>>,
+    pub(crate) fallbacks: Vec<FallbackDecl<'a>>,
+    pub(crate) precedences: Vec<PrecedenceDecl<'a>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PrecedenceDecl<'a> {
-    pub assoc: &'a str, // "left", "right", or "nonassoc"
-    pub tokens: Vec<&'a str>,
+pub(crate) struct PrecedenceDecl<'a> {
+    pub(crate) assoc: &'a str, // "left", "right", or "nonassoc"
+    pub(crate) tokens: Vec<&'a str>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FallbackDecl<'a> {
-    pub target: &'a str,
-    pub tokens: Vec<&'a str>,
+pub(crate) struct FallbackDecl<'a> {
+    pub(crate) target: &'a str,
+    pub(crate) tokens: Vec<&'a str>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TokenDecl<'a> {
-    pub name: &'a str,
+pub(crate) struct TokenDecl<'a> {
+    pub(crate) name: &'a str,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TokenClass<'a> {
-    pub name: &'a str,
-    pub tokens: &'a str, // Raw token list like "ID|STRING"
+pub(crate) struct TokenClass<'a> {
+    pub(crate) name: &'a str,
+    pub(crate) tokens: &'a str, // Raw token list like "ID|STRING"
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct GrammarRule<'a> {
-    pub lhs: &'a str,
-    pub rhs: Vec<RhsSymbol<'a>>,
-    pub precedence_override: Option<&'a str>,
+pub(crate) struct GrammarRule<'a> {
+    pub(crate) lhs: &'a str,
+    pub(crate) rhs: Vec<RhsSymbol<'a>>,
+    pub(crate) precedence_override: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct RhsSymbol<'a> {
-    pub name: &'a str,
-    pub alias: Option<&'a str>,
+pub(crate) struct RhsSymbol<'a> {
+    pub(crate) name: &'a str,
+    pub(crate) alias: Option<&'a str>,
 }
 
 // ============================================================================
 // Display Implementations
 // ============================================================================
 
-impl<'a> fmt::Display for GrammarRule<'a> {
+impl fmt::Display for GrammarRule<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let rhs = self
             .rhs
@@ -79,13 +79,13 @@ impl<'a> fmt::Display for GrammarRule<'a> {
     }
 }
 
-impl<'a> fmt::Display for TokenClass<'a> {
+impl fmt::Display for TokenClass<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "%token_class {}  {}", self.name, self.tokens)
     }
 }
 
-impl<'a> fmt::Display for TokenDecl<'a> {
+impl fmt::Display for TokenDecl<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name)
     }
@@ -96,13 +96,13 @@ impl<'a> fmt::Display for TokenDecl<'a> {
 // ============================================================================
 
 #[derive(Debug)]
-pub struct ParseError {
-    pub line: usize,
-    pub column: usize,
-    pub message: String,
+pub(crate) struct ParseError {
+    pub(crate) line: usize,
+    pub(crate) column: usize,
+    pub(crate) message: String,
 }
 
-pub type Result<T> = std::result::Result<T, ParseError>;
+pub(crate) type Result<T> = std::result::Result<T, ParseError>;
 
 // ============================================================================
 // %if / %ifdef condition evaluator
@@ -175,7 +175,7 @@ fn eval_condition(condition: &str, defined: &HashSet<&str>) -> bool {
     let mut group_ops = Vec::new();
     for (i, op) in ops.iter().enumerate() {
         if *op == "&&" {
-            let last = groups.last_mut().unwrap();
+            let last = groups.last_mut().expect("groups is non-empty");
             *last = *last && atoms[i + 1];
         } else {
             group_ops.push(*op);
@@ -185,14 +185,14 @@ fn eval_condition(condition: &str, defined: &HashSet<&str>) -> bool {
     groups.iter().any(|&v| v)
 }
 
-/// The default set of preprocessor symbols defined when parsing SQLite's grammar.
+/// The default set of preprocessor symbols defined when parsing `SQLite`'s grammar.
 ///
 /// `%ifdef SYM` includes the block when `SYM` is in this set.
 /// `%if EXPR` evaluates identifiers against this set.
 ///
 /// Convention: `SQLITE_ENABLE_*` features that syntaqlite opts into go here.
 /// `SQLITE_OMIT_*` flags are **not** defined (features are available by default).
-pub fn default_defines() -> HashSet<&'static str> {
+pub(crate) fn default_defines() -> HashSet<&'static str> {
     [
         // Opt-in features that syntaqlite includes in its grammar.
         "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
@@ -209,13 +209,13 @@ pub fn default_defines() -> HashSet<&'static str> {
 // ============================================================================
 
 impl<'a> LemonGrammar<'a> {
-    /// Parse with the default SQLite preprocessor defines.
-    pub fn parse(input: &'a str) -> Result<Self> {
+    /// Parse with the default `SQLite` preprocessor defines.
+    pub(crate) fn parse(input: &'a str) -> Result<Self> {
         Self::parse_with_defines(input, &default_defines())
     }
 
     /// Parse with a custom set of preprocessor defines.
-    pub fn parse_with_defines(input: &'a str, defines: &HashSet<&str>) -> Result<Self> {
+    pub(crate) fn parse_with_defines(input: &'a str, defines: &HashSet<&str>) -> Result<Self> {
         Parser::parse_grammar(input, defines)
     }
 }
@@ -269,13 +269,13 @@ impl<'a, 'b> Parser<'a, 'b> {
                             if parser.ifdef_is_defined() {
                                 parser.skip_to_eol();
                             } else {
-                                let end = parser.skip_ifdef_block()?;
+                                let end = parser.skip_ifdef_block();
                                 if end == "else" { /* include else branch */ }
                             }
                         }
                         "ifndef" => {
                             if parser.ifdef_is_defined() {
-                                let end = parser.skip_ifdef_block()?;
+                                let end = parser.skip_ifdef_block();
                                 if end == "else" { /* include else branch */ }
                             } else {
                                 parser.skip_to_eol();
@@ -285,14 +285,14 @@ impl<'a, 'b> Parser<'a, 'b> {
                             if parser.if_should_include() {
                                 parser.skip_to_eol();
                             } else {
-                                let end = parser.skip_ifdef_block()?;
+                                let end = parser.skip_ifdef_block();
                                 if end == "else" { /* include else branch */ }
                             }
                         }
                         "else" => {
                             // We were including the if/ifdef/ifndef block and
                             // hit the else branch — skip it.
-                            parser.skip_else_block()?;
+                            parser.skip_else_block();
                         }
                         "endif" => {
                             // Skip endif directive (already handled by skip_ifdef_block or matching ifndef)
@@ -531,17 +531,16 @@ impl<'a, 'b> Parser<'a, 'b> {
                             if self.ifdef_is_defined() {
                                 self.skip_to_eol();
                             } else {
-                                self.skip_ifdef_block()?;
+                                self.skip_ifdef_block();
                             }
                         }
                         "ifndef" => {
                             if self.ifdef_is_defined() {
-                                self.skip_ifdef_block()?;
+                                self.skip_ifdef_block();
                             } else {
                                 self.skip_to_eol();
                             }
                         }
-                        "endif" => self.skip_to_eol(),
                         _ => self.skip_to_eol(),
                     }
                 }
@@ -630,7 +629,7 @@ impl<'a, 'b> Parser<'a, 'b> {
 
     /// Skip content until `%endif` (or `%else`). Returns the directive that
     /// ended the skip (`"endif"` or `"else"`).
-    fn skip_ifdef_block(&mut self) -> Result<&'a str> {
+    fn skip_ifdef_block(&mut self) -> &'a str {
         self.skip_to_eol();
 
         while self.advance_until('%') {
@@ -638,28 +637,27 @@ impl<'a, 'b> Parser<'a, 'b> {
             match self.parse_identifier().ok() {
                 Some("endif") => {
                     self.skip_to_eol();
-                    return Ok("endif");
+                    return "endif";
                 }
                 Some("else") => {
                     self.skip_to_eol();
-                    return Ok("else");
+                    return "else";
                 }
                 _ => {}
             }
         }
-        Ok("endif")
+        "endif"
     }
 
     /// Skip from `%else` to `%endif`, discarding the else branch.
-    fn skip_else_block(&mut self) -> Result<()> {
+    fn skip_else_block(&mut self) {
         while self.advance_until('%') {
             self.next(); // consume %
             if self.parse_identifier().ok() == Some("endif") {
                 self.skip_to_eol();
-                return Ok(());
+                return;
             }
         }
-        Ok(())
     }
 
     fn skip_ws(&mut self) {
@@ -723,8 +721,8 @@ impl<'a, 'b> Parser<'a, 'b> {
                 self.next();
                 Ok(())
             }
-            Some(ch) => Err(self.error(&format!("Expected '{}', got '{}'", expected, ch))),
-            None => Err(self.error(&format!("Expected '{}', got EOF", expected))),
+            Some(ch) => Err(self.error(&format!("Expected '{expected}', got '{ch}'"))),
+            None => Err(self.error(&format!("Expected '{expected}', got EOF"))),
         }
     }
 

@@ -13,10 +13,10 @@ pub(crate) mod rust_ast;
 pub(crate) mod rust_dialect;
 
 pub(super) fn c_type_name(name: &str) -> String {
-    format!("Syntaqlite{}", name)
+    format!("Syntaqlite{name}")
 }
 
-pub struct AstModel<'a> {
+pub(crate) struct AstModel<'a> {
     items: &'a [Item],
     extension_items: &'a [Item],
     enum_names: HashSet<&'a str>,
@@ -37,40 +37,43 @@ pub struct AstModel<'a> {
 }
 
 #[derive(Clone, Copy)]
-pub struct EnumRef<'a> {
-    pub name: &'a str,
-    pub variants: &'a [String],
+pub(crate) struct EnumRef<'a> {
+    pub(crate) name: &'a str,
+    pub(crate) variants: &'a [String],
 }
 
 #[derive(Clone, Copy)]
-pub struct FlagsRef<'a> {
-    pub name: &'a str,
-    pub flags: &'a [(String, u32)],
+pub(crate) struct FlagsRef<'a> {
+    pub(crate) name: &'a str,
+    pub(crate) flags: &'a [(String, u32)],
 }
 
 #[derive(Clone, Copy)]
-pub struct NodeRef<'a> {
-    pub name: &'a str,
-    pub fields: &'a [Field],
-    pub fmt: Option<&'a [Fmt]>,
-    pub schema: Option<&'a SchemaAnnotation>,
+pub(crate) struct NodeRef<'a> {
+    pub(crate) name: &'a str,
+    pub(crate) fields: &'a [Field],
+    #[allow(dead_code)]
+    pub(crate) fmt: Option<&'a [Fmt]>,
+    #[allow(dead_code)]
+    pub(crate) schema: Option<&'a SchemaAnnotation>,
 }
 
 #[derive(Clone, Copy)]
-pub struct ListRef<'a> {
-    pub name: &'a str,
-    pub child_type: &'a str,
-    pub fmt: Option<&'a [Fmt]>,
+pub(crate) struct ListRef<'a> {
+    pub(crate) name: &'a str,
+    pub(crate) child_type: &'a str,
+    #[allow(dead_code)]
+    pub(crate) fmt: Option<&'a [Fmt]>,
 }
 
 #[derive(Clone, Copy)]
-pub enum NodeLikeRef<'a> {
+pub(crate) enum NodeLikeRef<'a> {
     Node(NodeRef<'a>),
     List(ListRef<'a>),
 }
 
 impl<'a> NodeLikeRef<'a> {
-    pub fn name(&self) -> &'a str {
+    pub(crate) const fn name(&self) -> &'a str {
         match self {
             NodeLikeRef::Node(n) => n.name,
             NodeLikeRef::List(l) => l.name,
@@ -79,7 +82,7 @@ impl<'a> NodeLikeRef<'a> {
 }
 
 impl<'a> AstModel<'a> {
-    pub fn new(items: &'a [Item]) -> Self {
+    pub(crate) fn new(items: &'a [Item]) -> Self {
         let mut enum_names: HashSet<&str> = HashSet::new();
         let mut flags_names: HashSet<&str> = HashSet::new();
         let mut node_names: HashSet<&str> = HashSet::new();
@@ -151,9 +154,12 @@ impl<'a> AstModel<'a> {
         let mut tag_map = HashMap::new();
         for (i, item) in node_like_items.iter().enumerate() {
             let name = item.name();
-            tag_map.insert(name.to_string(), (i + 1) as u32);
+            tag_map.insert(
+                name.to_string(),
+                u32::try_from(i + 1).expect("tag count fits in u32"),
+            );
         }
-        let base_tag_count = node_like_items.len() as u32;
+        let base_tag_count = u32::try_from(node_like_items.len()).expect("tag count fits in u32");
 
         Self {
             items,
@@ -173,10 +179,11 @@ impl<'a> AstModel<'a> {
         }
     }
 
-    /// Build an AstModel where base items get pinned tags and extension items
+    /// Build an `AstModel` where base items get pinned tags and extension items
     /// get tags after the base range. Extension items may redefine base nodes
     /// (append-only fields) or add entirely new nodes.
-    pub fn new_with_extensions(
+    #[allow(clippy::too_many_lines)]
+    pub(crate) fn new_with_extensions(
         base_items: &'a [Item],
         extension_items: &'a [Item],
     ) -> Result<Self, String> {
@@ -327,64 +334,61 @@ impl<'a> AstModel<'a> {
         })
     }
 
-    pub fn items(&self) -> &'a [Item] {
-        self.items
-    }
-
     /// Iterate all items (base + extension). Use this when codegen needs the
     /// full set — e.g. fmt compilation needs fmt blocks from both base and
     /// extension items.
-    pub fn all_items(&self) -> impl Iterator<Item = &'a Item> {
+    pub(crate) fn all_items(&self) -> impl Iterator<Item = &'a Item> {
         self.items.iter().chain(self.extension_items.iter())
     }
 
-    pub fn enum_names(&self) -> &HashSet<&'a str> {
+    pub(crate) const fn enum_names(&self) -> &HashSet<&'a str> {
         &self.enum_names
     }
 
-    pub fn flags_names(&self) -> &HashSet<&'a str> {
+    pub(crate) const fn flags_names(&self) -> &HashSet<&'a str> {
         &self.flags_names
     }
 
-    pub fn node_names(&self) -> &HashSet<&'a str> {
+    pub(crate) const fn node_names(&self) -> &HashSet<&'a str> {
         &self.node_names
     }
 
-    pub fn list_names(&self) -> &HashSet<&'a str> {
+    pub(crate) const fn list_names(&self) -> &HashSet<&'a str> {
         &self.list_names
     }
 
-    pub fn abstract_items(&self) -> &[(&'a str, &'a [String])] {
+    pub(crate) fn abstract_items(&self) -> &[(&'a str, &'a [String])] {
         &self.abstract_items
     }
 
-    pub fn enums(&self) -> &[EnumRef<'a>] {
+    pub(crate) fn enums(&self) -> &[EnumRef<'a>] {
         &self.enums
     }
 
-    pub fn flags(&self) -> &[FlagsRef<'a>] {
+    pub(crate) fn flags(&self) -> &[FlagsRef<'a>] {
         &self.flags
     }
 
-    pub fn nodes(&self) -> &[NodeRef<'a>] {
+    pub(crate) fn nodes(&self) -> &[NodeRef<'a>] {
         &self.nodes
     }
 
-    pub fn lists(&self) -> &[ListRef<'a>] {
+    pub(crate) fn lists(&self) -> &[ListRef<'a>] {
         &self.lists
     }
 
-    pub fn node_like_items(&self) -> &[NodeLikeRef<'a>] {
+    pub(crate) fn node_like_items(&self) -> &[NodeLikeRef<'a>] {
         &self.node_like_items
     }
 
     /// Return the pinned tag value for a node/list name.
-    pub fn tag_for(&self, name: &str) -> u32 {
+    pub(crate) fn tag_for(&self, name: &str) -> u32 {
         self.tag_map[name]
     }
 
     /// Number of base tags (before extension tags).
-    pub fn base_tag_count(&self) -> u32 {
+    #[cfg(test)]
+    pub(crate) const fn base_tag_count(&self) -> u32 {
         self.base_tag_count
     }
 }
