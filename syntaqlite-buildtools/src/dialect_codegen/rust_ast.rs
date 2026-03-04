@@ -534,7 +534,8 @@ impl AstModel<'_> {
         }
         w.lines(&format!(
             "
-        use {crate_prefix}::ast::{{NodeId, RawNodeId, RawNode, NodeFamily, GrammarNodeType, TypedList}};
+        use {crate_prefix}::ast::{{NodeId, RawNodeId, RawNode, GrammarNodeType, TypedList}};
+        use {crate_prefix}::parser::ParseResult;
         "
         ));
         w.newline();
@@ -684,7 +685,7 @@ impl AstModel<'_> {
             w.indent();
             w.line("let mut buf = String::new();");
             w.line(&format!(
-                "RawNode::new(self.id, self.reader, {dialect_fn_path}()).dump(&mut buf, 0);"
+                "RawNode::new(self.id, self.reader, {dialect_fn_path}().into_raw()).dump(&mut buf, 0);"
             ));
             w.line("f.write_str(&buf)");
             w.dedent();
@@ -1028,20 +1029,6 @@ impl AstModel<'_> {
             w.close_block("}");
             w.newline();
         }
-
-        // NodeFamily marker
-        let pascal = pascal_case(dialect_name);
-        let root_node = abstract_items.first().map_or("Stmt", |(n, _)| *n);
-        w.doc_comment(&format!(
-            "Marker type bundling the {dialect_name} AST node and token types for use with `TypedGrammar`."
-        ));
-        w.line(&format!("pub struct {pascal}NodeFamily;"));
-        w.newline();
-        w.open_block(&format!("impl NodeFamily for {pascal}NodeFamily {{"));
-        w.line(&format!("type Node<'a> = {root_node}<'a>;"));
-        w.line(&format!("type Token = super::tokens::{pascal}TokenType;"));
-        w.close_block("}");
-        w.newline();
 
         w.finish()
     }

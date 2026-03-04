@@ -13,6 +13,7 @@ pub use tokenizer::{
 };
 #[cfg(feature = "sqlite")]
 pub use tokenizer::{Token, TokenCursor, Tokenizer};
+pub use version::SqliteVersion;
 
 // ==== Internal modules ====
 
@@ -23,6 +24,7 @@ mod grammar;
 mod incremental;
 mod parser;
 mod tokenizer;
+mod version;
 
 #[cfg(feature = "sqlite")]
 mod sqlite;

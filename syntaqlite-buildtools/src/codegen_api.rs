@@ -77,10 +77,10 @@ impl DialectNaming {
         format!("syntaqlite_{}_grammar", self.name)
     }
 
-    /// Rust `NodeFamily` type name (e.g. `"SqliteNodeFamily"`).
+    /// Rust grammar struct type name (e.g. `"SqliteGrammar"`).
     #[must_use]
-    pub fn node_family_type(&self) -> String {
-        format!("{}NodeFamily", util::pascal_case(&self.name))
+    pub fn grammar_struct_type(&self) -> String {
+        format!("{}Grammar", util::pascal_case(&self.name))
     }
 
     /// Rust token enum type name (e.g. `"SqliteTokenType"`).
@@ -499,7 +499,7 @@ pub fn generate_codegen_artifacts(
             // ffi_path: dialect-specific FFI structs live in the sibling ffi module.
             ffi_path: "super::ffi",
             nodes_path: "crate::ast",
-            grammar_fn_path: "super::grammar::typed_grammar",
+            grammar_fn_path: "super::grammar::grammar",
         };
         Some(RustCodegenArtifacts {
             tokens_rs: generate_rust_tokens(&token_defines[..], &request.dialect.token_type_name()),
@@ -512,13 +512,16 @@ pub fn generate_codegen_artifacts(
             ast_traits_rs: Some(ast_model.generate_ast_traits()),
             grammar_rs: Some(generate_grammar_module(
                 &request.dialect.grammar_fn_name(),
-                &request.dialect.node_family_type(),
-                "super::ast",
+                &request.dialect.grammar_struct_type(),
+                ast_model.root_node_name(),
+                &request.dialect.token_type_name(),
                 "crate",
             )),
             lib_rs: generate_rust_lib(
                 &request.dialect.dialect_symbol_fn_name(),
-                &request.dialect.node_family_type(),
+                &request.dialect.grammar_struct_type(),
+                ast_model.root_node_name(),
+                &request.dialect.token_type_name(),
             ),
             build_rs: generate_rust_build_rs(request.dialect.name()),
             cargo_toml: generate_cargo_toml(

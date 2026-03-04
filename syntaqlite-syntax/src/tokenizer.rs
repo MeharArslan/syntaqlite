@@ -7,11 +7,11 @@ use std::marker::PhantomData;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::ast::{AnyDialect, GrammarTokenType, NodeFamily};
+use crate::ast::{AnyDialect, GrammarTokenType};
 use crate::grammar::{RawGrammar, TypedGrammar};
 
 #[cfg(feature = "sqlite")]
-use crate::sqlite::ast::SqliteNodeFamily;
+use crate::sqlite::grammar::SqliteGrammar;
 #[cfg(feature = "sqlite")]
 use crate::sqlite::tokens::SqliteTokenType;
 
@@ -25,12 +25,12 @@ use crate::sqlite::tokens::SqliteTokenType;
 /// use [`TypedTokenizer`] directly; for dialect-agnostic use with raw `u32`
 /// ordinals use [`RawTokenizer`].
 #[cfg(feature = "sqlite")]
-pub struct Tokenizer(TypedTokenizer<SqliteNodeFamily>);
+pub struct Tokenizer(TypedTokenizer<SqliteGrammar>);
 
 #[cfg(feature = "sqlite")]
 impl Tokenizer {
     /// Create a tokenizer bound to the given SQLite grammar.
-    pub fn new(grammar: TypedGrammar<SqliteNodeFamily>) -> Self {
+    pub fn new(grammar: SqliteGrammar) -> Self {
         Tokenizer(TypedTokenizer::new(grammar))
     }
 
@@ -39,7 +39,7 @@ impl Tokenizer {
     /// # Panics
     ///
     /// Panics if a cursor from a previous `tokenize()` call is still alive.
-    pub fn tokenize(&self, source: &str) -> TokenCursor<'_> {
+    pub fn tokenize<'a>(&self, source: &'a str) -> TokenCursor<'a> {
         TokenCursor(self.0.tokenize(source))
     }
 
@@ -60,7 +60,7 @@ impl Tokenizer {
 ///
 /// Iterates [`Token`]s with SQLite-specific token types.
 #[cfg(feature = "sqlite")]
-pub struct TokenCursor<'a>(TypedTokenCursor<'a, SqliteNodeFamily>);
+pub struct TokenCursor<'a>(TypedTokenCursor<'a, SqliteGrammar>);
 
 #[cfg(feature = "sqlite")]
 impl<'a> Iterator for TokenCursor<'a> {
@@ -75,7 +75,7 @@ impl<'a> Iterator for TokenCursor<'a> {
 
 /// A SQLite token: token type + source text slice. Produced by [`TokenCursor`].
 #[cfg(feature = "sqlite")]
-pub struct Token<'a>(pub TypedToken<'a, SqliteNodeFamily>);
+pub struct Token<'a>(pub TypedToken<'a, SqliteGrammar>);
 
 #[cfg(feature = "sqlite")]
 impl<'a> Token<'a> {
@@ -102,14 +102,14 @@ impl<'a> Token<'a> {
 /// Uses an interior-mutability checkout pattern: `tokenize()` checks out the
 /// C tokenizer state at runtime, and the returned [`TypedTokenCursor`] returns
 /// it on drop. This allows `tokenize()` to take `&self` rather than `&mut self`.
-pub struct TypedTokenizer<N: NodeFamily> {
+pub struct TypedTokenizer<G: TypedGrammar> {
     inner: Rc<RefCell<Option<TokenizerInner>>>,
-    _marker: PhantomData<N>,
+    _marker: PhantomData<G>,
 }
 
-impl<N: NodeFamily> TypedTokenizer<N> {
+impl<G: TypedGrammar> TypedTokenizer<G> {
     /// Create a tokenizer bound to the given dialect grammar.
-    pub fn new(grammar: TypedGrammar<N>) -> Self {
+    pub fn new(mut grammar: G) -> Self {
         // SAFETY: syntaqlite_tokenizer_create(NULL, grammar.inner) allocates a
         // new tokenizer with default malloc/free. The C side copies the grammar.
         let raw = NonNull::new(unsafe {
@@ -136,7 +136,7 @@ impl<N: NodeFamily> TypedTokenizer<N> {
     /// # Panics
     ///
     /// Panics if a cursor from a previous `tokenize()` call is still alive.
-    pub fn tokenize<'a>(&self, source: &'a str) -> TypedTokenCursor<'a, N> {
+    pub fn tokenize<'a>(&self, source: &'a str) -> TypedTokenCursor<'a, G> {
         let mut inner = self
             .inner
             .borrow_mut()
@@ -181,7 +181,7 @@ impl<N: NodeFamily> TypedTokenizer<N> {
     ///
     /// Panics if a cursor from a previous `tokenize()` call is still alive,
     /// or if `source` is not valid UTF-8.
-    pub fn tokenize_cstr<'a>(&self, source: &'a CStr) -> TypedTokenCursor<'a, N> {
+    pub fn tokenize_cstr<'a>(&self, source: &'a CStr) -> TypedTokenCursor<'a, G> {
         let inner = self
             .inner
             .borrow_mut()
@@ -212,11 +212,8 @@ impl<N: NodeFamily> TypedTokenizer<N> {
 
 impl TypedTokenizer<AnyDialect> {
     /// Create a type-erased tokenizer from a [`RawGrammar`].
-    ///
-    /// Convenience constructor for the [`RawTokenizer`] alias — avoids having
-    /// to wrap the grammar in a [`TypedGrammar`] manually.
     pub fn from_raw_grammar(grammar: RawGrammar) -> Self {
-        Self::new(TypedGrammar::new(grammar))
+        Self::new(AnyDialect { raw: grammar })
     }
 }
 
@@ -224,9 +221,9 @@ impl TypedTokenizer<AnyDialect> {
 
 /// A typed token: dialect token type + source text slice.
 #[derive(Debug, Clone, Copy)]
-pub struct TypedToken<'a, N: NodeFamily> {
+pub struct TypedToken<'a, G: TypedGrammar> {
     /// Dialect-typed token variant.
-    pub token_type: N::Token,
+    pub token_type: G::Token,
     /// Slice of the source text covered by this token.
     pub text: &'a str,
 }
@@ -235,12 +232,12 @@ pub struct TypedToken<'a, N: NodeFamily> {
 
 /// An active cursor over typed tokens from a [`TypedTokenizer`].
 ///
-/// Tokens whose ordinal does not map to a known `N::Token` variant are silently
+/// Tokens whose ordinal does not map to a known `G::Token` variant are silently
 /// skipped; use [`RawTokenizer`] / [`RawTokenCursor`] to observe every ordinal.
 ///
 /// On drop, the checked-out tokenizer state is returned to the parent
 /// [`TypedTokenizer`].
-pub struct TypedTokenCursor<'a, N: NodeFamily> {
+pub struct TypedTokenCursor<'a, G: TypedGrammar> {
     raw: NonNull<ffi::CTokenizer>,
     source: &'a str,
     /// Base pointer of the C source buffer. Used to compute byte offsets back
@@ -250,10 +247,10 @@ pub struct TypedTokenCursor<'a, N: NodeFamily> {
     inner: Option<TokenizerInner>,
     /// Slot to return `inner` to when this cursor is dropped.
     slot: Rc<RefCell<Option<TokenizerInner>>>,
-    _marker: PhantomData<N>,
+    _marker: PhantomData<G>,
 }
 
-impl<N: NodeFamily> Drop for TypedTokenCursor<'_, N> {
+impl<G: TypedGrammar> Drop for TypedTokenCursor<'_, G> {
     fn drop(&mut self) {
         if let Some(inner) = self.inner.take() {
             *self.slot.borrow_mut() = Some(inner);
@@ -261,8 +258,8 @@ impl<N: NodeFamily> Drop for TypedTokenCursor<'_, N> {
     }
 }
 
-impl<'a, N: NodeFamily> Iterator for TypedTokenCursor<'a, N> {
-    type Item = TypedToken<'a, N>;
+impl<'a, G: TypedGrammar> Iterator for TypedTokenCursor<'a, G> {
+    type Item = TypedToken<'a, G>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -278,7 +275,7 @@ impl<'a, N: NodeFamily> Iterator for TypedTokenCursor<'a, N> {
                 return None;
             }
 
-            if let Some(token_type) = N::Token::from_token_type(token.type_) {
+            if let Some(token_type) = G::Token::from_token_type(token.type_) {
                 // Compute offset into the source string from the C pointer.
                 let offset = token.text as usize - self.c_source_base.as_ptr() as usize;
                 let text = &self.source[offset..offset + token.length as usize];

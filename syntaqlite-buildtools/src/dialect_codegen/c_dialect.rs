@@ -192,20 +192,24 @@ pub(crate) fn generate_dialect_c(
     w.line("};");
     w.newline();
 
-    w.section("Default grammar handle");
-    w.newline();
-    w.line(&format!(
-        "static const SyntaqliteGrammar {upper}_GRAMMAR_DEFAULT ="
-    ));
-    w.line(&format!("    SYNQ_GRAMMAR_DEFAULT(&{upper}_GRAMMAR);"));
-    w.newline();
-
     w.section("Public API");
     w.newline();
     w.line(&format!(
         "SyntaqliteGrammar syntaqlite_{dialect}_grammar(void) {{"
     ));
-    w.line(&format!("  return {upper}_GRAMMAR_DEFAULT;"));
+    w.line(&format!(
+        "  SyntaqliteGrammar g = SYNQ_GRAMMAR_DEFAULT(&{upper}_GRAMMAR);"
+    ));
+    w.line("  return g;");
+    w.line("}");
+    w.newline();
+    w.line(&format!(
+        "SyntaqliteGrammar syntaqlite_{dialect}_grammar_with(int32_t sqlite_version, SyntaqliteCflags cflags) {{"
+    ));
+    w.line(&format!(
+        "  SyntaqliteGrammar g = {{&{upper}_GRAMMAR, sqlite_version, cflags}};"
+    ));
+    w.line("  return g;");
     w.line("}");
 
     w.finish()
@@ -235,6 +239,9 @@ pub(crate) fn generate_dialect_h(dialect: &str) -> String {
     w.newline();
     w.line(&format!(
         "SyntaqliteGrammar syntaqlite_{dialect}_grammar(void);"
+    ));
+    w.line(&format!(
+        "SyntaqliteGrammar syntaqlite_{dialect}_grammar_with(int32_t sqlite_version, SyntaqliteCflags cflags);"
     ));
     w.newline();
     w.line("#ifdef __cplusplus");

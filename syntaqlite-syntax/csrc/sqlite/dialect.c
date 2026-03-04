@@ -56,15 +56,15 @@ static const SyntaqliteGrammarTemplate SQLITE_GRAMMAR = {
     .token_type_count = TOKEN_TYPE_COUNT,
 };
 
-// ============ Default grammar handle ============
-
-
-static const SyntaqliteGrammar SQLITE_GRAMMAR_DEFAULT =
-    SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR);
-
 // ============ Public API ============
 
 
 SyntaqliteGrammar syntaqlite_sqlite_grammar(void) {
-  return SQLITE_GRAMMAR_DEFAULT;
+  SyntaqliteGrammar g = SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR);
+  return g;
+}
+
+SyntaqliteGrammar syntaqlite_sqlite_grammar_with(int32_t sqlite_version, SyntaqliteCflags cflags) {
+  SyntaqliteGrammar g = {&SQLITE_GRAMMAR, sqlite_version, cflags};
+  return g;
 }

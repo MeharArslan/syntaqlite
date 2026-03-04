@@ -27,54 +27,118 @@ fn emit_section(w: &mut RustWriter, section: &str) {
 /// internal `SQLite` dialect (as `sqlite/grammar.rs`).
 ///
 /// - `dialect_fn`: the `extern "C"` symbol name, e.g. `syntaqlite_sqlite_grammar`
-/// - `node_family`: the `NodeFamily` marker type, e.g. `SqliteNodeFamily`
-/// - `node_family_import`: module path to import it from, e.g. `super::ast` or `crate::ast`
-/// - `syntax_crate`: crate providing `Grammar` and `TypedGrammar`,
+/// - `grammar_struct`: the generated grammar struct name, e.g. `SqliteGrammar`
+/// - `root_node`: the root AST node type name, e.g. `Select`
+/// - `token_type`: the token enum type name, e.g. `SqliteTokenType`
+/// - `syntax_crate`: crate providing `RawGrammar` and `TypedGrammar`,
 ///   e.g. `crate` (internal) or `syntaqlite_syntax` (external)
 pub(crate) fn generate_grammar_module(
     dialect_fn: &str,
-    node_family: &str,
-    _node_family_import: &str,
+    grammar_struct: &str,
+    root_node: &str,
+    token_type: &str,
     syntax_crate: &str,
 ) -> String {
     let mut w = RustWriter::new();
     w.file_header();
-    emit_grammar_module(&mut w, dialect_fn, node_family, syntax_crate);
+    emit_grammar_module(
+        &mut w,
+        dialect_fn,
+        grammar_struct,
+        root_node,
+        token_type,
+        syntax_crate,
+    );
     w.finish()
 }
 
 fn emit_grammar_module(
     w: &mut RustWriter,
     dialect_fn: &str,
-    node_family: &str,
+    grammar_struct: &str,
+    root_node: &str,
+    token_type: &str,
     syntax_crate: &str,
 ) {
     w.lines(&format!(
         r#"
-use std::sync::LazyLock;
-
-use {syntax_crate}::grammar::{{TypedGrammar, RawGrammar}};
+use {syntax_crate}::grammar::{{RawGrammar, TypedGrammar}};
+use {syntax_crate}::version::SqliteVersion;
 
 unsafe extern "C" {{
-    fn {dialect_fn}() -> *const core::ffi::c_void;
+    fn {dialect_fn}() -> {syntax_crate}::grammar::ffi::CGrammar;
 }}
 
-// static GRAMMAR: LazyLock<Grammar> =
-//     LazyLock::new(|| unsafe {{ Grammar::from_raw({dialect_fn}()) }});
+/// The dialect grammar handle.
+///
+/// Wraps a [`RawGrammar`] and implements [`TypedGrammar`]. Obtain via [`grammar()`];
+/// configure with [`with_version`](Self::with_version) and [`with_cflags`](Self::with_cflags).
+#[derive(Clone, Copy)]
+pub struct {grammar_struct} {{
+    raw: RawGrammar,
+}}
 
-// /// Returns the grammar handle tagged with the dialect's node family.
-// pub fn typed_grammar() -> Grammar<{node_family}> {{
-//     TypedGrammar::new(*GRAMMAR)
-// }}
+impl {grammar_struct} {{
+    /// Return the underlying [`RawGrammar`] by value.
+    pub fn into_raw(self) -> RawGrammar {{
+        self.raw
+    }}
+
+    /// Set the target SQLite version.
+    pub fn with_version(mut self, version: SqliteVersion) -> Self {{
+        self.raw = self.raw.with_version(version);
+        self
+    }}
+
+    /// Set a compile-time flag by index.
+    pub fn with_cflag(mut self, idx: u32) -> Self {{
+        self.raw = self.raw.with_cflag(idx);
+        self
+    }}
+
+    /// Replace the entire cflags bitfield.
+    pub fn with_cflags(mut self, cflags: {syntax_crate}::cflags::Cflags) -> Self {{
+        self.raw = self.raw.with_cflags(cflags);
+        self
+    }}
+}}
+
+impl TypedGrammar for {grammar_struct} {{
+    type Node<'a> = super::ast::{root_node}<'a>;
+    type Token = super::tokens::{token_type};
+
+    fn raw(&mut self) -> &mut RawGrammar {{
+        &mut self.raw
+    }}
+}}
+
+/// Returns the dialect grammar handle.
+pub fn grammar() -> {grammar_struct} {{
+    // SAFETY: {dialect_fn}() returns a valid static C grammar.
+    let raw = unsafe {{ RawGrammar::new({dialect_fn}()) }};
+    {grammar_struct} {{ raw }}
+}}
 "#
     ));
 }
 
-pub(crate) fn generate_rust_lib(dialect_fn: &str, node_family: &str) -> String {
+pub(crate) fn generate_rust_lib(
+    dialect_fn: &str,
+    grammar_struct: &str,
+    root_node: &str,
+    token_type: &str,
+) -> String {
     let mut w = RustWriter::new();
     w.file_header();
     emit_section(&mut w, LIB_MODULE_DECLS);
-    emit_grammar_module(&mut w, dialect_fn, node_family, "syntaqlite_syntax");
+    emit_grammar_module(
+        &mut w,
+        dialect_fn,
+        grammar_struct,
+        root_node,
+        token_type,
+        "syntaqlite_syntax",
+    );
     w.newline();
     w.finish()
 }

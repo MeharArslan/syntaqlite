@@ -43,20 +43,6 @@ impl GrammarTokenType for u32 {
     }
 }
 
-// ── NodeFamily ────────────────────────────────────────────────────────────────
-
-/// Bundles the node and token types for a dialect into a single type parameter.
-///
-/// Implement this for a zero-sized marker type (e.g. `SqliteNodeFamily`) to
-/// allow the tagged [`Grammar<N>`](crate::Grammar) handle to infer both node
-/// and token types at construction time.
-pub(crate) trait NodeFamily {
-    /// The top-level typed AST node (e.g. `Stmt<'a>`).
-    type Node<'a>: GrammarNodeType<'a>;
-    /// The typed token enum (e.g. `TokenType`).
-    type Token: GrammarTokenType;
-}
-
 // ── NodeId ────────────────────────────────────────────────────────────────────
 
 /// A lifetime-free handle to a specific typed AST node.
@@ -199,14 +185,19 @@ impl<'a> GrammarNodeType<'a> for AnyNode {
     }
 }
 
-/// A type-erasing dialect marker for use with generic dialect types such as
-/// [`TypedTokenizer`](crate::tokenizer::TypedTokenizer) when no specific
-/// dialect is needed.
-pub(crate) struct AnyDialect;
+/// A type-erasing dialect for use with [`TypedTokenizer`](crate::tokenizer::TypedTokenizer)
+/// when no specific dialect is needed. Wraps a [`RawGrammar`] directly.
+#[derive(Clone, Copy)]
+pub(crate) struct AnyDialect {
+    pub(crate) raw: crate::grammar::RawGrammar,
+}
 
-impl NodeFamily for AnyDialect {
+impl crate::grammar::TypedGrammar for AnyDialect {
     type Node<'a> = AnyNode;
     type Token = u32;
+    fn raw(&mut self) -> &mut crate::grammar::RawGrammar {
+        &mut self.raw
+    }
 }
 
 // ── TypedList ─────────────────────────────────────────────────────────────────

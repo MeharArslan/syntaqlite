@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
+SyntaqliteGrammar syntaqlite_sqlite_grammar_with(int32_t sqlite_version, SyntaqliteCflags cflags);
 
 #ifdef __cplusplus
 }

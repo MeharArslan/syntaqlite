@@ -1,50 +1,21 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use std::marker::PhantomData;
-
-use crate::ast::NodeFamily;
 use crate::cflags::Cflags;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/// A grammar handle tagged with a [`NodeFamily`], carrying both the raw
-/// C grammar pointer and the knowledge of which node/token types it produces.
+/// A typed grammar handle for a specific dialect.
 ///
-/// Use this at construction boundaries (`Parser::new`, etc.) so the
-/// node type parameter `N` can be inferred automatically.
-///
-/// Call [`raw()`](Self::raw) to downgrade to an untyped [`RawGrammar`] for
-/// passing into untyped infrastructure.
-#[derive(Clone, Copy)]
-pub struct TypedGrammar<N: NodeFamily> {
-    inner: RawGrammar,
-    _marker: PhantomData<N>,
-}
-
-// SAFETY: same reasoning as Grammar — wraps immutable static C data.
-unsafe impl<N: NodeFamily> Send for TypedGrammar<N> {}
-unsafe impl<N: NodeFamily> Sync for TypedGrammar<N> {}
-
-impl<N: NodeFamily> TypedGrammar<N> {
-    /// Build a `Grammar` from a [`RawGrammar`] handle.
-    pub fn new(grammar: RawGrammar) -> Self {
-        TypedGrammar {
-            inner: grammar,
-            _marker: PhantomData,
-        }
-    }
-
-    /// Return the untagged [`RawGrammar`] handle.
-    pub fn raw(&self) -> RawGrammar {
-        self.inner
-    }
-}
-
-impl<N: NodeFamily> From<TypedGrammar<N>> for RawGrammar {
-    fn from(tg: TypedGrammar<N>) -> Self {
-        tg.inner
-    }
+/// Implement this for a dialect's grammar struct (e.g. `SqliteGrammar`).
+/// The struct carries a [`RawGrammar`] internally and exposes it via [`raw`](Self::raw).
+pub trait TypedGrammar: Copy {
+    /// The top-level typed AST node enum for this dialect.
+    type Node<'a>: crate::ast::GrammarNodeType<'a>;
+    /// The typed token enum for this dialect.
+    type Token: crate::ast::GrammarTokenType;
+    /// Access the underlying [`RawGrammar`] for FFI and configuration.
+    fn raw(&mut self) -> &mut RawGrammar;
 }
 
 // TODO(claude): add documentation.
@@ -58,11 +29,19 @@ unsafe impl Send for RawGrammar {}
 unsafe impl Sync for RawGrammar {}
 
 impl RawGrammar {
-    // TODO(claude): add a constructor.
+    /// Construct a `RawGrammar` from a raw C grammar value.
+    ///
+    /// # Safety
+    /// The `template` pointer inside `inner` must point to valid, `'static`
+    /// C grammar tables (e.g. returned by a dialect's `extern "C"` grammar
+    /// accessor such as `syntaqlite_sqlite_grammar()`).
+    pub unsafe fn new(inner: ffi::CGrammar) -> Self {
+        RawGrammar { inner }
+    }
 
     /// Set the target SQLite version.
-    pub fn with_version(mut self, version: i32) -> Self {
-        self.inner.sqlite_version = version;
+    pub fn with_version(mut self, version: crate::version::SqliteVersion) -> Self {
+        self.inner.sqlite_version = version.as_int();
         self
     }
 
