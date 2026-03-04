@@ -37,6 +37,12 @@ pub(crate) trait GrammarTokenType:
     fn from_token_type(raw: u32) -> Option<Self>;
 }
 
+impl GrammarTokenType for u32 {
+    fn from_token_type(raw: u32) -> Option<Self> {
+        Some(raw)
+    }
+}
+
 // ── NodeFamily ────────────────────────────────────────────────────────────────
 
 /// Bundles the node and token types for a dialect into a single type parameter.
@@ -75,22 +81,22 @@ pub(crate) trait NodeId: Copy + Into<RawNodeId> {
 /// [`children()`](Self::children), and [`dump()`](Self::dump) without threading
 /// three arguments everywhere.
 #[derive(Clone, Copy)]
-pub(crate) struct Node<'a> {
+pub(crate) struct RawNode<'a> {
     id: RawNodeId,
     result: ParseResult<'a>,
     grammar: RawGrammar,
 }
 
-impl std::fmt::Debug for Node<'_> {
+impl std::fmt::Debug for RawNode<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Node").field("id", &self.id).finish()
     }
 }
 
-impl<'a> Node<'a> {
-    /// Create a `Node` from its constituent parts.
+impl<'a> RawNode<'a> {
+    /// Create a `RawNode` from its constituent parts.
     pub(crate) fn new(id: RawNodeId, result: ParseResult<'a>, grammar: RawGrammar) -> Self {
-        Node {
+        RawNode {
             id,
             result,
             grammar,
@@ -136,11 +142,11 @@ impl<'a> Node<'a> {
     /// Child nodes: list children (for lists) or node-typed fields (for non-lists).
     ///
     /// Null child IDs are omitted.
-    pub(crate) fn children(&self) -> Vec<Node<'a>> {
+    pub(crate) fn children(&self) -> Vec<RawNode<'a>> {
         self.result
             .child_node_ids(self.id, &self.grammar)
             .into_iter()
-            .map(|child_id| Node {
+            .map(|child_id| RawNode {
                 id: child_id,
                 result: self.result,
                 grammar: self.grammar,
@@ -180,6 +186,27 @@ impl<'a> Node<'a> {
     pub(crate) fn source(&self) -> &'a str {
         self.result.source()
     }
+}
+
+// ── AnyDialect ────────────────────────────────────────────────────────────────
+
+/// An uninhabited node type used by [`AnyDialect`]. Never constructed.
+pub(crate) enum AnyNode {}
+
+impl<'a> GrammarNodeType<'a> for AnyNode {
+    fn from_arena(_reader: ParseResult<'a>, _id: RawNodeId) -> Option<Self> {
+        None
+    }
+}
+
+/// A type-erasing dialect marker for use with generic dialect types such as
+/// [`TypedTokenizer`](crate::tokenizer::TypedTokenizer) when no specific
+/// dialect is needed.
+pub(crate) struct AnyDialect;
+
+impl NodeFamily for AnyDialect {
+    type Node<'a> = AnyNode;
+    type Token = u32;
 }
 
 // ── TypedList ─────────────────────────────────────────────────────────────────

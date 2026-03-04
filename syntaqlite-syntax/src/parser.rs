@@ -8,7 +8,7 @@ use std::rc::Rc;
 
 use crate::ast::{
     ArenaNode, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldVal, Fields,
-    GrammarNodeType, Node, NodeList, RawNodeId, SourceSpan,
+    GrammarNodeType, NodeList, RawNode, RawNodeId, SourceSpan,
 };
 use crate::grammar::RawGrammar;
 
@@ -170,7 +170,7 @@ impl StatementCursor {
     /// - `Some(Err(e))` — syntax error; call again to continue with subsequent
     ///   statements (Lemon recovers on `;`).
     /// - `None` — all input has been consumed.
-    pub(crate) fn next_statement(&mut self) -> Option<Result<Node<'_>, ParseError>> {
+    pub(crate) fn next_statement(&mut self) -> Option<Result<RawNode<'_>, ParseError>> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         // When error is set, error_msg is a NUL-terminated string in the
         // parser's buffer (valid for parser lifetime).
@@ -214,7 +214,7 @@ impl StatementCursor {
         if has_root {
             self.last_saw_subquery = result.saw_subquery != 0;
             self.last_saw_update_delete_limit = result.saw_update_delete_limit != 0;
-            return Some(Ok(Node::new(id, self.reader(), self.grammar)));
+            return Some(Ok(RawNode::new(id, self.reader(), self.grammar)));
         }
 
         None
@@ -263,10 +263,10 @@ impl StatementCursor {
         unsafe { ffi_slice(self.raw_ptr(), ffi::syntaqlite_parser_comments) }
     }
 
-    /// Wrap a `RawNodeId` (e.g. from a `ParseError::root`) into a [`Node`]
+    /// Wrap a `RawNodeId` (e.g. from a `ParseError::root`) into a [`RawNode`]
     /// using this cursor's reader and grammar.
-    pub(crate) fn node_ref(&self, id: RawNodeId) -> Node<'_> {
-        Node::new(id, self.reader(), self.grammar)
+    pub(crate) fn node_ref(&self, id: RawNodeId) -> RawNode<'_> {
+        RawNode::new(id, self.reader(), self.grammar)
     }
 
     /// The raw C parser pointer from the checked-out inner state.

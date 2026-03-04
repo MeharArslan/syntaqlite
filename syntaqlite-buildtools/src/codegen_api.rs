@@ -83,6 +83,12 @@ impl DialectNaming {
         format!("{}NodeFamily", util::pascal_case(&self.name))
     }
 
+    /// Rust token enum type name (e.g. `"SqliteTokenType"`).
+    #[must_use]
+    pub fn token_type_name(&self) -> String {
+        format!("{}TokenType", util::pascal_case(&self.name))
+    }
+
     /// Lemon parser symbol prefix (e.g. `"SynqSqliteParse"`).
     #[must_use]
     pub fn parser_symbol_prefix(&self) -> String {
@@ -492,11 +498,11 @@ pub fn generate_codegen_artifacts(
             crate_prefix: "crate",
             // ffi_path: dialect-specific FFI structs live in the sibling ffi module.
             ffi_path: "super::ffi",
-            nodes_path: "crate",
+            nodes_path: "crate::ast",
             grammar_fn_path: "super::grammar::typed_grammar",
         };
         Some(RustCodegenArtifacts {
-            tokens_rs: generate_rust_tokens(&token_defines[..]),
+            tokens_rs: generate_rust_tokens(&token_defines[..], &request.dialect.token_type_name()),
             ffi_rs: ast_model.generate_rust_ffi_nodes(&rust_paths),
             ast_rs: ast_model.generate_rust_ast(
                 &rust_paths,

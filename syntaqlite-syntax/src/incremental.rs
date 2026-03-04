@@ -7,7 +7,7 @@ use std::ops::Range;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::ast::{Node, RawNodeId};
+use crate::ast::{RawNode, RawNodeId};
 use crate::grammar::RawGrammar;
 use crate::parser::{
     CParseResult, CParser, Comment, ParseError, ParseResult, ParserInner, TokenPos, ffi_slice,
@@ -275,9 +275,9 @@ impl IncrementalCursor {
         unsafe { ParseResult::new(inner.raw.as_ptr(), source) }
     }
 
-    /// Wrap a [`RawNodeId`] as a [`Node`] using this cursor's reader and grammar.
-    pub(crate) fn node_ref(&self, id: RawNodeId) -> Node<'_> {
-        Node::new(id, self.reader(), self.grammar)
+    /// Wrap a [`RawNodeId`] as a [`RawNode`] using this cursor's reader and grammar.
+    pub(crate) fn node_ref(&self, id: RawNodeId) -> RawNode<'_> {
+        RawNode::new(id, self.reader(), self.grammar)
     }
 
     /// Return all comments captured during parsing.

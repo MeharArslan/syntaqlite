@@ -53,7 +53,7 @@ fn emit_grammar_module(
         r#"
 use std::sync::LazyLock;
 
-use {syntax_crate}::grammar::{{Grammar, RawGrammar}};
+use {syntax_crate}::grammar::{{TypedGrammar, RawGrammar}};
 
 unsafe extern "C" {{
     fn {dialect_fn}() -> *const core::ffi::c_void;

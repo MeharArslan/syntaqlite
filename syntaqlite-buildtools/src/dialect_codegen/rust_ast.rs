@@ -18,7 +18,7 @@ fn rust_ffi_field_type(
     flags_names: &HashSet<&str>,
 ) -> String {
     match field.storage {
-        Storage::Index => "NodeId".into(),
+        Storage::Index => "RawNodeId".into(),
         Storage::Inline => {
             let t = &field.type_name;
             if t == "Bool" {
@@ -382,14 +382,14 @@ fn emit_rust_node_tag_accessor(
 }
 
 /// Generate Rust source for token type enum.
-pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
+pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)], type_name: &str) -> String {
     let mut w = RustWriter::new();
     w.file_header();
 
     // TokenType enum
     w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]");
     w.line("#[repr(u32)]");
-    w.open_block("pub enum TokenType {");
+    w.open_block(&format!("pub enum {type_name} {{"));
     for (name, value) in tokens {
         let variant = pascal_case(name);
         w.line(&format!("{variant} = {value},"));
@@ -398,12 +398,14 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     w.newline();
 
     // from_raw conversion
-    w.open_block("impl TokenType {");
-    w.open_block("pub fn from_raw(raw: u32) -> Option<TokenType> {");
+    w.open_block(&format!("impl {type_name} {{"));
+    w.open_block(&format!(
+        "pub fn from_raw(raw: u32) -> Option<{type_name}> {{"
+    ));
     w.open_block("match raw {");
     for (name, value) in tokens {
         let variant = pascal_case(name);
-        w.line(&format!("{value} => Some(TokenType::{variant}),"));
+        w.line(&format!("{value} => Some({type_name}::{variant}),"));
     }
     w.line("_ => None,");
     w.close_block("}");
@@ -411,14 +413,16 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)]) -> String {
     w.close_block("}");
     w.newline();
 
-    w.open_block("impl From<TokenType> for u32 {");
-    w.open_block("fn from(t: TokenType) -> u32 {");
+    w.open_block(&format!("impl From<{type_name}> for u32 {{"));
+    w.open_block(&format!("fn from(t: {type_name}) -> u32 {{"));
     w.line("t as u32");
     w.close_block("}");
     w.close_block("}");
     w.newline();
 
-    w.open_block("impl crate::GrammarTokenType for TokenType {");
+    w.open_block(&format!(
+        "impl crate::ast::GrammarTokenType for {type_name} {{"
+    ));
     w.open_block("fn from_token_type(raw: u32) -> Option<Self> {");
     w.line("Self::from_raw(raw)");
     w.close_block("}");
@@ -458,7 +462,7 @@ impl AstModel<'_> {
         w.file_header();
         w.lines(&format!(
             "
-        use {nodes_path}::{{ArenaNode, NodeId, SourceSpan}};
+        use {nodes_path}::{{ArenaNode, RawNodeId, SourceSpan}};
     ",
         ));
         w.newline();
@@ -530,7 +534,7 @@ impl AstModel<'_> {
         }
         w.lines(&format!(
             "
-        use {crate_prefix}::ast::{{NodeId, RawNodeId, NodeFamily, GrammarNodeType, TypedList}};
+        use {crate_prefix}::ast::{{NodeId, RawNodeId, RawNode, NodeFamily, GrammarNodeType, TypedList}};
         "
         ));
         w.newline();
@@ -680,7 +684,7 @@ impl AstModel<'_> {
             w.indent();
             w.line("let mut buf = String::new();");
             w.line(&format!(
-                "Node::new(self.id, self.reader, {dialect_fn_path}()).dump(&mut buf, 0);"
+                "RawNode::new(self.id, self.reader, {dialect_fn_path}()).dump(&mut buf, 0);"
             ));
             w.line("f.write_str(&buf)");
             w.dedent();
@@ -1035,7 +1039,7 @@ impl AstModel<'_> {
         w.newline();
         w.open_block(&format!("impl NodeFamily for {pascal}NodeFamily {{"));
         w.line(&format!("type Node<'a> = {root_node}<'a>;"));
-        w.line("type Token = super::tokens::TokenType;");
+        w.line(&format!("type Token = super::tokens::{pascal}TokenType;"));
         w.close_block("}");
         w.newline();
 

@@ -8,9 +8,11 @@
 // ==== Public API ====
 
 pub use grammar::{RawGrammar, TypedGrammar};
-pub use tokenizer::{RawToken, RawTokenizer, TokenCursor, TypedToken, TypedTokenCursor, TypedTokenizer};
+pub use tokenizer::{
+    RawToken, RawTokenCursor, RawTokenizer, TypedToken, TypedTokenCursor, TypedTokenizer,
+};
 #[cfg(feature = "sqlite")]
-pub use tokenizer::Tokenizer;
+pub use tokenizer::{Token, TokenCursor, Tokenizer};
 
 // ==== Internal modules ====
 
