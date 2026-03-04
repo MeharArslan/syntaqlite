@@ -65,14 +65,14 @@ fn rust_view_accessor_body(field: &Field, ffi_path: &str) -> String {
     let fname = rust_field_name(&field.name);
     match field.storage {
         Storage::Index => {
-            format!("GrammarNodeType::from_arena(self.reader, self.raw.{fname})")
+            format!("GrammarNodeType::from_arena(self.stmt_result, self.raw.{fname})")
         }
         Storage::Inline => {
             let t = &field.type_name;
             if t == "Bool" {
                 format!("self.raw.{fname} == {ffi_path}::Bool::True")
             } else if t == "SyntaqliteSourceSpan" {
-                format!("self.raw.{fname}.as_str(self.reader.source())")
+                format!("self.raw.{fname}.as_str(self.stmt_result.source())")
             } else {
                 format!("self.raw.{fname}")
             }
@@ -385,6 +385,9 @@ fn emit_rust_node_tag_accessor(
 pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)], type_name: &str) -> String {
     let mut w = RustWriter::new();
     w.file_header();
+    // Token names come from SQLite's C grammar (all-uppercase); allow the lint.
+    w.line("#![allow(clippy::upper_case_acronyms)]");
+    w.newline();
 
     // TokenType enum
     w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]");
@@ -529,6 +532,10 @@ impl AstModel<'_> {
 
         let mut w = RustWriter::new();
         w.file_header();
+        w.line(
+            "#![allow(missing_docs, clippy::upper_case_acronyms, clippy::elidable_lifetime_names)]",
+        );
+        w.newline();
         if !open_for_extension {
             w.line("use std::marker::PhantomData;");
         }
@@ -608,10 +615,10 @@ impl AstModel<'_> {
             ));
             w.indent();
             w.line(
-                "fn from_arena(reader: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {",
+                "fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {",
             );
             w.indent();
-            w.line("let node = Node::resolve(reader, id)?;");
+            w.line("let node = Node::resolve(stmt_result, id)?;");
             w.line("Some(match node {");
             w.indent();
             for member in members {
@@ -662,7 +669,7 @@ impl AstModel<'_> {
             w.line(&format!("pub struct {name}<'a> {{"));
             w.indent();
             w.line(&format!("raw: &'a {ffi_path}::{name},"));
-            w.line("reader: AnyStatementResult<'a>,");
+            w.line("stmt_result: AnyStatementResult<'a>,");
             w.line("id: AnyNodeId,");
             w.dedent();
             w.line("}");
@@ -687,7 +694,7 @@ impl AstModel<'_> {
             w.indent();
             w.line("let mut buf = String::new();");
             w.line(&format!(
-                "AnyNode {{ id: self.id, reader: self.reader }}.dump(&mut buf, 0);"
+                "AnyNode {{ id: self.id, stmt_result: self.stmt_result }}.dump(&mut buf, 0);"
             ));
             w.line("f.write_str(&buf)");
             w.dedent();
@@ -720,13 +727,13 @@ impl AstModel<'_> {
             w.line(&format!("impl<'a> GrammarNodeType<'a> for {name}<'a> {{"));
             w.indent();
             w.line(
-                "fn from_arena(reader: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {",
+                "fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {",
             );
             w.indent();
             w.line(&format!(
-                "let raw = reader.resolve_as::<{ffi_path}::{name}>(id)?;"
+                "let raw = stmt_result.resolve_as::<{ffi_path}::{name}>(id)?;"
             ));
-            w.line(&format!("Some({name} {{ raw, reader, id }})"));
+            w.line(&format!("Some({name} {{ raw, stmt_result, id }})"));
             w.dedent();
             w.line("}");
             w.dedent();
@@ -800,7 +807,7 @@ impl AstModel<'_> {
                     w.line(&format!("{}({}<'a>),", node.name, node.name));
                 }
                 NodeLikeRef::List(list) => {
-                    w.doc_comment(&format!("List of {}", list.child_type));
+                    w.doc_comment(&format!("List of [`{}`].", list.child_type));
                     w.line(&format!("{}({}<'a>),", list.name, list.name));
                 }
             }
@@ -825,7 +832,8 @@ impl AstModel<'_> {
         w.doc_comment("# Safety");
         w.doc_comment("`ptr` must be non-null, well-aligned, and valid for `'a`.");
         w.doc_comment("Its first `u32` must be a valid `NodeTag` discriminant.");
-        w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, reader: AnyStatementResult<'a>, id: AnyNodeId) -> Node<'a> {");
+        w.line("#[allow(clippy::too_many_lines, clippy::match_wildcard_for_single_variants)]");
+        w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Node<'a> {");
         w.indent();
         w.line("// SAFETY: caller guarantees ptr is valid for 'a with a valid tag.");
         w.line("unsafe {");
@@ -836,11 +844,11 @@ impl AstModel<'_> {
             match item {
                 NodeLikeRef::Node(node) => {
                     let name = node.name;
-                    w.line(&format!("NodeTag::{name} => Node::{name}({name} {{ raw: &*(ptr as *const {ffi_path}::{name}), reader, id }}),"));
+                    w.line(&format!("NodeTag::{name} => Node::{name}({name} {{ raw: &*ptr.cast::<{ffi_path}::{name}>(), stmt_result, id }}),"));
                 }
                 NodeLikeRef::List(list) => {
                     let name = list.name;
-                    w.line(&format!("NodeTag::{name} => Node::{name}(TypedList::from_arena(reader, id).expect(\"list tag invariant\")),"));
+                    w.line(&format!("NodeTag::{name} => Node::{name}(TypedList::from_arena(stmt_result, id).expect(\"list tag invariant\")),"));
                 }
             }
         }
@@ -860,9 +868,12 @@ impl AstModel<'_> {
         w.doc_comment("Resolve a `NodeId` into a typed `Node`, or `None` if null/invalid.");
         w.lines(
             "
-        pub(crate) fn resolve(reader: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Node<'a>> {
-            let (ptr, _tag) = reader.node_ptr(id)?;
-            Some(unsafe { Node::from_raw(ptr as *const u32, reader, id) })
+        #[allow(clippy::cast_ptr_alignment)]
+        pub(crate) fn resolve(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Node<'a>> {
+            let (ptr, _tag) = stmt_result.node_ptr(id)?;
+            // SAFETY: node_ptr returns a valid arena pointer aligned to u32;
+            // ptr is valid for 'a and its first u32 is a valid NodeTag.
+            Some(unsafe { Node::from_raw(ptr.cast::<u32>(), stmt_result, id) })
         }
     ",
         );
@@ -872,6 +883,7 @@ impl AstModel<'_> {
         emit_rust_node_tag_accessor(&mut w, self.node_like_items(), open_for_extension);
 
         // node_id() on Node<'a>
+        w.line("#[allow(clippy::match_same_arms)]");
         w.doc_comment("The arena node ID of this node.");
         w.open_block("pub fn node_id(&self) -> AnyNodeId {");
         w.open_block("match self {");
@@ -902,8 +914,8 @@ impl AstModel<'_> {
         w.lines(
             "
         impl<'a> GrammarNodeType<'a> for Node<'a> {
-            fn from_arena(reader: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
-                Node::resolve(reader, id)
+            fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+                Node::resolve(stmt_result, id)
             }
         }
     ",
@@ -966,6 +978,7 @@ impl AstModel<'_> {
             "impl<'a> {traits_path}::NodeLike<'a> for Node<'a> {{"
         ));
         w.line(&format!("type Ast = {marker};"));
+        w.line("#[allow(clippy::match_same_arms)]");
         w.open_block("fn node_id(&self) -> AnyNodeId {");
         w.open_block("match self {");
         for item in self.node_like_items() {
@@ -1158,7 +1171,7 @@ impl AstModel<'_> {
 
         w.lines(
             "
-        #![allow(clippy::type_complexity)]
+        #![allow(clippy::type_complexity, missing_docs)]
 
         use crate::ast::{GrammarNodeType, AnyNodeId, TypedList};
     ",

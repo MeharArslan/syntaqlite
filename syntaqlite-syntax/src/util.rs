@@ -3,13 +3,14 @@
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/// A supported SQLite major.minor version.
+/// A supported `SQLite` major.minor version.
 ///
-/// Used to constrain a grammar to a specific SQLite release, enabling
+/// Used to constrain a grammar to a specific `SQLite` release, enabling
 /// dead-code elimination of grammar rules introduced in later versions.
 ///
 /// Patch versions are ignored — `"3.35.5"` and `"3.35.0"` both map to
 /// [`V3_35`](SqliteVersion::V3_35).
+#[allow(missing_docs)]
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SqliteVersion {
@@ -119,7 +120,7 @@ impl SqliteVersion {
 // ── Crate-internal ───────────────────────────────────────────────────────────
 
 impl SqliteVersion {
-    /// Convert to SQLite's `SQLITE_VERSION_NUMBER` integer format.
+    /// Convert to `SQLite`'s `SQLITE_VERSION_NUMBER` integer format.
     ///
     /// Uses the formula `major * 1_000_000 + minor * 1_000`, matching the
     /// `SQLITE_VERSION_NUMBER` C macro (e.g. `V3_35` → `3035000`).

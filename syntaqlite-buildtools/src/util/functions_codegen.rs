@@ -119,7 +119,10 @@ fn cflag_index(name: &str) -> Option<u32> {
 /// # Errors
 ///
 /// Returns an error if reading, parsing, or writing fails.
-pub(crate) fn write_functions_catalog_file(json_path: &str, output_path: &str) -> Result<(), String> {
+pub(crate) fn write_functions_catalog_file(
+    json_path: &str,
+    output_path: &str,
+) -> Result<(), String> {
     use std::fs;
     use std::path::Path;
 

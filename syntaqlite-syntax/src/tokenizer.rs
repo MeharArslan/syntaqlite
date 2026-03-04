@@ -13,11 +13,11 @@ use crate::grammar::{AnyGrammar, TypedGrammar};
 #[cfg(feature = "sqlite")]
 use crate::sqlite::grammar::SqliteGrammar;
 #[cfg(feature = "sqlite")]
-use crate::sqlite::tokens::SqliteTokenType;
+use crate::sqlite::tokens::TokenType;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/// A tokenizer for the SQLite dialect.
+/// A tokenizer for the `SQLite` dialect.
 ///
 /// Yields [`TypedToken`]s with SQLite-specific token types. For other dialects
 /// use [`TypedTokenizer`] directly; for dialect-agnostic use with raw `u32`
@@ -27,12 +27,12 @@ pub struct Tokenizer(TypedTokenizer<SqliteGrammar>);
 
 #[cfg(feature = "sqlite")]
 impl Tokenizer {
-    /// Create a tokenizer for the SQLite dialect.
+    /// Create a tokenizer for the `SQLite` dialect.
     pub fn new() -> Self {
         Tokenizer(TypedTokenizer::new(crate::sqlite::grammar::grammar()))
     }
 
-    /// Bind source text and return an iterator over SQLite tokens.
+    /// Bind source text and return an iterator over `SQLite` tokens.
     ///
     /// # Panics
     ///
@@ -59,7 +59,7 @@ impl Default for Tokenizer {
     }
 }
 
-/// An active cursor over SQLite tokens. Produced by [`Tokenizer::tokenize`].
+/// An active cursor over `SQLite` tokens. Produced by [`Tokenizer::tokenize`].
 ///
 /// Iterates [`Token`]s with SQLite-specific token types.
 #[cfg(feature = "sqlite")]
@@ -74,14 +74,14 @@ impl<'a> Iterator for TokenCursor<'a> {
     }
 }
 
-/// A SQLite token: token type + source text slice. Produced by [`TokenCursor`].
+/// A `SQLite` token: token type + source text slice. Produced by [`TokenCursor`].
 #[cfg(feature = "sqlite")]
 pub struct Token<'a>(TypedToken<'a, SqliteGrammar>);
 
 #[cfg(feature = "sqlite")]
 impl<'a> Token<'a> {
-    /// The SQLite token type.
-    pub fn token_type(&self) -> SqliteTokenType {
+    /// The `SQLite` token type.
+    pub fn token_type(&self) -> TokenType {
         self.0.token_type
     }
 
@@ -95,7 +95,7 @@ impl<'a> Token<'a> {
 ///
 /// Yields [`TypedToken<'_, N>`] with `N::Token` instead of a raw `u32`.
 ///
-/// For the common SQLite case use [`Tokenizer`]. For dialect-agnostic use with
+/// For the common `SQLite` case use [`Tokenizer`]. For dialect-agnostic use with
 /// raw `u32` ordinals use [`AnyTokenizer`].
 ///
 /// Uses an interior-mutability checkout pattern: `tokenize()` checks out the
@@ -108,13 +108,16 @@ pub struct TypedTokenizer<G: TypedGrammar> {
 
 impl<G: TypedGrammar> TypedTokenizer<G> {
     /// Create a tokenizer bound to the given dialect grammar.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the underlying C tokenizer allocation fails (OOM).
     pub fn new(mut grammar: G) -> Self {
         // SAFETY: create(NULL, grammar.inner) allocates a new tokenizer with
         // default malloc/free. The C side copies the grammar.
-        let raw = NonNull::new(unsafe {
-            ffi::CTokenizer::create(std::ptr::null(), grammar.raw().inner)
-        })
-        .expect("tokenizer allocation failed");
+        let raw =
+            NonNull::new(unsafe { ffi::CTokenizer::create(std::ptr::null(), grammar.raw().inner) })
+                .expect("tokenizer allocation failed");
 
         TypedTokenizer {
             inner: Rc::new(RefCell::new(Some(TokenizerInner {
@@ -154,10 +157,13 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
         // is null-terminated. source_buf lives inside inner which will be owned
         // by the cursor.
         unsafe {
-            inner
-                .raw
-                .as_mut()
-                .reset(c_source_ptr.as_ptr() as *const _, source.len() as u32);
+            inner.raw.as_mut().reset(
+                c_source_ptr.as_ptr() as *const _,
+                #[allow(clippy::cast_possible_truncation)]
+                {
+                    source.len() as u32
+                },
+            );
         }
         TypedTokenCursor {
             raw: inner.raw,
@@ -190,7 +196,15 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
         let source_str = std::str::from_utf8(bytes).expect("source must be valid UTF-8");
 
         // SAFETY: inner.raw is valid; source is a CStr (null-terminated, valid for 'a).
-        unsafe { inner.raw.as_mut().reset(source.as_ptr(), bytes.len() as u32) };
+        unsafe {
+            inner.raw.as_mut().reset(
+                source.as_ptr(),
+                #[allow(clippy::cast_possible_truncation)]
+                {
+                    bytes.len() as u32
+                },
+            );
+        };
         TypedTokenCursor {
             raw: inner.raw,
             source: source_str,
@@ -258,7 +272,7 @@ impl<'a, G: TypedGrammar> Iterator for TypedTokenCursor<'a, G> {
             };
             // SAFETY: self.raw is valid (owned by TokenizerInner in self.inner);
             // &mut token is a valid output parameter.
-            let rc = unsafe { self.raw.as_mut().next(&mut token) };
+            let rc = unsafe { self.raw.as_mut().next(&raw mut token) };
             if rc == 0 {
                 return None;
             }
@@ -316,18 +330,26 @@ mod ffi {
             mem: *const std::ffi::c_void,
             grammar: crate::grammar::ffi::CGrammar,
         ) -> *mut Self {
+            // SAFETY: caller guarantees `mem` is null or a valid mem-methods
+            // pointer; `grammar` is a valid grammar descriptor.
             unsafe { syntaqlite_tokenizer_create(mem, grammar) }
         }
 
         pub(crate) unsafe fn reset(&mut self, source: *const c_char, len: u32) {
+            // SAFETY: caller guarantees `self` is valid and `source` points to
+            // at least `len` bytes of valid, null-terminated C string data.
             unsafe { syntaqlite_tokenizer_reset(self, source, len) }
         }
 
         pub(crate) unsafe fn next(&mut self, out: *mut CToken) -> c_int {
+            // SAFETY: caller guarantees `self` is valid after a `reset` call
+            // and `out` is a valid writable pointer to a `CToken`.
             unsafe { syntaqlite_tokenizer_next(self, out) }
         }
 
         pub(crate) unsafe fn destroy(this: *mut Self) {
+            // SAFETY: caller guarantees `this` was allocated by `create` and
+            // has not been freed yet (called exactly once from `Drop`).
             unsafe { syntaqlite_tokenizer_destroy(this) }
         }
     }

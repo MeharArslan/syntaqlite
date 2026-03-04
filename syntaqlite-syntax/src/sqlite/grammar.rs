@@ -46,7 +46,7 @@ impl SqliteGrammar {
 
 impl TypedGrammar for SqliteGrammar {
     type Node<'a> = super::ast::Stmt<'a>;
-    type Token = super::tokens::SqliteTokenType;
+    type Token = super::tokens::TokenType;
 
     fn raw(&mut self) -> &mut AnyGrammar {
         &mut self.raw

@@ -267,4 +267,3 @@ fn codegen_to_dir_with_base(
             &|path, content| write_file(path, content),
         )
 }
-

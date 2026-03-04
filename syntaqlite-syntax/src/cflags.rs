@@ -5,12 +5,12 @@
 
 /// Metadata for a single compile-time flag.
 #[derive(Debug, Clone)]
-pub struct CflagInfo {
+pub(crate) struct CflagInfo {
     /// The suffix shared across C and Rust (e.g. `"SQLITE_OMIT_WINDOWFUNC"`).
     pub suffix: String,
     /// Bit index in [`Cflags`] (matches `SYNQ_CFLAG_IDX_*` constants).
     pub index: u32,
-    /// Minimum SQLite version (encoded integer) at which this cflag has any
+    /// Minimum `SQLite` version (encoded integer) at which this cflag has any
     /// observable effect on keyword recognition. Zero means baseline (all versions).
     pub min_version: i32,
     /// Feature-area category for UI grouping:

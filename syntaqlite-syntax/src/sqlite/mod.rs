@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 //! TODO(claude): write documentation.
+pub use ast::*;
 
 pub(crate) mod ast;
 pub(crate) mod cflags;

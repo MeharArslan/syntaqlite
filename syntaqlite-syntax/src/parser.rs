@@ -24,7 +24,7 @@ pub struct ParserConfig {
     pub collect_tokens: bool,
 }
 
-/// A parser for the SQLite dialect. Yields [`ParseSession`]s with
+/// A parser for the `SQLite` dialect. Yields [`ParseSession`]s with
 /// SQLite-specific node types. For other dialects use [`TypedParser`] directly;
 /// for dialect-agnostic use with raw grammars use [`AnyParser`].
 ///
@@ -36,12 +36,12 @@ pub struct Parser(TypedParser<crate::sqlite::grammar::SqliteGrammar>);
 
 #[cfg(feature = "sqlite")]
 impl Parser {
-    /// Create a parser for the SQLite dialect with default configuration.
+    /// Create a parser for the `SQLite` dialect with default configuration.
     pub fn new() -> Self {
         Parser(TypedParser::new(crate::sqlite::grammar::grammar()))
     }
 
-    /// Create a parser for the SQLite dialect with custom configuration.
+    /// Create a parser for the `SQLite` dialect with custom configuration.
     pub fn with_config(config: &ParserConfig) -> Self {
         Parser(TypedParser::with_config(
             crate::sqlite::grammar::grammar(),
@@ -60,15 +60,15 @@ impl Parser {
     }
 
     /// Bind source text and return an
-    /// [`IncrementalCursor`](crate::incremental::IncrementalCursor) for
-    /// token-by-token feeding.
+    /// [`IncrementalParseSession`](crate::incremental::IncrementalParseSession)
+    /// for token-by-token feeding.
     ///
     /// # Panics
     ///
     /// Panics if a session from a previous `parse()` or `incremental_parse()`
     /// call is still alive.
-    pub fn incremental_parse(&self, source: &str) -> crate::incremental::IncrementalCursor {
-        self.0.incremental_parse(source)
+    pub fn incremental_parse(&self, source: &str) -> crate::incremental::IncrementalParseSession {
+        self.0.incremental_parse(source).into()
     }
 }
 
@@ -79,7 +79,7 @@ impl Default for Parser {
     }
 }
 
-/// An active session over parsed SQLite statements. Produced by [`Parser::parse`].
+/// An active session over parsed `SQLite` statements. Produced by [`Parser::parse`].
 ///
 /// On a parse error the session returns `Some(Err(_))` for the failing
 /// statement, then continues parsing subsequent statements (Lemon's built-in
@@ -120,8 +120,8 @@ impl ParseSession {
         self.0.grammar()
     }
 
-    pub(crate) fn reader(&self) -> AnyStatementResult<'_> {
-        self.0.reader()
+    pub(crate) fn stmt_result(&self) -> AnyStatementResult<'_> {
+        self.0.stmt_result()
     }
 
     pub(crate) fn node_ref(&self, id: AnyNodeId) -> AnyNode<'_> {
@@ -131,14 +131,14 @@ impl ParseSession {
 
 /// A type-safe parser scoped to a specific dialect `G`.
 ///
-/// Yields [`TypedParseSession<G>`]s. For the common SQLite case use
+/// Yields [`TypedParseSession<G>`]s. For the common `SQLite` case use
 /// [`Parser`]. For dialect-agnostic use with raw grammars use [`AnyParser`].
 ///
 /// Uses an interior-mutability checkout pattern: `parse()` and
 /// `incremental_parse()` check out the C parser state at runtime, and the
 /// returned session returns it on drop. This allows both methods to take
 /// `&self` rather than `&mut self`.
-pub struct TypedParser<G: TypedGrammar> {
+pub(crate) struct TypedParser<G: TypedGrammar> {
     inner: Rc<RefCell<Option<ParserInner>>>,
     grammar: AnyGrammar,
     _marker: PhantomData<G>,
@@ -146,24 +146,23 @@ pub struct TypedParser<G: TypedGrammar> {
 
 impl<G: TypedGrammar> TypedParser<G> {
     /// Create a parser bound to the given dialect grammar with default configuration.
-    pub fn new(grammar: G) -> Self {
+    pub(crate) fn new(grammar: G) -> Self {
         Self::with_config(grammar, &ParserConfig::default())
     }
 
     /// Create a parser bound to the given dialect grammar with custom configuration.
-    pub fn with_config(mut grammar: G, config: &ParserConfig) -> Self {
+    pub(crate) fn with_config(mut grammar: G, config: &ParserConfig) -> Self {
         let grammar_raw = *grammar.raw();
-        // SAFETY: syntaqlite_create_parser_with_grammar(NULL, grammar_raw.inner) allocates
-        // a new parser with default malloc/free. The C side copies the grammar.
-        let raw = NonNull::new(unsafe {
-            ffi::syntaqlite_create_parser_with_grammar(std::ptr::null(), grammar_raw.inner)
-        })
-        .expect("parser allocation failed");
+        // SAFETY: create(NULL, grammar_raw.inner) allocates a new parser with
+        // default malloc/free. The C side copies the grammar.
+        let mut raw = NonNull::new(unsafe { CParser::create(std::ptr::null(), grammar_raw.inner) })
+            .expect("parser allocation failed");
 
         // SAFETY: raw is freshly created (not sealed), so these calls always return 0.
         unsafe {
-            ffi::syntaqlite_parser_set_trace(raw.as_ptr(), config.trace as c_int);
-            ffi::syntaqlite_parser_set_collect_tokens(raw.as_ptr(), config.collect_tokens as c_int);
+            raw.as_mut().set_trace(c_int::from(config.trace));
+            raw.as_mut()
+                .set_collect_tokens(c_int::from(config.collect_tokens));
         }
 
         TypedParser {
@@ -182,7 +181,7 @@ impl<G: TypedGrammar> TypedParser<G> {
     ///
     /// Panics if a session from a previous `parse()` or `incremental_parse()`
     /// call is still alive.
-    pub fn parse(&self, source: &str) -> TypedParseSession<G> {
+    pub(crate) fn parse(&self, source: &str) -> TypedParseSession<G> {
         let mut inner = self
             .inner
             .borrow_mut()
@@ -199,14 +198,18 @@ impl<G: TypedGrammar> TypedParser<G> {
         }
     }
 
-    /// Bind source text and return an [`IncrementalCursor`](crate::incremental::IncrementalCursor)
+    /// Bind source text and return a
+    /// [`TypedIncrementalParseSession`](crate::incremental::TypedIncrementalParseSession)
     /// for token-by-token feeding.
     ///
     /// # Panics
     ///
     /// Panics if a session from a previous `parse()` or `incremental_parse()`
     /// call is still alive.
-    pub fn incremental_parse(&self, source: &str) -> crate::incremental::IncrementalCursor {
+    pub(crate) fn incremental_parse(
+        &self,
+        source: &str,
+    ) -> crate::incremental::TypedIncrementalParseSession<G> {
         let mut inner = self
             .inner
             .borrow_mut()
@@ -217,7 +220,7 @@ impl<G: TypedGrammar> TypedParser<G> {
         unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
         let c_source_ptr =
             NonNull::new(inner.source_buf.as_mut_ptr()).expect("source_buf is non-empty");
-        crate::incremental::IncrementalCursor::new(
+        crate::incremental::TypedIncrementalParseSession::new(
             c_source_ptr,
             self.grammar,
             inner,
@@ -228,7 +231,7 @@ impl<G: TypedGrammar> TypedParser<G> {
 
 impl TypedParser<AnyDialect> {
     /// Create a type-erased parser from a [`AnyGrammar`].
-    pub fn from_raw_grammar(grammar: AnyGrammar) -> Self {
+    pub(crate) fn from_raw_grammar(grammar: AnyGrammar) -> Self {
         Self::new(AnyDialect { raw: grammar })
     }
 }
@@ -242,7 +245,7 @@ impl TypedParser<AnyDialect> {
 ///
 /// On drop, the checked-out parser state is returned to the parent
 /// [`TypedParser`].
-pub struct TypedParseSession<G: TypedGrammar> {
+pub(crate) struct TypedParseSession<G: TypedGrammar> {
     grammar: AnyGrammar,
     /// Checked-out parser state. Returned to `slot` on drop.
     inner: Option<ParserInner>,
@@ -270,9 +273,8 @@ impl<G: TypedGrammar> TypedParseSession<G> {
     pub(crate) fn next_statement(
         &mut self,
     ) -> Option<Result<TypedStatementResult<'_, G>, TypedParseError<'_, G>>> {
-        let raw = self.raw_ptr();
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
-        let rc = unsafe { ffi::syntaqlite_parser_next(raw) };
+        let rc = unsafe { self.inner.as_mut().unwrap().raw.as_mut().next() };
 
         if rc == ffi::PARSE_DONE {
             return None;
@@ -298,7 +300,7 @@ impl<G: TypedGrammar> TypedParseSession<G> {
     ///
     /// Lightweight (no allocation) — packages the raw parser pointer with a
     /// `&str` view of the owned source buffer.
-    pub(crate) fn reader(&self) -> AnyStatementResult<'_> {
+    pub(crate) fn stmt_result(&self) -> AnyStatementResult<'_> {
         let inner = self.inner.as_ref().unwrap();
         let source_len = inner.source_buf.len().saturating_sub(1);
         // SAFETY: source_buf was populated from valid UTF-8 (&str) in
@@ -309,7 +311,7 @@ impl<G: TypedGrammar> TypedParseSession<G> {
     }
 
     /// The source text bound to this session.
-    pub fn source(&self) -> &str {
+    pub(crate) fn source(&self) -> &str {
         let inner = self.inner.as_ref().unwrap();
         let source_len = inner.source_buf.len().saturating_sub(1);
         // SAFETY: source_buf was populated from valid UTF-8 (&str) in
@@ -318,15 +320,15 @@ impl<G: TypedGrammar> TypedParseSession<G> {
     }
 
     /// The grammar for this session.
-    pub fn grammar(&self) -> AnyGrammar {
+    pub(crate) fn grammar(&self) -> AnyGrammar {
         self.grammar
     }
 
-    /// Wrap a `AnyNodeId` into an [`AnyNode`] using this session's reader.
+    /// Wrap a `AnyNodeId` into an [`AnyNode`] using this session's `stmt_result`.
     pub(crate) fn node_ref(&self, id: AnyNodeId) -> AnyNode<'_> {
         AnyNode {
             id,
-            reader: self.reader(),
+            stmt_result: self.stmt_result(),
         }
     }
 
@@ -337,10 +339,10 @@ impl<G: TypedGrammar> TypedParseSession<G> {
 
 /// A type-erased parser. Yields [`AnyParseSession`]s with raw node types,
 /// suitable for use across multiple dialects.
-pub type AnyParser = TypedParser<AnyDialect>;
+pub(crate) type AnyParser = TypedParser<AnyDialect>;
 
 /// An active session over raw statements from an [`AnyParser`].
-pub type AnyParseSession = TypedParseSession<AnyDialect>;
+pub(crate) type AnyParseSession = TypedParseSession<AnyDialect>;
 
 /// The result of a successfully parsed SQL statement from a [`TypedParseSession`].
 ///
@@ -375,7 +377,7 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
     /// Erase the grammar type parameter, producing an [`AnyStatementResult`].
     ///
     /// Required when passing this result to [`GrammarNodeType::from_arena`],
-    /// which expects a type-erased reader.
+    /// which expects a type-erased `stmt_result`.
     pub fn erase(self) -> AnyStatementResult<'a> {
         TypedStatementResult {
             raw: self.raw,
@@ -401,27 +403,27 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
 
     /// Per-statement token positions. Requires `collect_tokens: true`.
     pub fn tokens(&self) -> &'a [TokenPos] {
-        unsafe { ffi_slice(self.raw.as_ptr(), ffi::syntaqlite_result_tokens) }
+        unsafe { self.raw.as_ref().result_tokens() }
     }
 
     /// Per-statement comments. Requires `collect_tokens: true`.
     pub fn comments(&self) -> &'a [Comment] {
-        unsafe { ffi_slice(self.raw.as_ptr(), ffi::syntaqlite_result_comments) }
+        unsafe { self.raw.as_ref().result_comments() }
     }
 
     /// Whether this result has an associated parse error (RECOVERED case).
     pub fn has_error(&self) -> bool {
-        unsafe { ffi::syntaqlite_result_error(self.raw.as_ptr()) != 0 }
+        unsafe { self.raw.as_ref().result_error() != 0 }
     }
 
     /// Whether the statement contains a subquery.
     pub fn saw_subquery(&self) -> bool {
-        unsafe { ffi::syntaqlite_result_saw_subquery(self.raw.as_ptr()) != 0 }
+        unsafe { self.raw.as_ref().result_saw_subquery() != 0 }
     }
 
     /// Whether a DELETE/UPDATE uses ORDER BY or LIMIT.
     pub fn saw_update_delete_limit(&self) -> bool {
-        unsafe { ffi::syntaqlite_result_saw_update_delete_limit(self.raw.as_ptr()) != 0 }
+        unsafe { self.raw.as_ref().result_saw_update_delete_limit() != 0 }
     }
 
     /// The grammar for this result.
@@ -433,13 +435,13 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
 
     /// Root node ID for the current statement (`AnyNodeId::NULL` if none).
     pub(crate) fn root_id(&self) -> AnyNodeId {
-        AnyNodeId(unsafe { ffi::syntaqlite_result_root(self.raw.as_ptr()) })
+        AnyNodeId(unsafe { self.raw.as_ref().result_root() })
     }
 
     /// Human-readable error message, or `None`.
     pub(crate) fn error_msg(&self) -> Option<&str> {
         unsafe {
-            let ptr = ffi::syntaqlite_result_error_msg(self.raw.as_ptr());
+            let ptr = self.raw.as_ref().result_error_msg();
             if ptr.is_null() {
                 None
             } else {
@@ -450,13 +452,17 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
 
     /// Byte offset of the error token, or `None` if unknown.
     pub(crate) fn error_offset(&self) -> Option<usize> {
-        let v = unsafe { ffi::syntaqlite_result_error_offset(self.raw.as_ptr()) };
-        if v == 0xFFFF_FFFF { None } else { Some(v as usize) }
+        let v = unsafe { self.raw.as_ref().result_error_offset() };
+        if v == 0xFFFF_FFFF {
+            None
+        } else {
+            Some(v as usize)
+        }
     }
 
     /// Byte length of the error token, or `None` if unknown.
     pub(crate) fn error_length(&self) -> Option<usize> {
-        let v = unsafe { ffi::syntaqlite_result_error_length(self.raw.as_ptr()) };
+        let v = unsafe { self.raw.as_ref().result_error_length() };
         if v == 0 { None } else { Some(v as usize) }
     }
 
@@ -473,7 +479,7 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
 
         if grammar.is_list(tag) {
             // SAFETY: ptr is valid and tag confirms list layout.
-            let list = unsafe { &*(ptr as *const NodeList) };
+            let list = unsafe { &*ptr.cast::<NodeList>() };
             return list
                 .children()
                 .iter()
@@ -490,7 +496,7 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
                 // codegen-computed offset within the node struct, and the
                 // field at that offset is a u32 (raw node ID).
                 let child_raw = unsafe {
-                    let field_ptr = ptr.add(field.offset as usize) as *const u32;
+                    let field_ptr = ptr.add(field.offset as usize).cast::<u32>();
                     *field_ptr
                 };
                 let child_id = AnyNodeId(child_raw);
@@ -512,7 +518,7 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
         // SAFETY: tag matches T::TAG, confirming the arena node has type T.
         // ptr is valid for 'a. T is #[repr(C)] with a u32 tag as its first
         // field, matching the arena layout.
-        Some(unsafe { &*(ptr as *const T) })
+        Some(unsafe { &*ptr.cast::<T>() })
     }
 
     /// Resolve a `AnyNodeId` as a [`NodeList`] (for list nodes).
@@ -522,7 +528,7 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
         // SAFETY: ptr is valid for 'a. List nodes have NodeList layout
         // (tag, count, children[count]). The caller is responsible for
         // ensuring the id refers to a list node (enforced by codegen).
-        Some(unsafe { &*(ptr as *const NodeList) })
+        Some(unsafe { &*ptr.cast::<NodeList>() })
     }
 
     /// Get a raw pointer to a node in the arena. Returns `(pointer, tag)`.
@@ -533,12 +539,12 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
         // SAFETY: self.raw is valid for 'a. The returned pointer is
         // null-checked; all arena nodes start with a u32 tag.
         unsafe {
-            let ptr = ffi::syntaqlite_parser_node(self.raw.as_ptr(), id.0);
+            let ptr = self.raw.as_ref().node(id.0);
             if ptr.is_null() {
                 return None;
             }
             let tag = *ptr;
-            Some((ptr as *const u8, tag))
+            Some((ptr.cast::<u8>(), tag))
         }
     }
 
@@ -580,7 +586,7 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
         };
         if tag == ffi::SYNTAQLITE_ERROR_NODE_TAG {
             // SAFETY: tag 0 guarantees CErrorNode layout ({ u32, u32, u32 }, 12 bytes).
-            let e = unsafe { &*(ptr as *const ffi::CErrorNode) };
+            let e = unsafe { &*ptr.cast::<ffi::CErrorNode>() };
             return Err(ErrorSpan {
                 offset: e.offset,
                 length: e.length,
@@ -612,18 +618,18 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
             let val = unsafe {
                 let field_ptr = ptr.add(m.offset as usize);
                 match m.kind {
-                    FIELD_NODE_ID => FieldVal::NodeId(AnyNodeId(*(field_ptr as *const u32))),
+                    FIELD_NODE_ID => FieldVal::NodeId(AnyNodeId(*field_ptr.cast::<u32>())),
                     FIELD_SPAN => {
-                        let span = &*(field_ptr as *const SourceSpan);
+                        let span = &*field_ptr.cast::<SourceSpan>();
                         if span.length == 0 {
                             FieldVal::Span("", 0)
                         } else {
                             FieldVal::Span(span.as_str(self.source), span.offset)
                         }
                     }
-                    FIELD_BOOL => FieldVal::Bool(*(field_ptr as *const u32) != 0),
+                    FIELD_BOOL => FieldVal::Bool(*field_ptr.cast::<u32>() != 0),
                     FIELD_FLAGS => FieldVal::Flags(*field_ptr),
-                    FIELD_ENUM => FieldVal::Enum(*(field_ptr as *const u32)),
+                    FIELD_ENUM => FieldVal::Enum(*field_ptr.cast::<u32>()),
                     _ => panic!("unknown C field kind: {}", m.kind),
                 }
             };
@@ -637,13 +643,13 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
         unsafe extern "C" {
             fn free(ptr: *mut std::ffi::c_void);
         }
-        // SAFETY: raw is valid; syntaqlite_dump_node returns a malloc'd
-        // NUL-terminated string (or null). We free it after copying.
+        // SAFETY: raw is valid; dump_node returns a malloc'd NUL-terminated
+        // string (or null). We free it after copying.
         unsafe {
-            let ptr = ffi::syntaqlite_dump_node(self.raw.as_ptr(), id.0, indent as u32);
+            let ptr = self.raw.as_ref().dump_node(id.0, indent as u32);
             if !ptr.is_null() {
                 out.push_str(&CStr::from_ptr(ptr).to_string_lossy());
-                free(ptr as *mut std::ffi::c_void);
+                free(ptr.cast::<std::ffi::c_void>());
             }
         }
     }
@@ -660,37 +666,42 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
         }
         // SAFETY: ptr is a valid arena pointer and the tag confirms it is a
         // list node, so it has NodeList layout (tag, count, children[count]).
-        Some(unsafe { &*(ptr as *const NodeList) }.children())
+        Some(unsafe { &*ptr.cast::<NodeList>() }.children())
     }
 }
 
-/// The result of a successfully parsed SQLite statement.
+/// The result of a successfully parsed `SQLite` statement.
 /// Produced by [`ParseSession::next_statement`].
 #[cfg(feature = "sqlite")]
-pub type StatementResult<'a> = TypedStatementResult<'a, crate::sqlite::grammar::SqliteGrammar>;
+pub(crate) type StatementResult<'a> =
+    TypedStatementResult<'a, crate::sqlite::grammar::SqliteGrammar>;
 
 /// A type-erased statement result. The grammar type parameter is fixed to [`AnyDialect`].
-pub type AnyStatementResult<'a> = TypedStatementResult<'a, AnyDialect>;
+pub(crate) type AnyStatementResult<'a> = TypedStatementResult<'a, AnyDialect>;
 
 /// A parse error with human-readable message, optional source location, and
 /// optionally a partial recovery tree. Parameterised by dialect grammar `G`.
 ///
 /// Obtain via [`ParseSession::next_statement`] or
 /// [`TypedParseSession::next_statement`].
-pub struct TypedParseError<'a, G: TypedGrammar>(TypedStatementResult<'a, G>);
+pub(crate) struct TypedParseError<'a, G: TypedGrammar>(TypedStatementResult<'a, G>);
 
 impl<'a, G: TypedGrammar> TypedParseError<'a, G> {
-    pub fn message(&self) -> &str {
+    pub(crate) fn new(result: TypedStatementResult<'a, G>) -> Self {
+        TypedParseError(result)
+    }
+
+    pub(crate) fn message(&self) -> &str {
         self.0.error_msg().unwrap_or("parse error")
     }
-    pub fn offset(&self) -> Option<usize> {
+    pub(crate) fn offset(&self) -> Option<usize> {
         self.0.error_offset()
     }
-    pub fn length(&self) -> Option<usize> {
+    pub(crate) fn length(&self) -> Option<usize> {
         self.0.error_length()
     }
     /// The partial recovery tree, if error recovery produced one.
-    pub fn root(&self) -> Option<G::Node<'a>> {
+    pub(crate) fn root(&self) -> Option<G::Node<'a>> {
         self.0.root()
     }
 }
@@ -713,7 +724,7 @@ impl<G: TypedGrammar> std::fmt::Display for TypedParseError<'_, G> {
 
 impl<G: TypedGrammar> std::error::Error for TypedParseError<'_, G> {}
 
-/// A parse error from the SQLite dialect parser.
+/// A parse error from the `SQLite` dialect parser.
 ///
 /// Obtain via [`ParseSession::next_statement`].
 #[cfg(feature = "sqlite")]
@@ -779,9 +790,9 @@ pub(crate) struct ParserInner {
 
 impl Drop for ParserInner {
     fn drop(&mut self) {
-        // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_grammar
-        // and has not been freed (Drop runs exactly once).
-        unsafe { ffi::syntaqlite_parser_destroy(self.raw.as_ptr()) }
+        // SAFETY: self.raw was allocated by CParser::create and has not been
+        // freed (Drop runs exactly once).
+        unsafe { CParser::destroy(self.raw.as_ptr()) }
     }
 }
 
@@ -799,26 +810,7 @@ pub(crate) unsafe fn reset_parser(raw: *mut CParser, source_buf: &mut Vec<u8>, s
     let c_source_ptr = source_buf.as_ptr();
     // SAFETY: raw is valid (caller owns it); c_source_ptr points to
     // source_buf which is null-terminated.
-    unsafe {
-        ffi::syntaqlite_parser_reset(raw, c_source_ptr as *const _, source.len() as u32);
-    }
-}
-
-/// Build a slice from an FFI function that returns a pointer and writes a count.
-///
-/// # Safety
-/// `raw` must be a valid parser pointer. `f` must return a pointer valid for
-/// the caller's borrow of the parser, writing the element count into `*mut u32`.
-pub(crate) unsafe fn ffi_slice<'a, T>(
-    raw: *mut CParser,
-    f: unsafe extern "C" fn(*mut CParser, *mut u32) -> *const T,
-) -> &'a [T] {
-    let mut count: u32 = 0;
-    let ptr = unsafe { f(raw, &mut count) };
-    if count == 0 || ptr.is_null() {
-        return &[];
-    }
-    unsafe { std::slice::from_raw_parts(ptr, count as usize) }
+    unsafe { (*raw).reset(c_source_ptr.cast(), source.len() as u32) };
 }
 
 // ── ffi ───────────────────────────────────────────────────────────────────────
@@ -840,7 +832,7 @@ mod ffi {
 
     /// Mirrors C `SyntaqliteMemMethods`.
     #[repr(C)]
-    pub struct CMemMethods {
+    pub(crate) struct CMemMethods {
         pub x_malloc: unsafe extern "C" fn(usize) -> *mut c_void,
         pub x_free: unsafe extern "C" fn(*mut c_void),
     }
@@ -862,9 +854,9 @@ mod ffi {
         pub kind: CCommentKind,
     }
 
-    pub const TOKEN_FLAG_AS_ID: u32 = 1;
-    pub const TOKEN_FLAG_AS_FUNCTION: u32 = 2;
-    pub const TOKEN_FLAG_AS_TYPE: u32 = 4;
+    pub(super) const TOKEN_FLAG_AS_ID: u32 = 1;
+    pub(super) const TOKEN_FLAG_AS_FUNCTION: u32 = 2;
+    pub(super) const TOKEN_FLAG_AS_TYPE: u32 = 4;
 
     /// Mirrors C `SyntaqliteTokenPos`.
     #[derive(Debug, Clone, Copy)]
@@ -876,13 +868,25 @@ mod ffi {
         pub flags: u32,
     }
 
+    /// A recorded macro invocation region.
+    ///
+    /// Mirrors C `SyntaqliteMacroRegion` from `include/syntaqlite/parser.h`.
+    #[derive(Debug, Clone, Copy)]
+    #[repr(C)]
+    pub(crate) struct CMacroRegion {
+        /// Byte offset of the macro call in the original source.
+        pub(crate) call_offset: u32,
+        /// Byte length of the entire macro call.
+        pub(crate) call_length: u32,
+    }
+
     /// Tag value for error placeholder nodes (tag 0).
-    pub const SYNTAQLITE_ERROR_NODE_TAG: u32 = 0;
+    pub(super) const SYNTAQLITE_ERROR_NODE_TAG: u32 = 0;
 
     /// Mirrors C `SyntaqliteErrorNode`.
     #[derive(Debug, Clone, Copy)]
     #[repr(C)]
-    pub struct CErrorNode {
+    pub(super) struct CErrorNode {
         pub tag: u32,
         pub offset: u32,
         pub length: u32,
@@ -890,48 +894,221 @@ mod ffi {
     use std::mem::size_of;
     const _: () = assert!(size_of::<CErrorNode>() == 12);
 
+    impl CParser {
+        // Lifecycle
+        pub(crate) unsafe fn create(
+            mem: *const CMemMethods,
+            grammar: crate::grammar::ffi::CGrammar,
+        ) -> *mut Self {
+            unsafe { syntaqlite_create_parser_with_grammar(mem, grammar) }
+        }
+
+        pub(crate) unsafe fn set_trace(&mut self, enable: c_int) -> c_int {
+            unsafe { syntaqlite_parser_set_trace(self, enable) }
+        }
+
+        pub(crate) unsafe fn set_collect_tokens(&mut self, enable: c_int) -> c_int {
+            unsafe { syntaqlite_parser_set_collect_tokens(self, enable) }
+        }
+
+        pub(crate) unsafe fn reset(&mut self, source: *const c_char, len: u32) {
+            unsafe { syntaqlite_parser_reset(self, source, len) }
+        }
+
+        pub(crate) unsafe fn next(&mut self) -> c_int {
+            unsafe { syntaqlite_parser_next(self) }
+        }
+
+        pub(crate) unsafe fn destroy(this: *mut Self) {
+            unsafe { syntaqlite_parser_destroy(this) }
+        }
+
+        // Result accessors (valid after `next()` returns non-DONE)
+        pub(crate) unsafe fn result_root(&self) -> u32 {
+            unsafe { syntaqlite_result_root(std::ptr::from_ref::<Self>(self).cast_mut()) }
+        }
+
+        pub(crate) unsafe fn result_error(&self) -> c_int {
+            unsafe { syntaqlite_result_error(std::ptr::from_ref::<Self>(self).cast_mut()) }
+        }
+
+        pub(crate) unsafe fn result_error_msg(&self) -> *const c_char {
+            unsafe { syntaqlite_result_error_msg(std::ptr::from_ref::<Self>(self).cast_mut()) }
+        }
+
+        pub(crate) unsafe fn result_error_offset(&self) -> u32 {
+            unsafe { syntaqlite_result_error_offset(std::ptr::from_ref::<Self>(self).cast_mut()) }
+        }
+
+        pub(crate) unsafe fn result_error_length(&self) -> u32 {
+            unsafe { syntaqlite_result_error_length(std::ptr::from_ref::<Self>(self).cast_mut()) }
+        }
+
+        pub(crate) unsafe fn result_saw_subquery(&self) -> c_int {
+            unsafe { syntaqlite_result_saw_subquery(std::ptr::from_ref::<Self>(self).cast_mut()) }
+        }
+
+        pub(crate) unsafe fn result_saw_update_delete_limit(&self) -> c_int {
+            unsafe {
+                syntaqlite_result_saw_update_delete_limit(
+                    std::ptr::from_ref::<Self>(self).cast_mut(),
+                )
+            }
+        }
+
+        pub(crate) unsafe fn result_comments(&self) -> &[CComment] {
+            let mut count: u32 = 0;
+            let ptr = unsafe {
+                syntaqlite_result_comments(
+                    std::ptr::from_ref::<Self>(self).cast_mut(),
+                    &raw mut count,
+                )
+            };
+            if count == 0 || ptr.is_null() {
+                return &[];
+            }
+            unsafe { std::slice::from_raw_parts(ptr, count as usize) }
+        }
+
+        pub(crate) unsafe fn result_tokens(&self) -> &[CTokenPos] {
+            let mut count: u32 = 0;
+            let ptr = unsafe {
+                syntaqlite_result_tokens(
+                    std::ptr::from_ref::<Self>(self).cast_mut(),
+                    &raw mut count,
+                )
+            };
+            if count == 0 || ptr.is_null() {
+                return &[];
+            }
+            unsafe { std::slice::from_raw_parts(ptr, count as usize) }
+        }
+
+        pub(crate) unsafe fn result_macros(&self) -> &[CMacroRegion] {
+            let mut count: u32 = 0;
+            let ptr = unsafe {
+                syntaqlite_result_macros(
+                    std::ptr::from_ref::<Self>(self).cast_mut(),
+                    &raw mut count,
+                )
+            };
+            if count == 0 || ptr.is_null() {
+                return &[];
+            }
+            unsafe { std::slice::from_raw_parts(ptr, count as usize) }
+        }
+
+        // Arena accessors
+        pub(crate) unsafe fn node(&self, node_id: u32) -> *const u32 {
+            unsafe { syntaqlite_parser_node(std::ptr::from_ref::<Self>(self).cast_mut(), node_id) }
+        }
+
+        pub(crate) unsafe fn node_count(&self) -> u32 {
+            unsafe { syntaqlite_parser_node_count(std::ptr::from_ref::<Self>(self).cast_mut()) }
+        }
+
+        // AST dump
+        pub(crate) unsafe fn dump_node(&self, node_id: u32, indent: u32) -> *mut c_char {
+            unsafe {
+                syntaqlite_dump_node(std::ptr::from_ref::<Self>(self).cast_mut(), node_id, indent)
+            }
+        }
+
+        // Incremental (token-feeding) API
+        pub(crate) unsafe fn feed_token(
+            &mut self,
+            token_type: c_int,
+            text: *const c_char,
+            len: c_int,
+        ) -> c_int {
+            unsafe { syntaqlite_parser_feed_token(self, token_type, text, len) }
+        }
+
+        pub(crate) unsafe fn finish(&mut self) -> c_int {
+            unsafe { syntaqlite_parser_finish(self) }
+        }
+
+        pub(crate) unsafe fn expected_tokens(
+            &self,
+            out_tokens: *mut c_int,
+            out_cap: c_int,
+        ) -> c_int {
+            unsafe {
+                syntaqlite_parser_expected_tokens(
+                    std::ptr::from_ref::<Self>(self).cast_mut(),
+                    out_tokens,
+                    out_cap,
+                )
+            }
+        }
+
+        pub(crate) unsafe fn completion_context(&self) -> u32 {
+            unsafe {
+                syntaqlite_parser_completion_context(std::ptr::from_ref::<Self>(self).cast_mut())
+            }
+        }
+
+        pub(crate) unsafe fn begin_macro(&mut self, call_offset: u32, call_length: u32) {
+            unsafe { syntaqlite_parser_begin_macro(self, call_offset, call_length) }
+        }
+
+        pub(crate) unsafe fn end_macro(&mut self) {
+            unsafe { syntaqlite_parser_end_macro(self) }
+        }
+    }
+
     unsafe extern "C" {
         // Parser lifecycle
-        pub(crate) fn syntaqlite_create_parser_with_grammar(
+        fn syntaqlite_create_parser_with_grammar(
             mem: *const CMemMethods,
             grammar: crate::grammar::ffi::CGrammar,
         ) -> *mut CParser;
-        pub(crate) fn syntaqlite_parser_reset(p: *mut CParser, source: *const c_char, len: u32);
-        pub(crate) fn syntaqlite_parser_next(p: *mut CParser) -> c_int;
-        pub(crate) fn syntaqlite_parser_destroy(p: *mut CParser);
+        fn syntaqlite_parser_reset(p: *mut CParser, source: *const c_char, len: u32);
+        fn syntaqlite_parser_next(p: *mut CParser) -> c_int;
+        fn syntaqlite_parser_destroy(p: *mut CParser);
 
         // Result accessors
-        pub(crate) fn syntaqlite_result_root(p: *mut CParser) -> u32;
-        pub(crate) fn syntaqlite_result_error(p: *mut CParser) -> c_int;
-        pub(crate) fn syntaqlite_result_error_msg(p: *mut CParser) -> *const c_char;
-        pub(crate) fn syntaqlite_result_error_offset(p: *mut CParser) -> u32;
-        pub(crate) fn syntaqlite_result_error_length(p: *mut CParser) -> u32;
-        pub(crate) fn syntaqlite_result_saw_subquery(p: *mut CParser) -> c_int;
-        pub(crate) fn syntaqlite_result_saw_update_delete_limit(p: *mut CParser) -> c_int;
-        pub(crate) fn syntaqlite_result_comments(
-            p: *mut CParser,
-            count: *mut u32,
-        ) -> *const CComment;
-        pub(crate) fn syntaqlite_result_tokens(
-            p: *mut CParser,
-            count: *mut u32,
-        ) -> *const CTokenPos;
+        fn syntaqlite_result_root(p: *mut CParser) -> u32;
+        fn syntaqlite_result_error(p: *mut CParser) -> c_int;
+        fn syntaqlite_result_error_msg(p: *mut CParser) -> *const c_char;
+        fn syntaqlite_result_error_offset(p: *mut CParser) -> u32;
+        fn syntaqlite_result_error_length(p: *mut CParser) -> u32;
+        fn syntaqlite_result_saw_subquery(p: *mut CParser) -> c_int;
+        fn syntaqlite_result_saw_update_delete_limit(p: *mut CParser) -> c_int;
+        fn syntaqlite_result_comments(p: *mut CParser, count: *mut u32) -> *const CComment;
+        fn syntaqlite_result_tokens(p: *mut CParser, count: *mut u32) -> *const CTokenPos;
+        fn syntaqlite_result_macros(p: *mut CParser, count: *mut u32) -> *const CMacroRegion;
 
-        // Arena accessor
-        pub(crate) fn syntaqlite_parser_node(p: *mut CParser, node_id: u32) -> *const u32;
+        // Arena accessors
+        fn syntaqlite_parser_node(p: *mut CParser, node_id: u32) -> *const u32;
+        fn syntaqlite_parser_node_count(p: *mut CParser) -> u32;
 
         // Configuration
-        pub(crate) fn syntaqlite_parser_set_trace(p: *mut CParser, enable: c_int) -> c_int;
-        pub(crate) fn syntaqlite_parser_set_collect_tokens(p: *mut CParser, enable: c_int)
-        -> c_int;
+        fn syntaqlite_parser_set_trace(p: *mut CParser, enable: c_int) -> c_int;
+        fn syntaqlite_parser_set_collect_tokens(p: *mut CParser, enable: c_int) -> c_int;
 
         // AST dump
-        pub(crate) fn syntaqlite_dump_node(
+        fn syntaqlite_dump_node(p: *mut CParser, node_id: u32, indent: u32) -> *mut c_char;
+
+        // Incremental (token-feeding) API (from incremental.h)
+        fn syntaqlite_parser_feed_token(
             p: *mut CParser,
-            node_id: u32,
-            indent: u32,
-        ) -> *mut c_char;
+            token_type: c_int,
+            text: *const c_char,
+            len: c_int,
+        ) -> c_int;
+        fn syntaqlite_parser_finish(p: *mut CParser) -> c_int;
+        fn syntaqlite_parser_expected_tokens(
+            p: *mut CParser,
+            out_tokens: *mut c_int,
+            out_cap: c_int,
+        ) -> c_int;
+        fn syntaqlite_parser_completion_context(p: *mut CParser) -> u32;
+        fn syntaqlite_parser_begin_macro(p: *mut CParser, call_offset: u32, call_length: u32);
+        fn syntaqlite_parser_end_macro(p: *mut CParser);
     }
 }
 
-pub(crate) use ffi::{CComment as Comment, CParser, CTokenPos as TokenPos};
+pub(crate) use ffi::{
+    CComment as Comment, CMacroRegion as MacroRegion, CParser, CTokenPos as TokenPos,
+};

@@ -97,7 +97,10 @@ pub(crate) fn extract_fragments(
 /// # Errors
 ///
 /// Returns an error if creating the output directory or writing any fragment file fails.
-pub(crate) fn write_fragments(fragments: &TokenizerFragments, output_dir: &Path) -> Result<(), String> {
+pub(crate) fn write_fragments(
+    fragments: &TokenizerFragments,
+    output_dir: &Path,
+) -> Result<(), String> {
     fs::create_dir_all(output_dir)
         .map_err(|e| format!("creating fragment dir {}: {e}", output_dir.display()))?;
 

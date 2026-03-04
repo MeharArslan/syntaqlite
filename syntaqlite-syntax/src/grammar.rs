@@ -39,7 +39,7 @@ impl AnyGrammar {
         AnyGrammar { inner }
     }
 
-    /// Set the target SQLite version.
+    /// Set the target `SQLite` version.
     pub fn with_version(mut self, version: crate::util::SqliteVersion) -> Self {
         self.inner.sqlite_version = version.as_int();
         self
@@ -57,7 +57,7 @@ impl AnyGrammar {
         self
     }
 
-    /// The target SQLite version.
+    /// The target `SQLite` version.
     pub fn version(&self) -> i32 {
         self.inner.sqlite_version
     }
@@ -161,13 +161,13 @@ impl AnyGrammar {
             if idx >= keyword_count {
                 return None;
             }
-            let code = *raw.keyword_codes.add(idx) as u32;
+            let code = u32::from(*raw.keyword_codes.add(idx));
             let len = *raw.keyword_lens.add(idx) as usize;
             if len == 0 {
                 return None;
             }
             let off = *raw.keyword_offsets.add(idx) as usize;
-            let text_base = raw.keyword_text as *const u8;
+            let text_base = raw.keyword_text.cast::<u8>();
             let bytes = std::slice::from_raw_parts(text_base.add(off), len);
             let value = std::str::from_utf8_unchecked(bytes);
             Some((code, value))

@@ -3,17 +3,17 @@
 
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::similar_names))]
 
-//! Low-level tokenizer and parser for SQLite SQL.
+//! Low-level tokenizer and parser for `SQLite` SQL.
 //!
-//! `syntaqlite-syntax` wraps SQLite's own tokenizer and grammar rules — extracted
-//! directly from SQLite's source and verified by tests to match exactly — behind
+//! `syntaqlite-syntax` wraps `SQLite`'s own tokenizer and grammar rules — extracted
+//! directly from `SQLite`'s source and verified by tests to match exactly — behind
 //! safe, zero-dependency Rust APIs. Four design principles guide the library
 //! (expanded on in the [Design principles](#design-principles) section below):
 //!
-//! - **Reliability** — uses SQLite's own tokenizer and grammar rules directly; verified by tests to be identical to SQLite's interpretation.
+//! - **Reliability** — uses `SQLite`'s own tokenizer and grammar rules directly; verified by tests to be identical to `SQLite`'s interpretation.
 //! - **Speed** — [`Tokenizer`] is zero-copy; [`Parser`] is minimal-copy and uses arena allocation allowing reuse across multiple SQL inputs.
 //! - **Portability** — no runtime dependencies in Rust or C beyond the standard library.
-//! - **Flexibility** — the grammar system supports database engines which extend SQLite's grammar with their own tokens and rules.
+//! - **Flexibility** — the grammar system supports database engines which extend `SQLite`'s grammar with their own tokens and rules.
 //!
 //! # Tokenizing
 //!
@@ -44,9 +44,9 @@
 //!
 //! ## Reliability
 //!
-//! The tokenizer is extracted directly from SQLite's source code, and the grammar
-//! rules are verified by tests to be identical to SQLite's own Lemon grammar.
-//! The library tokenizes and parses SQL exactly as SQLite does.
+//! The tokenizer is extracted directly from `SQLite`'s source code, and the grammar
+//! rules are verified by tests to be identical to `SQLite`'s own Lemon grammar.
+//! The library tokenizes and parses SQL exactly as `SQLite` does.
 //!
 //! ## Speed
 //!
@@ -62,12 +62,12 @@
 //!
 //! ## Flexibility
 //!
-//! Database engines which extend SQLite with additional syntax can provide their
+//! Database engines which extend `SQLite` with additional syntax can provide their
 //! own grammar and reuse the same tokenization and parsing infrastructure.
 //!
 //! # Features
 //!
-//! - `sqlite` *(default)*: enables the built-in SQLite dialect
+//! - `sqlite` *(default)*: enables the built-in `SQLite` dialect
 //!   ([`Tokenizer`], [`Token`], and `sqlite::grammar`/`sqlite::ast`).
 
 // ==== Public API ====
@@ -80,22 +80,27 @@ pub use parser::{ParseError, ParseSession, Parser};
 #[cfg(feature = "sqlite")]
 pub use tokenizer::{Token, Tokenizer};
 
-/// AST traits, public for grammar crates to define AST nodes and for
-/// users who want to write generic code over multiple dialects while
-/// still assuming SQLite-compatible AST node types.
+// TODO(claude): document this.
 pub mod ast_traits;
 
 // TODO(claude): document this.
 pub mod tokenizer;
 
+// TODO(claude): document this.
+pub mod util;
+
+// TODO(claude): document this.
+pub mod ast;
+
+// TODO(claude): document this.
+pub mod incremental;
+
+// TODO(claude): document this.
+#[cfg(feature = "sqlite")]
+pub mod sqlite;
+
 // ==== Internal modules ====
 
-mod ast;
 mod cflags;
 mod grammar;
-mod incremental;
 mod parser;
-mod util;
-
-#[cfg(feature = "sqlite")]
-mod sqlite;

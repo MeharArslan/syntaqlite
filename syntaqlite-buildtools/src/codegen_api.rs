@@ -83,10 +83,10 @@ impl DialectNaming {
         format!("{}Grammar", util::pascal_case(&self.name))
     }
 
-    /// Rust token enum type name (e.g. `"SqliteTokenType"`).
+    /// Rust token enum type name (`"TokenType"`).
     #[must_use]
     pub fn token_type_name(&self) -> String {
-        format!("{}TokenType", util::pascal_case(&self.name))
+        "TokenType".to_string()
     }
 
     /// Lemon parser symbol prefix (e.g. `"SynqSqliteParse"`).
