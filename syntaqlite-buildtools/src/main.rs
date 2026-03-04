@@ -7,13 +7,13 @@
 //! from a completely clean checkout and used to regenerate everything.
 //!
 //! Subcommands:
-//!   codegen-sqlite          — regenerate the internal SQLite dialect (stage 2)
-//!   codegen-sqlite-parser   — regenerate ast_traits, functions_catalog (stage 1b)
-//!   sqlite-extract          — extract C fragments from raw SQLite source (stage 1)
-//!   audit-cflags            — audit cflag versions across SQLite amalgamations
+//!   codegen-sqlite          — regenerate the internal `SQLite` dialect (stage 2)
+//!   codegen-sqlite-parser   — regenerate `ast_traits`, `functions_catalog` (stage 1b)
+//!   sqlite-extract          — extract C fragments from raw `SQLite` source (stage 1)
+//!   audit-cflags            — audit cflag versions across `SQLite` amalgamations
 //!   generate-functions-catalog — generate Rust functions catalog from functions.json
-//!   extract-functions       — extract function catalog from SQLite amalgamations
-//!   analyze-versions        — analyze SQLite source version history
+//!   extract-functions       — extract function catalog from `SQLite` amalgamations
+//!   analyze-versions        — analyze `SQLite` source version history
 
 use std::fs;
 use std::path::Path;
@@ -42,25 +42,25 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Regenerate the internal SQLite dialect C sources and Rust bindings (stage 2).
+    /// Regenerate the internal `SQLite` dialect C sources and Rust bindings (stage 2).
     ///
     /// Writes generated files to the hardcoded workspace paths in
     /// syntaqlite-syntax/.
     #[command(name = "codegen-sqlite")]
     CodegenSqlite(CodegenSqliteArgs),
 
-    /// Regenerate internal Rust artifacts for the SQLite parser crate (stage 1b).
+    /// Regenerate internal Rust artifacts for the `SQLite` parser crate (stage 1b).
     ///
-    /// Generates ast_traits.rs, functions_catalog.rs, and optionally
-    /// cflag_versions.rs from pre-existing inputs.
+    /// Generates `ast_traits.rs`, `functions_catalog.rs`, and optionally
+    /// `cflag_versions.rs` from pre-existing inputs.
     #[command(name = "codegen-sqlite-parser")]
     CodegenSqliteParser(CodegenSqliteParserArgs),
 
-    /// Extract C fragments from raw SQLite source (stage 1).
+    /// Extract C fragments from raw `SQLite` source (stage 1).
     #[command(name = "sqlite-extract")]
     SqliteExtract(SqliteExtractArgs),
 
-    /// Audit which compile flags each SQLite amalgamation version references.
+    /// Audit which compile flags each `SQLite` amalgamation version references.
     #[command(name = "audit-cflags")]
     AuditCflags(AuditCflagsArgs),
 
@@ -68,11 +68,11 @@ enum Command {
     #[command(name = "generate-functions-catalog")]
     GenerateFunctionsCatalog(GenerateFunctionsCatalogArgs),
 
-    /// Extract built-in function catalog from pre-downloaded SQLite amalgamations.
+    /// Extract built-in function catalog from pre-downloaded `SQLite` amalgamations.
     #[command(name = "extract-functions")]
     ExtractFunctions(ExtractFunctionsArgs),
 
-    /// Analyze multiple SQLite source versions to find fragment variants.
+    /// Analyze multiple `SQLite` source versions to find fragment variants.
     #[command(name = "analyze-versions")]
     AnalyzeVersions(AnalyzeVersionsArgs),
 
@@ -193,7 +193,7 @@ fn clean_generated_files(dir: &Path) {
 #[derive(clap::Args)]
 struct CodegenSqliteParserArgs {
     /// Path to functions.json (from sqlite-vendored/data/functions.json).
-    /// When provided, generates functions_catalog.rs at its hardcoded workspace path.
+    /// When provided, generates `functions_catalog.rs` at its hardcoded workspace path.
     #[arg(long)]
     functions_json: Option<String>,
 
@@ -202,12 +202,12 @@ struct CodegenSqliteParserArgs {
     cflag_audit_json: Option<String>,
 
     /// Directory containing .y grammar action files.
-    /// When provided together with --nodes-dir, generates ast_traits.rs.
+    /// When provided together with --nodes-dir, generates `ast_traits.rs`.
     #[arg(long)]
     actions_dir: Option<String>,
 
     /// Directory containing .synq node definitions.
-    /// When provided together with --actions-dir, generates ast_traits.rs.
+    /// When provided together with --actions-dir, generates `ast_traits.rs`.
     #[arg(long)]
     nodes_dir: Option<String>,
 
@@ -311,7 +311,7 @@ fn cmd_generate_cflag_versions(audit_json_path: &str, output_path: &str) -> Resu
 
 #[derive(clap::Args)]
 struct SqliteExtractArgs {
-    /// Path to the SQLite source tree root (containing src/ and tool/).
+    /// Path to the `SQLite` source tree root (containing src/ and tool/).
     #[arg(long, required = true)]
     sqlite_src: String,
     /// Output directory for vendored files (sqlite-vendored/).
@@ -480,7 +480,7 @@ fn cmd_extract_functions(args: ExtractFunctionsArgs) -> Result<(), String> {
 
 #[derive(clap::Args)]
 struct AnalyzeVersionsArgs {
-    /// Directory containing per-version SQLite source trees.
+    /// Directory containing per-version `SQLite` source trees.
     /// Expected layout: <dir>/3.35.0/src/tokenize.c, etc.
     #[arg(long, required = true)]
     sqlite_source_dir: String,

@@ -7,139 +7,31 @@ use std::ops::Range;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::DialectEnv;
-use crate::NodeId;
-use crate::NodeRef;
-use crate::ast::NodeId;
-use crate::parser::{ParseResult as CParseResult, Parser as CParser};
-use crate::parser::{
-    syntaqlite_create_parser_with_grammar, syntaqlite_parser_begin_macro,
-    syntaqlite_parser_completion_context, syntaqlite_parser_destroy, syntaqlite_parser_end_macro,
-    syntaqlite_parser_expected_tokens, syntaqlite_parser_feed_token, syntaqlite_parser_finish,
-    syntaqlite_parser_node_count, syntaqlite_parser_result, syntaqlite_parser_set_collect_tokens,
-    syntaqlite_parser_set_trace,
-};
-use crate::raw_session::{ParserConfig, reset_parser};
-use crate::{Comment, MacroRegion};
-use crate::{ParseError, ParseResult};
-
-/// Holds the C parser handle and mutable state for incremental parsing.
-/// Checked out by cursors at runtime and returned on [`Drop`].
-pub(crate) struct IncrementalInner {
-    raw: NonNull<CParser>,
-    source_buf: Vec<u8>,
-}
-
-impl Drop for IncrementalInner {
-    fn drop(&mut self) {
-        // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_grammar
-        // and has not been freed (Drop runs exactly once).
-        unsafe { syntaqlite_parser_destroy(self.raw.as_ptr()) }
-    }
-}
-
-/// A low-level parser for token-by-token feeding. Owns its own C parser
-/// handle and source buffer, independent of `Parser`.
-///
-/// Uses the same interior-mutability checkout pattern as [`super::Parser`].
-pub struct IncrementalParser<'d> {
-    inner: Rc<RefCell<Option<IncrementalInner>>>,
-    dialect: DialectEnv<'d>,
-}
-
-impl<'d> IncrementalParser<'d> {
-    /// Create an incremental parser bound to the given dialect with default
-    /// configuration (token collection enabled).
-    pub fn new(dialect: impl Into<DialectEnv<'d>>) -> Self {
-        Self::with_config(
-            dialect,
-            &ParserConfig {
-                collect_tokens: true,
-                ..ParserConfig::default()
-            },
-        )
-    }
-
-    /// Create an incremental parser bound to the given dialect with custom
-    /// configuration.
-    pub fn with_config(dialect: impl Into<DialectEnv<'d>>, config: &ParserConfig) -> Self {
-        let env = dialect.into();
-        let ffi_env = env.to_ffi();
-        // SAFETY: syntaqlite_create_parser_with_grammar(NULL, &ffi_env) allocates
-        // a new parser with default malloc/free. The C side copies the env.
-        let raw = NonNull::new(unsafe {
-            syntaqlite_create_parser_with_grammar(std::ptr::null(), &ffi_env)
-        })
-        .expect("parser allocation failed");
-
-        // SAFETY: raw is freshly created (not sealed), so these calls always succeed.
-        unsafe {
-            syntaqlite_parser_set_trace(raw.as_ptr(), config.trace as c_int);
-            syntaqlite_parser_set_collect_tokens(raw.as_ptr(), config.collect_tokens as c_int);
-        }
-
-        let inner = IncrementalInner {
-            raw,
-            source_buf: Vec::new(),
-        };
-
-        IncrementalParser {
-            inner: Rc::new(RefCell::new(Some(inner))),
-            dialect: env,
-        }
-    }
-
-    /// Bind source text and return an `IncrementalCursor` for token feeding.
-    ///
-    /// Copies the source into an internal buffer to add a null terminator
-    /// (required by the C tokenizer). The cursor owns the copy, so the
-    /// original `source` does not need to outlive the cursor.
-    ///
-    /// # Panics
-    ///
-    /// Panics if a cursor from a previous `feed()` call is still alive.
-    pub fn feed(&self, source: &str) -> IncrementalCursor<'d> {
-        let mut inner = self
-            .inner
-            .borrow_mut()
-            .take()
-            .expect("IncrementalParser::feed called while a cursor is still active");
-        // SAFETY: inner.raw is valid (owned via IncrementalInner); source is
-        // copied into source_buf.
-        unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
-        let c_source_ptr =
-            NonNull::new(inner.source_buf.as_mut_ptr()).expect("source_buf is non-empty");
-        IncrementalCursor {
-            c_source_ptr,
-            dialect: self.dialect,
-            inner: Some(inner),
-            slot: Rc::clone(&self.inner),
-            finished: false,
-        }
-    }
-}
+use crate::ast::{Node, RawNodeId};
+use crate::grammar::RawGrammar;
+use crate::parser::{ParseError, ParseResult, ParserInner, ffi, ffi_slice};
 
 // ── IncrementalCursor ──────────────────────────────────────────────────────────
 
 /// A low-level cursor for feeding tokens one at a time.
 ///
-/// After calling `finish()`, no further methods may be called.
+/// Obtained via [`Parser::incremental_parse`](crate::parser::Parser::incremental_parse).
+/// After calling [`finish()`](Self::finish), no further methods may be called.
 ///
-/// On drop, the checked-out parser state is returned to the parent
-/// [`IncrementalParser`].
-pub struct IncrementalCursor<'d> {
+/// On drop, the checked-out parser state is returned to the parent [`Parser`](crate::parser::Parser).
+pub struct IncrementalCursor {
     /// Base pointer into the internal source buffer. `feed_token` uses this
     /// to compute the C-side token pointer from byte-offset spans.
     c_source_ptr: NonNull<u8>,
-    dialect: DialectEnv<'d>,
+    grammar: RawGrammar,
     /// Checked-out parser state. Returned to `slot` on drop.
-    inner: Option<IncrementalInner>,
+    inner: Option<ParserInner>,
     /// Slot to return `inner` to when this cursor is dropped.
-    slot: Rc<RefCell<Option<IncrementalInner>>>,
+    slot: Rc<RefCell<Option<ParserInner>>>,
     finished: bool,
 }
 
-impl Drop for IncrementalCursor<'_> {
+impl Drop for IncrementalCursor {
     fn drop(&mut self) {
         if let Some(inner) = self.inner.take() {
             *self.slot.borrow_mut() = Some(inner);
@@ -147,13 +39,27 @@ impl Drop for IncrementalCursor<'_> {
     }
 }
 
-impl<'d> IncrementalCursor<'d> {
+impl IncrementalCursor {
+    pub(crate) fn new(
+        c_source_ptr: NonNull<u8>,
+        grammar: RawGrammar,
+        inner: ParserInner,
+        slot: Rc<RefCell<Option<ParserInner>>>,
+    ) -> Self {
+        IncrementalCursor {
+            c_source_ptr,
+            grammar,
+            inner: Some(inner),
+            slot,
+            finished: false,
+        }
+    }
+
     fn assert_not_finished(&self) {
         assert!(!self.finished, "IncrementalCursor used after finish()");
     }
 
-    /// The raw C parser pointer from the checked-out inner state.
-    fn raw_ptr(&self) -> *mut CParser {
+    fn raw_ptr(&self) -> *mut ffi::CParser {
         self.inner.as_ref().unwrap().raw.as_ptr()
     }
 
@@ -161,27 +67,27 @@ impl<'d> IncrementalCursor<'d> {
     ///
     /// Return codes from C:
     /// - `1` = clean success
-    /// - `2` = success with error recovery (tree has ErrorNode holes)
+    /// - `2` = success with error recovery (tree has [`ffi::CErrorNode`] holes)
     /// - `-1` = unrecoverable error
-    fn parse_result(&self, rc: c_int) -> Result<NodeId, ParseError> {
+    fn parse_result(&self, rc: c_int) -> Result<RawNodeId, ParseError> {
         // SAFETY: raw is valid; result struct and error_msg pointer are valid
         // for the lifetime of the parser.
         unsafe {
-            let result = syntaqlite_parser_result(self.raw_ptr());
+            let result = ffi::syntaqlite_parser_result(self.raw_ptr());
             if rc == 1 {
-                return Ok(NodeId(result.root));
+                return Ok(RawNodeId(result.root));
             }
             let err = Self::extract_error(&result);
             if rc == 2 {
-                // Error recovery succeeded — tree is valid but has ErrorNode holes.
+                // Error recovery succeeded — tree is valid but has CErrorNode holes.
                 return Err(ParseError {
-                    root: Some(NodeId(result.root)),
+                    root: Some(RawNodeId(result.root)),
                     ..err
                 });
             }
             // rc == -1: unrecoverable error, root may be NULL.
             let root = if result.root != u32::MAX && result.root != 0 {
-                Some(NodeId(result.root))
+                Some(RawNodeId(result.root))
             } else {
                 None
             };
@@ -193,7 +99,7 @@ impl<'d> IncrementalCursor<'d> {
     ///
     /// # Safety
     /// `result.error_msg` must be null or a valid C string.
-    unsafe fn extract_error(result: &CParseResult) -> ParseError {
+    unsafe fn extract_error(result: &ffi::CParseResult) -> ParseError {
         let msg = if result.error_msg.is_null() {
             "parse error".to_string()
         } else {
@@ -231,16 +137,16 @@ impl<'d> IncrementalCursor<'d> {
     ///
     /// `span` is a byte range into the source text bound by this cursor.
     /// `token_type` is a raw token type ordinal (dialect-specific).
-    pub fn feed_token(
+    pub(crate) fn feed_token(
         &mut self,
         token_type: u32,
         span: Range<usize>,
-    ) -> Result<Option<NodeId>, ParseError> {
+    ) -> Result<Option<RawNodeId>, ParseError> {
         self.assert_not_finished();
         // SAFETY: c_source_ptr is valid for the source length; raw is valid.
         let rc = unsafe {
             let c_text = self.c_source_ptr.as_ptr().add(span.start);
-            syntaqlite_parser_feed_token(
+            ffi::syntaqlite_parser_feed_token(
                 self.raw_ptr(),
                 token_type as c_int,
                 c_text as *const _,
@@ -255,18 +161,18 @@ impl<'d> IncrementalCursor<'d> {
 
     /// Signal end of input.
     ///
-    /// Synthesizes a SEMI if the last token wasn't one, and sends EOF to
-    /// the parser. Returns `Ok(Some(root_id))` if a final statement
-    /// completed cleanly, `Ok(None)` if there was nothing pending, or `Err`
-    /// on parse error. When error recovery succeeds, the error's `root`
-    /// field contains the partial tree.
+    /// Synthesizes a SEMI if the last token wasn't one, then sends EOF to
+    /// the parser. Returns `Ok(Some(root_id))` if a final statement completed
+    /// cleanly, `Ok(None)` if there was nothing pending, or `Err` on parse
+    /// error. When error recovery succeeds, the error's `root` field contains
+    /// the partial tree.
     ///
     /// No further methods may be called after `finish()`.
-    pub fn finish(&mut self) -> Result<Option<NodeId>, ParseError> {
+    pub(crate) fn finish(&mut self) -> Result<Option<RawNodeId>, ParseError> {
         self.assert_not_finished();
         self.finished = true;
         // SAFETY: raw is valid.
-        let rc = unsafe { syntaqlite_parser_finish(self.raw_ptr()) };
+        let rc = unsafe { ffi::syntaqlite_parser_finish(self.raw_ptr()) };
         match rc {
             0 => Ok(None),
             _ => self.parse_result(rc).map(Some),
@@ -276,8 +182,8 @@ impl<'d> IncrementalCursor<'d> {
     /// Return terminal token IDs that are valid lookaheads at the current
     /// parser state.
     ///
-    /// This can be used by completion engines after feeding tokens up to the
-    /// cursor. Returns raw dialect-specific token ordinals.
+    /// Useful for completion engines after feeding tokens up to the cursor.
+    /// Returns raw dialect-specific token ordinals.
     pub fn expected_tokens(&self) -> Vec<u32> {
         self.assert_not_finished();
         // Use a stack buffer to avoid the count-then-allocate double FFI call.
@@ -287,7 +193,11 @@ impl<'d> IncrementalCursor<'d> {
         // SAFETY: raw is valid and exclusively borrowed via &self; stack_buf is
         // a valid output buffer.
         let total = unsafe {
-            syntaqlite_parser_expected_tokens(raw, stack_buf.as_mut_ptr(), stack_buf.len() as c_int)
+            ffi::syntaqlite_parser_expected_tokens(
+                raw,
+                stack_buf.as_mut_ptr(),
+                stack_buf.len() as c_int,
+            )
         };
         if total <= 0 {
             return Vec::new();
@@ -301,7 +211,7 @@ impl<'d> IncrementalCursor<'d> {
             let mut heap_buf = vec![0 as c_int; count];
             // SAFETY: raw is valid; heap_buf is sized to hold `total` entries.
             let written = unsafe {
-                syntaqlite_parser_expected_tokens(raw, heap_buf.as_mut_ptr(), total as c_int)
+                ffi::syntaqlite_parser_expected_tokens(raw, heap_buf.as_mut_ptr(), total as c_int)
             };
             let len = written.clamp(0, total) as usize;
             heap_buf.truncate(len);
@@ -309,13 +219,13 @@ impl<'d> IncrementalCursor<'d> {
         }
     }
 
-    /// Return the semantic completion context at the parser's current state.
+    /// Return the semantic completion context at the current parser state.
     ///
-    /// Returns a raw u32: 0 = Unknown, 1 = Expression, 2 = TableRef.
+    /// Returns a raw `u32`: `0` = Unknown, `1` = Expression, `2` = TableRef.
     pub fn completion_context(&self) -> u32 {
         self.assert_not_finished();
         // SAFETY: raw is valid and exclusively borrowed via &self.
-        unsafe { syntaqlite_parser_completion_context(self.raw_ptr()) }
+        unsafe { ffi::syntaqlite_parser_completion_context(self.raw_ptr()) }
     }
 
     /// Return the number of nodes currently in the parser arena.
@@ -323,7 +233,7 @@ impl<'d> IncrementalCursor<'d> {
     /// Flushes any pending list nodes first, so all node data is consistent.
     pub fn node_count(&self) -> u32 {
         // SAFETY: raw is valid and exclusively borrowed via &self.
-        unsafe { syntaqlite_parser_node_count(self.raw_ptr()) }
+        unsafe { ffi::syntaqlite_parser_node_count(self.raw_ptr()) }
     }
 
     /// Mark subsequent fed tokens as being inside a macro expansion.
@@ -334,7 +244,7 @@ impl<'d> IncrementalCursor<'d> {
         self.assert_not_finished();
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         unsafe {
-            syntaqlite_parser_begin_macro(self.raw_ptr(), call_offset, call_length);
+            ffi::syntaqlite_parser_begin_macro(self.raw_ptr(), call_offset, call_length);
         }
     }
 
@@ -343,56 +253,48 @@ impl<'d> IncrementalCursor<'d> {
         self.assert_not_finished();
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         unsafe {
-            syntaqlite_parser_end_macro(self.raw_ptr());
+            ffi::syntaqlite_parser_end_macro(self.raw_ptr());
         }
     }
 
-    /// Build a [`ParseResult`] for the parser arena, borrowing source
-    /// text from the internal buffer.
+    /// Build a [`ParseResult`] for the parser arena, borrowing source text
+    /// from the internal buffer.
     ///
-    /// This is lightweight (no allocation) — it packages the raw parser
-    /// pointer with a `&str` view of the owned source buffer.
-    pub fn reader(&self) -> ParseResult<'_> {
+    /// Lightweight (no allocation) — packages the raw parser pointer with a
+    /// `&str` view of the owned source buffer.
+    pub(crate) fn reader(&self) -> ParseResult<'_> {
         let inner = self.inner.as_ref().unwrap();
         let source_len = inner.source_buf.len().saturating_sub(1);
         // SAFETY: source_buf was populated from valid UTF-8 (&str) in
         // reset_parser. The first source_len bytes are the original source.
         let source = unsafe { std::str::from_utf8_unchecked(&inner.source_buf[..source_len]) };
-        // SAFETY: inner.raw is valid (owned via IncrementalInner, not yet destroyed).
+        // SAFETY: inner.raw is valid (owned via ParserInner, not yet destroyed).
         unsafe { ParseResult::new(inner.raw.as_ptr(), source) }
     }
 
-    /// Wrap a [`NodeId`] as a [`NodeRef`] using this cursor's reader and dialect.
-    pub fn node_ref(&self, id: NodeId) -> NodeRef<'_> {
-        NodeRef::new(id, self.reader(), self.dialect)
+    /// Wrap a [`RawNodeId`] as a [`Node`] using this cursor's reader and grammar.
+    pub(crate) fn node_ref(&self, id: RawNodeId) -> Node<'_> {
+        Node::new(id, self.reader(), self.grammar)
     }
 
     /// Return all comments captured during parsing.
-    pub fn comments(&self) -> &[Comment] {
-        // SAFETY: raw is valid (owned via IncrementalInner, valid for &self).
-        unsafe {
-            crate::session::ffi_slice(self.raw_ptr(), crate::parser::syntaqlite_parser_comments)
-        }
+    pub(crate) fn comments(&self) -> &[ffi::CComment] {
+        // SAFETY: raw is valid (owned via ParserInner, valid for &self).
+        unsafe { ffi_slice(self.raw_ptr(), ffi::syntaqlite_parser_comments) }
     }
 
     /// Return all token positions collected during parsing.
     ///
-    /// Only populated when the parser was built with `collect_tokens(true)`.
-    pub fn tokens(&self) -> &[crate::TokenPos] {
-        // SAFETY: raw is valid (owned via IncrementalInner, valid for &self).
-        unsafe {
-            crate::session::ffi_slice(self.raw_ptr(), crate::parser::syntaqlite_parser_tokens)
-        }
+    /// Only populated when the parser was built with `collect_tokens: true`.
+    pub(crate) fn tokens(&self) -> &[ffi::CTokenPos] {
+        // SAFETY: raw is valid (owned via ParserInner, valid for &self).
+        unsafe { ffi_slice(self.raw_ptr(), ffi::syntaqlite_parser_tokens) }
     }
 
-    /// Return all macro regions recorded via `begin_macro`/`end_macro`.
-    pub fn macro_regions(&self) -> &[MacroRegion] {
-        // SAFETY: raw is valid (owned via IncrementalInner, valid for &self).
-        unsafe {
-            crate::session::ffi_slice(
-                self.raw_ptr(),
-                crate::parser::syntaqlite_parser_macro_regions,
-            )
-        }
+    /// Return all macro regions recorded via [`begin_macro`](Self::begin_macro)
+    /// / [`end_macro`](Self::end_macro).
+    pub(crate) fn macro_regions(&self) -> &[ffi::CMacroRegion] {
+        // SAFETY: raw is valid (owned via ParserInner, valid for &self).
+        unsafe { ffi_slice(self.raw_ptr(), ffi::syntaqlite_parser_macro_regions) }
     }
 }

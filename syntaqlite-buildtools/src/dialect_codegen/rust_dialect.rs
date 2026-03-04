@@ -21,27 +21,60 @@ fn emit_section(w: &mut RustWriter, section: &str) {
     w.newline();
 }
 
-pub(crate) fn generate_rust_lib(dialect_fn: &str) -> String {
+/// Generate a self-contained grammar accessor module.
+///
+/// Used both for external dialect crates (as part of `lib.rs`) and for the
+/// internal SQLite dialect (as `sqlite/grammar.rs`).
+///
+/// - `dialect_fn`: the `extern "C"` symbol name, e.g. `syntaqlite_sqlite_grammar`
+/// - `node_family`: the `NodeFamily` marker type, e.g. `SqliteNodeFamily`
+/// - `node_family_import`: module path to import it from, e.g. `super::ast` or `crate::ast`
+/// - `syntax_crate`: crate providing `Grammar` and `TypedGrammar`,
+///   e.g. `crate` (internal) or `syntaqlite_syntax` (external)
+pub(crate) fn generate_grammar_module(
+    dialect_fn: &str,
+    node_family: &str,
+    node_family_import: &str,
+    syntax_crate: &str,
+) -> String {
     let mut w = RustWriter::new();
     w.file_header();
-    emit_section(&mut w, LIB_MODULE_DECLS);
+    emit_grammar_module(&mut w, dialect_fn, node_family, syntax_crate);
+    w.finish()
+}
+
+fn emit_grammar_module(
+    w: &mut RustWriter,
+    dialect_fn: &str,
+    node_family: &str,
+    syntax_crate: &str,
+) {
     w.lines(&format!(
         r#"
 use std::sync::LazyLock;
+
+use {syntax_crate}::grammar::{{Grammar, RawGrammar}};
 
 unsafe extern "C" {{
     fn {dialect_fn}() -> *const core::ffi::c_void;
 }}
 
-static DIALECT: LazyLock<syntaqlite_parser::Dialect<'static>> =
-    LazyLock::new(|| unsafe {{ syntaqlite_parser::Dialect::from_raw({dialect_fn}()) }});
+// static GRAMMAR: LazyLock<Grammar> =
+//     LazyLock::new(|| unsafe {{ Grammar::from_raw({dialect_fn}()) }});
 
-/// Returns the dialect handle.
-pub fn dialect() -> syntaqlite_parser::DialectEnv<'static> {{
-    syntaqlite_parser::DialectEnv::new(*DIALECT)
-}}
+// /// Returns the grammar handle tagged with the dialect's node family.
+// pub fn typed_grammar() -> Grammar<{node_family}> {{
+//     TypedGrammar::new(*GRAMMAR)
+// }}
 "#
     ));
+}
+
+pub(crate) fn generate_rust_lib(dialect_fn: &str, node_family: &str) -> String {
+    let mut w = RustWriter::new();
+    w.file_header();
+    emit_section(&mut w, LIB_MODULE_DECLS);
+    emit_grammar_module(&mut w, dialect_fn, node_family, "syntaqlite_syntax");
     w.newline();
     w.finish()
 }

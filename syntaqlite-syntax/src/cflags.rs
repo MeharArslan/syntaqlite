@@ -66,6 +66,8 @@ impl std::fmt::Debug for Cflags {
     }
 }
 
+use crate::grammar::ffi::FieldMeta;
+
 impl FieldMeta {
     /// Return the field name as a `&str`.
     ///

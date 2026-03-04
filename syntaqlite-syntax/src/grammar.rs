@@ -3,19 +3,61 @@
 
 // TODO(claude): write documentation.
 
+use std::marker::PhantomData;
+
+use crate::ast::NodeFamily;
 use crate::cflags::Cflags;
+
+/// A grammar handle tagged with a [`NodeFamily`], carrying both the raw
+/// C grammar pointer and the knowledge of which node/token types it produces.
+///
+/// Use this at construction boundaries (`Parser::new`, etc.) so the
+/// node type parameter `N` can be inferred automatically.
+///
+/// Call [`raw()`](Self::raw) to downgrade to an untyped [`Grammar`] for
+/// passing into untyped infrastructure.
+#[derive(Clone, Copy)]
+pub struct Grammar<N: NodeFamily> {
+    inner: RawGrammar,
+    _marker: PhantomData<N>,
+}
+
+// SAFETY: same reasoning as Grammar — wraps immutable static C data.
+unsafe impl<N: NodeFamily> Send for Grammar<N> {}
+unsafe impl<N: NodeFamily> Sync for Grammar<N> {}
+
+impl<N: NodeFamily> Grammar<N> {
+    /// Build a `Grammar` from a [`RawGrammar`] handle.
+    pub fn new(grammar: RawGrammar) -> Self {
+        Grammar {
+            inner: grammar,
+            _marker: PhantomData,
+        }
+    }
+
+    /// Return the untagged [`RawGrammar`] handle.
+    pub fn raw(&self) -> RawGrammar {
+        self.inner
+    }
+}
+
+impl<N: NodeFamily> From<Grammar<N>> for RawGrammar {
+    fn from(tg: Grammar<N>) -> Self {
+        tg.inner
+    }
+}
 
 // TODO(claude): add documentation.
 #[derive(Clone, Copy)]
-pub struct Grammar {
+pub struct RawGrammar {
     pub(crate) inner: ffi::Grammar,
 }
 
 // SAFETY: The grammar wraps an immutable reference to static C data.
-unsafe impl Send for Grammar {}
-unsafe impl Sync for Grammar {}
+unsafe impl Send for RawGrammar {}
+unsafe impl Sync for RawGrammar {}
 
-impl Grammar {
+impl RawGrammar {
     // TODO(claude): add a constructor.
 
     /// Set the target SQLite version.
@@ -51,15 +93,14 @@ impl Grammar {
     /// Return a reference to the abstract grammar template.
     #[inline]
     fn template(&self) -> &'static ffi::GrammarTemplate {
-        // SAFETY: `inner.template` was set from a valid pointer whose lifetime
-        // is at least `'g`, as required by the constructors.
+        // SAFETY: `inner.template` points to static C data (generated grammar tables).
         unsafe { &*self.inner.template }
     }
 
     // ── Metadata accessors ───────────────────────────────────────────────
 
     /// Return the node name for the given tag.
-    pub fn node_name(&self, tag: u32) -> &'g str {
+    pub fn node_name(&self, tag: u32) -> &'static str {
         let raw = self.template();
         let idx = tag as usize;
         assert!(
@@ -89,7 +130,7 @@ impl Grammar {
     }
 
     /// Return the field metadata slice for a node tag.
-    pub fn field_meta(&self, tag: u32) -> &'g [FieldMeta] {
+    pub fn field_meta(&self, tag: u32) -> &'static [ffi::FieldMeta] {
         let raw = self.template();
         let idx = tag as usize;
         if idx >= raw.node_count as usize {
@@ -105,21 +146,6 @@ impl Grammar {
             }
             std::slice::from_raw_parts(ptr, count)
         }
-    }
-
-    /// The well-known `TK_SPACE` token type ordinal.
-    pub fn tk_space(&self) -> u32 {
-        self.template().tk_space as u32
-    }
-
-    /// The well-known `TK_SEMI` token type ordinal.
-    pub fn tk_semi(&self) -> u32 {
-        self.template().tk_semi as u32
-    }
-
-    /// The well-known `TK_COMMENT` token type ordinal.
-    pub fn tk_comment(&self) -> u32 {
-        self.template().tk_comment as u32
     }
 
     /// Return the raw token category byte for a token type ordinal.
@@ -143,7 +169,7 @@ impl Grammar {
     }
 
     /// Return the `idx`th keyword entry as `(token_type, keyword_lexeme)`.
-    pub fn keyword_entry(&self, idx: usize) -> Option<(u32, &'g str)> {
+    pub fn keyword_entry(&self, idx: usize) -> Option<(u32, &'static str)> {
         let raw = self.template();
         if raw.keyword_text.is_null()
             || raw.keyword_offsets.is_null()
@@ -182,7 +208,7 @@ impl Grammar {
     }
 }
 
-mod ffi {
+pub(crate) mod ffi {
     use crate::cflags::Cflags;
 
     /// Mirrors C `SyntaqliteGrammarTemplate` struct defined in

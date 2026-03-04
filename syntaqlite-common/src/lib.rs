@@ -76,8 +76,9 @@ pub mod fmt {
 
         impl RawOp {
             /// Construct an instruction with only an opcode and all other fields zeroed.
-            pub fn simple(opcode: u8) -> Self {
-                RawOp {
+            #[must_use]
+            pub const fn simple(opcode: u8) -> Self {
+                Self {
                     opcode,
                     a: 0,
                     b: 0,

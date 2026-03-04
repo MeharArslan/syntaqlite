@@ -9,7 +9,7 @@ use std::path::PathBuf;
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
-    let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR must be set");
     let sources_dir = PathBuf::from(&manifest_dir).join("sqlite-vendored/sources");
 
     // Compile lemon.c (parser generator tool, called as subprocess).

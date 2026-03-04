@@ -5,7 +5,7 @@
 
 // ==== Public API ====
 
-pub use grammar::Grammar;
+pub use grammar::RawGrammar;
 
 // ==== Internal modules ====
 

@@ -66,7 +66,7 @@ fn rust_view_accessor_body(field: &Field, ffi_path: &str) -> String {
     match field.storage {
         Storage::Index => {
             format!(
-                "DialectNodeType::from_arena(self.reader, self.raw.{})",
+                "GrammarNodeType::from_arena(self.reader, self.raw.{})",
                 fname
             )
         }
@@ -203,7 +203,7 @@ fn emit_rust_value_enum_like_trait(w: &mut RustWriter, name: &str, variants: &[S
         "Base variants of `{name}`. Used for exhaustive pattern matching in generic code."
     ));
     w.doc_comment(&format!(
-        "TypedDialectEnv extensions that add variants beyond this set return `None` from `{name}Like::kind`."
+        "Grammar extensions that add variants beyond this set return `None` from `{name}Like::kind`."
     ));
     w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
     w.open_block(&format!("pub enum {name}Kind {{"));
@@ -445,7 +445,7 @@ pub struct RustAstPaths<'a> {
     pub session_path: &'a str,
     /// Path to the zero-argument function that returns `TypedDialectEnv<'static>`,
     /// e.g. `"crate::dialect::dialect"`. Used in generated `Display` impls.
-    pub dialect_fn_path: &'a str,
+    pub grammar_fn_path: &'a str,
 }
 
 /// Generate Rust source for the FFI layer (`ffi.rs`).
@@ -456,7 +456,7 @@ pub struct RustAstPaths<'a> {
 /// `crate_prefix` controls import paths: `"crate"` for the internal syntaqlite
 /// crate, `"syntaqlite"` for external dialect crates.
 impl AstModel<'_> {
-    pub fn generate_rust_ffi_nodes(&self, paths: &RustAstPaths<'_>) -> String {
+    pub(crate) fn generate_rust_ffi_nodes(&self, paths: &RustAstPaths<'_>) -> String {
         let nodes_path = paths.nodes_path;
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
@@ -521,9 +521,7 @@ impl AstModel<'_> {
     ) -> String {
         let crate_prefix = paths.crate_prefix;
         let ffi_path = paths.ffi_path;
-        let nodes_path = paths.nodes_path;
-        let session_path = paths.session_path;
-        let dialect_fn_path = paths.dialect_fn_path;
+        let dialect_fn_path = paths.grammar_fn_path;
         let traits_path = format!("{crate_prefix}::ast_traits");
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
@@ -538,13 +536,8 @@ impl AstModel<'_> {
         }
         w.lines(&format!(
             "
-        use {nodes_path}::NodeId;
-        use {session_path}::ParseResult;
-        use {crate_prefix}::dialect_traits::NodeFamily;
-        use {crate_prefix}::NodeRef;
-        use {crate_prefix}::DialectNodeType;
-        use {crate_prefix}::TypedList;
-    "
+        use {crate_prefix}::ast::{{NodeId, RawNodeId, NodeFamily, GrammarNodeType, TypedList}};
+        "
         ));
         w.newline();
 
@@ -599,7 +592,7 @@ impl AstModel<'_> {
             // node_id() method
             w.open_block(&format!("impl<'a> {}<'a> {{", abs_name));
             w.doc_comment("The arena node ID of this node.");
-            w.open_block("pub fn node_id(&self) -> NodeId {");
+            w.open_block("pub fn node_id(&self) -> RawNodeId {");
             w.open_block("match self {");
             for member in members {
                 if node_names.contains(member.as_str()) || list_names.contains(member.as_str()) {
@@ -614,11 +607,11 @@ impl AstModel<'_> {
 
             // FromArena impl
             w.line(&format!(
-                "impl<'a> DialectNodeType<'a> for {}<'a> {{",
+                "impl<'a> GrammarNodeType<'a> for {}<'a> {{",
                 abs_name
             ));
             w.indent();
-            w.line("fn from_arena(reader: ParseResult<'a>, id: NodeId) -> Option<Self> {");
+            w.line("fn from_arena(reader: ParseResult<'a>, id: RawNodeId) -> Option<Self> {");
             w.indent();
             w.line("let node = Node::resolve(reader, id)?;");
             w.line("Some(match node {");
@@ -642,7 +635,7 @@ impl AstModel<'_> {
 
             // XxxId newtype for this abstract enum
             w.line("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]");
-            w.line(&format!("pub struct {abs_name}Id(pub NodeId);"));
+            w.line(&format!("pub struct {abs_name}Id(pub RawNodeId);"));
             w.newline();
             w.open_block(&format!(
                 "impl<'a> From<{abs_name}<'a>> for {abs_name}Id {{"
@@ -652,13 +645,13 @@ impl AstModel<'_> {
             ));
             w.close_block("}");
             w.newline();
-            w.open_block(&format!("impl From<{abs_name}Id> for NodeId {{"));
-            w.line(&format!("fn from(id: {abs_name}Id) -> NodeId {{ id.0 }}"));
+            w.open_block(&format!("impl From<{abs_name}Id> for RawNodeId {{"));
+            w.line(&format!(
+                "fn from(id: {abs_name}Id) -> RawNodeId {{ id.0 }}"
+            ));
             w.close_block("}");
             w.newline();
-            w.open_block(&format!(
-                "impl {crate_prefix}::TypedNodeId for {abs_name}Id {{"
-            ));
+            w.open_block(&format!("impl NodeId for {abs_name}Id {{"));
             w.line(&format!("type Node<'a> = {abs_name}<'a>;"));
             w.close_block("}");
             w.newline();
@@ -675,7 +668,7 @@ impl AstModel<'_> {
             w.indent();
             w.line(&format!("raw: &'a {ffi_path}::{name},"));
             w.line("reader: ParseResult<'a>,");
-            w.line("id: NodeId,");
+            w.line("id: RawNodeId,");
             w.dedent();
             w.line("}");
             w.newline();
@@ -699,7 +692,7 @@ impl AstModel<'_> {
             w.indent();
             w.line("let mut buf = String::new();");
             w.line(&format!(
-                "NodeRef::new(self.id, self.reader, {dialect_fn_path}()).dump(&mut buf, 0);"
+                "Node::new(self.id, self.reader, {dialect_fn_path}()).dump(&mut buf, 0);"
             ));
             w.line("f.write_str(&buf)");
             w.dedent();
@@ -712,7 +705,7 @@ impl AstModel<'_> {
             w.line(&format!("impl<'a> {}<'a> {{", name));
             w.indent();
             w.doc_comment("The arena node ID of this node.");
-            w.line("pub fn node_id(&self) -> NodeId { self.id }");
+            w.line("pub fn node_id(&self) -> RawNodeId { self.id }");
             for field in fields {
                 let fname = rust_field_name(&field.name);
                 let return_type =
@@ -729,9 +722,9 @@ impl AstModel<'_> {
             w.newline();
 
             // FromArena impl — resolve from arena by NodeId (tag-checked, no unsafe)
-            w.line(&format!("impl<'a> DialectNodeType<'a> for {}<'a> {{", name));
+            w.line(&format!("impl<'a> GrammarNodeType<'a> for {}<'a> {{", name));
             w.indent();
-            w.line("fn from_arena(reader: ParseResult<'a>, id: NodeId) -> Option<Self> {");
+            w.line("fn from_arena(reader: ParseResult<'a>, id: RawNodeId) -> Option<Self> {");
             w.indent();
             w.line(&format!(
                 "let raw = reader.resolve_as::<{ffi_path}::{name}>(id)?;"
@@ -745,7 +738,7 @@ impl AstModel<'_> {
 
             // XxxId newtype for this view struct
             w.line("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]");
-            w.line(&format!("pub struct {name}Id(pub NodeId);"));
+            w.line(&format!("pub struct {name}Id(pub RawNodeId);"));
             w.newline();
             w.open_block(&format!("impl<'a> From<{name}<'a>> for {name}Id {{"));
             w.line(&format!(
@@ -753,11 +746,11 @@ impl AstModel<'_> {
             ));
             w.close_block("}");
             w.newline();
-            w.open_block(&format!("impl From<{name}Id> for NodeId {{"));
-            w.line(&format!("fn from(id: {name}Id) -> NodeId {{ id.0 }}"));
+            w.open_block(&format!("impl From<{name}Id> for RawNodeId {{"));
+            w.line(&format!("fn from(id: {name}Id) -> RawNodeId {{ id.0 }}"));
             w.close_block("}");
             w.newline();
-            w.open_block(&format!("impl {crate_prefix}::TypedNodeId for {name}Id {{"));
+            w.open_block(&format!("impl NodeId for {name}Id {{"));
             w.line(&format!("type Node<'a> = {name}<'a>;"));
             w.close_block("}");
             w.newline();
@@ -782,7 +775,7 @@ impl AstModel<'_> {
 
             // XxxId newtype for this list alias
             w.line("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]");
-            w.line(&format!("pub struct {name}Id(pub NodeId);"));
+            w.line(&format!("pub struct {name}Id(pub RawNodeId);"));
             w.newline();
             w.open_block(&format!("impl<'a> From<{name}<'a>> for {name}Id {{"));
             w.line(&format!(
@@ -790,11 +783,11 @@ impl AstModel<'_> {
             ));
             w.close_block("}");
             w.newline();
-            w.open_block(&format!("impl From<{name}Id> for NodeId {{"));
-            w.line(&format!("fn from(id: {name}Id) -> NodeId {{ id.0 }}"));
+            w.open_block(&format!("impl From<{name}Id> for RawNodeId {{"));
+            w.line(&format!("fn from(id: {name}Id) -> RawNodeId {{ id.0 }}"));
             w.close_block("}");
             w.newline();
-            w.open_block(&format!("impl {crate_prefix}::TypedNodeId for {name}Id {{"));
+            w.open_block(&format!("impl NodeId for {name}Id {{"));
             w.line(&format!("type Node<'a> = {name}<'a>;"));
             w.close_block("}");
             w.newline();
@@ -818,7 +811,7 @@ impl AstModel<'_> {
         }
         if open_for_extension {
             w.doc_comment("A node with an unknown tag from a dialect extension.");
-            w.line("Other { id: NodeId, tag: u32 },");
+            w.line("Other { id: RawNodeId, tag: u32 },");
         } else {
             w.doc_comment("Placeholder for PhantomData lifetime — never constructed.");
             w.line("__Phantom(PhantomData<&'a ()>),");
@@ -836,7 +829,7 @@ impl AstModel<'_> {
         w.doc_comment("# Safety");
         w.doc_comment("`ptr` must be non-null, well-aligned, and valid for `'a`.");
         w.doc_comment("Its first `u32` must be a valid `NodeTag` discriminant.");
-        w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, reader: ParseResult<'a>, id: NodeId) -> Node<'a> {");
+        w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, reader: ParseResult<'a>, id: RawNodeId) -> Node<'a> {");
         w.indent();
         w.line("// SAFETY: caller guarantees ptr is valid for 'a with a valid tag.");
         w.line("unsafe {");
@@ -871,7 +864,7 @@ impl AstModel<'_> {
         w.doc_comment("Resolve a `NodeId` into a typed `Node`, or `None` if null/invalid.");
         w.lines(
             "
-        pub(crate) fn resolve(reader: ParseResult<'a>, id: NodeId) -> Option<Node<'a>> {
+        pub(crate) fn resolve(reader: ParseResult<'a>, id: RawNodeId) -> Option<Node<'a>> {
             let (ptr, _tag) = reader.node_ptr(id)?;
             Some(unsafe { Node::from_raw(ptr as *const u32, reader, id) })
         }
@@ -884,7 +877,7 @@ impl AstModel<'_> {
 
         // node_id() on Node<'a>
         w.doc_comment("The arena node ID of this node.");
-        w.open_block("pub fn node_id(&self) -> NodeId {");
+        w.open_block("pub fn node_id(&self) -> RawNodeId {");
         w.open_block("match self {");
         for item in self.node_like_items() {
             match item {
@@ -912,8 +905,8 @@ impl AstModel<'_> {
         // FromArena impl for Node
         w.lines(
             "
-        impl<'a> DialectNodeType<'a> for Node<'a> {
-            fn from_arena(reader: ParseResult<'a>, id: NodeId) -> Option<Self> {
+        impl<'a> GrammarNodeType<'a> for Node<'a> {
+            fn from_arena(reader: ParseResult<'a>, id: RawNodeId) -> Option<Self> {
                 Node::resolve(reader, id)
             }
         }
@@ -923,19 +916,17 @@ impl AstModel<'_> {
 
         // AnyNodeId — typed ID for Node<'a>
         w.line("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]");
-        w.line("pub struct AnyNodeId(pub NodeId);");
+        w.line("pub struct AnyNodeId(pub RawNodeId);");
         w.newline();
         w.open_block("impl<'a> From<Node<'a>> for AnyNodeId {");
         w.line("fn from(n: Node<'a>) -> Self { AnyNodeId(n.node_id()) }");
         w.close_block("}");
         w.newline();
-        w.open_block("impl From<AnyNodeId> for NodeId {");
-        w.line("fn from(id: AnyNodeId) -> NodeId { id.0 }");
+        w.open_block("impl From<AnyNodeId> for RawNodeId {");
+        w.line("fn from(id: AnyNodeId) -> RawNodeId { id.0 }");
         w.close_block("}");
         w.newline();
-        w.open_block(&format!(
-            "impl {crate_prefix}::TypedNodeId for AnyNodeId {{"
-        ));
+        w.open_block(&format!("impl NodeId for AnyNodeId {{"));
         w.line("type Node<'a> = Node<'a>;");
         w.close_block("}");
         w.newline();
@@ -980,7 +971,7 @@ impl AstModel<'_> {
             "impl<'a> {traits_path}::NodeLike<'a> for Node<'a> {{"
         ));
         w.line(&format!("type Ast = {marker};"));
-        w.open_block("fn node_id(&self) -> NodeId {");
+        w.open_block("fn node_id(&self) -> RawNodeId {");
         w.open_block("match self {");
         for item in self.node_like_items() {
             match item {
@@ -1035,7 +1026,7 @@ impl AstModel<'_> {
                 "impl<'a> {traits_path}::{name}View<'a> for {name}<'a> {{"
             ));
             w.line(&format!("type Ast = {marker};"));
-            w.line("fn node_id(&self) -> NodeId { self.id }");
+            w.line("fn node_id(&self) -> RawNodeId { self.id }");
             for field in node.fields {
                 let fname = rust_field_name(&field.name);
                 let return_type =
@@ -1163,7 +1154,7 @@ fn trait_field_return_type(
 /// This module is always compiled (no feature gate) and lives in the syntaqlite crate.
 /// TypedDialectEnv crates import traits from `syntaqlite::ast_traits`.
 impl AstModel<'_> {
-    pub fn generate_ast_traits(&self) -> String {
+    pub(crate) fn generate_ast_traits(&self) -> String {
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();
         let node_names = self.node_names();
@@ -1178,9 +1169,7 @@ impl AstModel<'_> {
             "
         #![allow(clippy::type_complexity)]
 
-        use crate::nodes::NodeId;
-        use crate::dialect_traits::DialectNodeType;
-        use crate::typed_list::TypedList;
+        use crate::ast::{GrammarNodeType, Node, NodeId, RawNodeId, TypedList};
     ",
         );
         w.newline();
@@ -1202,7 +1191,7 @@ impl AstModel<'_> {
         w.doc_comment("Trait for the generic `Node` enum wrapper.");
         w.open_block("pub trait NodeLike<'a>: Copy {");
         w.line("type Ast: AstTypes<'a>;");
-        w.line("fn node_id(&self) -> NodeId;");
+        w.line("fn node_id(&self) -> RawNodeId;");
         w.close_block("}");
         w.newline();
 
@@ -1221,7 +1210,7 @@ impl AstModel<'_> {
             }
             w.open_block(&format!("pub trait {name}View<'a>: Copy {{"));
             w.line("type Ast: AstTypes<'a>;");
-            w.line("fn node_id(&self) -> NodeId;");
+            w.line("fn node_id(&self) -> RawNodeId;");
             for field in node.fields {
                 let fname = rust_field_name(&field.name);
                 let ret = trait_field_return_type(
@@ -1272,16 +1261,16 @@ impl AstModel<'_> {
         // ── AstTypes supertrait ──
         w.doc_comment("Bundle trait associating all AST types for a dialect.");
         w.open_block("pub trait AstTypes<'a>: 'a {");
-        w.line("type Node: NodeLike<'a, Ast = Self> + Copy + DialectNodeType<'a>;");
+        w.line("type Node: NodeLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;");
         for &(abs_name, _) in abstract_items {
             w.line(&format!(
-                "type {abs_name}: {abs_name}Like<'a, Ast = Self> + Copy + DialectNodeType<'a>;"
+                "type {abs_name}: {abs_name}Like<'a, Ast = Self> + Copy + GrammarNodeType<'a>;"
             ));
         }
         for node in self.nodes() {
             let name = node.name;
             w.line(&format!(
-                "type {name}: {name}View<'a, Ast = Self> + Copy + DialectNodeType<'a>;"
+                "type {name}: {name}View<'a, Ast = Self> + Copy + GrammarNodeType<'a>;"
             ));
         }
         // Enum and flags associated types — dialects provide their own concrete types.

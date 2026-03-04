@@ -12,7 +12,7 @@ use crate::dialect_codegen::c_dialect::{
 use crate::dialect_codegen::c_meta_codegen::{CFmtCodegenError, CMetaCodegenError};
 use crate::dialect_codegen::rust_ast::{RustAstPaths, generate_rust_tokens};
 use crate::dialect_codegen::rust_dialect::{
-    generate_cargo_toml, generate_rust_build_rs, generate_rust_lib,
+    generate_cargo_toml, generate_grammar_module, generate_rust_build_rs, generate_rust_lib,
 };
 use crate::parser_tools::{
     grammar_codegen, keyword_hash, mkkeyword, parser_pipeline, sqlite_fragments, tokenizer_assembly,
@@ -53,6 +53,14 @@ impl DialectNaming {
         format!("syntaqlite_{}_dialect", self.name)
     }
 
+    pub fn grammar_fn_name(&self) -> String {
+        format!("syntaqlite_{}_grammar", self.name)
+    }
+
+    pub fn node_family_type(&self) -> String {
+        format!("{}NodeFamily", util::pascal_case(&self.name))
+    }
+
     pub fn parser_symbol_prefix(&self) -> String {
         format!("Synq{}Parse", util::pascal_case(&self.name))
     }
@@ -80,6 +88,7 @@ pub struct RustCodegenArtifacts {
     /// Shared AST trait definitions. Only generated for the internal syntaqlite
     /// crate; external dialect crates import from `syntaqlite::ast_traits`.
     pub ast_traits_rs: Option<String>,
+    pub grammar_rs: Option<String>,
     pub lib_rs: String,
     pub build_rs: String,
     pub cargo_toml: String,
@@ -451,7 +460,7 @@ pub fn generate_codegen_artifacts(
             comment_path: "crate",
             nodes_path: "crate",
             session_path: "crate",
-            dialect_fn_path: "super::grammar::typed_grammar",
+            grammar_fn_path: "super::grammar::typed_grammar",
         };
         Some(RustCodegenArtifacts {
             tokens_rs: generate_rust_tokens(&token_defines[..]),
@@ -462,7 +471,16 @@ pub fn generate_codegen_artifacts(
                 request.open_for_extension,
             ),
             ast_traits_rs: Some(ast_model.generate_ast_traits()),
-            lib_rs: generate_rust_lib(&request.dialect.dialect_symbol_fn_name()),
+            grammar_rs: Some(generate_grammar_module(
+                &request.dialect.grammar_fn_name(),
+                &request.dialect.node_family_type(),
+                "super::ast",
+                "crate",
+            )),
+            lib_rs: generate_rust_lib(
+                &request.dialect.dialect_symbol_fn_name(),
+                &request.dialect.node_family_type(),
+            ),
             build_rs: generate_rust_build_rs(request.dialect.name()),
             cargo_toml: generate_cargo_toml(request.crate_name.unwrap_or(request.dialect.name())),
             functions_catalog_rs: None,

@@ -5,12 +5,10 @@
 
 #![allow(clippy::type_complexity)]
 
-use crate::dialect_traits::DialectNodeType;
-use crate::nodes::NodeId;
-use crate::typed_list::TypedList;
+use crate::ast::{GrammarNodeType, Node, NodeId, RawNodeId, TypedList};
 
 /// Base variants of `LiteralType`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `LiteralTypeLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `LiteralTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LiteralTypeKind {
     INTEGER,
@@ -30,7 +28,7 @@ pub trait LiteralTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `BinaryOp`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `BinaryOpLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `BinaryOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOpKind {
     PLUS,
@@ -62,7 +60,7 @@ pub trait BinaryOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `UnaryOp`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `UnaryOpLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `UnaryOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOpKind {
     MINUS,
@@ -79,7 +77,7 @@ pub trait UnaryOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `CompoundOp`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `CompoundOpLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `CompoundOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompoundOpKind {
     UNION,
@@ -96,7 +94,7 @@ pub trait CompoundOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `IsOp`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `IsOpLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `IsOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IsOpKind {
     IS,
@@ -115,7 +113,7 @@ pub trait IsOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `ForeignKeyAction`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `ForeignKeyActionLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `ForeignKeyActionLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ForeignKeyActionKind {
     NOACTION,
@@ -133,7 +131,7 @@ pub trait ForeignKeyActionLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `GeneratedColumnStorage`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `GeneratedColumnStorageLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `GeneratedColumnStorageLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GeneratedColumnStorageKind {
     VIRTUAL,
@@ -148,7 +146,7 @@ pub trait GeneratedColumnStorageLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `ColumnConstraintKind`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `ColumnConstraintKindLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `ColumnConstraintKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColumnConstraintKindKind {
     DEFAULT,
@@ -170,7 +168,7 @@ pub trait ColumnConstraintKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `TableConstraintKind`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `TableConstraintKindLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `TableConstraintKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TableConstraintKindKind {
     PRIMARYKEY,
@@ -187,7 +185,7 @@ pub trait TableConstraintKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `Materialized`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `MaterializedLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `MaterializedLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MaterializedKind {
     DEFAULT,
@@ -203,7 +201,7 @@ pub trait MaterializedLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `ConflictAction`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `ConflictActionLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `ConflictActionLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConflictActionKind {
     DEFAULT,
@@ -222,7 +220,7 @@ pub trait ConflictActionLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `RaiseType`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `RaiseTypeLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `RaiseTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RaiseTypeKind {
     IGNORE,
@@ -239,7 +237,7 @@ pub trait RaiseTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `DropObjectType`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `DropObjectTypeLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `DropObjectTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DropObjectTypeKind {
     TABLE,
@@ -256,7 +254,7 @@ pub trait DropObjectTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `AlterOp`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `AlterOpLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `AlterOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlterOpKind {
     RENAMETABLE,
@@ -273,7 +271,7 @@ pub trait AlterOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `TransactionType`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `TransactionTypeLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `TransactionTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionTypeKind {
     DEFERRED,
@@ -289,7 +287,7 @@ pub trait TransactionTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `TransactionOp`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `TransactionOpLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `TransactionOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionOpKind {
     BEGIN,
@@ -305,7 +303,7 @@ pub trait TransactionOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `SavepointOp`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `SavepointOpLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `SavepointOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SavepointOpKind {
     SAVEPOINT,
@@ -321,7 +319,7 @@ pub trait SavepointOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `SortOrder`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `SortOrderLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `SortOrderLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortOrderKind {
     ASC,
@@ -336,7 +334,7 @@ pub trait SortOrderLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `NullsOrder`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `NullsOrderLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `NullsOrderLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NullsOrderKind {
     NONE,
@@ -352,7 +350,7 @@ pub trait NullsOrderLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `JoinType`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `JoinTypeLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `JoinTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JoinTypeKind {
     COMMA,
@@ -375,7 +373,7 @@ pub trait JoinTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `TriggerTiming`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `TriggerTimingLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `TriggerTimingLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriggerTimingKind {
     BEFORE,
@@ -391,7 +389,7 @@ pub trait TriggerTimingLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `TriggerEventType`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `TriggerEventTypeLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `TriggerEventTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriggerEventTypeKind {
     DELETE,
@@ -407,7 +405,7 @@ pub trait TriggerEventTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `ExplainMode`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `ExplainModeLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `ExplainModeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExplainModeKind {
     EXPLAIN,
@@ -422,7 +420,7 @@ pub trait ExplainModeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `PragmaForm`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `PragmaFormLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `PragmaFormLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PragmaFormKind {
     BARE,
@@ -438,7 +436,7 @@ pub trait PragmaFormLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `AnalyzeKind`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `AnalyzeKindLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `AnalyzeKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AnalyzeKindKind {
     ANALYZE,
@@ -453,7 +451,7 @@ pub trait AnalyzeKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `FrameType`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `FrameTypeLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `FrameTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameTypeKind {
     NONE,
@@ -470,7 +468,7 @@ pub trait FrameTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `FrameBoundType`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `FrameBoundTypeLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `FrameBoundTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameBoundTypeKind {
     UNBOUNDEDPRECEDING,
@@ -488,7 +486,7 @@ pub trait FrameBoundTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 }
 
 /// Base variants of `FrameExclude`. Used for exhaustive pattern matching in generic code.
-/// TypedDialectEnv extensions that add variants beyond this set return `None` from `FrameExcludeLike::kind`.
+/// Grammar extensions that add variants beyond this set return `None` from `FrameExcludeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameExcludeKind {
     NONE,
@@ -537,13 +535,13 @@ pub trait SelectStmtFlagsLike: Copy + PartialEq + Eq + Default + std::fmt::Debug
 /// Trait for the generic `Node` enum wrapper.
 pub trait NodeLike<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
 }
 
 /// Accessor trait for `AggregateFunctionCall` nodes.
 pub trait AggregateFunctionCallView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn func_name(&self) -> &'a str;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::AggregateFunctionCallFlags;
     fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
@@ -555,7 +553,7 @@ pub trait AggregateFunctionCallView<'a>: Copy {
 /// Accessor trait for `OrderedSetFunctionCall` nodes.
 pub trait OrderedSetFunctionCallView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn func_name(&self) -> &'a str;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::AggregateFunctionCallFlags;
     fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
@@ -567,7 +565,7 @@ pub trait OrderedSetFunctionCallView<'a>: Copy {
 /// Accessor trait for `CastExpr` nodes.
 pub trait CastExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn type_name(&self) -> &'a str;
 }
@@ -575,7 +573,7 @@ pub trait CastExprView<'a>: Copy {
 /// Accessor trait for `ColumnRef` nodes.
 pub trait ColumnRefView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn column(&self) -> &'a str;
     fn table(&self) -> &'a str;
     fn schema(&self) -> &'a str;
@@ -584,7 +582,7 @@ pub trait ColumnRefView<'a>: Copy {
 /// Accessor trait for `CompoundSelect` nodes.
 pub trait CompoundSelectView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::CompoundOp;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
@@ -593,21 +591,21 @@ pub trait CompoundSelectView<'a>: Copy {
 /// Accessor trait for `SubqueryExpr` nodes.
 pub trait SubqueryExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
 
 /// Accessor trait for `ExistsExpr` nodes.
 pub trait ExistsExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
 
 /// Accessor trait for `InExpr` nodes.
 pub trait InExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn negated(&self) -> bool;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn source(&self) -> Option<<Self::Ast as AstTypes<'a>>::InExprSource>;
@@ -616,7 +614,7 @@ pub trait InExprView<'a>: Copy {
 /// Accessor trait for `IsExpr` nodes.
 pub trait IsExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::IsOp;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -625,7 +623,7 @@ pub trait IsExprView<'a>: Copy {
 /// Accessor trait for `BetweenExpr` nodes.
 pub trait BetweenExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn negated(&self) -> bool;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn low(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -635,7 +633,7 @@ pub trait BetweenExprView<'a>: Copy {
 /// Accessor trait for `LikeExpr` nodes.
 pub trait LikeExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn negated(&self) -> bool;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn pattern(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -645,7 +643,7 @@ pub trait LikeExprView<'a>: Copy {
 /// Accessor trait for `CaseExpr` nodes.
 pub trait CaseExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn else_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn whens(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::CaseWhen>>;
@@ -654,7 +652,7 @@ pub trait CaseExprView<'a>: Copy {
 /// Accessor trait for `CaseWhen` nodes.
 pub trait CaseWhenView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn when_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn then_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -662,7 +660,7 @@ pub trait CaseWhenView<'a>: Copy {
 /// Accessor trait for `ForeignKeyClause` nodes.
 pub trait ForeignKeyClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn ref_table(&self) -> &'a str;
     fn ref_columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
     fn on_delete(&self) -> <Self::Ast as AstTypes<'a>>::ForeignKeyAction;
@@ -673,7 +671,7 @@ pub trait ForeignKeyClauseView<'a>: Copy {
 /// Accessor trait for `ColumnConstraint` nodes.
 pub trait ColumnConstraintView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn kind(&self) -> <Self::Ast as AstTypes<'a>>::ColumnConstraintKind;
     fn constraint_name(&self) -> &'a str;
     fn onconf(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
@@ -690,7 +688,7 @@ pub trait ColumnConstraintView<'a>: Copy {
 /// Accessor trait for `ColumnDef` nodes.
 pub trait ColumnDefView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn column_name(&self) -> &'a str;
     fn type_name(&self) -> &'a str;
     fn constraints(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::ColumnConstraint>>;
@@ -699,7 +697,7 @@ pub trait ColumnDefView<'a>: Copy {
 /// Accessor trait for `TableConstraint` nodes.
 pub trait TableConstraintView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn kind(&self) -> <Self::Ast as AstTypes<'a>>::TableConstraintKind;
     fn constraint_name(&self) -> &'a str;
     fn onconf(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
@@ -713,7 +711,7 @@ pub trait TableConstraintView<'a>: Copy {
 /// Accessor trait for `CreateTableStmt` nodes.
 pub trait CreateTableStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn table_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn is_temp(&self) -> bool;
@@ -729,7 +727,7 @@ pub trait CreateTableStmtView<'a>: Copy {
 /// Accessor trait for `CteDefinition` nodes.
 pub trait CteDefinitionView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn cte_name(&self) -> &'a str;
     fn materialized(&self) -> <Self::Ast as AstTypes<'a>>::Materialized;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
@@ -739,7 +737,7 @@ pub trait CteDefinitionView<'a>: Copy {
 /// Accessor trait for `WithClause` nodes.
 pub trait WithClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn recursive(&self) -> bool;
     fn ctes(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::CteDefinition>>;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
@@ -748,7 +746,7 @@ pub trait WithClauseView<'a>: Copy {
 /// Accessor trait for `DeleteStmt` nodes.
 pub trait DeleteStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
     fn where_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
@@ -758,7 +756,7 @@ pub trait DeleteStmtView<'a>: Copy {
 /// Accessor trait for `SetClause` nodes.
 pub trait SetClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn column(&self) -> &'a str;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
     fn value(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -768,7 +766,7 @@ pub trait SetClauseView<'a>: Copy {
 #[allow(clippy::wrong_self_convention)]
 pub trait UpdateStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn conflict_action(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
     fn setlist(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::SetClause>>;
@@ -781,7 +779,7 @@ pub trait UpdateStmtView<'a>: Copy {
 /// Accessor trait for `InsertStmt` nodes.
 pub trait InsertStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn conflict_action(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
@@ -791,7 +789,7 @@ pub trait InsertStmtView<'a>: Copy {
 /// Accessor trait for `BinaryExpr` nodes.
 pub trait BinaryExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::BinaryOp;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -800,7 +798,7 @@ pub trait BinaryExprView<'a>: Copy {
 /// Accessor trait for `UnaryExpr` nodes.
 pub trait UnaryExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::UnaryOp;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -808,7 +806,7 @@ pub trait UnaryExprView<'a>: Copy {
 /// Accessor trait for `Literal` nodes.
 pub trait LiteralView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn literal_type(&self) -> <Self::Ast as AstTypes<'a>>::LiteralType;
     fn source(&self) -> &'a str;
 }
@@ -816,7 +814,7 @@ pub trait LiteralView<'a>: Copy {
 /// Accessor trait for `FunctionCall` nodes.
 pub trait FunctionCallView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn func_name(&self) -> &'a str;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::FunctionCallFlags;
     fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
@@ -827,14 +825,14 @@ pub trait FunctionCallView<'a>: Copy {
 /// Accessor trait for `Variable` nodes.
 pub trait VariableView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn source(&self) -> &'a str;
 }
 
 /// Accessor trait for `CollateExpr` nodes.
 pub trait CollateExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn collation(&self) -> &'a str;
 }
@@ -842,7 +840,7 @@ pub trait CollateExprView<'a>: Copy {
 /// Accessor trait for `RaiseExpr` nodes.
 pub trait RaiseExprView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn raise_type(&self) -> <Self::Ast as AstTypes<'a>>::RaiseType;
     fn error_message(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -850,7 +848,7 @@ pub trait RaiseExprView<'a>: Copy {
 /// Accessor trait for `QualifiedName` nodes.
 pub trait QualifiedNameView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn object_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
 }
@@ -858,7 +856,7 @@ pub trait QualifiedNameView<'a>: Copy {
 /// Accessor trait for `DropStmt` nodes.
 pub trait DropStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn object_type(&self) -> <Self::Ast as AstTypes<'a>>::DropObjectType;
     fn if_exists(&self) -> bool;
     fn target(&self) -> Option<<Self::Ast as AstTypes<'a>>::QualifiedName>;
@@ -867,7 +865,7 @@ pub trait DropStmtView<'a>: Copy {
 /// Accessor trait for `AlterTableStmt` nodes.
 pub trait AlterTableStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::AlterOp;
     fn target(&self) -> Option<<Self::Ast as AstTypes<'a>>::QualifiedName>;
     fn new_name(&self) -> &'a str;
@@ -877,7 +875,7 @@ pub trait AlterTableStmtView<'a>: Copy {
 /// Accessor trait for `TransactionStmt` nodes.
 pub trait TransactionStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::TransactionOp;
     fn trans_type(&self) -> <Self::Ast as AstTypes<'a>>::TransactionType;
 }
@@ -885,7 +883,7 @@ pub trait TransactionStmtView<'a>: Copy {
 /// Accessor trait for `SavepointStmt` nodes.
 pub trait SavepointStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::SavepointOp;
     fn savepoint_name(&self) -> &'a str;
 }
@@ -893,7 +891,7 @@ pub trait SavepointStmtView<'a>: Copy {
 /// Accessor trait for `ResultColumn` nodes.
 pub trait ResultColumnView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::ResultColumnFlags;
     fn alias(&self) -> &'a str;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -903,7 +901,7 @@ pub trait ResultColumnView<'a>: Copy {
 #[allow(clippy::wrong_self_convention)]
 pub trait SelectStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::SelectStmtFlags;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::ResultColumn>>;
     fn from_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
@@ -918,7 +916,7 @@ pub trait SelectStmtView<'a>: Copy {
 /// Accessor trait for `OrderingTerm` nodes.
 pub trait OrderingTermView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn sort_order(&self) -> <Self::Ast as AstTypes<'a>>::SortOrder;
     fn nulls_order(&self) -> <Self::Ast as AstTypes<'a>>::NullsOrder;
@@ -927,7 +925,7 @@ pub trait OrderingTermView<'a>: Copy {
 /// Accessor trait for `LimitClause` nodes.
 pub trait LimitClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn limit(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn offset(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -935,7 +933,7 @@ pub trait LimitClauseView<'a>: Copy {
 /// Accessor trait for `TableRef` nodes.
 pub trait TableRefView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn table_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn alias(&self) -> &'a str;
@@ -944,7 +942,7 @@ pub trait TableRefView<'a>: Copy {
 /// Accessor trait for `SubqueryTableSource` nodes.
 pub trait SubqueryTableSourceView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
     fn alias(&self) -> &'a str;
 }
@@ -952,7 +950,7 @@ pub trait SubqueryTableSourceView<'a>: Copy {
 /// Accessor trait for `JoinClause` nodes.
 pub trait JoinClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn join_type(&self) -> <Self::Ast as AstTypes<'a>>::JoinType;
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
@@ -963,7 +961,7 @@ pub trait JoinClauseView<'a>: Copy {
 /// Accessor trait for `JoinPrefix` nodes.
 pub trait JoinPrefixView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn source(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn join_type(&self) -> <Self::Ast as AstTypes<'a>>::JoinType;
 }
@@ -971,7 +969,7 @@ pub trait JoinPrefixView<'a>: Copy {
 /// Accessor trait for `TriggerEvent` nodes.
 pub trait TriggerEventView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn event_type(&self) -> <Self::Ast as AstTypes<'a>>::TriggerEventType;
     fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
 }
@@ -979,7 +977,7 @@ pub trait TriggerEventView<'a>: Copy {
 /// Accessor trait for `CreateTriggerStmt` nodes.
 pub trait CreateTriggerStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn trigger_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn is_temp(&self) -> bool;
@@ -994,7 +992,7 @@ pub trait CreateTriggerStmtView<'a>: Copy {
 /// Accessor trait for `CreateVirtualTableStmt` nodes.
 pub trait CreateVirtualTableStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn table_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn module_name(&self) -> &'a str;
@@ -1005,7 +1003,7 @@ pub trait CreateVirtualTableStmtView<'a>: Copy {
 /// Accessor trait for `PragmaStmt` nodes.
 pub trait PragmaStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn pragma_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn value(&self) -> &'a str;
@@ -1015,7 +1013,7 @@ pub trait PragmaStmtView<'a>: Copy {
 /// Accessor trait for `AnalyzeStmt` nodes.
 pub trait AnalyzeStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn target_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn kind(&self) -> <Self::Ast as AstTypes<'a>>::AnalyzeKind;
@@ -1024,7 +1022,7 @@ pub trait AnalyzeStmtView<'a>: Copy {
 /// Accessor trait for `AttachStmt` nodes.
 pub trait AttachStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn filename(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn db_name(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn key(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -1033,7 +1031,7 @@ pub trait AttachStmtView<'a>: Copy {
 /// Accessor trait for `DetachStmt` nodes.
 pub trait DetachStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn db_name(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
 
@@ -1041,7 +1039,7 @@ pub trait DetachStmtView<'a>: Copy {
 #[allow(clippy::wrong_self_convention)]
 pub trait VacuumStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn schema(&self) -> &'a str;
     fn into_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -1049,7 +1047,7 @@ pub trait VacuumStmtView<'a>: Copy {
 /// Accessor trait for `ExplainStmt` nodes.
 pub trait ExplainStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn explain_mode(&self) -> <Self::Ast as AstTypes<'a>>::ExplainMode;
     fn stmt(&self) -> Option<<Self::Ast as AstTypes<'a>>::Stmt>;
 }
@@ -1057,7 +1055,7 @@ pub trait ExplainStmtView<'a>: Copy {
 /// Accessor trait for `CreateIndexStmt` nodes.
 pub trait CreateIndexStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn index_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn table_name(&self) -> &'a str;
@@ -1070,7 +1068,7 @@ pub trait CreateIndexStmtView<'a>: Copy {
 /// Accessor trait for `CreateViewStmt` nodes.
 pub trait CreateViewStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn view_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
     fn is_temp(&self) -> bool;
@@ -1082,14 +1080,14 @@ pub trait CreateViewStmtView<'a>: Copy {
 /// Accessor trait for `ValuesClause` nodes.
 pub trait ValuesClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn rows(&self) -> Option<TypedList<'a, TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>>;
 }
 
 /// Accessor trait for `FrameBound` nodes.
 pub trait FrameBoundView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn bound_type(&self) -> <Self::Ast as AstTypes<'a>>::FrameBoundType;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -1097,7 +1095,7 @@ pub trait FrameBoundView<'a>: Copy {
 /// Accessor trait for `FrameSpec` nodes.
 pub trait FrameSpecView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn frame_type(&self) -> <Self::Ast as AstTypes<'a>>::FrameType;
     fn exclude(&self) -> <Self::Ast as AstTypes<'a>>::FrameExclude;
     fn start_bound(&self) -> Option<<Self::Ast as AstTypes<'a>>::FrameBound>;
@@ -1107,7 +1105,7 @@ pub trait FrameSpecView<'a>: Copy {
 /// Accessor trait for `WindowDef` nodes.
 pub trait WindowDefView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn base_window_name(&self) -> &'a str;
     fn partition_by(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
     fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
@@ -1117,7 +1115,7 @@ pub trait WindowDefView<'a>: Copy {
 /// Accessor trait for `NamedWindowDef` nodes.
 pub trait NamedWindowDefView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn window_name(&self) -> &'a str;
     fn window_def(&self) -> Option<<Self::Ast as AstTypes<'a>>::WindowDef>;
 }
@@ -1125,7 +1123,7 @@ pub trait NamedWindowDefView<'a>: Copy {
 /// Accessor trait for `FilterOver` nodes.
 pub trait FilterOverView<'a>: Copy {
     type Ast: AstTypes<'a>;
-    fn node_id(&self) -> NodeId;
+    fn node_id(&self) -> RawNodeId;
     fn filter_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn over_def(&self) -> Option<<Self::Ast as AstTypes<'a>>::WindowDef>;
     fn over_name(&self) -> &'a str;
@@ -1243,79 +1241,79 @@ pub trait TableSourceLike<'a>: Copy {
 
 /// Bundle trait associating all AST types for a dialect.
 pub trait AstTypes<'a>: 'a {
-    type Node: NodeLike<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type Select: SelectLike<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type InExprSource: InExprSourceLike<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type Expr: ExprLike<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type Stmt: StmtLike<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type TableSource: TableSourceLike<'a, Ast = Self> + Copy + DialectNodeType<'a>;
+    type Node: NodeLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type Select: SelectLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type InExprSource: InExprSourceLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type Expr: ExprLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type Stmt: StmtLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type TableSource: TableSourceLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type AggregateFunctionCall: AggregateFunctionCallView<'a, Ast = Self>
         + Copy
-        + DialectNodeType<'a>;
+        + GrammarNodeType<'a>;
     type OrderedSetFunctionCall: OrderedSetFunctionCallView<'a, Ast = Self>
         + Copy
-        + DialectNodeType<'a>;
-    type CastExpr: CastExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type ColumnRef: ColumnRefView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type CompoundSelect: CompoundSelectView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type SubqueryExpr: SubqueryExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type ExistsExpr: ExistsExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type InExpr: InExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type IsExpr: IsExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type BetweenExpr: BetweenExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type LikeExpr: LikeExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type CaseExpr: CaseExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type CaseWhen: CaseWhenView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type ForeignKeyClause: ForeignKeyClauseView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type ColumnConstraint: ColumnConstraintView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type ColumnDef: ColumnDefView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type TableConstraint: TableConstraintView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type CreateTableStmt: CreateTableStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type CteDefinition: CteDefinitionView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type WithClause: WithClauseView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type DeleteStmt: DeleteStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type SetClause: SetClauseView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type UpdateStmt: UpdateStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type InsertStmt: InsertStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type BinaryExpr: BinaryExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type UnaryExpr: UnaryExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type Literal: LiteralView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type FunctionCall: FunctionCallView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type Variable: VariableView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type CollateExpr: CollateExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type RaiseExpr: RaiseExprView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type QualifiedName: QualifiedNameView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type DropStmt: DropStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type AlterTableStmt: AlterTableStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type TransactionStmt: TransactionStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type SavepointStmt: SavepointStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type ResultColumn: ResultColumnView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type SelectStmt: SelectStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type OrderingTerm: OrderingTermView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type LimitClause: LimitClauseView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type TableRef: TableRefView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type SubqueryTableSource: SubqueryTableSourceView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type JoinClause: JoinClauseView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type JoinPrefix: JoinPrefixView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type TriggerEvent: TriggerEventView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type CreateTriggerStmt: CreateTriggerStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
+        + GrammarNodeType<'a>;
+    type CastExpr: CastExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type ColumnRef: ColumnRefView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type CompoundSelect: CompoundSelectView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type SubqueryExpr: SubqueryExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type ExistsExpr: ExistsExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type InExpr: InExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type IsExpr: IsExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type BetweenExpr: BetweenExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type LikeExpr: LikeExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type CaseExpr: CaseExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type CaseWhen: CaseWhenView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type ForeignKeyClause: ForeignKeyClauseView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type ColumnConstraint: ColumnConstraintView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type ColumnDef: ColumnDefView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type TableConstraint: TableConstraintView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type CreateTableStmt: CreateTableStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type CteDefinition: CteDefinitionView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type WithClause: WithClauseView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type DeleteStmt: DeleteStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type SetClause: SetClauseView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type UpdateStmt: UpdateStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type InsertStmt: InsertStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type BinaryExpr: BinaryExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type UnaryExpr: UnaryExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type Literal: LiteralView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type FunctionCall: FunctionCallView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type Variable: VariableView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type CollateExpr: CollateExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type RaiseExpr: RaiseExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type QualifiedName: QualifiedNameView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type DropStmt: DropStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type AlterTableStmt: AlterTableStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type TransactionStmt: TransactionStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type SavepointStmt: SavepointStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type ResultColumn: ResultColumnView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type SelectStmt: SelectStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type OrderingTerm: OrderingTermView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type LimitClause: LimitClauseView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type TableRef: TableRefView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type SubqueryTableSource: SubqueryTableSourceView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type JoinClause: JoinClauseView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type JoinPrefix: JoinPrefixView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type TriggerEvent: TriggerEventView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type CreateTriggerStmt: CreateTriggerStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type CreateVirtualTableStmt: CreateVirtualTableStmtView<'a, Ast = Self>
         + Copy
-        + DialectNodeType<'a>;
-    type PragmaStmt: PragmaStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type AnalyzeStmt: AnalyzeStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type AttachStmt: AttachStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type DetachStmt: DetachStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type VacuumStmt: VacuumStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type ExplainStmt: ExplainStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type CreateIndexStmt: CreateIndexStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type CreateViewStmt: CreateViewStmtView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type ValuesClause: ValuesClauseView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type FrameBound: FrameBoundView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type FrameSpec: FrameSpecView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type WindowDef: WindowDefView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type NamedWindowDef: NamedWindowDefView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
-    type FilterOver: FilterOverView<'a, Ast = Self> + Copy + DialectNodeType<'a>;
+        + GrammarNodeType<'a>;
+    type PragmaStmt: PragmaStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type AnalyzeStmt: AnalyzeStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type AttachStmt: AttachStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type DetachStmt: DetachStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type VacuumStmt: VacuumStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type ExplainStmt: ExplainStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type CreateIndexStmt: CreateIndexStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type CreateViewStmt: CreateViewStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type ValuesClause: ValuesClauseView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type FrameBound: FrameBoundView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type FrameSpec: FrameSpecView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type WindowDef: WindowDefView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type NamedWindowDef: NamedWindowDefView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type FilterOver: FilterOverView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type LiteralType: LiteralTypeLike;
     type BinaryOp: BinaryOpLike;
     type UnaryOp: UnaryOpLike;

@@ -6,26 +6,21 @@ use std::ffi::CStr;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::DialectEnv;
-use crate::parser::{Token as CToken, Tokenizer as CTokenizer};
-use crate::parser::{
-    syntaqlite_tokenizer_create, syntaqlite_tokenizer_destroy, syntaqlite_tokenizer_next,
-    syntaqlite_tokenizer_reset,
-};
+use crate::grammar::RawGrammar;
 
-/// A raw token: (token_type ordinal, text slice).
+/// A raw token produced by the tokenizer: type ordinal + source text slice.
 #[derive(Debug, Clone, Copy)]
 pub struct Token<'a> {
-    /// The token type as a raw `u32` ordinal (dialect-specific).
+    /// Raw token type ordinal (dialect-specific).
     pub token_type: u32,
-    /// The text of the token (a slice of the source).
+    /// Slice of the source text covered by this token.
     pub text: &'a str,
 }
 
 /// Holds the C tokenizer handle and mutable state. Checked out by cursors
 /// at runtime and returned on [`Drop`].
 pub(crate) struct TokenizerInner {
-    raw: NonNull<CTokenizer>,
+    raw: NonNull<ffi::CTokenizer>,
     source_buf: Vec<u8>,
 }
 
@@ -33,55 +28,49 @@ impl Drop for TokenizerInner {
     fn drop(&mut self) {
         // SAFETY: self.raw was allocated by syntaqlite_tokenizer_create and has
         // not been freed (Drop runs exactly once).
-        unsafe { syntaqlite_tokenizer_destroy(self.raw.as_ptr()) }
+        unsafe { ffi::syntaqlite_tokenizer_destroy(self.raw.as_ptr()) }
     }
 }
 
 /// Owns a tokenizer instance. Reusable across inputs via `tokenize()`.
 ///
-/// Uses the same interior-mutability checkout pattern as [`super::Parser`].
-pub struct Tokenizer<'d> {
+/// Uses an interior-mutability checkout pattern: `tokenize()` checks out the
+/// C tokenizer state at runtime, and the returned [`TokenCursor`] returns it on
+/// drop. This allows `tokenize()` to take `&self` rather than `&mut self`.
+pub struct Tokenizer {
     inner: Rc<RefCell<Option<TokenizerInner>>>,
-    /// Keeps the dialect environment alive for the lifetime of the tokenizer.
-    /// The C tokenizer stores the env pointer internally and uses it during
-    /// tokenization, so the env must outlive this struct.
-    _dialect: DialectEnv<'d>,
 }
 
-impl<'d> Tokenizer<'d> {
-    /// Create a tokenizer bound to the given dialect environment.
-    pub fn new(dialect: impl Into<DialectEnv<'d>>) -> Self {
-        let env = dialect.into();
-        let ffi_env = env.to_ffi();
-        // SAFETY: syntaqlite_tokenizer_create(NULL, &ffi_env) allocates a new
-        // tokenizer with default malloc/free. The C side copies the env.
-        let raw = NonNull::new(unsafe { syntaqlite_tokenizer_create(std::ptr::null(), &ffi_env) })
-            .expect("tokenizer allocation failed");
+impl Tokenizer {
+    /// Create a tokenizer bound to the given grammar.
+    pub fn new(grammar: RawGrammar) -> Self {
+        // SAFETY: syntaqlite_tokenizer_create(NULL, grammar.inner) allocates a new
+        // tokenizer with default malloc/free. The C side copies the grammar.
+        let raw = NonNull::new(unsafe {
+            ffi::syntaqlite_tokenizer_create(std::ptr::null(), grammar.inner)
+        })
+        .expect("tokenizer allocation failed");
 
         let inner = TokenizerInner {
             raw,
             source_buf: Vec::new(),
         };
-
         Tokenizer {
             inner: Rc::new(RefCell::new(Some(inner))),
-            _dialect: env,
         }
     }
 
-    /// Bind source text and return a `TokenCursor` for iterating tokens.
+    /// Bind source text and return a [`TokenCursor`] for iterating tokens.
     ///
     /// Copies the source into an internal buffer to add a null terminator
-    /// (required by the C tokenizer). For zero-copy tokenization, use
-    /// [`tokenize_cstr`](Self::tokenize_cstr).
+    /// (required by the C tokenizer). The cursor owns the copy, so the
+    /// original `source` does not need to outlive the cursor. For zero-copy
+    /// tokenization, use [`tokenize_cstr`](Self::tokenize_cstr).
     ///
     /// # Panics
     ///
     /// Panics if a cursor from a previous `tokenize()` call is still alive.
-    pub fn tokenize<'a>(&self, source: &'a str) -> TokenCursor<'a>
-    where
-        'd: 'a,
-    {
+    pub fn tokenize<'a>(&self, source: &'a str) -> TokenCursor<'a> {
         let mut inner = self
             .inner
             .borrow_mut()
@@ -100,7 +89,7 @@ impl<'d> Tokenizer<'d> {
         // null-terminated. source_buf lives inside inner which will be owned by
         // the cursor.
         unsafe {
-            syntaqlite_tokenizer_reset(
+            ffi::syntaqlite_tokenizer_reset(
                 inner.raw.as_ptr(),
                 c_source_ptr.as_ptr() as *const _,
                 source.len() as u32,
@@ -116,18 +105,16 @@ impl<'d> Tokenizer<'d> {
     }
 
     /// Zero-copy variant: bind a null-terminated source and return a
-    /// `TokenCursor`.
+    /// [`TokenCursor`].
     ///
     /// The `&CStr` already guarantees a trailing `\0`, so no copy is needed.
     /// The source must be valid UTF-8 (panics otherwise).
     ///
     /// # Panics
     ///
-    /// Panics if a cursor from a previous `tokenize()` call is still alive.
-    pub fn tokenize_cstr<'a>(&self, source: &'a CStr) -> TokenCursor<'a>
-    where
-        'd: 'a,
-    {
+    /// Panics if a cursor from a previous `tokenize()` call is still alive,
+    /// or if `source` is not valid UTF-8.
+    pub fn tokenize_cstr<'a>(&self, source: &'a CStr) -> TokenCursor<'a> {
         let inner = self
             .inner
             .borrow_mut()
@@ -139,7 +126,11 @@ impl<'d> Tokenizer<'d> {
 
         // SAFETY: inner.raw is valid; source is a CStr (null-terminated, valid for 'a).
         unsafe {
-            syntaqlite_tokenizer_reset(inner.raw.as_ptr(), source.as_ptr(), bytes.len() as u32);
+            ffi::syntaqlite_tokenizer_reset(
+                inner.raw.as_ptr(),
+                source.as_ptr(),
+                bytes.len() as u32,
+            );
         }
         TokenCursor {
             raw: inner.raw,
@@ -156,7 +147,7 @@ impl<'d> Tokenizer<'d> {
 /// On drop, the checked-out tokenizer state is returned to the parent
 /// [`Tokenizer`].
 pub struct TokenCursor<'a> {
-    raw: NonNull<CTokenizer>,
+    raw: NonNull<ffi::CTokenizer>,
     source: &'a str,
     /// Base pointer of the C source buffer. Used to compute offsets back
     /// into the Rust `source` slice.
@@ -179,14 +170,14 @@ impl<'a> Iterator for TokenCursor<'a> {
     type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut token = CToken {
+        let mut token = ffi::CToken {
             text: std::ptr::null(),
             length: 0,
             type_: 0,
         };
         // SAFETY: self.raw is valid (owned by TokenizerInner in self.inner);
         // &mut token is a valid output parameter.
-        let rc = unsafe { syntaqlite_tokenizer_next(self.raw.as_ptr(), &mut token) };
+        let rc = unsafe { ffi::syntaqlite_tokenizer_next(self.raw.as_ptr(), &mut token) };
         if rc == 0 {
             return None;
         }
@@ -200,5 +191,36 @@ impl<'a> Iterator for TokenCursor<'a> {
             token_type: token.type_,
             text,
         })
+    }
+}
+
+mod ffi {
+    use std::ffi::{c_char, c_int};
+
+    /// Opaque C tokenizer type.
+    pub(crate) enum CTokenizer {}
+
+    /// A single token produced by the C tokenizer.
+    ///
+    /// Mirrors C `SyntaqliteToken` from `include/syntaqlite/tokenizer.h`.
+    #[repr(C)]
+    pub(crate) struct CToken {
+        pub(crate) text: *const c_char,
+        pub(crate) length: u32,
+        pub(crate) type_: u32,
+    }
+
+    unsafe extern "C" {
+        pub(crate) fn syntaqlite_tokenizer_create(
+            mem: *const std::ffi::c_void,
+            grammar: crate::grammar::ffi::Grammar,
+        ) -> *mut CTokenizer;
+        pub(crate) fn syntaqlite_tokenizer_reset(
+            tok: *mut CTokenizer,
+            source: *const c_char,
+            len: u32,
+        );
+        pub(crate) fn syntaqlite_tokenizer_next(tok: *mut CTokenizer, out: *mut CToken) -> c_int;
+        pub(crate) fn syntaqlite_tokenizer_destroy(tok: *mut CTokenizer);
     }
 }
