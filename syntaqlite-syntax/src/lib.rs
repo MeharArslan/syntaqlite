@@ -72,23 +72,27 @@
 
 // ==== Public API ====
 
-// Parser
+// Top level parser types.
 #[cfg(feature = "sqlite")]
 pub use parser::{Parser, StatementCursor, ParseError};
 
-// Tokenizer
+// Top-level tokenizer types.
 #[cfg(feature = "sqlite")]
 pub use tokenizer::{Token, TokenCursor, Tokenizer};
+
+// TODO(claude): document this.
+pub mod tokenizer;
+
+// TODO(claude): document this.
+pub mod ast_traits;
 
 // ==== Internal modules ====
 
 mod ast;
-mod ast_traits;
 mod cflags;
 mod grammar;
 mod incremental;
 mod parser;
-mod tokenizer;
 mod util;
 
 #[cfg(feature = "sqlite")]
