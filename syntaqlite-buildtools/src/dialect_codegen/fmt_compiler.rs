@@ -727,8 +727,8 @@ mod tests {
     use crate::util::synq_parser::Storage;
     use crate::util::upper_snake;
 
-    fn raw_op_to_string(op: &RawOp) -> Result<String, FmtCompileError> {
-        let text = match op.opcode {
+    fn raw_op_to_string(op: RawOp) -> String {
+        match op.opcode {
             opcodes::KEYWORD => format!("FmtOp::Keyword({})", op.b),
             opcodes::SPAN => format!("FmtOp::Span({})", op.a),
             opcodes::CHILD => format!("FmtOp::Child({})", op.a),
@@ -737,7 +737,10 @@ mod tests {
             opcodes::HARDLINE => "FmtOp::HardLine".to_string(),
             opcodes::GROUP_START => "FmtOp::GroupStart".to_string(),
             opcodes::GROUP_END => "FmtOp::GroupEnd".to_string(),
-            opcodes::NEST_START => format!("FmtOp::NestStart({})", op.b as i16),
+            opcodes::NEST_START => format!(
+                "FmtOp::NestStart({})",
+                i16::try_from(op.b).expect("nest indent fits i16")
+            ),
             opcodes::NEST_END => "FmtOp::NestEnd".to_string(),
             opcodes::IF_SET => format!("FmtOp::IfSet({}, {})", op.a, op.c),
             opcodes::ELSE_OP => format!("FmtOp::Else({})", op.c),
@@ -753,8 +756,7 @@ mod tests {
             opcodes::ENUM_DISPLAY => format!("FmtOp::EnumDisplay({}, {})", op.a, op.b),
             opcodes::FOR_EACH_SELF_START => "FmtOp::ForEachSelfStart".to_string(),
             _ => panic!("unknown opcode {}", op.opcode),
-        };
-        Ok(text)
+        }
     }
 
     fn generate_rust_fmt_ops(model: &AstModel<'_>) -> Result<String, FmtCompileError> {
@@ -774,7 +776,7 @@ mod tests {
         // String table
         writeln!(out, "const STRINGS: &[&str] = &[").unwrap();
         for s in &compiled.strings {
-            writeln!(out, "    {:?},", s).unwrap();
+            writeln!(out, "    {s:?},").unwrap();
         }
         writeln!(out, "];").unwrap();
         writeln!(out).unwrap();
@@ -782,7 +784,7 @@ mod tests {
         // Enum display table
         writeln!(out, "const ENUM_DISPLAY: &[u16] = &[").unwrap();
         for &sid in &compiled.enum_display {
-            write!(out, "{}, ", sid).unwrap();
+            write!(out, "{sid}, ").unwrap();
         }
         writeln!(out, "];").unwrap();
         writeln!(out).unwrap();
@@ -790,9 +792,9 @@ mod tests {
         // Per-node: const ops array
         for cn in &compiled.nodes {
             let upper = upper_snake(&cn.name);
-            writeln!(out, "const FMT_{}: &[FmtOp] = &[", upper).unwrap();
+            writeln!(out, "const FMT_{upper}: &[FmtOp] = &[").unwrap();
             for op in &cn.ops {
-                writeln!(out, "    {},", raw_op_to_string(op)?).unwrap();
+                writeln!(out, "    {},", raw_op_to_string(*op)).unwrap();
             }
             writeln!(out, "];").unwrap();
             writeln!(out).unwrap();

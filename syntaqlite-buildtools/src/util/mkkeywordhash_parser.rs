@@ -254,13 +254,13 @@ mod tests {
 
     #[test]
     fn parse_mask_block_omit() {
-        let source = r#"
+        let source = r"
 #ifdef SQLITE_OMIT_RETURNING
 #  define RETURNING  0
 #else
 #  define RETURNING  0x00400000
 #endif
-"#;
+";
         let masks = parse_mask_defines(source);
         assert_eq!(masks.len(), 1);
         assert_eq!(masks[0].name, "RETURNING");
@@ -270,13 +270,13 @@ mod tests {
 
     #[test]
     fn parse_mask_block_enable() {
-        let source = r#"
+        let source = r"
 #ifndef SQLITE_ENABLE_ORDERED_SET_AGGREGATES
 #  define ORDERSET   0
 #else
 #  define ORDERSET   0x00800000
 #endif
-"#;
+";
         let masks = parse_mask_defines(source);
         assert_eq!(masks.len(), 1);
         assert_eq!(masks[0].name, "ORDERSET");
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn parse_mixed_omit_and_enable() {
-        let source = r#"
+        let source = r"
 #ifdef SQLITE_OMIT_WINDOWFUNC
 #  define WINDOWFUNC 0
 #else
@@ -302,7 +302,7 @@ mod tests {
 #else
 #  define ORDERSET   0x00800000
 #endif
-"#;
+";
         let masks = parse_mask_defines(source);
         assert_eq!(masks.len(), 3);
         assert_eq!(masks[0].name, "WINDOWFUNC");

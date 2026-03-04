@@ -176,6 +176,10 @@ const DIALECT_EXT_HEADERS: &[(&str, &str)] = &[
 /// This populates the temp directory used by the amalgamator so that
 /// `syntaqlite/types.h`, `syntaqlite/parser.h`, etc. are resolved and
 /// inlined rather than stripped as unresolved includes.
+///
+/// # Errors
+///
+/// Returns an error if creating directories or writing files fails.
 pub fn write_runtime_headers_to_dir(dir: &Path) -> Result<(), String> {
     let csrc_dest = dir.join("csrc");
     fs::create_dir_all(&csrc_dest).map_err(|e| format!("creating {}: {e}", csrc_dest.display()))?;

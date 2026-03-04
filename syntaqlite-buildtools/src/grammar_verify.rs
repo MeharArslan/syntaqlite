@@ -122,8 +122,8 @@ pub(crate) fn verify_grammar(
         .unwrap_or_else(|e| panic!("Failed to parse action files: {e:?}"));
 
     // Compare rules.
-    let upstream_rules: BTreeSet<String> = upstream.rules.iter().map(|r| r.to_string()).collect();
-    let actions_rules: BTreeSet<String> = actions.rules.iter().map(|r| r.to_string()).collect();
+    let upstream_rules: BTreeSet<String> = upstream.rules.iter().map(ToString::to_string).collect();
+    let actions_rules: BTreeSet<String> = actions.rules.iter().map(ToString::to_string).collect();
 
     let allowed: BTreeSet<&str> = ALLOWED_EXTRA_RULES.iter().copied().collect();
     let rules_missing: Vec<String> = upstream_rules.difference(&actions_rules).cloned().collect();
@@ -191,8 +191,8 @@ fn collect_fallbacks(grammar: &LemonGrammar<'_>) -> BTreeSet<String> {
         .fallbacks
         .iter()
         .map(|fb| {
-            let mut tokens: Vec<&str> = fb.tokens.to_vec();
-            tokens.sort();
+            let mut tokens: Vec<&str> = fb.tokens.clone();
+            tokens.sort_unstable();
             format!("{} <- {}", fb.target, tokens.join(" "))
         })
         .collect()
@@ -207,8 +207,8 @@ fn collect_precedences(grammar: &LemonGrammar<'_>) -> BTreeSet<String> {
         .iter()
         .enumerate()
         .map(|(i, p)| {
-            let mut tokens: Vec<&str> = p.tokens.to_vec();
-            tokens.sort();
+            let mut tokens: Vec<&str> = p.tokens.clone();
+            tokens.sort_unstable();
             format!("[{}] {} {}", i, p.assoc, tokens.join(" "))
         })
         .collect()
@@ -218,7 +218,7 @@ fn collect_token_classes(grammar: &LemonGrammar<'_>) -> BTreeSet<String> {
     grammar
         .token_classes
         .iter()
-        .map(|tc| tc.to_string())
+        .map(ToString::to_string)
         .collect()
 }
 
@@ -228,7 +228,7 @@ mod tests {
 
     #[test]
     fn verify_grammar_unit_ok() {
-        let upstream = r#"
+        let upstream = r"
 %fallback ID ABORT.
 %left OR.
 %left AND.
@@ -236,11 +236,11 @@ mod tests {
 cmd ::= SELECT expr.
 expr ::= ID.
 expr ::= INTEGER. [OR]
-"#;
+";
 
         let actions: &[(&str, &str)] = &[(
             "a.y",
-            r#"
+            r"
 %fallback ID ABORT.
 %left OR.
 %left AND.
@@ -248,7 +248,7 @@ expr ::= INTEGER. [OR]
 cmd ::= SELECT expr(X). { use(X); }
 expr(A) ::= ID(B). { A = B; }
 expr(A) ::= INTEGER(B). [OR] { A = B; }
-"#,
+",
         )];
 
         assert!(verify_grammar(upstream, actions).is_ok());
@@ -256,18 +256,18 @@ expr(A) ::= INTEGER(B). [OR] { A = B; }
 
     #[test]
     fn verify_grammar_unit_missing_rule() {
-        let upstream = r#"
+        let upstream = r"
 cmd ::= SELECT expr.
 expr ::= ID.
 expr ::= INTEGER.
-"#;
+";
 
         let actions: &[(&str, &str)] = &[(
             "a.y",
-            r#"
+            r"
 cmd ::= SELECT expr(X). { use(X); }
 expr(A) ::= ID(B). { A = B; }
-"#,
+",
         )];
 
         let err = verify_grammar(upstream, actions).unwrap_err();
@@ -277,16 +277,16 @@ expr(A) ::= ID(B). { A = B; }
 
     #[test]
     fn verify_grammar_unit_extra_rule() {
-        let upstream = r#"
+        let upstream = r"
 cmd ::= SELECT expr.
-"#;
+";
 
         let actions: &[(&str, &str)] = &[(
             "a.y",
-            r#"
+            r"
 cmd ::= SELECT expr(X). { use(X); }
 expr(A) ::= ID(B). { A = B; }
-"#,
+",
         )];
 
         let err = verify_grammar(upstream, actions).unwrap_err();

@@ -95,12 +95,12 @@ pub(super) fn extract_fragments(
     tokenize_c: &str,
     global_c: &str,
     sqliteint_h: &str,
-) -> Result<ExtractedFragments, String> {
+) -> ExtractedFragments {
     let tok = CExtractor::new(tokenize_c);
     let glob = CExtractor::new(global_c);
     let sqint = CExtractor::new(sqliteint_h);
 
-    Ok(ExtractedFragments {
+    ExtractedFragments {
         cc_defines: tok
             .extract_specific_defines(CC_DEFINE_NAMES)
             .map(|d| d.text),
@@ -119,5 +119,5 @@ pub(super) fn extract_fragments(
         is_macros: sqint
             .extract_specific_defines(&["sqlite3Isspace", "sqlite3Isdigit", "sqlite3Isxdigit"])
             .map(|d| d.text),
-    })
+    }
 }

@@ -29,10 +29,14 @@ fn keyword_since_version(name: &str) -> i32 {
 }
 
 /// Parse the pre-extracted keyword cflag JSON data.
+///
+/// The JSON is grouped by category; currently only the `"parser"` group is used
+/// here (all keyword-gated cflags are parser-category flags).
+/// Cflag indices are group-local (i.e. local to the `"parser"` group).
 fn parse_keyword_cflags(data: &str) -> HashMap<String, (u32, u8)> {
     #[derive(serde::Deserialize)]
     struct KeywordCflags {
-        keywords: Vec<KeywordCflagEntry>,
+        parser: Vec<KeywordCflagEntry>,
     }
     #[derive(serde::Deserialize)]
     struct KeywordCflagEntry {
@@ -41,9 +45,9 @@ fn parse_keyword_cflags(data: &str) -> HashMap<String, (u32, u8)> {
         polarity: u8,
     }
 
-    let catalog: KeywordCflags = serde_json::from_str(data).expect("invalid keyword_cflags.json");
+    let catalog: KeywordCflags = serde_json::from_str(data).expect("invalid cflags.json");
     catalog
-        .keywords
+        .parser
         .into_iter()
         .map(|e| (e.name, (e.cflag, e.polarity)))
         .collect()
@@ -158,7 +162,7 @@ pub(crate) fn generate(
     extra_keywords: &[String],
     includes: &crate::dialect_codegen::c_dialect::DialectCIncludes<'_>,
 ) -> Result<String, String> {
-    let cflag_map = parse_keyword_cflags(fragments.keyword_cflags);
+    let cflag_map = parse_keyword_cflags(fragments.parser_cflags);
 
     let mut cmd = crate::util::self_subcommand::self_subcommand("mkkeyword")?;
 

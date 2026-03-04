@@ -22,6 +22,10 @@ pub struct TokenizerFragments {
 }
 
 /// Extract tokenizer fragments from raw `SQLite` source files.
+///
+/// # Errors
+///
+/// Returns an error if any required C fragment cannot be extracted from the source files.
 pub fn extract_fragments(
     tokenize_content: &str,
     global_content: &str,
@@ -89,6 +93,10 @@ pub fn extract_fragments(
 }
 
 /// Write extracted tokenizer fragments to the output directory.
+///
+/// # Errors
+///
+/// Returns an error if creating the output directory or writing any fragment file fails.
 pub fn write_fragments(fragments: &TokenizerFragments, output_dir: &Path) -> Result<(), String> {
     fs::create_dir_all(output_dir)
         .map_err(|e| format!("creating fragment dir {}: {e}", output_dir.display()))?;

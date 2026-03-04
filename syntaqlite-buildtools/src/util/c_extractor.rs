@@ -9,10 +9,8 @@
 use std::fmt;
 
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub(crate) struct CFunction {
     pub(crate) text: String,
-    pub(crate) name: String,
 }
 
 #[derive(Debug, Clone)]
@@ -26,17 +24,9 @@ pub(crate) struct CDefines {
 }
 
 impl CFunction {
-    pub(crate) const fn new(text: String, name: String) -> Self {
-        Self { text, name }
+    pub(crate) const fn new(text: String) -> Self {
+        Self { text }
     }
-}
-
-/// Result of splitting source code by a function
-#[allow(dead_code)]
-pub(crate) struct SplitByFunction {
-    pub(crate) before: String,
-    pub(crate) function: CFunction,
-    pub(crate) after: String,
 }
 
 impl CStaticArray {
@@ -81,26 +71,9 @@ impl CExtractor {
     }
 
     pub(crate) fn extract_function(&self, name: &str) -> Result<CFunction, String> {
-        self.split_by_function(name).map(|split| split.function)
-    }
-
-    /// Split source code into: before function, function, after function.
-    pub(crate) fn split_by_function(&self, name: &str) -> Result<SplitByFunction, String> {
         let (start, end) = self.find_function_bounds(name)?;
-
-        let before = self.lines[..start].join("\n");
         let text = self.lines[start..=end].join("\n");
-        let after = if end + 1 < self.lines.len() {
-            self.lines[end + 1..].join("\n")
-        } else {
-            String::new()
-        };
-
-        Ok(SplitByFunction {
-            before,
-            function: CFunction::new(text, name.to_string()),
-            after,
-        })
+        Ok(CFunction::new(text))
     }
 
     pub(crate) fn extract_static_array(&self, name: &str) -> Result<CStaticArray, String> {
@@ -346,41 +319,6 @@ impl CExtractor {
             }
         }
         merged
-    }
-
-    /// Find the ifdef/ifndef block that contains a line matching `inner_marker`,
-    /// and return the full block text (from #if... through #endif).
-    #[allow(dead_code)]
-    pub(crate) fn extract_enclosing_ifdef(&self, inner_marker: &str) -> Result<String, String> {
-        let line_idx = self
-            .lines
-            .iter()
-            .position(|l| l.contains(inner_marker))
-            .ok_or_else(|| format!("Could not find line containing '{inner_marker}'"))?;
-        let (start, end) = self
-            .find_enclosing_ifdef(line_idx)
-            .ok_or_else(|| format!("No enclosing ifdef found for '{inner_marker}'"))?;
-        Ok(self.lines[start..=end].join("\n"))
-    }
-
-    /// Extract lines between (and including) two marker strings.
-    #[allow(dead_code)]
-    pub(crate) fn extract_between_markers(
-        &self,
-        start_marker: &str,
-        end_marker: &str,
-    ) -> Result<String, String> {
-        let start = self
-            .lines
-            .iter()
-            .position(|l| l.contains(start_marker))
-            .ok_or_else(|| format!("Could not find start marker: {start_marker}"))?;
-        let end = self.lines[start..]
-            .iter()
-            .position(|l| l.contains(end_marker))
-            .map(|i| start + i)
-            .ok_or_else(|| format!("Could not find end marker: {end_marker}"))?;
-        Ok(self.lines[start..=end].join("\n"))
     }
 
     fn extract_line_ranges(&self, ranges: &[(usize, usize)]) -> String {

@@ -5,7 +5,7 @@
 
 #![allow(clippy::type_complexity)]
 
-use crate::ast::{GrammarNodeType, Node, NodeId, RawNodeId, TypedList};
+use crate::ast::{GrammarNodeType, RawNodeId, TypedList};
 
 /// Base variants of `LiteralType`. Used for exhaustive pattern matching in generic code.
 /// Grammar extensions that add variants beyond this set return `None` from `LiteralTypeLike::kind`.

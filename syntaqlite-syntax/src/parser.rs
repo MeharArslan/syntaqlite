@@ -12,6 +12,10 @@ use crate::ast::{
 };
 use crate::grammar::RawGrammar;
 
+// ── Public API ───────────────────────────────────────────────────────────────
+
+// ── ParserConfig ─────────────────────────────────────────────────────────────
+
 /// Configuration for parser construction.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct ParserConfig {
@@ -21,20 +25,7 @@ pub struct ParserConfig {
     pub collect_tokens: bool,
 }
 
-/// Holds the C parser handle and mutable state. Checked out by cursors at
-/// runtime and returned on [`Drop`].
-pub(crate) struct ParserInner {
-    pub(crate) raw: NonNull<ffi::CParser>,
-    pub(crate) source_buf: Vec<u8>,
-}
-
-impl Drop for ParserInner {
-    fn drop(&mut self) {
-        // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_grammar
-        // and has not been freed (Drop runs exactly once).
-        unsafe { ffi::syntaqlite_parser_destroy(self.raw.as_ptr()) }
-    }
-}
+// ── Parser ───────────────────────────────────────────────────────────────────
 
 /// Owns a parser instance. Reusable across inputs via `parse()` and
 /// `incremental_parse()`.
@@ -81,36 +72,6 @@ impl Parser {
         }
     }
 
-    /// Bind source text and return an [`IncrementalCursor`](crate::incremental::IncrementalCursor)
-    /// for token-by-token feeding.
-    ///
-    /// Copies the source into an internal buffer to add a null terminator
-    /// (required by the C tokenizer). The cursor owns the copy, so the
-    /// original `source` does not need to outlive the cursor.
-    ///
-    /// # Panics
-    ///
-    /// Panics if a cursor from a previous `parse()` or `incremental_parse()`
-    /// call is still alive.
-    pub fn incremental_parse(&self, source: &str) -> crate::incremental::IncrementalCursor {
-        let mut inner = self
-            .inner
-            .borrow_mut()
-            .take()
-            .expect("Parser::incremental_parse called while a cursor is still active");
-        // SAFETY: inner.raw is valid (owned via ParserInner); source is
-        // copied into source_buf.
-        unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
-        let c_source_ptr =
-            NonNull::new(inner.source_buf.as_mut_ptr()).expect("source_buf is non-empty");
-        crate::incremental::IncrementalCursor::new(
-            c_source_ptr,
-            self.grammar,
-            inner,
-            Rc::clone(&self.inner),
-        )
-    }
-
     /// Bind source text and return a [`StatementCursor`] for iterating
     /// statements.
     ///
@@ -139,25 +100,35 @@ impl Parser {
             last_saw_update_delete_limit: false,
         }
     }
-}
 
-/// Copy source into `source_buf` (with null terminator) and reset the C
-/// parser to begin tokenizing from the buffer.
-///
-/// # Safety
-/// `raw` must be a valid parser pointer owned by the caller.
-pub(crate) unsafe fn reset_parser(raw: *mut ffi::CParser, source_buf: &mut Vec<u8>, source: &str) {
-    source_buf.clear();
-    source_buf.reserve(source.len() + 1);
-    source_buf.extend_from_slice(source.as_bytes());
-    source_buf.push(0);
-
-    // source_buf has at least one byte (the null terminator just pushed).
-    let c_source_ptr = source_buf.as_ptr();
-    // SAFETY: raw is valid (caller owns it); c_source_ptr points to
-    // source_buf which is null-terminated.
-    unsafe {
-        ffi::syntaqlite_parser_reset(raw, c_source_ptr as *const _, source.len() as u32);
+    /// Bind source text and return an [`IncrementalCursor`](crate::incremental::IncrementalCursor)
+    /// for token-by-token feeding.
+    ///
+    /// Copies the source into an internal buffer to add a null terminator
+    /// (required by the C tokenizer). The cursor owns the copy, so the
+    /// original `source` does not need to outlive the cursor.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a cursor from a previous `parse()` or `incremental_parse()`
+    /// call is still alive.
+    pub fn incremental_parse(&self, source: &str) -> crate::incremental::IncrementalCursor {
+        let mut inner = self
+            .inner
+            .borrow_mut()
+            .take()
+            .expect("Parser::incremental_parse called while a cursor is still active");
+        // SAFETY: inner.raw is valid (owned via ParserInner); source is
+        // copied into source_buf.
+        unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
+        let c_source_ptr =
+            NonNull::new(inner.source_buf.as_mut_ptr()).expect("source_buf is non-empty");
+        crate::incremental::IncrementalCursor::new(
+            c_source_ptr,
+            self.grammar,
+            inner,
+            Rc::clone(&self.inner),
+        )
     }
 }
 
@@ -304,19 +275,7 @@ impl StatementCursor {
     }
 }
 
-// ── ErrorSpan / ParseError ───────────────────────────────────────────────────
-
-/// A source span describing where an error node was recorded in the arena.
-///
-/// Returned by [`ParseResult::required_node`] and [`ParseResult::optional_node`]
-/// when the resolved arena node is a [`ffi::CErrorNode`] placeholder (tag 0).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct ErrorSpan {
-    /// Byte offset of the error token in the source text.
-    pub(crate) offset: u32,
-    /// Byte length of the error token (0 = unknown).
-    pub(crate) length: u32,
-}
+// ── ParseError ───────────────────────────────────────────────────────────────
 
 /// A parse error with a human-readable message and optional source location.
 #[derive(Debug, Clone)]
@@ -342,6 +301,8 @@ impl std::fmt::Display for ParseError {
 }
 
 impl std::error::Error for ParseError {}
+
+// ── Crate-internal ───────────────────────────────────────────────────────────
 
 // ── ParseResult ──────────────────────────────────────────────────────────────
 
@@ -567,13 +528,6 @@ impl<'a> ParseResult<'a> {
         unsafe { ffi_slice(self.raw.as_ptr(), ffi::syntaqlite_parser_comments) }
     }
 
-    /// Return all macro regions captured during parsing.
-    pub(crate) fn macro_regions(&self) -> &[ffi::CMacroRegion] {
-        // SAFETY: raw is valid; syntaqlite_parser_macro_regions returns a pointer
-        // valid for the lifetime of &self.
-        unsafe { ffi_slice(self.raw.as_ptr(), ffi::syntaqlite_parser_macro_regions) }
-    }
-
     /// Dump an AST node tree as indented text into `out`.
     pub(crate) fn dump_node(&self, id: RawNodeId, out: &mut String, indent: usize) {
         unsafe extern "C" {
@@ -606,6 +560,59 @@ impl<'a> ParseResult<'a> {
     }
 }
 
+// ── ErrorSpan ────────────────────────────────────────────────────────────────
+
+/// A source span describing where an error node was recorded in the arena.
+///
+/// Returned by [`ParseResult::required_node`] and [`ParseResult::optional_node`]
+/// when the resolved arena node is a [`ffi::CErrorNode`] placeholder (tag 0).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ErrorSpan {
+    /// Byte offset of the error token in the source text.
+    pub(crate) offset: u32,
+    /// Byte length of the error token (0 = unknown).
+    pub(crate) length: u32,
+}
+
+// ── ParserInner ───────────────────────────────────────────────────────────────
+
+/// Holds the C parser handle and mutable state. Checked out by cursors at
+/// runtime and returned on [`Drop`].
+pub(crate) struct ParserInner {
+    pub(crate) raw: NonNull<ffi::CParser>,
+    pub(crate) source_buf: Vec<u8>,
+}
+
+impl Drop for ParserInner {
+    fn drop(&mut self) {
+        // SAFETY: self.raw was allocated by syntaqlite_create_parser_with_grammar
+        // and has not been freed (Drop runs exactly once).
+        unsafe { ffi::syntaqlite_parser_destroy(self.raw.as_ptr()) }
+    }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/// Copy source into `source_buf` (with null terminator) and reset the C
+/// parser to begin tokenizing from the buffer.
+///
+/// # Safety
+/// `raw` must be a valid parser pointer owned by the caller.
+pub(crate) unsafe fn reset_parser(raw: *mut ffi::CParser, source_buf: &mut Vec<u8>, source: &str) {
+    source_buf.clear();
+    source_buf.reserve(source.len() + 1);
+    source_buf.extend_from_slice(source.as_bytes());
+    source_buf.push(0);
+
+    // source_buf has at least one byte (the null terminator just pushed).
+    let c_source_ptr = source_buf.as_ptr();
+    // SAFETY: raw is valid (caller owns it); c_source_ptr points to
+    // source_buf which is null-terminated.
+    unsafe {
+        ffi::syntaqlite_parser_reset(raw, c_source_ptr as *const _, source.len() as u32);
+    }
+}
+
 /// Build a slice from an FFI function that returns a pointer and writes a count.
 ///
 /// # Safety
@@ -624,7 +631,9 @@ pub(crate) unsafe fn ffi_slice<'a, T>(
     unsafe { std::slice::from_raw_parts(ptr, count as usize) }
 }
 
-pub(crate) mod ffi {
+// ── ffi ───────────────────────────────────────────────────────────────────────
+
+mod ffi {
     use std::ffi::{c_char, c_int, c_void};
 
     /// Opaque C parser type.
@@ -693,19 +702,6 @@ pub(crate) mod ffi {
         pub flags: u32,
     }
 
-    /// A recorded macro invocation region, populated via `begin_macro` /
-    /// `end_macro`. Used by the formatter to reconstruct macro calls.
-    ///
-    /// Mirrors C `SyntaqliteMacroRegion` from `include/syntaqlite/parser.h`.
-    #[derive(Debug, Clone, Copy)]
-    #[repr(C)]
-    pub struct CMacroRegion {
-        /// Byte offset of the macro call in the original source.
-        pub call_offset: u32,
-        /// Byte length of the entire macro call.
-        pub call_length: u32,
-    }
-
     /// Tag value for error placeholder nodes stored in the arena (tag 0).
     ///
     /// Mirrors C `SYNTAQLITE_ERROR_NODE_TAG` from `include/syntaqlite/parser.h`.
@@ -728,7 +724,7 @@ pub(crate) mod ffi {
         // Parser lifecycle
         pub(crate) fn syntaqlite_create_parser_with_grammar(
             mem: *const CMemMethods,
-            grammar: crate::grammar::ffi::Grammar,
+            grammar: crate::grammar::ffi::CGrammar,
         ) -> *mut CParser;
         pub(crate) fn syntaqlite_parser_reset(p: *mut CParser, source: *const c_char, len: u32);
         pub(crate) fn syntaqlite_parser_next(p: *mut CParser) -> CParseResult;
@@ -736,7 +732,6 @@ pub(crate) mod ffi {
 
         // Parser accessors
         pub(crate) fn syntaqlite_parser_node(p: *mut CParser, node_id: u32) -> *const u32;
-        pub(crate) fn syntaqlite_parser_node_count(p: *mut CParser) -> u32;
 
         // Parser configuration
         pub(crate) fn syntaqlite_parser_set_trace(p: *mut CParser, enable: c_int) -> c_int;
@@ -753,34 +748,6 @@ pub(crate) mod ffi {
             count: *mut u32,
         ) -> *const CTokenPos;
 
-        // Low-level token-feeding API
-        pub(crate) fn syntaqlite_parser_feed_token(
-            p: *mut CParser,
-            token_type: c_int,
-            text: *const c_char,
-            len: c_int,
-        ) -> c_int;
-        pub(crate) fn syntaqlite_parser_result(p: *mut CParser) -> CParseResult;
-        pub(crate) fn syntaqlite_parser_expected_tokens(
-            p: *mut CParser,
-            out_tokens: *mut c_int,
-            out_cap: c_int,
-        ) -> c_int;
-        pub(crate) fn syntaqlite_parser_completion_context(p: *mut CParser) -> u32;
-        pub(crate) fn syntaqlite_parser_finish(p: *mut CParser) -> c_int;
-
-        // Macro region tracking
-        pub(crate) fn syntaqlite_parser_begin_macro(
-            p: *mut CParser,
-            call_offset: u32,
-            call_length: u32,
-        );
-        pub(crate) fn syntaqlite_parser_end_macro(p: *mut CParser);
-        pub(crate) fn syntaqlite_parser_macro_regions(
-            p: *mut CParser,
-            count: *mut u32,
-        ) -> *const CMacroRegion;
-
         // AST dump
         pub(crate) fn syntaqlite_dump_node(
             p: *mut CParser,
@@ -788,4 +755,26 @@ pub(crate) mod ffi {
             indent: u32,
         ) -> *mut c_char;
     }
+}
+
+pub(crate) use ffi::{
+    CComment as Comment, CCommentKind as CommentKind, CParseResult, CParser, CTokenPos as TokenPos,
+};
+
+/// Wrapper around [`ffi::syntaqlite_parser_comments`] for use outside this module.
+///
+/// # Safety
+/// `raw` must be a valid parser pointer valid for `'a`.
+pub(crate) unsafe fn raw_parser_comments<'a>(raw: *mut CParser) -> &'a [Comment] {
+    // SAFETY: forwarded to ffi_slice which requires the same invariants.
+    unsafe { ffi_slice(raw, ffi::syntaqlite_parser_comments) }
+}
+
+/// Wrapper around [`ffi::syntaqlite_parser_tokens`] for use outside this module.
+///
+/// # Safety
+/// `raw` must be a valid parser pointer valid for `'a`.
+pub(crate) unsafe fn raw_parser_tokens<'a>(raw: *mut CParser) -> &'a [TokenPos] {
+    // SAFETY: forwarded to ffi_slice which requires the same invariants.
+    unsafe { ffi_slice(raw, ffi::syntaqlite_parser_tokens) }
 }

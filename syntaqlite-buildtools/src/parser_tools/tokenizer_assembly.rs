@@ -20,7 +20,7 @@ pub(crate) fn assemble(
     fragments: &SqliteFragments,
     dialect: &str,
     includes: &DialectCIncludes<'_>,
-) -> Result<(String, TokenizerExtractResult), String> {
+) -> (String, TokenizerExtractResult) {
     let combined = {
         let mut w = CWriter::new();
         w.sqlite_file_header();
@@ -60,11 +60,11 @@ pub(crate) fn assemble(
         .replace_all("TK_", "SYNTAQLITE_TK_")
         .finish();
 
-    Ok((
+    (
         output,
         TokenizerExtractResult {
             char_map: fragments.char_map.to_string(),
             upper_to_lower: fragments.upper_to_lower.to_string(),
         },
-    ))
+    )
 }

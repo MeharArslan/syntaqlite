@@ -5,7 +5,7 @@
 
 use std::sync::LazyLock;
 
-use crate::grammar::{Grammar, RawGrammar};
+use crate::grammar::RawGrammar;
 
 unsafe extern "C" {
     fn syntaqlite_sqlite_grammar() -> *const core::ffi::c_void;

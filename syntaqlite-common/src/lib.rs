@@ -1,6 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::similar_names))]
+
 //! Shared primitives with no generated-file dependencies.
 //!
 //! Safe for the bootstrap tool (`syntaqlite-buildtools`) to depend on.

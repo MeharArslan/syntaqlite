@@ -318,13 +318,13 @@ mod tests {
 
     #[test]
     fn extract_simple_grammar() {
-        let input = r#"
+        let input = r"
 %token PLUS MINUS.
 %left PLUS MINUS.
 
 expr ::= expr(A) PLUS expr(B). { A + B }
 expr ::= INTEGER(A). { A }
-"#;
+";
         let summary = extract_grammar_summary(input).unwrap();
         assert_eq!(summary.rule_signatures.len(), 2);
         assert!(summary.nonterminals.contains("expr"));

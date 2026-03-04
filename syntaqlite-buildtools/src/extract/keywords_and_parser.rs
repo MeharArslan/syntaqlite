@@ -104,10 +104,13 @@ pub const PARSER_CFLAGS: &[(&str, &str, &str)] = &[
 // Keyword cflag extraction
 // ---------------------------------------------------------------------------
 
-/// Top-level keyword cflag catalog.
+/// Top-level keyword cflag catalog, grouped by cflag category.
+///
+/// Each key is a category name (e.g. `"parser"`); the value is the list of keywords
+/// gated by flags in that category, using group-local cflag indices.
 #[derive(Debug, Clone, serde::Serialize)]
 struct KeywordCflags {
-    keywords: Vec<KeywordCflagEntry>,
+    parser: Vec<KeywordCflagEntry>,
 }
 
 /// A single keyword entry in the catalog.
@@ -151,9 +154,9 @@ pub fn extract_keyword_cflags(
         }
         // Look up the mask symbol in the defines.
         if let Some(&(omit_flag, polarity)) = mask_lookup.get(kw.mask_expr.as_str())
-            && let Some(cflag_val) = super::synq_cflag_for_sqlite_flag(omit_flag)
+            && let Some(local_idx) = super::group_local_index("parser", omit_flag)
         {
-            map.insert(kw.name.clone(), (cflag_val, polarity));
+            map.insert(kw.name.clone(), (local_idx, polarity));
         }
     }
 
@@ -179,7 +182,7 @@ pub fn write_keyword_cflags<S: std::hash::BuildHasher>(
         .collect();
     entries.sort_by(|a, b| a.name.cmp(&b.name));
 
-    let catalog = KeywordCflags { keywords: entries };
+    let catalog = KeywordCflags { parser: entries };
     let json = serde_json::to_string_pretty(&catalog)
         .map_err(|e| format!("serializing keyword cflags: {e}"))?;
     fs::write(output_path, format!("{json}\n"))

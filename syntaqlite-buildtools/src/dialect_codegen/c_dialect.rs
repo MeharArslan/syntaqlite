@@ -428,7 +428,7 @@ mod tests {
             ("FUNCTION".to_string(), 8),
             ("SPACE".to_string(), 9),
         ];
-        let kws: HashSet<String> = ["SELECT"].iter().map(|s| s.to_string()).collect();
+        let kws: HashSet<String> = ["SELECT"].iter().map(ToString::to_string).collect();
         let h = generate_token_categories_header(&tokens, Some(&kws));
         assert!(h.contains("#define TOKEN_TYPE_COUNT 10"));
         assert!(h.contains("token_categories[10]"));
@@ -450,7 +450,7 @@ mod tests {
         // FUNCTION is in the keyword set, so it should be Keyword(1) not Function(9)
         let kws: HashSet<String> = ["SELECT", "FUNCTION"]
             .iter()
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .collect();
         let h = generate_token_categories_header(&tokens, Some(&kws));
         // SELECT=1(kw), FUNCTION=1(kw, overridden), ID=2(ident)
@@ -462,7 +462,7 @@ mod tests {
         use std::collections::HashSet;
 
         let tokens = vec![("ID".to_string(), 0)];
-        let kws: HashSet<String> = ["ID"].iter().map(|s| s.to_string()).collect();
+        let kws: HashSet<String> = ["ID"].iter().map(ToString::to_string).collect();
         let h = generate_token_categories_header(&tokens, Some(&kws));
         assert!(h.contains("2,"));
     }
@@ -472,7 +472,7 @@ mod tests {
         use std::collections::HashSet;
 
         let tokens = vec![("DOT".to_string(), 0)];
-        let kws: HashSet<String> = ["DOT"].iter().map(|s| s.to_string()).collect();
+        let kws: HashSet<String> = ["DOT"].iter().map(ToString::to_string).collect();
         let h = generate_token_categories_header(&tokens, Some(&kws));
         assert!(h.contains("6,"));
     }
@@ -519,7 +519,7 @@ mod tests {
             ("COLUMN".to_string(), 3),    // internal token, not a keyword
             ("FILTER".to_string(), 4),    // internal token, not a keyword
         ];
-        let kws: HashSet<String> = ["SELECT"].iter().map(|s| s.to_string()).collect();
+        let kws: HashSet<String> = ["SELECT"].iter().map(ToString::to_string).collect();
         let h = generate_token_categories_header(&tokens, Some(&kws));
         // SELECT=1(kw), ID=2(ident), TRUEFALSE=0(other), COLUMN=0(other), FILTER=0(other)
         assert!(

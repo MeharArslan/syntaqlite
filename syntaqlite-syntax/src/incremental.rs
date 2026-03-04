@@ -9,7 +9,10 @@ use std::rc::Rc;
 
 use crate::ast::{Node, RawNodeId};
 use crate::grammar::RawGrammar;
-use crate::parser::{ParseError, ParseResult, ParserInner, ffi, ffi_slice};
+use crate::parser::{
+    CParseResult, CParser, Comment, ParseError, ParseResult, ParserInner, TokenPos, ffi_slice,
+    raw_parser_comments, raw_parser_tokens,
+};
 
 // ── IncrementalCursor ──────────────────────────────────────────────────────────
 
@@ -59,7 +62,7 @@ impl IncrementalCursor {
         assert!(!self.finished, "IncrementalCursor used after finish()");
     }
 
-    fn raw_ptr(&self) -> *mut ffi::CParser {
+    fn raw_ptr(&self) -> *mut CParser {
         self.inner.as_ref().unwrap().raw.as_ptr()
     }
 
@@ -67,7 +70,7 @@ impl IncrementalCursor {
     ///
     /// Return codes from C:
     /// - `1` = clean success
-    /// - `2` = success with error recovery (tree has [`ffi::CErrorNode`] holes)
+    /// - `2` = success with error recovery (tree has `CErrorNode` holes)
     /// - `-1` = unrecoverable error
     fn parse_result(&self, rc: c_int) -> Result<RawNodeId, ParseError> {
         // SAFETY: raw is valid; result struct and error_msg pointer are valid
@@ -99,7 +102,7 @@ impl IncrementalCursor {
     ///
     /// # Safety
     /// `result.error_msg` must be null or a valid C string.
-    unsafe fn extract_error(result: &ffi::CParseResult) -> ParseError {
+    unsafe fn extract_error(result: &CParseResult) -> ParseError {
         let msg = if result.error_msg.is_null() {
             "parse error".to_string()
         } else {
@@ -278,23 +281,75 @@ impl IncrementalCursor {
     }
 
     /// Return all comments captured during parsing.
-    pub(crate) fn comments(&self) -> &[ffi::CComment] {
+    pub(crate) fn comments(&self) -> &[Comment] {
         // SAFETY: raw is valid (owned via ParserInner, valid for &self).
-        unsafe { ffi_slice(self.raw_ptr(), ffi::syntaqlite_parser_comments) }
+        unsafe { raw_parser_comments(self.raw_ptr()) }
     }
 
     /// Return all token positions collected during parsing.
     ///
     /// Only populated when the parser was built with `collect_tokens: true`.
-    pub(crate) fn tokens(&self) -> &[ffi::CTokenPos] {
+    pub(crate) fn tokens(&self) -> &[TokenPos] {
         // SAFETY: raw is valid (owned via ParserInner, valid for &self).
-        unsafe { ffi_slice(self.raw_ptr(), ffi::syntaqlite_parser_tokens) }
+        unsafe { raw_parser_tokens(self.raw_ptr()) }
     }
 
     /// Return all macro regions recorded via [`begin_macro`](Self::begin_macro)
     /// / [`end_macro`](Self::end_macro).
-    pub(crate) fn macro_regions(&self) -> &[ffi::CMacroRegion] {
+    pub(crate) fn macro_regions(&self) -> &[MacroRegion] {
         // SAFETY: raw is valid (owned via ParserInner, valid for &self).
         unsafe { ffi_slice(self.raw_ptr(), ffi::syntaqlite_parser_macro_regions) }
+    }
+}
+
+pub(crate) use ffi::CMacroRegion as MacroRegion;
+
+// ── ffi ───────────────────────────────────────────────────────────────────────
+
+mod ffi {
+    use std::ffi::{c_char, c_int};
+
+    /// A recorded macro invocation region, populated via `begin_macro` /
+    /// `end_macro`. Used by the formatter to reconstruct macro calls.
+    ///
+    /// Mirrors C `SyntaqliteMacroRegion` from `include/syntaqlite/parser.h`.
+    #[derive(Debug, Clone, Copy)]
+    #[repr(C)]
+    pub(crate) struct CMacroRegion {
+        /// Byte offset of the macro call in the original source.
+        pub(crate) call_offset: u32,
+        /// Byte length of the entire macro call.
+        pub(crate) call_length: u32,
+    }
+
+    unsafe extern "C" {
+        // Low-level token-feeding API
+        pub(super) fn syntaqlite_parser_feed_token(
+            p: *mut super::CParser,
+            token_type: c_int,
+            text: *const c_char,
+            len: c_int,
+        ) -> c_int;
+        pub(super) fn syntaqlite_parser_result(p: *mut super::CParser) -> super::CParseResult;
+        pub(super) fn syntaqlite_parser_expected_tokens(
+            p: *mut super::CParser,
+            out_tokens: *mut c_int,
+            out_cap: c_int,
+        ) -> c_int;
+        pub(super) fn syntaqlite_parser_completion_context(p: *mut super::CParser) -> u32;
+        pub(super) fn syntaqlite_parser_finish(p: *mut super::CParser) -> c_int;
+        pub(super) fn syntaqlite_parser_node_count(p: *mut super::CParser) -> u32;
+
+        // Macro region tracking
+        pub(super) fn syntaqlite_parser_begin_macro(
+            p: *mut super::CParser,
+            call_offset: u32,
+            call_length: u32,
+        );
+        pub(super) fn syntaqlite_parser_end_macro(p: *mut super::CParser);
+        pub(super) fn syntaqlite_parser_macro_regions(
+            p: *mut super::CParser,
+            count: *mut u32,
+        ) -> *const CMacroRegion;
     }
 }

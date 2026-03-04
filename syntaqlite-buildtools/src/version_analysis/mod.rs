@@ -104,7 +104,6 @@ impl VariantGroup {
     pub(crate) fn first(&self) -> &SqliteVersion {
         self.versions.first().expect("VariantGroup has no versions")
     }
-
 }
 
 /// Analysis of a single fragment across all versions.
@@ -206,8 +205,7 @@ pub fn analyze_versions(
 
     // Extract fragments from each version.
     let fragment_names = extract::FRAGMENT_NAMES;
-    let mut per_version_fragments: Vec<(SqliteVersion, Result<ExtractedFragments, String>)> =
-        Vec::new();
+    let mut per_version_fragments: Vec<(SqliteVersion, ExtractedFragments)> = Vec::new();
     let mut per_version_keywords: Vec<(SqliteVersion, Result<KeywordTable, String>)> = Vec::new();
     let mut per_version_grammar: Vec<(SqliteVersion, Option<String>)> = Vec::new();
 
@@ -233,13 +231,7 @@ pub fn analyze_versions(
     for name in fragment_names {
         let texts: Vec<(SqliteVersion, Result<String, String>)> = per_version_fragments
             .iter()
-            .map(|(v, res)| {
-                let text = match res {
-                    Ok(f) => f.get(name).map(ToString::to_string),
-                    Err(e) => Err(e.clone()),
-                };
-                (v.clone(), text)
-            })
+            .map(|(v, f)| (v.clone(), f.get(name).map(ToString::to_string)))
             .collect();
 
         let analysis = analyze_fragment(name, &texts);

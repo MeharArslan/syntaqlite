@@ -1,18 +1,18 @@
 {
-  "keywords": [
+  "parser": [
     {
       "name": "ACTION",
-      "cflag": 11,
+      "cflag": 8,
       "polarity": 0
     },
     {
       "name": "AFTER",
-      "cflag": 20,
+      "cflag": 15,
       "polarity": 0
     },
     {
       "name": "ALWAYS",
-      "cflag": 12,
+      "cflag": 9,
       "polarity": 0
     },
     {
@@ -32,12 +32,12 @@
     },
     {
       "name": "BEFORE",
-      "cflag": 20,
+      "cflag": 15,
       "polarity": 0
     },
     {
       "name": "CASCADE",
-      "cflag": 11,
+      "cflag": 8,
       "polarity": 0
     },
     {
@@ -47,7 +47,7 @@
     },
     {
       "name": "CURRENT",
-      "cflag": 24,
+      "cflag": 19,
       "polarity": 0
     },
     {
@@ -57,7 +57,7 @@
     },
     {
       "name": "DEFERRABLE",
-      "cflag": 11,
+      "cflag": 8,
       "polarity": 0
     },
     {
@@ -67,187 +67,187 @@
     },
     {
       "name": "EACH",
-      "cflag": 20,
-      "polarity": 0
-    },
-    {
-      "name": "EXCEPT",
-      "cflag": 6,
-      "polarity": 0
-    },
-    {
-      "name": "EXCLUDE",
-      "cflag": 24,
-      "polarity": 0
-    },
-    {
-      "name": "EXPLAIN",
-      "cflag": 9,
-      "polarity": 0
-    },
-    {
-      "name": "FILTER",
-      "cflag": 24,
-      "polarity": 0
-    },
-    {
-      "name": "FOLLOWING",
-      "cflag": 24,
-      "polarity": 0
-    },
-    {
-      "name": "FOR",
-      "cflag": 20,
-      "polarity": 0
-    },
-    {
-      "name": "FOREIGN",
-      "cflag": 11,
-      "polarity": 0
-    },
-    {
-      "name": "GROUPS",
-      "cflag": 24,
-      "polarity": 0
-    },
-    {
-      "name": "INITIALLY",
-      "cflag": 11,
-      "polarity": 0
-    },
-    {
-      "name": "INSTEAD",
-      "cflag": 20,
-      "polarity": 0
-    },
-    {
-      "name": "INTERSECT",
-      "cflag": 6,
-      "polarity": 0
-    },
-    {
-      "name": "MATERIALIZED",
-      "cflag": 7,
-      "polarity": 0
-    },
-    {
-      "name": "OTHERS",
-      "cflag": 24,
-      "polarity": 0
-    },
-    {
-      "name": "OVER",
-      "cflag": 24,
-      "polarity": 0
-    },
-    {
-      "name": "PARTITION",
-      "cflag": 24,
-      "polarity": 0
-    },
-    {
-      "name": "PLAN",
-      "cflag": 9,
-      "polarity": 0
-    },
-    {
-      "name": "PRAGMA",
       "cflag": 15,
       "polarity": 0
     },
     {
-      "name": "PRECEDING",
-      "cflag": 24,
+      "name": "EXCEPT",
+      "cflag": 5,
       "polarity": 0
     },
     {
-      "name": "QUERY",
-      "cflag": 9,
+      "name": "EXCLUDE",
+      "cflag": 19,
       "polarity": 0
     },
     {
-      "name": "RAISE",
-      "cflag": 20,
-      "polarity": 0
-    },
-    {
-      "name": "RANGE",
-      "cflag": 24,
-      "polarity": 0
-    },
-    {
-      "name": "RECURSIVE",
+      "name": "EXPLAIN",
       "cflag": 7,
       "polarity": 0
     },
     {
-      "name": "REFERENCES",
-      "cflag": 11,
+      "name": "FILTER",
+      "cflag": 19,
       "polarity": 0
     },
     {
-      "name": "REINDEX",
-      "cflag": 16,
+      "name": "FOLLOWING",
+      "cflag": 19,
       "polarity": 0
     },
     {
-      "name": "RESTRICT",
-      "cflag": 11,
+      "name": "FOR",
+      "cflag": 15,
       "polarity": 0
     },
     {
-      "name": "RETURNING",
-      "cflag": 17,
+      "name": "FOREIGN",
+      "cflag": 8,
       "polarity": 0
     },
     {
-      "name": "ROW",
-      "cflag": 20,
+      "name": "GROUPS",
+      "cflag": 19,
       "polarity": 0
     },
     {
-      "name": "TIES",
-      "cflag": 24,
+      "name": "INITIALLY",
+      "cflag": 8,
       "polarity": 0
     },
     {
-      "name": "TRIGGER",
-      "cflag": 20,
+      "name": "INSTEAD",
+      "cflag": 15,
       "polarity": 0
     },
     {
-      "name": "UNBOUNDED",
-      "cflag": 24,
+      "name": "INTERSECT",
+      "cflag": 5,
       "polarity": 0
     },
     {
-      "name": "UNION",
+      "name": "MATERIALIZED",
       "cflag": 6,
       "polarity": 0
     },
     {
-      "name": "VIEW",
-      "cflag": 22,
+      "name": "OTHERS",
+      "cflag": 19,
       "polarity": 0
     },
     {
-      "name": "VIRTUAL",
-      "cflag": 23,
+      "name": "OVER",
+      "cflag": 19,
       "polarity": 0
     },
     {
-      "name": "WINDOW",
-      "cflag": 24,
+      "name": "PARTITION",
+      "cflag": 19,
       "polarity": 0
     },
     {
-      "name": "WITH",
+      "name": "PLAN",
       "cflag": 7,
       "polarity": 0
     },
     {
+      "name": "PRAGMA",
+      "cflag": 10,
+      "polarity": 0
+    },
+    {
+      "name": "PRECEDING",
+      "cflag": 19,
+      "polarity": 0
+    },
+    {
+      "name": "QUERY",
+      "cflag": 7,
+      "polarity": 0
+    },
+    {
+      "name": "RAISE",
+      "cflag": 15,
+      "polarity": 0
+    },
+    {
+      "name": "RANGE",
+      "cflag": 19,
+      "polarity": 0
+    },
+    {
+      "name": "RECURSIVE",
+      "cflag": 6,
+      "polarity": 0
+    },
+    {
+      "name": "REFERENCES",
+      "cflag": 8,
+      "polarity": 0
+    },
+    {
+      "name": "REINDEX",
+      "cflag": 11,
+      "polarity": 0
+    },
+    {
+      "name": "RESTRICT",
+      "cflag": 8,
+      "polarity": 0
+    },
+    {
+      "name": "RETURNING",
+      "cflag": 12,
+      "polarity": 0
+    },
+    {
+      "name": "ROW",
+      "cflag": 15,
+      "polarity": 0
+    },
+    {
+      "name": "TIES",
+      "cflag": 19,
+      "polarity": 0
+    },
+    {
+      "name": "TRIGGER",
+      "cflag": 15,
+      "polarity": 0
+    },
+    {
+      "name": "UNBOUNDED",
+      "cflag": 19,
+      "polarity": 0
+    },
+    {
+      "name": "UNION",
+      "cflag": 5,
+      "polarity": 0
+    },
+    {
+      "name": "VIEW",
+      "cflag": 17,
+      "polarity": 0
+    },
+    {
+      "name": "VIRTUAL",
+      "cflag": 18,
+      "polarity": 0
+    },
+    {
+      "name": "WINDOW",
+      "cflag": 19,
+      "polarity": 0
+    },
+    {
+      "name": "WITH",
+      "cflag": 6,
+      "polarity": 0
+    },
+    {
       "name": "WITHIN",
-      "cflag": 36,
+      "cflag": 20,
       "polarity": 1
     }
   ]

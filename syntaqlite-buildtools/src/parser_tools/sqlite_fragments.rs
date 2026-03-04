@@ -16,7 +16,7 @@ pub(crate) struct SqliteFragments {
     pub id_char: &'static str,
     pub char_map: &'static str,
     pub get_token_fn: &'static str,
-    pub keyword_cflags: &'static str,
+    pub parser_cflags: &'static str,
 }
 
 pub(crate) const fn load() -> SqliteFragments {
@@ -53,9 +53,9 @@ pub(crate) const fn load() -> SqliteFragments {
             env!("CARGO_MANIFEST_DIR"),
             "/sqlite-vendored/sources/fragments/get_token_fn.c"
         )),
-        keyword_cflags: include_str!(concat!(
+        parser_cflags: include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/sqlite-vendored/data/keyword_cflags.json"
+            "/sqlite-vendored/data/cflags.json"
         )),
     }
 }

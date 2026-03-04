@@ -1,6 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::similar_names))]
+
 //! Internal bootstrap and code generation tool.
 //!
 //! This binary has no dependency on any generated files, so it can be built
@@ -374,10 +376,7 @@ fn cmd_sqlite_extract(args: &SqliteExtractArgs) -> Result<(), String> {
 
     eprintln!("Extracting keyword cflag data...");
     let cflags = extract::keywords_and_parser::extract_keyword_cflags(&mkkeywordhash_c)?;
-    extract::keywords_and_parser::write_keyword_cflags(
-        &cflags,
-        &data_dir.join("keyword_cflags.json"),
-    )?;
+    extract::keywords_and_parser::write_keyword_cflags(&cflags, &data_dir.join("cflags.json"))?;
 
     eprintln!("Generating base_files_tables.rs...");
     let codegen_crate_dir = Path::new(&args.output_dir)

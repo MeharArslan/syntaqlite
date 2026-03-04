@@ -450,7 +450,7 @@ pub fn generate_codegen_artifacts(
         &fragments,
         request.dialect.name(),
         &request.dialect_c_includes,
-    )?;
+    );
     let keyword_c = keyword_hash::generate(
         &extract_result,
         &fragments,
@@ -582,12 +582,12 @@ mod tests {
 
     #[test]
     fn extract_terminals_collects_rhs_tokens_but_excludes_id() {
-        let y = r#"
+        let y = r"
 %token PERFETTO MACRO.
 %fallback ID PERFETTO MODULE.
 cmd ::= INCLUDE PERFETTO MODULE ID DOT ID.
 cmd ::= CREATE PERFETTO MACRO ID LP RP AS ANY.
-"#;
+";
         let got: BTreeSet<String> = super::extract_terminals_from_y(&[y]).into_iter().collect();
         let want: BTreeSet<String> = [
             "ANY", "AS", "CREATE", "DOT", "INCLUDE", "LP", "MACRO", "MODULE", "PERFETTO", "RP",

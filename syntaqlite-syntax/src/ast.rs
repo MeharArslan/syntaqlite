@@ -3,23 +3,70 @@
 
 use std::marker::PhantomData;
 
-use crate::grammar::{RawGrammar, ffi};
+use crate::grammar::{FieldMeta, RawGrammar};
 use crate::parser::ParseResult;
 
-pub(crate) const FIELD_NODE_ID: u8 = 0;
-pub(crate) const FIELD_SPAN: u8 = 1;
-pub(crate) const FIELD_BOOL: u8 = 2;
-pub(crate) const FIELD_FLAGS: u8 = 3;
-pub(crate) const FIELD_ENUM: u8 = 4;
+// ── Crate API ────────────────────────────────────────────────────────────────
 
-/// A raw arena node index. Identifies a node in the parser arena.
+// ── GrammarNodeType ───────────────────────────────────────────────────────────
+
+/// A node type that can be resolved from the parser arena by [`RawNodeId`].
 ///
-/// This is the untyped, lifetime-free handle used inside the engine. Dialect
-/// crates expose typed `XxxId` newtypes (e.g. `SelectStmtId`) that implement
-/// [`NodeId`] and convert into this.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub(crate) struct RawNodeId(pub(crate) u32);
+/// Implemented by generated view structs so that generic containers like
+/// [`TypedList`] can resolve children without dialect-specific code.
+///
+/// See also the symmetric [`GrammarTokenType`] for token enums.
+pub(crate) trait GrammarNodeType<'a>: Sized {
+    /// Resolve `id` to `Self`, or `None` if null, invalid, or tag mismatch.
+    fn from_arena(reader: ParseResult<'a>, id: RawNodeId) -> Option<Self>;
+}
+
+// ── GrammarTokenType ──────────────────────────────────────────────────────────
+
+/// A token type that can be resolved from a raw ordinal and converted back.
+///
+/// Each dialect's token enum implements this to enable generic typed tokenizer
+/// and cursor usage.
+///
+/// See also the symmetric [`GrammarNodeType`] for AST node types.
+pub(crate) trait GrammarTokenType:
+    Sized + Clone + Copy + std::fmt::Debug + Into<u32>
+{
+    /// Resolve a raw token type ordinal into this dialect's token variant,
+    /// or `None` if out of range.
+    fn from_token_type(raw: u32) -> Option<Self>;
+}
+
+// ── NodeFamily ────────────────────────────────────────────────────────────────
+
+/// Bundles the node and token types for a dialect into a single type parameter.
+///
+/// Implement this for a zero-sized marker type (e.g. `SqliteNodeFamily`) to
+/// allow the tagged [`Grammar<N>`](crate::Grammar) handle to infer both node
+/// and token types at construction time.
+pub(crate) trait NodeFamily {
+    /// The top-level typed AST node (e.g. `Stmt<'a>`).
+    type Node<'a>: GrammarNodeType<'a>;
+    /// The typed token enum (e.g. `TokenType`).
+    type Token: GrammarTokenType;
+}
+
+// ── NodeId ────────────────────────────────────────────────────────────────────
+
+/// A lifetime-free handle to a specific typed AST node.
+///
+/// Generated as `XxxId` newtypes (e.g. `SelectStmtId`) for each concrete view
+/// struct. Can be stored without keeping a parser arena alive.
+///
+/// Resolve back to a typed view with
+/// [`StatementCursor::node_ref`](crate::parser::StatementCursor::node_ref) or
+/// [`IncrementalCursor::node_ref`](crate::incremental::IncrementalCursor::node_ref).
+pub(crate) trait NodeId: Copy + Into<RawNodeId> {
+    /// The typed view produced when this ID is resolved against an arena.
+    type Node<'a>: GrammarNodeType<'a>;
+}
+
+// ── Node ──────────────────────────────────────────────────────────────────────
 
 /// A grammar-agnostic handle to a parsed AST node.
 ///
@@ -107,7 +154,7 @@ impl<'a> Node<'a> {
     }
 
     /// Grammar field metadata for this node type.
-    pub(crate) fn field_meta(&self) -> &[ffi::FieldMeta] {
+    pub(crate) fn field_meta(&self) -> &[FieldMeta] {
         match self.tag() {
             Some(tag) => self.grammar.field_meta(tag),
             None => &[],
@@ -135,135 +182,7 @@ impl<'a> Node<'a> {
     }
 }
 
-impl RawNodeId {
-    /// Sentinel value representing a missing/null node.
-    pub(crate) const NULL: RawNodeId = RawNodeId(0xFFFF_FFFF);
-
-    /// Returns `true` if this is the null sentinel.
-    pub(crate) fn is_null(&self) -> bool {
-        self.0 == Self::NULL.0
-    }
-}
-
-/// A source byte range within the parser's source buffer.
-///
-/// Mirrors the C `SyntaqliteSpan` layout: `offset` and `length` in bytes.
-/// Used in generated node structs for token-valued fields (identifiers, literals).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[repr(C)]
-pub(crate) struct SourceSpan {
-    pub(crate) offset: u32,
-    pub(crate) length: u16,
-}
-
-impl SourceSpan {
-    /// Returns `true` if the span covers zero bytes.
-    pub(crate) fn is_empty(&self) -> bool {
-        self.length == 0
-    }
-
-    /// Slice the span out of the given source string.
-    pub(crate) fn as_str<'a>(&self, source: &'a str) -> &'a str {
-        let start = self.offset as usize;
-        let end = start + self.length as usize;
-        &source[start..end]
-    }
-}
-
-/// Implemented by each `#[repr(C)]` arena node struct to declare its type tag.
-///
-/// # Safety
-/// Implementors must guarantee that `TAG` matches the `tag` field value
-/// that the C parser writes into the first `u32` of the struct.
-pub(crate) unsafe trait ArenaNode {
-    const TAG: u32;
-}
-
-/// List node header — `tag` + `count`, followed by `count` child [`RawNodeId`]s
-/// in trailing data. The parser arena guarantees this contiguous layout.
-#[derive(Debug)]
-#[repr(C)]
-pub(crate) struct NodeList {
-    pub(crate) tag: u32,
-    pub(crate) count: u32,
-}
-
-impl NodeList {
-    /// The child node IDs stored after this header in the arena.
-    pub(crate) fn children(&self) -> &[RawNodeId] {
-        // SAFETY: The arena allocates list nodes as { tag, count, children[count] }
-        // contiguously, so `count` u32 values immediately follow this header.
-        // NodeList is only constructed from valid arena pointers (validated tag).
-        // RawNodeId is #[repr(transparent)] over u32, so &[RawNodeId] is
-        // layout-compatible with &[u32].
-        unsafe {
-            let base = (self as *const NodeList).add(1) as *const RawNodeId;
-            std::slice::from_raw_parts(base, self.count as usize)
-        }
-    }
-}
-
-/// Extracted fields of a node. Returned by [`ParseResult::extract_fields`].
-///
-/// Uses `MaybeUninit` internally so that construction is zero-cost — no need
-/// to initialize all 16 slots when most nodes only have 2–5 fields.
-pub(crate) struct Fields<'a> {
-    buf: [std::mem::MaybeUninit<FieldVal<'a>>; 16],
-    len: usize,
-}
-
-impl<'a> Fields<'a> {
-    #[inline]
-    pub(crate) fn new() -> Self {
-        Self {
-            buf: [const { std::mem::MaybeUninit::uninit() }; 16],
-            len: 0,
-        }
-    }
-
-    #[inline]
-    pub(crate) fn push(&mut self, val: FieldVal<'a>) {
-        self.buf[self.len] = std::mem::MaybeUninit::new(val);
-        self.len += 1;
-    }
-
-    pub(crate) fn len(&self) -> usize {
-        self.len
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-}
-
-impl<'a> Default for Fields<'a> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<'a> std::ops::Deref for Fields<'a> {
-    type Target = [FieldVal<'a>];
-    fn deref(&self) -> &[FieldVal<'a>] {
-        // SAFETY: buf[..len] slots were all written via `push`.
-        unsafe { std::slice::from_raw_parts(self.buf.as_ptr().cast(), self.len) }
-    }
-}
-
-/// A typed field value extracted from a node struct.
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum FieldVal<'a> {
-    /// Child node or list reference.
-    NodeId(RawNodeId),
-    /// Source text slice with its byte offset in the original source.
-    Span(&'a str, u32),
-    /// Boolean flag.
-    Bool(bool),
-    /// Raw flags byte.
-    Flags(u8),
-    /// Enum ordinal.
-    Enum(u32),
-}
+// ── TypedList ─────────────────────────────────────────────────────────────────
 
 /// A typed, read-only view over a [`NodeList`] in the parser arena.
 ///
@@ -332,52 +251,159 @@ impl<'a, T> GrammarNodeType<'a> for TypedList<'a, T> {
     }
 }
 
-/// A node type that can be resolved from the parser arena by [`RawNodeId`].
-///
-/// Implemented by generated view structs so that generic containers like
-/// [`TypedList`] can resolve children without dialect-specific code.
-///
-/// See also the symmetric [`GrammarTokenType`] for token enums.
-pub(crate) trait GrammarNodeType<'a>: Sized {
-    /// Resolve `id` to `Self`, or `None` if null, invalid, or tag mismatch.
-    fn from_arena(reader: ParseResult<'a>, id: RawNodeId) -> Option<Self>;
+// ── FieldVal / Fields ─────────────────────────────────────────────────────────
+
+/// A typed field value extracted from a node struct.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum FieldVal<'a> {
+    /// Child node or list reference.
+    NodeId(RawNodeId),
+    /// Source text slice with its byte offset in the original source.
+    Span(&'a str, u32),
+    /// Boolean flag.
+    Bool(bool),
+    /// Raw flags byte.
+    Flags(u8),
+    /// Enum ordinal.
+    Enum(u32),
 }
 
-/// A token type that can be resolved from a raw ordinal and converted back.
+/// Extracted fields of a node. Returned by [`ParseResult::extract_fields`].
 ///
-/// Each dialect's token enum implements this to enable generic typed tokenizer
-/// and cursor usage.
-///
-/// See also the symmetric [`GrammarNodeType`] for AST node types.
-pub(crate) trait GrammarTokenType:
-    Sized + Clone + Copy + std::fmt::Debug + Into<u32>
-{
-    /// Resolve a raw token type ordinal into this dialect's token variant,
-    /// or `None` if out of range.
-    fn from_token_type(raw: u32) -> Option<Self>;
+/// Uses `MaybeUninit` internally so that construction is zero-cost — no need
+/// to initialize all 16 slots when most nodes only have 2–5 fields.
+pub(crate) struct Fields<'a> {
+    buf: [std::mem::MaybeUninit<FieldVal<'a>>; 16],
+    len: usize,
 }
 
-/// Bundles the node and token types for a dialect into a single type parameter.
-///
-/// Implement this for a zero-sized marker type (e.g. `SqliteNodeFamily`) to
-/// allow the tagged [`Grammar<N>`](crate::Grammar) handle to infer both node
-/// and token types at construction time.
-pub(crate) trait NodeFamily {
-    /// The top-level typed AST node (e.g. `Stmt<'a>`).
-    type Node<'a>: GrammarNodeType<'a>;
-    /// The typed token enum (e.g. `TokenType`).
-    type Token: GrammarTokenType;
+impl<'a> Fields<'a> {
+    #[inline]
+    pub(crate) fn new() -> Self {
+        Self {
+            buf: [const { std::mem::MaybeUninit::uninit() }; 16],
+            len: 0,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn push(&mut self, val: FieldVal<'a>) {
+        self.buf[self.len] = std::mem::MaybeUninit::new(val);
+        self.len += 1;
+    }
+
+    pub(crate) fn len(&self) -> usize {
+        self.len
+    }
+
+    pub(crate) fn is_empty(&self) -> bool {
+        self.len == 0
+    }
 }
 
-/// A lifetime-free handle to a specific typed AST node.
+impl<'a> Default for Fields<'a> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<'a> std::ops::Deref for Fields<'a> {
+    type Target = [FieldVal<'a>];
+    fn deref(&self) -> &[FieldVal<'a>] {
+        // SAFETY: buf[..len] slots were all written via `push`.
+        unsafe { std::slice::from_raw_parts(self.buf.as_ptr().cast(), self.len) }
+    }
+}
+
+// ── ArenaNode ─────────────────────────────────────────────────────────────────
+
+/// Implemented by each `#[repr(C)]` arena node struct to declare its type tag.
 ///
-/// Generated as `XxxId` newtypes (e.g. `SelectStmtId`) for each concrete view
-/// struct. Can be stored without keeping a parser arena alive.
-///
-/// Resolve back to a typed view with
-/// [`StatementCursor::node_ref`](crate::parser::StatementCursor::node_ref) or
-/// [`IncrementalCursor::node_ref`](crate::incremental::IncrementalCursor::node_ref).
-pub(crate) trait NodeId: Copy + Into<RawNodeId> {
-    /// The typed view produced when this ID is resolved against an arena.
-    type Node<'a>: GrammarNodeType<'a>;
+/// # Safety
+/// Implementors must guarantee that `TAG` matches the `tag` field value
+/// that the C parser writes into the first `u32` of the struct.
+pub(crate) unsafe trait ArenaNode {
+    const TAG: u32;
+}
+
+// ── Field kind constants ───────────────────────────────────────────────────────
+
+pub(crate) const FIELD_NODE_ID: u8 = 0;
+pub(crate) const FIELD_SPAN: u8 = 1;
+pub(crate) const FIELD_BOOL: u8 = 2;
+pub(crate) const FIELD_FLAGS: u8 = 3;
+pub(crate) const FIELD_ENUM: u8 = 4;
+
+// ── ffi ───────────────────────────────────────────────────────────────────────
+
+pub(crate) use ffi::{CNodeList as NodeList, CSourceSpan as SourceSpan, RawNodeId};
+
+mod ffi {
+    /// A raw arena node index. Identifies a node in the parser arena.
+    ///
+    /// This is the untyped, lifetime-free handle used inside the engine. Dialect
+    /// crates expose typed `XxxId` newtypes (e.g. `SelectStmtId`) that implement
+    /// [`NodeId`] and convert into this.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    #[repr(transparent)]
+    pub(crate) struct RawNodeId(pub(crate) u32);
+
+    impl RawNodeId {
+        /// Sentinel value representing a missing/null node.
+        pub(crate) const NULL: RawNodeId = RawNodeId(0xFFFF_FFFF);
+
+        /// Returns `true` if this is the null sentinel.
+        pub(crate) fn is_null(&self) -> bool {
+            self.0 == Self::NULL.0
+        }
+    }
+
+    /// A source byte range within the parser's source buffer.
+    ///
+    /// Mirrors the C `SyntaqliteSpan` layout: `offset` and `length` in bytes.
+    /// Used in generated node structs for token-valued fields (identifiers, literals).
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+    #[repr(C)]
+    pub(crate) struct CSourceSpan {
+        pub(crate) offset: u32,
+        pub(crate) length: u16,
+    }
+
+    impl CSourceSpan {
+        /// Returns `true` if the span covers zero bytes.
+        pub(crate) fn is_empty(&self) -> bool {
+            self.length == 0
+        }
+
+        /// Slice the span out of the given source string.
+        pub(crate) fn as_str<'a>(&self, source: &'a str) -> &'a str {
+            let start = self.offset as usize;
+            let end = start + self.length as usize;
+            &source[start..end]
+        }
+    }
+
+    /// List node header — `tag` + `count`, followed by `count` child [`RawNodeId`]s
+    /// in trailing data. The parser arena guarantees this contiguous layout.
+    #[derive(Debug)]
+    #[repr(C)]
+    pub(crate) struct CNodeList {
+        pub(crate) tag: u32,
+        pub(crate) count: u32,
+    }
+
+    impl CNodeList {
+        /// The child node IDs stored after this header in the arena.
+        pub(crate) fn children(&self) -> &[RawNodeId] {
+            // SAFETY: The arena allocates list nodes as { tag, count, children[count] }
+            // contiguously, so `count` u32 values immediately follow this header.
+            // CNodeList is only constructed from valid arena pointers (validated tag).
+            // RawNodeId is #[repr(transparent)] over u32, so &[RawNodeId] is
+            // layout-compatible with &[u32].
+            unsafe {
+                let base = (self as *const CNodeList).add(1) as *const RawNodeId;
+                std::slice::from_raw_parts(base, self.count as usize)
+            }
+        }
+    }
 }

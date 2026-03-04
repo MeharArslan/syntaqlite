@@ -438,11 +438,11 @@ mod tests {
     #[test]
     fn base_tags_are_sequential() {
         let items = parse_items(
-            r#"
+            r"
             node Foo { x: index Bar }
             node Bar { y: inline Bool }
             list FooList { Foo }
-            "#,
+            ",
         );
         let model = AstModel::new(&items);
         assert_eq!(model.tag_for("Foo"), 1);
@@ -454,15 +454,15 @@ mod tests {
     #[test]
     fn extension_new_node_gets_tag_after_base() {
         let base_items = parse_items(
-            r#"
+            r"
             node Foo { x: index Bar }
             node Bar { y: inline Bool }
-            "#,
+            ",
         );
         let ext_items = parse_items(
-            r#"
+            r"
             node Baz { z: inline Bool }
-            "#,
+            ",
         );
         let model = AstModel::new_with_extensions(&base_items, &ext_items).unwrap();
         assert_eq!(model.tag_for("Foo"), 1);
@@ -474,15 +474,15 @@ mod tests {
     #[test]
     fn extension_redefine_keeps_base_tag() {
         let base_items = parse_items(
-            r#"
+            r"
             node Foo { x: index Bar }
             node Bar { y: inline Bool }
-            "#,
+            ",
         );
         let ext_items = parse_items(
-            r#"
+            r"
             node Foo { x: index Bar  z: inline Bool }
-            "#,
+            ",
         );
         let model = AstModel::new_with_extensions(&base_items, &ext_items).unwrap();
         assert_eq!(model.tag_for("Foo"), 1);
@@ -495,15 +495,15 @@ mod tests {
     #[test]
     fn extension_field_reorder_is_error() {
         let base_items = parse_items(
-            r#"
+            r"
             node Foo { x: index Bar  y: inline Bool }
             node Bar { z: inline Bool }
-            "#,
+            ",
         );
         let ext_items = parse_items(
-            r#"
+            r"
             node Foo { y: inline Bool  x: index Bar }
-            "#,
+            ",
         );
         match AstModel::new_with_extensions(&base_items, &ext_items) {
             Err(err) => assert!(err.contains("mismatch"), "got: {err}"),
@@ -514,15 +514,15 @@ mod tests {
     #[test]
     fn extension_fewer_fields_is_error() {
         let base_items = parse_items(
-            r#"
+            r"
             node Foo { x: index Bar  y: inline Bool }
             node Bar { z: inline Bool }
-            "#,
+            ",
         );
         let ext_items = parse_items(
-            r#"
+            r"
             node Foo { x: index Bar }
-            "#,
+            ",
         );
         match AstModel::new_with_extensions(&base_items, &ext_items) {
             Err(err) => assert!(err.contains("fewer fields"), "got: {err}"),
@@ -537,7 +537,7 @@ mod tests {
         let mut all_items = Vec::new();
         for (name, content) in base_synq {
             let items =
-                parse_synq_file(content).unwrap_or_else(|e| panic!("parse {} failed: {}", name, e));
+                parse_synq_file(content).unwrap_or_else(|e| panic!("parse {name} failed: {e}"));
             all_items.extend(items);
         }
         let model = AstModel::new(&all_items);

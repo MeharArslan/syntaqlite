@@ -218,8 +218,10 @@ mod tests {
 
     #[test]
     fn keyword_struct_matches_c_layout() {
+        // SAFETY: the `keyword_sizeof` / `keyword_offsetof_*` statics are defined
+        // by the linked C test object; reading them is safe and they are never mutated.
         unsafe {
-            assert_eq!(mem::size_of::<Keyword>(), keyword_sizeof, "sizeof mismatch");
+            assert_eq!(size_of::<Keyword>(), keyword_sizeof, "sizeof mismatch");
             assert_eq!(mem::offset_of!(Keyword, z_name), keyword_offsetof_zName);
             assert_eq!(
                 mem::offset_of!(Keyword, z_token_type),

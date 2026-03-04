@@ -1,12 +1,12 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-// TODO(claude): write documentation.
-
 use std::marker::PhantomData;
 
 use crate::ast::NodeFamily;
 use crate::cflags::Cflags;
+
+// ── Public API ───────────────────────────────────────────────────────────────
 
 /// A grammar handle tagged with a [`NodeFamily`], carrying both the raw
 /// C grammar pointer and the knowledge of which node/token types it produces.
@@ -14,22 +14,22 @@ use crate::cflags::Cflags;
 /// Use this at construction boundaries (`Parser::new`, etc.) so the
 /// node type parameter `N` can be inferred automatically.
 ///
-/// Call [`raw()`](Self::raw) to downgrade to an untyped [`Grammar`] for
+/// Call [`raw()`](Self::raw) to downgrade to an untyped [`RawGrammar`] for
 /// passing into untyped infrastructure.
 #[derive(Clone, Copy)]
-pub struct Grammar<N: NodeFamily> {
+pub struct TypedGrammar<N: NodeFamily> {
     inner: RawGrammar,
     _marker: PhantomData<N>,
 }
 
 // SAFETY: same reasoning as Grammar — wraps immutable static C data.
-unsafe impl<N: NodeFamily> Send for Grammar<N> {}
-unsafe impl<N: NodeFamily> Sync for Grammar<N> {}
+unsafe impl<N: NodeFamily> Send for TypedGrammar<N> {}
+unsafe impl<N: NodeFamily> Sync for TypedGrammar<N> {}
 
-impl<N: NodeFamily> Grammar<N> {
+impl<N: NodeFamily> TypedGrammar<N> {
     /// Build a `Grammar` from a [`RawGrammar`] handle.
     pub fn new(grammar: RawGrammar) -> Self {
-        Grammar {
+        TypedGrammar {
             inner: grammar,
             _marker: PhantomData,
         }
@@ -41,8 +41,8 @@ impl<N: NodeFamily> Grammar<N> {
     }
 }
 
-impl<N: NodeFamily> From<Grammar<N>> for RawGrammar {
-    fn from(tg: Grammar<N>) -> Self {
+impl<N: NodeFamily> From<TypedGrammar<N>> for RawGrammar {
+    fn from(tg: TypedGrammar<N>) -> Self {
         tg.inner
     }
 }
@@ -50,7 +50,7 @@ impl<N: NodeFamily> From<Grammar<N>> for RawGrammar {
 // TODO(claude): add documentation.
 #[derive(Clone, Copy)]
 pub struct RawGrammar {
-    pub(crate) inner: ffi::Grammar,
+    pub(crate) inner: ffi::CGrammar,
 }
 
 // SAFETY: The grammar wraps an immutable reference to static C data.
@@ -92,7 +92,7 @@ impl RawGrammar {
 
     /// Return a reference to the abstract grammar template.
     #[inline]
-    fn template(&self) -> &'static ffi::GrammarTemplate {
+    fn template(&self) -> &'static ffi::CGrammarTemplate {
         // SAFETY: `inner.template` points to static C data (generated grammar tables).
         unsafe { &*self.inner.template }
     }
@@ -130,7 +130,7 @@ impl RawGrammar {
     }
 
     /// Return the field metadata slice for a node tag.
-    pub fn field_meta(&self, tag: u32) -> &'static [ffi::FieldMeta] {
+    pub fn field_meta(&self, tag: u32) -> &'static [ffi::CFieldMeta] {
         let raw = self.template();
         let idx = tag as usize;
         if idx >= raw.node_count as usize {
@@ -208,13 +208,19 @@ impl RawGrammar {
     }
 }
 
+// ── Crate-internal ───────────────────────────────────────────────────────────
+
+pub(crate) use ffi::CFieldMeta as FieldMeta;
+
+// ── ffi ───────────────────────────────────────────────────────────────────────
+
 pub(crate) mod ffi {
     use crate::cflags::Cflags;
 
     /// Mirrors C `SyntaqliteGrammarTemplate` struct defined in
     /// `include/syntaqlite/grammar.h`.
     #[repr(C)]
-    pub(crate) struct GrammarTemplate {
+    pub(crate) struct CGrammarTemplate {
         pub(crate) name: *const std::ffi::c_char,
 
         // Range metadata
@@ -223,7 +229,7 @@ pub(crate) mod ffi {
         // AST metadata
         pub(crate) node_count: u32,
         pub(crate) node_names: *const *const std::ffi::c_char,
-        pub(crate) field_meta: *const *const FieldMeta,
+        pub(crate) field_meta: *const *const CFieldMeta,
         pub(crate) field_meta_counts: *const u8,
         pub(crate) list_tags: *const u8,
 
@@ -255,19 +261,54 @@ pub(crate) mod ffi {
     /// Mirrors C `SyntaqliteGrammar` from `include/syntaqlite/grammar.h`.
     #[repr(C)]
     #[derive(Debug, Clone, Copy)]
-    pub(crate) struct Grammar {
-        pub(crate) template: *const GrammarTemplate,
+    pub(crate) struct CGrammar {
+        pub(crate) template: *const CGrammarTemplate,
         pub(crate) sqlite_version: i32,
         pub(crate) cflags: Cflags,
     }
 
     /// Mirrors C `SyntaqliteFieldMeta` from `include/syntaqlite_dialect/dialect_types.h`.
     #[repr(C)]
-    pub struct FieldMeta {
+    pub struct CFieldMeta {
         pub offset: u16,
         pub kind: u8,
         pub name: *const std::ffi::c_char,
         pub display: *const *const std::ffi::c_char,
         pub display_count: u8,
+    }
+
+    impl CFieldMeta {
+        /// Return the field name as a `&str`.
+        ///
+        /// # Safety
+        /// The `name` pointer must be valid and NUL-terminated for the lifetime
+        /// of the returned `&str`.
+        pub unsafe fn name_str(&self) -> &str {
+            unsafe {
+                let cstr = std::ffi::CStr::from_ptr(self.name);
+                cstr.to_str().expect("invalid UTF-8 in field name")
+            }
+        }
+
+        /// Return the display string for an enum ordinal or flag bit index.
+        ///
+        /// Returns `None` if `idx` is out of range or the entry is null.
+        ///
+        /// # Safety
+        /// The `display` pointer must be valid for `display_count` entries,
+        /// each pointing to a NUL-terminated C string (or null).
+        pub unsafe fn display_name(&self, idx: usize) -> Option<&str> {
+            if self.display.is_null() || idx >= self.display_count as usize {
+                return None;
+            }
+            unsafe {
+                let ptr = *self.display.add(idx);
+                if ptr.is_null() {
+                    return None;
+                }
+                let cstr = std::ffi::CStr::from_ptr(ptr);
+                Some(cstr.to_str().unwrap_or("?"))
+            }
+        }
     }
 }

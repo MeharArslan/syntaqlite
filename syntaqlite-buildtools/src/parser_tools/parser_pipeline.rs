@@ -9,20 +9,6 @@ use crate::util::c_transformer::CTransformer;
 // Embed lempar.c template (needed by the library)
 const LEMPAR_C: &[u8] = include_bytes!("../../sqlite-vendored/sources/lempar.c");
 
-#[allow(dead_code)]
-pub(crate) fn generate_parser(
-    actions_dir: &str,
-    parser_name: &str,
-    output_dir: &str,
-    tokens_header: Option<&str>,
-) -> Result<(), String> {
-    let body = concatenate_y_files(actions_dir)?;
-    let directive = format!("%name {parser_name}\n");
-    let mut grammar_bytes = directive.into_bytes();
-    grammar_bytes.extend_from_slice(&body);
-    generate_parser_with_grammar_bytes(&grammar_bytes, parser_name, output_dir, tokens_header)
-}
-
 /// Concatenate in-memory .y file contents (already sorted by caller).
 pub(crate) fn concatenate_y_contents(files: &[(String, String)]) -> Result<Vec<u8>, String> {
     if files.is_empty() {
@@ -374,16 +360,6 @@ uint32_t {parser_name}CompletionContext(void* parser) {{\n\
   return 0; /* Unknown */\n\
 }}\n"
     )
-}
-
-/// Read all .y files from a directory, sort by name, and concatenate their contents.
-#[allow(dead_code)]
-fn concatenate_y_files(dir: &str) -> Result<Vec<u8>, String> {
-    let y_files = crate::codegen_api::read_named_files_from_dir(dir, "y")?;
-    if y_files.is_empty() {
-        return Err(format!("No .y files found in {dir}"));
-    }
-    concatenate_y_contents(&y_files)
 }
 
 #[cfg(test)]

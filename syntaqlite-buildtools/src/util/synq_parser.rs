@@ -47,17 +47,6 @@ pub(crate) struct SchemaAnnotation {
     pub(crate) params: Vec<SchemaParam>,
 }
 
-impl SchemaAnnotation {
-    /// Look up a parameter by key name.
-    #[allow(dead_code)]
-    pub(crate) fn param(&self, key: &str) -> Option<&str> {
-        self.params
-            .iter()
-            .find(|p| p.key == key)
-            .map(|p| p.field.as_str())
-    }
-}
-
 #[derive(Debug)]
 pub(crate) enum Item {
     Node {
