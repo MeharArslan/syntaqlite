@@ -3,6 +3,8 @@
 
 """Builds the emscripten-target wasm module used by web/playground."""
 
+from __future__ import annotations
+
 import argparse
 import os
 import platform
@@ -11,16 +13,16 @@ import shutil
 import subprocess
 import sys
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def strip_separate_dwarf_link_arg(flags):
+def strip_separate_dwarf_link_arg(flags: str) -> str:
     """Remove any existing -gseparate-dwarf linker arg from rustflags."""
     if not flags:
         return ""
 
     parts = shlex.split(flags)
-    out = []
+    out: list[str] = []
     i = 0
     while i < len(parts):
         part = parts[i]
@@ -37,7 +39,7 @@ def strip_separate_dwarf_link_arg(flags):
     return " ".join(out)
 
 
-def get_platform_dir():
+def get_platform_dir() -> str | None:
     sys_name = platform.system().lower()
     machine = platform.machine().lower()
     arch = "arm64" if machine in ("arm64", "aarch64") else "amd64"
@@ -50,7 +52,7 @@ def get_platform_dir():
         return None
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Build the emscripten-target wasm module for web/playground.",
     )

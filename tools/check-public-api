@@ -1,125 +1,13 @@
-#!/bin/sh
+#!/usr/bin/env python3
 # Copyright 2025 The syntaqlite Authors. All rights reserved.
 # Licensed under the Apache License, Version 2.0.
 
-# Verify that the public API of each library crate matches the golden files
-# in public-api/. Exits non-zero with a diff if any crate's API changed.
-# All crates are checked in parallel. Uses a dedicated Cargo target directory
-# so nightly rustdoc builds don't invalidate the main workspace's stable cache.
-#
-# Usage:
-#   tools/check-public-api               — check all crates
-#   tools/check-public-api --rebaseline  — regenerate all golden files
+import os
+import sys
 
-set -e
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT_DIR)
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-GOLDEN_DIR="$ROOT_DIR/public-api"
+from python.tools.check_public_api import main
 
-# Keep nightly rustdoc artifacts separate from the main stable target directory
-# so that cargo public-api invocations don't invalidate cached stable builds.
-export CARGO_TARGET_DIR="$ROOT_DIR/target/public-api"
-
-REBASELINE=0
-for arg in "$@"; do
-    case "$arg" in
-        --rebaseline) REBASELINE=1 ;;
-    esac
-done
-
-# check_crate CRATE_NAME [FEATURES]
-# Returns 0 on success, 1 on API mismatch or missing golden file.
-check_crate() {
-    crate_name="$1"
-    features="$2"
-    golden="$GOLDEN_DIR/$crate_name.txt"
-
-    features_flag=""
-    if [ -n "$features" ]; then
-        features_flag="--features $features"
-    fi
-
-    if [ "$REBASELINE" = "1" ]; then
-        printf 'Rebaselining %s ... ' "$crate_name"
-        # shellcheck disable=SC2086
-        cargo public-api -p "$crate_name" $features_flag \
-            --omit blanket-impls --omit auto-trait-impls --omit auto-derived-impls 2>/dev/null \
-            | sort > "$golden"
-        printf 'done (%s lines)\n' "$(wc -l < "$golden" | tr -d ' ')"
-        return 0
-    fi
-
-    if [ ! -f "$golden" ]; then
-        printf '\033[1;31mMISSING golden file: %s\033[0m\n' "$golden"
-        printf '  Run: tools/check-public-api --rebaseline\n'
-        return 1
-    fi
-
-    actual=$(mktemp)
-    # shellcheck disable=SC2086
-    cargo public-api -p "$crate_name" $features_flag \
-        --omit blanket-impls --omit auto-trait-impls --omit auto-derived-impls 2>/dev/null \
-        | sort > "$actual"
-
-    if ! diff -u "$golden" "$actual" > /dev/null 2>&1; then
-        printf '\033[1;31mPublic API changed: %s\033[0m\n' "$crate_name"
-        diff -u "$golden" "$actual" || true
-        printf '\n  If intentional, run: tools/check-public-api --rebaseline\n\n'
-        rm -f "$actual"
-        return 1
-    fi
-    rm -f "$actual"
-    return 0
-}
-
-# —— Rebaseline mode: run all in parallel, stream progress, fail if any error ——
-if [ "$REBASELINE" = "1" ]; then
-    check_crate syntaqlite             "fmt,validation,sqlite,lsp,embedded,json" & pid1=$!
-    check_crate syntaqlite-parser                                                 & pid2=$!
-    check_crate syntaqlite-parser-sqlite                                          & pid3=$!
-    check_crate syntaqlite-buildtools                                             & pid4=$!
-    check_crate syntaqlite-cli                                                    & pid5=$!
-    FAILED=0
-    wait "$pid1" || FAILED=1
-    wait "$pid2" || FAILED=1
-    wait "$pid3" || FAILED=1
-    wait "$pid4" || FAILED=1
-    wait "$pid5" || FAILED=1
-    if [ "$FAILED" != "0" ]; then
-        exit 1
-    fi
-    printf '\033[1;32mAll golden files rebaselined.\033[0m\n'
-    exit 0
-fi
-
-# —— Check mode: run in parallel with buffered output so diffs don't interleave ——
-_TMPDIR=$(mktemp -d)
-trap 'rm -rf "$_TMPDIR"' EXIT
-
-run_check() {
-    crate_name="$1"
-    features="$2"
-    if check_crate "$crate_name" "$features" > "$_TMPDIR/${crate_name}.out" 2>&1; then
-        echo 0 > "$_TMPDIR/${crate_name}.exit"
-    else
-        echo 1 > "$_TMPDIR/${crate_name}.exit"
-    fi
-}
-
-run_check syntaqlite             "fmt,validation,sqlite,lsp,embedded,json" & pid1=$!
-run_check syntaqlite-parser                                                 & pid2=$!
-run_check syntaqlite-parser-sqlite                                          & pid3=$!
-run_check syntaqlite-buildtools                                             & pid4=$!
-run_check syntaqlite-cli                                                    & pid5=$!
-wait "$pid1"; wait "$pid2"; wait "$pid3"; wait "$pid4"; wait "$pid5"
-
-FAILED=0
-for crate in syntaqlite syntaqlite-parser syntaqlite-parser-sqlite syntaqlite-buildtools syntaqlite-cli; do
-    cat "$_TMPDIR/${crate}.out"
-    [ "$(cat "$_TMPDIR/${crate}.exit")" != "0" ] && FAILED=1
-done
-
-if [ "$FAILED" != "0" ]; then
-    exit 1
-fi
+sys.exit(main())

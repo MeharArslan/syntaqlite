@@ -3,15 +3,18 @@
 
 """A wrapper to run cargo, rustc and other Rust binaries from third_party/."""
 
+from __future__ import annotations
+
 import os
 import platform
+import shutil
 import subprocess
 import sys
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
-def get_platform_dir():
+def get_platform_dir() -> tuple[str | None, str]:
     """Returns the platform-specific buildtools subdirectory name."""
     sys_name = platform.system().lower()
     machine = platform.machine().lower()
@@ -27,7 +30,7 @@ def get_platform_dir():
         return None, ""
 
 
-def run_rust_binary(binary_name, args=None, cwd=None):
+def run_rust_binary(binary_name: str, args: list[str] | None = None, cwd: str | None = None) -> int | None:
     """Run a Rust toolchain binary (cargo, rustc, etc.)."""
     if args is None:
         args = []
@@ -38,6 +41,14 @@ def run_rust_binary(binary_name, args=None, cwd=None):
     if "--no-sysroot" in args:
         set_sysroot = False
         args = [a for a in args if a != "--no-sysroot"]
+
+    # Prefer system binary if available (avoids third_party download requirement).
+    system_binary = shutil.which(binary_name)
+    if system_binary:
+        if cwd or platform.system().lower() == "windows":
+            sys.exit(subprocess.call([system_binary] + args, cwd=cwd))
+        else:
+            os.execl(system_binary, os.path.basename(system_binary), *args)
 
     os_dir, ext = get_platform_dir()
     if os_dir is None:

@@ -19,13 +19,15 @@ Usage:
     tools/run-codegen --extract                   # Stage 1 + 1b + 2
 """
 
+from __future__ import annotations
+
 import argparse
 import subprocess
 import sys
 from pathlib import Path
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Build and run syntaqlite-buildtools to generate parser and tokenizer."
     )
@@ -92,6 +94,8 @@ def main():
     # Stage 1b: Generate functions catalog and ast_traits from synq files.
     # Output paths are hardcoded in the Rust binary.
     functions_json = vendored_dir / "data" / "functions.json"
+    cflag_audit_json = vendored_dir / "data" / "version_cflags.json"
+    cflag_versions_out = dialect_crate_dir / "src" / "sqlite" / "cflags.rs"
 
     print("Stage 1b: Generating functions catalog and ast_traits...")
     result = subprocess.run(
@@ -101,6 +105,8 @@ def main():
             "--functions-json", str(functions_json),
             "--actions-dir", str(actions_dir),
             "--nodes-dir", str(nodes_dir),
+            "--cflag-audit-json", str(cflag_audit_json),
+            "--cflag-versions-out", str(cflag_versions_out),
         ],
         cwd=project_root,
     )

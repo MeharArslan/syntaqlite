@@ -17,21 +17,19 @@ use crate::sqlite::tokens::SqliteTokenType;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-// ── Tokenizer (SQLite newtype) ────────────────────────────────────────────────
-
 /// A tokenizer for the SQLite dialect.
 ///
 /// Yields [`TypedToken`]s with SQLite-specific token types. For other dialects
 /// use [`TypedTokenizer`] directly; for dialect-agnostic use with raw `u32`
-/// ordinals use [`RawTokenizer`].
+/// ordinals use [`AnyTokenizer`].
 #[cfg(feature = "sqlite")]
 pub struct Tokenizer(TypedTokenizer<SqliteGrammar>);
 
 #[cfg(feature = "sqlite")]
 impl Tokenizer {
-    /// Create a tokenizer bound to the given SQLite grammar.
-    pub fn new(grammar: SqliteGrammar) -> Self {
-        Tokenizer(TypedTokenizer::new(grammar))
+    /// Create a tokenizer for the SQLite dialect.
+    pub fn new() -> Self {
+        Tokenizer(TypedTokenizer::new(crate::sqlite::grammar::grammar()))
     }
 
     /// Bind source text and return a [`TokenCursor`] for iterating SQLite tokens.
@@ -54,7 +52,12 @@ impl Tokenizer {
     }
 }
 
-// ── TokenCursor (SQLite newtype) ──────────────────────────────────────────────
+#[cfg(feature = "sqlite")]
+impl Default for Tokenizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// An active cursor over SQLite tokens. Produced by [`Tokenizer::tokenize`].
 ///
@@ -71,11 +74,9 @@ impl<'a> Iterator for TokenCursor<'a> {
     }
 }
 
-// ── Token (SQLite newtype) ────────────────────────────────────────────────────
-
 /// A SQLite token: token type + source text slice. Produced by [`TokenCursor`].
 #[cfg(feature = "sqlite")]
-pub struct Token<'a>(pub TypedToken<'a, SqliteGrammar>);
+pub struct Token<'a>(TypedToken<'a, SqliteGrammar>);
 
 #[cfg(feature = "sqlite")]
 impl<'a> Token<'a> {
@@ -90,14 +91,12 @@ impl<'a> Token<'a> {
     }
 }
 
-// ── TypedTokenizer ────────────────────────────────────────────────────────────
-
 /// A type-safe tokenizer scoped to a specific dialect `N`.
 ///
 /// Yields [`TypedToken<'_, N>`] with `N::Token` instead of a raw `u32`.
 ///
 /// For the common SQLite case use [`Tokenizer`]. For dialect-agnostic use with
-/// raw `u32` ordinals use [`RawTokenizer`].
+/// raw `u32` ordinals use [`AnyTokenizer`].
 ///
 /// Uses an interior-mutability checkout pattern: `tokenize()` checks out the
 /// C tokenizer state at runtime, and the returned [`TypedTokenCursor`] returns
@@ -217,8 +216,6 @@ impl TypedTokenizer<AnyDialect> {
     }
 }
 
-// ── TypedToken ─────────────────────────────────────────────────────────────────
-
 /// A typed token: dialect token type + source text slice.
 #[derive(Debug, Clone, Copy)]
 pub struct TypedToken<'a, G: TypedGrammar> {
@@ -228,12 +225,10 @@ pub struct TypedToken<'a, G: TypedGrammar> {
     pub text: &'a str,
 }
 
-// ── TypedTokenCursor ──────────────────────────────────────────────────────────
-
 /// An active cursor over typed tokens from a [`TypedTokenizer`].
 ///
 /// Tokens whose ordinal does not map to a known `G::Token` variant are silently
-/// skipped; use [`RawTokenizer`] / [`RawTokenCursor`] to observe every ordinal.
+/// skipped; use [`AnyTokenizer`] / [`AnyTokenCursor`] to observe every ordinal.
 ///
 /// On drop, the checked-out tokenizer state is returned to the parent
 /// [`TypedTokenizer`].
@@ -285,24 +280,20 @@ impl<'a, G: TypedGrammar> Iterator for TypedTokenCursor<'a, G> {
     }
 }
 
-// ── Type aliases ──────────────────────────────────────────────────────────────
-
-/// A type-erased tokenizer. Yields [`RawToken`]s with raw `u32` token type
+/// A type-erased tokenizer. Yields [`AnyToken`]s with raw `u32` token type
 /// ordinals, suitable for use across multiple dialects.
 ///
 /// This is a type alias for [`TypedTokenizer<AnyDialect>`]. Use
-/// [`RawTokenizer::from_raw_grammar`] to construct from a [`RawGrammar`].
-pub type RawTokenizer = TypedTokenizer<AnyDialect>;
+/// [`AnyTokenizer::from_raw_grammar`] to construct from a [`RawGrammar`].
+pub type AnyTokenizer = TypedTokenizer<AnyDialect>;
 
 /// A raw token: `u32` token type ordinal + source text slice.
-pub type RawToken<'a> = TypedToken<'a, AnyDialect>;
+pub type AnyToken<'a> = TypedToken<'a, AnyDialect>;
 
-/// An active cursor over raw tokens from a [`RawTokenizer`].
-pub type RawTokenCursor<'a> = TypedTokenCursor<'a, AnyDialect>;
+/// An active cursor over raw tokens from a [`AnyTokenizer`].
+pub type AnyTokenCursor<'a> = TypedTokenCursor<'a, AnyDialect>;
 
 // ── Crate-internal ───────────────────────────────────────────────────────────
-
-// ── TokenizerInner ────────────────────────────────────────────────────────────
 
 /// Holds the C tokenizer handle and mutable state. Checked out by cursors
 /// at runtime and returned on [`Drop`].

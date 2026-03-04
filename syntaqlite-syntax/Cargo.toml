@@ -11,8 +11,6 @@ pin-version = ["sqlite"]
 pin-cflags = ["sqlite"]
 no-bundled-parser = []
 
-[dependencies]
-syntaqlite-common = { path = "../syntaqlite-common" }
 
 [lints]
 workspace = true

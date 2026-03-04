@@ -19,6 +19,8 @@ Usage:
     tools/sqlite-data extract-functions --amalgamation-dir sqlite-amalgamations
 """
 
+from __future__ import annotations
+
 import argparse
 import io
 import subprocess
@@ -27,14 +29,14 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+PROJECT_ROOT: Path = Path(__file__).parent.parent.parent
 
 # ---------------------------------------------------------------------------
 # Version data
 # ---------------------------------------------------------------------------
 
 # Versions for source file downloads (version analysis, covers 3.12.2+).
-SOURCE_VERSIONS = [
+SOURCE_VERSIONS: list[str] = [
     "3.12.2", "3.13.0", "3.14.2", "3.15.2", "3.16.2", "3.17.0", "3.18.2",
     "3.19.4", "3.20.1", "3.21.0", "3.22.0", "3.23.2", "3.24.0", "3.25.3",
     "3.26.0", "3.27.2", "3.28.0", "3.29.0", "3.30.1", "3.31.1", "3.32.3",
@@ -44,7 +46,7 @@ SOURCE_VERSIONS = [
 ]
 
 # Source files to download per version (from GitHub mirror).
-SOURCE_FILES = [
+SOURCE_FILES: list[str] = [
     "src/tokenize.c",
     "src/global.c",
     "src/sqliteInt.h",
@@ -55,7 +57,7 @@ SOURCE_FILES = [
 # Versions for amalgamation downloads (function extraction, 3.30.0+
 # since PRAGMA function_list requires 3.30.0; we compile with
 # SQLITE_INTROSPECTION_PRAGMAS so older versions also work).
-AMALGAMATION_VERSIONS = [
+AMALGAMATION_VERSIONS: list[str] = [
     "3.30.1", "3.31.1", "3.32.3", "3.33.0", "3.34.1", "3.35.5", "3.36.0",
     "3.37.2", "3.38.5", "3.39.4", "3.40.1", "3.41.2", "3.42.0", "3.43.2",
     "3.44.2", "3.45.3", "3.46.1", "3.47.2", "3.48.0", "3.49.2", "3.50.4",
@@ -225,7 +227,7 @@ def cmd_download_amalgamations(args: argparse.Namespace) -> int:
 # extract-functions (two-phase: audit cflags, then extract)
 # ---------------------------------------------------------------------------
 
-DATA_DIR = PROJECT_ROOT / "syntaqlite-buildtools" / "sqlite-vendored" / "data"
+DATA_DIR: Path = PROJECT_ROOT / "syntaqlite-buildtools" / "sqlite-vendored" / "data"
 
 
 def _build_cli() -> tuple[int, Path]:

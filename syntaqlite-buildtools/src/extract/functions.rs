@@ -435,12 +435,20 @@ pub(crate) fn generate_cflag_versions_rs(availability: &CflagAvailability) -> St
 
 /// Generate a Rust source file containing cflag metadata for a specific group only.
 ///
-/// Filters `availability` to entries matching `group`, then emits a `CFLAG_TABLE`
-/// with group-local indices (0, 1, 2, … within the group).
+/// Uses [`super::SYNQ_CFLAG_TABLE`] as the authoritative source for group membership
+/// (so multi-category flags are correctly included in all their groups), and looks up
+/// `since` version data from `availability`. Emits group-local indices (0, 1, 2, …).
 pub(crate) fn generate_cflag_versions_rs_for_group(
     availability: &CflagAvailability,
     group: &str,
 ) -> String {
+    // Build a name → since map from the availability data.
+    let since_map: std::collections::HashMap<&str, &str> = availability
+        .cflags
+        .iter()
+        .map(|e| (e.name.as_str(), e.since.as_str()))
+        .collect();
+
     let mut out = String::new();
     out.push_str("// Copyright 2025 The syntaqlite Authors. All rights reserved.\n");
     out.push_str("// Licensed under the Apache License, Version 2.0.\n");
@@ -459,19 +467,20 @@ pub(crate) fn generate_cflag_versions_rs_for_group(
     out.push_str("/// \"parser\", \"functions\", \"vtable\", \"extensions\".\n");
     out.push_str("pub(crate) const CFLAG_TABLE: &[(&str, u32, i32, &str)] = &[\n");
 
-    for (local_idx, entry) in availability
-        .cflags
-        .iter()
-        .filter(|e| e.category == group)
-        .enumerate()
-    {
-        let ver_int = version_string_to_int(&entry.since);
+    let mut local_idx: u32 = 0;
+    for &(flag_name, _, _, categories) in super::SYNQ_CFLAG_TABLE {
+        if !categories.contains(&group) {
+            continue;
+        }
+        let since = since_map.get(flag_name).copied().unwrap_or("0");
+        let ver_int = version_string_to_int(since);
         writeln!(
             out,
             "    (\"{}\", {}, {}, \"{}\"),",
-            entry.name, local_idx, ver_int, entry.category
+            flag_name, local_idx, ver_int, group
         )
         .expect("write to String cannot fail");
+        local_idx += 1;
     }
 
     out.push_str("];\n");

@@ -3,18 +3,17 @@
 
 use std::cell::RefCell;
 use std::ffi::{CStr, c_int};
+use std::marker::PhantomData;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
 use crate::ast::{
-    ArenaNode, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN, FieldVal, Fields,
-    GrammarNodeType, NodeList, RawNode, RawNodeId, SourceSpan,
+    AnyDialect, ArenaNode, FIELD_BOOL, FIELD_ENUM, FIELD_FLAGS, FIELD_NODE_ID, FIELD_SPAN,
+    FieldVal, Fields, GrammarNodeType, NodeList, RawNode, RawNodeId, SourceSpan,
 };
-use crate::grammar::RawGrammar;
+use crate::grammar::{RawGrammar, TypedGrammar};
 
 // ── Public API ───────────────────────────────────────────────────────────────
-
-// ── ParserConfig ─────────────────────────────────────────────────────────────
 
 /// Configuration for parser construction.
 #[derive(Debug, Default, Clone, Copy)]
@@ -25,55 +24,148 @@ pub struct ParserConfig {
     pub collect_tokens: bool,
 }
 
-// ── Parser ───────────────────────────────────────────────────────────────────
-
+/// A parser for the SQLite dialect. Yields [`StatementCursor`]s with
+/// SQLite-specific node types. For other dialects use [`TypedParser`] directly;
+/// for dialect-agnostic use with raw grammars use [`AnyParser`].
+///
 /// Owns a parser instance. Reusable across inputs via `parse()` and
-/// `incremental_parse()`.
+/// `incremental_parse()`. Uses an interior-mutability checkout pattern so both
+/// methods take `&self` rather than `&mut self`.
+#[cfg(feature = "sqlite")]
+pub struct Parser(TypedParser<crate::sqlite::grammar::SqliteGrammar>);
+
+#[cfg(feature = "sqlite")]
+impl Parser {
+    /// Create a parser for the SQLite dialect with default configuration.
+    pub fn new() -> Self {
+        Parser(TypedParser::new(crate::sqlite::grammar::grammar()))
+    }
+
+    /// Create a parser for the SQLite dialect with custom configuration.
+    pub fn with_config(config: &ParserConfig) -> Self {
+        Parser(TypedParser::with_config(crate::sqlite::grammar::grammar(), config))
+    }
+
+    /// Bind source text and return a [`StatementCursor`] for iterating statements.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a cursor from a previous `parse()` or `incremental_parse()`
+    /// call is still alive.
+    pub fn parse(&self, source: &str) -> StatementCursor {
+        StatementCursor(self.0.parse(source))
+    }
+
+    /// Bind source text and return an
+    /// [`IncrementalCursor`](crate::incremental::IncrementalCursor) for
+    /// token-by-token feeding.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a cursor from a previous `parse()` or `incremental_parse()`
+    /// call is still alive.
+    pub fn incremental_parse(&self, source: &str) -> crate::incremental::IncrementalCursor {
+        self.0.incremental_parse(source)
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl Default for Parser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// An active cursor over parsed SQLite statements. Produced by [`Parser::parse`].
+///
+/// On a parse error the cursor returns `Some(Err(_))` for the failing
+/// statement, then continues parsing subsequent statements (Lemon's built-in
+/// error recovery synchronises on `;`). Call `next_statement()` again to
+/// retrieve the next valid statement.
+///
+/// On drop, the checked-out parser state is returned to the parent [`Parser`].
+#[cfg(feature = "sqlite")]
+pub struct StatementCursor(TypedStatementCursor<crate::sqlite::grammar::SqliteGrammar>);
+
+#[cfg(feature = "sqlite")]
+impl StatementCursor {
+    pub(crate) fn next_statement(&mut self) -> Option<Result<RawNode<'_>, ParseError>> {
+        self.0.next_statement()
+    }
+
+    pub(crate) fn reader(&self) -> ParseResult<'_> {
+        self.0.reader()
+    }
+
+    pub fn source(&self) -> &str {
+        self.0.source()
+    }
+
+    pub fn grammar(&self) -> RawGrammar {
+        self.0.grammar()
+    }
+
+    pub(crate) fn tokens(&self) -> &[ffi::CTokenPos] {
+        self.0.tokens()
+    }
+
+    pub(crate) fn comments(&self) -> &[ffi::CComment] {
+        self.0.comments()
+    }
+
+    pub(crate) fn node_ref(&self, id: RawNodeId) -> RawNode<'_> {
+        self.0.node_ref(id)
+    }
+}
+
+/// A type-safe parser scoped to a specific dialect `G`.
+///
+/// Yields [`TypedStatementCursor<G>`]s. For the common SQLite case use
+/// [`Parser`]. For dialect-agnostic use with raw grammars use [`AnyParser`].
 ///
 /// Uses an interior-mutability checkout pattern: `parse()` and
 /// `incremental_parse()` check out the C parser state at runtime, and the
 /// returned cursor returns it on drop. This allows both methods to take
 /// `&self` rather than `&mut self`.
-pub struct Parser {
+pub struct TypedParser<G: TypedGrammar> {
     inner: Rc<RefCell<Option<ParserInner>>>,
     grammar: RawGrammar,
+    _marker: PhantomData<G>,
 }
 
-impl Parser {
-    /// Create a parser bound to the given grammar with default configuration.
-    pub fn new(grammar: RawGrammar) -> Self {
+impl<G: TypedGrammar> TypedParser<G> {
+    /// Create a parser bound to the given dialect grammar with default configuration.
+    pub fn new(grammar: G) -> Self {
         Self::with_config(grammar, &ParserConfig::default())
     }
 
-    /// Create a parser bound to the given grammar with custom configuration.
-    pub fn with_config(grammar: RawGrammar, config: &ParserConfig) -> Self {
-        // SAFETY: syntaqlite_create_parser_with_grammar(NULL, grammar.inner) allocates
+    /// Create a parser bound to the given dialect grammar with custom configuration.
+    pub fn with_config(mut grammar: G, config: &ParserConfig) -> Self {
+        let grammar_raw = *grammar.raw();
+        // SAFETY: syntaqlite_create_parser_with_grammar(NULL, grammar_raw.inner) allocates
         // a new parser with default malloc/free. The C side copies the grammar.
         let raw = NonNull::new(unsafe {
-            ffi::syntaqlite_create_parser_with_grammar(std::ptr::null(), grammar.inner)
+            ffi::syntaqlite_create_parser_with_grammar(std::ptr::null(), grammar_raw.inner)
         })
         .expect("parser allocation failed");
 
-        // SAFETY: raw is freshly created (not sealed), so these calls
-        // always return 0.
+        // SAFETY: raw is freshly created (not sealed), so these calls always return 0.
         unsafe {
             ffi::syntaqlite_parser_set_trace(raw.as_ptr(), config.trace as c_int);
             ffi::syntaqlite_parser_set_collect_tokens(raw.as_ptr(), config.collect_tokens as c_int);
         }
 
-        let inner = ParserInner {
-            raw,
-            source_buf: Vec::new(),
-        };
-
-        Parser {
-            inner: Rc::new(RefCell::new(Some(inner))),
-            grammar,
+        TypedParser {
+            inner: Rc::new(RefCell::new(Some(ParserInner {
+                raw,
+                source_buf: Vec::new(),
+            }))),
+            grammar: grammar_raw,
+            _marker: PhantomData,
         }
     }
 
-    /// Bind source text and return a [`StatementCursor`] for iterating
-    /// statements.
+    /// Bind source text and return a [`TypedStatementCursor`] for iterating statements.
     ///
     /// Copies the source into an internal buffer to add a null terminator
     /// (required by the C tokenizer). The cursor owns the copy, so the
@@ -83,21 +175,22 @@ impl Parser {
     ///
     /// Panics if a cursor from a previous `parse()` or `incremental_parse()`
     /// call is still alive.
-    pub fn parse(&self, source: &str) -> StatementCursor {
+    pub fn parse(&self, source: &str) -> TypedStatementCursor<G> {
         let mut inner = self
             .inner
             .borrow_mut()
             .take()
-            .expect("Parser::parse called while a cursor is still active");
+            .expect("TypedParser::parse called while a cursor is still active");
         // SAFETY: inner.raw is valid (owned via ParserInner); source is
         // copied into source_buf which will be owned by the cursor.
         unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
-        StatementCursor {
+        TypedStatementCursor {
             grammar: self.grammar,
             inner: Some(inner),
             slot: Rc::clone(&self.inner),
             last_saw_subquery: false,
             last_saw_update_delete_limit: false,
+            _marker: PhantomData,
         }
     }
 
@@ -117,7 +210,7 @@ impl Parser {
             .inner
             .borrow_mut()
             .take()
-            .expect("Parser::incremental_parse called while a cursor is still active");
+            .expect("TypedParser::incremental_parse called while a cursor is still active");
         // SAFETY: inner.raw is valid (owned via ParserInner); source is
         // copied into source_buf.
         unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
@@ -132,17 +225,23 @@ impl Parser {
     }
 }
 
-// ── StatementCursor ──────────────────────────────────────────────────────────
+impl TypedParser<AnyDialect> {
+    /// Create a type-erased parser from a [`RawGrammar`].
+    pub fn from_raw_grammar(grammar: RawGrammar) -> Self {
+        Self::new(AnyDialect { raw: grammar })
+    }
+}
 
-/// A streaming cursor over parsed SQL statements.
+/// An active cursor over typed statements from a [`TypedParser`].
 ///
 /// On a parse error the cursor returns `Some(Err(_))` for the failing
 /// statement, then continues parsing subsequent statements (Lemon's built-in
 /// error recovery synchronises on `;`). Call `next_statement()` again to
 /// retrieve the next valid statement.
 ///
-/// On drop, the checked-out parser state is returned to the parent [`Parser`].
-pub struct StatementCursor {
+/// On drop, the checked-out parser state is returned to the parent
+/// [`TypedParser`].
+pub struct TypedStatementCursor<G: TypedGrammar> {
     grammar: RawGrammar,
     /// Checked-out parser state. Returned to `slot` on drop.
     inner: Option<ParserInner>,
@@ -152,9 +251,10 @@ pub struct StatementCursor {
     last_saw_subquery: bool,
     /// Value of `saw_update_delete_limit` from the last successful `next_statement()` call.
     last_saw_update_delete_limit: bool,
+    _marker: PhantomData<G>,
 }
 
-impl Drop for StatementCursor {
+impl<G: TypedGrammar> Drop for TypedStatementCursor<G> {
     fn drop(&mut self) {
         if let Some(inner) = self.inner.take() {
             *self.slot.borrow_mut() = Some(inner);
@@ -162,7 +262,7 @@ impl Drop for StatementCursor {
     }
 }
 
-impl StatementCursor {
+impl<G: TypedGrammar> TypedStatementCursor<G> {
     /// Parse the next SQL statement.
     ///
     /// Returns:
@@ -275,7 +375,15 @@ impl StatementCursor {
     }
 }
 
-// ── ParseError ───────────────────────────────────────────────────────────────
+/// A type-erased parser. Yields [`AnyStatementCursor`]s with raw node types,
+/// suitable for use across multiple dialects.
+///
+/// This is a type alias for [`TypedParser<AnyDialect>`]. Use
+/// [`AnyParser::from_raw_grammar`] to construct from a [`RawGrammar`].
+pub type AnyParser = TypedParser<AnyDialect>;
+
+/// An active cursor over raw statements from a [`AnyParser`].
+pub type AnyStatementCursor = TypedStatementCursor<AnyDialect>;
 
 /// A parse error with a human-readable message and optional source location.
 #[derive(Debug, Clone)]
@@ -303,8 +411,6 @@ impl std::fmt::Display for ParseError {
 impl std::error::Error for ParseError {}
 
 // ── Crate-internal ───────────────────────────────────────────────────────────
-
-// ── ParseResult ──────────────────────────────────────────────────────────────
 
 /// A lightweight, `Copy` handle for reading the parser arena: nodes, spans,
 /// and field data.
@@ -560,8 +666,6 @@ impl<'a> ParseResult<'a> {
     }
 }
 
-// ── ErrorSpan ────────────────────────────────────────────────────────────────
-
 /// A source span describing where an error node was recorded in the arena.
 ///
 /// Returned by [`ParseResult::required_node`] and [`ParseResult::optional_node`]
@@ -573,8 +677,6 @@ pub(crate) struct ErrorSpan {
     /// Byte length of the error token (0 = unknown).
     pub(crate) length: u32,
 }
-
-// ── ParserInner ───────────────────────────────────────────────────────────────
 
 /// Holds the C parser handle and mutable state. Checked out by cursors at
 /// runtime and returned on [`Drop`].
@@ -590,8 +692,6 @@ impl Drop for ParserInner {
         unsafe { ffi::syntaqlite_parser_destroy(self.raw.as_ptr()) }
     }
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 /// Copy source into `source_buf` (with null terminator) and reset the C
 /// parser to begin tokenizing from the buffer.

@@ -1,0 +1,36 @@
+impl core::default::Default for syntaqlite_syntax::Parser
+impl core::default::Default for syntaqlite_syntax::Tokenizer
+impl core::error::Error for syntaqlite_syntax::ParseError
+impl core::fmt::Display for syntaqlite_syntax::ParseError
+impl syntaqlite_syntax::Parser
+impl syntaqlite_syntax::StatementCursor
+impl syntaqlite_syntax::Tokenizer
+impl<'a> core::iter::traits::iterator::Iterator for syntaqlite_syntax::TokenCursor<'a>
+impl<'a> syntaqlite_syntax::Token<'a>
+pub fn syntaqlite_syntax::ParseError::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_syntax::Parser::default() -> Self
+pub fn syntaqlite_syntax::Parser::incremental_parse(&self, source: &str) -> syntaqlite_syntax::incremental::IncrementalCursor
+pub fn syntaqlite_syntax::Parser::new() -> Self
+pub fn syntaqlite_syntax::Parser::parse(&self, source: &str) -> syntaqlite_syntax::StatementCursor
+pub fn syntaqlite_syntax::Parser::with_config(config: &syntaqlite_syntax::parser::ParserConfig) -> Self
+pub fn syntaqlite_syntax::StatementCursor::grammar(&self) -> syntaqlite_syntax::grammar::RawGrammar
+pub fn syntaqlite_syntax::StatementCursor::source(&self) -> &str
+pub fn syntaqlite_syntax::Token<'a>::text(&self) -> &'a str
+pub fn syntaqlite_syntax::Token<'a>::token_type(&self) -> syntaqlite_syntax::sqlite::tokens::SqliteTokenType
+pub fn syntaqlite_syntax::TokenCursor<'a>::next(&mut self) -> core::option::Option<Self::Item>
+pub fn syntaqlite_syntax::Tokenizer::default() -> Self
+pub fn syntaqlite_syntax::Tokenizer::new() -> Self
+pub fn syntaqlite_syntax::Tokenizer::tokenize<'a>(&self, source: &'a str) -> syntaqlite_syntax::TokenCursor<'a>
+pub fn syntaqlite_syntax::Tokenizer::tokenize_cstr<'a>(&self, source: &'a core::ffi::c_str::CStr) -> syntaqlite_syntax::TokenCursor<'a>
+pub mod syntaqlite_syntax
+pub struct syntaqlite_syntax::ParseError
+pub struct syntaqlite_syntax::Parser(_)
+pub struct syntaqlite_syntax::StatementCursor(_)
+pub struct syntaqlite_syntax::Token<'a>(_)
+pub struct syntaqlite_syntax::TokenCursor<'a>(_)
+pub struct syntaqlite_syntax::Tokenizer(_)
+pub syntaqlite_syntax::ParseError::length: core::option::Option<usize>
+pub syntaqlite_syntax::ParseError::message: alloc::string::String
+pub syntaqlite_syntax::ParseError::offset: core::option::Option<usize>
+pub syntaqlite_syntax::ParseError::root: core::option::Option<ffi::RawNodeId>
+pub type syntaqlite_syntax::TokenCursor<'a>::Item = syntaqlite_syntax::Token<'a>

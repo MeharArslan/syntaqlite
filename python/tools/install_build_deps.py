@@ -3,6 +3,8 @@
 
 """Installs build dependencies to third_party/bin/ and third_party/src/."""
 
+from __future__ import annotations
+
 import argparse
 import hashlib
 import os
@@ -16,25 +18,25 @@ import zipfile
 from dataclasses import dataclass
 
 # Global verbosity level
-VERBOSITY = 0
+VERBOSITY: int = 0
 
 
-def vprint(level, *args, **kwargs):
+def vprint(level: int, *args: object, **kwargs: object) -> None:
     """Print only if verbosity level is high enough."""
     if VERBOSITY >= level:
         print(*args, **kwargs)
 
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-THIRD_PARTY_DIR = os.path.join(ROOT_DIR, "third_party")
-THIRD_PARTY_BIN_DIR = os.path.join(THIRD_PARTY_DIR, "bin")
-THIRD_PARTY_SRC_DIR = os.path.join(THIRD_PARTY_DIR, "src")
+ROOT_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+THIRD_PARTY_DIR: str = os.path.join(ROOT_DIR, "third_party")
+THIRD_PARTY_BIN_DIR: str = os.path.join(THIRD_PARTY_DIR, "bin")
+THIRD_PARTY_SRC_DIR: str = os.path.join(THIRD_PARTY_DIR, "src")
 
-SQLITE_VERSION = "3510200"  # 3.51.2
-SQLITE_YEAR = "2026"
-RUST_VERSION = "1.93.0"  # Latest stable
-EMSCRIPTEN_VERSION = "4.0.8"  # Pre-built tarballs from Perfetto's GCS
-NODE_VERSION = "20.11.0"  # Pre-built from Chromium's storage (same as Perfetto)
+SQLITE_VERSION: str = "3510200"  # 3.51.2
+SQLITE_YEAR: str = "2026"
+RUST_VERSION: str = "1.93.0"  # Latest stable
+EMSCRIPTEN_VERSION: str = "4.0.8"  # Pre-built tarballs from Perfetto's GCS
+NODE_VERSION: str = "20.11.0"  # Pre-built from Chromium's storage (same as Perfetto)
 
 
 @dataclass
@@ -163,7 +165,7 @@ SOURCE_DEPS = [
 # fmt: on
 
 
-def get_platform():
+def get_platform() -> tuple[str, str, str]:
     """Returns (os, arch, platform_dir)."""
     sys_name = platform.system().lower()
     machine = platform.machine().lower()
@@ -183,7 +185,7 @@ def get_platform():
     return host_os, host_arch, platform_dir
 
 
-def sha256_file(path):
+def sha256_file(path: str) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
@@ -191,7 +193,7 @@ def sha256_file(path):
     return h.hexdigest()
 
 
-def sha3_256_file(path):
+def sha3_256_file(path: str) -> str:
     h = hashlib.sha3_256()
     with open(path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
@@ -199,7 +201,7 @@ def sha3_256_file(path):
     return h.hexdigest()
 
 
-def extract(archive_path, dest_dir, fmt):
+def extract(archive_path: str, dest_dir: str, fmt: str) -> None:
     if fmt == "zip":
         with zipfile.ZipFile(archive_path) as zf:
             zf.extractall(dest_dir)
@@ -213,7 +215,7 @@ def extract(archive_path, dest_dir, fmt):
         sys.exit(f"Unsupported format: {fmt}")
 
 
-def install_rust(dep, target_dir):
+def install_rust(dep: BinaryDep, target_dir: str) -> bool:
     """Install Rust toolchain with proper directory structure."""
     rust_dir = os.path.join(target_dir, "rust")
     stamp_path = os.path.join(target_dir, f".{dep.name}.stamp")
@@ -334,7 +336,7 @@ def install_rust(dep, target_dir):
             os.unlink(tmp_path)
 
 
-def install_binary_dep(dep, target_dir):
+def install_binary_dep(dep: BinaryDep, target_dir: str) -> bool:
     """Install a binary dependency. Returns True on success."""
     # Special handling for Rust
     if dep.name == "rust":
@@ -402,7 +404,7 @@ def install_binary_dep(dep, target_dir):
             os.unlink(tmp_path)
 
 
-def install_source_dep(dep, target_dir):
+def install_source_dep(dep: SourceDep, target_dir: str) -> bool:
     """Install a source dependency. Returns True on success."""
     dest_dir = os.path.join(target_dir, dep.name)
     stamp_path = os.path.join(target_dir, f".{dep.name}.stamp")
@@ -458,7 +460,7 @@ def install_source_dep(dep, target_dir):
             os.unlink(tmp_path)
 
 
-def main():
+def main() -> int:
     global VERBOSITY
 
     parser = argparse.ArgumentParser(description="Install build dependencies to third_party/")

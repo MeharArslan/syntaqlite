@@ -14,7 +14,7 @@ use crate::parser::{
     raw_parser_comments, raw_parser_tokens,
 };
 
-// ── IncrementalCursor ──────────────────────────────────────────────────────────
+// ── Public API ───────────────────────────────────────────────────────────────
 
 /// A low-level cursor for feeding tokens one at a time.
 ///
@@ -301,6 +301,8 @@ impl IncrementalCursor {
         unsafe { ffi_slice(self.raw_ptr(), ffi::syntaqlite_parser_macro_regions) }
     }
 }
+
+// ── Crate-internal ───────────────────────────────────────────────────────────
 
 pub(crate) use ffi::CMacroRegion as MacroRegion;
 

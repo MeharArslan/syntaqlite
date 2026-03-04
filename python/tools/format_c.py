@@ -14,6 +14,8 @@ Usage:
     tools/format-c --check                        # check only
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import shutil
@@ -21,13 +23,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-ROOT_DIR = Path(__file__).parent.parent.parent
+ROOT_DIR: Path = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 from python.tools.run_rust_binary import get_platform_dir
 
 # Directories containing project-owned C code (relative to ROOT_DIR).
-C_SOURCE_DIRS = [
+C_SOURCE_DIRS: list[str] = [
     "syntaqlite-parser/csrc",
     "syntaqlite-parser/include",
     "syntaqlite-parser-sqlite/csrc",

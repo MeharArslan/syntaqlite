@@ -6,9 +6,7 @@ use std::marker::PhantomData;
 use crate::grammar::{FieldMeta, RawGrammar};
 use crate::parser::ParseResult;
 
-// ── Crate API ────────────────────────────────────────────────────────────────
-
-// ── GrammarNodeType ───────────────────────────────────────────────────────────
+// ── Public API ───────────────────────────────────────────────────────────────
 
 /// A node type that can be resolved from the parser arena by [`RawNodeId`].
 ///
@@ -16,12 +14,10 @@ use crate::parser::ParseResult;
 /// [`TypedList`] can resolve children without dialect-specific code.
 ///
 /// See also the symmetric [`GrammarTokenType`] for token enums.
-pub(crate) trait GrammarNodeType<'a>: Sized {
+pub trait GrammarNodeType<'a>: Sized {
     /// Resolve `id` to `Self`, or `None` if null, invalid, or tag mismatch.
     fn from_arena(reader: ParseResult<'a>, id: RawNodeId) -> Option<Self>;
 }
-
-// ── GrammarTokenType ──────────────────────────────────────────────────────────
 
 /// A token type that can be resolved from a raw ordinal and converted back.
 ///
@@ -29,7 +25,7 @@ pub(crate) trait GrammarNodeType<'a>: Sized {
 /// and cursor usage.
 ///
 /// See also the symmetric [`GrammarNodeType`] for AST node types.
-pub(crate) trait GrammarTokenType:
+pub trait GrammarTokenType:
     Sized + Clone + Copy + std::fmt::Debug + Into<u32>
 {
     /// Resolve a raw token type ordinal into this dialect's token variant,
@@ -43,7 +39,32 @@ impl GrammarTokenType for u32 {
     }
 }
 
-// ── NodeId ────────────────────────────────────────────────────────────────────
+/// An uninhabited node type used by [`AnyDialect`]. Never constructed.
+pub enum AnyNode {}
+
+impl<'a> GrammarNodeType<'a> for AnyNode {
+    fn from_arena(_reader: ParseResult<'a>, _id: RawNodeId) -> Option<Self> {
+        None
+    }
+}
+
+/// A type-erasing dialect for use with [`TypedTokenizer`](crate::tokenizer::TypedTokenizer)
+/// and [`TypedParser`](crate::parser::TypedParser) when no specific dialect is
+/// needed. Wraps a [`RawGrammar`] directly.
+#[derive(Clone, Copy)]
+pub struct AnyDialect {
+    pub raw: crate::grammar::RawGrammar,
+}
+
+impl crate::grammar::TypedGrammar for AnyDialect {
+    type Node<'a> = AnyNode;
+    type Token = u32;
+    fn raw(&mut self) -> &mut crate::grammar::RawGrammar {
+        &mut self.raw
+    }
+}
+
+// ── Crate-internal ───────────────────────────────────────────────────────────
 
 /// A lifetime-free handle to a specific typed AST node.
 ///
@@ -57,8 +78,6 @@ pub(crate) trait NodeId: Copy + Into<RawNodeId> {
     /// The typed view produced when this ID is resolved against an arena.
     type Node<'a>: GrammarNodeType<'a>;
 }
-
-// ── Node ──────────────────────────────────────────────────────────────────────
 
 /// A grammar-agnostic handle to a parsed AST node.
 ///
@@ -174,34 +193,6 @@ impl<'a> RawNode<'a> {
     }
 }
 
-// ── AnyDialect ────────────────────────────────────────────────────────────────
-
-/// An uninhabited node type used by [`AnyDialect`]. Never constructed.
-pub(crate) enum AnyNode {}
-
-impl<'a> GrammarNodeType<'a> for AnyNode {
-    fn from_arena(_reader: ParseResult<'a>, _id: RawNodeId) -> Option<Self> {
-        None
-    }
-}
-
-/// A type-erasing dialect for use with [`TypedTokenizer`](crate::tokenizer::TypedTokenizer)
-/// when no specific dialect is needed. Wraps a [`RawGrammar`] directly.
-#[derive(Clone, Copy)]
-pub(crate) struct AnyDialect {
-    pub(crate) raw: crate::grammar::RawGrammar,
-}
-
-impl crate::grammar::TypedGrammar for AnyDialect {
-    type Node<'a> = AnyNode;
-    type Token = u32;
-    fn raw(&mut self) -> &mut crate::grammar::RawGrammar {
-        &mut self.raw
-    }
-}
-
-// ── TypedList ─────────────────────────────────────────────────────────────────
-
 /// A typed, read-only view over a [`NodeList`] in the parser arena.
 ///
 /// `T` is the element type — a generated view struct, another [`TypedList`],
@@ -269,8 +260,6 @@ impl<'a, T> GrammarNodeType<'a> for TypedList<'a, T> {
     }
 }
 
-// ── FieldVal / Fields ─────────────────────────────────────────────────────────
-
 /// A typed field value extracted from a node struct.
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum FieldVal<'a> {
@@ -333,8 +322,6 @@ impl<'a> std::ops::Deref for Fields<'a> {
     }
 }
 
-// ── ArenaNode ─────────────────────────────────────────────────────────────────
-
 /// Implemented by each `#[repr(C)]` arena node struct to declare its type tag.
 ///
 /// # Safety
@@ -343,8 +330,6 @@ impl<'a> std::ops::Deref for Fields<'a> {
 pub(crate) unsafe trait ArenaNode {
     const TAG: u32;
 }
-
-// ── Field kind constants ───────────────────────────────────────────────────────
 
 pub(crate) const FIELD_NODE_ID: u8 = 0;
 pub(crate) const FIELD_SPAN: u8 = 1;

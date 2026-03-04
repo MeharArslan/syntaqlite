@@ -18,6 +18,8 @@ Usage:
     tools/run-bootstrap-test
 """
 
+from __future__ import annotations
+
 import shutil
 import subprocess
 import sys
@@ -25,7 +27,7 @@ import tempfile
 from pathlib import Path
 
 
-MANIFEST = "tools/generated-files.txt"
+MANIFEST: str = "tools/generated-files.txt"
 
 
 def read_manifest(project_root: Path) -> list[Path]:

@@ -37,37 +37,42 @@ Phases (parallelism within each phase; phases run sequentially):
   4. Diff tests    — all diff/integration suites (parallel)
 """
 
+from __future__ import annotations
+
 import argparse
 import os
 import platform
 import subprocess
 import sys
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from python.tools.cargo_slots import acquire_slot
+
+ROOT_DIR: str = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ANSI color codes.
-_BLUE = "\033[1;34m"
-_RED = "\033[1;31m"
-_GREEN = "\033[1;32m"
-_YELLOW = "\033[1;33m"
-_RESET = "\033[0m"
+_BLUE: str = "\033[1;34m"
+_RED: str = "\033[1;31m"
+_GREEN: str = "\033[1;32m"
+_YELLOW: str = "\033[1;33m"
+_RESET: str = "\033[0m"
 
-_DEAD_CODE_LINTS = [
+_DEAD_CODE_LINTS: list[str] = [
     "-D", "dead_code", "-D", "unused_imports",
     "-D", "unused_variables", "-D", "unused_mut",
 ]
 
 
-def _cargo_path():
+def _cargo_path() -> str:
     return os.path.join(ROOT_DIR, "tools", "cargo")
 
 
-def _tool(name):
+def _tool(name: str) -> str:
     return os.path.join(ROOT_DIR, "tools", name)
 
 
-def _cargo_cmd(*args):
+def _cargo_cmd(*args: str) -> list[str]:
     """Build a cargo command list via the hermetic wrapper."""
     return [sys.executable, _cargo_path()] + list(args)
 
@@ -80,17 +85,21 @@ class StepResult:
     """Captured result of a single step."""
     __slots__ = ("desc", "returncode", "output")
 
-    def __init__(self, desc, returncode, output):
+    desc: str
+    returncode: int
+    output: str
+
+    def __init__(self, desc: str, returncode: int, output: str) -> None:
         self.desc = desc
         self.returncode = returncode
         self.output = output
 
     @property
-    def ok(self):
+    def ok(self) -> bool:
         return self.returncode == 0
 
 
-def _run_capturing(desc, cmd):
+def _run_capturing(desc: str, cmd: list[str]) -> StepResult:
     """Run *cmd* capturing stdout+stderr into a StepResult."""
     try:
         proc = subprocess.run(
@@ -102,7 +111,7 @@ def _run_capturing(desc, cmd):
         return StepResult(desc, 1, str(exc))
 
 
-def run_step(desc, cmd, verbosity):
+def run_step(desc: str, cmd: list[str], verbosity: int) -> StepResult:
     """Run a single sequential step with immediate reporting."""
     if verbosity >= 1:
         # Verbose: header + live output.
@@ -132,12 +141,12 @@ def run_step(desc, cmd, verbosity):
 # Parallel execution
 # ---------------------------------------------------------------------------
 
-def _run_lane(steps):
+def _run_lane(steps: list[tuple[str, list[str]]]) -> list[StepResult]:
     """Run *steps* sequentially (capturing output). Stops on first failure.
 
     Each element of *steps* is ``(desc, cmd)``.  Returns ``list[StepResult]``.
     """
-    results = []
+    results: list[StepResult] = []
     for desc, cmd in steps:
         result = _run_capturing(desc, cmd)
         results.append(result)
@@ -146,7 +155,7 @@ def _run_lane(steps):
     return results
 
 
-def run_parallel_group(lanes, verbosity):
+def run_parallel_group(lanes: list[list[tuple[str, list[str]]]], verbosity: int) -> bool:
     """Run *lanes* in parallel, report results in launch order.
 
     Each lane is a list of ``(desc, cmd)`` tuples executed sequentially within
@@ -155,7 +164,7 @@ def run_parallel_group(lanes, verbosity):
 
     Returns ``True`` if every step in every lane succeeded.
     """
-    lane_results = [None] * len(lanes)
+    lane_results: list[list[StepResult] | None] = [None] * len(lanes)
 
     with ThreadPoolExecutor(max_workers=len(lanes)) as pool:
         futures = {}
@@ -198,12 +207,12 @@ def run_parallel_group(lanes, verbosity):
 # Emscripten detection (mirrors the shell logic)
 # ---------------------------------------------------------------------------
 
-def _has_emscripten():
+def _has_emscripten() -> bool:
     sys_name = platform.system().lower()
     machine = platform.machine().lower()
     arch = "arm64" if machine in ("arm64", "aarch64") else "amd64"
 
-    plat_dirs = {"darwin": "mac-" + arch, "linux": "linux-" + arch}
+    plat_dirs: dict[str, str] = {"darwin": "mac-" + arch, "linux": "linux-" + arch}
     plat_dir = plat_dirs.get(sys_name)
     if not plat_dir:
         return False
@@ -240,7 +249,7 @@ _RUST_NO_DIFF_PATHS = (
 _AMALG_C_PATHS = ("sqlite-amalgamations/",)
 
 
-def _get_changed_files():
+def _get_changed_files() -> set[str] | None:
     """Return the set of file paths changed since the upstream tracking branch.
 
     Includes committed-but-not-pushed, staged, and unstaged changes.
@@ -262,7 +271,7 @@ def _get_changed_files():
         return None  # No common base; run all checks.
     merge_base = proc.stdout.strip()
 
-    changed = set()
+    changed: set[str] = set()
     for git_args in (
         ["diff", "--name-only", merge_base, "HEAD"],  # committed since base
         ["diff", "--name-only", "--cached"],           # staged
@@ -276,13 +285,13 @@ def _get_changed_files():
     return changed
 
 
-def _classify(changed):
+def _classify(changed: set[str] | None) -> dict[str, bool]:
     """Map changed file paths to check-domain flags.
 
     Returns a dict of bool flags.  If *changed* is None (unknown), all flags
     are set True (conservative: run everything).
     """
-    all_true = {
+    all_true: dict[str, bool] = {
         "has_rust": True, "has_c": True,
         "run_ast": True, "run_fmt": True, "run_amalg": True,
         "run_perfetto_fmt": True, "run_perfetto_val": True,
@@ -290,7 +299,7 @@ def _classify(changed):
     if changed is None:
         return all_true
 
-    f = {k: False for k in all_true}
+    f: dict[str, bool] = {k: False for k in all_true}
 
     for path in changed:
         is_rust = path.endswith(".rs") or path.endswith("Cargo.toml") or path == "Cargo.lock"
@@ -363,10 +372,13 @@ def _classify(changed):
 # Main orchestrator
 # ---------------------------------------------------------------------------
 
-def _main(fix, verbosity, run_all):
+def _main(fix: bool, verbosity: int, run_all: bool) -> int:
     cargo = _cargo_cmd
-    clippy_all_target_dir = os.path.join(ROOT_DIR, "target", "clippy-all-features")
+    with acquire_slot() as clippy_all_target_dir:
+        return _run(fix, verbosity, run_all, cargo, clippy_all_target_dir)
 
+
+def _run(fix: bool, verbosity: int, run_all: bool, cargo: Callable[..., list[str]], clippy_all_target_dir: str) -> int:
     # ── Detect what changed ────────────────────────────────────────────
     if run_all:
         changed_files = None  # None → all flags True
@@ -573,7 +585,7 @@ def _main(fix, verbosity, run_all):
     return 0
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description="Pre-push verification: all checks must pass.",
     )

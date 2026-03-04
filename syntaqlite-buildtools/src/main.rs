@@ -298,15 +298,15 @@ fn cmd_generate_ast_traits(actions_dir: &str, nodes_dir: &str) -> Result<(), Str
 }
 
 fn cmd_generate_cflag_versions(audit_json_path: &str, output_path: &str) -> Result<(), String> {
-    use syntaqlite_buildtools::extract::functions::{CflagAvailability, write_cflag_versions_rs};
+    use syntaqlite_buildtools::extract::functions::{
+        CflagAvailability, write_cflag_versions_rs_for_group,
+    };
 
     let audit_json = fs::read_to_string(audit_json_path)
         .map_err(|e| format!("reading {audit_json_path}: {e}"))?;
     let availability: CflagAvailability =
         serde_json::from_str(&audit_json).map_err(|e| format!("parsing cflag audit JSON: {e}"))?;
-    write_cflag_versions_rs(&availability, Path::new(output_path))?;
-    eprintln!("wrote {output_path}");
-    Ok(())
+    write_cflag_versions_rs_for_group(&availability, "parser", Path::new(output_path))
 }
 
 // ── sqlite-extract ────────────────────────────────────────────────────────────
@@ -423,7 +423,11 @@ fn cmd_audit_cflags(args: &AuditCflagsArgs) -> Result<(), String> {
     }
     let availability =
         extract::functions::audit_version_cflags(amal_path, Path::new(&args.output))?;
-    extract::functions::write_cflag_versions_rs(&availability, Path::new(&args.rust_output))
+    extract::functions::write_cflag_versions_rs_for_group(
+        &availability,
+        "parser",
+        Path::new(&args.rust_output),
+    )
 }
 
 // ── generate-functions-catalog ────────────────────────────────────────────────

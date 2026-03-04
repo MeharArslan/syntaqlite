@@ -1,6 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+// ── Public API ───────────────────────────────────────────────────────────────
+
 /// A supported SQLite major.minor version.
 ///
 /// Used to constrain a grammar to a specific SQLite release, enabling
@@ -8,9 +10,6 @@
 ///
 /// Patch versions are ignored — `"3.35.5"` and `"3.35.0"` both map to
 /// [`V3_35`](SqliteVersion::V3_35).
-///
-/// Versions correspond to the `SOURCE_VERSIONS` list in
-/// `python/tools/sqlite_data.py` (3.12 through 3.51).
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SqliteVersion {
@@ -115,57 +114,63 @@ impl SqliteVersion {
             _ => return None,
         })
     }
+}
 
+// ── Crate-internal ───────────────────────────────────────────────────────────
+
+impl SqliteVersion {
     /// Convert to SQLite's `SQLITE_VERSION_NUMBER` integer format.
     ///
     /// Uses the formula `major * 1_000_000 + minor * 1_000`, matching the
     /// `SQLITE_VERSION_NUMBER` C macro (e.g. `V3_35` → `3035000`).
     pub(crate) fn as_int(self) -> i32 {
         match self {
-            Self::V3_12 => 3012000,
-            Self::V3_13 => 3013000,
-            Self::V3_14 => 3014000,
-            Self::V3_15 => 3015000,
-            Self::V3_16 => 3016000,
-            Self::V3_17 => 3017000,
-            Self::V3_18 => 3018000,
-            Self::V3_19 => 3019000,
-            Self::V3_20 => 3020000,
-            Self::V3_21 => 3021000,
-            Self::V3_22 => 3022000,
-            Self::V3_23 => 3023000,
-            Self::V3_24 => 3024000,
-            Self::V3_25 => 3025000,
-            Self::V3_26 => 3026000,
-            Self::V3_27 => 3027000,
-            Self::V3_28 => 3028000,
-            Self::V3_29 => 3029000,
-            Self::V3_30 => 3030000,
-            Self::V3_31 => 3031000,
-            Self::V3_32 => 3032000,
-            Self::V3_33 => 3033000,
-            Self::V3_34 => 3034000,
-            Self::V3_35 => 3035000,
-            Self::V3_36 => 3036000,
-            Self::V3_37 => 3037000,
-            Self::V3_38 => 3038000,
-            Self::V3_39 => 3039000,
-            Self::V3_40 => 3040000,
-            Self::V3_41 => 3041000,
-            Self::V3_42 => 3042000,
-            Self::V3_43 => 3043000,
-            Self::V3_44 => 3044000,
-            Self::V3_45 => 3045000,
-            Self::V3_46 => 3046000,
-            Self::V3_47 => 3047000,
-            Self::V3_48 => 3048000,
-            Self::V3_49 => 3049000,
-            Self::V3_50 => 3050000,
-            Self::V3_51 => 3051000,
+            Self::V3_12 => 3_012_000,
+            Self::V3_13 => 3_013_000,
+            Self::V3_14 => 3_014_000,
+            Self::V3_15 => 3_015_000,
+            Self::V3_16 => 3_016_000,
+            Self::V3_17 => 3_017_000,
+            Self::V3_18 => 3_018_000,
+            Self::V3_19 => 3_019_000,
+            Self::V3_20 => 3_020_000,
+            Self::V3_21 => 3_021_000,
+            Self::V3_22 => 3_022_000,
+            Self::V3_23 => 3_023_000,
+            Self::V3_24 => 3_024_000,
+            Self::V3_25 => 3_025_000,
+            Self::V3_26 => 3_026_000,
+            Self::V3_27 => 3_027_000,
+            Self::V3_28 => 3_028_000,
+            Self::V3_29 => 3_029_000,
+            Self::V3_30 => 3_030_000,
+            Self::V3_31 => 3_031_000,
+            Self::V3_32 => 3_032_000,
+            Self::V3_33 => 3_033_000,
+            Self::V3_34 => 3_034_000,
+            Self::V3_35 => 3_035_000,
+            Self::V3_36 => 3_036_000,
+            Self::V3_37 => 3_037_000,
+            Self::V3_38 => 3_038_000,
+            Self::V3_39 => 3_039_000,
+            Self::V3_40 => 3_040_000,
+            Self::V3_41 => 3_041_000,
+            Self::V3_42 => 3_042_000,
+            Self::V3_43 => 3_043_000,
+            Self::V3_44 => 3_044_000,
+            Self::V3_45 => 3_045_000,
+            Self::V3_46 => 3_046_000,
+            Self::V3_47 => 3_047_000,
+            Self::V3_48 => 3_048_000,
+            Self::V3_49 => 3_049_000,
+            Self::V3_50 => 3_050_000,
+            Self::V3_51 => 3_051_000,
             Self::Latest => i32::MAX,
         }
     }
 }
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod tests {
@@ -188,8 +193,8 @@ mod tests {
 
     #[test]
     fn as_int_spot_check() {
-        assert_eq!(SqliteVersion::V3_35.as_int(), 3035000);
-        assert_eq!(SqliteVersion::V3_51.as_int(), 3051000);
+        assert_eq!(SqliteVersion::V3_35.as_int(), 3_035_000);
+        assert_eq!(SqliteVersion::V3_51.as_int(), 3_051_000);
         assert_eq!(SqliteVersion::Latest.as_int(), i32::MAX);
     }
 }

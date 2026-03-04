@@ -798,7 +798,6 @@ name = "syntaqlite-syntax"
 version = "0.1.0"
 dependencies = [
  "cc",
- "syntaqlite-common",
 ]
 
 [[package]]

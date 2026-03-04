@@ -40,7 +40,7 @@ impl RawGrammar {
     }
 
     /// Set the target SQLite version.
-    pub fn with_version(mut self, version: crate::version::SqliteVersion) -> Self {
+    pub fn with_version(mut self, version: crate::util::SqliteVersion) -> Self {
         self.inner.sqlite_version = version.as_int();
         self
     }
@@ -67,16 +67,12 @@ impl RawGrammar {
         &self.inner.cflags
     }
 
-    // ── Internal helper ──────────────────────────────────────────────────
-
     /// Return a reference to the abstract grammar template.
     #[inline]
     fn template(&self) -> &'static ffi::CGrammarTemplate {
         // SAFETY: `inner.template` points to static C data (generated grammar tables).
         unsafe { &*self.inner.template }
     }
-
-    // ── Metadata accessors ───────────────────────────────────────────────
 
     /// Return the node name for the given tag.
     pub fn node_name(&self, tag: u32) -> &'static str {
