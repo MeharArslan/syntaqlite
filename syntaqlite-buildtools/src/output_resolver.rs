@@ -357,7 +357,7 @@ impl OutputLayout {
     /// # Errors
     ///
     /// Returns an error if directory creation or file writing fails.
-    pub fn write_codegen_artifacts(
+    pub(crate) fn write_codegen_artifacts(
         &self,
         dialect: &DialectNaming,
         artifacts: CodegenArtifacts,

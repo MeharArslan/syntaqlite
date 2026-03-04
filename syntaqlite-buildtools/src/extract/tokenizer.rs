@@ -10,7 +10,7 @@ use std::path::Path;
 use crate::util::c_extractor::CExtractor;
 
 /// All extracted tokenizer fragments.
-pub struct TokenizerFragments {
+pub(crate) struct TokenizerFragments {
     pub(crate) cc_defines: String,
     pub(crate) ai_class: String,
     pub(crate) ctype_map: String,
@@ -26,7 +26,7 @@ pub struct TokenizerFragments {
 /// # Errors
 ///
 /// Returns an error if any required C fragment cannot be extracted from the source files.
-pub fn extract_fragments(
+pub(crate) fn extract_fragments(
     tokenize_content: &str,
     global_content: &str,
     sqliteint_content: &str,
@@ -97,7 +97,7 @@ pub fn extract_fragments(
 /// # Errors
 ///
 /// Returns an error if creating the output directory or writing any fragment file fails.
-pub fn write_fragments(fragments: &TokenizerFragments, output_dir: &Path) -> Result<(), String> {
+pub(crate) fn write_fragments(fragments: &TokenizerFragments, output_dir: &Path) -> Result<(), String> {
     fs::create_dir_all(output_dir)
         .map_err(|e| format!("creating fragment dir {}: {e}", output_dir.display()))?;
 

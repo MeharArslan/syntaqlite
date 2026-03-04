@@ -175,7 +175,7 @@ pub(crate) struct FunctionCatalogEntry {
 
 /// The complete extracted function catalog.
 #[derive(Debug, Clone, serde::Serialize)]
-pub struct FunctionCatalog {
+pub(crate) struct FunctionCatalog {
     pub(crate) functions: Vec<FunctionCatalogEntry>,
 }
 
@@ -189,7 +189,7 @@ pub(crate) struct CflagAvailabilityEntry {
 
 /// Complete cflag availability data (cflag-centric format).
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct CflagAvailability {
+pub(crate) struct CflagAvailability {
     pub(crate) cflags: Vec<CflagAvailabilityEntry>,
 }
 
@@ -305,7 +305,7 @@ fn scan_version_cflags(sqlite3_c: &str) -> Vec<String> {
 ///
 /// Panics if the discovered versions list is non-empty but `first()`/`last()` returns `None`
 /// (should be unreachable).
-pub fn audit_version_cflags(
+pub(crate) fn audit_version_cflags(
     amalgamation_dir: &Path,
     output_path: &Path,
 ) -> Result<CflagAvailability, String> {
@@ -438,6 +438,7 @@ pub(crate) fn generate_cflag_versions_rs(availability: &CflagAvailability) -> St
 /// Uses [`super::SYNQ_CFLAG_TABLE`] as the authoritative source for group membership
 /// (so multi-category flags are correctly included in all their groups), and looks up
 /// `since` version data from `availability`. Emits group-local indices (0, 1, 2, …).
+#[allow(dead_code)]
 pub(crate) fn generate_cflag_versions_rs_for_group(
     availability: &CflagAvailability,
     group: &str,
@@ -492,7 +493,7 @@ pub(crate) fn generate_cflag_versions_rs_for_group(
 /// # Errors
 ///
 /// Returns an error if creating the parent directory or writing the file fails.
-pub fn write_cflag_versions_rs(
+pub(crate) fn write_cflag_versions_rs(
     availability: &CflagAvailability,
     output_path: &Path,
 ) -> Result<(), String> {
@@ -511,7 +512,8 @@ pub fn write_cflag_versions_rs(
 /// # Errors
 ///
 /// Returns an error if creating the parent directory or writing the file fails.
-pub fn write_cflag_versions_rs_for_group(
+#[allow(dead_code)]
+pub(crate) fn write_cflag_versions_rs_for_group(
     availability: &CflagAvailability,
     group: &str,
     output_path: &Path,
@@ -713,7 +715,7 @@ fn extract_version(
 ///
 /// Panics if the discovered versions list is non-empty but `first()`/`last()` returns `None`
 /// (should be unreachable).
-pub fn extract_function_catalog(
+pub(crate) fn extract_function_catalog(
     amalgamation_dir: &Path,
     audit_path: &Path,
     output_path: &Path,

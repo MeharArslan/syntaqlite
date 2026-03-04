@@ -113,7 +113,7 @@ fn link_probe(
 /// # Errors
 ///
 /// Returns an error if creating the build directory, compiling, or linking fails.
-pub fn compile_probe(
+pub(crate) fn compile_probe(
     amalgamation_dir: &Path,
     build_dir: &Path,
     defines: &[&str],
@@ -131,7 +131,7 @@ pub fn compile_probe(
 /// # Errors
 ///
 /// Returns an error if the probe binary fails to execute or exits with a non-zero status.
-pub fn run_probe(binary_path: &Path) -> Result<String, String> {
+pub(crate) fn run_probe(binary_path: &Path) -> Result<String, String> {
     let output = Command::new(binary_path)
         .output()
         .map_err(|e| format!("running probe: {e}"))?;

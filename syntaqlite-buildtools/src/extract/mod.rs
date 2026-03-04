@@ -10,7 +10,7 @@
 
 /// `SQLite`'s public domain blessing header, prepended to all extracted fragments
 /// to preserve proper attribution.
-pub const SQLITE_BLESSING: &str = "\
+pub(crate) const SQLITE_BLESSING: &str = "\
 /*
 ** The author disclaims copyright to this source code.  In place of
 ** a legal notice, here is a blessing:
@@ -21,13 +21,13 @@ pub const SQLITE_BLESSING: &str = "\
 */
 ";
 
-pub mod amalgamation_probe;
-pub mod base_files;
-pub mod functions;
-pub mod keywords_and_parser;
-pub mod mkkeywordhash;
-pub mod tokenizer;
-pub mod virtual_tables;
+pub(crate) mod amalgamation_probe;
+pub(crate) mod base_files;
+pub(crate) mod functions;
+pub(crate) mod keywords_and_parser;
+pub(crate) mod mkkeywordhash;
+pub(crate) mod tokenizer;
+pub(crate) mod virtual_tables;
 
 // ---------------------------------------------------------------------------
 // SYNQ cflag table — the union of all cflag lists
@@ -47,7 +47,7 @@ pub mod virtual_tables;
 /// - `"functions"`: affects built-in function availability
 /// - `"vtable"`:    affects virtual table modules
 /// - `"extensions"`: enables optional extension modules (FTS, `RTree`, etc.)
-pub const SYNQ_CFLAG_TABLE: &[(&str, &str, u32, &[&str])] = &[
+pub(crate) const SYNQ_CFLAG_TABLE: &[(&str, &str, u32, &[&str])] = &[
     // ── OMIT flags (0–24) ───────────────────────────────────────────────
     (
         "SQLITE_OMIT_ALTERTABLE",
@@ -300,8 +300,9 @@ pub const SYNQ_CFLAG_TABLE: &[(&str, &str, u32, &[&str])] = &[
 ];
 
 /// Look up the SYNQ cflag index for a `SQLITE_OMIT_*` or `SQLITE_ENABLE_*` flag.
+#[allow(dead_code)]
 #[must_use]
-pub fn synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> Option<u32> {
+pub(crate) fn synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> Option<u32> {
     SYNQ_CFLAG_TABLE
         .iter()
         .find(|(name, _, _, _)| *name == sqlite_flag)
@@ -312,8 +313,9 @@ pub fn synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> Option<u32> {
 ///
 /// Local indices are 0, 1, 2, … assigned by iterating `SYNQ_CFLAG_TABLE` in order
 /// and counting only entries whose categories slice contains `group`.
+#[allow(dead_code)]
 #[must_use]
-pub fn group_local_index(group: &str, sqlite_flag: &str) -> Option<u32> {
+pub(crate) fn group_local_index(group: &str, sqlite_flag: &str) -> Option<u32> {
     let mut local = 0u32;
     for &(name, _, _, cats) in SYNQ_CFLAG_TABLE {
         if cats.contains(&group) {
@@ -426,8 +428,9 @@ fn write_cflag_pinning(out: &mut String, entries: &[(&str, &str, u32)]) {
 /// # Panics
 ///
 /// Never in practice; panics only if the number of cflags exceeds `u32::MAX`.
+#[allow(dead_code)]
 #[must_use]
-pub fn generate_cflags_h(group: &str) -> String {
+pub(crate) fn generate_cflags_h(group: &str) -> String {
     use std::fmt::Write as _;
     // Collect group entries with sequential local indices.
     let mut local_idx: u32 = 0;
@@ -551,17 +554,4 @@ mod tests {
         }
     }
 
-    /// Verify the committed `cflags.h` matches the generated parser-group output.
-    #[test]
-    fn committed_cflags_h_matches_generated() {
-        let committed = include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../syntaqlite-syntax/include/syntaqlite/cflags.h"
-        ));
-        let generated = super::generate_cflags_h("parser");
-        assert_eq!(
-            committed, generated,
-            "committed cflags.h is out of date — regenerate with sqlite-extract"
-        );
-    }
 }

@@ -119,7 +119,7 @@ fn cflag_index(name: &str) -> Option<u32> {
 /// # Errors
 ///
 /// Returns an error if reading, parsing, or writing fails.
-pub fn write_functions_catalog_file(json_path: &str, output_path: &str) -> Result<(), String> {
+pub(crate) fn write_functions_catalog_file(json_path: &str, output_path: &str) -> Result<(), String> {
     use std::fs;
     use std::path::Path;
 
@@ -140,7 +140,7 @@ pub fn write_functions_catalog_file(json_path: &str, output_path: &str) -> Resul
 ///
 /// Returns an error if JSON parsing fails or an unknown category/cflag is encountered.
 #[allow(clippy::too_many_lines)]
-pub fn generate_functions_catalog(json_content: &str) -> Result<String, String> {
+pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, String> {
     let file: FunctionsFile =
         serde_json::from_str(json_content).map_err(|e| format!("parsing functions.json: {e}"))?;
 

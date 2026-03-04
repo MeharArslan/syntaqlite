@@ -19,7 +19,7 @@ use std::path::Path;
 /// # Errors
 ///
 /// Returns an error if directories cannot be read or canonicalized.
-pub fn generate_base_files_tables(
+pub(crate) fn generate_base_files_tables(
     actions_dir: &Path,
     nodes_dir: &Path,
     codegen_crate_dir: &Path,
@@ -125,7 +125,7 @@ fn relative_path(base: &Path, target: &Path) -> Result<String, String> {
 /// # Errors
 ///
 /// Returns an error if generation or file writing fails.
-pub fn write_base_files_tables(
+pub(crate) fn write_base_files_tables(
     actions_dir: &Path,
     nodes_dir: &Path,
     codegen_crate_dir: &Path,

@@ -8,15 +8,15 @@
 //! Contains extraction, codegen, and parser generation pipelines.
 
 /// Shared utilities (parsers, C/Rust writers, case conversion, tool_run).
-pub mod util;
+pub(crate) mod util;
 
 // Stage 1: extraction from raw SQLite source.
 /// Extraction from raw SQLite source (stage 1).
-pub mod extract;
+pub(crate) mod extract;
 
 // Stage 2/3: codegen pipeline.
 /// `.synq` to C/Rust codegen (AST model, node/meta/dialect/fmt codegen).
-pub mod dialect_codegen;
+pub(crate) mod dialect_codegen;
 
 pub(crate) mod parser_tools;
 
@@ -28,6 +28,9 @@ pub mod output_resolver;
 
 /// SQLite source version analysis and fragment diffing.
 pub mod version_analysis;
+
+/// Bootstrap command implementations.
+pub mod commands;
 
 #[cfg(test)]
 mod grammar_verify;

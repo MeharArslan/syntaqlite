@@ -25,7 +25,8 @@ use crate::util::mkkeywordhash_parser;
 /// Each entry is (`flag_name`, polarity, description).
 /// - "omit": default = OFF. Turning ON removes syntax.
 /// - "enable": default = OFF. Turning ON adds syntax.
-pub const PARSER_CFLAGS: &[(&str, &str, &str)] = &[
+#[allow(dead_code)]
+pub(crate) const PARSER_CFLAGS: &[(&str, &str, &str)] = &[
     // OMIT flags — each removes a SQL statement or clause from the grammar.
     ("SQLITE_OMIT_ALTERTABLE", "omit", "removes ALTER TABLE"),
     ("SQLITE_OMIT_ANALYZE", "omit", "removes ANALYZE"),
@@ -129,7 +130,7 @@ struct KeywordCflagEntry {
 /// # Errors
 ///
 /// Returns an error if the keyword table cannot be parsed.
-pub fn extract_keyword_cflags(
+pub(crate) fn extract_keyword_cflags(
     mkkeywordhash_source: &str,
 ) -> Result<HashMap<String, (u32, u8)>, String> {
     let table = mkkeywordhash_parser::parse_keyword_table(mkkeywordhash_source)?;
@@ -168,7 +169,7 @@ pub fn extract_keyword_cflags(
 /// # Errors
 ///
 /// Returns an error if serialization or file writing fails.
-pub fn write_keyword_cflags<S: std::hash::BuildHasher>(
+pub(crate) fn write_keyword_cflags<S: std::hash::BuildHasher>(
     cflags: &HashMap<String, (u32, u8), S>,
     output_path: &Path,
 ) -> Result<(), String> {
