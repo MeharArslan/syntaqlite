@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 #include "syntaqlite/parser.h"
-#include "syntaqlite/tokens.h"
+#include "csrc/tokens.h"
 #include "syntaqlite/incremental.h"
 
 #include <stdarg.h>
@@ -62,7 +62,7 @@ static int32_t set_result_status(SyntaqliteParser* p, int32_t rc) {
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-SyntaqliteParser* syntaqlite_create_parser_with_grammar(
+SyntaqliteParser* syntaqlite_parser_create_with_grammar(
     const SyntaqliteMemMethods* mem,
     const SyntaqliteGrammar grammar) {
   SyntaqliteMemMethods m = mem ? *mem : SYNTAQLITE_MEM_METHODS_DEFAULT;
@@ -77,6 +77,13 @@ SyntaqliteParser* syntaqlite_create_parser_with_grammar(
   syntaqlite_vec_init(&p->macros);
   return p;
 }
+
+#ifndef SYNTAQLITE_OMIT_SQLITE_API
+SyntaqliteParser* syntaqlite_parser_create(const SyntaqliteMemMethods* mem) {
+  SyntaqliteGrammar grammar = syntaqlite_sqlite_grammar();
+  return syntaqlite_parser_create_with_grammar(mem, grammar);
+}
+#endif
 
 void syntaqlite_parser_reset(SyntaqliteParser* p,
                              const char* source,
@@ -503,7 +510,8 @@ SyntaqliteCompletionContext syntaqlite_parser_completion_context(
       p->grammar.tmpl->parser_completion_context == NULL) {
     return SYNTAQLITE_COMPLETION_CONTEXT_UNKNOWN;
   }
-  return p->grammar.tmpl->parser_completion_context(p->lemon);
+  return (SyntaqliteCompletionContext)
+      p->grammar.tmpl->parser_completion_context(p->lemon);
 }
 
 int32_t syntaqlite_parser_finish(SyntaqliteParser* p) {

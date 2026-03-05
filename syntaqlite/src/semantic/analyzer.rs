@@ -93,9 +93,9 @@ impl<'d> SemanticAnalyzer<'d> {
         let mut comments = Vec::new();
         let mut parse_errors = Vec::new();
 
-        loop {
-            match session.next() {
-                syntaqlite_syntax::NextStatement::Statement(stmt) => {
+        while let Some(stmt) = session.next() {
+            match stmt {
+                Ok(stmt) => {
                     collect_stmt_positions(
                         source,
                         stmt.tokens().map(|t| (t.text(), t.token_type(), t.flags())),
@@ -104,14 +104,13 @@ impl<'d> SemanticAnalyzer<'d> {
                         &mut comments,
                     );
                 }
-                syntaqlite_syntax::NextStatement::Error(err) => {
+                Err(err) => {
                     parse_errors.push(StoredParseError {
                         message: err.message().to_string(),
                         offset: err.offset(),
                         length: err.length(),
                     });
                 }
-                syntaqlite_syntax::NextStatement::Done => break,
             }
         }
 
@@ -310,11 +309,10 @@ impl<'d> SemanticAnalyzer<'d> {
         let parser = syntaqlite_syntax::Parser::new();
         let mut session = parser.parse(model.source());
 
-        loop {
-            let stmt = match session.next() {
-                syntaqlite_syntax::NextStatement::Statement(stmt) => stmt,
-                syntaqlite_syntax::NextStatement::Error(_) => continue,
-                syntaqlite_syntax::NextStatement::Done => break,
+        while let Some(stmt) = session.next() {
+            let stmt = match stmt {
+                Ok(stmt) => stmt,
+                Err(_) => continue,
             };
 
             let Some(root) = stmt.root() else {

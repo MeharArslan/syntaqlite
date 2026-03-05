@@ -13,7 +13,9 @@
 // The result is valid until the next feed_token, finish, reset, or destroy.
 //
 // Usage:
-//   SyntaqliteParser* p = syntaqlite_create_sqlite_parser(NULL);
+//   SyntaqliteParser* p = syntaqlite_parser_create(NULL);
+//   // Optional: enable if you need result_tokens/result_comments.
+//   syntaqlite_parser_set_collect_tokens(p, 1);
 //   syntaqlite_parser_reset(p, source, len);
 //   while (has_more_tokens) {
 //     int32_t rc = syntaqlite_parser_feed_token(p, type, text, tlen);
@@ -55,7 +57,7 @@ extern "C" {
 // ---------------------------------------------------------------------------
 
 // Feed a single token. TK_SPACE is silently skipped. TK_COMMENT is recorded
-// as a comment (when collect_tokens is enabled) but not fed to the parser.
+// as a comment only when collect_tokens is enabled, and is not fed to parser.
 //
 // Returns a SYNTAQLITE_PARSE_* code:
 //   DONE      = keep going (statement not yet complete)

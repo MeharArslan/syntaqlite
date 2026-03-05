@@ -59,11 +59,10 @@ impl DatabaseCatalog {
         let mut session = parser.parse(source);
         let mut doc = DocumentCatalog::new();
 
-        loop {
-            let stmt = match session.next() {
-                syntaqlite_syntax::NextStatement::Statement(stmt) => stmt,
-                syntaqlite_syntax::NextStatement::Error(_) => continue,
-                syntaqlite_syntax::NextStatement::Done => break,
+        while let Some(stmt) = session.next() {
+            let stmt = match stmt {
+                Ok(stmt) => stmt,
+                Err(_) => continue,
             };
 
             if let Some(root) = stmt.root() {

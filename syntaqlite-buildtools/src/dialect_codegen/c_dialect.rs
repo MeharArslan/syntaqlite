@@ -222,7 +222,7 @@ pub(crate) fn generate_dialect_c(
 /// The generated header is minimal: it forward-declares `SyntaqliteDialect`
 /// Generates the dialect public header declaring `syntaqlite_<dialect>_dialect()`.
 ///
-/// Callers create a parser via the runtime's `syntaqlite_create_parser_with_grammar()`
+/// Callers create a parser via the runtime's `syntaqlite_parser_create_with_grammar()`
 /// using the dialect handle returned by the accessor.
 pub(crate) fn generate_dialect_h(dialect: &str) -> String {
     let upper = dialect.to_uppercase();
@@ -332,7 +332,7 @@ pub(crate) fn generate_parse_h(dialect: &str) -> String {
         "uint32_t Synq{pascal}ParseExpectedTokens(void* parser, uint32_t* out_tokens, uint32_t out_cap);"
     ));
     w.line(&format!(
-        "SyntaqliteCompletionContext Synq{pascal}ParseCompletionContext(void* parser);"
+        "uint32_t Synq{pascal}ParseCompletionContext(void* parser);"
     ));
     w.line("#ifndef NDEBUG");
     w.line(&format!(
@@ -370,7 +370,8 @@ pub(crate) fn generate_tokenize_h(dialect: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        DialectCIncludes, generate_dialect_c, generate_dialect_h, generate_token_categories_header,
+        DialectCIncludes, generate_dialect_c, generate_dialect_h, generate_parse_h,
+        generate_token_categories_header,
     };
 
     fn default_includes() -> DialectCIncludes<'static> {
@@ -410,7 +411,7 @@ mod tests {
         assert!(!h.contains("syntaqlite_sqlite_dialect"));
         // No convenience wrappers — those belong in the runtime headers
         assert!(
-            !h.contains("syntaqlite_create_sqlite_parser"),
+            !h.contains("syntaqlite_parser_create"),
             "codegen should not emit convenience wrappers"
         );
         assert!(
@@ -569,5 +570,12 @@ mod tests {
         assert!(!c.contains("\"dialect_fmt.h\""));
         assert!(c.contains("\"syntaqlite/parser.h\""));
         assert!(c.contains("\"syntaqlite_sqlite/sqlite_tokens.h\""));
+    }
+
+    #[test]
+    fn parse_header_completion_context_uses_uint32() {
+        let h = generate_parse_h("sqlite");
+        assert!(h.contains("uint32_t SynqSqliteParseCompletionContext(void* parser);"));
+        assert!(!h.contains("SyntaqliteCompletionContext SynqSqliteParseCompletionContext"));
     }
 }

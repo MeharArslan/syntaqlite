@@ -45,10 +45,10 @@ pub mod any {
         AnyNodeId,
         AnyParseError,
         AnyParseSession,
+        AnyParsedStatement,
         // Parser
         AnyParser,
         AnyParserToken,
-        AnyParsedStatement,
         // Tokenizer
         AnyToken,
         AnyTokenizer,
@@ -77,10 +77,10 @@ pub mod typed {
         TypedNodeList,
         TypedParseError,
         TypedParseSession,
+        TypedParsedStatement,
         // Parser
         TypedParser,
         TypedParserToken,
-        TypedParsedStatement,
         // Tokenizer
         TypedToken,
         TypedTokenizer,

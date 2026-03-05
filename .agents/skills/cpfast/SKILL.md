@@ -1,6 +1,6 @@
 ---
 name: cpfast
-description: Quickly commit and push current changes, skipping pre-push checks. Use when you want a fast save without running the full presubmit. WARNING: if origin/main starts failing, use /cp instead.
+description: "Quickly commit and push current changes, skipping pre-push checks. Use when you want a fast save without running the full presubmit. WARNING: if origin/main starts failing, use /cp instead."
 user_invocable: true
 ---
 

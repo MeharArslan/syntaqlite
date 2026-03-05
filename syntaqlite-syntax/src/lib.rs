@@ -29,22 +29,19 @@
 //! Use [`Parser`] to parse SQL source text into a typed AST:
 //!
 //! ```rust
-//! use syntaqlite_syntax::{NextStatement, ParseErrorKind};
+//! use syntaqlite_syntax::ParseErrorKind;
 //!
 //! let parser = syntaqlite_syntax::Parser::new();
 //! let mut session = parser.parse("SELECT 1");
-//! loop {
-//!     match session.next() {
-//!         NextStatement::Statement(statement) => {
-//!             println!("{:?}", statement.root());
-//!         }
-//!         NextStatement::Error(error) => {
+//! while let Some(statement) = session.next() {
+//!     match statement {
+//!         Ok(statement) => println!("{:?}", statement.root()),
+//!         Err(error) => {
 //!             eprintln!("parse error: {}", error.message());
 //!             if error.kind() == ParseErrorKind::Fatal {
 //!                 break;
 //!             }
 //!         }
-//!         NextStatement::Done => break,
 //!     }
 //! }
 //! ```
@@ -61,9 +58,7 @@
 pub use parser::ParserConfig;
 #[cfg(feature = "sqlite")]
 #[doc(inline)]
-pub use parser::{
-    NextStatement, ParseError, ParseErrorKind, ParseSession, Parser, ParserToken, ParsedStatement,
-};
+pub use parser::{ParseError, ParseErrorKind, ParseSession, ParsedStatement, Parser, ParserToken};
 
 // Token/comment data types shared across dialects.
 #[doc(inline)]
@@ -118,8 +113,8 @@ pub mod any {
     pub use crate::grammar::{AnyGrammar, FieldKind, FieldMeta, KeywordEntry, TokenCategory};
     #[doc(inline)]
     pub use crate::parser::{
-        AnyIncrementalParseSession, AnyNextStatement, AnyParseError, AnyParseSession, AnyParser,
-        AnyParserToken, AnyParsedStatement, MacroRegion,
+        AnyIncrementalParseSession, AnyParseError, AnyParseSession, AnyParsedStatement, AnyParser,
+        AnyParserToken, MacroRegion,
     };
     #[doc(inline)]
     pub use crate::tokenizer::{AnyToken, AnyTokenizer};
@@ -152,8 +147,8 @@ pub mod typed {
     pub use crate::grammar::TypedGrammar;
     #[doc(inline)]
     pub use crate::parser::{
-        TypedIncrementalParseSession, TypedParseError, TypedParseSession, TypedParser,
-        TypedParserToken, TypedParsedStatement, TypedNextStatement,
+        TypedIncrementalParseSession, TypedParseError, TypedParseSession, TypedParsedStatement,
+        TypedParser, TypedParserToken,
     };
     #[doc(inline)]
     pub use crate::tokenizer::{TypedToken, TypedTokenizer};

@@ -16,14 +16,12 @@ syntaqlite-syntax/csrc/sqlite/sqlite_dialect_dispatch.h
 syntaqlite-syntax/csrc/sqlite/sqlite_keyword.h
 syntaqlite-syntax/csrc/sqlite/sqlite_parse.h
 syntaqlite-syntax/csrc/sqlite/sqlite_tokenize.h
+syntaqlite-syntax/csrc/tokens.h
 
 # ── C public headers (syntaqlite-syntax/include/syntaqlite_sqlite/) ──────────
 syntaqlite-syntax/include/syntaqlite_sqlite/sqlite.h
 syntaqlite-syntax/include/syntaqlite_sqlite/sqlite_node.h
 syntaqlite-syntax/include/syntaqlite_sqlite/sqlite_tokens.h
-
-# ── C public headers (syntaqlite-syntax/include/syntaqlite/) ─────────────────
-syntaqlite-syntax/include/syntaqlite/tokens.h
 
 # ── Rust (syntaqlite-syntax/src/sqlite/) ─────────────────────────────────────
 syntaqlite-syntax/src/sqlite/ast.rs

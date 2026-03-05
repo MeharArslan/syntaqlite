@@ -6535,7 +6535,7 @@ return yy_lookahead[i] == nt;
 /* syntaqlite extension: determine the semantic completion context
 ** (Expression vs TableRef) by walking the parser stack. Returns one of
 ** SYNTAQLITE_COMPLETION_CONTEXT_*. */
-SyntaqliteCompletionContext SynqSqliteParseCompletionContext(void* parser) {
+uint32_t SynqSqliteParseCompletionContext(void* parser) {
 yyParser* p = (yyParser*)parser;
 if( p==0 || p->yytos==0 ) return SYNTAQLITE_COMPLETION_CONTEXT_UNKNOWN;
 

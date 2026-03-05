@@ -104,7 +104,7 @@ impl Default for Parser {
 
 /// An active session over parsed `SQLite` statements. Produced by [`Parser::parse`].
 ///
-/// On a parse error the session returns [`NextStatement::Error`] for the
+/// On a parse error the session returns `Some(Err(ParseError))` for the
 /// failing statement, then continues parsing subsequent statements (Lemon's
 /// built-in error recovery synchronises on `;`). Call [`next`](Self::next)
 /// again to retrieve the next valid statement.
@@ -112,17 +112,6 @@ impl Default for Parser {
 #[cfg(feature = "sqlite")]
 #[doc(hidden)]
 pub struct ParseSession(TypedParseSession<crate::sqlite::grammar::Grammar>);
-
-/// The outcome of calling [`ParseSession::next`].
-#[cfg(feature = "sqlite")]
-pub enum NextStatement<'a> {
-    /// A statement parsed successfully.
-    Statement(ParsedStatement<'a>),
-    /// A parse error for the current statement.
-    Error(ParseError<'a>),
-    /// All input has been consumed.
-    Done,
-}
 
 /// Parse error classification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -148,22 +137,21 @@ impl ParseSession {
     /// Parse the next SQL statement.
     ///
     /// Returns:
-    /// - [`NextStatement::Statement`] — successfully parsed statement; use
+    /// - `Some(Ok(_))` — successfully parsed statement; use
     ///   [`ParsedStatement::root`] to access the typed AST,
     ///   [`ParsedStatement::tokens`] / [`ParsedStatement::comments`] for
     ///   per-statement token data.
-    /// - [`NextStatement::Error`] — syntax error; the error's
+    /// - `Some(Err(_))` — syntax error; the error's
     ///   [`root()`](ParseError::root) may contain a partially recovered tree.
     ///   Use [`ParseError::kind`] to distinguish recovered vs fatal.
     ///   Call again to continue with subsequent statements (Lemon recovers
     ///   on `;`).
-    /// - [`NextStatement::Done`] — all input has been consumed.
-    pub fn next(&mut self) -> NextStatement<'_> {
-        match self.0.next() {
-            TypedNextStatement::Statement(result) => NextStatement::Statement(ParsedStatement(result)),
-            TypedNextStatement::Error(err) => NextStatement::Error(ParseError(err)),
-            TypedNextStatement::Done => NextStatement::Done,
-        }
+    /// - `None` — all input has been consumed.
+    pub fn next(&mut self) -> Option<Result<ParsedStatement<'_>, ParseError<'_>>> {
+        Some(match self.0.next()? {
+            Ok(result) => Ok(ParsedStatement(result)),
+            Err(err) => Err(ParseError(err)),
+        })
     }
 
     /// The source text bound to this session.
@@ -413,7 +401,7 @@ impl TypedParser<AnyGrammar> {
 
 /// An active session over typed statements from a [`TypedParser`].
 ///
-/// On a parse error the session returns [`TypedNextStatement::Error`] for the
+/// On a parse error the session returns `Some(Err(TypedParseError))` for the
 /// failing statement, then continues parsing subsequent statements (Lemon's
 /// built-in error recovery synchronises on `;`). Call [`next`](Self::next)
 /// again to retrieve the next valid statement.
@@ -439,17 +427,17 @@ impl<G: TypedGrammar> TypedParseSession<G> {
     /// Parse the next SQL statement.
     ///
     /// Returns:
-    /// - [`TypedNextStatement::Statement`] — successfully parsed statement root.
-    /// - [`TypedNextStatement::Error`] — syntax error; call again to continue
+    /// - `Some(Ok(_))` — successfully parsed statement root.
+    /// - `Some(Err(_))` — syntax error; call again to continue
     ///   with subsequent statements (Lemon recovers on `;`). Use
     ///   [`TypedParseError::kind`] to distinguish recovered vs fatal.
-    /// - [`TypedNextStatement::Done`] — all input has been consumed.
+    /// - `None` — all input has been consumed.
     ///
     /// # Panics
     ///
     /// Panics if called after the session has been dropped or its inner state
     /// has been reclaimed. This cannot happen in normal use.
-    pub fn next(&mut self) -> TypedNextStatement<'_, G> {
+    pub fn next(&mut self) -> Option<Result<TypedParsedStatement<'_, G>, TypedParseError<'_, G>>> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         let rc = unsafe {
             self.inner
@@ -461,7 +449,7 @@ impl<G: TypedGrammar> TypedParseSession<G> {
         };
 
         if rc == ffi::PARSE_DONE {
-            return TypedNextStatement::Done;
+            return None;
         }
 
         let inner = self
@@ -475,10 +463,10 @@ impl<G: TypedGrammar> TypedParseSession<G> {
         // SAFETY: inner.raw is valid (owned via ParserInner, not yet destroyed).
         let result = unsafe { TypedParsedStatement::new(inner.raw.as_ptr(), source, self.grammar) };
         if rc == ffi::PARSE_OK {
-            TypedNextStatement::Statement(result)
+            Some(Ok(result))
         } else {
             // RECOVERED or ERROR
-            TypedNextStatement::Error(TypedParseError(result))
+            Some(Err(TypedParseError(result)))
         }
     }
 
@@ -521,24 +509,12 @@ impl<G: TypedGrammar> TypedParseSession<G> {
     }
 }
 
-/// The outcome of calling [`TypedParseSession::next`].
-pub enum TypedNextStatement<'a, G: TypedGrammar> {
-    /// A statement parsed successfully.
-    Statement(TypedParsedStatement<'a, G>),
-    /// A parse error for the current statement.
-    Error(TypedParseError<'a, G>),
-    /// All input has been consumed.
-    Done,
-}
-
 /// A type-erased parser. Yields [`AnyParseSession`]s with raw node types,
 /// suitable for use across multiple dialects.
 pub type AnyParser = TypedParser<AnyGrammar>;
 
 /// An active session over raw statements from an [`AnyParser`].
 pub type AnyParseSession = TypedParseSession<AnyGrammar>;
-/// The outcome of calling [`AnyParseSession::next`].
-pub type AnyNextStatement<'a> = TypedNextStatement<'a, AnyGrammar>;
 
 /// The result of a successfully parsed SQL statement from a [`TypedParseSession`].
 ///

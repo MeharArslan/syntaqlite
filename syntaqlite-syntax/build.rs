@@ -13,6 +13,7 @@ fn main() {
     let csrc = manifest_dir.join("csrc");
     let include_dir = manifest_dir.join("include");
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    let sqlite_enabled = env::var("CARGO_FEATURE_SQLITE").is_ok();
 
     // Expose include directory so downstream crates can find headers.
     println!("cargo:include={}", include_dir.display());
@@ -31,14 +32,17 @@ fn main() {
         .file(csrc.join("parser.c"))
         .file(csrc.join("token_wrapped.c"))
         .include(&manifest_dir) // for csrc/*.h internal headers
-        .include(&include_dir); // for public syntaqlite/*.h headers (incl. tokens.h)
+        .include(&include_dir); // for public syntaqlite/*.h headers
+    if !sqlite_enabled {
+        engine_build.define("SYNTAQLITE_OMIT_SQLITE_API", None);
+    }
     if target_os == "emscripten" {
         engine_build.flag("-fPIC");
     }
     engine_build.compile("syntaqlite_engine");
 
     // ── SQLite grammar ───────────────────────────────────────────────────
-    if env::var("CARGO_FEATURE_SQLITE").is_ok() {
+    if sqlite_enabled {
         let sqlite_csrc = csrc.join("sqlite");
         let mut build = cc::Build::new();
         build

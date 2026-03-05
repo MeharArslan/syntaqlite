@@ -16,7 +16,7 @@ struct SyntaqliteTokenizer {
   uint32_t offset;
 };
 
-SyntaqliteTokenizer* syntaqlite_tokenizer_create(
+SyntaqliteTokenizer* syntaqlite_tokenizer_create_with_grammar(
     const SyntaqliteMemMethods* mem,
     const SyntaqliteGrammar* env) {
   SyntaqliteMemMethods m = mem ? *mem : SYNTAQLITE_MEM_METHODS_DEFAULT;
@@ -26,6 +26,14 @@ SyntaqliteTokenizer* syntaqlite_tokenizer_create(
   tok->env = *env;
   return tok;
 }
+
+#ifndef SYNTAQLITE_OMIT_SQLITE_API
+SyntaqliteTokenizer* syntaqlite_tokenizer_create(
+    const SyntaqliteMemMethods* mem) {
+  SyntaqliteGrammar env = syntaqlite_sqlite_grammar();
+  return syntaqlite_tokenizer_create_with_grammar(mem, &env);
+}
+#endif
 
 void syntaqlite_tokenizer_reset(SyntaqliteTokenizer* tok,
                                 const char* source,

@@ -179,8 +179,8 @@ impl OutputLayout {
                 include: format!("{id}/{dn}_tokens.h"),
             },
             runtime_tokens_h: CHeader {
-                write: Some(format!("{sc}/include/syntaqlite/tokens.h")),
-                include: "syntaqlite/tokens.h".to_string(),
+                write: Some(format!("{sc}/csrc/tokens.h")),
+                include: "csrc/tokens.h".to_string(),
             },
             // Rust: all in dialect_crate/src/sqlite/ subdirectory
             tokens_rs: Some(format!("{dc}/src/sqlite/tokens.rs")),
@@ -259,7 +259,7 @@ impl OutputLayout {
             },
             runtime_tokens_h: CHeader {
                 write: None,
-                include: "syntaqlite/tokens.h".to_string(),
+                include: "csrc/tokens.h".to_string(),
             },
             tokens_rs: Some("src/tokens.rs".to_string()),
             ffi_rs: Some("src/ffi.rs".to_string()),
@@ -338,7 +338,7 @@ impl OutputLayout {
             },
             runtime_tokens_h: CHeader {
                 write: None,
-                include: "syntaqlite/tokens.h".to_string(),
+                include: "csrc/tokens.h".to_string(),
             },
             tokens_rs: None,
             ffi_rs: None,

@@ -42,7 +42,6 @@
 #[repr(u32)] pub enum syntaqlite_syntax::util::SqliteFlag
 #[repr(u8)] pub enum syntaqlite_syntax::any::FieldKind
 impl core::convert::From<syntaqlite_syntax::CompletionContext> for u32
-impl core::convert::From<syntaqlite_syntax::TokenType> for syntaqlite_syntax::any::AnyTokenType
 impl core::convert::From<syntaqlite_syntax::TokenType> for u32
 impl core::convert::From<syntaqlite_syntax::any::AnyNodeId> for syntaqlite_syntax::nodes::NodeId
 impl core::convert::From<syntaqlite_syntax::any::AnyNodeTag> for u32
@@ -701,7 +700,6 @@ impl<G: syntaqlite_syntax::typed::TypedGrammar> syntaqlite_syntax::typed::TypedP
 impl<G: syntaqlite_syntax::typed::TypedGrammar> syntaqlite_syntax::typed::TypedParser<G>
 impl<G: syntaqlite_syntax::typed::TypedGrammar> syntaqlite_syntax::typed::TypedTokenizer<G>
 pub enum syntaqlite_syntax::CommentKind
-pub enum syntaqlite_syntax::NextStatement<'a>
 pub enum syntaqlite_syntax::any::FieldValue<'a>
 pub enum syntaqlite_syntax::any::TokenCategory
 pub enum syntaqlite_syntax::nodes::Expr<'a>
@@ -710,7 +708,6 @@ pub enum syntaqlite_syntax::nodes::Node<'a>
 pub enum syntaqlite_syntax::nodes::Select<'a>
 pub enum syntaqlite_syntax::nodes::Stmt<'a>
 pub enum syntaqlite_syntax::nodes::TableSource<'a>
-pub enum syntaqlite_syntax::typed::TypedNextStatement<'a, G: syntaqlite_syntax::typed::TypedGrammar>
 pub fn syntaqlite_syntax::CompletionContext::from_raw(v: u32) -> Self
 pub fn syntaqlite_syntax::CompletionContext::raw(self) -> u32
 pub fn syntaqlite_syntax::IncrementalParseSession::begin_macro(&mut self, span: core::ops::range::Range<usize>)
@@ -829,7 +826,6 @@ pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::Wit
 pub fn syntaqlite_syntax::any::AnyNodeId::is_null(&self) -> bool
 pub fn syntaqlite_syntax::any::AnyNodeTag::from(t: syntaqlite_syntax::nodes::NodeTag) -> syntaqlite_syntax::any::AnyNodeTag
 pub fn syntaqlite_syntax::any::AnyNodeTag::from_raw(v: u32) -> Self
-pub fn syntaqlite_syntax::any::AnyTokenType::from(t: syntaqlite_syntax::TokenType) -> syntaqlite_syntax::any::AnyTokenType
 pub fn syntaqlite_syntax::any::AnyTokenType::from_raw(v: u32) -> Self
 pub fn syntaqlite_syntax::any::AnyTokenType::from_token_type(raw: syntaqlite_syntax::any::AnyTokenType) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::any::FieldMeta<'_>::display_count(&self) -> usize
@@ -1485,7 +1481,7 @@ pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::offset(&self) -> core::
 pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::root(&self) -> core::option::Option<<G as syntaqlite_syntax::typed::TypedGrammar>::Node>
 pub fn syntaqlite_syntax::typed::TypedParseSession<G>::arena_result(&self) -> syntaqlite_syntax::any::AnyParsedStatement<'_>
 pub fn syntaqlite_syntax::typed::TypedParseSession<G>::drop(&mut self)
-pub fn syntaqlite_syntax::typed::TypedParseSession<G>::next(&mut self) -> syntaqlite_syntax::typed::TypedNextStatement<'_, G>
+pub fn syntaqlite_syntax::typed::TypedParseSession<G>::next(&mut self) -> core::option::Option<core::result::Result<syntaqlite_syntax::typed::TypedParsedStatement<'_, G>, syntaqlite_syntax::typed::TypedParseError<'_, G>>>
 pub fn syntaqlite_syntax::typed::TypedParseSession<G>::source(&self) -> &str
 pub fn syntaqlite_syntax::typed::TypedParsedStatement<'a, G>::comments(&self) -> impl core::iter::traits::iterator::Iterator<Item = syntaqlite_syntax::Comment<'a>>
 pub fn syntaqlite_syntax::typed::TypedParsedStatement<'a, G>::erase(self) -> syntaqlite_syntax::any::AnyParsedStatement<'a>
@@ -1693,9 +1689,6 @@ pub syntaqlite_syntax::CommentKind::Line
 pub syntaqlite_syntax::CompletionContext::Expression = 1
 pub syntaqlite_syntax::CompletionContext::TableRef = 2
 pub syntaqlite_syntax::CompletionContext::Unknown = 0
-pub syntaqlite_syntax::NextStatement::Done
-pub syntaqlite_syntax::NextStatement::Error(ParseError<'a>)
-pub syntaqlite_syntax::NextStatement::Statement(ParsedStatement<'a>)
 pub syntaqlite_syntax::ParseErrorKind::Fatal = 2
 pub syntaqlite_syntax::ParseErrorKind::Recovered = 1
 pub syntaqlite_syntax::TokenType::Abort = 1
@@ -2249,9 +2242,6 @@ pub syntaqlite_syntax::nodes::UnaryOp::BitNot = 2
 pub syntaqlite_syntax::nodes::UnaryOp::Minus = 0
 pub syntaqlite_syntax::nodes::UnaryOp::Not = 3
 pub syntaqlite_syntax::nodes::UnaryOp::Plus = 1
-pub syntaqlite_syntax::typed::TypedNextStatement::Done
-pub syntaqlite_syntax::typed::TypedNextStatement::Error(syntaqlite_syntax::typed::TypedParseError<'a, G>)
-pub syntaqlite_syntax::typed::TypedNextStatement::Statement(syntaqlite_syntax::typed::TypedParsedStatement<'a, G>)
 pub syntaqlite_syntax::util::SqliteFlag::EnableBytecodeVtab = 25
 pub syntaqlite_syntax::util::SqliteFlag::EnableCarray = 26
 pub syntaqlite_syntax::util::SqliteFlag::EnableDbpageVtab = 27
@@ -2343,7 +2333,6 @@ pub type syntaqlite_syntax::any::AnyGrammar::Node<'a> = syntaqlite_syntax::any::
 pub type syntaqlite_syntax::any::AnyGrammar::NodeId = syntaqlite_syntax::any::AnyNodeId
 pub type syntaqlite_syntax::any::AnyGrammar::Token = syntaqlite_syntax::any::AnyTokenType
 pub type syntaqlite_syntax::any::AnyIncrementalParseSession = syntaqlite_syntax::typed::TypedIncrementalParseSession<syntaqlite_syntax::any::AnyGrammar>
-pub type syntaqlite_syntax::any::AnyNextStatement<'a> = syntaqlite_syntax::typed::TypedNextStatement<'a, syntaqlite_syntax::any::AnyGrammar>
 pub type syntaqlite_syntax::any::AnyParseError<'a> = syntaqlite_syntax::typed::TypedParseError<'a, syntaqlite_syntax::any::AnyGrammar>
 pub type syntaqlite_syntax::any::AnyParseSession = syntaqlite_syntax::typed::TypedParseSession<syntaqlite_syntax::any::AnyGrammar>
 pub type syntaqlite_syntax::any::AnyParsedStatement<'a> = syntaqlite_syntax::typed::TypedParsedStatement<'a, syntaqlite_syntax::any::AnyGrammar>

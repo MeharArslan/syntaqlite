@@ -13,7 +13,7 @@
 // A single parser can be reused across inputs by calling reset() again.
 //
 // Usage:
-//   SyntaqliteParser* p = syntaqlite_create_sqlite_parser(NULL);
+//   SyntaqliteParser* p = syntaqlite_parser_create(NULL);
 //   syntaqlite_parser_reset(p, sql, len);
 //   for (;;) {
 //     int32_t rc = syntaqlite_parser_next(p);
@@ -38,8 +38,10 @@
 // done:
 //   syntaqlite_parser_destroy(p);
 //
-// For token collection (required for formatting), call
-// syntaqlite_parser_set_collect_tokens() before the first reset().
+// Token/comment capture is OFF by default. If you need
+// syntaqlite_result_tokens() / syntaqlite_result_comments() (for formatting,
+// diagnostics, etc.), call syntaqlite_parser_set_collect_tokens(p, 1) before
+// the first reset().
 // For custom dialects, see the "Advanced" section below.
 // For macro-aware or incremental token feeding, see incremental.h.
 
@@ -117,11 +119,10 @@ typedef struct SyntaqliteMacroRegion {
 // Core API
 // ---------------------------------------------------------------------------
 
-// Allocate a parser for the SQLite grammar. The parser is inert until
-// reset() is called. Pass NULL for mem to use malloc/free.
-// (For custom grammars, see syntaqlite_create_parser_with_grammar() below.)
-SyntaqliteParser* syntaqlite_create_sqlite_parser(
-    const SyntaqliteMemMethods* mem);
+// Allocate a parser bound to a specific grammar environment.
+SyntaqliteParser* syntaqlite_parser_create_with_grammar(
+    const SyntaqliteMemMethods* mem,
+    SyntaqliteGrammar env);
 
 // Bind a source buffer and reset all internal state. The source must remain
 // valid until the next reset() or destroy(). Can be called again to parse a
@@ -164,7 +165,9 @@ uint32_t syntaqlite_result_error_offset(SyntaqliteParser* p);
 // Byte length of error token (0 = unknown).
 uint32_t syntaqlite_result_error_length(SyntaqliteParser* p);
 
-// Per-statement token/comment/macro arrays (require collect_tokens enabled).
+// Per-statement token/comment/macro arrays.
+// Token/comment arrays are empty unless collect_tokens is enabled via
+// syntaqlite_parser_set_collect_tokens(p, 1) before first reset().
 const SyntaqliteComment* syntaqlite_result_comments(SyntaqliteParser* p,
                                                     uint32_t* count);
 const SyntaqliteParserToken* syntaqlite_result_tokens(SyntaqliteParser* p,
@@ -270,7 +273,8 @@ static inline const void* syntaqlite_list_child(SyntaqliteParser* p,
 // Configuration — call after create(), before first reset()
 // ============================================================================
 
-// Enable token collection. Default: off (0).
+// Enable token/comment collection for result_tokens/result_comments.
+// Default: off (0), in which case those arrays are empty.
 // Returns 0 on success, -1 if the parser has already been used.
 int32_t syntaqlite_parser_set_collect_tokens(SyntaqliteParser* p, uint32_t enable);
 
@@ -302,11 +306,12 @@ char* syntaqlite_dump_node(SyntaqliteParser* p,
 // Advanced: custom dialects
 // ============================================================================
 
-SyntaqliteParser* syntaqlite_create_parser_with_grammar(
-    const SyntaqliteMemMethods* mem,
-    SyntaqliteGrammar env);
-
 #ifndef SYNTAQLITE_OMIT_SQLITE_API
+// Allocate a parser for the built-in SQLite grammar. The parser is inert
+// until reset() is called. Pass NULL for mem to use malloc/free.
+SyntaqliteParser* syntaqlite_parser_create(
+    const SyntaqliteMemMethods* mem);
+
 SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
 #endif
 
@@ -470,7 +475,7 @@ class Parser {
 
 #ifndef SYNTAQLITE_OMIT_SQLITE_API
 inline Parser SqliteParser() {
-  return Parser(syntaqlite_create_sqlite_parser(nullptr));
+  return Parser(syntaqlite_parser_create(nullptr));
 }
 #endif
 

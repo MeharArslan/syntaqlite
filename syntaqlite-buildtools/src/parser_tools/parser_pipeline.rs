@@ -318,7 +318,7 @@ fn nonterminal_defines_snippet(nts: &[(String, u32)]) -> String {
 fn completion_context_h_snippet(parser_name: &str) -> String {
     format!(
         "\n/* syntaqlite extension: completion context from parser stack. */\n\
-SyntaqliteCompletionContext {parser_name}CompletionContext(void* parser);\n"
+uint32_t {parser_name}CompletionContext(void* parser);\n"
     )
 }
 
@@ -338,7 +338,7 @@ static int synq_has_goto(YYACTIONTYPE state, YYCODETYPE nt) {{\n\
 /* syntaqlite extension: determine the semantic completion context\n\
 ** (Expression vs TableRef) by walking the parser stack. Returns one of\n\
 ** SYNTAQLITE_COMPLETION_CONTEXT_*. */\n\
-SyntaqliteCompletionContext {parser_name}CompletionContext(void* parser) {{\n\
+uint32_t {parser_name}CompletionContext(void* parser) {{\n\
   yyParser* p = (yyParser*)parser;\n\
   if( p==0 || p->yytos==0 ) return SYNTAQLITE_COMPLETION_CONTEXT_UNKNOWN;\n\
 \n\
@@ -385,6 +385,8 @@ mod tests {
 
         assert!(parse_c_out.contains("uint32_t SynqFooParseExpectedTokens("));
         assert!(parse_c_out.contains("yy_find_shift_action"));
+        assert!(parse_c_out.contains("uint32_t SynqFooParseCompletionContext("));
         assert!(parse_h_out.contains("uint32_t SynqFooParseExpectedTokens("));
+        assert!(parse_h_out.contains("uint32_t SynqFooParseCompletionContext("));
     }
 }

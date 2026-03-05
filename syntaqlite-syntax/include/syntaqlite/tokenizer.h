@@ -5,8 +5,8 @@
 //
 // The lowest-level entry point — splits SQL text into a flat sequence of
 // tokens without any parsing or tree structure. Most users don't need this
-// directly; the parser (parser.h) and formatter (formatter.h) handle
-// tokenization internally. Use this when you need raw token access
+// directly; the parser (parser.h) handles tokenization internally.
+// Use this when you need raw token access
 // (syntax highlighting, custom analysis, etc.).
 //
 // Lifecycle: create → reset → next (loop) → destroy.
@@ -45,7 +45,7 @@ typedef struct SyntaqliteTokenizer SyntaqliteTokenizer;
 typedef struct SyntaqliteToken {
   const char* text;  // Pointer into source text.
   uint32_t length;   // Token length in bytes.
-  uint32_t type;     // Token type (SYNTAQLITE_TK_* from tokens.h).
+  uint32_t type;     // Token type ordinal.
 } SyntaqliteToken;
 
 // ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ typedef struct SyntaqliteToken {
 // the caller's struct does not need to outlive the tokenizer, but the dialect
 // pointer inside must remain valid for the tokenizer's lifetime.
 // The mem methods are copied — pass NULL for all defaults (malloc/free).
-SyntaqliteTokenizer* syntaqlite_tokenizer_create(
+SyntaqliteTokenizer* syntaqlite_tokenizer_create_with_grammar(
     const SyntaqliteMemMethods* mem,
     const SyntaqliteGrammar* env);
 
@@ -80,12 +80,12 @@ void syntaqlite_tokenizer_destroy(SyntaqliteTokenizer* tok);
 // ---------------------------------------------------------------------------
 
 #ifndef SYNTAQLITE_OMIT_SQLITE_API
+// Allocate a tokenizer for the built-in SQLite grammar.
+// The mem methods are copied — pass NULL for all defaults (malloc/free).
+SyntaqliteTokenizer* syntaqlite_tokenizer_create(
+    const SyntaqliteMemMethods* mem);
+
 SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
-static inline SyntaqliteTokenizer* syntaqlite_create_sqlite_tokenizer(
-    const SyntaqliteMemMethods* mem) {
-  SyntaqliteGrammar env = syntaqlite_sqlite_grammar();
-  return syntaqlite_tokenizer_create(mem, &env);
-}
 #endif
 
 #ifdef __cplusplus

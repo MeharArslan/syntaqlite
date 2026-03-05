@@ -312,7 +312,7 @@ mod ffi {
         ) -> *mut Self {
             // SAFETY: caller guarantees `mem` is null or a valid mem-methods
             // pointer; `grammar` is a valid grammar descriptor.
-            unsafe { syntaqlite_tokenizer_create(mem, grammar) }
+            unsafe { syntaqlite_tokenizer_create_with_grammar(mem, grammar) }
         }
 
         pub(crate) unsafe fn reset(&mut self, source: *const c_char, len: u32) {
@@ -345,7 +345,7 @@ mod ffi {
     }
 
     unsafe extern "C" {
-        fn syntaqlite_tokenizer_create(
+        fn syntaqlite_tokenizer_create_with_grammar(
             mem: *const std::ffi::c_void,
             grammar: crate::grammar::ffi::CGrammar,
         ) -> *mut CTokenizer;

@@ -34,6 +34,8 @@ pub mod commands;
 
 #[cfg(test)]
 mod grammar_verify;
+#[cfg(test)]
+mod no_sqlite_compile;
 
 // --- Codegen pipeline types and functions (stage 2/3) ---
 
