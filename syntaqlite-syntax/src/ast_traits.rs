@@ -1336,7 +1336,6 @@ pub enum SelectKind<'a, A: AstTypes<'a>> {
     CompoundSelect(A::CompoundSelect),
     WithClause(A::WithClause),
     ValuesClause(A::ValuesClause),
-    Other(A::Node),
 }
 
 /// Pattern-matching variants for `InExprSource`.
@@ -1344,7 +1343,6 @@ pub enum SelectKind<'a, A: AstTypes<'a>> {
 pub enum InExprSourceKind<'a, A: AstTypes<'a>> {
     ExprList(TypedNodeList<'a, A::Grammar, A::Expr>),
     SubqueryExpr(A::SubqueryExpr),
-    Other(A::Node),
 }
 
 /// Pattern-matching variants for `Name`.
@@ -1352,7 +1350,6 @@ pub enum InExprSourceKind<'a, A: AstTypes<'a>> {
 pub enum NameKind<'a, A: AstTypes<'a>> {
     IdentName(A::IdentName),
     Error(A::Error),
-    Other(A::Node),
 }
 
 /// Pattern-matching variants for `Expr`.
@@ -1377,7 +1374,6 @@ pub enum ExprKind<'a, A: AstTypes<'a>> {
     SubqueryExpr(A::SubqueryExpr),
     ExistsExpr(A::ExistsExpr),
     RaiseExpr(A::RaiseExpr),
-    Other(A::Node),
 }
 
 /// Pattern-matching variants for `Stmt`.
@@ -1405,7 +1401,6 @@ pub enum StmtKind<'a, A: AstTypes<'a>> {
     DetachStmt(A::DetachStmt),
     VacuumStmt(A::VacuumStmt),
     ExplainStmt(A::ExplainStmt),
-    Other(A::Node),
 }
 
 /// Pattern-matching variants for `TableSource`.
@@ -1415,7 +1410,6 @@ pub enum TableSourceKind<'a, A: AstTypes<'a>> {
     SubqueryTableSource(A::SubqueryTableSource),
     JoinClause(A::JoinClause),
     JoinPrefix(A::JoinPrefix),
-    Other(A::Node),
 }
 
 /// Abstract access trait for `Select`.

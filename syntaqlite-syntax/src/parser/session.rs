@@ -3,9 +3,9 @@
 
 #[cfg(feature = "sqlite")]
 use super::{
-    AnyParsedStatement, Comment, IncrementalParseSession, ParseErrorKind, ParserConfig,
-    ParserTokenFlags, TypedParseError, TypedParseSession, TypedParsedStatement, TypedParser,
-    TypedParserToken,
+    AnyParsedStatement, Comment, IncrementalParseSession, ParseErrorKind, ParseOutcome,
+    ParserConfig, ParserTokenFlags, TypedParseError, TypedParseSession, TypedParsedStatement,
+    TypedParser, TypedParserToken,
 };
 
 /// High-level entry point for parsing `SQLite` SQL into typed AST statements.
@@ -48,18 +48,19 @@ impl Parser {
     /// let mut session = parser.parse("SELECT 1; SELECT FROM;");
     /// let mut ok_count = 0;
     ///
-    /// while let Some(result) = session.next() {
-    ///     match result {
-    ///         Ok(stmt) => {
+    /// loop {
+    ///     match session.next() {
+    ///         syntaqlite_syntax::ParseOutcome::Ok(stmt) => {
     ///             ok_count += 1;
-    ///             assert!(stmt.root().is_some());
+    ///             let _ = stmt.root();
     ///         }
-    ///         Err(err) => {
+    ///         syntaqlite_syntax::ParseOutcome::Err(err) => {
     ///             assert!(!err.message().is_empty());
     ///             if err.kind() == ParseErrorKind::Fatal {
     ///                 break;
     ///             }
     ///         }
+    ///         syntaqlite_syntax::ParseOutcome::Done => break,
     ///     }
     /// }
     ///
@@ -91,7 +92,7 @@ impl Parser {
     /// assert!(session.feed_token(TokenType::Integer, 7..8).is_none());
     ///
     /// let stmt = session.finish().and_then(Result::ok).unwrap();
-    /// assert!(stmt.root().is_some());
+    /// let _ = stmt.root();
     /// ```
     ///
     /// # Panics
@@ -123,35 +124,14 @@ pub struct ParseSession(pub(super) TypedParseSession<crate::sqlite::grammar::Gra
 
 #[cfg(feature = "sqlite")]
 impl ParseSession {
-    /// Parse and return the next statement from the source.
+    /// Parse and return the next statement as a tri-state outcome.
     ///
-    /// Returns:
-    /// - `Some(Ok(_))` — successfully parsed statement; use
-    ///   [`ParsedStatement::root`] to access the typed AST,
-    ///   [`ParsedStatement::tokens`] / [`ParsedStatement::comments`] for
-    ///   per-statement token data.
-    /// - `Some(Err(_))` — syntax error; the error's
-    ///   [`root()`](ParseError::root) may contain a partially recovered tree.
-    ///   Use [`ParseError::kind`] to distinguish recovered vs fatal.
-    ///   Call again to continue when recovery succeeds.
-    /// - `None` — all input has been consumed.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// let parser = syntaqlite_syntax::Parser::new();
-    /// let mut session = parser.parse("SELECT 1; SELECT 2;");
-    ///
-    /// assert!(session.next().is_some());
-    /// assert!(session.next().is_some());
-    /// assert!(session.next().is_none());
-    /// ```
-    #[allow(clippy::should_implement_trait)]
-    pub fn next(&mut self) -> Option<Result<ParsedStatement<'_>, ParseError<'_>>> {
-        Some(match self.0.next()? {
-            Ok(result) => Ok(ParsedStatement(result)),
-            Err(err) => Err(ParseError(err)),
-        })
+    /// Mirrors C parser return codes directly:
+    /// - [`ParseOutcome::Done`]  -> `SYNTAQLITE_PARSE_DONE`
+    /// - [`ParseOutcome::Ok`]    -> `SYNTAQLITE_PARSE_OK`
+    /// - [`ParseOutcome::Err`]   -> `SYNTAQLITE_PARSE_ERROR`
+    pub fn next(&mut self) -> ParseOutcome<ParsedStatement<'_>, ParseError<'_>> {
+        self.0.next().map(ParsedStatement).map_err(ParseError)
     }
 
     /// Original SQL source bound to this session.
@@ -168,7 +148,12 @@ impl ParseSession {
     /// ```rust
     /// let parser = syntaqlite_syntax::Parser::new();
     /// let mut session = parser.parse("SELECT 1;");
-    /// while session.next().is_some() {}
+    /// let stmt = match session.next().transpose() {
+    ///     Ok(Some(stmt)) => stmt,
+    ///     Ok(None) => panic!("expected statement"),
+    ///     Err(err) => panic!("unexpected parse error: {err}"),
+    /// };
+    /// let _ = stmt.root();
     ///
     /// let any = session.arena_result();
     /// assert!(!any.root_id().is_null());
@@ -196,7 +181,7 @@ impl ParseSession {
 ///
 /// let parser = Parser::with_config(&ParserConfig::default().with_collect_tokens(true));
 /// let mut session = parser.parse("SELECT max(x) FROM t;");
-/// let stmt = session.next().and_then(Result::ok).unwrap();
+/// let stmt = session.next().transpose().unwrap().unwrap();
 ///
 /// let tokens: Vec<_> = stmt.tokens().collect();
 /// assert!(!tokens.is_empty());
@@ -220,7 +205,7 @@ impl<'a> ParserToken<'a> {
         self.0.text()
     }
 
-    /// Token kind from the SQLite SQL grammar.
+    /// Token kind from the `SQLite` SQL grammar.
     ///
     /// This is the lexical class (keyword, identifier, operator, etc.).
     pub fn token_type(&self) -> crate::sqlite::tokens::TokenType {
@@ -266,9 +251,18 @@ pub struct ParsedStatement<'a>(
 
 #[cfg(feature = "sqlite")]
 impl<'a> ParsedStatement<'a> {
-    /// Typed AST root for the statement, if one was produced.
-    pub fn root(&self) -> Option<crate::sqlite::ast::Stmt<'a>> {
-        self.0.root()
+    /// Typed AST root for the statement.
+    ///
+    /// Mirrors C `syntaqlite_result_root` for `PARSE_OK`.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if parser/result invariants are violated (an `Ok` result
+    /// without a C `result_root`).
+    pub fn root(&self) -> crate::sqlite::ast::Stmt<'a> {
+        self.0
+            .root()
+            .expect("ParseSession::next returned Ok but result_root was null")
     }
 
     /// The source text bound to this result.
@@ -305,7 +299,7 @@ impl<'a> ParsedStatement<'a> {
 /// - Error class (`kind()`: recovered vs fatal).
 /// - Error message (`message()`).
 /// - Optional location (`offset()` / `length()`).
-/// - Optional partial recovery tree (`root()`).
+/// - Optional partial recovery tree (`recovery_root()`).
 #[cfg(feature = "sqlite")]
 #[doc(hidden)]
 pub struct ParseError<'a>(pub(super) TypedParseError<'a, crate::sqlite::grammar::Grammar>);
@@ -343,8 +337,10 @@ impl<'a> ParseError<'a> {
     }
 
     /// Partial AST recovered from invalid input, if available.
-    pub fn root(&self) -> Option<crate::sqlite::ast::Stmt<'a>> {
-        self.0.root()
+    ///
+    /// Mirrors C `syntaqlite_result_recovery_root` for `PARSE_ERROR`.
+    pub fn recovery_root(&self) -> Option<crate::sqlite::ast::Stmt<'a>> {
+        self.0.recovery_root()
     }
 }
 
@@ -369,7 +365,7 @@ impl std::error::Error for ParseError<'_> {}
 mod tests {
     use std::panic::{self, AssertUnwindSafe};
 
-    use super::{ParseErrorKind, Parser, ParserConfig};
+    use super::{ParseErrorKind, ParseOutcome, Parser, ParserConfig};
     use crate::{CommentKind, TokenType};
 
     #[test]
@@ -377,13 +373,17 @@ mod tests {
         let parser = Parser::new();
         let mut session = parser.parse("SELECT 1; SELECT ; SELECT 2;");
 
-        let first = session.next().expect("first statement is present");
-        assert!(matches!(first, Ok(statement) if statement.root().is_some()));
+        let first = match session.next() {
+            ParseOutcome::Ok(stmt) => stmt,
+            ParseOutcome::Done => panic!("first statement missing"),
+            ParseOutcome::Err(err) => panic!("first statement should parse: {err}"),
+        };
+        let _ = first.root();
 
-        let second = session.next().expect("second statement is present");
-        let error = match second {
-            Ok(_) => panic!("second statement should fail"),
-            Err(error) => error,
+        let error = match session.next() {
+            ParseOutcome::Err(err) => err,
+            ParseOutcome::Done => panic!("second statement missing"),
+            ParseOutcome::Ok(_) => panic!("second statement should fail"),
         };
         assert!(!error.message().is_empty());
         assert_ne!(error.is_fatal(), error.is_recovered());
@@ -392,9 +392,13 @@ mod tests {
             ParseErrorKind::Recovered | ParseErrorKind::Fatal
         ));
 
-        let third = session.next().expect("third statement is present");
-        assert!(matches!(third, Ok(statement) if statement.root().is_some()));
-        assert!(session.next().is_none());
+        let third = match session.next() {
+            ParseOutcome::Ok(stmt) => stmt,
+            ParseOutcome::Done => panic!("third statement missing"),
+            ParseOutcome::Err(err) => panic!("third statement should parse: {err}"),
+        };
+        let _ = third.root();
+        assert!(matches!(session.next(), ParseOutcome::Done));
     }
 
     #[test]
@@ -402,10 +406,11 @@ mod tests {
         let parser = Parser::with_config(&ParserConfig::default().with_collect_tokens(true));
         let mut session = parser.parse("/* lead */ SELECT 1 -- tail\n;");
 
-        let statement = session
-            .next()
-            .expect("statement is present")
-            .expect("statement parses successfully");
+        let statement = match session.next() {
+            ParseOutcome::Ok(stmt) => stmt,
+            ParseOutcome::Done => panic!("statement is missing"),
+            ParseOutcome::Err(err) => panic!("statement should parse: {err}"),
+        };
 
         let token_types: Vec<_> = statement.tokens().map(|token| token.token_type()).collect();
         assert!(token_types.contains(&TokenType::Select));
@@ -437,7 +442,65 @@ mod tests {
         drop(session);
 
         let mut second = parser.parse("SELECT 2;");
-        let result = second.next().expect("statement is present");
-        assert!(matches!(result, Ok(statement) if statement.root().is_some()));
+        let result = match second.next() {
+            ParseOutcome::Ok(stmt) => stmt,
+            ParseOutcome::Done => panic!("statement is missing"),
+            ParseOutcome::Err(err) => panic!("statement should parse: {err}"),
+        };
+        let _ = result.root();
+    }
+
+    #[test]
+    fn parser_next_exposes_done_ok_err_states() {
+        let parser = Parser::new();
+        let mut ok_session = parser.parse("SELECT 1;");
+        match ok_session.next() {
+            ParseOutcome::Ok(stmt) => {
+                let _ = stmt.root();
+            }
+            ParseOutcome::Done => panic!("expected statement"),
+            ParseOutcome::Err(err) => panic!("unexpected error: {}", err.message()),
+        }
+        assert!(matches!(ok_session.next(), ParseOutcome::Done));
+        drop(ok_session);
+
+        let mut err_session = parser.parse("abc");
+        match err_session.next() {
+            ParseOutcome::Err(err) => assert!(err.is_fatal()),
+            ParseOutcome::Done => panic!("expected fatal error"),
+            ParseOutcome::Ok(_) => panic!("expected parse error"),
+        }
+    }
+
+    #[test]
+    fn parser_next_transposes_parse_outcome() {
+        let parser = Parser::new();
+        let mut ok_session = parser.parse("SELECT 1; SELECT 2;");
+        let first = ok_session
+            .next()
+            .transpose()
+            .expect("first should not error");
+        let first = first.expect("first statement should exist");
+        let _ = first.root();
+        let second = ok_session
+            .next()
+            .transpose()
+            .expect("second should not error");
+        let second = second.expect("second statement should exist");
+        let _ = second.root();
+        assert!(
+            ok_session
+                .next()
+                .transpose()
+                .expect("done should not error")
+                .is_none()
+        );
+        drop(ok_session);
+
+        let mut err_session = parser.parse("abc");
+        match err_session.next().transpose() {
+            Err(err) => assert!(err.is_fatal()),
+            Ok(_) => panic!("fatal error expected"),
+        }
     }
 }

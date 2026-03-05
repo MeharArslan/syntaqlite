@@ -33,15 +33,16 @@
 //!
 //! let parser = syntaqlite_syntax::Parser::new();
 //! let mut session = parser.parse("SELECT 1");
-//! while let Some(statement) = session.next() {
-//!     match statement {
-//!         Ok(statement) => println!("{:?}", statement.root()),
-//!         Err(error) => {
+//! loop {
+//!     match session.next() {
+//!         syntaqlite_syntax::ParseOutcome::Ok(statement) => println!("{:?}", statement.root()),
+//!         syntaqlite_syntax::ParseOutcome::Err(error) => {
 //!             eprintln!("parse error: {}", error.message());
 //!             if error.kind() == ParseErrorKind::Fatal {
 //!                 break;
 //!             }
 //!         }
+//!         syntaqlite_syntax::ParseOutcome::Done => break,
 //!     }
 //! }
 //! ```
@@ -61,7 +62,7 @@
 //! assert!(session.feed_token(TokenType::Integer, 7..8).is_none());
 //!
 //! let stmt = session.finish().and_then(Result::ok).unwrap();
-//! assert!(stmt.root().is_some());
+//! let _ = stmt.root();
 //! ```
 //!
 //! # Features
@@ -82,7 +83,9 @@
 pub use parser::ParserConfig;
 #[cfg(feature = "sqlite")]
 #[doc(inline)]
-pub use parser::{ParseError, ParseErrorKind, ParseSession, ParsedStatement, Parser, ParserToken};
+pub use parser::{
+    ParseError, ParseErrorKind, ParseOutcome, ParseSession, ParsedStatement, Parser, ParserToken,
+};
 
 // Token/comment data types shared across grammars.
 #[doc(inline)]
@@ -144,7 +147,7 @@ pub mod any {
     #[doc(inline)]
     pub use crate::parser::{
         AnyIncrementalParseSession, AnyParseError, AnyParseSession, AnyParsedStatement, AnyParser,
-        AnyParserToken, MacroRegion,
+        AnyParserToken, MacroRegion, ParseOutcome,
     };
     #[doc(inline)]
     pub use crate::tokenizer::{AnyToken, AnyTokenizer};
@@ -177,8 +180,8 @@ pub mod typed {
     pub use crate::grammar::TypedGrammar;
     #[doc(inline)]
     pub use crate::parser::{
-        TypedIncrementalParseSession, TypedParseError, TypedParseSession, TypedParsedStatement,
-        TypedParser, TypedParserToken,
+        ParseOutcome, TypedIncrementalParseSession, TypedParseError, TypedParseSession,
+        TypedParsedStatement, TypedParser, TypedParserToken,
     };
     #[doc(inline)]
     pub use crate::tokenizer::{TypedToken, TypedTokenizer};

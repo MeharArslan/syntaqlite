@@ -1,12 +1,16 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Semantic analysis (incrementally re-enabled).
+//! Semantic analysis active surface during refactor.
 
-pub(crate) mod catalog_core;
+#[cfg(all(feature = "fmt", any(feature = "embedded", feature = "lsp")))]
+pub(crate) mod catalog;
 pub(crate) mod diagnostics;
-pub(crate) mod fuzzy;
+#[cfg(all(feature = "fmt", any(feature = "embedded", feature = "lsp")))]
+pub(crate) mod schema;
 
+#[cfg(all(feature = "fmt", any(feature = "embedded", feature = "lsp")))]
+pub(crate) use catalog::DatabaseCatalog;
 pub use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
 
 /// Configuration for semantic validation.

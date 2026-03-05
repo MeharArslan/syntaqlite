@@ -27,8 +27,8 @@ pub use incremental::{AnyIncrementalParseSession, TypedIncrementalParseSession};
 #[cfg(feature = "sqlite")]
 pub use session::{ParseError, ParseSession, ParsedStatement, Parser, ParserToken};
 pub use types::{
-    AnyParserToken, Comment, CommentKind, CompletionContext, MacroRegion, ParserTokenFlags,
-    TypedParserToken,
+    AnyParserToken, Comment, CommentKind, CompletionContext, MacroRegion, ParseOutcome,
+    ParserTokenFlags, TypedParserToken,
 };
 
 /// Indicates whether parsing can continue after an error.
@@ -108,10 +108,15 @@ impl<G: TypedGrammar> TypedParser<G> {
     ///
     /// ```rust
     /// use syntaqlite_syntax::typed::{grammar, TypedParser};
+    /// use syntaqlite_syntax::ParseOutcome;
     ///
     /// let parser = TypedParser::new(grammar());
     /// let mut session = parser.parse("SELECT 1;");
-    /// let stmt = session.next().and_then(Result::ok).unwrap();
+    /// let stmt = match session.next() {
+    ///     ParseOutcome::Ok(stmt) => stmt,
+    ///     ParseOutcome::Done => panic!("expected statement"),
+    ///     ParseOutcome::Err(err) => panic!("unexpected parse error: {err}"),
+    /// };
     /// assert!(stmt.root().is_some());
     /// ```
     ///
@@ -207,35 +212,16 @@ impl<G: TypedGrammar> Drop for TypedParseSession<G> {
 }
 
 impl<G: TypedGrammar> TypedParseSession<G> {
-    /// Parse and return the next statement in the input.
+    /// Parse and return the next statement as a tri-state outcome.
     ///
-    /// Returns:
-    /// - `Some(Ok(_))` — successfully parsed statement root.
-    /// - `Some(Err(_))` — syntax error; call again to continue
-    ///   with subsequent statements when recovery succeeds. Use
-    ///   [`TypedParseError::kind`] to distinguish recovered vs fatal.
-    ///   "Recovered" means it skipped invalid input and continued at a later
-    ///   statement boundary (usually the next `;`).
-    /// - `None` — all input has been consumed.
+    /// Mirrors C parser return codes directly:
+    /// - [`ParseOutcome::Done`]  -> `SYNTAQLITE_PARSE_DONE`
+    /// - [`ParseOutcome::Ok`]    -> `SYNTAQLITE_PARSE_OK`
+    /// - [`ParseOutcome::Err`]   -> `SYNTAQLITE_PARSE_ERROR`
     ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use syntaqlite_syntax::typed::{grammar, TypedParser};
-    ///
-    /// let parser = TypedParser::new(grammar());
-    /// let mut session = parser.parse("SELECT 1; SELECT 2;");
-    ///
-    /// assert!(session.next().is_some());
-    /// assert!(session.next().is_some());
-    /// assert!(session.next().is_none());
-    /// ```
-    ///
-    /// # Panics
-    ///
-    /// Panics only if session invariants were violated.
-    #[allow(clippy::should_implement_trait)]
-    pub fn next(&mut self) -> Option<Result<TypedParsedStatement<'_, G>, TypedParseError<'_, G>>> {
+    /// Use [`ParseOutcome::transpose`] for `?`-friendly
+    /// `Result<Option<_>, _>` control flow.
+    pub fn next(&mut self) -> ParseOutcome<TypedParsedStatement<'_, G>, TypedParseError<'_, G>> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         let rc = unsafe {
             self.inner
@@ -247,7 +233,7 @@ impl<G: TypedGrammar> TypedParseSession<G> {
         };
 
         if rc == ffi::PARSE_DONE {
-            return None;
+            return ParseOutcome::Done;
         }
 
         let inner = self
@@ -261,10 +247,10 @@ impl<G: TypedGrammar> TypedParseSession<G> {
         // SAFETY: inner.raw is valid (owned via ParserInner, not yet destroyed).
         let result = unsafe { TypedParsedStatement::new(inner.raw.as_ptr(), source, self.grammar) };
         if rc == ffi::PARSE_OK {
-            Some(Ok(result))
+            ParseOutcome::Ok(result)
         } else {
             // ERROR (may still carry a recovery tree)
-            Some(Err(TypedParseError(result)))
+            ParseOutcome::Err(TypedParseError(result))
         }
     }
 
@@ -647,13 +633,13 @@ unsafe fn extract_field_value<'a>(
 /// - Message text (`message()`).
 /// - Optional source location (`offset()`, `length()`).
 /// - Severity/recovery status (`kind()`).
-/// - Optional partial tree (`root()`).
+/// - Optional recovery tree (`recovery_root()`).
 ///
 /// Recovery model:
 ///
 /// - `Recovered`: this statement is invalid, but the parser skipped ahead
 ///   (usually to the next `;`) so it can continue with later statements.
-/// - The returned `root()` can still be useful for diagnostics, but may
+/// - The returned `recovery_root()` can still be useful for diagnostics, but may
 ///   contain error placeholders where input was skipped.
 /// - `Fatal`: the parser could not find a safe point to continue from.
 pub struct TypedParseError<'a, G: TypedGrammar>(TypedParsedStatement<'a, G>);
@@ -691,7 +677,7 @@ impl<'a, G: TypedGrammar> TypedParseError<'a, G> {
         self.0.error_length()
     }
     /// The partial recovery tree, if error recovery produced one.
-    pub fn root(&self) -> Option<G::Node<'a>> {
+    pub fn recovery_root(&self) -> Option<G::Node<'a>> {
         self.0.recovery_root()
     }
 }

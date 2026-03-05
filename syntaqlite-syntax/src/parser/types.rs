@@ -3,6 +3,51 @@
 
 use crate::grammar::TypedGrammar;
 
+/// Tri-state parse result for statement-oriented parser APIs.
+///
+/// Mirrors C parser return codes:
+/// - [`ParseOutcome::Done`]  -> `SYNTAQLITE_PARSE_DONE`
+/// - [`ParseOutcome::Ok`]    -> `SYNTAQLITE_PARSE_OK`
+/// - [`ParseOutcome::Err`]   -> `SYNTAQLITE_PARSE_ERROR`
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ParseOutcome<T, E> {
+    /// No more statements/results are available.
+    Done,
+    /// A statement parsed successfully.
+    Ok(T),
+    /// A statement parsed with an error.
+    Err(E),
+}
+
+impl<T, E> ParseOutcome<T, E> {
+    /// Convert into `Result<Option<T>, E>` for `?`-friendly control flow.
+    pub fn transpose(self) -> Result<Option<T>, E> {
+        match self {
+            ParseOutcome::Done => Ok(None),
+            ParseOutcome::Ok(v) => Ok(Some(v)),
+            ParseOutcome::Err(e) => Err(e),
+        }
+    }
+
+    /// Map the `Ok(T)` payload.
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> ParseOutcome<U, E> {
+        match self {
+            ParseOutcome::Done => ParseOutcome::Done,
+            ParseOutcome::Ok(v) => ParseOutcome::Ok(f(v)),
+            ParseOutcome::Err(e) => ParseOutcome::Err(e),
+        }
+    }
+
+    /// Map the `Err(E)` payload.
+    pub fn map_err<F>(self, f: impl FnOnce(E) -> F) -> ParseOutcome<T, F> {
+        match self {
+            ParseOutcome::Done => ParseOutcome::Done,
+            ParseOutcome::Ok(v) => ParseOutcome::Ok(v),
+            ParseOutcome::Err(e) => ParseOutcome::Err(f(e)),
+        }
+    }
+}
+
 /// SQL comment style.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommentKind {

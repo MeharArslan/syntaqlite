@@ -43,7 +43,7 @@ impl<'ctx> ScopeStack<'ctx> {
     /// `columns` is `None` if column info is not available.
     pub(crate) fn add_table(&mut self, name: &str, columns: Option<Vec<String>>) {
         if let Some(scope) = self.stack.last_mut() {
-            scope.tables.insert(name.to_ascii_lowercase(), columns);
+            scope.tables.insert(canonical_name(name), columns);
         }
     }
 
@@ -55,7 +55,7 @@ impl<'ctx> ScopeStack<'ctx> {
     }
 
     pub(crate) fn resolve_table(&self, name: &str) -> bool {
-        let lower = name.to_ascii_lowercase();
+        let lower = canonical_name(name);
         self.stack.iter().any(|s| s.tables.contains_key(&lower))
             || self.catalog.resolve_relation(name)
     }
@@ -69,19 +69,9 @@ impl<'ctx> ScopeStack<'ctx> {
             return self.resolve_qualified_column(tbl, column);
         }
 
-        let mut has_unknown = false;
-        for scope in self.stack.iter().rev() {
-            for cols in scope.tables.values() {
-                match cols {
-                    Some(col_list) => {
-                        if col_list.iter().any(|c| c.eq_ignore_ascii_case(column)) {
-                            return ColumnResolution::Found;
-                        }
-                    }
-                    // A table with unknown columns — can't reject, but keep looking.
-                    None => has_unknown = true,
-                }
-            }
+        let (found_in_scope, has_unknown_scope_columns) = self.resolve_unqualified_in_scope(column);
+        if found_in_scope {
+            return ColumnResolution::Found;
         }
 
         // Check ambient catalog columns.
@@ -96,7 +86,7 @@ impl<'ctx> ScopeStack<'ctx> {
 
         // If any table in scope has unknown columns, we can't be sure
         // the column doesn't exist — conservatively accept.
-        if has_unknown {
+        if has_unknown_scope_columns {
             return ColumnResolution::Found;
         }
 
@@ -122,10 +112,8 @@ impl<'ctx> ScopeStack<'ctx> {
 
         for scope in &self.stack {
             for (key, cols) in &scope.tables {
-                if table.is_none_or(|tbl| key.eq_ignore_ascii_case(tbl))
-                    && let Some(cols) = cols
-                {
-                    names.extend(cols.iter().map(|c| c.to_ascii_lowercase()));
+                if table.is_none_or(|tbl| key.eq_ignore_ascii_case(tbl)) {
+                    extend_lowercase_columns(&mut names, cols);
                 }
             }
         }
@@ -138,7 +126,7 @@ impl<'ctx> ScopeStack<'ctx> {
     }
 
     fn resolve_qualified_column(&self, table: &str, column: &str) -> ColumnResolution {
-        let lower = table.to_ascii_lowercase();
+        let lower = canonical_name(table);
         for scope in self.stack.iter().rev() {
             if let Some(cols) = scope.tables.get(&lower) {
                 return match cols {
@@ -151,6 +139,34 @@ impl<'ctx> ScopeStack<'ctx> {
             }
         }
         ColumnResolution::TableNotFound
+    }
+
+    fn resolve_unqualified_in_scope(&self, column: &str) -> (bool, bool) {
+        let mut has_unknown_columns = false;
+
+        for scope in self.stack.iter().rev() {
+            for cols in scope.tables.values() {
+                match cols {
+                    Some(col_list) if col_list.iter().any(|c| c.eq_ignore_ascii_case(column)) => {
+                        return (true, has_unknown_columns);
+                    }
+                    Some(_) => {}
+                    None => has_unknown_columns = true,
+                }
+            }
+        }
+
+        (false, has_unknown_columns)
+    }
+}
+
+fn canonical_name(name: &str) -> String {
+    name.to_ascii_lowercase()
+}
+
+fn extend_lowercase_columns(out: &mut Vec<String>, columns: &Option<Vec<String>>) {
+    if let Some(columns) = columns {
+        out.extend(columns.iter().map(|c| c.to_ascii_lowercase()));
     }
 }
 

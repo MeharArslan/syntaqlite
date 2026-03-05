@@ -10,8 +10,8 @@ use crate::semantic::DatabaseCatalog;
 use crate::semantic::SemanticModel;
 use crate::semantic::ValidationConfig;
 use crate::semantic::analyzer::SemanticAnalyzer;
+use crate::semantic::catalog::{CatalogStack, DocumentCatalog, StaticCatalog};
 use crate::semantic::diagnostics::Diagnostic;
-use crate::semantic::functions::FunctionCatalog;
 use crate::semantic::model::SemanticToken;
 use syntaqlite_parser::DialectEnv;
 use syntaqlite_parser::ParseError;
@@ -247,11 +247,10 @@ impl<'d> LspHost<'d> {
             );
 
         if show_functions {
-            let catalog = self.function_catalog();
-            for name in catalog.unique_names() {
+            for name in self.available_function_names() {
                 if seen.insert(name.to_string()) {
                     items.push(CompletionEntry {
-                        label: name.to_string(),
+                        label: name,
                         kind: CompletionKind::Function,
                     });
                 }
@@ -297,30 +296,28 @@ impl<'d> LspHost<'d> {
 
     /// Parse + semantic diagnostics combined.
     #[cfg(feature = "sqlite")]
-    pub(crate) fn all_diagnostics(&mut self, uri: &str, config: &ValidationConfig) -> Vec<Diagnostic> {
+    pub(crate) fn all_diagnostics(
+        &mut self,
+        uri: &str,
+        config: &ValidationConfig,
+    ) -> Vec<Diagnostic> {
         let mut result = self.diagnostics(uri).to_vec();
         result.extend(self.validate(uri, config));
         result
     }
 
-    // ── Function catalog ──────────────────────────────────────────────────
-
-    /// Build the function catalog for the current dialect configuration and
-    /// session context.
-    pub(crate) fn function_catalog(&self) -> FunctionCatalog {
-        let mut catalog = FunctionCatalog::for_dialect(&self.dialect);
-        if let Some(ctx) = self.context.as_ref() {
-            catalog.add_session_functions(&ctx.functions);
-        }
-        catalog
-    }
-
     /// Unique function names for the current configuration.
     pub(crate) fn available_function_names(&self) -> Vec<String> {
-        self.function_catalog()
-            .unique_names()
-            .map(|s| s.to_string())
-            .collect()
+        let static_catalog = StaticCatalog::for_dialect(&self.dialect);
+        let empty_db = DatabaseCatalog::default();
+        let database = self.context.as_ref().unwrap_or(&empty_db);
+        let document = DocumentCatalog::new();
+        let stack = CatalogStack {
+            static_: &static_catalog,
+            database,
+            document: &document,
+        };
+        stack.all_function_names()
     }
 }
 
@@ -418,7 +415,7 @@ mod tests {
     use crate::semantic::DatabaseCatalog;
     use crate::semantic::ValidationConfig;
     use crate::semantic::diagnostics::{DiagnosticMessage, Severity};
-    use crate::semantic::functions::FunctionDef;
+    use crate::semantic::schema::FunctionDef;
     use syntaqlite_parser::Parser;
     use syntaqlite_parser_sqlite::tokens::TokenType;
 

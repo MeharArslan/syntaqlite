@@ -306,3 +306,173 @@ unsafe extern "C" {
     fn syntaqlite_parser_begin_macro(p: *mut CParser, call_offset: u32, call_length: u32);
     fn syntaqlite_parser_end_macro(p: *mut CParser);
 }
+
+#[cfg(all(test, feature = "sqlite"))]
+mod tests {
+    use std::ffi::CString;
+    use std::ptr::NonNull;
+
+    use super::{CParser, PARSE_DONE, PARSE_ERROR, PARSE_OK};
+    use crate::any::AnyGrammar;
+    use crate::ast::{AnyNodeId, GrammarNodeType};
+    use crate::sqlite::ast::{Expr, Name, Stmt};
+
+    const NULL_NODE: u32 = u32::MAX;
+
+    struct ParserHandle {
+        raw: NonNull<CParser>,
+    }
+
+    impl ParserHandle {
+        fn new() -> Self {
+            let grammar: AnyGrammar = crate::sqlite::grammar::grammar().into();
+            // SAFETY: SQLite grammar handle is valid static grammar metadata.
+            let raw = unsafe { CParser::create(std::ptr::null(), grammar.inner) };
+            let raw = NonNull::new(raw).expect("parser allocation failed");
+            Self { raw }
+        }
+
+        fn parser_mut(&mut self) -> &mut CParser {
+            // SAFETY: `raw` is owned by this handle and remains valid until drop.
+            unsafe { self.raw.as_mut() }
+        }
+    }
+
+    impl Drop for ParserHandle {
+        fn drop(&mut self) {
+            // SAFETY: pointer was created by CParser::create and not yet destroyed.
+            unsafe { CParser::destroy(self.raw.as_ptr()) };
+        }
+    }
+
+    fn reset_with_source(parser: &mut CParser, sql: &str) -> CString {
+        let sql_c = CString::new(sql).expect("SQL test input must not contain NUL bytes");
+        // SAFETY: sql_c is NUL-terminated and lives until caller drops it.
+        unsafe {
+            parser.reset(
+                sql_c.as_ptr(),
+                u32::try_from(sql.len()).expect("SQL test input too large"),
+            );
+        }
+        sql_c
+    }
+
+    fn recovery_stmt<'a>(parser: *mut CParser, source: &'a str, recovery_root: u32) -> Stmt<'a> {
+        let grammar: AnyGrammar = crate::sqlite::grammar::grammar().into();
+        // SAFETY: parser pointer is valid for test scope; source is valid UTF-8.
+        let result = unsafe { crate::parser::AnyParsedStatement::new(parser, source, grammar) };
+        Stmt::from_result(result, AnyNodeId(recovery_root))
+            .expect("recovery root should resolve to typed Stmt")
+    }
+
+    #[test]
+    fn c_parser_ok_statement_sets_root_only() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        let _sql = reset_with_source(parser, "SELECT 1;");
+
+        // SAFETY: parser was reset before next().
+        let rc = unsafe { parser.next() };
+        assert_eq!(rc, PARSE_OK);
+
+        // SAFETY: result accessors are valid after non-DONE return.
+        let root = unsafe { parser.result_root() };
+        assert_ne!(root, NULL_NODE);
+        // SAFETY: result accessors are valid after non-DONE return.
+        assert_eq!(unsafe { parser.result_recovery_root() }, NULL_NODE);
+        // SAFETY: result accessors are valid after non-DONE return.
+        assert!(unsafe { parser.result_error_msg().is_null() });
+
+        // SAFETY: parser remains valid.
+        assert_eq!(unsafe { parser.next() }, PARSE_DONE);
+    }
+
+    #[test]
+    fn c_parser_expr_error_sets_recovery_root_with_error_node() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        let _sql = reset_with_source(parser, "SELECT");
+
+        // SAFETY: parser was reset before next().
+        let rc = unsafe { parser.next() };
+        assert_eq!(rc, PARSE_ERROR);
+
+        // Statement errors should not expose a success root.
+        // SAFETY: result accessors are valid after non-DONE return.
+        assert_eq!(unsafe { parser.result_root() }, NULL_NODE);
+        // SAFETY: result accessors are valid after non-DONE return.
+        let recovery_root = unsafe { parser.result_recovery_root() };
+        assert_ne!(recovery_root, NULL_NODE);
+        // SAFETY: result accessors are valid after non-DONE return.
+        assert!(!unsafe { parser.result_error_msg().is_null() });
+
+        let stmt = recovery_stmt(parser as *mut CParser, "SELECT", recovery_root);
+        let select = match stmt {
+            Stmt::SelectStmt(select) => select,
+            _ => panic!("expected recovery root to be SelectStmt"),
+        };
+        let columns = select
+            .columns()
+            .expect("recovery select should keep result columns");
+        assert_eq!(columns.len(), 1);
+        let col = columns.get(0).expect("first result column should exist");
+        assert!(
+            matches!(col.expr(), Some(Expr::Error(_))),
+            "expected recovered expr hole at result column expr"
+        );
+    }
+
+    #[test]
+    fn c_parser_name_error_sets_recovery_root_with_error_node() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        let _sql = reset_with_source(parser, "SELECT 1 AS");
+
+        // SAFETY: parser was reset before next().
+        let rc = unsafe { parser.next() };
+        assert_eq!(rc, PARSE_ERROR);
+
+        // SAFETY: result accessors are valid after non-DONE return.
+        assert_eq!(unsafe { parser.result_root() }, NULL_NODE);
+        // SAFETY: result accessors are valid after non-DONE return.
+        let recovery_root = unsafe { parser.result_recovery_root() };
+        assert_ne!(recovery_root, NULL_NODE);
+
+        let stmt = recovery_stmt(parser as *mut CParser, "SELECT 1 AS", recovery_root);
+        let select = match stmt {
+            Stmt::SelectStmt(select) => select,
+            _ => panic!("expected recovery root to be SelectStmt"),
+        };
+        let columns = select
+            .columns()
+            .expect("recovery select should keep result columns");
+        assert_eq!(columns.len(), 1);
+        let col = columns.get(0).expect("first result column should exist");
+        assert!(
+            matches!(col.alias(), Some(Name::Error(_))),
+            "expected recovered name hole at result column alias"
+        );
+        assert!(
+            matches!(col.expr(), Some(Expr::Literal(_))),
+            "expected original expression to remain intact"
+        );
+    }
+
+    #[test]
+    fn c_parser_fatal_error_has_no_recovery_root() {
+        let mut handle = ParserHandle::new();
+        let parser = handle.parser_mut();
+        let _sql = reset_with_source(parser, "abc");
+
+        // SAFETY: parser was reset before next().
+        let rc = unsafe { parser.next() };
+        assert_eq!(rc, PARSE_ERROR);
+
+        // SAFETY: result accessors are valid after non-DONE return.
+        assert_eq!(unsafe { parser.result_root() }, NULL_NODE);
+        // SAFETY: result accessors are valid after non-DONE return.
+        assert_eq!(unsafe { parser.result_recovery_root() }, NULL_NODE);
+        // SAFETY: result accessors are valid after non-DONE return.
+        assert!(!unsafe { parser.result_error_msg().is_null() });
+    }
+}

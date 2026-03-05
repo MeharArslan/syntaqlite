@@ -73,6 +73,7 @@ typedef struct SyntaqliteParser SyntaqliteParser;
 //   ERROR = statement has syntax/runtime error
 //           - use syntaqlite_result_recovery_root() to check whether a
 //             partial recovery tree is available
+//           - syntaqlite_result_root() is always SYNTAQLITE_NULL_NODE on ERROR
 //
 // The integer values are stable ABI (DONE=0, OK=1, ERROR=-1).
 #define SYNTAQLITE_PARSE_DONE      0
@@ -147,6 +148,7 @@ uint32_t syntaqlite_result_root(SyntaqliteParser* p);
 
 // Partial recovery root for SYNTAQLITE_PARSE_ERROR results.
 // Returns SYNTAQLITE_NULL_NODE when no recovery tree is available.
+// Recovery trees may include grammar-level error nodes where parsing resumed.
 uint32_t syntaqlite_result_recovery_root(SyntaqliteParser* p);
 
 // Human-readable error message, or NULL.

@@ -604,10 +604,6 @@ impl AstModel<'_> {
                     w.line(&format!("{member}({member}<'a>),"));
                 }
             }
-            w.doc_comment(&format!(
-                "A node that doesn't match any known `{abs_name}` variant."
-            ));
-            w.line("Other(Node<'a>),");
             w.dedent();
             w.line("}");
             w.newline();
@@ -624,9 +620,6 @@ impl AstModel<'_> {
                     ));
                 }
             }
-            w.line(&format!(
-                "{abs_name}::Other(n) => {abs_name}Id(n.node_id().into()),"
-            ));
             w.close_block("}");
             w.close_block("}");
             w.close_block("}");
@@ -642,16 +635,18 @@ impl AstModel<'_> {
             );
             w.indent();
             w.line("let node = Node::resolve(stmt_result, id)?;");
-            w.line("Some(match node {");
+            w.line("match node {");
             w.indent();
             for member in members {
                 if node_names.contains(member.as_str()) || list_names.contains(member.as_str()) {
-                    w.line(&format!("Node::{member}(n) => {abs_name}::{member}(n),"));
+                    w.line(&format!(
+                        "Node::{member}(n) => Some({abs_name}::{member}(n)),"
+                    ));
                 }
             }
-            w.line(&format!("other => {abs_name}::Other(other),"));
+            w.line("_ => None,");
             w.dedent();
-            w.line("})");
+            w.line("}");
             w.dedent();
             w.line("}");
             w.dedent();
@@ -1071,9 +1066,6 @@ impl AstModel<'_> {
                     ));
                 }
             }
-            w.line(&format!(
-                "{abs_name}::Other(n) => {traits_path}::{abs_name}Kind::Other(n),"
-            ));
             w.close_block("}");
             w.close_block("}");
             w.close_block("}");
@@ -1319,7 +1311,6 @@ impl AstModel<'_> {
                     w.line(&format!("{member}({list_type}),"));
                 }
             }
-            w.line("Other(A::Node),");
             w.close_block("}");
             w.newline();
         }

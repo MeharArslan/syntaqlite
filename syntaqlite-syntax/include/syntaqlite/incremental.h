@@ -11,7 +11,8 @@
 // When feed_token or finish returns SYNTAQLITE_PARSE_OK, read the successful
 // tree via syntaqlite_result_root(). When the status is
 // SYNTAQLITE_PARSE_ERROR, read diagnostics via syntaqlite_result_error_*()
-// and inspect syntaqlite_result_recovery_root() for an optional partial tree.
+// and inspect syntaqlite_result_recovery_root() for an optional partial tree
+// (which may include grammar-level error nodes).
 // The result is valid until the next feed_token, finish, reset, or destroy.
 //
 // Usage:

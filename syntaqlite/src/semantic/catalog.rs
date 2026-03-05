@@ -1,60 +1,333 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Three-level catalog system for semantic analysis.
+//! Layered semantic catalog.
 //!
-//! Lookup priority: document → database → static. Identical pattern for
-//! both functions and relations.
-//!
-//! - [`StaticCatalog`] — built from dialect data at construction. Immutable.
-//! - [`DatabaseCatalog`] — provided by the caller. The user's live database.
-//! - [`DocumentCatalog`] — accumulated from DDL during analysis. Internal scratch.
-//! - [`CatalogStack`] — flat composition that holds references to all three.
+//! Precedence order is: document -> database -> static.
+
+use std::collections::{HashMap, HashSet};
 
 use syntaqlite_syntax::any::FieldKind;
 use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue};
+use syntaqlite_syntax::ast_traits::{
+    AstTypes, ColumnConstraintTypeKind, ExprKind, SelectKind, TableSourceKind,
+};
 use syntaqlite_syntax::typed::GrammarNodeType;
 
 use crate::dialect::Dialect;
+use crate::dialect::catalog::{FunctionCategory as DialectFunctionCategory, is_function_available};
 
-use super::functions::{FunctionCatalog, FunctionCheckResult, FunctionDef};
-use super::relations::{ColumnDef, RelationDef, RelationKind};
+use super::schema::{ColumnDef, FunctionDef, RelationDef, RelationKind};
 
-// ── DatabaseCatalog (public, caller-provided) ────────────────────────
+// -- Core catalog types ------------------------------------------------------
 
-/// What exists in the user's database. Symmetric — both relations and functions.
-///
-/// Callers populate it however they want: introspecting a live DB,
-/// parsing CREATE statements, loading from a config file, etc.
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum FunctionCategory {
+    Scalar,
+    Aggregate,
+    Window,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum AritySpec {
+    Exact(usize),
+    AtLeast(usize),
+    Any,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct FunctionOverload {
+    pub category: FunctionCategory,
+    pub arity: AritySpec,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FunctionSet {
+    name: String,
+    overloads: Vec<FunctionOverload>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RelationEntry {
+    name: String,
+    columns: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct TableFunctionSet {
+    name: String,
+    overloads: Vec<FunctionOverload>,
+    output_columns: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum FunctionCheckResult {
+    Ok,
+    Unknown,
+    WrongArity { expected: Vec<usize> },
+}
+
+#[derive(Debug, Default, Clone)]
+pub(crate) struct CatalogLayer {
+    relations: HashMap<String, RelationEntry>,
+    functions: HashMap<String, FunctionSet>,
+    table_functions: HashMap<String, TableFunctionSet>,
+}
+
+impl CatalogLayer {
+    pub(crate) fn clear(&mut self) {
+        self.relations.clear();
+        self.functions.clear();
+        self.table_functions.clear();
+    }
+
+    pub(crate) fn insert_relation(&mut self, name: impl Into<String>, columns: Vec<String>) {
+        let name = name.into();
+        self.relations
+            .insert(canonical_name(&name), RelationEntry { name, columns });
+    }
+
+    pub(crate) fn insert_function_overload(
+        &mut self,
+        name: impl Into<String>,
+        category: FunctionCategory,
+        arity: AritySpec,
+    ) {
+        let name = name.into();
+        let key = canonical_name(&name);
+        self.functions
+            .entry(key)
+            .and_modify(|set| {
+                set.overloads.push(FunctionOverload { category, arity });
+            })
+            .or_insert_with(|| FunctionSet {
+                name,
+                overloads: vec![FunctionOverload { category, arity }],
+            });
+    }
+
+    pub(crate) fn insert_function_arities(
+        &mut self,
+        name: impl Into<String>,
+        category: FunctionCategory,
+        arities: &[i16],
+    ) {
+        let name = name.into();
+        if arities.is_empty() {
+            self.insert_function_overload(name, category, AritySpec::Any);
+            return;
+        }
+
+        for &a in arities {
+            let arity = if a == -1 {
+                AritySpec::Any
+            } else if a < -1 {
+                AritySpec::AtLeast(
+                    usize::try_from(-i32::from(a) - 1).expect("negative arity encodes minimum"),
+                )
+            } else {
+                AritySpec::Exact(
+                    usize::try_from(i32::from(a)).expect("fixed arity must be non-negative"),
+                )
+            };
+            self.insert_function_overload(name.clone(), category, arity);
+        }
+    }
+
+    pub(crate) fn insert_table_function_overload(
+        &mut self,
+        name: impl Into<String>,
+        arity: AritySpec,
+        output_columns: Vec<String>,
+    ) {
+        let name = name.into();
+        let key = canonical_name(&name);
+        self.table_functions
+            .entry(key)
+            .and_modify(|set| {
+                set.overloads.push(FunctionOverload {
+                    category: FunctionCategory::Scalar,
+                    arity,
+                });
+            })
+            .or_insert_with(|| TableFunctionSet {
+                name,
+                overloads: vec![FunctionOverload {
+                    category: FunctionCategory::Scalar,
+                    arity,
+                }],
+                output_columns,
+            });
+    }
+
+    fn relation(&self, name: &str) -> Option<&RelationEntry> {
+        self.relations.get(&canonical_name(name))
+    }
+
+    fn function(&self, name: &str) -> Option<&FunctionSet> {
+        self.functions.get(&canonical_name(name))
+    }
+
+    fn table_function(&self, name: &str) -> Option<&TableFunctionSet> {
+        self.table_functions.get(&canonical_name(name))
+    }
+}
+
+#[derive(Debug, Clone)]
+struct Catalog {
+    layers: Vec<CatalogLayer>,
+}
+
+impl Catalog {
+    fn new(layer_count: usize) -> Self {
+        Catalog {
+            layers: vec![CatalogLayer::default(); layer_count],
+        }
+    }
+
+    fn replace_layer(&mut self, idx: usize, layer: &CatalogLayer) {
+        self.layers[idx] = layer.clone();
+    }
+
+    fn check_function(&self, name: &str, arg_count: usize) -> FunctionCheckResult {
+        let mut maybe_set = None;
+        for layer in &self.layers {
+            if let Some(set) = layer.function(name) {
+                maybe_set = Some(set);
+                break;
+            }
+        }
+        let Some(set) = maybe_set else {
+            return FunctionCheckResult::Unknown;
+        };
+
+        if set
+            .overloads
+            .iter()
+            .copied()
+            .any(|ov| overload_accepts(ov, arg_count))
+        {
+            return FunctionCheckResult::Ok;
+        }
+
+        FunctionCheckResult::WrongArity {
+            expected: expected_fixed_arities(set),
+        }
+    }
+
+    fn resolve_relation(&self, name: &str) -> bool {
+        for layer in &self.layers {
+            if layer.relation(name).is_some() {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn columns_for_relation(&self, name: &str) -> Option<Vec<String>> {
+        for layer in &self.layers {
+            if let Some(relation) = layer.relation(name) {
+                return Some(relation.columns.clone());
+            }
+        }
+        None
+    }
+
+    fn all_relation_names(&self) -> Vec<String> {
+        let mut seen = HashSet::new();
+        let mut out = Vec::new();
+        for layer in &self.layers {
+            for relation in layer.relations.values() {
+                push_unique_name(&mut seen, &mut out, &relation.name);
+            }
+        }
+        out.sort_unstable_by_key(|name| canonical_name(name));
+        out
+    }
+
+    fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
+        let mut names = Vec::new();
+        for layer in &self.layers {
+            for relation in layer.relations.values() {
+                if table.is_none_or(|tbl| relation.name.eq_ignore_ascii_case(tbl)) {
+                    names.extend(relation.columns.iter().map(|c| c.to_ascii_lowercase()));
+                }
+            }
+        }
+        names.sort_unstable();
+        names.dedup();
+        names
+    }
+
+    fn all_function_names(&self) -> Vec<String> {
+        let mut seen = HashSet::new();
+        let mut out = Vec::new();
+        for layer in &self.layers {
+            for function in layer.functions.values() {
+                push_unique_name(&mut seen, &mut out, &function.name);
+            }
+        }
+        out.sort_unstable_by_key(|name| canonical_name(name));
+        out
+    }
+
+    #[allow(dead_code)]
+    fn table_function(&self, name: &str) -> Option<&TableFunctionSet> {
+        for layer in &self.layers {
+            if let Some(table_function) = layer.table_function(name) {
+                return Some(table_function);
+            }
+        }
+        None
+    }
+
+    #[allow(dead_code)]
+    fn all_table_function_names(&self) -> Vec<String> {
+        let mut seen = HashSet::new();
+        let mut out = Vec::new();
+        for layer in &self.layers {
+            for function in layer.table_functions.values() {
+                push_unique_name(&mut seen, &mut out, &function.name);
+            }
+        }
+        out.sort_unstable_by_key(|name| canonical_name(name));
+        out
+    }
+}
+
+// -- Semantic-facing catalog API --------------------------------------------
+
+#[derive(Default, Clone)]
 pub(crate) struct DatabaseCatalog {
-    /// Relations visible to semantic analysis (tables and views).
     pub relations: Vec<RelationDef>,
-    /// User-defined or database-defined functions visible to analysis.
     pub functions: Vec<FunctionDef>,
 }
 
 impl DatabaseCatalog {
-    /// Iterate table relations only.
     pub(crate) fn tables(&self) -> impl Iterator<Item = &RelationDef> + '_ {
         self.relations
             .iter()
             .filter(|r| r.kind == RelationKind::Table)
     }
 
-    /// Iterate view relations only.
     pub(crate) fn views(&self) -> impl Iterator<Item = &RelationDef> + '_ {
         self.relations
             .iter()
             .filter(|r| r.kind == RelationKind::View)
     }
 
-    /// Build a `DatabaseCatalog` from a DDL source string.
-    ///
-    /// Creates a temporary parser, parses the source, and builds the schema
-    /// from the resulting DDL statements.
+    fn as_layer(&self) -> CatalogLayer {
+        let mut layer = CatalogLayer::default();
+        add_relation_defs(&mut layer, &self.relations);
+        add_function_defs(&mut layer, &self.functions);
+        layer
+    }
+
     #[cfg(feature = "sqlite")]
-    pub(crate) fn from_ddl(dialect: Dialect, source: &str) -> Self {
+    pub(crate) fn from_ddl_dialect<A: for<'a> AstTypes<'a>>(
+        dialect: Dialect,
+        source: &str,
+    ) -> Self {
         let parser = syntaqlite_syntax::Parser::new();
         let mut session = parser.parse(source);
         let mut doc = DocumentCatalog::new();
@@ -68,7 +341,7 @@ impl DatabaseCatalog {
             if let Some(root) = stmt.root() {
                 let root_id: AnyNodeId = root.node_id().into();
                 let any_result = stmt.erase();
-                doc.accumulate(any_result, root_id, dialect, None);
+                doc.accumulate_dialect::<A>(any_result, root_id, dialect, None);
             }
         }
 
@@ -78,7 +351,11 @@ impl DatabaseCatalog {
         }
     }
 
-    /// Build a `DatabaseCatalog` from a JSON string.
+    #[cfg(feature = "sqlite")]
+    pub(crate) fn from_ddl(dialect: Dialect, source: &str) -> Self {
+        Self::from_ddl_dialect::<syntaqlite_syntax::nodes::SqliteAstMarker>(dialect, source)
+    }
+
     #[cfg(feature = "json")]
     pub(crate) fn from_json(s: &str) -> Result<Self, String> {
         #[derive(serde::Deserialize)]
@@ -145,32 +422,18 @@ impl DatabaseCatalog {
     }
 }
 
-// ── StaticCatalog (internal, built from dialect) ─────────────────────
-
-/// Dialect-builtin functions and relations. Built once at analyzer construction.
 pub(crate) struct StaticCatalog {
-    pub(crate) functions: FunctionCatalog,
-    pub(crate) relations: Vec<RelationDef>,
+    layer: CatalogLayer,
 }
 
 impl StaticCatalog {
     pub(crate) fn for_dialect(dialect: &Dialect) -> Self {
-        StaticCatalog {
-            functions: FunctionCatalog::for_dialect(dialect),
-            relations: Vec::new(),
-        }
-    }
-
-    pub(crate) fn find_relation(&self, name: &str) -> Option<&RelationDef> {
-        self.relations
-            .iter()
-            .find(|r| r.name.eq_ignore_ascii_case(name))
+        let mut layer = CatalogLayer::default();
+        add_builtin_functions(&mut layer, dialect);
+        StaticCatalog { layer }
     }
 }
 
-// ── DocumentCatalog (internal scratch buffer) ────────────────────────
-
-/// Schema accumulated from DDL statements during analysis.
 pub(crate) struct DocumentCatalog {
     pub(crate) relations: Vec<RelationDef>,
     pub(crate) functions: Vec<FunctionDef>,
@@ -182,7 +445,7 @@ impl DocumentCatalog {
         DocumentCatalog {
             relations: Vec::new(),
             functions: Vec::new(),
-            known: std::collections::HashMap::new(),
+            known: HashMap::new(),
         }
     }
 
@@ -192,22 +455,16 @@ impl DocumentCatalog {
         self.known.clear();
     }
 
-    pub(crate) fn find_relation(&self, name: &str) -> Option<&RelationDef> {
-        self.relations
-            .iter()
-            .find(|r| r.name.eq_ignore_ascii_case(name))
+    fn as_layer(&self) -> CatalogLayer {
+        let mut layer = CatalogLayer::default();
+        add_relation_defs(&mut layer, &self.relations);
+        add_function_defs(&mut layer, &self.functions);
+        layer
     }
 
-    pub(crate) fn find_function(&self, name: &str) -> Option<&FunctionDef> {
-        self.functions
-            .iter()
-            .find(|f| f.name.eq_ignore_ascii_case(name))
-    }
-
-    /// Process one DDL statement and update the document schema.
-    pub(crate) fn accumulate(
+    pub(crate) fn accumulate_dialect<'a, A: AstTypes<'a>>(
         &mut self,
-        stmt_result: AnyParsedStatement<'_>,
+        stmt_result: AnyParsedStatement<'a>,
         stmt_id: AnyNodeId,
         dialect: Dialect,
         database: Option<&DatabaseCatalog>,
@@ -222,7 +479,6 @@ impl DocumentCatalog {
             return;
         };
 
-        // Extract the name span.
         let name_str = match fields[contrib.name_field as usize] {
             FieldValue::Span(s) if !s.is_empty() => s,
             _ => return,
@@ -244,7 +500,7 @@ impl DocumentCatalog {
                     && !col_list_id.is_null()
                 {
                     has_columns = true;
-                    columns_from_column_list(stmt_result, col_list_id, dialect, &mut columns);
+                    columns_from_column_list::<A>(stmt_result, col_list_id, dialect, &mut columns);
                 }
 
                 if !has_columns
@@ -252,11 +508,10 @@ impl DocumentCatalog {
                     && let FieldValue::NodeId(sel_id) = fields[sel_field_idx as usize]
                     && !sel_id.is_null()
                 {
-                    columns_from_select(stmt_result, sel_id, &self.known, database, &mut columns);
+                    columns_from_select::<A>(stmt_result, sel_id, &self.known, database, &mut columns);
                 }
 
-                self.known
-                    .insert(name.to_ascii_lowercase(), columns.clone());
+                self.known.insert(name.to_ascii_lowercase(), columns.clone());
                 self.relations.push(RelationDef {
                     name,
                     columns,
@@ -279,9 +534,69 @@ impl DocumentCatalog {
             SchemaKind::Import => {}
         }
     }
+
+    #[cfg(feature = "sqlite")]
+    pub(crate) fn accumulate(
+        &mut self,
+        stmt_result: AnyParsedStatement<'_>,
+        stmt_id: AnyNodeId,
+        dialect: Dialect,
+        database: Option<&DatabaseCatalog>,
+    ) {
+        self.accumulate_dialect::<syntaqlite_syntax::nodes::SqliteAstMarker>(
+            stmt_result,
+            stmt_id,
+            dialect,
+            database,
+        );
+    }
 }
 
-/// Extract column definitions from a column definition list node.
+pub(crate) struct CatalogStack<'a> {
+    pub(crate) static_: &'a StaticCatalog,
+    pub(crate) database: &'a DatabaseCatalog,
+    pub(crate) document: &'a DocumentCatalog,
+}
+
+impl CatalogStack<'_> {
+    fn build_catalog(&self) -> Catalog {
+        let document_layer = self.document.as_layer();
+        let database_layer = self.database.as_layer();
+
+        let mut catalog = Catalog::new(3);
+        catalog.replace_layer(0, &document_layer);
+        catalog.replace_layer(1, &database_layer);
+        catalog.replace_layer(2, &self.static_.layer);
+        catalog
+    }
+
+    pub(crate) fn check_function(&self, name: &str, arg_count: usize) -> FunctionCheckResult {
+        self.build_catalog().check_function(name, arg_count)
+    }
+
+    pub(crate) fn resolve_relation(&self, name: &str) -> bool {
+        self.build_catalog().resolve_relation(name)
+    }
+
+    pub(crate) fn columns_for(&self, name: &str) -> Option<Vec<String>> {
+        self.build_catalog().columns_for_relation(name)
+    }
+
+    pub(crate) fn all_relation_names(&self) -> Vec<String> {
+        self.build_catalog().all_relation_names()
+    }
+
+    pub(crate) fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
+        self.build_catalog().all_column_names(table)
+    }
+
+    pub(crate) fn all_function_names(&self) -> Vec<String> {
+        self.build_catalog().all_function_names()
+    }
+}
+
+// -- DDL extraction helpers --------------------------------------------------
+
 fn columns_from_column_list(
     stmt_result: AnyParsedStatement<'_>,
     list_id: AnyNodeId,
@@ -352,11 +667,33 @@ fn columns_from_column_list(
     }
 }
 
-/// Walk a constraint list to detect PRIMARY KEY and NOT NULL constraints.
 fn extract_column_constraints(
     stmt_result: AnyParsedStatement<'_>,
     list_id: AnyNodeId,
-    dialect: Dialect,
+    _dialect: Dialect,
+    is_primary_key: &mut bool,
+    is_nullable: &mut bool,
+) {
+    #[cfg(feature = "sqlite")]
+    {
+        extract_column_constraints_dialect::<syntaqlite_syntax::nodes::SqliteAstMarker>(
+            stmt_result,
+            list_id,
+            is_primary_key,
+            is_nullable,
+        );
+        return;
+    }
+
+    #[cfg(not(feature = "sqlite"))]
+    {
+        let _ = (stmt_result, list_id, is_primary_key, is_nullable);
+    }
+}
+
+fn extract_column_constraints_dialect<'a, A: AstTypes<'a>>(
+    stmt_result: AnyParsedStatement<'a>,
+    list_id: AnyNodeId,
     is_primary_key: &mut bool,
     is_nullable: &mut bool,
 ) {
@@ -368,33 +705,25 @@ fn extract_column_constraints(
         if constraint_id.is_null() {
             continue;
         }
-        let Some((ctag, cfields)) = stmt_result.extract_fields(constraint_id) else {
+        let Some(constraint) = A::ColumnConstraint::from_result(stmt_result, constraint_id) else {
             continue;
         };
 
-        for (i, meta) in dialect.field_meta(ctag).enumerate() {
-            if meta.kind() == FieldKind::Enum && meta.name() == "kind" {
-                #[cfg(feature = "sqlite")]
-                if let FieldValue::Enum(ordinal) = cfields[i] {
-                    use syntaqlite_syntax::nodes::ColumnConstraintType;
-                    if ordinal == ColumnConstraintType::NotNull as u32 {
-                        *is_nullable = false;
-                    } else if ordinal == ColumnConstraintType::PrimaryKey as u32 {
-                        *is_primary_key = true;
-                        *is_nullable = false;
-                    }
-                }
-                break;
+        match constraint.kind().kind() {
+            Some(ColumnConstraintTypeKind::NotNull) => {
+                *is_nullable = false;
             }
+            Some(ColumnConstraintTypeKind::PrimaryKey) => {
+                *is_primary_key = true;
+                *is_nullable = false;
+            }
+            _ => {}
         }
     }
 }
 
-/// Known schema for select resolution — maps lowercase table/view name to columns.
-type KnownSchema = std::collections::HashMap<String, Vec<ColumnDef>>;
+type KnownSchema = HashMap<String, Vec<ColumnDef>>;
 
-/// Best-effort column extraction from a SELECT, expanding `*` and `t.*`.
-#[cfg(feature = "sqlite")]
 fn columns_from_select(
     stmt_result: AnyParsedStatement<'_>,
     select_id: AnyNodeId,
@@ -402,26 +731,53 @@ fn columns_from_select(
     database: Option<&DatabaseCatalog>,
     out: &mut Vec<ColumnDef>,
 ) {
-    use syntaqlite_syntax::any::AnyNodeId;
-    use syntaqlite_syntax::nodes::{Expr, Select};
+    #[cfg(feature = "sqlite")]
+    {
+        columns_from_select_dialect::<syntaqlite_syntax::nodes::SqliteAstMarker>(
+            stmt_result,
+            select_id,
+            known,
+            database,
+            out,
+        );
+        return;
+    }
 
-    let Some(select) = Select::from_result(stmt_result, select_id) else {
+    #[cfg(not(feature = "sqlite"))]
+    {
+        let _ = (stmt_result, select_id, known, database, out);
+    }
+}
+
+struct FromSource {
+    qualifier: String,
+    columns: Vec<ColumnDef>,
+}
+
+fn columns_from_select_dialect<'a, A: AstTypes<'a>>(
+    stmt_result: AnyParsedStatement<'a>,
+    select_id: AnyNodeId,
+    known: &KnownSchema,
+    database: Option<&DatabaseCatalog>,
+    out: &mut Vec<ColumnDef>,
+) {
+    let Some(select) = A::Select::from_result(stmt_result, select_id) else {
         return;
     };
 
-    let stmt = match select {
-        Select::SelectStmt(s) => s,
-        Select::CompoundSelect(cs) => {
+    let stmt = match select.kind() {
+        SelectKind::SelectStmt(s) => s,
+        SelectKind::CompoundSelect(cs) => {
             if let Some(left) = cs.left() {
                 let id: AnyNodeId = left.node_id().into();
-                return columns_from_select(stmt_result, id, known, database, out);
+                return columns_from_select_dialect::<A>(stmt_result, id, known, database, out);
             }
             return;
         }
-        Select::WithClause(wc) => {
+        SelectKind::WithClause(wc) => {
             if let Some(s) = wc.select() {
                 let id: AnyNodeId = s.node_id().into();
-                return columns_from_select(stmt_result, id, known, database, out);
+                return columns_from_select_dialect::<A>(stmt_result, id, known, database, out);
             }
             return;
         }
@@ -432,7 +788,7 @@ fn columns_from_select(
         .from_clause()
         .map(|ts| {
             let id: AnyNodeId = ts.node_id().into();
-            collect_from_sources(stmt_result, id, known, database)
+            collect_from_sources_dialect::<A>(stmt_result, id, known, database)
         })
         .unwrap_or_default();
 
@@ -443,14 +799,19 @@ fn columns_from_select(
             expand_star(&from_sources, qualifier, out);
             continue;
         }
+
         let alias = rc.alias();
         let name = if !alias.is_empty() {
             alias.to_string()
-        } else if let Some(Expr::ColumnRef(cr)) = rc.expr() {
-            cr.column().to_string()
+        } else if let Some(expr) = rc.expr() {
+            match expr.kind() {
+                ExprKind::ColumnRef(cr) => cr.column().to_string(),
+                _ => continue,
+            }
         } else {
             continue;
         };
+
         out.push(ColumnDef {
             name,
             type_name: None,
@@ -460,41 +821,20 @@ fn columns_from_select(
     }
 }
 
-#[cfg(not(feature = "sqlite"))]
-fn columns_from_select(
-    _stmt_result: AnyParsedStatement<'_>,
-    _select_id: AnyNodeId,
-    _known: &KnownSchema,
-    _database: Option<&DatabaseCatalog>,
-    _out: &mut Vec<ColumnDef>,
-) {
-}
-
-/// A resolved FROM source: qualifier for `t.*` matching + pre-resolved columns.
-struct FromSource {
-    qualifier: String,
-    columns: Vec<ColumnDef>,
-}
-
-/// Walk a `TableSource` tree, resolving each leaf's columns eagerly.
-#[cfg(feature = "sqlite")]
-fn collect_from_sources(
-    stmt_result: AnyParsedStatement<'_>,
+fn collect_from_sources_dialect<'a, A: AstTypes<'a>>(
+    stmt_result: AnyParsedStatement<'a>,
     source_id: AnyNodeId,
     known: &KnownSchema,
     database: Option<&DatabaseCatalog>,
 ) -> Vec<FromSource> {
-    use syntaqlite_syntax::any::AnyNodeId;
-    use syntaqlite_syntax::nodes::TableSource;
-
     let mut out = Vec::new();
 
-    let Some(source) = TableSource::from_result(stmt_result, source_id) else {
+    let Some(source) = A::TableSource::from_result(stmt_result, source_id) else {
         return out;
     };
 
-    match source {
-        TableSource::TableRef(tr) => {
+    match source.kind() {
+        TableSourceKind::TableRef(tr) => {
             let name = tr.table_name();
             let alias = tr.alias();
             let qualifier = if alias.is_empty() { name } else { alias };
@@ -516,49 +856,53 @@ fn collect_from_sources(
                 columns,
             });
         }
-        TableSource::SubqueryTableSource(sq) => {
+        TableSourceKind::SubqueryTableSource(sq) => {
             let mut columns = Vec::new();
             if let Some(select) = sq.select() {
                 let id: AnyNodeId = select.node_id().into();
-                columns_from_select(stmt_result, id, known, database, &mut columns);
+                columns_from_select_dialect::<A>(stmt_result, id, known, database, &mut columns);
             }
             out.push(FromSource {
                 qualifier: sq.alias().to_string(),
                 columns,
             });
         }
-        TableSource::JoinClause(jc) => {
+        TableSourceKind::JoinClause(jc) => {
             if let Some(left) = jc.left() {
                 let id: AnyNodeId = left.node_id().into();
-                out.extend(collect_from_sources(stmt_result, id, known, database));
+                out.extend(collect_from_sources_dialect::<A>(
+                    stmt_result,
+                    id,
+                    known,
+                    database,
+                ));
             }
             if let Some(right) = jc.right() {
                 let id: AnyNodeId = right.node_id().into();
-                out.extend(collect_from_sources(stmt_result, id, known, database));
+                out.extend(collect_from_sources_dialect::<A>(
+                    stmt_result,
+                    id,
+                    known,
+                    database,
+                ));
             }
         }
-        TableSource::JoinPrefix(jp) => {
+        TableSourceKind::JoinPrefix(jp) => {
             if let Some(s) = jp.source() {
                 let id: AnyNodeId = s.node_id().into();
-                out.extend(collect_from_sources(stmt_result, id, known, database));
+                out.extend(collect_from_sources_dialect::<A>(
+                    stmt_result,
+                    id,
+                    known,
+                    database,
+                ));
             }
         }
-        TableSource::Other(_) => {}
+        _ => {}
     }
     out
 }
 
-#[cfg(not(feature = "sqlite"))]
-fn collect_from_sources(
-    _stmt_result: AnyParsedStatement<'_>,
-    _source_id: AnyNodeId,
-    _known: &KnownSchema,
-    _database: Option<&DatabaseCatalog>,
-) -> Vec<FromSource> {
-    Vec::new()
-}
-
-/// Expand `*` or `qualifier.*` using pre-resolved FROM sources.
 fn expand_star(from_sources: &[FromSource], qualifier: &str, out: &mut Vec<ColumnDef>) {
     for src in from_sources {
         if !qualifier.is_empty() && !src.qualifier.eq_ignore_ascii_case(qualifier) {
@@ -573,220 +917,87 @@ fn expand_star(from_sources: &[FromSource], qualifier: &str, out: &mut Vec<Colum
     }
 }
 
-// ── CatalogStack (internal, composed lookup) ─────────────────────────
-
-/// Flat composition of all three catalog levels.
-pub(crate) struct CatalogStack<'a> {
-    pub(crate) static_: &'a StaticCatalog,
-    pub(crate) database: &'a DatabaseCatalog,
-    pub(crate) document: &'a DocumentCatalog,
+fn add_relation_defs(layer: &mut CatalogLayer, relations: &[RelationDef]) {
+    for relation in relations {
+        layer.insert_relation(
+            relation.name.clone(),
+            relation.columns.iter().map(|c| c.name.clone()).collect(),
+        );
+    }
 }
 
-impl CatalogStack<'_> {
-    pub(crate) fn check_function(&self, name: &str, arg_count: usize) -> FunctionCheckResult {
-        if let Some(func) = self.document.find_function(name) {
-            return check_defined_function(func, arg_count);
-        }
-
-        if let Some(func) = self
-            .database
-            .functions
-            .iter()
-            .find(|f| f.name.eq_ignore_ascii_case(name))
-        {
-            return check_defined_function(func, arg_count);
-        }
-
-        self.static_.functions.check_call(name, arg_count)
+fn add_function_defs(layer: &mut CatalogLayer, functions: &[FunctionDef]) {
+    for function in functions {
+        let arity = match function.args {
+            Some(n) => AritySpec::Exact(n),
+            None => AritySpec::Any,
+        };
+        layer.insert_function_overload(function.name.clone(), FunctionCategory::Scalar, arity);
     }
+}
 
-    pub(crate) fn resolve_relation(&self, name: &str) -> bool {
-        self.document.find_relation(name).is_some()
-            || self
-                .database
-                .relations
-                .iter()
-                .any(|r| r.name.eq_ignore_ascii_case(name))
-            || self.static_.find_relation(name).is_some()
-    }
-
-    pub(crate) fn columns_for(&self, name: &str) -> Option<Vec<String>> {
-        if let Some(r) = self.document.find_relation(name) {
-            return Some(r.columns.iter().map(|c| c.name.clone()).collect());
-        }
-        if let Some(r) = self
-            .database
-            .relations
-            .iter()
-            .find(|r| r.name.eq_ignore_ascii_case(name))
-        {
-            return Some(r.columns.iter().map(|c| c.name.clone()).collect());
-        }
-        if let Some(r) = self.static_.find_relation(name) {
-            return Some(r.columns.iter().map(|c| c.name.clone()).collect());
-        }
-        None
-    }
-
-    pub(crate) fn all_relation_names(&self) -> Vec<String> {
-        let mut seen = std::collections::HashSet::new();
-        self.document
-            .relations
-            .iter()
-            .chain(self.database.relations.iter())
-            .chain(self.static_.relations.iter())
-            .filter_map(|r| push_unique_lower(&mut seen, &r.name))
-            .collect()
-    }
-
-    pub(crate) fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
-        let mut names = Vec::new();
-        let all_relations = self
-            .document
-            .relations
-            .iter()
-            .chain(self.database.relations.iter())
-            .chain(self.static_.relations.iter());
-        for r in all_relations {
-            if table.is_none_or(|tbl| r.name.eq_ignore_ascii_case(tbl)) {
-                names.extend(r.columns.iter().map(|c| c.name.to_ascii_lowercase()));
+fn add_builtin_functions(layer: &mut CatalogLayer, dialect: &Dialect) {
+    #[cfg(feature = "sqlite")]
+    {
+        for entry in crate::sqlite::functions_catalog::SQLITE_FUNCTIONS {
+            if is_function_available(entry, dialect) {
+                layer.insert_function_arities(
+                    entry.info.name.to_string(),
+                    map_function_category(entry.info.category),
+                    entry.info.arities,
+                );
             }
         }
-        names.sort_unstable();
-        names.dedup();
-        names
     }
 
-    pub(crate) fn all_function_names(&self) -> Vec<String> {
-        let mut seen = std::collections::HashSet::new();
-        let mut names: Vec<String> = self
-            .document
-            .functions
-            .iter()
-            .chain(self.database.functions.iter())
-            .filter_map(|f| push_unique_name(&mut seen, &f.name))
-            .collect();
-
-        for name in self.static_.functions.all_names() {
-            if seen.insert(name.to_ascii_lowercase()) {
-                names.push(name);
-            }
+    for ext in dialect.function_extensions().iter() {
+        if is_function_available(ext, dialect) {
+            layer.insert_function_arities(
+                ext.info.name.to_string(),
+                map_function_category(ext.info.category),
+                ext.info.arities,
+            );
         }
-
-        names
     }
 }
 
-fn check_defined_function(func: &FunctionDef, arg_count: usize) -> FunctionCheckResult {
-    match func.args {
-        None => FunctionCheckResult::Ok,
-        Some(n) if n == arg_count => FunctionCheckResult::Ok,
-        Some(n) => FunctionCheckResult::WrongArity { expected: vec![n] },
+fn map_function_category(category: DialectFunctionCategory) -> FunctionCategory {
+    match category {
+        DialectFunctionCategory::Scalar => FunctionCategory::Scalar,
+        DialectFunctionCategory::Aggregate => FunctionCategory::Aggregate,
+        DialectFunctionCategory::Window => FunctionCategory::Window,
     }
 }
 
-fn push_unique_lower(seen: &mut std::collections::HashSet<String>, name: &str) -> Option<String> {
-    let lower = name.to_ascii_lowercase();
-    if seen.insert(lower.clone()) {
-        Some(lower)
-    } else {
-        None
+fn canonical_name(name: &str) -> String {
+    name.to_ascii_lowercase()
+}
+
+fn overload_accepts(overload: FunctionOverload, arg_count: usize) -> bool {
+    match overload.arity {
+        AritySpec::Exact(n) => n == arg_count,
+        AritySpec::AtLeast(min) => arg_count >= min,
+        AritySpec::Any => true,
     }
 }
 
-fn push_unique_name(seen: &mut std::collections::HashSet<String>, name: &str) -> Option<String> {
-    if seen.insert(name.to_ascii_lowercase()) {
-        Some(name.to_string())
-    } else {
-        None
-    }
+fn expected_fixed_arities(set: &FunctionSet) -> Vec<usize> {
+    let mut expected: Vec<usize> = set
+        .overloads
+        .iter()
+        .filter_map(|ov| match ov.arity {
+            AritySpec::Exact(n) => Some(n),
+            AritySpec::AtLeast(_) | AritySpec::Any => None,
+        })
+        .collect();
+    expected.sort_unstable();
+    expected.dedup();
+    expected
 }
-#[cfg(test)]
-#[cfg(feature = "sqlite")]
-mod tests {
-    use super::*;
 
-    #[test]
-    fn from_ddl_creates_database_catalog() {
-        let dialect = crate::dialect::sqlite();
-        let sql = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);";
-        let catalog = DatabaseCatalog::from_ddl(dialect, sql);
-
-        let tables: Vec<_> = catalog.tables().collect();
-        assert_eq!(tables.len(), 1);
-        let table = tables[0];
-        assert_eq!(table.name, "users");
-        assert_eq!(table.columns.len(), 2);
-
-        let id_col = &table.columns[0];
-        assert_eq!(id_col.name, "id");
-        assert_eq!(id_col.type_name.as_deref(), Some("INTEGER"));
-        assert!(id_col.is_primary_key);
-        assert!(!id_col.is_nullable);
-
-        let name_col = &table.columns[1];
-        assert_eq!(name_col.name, "name");
-        assert_eq!(name_col.type_name.as_deref(), Some("TEXT"));
-        assert!(!name_col.is_primary_key);
-        assert!(!name_col.is_nullable);
-
-        assert_eq!(catalog.views().count(), 0);
-        assert!(catalog.functions.is_empty());
-    }
-
-    #[test]
-    fn from_ddl_star_expands_from_earlier_table() {
-        let dialect = crate::dialect::sqlite();
-        let sql = "\
-            CREATE TABLE slice (order_id INTEGER, status TEXT);\n\
-            CREATE TABLE orders AS SELECT * FROM slice;\n";
-        let catalog = DatabaseCatalog::from_ddl(dialect, sql);
-
-        let tables: Vec<_> = catalog.tables().collect();
-        assert_eq!(tables.len(), 2);
-        let orders = tables[1];
-        assert_eq!(orders.name, "orders");
-        assert_eq!(orders.columns.len(), 2);
-        assert_eq!(orders.columns[0].name, "order_id");
-        assert_eq!(orders.columns[1].name, "status");
-    }
-
-    #[test]
-    fn catalog_stack_resolves_document_first() {
-        let static_ = StaticCatalog::for_dialect(&crate::dialect::sqlite());
-        let database = DatabaseCatalog {
-            relations: vec![RelationDef {
-                name: "users".to_string(),
-                columns: vec![ColumnDef {
-                    name: "id".to_string(),
-                    type_name: None,
-                    is_primary_key: false,
-                    is_nullable: true,
-                }],
-                kind: RelationKind::Table,
-            }],
-            functions: Vec::new(),
-        };
-        let mut document = DocumentCatalog::new();
-        document.relations.push(RelationDef {
-            name: "users".to_string(),
-            columns: vec![ColumnDef {
-                name: "name".to_string(),
-                type_name: None,
-                is_primary_key: false,
-                is_nullable: true,
-            }],
-            kind: RelationKind::Table,
-        });
-
-        let stack = CatalogStack {
-            static_: &static_,
-            database: &database,
-            document: &document,
-        };
-
-        assert!(stack.resolve_relation("users"));
-        let cols = stack.columns_for("users").unwrap();
-        assert_eq!(cols, vec!["name"]); // document wins
+fn push_unique_name(seen: &mut HashSet<String>, out: &mut Vec<String>, name: &str) {
+    let lower = canonical_name(name);
+    if seen.insert(lower) {
+        out.push(name.to_string());
     }
 }

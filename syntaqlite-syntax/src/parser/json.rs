@@ -142,7 +142,7 @@ mod tests {
             .next()
             .expect("statement is present")
             .expect("statement parses successfully");
-        let typed_root = stmt.root().expect("root should be present");
+        let typed_root = stmt.root();
         let select = match typed_root {
             Stmt::SelectStmt(n) => n,
             other => panic!("expected SelectStmt root, got {other:?}"),
@@ -174,7 +174,7 @@ mod tests {
         let any_root_json = dump_json_value(|out| any_root.dump_json(out));
         assert_eq!(node_json, any_root_json);
 
-        let typed_root = stmt.root().expect("root should be present");
+        let typed_root = stmt.root();
         let select = match typed_root {
             Stmt::SelectStmt(n) => n,
             other => panic!("expected SelectStmt root, got {other:?}"),

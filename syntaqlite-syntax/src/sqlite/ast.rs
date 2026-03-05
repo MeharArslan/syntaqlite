@@ -1327,8 +1327,6 @@ pub enum Select<'a> {
     CompoundSelect(CompoundSelect<'a>),
     WithClause(WithClause<'a>),
     ValuesClause(ValuesClause<'a>),
-    /// A node that doesn't match any known `Select` variant.
-    Other(Node<'a>),
 }
 
 impl<'a> Select<'a> {
@@ -1339,7 +1337,6 @@ impl<'a> Select<'a> {
             Select::CompoundSelect(n) => SelectId(n.node_id().into()),
             Select::WithClause(n) => SelectId(n.node_id().into()),
             Select::ValuesClause(n) => SelectId(n.node_id().into()),
-            Select::Other(n) => SelectId(n.node_id().into()),
         }
     }
 }
@@ -1347,13 +1344,13 @@ impl<'a> Select<'a> {
 impl<'a> GrammarNodeType<'a> for Select<'a> {
     fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
-        Some(match node {
-            Node::SelectStmt(n) => Select::SelectStmt(n),
-            Node::CompoundSelect(n) => Select::CompoundSelect(n),
-            Node::WithClause(n) => Select::WithClause(n),
-            Node::ValuesClause(n) => Select::ValuesClause(n),
-            other => Select::Other(other),
-        })
+        match node {
+            Node::SelectStmt(n) => Some(Select::SelectStmt(n)),
+            Node::CompoundSelect(n) => Some(Select::CompoundSelect(n)),
+            Node::WithClause(n) => Some(Select::WithClause(n)),
+            Node::ValuesClause(n) => Some(Select::ValuesClause(n)),
+            _ => None,
+        }
     }
 }
 
@@ -1387,8 +1384,6 @@ impl TypedNodeId for SelectId {
 pub enum InExprSource<'a> {
     ExprList(ExprList<'a>),
     SubqueryExpr(SubqueryExpr<'a>),
-    /// A node that doesn't match any known `InExprSource` variant.
-    Other(Node<'a>),
 }
 
 impl<'a> InExprSource<'a> {
@@ -1397,7 +1392,6 @@ impl<'a> InExprSource<'a> {
         match self {
             InExprSource::ExprList(n) => InExprSourceId(n.node_id().into()),
             InExprSource::SubqueryExpr(n) => InExprSourceId(n.node_id().into()),
-            InExprSource::Other(n) => InExprSourceId(n.node_id().into()),
         }
     }
 }
@@ -1405,11 +1399,11 @@ impl<'a> InExprSource<'a> {
 impl<'a> GrammarNodeType<'a> for InExprSource<'a> {
     fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
-        Some(match node {
-            Node::ExprList(n) => InExprSource::ExprList(n),
-            Node::SubqueryExpr(n) => InExprSource::SubqueryExpr(n),
-            other => InExprSource::Other(other),
-        })
+        match node {
+            Node::ExprList(n) => Some(InExprSource::ExprList(n)),
+            Node::SubqueryExpr(n) => Some(InExprSource::SubqueryExpr(n)),
+            _ => None,
+        }
     }
 }
 
@@ -1443,8 +1437,6 @@ impl TypedNodeId for InExprSourceId {
 pub enum Name<'a> {
     IdentName(IdentName<'a>),
     Error(Error<'a>),
-    /// A node that doesn't match any known `Name` variant.
-    Other(Node<'a>),
 }
 
 impl<'a> Name<'a> {
@@ -1453,7 +1445,6 @@ impl<'a> Name<'a> {
         match self {
             Name::IdentName(n) => NameId(n.node_id().into()),
             Name::Error(n) => NameId(n.node_id().into()),
-            Name::Other(n) => NameId(n.node_id().into()),
         }
     }
 }
@@ -1461,11 +1452,11 @@ impl<'a> Name<'a> {
 impl<'a> GrammarNodeType<'a> for Name<'a> {
     fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
-        Some(match node {
-            Node::IdentName(n) => Name::IdentName(n),
-            Node::Error(n) => Name::Error(n),
-            other => Name::Other(other),
-        })
+        match node {
+            Node::IdentName(n) => Some(Name::IdentName(n)),
+            Node::Error(n) => Some(Name::Error(n)),
+            _ => None,
+        }
     }
 }
 
@@ -1516,8 +1507,6 @@ pub enum Expr<'a> {
     SubqueryExpr(SubqueryExpr<'a>),
     ExistsExpr(ExistsExpr<'a>),
     RaiseExpr(RaiseExpr<'a>),
-    /// A node that doesn't match any known `Expr` variant.
-    Other(Node<'a>),
 }
 
 impl<'a> Expr<'a> {
@@ -1543,7 +1532,6 @@ impl<'a> Expr<'a> {
             Expr::SubqueryExpr(n) => ExprId(n.node_id().into()),
             Expr::ExistsExpr(n) => ExprId(n.node_id().into()),
             Expr::RaiseExpr(n) => ExprId(n.node_id().into()),
-            Expr::Other(n) => ExprId(n.node_id().into()),
         }
     }
 }
@@ -1551,28 +1539,28 @@ impl<'a> Expr<'a> {
 impl<'a> GrammarNodeType<'a> for Expr<'a> {
     fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
-        Some(match node {
-            Node::BinaryExpr(n) => Expr::BinaryExpr(n),
-            Node::UnaryExpr(n) => Expr::UnaryExpr(n),
-            Node::Literal(n) => Expr::Literal(n),
-            Node::ColumnRef(n) => Expr::ColumnRef(n),
-            Node::Variable(n) => Expr::Variable(n),
-            Node::Error(n) => Expr::Error(n),
-            Node::FunctionCall(n) => Expr::FunctionCall(n),
-            Node::AggregateFunctionCall(n) => Expr::AggregateFunctionCall(n),
-            Node::OrderedSetFunctionCall(n) => Expr::OrderedSetFunctionCall(n),
-            Node::CastExpr(n) => Expr::CastExpr(n),
-            Node::CollateExpr(n) => Expr::CollateExpr(n),
-            Node::CaseExpr(n) => Expr::CaseExpr(n),
-            Node::IsExpr(n) => Expr::IsExpr(n),
-            Node::BetweenExpr(n) => Expr::BetweenExpr(n),
-            Node::LikeExpr(n) => Expr::LikeExpr(n),
-            Node::InExpr(n) => Expr::InExpr(n),
-            Node::SubqueryExpr(n) => Expr::SubqueryExpr(n),
-            Node::ExistsExpr(n) => Expr::ExistsExpr(n),
-            Node::RaiseExpr(n) => Expr::RaiseExpr(n),
-            other => Expr::Other(other),
-        })
+        match node {
+            Node::BinaryExpr(n) => Some(Expr::BinaryExpr(n)),
+            Node::UnaryExpr(n) => Some(Expr::UnaryExpr(n)),
+            Node::Literal(n) => Some(Expr::Literal(n)),
+            Node::ColumnRef(n) => Some(Expr::ColumnRef(n)),
+            Node::Variable(n) => Some(Expr::Variable(n)),
+            Node::Error(n) => Some(Expr::Error(n)),
+            Node::FunctionCall(n) => Some(Expr::FunctionCall(n)),
+            Node::AggregateFunctionCall(n) => Some(Expr::AggregateFunctionCall(n)),
+            Node::OrderedSetFunctionCall(n) => Some(Expr::OrderedSetFunctionCall(n)),
+            Node::CastExpr(n) => Some(Expr::CastExpr(n)),
+            Node::CollateExpr(n) => Some(Expr::CollateExpr(n)),
+            Node::CaseExpr(n) => Some(Expr::CaseExpr(n)),
+            Node::IsExpr(n) => Some(Expr::IsExpr(n)),
+            Node::BetweenExpr(n) => Some(Expr::BetweenExpr(n)),
+            Node::LikeExpr(n) => Some(Expr::LikeExpr(n)),
+            Node::InExpr(n) => Some(Expr::InExpr(n)),
+            Node::SubqueryExpr(n) => Some(Expr::SubqueryExpr(n)),
+            Node::ExistsExpr(n) => Some(Expr::ExistsExpr(n)),
+            Node::RaiseExpr(n) => Some(Expr::RaiseExpr(n)),
+            _ => None,
+        }
     }
 }
 
@@ -1626,8 +1614,6 @@ pub enum Stmt<'a> {
     DetachStmt(DetachStmt<'a>),
     VacuumStmt(VacuumStmt<'a>),
     ExplainStmt(ExplainStmt<'a>),
-    /// A node that doesn't match any known `Stmt` variant.
-    Other(Node<'a>),
 }
 
 impl<'a> Stmt<'a> {
@@ -1656,7 +1642,6 @@ impl<'a> Stmt<'a> {
             Stmt::DetachStmt(n) => StmtId(n.node_id().into()),
             Stmt::VacuumStmt(n) => StmtId(n.node_id().into()),
             Stmt::ExplainStmt(n) => StmtId(n.node_id().into()),
-            Stmt::Other(n) => StmtId(n.node_id().into()),
         }
     }
 }
@@ -1664,31 +1649,31 @@ impl<'a> Stmt<'a> {
 impl<'a> GrammarNodeType<'a> for Stmt<'a> {
     fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
-        Some(match node {
-            Node::SelectStmt(n) => Stmt::SelectStmt(n),
-            Node::CompoundSelect(n) => Stmt::CompoundSelect(n),
-            Node::ValuesClause(n) => Stmt::ValuesClause(n),
-            Node::WithClause(n) => Stmt::WithClause(n),
-            Node::InsertStmt(n) => Stmt::InsertStmt(n),
-            Node::UpdateStmt(n) => Stmt::UpdateStmt(n),
-            Node::DeleteStmt(n) => Stmt::DeleteStmt(n),
-            Node::CreateTableStmt(n) => Stmt::CreateTableStmt(n),
-            Node::CreateIndexStmt(n) => Stmt::CreateIndexStmt(n),
-            Node::CreateViewStmt(n) => Stmt::CreateViewStmt(n),
-            Node::CreateTriggerStmt(n) => Stmt::CreateTriggerStmt(n),
-            Node::CreateVirtualTableStmt(n) => Stmt::CreateVirtualTableStmt(n),
-            Node::DropStmt(n) => Stmt::DropStmt(n),
-            Node::AlterTableStmt(n) => Stmt::AlterTableStmt(n),
-            Node::TransactionStmt(n) => Stmt::TransactionStmt(n),
-            Node::SavepointStmt(n) => Stmt::SavepointStmt(n),
-            Node::PragmaStmt(n) => Stmt::PragmaStmt(n),
-            Node::AnalyzeOrReindexStmt(n) => Stmt::AnalyzeOrReindexStmt(n),
-            Node::AttachStmt(n) => Stmt::AttachStmt(n),
-            Node::DetachStmt(n) => Stmt::DetachStmt(n),
-            Node::VacuumStmt(n) => Stmt::VacuumStmt(n),
-            Node::ExplainStmt(n) => Stmt::ExplainStmt(n),
-            other => Stmt::Other(other),
-        })
+        match node {
+            Node::SelectStmt(n) => Some(Stmt::SelectStmt(n)),
+            Node::CompoundSelect(n) => Some(Stmt::CompoundSelect(n)),
+            Node::ValuesClause(n) => Some(Stmt::ValuesClause(n)),
+            Node::WithClause(n) => Some(Stmt::WithClause(n)),
+            Node::InsertStmt(n) => Some(Stmt::InsertStmt(n)),
+            Node::UpdateStmt(n) => Some(Stmt::UpdateStmt(n)),
+            Node::DeleteStmt(n) => Some(Stmt::DeleteStmt(n)),
+            Node::CreateTableStmt(n) => Some(Stmt::CreateTableStmt(n)),
+            Node::CreateIndexStmt(n) => Some(Stmt::CreateIndexStmt(n)),
+            Node::CreateViewStmt(n) => Some(Stmt::CreateViewStmt(n)),
+            Node::CreateTriggerStmt(n) => Some(Stmt::CreateTriggerStmt(n)),
+            Node::CreateVirtualTableStmt(n) => Some(Stmt::CreateVirtualTableStmt(n)),
+            Node::DropStmt(n) => Some(Stmt::DropStmt(n)),
+            Node::AlterTableStmt(n) => Some(Stmt::AlterTableStmt(n)),
+            Node::TransactionStmt(n) => Some(Stmt::TransactionStmt(n)),
+            Node::SavepointStmt(n) => Some(Stmt::SavepointStmt(n)),
+            Node::PragmaStmt(n) => Some(Stmt::PragmaStmt(n)),
+            Node::AnalyzeOrReindexStmt(n) => Some(Stmt::AnalyzeOrReindexStmt(n)),
+            Node::AttachStmt(n) => Some(Stmt::AttachStmt(n)),
+            Node::DetachStmt(n) => Some(Stmt::DetachStmt(n)),
+            Node::VacuumStmt(n) => Some(Stmt::VacuumStmt(n)),
+            Node::ExplainStmt(n) => Some(Stmt::ExplainStmt(n)),
+            _ => None,
+        }
     }
 }
 
@@ -1724,8 +1709,6 @@ pub enum TableSource<'a> {
     SubqueryTableSource(SubqueryTableSource<'a>),
     JoinClause(JoinClause<'a>),
     JoinPrefix(JoinPrefix<'a>),
-    /// A node that doesn't match any known `TableSource` variant.
-    Other(Node<'a>),
 }
 
 impl<'a> TableSource<'a> {
@@ -1736,7 +1719,6 @@ impl<'a> TableSource<'a> {
             TableSource::SubqueryTableSource(n) => TableSourceId(n.node_id().into()),
             TableSource::JoinClause(n) => TableSourceId(n.node_id().into()),
             TableSource::JoinPrefix(n) => TableSourceId(n.node_id().into()),
-            TableSource::Other(n) => TableSourceId(n.node_id().into()),
         }
     }
 }
@@ -1744,13 +1726,13 @@ impl<'a> TableSource<'a> {
 impl<'a> GrammarNodeType<'a> for TableSource<'a> {
     fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
-        Some(match node {
-            Node::TableRef(n) => TableSource::TableRef(n),
-            Node::SubqueryTableSource(n) => TableSource::SubqueryTableSource(n),
-            Node::JoinClause(n) => TableSource::JoinClause(n),
-            Node::JoinPrefix(n) => TableSource::JoinPrefix(n),
-            other => TableSource::Other(other),
-        })
+        match node {
+            Node::TableRef(n) => Some(TableSource::TableRef(n)),
+            Node::SubqueryTableSource(n) => Some(TableSource::SubqueryTableSource(n)),
+            Node::JoinClause(n) => Some(TableSource::JoinClause(n)),
+            Node::JoinPrefix(n) => Some(TableSource::JoinPrefix(n)),
+            _ => None,
+        }
     }
 }
 
@@ -7995,7 +7977,6 @@ impl<'a> crate::ast_traits::SelectLike<'a> for Select<'a> {
             Select::CompoundSelect(n) => crate::ast_traits::SelectKind::CompoundSelect(n),
             Select::WithClause(n) => crate::ast_traits::SelectKind::WithClause(n),
             Select::ValuesClause(n) => crate::ast_traits::SelectKind::ValuesClause(n),
-            Select::Other(n) => crate::ast_traits::SelectKind::Other(n),
         }
     }
 }
@@ -8006,7 +7987,6 @@ impl<'a> crate::ast_traits::InExprSourceLike<'a> for InExprSource<'a> {
         match *self {
             InExprSource::ExprList(n) => crate::ast_traits::InExprSourceKind::ExprList(n),
             InExprSource::SubqueryExpr(n) => crate::ast_traits::InExprSourceKind::SubqueryExpr(n),
-            InExprSource::Other(n) => crate::ast_traits::InExprSourceKind::Other(n),
         }
     }
 }
@@ -8017,7 +7997,6 @@ impl<'a> crate::ast_traits::NameLike<'a> for Name<'a> {
         match *self {
             Name::IdentName(n) => crate::ast_traits::NameKind::IdentName(n),
             Name::Error(n) => crate::ast_traits::NameKind::Error(n),
-            Name::Other(n) => crate::ast_traits::NameKind::Other(n),
         }
     }
 }
@@ -8047,7 +8026,6 @@ impl<'a> crate::ast_traits::ExprLike<'a> for Expr<'a> {
             Expr::SubqueryExpr(n) => crate::ast_traits::ExprKind::SubqueryExpr(n),
             Expr::ExistsExpr(n) => crate::ast_traits::ExprKind::ExistsExpr(n),
             Expr::RaiseExpr(n) => crate::ast_traits::ExprKind::RaiseExpr(n),
-            Expr::Other(n) => crate::ast_traits::ExprKind::Other(n),
         }
     }
 }
@@ -8080,7 +8058,6 @@ impl<'a> crate::ast_traits::StmtLike<'a> for Stmt<'a> {
             Stmt::DetachStmt(n) => crate::ast_traits::StmtKind::DetachStmt(n),
             Stmt::VacuumStmt(n) => crate::ast_traits::StmtKind::VacuumStmt(n),
             Stmt::ExplainStmt(n) => crate::ast_traits::StmtKind::ExplainStmt(n),
-            Stmt::Other(n) => crate::ast_traits::StmtKind::Other(n),
         }
     }
 }
@@ -8095,7 +8072,6 @@ impl<'a> crate::ast_traits::TableSourceLike<'a> for TableSource<'a> {
             }
             TableSource::JoinClause(n) => crate::ast_traits::TableSourceKind::JoinClause(n),
             TableSource::JoinPrefix(n) => crate::ast_traits::TableSourceKind::JoinPrefix(n),
-            TableSource::Other(n) => crate::ast_traits::TableSourceKind::Other(n),
         }
     }
 }

@@ -10,17 +10,21 @@ use syntaqlite_syntax::typed::{GrammarNodeType, TypedNodeList};
 
 use super::ValidationConfig;
 use super::catalog::CatalogStack;
+use super::catalog::FunctionCheckResult;
 use super::checks::{check_column_ref, check_table_ref};
 use super::diagnostics::{Diagnostic, DiagnosticMessage, Help};
 use super::fuzzy::best_suggestion;
 use super::scope::ScopeStack;
 
-use super::functions::FunctionCheckResult;
+#[derive(Clone, Copy)]
+pub(crate) struct WalkContext<'a> {
+    pub(crate) catalog: &'a CatalogStack<'a>,
+    pub(crate) config: &'a ValidationConfig,
+}
 
 pub(crate) struct Walker<'a, A: AstTypes<'a>> {
     stmt_result: AnyParsedStatement<'a>,
-    catalog: &'a CatalogStack<'a>,
-    config: &'a ValidationConfig,
+    ctx: WalkContext<'a>,
     diagnostics: Vec<Diagnostic>,
     _ast: PhantomData<A>,
 }
@@ -30,13 +34,11 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
         stmt_result: AnyParsedStatement<'a>,
         stmt: A::Stmt,
         scope: &mut ScopeStack,
-        catalog: &'a CatalogStack<'a>,
-        config: &'a ValidationConfig,
+        ctx: WalkContext<'a>,
     ) -> Vec<Diagnostic> {
         let mut walker: Walker<'_, A> = Walker {
             stmt_result,
-            catalog,
-            config,
+            ctx,
             diagnostics: Vec::new(),
             _ast: PhantomData,
         };
@@ -49,6 +51,75 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
         s.as_ptr() as usize - self.stmt_result.source().as_ptr() as usize
     }
 
+    fn catalog(&self) -> &CatalogStack<'a> {
+        self.ctx.catalog
+    }
+
+    fn config(&self) -> &ValidationConfig {
+        self.ctx.config
+    }
+
+    fn push_diag(&mut self, diag: Option<Diagnostic>) {
+        if let Some(diag) = diag {
+            self.diagnostics.push(diag);
+        }
+    }
+
+    fn with_scope<F>(&mut self, scope: &mut ScopeStack, f: F)
+    where
+        F: FnOnce(&mut Self, &mut ScopeStack),
+    {
+        scope.push();
+        f(self, scope);
+        scope.pop();
+    }
+
+    fn walk_opt_select(&mut self, select: Option<A::Select>, scope: &mut ScopeStack) {
+        if let Some(select) = select {
+            self.walk_select(select, scope);
+        }
+    }
+
+    fn walk_opt_table_source(&mut self, source: Option<A::TableSource>, scope: &mut ScopeStack) {
+        if let Some(source) = source {
+            self.walk_table_source(source, scope);
+        }
+    }
+
+    fn walk_opt_table_ref(&mut self, table_ref: Option<A::TableRef>, scope: &mut ScopeStack) {
+        if let Some(table_ref) = table_ref {
+            self.check_and_add_table_ref(&table_ref, scope);
+        }
+    }
+
+    fn emit_unknown_function(&mut self, name: &str, offset: usize) {
+        let all_names = self.catalog().all_function_names();
+        let suggestion = best_suggestion(name, &all_names, self.config().suggestion_threshold);
+        self.diagnostics.push(Diagnostic {
+            start_offset: offset,
+            end_offset: offset + name.len(),
+            message: DiagnosticMessage::UnknownFunction {
+                name: name.to_string(),
+            },
+            severity: self.config().severity(),
+            help: suggestion.map(Help::Suggestion),
+        });
+    }
+
+    fn emit_wrong_arity(&mut self, name: &str, offset: usize, expected: Vec<usize>, got: usize) {
+        self.diagnostics.push(Diagnostic {
+            start_offset: offset,
+            end_offset: offset + name.len(),
+            message: DiagnosticMessage::FunctionArity {
+                name: name.to_string(),
+                expected,
+                got,
+            },
+            severity: self.config().severity(),
+            help: None,
+        });
+    }
+
     fn walk_stmt(&mut self, stmt: A::Stmt, scope: &mut ScopeStack) {
         match stmt.kind() {
             StmtKind::SelectStmt(s) => self.walk_select_stmt(s, scope),
@@ -57,16 +128,8 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
             StmtKind::InsertStmt(i) => self.walk_insert_stmt(i, scope),
             StmtKind::UpdateStmt(u) => self.walk_update_stmt(u, scope),
             StmtKind::DeleteStmt(d) => self.walk_delete_stmt(d, scope),
-            StmtKind::CreateTableStmt(ct) => {
-                if let Some(select) = ct.as_select() {
-                    self.walk_select(select, scope);
-                }
-            }
-            StmtKind::CreateViewStmt(cv) => {
-                if let Some(select) = cv.select() {
-                    self.walk_select(select, scope);
-                }
-            }
+            StmtKind::CreateTableStmt(ct) => self.walk_opt_select(ct.as_select(), scope),
+            StmtKind::CreateViewStmt(cv) => self.walk_opt_select(cv.select(), scope),
             StmtKind::CreateTriggerStmt(t) => self.walk_trigger_stmt(t, scope),
             StmtKind::Other(node) => self.walk_other_node(node, scope),
             _ => {}
@@ -120,11 +183,9 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
                     scope.add_table(cte_name, None);
                 }
 
-                scope.push();
-                if let Some(select) = cte.select() {
-                    self.walk_select(select, scope);
-                }
-                scope.pop();
+                self.with_scope(scope, |this, scope| {
+                    this.walk_opt_select(cte.select(), scope)
+                });
 
                 if !cte_name.is_empty() {
                     scope.add_table(cte_name, None);
@@ -132,9 +193,7 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
             }
         }
 
-        if let Some(select) = with.select() {
-            self.walk_select(select, scope);
-        }
+        self.walk_opt_select(with.select(), scope);
     }
 
     fn walk_select(&mut self, select: A::Select, scope: &mut ScopeStack) {
@@ -154,21 +213,13 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
     }
 
     fn walk_insert_stmt(&mut self, insert: A::InsertStmt, scope: &mut ScopeStack) {
-        if let Some(table_ref) = insert.table() {
-            self.check_and_add_table_ref(&table_ref, scope);
-        }
-        if let Some(source) = insert.source() {
-            self.walk_select(source, scope);
-        }
+        self.walk_opt_table_ref(insert.table(), scope);
+        self.walk_opt_select(insert.source(), scope);
     }
 
     fn walk_update_stmt(&mut self, update: A::UpdateStmt, scope: &mut ScopeStack) {
-        if let Some(table_ref) = update.table() {
-            self.check_and_add_table_ref(&table_ref, scope);
-        }
-        if let Some(from) = update.from_clause() {
-            self.walk_table_source(from, scope);
-        }
+        self.walk_opt_table_ref(update.table(), scope);
+        self.walk_opt_table_source(update.from_clause(), scope);
         if let Some(setlist) = update.setlist() {
             for clause in setlist.iter() {
                 self.walk_opt_expr(clause.value(), scope);
@@ -178,23 +229,21 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
     }
 
     fn walk_delete_stmt(&mut self, delete: A::DeleteStmt, scope: &mut ScopeStack) {
-        if let Some(table_ref) = delete.table() {
-            self.check_and_add_table_ref(&table_ref, scope);
-        }
+        self.walk_opt_table_ref(delete.table(), scope);
         self.walk_opt_expr(delete.where_clause(), scope);
     }
 
     fn walk_trigger_stmt(&mut self, trigger: A::CreateTriggerStmt, scope: &mut ScopeStack) {
-        scope.push();
-        scope.add_table("OLD", None);
-        scope.add_table("NEW", None);
-        self.walk_opt_expr(trigger.when_expr(), scope);
-        if let Some(body) = trigger.body() {
-            for stmt in body.iter() {
-                self.walk_stmt(stmt, scope);
+        self.with_scope(scope, |this, scope| {
+            scope.add_table("OLD", None);
+            scope.add_table("NEW", None);
+            this.walk_opt_expr(trigger.when_expr(), scope);
+            if let Some(body) = trigger.body() {
+                for stmt in body.iter() {
+                    this.walk_stmt(stmt, scope);
+                }
             }
-        }
-        scope.pop();
+        });
     }
 
     fn walk_table_source(&mut self, source: A::TableSource, scope: &mut ScopeStack) {
@@ -203,30 +252,20 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
                 self.check_and_add_table_ref(&t, scope);
             }
             TableSourceKind::SubqueryTableSource(sub) => {
-                scope.push();
-                if let Some(select) = sub.select() {
-                    self.walk_select(select, scope);
-                }
-                scope.pop();
+                self.with_scope(scope, |this, scope| {
+                    this.walk_opt_select(sub.select(), scope)
+                });
                 let alias = sub.alias();
                 if !alias.is_empty() {
                     scope.add_table(alias, None);
                 }
             }
             TableSourceKind::JoinClause(join) => {
-                if let Some(left) = join.left() {
-                    self.walk_table_source(left, scope);
-                }
-                if let Some(right) = join.right() {
-                    self.walk_table_source(right, scope);
-                }
+                self.walk_opt_table_source(join.left(), scope);
+                self.walk_opt_table_source(join.right(), scope);
                 self.walk_opt_expr(join.on_expr(), scope);
             }
-            TableSourceKind::JoinPrefix(jp) => {
-                if let Some(src) = jp.source() {
-                    self.walk_table_source(src, scope);
-                }
-            }
+            TableSourceKind::JoinPrefix(jp) => self.walk_opt_table_source(jp.source(), scope),
             TableSourceKind::Other(node) => self.walk_other_node(node, scope),
         }
     }
@@ -238,9 +277,13 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
         }
 
         let offset = self.str_offset(name);
-        if let Some(diag) = check_table_ref(name, offset, name.len(), scope, self.config) {
-            self.diagnostics.push(diag);
-        }
+        self.push_diag(check_table_ref(
+            name,
+            offset,
+            name.len(),
+            scope,
+            self.config(),
+        ));
 
         let alias = table_ref.alias();
         let scope_name = if alias.is_empty() { name } else { alias };
@@ -259,11 +302,14 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
                 let offset = self.str_offset(column);
                 let table_opt = if table.is_empty() { None } else { Some(table) };
 
-                if let Some(diag) =
-                    check_column_ref(table_opt, column, offset, column.len(), scope, self.config)
-                {
-                    self.diagnostics.push(diag);
-                }
+                self.push_diag(check_column_ref(
+                    table_opt,
+                    column,
+                    offset,
+                    column.len(),
+                    scope,
+                    self.config(),
+                ));
             }
             ExprKind::FunctionCall(f) => {
                 self.walk_function(f.func_name(), f.args(), f.filter_clause(), scope);
@@ -343,11 +389,7 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
     }
 
     fn walk_subquery(&mut self, select: Option<A::Select>, scope: &mut ScopeStack) {
-        if let Some(select) = select {
-            scope.push();
-            self.walk_select(select, scope);
-            scope.pop();
-        }
+        self.with_scope(scope, |this, scope| this.walk_opt_select(select, scope));
     }
 
     fn walk_function(
@@ -360,34 +402,11 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
         if !name.is_empty() {
             let offset = self.str_offset(name);
             let arg_count = args.as_ref().map_or(0, TypedNodeList::len);
-            match self.catalog.check_function(name, arg_count) {
+            match self.catalog().check_function(name, arg_count) {
                 FunctionCheckResult::Ok => {}
-                FunctionCheckResult::Unknown => {
-                    let all_names = self.catalog.all_function_names();
-                    let suggestion =
-                        best_suggestion(name, &all_names, self.config.suggestion_threshold);
-                    self.diagnostics.push(Diagnostic {
-                        start_offset: offset,
-                        end_offset: offset + name.len(),
-                        message: DiagnosticMessage::UnknownFunction {
-                            name: name.to_string(),
-                        },
-                        severity: self.config.severity(),
-                        help: suggestion.map(Help::Suggestion),
-                    });
-                }
+                FunctionCheckResult::Unknown => self.emit_unknown_function(name, offset),
                 FunctionCheckResult::WrongArity { expected } => {
-                    self.diagnostics.push(Diagnostic {
-                        start_offset: offset,
-                        end_offset: offset + name.len(),
-                        message: DiagnosticMessage::FunctionArity {
-                            name: name.to_string(),
-                            expected,
-                            got: arg_count,
-                        },
-                        severity: self.config.severity(),
-                        help: None,
-                    });
+                    self.emit_wrong_arity(name, offset, expected, arg_count);
                 }
             }
         }

@@ -114,7 +114,7 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
     /// - `None` — keep going, statement not yet complete.
     /// - `Some(Ok(result))` — statement parsed cleanly; use
     ///   [`TypedParsedStatement::root`] to access the typed AST.
-    /// - `Some(Err(err))` — parse error; `err.root()` may contain a partial
+    /// - `Some(Err(err))` — parse error; `err.recovery_root()` may contain a partial
     ///   recovery tree.
     ///
     /// `span` is a byte range into the source text bound by this session.
@@ -154,7 +154,7 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
     /// Returns:
     /// - `None` — nothing was pending (empty input or bare semicolons only).
     /// - `Some(Ok(result))` — final statement parsed cleanly.
-    /// - `Some(Err(err))` — parse error; `err.root()` may contain a partial
+    /// - `Some(Err(err))` — parse error; `err.recovery_root()` may contain a partial
     ///   recovery tree.
     ///
     /// No further methods may be called after `finish()`.
@@ -300,7 +300,7 @@ impl IncrementalParseSession {
     /// Returns:
     /// - `None` — keep going, statement not yet complete.
     /// - `Some(Ok(result))` — statement parsed cleanly.
-    /// - `Some(Err(e))` — parse error; `e.root()` may contain a partial
+    /// - `Some(Err(e))` — parse error; `e.recovery_root()` may contain a partial
     ///   recovery tree.
     ///
     /// - `span` is a byte range into the source text bound by this session.
@@ -332,7 +332,7 @@ impl IncrementalParseSession {
     /// Returns:
     /// - `None` — nothing was pending.
     /// - `Some(Ok(result))` — final statement parsed cleanly.
-    /// - `Some(Err(e))` — parse error; `e.root()` may contain a partial
+    /// - `Some(Err(e))` — parse error; `e.recovery_root()` may contain a partial
     ///   recovery tree.
     ///
     /// No further methods may be called after `finish()`.
@@ -348,7 +348,7 @@ impl IncrementalParseSession {
     /// let _ = session.feed_token(TokenType::Integer, 7..8);
     ///
     /// let stmt = session.finish().and_then(Result::ok).unwrap();
-    /// assert!(stmt.root().is_some());
+    /// let _ = stmt.root();
     /// ```
     pub fn finish(&mut self) -> Option<Result<ParsedStatement<'_>, ParseError<'_>>> {
         Some(match self.0.finish()? {

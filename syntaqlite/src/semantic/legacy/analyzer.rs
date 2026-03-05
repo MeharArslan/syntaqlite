@@ -6,20 +6,22 @@
 //! [`SemanticAnalyzer`] is the single entry point for all semantic analysis -
 //! diagnostics, semantic tokens, completions.
 
-use syntaqlite_syntax::ParserTokenFlags;
-use syntaqlite_syntax::TokenType;
+use std::collections::HashSet;
+
 use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement};
 use syntaqlite_syntax::ast_traits::AstTypes;
 use syntaqlite_syntax::typed::{GrammarNodeType, TypedParser};
+use syntaqlite_syntax::ParserTokenFlags;
+use syntaqlite_syntax::TokenType;
 
 use crate::dialect::{Dialect, TokenCategory};
 
-use super::ValidationConfig;
 use super::catalog::{CatalogStack, DatabaseCatalog, DocumentCatalog, StaticCatalog};
 use super::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
 use super::model::{SemanticModel, StoredComment, StoredParseError, StoredToken};
 use super::scope::ScopeStack;
 use super::walker::Walker;
+use super::ValidationConfig;
 
 /// Analysis engine. Long-lived, reuses scratch buffers internally.
 ///
@@ -61,10 +63,38 @@ impl<'d> SemanticAnalyzer<'d> {
         self.dialect
     }
 
+    fn push_statement_diagnostics<'a, A: AstTypes<'a>>(
+        &mut self,
+        stmt_result: AnyParsedStatement<'a>,
+        stmt_id: AnyNodeId,
+        catalog: &DatabaseCatalog,
+        config: &ValidationConfig,
+    ) {
+        let catalog_stack = CatalogStack {
+            static_: &self.static_catalog,
+            database: catalog,
+            document: &self.doc_catalog,
+        };
+        self.diag_buf.extend(validate_statement_dialect::<A>(
+            stmt_result,
+            stmt_id,
+            &catalog_stack,
+            config,
+        ));
+
+        #[cfg(feature = "sqlite")]
+        self.doc_catalog
+            .accumulate(stmt_result, stmt_id, self.dialect, Some(catalog));
+    }
+
     // -- Primary API -------------------------------------------------------
 
     /// Parse and validate SQL, returning all diagnostics (parse + semantic).
-    pub(crate) fn diagnostics(&mut self, source: &str, catalog: &DatabaseCatalog) -> Vec<Diagnostic> {
+    pub(crate) fn diagnostics(
+        &mut self,
+        source: &str,
+        catalog: &DatabaseCatalog,
+    ) -> Vec<Diagnostic> {
         let model = self.prepare(source);
         self.diagnostics_prepared(&model, catalog)
     }
@@ -168,21 +198,15 @@ impl<'d> SemanticAnalyzer<'d> {
         model
             .parse_errors
             .iter()
-            .map(|err| {
-                let (start_offset, end_offset) = parse_error_span(err, model.source());
-                Diagnostic {
-                    start_offset,
-                    end_offset,
-                    message: DiagnosticMessage::Other(err.message.clone()),
-                    severity: Severity::Error,
-                    help: None,
-                }
-            })
+            .map(|err| parse_error_diagnostic(err, model.source()))
             .collect()
     }
 
     /// Semantic tokens for syntax highlighting.
-    pub(crate) fn semantic_tokens(&self, model: &SemanticModel) -> Vec<super::model::SemanticToken> {
+    pub(crate) fn semantic_tokens(
+        &self,
+        model: &SemanticModel,
+    ) -> Vec<super::model::SemanticToken> {
         let mut tokens = Vec::new();
 
         for tp in &model.tokens {
@@ -218,36 +242,8 @@ impl<'d> SemanticAnalyzer<'d> {
         let source = model.source();
         let tokens = &model.tokens;
         let cursor_offset = offset.min(source.len());
-
-        let mut boundary = tokens.partition_point(|t| t.offset + t.length <= cursor_offset);
-
-        // Skip zero-width tokens at cursor.
-        while boundary > 0 {
-            let t = &tokens[boundary - 1];
-            if t.length == 0 && t.offset == cursor_offset {
-                boundary -= 1;
-            } else {
-                break;
-            }
-        }
-
-        // Backtrack if cursor is mid-identifier so we still suggest completions.
-        let mut backtracked = false;
-        if boundary > 0
-            && tokens[boundary - 1].offset + tokens[boundary - 1].length == cursor_offset
-            && cursor_offset > 0
-        {
-            let b = source.as_bytes()[cursor_offset - 1];
-            if b.is_ascii_alphanumeric() || b == b'_' {
-                boundary -= 1;
-                backtracked = true;
-            }
-        }
-
-        let start = tokens[..boundary]
-            .iter()
-            .rposition(|t| t.token_type == TokenType::Semi)
-            .map_or(0, |idx| idx + 1);
+        let (boundary, backtracked) = completion_boundary(source, tokens, cursor_offset);
+        let start = statement_token_start(tokens, boundary);
 
         let stmt_tokens = &tokens[start..boundary];
 
@@ -274,14 +270,7 @@ impl<'d> SemanticAnalyzer<'d> {
             let extra = &tokens[boundary];
             let span = extra.offset..(extra.offset + extra.length);
             if cursor.feed_token(extra.token_type, span).is_none() {
-                let after: Vec<TokenType> = cursor.expected_tokens().collect();
-                let mut seen: std::collections::HashSet<TokenType> =
-                    last_expected.iter().copied().collect();
-                for tok in after {
-                    if seen.insert(tok) {
-                        last_expected.push(tok);
-                    }
-                }
+                merge_expected_tokens(&mut last_expected, cursor.expected_tokens().collect());
             }
         }
 
@@ -320,20 +309,7 @@ impl<'d> SemanticAnalyzer<'d> {
             };
 
             let stmt_id: AnyNodeId = root.node_id().into();
-            let stmt_result = stmt.erase();
-
-            let catalog_stack = CatalogStack {
-                static_: &self.static_catalog,
-                database: catalog,
-                document: &self.doc_catalog,
-            };
-            let diags =
-                validate_statement_dialect::<A>(stmt_result, stmt_id, &catalog_stack, config);
-            self.diag_buf.extend(diags);
-
-            #[cfg(feature = "sqlite")]
-            self.doc_catalog
-                .accumulate(stmt_result, stmt_id, self.dialect, Some(catalog));
+            self.push_statement_diagnostics::<A>(stmt.erase(), stmt_id, catalog, config);
         }
 
         self.diag_buf.clone()
@@ -373,6 +349,64 @@ fn collect_stmt_positions<'a>(
 
 fn str_offset(source: &str, part: &str) -> usize {
     part.as_ptr() as usize - source.as_ptr() as usize
+}
+
+fn parse_error_diagnostic(err: &StoredParseError, source: &str) -> Diagnostic {
+    let (start_offset, end_offset) = parse_error_span(err, source);
+    Diagnostic {
+        start_offset,
+        end_offset,
+        message: DiagnosticMessage::Other(err.message.clone()),
+        severity: Severity::Error,
+        help: None,
+    }
+}
+
+fn completion_boundary(
+    source: &str,
+    tokens: &[StoredToken],
+    cursor_offset: usize,
+) -> (usize, bool) {
+    let mut boundary = tokens.partition_point(|t| t.offset + t.length <= cursor_offset);
+
+    while boundary > 0 {
+        let token = &tokens[boundary - 1];
+        if token.length == 0 && token.offset == cursor_offset {
+            boundary -= 1;
+        } else {
+            break;
+        }
+    }
+
+    let mut backtracked = false;
+    if boundary > 0
+        && tokens[boundary - 1].offset + tokens[boundary - 1].length == cursor_offset
+        && cursor_offset > 0
+    {
+        let prev = source.as_bytes()[cursor_offset - 1];
+        if prev.is_ascii_alphanumeric() || prev == b'_' {
+            boundary -= 1;
+            backtracked = true;
+        }
+    }
+
+    (boundary, backtracked)
+}
+
+fn statement_token_start(tokens: &[StoredToken], boundary: usize) -> usize {
+    tokens[..boundary]
+        .iter()
+        .rposition(|t| t.token_type == TokenType::Semi)
+        .map_or(0, |idx| idx + 1)
+}
+
+fn merge_expected_tokens(into: &mut Vec<TokenType>, extra: Vec<TokenType>) {
+    let mut seen: HashSet<TokenType> = into.iter().copied().collect();
+    for token in extra {
+        if seen.insert(token) {
+            into.push(token);
+        }
+    }
 }
 
 // -- Internal validation functions ------------------------------------------

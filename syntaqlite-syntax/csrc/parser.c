@@ -372,6 +372,9 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
 // ---------------------------------------------------------------------------
 
 uint32_t syntaqlite_result_root(SyntaqliteParser* p) {
+  if (p->last_status != SYNTAQLITE_PARSE_OK) {
+    return SYNTAQLITE_NULL_NODE;
+  }
   return p->ctx.root;
 }
 

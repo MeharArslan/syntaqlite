@@ -22,10 +22,10 @@ pub(crate) use typescript::extract_typescript;
 use std::ops::Range;
 
 use crate::dialect::{DialectExt, TokenCategory};
+use crate::semantic::DatabaseCatalog;
 use crate::semantic::ValidationConfig;
 use crate::semantic::catalog::{CatalogStack, DocumentCatalog, StaticCatalog};
 use crate::semantic::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
-use crate::semantic::functions::FunctionCatalog;
 use syntaqlite_parser::DialectEnv;
 use syntaqlite_parser::IncrementalParser;
 use syntaqlite_parser::ParseError;
@@ -123,17 +123,16 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 
 /// Analyzer for embedded SQL in host-language source files.
 ///
-/// Holds the dialect, optional function catalog, and validation config so they
+/// Holds the dialect, optional catalog context, and validation config so they
 /// don't need to be threaded through every call.
 ///
 /// # Example
 ///
 /// ```rust,no_run
 /// # use syntaqlite::embedded::{EmbeddedAnalyzer, extract_python};
-/// # use syntaqlite::semantic::functions::FunctionCatalog;
 /// # let source = "";
 /// # let dialect = syntaqlite::dialect::sqlite();
-/// let catalog = FunctionCatalog::for_default_dialect(&dialect);
+/// let catalog = syntaqlite::semantic::DatabaseCatalog::default();
 /// let fragments = extract_python(source);
 /// let diags = EmbeddedAnalyzer::new(dialect)
 ///     .with_catalog(catalog)
@@ -141,23 +140,23 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 /// ```
 pub(crate) struct EmbeddedAnalyzer<'d> {
     dialect: DialectEnv<'d>,
-    catalog: FunctionCatalog,
+    catalog: DatabaseCatalog,
     config: ValidationConfig,
 }
 
 impl<'d> EmbeddedAnalyzer<'d> {
-    /// Create a new analyzer with an empty function catalog and default
+    /// Create a new analyzer with an empty catalog and default
     /// validation config.
     pub(crate) fn new(dialect: DialectEnv<'d>) -> Self {
         Self {
             dialect,
-            catalog: FunctionCatalog::for_dialect(&dialect),
+            catalog: DatabaseCatalog::default(),
             config: ValidationConfig::default(),
         }
     }
 
-    /// Attach a function catalog to enable function-existence validation.
-    pub(crate) fn with_catalog(mut self, catalog: FunctionCatalog) -> Self {
+    /// Attach a catalog context to enable relation/function validation.
+    pub(crate) fn with_catalog(mut self, catalog: DatabaseCatalog) -> Self {
         self.catalog = catalog;
         self
     }
@@ -392,11 +391,8 @@ impl<'d> EmbeddedAnalyzer<'d> {
         }
 
         let reader = cursor.reader();
-        let static_catalog = StaticCatalog {
-            functions: self.catalog.clone(),
-            relations: Vec::new(),
-        };
-        let db_catalog = crate::semantic::DatabaseCatalog::default();
+        let static_catalog = StaticCatalog::for_dialect(&dialect);
+        let db_catalog = self.catalog.clone();
         let mut doc_catalog = DocumentCatalog::new();
         let mut diags = Vec::new();
 
@@ -462,8 +458,7 @@ mod tests {
 
     fn analyzer() -> EmbeddedAnalyzer<'static> {
         let dialect = crate::dialect::sqlite();
-        let catalog = FunctionCatalog::for_default_dialect(&dialect);
-        EmbeddedAnalyzer::new(dialect).with_catalog(catalog)
+        EmbeddedAnalyzer::new(dialect)
     }
 
     // ── Python syntax error tests ────────────────────────────────────
