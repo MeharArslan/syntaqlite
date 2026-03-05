@@ -6979,7 +6979,7 @@ pub enum Node<'a> {
     /// List of [`NamedWindowDef`].
     NamedWindowDefList(NamedWindowDefList<'a>),
     FilterOver(FilterOver<'a>),
-    /// A node with an unknown tag from a dialect extension.
+    /// A node with an unknown tag from a grammar extension.
     Other {
         id: AnyNodeId,
         tag: crate::any::AnyNodeTag,

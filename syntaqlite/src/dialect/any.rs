@@ -4,30 +4,16 @@
 //! Core dialect handle types.
 //!
 //! Mirrors the `syntaqlite-syntax` grammar layout:
-//! - [`TypedDialect`]: typed dialect handle contract (`Into<AnyDialect>`)
 //! - [`AnyDialect`]: type-erased dialect handle used by infrastructure
 //! - [`Dialect`]: convenience alias to [`AnyDialect`]
 
 use syntaqlite_syntax::any::AnyGrammar;
-use syntaqlite_syntax::util::SqliteVersion;
-
-use super::catalog::FunctionEntry;
-use super::schema::SchemaContribution;
-
-/// Typed dialect contract.
-///
-/// Typed dialect wrappers should be cheap `Copy` handles and convertible into
-/// [`AnyDialect`] for use by grammar-agnostic infrastructure.
-pub(crate) trait TypedDialect: Copy + Into<AnyDialect> {}
-
-impl<T> TypedDialect for T where T: Copy + Into<AnyDialect> {}
 
 /// Type-erased semantic dialect handle: grammar + formatter + semantic data.
 ///
 /// This bundles:
 /// - the syntactic [`AnyGrammar`]
 /// - formatter bytecode tables
-/// - semantic catalog/schema contributions
 #[derive(Clone, Copy)]
 pub(crate) struct AnyDialect {
     grammar: AnyGrammar,
@@ -37,10 +23,6 @@ pub(crate) struct AnyDialect {
     fmt_enum_display: &'static [u16],
     fmt_ops: &'static [u8],
     fmt_dispatch: &'static [u32],
-
-    // Semantic data.
-    function_entries: &'static [FunctionEntry<'static>],
-    schema_contributions: &'static [SchemaContribution],
 }
 
 /// Default dialect handle name used throughout the crate.
@@ -60,8 +42,6 @@ impl AnyDialect {
         fmt_enum_display: &'static [u16],
         fmt_ops: &'static [u8],
         fmt_dispatch: &'static [u32],
-        function_entries: &'static [FunctionEntry<'static>],
-        schema_contributions: &'static [SchemaContribution],
     ) -> Self {
         AnyDialect {
             grammar,
@@ -69,26 +49,7 @@ impl AnyDialect {
             fmt_enum_display,
             fmt_ops,
             fmt_dispatch,
-            function_entries,
-            schema_contributions,
         }
-    }
-
-    /// Set the target `SQLite` version.
-    #[must_use]
-    pub(crate) fn with_version(mut self, version: SqliteVersion) -> Self {
-        self.grammar = self.grammar.with_version(version);
-        self
-    }
-
-    /// The target `SQLite` version.
-    pub(crate) fn version(&self) -> SqliteVersion {
-        self.grammar.version()
-    }
-
-    /// The underlying syntax grammar handle.
-    pub(crate) fn grammar(&self) -> AnyGrammar {
-        self.grammar
     }
 
     // ── Formatter accessors ──────────────────────────────────────────────
@@ -142,25 +103,6 @@ impl AnyDialect {
     /// Whether this dialect has formatter data.
     pub(crate) fn has_fmt_data(&self) -> bool {
         !self.fmt_strings.is_empty()
-    }
-
-    // ── Semantic accessors ───────────────────────────────────────────────
-
-    /// Return dialect-provided function extensions.
-    pub(crate) fn function_extensions(&self) -> &'static [FunctionEntry<'static>] {
-        self.function_entries
-    }
-
-    /// Look up a schema contribution for a given node tag.
-    pub(crate) fn schema_contribution_for_tag(
-        &self,
-        tag: syntaqlite_syntax::any::AnyNodeTag,
-    ) -> Option<SchemaContribution> {
-        let tag_u32 = u32::from(tag);
-        self.schema_contributions
-            .iter()
-            .find(|sc| sc.node_tag == tag_u32)
-            .copied()
     }
 }
 

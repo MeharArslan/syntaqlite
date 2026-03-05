@@ -10,7 +10,7 @@ pub(super) type DocId = u32;
 /// as identity elements (e.g. `cat(NIL_DOC, x) == x`).
 pub(super) const NIL_DOC: DocId = u32::MAX;
 
-/// A node in the document algebra. Lifetime `'a` covers borrowed text slices.
+/// A node in the Wadler-style document algebra. Lifetime `'a` covers borrowed text slices.
 #[derive(Debug, Clone)]
 enum Doc<'a> {
     /// Source text (identifiers, literals). Never case-transformed.
@@ -159,6 +159,11 @@ impl<'a> DocArena<'a> {
     }
 
     /// Render into caller-provided buffers, reusing their allocations.
+    ///
+    /// Uses a Wadler-style pretty-printing strategy:
+    /// - `Group` probes whether content fits in flat mode
+    /// - if it does not fit, rendering switches to break mode
+    /// - `Line`/`SoftLine` choose space vs newline based on that mode
     /// This avoids re-allocating the render stack, fits stack, and output
     /// string on every format call.
     pub(crate) fn render_into(

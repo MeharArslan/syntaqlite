@@ -18,36 +18,72 @@ use crate::sqlite::tokens::TokenType;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/// A tokenizer for the `SQLite` dialect.
+/// High-level tokenizer for `SQLite` SQL.
 ///
-/// Yields [`TypedToken`]s with SQLite-specific token types. For other dialects
-/// use [`TypedTokenizer`] directly; for grammar-agnostic use with raw `u32`
-/// ordinals use [`AnyTokenizer`].
+/// In most codebases this is the tokenizer you want.
+///
+/// - Fast lexical analysis without building an AST.
+/// - Returns token kind + original source slice.
+/// - Reusable across many SQL inputs.
+///
+/// Advanced generic tokenizer APIs exist in [`crate::typed`] and [`crate::any`].
 #[cfg(feature = "sqlite")]
 #[doc(hidden)]
 pub struct Tokenizer(TypedTokenizer<Grammar>);
 
 #[cfg(feature = "sqlite")]
 impl Tokenizer {
-    /// Create a tokenizer for the `SQLite` dialect.
+    /// Create a tokenizer for `SQLite` SQL.
     pub fn new() -> Self {
         Tokenizer(TypedTokenizer::new(crate::sqlite::grammar::grammar()))
     }
 
-    /// Bind source text and return an iterator over `SQLite` tokens.
+    /// Tokenize one SQL source string and iterate `SQLite` tokens.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use syntaqlite_syntax::{Tokenizer, TokenType};
+    ///
+    /// let tokenizer = Tokenizer::new();
+    /// let tokens: Vec<_> = tokenizer
+    ///     .tokenize("SELECT x FROM t")
+    ///     .map(|tok| (tok.token_type(), tok.text().to_string()))
+    ///     .collect();
+    ///
+    /// assert!(tokens.iter().any(|(ty, _)| *ty == TokenType::Select));
+    /// assert!(tokens.iter().any(|(_, text)| text == "x"));
+    /// ```
     ///
     /// # Panics
     ///
-    /// Panics if a cursor from a previous `tokenize()` call is still alive.
+    /// Panics if another cursor from this tokenizer is still active.
+    /// Drop the previous iterator before starting a new one.
     pub fn tokenize<'a>(&self, source: &'a str) -> impl Iterator<Item = Token<'a>> {
         self.0.tokenize(source).map(Token)
     }
 
-    /// Zero-copy variant: bind a null-terminated source.
+    /// Zero-copy tokenization over a null-terminated source buffer.
+    ///
+    /// Use this when your SQL already lives in a [`CStr`] and you want to
+    /// avoid copying.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::CString;
+    /// use syntaqlite_syntax::{Tokenizer, TokenType};
+    ///
+    /// let tokenizer = Tokenizer::new();
+    /// let sql = CString::new("SELECT 1").unwrap();
+    /// let types: Vec<_> = tokenizer.tokenize_cstr(&sql).map(|t| t.token_type()).collect();
+    ///
+    /// assert!(types.contains(&TokenType::Select));
+    /// ```
     ///
     /// # Panics
     ///
-    /// Panics if a cursor from a previous `tokenize()` call is still alive,
+    /// Panics if another cursor from this tokenizer is still active,
     /// or if `source` is not valid UTF-8.
     pub fn tokenize_cstr<'a>(&self, source: &'a CStr) -> impl Iterator<Item = Token<'a>> {
         self.0.tokenize_cstr(source).map(Token)
@@ -61,7 +97,12 @@ impl Default for Tokenizer {
     }
 }
 
-/// A `SQLite` token: token type + source text slice. Produced by [`Tokenizer::tokenize`].
+/// Token emitted by [`Tokenizer`], including kind and source slice.
+///
+/// Typical usage:
+///
+/// - Inspect token kind via [`token_type`](Self::token_type).
+/// - Read exact source text via [`text`](Self::text).
 #[cfg(feature = "sqlite")]
 #[doc(hidden)]
 pub struct Token<'a>(TypedToken<'a, Grammar>);
@@ -79,12 +120,12 @@ impl<'a> Token<'a> {
     }
 }
 
-/// A type-safe tokenizer scoped to a specific dialect `N`.
+/// Tokenizer parameterized by grammar type `G`.
 ///
-/// Yields [`TypedToken<'_, N>`] with `N::Token` instead of a raw `u32`.
+/// Useful for reusable tooling built against generated grammars.
 ///
-/// For the common `SQLite` case use [`Tokenizer`]. For grammar-agnostic use with
-/// raw `u32` ordinals use [`AnyTokenizer`].
+/// - Use this when grammar type is known at compile time.
+/// - Use [`Tokenizer`] for typical SQLite SQL app code.
 ///
 pub struct TypedTokenizer<G: TypedGrammar> {
     inner: Rc<RefCell<Option<TokenizerInner>>>,
@@ -92,11 +133,19 @@ pub struct TypedTokenizer<G: TypedGrammar> {
 }
 
 impl<G: TypedGrammar> TypedTokenizer<G> {
-    /// Create a tokenizer bound to the given dialect grammar.
+    /// Create a tokenizer for grammar `G`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use syntaqlite_syntax::typed::{grammar, TypedTokenizer};
+    ///
+    /// let _tokenizer = TypedTokenizer::new(grammar());
+    /// ```
     ///
     /// # Panics
     ///
-    /// Panics if the underlying C tokenizer allocation fails (OOM).
+    /// Panics if tokenizer allocation fails (out of memory).
     pub fn new(grammar: G) -> Self {
         // SAFETY: create(NULL, grammar.inner) allocates a new tokenizer with
         // default malloc/free. The C side copies the grammar.
@@ -114,14 +163,28 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
         }
     }
 
-    /// Bind source text and return an iterator over typed tokens.
+    /// Tokenize source and iterate typed tokens.
     ///
     /// The source is copied; the original does not need to outlive the iterator.
     /// For zero-copy tokenization use [`tokenize_cstr`](Self::tokenize_cstr).
     ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use syntaqlite_syntax::TokenType;
+    /// use syntaqlite_syntax::typed::{grammar, TypedTokenizer};
+    ///
+    /// let tokenizer = TypedTokenizer::new(grammar());
+    /// let tokens: Vec<_> = tokenizer.tokenize("SELECT 1").collect();
+    ///
+    /// assert_eq!(tokens[0].token_type(), TokenType::Select);
+    /// assert_eq!(tokens[0].text(), "SELECT");
+    /// ```
+    ///
     /// # Panics
     ///
-    /// Panics if an iterator from a previous `tokenize()` call is still alive.
+    /// Panics if another cursor from this tokenizer is still active.
+    /// Drop the previous iterator before starting a new one.
     pub fn tokenize<'a>(
         &self,
         source: &'a str,
@@ -162,13 +225,27 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
         }
     }
 
-    /// Zero-copy variant: bind a null-terminated source and return an iterator over typed tokens.
+    /// Zero-copy tokenization over a null-terminated source buffer.
     ///
     /// No copy is performed. The source must be valid UTF-8 (panics otherwise).
     ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::ffi::CString;
+    /// use syntaqlite_syntax::TokenType;
+    /// use syntaqlite_syntax::typed::{grammar, TypedTokenizer};
+    ///
+    /// let tokenizer = TypedTokenizer::new(grammar());
+    /// let sql = CString::new("SELECT 1").unwrap();
+    /// let types: Vec<_> = tokenizer.tokenize_cstr(&sql).map(|t| t.token_type()).collect();
+    ///
+    /// assert!(types.contains(&TokenType::Select));
+    /// ```
+    ///
     /// # Panics
     ///
-    /// Panics if an iterator from a previous `tokenize()` call is still alive,
+    /// Panics if another cursor from this tokenizer is still active,
     /// or if `source` is not valid UTF-8.
     pub fn tokenize_cstr<'a>(
         &self,
@@ -204,7 +281,12 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
     }
 }
 
-/// A typed token: dialect token type + source text slice.
+/// Token value shared by typed and SQLite-specific tokenizer APIs.
+///
+/// Provides:
+///
+/// - Grammar-typed token kind.
+/// - Exact source text slice.
 #[derive(Debug, Clone, Copy)]
 pub struct TypedToken<'a, G: TypedGrammar> {
     token_type: G::Token,
@@ -212,7 +294,7 @@ pub struct TypedToken<'a, G: TypedGrammar> {
 }
 
 impl<'a, G: TypedGrammar> TypedToken<'a, G> {
-    /// The dialect-typed token variant.
+    /// The grammar-typed token variant.
     pub fn token_type(&self) -> G::Token {
         self.token_type
     }
@@ -223,13 +305,12 @@ impl<'a, G: TypedGrammar> TypedToken<'a, G> {
     }
 }
 
-/// A type-erased tokenizer. Yields [`AnyToken`]s whose token type is
-/// [`AnyTokenType`](crate::any::AnyTokenType), suitable for use across multiple dialects.
+/// Tokenizer alias for grammar-independent code that picks grammar at runtime.
 ///
 /// This is a type alias for [`TypedTokenizer<AnyGrammar>`].
 pub type AnyTokenizer = TypedTokenizer<AnyGrammar>;
 
-/// A type-erased token: [`AnyTokenType`](crate::any::AnyTokenType) + source text slice.
+/// Token alias for grammar-independent tokenization pipelines.
 pub type AnyToken<'a> = TypedToken<'a, AnyGrammar>;
 
 // ── Crate-internal ───────────────────────────────────────────────────────────
@@ -352,5 +433,70 @@ mod ffi {
         fn syntaqlite_tokenizer_reset(tok: *mut CTokenizer, source: *const c_char, len: u32);
         fn syntaqlite_tokenizer_next(tok: *mut CTokenizer, out: *mut CToken) -> u32;
         fn syntaqlite_tokenizer_destroy(tok: *mut CTokenizer);
+    }
+}
+
+#[cfg(all(test, feature = "sqlite"))]
+mod tests {
+    use std::ffi::CString;
+    use std::panic::{self, AssertUnwindSafe};
+
+    use super::{TokenType, Tokenizer};
+
+    #[test]
+    fn tokenizer_emits_expected_core_tokens() {
+        let tokenizer = Tokenizer::new();
+        let tokens: Vec<_> = tokenizer
+            .tokenize("SELECT x, 1 FROM t;")
+            .filter(|token| !matches!(token.token_type(), TokenType::Space | TokenType::Comment))
+            .map(|token| (token.token_type(), token.text().to_owned()))
+            .collect();
+
+        assert_eq!(
+            tokens,
+            vec![
+                (TokenType::Select, "SELECT".to_owned()),
+                (TokenType::Id, "x".to_owned()),
+                (TokenType::Comma, ",".to_owned()),
+                (TokenType::Integer, "1".to_owned()),
+                (TokenType::From, "FROM".to_owned()),
+                (TokenType::Id, "t".to_owned()),
+                (TokenType::Semi, ";".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizer_cstr_matches_str_path() {
+        let source = CString::new("SELECT 1;").expect("source has no interior NUL");
+        let tokenizer = Tokenizer::new();
+
+        let from_str: Vec<_> = tokenizer
+            .tokenize(source.to_str().expect("source is UTF-8"))
+            .map(|token| (token.token_type(), token.text().to_owned()))
+            .collect();
+
+        let from_cstr: Vec<_> = tokenizer
+            .tokenize_cstr(source.as_c_str())
+            .map(|token| (token.token_type(), token.text().to_owned()))
+            .collect();
+
+        assert_eq!(from_str, from_cstr);
+    }
+
+    #[test]
+    fn tokenizer_allows_only_one_live_cursor() {
+        let tokenizer = Tokenizer::new();
+        let mut cursor = tokenizer.tokenize("SELECT 1;");
+        assert!(cursor.next().is_some());
+
+        let reentrant_attempt = panic::catch_unwind(AssertUnwindSafe(|| {
+            let _cursor = tokenizer.tokenize("SELECT 2;");
+        }));
+        assert!(reentrant_attempt.is_err());
+
+        drop(cursor);
+        let second_count = tokenizer.tokenize("SELECT 2;").count();
+        assert!(second_count > 0);
     }
 }

@@ -3,14 +3,6 @@
 
 //! Dialect handle and token classification.
 
-pub(crate) mod catalog;
-pub(crate) mod dialect;
-pub(crate) mod schema;
+pub(crate) mod any;
 
-pub(crate) use dialect::Dialect;
-
-/// Return the built-in `SQLite` dialect handle.
-#[cfg(feature = "sqlite")]
-pub(crate) fn sqlite() -> Dialect {
-    crate::sqlite::dialect::dialect()
-}
+pub(crate) use any::Dialect;

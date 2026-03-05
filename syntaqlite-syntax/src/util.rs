@@ -6,19 +6,15 @@
 #[doc(inline)]
 pub use crate::cflags::SqliteFlag;
 
-/// An opaque snapshot of the active compile-time flags for a grammar.
+/// Snapshot of grammar compatibility flags (compile-time feature assumptions).
 ///
-/// Obtain one from [`AnyGrammar::cflags`](crate::any::AnyGrammar::cflags) and pass
-/// a clone back via [`AnyGrammar::with_cflags`](crate::any::AnyGrammar::with_cflags)
-/// to copy flag state from one grammar handle to another.
-///
-/// The set of available flag indices and their meanings are grammar-specific
-/// (e.g. the `SYNQ_CFLAG_IDX_*` constants exported by `syntaqlite`).
+/// Use this when you need to mirror a target engine build configuration across
+/// parser instances.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SqliteFlags(pub(crate) ffi::CCflags);
 
 impl SqliteFlags {
-    /// Returns `true` if the compile-time flag `flag` is set.
+    /// Returns `true` if compatibility flag `flag` is enabled.
     #[inline]
     pub fn has(&self, flag: SqliteFlag) -> bool {
         self.0.has(flag as u32)
@@ -27,13 +23,10 @@ impl SqliteFlags {
     // TODO(claude): add `set` and `clear` methods etc - match ffi.
 }
 
-/// A supported `SQLite` major.minor version.
+/// SQLite compatibility target used to select grammar behavior.
 ///
-/// Used to constrain a grammar to a specific `SQLite` release, enabling
-/// dead-code elimination of grammar rules introduced in later versions.
-///
-/// Patch versions are ignored — `"3.35.5"` and `"3.35.0"` both map to
-/// [`V3_35`](SqliteVersion::V3_35).
+/// Pin this when your application needs to parse according to a specific
+/// SQLite release. Patch versions are intentionally ignored.
 #[allow(missing_docs)]
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

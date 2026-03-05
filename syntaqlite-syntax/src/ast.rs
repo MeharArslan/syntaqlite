@@ -7,34 +7,27 @@ use crate::parser::AnyParsedStatement;
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
-/// A node type that can be resolved from the parser arena by [`AnyNodeId`].
+/// Trait for AST node views that can be materialized from arena IDs.
 ///
-/// Implemented by generated view structs so that generic containers like
-/// [`TypedNodeList`] can resolve children without grammar-specific code.
-///
-/// See also the symmetric [`GrammarTokenType`] for token enums.
+/// Implemented by generated node wrappers and used by generic traversals such
+/// as [`TypedNodeList`].
 pub trait GrammarNodeType<'a>: Sized {
     /// Resolve `id` to `Self`, or `None` if null, invalid, or tag mismatch.
     fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self>;
 }
 
-/// A token type that can be resolved from a raw ordinal and converted back.
+/// Trait for token enums that support typed <-> raw conversion.
 ///
-/// Each dialect's token enum implements this to enable generic typed tokenizer
-/// and cursor usage.
-///
-/// See also the symmetric [`GrammarNodeType`] for AST node types.
+/// Enables tokenizer/parser code that is generic over a grammar's token type.
 pub trait GrammarTokenType: Sized + Clone + Copy + std::fmt::Debug + Into<u32> {
-    /// Convert a type-erased [`AnyTokenType`] into this dialect's typed token
+    /// Convert a type-erased [`AnyTokenType`] into this grammar's typed token
     /// variant, or `None` if the ordinal is out of range.
     fn from_token_type(raw: AnyTokenType) -> Option<Self>;
 }
 
-/// A type-erased token type used by [`AnyGrammar`](crate::grammar::AnyGrammar).
+/// Type-erased token kind represented as a raw ordinal.
 ///
-/// Wraps a raw token type ordinal for use when the dialect is not known at
-/// compile time. The typed equivalent for the `SQLite` dialect is
-/// [`TokenType`](crate::sqlite::tokens::TokenType).
+/// Use this in grammar-agnostic paths where concrete token enums are unknown.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct AnyTokenType(pub(crate) u32);
@@ -61,11 +54,9 @@ impl GrammarTokenType for AnyTokenType {
     }
 }
 
-/// A type-erased node tag used by [`crate::grammar::AnyGrammar`].
+/// Type-erased AST node tag represented as a raw ordinal.
 ///
-/// Wraps a raw node tag ordinal for use when the dialect is not known at
-/// compile time. The typed equivalent for the `SQLite` dialect is
-/// `sqlite::ast::NodeTag`.
+/// Use this for grammar-agnostic AST introspection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct AnyNodeTag(pub(crate) u32);
@@ -86,11 +77,9 @@ impl AnyNodeTag {
     }
 }
 
-/// A raw arena node index. Identifies a node in the parser arena.
+/// Lifetime-free handle to a node in the parser arena.
 ///
-/// This is the untyped, lifetime-free handle used inside the engine. Dialect
-/// crates expose typed `XxxId` newtypes (e.g. `SelectStmtId`) that implement
-/// `TypedNodeId` and convert into this.
+/// Store this when you need stable node identity outside a borrowed AST view.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct AnyNodeId(pub(crate) u32);
@@ -105,10 +94,9 @@ impl AnyNodeId {
     }
 }
 
-/// A grammar-agnostic AST node used by [`AnyGrammar`](crate::grammar::AnyGrammar).
+/// Grammar-agnostic node view.
 ///
-/// Wraps the node's arena ID and parser `stmt_result` so that callers can inspect
-/// the node without a grammar-specific type.
+/// Useful for tooling that traverses trees without generated node enums.
 #[derive(Clone, Copy)]
 pub struct AnyNode<'a> {
     pub(crate) id: AnyNodeId,
@@ -135,10 +123,9 @@ impl AnyNode<'_> {
     }
 }
 
-/// A typed, read-only view over a node list in the parser arena.
+/// Typed read-only view over a list node in the arena.
 ///
-/// `G` is the dialect grammar; `T` is the element type — a generated view
-/// struct, another [`TypedNodeList`], or a heterogeneous node type.
+/// Used throughout generated AST APIs for child collections.
 #[derive(Clone, Copy)]
 pub struct TypedNodeList<'a, G: crate::grammar::TypedGrammar, T> {
     raw: &'a RawNodeList,
@@ -189,20 +176,18 @@ impl<'a, G: crate::grammar::TypedGrammar, T: GrammarNodeType<'a>> TypedNodeList<
     }
 }
 
-/// A lifetime-free handle to a specific typed AST node.
+/// Trait for typed node IDs generated per AST node kind.
 ///
-/// Generated as `XxxId` newtypes (e.g. `SelectStmtId`) for each concrete view
-/// struct. Can be stored without keeping a parser arena alive.
-///
-/// Resolve back to a typed view using the arena from a parse session.
+/// IDs are cheap, storable handles that can later be resolved against a parse
+/// result back into typed node views.
 pub trait TypedNodeId: Copy + Into<AnyNodeId> {
     /// The typed view produced when this ID is resolved against an arena.
     type Node<'a>: GrammarNodeType<'a>;
 }
 
-/// A typed field value extracted from an AST node.
+/// Reflected field value extracted from a node.
 ///
-/// Returned as elements of [`NodeFields`], which is produced by
+/// Used by grammar-agnostic AST tooling built on
 /// [`AnyParsedStatement::extract_fields`](crate::parser::AnyParsedStatement::extract_fields).
 #[derive(Clone, Copy, Debug)]
 pub enum FieldValue<'a> {
@@ -218,10 +203,10 @@ pub enum FieldValue<'a> {
     Enum(u32),
 }
 
-/// A stack-allocated, indexable collection of [`FieldValue`]s for a single AST node.
+/// Compact reflected field collection for one AST node.
 ///
-/// Returned by [`AnyParsedStatement::extract_fields`](crate::parser::AnyParsedStatement::extract_fields).
-/// Supports `fields[idx]` indexing; `FieldValue` is `Copy` so indexing yields an owned copy.
+/// Returned by [`AnyParsedStatement::extract_fields`](crate::parser::AnyParsedStatement::extract_fields)
+/// and indexable via `fields[idx]`.
 pub struct NodeFields<'a> {
     buf: [std::mem::MaybeUninit<FieldValue<'a>>; 16],
     len: usize,

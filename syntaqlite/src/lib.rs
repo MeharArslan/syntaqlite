@@ -12,8 +12,8 @@ pub(crate) mod dialect;
 #[cfg(feature = "fmt")]
 pub(crate) mod fmt;
 
-// Temporarily disabled during refactor.
-#[cfg(any())]
+// Incrementally re-enabled during refactor.
+#[cfg(feature = "validation")]
 pub(crate) mod semantic;
 
 #[cfg(feature = "sqlite")]
@@ -24,7 +24,9 @@ pub(crate) mod sqlite;
 #[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
 #[cfg(feature = "fmt")]
-pub use fmt::{FormatConfig, KeywordCase};
+pub use fmt::{FormatConfig, FormatError, KeywordCase};
+#[cfg(feature = "validation")]
+pub use semantic::{Diagnostic, DiagnosticMessage, Help, Severity, ValidationConfig};
 
 // Shared parser utility types used across both `any` and `typed` modules.
 pub use syntaqlite_syntax::any::MacroRegion;

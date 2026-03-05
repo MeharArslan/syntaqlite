@@ -31,8 +31,8 @@ pub(crate) struct DrainResult {
 }
 
 /// Two cursors advancing monotonically through sorted comment and token arrays.
-/// Shared via `&` across recursive format calls; interior mutability is required
-/// because the recursive `format_child` closure captures `&CommentCtx`.
+/// Shared via `&` across iterative formatting traversal; interior mutability is
+/// required because interpreter state carries a shared `&CommentCtx`.
 ///
 /// Owns its comment and token data (no lifetime parameter).
 pub(crate) struct CommentCtx {
@@ -50,6 +50,11 @@ impl CommentCtx {
             cursor: Cell::new(0),
             token_cursor: Cell::new(0),
         }
+    }
+
+    /// Return owned storage so callers can recycle vector allocations.
+    pub(crate) fn into_parts(self) -> (Vec<CommentEntry>, Vec<TokenEntry>) {
+        (self.comments, self.tokens)
     }
 
     /// End offset of the token just before the current token cursor position.

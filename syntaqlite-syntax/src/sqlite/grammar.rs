@@ -11,7 +11,7 @@ unsafe extern "C" {
     fn syntaqlite_sqlite_grammar() -> crate::typed::CGrammar;
 }
 
-/// The dialect grammar handle.
+/// The SQLite SQL grammar handle.
 ///
 /// Wraps a [`AnyGrammar`] and implements [`TypedGrammar`]. Obtain via [`grammar()`];
 /// configure with [`with_version`](Self::with_version) and [`with_cflags`](Self::with_cflags).
@@ -53,7 +53,7 @@ impl TypedGrammar for Grammar {
     type Token = super::tokens::TokenType;
 }
 
-/// Returns the dialect grammar handle.
+/// Returns the SQLite SQL grammar handle.
 pub fn grammar() -> Grammar {
     // SAFETY: syntaqlite_sqlite_grammar() returns a valid static C grammar.
     let raw = unsafe { AnyGrammar::new(syntaqlite_sqlite_grammar()) };

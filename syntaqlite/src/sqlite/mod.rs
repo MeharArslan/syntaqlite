@@ -5,4 +5,3 @@
 
 pub(crate) mod dialect;
 pub(crate) mod fmt_statics;
-pub(crate) mod functions_catalog;

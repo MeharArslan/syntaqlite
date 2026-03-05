@@ -5,6 +5,8 @@
 //!
 //! Formats SQL source text using a bytecode interpreter driven by
 //! per-node formatting instructions compiled from `.synq` definitions.
+//! Layout selection is handled by a Wadler-style document renderer in
+//! [`doc`](self::doc), using `group`/`line`/`softline` primitives.
 //! The high-level entry point is [`Formatter`](crate::Formatter);
 //! configuration types are re-exported at the crate root as
 //! [`FormatConfig`](crate::FormatConfig) and

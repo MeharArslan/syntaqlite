@@ -9,7 +9,7 @@
 
 /// A diagnostic message associated with a source range.
 #[derive(Debug, Clone)]
-pub(crate) struct Diagnostic {
+pub struct Diagnostic {
     /// Byte offset of the start of the diagnostic range.
     pub start_offset: usize,
     /// Byte offset of the end of the diagnostic range.
@@ -27,7 +27,7 @@ pub(crate) struct Diagnostic {
 /// Each variant carries the identifiers needed for machine-readable
 /// consumption; [`fmt::Display`](std::fmt::Display) produces the human-readable form.
 #[derive(Debug, Clone)]
-pub(crate) enum DiagnosticMessage {
+pub enum DiagnosticMessage {
     /// Referenced table name was not found in any catalog layer.
     UnknownTable {
         /// The unresolved table name.
@@ -94,7 +94,7 @@ impl std::fmt::Display for DiagnosticMessage {
 
 impl DiagnosticMessage {
     /// Returns `true` for parse errors (`Other`), `false` for semantic diagnostics.
-    pub(crate) fn is_parse_error(&self) -> bool {
+    pub fn is_parse_error(&self) -> bool {
         matches!(self, Self::Other(_))
     }
 
@@ -110,7 +110,7 @@ impl DiagnosticMessage {
 
 /// Structured help information attached to a diagnostic.
 #[derive(Debug, Clone)]
-pub(crate) enum Help {
+pub enum Help {
     /// A "did you mean?" suggestion with the corrected identifier.
     Suggestion(String),
 }
@@ -141,7 +141,7 @@ impl Diagnostic {
 
 /// Diagnostic severity level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Severity {
+pub enum Severity {
     /// Blocking issue that should fail validation.
     Error,
     /// Suspicious but non-fatal issue.

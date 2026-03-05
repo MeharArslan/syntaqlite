@@ -24,8 +24,6 @@ static DIALECT: LazyLock<Dialect> = LazyLock::new(|| {
         SQLITE_FMT_ENUM_DISPLAY,
         SQLITE_FMT_OPS,
         SQLITE_FMT_DISPATCH,
-        &[],
-        &[],
     )
 });
 

@@ -6,7 +6,10 @@
 use crate::any::{AnyNodeTag, AnyTokenType};
 use crate::util::{SqliteFlags, SqliteVersion};
 
-/// The kind of value a struct field holds in the AST node layout.
+/// Runtime field-value shape used when reflecting over AST nodes.
+///
+/// This powers grammar-agnostic tooling that inspects nodes without generated
+/// Rust types.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FieldKind {
@@ -34,9 +37,10 @@ impl FieldKind {
     }
 }
 
-/// Semantic category of a SQL token, used for syntax highlighting.
+/// High-level semantic class of a token.
 ///
-/// Returned by [`AnyGrammar::token_category`].
+/// Commonly used for syntax highlighting, token styling, and lightweight
+/// heuristics before full semantic analysis.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenCategory {
     /// SQL keyword (SELECT, FROM, WHERE, …)
@@ -81,9 +85,10 @@ impl From<ffi::CTokenCategory> for TokenCategory {
     }
 }
 
-/// A reference to one field's metadata entry in the grammar tables.
+/// Metadata for one AST field of one node type.
 ///
-/// Obtained from [`AnyGrammar::field_meta`].
+/// Use this to build generic inspectors, serializers, or debug UIs that can
+/// walk arbitrary grammars.
 pub struct FieldMeta<'a>(pub(crate) &'a ffi::CFieldMeta);
 
 impl FieldMeta<'_> {
@@ -138,9 +143,10 @@ impl FieldMeta<'_> {
     }
 }
 
-/// Token-usage flags set by the parser during disambiguation.
+/// Parser-inferred semantic usage for an individual token occurrence.
 ///
-/// Returned as part of [`crate::parser::TypedParserToken`].
+/// This complements lexical token kind and helps distinguish ambiguous tokens
+/// (for example keyword text used as an identifier).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct ParserTokenFlags(u8);
 
@@ -177,10 +183,10 @@ impl ParserTokenFlags {
     }
 }
 
-/// A typed grammar handle.
+/// Trait implemented by generated grammar handles.
 ///
-/// Implement this for a grammar struct (e.g. `sqlite::grammar::Grammar`).
-/// Must be convertible to [`AnyGrammar`] via `Into<AnyGrammar>`.
+/// End users typically consume implementations rather than writing them.
+/// The trait links a grammar to its typed node and token enums.
 pub trait TypedGrammar: Copy + Into<AnyGrammar> {
     /// The top-level typed AST node enum for this grammar.
     type Node<'a>: crate::ast::GrammarNodeType<'a>;
@@ -193,14 +199,11 @@ pub trait TypedGrammar: Copy + Into<AnyGrammar> {
     type Token: crate::ast::GrammarTokenType;
 }
 
-/// A type-erased grammar handle shared by all dialects.
+/// Grammar handle for runtime-configurable, grammar-agnostic workflows.
 ///
-/// Carries the target `SQLite` version and compile-time flags for a dialect.
-/// It is cheap to copy and safe to send across threads.
-///
-/// Obtain one via a grammar-specific wrapper (e.g. `SqliteGrammar`);
-/// use [`typed::TypedGrammar`](crate::typed::TypedGrammar) when you need the typed dialect API,
-/// or pass `AnyGrammar` directly to [`crate::Parser`] and other grammar-agnostic infrastructure.
+/// Use `AnyGrammar` when grammar selection/configuration is dynamic (plugins,
+/// LSP hosts, multi-grammar test harnesses). It carries version/cflag knobs
+/// and introspection metadata, while remaining cheap to copy.
 #[derive(Clone, Copy)]
 pub struct AnyGrammar {
     pub(crate) inner: ffi::CGrammar,
@@ -219,32 +222,34 @@ impl AnyGrammar {
     ///
     /// # Safety
     /// The `template` pointer inside `inner` must point to valid, `'static`
-    /// C grammar tables (e.g. returned by a dialect's `extern "C"` grammar
+    /// C grammar tables (e.g. returned by a grammar's `extern "C"` grammar
     /// accessor such as `syntaqlite_sqlite_grammar()`).
     pub(crate) unsafe fn new(inner: ffi::CGrammar) -> Self {
         AnyGrammar { inner }
     }
 
-    /// Set the target `SQLite` version.
+    /// Pin this grammar handle to a target SQLite version.
+    ///
+    /// Useful when your product must emulate a specific engine release.
     #[must_use]
     pub fn with_version(mut self, version: SqliteVersion) -> Self {
         self.inner.sqlite_version = version.as_int();
         self
     }
 
-    /// Replace the entire cflags bitfield.
+    /// Replace compile-time compatibility flags on this handle.
     #[must_use]
     pub fn with_cflags(mut self, flags: SqliteFlags) -> Self {
         self.inner.cflags = flags.0;
         self
     }
 
-    /// The target `SQLite` version.
+    /// Target SQLite version currently configured on this handle.
     pub fn version(&self) -> SqliteVersion {
         SqliteVersion::from_int(self.inner.sqlite_version)
     }
 
-    /// The active compile-time flags.
+    /// Active compile-time compatibility flags.
     pub fn cflags(&self) -> SqliteFlags {
         SqliteFlags(self.inner.cflags)
     }
@@ -256,7 +261,7 @@ impl AnyGrammar {
         unsafe { &*self.inner.template }
     }
 
-    /// Return the node name for the given tag.
+    /// Return the human-readable node name for `tag`.
     ///
     /// # Panics
     /// Panics if `tag` is out of bounds for this grammar.
@@ -277,7 +282,7 @@ impl AnyGrammar {
         }
     }
 
-    /// Whether the given node tag represents a list node.
+    /// Whether `tag` identifies a list node shape.
     pub fn is_list(&self, tag: AnyNodeTag) -> bool {
         let raw = self.template();
         let idx = tag.0 as usize;
@@ -289,7 +294,7 @@ impl AnyGrammar {
         unsafe { *raw.list_tags.add(idx) != 0 }
     }
 
-    /// Return the field metadata for a node tag as an iterator of [`FieldMeta`].
+    /// Return field metadata for nodes with tag `tag`.
     pub fn field_meta(&self, tag: AnyNodeTag) -> impl ExactSizeIterator<Item = FieldMeta<'static>> {
         let raw = self.template();
         let idx = tag.0 as usize;
@@ -311,8 +316,7 @@ impl AnyGrammar {
         slice.iter().map(FieldMeta)
     }
 
-    /// Classify a token using parser-assigned flags, falling back to the
-    /// static token-category table.
+    /// Classify a token for presentation/analysis using parser context when available.
     pub fn classify_token(
         &self,
         token_type: AnyTokenType,
@@ -329,7 +333,7 @@ impl AnyGrammar {
         }
     }
 
-    /// Return the [`TokenCategory`] for a token type ordinal.
+    /// Return the default semantic category for a token type ordinal.
     pub fn token_category(&self, token_type: AnyTokenType) -> TokenCategory {
         let raw = self.template();
         let idx = token_type.0 as usize;
@@ -342,7 +346,7 @@ impl AnyGrammar {
         TokenCategory::from(ffi::CTokenCategory::from_u8(byte))
     }
 
-    /// Iterate over all keyword entries in the grammar's exported keyword table.
+    /// Iterate all keywords known to this grammar.
     ///
     /// Yields a [`KeywordEntry`] for each keyword, containing the token type
     /// ordinal and the keyword lexeme (e.g. `SELECT`, `WHERE`).
@@ -376,9 +380,9 @@ impl TypedGrammar for AnyGrammar {
     type Token = AnyTokenType;
 }
 
-/// A single entry from the grammar's exported keyword table.
+/// One grammar keyword entry.
 ///
-/// Yielded by [`AnyGrammar::keywords`].
+/// Yielded by [`AnyGrammar::keywords`] for completions, lexers, and tooling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KeywordEntry {
     /// The token type for this keyword.

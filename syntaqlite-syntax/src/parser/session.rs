@@ -1,0 +1,443 @@
+// Copyright 2025 The syntaqlite Authors. All rights reserved.
+// Licensed under the Apache License, Version 2.0.
+
+#[cfg(feature = "sqlite")]
+use super::{
+    AnyParsedStatement, Comment, IncrementalParseSession, ParseErrorKind, ParserConfig,
+    ParserTokenFlags, TypedParseError, TypedParseSession, TypedParsedStatement, TypedParser,
+    TypedParserToken,
+};
+
+/// High-level entry point for parsing `SQLite` SQL into typed AST statements.
+///
+/// Use this in most applications.
+///
+/// - Hides grammar setup and returns SQLite SQL-native result types.
+/// - Reusable across many SQL inputs.
+/// - Supports batch/script parsing via [`parse`](Self::parse).
+/// - Supports editor-style token feeds via [`incremental_parse`](Self::incremental_parse).
+///
+/// Advanced generic APIs exist in [`crate::typed`] and [`crate::any`].
+#[cfg(feature = "sqlite")]
+#[doc(hidden)]
+pub struct Parser(pub(super) TypedParser<crate::sqlite::grammar::Grammar>);
+
+#[cfg(feature = "sqlite")]
+impl Parser {
+    /// Create a parser for the `SQLite` grammar with default configuration.
+    pub fn new() -> Self {
+        Parser(TypedParser::new(crate::sqlite::grammar::grammar()))
+    }
+
+    /// Create a parser for the `SQLite` grammar with custom configuration.
+    pub fn with_config(config: &ParserConfig) -> Self {
+        Parser(TypedParser::with_config(
+            crate::sqlite::grammar::grammar(),
+            config,
+        ))
+    }
+
+    /// Parse a SQL script and return a statement-by-statement session.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use syntaqlite_syntax::{ParseErrorKind, Parser};
+    ///
+    /// let parser = Parser::new();
+    /// let mut session = parser.parse("SELECT 1; SELECT FROM;");
+    /// let mut ok_count = 0;
+    ///
+    /// while let Some(result) = session.next() {
+    ///     match result {
+    ///         Ok(stmt) => {
+    ///             ok_count += 1;
+    ///             assert!(stmt.root().is_some());
+    ///         }
+    ///         Err(err) => {
+    ///             assert!(!err.message().is_empty());
+    ///             if err.kind() == ParseErrorKind::Fatal {
+    ///                 break;
+    ///             }
+    ///         }
+    ///     }
+    /// }
+    ///
+    /// assert!(ok_count >= 1);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if another session from this parser is still active.
+    /// Drop the previous session before starting a new one.
+    pub fn parse(&self, source: &str) -> ParseSession {
+        ParseSession(self.0.parse(source))
+    }
+
+    /// Start an incremental parse session for token-by-token input.
+    ///
+    /// This mode is intended for IDEs, completion engines, and other workflows
+    /// where SQL is consumed progressively.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use syntaqlite_syntax::{Parser, TokenType};
+    ///
+    /// let parser = Parser::new();
+    /// let mut session = parser.incremental_parse("SELECT 1");
+    ///
+    /// assert!(session.feed_token(TokenType::Select, 0..6).is_none());
+    /// assert!(session.feed_token(TokenType::Integer, 7..8).is_none());
+    ///
+    /// let stmt = session.finish().and_then(Result::ok).unwrap();
+    /// assert!(stmt.root().is_some());
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if another session from this parser is still active.
+    /// Drop the previous session before starting a new one.
+    pub fn incremental_parse(&self, source: &str) -> IncrementalParseSession {
+        self.0.incremental_parse(source).into()
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl Default for Parser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Cursor over statements parsed from one SQL source string.
+///
+/// Useful for SQL scripts containing multiple statements.
+///
+/// - Returns one statement at a time via [`next`](Self::next).
+/// - Reports errors per statement instead of failing the whole script immediately.
+/// - Can continue after recoverable errors.
+#[cfg(feature = "sqlite")]
+#[doc(hidden)]
+pub struct ParseSession(pub(super) TypedParseSession<crate::sqlite::grammar::Grammar>);
+
+#[cfg(feature = "sqlite")]
+impl ParseSession {
+    /// Parse and return the next statement from the source.
+    ///
+    /// Returns:
+    /// - `Some(Ok(_))` — successfully parsed statement; use
+    ///   [`ParsedStatement::root`] to access the typed AST,
+    ///   [`ParsedStatement::tokens`] / [`ParsedStatement::comments`] for
+    ///   per-statement token data.
+    /// - `Some(Err(_))` — syntax error; the error's
+    ///   [`root()`](ParseError::root) may contain a partially recovered tree.
+    ///   Use [`ParseError::kind`] to distinguish recovered vs fatal.
+    ///   Call again to continue when recovery succeeds.
+    /// - `None` — all input has been consumed.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let parser = syntaqlite_syntax::Parser::new();
+    /// let mut session = parser.parse("SELECT 1; SELECT 2;");
+    ///
+    /// assert!(session.next().is_some());
+    /// assert!(session.next().is_some());
+    /// assert!(session.next().is_none());
+    /// ```
+    #[allow(clippy::should_implement_trait)]
+    pub fn next(&mut self) -> Option<Result<ParsedStatement<'_>, ParseError<'_>>> {
+        Some(match self.0.next()? {
+            Ok(result) => Ok(ParsedStatement(result)),
+            Err(err) => Err(ParseError(err)),
+        })
+    }
+
+    /// Original SQL source bound to this session.
+    pub fn source(&self) -> &str {
+        self.0.source()
+    }
+
+    /// Return a grammar-agnostic view over the current parse arena state.
+    ///
+    /// Useful for generic introspection after consuming the session.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let parser = syntaqlite_syntax::Parser::new();
+    /// let mut session = parser.parse("SELECT 1;");
+    /// while session.next().is_some() {}
+    ///
+    /// let any = session.arena_result();
+    /// assert!(!any.root_id().is_null());
+    /// ```
+    pub fn arena_result(&self) -> AnyParsedStatement<'_> {
+        self.0.arena_result()
+    }
+}
+
+/// One parser-observed token from a parsed statement.
+///
+/// Returned by [`ParsedStatement::tokens`]. This is useful when building
+/// token-aware tooling such as:
+///
+/// - Semantic syntax highlighting.
+/// - Identifier/function/type classification.
+/// - Statement-level token diagnostics.
+///
+/// Requires `collect_tokens: true` in [`ParserConfig`].
+///
+/// # Examples
+///
+/// ```rust
+/// use syntaqlite_syntax::{Parser, ParserConfig, TokenType};
+///
+/// let parser = Parser::with_config(&ParserConfig::default().with_collect_tokens(true));
+/// let mut session = parser.parse("SELECT max(x) FROM t;");
+/// let stmt = session.next().and_then(Result::ok).unwrap();
+///
+/// let tokens: Vec<_> = stmt.tokens().collect();
+/// assert!(!tokens.is_empty());
+/// assert!(tokens.iter().any(|t| t.token_type() == TokenType::Select));
+///
+/// // Flags expose parser-inferred role information (identifier/function/type).
+/// let _has_semantic_role = tokens.iter().any(|t| {
+///     let f = t.flags();
+///     f.used_as_identifier() || f.used_as_function() || f.used_as_type()
+/// });
+/// ```
+#[cfg(feature = "sqlite")]
+pub struct ParserToken<'a>(pub(super) TypedParserToken<'a, crate::sqlite::grammar::Grammar>);
+
+#[cfg(feature = "sqlite")]
+impl<'a> ParserToken<'a> {
+    /// Exact source text for this token.
+    ///
+    /// Preserves original casing and quoting from input SQL.
+    pub fn text(&self) -> &'a str {
+        self.0.text()
+    }
+
+    /// Token kind from the SQLite SQL grammar.
+    ///
+    /// This is the lexical class (keyword, identifier, operator, etc.).
+    pub fn token_type(&self) -> crate::sqlite::tokens::TokenType {
+        self.0.token_type()
+    }
+
+    /// Semantic usage flags inferred by the parser.
+    ///
+    /// Use this to distinguish contextual role, for example:
+    ///
+    /// - Keyword text used as an identifier.
+    /// - Function-call names.
+    /// - Type names.
+    pub fn flags(&self) -> ParserTokenFlags {
+        self.0.flags()
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl std::fmt::Debug for ParserToken<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ParserToken")
+            .field("text", &self.0.text())
+            .field("token_type", &self.0.token_type())
+            .field("flags", &self.0.flags())
+            .finish()
+    }
+}
+
+/// Parse result for one successfully recognized `SQLite` statement.
+///
+/// Contains statement-local data:
+///
+/// - Typed AST root (`root()`).
+/// - Optional token stream (`tokens()`).
+/// - Optional comments (`comments()`).
+/// - Original source slice (`source()`).
+#[cfg(feature = "sqlite")]
+#[doc(hidden)]
+pub struct ParsedStatement<'a>(
+    pub(super) TypedParsedStatement<'a, crate::sqlite::grammar::Grammar>,
+);
+
+#[cfg(feature = "sqlite")]
+impl<'a> ParsedStatement<'a> {
+    /// Typed AST root for the statement, if one was produced.
+    pub fn root(&self) -> Option<crate::sqlite::ast::Stmt<'a>> {
+        self.0.root()
+    }
+
+    /// The source text bound to this result.
+    pub fn source(&self) -> &'a str {
+        self.0.source()
+    }
+
+    /// Statement-local token stream with parser usage flags.
+    ///
+    /// Requires `collect_tokens: true` in [`ParserConfig`].
+    pub fn tokens(&self) -> impl Iterator<Item = ParserToken<'a>> {
+        self.0.tokens().map(ParserToken)
+    }
+
+    /// Comments that belong to this statement.
+    ///
+    /// Requires `collect_tokens: true` in [`ParserConfig`].
+    pub fn comments(&self) -> impl Iterator<Item = Comment<'a>> {
+        self.0.comments()
+    }
+
+    /// Convert this result into the grammar-agnostic [`AnyParsedStatement`].
+    ///
+    /// Use this when handing statement data to grammar-independent tooling.
+    pub fn erase(&self) -> AnyParsedStatement<'a> {
+        self.0.erase()
+    }
+}
+
+/// Parse error for one `SQLite` statement.
+///
+/// Includes diagnostics you can show directly to users:
+///
+/// - Error class (`kind()`: recovered vs fatal).
+/// - Error message (`message()`).
+/// - Optional location (`offset()` / `length()`).
+/// - Optional partial recovery tree (`root()`).
+#[cfg(feature = "sqlite")]
+#[doc(hidden)]
+pub struct ParseError<'a>(pub(super) TypedParseError<'a, crate::sqlite::grammar::Grammar>);
+
+#[cfg(feature = "sqlite")]
+impl<'a> ParseError<'a> {
+    /// Whether parsing recovered (`Recovered`) or fully failed (`Fatal`).
+    pub fn kind(&self) -> ParseErrorKind {
+        self.0.kind()
+    }
+
+    /// True if this error was recovered and yielded a partial tree.
+    pub fn is_recovered(&self) -> bool {
+        self.0.is_recovered()
+    }
+
+    /// True if this error is fatal (unrecoverable).
+    pub fn is_fatal(&self) -> bool {
+        self.0.is_fatal()
+    }
+
+    /// Human-readable diagnostic text.
+    pub fn message(&self) -> &str {
+        self.0.message()
+    }
+
+    /// Byte offset in the original source, if known.
+    pub fn offset(&self) -> Option<usize> {
+        self.0.offset()
+    }
+
+    /// Byte length of the offending range, if known.
+    pub fn length(&self) -> Option<usize> {
+        self.0.length()
+    }
+
+    /// Partial AST recovered from invalid input, if available.
+    pub fn root(&self) -> Option<crate::sqlite::ast::Stmt<'a>> {
+        self.0.root()
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl std::fmt::Debug for ParseError<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl std::fmt::Display for ParseError<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl std::error::Error for ParseError<'_> {}
+
+#[cfg(all(test, feature = "sqlite"))]
+mod tests {
+    use std::panic::{self, AssertUnwindSafe};
+
+    use super::{ParseErrorKind, Parser, ParserConfig};
+    use crate::{CommentKind, TokenType};
+
+    #[test]
+    fn parser_continues_after_statement_error() {
+        let parser = Parser::new();
+        let mut session = parser.parse("SELECT 1; SELECT ; SELECT 2;");
+
+        let first = session.next().expect("first statement is present");
+        assert!(matches!(first, Ok(statement) if statement.root().is_some()));
+
+        let second = session.next().expect("second statement is present");
+        let error = match second {
+            Ok(_) => panic!("second statement should fail"),
+            Err(error) => error,
+        };
+        assert!(!error.message().is_empty());
+        assert_ne!(error.is_fatal(), error.is_recovered());
+        assert!(matches!(
+            error.kind(),
+            ParseErrorKind::Recovered | ParseErrorKind::Fatal
+        ));
+
+        let third = session.next().expect("third statement is present");
+        assert!(matches!(third, Ok(statement) if statement.root().is_some()));
+        assert!(session.next().is_none());
+    }
+
+    #[test]
+    fn parser_collect_tokens_and_comments() {
+        let parser = Parser::with_config(&ParserConfig::default().with_collect_tokens(true));
+        let mut session = parser.parse("/* lead */ SELECT 1 -- tail\n;");
+
+        let statement = session
+            .next()
+            .expect("statement is present")
+            .expect("statement parses successfully");
+
+        let token_types: Vec<_> = statement.tokens().map(|token| token.token_type()).collect();
+        assert!(token_types.contains(&TokenType::Select));
+        assert!(token_types.contains(&TokenType::Integer));
+
+        let comments: Vec<_> = statement.comments().collect();
+        assert!(
+            comments
+                .iter()
+                .any(|comment| comment.kind == CommentKind::Block && comment.text.contains("lead"))
+        );
+        assert!(
+            comments
+                .iter()
+                .any(|comment| comment.kind == CommentKind::Line && comment.text.contains("tail"))
+        );
+    }
+
+    #[test]
+    fn parser_allows_only_one_live_session() {
+        let parser = Parser::new();
+        let session = parser.parse("SELECT 1;");
+
+        let reentrant_attempt = panic::catch_unwind(AssertUnwindSafe(|| {
+            let _session = parser.parse("SELECT 2;");
+        }));
+        assert!(reentrant_attempt.is_err());
+
+        drop(session);
+
+        let mut second = parser.parse("SELECT 2;");
+        let result = second.next().expect("statement is present");
+        assert!(matches!(result, Ok(statement) if statement.root().is_some()));
+    }
+}

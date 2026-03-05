@@ -5,10 +5,11 @@ use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, MacroReg
 
 use super::comment::{CommentCtx, DrainResult};
 use super::doc::{DocArena, DocId, NIL_DOC};
+use super::formatter::Formatter;
 use crate::dialect::Dialect;
 use syntaqlite_common::fmt::bytecode::opcodes;
 
-/// Shared context threaded through the recursive formatting tree.
+/// Shared context threaded through the iterative formatting traversal.
 pub(crate) struct FmtCtx<'a> {
     pub dialect: Dialect,
     pub reader: AnyParsedStatement<'a>,
@@ -25,25 +26,26 @@ impl<'a> FmtCtx<'a> {
 
 /// Reusable scratch buffers for the iterative interpret loop.
 pub(super) struct InterpretScratch {
-    gn_stack: Vec<GNFrame>,
+    group_nest: Vec<GroupNestFrame>,
+    calls: Vec<CallFrame>,
+    for_each: Vec<ForEachState>,
 }
 
 impl InterpretScratch {
     pub(super) fn new() -> Self {
         InterpretScratch {
-            gn_stack: Vec::new(),
+            group_nest: Vec::new(),
+            calls: Vec::new(),
+            for_each: Vec::new(),
         }
     }
 }
 
 // ── Iterative interpreter ────────────────────────────────────────────────
 
-struct CallFrame<'a> {
-    ops: &'a [u8],
-    ops_count: usize,
+struct CallFrame {
     ip: usize,
     node_id: AnyNodeId,
-    list_children: Option<&'a [AnyNodeId]>,
     running: DocId,
     pending: DocId,
     gn_save: usize,
@@ -57,13 +59,19 @@ enum ReturnAction {
 }
 
 #[allow(clippy::too_many_lines)]
-pub(super) fn interpret_node<'a>(
-    ctx: &'a FmtCtx<'a>,
-    root_id: AnyNodeId,
-    consumed_regions: &mut [bool],
-    arena: &mut DocArena<'a>,
-    scratch: &mut InterpretScratch,
-) -> DocId {
+impl Formatter {
+    pub(super) fn interpret_node<'a>(
+        &mut self,
+        ctx: &FmtCtx<'a>,
+        root_id: AnyNodeId,
+        arena: &mut DocArena<'a>,
+    ) -> DocId {
+        self.consumed_regions.clear();
+        self.consumed_regions
+            .resize(ctx.macro_regions.len(), false);
+        let consumed_regions = &mut self.consumed_regions;
+        let scratch = &mut self.interpret_scratch;
+
     if root_id.is_null() {
         return NIL_DOC;
     }
@@ -75,49 +83,43 @@ pub(super) fn interpret_node<'a>(
     let Some((ops_bytes, ops_len)) = ctx.dialect.fmt_dispatch(tag) else {
         return NIL_DOC;
     };
-    let children = ctx.reader.list_children(root_id);
-
-    let mut call_stack: Vec<CallFrame<'a>> = Vec::new();
-    let mut for_each_stack: Vec<ForEachState<'a>> = Vec::new();
+    scratch.group_nest.clear();
+    scratch.calls.clear();
+    scratch.for_each.clear();
 
     let mut cur_node_id: AnyNodeId = root_id;
     let mut ops: &[u8] = &ops_bytes[..ops_len * 6];
     let mut ops_count: usize = ops_len;
     let mut fields = fields;
-    let mut list_children: Option<&'a [AnyNodeId]> = children;
     let mut running: DocId = NIL_DOC;
     let mut pending: DocId = NIL_DOC;
-    let mut gn_save = scratch.gn_stack.len();
-    let mut fe_save = for_each_stack.len();
+    let mut gn_save = scratch.group_nest.len();
+    let mut fe_save = scratch.for_each.len();
     let mut ip: usize = 0;
     let has_comments = ctx.comment_ctx.is_some();
 
     macro_rules! push_call_frame {
         ($child_id:expr, $child_ops_bytes:expr, $child_ops_len:expr,
-         $child_fields:expr, $child_children:expr, $return_action_val:expr) => {{
+         $child_fields:expr, $return_action_val:expr) => {{
             let frame = CallFrame {
-                ops,
-                ops_count,
                 ip: ip + 1,
                 node_id: cur_node_id,
-                list_children,
                 running,
                 pending,
                 gn_save,
                 fe_save,
                 return_action: $return_action_val,
             };
-            call_stack.push(frame);
+            scratch.calls.push(frame);
 
             cur_node_id = $child_id;
             ops = &$child_ops_bytes[..$child_ops_len * 6];
             ops_count = $child_ops_len;
             fields = $child_fields;
-            list_children = $child_children;
             running = NIL_DOC;
             pending = NIL_DOC;
-            gn_save = scratch.gn_stack.len();
-            fe_save = for_each_stack.len();
+            gn_save = scratch.group_nest.len();
+            fe_save = scratch.for_each.len();
             ip = 0;
             continue;
         }};
@@ -126,25 +128,28 @@ pub(super) fn interpret_node<'a>(
     loop {
         if ip >= ops_count {
             let result = arena.cat(running, pending);
-            scratch.gn_stack.truncate(gn_save);
-            for_each_stack.truncate(fe_save);
+            scratch.group_nest.truncate(gn_save);
+            scratch.for_each.truncate(fe_save);
 
-            if call_stack.is_empty() {
+            if scratch.calls.is_empty() {
                 return result;
             }
 
-            let frame = call_stack
+            let frame = scratch
+                .calls
                 .pop()
                 .expect("call_stack must contain a parent frame");
             cur_node_id = frame.node_id;
-            ops = frame.ops;
-            ops_count = frame.ops_count;
             ip = frame.ip;
-            let Some((_, restored_fields)) = ctx.reader.extract_fields(cur_node_id) else {
+            let Some((restored_tag, restored_fields)) = ctx.reader.extract_fields(cur_node_id) else {
                 panic!("restored node must resolve to fields");
             };
+            let Some((restored_ops, restored_ops_len)) = ctx.dialect.fmt_dispatch(restored_tag) else {
+                panic!("restored node must resolve to formatter ops");
+            };
+            ops = &restored_ops[..restored_ops_len * 6];
+            ops_count = restored_ops_len;
             fields = restored_fields;
-            list_children = frame.list_children;
             running = frame.running;
             pending = frame.pending;
             gn_save = frame.gn_save;
@@ -228,13 +233,11 @@ pub(super) fn interpret_node<'a>(
                         && let Some((child_ops_bytes, child_ops_len)) =
                             ctx.dialect.fmt_dispatch(ctag)
                     {
-                        let child_children = ctx.reader.list_children(child_id);
                         push_call_frame!(
                             child_id,
                             child_ops_bytes,
                             child_ops_len,
                             child_fields,
-                            child_children,
                             return_action
                         );
                     }
@@ -254,35 +257,35 @@ pub(super) fn interpret_node<'a>(
                 }
             }
             FmtOp::GroupStart => {
-                scratch.gn_stack.push(GNFrame::Group(running));
+                scratch.group_nest.push(GroupNestFrame::Group(running));
                 running = NIL_DOC;
             }
             FmtOp::GroupEnd => {
                 running = arena.cat(running, pending);
                 pending = NIL_DOC;
                 let inner = running;
-                match scratch.gn_stack.pop().expect("unmatched GroupEnd") {
-                    GNFrame::Group(parent) => {
+                match scratch.group_nest.pop().expect("unmatched GroupEnd") {
+                    GroupNestFrame::Group(parent) => {
                         let g = arena.group(inner);
                         running = arena.cat(parent, g);
                     }
-                    GNFrame::Nest(..) => panic!("expected Group frame"),
+                    GroupNestFrame::Nest(..) => panic!("expected Group frame"),
                 }
             }
             FmtOp::NestStart(indent) => {
-                scratch.gn_stack.push(GNFrame::Nest(indent, running));
+                scratch.group_nest.push(GroupNestFrame::Nest(indent, running));
                 running = NIL_DOC;
             }
             FmtOp::NestEnd => {
                 running = arena.cat(running, pending);
                 pending = NIL_DOC;
                 let inner = running;
-                match scratch.gn_stack.pop().expect("unmatched NestEnd") {
-                    GNFrame::Nest(indent, parent) => {
+                match scratch.group_nest.pop().expect("unmatched NestEnd") {
+                    GroupNestFrame::Nest(indent, parent) => {
                         let n = arena.nest(indent, inner);
                         running = arena.cat(parent, n);
                     }
-                    GNFrame::Group(_) => panic!("expected Nest frame"),
+                    GroupNestFrame::Group(_) => panic!("expected Nest frame"),
                 }
             }
             FmtOp::IfSet(idx, skip) => {
@@ -311,8 +314,8 @@ pub(super) fn interpret_node<'a>(
                     if children.is_empty() {
                         ip = skip_to_foreach_end(ops, ops_count, ip);
                     } else {
-                        for_each_stack.push(ForEachState {
-                            children,
+                        scratch.for_each.push(ForEachState {
+                            list_id,
                             index: 0,
                             body_start: ip + 1,
                             sep_checkpoint: None,
@@ -321,8 +324,12 @@ pub(super) fn interpret_node<'a>(
                 }
             }
             FmtOp::ChildItem => {
-                let state = for_each_stack.last().expect("ChildItem outside ForEach");
-                let child_id = state.children[state.index];
+                let state = scratch
+                    .for_each
+                    .last()
+                    .expect("ChildItem outside ForEach");
+                let children = ctx.reader.list_children(state.list_id).unwrap_or(&[]);
+                let child_id = children[state.index];
 
                 let macro_regions = &ctx.macro_regions;
                 let macro_doc =
@@ -340,7 +347,8 @@ pub(super) fn interpret_node<'a>(
                 let return_action;
 
                 if macro_doc == Some(NIL_DOC) {
-                    let state = for_each_stack
+                    let state = scratch
+                        .for_each
                         .last_mut()
                         .expect("ForEachState must exist while handling ChildItem");
                     if let Some((saved_running, saved_pending)) = state.sep_checkpoint.take() {
@@ -368,22 +376,22 @@ pub(super) fn interpret_node<'a>(
                 if let Some((ctag, child_fields)) = ctx.reader.extract_fields(child_id)
                     && let Some((child_ops_bytes, child_ops_len)) = ctx.dialect.fmt_dispatch(ctag)
                 {
-                    let child_children = ctx.reader.list_children(child_id);
                     push_call_frame!(
                         child_id,
                         child_ops_bytes,
                         child_ops_len,
                         child_fields,
-                        child_children,
                         return_action
                     );
                 }
             }
             FmtOp::ForEachSep(sid) => {
-                let state = for_each_stack
+                let state = scratch
+                    .for_each
                     .last_mut()
                     .expect("ForEachSep outside ForEach");
-                if state.index < state.children.len() - 1 {
+                let children = ctx.reader.list_children(state.list_id).unwrap_or(&[]);
+                if state.index < children.len() - 1 {
                     state.sep_checkpoint = Some((running, pending));
                     let sep_text = ctx.dialect.fmt_string(sid);
                     if let Some(ref cctx) = ctx.comment_ctx
@@ -399,15 +407,17 @@ pub(super) fn interpret_node<'a>(
                 }
             }
             FmtOp::ForEachEnd => {
-                let state = for_each_stack
+                let state = scratch
+                    .for_each
                     .last_mut()
                     .expect("ForEachEnd outside ForEach");
                 state.index += 1;
-                if state.index < state.children.len() {
+                let children = ctx.reader.list_children(state.list_id).unwrap_or(&[]);
+                if state.index < children.len() {
                     ip = state.body_start;
                     continue;
                 }
-                for_each_stack.pop();
+                scratch.for_each.pop();
             }
             FmtOp::IfBool(idx, skip) => {
                 // INVARIANT: IfBool ops only target Bool fields.
@@ -468,12 +478,15 @@ pub(super) fn interpret_node<'a>(
                 running = arena.cat(running, kw);
             }
             FmtOp::ForEachSelfStart => {
-                let children = list_children.expect("ForEachSelfStart on non-list node");
+                let children = ctx
+                    .reader
+                    .list_children(cur_node_id)
+                    .expect("ForEachSelfStart on non-list node");
                 if children.is_empty() {
                     ip = skip_to_foreach_end(ops, ops_count, ip);
                 } else {
-                    for_each_stack.push(ForEachState {
-                        children,
+                    scratch.for_each.push(ForEachState {
+                        list_id: cur_node_id,
                         index: 0,
                         body_start: ip + 1,
                         sep_checkpoint: None,
@@ -483,6 +496,7 @@ pub(super) fn interpret_node<'a>(
         }
         ip += 1;
     }
+}
 }
 
 // ── Comment drain helpers ───────────────────────────────────────────────
@@ -635,13 +649,13 @@ fn byte_offset_in(source: &str, ptr: *const u8) -> u32 {
     usize_to_u32(offset)
 }
 
-enum GNFrame {
+enum GroupNestFrame {
     Group(DocId),
     Nest(i16, DocId),
 }
 
-struct ForEachState<'a> {
-    children: &'a [AnyNodeId],
+struct ForEachState {
+    list_id: AnyNodeId,
     index: usize,
     body_start: usize,
     sep_checkpoint: Option<(DocId, DocId)>,
