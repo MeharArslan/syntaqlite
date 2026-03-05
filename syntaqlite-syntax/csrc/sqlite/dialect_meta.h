@@ -65,8 +65,8 @@ static const char* const display_compound_op[] = {
 static const char* const display_is_op[] = {
     "IS",
     "IS_NOT",
-    "ISNULL",
-    "NOTNULL",
+    "IS_NULL",
+    "NOT_NULL",
     "IS_NOT_DISTINCT",
     "IS_DISTINCT",
 };
@@ -84,7 +84,7 @@ static const char* const display_generated_column_storage[] = {
     "STORED",
 };
 
-static const char* const display_column_constraint_kind[] = {
+static const char* const display_column_constraint_type[] = {
     "DEFAULT",
     "NOT_NULL",
     "PRIMARY_KEY",
@@ -96,7 +96,7 @@ static const char* const display_column_constraint_kind[] = {
     "NULL",
 };
 
-static const char* const display_table_constraint_kind[] = {
+static const char* const display_table_constraint_type[] = {
     "PRIMARY_KEY",
     "UNIQUE",
     "CHECK",
@@ -204,7 +204,7 @@ static const char* const display_pragma_form[] = {
     "CALL",
 };
 
-static const char* const display_analyze_or_reindex_kind[] = {
+static const char* const display_analyze_or_reindex_op[] = {
     "ANALYZE",
     "REINDEX",
 };
@@ -343,7 +343,7 @@ static const SyntaqliteFieldMeta field_meta_foreign_key_clause[] = {
 };
 
 static const SyntaqliteFieldMeta field_meta_column_constraint[] = {
-    {offsetof(SyntaqliteColumnConstraint, kind), SYNTAQLITE_FIELD_ENUM, "kind", display_column_constraint_kind, sizeof(display_column_constraint_kind) / sizeof(display_column_constraint_kind[0])},
+    {offsetof(SyntaqliteColumnConstraint, kind), SYNTAQLITE_FIELD_ENUM, "kind", display_column_constraint_type, sizeof(display_column_constraint_type) / sizeof(display_column_constraint_type[0])},
     {offsetof(SyntaqliteColumnConstraint, constraint_name), SYNTAQLITE_FIELD_SPAN, "constraint_name", NULL, 0},
     {offsetof(SyntaqliteColumnConstraint, onconf), SYNTAQLITE_FIELD_ENUM, "onconf", display_conflict_action, sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
     {offsetof(SyntaqliteColumnConstraint, sort_order), SYNTAQLITE_FIELD_ENUM, "sort_order", display_sort_order, sizeof(display_sort_order) / sizeof(display_sort_order[0])},
@@ -363,7 +363,7 @@ static const SyntaqliteFieldMeta field_meta_column_def[] = {
 };
 
 static const SyntaqliteFieldMeta field_meta_table_constraint[] = {
-    {offsetof(SyntaqliteTableConstraint, kind), SYNTAQLITE_FIELD_ENUM, "kind", display_table_constraint_kind, sizeof(display_table_constraint_kind) / sizeof(display_table_constraint_kind[0])},
+    {offsetof(SyntaqliteTableConstraint, kind), SYNTAQLITE_FIELD_ENUM, "kind", display_table_constraint_type, sizeof(display_table_constraint_type) / sizeof(display_table_constraint_type[0])},
     {offsetof(SyntaqliteTableConstraint, constraint_name), SYNTAQLITE_FIELD_SPAN, "constraint_name", NULL, 0},
     {offsetof(SyntaqliteTableConstraint, onconf), SYNTAQLITE_FIELD_ENUM, "onconf", display_conflict_action, sizeof(display_conflict_action) / sizeof(display_conflict_action[0])},
     {offsetof(SyntaqliteTableConstraint, is_autoincrement), SYNTAQLITE_FIELD_BOOL, "is_autoincrement", display_bool, sizeof(display_bool) / sizeof(display_bool[0])},
@@ -581,7 +581,7 @@ static const SyntaqliteFieldMeta field_meta_pragma_stmt[] = {
 static const SyntaqliteFieldMeta field_meta_analyze_or_reindex_stmt[] = {
     {offsetof(SyntaqliteAnalyzeOrReindexStmt, target_name), SYNTAQLITE_FIELD_SPAN, "target_name", NULL, 0},
     {offsetof(SyntaqliteAnalyzeOrReindexStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
-    {offsetof(SyntaqliteAnalyzeOrReindexStmt, kind), SYNTAQLITE_FIELD_ENUM, "kind", display_analyze_or_reindex_kind, sizeof(display_analyze_or_reindex_kind) / sizeof(display_analyze_or_reindex_kind[0])},
+    {offsetof(SyntaqliteAnalyzeOrReindexStmt, kind), SYNTAQLITE_FIELD_ENUM, "kind", display_analyze_or_reindex_op, sizeof(display_analyze_or_reindex_op) / sizeof(display_analyze_or_reindex_op[0])},
 };
 
 static const SyntaqliteFieldMeta field_meta_attach_stmt[] = {
@@ -596,7 +596,7 @@ static const SyntaqliteFieldMeta field_meta_detach_stmt[] = {
 
 static const SyntaqliteFieldMeta field_meta_vacuum_stmt[] = {
     {offsetof(SyntaqliteVacuumStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
-    {offsetof(SyntaqliteVacuumStmt, into_expr), SYNTAQLITE_FIELD_NODE_ID, "into_expr", NULL, 0},
+    {offsetof(SyntaqliteVacuumStmt, filename), SYNTAQLITE_FIELD_NODE_ID, "filename", NULL, 0},
 };
 
 static const SyntaqliteFieldMeta field_meta_explain_stmt[] = {

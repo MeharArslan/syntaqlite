@@ -235,7 +235,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
                 .find(|h| offset >= h.sql_offset && offset < h.sql_offset + h.placeholder.len());
 
             if let Some(hole) = hole {
-                cursor.begin_macro(hole.host_range.start as u32, hole.host_range.len() as u32);
+                cursor.begin_macro(hole.host_range.clone());
             }
 
             // Ignore parse results — we only need the collected tokens.
@@ -371,7 +371,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
                 .find(|h| offset >= h.sql_offset && offset < h.sql_offset + h.placeholder.len());
 
             if let Some(hole) = hole {
-                cursor.begin_macro(hole.host_range.start as u32, hole.host_range.len() as u32);
+                cursor.begin_macro(hole.host_range.clone());
             }
 
             match cursor.feed_token(token_type, offset..offset + length) {

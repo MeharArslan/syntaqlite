@@ -23,7 +23,7 @@ void SynqSqliteParseFree(void* parser, void (*freeProc)(void*));
 void SynqSqliteParse(void* parser, uint32_t token_type, SynqParseToken minor,
                      SynqParseCtx* pCtx);
 uint32_t SynqSqliteParseExpectedTokens(void* parser, uint32_t* out_tokens, uint32_t out_cap);
-uint32_t SynqSqliteParseCompletionContext(void* parser);
+SyntaqliteCompletionContext SynqSqliteParseCompletionContext(void* parser);
 #ifndef NDEBUG
 void SynqSqliteParseTrace(FILE* trace_file, char* prompt);
 #endif

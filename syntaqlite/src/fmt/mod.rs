@@ -10,8 +10,6 @@
 //! [`FormatConfig`](crate::FormatConfig) and
 //! [`KeywordCase`](crate::KeywordCase).
 
-#[doc(hidden)]
-pub mod bytecode;
 mod comment;
 mod doc;
 pub(crate) mod formatter;
@@ -43,6 +41,25 @@ pub struct FormatConfig {
     /// Append semicolons after each statement. Default: true.
     pub semicolons: bool,
 }
+
+/// An error returned by [`Formatter::format`] when a statement fails to parse.
+#[derive(Debug, Clone)]
+pub struct FormatError {
+    /// Human-readable error message.
+    pub message: String,
+    /// Byte offset of the error token in the source, if known.
+    pub offset: Option<usize>,
+    /// Byte length of the error token, if known.
+    pub length: Option<usize>,
+}
+
+impl std::fmt::Display for FormatError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl std::error::Error for FormatError {}
 
 impl Default for FormatConfig {
     fn default() -> Self {

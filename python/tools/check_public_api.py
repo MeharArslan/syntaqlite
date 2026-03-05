@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -44,23 +45,39 @@ def _cargo_path() -> str:
     return os.path.join(ROOT_DIR, "tools", "cargo")
 
 
-def _run_public_api(crate_name: str, features: str | None) -> str:
-    """Run cargo public-api for *crate_name* and return sorted output as a str."""
+def _verbose_log(verbose: bool, msg: str) -> None:
+    if verbose:
+        print(msg, file=sys.stderr, flush=True)
+
+
+def _run_public_api(crate_name: str, features: str | None, verbose: bool) -> tuple[bool, str]:
+    """Run cargo public-api for *crate_name* and return (ok, output_or_error)."""
     cmd = [sys.executable, _cargo_path(), "public-api", "-p", crate_name]
     if features:
         cmd += ["--features", features]
     cmd += ["--omit", "blanket-impls", "--omit", "auto-trait-impls", "--omit", "auto-derived-impls"]
     with acquire_slot() as target_dir:
         env = {**os.environ, "CARGO_TARGET_DIR": target_dir}
+        _verbose_log(verbose, f"[check-public-api] {crate_name}: {shlex.join(cmd)}")
+        _verbose_log(verbose, f"[check-public-api] {crate_name}: CARGO_TARGET_DIR={target_dir}")
         proc = subprocess.run(
             cmd, cwd=ROOT_DIR, env=env,
-            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        )
+        if proc.returncode != 0:
+            return False, (
+                f"{_RED}public-api command failed for {crate_name} (exit {proc.returncode}){_RESET}\n"
+                f"{proc.stderr}\n"
+            )
+        _verbose_log(
+            verbose,
+            f"[check-public-api] {crate_name}: success, stdout lines={len(proc.stdout.splitlines())}",
         )
         lines = sorted(dict.fromkeys(proc.stdout.splitlines()))
-        return "\n".join(lines) + ("\n" if lines else "")
+        return True, "\n".join(lines) + ("\n" if lines else "")
 
 
-def _check_crate(crate_name: str, features: str | None) -> tuple[bool, str]:
+def _check_crate(crate_name: str, features: str | None, verbose: bool) -> tuple[bool, str]:
     """Check one crate against its golden file. Returns (ok, message)."""
     golden = os.path.join(_GOLDEN_DIR, f"{crate_name}.txt")
     if not os.path.exists(golden):
@@ -69,7 +86,9 @@ def _check_crate(crate_name: str, features: str | None) -> tuple[bool, str]:
             f"  Run: tools/check-public-api --rebaseline\n"
         )
 
-    actual = _run_public_api(crate_name, features)
+    ok, actual = _run_public_api(crate_name, features, verbose)
+    if not ok:
+        return False, actual
 
     with open(golden) as f:
         expected = f.read()
@@ -95,9 +114,12 @@ def _check_crate(crate_name: str, features: str | None) -> tuple[bool, str]:
     )
 
 
-def _rebaseline_crate(crate_name: str, features: str | None) -> tuple[bool, str]:
+def _rebaseline_crate(crate_name: str, features: str | None, verbose: bool) -> tuple[bool, str]:
     """Regenerate the golden file for one crate. Returns (ok, message)."""
-    actual = _run_public_api(crate_name, features)
+    ok, actual = _run_public_api(crate_name, features, verbose)
+    if not ok:
+        return False, actual
+
     golden = os.path.join(_GOLDEN_DIR, f"{crate_name}.txt")
     os.makedirs(_GOLDEN_DIR, exist_ok=True)
     with open(golden, "w") as f:
@@ -106,13 +128,13 @@ def _rebaseline_crate(crate_name: str, features: str | None) -> tuple[bool, str]
     return True, f"Rebaselined {crate_name} ({lines} lines)\n"
 
 
-def _run_all(rebaseline: bool) -> bool:
+def _run_all(rebaseline: bool, verbose: bool) -> bool:
     worker = _rebaseline_crate if rebaseline else _check_crate
 
     results: list[tuple[bool, str] | None] = [None] * len(_CRATES)
     with ThreadPoolExecutor(max_workers=len(_CRATES)) as pool:
         futures = {
-            pool.submit(worker, name, feats): i
+            pool.submit(worker, name, feats, verbose): i
             for i, (name, feats) in enumerate(_CRATES)
         }
         for future in as_completed(futures):
@@ -135,9 +157,13 @@ def main() -> int:
         "--rebaseline", action="store_true",
         help="Regenerate all golden files instead of checking them",
     )
+    parser.add_argument(
+        "--verbose", action="store_true",
+        help="Print per-crate command/debug logs (including command failures).",
+    )
     args = parser.parse_args()
 
-    ok = _run_all(args.rebaseline)
+    ok = _run_all(args.rebaseline, args.verbose)
     if ok and args.rebaseline:
         print(f"{_GREEN}All golden files rebaselined.{_RESET}")
     elif not ok:

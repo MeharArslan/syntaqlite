@@ -1,26 +1,23 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
+use syntaqlite_syntax::any::MacroRegion;
+use syntaqlite_syntax::{CommentKind, NextStatement, Parser, ParserConfig};
+
 use super::FormatConfig;
-use super::comment::CommentCtx;
+use super::FormatError;
+use super::comment::{CommentCtx, CommentEntry, TokenEntry};
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
-use syntaqlite_parser::Parser;
-use syntaqlite_parser::{CommentKind, MacroRegion, ParserConfig};
-use syntaqlite_parser::{DialectEnv, NodeRef};
+use crate::dialect::handle::Dialect;
 
-/// High-level SQL formatter. Created from a `TypedDialectEnv`, reusable across inputs.
+/// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter<'d> {
-    dialect: DialectEnv<'d>,
-    parser: Parser<'d>,
+    dialect: Dialect<'d>,
+    parser: Parser,
     config: FormatConfig,
-    /// Reusable scratch arena — cleared between format calls to avoid
-    /// re-allocating the backing Vec.
     arena: DocArena<'static>,
-    /// Reusable scratch buffers for the bytecode interpreter, shared across
-    /// all recursive `interpret` calls within a single `format()` invocation.
     interpret_scratch: InterpretScratch,
-    /// Reusable render buffers — recycled between format calls.
     render_bufs: RenderBuffers,
 }
 
@@ -35,23 +32,16 @@ impl<'d> Formatter<'d> {
     /// Create a formatter for the built-in SQLite dialect with default configuration.
     #[cfg(feature = "sqlite")]
     pub fn new() -> Formatter<'static> {
-        Formatter::with_config(crate::dialect::sqlite(), &FormatConfig::default())
+        Formatter::with_config(crate::sqlite::dialect::dialect(), &FormatConfig::default())
     }
 
     /// Create a formatter bound to the given dialect with custom configuration.
-    pub fn with_config(dialect: impl Into<DialectEnv<'d>>, format_config: &FormatConfig) -> Self {
-        let dialect = dialect.into();
+    pub fn with_config(dialect: Dialect<'d>, format_config: &FormatConfig) -> Self {
         assert!(
             dialect.has_fmt_data(),
             "dialect has no formatter bytecode — ensure .synq definitions include fmt blocks",
         );
-        let parser = Parser::with_config(
-            dialect,
-            &ParserConfig {
-                collect_tokens: true,
-                ..ParserConfig::default()
-            },
-        );
+        let parser = Parser::with_config(&ParserConfig::default().with_collect_tokens(true));
         Formatter {
             dialect,
             parser,
@@ -68,50 +58,84 @@ impl<'d> Formatter<'d> {
     }
 
     /// Format SQL source text. Handles multiple statements and preserves comments.
-    pub fn format(&mut self, source: &str) -> Result<String, syntaqlite_parser::ParseError> {
-        let mut cursor = self.parser.parse(source);
+    pub fn format(&mut self, source: &str) -> Result<String, FormatError> {
+        let mut session = self.parser.parse(source);
+        let mut result = String::new();
+        let mut stmt_num: usize = 0;
 
-        let mut roots = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            roots.push(result?.id());
-        }
+        loop {
+            let stmt = match session.next() {
+                NextStatement::Statement(s) => s,
+                NextStatement::Error(e) => {
+                    return Err(FormatError {
+                        message: e.message().to_owned(),
+                        offset: e.offset(),
+                        length: e.length(),
+                    });
+                }
+                NextStatement::Done => break,
+            };
 
-        let comments = cursor.comments();
-        let tokens = cursor.tokens();
-        let source = cursor.source();
+            let erased = stmt.erase();
+            let stmt_source = erased.source();
 
-        if roots.is_empty() {
-            return Ok(String::new());
-        }
+            let macro_regions: Vec<MacroRegion> = erased.macro_regions().collect();
 
-        // Recycle the arena from the previous call (reuses the Vec allocation).
-        let prev_arena = std::mem::replace(&mut self.arena, DocArena::new());
-        let mut arena = DocArena::recycle(prev_arena);
+            let comments: Vec<CommentEntry> = erased
+                .comments()
+                .map(|c| CommentEntry {
+                    offset: (c.text.as_ptr() as usize - source.as_ptr() as usize) as u32,
+                    length: c.text.len() as u32,
+                    kind: c.kind,
+                })
+                .collect();
 
-        let comment_ctx = if comments.is_empty() {
-            None
-        } else {
-            Some(CommentCtx::new(comments, tokens))
-        };
-        let comment_ctx_ref = comment_ctx.as_ref();
-        let semicolons = self.config.semicolons;
+            let tokens: Vec<TokenEntry> = erased
+                .tokens()
+                .map(|t| TokenEntry {
+                    offset: (t.text().as_ptr() as usize - source.as_ptr() as usize) as u32,
+                    length: t.text().len() as u32,
+                })
+                .collect();
 
-        let mut parts: Vec<DocId> = Vec::new();
-        for (i, &root_id) in roots.iter().enumerate() {
-            if i > 0 {
-                emit_stmt_separator(&comment_ctx, semicolons, source, &mut arena, &mut parts);
-            } else if let Some(cctx) = &comment_ctx
+            let root_id = erased.root_id();
+            let semicolons = self.config.semicolons;
+            let has_comments = !comments.is_empty();
+
+            let comment_ctx = if has_comments {
+                Some(CommentCtx::new(comments, tokens))
+            } else {
+                None
+            };
+
+            // Fresh arena for this statement — drops borrows from the previous iteration.
+            let prev_arena = std::mem::replace(&mut self.arena, DocArena::new());
+            let mut arena = DocArena::recycle(prev_arena);
+            let mut parts: Vec<DocId> = Vec::new();
+
+            if stmt_num > 0 {
+                emit_stmt_separator(
+                    &comment_ctx,
+                    semicolons,
+                    stmt_source,
+                    &mut arena,
+                    &mut parts,
+                );
+            } else if let Some(cctx) = comment_ctx.as_ref()
                 && let Some((next_offset, _)) = cctx.peek_next_token()
             {
-                drain_gap_comments(cctx, next_offset, source, &mut arena, &mut parts);
+                drain_gap_comments(cctx, next_offset, stmt_source, &mut arena, &mut parts);
             }
 
+            // Coerce Dialect<'d> to Dialect<'_> — safe because 'd: '_ ('d outlives source).
+            let dialect: Dialect<'_> = self.dialect;
             let ctx = FmtCtx {
-                dialect: self.dialect,
-                reader: cursor.reader(),
-                comment_ctx: comment_ctx_ref,
+                dialect,
+                reader: erased,
+                comment_ctx,
+                macro_regions,
             };
-            let mut consumed = vec![false; ctx.reader.macro_regions().len()];
+            let mut consumed = vec![false; ctx.macro_regions.len()];
             parts.push(interpret_node(
                 &ctx,
                 root_id,
@@ -119,86 +143,54 @@ impl<'d> Formatter<'d> {
                 &mut arena,
                 &mut self.interpret_scratch,
             ));
+
+            if let Some(cctx) = ctx.comment_ctx.as_ref() {
+                parts.push(cctx.drain_remaining(stmt_source, &mut arena));
+            }
+
+            // Render this statement immediately while `erased`/`ctx` still borrow session.
+            let doc = arena.cats(&parts);
+            let mut bufs = std::mem::take(&mut self.render_bufs);
+            bufs.clear();
+            arena.render_into(
+                doc,
+                self.config.line_width,
+                self.config.keyword_case,
+                &mut bufs,
+            );
+            result.push_str(&bufs.out);
+            self.render_bufs = bufs;
+
+            // Recycle the arena, releasing all Doc borrows from this iteration.
+            // `ctx`, `erased`, and `stmt` drop at end of loop body, releasing session borrow.
+            self.arena = DocArena::recycle(arena);
+
+            stmt_num += 1;
         }
 
-        if let Some(cctx) = &comment_ctx {
-            parts.push(cctx.drain_remaining(source, &mut arena));
+        if stmt_num == 0 {
+            return Ok(String::new());
         }
 
-        let doc = arena.cats(&parts);
-
-        // Reuse the render buffers from the previous call.
-        let mut bufs = std::mem::take(&mut self.render_bufs);
-        bufs.clear();
-
-        arena.render_into(
-            doc,
-            self.config.line_width,
-            self.config.keyword_case,
-            &mut bufs,
-        );
-
-        if semicolons {
-            bufs.out.push(';');
+        if self.config.semicolons {
+            result.push(';');
         }
-        bufs.out.push('\n');
-
-        // Recycle arena and render buffers back for next call.
-        self.arena = DocArena::recycle(arena);
-        let result = std::mem::take(&mut bufs.out);
-        self.render_bufs = bufs;
+        result.push('\n');
 
         Ok(result)
-    }
-
-    /// Format a single pre-parsed AST node. This is the low-level entry point
-    /// for cases where the caller controls parsing (e.g. macro expansion).
-    pub fn format_node(&mut self, node: NodeRef<'_>) -> String {
-        let reader = node.reader();
-        let tokens = reader.tokens();
-        let comment_ctx = CommentCtx::new(&[], tokens);
-        let ctx = FmtCtx {
-            dialect: self.dialect,
-            reader,
-            comment_ctx: Some(&comment_ctx),
-        };
-
-        let prev_arena = std::mem::replace(&mut self.arena, DocArena::new());
-        let mut arena = DocArena::recycle(prev_arena);
-        let mut consumed = vec![false; reader.macro_regions().len()];
-        let doc = interpret_node(
-            &ctx,
-            node.id(),
-            &mut consumed,
-            &mut arena,
-            &mut self.interpret_scratch,
-        );
-
-        let mut bufs = std::mem::take(&mut self.render_bufs);
-        bufs.clear();
-        arena.render_into(
-            doc,
-            self.config.line_width,
-            self.config.keyword_case,
-            &mut bufs,
-        );
-        self.arena = DocArena::recycle(arena);
-        let result = std::mem::take(&mut bufs.out);
-        self.render_bufs = bufs;
-        result
     }
 }
 
 // ── Multi-statement helpers ─────────────────────────────────────────────
 
 fn emit_stmt_separator<'a>(
-    comment_ctx: &Option<CommentCtx<'a>>,
+    comment_ctx: &Option<CommentCtx>,
     semicolons: bool,
     source: &'a str,
     arena: &mut DocArena<'a>,
     parts: &mut Vec<DocId>,
 ) {
-    if let Some(cctx) = comment_ctx
+    if let Some(cctx) = comment_ctx.as_ref()
         && let Some((next_offset, _)) = cctx.peek_next_token()
     {
         if semicolons {
@@ -217,10 +209,8 @@ fn emit_stmt_separator<'a>(
     parts.push(arena.hardline());
 }
 
-/// Drain trailing comments from the inter-statement gap (same line as the
-/// previous statement's end). Stops at the first newline.
 fn drain_trailing_gap<'a>(
-    ctx: &CommentCtx<'a>,
+    ctx: &CommentCtx,
     before: u32,
     source: &'a str,
     arena: &mut DocArena<'a>,
@@ -238,14 +228,14 @@ fn drain_trailing_gap<'a>(
         }
         let text = &source[c.offset as usize..(c.offset + c.length) as usize];
         match c.kind {
-            CommentKind::LineComment => {
+            CommentKind::Line => {
                 let space = arena.text(" ");
                 let comment = arena.text(text);
                 let inner = arena.cat(space, comment);
                 parts.push(arena.line_suffix(inner));
                 parts.push(arena.break_parent());
             }
-            CommentKind::BlockComment => {
+            CommentKind::Block => {
                 parts.push(arena.text(" "));
                 parts.push(arena.text(text));
             }
@@ -255,9 +245,8 @@ fn drain_trailing_gap<'a>(
     }
 }
 
-/// Drain leading comments from the inter-statement gap (each on its own line).
 fn drain_gap_comments<'a>(
-    ctx: &CommentCtx<'a>,
+    ctx: &CommentCtx,
     before: u32,
     source: &'a str,
     arena: &mut DocArena<'a>,
@@ -277,21 +266,13 @@ fn drain_gap_comments<'a>(
 // ── Single-node formatting ──────────────────────────────────────────────
 
 /// Check if the next token falls within a macro region.
-///
-/// Returns:
-/// - `Some(doc)` with verbatim text on first encounter (consumed bit gets set).
-/// - `Some(NIL_DOC)` if the region was already consumed (child should be suppressed).
-/// - `None` if the next token is not inside any macro region.
-///
-/// Does NOT advance the token cursor — the caller is responsible for
-/// advancing it (typically by "calling" into the child node).
 pub(crate) fn try_macro_verbatim<'a>(
     ctx: &FmtCtx<'a>,
     regions: &[MacroRegion],
     arena: &mut DocArena<'a>,
     consumed: &mut [bool],
 ) -> Option<DocId> {
-    let cctx = ctx.comment_ctx?;
+    let cctx = ctx.comment_ctx.as_ref()?;
     let (tok_offset, _) = cctx.peek_next_token()?;
     let source = ctx.source();
 
@@ -301,7 +282,6 @@ pub(crate) fn try_macro_verbatim<'a>(
 
         if tok_offset >= r_start && tok_offset < r_end {
             if consumed[i] {
-                // Already consumed — suppress this child.
                 return Some(NIL_DOC);
             }
             consumed[i] = true;

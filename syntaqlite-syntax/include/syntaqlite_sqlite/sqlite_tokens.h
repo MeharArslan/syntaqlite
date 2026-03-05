@@ -1,5 +1,7 @@
 #ifndef SYNTAQLITE_SQLITE_TOKENS_H
 #define SYNTAQLITE_SQLITE_TOKENS_H
+
+#include "syntaqlite/types.h"
 #define SYNTAQLITE_TK_ABORT                            1
 #define SYNTAQLITE_TK_ACTION                           2
 #define SYNTAQLITE_TK_AFTER                            3
@@ -192,5 +194,5 @@
 uint32_t SynqSqliteParseExpectedTokens(void* parser, uint32_t* out_tokens, uint32_t out_cap);
 
 /* syntaqlite extension: completion context from parser stack. */
-uint32_t SynqSqliteParseCompletionContext(void* parser);
+SyntaqliteCompletionContext SynqSqliteParseCompletionContext(void* parser);
 #endif /* SYNTAQLITE_SQLITE_TOKENS_H */

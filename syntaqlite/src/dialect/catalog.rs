@@ -6,7 +6,7 @@
 //! These types are used by the generated `functions_catalog.rs` and by
 //! dialect extensions to describe function availability.
 
-use syntaqlite_syntax::ffi::Cflags;
+use syntaqlite_syntax::util::SqliteVersion;
 
 use super::handle::Dialect;
 
@@ -56,7 +56,7 @@ pub struct AvailabilityRule {
     pub since: i32,
     /// Maximum SQLite version (exclusive). 0 means no upper bound.
     pub until: i32,
-    /// Cflag bit index in `Cflags`, or `u32::MAX` if no cflag required.
+    /// Cflag bit index, or `u32::MAX` if no cflag required.
     pub cflag_index: u32,
     /// Polarity of the cflag constraint.
     pub cflag_polarity: CflagPolarity,
@@ -75,55 +75,15 @@ pub struct FunctionEntry<'a> {
 
 /// Check whether a function entry is available for the given dialect config.
 ///
-/// A function is available if *any* of its availability rules matches.
-/// A rule matches when:
-/// - The config version is >= `since`
-/// - The config version is < `until` (if `until` is non-zero)
-/// - If a cflag is required: for `Enable` polarity, the cflag must be set;
-///   for `Omit` polarity, the cflag must NOT be set.
+/// Checks version constraints only; cflag constraints are ignored for now.
 pub fn is_function_available(entry: &FunctionEntry<'_>, dialect: &Dialect<'_>) -> bool {
     entry.availability.iter().any(|rule| {
-        if dialect.version() < rule.since {
+        if dialect.version() < SqliteVersion::from_int(rule.since) {
             return false;
         }
-        if rule.until != 0 && dialect.version() >= rule.until {
+        if rule.until != 0 && dialect.version() >= SqliteVersion::from_int(rule.until) {
             return false;
         }
-        if rule.cflag_index != u32::MAX {
-            let flag_set = dialect.cflags().has(rule.cflag_index);
-            match rule.cflag_polarity {
-                CflagPolarity::Enable => flag_set,
-                CflagPolarity::Omit => !flag_set,
-            }
-        } else {
-            true
-        }
-    })
-}
-
-/// Check whether a function entry is available for a raw (version, cflags) pair.
-///
-/// Used in contexts where a full `Dialect` handle is not available.
-pub fn is_function_available_raw(
-    entry: &FunctionEntry<'_>,
-    version: i32,
-    cflags: &Cflags,
-) -> bool {
-    entry.availability.iter().any(|rule| {
-        if version < rule.since {
-            return false;
-        }
-        if rule.until != 0 && version >= rule.until {
-            return false;
-        }
-        if rule.cflag_index != u32::MAX {
-            let flag_set = cflags.has(rule.cflag_index);
-            match rule.cflag_polarity {
-                CflagPolarity::Enable => flag_set,
-                CflagPolarity::Omit => !flag_set,
-            }
-        } else {
-            true
-        }
+        true
     })
 }

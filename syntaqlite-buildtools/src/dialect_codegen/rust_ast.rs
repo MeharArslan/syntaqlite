@@ -322,6 +322,13 @@ fn emit_rust_node_tag_type(w: &mut RustWriter, model: &AstModel<'_>) {
     w.close_block("}");
     w.newline();
 
+    w.open_block("impl From<NodeTag> for crate::any::AnyNodeTag {");
+    w.open_block("fn from(t: NodeTag) -> crate::any::AnyNodeTag {");
+    w.line("crate::any::AnyNodeTag(t as u32)");
+    w.close_block("}");
+    w.close_block("}");
+    w.newline();
+
     w.open_block("impl NodeTag {");
     w.open_block("pub(crate) fn from_raw(raw: u32) -> Option<NodeTag> {");
     w.open_block("match raw {");
@@ -389,7 +396,7 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)], type_name: &str) ->
     let mut w = RustWriter::new();
     w.file_header();
     // Token names come from SQLite's C grammar (all-uppercase); allow the lint.
-    w.line("#![allow(clippy::upper_case_acronyms)]");
+    w.line("#![allow(clippy::upper_case_acronyms, missing_docs)]");
     w.newline();
 
     // TokenType enum
@@ -403,23 +410,6 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)], type_name: &str) ->
     w.close_block("}");
     w.newline();
 
-    // from_raw conversion
-    w.open_block(&format!("impl {type_name} {{"));
-    w.line("#[allow(clippy::too_many_lines)]");
-    w.open_block(&format!(
-        "pub fn from_raw(raw: u32) -> Option<{type_name}> {{"
-    ));
-    w.open_block("match raw {");
-    for (name, value) in tokens {
-        let variant = pascal_case(name);
-        w.line(&format!("{value} => Some({type_name}::{variant}),"));
-    }
-    w.line("_ => None,");
-    w.close_block("}");
-    w.close_block("}");
-    w.close_block("}");
-    w.newline();
-
     w.open_block(&format!("impl From<{type_name}> for u32 {{"));
     w.open_block(&format!("fn from(t: {type_name}) -> u32 {{"));
     w.line("t as u32");
@@ -430,8 +420,15 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)], type_name: &str) ->
     w.open_block(&format!(
         "impl crate::ast::GrammarTokenType for {type_name} {{"
     ));
-    w.open_block("fn from_token_type(raw: u32) -> Option<Self> {");
-    w.line("Self::from_raw(raw)");
+    w.line("#[allow(clippy::too_many_lines)]");
+    w.open_block("fn from_token_type(raw: crate::any::AnyTokenType) -> Option<Self> {");
+    w.open_block("match raw.0 {");
+    for (name, value) in tokens {
+        let variant = pascal_case(name);
+        w.line(&format!("{value} => Some({type_name}::{variant}),"));
+    }
+    w.line("_ => None,");
+    w.close_block("}");
     w.close_block("}");
     w.close_block("}");
 
@@ -553,7 +550,7 @@ impl AstModel<'_> {
         w.lines(&format!(
             "
         use {crate_prefix}::ast::{{TypedNodeId, AnyNodeId, AnyNode, GrammarNodeType, TypedNodeList}};
-        use {crate_prefix}::parser::AnyStatementResult;
+        use {crate_prefix}::parser::AnyParsedStatement;
         "
         ));
         w.newline();
@@ -630,7 +627,7 @@ impl AstModel<'_> {
             ));
             w.indent();
             w.line(
-                "fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {",
+                "fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {",
             );
             w.indent();
             w.line("let node = Node::resolve(stmt_result, id)?;");
@@ -688,7 +685,7 @@ impl AstModel<'_> {
             w.line(&format!("pub struct {name}<'a> {{"));
             w.indent();
             w.line(&format!("raw: &'a {ffi_path}::{name},"));
-            w.line("stmt_result: AnyStatementResult<'a>,");
+            w.line("stmt_result: AnyParsedStatement<'a>,");
             w.line("id: AnyNodeId,");
             w.dedent();
             w.line("}");
@@ -706,7 +703,7 @@ impl AstModel<'_> {
             w.line("}");
             w.newline();
 
-            // Display impl — dump via NodeRef to avoid exposing AnyStatementResult internals
+            // Display impl — dump via NodeRef to avoid exposing AnyParsedStatement internals
             w.line(&format!("impl std::fmt::Display for {name}<'_> {{"));
             w.indent();
             w.line("fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {");
@@ -748,7 +745,7 @@ impl AstModel<'_> {
             w.line(&format!("impl<'a> GrammarNodeType<'a> for {name}<'a> {{"));
             w.indent();
             w.line(
-                "fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {",
+                "fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {",
             );
             w.indent();
             w.line(&format!(
@@ -846,7 +843,7 @@ impl AstModel<'_> {
         }
         if open_for_extension {
             w.doc_comment("A node with an unknown tag from a dialect extension.");
-            w.line("Other { id: AnyNodeId, tag: u32 },");
+            w.line("Other { id: AnyNodeId, tag: crate::any::AnyNodeTag },");
         } else {
             w.doc_comment("Placeholder for PhantomData lifetime — never constructed.");
             w.line("__Phantom(PhantomData<&'a ()>),");
@@ -865,7 +862,7 @@ impl AstModel<'_> {
         w.doc_comment("`ptr` must be non-null, well-aligned, and valid for `'a`.");
         w.doc_comment("Its first `u32` must be a valid `NodeTag` discriminant.");
         w.line("#[allow(clippy::too_many_lines, clippy::match_wildcard_for_single_variants)]");
-        w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Node<'a> {");
+        w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Node<'a> {");
         w.indent();
         w.line("// SAFETY: caller guarantees ptr is valid for 'a with a valid tag.");
         w.line("unsafe {");
@@ -885,7 +882,7 @@ impl AstModel<'_> {
             }
         }
         if open_for_extension {
-            w.line("_ => Node::Other { id, tag: *ptr },");
+            w.line("_ => Node::Other { id, tag: crate::any::AnyNodeTag(*ptr) },");
         } else {
             w.line("_ => unreachable!(\"unknown node tag\"),");
         }
@@ -901,7 +898,7 @@ impl AstModel<'_> {
         w.lines(
             "
         #[allow(clippy::cast_ptr_alignment)]
-        pub(crate) fn resolve(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Node<'a>> {
+        pub(crate) fn resolve(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Node<'a>> {
             let (ptr, _tag) = stmt_result.node_ptr(id)?;
             // SAFETY: node_ptr returns a valid arena pointer aligned to u32;
             // ptr is valid for 'a and its first u32 is a valid NodeTag.
@@ -952,7 +949,7 @@ impl AstModel<'_> {
         w.lines(
             "
         impl<'a> GrammarNodeType<'a> for Node<'a> {
-            fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+            fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
                 Node::resolve(stmt_result, id)
             }
         }

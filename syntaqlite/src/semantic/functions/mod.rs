@@ -5,7 +5,7 @@
 //!
 //! Provides [`FunctionCatalog`] — a resolved catalog of known functions for
 //! a given dialect + configuration. Supports name/arity checking, lookup,
-//! iteration, and completions. Merges SQLite built-in functions, dialect
+//! iteration, and completions. Merges `SQLite` built-in functions, dialect
 //! extensions, and session/document-defined functions.
 
 mod catalog;

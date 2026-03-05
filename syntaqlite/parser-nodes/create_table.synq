@@ -1,7 +1,7 @@
 enum ForeignKeyAction { NO_ACTION SET_NULL SET_DEFAULT CASCADE RESTRICT }
 enum GeneratedColumnStorage { VIRTUAL STORED }
-enum ColumnConstraintKind { DEFAULT NOT_NULL PRIMARY_KEY UNIQUE CHECK REFERENCES COLLATE GENERATED NULL }
-enum TableConstraintKind { PRIMARY_KEY UNIQUE CHECK FOREIGN_KEY }
+enum ColumnConstraintType { DEFAULT NOT_NULL PRIMARY_KEY UNIQUE CHECK REFERENCES COLLATE GENERATED NULL }
+enum TableConstraintType { PRIMARY_KEY UNIQUE CHECK FOREIGN_KEY }
 
 flags CreateTableStmtFlags { WITHOUT_ROWID = 1 STRICT = 2 }
 
@@ -32,7 +32,7 @@ node ForeignKeyClause {
 }
 
 node ColumnConstraint {
-  kind: inline ColumnConstraintKind
+  kind: inline ColumnConstraintType
   constraint_name: inline SyntaqliteSourceSpan
   onconf: inline ConflictAction
   sort_order: inline SortOrder
@@ -115,7 +115,7 @@ list ColumnDefList {
 }
 
 node TableConstraint {
-  kind: inline TableConstraintKind
+  kind: inline TableConstraintType
   constraint_name: inline SyntaqliteSourceSpan
   onconf: inline ConflictAction
   is_autoincrement: inline Bool

@@ -837,7 +837,7 @@ typedef struct SyntaqliteDetachStmt {
 typedef struct SyntaqliteVacuumStmt {
     SyntaqliteNodeTag tag;
     SyntaqliteSourceSpan schema;
-    uint32_t into_expr;
+    uint32_t filename;
 } SyntaqliteVacuumStmt;
 
 typedef struct SyntaqliteExplainStmt {

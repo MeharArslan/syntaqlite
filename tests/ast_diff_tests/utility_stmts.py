@@ -204,7 +204,7 @@ class VacuumStmts(TestSuite):
             out="""\
             VacuumStmt
               schema: null
-              into_expr: (none)
+              filename: (none)
 """,
         )
 
@@ -214,7 +214,7 @@ class VacuumStmts(TestSuite):
             out="""\
             VacuumStmt
               schema: null
-              into_expr:
+              filename:
                 Literal
                   literal_type: STRING
                   source: "'backup.db'"
@@ -227,7 +227,7 @@ class VacuumStmts(TestSuite):
             out="""\
             VacuumStmt
               schema: "main"
-              into_expr: (none)
+              filename: (none)
 """,
         )
 

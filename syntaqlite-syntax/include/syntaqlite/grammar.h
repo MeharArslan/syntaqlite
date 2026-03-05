@@ -32,6 +32,7 @@
 #include <stdio.h>
 
 #include "syntaqlite/cflags.h"
+#include "syntaqlite/types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,7 +96,7 @@ typedef struct SyntaqliteGrammarTemplate {
                       SynqParseCtx* pCtx);
   void (*parser_trace)(FILE* trace_file, char* prompt);
   uint32_t (*parser_expected_tokens)(void* parser, uint32_t* out_tokens, uint32_t out_cap);
-  uint32_t (*parser_completion_context)(void* parser);
+  SyntaqliteCompletionContext (*parser_completion_context)(void* parser);
 
   // Tokenizer (provided by grammar)
   int64_t (*get_token)(const SyntaqliteGrammar* env,

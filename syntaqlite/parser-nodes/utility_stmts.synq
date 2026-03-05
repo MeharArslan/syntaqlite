@@ -1,6 +1,6 @@
 enum ExplainMode { EXPLAIN QUERY_PLAN }
 enum PragmaForm { BARE EQ CALL }
-enum AnalyzeKind { ANALYZE REINDEX }
+enum AnalyzeOrReindexOp { ANALYZE REINDEX }
 
 node PragmaStmt {
   pragma_name: inline SyntaqliteSourceSpan
@@ -19,10 +19,10 @@ node PragmaStmt {
   }
 }
 
-node AnalyzeStmt {
+node AnalyzeOrReindexStmt {
   target_name: inline SyntaqliteSourceSpan
   schema: inline SyntaqliteSourceSpan
-  kind: inline AnalyzeKind
+  kind: inline AnalyzeOrReindexOp
 
   fmt {
     if_enum(kind, REINDEX) { "REINDEX" } else { "ANALYZE" }
@@ -53,12 +53,12 @@ node DetachStmt {
 
 node VacuumStmt {
   schema: inline SyntaqliteSourceSpan
-  into_expr: index Expr
+  filename: index Expr
 
   fmt {
     "VACUUM"
     if_span(schema) { " " span(schema) }
-    if_set(into_expr) { " INTO " child(into_expr) }
+    if_set(filename) { " INTO " child(filename) }
   }
 }
 

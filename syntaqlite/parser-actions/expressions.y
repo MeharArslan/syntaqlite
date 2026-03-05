@@ -73,8 +73,8 @@ expr(A) ::= expr(L) OR expr(R). {
 expr(A) ::= expr(L) BITAND|BITOR|LSHIFT|RSHIFT(OP) expr(R). {
     SyntaqliteBinaryOp op;
     switch (OP.type) {
-        case SYNTAQLITE_TK_BITAND: op = SYNTAQLITE_BINARY_OP_BITAND; break;
-        case SYNTAQLITE_TK_BITOR:  op = SYNTAQLITE_BINARY_OP_BITOR; break;
+        case SYNTAQLITE_TK_BITAND: op = SYNTAQLITE_BINARY_OP_BIT_AND; break;
+        case SYNTAQLITE_TK_BITOR:  op = SYNTAQLITE_BINARY_OP_BIT_OR; break;
         case SYNTAQLITE_TK_LSHIFT: op = SYNTAQLITE_BINARY_OP_LSHIFT; break;
         default:        op = SYNTAQLITE_BINARY_OP_RSHIFT; break;
     }
@@ -97,7 +97,7 @@ expr(A) ::= PLUS|MINUS(OP) expr(B). [BITNOT] {
 }
 
 expr(A) ::= BITNOT expr(B). {
-    A = synq_parse_unary_expr(pCtx, SYNTAQLITE_UNARY_OP_BITNOT, B);
+    A = synq_parse_unary_expr(pCtx, SYNTAQLITE_UNARY_OP_BIT_NOT, B);
 }
 
 expr(A) ::= NOT expr(B). {

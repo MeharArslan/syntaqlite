@@ -1,4 +1,4 @@
-enum IsOp { IS IS_NOT ISNULL NOTNULL IS_NOT_DISTINCT IS_DISTINCT }
+enum IsOp { IS IS_NOT IS_NULL NOT_NULL IS_NOT_DISTINCT IS_DISTINCT }
 
 node IsExpr {
   op: inline IsOp
@@ -7,8 +7,8 @@ node IsExpr {
 
   fmt {
     switch(op) {
-      ISNULL          { child(left) " ISNULL" }
-      NOTNULL         { child(left) " NOTNULL" }
+      IS_NULL         { child(left) " ISNULL" }
+      NOT_NULL        { child(left) " NOTNULL" }
       IS              { child(left) " IS " child(right) }
       IS_NOT          { child(left) " IS NOT " child(right) }
       IS_NOT_DISTINCT { child(left) " IS NOT DISTINCT FROM " child(right) }

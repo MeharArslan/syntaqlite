@@ -29,10 +29,23 @@
 //! Use [`Parser`] to parse SQL source text into a typed AST:
 //!
 //! ```rust
+//! use syntaqlite_syntax::{NextStatement, ParseErrorKind};
+//!
 //! let parser = syntaqlite_syntax::Parser::new();
 //! let mut session = parser.parse("SELECT 1");
-//! while let Some(result) = session.next_statement() {
-//!     println!("{result:?}");
+//! loop {
+//!     match session.next() {
+//!         NextStatement::Statement(statement) => {
+//!             println!("{:?}", statement.root());
+//!         }
+//!         NextStatement::Error(error) => {
+//!             eprintln!("parse error: {}", error.message());
+//!             if error.kind() == ParseErrorKind::Fatal {
+//!                 break;
+//!             }
+//!         }
+//!         NextStatement::Done => break,
+//!     }
 //! }
 //! ```
 //!
@@ -48,13 +61,18 @@
 pub use parser::ParserConfig;
 #[cfg(feature = "sqlite")]
 #[doc(inline)]
-pub use parser::{ParseError, ParseSession, Parser, ParserToken, StatementResult};
+pub use parser::{
+    NextStatement, ParseError, ParseErrorKind, ParseSession, Parser, ParserToken, ParsedStatement,
+};
 
 // Token/comment data types shared across dialects.
 #[doc(inline)]
-pub use parser::{Comment, CommentKind, ParserTokenFlags};
+pub use parser::{Comment, CommentKind, CompletionContext, ParserTokenFlags};
 
 // Top-level tokenizer types.
+#[cfg(feature = "sqlite")]
+#[doc(inline)]
+pub use sqlite::tokens::TokenType;
 #[cfg(feature = "sqlite")]
 #[doc(inline)]
 pub use tokenizer::{Token, Tokenizer};
@@ -95,13 +113,13 @@ pub mod util;
 /// dialect is known statically.
 pub mod any {
     #[doc(inline)]
-    pub use crate::ast::{AnyDialect, AnyNode, AnyNodeId, FieldValue, NodeFields};
+    pub use crate::ast::{AnyNode, AnyNodeId, AnyNodeTag, AnyTokenType, FieldValue, NodeFields};
     #[doc(inline)]
-    pub use crate::grammar::{AnyGrammar, FieldKind, FieldMeta, TokenCategory};
+    pub use crate::grammar::{AnyGrammar, FieldKind, FieldMeta, KeywordEntry, TokenCategory};
     #[doc(inline)]
     pub use crate::parser::{
-        AnyIncrementalParseSession, AnyParseError, AnyParseSession, AnyParser, AnyParserToken,
-        AnyStatementResult, MacroRegion,
+        AnyIncrementalParseSession, AnyNextStatement, AnyParseError, AnyParseSession, AnyParser,
+        AnyParserToken, AnyParsedStatement, MacroRegion,
     };
     #[doc(inline)]
     pub use crate::tokenizer::{AnyToken, AnyTokenizer};
@@ -124,7 +142,7 @@ pub mod any {
 /// grammar's generated node and token enums. The generator produces correct
 /// implementations — you do not implement or import these manually.
 ///
-/// If you need to write code that works across grammars without dialect-specific
+/// If you need to write code that works across grammars without grammar-specific
 /// types, use [`any`] instead, which provides type-erased equivalents that are
 /// far easier to work with.
 pub mod typed {
@@ -135,7 +153,7 @@ pub mod typed {
     #[doc(inline)]
     pub use crate::parser::{
         TypedIncrementalParseSession, TypedParseError, TypedParseSession, TypedParser,
-        TypedParserToken, TypedStatementResult,
+        TypedParserToken, TypedParsedStatement, TypedNextStatement,
     };
     #[doc(inline)]
     pub use crate::tokenizer::{TypedToken, TypedTokenizer};
@@ -159,7 +177,7 @@ pub mod typed {
 ///
 /// Re-exports every generated node struct, enum, and accessor type for the
 /// `SQLite` dialect. Import from here when you need to name concrete node
-/// types — for example, when pattern-matching on a [`StatementResult`] or
+/// types — for example, when pattern-matching on a [`ParsedStatement`] or
 /// traversing the parse tree.
 #[cfg(feature = "sqlite")]
 pub mod nodes {

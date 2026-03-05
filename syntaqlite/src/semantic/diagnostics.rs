@@ -28,19 +28,30 @@ pub struct Diagnostic {
 /// consumption; [`fmt::Display`](std::fmt::Display) produces the human-readable form.
 #[derive(Debug, Clone)]
 pub enum DiagnosticMessage {
+    /// Referenced table name was not found in any catalog layer.
     UnknownTable {
+        /// The unresolved table name.
         name: String,
     },
+    /// Referenced column name was not found in the current scope.
     UnknownColumn {
+        /// The unresolved column name.
         column: String,
+        /// Optional table qualifier used by the query.
         table: Option<String>,
     },
+    /// Function name was not found in the function catalog.
     UnknownFunction {
+        /// The unresolved function name.
         name: String,
     },
+    /// Function exists, but the call arity is invalid.
     FunctionArity {
+        /// The function name.
         name: String,
+        /// Accepted fixed arities.
         expected: Vec<usize>,
+        /// Arity supplied by the call.
         got: usize,
     },
     /// Catch-all for parse errors and other unstructured messages.
@@ -69,7 +80,7 @@ impl std::fmt::Display for DiagnosticMessage {
                 expected,
                 got,
             } => {
-                let expected_str: Vec<String> = expected.iter().map(|n| n.to_string()).collect();
+                let expected_str: Vec<String> = expected.iter().map(ToString::to_string).collect();
                 write!(
                     f,
                     "function '{name}' expects {} argument(s), got {got}",
@@ -131,9 +142,13 @@ impl Diagnostic {
 /// Diagnostic severity level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
+    /// Blocking issue that should fail validation.
     Error,
+    /// Suspicious but non-fatal issue.
     Warning,
+    /// Informational diagnostic.
     Info,
+    /// Lowest-severity diagnostic, usually a suggestion.
     Hint,
 }
 

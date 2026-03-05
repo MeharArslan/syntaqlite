@@ -30,6 +30,7 @@ struct SyntaqliteParser {
   uint32_t last_token_type;  // Last non-whitespace token fed to Lemon.
   uint32_t finished;         // 1 after EOF has been sent to Lemon.
   uint32_t had_error;        // Sticky error flag for current result.
+  uint32_t result_error_kind;  // SyntaqliteErrorKind for current result.
   char error_msg[256];       // Error message buffer.
   uint32_t trace;
   uint32_t collect_tokens;
@@ -41,6 +42,21 @@ struct SyntaqliteParser {
   uint32_t macro_depth;  // Nesting depth (0 = not in macro).
   SYNQ_VEC(SyntaqliteMacroRegion) macros;
 };
+
+static int32_t set_result_status(SyntaqliteParser* p, int32_t rc) {
+  switch (rc) {
+    case SYNTAQLITE_PARSE_RECOVERED:
+      p->result_error_kind = SYNTAQLITE_ERROR_KIND_RECOVERED;
+      break;
+    case SYNTAQLITE_PARSE_ERROR:
+      p->result_error_kind = SYNTAQLITE_ERROR_KIND_FATAL;
+      break;
+    default:
+      p->result_error_kind = SYNTAQLITE_ERROR_KIND_NONE;
+      break;
+  }
+  return rc;
+}
 
 // ---------------------------------------------------------------------------
 // Lifecycle
@@ -81,6 +97,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->last_token_type = 0;
   p->finished = 0;
   p->had_error = 0;
+  p->result_error_kind = SYNTAQLITE_ERROR_KIND_NONE;
   p->error_msg[0] = '\0';
   p->pending_reset = 0;
   syntaqlite_vec_clear(&p->comments);
@@ -210,7 +227,7 @@ static int finish_input(SyntaqliteParser* p) {
   // Nothing to do if no tokens were ever fed.
   if (p->last_token_type == 0) {
     p->finished = 1;
-    return SYNTAQLITE_PARSE_DONE;
+    return set_result_status(p, SYNTAQLITE_PARSE_DONE);
   }
 
   // Synthesize SEMI if the last token wasn't one.
@@ -220,12 +237,13 @@ static int finish_input(SyntaqliteParser* p) {
       if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
         p->finished = 1;
         if (check_macro_straddle(p) < 0)
-          return SYNTAQLITE_PARSE_ERROR;
-        return p->had_error ? SYNTAQLITE_PARSE_RECOVERED : SYNTAQLITE_PARSE_OK;
+          return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
+        return set_result_status(
+            p, p->had_error ? SYNTAQLITE_PARSE_RECOVERED : SYNTAQLITE_PARSE_OK);
       }
       if (p->had_error) {
         p->finished = 1;
-        return SYNTAQLITE_PARSE_ERROR;
+        return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
       }
       // null root, no error = bare semicolon, fall through to EOF
     }
@@ -244,19 +262,20 @@ static int finish_input(SyntaqliteParser* p) {
     if (p->error_msg[0] == '\0') {
       snprintf(p->error_msg, sizeof(p->error_msg), "incomplete SQL statement");
     }
-    return SYNTAQLITE_PARSE_ERROR;
+    return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
   }
 
   if (p->ctx.root != SYNTAQLITE_NULL_NODE) {
     if (check_macro_straddle(p) < 0)
-      return SYNTAQLITE_PARSE_ERROR;
-    return p->had_error ? SYNTAQLITE_PARSE_RECOVERED : SYNTAQLITE_PARSE_OK;
+      return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
+    return set_result_status(
+        p, p->had_error ? SYNTAQLITE_PARSE_RECOVERED : SYNTAQLITE_PARSE_OK);
   }
 
   if (p->had_error)
-    return SYNTAQLITE_PARSE_ERROR;
+    return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
 
-  return SYNTAQLITE_PARSE_DONE;
+  return set_result_status(p, SYNTAQLITE_PARSE_DONE);
 }
 
 // ---------------------------------------------------------------------------
@@ -271,7 +290,8 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
   syntaqlite_vec_clear(&p->macros);
 
   if (p->finished) {
-    return p->had_error ? SYNTAQLITE_PARSE_ERROR : SYNTAQLITE_PARSE_DONE;
+    return set_result_status(
+        p, p->had_error ? SYNTAQLITE_PARSE_ERROR : SYNTAQLITE_PARSE_DONE);
   }
 
   // Reset per-statement parse state.
@@ -281,6 +301,7 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
   p->ctx.saw_subquery = 0;
   p->ctx.saw_update_delete_limit = 0;
   p->had_error = 0;
+  p->result_error_kind = SYNTAQLITE_ERROR_KIND_NONE;
   p->error_msg[0] = '\0';
   p->ctx.error_offset = 0xFFFFFFFF;
   p->ctx.error_length = 0;
@@ -340,10 +361,10 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
       if (p->had_error) {
         p->had_error = 0;  // consumed for this result
         if (check_macro_straddle(p) < 0)
-          return SYNTAQLITE_PARSE_ERROR;
-        return SYNTAQLITE_PARSE_RECOVERED;
+          return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
+        return set_result_status(p, SYNTAQLITE_PARSE_RECOVERED);
       }
-      return SYNTAQLITE_PARSE_OK;
+      return set_result_status(p, SYNTAQLITE_PARSE_OK);
     }
   }
 
@@ -359,8 +380,8 @@ uint32_t syntaqlite_result_root(SyntaqliteParser* p) {
   return p->ctx.root;
 }
 
-uint32_t syntaqlite_result_error(SyntaqliteParser* p) {
-  return p->had_error;
+SyntaqliteErrorKind syntaqlite_result_error_kind(SyntaqliteParser* p) {
+  return p->result_error_kind;
 }
 
 const char* syntaqlite_result_error_msg(SyntaqliteParser* p) {
@@ -414,6 +435,7 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
     p->ctx.saw_subquery = 0;
     p->ctx.saw_update_delete_limit = 0;
     p->had_error = 0;
+    p->result_error_kind = SYNTAQLITE_ERROR_KIND_NONE;
     p->error_msg[0] = '\0';
     p->ctx.error_offset = 0xFFFFFFFF;
     p->ctx.error_length = 0;
@@ -423,7 +445,7 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
 
   // Skip whitespace silently.
   if (token_type == SYNTAQLITE_TK_SPACE) {
-    return SYNTAQLITE_PARSE_DONE;
+    return set_result_status(p, SYNTAQLITE_PARSE_DONE);
   }
 
   // Record comments but don't feed to Lemon.
@@ -433,7 +455,7 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
       SyntaqliteComment t = {tok_offset, len, (uint8_t)(text[0] == '-' ? 0 : 1)};
       syntaqlite_vec_push(&p->comments, t, p->mem);
     }
-    return SYNTAQLITE_PARSE_DONE;
+    return set_result_status(p, SYNTAQLITE_PARSE_DONE);
   }
 
   // Capture non-whitespace, non-comment, non-semicolon token positions.
@@ -447,21 +469,22 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
 
   int rc = feed_one_token(p, token_type, text, len, tidx);
   if (rc < 0)
-    return SYNTAQLITE_PARSE_ERROR;
+    return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
 
   if (rc == 1 && p->ctx.root == SYNTAQLITE_NULL_NODE) {
     // Bare semicolon — not a real statement.
-    return SYNTAQLITE_PARSE_DONE;
+    return set_result_status(p, SYNTAQLITE_PARSE_DONE);
   }
 
   if (rc == 1) {
     if (check_macro_straddle(p) < 0)
-      return SYNTAQLITE_PARSE_ERROR;
+      return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
     p->pending_reset = 1;
-    return p->had_error ? SYNTAQLITE_PARSE_RECOVERED : SYNTAQLITE_PARSE_OK;
+    return set_result_status(
+        p, p->had_error ? SYNTAQLITE_PARSE_RECOVERED : SYNTAQLITE_PARSE_OK);
   }
 
-  return SYNTAQLITE_PARSE_DONE;
+  return set_result_status(p, SYNTAQLITE_PARSE_DONE);
 }
 
 uint32_t syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
@@ -474,10 +497,11 @@ uint32_t syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
   return p->grammar.tmpl->parser_expected_tokens(p->lemon, out_tokens, out_cap);
 }
 
-uint32_t syntaqlite_parser_completion_context(SyntaqliteParser* p) {
+SyntaqliteCompletionContext syntaqlite_parser_completion_context(
+    SyntaqliteParser* p) {
   if (p == NULL || p->grammar.tmpl == NULL ||
       p->grammar.tmpl->parser_completion_context == NULL) {
-    return 0;
+    return SYNTAQLITE_COMPLETION_CONTEXT_UNKNOWN;
   }
   return p->grammar.tmpl->parser_completion_context(p->lemon);
 }
@@ -486,7 +510,7 @@ int32_t syntaqlite_parser_finish(SyntaqliteParser* p) {
   if (p->pending_reset) {
     // Nothing pending after a completed statement — done.
     p->pending_reset = 0;
-    return SYNTAQLITE_PARSE_DONE;
+    return set_result_status(p, SYNTAQLITE_PARSE_DONE);
   }
   return finish_input(p);
 }

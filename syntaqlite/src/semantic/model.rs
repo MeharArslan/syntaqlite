@@ -4,16 +4,11 @@
 //! Opaque precomputed SQL representation.
 //!
 //! [`SemanticModel`] is produced by [`SemanticAnalyzer::prepare()`] and holds
-//! the parser arena, source text, statement results, and cached token stream.
+//! the owned source text, accumulated token stream, comments, and parse errors.
 //! It has no public methods — callers pass it to `_prepared` methods on the
 //! analyzer.
 
-use syntaqlite_parser::{NodeId, ParseError, ParseResult, Parser, StatementCursor};
-
-// ── Re-export `StatementCursor` lifetime change ──────────────────────
-// `StatementCursor<'d>` no longer borrows source text — it copies
-// source internally.  `SemanticModel<'d>` therefore has a single
-// lifetime (the dialect), making it trivially cacheable.
+use syntaqlite_syntax::{ParserTokenFlags, TokenType};
 
 // ── Types shared between semantic and LSP layers ─────────────────────
 
@@ -30,11 +25,11 @@ pub enum CompletionContext {
 }
 
 impl CompletionContext {
-    pub(crate) fn from_raw(v: u32) -> Self {
+    pub(crate) fn from_parser(v: syntaqlite_syntax::CompletionContext) -> Self {
         match v {
-            1 => Self::Expression,
-            2 => Self::TableRef,
-            _ => Self::Unknown,
+            syntaqlite_syntax::CompletionContext::Expression => Self::Expression,
+            syntaqlite_syntax::CompletionContext::TableRef => Self::TableRef,
+            syntaqlite_syntax::CompletionContext::Unknown => Self::Unknown,
         }
     }
 }
@@ -42,8 +37,8 @@ impl CompletionContext {
 /// Expected tokens and semantic context at a cursor position.
 #[derive(Debug)]
 pub struct CompletionInfo {
-    /// Terminal token IDs valid at the cursor.
-    pub tokens: Vec<u32>,
+    /// Terminal token types valid at the cursor.
+    pub tokens: Vec<TokenType>,
     /// Semantic context (expression vs table-ref).
     pub context: CompletionContext,
 }
@@ -59,46 +54,62 @@ pub struct SemanticToken {
     pub category: crate::dialect::TokenCategory,
 }
 
+// ── Stored per-statement token data ──────────────────────────────────
+
+/// A token position recorded during parsing. Stored in [`SemanticModel`].
+#[derive(Debug, Clone)]
+pub(crate) struct StoredToken {
+    pub(crate) offset: usize,
+    pub(crate) length: usize,
+    pub(crate) token_type: TokenType,
+    pub(crate) flags: ParserTokenFlags,
+}
+
+/// A comment position recorded during parsing. Stored in [`SemanticModel`].
+#[derive(Debug, Clone)]
+pub(crate) struct StoredComment {
+    pub(crate) offset: usize,
+    pub(crate) length: usize,
+}
+
+/// A parse error recorded during parsing. Stored in [`SemanticModel`].
+#[derive(Debug, Clone)]
+pub(crate) struct StoredParseError {
+    pub(crate) message: String,
+    pub(crate) offset: Option<usize>,
+    pub(crate) length: Option<usize>,
+}
+
 // ── SemanticModel ────────────────────────────────────────────────────
 
 /// Opaque precomputed representation of parsed SQL.
 ///
-/// Owns the parser and its cursor so node IDs remain valid. Produced only by
-/// [`SemanticAnalyzer::prepare()`](super::SemanticAnalyzer::prepare).
-///
-/// # Lifetimes
-///
-/// - `'a` — the source text passed to `prepare()`.
-/// - `'d` — the dialect (for the common SQLite case this is `'static`).
-pub struct SemanticModel<'d> {
-    /// Keeps the C parser alive (via the Rc inside Parser).
-    _parser: Parser<'d>,
-    /// Exhausted cursor — kept alive for its reader (arena access).
-    cursor: StatementCursor<'d>,
-    pub(crate) stmts: Vec<Result<NodeId, ParseError>>,
+/// Owns the source text, token stream, comments, and parse errors.
+/// Produced only by [`SemanticAnalyzer::prepare()`](super::SemanticAnalyzer::prepare).
+pub struct SemanticModel {
+    pub(crate) source: String,
+    pub(crate) tokens: Vec<StoredToken>,
+    pub(crate) comments: Vec<StoredComment>,
+    pub(crate) parse_errors: Vec<StoredParseError>,
 }
 
-impl<'d> SemanticModel<'d> {
-    /// Construct a new model from a parser, its cursor, and collected results.
+impl SemanticModel {
     pub(crate) fn new(
-        parser: Parser<'d>,
-        cursor: StatementCursor<'d>,
-        stmts: Vec<Result<NodeId, ParseError>>,
+        source: String,
+        tokens: Vec<StoredToken>,
+        comments: Vec<StoredComment>,
+        parse_errors: Vec<StoredParseError>,
     ) -> Self {
         SemanticModel {
-            _parser: parser,
-            cursor,
-            stmts,
+            source,
+            tokens,
+            comments,
+            parse_errors,
         }
-    }
-
-    /// Get a [`ParseResult`] for the parser's arena state.
-    pub(crate) fn reader(&self) -> ParseResult<'_> {
-        self.cursor.reader()
     }
 
     /// The source text bound to this model.
     pub(crate) fn source(&self) -> &str {
-        self.cursor.source()
+        &self.source
     }
 }

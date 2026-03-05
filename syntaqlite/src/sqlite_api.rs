@@ -267,8 +267,8 @@ impl IncrementalCursor {
     }
 
     /// Mark subsequent fed tokens as inside a macro expansion.
-    pub fn begin_macro(&mut self, call_offset: u32, call_length: u32) {
-        self.inner.begin_macro(call_offset, call_length)
+    pub fn begin_macro(&mut self, span: Range<usize>) {
+        self.inner.begin_macro(span)
     }
 
     /// End the innermost macro expansion region.

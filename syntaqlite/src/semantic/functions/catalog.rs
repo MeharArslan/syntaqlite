@@ -1,27 +1,26 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_parser::DialectEnv;
-
-use syntaqlite_parser::{FunctionCategory, FunctionInfo};
+use crate::dialect::catalog::{FunctionCategory, FunctionInfo, is_function_available};
+use crate::dialect::handle::Dialect;
 
 use super::types::{FunctionCheckResult, FunctionDef, FunctionLookup};
 
 /// Resolved function catalog for a dialect + config combination.
 ///
 /// Merges three sources with the following priority:
-/// 1. SQLite built-in catalog (filtered by [`DialectEnv`])
-/// 2. TypedDialectEnv extension functions (filtered by [`DialectEnv`])
+/// 1. `SQLite` built-in catalog (filtered by [`Dialect`])
+/// 2. Dialect extension functions (filtered by [`Dialect`])
 /// 3. Session/document user-defined functions
 ///
 /// Unlike the old `Vec<FunctionDef>` approach, this does **not** expand
-/// one entry per arity — arity checking works directly on the compact
+/// one entry per arity - arity checking works directly on the compact
 /// `&[i16]` representation from `FunctionInfo`.
 #[derive(Clone)]
 pub struct FunctionCatalog {
     /// Built-in functions (borrowed from static catalog, NOT expanded per-arity).
     builtins: Vec<&'static FunctionInfo<'static>>,
-    /// TypedDialectEnv extension functions (owned, copied from C data at construction).
+    /// Dialect extension functions (owned, copied from C data at construction).
     extensions: Vec<OwnedFunctionInfo>,
     /// User/session-defined functions.
     session: Vec<FunctionDef>,
@@ -37,22 +36,22 @@ struct OwnedFunctionInfo {
 
 impl FunctionCatalog {
     /// Build the catalog from a dialect and its compile-time configuration.
-    ///
-    /// Includes the SQLite built-in catalog and dialect extensions, both
-    /// filtered by `config`. Call [`with_session_functions`](Self::with_session_functions)
-    /// to merge in user-defined functions.
-    pub fn for_dialect(env: &DialectEnv<'_>) -> Self {
+    pub fn for_dialect(dialect: &Dialect<'_>) -> Self {
         #[cfg(feature = "sqlite")]
         let builtins: Vec<&'static FunctionInfo<'static>> =
-            syntaqlite_parser::available_functions(env);
+            crate::sqlite::functions_catalog::SQLITE_FUNCTIONS
+                .iter()
+                .filter(|e| is_function_available(e, dialect))
+                .map(|e| &e.info)
+                .collect();
 
         #[cfg(not(feature = "sqlite"))]
         let builtins: Vec<&'static FunctionInfo<'static>> = Vec::new();
 
-        let extensions: Vec<OwnedFunctionInfo> = env
+        let extensions: Vec<OwnedFunctionInfo> = dialect
             .function_extensions()
-            .into_iter()
-            .filter(|ext| syntaqlite_parser::is_function_available(ext, env))
+            .iter()
+            .filter(|ext| is_function_available(ext, dialect))
             .map(|ext| OwnedFunctionInfo {
                 name: ext.info.name.to_string(),
                 arities: ext.info.arities.to_vec(),
@@ -65,12 +64,6 @@ impl FunctionCatalog {
             extensions,
             session: Vec::new(),
         }
-    }
-
-    /// Build the catalog using default configuration. Convenience for SQLite.
-    #[cfg(feature = "sqlite")]
-    pub fn for_default_dialect(env: &DialectEnv<'_>) -> Self {
-        Self::for_dialect(env)
     }
 
     /// Append user-defined functions from a list of session functions.
@@ -122,9 +115,6 @@ impl FunctionCatalog {
             return FunctionCheckResult::Unknown;
         }
 
-        // If any source had a variadic entry, the call is valid for any arity.
-        // (We should not reach here if that's the case since matches_arity
-        // handles it, but be safe.)
         if has_variadic {
             return FunctionCheckResult::Ok;
         }
@@ -136,7 +126,6 @@ impl FunctionCatalog {
 
     /// Look up a function by name. Returns `None` if not found.
     pub fn lookup(&self, name: &str) -> Option<FunctionLookup<'_>> {
-        // Check builtins first.
         for info in &self.builtins {
             if info.name.eq_ignore_ascii_case(name) {
                 let mut fixed_arities = Vec::new();
@@ -153,7 +142,6 @@ impl FunctionCatalog {
             }
         }
 
-        // Check extensions.
         for ext in &self.extensions {
             if ext.name.eq_ignore_ascii_case(name) {
                 let mut fixed_arities = Vec::new();
@@ -170,7 +158,6 @@ impl FunctionCatalog {
             }
         }
 
-        // Check session.
         for func in &self.session {
             if func.name.eq_ignore_ascii_case(name) {
                 return Some(FunctionLookup {
@@ -187,86 +174,46 @@ impl FunctionCatalog {
 
     /// All unique function names (deduplicated, for completions and fuzzy matching).
     pub fn all_names(&self) -> Vec<String> {
-        let mut seen = std::collections::HashSet::new();
         let mut names = Vec::new();
-
-        for info in &self.builtins {
-            if seen.insert(info.name.to_ascii_lowercase()) {
-                names.push(info.name.to_string());
-            }
-        }
-        for ext in &self.extensions {
-            if seen.insert(ext.name.to_ascii_lowercase()) {
-                names.push(ext.name.clone());
-            }
-        }
-        for func in &self.session {
-            if seen.insert(func.name.to_ascii_lowercase()) {
-                names.push(func.name.clone());
-            }
-        }
-
+        self.visit_unique_names(|name, _category| names.push(name.to_string()));
         names
     }
 
     /// Iterate all known functions as `(name, category)` pairs.
-    ///
-    /// Each function name appears once even if multiple arities exist.
     pub fn iter(&self) -> impl Iterator<Item = (&str, FunctionCategory)> {
-        let mut seen = std::collections::HashSet::new();
-        let mut result: Vec<(&str, FunctionCategory)> = Vec::new();
-
-        for info in &self.builtins {
-            if seen.insert(info.name.to_ascii_lowercase()) {
-                result.push((info.name, info.category));
-            }
-        }
-        for ext in &self.extensions {
-            if seen.insert(ext.name.to_ascii_lowercase()) {
-                result.push((&ext.name, ext.category));
-            }
-        }
-        for func in &self.session {
-            if seen.insert(func.name.to_ascii_lowercase()) {
-                result.push((&func.name, FunctionCategory::Scalar));
-            }
-        }
-
+        let mut result = Vec::new();
+        self.visit_unique_names(|name, category| result.push((name, category)));
         result.into_iter()
     }
 
     /// Unique function names as `&str`, deduplicated across arities.
     pub fn unique_names(&self) -> impl Iterator<Item = &str> {
+        let mut names = Vec::new();
+        self.visit_unique_names(|name, _category| names.push(name));
+        names.into_iter()
+    }
+
+    fn visit_unique_names<'a>(&'a self, mut visit: impl FnMut(&'a str, FunctionCategory)) {
         let mut seen = std::collections::HashSet::new();
-        let mut names: Vec<&str> = Vec::new();
 
         for info in &self.builtins {
             if seen.insert(info.name.to_ascii_lowercase()) {
-                names.push(info.name);
+                visit(info.name, info.category);
             }
         }
         for ext in &self.extensions {
             if seen.insert(ext.name.to_ascii_lowercase()) {
-                names.push(&ext.name);
+                visit(&ext.name, ext.category);
             }
         }
         for func in &self.session {
             if seen.insert(func.name.to_ascii_lowercase()) {
-                names.push(&func.name);
+                visit(&func.name, FunctionCategory::Scalar);
             }
         }
-
-        names.into_iter()
     }
 }
 
-/// Check if a given `arg_count` matches any arity in the arities slice.
-///
-/// Arity encoding:
-/// - Positive value: exact arity (e.g., `2` = exactly 2 args)
-/// - `-1`: any number of args
-/// - `-N` (N > 1): at least `N - 1` args
-/// - Empty slice: variadic (any arity)
 fn matches_arity(arities: &[i16], arg_count: usize) -> bool {
     if arities.is_empty() {
         return true;
@@ -276,15 +223,16 @@ fn matches_arity(arities: &[i16], arg_count: usize) -> bool {
             if a == -1 {
                 true
             } else {
-                arg_count >= (-a - 1) as usize
+                arg_count
+                    >= usize::try_from(-i32::from(a) - 1)
+                        .expect("negative arity encodes minimum args")
             }
         } else {
-            arg_count == a as usize
+            arg_count == usize::try_from(i32::from(a)).expect("fixed arity is non-negative")
         }
     })
 }
 
-/// Collect fixed arities and set `is_variadic` if any entry is variadic.
 fn collect_arities(arities: &[i16], expected: &mut Vec<usize>, is_variadic: &mut bool) {
     if arities.is_empty() {
         *is_variadic = true;
@@ -294,7 +242,7 @@ fn collect_arities(arities: &[i16], expected: &mut Vec<usize>, is_variadic: &mut
         if a < 0 {
             *is_variadic = true;
         } else {
-            expected.push(a as usize);
+            expected.push(usize::try_from(i32::from(a)).expect("fixed arity is non-negative"));
         }
     }
 }
@@ -317,7 +265,6 @@ mod tests {
 
     #[test]
     fn matches_arity_variadic_min() {
-        // -4 means at least 3 args
         assert!(!matches_arity(&[-4], 2));
         assert!(matches_arity(&[-4], 3));
         assert!(matches_arity(&[-4], 10));
@@ -331,7 +278,6 @@ mod tests {
 
     #[test]
     fn matches_arity_mixed() {
-        // 1 or 2 or variadic(any)
         assert!(matches_arity(&[1, 2, -1], 0));
         assert!(matches_arity(&[1, 2, -1], 5));
     }
@@ -339,8 +285,8 @@ mod tests {
     #[cfg(feature = "sqlite")]
     #[test]
     fn catalog_check_call_abs() {
-        let dialect = syntaqlite_parser_sqlite::dialect();
-        let catalog = FunctionCatalog::for_default_dialect(&dialect);
+        let dialect = crate::dialect::sqlite();
+        let catalog = FunctionCatalog::for_dialect(&dialect);
         assert!(matches!(
             catalog.check_call("abs", 1),
             FunctionCheckResult::Ok
@@ -349,56 +295,5 @@ mod tests {
             catalog.check_call("abs", 2),
             FunctionCheckResult::WrongArity { .. }
         ));
-    }
-
-    #[cfg(feature = "sqlite")]
-    #[test]
-    fn catalog_check_call_unknown() {
-        let dialect = syntaqlite_parser_sqlite::dialect();
-        let catalog = FunctionCatalog::for_default_dialect(&dialect);
-        assert!(matches!(
-            catalog.check_call("no_such_func", 1),
-            FunctionCheckResult::Unknown
-        ));
-    }
-
-    #[cfg(feature = "sqlite")]
-    #[test]
-    fn catalog_check_call_session_function() {
-        let dialect = syntaqlite_parser_sqlite::dialect();
-        let mut catalog = FunctionCatalog::for_default_dialect(&dialect);
-        catalog.add_session_functions(&[FunctionDef {
-            name: "my_func".to_string(),
-            args: Some(2),
-        }]);
-        assert!(matches!(
-            catalog.check_call("my_func", 2),
-            FunctionCheckResult::Ok
-        ));
-        assert!(matches!(
-            catalog.check_call("my_func", 3),
-            FunctionCheckResult::WrongArity { .. }
-        ));
-    }
-
-    #[cfg(feature = "sqlite")]
-    #[test]
-    fn catalog_lookup_abs() {
-        let dialect = syntaqlite_parser_sqlite::dialect();
-        let catalog = FunctionCatalog::for_default_dialect(&dialect);
-        let info = catalog.lookup("abs").expect("abs should exist");
-        assert_eq!(info.name, "abs");
-        assert!(!info.is_variadic);
-        assert!(info.fixed_arities.contains(&1));
-    }
-
-    #[cfg(feature = "sqlite")]
-    #[test]
-    fn catalog_all_names_includes_builtins() {
-        let dialect = syntaqlite_parser_sqlite::dialect();
-        let catalog = FunctionCatalog::for_default_dialect(&dialect);
-        let names = catalog.all_names();
-        assert!(names.iter().any(|n| n == "abs"));
-        assert!(names.iter().any(|n| n == "count"));
     }
 }

@@ -332,7 +332,7 @@ pub(crate) fn generate_parse_h(dialect: &str) -> String {
         "uint32_t Synq{pascal}ParseExpectedTokens(void* parser, uint32_t* out_tokens, uint32_t out_cap);"
     ));
     w.line(&format!(
-        "uint32_t Synq{pascal}ParseCompletionContext(void* parser);"
+        "SyntaqliteCompletionContext Synq{pascal}ParseCompletionContext(void* parser);"
     ));
     w.line("#ifndef NDEBUG");
     w.line(&format!(

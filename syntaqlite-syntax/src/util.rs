@@ -12,7 +12,7 @@ pub use crate::cflags::SqliteFlag;
 /// a clone back via [`AnyGrammar::with_cflags`](crate::any::AnyGrammar::with_cflags)
 /// to copy flag state from one grammar handle to another.
 ///
-/// The set of available flag indices and their meanings are dialect-specific
+/// The set of available flag indices and their meanings are grammar-specific
 /// (e.g. the `SYNQ_CFLAG_IDX_*` constants exported by `syntaqlite`).
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SqliteFlags(pub(crate) ffi::CCflags);
@@ -148,7 +148,7 @@ impl SqliteVersion {
     ///
     /// Returns `SqliteVersion::Latest` for `i32::MAX` and for any unrecognised
     /// value (e.g. a version newer than the highest known variant).
-    pub(crate) fn from_int(v: i32) -> Self {
+    pub fn from_int(v: i32) -> Self {
         match v {
             3_012_000 => Self::V3_12,
             3_013_000 => Self::V3_13,

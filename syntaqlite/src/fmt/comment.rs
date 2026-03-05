@@ -3,9 +3,24 @@
 
 use std::cell::Cell;
 
-use syntaqlite_parser::{Comment, CommentKind, TokenPos};
+use syntaqlite_syntax::CommentKind;
 
 use super::doc::{DocArena, DocId, NIL_DOC};
+
+/// A collected comment entry with pre-computed byte offset and length.
+#[derive(Clone, Copy)]
+pub(crate) struct CommentEntry {
+    pub offset: u32,
+    pub length: u32,
+    pub kind: CommentKind,
+}
+
+/// A collected token entry with pre-computed byte offset and length.
+#[derive(Clone, Copy)]
+pub(crate) struct TokenEntry {
+    pub offset: u32,
+    pub length: u32,
+}
 
 /// Result of draining comment items. Trailing docs (e.g. LineSuffix for
 /// end-of-line comments) go BEFORE any pending line break. Leading docs
@@ -18,15 +33,17 @@ pub(crate) struct DrainResult {
 /// Two cursors advancing monotonically through sorted comment and token arrays.
 /// Shared via `&` across recursive format calls; interior mutability is required
 /// because the recursive `format_child` closure captures `&CommentCtx`.
-pub(crate) struct CommentCtx<'a> {
-    comments: &'a [Comment],
-    tokens: &'a [TokenPos],
+///
+/// Owns its comment and token data (no lifetime parameter).
+pub(crate) struct CommentCtx {
+    comments: Vec<CommentEntry>,
+    tokens: Vec<TokenEntry>,
     cursor: Cell<usize>,
     token_cursor: Cell<usize>,
 }
 
-impl<'a> CommentCtx<'a> {
-    pub(crate) fn new(comments: &'a [Comment], tokens: &'a [TokenPos]) -> Self {
+impl CommentCtx {
+    pub(crate) fn new(comments: Vec<CommentEntry>, tokens: Vec<TokenEntry>) -> Self {
         CommentCtx {
             comments,
             tokens,
@@ -50,10 +67,8 @@ impl<'a> CommentCtx<'a> {
     /// Drain all comments with offset < `before`.
     ///
     /// Stops early if there is non-whitespace source text (i.e. a keyword)
-    /// between a comment and `before`. This prevents comments that precede
-    /// an intervening keyword from being attributed to the child after the
-    /// keyword.
-    pub(crate) fn drain_before(
+    /// between a comment and `before`.
+    pub(crate) fn drain_before<'a>(
         &self,
         before: u32,
         source: &'a str,
@@ -67,17 +82,13 @@ impl<'a> CommentCtx<'a> {
             let t = &self.comments[cursor];
             let comment_end = (t.offset + t.length) as usize;
 
-            // Check if there is non-whitespace, non-comment source text
-            // between the end of this comment and `before`. If so, there's
-            // an intervening keyword — stop draining so this comment stays
-            // with the keyword rather than being pulled past it.
             let before_usize = (before as usize).min(source.len());
             if comment_end < before_usize
                 && has_non_comment_text(
                     source,
                     comment_end,
                     before_usize,
-                    self.comments,
+                    &self.comments,
                     cursor + 1,
                 )
             {
@@ -91,7 +102,7 @@ impl<'a> CommentCtx<'a> {
             let has_newline = gap_start < gap_end && source[gap_start..gap_end].contains('\n');
 
             match t.kind {
-                CommentKind::LineComment => {
+                CommentKind::Line => {
                     if has_newline {
                         let hl1 = arena.hardline();
                         let txt = arena.text(text);
@@ -117,7 +128,7 @@ impl<'a> CommentCtx<'a> {
                         };
                     }
                 }
-                CommentKind::BlockComment => {
+                CommentKind::Block => {
                     if has_newline {
                         let hl = arena.hardline();
                         let txt = arena.text(text);
@@ -149,8 +160,7 @@ impl<'a> CommentCtx<'a> {
         DrainResult { trailing, leading }
     }
 
-    /// Peek at the next N tokens (one per whitespace-separated word in the keyword)
-    /// without advancing the token cursor.
+    /// Peek at the next N tokens without advancing the token cursor.
     pub(crate) fn peek_keyword_tokens(&self, kw_text: &str) -> Option<(u32, usize)> {
         let word_count = kw_text.split_whitespace().count();
         if word_count == 0 {
@@ -179,13 +189,9 @@ impl<'a> CommentCtx<'a> {
     }
 
     /// Peek at the next undrained comment without advancing the cursor.
-    pub(crate) fn peek_comment(&self) -> Option<&Comment> {
+    pub(crate) fn peek_comment(&self) -> Option<&CommentEntry> {
         let idx = self.cursor.get();
-        if idx < self.comments.len() {
-            Some(&self.comments[idx])
-        } else {
-            None
-        }
+        self.comments.get(idx)
     }
 
     /// Advance the comment cursor by one.
@@ -196,32 +202,24 @@ impl<'a> CommentCtx<'a> {
         }
     }
 
-    /// Peek at the next token's offset without advancing the token cursor.
+    /// Peek at the next token's offset and length without advancing.
     pub(crate) fn peek_next_token(&self) -> Option<(u32, u32)> {
         let idx = self.token_cursor.get();
-        if idx < self.tokens.len() {
-            let tp = &self.tokens[idx];
-            Some((tp.offset, tp.length))
-        } else {
-            None
-        }
+        self.tokens.get(idx).map(|tp| (tp.offset, tp.length))
     }
 
     /// Flush all remaining comments.
-    pub(crate) fn drain_remaining(&self, source: &'a str, arena: &mut DocArena<'a>) -> DocId {
+    pub(crate) fn drain_remaining<'a>(&self, source: &'a str, arena: &mut DocArena<'a>) -> DocId {
         let drain = self.drain_before(u32::MAX, source, arena);
         arena.cat(drain.trailing, drain.leading)
     }
 }
 
-/// Check whether a byte range contains non-whitespace text that isn't covered
-/// by a comment. `comments` must be sorted by offset; scanning starts at
-/// `comment_start_idx`.
 fn has_non_comment_text(
     source: &str,
     start: usize,
     end: usize,
-    comments: &[Comment],
+    comments: &[CommentEntry],
     comment_start_idx: usize,
 ) -> bool {
     let src = source.as_bytes();
@@ -229,7 +227,6 @@ fn has_non_comment_text(
     let mut ci = comment_start_idx;
 
     while pos < end {
-        // Skip over any comment region that covers `pos`.
         while ci < comments.len() {
             let c_start = comments[ci].offset as usize;
             let c_end = (comments[ci].offset + comments[ci].length) as usize;

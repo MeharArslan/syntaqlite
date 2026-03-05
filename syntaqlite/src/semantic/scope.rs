@@ -42,11 +42,9 @@ impl<'ctx> ScopeStack<'ctx> {
     /// Add a table or alias to the current scope.
     /// `columns` is `None` if column info is not available.
     pub(crate) fn add_table(&mut self, name: &str, columns: Option<Vec<String>>) {
-        self.stack
-            .last_mut()
-            .unwrap()
-            .tables
-            .insert(name.to_ascii_lowercase(), columns);
+        if let Some(scope) = self.stack.last_mut() {
+            scope.tables.insert(name.to_ascii_lowercase(), columns);
+        }
     }
 
     /// Look up column names for a table from the ambient catalog.

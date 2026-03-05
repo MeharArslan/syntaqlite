@@ -318,7 +318,7 @@ fn nonterminal_defines_snippet(nts: &[(String, u32)]) -> String {
 fn completion_context_h_snippet(parser_name: &str) -> String {
     format!(
         "\n/* syntaqlite extension: completion context from parser stack. */\n\
-uint32_t {parser_name}CompletionContext(void* parser);\n"
+SyntaqliteCompletionContext {parser_name}CompletionContext(void* parser);\n"
     )
 }
 
@@ -336,11 +336,11 @@ static int synq_has_goto(YYACTIONTYPE state, YYCODETYPE nt) {{\n\
 }}\n\
 \n\
 /* syntaqlite extension: determine the semantic completion context\n\
-** (Expression vs TableRef) by walking the parser stack. Returns:\n\
-**   0 = Unknown, 1 = Expression, 2 = TableRef. */\n\
-uint32_t {parser_name}CompletionContext(void* parser) {{\n\
+** (Expression vs TableRef) by walking the parser stack. Returns one of\n\
+** SYNTAQLITE_COMPLETION_CONTEXT_*. */\n\
+SyntaqliteCompletionContext {parser_name}CompletionContext(void* parser) {{\n\
   yyParser* p = (yyParser*)parser;\n\
-  if( p==0 || p->yytos==0 ) return 0;\n\
+  if( p==0 || p->yytos==0 ) return SYNTAQLITE_COMPLETION_CONTEXT_UNKNOWN;\n\
 \n\
   for(yyStackEntry* e = p->yytos; e >= p->yystack; e--) {{\n\
     YYACTIONTYPE s = e->stateno;\n\
@@ -349,15 +349,15 @@ uint32_t {parser_name}CompletionContext(void* parser) {{\n\
     if( synq_has_goto(s, SYNQ_NT_SELTABLIST)\n\
      || synq_has_goto(s, SYNQ_NT_FULLNAME)\n\
      || synq_has_goto(s, SYNQ_NT_XFULLNAME) ) {{\n\
-      return 2; /* TableRef */\n\
+      return SYNTAQLITE_COMPLETION_CONTEXT_TABLE_REF;\n\
     }}\n\
 \n\
     /* Check if this state has gotos for expression non-terminals. */\n\
     if( synq_has_goto(s, SYNQ_NT_EXPR) ) {{\n\
-      return 1; /* Expression */\n\
+      return SYNTAQLITE_COMPLETION_CONTEXT_EXPRESSION;\n\
     }}\n\
   }}\n\
-  return 0; /* Unknown */\n\
+  return SYNTAQLITE_COMPLETION_CONTEXT_UNKNOWN;\n\
 }}\n"
     )
 }

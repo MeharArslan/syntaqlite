@@ -41,14 +41,16 @@ impl Grammar {
     }
 }
 
+impl From<Grammar> for AnyGrammar {
+    fn from(g: Grammar) -> AnyGrammar {
+        g.raw
+    }
+}
+
 impl TypedGrammar for Grammar {
     type Node<'a> = super::ast::Stmt<'a>;
     type NodeId = super::ast::NodeId;
     type Token = super::tokens::TokenType;
-
-    fn raw(&mut self) -> &mut AnyGrammar {
-        &mut self.raw
-    }
 }
 
 /// Returns the dialect grammar handle.

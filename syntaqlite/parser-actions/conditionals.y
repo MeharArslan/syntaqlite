@@ -19,12 +19,12 @@
 // ============ IS / ISNULL / NOTNULL ============
 
 expr(A) ::= expr(B) ISNULL|NOTNULL(E). {
-    SyntaqliteIsOp op = (E.type == SYNTAQLITE_TK_ISNULL) ? SYNTAQLITE_IS_OP_ISNULL : SYNTAQLITE_IS_OP_NOTNULL;
+    SyntaqliteIsOp op = (E.type == SYNTAQLITE_TK_ISNULL) ? SYNTAQLITE_IS_OP_IS_NULL : SYNTAQLITE_IS_OP_NOT_NULL;
     A = synq_parse_is_expr(pCtx, op, B, SYNTAQLITE_NULL_NODE);
 }
 
 expr(A) ::= expr(B) NOT NULL. {
-    A = synq_parse_is_expr(pCtx, SYNTAQLITE_IS_OP_NOTNULL, B, SYNTAQLITE_NULL_NODE);
+    A = synq_parse_is_expr(pCtx, SYNTAQLITE_IS_OP_NOT_NULL, B, SYNTAQLITE_NULL_NODE);
 }
 
 expr(A) ::= expr(B) IS expr(C). {

@@ -17,14 +17,24 @@
 //   syntaqlite_parser_reset(p, source, len);
 //   while (has_more_tokens) {
 //     int32_t rc = syntaqlite_parser_feed_token(p, type, text, tlen);
-//     if (rc == SYNTAQLITE_PARSE_OK || rc == SYNTAQLITE_PARSE_RECOVERED) {
-//       uint32_t root = syntaqlite_result_root(p);
-//       // read nodes ...
+//     switch (rc) {
+//       case SYNTAQLITE_PARSE_DONE:
+//         break;
+//       case SYNTAQLITE_PARSE_OK: {
+//         uint32_t root = syntaqlite_result_root(p);
+//         // read nodes ...
+//         break;
+//       }
+//       case SYNTAQLITE_PARSE_RECOVERED:
+//       case SYNTAQLITE_PARSE_ERROR:
+//         if (syntaqlite_result_error_kind(p) == SYNTAQLITE_ERROR_KIND_FATAL)
+//           goto done;
+//         break;
 //     }
-//     if (rc == SYNTAQLITE_PARSE_ERROR) { /* handle error */ break; }
 //   }
 //   int32_t rc = syntaqlite_parser_finish(p);
 //   if (rc == SYNTAQLITE_PARSE_OK) { /* final statement complete */ }
+// done:
 //   syntaqlite_parser_destroy(p);
 //
 // For macro region tracking, bracket expanded tokens with
@@ -73,8 +83,9 @@ uint32_t syntaqlite_parser_expected_tokens(SyntaqliteParser* p,
                                            uint32_t out_cap);
 
 // Return the semantic completion context at the parser's current state.
-// 0 = Unknown, 1 = Expression, 2 = TableRef.
-uint32_t syntaqlite_parser_completion_context(SyntaqliteParser* p);
+// One of SYNTAQLITE_COMPLETION_CONTEXT_*.
+SyntaqliteCompletionContext syntaqlite_parser_completion_context(
+    SyntaqliteParser* p);
 
 // ---------------------------------------------------------------------------
 // Macro region tracking

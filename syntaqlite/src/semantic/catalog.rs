@@ -11,7 +11,11 @@
 //! - [`DocumentCatalog`] — accumulated from DDL during analysis. Internal scratch.
 //! - [`CatalogStack`] — flat composition that holds references to all three.
 
-use syntaqlite_parser::DialectEnv;
+use syntaqlite_syntax::any::FieldKind;
+use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue};
+use syntaqlite_syntax::typed::GrammarNodeType;
+
+use crate::dialect::handle::Dialect;
 
 use super::functions::{FunctionCatalog, FunctionCheckResult, FunctionDef};
 use super::relations::{ColumnDef, RelationDef, RelationKind};
@@ -22,79 +26,60 @@ use super::relations::{ColumnDef, RelationDef, RelationKind};
 ///
 /// Callers populate it however they want: introspecting a live DB,
 /// parsing CREATE statements, loading from a config file, etc.
-///
-/// This replaces the old `SessionContext`.
 #[derive(Default)]
 pub struct DatabaseCatalog {
+    /// Relations visible to semantic analysis (tables and views).
     pub relations: Vec<RelationDef>,
+    /// User-defined or database-defined functions visible to analysis.
     pub functions: Vec<FunctionDef>,
 }
 
 impl DatabaseCatalog {
+    /// Iterate table relations only.
     pub fn tables(&self) -> impl Iterator<Item = &RelationDef> + '_ {
         self.relations
             .iter()
             .filter(|r| r.kind == RelationKind::Table)
     }
 
+    /// Iterate view relations only.
     pub fn views(&self) -> impl Iterator<Item = &RelationDef> + '_ {
         self.relations
             .iter()
             .filter(|r| r.kind == RelationKind::View)
     }
 
-    /// Build a `DatabaseCatalog` from parsed DDL statement roots.
+    /// Build a `DatabaseCatalog` from a DDL source string.
     ///
-    /// Processes statements in order, building up a schema incrementally.
-    /// `SELECT *` and `SELECT t.*` in `CREATE TABLE … AS SELECT` or
-    /// `CREATE VIEW … AS SELECT` are expanded using tables/views defined
-    /// by earlier statements in the same input.
-    pub fn from_stmts<'a>(
-        reader: syntaqlite_parser::ParseResult<'a>,
-        stmt_ids: &[syntaqlite_parser::NodeId],
-        dialect: DialectEnv<'_>,
-    ) -> Self {
+    /// Creates a temporary parser, parses the source, and builds the schema
+    /// from the resulting DDL statements.
+    #[cfg(feature = "sqlite")]
+    pub fn from_ddl(dialect: Dialect<'_>, source: &str) -> Self {
+        let parser = syntaqlite_syntax::Parser::new();
+        let mut session = parser.parse(source);
         let mut doc = DocumentCatalog::new();
-        for &id in stmt_ids {
-            doc.accumulate(reader, id, dialect, None);
+
+        loop {
+            let stmt = match session.next() {
+                syntaqlite_syntax::NextStatement::Statement(stmt) => stmt,
+                syntaqlite_syntax::NextStatement::Error(_) => continue,
+                syntaqlite_syntax::NextStatement::Done => break,
+            };
+
+            if let Some(root) = stmt.root() {
+                let root_id: AnyNodeId = root.node_id().into();
+                let any_result = stmt.erase();
+                doc.accumulate(any_result, root_id, dialect, None);
+            }
         }
+
         DatabaseCatalog {
             relations: doc.relations,
             functions: doc.functions,
         }
     }
 
-    /// Build a `DatabaseCatalog` from a DDL source string.
-    ///
-    /// Creates a temporary parser, parses the source, and builds the schema
-    /// from the resulting DDL statements. This is a convenience wrapper for
-    /// cases like WASM where you have raw DDL text.
-    pub fn from_ddl(dialect: DialectEnv<'_>, source: &str) -> Self {
-        let parser = syntaqlite_parser::Parser::new(dialect);
-        let mut cursor = parser.parse(source);
-
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            if let Ok(node_ref) = result {
-                stmt_ids.push(node_ref.id());
-            }
-        }
-
-        Self::from_stmts(cursor.reader(), &stmt_ids, dialect)
-    }
-
     /// Build a `DatabaseCatalog` from a JSON string.
-    ///
-    /// The JSON format is:
-    /// ```json
-    /// {
-    ///   "tables": [{"name": "t", "columns": ["id", "name"]}],
-    ///   "views":  [{"name": "v", "columns": ["id"]}],
-    ///   "functions": [{"name": "my_func", "args": 2}]
-    /// }
-    /// ```
-    /// All top-level keys are optional and default to empty.
-    /// Column entries are bare strings; function `args` is `null` for variadic.
     #[cfg(feature = "json")]
     pub fn from_json(s: &str) -> Result<Self, String> {
         #[derive(serde::Deserialize)]
@@ -163,19 +148,17 @@ impl DatabaseCatalog {
 
 // ── StaticCatalog (internal, built from dialect) ─────────────────────
 
-/// TypedDialectEnv-builtin functions and relations. Built once at
-/// [`SemanticAnalyzer::new()`](super::SemanticAnalyzer::new), immutable thereafter.
+/// Dialect-builtin functions and relations. Built once at analyzer construction.
 pub(crate) struct StaticCatalog {
     pub(crate) functions: FunctionCatalog,
     pub(crate) relations: Vec<RelationDef>,
 }
 
 impl StaticCatalog {
-    /// Build from a dialect and explicit configuration.
-    pub(crate) fn for_dialect(dialect: &DialectEnv<'_>) -> Self {
+    pub(crate) fn for_dialect(dialect: &Dialect<'_>) -> Self {
         StaticCatalog {
             functions: FunctionCatalog::for_dialect(dialect),
-            relations: Vec::new(), // TODO: add static relations via C FFI
+            relations: Vec::new(),
         }
     }
 
@@ -189,11 +172,6 @@ impl StaticCatalog {
 // ── DocumentCatalog (internal scratch buffer) ────────────────────────
 
 /// Schema accumulated from DDL statements during analysis.
-///
-/// Rebuilt each analysis pass. Owned by the analyzer as a reusable
-/// scratch buffer (cleared, not reallocated).
-///
-/// This replaces the old `DocumentContext`.
 pub(crate) struct DocumentCatalog {
     pub(crate) relations: Vec<RelationDef>,
     pub(crate) functions: Vec<FunctionDef>,
@@ -226,64 +204,18 @@ impl DocumentCatalog {
             .iter()
             .find(|f| f.name.eq_ignore_ascii_case(name))
     }
-}
 
-/// Read a `NodeId` field from a raw node pointer at the given metadata offset.
-///
-/// # Safety
-/// `ptr` must point to a valid node struct; `meta.offset` must be a valid
-/// offset to a `u32` (NodeId) field within that struct.
-unsafe fn read_node_id(
-    ptr: *const u8,
-    meta: &syntaqlite_parser::FieldMeta,
-) -> syntaqlite_parser::NodeId {
-    unsafe { syntaqlite_parser::NodeId(*(ptr.add(meta.offset as usize) as *const u32)) }
-}
-
-/// Read a `SourceSpan` field from a raw node pointer, returning its text
-/// (or `""` if the span is empty).
-///
-/// # Safety
-/// `ptr` must point to a valid node struct; `meta.offset` must be a valid
-/// offset to a `SourceSpan` field within that struct.
-unsafe fn read_span<'a>(
-    ptr: *const u8,
-    meta: &syntaqlite_parser::FieldMeta,
-    source: &'a str,
-) -> &'a str {
-    unsafe {
-        let span = &*(ptr.add(meta.offset as usize) as *const syntaqlite_parser::SourceSpan);
-        if span.is_empty() {
-            ""
-        } else {
-            span.as_str(source)
-        }
-    }
-}
-
-impl DocumentCatalog {
     /// Process one DDL statement and update the document schema.
-    ///
-    /// Uses the dialect's schema contribution metadata to determine which
-    /// node types define tables/views/functions, and which fields hold the
-    /// name, column list, and AS SELECT clause. This works for any dialect
-    /// that declares `schema { ... }` annotations in its `.synq` files.
-    ///
-    /// `database` is consulted for `*` expansion so that
-    /// `CREATE TABLE t AS SELECT * FROM db_table` resolves correctly when
-    /// `db_table` lives in the database (live DB) context.
     pub(crate) fn accumulate(
         &mut self,
-        reader: syntaqlite_parser::ParseResult<'_>,
-        stmt_id: syntaqlite_parser::NodeId,
-        dialect: DialectEnv<'_>,
+        stmt_result: AnyParsedStatement<'_>,
+        stmt_id: AnyNodeId,
+        dialect: Dialect<'_>,
         database: Option<&DatabaseCatalog>,
     ) {
-        use syntaqlite_parser::DialectNodeType;
-        use syntaqlite_parser::SchemaKind;
-        use syntaqlite_parser::{FIELD_NODE_ID, FIELD_SPAN};
+        use crate::dialect::schema::SchemaKind;
 
-        let Some((ptr, tag)) = reader.node_ptr(stmt_id) else {
+        let Some((tag, fields)) = stmt_result.extract_fields(stmt_id) else {
             return;
         };
 
@@ -291,18 +223,11 @@ impl DocumentCatalog {
             return;
         };
 
-        let meta = dialect.field_meta(tag);
-        let source = reader.source();
-
         // Extract the name span.
-        let name_meta = &meta[contrib.name_field as usize];
-        debug_assert_eq!(name_meta.kind, FIELD_SPAN);
-        // SAFETY: ptr is a valid arena pointer from node_ptr(); name_meta.offset
-        // is from codegen metadata, and kind == FIELD_SPAN (debug-asserted above).
-        let name_str = unsafe { read_span(ptr, name_meta, source) };
-        if name_str.is_empty() {
-            return;
-        }
+        let name_str = match fields[contrib.name_field as usize] {
+            FieldValue::Span(s) if !s.is_empty() => s,
+            _ => return,
+        };
         let name = name_str.to_string();
 
         match contrib.kind {
@@ -313,34 +238,22 @@ impl DocumentCatalog {
                     RelationKind::View
                 };
                 let mut columns = Vec::new();
-
-                // Try explicit column list first (e.g., ColumnDefList).
                 let mut has_columns = false;
-                if let Some(col_field_idx) = contrib.columns_field {
-                    let col_meta = &meta[col_field_idx as usize];
-                    debug_assert_eq!(col_meta.kind, FIELD_NODE_ID);
-                    // SAFETY: ptr is a valid arena pointer; col_meta.offset is from
-                    // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
-                    let col_list_id = unsafe { read_node_id(ptr, col_meta) };
-                    if !col_list_id.is_null() {
-                        has_columns = true;
-                        columns_from_column_list(&reader, col_list_id, &dialect, &mut columns);
-                    }
+
+                if let Some(col_field_idx) = contrib.columns_field
+                    && let FieldValue::NodeId(col_list_id) = fields[col_field_idx as usize]
+                    && !col_list_id.is_null()
+                {
+                    has_columns = true;
+                    columns_from_column_list(stmt_result, col_list_id, dialect, &mut columns);
                 }
 
-                // Fall back to AS SELECT for column inference.
-                if !has_columns && let Some(sel_field_idx) = contrib.select_field {
-                    let sel_meta = &meta[sel_field_idx as usize];
-                    debug_assert_eq!(sel_meta.kind, FIELD_NODE_ID);
-                    // SAFETY: ptr is a valid arena pointer; sel_meta.offset is from
-                    // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
-                    let sel_id = unsafe { read_node_id(ptr, sel_meta) };
-                    if !sel_id.is_null()
-                        && let Some(select) =
-                            syntaqlite_parser_sqlite::ast::Select::from_arena(reader, sel_id)
-                    {
-                        columns_from_select(&select, &self.known, database, &mut columns);
-                    }
+                if !has_columns
+                    && let Some(sel_field_idx) = contrib.select_field
+                    && let FieldValue::NodeId(sel_id) = fields[sel_field_idx as usize]
+                    && !sel_id.is_null()
+                {
+                    columns_from_select(stmt_result, sel_id, &self.known, database, &mut columns);
                 }
 
                 self.known
@@ -353,77 +266,65 @@ impl DocumentCatalog {
             }
             SchemaKind::Function => {
                 let args = contrib.args_field.and_then(|args_idx| {
-                    let args_meta = &meta[args_idx as usize];
-                    debug_assert_eq!(args_meta.kind, FIELD_NODE_ID);
-                    // SAFETY: ptr is a valid arena pointer; args_meta.offset is from
-                    // codegen metadata, and kind == FIELD_NODE_ID (debug-asserted above).
-                    let args_id = unsafe { read_node_id(ptr, args_meta) };
+                    let FieldValue::NodeId(args_id) = fields[args_idx as usize] else {
+                        return None;
+                    };
                     if args_id.is_null() {
                         return None;
                     }
-                    // Count children of the args list node.
-                    let list = reader.resolve_list(args_id)?;
-                    Some(list.children().len())
+                    let children = stmt_result.list_children(args_id)?;
+                    Some(children.len())
                 });
                 self.functions.push(FunctionDef { name, args });
             }
-            SchemaKind::Import => {
-                // Future: resolve from DatabaseCatalog.modules
-            }
+            SchemaKind::Import => {}
         }
     }
 }
 
 /// Extract column definitions from a column definition list node.
 fn columns_from_column_list(
-    reader: &syntaqlite_parser::ParseResult<'_>,
-    list_id: syntaqlite_parser::NodeId,
-    dialect: &DialectEnv<'_>,
+    stmt_result: AnyParsedStatement<'_>,
+    list_id: AnyNodeId,
+    dialect: Dialect<'_>,
     out: &mut Vec<ColumnDef>,
 ) {
-    use syntaqlite_parser::NodeId;
-    use syntaqlite_parser::{FIELD_NODE_ID, FIELD_SPAN};
-
-    let Some(list) = reader.resolve_list(list_id) else {
+    let Some(children) = stmt_result.list_children(list_id) else {
         return;
     };
-    let source = reader.source();
 
-    for &child_id in list.children() {
+    for &child_id in children {
         if child_id.is_null() {
             continue;
         }
-        let Some((child_ptr, child_tag)) = reader.node_ptr(child_id) else {
+        let Some((child_tag, child_fields)) = stmt_result.extract_fields(child_id) else {
             continue;
         };
-        let child_meta = dialect.field_meta(child_tag);
 
-        let mut col_name = None;
-        let mut type_name = None;
-        let mut constraints_id = NodeId::NULL;
+        let mut col_name: Option<String> = None;
+        let mut type_name: Option<String> = None;
+        let mut constraints_id: Option<AnyNodeId> = None;
 
-        for fm in child_meta {
-            // SAFETY: fm is from dialect.field_meta() which returns static
-            // codegen data; the name pointer is valid for 'd.
-            let field_name = unsafe { fm.name_str() };
-            match (fm.kind, field_name) {
-                (FIELD_SPAN, "column_name") => {
-                    // SAFETY: child_ptr is valid; fm.offset is from codegen metadata.
-                    let s = unsafe { read_span(child_ptr, fm, source) };
-                    if !s.is_empty() {
+        for (i, meta) in dialect.field_meta(child_tag).enumerate() {
+            match (meta.kind(), meta.name()) {
+                (FieldKind::Span, "column_name") => {
+                    if let FieldValue::Span(s) = child_fields[i]
+                        && !s.is_empty()
+                    {
                         col_name = Some(s.to_string());
                     }
                 }
-                (FIELD_SPAN, "type_name") => {
-                    // SAFETY: child_ptr is valid; fm.offset is from codegen metadata.
-                    let s = unsafe { read_span(child_ptr, fm, source) };
-                    if !s.is_empty() {
+                (FieldKind::Span, "type_name") => {
+                    if let FieldValue::Span(s) = child_fields[i]
+                        && !s.is_empty()
+                    {
                         type_name = Some(s.to_string());
                     }
                 }
-                (FIELD_NODE_ID, "constraints") => {
-                    // SAFETY: child_ptr is valid; fm.offset is from codegen metadata.
-                    constraints_id = unsafe { read_node_id(child_ptr, fm) };
+                (FieldKind::NodeId, "constraints") => {
+                    if let FieldValue::NodeId(id) = child_fields[i] {
+                        constraints_id = Some(id);
+                    }
                 }
                 _ => {}
             }
@@ -431,12 +332,11 @@ fn columns_from_column_list(
 
         let Some(name) = col_name else { continue };
 
-        // Walk constraints to find PRIMARY KEY and NOT NULL.
         let mut is_primary_key = false;
         let mut is_nullable = true;
-        if !constraints_id.is_null() {
+        if let Some(constraints_id) = constraints_id.filter(|id| !id.is_null()) {
             extract_column_constraints(
-                reader,
+                stmt_result,
                 constraints_id,
                 dialect,
                 &mut is_primary_key,
@@ -455,89 +355,92 @@ fn columns_from_column_list(
 
 /// Walk a constraint list to detect PRIMARY KEY and NOT NULL constraints.
 fn extract_column_constraints(
-    reader: &syntaqlite_parser::ParseResult<'_>,
-    list_id: syntaqlite_parser::NodeId,
-    dialect: &DialectEnv<'_>,
+    stmt_result: AnyParsedStatement<'_>,
+    list_id: AnyNodeId,
+    dialect: Dialect<'_>,
     is_primary_key: &mut bool,
     is_nullable: &mut bool,
 ) {
-    use syntaqlite_parser::FIELD_ENUM;
-
-    let Some(list) = reader.resolve_list(list_id) else {
+    let Some(children) = stmt_result.list_children(list_id) else {
         return;
     };
 
-    for &constraint_id in list.children() {
+    for &constraint_id in children {
         if constraint_id.is_null() {
             continue;
         }
-        let Some((cptr, ctag)) = reader.node_ptr(constraint_id) else {
+        let Some((ctag, cfields)) = stmt_result.extract_fields(constraint_id) else {
             continue;
         };
-        let meta = dialect.field_meta(ctag);
-        for fm in meta {
-            if fm.kind == FIELD_ENUM {
-                let field_name = unsafe { fm.name_str() };
-                if field_name == "kind" {
-                    let ordinal = unsafe { *(cptr.add(fm.offset as usize) as *const u32) };
-                    if let Some(display) = unsafe { fm.display_name(ordinal as usize) } {
-                        match display {
-                            "NOT_NULL" => *is_nullable = false,
-                            "PRIMARY_KEY" => {
-                                *is_primary_key = true;
-                                *is_nullable = false;
-                            }
-                            _ => {}
-                        }
+
+        for (i, meta) in dialect.field_meta(ctag).enumerate() {
+            if meta.kind() == FieldKind::Enum && meta.name() == "kind" {
+                #[cfg(feature = "sqlite")]
+                if let FieldValue::Enum(ordinal) = cfields[i] {
+                    use syntaqlite_syntax::nodes::ColumnConstraintType;
+                    if ordinal == ColumnConstraintType::NotNull as u32 {
+                        *is_nullable = false;
+                    } else if ordinal == ColumnConstraintType::PrimaryKey as u32 {
+                        *is_primary_key = true;
+                        *is_nullable = false;
                     }
-                    break;
                 }
+                break;
             }
         }
     }
 }
 
-/// Known schema passed through select resolution — maps lowercase table/view
-/// name to its columns.
+/// Known schema for select resolution — maps lowercase table/view name to columns.
 type KnownSchema = std::collections::HashMap<String, Vec<ColumnDef>>;
 
-/// Best-effort column extraction from a SELECT, expanding `*` and `t.*`
-/// against previously defined tables/views.
+/// Best-effort column extraction from a SELECT, expanding `*` and `t.*`.
+#[cfg(feature = "sqlite")]
 fn columns_from_select(
-    select: &syntaqlite_parser_sqlite::ast::Select<'_>,
+    stmt_result: AnyParsedStatement<'_>,
+    select_id: AnyNodeId,
     known: &KnownSchema,
     database: Option<&DatabaseCatalog>,
     out: &mut Vec<ColumnDef>,
 ) {
-    use syntaqlite_parser_sqlite::ast::{Expr, Select};
+    use syntaqlite_syntax::any::AnyNodeId;
+    use syntaqlite_syntax::nodes::{Expr, Select};
+
+    let Some(select) = Select::from_result(stmt_result, select_id) else {
+        return;
+    };
 
     let stmt = match select {
         Select::SelectStmt(s) => s,
         Select::CompoundSelect(cs) => {
-            if let Some(s) = cs.left() {
-                return columns_from_select(&s, known, database, out);
+            if let Some(left) = cs.left() {
+                let id: AnyNodeId = left.node_id().into();
+                return columns_from_select(stmt_result, id, known, database, out);
             }
             return;
         }
         Select::WithClause(wc) => {
             if let Some(s) = wc.select() {
-                return columns_from_select(&s, known, database, out);
+                let id: AnyNodeId = s.node_id().into();
+                return columns_from_select(stmt_result, id, known, database, out);
             }
             return;
         }
         _ => return,
     };
 
-    // Collect FROM sources so we can expand `*`.
     let from_sources = stmt
         .from_clause()
-        .map(|ts| collect_from_sources(&ts, known, database))
+        .map(|ts| {
+            let id: AnyNodeId = ts.node_id().into();
+            collect_from_sources(stmt_result, id, known, database)
+        })
         .unwrap_or_default();
 
     let Some(cols) = stmt.columns() else { return };
     for rc in cols.iter() {
         if rc.flags().star() {
-            let qualifier = rc.alias(); // "t" for `SELECT t.*`, empty for `SELECT *`
+            let qualifier = rc.alias();
             expand_star(&from_sources, qualifier, out);
             continue;
         }
@@ -558,6 +461,16 @@ fn columns_from_select(
     }
 }
 
+#[cfg(not(feature = "sqlite"))]
+fn columns_from_select(
+    _stmt_result: AnyParsedStatement<'_>,
+    _select_id: AnyNodeId,
+    _known: &KnownSchema,
+    _database: Option<&DatabaseCatalog>,
+    _out: &mut Vec<ColumnDef>,
+) {
+}
+
 /// A resolved FROM source: qualifier for `t.*` matching + pre-resolved columns.
 struct FromSource {
     qualifier: String,
@@ -565,14 +478,22 @@ struct FromSource {
 }
 
 /// Walk a `TableSource` tree, resolving each leaf's columns eagerly.
+#[cfg(feature = "sqlite")]
 fn collect_from_sources(
-    source: &syntaqlite_parser_sqlite::ast::TableSource<'_>,
+    stmt_result: AnyParsedStatement<'_>,
+    source_id: AnyNodeId,
     known: &KnownSchema,
     database: Option<&DatabaseCatalog>,
 ) -> Vec<FromSource> {
-    use syntaqlite_parser_sqlite::ast::TableSource;
+    use syntaqlite_syntax::any::AnyNodeId;
+    use syntaqlite_syntax::nodes::TableSource;
 
     let mut out = Vec::new();
+
+    let Some(source) = TableSource::from_result(stmt_result, source_id) else {
+        return out;
+    };
+
     match source {
         TableSource::TableRef(tr) => {
             let name = tr.table_name();
@@ -599,7 +520,8 @@ fn collect_from_sources(
         TableSource::SubqueryTableSource(sq) => {
             let mut columns = Vec::new();
             if let Some(select) = sq.select() {
-                columns_from_select(&select, known, database, &mut columns);
+                let id: AnyNodeId = select.node_id().into();
+                columns_from_select(stmt_result, id, known, database, &mut columns);
             }
             out.push(FromSource {
                 qualifier: sq.alias().to_string(),
@@ -608,20 +530,33 @@ fn collect_from_sources(
         }
         TableSource::JoinClause(jc) => {
             if let Some(left) = jc.left() {
-                out.extend(collect_from_sources(&left, known, database));
+                let id: AnyNodeId = left.node_id().into();
+                out.extend(collect_from_sources(stmt_result, id, known, database));
             }
             if let Some(right) = jc.right() {
-                out.extend(collect_from_sources(&right, known, database));
+                let id: AnyNodeId = right.node_id().into();
+                out.extend(collect_from_sources(stmt_result, id, known, database));
             }
         }
         TableSource::JoinPrefix(jp) => {
             if let Some(s) = jp.source() {
-                out.extend(collect_from_sources(&s, known, database));
+                let id: AnyNodeId = s.node_id().into();
+                out.extend(collect_from_sources(stmt_result, id, known, database));
             }
         }
-        _ => {}
+        TableSource::Other(_) => {}
     }
     out
+}
+
+#[cfg(not(feature = "sqlite"))]
+fn collect_from_sources(
+    _stmt_result: AnyParsedStatement<'_>,
+    _source_id: AnyNodeId,
+    _known: &KnownSchema,
+    _database: Option<&DatabaseCatalog>,
+) -> Vec<FromSource> {
+    Vec::new()
 }
 
 /// Expand `*` or `qualifier.*` using pre-resolved FROM sources.
@@ -641,8 +576,7 @@ fn expand_star(from_sources: &[FromSource], qualifier: &str, out: &mut Vec<Colum
 
 // ── CatalogStack (internal, composed lookup) ─────────────────────────
 
-/// Flat composition of all three catalog levels. One struct holds references
-/// to all three levels; lookup methods check document → database → static.
+/// Flat composition of all three catalog levels.
 pub(crate) struct CatalogStack<'a> {
     pub(crate) static_: &'a StaticCatalog,
     pub(crate) database: &'a DatabaseCatalog,
@@ -650,37 +584,23 @@ pub(crate) struct CatalogStack<'a> {
 }
 
 impl CatalogStack<'_> {
-    /// Case-insensitive function check: document → database → static.
     pub(crate) fn check_function(&self, name: &str, arg_count: usize) -> FunctionCheckResult {
-        // Document-defined functions first.
         if let Some(func) = self.document.find_function(name) {
-            return match func.args {
-                None => FunctionCheckResult::Ok,
-                Some(n) if n == arg_count => FunctionCheckResult::Ok,
-                Some(n) => FunctionCheckResult::WrongArity { expected: vec![n] },
-            };
+            return check_defined_function(func, arg_count);
         }
 
-        // Database functions.
         if let Some(func) = self
             .database
             .functions
             .iter()
             .find(|f| f.name.eq_ignore_ascii_case(name))
         {
-            return match func.args {
-                None => FunctionCheckResult::Ok,
-                Some(n) if n == arg_count => FunctionCheckResult::Ok,
-                Some(n) => FunctionCheckResult::WrongArity { expected: vec![n] },
-            };
+            return check_defined_function(func, arg_count);
         }
 
-        // Static (dialect builtins + extensions). FunctionCatalog already
-        // handles arity encoding and session functions.
         self.static_.functions.check_call(name, arg_count)
     }
 
-    /// Case-insensitive relation resolution: document → database → static.
     pub(crate) fn resolve_relation(&self, name: &str) -> bool {
         self.document.find_relation(name).is_some()
             || self
@@ -691,7 +611,6 @@ impl CatalogStack<'_> {
             || self.static_.find_relation(name).is_some()
     }
 
-    /// Look up columns for a relation by name (document → database → static).
     pub(crate) fn columns_for(&self, name: &str) -> Option<Vec<String>> {
         if let Some(r) = self.document.find_relation(name) {
             return Some(r.columns.iter().map(|c| c.name.clone()).collect());
@@ -710,32 +629,17 @@ impl CatalogStack<'_> {
         None
     }
 
-    /// All known relation names across all three levels (for fuzzy matching).
     pub(crate) fn all_relation_names(&self) -> Vec<String> {
         let mut seen = std::collections::HashSet::new();
-        let mut names = Vec::new();
-        for r in &self.document.relations {
-            let lower = r.name.to_ascii_lowercase();
-            if seen.insert(lower.clone()) {
-                names.push(lower);
-            }
-        }
-        for r in &self.database.relations {
-            let lower = r.name.to_ascii_lowercase();
-            if seen.insert(lower.clone()) {
-                names.push(lower);
-            }
-        }
-        for r in &self.static_.relations {
-            let lower = r.name.to_ascii_lowercase();
-            if seen.insert(lower.clone()) {
-                names.push(lower);
-            }
-        }
-        names
+        self.document
+            .relations
+            .iter()
+            .chain(self.database.relations.iter())
+            .chain(self.static_.relations.iter())
+            .filter_map(|r| push_unique_lower(&mut seen, &r.name))
+            .collect()
     }
 
-    /// All known column names, optionally filtered by table (for fuzzy matching).
     pub(crate) fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
         let mut names = Vec::new();
         let all_relations = self
@@ -754,47 +658,60 @@ impl CatalogStack<'_> {
         names
     }
 
-    /// All known function names across all three levels (for fuzzy matching).
     pub(crate) fn all_function_names(&self) -> Vec<String> {
         let mut seen = std::collections::HashSet::new();
-        let mut names = Vec::new();
-        for f in &self.document.functions {
-            if seen.insert(f.name.to_ascii_lowercase()) {
-                names.push(f.name.clone());
-            }
-        }
-        for f in &self.database.functions {
-            if seen.insert(f.name.to_ascii_lowercase()) {
-                names.push(f.name.clone());
-            }
-        }
-        // Static function names from the FunctionCatalog.
+        let mut names: Vec<String> = self
+            .document
+            .functions
+            .iter()
+            .chain(self.database.functions.iter())
+            .filter_map(|f| push_unique_name(&mut seen, &f.name))
+            .collect();
+
         for name in self.static_.functions.all_names() {
             if seen.insert(name.to_ascii_lowercase()) {
                 names.push(name);
             }
         }
+
         names
     }
 }
 
+fn check_defined_function(func: &FunctionDef, arg_count: usize) -> FunctionCheckResult {
+    match func.args {
+        None => FunctionCheckResult::Ok,
+        Some(n) if n == arg_count => FunctionCheckResult::Ok,
+        Some(n) => FunctionCheckResult::WrongArity { expected: vec![n] },
+    }
+}
+
+fn push_unique_lower(seen: &mut std::collections::HashSet<String>, name: &str) -> Option<String> {
+    let lower = name.to_ascii_lowercase();
+    if seen.insert(lower.clone()) {
+        Some(lower)
+    } else {
+        None
+    }
+}
+
+fn push_unique_name(seen: &mut std::collections::HashSet<String>, name: &str) -> Option<String> {
+    if seen.insert(name.to_ascii_lowercase()) {
+        Some(name.to_string())
+    } else {
+        None
+    }
+}
 #[cfg(test)]
 #[cfg(feature = "sqlite")]
 mod tests {
     use super::*;
 
     #[test]
-    fn from_stmts_creates_database_catalog() {
+    fn from_ddl_creates_database_catalog() {
         let dialect = crate::dialect::sqlite();
-        let parser = syntaqlite_parser::Parser::new(dialect);
         let sql = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL);";
-        let mut cursor = parser.parse(sql);
-
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmt_ids.push(result.expect("parse failed").id());
-        }
-        let catalog = DatabaseCatalog::from_stmts(cursor.reader(), &stmt_ids, dialect);
+        let catalog = DatabaseCatalog::from_ddl(dialect, sql);
 
         let tables: Vec<_> = catalog.tables().collect();
         assert_eq!(tables.len(), 1);
@@ -819,19 +736,12 @@ mod tests {
     }
 
     #[test]
-    fn from_stmts_star_expands_from_earlier_table() {
+    fn from_ddl_star_expands_from_earlier_table() {
         let dialect = crate::dialect::sqlite();
-        let parser = syntaqlite_parser::Parser::new(dialect);
         let sql = "\
             CREATE TABLE slice (order_id INTEGER, status TEXT);\n\
             CREATE TABLE orders AS SELECT * FROM slice;\n";
-        let mut cursor = parser.parse(sql);
-
-        let mut stmt_ids = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmt_ids.push(result.expect("parse failed").id());
-        }
-        let catalog = DatabaseCatalog::from_stmts(cursor.reader(), &stmt_ids, dialect);
+        let catalog = DatabaseCatalog::from_ddl(dialect, sql);
 
         let tables: Vec<_> = catalog.tables().collect();
         assert_eq!(tables.len(), 2);

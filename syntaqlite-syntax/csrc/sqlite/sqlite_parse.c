@@ -3708,14 +3708,14 @@ static YYACTIONTYPE yy_reduce(
         break;
       case 37: /* expr ::= expr ISNULL|NOTNULL */
 {
-    SyntaqliteIsOp op = (yymsp[0].minor.yy0.type == SYNTAQLITE_TK_ISNULL) ? SYNTAQLITE_IS_OP_ISNULL : SYNTAQLITE_IS_OP_NOTNULL;
+    SyntaqliteIsOp op = (yymsp[0].minor.yy0.type == SYNTAQLITE_TK_ISNULL) ? SYNTAQLITE_IS_OP_IS_NULL : SYNTAQLITE_IS_OP_NOT_NULL;
     yylhsminor.yy213 = synq_parse_is_expr(pCtx, op, yymsp[-1].minor.yy213, SYNTAQLITE_NULL_NODE);
 }
   yymsp[-1].minor.yy213 = yylhsminor.yy213;
         break;
       case 38: /* expr ::= expr NOT NULL */
 {
-    yylhsminor.yy213 = synq_parse_is_expr(pCtx, SYNTAQLITE_IS_OP_NOTNULL, yymsp[-2].minor.yy213, SYNTAQLITE_NULL_NODE);
+    yylhsminor.yy213 = synq_parse_is_expr(pCtx, SYNTAQLITE_IS_OP_NOT_NULL, yymsp[-2].minor.yy213, SYNTAQLITE_NULL_NODE);
 }
   yymsp[-2].minor.yy213 = yylhsminor.yy213;
         break;
@@ -3985,7 +3985,7 @@ static YYACTIONTYPE yy_reduce(
       case 71: /* ccons ::= DEFAULT scantok term */
 {
     yymsp[-2].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_DEFAULT,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -3997,7 +3997,7 @@ static YYACTIONTYPE yy_reduce(
       case 72: /* ccons ::= DEFAULT LP expr RP */
 {
     yymsp[-3].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_DEFAULT,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4009,7 +4009,7 @@ static YYACTIONTYPE yy_reduce(
       case 73: /* ccons ::= DEFAULT PLUS scantok term */
 {
     yymsp[-3].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_DEFAULT,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4023,7 +4023,7 @@ static YYACTIONTYPE yy_reduce(
     // Create a unary minus wrapping the term
     uint32_t neg = synq_parse_unary_expr(pCtx, SYNTAQLITE_UNARY_OP_MINUS, yymsp[0].minor.yy213);
     yymsp[-3].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_DEFAULT,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4038,7 +4038,7 @@ static YYACTIONTYPE yy_reduce(
     uint32_t lit = synq_parse_literal(pCtx,
         SYNTAQLITE_LITERAL_TYPE_STRING, synq_span(pCtx, yymsp[0].minor.yy0));
     yymsp[-2].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_DEFAULT,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4050,7 +4050,7 @@ static YYACTIONTYPE yy_reduce(
       case 76: /* ccons ::= NULL onconf */
 {
     yymsp[-1].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_NULL,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_NULL,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)yymsp[0].minor.yy220, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4062,7 +4062,7 @@ static YYACTIONTYPE yy_reduce(
       case 77: /* ccons ::= NOT NULL onconf */
 {
     yymsp[-2].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_NOT_NULL,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_NOT_NULL,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)yymsp[0].minor.yy220, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4074,7 +4074,7 @@ static YYACTIONTYPE yy_reduce(
       case 78: /* ccons ::= PRIMARY KEY sortorder onconf autoinc */
 {
     yymsp[-4].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_PRIMARY_KEY,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_PRIMARY_KEY,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)yymsp[-1].minor.yy220, (SyntaqliteSortOrder)yymsp[-2].minor.yy213, (SyntaqliteBool)yymsp[0].minor.yy220,
         SYNQ_NO_SPAN,
@@ -4086,7 +4086,7 @@ static YYACTIONTYPE yy_reduce(
       case 79: /* ccons ::= UNIQUE onconf */
 {
     yymsp[-1].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_UNIQUE,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_UNIQUE,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)yymsp[0].minor.yy220, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4098,7 +4098,7 @@ static YYACTIONTYPE yy_reduce(
       case 80: /* ccons ::= CHECK LP expr RP */
 {
     yymsp[-3].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_CHECK,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_CHECK,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4115,7 +4115,7 @@ static YYACTIONTYPE yy_reduce(
     uint32_t fk = synq_parse_foreign_key_clause(pCtx,
         synq_span(pCtx, yymsp[-2].minor.yy0), yymsp[-1].minor.yy213, on_del, on_upd, SYNTAQLITE_BOOL_FALSE);
     yymsp[-3].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_REFERENCES,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_REFERENCES,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4137,7 +4137,7 @@ static YYACTIONTYPE yy_reduce(
         SYNTAQLITE_FOREIGN_KEY_ACTION_NO_ACTION,
         (SyntaqliteBool)yymsp[0].minor.yy220);
     yylhsminor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_REFERENCES,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_REFERENCES,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4150,7 +4150,7 @@ static YYACTIONTYPE yy_reduce(
       case 83: /* ccons ::= COLLATE ID|STRING */
 {
     yymsp[-1].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_COLLATE,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_COLLATE,
         SYNQ_NO_SPAN,
         0, 0, 0,
         synq_span(pCtx, yymsp[0].minor.yy0),
@@ -4172,7 +4172,7 @@ static YYACTIONTYPE yy_reduce(
       case 86: /* generated ::= LP expr RP */
 {
     yymsp[-2].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_GENERATED,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_GENERATED,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4188,7 +4188,7 @@ static YYACTIONTYPE yy_reduce(
         storage = SYNTAQLITE_GENERATED_COLUMN_STORAGE_STORED;
     }
     yymsp[-3].minor.yy34.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_GENERATED,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_GENERATED,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -4339,7 +4339,7 @@ static YYACTIONTYPE yy_reduce(
       case 113: /* tcons ::= PRIMARY KEY LP sortlist autoinc RP onconf */
 {
     yymsp[-6].minor.yy34.node = synq_parse_table_constraint(pCtx,
-        SYNTAQLITE_TABLE_CONSTRAINT_KIND_PRIMARY_KEY,
+        SYNTAQLITE_TABLE_CONSTRAINT_TYPE_PRIMARY_KEY,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)yymsp[0].minor.yy220, (SyntaqliteBool)yymsp[-2].minor.yy220,
         yymsp[-3].minor.yy213, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
@@ -4349,7 +4349,7 @@ static YYACTIONTYPE yy_reduce(
       case 114: /* tcons ::= UNIQUE LP sortlist RP onconf */
 {
     yymsp[-4].minor.yy34.node = synq_parse_table_constraint(pCtx,
-        SYNTAQLITE_TABLE_CONSTRAINT_KIND_UNIQUE,
+        SYNTAQLITE_TABLE_CONSTRAINT_TYPE_UNIQUE,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)yymsp[0].minor.yy220, SYNTAQLITE_BOOL_FALSE,
         yymsp[-2].minor.yy213, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
@@ -4359,7 +4359,7 @@ static YYACTIONTYPE yy_reduce(
       case 115: /* tcons ::= CHECK LP expr RP onconf */
 {
     yymsp[-4].minor.yy34.node = synq_parse_table_constraint(pCtx,
-        SYNTAQLITE_TABLE_CONSTRAINT_KIND_CHECK,
+        SYNTAQLITE_TABLE_CONSTRAINT_TYPE_CHECK,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)yymsp[0].minor.yy220, SYNTAQLITE_BOOL_FALSE,
         SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, yymsp[-2].minor.yy213, SYNTAQLITE_NULL_NODE);
@@ -4373,7 +4373,7 @@ static YYACTIONTYPE yy_reduce(
     uint32_t fk = synq_parse_foreign_key_clause(pCtx,
         synq_span(pCtx, yymsp[-3].minor.yy0), yymsp[-2].minor.yy213, on_del, on_upd, (SyntaqliteBool)yymsp[0].minor.yy220);
     yymsp[-9].minor.yy34.node = synq_parse_table_constraint(pCtx,
-        SYNTAQLITE_TABLE_CONSTRAINT_KIND_FOREIGN_KEY,
+        SYNTAQLITE_TABLE_CONSTRAINT_TYPE_FOREIGN_KEY,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_BOOL_FALSE,
         SYNTAQLITE_NULL_NODE, yymsp[-6].minor.yy213, SYNTAQLITE_NULL_NODE, fk);
@@ -5586,14 +5586,14 @@ static YYACTIONTYPE yy_reduce(
     yymsp[0].minor.yy213 = synq_parse_analyze_or_reindex_stmt(pCtx,
         SYNQ_NO_SPAN,
         SYNQ_NO_SPAN,
-        SYNTAQLITE_ANALYZE_OR_REINDEX_KIND_ANALYZE);
+        SYNTAQLITE_ANALYZE_OR_REINDEX_OP_ANALYZE);
 }
         break;
       case 340: /* cmd ::= ANALYZE nm dbnm */
 {
     SyntaqliteSourceSpan name_span = yymsp[0].minor.yy0.z ? synq_span(pCtx, yymsp[0].minor.yy0) : synq_span(pCtx, yymsp[-1].minor.yy0);
     SyntaqliteSourceSpan schema_span = yymsp[0].minor.yy0.z ? synq_span(pCtx, yymsp[-1].minor.yy0) : SYNQ_NO_SPAN;
-    yymsp[-2].minor.yy213 = synq_parse_analyze_or_reindex_stmt(pCtx, name_span, schema_span, SYNTAQLITE_ANALYZE_OR_REINDEX_KIND_ANALYZE);
+    yymsp[-2].minor.yy213 = synq_parse_analyze_or_reindex_stmt(pCtx, name_span, schema_span, SYNTAQLITE_ANALYZE_OR_REINDEX_OP_ANALYZE);
 }
         break;
       case 341: /* cmd ::= REINDEX */
@@ -5601,7 +5601,7 @@ static YYACTIONTYPE yy_reduce(
     yymsp[0].minor.yy213 = synq_parse_analyze_or_reindex_stmt(pCtx,
         SYNQ_NO_SPAN,
         SYNQ_NO_SPAN,
-        SYNTAQLITE_ANALYZE_OR_REINDEX_KIND_REINDEX);
+        SYNTAQLITE_ANALYZE_OR_REINDEX_OP_REINDEX);
 }
         break;
       case 342: /* cmd ::= REINDEX nm dbnm */
@@ -6533,11 +6533,11 @@ return yy_lookahead[i] == nt;
 }
 
 /* syntaqlite extension: determine the semantic completion context
-** (Expression vs TableRef) by walking the parser stack. Returns:
-**   0 = Unknown, 1 = Expression, 2 = TableRef. */
-uint32_t SynqSqliteParseCompletionContext(void* parser) {
+** (Expression vs TableRef) by walking the parser stack. Returns one of
+** SYNTAQLITE_COMPLETION_CONTEXT_*. */
+SyntaqliteCompletionContext SynqSqliteParseCompletionContext(void* parser) {
 yyParser* p = (yyParser*)parser;
-if( p==0 || p->yytos==0 ) return 0;
+if( p==0 || p->yytos==0 ) return SYNTAQLITE_COMPLETION_CONTEXT_UNKNOWN;
 
 for(yyStackEntry* e = p->yytos; e >= p->yystack; e--) {
 YYACTIONTYPE s = e->stateno;
@@ -6546,13 +6546,13 @@ YYACTIONTYPE s = e->stateno;
 if( synq_has_goto(s, SYNQ_NT_SELTABLIST)
 || synq_has_goto(s, SYNQ_NT_FULLNAME)
 || synq_has_goto(s, SYNQ_NT_XFULLNAME) ) {
-return 2; /* TableRef */
+return SYNTAQLITE_COMPLETION_CONTEXT_TABLE_REF;
 }
 
 /* Check if this state has gotos for expression non-terminals. */
 if( synq_has_goto(s, SYNQ_NT_EXPR) ) {
-return 1; /* Expression */
+return SYNTAQLITE_COMPLETION_CONTEXT_EXPRESSION;
 }
 }
-return 0; /* Unknown */
+return SYNTAQLITE_COMPLETION_CONTEXT_UNKNOWN;
 }

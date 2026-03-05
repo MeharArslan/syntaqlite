@@ -156,7 +156,7 @@ ccons(A) ::= CONSTRAINT nm(X). {
 // DEFAULT scantok term
 ccons(A) ::= DEFAULT scantok term(X). {
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_DEFAULT,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -168,7 +168,7 @@ ccons(A) ::= DEFAULT scantok term(X). {
 // DEFAULT LP expr RP
 ccons(A) ::= DEFAULT LP expr(X) RP. {
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_DEFAULT,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -180,7 +180,7 @@ ccons(A) ::= DEFAULT LP expr(X) RP. {
 // DEFAULT PLUS scantok term
 ccons(A) ::= DEFAULT PLUS scantok term(X). {
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_DEFAULT,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -194,7 +194,7 @@ ccons(A) ::= DEFAULT MINUS scantok term(X). {
     // Create a unary minus wrapping the term
     uint32_t neg = synq_parse_unary_expr(pCtx, SYNTAQLITE_UNARY_OP_MINUS, X);
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_DEFAULT,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -209,7 +209,7 @@ ccons(A) ::= DEFAULT scantok id(X). {
     uint32_t lit = synq_parse_literal(pCtx,
         SYNTAQLITE_LITERAL_TYPE_STRING, synq_span(pCtx, X));
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_DEFAULT,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -221,7 +221,7 @@ ccons(A) ::= DEFAULT scantok id(X). {
 // NULL onconf
 ccons(A) ::= NULL onconf(R). {
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_NULL,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_NULL,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)R, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -233,7 +233,7 @@ ccons(A) ::= NULL onconf(R). {
 // NOT NULL onconf
 ccons(A) ::= NOT NULL onconf(R). {
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_NOT_NULL,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_NOT_NULL,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)R, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -245,7 +245,7 @@ ccons(A) ::= NOT NULL onconf(R). {
 // PRIMARY KEY sortorder onconf autoinc
 ccons(A) ::= PRIMARY KEY sortorder(Z) onconf(R) autoinc(I). {
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_PRIMARY_KEY,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_PRIMARY_KEY,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)R, (SyntaqliteSortOrder)Z, (SyntaqliteBool)I,
         SYNQ_NO_SPAN,
@@ -257,7 +257,7 @@ ccons(A) ::= PRIMARY KEY sortorder(Z) onconf(R) autoinc(I). {
 // UNIQUE onconf
 ccons(A) ::= UNIQUE onconf(R). {
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_UNIQUE,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_UNIQUE,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)R, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -269,7 +269,7 @@ ccons(A) ::= UNIQUE onconf(R). {
 // CHECK LP expr RP
 ccons(A) ::= CHECK LP expr(X) RP. {
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_CHECK,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_CHECK,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -286,7 +286,7 @@ ccons(A) ::= REFERENCES nm(T) eidlist_opt(TA) refargs(R). {
     uint32_t fk = synq_parse_foreign_key_clause(pCtx,
         synq_span(pCtx, T), TA, on_del, on_upd, SYNTAQLITE_BOOL_FALSE);
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_REFERENCES,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_REFERENCES,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -308,7 +308,7 @@ ccons(A) ::= defer_subclause(D). {
         SYNTAQLITE_FOREIGN_KEY_ACTION_NO_ACTION,
         (SyntaqliteBool)D);
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_REFERENCES,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_REFERENCES,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -320,7 +320,7 @@ ccons(A) ::= defer_subclause(D). {
 // COLLATE ids
 ccons(A) ::= COLLATE ids(C). {
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_COLLATE,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_COLLATE,
         SYNQ_NO_SPAN,
         0, 0, 0,
         synq_span(pCtx, C),
@@ -344,7 +344,7 @@ ccons(A) ::= AS generated(G). {
 
 generated(A) ::= LP expr(E) RP. {
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_GENERATED,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_GENERATED,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -359,7 +359,7 @@ generated(A) ::= LP expr(E) RP ID(TYPE). {
         storage = SYNTAQLITE_GENERATED_COLUMN_STORAGE_STORED;
     }
     A.node = synq_parse_column_constraint(pCtx,
-        SYNTAQLITE_COLUMN_CONSTRAINT_KIND_GENERATED,
+        SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_GENERATED,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_SORT_ORDER_ASC, SYNTAQLITE_BOOL_FALSE,
         SYNQ_NO_SPAN,
@@ -506,7 +506,7 @@ tcons(A) ::= CONSTRAINT nm(X). {
 
 tcons(A) ::= PRIMARY KEY LP sortlist(X) autoinc(I) RP onconf(R). {
     A.node = synq_parse_table_constraint(pCtx,
-        SYNTAQLITE_TABLE_CONSTRAINT_KIND_PRIMARY_KEY,
+        SYNTAQLITE_TABLE_CONSTRAINT_TYPE_PRIMARY_KEY,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)R, (SyntaqliteBool)I,
         X, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
@@ -515,7 +515,7 @@ tcons(A) ::= PRIMARY KEY LP sortlist(X) autoinc(I) RP onconf(R). {
 
 tcons(A) ::= UNIQUE LP sortlist(X) RP onconf(R). {
     A.node = synq_parse_table_constraint(pCtx,
-        SYNTAQLITE_TABLE_CONSTRAINT_KIND_UNIQUE,
+        SYNTAQLITE_TABLE_CONSTRAINT_TYPE_UNIQUE,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)R, SYNTAQLITE_BOOL_FALSE,
         X, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
@@ -524,7 +524,7 @@ tcons(A) ::= UNIQUE LP sortlist(X) RP onconf(R). {
 
 tcons(A) ::= CHECK LP expr(E) RP onconf(R). {
     A.node = synq_parse_table_constraint(pCtx,
-        SYNTAQLITE_TABLE_CONSTRAINT_KIND_CHECK,
+        SYNTAQLITE_TABLE_CONSTRAINT_TYPE_CHECK,
         SYNQ_NO_SPAN,
         (SyntaqliteConflictAction)R, SYNTAQLITE_BOOL_FALSE,
         SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE, E, SYNTAQLITE_NULL_NODE);
@@ -537,7 +537,7 @@ tcons(A) ::= FOREIGN KEY LP eidlist(FA) RP REFERENCES nm(T) eidlist_opt(TA) refa
     uint32_t fk = synq_parse_foreign_key_clause(pCtx,
         synq_span(pCtx, T), TA, on_del, on_upd, (SyntaqliteBool)D);
     A.node = synq_parse_table_constraint(pCtx,
-        SYNTAQLITE_TABLE_CONSTRAINT_KIND_FOREIGN_KEY,
+        SYNTAQLITE_TABLE_CONSTRAINT_TYPE_FOREIGN_KEY,
         SYNQ_NO_SPAN,
         SYNTAQLITE_CONFLICT_ACTION_DEFAULT, SYNTAQLITE_BOOL_FALSE,
         SYNTAQLITE_NULL_NODE, FA, SYNTAQLITE_NULL_NODE, fk);

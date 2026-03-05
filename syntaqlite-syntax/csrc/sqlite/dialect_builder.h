@@ -236,7 +236,7 @@ static inline uint32_t synq_parse_foreign_key_clause(
 
 static inline uint32_t synq_parse_column_constraint(
     SynqParseCtx *ctx,
-    SyntaqliteColumnConstraintKind kind,
+    SyntaqliteColumnConstraintType kind,
     SyntaqliteSourceSpan constraint_name,
     SyntaqliteConflictAction onconf,
     SyntaqliteSortOrder sort_order,
@@ -282,7 +282,7 @@ static inline uint32_t synq_parse_column_def(
 
 static inline uint32_t synq_parse_table_constraint(
     SynqParseCtx *ctx,
-    SyntaqliteTableConstraintKind kind,
+    SyntaqliteTableConstraintType kind,
     SyntaqliteSourceSpan constraint_name,
     SyntaqliteConflictAction onconf,
     SyntaqliteBool is_autoincrement,
@@ -812,7 +812,7 @@ static inline uint32_t synq_parse_analyze_or_reindex_stmt(
     SynqParseCtx *ctx,
     SyntaqliteSourceSpan target_name,
     SyntaqliteSourceSpan schema,
-    SyntaqliteAnalyzeOrReindexKind kind
+    SyntaqliteAnalyzeOrReindexOp kind
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteAnalyzeOrReindexStmt){
@@ -852,13 +852,13 @@ static inline uint32_t synq_parse_detach_stmt(
 static inline uint32_t synq_parse_vacuum_stmt(
     SynqParseCtx *ctx,
     SyntaqliteSourceSpan schema,
-    uint32_t into_expr
+    uint32_t filename
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteVacuumStmt){
             .tag = SYNTAQLITE_NODE_VACUUM_STMT,
             .schema = schema,
-            .into_expr = into_expr
+            .filename = filename
         }, (uint32_t)sizeof(SyntaqliteVacuumStmt));
 }
 

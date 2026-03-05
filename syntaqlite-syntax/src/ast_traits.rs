@@ -100,8 +100,8 @@ pub trait CompoundOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 pub enum IsOpKind {
     Is,
     IsNot,
-    Isnull,
-    Notnull,
+    IsNull,
+    NotNull,
     IsNotDistinct,
     IsDistinct,
 }
@@ -146,10 +146,10 @@ pub trait GeneratedColumnStorageLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn kind(&self) -> Option<GeneratedColumnStorageKind>;
 }
 
-/// Base variants of `ColumnConstraintKind`. Used for exhaustive pattern matching in generic code.
-/// Grammar extensions that add variants beyond this set return `None` from `ColumnConstraintKindLike::kind`.
+/// Base variants of `ColumnConstraintType`. Used for exhaustive pattern matching in generic code.
+/// Grammar extensions that add variants beyond this set return `None` from `ColumnConstraintTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ColumnConstraintKindKind {
+pub enum ColumnConstraintTypeKind {
     Default,
     NotNull,
     PrimaryKey,
@@ -161,28 +161,28 @@ pub enum ColumnConstraintKindKind {
     Null,
 }
 
-/// Trait for `ColumnConstraintKind`-compatible values. Dialects may define their own type and implement this.
-pub trait ColumnConstraintKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
+/// Trait for `ColumnConstraintType`-compatible values. Dialects may define their own type and implement this.
+pub trait ColumnConstraintTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `ColumnConstraintKindKind` variants. Returns `None` for dialect-specific extensions.
-    fn kind(&self) -> Option<ColumnConstraintKindKind>;
+    /// Match against base `ColumnConstraintTypeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<ColumnConstraintTypeKind>;
 }
 
-/// Base variants of `TableConstraintKind`. Used for exhaustive pattern matching in generic code.
-/// Grammar extensions that add variants beyond this set return `None` from `TableConstraintKindLike::kind`.
+/// Base variants of `TableConstraintType`. Used for exhaustive pattern matching in generic code.
+/// Grammar extensions that add variants beyond this set return `None` from `TableConstraintTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TableConstraintKindKind {
+pub enum TableConstraintTypeKind {
     PrimaryKey,
     Unique,
     Check,
     ForeignKey,
 }
 
-/// Trait for `TableConstraintKind`-compatible values. Dialects may define their own type and implement this.
-pub trait TableConstraintKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
+/// Trait for `TableConstraintType`-compatible values. Dialects may define their own type and implement this.
+pub trait TableConstraintTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `TableConstraintKindKind` variants. Returns `None` for dialect-specific extensions.
-    fn kind(&self) -> Option<TableConstraintKindKind>;
+    /// Match against base `TableConstraintTypeKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<TableConstraintTypeKind>;
 }
 
 /// Base variants of `Materialized`. Used for exhaustive pattern matching in generic code.
@@ -436,19 +436,19 @@ pub trait PragmaFormLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn kind(&self) -> Option<PragmaFormKind>;
 }
 
-/// Base variants of `AnalyzeOrReindexKind`. Used for exhaustive pattern matching in generic code.
-/// Grammar extensions that add variants beyond this set return `None` from `AnalyzeOrReindexKindLike::kind`.
+/// Base variants of `AnalyzeOrReindexOp`. Used for exhaustive pattern matching in generic code.
+/// Grammar extensions that add variants beyond this set return `None` from `AnalyzeOrReindexOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AnalyzeOrReindexKindKind {
+pub enum AnalyzeOrReindexOpKind {
     Analyze,
     Reindex,
 }
 
-/// Trait for `AnalyzeOrReindexKind`-compatible values. Dialects may define their own type and implement this.
-pub trait AnalyzeOrReindexKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
+/// Trait for `AnalyzeOrReindexOp`-compatible values. Dialects may define their own type and implement this.
+pub trait AnalyzeOrReindexOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `AnalyzeOrReindexKindKind` variants. Returns `None` for dialect-specific extensions.
-    fn kind(&self) -> Option<AnalyzeOrReindexKindKind>;
+    /// Match against base `AnalyzeOrReindexOpKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<AnalyzeOrReindexOpKind>;
 }
 
 /// Base variants of `FrameType`. Used for exhaustive pattern matching in generic code.
@@ -701,7 +701,7 @@ pub trait ForeignKeyClauseView<'a>: Copy {
 pub trait ColumnConstraintView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
-    fn kind(&self) -> <Self::Ast as AstTypes<'a>>::ColumnConstraintKind;
+    fn kind(&self) -> <Self::Ast as AstTypes<'a>>::ColumnConstraintType;
     fn constraint_name(&self) -> &'a str;
     fn onconf(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn sort_order(&self) -> <Self::Ast as AstTypes<'a>>::SortOrder;
@@ -735,7 +735,7 @@ pub trait ColumnDefView<'a>: Copy {
 pub trait TableConstraintView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
-    fn kind(&self) -> <Self::Ast as AstTypes<'a>>::TableConstraintKind;
+    fn kind(&self) -> <Self::Ast as AstTypes<'a>>::TableConstraintType;
     fn constraint_name(&self) -> &'a str;
     fn onconf(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn is_autoincrement(&self) -> bool;
@@ -1167,7 +1167,7 @@ pub trait AnalyzeOrReindexStmtView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn target_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
-    fn kind(&self) -> <Self::Ast as AstTypes<'a>>::AnalyzeOrReindexKind;
+    fn kind(&self) -> <Self::Ast as AstTypes<'a>>::AnalyzeOrReindexOp;
 }
 
 /// Accessor trait for `AttachStmt` nodes.
@@ -1187,12 +1187,11 @@ pub trait DetachStmtView<'a>: Copy {
 }
 
 /// Accessor trait for `VacuumStmt` nodes.
-#[allow(clippy::wrong_self_convention)]
 pub trait VacuumStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
     fn schema(&self) -> &'a str;
-    fn into_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
+    fn filename(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
 
 /// Accessor trait for `ExplainStmt` nodes.
@@ -1509,8 +1508,8 @@ pub trait AstTypes<'a>: 'a {
     type IsOp: IsOpLike;
     type ForeignKeyAction: ForeignKeyActionLike;
     type GeneratedColumnStorage: GeneratedColumnStorageLike;
-    type ColumnConstraintKind: ColumnConstraintKindLike;
-    type TableConstraintKind: TableConstraintKindLike;
+    type ColumnConstraintType: ColumnConstraintTypeLike;
+    type TableConstraintType: TableConstraintTypeLike;
     type Materialized: MaterializedLike;
     type ConflictAction: ConflictActionLike;
     type RaiseType: RaiseTypeLike;
@@ -1526,7 +1525,7 @@ pub trait AstTypes<'a>: 'a {
     type TriggerEventType: TriggerEventTypeLike;
     type ExplainMode: ExplainModeLike;
     type PragmaForm: PragmaFormLike;
-    type AnalyzeOrReindexKind: AnalyzeOrReindexKindLike;
+    type AnalyzeOrReindexOp: AnalyzeOrReindexOpLike;
     type FrameType: FrameTypeLike;
     type FrameBoundType: FrameBoundTypeLike;
     type FrameExclude: FrameExcludeLike;

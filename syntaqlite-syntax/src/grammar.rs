@@ -3,6 +3,7 @@
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
+use crate::any::{AnyNodeTag, AnyTokenType};
 use crate::util::{SqliteFlags, SqliteVersion};
 
 /// The kind of value a struct field holds in the AST node layout.
@@ -137,22 +138,64 @@ impl FieldMeta<'_> {
     }
 }
 
-/// A typed grammar handle for a specific dialect.
+/// Token-usage flags set by the parser during disambiguation.
 ///
-/// Implement this for a dialect's grammar struct (e.g. `SqliteGrammar`).
-/// Wraps an [`AnyGrammar`] and exposes it via [`raw`](Self::raw).
-pub trait TypedGrammar: Copy {
-    /// The top-level typed AST node enum for this dialect.
+/// Returned as part of [`crate::parser::TypedParserToken`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ParserTokenFlags(u8);
+
+impl ParserTokenFlags {
+    /// Construct from a raw C flag bitfield (`SyntaqliteParserTokenFlags = uint32_t`).
+    pub(crate) fn from_raw(v: u32) -> Self {
+        let bits = v as u8;
+        debug_assert_eq!(
+            v,
+            u32::from(bits),
+            "parser token flags out of range for u8: {v}"
+        );
+        ParserTokenFlags(bits)
+    }
+
+    // Bit positions — mirror C SYNQ_TOKEN_FLAG_* in syntaqlite/parser.h.
+    const AS_ID: u8 = 1;
+    const AS_FUNCTION: u8 = 2;
+    const AS_TYPE: u8 = 4;
+
+    /// Returns the underlying flag bits.
+    pub fn bits(self) -> u8 {
+        self.0
+    }
+
+    /// True if the token was used as an identifier (`SYNQ_TOKEN_FLAG_AS_ID`).
+    pub fn used_as_identifier(self) -> bool {
+        self.0 & Self::AS_ID != 0
+    }
+
+    /// True if the token was used as a function name (`SYNQ_TOKEN_FLAG_AS_FUNCTION`).
+    pub fn used_as_function(self) -> bool {
+        self.0 & Self::AS_FUNCTION != 0
+    }
+
+    /// True if the token was used as a type name (`SYNQ_TOKEN_FLAG_AS_TYPE`).
+    pub fn used_as_type(self) -> bool {
+        self.0 & Self::AS_TYPE != 0
+    }
+}
+
+/// A typed grammar handle.
+///
+/// Implement this for a grammar struct (e.g. `sqlite::grammar::Grammar`).
+/// Must be convertible to [`AnyGrammar`] via `Into<AnyGrammar>`.
+pub trait TypedGrammar: Copy + Into<AnyGrammar> {
+    /// The top-level typed AST node enum for this grammar.
     type Node<'a>: crate::ast::GrammarNodeType<'a>;
-    /// The dialect's typed node ID, wrapping an [`crate::ast::AnyNodeId`].
+    /// The grammar's typed node ID, wrapping an [`crate::ast::AnyNodeId`].
     ///
     /// Used as the return type of [`TypedNodeList::node_id`](crate::ast::TypedNodeList::node_id)
     /// so callers get a grammar-typed handle rather than a raw [`crate::ast::AnyNodeId`].
     type NodeId: Copy + From<crate::ast::AnyNodeId> + Into<crate::ast::AnyNodeId>;
-    /// The typed token enum for this dialect.
+    /// The typed token enum for this grammar.
     type Token: crate::ast::GrammarTokenType;
-    /// Access the underlying [`AnyGrammar`] for configuration and grammar-agnostic APIs.
-    fn raw(&mut self) -> &mut AnyGrammar;
 }
 
 /// A type-erased grammar handle shared by all dialects.
@@ -160,7 +203,7 @@ pub trait TypedGrammar: Copy {
 /// Carries the target `SQLite` version and compile-time flags for a dialect.
 /// It is cheap to copy and safe to send across threads.
 ///
-/// Obtain one via a dialect-specific wrapper (e.g. `SqliteGrammar`);
+/// Obtain one via a grammar-specific wrapper (e.g. `SqliteGrammar`);
 /// use [`typed::TypedGrammar`](crate::typed::TypedGrammar) when you need the typed dialect API,
 /// or pass `AnyGrammar` directly to [`crate::Parser`] and other grammar-agnostic infrastructure.
 #[derive(Clone, Copy)]
@@ -183,7 +226,7 @@ impl AnyGrammar {
     /// The `template` pointer inside `inner` must point to valid, `'static`
     /// C grammar tables (e.g. returned by a dialect's `extern "C"` grammar
     /// accessor such as `syntaqlite_sqlite_grammar()`).
-    pub unsafe fn new(inner: ffi::CGrammar) -> Self {
+    pub(crate) unsafe fn new(inner: ffi::CGrammar) -> Self {
         AnyGrammar { inner }
     }
 
@@ -222,9 +265,9 @@ impl AnyGrammar {
     ///
     /// # Panics
     /// Panics if `tag` is out of bounds for this grammar.
-    pub fn node_name(&self, tag: u32) -> &'static str {
+    pub fn node_name(&self, tag: AnyNodeTag) -> &'static str {
         let raw = self.template();
-        let idx = tag as usize;
+        let idx = tag.0 as usize;
         assert!(
             idx < raw.node_count as usize,
             "node tag {} out of bounds (count={})",
@@ -240,9 +283,9 @@ impl AnyGrammar {
     }
 
     /// Whether the given node tag represents a list node.
-    pub fn is_list(&self, tag: u32) -> bool {
+    pub fn is_list(&self, tag: AnyNodeTag) -> bool {
         let raw = self.template();
-        let idx = tag as usize;
+        let idx = tag.0 as usize;
         if idx >= raw.node_count as usize {
             return false;
         }
@@ -252,9 +295,9 @@ impl AnyGrammar {
     }
 
     /// Return the field metadata for a node tag as an iterator of [`FieldMeta`].
-    pub fn field_meta(&self, tag: u32) -> impl ExactSizeIterator<Item = FieldMeta<'static>> {
+    pub fn field_meta(&self, tag: AnyNodeTag) -> impl ExactSizeIterator<Item = FieldMeta<'static>> {
         let raw = self.template();
-        let idx = tag as usize;
+        let idx = tag.0 as usize;
         // SAFETY: idx is bounds-checked; field_meta_counts and field_meta are
         // parallel static arrays of length node_count populated by codegen.
         let slice: &'static [ffi::CFieldMeta] = unsafe {
@@ -273,10 +316,28 @@ impl AnyGrammar {
         slice.iter().map(FieldMeta)
     }
 
+    /// Classify a token using parser-assigned flags, falling back to the
+    /// static token-category table.
+    pub fn classify_token(
+        &self,
+        token_type: AnyTokenType,
+        flags: ParserTokenFlags,
+    ) -> TokenCategory {
+        if flags.used_as_function() {
+            TokenCategory::Function
+        } else if flags.used_as_type() {
+            TokenCategory::Type
+        } else if flags.used_as_identifier() {
+            TokenCategory::Identifier
+        } else {
+            self.token_category(token_type)
+        }
+    }
+
     /// Return the [`TokenCategory`] for a token type ordinal.
-    pub fn token_category(&self, token_type: u32) -> TokenCategory {
+    pub fn token_category(&self, token_type: AnyTokenType) -> TokenCategory {
         let raw = self.template();
-        let idx = token_type as usize;
+        let idx = token_type.0 as usize;
         if raw.token_categories.is_null() || idx >= raw.token_type_count as usize {
             return TokenCategory::Other;
         }
@@ -306,8 +367,18 @@ impl AnyGrammar {
             // SAFETY: keyword_count is null-checked above; points to a static u32.
             unsafe { *raw.keyword_count as usize }
         };
-        KeywordIter { grammar: self, idx: 0, count }
+        KeywordIter {
+            grammar: self,
+            idx: 0,
+            count,
+        }
     }
+}
+
+impl TypedGrammar for AnyGrammar {
+    type Node<'a> = crate::ast::AnyNode<'a>;
+    type NodeId = crate::ast::AnyNodeId;
+    type Token = AnyTokenType;
 }
 
 /// A single entry from the grammar's exported keyword table.
@@ -315,8 +386,8 @@ impl AnyGrammar {
 /// Yielded by [`AnyGrammar::keywords`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KeywordEntry {
-    /// Raw token type ordinal for this keyword.
-    pub token_type: u32,
+    /// The token type for this keyword.
+    pub token_type: AnyTokenType,
     /// The keyword lexeme (e.g. `"SELECT"`, `"WHERE"`).
     pub keyword: &'static str,
 }
@@ -343,7 +414,7 @@ impl Iterator for KeywordIter<'_> {
             let off = *raw.keyword_offsets.add(self.idx) as usize;
             let bytes = std::slice::from_raw_parts(raw.keyword_text.cast::<u8>().add(off), len);
             KeywordEntry {
-                token_type: code,
+                token_type: AnyTokenType(code),
                 keyword: std::str::from_utf8_unchecked(bytes),
             }
         };

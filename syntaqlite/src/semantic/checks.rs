@@ -42,42 +42,53 @@ pub(crate) fn check_column_ref(
     }
 
     match scope.resolve_column(table, column) {
-        ColumnResolution::Found => None,
-        // Table qualifier itself doesn't resolve — the table check already reported this.
-        ColumnResolution::TableNotFound => None,
+        ColumnResolution::Found | ColumnResolution::TableNotFound => None,
+        // Table qualifier itself doesn't resolve - the table check already reported this.
         ColumnResolution::TableFoundColumnMissing => {
-            let tbl = table.unwrap();
-            let candidates = scope.all_column_names(Some(tbl));
-            let suggestion = best_suggestion(column, &candidates, config.suggestion_threshold);
-            Some(make_diagnostic(
+            let table = table?;
+            let candidates = scope.all_column_names(Some(table));
+            Some(unknown_column_diagnostic(
+                column,
+                Some(table),
                 offset,
                 length,
-                DiagnosticMessage::UnknownColumn {
-                    column: column.to_string(),
-                    table: Some(tbl.to_string()),
-                },
-                suggestion.map(Help::Suggestion),
+                &candidates,
                 config,
             ))
         }
         ColumnResolution::NotFound => {
-            let suggestion = best_suggestion(
+            let candidates = scope.all_column_names(None);
+            Some(unknown_column_diagnostic(
                 column,
-                &scope.all_column_names(None),
-                config.suggestion_threshold,
-            );
-            Some(make_diagnostic(
+                None,
                 offset,
                 length,
-                DiagnosticMessage::UnknownColumn {
-                    column: column.to_string(),
-                    table: None,
-                },
-                suggestion.map(Help::Suggestion),
+                &candidates,
                 config,
             ))
         }
     }
+}
+
+fn unknown_column_diagnostic(
+    column: &str,
+    table: Option<&str>,
+    offset: usize,
+    length: usize,
+    candidates: &[String],
+    config: &ValidationConfig,
+) -> Diagnostic {
+    let suggestion = best_suggestion(column, candidates, config.suggestion_threshold);
+    make_diagnostic(
+        offset,
+        length,
+        DiagnosticMessage::UnknownColumn {
+            column: column.to_string(),
+            table: table.map(str::to_string),
+        },
+        suggestion.map(Help::Suggestion),
+        config,
+    )
 }
 
 fn make_diagnostic(

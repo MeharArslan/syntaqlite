@@ -1,16 +1,17 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_parser::FunctionCategory;
+use crate::dialect::catalog::FunctionCategory;
 
 /// A user-defined or database function (from DDL parsing, JSON config, or runtime).
 ///
-/// Symmetric with [`RelationDef`](crate::semantic::relations::RelationDef) —
+/// Symmetric with [`RelationDef`](crate::semantic::relations::RelationDef) -
 /// both represent externally-defined schema objects.
 #[derive(Debug, Clone)]
 pub struct FunctionDef {
+    /// Function name.
     pub name: String,
-    /// `None` = variadic (any number of arguments).
+    /// `None` means variadic (any number of arguments).
     pub args: Option<usize>,
 }
 
@@ -32,7 +33,9 @@ pub enum FunctionCheckResult {
 
 /// Information about a resolved function, returned by [`super::FunctionCatalog::lookup()`].
 pub struct FunctionLookup<'a> {
+    /// Function name.
     pub name: &'a str,
+    /// Function category (scalar/aggregate/window/etc).
     pub category: FunctionCategory,
     /// All accepted fixed arities. Empty + `is_variadic` means any arity.
     pub fixed_arities: Vec<usize>,

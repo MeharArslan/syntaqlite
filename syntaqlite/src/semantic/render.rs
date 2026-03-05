@@ -22,6 +22,7 @@ pub struct DiagnosticRenderer<'a> {
 }
 
 impl<'a> DiagnosticRenderer<'a> {
+    /// Create a renderer bound to a source string and display file label.
     pub fn new(source: &'a str, file: &'a str) -> Self {
         Self { source, file }
     }
@@ -102,7 +103,7 @@ impl<'a> DiagnosticRenderer<'a> {
                 Severity::Hint => "hint",
             };
             let message = d.message.to_string();
-            let help = d.help.as_ref().map(|h| h.to_string());
+            let help = d.help.as_ref().map(ToString::to_string);
             self.render_diagnostic(
                 severity,
                 &message,

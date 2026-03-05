@@ -3,7 +3,7 @@
 
 /// Compute the Levenshtein distance between two strings (case-insensitive).
 ///
-/// Uses O(n) space where n = b.len(). SQL identifiers are ASCII, so this
+/// Uses `O(n)` space where `n = b.len()`. SQL identifiers are ASCII, so this
 /// uses byte-level comparison with ASCII lowercase conversion.
 pub(crate) fn levenshtein_distance(a: &str, b: &str) -> usize {
     let a: Vec<u8> = a.bytes().map(|c| c.to_ascii_lowercase()).collect();
@@ -25,7 +25,7 @@ pub(crate) fn levenshtein_distance(a: &str, b: &str) -> usize {
     for i in 1..=m {
         curr[0] = i;
         for j in 1..=n {
-            let cost = if a[i - 1] == b[j - 1] { 0 } else { 1 };
+            let cost = usize::from(a[i - 1] != b[j - 1]);
             curr[j] = (prev[j] + 1).min(curr[j - 1] + 1).min(prev[j - 1] + cost);
         }
         std::mem::swap(&mut prev, &mut curr);

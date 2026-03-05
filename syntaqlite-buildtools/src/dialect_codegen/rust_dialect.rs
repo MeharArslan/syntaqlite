@@ -100,14 +100,16 @@ impl {grammar_struct} {{
     }}
 }}
 
+impl From<{grammar_struct}> for AnyGrammar {{
+    fn from(g: {grammar_struct}) -> AnyGrammar {{
+        g.raw
+    }}
+}}
+
 impl TypedGrammar for {grammar_struct} {{
     type Node<'a> = super::ast::{root_node}<'a>;
     type NodeId = super::ast::NodeId;
     type Token = super::tokens::{token_type};
-
-    fn raw(&mut self) -> &mut AnyGrammar {{
-        &mut self.raw
-    }}
 }}
 
 /// Returns the dialect grammar handle.

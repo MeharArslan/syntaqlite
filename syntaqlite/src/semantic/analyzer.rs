@@ -3,22 +3,21 @@
 
 //! Core analysis engine.
 //!
-//! [`SemanticAnalyzer`] is the single entry point for all semantic analysis —
-//! diagnostics, semantic tokens, completions. It replaces the old `Validator`,
-//! `EmbeddedAnalyzer`, and `AnalysisHost`.
+//! [`SemanticAnalyzer`] is the single entry point for all semantic analysis -
+//! diagnostics, semantic tokens, completions.
 
-use syntaqlite_parser::ast_traits::AstTypes;
-use syntaqlite_parser::{
-    DialectEnv, DialectNodeType, IncrementalParser, NodeId, ParseError, ParseResult, Parser,
-    ParserConfig,
-};
+use syntaqlite_syntax::ParserTokenFlags;
+use syntaqlite_syntax::TokenType;
+use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement};
+use syntaqlite_syntax::ast_traits::AstTypes;
+use syntaqlite_syntax::typed::{GrammarNodeType, TypedParser};
 
-use crate::dialect::{DialectExt, TokenCategory};
+use crate::dialect::{Dialect, TokenCategory};
 
 use super::ValidationConfig;
 use super::catalog::{CatalogStack, DatabaseCatalog, DocumentCatalog, StaticCatalog};
 use super::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
-use super::model::SemanticModel;
+use super::model::{SemanticModel, StoredComment, StoredParseError, StoredToken};
 use super::scope::ScopeStack;
 use super::walker::Walker;
 
@@ -26,30 +25,19 @@ use super::walker::Walker;
 ///
 /// Created once for a dialect, reused across inputs. Holds the static
 /// catalog (dialect builtins) and reusable scratch space.
-///
-/// # Example
-///
-/// ```
-/// use syntaqlite::semantic::{SemanticAnalyzer, DatabaseCatalog};
-///
-/// let catalog = DatabaseCatalog::default();
-/// let mut analyzer = SemanticAnalyzer::new();
-/// let diags = analyzer.diagnostics("SELECT 1", &catalog);
-/// assert!(diags.is_empty());
-/// ```
 pub struct SemanticAnalyzer<'d> {
-    dialect: DialectEnv<'d>,
+    dialect: Dialect<'d>,
 
-    /// Built once from dialect at construction — dialect builtins.
+    /// Built once from dialect at construction - dialect builtins.
     static_catalog: StaticCatalog,
 
-    /// Reusable scratch buffers — cleared, not reallocated.
+    /// Reusable scratch buffers - cleared, not reallocated.
     diag_buf: Vec<Diagnostic>,
     doc_catalog: DocumentCatalog,
 }
 
 impl<'d> SemanticAnalyzer<'d> {
-    /// Create an analyzer for the built-in SQLite dialect.
+    /// Create an analyzer for the built-in `SQLite` dialect.
     #[cfg(feature = "sqlite")]
     pub fn new() -> SemanticAnalyzer<'static> {
         let dialect = crate::dialect::sqlite();
@@ -57,7 +45,7 @@ impl<'d> SemanticAnalyzer<'d> {
     }
 
     /// Create an analyzer bound to a specific dialect.
-    pub fn with_dialect(dialect: impl Into<DialectEnv<'d>>) -> Self {
+    pub fn with_dialect(dialect: impl Into<Dialect<'d>>) -> Self {
         let dialect = dialect.into();
         let static_catalog = StaticCatalog::for_dialect(&dialect);
         SemanticAnalyzer {
@@ -69,11 +57,11 @@ impl<'d> SemanticAnalyzer<'d> {
     }
 
     /// Access the underlying dialect.
-    pub fn dialect(&self) -> DialectEnv<'d> {
+    pub fn dialect(&self) -> Dialect<'d> {
         self.dialect
     }
 
-    // ── Primary API — string in, results out ─────────────────────────
+    // -- Primary API -------------------------------------------------------
 
     /// Parse and validate SQL, returning all diagnostics (parse + semantic).
     pub fn diagnostics(&mut self, source: &str, catalog: &DatabaseCatalog) -> Vec<Diagnostic> {
@@ -89,132 +77,165 @@ impl<'d> SemanticAnalyzer<'d> {
         config: &ValidationConfig,
     ) -> Vec<Diagnostic> {
         let model = self.prepare(source);
-        self.diagnostics_prepared_with_config_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(
-            &model, catalog, config,
-        )
+        self.diagnostics_prepared_with_config_default_ast(&model, catalog, config)
     }
 
-    // ── Advanced API — prepare once, query many ──────────────────────
+    // -- Advanced API ------------------------------------------------------
 
     /// Parse SQL and produce an opaque model for repeated queries.
-    pub fn prepare(&mut self, source: &str) -> SemanticModel<'d> {
-        let parser = Parser::with_config(
-            self.dialect,
-            &ParserConfig {
-                collect_tokens: true,
-                ..ParserConfig::default()
-            },
+    pub fn prepare(&mut self, source: &str) -> SemanticModel {
+        let parser = syntaqlite_syntax::Parser::with_config(
+            &syntaqlite_syntax::ParserConfig::default().with_collect_tokens(true),
         );
-        let mut cursor = parser.parse(source);
+        let mut session = parser.parse(source);
 
-        let mut stmts = Vec::new();
-        while let Some(result) = cursor.next_statement() {
-            stmts.push(result.map(|node_ref| node_ref.id()));
+        let mut tokens = Vec::new();
+        let mut comments = Vec::new();
+        let mut parse_errors = Vec::new();
+
+        loop {
+            match session.next() {
+                syntaqlite_syntax::NextStatement::Statement(stmt) => {
+                    collect_stmt_positions(
+                        source,
+                        stmt.tokens().map(|t| (t.text(), t.token_type(), t.flags())),
+                        stmt.comments().map(|c| c.text),
+                        &mut tokens,
+                        &mut comments,
+                    );
+                }
+                syntaqlite_syntax::NextStatement::Error(err) => {
+                    parse_errors.push(StoredParseError {
+                        message: err.message().to_string(),
+                        offset: err.offset(),
+                        length: err.length(),
+                    });
+                }
+                syntaqlite_syntax::NextStatement::Done => break,
+            }
         }
 
-        SemanticModel::new(parser, cursor, stmts)
+        SemanticModel::new(source.to_string(), tokens, comments, parse_errors)
     }
 
-    /// Diagnostics from a prepared model (no re-parsing).
+    /// Diagnostics from a prepared model.
     pub fn diagnostics_prepared(
         &mut self,
-        model: &SemanticModel<'d>,
+        model: &SemanticModel,
         catalog: &DatabaseCatalog,
     ) -> Vec<Diagnostic> {
-        self.diagnostics_prepared_dialect::<syntaqlite_parser_sqlite::ast::SqliteAst>(
-            model, catalog,
+        self.diagnostics_prepared_with_config_default_ast(
+            model,
+            catalog,
+            &ValidationConfig::default(),
         )
     }
 
     /// Diagnostics from a prepared model, generic over dialect AST types.
     pub fn diagnostics_prepared_dialect<A: for<'a> AstTypes<'a>>(
         &mut self,
-        model: &SemanticModel<'d>,
+        model: &SemanticModel,
         catalog: &DatabaseCatalog,
     ) -> Vec<Diagnostic> {
         let config = ValidationConfig::default();
         self.diagnostics_prepared_with_config_dialect::<A>(model, catalog, &config)
     }
 
-    // ── Lazy query methods — compute from model on demand ────────────
+    #[cfg(feature = "sqlite")]
+    fn diagnostics_prepared_with_config_default_ast(
+        &mut self,
+        model: &SemanticModel,
+        catalog: &DatabaseCatalog,
+        config: &ValidationConfig,
+    ) -> Vec<Diagnostic> {
+        self.diagnostics_prepared_with_config_dialect::<syntaqlite_syntax::nodes::SqliteAstMarker>(
+            model, catalog, config,
+        )
+    }
+
+    #[cfg(not(feature = "sqlite"))]
+    fn diagnostics_prepared_with_config_default_ast(
+        &mut self,
+        model: &SemanticModel,
+        _catalog: &DatabaseCatalog,
+        _config: &ValidationConfig,
+    ) -> Vec<Diagnostic> {
+        self.parse_diagnostics(model)
+    }
+    // -- Lazy query methods ------------------------------------------------
 
     /// Parse-error diagnostics extracted from a prepared model.
-    ///
-    /// Iterates `model.stmts` and converts `Err(ParseError)` entries to
-    /// `Diagnostic`. Does not include semantic diagnostics.
-    pub fn parse_diagnostics(&self, model: &SemanticModel<'d>) -> Vec<Diagnostic> {
-        let mut diagnostics = Vec::new();
-        for result in &model.stmts {
-            if let Err(err) = result {
+    pub fn parse_diagnostics(&self, model: &SemanticModel) -> Vec<Diagnostic> {
+        model
+            .parse_errors
+            .iter()
+            .map(|err| {
                 let (start_offset, end_offset) = parse_error_span(err, model.source());
-                diagnostics.push(Diagnostic {
+                Diagnostic {
                     start_offset,
                     end_offset,
                     message: DiagnosticMessage::Other(err.message.clone()),
                     severity: Severity::Error,
                     help: None,
-                });
-            }
-        }
-        diagnostics
+                }
+            })
+            .collect()
     }
 
-    /// Semantic tokens for syntax highlighting, computed from the model's
-    /// parser token and comment data.
-    pub fn semantic_tokens(&self, model: &SemanticModel<'d>) -> Vec<super::model::SemanticToken> {
-        let reader = model.reader();
+    /// Semantic tokens for syntax highlighting.
+    pub fn semantic_tokens(&self, model: &SemanticModel) -> Vec<super::model::SemanticToken> {
         let mut tokens = Vec::new();
 
-        for tp in reader.tokens() {
-            let cat = self.dialect.classify_token(tp.type_, tp.flags);
+        for tp in &model.tokens {
+            let cat = self.dialect.classify_token(tp.token_type.into(), tp.flags);
             if cat == TokenCategory::Other {
                 continue;
             }
             tokens.push(super::model::SemanticToken {
-                offset: tp.offset as usize,
-                length: tp.length as usize,
+                offset: tp.offset,
+                length: tp.length,
                 category: cat,
             });
         }
 
-        for c in reader.comments() {
+        for c in &model.comments {
             tokens.push(super::model::SemanticToken {
-                offset: c.offset as usize,
-                length: c.length as usize,
+                offset: c.offset,
+                length: c.length,
                 category: TokenCategory::Comment,
             });
         }
+
         tokens.sort_by_key(|t| t.offset);
         tokens
     }
 
-    /// Expected tokens and semantic context at `offset`, computed by
-    /// replaying the model's token stream through an incremental parser.
+    /// Expected tokens and semantic context at `offset`.
     pub fn completion_info(
         &self,
-        model: &SemanticModel<'d>,
+        model: &SemanticModel,
         offset: usize,
     ) -> super::model::CompletionInfo {
         let source = model.source();
-        let reader = model.reader();
-        let tokens = reader.tokens();
+        let tokens = &model.tokens;
         let cursor_offset = offset.min(source.len());
 
-        let mut boundary =
-            tokens.partition_point(|t| (t.offset + t.length) as usize <= cursor_offset);
+        let mut boundary = tokens.partition_point(|t| t.offset + t.length <= cursor_offset);
 
         // Skip zero-width tokens at cursor.
-        while boundary > 0 && {
+        while boundary > 0 {
             let t = &tokens[boundary - 1];
-            t.length == 0 && t.offset as usize == cursor_offset
-        } {
-            boundary -= 1;
+            if t.length == 0 && t.offset == cursor_offset {
+                boundary -= 1;
+            } else {
+                break;
+            }
         }
 
         // Backtrack if cursor is mid-identifier so we still suggest completions.
         let mut backtracked = false;
         if boundary > 0
-            && (tokens[boundary - 1].offset + tokens[boundary - 1].length) as usize == cursor_offset
+            && tokens[boundary - 1].offset + tokens[boundary - 1].length == cursor_offset
             && cursor_offset > 0
         {
             let b = source.as_bytes()[cursor_offset - 1];
@@ -224,37 +245,38 @@ impl<'d> SemanticAnalyzer<'d> {
             }
         }
 
-        let tk_semi = self.dialect.tk_semi();
         let start = tokens[..boundary]
             .iter()
-            .rposition(|t| t.type_ == tk_semi)
+            .rposition(|t| t.token_type == TokenType::Semi)
             .map_or(0, |idx| idx + 1);
 
         let stmt_tokens = &tokens[start..boundary];
 
-        let inc_parser = IncrementalParser::new(self.dialect);
-        let mut cursor = inc_parser.feed(source);
-        let mut last_expected = cursor.expected_tokens();
+        let parser = TypedParser::new(syntaqlite_syntax::typed::grammar());
+        let mut cursor = parser.incremental_parse(source);
+        let mut last_expected: Vec<TokenType> = cursor.expected_tokens().collect();
 
         for tok in stmt_tokens {
-            let span = tok.offset as usize..(tok.offset + tok.length) as usize;
-            if cursor.feed_token(tok.type_, span).is_err() {
+            let span = tok.offset..(tok.offset + tok.length);
+            if cursor.feed_token(tok.token_type, span).is_some() {
                 return super::model::CompletionInfo {
                     tokens: last_expected,
-                    context: super::model::CompletionContext::from_raw(cursor.completion_context()),
+                    context: super::model::CompletionContext::from_parser(
+                        cursor.completion_context(),
+                    ),
                 };
             }
-            last_expected = cursor.expected_tokens();
+            last_expected = cursor.expected_tokens().collect();
         }
 
-        let context = super::model::CompletionContext::from_raw(cursor.completion_context());
+        let context = super::model::CompletionContext::from_parser(cursor.completion_context());
 
         if backtracked {
             let extra = &tokens[boundary];
-            let span = extra.offset as usize..(extra.offset + extra.length) as usize;
-            if cursor.feed_token(extra.type_, span).is_ok() {
-                let after = cursor.expected_tokens();
-                let mut seen: std::collections::HashSet<u32> =
+            let span = extra.offset..(extra.offset + extra.length);
+            if cursor.feed_token(extra.token_type, span).is_none() {
+                let after: Vec<TokenType> = cursor.expected_tokens().collect();
+                let mut seen: std::collections::HashSet<TokenType> =
                     last_expected.iter().copied().collect();
                 for tok in after {
                     if seen.insert(tok) {
@@ -270,60 +292,50 @@ impl<'d> SemanticAnalyzer<'d> {
         }
     }
 
-    // ── Validation methods ────────────────────────────────────────────
+    // -- Validation methods ------------------------------------------------
 
     /// Diagnostics with explicit config, generic over dialect AST types.
     pub(crate) fn diagnostics_prepared_with_config_dialect<A: for<'a> AstTypes<'a>>(
         &mut self,
-        model: &SemanticModel<'d>,
+        model: &SemanticModel,
         catalog: &DatabaseCatalog,
         config: &ValidationConfig,
     ) -> Vec<Diagnostic> {
         self.diag_buf.clear();
         self.doc_catalog.clear();
 
-        let reader = model.reader();
+        self.diag_buf.extend(self.parse_diagnostics(model));
 
-        // Collect parse errors and valid statement roots.
-        let mut stmt_ids = Vec::new();
-        for result in &model.stmts {
-            match result {
-                Ok(id) => stmt_ids.push(*id),
-                Err(err) => {
-                    if let Some(root) = err.root {
-                        stmt_ids.push(root);
-                    }
-                    let (start_offset, end_offset) = parse_error_span(err, model.source());
-                    self.diag_buf.push(Diagnostic {
-                        start_offset,
-                        end_offset,
-                        message: DiagnosticMessage::Other(err.message.clone()),
-                        severity: Severity::Error,
-                        help: None,
-                    });
-                }
-            }
-        }
+        // Re-parse to obtain statement arenas for semantic walking.
+        let parser = syntaqlite_syntax::Parser::new();
+        let mut session = parser.parse(model.source());
 
-        // Validate each statement with incremental document catalog.
-        for &stmt_id in &stmt_ids {
+        loop {
+            let stmt = match session.next() {
+                syntaqlite_syntax::NextStatement::Statement(stmt) => stmt,
+                syntaqlite_syntax::NextStatement::Error(_) => continue,
+                syntaqlite_syntax::NextStatement::Done => break,
+            };
+
+            let Some(root) = stmt.root() else {
+                continue;
+            };
+
+            let stmt_id: AnyNodeId = root.node_id().into();
+            let stmt_result = stmt.erase();
+
             let catalog_stack = CatalogStack {
                 static_: &self.static_catalog,
                 database: catalog,
                 document: &self.doc_catalog,
             };
-            let diags = validate_statement_dialect::<A>(
-                reader,
-                stmt_id,
-                self.dialect,
-                &catalog_stack,
-                config,
-            );
+            let diags =
+                validate_statement_dialect::<A>(stmt_result, stmt_id, &catalog_stack, config);
             self.diag_buf.extend(diags);
 
             #[cfg(feature = "sqlite")]
             self.doc_catalog
-                .accumulate(reader, stmt_id, self.dialect, Some(catalog));
+                .accumulate(stmt_result, stmt_id, self.dialect, Some(catalog));
         }
 
         self.diag_buf.clone()
@@ -337,18 +349,44 @@ impl Default for SemanticAnalyzer<'static> {
     }
 }
 
-// ── Internal validation functions ────────────────────────────────────
+fn collect_stmt_positions<'a>(
+    source: &'a str,
+    tokens: impl Iterator<Item = (&'a str, TokenType, ParserTokenFlags)>,
+    comments: impl Iterator<Item = &'a str>,
+    out_tokens: &mut Vec<StoredToken>,
+    out_comments: &mut Vec<StoredComment>,
+) {
+    for (text, token_type, flags) in tokens {
+        out_tokens.push(StoredToken {
+            offset: str_offset(source, text),
+            length: text.len(),
+            token_type,
+            flags,
+        });
+    }
+
+    for text in comments {
+        out_comments.push(StoredComment {
+            offset: str_offset(source, text),
+            length: text.len(),
+        });
+    }
+}
+
+fn str_offset(source: &str, part: &str) -> usize {
+    part.as_ptr() as usize - source.as_ptr() as usize
+}
+
+// -- Internal validation functions ------------------------------------------
 
 /// Validate a single parsed statement against the catalog stack.
 pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
-    reader: ParseResult<'a>,
-    stmt_id: NodeId,
-    dialect: DialectEnv<'_>,
+    stmt_result: AnyParsedStatement<'a>,
+    stmt_id: AnyNodeId,
     catalog: &'a CatalogStack<'a>,
     config: &'a ValidationConfig,
 ) -> Vec<Diagnostic> {
-    let stmt: Option<A::Stmt> = DialectNodeType::from_arena(reader, stmt_id);
-    let Some(stmt) = stmt else {
+    let Some(stmt) = A::Stmt::from_result(stmt_result, stmt_id) else {
         return Vec::new();
     };
 
@@ -358,11 +396,11 @@ pub(crate) fn validate_statement_dialect<'a, A: AstTypes<'a>>(
         document: catalog.document,
     });
 
-    Walker::<A>::run(reader, stmt, dialect, &mut scope, catalog, config)
+    Walker::<A>::run(stmt_result, stmt, &mut scope, catalog, config)
 }
 
 /// Compute the byte range for a parse error in the source text.
-pub(crate) fn parse_error_span(err: &ParseError, source: &str) -> (usize, usize) {
+pub(crate) fn parse_error_span(err: &StoredParseError, source: &str) -> (usize, usize) {
     match (err.offset, err.length) {
         (Some(offset), Some(length)) if length > 0 => (offset, offset + length),
         (Some(offset), _) => {

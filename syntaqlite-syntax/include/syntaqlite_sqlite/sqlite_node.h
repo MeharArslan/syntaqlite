@@ -77,8 +77,8 @@ typedef enum SyntaqliteCompoundOp {
 typedef enum SyntaqliteIsOp {
     SYNTAQLITE_IS_OP_IS = 0,
     SYNTAQLITE_IS_OP_IS_NOT = 1,
-    SYNTAQLITE_IS_OP_ISNULL = 2,
-    SYNTAQLITE_IS_OP_NOTNULL = 3,
+    SYNTAQLITE_IS_OP_IS_NULL = 2,
+    SYNTAQLITE_IS_OP_NOT_NULL = 3,
     SYNTAQLITE_IS_OP_IS_NOT_DISTINCT = 4,
     SYNTAQLITE_IS_OP_IS_DISTINCT = 5
 } SyntaqliteIsOp;
@@ -96,24 +96,24 @@ typedef enum SyntaqliteGeneratedColumnStorage {
     SYNTAQLITE_GENERATED_COLUMN_STORAGE_STORED = 1
 } SyntaqliteGeneratedColumnStorage;
 
-typedef enum SyntaqliteColumnConstraintKind {
-    SYNTAQLITE_COLUMN_CONSTRAINT_KIND_DEFAULT = 0,
-    SYNTAQLITE_COLUMN_CONSTRAINT_KIND_NOT_NULL = 1,
-    SYNTAQLITE_COLUMN_CONSTRAINT_KIND_PRIMARY_KEY = 2,
-    SYNTAQLITE_COLUMN_CONSTRAINT_KIND_UNIQUE = 3,
-    SYNTAQLITE_COLUMN_CONSTRAINT_KIND_CHECK = 4,
-    SYNTAQLITE_COLUMN_CONSTRAINT_KIND_REFERENCES = 5,
-    SYNTAQLITE_COLUMN_CONSTRAINT_KIND_COLLATE = 6,
-    SYNTAQLITE_COLUMN_CONSTRAINT_KIND_GENERATED = 7,
-    SYNTAQLITE_COLUMN_CONSTRAINT_KIND_NULL = 8
-} SyntaqliteColumnConstraintKind;
+typedef enum SyntaqliteColumnConstraintType {
+    SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_DEFAULT = 0,
+    SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_NOT_NULL = 1,
+    SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_PRIMARY_KEY = 2,
+    SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_UNIQUE = 3,
+    SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_CHECK = 4,
+    SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_REFERENCES = 5,
+    SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_COLLATE = 6,
+    SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_GENERATED = 7,
+    SYNTAQLITE_COLUMN_CONSTRAINT_TYPE_NULL = 8
+} SyntaqliteColumnConstraintType;
 
-typedef enum SyntaqliteTableConstraintKind {
-    SYNTAQLITE_TABLE_CONSTRAINT_KIND_PRIMARY_KEY = 0,
-    SYNTAQLITE_TABLE_CONSTRAINT_KIND_UNIQUE = 1,
-    SYNTAQLITE_TABLE_CONSTRAINT_KIND_CHECK = 2,
-    SYNTAQLITE_TABLE_CONSTRAINT_KIND_FOREIGN_KEY = 3
-} SyntaqliteTableConstraintKind;
+typedef enum SyntaqliteTableConstraintType {
+    SYNTAQLITE_TABLE_CONSTRAINT_TYPE_PRIMARY_KEY = 0,
+    SYNTAQLITE_TABLE_CONSTRAINT_TYPE_UNIQUE = 1,
+    SYNTAQLITE_TABLE_CONSTRAINT_TYPE_CHECK = 2,
+    SYNTAQLITE_TABLE_CONSTRAINT_TYPE_FOREIGN_KEY = 3
+} SyntaqliteTableConstraintType;
 
 typedef enum SyntaqliteMaterialized {
     SYNTAQLITE_MATERIALIZED_DEFAULT = 0,
@@ -216,10 +216,10 @@ typedef enum SyntaqlitePragmaForm {
     SYNTAQLITE_PRAGMA_FORM_CALL = 2
 } SyntaqlitePragmaForm;
 
-typedef enum SyntaqliteAnalyzeOrReindexKind {
-    SYNTAQLITE_ANALYZE_OR_REINDEX_KIND_ANALYZE = 0,
-    SYNTAQLITE_ANALYZE_OR_REINDEX_KIND_REINDEX = 1
-} SyntaqliteAnalyzeOrReindexKind;
+typedef enum SyntaqliteAnalyzeOrReindexOp {
+    SYNTAQLITE_ANALYZE_OR_REINDEX_OP_ANALYZE = 0,
+    SYNTAQLITE_ANALYZE_OR_REINDEX_OP_REINDEX = 1
+} SyntaqliteAnalyzeOrReindexOp;
 
 typedef enum SyntaqliteFrameType {
     SYNTAQLITE_FRAME_TYPE_NONE = 0,
@@ -484,7 +484,7 @@ typedef struct SyntaqliteForeignKeyClause {
 
 typedef struct SyntaqliteColumnConstraint {
     SyntaqliteNodeTag tag;
-    SyntaqliteColumnConstraintKind kind;
+    SyntaqliteColumnConstraintType kind;
     SyntaqliteSourceSpan constraint_name;
     SyntaqliteConflictAction onconf;
     SyntaqliteSortOrder sort_order;
@@ -520,7 +520,7 @@ typedef struct SyntaqliteColumnDefList {
 
 typedef struct SyntaqliteTableConstraint {
     SyntaqliteNodeTag tag;
-    SyntaqliteTableConstraintKind kind;
+    SyntaqliteTableConstraintType kind;
     SyntaqliteSourceSpan constraint_name;
     SyntaqliteConflictAction onconf;
     SyntaqliteBool is_autoincrement;
@@ -819,7 +819,7 @@ typedef struct SyntaqliteAnalyzeOrReindexStmt {
     SyntaqliteNodeTag tag;
     SyntaqliteSourceSpan target_name;
     SyntaqliteSourceSpan schema;
-    SyntaqliteAnalyzeOrReindexKind kind;
+    SyntaqliteAnalyzeOrReindexOp kind;
 } SyntaqliteAnalyzeOrReindexStmt;
 
 typedef struct SyntaqliteAttachStmt {
@@ -837,7 +837,7 @@ typedef struct SyntaqliteDetachStmt {
 typedef struct SyntaqliteVacuumStmt {
     SyntaqliteNodeTag tag;
     SyntaqliteSourceSpan schema;
-    uint32_t into_expr;
+    uint32_t filename;
 } SyntaqliteVacuumStmt;
 
 typedef struct SyntaqliteExplainStmt {

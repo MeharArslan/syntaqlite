@@ -15,16 +15,27 @@
 // Usage:
 //   SyntaqliteParser* p = syntaqlite_create_sqlite_parser(NULL);
 //   syntaqlite_parser_reset(p, sql, len);
-//   int32_t rc;
-//   while ((rc = syntaqlite_parser_next(p)) != SYNTAQLITE_PARSE_DONE) {
-//     if (rc == SYNTAQLITE_PARSE_ERROR) {
-//       fprintf(stderr, "%s\n", syntaqlite_result_error_msg(p));
-//       break;
+//   for (;;) {
+//     int32_t rc = syntaqlite_parser_next(p);
+//     switch (rc) {
+//       case SYNTAQLITE_PARSE_DONE:
+//         goto done;
+//       case SYNTAQLITE_PARSE_OK: {
+//         uint32_t root = syntaqlite_result_root(p);
+//         const void* node = syntaqlite_parser_node(p, root);
+//         // cast to dialect-specific node type and switch on tag ...
+//         break;
+//       }
+//       case SYNTAQLITE_PARSE_RECOVERED:
+//       case SYNTAQLITE_PARSE_ERROR: {
+//         fprintf(stderr, "%s\n", syntaqlite_result_error_msg(p));
+//         if (syntaqlite_result_error_kind(p) == SYNTAQLITE_ERROR_KIND_FATAL)
+//           goto done;
+//         break;
+//       }
 //     }
-//     uint32_t root = syntaqlite_result_root(p);
-//     const void* node = syntaqlite_parser_node(p, root);
-//     // cast to dialect-specific node type and switch on tag ...
 //   }
+// done:
 //   syntaqlite_parser_destroy(p);
 //
 // For token collection (required for formatting), call
@@ -66,6 +77,12 @@ typedef struct SyntaqliteParser SyntaqliteParser;
 #define SYNTAQLITE_PARSE_RECOVERED 2
 #define SYNTAQLITE_PARSE_ERROR     (-1)
 
+// Error kind for the current result (valid when rc is RECOVERED or ERROR).
+typedef uint32_t SyntaqliteErrorKind;
+#define SYNTAQLITE_ERROR_KIND_NONE      0
+#define SYNTAQLITE_ERROR_KIND_RECOVERED 1
+#define SYNTAQLITE_ERROR_KIND_FATAL     2
+
 // A comment captured during parsing.
 typedef struct SyntaqliteComment {
   uint32_t offset;  // Byte offset in source.
@@ -73,17 +90,20 @@ typedef struct SyntaqliteComment {
   uint8_t kind;     // 0 = line comment (--), 1 = block comment (/* */).
 } SyntaqliteComment;
 
-// Token flags bitfield.
-#define SYNQ_TOKEN_FLAG_AS_ID       1  // Token consumed as identifier (keyword fallback).
-#define SYNQ_TOKEN_FLAG_AS_FUNCTION 2  // Token consumed as function name.
-#define SYNQ_TOKEN_FLAG_AS_TYPE     4  // Token consumed as type name.
+// Token-usage flags: set by the parser during disambiguation to record how
+// each token was consumed.  Use SYNQ_TOKEN_FLAG_* as bitmasks on the flags
+// field of SyntaqliteParserToken.
+typedef uint32_t SyntaqliteParserTokenFlags;
+#define SYNQ_TOKEN_FLAG_AS_ID       ((SyntaqliteParserTokenFlags)1)  // Consumed as identifier (keyword fallback).
+#define SYNQ_TOKEN_FLAG_AS_FUNCTION ((SyntaqliteParserTokenFlags)2)  // Consumed as function name.
+#define SYNQ_TOKEN_FLAG_AS_TYPE     ((SyntaqliteParserTokenFlags)4)  // Consumed as type name.
 
 // A non-whitespace, non-comment token position captured during parsing.
 typedef struct SyntaqliteParserToken {
-  uint32_t offset;  // Byte offset in source.
-  uint32_t length;  // Byte length.
-  uint32_t type;    // Original token type from tokenizer (pre-fallback).
-  uint32_t flags;   // Bitfield: SYNQ_TOKEN_FLAG_AS_ID / AS_FUNCTION / AS_TYPE.
+  uint32_t offset;                // Byte offset in source.
+  uint32_t length;                // Byte length.
+  uint32_t type;                  // Original token type from tokenizer (pre-fallback).
+  SyntaqliteParserTokenFlags flags;  // Bitmask of SYNQ_TOKEN_FLAG_* values.
 } SyntaqliteParserToken;
 
 // A recorded macro invocation region.
@@ -129,8 +149,11 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p);
 // Statement root node ID (SYNTAQLITE_NULL_NODE if none / unrecoverable error).
 uint32_t syntaqlite_result_root(SyntaqliteParser* p);
 
-// Nonzero if an error occurred (rc == RECOVERED or rc == ERROR).
-uint32_t syntaqlite_result_error(SyntaqliteParser* p);
+// Error kind for the current result.
+// - SYNTAQLITE_ERROR_KIND_RECOVERED: parser recovered and produced a partial tree
+// - SYNTAQLITE_ERROR_KIND_FATAL: unrecoverable parse error
+// - SYNTAQLITE_ERROR_KIND_NONE: no error for this result
+SyntaqliteErrorKind syntaqlite_result_error_kind(SyntaqliteParser* p);
 
 // Human-readable error message, or NULL.
 const char* syntaqlite_result_error_msg(SyntaqliteParser* p);
@@ -376,10 +399,20 @@ ListView<T> MakeListView(SyntaqliteParser* p, uint32_t list_id) {
 // Usage:
 //   auto parser = syntaqlite::SqliteParser();
 //   parser.Reset("SELECT 1; SELECT 2;");
-//   int rc;
-//   while ((rc = parser.Next()) != SYNTAQLITE_PARSE_DONE) {
-//     if (rc == SYNTAQLITE_PARSE_ERROR) { /* handle error */ break; }
-//     const auto* stmt = parser.Node<SyntaqliteStmt>(parser.ResultRoot());
+//   for (;;) {
+//     int rc = parser.Next();
+//     switch (rc) {
+//       case SYNTAQLITE_PARSE_DONE:
+//         return;
+//       case SYNTAQLITE_PARSE_OK:
+//         (void)parser.Node<SyntaqliteStmt>(parser.ResultRoot());
+//         break;
+//       case SYNTAQLITE_PARSE_RECOVERED:
+//       case SYNTAQLITE_PARSE_ERROR:
+//         if (parser.ResultErrorKind() == SYNTAQLITE_ERROR_KIND_FATAL)
+//           return;
+//         break;
+//     }
 //   }
 class Parser {
  public:
@@ -411,7 +444,12 @@ class Parser {
   int32_t Next() { return syntaqlite_parser_next(raw_); }
 
   uint32_t    ResultRoot()     const { return syntaqlite_result_root(raw_); }
-  bool        ResultError()    const { return syntaqlite_result_error(raw_) != 0; }
+  SyntaqliteErrorKind ResultErrorKind() const {
+    return syntaqlite_result_error_kind(raw_);
+  }
+  bool ResultErrorRecovered() const {
+    return ResultErrorKind() == SYNTAQLITE_ERROR_KIND_RECOVERED;
+  }
   const char* ResultErrorMsg() const { return syntaqlite_result_error_msg(raw_); }
 
   template <typename T>

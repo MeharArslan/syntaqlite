@@ -3,11 +3,10 @@
 
 use std::marker::PhantomData;
 
-use syntaqlite_parser::DialectEnv;
-use syntaqlite_parser::DialectNodeType;
-use syntaqlite_parser::ParseResult;
-use syntaqlite_parser::TypedList;
-use syntaqlite_parser::ast_traits::*;
+use syntaqlite_syntax::any::AnyParsedStatement;
+#[allow(clippy::wildcard_imports)]
+use syntaqlite_syntax::ast_traits::*;
+use syntaqlite_syntax::typed::{GrammarNodeType, TypedNodeList};
 
 use super::ValidationConfig;
 use super::catalog::CatalogStack;
@@ -18,27 +17,24 @@ use super::scope::ScopeStack;
 
 use super::functions::FunctionCheckResult;
 
-pub(crate) struct Walker<'a, 'd, A: AstTypes<'a>> {
-    reader: ParseResult<'a>,
-    dialect: DialectEnv<'d>,
+pub(crate) struct Walker<'a, A: AstTypes<'a>> {
+    stmt_result: AnyParsedStatement<'a>,
     catalog: &'a CatalogStack<'a>,
     config: &'a ValidationConfig,
     diagnostics: Vec<Diagnostic>,
     _ast: PhantomData<A>,
 }
 
-impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
+impl<'a, A: AstTypes<'a>> Walker<'a, A> {
     pub(crate) fn run(
-        reader: ParseResult<'a>,
+        stmt_result: AnyParsedStatement<'a>,
         stmt: A::Stmt,
-        dialect: DialectEnv<'d>,
         scope: &mut ScopeStack,
         catalog: &'a CatalogStack<'a>,
         config: &'a ValidationConfig,
     ) -> Vec<Diagnostic> {
-        let mut walker: Walker<'_, '_, A> = Walker {
-            reader,
-            dialect,
+        let mut walker: Walker<'_, A> = Walker {
+            stmt_result,
             catalog,
             config,
             diagnostics: Vec::new(),
@@ -50,7 +46,7 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
 
     /// Compute the byte offset of a string slice within the source.
     fn str_offset(&self, s: &str) -> usize {
-        s.as_ptr() as usize - self.reader.source().as_ptr() as usize
+        s.as_ptr() as usize - self.stmt_result.source().as_ptr() as usize
     }
 
     fn walk_stmt(&mut self, stmt: A::Stmt, scope: &mut ScopeStack) {
@@ -78,7 +74,6 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
     }
 
     fn walk_select_stmt(&mut self, select: A::SelectStmt, scope: &mut ScopeStack) {
-        // FROM first — populates scope before column refs are checked.
         if let Some(from) = select.from_clause() {
             self.walk_table_source(from, scope);
         }
@@ -191,16 +186,12 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
 
     fn walk_trigger_stmt(&mut self, trigger: A::CreateTriggerStmt, scope: &mut ScopeStack) {
         scope.push();
-        // OLD and NEW are pseudo-tables available in trigger body commands.
         scope.add_table("OLD", None);
         scope.add_table("NEW", None);
         self.walk_opt_expr(trigger.when_expr(), scope);
         if let Some(body) = trigger.body() {
-            for node in body.iter() {
-                let id = node.node_id();
-                if let Some(stmt) = A::Stmt::from_arena(self.reader, id) {
-                    self.walk_stmt(stmt, scope);
-                }
+            for stmt in body.iter() {
+                self.walk_stmt(stmt, scope);
             }
         }
         scope.pop();
@@ -362,13 +353,13 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
     fn walk_function(
         &mut self,
         name: &str,
-        args: Option<TypedList<'a, A::Node>>,
+        args: Option<TypedNodeList<'a, A::Grammar, A::Expr>>,
         filter: Option<A::Expr>,
         scope: &mut ScopeStack,
     ) {
         if !name.is_empty() {
             let offset = self.str_offset(name);
-            let arg_count = args.as_ref().map_or(0, |a| a.len());
+            let arg_count = args.as_ref().map_or(0, TypedNodeList::len);
             match self.catalog.check_function(name, arg_count) {
                 FunctionCheckResult::Ok => {}
                 FunctionCheckResult::Unknown => {
@@ -411,25 +402,27 @@ impl<'a, 'd, A: AstTypes<'a>> Walker<'a, 'd, A> {
         if id.is_null() {
             return;
         }
-        for child_id in self.reader.child_node_ids(id, &self.dialect) {
-            // Check Stmt before Expr: Expr::from_arena has a catch-all Other
+        let child_ids: Vec<_> = self.stmt_result.child_node_ids(id).collect();
+        for child_id in child_ids {
+            // Check Stmt before Expr: Expr::from_result has a catch-all Other
             // variant that matches any node (including SelectStmt), so checking
             // Expr first would route statement children through walk_expr
             // instead of walk_stmt, skipping FROM-clause table resolution.
-            if let Some(stmt) = A::Stmt::from_arena(self.reader, child_id) {
+            if let Some(stmt) = A::Stmt::from_result(self.stmt_result, child_id) {
                 self.walk_stmt(stmt, scope);
-            } else if let Some(expr) = A::Expr::from_arena(self.reader, child_id) {
+            } else if let Some(expr) = A::Expr::from_result(self.stmt_result, child_id) {
                 self.walk_expr(expr, scope);
             }
         }
     }
 
-    fn walk_expr_list(&mut self, list: TypedList<'a, A::Node>, scope: &mut ScopeStack) {
-        for node in list.iter() {
-            let id = node.node_id();
-            if let Some(expr) = A::Expr::from_arena(self.reader, id) {
-                self.walk_expr(expr, scope);
-            }
+    fn walk_expr_list(
+        &mut self,
+        list: TypedNodeList<'a, A::Grammar, A::Expr>,
+        scope: &mut ScopeStack,
+    ) {
+        for expr in list.iter() {
+            self.walk_expr(expr, scope);
         }
     }
 }

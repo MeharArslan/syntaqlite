@@ -13,7 +13,7 @@ node BinaryExpr {
           enum_display(op, {
             PLUS="+" MINUS="-" STAR="*" SLASH="/" REM="%"
             LT="<" GT=">" LE="<=" GE=">=" EQ="=" NE="!="
-            AND="AND" OR="OR" BITAND="&" BITOR="|"
+            AND="AND" OR="OR" BIT_AND="&" BIT_OR="|"
             LSHIFT="<<" RSHIFT=">>" CONCAT="||" PTR="->"
           })
           " " child(right)
@@ -29,7 +29,7 @@ node UnaryExpr {
 
   fmt {
     enum_display(op, {
-      MINUS="-" PLUS="+" BITNOT="~" NOT="NOT "
+      MINUS="-" PLUS="+" BIT_NOT="~" NOT="NOT "
     })
     child(operand)
   }
@@ -59,7 +59,7 @@ abstract Stmt {
   CreateTriggerStmt CreateVirtualTableStmt
   DropStmt AlterTableStmt
   TransactionStmt SavepointStmt
-  PragmaStmt AnalyzeStmt
+  PragmaStmt AnalyzeOrReindexStmt
   AttachStmt DetachStmt VacuumStmt
   ExplainStmt
 }

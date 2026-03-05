@@ -149,7 +149,7 @@ pub(crate) struct ForeignKeyClause {
 #[repr(C)]
 pub(crate) struct ColumnConstraint {
     pub(crate) tag: u32,
-    pub(crate) kind: super::ast::ColumnConstraintKind,
+    pub(crate) kind: super::ast::ColumnConstraintType,
     pub(crate) constraint_name: SourceSpan,
     pub(crate) onconf: super::ast::ConflictAction,
     pub(crate) sort_order: super::ast::SortOrder,
@@ -175,7 +175,7 @@ pub(crate) struct ColumnDef {
 #[repr(C)]
 pub(crate) struct TableConstraint {
     pub(crate) tag: u32,
-    pub(crate) kind: super::ast::TableConstraintKind,
+    pub(crate) kind: super::ast::TableConstraintType,
     pub(crate) constraint_name: SourceSpan,
     pub(crate) onconf: super::ast::ConflictAction,
     pub(crate) is_autoincrement: Bool,
@@ -489,7 +489,7 @@ pub(crate) struct AnalyzeOrReindexStmt {
     pub(crate) tag: u32,
     pub(crate) target_name: SourceSpan,
     pub(crate) schema: SourceSpan,
-    pub(crate) kind: super::ast::AnalyzeOrReindexKind,
+    pub(crate) kind: super::ast::AnalyzeOrReindexOp,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -513,7 +513,7 @@ pub(crate) struct DetachStmt {
 pub(crate) struct VacuumStmt {
     pub(crate) tag: u32,
     pub(crate) schema: SourceSpan,
-    pub(crate) into_expr: AnyNodeId,
+    pub(crate) filename: AnyNodeId,
 }
 
 #[derive(Debug, Clone, Copy)]

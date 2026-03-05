@@ -107,31 +107,31 @@ signed(A) ::= minus_num(A). {
 // ============ ANALYZE ============
 
 cmd(A) ::= ANALYZE. {
-    A = synq_parse_analyze_stmt(pCtx,
+    A = synq_parse_analyze_or_reindex_stmt(pCtx,
         SYNQ_NO_SPAN,
         SYNQ_NO_SPAN,
-        SYNTAQLITE_ANALYZE_KIND_ANALYZE);
+        SYNTAQLITE_ANALYZE_OR_REINDEX_OP_ANALYZE);
 }
 
 cmd(A) ::= ANALYZE nm(X) dbnm(Y). {
     SyntaqliteSourceSpan name_span = Y.z ? synq_span(pCtx, Y) : synq_span(pCtx, X);
     SyntaqliteSourceSpan schema_span = Y.z ? synq_span(pCtx, X) : SYNQ_NO_SPAN;
-    A = synq_parse_analyze_stmt(pCtx, name_span, schema_span, SYNTAQLITE_ANALYZE_KIND_ANALYZE);
+    A = synq_parse_analyze_or_reindex_stmt(pCtx, name_span, schema_span, SYNTAQLITE_ANALYZE_OR_REINDEX_OP_ANALYZE);
 }
 
 // ============ REINDEX ============
 
 cmd(A) ::= REINDEX. {
-    A = synq_parse_analyze_stmt(pCtx,
+    A = synq_parse_analyze_or_reindex_stmt(pCtx,
         SYNQ_NO_SPAN,
         SYNQ_NO_SPAN,
-        SYNTAQLITE_ANALYZE_KIND_REINDEX);
+        SYNTAQLITE_ANALYZE_OR_REINDEX_OP_REINDEX);
 }
 
 cmd(A) ::= REINDEX nm(X) dbnm(Y). {
     SyntaqliteSourceSpan name_span = Y.z ? synq_span(pCtx, Y) : synq_span(pCtx, X);
     SyntaqliteSourceSpan schema_span = Y.z ? synq_span(pCtx, X) : SYNQ_NO_SPAN;
-    A = synq_parse_analyze_stmt(pCtx, name_span, schema_span, 1);
+    A = synq_parse_analyze_or_reindex_stmt(pCtx, name_span, schema_span, 1);
 }
 
 // ============ ATTACH / DETACH ============

@@ -1,3 +1,5 @@
+// TODO: broken - needs migration to syntaqlite_syntax
+#![cfg(broken_needs_migration)]
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 

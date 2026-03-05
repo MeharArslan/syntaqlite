@@ -7,7 +7,8 @@ use std::marker::PhantomData;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::ast::{AnyDialect, GrammarTokenType};
+use crate::any::AnyTokenType;
+use crate::ast::GrammarTokenType;
 use crate::grammar::{AnyGrammar, TypedGrammar};
 
 #[cfg(feature = "sqlite")]
@@ -20,7 +21,7 @@ use crate::sqlite::tokens::TokenType;
 /// A tokenizer for the `SQLite` dialect.
 ///
 /// Yields [`TypedToken`]s with SQLite-specific token types. For other dialects
-/// use [`TypedTokenizer`] directly; for dialect-agnostic use with raw `u32`
+/// use [`TypedTokenizer`] directly; for grammar-agnostic use with raw `u32`
 /// ordinals use [`AnyTokenizer`].
 #[cfg(feature = "sqlite")]
 #[doc(hidden)]
@@ -82,7 +83,7 @@ impl<'a> Token<'a> {
 ///
 /// Yields [`TypedToken<'_, N>`] with `N::Token` instead of a raw `u32`.
 ///
-/// For the common `SQLite` case use [`Tokenizer`]. For dialect-agnostic use with
+/// For the common `SQLite` case use [`Tokenizer`]. For grammar-agnostic use with
 /// raw `u32` ordinals use [`AnyTokenizer`].
 ///
 pub struct TypedTokenizer<G: TypedGrammar> {
@@ -96,12 +97,13 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
     /// # Panics
     ///
     /// Panics if the underlying C tokenizer allocation fails (OOM).
-    pub fn new(mut grammar: G) -> Self {
+    pub fn new(grammar: G) -> Self {
         // SAFETY: create(NULL, grammar.inner) allocates a new tokenizer with
         // default malloc/free. The C side copies the grammar.
-        let raw =
-            NonNull::new(unsafe { ffi::CTokenizer::create(std::ptr::null(), grammar.raw().inner) })
-                .expect("tokenizer allocation failed");
+        let raw = NonNull::new(unsafe {
+            ffi::CTokenizer::create(std::ptr::null(), Into::<AnyGrammar>::into(grammar).inner)
+        })
+        .expect("tokenizer allocation failed");
 
         TypedTokenizer {
             inner: Rc::new(RefCell::new(Some(TokenizerInner {
@@ -202,13 +204,6 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
     }
 }
 
-impl TypedTokenizer<AnyDialect> {
-    /// Create a type-erased tokenizer from a raw grammar handle.
-    pub fn from_raw_grammar(grammar: AnyGrammar) -> Self {
-        Self::new(AnyDialect::new(grammar))
-    }
-}
-
 /// A typed token: dialect token type + source text slice.
 #[derive(Debug, Clone, Copy)]
 pub struct TypedToken<'a, G: TypedGrammar> {
@@ -228,15 +223,14 @@ impl<'a, G: TypedGrammar> TypedToken<'a, G> {
     }
 }
 
-/// A type-erased tokenizer. Yields [`AnyToken`]s with raw `u32` token type
-/// ordinals, suitable for use across multiple dialects.
+/// A type-erased tokenizer. Yields [`AnyToken`]s whose token type is
+/// [`AnyTokenType`](crate::any::AnyTokenType), suitable for use across multiple dialects.
 ///
-/// This is a type alias for [`TypedTokenizer<AnyDialect>`]. Use
-/// [`AnyTokenizer::from_raw_grammar`] to construct from a raw grammar handle.
-pub type AnyTokenizer = TypedTokenizer<AnyDialect>;
+/// This is a type alias for [`TypedTokenizer<AnyGrammar>`].
+pub type AnyTokenizer = TypedTokenizer<AnyGrammar>;
 
-/// A raw token: `u32` token type ordinal + source text slice.
-pub type AnyToken<'a> = TypedToken<'a, AnyDialect>;
+/// A type-erased token: [`AnyTokenType`](crate::any::AnyTokenType) + source text slice.
+pub type AnyToken<'a> = TypedToken<'a, AnyGrammar>;
 
 // ── Crate-internal ───────────────────────────────────────────────────────────
 
@@ -280,7 +274,7 @@ impl<'a, G: TypedGrammar> Iterator for TypedTokenCursor<'a, G> {
                 return None;
             }
 
-            if let Some(token_type) = G::Token::from_token_type(token.type_) {
+            if let Some(token_type) = G::Token::from_token_type(AnyTokenType(token.type_)) {
                 // Compute offset into the source string from the C pointer.
                 let offset = token.text as usize - self.c_source_base.as_ptr() as usize;
                 let text = &self.source[offset..offset + token.length as usize];
