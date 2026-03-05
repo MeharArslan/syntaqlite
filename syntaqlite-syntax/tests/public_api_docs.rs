@@ -53,7 +53,9 @@ fn parser_can_be_reused_across_multiple_inputs() {
     let parser = Parser::new();
 
     let mut first = parser.parse("SELECT 1");
-    let first_stmt = first.next().expect("first parse should produce a statement");
+    let first_stmt = first
+        .next()
+        .expect("first parse should produce a statement");
     assert!(matches!(first_stmt, Ok(statement) if statement.root().is_some()));
     assert!(first.next().is_none());
     drop(first);
@@ -109,7 +111,10 @@ fn collect_tokens_and_comments_follows_parser_config() {
         .expect("statement should exist")
         .expect("statement should parse");
 
-    let token_types: Vec<_> = enabled_stmt.tokens().map(|token| token.token_type()).collect();
+    let token_types: Vec<_> = enabled_stmt
+        .tokens()
+        .map(|token| token.token_type())
+        .collect();
     assert!(token_types.contains(&TokenType::Select));
     assert!(token_types.contains(&TokenType::Integer));
 

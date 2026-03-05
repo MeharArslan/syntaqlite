@@ -121,6 +121,12 @@ impl AnyNode<'_> {
     pub(crate) fn dump(&self, out: &mut String, indent: usize) {
         self.stmt_result.dump_node(self.id, out, indent);
     }
+
+    /// Serialize this node to the WASM AST JSON format, appending to `out`.
+    #[cfg(feature = "json")]
+    pub fn dump_json(&self, out: &mut String) {
+        crate::parser::json::write_json_node(self, out);
+    }
 }
 
 /// Typed read-only view over a list node in the arena.
@@ -156,6 +162,16 @@ impl<G: crate::grammar::TypedGrammar, T> TypedNodeList<'_, G, T> {
     /// Whether this list has no children.
     pub fn is_empty(&self) -> bool {
         self.raw.children().is_empty()
+    }
+
+    /// Serialize this list node to the WASM AST JSON format, appending to `out`.
+    #[cfg(feature = "json")]
+    pub fn dump_json(&self, out: &mut String) {
+        AnyNode {
+            id: self.id,
+            stmt_result: self.stmt_result,
+        }
+        .dump_json(out);
     }
 }
 

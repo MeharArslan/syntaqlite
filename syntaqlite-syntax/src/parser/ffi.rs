@@ -10,10 +10,7 @@ pub(crate) enum CParser {}
 pub(crate) const PARSE_DONE: i32 = 0;
 /// Return code: statement parsed cleanly.
 pub(crate) const PARSE_OK: i32 = 1;
-/// Return code: statement parsed with error recovery.
-#[allow(dead_code)]
-pub(crate) const PARSE_RECOVERED: i32 = 2;
-/// Return code: unrecoverable error.
+/// Return code: statement has parse/runtime error.
 #[allow(dead_code)]
 pub(crate) const PARSE_ERROR: i32 = -1;
 
@@ -137,10 +134,10 @@ impl CParser {
         unsafe { syntaqlite_result_root(std::ptr::from_ref::<Self>(self).cast_mut()) }
     }
 
-    pub(crate) unsafe fn result_error_kind(&self) -> u32 {
+    pub(crate) unsafe fn result_recovery_root(&self) -> u32 {
         // SAFETY: self is a valid, non-null CParser pointer; result
         // accessors are valid after `next()` returns a non-DONE code.
-        unsafe { syntaqlite_result_error_kind(std::ptr::from_ref::<Self>(self).cast_mut()) }
+        unsafe { syntaqlite_result_recovery_root(std::ptr::from_ref::<Self>(self).cast_mut()) }
     }
 
     pub(crate) unsafe fn result_error_msg(&self) -> *const c_char {
@@ -222,11 +219,18 @@ impl CParser {
     pub(crate) unsafe fn dump_node(&self, node_id: u32, indent: u32) -> *mut c_char {
         // SAFETY: self is a valid, non-null CParser pointer; node_id is a
         // raw node ID from the arena. Returns a malloc'd string or null.
-        unsafe { syntaqlite_dump_node(std::ptr::from_ref::<Self>(self).cast_mut(), node_id, indent) }
+        unsafe {
+            syntaqlite_dump_node(std::ptr::from_ref::<Self>(self).cast_mut(), node_id, indent)
+        }
     }
 
     // Incremental (token-feeding) API
-    pub(crate) unsafe fn feed_token(&mut self, token_type: u32, text: *const c_char, len: u32) -> i32 {
+    pub(crate) unsafe fn feed_token(
+        &mut self,
+        token_type: u32,
+        text: *const c_char,
+        len: u32,
+    ) -> i32 {
         // SAFETY: self is a valid, non-null CParser pointer; text is a
         // valid pointer to at least `len` bytes of token text.
         unsafe { syntaqlite_parser_feed_token(self, token_type, text, len) }
@@ -281,7 +285,7 @@ unsafe extern "C" {
 
     // Result accessors
     fn syntaqlite_result_root(p: *mut CParser) -> u32;
-    fn syntaqlite_result_error_kind(p: *mut CParser) -> u32;
+    fn syntaqlite_result_recovery_root(p: *mut CParser) -> u32;
     fn syntaqlite_result_error_msg(p: *mut CParser) -> *const c_char;
     fn syntaqlite_result_error_offset(p: *mut CParser) -> u32;
     fn syntaqlite_result_error_length(p: *mut CParser) -> u32;
@@ -308,8 +312,11 @@ unsafe extern "C" {
         len: u32,
     ) -> i32;
     fn syntaqlite_parser_finish(p: *mut CParser) -> i32;
-    fn syntaqlite_parser_expected_tokens(p: *mut CParser, out_tokens: *mut u32, out_cap: u32)
-    -> u32;
+    fn syntaqlite_parser_expected_tokens(
+        p: *mut CParser,
+        out_tokens: *mut u32,
+        out_cap: u32,
+    ) -> u32;
     fn syntaqlite_parser_completion_context(p: *mut CParser) -> CCompletionContext;
     fn syntaqlite_parser_begin_macro(p: *mut CParser, call_offset: u32, call_length: u32);
     fn syntaqlite_parser_end_macro(p: *mut CParser);

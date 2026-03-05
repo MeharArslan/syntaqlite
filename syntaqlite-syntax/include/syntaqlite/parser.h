@@ -26,10 +26,10 @@
 //         // cast to dialect-specific node type and switch on tag ...
 //         break;
 //       }
-//       case SYNTAQLITE_PARSE_RECOVERED:
 //       case SYNTAQLITE_PARSE_ERROR: {
 //         fprintf(stderr, "%s\n", syntaqlite_result_error_msg(p));
-//         if (syntaqlite_result_error_kind(p) == SYNTAQLITE_ERROR_KIND_FATAL)
+//         uint32_t recovery_root = syntaqlite_result_recovery_root(p);
+//         if (recovery_root == SYNTAQLITE_NULL_NODE)
 //           goto done;
 //         break;
 //       }
@@ -70,20 +70,14 @@ typedef struct SyntaqliteParser SyntaqliteParser;
 //
 //   DONE  = no statement (all input consumed, or only bare semicolons)
 //   OK    = statement parsed cleanly; nodes are valid
-//   RECOVERED = statement parsed with error recovery; tree has CErrorNode holes
-//   ERROR = unrecoverable error; no usable tree
+//   ERROR = statement has syntax/runtime error
+//           - use syntaqlite_result_recovery_root() to check whether a
+//             partial recovery tree is available
 //
-// The integer values are stable ABI (DONE=0, OK=1, RECOVERED=2, ERROR=-1).
+// The integer values are stable ABI (DONE=0, OK=1, ERROR=-1).
 #define SYNTAQLITE_PARSE_DONE      0
 #define SYNTAQLITE_PARSE_OK        1
-#define SYNTAQLITE_PARSE_RECOVERED 2
 #define SYNTAQLITE_PARSE_ERROR     (-1)
-
-// Error kind for the current result (valid when rc is RECOVERED or ERROR).
-typedef uint32_t SyntaqliteErrorKind;
-#define SYNTAQLITE_ERROR_KIND_NONE      0
-#define SYNTAQLITE_ERROR_KIND_RECOVERED 1
-#define SYNTAQLITE_ERROR_KIND_FATAL     2
 
 // A comment captured during parsing.
 typedef struct SyntaqliteComment {
@@ -147,14 +141,13 @@ void syntaqlite_parser_destroy(SyntaqliteParser* p);
 // Valid until the next syntaqlite_parser_next(), reset(), or destroy() call.
 // ---------------------------------------------------------------------------
 
-// Statement root node ID (SYNTAQLITE_NULL_NODE if none / unrecoverable error).
+// Statement root node ID for SYNTAQLITE_PARSE_OK results.
+// Returns SYNTAQLITE_NULL_NODE for DONE/ERROR.
 uint32_t syntaqlite_result_root(SyntaqliteParser* p);
 
-// Error kind for the current result.
-// - SYNTAQLITE_ERROR_KIND_RECOVERED: parser recovered and produced a partial tree
-// - SYNTAQLITE_ERROR_KIND_FATAL: unrecoverable parse error
-// - SYNTAQLITE_ERROR_KIND_NONE: no error for this result
-SyntaqliteErrorKind syntaqlite_result_error_kind(SyntaqliteParser* p);
+// Partial recovery root for SYNTAQLITE_PARSE_ERROR results.
+// Returns SYNTAQLITE_NULL_NODE when no recovery tree is available.
+uint32_t syntaqlite_result_recovery_root(SyntaqliteParser* p);
 
 // Human-readable error message, or NULL.
 const char* syntaqlite_result_error_msg(SyntaqliteParser* p);
@@ -412,9 +405,8 @@ ListView<T> MakeListView(SyntaqliteParser* p, uint32_t list_id) {
 //       case SYNTAQLITE_PARSE_OK:
 //         (void)parser.Node<SyntaqliteStmt>(parser.ResultRoot());
 //         break;
-//       case SYNTAQLITE_PARSE_RECOVERED:
 //       case SYNTAQLITE_PARSE_ERROR:
-//         if (parser.ResultErrorKind() == SYNTAQLITE_ERROR_KIND_FATAL)
+//         if (parser.ResultRecoveryRoot() == SYNTAQLITE_NULL_NODE)
 //           return;
 //         break;
 //     }
@@ -449,11 +441,8 @@ class Parser {
   int32_t Next() { return syntaqlite_parser_next(raw_); }
 
   uint32_t    ResultRoot()     const { return syntaqlite_result_root(raw_); }
-  SyntaqliteErrorKind ResultErrorKind() const {
-    return syntaqlite_result_error_kind(raw_);
-  }
-  bool ResultErrorRecovered() const {
-    return ResultErrorKind() == SYNTAQLITE_ERROR_KIND_RECOVERED;
+  uint32_t ResultRecoveryRoot() const {
+    return syntaqlite_result_recovery_root(raw_);
   }
   const char* ResultErrorMsg() const { return syntaqlite_result_error_msg(raw_); }
 

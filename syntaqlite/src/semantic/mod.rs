@@ -3,6 +3,7 @@
 
 //! Semantic analysis (incrementally re-enabled).
 
+pub(crate) mod catalog_core;
 pub(crate) mod diagnostics;
 pub(crate) mod fuzzy;
 

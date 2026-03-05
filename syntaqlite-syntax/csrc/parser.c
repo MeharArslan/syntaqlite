@@ -30,7 +30,6 @@ struct SyntaqliteParser {
   uint32_t last_token_type;  // Last non-whitespace token fed to Lemon.
   uint32_t finished;         // 1 after EOF has been sent to Lemon.
   uint32_t had_error;        // Sticky error flag for current result.
-  uint32_t result_error_kind;  // SyntaqliteErrorKind for current result.
   char error_msg[256];       // Error message buffer.
   uint32_t trace;
   uint32_t collect_tokens;
@@ -44,17 +43,7 @@ struct SyntaqliteParser {
 };
 
 static int32_t set_result_status(SyntaqliteParser* p, int32_t rc) {
-  switch (rc) {
-    case SYNTAQLITE_PARSE_RECOVERED:
-      p->result_error_kind = SYNTAQLITE_ERROR_KIND_RECOVERED;
-      break;
-    case SYNTAQLITE_PARSE_ERROR:
-      p->result_error_kind = SYNTAQLITE_ERROR_KIND_FATAL;
-      break;
-    default:
-      p->result_error_kind = SYNTAQLITE_ERROR_KIND_NONE;
-      break;
-  }
+  (void)p;
   return rc;
 }
 
@@ -104,7 +93,6 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->last_token_type = 0;
   p->finished = 0;
   p->had_error = 0;
-  p->result_error_kind = SYNTAQLITE_ERROR_KIND_NONE;
   p->error_msg[0] = '\0';
   p->pending_reset = 0;
   syntaqlite_vec_clear(&p->comments);
@@ -246,7 +234,7 @@ static int finish_input(SyntaqliteParser* p) {
         if (check_macro_straddle(p) < 0)
           return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
         return set_result_status(
-            p, p->had_error ? SYNTAQLITE_PARSE_RECOVERED : SYNTAQLITE_PARSE_OK);
+            p, p->had_error ? SYNTAQLITE_PARSE_ERROR : SYNTAQLITE_PARSE_OK);
       }
       if (p->had_error) {
         p->finished = 1;
@@ -276,7 +264,7 @@ static int finish_input(SyntaqliteParser* p) {
     if (check_macro_straddle(p) < 0)
       return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
     return set_result_status(
-        p, p->had_error ? SYNTAQLITE_PARSE_RECOVERED : SYNTAQLITE_PARSE_OK);
+        p, p->had_error ? SYNTAQLITE_PARSE_ERROR : SYNTAQLITE_PARSE_OK);
   }
 
   if (p->had_error)
@@ -308,7 +296,6 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
   p->ctx.saw_subquery = 0;
   p->ctx.saw_update_delete_limit = 0;
   p->had_error = 0;
-  p->result_error_kind = SYNTAQLITE_ERROR_KIND_NONE;
   p->error_msg[0] = '\0';
   p->ctx.error_offset = 0xFFFFFFFF;
   p->ctx.error_length = 0;
@@ -369,7 +356,7 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
         p->had_error = 0;  // consumed for this result
         if (check_macro_straddle(p) < 0)
           return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
-        return set_result_status(p, SYNTAQLITE_PARSE_RECOVERED);
+        return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
       }
       return set_result_status(p, SYNTAQLITE_PARSE_OK);
     }
@@ -385,10 +372,6 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
 
 uint32_t syntaqlite_result_root(SyntaqliteParser* p) {
   return p->ctx.root;
-}
-
-SyntaqliteErrorKind syntaqlite_result_error_kind(SyntaqliteParser* p) {
-  return p->result_error_kind;
 }
 
 const char* syntaqlite_result_error_msg(SyntaqliteParser* p) {
@@ -442,7 +425,6 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
     p->ctx.saw_subquery = 0;
     p->ctx.saw_update_delete_limit = 0;
     p->had_error = 0;
-    p->result_error_kind = SYNTAQLITE_ERROR_KIND_NONE;
     p->error_msg[0] = '\0';
     p->ctx.error_offset = 0xFFFFFFFF;
     p->ctx.error_length = 0;
@@ -488,7 +470,7 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
       return set_result_status(p, SYNTAQLITE_PARSE_ERROR);
     p->pending_reset = 1;
     return set_result_status(
-        p, p->had_error ? SYNTAQLITE_PARSE_RECOVERED : SYNTAQLITE_PARSE_OK);
+        p, p->had_error ? SYNTAQLITE_PARSE_ERROR : SYNTAQLITE_PARSE_OK);
   }
 
   return set_result_status(p, SYNTAQLITE_PARSE_DONE);

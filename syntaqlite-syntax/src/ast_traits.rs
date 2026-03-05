@@ -21,10 +21,10 @@ pub enum LiteralTypeKind {
     Qnumber,
 }
 
-/// Trait for `LiteralType`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `LiteralType`-compatible values. Dialects may define their own type and implement this.
 pub trait LiteralTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `LiteralTypeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `LiteralTypeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<LiteralTypeKind>;
 }
 
@@ -53,10 +53,10 @@ pub enum BinaryOpKind {
     Ptr,
 }
 
-/// Trait for `BinaryOp`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `BinaryOp`-compatible values. Dialects may define their own type and implement this.
 pub trait BinaryOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `BinaryOpKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `BinaryOpKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<BinaryOpKind>;
 }
 
@@ -70,10 +70,10 @@ pub enum UnaryOpKind {
     Not,
 }
 
-/// Trait for `UnaryOp`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `UnaryOp`-compatible values. Dialects may define their own type and implement this.
 pub trait UnaryOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `UnaryOpKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `UnaryOpKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<UnaryOpKind>;
 }
 
@@ -87,10 +87,10 @@ pub enum CompoundOpKind {
     Except,
 }
 
-/// Trait for `CompoundOp`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `CompoundOp`-compatible values. Dialects may define their own type and implement this.
 pub trait CompoundOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `CompoundOpKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `CompoundOpKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<CompoundOpKind>;
 }
 
@@ -106,10 +106,10 @@ pub enum IsOpKind {
     IsDistinct,
 }
 
-/// Trait for `IsOp`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `IsOp`-compatible values. Dialects may define their own type and implement this.
 pub trait IsOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `IsOpKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `IsOpKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<IsOpKind>;
 }
 
@@ -124,10 +124,10 @@ pub enum ForeignKeyActionKind {
     Restrict,
 }
 
-/// Trait for `ForeignKeyAction`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `ForeignKeyAction`-compatible values. Dialects may define their own type and implement this.
 pub trait ForeignKeyActionLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `ForeignKeyActionKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `ForeignKeyActionKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<ForeignKeyActionKind>;
 }
 
@@ -139,10 +139,10 @@ pub enum GeneratedColumnStorageKind {
     Stored,
 }
 
-/// Trait for `GeneratedColumnStorage`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `GeneratedColumnStorage`-compatible values. Dialects may define their own type and implement this.
 pub trait GeneratedColumnStorageLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `GeneratedColumnStorageKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `GeneratedColumnStorageKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<GeneratedColumnStorageKind>;
 }
 
@@ -161,10 +161,10 @@ pub enum ColumnConstraintTypeKind {
     Null,
 }
 
-/// Trait for `ColumnConstraintType`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `ColumnConstraintType`-compatible values. Dialects may define their own type and implement this.
 pub trait ColumnConstraintTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `ColumnConstraintTypeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `ColumnConstraintTypeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<ColumnConstraintTypeKind>;
 }
 
@@ -178,10 +178,10 @@ pub enum TableConstraintTypeKind {
     ForeignKey,
 }
 
-/// Trait for `TableConstraintType`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `TableConstraintType`-compatible values. Dialects may define their own type and implement this.
 pub trait TableConstraintTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `TableConstraintTypeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `TableConstraintTypeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<TableConstraintTypeKind>;
 }
 
@@ -194,10 +194,10 @@ pub enum MaterializedKind {
     NotMaterialized,
 }
 
-/// Trait for `Materialized`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `Materialized`-compatible values. Dialects may define their own type and implement this.
 pub trait MaterializedLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `MaterializedKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `MaterializedKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<MaterializedKind>;
 }
 
@@ -213,10 +213,10 @@ pub enum ConflictActionKind {
     Replace,
 }
 
-/// Trait for `ConflictAction`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `ConflictAction`-compatible values. Dialects may define their own type and implement this.
 pub trait ConflictActionLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `ConflictActionKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `ConflictActionKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<ConflictActionKind>;
 }
 
@@ -230,10 +230,10 @@ pub enum RaiseTypeKind {
     Fail,
 }
 
-/// Trait for `RaiseType`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `RaiseType`-compatible values. Dialects may define their own type and implement this.
 pub trait RaiseTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `RaiseTypeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `RaiseTypeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<RaiseTypeKind>;
 }
 
@@ -247,10 +247,10 @@ pub enum DropObjectTypeKind {
     Trigger,
 }
 
-/// Trait for `DropObjectType`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `DropObjectType`-compatible values. Dialects may define their own type and implement this.
 pub trait DropObjectTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `DropObjectTypeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `DropObjectTypeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<DropObjectTypeKind>;
 }
 
@@ -264,10 +264,10 @@ pub enum AlterOpKind {
     AddColumn,
 }
 
-/// Trait for `AlterOp`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `AlterOp`-compatible values. Dialects may define their own type and implement this.
 pub trait AlterOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `AlterOpKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `AlterOpKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<AlterOpKind>;
 }
 
@@ -280,10 +280,10 @@ pub enum TransactionTypeKind {
     Exclusive,
 }
 
-/// Trait for `TransactionType`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `TransactionType`-compatible values. Dialects may define their own type and implement this.
 pub trait TransactionTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `TransactionTypeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `TransactionTypeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<TransactionTypeKind>;
 }
 
@@ -296,10 +296,10 @@ pub enum TransactionOpKind {
     Rollback,
 }
 
-/// Trait for `TransactionOp`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `TransactionOp`-compatible values. Dialects may define their own type and implement this.
 pub trait TransactionOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `TransactionOpKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `TransactionOpKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<TransactionOpKind>;
 }
 
@@ -312,10 +312,10 @@ pub enum SavepointOpKind {
     RollbackTo,
 }
 
-/// Trait for `SavepointOp`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `SavepointOp`-compatible values. Dialects may define their own type and implement this.
 pub trait SavepointOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `SavepointOpKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `SavepointOpKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<SavepointOpKind>;
 }
 
@@ -327,10 +327,10 @@ pub enum SortOrderKind {
     Desc,
 }
 
-/// Trait for `SortOrder`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `SortOrder`-compatible values. Dialects may define their own type and implement this.
 pub trait SortOrderLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `SortOrderKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `SortOrderKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<SortOrderKind>;
 }
 
@@ -343,10 +343,10 @@ pub enum NullsOrderKind {
     Last,
 }
 
-/// Trait for `NullsOrder`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `NullsOrder`-compatible values. Dialects may define their own type and implement this.
 pub trait NullsOrderLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `NullsOrderKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `NullsOrderKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<NullsOrderKind>;
 }
 
@@ -366,10 +366,10 @@ pub enum JoinTypeKind {
     NaturalFull,
 }
 
-/// Trait for `JoinType`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `JoinType`-compatible values. Dialects may define their own type and implement this.
 pub trait JoinTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `JoinTypeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `JoinTypeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<JoinTypeKind>;
 }
 
@@ -382,10 +382,10 @@ pub enum TriggerTimingKind {
     InsteadOf,
 }
 
-/// Trait for `TriggerTiming`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `TriggerTiming`-compatible values. Dialects may define their own type and implement this.
 pub trait TriggerTimingLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `TriggerTimingKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `TriggerTimingKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<TriggerTimingKind>;
 }
 
@@ -398,10 +398,10 @@ pub enum TriggerEventTypeKind {
     Update,
 }
 
-/// Trait for `TriggerEventType`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `TriggerEventType`-compatible values. Dialects may define their own type and implement this.
 pub trait TriggerEventTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `TriggerEventTypeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `TriggerEventTypeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<TriggerEventTypeKind>;
 }
 
@@ -413,10 +413,10 @@ pub enum ExplainModeKind {
     QueryPlan,
 }
 
-/// Trait for `ExplainMode`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `ExplainMode`-compatible values. Dialects may define their own type and implement this.
 pub trait ExplainModeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `ExplainModeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `ExplainModeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<ExplainModeKind>;
 }
 
@@ -429,10 +429,10 @@ pub enum PragmaFormKind {
     Call,
 }
 
-/// Trait for `PragmaForm`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `PragmaForm`-compatible values. Dialects may define their own type and implement this.
 pub trait PragmaFormLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `PragmaFormKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `PragmaFormKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<PragmaFormKind>;
 }
 
@@ -444,10 +444,10 @@ pub enum AnalyzeOrReindexOpKind {
     Reindex,
 }
 
-/// Trait for `AnalyzeOrReindexOp`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `AnalyzeOrReindexOp`-compatible values. Dialects may define their own type and implement this.
 pub trait AnalyzeOrReindexOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `AnalyzeOrReindexOpKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `AnalyzeOrReindexOpKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<AnalyzeOrReindexOpKind>;
 }
 
@@ -461,10 +461,10 @@ pub enum FrameTypeKind {
     Groups,
 }
 
-/// Trait for `FrameType`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `FrameType`-compatible values. Dialects may define their own type and implement this.
 pub trait FrameTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `FrameTypeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `FrameTypeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<FrameTypeKind>;
 }
 
@@ -479,10 +479,10 @@ pub enum FrameBoundTypeKind {
     UnboundedFollowing,
 }
 
-/// Trait for `FrameBoundType`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `FrameBoundType`-compatible values. Dialects may define their own type and implement this.
 pub trait FrameBoundTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `FrameBoundTypeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `FrameBoundTypeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<FrameBoundTypeKind>;
 }
 
@@ -497,38 +497,38 @@ pub enum FrameExcludeKind {
     Ties,
 }
 
-/// Trait for `FrameExclude`-compatible values. Grammars may define their own type and implement this.
+/// Trait for `FrameExclude`-compatible values. Dialects may define their own type and implement this.
 pub trait FrameExcludeLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `FrameExcludeKind` variants. Returns `None` for grammar-specific extensions.
+    /// Match against base `FrameExcludeKind` variants. Returns `None` for dialect-specific extensions.
     fn kind(&self) -> Option<FrameExcludeKind>;
 }
 
-/// Trait for `AggregateFunctionCallFlags`-compatible flags. Grammars may define their own type and implement this.
+/// Trait for `AggregateFunctionCallFlags`-compatible flags. Dialects may define their own type and implement this.
 pub trait AggregateFunctionCallFlagsLike:
     Copy + PartialEq + Eq + Default + std::fmt::Debug
 {
     fn distinct(&self) -> bool;
 }
 
-/// Trait for `CreateTableStmtFlags`-compatible flags. Grammars may define their own type and implement this.
+/// Trait for `CreateTableStmtFlags`-compatible flags. Dialects may define their own type and implement this.
 pub trait CreateTableStmtFlagsLike: Copy + PartialEq + Eq + Default + std::fmt::Debug {
     fn without_rowid(&self) -> bool;
     fn strict(&self) -> bool;
 }
 
-/// Trait for `FunctionCallFlags`-compatible flags. Grammars may define their own type and implement this.
+/// Trait for `FunctionCallFlags`-compatible flags. Dialects may define their own type and implement this.
 pub trait FunctionCallFlagsLike: Copy + PartialEq + Eq + Default + std::fmt::Debug {
     fn distinct(&self) -> bool;
     fn star(&self) -> bool;
 }
 
-/// Trait for `ResultColumnFlags`-compatible flags. Grammars may define their own type and implement this.
+/// Trait for `ResultColumnFlags`-compatible flags. Dialects may define their own type and implement this.
 pub trait ResultColumnFlagsLike: Copy + PartialEq + Eq + Default + std::fmt::Debug {
     fn star(&self) -> bool;
 }
 
-/// Trait for `SelectStmtFlags`-compatible flags. Grammars may define their own type and implement this.
+/// Trait for `SelectStmtFlags`-compatible flags. Dialects may define their own type and implement this.
 pub trait SelectStmtFlagsLike: Copy + PartialEq + Eq + Default + std::fmt::Debug {
     fn distinct(&self) -> bool;
 }
@@ -1425,7 +1425,7 @@ pub trait TableSourceLike<'a>: Copy {
     fn kind(&self) -> TableSourceKind<'a, Self::Ast>;
 }
 
-/// Bundle trait associating all AST types for a grammar.
+/// Bundle trait associating all AST types for a dialect.
 pub trait AstTypes<'a>: 'a {
     type Grammar: TypedGrammar;
     type Node: NodeLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;

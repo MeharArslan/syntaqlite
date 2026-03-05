@@ -8,8 +8,10 @@
 // Feed tokens one at a time after calling syntaqlite_parser_reset(); the
 // parser signals statement boundaries as tokens arrive.
 //
-// When feed_token or finish returns SYNTAQLITE_PARSE_OK or _RECOVERED, read
-// the result via the syntaqlite_result_*() accessors (defined in parser.h).
+// When feed_token or finish returns SYNTAQLITE_PARSE_OK, read the successful
+// tree via syntaqlite_result_root(). When the status is
+// SYNTAQLITE_PARSE_ERROR, read diagnostics via syntaqlite_result_error_*()
+// and inspect syntaqlite_result_recovery_root() for an optional partial tree.
 // The result is valid until the next feed_token, finish, reset, or destroy.
 //
 // Usage:
@@ -27,9 +29,8 @@
 //         // read nodes ...
 //         break;
 //       }
-//       case SYNTAQLITE_PARSE_RECOVERED:
 //       case SYNTAQLITE_PARSE_ERROR:
-//         if (syntaqlite_result_error_kind(p) == SYNTAQLITE_ERROR_KIND_FATAL)
+//         if (syntaqlite_result_recovery_root(p) == SYNTAQLITE_NULL_NODE)
 //           goto done;
 //         break;
 //     }
@@ -62,8 +63,7 @@ extern "C" {
 // Returns a SYNTAQLITE_PARSE_* code:
 //   DONE      = keep going (statement not yet complete)
 //   OK        = statement completed cleanly
-//   RECOVERED = statement completed with error recovery
-//   ERROR     = unrecoverable parse error
+//   ERROR     = statement has parse/runtime error (may still have recovery root)
 int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
                                      uint32_t token_type,
                                      const char* text,

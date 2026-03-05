@@ -14,14 +14,16 @@ use crate::grammar::{AnyGrammar, TypedGrammar};
 mod config;
 mod ffi;
 mod incremental;
+#[cfg(feature = "json")]
+pub(crate) mod json;
 #[cfg(feature = "sqlite")]
 mod session;
 mod types;
 
 pub use config::ParserConfig;
-pub use incremental::{AnyIncrementalParseSession, TypedIncrementalParseSession};
 #[cfg(feature = "sqlite")]
 pub use incremental::IncrementalParseSession;
+pub use incremental::{AnyIncrementalParseSession, TypedIncrementalParseSession};
 #[cfg(feature = "sqlite")]
 pub use session::{ParseError, ParseSession, ParsedStatement, Parser, ParserToken};
 pub use types::{
@@ -54,14 +56,6 @@ pub enum ParseErrorKind {
     Fatal = 2,
 }
 
-impl ParseErrorKind {
-    fn from_raw(v: u32) -> Self {
-        match v {
-            1 => Self::Recovered,
-            _ => Self::Fatal,
-        }
-    }
-}
 /// Parser API parameterized by grammar type `G`.
 ///
 /// Primarily for library/framework code over generated grammars.
@@ -269,7 +263,7 @@ impl<G: TypedGrammar> TypedParseSession<G> {
         if rc == ffi::PARSE_OK {
             Some(Ok(result))
         } else {
-            // RECOVERED or ERROR
+            // ERROR (may still carry a recovery tree)
             Some(Err(TypedParseError(result)))
         }
     }
@@ -447,8 +441,22 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
     /// Error classification for the current result.
     pub(crate) fn error_kind(&self) -> ParseErrorKind {
         // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
-        let v = unsafe { self.raw.as_ref().result_error_kind() };
-        ParseErrorKind::from_raw(v)
+        let recovery_root = AnyNodeId(unsafe { self.raw.as_ref().result_recovery_root() });
+        if recovery_root.is_null() {
+            ParseErrorKind::Fatal
+        } else {
+            ParseErrorKind::Recovered
+        }
+    }
+
+    /// Typed recovery AST root for this statement, if available.
+    pub(crate) fn recovery_root(&self) -> Option<G::Node<'a>> {
+        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
+        let id = AnyNodeId(unsafe { self.raw.as_ref().result_recovery_root() });
+        if id.is_null() {
+            return None;
+        }
+        G::Node::from_result(self.erase(), id)
     }
 
     // ── Arena access ───────────────────────────────────────────────────────
@@ -684,7 +692,7 @@ impl<'a, G: TypedGrammar> TypedParseError<'a, G> {
     }
     /// The partial recovery tree, if error recovery produced one.
     pub fn root(&self) -> Option<G::Node<'a>> {
-        self.0.root()
+        self.0.recovery_root()
     }
 }
 
@@ -726,7 +734,6 @@ impl Drop for ParserInner {
         unsafe { CParser::destroy(self.raw.as_ptr()) }
     }
 }
-
 
 /// Copy source into `source_buf` (with null terminator) and reset the C parser.
 ///

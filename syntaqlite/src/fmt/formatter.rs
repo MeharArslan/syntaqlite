@@ -104,17 +104,19 @@ impl Formatter {
             self.macro_regions.extend(erased.macro_regions());
 
             self.comment_entries.clear();
-            self.comment_entries.extend(erased.comments().map(|c| CommentEntry {
-                offset: byte_offset_in(source, c.text.as_ptr()),
-                length: usize_to_u32(c.text.len()),
-                kind: c.kind,
-            }));
+            self.comment_entries
+                .extend(erased.comments().map(|c| CommentEntry {
+                    offset: byte_offset_in(source, c.text.as_ptr()),
+                    length: usize_to_u32(c.text.len()),
+                    kind: c.kind,
+                }));
 
             self.token_entries.clear();
-            self.token_entries.extend(erased.tokens().map(|t| TokenEntry {
-                offset: byte_offset_in(source, t.text().as_ptr()),
-                length: usize_to_u32(t.text().len()),
-            }));
+            self.token_entries
+                .extend(erased.tokens().map(|t| TokenEntry {
+                    offset: byte_offset_in(source, t.text().as_ptr()),
+                    length: usize_to_u32(t.text().len()),
+                }));
 
             let root_id = erased.root_id();
             let semicolons = self.config.semicolons;
@@ -160,7 +162,8 @@ impl Formatter {
             self.parts.push(interpreted);
 
             if let Some(cctx) = ctx.comment_ctx.as_ref() {
-                self.parts.push(cctx.drain_remaining(stmt_source, &mut arena));
+                self.parts
+                    .push(cctx.drain_remaining(stmt_source, &mut arena));
             }
 
             // Stage 3: Render Docs via the Wadler-style group/flat/break algorithm.

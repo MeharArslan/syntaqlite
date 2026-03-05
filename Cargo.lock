@@ -798,6 +798,7 @@ name = "syntaqlite-syntax"
 version = "0.1.0"
 dependencies = [
  "cc",
+ "serde_json",
 ]
 
 [[package]]

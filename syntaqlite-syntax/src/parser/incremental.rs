@@ -12,8 +12,8 @@ use crate::ast::{AnyNode, GrammarTokenType};
 use crate::grammar::{AnyGrammar, TypedGrammar};
 
 use super::{
-    ffi, AnyParsedStatement, CParser, CompletionContext, ParserInner, TypedParseError,
-    TypedParsedStatement,
+    AnyParsedStatement, CParser, CompletionContext, ParserInner, TypedParseError,
+    TypedParsedStatement, ffi,
 };
 #[cfg(feature = "sqlite")]
 use super::{ParseError, ParsedStatement};

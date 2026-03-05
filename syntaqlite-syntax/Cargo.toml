@@ -7,6 +7,7 @@ links = "syntaqlite_syntax"
 [features]
 default = ["sqlite"]
 sqlite = []
+json = ["dep:serde_json"]
 pin-version = ["sqlite"]
 pin-cflags = ["sqlite"]
 no-bundled-parser = []
@@ -14,6 +15,9 @@ no-bundled-parser = []
 
 [lints]
 workspace = true
+
+[dependencies]
+serde_json = { version = "1", optional = true }
 
 [build-dependencies]
 cc = "1.0"

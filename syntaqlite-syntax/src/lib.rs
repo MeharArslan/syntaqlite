@@ -224,4 +224,3 @@ pub(crate) mod tokenizer;
 
 #[cfg(feature = "sqlite")]
 pub(crate) mod sqlite;
-
