@@ -23,13 +23,13 @@
 
 // ============ Qualified name (fullname) ============
 
-fullname(A) ::= nm(X). {
+fullname(A) ::= nmorerr(X). {
     A = synq_parse_qualified_name(pCtx,
         synq_span(pCtx, X),
         SYNQ_NO_SPAN);
 }
 
-fullname(A) ::= nm(X) DOT nm(Y). {
+fullname(A) ::= nmorerr(X) DOT nmorerr(Y). {
     A = synq_parse_qualified_name(pCtx,
         synq_span(pCtx, Y),
         synq_span(pCtx, X));
@@ -65,21 +65,21 @@ cmd(A) ::= DROP TRIGGER ifexists(NOERR) fullname(X). {
 
 // ============ ALTER TABLE ============
 
-cmd(A) ::= ALTER TABLE fullname(X) RENAME TO nm(Z). {
+cmd(A) ::= ALTER TABLE fullname(X) RENAME TO nmorerr(Z). {
     A = synq_parse_alter_table_stmt(pCtx,
         SYNTAQLITE_ALTER_OP_RENAME_TABLE, X,
         synq_span(pCtx, Z),
         SYNQ_NO_SPAN);
 }
 
-cmd(A) ::= ALTER TABLE fullname(X) RENAME kwcolumn_opt nm(Y) TO nm(Z). {
+cmd(A) ::= ALTER TABLE fullname(X) RENAME kwcolumn_opt nmorerr(Y) TO nmorerr(Z). {
     A = synq_parse_alter_table_stmt(pCtx,
         SYNTAQLITE_ALTER_OP_RENAME_COLUMN, X,
         synq_span(pCtx, Z),
         synq_span(pCtx, Y));
 }
 
-cmd(A) ::= ALTER TABLE fullname(X) DROP kwcolumn_opt nm(Y). {
+cmd(A) ::= ALTER TABLE fullname(X) DROP kwcolumn_opt nmorerr(Y). {
     A = synq_parse_alter_table_stmt(pCtx,
         SYNTAQLITE_ALTER_OP_DROP_COLUMN, X,
         SYNQ_NO_SPAN,
@@ -108,7 +108,7 @@ kwcolumn_opt(A) ::= COLUMNKW. {
     A = 1;
 }
 
-columnname(A) ::= nm(X) typetoken(Y). {
+columnname(A) ::= nmorerr(X) typetoken(Y). {
     A.name = synq_span(pCtx, X);
     A.typetoken = Y.z ? synq_span(pCtx, Y) : SYNQ_NO_SPAN;
 }
@@ -175,19 +175,19 @@ savepoint_opt(A) ::= . {
     A = 0;
 }
 
-cmd(A) ::= SAVEPOINT nm(X). {
+cmd(A) ::= SAVEPOINT nmorerr(X). {
     A = synq_parse_savepoint_stmt(pCtx,
         SYNTAQLITE_SAVEPOINT_OP_SAVEPOINT,
         synq_span(pCtx, X));
 }
 
-cmd(A) ::= RELEASE savepoint_opt nm(X). {
+cmd(A) ::= RELEASE savepoint_opt nmorerr(X). {
     A = synq_parse_savepoint_stmt(pCtx,
         SYNTAQLITE_SAVEPOINT_OP_RELEASE,
         synq_span(pCtx, X));
 }
 
-cmd(A) ::= ROLLBACK trans_opt TO savepoint_opt nm(X). {
+cmd(A) ::= ROLLBACK trans_opt TO savepoint_opt nmorerr(X). {
     A = synq_parse_savepoint_stmt(pCtx,
         SYNTAQLITE_SAVEPOINT_OP_ROLLBACK_TO,
         synq_span(pCtx, X));

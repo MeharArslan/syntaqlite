@@ -92,7 +92,44 @@ const ALLOWED_EXTRA_RULES: &[&str] = &[
     // languages). These allow the parser to accept an error token in expression
     // or name position and continue parsing the rest of the statement.
     "expr ::= error",
-    "nm ::= error",
+    "nmorerr ::= nm",
+    "nmorerr ::= error",
+];
+
+/// Intentional, tracked upstream rule substitutions.
+///
+/// Each tuple is `(upstream_rule, local_rule)`. A rewrite only applies when
+/// both sides are present in the diff (upstream rule is missing AND local rule
+/// is extra), keeping drift explicit and auditable.
+const ALLOWED_RULE_REWRITES: &[(&str, &str)] = &[
+    ("as ::= AS nm", "as ::= AS nmorerr"),
+    ("fullname ::= nm", "fullname ::= nmorerr"),
+    ("fullname ::= nm DOT nm", "fullname ::= nmorerr DOT nmorerr"),
+    (
+        "cmd ::= ALTER TABLE fullname RENAME TO nm",
+        "cmd ::= ALTER TABLE fullname RENAME TO nmorerr",
+    ),
+    (
+        "cmd ::= ALTER TABLE fullname RENAME kwcolumn_opt nm TO nm",
+        "cmd ::= ALTER TABLE fullname RENAME kwcolumn_opt nmorerr TO nmorerr",
+    ),
+    (
+        "cmd ::= ALTER TABLE fullname DROP kwcolumn_opt nm",
+        "cmd ::= ALTER TABLE fullname DROP kwcolumn_opt nmorerr",
+    ),
+    (
+        "columnname ::= nm typetoken",
+        "columnname ::= nmorerr typetoken",
+    ),
+    ("cmd ::= SAVEPOINT nm", "cmd ::= SAVEPOINT nmorerr"),
+    (
+        "cmd ::= RELEASE savepoint_opt nm",
+        "cmd ::= RELEASE savepoint_opt nmorerr",
+    ),
+    (
+        "cmd ::= ROLLBACK trans_opt TO savepoint_opt nm",
+        "cmd ::= ROLLBACK trans_opt TO savepoint_opt nmorerr",
+    ),
 ];
 
 /// Compare rule signatures between upstream `parse.y` and concatenated action files.
@@ -125,13 +162,29 @@ pub(crate) fn verify_grammar(
     let upstream_rules: BTreeSet<String> = upstream.rules.iter().map(ToString::to_string).collect();
     let actions_rules: BTreeSet<String> = actions.rules.iter().map(ToString::to_string).collect();
 
+    let mut rules_missing: BTreeSet<String> =
+        upstream_rules.difference(&actions_rules).cloned().collect();
+    let mut rules_extra: BTreeSet<String> =
+        actions_rules.difference(&upstream_rules).cloned().collect();
+
+    for (upstream, local) in ALLOWED_RULE_REWRITES {
+        let removed_upstream = rules_missing.remove(*upstream);
+        let removed_local = rules_extra.remove(*local);
+        if removed_upstream != removed_local {
+            if removed_upstream {
+                rules_missing.insert((*upstream).to_string());
+            }
+            if removed_local {
+                rules_extra.insert((*local).to_string());
+            }
+        }
+    }
+
     let allowed: BTreeSet<&str> = ALLOWED_EXTRA_RULES.iter().copied().collect();
-    let rules_missing: Vec<String> = upstream_rules.difference(&actions_rules).cloned().collect();
-    let rules_extra: Vec<String> = actions_rules
-        .difference(&upstream_rules)
-        .filter(|r| !allowed.contains(r.as_str()))
-        .cloned()
-        .collect();
+    rules_extra.retain(|r| !allowed.contains(r.as_str()));
+
+    let rules_missing: Vec<String> = rules_missing.into_iter().collect();
+    let rules_extra: Vec<String> = rules_extra.into_iter().collect();
 
     // Compare fallbacks: normalize to "target <- tok1 tok2 ..." sorted strings.
     let upstream_fallbacks = collect_fallbacks(&upstream);
@@ -292,6 +345,44 @@ expr(A) ::= ID(B). { A = B; }
         let err = verify_grammar(upstream, actions).unwrap_err();
         assert!(err.rules_missing.is_empty());
         assert_eq!(err.rules_extra, vec!["expr ::= ID"]);
+    }
+
+    #[test]
+    fn verify_grammar_unit_allowed_rewrite() {
+        let upstream = r"
+as ::= AS nm.
+nm ::= ID.
+";
+
+        let actions: &[(&str, &str)] = &[(
+            "a.y",
+            r"
+as(A) ::= AS nmorerr(B). { A = B; }
+nm(A) ::= ID(B). { A = B; }
+nmorerr(A) ::= nm(B). { A = B; }
+nmorerr(A) ::= error. { A.z = 0; A.n = 0; }
+",
+        )];
+
+        assert!(verify_grammar(upstream, actions).is_ok());
+    }
+
+    #[test]
+    fn verify_grammar_unit_rewrite_requires_pairing() {
+        let upstream = r"
+as ::= AS nm.
+";
+
+        let actions: &[(&str, &str)] = &[(
+            "a.y",
+            r"
+// Missing local rewrite counterpart for upstream rule.
+",
+        )];
+
+        let err = verify_grammar(upstream, actions).unwrap_err();
+        assert_eq!(err.rules_missing, vec!["as ::= AS nm"]);
+        assert!(err.rules_extra.is_empty());
     }
 
     #[test]

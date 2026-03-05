@@ -15,16 +15,9 @@
 // - Non-terminals are u32 node IDs
 
 %type nm {SynqParseToken}
+%type nmorerr {SynqParseToken}
 
 // ============ Identifiers ============
-
-// Error recovery: accept a parse error in name position so that
-// interpolation holes (e.g. f-string `{table}`) produce an ErrorNode
-// without discarding the rest of the statement.
-nm(A) ::= error. {
-    A.z = NULL;
-    A.n = 0;
-}
 
 nm(A) ::= idj(B). {
     synq_mark_as_id(pCtx, B);
@@ -33,4 +26,14 @@ nm(A) ::= idj(B). {
 
 nm(A) ::= STRING(B). {
     A = B;
+}
+
+// Localized name recovery wrapper used at selected grammar sites.
+nmorerr(A) ::= nm(B). {
+    A = B;
+}
+
+nmorerr(A) ::= error. {
+    A.z = NULL;
+    A.n = 0;
 }

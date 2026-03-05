@@ -66,7 +66,7 @@ scanpt(A) ::= . {
 }
 
 // as is optional alias
-as(A) ::= AS nm(B). {
+as(A) ::= AS nmorerr(B). {
     A = B;
 }
 
