@@ -74,21 +74,6 @@ pub(crate) struct CMacroRegion {
     pub(crate) call_length: u32,
 }
 
-/// Tag value for error placeholder nodes (tag 0).
-#[allow(dead_code)]
-pub(super) const SYNTAQLITE_ERROR_NODE_TAG: u32 = 0;
-
-/// Mirrors C `SyntaqliteErrorNode`.
-#[derive(Debug, Clone, Copy)]
-#[repr(C)]
-pub(super) struct CErrorNode {
-    pub tag: u32,
-    pub offset: u32,
-    pub length: u32,
-}
-use std::mem::size_of;
-const _: () = assert!(size_of::<CErrorNode>() == 12);
-
 impl CParser {
     // Lifecycle
     pub(crate) unsafe fn create(

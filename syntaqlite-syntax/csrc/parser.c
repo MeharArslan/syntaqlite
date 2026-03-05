@@ -30,6 +30,7 @@ struct SyntaqliteParser {
   uint32_t last_token_type;  // Last non-whitespace token fed to Lemon.
   uint32_t finished;         // 1 after EOF has been sent to Lemon.
   uint32_t had_error;        // Sticky error flag for current result.
+  int32_t last_status;       // Last SYNTAQLITE_PARSE_* status returned.
   char error_msg[256];       // Error message buffer.
   uint32_t trace;
   uint32_t collect_tokens;
@@ -43,7 +44,7 @@ struct SyntaqliteParser {
 };
 
 static int32_t set_result_status(SyntaqliteParser* p, int32_t rc) {
-  (void)p;
+  p->last_status = rc;
   return rc;
 }
 
@@ -95,6 +96,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
   p->had_error = 0;
   p->error_msg[0] = '\0';
   p->pending_reset = 0;
+  p->last_status = SYNTAQLITE_PARSE_DONE;
   syntaqlite_vec_clear(&p->comments);
   syntaqlite_vec_clear(&p->tokens);
   p->macro_depth = 0;
@@ -113,8 +115,7 @@ void syntaqlite_parser_reset(SyntaqliteParser* p,
 
 // ---------------------------------------------------------------------------
 // Internal: feed one real token to Lemon.
-// Returns: 0 = keep going, 1 = statement completed, 2 = statement completed
-// with error recovery (tree has ErrorNode holes), -1 = unrecoverable error.
+// Returns: 0 = keep going, 1 = statement completed, -1 = unrecoverable error.
 // ---------------------------------------------------------------------------
 
 static int feed_one_token(SyntaqliteParser* p,
@@ -374,6 +375,13 @@ uint32_t syntaqlite_result_root(SyntaqliteParser* p) {
   return p->ctx.root;
 }
 
+uint32_t syntaqlite_result_recovery_root(SyntaqliteParser* p) {
+  if (p->last_status != SYNTAQLITE_PARSE_ERROR) {
+    return SYNTAQLITE_NULL_NODE;
+  }
+  return p->ctx.root;
+}
+
 const char* syntaqlite_result_error_msg(SyntaqliteParser* p) {
   return p->error_msg[0] ? p->error_msg : NULL;
 }
@@ -573,14 +581,6 @@ static void dump_node_recursive(DumpBuf* b,
   memcpy(&tag, raw, sizeof(tag));
 
   const SyntaqliteGrammarTemplate* g = p->grammar.tmpl;
-  if (tag == SYNTAQLITE_ERROR_NODE_TAG) {
-    const SyntaqliteErrorNode* e = (const SyntaqliteErrorNode*)raw;
-    SyntaqliteMemMethods mem = p->mem;
-    dump_indent(b, mem, indent);
-    dump_printf(b, mem, "ErrorNode { offset: %u, length: %u }\n", e->offset,
-                e->length);
-    return;
-  }
   if (tag >= g->node_count)
     return;
 

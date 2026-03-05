@@ -267,7 +267,7 @@ static inline uint32_t synq_parse_column_constraint(
 
 static inline uint32_t synq_parse_column_def(
     SynqParseCtx *ctx,
-    SyntaqliteSourceSpan column_name,
+    uint32_t column_name,
     SyntaqliteSourceSpan type_name,
     uint32_t constraints
 ) {
@@ -475,6 +475,28 @@ static inline uint32_t synq_parse_literal(
         }, (uint32_t)sizeof(SyntaqliteLiteral));
 }
 
+static inline uint32_t synq_parse_ident_name(
+    SynqParseCtx *ctx,
+    SyntaqliteSourceSpan source
+) {
+    return synq_parse_build(ctx,
+        &(SyntaqliteIdentName){
+            .tag = SYNTAQLITE_NODE_IDENT_NAME,
+            .source = source
+        }, (uint32_t)sizeof(SyntaqliteIdentName));
+}
+
+static inline uint32_t synq_parse_error(
+    SynqParseCtx *ctx,
+    SyntaqliteSourceSpan source
+) {
+    return synq_parse_build(ctx,
+        &(SyntaqliteError){
+            .tag = SYNTAQLITE_NODE_ERROR,
+            .source = source
+        }, (uint32_t)sizeof(SyntaqliteError));
+}
+
 static inline uint32_t synq_parse_function_call(
     SynqParseCtx *ctx,
     SyntaqliteSourceSpan func_name,
@@ -533,8 +555,8 @@ static inline uint32_t synq_parse_raise_expr(
 
 static inline uint32_t synq_parse_qualified_name(
     SynqParseCtx *ctx,
-    SyntaqliteSourceSpan object_name,
-    SyntaqliteSourceSpan schema
+    uint32_t object_name,
+    uint32_t schema
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteQualifiedName){
@@ -563,8 +585,8 @@ static inline uint32_t synq_parse_alter_table_stmt(
     SynqParseCtx *ctx,
     SyntaqliteAlterOp op,
     uint32_t target,
-    SyntaqliteSourceSpan new_name,
-    SyntaqliteSourceSpan old_name
+    uint32_t new_name,
+    uint32_t old_name
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteAlterTableStmt){
@@ -592,7 +614,7 @@ static inline uint32_t synq_parse_transaction_stmt(
 static inline uint32_t synq_parse_savepoint_stmt(
     SynqParseCtx *ctx,
     SyntaqliteSavepointOp op,
-    SyntaqliteSourceSpan savepoint_name
+    uint32_t savepoint_name
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteSavepointStmt){
@@ -605,7 +627,7 @@ static inline uint32_t synq_parse_savepoint_stmt(
 static inline uint32_t synq_parse_result_column(
     SynqParseCtx *ctx,
     SyntaqliteResultColumnFlags flags,
-    SyntaqliteSourceSpan alias,
+    uint32_t alias,
     uint32_t expr
 ) {
     return synq_parse_build(ctx,
@@ -676,7 +698,7 @@ static inline uint32_t synq_parse_table_ref(
     SynqParseCtx *ctx,
     SyntaqliteSourceSpan table_name,
     SyntaqliteSourceSpan schema,
-    SyntaqliteSourceSpan alias
+    uint32_t alias
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteTableRef){
@@ -690,7 +712,7 @@ static inline uint32_t synq_parse_table_ref(
 static inline uint32_t synq_parse_subquery_table_source(
     SynqParseCtx *ctx,
     uint32_t select,
-    SyntaqliteSourceSpan alias
+    uint32_t alias
 ) {
     return synq_parse_build(ctx,
         &(SyntaqliteSubqueryTableSource){

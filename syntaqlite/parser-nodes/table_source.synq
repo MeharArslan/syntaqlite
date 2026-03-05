@@ -6,22 +6,22 @@ enum JoinType {
 node TableRef {
   table_name: inline SyntaqliteSourceSpan
   schema: inline SyntaqliteSourceSpan
-  alias: inline SyntaqliteSourceSpan
+  alias: index Name
 
   fmt {
     if_span(schema) { span(schema) "." }
     span(table_name)
-    if_span(alias) { " AS " span(alias) }
+    if_set(alias) { " AS " child(alias) }
   }
 }
 
 node SubqueryTableSource {
   select: index Select
-  alias: inline SyntaqliteSourceSpan
+  alias: index Name
 
   fmt {
     "(" child(select) ")"
-    if_span(alias) { " AS " span(alias) }
+    if_set(alias) { " AS " child(alias) }
   }
 }
 

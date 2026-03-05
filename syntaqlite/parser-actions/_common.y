@@ -21,6 +21,7 @@
 
 %include {
 #include <string.h>
+#include <limits.h>
 
 #include "syntaqlite_dialect/ast_builder.h"
 #include "syntaqlite_dialect/dialect_macros.h"
@@ -34,7 +35,7 @@
 
 // columnname: passes name span + typetoken span from column definition.
 typedef struct SynqColumnNameValue {
-  SyntaqliteSourceSpan name;
+  uint32_t name;
   SyntaqliteSourceSpan typetoken;
 } SynqColumnNameValue;
 
@@ -64,6 +65,21 @@ typedef struct SynqWithValue {
 /* END GRAMMAR_TYPES */
 
 #define YYPARSEFREENEVERNULL 1
+
+// Map parser error bookkeeping to a best-effort source span.
+static inline SyntaqliteSourceSpan synq_error_span(SynqParseCtx* pCtx) {
+  if (pCtx->error_offset == 0xFFFFFFFF || pCtx->error_length == 0) {
+    return SYNQ_NO_SPAN;
+  }
+  uint32_t len = pCtx->error_length;
+  if (len > UINT16_MAX) {
+    len = UINT16_MAX;
+  }
+  return (SyntaqliteSourceSpan){
+      .offset = pCtx->error_offset,
+      .length = (uint16_t)len,
+  };
+}
 }
 
 // ============ Type declarations ============

@@ -279,16 +279,6 @@ int32_t syntaqlite_parser_set_trace(SyntaqliteParser* p, uint32_t enable);
 // Debugging
 // ============================================================================
 
-// Error node tag — stored as the first uint32_t of a SyntaqliteErrorNode.
-#define SYNTAQLITE_ERROR_NODE_TAG 0u
-
-// An error placeholder node stored in the arena when a parse error occurs.
-typedef struct SyntaqliteErrorNode {
-  uint32_t tag;     // Always SYNTAQLITE_ERROR_NODE_TAG (0).
-  uint32_t offset;  // Byte offset of the error in source.
-  uint32_t length;  // Byte length of the error token (0 = unknown).
-} SyntaqliteErrorNode;
-
 // Dump an AST node tree as indented text. Returns a malloc'd NUL-terminated
 // string. The caller must free() the result. Returns NULL on allocation failure.
 char* syntaqlite_dump_node(SyntaqliteParser* p,

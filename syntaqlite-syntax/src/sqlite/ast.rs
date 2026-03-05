@@ -49,47 +49,49 @@ pub enum NodeTag {
     BinaryExpr = 31,
     UnaryExpr = 32,
     Literal = 33,
-    ExprList = 34,
-    FunctionCall = 35,
-    Variable = 36,
-    CollateExpr = 37,
-    RaiseExpr = 38,
-    QualifiedName = 39,
-    DropStmt = 40,
-    AlterTableStmt = 41,
-    TransactionStmt = 42,
-    SavepointStmt = 43,
-    ResultColumn = 44,
-    ResultColumnList = 45,
-    SelectStmt = 46,
-    OrderingTerm = 47,
-    OrderByList = 48,
-    LimitClause = 49,
-    TableRef = 50,
-    SubqueryTableSource = 51,
-    JoinClause = 52,
-    JoinPrefix = 53,
-    TriggerEvent = 54,
-    TriggerCmdList = 55,
-    CreateTriggerStmt = 56,
-    CreateVirtualTableStmt = 57,
-    PragmaStmt = 58,
-    AnalyzeOrReindexStmt = 59,
-    AttachStmt = 60,
-    DetachStmt = 61,
-    VacuumStmt = 62,
-    ExplainStmt = 63,
-    CreateIndexStmt = 64,
-    CreateViewStmt = 65,
-    ValuesRowList = 66,
-    ValuesClause = 67,
-    FrameBound = 68,
-    FrameSpec = 69,
-    WindowDef = 70,
-    WindowDefList = 71,
-    NamedWindowDef = 72,
-    NamedWindowDefList = 73,
-    FilterOver = 74,
+    IdentName = 34,
+    Error = 35,
+    ExprList = 36,
+    FunctionCall = 37,
+    Variable = 38,
+    CollateExpr = 39,
+    RaiseExpr = 40,
+    QualifiedName = 41,
+    DropStmt = 42,
+    AlterTableStmt = 43,
+    TransactionStmt = 44,
+    SavepointStmt = 45,
+    ResultColumn = 46,
+    ResultColumnList = 47,
+    SelectStmt = 48,
+    OrderingTerm = 49,
+    OrderByList = 50,
+    LimitClause = 51,
+    TableRef = 52,
+    SubqueryTableSource = 53,
+    JoinClause = 54,
+    JoinPrefix = 55,
+    TriggerEvent = 56,
+    TriggerCmdList = 57,
+    CreateTriggerStmt = 58,
+    CreateVirtualTableStmt = 59,
+    PragmaStmt = 60,
+    AnalyzeOrReindexStmt = 61,
+    AttachStmt = 62,
+    DetachStmt = 63,
+    VacuumStmt = 64,
+    ExplainStmt = 65,
+    CreateIndexStmt = 66,
+    CreateViewStmt = 67,
+    ValuesRowList = 68,
+    ValuesClause = 69,
+    FrameBound = 70,
+    FrameSpec = 71,
+    WindowDef = 72,
+    WindowDefList = 73,
+    NamedWindowDef = 74,
+    NamedWindowDefList = 75,
+    FilterOver = 76,
 }
 
 impl From<NodeTag> for crate::any::AnyNodeTag {
@@ -135,47 +137,49 @@ impl NodeTag {
             31 => Some(NodeTag::BinaryExpr),
             32 => Some(NodeTag::UnaryExpr),
             33 => Some(NodeTag::Literal),
-            34 => Some(NodeTag::ExprList),
-            35 => Some(NodeTag::FunctionCall),
-            36 => Some(NodeTag::Variable),
-            37 => Some(NodeTag::CollateExpr),
-            38 => Some(NodeTag::RaiseExpr),
-            39 => Some(NodeTag::QualifiedName),
-            40 => Some(NodeTag::DropStmt),
-            41 => Some(NodeTag::AlterTableStmt),
-            42 => Some(NodeTag::TransactionStmt),
-            43 => Some(NodeTag::SavepointStmt),
-            44 => Some(NodeTag::ResultColumn),
-            45 => Some(NodeTag::ResultColumnList),
-            46 => Some(NodeTag::SelectStmt),
-            47 => Some(NodeTag::OrderingTerm),
-            48 => Some(NodeTag::OrderByList),
-            49 => Some(NodeTag::LimitClause),
-            50 => Some(NodeTag::TableRef),
-            51 => Some(NodeTag::SubqueryTableSource),
-            52 => Some(NodeTag::JoinClause),
-            53 => Some(NodeTag::JoinPrefix),
-            54 => Some(NodeTag::TriggerEvent),
-            55 => Some(NodeTag::TriggerCmdList),
-            56 => Some(NodeTag::CreateTriggerStmt),
-            57 => Some(NodeTag::CreateVirtualTableStmt),
-            58 => Some(NodeTag::PragmaStmt),
-            59 => Some(NodeTag::AnalyzeOrReindexStmt),
-            60 => Some(NodeTag::AttachStmt),
-            61 => Some(NodeTag::DetachStmt),
-            62 => Some(NodeTag::VacuumStmt),
-            63 => Some(NodeTag::ExplainStmt),
-            64 => Some(NodeTag::CreateIndexStmt),
-            65 => Some(NodeTag::CreateViewStmt),
-            66 => Some(NodeTag::ValuesRowList),
-            67 => Some(NodeTag::ValuesClause),
-            68 => Some(NodeTag::FrameBound),
-            69 => Some(NodeTag::FrameSpec),
-            70 => Some(NodeTag::WindowDef),
-            71 => Some(NodeTag::WindowDefList),
-            72 => Some(NodeTag::NamedWindowDef),
-            73 => Some(NodeTag::NamedWindowDefList),
-            74 => Some(NodeTag::FilterOver),
+            34 => Some(NodeTag::IdentName),
+            35 => Some(NodeTag::Error),
+            36 => Some(NodeTag::ExprList),
+            37 => Some(NodeTag::FunctionCall),
+            38 => Some(NodeTag::Variable),
+            39 => Some(NodeTag::CollateExpr),
+            40 => Some(NodeTag::RaiseExpr),
+            41 => Some(NodeTag::QualifiedName),
+            42 => Some(NodeTag::DropStmt),
+            43 => Some(NodeTag::AlterTableStmt),
+            44 => Some(NodeTag::TransactionStmt),
+            45 => Some(NodeTag::SavepointStmt),
+            46 => Some(NodeTag::ResultColumn),
+            47 => Some(NodeTag::ResultColumnList),
+            48 => Some(NodeTag::SelectStmt),
+            49 => Some(NodeTag::OrderingTerm),
+            50 => Some(NodeTag::OrderByList),
+            51 => Some(NodeTag::LimitClause),
+            52 => Some(NodeTag::TableRef),
+            53 => Some(NodeTag::SubqueryTableSource),
+            54 => Some(NodeTag::JoinClause),
+            55 => Some(NodeTag::JoinPrefix),
+            56 => Some(NodeTag::TriggerEvent),
+            57 => Some(NodeTag::TriggerCmdList),
+            58 => Some(NodeTag::CreateTriggerStmt),
+            59 => Some(NodeTag::CreateVirtualTableStmt),
+            60 => Some(NodeTag::PragmaStmt),
+            61 => Some(NodeTag::AnalyzeOrReindexStmt),
+            62 => Some(NodeTag::AttachStmt),
+            63 => Some(NodeTag::DetachStmt),
+            64 => Some(NodeTag::VacuumStmt),
+            65 => Some(NodeTag::ExplainStmt),
+            66 => Some(NodeTag::CreateIndexStmt),
+            67 => Some(NodeTag::CreateViewStmt),
+            68 => Some(NodeTag::ValuesRowList),
+            69 => Some(NodeTag::ValuesClause),
+            70 => Some(NodeTag::FrameBound),
+            71 => Some(NodeTag::FrameSpec),
+            72 => Some(NodeTag::WindowDef),
+            73 => Some(NodeTag::WindowDefList),
+            74 => Some(NodeTag::NamedWindowDef),
+            75 => Some(NodeTag::NamedWindowDefList),
+            76 => Some(NodeTag::FilterOver),
             _ => None,
         }
     }
@@ -1434,6 +1438,62 @@ impl TypedNodeId for InExprSourceId {
     type Node<'a> = InExprSource<'a>;
 }
 
+/// Abstract `Name` — pattern-match to access the concrete type.
+#[derive(Debug, Clone, Copy)]
+pub enum Name<'a> {
+    IdentName(IdentName<'a>),
+    Error(Error<'a>),
+    /// A node that doesn't match any known `Name` variant.
+    Other(Node<'a>),
+}
+
+impl<'a> Name<'a> {
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> NameId {
+        match self {
+            Name::IdentName(n) => NameId(n.node_id().into()),
+            Name::Error(n) => NameId(n.node_id().into()),
+            Name::Other(n) => NameId(n.node_id().into()),
+        }
+    }
+}
+
+impl<'a> GrammarNodeType<'a> for Name<'a> {
+    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+        let node = Node::resolve(stmt_result, id)?;
+        Some(match node {
+            Node::IdentName(n) => Name::IdentName(n),
+            Node::Error(n) => Name::Error(n),
+            other => Name::Other(other),
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct NameId(AnyNodeId);
+
+impl NameId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
+
+impl<'a> From<Name<'a>> for NameId {
+    fn from(n: Name<'a>) -> Self {
+        n.node_id()
+    }
+}
+
+impl From<NameId> for AnyNodeId {
+    fn from(id: NameId) -> AnyNodeId {
+        id.0
+    }
+}
+
+impl TypedNodeId for NameId {
+    type Node<'a> = Name<'a>;
+}
+
 /// Abstract `Expr` — pattern-match to access the concrete type.
 #[derive(Debug, Clone, Copy)]
 pub enum Expr<'a> {
@@ -1442,6 +1502,7 @@ pub enum Expr<'a> {
     Literal(Literal<'a>),
     ColumnRef(ColumnRef<'a>),
     Variable(Variable<'a>),
+    Error(Error<'a>),
     FunctionCall(FunctionCall<'a>),
     AggregateFunctionCall(AggregateFunctionCall<'a>),
     OrderedSetFunctionCall(OrderedSetFunctionCall<'a>),
@@ -1468,6 +1529,7 @@ impl<'a> Expr<'a> {
             Expr::Literal(n) => ExprId(n.node_id().into()),
             Expr::ColumnRef(n) => ExprId(n.node_id().into()),
             Expr::Variable(n) => ExprId(n.node_id().into()),
+            Expr::Error(n) => ExprId(n.node_id().into()),
             Expr::FunctionCall(n) => ExprId(n.node_id().into()),
             Expr::AggregateFunctionCall(n) => ExprId(n.node_id().into()),
             Expr::OrderedSetFunctionCall(n) => ExprId(n.node_id().into()),
@@ -1495,6 +1557,7 @@ impl<'a> GrammarNodeType<'a> for Expr<'a> {
             Node::Literal(n) => Expr::Literal(n),
             Node::ColumnRef(n) => Expr::ColumnRef(n),
             Node::Variable(n) => Expr::Variable(n),
+            Node::Error(n) => Expr::Error(n),
             Node::FunctionCall(n) => Expr::FunctionCall(n),
             Node::AggregateFunctionCall(n) => Expr::AggregateFunctionCall(n),
             Node::OrderedSetFunctionCall(n) => Expr::OrderedSetFunctionCall(n),
@@ -2937,8 +3000,8 @@ impl<'a> ColumnDef<'a> {
     pub fn node_id(&self) -> ColumnDefId {
         ColumnDefId(self.id)
     }
-    pub fn column_name(&self) -> &'a str {
-        self.raw.column_name.as_str(self.stmt_result.source())
+    pub fn column_name(&self) -> Option<Name<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.column_name)
     }
     pub fn type_name(&self) -> &'a str {
         self.raw.type_name.as_str(self.stmt_result.source())
@@ -3877,6 +3940,148 @@ impl TypedNodeId for LiteralId {
 }
 
 #[derive(Clone, Copy)]
+pub struct IdentName<'a> {
+    raw: &'a super::ffi::IdentName,
+    stmt_result: AnyParsedStatement<'a>,
+    id: AnyNodeId,
+}
+
+impl std::fmt::Debug for IdentName<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for IdentName<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        AnyNode {
+            id: self.id,
+            stmt_result: self.stmt_result,
+        }
+        .dump(&mut buf, 0);
+        f.write_str(&buf)
+    }
+}
+
+impl<'a> IdentName<'a> {
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> IdentNameId {
+        IdentNameId(self.id)
+    }
+    pub fn source(&self) -> &'a str {
+        self.raw.source.as_str(self.stmt_result.source())
+    }
+}
+
+impl<'a> GrammarNodeType<'a> for IdentName<'a> {
+    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+        let raw = stmt_result.resolve_as::<super::ffi::IdentName>(id)?;
+        Some(IdentName {
+            raw,
+            stmt_result,
+            id,
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct IdentNameId(AnyNodeId);
+
+impl IdentNameId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
+
+impl<'a> From<IdentName<'a>> for IdentNameId {
+    fn from(n: IdentName<'a>) -> Self {
+        n.node_id()
+    }
+}
+
+impl From<IdentNameId> for AnyNodeId {
+    fn from(id: IdentNameId) -> AnyNodeId {
+        id.0
+    }
+}
+
+impl TypedNodeId for IdentNameId {
+    type Node<'a> = IdentName<'a>;
+}
+
+#[derive(Clone, Copy)]
+pub struct Error<'a> {
+    raw: &'a super::ffi::Error,
+    stmt_result: AnyParsedStatement<'a>,
+    id: AnyNodeId,
+}
+
+impl std::fmt::Debug for Error<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.raw.fmt(f)
+    }
+}
+
+impl std::fmt::Display for Error<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        AnyNode {
+            id: self.id,
+            stmt_result: self.stmt_result,
+        }
+        .dump(&mut buf, 0);
+        f.write_str(&buf)
+    }
+}
+
+impl<'a> Error<'a> {
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> ErrorId {
+        ErrorId(self.id)
+    }
+    pub fn source(&self) -> &'a str {
+        self.raw.source.as_str(self.stmt_result.source())
+    }
+}
+
+impl<'a> GrammarNodeType<'a> for Error<'a> {
+    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+        let raw = stmt_result.resolve_as::<super::ffi::Error>(id)?;
+        Some(Error {
+            raw,
+            stmt_result,
+            id,
+        })
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct ErrorId(AnyNodeId);
+
+impl ErrorId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
+
+impl<'a> From<Error<'a>> for ErrorId {
+    fn from(n: Error<'a>) -> Self {
+        n.node_id()
+    }
+}
+
+impl From<ErrorId> for AnyNodeId {
+    fn from(id: ErrorId) -> AnyNodeId {
+        id.0
+    }
+}
+
+impl TypedNodeId for ErrorId {
+    type Node<'a> = Error<'a>;
+}
+
+#[derive(Clone, Copy)]
 pub struct FunctionCall<'a> {
     raw: &'a super::ffi::FunctionCall,
     stmt_result: AnyParsedStatement<'a>,
@@ -4208,11 +4413,11 @@ impl<'a> QualifiedName<'a> {
     pub fn node_id(&self) -> QualifiedNameId {
         QualifiedNameId(self.id)
     }
-    pub fn object_name(&self) -> &'a str {
-        self.raw.object_name.as_str(self.stmt_result.source())
+    pub fn object_name(&self) -> Option<Name<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.object_name)
     }
-    pub fn schema(&self) -> &'a str {
-        self.raw.schema.as_str(self.stmt_result.source())
+    pub fn schema(&self) -> Option<Name<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.schema)
     }
 }
 
@@ -4365,11 +4570,11 @@ impl<'a> AlterTableStmt<'a> {
     pub fn target(&self) -> Option<QualifiedName<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.target)
     }
-    pub fn new_name(&self) -> &'a str {
-        self.raw.new_name.as_str(self.stmt_result.source())
+    pub fn new_name(&self) -> Option<Name<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.new_name)
     }
-    pub fn old_name(&self) -> &'a str {
-        self.raw.old_name.as_str(self.stmt_result.source())
+    pub fn old_name(&self) -> Option<Name<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.old_name)
     }
 }
 
@@ -4516,8 +4721,8 @@ impl<'a> SavepointStmt<'a> {
     pub fn op(&self) -> SavepointOp {
         self.raw.op
     }
-    pub fn savepoint_name(&self) -> &'a str {
-        self.raw.savepoint_name.as_str(self.stmt_result.source())
+    pub fn savepoint_name(&self) -> Option<Name<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.savepoint_name)
     }
 }
 
@@ -4590,8 +4795,8 @@ impl<'a> ResultColumn<'a> {
     pub fn flags(&self) -> ResultColumnFlags {
         self.raw.flags
     }
-    pub fn alias(&self) -> &'a str {
-        self.raw.alias.as_str(self.stmt_result.source())
+    pub fn alias(&self) -> Option<Name<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.alias)
     }
     pub fn expr(&self) -> Option<Expr<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.expr)
@@ -4916,8 +5121,8 @@ impl<'a> TableRef<'a> {
     pub fn schema(&self) -> &'a str {
         self.raw.schema.as_str(self.stmt_result.source())
     }
-    pub fn alias(&self) -> &'a str {
-        self.raw.alias.as_str(self.stmt_result.source())
+    pub fn alias(&self) -> Option<Name<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.alias)
     }
 }
 
@@ -4990,8 +5195,8 @@ impl<'a> SubqueryTableSource<'a> {
     pub fn select(&self) -> Option<Select<'a>> {
         GrammarNodeType::from_result(self.stmt_result, self.raw.select)
     }
-    pub fn alias(&self) -> &'a str {
-        self.raw.alias.as_str(self.stmt_result.source())
+    pub fn alias(&self) -> Option<Name<'a>> {
+        GrammarNodeType::from_result(self.stmt_result, self.raw.alias)
     }
 }
 
@@ -6931,6 +7136,8 @@ pub enum Node<'a> {
     BinaryExpr(BinaryExpr<'a>),
     UnaryExpr(UnaryExpr<'a>),
     Literal(Literal<'a>),
+    IdentName(IdentName<'a>),
+    Error(Error<'a>),
     /// List of [`Expr`].
     ExprList(ExprList<'a>),
     FunctionCall(FunctionCall<'a>),
@@ -7156,6 +7363,16 @@ impl<'a> Node<'a> {
                 }),
                 NodeTag::Literal => Node::Literal(Literal {
                     raw: &*ptr.cast::<super::ffi::Literal>(),
+                    stmt_result,
+                    id,
+                }),
+                NodeTag::IdentName => Node::IdentName(IdentName {
+                    raw: &*ptr.cast::<super::ffi::IdentName>(),
+                    stmt_result,
+                    id,
+                }),
+                NodeTag::Error => Node::Error(Error {
+                    raw: &*ptr.cast::<super::ffi::Error>(),
                     stmt_result,
                     id,
                 }),
@@ -7405,6 +7622,8 @@ impl<'a> Node<'a> {
             Node::BinaryExpr(..) => NodeTag::BinaryExpr,
             Node::UnaryExpr(..) => NodeTag::UnaryExpr,
             Node::Literal(..) => NodeTag::Literal,
+            Node::IdentName(..) => NodeTag::IdentName,
+            Node::Error(..) => NodeTag::Error,
             Node::ExprList(..) => NodeTag::ExprList,
             Node::FunctionCall(..) => NodeTag::FunctionCall,
             Node::Variable(..) => NodeTag::Variable,
@@ -7487,6 +7706,8 @@ impl<'a> Node<'a> {
             Node::BinaryExpr(n) => NodeId(n.node_id().into()),
             Node::UnaryExpr(n) => NodeId(n.node_id().into()),
             Node::Literal(n) => NodeId(n.node_id().into()),
+            Node::IdentName(n) => NodeId(n.node_id().into()),
+            Node::Error(n) => NodeId(n.node_id().into()),
             Node::ExprList(n) => NodeId(n.node_id().into()),
             Node::FunctionCall(n) => NodeId(n.node_id().into()),
             Node::Variable(n) => NodeId(n.node_id().into()),
@@ -7578,6 +7799,7 @@ impl<'a> crate::ast_traits::AstTypes<'a> for SqliteAstMarker {
     type Node = Node<'a>;
     type Select = Select<'a>;
     type InExprSource = InExprSource<'a>;
+    type Name = Name<'a>;
     type Expr = Expr<'a>;
     type Stmt = Stmt<'a>;
     type TableSource = TableSource<'a>;
@@ -7608,6 +7830,8 @@ impl<'a> crate::ast_traits::AstTypes<'a> for SqliteAstMarker {
     type BinaryExpr = BinaryExpr<'a>;
     type UnaryExpr = UnaryExpr<'a>;
     type Literal = Literal<'a>;
+    type IdentName = IdentName<'a>;
+    type Error = Error<'a>;
     type FunctionCall = FunctionCall<'a>;
     type Variable = Variable<'a>;
     type CollateExpr = CollateExpr<'a>;
@@ -7715,6 +7939,8 @@ impl<'a> crate::ast_traits::NodeLike<'a> for Node<'a> {
             Node::BinaryExpr(n) => n.node_id().into(),
             Node::UnaryExpr(n) => n.node_id().into(),
             Node::Literal(n) => n.node_id().into(),
+            Node::IdentName(n) => n.node_id().into(),
+            Node::Error(n) => n.node_id().into(),
             Node::ExprList(n) => n.node_id().into(),
             Node::FunctionCall(n) => n.node_id().into(),
             Node::Variable(n) => n.node_id().into(),
@@ -7785,6 +8011,17 @@ impl<'a> crate::ast_traits::InExprSourceLike<'a> for InExprSource<'a> {
     }
 }
 
+impl<'a> crate::ast_traits::NameLike<'a> for Name<'a> {
+    type Ast = SqliteAstMarker;
+    fn kind(&self) -> crate::ast_traits::NameKind<'a, SqliteAstMarker> {
+        match *self {
+            Name::IdentName(n) => crate::ast_traits::NameKind::IdentName(n),
+            Name::Error(n) => crate::ast_traits::NameKind::Error(n),
+            Name::Other(n) => crate::ast_traits::NameKind::Other(n),
+        }
+    }
+}
+
 impl<'a> crate::ast_traits::ExprLike<'a> for Expr<'a> {
     type Ast = SqliteAstMarker;
     fn kind(&self) -> crate::ast_traits::ExprKind<'a, SqliteAstMarker> {
@@ -7794,6 +8031,7 @@ impl<'a> crate::ast_traits::ExprLike<'a> for Expr<'a> {
             Expr::Literal(n) => crate::ast_traits::ExprKind::Literal(n),
             Expr::ColumnRef(n) => crate::ast_traits::ExprKind::ColumnRef(n),
             Expr::Variable(n) => crate::ast_traits::ExprKind::Variable(n),
+            Expr::Error(n) => crate::ast_traits::ExprKind::Error(n),
             Expr::FunctionCall(n) => crate::ast_traits::ExprKind::FunctionCall(n),
             Expr::AggregateFunctionCall(n) => crate::ast_traits::ExprKind::AggregateFunctionCall(n),
             Expr::OrderedSetFunctionCall(n) => {
@@ -8143,7 +8381,7 @@ impl<'a> crate::ast_traits::ColumnDefView<'a> for ColumnDef<'a> {
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
-    fn column_name(&self) -> &'a str {
+    fn column_name(&self) -> Option<Name<'a>> {
         self.column_name()
     }
     fn type_name(&self) -> &'a str {
@@ -8375,6 +8613,26 @@ impl<'a> crate::ast_traits::LiteralView<'a> for Literal<'a> {
     }
 }
 
+impl<'a> crate::ast_traits::IdentNameView<'a> for IdentName<'a> {
+    type Ast = SqliteAstMarker;
+    fn node_id(&self) -> AnyNodeId {
+        self.id
+    }
+    fn source(&self) -> &'a str {
+        self.source()
+    }
+}
+
+impl<'a> crate::ast_traits::ErrorView<'a> for Error<'a> {
+    type Ast = SqliteAstMarker;
+    fn node_id(&self) -> AnyNodeId {
+        self.id
+    }
+    fn source(&self) -> &'a str {
+        self.source()
+    }
+}
+
 impl<'a> crate::ast_traits::FunctionCallView<'a> for FunctionCall<'a> {
     type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
@@ -8438,10 +8696,10 @@ impl<'a> crate::ast_traits::QualifiedNameView<'a> for QualifiedName<'a> {
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
-    fn object_name(&self) -> &'a str {
+    fn object_name(&self) -> Option<Name<'a>> {
         self.object_name()
     }
-    fn schema(&self) -> &'a str {
+    fn schema(&self) -> Option<Name<'a>> {
         self.schema()
     }
 }
@@ -8473,10 +8731,10 @@ impl<'a> crate::ast_traits::AlterTableStmtView<'a> for AlterTableStmt<'a> {
     fn target(&self) -> Option<QualifiedName<'a>> {
         self.target()
     }
-    fn new_name(&self) -> &'a str {
+    fn new_name(&self) -> Option<Name<'a>> {
         self.new_name()
     }
-    fn old_name(&self) -> &'a str {
+    fn old_name(&self) -> Option<Name<'a>> {
         self.old_name()
     }
 }
@@ -8502,7 +8760,7 @@ impl<'a> crate::ast_traits::SavepointStmtView<'a> for SavepointStmt<'a> {
     fn op(&self) -> SavepointOp {
         self.op()
     }
-    fn savepoint_name(&self) -> &'a str {
+    fn savepoint_name(&self) -> Option<Name<'a>> {
         self.savepoint_name()
     }
 }
@@ -8515,7 +8773,7 @@ impl<'a> crate::ast_traits::ResultColumnView<'a> for ResultColumn<'a> {
     fn flags(&self) -> ResultColumnFlags {
         self.flags()
     }
-    fn alias(&self) -> &'a str {
+    fn alias(&self) -> Option<Name<'a>> {
         self.alias()
     }
     fn expr(&self) -> Option<Expr<'a>> {
@@ -8597,7 +8855,7 @@ impl<'a> crate::ast_traits::TableRefView<'a> for TableRef<'a> {
     fn schema(&self) -> &'a str {
         self.schema()
     }
-    fn alias(&self) -> &'a str {
+    fn alias(&self) -> Option<Name<'a>> {
         self.alias()
     }
 }
@@ -8610,7 +8868,7 @@ impl<'a> crate::ast_traits::SubqueryTableSourceView<'a> for SubqueryTableSource<
     fn select(&self) -> Option<Select<'a>> {
         self.select()
     }
-    fn alias(&self) -> &'a str {
+    fn alias(&self) -> Option<Name<'a>> {
         self.alias()
     }
 }

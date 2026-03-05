@@ -15,7 +15,7 @@
 // - Non-terminals are u32 node IDs
 
 %type nm {SynqParseToken}
-%type nmorerr {SynqParseToken}
+%type nmorerr {uint32_t}
 
 // ============ Identifiers ============
 
@@ -30,10 +30,9 @@ nm(A) ::= STRING(B). {
 
 // Localized name recovery wrapper used at selected grammar sites.
 nmorerr(A) ::= nm(B). {
-    A = B;
+    A = synq_parse_ident_name(pCtx, synq_span(pCtx, B));
 }
 
 nmorerr(A) ::= error. {
-    A.z = NULL;
-    A.n = 0;
+    A = synq_parse_error(pCtx, synq_error_span(pCtx));
 }

@@ -15,7 +15,7 @@
 // - Non-terminals are u32 node IDs
 
 %type scanpt {SynqParseToken}
-%type as {SynqParseToken}
+%type as {uint32_t}
 
 // ============ SELECT ============
 
@@ -42,13 +42,12 @@ oneselect(A) ::= SELECT distinct(B) selcollist(C) from(D) where_opt(E) groupby_o
 // ============ Result columns ============
 
 selcollist(A) ::= sclp(B) scanpt expr(C) scanpt as(D). {
-    SyntaqliteSourceSpan alias = (D.z) ? synq_span(pCtx, D) : SYNQ_NO_SPAN;
-    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){0}, alias, C);
+    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){0}, D, C);
     A = synq_parse_result_column_list(pCtx, B, col);
 }
 
 selcollist(A) ::= sclp(B) scanpt STAR. {
-    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.bits = {.star = 1}}, SYNQ_NO_SPAN, SYNTAQLITE_NULL_NODE);
+    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.bits = {.star = 1}}, SYNTAQLITE_NULL_NODE, SYNTAQLITE_NULL_NODE);
     A = synq_parse_result_column_list(pCtx, B, col);
 }
 
@@ -71,11 +70,11 @@ as(A) ::= AS nmorerr(B). {
 }
 
 as(A) ::= ids(B). {
-    A = B;
+    A = synq_parse_ident_name(pCtx, synq_span(pCtx, B));
 }
 
 as(A) ::= . {
-    A.z = NULL; A.n = 0;
+    A = SYNTAQLITE_NULL_NODE;
 }
 
 // ============ DISTINCT / ALL ============

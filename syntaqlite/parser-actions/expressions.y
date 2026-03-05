@@ -20,7 +20,7 @@
 // interpolation holes (e.g. f-string `{expr}`) can be represented as
 // ErrorNodes without discarding the rest of the statement.
 expr(A) ::= error. {
-    A = synq_parse_error_node(pCtx, pCtx->error_offset, pCtx->error_length);
+    A = synq_parse_error(pCtx, synq_error_span(pCtx));
 }
 
 expr(A) ::= term(B). {

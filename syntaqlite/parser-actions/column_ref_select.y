@@ -18,6 +18,7 @@
 
 // table.* in result columns
 selcollist(A) ::= sclp(B) scanpt nm(C) DOT STAR. {
-    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.bits = {.star = 1}}, synq_span(pCtx, C), SYNTAQLITE_NULL_NODE);
+    uint32_t alias = synq_parse_ident_name(pCtx, synq_span(pCtx, C));
+    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.bits = {.star = 1}}, alias, SYNTAQLITE_NULL_NODE);
     A = synq_parse_result_column_list(pCtx, B, col);
 }

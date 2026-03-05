@@ -718,7 +718,7 @@ pub trait ColumnConstraintView<'a>: Copy {
 pub trait ColumnDefView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
-    fn column_name(&self) -> &'a str;
+    fn column_name(&self) -> Option<<Self::Ast as AstTypes<'a>>::Name>;
     fn type_name(&self) -> &'a str;
     fn constraints(
         &self,
@@ -918,6 +918,20 @@ pub trait LiteralView<'a>: Copy {
     fn source(&self) -> &'a str;
 }
 
+/// Accessor trait for `IdentName` nodes.
+pub trait IdentNameView<'a>: Copy {
+    type Ast: AstTypes<'a>;
+    fn node_id(&self) -> AnyNodeId;
+    fn source(&self) -> &'a str;
+}
+
+/// Accessor trait for `Error` nodes.
+pub trait ErrorView<'a>: Copy {
+    type Ast: AstTypes<'a>;
+    fn node_id(&self) -> AnyNodeId;
+    fn source(&self) -> &'a str;
+}
+
 /// Accessor trait for `FunctionCall` nodes.
 pub trait FunctionCallView<'a>: Copy {
     type Ast: AstTypes<'a>;
@@ -960,8 +974,8 @@ pub trait RaiseExprView<'a>: Copy {
 pub trait QualifiedNameView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
-    fn object_name(&self) -> &'a str;
-    fn schema(&self) -> &'a str;
+    fn object_name(&self) -> Option<<Self::Ast as AstTypes<'a>>::Name>;
+    fn schema(&self) -> Option<<Self::Ast as AstTypes<'a>>::Name>;
 }
 
 /// Accessor trait for `DropStmt` nodes.
@@ -979,8 +993,8 @@ pub trait AlterTableStmtView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::AlterOp;
     fn target(&self) -> Option<<Self::Ast as AstTypes<'a>>::QualifiedName>;
-    fn new_name(&self) -> &'a str;
-    fn old_name(&self) -> &'a str;
+    fn new_name(&self) -> Option<<Self::Ast as AstTypes<'a>>::Name>;
+    fn old_name(&self) -> Option<<Self::Ast as AstTypes<'a>>::Name>;
 }
 
 /// Accessor trait for `TransactionStmt` nodes.
@@ -996,7 +1010,7 @@ pub trait SavepointStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
     fn op(&self) -> <Self::Ast as AstTypes<'a>>::SavepointOp;
-    fn savepoint_name(&self) -> &'a str;
+    fn savepoint_name(&self) -> Option<<Self::Ast as AstTypes<'a>>::Name>;
 }
 
 /// Accessor trait for `ResultColumn` nodes.
@@ -1004,7 +1018,7 @@ pub trait ResultColumnView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::ResultColumnFlags;
-    fn alias(&self) -> &'a str;
+    fn alias(&self) -> Option<<Self::Ast as AstTypes<'a>>::Name>;
     fn expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
 
@@ -1075,7 +1089,7 @@ pub trait TableRefView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn table_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
-    fn alias(&self) -> &'a str;
+    fn alias(&self) -> Option<<Self::Ast as AstTypes<'a>>::Name>;
 }
 
 /// Accessor trait for `SubqueryTableSource` nodes.
@@ -1083,7 +1097,7 @@ pub trait SubqueryTableSourceView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
-    fn alias(&self) -> &'a str;
+    fn alias(&self) -> Option<<Self::Ast as AstTypes<'a>>::Name>;
 }
 
 /// Accessor trait for `JoinClause` nodes.
@@ -1333,6 +1347,14 @@ pub enum InExprSourceKind<'a, A: AstTypes<'a>> {
     Other(A::Node),
 }
 
+/// Pattern-matching variants for `Name`.
+#[derive(Clone, Copy)]
+pub enum NameKind<'a, A: AstTypes<'a>> {
+    IdentName(A::IdentName),
+    Error(A::Error),
+    Other(A::Node),
+}
+
 /// Pattern-matching variants for `Expr`.
 #[derive(Clone, Copy)]
 pub enum ExprKind<'a, A: AstTypes<'a>> {
@@ -1341,6 +1363,7 @@ pub enum ExprKind<'a, A: AstTypes<'a>> {
     Literal(A::Literal),
     ColumnRef(A::ColumnRef),
     Variable(A::Variable),
+    Error(A::Error),
     FunctionCall(A::FunctionCall),
     AggregateFunctionCall(A::AggregateFunctionCall),
     OrderedSetFunctionCall(A::OrderedSetFunctionCall),
@@ -1407,6 +1430,12 @@ pub trait InExprSourceLike<'a>: Copy {
     fn kind(&self) -> InExprSourceKind<'a, Self::Ast>;
 }
 
+/// Abstract access trait for `Name`.
+pub trait NameLike<'a>: Copy {
+    type Ast: AstTypes<'a>;
+    fn kind(&self) -> NameKind<'a, Self::Ast>;
+}
+
 /// Abstract access trait for `Expr`.
 pub trait ExprLike<'a>: Copy {
     type Ast: AstTypes<'a>;
@@ -1431,6 +1460,7 @@ pub trait AstTypes<'a>: 'a {
     type Node: NodeLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type Select: SelectLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type InExprSource: InExprSourceLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type Name: NameLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type Expr: ExprLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type Stmt: StmtLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type TableSource: TableSourceLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
@@ -1465,6 +1495,8 @@ pub trait AstTypes<'a>: 'a {
     type BinaryExpr: BinaryExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type UnaryExpr: UnaryExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type Literal: LiteralView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type IdentName: IdentNameView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type Error: ErrorView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type FunctionCall: FunctionCallView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type Variable: VariableView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type CollateExpr: CollateExprView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;

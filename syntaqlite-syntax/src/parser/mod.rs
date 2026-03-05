@@ -41,7 +41,7 @@ pub enum ParseErrorKind {
     /// still able to skip forward (usually to the next `;`) and continue with
     /// later statements.
     ///
-    /// The current statement can include `ErrorNode` holes where invalid input
+    /// The current statement can include `Error` AST nodes where invalid input
     /// was skipped.
     ///
     /// A partial AST may still be available for diagnostics.

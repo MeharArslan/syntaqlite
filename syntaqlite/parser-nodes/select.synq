@@ -6,7 +6,7 @@ flags SelectStmtFlags { DISTINCT = 1 }
 
 node ResultColumn {
   flags: inline ResultColumnFlags
-  alias: inline SyntaqliteSourceSpan
+  alias: index Name
   expr: index Expr
 
   fmt {
@@ -15,7 +15,7 @@ node ResultColumn {
     } else {
       child(expr)
     }
-    if_span(alias) { " AS " span(alias) }
+    if_set(alias) { " AS " child(alias) }
   }
 }
 

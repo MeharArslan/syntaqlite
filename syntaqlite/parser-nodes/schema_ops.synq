@@ -5,12 +5,12 @@ enum TransactionOp { BEGIN COMMIT ROLLBACK }
 enum SavepointOp { SAVEPOINT RELEASE ROLLBACK_TO }
 
 node QualifiedName {
-  object_name: inline SyntaqliteSourceSpan
-  schema: inline SyntaqliteSourceSpan
+  object_name: index Name
+  schema: index Name
 
   fmt {
-    if_span(schema) { span(schema) "." }
-    span(object_name)
+    if_set(schema) { child(schema) "." }
+    child(object_name)
   }
 }
 
@@ -32,17 +32,17 @@ node DropStmt {
 node AlterTableStmt {
   op: inline AlterOp
   target: index QualifiedName
-  new_name: inline SyntaqliteSourceSpan
-  old_name: inline SyntaqliteSourceSpan
+  new_name: index Name
+  old_name: index Name
 
   fmt {
     "ALTER TABLE "
     if_set(target) { child(target) " " }
     switch(op) {
-      RENAME_TABLE  { "RENAME TO " span(new_name) }
-      RENAME_COLUMN { "RENAME COLUMN " span(old_name) " TO " span(new_name) }
-      DROP_COLUMN   { "DROP COLUMN " span(old_name) }
-      ADD_COLUMN    { "ADD COLUMN " span(old_name) }
+      RENAME_TABLE  { "RENAME TO " child(new_name) }
+      RENAME_COLUMN { "RENAME COLUMN " child(old_name) " TO " child(new_name) }
+      DROP_COLUMN   { "DROP COLUMN " child(old_name) }
+      ADD_COLUMN    { "ADD COLUMN " child(old_name) }
     }
   }
 }
@@ -67,13 +67,13 @@ node TransactionStmt {
 
 node SavepointStmt {
   op: inline SavepointOp
-  savepoint_name: inline SyntaqliteSourceSpan
+  savepoint_name: index Name
 
   fmt {
     switch(op) {
-      SAVEPOINT   { "SAVEPOINT " span(savepoint_name) }
-      RELEASE     { "RELEASE SAVEPOINT " span(savepoint_name) }
-      ROLLBACK_TO { "ROLLBACK TO SAVEPOINT " span(savepoint_name) }
+      SAVEPOINT   { "SAVEPOINT " child(savepoint_name) }
+      RELEASE     { "RELEASE SAVEPOINT " child(savepoint_name) }
+      ROLLBACK_TO { "ROLLBACK TO SAVEPOINT " child(savepoint_name) }
     }
   }
 }

@@ -31,7 +31,7 @@ stl_prefix(A) ::= . {
 
 // Simple table reference: FROM t, FROM t AS x, FROM schema.t
 seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) as(Z) on_using(N). {
-    SyntaqliteSourceSpan alias = (Z.z != NULL) ? synq_span(pCtx, Z) : SYNQ_NO_SPAN;
+    uint32_t alias = Z;
     SyntaqliteSourceSpan table_name;
     SyntaqliteSourceSpan schema;
     if (D.z != NULL) {
@@ -56,7 +56,7 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) as(Z) on_using(N). {
 // Table reference with INDEXED BY (ignore index hint in AST)
 seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) as(Z) indexed_by(I) on_using(N). {
     (void)I;
-    SyntaqliteSourceSpan alias = (Z.z != NULL) ? synq_span(pCtx, Z) : SYNQ_NO_SPAN;
+    uint32_t alias = Z;
     SyntaqliteSourceSpan table_name;
     SyntaqliteSourceSpan schema;
     if (D.z != NULL) {
@@ -81,7 +81,7 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) as(Z) indexed_by(I) on_using(N). {
 // Table-valued function: FROM t(args)
 seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) LP exprlist(E) RP as(Z) on_using(N). {
     (void)E;
-    SyntaqliteSourceSpan alias = (Z.z != NULL) ? synq_span(pCtx, Z) : SYNQ_NO_SPAN;
+    uint32_t alias = Z;
     SyntaqliteSourceSpan table_name;
     SyntaqliteSourceSpan schema;
     if (D.z != NULL) {
@@ -106,7 +106,7 @@ seltablist(A) ::= stl_prefix(A) nm(Y) dbnm(D) LP exprlist(E) RP as(Z) on_using(N
 // Subquery table source: FROM (SELECT ...) AS t
 seltablist(A) ::= stl_prefix(A) LP select(S) RP as(Z) on_using(N). {
     pCtx->saw_subquery = 1;
-    SyntaqliteSourceSpan alias = (Z.z != NULL) ? synq_span(pCtx, Z) : SYNQ_NO_SPAN;
+    uint32_t alias = Z;
     uint32_t sub = synq_parse_subquery_table_source(pCtx, S, alias);
     if (A == SYNTAQLITE_NULL_NODE) {
         A = sub;

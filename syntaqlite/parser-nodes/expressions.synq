@@ -42,10 +42,32 @@ node Literal {
   fmt { span(source) }
 }
 
+node IdentName {
+  source: inline SyntaqliteSourceSpan
+
+  fmt { span(source) }
+}
+
+node Error {
+  source: inline SyntaqliteSourceSpan
+
+  fmt {
+    if_span(source) {
+      span(source)
+    } else {
+      "<error>"
+    }
+  }
+}
+
 list ExprList { Expr }
 
+abstract Name {
+  IdentName Error
+}
+
 abstract Expr {
-  BinaryExpr UnaryExpr Literal ColumnRef Variable
+  BinaryExpr UnaryExpr Literal ColumnRef Variable Error
   FunctionCall AggregateFunctionCall OrderedSetFunctionCall
   CastExpr CollateExpr CaseExpr
   IsExpr BetweenExpr LikeExpr InExpr

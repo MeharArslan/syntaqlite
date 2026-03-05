@@ -98,12 +98,12 @@ list ColumnConstraintList {
 }
 
 node ColumnDef {
-  column_name: inline SyntaqliteSourceSpan
+  column_name: index Name
   type_name: inline SyntaqliteSourceSpan
   constraints: index ColumnConstraintList
 
   fmt {
-    span(column_name)
+    child(column_name)
     if_span(type_name) { " " span(type_name) }
     if_set(constraints) { " " child(constraints) }
   }
