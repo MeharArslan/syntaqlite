@@ -8,17 +8,29 @@ use crate::cflags::Cflags;
 /// A typed grammar handle for a specific dialect.
 ///
 /// Implement this for a dialect's grammar struct (e.g. `SqliteGrammar`).
-/// The struct carries a [`AnyGrammar`] internally and exposes it via [`raw`](Self::raw).
+/// Wraps an [`AnyGrammar`] and exposes it via [`raw`](Self::raw).
 pub trait TypedGrammar: Copy {
     /// The top-level typed AST node enum for this dialect.
     type Node<'a>: crate::ast::GrammarNodeType<'a>;
+    /// The dialect's typed node ID, wrapping an [`crate::ast::AnyNodeId`].
+    ///
+    /// Used as the return type of [`TypedNodeList::node_id`](crate::ast::TypedNodeList::node_id)
+    /// so callers get a grammar-typed handle rather than a raw [`crate::ast::AnyNodeId`].
+    type NodeId: Copy + From<crate::ast::AnyNodeId> + Into<crate::ast::AnyNodeId>;
     /// The typed token enum for this dialect.
     type Token: crate::ast::GrammarTokenType;
-    /// Access the underlying [`AnyGrammar`] for FFI and configuration.
+    /// Access the underlying [`AnyGrammar`] for configuration and grammar-agnostic APIs.
     fn raw(&mut self) -> &mut AnyGrammar;
 }
 
-// TODO(claude): add documentation.
+/// A type-erased grammar handle shared by all dialects.
+///
+/// Carries the target `SQLite` version and compile-time flags for a dialect.
+/// It is cheap to copy and safe to send across threads.
+///
+/// Obtain one via a dialect-specific wrapper (e.g. [`crate::sqlite::grammar::SqliteGrammar`]);
+/// use [`TypedGrammar`] when you need the typed dialect API, or pass `AnyGrammar` directly
+/// to [`crate::Parser`] and other grammar-agnostic infrastructure.
 #[derive(Clone, Copy)]
 pub struct AnyGrammar {
     pub(crate) inner: ffi::CGrammar,
@@ -244,49 +256,11 @@ pub(crate) mod ffi {
 
     /// Mirrors C `SyntaqliteFieldMeta` from `include/syntaqlite_dialect/dialect_types.h`.
     #[repr(C)]
-    pub struct CFieldMeta {
-        pub offset: u16,
-        pub kind: u8,
-        pub name: *const std::ffi::c_char,
-        pub display: *const *const std::ffi::c_char,
-        pub display_count: u8,
-    }
-
-    impl CFieldMeta {
-        /// Return the field name as a `&str`.
-        ///
-        /// # Safety
-        /// The `name` pointer must be valid and NUL-terminated for the lifetime
-        /// of the returned `&str`.
-        pub unsafe fn name_str(&self) -> &str {
-            // SAFETY: caller guarantees `self.name` is valid and NUL-terminated.
-            unsafe {
-                let cstr = std::ffi::CStr::from_ptr(self.name);
-                cstr.to_str().expect("invalid UTF-8 in field name")
-            }
-        }
-
-        /// Return the display string for an enum ordinal or flag bit index.
-        ///
-        /// Returns `None` if `idx` is out of range or the entry is null.
-        ///
-        /// # Safety
-        /// The `display` pointer must be valid for `display_count` entries,
-        /// each pointing to a NUL-terminated C string (or null).
-        pub unsafe fn display_name(&self, idx: usize) -> Option<&str> {
-            if self.display.is_null() || idx >= self.display_count as usize {
-                return None;
-            }
-            // SAFETY: caller guarantees `self.display` is valid for `display_count`
-            // entries, each a NUL-terminated C string or null.
-            unsafe {
-                let ptr = *self.display.add(idx);
-                if ptr.is_null() {
-                    return None;
-                }
-                let cstr = std::ffi::CStr::from_ptr(ptr);
-                Some(cstr.to_str().unwrap_or("?"))
-            }
-        }
+    pub(crate) struct CFieldMeta {
+        pub(crate) offset: u16,
+        pub(crate) kind: u8,
+        pub(crate) name: *const std::ffi::c_char,
+        pub(crate) display: *const *const std::ffi::c_char,
+        pub(crate) display_count: u8,
     }
 }

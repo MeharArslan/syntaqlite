@@ -7,11 +7,10 @@
 //!
 //! `syntaqlite-syntax` wraps `SQLite`'s own tokenizer and grammar rules — extracted
 //! directly from `SQLite`'s source and verified by tests to match exactly — behind
-//! safe, zero-dependency Rust APIs. Four design principles guide the library
-//! (expanded on in the [Design principles](#design-principles) section below):
+//! safe, zero-dependency Rust APIs. Four design principles guide the library:
 //!
 //! - **Reliability** — uses `SQLite`'s own tokenizer and grammar rules directly; verified by tests to be identical to `SQLite`'s interpretation.
-//! - **Speed** — [`Tokenizer`] is zero-copy; [`Parser`] is minimal-copy and uses arena allocation allowing reuse across multiple SQL inputs.
+//! - **Speed** — [`Tokenizer`] is zero-copy; [`Parser`] is minimal-copy, uses arena allocation and can be reused across multiple SQL inputs.
 //! - **Portability** — no runtime dependencies in Rust or C beyond the standard library.
 //! - **Flexibility** — the grammar system supports database engines which extend `SQLite`'s grammar with their own tokens and rules.
 //!
@@ -40,31 +39,6 @@
 //! }
 //! ```
 //!
-//! # Design principles
-//!
-//! ## Reliability
-//!
-//! The tokenizer is extracted directly from `SQLite`'s source code, and the grammar
-//! rules are verified by tests to be identical to `SQLite`'s own Lemon grammar.
-//! The library tokenizes and parses SQL exactly as `SQLite` does.
-//!
-//! ## Speed
-//!
-//! [`Token::text`] is a zero-copy slice into the original source string.
-//! [`Parser`] reuses its internal arena across calls, so repeated parses avoid
-//! repeated allocation. Typed AST view structs are zero-sized arena pointers.
-//!
-//! ## Portability
-//!
-//! `syntaqlite-syntax`, like all code under the syntaqlite umbrella, has no
-//! runtime Rust dependencies and no C dependencies beyond the standard library.
-//! The only build-time dependency is [`cc`](https://crates.io/crates/cc).
-//!
-//! ## Flexibility
-//!
-//! Database engines which extend `SQLite` with additional syntax can provide their
-//! own grammar and reuse the same tokenization and parsing infrastructure.
-//!
 //! # Features
 //!
 //! - `sqlite` *(default)*: enables the built-in `SQLite` dialect
@@ -74,10 +48,12 @@
 
 // Top level parser types.
 #[cfg(feature = "sqlite")]
-pub use parser::{ParseError, ParseSession, Parser};
+#[doc(inline)]
+pub use parser::{ParseError, ParseSession, Parser, StatementResult};
 
 // Top-level tokenizer types.
 #[cfg(feature = "sqlite")]
+#[doc(inline)]
 pub use tokenizer::{Token, Tokenizer};
 
 /// AST accessor traits implemented by generated dialect types.
@@ -95,7 +71,10 @@ pub mod ast;
 /// Incremental parse session types.
 pub mod incremental;
 
-// TODO(claude): document this.
+/// Built-in `SQLite` dialect: AST types, token types, and grammar handle.
+///
+/// Use `sqlite::grammar::grammar()` to obtain a grammar handle and pass it to
+/// [`Tokenizer`] or [`Parser`].
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
 

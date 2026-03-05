@@ -5,7 +5,8 @@
 
 #![allow(clippy::type_complexity, missing_docs)]
 
-use crate::ast::{AnyNodeId, GrammarNodeType, TypedList};
+use crate::ast::{AnyNodeId, GrammarNodeType, TypedNodeList};
+use crate::grammar::TypedGrammar;
 
 /// Base variants of `LiteralType`. Used for exhaustive pattern matching in generic code.
 /// Grammar extensions that add variants beyond this set return `None` from `LiteralTypeLike::kind`.
@@ -544,8 +545,20 @@ pub trait AggregateFunctionCallView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn func_name(&self) -> &'a str;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::AggregateFunctionCallFlags;
-    fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
-    fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
+    fn args(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
+    fn orderby(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::OrderingTerm,
+        >,
+    >;
     fn filter_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn over_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::WindowDef>;
 }
@@ -556,7 +569,11 @@ pub trait OrderedSetFunctionCallView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn func_name(&self) -> &'a str;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::AggregateFunctionCallFlags;
-    fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn args(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
     fn orderby_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn filter_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn over_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::WindowDef>;
@@ -646,7 +663,15 @@ pub trait CaseExprView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn operand(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn else_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
-    fn whens(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::CaseWhen>>;
+    fn whens(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::CaseWhen,
+        >,
+    >;
 }
 
 /// Accessor trait for `CaseWhen` nodes.
@@ -662,7 +687,11 @@ pub trait ForeignKeyClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
     fn ref_table(&self) -> &'a str;
-    fn ref_columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn ref_columns(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
     fn on_delete(&self) -> <Self::Ast as AstTypes<'a>>::ForeignKeyAction;
     fn on_update(&self) -> <Self::Ast as AstTypes<'a>>::ForeignKeyAction;
     fn is_deferred(&self) -> bool;
@@ -691,7 +720,15 @@ pub trait ColumnDefView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn column_name(&self) -> &'a str;
     fn type_name(&self) -> &'a str;
-    fn constraints(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::ColumnConstraint>>;
+    fn constraints(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::ColumnConstraint,
+        >,
+    >;
 }
 
 /// Accessor trait for `TableConstraint` nodes.
@@ -702,8 +739,20 @@ pub trait TableConstraintView<'a>: Copy {
     fn constraint_name(&self) -> &'a str;
     fn onconf(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn is_autoincrement(&self) -> bool;
-    fn pk_columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
-    fn fk_columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn pk_columns(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::OrderingTerm,
+        >,
+    >;
+    fn fk_columns(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
     fn check_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn fk_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::ForeignKeyClause>;
 }
@@ -717,10 +766,24 @@ pub trait CreateTableStmtView<'a>: Copy {
     fn is_temp(&self) -> bool;
     fn if_not_exists(&self) -> bool;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::CreateTableStmtFlags;
-    fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::ColumnDef>>;
+    fn columns(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::ColumnDef,
+        >,
+    >;
     fn table_constraints(
         &self,
-    ) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::TableConstraint>>;
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::TableConstraint,
+        >,
+    >;
     fn as_select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
 
@@ -730,7 +793,11 @@ pub trait CteDefinitionView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn cte_name(&self) -> &'a str;
     fn materialized(&self) -> <Self::Ast as AstTypes<'a>>::Materialized;
-    fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn columns(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
 
@@ -739,7 +806,15 @@ pub trait WithClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
     fn recursive(&self) -> bool;
-    fn ctes(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::CteDefinition>>;
+    fn ctes(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::CteDefinition,
+        >,
+    >;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
 
@@ -749,7 +824,15 @@ pub trait DeleteStmtView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
     fn where_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
-    fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
+    fn orderby(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::OrderingTerm,
+        >,
+    >;
     fn limit_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::LimitClause>;
 }
 
@@ -758,7 +841,11 @@ pub trait SetClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
     fn column(&self) -> &'a str;
-    fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn columns(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
     fn value(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
 
@@ -769,10 +856,26 @@ pub trait UpdateStmtView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn conflict_action(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
-    fn setlist(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::SetClause>>;
+    fn setlist(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::SetClause,
+        >,
+    >;
     fn from_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn where_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
-    fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
+    fn orderby(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::OrderingTerm,
+        >,
+    >;
     fn limit_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::LimitClause>;
 }
 
@@ -782,7 +885,11 @@ pub trait InsertStmtView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn conflict_action(&self) -> <Self::Ast as AstTypes<'a>>::ConflictAction;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableRef>;
-    fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn columns(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
     fn source(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
 
@@ -817,7 +924,11 @@ pub trait FunctionCallView<'a>: Copy {
     fn node_id(&self) -> AnyNodeId;
     fn func_name(&self) -> &'a str;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::FunctionCallFlags;
-    fn args(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn args(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
     fn filter_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn over_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::WindowDef>;
 }
@@ -903,14 +1014,42 @@ pub trait SelectStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
     fn flags(&self) -> <Self::Ast as AstTypes<'a>>::SelectStmtFlags;
-    fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::ResultColumn>>;
+    fn columns(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::ResultColumn,
+        >,
+    >;
     fn from_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn where_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
-    fn groupby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn groupby(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
     fn having(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
-    fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
+    fn orderby(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::OrderingTerm,
+        >,
+    >;
     fn limit_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::LimitClause>;
-    fn window_clause(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::NamedWindowDef>>;
+    fn window_clause(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::NamedWindowDef,
+        >,
+    >;
 }
 
 /// Accessor trait for `OrderingTerm` nodes.
@@ -955,7 +1094,11 @@ pub trait JoinClauseView<'a>: Copy {
     fn left(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn right(&self) -> Option<<Self::Ast as AstTypes<'a>>::TableSource>;
     fn on_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
-    fn using_columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn using_columns(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
 }
 
 /// Accessor trait for `JoinPrefix` nodes.
@@ -971,7 +1114,11 @@ pub trait TriggerEventView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
     fn event_type(&self) -> <Self::Ast as AstTypes<'a>>::TriggerEventType;
-    fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn columns(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
 }
 
 /// Accessor trait for `CreateTriggerStmt` nodes.
@@ -986,7 +1133,11 @@ pub trait CreateTriggerStmtView<'a>: Copy {
     fn event(&self) -> Option<<Self::Ast as AstTypes<'a>>::TriggerEvent>;
     fn table(&self) -> Option<<Self::Ast as AstTypes<'a>>::QualifiedName>;
     fn when_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
-    fn body(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn body(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
 }
 
 /// Accessor trait for `CreateVirtualTableStmt` nodes.
@@ -1061,7 +1212,15 @@ pub trait CreateIndexStmtView<'a>: Copy {
     fn table_name(&self) -> &'a str;
     fn is_unique(&self) -> bool;
     fn if_not_exists(&self) -> bool;
-    fn columns(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
+    fn columns(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::OrderingTerm,
+        >,
+    >;
     fn where_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
 
@@ -1073,7 +1232,11 @@ pub trait CreateViewStmtView<'a>: Copy {
     fn schema(&self) -> &'a str;
     fn is_temp(&self) -> bool;
     fn if_not_exists(&self) -> bool;
-    fn column_names(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
+    fn column_names(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
 
@@ -1081,7 +1244,19 @@ pub trait CreateViewStmtView<'a>: Copy {
 pub trait ValuesClauseView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
-    fn rows(&self) -> Option<TypedList<'a, TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>>;
+    fn rows(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            TypedNodeList<
+                'a,
+                <Self::Ast as AstTypes<'a>>::Grammar,
+                <Self::Ast as AstTypes<'a>>::Node,
+            >,
+        >,
+    >;
 }
 
 /// Accessor trait for `FrameBound` nodes.
@@ -1107,8 +1282,20 @@ pub trait WindowDefView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
     fn base_window_name(&self) -> &'a str;
-    fn partition_by(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::Node>>;
-    fn orderby(&self) -> Option<TypedList<'a, <Self::Ast as AstTypes<'a>>::OrderingTerm>>;
+    fn partition_by(
+        &self,
+    ) -> Option<
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+    >;
+    fn orderby(
+        &self,
+    ) -> Option<
+        TypedNodeList<
+            'a,
+            <Self::Ast as AstTypes<'a>>::Grammar,
+            <Self::Ast as AstTypes<'a>>::OrderingTerm,
+        >,
+    >;
     fn frame(&self) -> Option<<Self::Ast as AstTypes<'a>>::FrameSpec>;
 }
 
@@ -1142,7 +1329,7 @@ pub enum SelectKind<'a, A: AstTypes<'a>> {
 /// Pattern-matching variants for `InExprSource`.
 #[derive(Clone, Copy)]
 pub enum InExprSourceKind<'a, A: AstTypes<'a>> {
-    ExprList(TypedList<'a, A::Node>),
+    ExprList(TypedNodeList<'a, A::Grammar, A::Node>),
     SubqueryExpr(A::SubqueryExpr),
     Other(A::Node),
 }
@@ -1241,6 +1428,7 @@ pub trait TableSourceLike<'a>: Copy {
 
 /// Bundle trait associating all AST types for a dialect.
 pub trait AstTypes<'a>: 'a {
+    type Grammar: TypedGrammar;
     type Node: NodeLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type Select: SelectLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type InExprSource: InExprSourceLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;

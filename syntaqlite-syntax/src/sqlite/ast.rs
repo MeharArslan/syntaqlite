@@ -9,7 +9,7 @@
     clippy::elidable_lifetime_names
 )]
 
-use crate::ast::{AnyNode, AnyNodeId, GrammarNodeType, TypedList, TypedNodeId};
+use crate::ast::{AnyNode, AnyNodeId, GrammarNodeType, TypedNodeId, TypedNodeList};
 use crate::parser::AnyStatementResult;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1364,7 +1364,7 @@ impl<'a> InExprSource<'a> {
     /// The arena node ID of this node.
     pub fn node_id(&self) -> AnyNodeId {
         match self {
-            InExprSource::ExprList(n) => n.node_id(),
+            InExprSource::ExprList(n) => n.node_id().into(),
             InExprSource::SubqueryExpr(n) => n.node_id(),
             InExprSource::Other(n) => n.node_id(),
         }
@@ -6108,14 +6108,14 @@ impl TypedNodeId for FilterOverId {
 }
 
 /// Typed list of `CaseWhen`.
-pub type CaseWhenList<'a> = TypedList<'a, CaseWhen<'a>>;
+pub type CaseWhenList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, CaseWhen<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CaseWhenListId(pub AnyNodeId);
 
 impl<'a> From<CaseWhenList<'a>> for CaseWhenListId {
     fn from(n: CaseWhenList<'a>) -> Self {
-        CaseWhenListId(n.node_id())
+        CaseWhenListId(n.node_id().into())
     }
 }
 
@@ -6130,14 +6130,15 @@ impl TypedNodeId for CaseWhenListId {
 }
 
 /// Typed list of `ColumnConstraint`.
-pub type ColumnConstraintList<'a> = TypedList<'a, ColumnConstraint<'a>>;
+pub type ColumnConstraintList<'a> =
+    TypedNodeList<'a, super::grammar::SqliteGrammar, ColumnConstraint<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ColumnConstraintListId(pub AnyNodeId);
 
 impl<'a> From<ColumnConstraintList<'a>> for ColumnConstraintListId {
     fn from(n: ColumnConstraintList<'a>) -> Self {
-        ColumnConstraintListId(n.node_id())
+        ColumnConstraintListId(n.node_id().into())
     }
 }
 
@@ -6152,14 +6153,14 @@ impl TypedNodeId for ColumnConstraintListId {
 }
 
 /// Typed list of `ColumnDef`.
-pub type ColumnDefList<'a> = TypedList<'a, ColumnDef<'a>>;
+pub type ColumnDefList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, ColumnDef<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ColumnDefListId(pub AnyNodeId);
 
 impl<'a> From<ColumnDefList<'a>> for ColumnDefListId {
     fn from(n: ColumnDefList<'a>) -> Self {
-        ColumnDefListId(n.node_id())
+        ColumnDefListId(n.node_id().into())
     }
 }
 
@@ -6174,14 +6175,15 @@ impl TypedNodeId for ColumnDefListId {
 }
 
 /// Typed list of `TableConstraint`.
-pub type TableConstraintList<'a> = TypedList<'a, TableConstraint<'a>>;
+pub type TableConstraintList<'a> =
+    TypedNodeList<'a, super::grammar::SqliteGrammar, TableConstraint<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TableConstraintListId(pub AnyNodeId);
 
 impl<'a> From<TableConstraintList<'a>> for TableConstraintListId {
     fn from(n: TableConstraintList<'a>) -> Self {
-        TableConstraintListId(n.node_id())
+        TableConstraintListId(n.node_id().into())
     }
 }
 
@@ -6196,14 +6198,14 @@ impl TypedNodeId for TableConstraintListId {
 }
 
 /// Typed list of `CteDefinition`.
-pub type CteList<'a> = TypedList<'a, CteDefinition<'a>>;
+pub type CteList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, CteDefinition<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CteListId(pub AnyNodeId);
 
 impl<'a> From<CteList<'a>> for CteListId {
     fn from(n: CteList<'a>) -> Self {
-        CteListId(n.node_id())
+        CteListId(n.node_id().into())
     }
 }
 
@@ -6218,14 +6220,14 @@ impl TypedNodeId for CteListId {
 }
 
 /// Typed list of `SetClause`.
-pub type SetClauseList<'a> = TypedList<'a, SetClause<'a>>;
+pub type SetClauseList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, SetClause<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct SetClauseListId(pub AnyNodeId);
 
 impl<'a> From<SetClauseList<'a>> for SetClauseListId {
     fn from(n: SetClauseList<'a>) -> Self {
-        SetClauseListId(n.node_id())
+        SetClauseListId(n.node_id().into())
     }
 }
 
@@ -6240,14 +6242,14 @@ impl TypedNodeId for SetClauseListId {
 }
 
 /// Typed list of `Expr`.
-pub type ExprList<'a> = TypedList<'a, Node<'a>>;
+pub type ExprList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, Node<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ExprListId(pub AnyNodeId);
 
 impl<'a> From<ExprList<'a>> for ExprListId {
     fn from(n: ExprList<'a>) -> Self {
-        ExprListId(n.node_id())
+        ExprListId(n.node_id().into())
     }
 }
 
@@ -6262,14 +6264,14 @@ impl TypedNodeId for ExprListId {
 }
 
 /// Typed list of `ResultColumn`.
-pub type ResultColumnList<'a> = TypedList<'a, ResultColumn<'a>>;
+pub type ResultColumnList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, ResultColumn<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ResultColumnListId(pub AnyNodeId);
 
 impl<'a> From<ResultColumnList<'a>> for ResultColumnListId {
     fn from(n: ResultColumnList<'a>) -> Self {
-        ResultColumnListId(n.node_id())
+        ResultColumnListId(n.node_id().into())
     }
 }
 
@@ -6284,14 +6286,14 @@ impl TypedNodeId for ResultColumnListId {
 }
 
 /// Typed list of `OrderingTerm`.
-pub type OrderByList<'a> = TypedList<'a, OrderingTerm<'a>>;
+pub type OrderByList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, OrderingTerm<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct OrderByListId(pub AnyNodeId);
 
 impl<'a> From<OrderByList<'a>> for OrderByListId {
     fn from(n: OrderByList<'a>) -> Self {
-        OrderByListId(n.node_id())
+        OrderByListId(n.node_id().into())
     }
 }
 
@@ -6306,14 +6308,14 @@ impl TypedNodeId for OrderByListId {
 }
 
 /// Typed list of `Stmt`.
-pub type TriggerCmdList<'a> = TypedList<'a, Node<'a>>;
+pub type TriggerCmdList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, Node<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TriggerCmdListId(pub AnyNodeId);
 
 impl<'a> From<TriggerCmdList<'a>> for TriggerCmdListId {
     fn from(n: TriggerCmdList<'a>) -> Self {
-        TriggerCmdListId(n.node_id())
+        TriggerCmdListId(n.node_id().into())
     }
 }
 
@@ -6328,14 +6330,14 @@ impl TypedNodeId for TriggerCmdListId {
 }
 
 /// Typed list of `ExprList`.
-pub type ValuesRowList<'a> = TypedList<'a, ExprList<'a>>;
+pub type ValuesRowList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, ExprList<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ValuesRowListId(pub AnyNodeId);
 
 impl<'a> From<ValuesRowList<'a>> for ValuesRowListId {
     fn from(n: ValuesRowList<'a>) -> Self {
-        ValuesRowListId(n.node_id())
+        ValuesRowListId(n.node_id().into())
     }
 }
 
@@ -6350,14 +6352,14 @@ impl TypedNodeId for ValuesRowListId {
 }
 
 /// Typed list of `WindowDef`.
-pub type WindowDefList<'a> = TypedList<'a, WindowDef<'a>>;
+pub type WindowDefList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, WindowDef<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct WindowDefListId(pub AnyNodeId);
 
 impl<'a> From<WindowDefList<'a>> for WindowDefListId {
     fn from(n: WindowDefList<'a>) -> Self {
-        WindowDefListId(n.node_id())
+        WindowDefListId(n.node_id().into())
     }
 }
 
@@ -6372,14 +6374,15 @@ impl TypedNodeId for WindowDefListId {
 }
 
 /// Typed list of `NamedWindowDef`.
-pub type NamedWindowDefList<'a> = TypedList<'a, NamedWindowDef<'a>>;
+pub type NamedWindowDefList<'a> =
+    TypedNodeList<'a, super::grammar::SqliteGrammar, NamedWindowDef<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct NamedWindowDefListId(pub AnyNodeId);
 
 impl<'a> From<NamedWindowDefList<'a>> for NamedWindowDefListId {
     fn from(n: NamedWindowDefList<'a>) -> Self {
-        NamedWindowDefListId(n.node_id())
+        NamedWindowDefListId(n.node_id().into())
     }
 }
 
@@ -6576,7 +6579,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::CaseWhenList => Node::CaseWhenList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::ForeignKeyClause => Node::ForeignKeyClause(ForeignKeyClause {
                     raw: &*ptr.cast::<super::ffi::ForeignKeyClause>(),
@@ -6589,7 +6592,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::ColumnConstraintList => Node::ColumnConstraintList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::ColumnDef => Node::ColumnDef(ColumnDef {
                     raw: &*ptr.cast::<super::ffi::ColumnDef>(),
@@ -6597,7 +6600,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::ColumnDefList => Node::ColumnDefList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::TableConstraint => Node::TableConstraint(TableConstraint {
                     raw: &*ptr.cast::<super::ffi::TableConstraint>(),
@@ -6605,7 +6608,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::TableConstraintList => Node::TableConstraintList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::CreateTableStmt => Node::CreateTableStmt(CreateTableStmt {
                     raw: &*ptr.cast::<super::ffi::CreateTableStmt>(),
@@ -6618,7 +6621,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::CteList => Node::CteList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::WithClause => Node::WithClause(WithClause {
                     raw: &*ptr.cast::<super::ffi::WithClause>(),
@@ -6636,7 +6639,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::SetClauseList => Node::SetClauseList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::UpdateStmt => Node::UpdateStmt(UpdateStmt {
                     raw: &*ptr.cast::<super::ffi::UpdateStmt>(),
@@ -6664,7 +6667,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::ExprList => Node::ExprList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::FunctionCall => Node::FunctionCall(FunctionCall {
                     raw: &*ptr.cast::<super::ffi::FunctionCall>(),
@@ -6717,7 +6720,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::ResultColumnList => Node::ResultColumnList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::SelectStmt => Node::SelectStmt(SelectStmt {
                     raw: &*ptr.cast::<super::ffi::SelectStmt>(),
@@ -6730,7 +6733,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::OrderByList => Node::OrderByList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::LimitClause => Node::LimitClause(LimitClause {
                     raw: &*ptr.cast::<super::ffi::LimitClause>(),
@@ -6763,7 +6766,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::TriggerCmdList => Node::TriggerCmdList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::CreateTriggerStmt => Node::CreateTriggerStmt(CreateTriggerStmt {
                     raw: &*ptr.cast::<super::ffi::CreateTriggerStmt>(),
@@ -6818,7 +6821,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::ValuesRowList => Node::ValuesRowList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::ValuesClause => Node::ValuesClause(ValuesClause {
                     raw: &*ptr.cast::<super::ffi::ValuesClause>(),
@@ -6841,7 +6844,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::WindowDefList => Node::WindowDefList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::NamedWindowDef => Node::NamedWindowDef(NamedWindowDef {
                     raw: &*ptr.cast::<super::ffi::NamedWindowDef>(),
@@ -6849,7 +6852,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::NamedWindowDefList => Node::NamedWindowDefList(
-                    TypedList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::FilterOver => Node::FilterOver(FilterOver {
                     raw: &*ptr.cast::<super::ffi::FilterOver>(),
@@ -6968,27 +6971,27 @@ impl<'a> Node<'a> {
             Node::LikeExpr(n) => n.node_id(),
             Node::CaseExpr(n) => n.node_id(),
             Node::CaseWhen(n) => n.node_id(),
-            Node::CaseWhenList(n) => n.node_id(),
+            Node::CaseWhenList(n) => n.node_id().into(),
             Node::ForeignKeyClause(n) => n.node_id(),
             Node::ColumnConstraint(n) => n.node_id(),
-            Node::ColumnConstraintList(n) => n.node_id(),
+            Node::ColumnConstraintList(n) => n.node_id().into(),
             Node::ColumnDef(n) => n.node_id(),
-            Node::ColumnDefList(n) => n.node_id(),
+            Node::ColumnDefList(n) => n.node_id().into(),
             Node::TableConstraint(n) => n.node_id(),
-            Node::TableConstraintList(n) => n.node_id(),
+            Node::TableConstraintList(n) => n.node_id().into(),
             Node::CreateTableStmt(n) => n.node_id(),
             Node::CteDefinition(n) => n.node_id(),
-            Node::CteList(n) => n.node_id(),
+            Node::CteList(n) => n.node_id().into(),
             Node::WithClause(n) => n.node_id(),
             Node::DeleteStmt(n) => n.node_id(),
             Node::SetClause(n) => n.node_id(),
-            Node::SetClauseList(n) => n.node_id(),
+            Node::SetClauseList(n) => n.node_id().into(),
             Node::UpdateStmt(n) => n.node_id(),
             Node::InsertStmt(n) => n.node_id(),
             Node::BinaryExpr(n) => n.node_id(),
             Node::UnaryExpr(n) => n.node_id(),
             Node::Literal(n) => n.node_id(),
-            Node::ExprList(n) => n.node_id(),
+            Node::ExprList(n) => n.node_id().into(),
             Node::FunctionCall(n) => n.node_id(),
             Node::Variable(n) => n.node_id(),
             Node::CollateExpr(n) => n.node_id(),
@@ -6999,17 +7002,17 @@ impl<'a> Node<'a> {
             Node::TransactionStmt(n) => n.node_id(),
             Node::SavepointStmt(n) => n.node_id(),
             Node::ResultColumn(n) => n.node_id(),
-            Node::ResultColumnList(n) => n.node_id(),
+            Node::ResultColumnList(n) => n.node_id().into(),
             Node::SelectStmt(n) => n.node_id(),
             Node::OrderingTerm(n) => n.node_id(),
-            Node::OrderByList(n) => n.node_id(),
+            Node::OrderByList(n) => n.node_id().into(),
             Node::LimitClause(n) => n.node_id(),
             Node::TableRef(n) => n.node_id(),
             Node::SubqueryTableSource(n) => n.node_id(),
             Node::JoinClause(n) => n.node_id(),
             Node::JoinPrefix(n) => n.node_id(),
             Node::TriggerEvent(n) => n.node_id(),
-            Node::TriggerCmdList(n) => n.node_id(),
+            Node::TriggerCmdList(n) => n.node_id().into(),
             Node::CreateTriggerStmt(n) => n.node_id(),
             Node::CreateVirtualTableStmt(n) => n.node_id(),
             Node::PragmaStmt(n) => n.node_id(),
@@ -7020,14 +7023,14 @@ impl<'a> Node<'a> {
             Node::ExplainStmt(n) => n.node_id(),
             Node::CreateIndexStmt(n) => n.node_id(),
             Node::CreateViewStmt(n) => n.node_id(),
-            Node::ValuesRowList(n) => n.node_id(),
+            Node::ValuesRowList(n) => n.node_id().into(),
             Node::ValuesClause(n) => n.node_id(),
             Node::FrameBound(n) => n.node_id(),
             Node::FrameSpec(n) => n.node_id(),
             Node::WindowDef(n) => n.node_id(),
-            Node::WindowDefList(n) => n.node_id(),
+            Node::WindowDefList(n) => n.node_id().into(),
             Node::NamedWindowDef(n) => n.node_id(),
-            Node::NamedWindowDefList(n) => n.node_id(),
+            Node::NamedWindowDefList(n) => n.node_id().into(),
             Node::FilterOver(n) => n.node_id(),
             Node::Other { id, .. } => *id,
         }
@@ -7049,6 +7052,12 @@ impl<'a> From<Node<'a>> for NodeId {
     }
 }
 
+impl From<AnyNodeId> for NodeId {
+    fn from(id: AnyNodeId) -> Self {
+        NodeId(id)
+    }
+}
+
 impl From<NodeId> for AnyNodeId {
     fn from(id: NodeId) -> AnyNodeId {
         id.0
@@ -7063,6 +7072,7 @@ impl TypedNodeId for NodeId {
 pub enum SqliteAst {}
 
 impl<'a> crate::ast_traits::AstTypes<'a> for SqliteAst {
+    type Grammar = super::grammar::SqliteGrammar;
     type Node = Node<'a>;
     type Select = Select<'a>;
     type InExprSource = InExprSource<'a>;
@@ -7183,27 +7193,27 @@ impl<'a> crate::ast_traits::NodeLike<'a> for Node<'a> {
             Node::LikeExpr(n) => n.node_id(),
             Node::CaseExpr(n) => n.node_id(),
             Node::CaseWhen(n) => n.node_id(),
-            Node::CaseWhenList(n) => n.node_id(),
+            Node::CaseWhenList(n) => n.node_id().into(),
             Node::ForeignKeyClause(n) => n.node_id(),
             Node::ColumnConstraint(n) => n.node_id(),
-            Node::ColumnConstraintList(n) => n.node_id(),
+            Node::ColumnConstraintList(n) => n.node_id().into(),
             Node::ColumnDef(n) => n.node_id(),
-            Node::ColumnDefList(n) => n.node_id(),
+            Node::ColumnDefList(n) => n.node_id().into(),
             Node::TableConstraint(n) => n.node_id(),
-            Node::TableConstraintList(n) => n.node_id(),
+            Node::TableConstraintList(n) => n.node_id().into(),
             Node::CreateTableStmt(n) => n.node_id(),
             Node::CteDefinition(n) => n.node_id(),
-            Node::CteList(n) => n.node_id(),
+            Node::CteList(n) => n.node_id().into(),
             Node::WithClause(n) => n.node_id(),
             Node::DeleteStmt(n) => n.node_id(),
             Node::SetClause(n) => n.node_id(),
-            Node::SetClauseList(n) => n.node_id(),
+            Node::SetClauseList(n) => n.node_id().into(),
             Node::UpdateStmt(n) => n.node_id(),
             Node::InsertStmt(n) => n.node_id(),
             Node::BinaryExpr(n) => n.node_id(),
             Node::UnaryExpr(n) => n.node_id(),
             Node::Literal(n) => n.node_id(),
-            Node::ExprList(n) => n.node_id(),
+            Node::ExprList(n) => n.node_id().into(),
             Node::FunctionCall(n) => n.node_id(),
             Node::Variable(n) => n.node_id(),
             Node::CollateExpr(n) => n.node_id(),
@@ -7214,17 +7224,17 @@ impl<'a> crate::ast_traits::NodeLike<'a> for Node<'a> {
             Node::TransactionStmt(n) => n.node_id(),
             Node::SavepointStmt(n) => n.node_id(),
             Node::ResultColumn(n) => n.node_id(),
-            Node::ResultColumnList(n) => n.node_id(),
+            Node::ResultColumnList(n) => n.node_id().into(),
             Node::SelectStmt(n) => n.node_id(),
             Node::OrderingTerm(n) => n.node_id(),
-            Node::OrderByList(n) => n.node_id(),
+            Node::OrderByList(n) => n.node_id().into(),
             Node::LimitClause(n) => n.node_id(),
             Node::TableRef(n) => n.node_id(),
             Node::SubqueryTableSource(n) => n.node_id(),
             Node::JoinClause(n) => n.node_id(),
             Node::JoinPrefix(n) => n.node_id(),
             Node::TriggerEvent(n) => n.node_id(),
-            Node::TriggerCmdList(n) => n.node_id(),
+            Node::TriggerCmdList(n) => n.node_id().into(),
             Node::CreateTriggerStmt(n) => n.node_id(),
             Node::CreateVirtualTableStmt(n) => n.node_id(),
             Node::PragmaStmt(n) => n.node_id(),
@@ -7235,14 +7245,14 @@ impl<'a> crate::ast_traits::NodeLike<'a> for Node<'a> {
             Node::ExplainStmt(n) => n.node_id(),
             Node::CreateIndexStmt(n) => n.node_id(),
             Node::CreateViewStmt(n) => n.node_id(),
-            Node::ValuesRowList(n) => n.node_id(),
+            Node::ValuesRowList(n) => n.node_id().into(),
             Node::ValuesClause(n) => n.node_id(),
             Node::FrameBound(n) => n.node_id(),
             Node::FrameSpec(n) => n.node_id(),
             Node::WindowDef(n) => n.node_id(),
-            Node::WindowDefList(n) => n.node_id(),
+            Node::WindowDefList(n) => n.node_id().into(),
             Node::NamedWindowDef(n) => n.node_id(),
-            Node::NamedWindowDefList(n) => n.node_id(),
+            Node::NamedWindowDefList(n) => n.node_id().into(),
             Node::FilterOver(n) => n.node_id(),
             Node::Other { id, .. } => *id,
         }

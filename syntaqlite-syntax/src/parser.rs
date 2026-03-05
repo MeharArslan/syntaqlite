@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::ast::{AnyDialect, AnyNode, AnyNodeId, ArenaNode, GrammarNodeType, NodeList};
+use crate::ast::{AnyDialect, AnyNodeId, ArenaNode, GrammarNodeType, RawNodeList};
 use crate::grammar::{AnyGrammar, TypedGrammar};
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -29,6 +29,7 @@ pub struct ParserConfig {
 /// `incremental_parse()`. Uses an interior-mutability checkout pattern so both
 /// methods take `&self` rather than `&mut self`.
 #[cfg(feature = "sqlite")]
+#[doc(hidden)]
 pub struct Parser(TypedParser<crate::sqlite::grammar::SqliteGrammar>);
 
 #[cfg(feature = "sqlite")]
@@ -83,8 +84,8 @@ impl Default for Parser {
 /// error recovery synchronises on `;`). Call `next_statement()` again to
 /// retrieve the next valid statement.
 ///
-/// On drop, the checked-out parser state is returned to the parent [`Parser`].
 #[cfg(feature = "sqlite")]
+#[doc(hidden)]
 pub struct ParseSession(TypedParseSession<crate::sqlite::grammar::SqliteGrammar>);
 
 #[cfg(feature = "sqlite")]
@@ -102,7 +103,7 @@ impl ParseSession {
     /// - `None` — all input has been consumed.
     pub fn next_statement(&mut self) -> Option<Result<StatementResult<'_>, ParseError<'_>>> {
         Some(match self.0.next_statement()? {
-            Ok(result) => Ok(result),
+            Ok(result) => Ok(StatementResult(result)),
             Err(err) => Err(ParseError(err)),
         })
     }
@@ -111,32 +112,93 @@ impl ParseSession {
     pub fn source(&self) -> &str {
         self.0.source()
     }
+}
 
-    /// The grammar for this session.
-    pub fn grammar(&self) -> AnyGrammar {
-        self.0.grammar()
+/// The result of a successfully parsed `SQLite` statement.
+/// Produced by [`ParseSession::next_statement`].
+#[cfg(feature = "sqlite")]
+#[doc(hidden)]
+pub struct StatementResult<'a>(
+    pub(crate) TypedStatementResult<'a, crate::sqlite::grammar::SqliteGrammar>,
+);
+
+#[cfg(feature = "sqlite")]
+impl<'a> StatementResult<'a> {
+    /// The typed root node for this statement, or `None` if unavailable.
+    pub fn root(&self) -> Option<crate::sqlite::ast::Stmt<'a>> {
+        self.0.root()
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn stmt_result(&self) -> AnyStatementResult<'_> {
-        self.0.stmt_result()
+    /// The source text bound to this result.
+    pub fn source(&self) -> &'a str {
+        self.0.source()
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn node_ref(&self, id: AnyNodeId) -> AnyNode<'_> {
-        self.0.node_ref(id)
+    /// Per-statement token positions. Requires `collect_tokens: true`.
+    pub fn tokens(&self) -> &'a [TokenPos] {
+        self.0.tokens()
+    }
+
+    /// Per-statement comments. Requires `collect_tokens: true`.
+    pub fn comments(&self) -> &'a [Comment] {
+        self.0.comments()
+    }
+
+    /// Whether this result has an associated parse error (RECOVERED case).
+    pub fn has_error(&self) -> bool {
+        self.0.has_error()
     }
 }
+
+/// A parse error from the `SQLite` dialect parser.
+///
+/// Obtain via [`ParseSession::next_statement`].
+#[cfg(feature = "sqlite")]
+#[doc(hidden)]
+pub struct ParseError<'a>(pub(crate) TypedParseError<'a, crate::sqlite::grammar::SqliteGrammar>);
+
+#[cfg(feature = "sqlite")]
+impl<'a> ParseError<'a> {
+    /// Returns the human-readable error message.
+    pub fn message(&self) -> &str {
+        self.0.message()
+    }
+    /// Returns the byte offset of the error token, or `None` if unknown.
+    pub fn offset(&self) -> Option<usize> {
+        self.0.offset()
+    }
+    /// Returns the byte length of the error token, or `None` if unknown.
+    pub fn length(&self) -> Option<usize> {
+        self.0.length()
+    }
+    /// Returns the partial recovery tree produced by error recovery, if any.
+    pub fn root(&self) -> Option<crate::sqlite::ast::Stmt<'a>> {
+        self.0.root()
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl std::fmt::Debug for ParseError<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl std::fmt::Display for ParseError<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl std::error::Error for ParseError<'_> {}
 
 /// A type-safe parser scoped to a specific dialect `G`.
 ///
 /// Yields [`TypedParseSession<G>`]s. For the common `SQLite` case use
 /// [`Parser`]. For dialect-agnostic use with raw grammars use [`AnyParser`].
 ///
-/// Uses an interior-mutability checkout pattern: `parse()` and
-/// `incremental_parse()` check out the C parser state at runtime, and the
-/// returned session returns it on drop. This allows both methods to take
-/// `&self` rather than `&mut self`.
 pub struct TypedParser<G: TypedGrammar> {
     inner: Rc<RefCell<Option<ParserInner>>>,
     grammar: AnyGrammar,
@@ -243,8 +305,6 @@ impl TypedParser<AnyDialect> {
 /// error recovery synchronises on `;`). Call `next_statement()` again to
 /// retrieve the next valid statement.
 ///
-/// On drop, the checked-out parser state is returned to the parent
-/// [`TypedParser`].
 pub struct TypedParseSession<G: TypedGrammar> {
     grammar: AnyGrammar,
     /// Checked-out parser state. Returned to `slot` on drop.
@@ -270,7 +330,12 @@ impl<G: TypedGrammar> TypedParseSession<G> {
     /// - `Some(Err(e))` — syntax error; call again to continue with subsequent
     ///   statements (Lemon recovers on `;`).
     /// - `None` — all input has been consumed.
-    pub(crate) fn next_statement(
+    ///
+    /// # Panics
+    ///
+    /// Panics if called after the session has been dropped or its inner state
+    /// has been reclaimed. This cannot happen in normal use.
+    pub fn next_statement(
         &mut self,
     ) -> Option<Result<TypedStatementResult<'_, G>, TypedParseError<'_, G>>> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
@@ -305,27 +370,13 @@ impl<G: TypedGrammar> TypedParseSession<G> {
         }
     }
 
-    /// Build a [`AnyStatementResult`] for the parser arena, borrowing source text
-    /// from the internal buffer.
-    ///
-    /// Lightweight (no allocation) — packages the raw parser pointer with a
-    /// `&str` view of the owned source buffer.
-    #[allow(dead_code)]
-    pub(crate) fn stmt_result(&self) -> AnyStatementResult<'_> {
-        let inner = self
-            .inner
-            .as_ref()
-            .expect("inner is Some while session is not finished");
-        let source_len = inner.source_buf.len().saturating_sub(1);
-        // SAFETY: source_buf was populated from valid UTF-8 (&str) in
-        // reset_parser. The first source_len bytes are the original source.
-        let source = unsafe { std::str::from_utf8_unchecked(&inner.source_buf[..source_len]) };
-        // SAFETY: inner.raw is valid (owned via ParserInner, not yet destroyed).
-        unsafe { TypedStatementResult::new(inner.raw.as_ptr(), source, self.grammar) }
-    }
-
     /// The source text bound to this session.
-    pub(crate) fn source(&self) -> &str {
+    ///
+    /// # Panics
+    ///
+    /// Panics if called after the session has been dropped or its inner state
+    /// has been reclaimed. This cannot happen in normal use.
+    pub fn source(&self) -> &str {
         let inner = self
             .inner
             .as_ref()
@@ -334,29 +385,6 @@ impl<G: TypedGrammar> TypedParseSession<G> {
         // SAFETY: source_buf was populated from valid UTF-8 (&str) in
         // reset_parser.
         unsafe { std::str::from_utf8_unchecked(&inner.source_buf[..source_len]) }
-    }
-
-    /// The grammar for this session.
-    pub(crate) fn grammar(&self) -> AnyGrammar {
-        self.grammar
-    }
-
-    /// Wrap a `AnyNodeId` into an [`AnyNode`] using this session's `stmt_result`.
-    #[allow(dead_code)]
-    pub(crate) fn node_ref(&self, id: AnyNodeId) -> AnyNode<'_> {
-        AnyNode {
-            id,
-            stmt_result: self.stmt_result(),
-        }
-    }
-
-    #[allow(dead_code)]
-    fn raw_ptr(&self) -> *mut CParser {
-        self.inner
-            .as_ref()
-            .expect("inner is Some while session is not finished")
-            .raw
-            .as_ptr()
     }
 }
 
@@ -370,11 +398,7 @@ pub type AnyParseSession = TypedParseSession<AnyDialect>;
 /// The result of a successfully parsed SQL statement from a [`TypedParseSession`].
 ///
 /// Provides typed access to the statement root, per-statement token/comment
-/// data, and semantic flags. Valid until the next call to
-/// [`TypedParseSession::next_statement`].
-///
-/// This is the primary result struct; [`AnyStatementResult`] is a type alias
-/// for `TypedStatementResult<'a, AnyDialect>`.
+/// data, and semantic flags.
 #[derive(Clone, Copy)]
 pub struct TypedStatementResult<'a, G: TypedGrammar> {
     pub(crate) raw: NonNull<CParser>,
@@ -398,7 +422,7 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
         }
     }
 
-    /// Erase the grammar type parameter, producing an [`AnyStatementResult`].
+    /// Erase the grammar type parameter.
     ///
     /// Required when passing this result to [`GrammarNodeType::from_arena`],
     /// which expects a type-erased `stmt_result`.
@@ -497,16 +521,16 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
         Some(unsafe { &*ptr.cast::<T>() })
     }
 
-    /// Resolve a `AnyNodeId` as a [`NodeList`] (for list nodes).
+    /// Resolve a `AnyNodeId` as a [`RawNodeList`] (for list nodes).
     /// Returns `None` if null or invalid.
-    pub(crate) fn resolve_list(&self, id: AnyNodeId) -> Option<&'a NodeList> {
+    pub(crate) fn resolve_list(&self, id: AnyNodeId) -> Option<&'a RawNodeList> {
         let (ptr, _) = self.node_ptr(id)?;
-        // SAFETY: ptr is valid for 'a. List nodes have NodeList layout
+        // SAFETY: ptr is valid for 'a. List nodes have RawNodeList layout
         // (tag, count, children[count]). The caller is responsible for
         // ensuring the id refers to a list node (enforced by codegen).
         // The arena guarantees alignment of all allocated nodes.
         #[allow(clippy::cast_ptr_alignment)]
-        Some(unsafe { &*ptr.cast::<NodeList>() })
+        Some(unsafe { &*ptr.cast::<RawNodeList>() })
     }
 
     /// Get a raw pointer to a node in the arena. Returns `(pointer, tag)`.
@@ -544,21 +568,15 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
     }
 }
 
-/// The result of a successfully parsed `SQLite` statement.
-/// Produced by [`ParseSession::next_statement`].
-#[cfg(feature = "sqlite")]
-pub(crate) type StatementResult<'a> =
-    TypedStatementResult<'a, crate::sqlite::grammar::SqliteGrammar>;
-
 /// A type-erased statement result. The grammar type parameter is fixed to [`AnyDialect`].
-pub(crate) type AnyStatementResult<'a> = TypedStatementResult<'a, AnyDialect>;
+pub type AnyStatementResult<'a> = TypedStatementResult<'a, AnyDialect>;
 
 /// A parse error with human-readable message, optional source location, and
 /// optionally a partial recovery tree. Parameterised by dialect grammar `G`.
 ///
 /// Obtain via [`ParseSession::next_statement`] or
 /// [`TypedParseSession::next_statement`].
-pub(crate) struct TypedParseError<'a, G: TypedGrammar>(TypedStatementResult<'a, G>);
+pub struct TypedParseError<'a, G: TypedGrammar>(TypedStatementResult<'a, G>);
 
 impl<'a, G: TypedGrammar> TypedParseError<'a, G> {
     pub(crate) fn new(result: TypedStatementResult<'a, G>) -> Self {
@@ -598,68 +616,11 @@ impl<G: TypedGrammar> std::fmt::Display for TypedParseError<'_, G> {
 
 impl<G: TypedGrammar> std::error::Error for TypedParseError<'_, G> {}
 
-/// A parse error from the `SQLite` dialect parser.
-///
-/// Obtain via [`ParseSession::next_statement`].
-#[cfg(feature = "sqlite")]
-pub struct ParseError<'a>(pub(crate) TypedParseError<'a, crate::sqlite::grammar::SqliteGrammar>);
-
-#[cfg(feature = "sqlite")]
-impl<'a> ParseError<'a> {
-    /// Returns the human-readable error message.
-    pub fn message(&self) -> &str {
-        self.0.message()
-    }
-    /// Returns the byte offset of the error token, or `None` if unknown.
-    pub fn offset(&self) -> Option<usize> {
-        self.0.offset()
-    }
-    /// Returns the byte length of the error token, or `None` if unknown.
-    pub fn length(&self) -> Option<usize> {
-        self.0.length()
-    }
-    /// Returns the partial recovery tree produced by error recovery, if any.
-    pub fn root(&self) -> Option<crate::sqlite::ast::Stmt<'a>> {
-        self.0.root()
-    }
-}
-
-#[cfg(feature = "sqlite")]
-impl std::fmt::Debug for ParseError<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-#[cfg(feature = "sqlite")]
-impl std::fmt::Display for ParseError<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
-#[cfg(feature = "sqlite")]
-impl std::error::Error for ParseError<'_> {}
+/// A type-erased parse error. Yields raw node types, suitable for use across
+/// multiple dialects.
+pub type AnyParseError<'a> = TypedParseError<'a, AnyDialect>;
 
 // ── Crate-internal ───────────────────────────────────────────────────────────
-
-/// A source span describing where an error node was recorded in the arena.
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct ErrorSpan {
-    pub(crate) offset: u32,
-    pub(crate) length: u32,
-}
-
-/// Internal parse error value — lifetime-free, used by the incremental API.
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub(crate) struct AnyParseError {
-    pub(crate) message: String,
-    pub(crate) offset: Option<usize>,
-    pub(crate) length: Option<usize>,
-    pub(crate) root: Option<AnyNodeId>,
-}
 
 /// Holds the C parser handle and mutable state. Checked out by sessions at
 /// runtime and returned on [`Drop`].

@@ -11,7 +11,7 @@ use crate::parser::AnyStatementResult;
 /// A node type that can be resolved from the parser arena by [`AnyNodeId`].
 ///
 /// Implemented by generated view structs so that generic containers like
-/// [`TypedList`] can resolve children without dialect-specific code.
+/// [`TypedNodeList`] can resolve children without dialect-specific code.
 ///
 /// See also the symmetric [`GrammarTokenType`] for token enums.
 pub trait GrammarNodeType<'a>: Sized {
@@ -59,8 +59,7 @@ impl AnyNodeId {
 /// A grammar-agnostic AST node used by [`AnyDialect`].
 ///
 /// Wraps the node's arena ID and parser `stmt_result` so that callers can inspect
-/// the node without a grammar-specific type. Obtain via
-/// [`AnyStatementCursor::next_statement`](crate::parser::AnyStatementCursor).
+/// the node without a grammar-specific type.
 #[derive(Clone, Copy)]
 pub struct AnyNode<'a> {
     pub(crate) id: AnyNodeId,
@@ -89,7 +88,7 @@ impl AnyNode<'_> {
 
 /// A type-erasing dialect for use with [`TypedTokenizer`](crate::tokenizer::TypedTokenizer)
 /// and [`TypedParser`](crate::parser::TypedParser) when no specific dialect is
-/// needed. Wraps a [`AnyGrammar`] directly.
+/// needed. Wraps a raw grammar handle directly.
 #[derive(Clone, Copy)]
 pub struct AnyDialect {
     /// The underlying grammar handle.
@@ -98,36 +97,37 @@ pub struct AnyDialect {
 
 impl crate::grammar::TypedGrammar for AnyDialect {
     type Node<'a> = AnyNode<'a>;
+    type NodeId = AnyNodeId;
     type Token = u32;
     fn raw(&mut self) -> &mut AnyGrammar {
         &mut self.raw
     }
 }
 
-/// A typed, read-only view over a [`NodeList`] in the parser arena.
+/// A typed, read-only view over a node list in the parser arena.
 ///
-/// `T` is the element type — a generated view struct, another [`TypedList`],
-/// or [`Node<'a>`] for heterogeneous lists.
+/// `G` is the dialect grammar; `T` is the element type — a generated view
+/// struct, another [`TypedNodeList`], or a heterogeneous node type.
 #[derive(Clone, Copy)]
-pub struct TypedList<'a, T> {
-    raw: &'a NodeList,
+pub struct TypedNodeList<'a, G: crate::grammar::TypedGrammar, T> {
+    raw: &'a RawNodeList,
     stmt_result: AnyStatementResult<'a>,
     id: AnyNodeId,
-    _phantom: PhantomData<fn() -> T>,
+    _phantom: PhantomData<fn() -> (G, T)>,
 }
 
-impl<T> std::fmt::Debug for TypedList<'_, T> {
+impl<G: crate::grammar::TypedGrammar, T> std::fmt::Debug for TypedNodeList<'_, G, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TypedList")
+        f.debug_struct("TypedNodeList")
             .field("len", &self.raw.children().len())
             .finish()
     }
 }
 
-impl<T> TypedList<'_, T> {
-    /// The arena node ID of this list.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+impl<G: crate::grammar::TypedGrammar, T> TypedNodeList<'_, G, T> {
+    /// The arena node ID of this list, as the grammar's typed node ID.
+    pub fn node_id(&self) -> G::NodeId {
+        G::NodeId::from(self.id)
     }
 
     /// Number of children.
@@ -141,7 +141,7 @@ impl<T> TypedList<'_, T> {
     }
 }
 
-impl<'a, T: GrammarNodeType<'a>> TypedList<'a, T> {
+impl<'a, G: crate::grammar::TypedGrammar, T: GrammarNodeType<'a>> TypedNodeList<'a, G, T> {
     /// Get a child by index, or `None` if out of bounds or unresolvable.
     pub fn get(&self, index: usize) -> Option<T> {
         let id = *self.raw.children().get(index)?;
@@ -163,9 +163,7 @@ impl<'a, T: GrammarNodeType<'a>> TypedList<'a, T> {
 /// Generated as `XxxId` newtypes (e.g. `SelectStmtId`) for each concrete view
 /// struct. Can be stored without keeping a parser arena alive.
 ///
-/// Resolve back to a typed view with
-/// [`StatementCursor::node_ref`](crate::parser::StatementCursor::node_ref) or
-/// [`IncrementalCursor::node_ref`](crate::incremental::IncrementalCursor::node_ref).
+/// Resolve back to a typed view using the arena from a parse session.
 pub trait TypedNodeId: Copy + Into<AnyNodeId> {
     /// The typed view produced when this ID is resolved against an arena.
     type Node<'a>: GrammarNodeType<'a>;
@@ -173,11 +171,11 @@ pub trait TypedNodeId: Copy + Into<AnyNodeId> {
 
 // ── Crate-internal ───────────────────────────────────────────────────────────
 
-/// Blanket [`GrammarNodeType`] impl for [`TypedList`] — resolves the ID as a list node.
-impl<'a, T> GrammarNodeType<'a> for TypedList<'a, T> {
+/// Blanket [`GrammarNodeType`] impl for [`TypedNodeList`] — resolves the ID as a list node.
+impl<'a, G: crate::grammar::TypedGrammar, T> GrammarNodeType<'a> for TypedNodeList<'a, G, T> {
     fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_list(id)?;
-        Some(TypedList {
+        Some(TypedNodeList {
             raw,
             stmt_result,
             id,
@@ -273,7 +271,7 @@ pub(crate) const FIELD_ENUM: u8 = 4;
 
 // ── ffi ───────────────────────────────────────────────────────────────────────
 
-pub(crate) use ffi::{CNodeList as NodeList, CSourceSpan as SourceSpan};
+pub(crate) use ffi::{CNodeList as RawNodeList, CSourceSpan as SourceSpan};
 
 mod ffi {
     use crate::ast::AnyNodeId;

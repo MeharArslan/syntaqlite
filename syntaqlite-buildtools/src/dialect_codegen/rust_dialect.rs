@@ -106,6 +106,7 @@ impl {grammar_struct} {{
 
 impl TypedGrammar for {grammar_struct} {{
     type Node<'a> = super::ast::{root_node}<'a>;
+    type NodeId = super::ast::NodeId;
     type Token = super::tokens::{token_type};
 
     fn raw(&mut self) -> &mut AnyGrammar {{

@@ -10,22 +10,21 @@ use std::rc::Rc;
 use crate::ast::{AnyDialect, AnyNode, AnyNodeId};
 use crate::grammar::{AnyGrammar, TypedGrammar};
 use crate::parser::{
-    AnyStatementResult, CParser, MacroRegion, ParserInner, TypedParseError, TypedStatementResult,
+    AnyStatementResult, CParser, Comment, MacroRegion, ParserInner, TokenPos, TypedParseError,
+    TypedStatementResult,
 };
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
 /// A type-safe incremental parse session for a specific dialect `G`.
 ///
-/// Feed tokens one at a time via [`feed_token`](Self::feed_token) and signal
-/// end of input with [`finish`](Self::finish).
+/// Feed tokens one at a time via `feed_token` and signal
+/// end of input with `finish`.
 ///
 /// For the `SQLite` dialect use [`IncrementalParseSession`]. For dialect-agnostic
 /// use with raw grammars use [`AnyIncrementalParseSession`].
 ///
-/// Obtained via [`TypedParser::incremental_parse`](crate::parser::TypedParser::incremental_parse).
-/// On drop, the checked-out parser state is returned to the parent
-/// [`TypedParser`](crate::parser::TypedParser).
+/// Obtained via `TypedParser::incremental_parse`.
 pub struct TypedIncrementalParseSession<G: TypedGrammar> {
     /// Base pointer into the internal source buffer. `feed_token` uses this
     /// to compute the C-side token pointer from byte-offset spans.
@@ -75,7 +74,11 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
     }
 
     fn raw_ptr(&self) -> *mut CParser {
-        self.inner.as_ref().expect("inner taken after finish()").raw.as_ptr()
+        self.inner
+            .as_ref()
+            .expect("inner taken after finish()")
+            .raw
+            .as_ptr()
     }
 
     /// Build a typed [`TypedStatementResult`] for the current parser arena.
@@ -241,14 +244,14 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
     }
 
     /// Return all comments captured during parsing.
-    pub(crate) fn comments(&self) -> &[crate::parser::Comment] {
+    pub(crate) fn comments(&self) -> &[Comment] {
         self.stmt_result().comments()
     }
 
     /// Return all token positions collected during parsing.
     ///
     /// Only populated when the parser was built with `collect_tokens: true`.
-    pub(crate) fn tokens(&self) -> &[crate::parser::TokenPos] {
+    pub(crate) fn tokens(&self) -> &[TokenPos] {
         self.stmt_result().tokens()
     }
 
@@ -260,15 +263,15 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
     }
 }
 
-/// A type-erased incremental parse session. Yields [`AnyStatementResult`]s
-/// with raw node types, suitable for use across multiple dialects.
+/// A type-erased incremental parse session.
+/// Yields type-erased statement results with raw node types, suitable for use across multiple dialects.
 pub type AnyIncrementalParseSession = TypedIncrementalParseSession<AnyDialect>;
 
 /// An incremental parse session for the `SQLite` dialect. Produced by
 /// [`Parser::incremental_parse`](crate::parser::Parser::incremental_parse).
 ///
-/// Feed tokens one at a time via [`feed_token`](Self::feed_token) and signal
-/// end of input with [`finish`](Self::finish).
+/// Feed tokens one at a time via `feed_token` and signal
+/// end of input with `finish`.
 ///
 /// On drop, the checked-out parser state is returned to the parent
 /// [`Parser`](crate::parser::Parser).
@@ -293,7 +296,7 @@ impl IncrementalParseSession {
         span: Range<usize>,
     ) -> Option<Result<crate::parser::StatementResult<'_>, crate::parser::ParseError<'_>>> {
         Some(match self.0.feed_token(token_type, span)? {
-            Ok(result) => Ok(result),
+            Ok(result) => Ok(crate::parser::StatementResult(result)),
             Err(err) => Err(crate::parser::ParseError(err)),
         })
     }
@@ -311,7 +314,7 @@ impl IncrementalParseSession {
         &mut self,
     ) -> Option<Result<crate::parser::StatementResult<'_>, crate::parser::ParseError<'_>>> {
         Some(match self.0.finish()? {
-            Ok(result) => Ok(result),
+            Ok(result) => Ok(crate::parser::StatementResult(result)),
             Err(err) => Err(crate::parser::ParseError(err)),
         })
     }
@@ -352,11 +355,11 @@ impl IncrementalParseSession {
         self.0.node_ref(id)
     }
 
-    pub(crate) fn comments(&self) -> &[crate::parser::Comment] {
+    pub(crate) fn comments(&self) -> &[Comment] {
         self.0.comments()
     }
 
-    pub(crate) fn tokens(&self) -> &[crate::parser::TokenPos] {
+    pub(crate) fn tokens(&self) -> &[TokenPos] {
         self.0.tokens()
     }
 

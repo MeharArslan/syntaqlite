@@ -447,6 +447,10 @@ pub(crate) struct RustAstPaths<'a> {
     /// Path to the zero-argument function that returns `TypedDialectEnv<'static>`,
     /// e.g. `"crate::dialect::dialect"`. Used in generated `Display` impls.
     pub grammar_fn_path: &'a str,
+    /// Fully-qualified path to the dialect grammar struct, e.g.
+    /// `"super::grammar::SqliteGrammar"`. Used as the `G` parameter in
+    /// `TypedNodeList<'a, G, T>` type aliases emitted into `ast.rs`.
+    pub grammar_type: &'a str,
 }
 
 /// Generate Rust source for the FFI layer (`ffi.rs`).
@@ -525,6 +529,7 @@ impl AstModel<'_> {
     ) -> String {
         let crate_prefix = paths.crate_prefix;
         let ffi_path = paths.ffi_path;
+        let grammar_type = paths.grammar_type;
         let _dialect_fn_path = paths.grammar_fn_path;
         let traits_path = format!("{crate_prefix}::ast_traits");
         let enum_names = self.enum_names();
@@ -544,7 +549,7 @@ impl AstModel<'_> {
         }
         w.lines(&format!(
             "
-        use {crate_prefix}::ast::{{TypedNodeId, AnyNodeId, AnyNode, GrammarNodeType, TypedList}};
+        use {crate_prefix}::ast::{{TypedNodeId, AnyNodeId, AnyNode, GrammarNodeType, TypedNodeList}};
         use {crate_prefix}::parser::AnyStatementResult;
         "
         ));
@@ -602,8 +607,10 @@ impl AstModel<'_> {
             w.open_block("pub fn node_id(&self) -> AnyNodeId {");
             w.open_block("match self {");
             for member in members {
-                if node_names.contains(member.as_str()) || list_names.contains(member.as_str()) {
+                if node_names.contains(member.as_str()) {
                     w.line(&format!("{abs_name}::{member}(n) => n.node_id(),"));
+                } else if list_names.contains(member.as_str()) {
+                    w.line(&format!("{abs_name}::{member}(n) => n.node_id().into(),"));
                 }
             }
             w.line(&format!("{abs_name}::Other(n) => n.node_id(),"));
@@ -775,7 +782,7 @@ impl AstModel<'_> {
             };
             w.doc_comment(&format!("Typed list of `{child_type}`."));
             w.line(&format!(
-                "pub type {name}<'a> = TypedList<'a, {element_type}>;"
+                "pub type {name}<'a> = TypedNodeList<'a, {grammar_type}, {element_type}>;"
             ));
             w.newline();
 
@@ -785,7 +792,7 @@ impl AstModel<'_> {
             w.newline();
             w.open_block(&format!("impl<'a> From<{name}<'a>> for {name}Id {{"));
             w.line(&format!(
-                "fn from(n: {name}<'a>) -> Self {{ {name}Id(n.node_id()) }}"
+                "fn from(n: {name}<'a>) -> Self {{ {name}Id(n.node_id().into()) }}"
             ));
             w.close_block("}");
             w.newline();
@@ -851,7 +858,7 @@ impl AstModel<'_> {
                 }
                 NodeLikeRef::List(list) => {
                     let name = list.name;
-                    w.line(&format!("NodeTag::{name} => Node::{name}(TypedList::from_arena(stmt_result, id).expect(\"list tag invariant\")),"));
+                    w.line(&format!("NodeTag::{name} => Node::{name}(TypedNodeList::from_arena(stmt_result, id).expect(\"list tag invariant\")),"));
                 }
             }
         }
@@ -896,7 +903,7 @@ impl AstModel<'_> {
                     w.line(&format!("Node::{}(n) => n.node_id(),", node.name));
                 }
                 NodeLikeRef::List(list) => {
-                    w.line(&format!("Node::{}(n) => n.node_id(),", list.name));
+                    w.line(&format!("Node::{}(n) => n.node_id().into(),", list.name));
                 }
             }
         }
@@ -933,6 +940,10 @@ impl AstModel<'_> {
         w.line("fn from(n: Node<'a>) -> Self { NodeId(n.node_id()) }");
         w.close_block("}");
         w.newline();
+        w.open_block("impl From<AnyNodeId> for NodeId {");
+        w.line("fn from(id: AnyNodeId) -> Self { NodeId(id) }");
+        w.close_block("}");
+        w.newline();
         w.open_block("impl From<NodeId> for AnyNodeId {");
         w.line("fn from(id: NodeId) -> AnyNodeId { id.0 }");
         w.close_block("}");
@@ -957,6 +968,7 @@ impl AstModel<'_> {
         w.open_block(&format!(
             "impl<'a> {traits_path}::AstTypes<'a> for {marker} {{"
         ));
+        w.line(&format!("type Grammar = {grammar_type};"));
         w.line("type Node = Node<'a>;");
         for &(abs_name, _) in abstract_items {
             w.line(&format!("type {abs_name} = {abs_name}<'a>;"));
@@ -990,7 +1002,7 @@ impl AstModel<'_> {
                     w.line(&format!("Node::{}(n) => n.node_id(),", node.name));
                 }
                 NodeLikeRef::List(list) => {
-                    w.line(&format!("Node::{}(n) => n.node_id(),", list.name));
+                    w.line(&format!("Node::{}(n) => n.node_id().into(),", list.name));
                 }
             }
         }
@@ -1072,13 +1084,13 @@ fn resolve_kind_enum_list_type(
         .expect("list not found in model");
     let child = list.child_type;
     if node_names.contains(child) {
-        format!("TypedList<'a, A::{child}>")
+        format!("TypedNodeList<'a, A::Grammar, A::{child}>")
     } else if list_names.contains(child) {
         let inner = resolve_kind_enum_list_type(child, node_names, list_names, lists);
-        format!("TypedList<'a, {inner}>")
+        format!("TypedNodeList<'a, A::Grammar, {inner}>")
     } else {
         // Abstract or unknown child → Node
-        "TypedList<'a, A::Node>".to_string()
+        "TypedNodeList<'a, A::Grammar, A::Node>".to_string()
     }
 }
 
@@ -1101,7 +1113,7 @@ fn resolve_generic_element_type(
             .find(|l| l.name == child_type)
             .expect("list not found in model");
         let inner = resolve_generic_element_type(list.child_type, node_names, list_names, lists);
-        format!("TypedList<'a, {inner}>")
+        format!("TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, {inner}>")
     } else {
         // Abstract child type → use Node
         "<Self::Ast as AstTypes<'a>>::Node".to_string()
@@ -1128,7 +1140,9 @@ fn trait_field_return_type(
                     .expect("list not found in model");
                 let element =
                     resolve_generic_element_type(list.child_type, node_names, list_names, lists);
-                format!("Option<TypedList<'a, {element}>>")
+                format!(
+                    "Option<TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, {element}>>"
+                )
             } else if node_names.contains(t) || abstract_names.contains(t) {
                 format!("Option<<Self::Ast as AstTypes<'a>>::{t}>")
             } else {
@@ -1176,7 +1190,8 @@ impl AstModel<'_> {
             "
         #![allow(clippy::type_complexity, missing_docs)]
 
-        use crate::ast::{GrammarNodeType, AnyNodeId, TypedList};
+        use crate::ast::{GrammarNodeType, AnyNodeId, TypedNodeList};
+        use crate::grammar::TypedGrammar;
     ",
         );
         w.newline();
@@ -1268,6 +1283,7 @@ impl AstModel<'_> {
         // ── AstTypes supertrait ──
         w.doc_comment("Bundle trait associating all AST types for a dialect.");
         w.open_block("pub trait AstTypes<'a>: 'a {");
+        w.line("type Grammar: TypedGrammar;");
         w.line("type Node: NodeLike<'a, Ast = Self> + Copy + GrammarNodeType<'a>;");
         for &(abs_name, _) in abstract_items {
             w.line(&format!(

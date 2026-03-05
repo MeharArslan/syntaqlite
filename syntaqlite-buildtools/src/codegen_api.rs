@@ -515,12 +515,14 @@ pub(crate) fn generate_codegen_artifacts(
     let rust = if request.include_rust {
         // All generated Rust files import from `crate` directly (they live
         // inside syntaqlite-syntax/src/sqlite/).
+        let grammar_type = format!("super::grammar::{}", request.dialect.grammar_struct_type());
         let rust_paths = RustAstPaths {
             crate_prefix: "crate",
             // ffi_path: dialect-specific FFI structs live in the sibling ffi module.
             ffi_path: "super::ffi",
             nodes_path: "crate::ast",
             grammar_fn_path: "super::grammar::grammar",
+            grammar_type: &grammar_type,
         };
         Some(RustCodegenArtifacts {
             tokens_rs: generate_rust_tokens(&token_defines[..], &request.dialect.token_type_name()),
