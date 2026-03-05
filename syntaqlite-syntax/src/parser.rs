@@ -147,6 +147,7 @@ impl ParseSession {
     ///   Call again to continue with subsequent statements (Lemon recovers
     ///   on `;`).
     /// - `None` — all input has been consumed.
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<Result<ParsedStatement<'_>, ParseError<'_>>> {
         Some(match self.0.next()? {
             Ok(result) => Ok(ParsedStatement(result)),
@@ -437,6 +438,7 @@ impl<G: TypedGrammar> TypedParseSession<G> {
     ///
     /// Panics if called after the session has been dropped or its inner state
     /// has been reclaimed. This cannot happen in normal use.
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> Option<Result<TypedParsedStatement<'_, G>, TypedParseError<'_, G>>> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         let rc = unsafe {
@@ -1211,6 +1213,10 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
     ///
     /// `span` describes the macro call's byte range in the original source.
     /// Calls may nest (for nested macro expansions).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `span.start` or `span.len()` does not fit in `u32`.
     pub fn begin_macro(&mut self, span: Range<usize>) {
         self.assert_not_finished();
         let call_offset = u32::try_from(span.start).expect("macro span start exceeds u32");
@@ -1277,7 +1283,8 @@ impl IncrementalParseSession {
     /// - `Some(Ok(result))` — statement parsed cleanly.
     /// - `Some(Err(e))` — parse error; `e.root()` may contain a partial
     ///   recovery tree.
-    /// `span` is a byte range into the source text bound by this session.
+    ///
+    /// - `span` is a byte range into the source text bound by this session.
     pub fn feed_token(
         &mut self,
         token_type: crate::sqlite::tokens::TokenType,
@@ -1482,7 +1489,7 @@ mod ffi {
         ) -> *mut Self {
             // SAFETY: mem may be null (use default allocator); grammar is a
             // valid grammar handle passed by the caller.
-            unsafe { syntaqlite_create_parser_with_grammar(mem, grammar) }
+            unsafe { syntaqlite_parser_create_with_grammar(mem, grammar) }
         }
 
         pub(crate) unsafe fn set_trace(&mut self, enable: u32) -> i32 {
@@ -1508,7 +1515,7 @@ mod ffi {
 
         pub(crate) unsafe fn destroy(this: *mut Self) {
             // SAFETY: this is a valid CParser pointer previously created by
-            // `syntaqlite_create_parser_with_grammar` and not yet destroyed.
+            // `syntaqlite_parser_create_with_grammar` and not yet destroyed.
             unsafe { syntaqlite_parser_destroy(this) }
         }
 
@@ -1669,7 +1676,7 @@ mod ffi {
 
     unsafe extern "C" {
         // Parser lifecycle
-        fn syntaqlite_create_parser_with_grammar(
+        fn syntaqlite_parser_create_with_grammar(
             mem: *const CMemMethods,
             grammar: crate::grammar::ffi::CGrammar,
         ) -> *mut CParser;

@@ -33,11 +33,11 @@ use syntaqlite_parser::DialectEnv;
 /// Runs a JSON-RPC message loop on stdin/stdout, driving an [`LspHost`]
 /// for all analysis requests.  Exits cleanly when the client sends a
 /// `shutdown` request.
-pub struct LspServer;
+pub(crate) struct LspServer;
 
 impl LspServer {
     /// Start the LSP server bound to `dialect` and block until shutdown.
-    pub fn run(dialect: DialectEnv<'_>) -> Result<(), Box<dyn Error + Sync + Send>> {
+    pub(crate) fn run(dialect: DialectEnv<'_>) -> Result<(), Box<dyn Error + Sync + Send>> {
         let (connection, io_threads) = Connection::stdio();
 
         let server_capabilities = serde_json::to_value(ServerCapabilities {

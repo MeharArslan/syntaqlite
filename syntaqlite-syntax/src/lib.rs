@@ -194,3 +194,137 @@ pub(crate) mod tokenizer;
 
 #[cfg(feature = "sqlite")]
 pub(crate) mod sqlite;
+
+#[cfg(all(test, feature = "sqlite"))]
+mod tests {
+    use std::ffi::CString;
+    use std::panic::{self, AssertUnwindSafe};
+
+    use super::{CommentKind, ParseErrorKind, Parser, ParserConfig, TokenType, Tokenizer};
+
+    #[test]
+    fn tokenizer_emits_expected_core_tokens() {
+        let tokenizer = Tokenizer::new();
+        let tokens: Vec<_> = tokenizer
+            .tokenize("SELECT x, 1 FROM t;")
+            .filter(|token| !matches!(token.token_type(), TokenType::Space | TokenType::Comment))
+            .map(|token| (token.token_type(), token.text().to_owned()))
+            .collect();
+
+        assert_eq!(
+            tokens,
+            vec![
+                (TokenType::Select, "SELECT".to_owned()),
+                (TokenType::Id, "x".to_owned()),
+                (TokenType::Comma, ",".to_owned()),
+                (TokenType::Integer, "1".to_owned()),
+                (TokenType::From, "FROM".to_owned()),
+                (TokenType::Id, "t".to_owned()),
+                (TokenType::Semi, ";".to_owned()),
+            ]
+        );
+    }
+
+    #[test]
+    fn tokenizer_cstr_matches_str_path() {
+        let source = CString::new("SELECT 1;").expect("source has no interior NUL");
+        let tokenizer = Tokenizer::new();
+
+        let from_str: Vec<_> = tokenizer
+            .tokenize(source.to_str().expect("source is UTF-8"))
+            .map(|token| (token.token_type(), token.text().to_owned()))
+            .collect();
+
+        let from_cstr: Vec<_> = tokenizer
+            .tokenize_cstr(source.as_c_str())
+            .map(|token| (token.token_type(), token.text().to_owned()))
+            .collect();
+
+        assert_eq!(from_str, from_cstr);
+    }
+
+    #[test]
+    fn tokenizer_allows_only_one_live_cursor() {
+        let tokenizer = Tokenizer::new();
+        let mut cursor = tokenizer.tokenize("SELECT 1;");
+        assert!(cursor.next().is_some());
+
+        let reentrant_attempt = panic::catch_unwind(AssertUnwindSafe(|| {
+            let _cursor = tokenizer.tokenize("SELECT 2;");
+        }));
+        assert!(reentrant_attempt.is_err());
+
+        drop(cursor);
+        let second_count = tokenizer.tokenize("SELECT 2;").count();
+        assert!(second_count > 0);
+    }
+
+    #[test]
+    fn parser_continues_after_statement_error() {
+        let parser = Parser::new();
+        let mut session = parser.parse("SELECT 1; SELECT ; SELECT 2;");
+
+        let first = session.next().expect("first statement is present");
+        assert!(matches!(first, Ok(statement) if statement.root().is_some()));
+
+        let second = session.next().expect("second statement is present");
+        let error = match second {
+            Ok(_) => panic!("second statement should fail"),
+            Err(error) => error,
+        };
+        assert!(!error.message().is_empty());
+        assert_ne!(error.is_fatal(), error.is_recovered());
+        assert!(matches!(
+            error.kind(),
+            ParseErrorKind::Recovered | ParseErrorKind::Fatal
+        ));
+
+        let third = session.next().expect("third statement is present");
+        assert!(matches!(third, Ok(statement) if statement.root().is_some()));
+        assert!(session.next().is_none());
+    }
+
+    #[test]
+    fn parser_collect_tokens_and_comments() {
+        let parser = Parser::with_config(&ParserConfig::default().with_collect_tokens(true));
+        let mut session = parser.parse("/* lead */ SELECT 1 -- tail\n;");
+
+        let statement = session
+            .next()
+            .expect("statement is present")
+            .expect("statement parses successfully");
+
+        let token_types: Vec<_> = statement.tokens().map(|token| token.token_type()).collect();
+        assert!(token_types.contains(&TokenType::Select));
+        assert!(token_types.contains(&TokenType::Integer));
+
+        let comments: Vec<_> = statement.comments().collect();
+        assert!(
+            comments
+                .iter()
+                .any(|comment| comment.kind == CommentKind::Block && comment.text.contains("lead"))
+        );
+        assert!(
+            comments
+                .iter()
+                .any(|comment| comment.kind == CommentKind::Line && comment.text.contains("tail"))
+        );
+    }
+
+    #[test]
+    fn parser_allows_only_one_live_session() {
+        let parser = Parser::new();
+        let session = parser.parse("SELECT 1;");
+
+        let reentrant_attempt = panic::catch_unwind(AssertUnwindSafe(|| {
+            let _session = parser.parse("SELECT 2;");
+        }));
+        assert!(reentrant_attempt.is_err());
+
+        drop(session);
+
+        let mut second = parser.parse("SELECT 2;");
+        let result = second.next().expect("statement is present");
+        assert!(matches!(result, Ok(statement) if statement.root().is_some()));
+    }
+}

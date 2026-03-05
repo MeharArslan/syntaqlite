@@ -58,7 +58,7 @@ typedef struct SyntaqliteToken {
 // The mem methods are copied — pass NULL for all defaults (malloc/free).
 SyntaqliteTokenizer* syntaqlite_tokenizer_create_with_grammar(
     const SyntaqliteMemMethods* mem,
-    const SyntaqliteGrammar* env);
+    SyntaqliteGrammar env);
 
 // Bind a source buffer and start tokenizing from the beginning. The source
 // must remain valid until the next reset() or destroy(). Can be called

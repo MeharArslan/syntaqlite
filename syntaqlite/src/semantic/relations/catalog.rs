@@ -8,19 +8,19 @@ use super::types::{ColumnDef, RelationDef};
 /// Cheap to construct per-statement (two slice refs). Document relations
 /// take priority over session relations for name resolution.
 #[derive(Clone, Copy)]
-pub struct RelationCatalog<'a> {
+pub(crate) struct RelationCatalog<'a> {
     pub(crate) session: &'a [RelationDef],
     pub(crate) document: &'a [RelationDef],
 }
 
 impl<'a> RelationCatalog<'a> {
     /// Construct from two slices. Document relations take priority.
-    pub fn new(session: &'a [RelationDef], document: &'a [RelationDef]) -> Self {
+    pub(crate) fn new(session: &'a [RelationDef], document: &'a [RelationDef]) -> Self {
         RelationCatalog { session, document }
     }
 
     /// Case-insensitive lookup, document-first priority.
-    pub fn lookup(&self, name: &str) -> Option<&'a RelationDef> {
+    pub(crate) fn lookup(&self, name: &str) -> Option<&'a RelationDef> {
         self.document
             .iter()
             .find(|r| r.name.eq_ignore_ascii_case(name))
@@ -32,17 +32,17 @@ impl<'a> RelationCatalog<'a> {
     }
 
     /// Existence check (case-insensitive).
-    pub fn resolve(&self, name: &str) -> bool {
+    pub(crate) fn resolve(&self, name: &str) -> bool {
         self.lookup(name).is_some()
     }
 
     /// Column lookup for a relation by name.
-    pub fn columns_for(&self, name: &str) -> Option<&'a [ColumnDef]> {
+    pub(crate) fn columns_for(&self, name: &str) -> Option<&'a [ColumnDef]> {
         self.lookup(name).map(|r| r.columns.as_slice())
     }
 
     /// All relation names, deduplicated (for fuzzy matching).
-    pub fn all_names(&self) -> Vec<String> {
+    pub(crate) fn all_names(&self) -> Vec<String> {
         let mut seen = std::collections::HashSet::new();
         let mut names = Vec::new();
         for r in self.iter() {
@@ -55,7 +55,7 @@ impl<'a> RelationCatalog<'a> {
     }
 
     /// All column names, optionally filtered by table name (for fuzzy matching).
-    pub fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
+    pub(crate) fn all_column_names(&self, table: Option<&str>) -> Vec<String> {
         let mut names = Vec::new();
         for r in self.iter() {
             if table.is_none_or(|tbl| r.name.eq_ignore_ascii_case(tbl)) {
@@ -68,7 +68,7 @@ impl<'a> RelationCatalog<'a> {
     }
 
     /// Iterate all relations (document first, then session).
-    pub fn iter(&self) -> impl Iterator<Item = &'a RelationDef> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &'a RelationDef> {
         self.document.iter().chain(self.session.iter())
     }
 }

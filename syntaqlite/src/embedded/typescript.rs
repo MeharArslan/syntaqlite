@@ -10,7 +10,7 @@ use super::{EmbeddedFragment, Hole, starts_with_sql_keyword};
 /// Scans for template literals (`` `...` ``) and checks if their content starts
 /// with a SQL keyword. For qualifying strings, interpolation holes (`${expr}`)
 /// are replaced with `__hole_N__` placeholders.
-pub fn extract_typescript(source: &str) -> Vec<EmbeddedFragment> {
+pub(crate) fn extract_typescript(source: &str) -> Vec<EmbeddedFragment> {
     let bytes = source.as_bytes();
     let len = bytes.len();
     let mut fragments = Vec::new();

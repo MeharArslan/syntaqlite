@@ -418,6 +418,17 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)], type_name: &str) ->
     w.newline();
 
     w.open_block(&format!(
+        "impl From<{type_name}> for crate::any::AnyTokenType {{"
+    ));
+    w.open_block(&format!(
+        "fn from(t: {type_name}) -> crate::any::AnyTokenType {{"
+    ));
+    w.line("crate::any::AnyTokenType::from_raw(t as u32)");
+    w.close_block("}");
+    w.close_block("}");
+    w.newline();
+
+    w.open_block(&format!(
         "impl crate::ast::GrammarTokenType for {type_name} {{"
     ));
     w.line("#[allow(clippy::too_many_lines)]");

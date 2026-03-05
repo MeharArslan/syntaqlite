@@ -6,7 +6,7 @@
 use syntaqlite_syntax::ffi::CflagInfo;
 
 use crate::dialect::catalog::{is_function_available_raw, FunctionInfo};
-use crate::dialect::handle::Dialect;
+use crate::dialect::Dialect;
 
 // ── Built-in function catalog ────────────────────────────────────────────────
 
@@ -14,7 +14,7 @@ use crate::dialect::handle::Dialect;
 ///
 /// Filters the full catalog by version and cflags. A function is included
 /// if at least one of its availability rules matches the config.
-pub fn available_functions(dialect: &Dialect<'_>) -> Vec<&'static FunctionInfo<'static>> {
+pub(crate) fn available_functions(dialect: &Dialect) -> Vec<&'static FunctionInfo<'static>> {
     crate::sqlite::functions_catalog::SQLITE_FUNCTIONS
         .iter()
         .filter(|entry| is_function_available_raw(entry, dialect.version(), dialect.cflags()))
@@ -27,7 +27,7 @@ pub fn available_functions(dialect: &Dialect<'_>) -> Vec<&'static FunctionInfo<'
 /// All known compile-time flags, built once from the generated table.
 ///
 /// Returns a static slice of [`CflagInfo`] entries in index order.
-pub fn cflag_table() -> &'static [CflagInfo] {
+pub(crate) fn cflag_table() -> &'static [CflagInfo] {
     use std::sync::LazyLock;
     static TABLE: LazyLock<Vec<CflagInfo>> = LazyLock::new(|| {
         syntaqlite_syntax::sqlite::cflag_versions::CFLAG_TABLE
@@ -46,7 +46,7 @@ pub fn cflag_table() -> &'static [CflagInfo] {
 /// Parse a dotted SQLite version string (e.g. `"3.35.0"`) into an integer
 /// using SQLite's encoding: `major * 1_000_000 + minor * 1_000 + patch`.
 /// The string `"latest"` maps to `i32::MAX`.
-pub fn parse_sqlite_version(s: &str) -> Result<i32, String> {
+pub(crate) fn parse_sqlite_version(s: &str) -> Result<i32, String> {
     let s = s.trim();
     if s.eq_ignore_ascii_case("latest") {
         return Ok(i32::MAX);
@@ -71,7 +71,7 @@ pub fn parse_sqlite_version(s: &str) -> Result<i32, String> {
 /// (e.g. `"SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC"`).
 ///
 /// Returns the bit index on success.
-pub fn parse_cflag_name(s: &str) -> Result<u32, String> {
+pub(crate) fn parse_cflag_name(s: &str) -> Result<u32, String> {
     let suffix = s
         .strip_prefix("SYNTAQLITE_CFLAG_")
         .ok_or_else(|| format!("cflag name must start with 'SYNTAQLITE_CFLAG_', got '{s}'"))?;
@@ -84,6 +84,6 @@ pub fn parse_cflag_name(s: &str) -> Result<u32, String> {
 }
 
 /// Returns all known cflag suffixes (e.g. `"SQLITE_OMIT_WINDOWFUNC"`).
-pub fn cflag_names() -> Vec<&'static str> {
+pub(crate) fn cflag_names() -> Vec<&'static str> {
     cflag_table().iter().map(|e| e.suffix.as_str()).collect()
 }

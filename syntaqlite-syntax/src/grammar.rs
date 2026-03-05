@@ -147,12 +147,7 @@ pub struct ParserTokenFlags(u8);
 impl ParserTokenFlags {
     /// Construct from a raw C flag bitfield (`SyntaqliteParserTokenFlags = uint32_t`).
     pub(crate) fn from_raw(v: u32) -> Self {
-        let bits = v as u8;
-        debug_assert_eq!(
-            v,
-            u32::from(bits),
-            "parser token flags out of range for u8: {v}"
-        );
+        let bits = u8::try_from(v).expect("parser token flags out of range for u8");
         ParserTokenFlags(bits)
     }
 

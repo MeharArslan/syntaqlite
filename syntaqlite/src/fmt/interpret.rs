@@ -5,14 +5,14 @@ use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, MacroReg
 
 use super::comment::{CommentCtx, DrainResult};
 use super::doc::{DocArena, DocId, NIL_DOC};
-use crate::dialect::handle::Dialect;
+use crate::dialect::Dialect;
 use syntaqlite_common::fmt::bytecode::opcodes;
 
 /// Shared context threaded through the recursive formatting tree.
 pub(crate) struct FmtCtx<'a> {
-    pub dialect: Dialect<'a>,
+    pub dialect: Dialect,
     pub reader: AnyParsedStatement<'a>,
-    /// Owned comment context — no lifetime needed since CommentCtx owns its data.
+    /// Owned comment context — no lifetime needed since `CommentCtx` owns its data.
     pub comment_ctx: Option<CommentCtx>,
     pub macro_regions: Vec<MacroRegion>,
 }
@@ -56,8 +56,9 @@ enum ReturnAction {
     Discard,
 }
 
+#[allow(clippy::too_many_lines)]
 pub(super) fn interpret_node<'a>(
-    ctx: &FmtCtx<'a>,
+    ctx: &'a FmtCtx<'a>,
     root_id: AnyNodeId,
     consumed_regions: &mut [bool],
     arena: &mut DocArena<'a>,
@@ -132,12 +133,17 @@ pub(super) fn interpret_node<'a>(
                 return result;
             }
 
-            let frame = call_stack.pop().unwrap();
+            let frame = call_stack
+                .pop()
+                .expect("call_stack must contain a parent frame");
             cur_node_id = frame.node_id;
             ops = frame.ops;
             ops_count = frame.ops_count;
             ip = frame.ip;
-            fields = ctx.reader.extract_fields(cur_node_id).unwrap().1;
+            let Some((_, restored_fields)) = ctx.reader.extract_fields(cur_node_id) else {
+                panic!("restored node must resolve to fields");
+            };
+            fields = restored_fields;
             list_children = frame.list_children;
             running = frame.running;
             pending = frame.pending;
@@ -161,7 +167,7 @@ pub(super) fn interpret_node<'a>(
                 if let Some(ref cctx) = ctx.comment_ctx {
                     if let Some((tok_offset, word_count)) = cctx.peek_keyword_tokens(kw_text) {
                         let drain = cctx.drain_before(tok_offset, source, arena);
-                        flush_drain(drain, &mut pending, &mut running, arena);
+                        flush_drain(&drain, &mut pending, &mut running, arena);
                         cctx.advance_token_cursor(word_count);
                     } else {
                         running = arena.cat(running, pending);
@@ -174,15 +180,15 @@ pub(super) fn interpret_node<'a>(
             FmtOp::Span(idx) => {
                 // INVARIANT: Span ops only target Span fields.
                 let FieldValue::Span(s) = fields[idx as usize] else {
-                    panic!("Span: field {} is not a Span", idx);
+                    panic!("Span: field {idx} is not a Span");
                 };
 
                 if !s.is_empty() {
-                    let offset = (s.as_ptr() as usize - source.as_ptr() as usize) as u32;
+                    let offset = byte_offset_in(source, s.as_ptr());
                     if let Some(ref cctx) = ctx.comment_ctx {
                         let drain = cctx.drain_before(offset, source, arena);
-                        flush_drain(drain, &mut pending, &mut running, arena);
-                        cctx.advance_past(offset + s.len() as u32);
+                        flush_drain(&drain, &mut pending, &mut running, arena);
+                        cctx.advance_past(offset + usize_to_u32(s.len()));
                     }
                     let txt = arena.text(s);
                     running = arena.cat(running, txt);
@@ -191,7 +197,7 @@ pub(super) fn interpret_node<'a>(
             FmtOp::Child(idx) => {
                 // INVARIANT: Child ops only target NodeId fields.
                 let FieldValue::NodeId(child_id) = fields[idx as usize] else {
-                    panic!("Child: field {} is not a NodeId", idx);
+                    panic!("Child: field {idx} is not a NodeId");
                 };
 
                 if !child_id.is_null() {
@@ -260,7 +266,7 @@ pub(super) fn interpret_node<'a>(
                         let g = arena.group(inner);
                         running = arena.cat(parent, g);
                     }
-                    _ => panic!("expected Group frame"),
+                    GNFrame::Nest(..) => panic!("expected Group frame"),
                 }
             }
             FmtOp::NestStart(indent) => {
@@ -276,13 +282,13 @@ pub(super) fn interpret_node<'a>(
                         let n = arena.nest(indent, inner);
                         running = arena.cat(parent, n);
                     }
-                    _ => panic!("expected Nest frame"),
+                    GNFrame::Group(_) => panic!("expected Nest frame"),
                 }
             }
             FmtOp::IfSet(idx, skip) => {
                 // INVARIANT: IfSet ops only target NodeId fields.
                 let FieldValue::NodeId(id) = fields[idx as usize] else {
-                    panic!("IfSet: field {} is not a NodeId", idx);
+                    panic!("IfSet: field {idx} is not a NodeId");
                 };
                 if id.is_null() {
                     ip += skip as usize;
@@ -295,7 +301,7 @@ pub(super) fn interpret_node<'a>(
             FmtOp::ForEachStart(idx) => {
                 // INVARIANT: ForEachStart ops only target NodeId fields.
                 let FieldValue::NodeId(list_id) = fields[idx as usize] else {
-                    panic!("ForEachStart: field {} is not a NodeId", idx);
+                    panic!("ForEachStart: field {idx} is not a NodeId");
                 };
                 if list_id.is_null() {
                     ip = skip_to_foreach_end(ops, ops_count, ip);
@@ -334,7 +340,9 @@ pub(super) fn interpret_node<'a>(
                 let return_action;
 
                 if macro_doc == Some(NIL_DOC) {
-                    let state = for_each_stack.last_mut().unwrap();
+                    let state = for_each_stack
+                        .last_mut()
+                        .expect("ForEachState must exist while handling ChildItem");
                     if let Some((saved_running, saved_pending)) = state.sep_checkpoint.take() {
                         running = saved_running;
                         pending = saved_pending;
@@ -398,14 +406,13 @@ pub(super) fn interpret_node<'a>(
                 if state.index < state.children.len() {
                     ip = state.body_start;
                     continue;
-                } else {
-                    for_each_stack.pop();
                 }
+                for_each_stack.pop();
             }
             FmtOp::IfBool(idx, skip) => {
                 // INVARIANT: IfBool ops only target Bool fields.
                 let FieldValue::Bool(val) = fields[idx as usize] else {
-                    panic!("IfBool: field {} is not a Bool", idx);
+                    panic!("IfBool: field {idx} is not a Bool");
                 };
                 if !val {
                     ip += skip as usize;
@@ -414,7 +421,7 @@ pub(super) fn interpret_node<'a>(
             FmtOp::IfFlag(idx, mask, skip) => {
                 // INVARIANT: IfFlag ops only target Flags fields.
                 let FieldValue::Flags(f) = fields[idx as usize] else {
-                    panic!("IfFlag: field {} is not Flags", idx);
+                    panic!("IfFlag: field {idx} is not Flags");
                 };
                 if f & mask == 0 {
                     ip += skip as usize;
@@ -423,16 +430,16 @@ pub(super) fn interpret_node<'a>(
             FmtOp::IfEnum(idx, ordinal, skip) => {
                 // INVARIANT: IfEnum ops only target Enum fields.
                 let FieldValue::Enum(val) = fields[idx as usize] else {
-                    panic!("IfEnum: field {} is not an Enum", idx);
+                    panic!("IfEnum: field {idx} is not an Enum");
                 };
-                if val != ordinal as u32 {
+                if val != u32::from(ordinal) {
                     ip += skip as usize;
                 }
             }
             FmtOp::IfSpan(idx, skip) => {
                 // INVARIANT: IfSpan ops only target Span fields.
                 let FieldValue::Span(s) = fields[idx as usize] else {
-                    panic!("IfSpan: field {} is not a Span", idx);
+                    panic!("IfSpan: field {idx} is not a Span");
                 };
                 if s.is_empty() {
                     ip += skip as usize;
@@ -441,7 +448,7 @@ pub(super) fn interpret_node<'a>(
             FmtOp::EnumDisplay(idx, base) => {
                 // INVARIANT: EnumDisplay ops only target Enum fields.
                 let FieldValue::Enum(ordinal) = fields[idx as usize] else {
-                    panic!("EnumDisplay: field {} is not an Enum", idx);
+                    panic!("EnumDisplay: field {idx} is not an Enum");
                 };
                 let string_id = ctx
                     .dialect
@@ -450,7 +457,7 @@ pub(super) fn interpret_node<'a>(
                 if let Some(ref cctx) = ctx.comment_ctx {
                     if let Some((tok_offset, word_count)) = cctx.peek_keyword_tokens(kw_text) {
                         let drain = cctx.drain_before(tok_offset, source, arena);
-                        flush_drain(drain, &mut pending, &mut running, arena);
+                        flush_drain(&drain, &mut pending, &mut running, arena);
                         cctx.advance_token_cursor(word_count);
                     } else {
                         running = arena.cat(running, pending);
@@ -481,16 +488,16 @@ pub(super) fn interpret_node<'a>(
 // ── Comment drain helpers ───────────────────────────────────────────────
 
 #[inline]
-fn flush_drain(drain: DrainResult, pending: &mut DocId, running: &mut DocId, arena: &mut DocArena) {
+fn flush_drain(drain: &DrainResult, pending: &mut DocId, running: &mut DocId, arena: &mut DocArena) {
     if drain.trailing != NIL_DOC {
         *running = arena.cat(*running, drain.trailing);
     }
-    if drain.leading != NIL_DOC {
-        *pending = NIL_DOC;
-        *running = arena.cat(*running, drain.leading);
-    } else {
+    if drain.leading == NIL_DOC {
         *running = arena.cat(*running, *pending);
         *pending = NIL_DOC;
+    } else {
+        *pending = NIL_DOC;
+        *running = arena.cat(*running, drain.leading);
     }
 }
 
@@ -505,7 +512,7 @@ fn drain_comments_before_child<'a>(
     if let Some(cctx) = comment_ctx {
         if let Some((offset, _)) = cctx.peek_next_token() {
             let drain = cctx.drain_before(offset, source, arena);
-            flush_drain(drain, pending, running, arena);
+            flush_drain(&drain, pending, running, arena);
         } else {
             *running = arena.cat(*running, *pending);
             *pending = NIL_DOC;
@@ -515,7 +522,7 @@ fn drain_comments_before_child<'a>(
 
 // ── Bytecode helpers ────────────────────────────────────────────────────
 
-#[inline(always)]
+#[inline]
 fn op_at(ops: &[u8], ip: usize) -> FmtOp {
     let base = ip * 6;
     let opcode = ops[base];
@@ -578,35 +585,54 @@ enum FmtOp {
 }
 
 impl FmtOp {
-    #[inline(always)]
-    pub(crate) const fn decode(opcode: u8, a: u8, b: u16, c: u16) -> Self {
+    #[inline]
+    pub(crate) fn decode(opcode: u8, a: u8, b: u16, c: u16) -> Self {
         match opcode {
             opcodes::KEYWORD => FmtOp::Keyword(b),
-            opcodes::SPAN => FmtOp::Span(a as u16),
-            opcodes::CHILD => FmtOp::Child(a as u16),
+            opcodes::SPAN => FmtOp::Span(a.into()),
+            opcodes::CHILD => FmtOp::Child(a.into()),
             opcodes::LINE => FmtOp::Line,
             opcodes::SOFTLINE => FmtOp::SoftLine,
             opcodes::HARDLINE => FmtOp::HardLine,
             opcodes::GROUP_START => FmtOp::GroupStart,
             opcodes::GROUP_END => FmtOp::GroupEnd,
-            opcodes::NEST_START => FmtOp::NestStart(b as i16),
+            opcodes::NEST_START => FmtOp::NestStart(i16::from_le_bytes(b.to_le_bytes())),
             opcodes::NEST_END => FmtOp::NestEnd,
-            opcodes::IF_SET => FmtOp::IfSet(a as u16, c),
+            opcodes::IF_SET => FmtOp::IfSet(a.into(), c),
             opcodes::ELSE_OP => FmtOp::Else(c),
             opcodes::END_IF => FmtOp::EndIf,
-            opcodes::FOR_EACH_START => FmtOp::ForEachStart(a as u16),
+            opcodes::FOR_EACH_START => FmtOp::ForEachStart(a.into()),
             opcodes::CHILD_ITEM => FmtOp::ChildItem,
             opcodes::FOR_EACH_SEP => FmtOp::ForEachSep(b),
             opcodes::FOR_EACH_END => FmtOp::ForEachEnd,
-            opcodes::IF_BOOL => FmtOp::IfBool(a as u16, c),
-            opcodes::IF_FLAG => FmtOp::IfFlag(a as u16, b as u8, c),
-            opcodes::IF_ENUM => FmtOp::IfEnum(a as u16, b, c),
-            opcodes::IF_SPAN => FmtOp::IfSpan(a as u16, c),
-            opcodes::ENUM_DISPLAY => FmtOp::EnumDisplay(a as u16, b),
+            opcodes::IF_BOOL => FmtOp::IfBool(a.into(), c),
+            opcodes::IF_FLAG => FmtOp::IfFlag(
+                a.into(),
+                u8::try_from(b).expect("IF_FLAG mask must fit in u8"),
+                c,
+            ),
+            opcodes::IF_ENUM => FmtOp::IfEnum(a.into(), b, c),
+            opcodes::IF_SPAN => FmtOp::IfSpan(a.into(), c),
+            opcodes::ENUM_DISPLAY => FmtOp::EnumDisplay(a.into(), b),
             opcodes::FOR_EACH_SELF_START => FmtOp::ForEachSelfStart,
             _ => panic!("unknown opcode in fmt data"),
         }
     }
+}
+
+#[inline]
+fn usize_to_u32(value: usize) -> u32 {
+    u32::try_from(value).expect("value must fit in u32")
+}
+
+#[inline]
+fn byte_offset_in(source: &str, ptr: *const u8) -> u32 {
+    let base = source.as_ptr() as usize;
+    let start = ptr as usize;
+    let offset = start
+        .checked_sub(base)
+        .expect("span pointer must be within source");
+    usize_to_u32(offset)
 }
 
 enum GNFrame {

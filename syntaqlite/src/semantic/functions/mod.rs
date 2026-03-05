@@ -11,5 +11,5 @@
 mod catalog;
 mod types;
 
-pub use catalog::FunctionCatalog;
-pub use types::{FunctionCheckResult, FunctionDef, FunctionLookup, SessionFunction};
+pub(crate) use catalog::FunctionCatalog;
+pub(crate) use types::{FunctionCheckResult, FunctionDef, FunctionLookup, SessionFunction};

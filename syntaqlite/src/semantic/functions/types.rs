@@ -8,7 +8,7 @@ use crate::dialect::catalog::FunctionCategory;
 /// Symmetric with [`RelationDef`](crate::semantic::relations::RelationDef) -
 /// both represent externally-defined schema objects.
 #[derive(Debug, Clone)]
-pub struct FunctionDef {
+pub(crate) struct FunctionDef {
     /// Function name.
     pub name: String,
     /// `None` means variadic (any number of arguments).
@@ -16,10 +16,10 @@ pub struct FunctionDef {
 }
 
 /// Backward-compatible alias.
-pub type SessionFunction = FunctionDef;
+pub(crate) type SessionFunction = FunctionDef;
 
 /// Result of checking a function call against the catalog.
-pub enum FunctionCheckResult {
+pub(crate) enum FunctionCheckResult {
     /// Function exists and the given arity is accepted.
     Ok,
     /// No function with this name exists.
@@ -32,7 +32,7 @@ pub enum FunctionCheckResult {
 }
 
 /// Information about a resolved function, returned by [`super::FunctionCatalog::lookup()`].
-pub struct FunctionLookup<'a> {
+pub(crate) struct FunctionLookup<'a> {
     /// Function name.
     pub name: &'a str,
     /// Function category (scalar/aggregate/window/etc).

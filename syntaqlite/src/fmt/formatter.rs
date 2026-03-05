@@ -9,11 +9,11 @@ use super::FormatError;
 use super::comment::{CommentCtx, CommentEntry, TokenEntry};
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch, interpret_node};
-use crate::dialect::handle::Dialect;
+use crate::dialect::Dialect;
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
-pub struct Formatter<'d> {
-    dialect: Dialect<'d>,
+pub struct Formatter {
+    dialect: Dialect,
     parser: Parser,
     config: FormatConfig,
     arena: DocArena<'static>,
@@ -22,21 +22,27 @@ pub struct Formatter<'d> {
 }
 
 #[cfg(feature = "sqlite")]
-impl Default for Formatter<'static> {
+impl Default for Formatter {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'d> Formatter<'d> {
-    /// Create a formatter for the built-in SQLite dialect with default configuration.
+impl Formatter {
+    /// Create a formatter for the built-in `SQLite` dialect with default configuration.
     #[cfg(feature = "sqlite")]
-    pub fn new() -> Formatter<'static> {
-        Formatter::with_config(crate::sqlite::dialect::dialect(), &FormatConfig::default())
+    pub fn new() -> Formatter {
+        Formatter::with_config(&FormatConfig::default())
+    }
+
+    /// Create a formatter for the built-in `SQLite` dialect with custom configuration.
+    #[cfg(feature = "sqlite")]
+    pub fn with_config(format_config: &FormatConfig) -> Formatter {
+        Formatter::with_dialect_config(crate::sqlite::dialect::dialect(), format_config)
     }
 
     /// Create a formatter bound to the given dialect with custom configuration.
-    pub fn with_config(dialect: Dialect<'d>, format_config: &FormatConfig) -> Self {
+    pub(crate) fn with_dialect_config(dialect: Dialect, format_config: &FormatConfig) -> Self {
         assert!(
             dialect.has_fmt_data(),
             "dialect has no formatter bytecode — ensure .synq definitions include fmt blocks",
@@ -52,12 +58,10 @@ impl<'d> Formatter<'d> {
         }
     }
 
-    /// Access the current configuration.
-    pub fn config(&self) -> &FormatConfig {
-        &self.config
-    }
-
     /// Format SQL source text. Handles multiple statements and preserves comments.
+    ///
+    /// # Errors
+    /// Returns [`FormatError`] when parsing fails for any statement in `source`.
     pub fn format(&mut self, source: &str) -> Result<String, FormatError> {
         let mut session = self.parser.parse(source);
         let mut result = String::new();
@@ -83,8 +87,8 @@ impl<'d> Formatter<'d> {
             let comments: Vec<CommentEntry> = erased
                 .comments()
                 .map(|c| CommentEntry {
-                    offset: (c.text.as_ptr() as usize - source.as_ptr() as usize) as u32,
-                    length: c.text.len() as u32,
+                    offset: byte_offset_in(source, c.text.as_ptr()),
+                    length: usize_to_u32(c.text.len()),
                     kind: c.kind,
                 })
                 .collect();
@@ -92,8 +96,8 @@ impl<'d> Formatter<'d> {
             let tokens: Vec<TokenEntry> = erased
                 .tokens()
                 .map(|t| TokenEntry {
-                    offset: (t.text().as_ptr() as usize - source.as_ptr() as usize) as u32,
-                    length: t.text().len() as u32,
+                    offset: byte_offset_in(source, t.text().as_ptr()),
+                    length: usize_to_u32(t.text().len()),
                 })
                 .collect();
 
@@ -114,7 +118,7 @@ impl<'d> Formatter<'d> {
 
             if stmt_num > 0 {
                 emit_stmt_separator(
-                    &comment_ctx,
+                    comment_ctx.as_ref(),
                     semicolons,
                     stmt_source,
                     &mut arena,
@@ -126,10 +130,8 @@ impl<'d> Formatter<'d> {
                 drain_gap_comments(cctx, next_offset, stmt_source, &mut arena, &mut parts);
             }
 
-            // Coerce Dialect<'d> to Dialect<'_> — safe because 'd: '_ ('d outlives source).
-            let dialect: Dialect<'_> = self.dialect;
             let ctx = FmtCtx {
-                dialect,
+                dialect: self.dialect,
                 reader: erased,
                 comment_ctx,
                 macro_regions,
@@ -183,13 +185,13 @@ impl<'d> Formatter<'d> {
 // ── Multi-statement helpers ─────────────────────────────────────────────
 
 fn emit_stmt_separator<'a>(
-    comment_ctx: &Option<CommentCtx>,
+    comment_ctx: Option<&CommentCtx>,
     semicolons: bool,
     source: &'a str,
     arena: &mut DocArena<'a>,
     parts: &mut Vec<DocId>,
 ) {
-    if let Some(cctx) = comment_ctx.as_ref()
+    if let Some(cctx) = comment_ctx
         && let Some((next_offset, _)) = cctx.peek_next_token()
     {
         if semicolons {
@@ -206,6 +208,21 @@ fn emit_stmt_separator<'a>(
     }
     parts.push(arena.hardline());
     parts.push(arena.hardline());
+}
+
+#[inline]
+fn usize_to_u32(value: usize) -> u32 {
+    u32::try_from(value).expect("value must fit in u32")
+}
+
+#[inline]
+fn byte_offset_in(source: &str, ptr: *const u8) -> u32 {
+    let base = source.as_ptr() as usize;
+    let start = ptr as usize;
+    let offset = start
+        .checked_sub(base)
+        .expect("span pointer must be within source");
+    usize_to_u32(offset)
 }
 
 fn drain_trailing_gap<'a>(

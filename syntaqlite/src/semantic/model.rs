@@ -15,7 +15,7 @@ use syntaqlite_syntax::{ParserTokenFlags, TokenType};
 /// Semantic completion context derived from parser stack state.
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CompletionContext {
+pub(crate) enum CompletionContext {
     /// Could not determine context.
     Unknown = 0,
     /// Cursor is in an expression position (functions/values expected).
@@ -36,7 +36,7 @@ impl CompletionContext {
 
 /// Expected tokens and semantic context at a cursor position.
 #[derive(Debug)]
-pub struct CompletionInfo {
+pub(crate) struct CompletionInfo {
     /// Terminal token types valid at the cursor.
     pub tokens: Vec<TokenType>,
     /// Semantic context (expression vs table-ref).
@@ -45,7 +45,7 @@ pub struct CompletionInfo {
 
 /// A semantic token for syntax highlighting.
 #[derive(Debug, Clone)]
-pub struct SemanticToken {
+pub(crate) struct SemanticToken {
     /// Byte offset in the source text.
     pub offset: usize,
     /// Length in bytes.
@@ -86,7 +86,7 @@ pub(crate) struct StoredParseError {
 ///
 /// Owns the source text, token stream, comments, and parse errors.
 /// Produced only by [`SemanticAnalyzer::prepare()`](super::SemanticAnalyzer::prepare).
-pub struct SemanticModel {
+pub(crate) struct SemanticModel {
     pub(crate) source: String,
     pub(crate) tokens: Vec<StoredToken>,
     pub(crate) comments: Vec<StoredComment>,

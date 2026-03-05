@@ -24,36 +24,36 @@
 
 pub(crate) mod analyzer;
 pub(crate) mod catalog;
-pub mod diagnostics;
+pub(crate) mod diagnostics;
 pub(crate) mod fuzzy;
 pub(crate) mod model;
-pub mod render;
+pub(crate) mod render;
 
 pub(crate) mod checks;
 pub(crate) mod scope;
 pub(crate) mod walker;
 
-pub mod functions;
-pub mod relations;
+pub(crate) mod functions;
+pub(crate) mod relations;
 
 // ── Re-exports ───────────────────────────────────────────────────────
 
-pub use analyzer::SemanticAnalyzer;
-pub use catalog::DatabaseCatalog;
-pub use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
-pub use model::{CompletionContext, CompletionInfo, SemanticModel, SemanticToken};
-pub use render::{DiagnosticRenderer, SourceContext};
+pub(crate) use analyzer::SemanticAnalyzer;
+pub(crate) use catalog::DatabaseCatalog;
+pub(crate) use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
+pub(crate) use model::{CompletionContext, CompletionInfo, SemanticModel, SemanticToken};
+pub(crate) use render::{DiagnosticRenderer, SourceContext};
 
 // Re-export key types for callers.
-pub use functions::SessionFunction;
-pub use functions::{FunctionCatalog, FunctionCheckResult, FunctionDef, FunctionLookup};
-pub use relations::{ColumnDef, RelationCatalog, RelationDef, RelationKind};
+pub(crate) use functions::SessionFunction;
+pub(crate) use functions::{FunctionCatalog, FunctionCheckResult, FunctionDef, FunctionLookup};
+pub(crate) use relations::{ColumnDef, RelationCatalog, RelationDef, RelationKind};
 
 // ── Configuration ────────────────────────────────────────────────────
 
 /// Configuration for semantic validation.
 #[derive(Clone, Copy)]
-pub struct ValidationConfig {
+pub(crate) struct ValidationConfig {
     /// When `true`, unresolved names are reported as errors.
     /// When `false`, they are reported as warnings.
     pub strict_schema: bool,

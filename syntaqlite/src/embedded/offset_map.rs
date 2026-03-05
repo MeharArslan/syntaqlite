@@ -21,7 +21,7 @@ struct Segment {
 }
 
 /// Maps byte offsets from processed SQL text back to host-file positions.
-pub struct OffsetMap {
+pub(crate) struct OffsetMap {
     /// Base offset of the SQL content in the host file.
     base_offset: usize,
     /// Sorted segments where SQL and host offsets diverge (holes).
@@ -30,7 +30,7 @@ pub struct OffsetMap {
 
 impl OffsetMap {
     /// Build an offset map from an `EmbeddedFragment`.
-    pub fn new(fragment: &EmbeddedFragment) -> Self {
+    pub(crate) fn new(fragment: &EmbeddedFragment) -> Self {
         let segments = fragment
             .holes
             .iter()
@@ -51,7 +51,7 @@ impl OffsetMap {
     ///
     /// Returns `None` if the offset falls inside a hole placeholder, since
     /// those regions correspond to host-language expressions, not SQL.
-    pub fn to_host(&self, sql_offset: usize) -> Option<usize> {
+    pub(crate) fn to_host(&self, sql_offset: usize) -> Option<usize> {
         // Walk through segments to compute the cumulative drift.
         let mut drift: isize = 0;
 

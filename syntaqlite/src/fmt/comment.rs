@@ -22,7 +22,7 @@ pub(crate) struct TokenEntry {
     pub length: u32,
 }
 
-/// Result of draining comment items. Trailing docs (e.g. LineSuffix for
+/// Result of draining comment items. Trailing docs (e.g. `LineSuffix` for
 /// end-of-line comments) go BEFORE any pending line break. Leading docs
 /// (comments on their own line) go AFTER any pending line break.
 pub(crate) struct DrainResult {
@@ -105,9 +105,9 @@ impl CommentCtx {
                 CommentKind::Line => {
                     if has_newline {
                         let hl1 = arena.hardline();
-                        let txt = arena.text(text);
+                        let comment_doc = arena.text(text);
                         let hl2 = arena.hardline();
-                        let inner = arena.cat(txt, hl2);
+                        let inner = arena.cat(comment_doc, hl2);
                         let chunk = arena.cat(hl1, inner);
                         leading = if leading == NIL_DOC {
                             chunk
@@ -131,8 +131,8 @@ impl CommentCtx {
                 CommentKind::Block => {
                     if has_newline {
                         let hl = arena.hardline();
-                        let txt = arena.text(text);
-                        let chunk = arena.cat(hl, txt);
+                        let comment_doc = arena.text(text);
+                        let chunk = arena.cat(hl, comment_doc);
                         leading = if leading == NIL_DOC {
                             chunk
                         } else {
@@ -140,8 +140,8 @@ impl CommentCtx {
                         };
                     } else {
                         let sp = arena.text(" ");
-                        let txt = arena.text(text);
-                        let chunk = arena.cat(sp, txt);
+                        let comment_doc = arena.text(text);
+                        let chunk = arena.cat(sp, comment_doc);
                         trailing = if trailing == NIL_DOC {
                             chunk
                         } else {
@@ -179,7 +179,7 @@ impl CommentCtx {
         self.token_cursor.set(self.token_cursor.get() + n);
     }
 
-    /// Advance the token cursor past all tokens whose offset < end_offset.
+    /// Advance the token cursor past all tokens whose offset is `< end_offset`.
     pub(crate) fn advance_past(&self, end_offset: u32) {
         let mut idx = self.token_cursor.get();
         while idx < self.tokens.len() && self.tokens[idx].offset < end_offset {

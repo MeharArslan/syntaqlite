@@ -6,7 +6,7 @@ use super::KeywordCase;
 /// A handle into the `DocArena`. `NIL_DOC` represents an empty/absent document.
 pub(super) type DocId = u32;
 
-/// Sentinel value meaning "no document". Builder methods treat NIL_DOC operands
+/// Sentinel value meaning "no document". Builder methods treat `NIL_DOC` operands
 /// as identity elements (e.g. `cat(NIL_DOC, x) == x`).
 pub(super) const NIL_DOC: DocId = u32::MAX;
 
@@ -57,14 +57,14 @@ impl<'a> DocArena<'a> {
     ///
     /// The old arena is consumed. The new arena has the same capacity but
     /// a fresh (possibly different) lifetime parameter.
-    pub(crate) fn recycle<'b>(old: DocArena<'b>) -> Self {
+    pub(crate) fn recycle(old: DocArena<'_>) -> Self {
         let cap = old.docs.capacity();
         drop(old);
         DocArena::with_capacity(cap)
     }
 
     fn push(&mut self, doc: Doc<'a>) -> DocId {
-        let id = self.docs.len() as DocId;
+        let id = usize_to_doc_id(self.docs.len());
         debug_assert!(id != NIL_DOC, "DocArena overflow");
         self.docs.push(doc);
         id
@@ -180,6 +180,7 @@ impl<'a> DocArena<'a> {
 
         out.reserve(self.docs.len() * 4);
         let mut pos: usize = 0;
+        let line_width_i32 = usize_to_i32(line_width);
         stack.push((0, Mode::Break, root));
 
         while let Some((indent, mode, doc_id)) = stack.pop() {
@@ -228,11 +229,16 @@ impl<'a> DocArena<'a> {
                 }
 
                 Doc::Nest { indent: di, child } => {
-                    stack.push((indent + *di as i32, mode, *child));
+                    stack.push((indent + i32::from(*di), mode, *child));
                 }
 
                 Doc::Group { child } => {
-                    if self.fits_with(*child, indent, line_width as i32 - pos as i32, fits_stack) {
+                    if self.fits_with(
+                        *child,
+                        indent,
+                        line_width_i32 - usize_to_i32(pos),
+                        fits_stack,
+                    ) {
                         stack.push((indent, Mode::Flat, *child));
                     } else {
                         stack.push((indent, Mode::Break, *child));
@@ -277,13 +283,13 @@ impl<'a> DocArena<'a> {
 
             match self.get(doc_id) {
                 Doc::Text(s) | Doc::Keyword(s) => {
-                    remaining -= s.len() as i32;
+                    remaining -= usize_to_i32(s.len());
                 }
                 Doc::Line => {
                     remaining -= 1;
                 }
-                Doc::SoftLine => {}
-                Doc::HardLine => {
+                Doc::SoftLine | Doc::LineSuffix { .. } => {}
+                Doc::HardLine | Doc::BreakParent => {
                     return false;
                 }
                 Doc::Cat { left, right } => {
@@ -291,14 +297,10 @@ impl<'a> DocArena<'a> {
                     scratch.push((indent, *left));
                 }
                 Doc::Nest { indent: di, child } => {
-                    scratch.push((indent + *di as i32, *child));
+                    scratch.push((indent + i32::from(*di), *child));
                 }
                 Doc::Group { child } => {
                     scratch.push((indent, *child));
-                }
-                Doc::LineSuffix { .. } => {}
-                Doc::BreakParent => {
-                    return false;
                 }
             }
         }
@@ -354,7 +356,7 @@ const SPACES: &str = "                                                          
 
 fn emit_newline(indent: i32, out: &mut String, pos: &mut usize) {
     out.push('\n');
-    let spaces = indent.max(0) as usize;
+    let spaces = non_negative_i32_to_usize(indent.max(0));
     let mut remaining = spaces;
     while remaining > 0 {
         let chunk = remaining.min(SPACES.len());
@@ -429,11 +431,26 @@ fn render_inline(
                 stack.push((indent, *left));
             }
             Doc::Nest { indent: di, child } => {
-                stack.push((indent + *di as i32, *child));
+                stack.push((indent + i32::from(*di), *child));
             }
             _ => {}
         }
     }
+}
+
+#[inline]
+fn usize_to_doc_id(value: usize) -> DocId {
+    u32::try_from(value).expect("DocArena index must fit in DocId")
+}
+
+#[inline]
+fn usize_to_i32(value: usize) -> i32 {
+    i32::try_from(value).expect("value must fit in i32")
+}
+
+#[inline]
+fn non_negative_i32_to_usize(value: i32) -> usize {
+    usize::try_from(value).expect("value must be non-negative")
 }
 
 #[cfg(test)]

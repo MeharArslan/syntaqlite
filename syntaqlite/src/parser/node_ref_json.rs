@@ -13,7 +13,7 @@ use syntaqlite_parser::{NodeRef, ParseResult};
 /// Extension trait that adds JSON serialization to [`NodeRef`].
 ///
 /// Enabled with `feature = "json"`. Produces JSON matching the WASM AST JSON format.
-pub trait NodeRefJsonExt {
+pub(crate) trait NodeRefJsonExt {
     /// Serialize this node to the WASM AST JSON format, appending to `out`.
     fn dump_json(&self, out: &mut String);
 }

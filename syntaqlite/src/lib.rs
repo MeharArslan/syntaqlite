@@ -3,23 +3,23 @@
 
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::similar_names))]
 
-//! Fast, accurate SQL tooling for SQLite and its dialects.
+//! Fast, accurate SQL tooling for `SQLite` and its dialects.
 
+// Temporarily disabled during refactor except for formatter dependency chain.
+#[cfg(feature = "fmt")]
 pub(crate) mod dialect;
 
 #[cfg(feature = "fmt")]
 pub(crate) mod fmt;
 
-#[cfg(feature = "validation")]
-pub mod semantic;
+// Temporarily disabled during refactor.
+#[cfg(any())]
+pub(crate) mod semantic;
 
 #[cfg(feature = "sqlite")]
 pub(crate) mod sqlite;
 
 // ── Public API ────────────────────────────────────────────────────────────────
-
-// Top-level dialect and formatter types.
-pub use dialect::{Dialect, TokenCategory};
 
 #[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
@@ -33,7 +33,7 @@ pub use syntaqlite_syntax::{CommentKind, ParserConfig, ParserTokenFlags};
 /// Type-erased (grammar-agnostic) parser and tokenizer types.
 ///
 /// Use these when working across multiple dialects, or when the grammar is not
-/// known at compile time. For SQLite or a specific known grammar, prefer the
+/// known at compile time. For `SQLite` or a specific known grammar, prefer the
 /// types in [`typed`] instead.
 pub mod any {
     pub use syntaqlite_syntax::any::{
@@ -64,7 +64,7 @@ pub mod any {
 /// Typed (grammar-parameterized) parser and tokenizer infrastructure.
 ///
 /// Use these when the dialect grammar `G` is known at compile time. For the
-/// built-in SQLite dialect this is already wired up; access it via
+/// built-in `SQLite` dialect this is already wired up; access it via
 /// [`crate::sqlite`].
 pub mod typed {
     pub use syntaqlite_syntax::typed::{

@@ -9,7 +9,7 @@
 
 /// A diagnostic message associated with a source range.
 #[derive(Debug, Clone)]
-pub struct Diagnostic {
+pub(crate) struct Diagnostic {
     /// Byte offset of the start of the diagnostic range.
     pub start_offset: usize,
     /// Byte offset of the end of the diagnostic range.
@@ -27,7 +27,7 @@ pub struct Diagnostic {
 /// Each variant carries the identifiers needed for machine-readable
 /// consumption; [`fmt::Display`](std::fmt::Display) produces the human-readable form.
 #[derive(Debug, Clone)]
-pub enum DiagnosticMessage {
+pub(crate) enum DiagnosticMessage {
     /// Referenced table name was not found in any catalog layer.
     UnknownTable {
         /// The unresolved table name.
@@ -94,7 +94,7 @@ impl std::fmt::Display for DiagnosticMessage {
 
 impl DiagnosticMessage {
     /// Returns `true` for parse errors (`Other`), `false` for semantic diagnostics.
-    pub fn is_parse_error(&self) -> bool {
+    pub(crate) fn is_parse_error(&self) -> bool {
         matches!(self, Self::Other(_))
     }
 
@@ -103,14 +103,14 @@ impl DiagnosticMessage {
     /// This is the machine-readable detail object; callers also emit
     /// `"message"` with the [`fmt::Display`](std::fmt::Display) string alongside it.
     #[cfg(feature = "json")]
-    pub fn write_json(&self, out: &mut String) {
+    pub(crate) fn write_json(&self, out: &mut String) {
         out.push_str(&serde_json::to_string(self).expect("DiagnosticMessage serialization failed"));
     }
 }
 
 /// Structured help information attached to a diagnostic.
 #[derive(Debug, Clone)]
-pub enum Help {
+pub(crate) enum Help {
     /// A "did you mean?" suggestion with the corrected identifier.
     Suggestion(String),
 }
@@ -126,7 +126,7 @@ impl std::fmt::Display for Help {
 impl Help {
     /// Write the structured JSON representation into `out`.
     #[cfg(feature = "json")]
-    pub fn write_json(&self, out: &mut String) {
+    pub(crate) fn write_json(&self, out: &mut String) {
         out.push_str(&serde_json::to_string(self).expect("Help serialization failed"));
     }
 }
@@ -134,14 +134,14 @@ impl Help {
 impl Diagnostic {
     /// Write the full diagnostic as a JSON object into `out`.
     #[cfg(feature = "json")]
-    pub fn write_json(&self, out: &mut String) {
+    pub(crate) fn write_json(&self, out: &mut String) {
         out.push_str(&serde_json::to_string(self).expect("Diagnostic serialization failed"));
     }
 }
 
 /// Diagnostic severity level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Severity {
+pub(crate) enum Severity {
     /// Blocking issue that should fail validation.
     Error,
     /// Suspicious but non-fatal issue.

@@ -15,7 +15,7 @@ use syntaqlite_syntax::any::FieldKind;
 use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue};
 use syntaqlite_syntax::typed::GrammarNodeType;
 
-use crate::dialect::handle::Dialect;
+use crate::dialect::Dialect;
 
 use super::functions::{FunctionCatalog, FunctionCheckResult, FunctionDef};
 use super::relations::{ColumnDef, RelationDef, RelationKind};
@@ -27,7 +27,7 @@ use super::relations::{ColumnDef, RelationDef, RelationKind};
 /// Callers populate it however they want: introspecting a live DB,
 /// parsing CREATE statements, loading from a config file, etc.
 #[derive(Default)]
-pub struct DatabaseCatalog {
+pub(crate) struct DatabaseCatalog {
     /// Relations visible to semantic analysis (tables and views).
     pub relations: Vec<RelationDef>,
     /// User-defined or database-defined functions visible to analysis.
@@ -36,14 +36,14 @@ pub struct DatabaseCatalog {
 
 impl DatabaseCatalog {
     /// Iterate table relations only.
-    pub fn tables(&self) -> impl Iterator<Item = &RelationDef> + '_ {
+    pub(crate) fn tables(&self) -> impl Iterator<Item = &RelationDef> + '_ {
         self.relations
             .iter()
             .filter(|r| r.kind == RelationKind::Table)
     }
 
     /// Iterate view relations only.
-    pub fn views(&self) -> impl Iterator<Item = &RelationDef> + '_ {
+    pub(crate) fn views(&self) -> impl Iterator<Item = &RelationDef> + '_ {
         self.relations
             .iter()
             .filter(|r| r.kind == RelationKind::View)
@@ -54,7 +54,7 @@ impl DatabaseCatalog {
     /// Creates a temporary parser, parses the source, and builds the schema
     /// from the resulting DDL statements.
     #[cfg(feature = "sqlite")]
-    pub fn from_ddl(dialect: Dialect<'_>, source: &str) -> Self {
+    pub(crate) fn from_ddl(dialect: Dialect, source: &str) -> Self {
         let parser = syntaqlite_syntax::Parser::new();
         let mut session = parser.parse(source);
         let mut doc = DocumentCatalog::new();
@@ -80,7 +80,7 @@ impl DatabaseCatalog {
 
     /// Build a `DatabaseCatalog` from a JSON string.
     #[cfg(feature = "json")]
-    pub fn from_json(s: &str) -> Result<Self, String> {
+    pub(crate) fn from_json(s: &str) -> Result<Self, String> {
         #[derive(serde::Deserialize)]
         struct Root {
             #[serde(default)]
@@ -154,7 +154,7 @@ pub(crate) struct StaticCatalog {
 }
 
 impl StaticCatalog {
-    pub(crate) fn for_dialect(dialect: &Dialect<'_>) -> Self {
+    pub(crate) fn for_dialect(dialect: &Dialect) -> Self {
         StaticCatalog {
             functions: FunctionCatalog::for_dialect(dialect),
             relations: Vec::new(),
@@ -209,7 +209,7 @@ impl DocumentCatalog {
         &mut self,
         stmt_result: AnyParsedStatement<'_>,
         stmt_id: AnyNodeId,
-        dialect: Dialect<'_>,
+        dialect: Dialect,
         database: Option<&DatabaseCatalog>,
     ) {
         use crate::dialect::schema::SchemaKind;
@@ -285,7 +285,7 @@ impl DocumentCatalog {
 fn columns_from_column_list(
     stmt_result: AnyParsedStatement<'_>,
     list_id: AnyNodeId,
-    dialect: Dialect<'_>,
+    dialect: Dialect,
     out: &mut Vec<ColumnDef>,
 ) {
     let Some(children) = stmt_result.list_children(list_id) else {
@@ -356,7 +356,7 @@ fn columns_from_column_list(
 fn extract_column_constraints(
     stmt_result: AnyParsedStatement<'_>,
     list_id: AnyNodeId,
-    dialect: Dialect<'_>,
+    dialect: Dialect,
     is_primary_key: &mut bool,
     is_nullable: &mut bool,
 ) {

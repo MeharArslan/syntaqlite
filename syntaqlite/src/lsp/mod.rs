@@ -62,32 +62,32 @@ impl TokenCategoryExt for TokenCategory {
 }
 
 // Public API starts here.
-pub use host::LspHost;
-pub use server::LspServer;
+pub(crate) use host::LspHost;
+pub(crate) use server::LspServer;
 
 // Re-export shared types from semantic layer.
-pub use crate::semantic::{CompletionContext, CompletionInfo, SemanticToken};
+pub(crate) use crate::semantic::{CompletionContext, CompletionInfo, SemanticToken};
 
 // ── LSP-specific types ──────────────────────────────────────────────────
 
 /// A completion item returned by [`LspHost::completion_items`].
 #[derive(Debug, Clone)]
-pub struct CompletionEntry {
+pub(crate) struct CompletionEntry {
     /// The label to display and insert.
-    pub label: String,
+    pub(crate) label: String,
     /// What kind of thing is being completed.
-    pub kind: CompletionKind,
+    pub(crate) kind: CompletionKind,
 }
 
 /// The kind of a [`CompletionEntry`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CompletionKind {
+pub(crate) enum CompletionKind {
     Keyword,
     Function,
 }
 
 impl CompletionKind {
-    pub fn as_str(self) -> &'static str {
+    pub(crate) fn as_str(self) -> &'static str {
         match self {
             Self::Keyword => "keyword",
             Self::Function => "function",

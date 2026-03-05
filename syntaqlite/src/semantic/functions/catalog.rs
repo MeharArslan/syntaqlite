@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use crate::dialect::catalog::{FunctionCategory, FunctionInfo, is_function_available};
-use crate::dialect::handle::Dialect;
+use crate::dialect::Dialect;
 
 use super::types::{FunctionCheckResult, FunctionDef, FunctionLookup};
 
@@ -17,7 +17,7 @@ use super::types::{FunctionCheckResult, FunctionDef, FunctionLookup};
 /// one entry per arity - arity checking works directly on the compact
 /// `&[i16]` representation from `FunctionInfo`.
 #[derive(Clone)]
-pub struct FunctionCatalog {
+pub(crate) struct FunctionCatalog {
     /// Built-in functions (borrowed from static catalog, NOT expanded per-arity).
     builtins: Vec<&'static FunctionInfo<'static>>,
     /// Dialect extension functions (owned, copied from C data at construction).
@@ -36,7 +36,7 @@ struct OwnedFunctionInfo {
 
 impl FunctionCatalog {
     /// Build the catalog from a dialect and its compile-time configuration.
-    pub fn for_dialect(dialect: &Dialect<'_>) -> Self {
+    pub(crate) fn for_dialect(dialect: &Dialect) -> Self {
         #[cfg(feature = "sqlite")]
         let builtins: Vec<&'static FunctionInfo<'static>> =
             crate::sqlite::functions_catalog::SQLITE_FUNCTIONS
@@ -67,12 +67,12 @@ impl FunctionCatalog {
     }
 
     /// Append user-defined functions from a list of session functions.
-    pub fn add_session_functions(&mut self, functions: &[FunctionDef]) {
+    pub(crate) fn add_session_functions(&mut self, functions: &[FunctionDef]) {
         self.session.extend(functions.iter().cloned());
     }
 
     /// Check whether a function call with the given name and argument count is valid.
-    pub fn check_call(&self, name: &str, arg_count: usize) -> FunctionCheckResult {
+    pub(crate) fn check_call(&self, name: &str, arg_count: usize) -> FunctionCheckResult {
         let mut found = false;
         let mut expected = Vec::new();
         let mut has_variadic = false;
@@ -125,7 +125,7 @@ impl FunctionCatalog {
     }
 
     /// Look up a function by name. Returns `None` if not found.
-    pub fn lookup(&self, name: &str) -> Option<FunctionLookup<'_>> {
+    pub(crate) fn lookup(&self, name: &str) -> Option<FunctionLookup<'_>> {
         for info in &self.builtins {
             if info.name.eq_ignore_ascii_case(name) {
                 let mut fixed_arities = Vec::new();
@@ -173,21 +173,21 @@ impl FunctionCatalog {
     }
 
     /// All unique function names (deduplicated, for completions and fuzzy matching).
-    pub fn all_names(&self) -> Vec<String> {
+    pub(crate) fn all_names(&self) -> Vec<String> {
         let mut names = Vec::new();
         self.visit_unique_names(|name, _category| names.push(name.to_string()));
         names
     }
 
     /// Iterate all known functions as `(name, category)` pairs.
-    pub fn iter(&self) -> impl Iterator<Item = (&str, FunctionCategory)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = (&str, FunctionCategory)> {
         let mut result = Vec::new();
         self.visit_unique_names(|name, category| result.push((name, category)));
         result.into_iter()
     }
 
     /// Unique function names as `&str`, deduplicated across arities.
-    pub fn unique_names(&self) -> impl Iterator<Item = &str> {
+    pub(crate) fn unique_names(&self) -> impl Iterator<Item = &str> {
         let mut names = Vec::new();
         self.visit_unique_names(|name, _category| names.push(name));
         names.into_iter()

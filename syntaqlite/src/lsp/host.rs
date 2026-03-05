@@ -45,7 +45,7 @@ fn ensure_model<'d>(doc: &mut Document<'d>, analyzer: &mut SemanticAnalyzer<'d>)
 /// Stores documents by URI and lazily computes per-document analysis
 /// (diagnostics, semantic tokens, completion tokens) on first access after
 /// each edit. Semantic validation delegates to [`SemanticAnalyzer`].
-pub struct LspHost<'d> {
+pub(crate) struct LspHost<'d> {
     dialect: DialectEnv<'d>,
     documents: HashMap<String, Document<'d>>,
     context: Option<DatabaseCatalog>,
@@ -54,7 +54,7 @@ pub struct LspHost<'d> {
 
 impl<'d> LspHost<'d> {
     /// Create a host bound to `dialect`.
-    pub fn with_dialect(dialect: impl Into<DialectEnv<'d>>) -> Self {
+    pub(crate) fn with_dialect(dialect: impl Into<DialectEnv<'d>>) -> Self {
         let dialect = dialect.into();
         let analyzer = SemanticAnalyzer::with_dialect(dialect);
         LspHost {
@@ -67,24 +67,24 @@ impl<'d> LspHost<'d> {
 
     /// Create a host for the built-in SQLite dialect.
     #[cfg(feature = "sqlite")]
-    pub fn new() -> LspHost<'static> {
+    pub(crate) fn new() -> LspHost<'static> {
         LspHost::with_dialect(crate::dialect::sqlite())
     }
 
     // ── Configuration ─────────────────────────────────────────────────────
 
     /// Set the session context (user-provided schema and functions).
-    pub fn set_session_context(&mut self, ctx: DatabaseCatalog) {
+    pub(crate) fn set_session_context(&mut self, ctx: DatabaseCatalog) {
         self.context = Some(ctx);
     }
 
     /// Access the current session context.
-    pub fn session_context(&self) -> Option<&DatabaseCatalog> {
+    pub(crate) fn session_context(&self) -> Option<&DatabaseCatalog> {
         self.context.as_ref()
     }
 
     /// Update the dialect environment (version/cflags). Rebuilds the analyzer.
-    pub fn set_dialect_env(&mut self, env: DialectEnv<'d>) {
+    pub(crate) fn set_dialect_env(&mut self, env: DialectEnv<'d>) {
         self.dialect = env;
         self.analyzer = SemanticAnalyzer::with_dialect(env);
     }
@@ -92,7 +92,7 @@ impl<'d> LspHost<'d> {
     // ── Document lifecycle ─────────────────────────────────────────────────
 
     /// Register a newly opened document.
-    pub fn open_document(&mut self, uri: &str, version: i32, text: String) {
+    pub(crate) fn open_document(&mut self, uri: &str, version: i32, text: String) {
         self.documents.insert(
             uri.to_string(),
             Document {
@@ -106,7 +106,7 @@ impl<'d> LspHost<'d> {
     }
 
     /// Update a document's content, invalidating cached analysis.
-    pub fn update_document(&mut self, uri: &str, version: i32, text: String) {
+    pub(crate) fn update_document(&mut self, uri: &str, version: i32, text: String) {
         if let Some(doc) = self.documents.get_mut(uri) {
             doc.version = version;
             doc.source = text;
@@ -119,19 +119,19 @@ impl<'d> LspHost<'d> {
     }
 
     /// Remove a document from the host.
-    pub fn close_document(&mut self, uri: &str) {
+    pub(crate) fn close_document(&mut self, uri: &str) {
         self.documents.remove(uri);
     }
 
     /// Source text for a document.
-    pub fn document_source(&self, uri: &str) -> Option<&str> {
+    pub(crate) fn document_source(&self, uri: &str) -> Option<&str> {
         self.documents.get(uri).map(|doc| doc.source.as_str())
     }
 
     // ── Analysis queries ───────────────────────────────────────────────────
 
     /// Parse-error diagnostics for a document, lazily computed.
-    pub fn diagnostics(&mut self, uri: &str) -> &[Diagnostic] {
+    pub(crate) fn diagnostics(&mut self, uri: &str) -> &[Diagnostic] {
         let Some(doc) = self.documents.get_mut(uri) else {
             return &[];
         };
@@ -145,7 +145,7 @@ impl<'d> LspHost<'d> {
     }
 
     /// Version, source text, and parse-error diagnostics in one borrow.
-    pub fn document_diagnostics(&mut self, uri: &str) -> Option<(i32, &str, &[Diagnostic])> {
+    pub(crate) fn document_diagnostics(&mut self, uri: &str) -> Option<(i32, &str, &[Diagnostic])> {
         let doc = self.documents.get_mut(uri)?;
         ensure_model(doc, &mut self.analyzer);
         if doc.cached_parse_diags.is_none() {
@@ -160,7 +160,7 @@ impl<'d> LspHost<'d> {
     }
 
     /// Semantic tokens for syntax highlighting, lazily computed.
-    pub fn semantic_tokens(&mut self, uri: &str) -> &[SemanticToken] {
+    pub(crate) fn semantic_tokens(&mut self, uri: &str) -> &[SemanticToken] {
         let Some(doc) = self.documents.get_mut(uri) else {
             return &[];
         };
@@ -174,7 +174,7 @@ impl<'d> LspHost<'d> {
     }
 
     /// Semantic tokens delta-encoded for LSP `textDocument/semanticTokens/full`.
-    pub fn semantic_tokens_encoded(
+    pub(crate) fn semantic_tokens_encoded(
         &mut self,
         uri: &str,
         range: Option<(usize, usize)>,
@@ -193,7 +193,7 @@ impl<'d> LspHost<'d> {
     }
 
     /// Expected parser tokens and semantic context at a byte offset.
-    pub fn completion_info_at_offset(&mut self, uri: &str, offset: usize) -> CompletionInfo {
+    pub(crate) fn completion_info_at_offset(&mut self, uri: &str, offset: usize) -> CompletionInfo {
         let Some(doc) = self.documents.get_mut(uri) else {
             return CompletionInfo {
                 tokens: Vec::new(),
@@ -206,12 +206,12 @@ impl<'d> LspHost<'d> {
     }
 
     /// Expected terminal token IDs at a byte offset.
-    pub fn expected_tokens_at_offset(&mut self, uri: &str, offset: usize) -> Vec<u32> {
+    pub(crate) fn expected_tokens_at_offset(&mut self, uri: &str, offset: usize) -> Vec<u32> {
         self.completion_info_at_offset(uri, offset).tokens
     }
 
     /// Completion items (keywords + functions) at a byte offset.
-    pub fn completion_items(&mut self, uri: &str, offset: usize) -> Vec<CompletionEntry> {
+    pub(crate) fn completion_items(&mut self, uri: &str, offset: usize) -> Vec<CompletionEntry> {
         use crate::dialect::DialectExt;
         use std::collections::HashSet;
 
@@ -262,12 +262,12 @@ impl<'d> LspHost<'d> {
     }
 
     /// Format a document's source text.
-    pub fn format(&self, uri: &str, config: &FormatConfig) -> Result<String, FormatError> {
+    pub(crate) fn format(&self, uri: &str, config: &FormatConfig) -> Result<String, FormatError> {
         let doc = self
             .documents
             .get(uri)
             .ok_or(FormatError::UnknownDocument)?;
-        let mut formatter = Formatter::with_config(self.dialect, config);
+        let mut formatter = Formatter::with_dialect_config(self.dialect, config);
         formatter.format(&doc.source).map_err(FormatError::Parse)
     }
 
@@ -278,7 +278,7 @@ impl<'d> LspHost<'d> {
     /// Returns only semantic diagnostics (unknown tables, columns, functions,
     /// wrong arity). Parse-error diagnostics come from [`diagnostics()`](Self::diagnostics).
     #[cfg(feature = "sqlite")]
-    pub fn validate(&mut self, uri: &str, config: &ValidationConfig) -> Vec<Diagnostic> {
+    pub(crate) fn validate(&mut self, uri: &str, config: &ValidationConfig) -> Vec<Diagnostic> {
         let Some(doc) = self.documents.get_mut(uri) else {
             return Vec::new();
         };
@@ -297,7 +297,7 @@ impl<'d> LspHost<'d> {
 
     /// Parse + semantic diagnostics combined.
     #[cfg(feature = "sqlite")]
-    pub fn all_diagnostics(&mut self, uri: &str, config: &ValidationConfig) -> Vec<Diagnostic> {
+    pub(crate) fn all_diagnostics(&mut self, uri: &str, config: &ValidationConfig) -> Vec<Diagnostic> {
         let mut result = self.diagnostics(uri).to_vec();
         result.extend(self.validate(uri, config));
         result
@@ -307,7 +307,7 @@ impl<'d> LspHost<'d> {
 
     /// Build the function catalog for the current dialect configuration and
     /// session context.
-    pub fn function_catalog(&self) -> FunctionCatalog {
+    pub(crate) fn function_catalog(&self) -> FunctionCatalog {
         let mut catalog = FunctionCatalog::for_dialect(&self.dialect);
         if let Some(ctx) = self.context.as_ref() {
             catalog.add_session_functions(&ctx.functions);
@@ -316,7 +316,7 @@ impl<'d> LspHost<'d> {
     }
 
     /// Unique function names for the current configuration.
-    pub fn available_function_names(&self) -> Vec<String> {
+    pub(crate) fn available_function_names(&self) -> Vec<String> {
         self.function_catalog()
             .unique_names()
             .map(|s| s.to_string())
@@ -391,7 +391,7 @@ fn encode_semantic_tokens(
 
 /// Errors that can occur during formatting.
 #[derive(Debug)]
-pub enum FormatError {
+pub(crate) enum FormatError {
     /// The document URI was not found.
     UnknownDocument,
     /// Parse error during formatting.

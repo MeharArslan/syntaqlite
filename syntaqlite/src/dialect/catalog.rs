@@ -7,12 +7,13 @@
 //! dialect extensions to describe function availability.
 
 use syntaqlite_syntax::util::SqliteVersion;
+use std::mem::size_of;
 
-use super::handle::Dialect;
+use super::Dialect;
 
 /// Category of a built-in function.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FunctionCategory {
+pub(crate) enum FunctionCategory {
     Scalar,
     Aggregate,
     Window,
@@ -25,16 +26,16 @@ pub enum FunctionCategory {
 /// which allows [`AvailabilityRule`] to be cast directly from C data.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum CflagPolarity {
-    /// Function requires the cflag to be set (SQLITE_ENABLE_*).
+pub(crate) enum CflagPolarity {
+    /// Function requires the cflag to be set (`SQLITE_ENABLE`_*).
     Enable = 0,
-    /// Function is omitted when the cflag is set (SQLITE_OMIT_*).
+    /// Function is omitted when the cflag is set (`SQLITE_OMIT`_*).
     Omit = 1,
 }
 
 /// Metadata about a built-in function.
 #[derive(Debug, Clone, Copy)]
-pub struct FunctionInfo<'a> {
+pub(crate) struct FunctionInfo<'a> {
     /// Function name (lowercase).
     pub name: &'a str,
     /// Supported arities. Negative values indicate variadic:
@@ -51,10 +52,10 @@ pub struct FunctionInfo<'a> {
 /// reinterpreted as `&[AvailabilityRule]` without copying.
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct AvailabilityRule {
-    /// Minimum SQLite version (encoded: major*1_000_000 + minor*1_000 + patch).
+pub(crate) struct AvailabilityRule {
+    /// Minimum `SQLite` version (encoded: major*`1_000_000` + minor*`1_000` + patch).
     pub since: i32,
-    /// Maximum SQLite version (exclusive). 0 means no upper bound.
+    /// Maximum `SQLite` version (exclusive). 0 means no upper bound.
     pub until: i32,
     /// Cflag bit index, or `u32::MAX` if no cflag required.
     pub cflag_index: u32,
@@ -63,12 +64,12 @@ pub struct AvailabilityRule {
 }
 
 const _: () = {
-    assert!(std::mem::size_of::<AvailabilityRule>() == 16);
+    assert!(size_of::<AvailabilityRule>() == 16);
 };
 
 /// A function entry combining metadata with availability rules.
 #[derive(Debug, Clone, Copy)]
-pub struct FunctionEntry<'a> {
+pub(crate) struct FunctionEntry<'a> {
     pub info: FunctionInfo<'a>,
     pub availability: &'a [AvailabilityRule],
 }
@@ -76,7 +77,7 @@ pub struct FunctionEntry<'a> {
 /// Check whether a function entry is available for the given dialect config.
 ///
 /// Checks version constraints only; cflag constraints are ignored for now.
-pub fn is_function_available(entry: &FunctionEntry<'_>, dialect: &Dialect<'_>) -> bool {
+pub(crate) fn is_function_available(entry: &FunctionEntry<'_>, dialect: &Dialect) -> bool {
     entry.availability.iter().any(|rule| {
         if dialect.version() < SqliteVersion::from_int(rule.since) {
             return false;

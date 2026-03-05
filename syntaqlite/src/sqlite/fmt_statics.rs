@@ -7,16 +7,16 @@
 // will be populated after Step 2 of the crate refactor updates buildtools to
 // emit formatter data as Rust statics instead of C headers.
 
-//! Formatter string table and opcode data for the SQLite dialect.
+//! Formatter string table and opcode data for the `SQLite` dialect.
 
-/// String table for the SQLite formatter.
-pub static SQLITE_FMT_STRINGS: &[&str] = &[];
+/// String table for the `SQLite` formatter.
+pub(crate) static SQLITE_FMT_STRINGS: &[&str] = &[];
 
-/// Enum display table for the SQLite formatter.
-pub static SQLITE_FMT_ENUM_DISPLAY: &[u16] = &[];
+/// Enum display table for the `SQLite` formatter.
+pub(crate) static SQLITE_FMT_ENUM_DISPLAY: &[u16] = &[];
 
 /// Packed formatter opcode stream (6 bytes per instruction).
-pub static SQLITE_FMT_OPS: &[u8] = &[];
+pub(crate) static SQLITE_FMT_OPS: &[u8] = &[];
 
 /// Packed dispatch table: each `u32` encodes `(offset << 16) | length`.
-pub static SQLITE_FMT_DISPATCH: &[u32] = &[];
+pub(crate) static SQLITE_FMT_DISPATCH: &[u32] = &[];

@@ -9,5 +9,5 @@
 mod catalog;
 mod types;
 
-pub use catalog::RelationCatalog;
-pub use types::{ColumnDef, RelationDef, RelationKind};
+pub(crate) use catalog::RelationCatalog;
+pub(crate) use types::{ColumnDef, RelationDef, RelationKind};

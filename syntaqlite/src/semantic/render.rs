@@ -16,14 +16,14 @@ use super::diagnostics::{Diagnostic, Severity};
 /// 1 | include ;
 ///   | ^~~~~~~
 /// ```
-pub struct DiagnosticRenderer<'a> {
+pub(crate) struct DiagnosticRenderer<'a> {
     source: &'a str,
     file: &'a str,
 }
 
 impl<'a> DiagnosticRenderer<'a> {
     /// Create a renderer bound to a source string and display file label.
-    pub fn new(source: &'a str, file: &'a str) -> Self {
+    pub(crate) fn new(source: &'a str, file: &'a str) -> Self {
         Self { source, file }
     }
 
@@ -53,7 +53,7 @@ impl<'a> DiagnosticRenderer<'a> {
     }
 
     /// Render a single diagnostic to stderr.
-    pub fn render_diagnostic(
+    pub(crate) fn render_diagnostic(
         &self,
         severity: &str,
         message: &str,
@@ -90,7 +90,7 @@ impl<'a> DiagnosticRenderer<'a> {
 
     /// Render a slice of [`Diagnostic`] values to stderr and return `true`
     /// if any have [`Severity::Error`].
-    pub fn render_diagnostics(&self, diags: &[Diagnostic]) -> bool {
+    pub(crate) fn render_diagnostics(&self, diags: &[Diagnostic]) -> bool {
         let mut has_errors = false;
         for d in diags {
             let severity = match d.severity {
@@ -117,4 +117,4 @@ impl<'a> DiagnosticRenderer<'a> {
 }
 
 /// Backward-compatible alias.
-pub type SourceContext<'a> = DiagnosticRenderer<'a>;
+pub(crate) type SourceContext<'a> = DiagnosticRenderer<'a>;

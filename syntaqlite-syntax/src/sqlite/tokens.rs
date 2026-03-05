@@ -203,6 +203,12 @@ impl From<TokenType> for u32 {
     }
 }
 
+impl From<TokenType> for crate::any::AnyTokenType {
+    fn from(t: TokenType) -> crate::any::AnyTokenType {
+        crate::any::AnyTokenType::from_raw(t as u32)
+    }
+}
+
 impl crate::ast::GrammarTokenType for TokenType {
     #[allow(clippy::too_many_lines)]
     fn from_token_type(raw: crate::any::AnyTokenType) -> Option<Self> {

@@ -3,7 +3,7 @@
 
 /// Whether a [`RelationDef`] represents a base table or a view.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum RelationKind {
+pub(crate) enum RelationKind {
     /// Base table relation.
     Table,
     /// View relation.
@@ -12,7 +12,7 @@ pub enum RelationKind {
 
 /// A table or view in the schema.
 #[derive(Clone)]
-pub struct RelationDef {
+pub(crate) struct RelationDef {
     /// Relation name.
     pub name: String,
     /// Projected column definitions for the relation.
@@ -23,7 +23,7 @@ pub struct RelationDef {
 
 /// Column definition used by semantic relation catalogs.
 #[derive(Clone)]
-pub struct ColumnDef {
+pub(crate) struct ColumnDef {
     /// Column name.
     pub name: String,
     /// Optional declared type name. `SQLite` is permissive here.

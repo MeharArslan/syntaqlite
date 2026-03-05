@@ -4,14 +4,13 @@
 //! Dialect handle and token classification.
 
 pub(crate) mod catalog;
-pub(crate) mod handle;
+pub(crate) mod dialect;
 pub(crate) mod schema;
 
-pub use handle::Dialect;
-pub use syntaqlite_syntax::any::TokenCategory;
+pub(crate) use dialect::Dialect;
 
-/// Return the built-in SQLite dialect handle.
+/// Return the built-in `SQLite` dialect handle.
 #[cfg(feature = "sqlite")]
-pub fn sqlite() -> Dialect<'static> {
+pub(crate) fn sqlite() -> Dialect {
     crate::sqlite::dialect::dialect()
 }

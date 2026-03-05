@@ -18,12 +18,12 @@ struct SyntaqliteTokenizer {
 
 SyntaqliteTokenizer* syntaqlite_tokenizer_create_with_grammar(
     const SyntaqliteMemMethods* mem,
-    const SyntaqliteGrammar* env) {
+    const SyntaqliteGrammar env) {
   SyntaqliteMemMethods m = mem ? *mem : SYNTAQLITE_MEM_METHODS_DEFAULT;
   SyntaqliteTokenizer* tok = m.xMalloc(sizeof(SyntaqliteTokenizer));
   memset(tok, 0, sizeof(*tok));
   tok->mem = m;
-  tok->env = *env;
+  tok->env = env;
   return tok;
 }
 
@@ -31,7 +31,7 @@ SyntaqliteTokenizer* syntaqlite_tokenizer_create_with_grammar(
 SyntaqliteTokenizer* syntaqlite_tokenizer_create(
     const SyntaqliteMemMethods* mem) {
   SyntaqliteGrammar env = syntaqlite_sqlite_grammar();
-  return syntaqlite_tokenizer_create_with_grammar(mem, &env);
+  return syntaqlite_tokenizer_create_with_grammar(mem, env);
 }
 #endif
 

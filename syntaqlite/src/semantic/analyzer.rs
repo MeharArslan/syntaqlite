@@ -25,8 +25,8 @@ use super::walker::Walker;
 ///
 /// Created once for a dialect, reused across inputs. Holds the static
 /// catalog (dialect builtins) and reusable scratch space.
-pub struct SemanticAnalyzer<'d> {
-    dialect: Dialect<'d>,
+pub(crate) struct SemanticAnalyzer<'d> {
+    dialect: Dialect,
 
     /// Built once from dialect at construction - dialect builtins.
     static_catalog: StaticCatalog,
@@ -39,13 +39,13 @@ pub struct SemanticAnalyzer<'d> {
 impl<'d> SemanticAnalyzer<'d> {
     /// Create an analyzer for the built-in `SQLite` dialect.
     #[cfg(feature = "sqlite")]
-    pub fn new() -> SemanticAnalyzer<'static> {
+    pub(crate) fn new() -> SemanticAnalyzer<'static> {
         let dialect = crate::dialect::sqlite();
         SemanticAnalyzer::with_dialect(dialect)
     }
 
     /// Create an analyzer bound to a specific dialect.
-    pub fn with_dialect(dialect: impl Into<Dialect<'d>>) -> Self {
+    pub(crate) fn with_dialect(dialect: impl Into<Dialect>) -> Self {
         let dialect = dialect.into();
         let static_catalog = StaticCatalog::for_dialect(&dialect);
         SemanticAnalyzer {
@@ -57,20 +57,20 @@ impl<'d> SemanticAnalyzer<'d> {
     }
 
     /// Access the underlying dialect.
-    pub fn dialect(&self) -> Dialect<'d> {
+    pub(crate) fn dialect(&self) -> Dialect {
         self.dialect
     }
 
     // -- Primary API -------------------------------------------------------
 
     /// Parse and validate SQL, returning all diagnostics (parse + semantic).
-    pub fn diagnostics(&mut self, source: &str, catalog: &DatabaseCatalog) -> Vec<Diagnostic> {
+    pub(crate) fn diagnostics(&mut self, source: &str, catalog: &DatabaseCatalog) -> Vec<Diagnostic> {
         let model = self.prepare(source);
         self.diagnostics_prepared(&model, catalog)
     }
 
     /// Parse and validate SQL with explicit config, returning all diagnostics.
-    pub fn diagnostics_with_config(
+    pub(crate) fn diagnostics_with_config(
         &mut self,
         source: &str,
         catalog: &DatabaseCatalog,
@@ -83,7 +83,7 @@ impl<'d> SemanticAnalyzer<'d> {
     // -- Advanced API ------------------------------------------------------
 
     /// Parse SQL and produce an opaque model for repeated queries.
-    pub fn prepare(&mut self, source: &str) -> SemanticModel {
+    pub(crate) fn prepare(&mut self, source: &str) -> SemanticModel {
         let parser = syntaqlite_syntax::Parser::with_config(
             &syntaqlite_syntax::ParserConfig::default().with_collect_tokens(true),
         );
@@ -118,7 +118,7 @@ impl<'d> SemanticAnalyzer<'d> {
     }
 
     /// Diagnostics from a prepared model.
-    pub fn diagnostics_prepared(
+    pub(crate) fn diagnostics_prepared(
         &mut self,
         model: &SemanticModel,
         catalog: &DatabaseCatalog,
@@ -131,7 +131,7 @@ impl<'d> SemanticAnalyzer<'d> {
     }
 
     /// Diagnostics from a prepared model, generic over dialect AST types.
-    pub fn diagnostics_prepared_dialect<A: for<'a> AstTypes<'a>>(
+    pub(crate) fn diagnostics_prepared_dialect<A: for<'a> AstTypes<'a>>(
         &mut self,
         model: &SemanticModel,
         catalog: &DatabaseCatalog,
@@ -164,7 +164,7 @@ impl<'d> SemanticAnalyzer<'d> {
     // -- Lazy query methods ------------------------------------------------
 
     /// Parse-error diagnostics extracted from a prepared model.
-    pub fn parse_diagnostics(&self, model: &SemanticModel) -> Vec<Diagnostic> {
+    pub(crate) fn parse_diagnostics(&self, model: &SemanticModel) -> Vec<Diagnostic> {
         model
             .parse_errors
             .iter()
@@ -182,7 +182,7 @@ impl<'d> SemanticAnalyzer<'d> {
     }
 
     /// Semantic tokens for syntax highlighting.
-    pub fn semantic_tokens(&self, model: &SemanticModel) -> Vec<super::model::SemanticToken> {
+    pub(crate) fn semantic_tokens(&self, model: &SemanticModel) -> Vec<super::model::SemanticToken> {
         let mut tokens = Vec::new();
 
         for tp in &model.tokens {
@@ -210,7 +210,7 @@ impl<'d> SemanticAnalyzer<'d> {
     }
 
     /// Expected tokens and semantic context at `offset`.
-    pub fn completion_info(
+    pub(crate) fn completion_info(
         &self,
         model: &SemanticModel,
         offset: usize,

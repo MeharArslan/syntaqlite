@@ -12,12 +12,12 @@
 //! - [`extract_python`] — Python f-string extraction
 //! - [`extract_typescript`] — TypeScript/JavaScript template literal extraction
 
-pub mod offset_map;
+pub(crate) mod offset_map;
 mod python;
 mod typescript;
 
-pub use python::extract_python;
-pub use typescript::extract_typescript;
+pub(crate) use python::extract_python;
+pub(crate) use typescript::extract_typescript;
 
 use std::ops::Range;
 
@@ -37,24 +37,24 @@ use offset_map::OffsetMap;
 
 /// A SQL fragment extracted from a host language source file.
 #[derive(Debug)]
-pub struct EmbeddedFragment {
+pub(crate) struct EmbeddedFragment {
     /// Byte range of the SQL content in the host file (excluding quotes).
-    pub sql_range: Range<usize>,
+    pub(crate) sql_range: Range<usize>,
     /// SQL text with holes replaced by placeholder identifiers.
-    pub sql_text: String,
+    pub(crate) sql_text: String,
     /// Information about each interpolation hole.
-    pub holes: Vec<Hole>,
+    pub(crate) holes: Vec<Hole>,
 }
 
 /// An interpolation hole (e.g. `{expr}` in a Python f-string, `${expr}` in JS).
 #[derive(Debug)]
-pub struct Hole {
+pub(crate) struct Hole {
     /// Byte range of the hole expression in the host file.
-    pub host_range: Range<usize>,
+    pub(crate) host_range: Range<usize>,
     /// Byte offset in `sql_text` where the placeholder sits.
-    pub sql_offset: usize,
+    pub(crate) sql_offset: usize,
     /// The placeholder identifier (e.g. `__hole_0__`).
-    pub placeholder: String,
+    pub(crate) placeholder: String,
 }
 
 // ── Shared scanner utilities ────────────────────────────────────────────
@@ -139,7 +139,7 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 ///     .with_catalog(catalog)
 ///     .validate(&fragments);
 /// ```
-pub struct EmbeddedAnalyzer<'d> {
+pub(crate) struct EmbeddedAnalyzer<'d> {
     dialect: DialectEnv<'d>,
     catalog: FunctionCatalog,
     config: ValidationConfig,
@@ -148,7 +148,7 @@ pub struct EmbeddedAnalyzer<'d> {
 impl<'d> EmbeddedAnalyzer<'d> {
     /// Create a new analyzer with an empty function catalog and default
     /// validation config.
-    pub fn new(dialect: DialectEnv<'d>) -> Self {
+    pub(crate) fn new(dialect: DialectEnv<'d>) -> Self {
         Self {
             dialect,
             catalog: FunctionCatalog::for_dialect(&dialect),
@@ -157,13 +157,13 @@ impl<'d> EmbeddedAnalyzer<'d> {
     }
 
     /// Attach a function catalog to enable function-existence validation.
-    pub fn with_catalog(mut self, catalog: FunctionCatalog) -> Self {
+    pub(crate) fn with_catalog(mut self, catalog: FunctionCatalog) -> Self {
         self.catalog = catalog;
         self
     }
 
     /// Override the default validation config.
-    pub fn with_config(mut self, config: ValidationConfig) -> Self {
+    pub(crate) fn with_config(mut self, config: ValidationConfig) -> Self {
         self.config = config;
         self
     }
@@ -172,7 +172,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
     ///
     /// Diagnostics whose spans fall entirely inside a hole placeholder are
     /// filtered out.
-    pub fn validate(&self, fragments: &[EmbeddedFragment]) -> Vec<Diagnostic> {
+    pub(crate) fn validate(&self, fragments: &[EmbeddedFragment]) -> Vec<Diagnostic> {
         let mut all_diags = Vec::new();
 
         for fragment in fragments {
@@ -206,7 +206,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
     /// Returns `(sql_offset, length, category)` tuples with byte offsets into
     /// `fragment.sql_text`. The caller is responsible for mapping these through
     /// an [`OffsetMap`] to host-file positions.
-    pub fn fragment_semantic_tokens(
+    pub(crate) fn fragment_semantic_tokens(
         &self,
         fragment: &EmbeddedFragment,
     ) -> Vec<(usize, usize, TokenCategory)> {
@@ -274,7 +274,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
     /// byte offset via [`OffsetMap`], and delta-encodes the result into the
     /// `[deltaLine, deltaStart, length, tokenType, modifiers]` 5-tuple format
     /// consumed by LSP `textDocument/semanticTokens` responses.
-    pub fn semantic_tokens_encoded(
+    pub(crate) fn semantic_tokens_encoded(
         &self,
         fragments: &[EmbeddedFragment],
         source: &str,
