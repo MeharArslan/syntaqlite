@@ -11,7 +11,7 @@ use crate::ast::{AnyDialect, GrammarTokenType};
 use crate::grammar::{AnyGrammar, TypedGrammar};
 
 #[cfg(feature = "sqlite")]
-use crate::sqlite::grammar::SqliteGrammar;
+use crate::sqlite::grammar::Grammar;
 #[cfg(feature = "sqlite")]
 use crate::sqlite::tokens::TokenType;
 
@@ -24,7 +24,7 @@ use crate::sqlite::tokens::TokenType;
 /// ordinals use [`AnyTokenizer`].
 #[cfg(feature = "sqlite")]
 #[doc(hidden)]
-pub struct Tokenizer(TypedTokenizer<SqliteGrammar>);
+pub struct Tokenizer(TypedTokenizer<Grammar>);
 
 #[cfg(feature = "sqlite")]
 impl Tokenizer {
@@ -63,18 +63,18 @@ impl Default for Tokenizer {
 /// A `SQLite` token: token type + source text slice. Produced by [`Tokenizer::tokenize`].
 #[cfg(feature = "sqlite")]
 #[doc(hidden)]
-pub struct Token<'a>(TypedToken<'a, SqliteGrammar>);
+pub struct Token<'a>(TypedToken<'a, Grammar>);
 
 #[cfg(feature = "sqlite")]
 impl<'a> Token<'a> {
     /// The `SQLite` token type.
     pub fn token_type(&self) -> TokenType {
-        self.0.token_type
+        self.0.token_type()
     }
 
     /// The source text slice covered by this token.
     pub fn text(&self) -> &'a str {
-        self.0.text
+        self.0.text()
     }
 }
 
@@ -205,17 +205,27 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
 impl TypedTokenizer<AnyDialect> {
     /// Create a type-erased tokenizer from a raw grammar handle.
     pub fn from_raw_grammar(grammar: AnyGrammar) -> Self {
-        Self::new(AnyDialect { raw: grammar })
+        Self::new(AnyDialect::new(grammar))
     }
 }
 
 /// A typed token: dialect token type + source text slice.
 #[derive(Debug, Clone, Copy)]
 pub struct TypedToken<'a, G: TypedGrammar> {
-    /// Dialect-typed token variant.
-    pub token_type: G::Token,
-    /// Slice of the source text covered by this token.
-    pub text: &'a str,
+    token_type: G::Token,
+    text: &'a str,
+}
+
+impl<'a, G: TypedGrammar> TypedToken<'a, G> {
+    /// The dialect-typed token variant.
+    pub fn token_type(&self) -> G::Token {
+        self.token_type
+    }
+
+    /// The source text slice covered by this token.
+    pub fn text(&self) -> &'a str {
+        self.text
+    }
 }
 
 /// A type-erased tokenizer. Yields [`AnyToken`]s with raw `u32` token type
@@ -230,7 +240,11 @@ pub type AnyToken<'a> = TypedToken<'a, AnyDialect>;
 
 // ── Crate-internal ───────────────────────────────────────────────────────────
 
-pub(crate) struct TypedTokenCursor<'a, G: TypedGrammar> {
+/// An iterator over tokens produced by [`TypedTokenizer::tokenize`] or [`TypedTokenizer::tokenize_cstr`].
+///
+/// Returned by the `tokenize` family of methods on [`TypedTokenizer`] and [`AnyTokenizer`].
+/// Implements [`Iterator`]`<Item = `[`TypedToken`]`<'a, G>>`.
+struct TypedTokenCursor<'a, G: TypedGrammar> {
     raw: NonNull<ffi::CTokenizer>,
     source: &'a str,
     /// Base pointer of the C source buffer. Used to compute byte offsets back

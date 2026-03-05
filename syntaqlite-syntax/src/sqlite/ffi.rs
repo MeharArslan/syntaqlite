@@ -485,11 +485,11 @@ pub(crate) struct PragmaStmt {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(C)]
-pub(crate) struct AnalyzeStmt {
+pub(crate) struct AnalyzeOrReindexStmt {
     pub(crate) tag: u32,
     pub(crate) target_name: SourceSpan,
     pub(crate) schema: SourceSpan,
-    pub(crate) kind: super::ast::AnalyzeKind,
+    pub(crate) kind: super::ast::AnalyzeOrReindexKind,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -842,7 +842,7 @@ unsafe impl ArenaNode for PragmaStmt {
 }
 
 // SAFETY: TAG matches the value the C parser writes into the `tag` field.
-unsafe impl ArenaNode for AnalyzeStmt {
+unsafe impl ArenaNode for AnalyzeOrReindexStmt {
     const TAG: u32 = 59;
 }
 

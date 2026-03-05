@@ -4762,8 +4762,8 @@ static YYACTIONTYPE yy_reduce(
 {
     SyntaqliteBinaryOp op;
     switch (yymsp[-1].minor.yy0.type) {
-        case SYNTAQLITE_TK_BITAND: op = SYNTAQLITE_BINARY_OP_BITAND; break;
-        case SYNTAQLITE_TK_BITOR:  op = SYNTAQLITE_BINARY_OP_BITOR; break;
+        case SYNTAQLITE_TK_BITAND: op = SYNTAQLITE_BINARY_OP_BIT_AND; break;
+        case SYNTAQLITE_TK_BITOR:  op = SYNTAQLITE_BINARY_OP_BIT_OR; break;
         case SYNTAQLITE_TK_LSHIFT: op = SYNTAQLITE_BINARY_OP_LSHIFT; break;
         default:        op = SYNTAQLITE_BINARY_OP_RSHIFT; break;
     }
@@ -4792,7 +4792,7 @@ static YYACTIONTYPE yy_reduce(
         break;
       case 188: /* expr ::= BITNOT expr */
 {
-    yymsp[-1].minor.yy213 = synq_parse_unary_expr(pCtx, SYNTAQLITE_UNARY_OP_BITNOT, yymsp[0].minor.yy213);
+    yymsp[-1].minor.yy213 = synq_parse_unary_expr(pCtx, SYNTAQLITE_UNARY_OP_BIT_NOT, yymsp[0].minor.yy213);
 }
         break;
       case 189: /* expr ::= NOT expr */
@@ -5583,32 +5583,32 @@ static YYACTIONTYPE yy_reduce(
         break;
       case 339: /* cmd ::= ANALYZE */
 {
-    yymsp[0].minor.yy213 = synq_parse_analyze_stmt(pCtx,
+    yymsp[0].minor.yy213 = synq_parse_analyze_or_reindex_stmt(pCtx,
         SYNQ_NO_SPAN,
         SYNQ_NO_SPAN,
-        SYNTAQLITE_ANALYZE_KIND_ANALYZE);
+        SYNTAQLITE_ANALYZE_OR_REINDEX_KIND_ANALYZE);
 }
         break;
       case 340: /* cmd ::= ANALYZE nm dbnm */
 {
     SyntaqliteSourceSpan name_span = yymsp[0].minor.yy0.z ? synq_span(pCtx, yymsp[0].minor.yy0) : synq_span(pCtx, yymsp[-1].minor.yy0);
     SyntaqliteSourceSpan schema_span = yymsp[0].minor.yy0.z ? synq_span(pCtx, yymsp[-1].minor.yy0) : SYNQ_NO_SPAN;
-    yymsp[-2].minor.yy213 = synq_parse_analyze_stmt(pCtx, name_span, schema_span, SYNTAQLITE_ANALYZE_KIND_ANALYZE);
+    yymsp[-2].minor.yy213 = synq_parse_analyze_or_reindex_stmt(pCtx, name_span, schema_span, SYNTAQLITE_ANALYZE_OR_REINDEX_KIND_ANALYZE);
 }
         break;
       case 341: /* cmd ::= REINDEX */
 {
-    yymsp[0].minor.yy213 = synq_parse_analyze_stmt(pCtx,
+    yymsp[0].minor.yy213 = synq_parse_analyze_or_reindex_stmt(pCtx,
         SYNQ_NO_SPAN,
         SYNQ_NO_SPAN,
-        SYNTAQLITE_ANALYZE_KIND_REINDEX);
+        SYNTAQLITE_ANALYZE_OR_REINDEX_KIND_REINDEX);
 }
         break;
       case 342: /* cmd ::= REINDEX nm dbnm */
 {
     SyntaqliteSourceSpan name_span = yymsp[0].minor.yy0.z ? synq_span(pCtx, yymsp[0].minor.yy0) : synq_span(pCtx, yymsp[-1].minor.yy0);
     SyntaqliteSourceSpan schema_span = yymsp[0].minor.yy0.z ? synq_span(pCtx, yymsp[-1].minor.yy0) : SYNQ_NO_SPAN;
-    yymsp[-2].minor.yy213 = synq_parse_analyze_stmt(pCtx, name_span, schema_span, 1);
+    yymsp[-2].minor.yy213 = synq_parse_analyze_or_reindex_stmt(pCtx, name_span, schema_span, 1);
 }
         break;
       case 343: /* cmd ::= ATTACH database_kw_opt expr AS expr key_opt */

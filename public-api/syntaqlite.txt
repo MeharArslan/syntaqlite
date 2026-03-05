@@ -1,0 +1,43 @@
+impl core::default::Default for syntaqlite::FormatConfig
+impl core::default::Default for syntaqlite::Formatter<'static>
+impl core::marker::Send for syntaqlite::Dialect<'_>
+impl core::marker::Sync for syntaqlite::Dialect<'_>
+impl<'d> syntaqlite::Dialect<'d>
+impl<'d> syntaqlite::Formatter<'d>
+pub enum syntaqlite::KeywordCase
+pub fn syntaqlite::Dialect<'d>::classify_token(&self, token_type: u32, flags: u32) -> syntaqlite_syntax::grammar::TokenCategory
+pub fn syntaqlite::Dialect<'d>::field_meta(&self, tag: u32) -> impl core::iter::traits::exact_size::ExactSizeIterator<Item = syntaqlite_syntax::grammar::FieldMeta<'static>>
+pub fn syntaqlite::Dialect<'d>::fmt_dispatch(&self, tag: u32) -> core::option::Option<(&'d [u8], usize)>
+pub fn syntaqlite::Dialect<'d>::fmt_enum_display_val(&self, idx: usize) -> u16
+pub fn syntaqlite::Dialect<'d>::fmt_string(&self, idx: u16) -> &'d str
+pub fn syntaqlite::Dialect<'d>::function_extensions(&self) -> &'d [syntaqlite::dialect::catalog::FunctionEntry<'d>]
+pub fn syntaqlite::Dialect<'d>::grammar(&self) -> syntaqlite_syntax::grammar::AnyGrammar
+pub fn syntaqlite::Dialect<'d>::has_fmt_data(&self) -> bool
+pub fn syntaqlite::Dialect<'d>::is_list(&self, tag: u32) -> bool
+pub fn syntaqlite::Dialect<'d>::is_suggestable_keyword(name: &str) -> bool
+pub fn syntaqlite::Dialect<'d>::keyword_count(&self) -> usize
+pub fn syntaqlite::Dialect<'d>::keyword_entry(&self, idx: usize) -> core::option::Option<(u32, &'static str)>
+pub fn syntaqlite::Dialect<'d>::new(grammar: syntaqlite_syntax::grammar::AnyGrammar, fmt_strings: &'d [&'d str], fmt_enum_display: &'d [u16], fmt_ops: &'d [u8], fmt_dispatch: &'d [u32], function_entries: &'d [syntaqlite::dialect::catalog::FunctionEntry<'d>], schema_contributions: &'d [syntaqlite::dialect::schema::SchemaContribution]) -> Self
+pub fn syntaqlite::Dialect<'d>::node_name(&self, tag: u32) -> &'static str
+pub fn syntaqlite::Dialect<'d>::schema_contribution_for_tag(&self, tag: u32) -> core::option::Option<syntaqlite::dialect::schema::SchemaContribution>
+pub fn syntaqlite::Dialect<'d>::token_category(&self, token_type: u32) -> syntaqlite_syntax::grammar::TokenCategory
+pub fn syntaqlite::Dialect<'d>::version(&self) -> syntaqlite_syntax::util::SqliteVersion
+pub fn syntaqlite::Dialect<'d>::with_version(self, version: syntaqlite_syntax::util::SqliteVersion) -> Self
+pub fn syntaqlite::FormatConfig::default() -> Self
+pub fn syntaqlite::Formatter<'d>::config(&self) -> &syntaqlite::FormatConfig
+pub fn syntaqlite::Formatter<'d>::format(&mut self, source: &str) -> core::result::Result<alloc::string::String, syntaqlite::fmt::FormatError>
+pub fn syntaqlite::Formatter<'d>::new() -> syntaqlite::Formatter<'static>
+pub fn syntaqlite::Formatter<'d>::with_config(dialect: syntaqlite::Dialect<'d>, format_config: &syntaqlite::FormatConfig) -> Self
+pub fn syntaqlite::Formatter<'static>::default() -> Self
+pub mod syntaqlite
+pub struct syntaqlite::Dialect<'d>
+pub struct syntaqlite::FormatConfig
+pub struct syntaqlite::Formatter<'d>
+pub syntaqlite::FormatConfig::indent_width: usize
+pub syntaqlite::FormatConfig::keyword_case: syntaqlite::KeywordCase
+pub syntaqlite::FormatConfig::line_width: usize
+pub syntaqlite::FormatConfig::semicolons: bool
+pub syntaqlite::KeywordCase::Lower
+pub syntaqlite::KeywordCase::Preserve
+pub syntaqlite::KeywordCase::Upper
+pub use syntaqlite::TokenCategory

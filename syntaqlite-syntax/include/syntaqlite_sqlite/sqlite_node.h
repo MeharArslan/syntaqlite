@@ -52,8 +52,8 @@ typedef enum SyntaqliteBinaryOp {
     SYNTAQLITE_BINARY_OP_NE = 10,
     SYNTAQLITE_BINARY_OP_AND = 11,
     SYNTAQLITE_BINARY_OP_OR = 12,
-    SYNTAQLITE_BINARY_OP_BITAND = 13,
-    SYNTAQLITE_BINARY_OP_BITOR = 14,
+    SYNTAQLITE_BINARY_OP_BIT_AND = 13,
+    SYNTAQLITE_BINARY_OP_BIT_OR = 14,
     SYNTAQLITE_BINARY_OP_LSHIFT = 15,
     SYNTAQLITE_BINARY_OP_RSHIFT = 16,
     SYNTAQLITE_BINARY_OP_CONCAT = 17,
@@ -63,7 +63,7 @@ typedef enum SyntaqliteBinaryOp {
 typedef enum SyntaqliteUnaryOp {
     SYNTAQLITE_UNARY_OP_MINUS = 0,
     SYNTAQLITE_UNARY_OP_PLUS = 1,
-    SYNTAQLITE_UNARY_OP_BITNOT = 2,
+    SYNTAQLITE_UNARY_OP_BIT_NOT = 2,
     SYNTAQLITE_UNARY_OP_NOT = 3
 } SyntaqliteUnaryOp;
 
@@ -216,10 +216,10 @@ typedef enum SyntaqlitePragmaForm {
     SYNTAQLITE_PRAGMA_FORM_CALL = 2
 } SyntaqlitePragmaForm;
 
-typedef enum SyntaqliteAnalyzeKind {
-    SYNTAQLITE_ANALYZE_KIND_ANALYZE = 0,
-    SYNTAQLITE_ANALYZE_KIND_REINDEX = 1
-} SyntaqliteAnalyzeKind;
+typedef enum SyntaqliteAnalyzeOrReindexKind {
+    SYNTAQLITE_ANALYZE_OR_REINDEX_KIND_ANALYZE = 0,
+    SYNTAQLITE_ANALYZE_OR_REINDEX_KIND_REINDEX = 1
+} SyntaqliteAnalyzeOrReindexKind;
 
 typedef enum SyntaqliteFrameType {
     SYNTAQLITE_FRAME_TYPE_NONE = 0,
@@ -345,7 +345,7 @@ typedef enum SyntaqliteNodeTag {
     SYNTAQLITE_NODE_CREATE_TRIGGER_STMT = 56,
     SYNTAQLITE_NODE_CREATE_VIRTUAL_TABLE_STMT = 57,
     SYNTAQLITE_NODE_PRAGMA_STMT = 58,
-    SYNTAQLITE_NODE_ANALYZE_STMT = 59,
+    SYNTAQLITE_NODE_ANALYZE_OR_REINDEX_STMT = 59,
     SYNTAQLITE_NODE_ATTACH_STMT = 60,
     SYNTAQLITE_NODE_DETACH_STMT = 61,
     SYNTAQLITE_NODE_VACUUM_STMT = 62,
@@ -815,12 +815,12 @@ typedef struct SyntaqlitePragmaStmt {
     SyntaqlitePragmaForm pragma_form;
 } SyntaqlitePragmaStmt;
 
-typedef struct SyntaqliteAnalyzeStmt {
+typedef struct SyntaqliteAnalyzeOrReindexStmt {
     SyntaqliteNodeTag tag;
     SyntaqliteSourceSpan target_name;
     SyntaqliteSourceSpan schema;
-    SyntaqliteAnalyzeKind kind;
-} SyntaqliteAnalyzeStmt;
+    SyntaqliteAnalyzeOrReindexKind kind;
+} SyntaqliteAnalyzeOrReindexStmt;
 
 typedef struct SyntaqliteAttachStmt {
     SyntaqliteNodeTag tag;
@@ -990,7 +990,7 @@ typedef union SyntaqliteNode {
     SyntaqliteCreateTriggerStmt create_trigger_stmt;
     SyntaqliteCreateVirtualTableStmt create_virtual_table_stmt;
     SyntaqlitePragmaStmt pragma_stmt;
-    SyntaqliteAnalyzeStmt analyze_stmt;
+    SyntaqliteAnalyzeOrReindexStmt analyze_or_reindex_stmt;
     SyntaqliteAttachStmt attach_stmt;
     SyntaqliteDetachStmt detach_stmt;
     SyntaqliteVacuumStmt vacuum_stmt;
@@ -1209,7 +1209,7 @@ typedef union SyntaqliteStmt {
     SyntaqliteTransactionStmt transaction_stmt;
     SyntaqliteSavepointStmt savepoint_stmt;
     SyntaqlitePragmaStmt pragma_stmt;
-    SyntaqliteAnalyzeStmt analyze_stmt;
+    SyntaqliteAnalyzeOrReindexStmt analyze_or_reindex_stmt;
     SyntaqliteAttachStmt attach_stmt;
     SyntaqliteDetachStmt detach_stmt;
     SyntaqliteVacuumStmt vacuum_stmt;
@@ -1235,7 +1235,7 @@ static inline int syntaqlite_is_stmt(SyntaqliteNodeTag tag) {
         case SYNTAQLITE_NODE_TRANSACTION_STMT: return 1;
         case SYNTAQLITE_NODE_SAVEPOINT_STMT: return 1;
         case SYNTAQLITE_NODE_PRAGMA_STMT: return 1;
-        case SYNTAQLITE_NODE_ANALYZE_STMT: return 1;
+        case SYNTAQLITE_NODE_ANALYZE_OR_REINDEX_STMT: return 1;
         case SYNTAQLITE_NODE_ATTACH_STMT: return 1;
         case SYNTAQLITE_NODE_DETACH_STMT: return 1;
         case SYNTAQLITE_NODE_VACUUM_STMT: return 1;
@@ -1312,8 +1312,8 @@ static inline const SyntaqlitePragmaStmt* syntaqlite_stmt_as_pragma_stmt(const S
     return node->tag == SYNTAQLITE_NODE_PRAGMA_STMT ? &node->pragma_stmt : NULL;
 }
 
-static inline const SyntaqliteAnalyzeStmt* syntaqlite_stmt_as_analyze_stmt(const SyntaqliteStmt* node) {
-    return node->tag == SYNTAQLITE_NODE_ANALYZE_STMT ? &node->analyze_stmt : NULL;
+static inline const SyntaqliteAnalyzeOrReindexStmt* syntaqlite_stmt_as_analyze_or_reindex_stmt(const SyntaqliteStmt* node) {
+    return node->tag == SYNTAQLITE_NODE_ANALYZE_OR_REINDEX_STMT ? &node->analyze_or_reindex_stmt : NULL;
 }
 
 static inline const SyntaqliteAttachStmt* syntaqlite_stmt_as_attach_stmt(const SyntaqliteStmt* node) {
@@ -1609,9 +1609,9 @@ template <> struct NodeTag<SyntaqlitePragmaStmt> {
   static constexpr bool kHasTag = true;
   static constexpr uint32_t kValue = SYNTAQLITE_NODE_PRAGMA_STMT;
 };
-template <> struct NodeTag<SyntaqliteAnalyzeStmt> {
+template <> struct NodeTag<SyntaqliteAnalyzeOrReindexStmt> {
   static constexpr bool kHasTag = true;
-  static constexpr uint32_t kValue = SYNTAQLITE_NODE_ANALYZE_STMT;
+  static constexpr uint32_t kValue = SYNTAQLITE_NODE_ANALYZE_OR_REINDEX_STMT;
 };
 template <> struct NodeTag<SyntaqliteAttachStmt> {
   static constexpr bool kHasTag = true;

@@ -74,7 +74,7 @@ pub enum NodeTag {
     CreateTriggerStmt = 56,
     CreateVirtualTableStmt = 57,
     PragmaStmt = 58,
-    AnalyzeStmt = 59,
+    AnalyzeOrReindexStmt = 59,
     AttachStmt = 60,
     DetachStmt = 61,
     VacuumStmt = 62,
@@ -154,7 +154,7 @@ impl NodeTag {
             56 => Some(NodeTag::CreateTriggerStmt),
             57 => Some(NodeTag::CreateVirtualTableStmt),
             58 => Some(NodeTag::PragmaStmt),
-            59 => Some(NodeTag::AnalyzeStmt),
+            59 => Some(NodeTag::AnalyzeOrReindexStmt),
             60 => Some(NodeTag::AttachStmt),
             61 => Some(NodeTag::DetachStmt),
             62 => Some(NodeTag::VacuumStmt),
@@ -178,25 +178,25 @@ impl NodeTag {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum LiteralType {
-    INTEGER = 0,
-    FLOAT = 1,
-    STRING = 2,
-    BLOB = 3,
-    NULL = 4,
-    CURRENT = 5,
-    QNUMBER = 6,
+    Integer = 0,
+    Float = 1,
+    String = 2,
+    Blob = 3,
+    Null = 4,
+    Current = 5,
+    Qnumber = 6,
 }
 
 impl LiteralType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            LiteralType::INTEGER => "INTEGER",
-            LiteralType::FLOAT => "FLOAT",
-            LiteralType::STRING => "STRING",
-            LiteralType::BLOB => "BLOB",
-            LiteralType::NULL => "NULL",
-            LiteralType::CURRENT => "CURRENT",
-            LiteralType::QNUMBER => "QNUMBER",
+            LiteralType::Integer => "INTEGER",
+            LiteralType::Float => "FLOAT",
+            LiteralType::String => "STRING",
+            LiteralType::Blob => "BLOB",
+            LiteralType::Null => "NULL",
+            LiteralType::Current => "CURRENT",
+            LiteralType::Qnumber => "QNUMBER",
         }
     }
 }
@@ -204,49 +204,49 @@ impl LiteralType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum BinaryOp {
-    PLUS = 0,
-    MINUS = 1,
-    STAR = 2,
-    SLASH = 3,
-    REM = 4,
-    LT = 5,
-    GT = 6,
-    LE = 7,
-    GE = 8,
-    EQ = 9,
-    NE = 10,
-    AND = 11,
-    OR = 12,
-    BITAND = 13,
-    BITOR = 14,
-    LSHIFT = 15,
-    RSHIFT = 16,
-    CONCAT = 17,
-    PTR = 18,
+    Plus = 0,
+    Minus = 1,
+    Star = 2,
+    Slash = 3,
+    Rem = 4,
+    Lt = 5,
+    Gt = 6,
+    Le = 7,
+    Ge = 8,
+    Eq = 9,
+    Ne = 10,
+    And = 11,
+    Or = 12,
+    BitAnd = 13,
+    BitOr = 14,
+    Lshift = 15,
+    Rshift = 16,
+    Concat = 17,
+    Ptr = 18,
 }
 
 impl BinaryOp {
     pub fn as_str(&self) -> &'static str {
         match self {
-            BinaryOp::PLUS => "PLUS",
-            BinaryOp::MINUS => "MINUS",
-            BinaryOp::STAR => "STAR",
-            BinaryOp::SLASH => "SLASH",
-            BinaryOp::REM => "REM",
-            BinaryOp::LT => "LT",
-            BinaryOp::GT => "GT",
-            BinaryOp::LE => "LE",
-            BinaryOp::GE => "GE",
-            BinaryOp::EQ => "EQ",
-            BinaryOp::NE => "NE",
-            BinaryOp::AND => "AND",
-            BinaryOp::OR => "OR",
-            BinaryOp::BITAND => "BITAND",
-            BinaryOp::BITOR => "BITOR",
-            BinaryOp::LSHIFT => "LSHIFT",
-            BinaryOp::RSHIFT => "RSHIFT",
-            BinaryOp::CONCAT => "CONCAT",
-            BinaryOp::PTR => "PTR",
+            BinaryOp::Plus => "PLUS",
+            BinaryOp::Minus => "MINUS",
+            BinaryOp::Star => "STAR",
+            BinaryOp::Slash => "SLASH",
+            BinaryOp::Rem => "REM",
+            BinaryOp::Lt => "LT",
+            BinaryOp::Gt => "GT",
+            BinaryOp::Le => "LE",
+            BinaryOp::Ge => "GE",
+            BinaryOp::Eq => "EQ",
+            BinaryOp::Ne => "NE",
+            BinaryOp::And => "AND",
+            BinaryOp::Or => "OR",
+            BinaryOp::BitAnd => "BIT_AND",
+            BinaryOp::BitOr => "BIT_OR",
+            BinaryOp::Lshift => "LSHIFT",
+            BinaryOp::Rshift => "RSHIFT",
+            BinaryOp::Concat => "CONCAT",
+            BinaryOp::Ptr => "PTR",
         }
     }
 }
@@ -254,19 +254,19 @@ impl BinaryOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum UnaryOp {
-    MINUS = 0,
-    PLUS = 1,
-    BITNOT = 2,
-    NOT = 3,
+    Minus = 0,
+    Plus = 1,
+    BitNot = 2,
+    Not = 3,
 }
 
 impl UnaryOp {
     pub fn as_str(&self) -> &'static str {
         match self {
-            UnaryOp::MINUS => "MINUS",
-            UnaryOp::PLUS => "PLUS",
-            UnaryOp::BITNOT => "BITNOT",
-            UnaryOp::NOT => "NOT",
+            UnaryOp::Minus => "MINUS",
+            UnaryOp::Plus => "PLUS",
+            UnaryOp::BitNot => "BIT_NOT",
+            UnaryOp::Not => "NOT",
         }
     }
 }
@@ -274,19 +274,19 @@ impl UnaryOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum CompoundOp {
-    UNION = 0,
-    UNIONALL = 1,
-    INTERSECT = 2,
-    EXCEPT = 3,
+    Union = 0,
+    UnionAll = 1,
+    Intersect = 2,
+    Except = 3,
 }
 
 impl CompoundOp {
     pub fn as_str(&self) -> &'static str {
         match self {
-            CompoundOp::UNION => "UNION",
-            CompoundOp::UNIONALL => "UNION_ALL",
-            CompoundOp::INTERSECT => "INTERSECT",
-            CompoundOp::EXCEPT => "EXCEPT",
+            CompoundOp::Union => "UNION",
+            CompoundOp::UnionAll => "UNION_ALL",
+            CompoundOp::Intersect => "INTERSECT",
+            CompoundOp::Except => "EXCEPT",
         }
     }
 }
@@ -294,23 +294,23 @@ impl CompoundOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum IsOp {
-    IS = 0,
-    ISNOT = 1,
-    ISNULL = 2,
-    NOTNULL = 3,
-    ISNOTDISTINCT = 4,
-    ISDISTINCT = 5,
+    Is = 0,
+    IsNot = 1,
+    Isnull = 2,
+    Notnull = 3,
+    IsNotDistinct = 4,
+    IsDistinct = 5,
 }
 
 impl IsOp {
     pub fn as_str(&self) -> &'static str {
         match self {
-            IsOp::IS => "IS",
-            IsOp::ISNOT => "IS_NOT",
-            IsOp::ISNULL => "ISNULL",
-            IsOp::NOTNULL => "NOTNULL",
-            IsOp::ISNOTDISTINCT => "IS_NOT_DISTINCT",
-            IsOp::ISDISTINCT => "IS_DISTINCT",
+            IsOp::Is => "IS",
+            IsOp::IsNot => "IS_NOT",
+            IsOp::Isnull => "ISNULL",
+            IsOp::Notnull => "NOTNULL",
+            IsOp::IsNotDistinct => "IS_NOT_DISTINCT",
+            IsOp::IsDistinct => "IS_DISTINCT",
         }
     }
 }
@@ -318,21 +318,21 @@ impl IsOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ForeignKeyAction {
-    NOACTION = 0,
-    SETNULL = 1,
-    SETDEFAULT = 2,
-    CASCADE = 3,
-    RESTRICT = 4,
+    NoAction = 0,
+    SetNull = 1,
+    SetDefault = 2,
+    Cascade = 3,
+    Restrict = 4,
 }
 
 impl ForeignKeyAction {
     pub fn as_str(&self) -> &'static str {
         match self {
-            ForeignKeyAction::NOACTION => "NO_ACTION",
-            ForeignKeyAction::SETNULL => "SET_NULL",
-            ForeignKeyAction::SETDEFAULT => "SET_DEFAULT",
-            ForeignKeyAction::CASCADE => "CASCADE",
-            ForeignKeyAction::RESTRICT => "RESTRICT",
+            ForeignKeyAction::NoAction => "NO_ACTION",
+            ForeignKeyAction::SetNull => "SET_NULL",
+            ForeignKeyAction::SetDefault => "SET_DEFAULT",
+            ForeignKeyAction::Cascade => "CASCADE",
+            ForeignKeyAction::Restrict => "RESTRICT",
         }
     }
 }
@@ -340,15 +340,15 @@ impl ForeignKeyAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum GeneratedColumnStorage {
-    VIRTUAL = 0,
-    STORED = 1,
+    Virtual = 0,
+    Stored = 1,
 }
 
 impl GeneratedColumnStorage {
     pub fn as_str(&self) -> &'static str {
         match self {
-            GeneratedColumnStorage::VIRTUAL => "VIRTUAL",
-            GeneratedColumnStorage::STORED => "STORED",
+            GeneratedColumnStorage::Virtual => "VIRTUAL",
+            GeneratedColumnStorage::Stored => "STORED",
         }
     }
 }
@@ -356,29 +356,29 @@ impl GeneratedColumnStorage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ColumnConstraintKind {
-    DEFAULT = 0,
-    NOTNULL = 1,
-    PRIMARYKEY = 2,
-    UNIQUE = 3,
-    CHECK = 4,
-    REFERENCES = 5,
-    COLLATE = 6,
-    GENERATED = 7,
-    NULL = 8,
+    Default = 0,
+    NotNull = 1,
+    PrimaryKey = 2,
+    Unique = 3,
+    Check = 4,
+    References = 5,
+    Collate = 6,
+    Generated = 7,
+    Null = 8,
 }
 
 impl ColumnConstraintKind {
     pub fn as_str(&self) -> &'static str {
         match self {
-            ColumnConstraintKind::DEFAULT => "DEFAULT",
-            ColumnConstraintKind::NOTNULL => "NOT_NULL",
-            ColumnConstraintKind::PRIMARYKEY => "PRIMARY_KEY",
-            ColumnConstraintKind::UNIQUE => "UNIQUE",
-            ColumnConstraintKind::CHECK => "CHECK",
-            ColumnConstraintKind::REFERENCES => "REFERENCES",
-            ColumnConstraintKind::COLLATE => "COLLATE",
-            ColumnConstraintKind::GENERATED => "GENERATED",
-            ColumnConstraintKind::NULL => "NULL",
+            ColumnConstraintKind::Default => "DEFAULT",
+            ColumnConstraintKind::NotNull => "NOT_NULL",
+            ColumnConstraintKind::PrimaryKey => "PRIMARY_KEY",
+            ColumnConstraintKind::Unique => "UNIQUE",
+            ColumnConstraintKind::Check => "CHECK",
+            ColumnConstraintKind::References => "REFERENCES",
+            ColumnConstraintKind::Collate => "COLLATE",
+            ColumnConstraintKind::Generated => "GENERATED",
+            ColumnConstraintKind::Null => "NULL",
         }
     }
 }
@@ -386,19 +386,19 @@ impl ColumnConstraintKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TableConstraintKind {
-    PRIMARYKEY = 0,
-    UNIQUE = 1,
-    CHECK = 2,
-    FOREIGNKEY = 3,
+    PrimaryKey = 0,
+    Unique = 1,
+    Check = 2,
+    ForeignKey = 3,
 }
 
 impl TableConstraintKind {
     pub fn as_str(&self) -> &'static str {
         match self {
-            TableConstraintKind::PRIMARYKEY => "PRIMARY_KEY",
-            TableConstraintKind::UNIQUE => "UNIQUE",
-            TableConstraintKind::CHECK => "CHECK",
-            TableConstraintKind::FOREIGNKEY => "FOREIGN_KEY",
+            TableConstraintKind::PrimaryKey => "PRIMARY_KEY",
+            TableConstraintKind::Unique => "UNIQUE",
+            TableConstraintKind::Check => "CHECK",
+            TableConstraintKind::ForeignKey => "FOREIGN_KEY",
         }
     }
 }
@@ -406,17 +406,17 @@ impl TableConstraintKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Materialized {
-    DEFAULT = 0,
-    MATERIALIZED = 1,
-    NOTMATERIALIZED = 2,
+    Default = 0,
+    Materialized = 1,
+    NotMaterialized = 2,
 }
 
 impl Materialized {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Materialized::DEFAULT => "DEFAULT",
-            Materialized::MATERIALIZED => "MATERIALIZED",
-            Materialized::NOTMATERIALIZED => "NOT_MATERIALIZED",
+            Materialized::Default => "DEFAULT",
+            Materialized::Materialized => "MATERIALIZED",
+            Materialized::NotMaterialized => "NOT_MATERIALIZED",
         }
     }
 }
@@ -424,23 +424,23 @@ impl Materialized {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ConflictAction {
-    DEFAULT = 0,
-    ROLLBACK = 1,
-    ABORT = 2,
-    FAIL = 3,
-    IGNORE = 4,
-    REPLACE = 5,
+    Default = 0,
+    Rollback = 1,
+    Abort = 2,
+    Fail = 3,
+    Ignore = 4,
+    Replace = 5,
 }
 
 impl ConflictAction {
     pub fn as_str(&self) -> &'static str {
         match self {
-            ConflictAction::DEFAULT => "DEFAULT",
-            ConflictAction::ROLLBACK => "ROLLBACK",
-            ConflictAction::ABORT => "ABORT",
-            ConflictAction::FAIL => "FAIL",
-            ConflictAction::IGNORE => "IGNORE",
-            ConflictAction::REPLACE => "REPLACE",
+            ConflictAction::Default => "DEFAULT",
+            ConflictAction::Rollback => "ROLLBACK",
+            ConflictAction::Abort => "ABORT",
+            ConflictAction::Fail => "FAIL",
+            ConflictAction::Ignore => "IGNORE",
+            ConflictAction::Replace => "REPLACE",
         }
     }
 }
@@ -448,19 +448,19 @@ impl ConflictAction {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum RaiseType {
-    IGNORE = 0,
-    ROLLBACK = 1,
-    ABORT = 2,
-    FAIL = 3,
+    Ignore = 0,
+    Rollback = 1,
+    Abort = 2,
+    Fail = 3,
 }
 
 impl RaiseType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            RaiseType::IGNORE => "IGNORE",
-            RaiseType::ROLLBACK => "ROLLBACK",
-            RaiseType::ABORT => "ABORT",
-            RaiseType::FAIL => "FAIL",
+            RaiseType::Ignore => "IGNORE",
+            RaiseType::Rollback => "ROLLBACK",
+            RaiseType::Abort => "ABORT",
+            RaiseType::Fail => "FAIL",
         }
     }
 }
@@ -468,19 +468,19 @@ impl RaiseType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum DropObjectType {
-    TABLE = 0,
-    INDEX = 1,
-    VIEW = 2,
-    TRIGGER = 3,
+    Table = 0,
+    Index = 1,
+    View = 2,
+    Trigger = 3,
 }
 
 impl DropObjectType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            DropObjectType::TABLE => "TABLE",
-            DropObjectType::INDEX => "INDEX",
-            DropObjectType::VIEW => "VIEW",
-            DropObjectType::TRIGGER => "TRIGGER",
+            DropObjectType::Table => "TABLE",
+            DropObjectType::Index => "INDEX",
+            DropObjectType::View => "VIEW",
+            DropObjectType::Trigger => "TRIGGER",
         }
     }
 }
@@ -488,19 +488,19 @@ impl DropObjectType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum AlterOp {
-    RENAMETABLE = 0,
-    RENAMECOLUMN = 1,
-    DROPCOLUMN = 2,
-    ADDCOLUMN = 3,
+    RenameTable = 0,
+    RenameColumn = 1,
+    DropColumn = 2,
+    AddColumn = 3,
 }
 
 impl AlterOp {
     pub fn as_str(&self) -> &'static str {
         match self {
-            AlterOp::RENAMETABLE => "RENAME_TABLE",
-            AlterOp::RENAMECOLUMN => "RENAME_COLUMN",
-            AlterOp::DROPCOLUMN => "DROP_COLUMN",
-            AlterOp::ADDCOLUMN => "ADD_COLUMN",
+            AlterOp::RenameTable => "RENAME_TABLE",
+            AlterOp::RenameColumn => "RENAME_COLUMN",
+            AlterOp::DropColumn => "DROP_COLUMN",
+            AlterOp::AddColumn => "ADD_COLUMN",
         }
     }
 }
@@ -508,17 +508,17 @@ impl AlterOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TransactionType {
-    DEFERRED = 0,
-    IMMEDIATE = 1,
-    EXCLUSIVE = 2,
+    Deferred = 0,
+    Immediate = 1,
+    Exclusive = 2,
 }
 
 impl TransactionType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            TransactionType::DEFERRED => "DEFERRED",
-            TransactionType::IMMEDIATE => "IMMEDIATE",
-            TransactionType::EXCLUSIVE => "EXCLUSIVE",
+            TransactionType::Deferred => "DEFERRED",
+            TransactionType::Immediate => "IMMEDIATE",
+            TransactionType::Exclusive => "EXCLUSIVE",
         }
     }
 }
@@ -526,17 +526,17 @@ impl TransactionType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TransactionOp {
-    BEGIN = 0,
-    COMMIT = 1,
-    ROLLBACK = 2,
+    Begin = 0,
+    Commit = 1,
+    Rollback = 2,
 }
 
 impl TransactionOp {
     pub fn as_str(&self) -> &'static str {
         match self {
-            TransactionOp::BEGIN => "BEGIN",
-            TransactionOp::COMMIT => "COMMIT",
-            TransactionOp::ROLLBACK => "ROLLBACK",
+            TransactionOp::Begin => "BEGIN",
+            TransactionOp::Commit => "COMMIT",
+            TransactionOp::Rollback => "ROLLBACK",
         }
     }
 }
@@ -544,17 +544,17 @@ impl TransactionOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum SavepointOp {
-    SAVEPOINT = 0,
-    RELEASE = 1,
-    ROLLBACKTO = 2,
+    Savepoint = 0,
+    Release = 1,
+    RollbackTo = 2,
 }
 
 impl SavepointOp {
     pub fn as_str(&self) -> &'static str {
         match self {
-            SavepointOp::SAVEPOINT => "SAVEPOINT",
-            SavepointOp::RELEASE => "RELEASE",
-            SavepointOp::ROLLBACKTO => "ROLLBACK_TO",
+            SavepointOp::Savepoint => "SAVEPOINT",
+            SavepointOp::Release => "RELEASE",
+            SavepointOp::RollbackTo => "ROLLBACK_TO",
         }
     }
 }
@@ -562,15 +562,15 @@ impl SavepointOp {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum SortOrder {
-    ASC = 0,
-    DESC = 1,
+    Asc = 0,
+    Desc = 1,
 }
 
 impl SortOrder {
     pub fn as_str(&self) -> &'static str {
         match self {
-            SortOrder::ASC => "ASC",
-            SortOrder::DESC => "DESC",
+            SortOrder::Asc => "ASC",
+            SortOrder::Desc => "DESC",
         }
     }
 }
@@ -578,17 +578,17 @@ impl SortOrder {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum NullsOrder {
-    NONE = 0,
-    FIRST = 1,
-    LAST = 2,
+    None = 0,
+    First = 1,
+    Last = 2,
 }
 
 impl NullsOrder {
     pub fn as_str(&self) -> &'static str {
         match self {
-            NullsOrder::NONE => "NONE",
-            NullsOrder::FIRST => "FIRST",
-            NullsOrder::LAST => "LAST",
+            NullsOrder::None => "NONE",
+            NullsOrder::First => "FIRST",
+            NullsOrder::Last => "LAST",
         }
     }
 }
@@ -596,31 +596,31 @@ impl NullsOrder {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum JoinType {
-    COMMA = 0,
-    INNER = 1,
-    LEFT = 2,
-    RIGHT = 3,
-    FULL = 4,
-    CROSS = 5,
-    NATURALINNER = 6,
-    NATURALLEFT = 7,
-    NATURALRIGHT = 8,
-    NATURALFULL = 9,
+    Comma = 0,
+    Inner = 1,
+    Left = 2,
+    Right = 3,
+    Full = 4,
+    Cross = 5,
+    NaturalInner = 6,
+    NaturalLeft = 7,
+    NaturalRight = 8,
+    NaturalFull = 9,
 }
 
 impl JoinType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            JoinType::COMMA => "COMMA",
-            JoinType::INNER => "INNER",
-            JoinType::LEFT => "LEFT",
-            JoinType::RIGHT => "RIGHT",
-            JoinType::FULL => "FULL",
-            JoinType::CROSS => "CROSS",
-            JoinType::NATURALINNER => "NATURAL_INNER",
-            JoinType::NATURALLEFT => "NATURAL_LEFT",
-            JoinType::NATURALRIGHT => "NATURAL_RIGHT",
-            JoinType::NATURALFULL => "NATURAL_FULL",
+            JoinType::Comma => "COMMA",
+            JoinType::Inner => "INNER",
+            JoinType::Left => "LEFT",
+            JoinType::Right => "RIGHT",
+            JoinType::Full => "FULL",
+            JoinType::Cross => "CROSS",
+            JoinType::NaturalInner => "NATURAL_INNER",
+            JoinType::NaturalLeft => "NATURAL_LEFT",
+            JoinType::NaturalRight => "NATURAL_RIGHT",
+            JoinType::NaturalFull => "NATURAL_FULL",
         }
     }
 }
@@ -628,17 +628,17 @@ impl JoinType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TriggerTiming {
-    BEFORE = 0,
-    AFTER = 1,
-    INSTEADOF = 2,
+    Before = 0,
+    After = 1,
+    InsteadOf = 2,
 }
 
 impl TriggerTiming {
     pub fn as_str(&self) -> &'static str {
         match self {
-            TriggerTiming::BEFORE => "BEFORE",
-            TriggerTiming::AFTER => "AFTER",
-            TriggerTiming::INSTEADOF => "INSTEAD_OF",
+            TriggerTiming::Before => "BEFORE",
+            TriggerTiming::After => "AFTER",
+            TriggerTiming::InsteadOf => "INSTEAD_OF",
         }
     }
 }
@@ -646,17 +646,17 @@ impl TriggerTiming {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum TriggerEventType {
-    DELETE = 0,
-    INSERT = 1,
-    UPDATE = 2,
+    Delete = 0,
+    Insert = 1,
+    Update = 2,
 }
 
 impl TriggerEventType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            TriggerEventType::DELETE => "DELETE",
-            TriggerEventType::INSERT => "INSERT",
-            TriggerEventType::UPDATE => "UPDATE",
+            TriggerEventType::Delete => "DELETE",
+            TriggerEventType::Insert => "INSERT",
+            TriggerEventType::Update => "UPDATE",
         }
     }
 }
@@ -664,15 +664,15 @@ impl TriggerEventType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum ExplainMode {
-    EXPLAIN = 0,
-    QUERYPLAN = 1,
+    Explain = 0,
+    QueryPlan = 1,
 }
 
 impl ExplainMode {
     pub fn as_str(&self) -> &'static str {
         match self {
-            ExplainMode::EXPLAIN => "EXPLAIN",
-            ExplainMode::QUERYPLAN => "QUERY_PLAN",
+            ExplainMode::Explain => "EXPLAIN",
+            ExplainMode::QueryPlan => "QUERY_PLAN",
         }
     }
 }
@@ -680,33 +680,33 @@ impl ExplainMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum PragmaForm {
-    BARE = 0,
-    EQ = 1,
-    CALL = 2,
+    Bare = 0,
+    Eq = 1,
+    Call = 2,
 }
 
 impl PragmaForm {
     pub fn as_str(&self) -> &'static str {
         match self {
-            PragmaForm::BARE => "BARE",
-            PragmaForm::EQ => "EQ",
-            PragmaForm::CALL => "CALL",
+            PragmaForm::Bare => "BARE",
+            PragmaForm::Eq => "EQ",
+            PragmaForm::Call => "CALL",
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
-pub enum AnalyzeKind {
-    ANALYZE = 0,
-    REINDEX = 1,
+pub enum AnalyzeOrReindexKind {
+    Analyze = 0,
+    Reindex = 1,
 }
 
-impl AnalyzeKind {
+impl AnalyzeOrReindexKind {
     pub fn as_str(&self) -> &'static str {
         match self {
-            AnalyzeKind::ANALYZE => "ANALYZE",
-            AnalyzeKind::REINDEX => "REINDEX",
+            AnalyzeOrReindexKind::Analyze => "ANALYZE",
+            AnalyzeOrReindexKind::Reindex => "REINDEX",
         }
     }
 }
@@ -714,19 +714,19 @@ impl AnalyzeKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum FrameType {
-    NONE = 0,
-    RANGE = 1,
-    ROWS = 2,
-    GROUPS = 3,
+    None = 0,
+    Range = 1,
+    Rows = 2,
+    Groups = 3,
 }
 
 impl FrameType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            FrameType::NONE => "NONE",
-            FrameType::RANGE => "RANGE",
-            FrameType::ROWS => "ROWS",
-            FrameType::GROUPS => "GROUPS",
+            FrameType::None => "NONE",
+            FrameType::Range => "RANGE",
+            FrameType::Rows => "ROWS",
+            FrameType::Groups => "GROUPS",
         }
     }
 }
@@ -734,21 +734,21 @@ impl FrameType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum FrameBoundType {
-    UNBOUNDEDPRECEDING = 0,
-    EXPRPRECEDING = 1,
-    CURRENTROW = 2,
-    EXPRFOLLOWING = 3,
-    UNBOUNDEDFOLLOWING = 4,
+    UnboundedPreceding = 0,
+    ExprPreceding = 1,
+    CurrentRow = 2,
+    ExprFollowing = 3,
+    UnboundedFollowing = 4,
 }
 
 impl FrameBoundType {
     pub fn as_str(&self) -> &'static str {
         match self {
-            FrameBoundType::UNBOUNDEDPRECEDING => "UNBOUNDED_PRECEDING",
-            FrameBoundType::EXPRPRECEDING => "EXPR_PRECEDING",
-            FrameBoundType::CURRENTROW => "CURRENT_ROW",
-            FrameBoundType::EXPRFOLLOWING => "EXPR_FOLLOWING",
-            FrameBoundType::UNBOUNDEDFOLLOWING => "UNBOUNDED_FOLLOWING",
+            FrameBoundType::UnboundedPreceding => "UNBOUNDED_PRECEDING",
+            FrameBoundType::ExprPreceding => "EXPR_PRECEDING",
+            FrameBoundType::CurrentRow => "CURRENT_ROW",
+            FrameBoundType::ExprFollowing => "EXPR_FOLLOWING",
+            FrameBoundType::UnboundedFollowing => "UNBOUNDED_FOLLOWING",
         }
     }
 }
@@ -756,30 +756,33 @@ impl FrameBoundType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum FrameExclude {
-    NONE = 0,
-    NOOTHERS = 1,
-    CURRENTROW = 2,
-    GROUP = 3,
-    TIES = 4,
+    None = 0,
+    NoOthers = 1,
+    CurrentRow = 2,
+    Group = 3,
+    Ties = 4,
 }
 
 impl FrameExclude {
     pub fn as_str(&self) -> &'static str {
         match self {
-            FrameExclude::NONE => "NONE",
-            FrameExclude::NOOTHERS => "NO_OTHERS",
-            FrameExclude::CURRENTROW => "CURRENT_ROW",
-            FrameExclude::GROUP => "GROUP",
-            FrameExclude::TIES => "TIES",
+            FrameExclude::None => "NONE",
+            FrameExclude::NoOthers => "NO_OTHERS",
+            FrameExclude::CurrentRow => "CURRENT_ROW",
+            FrameExclude::Group => "GROUP",
+            FrameExclude::Ties => "TIES",
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(transparent)]
-pub struct AggregateFunctionCallFlags(pub u8);
+pub struct AggregateFunctionCallFlags(u8);
 
 impl AggregateFunctionCallFlags {
+    pub fn bits(self) -> u8 {
+        self.0
+    }
     pub fn distinct(&self) -> bool {
         self.0 & 1 != 0
     }
@@ -787,9 +790,12 @@ impl AggregateFunctionCallFlags {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(transparent)]
-pub struct CreateTableStmtFlags(pub u8);
+pub struct CreateTableStmtFlags(u8);
 
 impl CreateTableStmtFlags {
+    pub fn bits(self) -> u8 {
+        self.0
+    }
     pub fn without_rowid(&self) -> bool {
         self.0 & 1 != 0
     }
@@ -800,9 +806,12 @@ impl CreateTableStmtFlags {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(transparent)]
-pub struct FunctionCallFlags(pub u8);
+pub struct FunctionCallFlags(u8);
 
 impl FunctionCallFlags {
+    pub fn bits(self) -> u8 {
+        self.0
+    }
     pub fn distinct(&self) -> bool {
         self.0 & 1 != 0
     }
@@ -813,9 +822,12 @@ impl FunctionCallFlags {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(transparent)]
-pub struct ResultColumnFlags(pub u8);
+pub struct ResultColumnFlags(u8);
 
 impl ResultColumnFlags {
+    pub fn bits(self) -> u8 {
+        self.0
+    }
     pub fn star(&self) -> bool {
         self.0 & 1 != 0
     }
@@ -823,9 +835,12 @@ impl ResultColumnFlags {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[repr(transparent)]
-pub struct SelectStmtFlags(pub u8);
+pub struct SelectStmtFlags(u8);
 
 impl SelectStmtFlags {
+    pub fn bits(self) -> u8 {
+        self.0
+    }
     pub fn distinct(&self) -> bool {
         self.0 & 1 != 0
     }
@@ -837,13 +852,13 @@ impl crate::ast_traits::LiteralTypeLike for LiteralType {
     }
     fn kind(&self) -> Option<crate::ast_traits::LiteralTypeKind> {
         Some(match self {
-            LiteralType::INTEGER => crate::ast_traits::LiteralTypeKind::INTEGER,
-            LiteralType::FLOAT => crate::ast_traits::LiteralTypeKind::FLOAT,
-            LiteralType::STRING => crate::ast_traits::LiteralTypeKind::STRING,
-            LiteralType::BLOB => crate::ast_traits::LiteralTypeKind::BLOB,
-            LiteralType::NULL => crate::ast_traits::LiteralTypeKind::NULL,
-            LiteralType::CURRENT => crate::ast_traits::LiteralTypeKind::CURRENT,
-            LiteralType::QNUMBER => crate::ast_traits::LiteralTypeKind::QNUMBER,
+            LiteralType::Integer => crate::ast_traits::LiteralTypeKind::Integer,
+            LiteralType::Float => crate::ast_traits::LiteralTypeKind::Float,
+            LiteralType::String => crate::ast_traits::LiteralTypeKind::String,
+            LiteralType::Blob => crate::ast_traits::LiteralTypeKind::Blob,
+            LiteralType::Null => crate::ast_traits::LiteralTypeKind::Null,
+            LiteralType::Current => crate::ast_traits::LiteralTypeKind::Current,
+            LiteralType::Qnumber => crate::ast_traits::LiteralTypeKind::Qnumber,
         })
     }
 }
@@ -854,25 +869,25 @@ impl crate::ast_traits::BinaryOpLike for BinaryOp {
     }
     fn kind(&self) -> Option<crate::ast_traits::BinaryOpKind> {
         Some(match self {
-            BinaryOp::PLUS => crate::ast_traits::BinaryOpKind::PLUS,
-            BinaryOp::MINUS => crate::ast_traits::BinaryOpKind::MINUS,
-            BinaryOp::STAR => crate::ast_traits::BinaryOpKind::STAR,
-            BinaryOp::SLASH => crate::ast_traits::BinaryOpKind::SLASH,
-            BinaryOp::REM => crate::ast_traits::BinaryOpKind::REM,
-            BinaryOp::LT => crate::ast_traits::BinaryOpKind::LT,
-            BinaryOp::GT => crate::ast_traits::BinaryOpKind::GT,
-            BinaryOp::LE => crate::ast_traits::BinaryOpKind::LE,
-            BinaryOp::GE => crate::ast_traits::BinaryOpKind::GE,
-            BinaryOp::EQ => crate::ast_traits::BinaryOpKind::EQ,
-            BinaryOp::NE => crate::ast_traits::BinaryOpKind::NE,
-            BinaryOp::AND => crate::ast_traits::BinaryOpKind::AND,
-            BinaryOp::OR => crate::ast_traits::BinaryOpKind::OR,
-            BinaryOp::BITAND => crate::ast_traits::BinaryOpKind::BITAND,
-            BinaryOp::BITOR => crate::ast_traits::BinaryOpKind::BITOR,
-            BinaryOp::LSHIFT => crate::ast_traits::BinaryOpKind::LSHIFT,
-            BinaryOp::RSHIFT => crate::ast_traits::BinaryOpKind::RSHIFT,
-            BinaryOp::CONCAT => crate::ast_traits::BinaryOpKind::CONCAT,
-            BinaryOp::PTR => crate::ast_traits::BinaryOpKind::PTR,
+            BinaryOp::Plus => crate::ast_traits::BinaryOpKind::Plus,
+            BinaryOp::Minus => crate::ast_traits::BinaryOpKind::Minus,
+            BinaryOp::Star => crate::ast_traits::BinaryOpKind::Star,
+            BinaryOp::Slash => crate::ast_traits::BinaryOpKind::Slash,
+            BinaryOp::Rem => crate::ast_traits::BinaryOpKind::Rem,
+            BinaryOp::Lt => crate::ast_traits::BinaryOpKind::Lt,
+            BinaryOp::Gt => crate::ast_traits::BinaryOpKind::Gt,
+            BinaryOp::Le => crate::ast_traits::BinaryOpKind::Le,
+            BinaryOp::Ge => crate::ast_traits::BinaryOpKind::Ge,
+            BinaryOp::Eq => crate::ast_traits::BinaryOpKind::Eq,
+            BinaryOp::Ne => crate::ast_traits::BinaryOpKind::Ne,
+            BinaryOp::And => crate::ast_traits::BinaryOpKind::And,
+            BinaryOp::Or => crate::ast_traits::BinaryOpKind::Or,
+            BinaryOp::BitAnd => crate::ast_traits::BinaryOpKind::BitAnd,
+            BinaryOp::BitOr => crate::ast_traits::BinaryOpKind::BitOr,
+            BinaryOp::Lshift => crate::ast_traits::BinaryOpKind::Lshift,
+            BinaryOp::Rshift => crate::ast_traits::BinaryOpKind::Rshift,
+            BinaryOp::Concat => crate::ast_traits::BinaryOpKind::Concat,
+            BinaryOp::Ptr => crate::ast_traits::BinaryOpKind::Ptr,
         })
     }
 }
@@ -883,10 +898,10 @@ impl crate::ast_traits::UnaryOpLike for UnaryOp {
     }
     fn kind(&self) -> Option<crate::ast_traits::UnaryOpKind> {
         Some(match self {
-            UnaryOp::MINUS => crate::ast_traits::UnaryOpKind::MINUS,
-            UnaryOp::PLUS => crate::ast_traits::UnaryOpKind::PLUS,
-            UnaryOp::BITNOT => crate::ast_traits::UnaryOpKind::BITNOT,
-            UnaryOp::NOT => crate::ast_traits::UnaryOpKind::NOT,
+            UnaryOp::Minus => crate::ast_traits::UnaryOpKind::Minus,
+            UnaryOp::Plus => crate::ast_traits::UnaryOpKind::Plus,
+            UnaryOp::BitNot => crate::ast_traits::UnaryOpKind::BitNot,
+            UnaryOp::Not => crate::ast_traits::UnaryOpKind::Not,
         })
     }
 }
@@ -897,10 +912,10 @@ impl crate::ast_traits::CompoundOpLike for CompoundOp {
     }
     fn kind(&self) -> Option<crate::ast_traits::CompoundOpKind> {
         Some(match self {
-            CompoundOp::UNION => crate::ast_traits::CompoundOpKind::UNION,
-            CompoundOp::UNIONALL => crate::ast_traits::CompoundOpKind::UNIONALL,
-            CompoundOp::INTERSECT => crate::ast_traits::CompoundOpKind::INTERSECT,
-            CompoundOp::EXCEPT => crate::ast_traits::CompoundOpKind::EXCEPT,
+            CompoundOp::Union => crate::ast_traits::CompoundOpKind::Union,
+            CompoundOp::UnionAll => crate::ast_traits::CompoundOpKind::UnionAll,
+            CompoundOp::Intersect => crate::ast_traits::CompoundOpKind::Intersect,
+            CompoundOp::Except => crate::ast_traits::CompoundOpKind::Except,
         })
     }
 }
@@ -911,12 +926,12 @@ impl crate::ast_traits::IsOpLike for IsOp {
     }
     fn kind(&self) -> Option<crate::ast_traits::IsOpKind> {
         Some(match self {
-            IsOp::IS => crate::ast_traits::IsOpKind::IS,
-            IsOp::ISNOT => crate::ast_traits::IsOpKind::ISNOT,
-            IsOp::ISNULL => crate::ast_traits::IsOpKind::ISNULL,
-            IsOp::NOTNULL => crate::ast_traits::IsOpKind::NOTNULL,
-            IsOp::ISNOTDISTINCT => crate::ast_traits::IsOpKind::ISNOTDISTINCT,
-            IsOp::ISDISTINCT => crate::ast_traits::IsOpKind::ISDISTINCT,
+            IsOp::Is => crate::ast_traits::IsOpKind::Is,
+            IsOp::IsNot => crate::ast_traits::IsOpKind::IsNot,
+            IsOp::Isnull => crate::ast_traits::IsOpKind::Isnull,
+            IsOp::Notnull => crate::ast_traits::IsOpKind::Notnull,
+            IsOp::IsNotDistinct => crate::ast_traits::IsOpKind::IsNotDistinct,
+            IsOp::IsDistinct => crate::ast_traits::IsOpKind::IsDistinct,
         })
     }
 }
@@ -927,11 +942,11 @@ impl crate::ast_traits::ForeignKeyActionLike for ForeignKeyAction {
     }
     fn kind(&self) -> Option<crate::ast_traits::ForeignKeyActionKind> {
         Some(match self {
-            ForeignKeyAction::NOACTION => crate::ast_traits::ForeignKeyActionKind::NOACTION,
-            ForeignKeyAction::SETNULL => crate::ast_traits::ForeignKeyActionKind::SETNULL,
-            ForeignKeyAction::SETDEFAULT => crate::ast_traits::ForeignKeyActionKind::SETDEFAULT,
-            ForeignKeyAction::CASCADE => crate::ast_traits::ForeignKeyActionKind::CASCADE,
-            ForeignKeyAction::RESTRICT => crate::ast_traits::ForeignKeyActionKind::RESTRICT,
+            ForeignKeyAction::NoAction => crate::ast_traits::ForeignKeyActionKind::NoAction,
+            ForeignKeyAction::SetNull => crate::ast_traits::ForeignKeyActionKind::SetNull,
+            ForeignKeyAction::SetDefault => crate::ast_traits::ForeignKeyActionKind::SetDefault,
+            ForeignKeyAction::Cascade => crate::ast_traits::ForeignKeyActionKind::Cascade,
+            ForeignKeyAction::Restrict => crate::ast_traits::ForeignKeyActionKind::Restrict,
         })
     }
 }
@@ -942,10 +957,10 @@ impl crate::ast_traits::GeneratedColumnStorageLike for GeneratedColumnStorage {
     }
     fn kind(&self) -> Option<crate::ast_traits::GeneratedColumnStorageKind> {
         Some(match self {
-            GeneratedColumnStorage::VIRTUAL => {
-                crate::ast_traits::GeneratedColumnStorageKind::VIRTUAL
+            GeneratedColumnStorage::Virtual => {
+                crate::ast_traits::GeneratedColumnStorageKind::Virtual
             }
-            GeneratedColumnStorage::STORED => crate::ast_traits::GeneratedColumnStorageKind::STORED,
+            GeneratedColumnStorage::Stored => crate::ast_traits::GeneratedColumnStorageKind::Stored,
         })
     }
 }
@@ -956,21 +971,21 @@ impl crate::ast_traits::ColumnConstraintKindLike for ColumnConstraintKind {
     }
     fn kind(&self) -> Option<crate::ast_traits::ColumnConstraintKindKind> {
         Some(match self {
-            ColumnConstraintKind::DEFAULT => crate::ast_traits::ColumnConstraintKindKind::DEFAULT,
-            ColumnConstraintKind::NOTNULL => crate::ast_traits::ColumnConstraintKindKind::NOTNULL,
-            ColumnConstraintKind::PRIMARYKEY => {
-                crate::ast_traits::ColumnConstraintKindKind::PRIMARYKEY
+            ColumnConstraintKind::Default => crate::ast_traits::ColumnConstraintKindKind::Default,
+            ColumnConstraintKind::NotNull => crate::ast_traits::ColumnConstraintKindKind::NotNull,
+            ColumnConstraintKind::PrimaryKey => {
+                crate::ast_traits::ColumnConstraintKindKind::PrimaryKey
             }
-            ColumnConstraintKind::UNIQUE => crate::ast_traits::ColumnConstraintKindKind::UNIQUE,
-            ColumnConstraintKind::CHECK => crate::ast_traits::ColumnConstraintKindKind::CHECK,
-            ColumnConstraintKind::REFERENCES => {
-                crate::ast_traits::ColumnConstraintKindKind::REFERENCES
+            ColumnConstraintKind::Unique => crate::ast_traits::ColumnConstraintKindKind::Unique,
+            ColumnConstraintKind::Check => crate::ast_traits::ColumnConstraintKindKind::Check,
+            ColumnConstraintKind::References => {
+                crate::ast_traits::ColumnConstraintKindKind::References
             }
-            ColumnConstraintKind::COLLATE => crate::ast_traits::ColumnConstraintKindKind::COLLATE,
-            ColumnConstraintKind::GENERATED => {
-                crate::ast_traits::ColumnConstraintKindKind::GENERATED
+            ColumnConstraintKind::Collate => crate::ast_traits::ColumnConstraintKindKind::Collate,
+            ColumnConstraintKind::Generated => {
+                crate::ast_traits::ColumnConstraintKindKind::Generated
             }
-            ColumnConstraintKind::NULL => crate::ast_traits::ColumnConstraintKindKind::NULL,
+            ColumnConstraintKind::Null => crate::ast_traits::ColumnConstraintKindKind::Null,
         })
     }
 }
@@ -981,13 +996,13 @@ impl crate::ast_traits::TableConstraintKindLike for TableConstraintKind {
     }
     fn kind(&self) -> Option<crate::ast_traits::TableConstraintKindKind> {
         Some(match self {
-            TableConstraintKind::PRIMARYKEY => {
-                crate::ast_traits::TableConstraintKindKind::PRIMARYKEY
+            TableConstraintKind::PrimaryKey => {
+                crate::ast_traits::TableConstraintKindKind::PrimaryKey
             }
-            TableConstraintKind::UNIQUE => crate::ast_traits::TableConstraintKindKind::UNIQUE,
-            TableConstraintKind::CHECK => crate::ast_traits::TableConstraintKindKind::CHECK,
-            TableConstraintKind::FOREIGNKEY => {
-                crate::ast_traits::TableConstraintKindKind::FOREIGNKEY
+            TableConstraintKind::Unique => crate::ast_traits::TableConstraintKindKind::Unique,
+            TableConstraintKind::Check => crate::ast_traits::TableConstraintKindKind::Check,
+            TableConstraintKind::ForeignKey => {
+                crate::ast_traits::TableConstraintKindKind::ForeignKey
             }
         })
     }
@@ -999,9 +1014,9 @@ impl crate::ast_traits::MaterializedLike for Materialized {
     }
     fn kind(&self) -> Option<crate::ast_traits::MaterializedKind> {
         Some(match self {
-            Materialized::DEFAULT => crate::ast_traits::MaterializedKind::DEFAULT,
-            Materialized::MATERIALIZED => crate::ast_traits::MaterializedKind::MATERIALIZED,
-            Materialized::NOTMATERIALIZED => crate::ast_traits::MaterializedKind::NOTMATERIALIZED,
+            Materialized::Default => crate::ast_traits::MaterializedKind::Default,
+            Materialized::Materialized => crate::ast_traits::MaterializedKind::Materialized,
+            Materialized::NotMaterialized => crate::ast_traits::MaterializedKind::NotMaterialized,
         })
     }
 }
@@ -1012,12 +1027,12 @@ impl crate::ast_traits::ConflictActionLike for ConflictAction {
     }
     fn kind(&self) -> Option<crate::ast_traits::ConflictActionKind> {
         Some(match self {
-            ConflictAction::DEFAULT => crate::ast_traits::ConflictActionKind::DEFAULT,
-            ConflictAction::ROLLBACK => crate::ast_traits::ConflictActionKind::ROLLBACK,
-            ConflictAction::ABORT => crate::ast_traits::ConflictActionKind::ABORT,
-            ConflictAction::FAIL => crate::ast_traits::ConflictActionKind::FAIL,
-            ConflictAction::IGNORE => crate::ast_traits::ConflictActionKind::IGNORE,
-            ConflictAction::REPLACE => crate::ast_traits::ConflictActionKind::REPLACE,
+            ConflictAction::Default => crate::ast_traits::ConflictActionKind::Default,
+            ConflictAction::Rollback => crate::ast_traits::ConflictActionKind::Rollback,
+            ConflictAction::Abort => crate::ast_traits::ConflictActionKind::Abort,
+            ConflictAction::Fail => crate::ast_traits::ConflictActionKind::Fail,
+            ConflictAction::Ignore => crate::ast_traits::ConflictActionKind::Ignore,
+            ConflictAction::Replace => crate::ast_traits::ConflictActionKind::Replace,
         })
     }
 }
@@ -1028,10 +1043,10 @@ impl crate::ast_traits::RaiseTypeLike for RaiseType {
     }
     fn kind(&self) -> Option<crate::ast_traits::RaiseTypeKind> {
         Some(match self {
-            RaiseType::IGNORE => crate::ast_traits::RaiseTypeKind::IGNORE,
-            RaiseType::ROLLBACK => crate::ast_traits::RaiseTypeKind::ROLLBACK,
-            RaiseType::ABORT => crate::ast_traits::RaiseTypeKind::ABORT,
-            RaiseType::FAIL => crate::ast_traits::RaiseTypeKind::FAIL,
+            RaiseType::Ignore => crate::ast_traits::RaiseTypeKind::Ignore,
+            RaiseType::Rollback => crate::ast_traits::RaiseTypeKind::Rollback,
+            RaiseType::Abort => crate::ast_traits::RaiseTypeKind::Abort,
+            RaiseType::Fail => crate::ast_traits::RaiseTypeKind::Fail,
         })
     }
 }
@@ -1042,10 +1057,10 @@ impl crate::ast_traits::DropObjectTypeLike for DropObjectType {
     }
     fn kind(&self) -> Option<crate::ast_traits::DropObjectTypeKind> {
         Some(match self {
-            DropObjectType::TABLE => crate::ast_traits::DropObjectTypeKind::TABLE,
-            DropObjectType::INDEX => crate::ast_traits::DropObjectTypeKind::INDEX,
-            DropObjectType::VIEW => crate::ast_traits::DropObjectTypeKind::VIEW,
-            DropObjectType::TRIGGER => crate::ast_traits::DropObjectTypeKind::TRIGGER,
+            DropObjectType::Table => crate::ast_traits::DropObjectTypeKind::Table,
+            DropObjectType::Index => crate::ast_traits::DropObjectTypeKind::Index,
+            DropObjectType::View => crate::ast_traits::DropObjectTypeKind::View,
+            DropObjectType::Trigger => crate::ast_traits::DropObjectTypeKind::Trigger,
         })
     }
 }
@@ -1056,10 +1071,10 @@ impl crate::ast_traits::AlterOpLike for AlterOp {
     }
     fn kind(&self) -> Option<crate::ast_traits::AlterOpKind> {
         Some(match self {
-            AlterOp::RENAMETABLE => crate::ast_traits::AlterOpKind::RENAMETABLE,
-            AlterOp::RENAMECOLUMN => crate::ast_traits::AlterOpKind::RENAMECOLUMN,
-            AlterOp::DROPCOLUMN => crate::ast_traits::AlterOpKind::DROPCOLUMN,
-            AlterOp::ADDCOLUMN => crate::ast_traits::AlterOpKind::ADDCOLUMN,
+            AlterOp::RenameTable => crate::ast_traits::AlterOpKind::RenameTable,
+            AlterOp::RenameColumn => crate::ast_traits::AlterOpKind::RenameColumn,
+            AlterOp::DropColumn => crate::ast_traits::AlterOpKind::DropColumn,
+            AlterOp::AddColumn => crate::ast_traits::AlterOpKind::AddColumn,
         })
     }
 }
@@ -1070,9 +1085,9 @@ impl crate::ast_traits::TransactionTypeLike for TransactionType {
     }
     fn kind(&self) -> Option<crate::ast_traits::TransactionTypeKind> {
         Some(match self {
-            TransactionType::DEFERRED => crate::ast_traits::TransactionTypeKind::DEFERRED,
-            TransactionType::IMMEDIATE => crate::ast_traits::TransactionTypeKind::IMMEDIATE,
-            TransactionType::EXCLUSIVE => crate::ast_traits::TransactionTypeKind::EXCLUSIVE,
+            TransactionType::Deferred => crate::ast_traits::TransactionTypeKind::Deferred,
+            TransactionType::Immediate => crate::ast_traits::TransactionTypeKind::Immediate,
+            TransactionType::Exclusive => crate::ast_traits::TransactionTypeKind::Exclusive,
         })
     }
 }
@@ -1083,9 +1098,9 @@ impl crate::ast_traits::TransactionOpLike for TransactionOp {
     }
     fn kind(&self) -> Option<crate::ast_traits::TransactionOpKind> {
         Some(match self {
-            TransactionOp::BEGIN => crate::ast_traits::TransactionOpKind::BEGIN,
-            TransactionOp::COMMIT => crate::ast_traits::TransactionOpKind::COMMIT,
-            TransactionOp::ROLLBACK => crate::ast_traits::TransactionOpKind::ROLLBACK,
+            TransactionOp::Begin => crate::ast_traits::TransactionOpKind::Begin,
+            TransactionOp::Commit => crate::ast_traits::TransactionOpKind::Commit,
+            TransactionOp::Rollback => crate::ast_traits::TransactionOpKind::Rollback,
         })
     }
 }
@@ -1096,9 +1111,9 @@ impl crate::ast_traits::SavepointOpLike for SavepointOp {
     }
     fn kind(&self) -> Option<crate::ast_traits::SavepointOpKind> {
         Some(match self {
-            SavepointOp::SAVEPOINT => crate::ast_traits::SavepointOpKind::SAVEPOINT,
-            SavepointOp::RELEASE => crate::ast_traits::SavepointOpKind::RELEASE,
-            SavepointOp::ROLLBACKTO => crate::ast_traits::SavepointOpKind::ROLLBACKTO,
+            SavepointOp::Savepoint => crate::ast_traits::SavepointOpKind::Savepoint,
+            SavepointOp::Release => crate::ast_traits::SavepointOpKind::Release,
+            SavepointOp::RollbackTo => crate::ast_traits::SavepointOpKind::RollbackTo,
         })
     }
 }
@@ -1109,8 +1124,8 @@ impl crate::ast_traits::SortOrderLike for SortOrder {
     }
     fn kind(&self) -> Option<crate::ast_traits::SortOrderKind> {
         Some(match self {
-            SortOrder::ASC => crate::ast_traits::SortOrderKind::ASC,
-            SortOrder::DESC => crate::ast_traits::SortOrderKind::DESC,
+            SortOrder::Asc => crate::ast_traits::SortOrderKind::Asc,
+            SortOrder::Desc => crate::ast_traits::SortOrderKind::Desc,
         })
     }
 }
@@ -1121,9 +1136,9 @@ impl crate::ast_traits::NullsOrderLike for NullsOrder {
     }
     fn kind(&self) -> Option<crate::ast_traits::NullsOrderKind> {
         Some(match self {
-            NullsOrder::NONE => crate::ast_traits::NullsOrderKind::NONE,
-            NullsOrder::FIRST => crate::ast_traits::NullsOrderKind::FIRST,
-            NullsOrder::LAST => crate::ast_traits::NullsOrderKind::LAST,
+            NullsOrder::None => crate::ast_traits::NullsOrderKind::None,
+            NullsOrder::First => crate::ast_traits::NullsOrderKind::First,
+            NullsOrder::Last => crate::ast_traits::NullsOrderKind::Last,
         })
     }
 }
@@ -1134,16 +1149,16 @@ impl crate::ast_traits::JoinTypeLike for JoinType {
     }
     fn kind(&self) -> Option<crate::ast_traits::JoinTypeKind> {
         Some(match self {
-            JoinType::COMMA => crate::ast_traits::JoinTypeKind::COMMA,
-            JoinType::INNER => crate::ast_traits::JoinTypeKind::INNER,
-            JoinType::LEFT => crate::ast_traits::JoinTypeKind::LEFT,
-            JoinType::RIGHT => crate::ast_traits::JoinTypeKind::RIGHT,
-            JoinType::FULL => crate::ast_traits::JoinTypeKind::FULL,
-            JoinType::CROSS => crate::ast_traits::JoinTypeKind::CROSS,
-            JoinType::NATURALINNER => crate::ast_traits::JoinTypeKind::NATURALINNER,
-            JoinType::NATURALLEFT => crate::ast_traits::JoinTypeKind::NATURALLEFT,
-            JoinType::NATURALRIGHT => crate::ast_traits::JoinTypeKind::NATURALRIGHT,
-            JoinType::NATURALFULL => crate::ast_traits::JoinTypeKind::NATURALFULL,
+            JoinType::Comma => crate::ast_traits::JoinTypeKind::Comma,
+            JoinType::Inner => crate::ast_traits::JoinTypeKind::Inner,
+            JoinType::Left => crate::ast_traits::JoinTypeKind::Left,
+            JoinType::Right => crate::ast_traits::JoinTypeKind::Right,
+            JoinType::Full => crate::ast_traits::JoinTypeKind::Full,
+            JoinType::Cross => crate::ast_traits::JoinTypeKind::Cross,
+            JoinType::NaturalInner => crate::ast_traits::JoinTypeKind::NaturalInner,
+            JoinType::NaturalLeft => crate::ast_traits::JoinTypeKind::NaturalLeft,
+            JoinType::NaturalRight => crate::ast_traits::JoinTypeKind::NaturalRight,
+            JoinType::NaturalFull => crate::ast_traits::JoinTypeKind::NaturalFull,
         })
     }
 }
@@ -1154,9 +1169,9 @@ impl crate::ast_traits::TriggerTimingLike for TriggerTiming {
     }
     fn kind(&self) -> Option<crate::ast_traits::TriggerTimingKind> {
         Some(match self {
-            TriggerTiming::BEFORE => crate::ast_traits::TriggerTimingKind::BEFORE,
-            TriggerTiming::AFTER => crate::ast_traits::TriggerTimingKind::AFTER,
-            TriggerTiming::INSTEADOF => crate::ast_traits::TriggerTimingKind::INSTEADOF,
+            TriggerTiming::Before => crate::ast_traits::TriggerTimingKind::Before,
+            TriggerTiming::After => crate::ast_traits::TriggerTimingKind::After,
+            TriggerTiming::InsteadOf => crate::ast_traits::TriggerTimingKind::InsteadOf,
         })
     }
 }
@@ -1167,9 +1182,9 @@ impl crate::ast_traits::TriggerEventTypeLike for TriggerEventType {
     }
     fn kind(&self) -> Option<crate::ast_traits::TriggerEventTypeKind> {
         Some(match self {
-            TriggerEventType::DELETE => crate::ast_traits::TriggerEventTypeKind::DELETE,
-            TriggerEventType::INSERT => crate::ast_traits::TriggerEventTypeKind::INSERT,
-            TriggerEventType::UPDATE => crate::ast_traits::TriggerEventTypeKind::UPDATE,
+            TriggerEventType::Delete => crate::ast_traits::TriggerEventTypeKind::Delete,
+            TriggerEventType::Insert => crate::ast_traits::TriggerEventTypeKind::Insert,
+            TriggerEventType::Update => crate::ast_traits::TriggerEventTypeKind::Update,
         })
     }
 }
@@ -1180,8 +1195,8 @@ impl crate::ast_traits::ExplainModeLike for ExplainMode {
     }
     fn kind(&self) -> Option<crate::ast_traits::ExplainModeKind> {
         Some(match self {
-            ExplainMode::EXPLAIN => crate::ast_traits::ExplainModeKind::EXPLAIN,
-            ExplainMode::QUERYPLAN => crate::ast_traits::ExplainModeKind::QUERYPLAN,
+            ExplainMode::Explain => crate::ast_traits::ExplainModeKind::Explain,
+            ExplainMode::QueryPlan => crate::ast_traits::ExplainModeKind::QueryPlan,
         })
     }
 }
@@ -1192,21 +1207,21 @@ impl crate::ast_traits::PragmaFormLike for PragmaForm {
     }
     fn kind(&self) -> Option<crate::ast_traits::PragmaFormKind> {
         Some(match self {
-            PragmaForm::BARE => crate::ast_traits::PragmaFormKind::BARE,
-            PragmaForm::EQ => crate::ast_traits::PragmaFormKind::EQ,
-            PragmaForm::CALL => crate::ast_traits::PragmaFormKind::CALL,
+            PragmaForm::Bare => crate::ast_traits::PragmaFormKind::Bare,
+            PragmaForm::Eq => crate::ast_traits::PragmaFormKind::Eq,
+            PragmaForm::Call => crate::ast_traits::PragmaFormKind::Call,
         })
     }
 }
 
-impl crate::ast_traits::AnalyzeKindLike for AnalyzeKind {
+impl crate::ast_traits::AnalyzeOrReindexKindLike for AnalyzeOrReindexKind {
     fn as_str(&self) -> &'static str {
         self.as_str()
     }
-    fn kind(&self) -> Option<crate::ast_traits::AnalyzeKindKind> {
+    fn kind(&self) -> Option<crate::ast_traits::AnalyzeOrReindexKindKind> {
         Some(match self {
-            AnalyzeKind::ANALYZE => crate::ast_traits::AnalyzeKindKind::ANALYZE,
-            AnalyzeKind::REINDEX => crate::ast_traits::AnalyzeKindKind::REINDEX,
+            AnalyzeOrReindexKind::Analyze => crate::ast_traits::AnalyzeOrReindexKindKind::Analyze,
+            AnalyzeOrReindexKind::Reindex => crate::ast_traits::AnalyzeOrReindexKindKind::Reindex,
         })
     }
 }
@@ -1217,10 +1232,10 @@ impl crate::ast_traits::FrameTypeLike for FrameType {
     }
     fn kind(&self) -> Option<crate::ast_traits::FrameTypeKind> {
         Some(match self {
-            FrameType::NONE => crate::ast_traits::FrameTypeKind::NONE,
-            FrameType::RANGE => crate::ast_traits::FrameTypeKind::RANGE,
-            FrameType::ROWS => crate::ast_traits::FrameTypeKind::ROWS,
-            FrameType::GROUPS => crate::ast_traits::FrameTypeKind::GROUPS,
+            FrameType::None => crate::ast_traits::FrameTypeKind::None,
+            FrameType::Range => crate::ast_traits::FrameTypeKind::Range,
+            FrameType::Rows => crate::ast_traits::FrameTypeKind::Rows,
+            FrameType::Groups => crate::ast_traits::FrameTypeKind::Groups,
         })
     }
 }
@@ -1231,14 +1246,14 @@ impl crate::ast_traits::FrameBoundTypeLike for FrameBoundType {
     }
     fn kind(&self) -> Option<crate::ast_traits::FrameBoundTypeKind> {
         Some(match self {
-            FrameBoundType::UNBOUNDEDPRECEDING => {
-                crate::ast_traits::FrameBoundTypeKind::UNBOUNDEDPRECEDING
+            FrameBoundType::UnboundedPreceding => {
+                crate::ast_traits::FrameBoundTypeKind::UnboundedPreceding
             }
-            FrameBoundType::EXPRPRECEDING => crate::ast_traits::FrameBoundTypeKind::EXPRPRECEDING,
-            FrameBoundType::CURRENTROW => crate::ast_traits::FrameBoundTypeKind::CURRENTROW,
-            FrameBoundType::EXPRFOLLOWING => crate::ast_traits::FrameBoundTypeKind::EXPRFOLLOWING,
-            FrameBoundType::UNBOUNDEDFOLLOWING => {
-                crate::ast_traits::FrameBoundTypeKind::UNBOUNDEDFOLLOWING
+            FrameBoundType::ExprPreceding => crate::ast_traits::FrameBoundTypeKind::ExprPreceding,
+            FrameBoundType::CurrentRow => crate::ast_traits::FrameBoundTypeKind::CurrentRow,
+            FrameBoundType::ExprFollowing => crate::ast_traits::FrameBoundTypeKind::ExprFollowing,
+            FrameBoundType::UnboundedFollowing => {
+                crate::ast_traits::FrameBoundTypeKind::UnboundedFollowing
             }
         })
     }
@@ -1250,11 +1265,11 @@ impl crate::ast_traits::FrameExcludeLike for FrameExclude {
     }
     fn kind(&self) -> Option<crate::ast_traits::FrameExcludeKind> {
         Some(match self {
-            FrameExclude::NONE => crate::ast_traits::FrameExcludeKind::NONE,
-            FrameExclude::NOOTHERS => crate::ast_traits::FrameExcludeKind::NOOTHERS,
-            FrameExclude::CURRENTROW => crate::ast_traits::FrameExcludeKind::CURRENTROW,
-            FrameExclude::GROUP => crate::ast_traits::FrameExcludeKind::GROUP,
-            FrameExclude::TIES => crate::ast_traits::FrameExcludeKind::TIES,
+            FrameExclude::None => crate::ast_traits::FrameExcludeKind::None,
+            FrameExclude::NoOthers => crate::ast_traits::FrameExcludeKind::NoOthers,
+            FrameExclude::CurrentRow => crate::ast_traits::FrameExcludeKind::CurrentRow,
+            FrameExclude::Group => crate::ast_traits::FrameExcludeKind::Group,
+            FrameExclude::Ties => crate::ast_traits::FrameExcludeKind::Ties,
         })
     }
 }
@@ -1307,20 +1322,20 @@ pub enum Select<'a> {
 }
 
 impl<'a> Select<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> SelectId {
         match self {
-            Select::SelectStmt(n) => n.node_id(),
-            Select::CompoundSelect(n) => n.node_id(),
-            Select::WithClause(n) => n.node_id(),
-            Select::ValuesClause(n) => n.node_id(),
-            Select::Other(n) => n.node_id(),
+            Select::SelectStmt(n) => SelectId(n.node_id().into()),
+            Select::CompoundSelect(n) => SelectId(n.node_id().into()),
+            Select::WithClause(n) => SelectId(n.node_id().into()),
+            Select::ValuesClause(n) => SelectId(n.node_id().into()),
+            Select::Other(n) => SelectId(n.node_id().into()),
         }
     }
 }
 
 impl<'a> GrammarNodeType<'a> for Select<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
         Some(match node {
             Node::SelectStmt(n) => Select::SelectStmt(n),
@@ -1333,11 +1348,17 @@ impl<'a> GrammarNodeType<'a> for Select<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SelectId(pub AnyNodeId);
+pub struct SelectId(AnyNodeId);
+
+impl SelectId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<Select<'a>> for SelectId {
     fn from(n: Select<'a>) -> Self {
-        SelectId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -1361,18 +1382,18 @@ pub enum InExprSource<'a> {
 }
 
 impl<'a> InExprSource<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> InExprSourceId {
         match self {
-            InExprSource::ExprList(n) => n.node_id().into(),
-            InExprSource::SubqueryExpr(n) => n.node_id(),
-            InExprSource::Other(n) => n.node_id(),
+            InExprSource::ExprList(n) => InExprSourceId(n.node_id().into()),
+            InExprSource::SubqueryExpr(n) => InExprSourceId(n.node_id().into()),
+            InExprSource::Other(n) => InExprSourceId(n.node_id().into()),
         }
     }
 }
 
 impl<'a> GrammarNodeType<'a> for InExprSource<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
         Some(match node {
             Node::ExprList(n) => InExprSource::ExprList(n),
@@ -1383,11 +1404,17 @@ impl<'a> GrammarNodeType<'a> for InExprSource<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct InExprSourceId(pub AnyNodeId);
+pub struct InExprSourceId(AnyNodeId);
+
+impl InExprSourceId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<InExprSource<'a>> for InExprSourceId {
     fn from(n: InExprSource<'a>) -> Self {
-        InExprSourceId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -1427,34 +1454,34 @@ pub enum Expr<'a> {
 }
 
 impl<'a> Expr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> ExprId {
         match self {
-            Expr::BinaryExpr(n) => n.node_id(),
-            Expr::UnaryExpr(n) => n.node_id(),
-            Expr::Literal(n) => n.node_id(),
-            Expr::ColumnRef(n) => n.node_id(),
-            Expr::Variable(n) => n.node_id(),
-            Expr::FunctionCall(n) => n.node_id(),
-            Expr::AggregateFunctionCall(n) => n.node_id(),
-            Expr::OrderedSetFunctionCall(n) => n.node_id(),
-            Expr::CastExpr(n) => n.node_id(),
-            Expr::CollateExpr(n) => n.node_id(),
-            Expr::CaseExpr(n) => n.node_id(),
-            Expr::IsExpr(n) => n.node_id(),
-            Expr::BetweenExpr(n) => n.node_id(),
-            Expr::LikeExpr(n) => n.node_id(),
-            Expr::InExpr(n) => n.node_id(),
-            Expr::SubqueryExpr(n) => n.node_id(),
-            Expr::ExistsExpr(n) => n.node_id(),
-            Expr::RaiseExpr(n) => n.node_id(),
-            Expr::Other(n) => n.node_id(),
+            Expr::BinaryExpr(n) => ExprId(n.node_id().into()),
+            Expr::UnaryExpr(n) => ExprId(n.node_id().into()),
+            Expr::Literal(n) => ExprId(n.node_id().into()),
+            Expr::ColumnRef(n) => ExprId(n.node_id().into()),
+            Expr::Variable(n) => ExprId(n.node_id().into()),
+            Expr::FunctionCall(n) => ExprId(n.node_id().into()),
+            Expr::AggregateFunctionCall(n) => ExprId(n.node_id().into()),
+            Expr::OrderedSetFunctionCall(n) => ExprId(n.node_id().into()),
+            Expr::CastExpr(n) => ExprId(n.node_id().into()),
+            Expr::CollateExpr(n) => ExprId(n.node_id().into()),
+            Expr::CaseExpr(n) => ExprId(n.node_id().into()),
+            Expr::IsExpr(n) => ExprId(n.node_id().into()),
+            Expr::BetweenExpr(n) => ExprId(n.node_id().into()),
+            Expr::LikeExpr(n) => ExprId(n.node_id().into()),
+            Expr::InExpr(n) => ExprId(n.node_id().into()),
+            Expr::SubqueryExpr(n) => ExprId(n.node_id().into()),
+            Expr::ExistsExpr(n) => ExprId(n.node_id().into()),
+            Expr::RaiseExpr(n) => ExprId(n.node_id().into()),
+            Expr::Other(n) => ExprId(n.node_id().into()),
         }
     }
 }
 
 impl<'a> GrammarNodeType<'a> for Expr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
         Some(match node {
             Node::BinaryExpr(n) => Expr::BinaryExpr(n),
@@ -1481,11 +1508,17 @@ impl<'a> GrammarNodeType<'a> for Expr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ExprId(pub AnyNodeId);
+pub struct ExprId(AnyNodeId);
+
+impl ExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<Expr<'a>> for ExprId {
     fn from(n: Expr<'a>) -> Self {
-        ExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -1519,7 +1552,7 @@ pub enum Stmt<'a> {
     TransactionStmt(TransactionStmt<'a>),
     SavepointStmt(SavepointStmt<'a>),
     PragmaStmt(PragmaStmt<'a>),
-    AnalyzeStmt(AnalyzeStmt<'a>),
+    AnalyzeOrReindexStmt(AnalyzeOrReindexStmt<'a>),
     AttachStmt(AttachStmt<'a>),
     DetachStmt(DetachStmt<'a>),
     VacuumStmt(VacuumStmt<'a>),
@@ -1529,38 +1562,38 @@ pub enum Stmt<'a> {
 }
 
 impl<'a> Stmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> StmtId {
         match self {
-            Stmt::SelectStmt(n) => n.node_id(),
-            Stmt::CompoundSelect(n) => n.node_id(),
-            Stmt::ValuesClause(n) => n.node_id(),
-            Stmt::WithClause(n) => n.node_id(),
-            Stmt::InsertStmt(n) => n.node_id(),
-            Stmt::UpdateStmt(n) => n.node_id(),
-            Stmt::DeleteStmt(n) => n.node_id(),
-            Stmt::CreateTableStmt(n) => n.node_id(),
-            Stmt::CreateIndexStmt(n) => n.node_id(),
-            Stmt::CreateViewStmt(n) => n.node_id(),
-            Stmt::CreateTriggerStmt(n) => n.node_id(),
-            Stmt::CreateVirtualTableStmt(n) => n.node_id(),
-            Stmt::DropStmt(n) => n.node_id(),
-            Stmt::AlterTableStmt(n) => n.node_id(),
-            Stmt::TransactionStmt(n) => n.node_id(),
-            Stmt::SavepointStmt(n) => n.node_id(),
-            Stmt::PragmaStmt(n) => n.node_id(),
-            Stmt::AnalyzeStmt(n) => n.node_id(),
-            Stmt::AttachStmt(n) => n.node_id(),
-            Stmt::DetachStmt(n) => n.node_id(),
-            Stmt::VacuumStmt(n) => n.node_id(),
-            Stmt::ExplainStmt(n) => n.node_id(),
-            Stmt::Other(n) => n.node_id(),
+            Stmt::SelectStmt(n) => StmtId(n.node_id().into()),
+            Stmt::CompoundSelect(n) => StmtId(n.node_id().into()),
+            Stmt::ValuesClause(n) => StmtId(n.node_id().into()),
+            Stmt::WithClause(n) => StmtId(n.node_id().into()),
+            Stmt::InsertStmt(n) => StmtId(n.node_id().into()),
+            Stmt::UpdateStmt(n) => StmtId(n.node_id().into()),
+            Stmt::DeleteStmt(n) => StmtId(n.node_id().into()),
+            Stmt::CreateTableStmt(n) => StmtId(n.node_id().into()),
+            Stmt::CreateIndexStmt(n) => StmtId(n.node_id().into()),
+            Stmt::CreateViewStmt(n) => StmtId(n.node_id().into()),
+            Stmt::CreateTriggerStmt(n) => StmtId(n.node_id().into()),
+            Stmt::CreateVirtualTableStmt(n) => StmtId(n.node_id().into()),
+            Stmt::DropStmt(n) => StmtId(n.node_id().into()),
+            Stmt::AlterTableStmt(n) => StmtId(n.node_id().into()),
+            Stmt::TransactionStmt(n) => StmtId(n.node_id().into()),
+            Stmt::SavepointStmt(n) => StmtId(n.node_id().into()),
+            Stmt::PragmaStmt(n) => StmtId(n.node_id().into()),
+            Stmt::AnalyzeOrReindexStmt(n) => StmtId(n.node_id().into()),
+            Stmt::AttachStmt(n) => StmtId(n.node_id().into()),
+            Stmt::DetachStmt(n) => StmtId(n.node_id().into()),
+            Stmt::VacuumStmt(n) => StmtId(n.node_id().into()),
+            Stmt::ExplainStmt(n) => StmtId(n.node_id().into()),
+            Stmt::Other(n) => StmtId(n.node_id().into()),
         }
     }
 }
 
 impl<'a> GrammarNodeType<'a> for Stmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
         Some(match node {
             Node::SelectStmt(n) => Stmt::SelectStmt(n),
@@ -1580,7 +1613,7 @@ impl<'a> GrammarNodeType<'a> for Stmt<'a> {
             Node::TransactionStmt(n) => Stmt::TransactionStmt(n),
             Node::SavepointStmt(n) => Stmt::SavepointStmt(n),
             Node::PragmaStmt(n) => Stmt::PragmaStmt(n),
-            Node::AnalyzeStmt(n) => Stmt::AnalyzeStmt(n),
+            Node::AnalyzeOrReindexStmt(n) => Stmt::AnalyzeOrReindexStmt(n),
             Node::AttachStmt(n) => Stmt::AttachStmt(n),
             Node::DetachStmt(n) => Stmt::DetachStmt(n),
             Node::VacuumStmt(n) => Stmt::VacuumStmt(n),
@@ -1591,11 +1624,17 @@ impl<'a> GrammarNodeType<'a> for Stmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct StmtId(pub AnyNodeId);
+pub struct StmtId(AnyNodeId);
+
+impl StmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<Stmt<'a>> for StmtId {
     fn from(n: Stmt<'a>) -> Self {
-        StmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -1621,20 +1660,20 @@ pub enum TableSource<'a> {
 }
 
 impl<'a> TableSource<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> TableSourceId {
         match self {
-            TableSource::TableRef(n) => n.node_id(),
-            TableSource::SubqueryTableSource(n) => n.node_id(),
-            TableSource::JoinClause(n) => n.node_id(),
-            TableSource::JoinPrefix(n) => n.node_id(),
-            TableSource::Other(n) => n.node_id(),
+            TableSource::TableRef(n) => TableSourceId(n.node_id().into()),
+            TableSource::SubqueryTableSource(n) => TableSourceId(n.node_id().into()),
+            TableSource::JoinClause(n) => TableSourceId(n.node_id().into()),
+            TableSource::JoinPrefix(n) => TableSourceId(n.node_id().into()),
+            TableSource::Other(n) => TableSourceId(n.node_id().into()),
         }
     }
 }
 
 impl<'a> GrammarNodeType<'a> for TableSource<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
         Some(match node {
             Node::TableRef(n) => TableSource::TableRef(n),
@@ -1647,11 +1686,17 @@ impl<'a> GrammarNodeType<'a> for TableSource<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct TableSourceId(pub AnyNodeId);
+pub struct TableSourceId(AnyNodeId);
+
+impl TableSourceId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<TableSource<'a>> for TableSourceId {
     fn from(n: TableSource<'a>) -> Self {
-        TableSourceId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -1691,9 +1736,9 @@ impl std::fmt::Display for AggregateFunctionCall<'_> {
 }
 
 impl<'a> AggregateFunctionCall<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> AggregateFunctionCallId {
+        AggregateFunctionCallId(self.id)
     }
     pub fn func_name(&self) -> &'a str {
         self.raw.func_name.as_str(self.stmt_result.source())
@@ -1702,21 +1747,21 @@ impl<'a> AggregateFunctionCall<'a> {
         self.raw.flags
     }
     pub fn args(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.args)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.args)
     }
     pub fn orderby(&self) -> Option<OrderByList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.orderby)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.orderby)
     }
     pub fn filter_clause(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.filter_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.filter_clause)
     }
     pub fn over_clause(&self) -> Option<WindowDef<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.over_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.over_clause)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for AggregateFunctionCall<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::AggregateFunctionCall>(id)?;
         Some(AggregateFunctionCall {
             raw,
@@ -1727,11 +1772,17 @@ impl<'a> GrammarNodeType<'a> for AggregateFunctionCall<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct AggregateFunctionCallId(pub AnyNodeId);
+pub struct AggregateFunctionCallId(AnyNodeId);
+
+impl AggregateFunctionCallId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<AggregateFunctionCall<'a>> for AggregateFunctionCallId {
     fn from(n: AggregateFunctionCall<'a>) -> Self {
-        AggregateFunctionCallId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -1771,9 +1822,9 @@ impl std::fmt::Display for OrderedSetFunctionCall<'_> {
 }
 
 impl<'a> OrderedSetFunctionCall<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> OrderedSetFunctionCallId {
+        OrderedSetFunctionCallId(self.id)
     }
     pub fn func_name(&self) -> &'a str {
         self.raw.func_name.as_str(self.stmt_result.source())
@@ -1782,21 +1833,21 @@ impl<'a> OrderedSetFunctionCall<'a> {
         self.raw.flags
     }
     pub fn args(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.args)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.args)
     }
     pub fn orderby_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.orderby_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.orderby_expr)
     }
     pub fn filter_clause(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.filter_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.filter_clause)
     }
     pub fn over_clause(&self) -> Option<WindowDef<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.over_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.over_clause)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for OrderedSetFunctionCall<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::OrderedSetFunctionCall>(id)?;
         Some(OrderedSetFunctionCall {
             raw,
@@ -1807,11 +1858,17 @@ impl<'a> GrammarNodeType<'a> for OrderedSetFunctionCall<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct OrderedSetFunctionCallId(pub AnyNodeId);
+pub struct OrderedSetFunctionCallId(AnyNodeId);
+
+impl OrderedSetFunctionCallId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<OrderedSetFunctionCall<'a>> for OrderedSetFunctionCallId {
     fn from(n: OrderedSetFunctionCall<'a>) -> Self {
-        OrderedSetFunctionCallId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -1851,12 +1908,12 @@ impl std::fmt::Display for CastExpr<'_> {
 }
 
 impl<'a> CastExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> CastExprId {
+        CastExprId(self.id)
     }
     pub fn expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.expr)
     }
     pub fn type_name(&self) -> &'a str {
         self.raw.type_name.as_str(self.stmt_result.source())
@@ -1864,7 +1921,7 @@ impl<'a> CastExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CastExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CastExpr>(id)?;
         Some(CastExpr {
             raw,
@@ -1875,11 +1932,17 @@ impl<'a> GrammarNodeType<'a> for CastExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CastExprId(pub AnyNodeId);
+pub struct CastExprId(AnyNodeId);
+
+impl CastExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CastExpr<'a>> for CastExprId {
     fn from(n: CastExpr<'a>) -> Self {
-        CastExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -1919,9 +1982,9 @@ impl std::fmt::Display for ColumnRef<'_> {
 }
 
 impl<'a> ColumnRef<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> ColumnRefId {
+        ColumnRefId(self.id)
     }
     pub fn column(&self) -> &'a str {
         self.raw.column.as_str(self.stmt_result.source())
@@ -1935,7 +1998,7 @@ impl<'a> ColumnRef<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for ColumnRef<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ColumnRef>(id)?;
         Some(ColumnRef {
             raw,
@@ -1946,11 +2009,17 @@ impl<'a> GrammarNodeType<'a> for ColumnRef<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ColumnRefId(pub AnyNodeId);
+pub struct ColumnRefId(AnyNodeId);
+
+impl ColumnRefId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ColumnRef<'a>> for ColumnRefId {
     fn from(n: ColumnRef<'a>) -> Self {
-        ColumnRefId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -1990,23 +2059,23 @@ impl std::fmt::Display for CompoundSelect<'_> {
 }
 
 impl<'a> CompoundSelect<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> CompoundSelectId {
+        CompoundSelectId(self.id)
     }
     pub fn op(&self) -> CompoundOp {
         self.raw.op
     }
     pub fn left(&self) -> Option<Select<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.left)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.left)
     }
     pub fn right(&self) -> Option<Select<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.right)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.right)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for CompoundSelect<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CompoundSelect>(id)?;
         Some(CompoundSelect {
             raw,
@@ -2017,11 +2086,17 @@ impl<'a> GrammarNodeType<'a> for CompoundSelect<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CompoundSelectId(pub AnyNodeId);
+pub struct CompoundSelectId(AnyNodeId);
+
+impl CompoundSelectId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CompoundSelect<'a>> for CompoundSelectId {
     fn from(n: CompoundSelect<'a>) -> Self {
-        CompoundSelectId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2061,17 +2136,17 @@ impl std::fmt::Display for SubqueryExpr<'_> {
 }
 
 impl<'a> SubqueryExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> SubqueryExprId {
+        SubqueryExprId(self.id)
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.select)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.select)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for SubqueryExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::SubqueryExpr>(id)?;
         Some(SubqueryExpr {
             raw,
@@ -2082,11 +2157,17 @@ impl<'a> GrammarNodeType<'a> for SubqueryExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SubqueryExprId(pub AnyNodeId);
+pub struct SubqueryExprId(AnyNodeId);
+
+impl SubqueryExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<SubqueryExpr<'a>> for SubqueryExprId {
     fn from(n: SubqueryExpr<'a>) -> Self {
-        SubqueryExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2126,17 +2207,17 @@ impl std::fmt::Display for ExistsExpr<'_> {
 }
 
 impl<'a> ExistsExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> ExistsExprId {
+        ExistsExprId(self.id)
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.select)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.select)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for ExistsExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ExistsExpr>(id)?;
         Some(ExistsExpr {
             raw,
@@ -2147,11 +2228,17 @@ impl<'a> GrammarNodeType<'a> for ExistsExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ExistsExprId(pub AnyNodeId);
+pub struct ExistsExprId(AnyNodeId);
+
+impl ExistsExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ExistsExpr<'a>> for ExistsExprId {
     fn from(n: ExistsExpr<'a>) -> Self {
-        ExistsExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2191,23 +2278,23 @@ impl std::fmt::Display for InExpr<'_> {
 }
 
 impl<'a> InExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> InExprId {
+        InExprId(self.id)
     }
     pub fn negated(&self) -> bool {
         self.raw.negated == super::ffi::Bool::True
     }
     pub fn operand(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.operand)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.operand)
     }
     pub fn source(&self) -> Option<InExprSource<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.source)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.source)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for InExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::InExpr>(id)?;
         Some(InExpr {
             raw,
@@ -2218,11 +2305,17 @@ impl<'a> GrammarNodeType<'a> for InExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct InExprId(pub AnyNodeId);
+pub struct InExprId(AnyNodeId);
+
+impl InExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<InExpr<'a>> for InExprId {
     fn from(n: InExpr<'a>) -> Self {
-        InExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2262,23 +2355,23 @@ impl std::fmt::Display for IsExpr<'_> {
 }
 
 impl<'a> IsExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> IsExprId {
+        IsExprId(self.id)
     }
     pub fn op(&self) -> IsOp {
         self.raw.op
     }
     pub fn left(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.left)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.left)
     }
     pub fn right(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.right)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.right)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for IsExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::IsExpr>(id)?;
         Some(IsExpr {
             raw,
@@ -2289,11 +2382,17 @@ impl<'a> GrammarNodeType<'a> for IsExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct IsExprId(pub AnyNodeId);
+pub struct IsExprId(AnyNodeId);
+
+impl IsExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<IsExpr<'a>> for IsExprId {
     fn from(n: IsExpr<'a>) -> Self {
-        IsExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2333,26 +2432,26 @@ impl std::fmt::Display for BetweenExpr<'_> {
 }
 
 impl<'a> BetweenExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> BetweenExprId {
+        BetweenExprId(self.id)
     }
     pub fn negated(&self) -> bool {
         self.raw.negated == super::ffi::Bool::True
     }
     pub fn operand(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.operand)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.operand)
     }
     pub fn low(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.low)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.low)
     }
     pub fn high(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.high)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.high)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for BetweenExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::BetweenExpr>(id)?;
         Some(BetweenExpr {
             raw,
@@ -2363,11 +2462,17 @@ impl<'a> GrammarNodeType<'a> for BetweenExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct BetweenExprId(pub AnyNodeId);
+pub struct BetweenExprId(AnyNodeId);
+
+impl BetweenExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<BetweenExpr<'a>> for BetweenExprId {
     fn from(n: BetweenExpr<'a>) -> Self {
-        BetweenExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2407,26 +2512,26 @@ impl std::fmt::Display for LikeExpr<'_> {
 }
 
 impl<'a> LikeExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> LikeExprId {
+        LikeExprId(self.id)
     }
     pub fn negated(&self) -> bool {
         self.raw.negated == super::ffi::Bool::True
     }
     pub fn operand(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.operand)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.operand)
     }
     pub fn pattern(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.pattern)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.pattern)
     }
     pub fn escape(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.escape)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.escape)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for LikeExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::LikeExpr>(id)?;
         Some(LikeExpr {
             raw,
@@ -2437,11 +2542,17 @@ impl<'a> GrammarNodeType<'a> for LikeExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct LikeExprId(pub AnyNodeId);
+pub struct LikeExprId(AnyNodeId);
+
+impl LikeExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<LikeExpr<'a>> for LikeExprId {
     fn from(n: LikeExpr<'a>) -> Self {
-        LikeExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2481,23 +2592,23 @@ impl std::fmt::Display for CaseExpr<'_> {
 }
 
 impl<'a> CaseExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> CaseExprId {
+        CaseExprId(self.id)
     }
     pub fn operand(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.operand)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.operand)
     }
     pub fn else_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.else_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.else_expr)
     }
     pub fn whens(&self) -> Option<CaseWhenList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.whens)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.whens)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for CaseExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CaseExpr>(id)?;
         Some(CaseExpr {
             raw,
@@ -2508,11 +2619,17 @@ impl<'a> GrammarNodeType<'a> for CaseExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CaseExprId(pub AnyNodeId);
+pub struct CaseExprId(AnyNodeId);
+
+impl CaseExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CaseExpr<'a>> for CaseExprId {
     fn from(n: CaseExpr<'a>) -> Self {
-        CaseExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2552,20 +2669,20 @@ impl std::fmt::Display for CaseWhen<'_> {
 }
 
 impl<'a> CaseWhen<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> CaseWhenId {
+        CaseWhenId(self.id)
     }
     pub fn when_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.when_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.when_expr)
     }
     pub fn then_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.then_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.then_expr)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for CaseWhen<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CaseWhen>(id)?;
         Some(CaseWhen {
             raw,
@@ -2576,11 +2693,17 @@ impl<'a> GrammarNodeType<'a> for CaseWhen<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CaseWhenId(pub AnyNodeId);
+pub struct CaseWhenId(AnyNodeId);
+
+impl CaseWhenId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CaseWhen<'a>> for CaseWhenId {
     fn from(n: CaseWhen<'a>) -> Self {
-        CaseWhenId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2620,15 +2743,15 @@ impl std::fmt::Display for ForeignKeyClause<'_> {
 }
 
 impl<'a> ForeignKeyClause<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> ForeignKeyClauseId {
+        ForeignKeyClauseId(self.id)
     }
     pub fn ref_table(&self) -> &'a str {
         self.raw.ref_table.as_str(self.stmt_result.source())
     }
     pub fn ref_columns(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.ref_columns)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.ref_columns)
     }
     pub fn on_delete(&self) -> ForeignKeyAction {
         self.raw.on_delete
@@ -2642,7 +2765,7 @@ impl<'a> ForeignKeyClause<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for ForeignKeyClause<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ForeignKeyClause>(id)?;
         Some(ForeignKeyClause {
             raw,
@@ -2653,11 +2776,17 @@ impl<'a> GrammarNodeType<'a> for ForeignKeyClause<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ForeignKeyClauseId(pub AnyNodeId);
+pub struct ForeignKeyClauseId(AnyNodeId);
+
+impl ForeignKeyClauseId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ForeignKeyClause<'a>> for ForeignKeyClauseId {
     fn from(n: ForeignKeyClause<'a>) -> Self {
-        ForeignKeyClauseId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2697,9 +2826,9 @@ impl std::fmt::Display for ColumnConstraint<'_> {
 }
 
 impl<'a> ColumnConstraint<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> ColumnConstraintId {
+        ColumnConstraintId(self.id)
     }
     pub fn kind(&self) -> ColumnConstraintKind {
         self.raw.kind
@@ -2723,21 +2852,21 @@ impl<'a> ColumnConstraint<'a> {
         self.raw.generated_storage
     }
     pub fn default_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.default_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.default_expr)
     }
     pub fn check_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.check_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.check_expr)
     }
     pub fn generated_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.generated_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.generated_expr)
     }
     pub fn fk_clause(&self) -> Option<ForeignKeyClause<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.fk_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.fk_clause)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for ColumnConstraint<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ColumnConstraint>(id)?;
         Some(ColumnConstraint {
             raw,
@@ -2748,11 +2877,17 @@ impl<'a> GrammarNodeType<'a> for ColumnConstraint<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ColumnConstraintId(pub AnyNodeId);
+pub struct ColumnConstraintId(AnyNodeId);
+
+impl ColumnConstraintId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ColumnConstraint<'a>> for ColumnConstraintId {
     fn from(n: ColumnConstraint<'a>) -> Self {
-        ColumnConstraintId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2792,9 +2927,9 @@ impl std::fmt::Display for ColumnDef<'_> {
 }
 
 impl<'a> ColumnDef<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> ColumnDefId {
+        ColumnDefId(self.id)
     }
     pub fn column_name(&self) -> &'a str {
         self.raw.column_name.as_str(self.stmt_result.source())
@@ -2803,12 +2938,12 @@ impl<'a> ColumnDef<'a> {
         self.raw.type_name.as_str(self.stmt_result.source())
     }
     pub fn constraints(&self) -> Option<ColumnConstraintList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.constraints)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.constraints)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for ColumnDef<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ColumnDef>(id)?;
         Some(ColumnDef {
             raw,
@@ -2819,11 +2954,17 @@ impl<'a> GrammarNodeType<'a> for ColumnDef<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ColumnDefId(pub AnyNodeId);
+pub struct ColumnDefId(AnyNodeId);
+
+impl ColumnDefId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ColumnDef<'a>> for ColumnDefId {
     fn from(n: ColumnDef<'a>) -> Self {
-        ColumnDefId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2863,9 +3004,9 @@ impl std::fmt::Display for TableConstraint<'_> {
 }
 
 impl<'a> TableConstraint<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> TableConstraintId {
+        TableConstraintId(self.id)
     }
     pub fn kind(&self) -> TableConstraintKind {
         self.raw.kind
@@ -2880,21 +3021,21 @@ impl<'a> TableConstraint<'a> {
         self.raw.is_autoincrement == super::ffi::Bool::True
     }
     pub fn pk_columns(&self) -> Option<OrderByList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.pk_columns)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.pk_columns)
     }
     pub fn fk_columns(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.fk_columns)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.fk_columns)
     }
     pub fn check_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.check_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.check_expr)
     }
     pub fn fk_clause(&self) -> Option<ForeignKeyClause<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.fk_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.fk_clause)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for TableConstraint<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::TableConstraint>(id)?;
         Some(TableConstraint {
             raw,
@@ -2905,11 +3046,17 @@ impl<'a> GrammarNodeType<'a> for TableConstraint<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct TableConstraintId(pub AnyNodeId);
+pub struct TableConstraintId(AnyNodeId);
+
+impl TableConstraintId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<TableConstraint<'a>> for TableConstraintId {
     fn from(n: TableConstraint<'a>) -> Self {
-        TableConstraintId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -2949,9 +3096,9 @@ impl std::fmt::Display for CreateTableStmt<'_> {
 }
 
 impl<'a> CreateTableStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> CreateTableStmtId {
+        CreateTableStmtId(self.id)
     }
     pub fn table_name(&self) -> &'a str {
         self.raw.table_name.as_str(self.stmt_result.source())
@@ -2969,18 +3116,18 @@ impl<'a> CreateTableStmt<'a> {
         self.raw.flags
     }
     pub fn columns(&self) -> Option<ColumnDefList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.columns)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.columns)
     }
     pub fn table_constraints(&self) -> Option<TableConstraintList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.table_constraints)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.table_constraints)
     }
     pub fn as_select(&self) -> Option<Select<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.as_select)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.as_select)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for CreateTableStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CreateTableStmt>(id)?;
         Some(CreateTableStmt {
             raw,
@@ -2991,11 +3138,17 @@ impl<'a> GrammarNodeType<'a> for CreateTableStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CreateTableStmtId(pub AnyNodeId);
+pub struct CreateTableStmtId(AnyNodeId);
+
+impl CreateTableStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CreateTableStmt<'a>> for CreateTableStmtId {
     fn from(n: CreateTableStmt<'a>) -> Self {
-        CreateTableStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3035,9 +3188,9 @@ impl std::fmt::Display for CteDefinition<'_> {
 }
 
 impl<'a> CteDefinition<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> CteDefinitionId {
+        CteDefinitionId(self.id)
     }
     pub fn cte_name(&self) -> &'a str {
         self.raw.cte_name.as_str(self.stmt_result.source())
@@ -3046,15 +3199,15 @@ impl<'a> CteDefinition<'a> {
         self.raw.materialized
     }
     pub fn columns(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.columns)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.columns)
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.select)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.select)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for CteDefinition<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CteDefinition>(id)?;
         Some(CteDefinition {
             raw,
@@ -3065,11 +3218,17 @@ impl<'a> GrammarNodeType<'a> for CteDefinition<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CteDefinitionId(pub AnyNodeId);
+pub struct CteDefinitionId(AnyNodeId);
+
+impl CteDefinitionId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CteDefinition<'a>> for CteDefinitionId {
     fn from(n: CteDefinition<'a>) -> Self {
-        CteDefinitionId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3109,23 +3268,23 @@ impl std::fmt::Display for WithClause<'_> {
 }
 
 impl<'a> WithClause<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> WithClauseId {
+        WithClauseId(self.id)
     }
     pub fn recursive(&self) -> bool {
         self.raw.recursive == super::ffi::Bool::True
     }
     pub fn ctes(&self) -> Option<CteList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.ctes)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.ctes)
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.select)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.select)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for WithClause<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::WithClause>(id)?;
         Some(WithClause {
             raw,
@@ -3136,11 +3295,17 @@ impl<'a> GrammarNodeType<'a> for WithClause<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct WithClauseId(pub AnyNodeId);
+pub struct WithClauseId(AnyNodeId);
+
+impl WithClauseId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<WithClause<'a>> for WithClauseId {
     fn from(n: WithClause<'a>) -> Self {
-        WithClauseId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3180,26 +3345,26 @@ impl std::fmt::Display for DeleteStmt<'_> {
 }
 
 impl<'a> DeleteStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> DeleteStmtId {
+        DeleteStmtId(self.id)
     }
     pub fn table(&self) -> Option<TableRef<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.table)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.table)
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.where_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.where_clause)
     }
     pub fn orderby(&self) -> Option<OrderByList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.orderby)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.orderby)
     }
     pub fn limit_clause(&self) -> Option<LimitClause<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.limit_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.limit_clause)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for DeleteStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::DeleteStmt>(id)?;
         Some(DeleteStmt {
             raw,
@@ -3210,11 +3375,17 @@ impl<'a> GrammarNodeType<'a> for DeleteStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct DeleteStmtId(pub AnyNodeId);
+pub struct DeleteStmtId(AnyNodeId);
+
+impl DeleteStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<DeleteStmt<'a>> for DeleteStmtId {
     fn from(n: DeleteStmt<'a>) -> Self {
-        DeleteStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3254,23 +3425,23 @@ impl std::fmt::Display for SetClause<'_> {
 }
 
 impl<'a> SetClause<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> SetClauseId {
+        SetClauseId(self.id)
     }
     pub fn column(&self) -> &'a str {
         self.raw.column.as_str(self.stmt_result.source())
     }
     pub fn columns(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.columns)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.columns)
     }
     pub fn value(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.value)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.value)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for SetClause<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::SetClause>(id)?;
         Some(SetClause {
             raw,
@@ -3281,11 +3452,17 @@ impl<'a> GrammarNodeType<'a> for SetClause<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SetClauseId(pub AnyNodeId);
+pub struct SetClauseId(AnyNodeId);
+
+impl SetClauseId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<SetClause<'a>> for SetClauseId {
     fn from(n: SetClause<'a>) -> Self {
-        SetClauseId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3325,35 +3502,35 @@ impl std::fmt::Display for UpdateStmt<'_> {
 }
 
 impl<'a> UpdateStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> UpdateStmtId {
+        UpdateStmtId(self.id)
     }
     pub fn conflict_action(&self) -> ConflictAction {
         self.raw.conflict_action
     }
     pub fn table(&self) -> Option<TableRef<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.table)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.table)
     }
     pub fn setlist(&self) -> Option<SetClauseList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.setlist)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.setlist)
     }
     pub fn from_clause(&self) -> Option<TableSource<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.from_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.from_clause)
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.where_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.where_clause)
     }
     pub fn orderby(&self) -> Option<OrderByList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.orderby)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.orderby)
     }
     pub fn limit_clause(&self) -> Option<LimitClause<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.limit_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.limit_clause)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for UpdateStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::UpdateStmt>(id)?;
         Some(UpdateStmt {
             raw,
@@ -3364,11 +3541,17 @@ impl<'a> GrammarNodeType<'a> for UpdateStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct UpdateStmtId(pub AnyNodeId);
+pub struct UpdateStmtId(AnyNodeId);
+
+impl UpdateStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<UpdateStmt<'a>> for UpdateStmtId {
     fn from(n: UpdateStmt<'a>) -> Self {
-        UpdateStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3408,26 +3591,26 @@ impl std::fmt::Display for InsertStmt<'_> {
 }
 
 impl<'a> InsertStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> InsertStmtId {
+        InsertStmtId(self.id)
     }
     pub fn conflict_action(&self) -> ConflictAction {
         self.raw.conflict_action
     }
     pub fn table(&self) -> Option<TableRef<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.table)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.table)
     }
     pub fn columns(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.columns)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.columns)
     }
     pub fn source(&self) -> Option<Select<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.source)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.source)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for InsertStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::InsertStmt>(id)?;
         Some(InsertStmt {
             raw,
@@ -3438,11 +3621,17 @@ impl<'a> GrammarNodeType<'a> for InsertStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct InsertStmtId(pub AnyNodeId);
+pub struct InsertStmtId(AnyNodeId);
+
+impl InsertStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<InsertStmt<'a>> for InsertStmtId {
     fn from(n: InsertStmt<'a>) -> Self {
-        InsertStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3482,23 +3671,23 @@ impl std::fmt::Display for BinaryExpr<'_> {
 }
 
 impl<'a> BinaryExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> BinaryExprId {
+        BinaryExprId(self.id)
     }
     pub fn op(&self) -> BinaryOp {
         self.raw.op
     }
     pub fn left(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.left)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.left)
     }
     pub fn right(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.right)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.right)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for BinaryExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::BinaryExpr>(id)?;
         Some(BinaryExpr {
             raw,
@@ -3509,11 +3698,17 @@ impl<'a> GrammarNodeType<'a> for BinaryExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct BinaryExprId(pub AnyNodeId);
+pub struct BinaryExprId(AnyNodeId);
+
+impl BinaryExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<BinaryExpr<'a>> for BinaryExprId {
     fn from(n: BinaryExpr<'a>) -> Self {
-        BinaryExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3553,20 +3748,20 @@ impl std::fmt::Display for UnaryExpr<'_> {
 }
 
 impl<'a> UnaryExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> UnaryExprId {
+        UnaryExprId(self.id)
     }
     pub fn op(&self) -> UnaryOp {
         self.raw.op
     }
     pub fn operand(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.operand)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.operand)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for UnaryExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::UnaryExpr>(id)?;
         Some(UnaryExpr {
             raw,
@@ -3577,11 +3772,17 @@ impl<'a> GrammarNodeType<'a> for UnaryExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct UnaryExprId(pub AnyNodeId);
+pub struct UnaryExprId(AnyNodeId);
+
+impl UnaryExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<UnaryExpr<'a>> for UnaryExprId {
     fn from(n: UnaryExpr<'a>) -> Self {
-        UnaryExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3621,9 +3822,9 @@ impl std::fmt::Display for Literal<'_> {
 }
 
 impl<'a> Literal<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> LiteralId {
+        LiteralId(self.id)
     }
     pub fn literal_type(&self) -> LiteralType {
         self.raw.literal_type
@@ -3634,7 +3835,7 @@ impl<'a> Literal<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for Literal<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::Literal>(id)?;
         Some(Literal {
             raw,
@@ -3645,11 +3846,17 @@ impl<'a> GrammarNodeType<'a> for Literal<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct LiteralId(pub AnyNodeId);
+pub struct LiteralId(AnyNodeId);
+
+impl LiteralId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<Literal<'a>> for LiteralId {
     fn from(n: Literal<'a>) -> Self {
-        LiteralId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3689,9 +3896,9 @@ impl std::fmt::Display for FunctionCall<'_> {
 }
 
 impl<'a> FunctionCall<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> FunctionCallId {
+        FunctionCallId(self.id)
     }
     pub fn func_name(&self) -> &'a str {
         self.raw.func_name.as_str(self.stmt_result.source())
@@ -3700,18 +3907,18 @@ impl<'a> FunctionCall<'a> {
         self.raw.flags
     }
     pub fn args(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.args)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.args)
     }
     pub fn filter_clause(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.filter_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.filter_clause)
     }
     pub fn over_clause(&self) -> Option<WindowDef<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.over_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.over_clause)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for FunctionCall<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::FunctionCall>(id)?;
         Some(FunctionCall {
             raw,
@@ -3722,11 +3929,17 @@ impl<'a> GrammarNodeType<'a> for FunctionCall<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct FunctionCallId(pub AnyNodeId);
+pub struct FunctionCallId(AnyNodeId);
+
+impl FunctionCallId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<FunctionCall<'a>> for FunctionCallId {
     fn from(n: FunctionCall<'a>) -> Self {
-        FunctionCallId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3766,9 +3979,9 @@ impl std::fmt::Display for Variable<'_> {
 }
 
 impl<'a> Variable<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> VariableId {
+        VariableId(self.id)
     }
     pub fn source(&self) -> &'a str {
         self.raw.source.as_str(self.stmt_result.source())
@@ -3776,7 +3989,7 @@ impl<'a> Variable<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for Variable<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::Variable>(id)?;
         Some(Variable {
             raw,
@@ -3787,11 +4000,17 @@ impl<'a> GrammarNodeType<'a> for Variable<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct VariableId(pub AnyNodeId);
+pub struct VariableId(AnyNodeId);
+
+impl VariableId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<Variable<'a>> for VariableId {
     fn from(n: Variable<'a>) -> Self {
-        VariableId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3831,12 +4050,12 @@ impl std::fmt::Display for CollateExpr<'_> {
 }
 
 impl<'a> CollateExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> CollateExprId {
+        CollateExprId(self.id)
     }
     pub fn expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.expr)
     }
     pub fn collation(&self) -> &'a str {
         self.raw.collation.as_str(self.stmt_result.source())
@@ -3844,7 +4063,7 @@ impl<'a> CollateExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CollateExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CollateExpr>(id)?;
         Some(CollateExpr {
             raw,
@@ -3855,11 +4074,17 @@ impl<'a> GrammarNodeType<'a> for CollateExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CollateExprId(pub AnyNodeId);
+pub struct CollateExprId(AnyNodeId);
+
+impl CollateExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CollateExpr<'a>> for CollateExprId {
     fn from(n: CollateExpr<'a>) -> Self {
-        CollateExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3899,20 +4124,20 @@ impl std::fmt::Display for RaiseExpr<'_> {
 }
 
 impl<'a> RaiseExpr<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> RaiseExprId {
+        RaiseExprId(self.id)
     }
     pub fn raise_type(&self) -> RaiseType {
         self.raw.raise_type
     }
     pub fn error_message(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.error_message)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.error_message)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for RaiseExpr<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::RaiseExpr>(id)?;
         Some(RaiseExpr {
             raw,
@@ -3923,11 +4148,17 @@ impl<'a> GrammarNodeType<'a> for RaiseExpr<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct RaiseExprId(pub AnyNodeId);
+pub struct RaiseExprId(AnyNodeId);
+
+impl RaiseExprId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<RaiseExpr<'a>> for RaiseExprId {
     fn from(n: RaiseExpr<'a>) -> Self {
-        RaiseExprId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -3967,9 +4198,9 @@ impl std::fmt::Display for QualifiedName<'_> {
 }
 
 impl<'a> QualifiedName<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> QualifiedNameId {
+        QualifiedNameId(self.id)
     }
     pub fn object_name(&self) -> &'a str {
         self.raw.object_name.as_str(self.stmt_result.source())
@@ -3980,7 +4211,7 @@ impl<'a> QualifiedName<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for QualifiedName<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::QualifiedName>(id)?;
         Some(QualifiedName {
             raw,
@@ -3991,11 +4222,17 @@ impl<'a> GrammarNodeType<'a> for QualifiedName<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct QualifiedNameId(pub AnyNodeId);
+pub struct QualifiedNameId(AnyNodeId);
+
+impl QualifiedNameId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<QualifiedName<'a>> for QualifiedNameId {
     fn from(n: QualifiedName<'a>) -> Self {
-        QualifiedNameId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4035,9 +4272,9 @@ impl std::fmt::Display for DropStmt<'_> {
 }
 
 impl<'a> DropStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> DropStmtId {
+        DropStmtId(self.id)
     }
     pub fn object_type(&self) -> DropObjectType {
         self.raw.object_type
@@ -4046,12 +4283,12 @@ impl<'a> DropStmt<'a> {
         self.raw.if_exists == super::ffi::Bool::True
     }
     pub fn target(&self) -> Option<QualifiedName<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.target)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.target)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for DropStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::DropStmt>(id)?;
         Some(DropStmt {
             raw,
@@ -4062,11 +4299,17 @@ impl<'a> GrammarNodeType<'a> for DropStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct DropStmtId(pub AnyNodeId);
+pub struct DropStmtId(AnyNodeId);
+
+impl DropStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<DropStmt<'a>> for DropStmtId {
     fn from(n: DropStmt<'a>) -> Self {
-        DropStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4106,15 +4349,15 @@ impl std::fmt::Display for AlterTableStmt<'_> {
 }
 
 impl<'a> AlterTableStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> AlterTableStmtId {
+        AlterTableStmtId(self.id)
     }
     pub fn op(&self) -> AlterOp {
         self.raw.op
     }
     pub fn target(&self) -> Option<QualifiedName<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.target)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.target)
     }
     pub fn new_name(&self) -> &'a str {
         self.raw.new_name.as_str(self.stmt_result.source())
@@ -4125,7 +4368,7 @@ impl<'a> AlterTableStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for AlterTableStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::AlterTableStmt>(id)?;
         Some(AlterTableStmt {
             raw,
@@ -4136,11 +4379,17 @@ impl<'a> GrammarNodeType<'a> for AlterTableStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct AlterTableStmtId(pub AnyNodeId);
+pub struct AlterTableStmtId(AnyNodeId);
+
+impl AlterTableStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<AlterTableStmt<'a>> for AlterTableStmtId {
     fn from(n: AlterTableStmt<'a>) -> Self {
-        AlterTableStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4180,9 +4429,9 @@ impl std::fmt::Display for TransactionStmt<'_> {
 }
 
 impl<'a> TransactionStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> TransactionStmtId {
+        TransactionStmtId(self.id)
     }
     pub fn op(&self) -> TransactionOp {
         self.raw.op
@@ -4193,7 +4442,7 @@ impl<'a> TransactionStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for TransactionStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::TransactionStmt>(id)?;
         Some(TransactionStmt {
             raw,
@@ -4204,11 +4453,17 @@ impl<'a> GrammarNodeType<'a> for TransactionStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct TransactionStmtId(pub AnyNodeId);
+pub struct TransactionStmtId(AnyNodeId);
+
+impl TransactionStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<TransactionStmt<'a>> for TransactionStmtId {
     fn from(n: TransactionStmt<'a>) -> Self {
-        TransactionStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4248,9 +4503,9 @@ impl std::fmt::Display for SavepointStmt<'_> {
 }
 
 impl<'a> SavepointStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> SavepointStmtId {
+        SavepointStmtId(self.id)
     }
     pub fn op(&self) -> SavepointOp {
         self.raw.op
@@ -4261,7 +4516,7 @@ impl<'a> SavepointStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for SavepointStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::SavepointStmt>(id)?;
         Some(SavepointStmt {
             raw,
@@ -4272,11 +4527,17 @@ impl<'a> GrammarNodeType<'a> for SavepointStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SavepointStmtId(pub AnyNodeId);
+pub struct SavepointStmtId(AnyNodeId);
+
+impl SavepointStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<SavepointStmt<'a>> for SavepointStmtId {
     fn from(n: SavepointStmt<'a>) -> Self {
-        SavepointStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4316,9 +4577,9 @@ impl std::fmt::Display for ResultColumn<'_> {
 }
 
 impl<'a> ResultColumn<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> ResultColumnId {
+        ResultColumnId(self.id)
     }
     pub fn flags(&self) -> ResultColumnFlags {
         self.raw.flags
@@ -4327,12 +4588,12 @@ impl<'a> ResultColumn<'a> {
         self.raw.alias.as_str(self.stmt_result.source())
     }
     pub fn expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.expr)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for ResultColumn<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ResultColumn>(id)?;
         Some(ResultColumn {
             raw,
@@ -4343,11 +4604,17 @@ impl<'a> GrammarNodeType<'a> for ResultColumn<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ResultColumnId(pub AnyNodeId);
+pub struct ResultColumnId(AnyNodeId);
+
+impl ResultColumnId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ResultColumn<'a>> for ResultColumnId {
     fn from(n: ResultColumn<'a>) -> Self {
-        ResultColumnId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4387,41 +4654,41 @@ impl std::fmt::Display for SelectStmt<'_> {
 }
 
 impl<'a> SelectStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> SelectStmtId {
+        SelectStmtId(self.id)
     }
     pub fn flags(&self) -> SelectStmtFlags {
         self.raw.flags
     }
     pub fn columns(&self) -> Option<ResultColumnList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.columns)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.columns)
     }
     pub fn from_clause(&self) -> Option<TableSource<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.from_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.from_clause)
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.where_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.where_clause)
     }
     pub fn groupby(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.groupby)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.groupby)
     }
     pub fn having(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.having)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.having)
     }
     pub fn orderby(&self) -> Option<OrderByList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.orderby)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.orderby)
     }
     pub fn limit_clause(&self) -> Option<LimitClause<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.limit_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.limit_clause)
     }
     pub fn window_clause(&self) -> Option<NamedWindowDefList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.window_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.window_clause)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for SelectStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::SelectStmt>(id)?;
         Some(SelectStmt {
             raw,
@@ -4432,11 +4699,17 @@ impl<'a> GrammarNodeType<'a> for SelectStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SelectStmtId(pub AnyNodeId);
+pub struct SelectStmtId(AnyNodeId);
+
+impl SelectStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<SelectStmt<'a>> for SelectStmtId {
     fn from(n: SelectStmt<'a>) -> Self {
-        SelectStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4476,12 +4749,12 @@ impl std::fmt::Display for OrderingTerm<'_> {
 }
 
 impl<'a> OrderingTerm<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> OrderingTermId {
+        OrderingTermId(self.id)
     }
     pub fn expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.expr)
     }
     pub fn sort_order(&self) -> SortOrder {
         self.raw.sort_order
@@ -4492,7 +4765,7 @@ impl<'a> OrderingTerm<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for OrderingTerm<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::OrderingTerm>(id)?;
         Some(OrderingTerm {
             raw,
@@ -4503,11 +4776,17 @@ impl<'a> GrammarNodeType<'a> for OrderingTerm<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct OrderingTermId(pub AnyNodeId);
+pub struct OrderingTermId(AnyNodeId);
+
+impl OrderingTermId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<OrderingTerm<'a>> for OrderingTermId {
     fn from(n: OrderingTerm<'a>) -> Self {
-        OrderingTermId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4547,20 +4826,20 @@ impl std::fmt::Display for LimitClause<'_> {
 }
 
 impl<'a> LimitClause<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> LimitClauseId {
+        LimitClauseId(self.id)
     }
     pub fn limit(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.limit)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.limit)
     }
     pub fn offset(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.offset)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.offset)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for LimitClause<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::LimitClause>(id)?;
         Some(LimitClause {
             raw,
@@ -4571,11 +4850,17 @@ impl<'a> GrammarNodeType<'a> for LimitClause<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct LimitClauseId(pub AnyNodeId);
+pub struct LimitClauseId(AnyNodeId);
+
+impl LimitClauseId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<LimitClause<'a>> for LimitClauseId {
     fn from(n: LimitClause<'a>) -> Self {
-        LimitClauseId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4615,9 +4900,9 @@ impl std::fmt::Display for TableRef<'_> {
 }
 
 impl<'a> TableRef<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> TableRefId {
+        TableRefId(self.id)
     }
     pub fn table_name(&self) -> &'a str {
         self.raw.table_name.as_str(self.stmt_result.source())
@@ -4631,7 +4916,7 @@ impl<'a> TableRef<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for TableRef<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::TableRef>(id)?;
         Some(TableRef {
             raw,
@@ -4642,11 +4927,17 @@ impl<'a> GrammarNodeType<'a> for TableRef<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct TableRefId(pub AnyNodeId);
+pub struct TableRefId(AnyNodeId);
+
+impl TableRefId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<TableRef<'a>> for TableRefId {
     fn from(n: TableRef<'a>) -> Self {
-        TableRefId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4686,12 +4977,12 @@ impl std::fmt::Display for SubqueryTableSource<'_> {
 }
 
 impl<'a> SubqueryTableSource<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> SubqueryTableSourceId {
+        SubqueryTableSourceId(self.id)
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.select)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.select)
     }
     pub fn alias(&self) -> &'a str {
         self.raw.alias.as_str(self.stmt_result.source())
@@ -4699,7 +4990,7 @@ impl<'a> SubqueryTableSource<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for SubqueryTableSource<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::SubqueryTableSource>(id)?;
         Some(SubqueryTableSource {
             raw,
@@ -4710,11 +5001,17 @@ impl<'a> GrammarNodeType<'a> for SubqueryTableSource<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SubqueryTableSourceId(pub AnyNodeId);
+pub struct SubqueryTableSourceId(AnyNodeId);
+
+impl SubqueryTableSourceId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<SubqueryTableSource<'a>> for SubqueryTableSourceId {
     fn from(n: SubqueryTableSource<'a>) -> Self {
-        SubqueryTableSourceId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4754,29 +5051,29 @@ impl std::fmt::Display for JoinClause<'_> {
 }
 
 impl<'a> JoinClause<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> JoinClauseId {
+        JoinClauseId(self.id)
     }
     pub fn join_type(&self) -> JoinType {
         self.raw.join_type
     }
     pub fn left(&self) -> Option<TableSource<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.left)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.left)
     }
     pub fn right(&self) -> Option<TableSource<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.right)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.right)
     }
     pub fn on_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.on_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.on_expr)
     }
     pub fn using_columns(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.using_columns)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.using_columns)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for JoinClause<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::JoinClause>(id)?;
         Some(JoinClause {
             raw,
@@ -4787,11 +5084,17 @@ impl<'a> GrammarNodeType<'a> for JoinClause<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct JoinClauseId(pub AnyNodeId);
+pub struct JoinClauseId(AnyNodeId);
+
+impl JoinClauseId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<JoinClause<'a>> for JoinClauseId {
     fn from(n: JoinClause<'a>) -> Self {
-        JoinClauseId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4831,12 +5134,12 @@ impl std::fmt::Display for JoinPrefix<'_> {
 }
 
 impl<'a> JoinPrefix<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> JoinPrefixId {
+        JoinPrefixId(self.id)
     }
     pub fn source(&self) -> Option<TableSource<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.source)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.source)
     }
     pub fn join_type(&self) -> JoinType {
         self.raw.join_type
@@ -4844,7 +5147,7 @@ impl<'a> JoinPrefix<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for JoinPrefix<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::JoinPrefix>(id)?;
         Some(JoinPrefix {
             raw,
@@ -4855,11 +5158,17 @@ impl<'a> GrammarNodeType<'a> for JoinPrefix<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct JoinPrefixId(pub AnyNodeId);
+pub struct JoinPrefixId(AnyNodeId);
+
+impl JoinPrefixId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<JoinPrefix<'a>> for JoinPrefixId {
     fn from(n: JoinPrefix<'a>) -> Self {
-        JoinPrefixId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4899,20 +5208,20 @@ impl std::fmt::Display for TriggerEvent<'_> {
 }
 
 impl<'a> TriggerEvent<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> TriggerEventId {
+        TriggerEventId(self.id)
     }
     pub fn event_type(&self) -> TriggerEventType {
         self.raw.event_type
     }
     pub fn columns(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.columns)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.columns)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for TriggerEvent<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::TriggerEvent>(id)?;
         Some(TriggerEvent {
             raw,
@@ -4923,11 +5232,17 @@ impl<'a> GrammarNodeType<'a> for TriggerEvent<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct TriggerEventId(pub AnyNodeId);
+pub struct TriggerEventId(AnyNodeId);
+
+impl TriggerEventId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<TriggerEvent<'a>> for TriggerEventId {
     fn from(n: TriggerEvent<'a>) -> Self {
-        TriggerEventId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -4967,9 +5282,9 @@ impl std::fmt::Display for CreateTriggerStmt<'_> {
 }
 
 impl<'a> CreateTriggerStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> CreateTriggerStmtId {
+        CreateTriggerStmtId(self.id)
     }
     pub fn trigger_name(&self) -> &'a str {
         self.raw.trigger_name.as_str(self.stmt_result.source())
@@ -4987,21 +5302,21 @@ impl<'a> CreateTriggerStmt<'a> {
         self.raw.timing
     }
     pub fn event(&self) -> Option<TriggerEvent<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.event)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.event)
     }
     pub fn table(&self) -> Option<QualifiedName<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.table)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.table)
     }
     pub fn when_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.when_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.when_expr)
     }
     pub fn body(&self) -> Option<TriggerCmdList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.body)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.body)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for CreateTriggerStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CreateTriggerStmt>(id)?;
         Some(CreateTriggerStmt {
             raw,
@@ -5012,11 +5327,17 @@ impl<'a> GrammarNodeType<'a> for CreateTriggerStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CreateTriggerStmtId(pub AnyNodeId);
+pub struct CreateTriggerStmtId(AnyNodeId);
+
+impl CreateTriggerStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CreateTriggerStmt<'a>> for CreateTriggerStmtId {
     fn from(n: CreateTriggerStmt<'a>) -> Self {
-        CreateTriggerStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5056,9 +5377,9 @@ impl std::fmt::Display for CreateVirtualTableStmt<'_> {
 }
 
 impl<'a> CreateVirtualTableStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> CreateVirtualTableStmtId {
+        CreateVirtualTableStmtId(self.id)
     }
     pub fn table_name(&self) -> &'a str {
         self.raw.table_name.as_str(self.stmt_result.source())
@@ -5078,7 +5399,7 @@ impl<'a> CreateVirtualTableStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CreateVirtualTableStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CreateVirtualTableStmt>(id)?;
         Some(CreateVirtualTableStmt {
             raw,
@@ -5089,11 +5410,17 @@ impl<'a> GrammarNodeType<'a> for CreateVirtualTableStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CreateVirtualTableStmtId(pub AnyNodeId);
+pub struct CreateVirtualTableStmtId(AnyNodeId);
+
+impl CreateVirtualTableStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CreateVirtualTableStmt<'a>> for CreateVirtualTableStmtId {
     fn from(n: CreateVirtualTableStmt<'a>) -> Self {
-        CreateVirtualTableStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5133,9 +5460,9 @@ impl std::fmt::Display for PragmaStmt<'_> {
 }
 
 impl<'a> PragmaStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> PragmaStmtId {
+        PragmaStmtId(self.id)
     }
     pub fn pragma_name(&self) -> &'a str {
         self.raw.pragma_name.as_str(self.stmt_result.source())
@@ -5152,7 +5479,7 @@ impl<'a> PragmaStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for PragmaStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::PragmaStmt>(id)?;
         Some(PragmaStmt {
             raw,
@@ -5163,11 +5490,17 @@ impl<'a> GrammarNodeType<'a> for PragmaStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct PragmaStmtId(pub AnyNodeId);
+pub struct PragmaStmtId(AnyNodeId);
+
+impl PragmaStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<PragmaStmt<'a>> for PragmaStmtId {
     fn from(n: PragmaStmt<'a>) -> Self {
-        PragmaStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5182,19 +5515,19 @@ impl TypedNodeId for PragmaStmtId {
 }
 
 #[derive(Clone, Copy)]
-pub struct AnalyzeStmt<'a> {
-    raw: &'a super::ffi::AnalyzeStmt,
+pub struct AnalyzeOrReindexStmt<'a> {
+    raw: &'a super::ffi::AnalyzeOrReindexStmt,
     stmt_result: AnyStatementResult<'a>,
     id: AnyNodeId,
 }
 
-impl std::fmt::Debug for AnalyzeStmt<'_> {
+impl std::fmt::Debug for AnalyzeOrReindexStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.raw.fmt(f)
     }
 }
 
-impl std::fmt::Display for AnalyzeStmt<'_> {
+impl std::fmt::Display for AnalyzeOrReindexStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut buf = String::new();
         AnyNode {
@@ -5206,10 +5539,10 @@ impl std::fmt::Display for AnalyzeStmt<'_> {
     }
 }
 
-impl<'a> AnalyzeStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+impl<'a> AnalyzeOrReindexStmt<'a> {
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> AnalyzeOrReindexStmtId {
+        AnalyzeOrReindexStmtId(self.id)
     }
     pub fn target_name(&self) -> &'a str {
         self.raw.target_name.as_str(self.stmt_result.source())
@@ -5217,15 +5550,15 @@ impl<'a> AnalyzeStmt<'a> {
     pub fn schema(&self) -> &'a str {
         self.raw.schema.as_str(self.stmt_result.source())
     }
-    pub fn kind(&self) -> AnalyzeKind {
+    pub fn kind(&self) -> AnalyzeOrReindexKind {
         self.raw.kind
     }
 }
 
-impl<'a> GrammarNodeType<'a> for AnalyzeStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
-        let raw = stmt_result.resolve_as::<super::ffi::AnalyzeStmt>(id)?;
-        Some(AnalyzeStmt {
+impl<'a> GrammarNodeType<'a> for AnalyzeOrReindexStmt<'a> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+        let raw = stmt_result.resolve_as::<super::ffi::AnalyzeOrReindexStmt>(id)?;
+        Some(AnalyzeOrReindexStmt {
             raw,
             stmt_result,
             id,
@@ -5234,22 +5567,28 @@ impl<'a> GrammarNodeType<'a> for AnalyzeStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct AnalyzeStmtId(pub AnyNodeId);
+pub struct AnalyzeOrReindexStmtId(AnyNodeId);
 
-impl<'a> From<AnalyzeStmt<'a>> for AnalyzeStmtId {
-    fn from(n: AnalyzeStmt<'a>) -> Self {
-        AnalyzeStmtId(n.node_id())
+impl AnalyzeOrReindexStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
     }
 }
 
-impl From<AnalyzeStmtId> for AnyNodeId {
-    fn from(id: AnalyzeStmtId) -> AnyNodeId {
+impl<'a> From<AnalyzeOrReindexStmt<'a>> for AnalyzeOrReindexStmtId {
+    fn from(n: AnalyzeOrReindexStmt<'a>) -> Self {
+        n.node_id()
+    }
+}
+
+impl From<AnalyzeOrReindexStmtId> for AnyNodeId {
+    fn from(id: AnalyzeOrReindexStmtId) -> AnyNodeId {
         id.0
     }
 }
 
-impl TypedNodeId for AnalyzeStmtId {
-    type Node<'a> = AnalyzeStmt<'a>;
+impl TypedNodeId for AnalyzeOrReindexStmtId {
+    type Node<'a> = AnalyzeOrReindexStmt<'a>;
 }
 
 #[derive(Clone, Copy)]
@@ -5278,23 +5617,23 @@ impl std::fmt::Display for AttachStmt<'_> {
 }
 
 impl<'a> AttachStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> AttachStmtId {
+        AttachStmtId(self.id)
     }
     pub fn filename(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.filename)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.filename)
     }
     pub fn db_name(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.db_name)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.db_name)
     }
     pub fn key(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.key)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.key)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for AttachStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::AttachStmt>(id)?;
         Some(AttachStmt {
             raw,
@@ -5305,11 +5644,17 @@ impl<'a> GrammarNodeType<'a> for AttachStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct AttachStmtId(pub AnyNodeId);
+pub struct AttachStmtId(AnyNodeId);
+
+impl AttachStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<AttachStmt<'a>> for AttachStmtId {
     fn from(n: AttachStmt<'a>) -> Self {
-        AttachStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5349,17 +5694,17 @@ impl std::fmt::Display for DetachStmt<'_> {
 }
 
 impl<'a> DetachStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> DetachStmtId {
+        DetachStmtId(self.id)
     }
     pub fn db_name(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.db_name)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.db_name)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for DetachStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::DetachStmt>(id)?;
         Some(DetachStmt {
             raw,
@@ -5370,11 +5715,17 @@ impl<'a> GrammarNodeType<'a> for DetachStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct DetachStmtId(pub AnyNodeId);
+pub struct DetachStmtId(AnyNodeId);
+
+impl DetachStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<DetachStmt<'a>> for DetachStmtId {
     fn from(n: DetachStmt<'a>) -> Self {
-        DetachStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5414,20 +5765,20 @@ impl std::fmt::Display for VacuumStmt<'_> {
 }
 
 impl<'a> VacuumStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> VacuumStmtId {
+        VacuumStmtId(self.id)
     }
     pub fn schema(&self) -> &'a str {
         self.raw.schema.as_str(self.stmt_result.source())
     }
     pub fn into_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.into_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.into_expr)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for VacuumStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::VacuumStmt>(id)?;
         Some(VacuumStmt {
             raw,
@@ -5438,11 +5789,17 @@ impl<'a> GrammarNodeType<'a> for VacuumStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct VacuumStmtId(pub AnyNodeId);
+pub struct VacuumStmtId(AnyNodeId);
+
+impl VacuumStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<VacuumStmt<'a>> for VacuumStmtId {
     fn from(n: VacuumStmt<'a>) -> Self {
-        VacuumStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5482,20 +5839,20 @@ impl std::fmt::Display for ExplainStmt<'_> {
 }
 
 impl<'a> ExplainStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> ExplainStmtId {
+        ExplainStmtId(self.id)
     }
     pub fn explain_mode(&self) -> ExplainMode {
         self.raw.explain_mode
     }
     pub fn stmt(&self) -> Option<Stmt<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.stmt)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.stmt)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for ExplainStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ExplainStmt>(id)?;
         Some(ExplainStmt {
             raw,
@@ -5506,11 +5863,17 @@ impl<'a> GrammarNodeType<'a> for ExplainStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ExplainStmtId(pub AnyNodeId);
+pub struct ExplainStmtId(AnyNodeId);
+
+impl ExplainStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ExplainStmt<'a>> for ExplainStmtId {
     fn from(n: ExplainStmt<'a>) -> Self {
-        ExplainStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5550,9 +5913,9 @@ impl std::fmt::Display for CreateIndexStmt<'_> {
 }
 
 impl<'a> CreateIndexStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> CreateIndexStmtId {
+        CreateIndexStmtId(self.id)
     }
     pub fn index_name(&self) -> &'a str {
         self.raw.index_name.as_str(self.stmt_result.source())
@@ -5570,15 +5933,15 @@ impl<'a> CreateIndexStmt<'a> {
         self.raw.if_not_exists == super::ffi::Bool::True
     }
     pub fn columns(&self) -> Option<OrderByList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.columns)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.columns)
     }
     pub fn where_clause(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.where_clause)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.where_clause)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for CreateIndexStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CreateIndexStmt>(id)?;
         Some(CreateIndexStmt {
             raw,
@@ -5589,11 +5952,17 @@ impl<'a> GrammarNodeType<'a> for CreateIndexStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CreateIndexStmtId(pub AnyNodeId);
+pub struct CreateIndexStmtId(AnyNodeId);
+
+impl CreateIndexStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CreateIndexStmt<'a>> for CreateIndexStmtId {
     fn from(n: CreateIndexStmt<'a>) -> Self {
-        CreateIndexStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5633,9 +6002,9 @@ impl std::fmt::Display for CreateViewStmt<'_> {
 }
 
 impl<'a> CreateViewStmt<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> CreateViewStmtId {
+        CreateViewStmtId(self.id)
     }
     pub fn view_name(&self) -> &'a str {
         self.raw.view_name.as_str(self.stmt_result.source())
@@ -5650,15 +6019,15 @@ impl<'a> CreateViewStmt<'a> {
         self.raw.if_not_exists == super::ffi::Bool::True
     }
     pub fn column_names(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.column_names)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.column_names)
     }
     pub fn select(&self) -> Option<Select<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.select)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.select)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for CreateViewStmt<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CreateViewStmt>(id)?;
         Some(CreateViewStmt {
             raw,
@@ -5669,11 +6038,17 @@ impl<'a> GrammarNodeType<'a> for CreateViewStmt<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CreateViewStmtId(pub AnyNodeId);
+pub struct CreateViewStmtId(AnyNodeId);
+
+impl CreateViewStmtId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CreateViewStmt<'a>> for CreateViewStmtId {
     fn from(n: CreateViewStmt<'a>) -> Self {
-        CreateViewStmtId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5713,17 +6088,17 @@ impl std::fmt::Display for ValuesClause<'_> {
 }
 
 impl<'a> ValuesClause<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> ValuesClauseId {
+        ValuesClauseId(self.id)
     }
     pub fn rows(&self) -> Option<ValuesRowList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.rows)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.rows)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for ValuesClause<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ValuesClause>(id)?;
         Some(ValuesClause {
             raw,
@@ -5734,11 +6109,17 @@ impl<'a> GrammarNodeType<'a> for ValuesClause<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ValuesClauseId(pub AnyNodeId);
+pub struct ValuesClauseId(AnyNodeId);
+
+impl ValuesClauseId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ValuesClause<'a>> for ValuesClauseId {
     fn from(n: ValuesClause<'a>) -> Self {
-        ValuesClauseId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5778,20 +6159,20 @@ impl std::fmt::Display for FrameBound<'_> {
 }
 
 impl<'a> FrameBound<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> FrameBoundId {
+        FrameBoundId(self.id)
     }
     pub fn bound_type(&self) -> FrameBoundType {
         self.raw.bound_type
     }
     pub fn expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.expr)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for FrameBound<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::FrameBound>(id)?;
         Some(FrameBound {
             raw,
@@ -5802,11 +6183,17 @@ impl<'a> GrammarNodeType<'a> for FrameBound<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct FrameBoundId(pub AnyNodeId);
+pub struct FrameBoundId(AnyNodeId);
+
+impl FrameBoundId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<FrameBound<'a>> for FrameBoundId {
     fn from(n: FrameBound<'a>) -> Self {
-        FrameBoundId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5846,9 +6233,9 @@ impl std::fmt::Display for FrameSpec<'_> {
 }
 
 impl<'a> FrameSpec<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> FrameSpecId {
+        FrameSpecId(self.id)
     }
     pub fn frame_type(&self) -> FrameType {
         self.raw.frame_type
@@ -5857,15 +6244,15 @@ impl<'a> FrameSpec<'a> {
         self.raw.exclude
     }
     pub fn start_bound(&self) -> Option<FrameBound<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.start_bound)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.start_bound)
     }
     pub fn end_bound(&self) -> Option<FrameBound<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.end_bound)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.end_bound)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for FrameSpec<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::FrameSpec>(id)?;
         Some(FrameSpec {
             raw,
@@ -5876,11 +6263,17 @@ impl<'a> GrammarNodeType<'a> for FrameSpec<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct FrameSpecId(pub AnyNodeId);
+pub struct FrameSpecId(AnyNodeId);
+
+impl FrameSpecId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<FrameSpec<'a>> for FrameSpecId {
     fn from(n: FrameSpec<'a>) -> Self {
-        FrameSpecId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5920,26 +6313,26 @@ impl std::fmt::Display for WindowDef<'_> {
 }
 
 impl<'a> WindowDef<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> WindowDefId {
+        WindowDefId(self.id)
     }
     pub fn base_window_name(&self) -> &'a str {
         self.raw.base_window_name.as_str(self.stmt_result.source())
     }
     pub fn partition_by(&self) -> Option<ExprList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.partition_by)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.partition_by)
     }
     pub fn orderby(&self) -> Option<OrderByList<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.orderby)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.orderby)
     }
     pub fn frame(&self) -> Option<FrameSpec<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.frame)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.frame)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for WindowDef<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::WindowDef>(id)?;
         Some(WindowDef {
             raw,
@@ -5950,11 +6343,17 @@ impl<'a> GrammarNodeType<'a> for WindowDef<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct WindowDefId(pub AnyNodeId);
+pub struct WindowDefId(AnyNodeId);
+
+impl WindowDefId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<WindowDef<'a>> for WindowDefId {
     fn from(n: WindowDef<'a>) -> Self {
-        WindowDefId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -5994,20 +6393,20 @@ impl std::fmt::Display for NamedWindowDef<'_> {
 }
 
 impl<'a> NamedWindowDef<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> NamedWindowDefId {
+        NamedWindowDefId(self.id)
     }
     pub fn window_name(&self) -> &'a str {
         self.raw.window_name.as_str(self.stmt_result.source())
     }
     pub fn window_def(&self) -> Option<WindowDef<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.window_def)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.window_def)
     }
 }
 
 impl<'a> GrammarNodeType<'a> for NamedWindowDef<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::NamedWindowDef>(id)?;
         Some(NamedWindowDef {
             raw,
@@ -6018,11 +6417,17 @@ impl<'a> GrammarNodeType<'a> for NamedWindowDef<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct NamedWindowDefId(pub AnyNodeId);
+pub struct NamedWindowDefId(AnyNodeId);
+
+impl NamedWindowDefId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<NamedWindowDef<'a>> for NamedWindowDefId {
     fn from(n: NamedWindowDef<'a>) -> Self {
-        NamedWindowDefId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -6062,15 +6467,15 @@ impl std::fmt::Display for FilterOver<'_> {
 }
 
 impl<'a> FilterOver<'a> {
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
-        self.id
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> FilterOverId {
+        FilterOverId(self.id)
     }
     pub fn filter_expr(&self) -> Option<Expr<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.filter_expr)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.filter_expr)
     }
     pub fn over_def(&self) -> Option<WindowDef<'a>> {
-        GrammarNodeType::from_arena(self.stmt_result, self.raw.over_def)
+        GrammarNodeType::from_result(self.stmt_result, self.raw.over_def)
     }
     pub fn over_name(&self) -> &'a str {
         self.raw.over_name.as_str(self.stmt_result.source())
@@ -6078,7 +6483,7 @@ impl<'a> FilterOver<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for FilterOver<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::FilterOver>(id)?;
         Some(FilterOver {
             raw,
@@ -6089,11 +6494,17 @@ impl<'a> GrammarNodeType<'a> for FilterOver<'a> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct FilterOverId(pub AnyNodeId);
+pub struct FilterOverId(AnyNodeId);
+
+impl FilterOverId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<FilterOver<'a>> for FilterOverId {
     fn from(n: FilterOver<'a>) -> Self {
-        FilterOverId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -6108,10 +6519,16 @@ impl TypedNodeId for FilterOverId {
 }
 
 /// Typed list of `CaseWhen`.
-pub type CaseWhenList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, CaseWhen<'a>>;
+pub type CaseWhenList<'a> = TypedNodeList<'a, super::grammar::Grammar, CaseWhen<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CaseWhenListId(pub AnyNodeId);
+pub struct CaseWhenListId(AnyNodeId);
+
+impl CaseWhenListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CaseWhenList<'a>> for CaseWhenListId {
     fn from(n: CaseWhenList<'a>) -> Self {
@@ -6131,10 +6548,16 @@ impl TypedNodeId for CaseWhenListId {
 
 /// Typed list of `ColumnConstraint`.
 pub type ColumnConstraintList<'a> =
-    TypedNodeList<'a, super::grammar::SqliteGrammar, ColumnConstraint<'a>>;
+    TypedNodeList<'a, super::grammar::Grammar, ColumnConstraint<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ColumnConstraintListId(pub AnyNodeId);
+pub struct ColumnConstraintListId(AnyNodeId);
+
+impl ColumnConstraintListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ColumnConstraintList<'a>> for ColumnConstraintListId {
     fn from(n: ColumnConstraintList<'a>) -> Self {
@@ -6153,10 +6576,16 @@ impl TypedNodeId for ColumnConstraintListId {
 }
 
 /// Typed list of `ColumnDef`.
-pub type ColumnDefList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, ColumnDef<'a>>;
+pub type ColumnDefList<'a> = TypedNodeList<'a, super::grammar::Grammar, ColumnDef<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ColumnDefListId(pub AnyNodeId);
+pub struct ColumnDefListId(AnyNodeId);
+
+impl ColumnDefListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ColumnDefList<'a>> for ColumnDefListId {
     fn from(n: ColumnDefList<'a>) -> Self {
@@ -6175,11 +6604,16 @@ impl TypedNodeId for ColumnDefListId {
 }
 
 /// Typed list of `TableConstraint`.
-pub type TableConstraintList<'a> =
-    TypedNodeList<'a, super::grammar::SqliteGrammar, TableConstraint<'a>>;
+pub type TableConstraintList<'a> = TypedNodeList<'a, super::grammar::Grammar, TableConstraint<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct TableConstraintListId(pub AnyNodeId);
+pub struct TableConstraintListId(AnyNodeId);
+
+impl TableConstraintListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<TableConstraintList<'a>> for TableConstraintListId {
     fn from(n: TableConstraintList<'a>) -> Self {
@@ -6198,10 +6632,16 @@ impl TypedNodeId for TableConstraintListId {
 }
 
 /// Typed list of `CteDefinition`.
-pub type CteList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, CteDefinition<'a>>;
+pub type CteList<'a> = TypedNodeList<'a, super::grammar::Grammar, CteDefinition<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct CteListId(pub AnyNodeId);
+pub struct CteListId(AnyNodeId);
+
+impl CteListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<CteList<'a>> for CteListId {
     fn from(n: CteList<'a>) -> Self {
@@ -6220,10 +6660,16 @@ impl TypedNodeId for CteListId {
 }
 
 /// Typed list of `SetClause`.
-pub type SetClauseList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, SetClause<'a>>;
+pub type SetClauseList<'a> = TypedNodeList<'a, super::grammar::Grammar, SetClause<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct SetClauseListId(pub AnyNodeId);
+pub struct SetClauseListId(AnyNodeId);
+
+impl SetClauseListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<SetClauseList<'a>> for SetClauseListId {
     fn from(n: SetClauseList<'a>) -> Self {
@@ -6242,10 +6688,16 @@ impl TypedNodeId for SetClauseListId {
 }
 
 /// Typed list of `Expr`.
-pub type ExprList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, Node<'a>>;
+pub type ExprList<'a> = TypedNodeList<'a, super::grammar::Grammar, Expr<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ExprListId(pub AnyNodeId);
+pub struct ExprListId(AnyNodeId);
+
+impl ExprListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ExprList<'a>> for ExprListId {
     fn from(n: ExprList<'a>) -> Self {
@@ -6264,10 +6716,16 @@ impl TypedNodeId for ExprListId {
 }
 
 /// Typed list of `ResultColumn`.
-pub type ResultColumnList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, ResultColumn<'a>>;
+pub type ResultColumnList<'a> = TypedNodeList<'a, super::grammar::Grammar, ResultColumn<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ResultColumnListId(pub AnyNodeId);
+pub struct ResultColumnListId(AnyNodeId);
+
+impl ResultColumnListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ResultColumnList<'a>> for ResultColumnListId {
     fn from(n: ResultColumnList<'a>) -> Self {
@@ -6286,10 +6744,16 @@ impl TypedNodeId for ResultColumnListId {
 }
 
 /// Typed list of `OrderingTerm`.
-pub type OrderByList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, OrderingTerm<'a>>;
+pub type OrderByList<'a> = TypedNodeList<'a, super::grammar::Grammar, OrderingTerm<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct OrderByListId(pub AnyNodeId);
+pub struct OrderByListId(AnyNodeId);
+
+impl OrderByListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<OrderByList<'a>> for OrderByListId {
     fn from(n: OrderByList<'a>) -> Self {
@@ -6308,10 +6772,16 @@ impl TypedNodeId for OrderByListId {
 }
 
 /// Typed list of `Stmt`.
-pub type TriggerCmdList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, Node<'a>>;
+pub type TriggerCmdList<'a> = TypedNodeList<'a, super::grammar::Grammar, Stmt<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct TriggerCmdListId(pub AnyNodeId);
+pub struct TriggerCmdListId(AnyNodeId);
+
+impl TriggerCmdListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<TriggerCmdList<'a>> for TriggerCmdListId {
     fn from(n: TriggerCmdList<'a>) -> Self {
@@ -6330,10 +6800,16 @@ impl TypedNodeId for TriggerCmdListId {
 }
 
 /// Typed list of `ExprList`.
-pub type ValuesRowList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, ExprList<'a>>;
+pub type ValuesRowList<'a> = TypedNodeList<'a, super::grammar::Grammar, ExprList<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct ValuesRowListId(pub AnyNodeId);
+pub struct ValuesRowListId(AnyNodeId);
+
+impl ValuesRowListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<ValuesRowList<'a>> for ValuesRowListId {
     fn from(n: ValuesRowList<'a>) -> Self {
@@ -6352,10 +6828,16 @@ impl TypedNodeId for ValuesRowListId {
 }
 
 /// Typed list of `WindowDef`.
-pub type WindowDefList<'a> = TypedNodeList<'a, super::grammar::SqliteGrammar, WindowDef<'a>>;
+pub type WindowDefList<'a> = TypedNodeList<'a, super::grammar::Grammar, WindowDef<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct WindowDefListId(pub AnyNodeId);
+pub struct WindowDefListId(AnyNodeId);
+
+impl WindowDefListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<WindowDefList<'a>> for WindowDefListId {
     fn from(n: WindowDefList<'a>) -> Self {
@@ -6374,11 +6856,16 @@ impl TypedNodeId for WindowDefListId {
 }
 
 /// Typed list of `NamedWindowDef`.
-pub type NamedWindowDefList<'a> =
-    TypedNodeList<'a, super::grammar::SqliteGrammar, NamedWindowDef<'a>>;
+pub type NamedWindowDefList<'a> = TypedNodeList<'a, super::grammar::Grammar, NamedWindowDef<'a>>;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct NamedWindowDefListId(pub AnyNodeId);
+pub struct NamedWindowDefListId(AnyNodeId);
+
+impl NamedWindowDefListId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<NamedWindowDefList<'a>> for NamedWindowDefListId {
     fn from(n: NamedWindowDefList<'a>) -> Self {
@@ -6467,7 +6954,7 @@ pub enum Node<'a> {
     CreateTriggerStmt(CreateTriggerStmt<'a>),
     CreateVirtualTableStmt(CreateVirtualTableStmt<'a>),
     PragmaStmt(PragmaStmt<'a>),
-    AnalyzeStmt(AnalyzeStmt<'a>),
+    AnalyzeOrReindexStmt(AnalyzeOrReindexStmt<'a>),
     AttachStmt(AttachStmt<'a>),
     DetachStmt(DetachStmt<'a>),
     VacuumStmt(VacuumStmt<'a>),
@@ -6579,7 +7066,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::CaseWhenList => Node::CaseWhenList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::ForeignKeyClause => Node::ForeignKeyClause(ForeignKeyClause {
                     raw: &*ptr.cast::<super::ffi::ForeignKeyClause>(),
@@ -6592,7 +7079,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::ColumnConstraintList => Node::ColumnConstraintList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::ColumnDef => Node::ColumnDef(ColumnDef {
                     raw: &*ptr.cast::<super::ffi::ColumnDef>(),
@@ -6600,7 +7087,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::ColumnDefList => Node::ColumnDefList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::TableConstraint => Node::TableConstraint(TableConstraint {
                     raw: &*ptr.cast::<super::ffi::TableConstraint>(),
@@ -6608,7 +7095,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::TableConstraintList => Node::TableConstraintList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::CreateTableStmt => Node::CreateTableStmt(CreateTableStmt {
                     raw: &*ptr.cast::<super::ffi::CreateTableStmt>(),
@@ -6621,7 +7108,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::CteList => Node::CteList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::WithClause => Node::WithClause(WithClause {
                     raw: &*ptr.cast::<super::ffi::WithClause>(),
@@ -6639,7 +7126,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::SetClauseList => Node::SetClauseList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::UpdateStmt => Node::UpdateStmt(UpdateStmt {
                     raw: &*ptr.cast::<super::ffi::UpdateStmt>(),
@@ -6667,7 +7154,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::ExprList => Node::ExprList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::FunctionCall => Node::FunctionCall(FunctionCall {
                     raw: &*ptr.cast::<super::ffi::FunctionCall>(),
@@ -6720,7 +7207,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::ResultColumnList => Node::ResultColumnList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::SelectStmt => Node::SelectStmt(SelectStmt {
                     raw: &*ptr.cast::<super::ffi::SelectStmt>(),
@@ -6733,7 +7220,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::OrderByList => Node::OrderByList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::LimitClause => Node::LimitClause(LimitClause {
                     raw: &*ptr.cast::<super::ffi::LimitClause>(),
@@ -6766,7 +7253,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::TriggerCmdList => Node::TriggerCmdList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::CreateTriggerStmt => Node::CreateTriggerStmt(CreateTriggerStmt {
                     raw: &*ptr.cast::<super::ffi::CreateTriggerStmt>(),
@@ -6785,8 +7272,8 @@ impl<'a> Node<'a> {
                     stmt_result,
                     id,
                 }),
-                NodeTag::AnalyzeStmt => Node::AnalyzeStmt(AnalyzeStmt {
-                    raw: &*ptr.cast::<super::ffi::AnalyzeStmt>(),
+                NodeTag::AnalyzeOrReindexStmt => Node::AnalyzeOrReindexStmt(AnalyzeOrReindexStmt {
+                    raw: &*ptr.cast::<super::ffi::AnalyzeOrReindexStmt>(),
                     stmt_result,
                     id,
                 }),
@@ -6821,7 +7308,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::ValuesRowList => Node::ValuesRowList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::ValuesClause => Node::ValuesClause(ValuesClause {
                     raw: &*ptr.cast::<super::ffi::ValuesClause>(),
@@ -6844,7 +7331,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::WindowDefList => Node::WindowDefList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::NamedWindowDef => Node::NamedWindowDef(NamedWindowDef {
                     raw: &*ptr.cast::<super::ffi::NamedWindowDef>(),
@@ -6852,7 +7339,7 @@ impl<'a> Node<'a> {
                     id,
                 }),
                 NodeTag::NamedWindowDefList => Node::NamedWindowDefList(
-                    TypedNodeList::from_arena(stmt_result, id).expect("list tag invariant"),
+                    TypedNodeList::from_result(stmt_result, id).expect("list tag invariant"),
                 ),
                 NodeTag::FilterOver => Node::FilterOver(FilterOver {
                     raw: &*ptr.cast::<super::ffi::FilterOver>(),
@@ -6934,7 +7421,7 @@ impl<'a> Node<'a> {
             Node::CreateTriggerStmt(..) => NodeTag::CreateTriggerStmt,
             Node::CreateVirtualTableStmt(..) => NodeTag::CreateVirtualTableStmt,
             Node::PragmaStmt(..) => NodeTag::PragmaStmt,
-            Node::AnalyzeStmt(..) => NodeTag::AnalyzeStmt,
+            Node::AnalyzeOrReindexStmt(..) => NodeTag::AnalyzeOrReindexStmt,
             Node::AttachStmt(..) => NodeTag::AttachStmt,
             Node::DetachStmt(..) => NodeTag::DetachStmt,
             Node::VacuumStmt(..) => NodeTag::VacuumStmt,
@@ -6955,100 +7442,106 @@ impl<'a> Node<'a> {
     }
 
     #[allow(clippy::match_same_arms)]
-    /// The arena node ID of this node.
-    pub fn node_id(&self) -> AnyNodeId {
+    /// The typed node ID of this node.
+    pub fn node_id(&self) -> NodeId {
         match self {
-            Node::AggregateFunctionCall(n) => n.node_id(),
-            Node::OrderedSetFunctionCall(n) => n.node_id(),
-            Node::CastExpr(n) => n.node_id(),
-            Node::ColumnRef(n) => n.node_id(),
-            Node::CompoundSelect(n) => n.node_id(),
-            Node::SubqueryExpr(n) => n.node_id(),
-            Node::ExistsExpr(n) => n.node_id(),
-            Node::InExpr(n) => n.node_id(),
-            Node::IsExpr(n) => n.node_id(),
-            Node::BetweenExpr(n) => n.node_id(),
-            Node::LikeExpr(n) => n.node_id(),
-            Node::CaseExpr(n) => n.node_id(),
-            Node::CaseWhen(n) => n.node_id(),
-            Node::CaseWhenList(n) => n.node_id().into(),
-            Node::ForeignKeyClause(n) => n.node_id(),
-            Node::ColumnConstraint(n) => n.node_id(),
-            Node::ColumnConstraintList(n) => n.node_id().into(),
-            Node::ColumnDef(n) => n.node_id(),
-            Node::ColumnDefList(n) => n.node_id().into(),
-            Node::TableConstraint(n) => n.node_id(),
-            Node::TableConstraintList(n) => n.node_id().into(),
-            Node::CreateTableStmt(n) => n.node_id(),
-            Node::CteDefinition(n) => n.node_id(),
-            Node::CteList(n) => n.node_id().into(),
-            Node::WithClause(n) => n.node_id(),
-            Node::DeleteStmt(n) => n.node_id(),
-            Node::SetClause(n) => n.node_id(),
-            Node::SetClauseList(n) => n.node_id().into(),
-            Node::UpdateStmt(n) => n.node_id(),
-            Node::InsertStmt(n) => n.node_id(),
-            Node::BinaryExpr(n) => n.node_id(),
-            Node::UnaryExpr(n) => n.node_id(),
-            Node::Literal(n) => n.node_id(),
-            Node::ExprList(n) => n.node_id().into(),
-            Node::FunctionCall(n) => n.node_id(),
-            Node::Variable(n) => n.node_id(),
-            Node::CollateExpr(n) => n.node_id(),
-            Node::RaiseExpr(n) => n.node_id(),
-            Node::QualifiedName(n) => n.node_id(),
-            Node::DropStmt(n) => n.node_id(),
-            Node::AlterTableStmt(n) => n.node_id(),
-            Node::TransactionStmt(n) => n.node_id(),
-            Node::SavepointStmt(n) => n.node_id(),
-            Node::ResultColumn(n) => n.node_id(),
-            Node::ResultColumnList(n) => n.node_id().into(),
-            Node::SelectStmt(n) => n.node_id(),
-            Node::OrderingTerm(n) => n.node_id(),
-            Node::OrderByList(n) => n.node_id().into(),
-            Node::LimitClause(n) => n.node_id(),
-            Node::TableRef(n) => n.node_id(),
-            Node::SubqueryTableSource(n) => n.node_id(),
-            Node::JoinClause(n) => n.node_id(),
-            Node::JoinPrefix(n) => n.node_id(),
-            Node::TriggerEvent(n) => n.node_id(),
-            Node::TriggerCmdList(n) => n.node_id().into(),
-            Node::CreateTriggerStmt(n) => n.node_id(),
-            Node::CreateVirtualTableStmt(n) => n.node_id(),
-            Node::PragmaStmt(n) => n.node_id(),
-            Node::AnalyzeStmt(n) => n.node_id(),
-            Node::AttachStmt(n) => n.node_id(),
-            Node::DetachStmt(n) => n.node_id(),
-            Node::VacuumStmt(n) => n.node_id(),
-            Node::ExplainStmt(n) => n.node_id(),
-            Node::CreateIndexStmt(n) => n.node_id(),
-            Node::CreateViewStmt(n) => n.node_id(),
-            Node::ValuesRowList(n) => n.node_id().into(),
-            Node::ValuesClause(n) => n.node_id(),
-            Node::FrameBound(n) => n.node_id(),
-            Node::FrameSpec(n) => n.node_id(),
-            Node::WindowDef(n) => n.node_id(),
-            Node::WindowDefList(n) => n.node_id().into(),
-            Node::NamedWindowDef(n) => n.node_id(),
-            Node::NamedWindowDefList(n) => n.node_id().into(),
-            Node::FilterOver(n) => n.node_id(),
-            Node::Other { id, .. } => *id,
+            Node::AggregateFunctionCall(n) => NodeId(n.node_id().into()),
+            Node::OrderedSetFunctionCall(n) => NodeId(n.node_id().into()),
+            Node::CastExpr(n) => NodeId(n.node_id().into()),
+            Node::ColumnRef(n) => NodeId(n.node_id().into()),
+            Node::CompoundSelect(n) => NodeId(n.node_id().into()),
+            Node::SubqueryExpr(n) => NodeId(n.node_id().into()),
+            Node::ExistsExpr(n) => NodeId(n.node_id().into()),
+            Node::InExpr(n) => NodeId(n.node_id().into()),
+            Node::IsExpr(n) => NodeId(n.node_id().into()),
+            Node::BetweenExpr(n) => NodeId(n.node_id().into()),
+            Node::LikeExpr(n) => NodeId(n.node_id().into()),
+            Node::CaseExpr(n) => NodeId(n.node_id().into()),
+            Node::CaseWhen(n) => NodeId(n.node_id().into()),
+            Node::CaseWhenList(n) => NodeId(n.node_id().into()),
+            Node::ForeignKeyClause(n) => NodeId(n.node_id().into()),
+            Node::ColumnConstraint(n) => NodeId(n.node_id().into()),
+            Node::ColumnConstraintList(n) => NodeId(n.node_id().into()),
+            Node::ColumnDef(n) => NodeId(n.node_id().into()),
+            Node::ColumnDefList(n) => NodeId(n.node_id().into()),
+            Node::TableConstraint(n) => NodeId(n.node_id().into()),
+            Node::TableConstraintList(n) => NodeId(n.node_id().into()),
+            Node::CreateTableStmt(n) => NodeId(n.node_id().into()),
+            Node::CteDefinition(n) => NodeId(n.node_id().into()),
+            Node::CteList(n) => NodeId(n.node_id().into()),
+            Node::WithClause(n) => NodeId(n.node_id().into()),
+            Node::DeleteStmt(n) => NodeId(n.node_id().into()),
+            Node::SetClause(n) => NodeId(n.node_id().into()),
+            Node::SetClauseList(n) => NodeId(n.node_id().into()),
+            Node::UpdateStmt(n) => NodeId(n.node_id().into()),
+            Node::InsertStmt(n) => NodeId(n.node_id().into()),
+            Node::BinaryExpr(n) => NodeId(n.node_id().into()),
+            Node::UnaryExpr(n) => NodeId(n.node_id().into()),
+            Node::Literal(n) => NodeId(n.node_id().into()),
+            Node::ExprList(n) => NodeId(n.node_id().into()),
+            Node::FunctionCall(n) => NodeId(n.node_id().into()),
+            Node::Variable(n) => NodeId(n.node_id().into()),
+            Node::CollateExpr(n) => NodeId(n.node_id().into()),
+            Node::RaiseExpr(n) => NodeId(n.node_id().into()),
+            Node::QualifiedName(n) => NodeId(n.node_id().into()),
+            Node::DropStmt(n) => NodeId(n.node_id().into()),
+            Node::AlterTableStmt(n) => NodeId(n.node_id().into()),
+            Node::TransactionStmt(n) => NodeId(n.node_id().into()),
+            Node::SavepointStmt(n) => NodeId(n.node_id().into()),
+            Node::ResultColumn(n) => NodeId(n.node_id().into()),
+            Node::ResultColumnList(n) => NodeId(n.node_id().into()),
+            Node::SelectStmt(n) => NodeId(n.node_id().into()),
+            Node::OrderingTerm(n) => NodeId(n.node_id().into()),
+            Node::OrderByList(n) => NodeId(n.node_id().into()),
+            Node::LimitClause(n) => NodeId(n.node_id().into()),
+            Node::TableRef(n) => NodeId(n.node_id().into()),
+            Node::SubqueryTableSource(n) => NodeId(n.node_id().into()),
+            Node::JoinClause(n) => NodeId(n.node_id().into()),
+            Node::JoinPrefix(n) => NodeId(n.node_id().into()),
+            Node::TriggerEvent(n) => NodeId(n.node_id().into()),
+            Node::TriggerCmdList(n) => NodeId(n.node_id().into()),
+            Node::CreateTriggerStmt(n) => NodeId(n.node_id().into()),
+            Node::CreateVirtualTableStmt(n) => NodeId(n.node_id().into()),
+            Node::PragmaStmt(n) => NodeId(n.node_id().into()),
+            Node::AnalyzeOrReindexStmt(n) => NodeId(n.node_id().into()),
+            Node::AttachStmt(n) => NodeId(n.node_id().into()),
+            Node::DetachStmt(n) => NodeId(n.node_id().into()),
+            Node::VacuumStmt(n) => NodeId(n.node_id().into()),
+            Node::ExplainStmt(n) => NodeId(n.node_id().into()),
+            Node::CreateIndexStmt(n) => NodeId(n.node_id().into()),
+            Node::CreateViewStmt(n) => NodeId(n.node_id().into()),
+            Node::ValuesRowList(n) => NodeId(n.node_id().into()),
+            Node::ValuesClause(n) => NodeId(n.node_id().into()),
+            Node::FrameBound(n) => NodeId(n.node_id().into()),
+            Node::FrameSpec(n) => NodeId(n.node_id().into()),
+            Node::WindowDef(n) => NodeId(n.node_id().into()),
+            Node::WindowDefList(n) => NodeId(n.node_id().into()),
+            Node::NamedWindowDef(n) => NodeId(n.node_id().into()),
+            Node::NamedWindowDefList(n) => NodeId(n.node_id().into()),
+            Node::FilterOver(n) => NodeId(n.node_id().into()),
+            Node::Other { id, .. } => NodeId(*id),
         }
     }
 }
 
 impl<'a> GrammarNodeType<'a> for Node<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         Node::resolve(stmt_result, id)
     }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct NodeId(pub AnyNodeId);
+pub struct NodeId(AnyNodeId);
+
+impl NodeId {
+    pub fn into_inner(self) -> AnyNodeId {
+        self.0
+    }
+}
 
 impl<'a> From<Node<'a>> for NodeId {
     fn from(n: Node<'a>) -> Self {
-        NodeId(n.node_id())
+        n.node_id()
     }
 }
 
@@ -7068,11 +7561,11 @@ impl TypedNodeId for NodeId {
     type Node<'a> = Node<'a>;
 }
 
-/// Marker type for the sqlite dialect's AST. Implements `AstTypes`.
-pub enum SqliteAst {}
+#[doc(hidden)]
+pub struct SqliteAstMarker;
 
-impl<'a> crate::ast_traits::AstTypes<'a> for SqliteAst {
-    type Grammar = super::grammar::SqliteGrammar;
+impl<'a> crate::ast_traits::AstTypes<'a> for SqliteAstMarker {
+    type Grammar = super::grammar::Grammar;
     type Node = Node<'a>;
     type Select = Select<'a>;
     type InExprSource = InExprSource<'a>;
@@ -7127,7 +7620,7 @@ impl<'a> crate::ast_traits::AstTypes<'a> for SqliteAst {
     type CreateTriggerStmt = CreateTriggerStmt<'a>;
     type CreateVirtualTableStmt = CreateVirtualTableStmt<'a>;
     type PragmaStmt = PragmaStmt<'a>;
-    type AnalyzeStmt = AnalyzeStmt<'a>;
+    type AnalyzeOrReindexStmt = AnalyzeOrReindexStmt<'a>;
     type AttachStmt = AttachStmt<'a>;
     type DetachStmt = DetachStmt<'a>;
     type VacuumStmt = VacuumStmt<'a>;
@@ -7164,7 +7657,7 @@ impl<'a> crate::ast_traits::AstTypes<'a> for SqliteAst {
     type TriggerEventType = TriggerEventType;
     type ExplainMode = ExplainMode;
     type PragmaForm = PragmaForm;
-    type AnalyzeKind = AnalyzeKind;
+    type AnalyzeOrReindexKind = AnalyzeOrReindexKind;
     type FrameType = FrameType;
     type FrameBoundType = FrameBoundType;
     type FrameExclude = FrameExclude;
@@ -7176,92 +7669,92 @@ impl<'a> crate::ast_traits::AstTypes<'a> for SqliteAst {
 }
 
 impl<'a> crate::ast_traits::NodeLike<'a> for Node<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     #[allow(clippy::match_same_arms)]
     fn node_id(&self) -> AnyNodeId {
         match self {
-            Node::AggregateFunctionCall(n) => n.node_id(),
-            Node::OrderedSetFunctionCall(n) => n.node_id(),
-            Node::CastExpr(n) => n.node_id(),
-            Node::ColumnRef(n) => n.node_id(),
-            Node::CompoundSelect(n) => n.node_id(),
-            Node::SubqueryExpr(n) => n.node_id(),
-            Node::ExistsExpr(n) => n.node_id(),
-            Node::InExpr(n) => n.node_id(),
-            Node::IsExpr(n) => n.node_id(),
-            Node::BetweenExpr(n) => n.node_id(),
-            Node::LikeExpr(n) => n.node_id(),
-            Node::CaseExpr(n) => n.node_id(),
-            Node::CaseWhen(n) => n.node_id(),
+            Node::AggregateFunctionCall(n) => n.node_id().into(),
+            Node::OrderedSetFunctionCall(n) => n.node_id().into(),
+            Node::CastExpr(n) => n.node_id().into(),
+            Node::ColumnRef(n) => n.node_id().into(),
+            Node::CompoundSelect(n) => n.node_id().into(),
+            Node::SubqueryExpr(n) => n.node_id().into(),
+            Node::ExistsExpr(n) => n.node_id().into(),
+            Node::InExpr(n) => n.node_id().into(),
+            Node::IsExpr(n) => n.node_id().into(),
+            Node::BetweenExpr(n) => n.node_id().into(),
+            Node::LikeExpr(n) => n.node_id().into(),
+            Node::CaseExpr(n) => n.node_id().into(),
+            Node::CaseWhen(n) => n.node_id().into(),
             Node::CaseWhenList(n) => n.node_id().into(),
-            Node::ForeignKeyClause(n) => n.node_id(),
-            Node::ColumnConstraint(n) => n.node_id(),
+            Node::ForeignKeyClause(n) => n.node_id().into(),
+            Node::ColumnConstraint(n) => n.node_id().into(),
             Node::ColumnConstraintList(n) => n.node_id().into(),
-            Node::ColumnDef(n) => n.node_id(),
+            Node::ColumnDef(n) => n.node_id().into(),
             Node::ColumnDefList(n) => n.node_id().into(),
-            Node::TableConstraint(n) => n.node_id(),
+            Node::TableConstraint(n) => n.node_id().into(),
             Node::TableConstraintList(n) => n.node_id().into(),
-            Node::CreateTableStmt(n) => n.node_id(),
-            Node::CteDefinition(n) => n.node_id(),
+            Node::CreateTableStmt(n) => n.node_id().into(),
+            Node::CteDefinition(n) => n.node_id().into(),
             Node::CteList(n) => n.node_id().into(),
-            Node::WithClause(n) => n.node_id(),
-            Node::DeleteStmt(n) => n.node_id(),
-            Node::SetClause(n) => n.node_id(),
+            Node::WithClause(n) => n.node_id().into(),
+            Node::DeleteStmt(n) => n.node_id().into(),
+            Node::SetClause(n) => n.node_id().into(),
             Node::SetClauseList(n) => n.node_id().into(),
-            Node::UpdateStmt(n) => n.node_id(),
-            Node::InsertStmt(n) => n.node_id(),
-            Node::BinaryExpr(n) => n.node_id(),
-            Node::UnaryExpr(n) => n.node_id(),
-            Node::Literal(n) => n.node_id(),
+            Node::UpdateStmt(n) => n.node_id().into(),
+            Node::InsertStmt(n) => n.node_id().into(),
+            Node::BinaryExpr(n) => n.node_id().into(),
+            Node::UnaryExpr(n) => n.node_id().into(),
+            Node::Literal(n) => n.node_id().into(),
             Node::ExprList(n) => n.node_id().into(),
-            Node::FunctionCall(n) => n.node_id(),
-            Node::Variable(n) => n.node_id(),
-            Node::CollateExpr(n) => n.node_id(),
-            Node::RaiseExpr(n) => n.node_id(),
-            Node::QualifiedName(n) => n.node_id(),
-            Node::DropStmt(n) => n.node_id(),
-            Node::AlterTableStmt(n) => n.node_id(),
-            Node::TransactionStmt(n) => n.node_id(),
-            Node::SavepointStmt(n) => n.node_id(),
-            Node::ResultColumn(n) => n.node_id(),
+            Node::FunctionCall(n) => n.node_id().into(),
+            Node::Variable(n) => n.node_id().into(),
+            Node::CollateExpr(n) => n.node_id().into(),
+            Node::RaiseExpr(n) => n.node_id().into(),
+            Node::QualifiedName(n) => n.node_id().into(),
+            Node::DropStmt(n) => n.node_id().into(),
+            Node::AlterTableStmt(n) => n.node_id().into(),
+            Node::TransactionStmt(n) => n.node_id().into(),
+            Node::SavepointStmt(n) => n.node_id().into(),
+            Node::ResultColumn(n) => n.node_id().into(),
             Node::ResultColumnList(n) => n.node_id().into(),
-            Node::SelectStmt(n) => n.node_id(),
-            Node::OrderingTerm(n) => n.node_id(),
+            Node::SelectStmt(n) => n.node_id().into(),
+            Node::OrderingTerm(n) => n.node_id().into(),
             Node::OrderByList(n) => n.node_id().into(),
-            Node::LimitClause(n) => n.node_id(),
-            Node::TableRef(n) => n.node_id(),
-            Node::SubqueryTableSource(n) => n.node_id(),
-            Node::JoinClause(n) => n.node_id(),
-            Node::JoinPrefix(n) => n.node_id(),
-            Node::TriggerEvent(n) => n.node_id(),
+            Node::LimitClause(n) => n.node_id().into(),
+            Node::TableRef(n) => n.node_id().into(),
+            Node::SubqueryTableSource(n) => n.node_id().into(),
+            Node::JoinClause(n) => n.node_id().into(),
+            Node::JoinPrefix(n) => n.node_id().into(),
+            Node::TriggerEvent(n) => n.node_id().into(),
             Node::TriggerCmdList(n) => n.node_id().into(),
-            Node::CreateTriggerStmt(n) => n.node_id(),
-            Node::CreateVirtualTableStmt(n) => n.node_id(),
-            Node::PragmaStmt(n) => n.node_id(),
-            Node::AnalyzeStmt(n) => n.node_id(),
-            Node::AttachStmt(n) => n.node_id(),
-            Node::DetachStmt(n) => n.node_id(),
-            Node::VacuumStmt(n) => n.node_id(),
-            Node::ExplainStmt(n) => n.node_id(),
-            Node::CreateIndexStmt(n) => n.node_id(),
-            Node::CreateViewStmt(n) => n.node_id(),
+            Node::CreateTriggerStmt(n) => n.node_id().into(),
+            Node::CreateVirtualTableStmt(n) => n.node_id().into(),
+            Node::PragmaStmt(n) => n.node_id().into(),
+            Node::AnalyzeOrReindexStmt(n) => n.node_id().into(),
+            Node::AttachStmt(n) => n.node_id().into(),
+            Node::DetachStmt(n) => n.node_id().into(),
+            Node::VacuumStmt(n) => n.node_id().into(),
+            Node::ExplainStmt(n) => n.node_id().into(),
+            Node::CreateIndexStmt(n) => n.node_id().into(),
+            Node::CreateViewStmt(n) => n.node_id().into(),
             Node::ValuesRowList(n) => n.node_id().into(),
-            Node::ValuesClause(n) => n.node_id(),
-            Node::FrameBound(n) => n.node_id(),
-            Node::FrameSpec(n) => n.node_id(),
-            Node::WindowDef(n) => n.node_id(),
+            Node::ValuesClause(n) => n.node_id().into(),
+            Node::FrameBound(n) => n.node_id().into(),
+            Node::FrameSpec(n) => n.node_id().into(),
+            Node::WindowDef(n) => n.node_id().into(),
             Node::WindowDefList(n) => n.node_id().into(),
-            Node::NamedWindowDef(n) => n.node_id(),
+            Node::NamedWindowDef(n) => n.node_id().into(),
             Node::NamedWindowDefList(n) => n.node_id().into(),
-            Node::FilterOver(n) => n.node_id(),
+            Node::FilterOver(n) => n.node_id().into(),
             Node::Other { id, .. } => *id,
         }
     }
 }
 
 impl<'a> crate::ast_traits::SelectLike<'a> for Select<'a> {
-    type Ast = SqliteAst;
-    fn kind(&self) -> crate::ast_traits::SelectKind<'a, SqliteAst> {
+    type Ast = SqliteAstMarker;
+    fn kind(&self) -> crate::ast_traits::SelectKind<'a, SqliteAstMarker> {
         match *self {
             Select::SelectStmt(n) => crate::ast_traits::SelectKind::SelectStmt(n),
             Select::CompoundSelect(n) => crate::ast_traits::SelectKind::CompoundSelect(n),
@@ -7273,8 +7766,8 @@ impl<'a> crate::ast_traits::SelectLike<'a> for Select<'a> {
 }
 
 impl<'a> crate::ast_traits::InExprSourceLike<'a> for InExprSource<'a> {
-    type Ast = SqliteAst;
-    fn kind(&self) -> crate::ast_traits::InExprSourceKind<'a, SqliteAst> {
+    type Ast = SqliteAstMarker;
+    fn kind(&self) -> crate::ast_traits::InExprSourceKind<'a, SqliteAstMarker> {
         match *self {
             InExprSource::ExprList(n) => crate::ast_traits::InExprSourceKind::ExprList(n),
             InExprSource::SubqueryExpr(n) => crate::ast_traits::InExprSourceKind::SubqueryExpr(n),
@@ -7284,8 +7777,8 @@ impl<'a> crate::ast_traits::InExprSourceLike<'a> for InExprSource<'a> {
 }
 
 impl<'a> crate::ast_traits::ExprLike<'a> for Expr<'a> {
-    type Ast = SqliteAst;
-    fn kind(&self) -> crate::ast_traits::ExprKind<'a, SqliteAst> {
+    type Ast = SqliteAstMarker;
+    fn kind(&self) -> crate::ast_traits::ExprKind<'a, SqliteAstMarker> {
         match *self {
             Expr::BinaryExpr(n) => crate::ast_traits::ExprKind::BinaryExpr(n),
             Expr::UnaryExpr(n) => crate::ast_traits::ExprKind::UnaryExpr(n),
@@ -7313,8 +7806,8 @@ impl<'a> crate::ast_traits::ExprLike<'a> for Expr<'a> {
 }
 
 impl<'a> crate::ast_traits::StmtLike<'a> for Stmt<'a> {
-    type Ast = SqliteAst;
-    fn kind(&self) -> crate::ast_traits::StmtKind<'a, SqliteAst> {
+    type Ast = SqliteAstMarker;
+    fn kind(&self) -> crate::ast_traits::StmtKind<'a, SqliteAstMarker> {
         match *self {
             Stmt::SelectStmt(n) => crate::ast_traits::StmtKind::SelectStmt(n),
             Stmt::CompoundSelect(n) => crate::ast_traits::StmtKind::CompoundSelect(n),
@@ -7335,7 +7828,7 @@ impl<'a> crate::ast_traits::StmtLike<'a> for Stmt<'a> {
             Stmt::TransactionStmt(n) => crate::ast_traits::StmtKind::TransactionStmt(n),
             Stmt::SavepointStmt(n) => crate::ast_traits::StmtKind::SavepointStmt(n),
             Stmt::PragmaStmt(n) => crate::ast_traits::StmtKind::PragmaStmt(n),
-            Stmt::AnalyzeStmt(n) => crate::ast_traits::StmtKind::AnalyzeStmt(n),
+            Stmt::AnalyzeOrReindexStmt(n) => crate::ast_traits::StmtKind::AnalyzeOrReindexStmt(n),
             Stmt::AttachStmt(n) => crate::ast_traits::StmtKind::AttachStmt(n),
             Stmt::DetachStmt(n) => crate::ast_traits::StmtKind::DetachStmt(n),
             Stmt::VacuumStmt(n) => crate::ast_traits::StmtKind::VacuumStmt(n),
@@ -7346,8 +7839,8 @@ impl<'a> crate::ast_traits::StmtLike<'a> for Stmt<'a> {
 }
 
 impl<'a> crate::ast_traits::TableSourceLike<'a> for TableSource<'a> {
-    type Ast = SqliteAst;
-    fn kind(&self) -> crate::ast_traits::TableSourceKind<'a, SqliteAst> {
+    type Ast = SqliteAstMarker;
+    fn kind(&self) -> crate::ast_traits::TableSourceKind<'a, SqliteAstMarker> {
         match *self {
             TableSource::TableRef(n) => crate::ast_traits::TableSourceKind::TableRef(n),
             TableSource::SubqueryTableSource(n) => {
@@ -7361,7 +7854,7 @@ impl<'a> crate::ast_traits::TableSourceLike<'a> for TableSource<'a> {
 }
 
 impl<'a> crate::ast_traits::AggregateFunctionCallView<'a> for AggregateFunctionCall<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7386,7 +7879,7 @@ impl<'a> crate::ast_traits::AggregateFunctionCallView<'a> for AggregateFunctionC
 }
 
 impl<'a> crate::ast_traits::OrderedSetFunctionCallView<'a> for OrderedSetFunctionCall<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7411,7 +7904,7 @@ impl<'a> crate::ast_traits::OrderedSetFunctionCallView<'a> for OrderedSetFunctio
 }
 
 impl<'a> crate::ast_traits::CastExprView<'a> for CastExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7424,7 +7917,7 @@ impl<'a> crate::ast_traits::CastExprView<'a> for CastExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::ColumnRefView<'a> for ColumnRef<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7440,7 +7933,7 @@ impl<'a> crate::ast_traits::ColumnRefView<'a> for ColumnRef<'a> {
 }
 
 impl<'a> crate::ast_traits::CompoundSelectView<'a> for CompoundSelect<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7456,7 +7949,7 @@ impl<'a> crate::ast_traits::CompoundSelectView<'a> for CompoundSelect<'a> {
 }
 
 impl<'a> crate::ast_traits::SubqueryExprView<'a> for SubqueryExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7466,7 +7959,7 @@ impl<'a> crate::ast_traits::SubqueryExprView<'a> for SubqueryExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::ExistsExprView<'a> for ExistsExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7476,7 +7969,7 @@ impl<'a> crate::ast_traits::ExistsExprView<'a> for ExistsExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::InExprView<'a> for InExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7492,7 +7985,7 @@ impl<'a> crate::ast_traits::InExprView<'a> for InExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::IsExprView<'a> for IsExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7508,7 +8001,7 @@ impl<'a> crate::ast_traits::IsExprView<'a> for IsExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::BetweenExprView<'a> for BetweenExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7527,7 +8020,7 @@ impl<'a> crate::ast_traits::BetweenExprView<'a> for BetweenExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::LikeExprView<'a> for LikeExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7546,7 +8039,7 @@ impl<'a> crate::ast_traits::LikeExprView<'a> for LikeExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::CaseExprView<'a> for CaseExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7562,7 +8055,7 @@ impl<'a> crate::ast_traits::CaseExprView<'a> for CaseExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::CaseWhenView<'a> for CaseWhen<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7575,7 +8068,7 @@ impl<'a> crate::ast_traits::CaseWhenView<'a> for CaseWhen<'a> {
 }
 
 impl<'a> crate::ast_traits::ForeignKeyClauseView<'a> for ForeignKeyClause<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7597,7 +8090,7 @@ impl<'a> crate::ast_traits::ForeignKeyClauseView<'a> for ForeignKeyClause<'a> {
 }
 
 impl<'a> crate::ast_traits::ColumnConstraintView<'a> for ColumnConstraint<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7637,7 +8130,7 @@ impl<'a> crate::ast_traits::ColumnConstraintView<'a> for ColumnConstraint<'a> {
 }
 
 impl<'a> crate::ast_traits::ColumnDefView<'a> for ColumnDef<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7653,7 +8146,7 @@ impl<'a> crate::ast_traits::ColumnDefView<'a> for ColumnDef<'a> {
 }
 
 impl<'a> crate::ast_traits::TableConstraintView<'a> for TableConstraint<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7684,7 +8177,7 @@ impl<'a> crate::ast_traits::TableConstraintView<'a> for TableConstraint<'a> {
 }
 
 impl<'a> crate::ast_traits::CreateTableStmtView<'a> for CreateTableStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7715,7 +8208,7 @@ impl<'a> crate::ast_traits::CreateTableStmtView<'a> for CreateTableStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::CteDefinitionView<'a> for CteDefinition<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7734,7 +8227,7 @@ impl<'a> crate::ast_traits::CteDefinitionView<'a> for CteDefinition<'a> {
 }
 
 impl<'a> crate::ast_traits::WithClauseView<'a> for WithClause<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7750,7 +8243,7 @@ impl<'a> crate::ast_traits::WithClauseView<'a> for WithClause<'a> {
 }
 
 impl<'a> crate::ast_traits::DeleteStmtView<'a> for DeleteStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7769,7 +8262,7 @@ impl<'a> crate::ast_traits::DeleteStmtView<'a> for DeleteStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::SetClauseView<'a> for SetClause<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7785,7 +8278,7 @@ impl<'a> crate::ast_traits::SetClauseView<'a> for SetClause<'a> {
 }
 
 impl<'a> crate::ast_traits::UpdateStmtView<'a> for UpdateStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7813,7 +8306,7 @@ impl<'a> crate::ast_traits::UpdateStmtView<'a> for UpdateStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::InsertStmtView<'a> for InsertStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7832,7 +8325,7 @@ impl<'a> crate::ast_traits::InsertStmtView<'a> for InsertStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::BinaryExprView<'a> for BinaryExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7848,7 +8341,7 @@ impl<'a> crate::ast_traits::BinaryExprView<'a> for BinaryExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::UnaryExprView<'a> for UnaryExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7861,7 +8354,7 @@ impl<'a> crate::ast_traits::UnaryExprView<'a> for UnaryExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::LiteralView<'a> for Literal<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7874,7 +8367,7 @@ impl<'a> crate::ast_traits::LiteralView<'a> for Literal<'a> {
 }
 
 impl<'a> crate::ast_traits::FunctionCallView<'a> for FunctionCall<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7896,7 +8389,7 @@ impl<'a> crate::ast_traits::FunctionCallView<'a> for FunctionCall<'a> {
 }
 
 impl<'a> crate::ast_traits::VariableView<'a> for Variable<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7906,7 +8399,7 @@ impl<'a> crate::ast_traits::VariableView<'a> for Variable<'a> {
 }
 
 impl<'a> crate::ast_traits::CollateExprView<'a> for CollateExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7919,7 +8412,7 @@ impl<'a> crate::ast_traits::CollateExprView<'a> for CollateExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::RaiseExprView<'a> for RaiseExpr<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7932,7 +8425,7 @@ impl<'a> crate::ast_traits::RaiseExprView<'a> for RaiseExpr<'a> {
 }
 
 impl<'a> crate::ast_traits::QualifiedNameView<'a> for QualifiedName<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7945,7 +8438,7 @@ impl<'a> crate::ast_traits::QualifiedNameView<'a> for QualifiedName<'a> {
 }
 
 impl<'a> crate::ast_traits::DropStmtView<'a> for DropStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7961,7 +8454,7 @@ impl<'a> crate::ast_traits::DropStmtView<'a> for DropStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::AlterTableStmtView<'a> for AlterTableStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7980,7 +8473,7 @@ impl<'a> crate::ast_traits::AlterTableStmtView<'a> for AlterTableStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::TransactionStmtView<'a> for TransactionStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -7993,7 +8486,7 @@ impl<'a> crate::ast_traits::TransactionStmtView<'a> for TransactionStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::SavepointStmtView<'a> for SavepointStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8006,7 +8499,7 @@ impl<'a> crate::ast_traits::SavepointStmtView<'a> for SavepointStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::ResultColumnView<'a> for ResultColumn<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8022,7 +8515,7 @@ impl<'a> crate::ast_traits::ResultColumnView<'a> for ResultColumn<'a> {
 }
 
 impl<'a> crate::ast_traits::SelectStmtView<'a> for SelectStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8056,7 +8549,7 @@ impl<'a> crate::ast_traits::SelectStmtView<'a> for SelectStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::OrderingTermView<'a> for OrderingTerm<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8072,7 +8565,7 @@ impl<'a> crate::ast_traits::OrderingTermView<'a> for OrderingTerm<'a> {
 }
 
 impl<'a> crate::ast_traits::LimitClauseView<'a> for LimitClause<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8085,7 +8578,7 @@ impl<'a> crate::ast_traits::LimitClauseView<'a> for LimitClause<'a> {
 }
 
 impl<'a> crate::ast_traits::TableRefView<'a> for TableRef<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8101,7 +8594,7 @@ impl<'a> crate::ast_traits::TableRefView<'a> for TableRef<'a> {
 }
 
 impl<'a> crate::ast_traits::SubqueryTableSourceView<'a> for SubqueryTableSource<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8114,7 +8607,7 @@ impl<'a> crate::ast_traits::SubqueryTableSourceView<'a> for SubqueryTableSource<
 }
 
 impl<'a> crate::ast_traits::JoinClauseView<'a> for JoinClause<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8136,7 +8629,7 @@ impl<'a> crate::ast_traits::JoinClauseView<'a> for JoinClause<'a> {
 }
 
 impl<'a> crate::ast_traits::JoinPrefixView<'a> for JoinPrefix<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8149,7 +8642,7 @@ impl<'a> crate::ast_traits::JoinPrefixView<'a> for JoinPrefix<'a> {
 }
 
 impl<'a> crate::ast_traits::TriggerEventView<'a> for TriggerEvent<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8162,7 +8655,7 @@ impl<'a> crate::ast_traits::TriggerEventView<'a> for TriggerEvent<'a> {
 }
 
 impl<'a> crate::ast_traits::CreateTriggerStmtView<'a> for CreateTriggerStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8196,7 +8689,7 @@ impl<'a> crate::ast_traits::CreateTriggerStmtView<'a> for CreateTriggerStmt<'a> 
 }
 
 impl<'a> crate::ast_traits::CreateVirtualTableStmtView<'a> for CreateVirtualTableStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8218,7 +8711,7 @@ impl<'a> crate::ast_traits::CreateVirtualTableStmtView<'a> for CreateVirtualTabl
 }
 
 impl<'a> crate::ast_traits::PragmaStmtView<'a> for PragmaStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8236,8 +8729,8 @@ impl<'a> crate::ast_traits::PragmaStmtView<'a> for PragmaStmt<'a> {
     }
 }
 
-impl<'a> crate::ast_traits::AnalyzeStmtView<'a> for AnalyzeStmt<'a> {
-    type Ast = SqliteAst;
+impl<'a> crate::ast_traits::AnalyzeOrReindexStmtView<'a> for AnalyzeOrReindexStmt<'a> {
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8247,13 +8740,13 @@ impl<'a> crate::ast_traits::AnalyzeStmtView<'a> for AnalyzeStmt<'a> {
     fn schema(&self) -> &'a str {
         self.schema()
     }
-    fn kind(&self) -> AnalyzeKind {
+    fn kind(&self) -> AnalyzeOrReindexKind {
         self.kind()
     }
 }
 
 impl<'a> crate::ast_traits::AttachStmtView<'a> for AttachStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8269,7 +8762,7 @@ impl<'a> crate::ast_traits::AttachStmtView<'a> for AttachStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::DetachStmtView<'a> for DetachStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8279,7 +8772,7 @@ impl<'a> crate::ast_traits::DetachStmtView<'a> for DetachStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::VacuumStmtView<'a> for VacuumStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8292,7 +8785,7 @@ impl<'a> crate::ast_traits::VacuumStmtView<'a> for VacuumStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::ExplainStmtView<'a> for ExplainStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8305,7 +8798,7 @@ impl<'a> crate::ast_traits::ExplainStmtView<'a> for ExplainStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::CreateIndexStmtView<'a> for CreateIndexStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8333,7 +8826,7 @@ impl<'a> crate::ast_traits::CreateIndexStmtView<'a> for CreateIndexStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::CreateViewStmtView<'a> for CreateViewStmt<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8358,7 +8851,7 @@ impl<'a> crate::ast_traits::CreateViewStmtView<'a> for CreateViewStmt<'a> {
 }
 
 impl<'a> crate::ast_traits::ValuesClauseView<'a> for ValuesClause<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8368,7 +8861,7 @@ impl<'a> crate::ast_traits::ValuesClauseView<'a> for ValuesClause<'a> {
 }
 
 impl<'a> crate::ast_traits::FrameBoundView<'a> for FrameBound<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8381,7 +8874,7 @@ impl<'a> crate::ast_traits::FrameBoundView<'a> for FrameBound<'a> {
 }
 
 impl<'a> crate::ast_traits::FrameSpecView<'a> for FrameSpec<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8400,7 +8893,7 @@ impl<'a> crate::ast_traits::FrameSpecView<'a> for FrameSpec<'a> {
 }
 
 impl<'a> crate::ast_traits::WindowDefView<'a> for WindowDef<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8419,7 +8912,7 @@ impl<'a> crate::ast_traits::WindowDefView<'a> for WindowDef<'a> {
 }
 
 impl<'a> crate::ast_traits::NamedWindowDefView<'a> for NamedWindowDef<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }
@@ -8432,7 +8925,7 @@ impl<'a> crate::ast_traits::NamedWindowDefView<'a> for NamedWindowDef<'a> {
 }
 
 impl<'a> crate::ast_traits::FilterOverView<'a> for FilterOver<'a> {
-    type Ast = SqliteAst;
+    type Ast = SqliteAstMarker;
     fn node_id(&self) -> AnyNodeId {
         self.id
     }

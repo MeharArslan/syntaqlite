@@ -198,11 +198,11 @@ static inline SyntaqliteSourceSpan synq_span(SynqParseCtx* ctx,
 static inline void synq_mark_as_id(SynqParseCtx* ctx, SynqParseToken tok) {
   if (!ctx->tokens || tok.token_idx == 0xFFFFFFFF)
     return;
-  // ctx->tokens is a void* pointing to SYNQ_VEC(SyntaqliteTokenPos).
-  // The vec layout is: { SyntaqliteTokenPos* data; uint32_t count; uint32_t
+  // ctx->tokens is a void* pointing to SYNQ_VEC(SyntaqliteParserToken).
+  // The vec layout is: { SyntaqliteParserToken* data; uint32_t count; uint32_t
   // capacity; }
   typedef struct {
-    SyntaqliteTokenPos* data;
+    SyntaqliteParserToken* data;
     uint32_t count;
     uint32_t capacity;
   } TokenVec;
@@ -216,11 +216,11 @@ static inline void synq_mark_as_function(SynqParseCtx* ctx,
                                          SynqParseToken tok) {
   if (!ctx->tokens || tok.token_idx == 0xFFFFFFFF)
     return;
-  // ctx->tokens is a void* pointing to SYNQ_VEC(SyntaqliteTokenPos).
-  // The vec layout is: { SyntaqliteTokenPos* data; uint32_t count; uint32_t
+  // ctx->tokens is a void* pointing to SYNQ_VEC(SyntaqliteParserToken).
+  // The vec layout is: { SyntaqliteParserToken* data; uint32_t count; uint32_t
   // capacity; }
   typedef struct {
-    SyntaqliteTokenPos* data;
+    SyntaqliteParserToken* data;
     uint32_t count;
     uint32_t capacity;
   } TokenVec;
@@ -233,11 +233,11 @@ static inline void synq_mark_as_function(SynqParseCtx* ctx,
 static inline void synq_mark_as_type(SynqParseCtx* ctx, SynqParseToken tok) {
   if (!ctx->tokens || tok.token_idx == 0xFFFFFFFF)
     return;
-  // ctx->tokens is a void* pointing to SYNQ_VEC(SyntaqliteTokenPos).
-  // The vec layout is: { SyntaqliteTokenPos* data; uint32_t count; uint32_t
+  // ctx->tokens is a void* pointing to SYNQ_VEC(SyntaqliteParserToken).
+  // The vec layout is: { SyntaqliteParserToken* data; uint32_t count; uint32_t
   // capacity; }
   typedef struct {
-    SyntaqliteTokenPos* data;
+    SyntaqliteParserToken* data;
     uint32_t count;
     uint32_t capacity;
   } TokenVec;

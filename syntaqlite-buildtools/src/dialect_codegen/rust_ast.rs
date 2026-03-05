@@ -65,7 +65,7 @@ fn rust_view_accessor_body(field: &Field, ffi_path: &str) -> String {
     let fname = rust_field_name(&field.name);
     match field.storage {
         Storage::Index => {
-            format!("GrammarNodeType::from_arena(self.stmt_result, self.raw.{fname})")
+            format!("GrammarNodeType::from_result(self.stmt_result, self.raw.{fname})")
         }
         Storage::Inline => {
             let t = &field.type_name;
@@ -173,10 +173,13 @@ fn emit_rust_value_enum(w: &mut RustWriter, name: &str, variants: &[String]) {
 fn emit_rust_flags_type(w: &mut RustWriter, name: &str, flags: &[(String, u32)]) {
     w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]");
     w.line("#[repr(transparent)]");
-    w.line(&format!("pub struct {name}(pub u8);"));
+    w.line(&format!("pub struct {name}(u8);"));
     w.newline();
 
     w.open_block(&format!("impl {name} {{"));
+    w.open_block("pub fn bits(self) -> u8 {");
+    w.line("self.0");
+    w.close_block("}");
     let mut sorted: Vec<_> = flags.iter().collect();
     sorted.sort_by_key(|(_, v)| *v);
     for (flag_name, bit) in &sorted {
@@ -603,17 +606,19 @@ impl AstModel<'_> {
 
             // node_id() method
             w.open_block(&format!("impl<'a> {abs_name}<'a> {{"));
-            w.doc_comment("The arena node ID of this node.");
-            w.open_block("pub fn node_id(&self) -> AnyNodeId {");
+            w.doc_comment("The typed node ID of this node.");
+            w.open_block(&format!("pub fn node_id(&self) -> {abs_name}Id {{"));
             w.open_block("match self {");
             for member in members {
-                if node_names.contains(member.as_str()) {
-                    w.line(&format!("{abs_name}::{member}(n) => n.node_id(),"));
-                } else if list_names.contains(member.as_str()) {
-                    w.line(&format!("{abs_name}::{member}(n) => n.node_id().into(),"));
+                if node_names.contains(member.as_str()) || list_names.contains(member.as_str()) {
+                    w.line(&format!(
+                        "{abs_name}::{member}(n) => {abs_name}Id(n.node_id().into()),"
+                    ));
                 }
             }
-            w.line(&format!("{abs_name}::Other(n) => n.node_id(),"));
+            w.line(&format!(
+                "{abs_name}::Other(n) => {abs_name}Id(n.node_id().into()),"
+            ));
             w.close_block("}");
             w.close_block("}");
             w.close_block("}");
@@ -625,7 +630,7 @@ impl AstModel<'_> {
             ));
             w.indent();
             w.line(
-                "fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {",
+                "fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {",
             );
             w.indent();
             w.line("let node = Node::resolve(stmt_result, id)?;");
@@ -647,13 +652,17 @@ impl AstModel<'_> {
 
             // XxxId newtype for this abstract enum
             w.line("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]");
-            w.line(&format!("pub struct {abs_name}Id(pub AnyNodeId);"));
+            w.line(&format!("pub struct {abs_name}Id(AnyNodeId);"));
+            w.newline();
+            w.open_block(&format!("impl {abs_name}Id {{"));
+            w.line("pub fn into_inner(self) -> AnyNodeId { self.0 }");
+            w.close_block("}");
             w.newline();
             w.open_block(&format!(
                 "impl<'a> From<{abs_name}<'a>> for {abs_name}Id {{"
             ));
             w.line(&format!(
-                "fn from(n: {abs_name}<'a>) -> Self {{ {abs_name}Id(n.node_id()) }}"
+                "fn from(n: {abs_name}<'a>) -> Self {{ n.node_id() }}"
             ));
             w.close_block("}");
             w.newline();
@@ -716,8 +725,10 @@ impl AstModel<'_> {
             // Accessor methods
             w.line(&format!("impl<'a> {name}<'a> {{"));
             w.indent();
-            w.doc_comment("The arena node ID of this node.");
-            w.line("pub fn node_id(&self) -> AnyNodeId { self.id }");
+            w.doc_comment("The typed node ID of this node.");
+            w.line(&format!(
+                "pub fn node_id(&self) -> {name}Id {{ {name}Id(self.id) }}"
+            ));
             for field in fields {
                 let fname = rust_field_name(&field.name);
                 let return_type =
@@ -737,7 +748,7 @@ impl AstModel<'_> {
             w.line(&format!("impl<'a> GrammarNodeType<'a> for {name}<'a> {{"));
             w.indent();
             w.line(
-                "fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {",
+                "fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {",
             );
             w.indent();
             w.line(&format!(
@@ -752,12 +763,14 @@ impl AstModel<'_> {
 
             // XxxId newtype for this view struct
             w.line("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]");
-            w.line(&format!("pub struct {name}Id(pub AnyNodeId);"));
+            w.line(&format!("pub struct {name}Id(AnyNodeId);"));
+            w.newline();
+            w.open_block(&format!("impl {name}Id {{"));
+            w.line("pub fn into_inner(self) -> AnyNodeId { self.0 }");
+            w.close_block("}");
             w.newline();
             w.open_block(&format!("impl<'a> From<{name}<'a>> for {name}Id {{"));
-            w.line(&format!(
-                "fn from(n: {name}<'a>) -> Self {{ {name}Id(n.node_id()) }}"
-            ));
+            w.line(&format!("fn from(n: {name}<'a>) -> Self {{ n.node_id() }}"));
             w.close_block("}");
             w.newline();
             w.open_block(&format!("impl From<{name}Id> for AnyNodeId {{"));
@@ -770,12 +783,17 @@ impl AstModel<'_> {
             w.newline();
         }
 
+        let abstract_names: HashSet<&str> = abstract_items.iter().map(|(name, _)| *name).collect();
+
         // Typed list type aliases
         for list in self.lists() {
             let name = list.name;
             let child_type = list.child_type;
             let ct = child_type;
-            let element_type = if node_names.contains(ct) || list_names.contains(ct) {
+            let element_type = if node_names.contains(ct)
+                || list_names.contains(ct)
+                || abstract_names.contains(ct)
+            {
                 format!("{ct}<'a>")
             } else {
                 "Node<'a>".into()
@@ -788,7 +806,11 @@ impl AstModel<'_> {
 
             // XxxId newtype for this list alias
             w.line("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]");
-            w.line(&format!("pub struct {name}Id(pub AnyNodeId);"));
+            w.line(&format!("pub struct {name}Id(AnyNodeId);"));
+            w.newline();
+            w.open_block(&format!("impl {name}Id {{"));
+            w.line("pub fn into_inner(self) -> AnyNodeId { self.0 }");
+            w.close_block("}");
             w.newline();
             w.open_block(&format!("impl<'a> From<{name}<'a>> for {name}Id {{"));
             w.line(&format!(
@@ -858,7 +880,7 @@ impl AstModel<'_> {
                 }
                 NodeLikeRef::List(list) => {
                     let name = list.name;
-                    w.line(&format!("NodeTag::{name} => Node::{name}(TypedNodeList::from_arena(stmt_result, id).expect(\"list tag invariant\")),"));
+                    w.line(&format!("NodeTag::{name} => Node::{name}(TypedNodeList::from_result(stmt_result, id).expect(\"list tag invariant\")),"));
                 }
             }
         }
@@ -894,21 +916,27 @@ impl AstModel<'_> {
 
         // node_id() on Node<'a>
         w.line("#[allow(clippy::match_same_arms)]");
-        w.doc_comment("The arena node ID of this node.");
-        w.open_block("pub fn node_id(&self) -> AnyNodeId {");
+        w.doc_comment("The typed node ID of this node.");
+        w.open_block("pub fn node_id(&self) -> NodeId {");
         w.open_block("match self {");
         for item in self.node_like_items() {
             match item {
                 NodeLikeRef::Node(node) => {
-                    w.line(&format!("Node::{}(n) => n.node_id(),", node.name));
+                    w.line(&format!(
+                        "Node::{}(n) => NodeId(n.node_id().into()),",
+                        node.name
+                    ));
                 }
                 NodeLikeRef::List(list) => {
-                    w.line(&format!("Node::{}(n) => n.node_id().into(),", list.name));
+                    w.line(&format!(
+                        "Node::{}(n) => NodeId(n.node_id().into()),",
+                        list.name
+                    ));
                 }
             }
         }
         if open_for_extension {
-            w.line("Node::Other { id, .. } => *id,");
+            w.line("Node::Other { id, .. } => NodeId(*id),");
         } else {
             w.line("Node::__Phantom(_) => unreachable!(),");
         }
@@ -924,7 +952,7 @@ impl AstModel<'_> {
         w.lines(
             "
         impl<'a> GrammarNodeType<'a> for Node<'a> {
-            fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+            fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
                 Node::resolve(stmt_result, id)
             }
         }
@@ -934,10 +962,14 @@ impl AstModel<'_> {
 
         // NodeId — typed ID for Node<'a>
         w.line("#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]");
-        w.line("pub struct NodeId(pub AnyNodeId);");
+        w.line("pub struct NodeId(AnyNodeId);");
+        w.newline();
+        w.open_block("impl NodeId {");
+        w.line("pub fn into_inner(self) -> AnyNodeId { self.0 }");
+        w.close_block("}");
         w.newline();
         w.open_block("impl<'a> From<Node<'a>> for NodeId {");
-        w.line("fn from(n: Node<'a>) -> Self { NodeId(n.node_id()) }");
+        w.line("fn from(n: Node<'a>) -> Self { n.node_id() }");
         w.close_block("}");
         w.newline();
         w.open_block("impl From<AnyNodeId> for NodeId {");
@@ -955,13 +987,11 @@ impl AstModel<'_> {
 
         // ── Trait impls (connecting concrete types to the generic trait layer) ──
 
-        let marker = format!("{}Ast", pascal_case(dialect_name));
+        let marker = format!("{}AstMarker", pascal_case(dialect_name));
 
         // Marker type
-        w.doc_comment(&format!(
-            "Marker type for the {dialect_name} dialect's AST. Implements `AstTypes`."
-        ));
-        w.line(&format!("pub enum {marker} {{}}"));
+        w.line("#[doc(hidden)]");
+        w.line(&format!("pub struct {marker};"));
         w.newline();
 
         // impl AstTypes for marker
@@ -999,7 +1029,7 @@ impl AstModel<'_> {
         for item in self.node_like_items() {
             match item {
                 NodeLikeRef::Node(node) => {
-                    w.line(&format!("Node::{}(n) => n.node_id(),", node.name));
+                    w.line(&format!("Node::{}(n) => n.node_id().into(),", node.name));
                 }
                 NodeLikeRef::List(list) => {
                     w.line(&format!("Node::{}(n) => n.node_id().into(),", list.name));
@@ -1076,6 +1106,7 @@ fn resolve_kind_enum_list_type(
     list_name: &str,
     node_names: &HashSet<&str>,
     list_names: &HashSet<&str>,
+    abstract_names: &HashSet<&str>,
     lists: &[super::ListRef<'_>],
 ) -> String {
     let list = lists
@@ -1083,39 +1114,44 @@ fn resolve_kind_enum_list_type(
         .find(|l| l.name == list_name)
         .expect("list not found in model");
     let child = list.child_type;
-    if node_names.contains(child) {
+    if node_names.contains(child) || abstract_names.contains(child) {
         format!("TypedNodeList<'a, A::Grammar, A::{child}>")
     } else if list_names.contains(child) {
-        let inner = resolve_kind_enum_list_type(child, node_names, list_names, lists);
+        let inner =
+            resolve_kind_enum_list_type(child, node_names, list_names, abstract_names, lists);
         format!("TypedNodeList<'a, A::Grammar, {inner}>")
     } else {
-        // Abstract or unknown child → Node
         "TypedNodeList<'a, A::Grammar, A::Node>".to_string()
     }
 }
 
 /// Resolve a list's child type to its generic form for use in trait signatures.
 ///
-/// - Concrete node child → `<Self::Ast as AstTypes<'a>>::ChildName`
+/// - Concrete node or abstract child → `<Self::Ast as AstTypes<'a>>::ChildName`
 /// - List child (list-of-lists) → `TypedList<'a, resolve(inner)>`
-/// - Abstract child → `<Self::Ast as AstTypes<'a>>::Node`
 fn resolve_generic_element_type(
     child_type: &str,
     node_names: &HashSet<&str>,
     list_names: &HashSet<&str>,
+    abstract_names: &HashSet<&str>,
     lists: &[super::ListRef<'_>],
 ) -> String {
-    if node_names.contains(child_type) {
+    if node_names.contains(child_type) || abstract_names.contains(child_type) {
         format!("<Self::Ast as AstTypes<'a>>::{child_type}")
     } else if list_names.contains(child_type) {
         let list = lists
             .iter()
             .find(|l| l.name == child_type)
             .expect("list not found in model");
-        let inner = resolve_generic_element_type(list.child_type, node_names, list_names, lists);
+        let inner = resolve_generic_element_type(
+            list.child_type,
+            node_names,
+            list_names,
+            abstract_names,
+            lists,
+        );
         format!("TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, {inner}>")
     } else {
-        // Abstract child type → use Node
         "<Self::Ast as AstTypes<'a>>::Node".to_string()
     }
 }
@@ -1138,8 +1174,13 @@ fn trait_field_return_type(
                     .iter()
                     .find(|l| l.name == t)
                     .expect("list not found in model");
-                let element =
-                    resolve_generic_element_type(list.child_type, node_names, list_names, lists);
+                let element = resolve_generic_element_type(
+                    list.child_type,
+                    node_names,
+                    list_names,
+                    &abstract_names,
+                    lists,
+                );
                 format!(
                     "Option<TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, {element}>>"
                 )
@@ -1260,8 +1301,13 @@ impl AstModel<'_> {
                     w.line(&format!("{member}(A::{member}),"));
                 } else if list_names.contains(member.as_str()) {
                     // Lists are TypedList aliases, not associated types on AstTypes.
-                    let list_type =
-                        resolve_kind_enum_list_type(member, node_names, list_names, self.lists());
+                    let list_type = resolve_kind_enum_list_type(
+                        member,
+                        node_names,
+                        list_names,
+                        &abstract_names,
+                        self.lists(),
+                    );
                     w.line(&format!("{member}({list_type}),"));
                 }
             }

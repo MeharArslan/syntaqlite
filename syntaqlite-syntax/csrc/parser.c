@@ -37,7 +37,7 @@ struct SyntaqliteParser {
   uint32_t pending_reset;  // 1 after feed_token signals completion; cleared on
                            // the next feed_token call (arena reset deferred).
   SYNQ_VEC(SyntaqliteComment) comments;
-  SYNQ_VEC(SyntaqliteTokenPos) tokens;
+  SYNQ_VEC(SyntaqliteParserToken) tokens;
   uint32_t macro_depth;  // Nesting depth (0 = not in macro).
   SYNQ_VEC(SyntaqliteMacroRegion) macros;
 };
@@ -313,7 +313,7 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
 
     uint32_t tidx = 0xFFFFFFFF;
     if (p->collect_tokens && token_type != SYNTAQLITE_TK_SEMI) {
-      SyntaqliteTokenPos tp = {tok_offset, (uint32_t)token_len, token_type, 0};
+      SyntaqliteParserToken tp = {tok_offset, (uint32_t)token_len, token_type, 0};
       syntaqlite_vec_push(&p->tokens, tp, p->mem);
       tidx = syntaqlite_vec_len(&p->tokens) - 1;
     }
@@ -381,7 +381,7 @@ const SyntaqliteComment* syntaqlite_result_comments(SyntaqliteParser* p,
   return p->comments.data;
 }
 
-const SyntaqliteTokenPos* syntaqlite_result_tokens(SyntaqliteParser* p,
+const SyntaqliteParserToken* syntaqlite_result_tokens(SyntaqliteParser* p,
                                                    uint32_t* count) {
   *count = syntaqlite_vec_len(&p->tokens);
   return p->tokens.data;
@@ -440,7 +440,7 @@ int32_t syntaqlite_parser_feed_token(SyntaqliteParser* p,
   uint32_t tidx = 0xFFFFFFFF;
   if (p->collect_tokens && text && token_type != SYNTAQLITE_TK_SEMI) {
     uint32_t tok_offset = (uint32_t)(text - p->source);
-    SyntaqliteTokenPos tp = {tok_offset, len, token_type, 0};
+    SyntaqliteParserToken tp = {tok_offset, len, token_type, 0};
     syntaqlite_vec_push(&p->tokens, tp, p->mem);
     tidx = syntaqlite_vec_len(&p->tokens) - 1;
   }

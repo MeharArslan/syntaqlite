@@ -110,7 +110,7 @@ def main() -> int:
     # Output paths are hardcoded in the Rust binary.
     functions_json = vendored_dir / "data" / "functions.json"
     cflag_audit_json = vendored_dir / "data" / "version_cflags.json"
-    cflag_versions_out = dialect_crate_dir / "src" / "sqlite" / "cflags.rs"
+    cflag_versions_out = dialect_crate_dir / "src" / "cflags.rs"
 
     log("Stage 1b: Generating functions catalog and ast_traits...")
     result = subprocess.run(

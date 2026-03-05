@@ -79,12 +79,12 @@ typedef struct SyntaqliteComment {
 #define SYNQ_TOKEN_FLAG_AS_TYPE     4  // Token consumed as type name.
 
 // A non-whitespace, non-comment token position captured during parsing.
-typedef struct SyntaqliteTokenPos {
+typedef struct SyntaqliteParserToken {
   uint32_t offset;  // Byte offset in source.
   uint32_t length;  // Byte length.
   uint32_t type;    // Original token type from tokenizer (pre-fallback).
   uint32_t flags;   // Bitfield: SYNQ_TOKEN_FLAG_AS_ID / AS_FUNCTION / AS_TYPE.
-} SyntaqliteTokenPos;
+} SyntaqliteParserToken;
 
 // A recorded macro invocation region.
 // For the input-side begin/end API see incremental.h.
@@ -144,7 +144,7 @@ uint32_t syntaqlite_result_error_length(SyntaqliteParser* p);
 // Per-statement token/comment/macro arrays (require collect_tokens enabled).
 const SyntaqliteComment* syntaqlite_result_comments(SyntaqliteParser* p,
                                                     uint32_t* count);
-const SyntaqliteTokenPos* syntaqlite_result_tokens(SyntaqliteParser* p,
+const SyntaqliteParserToken* syntaqlite_result_tokens(SyntaqliteParser* p,
                                                    uint32_t* count);
 const SyntaqliteMacroRegion* syntaqlite_result_macros(SyntaqliteParser* p,
                                                       uint32_t* count);

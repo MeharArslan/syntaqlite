@@ -56,7 +56,7 @@ def _run_public_api(crate_name: str, features: str | None) -> str:
             cmd, cwd=ROOT_DIR, env=env,
             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
         )
-        lines = sorted(proc.stdout.splitlines())
+        lines = sorted(dict.fromkeys(proc.stdout.splitlines()))
         return "\n".join(lines) + ("\n" if lines else "")
 
 

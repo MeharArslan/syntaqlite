@@ -40,8 +40,8 @@ static const char* const display_binary_op[] = {
     "NE",
     "AND",
     "OR",
-    "BITAND",
-    "BITOR",
+    "BIT_AND",
+    "BIT_OR",
     "LSHIFT",
     "RSHIFT",
     "CONCAT",
@@ -51,7 +51,7 @@ static const char* const display_binary_op[] = {
 static const char* const display_unary_op[] = {
     "MINUS",
     "PLUS",
-    "BITNOT",
+    "BIT_NOT",
     "NOT",
 };
 
@@ -204,7 +204,7 @@ static const char* const display_pragma_form[] = {
     "CALL",
 };
 
-static const char* const display_analyze_kind[] = {
+static const char* const display_analyze_or_reindex_kind[] = {
     "ANALYZE",
     "REINDEX",
 };
@@ -578,10 +578,10 @@ static const SyntaqliteFieldMeta field_meta_pragma_stmt[] = {
     {offsetof(SyntaqlitePragmaStmt, pragma_form), SYNTAQLITE_FIELD_ENUM, "pragma_form", display_pragma_form, sizeof(display_pragma_form) / sizeof(display_pragma_form[0])},
 };
 
-static const SyntaqliteFieldMeta field_meta_analyze_stmt[] = {
-    {offsetof(SyntaqliteAnalyzeStmt, target_name), SYNTAQLITE_FIELD_SPAN, "target_name", NULL, 0},
-    {offsetof(SyntaqliteAnalyzeStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
-    {offsetof(SyntaqliteAnalyzeStmt, kind), SYNTAQLITE_FIELD_ENUM, "kind", display_analyze_kind, sizeof(display_analyze_kind) / sizeof(display_analyze_kind[0])},
+static const SyntaqliteFieldMeta field_meta_analyze_or_reindex_stmt[] = {
+    {offsetof(SyntaqliteAnalyzeOrReindexStmt, target_name), SYNTAQLITE_FIELD_SPAN, "target_name", NULL, 0},
+    {offsetof(SyntaqliteAnalyzeOrReindexStmt, schema), SYNTAQLITE_FIELD_SPAN, "schema", NULL, 0},
+    {offsetof(SyntaqliteAnalyzeOrReindexStmt, kind), SYNTAQLITE_FIELD_ENUM, "kind", display_analyze_or_reindex_kind, sizeof(display_analyze_or_reindex_kind) / sizeof(display_analyze_or_reindex_kind[0])},
 };
 
 static const SyntaqliteFieldMeta field_meta_attach_stmt[] = {
@@ -719,7 +719,7 @@ static const char* const ast_meta_node_names[] = {
     "CreateTriggerStmt",
     "CreateVirtualTableStmt",
     "PragmaStmt",
-    "AnalyzeStmt",
+    "AnalyzeOrReindexStmt",
     "AttachStmt",
     "DetachStmt",
     "VacuumStmt",
@@ -799,7 +799,7 @@ static const SyntaqliteFieldMeta* const ast_meta_field_meta[] = {
     field_meta_create_trigger_stmt, /* CreateTriggerStmt */
     field_meta_create_virtual_table_stmt, /* CreateVirtualTableStmt */
     field_meta_pragma_stmt, /* PragmaStmt */
-    field_meta_analyze_stmt, /* AnalyzeStmt */
+    field_meta_analyze_or_reindex_stmt, /* AnalyzeOrReindexStmt */
     field_meta_attach_stmt, /* AttachStmt */
     field_meta_detach_stmt, /* DetachStmt */
     field_meta_vacuum_stmt, /* VacuumStmt */
@@ -877,7 +877,7 @@ static const uint8_t ast_meta_field_meta_counts[] = {
     9, /* CreateTriggerStmt */
     5, /* CreateVirtualTableStmt */
     4, /* PragmaStmt */
-    3, /* AnalyzeStmt */
+    3, /* AnalyzeOrReindexStmt */
     3, /* AttachStmt */
     1, /* DetachStmt */
     2, /* VacuumStmt */
@@ -957,7 +957,7 @@ static const uint8_t ast_meta_list_tags[] = {
     0, /* CreateTriggerStmt */
     0, /* CreateVirtualTableStmt */
     0, /* PragmaStmt */
-    0, /* AnalyzeStmt */
+    0, /* AnalyzeOrReindexStmt */
     0, /* AttachStmt */
     0, /* DetachStmt */
     0, /* VacuumStmt */

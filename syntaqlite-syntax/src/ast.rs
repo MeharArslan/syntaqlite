@@ -16,7 +16,7 @@ use crate::parser::AnyStatementResult;
 /// See also the symmetric [`GrammarTokenType`] for token enums.
 pub trait GrammarNodeType<'a>: Sized {
     /// Resolve `id` to `Self`, or `None` if null, invalid, or tag mismatch.
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self>;
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self>;
 }
 
 /// A token type that can be resolved from a raw ordinal and converted back.
@@ -41,7 +41,7 @@ impl GrammarTokenType for u32 {
 ///
 /// This is the untyped, lifetime-free handle used inside the engine. Dialect
 /// crates expose typed `XxxId` newtypes (e.g. `SelectStmtId`) that implement
-/// [`TypedNodeId`] and convert into this.
+/// `TypedNodeId` and convert into this.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct AnyNodeId(pub(crate) u32);
@@ -67,7 +67,7 @@ pub struct AnyNode<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for AnyNode<'a> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         stmt_result.node_ptr(id)?; // validate the node exists
         Some(AnyNode { id, stmt_result })
     }
@@ -91,8 +91,18 @@ impl AnyNode<'_> {
 /// needed. Wraps a raw grammar handle directly.
 #[derive(Clone, Copy)]
 pub struct AnyDialect {
-    /// The underlying grammar handle.
-    pub raw: AnyGrammar,
+    raw: AnyGrammar,
+}
+
+impl AnyDialect {
+    pub(crate) fn new(raw: AnyGrammar) -> Self {
+        AnyDialect { raw }
+    }
+
+    /// Returns the underlying [`AnyGrammar`] by value.
+    pub fn into_raw(self) -> AnyGrammar {
+        self.raw
+    }
 }
 
 impl crate::grammar::TypedGrammar for AnyDialect {
@@ -145,7 +155,7 @@ impl<'a, G: crate::grammar::TypedGrammar, T: GrammarNodeType<'a>> TypedNodeList<
     /// Get a child by index, or `None` if out of bounds or unresolvable.
     pub fn get(&self, index: usize) -> Option<T> {
         let id = *self.raw.children().get(index)?;
-        T::from_arena(self.stmt_result, id)
+        T::from_result(self.stmt_result, id)
     }
 
     /// Iterate over children. Unresolvable IDs are silently skipped.
@@ -154,7 +164,7 @@ impl<'a, G: crate::grammar::TypedGrammar, T: GrammarNodeType<'a>> TypedNodeList<
         let children = self.raw.children();
         children
             .iter()
-            .filter_map(move |&id| T::from_arena(stmt_result, id))
+            .filter_map(move |&id| T::from_result(stmt_result, id))
     }
 }
 
@@ -169,11 +179,99 @@ pub trait TypedNodeId: Copy + Into<AnyNodeId> {
     type Node<'a>: GrammarNodeType<'a>;
 }
 
+/// A typed field value extracted from an AST node.
+///
+/// Returned as elements of [`NodeFields`], which is produced by
+/// [`AnyStatementResult::extract_fields`](crate::parser::AnyStatementResult::extract_fields).
+#[derive(Clone, Copy, Debug)]
+pub enum FieldValue<'a> {
+    /// A child node reference.
+    NodeId(AnyNodeId),
+    /// A source text span — a subslice of the original source string.
+    Span(&'a str),
+    /// A boolean flag.
+    Bool(bool),
+    /// A compact bitfield of flags.
+    Flags(u8),
+    /// An enum discriminant.
+    Enum(u32),
+}
+
+/// A stack-allocated, indexable collection of [`FieldValue`]s for a single AST node.
+///
+/// Returned by [`AnyStatementResult::extract_fields`](crate::parser::AnyStatementResult::extract_fields).
+/// Supports `fields[idx]` indexing; `FieldValue` is `Copy` so indexing yields an owned copy.
+pub struct NodeFields<'a> {
+    buf: [std::mem::MaybeUninit<FieldValue<'a>>; 16],
+    len: usize,
+}
+
+impl<'a> NodeFields<'a> {
+    /// Create an empty `NodeFields`.
+    pub fn new() -> Self {
+        Self {
+            buf: [const { std::mem::MaybeUninit::uninit() }; 16],
+            len: 0,
+        }
+    }
+
+    /// Append a field value.
+    ///
+    /// # Panics
+    /// Panics if more than 16 fields are pushed.
+    pub(crate) fn push(&mut self, val: FieldValue<'a>) {
+        assert!(self.len < 16, "NodeFields overflow: more than 16 fields");
+        self.buf[self.len] = std::mem::MaybeUninit::new(val);
+        self.len += 1;
+    }
+
+    /// Number of fields.
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    /// Whether there are no fields.
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+}
+
+impl Default for NodeFields<'_> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<'a> std::ops::Index<usize> for NodeFields<'a> {
+    type Output = FieldValue<'a>;
+
+    fn index(&self, idx: usize) -> &FieldValue<'a> {
+        assert!(
+            idx < self.len,
+            "field index {} out of bounds (len={})",
+            idx,
+            self.len
+        );
+        // SAFETY: buf[..len] are all initialised via `push`.
+        unsafe { self.buf[idx].assume_init_ref() }
+    }
+}
+
+impl std::fmt::Debug for NodeFields<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut list = f.debug_list();
+        for i in 0..self.len {
+            list.entry(&self[i]);
+        }
+        list.finish()
+    }
+}
+
 // ── Crate-internal ───────────────────────────────────────────────────────────
 
 /// Blanket [`GrammarNodeType`] impl for [`TypedNodeList`] — resolves the ID as a list node.
 impl<'a, G: crate::grammar::TypedGrammar, T> GrammarNodeType<'a> for TypedNodeList<'a, G, T> {
-    fn from_arena(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: AnyStatementResult<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_list(id)?;
         Some(TypedNodeList {
             raw,

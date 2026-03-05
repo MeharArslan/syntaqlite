@@ -77,10 +77,10 @@ impl DialectNaming {
         format!("syntaqlite_{}_grammar", self.name)
     }
 
-    /// Rust grammar struct type name (e.g. `"SqliteGrammar"`).
+    /// Rust grammar struct type name (`"Grammar"`).
     #[must_use]
     pub fn grammar_struct_type(&self) -> String {
-        format!("{}Grammar", util::pascal_case(&self.name))
+        "Grammar".to_owned()
     }
 
     /// Rust token enum type name (`"TokenType"`).

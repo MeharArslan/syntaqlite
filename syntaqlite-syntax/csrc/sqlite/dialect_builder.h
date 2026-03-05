@@ -808,19 +808,19 @@ static inline uint32_t synq_parse_pragma_stmt(
         }, (uint32_t)sizeof(SyntaqlitePragmaStmt));
 }
 
-static inline uint32_t synq_parse_analyze_stmt(
+static inline uint32_t synq_parse_analyze_or_reindex_stmt(
     SynqParseCtx *ctx,
     SyntaqliteSourceSpan target_name,
     SyntaqliteSourceSpan schema,
-    SyntaqliteAnalyzeKind kind
+    SyntaqliteAnalyzeOrReindexKind kind
 ) {
     return synq_parse_build(ctx,
-        &(SyntaqliteAnalyzeStmt){
-            .tag = SYNTAQLITE_NODE_ANALYZE_STMT,
+        &(SyntaqliteAnalyzeOrReindexStmt){
+            .tag = SYNTAQLITE_NODE_ANALYZE_OR_REINDEX_STMT,
             .target_name = target_name,
             .schema = schema,
             .kind = kind
-        }, (uint32_t)sizeof(SyntaqliteAnalyzeStmt));
+        }, (uint32_t)sizeof(SyntaqliteAnalyzeOrReindexStmt));
 }
 
 static inline uint32_t synq_parse_attach_stmt(

@@ -12,13 +12,13 @@ use crate::grammar::TypedGrammar;
 /// Grammar extensions that add variants beyond this set return `None` from `LiteralTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LiteralTypeKind {
-    INTEGER,
-    FLOAT,
-    STRING,
-    BLOB,
-    NULL,
-    CURRENT,
-    QNUMBER,
+    Integer,
+    Float,
+    String,
+    Blob,
+    Null,
+    Current,
+    Qnumber,
 }
 
 /// Trait for `LiteralType`-compatible values. Dialects may define their own type and implement this.
@@ -32,25 +32,25 @@ pub trait LiteralTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `BinaryOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinaryOpKind {
-    PLUS,
-    MINUS,
-    STAR,
-    SLASH,
-    REM,
-    LT,
-    GT,
-    LE,
-    GE,
-    EQ,
-    NE,
-    AND,
-    OR,
-    BITAND,
-    BITOR,
-    LSHIFT,
-    RSHIFT,
-    CONCAT,
-    PTR,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    Rem,
+    Lt,
+    Gt,
+    Le,
+    Ge,
+    Eq,
+    Ne,
+    And,
+    Or,
+    BitAnd,
+    BitOr,
+    Lshift,
+    Rshift,
+    Concat,
+    Ptr,
 }
 
 /// Trait for `BinaryOp`-compatible values. Dialects may define their own type and implement this.
@@ -64,10 +64,10 @@ pub trait BinaryOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `UnaryOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnaryOpKind {
-    MINUS,
-    PLUS,
-    BITNOT,
-    NOT,
+    Minus,
+    Plus,
+    BitNot,
+    Not,
 }
 
 /// Trait for `UnaryOp`-compatible values. Dialects may define their own type and implement this.
@@ -81,10 +81,10 @@ pub trait UnaryOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `CompoundOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompoundOpKind {
-    UNION,
-    UNIONALL,
-    INTERSECT,
-    EXCEPT,
+    Union,
+    UnionAll,
+    Intersect,
+    Except,
 }
 
 /// Trait for `CompoundOp`-compatible values. Dialects may define their own type and implement this.
@@ -98,12 +98,12 @@ pub trait CompoundOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `IsOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IsOpKind {
-    IS,
-    ISNOT,
-    ISNULL,
-    NOTNULL,
-    ISNOTDISTINCT,
-    ISDISTINCT,
+    Is,
+    IsNot,
+    Isnull,
+    Notnull,
+    IsNotDistinct,
+    IsDistinct,
 }
 
 /// Trait for `IsOp`-compatible values. Dialects may define their own type and implement this.
@@ -117,11 +117,11 @@ pub trait IsOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `ForeignKeyActionLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ForeignKeyActionKind {
-    NOACTION,
-    SETNULL,
-    SETDEFAULT,
-    CASCADE,
-    RESTRICT,
+    NoAction,
+    SetNull,
+    SetDefault,
+    Cascade,
+    Restrict,
 }
 
 /// Trait for `ForeignKeyAction`-compatible values. Dialects may define their own type and implement this.
@@ -135,8 +135,8 @@ pub trait ForeignKeyActionLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `GeneratedColumnStorageLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GeneratedColumnStorageKind {
-    VIRTUAL,
-    STORED,
+    Virtual,
+    Stored,
 }
 
 /// Trait for `GeneratedColumnStorage`-compatible values. Dialects may define their own type and implement this.
@@ -150,15 +150,15 @@ pub trait GeneratedColumnStorageLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `ColumnConstraintKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ColumnConstraintKindKind {
-    DEFAULT,
-    NOTNULL,
-    PRIMARYKEY,
-    UNIQUE,
-    CHECK,
-    REFERENCES,
-    COLLATE,
-    GENERATED,
-    NULL,
+    Default,
+    NotNull,
+    PrimaryKey,
+    Unique,
+    Check,
+    References,
+    Collate,
+    Generated,
+    Null,
 }
 
 /// Trait for `ColumnConstraintKind`-compatible values. Dialects may define their own type and implement this.
@@ -172,10 +172,10 @@ pub trait ColumnConstraintKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `TableConstraintKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TableConstraintKindKind {
-    PRIMARYKEY,
-    UNIQUE,
-    CHECK,
-    FOREIGNKEY,
+    PrimaryKey,
+    Unique,
+    Check,
+    ForeignKey,
 }
 
 /// Trait for `TableConstraintKind`-compatible values. Dialects may define their own type and implement this.
@@ -189,9 +189,9 @@ pub trait TableConstraintKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `MaterializedLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MaterializedKind {
-    DEFAULT,
-    MATERIALIZED,
-    NOTMATERIALIZED,
+    Default,
+    Materialized,
+    NotMaterialized,
 }
 
 /// Trait for `Materialized`-compatible values. Dialects may define their own type and implement this.
@@ -205,12 +205,12 @@ pub trait MaterializedLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `ConflictActionLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConflictActionKind {
-    DEFAULT,
-    ROLLBACK,
-    ABORT,
-    FAIL,
-    IGNORE,
-    REPLACE,
+    Default,
+    Rollback,
+    Abort,
+    Fail,
+    Ignore,
+    Replace,
 }
 
 /// Trait for `ConflictAction`-compatible values. Dialects may define their own type and implement this.
@@ -224,10 +224,10 @@ pub trait ConflictActionLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `RaiseTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RaiseTypeKind {
-    IGNORE,
-    ROLLBACK,
-    ABORT,
-    FAIL,
+    Ignore,
+    Rollback,
+    Abort,
+    Fail,
 }
 
 /// Trait for `RaiseType`-compatible values. Dialects may define their own type and implement this.
@@ -241,10 +241,10 @@ pub trait RaiseTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `DropObjectTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DropObjectTypeKind {
-    TABLE,
-    INDEX,
-    VIEW,
-    TRIGGER,
+    Table,
+    Index,
+    View,
+    Trigger,
 }
 
 /// Trait for `DropObjectType`-compatible values. Dialects may define their own type and implement this.
@@ -258,10 +258,10 @@ pub trait DropObjectTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `AlterOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlterOpKind {
-    RENAMETABLE,
-    RENAMECOLUMN,
-    DROPCOLUMN,
-    ADDCOLUMN,
+    RenameTable,
+    RenameColumn,
+    DropColumn,
+    AddColumn,
 }
 
 /// Trait for `AlterOp`-compatible values. Dialects may define their own type and implement this.
@@ -275,9 +275,9 @@ pub trait AlterOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `TransactionTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionTypeKind {
-    DEFERRED,
-    IMMEDIATE,
-    EXCLUSIVE,
+    Deferred,
+    Immediate,
+    Exclusive,
 }
 
 /// Trait for `TransactionType`-compatible values. Dialects may define their own type and implement this.
@@ -291,9 +291,9 @@ pub trait TransactionTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `TransactionOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionOpKind {
-    BEGIN,
-    COMMIT,
-    ROLLBACK,
+    Begin,
+    Commit,
+    Rollback,
 }
 
 /// Trait for `TransactionOp`-compatible values. Dialects may define their own type and implement this.
@@ -307,9 +307,9 @@ pub trait TransactionOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `SavepointOpLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SavepointOpKind {
-    SAVEPOINT,
-    RELEASE,
-    ROLLBACKTO,
+    Savepoint,
+    Release,
+    RollbackTo,
 }
 
 /// Trait for `SavepointOp`-compatible values. Dialects may define their own type and implement this.
@@ -323,8 +323,8 @@ pub trait SavepointOpLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `SortOrderLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortOrderKind {
-    ASC,
-    DESC,
+    Asc,
+    Desc,
 }
 
 /// Trait for `SortOrder`-compatible values. Dialects may define their own type and implement this.
@@ -338,9 +338,9 @@ pub trait SortOrderLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `NullsOrderLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NullsOrderKind {
-    NONE,
-    FIRST,
-    LAST,
+    None,
+    First,
+    Last,
 }
 
 /// Trait for `NullsOrder`-compatible values. Dialects may define their own type and implement this.
@@ -354,16 +354,16 @@ pub trait NullsOrderLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `JoinTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JoinTypeKind {
-    COMMA,
-    INNER,
-    LEFT,
-    RIGHT,
-    FULL,
-    CROSS,
-    NATURALINNER,
-    NATURALLEFT,
-    NATURALRIGHT,
-    NATURALFULL,
+    Comma,
+    Inner,
+    Left,
+    Right,
+    Full,
+    Cross,
+    NaturalInner,
+    NaturalLeft,
+    NaturalRight,
+    NaturalFull,
 }
 
 /// Trait for `JoinType`-compatible values. Dialects may define their own type and implement this.
@@ -377,9 +377,9 @@ pub trait JoinTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `TriggerTimingLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriggerTimingKind {
-    BEFORE,
-    AFTER,
-    INSTEADOF,
+    Before,
+    After,
+    InsteadOf,
 }
 
 /// Trait for `TriggerTiming`-compatible values. Dialects may define their own type and implement this.
@@ -393,9 +393,9 @@ pub trait TriggerTimingLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `TriggerEventTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TriggerEventTypeKind {
-    DELETE,
-    INSERT,
-    UPDATE,
+    Delete,
+    Insert,
+    Update,
 }
 
 /// Trait for `TriggerEventType`-compatible values. Dialects may define their own type and implement this.
@@ -409,8 +409,8 @@ pub trait TriggerEventTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `ExplainModeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExplainModeKind {
-    EXPLAIN,
-    QUERYPLAN,
+    Explain,
+    QueryPlan,
 }
 
 /// Trait for `ExplainMode`-compatible values. Dialects may define their own type and implement this.
@@ -424,9 +424,9 @@ pub trait ExplainModeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `PragmaFormLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PragmaFormKind {
-    BARE,
-    EQ,
-    CALL,
+    Bare,
+    Eq,
+    Call,
 }
 
 /// Trait for `PragmaForm`-compatible values. Dialects may define their own type and implement this.
@@ -436,29 +436,29 @@ pub trait PragmaFormLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn kind(&self) -> Option<PragmaFormKind>;
 }
 
-/// Base variants of `AnalyzeKind`. Used for exhaustive pattern matching in generic code.
-/// Grammar extensions that add variants beyond this set return `None` from `AnalyzeKindLike::kind`.
+/// Base variants of `AnalyzeOrReindexKind`. Used for exhaustive pattern matching in generic code.
+/// Grammar extensions that add variants beyond this set return `None` from `AnalyzeOrReindexKindLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AnalyzeKindKind {
-    ANALYZE,
-    REINDEX,
+pub enum AnalyzeOrReindexKindKind {
+    Analyze,
+    Reindex,
 }
 
-/// Trait for `AnalyzeKind`-compatible values. Dialects may define their own type and implement this.
-pub trait AnalyzeKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
+/// Trait for `AnalyzeOrReindexKind`-compatible values. Dialects may define their own type and implement this.
+pub trait AnalyzeOrReindexKindLike: Copy + PartialEq + Eq + std::fmt::Debug {
     fn as_str(&self) -> &'static str;
-    /// Match against base `AnalyzeKindKind` variants. Returns `None` for dialect-specific extensions.
-    fn kind(&self) -> Option<AnalyzeKindKind>;
+    /// Match against base `AnalyzeOrReindexKindKind` variants. Returns `None` for dialect-specific extensions.
+    fn kind(&self) -> Option<AnalyzeOrReindexKindKind>;
 }
 
 /// Base variants of `FrameType`. Used for exhaustive pattern matching in generic code.
 /// Grammar extensions that add variants beyond this set return `None` from `FrameTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameTypeKind {
-    NONE,
-    RANGE,
-    ROWS,
-    GROUPS,
+    None,
+    Range,
+    Rows,
+    Groups,
 }
 
 /// Trait for `FrameType`-compatible values. Dialects may define their own type and implement this.
@@ -472,11 +472,11 @@ pub trait FrameTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `FrameBoundTypeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameBoundTypeKind {
-    UNBOUNDEDPRECEDING,
-    EXPRPRECEDING,
-    CURRENTROW,
-    EXPRFOLLOWING,
-    UNBOUNDEDFOLLOWING,
+    UnboundedPreceding,
+    ExprPreceding,
+    CurrentRow,
+    ExprFollowing,
+    UnboundedFollowing,
 }
 
 /// Trait for `FrameBoundType`-compatible values. Dialects may define their own type and implement this.
@@ -490,11 +490,11 @@ pub trait FrameBoundTypeLike: Copy + PartialEq + Eq + std::fmt::Debug {
 /// Grammar extensions that add variants beyond this set return `None` from `FrameExcludeLike::kind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrameExcludeKind {
-    NONE,
-    NOOTHERS,
-    CURRENTROW,
-    GROUP,
-    TIES,
+    None,
+    NoOthers,
+    CurrentRow,
+    Group,
+    Ties,
 }
 
 /// Trait for `FrameExclude`-compatible values. Dialects may define their own type and implement this.
@@ -548,7 +548,7 @@ pub trait AggregateFunctionCallView<'a>: Copy {
     fn args(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
     fn orderby(
         &self,
@@ -572,7 +572,7 @@ pub trait OrderedSetFunctionCallView<'a>: Copy {
     fn args(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
     fn orderby_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn filter_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
@@ -690,7 +690,7 @@ pub trait ForeignKeyClauseView<'a>: Copy {
     fn ref_columns(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
     fn on_delete(&self) -> <Self::Ast as AstTypes<'a>>::ForeignKeyAction;
     fn on_update(&self) -> <Self::Ast as AstTypes<'a>>::ForeignKeyAction;
@@ -751,7 +751,7 @@ pub trait TableConstraintView<'a>: Copy {
     fn fk_columns(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
     fn check_expr(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn fk_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::ForeignKeyClause>;
@@ -796,7 +796,7 @@ pub trait CteDefinitionView<'a>: Copy {
     fn columns(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
@@ -844,7 +844,7 @@ pub trait SetClauseView<'a>: Copy {
     fn columns(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
     fn value(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
 }
@@ -888,7 +888,7 @@ pub trait InsertStmtView<'a>: Copy {
     fn columns(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
     fn source(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
@@ -927,7 +927,7 @@ pub trait FunctionCallView<'a>: Copy {
     fn args(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
     fn filter_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn over_clause(&self) -> Option<<Self::Ast as AstTypes<'a>>::WindowDef>;
@@ -1028,7 +1028,7 @@ pub trait SelectStmtView<'a>: Copy {
     fn groupby(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
     fn having(&self) -> Option<<Self::Ast as AstTypes<'a>>::Expr>;
     fn orderby(
@@ -1097,7 +1097,7 @@ pub trait JoinClauseView<'a>: Copy {
     fn using_columns(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
 }
 
@@ -1117,7 +1117,7 @@ pub trait TriggerEventView<'a>: Copy {
     fn columns(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
 }
 
@@ -1136,7 +1136,7 @@ pub trait CreateTriggerStmtView<'a>: Copy {
     fn body(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Stmt>,
     >;
 }
 
@@ -1161,13 +1161,13 @@ pub trait PragmaStmtView<'a>: Copy {
     fn pragma_form(&self) -> <Self::Ast as AstTypes<'a>>::PragmaForm;
 }
 
-/// Accessor trait for `AnalyzeStmt` nodes.
-pub trait AnalyzeStmtView<'a>: Copy {
+/// Accessor trait for `AnalyzeOrReindexStmt` nodes.
+pub trait AnalyzeOrReindexStmtView<'a>: Copy {
     type Ast: AstTypes<'a>;
     fn node_id(&self) -> AnyNodeId;
     fn target_name(&self) -> &'a str;
     fn schema(&self) -> &'a str;
-    fn kind(&self) -> <Self::Ast as AstTypes<'a>>::AnalyzeKind;
+    fn kind(&self) -> <Self::Ast as AstTypes<'a>>::AnalyzeOrReindexKind;
 }
 
 /// Accessor trait for `AttachStmt` nodes.
@@ -1235,7 +1235,7 @@ pub trait CreateViewStmtView<'a>: Copy {
     fn column_names(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
     fn select(&self) -> Option<<Self::Ast as AstTypes<'a>>::Select>;
 }
@@ -1253,7 +1253,7 @@ pub trait ValuesClauseView<'a>: Copy {
             TypedNodeList<
                 'a,
                 <Self::Ast as AstTypes<'a>>::Grammar,
-                <Self::Ast as AstTypes<'a>>::Node,
+                <Self::Ast as AstTypes<'a>>::Expr,
             >,
         >,
     >;
@@ -1285,7 +1285,7 @@ pub trait WindowDefView<'a>: Copy {
     fn partition_by(
         &self,
     ) -> Option<
-        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Node>,
+        TypedNodeList<'a, <Self::Ast as AstTypes<'a>>::Grammar, <Self::Ast as AstTypes<'a>>::Expr>,
     >;
     fn orderby(
         &self,
@@ -1329,7 +1329,7 @@ pub enum SelectKind<'a, A: AstTypes<'a>> {
 /// Pattern-matching variants for `InExprSource`.
 #[derive(Clone, Copy)]
 pub enum InExprSourceKind<'a, A: AstTypes<'a>> {
-    ExprList(TypedNodeList<'a, A::Grammar, A::Node>),
+    ExprList(TypedNodeList<'a, A::Grammar, A::Expr>),
     SubqueryExpr(A::SubqueryExpr),
     Other(A::Node),
 }
@@ -1378,7 +1378,7 @@ pub enum StmtKind<'a, A: AstTypes<'a>> {
     TransactionStmt(A::TransactionStmt),
     SavepointStmt(A::SavepointStmt),
     PragmaStmt(A::PragmaStmt),
-    AnalyzeStmt(A::AnalyzeStmt),
+    AnalyzeOrReindexStmt(A::AnalyzeOrReindexStmt),
     AttachStmt(A::AttachStmt),
     DetachStmt(A::DetachStmt),
     VacuumStmt(A::VacuumStmt),
@@ -1489,7 +1489,7 @@ pub trait AstTypes<'a>: 'a {
         + Copy
         + GrammarNodeType<'a>;
     type PragmaStmt: PragmaStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
-    type AnalyzeStmt: AnalyzeStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
+    type AnalyzeOrReindexStmt: AnalyzeOrReindexStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type AttachStmt: AttachStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type DetachStmt: DetachStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
     type VacuumStmt: VacuumStmtView<'a, Ast = Self> + Copy + GrammarNodeType<'a>;
@@ -1526,7 +1526,7 @@ pub trait AstTypes<'a>: 'a {
     type TriggerEventType: TriggerEventTypeLike;
     type ExplainMode: ExplainModeLike;
     type PragmaForm: PragmaFormLike;
-    type AnalyzeKind: AnalyzeKindLike;
+    type AnalyzeOrReindexKind: AnalyzeOrReindexKindLike;
     type FrameType: FrameTypeLike;
     type FrameBoundType: FrameBoundTypeLike;
     type FrameExclude: FrameExcludeLike;

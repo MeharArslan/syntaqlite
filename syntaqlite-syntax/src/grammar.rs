@@ -1,9 +1,141 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use crate::cflags::Cflags;
-
 // ── Public API ───────────────────────────────────────────────────────────────
+
+use crate::util::{SqliteFlags, SqliteVersion};
+
+/// The kind of value a struct field holds in the AST node layout.
+#[repr(u8)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FieldKind {
+    /// A child node identifier.
+    NodeId = 0,
+    /// A source span (byte offset + length).
+    Span = 1,
+    /// A boolean flag.
+    Bool = 2,
+    /// A compact bitfield of flags.
+    Flags = 3,
+    /// A discriminant for an enum variant.
+    Enum = 4,
+}
+
+impl FieldKind {
+    fn from_u8(v: u8) -> Self {
+        match v {
+            1 => FieldKind::Span,
+            2 => FieldKind::Bool,
+            3 => FieldKind::Flags,
+            4 => FieldKind::Enum,
+            _ => FieldKind::NodeId,
+        }
+    }
+}
+
+/// Semantic category of a SQL token, used for syntax highlighting.
+///
+/// Returned by [`AnyGrammar::token_category`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TokenCategory {
+    /// SQL keyword (SELECT, FROM, WHERE, …)
+    Keyword,
+    /// Bind parameter or session variable (`:name`, `@var`, `?`)
+    Variable,
+    /// String literal or blob literal
+    String,
+    /// Numeric literal
+    Number,
+    /// Operator or comparison symbol (`+`, `=`, `||`, …)
+    Operator,
+    /// Comment (`-- …` or `/* … */`)
+    Comment,
+    /// Punctuation (`,`, `(`, `)`, `;`, …)
+    Punctuation,
+    /// Quoted or unquoted identifier
+    Identifier,
+    /// Built-in or user-defined function name
+    Function,
+    /// Type name (in CAST, column definitions, …)
+    Type,
+    /// Anything that doesn't fall into the above categories
+    Other,
+}
+
+impl From<ffi::CTokenCategory> for TokenCategory {
+    fn from(c: ffi::CTokenCategory) -> Self {
+        match c {
+            ffi::CTokenCategory::Keyword => Self::Keyword,
+            ffi::CTokenCategory::Identifier => Self::Identifier,
+            ffi::CTokenCategory::String => Self::String,
+            ffi::CTokenCategory::Number => Self::Number,
+            ffi::CTokenCategory::Operator => Self::Operator,
+            ffi::CTokenCategory::Punctuation => Self::Punctuation,
+            ffi::CTokenCategory::Comment => Self::Comment,
+            ffi::CTokenCategory::Variable => Self::Variable,
+            ffi::CTokenCategory::Function => Self::Function,
+            ffi::CTokenCategory::Type => Self::Type,
+            ffi::CTokenCategory::Other => Self::Other,
+        }
+    }
+}
+
+/// A reference to one field's metadata entry in the grammar tables.
+///
+/// Obtained from [`AnyGrammar::field_meta`].
+pub struct FieldMeta<'a>(pub(crate) &'a ffi::CFieldMeta);
+
+impl FieldMeta<'_> {
+    /// Byte offset of this field within its parent AST node struct.
+    pub fn offset(&self) -> u16 {
+        self.0.offset
+    }
+
+    /// Semantic kind of this field.
+    pub fn kind(&self) -> FieldKind {
+        FieldKind::from_u8(self.0.kind)
+    }
+
+    /// The field name as a `&str`.
+    ///
+    /// # Panics
+    /// Panics if the grammar table contains invalid UTF-8 in the field name
+    /// (which would indicate a codegen bug).
+    pub fn name(&self) -> &'static str {
+        // SAFETY: `FieldMeta` is only constructed from static grammar tables
+        // where `name` is always a valid, NUL-terminated UTF-8 C string.
+        unsafe {
+            let cstr = std::ffi::CStr::from_ptr(self.0.name);
+            cstr.to_str().expect("invalid UTF-8 in field name")
+        }
+    }
+
+    /// The `idx`-th display name for enum variants, if present.
+    ///
+    /// # Panics
+    /// Panics if the grammar table contains invalid UTF-8 in a display name
+    /// (which would indicate a codegen bug).
+    pub fn display_name(&self, idx: usize) -> Option<&'static str> {
+        if self.0.display.is_null() || idx >= self.0.display_count as usize {
+            return None;
+        }
+        // SAFETY: `FieldMeta` is only constructed from static grammar tables;
+        // `display` and its entries are valid static C strings.
+        unsafe {
+            let ptr = *self.0.display.add(idx);
+            if ptr.is_null() {
+                return None;
+            }
+            let cstr = std::ffi::CStr::from_ptr(ptr);
+            Some(cstr.to_str().expect("invalid UTF-8 in display name"))
+        }
+    }
+
+    /// Number of display names for this field.
+    pub fn display_count(&self) -> usize {
+        self.0.display_count as usize
+    }
+}
 
 /// A typed grammar handle for a specific dialect.
 ///
@@ -28,9 +160,9 @@ pub trait TypedGrammar: Copy {
 /// Carries the target `SQLite` version and compile-time flags for a dialect.
 /// It is cheap to copy and safe to send across threads.
 ///
-/// Obtain one via a dialect-specific wrapper (e.g. [`crate::sqlite::grammar::SqliteGrammar`]);
-/// use [`TypedGrammar`] when you need the typed dialect API, or pass `AnyGrammar` directly
-/// to [`crate::Parser`] and other grammar-agnostic infrastructure.
+/// Obtain one via a dialect-specific wrapper (e.g. `SqliteGrammar`);
+/// use [`typed::TypedGrammar`](crate::typed::TypedGrammar) when you need the typed dialect API,
+/// or pass `AnyGrammar` directly to [`crate::Parser`] and other grammar-agnostic infrastructure.
 #[derive(Clone, Copy)]
 pub struct AnyGrammar {
     pub(crate) inner: ffi::CGrammar,
@@ -42,45 +174,41 @@ unsafe impl Send for AnyGrammar {}
 unsafe impl Sync for AnyGrammar {}
 
 impl AnyGrammar {
-    /// Construct a `AnyGrammar` from a raw C grammar value.
+    /// Construct a `AnyGrammar` from a raw C grammar value.\
+    ///
+    /// This unsafe method exists only for use by grammar implementations which are code generated.
+    /// End users should never need to call this directly.
     ///
     /// # Safety
     /// The `template` pointer inside `inner` must point to valid, `'static`
     /// C grammar tables (e.g. returned by a dialect's `extern "C"` grammar
     /// accessor such as `syntaqlite_sqlite_grammar()`).
-    #[allow(private_interfaces)]
     pub unsafe fn new(inner: ffi::CGrammar) -> Self {
         AnyGrammar { inner }
     }
 
     /// Set the target `SQLite` version.
-    pub fn with_version(mut self, version: crate::util::SqliteVersion) -> Self {
+    #[must_use]
+    pub fn with_version(mut self, version: SqliteVersion) -> Self {
         self.inner.sqlite_version = version.as_int();
         self
     }
 
-    /// Set a compile-time flag by index.
-    pub fn with_cflag(mut self, idx: u32) -> Self {
-        self.inner.cflags.set(idx);
-        self
-    }
-
     /// Replace the entire cflags bitfield.
-    #[allow(private_interfaces)]
-    pub fn with_cflags(mut self, cflags: Cflags) -> Self {
-        self.inner.cflags = cflags;
+    #[must_use]
+    pub fn with_cflags(mut self, flags: SqliteFlags) -> Self {
+        self.inner.cflags = flags.0;
         self
     }
 
     /// The target `SQLite` version.
-    pub fn version(&self) -> i32 {
-        self.inner.sqlite_version
+    pub fn version(&self) -> SqliteVersion {
+        SqliteVersion::from_int(self.inner.sqlite_version)
     }
 
     /// The active compile-time flags.
-    #[allow(private_interfaces)]
-    pub fn cflags(&self) -> &Cflags {
-        &self.inner.cflags
+    pub fn cflags(&self) -> SqliteFlags {
+        SqliteFlags(self.inner.cflags)
     }
 
     /// Return a reference to the abstract grammar template.
@@ -91,6 +219,9 @@ impl AnyGrammar {
     }
 
     /// Return the node name for the given tag.
+    ///
+    /// # Panics
+    /// Panics if `tag` is out of bounds for this grammar.
     pub fn node_name(&self, tag: u32) -> &'static str {
         let raw = self.template();
         let idx = tag as usize;
@@ -120,89 +251,156 @@ impl AnyGrammar {
         unsafe { *raw.list_tags.add(idx) != 0 }
     }
 
-    /// Return the field metadata slice for a node tag.
-    pub fn field_meta(&self, tag: u32) -> &'static [ffi::CFieldMeta] {
+    /// Return the field metadata for a node tag as an iterator of [`FieldMeta`].
+    pub fn field_meta(&self, tag: u32) -> impl ExactSizeIterator<Item = FieldMeta<'static>> {
         let raw = self.template();
         let idx = tag as usize;
-        if idx >= raw.node_count as usize {
-            return &[];
-        }
-        // SAFETY: idx is bounds-checked above; field_meta_counts and field_meta
-        // are parallel arrays of length node_count populated by codegen.
-        unsafe {
-            let count = *raw.field_meta_counts.add(idx) as usize;
-            let ptr = *raw.field_meta.add(idx);
-            if count == 0 || ptr.is_null() {
-                return &[];
+        // SAFETY: idx is bounds-checked; field_meta_counts and field_meta are
+        // parallel static arrays of length node_count populated by codegen.
+        let slice: &'static [ffi::CFieldMeta] = unsafe {
+            if idx >= raw.node_count as usize {
+                &[]
+            } else {
+                let count = *raw.field_meta_counts.add(idx) as usize;
+                let ptr = *raw.field_meta.add(idx);
+                if count == 0 || ptr.is_null() {
+                    &[]
+                } else {
+                    std::slice::from_raw_parts(ptr, count)
+                }
             }
-            std::slice::from_raw_parts(ptr, count)
-        }
+        };
+        slice.iter().map(FieldMeta)
     }
 
-    /// Return the raw token category byte for a token type ordinal.
-    pub fn token_category_raw(&self, token_type: u32) -> u8 {
+    /// Return the [`TokenCategory`] for a token type ordinal.
+    pub fn token_category(&self, token_type: u32) -> TokenCategory {
         let raw = self.template();
-        if raw.token_categories.is_null() || token_type >= raw.token_type_count {
-            return 0;
+        let idx = token_type as usize;
+        if raw.token_categories.is_null() || idx >= raw.token_type_count as usize {
+            return TokenCategory::Other;
         }
-        // SAFETY: token_type is bounds-checked above; token_categories is a static array.
-        unsafe { *raw.token_categories.add(token_type as usize) }
+        // SAFETY: token_categories is null-checked; it is a static array of
+        // length token_type_count populated by codegen.
+        let byte = unsafe { *raw.token_categories.add(idx) };
+        TokenCategory::from(ffi::CTokenCategory::from_u8(byte))
     }
 
-    /// Return number of entries in the grammar's exported mkkeyword table.
-    pub fn keyword_count(&self) -> usize {
+    /// Iterate over all keyword entries in the grammar's exported keyword table.
+    ///
+    /// Yields a [`KeywordEntry`] for each keyword, containing the token type
+    /// ordinal and the keyword lexeme (e.g. `SELECT`, `WHERE`).
+    ///
+    /// The iterator implements [`ExactSizeIterator`], so `.len()` gives the
+    /// total keyword count without consuming the iterator.
+    pub fn keywords(&self) -> impl ExactSizeIterator<Item = KeywordEntry> + '_ {
         let raw = self.template();
-        if raw.keyword_count.is_null() {
-            return 0;
-        }
-        // SAFETY: keyword_count is null-checked above; it points to a static u32.
-        unsafe { *raw.keyword_count as usize }
-    }
-
-    /// Return the `idx`th keyword entry as `(token_type, keyword_lexeme)`.
-    pub fn keyword_entry(&self, idx: usize) -> Option<(u32, &'static str)> {
-        let raw = self.template();
-        if raw.keyword_text.is_null()
+        let count = if raw.keyword_text.is_null()
             || raw.keyword_offsets.is_null()
             || raw.keyword_lens.is_null()
             || raw.keyword_codes.is_null()
             || raw.keyword_count.is_null()
         {
-            return None;
-        }
-        // SAFETY: all keyword pointers are null-checked above; arrays are static
-        // and populated by codegen. idx is bounds-checked against keyword_count.
-        unsafe {
-            let keyword_count = *raw.keyword_count as usize;
-            if idx >= keyword_count {
-                return None;
-            }
-            let code = u32::from(*raw.keyword_codes.add(idx));
-            let len = *raw.keyword_lens.add(idx) as usize;
-            if len == 0 {
-                return None;
-            }
-            let off = *raw.keyword_offsets.add(idx) as usize;
-            let text_base = raw.keyword_text.cast::<u8>();
-            let bytes = std::slice::from_raw_parts(text_base.add(off), len);
-            let value = std::str::from_utf8_unchecked(bytes);
-            Some((code, value))
-        }
-    }
-
-    /// Return `true` if `name` looks like a completable keyword symbol.
-    pub fn is_suggestable_keyword(name: &str) -> bool {
-        !name.is_empty()
-            && name
-                .bytes()
-                .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
+            0
+        } else {
+            // SAFETY: keyword_count is null-checked above; points to a static u32.
+            unsafe { *raw.keyword_count as usize }
+        };
+        KeywordIter { grammar: self, idx: 0, count }
     }
 }
+
+/// A single entry from the grammar's exported keyword table.
+///
+/// Yielded by [`AnyGrammar::keywords`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct KeywordEntry {
+    /// Raw token type ordinal for this keyword.
+    pub token_type: u32,
+    /// The keyword lexeme (e.g. `"SELECT"`, `"WHERE"`).
+    pub keyword: &'static str,
+}
+
+struct KeywordIter<'a> {
+    grammar: &'a AnyGrammar,
+    idx: usize,
+    count: usize,
+}
+
+impl Iterator for KeywordIter<'_> {
+    type Item = KeywordEntry;
+
+    fn next(&mut self) -> Option<KeywordEntry> {
+        if self.idx >= self.count {
+            return None;
+        }
+        let raw = self.grammar.template();
+        // SAFETY: all keyword pointers were null-checked in `keywords()`; arrays
+        // are static, length = self.count, and self.idx < self.count.
+        let entry = unsafe {
+            let code = u32::from(*raw.keyword_codes.add(self.idx));
+            let len = *raw.keyword_lens.add(self.idx) as usize;
+            let off = *raw.keyword_offsets.add(self.idx) as usize;
+            let bytes = std::slice::from_raw_parts(raw.keyword_text.cast::<u8>().add(off), len);
+            KeywordEntry {
+                token_type: code,
+                keyword: std::str::from_utf8_unchecked(bytes),
+            }
+        };
+        self.idx += 1;
+        Some(entry)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.count - self.idx;
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for KeywordIter<'_> {}
 
 // ── ffi ───────────────────────────────────────────────────────────────────────
 
 pub(crate) mod ffi {
-    use crate::cflags::Cflags;
+    use crate::util::ffi::CCflags;
+
+    /// Mirrors C `SynqTokenCategory` enum defined in
+    /// `include/syntaqlite/grammar.h`.
+    #[repr(u8)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub(crate) enum CTokenCategory {
+        Other = 0,
+        Keyword = 1,
+        Identifier = 2,
+        String = 3,
+        Number = 4,
+        Operator = 5,
+        Punctuation = 6,
+        Comment = 7,
+        Variable = 8,
+        Function = 9,
+        Type = 10,
+    }
+
+    impl CTokenCategory {
+        /// Convert a raw byte from the grammar table to a `CTokenCategory`.
+        /// Unknown values map to `Other`.
+        pub(crate) fn from_u8(v: u8) -> Self {
+            match v {
+                1 => Self::Keyword,
+                2 => Self::Identifier,
+                3 => Self::String,
+                4 => Self::Number,
+                5 => Self::Operator,
+                6 => Self::Punctuation,
+                7 => Self::Comment,
+                8 => Self::Variable,
+                9 => Self::Function,
+                10 => Self::Type,
+                _ => Self::Other,
+            }
+        }
+    }
 
     /// Mirrors C `SyntaqliteGrammarTemplate` struct defined in
     /// `include/syntaqlite/grammar.h`.
@@ -248,10 +446,10 @@ pub(crate) mod ffi {
     /// Mirrors C `SyntaqliteGrammar` from `include/syntaqlite/grammar.h`.
     #[repr(C)]
     #[derive(Debug, Clone, Copy)]
-    pub(crate) struct CGrammar {
+    pub struct CGrammar {
         pub(crate) template: *const CGrammarTemplate,
         pub(crate) sqlite_version: i32,
-        pub(crate) cflags: Cflags,
+        pub(crate) cflags: CCflags,
     }
 
     /// Mirrors C `SyntaqliteFieldMeta` from `include/syntaqlite_dialect/dialect_types.h`.

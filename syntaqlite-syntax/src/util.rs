@@ -3,6 +3,30 @@
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
+#[doc(inline)]
+pub use crate::cflags::SqliteFlag;
+
+/// An opaque snapshot of the active compile-time flags for a grammar.
+///
+/// Obtain one from [`AnyGrammar::cflags`](crate::any::AnyGrammar::cflags) and pass
+/// a clone back via [`AnyGrammar::with_cflags`](crate::any::AnyGrammar::with_cflags)
+/// to copy flag state from one grammar handle to another.
+///
+/// The set of available flag indices and their meanings are dialect-specific
+/// (e.g. the `SYNQ_CFLAG_IDX_*` constants exported by `syntaqlite`).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SqliteFlags(pub(crate) ffi::CCflags);
+
+impl SqliteFlags {
+    /// Returns `true` if the compile-time flag `flag` is set.
+    #[inline]
+    pub fn has(&self, flag: SqliteFlag) -> bool {
+        self.0.has(flag as u32)
+    }
+
+    // TODO(claude): add `set` and `clear` methods etc - match ffi.
+}
+
 /// A supported `SQLite` major.minor version.
 ///
 /// Used to constrain a grammar to a specific `SQLite` release, enabling
@@ -120,6 +144,56 @@ impl SqliteVersion {
 // ── Crate-internal ───────────────────────────────────────────────────────────
 
 impl SqliteVersion {
+    /// Convert from `SQLite`'s `SQLITE_VERSION_NUMBER` integer format.
+    ///
+    /// Returns `SqliteVersion::Latest` for `i32::MAX` and for any unrecognised
+    /// value (e.g. a version newer than the highest known variant).
+    pub(crate) fn from_int(v: i32) -> Self {
+        match v {
+            3_012_000 => Self::V3_12,
+            3_013_000 => Self::V3_13,
+            3_014_000 => Self::V3_14,
+            3_015_000 => Self::V3_15,
+            3_016_000 => Self::V3_16,
+            3_017_000 => Self::V3_17,
+            3_018_000 => Self::V3_18,
+            3_019_000 => Self::V3_19,
+            3_020_000 => Self::V3_20,
+            3_021_000 => Self::V3_21,
+            3_022_000 => Self::V3_22,
+            3_023_000 => Self::V3_23,
+            3_024_000 => Self::V3_24,
+            3_025_000 => Self::V3_25,
+            3_026_000 => Self::V3_26,
+            3_027_000 => Self::V3_27,
+            3_028_000 => Self::V3_28,
+            3_029_000 => Self::V3_29,
+            3_030_000 => Self::V3_30,
+            3_031_000 => Self::V3_31,
+            3_032_000 => Self::V3_32,
+            3_033_000 => Self::V3_33,
+            3_034_000 => Self::V3_34,
+            3_035_000 => Self::V3_35,
+            3_036_000 => Self::V3_36,
+            3_037_000 => Self::V3_37,
+            3_038_000 => Self::V3_38,
+            3_039_000 => Self::V3_39,
+            3_040_000 => Self::V3_40,
+            3_041_000 => Self::V3_41,
+            3_042_000 => Self::V3_42,
+            3_043_000 => Self::V3_43,
+            3_044_000 => Self::V3_44,
+            3_045_000 => Self::V3_45,
+            3_046_000 => Self::V3_46,
+            3_047_000 => Self::V3_47,
+            3_048_000 => Self::V3_48,
+            3_049_000 => Self::V3_49,
+            3_050_000 => Self::V3_50,
+            3_051_000 => Self::V3_51,
+            _ => Self::Latest,
+        }
+    }
+
     /// Convert to `SQLite`'s `SQLITE_VERSION_NUMBER` integer format.
     ///
     /// Uses the formula `major * 1_000_000 + minor * 1_000`, matching the
@@ -171,7 +245,77 @@ impl SqliteVersion {
     }
 }
 
+// ── ffi ───────────────────────────────────────────────────────────────────────
+
+pub(crate) mod ffi {
+    /// Mirrors C `SyntaqliteCflags` from `include/syntaqlite/cflags.h`.
+    ///
+    /// A packed bitfield over the parser-group compile-time flags (22 flags,
+    /// packed into 3 bytes). Indices match the `SYNQ_CFLAG_IDX_*` C constants
+    /// and the generated [`crate::cflags::SqliteFlag`] Rust enum.
+    #[repr(C)]
+    #[derive(Clone, Copy, Default)]
+    pub(crate) struct CCflags {
+        pub(super) bytes: [u8; 3],
+    }
+
+    #[allow(dead_code)]
+    impl CCflags {
+        pub(crate) const fn new() -> Self {
+            Self { bytes: [0; 3] }
+        }
+
+        #[inline]
+        pub(crate) fn has(self, idx: u32) -> bool {
+            let byte = idx / 8;
+            let bit = idx % 8;
+            (byte < 3) && (self.bytes[byte as usize] >> bit) & 1 != 0
+        }
+
+        #[inline]
+        pub(crate) fn set(&mut self, idx: u32) {
+            let byte = idx / 8;
+            let bit = idx % 8;
+            if byte < 3 {
+                self.bytes[byte as usize] |= 1 << bit;
+            }
+        }
+
+        #[inline]
+        pub(crate) fn clear(&mut self, idx: u32) {
+            let byte = idx / 8;
+            let bit = idx % 8;
+            if byte < 3 {
+                self.bytes[byte as usize] &= !(1 << bit);
+            }
+        }
+
+        #[inline]
+        pub(crate) fn clear_all(&mut self) {
+            self.bytes = [0; 3];
+        }
+    }
+
+    impl std::fmt::Debug for CCflags {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "Cflags({:02x?})", &self.bytes)
+        }
+    }
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
+
+/// Return `true` if `name` looks like a completable keyword symbol.
+///
+/// Keyword symbols use all-uppercase names with digits and underscores
+/// (e.g. `SELECT`, `LEFT_JOIN`). This is a pure naming-convention predicate
+/// and does not depend on grammar version or flags.
+pub fn is_suggestable_keyword(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_uppercase() || b.is_ascii_digit() || b == b'_')
+}
 
 #[cfg(test)]
 mod tests {

@@ -3,10 +3,9 @@
 
 #![cfg_attr(test, allow(clippy::unwrap_used, clippy::similar_names))]
 
-//! Low-level tokenizer and parser for `SQLite` SQL.
+//! Tokenizer and parser for `SQLite` SQL.
 //!
-//! `syntaqlite-syntax` wraps `SQLite`'s own tokenizer and grammar rules — extracted
-//! directly from `SQLite`'s source and verified by tests to match exactly — behind
+//! This crate wraps `SQLite`'s own tokenizer and grammar rules behind
 //! safe, zero-dependency Rust APIs. Four design principles guide the library:
 //!
 //! - **Reliability** — uses `SQLite`'s own tokenizer and grammar rules directly; verified by tests to be identical to `SQLite`'s interpretation.
@@ -18,9 +17,8 @@
 //!
 //! Use [`Tokenizer`] to break SQL source text into [`Token`]s:
 //!
-//! ```rust,ignore
-//! let grammar = syntaqlite_syntax::sqlite::grammar::grammar();
-//! let tokenizer = syntaqlite_syntax::Tokenizer::new(grammar);
+//! ```rust
+//! let tokenizer = syntaqlite_syntax::Tokenizer::new();
 //! for token in tokenizer.tokenize("SELECT 1") {
 //!     println!("{:?}: {:?}", token.token_type(), token.text());
 //! }
@@ -30,12 +28,11 @@
 //!
 //! Use [`Parser`] to parse SQL source text into a typed AST:
 //!
-//! ```rust,ignore
-//! let grammar = syntaqlite_syntax::sqlite::grammar::grammar();
-//! let parser = syntaqlite_syntax::Parser::new(grammar.into_raw());
-//! let cursor = parser.parse("SELECT 1");
-//! while let Some(stmt) = cursor.next_statement() {
-//!     println!("{stmt:?}");
+//! ```rust
+//! let parser = syntaqlite_syntax::Parser::new();
+//! let mut session = parser.parse("SELECT 1");
+//! while let Some(result) = session.next_statement() {
+//!     println!("{result:?}");
 //! }
 //! ```
 //!
@@ -47,9 +44,15 @@
 // ==== Public API ====
 
 // Top level parser types.
+#[doc(inline)]
+pub use parser::ParserConfig;
 #[cfg(feature = "sqlite")]
 #[doc(inline)]
-pub use parser::{ParseError, ParseSession, Parser, StatementResult};
+pub use parser::{ParseError, ParseSession, Parser, ParserToken, StatementResult};
+
+// Token/comment data types shared across dialects.
+#[doc(inline)]
+pub use parser::{Comment, CommentKind, ParserTokenFlags};
 
 // Top-level tokenizer types.
 #[cfg(feature = "sqlite")]
@@ -57,30 +60,124 @@ pub use parser::{ParseError, ParseSession, Parser, StatementResult};
 pub use tokenizer::{Token, Tokenizer};
 
 /// AST accessor traits implemented by generated dialect types.
+#[doc(hidden)]
 pub mod ast_traits;
-
-/// Tokenizer for `SQLite` SQL text.
-pub mod tokenizer;
 
 /// Shared utilities (e.g. [`SqliteVersion`](util::SqliteVersion)).
 pub mod util;
 
-/// Grammar-agnostic AST node types and traits.
-pub mod ast;
-
-/// Incremental parse session types.
-pub mod incremental;
-
-/// Built-in `SQLite` dialect: AST types, token types, and grammar handle.
+/// Type-erased variants of every parser and tokenizer type.
 ///
-/// Use `sqlite::grammar::grammar()` to obtain a grammar handle and pass it to
-/// [`Tokenizer`] or [`Parser`].
+/// **Most code should not need this module.** If you are working with the
+/// `SQLite` dialect — which is the common case — use the top-level
+/// [`Parser`], [`ParseSession`], [`Tokenizer`], and [`Token`] types instead.
+///
+/// ## When to use `any`
+///
+/// Reach for this module only when you need to work with grammars generically,
+/// without knowing the dialect at compile time. The primary use cases are:
+///
+/// - **Multi-dialect infrastructure** — tools that accept an [`any::AnyGrammar`]
+///   from the caller and operate on whichever dialect is handed in (e.g. a
+///   generic formatter, a language-server host, or a test harness that runs
+///   against several grammars).
+/// - **Storage without a lifetime parameter** — [`any::AnyNodeId`] identifies a
+///   node in a parse arena and can be stored freely; typed node references
+///   borrow the arena and cannot outlive it.
+/// - **FFI and plugin boundaries** — [`any::AnyGrammar`] is `Copy + Send + Sync`
+///   and is the natural unit to pass across crate boundaries or plugin APIs.
+///
+/// ## Caveats
+///
+/// The `Any*` types erase the dialect's token and node enums, replacing them
+/// with raw `u32` ordinals. You lose exhaustive `match` on token kinds and
+/// the typed accessor methods on AST nodes. Prefer the typed API whenever the
+/// dialect is known statically.
+pub mod any {
+    #[doc(inline)]
+    pub use crate::ast::{AnyDialect, AnyNode, AnyNodeId, FieldValue, NodeFields};
+    #[doc(inline)]
+    pub use crate::grammar::{AnyGrammar, FieldKind, FieldMeta, TokenCategory};
+    #[doc(inline)]
+    pub use crate::parser::{
+        AnyIncrementalParseSession, AnyParseError, AnyParseSession, AnyParser, AnyParserToken,
+        AnyStatementResult, MacroRegion,
+    };
+    #[doc(inline)]
+    pub use crate::tokenizer::{AnyToken, AnyTokenizer};
+}
+
+/// Generic, grammar-parameterized variants of every parser and tokenizer type.
+///
+/// **Most code should not need this module.** Application code working with
+/// the `SQLite` dialect should use the top-level [`Parser`], [`ParseSession`],
+/// [`Tokenizer`], and [`Token`] types, which are thin wrappers over the typed
+/// internals already instantiated for `SQLite`.
+///
+/// ## When to use `typed`
+///
+/// In practice, you will rarely import from this module directly. Its contents
+/// are primarily consumed by the dialect generator: the traits
+/// [`GrammarNodeType`](typed::GrammarNodeType),
+/// [`GrammarTokenType`](typed::GrammarTokenType), and
+/// [`TypedNodeId`](typed::TypedNodeId) are implemented automatically for each
+/// grammar's generated node and token enums. The generator produces correct
+/// implementations — you do not implement or import these manually.
+///
+/// If you need to write code that works across grammars without dialect-specific
+/// types, use [`any`] instead, which provides type-erased equivalents that are
+/// far easier to work with.
+pub mod typed {
+    #[doc(inline)]
+    pub use crate::ast::{GrammarNodeType, GrammarTokenType, TypedNodeId, TypedNodeList};
+    #[doc(inline)]
+    pub use crate::grammar::TypedGrammar;
+    #[doc(inline)]
+    pub use crate::parser::{
+        TypedIncrementalParseSession, TypedParseError, TypedParseSession, TypedParser,
+        TypedParserToken, TypedStatementResult,
+    };
+    #[doc(inline)]
+    pub use crate::tokenizer::{TypedToken, TypedTokenizer};
+
+    // Only exposed for use in generated code, not public API.
+    #[doc(hidden)]
+    pub use crate::grammar::ffi::CGrammar;
+
+    /// Top-level grammar handle for the `SQLite` dialect.
+    ///
+    /// Most code should not need to call `grammar()` directly; the top-level [`crate::Parser`]
+    /// and [`crate::Tokenizer`] types construct it internally. However, if you need to
+    /// work with the grammar directly — for example, to inspect its token and node
+    /// metadata, or to construct a parser or tokenizer manually — you can obtain a
+    /// handle with `grammar()`.
+    #[cfg(feature = "sqlite")]
+    pub use crate::sqlite::grammar::grammar;
+}
+
+/// Typed AST node types for the built-in `SQLite` dialect.
+///
+/// Re-exports every generated node struct, enum, and accessor type for the
+/// `SQLite` dialect. Import from here when you need to name concrete node
+/// types — for example, when pattern-matching on a [`StatementResult`] or
+/// traversing the parse tree.
 #[cfg(feature = "sqlite")]
-pub mod sqlite;
+pub mod nodes {
+    pub use crate::sqlite::ast::*;
+}
+
+// Top-level incremental parse session type (SQLite dialect).
+#[cfg(feature = "sqlite")]
+#[doc(inline)]
+pub use parser::IncrementalParseSession;
 
 // ==== Internal modules ====
 
-mod cflags;
+pub(crate) mod ast;
+pub(crate) mod cflags;
 mod grammar;
-/// Low-level typed parser and parse session types.
-pub mod parser;
+pub(crate) mod parser;
+pub(crate) mod tokenizer;
+
+#[cfg(feature = "sqlite")]
+pub(crate) mod sqlite;

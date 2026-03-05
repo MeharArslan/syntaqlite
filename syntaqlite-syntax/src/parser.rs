@@ -7,7 +7,9 @@ use std::marker::PhantomData;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::ast::{AnyDialect, AnyNodeId, ArenaNode, GrammarNodeType, RawNodeList};
+use crate::ast::{
+    AnyDialect, AnyNode, AnyNodeId, ArenaNode, GrammarNodeType, GrammarTokenType, RawNodeList,
+};
 use crate::grammar::{AnyGrammar, TypedGrammar};
 
 // ── Public API ───────────────────────────────────────────────────────────────
@@ -15,10 +17,34 @@ use crate::grammar::{AnyGrammar, TypedGrammar};
 /// Configuration for parser construction.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct ParserConfig {
+    trace: bool,
+    collect_tokens: bool,
+}
+
+impl ParserConfig {
     /// Enable parser trace output (Lemon debug trace). Default: `false`.
-    pub trace: bool,
+    pub fn trace(&self) -> bool {
+        self.trace
+    }
+
     /// Collect non-whitespace token positions during parsing. Default: `false`.
-    pub collect_tokens: bool,
+    pub fn collect_tokens(&self) -> bool {
+        self.collect_tokens
+    }
+
+    /// Set whether to enable parser trace output.
+    #[must_use]
+    pub fn with_trace(mut self, trace: bool) -> Self {
+        self.trace = trace;
+        self
+    }
+
+    /// Set whether to collect non-whitespace token positions.
+    #[must_use]
+    pub fn with_collect_tokens(mut self, collect_tokens: bool) -> Self {
+        self.collect_tokens = collect_tokens;
+        self
+    }
 }
 
 /// A parser for the `SQLite` dialect. Yields [`ParseSession`]s with
@@ -30,7 +56,7 @@ pub struct ParserConfig {
 /// methods take `&self` rather than `&mut self`.
 #[cfg(feature = "sqlite")]
 #[doc(hidden)]
-pub struct Parser(TypedParser<crate::sqlite::grammar::SqliteGrammar>);
+pub struct Parser(TypedParser<crate::sqlite::grammar::Grammar>);
 
 #[cfg(feature = "sqlite")]
 impl Parser {
@@ -58,14 +84,14 @@ impl Parser {
     }
 
     /// Bind source text and return an
-    /// [`IncrementalParseSession`](crate::incremental::IncrementalParseSession)
+    /// [`IncrementalParseSession`](crate::IncrementalParseSession)
     /// for token-by-token feeding.
     ///
     /// # Panics
     ///
     /// Panics if a session from a previous `parse()` or `incremental_parse()`
     /// call is still alive.
-    pub fn incremental_parse(&self, source: &str) -> crate::incremental::IncrementalParseSession {
+    pub fn incremental_parse(&self, source: &str) -> IncrementalParseSession {
         self.0.incremental_parse(source).into()
     }
 }
@@ -86,7 +112,7 @@ impl Default for Parser {
 ///
 #[cfg(feature = "sqlite")]
 #[doc(hidden)]
-pub struct ParseSession(TypedParseSession<crate::sqlite::grammar::SqliteGrammar>);
+pub struct ParseSession(TypedParseSession<crate::sqlite::grammar::Grammar>);
 
 #[cfg(feature = "sqlite")]
 impl ParseSession {
@@ -114,12 +140,49 @@ impl ParseSession {
     }
 }
 
+/// A recorded `SQLite` token position from a parsed statement.
+///
+/// Returned by [`StatementResult::tokens`]. Requires `collect_tokens: true`
+/// in [`ParserConfig`]. This is the `SQLite`-specific form of the
+/// grammar-generic [`TypedParserToken`].
+#[cfg(feature = "sqlite")]
+pub struct ParserToken<'a>(TypedParserToken<'a, crate::sqlite::grammar::Grammar>);
+
+#[cfg(feature = "sqlite")]
+impl<'a> ParserToken<'a> {
+    /// The source text slice covered by this token.
+    pub fn text(&self) -> &'a str {
+        self.0.text()
+    }
+
+    /// The `SQLite` token type.
+    pub fn token_type(&self) -> crate::sqlite::tokens::TokenType {
+        self.0.token_type()
+    }
+
+    /// Token-usage flags set during disambiguation.
+    pub fn flags(&self) -> ParserTokenFlags {
+        self.0.flags()
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl std::fmt::Debug for ParserToken<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ParserToken")
+            .field("text", &self.0.text())
+            .field("token_type", &self.0.token_type())
+            .field("flags", &self.0.flags())
+            .finish()
+    }
+}
+
 /// The result of a successfully parsed `SQLite` statement.
 /// Produced by [`ParseSession::next_statement`].
 #[cfg(feature = "sqlite")]
 #[doc(hidden)]
 pub struct StatementResult<'a>(
-    pub(crate) TypedStatementResult<'a, crate::sqlite::grammar::SqliteGrammar>,
+    pub(crate) TypedStatementResult<'a, crate::sqlite::grammar::Grammar>,
 );
 
 #[cfg(feature = "sqlite")]
@@ -135,18 +198,26 @@ impl<'a> StatementResult<'a> {
     }
 
     /// Per-statement token positions. Requires `collect_tokens: true`.
-    pub fn tokens(&self) -> &'a [TokenPos] {
-        self.0.tokens()
+    pub fn tokens(&self) -> impl Iterator<Item = ParserToken<'a>> {
+        self.0.tokens().map(ParserToken)
     }
 
     /// Per-statement comments. Requires `collect_tokens: true`.
-    pub fn comments(&self) -> &'a [Comment] {
+    pub fn comments(&self) -> impl Iterator<Item = Comment<'a>> {
         self.0.comments()
     }
 
     /// Whether this result has an associated parse error (RECOVERED case).
     pub fn has_error(&self) -> bool {
         self.0.has_error()
+    }
+
+    /// Erase the grammar type parameter, returning a type-erased [`AnyStatementResult`].
+    ///
+    /// Use this to access grammar-agnostic APIs such as [`AnyStatementResult::extract_fields`],
+    /// [`AnyStatementResult::list_children`], and [`AnyStatementResult::macro_regions`].
+    pub fn erase(&self) -> AnyStatementResult<'a> {
+        self.0.erase()
     }
 }
 
@@ -155,7 +226,7 @@ impl<'a> StatementResult<'a> {
 /// Obtain via [`ParseSession::next_statement`].
 #[cfg(feature = "sqlite")]
 #[doc(hidden)]
-pub struct ParseError<'a>(pub(crate) TypedParseError<'a, crate::sqlite::grammar::SqliteGrammar>);
+pub struct ParseError<'a>(pub(crate) TypedParseError<'a, crate::sqlite::grammar::Grammar>);
 
 #[cfg(feature = "sqlite")]
 impl<'a> ParseError<'a> {
@@ -221,9 +292,9 @@ impl<G: TypedGrammar> TypedParser<G> {
 
         // SAFETY: raw is freshly created (not sealed), so these calls always return 0.
         unsafe {
-            raw.as_mut().set_trace(u32::from(config.trace));
+            raw.as_mut().set_trace(u32::from(config.trace()));
             raw.as_mut()
-                .set_collect_tokens(u32::from(config.collect_tokens));
+                .set_collect_tokens(u32::from(config.collect_tokens()));
         }
 
         TypedParser {
@@ -267,10 +338,7 @@ impl<G: TypedGrammar> TypedParser<G> {
     ///
     /// Panics if a session from a previous `parse()` or `incremental_parse()`
     /// call is still alive.
-    pub(crate) fn incremental_parse(
-        &self,
-        source: &str,
-    ) -> crate::incremental::TypedIncrementalParseSession<G> {
+    pub(crate) fn incremental_parse(&self, source: &str) -> TypedIncrementalParseSession<G> {
         let mut inner = self
             .inner
             .borrow_mut()
@@ -281,12 +349,7 @@ impl<G: TypedGrammar> TypedParser<G> {
         unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
         let c_source_ptr =
             NonNull::new(inner.source_buf.as_mut_ptr()).expect("source_buf is non-empty");
-        crate::incremental::TypedIncrementalParseSession::new(
-            c_source_ptr,
-            self.grammar,
-            inner,
-            Rc::clone(&self.inner),
-        )
+        TypedIncrementalParseSession::new(c_source_ptr, self.grammar, inner, Rc::clone(&self.inner))
     }
 }
 
@@ -294,7 +357,7 @@ impl TypedParser<AnyDialect> {
     /// Create a type-erased parser from a [`AnyGrammar`].
     #[allow(dead_code)]
     pub(crate) fn from_raw_grammar(grammar: AnyGrammar) -> Self {
-        Self::new(AnyDialect { raw: grammar })
+        Self::new(AnyDialect::new(grammar))
     }
 }
 
@@ -424,7 +487,7 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
 
     /// Erase the grammar type parameter.
     ///
-    /// Required when passing this result to [`GrammarNodeType::from_arena`],
+    /// Required when passing this result to [`GrammarNodeType::from_result`],
     /// which expects a type-erased `stmt_result`.
     pub fn erase(self) -> AnyStatementResult<'a> {
         TypedStatementResult {
@@ -437,11 +500,12 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
 
     /// The typed root node for this statement, or `None` if unavailable.
     pub fn root(&self) -> Option<G::Node<'a>> {
-        let id = self.root_id();
+        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
+        let id = AnyNodeId(unsafe { self.raw.as_ref().result_root() });
         if id.is_null() {
             return None;
         }
-        G::Node::from_arena(self.erase(), id)
+        G::Node::from_result(self.erase(), id)
     }
 
     /// The source text bound to this result.
@@ -450,15 +514,36 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
     }
 
     /// Per-statement token positions. Requires `collect_tokens: true`.
-    pub fn tokens(&self) -> &'a [TokenPos] {
-        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
-        unsafe { self.raw.as_ref().result_tokens() }
+    ///
+    /// Skips tokens whose type is not recognised by grammar `G`.
+    pub fn tokens(&self) -> impl Iterator<Item = TypedParserToken<'a, G>> {
+        let source = self.source;
+        // SAFETY: self.raw is valid for 'a; the returned slice lives for 'a.
+        let raw: &'a [ffi::CParserToken] = unsafe { self.raw.as_ref().result_tokens() };
+        raw.iter().filter_map(move |t| {
+            let token_type = G::Token::from_token_type(t.type_)?;
+            let text = &source[t.offset as usize..(t.offset + t.length) as usize];
+            Some(TypedParserToken {
+                text,
+                token_type,
+                flags: ParserTokenFlags(t.flags),
+            })
+        })
     }
 
     /// Per-statement comments. Requires `collect_tokens: true`.
-    pub fn comments(&self) -> &'a [Comment] {
-        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
-        unsafe { self.raw.as_ref().result_comments() }
+    pub fn comments(&self) -> impl Iterator<Item = Comment<'a>> {
+        let source = self.source;
+        // SAFETY: self.raw is valid for 'a; the returned slice lives for 'a.
+        let raw: &'a [ffi::CComment] = unsafe { self.raw.as_ref().result_comments() };
+        raw.iter().map(move |c| {
+            let text = &source[c.offset as usize..(c.offset + c.length) as usize];
+            let kind = match c.kind {
+                ffi::CCommentKind::LineComment => CommentKind::Line,
+                ffi::CCommentKind::BlockComment => CommentKind::Block,
+            };
+            Comment { text, kind }
+        })
     }
 
     /// Whether this result has an associated parse error (RECOVERED case).
@@ -468,12 +553,6 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
     }
 
     // ── Result accessors (mirror syntaqlite_result_*) ──────────────────────
-
-    /// Root node ID for the current statement (`AnyNodeId::NULL` if none).
-    pub(crate) fn root_id(&self) -> AnyNodeId {
-        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
-        AnyNodeId(unsafe { self.raw.as_ref().result_root() })
-    }
 
     /// Human-readable error message, or `None`.
     pub(crate) fn error_msg(&self) -> Option<&str> {
@@ -571,6 +650,96 @@ impl<'a, G: TypedGrammar> TypedStatementResult<'a, G> {
 /// A type-erased statement result. The grammar type parameter is fixed to [`AnyDialect`].
 pub type AnyStatementResult<'a> = TypedStatementResult<'a, AnyDialect>;
 
+// ── AnyDialect-specific statement result APIs ────────────────────────────────
+
+impl<'a> TypedStatementResult<'a, AnyDialect> {
+    /// Root node ID for the current statement (`AnyNodeId::NULL` if none).
+    ///
+    /// This is the untyped counterpart to [`TypedStatementResult::root`], which
+    /// returns the dialect's typed node. Use when working in a dialect-agnostic
+    /// context, e.g. when passing to [`extract_fields`](Self::extract_fields).
+    pub fn root_id(&self) -> AnyNodeId {
+        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
+        AnyNodeId(unsafe { self.raw.as_ref().result_root() })
+    }
+
+    /// Macro invocation regions recorded during parsing.
+    ///
+    /// Each region describes a macro call site's byte range in the original
+    /// source. Empty if no macro expansions occurred.
+    pub fn macro_regions(&self) -> impl Iterator<Item = MacroRegion> + '_ {
+        // SAFETY: self.raw is valid for 'a; the slice lives for the parser lifetime.
+        let raw: &[ffi::CMacroRegion] = unsafe { self.raw.as_ref().result_macros() };
+        raw.iter().map(|r| MacroRegion {
+            call_offset: r.call_offset,
+            call_length: r.call_length,
+        })
+    }
+
+    /// Extract the tag and fields from the node at `id`.
+    ///
+    /// Returns `Some((tag, fields))` where `tag` is the node type ordinal and
+    /// `fields` is an indexable collection of [`crate::ast::FieldValue`]s, or `None` if
+    /// `id` is null or invalid.
+    pub fn extract_fields(&self, id: AnyNodeId) -> Option<(u32, crate::ast::NodeFields<'a>)> {
+        let (ptr, tag) = self.node_ptr(id)?;
+        let mut fields = crate::ast::NodeFields::new();
+        for meta in self.grammar.field_meta(tag) {
+            // SAFETY: ptr is a valid arena node pointer valid for 'a;
+            // meta describes a field within that node's struct layout.
+            let val = unsafe { extract_field_value(ptr, &meta, self.source) };
+            fields.push(val);
+        }
+        Some((tag, fields))
+    }
+
+    /// Get the child node IDs of a list node.
+    ///
+    /// Returns `Some(children)` if `id` refers to a list node, `None` if
+    /// `id` is null, invalid, or refers to a non-list node.
+    pub fn list_children(&self, id: AnyNodeId) -> Option<&'a [AnyNodeId]> {
+        let (_, tag) = self.node_ptr(id)?;
+        if !self.grammar.is_list(tag) {
+            return None;
+        }
+        #[allow(clippy::redundant_closure_for_method_calls)]
+        self.resolve_list(id).map(|l| l.children())
+    }
+}
+
+/// Extract a single [`crate::ast::FieldValue`] from a raw arena node pointer.
+///
+/// # Safety
+/// `ptr` must point to a valid arena node struct whose field at `meta.offset()`
+/// has the type indicated by `meta.kind()`, and must be valid for lifetime `'a`.
+#[allow(clippy::cast_ptr_alignment)]
+unsafe fn extract_field_value<'a>(
+    ptr: *const u8,
+    meta: &crate::grammar::FieldMeta<'_>,
+    source: &'a str,
+) -> crate::ast::FieldValue<'a> {
+    use crate::ast::{FieldValue, SourceSpan};
+    use crate::grammar::FieldKind;
+    // SAFETY: covered by function-level contract; ptr and meta are consistent.
+    unsafe {
+        let field_ptr = ptr.add(meta.offset() as usize);
+        match meta.kind() {
+            FieldKind::NodeId => FieldValue::NodeId(AnyNodeId(*(field_ptr.cast::<u32>()))),
+            FieldKind::Span => {
+                let span = &*(field_ptr.cast::<SourceSpan>());
+                if span.length == 0 {
+                    FieldValue::Span("")
+                } else {
+                    FieldValue::Span(span.as_str(source))
+                }
+            }
+            FieldKind::Bool => FieldValue::Bool(*(field_ptr.cast::<u32>()) != 0),
+            FieldKind::Flags => FieldValue::Flags(*field_ptr),
+            FieldKind::Enum => FieldValue::Enum(*(field_ptr.cast::<u32>())),
+        }
+    }
+}
+
 /// A parse error with human-readable message, optional source location, and
 /// optionally a partial recovery tree. Parameterised by dialect grammar `G`.
 ///
@@ -620,6 +789,102 @@ impl<G: TypedGrammar> std::error::Error for TypedParseError<'_, G> {}
 /// multiple dialects.
 pub type AnyParseError<'a> = TypedParseError<'a, AnyDialect>;
 
+// ── Public token/comment types ───────────────────────────────────────────────
+
+/// The kind of a SQL comment.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommentKind {
+    /// A line comment starting with `--`.
+    Line,
+    /// A block comment delimited by `/* ... */`.
+    Block,
+}
+
+/// A comment found during parsing.
+///
+/// Returned by [`TypedStatementResult::comments`]. Requires
+/// `collect_tokens: true` in [`ParserConfig`].
+#[derive(Debug, Clone, Copy)]
+pub struct Comment<'a> {
+    /// The full comment text, including delimiters.
+    pub text: &'a str,
+    /// Whether this is a line (`--`) or block (`/* */`) comment.
+    pub kind: CommentKind,
+}
+
+/// Token-usage flags set by the parser during disambiguation.
+///
+/// Returned as part of [`TypedParserToken`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ParserTokenFlags(u32);
+
+impl ParserTokenFlags {
+    /// Returns the raw flag bitfield.
+    pub fn raw(self) -> u32 {
+        self.0
+    }
+
+    /// True if the token was used as an identifier in this context.
+    pub fn used_as_identifier(self) -> bool {
+        self.0 & 1 != 0
+    }
+
+    /// True if the token was used as a function name.
+    pub fn used_as_function(self) -> bool {
+        self.0 & 2 != 0
+    }
+
+    /// True if the token was used as a type name.
+    pub fn used_as_type(self) -> bool {
+        self.0 & 4 != 0
+    }
+}
+
+/// A recorded token position from a parsed statement, typed by grammar `G`.
+///
+/// Returned by [`TypedStatementResult::tokens`]. Requires
+/// `collect_tokens: true` in [`ParserConfig`].
+#[derive(Debug, Clone, Copy)]
+pub struct TypedParserToken<'a, G: TypedGrammar> {
+    text: &'a str,
+    token_type: G::Token,
+    flags: ParserTokenFlags,
+}
+
+impl<'a, G: TypedGrammar> TypedParserToken<'a, G> {
+    /// The source text slice covered by this token.
+    pub fn text(&self) -> &'a str {
+        self.text
+    }
+
+    /// Dialect-typed token variant.
+    pub fn token_type(&self) -> G::Token {
+        self.token_type
+    }
+
+    /// Usage flags set by the parser during disambiguation.
+    pub fn flags(&self) -> ParserTokenFlags {
+        self.flags
+    }
+}
+
+/// A type-erased token position, not tied to any specific dialect.
+///
+/// This is [`TypedParserToken`] with the grammar parameter fixed to [`AnyDialect`].
+pub type AnyParserToken<'a> = TypedParserToken<'a, AnyDialect>;
+
+/// A recorded macro invocation region in the source text.
+///
+/// Describes the byte range of a macro call site in the original source.
+/// Returned by [`AnyStatementResult::macro_regions`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MacroRegion {
+    /// Byte offset of the macro call in the original source.
+    pub call_offset: u32,
+    /// Byte length of the entire macro call.
+    pub call_length: u32,
+}
+
 // ── Crate-internal ───────────────────────────────────────────────────────────
 
 /// Holds the C parser handle and mutable state. Checked out by sessions at
@@ -634,6 +899,347 @@ impl Drop for ParserInner {
         // SAFETY: self.raw was allocated by CParser::create and has not been
         // freed (Drop runs exactly once).
         unsafe { CParser::destroy(self.raw.as_ptr()) }
+    }
+}
+
+// ── Incremental parse sessions ────────────────────────────────────────────────
+
+use std::ops::Range;
+
+/// A type-safe incremental parse session for a specific dialect `G`.
+///
+/// Feed tokens one at a time via `feed_token` and signal
+/// end of input with `finish`.
+///
+/// For the `SQLite` dialect use [`IncrementalParseSession`]. For dialect-agnostic
+/// use with raw grammars use [`AnyIncrementalParseSession`].
+///
+/// Obtained via `TypedParser::incremental_parse`.
+pub struct TypedIncrementalParseSession<G: TypedGrammar> {
+    /// Base pointer into the internal source buffer. `feed_token` uses this
+    /// to compute the C-side token pointer from byte-offset spans.
+    #[allow(dead_code)]
+    c_source_ptr: NonNull<u8>,
+    #[allow(dead_code)]
+    grammar: AnyGrammar,
+    /// Checked-out parser state. Returned to `slot` on drop.
+    inner: Option<ParserInner>,
+    /// Slot to return `inner` to when this session is dropped.
+    slot: Rc<RefCell<Option<ParserInner>>>,
+    finished: bool,
+    _marker: PhantomData<G>,
+}
+
+impl<G: TypedGrammar> Drop for TypedIncrementalParseSession<G> {
+    fn drop(&mut self) {
+        if let Some(inner) = self.inner.take() {
+            *self.slot.borrow_mut() = Some(inner);
+        }
+    }
+}
+
+#[allow(dead_code)]
+impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
+    pub(crate) fn new(
+        c_source_ptr: NonNull<u8>,
+        grammar: AnyGrammar,
+        inner: ParserInner,
+        slot: Rc<RefCell<Option<ParserInner>>>,
+    ) -> Self {
+        TypedIncrementalParseSession {
+            c_source_ptr,
+            grammar,
+            inner: Some(inner),
+            slot,
+            finished: false,
+            _marker: PhantomData,
+        }
+    }
+
+    fn assert_not_finished(&self) {
+        assert!(
+            !self.finished,
+            "TypedIncrementalParseSession used after finish()"
+        );
+    }
+
+    fn raw_ptr(&self) -> *mut CParser {
+        self.inner
+            .as_ref()
+            .expect("inner taken after finish()")
+            .raw
+            .as_ptr()
+    }
+
+    fn typed_stmt_result(&self) -> TypedStatementResult<'_, G> {
+        let inner = self.inner.as_ref().expect("inner taken after finish()");
+        let source_len = inner.source_buf.len().saturating_sub(1);
+        // SAFETY: source_buf was populated from valid UTF-8 (&str) in
+        // reset_parser. The first source_len bytes are the original source.
+        let source = unsafe { std::str::from_utf8_unchecked(&inner.source_buf[..source_len]) };
+        // SAFETY: inner.raw is valid (owned via ParserInner, not yet destroyed).
+        unsafe { TypedStatementResult::new(inner.raw.as_ptr(), source, self.grammar) }
+    }
+
+    fn result_from_rc(
+        &self,
+        rc: i32,
+    ) -> Option<Result<TypedStatementResult<'_, G>, TypedParseError<'_, G>>> {
+        if rc == 0 {
+            return None;
+        }
+        let result = self.typed_stmt_result();
+        if rc == 1 {
+            Some(Ok(result))
+        } else {
+            Some(Err(TypedParseError::new(result)))
+        }
+    }
+
+    /// Feed a single token to the parser.
+    ///
+    /// `TK_SPACE` is silently skipped. `TK_COMMENT` is recorded as a comment
+    /// (when `collect_tokens` is enabled) but not fed to the parser.
+    ///
+    /// Returns:
+    /// - `None` — keep going, statement not yet complete.
+    /// - `Some(Ok(result))` — statement parsed cleanly; use
+    ///   [`TypedStatementResult::root`] to access the typed AST.
+    /// - `Some(Err(err))` — parse error; `err.root()` may contain a partial
+    ///   recovery tree.
+    ///
+    /// `span` is a byte range into the source text bound by this session.
+    /// `token_type` is a raw token type ordinal (dialect-specific).
+    pub(crate) fn feed_token(
+        &mut self,
+        token_type: u32,
+        span: Range<usize>,
+    ) -> Option<Result<TypedStatementResult<'_, G>, TypedParseError<'_, G>>> {
+        self.assert_not_finished();
+        // SAFETY: c_source_ptr is valid for the source length; raw is valid.
+        let rc = unsafe {
+            let c_text = self.c_source_ptr.as_ptr().add(span.start);
+            #[allow(clippy::cast_possible_truncation)]
+            (*self.raw_ptr()).feed_token(token_type, c_text as *const _, span.len() as u32)
+        };
+        self.result_from_rc(rc)
+    }
+
+    /// Signal end of input.
+    ///
+    /// Synthesizes a SEMI if the last token wasn't one, then sends EOF to the
+    /// parser. Returns:
+    /// - `None` — nothing was pending (empty input or bare semicolons only).
+    /// - `Some(Ok(result))` — final statement parsed cleanly.
+    /// - `Some(Err(err))` — parse error; `err.root()` may contain a partial
+    ///   recovery tree.
+    ///
+    /// No further methods may be called after `finish()`.
+    pub(crate) fn finish(
+        &mut self,
+    ) -> Option<Result<TypedStatementResult<'_, G>, TypedParseError<'_, G>>> {
+        self.assert_not_finished();
+        self.finished = true;
+        // SAFETY: raw is valid.
+        let rc = unsafe { (*self.raw_ptr()).finish() };
+        self.result_from_rc(rc)
+    }
+
+    /// Return terminal token IDs that are valid lookaheads at the current
+    /// parser state.
+    ///
+    /// Useful for completion engines after feeding tokens up to the session.
+    /// Returns raw dialect-specific token ordinals.
+    pub fn expected_tokens(&self) -> Vec<u32> {
+        self.assert_not_finished();
+        let raw = self.raw_ptr();
+        let mut stack_buf = [0u32; 256];
+        // SAFETY: raw is valid and exclusively borrowed via &self; stack_buf is
+        // a valid output buffer.
+        #[allow(clippy::cast_possible_truncation)]
+        let total =
+            unsafe { (*raw).expected_tokens(stack_buf.as_mut_ptr(), stack_buf.len() as u32) };
+        if total == 0 {
+            return Vec::new();
+        }
+        let count = total as usize;
+        if count <= stack_buf.len() {
+            stack_buf[..count].to_vec()
+        } else {
+            let mut heap_buf = vec![0u32; count];
+            // SAFETY: raw is valid; heap_buf is sized to hold `total` entries.
+            let written = unsafe { (*raw).expected_tokens(heap_buf.as_mut_ptr(), total) };
+            let len = written.clamp(0, total) as usize;
+            heap_buf.truncate(len);
+            heap_buf.into_iter().collect()
+        }
+    }
+
+    /// Return the semantic completion context at the current parser state.
+    ///
+    /// Returns a raw `u32`: `0` = Unknown, `1` = Expression, `2` = `TableRef`.
+    pub fn completion_context(&self) -> u32 {
+        self.assert_not_finished();
+        // SAFETY: raw is valid and exclusively borrowed via &self.
+        unsafe { (*self.raw_ptr()).completion_context() }
+    }
+
+    /// Return the number of nodes currently in the parser arena.
+    pub fn node_count(&self) -> u32 {
+        // SAFETY: raw is valid and exclusively borrowed via &self.
+        unsafe { (*self.raw_ptr()).node_count() }
+    }
+
+    /// Mark subsequent fed tokens as being inside a macro expansion.
+    ///
+    /// `call_offset` and `call_length` describe the macro call's byte range
+    /// in the original source. Calls may nest (for nested macro expansions).
+    pub fn begin_macro(&mut self, call_offset: u32, call_length: u32) {
+        self.assert_not_finished();
+        // SAFETY: raw is valid and exclusively borrowed via &mut self.
+        unsafe { (*self.raw_ptr()).begin_macro(call_offset, call_length) }
+    }
+
+    /// End the innermost macro expansion region.
+    pub fn end_macro(&mut self) {
+        self.assert_not_finished();
+        // SAFETY: raw is valid and exclusively borrowed via &mut self.
+        unsafe { (*self.raw_ptr()).end_macro() }
+    }
+
+    pub(crate) fn stmt_result(&self) -> AnyStatementResult<'_> {
+        self.typed_stmt_result().erase()
+    }
+
+    pub(crate) fn node_ref(&self, id: AnyNodeId) -> AnyNode<'_> {
+        AnyNode {
+            id,
+            stmt_result: self.stmt_result(),
+        }
+    }
+
+    pub(crate) fn comments(&self) -> &[ffi::CComment] {
+        // SAFETY: raw is valid (owned via ParserInner, valid for &self).
+        unsafe { (*self.raw_ptr()).result_comments() }
+    }
+
+    pub(crate) fn tokens(&self) -> &[ffi::CParserToken] {
+        // SAFETY: raw is valid (owned via ParserInner, valid for &self).
+        unsafe { (*self.raw_ptr()).result_tokens() }
+    }
+
+    pub(crate) fn macro_regions(&self) -> &[ffi::CMacroRegion] {
+        // SAFETY: raw is valid (owned via ParserInner, valid for &self).
+        unsafe { (*self.raw_ptr()).result_macros() }
+    }
+}
+
+/// A type-erased incremental parse session. Yields type-erased statement
+/// results with raw node types, suitable for use across multiple dialects.
+pub type AnyIncrementalParseSession = TypedIncrementalParseSession<AnyDialect>;
+
+/// An incremental parse session for the `SQLite` dialect. Produced by
+/// [`Parser::incremental_parse`].
+///
+/// Feed tokens one at a time via `feed_token` and signal
+/// end of input with `finish`.
+///
+/// On drop, the checked-out parser state is returned to the parent [`Parser`].
+#[cfg(feature = "sqlite")]
+pub struct IncrementalParseSession(TypedIncrementalParseSession<crate::sqlite::grammar::Grammar>);
+
+#[cfg(feature = "sqlite")]
+#[allow(dead_code)]
+impl IncrementalParseSession {
+    /// Feed a single token to the parser.
+    ///
+    /// Returns:
+    /// - `None` — keep going, statement not yet complete.
+    /// - `Some(Ok(result))` — statement parsed cleanly.
+    /// - `Some(Err(e))` — parse error; `e.root()` may contain a partial
+    ///   recovery tree.
+    pub(crate) fn feed_token(
+        &mut self,
+        token_type: u32,
+        span: Range<usize>,
+    ) -> Option<Result<StatementResult<'_>, ParseError<'_>>> {
+        Some(match self.0.feed_token(token_type, span)? {
+            Ok(result) => Ok(StatementResult(result)),
+            Err(err) => Err(ParseError(err)),
+        })
+    }
+
+    /// Signal end of input.
+    ///
+    /// Returns:
+    /// - `None` — nothing was pending.
+    /// - `Some(Ok(result))` — final statement parsed cleanly.
+    /// - `Some(Err(e))` — parse error; `e.root()` may contain a partial
+    ///   recovery tree.
+    ///
+    /// No further methods may be called after `finish()`.
+    pub(crate) fn finish(&mut self) -> Option<Result<StatementResult<'_>, ParseError<'_>>> {
+        Some(match self.0.finish()? {
+            Ok(result) => Ok(StatementResult(result)),
+            Err(err) => Err(ParseError(err)),
+        })
+    }
+
+    /// Return terminal token IDs that are valid lookaheads at the current
+    /// parser state.
+    pub fn expected_tokens(&self) -> Vec<u32> {
+        self.0.expected_tokens()
+    }
+
+    /// Return the semantic completion context at the current parser state.
+    ///
+    /// Returns a raw `u32`: `0` = Unknown, `1` = Expression, `2` = `TableRef`.
+    pub fn completion_context(&self) -> u32 {
+        self.0.completion_context()
+    }
+
+    /// Return the number of nodes currently in the parser arena.
+    pub fn node_count(&self) -> u32 {
+        self.0.node_count()
+    }
+
+    /// Mark subsequent fed tokens as being inside a macro expansion.
+    pub fn begin_macro(&mut self, call_offset: u32, call_length: u32) {
+        self.0.begin_macro(call_offset, call_length);
+    }
+
+    /// End the innermost macro expansion region.
+    pub fn end_macro(&mut self) {
+        self.0.end_macro();
+    }
+
+    pub(crate) fn stmt_result(&self) -> AnyStatementResult<'_> {
+        self.0.stmt_result()
+    }
+
+    pub(crate) fn node_ref(&self, id: AnyNodeId) -> AnyNode<'_> {
+        self.0.node_ref(id)
+    }
+
+    pub(crate) fn comments(&self) -> &[ffi::CComment] {
+        self.0.comments()
+    }
+
+    pub(crate) fn tokens(&self) -> &[ffi::CParserToken] {
+        self.0.tokens()
+    }
+
+    pub(crate) fn macro_regions(&self) -> &[ffi::CMacroRegion] {
+        self.0.macro_regions()
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl From<TypedIncrementalParseSession<crate::sqlite::grammar::Grammar>>
+    for IncrementalParseSession
+{
+    fn from(inner: TypedIncrementalParseSession<crate::sqlite::grammar::Grammar>) -> Self {
+        IncrementalParseSession(inner)
     }
 }
 
@@ -686,7 +1292,8 @@ mod ffi {
     /// The kind of a comment.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     #[repr(u8)]
-    pub enum CCommentKind {
+    #[allow(dead_code)]
+    pub(crate) enum CCommentKind {
         LineComment = 0,
         BlockComment = 1,
     }
@@ -694,7 +1301,7 @@ mod ffi {
     /// Mirrors C `SyntaqliteComment`.
     #[derive(Debug, Clone, Copy)]
     #[repr(C)]
-    pub struct CComment {
+    pub(crate) struct CComment {
         pub offset: u32,
         pub length: u32,
         pub kind: CCommentKind,
@@ -707,10 +1314,10 @@ mod ffi {
     #[allow(dead_code)]
     pub(super) const TOKEN_FLAG_AS_TYPE: u32 = 4;
 
-    /// Mirrors C `SyntaqliteTokenPos`.
+    /// Mirrors C `SyntaqliteParserToken`.
     #[derive(Debug, Clone, Copy)]
     #[repr(C)]
-    pub struct CTokenPos {
+    pub(crate) struct CParserToken {
         pub offset: u32,
         pub length: u32,
         pub type_: u32,
@@ -831,7 +1438,7 @@ mod ffi {
             unsafe { std::slice::from_raw_parts(ptr, count as usize) }
         }
 
-        pub(crate) unsafe fn result_tokens(&self) -> &[CTokenPos] {
+        pub(crate) unsafe fn result_tokens(&self) -> &[CParserToken] {
             let mut count: u32 = 0;
             // SAFETY: self is a valid, non-null CParser pointer; result
             // accessors are valid after `next()` returns a non-DONE code.
@@ -844,7 +1451,7 @@ mod ffi {
             if count == 0 || ptr.is_null() {
                 return &[];
             }
-            // SAFETY: ptr is a valid pointer to `count` CTokenPos values owned
+            // SAFETY: ptr is a valid pointer to `count` CParserToken values owned
             // by the parser arena; the slice is valid for the parser's lifetime.
             unsafe { std::slice::from_raw_parts(ptr, count as usize) }
         }
@@ -952,7 +1559,7 @@ mod ffi {
         fn syntaqlite_result_error_offset(p: *mut CParser) -> u32;
         fn syntaqlite_result_error_length(p: *mut CParser) -> u32;
         fn syntaqlite_result_comments(p: *mut CParser, count: *mut u32) -> *const CComment;
-        fn syntaqlite_result_tokens(p: *mut CParser, count: *mut u32) -> *const CTokenPos;
+        fn syntaqlite_result_tokens(p: *mut CParser, count: *mut u32) -> *const CParserToken;
         fn syntaqlite_result_macros(p: *mut CParser, count: *mut u32) -> *const CMacroRegion;
 
         // Arena accessors
@@ -985,6 +1592,4 @@ mod ffi {
     }
 }
 
-pub(crate) use ffi::{
-    CComment as Comment, CMacroRegion as MacroRegion, CParser, CTokenPos as TokenPos,
-};
+pub(crate) use ffi::CParser;

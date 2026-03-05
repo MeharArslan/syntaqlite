@@ -62,11 +62,12 @@ fn emit_grammar_module(
 ) {
     w.lines(&format!(
         r#"
-use {syntax_crate}::grammar::{{AnyGrammar, TypedGrammar}};
-use {syntax_crate}::util::SqliteVersion;
+use {syntax_crate}::any::AnyGrammar;
+use {syntax_crate}::typed::TypedGrammar;
+use {syntax_crate}::util::{{SqliteFlags, SqliteVersion}};
 
 unsafe extern "C" {{
-    fn {dialect_fn}() -> {syntax_crate}::grammar::ffi::CGrammar;
+    fn {dialect_fn}() -> {syntax_crate}::typed::CGrammar;
 }}
 
 /// The dialect grammar handle.
@@ -85,20 +86,15 @@ impl {grammar_struct} {{
     }}
 
     /// Set the target `SQLite` version.
+    #[must_use]
     pub fn with_version(mut self, version: SqliteVersion) -> Self {{
         self.raw = self.raw.with_version(version);
         self
     }}
 
-    /// Set a compile-time flag by index.
-    pub fn with_cflag(mut self, idx: u32) -> Self {{
-        self.raw = self.raw.with_cflag(idx);
-        self
-    }}
-
     /// Replace the entire cflags bitfield.
-    #[allow(private_interfaces)]
-    pub fn with_cflags(mut self, cflags: {syntax_crate}::cflags::Cflags) -> Self {{
+    #[must_use]
+    pub fn with_cflags(mut self, cflags: SqliteFlags) -> Self {{
         self.raw = self.raw.with_cflags(cflags);
         self
     }}
@@ -115,7 +111,7 @@ impl TypedGrammar for {grammar_struct} {{
 }}
 
 /// Returns the dialect grammar handle.
-pub(crate) fn grammar() -> {grammar_struct} {{
+pub fn grammar() -> {grammar_struct} {{
     // SAFETY: {dialect_fn}() returns a valid static C grammar.
     let raw = unsafe {{ AnyGrammar::new({dialect_fn}()) }};
     {grammar_struct} {{ raw }}
