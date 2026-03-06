@@ -95,6 +95,7 @@ impl SemanticAnalyzer {
     }
 
     /// Expected tokens and semantic context at `offset` (for completion).
+    #[cfg(feature = "sqlite")]
     pub(crate) fn completion_info(&self, model: &SemanticModel, offset: usize) -> CompletionInfo {
         let source = model.source();
         let tokens = &model.tokens;
@@ -233,10 +234,12 @@ impl Default for SemanticAnalyzer {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+#[cfg(feature = "sqlite")]
 fn str_offset(source: &str, part: &str) -> usize {
     part.as_ptr() as usize - source.as_ptr() as usize
 }
 
+#[cfg(feature = "sqlite")]
 fn parse_error_span(err: &syntaqlite_syntax::ParseError<'_>, source: &str) -> (usize, usize) {
     match (err.offset(), err.length()) {
         (Some(off), Some(len)) if len > 0 => (off, off + len),
@@ -255,6 +258,7 @@ fn parse_error_span(err: &syntaqlite_syntax::ParseError<'_>, source: &str) -> (u
     }
 }
 
+#[cfg(feature = "sqlite")]
 fn completion_boundary(
     source: &str,
     tokens: &[StoredToken],
@@ -285,6 +289,7 @@ fn completion_boundary(
     (boundary, backtracked)
 }
 
+#[cfg(feature = "sqlite")]
 fn statement_token_start(tokens: &[StoredToken], boundary: usize) -> usize {
     tokens[..boundary]
         .iter()
@@ -292,6 +297,7 @@ fn statement_token_start(tokens: &[StoredToken], boundary: usize) -> usize {
         .map_or(0, |idx| idx + 1)
 }
 
+#[cfg(feature = "sqlite")]
 fn merge_expected_tokens(into: &mut Vec<TokenType>, extra: Vec<TokenType>) {
     let mut seen: HashSet<TokenType> = into.iter().copied().collect();
     for token in extra {
