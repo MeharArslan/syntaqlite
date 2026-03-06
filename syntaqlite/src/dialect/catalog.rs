@@ -76,14 +76,35 @@ pub(crate) struct FunctionEntry<'a> {
 
 /// Check whether a function entry is available for the given dialect config.
 ///
-/// Checks version constraints only; cflag constraints are ignored for now.
+/// A function is available if at least one of its availability rules passes.
+/// Each rule checks:
+/// - version range (`since`/`until`)
+/// - cflag constraint: for `Enable` polarity the cflag must be set; for
+///   `Omit` polarity the cflag must be clear. Rules with `cflag_index ==
+///   u32::MAX` have no cflag constraint.
 pub(crate) fn is_function_available(entry: &FunctionEntry<'_>, dialect: &Dialect) -> bool {
+    let cflags = dialect.cflags();
     entry.availability.iter().any(|rule| {
         if dialect.version() < SqliteVersion::from_int(rule.since) {
             return false;
         }
         if rule.until != 0 && dialect.version() >= SqliteVersion::from_int(rule.until) {
             return false;
+        }
+        if rule.cflag_index != u32::MAX {
+            let flag_set = cflags.has_index(rule.cflag_index);
+            match rule.cflag_polarity {
+                CflagPolarity::Enable => {
+                    if !flag_set {
+                        return false;
+                    }
+                }
+                CflagPolarity::Omit => {
+                    if flag_set {
+                        return false;
+                    }
+                }
+            }
         }
         true
     })

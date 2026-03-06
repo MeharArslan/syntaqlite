@@ -20,6 +20,16 @@ impl SqliteFlags {
         self.0.has(flag as u32)
     }
 
+    /// Returns `true` if the flag at raw bit-index `idx` is enabled.
+    ///
+    /// Use this when `idx` comes from an external source (e.g. a generated
+    /// availability rule) and no `SqliteFlag` variant is available at the
+    /// call site.
+    #[inline]
+    pub fn has_index(&self, idx: u32) -> bool {
+        self.0.has(idx)
+    }
+
     // TODO(claude): add `set` and `clear` methods etc - match ffi.
 }
 

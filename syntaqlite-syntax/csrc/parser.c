@@ -286,8 +286,7 @@ int32_t syntaqlite_parser_next(SyntaqliteParser* p) {
   syntaqlite_vec_clear(&p->macros);
 
   if (p->finished) {
-    return set_result_status(
-        p, p->had_error ? SYNTAQLITE_PARSE_ERROR : SYNTAQLITE_PARSE_DONE);
+    return set_result_status(p, SYNTAQLITE_PARSE_DONE);
   }
 
   // Reset per-statement parse state.

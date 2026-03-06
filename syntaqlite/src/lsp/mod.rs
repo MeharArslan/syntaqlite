@@ -66,7 +66,7 @@ pub(crate) use host::LspHost;
 pub(crate) use server::LspServer;
 
 // Re-export shared types from semantic layer.
-pub(crate) use crate::semantic::{CompletionContext, CompletionInfo, SemanticToken};
+pub(crate) use crate::semantic::model::{CompletionContext, CompletionInfo};
 
 // ── LSP-specific types ──────────────────────────────────────────────────
 

@@ -678,6 +678,21 @@ impl<'a, G: TypedGrammar> TypedParseError<'a, G> {
     pub fn recovery_root(&self) -> Option<G::Node<'a>> {
         self.0.recovery_root()
     }
+
+    /// The source text bound to this result.
+    pub fn parse_source(&self) -> &'a str {
+        self.0.source()
+    }
+
+    /// Tokens collected during the (partial) parse, if `collect_tokens` was enabled.
+    pub fn tokens(&self) -> impl Iterator<Item = TypedParserToken<'a, G>> {
+        self.0.tokens()
+    }
+
+    /// Comments collected during the (partial) parse, if `collect_tokens` was enabled.
+    pub fn comments(&self) -> impl Iterator<Item = Comment<'a>> {
+        self.0.comments()
+    }
 }
 
 impl<G: TypedGrammar> std::fmt::Debug for TypedParseError<'_, G> {

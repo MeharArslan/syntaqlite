@@ -19,6 +19,9 @@ pub(crate) mod semantic;
 #[cfg(feature = "sqlite")]
 pub(crate) mod sqlite;
 
+#[cfg(feature = "lsp")]
+pub(crate) mod lsp;
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
 #[cfg(feature = "fmt")]

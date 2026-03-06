@@ -105,7 +105,10 @@ impl SemanticAnalyzer {
 
         let parser = TypedParser::new(syntaqlite_syntax::typed::grammar());
         let mut cursor_p = parser.incremental_parse(source);
-        let mut last_expected: Vec<TokenType> = cursor_p.expected_tokens().collect();
+        // Do not call expected_tokens() before feeding any tokens: the C parser
+        // returns a garbage `total` count when no tokens have been fed yet,
+        // which would trigger a multi-GiB allocation and SIGKILL.
+        let mut last_expected: Vec<TokenType> = Vec::new();
 
         for tok in stmt_tokens {
             let span = tok.offset..(tok.offset + tok.length);
@@ -163,14 +166,35 @@ impl SemanticAnalyzer {
                         severity: Severity::Error,
                         help: None,
                     });
+                    // Collect tokens from the partial parse so completion_info
+                    // can replay them through the incremental parser.
+                    let stmt_source = e.parse_source();
+                    for tok in e.tokens() {
+                        tokens.push(StoredToken {
+                            offset: str_offset(stmt_source, tok.text()),
+                            length: tok.text().len(),
+                            token_type: tok.token_type(),
+                            flags: tok.flags(),
+                        });
+                    }
+                    for c in e.comments() {
+                        comments.push(StoredComment {
+                            offset: str_offset(stmt_source, c.text),
+                            length: c.text.len(),
+                        });
+                    }
                     continue;
                 }
             };
 
             // Collect token and comment positions for semantic highlighting.
+            // tok.text() / c.text are sub-slices of stmt.source() (the parser's
+            // internal source_buf), NOT of the outer `source` parameter, so we
+            // must use stmt.source() as the base for pointer arithmetic.
+            let stmt_source = stmt.source();
             for tok in stmt.tokens() {
                 tokens.push(StoredToken {
-                    offset: str_offset(source, tok.text()),
+                    offset: str_offset(stmt_source, tok.text()),
                     length: tok.text().len(),
                     token_type: tok.token_type(),
                     flags: tok.flags(),
@@ -178,7 +202,7 @@ impl SemanticAnalyzer {
             }
             for c in stmt.comments() {
                 comments.push(StoredComment {
-                    offset: str_offset(source, c.text),
+                    offset: str_offset(stmt_source, c.text),
                     length: c.text.len(),
                 });
             }

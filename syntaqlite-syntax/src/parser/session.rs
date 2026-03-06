@@ -342,6 +342,21 @@ impl<'a> ParseError<'a> {
     pub fn recovery_root(&self) -> Option<crate::sqlite::ast::Stmt<'a>> {
         self.0.recovery_root()
     }
+
+    /// The source text bound to this result.
+    pub fn parse_source(&self) -> &'a str {
+        self.0.0.source()
+    }
+
+    /// Tokens collected during the (partial) parse, if `collect_tokens` was enabled.
+    pub fn tokens(&self) -> impl Iterator<Item = ParserToken<'a>> {
+        self.0.tokens().map(ParserToken)
+    }
+
+    /// Comments collected during the (partial) parse, if `collect_tokens` was enabled.
+    pub fn comments(&self) -> impl Iterator<Item = Comment<'a>> {
+        self.0.comments()
+    }
 }
 
 #[cfg(feature = "sqlite")]
