@@ -179,6 +179,26 @@ impl CommentCtx {
         Some((first_offset, word_count))
     }
 
+    /// Return the source byte range `(start, end)` covering the keyword's word tokens.
+    ///
+    /// Used for `Preserve` keyword case: the span `source[start..end]` contains the
+    /// original source text for the keyword words. Returns `None` if there are not
+    /// enough tokens.
+    pub(crate) fn keyword_source_span(&self, kw_text: &str) -> Option<(u32, u32)> {
+        let word_count = kw_text.split_whitespace().count();
+        if word_count == 0 {
+            return None;
+        }
+        let first_idx = self.token_cursor.get();
+        let last_idx = first_idx + word_count - 1;
+        if last_idx >= self.tokens.len() {
+            return None;
+        }
+        let first = &self.tokens[first_idx];
+        let last = &self.tokens[last_idx];
+        Some((first.offset, last.offset + last.length))
+    }
+
     /// Advance the token cursor by `n` positions.
     pub(crate) fn advance_token_cursor(&self, n: usize) {
         self.token_cursor.set(self.token_cursor.get() + n);

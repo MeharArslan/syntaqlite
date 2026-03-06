@@ -125,11 +125,11 @@ fn collect_tokens_and_comments_follows_parser_config() {
     assert!(
         comments
             .iter()
-            .any(|comment| comment.kind == CommentKind::Block && comment.text.contains("lead"))
+            .any(|comment| comment.kind() == CommentKind::Block && comment.text().contains("lead"))
     );
     assert!(
         comments
             .iter()
-            .any(|comment| comment.kind == CommentKind::Line && comment.text.contains("tail"))
+            .any(|comment| comment.kind() == CommentKind::Line && comment.text().contains("tail"))
     );
 }

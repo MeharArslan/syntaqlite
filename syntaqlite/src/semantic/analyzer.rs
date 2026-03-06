@@ -173,19 +173,18 @@ impl SemanticAnalyzer {
                     });
                     // Collect tokens from the partial parse so completion_info
                     // can replay them through the incremental parser.
-                    let stmt_source = e.parse_source();
                     for tok in e.tokens() {
                         tokens.push(StoredToken {
-                            offset: str_offset(stmt_source, tok.text()),
-                            length: tok.text().len(),
+                            offset: tok.offset() as usize,
+                            length: tok.length() as usize,
                             token_type: tok.token_type(),
                             flags: tok.flags(),
                         });
                     }
                     for c in e.comments() {
                         comments.push(StoredComment {
-                            offset: str_offset(stmt_source, c.text),
-                            length: c.text.len(),
+                            offset: c.offset() as usize,
+                            length: c.length() as usize,
                         });
                     }
                     continue;
@@ -193,22 +192,18 @@ impl SemanticAnalyzer {
             };
 
             // Collect token and comment positions for semantic highlighting.
-            // tok.text() / c.text are sub-slices of stmt.source() (the parser's
-            // internal source_buf), NOT of the outer `source` parameter, so we
-            // must use stmt.source() as the base for pointer arithmetic.
-            let stmt_source = stmt.source();
             for tok in stmt.tokens() {
                 tokens.push(StoredToken {
-                    offset: str_offset(stmt_source, tok.text()),
-                    length: tok.text().len(),
+                    offset: tok.offset() as usize,
+                    length: tok.length() as usize,
                     token_type: tok.token_type(),
                     flags: tok.flags(),
                 });
             }
             for c in stmt.comments() {
                 comments.push(StoredComment {
-                    offset: str_offset(stmt_source, c.text),
-                    length: c.text.len(),
+                    offset: c.offset() as usize,
+                    length: c.length() as usize,
                 });
             }
 
@@ -247,11 +242,6 @@ impl Default for SemanticAnalyzer {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-#[cfg(feature = "sqlite")]
-#[allow(dead_code)]
-fn str_offset(source: &str, part: &str) -> usize {
-    part.as_ptr() as usize - source.as_ptr() as usize
-}
 
 #[cfg(feature = "sqlite")]
 #[allow(dead_code)]

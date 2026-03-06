@@ -223,6 +223,16 @@ impl<'a> ParserToken<'a> {
     pub fn flags(&self) -> ParserTokenFlags {
         self.0.flags()
     }
+
+    /// Byte offset of the token start within the statement source.
+    pub fn offset(&self) -> u32 {
+        self.0.offset()
+    }
+
+    /// Byte length of the token text.
+    pub fn length(&self) -> u32 {
+        self.0.length()
+    }
 }
 
 #[cfg(feature = "sqlite")]
@@ -436,12 +446,12 @@ mod tests {
         assert!(
             comments
                 .iter()
-                .any(|comment| comment.kind == CommentKind::Block && comment.text.contains("lead"))
+                .any(|comment| comment.kind() == CommentKind::Block && comment.text().contains("lead"))
         );
         assert!(
             comments
                 .iter()
-                .any(|comment| comment.kind == CommentKind::Line && comment.text.contains("tail"))
+                .any(|comment| comment.kind() == CommentKind::Line && comment.text().contains("tail"))
         );
     }
 

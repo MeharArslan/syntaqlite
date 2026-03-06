@@ -67,10 +67,36 @@ pub enum CommentKind {
 /// `collect_tokens: true` in [`super::ParserConfig`].
 #[derive(Debug, Clone, Copy)]
 pub struct Comment<'a> {
+    text: &'a str,
+    kind: CommentKind,
+    offset: u32,
+    length: u32,
+}
+
+impl<'a> Comment<'a> {
+    pub(super) fn new(text: &'a str, kind: CommentKind, offset: u32, length: u32) -> Self {
+        Comment { text, kind, offset, length }
+    }
+
     /// The full comment text, including delimiters.
-    pub text: &'a str,
+    pub fn text(&self) -> &'a str {
+        self.text
+    }
+
     /// Whether this is a line (`--`) or block (`/* */`) comment.
-    pub kind: CommentKind,
+    pub fn kind(&self) -> CommentKind {
+        self.kind
+    }
+
+    /// Byte offset of the comment start within the statement source.
+    pub fn offset(&self) -> u32 {
+        self.offset
+    }
+
+    /// Byte length of the comment text.
+    pub fn length(&self) -> u32 {
+        self.length
+    }
 }
 
 pub use crate::grammar::ParserTokenFlags;
@@ -81,12 +107,24 @@ pub use crate::grammar::ParserTokenFlags;
 /// `collect_tokens: true` in [`super::ParserConfig`].
 #[derive(Debug, Clone, Copy)]
 pub struct TypedParserToken<'a, G: TypedGrammar> {
-    pub(super) text: &'a str,
-    pub(super) token_type: G::Token,
-    pub(super) flags: ParserTokenFlags,
+    text: &'a str,
+    token_type: G::Token,
+    flags: ParserTokenFlags,
+    offset: u32,
+    length: u32,
 }
 
 impl<'a, G: TypedGrammar> TypedParserToken<'a, G> {
+    pub(super) fn new(
+        text: &'a str,
+        token_type: G::Token,
+        flags: ParserTokenFlags,
+        offset: u32,
+        length: u32,
+    ) -> Self {
+        TypedParserToken { text, token_type, flags, offset, length }
+    }
+
     /// The source text slice covered by this token.
     pub fn text(&self) -> &'a str {
         self.text
@@ -100,6 +138,16 @@ impl<'a, G: TypedGrammar> TypedParserToken<'a, G> {
     /// Semantic usage flags inferred by the parser.
     pub fn flags(&self) -> ParserTokenFlags {
         self.flags
+    }
+
+    /// Byte offset of the token start within the statement source.
+    pub fn offset(&self) -> u32 {
+        self.offset
+    }
+
+    /// Byte length of the token text.
+    pub fn length(&self) -> u32 {
+        self.length
     }
 }
 

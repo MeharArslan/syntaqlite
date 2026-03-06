@@ -361,11 +361,13 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
         raw.iter().filter_map(move |t| {
             let token_type = G::Token::from_token_type(AnyTokenType(t.type_))?;
             let text = &source[t.offset as usize..(t.offset + t.length) as usize];
-            Some(TypedParserToken {
+            Some(TypedParserToken::new(
                 text,
                 token_type,
-                flags: ParserTokenFlags::from_raw(t.flags),
-            })
+                ParserTokenFlags::from_raw(t.flags),
+                t.offset,
+                t.length,
+            ))
         })
     }
 
@@ -382,7 +384,7 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
                 ffi::CCommentKind::LineComment => CommentKind::Line,
                 ffi::CCommentKind::BlockComment => CommentKind::Block,
             };
-            Comment { text, kind }
+            Comment::new(text, kind, c.offset, c.length)
         })
     }
 

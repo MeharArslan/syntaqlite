@@ -6,6 +6,7 @@ use syntaqlite_syntax::{CommentKind, ParseOutcome, Parser, ParserConfig};
 
 use super::FormatConfig;
 use super::FormatError;
+use super::KeywordCase;
 use super::comment::{CommentCtx, CommentEntry, TokenEntry};
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch};
@@ -107,23 +108,25 @@ impl Formatter {
             self.comment_entries.clear();
             self.comment_entries
                 .extend(erased.comments().map(|c| CommentEntry {
-                    offset: byte_offset_in(source, c.text.as_ptr()),
-                    length: usize_to_u32(c.text.len()),
-                    kind: c.kind,
+                    offset: c.offset(),
+                    length: c.length(),
+                    kind: c.kind(),
                 }));
 
             self.token_entries.clear();
             self.token_entries
                 .extend(erased.tokens().map(|t| TokenEntry {
-                    offset: byte_offset_in(source, t.text().as_ptr()),
-                    length: usize_to_u32(t.text().len()),
+                    offset: t.offset(),
+                    length: t.length(),
                 }));
 
             let root_id = erased.root_id();
             let semicolons = self.config.semicolons;
             let has_comments = !self.comment_entries.is_empty();
+            let needs_token_ctx =
+                has_comments || self.config.keyword_case == KeywordCase::Preserve;
 
-            let comment_ctx = if has_comments {
+            let comment_ctx = if needs_token_ctx {
                 // Move buffers into CommentCtx for this statement, then reclaim them after render.
                 Some(CommentCtx::new(
                     std::mem::take(&mut self.comment_entries),
@@ -158,6 +161,7 @@ impl Formatter {
                 reader: erased,
                 comment_ctx,
                 macro_regions: std::mem::take(&mut self.macro_regions),
+                keyword_case: self.config.keyword_case,
             };
             let interpreted = self.interpret_node(&ctx, root_id, &mut arena);
             self.parts.push(interpreted);
@@ -237,20 +241,6 @@ fn emit_stmt_separator<'a>(
     parts.push(arena.hardline());
 }
 
-#[inline]
-fn usize_to_u32(value: usize) -> u32 {
-    u32::try_from(value).expect("value must fit in u32")
-}
-
-#[inline]
-fn byte_offset_in(source: &str, ptr: *const u8) -> u32 {
-    let base = source.as_ptr() as usize;
-    let start = ptr as usize;
-    let offset = start
-        .checked_sub(base)
-        .expect("span pointer must be within source");
-    usize_to_u32(offset)
-}
 
 fn drain_trailing_gap<'a>(
     ctx: &CommentCtx,
@@ -342,13 +332,6 @@ mod tests {
     fn render_parts(arena: &mut DocArena<'_>, parts: &[DocId]) -> String {
         let root = arena.cats(parts);
         arena.render(root, 80, KeywordCase::Preserve)
-    }
-
-    #[test]
-    fn byte_offset_in_returns_expected_offsets() {
-        let src = "SELECT 1";
-        assert_eq!(byte_offset_in(src, src.as_ptr()), 0);
-        assert_eq!(byte_offset_in(src, src[7..].as_ptr()), 7);
     }
 
     #[test]

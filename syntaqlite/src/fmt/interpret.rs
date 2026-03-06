@@ -3,6 +3,7 @@
 
 use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, MacroRegion};
 
+use super::KeywordCase;
 use super::comment::{CommentCtx, DrainResult};
 use super::doc::{DocArena, DocId, NIL_DOC};
 use super::formatter::Formatter;
@@ -16,6 +17,7 @@ pub(crate) struct FmtCtx<'a> {
     /// Owned comment context — no lifetime needed since `CommentCtx` owns its data.
     pub comment_ctx: Option<CommentCtx>,
     pub macro_regions: Vec<MacroRegion>,
+    pub keyword_case: KeywordCase,
 }
 
 impl<'a> FmtCtx<'a> {
@@ -170,6 +172,14 @@ impl Formatter {
                 FmtOp::Keyword(sid) => {
                     let kw_text = ctx.dialect.fmt_string(sid);
 
+                    // For Preserve mode, capture the source byte span before advancing
+                    // the token cursor so we can emit the original casing.
+                    let preserve_span = if ctx.keyword_case == KeywordCase::Preserve {
+                        ctx.comment_ctx.as_ref().and_then(|c| c.keyword_source_span(kw_text))
+                    } else {
+                        None
+                    };
+
                     if let Some(ref cctx) = ctx.comment_ctx {
                         if let Some((tok_offset, word_count)) = cctx.peek_keyword_tokens(kw_text) {
                             let drain = cctx.drain_before(tok_offset, source, arena);
@@ -180,8 +190,13 @@ impl Formatter {
                             pending = NIL_DOC;
                         }
                     }
-                    let kw = arena.keyword(kw_text);
-                    running = arena.cat(running, kw);
+                    if let Some((start, end)) = preserve_span {
+                        let src_kw = arena.text(&source[start as usize..end as usize]);
+                        running = arena.cat(running, src_kw);
+                    } else {
+                        let kw = arena.keyword(kw_text);
+                        running = arena.cat(running, kw);
+                    }
                 }
                 FmtOp::Span(idx) => {
                     // INVARIANT: Span ops only target Span fields.
