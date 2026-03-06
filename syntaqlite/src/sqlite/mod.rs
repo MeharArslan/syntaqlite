@@ -5,4 +5,5 @@
 
 pub(crate) mod dialect;
 pub(crate) mod fmt_statics;
+pub(crate) mod functions_catalog;
 pub(crate) mod semantic_roles;

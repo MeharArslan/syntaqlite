@@ -4,10 +4,11 @@ members = [
     "syntaqlite-common",
     "syntaqlite-syntax",
     "syntaqlite",
-    "syntaqlite-wasm",
     "syntaqlite-buildtools",
-    "syntaqlite-cli",
-    "benches",
+    # temporarily excluded until semantic refactor is complete:
+    # "syntaqlite-wasm",
+    # "syntaqlite-cli",
+    # "benches",
 ]
 resolver = "3"
 

@@ -7,10 +7,12 @@
 
 use std::collections::{HashMap, HashSet};
 
-use syntaqlite_syntax::any::FieldKind;
-use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue};
+use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, NodeFields};
 use syntaqlite_syntax::ast_traits::{
-    AstTypes, ColumnConstraintTypeKind, ExprKind, SelectKind, TableSourceKind,
+    AstTypes, ColumnRefView, CompoundSelectView, ExprKind, ExprLike, IdentNameView,
+    JoinClauseView, JoinPrefixView, NameKind, NameLike, ResultColumnFlagsLike, ResultColumnView,
+    SelectKind, SelectLike, SelectStmtView, SubqueryTableSourceView, TableRefView,
+    TableSourceKind, TableSourceLike, WithClauseView,
 };
 use syntaqlite_syntax::typed::GrammarNodeType;
 
@@ -272,17 +274,21 @@ impl Catalog {
         use syntaqlite_syntax::nodes::SqliteAstMarker;
         let mut catalog = Catalog::new(dialect);
         let parser = syntaqlite_syntax::Parser::new();
+        use syntaqlite_syntax::ParseOutcome;
         let mut session = parser.parse(source);
-        while let Some(stmt) = session.next() {
-            let Ok(stmt) = stmt else { continue };
-            if let Some(root) = stmt.root() {
-                let root_id: AnyNodeId = root.node_id().into();
-                catalog.accumulate_ddl_into_database::<SqliteAstMarker>(
-                    stmt.erase(),
-                    root_id,
-                    dialect,
-                );
-            }
+        loop {
+            let stmt = match session.next() {
+                ParseOutcome::Ok(stmt) => stmt,
+                ParseOutcome::Done => break,
+                ParseOutcome::Err(_) => continue,
+            };
+            let root = stmt.root();
+            let root_id: AnyNodeId = root.node_id().into();
+            catalog.accumulate_ddl_into_database::<SqliteAstMarker>(
+                stmt.erase(),
+                root_id,
+                dialect,
+            );
         }
         catalog
     }
@@ -350,37 +356,46 @@ impl Catalog {
         root: AnyNodeId,
         dialect: Dialect,
     ) {
-        use crate::dialect::schema::SchemaKind;
+        use crate::dialect::schema::SemanticRole;
 
         let Some((tag, fields)) = stmt.extract_fields(root) else { return };
-        let Some(contrib) = dialect.schema_contribution_for_tag(tag) else { return };
+        let idx = u32::from(tag) as usize;
+        let Some(&role) = dialect.roles().get(idx) else { return };
 
-        let name = match fields[contrib.name_field as usize] {
-            FieldValue::Span(s) if !s.is_empty() => s.to_string(),
-            _ => return,
-        };
-
-        match contrib.kind {
-            SchemaKind::Table | SchemaKind::View => {
-                let columns = extract_columns::<A>(
-                    stmt,
-                    &fields,
-                    &contrib,
-                    dialect,
-                    &self.database,
-                    &self.document,
+        match role {
+            SemanticRole::DefineTable { name, columns, select } => {
+                let name_val = match fields[name as usize] {
+                    FieldValue::Span(s) if !s.is_empty() => s.to_string(),
+                    _ => return,
+                };
+                let cols = extract_columns::<A>(
+                    stmt, &fields, columns, select, &self.database, &self.document,
                 );
-                self.document.insert_relation(name, columns);
+                self.document.insert_relation(name_val, cols);
             }
-            SchemaKind::Function => {
-                let arity = extract_function_arity(stmt, &fields, &contrib);
+            SemanticRole::DefineView { name, select } => {
+                let name_val = match fields[name as usize] {
+                    FieldValue::Span(s) if !s.is_empty() => s.to_string(),
+                    _ => return,
+                };
+                let cols = extract_columns::<A>(
+                    stmt, &fields, None, Some(select), &self.database, &self.document,
+                );
+                self.document.insert_relation(name_val, cols);
+            }
+            SemanticRole::DefineFunction { name, args } => {
+                let name_val = match fields[name as usize] {
+                    FieldValue::Span(s) if !s.is_empty() => s.to_string(),
+                    _ => return,
+                };
+                let arity = extract_function_arity(stmt, &fields, args);
                 self.document.insert_function_overload(
-                    name,
+                    name_val,
                     FunctionCategory::Scalar,
                     arity,
                 );
             }
-            SchemaKind::Import => {}
+            SemanticRole::Import { .. } | SemanticRole::Transparent => {}
         }
     }
 
@@ -578,39 +593,48 @@ impl Catalog {
         root: AnyNodeId,
         dialect: Dialect,
     ) {
-        use crate::dialect::schema::SchemaKind;
+        use crate::dialect::schema::SemanticRole;
 
         let Some((tag, fields)) = stmt.extract_fields(root) else { return };
-        let Some(contrib) = dialect.schema_contribution_for_tag(tag) else { return };
+        let idx = u32::from(tag) as usize;
+        let Some(&role) = dialect.roles().get(idx) else { return };
 
-        let name = match fields[contrib.name_field as usize] {
-            FieldValue::Span(s) if !s.is_empty() => s.to_string(),
-            _ => return,
-        };
-
-        match contrib.kind {
-            SchemaKind::Table | SchemaKind::View => {
-                // For DDL parsing, document layer is empty; use a temporary empty layer.
+        match role {
+            SemanticRole::DefineTable { name, columns, select } => {
+                let name_val = match fields[name as usize] {
+                    FieldValue::Span(s) if !s.is_empty() => s.to_string(),
+                    _ => return,
+                };
                 let empty = CatalogLayer::default();
-                let columns = extract_columns::<A>(
-                    stmt,
-                    &fields,
-                    &contrib,
-                    dialect,
-                    &self.database, // already-accumulated entries
-                    &empty,
+                let cols = extract_columns::<A>(
+                    stmt, &fields, columns, select, &self.database, &empty,
                 );
-                self.database.insert_relation(name, columns);
+                self.database.insert_relation(name_val, cols);
             }
-            SchemaKind::Function => {
-                let arity = extract_function_arity(stmt, &fields, &contrib);
+            SemanticRole::DefineView { name, select } => {
+                let name_val = match fields[name as usize] {
+                    FieldValue::Span(s) if !s.is_empty() => s.to_string(),
+                    _ => return,
+                };
+                let empty = CatalogLayer::default();
+                let cols = extract_columns::<A>(
+                    stmt, &fields, None, Some(select), &self.database, &empty,
+                );
+                self.database.insert_relation(name_val, cols);
+            }
+            SemanticRole::DefineFunction { name, args } => {
+                let name_val = match fields[name as usize] {
+                    FieldValue::Span(s) if !s.is_empty() => s.to_string(),
+                    _ => return,
+                };
+                let arity = extract_function_arity(stmt, &fields, args);
                 self.database.insert_function_overload(
-                    name,
+                    name_val,
                     FunctionCategory::Scalar,
                     arity,
                 );
             }
-            SchemaKind::Import => {}
+            SemanticRole::Import { .. } | SemanticRole::Transparent => {}
         }
     }
 }
@@ -618,36 +642,38 @@ impl Catalog {
 // ── DDL extraction helpers ────────────────────────────────────────────────────
 
 /// Extract columns for a table/view DDL contribution.
+/// `columns_field` indexes a column-list child; `select_field` indexes an AS SELECT child.
 /// Returns `None` when columns cannot be statically determined.
 fn extract_columns<'a, A: AstTypes<'a>>(
     stmt: AnyParsedStatement<'a>,
-    fields: &[FieldValue<'a>],
-    contrib: &crate::dialect::schema::SchemaContribution,
-    dialect: Dialect,
+    fields: &NodeFields<'a>,
+    columns_field: Option<u8>,
+    select_field: Option<u8>,
     database: &CatalogLayer,
     document: &CatalogLayer,
 ) -> Option<Vec<String>> {
     // Explicit column list takes priority.
-    if let Some(col_field_idx) = contrib.columns_field
-        && let FieldValue::NodeId(col_list_id) = fields[col_field_idx as usize]
+    if let Some(col_idx) = columns_field
+        && let FieldValue::NodeId(col_list_id) = fields[col_idx as usize]
         && !col_list_id.is_null()
     {
         let mut columns = Vec::new();
-        columns_from_column_list::<A>(stmt, col_list_id, dialect, &mut columns);
+        columns_from_column_list(stmt, col_list_id, &mut columns);
         if !columns.is_empty() {
             return Some(columns);
         }
     }
 
     // Fall back to SELECT inference.
-    if let Some(sel_field_idx) = contrib.select_field
-        && let FieldValue::NodeId(sel_id) = fields[sel_field_idx as usize]
+    if let Some(sel_idx) = select_field
+        && let FieldValue::NodeId(sel_id) = fields[sel_idx as usize]
         && !sel_id.is_null()
     {
-        let mut columns = Vec::new();
-        columns_from_select::<A>(stmt, sel_id, database, document, &mut columns);
-        // If we got some columns, return them. If not, return None (suppress errors).
-        return if columns.is_empty() { None } else { Some(columns) };
+        if let Some(select) = A::Select::from_result(stmt, sel_id) {
+            let mut columns = Vec::new();
+            columns_from_select::<A>(stmt, select, database, document, &mut columns);
+            return if columns.is_empty() { None } else { Some(columns) };
+        }
     }
 
     None
@@ -656,63 +682,64 @@ fn extract_columns<'a, A: AstTypes<'a>>(
 /// Extract argument count for a function DDL contribution.
 fn extract_function_arity<'a>(
     stmt: AnyParsedStatement<'a>,
-    fields: &[FieldValue<'a>],
-    contrib: &crate::dialect::schema::SchemaContribution,
+    fields: &NodeFields<'a>,
+    args_field: Option<u8>,
 ) -> AritySpec {
-    let Some(args_idx) = contrib.args_field else { return AritySpec::Any };
+    let Some(args_idx) = args_field else { return AritySpec::Any };
     let FieldValue::NodeId(args_id) = fields[args_idx as usize] else { return AritySpec::Any };
     if args_id.is_null() { return AritySpec::Any }
     let Some(children) = stmt.list_children(args_id) else { return AritySpec::Any };
     AritySpec::Exact(children.len())
 }
 
-fn columns_from_column_list<'a, A: AstTypes<'a>>(
+fn columns_from_column_list<'a>(
     stmt: AnyParsedStatement<'a>,
     list_id: AnyNodeId,
-    dialect: Dialect,
     out: &mut Vec<String>,
 ) {
     let Some(children) = stmt.list_children(list_id) else { return };
 
     for &child_id in children {
         if child_id.is_null() { continue }
-        let Some((child_tag, child_fields)) = stmt.extract_fields(child_id) else { continue };
+        let Some((_tag, child_fields)) = stmt.extract_fields(child_id) else { continue };
 
-        for (i, meta) in dialect.field_meta(child_tag).enumerate() {
-            if meta.kind() == FieldKind::Span && meta.name() == "column_name" {
-                if let FieldValue::Span(s) = child_fields[i]
+        // The first non-null NodeId field of a column-def node is the column name node.
+        // The first non-empty Span inside that name node is the identifier text.
+        'col: for i in 0..child_fields.len() {
+            let FieldValue::NodeId(name_id) = child_fields[i] else { continue };
+            if name_id.is_null() { continue }
+            let Some((_, name_fields)) = stmt.extract_fields(name_id) else { break };
+            for j in 0..name_fields.len() {
+                if let FieldValue::Span(s) = name_fields[j]
                     && !s.is_empty()
                 {
                     out.push(s.to_ascii_lowercase());
+                    break 'col;
                 }
-                break;
             }
+            break; // only inspect the first non-null NodeId field per column-def
         }
     }
 }
 
 fn columns_from_select<'a, A: AstTypes<'a>>(
     stmt: AnyParsedStatement<'a>,
-    select_id: AnyNodeId,
+    select: A::Select,
     database: &CatalogLayer,
     document: &CatalogLayer,
     out: &mut Vec<String>,
 ) {
-    let Some(select) = A::Select::from_result(stmt, select_id) else { return };
-
     let core_stmt = match select.kind() {
         SelectKind::SelectStmt(s) => s,
         SelectKind::CompoundSelect(cs) => {
             if let Some(left) = cs.left() {
-                let id: AnyNodeId = left.node_id().into();
-                return columns_from_select::<A>(stmt, id, database, document, out);
+                return columns_from_select::<A>(stmt, left, database, document, out);
             }
             return;
         }
         SelectKind::WithClause(wc) => {
             if let Some(s) = wc.select() {
-                let id: AnyNodeId = s.node_id().into();
-                return columns_from_select::<A>(stmt, id, database, document, out);
+                return columns_from_select::<A>(stmt, s, database, document, out);
             }
             return;
         }
@@ -721,21 +748,18 @@ fn columns_from_select<'a, A: AstTypes<'a>>(
 
     let from_sources = core_stmt
         .from_clause()
-        .map(|ts| {
-            let id: AnyNodeId = ts.node_id().into();
-            collect_from_sources::<A>(stmt, id, database, document)
-        })
+        .map(|ts| collect_from_sources::<A>(stmt, ts, database, document))
         .unwrap_or_default();
 
     let Some(cols) = core_stmt.columns() else { return };
     for rc in cols.iter() {
         if rc.flags().star() {
-            let qualifier = rc.alias();
+            let qualifier = name_str::<A>(rc.alias());
             expand_star(&from_sources, qualifier, out);
             continue;
         }
 
-        let alias = rc.alias();
+        let alias = name_str::<A>(rc.alias());
         let name = if !alias.is_empty() {
             alias.to_string()
         } else if let Some(expr) = rc.expr() {
@@ -760,58 +784,58 @@ struct FromSource {
 
 fn collect_from_sources<'a, A: AstTypes<'a>>(
     stmt: AnyParsedStatement<'a>,
-    source_id: AnyNodeId,
+    source: A::TableSource,
     database: &CatalogLayer,
     document: &CatalogLayer,
 ) -> Vec<FromSource> {
     let mut out = Vec::new();
 
-    let Some(source) = A::TableSource::from_result(stmt, source_id) else { return out };
-
     match source.kind() {
         TableSourceKind::TableRef(tr) => {
             let name = tr.table_name();
-            let alias = tr.alias();
+            let alias = name_str::<A>(tr.alias());
             let qualifier = if alias.is_empty() { name } else { alias };
-            // Look up columns in document first, then database.
             let columns = lookup_columns(name, document)
                 .or_else(|| lookup_columns(name, database))
                 .unwrap_or_default();
-            out.push(FromSource {
-                qualifier: qualifier.to_string(),
-                columns,
-            });
+            out.push(FromSource { qualifier: qualifier.to_string(), columns });
         }
         TableSourceKind::SubqueryTableSource(sq) => {
             let mut columns = Vec::new();
             if let Some(select) = sq.select() {
-                let id: AnyNodeId = select.node_id().into();
-                columns_from_select::<A>(stmt, id, database, document, &mut columns);
+                columns_from_select::<A>(stmt, select, database, document, &mut columns);
             }
             out.push(FromSource {
-                qualifier: sq.alias().to_string(),
+                qualifier: name_str::<A>(sq.alias()).to_string(),
                 columns,
             });
         }
         TableSourceKind::JoinClause(jc) => {
             if let Some(left) = jc.left() {
-                let id: AnyNodeId = left.node_id().into();
-                out.extend(collect_from_sources::<A>(stmt, id, database, document));
+                out.extend(collect_from_sources::<A>(stmt, left, database, document));
             }
             if let Some(right) = jc.right() {
-                let id: AnyNodeId = right.node_id().into();
-                out.extend(collect_from_sources::<A>(stmt, id, database, document));
+                out.extend(collect_from_sources::<A>(stmt, right, database, document));
             }
         }
         TableSourceKind::JoinPrefix(jp) => {
             if let Some(s) = jp.source() {
-                let id: AnyNodeId = s.node_id().into();
-                out.extend(collect_from_sources::<A>(stmt, id, database, document));
+                out.extend(collect_from_sources::<A>(stmt, s, database, document));
             }
         }
-        _ => {}
     }
     out
+}
+
+/// Extract the source text from an optional `Name` node, returning `""` if absent or an error node.
+fn name_str<'a, A: AstTypes<'a>>(name: Option<A::Name>) -> &'a str {
+    match name {
+        Some(n) => match n.kind() {
+            NameKind::IdentName(ident) => ident.source(),
+            NameKind::Error(_) => "",
+        },
+        None => "",
+    }
 }
 
 fn lookup_columns(name: &str, layer: &CatalogLayer) -> Option<Vec<String>> {
@@ -843,15 +867,6 @@ fn build_dialect_layer(layer: &mut CatalogLayer, dialect: &Dialect) {
         }
     }
 
-    for ext in dialect.function_extensions().iter() {
-        if is_function_available(ext, dialect) {
-            layer.insert_function_arities(
-                ext.info.name.to_string(),
-                map_function_category(ext.info.category),
-                ext.info.arities,
-            );
-        }
-    }
 }
 
 fn map_function_category(category: DialectFunctionCategory) -> FunctionCategory {

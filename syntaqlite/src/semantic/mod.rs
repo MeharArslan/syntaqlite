@@ -3,14 +3,13 @@
 
 //! Semantic analysis active surface during refactor.
 
-#[cfg(all(feature = "fmt", any(feature = "embedded", feature = "lsp")))]
+#[cfg(feature = "validation")]
 pub(crate) mod catalog;
 pub(crate) mod diagnostics;
-#[cfg(all(feature = "fmt", any(feature = "embedded", feature = "lsp")))]
-pub(crate) mod schema;
+pub(crate) mod fuzzy;
 
-#[cfg(all(feature = "fmt", any(feature = "embedded", feature = "lsp")))]
-pub(crate) use catalog::DatabaseCatalog;
+#[cfg(feature = "validation")]
+pub use catalog::Catalog;
 pub use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
 
 /// Configuration for semantic validation.

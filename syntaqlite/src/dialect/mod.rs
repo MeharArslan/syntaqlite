@@ -4,6 +4,7 @@
 //! Dialect handle and token classification.
 
 pub(crate) mod any;
+pub(crate) mod catalog;
 pub(crate) mod schema;
 
 pub(crate) use any::Dialect;
