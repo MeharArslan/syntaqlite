@@ -173,10 +173,7 @@ impl LspHost {
     }
 
     /// Version, source text, and parse-error diagnostics in one borrow.
-    pub(crate) fn document_diagnostics(
-        &mut self,
-        uri: &str,
-    ) -> Option<(i32, &str, &[Diagnostic])> {
+    pub(crate) fn document_diagnostics(&mut self, uri: &str) -> Option<(i32, &str, &[Diagnostic])> {
         let doc = self.documents.get_mut(uri)?;
         ensure_model(doc, &mut self.analyzer, &self.catalog);
         if doc.cached_parse_diags.is_none() {
@@ -231,11 +228,7 @@ impl LspHost {
     }
 
     /// Expected parser tokens and semantic context at a byte offset.
-    pub(crate) fn completion_info_at_offset(
-        &mut self,
-        uri: &str,
-        offset: usize,
-    ) -> CompletionInfo {
+    pub(crate) fn completion_info_at_offset(&mut self, uri: &str, offset: usize) -> CompletionInfo {
         let Some(doc) = self.documents.get_mut(uri) else {
             return CompletionInfo {
                 tokens: Vec::new(),
@@ -427,8 +420,7 @@ mod tests {
     use crate::semantic::diagnostics::{DiagnosticMessage, Severity};
     use syntaqlite_syntax::TokenType;
 
-
-#[test]
+    #[test]
     fn completions_fall_back_to_last_good_state_on_parse_error() {
         let mut host = LspHost::new();
         let uri = "file:///test.sql";

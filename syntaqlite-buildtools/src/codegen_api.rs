@@ -542,10 +542,7 @@ pub(crate) fn generate_codegen_artifacts(
         Some(RustCodegenArtifacts {
             tokens_rs: generate_rust_tokens(&token_defines[..], &request.dialect.token_type_name()),
             ffi_rs: ast_model.generate_rust_ffi_nodes(&rust_paths),
-            ast_rs: ast_model.generate_rust_ast(
-                &rust_paths,
-                request.open_for_extension,
-            ),
+            ast_rs: ast_model.generate_rust_ast(&rust_paths, request.open_for_extension),
             grammar_rs: Some(generate_grammar_module(
                 &request.dialect.grammar_fn_name(),
                 &request.dialect.grammar_struct_type(),

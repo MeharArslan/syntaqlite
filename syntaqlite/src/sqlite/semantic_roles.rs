@@ -102,7 +102,11 @@ pub(crate) static SQLITE_SEMANTIC_ROLES: &[SemanticRole] = &[
         when: 7,
         body: 8,
     }, // CreateTriggerStmt
-    SemanticRole::Transparent,               // CreateVirtualTableStmt
+    SemanticRole::DefineTable {
+        name: 0,
+        columns: None,
+        select: None,
+    }, // CreateVirtualTableStmt
     SemanticRole::Transparent,               // PragmaStmt
     SemanticRole::Transparent,               // AnalyzeOrReindexStmt
     SemanticRole::Transparent,               // AttachStmt

@@ -470,7 +470,6 @@ impl AstModel<'_> {
             emit_rust_flags_type(&mut w, item.name, item.flags);
         }
 
-
         // Abstract type enums (Expr, Stmt, etc.)
         for &(abs_name, members) in abstract_items {
             w.doc_comment(&format!(

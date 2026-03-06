@@ -42,17 +42,17 @@ pub(crate) trait TokenCategoryExt {
 impl TokenCategoryExt for TokenCategory {
     fn legend_index(self) -> Option<usize> {
         match self {
-            TokenCategory::Keyword     => Some(0),
-            TokenCategory::Variable    => Some(1),
-            TokenCategory::String      => Some(2),
-            TokenCategory::Number      => Some(3),
-            TokenCategory::Operator    => Some(4),
-            TokenCategory::Comment     => Some(5),
+            TokenCategory::Keyword => Some(0),
+            TokenCategory::Variable => Some(1),
+            TokenCategory::String => Some(2),
+            TokenCategory::Number => Some(3),
+            TokenCategory::Operator => Some(4),
+            TokenCategory::Comment => Some(5),
             TokenCategory::Punctuation => Some(6),
-            TokenCategory::Identifier  => Some(7),
-            TokenCategory::Function    => Some(8),
-            TokenCategory::Type        => Some(9),
-            TokenCategory::Other       => None,
+            TokenCategory::Identifier => Some(7),
+            TokenCategory::Function => Some(8),
+            TokenCategory::Type => Some(9),
+            TokenCategory::Other => None,
         }
     }
 

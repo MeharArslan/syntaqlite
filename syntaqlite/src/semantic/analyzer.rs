@@ -139,11 +139,7 @@ impl SemanticAnalyzer {
     // ── Private ───────────────────────────────────────────────────────────────
 
     #[cfg(feature = "sqlite")]
-    fn analyze_inner(
-        &mut self,
-        source: &str,
-        config: &ValidationConfig,
-    ) -> SemanticModel {
+    fn analyze_inner(&mut self, source: &str, config: &ValidationConfig) -> SemanticModel {
         let parser = syntaqlite_syntax::Parser::with_config(
             &ParserConfig::default().with_collect_tokens(true),
         );
@@ -398,6 +394,32 @@ mod tests {
         let dialect = crate::sqlite::dialect::dialect();
         let cat = Catalog::from_ddl(dialect, "CREATE TABLE users (id INTEGER, name TEXT);");
         assert!(cat.resolve_relation("users"));
+    }
+
+    #[test]
+    fn catalog_from_ddl_populates_virtual_tables() {
+        let dialect = crate::sqlite::dialect::dialect();
+        let cat = Catalog::from_ddl(dialect, "CREATE VIRTUAL TABLE fts USING fts5(content);");
+        assert!(cat.resolve_relation("fts"));
+    }
+
+    #[test]
+    fn virtual_table_in_from_clause_no_error() {
+        // Virtual tables are known to exist; column refs are conservatively
+        // accepted because the column list is not statically known.
+        let source = "CREATE VIRTUAL TABLE fts USING fts5(content);\nSELECT * FROM fts;";
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(source, &cat, &strict());
+        let unknown_tables: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(d.message, DiagnosticMessage::UnknownTable { .. }))
+            .collect();
+        assert!(
+            unknown_tables.is_empty(),
+            "virtual table should be known: {unknown_tables:?}"
+        );
     }
 
     #[test]

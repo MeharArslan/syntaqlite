@@ -134,7 +134,11 @@ impl<'a> SemanticEngine<'a> {
                 bindings,
                 body,
             } => self.visit_cte_scope(&fields, recursive, bindings, body),
-            SemanticRole::TriggerScope { target: _, when, body } => {
+            SemanticRole::TriggerScope {
+                target: _,
+                when,
+                body,
+            } => {
                 self.visit_trigger_scope(&fields, when, body);
             }
         }
@@ -199,13 +203,12 @@ impl<'a> SemanticEngine<'a> {
         }
         let offset = self.span_offset(name);
 
-        let is_known = self.catalog.resolve_relation(name)
-            || self.catalog.resolve_table_function(name);
+        let is_known =
+            self.catalog.resolve_relation(name) || self.catalog.resolve_table_function(name);
         if !is_known {
             let mut candidates = self.catalog.all_relation_names();
             candidates.extend(self.catalog.all_table_function_names());
-            let suggestion =
-                best_suggestion(name, &candidates, self.config.suggestion_threshold);
+            let suggestion = best_suggestion(name, &candidates, self.config.suggestion_threshold);
             self.diagnostics.push(Diagnostic {
                 start_offset: offset,
                 end_offset: offset + name.len(),
@@ -242,11 +245,8 @@ impl<'a> SemanticEngine<'a> {
                     FunctionCheckResult::Ok => {}
                     FunctionCheckResult::Unknown => {
                         let candidates = self.catalog.all_function_names();
-                        let suggestion = best_suggestion(
-                            name,
-                            &candidates,
-                            self.config.suggestion_threshold,
-                        );
+                        let suggestion =
+                            best_suggestion(name, &candidates, self.config.suggestion_threshold);
                         self.diagnostics.push(Diagnostic {
                             start_offset: offset,
                             end_offset: offset + name.len(),
@@ -355,7 +355,14 @@ impl<'a> SemanticEngine<'a> {
     ) {
         // FROM first so table bindings are in scope for expression checks.
         self.visit_opt(Self::field_node_id(fields, from));
-        for idx in [columns, where_clause, groupby, having, orderby, limit_clause] {
+        for idx in [
+            columns,
+            where_clause,
+            groupby,
+            having,
+            orderby,
+            limit_clause,
+        ] {
             self.visit_opt(Self::field_node_id(fields, idx));
         }
     }

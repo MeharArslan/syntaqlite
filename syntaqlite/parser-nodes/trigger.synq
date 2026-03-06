@@ -74,4 +74,6 @@ node CreateVirtualTableStmt {
     " USING " span(module_name)
     if_span(module_args) { "(" span(module_args) ")" }
   }
+
+  semantic { define_table(name: table_name) }
 }
