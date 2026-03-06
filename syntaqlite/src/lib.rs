@@ -51,64 +51,27 @@ pub fn sqlite_dialect() -> Dialect {
     sqlite::dialect::dialect()
 }
 
-// Shared parser utility types used across both `any` and `typed` modules.
-pub use syntaqlite_syntax::any::MacroRegion;
-pub use syntaqlite_syntax::{CommentKind, ParserConfig, ParserTokenFlags};
+// Re-export all public types from syntaqlite_syntax so users only need
+// to depend on this crate.
+pub use syntaqlite_syntax::*;
+
+/// Cross-cutting utilities for grammar configuration and compatibility.
+pub mod util {
+    pub use syntaqlite_syntax::util::*;
+}
 
 /// Type-erased (grammar-agnostic) parser and tokenizer types.
-///
-/// Use these when working across multiple dialects, or when the grammar is not
-/// known at compile time. For `SQLite` or a specific known grammar, prefer the
-/// types in [`typed`] instead.
 pub mod any {
-    pub use syntaqlite_syntax::any::{
-        // Grammar inspection
-        AnyGrammar,
-        AnyIncrementalParseSession,
-        // AST
-        AnyNode,
-        AnyNodeId,
-        AnyParseError,
-        AnyParseSession,
-        AnyParsedStatement,
-        // Parser
-        AnyParser,
-        AnyParserToken,
-        ParseOutcome,
-        // Tokenizer
-        AnyToken,
-        AnyTokenizer,
-        FieldKind,
-        FieldMeta,
-        FieldValue,
-        KeywordEntry,
-        MacroRegion,
-        NodeFields,
-    };
+    pub use syntaqlite_syntax::any::*;
 }
 
 /// Typed (grammar-parameterized) parser and tokenizer infrastructure.
-///
-/// Use these when the dialect grammar `G` is known at compile time. For the
-/// built-in `SQLite` dialect this is already wired up; access it via
-/// [`crate::sqlite`].
 pub mod typed {
-    pub use syntaqlite_syntax::typed::{
-        // Grammar traits
-        GrammarNodeType,
-        GrammarTokenType,
-        TypedGrammar,
-        TypedIncrementalParseSession,
-        TypedNodeId,
-        TypedNodeList,
-        TypedParseError,
-        TypedParseSession,
-        TypedParsedStatement,
-        // Parser
-        TypedParser,
-        TypedParserToken,
-        // Tokenizer
-        TypedToken,
-        TypedTokenizer,
-    };
+    pub use syntaqlite_syntax::typed::*;
+}
+
+/// Generated typed AST nodes for the built-in `SQLite` grammar.
+#[cfg(feature = "sqlite")]
+pub mod nodes {
+    pub use syntaqlite_syntax::nodes::*;
 }

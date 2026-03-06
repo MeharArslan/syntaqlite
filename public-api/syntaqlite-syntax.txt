@@ -42,6 +42,7 @@
 #[repr(u32)] pub enum syntaqlite_syntax::util::SqliteFlag
 #[repr(u8)] pub enum syntaqlite_syntax::any::FieldKind
 impl core::convert::From<syntaqlite_syntax::CompletionContext> for u32
+impl core::convert::From<syntaqlite_syntax::TokenType> for syntaqlite_syntax::any::AnyTokenType
 impl core::convert::From<syntaqlite_syntax::TokenType> for u32
 impl core::convert::From<syntaqlite_syntax::any::AnyNodeId> for syntaqlite_syntax::nodes::NodeId
 impl core::convert::From<syntaqlite_syntax::any::AnyNodeTag> for u32
@@ -73,6 +74,7 @@ impl core::convert::From<syntaqlite_syntax::nodes::CteListId> for syntaqlite_syn
 impl core::convert::From<syntaqlite_syntax::nodes::DeleteStmtId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::DetachStmtId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::DropStmtId> for syntaqlite_syntax::any::AnyNodeId
+impl core::convert::From<syntaqlite_syntax::nodes::ErrorId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::ExistsExprId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::ExplainStmtId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::ExprId> for syntaqlite_syntax::any::AnyNodeId
@@ -82,6 +84,7 @@ impl core::convert::From<syntaqlite_syntax::nodes::ForeignKeyClauseId> for synta
 impl core::convert::From<syntaqlite_syntax::nodes::FrameBoundId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::FrameSpecId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::FunctionCallId> for syntaqlite_syntax::any::AnyNodeId
+impl core::convert::From<syntaqlite_syntax::nodes::IdentNameId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::InExprId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::InExprSourceId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::InsertStmtId> for syntaqlite_syntax::any::AnyNodeId
@@ -91,6 +94,7 @@ impl core::convert::From<syntaqlite_syntax::nodes::JoinPrefixId> for syntaqlite_
 impl core::convert::From<syntaqlite_syntax::nodes::LikeExprId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::LimitClauseId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::LiteralId> for syntaqlite_syntax::any::AnyNodeId
+impl core::convert::From<syntaqlite_syntax::nodes::NameId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::NamedWindowDefId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::NamedWindowDefListId> for syntaqlite_syntax::any::AnyNodeId
 impl core::convert::From<syntaqlite_syntax::nodes::NodeId> for syntaqlite_syntax::any::AnyNodeId
@@ -155,6 +159,7 @@ impl core::fmt::Debug for syntaqlite_syntax::nodes::CteDefinition<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::DeleteStmt<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::DetachStmt<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::DropStmt<'_>
+impl core::fmt::Debug for syntaqlite_syntax::nodes::Error<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::ExistsExpr<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::ExplainStmt<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::FilterOver<'_>
@@ -162,6 +167,7 @@ impl core::fmt::Debug for syntaqlite_syntax::nodes::ForeignKeyClause<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::FrameBound<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::FrameSpec<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::FunctionCall<'_>
+impl core::fmt::Debug for syntaqlite_syntax::nodes::IdentName<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::InExpr<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::InsertStmt<'_>
 impl core::fmt::Debug for syntaqlite_syntax::nodes::IsExpr<'_>
@@ -216,6 +222,7 @@ impl core::fmt::Display for syntaqlite_syntax::nodes::CteDefinition<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::DeleteStmt<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::DetachStmt<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::DropStmt<'_>
+impl core::fmt::Display for syntaqlite_syntax::nodes::Error<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::ExistsExpr<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::ExplainStmt<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::FilterOver<'_>
@@ -223,6 +230,7 @@ impl core::fmt::Display for syntaqlite_syntax::nodes::ForeignKeyClause<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::FrameBound<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::FrameSpec<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::FunctionCall<'_>
+impl core::fmt::Display for syntaqlite_syntax::nodes::IdentName<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::InExpr<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::InsertStmt<'_>
 impl core::fmt::Display for syntaqlite_syntax::nodes::IsExpr<'_>
@@ -301,6 +309,7 @@ impl syntaqlite_syntax::nodes::DeleteStmtId
 impl syntaqlite_syntax::nodes::DetachStmtId
 impl syntaqlite_syntax::nodes::DropObjectType
 impl syntaqlite_syntax::nodes::DropStmtId
+impl syntaqlite_syntax::nodes::ErrorId
 impl syntaqlite_syntax::nodes::ExistsExprId
 impl syntaqlite_syntax::nodes::ExplainMode
 impl syntaqlite_syntax::nodes::ExplainStmtId
@@ -317,6 +326,7 @@ impl syntaqlite_syntax::nodes::FrameType
 impl syntaqlite_syntax::nodes::FunctionCallFlags
 impl syntaqlite_syntax::nodes::FunctionCallId
 impl syntaqlite_syntax::nodes::GeneratedColumnStorage
+impl syntaqlite_syntax::nodes::IdentNameId
 impl syntaqlite_syntax::nodes::InExprId
 impl syntaqlite_syntax::nodes::InExprSourceId
 impl syntaqlite_syntax::nodes::InsertStmtId
@@ -330,6 +340,7 @@ impl syntaqlite_syntax::nodes::LimitClauseId
 impl syntaqlite_syntax::nodes::LiteralId
 impl syntaqlite_syntax::nodes::LiteralType
 impl syntaqlite_syntax::nodes::Materialized
+impl syntaqlite_syntax::nodes::NameId
 impl syntaqlite_syntax::nodes::NamedWindowDefId
 impl syntaqlite_syntax::nodes::NamedWindowDefListId
 impl syntaqlite_syntax::nodes::NodeId
@@ -408,6 +419,7 @@ impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::CteList
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::DeleteStmtId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::DetachStmtId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::DropStmtId
+impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::ErrorId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::ExistsExprId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::ExplainStmtId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::ExprId
@@ -417,6 +429,7 @@ impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::Foreign
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::FrameBoundId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::FrameSpecId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::FunctionCallId
+impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::IdentNameId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::InExprId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::InExprSourceId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::InsertStmtId
@@ -426,6 +439,7 @@ impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::JoinPre
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::LikeExprId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::LimitClauseId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::LiteralId
+impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::NameId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::NamedWindowDefId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::NamedWindowDefListId
 impl syntaqlite_syntax::typed::TypedNodeId for syntaqlite_syntax::nodes::NodeId
@@ -492,6 +506,7 @@ impl<'a> core::convert::From<syntaqlite_syntax::nodes::CteDefinition<'a>> for sy
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::DeleteStmt<'a>> for syntaqlite_syntax::nodes::DeleteStmtId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::DetachStmt<'a>> for syntaqlite_syntax::nodes::DetachStmtId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::DropStmt<'a>> for syntaqlite_syntax::nodes::DropStmtId
+impl<'a> core::convert::From<syntaqlite_syntax::nodes::Error<'a>> for syntaqlite_syntax::nodes::ErrorId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::ExistsExpr<'a>> for syntaqlite_syntax::nodes::ExistsExprId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::ExplainStmt<'a>> for syntaqlite_syntax::nodes::ExplainStmtId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::Expr<'a>> for syntaqlite_syntax::nodes::ExprId
@@ -500,6 +515,7 @@ impl<'a> core::convert::From<syntaqlite_syntax::nodes::ForeignKeyClause<'a>> for
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::FrameBound<'a>> for syntaqlite_syntax::nodes::FrameBoundId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::FrameSpec<'a>> for syntaqlite_syntax::nodes::FrameSpecId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::FunctionCall<'a>> for syntaqlite_syntax::nodes::FunctionCallId
+impl<'a> core::convert::From<syntaqlite_syntax::nodes::IdentName<'a>> for syntaqlite_syntax::nodes::IdentNameId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::InExpr<'a>> for syntaqlite_syntax::nodes::InExprId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::InExprSource<'a>> for syntaqlite_syntax::nodes::InExprSourceId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::InsertStmt<'a>> for syntaqlite_syntax::nodes::InsertStmtId
@@ -509,6 +525,7 @@ impl<'a> core::convert::From<syntaqlite_syntax::nodes::JoinPrefix<'a>> for synta
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::LikeExpr<'a>> for syntaqlite_syntax::nodes::LikeExprId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::LimitClause<'a>> for syntaqlite_syntax::nodes::LimitClauseId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::Literal<'a>> for syntaqlite_syntax::nodes::LiteralId
+impl<'a> core::convert::From<syntaqlite_syntax::nodes::Name<'a>> for syntaqlite_syntax::nodes::NameId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::NamedWindowDef<'a>> for syntaqlite_syntax::nodes::NamedWindowDefId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::Node<'a>> for syntaqlite_syntax::nodes::NodeId
 impl<'a> core::convert::From<syntaqlite_syntax::nodes::OrderedSetFunctionCall<'a>> for syntaqlite_syntax::nodes::OrderedSetFunctionCallId
@@ -550,6 +567,7 @@ impl<'a> core::convert::From<syntaqlite_syntax::typed::TypedNodeList<'a, syntaql
 impl<'a> core::convert::From<syntaqlite_syntax::typed::TypedNodeList<'a, syntaqlite_syntax::sqlite::grammar::Grammar, syntaqlite_syntax::nodes::WindowDef<'a>>> for syntaqlite_syntax::nodes::WindowDefListId
 impl<'a> core::convert::From<syntaqlite_syntax::typed::TypedNodeList<'a, syntaqlite_syntax::sqlite::grammar::Grammar, syntaqlite_syntax::typed::TypedNodeList<'a, syntaqlite_syntax::sqlite::grammar::Grammar, syntaqlite_syntax::nodes::Expr<'a>>>> for syntaqlite_syntax::nodes::ValuesRowListId
 impl<'a> core::ops::index::Index<usize> for syntaqlite_syntax::any::NodeFields<'a>
+impl<'a> syntaqlite_syntax::Comment<'a>
 impl<'a> syntaqlite_syntax::ParserToken<'a>
 impl<'a> syntaqlite_syntax::any::NodeFields<'a>
 impl<'a> syntaqlite_syntax::nodes::AggregateFunctionCall<'a>
@@ -575,6 +593,7 @@ impl<'a> syntaqlite_syntax::nodes::CteDefinition<'a>
 impl<'a> syntaqlite_syntax::nodes::DeleteStmt<'a>
 impl<'a> syntaqlite_syntax::nodes::DetachStmt<'a>
 impl<'a> syntaqlite_syntax::nodes::DropStmt<'a>
+impl<'a> syntaqlite_syntax::nodes::Error<'a>
 impl<'a> syntaqlite_syntax::nodes::ExistsExpr<'a>
 impl<'a> syntaqlite_syntax::nodes::ExplainStmt<'a>
 impl<'a> syntaqlite_syntax::nodes::Expr<'a>
@@ -583,6 +602,7 @@ impl<'a> syntaqlite_syntax::nodes::ForeignKeyClause<'a>
 impl<'a> syntaqlite_syntax::nodes::FrameBound<'a>
 impl<'a> syntaqlite_syntax::nodes::FrameSpec<'a>
 impl<'a> syntaqlite_syntax::nodes::FunctionCall<'a>
+impl<'a> syntaqlite_syntax::nodes::IdentName<'a>
 impl<'a> syntaqlite_syntax::nodes::InExpr<'a>
 impl<'a> syntaqlite_syntax::nodes::InExprSource<'a>
 impl<'a> syntaqlite_syntax::nodes::InsertStmt<'a>
@@ -592,6 +612,7 @@ impl<'a> syntaqlite_syntax::nodes::JoinPrefix<'a>
 impl<'a> syntaqlite_syntax::nodes::LikeExpr<'a>
 impl<'a> syntaqlite_syntax::nodes::LimitClause<'a>
 impl<'a> syntaqlite_syntax::nodes::Literal<'a>
+impl<'a> syntaqlite_syntax::nodes::Name<'a>
 impl<'a> syntaqlite_syntax::nodes::NamedWindowDef<'a>
 impl<'a> syntaqlite_syntax::nodes::Node<'a>
 impl<'a> syntaqlite_syntax::nodes::OrderedSetFunctionCall<'a>
@@ -643,6 +664,7 @@ impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::no
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::DeleteStmt<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::DetachStmt<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::DropStmt<'a>
+impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::Error<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::ExistsExpr<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::ExplainStmt<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::Expr<'a>
@@ -651,6 +673,7 @@ impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::no
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::FrameBound<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::FrameSpec<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::FunctionCall<'a>
+impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::IdentName<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::InExpr<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::InExprSource<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::InsertStmt<'a>
@@ -660,6 +683,7 @@ impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::no
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::LikeExpr<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::LimitClause<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::Literal<'a>
+impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::Name<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::NamedWindowDef<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::Node<'a>
 impl<'a> syntaqlite_syntax::typed::GrammarNodeType<'a> for syntaqlite_syntax::nodes::OrderedSetFunctionCall<'a>
@@ -699,15 +723,24 @@ impl<G: syntaqlite_syntax::typed::TypedGrammar> syntaqlite_syntax::typed::TypedI
 impl<G: syntaqlite_syntax::typed::TypedGrammar> syntaqlite_syntax::typed::TypedParseSession<G>
 impl<G: syntaqlite_syntax::typed::TypedGrammar> syntaqlite_syntax::typed::TypedParser<G>
 impl<G: syntaqlite_syntax::typed::TypedGrammar> syntaqlite_syntax::typed::TypedTokenizer<G>
+impl<T, E> syntaqlite_syntax::ParseOutcome<T, E>
 pub enum syntaqlite_syntax::CommentKind
+pub enum syntaqlite_syntax::ParseOutcome<T, E>
 pub enum syntaqlite_syntax::any::FieldValue<'a>
+pub enum syntaqlite_syntax::any::ParseOutcome<T, E>
 pub enum syntaqlite_syntax::any::TokenCategory
 pub enum syntaqlite_syntax::nodes::Expr<'a>
 pub enum syntaqlite_syntax::nodes::InExprSource<'a>
+pub enum syntaqlite_syntax::nodes::Name<'a>
 pub enum syntaqlite_syntax::nodes::Node<'a>
 pub enum syntaqlite_syntax::nodes::Select<'a>
 pub enum syntaqlite_syntax::nodes::Stmt<'a>
 pub enum syntaqlite_syntax::nodes::TableSource<'a>
+pub enum syntaqlite_syntax::typed::ParseOutcome<T, E>
+pub fn syntaqlite_syntax::Comment<'a>::kind(&self) -> syntaqlite_syntax::CommentKind
+pub fn syntaqlite_syntax::Comment<'a>::length(&self) -> u32
+pub fn syntaqlite_syntax::Comment<'a>::offset(&self) -> u32
+pub fn syntaqlite_syntax::Comment<'a>::text(&self) -> &'a str
 pub fn syntaqlite_syntax::CompletionContext::from_raw(v: u32) -> Self
 pub fn syntaqlite_syntax::CompletionContext::raw(self) -> u32
 pub fn syntaqlite_syntax::IncrementalParseSession::begin_macro(&mut self, span: core::ops::range::Range<usize>)
@@ -718,12 +751,17 @@ pub fn syntaqlite_syntax::IncrementalParseSession::feed_token(&mut self, token_t
 pub fn syntaqlite_syntax::IncrementalParseSession::finish(&mut self) -> core::option::Option<core::result::Result<ParsedStatement<'_>, ParseError<'_>>>
 pub fn syntaqlite_syntax::IncrementalParseSession::from(inner: syntaqlite_syntax::typed::TypedIncrementalParseSession<syntaqlite_syntax::sqlite::grammar::Grammar>) -> Self
 pub fn syntaqlite_syntax::IncrementalParseSession::node_count(&self) -> u32
+pub fn syntaqlite_syntax::ParseOutcome<T, E>::map<U>(self, f: impl core::ops::function::FnOnce(T) -> U) -> syntaqlite_syntax::ParseOutcome<U, E>
+pub fn syntaqlite_syntax::ParseOutcome<T, E>::map_err<F>(self, f: impl core::ops::function::FnOnce(E) -> F) -> syntaqlite_syntax::ParseOutcome<T, F>
+pub fn syntaqlite_syntax::ParseOutcome<T, E>::transpose(self) -> core::result::Result<core::option::Option<T>, E>
 pub fn syntaqlite_syntax::ParserConfig::collect_tokens(&self) -> bool
 pub fn syntaqlite_syntax::ParserConfig::trace(&self) -> bool
 pub fn syntaqlite_syntax::ParserConfig::with_collect_tokens(self, collect_tokens: bool) -> Self
 pub fn syntaqlite_syntax::ParserConfig::with_trace(self, trace: bool) -> Self
 pub fn syntaqlite_syntax::ParserToken<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::ParserToken<'a>::flags(&self) -> syntaqlite_syntax::ParserTokenFlags
+pub fn syntaqlite_syntax::ParserToken<'a>::length(&self) -> u32
+pub fn syntaqlite_syntax::ParserToken<'a>::offset(&self) -> u32
 pub fn syntaqlite_syntax::ParserToken<'a>::text(&self) -> &'a str
 pub fn syntaqlite_syntax::ParserToken<'a>::token_type(&self) -> syntaqlite_syntax::TokenType
 pub fn syntaqlite_syntax::ParserTokenFlags::bits(self) -> u8
@@ -770,6 +808,7 @@ pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::Cte
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::DeleteStmtId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::DetachStmtId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::DropStmtId) -> syntaqlite_syntax::any::AnyNodeId
+pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::ErrorId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::ExistsExprId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::ExplainStmtId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::ExprId) -> syntaqlite_syntax::any::AnyNodeId
@@ -779,6 +818,7 @@ pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::For
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::FrameBoundId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::FrameSpecId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::FunctionCallId) -> syntaqlite_syntax::any::AnyNodeId
+pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::IdentNameId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::InExprId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::InExprSourceId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::InsertStmtId) -> syntaqlite_syntax::any::AnyNodeId
@@ -788,6 +828,7 @@ pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::Joi
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::LikeExprId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::LimitClauseId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::LiteralId) -> syntaqlite_syntax::any::AnyNodeId
+pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::NameId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::NamedWindowDefId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::NamedWindowDefListId) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::NodeId) -> syntaqlite_syntax::any::AnyNodeId
@@ -826,6 +867,7 @@ pub fn syntaqlite_syntax::any::AnyNodeId::from(id: syntaqlite_syntax::nodes::Wit
 pub fn syntaqlite_syntax::any::AnyNodeId::is_null(&self) -> bool
 pub fn syntaqlite_syntax::any::AnyNodeTag::from(t: syntaqlite_syntax::nodes::NodeTag) -> syntaqlite_syntax::any::AnyNodeTag
 pub fn syntaqlite_syntax::any::AnyNodeTag::from_raw(v: u32) -> Self
+pub fn syntaqlite_syntax::any::AnyTokenType::from(t: syntaqlite_syntax::TokenType) -> syntaqlite_syntax::any::AnyTokenType
 pub fn syntaqlite_syntax::any::AnyTokenType::from_raw(v: u32) -> Self
 pub fn syntaqlite_syntax::any::AnyTokenType::from_token_type(raw: syntaqlite_syntax::any::AnyTokenType) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::any::FieldMeta<'_>::display_count(&self) -> usize
@@ -853,9 +895,9 @@ pub fn syntaqlite_syntax::nodes::AggregateFunctionCallId::into_inner(self) -> sy
 pub fn syntaqlite_syntax::nodes::AlterOp::as_str(&self) -> &'static str
 pub fn syntaqlite_syntax::nodes::AlterTableStmt<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::nodes::AlterTableStmt<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
-pub fn syntaqlite_syntax::nodes::AlterTableStmt<'a>::new_name(&self) -> &'a str
+pub fn syntaqlite_syntax::nodes::AlterTableStmt<'a>::new_name(&self) -> core::option::Option<syntaqlite_syntax::nodes::Name<'a>>
 pub fn syntaqlite_syntax::nodes::AlterTableStmt<'a>::node_id(&self) -> syntaqlite_syntax::nodes::AlterTableStmtId
-pub fn syntaqlite_syntax::nodes::AlterTableStmt<'a>::old_name(&self) -> &'a str
+pub fn syntaqlite_syntax::nodes::AlterTableStmt<'a>::old_name(&self) -> core::option::Option<syntaqlite_syntax::nodes::Name<'a>>
 pub fn syntaqlite_syntax::nodes::AlterTableStmt<'a>::op(&self) -> syntaqlite_syntax::nodes::AlterOp
 pub fn syntaqlite_syntax::nodes::AlterTableStmt<'a>::target(&self) -> core::option::Option<syntaqlite_syntax::nodes::QualifiedName<'a>>
 pub fn syntaqlite_syntax::nodes::AlterTableStmtId::from(n: syntaqlite_syntax::nodes::AlterTableStmt<'a>) -> Self
@@ -946,7 +988,7 @@ pub fn syntaqlite_syntax::nodes::ColumnConstraintListId::from(n: syntaqlite_synt
 pub fn syntaqlite_syntax::nodes::ColumnConstraintListId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::ColumnConstraintType::as_str(&self) -> &'static str
 pub fn syntaqlite_syntax::nodes::ColumnDef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_syntax::nodes::ColumnDef<'a>::column_name(&self) -> &'a str
+pub fn syntaqlite_syntax::nodes::ColumnDef<'a>::column_name(&self) -> core::option::Option<syntaqlite_syntax::nodes::Name<'a>>
 pub fn syntaqlite_syntax::nodes::ColumnDef<'a>::constraints(&self) -> core::option::Option<syntaqlite_syntax::nodes::ColumnConstraintList<'a>>
 pub fn syntaqlite_syntax::nodes::ColumnDef<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::nodes::ColumnDef<'a>::node_id(&self) -> syntaqlite_syntax::nodes::ColumnDefId
@@ -1071,6 +1113,12 @@ pub fn syntaqlite_syntax::nodes::DropStmt<'a>::object_type(&self) -> syntaqlite_
 pub fn syntaqlite_syntax::nodes::DropStmt<'a>::target(&self) -> core::option::Option<syntaqlite_syntax::nodes::QualifiedName<'a>>
 pub fn syntaqlite_syntax::nodes::DropStmtId::from(n: syntaqlite_syntax::nodes::DropStmt<'a>) -> Self
 pub fn syntaqlite_syntax::nodes::DropStmtId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
+pub fn syntaqlite_syntax::nodes::Error<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_syntax::nodes::Error<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
+pub fn syntaqlite_syntax::nodes::Error<'a>::node_id(&self) -> syntaqlite_syntax::nodes::ErrorId
+pub fn syntaqlite_syntax::nodes::Error<'a>::source(&self) -> &'a str
+pub fn syntaqlite_syntax::nodes::ErrorId::from(n: syntaqlite_syntax::nodes::Error<'a>) -> Self
+pub fn syntaqlite_syntax::nodes::ErrorId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::ExistsExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::nodes::ExistsExpr<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::nodes::ExistsExpr<'a>::node_id(&self) -> syntaqlite_syntax::nodes::ExistsExprId
@@ -1143,6 +1191,12 @@ pub fn syntaqlite_syntax::nodes::FunctionCallFlags::star(&self) -> bool
 pub fn syntaqlite_syntax::nodes::FunctionCallId::from(n: syntaqlite_syntax::nodes::FunctionCall<'a>) -> Self
 pub fn syntaqlite_syntax::nodes::FunctionCallId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::GeneratedColumnStorage::as_str(&self) -> &'static str
+pub fn syntaqlite_syntax::nodes::IdentName<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_syntax::nodes::IdentName<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
+pub fn syntaqlite_syntax::nodes::IdentName<'a>::node_id(&self) -> syntaqlite_syntax::nodes::IdentNameId
+pub fn syntaqlite_syntax::nodes::IdentName<'a>::source(&self) -> &'a str
+pub fn syntaqlite_syntax::nodes::IdentNameId::from(n: syntaqlite_syntax::nodes::IdentName<'a>) -> Self
+pub fn syntaqlite_syntax::nodes::IdentNameId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::InExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::nodes::InExpr<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::nodes::InExpr<'a>::negated(&self) -> bool
@@ -1216,6 +1270,10 @@ pub fn syntaqlite_syntax::nodes::LiteralId::from(n: syntaqlite_syntax::nodes::Li
 pub fn syntaqlite_syntax::nodes::LiteralId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::LiteralType::as_str(&self) -> &'static str
 pub fn syntaqlite_syntax::nodes::Materialized::as_str(&self) -> &'static str
+pub fn syntaqlite_syntax::nodes::Name<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
+pub fn syntaqlite_syntax::nodes::Name<'a>::node_id(&self) -> syntaqlite_syntax::nodes::NameId
+pub fn syntaqlite_syntax::nodes::NameId::from(n: syntaqlite_syntax::nodes::Name<'a>) -> Self
+pub fn syntaqlite_syntax::nodes::NameId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::NamedWindowDef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::nodes::NamedWindowDef<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::nodes::NamedWindowDef<'a>::node_id(&self) -> syntaqlite_syntax::nodes::NamedWindowDefId
@@ -1266,8 +1324,8 @@ pub fn syntaqlite_syntax::nodes::PragmaStmtId::into_inner(self) -> syntaqlite_sy
 pub fn syntaqlite_syntax::nodes::QualifiedName<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
 pub fn syntaqlite_syntax::nodes::QualifiedName<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::nodes::QualifiedName<'a>::node_id(&self) -> syntaqlite_syntax::nodes::QualifiedNameId
-pub fn syntaqlite_syntax::nodes::QualifiedName<'a>::object_name(&self) -> &'a str
-pub fn syntaqlite_syntax::nodes::QualifiedName<'a>::schema(&self) -> &'a str
+pub fn syntaqlite_syntax::nodes::QualifiedName<'a>::object_name(&self) -> core::option::Option<syntaqlite_syntax::nodes::Name<'a>>
+pub fn syntaqlite_syntax::nodes::QualifiedName<'a>::schema(&self) -> core::option::Option<syntaqlite_syntax::nodes::Name<'a>>
 pub fn syntaqlite_syntax::nodes::QualifiedNameId::from(n: syntaqlite_syntax::nodes::QualifiedName<'a>) -> Self
 pub fn syntaqlite_syntax::nodes::QualifiedNameId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::RaiseExpr<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
@@ -1279,7 +1337,7 @@ pub fn syntaqlite_syntax::nodes::RaiseExprId::from(n: syntaqlite_syntax::nodes::
 pub fn syntaqlite_syntax::nodes::RaiseExprId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::RaiseType::as_str(&self) -> &'static str
 pub fn syntaqlite_syntax::nodes::ResultColumn<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_syntax::nodes::ResultColumn<'a>::alias(&self) -> &'a str
+pub fn syntaqlite_syntax::nodes::ResultColumn<'a>::alias(&self) -> core::option::Option<syntaqlite_syntax::nodes::Name<'a>>
 pub fn syntaqlite_syntax::nodes::ResultColumn<'a>::expr(&self) -> core::option::Option<syntaqlite_syntax::nodes::Expr<'a>>
 pub fn syntaqlite_syntax::nodes::ResultColumn<'a>::flags(&self) -> syntaqlite_syntax::nodes::ResultColumnFlags
 pub fn syntaqlite_syntax::nodes::ResultColumn<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
@@ -1295,7 +1353,7 @@ pub fn syntaqlite_syntax::nodes::SavepointStmt<'_>::fmt(&self, f: &mut core::fmt
 pub fn syntaqlite_syntax::nodes::SavepointStmt<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::nodes::SavepointStmt<'a>::node_id(&self) -> syntaqlite_syntax::nodes::SavepointStmtId
 pub fn syntaqlite_syntax::nodes::SavepointStmt<'a>::op(&self) -> syntaqlite_syntax::nodes::SavepointOp
-pub fn syntaqlite_syntax::nodes::SavepointStmt<'a>::savepoint_name(&self) -> &'a str
+pub fn syntaqlite_syntax::nodes::SavepointStmt<'a>::savepoint_name(&self) -> core::option::Option<syntaqlite_syntax::nodes::Name<'a>>
 pub fn syntaqlite_syntax::nodes::SavepointStmtId::from(n: syntaqlite_syntax::nodes::SavepointStmt<'a>) -> Self
 pub fn syntaqlite_syntax::nodes::SavepointStmtId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::Select<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
@@ -1340,7 +1398,7 @@ pub fn syntaqlite_syntax::nodes::SubqueryExpr<'a>::select(&self) -> core::option
 pub fn syntaqlite_syntax::nodes::SubqueryExprId::from(n: syntaqlite_syntax::nodes::SubqueryExpr<'a>) -> Self
 pub fn syntaqlite_syntax::nodes::SubqueryExprId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::SubqueryTableSource<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_syntax::nodes::SubqueryTableSource<'a>::alias(&self) -> &'a str
+pub fn syntaqlite_syntax::nodes::SubqueryTableSource<'a>::alias(&self) -> core::option::Option<syntaqlite_syntax::nodes::Name<'a>>
 pub fn syntaqlite_syntax::nodes::SubqueryTableSource<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::nodes::SubqueryTableSource<'a>::node_id(&self) -> syntaqlite_syntax::nodes::SubqueryTableSourceId
 pub fn syntaqlite_syntax::nodes::SubqueryTableSource<'a>::select(&self) -> core::option::Option<syntaqlite_syntax::nodes::Select<'a>>
@@ -1363,7 +1421,7 @@ pub fn syntaqlite_syntax::nodes::TableConstraintListId::from(n: syntaqlite_synta
 pub fn syntaqlite_syntax::nodes::TableConstraintListId::into_inner(self) -> syntaqlite_syntax::any::AnyNodeId
 pub fn syntaqlite_syntax::nodes::TableConstraintType::as_str(&self) -> &'static str
 pub fn syntaqlite_syntax::nodes::TableRef<'_>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
-pub fn syntaqlite_syntax::nodes::TableRef<'a>::alias(&self) -> &'a str
+pub fn syntaqlite_syntax::nodes::TableRef<'a>::alias(&self) -> core::option::Option<syntaqlite_syntax::nodes::Name<'a>>
 pub fn syntaqlite_syntax::nodes::TableRef<'a>::from_result(stmt_result: syntaqlite_syntax::any::AnyParsedStatement<'a>, id: syntaqlite_syntax::any::AnyNodeId) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::nodes::TableRef<'a>::node_id(&self) -> syntaqlite_syntax::nodes::TableRefId
 pub fn syntaqlite_syntax::nodes::TableRef<'a>::schema(&self) -> &'a str
@@ -1472,18 +1530,22 @@ pub fn syntaqlite_syntax::typed::TypedNodeList<'a, G, T>::from_result(stmt_resul
 pub fn syntaqlite_syntax::typed::TypedNodeList<'a, G, T>::get(&self, index: usize) -> core::option::Option<T>
 pub fn syntaqlite_syntax::typed::TypedNodeList<'a, G, T>::iter(&self) -> impl core::iter::traits::iterator::Iterator<Item = T> + 'a
 pub fn syntaqlite_syntax::typed::TypedParseError<'_, G>::fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result
+pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::comments(&self) -> impl core::iter::traits::iterator::Iterator<Item = syntaqlite_syntax::Comment<'a>>
 pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::is_fatal(&self) -> bool
 pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::is_recovered(&self) -> bool
 pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::kind(&self) -> syntaqlite_syntax::ParseErrorKind
 pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::length(&self) -> core::option::Option<usize>
 pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::message(&self) -> &str
 pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::offset(&self) -> core::option::Option<usize>
-pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::root(&self) -> core::option::Option<<G as syntaqlite_syntax::typed::TypedGrammar>::Node>
+pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::parse_source(&self) -> &'a str
+pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::recovery_root(&self) -> core::option::Option<<G as syntaqlite_syntax::typed::TypedGrammar>::Node>
+pub fn syntaqlite_syntax::typed::TypedParseError<'a, G>::tokens(&self) -> impl core::iter::traits::iterator::Iterator<Item = syntaqlite_syntax::typed::TypedParserToken<'a, G>>
 pub fn syntaqlite_syntax::typed::TypedParseSession<G>::arena_result(&self) -> syntaqlite_syntax::any::AnyParsedStatement<'_>
 pub fn syntaqlite_syntax::typed::TypedParseSession<G>::drop(&mut self)
-pub fn syntaqlite_syntax::typed::TypedParseSession<G>::next(&mut self) -> core::option::Option<core::result::Result<syntaqlite_syntax::typed::TypedParsedStatement<'_, G>, syntaqlite_syntax::typed::TypedParseError<'_, G>>>
+pub fn syntaqlite_syntax::typed::TypedParseSession<G>::next(&mut self) -> syntaqlite_syntax::ParseOutcome<syntaqlite_syntax::typed::TypedParsedStatement<'_, G>, syntaqlite_syntax::typed::TypedParseError<'_, G>>
 pub fn syntaqlite_syntax::typed::TypedParseSession<G>::source(&self) -> &str
 pub fn syntaqlite_syntax::typed::TypedParsedStatement<'a, G>::comments(&self) -> impl core::iter::traits::iterator::Iterator<Item = syntaqlite_syntax::Comment<'a>>
+pub fn syntaqlite_syntax::typed::TypedParsedStatement<'a, G>::dump(&self, out: &mut alloc::string::String, indent: usize)
 pub fn syntaqlite_syntax::typed::TypedParsedStatement<'a, G>::erase(self) -> syntaqlite_syntax::any::AnyParsedStatement<'a>
 pub fn syntaqlite_syntax::typed::TypedParsedStatement<'a, G>::root(&self) -> core::option::Option<<G as syntaqlite_syntax::typed::TypedGrammar>::Node>
 pub fn syntaqlite_syntax::typed::TypedParsedStatement<'a, G>::source(&self) -> &'a str
@@ -1498,6 +1560,8 @@ pub fn syntaqlite_syntax::typed::TypedParser<G>::new(grammar: G) -> Self
 pub fn syntaqlite_syntax::typed::TypedParser<G>::parse(&self, source: &str) -> syntaqlite_syntax::typed::TypedParseSession<G>
 pub fn syntaqlite_syntax::typed::TypedParser<G>::with_config(grammar: G, config: &syntaqlite_syntax::ParserConfig) -> Self
 pub fn syntaqlite_syntax::typed::TypedParserToken<'a, G>::flags(&self) -> syntaqlite_syntax::ParserTokenFlags
+pub fn syntaqlite_syntax::typed::TypedParserToken<'a, G>::length(&self) -> u32
+pub fn syntaqlite_syntax::typed::TypedParserToken<'a, G>::offset(&self) -> u32
 pub fn syntaqlite_syntax::typed::TypedParserToken<'a, G>::text(&self) -> &'a str
 pub fn syntaqlite_syntax::typed::TypedParserToken<'a, G>::token_type(&self) -> <G as syntaqlite_syntax::typed::TypedGrammar>::Token
 pub fn syntaqlite_syntax::typed::TypedToken<'a, G>::text(&self) -> &'a str
@@ -1507,6 +1571,7 @@ pub fn syntaqlite_syntax::typed::TypedTokenizer<G>::tokenize<'a>(&self, source: 
 pub fn syntaqlite_syntax::typed::TypedTokenizer<G>::tokenize_cstr<'a>(&self, source: &'a core::ffi::c_str::CStr) -> impl core::iter::traits::iterator::Iterator<Item = syntaqlite_syntax::typed::TypedToken<'a, G>> + use<'a, G>
 pub fn syntaqlite_syntax::typed::grammar() -> syntaqlite_syntax::sqlite::grammar::Grammar
 pub fn syntaqlite_syntax::util::SqliteFlags::has(&self, flag: syntaqlite_syntax::util::SqliteFlag) -> bool
+pub fn syntaqlite_syntax::util::SqliteFlags::has_index(&self, idx: u32) -> bool
 pub fn syntaqlite_syntax::util::SqliteVersion::from_int(v: i32) -> Self
 pub fn syntaqlite_syntax::util::SqliteVersion::parse(s: &str) -> core::option::Option<Self>
 pub fn syntaqlite_syntax::util::is_suggestable_keyword(name: &str) -> bool
@@ -1581,6 +1646,8 @@ pub struct syntaqlite_syntax::nodes::DetachStmt<'a>
 pub struct syntaqlite_syntax::nodes::DetachStmtId(_)
 pub struct syntaqlite_syntax::nodes::DropStmt<'a>
 pub struct syntaqlite_syntax::nodes::DropStmtId(_)
+pub struct syntaqlite_syntax::nodes::Error<'a>
+pub struct syntaqlite_syntax::nodes::ErrorId(_)
 pub struct syntaqlite_syntax::nodes::ExistsExpr<'a>
 pub struct syntaqlite_syntax::nodes::ExistsExprId(_)
 pub struct syntaqlite_syntax::nodes::ExplainStmt<'a>
@@ -1597,6 +1664,8 @@ pub struct syntaqlite_syntax::nodes::FrameSpec<'a>
 pub struct syntaqlite_syntax::nodes::FrameSpecId(_)
 pub struct syntaqlite_syntax::nodes::FunctionCall<'a>
 pub struct syntaqlite_syntax::nodes::FunctionCallId(_)
+pub struct syntaqlite_syntax::nodes::IdentName<'a>
+pub struct syntaqlite_syntax::nodes::IdentNameId(_)
 pub struct syntaqlite_syntax::nodes::InExpr<'a>
 pub struct syntaqlite_syntax::nodes::InExprId(_)
 pub struct syntaqlite_syntax::nodes::InExprSourceId(_)
@@ -1614,6 +1683,7 @@ pub struct syntaqlite_syntax::nodes::LimitClause<'a>
 pub struct syntaqlite_syntax::nodes::LimitClauseId(_)
 pub struct syntaqlite_syntax::nodes::Literal<'a>
 pub struct syntaqlite_syntax::nodes::LiteralId(_)
+pub struct syntaqlite_syntax::nodes::NameId(_)
 pub struct syntaqlite_syntax::nodes::NamedWindowDef<'a>
 pub struct syntaqlite_syntax::nodes::NamedWindowDefId(_)
 pub struct syntaqlite_syntax::nodes::NamedWindowDefListId(_)
@@ -1682,8 +1752,6 @@ pub struct syntaqlite_syntax::typed::TypedParserToken<'a, G: syntaqlite_syntax::
 pub struct syntaqlite_syntax::typed::TypedToken<'a, G: syntaqlite_syntax::typed::TypedGrammar>
 pub struct syntaqlite_syntax::typed::TypedTokenizer<G: syntaqlite_syntax::typed::TypedGrammar>
 pub struct syntaqlite_syntax::util::SqliteFlags(_)
-pub syntaqlite_syntax::Comment::kind: syntaqlite_syntax::CommentKind
-pub syntaqlite_syntax::Comment::text: &'a str
 pub syntaqlite_syntax::CommentKind::Block
 pub syntaqlite_syntax::CommentKind::Line
 pub syntaqlite_syntax::CompletionContext::Expression = 1
@@ -1691,6 +1759,9 @@ pub syntaqlite_syntax::CompletionContext::TableRef = 2
 pub syntaqlite_syntax::CompletionContext::Unknown = 0
 pub syntaqlite_syntax::ParseErrorKind::Fatal = 2
 pub syntaqlite_syntax::ParseErrorKind::Recovered = 1
+pub syntaqlite_syntax::ParseOutcome::Done
+pub syntaqlite_syntax::ParseOutcome::Err(E)
+pub syntaqlite_syntax::ParseOutcome::Ok(T)
 pub syntaqlite_syntax::TokenType::Abort = 1
 pub syntaqlite_syntax::TokenType::Action = 2
 pub syntaqlite_syntax::TokenType::Add = 158
@@ -1892,6 +1963,9 @@ pub syntaqlite_syntax::any::KeywordEntry::keyword: &'static str
 pub syntaqlite_syntax::any::KeywordEntry::token_type: syntaqlite_syntax::any::AnyTokenType
 pub syntaqlite_syntax::any::MacroRegion::call_length: u32
 pub syntaqlite_syntax::any::MacroRegion::call_offset: u32
+pub syntaqlite_syntax::any::ParseOutcome::Done
+pub syntaqlite_syntax::any::ParseOutcome::Err(E)
+pub syntaqlite_syntax::any::ParseOutcome::Ok(T)
 pub syntaqlite_syntax::any::TokenCategory::Comment
 pub syntaqlite_syntax::any::TokenCategory::Function
 pub syntaqlite_syntax::any::TokenCategory::Identifier
@@ -1960,6 +2034,7 @@ pub syntaqlite_syntax::nodes::Expr::CaseExpr(syntaqlite_syntax::nodes::CaseExpr<
 pub syntaqlite_syntax::nodes::Expr::CastExpr(syntaqlite_syntax::nodes::CastExpr<'a>)
 pub syntaqlite_syntax::nodes::Expr::CollateExpr(syntaqlite_syntax::nodes::CollateExpr<'a>)
 pub syntaqlite_syntax::nodes::Expr::ColumnRef(syntaqlite_syntax::nodes::ColumnRef<'a>)
+pub syntaqlite_syntax::nodes::Expr::Error(syntaqlite_syntax::nodes::Error<'a>)
 pub syntaqlite_syntax::nodes::Expr::ExistsExpr(syntaqlite_syntax::nodes::ExistsExpr<'a>)
 pub syntaqlite_syntax::nodes::Expr::FunctionCall(syntaqlite_syntax::nodes::FunctionCall<'a>)
 pub syntaqlite_syntax::nodes::Expr::InExpr(syntaqlite_syntax::nodes::InExpr<'a>)
@@ -1967,7 +2042,6 @@ pub syntaqlite_syntax::nodes::Expr::IsExpr(syntaqlite_syntax::nodes::IsExpr<'a>)
 pub syntaqlite_syntax::nodes::Expr::LikeExpr(syntaqlite_syntax::nodes::LikeExpr<'a>)
 pub syntaqlite_syntax::nodes::Expr::Literal(syntaqlite_syntax::nodes::Literal<'a>)
 pub syntaqlite_syntax::nodes::Expr::OrderedSetFunctionCall(syntaqlite_syntax::nodes::OrderedSetFunctionCall<'a>)
-pub syntaqlite_syntax::nodes::Expr::Other(syntaqlite_syntax::nodes::Node<'a>)
 pub syntaqlite_syntax::nodes::Expr::RaiseExpr(syntaqlite_syntax::nodes::RaiseExpr<'a>)
 pub syntaqlite_syntax::nodes::Expr::SubqueryExpr(syntaqlite_syntax::nodes::SubqueryExpr<'a>)
 pub syntaqlite_syntax::nodes::Expr::UnaryExpr(syntaqlite_syntax::nodes::UnaryExpr<'a>)
@@ -1994,7 +2068,6 @@ pub syntaqlite_syntax::nodes::FrameType::Rows = 2
 pub syntaqlite_syntax::nodes::GeneratedColumnStorage::Stored = 1
 pub syntaqlite_syntax::nodes::GeneratedColumnStorage::Virtual = 0
 pub syntaqlite_syntax::nodes::InExprSource::ExprList(syntaqlite_syntax::nodes::ExprList<'a>)
-pub syntaqlite_syntax::nodes::InExprSource::Other(syntaqlite_syntax::nodes::Node<'a>)
 pub syntaqlite_syntax::nodes::InExprSource::SubqueryExpr(syntaqlite_syntax::nodes::SubqueryExpr<'a>)
 pub syntaqlite_syntax::nodes::IsOp::Is = 0
 pub syntaqlite_syntax::nodes::IsOp::IsDistinct = 5
@@ -2022,6 +2095,8 @@ pub syntaqlite_syntax::nodes::LiteralType::String = 2
 pub syntaqlite_syntax::nodes::Materialized::Default = 0
 pub syntaqlite_syntax::nodes::Materialized::Materialized = 1
 pub syntaqlite_syntax::nodes::Materialized::NotMaterialized = 2
+pub syntaqlite_syntax::nodes::Name::Error(syntaqlite_syntax::nodes::Error<'a>)
+pub syntaqlite_syntax::nodes::Name::IdentName(syntaqlite_syntax::nodes::IdentName<'a>)
 pub syntaqlite_syntax::nodes::Node::AggregateFunctionCall(syntaqlite_syntax::nodes::AggregateFunctionCall<'a>)
 pub syntaqlite_syntax::nodes::Node::AlterTableStmt(syntaqlite_syntax::nodes::AlterTableStmt<'a>)
 pub syntaqlite_syntax::nodes::Node::AnalyzeOrReindexStmt(syntaqlite_syntax::nodes::AnalyzeOrReindexStmt<'a>)
@@ -2049,6 +2124,7 @@ pub syntaqlite_syntax::nodes::Node::CteList(syntaqlite_syntax::nodes::CteList<'a
 pub syntaqlite_syntax::nodes::Node::DeleteStmt(syntaqlite_syntax::nodes::DeleteStmt<'a>)
 pub syntaqlite_syntax::nodes::Node::DetachStmt(syntaqlite_syntax::nodes::DetachStmt<'a>)
 pub syntaqlite_syntax::nodes::Node::DropStmt(syntaqlite_syntax::nodes::DropStmt<'a>)
+pub syntaqlite_syntax::nodes::Node::Error(syntaqlite_syntax::nodes::Error<'a>)
 pub syntaqlite_syntax::nodes::Node::ExistsExpr(syntaqlite_syntax::nodes::ExistsExpr<'a>)
 pub syntaqlite_syntax::nodes::Node::ExplainStmt(syntaqlite_syntax::nodes::ExplainStmt<'a>)
 pub syntaqlite_syntax::nodes::Node::ExprList(syntaqlite_syntax::nodes::ExprList<'a>)
@@ -2057,6 +2133,7 @@ pub syntaqlite_syntax::nodes::Node::ForeignKeyClause(syntaqlite_syntax::nodes::F
 pub syntaqlite_syntax::nodes::Node::FrameBound(syntaqlite_syntax::nodes::FrameBound<'a>)
 pub syntaqlite_syntax::nodes::Node::FrameSpec(syntaqlite_syntax::nodes::FrameSpec<'a>)
 pub syntaqlite_syntax::nodes::Node::FunctionCall(syntaqlite_syntax::nodes::FunctionCall<'a>)
+pub syntaqlite_syntax::nodes::Node::IdentName(syntaqlite_syntax::nodes::IdentName<'a>)
 pub syntaqlite_syntax::nodes::Node::InExpr(syntaqlite_syntax::nodes::InExpr<'a>)
 pub syntaqlite_syntax::nodes::Node::InsertStmt(syntaqlite_syntax::nodes::InsertStmt<'a>)
 pub syntaqlite_syntax::nodes::Node::IsExpr(syntaqlite_syntax::nodes::IsExpr<'a>)
@@ -2100,79 +2177,81 @@ pub syntaqlite_syntax::nodes::Node::WindowDef(syntaqlite_syntax::nodes::WindowDe
 pub syntaqlite_syntax::nodes::Node::WindowDefList(syntaqlite_syntax::nodes::WindowDefList<'a>)
 pub syntaqlite_syntax::nodes::Node::WithClause(syntaqlite_syntax::nodes::WithClause<'a>)
 pub syntaqlite_syntax::nodes::NodeTag::AggregateFunctionCall = 1
-pub syntaqlite_syntax::nodes::NodeTag::AlterTableStmt = 41
-pub syntaqlite_syntax::nodes::NodeTag::AnalyzeOrReindexStmt = 59
-pub syntaqlite_syntax::nodes::NodeTag::AttachStmt = 60
+pub syntaqlite_syntax::nodes::NodeTag::AlterTableStmt = 43
+pub syntaqlite_syntax::nodes::NodeTag::AnalyzeOrReindexStmt = 61
+pub syntaqlite_syntax::nodes::NodeTag::AttachStmt = 62
 pub syntaqlite_syntax::nodes::NodeTag::BetweenExpr = 10
 pub syntaqlite_syntax::nodes::NodeTag::BinaryExpr = 31
 pub syntaqlite_syntax::nodes::NodeTag::CaseExpr = 12
 pub syntaqlite_syntax::nodes::NodeTag::CaseWhen = 13
 pub syntaqlite_syntax::nodes::NodeTag::CaseWhenList = 14
 pub syntaqlite_syntax::nodes::NodeTag::CastExpr = 3
-pub syntaqlite_syntax::nodes::NodeTag::CollateExpr = 37
+pub syntaqlite_syntax::nodes::NodeTag::CollateExpr = 39
 pub syntaqlite_syntax::nodes::NodeTag::ColumnConstraint = 16
 pub syntaqlite_syntax::nodes::NodeTag::ColumnConstraintList = 17
 pub syntaqlite_syntax::nodes::NodeTag::ColumnDef = 18
 pub syntaqlite_syntax::nodes::NodeTag::ColumnDefList = 19
 pub syntaqlite_syntax::nodes::NodeTag::ColumnRef = 4
 pub syntaqlite_syntax::nodes::NodeTag::CompoundSelect = 5
-pub syntaqlite_syntax::nodes::NodeTag::CreateIndexStmt = 64
+pub syntaqlite_syntax::nodes::NodeTag::CreateIndexStmt = 66
 pub syntaqlite_syntax::nodes::NodeTag::CreateTableStmt = 22
-pub syntaqlite_syntax::nodes::NodeTag::CreateTriggerStmt = 56
-pub syntaqlite_syntax::nodes::NodeTag::CreateViewStmt = 65
-pub syntaqlite_syntax::nodes::NodeTag::CreateVirtualTableStmt = 57
+pub syntaqlite_syntax::nodes::NodeTag::CreateTriggerStmt = 58
+pub syntaqlite_syntax::nodes::NodeTag::CreateViewStmt = 67
+pub syntaqlite_syntax::nodes::NodeTag::CreateVirtualTableStmt = 59
 pub syntaqlite_syntax::nodes::NodeTag::CteDefinition = 23
 pub syntaqlite_syntax::nodes::NodeTag::CteList = 24
 pub syntaqlite_syntax::nodes::NodeTag::DeleteStmt = 26
-pub syntaqlite_syntax::nodes::NodeTag::DetachStmt = 61
-pub syntaqlite_syntax::nodes::NodeTag::DropStmt = 40
+pub syntaqlite_syntax::nodes::NodeTag::DetachStmt = 63
+pub syntaqlite_syntax::nodes::NodeTag::DropStmt = 42
+pub syntaqlite_syntax::nodes::NodeTag::Error = 35
 pub syntaqlite_syntax::nodes::NodeTag::ExistsExpr = 7
-pub syntaqlite_syntax::nodes::NodeTag::ExplainStmt = 63
-pub syntaqlite_syntax::nodes::NodeTag::ExprList = 34
-pub syntaqlite_syntax::nodes::NodeTag::FilterOver = 74
+pub syntaqlite_syntax::nodes::NodeTag::ExplainStmt = 65
+pub syntaqlite_syntax::nodes::NodeTag::ExprList = 36
+pub syntaqlite_syntax::nodes::NodeTag::FilterOver = 76
 pub syntaqlite_syntax::nodes::NodeTag::ForeignKeyClause = 15
-pub syntaqlite_syntax::nodes::NodeTag::FrameBound = 68
-pub syntaqlite_syntax::nodes::NodeTag::FrameSpec = 69
-pub syntaqlite_syntax::nodes::NodeTag::FunctionCall = 35
+pub syntaqlite_syntax::nodes::NodeTag::FrameBound = 70
+pub syntaqlite_syntax::nodes::NodeTag::FrameSpec = 71
+pub syntaqlite_syntax::nodes::NodeTag::FunctionCall = 37
+pub syntaqlite_syntax::nodes::NodeTag::IdentName = 34
 pub syntaqlite_syntax::nodes::NodeTag::InExpr = 8
 pub syntaqlite_syntax::nodes::NodeTag::InsertStmt = 30
 pub syntaqlite_syntax::nodes::NodeTag::IsExpr = 9
-pub syntaqlite_syntax::nodes::NodeTag::JoinClause = 52
-pub syntaqlite_syntax::nodes::NodeTag::JoinPrefix = 53
+pub syntaqlite_syntax::nodes::NodeTag::JoinClause = 54
+pub syntaqlite_syntax::nodes::NodeTag::JoinPrefix = 55
 pub syntaqlite_syntax::nodes::NodeTag::LikeExpr = 11
-pub syntaqlite_syntax::nodes::NodeTag::LimitClause = 49
+pub syntaqlite_syntax::nodes::NodeTag::LimitClause = 51
 pub syntaqlite_syntax::nodes::NodeTag::Literal = 33
-pub syntaqlite_syntax::nodes::NodeTag::NamedWindowDef = 72
-pub syntaqlite_syntax::nodes::NodeTag::NamedWindowDefList = 73
+pub syntaqlite_syntax::nodes::NodeTag::NamedWindowDef = 74
+pub syntaqlite_syntax::nodes::NodeTag::NamedWindowDefList = 75
 pub syntaqlite_syntax::nodes::NodeTag::Null = 0
-pub syntaqlite_syntax::nodes::NodeTag::OrderByList = 48
+pub syntaqlite_syntax::nodes::NodeTag::OrderByList = 50
 pub syntaqlite_syntax::nodes::NodeTag::OrderedSetFunctionCall = 2
-pub syntaqlite_syntax::nodes::NodeTag::OrderingTerm = 47
-pub syntaqlite_syntax::nodes::NodeTag::PragmaStmt = 58
-pub syntaqlite_syntax::nodes::NodeTag::QualifiedName = 39
-pub syntaqlite_syntax::nodes::NodeTag::RaiseExpr = 38
-pub syntaqlite_syntax::nodes::NodeTag::ResultColumn = 44
-pub syntaqlite_syntax::nodes::NodeTag::ResultColumnList = 45
-pub syntaqlite_syntax::nodes::NodeTag::SavepointStmt = 43
-pub syntaqlite_syntax::nodes::NodeTag::SelectStmt = 46
+pub syntaqlite_syntax::nodes::NodeTag::OrderingTerm = 49
+pub syntaqlite_syntax::nodes::NodeTag::PragmaStmt = 60
+pub syntaqlite_syntax::nodes::NodeTag::QualifiedName = 41
+pub syntaqlite_syntax::nodes::NodeTag::RaiseExpr = 40
+pub syntaqlite_syntax::nodes::NodeTag::ResultColumn = 46
+pub syntaqlite_syntax::nodes::NodeTag::ResultColumnList = 47
+pub syntaqlite_syntax::nodes::NodeTag::SavepointStmt = 45
+pub syntaqlite_syntax::nodes::NodeTag::SelectStmt = 48
 pub syntaqlite_syntax::nodes::NodeTag::SetClause = 27
 pub syntaqlite_syntax::nodes::NodeTag::SetClauseList = 28
 pub syntaqlite_syntax::nodes::NodeTag::SubqueryExpr = 6
-pub syntaqlite_syntax::nodes::NodeTag::SubqueryTableSource = 51
+pub syntaqlite_syntax::nodes::NodeTag::SubqueryTableSource = 53
 pub syntaqlite_syntax::nodes::NodeTag::TableConstraint = 20
 pub syntaqlite_syntax::nodes::NodeTag::TableConstraintList = 21
-pub syntaqlite_syntax::nodes::NodeTag::TableRef = 50
-pub syntaqlite_syntax::nodes::NodeTag::TransactionStmt = 42
-pub syntaqlite_syntax::nodes::NodeTag::TriggerCmdList = 55
-pub syntaqlite_syntax::nodes::NodeTag::TriggerEvent = 54
+pub syntaqlite_syntax::nodes::NodeTag::TableRef = 52
+pub syntaqlite_syntax::nodes::NodeTag::TransactionStmt = 44
+pub syntaqlite_syntax::nodes::NodeTag::TriggerCmdList = 57
+pub syntaqlite_syntax::nodes::NodeTag::TriggerEvent = 56
 pub syntaqlite_syntax::nodes::NodeTag::UnaryExpr = 32
 pub syntaqlite_syntax::nodes::NodeTag::UpdateStmt = 29
-pub syntaqlite_syntax::nodes::NodeTag::VacuumStmt = 62
-pub syntaqlite_syntax::nodes::NodeTag::ValuesClause = 67
-pub syntaqlite_syntax::nodes::NodeTag::ValuesRowList = 66
-pub syntaqlite_syntax::nodes::NodeTag::Variable = 36
-pub syntaqlite_syntax::nodes::NodeTag::WindowDef = 70
-pub syntaqlite_syntax::nodes::NodeTag::WindowDefList = 71
+pub syntaqlite_syntax::nodes::NodeTag::VacuumStmt = 64
+pub syntaqlite_syntax::nodes::NodeTag::ValuesClause = 69
+pub syntaqlite_syntax::nodes::NodeTag::ValuesRowList = 68
+pub syntaqlite_syntax::nodes::NodeTag::Variable = 38
+pub syntaqlite_syntax::nodes::NodeTag::WindowDef = 72
+pub syntaqlite_syntax::nodes::NodeTag::WindowDefList = 73
 pub syntaqlite_syntax::nodes::NodeTag::WithClause = 25
 pub syntaqlite_syntax::nodes::NullsOrder::First = 1
 pub syntaqlite_syntax::nodes::NullsOrder::Last = 2
@@ -2188,7 +2267,6 @@ pub syntaqlite_syntax::nodes::SavepointOp::Release = 1
 pub syntaqlite_syntax::nodes::SavepointOp::RollbackTo = 2
 pub syntaqlite_syntax::nodes::SavepointOp::Savepoint = 0
 pub syntaqlite_syntax::nodes::Select::CompoundSelect(syntaqlite_syntax::nodes::CompoundSelect<'a>)
-pub syntaqlite_syntax::nodes::Select::Other(syntaqlite_syntax::nodes::Node<'a>)
 pub syntaqlite_syntax::nodes::Select::SelectStmt(syntaqlite_syntax::nodes::SelectStmt<'a>)
 pub syntaqlite_syntax::nodes::Select::ValuesClause(syntaqlite_syntax::nodes::ValuesClause<'a>)
 pub syntaqlite_syntax::nodes::Select::WithClause(syntaqlite_syntax::nodes::WithClause<'a>)
@@ -2208,7 +2286,6 @@ pub syntaqlite_syntax::nodes::Stmt::DetachStmt(syntaqlite_syntax::nodes::DetachS
 pub syntaqlite_syntax::nodes::Stmt::DropStmt(syntaqlite_syntax::nodes::DropStmt<'a>)
 pub syntaqlite_syntax::nodes::Stmt::ExplainStmt(syntaqlite_syntax::nodes::ExplainStmt<'a>)
 pub syntaqlite_syntax::nodes::Stmt::InsertStmt(syntaqlite_syntax::nodes::InsertStmt<'a>)
-pub syntaqlite_syntax::nodes::Stmt::Other(syntaqlite_syntax::nodes::Node<'a>)
 pub syntaqlite_syntax::nodes::Stmt::PragmaStmt(syntaqlite_syntax::nodes::PragmaStmt<'a>)
 pub syntaqlite_syntax::nodes::Stmt::SavepointStmt(syntaqlite_syntax::nodes::SavepointStmt<'a>)
 pub syntaqlite_syntax::nodes::Stmt::SelectStmt(syntaqlite_syntax::nodes::SelectStmt<'a>)
@@ -2223,7 +2300,6 @@ pub syntaqlite_syntax::nodes::TableConstraintType::PrimaryKey = 0
 pub syntaqlite_syntax::nodes::TableConstraintType::Unique = 1
 pub syntaqlite_syntax::nodes::TableSource::JoinClause(syntaqlite_syntax::nodes::JoinClause<'a>)
 pub syntaqlite_syntax::nodes::TableSource::JoinPrefix(syntaqlite_syntax::nodes::JoinPrefix<'a>)
-pub syntaqlite_syntax::nodes::TableSource::Other(syntaqlite_syntax::nodes::Node<'a>)
 pub syntaqlite_syntax::nodes::TableSource::SubqueryTableSource(syntaqlite_syntax::nodes::SubqueryTableSource<'a>)
 pub syntaqlite_syntax::nodes::TableSource::TableRef(syntaqlite_syntax::nodes::TableRef<'a>)
 pub syntaqlite_syntax::nodes::TransactionOp::Begin = 0
@@ -2242,6 +2318,9 @@ pub syntaqlite_syntax::nodes::UnaryOp::BitNot = 2
 pub syntaqlite_syntax::nodes::UnaryOp::Minus = 0
 pub syntaqlite_syntax::nodes::UnaryOp::Not = 3
 pub syntaqlite_syntax::nodes::UnaryOp::Plus = 1
+pub syntaqlite_syntax::typed::ParseOutcome::Done
+pub syntaqlite_syntax::typed::ParseOutcome::Err(E)
+pub syntaqlite_syntax::typed::ParseOutcome::Ok(T)
 pub syntaqlite_syntax::util::SqliteFlag::EnableBytecodeVtab = 25
 pub syntaqlite_syntax::util::SqliteFlag::EnableCarray = 26
 pub syntaqlite_syntax::util::SqliteFlag::EnableDbpageVtab = 27
@@ -2372,6 +2451,7 @@ pub type syntaqlite_syntax::nodes::CteListId::Node<'a> = syntaqlite_syntax::type
 pub type syntaqlite_syntax::nodes::DeleteStmtId::Node<'a> = syntaqlite_syntax::nodes::DeleteStmt<'a>
 pub type syntaqlite_syntax::nodes::DetachStmtId::Node<'a> = syntaqlite_syntax::nodes::DetachStmt<'a>
 pub type syntaqlite_syntax::nodes::DropStmtId::Node<'a> = syntaqlite_syntax::nodes::DropStmt<'a>
+pub type syntaqlite_syntax::nodes::ErrorId::Node<'a> = syntaqlite_syntax::nodes::Error<'a>
 pub type syntaqlite_syntax::nodes::ExistsExprId::Node<'a> = syntaqlite_syntax::nodes::ExistsExpr<'a>
 pub type syntaqlite_syntax::nodes::ExplainStmtId::Node<'a> = syntaqlite_syntax::nodes::ExplainStmt<'a>
 pub type syntaqlite_syntax::nodes::ExprId::Node<'a> = syntaqlite_syntax::nodes::Expr<'a>
@@ -2382,6 +2462,7 @@ pub type syntaqlite_syntax::nodes::ForeignKeyClauseId::Node<'a> = syntaqlite_syn
 pub type syntaqlite_syntax::nodes::FrameBoundId::Node<'a> = syntaqlite_syntax::nodes::FrameBound<'a>
 pub type syntaqlite_syntax::nodes::FrameSpecId::Node<'a> = syntaqlite_syntax::nodes::FrameSpec<'a>
 pub type syntaqlite_syntax::nodes::FunctionCallId::Node<'a> = syntaqlite_syntax::nodes::FunctionCall<'a>
+pub type syntaqlite_syntax::nodes::IdentNameId::Node<'a> = syntaqlite_syntax::nodes::IdentName<'a>
 pub type syntaqlite_syntax::nodes::InExprId::Node<'a> = syntaqlite_syntax::nodes::InExpr<'a>
 pub type syntaqlite_syntax::nodes::InExprSourceId::Node<'a> = syntaqlite_syntax::nodes::InExprSource<'a>
 pub type syntaqlite_syntax::nodes::InsertStmtId::Node<'a> = syntaqlite_syntax::nodes::InsertStmt<'a>
@@ -2391,6 +2472,7 @@ pub type syntaqlite_syntax::nodes::JoinPrefixId::Node<'a> = syntaqlite_syntax::n
 pub type syntaqlite_syntax::nodes::LikeExprId::Node<'a> = syntaqlite_syntax::nodes::LikeExpr<'a>
 pub type syntaqlite_syntax::nodes::LimitClauseId::Node<'a> = syntaqlite_syntax::nodes::LimitClause<'a>
 pub type syntaqlite_syntax::nodes::LiteralId::Node<'a> = syntaqlite_syntax::nodes::Literal<'a>
+pub type syntaqlite_syntax::nodes::NameId::Node<'a> = syntaqlite_syntax::nodes::Name<'a>
 pub type syntaqlite_syntax::nodes::NamedWindowDefId::Node<'a> = syntaqlite_syntax::nodes::NamedWindowDef<'a>
 pub type syntaqlite_syntax::nodes::NamedWindowDefList<'a> = syntaqlite_syntax::typed::TypedNodeList<'a, syntaqlite_syntax::sqlite::grammar::Grammar, syntaqlite_syntax::nodes::NamedWindowDef<'a>>
 pub type syntaqlite_syntax::nodes::NamedWindowDefListId::Node<'a> = syntaqlite_syntax::typed::TypedNodeList<'a, syntaqlite_syntax::sqlite::grammar::Grammar, syntaqlite_syntax::nodes::NamedWindowDef<'a>>
@@ -2438,3 +2520,4 @@ pub type syntaqlite_syntax::typed::TypedGrammar::Node<'a>: syntaqlite_syntax::ty
 pub type syntaqlite_syntax::typed::TypedGrammar::NodeId: core::marker::Copy + core::convert::From<syntaqlite_syntax::any::AnyNodeId> + core::convert::Into<syntaqlite_syntax::any::AnyNodeId>
 pub type syntaqlite_syntax::typed::TypedGrammar::Token: syntaqlite_syntax::typed::GrammarTokenType
 pub type syntaqlite_syntax::typed::TypedNodeId::Node<'a>: syntaqlite_syntax::typed::GrammarNodeType<'a>
+pub unsafe fn syntaqlite_syntax::any::AnyGrammar::new(inner: syntaqlite_syntax::grammar::ffi::CGrammar) -> Self
