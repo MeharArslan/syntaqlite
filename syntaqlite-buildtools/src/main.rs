@@ -109,6 +109,11 @@ struct CodegenSqliteParserArgs {
     /// Requires --cflag-audit-json.
     #[arg(long, requires = "cflag_audit_json")]
     cflag_versions_out: Option<String>,
+
+    /// Output path for the generated cflag entries Rust file (`cflag_entries.rs`).
+    /// Requires --cflag-audit-json.
+    #[arg(long, requires = "cflag_audit_json")]
+    cflag_entries_out: Option<String>,
 }
 
 // ── sqlite-extract ────────────────────────────────────────────────────────────
@@ -199,6 +204,7 @@ fn main() {
             functions_json: args.functions_json.clone(),
             cflag_audit_json: args.cflag_audit_json.clone(),
             cflag_versions_out: args.cflag_versions_out.clone(),
+            cflag_entries_out: args.cflag_entries_out.clone(),
         }
         .run(),
         Command::SqliteExtract(args) => commands::SqliteExtract {

@@ -5,7 +5,7 @@
 
 use crate::any::AnyGrammar;
 use crate::typed::TypedGrammar;
-use crate::util::{SqliteFlags, SqliteVersion};
+use crate::util::{SqliteSyntaxFlags, SqliteVersion};
 
 unsafe extern "C" {
     fn syntaqlite_sqlite_grammar() -> crate::typed::CGrammar;
@@ -35,7 +35,7 @@ impl Grammar {
 
     /// Replace the entire cflags bitfield.
     #[must_use]
-    pub fn with_cflags(mut self, cflags: SqliteFlags) -> Self {
+    pub fn with_cflags(mut self, cflags: SqliteSyntaxFlags) -> Self {
         self.raw = self.raw.with_cflags(cflags);
         self
     }

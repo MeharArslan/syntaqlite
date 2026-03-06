@@ -1164,6 +1164,50 @@ mod tests {
         assert!(errs.is_empty(), "abs() should be a known builtin: {errs:?}");
     }
 
+    // ── Analyzer: cflag-gated function availability ───────────────────────────
+
+    #[test]
+    fn math_function_unknown_without_cflag() {
+        // Without SQLITE_ENABLE_MATH_FUNCTIONS the math functions (acos, sin,
+        // cos, …) are absent from the catalog and should produce an error.
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog(); // default: no cflags set
+        let model = az.analyze("SELECT acos(1.0)", &cat, &strict());
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| {
+                matches!(&d.message, DiagnosticMessage::UnknownFunction { name } if name == "acos")
+            })
+            .collect();
+        assert_eq!(
+            errs.len(),
+            1,
+            "acos() should be unknown without SQLITE_ENABLE_MATH_FUNCTIONS: {:?}",
+            model.diagnostics()
+        );
+    }
+
+    #[test]
+    fn math_function_known_with_cflag() {
+        // With SQLITE_ENABLE_MATH_FUNCTIONS set, acos should be in the catalog.
+        use crate::util::{SqliteFlag, SqliteFlags};
+        let dialect = crate::sqlite::dialect::dialect()
+            .with_cflags(SqliteFlags::default().with(SqliteFlag::EnableMathFunctions));
+        let mut az = SemanticAnalyzer::with_dialect(dialect.clone());
+        let cat = Catalog::new(dialect);
+        let model = az.analyze("SELECT acos(1.0)", &cat, &strict());
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownFunction { .. }))
+            .collect();
+        assert!(
+            errs.is_empty(),
+            "acos() should be known with SQLITE_ENABLE_MATH_FUNCTIONS: {errs:?}"
+        );
+    }
+
     // ── Analyzer: multiple statements ─────────────────────────────────────────
 
     #[test]

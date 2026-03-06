@@ -119,6 +119,9 @@ pub struct SqliteParserCodegen {
     /// Output path for the generated cflag versions Rust file.
     /// Requires `cflag_audit_json`.
     pub cflag_versions_out: Option<String>,
+    /// Output path for the generated cflag entries Rust file (`cflag_entries.rs`).
+    /// Requires `cflag_audit_json`.
+    pub cflag_entries_out: Option<String>,
 }
 
 impl SqliteParserCodegen {
@@ -141,6 +144,17 @@ impl SqliteParserCodegen {
                 .as_deref()
                 .ok_or("cflag_audit_json is required when cflag_versions_out is given")?;
             generate_cflag_versions(audit_path, cflag_out)?;
+        }
+
+        if let Some(entries_out) = &self.cflag_entries_out {
+            let audit_path = self
+                .cflag_audit_json
+                .as_deref()
+                .ok_or("cflag_audit_json is required when cflag_entries_out is given")?;
+            crate::util::cflag_entries_codegen::write_cflag_entries_file(
+                audit_path,
+                entries_out,
+            )?;
         }
 
         Ok(())

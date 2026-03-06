@@ -6,31 +6,34 @@
 #[doc(inline)]
 pub use crate::cflags::SqliteFlag;
 
-/// Snapshot of grammar compatibility flags (compile-time feature assumptions).
+/// Snapshot of C-parser compatibility flags for the SQLite grammar.
 ///
-/// Use this when you need to mirror a target engine build configuration across
-/// parser instances.
+/// This type mirrors the `SyntaqliteCflags` C struct (3 bytes, 22 meaningful
+/// bits, compact indices 0–21) and is used to configure the C parser at
+/// runtime. It covers only the grammar-level parser flags defined in
+/// `include/syntaqlite/cflags.h`.
+///
+/// For the full set of SQLite compile-time flags — including non-parser flags
+/// like `SQLITE_ENABLE_MATH_FUNCTIONS` — use `syntaqlite::util::SqliteFlags`.
 #[derive(Debug, Clone, Copy, Default)]
-pub struct SqliteFlags(pub(crate) ffi::CCflags);
+pub struct SqliteSyntaxFlags(pub(crate) ffi::CCflags);
 
-impl SqliteFlags {
-    /// Returns `true` if compatibility flag `flag` is enabled.
-    #[inline]
-    pub fn has(&self, flag: SqliteFlag) -> bool {
-        self.0.has(flag as u32)
-    }
-
-    /// Returns `true` if the flag at raw bit-index `idx` is enabled.
+impl SqliteSyntaxFlags {
+    /// Returns `true` if the C-compact parser flag at index `idx` is enabled.
     ///
-    /// Use this when `idx` comes from an external source (e.g. a generated
-    /// availability rule) and no `SqliteFlag` variant is available at the
-    /// call site.
+    /// `idx` must be a C-compact index (0–21), as defined by
+    /// `SYNQ_CFLAG_IDX_*` in `cflags.h`.
     #[inline]
-    pub fn has_index(&self, idx: u32) -> bool {
+    pub fn has_compact(&self, idx: u32) -> bool {
         self.0.has(idx)
     }
 
-    // TODO(claude): add `set` and `clear` methods etc - match ffi.
+    /// Return a copy of these flags with the C-compact parser flag at `idx` enabled.
+    #[must_use]
+    pub fn with_compact(mut self, idx: u32) -> Self {
+        self.0.set(idx);
+        self
+    }
 }
 
 /// `SQLite` compatibility target used to select grammar behavior.

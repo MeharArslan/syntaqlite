@@ -309,6 +309,11 @@ pub struct AnyDialect {
     // Semantic role table — generated from `semantic { ... }` annotations.
     roles: &'static [SemanticRole],
 
+    /// Rust-side cflag set (all 42 flags, u64 bitset). Distinct from the
+    /// C-ABI `SqliteSyntaxFlags` stored in the grammar — this covers
+    /// non-parser flags like `SQLITE_ENABLE_MATH_FUNCTIONS`.
+    ext_cflags: crate::util::SqliteFlags,
+
     /// Keeps a dynamically loaded library alive as long as this dialect handle
     /// (or any clone of it) is alive. `None` for built-in dialects.
     _keep_alive: Option<Arc<dyn Send + Sync>>,
@@ -340,6 +345,7 @@ impl AnyDialect {
             fmt_ops,
             fmt_dispatch,
             roles,
+            ext_cflags: crate::util::SqliteFlags::default(),
             _keep_alive: None,
         }
     }
@@ -381,8 +387,29 @@ impl AnyDialect {
             fmt_ops,
             fmt_dispatch,
             roles,
+            ext_cflags: crate::util::SqliteFlags::default(),
             _keep_alive: Some(keep_alive),
         }
+    }
+
+    /// Return a copy of this dialect with the given flags replacing the current
+    /// compile-time compatibility flags.
+    ///
+    /// ```rust,ignore
+    /// use syntaqlite::util::{SqliteFlag, SqliteFlags};
+    /// let dialect = syntaqlite::sqlite_dialect()
+    ///     .with_cflags(SqliteFlags::default().with(SqliteFlag::EnableMathFunctions));
+    /// ```
+    #[must_use]
+    pub fn with_cflags(mut self, flags: crate::util::SqliteFlags) -> Self {
+        self.ext_cflags = flags;
+        self.grammar = self.grammar.with_cflags(flags.into());
+        self
+    }
+
+    /// Active compile-time compatibility flags set on this dialect.
+    pub fn cflags(&self) -> crate::util::SqliteFlags {
+        self.ext_cflags
     }
 
     /// The semantic role table for this dialect, indexed by node tag.

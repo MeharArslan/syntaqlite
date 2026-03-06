@@ -69,50 +69,52 @@ fn encode_version(s: &str) -> Result<String, String> {
 /// The mapping is derived from the C header constants. We hardcode the known
 /// set here rather than parsing the header at codegen time, since the set is
 /// stable and tracked by the cflags header.
-fn cflag_index(name: &str) -> Option<u32> {
+pub(crate) fn cflag_index(name: &str) -> Option<u32> {
     let suffix = name.strip_prefix("SQLITE_")?;
     match suffix {
+        // Parser flags (0–21): indices match C compact SYNQ_CFLAG_IDX_* values.
         "OMIT_ALTERTABLE" => Some(0),
         "OMIT_ANALYZE" => Some(1),
         "OMIT_ATTACH" => Some(2),
         "OMIT_AUTOINCREMENT" => Some(3),
         "OMIT_CAST" => Some(4),
-        "OMIT_COMPILEOPTION_DIAGS" => Some(5),
-        "OMIT_COMPOUND_SELECT" => Some(6),
-        "OMIT_CTE" => Some(7),
-        "OMIT_DATETIME_FUNCS" => Some(8),
-        "OMIT_EXPLAIN" => Some(9),
-        "OMIT_FLOATING_POINT" => Some(10),
-        "OMIT_FOREIGN_KEY" => Some(11),
-        "OMIT_GENERATED_COLUMNS" => Some(12),
-        "OMIT_JSON" => Some(13),
-        "OMIT_LOAD_EXTENSION" => Some(14),
-        "OMIT_PRAGMA" => Some(15),
-        "OMIT_REINDEX" => Some(16),
-        "OMIT_RETURNING" => Some(17),
-        "OMIT_SUBQUERY" => Some(18),
-        "OMIT_TEMPDB" => Some(19),
-        "OMIT_TRIGGER" => Some(20),
-        "OMIT_VACUUM" => Some(21),
-        "OMIT_VIEW" => Some(22),
-        "OMIT_VIRTUALTABLE" => Some(23),
-        "OMIT_WINDOWFUNC" => Some(24),
-        "ENABLE_BYTECODE_VTAB" => Some(25),
-        "ENABLE_CARRAY" => Some(26),
-        "ENABLE_DBPAGE_VTAB" => Some(27),
-        "ENABLE_DBSTAT_VTAB" => Some(28),
-        "ENABLE_FTS3" => Some(29),
-        "ENABLE_FTS4" => Some(30),
-        "ENABLE_FTS5" => Some(31),
-        "ENABLE_GEOPOLY" => Some(32),
-        "ENABLE_JSON1" => Some(33),
-        "ENABLE_MATH_FUNCTIONS" => Some(34),
-        "ENABLE_OFFSET_SQL_FUNC" => Some(35),
-        "ENABLE_ORDERED_SET_AGGREGATES" => Some(36),
-        "ENABLE_PERCENTILE" => Some(37),
-        "ENABLE_RTREE" => Some(38),
-        "ENABLE_STMTVTAB" => Some(39),
-        "ENABLE_UPDATE_DELETE_LIMIT" => Some(40),
+        "OMIT_COMPOUND_SELECT" => Some(5),
+        "OMIT_CTE" => Some(6),
+        "OMIT_EXPLAIN" => Some(7),
+        "OMIT_FOREIGN_KEY" => Some(8),
+        "OMIT_GENERATED_COLUMNS" => Some(9),
+        "OMIT_PRAGMA" => Some(10),
+        "OMIT_REINDEX" => Some(11),
+        "OMIT_RETURNING" => Some(12),
+        "OMIT_SUBQUERY" => Some(13),
+        "OMIT_TEMPDB" => Some(14),
+        "OMIT_TRIGGER" => Some(15),
+        "OMIT_VACUUM" => Some(16),
+        "OMIT_VIEW" => Some(17),
+        "OMIT_VIRTUALTABLE" => Some(18),
+        "OMIT_WINDOWFUNC" => Some(19),
+        "ENABLE_ORDERED_SET_AGGREGATES" => Some(20),
+        "ENABLE_UPDATE_DELETE_LIMIT" => Some(21),
+        // Non-parser flags (22–41).
+        "OMIT_COMPILEOPTION_DIAGS" => Some(22),
+        "OMIT_DATETIME_FUNCS" => Some(23),
+        "OMIT_FLOATING_POINT" => Some(24),
+        "OMIT_JSON" => Some(25),
+        "OMIT_LOAD_EXTENSION" => Some(26),
+        "ENABLE_BYTECODE_VTAB" => Some(27),
+        "ENABLE_CARRAY" => Some(28),
+        "ENABLE_DBPAGE_VTAB" => Some(29),
+        "ENABLE_DBSTAT_VTAB" => Some(30),
+        "ENABLE_FTS3" => Some(31),
+        "ENABLE_FTS4" => Some(32),
+        "ENABLE_FTS5" => Some(33),
+        "ENABLE_GEOPOLY" => Some(34),
+        "ENABLE_JSON1" => Some(35),
+        "ENABLE_MATH_FUNCTIONS" => Some(36),
+        "ENABLE_OFFSET_SQL_FUNC" => Some(37),
+        "ENABLE_PERCENTILE" => Some(38),
+        "ENABLE_RTREE" => Some(39),
+        "ENABLE_STMTVTAB" => Some(40),
         "SOUNDEX" => Some(41),
         _ => None,
     }
@@ -317,7 +319,7 @@ mod tests {
             ]
         }"#;
         let result = generate_functions_catalog(json).unwrap();
-        assert!(result.contains("cflag_index: 34"));
+        assert!(result.contains("cflag_index: 36"));
         assert!(result.contains("CflagPolarity::Enable"));
     }
 }

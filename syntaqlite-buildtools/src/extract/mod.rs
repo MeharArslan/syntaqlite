@@ -47,8 +47,16 @@ pub(crate) mod virtual_tables;
 /// - `"functions"`: affects built-in function availability
 /// - `"vtable"`:    affects virtual table modules
 /// - `"extensions"`: enables optional extension modules (FTS, `RTree`, etc.)
+// Index assignment invariant:
+//   - Parser flags (category contains "parser") occupy indices 0–21, matching
+//     the C compact `SYNQ_CFLAG_IDX_*` values in `cflags.h` exactly.
+//   - Non-parser flags occupy indices 22–41 in their original relative order.
+//
+// This means `SqliteFlag as u32` == C compact index for all parser flags, so
+// `SqliteSyntaxFlags` (3-byte CCflags, bits 0–23) and `SqliteFlags` (u64)
+// both use the same index — no translation table is needed.
 pub(crate) const SYNQ_CFLAG_TABLE: &[(&str, &str, u32, &[&str])] = &[
-    // ── OMIT flags (0–24) ───────────────────────────────────────────────
+    // ── Parser flags (0–21, matching C compact indices) ─────────────────
     (
         "SQLITE_OMIT_ALTERTABLE",
         "SYNQ_CFLAG_IDX_OMIT_ALTERTABLE",
@@ -80,216 +88,216 @@ pub(crate) const SYNQ_CFLAG_TABLE: &[(&str, &str, u32, &[&str])] = &[
         &["parser"],
     ),
     (
-        "SQLITE_OMIT_COMPILEOPTION_DIAGS",
-        "SYNQ_CFLAG_IDX_OMIT_COMPILEOPTION_DIAGS",
-        5,
-        &["functions"],
-    ),
-    (
         "SQLITE_OMIT_COMPOUND_SELECT",
         "SYNQ_CFLAG_IDX_OMIT_COMPOUND_SELECT",
-        6,
+        5,
         &["parser"],
     ),
-    ("SQLITE_OMIT_CTE", "SYNQ_CFLAG_IDX_OMIT_CTE", 7, &["parser"]),
-    (
-        "SQLITE_OMIT_DATETIME_FUNCS",
-        "SYNQ_CFLAG_IDX_OMIT_DATETIME_FUNCS",
-        8,
-        &["functions"],
-    ),
+    ("SQLITE_OMIT_CTE", "SYNQ_CFLAG_IDX_OMIT_CTE", 6, &["parser"]),
     (
         "SQLITE_OMIT_EXPLAIN",
         "SYNQ_CFLAG_IDX_OMIT_EXPLAIN",
-        9,
+        7,
         &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_FLOATING_POINT",
-        "SYNQ_CFLAG_IDX_OMIT_FLOATING_POINT",
-        10,
-        &["functions"],
     ),
     (
         "SQLITE_OMIT_FOREIGN_KEY",
         "SYNQ_CFLAG_IDX_OMIT_FOREIGN_KEY",
-        11,
+        8,
         &["parser"],
     ),
     (
         "SQLITE_OMIT_GENERATED_COLUMNS",
         "SYNQ_CFLAG_IDX_OMIT_GENERATED_COLUMNS",
-        12,
+        9,
         &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_JSON",
-        "SYNQ_CFLAG_IDX_OMIT_JSON",
-        13,
-        &["functions"],
-    ),
-    (
-        "SQLITE_OMIT_LOAD_EXTENSION",
-        "SYNQ_CFLAG_IDX_OMIT_LOAD_EXTENSION",
-        14,
-        &["functions"],
     ),
     (
         "SQLITE_OMIT_PRAGMA",
         "SYNQ_CFLAG_IDX_OMIT_PRAGMA",
-        15,
+        10,
         &["parser"],
     ),
     (
         "SQLITE_OMIT_REINDEX",
         "SYNQ_CFLAG_IDX_OMIT_REINDEX",
-        16,
+        11,
         &["parser"],
     ),
     (
         "SQLITE_OMIT_RETURNING",
         "SYNQ_CFLAG_IDX_OMIT_RETURNING",
-        17,
+        12,
         &["parser"],
     ),
     (
         "SQLITE_OMIT_SUBQUERY",
         "SYNQ_CFLAG_IDX_OMIT_SUBQUERY",
-        18,
+        13,
         &["parser"],
     ),
     (
         "SQLITE_OMIT_TEMPDB",
         "SYNQ_CFLAG_IDX_OMIT_TEMPDB",
-        19,
+        14,
         &["parser"],
     ),
     (
         "SQLITE_OMIT_TRIGGER",
         "SYNQ_CFLAG_IDX_OMIT_TRIGGER",
-        20,
+        15,
         &["parser"],
     ),
     (
         "SQLITE_OMIT_VACUUM",
         "SYNQ_CFLAG_IDX_OMIT_VACUUM",
-        21,
+        16,
         &["parser"],
     ),
     (
         "SQLITE_OMIT_VIEW",
         "SYNQ_CFLAG_IDX_OMIT_VIEW",
-        22,
+        17,
         &["parser"],
     ),
     (
         "SQLITE_OMIT_VIRTUALTABLE",
         "SYNQ_CFLAG_IDX_OMIT_VIRTUALTABLE",
-        23,
+        18,
         &["parser", "vtable"], // adds VIRTUAL keyword (parser) + disables vtable mechanism
     ),
     (
         "SQLITE_OMIT_WINDOWFUNC",
         "SYNQ_CFLAG_IDX_OMIT_WINDOWFUNC",
-        24,
+        19,
         &["parser", "functions"], // removes window keywords (parser) + window functions
     ),
-    // ── ENABLE / misc flags (25–41) ──────────────────────────────────────
+    (
+        "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
+        "SYNQ_CFLAG_IDX_ENABLE_ORDERED_SET_AGGREGATES",
+        20,
+        &["parser"], // adds WITHIN keyword for ordered-set aggregate syntax
+    ),
+    (
+        "SQLITE_ENABLE_UPDATE_DELETE_LIMIT",
+        "SYNQ_CFLAG_IDX_ENABLE_UPDATE_DELETE_LIMIT",
+        21,
+        &["parser"],
+    ),
+    // ── Non-parser flags (22–41, original relative order) ────────────────
+    (
+        "SQLITE_OMIT_COMPILEOPTION_DIAGS",
+        "SYNQ_CFLAG_IDX_OMIT_COMPILEOPTION_DIAGS",
+        22,
+        &["functions"],
+    ),
+    (
+        "SQLITE_OMIT_DATETIME_FUNCS",
+        "SYNQ_CFLAG_IDX_OMIT_DATETIME_FUNCS",
+        23,
+        &["functions"],
+    ),
+    (
+        "SQLITE_OMIT_FLOATING_POINT",
+        "SYNQ_CFLAG_IDX_OMIT_FLOATING_POINT",
+        24,
+        &["functions"],
+    ),
+    (
+        "SQLITE_OMIT_JSON",
+        "SYNQ_CFLAG_IDX_OMIT_JSON",
+        25,
+        &["functions"],
+    ),
+    (
+        "SQLITE_OMIT_LOAD_EXTENSION",
+        "SYNQ_CFLAG_IDX_OMIT_LOAD_EXTENSION",
+        26,
+        &["functions"],
+    ),
     (
         "SQLITE_ENABLE_BYTECODE_VTAB",
         "SYNQ_CFLAG_IDX_ENABLE_BYTECODE_VTAB",
-        25,
+        27,
         &["vtable"],
     ),
     (
         "SQLITE_ENABLE_CARRAY",
         "SYNQ_CFLAG_IDX_ENABLE_CARRAY",
-        26,
+        28,
         &["vtable"],
     ),
     (
         "SQLITE_ENABLE_DBPAGE_VTAB",
         "SYNQ_CFLAG_IDX_ENABLE_DBPAGE_VTAB",
-        27,
+        29,
         &["vtable"],
     ),
     (
         "SQLITE_ENABLE_DBSTAT_VTAB",
         "SYNQ_CFLAG_IDX_ENABLE_DBSTAT_VTAB",
-        28,
+        30,
         &["vtable"],
     ),
     (
         "SQLITE_ENABLE_FTS3",
         "SYNQ_CFLAG_IDX_ENABLE_FTS3",
-        29,
+        31,
         &["extensions"],
     ),
     (
         "SQLITE_ENABLE_FTS4",
         "SYNQ_CFLAG_IDX_ENABLE_FTS4",
-        30,
+        32,
         &["extensions"],
     ),
     (
         "SQLITE_ENABLE_FTS5",
         "SYNQ_CFLAG_IDX_ENABLE_FTS5",
-        31,
+        33,
         &["extensions"],
     ),
     (
         "SQLITE_ENABLE_GEOPOLY",
         "SYNQ_CFLAG_IDX_ENABLE_GEOPOLY",
-        32,
+        34,
         &["extensions"],
     ),
     (
         "SQLITE_ENABLE_JSON1",
         "SYNQ_CFLAG_IDX_ENABLE_JSON1",
-        33,
+        35,
         &["functions"],
     ),
     (
         "SQLITE_ENABLE_MATH_FUNCTIONS",
         "SYNQ_CFLAG_IDX_ENABLE_MATH_FUNCTIONS",
-        34,
+        36,
         &["functions"],
     ),
     (
         "SQLITE_ENABLE_OFFSET_SQL_FUNC",
         "SYNQ_CFLAG_IDX_ENABLE_OFFSET_SQL_FUNC",
-        35,
+        37,
         &["functions"],
-    ),
-    (
-        "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
-        "SYNQ_CFLAG_IDX_ENABLE_ORDERED_SET_AGGREGATES",
-        36,
-        &["parser"], // adds WITHIN keyword for ordered-set aggregate syntax
     ),
     (
         "SQLITE_ENABLE_PERCENTILE",
         "SYNQ_CFLAG_IDX_ENABLE_PERCENTILE",
-        37,
+        38,
         &["functions"],
     ),
     (
         "SQLITE_ENABLE_RTREE",
         "SYNQ_CFLAG_IDX_ENABLE_RTREE",
-        38,
+        39,
         &["extensions"],
     ),
     (
         "SQLITE_ENABLE_STMTVTAB",
         "SYNQ_CFLAG_IDX_ENABLE_STMTVTAB",
-        39,
-        &["vtable"],
-    ),
-    (
-        "SQLITE_ENABLE_UPDATE_DELETE_LIMIT",
-        "SYNQ_CFLAG_IDX_ENABLE_UPDATE_DELETE_LIMIT",
         40,
-        &["parser"],
+        &["vtable"],
     ),
     (
         "SQLITE_SOUNDEX",

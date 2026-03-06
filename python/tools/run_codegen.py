@@ -106,13 +106,14 @@ def main() -> int:
 
     tools_bin = project_root / "target" / "release" / "syntaqlite-buildtools"
 
-    # Stage 1b: Generate functions catalog.
+    # Stage 1b: Generate functions catalog and cflag metadata.
     # Output paths are hardcoded in the Rust binary.
     functions_json = vendored_dir / "data" / "functions.json"
     cflag_audit_json = vendored_dir / "data" / "version_cflags.json"
     cflag_versions_out = dialect_crate_dir / "src" / "cflags.rs"
+    cflag_entries_out = project_root / "syntaqlite" / "src" / "sqlite" / "cflag_entries.rs"
 
-    log("Stage 1b: Generating functions catalog...")
+    log("Stage 1b: Generating functions catalog and cflag metadata...")
     result = subprocess.run(
         [
             str(tools_bin),
@@ -120,6 +121,7 @@ def main() -> int:
             "--functions-json", str(functions_json),
             "--cflag-audit-json", str(cflag_audit_json),
             "--cflag-versions-out", str(cflag_versions_out),
+            "--cflag-entries-out", str(cflag_entries_out),
         ],
         cwd=project_root,
         capture_output=not args.verbose,

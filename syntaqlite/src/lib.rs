@@ -51,14 +51,11 @@ pub fn sqlite_dialect() -> Dialect {
     sqlite::dialect::dialect()
 }
 
-// Re-export all public types from syntaqlite_syntax so users only need
-// to depend on this crate.
-pub use syntaqlite_syntax::*;
+pub mod util;
 
-/// Cross-cutting utilities for grammar configuration and compatibility.
-pub mod util {
-    pub use syntaqlite_syntax::util::*;
-}
+// Shared parser utility types used across both `any` and `typed` modules.
+pub use syntaqlite_syntax::any::MacroRegion;
+pub use syntaqlite_syntax::{CommentKind, ParserConfig, ParserTokenFlags};
 
 /// Type-erased (grammar-agnostic) parser and tokenizer types.
 pub mod any {

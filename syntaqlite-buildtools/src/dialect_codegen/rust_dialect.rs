@@ -64,7 +64,7 @@ fn emit_grammar_module(
         r#"
 use {syntax_crate}::any::AnyGrammar;
 use {syntax_crate}::typed::TypedGrammar;
-use {syntax_crate}::util::{{SqliteFlags, SqliteVersion}};
+use {syntax_crate}::util::{{SqliteSyntaxFlags, SqliteVersion}};
 
 unsafe extern "C" {{
     fn {dialect_fn}() -> {syntax_crate}::typed::CGrammar;
@@ -94,7 +94,7 @@ impl {grammar_struct} {{
 
     /// Replace the entire cflags bitfield.
     #[must_use]
-    pub fn with_cflags(mut self, cflags: SqliteFlags) -> Self {{
+    pub fn with_cflags(mut self, cflags: SqliteSyntaxFlags) -> Self {{
         self.raw = self.raw.with_cflags(cflags);
         self
     }}

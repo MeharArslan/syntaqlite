@@ -4,7 +4,7 @@
 // ── Public API ───────────────────────────────────────────────────────────────
 
 use crate::any::{AnyNodeTag, AnyTokenType};
-use crate::util::{SqliteFlags, SqliteVersion};
+use crate::util::{SqliteSyntaxFlags, SqliteVersion};
 
 /// Runtime field-value shape used when reflecting over AST nodes.
 ///
@@ -239,7 +239,7 @@ impl AnyGrammar {
 
     /// Replace compile-time compatibility flags on this handle.
     #[must_use]
-    pub fn with_cflags(mut self, flags: SqliteFlags) -> Self {
+    pub fn with_cflags(mut self, flags: SqliteSyntaxFlags) -> Self {
         self.inner.cflags = flags.0;
         self
     }
@@ -249,9 +249,9 @@ impl AnyGrammar {
         SqliteVersion::from_int(self.inner.sqlite_version)
     }
 
-    /// Active compile-time compatibility flags.
-    pub fn cflags(&self) -> SqliteFlags {
-        SqliteFlags(self.inner.cflags)
+    /// Active C-parser compile-time compatibility flags.
+    pub fn cflags(&self) -> SqliteSyntaxFlags {
+        SqliteSyntaxFlags(self.inner.cflags)
     }
 
     /// Return a reference to the abstract grammar template.

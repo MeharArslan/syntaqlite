@@ -192,13 +192,13 @@ static ARITIES_ZEROBLOB: &[i16] = &[0, 1];
 static AVAIL___: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_38,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL____: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_38,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_ABS: &[AvailabilityRule] = &[AvailabilityRule {
@@ -210,43 +210,43 @@ static AVAIL_ABS: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_ACOS: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_ACOSH: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_ASIN: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_ASINH: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_ATAN: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_ATAN2: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_ATANH: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_AVG: &[AvailabilityRule] = &[AvailabilityRule {
@@ -258,19 +258,19 @@ static AVAIL_AVG: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_BM25: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_CEIL: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_CEILING: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_CHANGES: &[AvailabilityRule] = &[AvailabilityRule {
@@ -306,13 +306,13 @@ static AVAIL_CONCAT_WS: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_COS: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_COSH: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_COUNT: &[AvailabilityRule] = &[AvailabilityRule {
@@ -348,19 +348,19 @@ static AVAIL_CURRENT_TIMESTAMP: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_DATE: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 8,
+    cflag_index: 23,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_DATETIME: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 8,
+    cflag_index: 23,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_DEGREES: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_DENSE_RANK: &[AvailabilityRule] = &[AvailabilityRule {
@@ -372,7 +372,7 @@ static AVAIL_DENSE_RANK: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_EXP: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FIRST_VALUE: &[AvailabilityRule] = &[AvailabilityRule {
@@ -384,7 +384,7 @@ static AVAIL_FIRST_VALUE: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_FLOOR: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FORMAT: &[AvailabilityRule] = &[AvailabilityRule {
@@ -396,157 +396,157 @@ static AVAIL_FORMAT: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_FTS3_TOKENIZER: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 29,
+    cflag_index: 31,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5_DECODE: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: Some(SqliteVersion::V3_36),
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5_DECODE_NONE: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: Some(SqliteVersion::V3_36),
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5_EXPR: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: Some(SqliteVersion::V3_36),
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5_EXPR_TCL: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: Some(SqliteVersion::V3_36),
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5_FOLD: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: Some(SqliteVersion::V3_36),
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5_GET_LOCALE: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_47,
     until: None,
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5_INSTTOKEN: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_48,
     until: None,
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5_ISALNUM: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: Some(SqliteVersion::V3_36),
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5_LOCALE: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_47,
     until: None,
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5_ROWID: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: Some(SqliteVersion::V3_36),
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_FTS5_SOURCE_ID: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_AREA: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_BBOX: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_BLOB: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_CCW: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_CONTAINS_POINT: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_DEBUG: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_GROUP_BBOX: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_JSON: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_OVERLAP: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_REGULAR: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_SVG: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_WITHIN: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GEOPOLY_XFORM: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_GLOB: &[AvailabilityRule] = &[AvailabilityRule {
@@ -570,7 +570,7 @@ static AVAIL_HEX: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_HIGHLIGHT: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 31,
+    cflag_index: 33,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_IF: &[AvailabilityRule] = &[AvailabilityRule {
@@ -601,13 +601,13 @@ static AVAIL_JSON: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -615,13 +615,13 @@ static AVAIL_JSON_ARRAY: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -629,33 +629,33 @@ static AVAIL_JSON_ARRAY_LENGTH: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
 static AVAIL_JSON_ERROR_POSITION: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_42,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSON_EXTRACT: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -663,13 +663,13 @@ static AVAIL_JSON_GROUP_ARRAY: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -677,13 +677,13 @@ static AVAIL_JSON_GROUP_OBJECT: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -691,13 +691,13 @@ static AVAIL_JSON_INSERT: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -705,13 +705,13 @@ static AVAIL_JSON_OBJECT: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -719,33 +719,33 @@ static AVAIL_JSON_PATCH: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
 static AVAIL_JSON_PRETTY: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_46,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSON_QUOTE: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -753,13 +753,13 @@ static AVAIL_JSON_REMOVE: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -767,13 +767,13 @@ static AVAIL_JSON_REPLACE: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -781,13 +781,13 @@ static AVAIL_JSON_SET: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -795,13 +795,13 @@ static AVAIL_JSON_TYPE: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
@@ -809,86 +809,86 @@ static AVAIL_JSON_VALID: &[AvailabilityRule] = &[
     AvailabilityRule {
         since: SqliteVersion::V3_30,
         until: Some(SqliteVersion::V3_38),
-        cflag_index: 33,
+        cflag_index: 35,
         cflag_polarity: CflagPolarity::Enable,
     },
     AvailabilityRule {
         since: SqliteVersion::V3_38,
         until: None,
-        cflag_index: 13,
+        cflag_index: 25,
         cflag_polarity: CflagPolarity::Omit,
     },
 ];
 static AVAIL_JSONB: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_45,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSONB_ARRAY: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_45,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSONB_EXTRACT: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_45,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSONB_GROUP_ARRAY: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_45,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSONB_GROUP_OBJECT: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_45,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSONB_INSERT: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_45,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSONB_OBJECT: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_45,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSONB_PATCH: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_45,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSONB_REMOVE: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_45,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSONB_REPLACE: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_45,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JSONB_SET: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_45,
     until: None,
-    cflag_index: 13,
+    cflag_index: 25,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_JULIANDAY: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 8,
+    cflag_index: 23,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_LAG: &[AvailabilityRule] = &[AvailabilityRule {
@@ -942,31 +942,31 @@ static AVAIL_LIKELY: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_LN: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_LOAD_EXTENSION: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 14,
+    cflag_index: 26,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_LOG: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_LOG10: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_LOG2: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_LOWER: &[AvailabilityRule] = &[AvailabilityRule {
@@ -990,7 +990,7 @@ static AVAIL_MATCH: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_MATCHINFO: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 29,
+    cflag_index: 31,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_MAX: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1002,7 +1002,7 @@ static AVAIL_MAX: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_MEDIAN: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_51,
     until: None,
-    cflag_index: 37,
+    cflag_index: 38,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_MIN: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1014,7 +1014,7 @@ static AVAIL_MIN: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_MOD: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_NTH_VALUE: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1044,13 +1044,13 @@ static AVAIL_OCTET_LENGTH: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_OFFSETS: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 29,
+    cflag_index: 31,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_OPTIMIZE: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 29,
+    cflag_index: 31,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_PERCENT_RANK: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1062,37 +1062,37 @@ static AVAIL_PERCENT_RANK: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_PERCENTILE: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_51,
     until: None,
-    cflag_index: 37,
+    cflag_index: 38,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_PERCENTILE_CONT: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_51,
     until: None,
-    cflag_index: 37,
+    cflag_index: 38,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_PERCENTILE_DISC: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_51,
     until: None,
-    cflag_index: 37,
+    cflag_index: 38,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_PI: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_POW: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_POWER: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_PRINTF: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1110,7 +1110,7 @@ static AVAIL_QUOTE: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_RADIANS: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_RANDOM: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1152,19 +1152,19 @@ static AVAIL_ROW_NUMBER: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_RTREECHECK: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_RTREEDEPTH: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_RTREENODE: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 32,
+    cflag_index: 34,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_RTRIM: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1182,13 +1182,13 @@ static AVAIL_SIGN: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_SIN: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_SINH: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_SNIPPET: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1206,13 +1206,13 @@ static AVAIL_SOUNDEX: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_SQLITE_COMPILEOPTION_GET: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 5,
+    cflag_index: 22,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_SQLITE_COMPILEOPTION_USED: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 5,
+    cflag_index: 22,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_SQLITE_LOG: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1224,7 +1224,7 @@ static AVAIL_SQLITE_LOG: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_SQLITE_OFFSET: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 35,
+    cflag_index: 37,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_SQLITE_SOURCE_ID: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1242,13 +1242,13 @@ static AVAIL_SQLITE_VERSION: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_SQRT: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_STRFTIME: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 8,
+    cflag_index: 23,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_STRING_AGG: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1284,25 +1284,25 @@ static AVAIL_SUM: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_TAN: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_TANH: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_TIME: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_30,
     until: None,
-    cflag_index: 8,
+    cflag_index: 23,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_TIMEDIFF: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_43,
     until: None,
-    cflag_index: 8,
+    cflag_index: 23,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_TOTAL: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1326,7 +1326,7 @@ static AVAIL_TRIM: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_TRUNC: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_35,
     until: None,
-    cflag_index: 34,
+    cflag_index: 36,
     cflag_polarity: CflagPolarity::Enable,
 }];
 static AVAIL_TYPEOF: &[AvailabilityRule] = &[AvailabilityRule {
@@ -1362,7 +1362,7 @@ static AVAIL_UNISTR_QUOTE: &[AvailabilityRule] = &[AvailabilityRule {
 static AVAIL_UNIXEPOCH: &[AvailabilityRule] = &[AvailabilityRule {
     since: SqliteVersion::V3_38,
     until: None,
-    cflag_index: 8,
+    cflag_index: 23,
     cflag_polarity: CflagPolarity::Omit,
 }];
 static AVAIL_UNLIKELY: &[AvailabilityRule] = &[AvailabilityRule {

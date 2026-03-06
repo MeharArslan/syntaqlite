@@ -3,10 +3,11 @@
 
 //! SQLite-specific cflag and version helpers.
 
-use syntaqlite_syntax::ffi::CflagInfo;
+use syntaqlite_syntax::util::SqliteVersion;
 
-use crate::dialect::catalog::{is_function_available_raw, FunctionInfo};
+use crate::dialect::{is_function_available, FunctionInfo};
 use crate::dialect::Dialect;
+use crate::sqlite::cflag_entries::CFLAG_ENTRIES;
 
 // ── Built-in function catalog ────────────────────────────────────────────────
 
@@ -17,54 +18,22 @@ use crate::dialect::Dialect;
 pub(crate) fn available_functions(dialect: &Dialect) -> Vec<&'static FunctionInfo<'static>> {
     crate::sqlite::functions_catalog::SQLITE_FUNCTIONS
         .iter()
-        .filter(|entry| is_function_available_raw(entry, dialect.version(), dialect.cflags()))
+        .filter(|entry| is_function_available(entry, dialect))
         .map(|entry| &entry.info)
         .collect()
 }
 
-// ── Cflag table and helpers ──────────────────────────────────────────────────
+// ── Cflag helpers ─────────────────────────────────────────────────────────────
 
-/// All known compile-time flags, built once from the generated table.
-///
-/// Returns a static slice of [`CflagInfo`] entries in index order.
-pub(crate) fn cflag_table() -> &'static [CflagInfo] {
-    use std::sync::LazyLock;
-    static TABLE: LazyLock<Vec<CflagInfo>> = LazyLock::new(|| {
-        syntaqlite_syntax::sqlite::cflag_versions::CFLAG_TABLE
-            .iter()
-            .map(|(suffix, index, min_version, category)| CflagInfo {
-                suffix: suffix.to_string(),
-                index: *index,
-                min_version: *min_version,
-                category: category.to_string(),
-            })
-            .collect()
-    });
-    &TABLE
-}
-
-/// Parse a dotted SQLite version string (e.g. `"3.35.0"`) into an integer
-/// using SQLite's encoding: `major * 1_000_000 + minor * 1_000 + patch`.
-/// The string `"latest"` maps to `i32::MAX`.
-pub(crate) fn parse_sqlite_version(s: &str) -> Result<i32, String> {
+/// Parse a dotted SQLite version string (e.g. `"3.35.0"`) into a [`SqliteVersion`].
+/// The string `"latest"` maps to [`SqliteVersion::Latest`].
+pub(crate) fn parse_sqlite_version(s: &str) -> Result<SqliteVersion, String> {
     let s = s.trim();
     if s.eq_ignore_ascii_case("latest") {
-        return Ok(i32::MAX);
+        return Ok(SqliteVersion::Latest);
     }
-    let parts: Vec<&str> = s.split('.').collect();
-    if parts.len() != 3 {
-        return Err(format!("expected 'major.minor.patch', got '{s}'"));
-    }
-    let major: i32 = parts[0]
-        .parse()
-        .map_err(|_| format!("invalid major version: '{}'", parts[0]))?;
-    let minor: i32 = parts[1]
-        .parse()
-        .map_err(|_| format!("invalid minor version: '{}'", parts[1]))?;
-    let patch: i32 = parts[2]
-        .parse()
-        .map_err(|_| format!("invalid patch version: '{}'", parts[2]))?;
-    Ok(major * 1_000_000 + minor * 1_000 + patch)
+    SqliteVersion::parse(s)
+        .ok_or_else(|| format!("unknown or unsupported SQLite version: '{s}'"))
 }
 
 /// Look up a cflag by its full canonical name
@@ -72,18 +41,73 @@ pub(crate) fn parse_sqlite_version(s: &str) -> Result<i32, String> {
 ///
 /// Returns the bit index on success.
 pub(crate) fn parse_cflag_name(s: &str) -> Result<u32, String> {
-    let suffix = s
+    let flag_name = s
         .strip_prefix("SYNTAQLITE_CFLAG_")
         .ok_or_else(|| format!("cflag name must start with 'SYNTAQLITE_CFLAG_', got '{s}'"))?;
-    for entry in cflag_table() {
-        if entry.suffix == suffix {
-            return Ok(entry.index);
+    for &(name, index, _, _) in CFLAG_ENTRIES {
+        if name == flag_name {
+            return Ok(index);
         }
     }
     Err(format!("unknown cflag: '{s}'"))
 }
 
-/// Returns all known cflag suffixes (e.g. `"SQLITE_OMIT_WINDOWFUNC"`).
-pub(crate) fn cflag_names() -> Vec<&'static str> {
-    cflag_table().iter().map(|e| e.suffix.as_str()).collect()
+/// Returns an iterator over all known cflag names (e.g. `"SQLITE_OMIT_WINDOWFUNC"`).
+pub(crate) fn cflag_names() -> impl Iterator<Item = &'static str> {
+    CFLAG_ENTRIES.iter().map(|&(name, _, _, _)| name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_version_known() {
+        assert_eq!(parse_sqlite_version("3.35.0"), Ok(SqliteVersion::V3_35));
+    }
+
+    #[test]
+    fn parse_version_latest() {
+        assert_eq!(parse_sqlite_version("latest"), Ok(SqliteVersion::Latest));
+    }
+
+    #[test]
+    fn parse_version_unknown() {
+        assert!(parse_sqlite_version("3.99.0").is_err());
+    }
+
+    #[test]
+    fn parse_cflag_known() {
+        // OMIT_WINDOWFUNC is parser flag C compact index 19 (== SqliteFlag::OmitWindowfunc = 19).
+        assert_eq!(
+            parse_cflag_name("SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC"),
+            Ok(19)
+        );
+    }
+
+    #[test]
+    fn parse_cflag_bad_prefix() {
+        assert!(parse_cflag_name("SQLITE_OMIT_WINDOWFUNC").is_err());
+    }
+
+    #[test]
+    fn parse_cflag_unknown() {
+        assert!(parse_cflag_name("SYNTAQLITE_CFLAG_SQLITE_OMIT_NONEXISTENT").is_err());
+    }
+
+    #[test]
+    fn cflag_names_count() {
+        let names: Vec<_> = cflag_names().collect();
+        assert_eq!(names.len(), CFLAG_ENTRIES.len());
+        assert!(names.contains(&"SQLITE_OMIT_WINDOWFUNC"));
+        assert!(names.contains(&"SQLITE_ENABLE_FTS5"));
+    }
+
+    #[test]
+    fn available_functions_latest_includes_builtins() {
+        let dialect = crate::sqlite::dialect::dialect();
+        let fns = available_functions(&dialect);
+        assert!(fns.iter().any(|f| f.name == "abs"));
+        assert!(fns.iter().any(|f| f.name == "count"));
+    }
 }
