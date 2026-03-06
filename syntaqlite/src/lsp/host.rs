@@ -304,7 +304,7 @@ impl LspHost {
     // ── Schema helpers ────────────────────────────────────────────────────────
 
     /// All function names available given the current dialect and user catalog.
-    pub(crate) fn available_function_names(&self) -> Vec<String> {
+    pub fn available_function_names(&self) -> Vec<String> {
         let mut cat = Catalog::new(self.dialect.clone());
         cat.database = self.user_catalog.database.clone();
         cat.all_function_names()

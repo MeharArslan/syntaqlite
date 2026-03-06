@@ -62,7 +62,7 @@ impl TokenCategoryExt for TokenCategory {
 }
 
 // Public API starts here.
-pub(crate) use host::LspHost;
+pub use host::LspHost;
 pub use server::LspServer;
 
 // Re-export shared types from semantic layer.

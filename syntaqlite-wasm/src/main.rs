@@ -332,35 +332,112 @@ pub extern "C" fn wasm_completions(ptr: u32, len: u32, offset: u32, version: u32
 
 // ── Embedded SQL WASM exports ────────────────────────────────────────
 //
-// TODO: embedded module needs migration to the new syntaqlite API.
-// These stubs preserve the ABI so callers don't need to change.
+// lang encoding: 0 = Python, 1 = TypeScript/JavaScript
+
+use syntaqlite::embedded::{EmbeddedAnalyzer, EmbeddedFragment};
+
+fn embedded_fragments(lang: u32, source: &str) -> Result<Vec<EmbeddedFragment>, String> {
+    match lang {
+        0 => Ok(syntaqlite::embedded::extract_python(source)),
+        1 => Ok(syntaqlite::embedded::extract_typescript(source)),
+        _ => Err(format!("unknown host language id: {lang}")),
+    }
+}
+
+fn make_embedded_analyzer() -> EmbeddedAnalyzer {
+    EmbeddedAnalyzer::new(syntaqlite::sqlite_dialect())
+}
+
+#[derive(Serialize)]
+struct WasmHole {
+    start: usize,
+    end: usize,
+    placeholder: String,
+}
+
+#[derive(Serialize)]
+struct WasmFragment {
+    start: usize,
+    end: usize,
+    sql: String,
+    holes: Vec<WasmHole>,
+}
+
+fn run_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
+    let source = try_wasm!(decode_input(ptr, len), -1);
+    let fragments = try_wasm!(embedded_fragments(lang, &source), -1);
+    let count = fragments.len() as i32;
+    let items: Vec<WasmFragment> = fragments
+        .iter()
+        .map(|f| WasmFragment {
+            start: f.sql_range.start,
+            end: f.sql_range.end,
+            sql: f.sql_text.clone(),
+            holes: f
+                .holes
+                .iter()
+                .map(|h| WasmHole {
+                    start: h.host_range.start,
+                    end: h.host_range.end,
+                    placeholder: h.placeholder.clone(),
+                })
+                .collect(),
+        })
+        .collect();
+    set_result(&serde_json::to_string(&items).expect("fragment serialization failed"));
+    count
+}
+
+fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32) -> i32 {
+    let source = try_wasm!(decode_input(ptr, len), -1);
+    let fragments = try_wasm!(embedded_fragments(lang, &source), -1);
+    let diags = make_embedded_analyzer().validate(&fragments);
+    let count = diags.len() as i32;
+    set_result(&serde_json::to_string(&diags).expect("embedded diagnostic serialization failed"));
+    count
+}
+
+fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32) -> i32 {
+    let source = try_wasm!(decode_input(ptr, len), -1);
+    let fragments = try_wasm!(embedded_fragments(lang, &source), -1);
+    let encoded = make_embedded_analyzer().semantic_tokens_encoded(&fragments, &source);
+    let token_count = (encoded.len() / 5) as i32;
+    set_result_u32s(&encoded);
+    token_count
+}
 
 #[unsafe(no_mangle)]
-pub extern "C" fn wasm_embedded_extract(_lang: u32, _ptr: u32, _len: u32) -> i32 {
-    set_result("embedded SQL extraction is not yet available in this build");
-    -1
+pub extern "C" fn wasm_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
+    catch_unwind(
+        || run_embedded_extract(lang, ptr, len),
+        "wasm_embedded_extract panicked",
+    )
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_embedded_diagnostics(
-    _lang: u32,
-    _ptr: u32,
-    _len: u32,
+    lang: u32,
+    ptr: u32,
+    len: u32,
     _version: u32,
 ) -> i32 {
-    set_result("embedded SQL diagnostics are not yet available in this build");
-    -1
+    catch_unwind(
+        || run_embedded_diagnostics(lang, ptr, len),
+        "wasm_embedded_diagnostics panicked",
+    )
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_embedded_semantic_tokens(
-    _lang: u32,
-    _ptr: u32,
-    _len: u32,
+    lang: u32,
+    ptr: u32,
+    len: u32,
     _version: u32,
 ) -> i32 {
-    set_result("embedded SQL semantic tokens are not yet available in this build");
-    -1
+    catch_unwind(
+        || run_embedded_semantic_tokens(lang, ptr, len),
+        "wasm_embedded_semantic_tokens panicked",
+    )
 }
 
 fn main() {}

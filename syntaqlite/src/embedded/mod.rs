@@ -36,22 +36,22 @@ use offset_map::OffsetMap;
 #[derive(Debug)]
 pub struct EmbeddedFragment {
     /// Byte range of the SQL content in the host file (excluding quotes).
-    pub(crate) sql_range: Range<usize>,
+    pub sql_range: Range<usize>,
     /// SQL text with holes replaced by placeholder identifiers.
-    pub(crate) sql_text: String,
+    pub sql_text: String,
     /// Information about each interpolation hole.
-    pub(crate) holes: Vec<Hole>,
+    pub holes: Vec<Hole>,
 }
 
 /// An interpolation hole (e.g. `{expr}` in a Python f-string, `${expr}` in JS).
 #[derive(Debug)]
 pub struct Hole {
     /// Byte range of the hole expression in the host file.
-    pub(crate) host_range: Range<usize>,
+    pub host_range: Range<usize>,
     /// Byte offset in `sql_text` where the placeholder sits.
-    pub(crate) sql_offset: usize,
+    pub sql_offset: usize,
     /// The placeholder identifier (e.g. `__hole_0__`).
-    pub(crate) placeholder: String,
+    pub placeholder: String,
 }
 
 // ── Shared scanner utilities ────────────────────────────────────────────
@@ -213,7 +213,7 @@ impl EmbeddedAnalyzer {
     /// Delta-encodes the result into the
     /// `[deltaLine, deltaStart, length, tokenType, modifiers]` 5-tuple format
     /// consumed by LSP `textDocument/semanticTokens` responses.
-    pub(crate) fn semantic_tokens_encoded(
+    pub fn semantic_tokens_encoded(
         &self,
         fragments: &[EmbeddedFragment],
         source: &str,
