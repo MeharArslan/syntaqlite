@@ -61,6 +61,8 @@ pub struct OutputLayout {
     pub tokens_h: CHeader,
     /// Runtime tokens header: minimal subset of tokens needed by `token_wrapped.c`.
     pub runtime_tokens_h: CHeader,
+    /// SQLite cflag index constants header (`cflags.h`).
+    pub cflags_h: CHeader,
 
     // ── Rust sources (src/) ─────────────────────────────────────────────────
     /// Rust token constants (`tokens.rs`).
@@ -184,6 +186,10 @@ impl OutputLayout {
                 write: Some(format!("{sc}/csrc/tokens.h")),
                 include: "csrc/tokens.h".to_string(),
             },
+            cflags_h: CHeader {
+                write: Some(format!("{sc}/include/syntaqlite/cflags.h")),
+                include: "syntaqlite/cflags.h".to_string(),
+            },
             // Rust: all in dialect_crate/src/sqlite/ subdirectory
             tokens_rs: Some(format!("{dc}/src/sqlite/tokens.rs")),
             ffi_rs: Some(format!("{dc}/src/sqlite/ffi.rs")),
@@ -263,6 +269,10 @@ impl OutputLayout {
             runtime_tokens_h: CHeader {
                 write: None,
                 include: "csrc/tokens.h".to_string(),
+            },
+            cflags_h: CHeader {
+                write: None,
+                include: "syntaqlite/cflags.h".to_string(),
             },
             tokens_rs: Some("src/tokens.rs".to_string()),
             ffi_rs: Some("src/ffi.rs".to_string()),
@@ -344,6 +354,10 @@ impl OutputLayout {
                 write: None,
                 include: "csrc/tokens.h".to_string(),
             },
+            cflags_h: CHeader {
+                write: None,
+                include: "syntaqlite/cflags.h".to_string(),
+            },
             tokens_rs: None,
             ffi_rs: None,
             ast_rs: None,
@@ -411,6 +425,7 @@ impl OutputLayout {
             write(&self.tokens_h.write, &guarded)?;
         }
         write(&self.runtime_tokens_h.write, &artifacts.runtime_tokens_h)?;
+        write(&self.cflags_h.write, &artifacts.cflags_h)?;
 
         // Rust
         if let Some(rust) = artifacts.rust {

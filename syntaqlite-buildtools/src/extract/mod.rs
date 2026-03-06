@@ -29,302 +29,16 @@ pub(crate) mod mkkeywordhash;
 pub(crate) mod tokenizer;
 pub(crate) mod virtual_tables;
 
-// ---------------------------------------------------------------------------
-// SYNQ cflag table — the union of all cflag lists
-// ---------------------------------------------------------------------------
-
-/// SYNQ cflag index table, mirroring `cflags.h`.
-///
-/// This is the authoritative Rust-side table. It is the union of all cflags
-/// across [`keywords_and_parser::PARSER_CFLAGS`], `functions::FUNCTION_CFLAGS`,
-/// and [`virtual_tables::VIRTUAL_TABLE_CFLAGS`].
-///
-/// Each entry is (`sqlite_flag_name`, `synq_index_constant_name`, index, categories).
-/// Sorted alphabetically within OMIT and ENABLE groups, indices assigned sequentially.
-///
-/// A flag may belong to multiple categories when it spans multiple concerns:
-/// - `"parser"`:    affects keyword recognition or SQL syntax
-/// - `"functions"`: affects built-in function availability
-/// - `"vtable"`:    affects virtual table modules
-/// - `"extensions"`: enables optional extension modules (FTS, `RTree`, etc.)
-// Index assignment invariant:
-//   - Parser flags (category contains "parser") occupy indices 0–21, matching
-//     the C compact `SYNQ_CFLAG_IDX_*` values in `cflags.h` exactly.
-//   - Non-parser flags occupy indices 22–41 in their original relative order.
-//
-// This means `SqliteFlag as u32` == C compact index for all parser flags, so
-// `SqliteSyntaxFlags` (3-byte CCflags, bits 0–23) and `SqliteFlags` (u64)
-// both use the same index — no translation table is needed.
-pub(crate) const SYNQ_CFLAG_TABLE: &[(&str, &str, u32, &[&str])] = &[
-    // ── Parser flags (0–21, matching C compact indices) ─────────────────
-    (
-        "SQLITE_OMIT_ALTERTABLE",
-        "SYNQ_CFLAG_IDX_OMIT_ALTERTABLE",
-        0,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_ANALYZE",
-        "SYNQ_CFLAG_IDX_OMIT_ANALYZE",
-        1,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_ATTACH",
-        "SYNQ_CFLAG_IDX_OMIT_ATTACH",
-        2,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_AUTOINCREMENT",
-        "SYNQ_CFLAG_IDX_OMIT_AUTOINCREMENT",
-        3,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_CAST",
-        "SYNQ_CFLAG_IDX_OMIT_CAST",
-        4,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_COMPOUND_SELECT",
-        "SYNQ_CFLAG_IDX_OMIT_COMPOUND_SELECT",
-        5,
-        &["parser"],
-    ),
-    ("SQLITE_OMIT_CTE", "SYNQ_CFLAG_IDX_OMIT_CTE", 6, &["parser"]),
-    (
-        "SQLITE_OMIT_EXPLAIN",
-        "SYNQ_CFLAG_IDX_OMIT_EXPLAIN",
-        7,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_FOREIGN_KEY",
-        "SYNQ_CFLAG_IDX_OMIT_FOREIGN_KEY",
-        8,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_GENERATED_COLUMNS",
-        "SYNQ_CFLAG_IDX_OMIT_GENERATED_COLUMNS",
-        9,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_PRAGMA",
-        "SYNQ_CFLAG_IDX_OMIT_PRAGMA",
-        10,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_REINDEX",
-        "SYNQ_CFLAG_IDX_OMIT_REINDEX",
-        11,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_RETURNING",
-        "SYNQ_CFLAG_IDX_OMIT_RETURNING",
-        12,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_SUBQUERY",
-        "SYNQ_CFLAG_IDX_OMIT_SUBQUERY",
-        13,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_TEMPDB",
-        "SYNQ_CFLAG_IDX_OMIT_TEMPDB",
-        14,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_TRIGGER",
-        "SYNQ_CFLAG_IDX_OMIT_TRIGGER",
-        15,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_VACUUM",
-        "SYNQ_CFLAG_IDX_OMIT_VACUUM",
-        16,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_VIEW",
-        "SYNQ_CFLAG_IDX_OMIT_VIEW",
-        17,
-        &["parser"],
-    ),
-    (
-        "SQLITE_OMIT_VIRTUALTABLE",
-        "SYNQ_CFLAG_IDX_OMIT_VIRTUALTABLE",
-        18,
-        &["parser", "vtable"], // adds VIRTUAL keyword (parser) + disables vtable mechanism
-    ),
-    (
-        "SQLITE_OMIT_WINDOWFUNC",
-        "SYNQ_CFLAG_IDX_OMIT_WINDOWFUNC",
-        19,
-        &["parser", "functions"], // removes window keywords (parser) + window functions
-    ),
-    (
-        "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
-        "SYNQ_CFLAG_IDX_ENABLE_ORDERED_SET_AGGREGATES",
-        20,
-        &["parser", "functions"], // adds WITHIN keyword (parser) + ordered-set aggregate functions
-    ),
-    (
-        "SQLITE_ENABLE_UPDATE_DELETE_LIMIT",
-        "SYNQ_CFLAG_IDX_ENABLE_UPDATE_DELETE_LIMIT",
-        21,
-        &["parser"],
-    ),
-    // ── Non-parser flags (22–41, original relative order) ────────────────
-    (
-        "SQLITE_OMIT_COMPILEOPTION_DIAGS",
-        "SYNQ_CFLAG_IDX_OMIT_COMPILEOPTION_DIAGS",
-        22,
-        &["functions"],
-    ),
-    (
-        "SQLITE_OMIT_DATETIME_FUNCS",
-        "SYNQ_CFLAG_IDX_OMIT_DATETIME_FUNCS",
-        23,
-        &["functions"],
-    ),
-    (
-        "SQLITE_OMIT_FLOATING_POINT",
-        "SYNQ_CFLAG_IDX_OMIT_FLOATING_POINT",
-        24,
-        &["functions"],
-    ),
-    (
-        "SQLITE_OMIT_JSON",
-        "SYNQ_CFLAG_IDX_OMIT_JSON",
-        25,
-        &["functions"],
-    ),
-    (
-        "SQLITE_OMIT_LOAD_EXTENSION",
-        "SYNQ_CFLAG_IDX_OMIT_LOAD_EXTENSION",
-        26,
-        &["functions"],
-    ),
-    (
-        "SQLITE_ENABLE_BYTECODE_VTAB",
-        "SYNQ_CFLAG_IDX_ENABLE_BYTECODE_VTAB",
-        27,
-        &["vtable"],
-    ),
-    (
-        "SQLITE_ENABLE_CARRAY",
-        "SYNQ_CFLAG_IDX_ENABLE_CARRAY",
-        28,
-        &["vtable"],
-    ),
-    (
-        "SQLITE_ENABLE_DBPAGE_VTAB",
-        "SYNQ_CFLAG_IDX_ENABLE_DBPAGE_VTAB",
-        29,
-        &["vtable"],
-    ),
-    (
-        "SQLITE_ENABLE_DBSTAT_VTAB",
-        "SYNQ_CFLAG_IDX_ENABLE_DBSTAT_VTAB",
-        30,
-        &["vtable"],
-    ),
-    (
-        "SQLITE_ENABLE_FTS3",
-        "SYNQ_CFLAG_IDX_ENABLE_FTS3",
-        31,
-        &["extensions"],
-    ),
-    (
-        "SQLITE_ENABLE_FTS4",
-        "SYNQ_CFLAG_IDX_ENABLE_FTS4",
-        32,
-        &["extensions"],
-    ),
-    (
-        "SQLITE_ENABLE_FTS5",
-        "SYNQ_CFLAG_IDX_ENABLE_FTS5",
-        33,
-        &["extensions"],
-    ),
-    (
-        "SQLITE_ENABLE_GEOPOLY",
-        "SYNQ_CFLAG_IDX_ENABLE_GEOPOLY",
-        34,
-        &["extensions"],
-    ),
-    (
-        "SQLITE_ENABLE_JSON1",
-        "SYNQ_CFLAG_IDX_ENABLE_JSON1",
-        35,
-        &["functions"],
-    ),
-    (
-        "SQLITE_ENABLE_MATH_FUNCTIONS",
-        "SYNQ_CFLAG_IDX_ENABLE_MATH_FUNCTIONS",
-        36,
-        &["functions"],
-    ),
-    (
-        "SQLITE_ENABLE_OFFSET_SQL_FUNC",
-        "SYNQ_CFLAG_IDX_ENABLE_OFFSET_SQL_FUNC",
-        37,
-        &["functions"],
-    ),
-    (
-        "SQLITE_ENABLE_PERCENTILE",
-        "SYNQ_CFLAG_IDX_ENABLE_PERCENTILE",
-        38,
-        &["functions"],
-    ),
-    (
-        "SQLITE_ENABLE_RTREE",
-        "SYNQ_CFLAG_IDX_ENABLE_RTREE",
-        39,
-        &["extensions"],
-    ),
-    (
-        "SQLITE_ENABLE_STMTVTAB",
-        "SYNQ_CFLAG_IDX_ENABLE_STMTVTAB",
-        40,
-        &["vtable"],
-    ),
-    (
-        "SQLITE_SOUNDEX",
-        "SYNQ_CFLAG_IDX_SOUNDEX",
-        41,
-        &["functions"],
-    ),
-];
-
-/// Look up the SYNQ cflag index for a `SQLITE_OMIT_*` or `SQLITE_ENABLE_*` flag.
-#[expect(dead_code)]
-#[must_use]
-pub(crate) fn synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> Option<u32> {
-    SYNQ_CFLAG_TABLE
-        .iter()
-        .find(|(name, _, _, _)| *name == sqlite_flag)
-        .map(|(_, _, idx, _)| *idx)
-}
+use crate::util::cflag_registry::{synq_const_name, CFLAG_REGISTRY};
 
 /// Compute the group-local index of `sqlite_flag` within the `group` category.
 ///
-/// Local indices are 0, 1, 2, … assigned by iterating `SYNQ_CFLAG_TABLE` in order
+/// Local indices are 0, 1, 2, … assigned by iterating `CFLAG_REGISTRY` in order
 /// and counting only entries whose categories slice contains `group`.
 #[must_use]
 pub(crate) fn group_local_index(group: &str, sqlite_flag: &str) -> Option<u32> {
     let mut local = 0u32;
-    for &(name, _, _, cats) in SYNQ_CFLAG_TABLE {
+    for &(name, _, cats) in CFLAG_REGISTRY {
         if cats.contains(&group) {
             if name == sqlite_flag {
                 return Some(local);
@@ -350,11 +64,7 @@ fn write_cflag_defines(out: &mut String, entries: &[(&str, &str, u32)], count: u
     out.push('\n');
     let mut last_prefix = "";
     for &(_, synq_name, idx) in entries {
-        let prefix = if synq_name.contains("OMIT") {
-            "OMIT"
-        } else {
-            "ENABLE"
-        };
+        let prefix = if synq_name.contains("OMIT") { "OMIT" } else { "ENABLE" };
         if prefix != last_prefix {
             if !last_prefix.is_empty() {
                 out.push('\n');
@@ -382,11 +92,7 @@ fn write_cflag_struct(
     out.push_str("typedef struct SyntaqliteCflags {\n");
     let mut last_prefix = "";
     for &(_, synq_name, _) in entries {
-        let prefix = if synq_name.contains("OMIT") {
-            "OMIT"
-        } else {
-            "ENABLE"
-        };
+        let prefix = if synq_name.contains("OMIT") { "OMIT" } else { "ENABLE" };
         if prefix != last_prefix {
             writeln!(out, "  // {prefix} flags:").expect("write to String");
             last_prefix = prefix;
@@ -395,11 +101,7 @@ fn write_cflag_struct(
         writeln!(out, "  uint8_t {field} : 1;").expect("write to String");
     }
     if padding > 0 {
-        writeln!(
-            out,
-            "  // Padding to {bits_total} bits ({byte_count} bytes):"
-        )
-        .expect("write to String");
+        writeln!(out, "  // Padding to {bits_total} bits ({byte_count} bytes):").expect("write to String");
         writeln!(out, "  uint8_t _reserved : {padding};").expect("write to String");
     }
     out.push_str("} SyntaqliteCflags;\n");
@@ -435,26 +137,28 @@ fn write_cflag_pinning(out: &mut String, entries: &[(&str, &str, u32)]) {
 /// # Panics
 ///
 /// Never in practice; panics only if the number of cflags exceeds `u32::MAX`.
-#[expect(dead_code)]
 #[must_use]
 pub(crate) fn generate_cflags_h(group: &str) -> String {
     use std::fmt::Write as _;
-    // Collect group entries with sequential local indices.
     let mut local_idx: u32 = 0;
-    let entries: Vec<(&str, &str, u32)> = SYNQ_CFLAG_TABLE
+    let entries: Vec<(&str, String, u32)> = CFLAG_REGISTRY
         .iter()
-        .filter_map(|&(sqlite_flag, synq_name, _, cats)| {
+        .filter_map(|&(sqlite_flag, _, cats)| {
             if cats.contains(&group) {
                 let idx = local_idx;
                 local_idx += 1;
-                Some((sqlite_flag, synq_name, idx))
+                Some((sqlite_flag, synq_const_name(sqlite_flag), idx))
             } else {
                 None
             }
         })
         .collect();
+    let entries_ref: Vec<(&str, &str, u32)> = entries
+        .iter()
+        .map(|(f, n, i)| (*f, n.as_str(), *i))
+        .collect();
 
-    let count = u32::try_from(entries.len()).expect("cflag count fits u32");
+    let count = u32::try_from(entries_ref.len()).expect("cflag count fits u32");
     let bits_total = count.div_ceil(8) * 8;
     let padding = bits_total - count;
     let byte_count = bits_total / 8;
@@ -462,13 +166,9 @@ pub(crate) fn generate_cflags_h(group: &str) -> String {
     let mut out = String::new();
     out.push_str("// Copyright 2025 The syntaqlite Authors. All rights reserved.\n");
     out.push_str("// Licensed under the Apache License, Version 2.0.\n");
-    out.push_str("// @generated by sqlite-extract — DO NOT EDIT\n");
+    out.push_str("// @generated by syntaqlite-buildtools codegen-sqlite — DO NOT EDIT\n");
     out.push_str("//\n");
-    writeln!(
-        out,
-        "// SQLite compile-time flag constants for the \"{group}\" group."
-    )
-    .expect("write to String");
+    writeln!(out, "// SQLite compile-time flag constants for the \"{group}\" group.").expect("write to String");
     out.push_str("// For use with SyntaqliteGrammar.cflags.\n");
     out.push_str("//\n");
     out.push_str("// Indices are group-local (0-based within this group).\n");
@@ -479,8 +179,8 @@ pub(crate) fn generate_cflags_h(group: &str) -> String {
     out.push_str("#include <stdint.h>\n");
     out.push_str("#include <string.h>\n");
     out.push('\n');
-    write_cflag_defines(&mut out, &entries, count);
-    write_cflag_struct(&mut out, &entries, bits_total, padding, byte_count);
+    write_cflag_defines(&mut out, &entries_ref, count);
+    write_cflag_struct(&mut out, &entries_ref, bits_total, padding, byte_count);
     out.push_str("// ── Indexed accessor ────────────────────────────────────────────────────\n");
     out.push_str("//\n");
     out.push_str("// For dynamic cflag lookup (keyword tables etc.).\n");
@@ -495,7 +195,7 @@ pub(crate) fn generate_cflags_h(group: &str) -> String {
     out.push_str("  bytes[idx / 8] |= (uint8_t)(1u << (idx % 8));\n");
     out.push_str("}\n");
     out.push('\n');
-    write_cflag_pinning(&mut out, &entries);
+    write_cflag_pinning(&mut out, &entries_ref);
     out.push('\n');
     out.push_str("#endif  // SYNTAQLITE_SQLITE_CFLAGS_H\n");
     out
@@ -503,14 +203,64 @@ pub(crate) fn generate_cflags_h(group: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use crate::util::cflag_registry::CFLAG_REGISTRY;
+
+    /// `CFLAG_REGISTRY` flag names must match `version_cflags.json` exactly.
+    ///
+    /// Catches two directions of drift:
+    /// - A flag added to `CFLAG_REGISTRY` without re-running `tools/sqlite-data update-data`
+    /// - The JSON being regenerated from a different flag set than the registry
+    #[test]
+    fn cflag_registry_matches_version_cflags_json() {
+        let json_content = include_str!("../../sqlite-vendored/data/version_cflags.json");
+
+        #[derive(serde::Deserialize)]
+        struct File {
+            cflags: Vec<Entry>,
+        }
+        #[derive(serde::Deserialize)]
+        struct Entry {
+            name: String,
+        }
+
+        let file: File =
+            serde_json::from_str(json_content).expect("version_cflags.json is valid JSON");
+
+        let json_names: std::collections::HashSet<&str> =
+            file.cflags.iter().map(|e| e.name.as_str()).collect();
+        let registry_names: std::collections::HashSet<&str> =
+            CFLAG_REGISTRY.iter().map(|(n, _, _)| *n).collect();
+
+        let mut in_registry_not_json: Vec<&str> =
+            registry_names.difference(&json_names).copied().collect();
+        in_registry_not_json.sort_unstable();
+        let mut in_json_not_registry: Vec<&str> =
+            json_names.difference(&registry_names).copied().collect();
+        in_json_not_registry.sort_unstable();
+
+        assert!(
+            in_registry_not_json.is_empty(),
+            "flags in CFLAG_REGISTRY but missing from version_cflags.json \
+             (re-run `tools/sqlite-data update-data`): {in_registry_not_json:?}"
+        );
+        assert!(
+            in_json_not_registry.is_empty(),
+            "flags in version_cflags.json but missing from CFLAG_REGISTRY: \
+             {in_json_not_registry:?}"
+        );
+    }
+
     /// Verify that `generate_cflags_h("parser")` is self-consistent: only parser-group
-    /// entries from `SYNQ_CFLAG_TABLE` appear, with correct group-local indices.
+    /// entries from `CFLAG_REGISTRY` appear, with correct group-local indices.
     #[test]
     fn generate_cflags_h_parser_is_consistent() {
+        use crate::util::cflag_registry::synq_const_name;
+
         let generated = super::generate_cflags_h("parser");
 
         // Parse "#define SYNQ_CFLAG_IDX_*  N" lines from the generated header.
-        let mut defines: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
+        let mut defines: std::collections::HashMap<String, u32> =
+            std::collections::HashMap::new();
         for line in generated.lines() {
             let line = line.trim();
             if let Some(rest) = line.strip_prefix("#define SYNQ_CFLAG_IDX_") {
@@ -525,38 +275,38 @@ mod tests {
         }
 
         // Every parser-group entry must appear with its group-local index.
-        for &(sqlite_flag, synq_name, _, cats) in super::SYNQ_CFLAG_TABLE {
+        for &(sqlite_flag, _, cats) in CFLAG_REGISTRY {
+            let const_name = synq_const_name(sqlite_flag);
             if !cats.contains(&"parser") {
-                // Non-parser entries must NOT appear.
                 assert!(
-                    !defines.contains_key(synq_name),
-                    "non-parser flag {synq_name} should not be in parser cflags.h"
+                    !defines.contains_key(&const_name),
+                    "non-parser flag {const_name} should not be in parser cflags.h"
                 );
                 continue;
             }
             let expected_local = super::group_local_index("parser", sqlite_flag)
                 .expect("parser-group flag must have a local index");
-            let header_val = defines.get(synq_name);
+            let header_val = defines.get(&const_name);
             assert_eq!(
                 header_val,
                 Some(&expected_local),
-                "{synq_name}: expected local index {expected_local}, got {header_val:?}"
+                "{const_name}: expected local index {expected_local}, got {header_val:?}"
             );
         }
 
         // Every define in the header (except COUNT) must correspond to a parser-group entry.
-        let parser_synq_names: std::collections::HashSet<&str> = super::SYNQ_CFLAG_TABLE
+        let parser_const_names: std::collections::HashSet<String> = CFLAG_REGISTRY
             .iter()
-            .filter(|(_, _, _, cats)| cats.contains(&"parser"))
-            .map(|(_, n, _, _)| *n)
+            .filter(|(_, _, cats)| cats.contains(&"parser"))
+            .map(|(n, _, _)| synq_const_name(n))
             .collect();
         for (name, val) in &defines {
             if name == "SYNQ_CFLAG_IDX_COUNT" {
                 continue;
             }
             assert!(
-                parser_synq_names.contains(name.as_str()),
-                "cflags.h defines {name}={val} but it is not a parser-group entry in SYNQ_CFLAG_TABLE"
+                parser_const_names.contains(name),
+                "cflags.h defines {name}={val} but it is not a parser-group entry in CFLAG_REGISTRY"
             );
         }
     }

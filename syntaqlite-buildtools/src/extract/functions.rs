@@ -19,63 +19,63 @@ use std::path::Path;
 
 use super::amalgamation_probe;
 
-/// All function-relevant cflags we care about.
+/// Overrides for flags whose probe compile args differ from the default `-D{name}`.
 ///
-/// Each entry is (`flag_name`, polarity, `compile_defines`).
-/// - OMIT flags: default = OFF. We test by turning them ON to see what disappears.
-/// - ENABLE flags: default = OFF. We test by turning them ON to see what appears.
-const FUNCTION_CFLAGS: &[(&str, &str, &[&str])] = &[
-    // OMIT flags.
-    (
-        "SQLITE_OMIT_WINDOWFUNC",
-        "omit",
-        &["-DSQLITE_OMIT_WINDOWFUNC"],
-    ),
-    ("SQLITE_OMIT_JSON", "omit", &["-DSQLITE_OMIT_JSON"]),
-    // SQLITE_OMIT_FLOATING_POINT intentionally excluded: it redefines `double`
-    // as `sqlite_int64`, causing compile failures on all versions with modern
-    // compilers. Extremely niche (embedded systems with no FPU).
-    (
-        "SQLITE_OMIT_LOAD_EXTENSION",
-        "omit",
-        &["-DSQLITE_OMIT_LOAD_EXTENSION"],
-    ),
-    (
-        "SQLITE_OMIT_COMPILEOPTION_DIAGS",
-        "omit",
-        &["-DSQLITE_OMIT_COMPILEOPTION_DIAGS"],
-    ),
-    (
-        "SQLITE_OMIT_DATETIME_FUNCS",
-        "omit",
-        &["-DSQLITE_OMIT_DATETIME_FUNCS"],
-    ),
-    // ENABLE flags.
-    (
-        "SQLITE_ENABLE_MATH_FUNCTIONS",
-        "enable",
-        &["-DSQLITE_ENABLE_MATH_FUNCTIONS"],
-    ),
-    ("SQLITE_ENABLE_JSON1", "enable", &["-DSQLITE_ENABLE_JSON1"]),
-    (
-        "SQLITE_ENABLE_PERCENTILE",
-        "enable",
-        &["-DSQLITE_ENABLE_PERCENTILE"],
-    ),
-    ("SQLITE_SOUNDEX", "enable", &["-DSQLITE_SOUNDEX"]),
-    (
-        "SQLITE_ENABLE_OFFSET_SQL_FUNC",
-        "enable",
-        &["-DSQLITE_ENABLE_OFFSET_SQL_FUNC"],
-    ),
-    ("SQLITE_ENABLE_FTS3", "enable", &["-DSQLITE_ENABLE_FTS3"]),
-    ("SQLITE_ENABLE_FTS5", "enable", &["-DSQLITE_ENABLE_FTS5"]),
+/// - `None` = skip probing entirely (flag cannot be safely compiled on modern toolchains).
+/// - `Some(defines)` = use these compiler defines instead of the default `-D{name}`.
+///
+/// Flags not listed here use `-D{flag_name}` as the only compile define.
+const PROBE_OVERRIDES: &[(&str, Option<&[&str]>)] = &[
+    // Redefines `double` as `sqlite_int64`, causing compile failures on all
+    // modern compilers. Extremely niche (embedded systems with no FPU).
+    ("SQLITE_OMIT_FLOATING_POINT", None),
+    // Requires RTREE to be enabled alongside for correct compilation.
     (
         "SQLITE_ENABLE_GEOPOLY",
-        "enable",
-        &["-DSQLITE_ENABLE_GEOPOLY", "-DSQLITE_ENABLE_RTREE"],
+        Some(&["-DSQLITE_ENABLE_GEOPOLY", "-DSQLITE_ENABLE_RTREE"]),
     ),
 ];
+
+/// Returns the compile defines for probing `flag_name`, or `None` to skip probing.
+fn probe_defines(flag_name: &str) -> Option<Vec<String>> {
+    if let Some(&(_, ref override_val)) = PROBE_OVERRIDES.iter().find(|(n, _)| *n == flag_name) {
+        return override_val.map(|defs| defs.iter().map(|s| (*s).to_string()).collect());
+    }
+    Some(vec![format!("-D{flag_name}")])
+}
+
+/// Returns `"omit"` for `SQLITE_OMIT_*` flags, `"enable"` for all others.
+fn flag_polarity(flag_name: &str) -> &'static str {
+    if flag_name.starts_with("SQLITE_OMIT_") {
+        "omit"
+    } else {
+        "enable"
+    }
+}
+
+/// Returns the (flag_name, polarity) pairs to probe for the given available flags.
+///
+/// Only flags in `CFLAG_REGISTRY` with `"functions"` in their categories are considered,
+/// minus any with `None` in `PROBE_OVERRIDES`.
+fn probeable_flags(available: &BTreeSet<String>) -> Vec<(&'static str, &'static str)> {
+    use crate::util::cflag_registry::CFLAG_REGISTRY;
+    CFLAG_REGISTRY
+        .iter()
+        .filter_map(|&(name, _, cats)| {
+            if !cats.contains(&"functions") || !available.contains(name) {
+                return None;
+            }
+            // Skip flags that cannot be probed (e.g. compile failures).
+            if PROBE_OVERRIDES
+                .iter()
+                .any(|(n, defs)| *n == name && defs.is_none())
+            {
+                return None;
+            }
+            Some((name, flag_polarity(name)))
+        })
+        .collect()
+}
 
 /// The C probe program that extracts function data via PRAGMA `function_list`.
 const PROBE_C: &str = r#"
@@ -273,11 +273,11 @@ pub(crate) fn discover_versions(amalgamation_dir: &Path) -> Result<Vec<String>, 
 // Phase 1: Audit — scan sqlite3.c for flag references
 // ---------------------------------------------------------------------------
 
-/// All flag names we look for during audit (all 42 cflags from `SYNQ_CFLAG_TABLE`).
+/// All flag names we look for during audit (all entries from `CFLAG_REGISTRY`).
 fn all_flag_names() -> Vec<&'static str> {
-    super::SYNQ_CFLAG_TABLE
+    crate::util::cflag_registry::CFLAG_REGISTRY
         .iter()
-        .map(|(name, _, _, _)| *name)
+        .map(|(name, _, _)| *name)
         .collect()
 }
 
@@ -353,11 +353,9 @@ pub(crate) fn audit_version_cflags(
 
 /// Compute cflag availability from per-version scan results.
 ///
-/// For each cflag in `SYNQ_CFLAG_TABLE`, finds the earliest version where it
+/// For each cflag in `CFLAG_REGISTRY`, finds the earliest version where it
 /// appears in the amalgamation source. Cflags not observed in any version
 /// get `since: "0"`.
-///
-/// Multi-category flags (e.g. `&["parser", "vtable"]`) emit one entry per category.
 fn compute_cflag_availability(per_version: &BTreeMap<String, Vec<String>>) -> CflagAvailability {
     // Sort versions.
     let mut sorted_versions: Vec<&String> = per_version.keys().collect();
@@ -368,7 +366,7 @@ fn compute_cflag_availability(per_version: &BTreeMap<String, Vec<String>>) -> Cf
     });
 
     let mut entries = Vec::new();
-    for (flag_name, _, _, categories) in super::SYNQ_CFLAG_TABLE {
+    for &(flag_name, _, categories) in crate::util::cflag_registry::CFLAG_REGISTRY {
         // Find earliest version containing this flag.
         let since = sorted_versions
             .iter()
@@ -405,10 +403,8 @@ pub(crate) fn generate_cflag_versions_rs(availability: &CflagAvailability) -> St
     out.push_str("pub enum SqliteFlag {\n");
 
     for entry in &availability.cflags {
-        let (_, _, index, _) = super::SYNQ_CFLAG_TABLE
-            .iter()
-            .find(|(name, _, _, _)| *name == entry.name)
-            .unwrap_or_else(|| panic!("cflag '{}' not found in SYNQ_CFLAG_TABLE", entry.name));
+        let index = crate::util::cflag_registry::cflag_index(&entry.name)
+            .unwrap_or_else(|| panic!("cflag '{}' not found in CFLAG_REGISTRY", entry.name));
         let suffix = entry.name.strip_prefix("SQLITE_").unwrap_or(&entry.name);
         let variant = crate::util::pascal_case(suffix);
         writeln!(out, "    /// `{}`", entry.name).expect("write cannot fail");
@@ -461,7 +457,7 @@ pub(crate) fn generate_cflag_versions_rs_for_group(
     out.push_str("pub(crate) const CFLAG_TABLE: &[(&str, u32, i32, &str)] = &[\n");
 
     let mut local_idx: u32 = 0;
-    for &(flag_name, _, _, categories) in super::SYNQ_CFLAG_TABLE {
+    for &(flag_name, _, categories) in crate::util::cflag_registry::CFLAG_REGISTRY {
         if !categories.contains(&group) {
             continue;
         }
@@ -590,11 +586,17 @@ fn parse_function_output(stdout: &str) -> FunctionSet {
 }
 
 /// Build the baseline compile defines for a version — all available ENABLE flags ON.
-fn baseline_defines_for(available: &BTreeSet<String>) -> Vec<&'static str> {
+fn baseline_defines_for(available: &BTreeSet<String>) -> Vec<String> {
+    use crate::util::cflag_registry::CFLAG_REGISTRY;
     let mut defines = Vec::new();
-    for &(name, polarity, flag_defines) in FUNCTION_CFLAGS {
-        if polarity == "enable" && available.contains(name) {
-            defines.extend_from_slice(flag_defines);
+    for &(name, _, cats) in CFLAG_REGISTRY {
+        if !cats.contains(&"functions") || !available.contains(name) {
+            continue;
+        }
+        if flag_polarity(name) == "enable" {
+            if let Some(defs) = probe_defines(name) {
+                defines.extend(defs);
+            }
         }
     }
     defines
@@ -602,30 +604,33 @@ fn baseline_defines_for(available: &BTreeSet<String>) -> Vec<&'static str> {
 
 /// Build the test defines for a specific cflag.
 ///
-/// For OMIT flags: baseline + the OMIT flag.
+/// For OMIT flags: baseline ENABLE flags + the OMIT flag itself.
 /// For ENABLE flags: baseline minus the ENABLE flag being tested.
-fn test_defines_for(
-    flag_name: &str,
-    polarity: &str,
-    available: &BTreeSet<String>,
-) -> Vec<&'static str> {
+fn test_defines_for(flag_name: &str, polarity: &str, available: &BTreeSet<String>) -> Vec<String> {
+    use crate::util::cflag_registry::CFLAG_REGISTRY;
     let mut defines = Vec::new();
-    for &(name, pol, flag_defines) in FUNCTION_CFLAGS {
-        if !available.contains(name) {
+    for &(name, _, cats) in CFLAG_REGISTRY {
+        if !cats.contains(&"functions") || !available.contains(name) {
             continue;
         }
         if polarity == "omit" {
-            // OMIT test: baseline + the OMIT flag.
-            if pol == "enable" {
-                defines.extend_from_slice(flag_defines);
+            // OMIT test: all ENABLE flags in baseline, plus the OMIT flag itself.
+            if flag_polarity(name) == "enable" {
+                if let Some(defs) = probe_defines(name) {
+                    defines.extend(defs);
+                }
             }
             if name == flag_name {
-                defines.extend_from_slice(flag_defines);
+                if let Some(defs) = probe_defines(name) {
+                    defines.extend(defs);
+                }
             }
         } else {
-            // ENABLE test: baseline minus this ENABLE flag.
-            if pol == "enable" && name != flag_name {
-                defines.extend_from_slice(flag_defines);
+            // ENABLE test: baseline minus this flag.
+            if flag_polarity(name) == "enable" && name != flag_name {
+                if let Some(defs) = probe_defines(name) {
+                    defines.extend(defs);
+                }
             }
         }
     }
@@ -666,7 +671,8 @@ fn extract_version(
 ) -> Result<(FunctionSet, Vec<CflagEffect>), String> {
     // Compile and run baseline (all available ENABLE flags ON, no OMIT flags).
     let bl_defs = baseline_defines_for(available_flags);
-    let baseline = compile_and_run_probe(amalgamation_dir, build_dir, &bl_defs, "baseline")?;
+    let bl_refs: Vec<&str> = bl_defs.iter().map(String::as_str).collect();
+    let baseline = compile_and_run_probe(amalgamation_dir, build_dir, &bl_refs, "baseline")?;
 
     let baseline_names: BTreeSet<String> =
         baseline.functions.iter().map(|f| f.name.clone()).collect();
@@ -675,22 +681,20 @@ fn extract_version(
 
     let mut effects = Vec::new();
 
-    // Test each available cflag.
-    for &(flag_name, polarity, _) in FUNCTION_CFLAGS {
-        if !available_flags.contains(flag_name) {
-            continue;
-        }
-
+    // Test each probeable cflag.
+    for (flag_name, polarity) in probeable_flags(available_flags) {
         if is_known_broken(version, flag_name) {
             eprintln!("    {flag_name}: known broken on {version}, skipping");
             continue;
         }
 
         let test_defs = test_defines_for(flag_name, polarity, available_flags);
+        let test_refs: Vec<&str> = test_defs.iter().map(String::as_str).collect();
         let label = format!("{version}_{flag_name}");
 
-        let test_set = compile_and_run_probe(amalgamation_dir, build_dir, &test_defs, &label)
-            .map_err(|e| format!("{version}/{flag_name}: {e}"))?;
+        let test_set =
+            compile_and_run_probe(amalgamation_dir, build_dir, &test_refs, &label)
+                .map_err(|e| format!("{version}/{flag_name}: {e}"))?;
 
         let test_names: BTreeSet<String> =
             test_set.functions.iter().map(|f| f.name.clone()).collect();
@@ -951,10 +955,10 @@ mod tests {
             .collect();
 
         let defs = baseline_defines_for(&available);
-        assert!(defs.contains(&"-DSQLITE_ENABLE_MATH_FUNCTIONS"));
-        assert!(defs.contains(&"-DSQLITE_SOUNDEX"));
+        assert!(defs.iter().any(|d| d.as_str() == "-DSQLITE_ENABLE_MATH_FUNCTIONS"));
+        assert!(defs.iter().any(|d| d.as_str() == "-DSQLITE_SOUNDEX"));
         // FTS5 is not in available, should not appear.
-        assert!(!defs.contains(&"-DSQLITE_ENABLE_FTS5"));
+        assert!(!defs.iter().any(|d| d.as_str() == "-DSQLITE_ENABLE_FTS5"));
         // No OMIT flags in baseline.
         assert!(!defs.iter().any(|d| d.contains("OMIT")));
     }
@@ -967,8 +971,8 @@ mod tests {
             .collect();
 
         let defs = test_defines_for("SQLITE_OMIT_JSON", "omit", &available);
-        assert!(defs.contains(&"-DSQLITE_OMIT_JSON"));
-        assert!(defs.contains(&"-DSQLITE_ENABLE_MATH_FUNCTIONS"));
+        assert!(defs.iter().any(|d| d.as_str() == "-DSQLITE_OMIT_JSON"));
+        assert!(defs.iter().any(|d| d.as_str() == "-DSQLITE_ENABLE_MATH_FUNCTIONS"));
     }
 
     #[test]
@@ -979,8 +983,8 @@ mod tests {
             .collect();
 
         let defs = test_defines_for("SQLITE_ENABLE_MATH_FUNCTIONS", "enable", &available);
-        assert!(!defs.contains(&"-DSQLITE_ENABLE_MATH_FUNCTIONS"));
-        assert!(defs.contains(&"-DSQLITE_SOUNDEX"));
+        assert!(!defs.iter().any(|d| d.as_str() == "-DSQLITE_ENABLE_MATH_FUNCTIONS"));
+        assert!(defs.iter().any(|d| d.as_str() == "-DSQLITE_SOUNDEX"));
     }
 
     #[test]

@@ -173,6 +173,8 @@ pub(crate) struct CodegenArtifacts {
     /// Minimal runtime tokens header containing only the tokens needed by
     /// `token_wrapped.c` in the grammar-agnostic engine crate.
     pub runtime_tokens_h: String,
+    /// SQLite cflag index constants header (`cflags.h`).
+    pub cflags_h: String,
     /// Generated Rust sources, when `include_rust` was set.
     pub rust: Option<RustCodegenArtifacts>,
 }
@@ -608,6 +610,7 @@ pub(crate) fn generate_codegen_artifacts(
     };
 
     let runtime_tokens_h = generate_runtime_tokens_header(&token_defines);
+    let cflags_h = crate::extract::generate_cflags_h("parser");
 
     Ok(CodegenArtifacts {
         parse_h,
@@ -626,6 +629,7 @@ pub(crate) fn generate_codegen_artifacts(
         dialect_h,
         dialect_dispatch_h,
         runtime_tokens_h,
+        cflags_h,
         rust,
     })
 }
