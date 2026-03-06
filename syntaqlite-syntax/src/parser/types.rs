@@ -75,7 +75,12 @@ pub struct Comment<'a> {
 
 impl<'a> Comment<'a> {
     pub(super) fn new(text: &'a str, kind: CommentKind, offset: u32, length: u32) -> Self {
-        Comment { text, kind, offset, length }
+        Comment {
+            text,
+            kind,
+            offset,
+            length,
+        }
     }
 
     /// The full comment text, including delimiters.
@@ -122,7 +127,13 @@ impl<'a, G: TypedGrammar> TypedParserToken<'a, G> {
         offset: u32,
         length: u32,
     ) -> Self {
-        TypedParserToken { text, token_type, flags, offset, length }
+        TypedParserToken {
+            text,
+            token_type,
+            flags,
+            offset,
+            length,
+        }
     }
 
     /// The source text slice covered by this token.

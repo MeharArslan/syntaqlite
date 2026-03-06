@@ -208,7 +208,10 @@ impl LspHost {
                 continue;
             }
             if seen.insert(entry.keyword.to_string()) {
-                items.push(CompletionEntry::new(entry.keyword.to_string(), CompletionKind::Keyword));
+                items.push(CompletionEntry::new(
+                    entry.keyword.to_string(),
+                    CompletionKind::Keyword,
+                ));
             }
         }
 
@@ -251,11 +254,7 @@ impl LspHost {
 
     /// Parse + semantic diagnostics combined.
     #[cfg(feature = "validation")]
-    pub fn all_diagnostics(
-        &mut self,
-        uri: &str,
-        config: &ValidationConfig,
-    ) -> Vec<Diagnostic> {
+    pub fn all_diagnostics(&mut self, uri: &str, config: &ValidationConfig) -> Vec<Diagnostic> {
         let mut result = self.diagnostics(uri).to_vec();
         result.extend(self.validate(uri, config));
         result
@@ -494,7 +493,11 @@ mod tests {
         let dialect = crate::sqlite::dialect::dialect();
         let mut ctx = Catalog::new(dialect);
         ctx.layer_mut(CatalogLayer::Database)
-            .insert_function_overload("my_custom_func", FunctionCategory::Scalar, AritySpec::Exact(2));
+            .insert_function_overload(
+                "my_custom_func",
+                FunctionCategory::Scalar,
+                AritySpec::Exact(2),
+            );
         host.set_session_context(ctx);
         let names = host.available_function_names();
         assert!(names.iter().any(|n| n == "my_custom_func"));

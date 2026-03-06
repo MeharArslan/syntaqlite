@@ -60,7 +60,7 @@ enum ReturnAction {
     Discard,
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 impl Formatter {
     pub(super) fn interpret_node<'a>(
         &mut self,
@@ -175,7 +175,9 @@ impl Formatter {
                     // For Preserve mode, capture the source byte span before advancing
                     // the token cursor so we can emit the original casing.
                     let preserve_span = if ctx.keyword_case == KeywordCase::Preserve {
-                        ctx.comment_ctx.as_ref().and_then(|c| c.keyword_source_span(kw_text))
+                        ctx.comment_ctx
+                            .as_ref()
+                            .and_then(|c| c.keyword_source_span(kw_text))
                     } else {
                         None
                     };

@@ -138,7 +138,7 @@ impl AstModel<'_> {
         Ok(w.finish())
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     pub(crate) fn generate_c_field_metadata(
         &self,
         dialect: &str,

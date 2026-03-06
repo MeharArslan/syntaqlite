@@ -32,14 +32,14 @@ pub mod dynload;
 
 #[cfg(feature = "fmt")]
 pub use dialect::{AnyDialect, Dialect};
+#[cfg(feature = "dynload")]
+pub use dynload::load_dialect;
 #[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
 #[cfg(feature = "fmt")]
 pub use fmt::{FormatConfig, FormatError, KeywordCase};
 #[cfg(feature = "lsp")]
 pub use lsp::LspServer;
-#[cfg(feature = "dynload")]
-pub use dynload::load_dialect;
 #[cfg(feature = "validation")]
 pub use semantic::{
     Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, Help, SemanticAnalyzer,

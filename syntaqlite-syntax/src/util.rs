@@ -37,7 +37,7 @@ impl SqliteFlags {
 ///
 /// Pin this when your application needs to parse according to a specific
 /// `SQLite` release. Patch versions are intentionally ignored.
-#[allow(missing_docs)]
+#[expect(missing_docs)]
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SqliteVersion {

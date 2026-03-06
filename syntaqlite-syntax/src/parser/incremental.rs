@@ -140,7 +140,7 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
         let rc = unsafe {
             let c_text = self.c_source_ptr.as_ptr().add(span.start);
             let raw_token_type: u32 = token_type.into();
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(clippy::cast_possible_truncation)]
             (*self.raw_ptr()).feed_token(raw_token_type, c_text as *const _, span.len() as u32)
         };
         self.result_from_rc(rc)
@@ -188,7 +188,7 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
         let mut stack_buf = [0u32; 256];
         // SAFETY: raw is valid and exclusively borrowed via &self; stack_buf is
         // a valid output buffer.
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_possible_truncation)]
         let total =
             unsafe { (*raw).expected_tokens(stack_buf.as_mut_ptr(), stack_buf.len() as u32) };
         let raw_tokens: Vec<u32> = if total == 0 {

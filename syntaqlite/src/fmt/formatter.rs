@@ -123,8 +123,7 @@ impl Formatter {
             let root_id = erased.root_id();
             let semicolons = self.config.semicolons;
             let has_comments = !self.comment_entries.is_empty();
-            let needs_token_ctx =
-                has_comments || self.config.keyword_case == KeywordCase::Preserve;
+            let needs_token_ctx = has_comments || self.config.keyword_case == KeywordCase::Preserve;
 
             let comment_ctx = if needs_token_ctx {
                 // Move buffers into CommentCtx for this statement, then reclaim them after render.
@@ -240,7 +239,6 @@ fn emit_stmt_separator<'a>(
     parts.push(arena.hardline());
     parts.push(arena.hardline());
 }
-
 
 fn drain_trailing_gap<'a>(
     ctx: &CommentCtx,

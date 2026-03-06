@@ -10,7 +10,7 @@ use crate::util::{pascal_to_snake, upper_snake};
 use super::{AstModel, NodeLikeRef, c_type_name};
 
 impl AstModel<'_> {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     pub(crate) fn generate_ast_nodes_header(&self, dialect: &str) -> String {
         let enum_names = self.enum_names();
         let flags_names = self.flags_names();

@@ -436,7 +436,7 @@ fn parse_synq_items(
 /// # Errors
 ///
 /// Returns an error if grammar parsing, parser generation, or AST codegen fails.
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 pub(crate) fn generate_codegen_artifacts(
     request: &CodegenRequest<'_>,
 ) -> Result<CodegenArtifacts, String> {

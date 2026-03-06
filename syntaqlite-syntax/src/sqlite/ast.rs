@@ -6717,7 +6717,7 @@ impl<'a> Node<'a> {
     /// # Safety
     /// `ptr` must be non-null, well-aligned, and valid for `'a`.
     /// Its first `u32` must be a valid `NodeTag` discriminant.
-    #[allow(clippy::too_many_lines, clippy::match_wildcard_for_single_variants)]
+    #[expect(clippy::too_many_lines, clippy::match_wildcard_for_single_variants)]
     pub(crate) unsafe fn from_raw(
         ptr: *const u32,
         stmt_result: AnyParsedStatement<'a>,
@@ -7096,7 +7096,7 @@ impl<'a> Node<'a> {
     }
 
     /// Resolve a `NodeId` into a typed `Node`, or `None` if null/invalid.
-    #[allow(clippy::cast_ptr_alignment)]
+    #[expect(clippy::cast_ptr_alignment)]
     pub(crate) fn resolve(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Node<'a>> {
         let (ptr, _tag) = stmt_result.node_ptr(id)?;
         // SAFETY: node_ptr returns a valid arena pointer aligned to u32;
@@ -7187,7 +7187,7 @@ impl<'a> Node<'a> {
         }
     }
 
-    #[allow(clippy::match_same_arms)]
+    #[expect(clippy::match_same_arms)]
     /// The typed node ID of this node.
     pub fn node_id(&self) -> NodeId {
         match self {

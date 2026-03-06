@@ -324,7 +324,7 @@ unsafe impl Sync for AnyDialect {}
 
 impl AnyDialect {
     /// Construct from grammar + generated static tables (built-in dialects).
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         grammar: AnyGrammar,
         fmt_strings: &'static [&'static str],

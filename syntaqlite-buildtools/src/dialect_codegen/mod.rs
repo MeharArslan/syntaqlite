@@ -182,7 +182,7 @@ impl<'a> AstModel<'a> {
     /// Build an `AstModel` where base items get pinned tags and extension items
     /// get tags after the base range. Extension items may redefine base nodes
     /// (append-only fields) or add entirely new nodes.
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     pub(crate) fn new_with_extensions(
         base_items: &'a [Item],
         extension_items: &'a [Item],

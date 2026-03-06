@@ -54,11 +54,7 @@ impl<'a> DiagnosticRenderer<'a> {
     }
 
     /// Render a single diagnostic to `out`.
-    pub fn render_diagnostic(
-        &self,
-        diag: &Diagnostic,
-        out: &mut impl Write,
-    ) -> io::Result<()> {
+    pub fn render_diagnostic(&self, diag: &Diagnostic, out: &mut impl Write) -> io::Result<()> {
         let severity = match diag.severity {
             Severity::Error => "error",
             Severity::Warning => "warning",

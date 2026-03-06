@@ -270,14 +270,14 @@ impl LspServer {
     // ── Helpers ───────────────────────────────────────────────────────────
 
     fn workspace_root(params: &InitializeParams) -> Option<PathBuf> {
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         if let Some(uri) = &params.root_uri {
             let s = uri.as_str();
             if let Some(path) = s.strip_prefix("file://") {
                 return Some(PathBuf::from(path));
             }
         }
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         params.root_path.as_ref().map(PathBuf::from)
     }
 }

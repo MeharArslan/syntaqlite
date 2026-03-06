@@ -75,7 +75,7 @@ const fn idx_u8(idx: u16) -> Result<u8, FmtCompileError> {
         return Err(FmtCompileError::FieldIndexTooLarge(idx));
     }
     // Safety: checked above that idx < 256
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_possible_truncation)]
     let val = idx as u8;
     Ok(val)
 }
@@ -286,7 +286,7 @@ fn compile_seq(
     Ok(())
 }
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn compile_one(
     fmt: &Fmt,
     ctx: &mut CompileCtx<'_>,
@@ -514,7 +514,7 @@ fn compile_switch(
 ) -> Result<(), FmtCompileError> {
     let field_idx = idx_u8(ctx.field(field)?.idx)?;
 
-    #[allow(clippy::items_after_statements)]
+    #[expect(clippy::items_after_statements)]
     struct CaseChunk {
         ordinal: u16,
         body_ops: Vec<RawOp>,
@@ -532,7 +532,7 @@ fn compile_switch(
         compile_seq(def, ctx, &mut default_ops)?;
     }
 
-    #[allow(clippy::items_after_statements)]
+    #[expect(clippy::items_after_statements)]
     fn emit_chain(
         field_idx: u8,
         chunks: &[CaseChunk],

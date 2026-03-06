@@ -100,7 +100,7 @@ impl SemanticAnalyzer {
 
     /// Expected tokens and semantic context at `offset` (for completion).
     #[cfg(feature = "sqlite")]
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     pub(crate) fn completion_info(&self, model: &SemanticModel, offset: usize) -> CompletionInfo {
         let source = model.source();
         let tokens = &model.tokens;
@@ -213,7 +213,12 @@ impl SemanticAnalyzer {
             let root_id: AnyNodeId = root.node_id().into();
             let erased = stmt.erase();
 
-            self.catalog.accumulate_ddl(CatalogLayer::Document, erased, root_id, self.dialect.clone());
+            self.catalog.accumulate_ddl(
+                CatalogLayer::Document,
+                erased,
+                root_id,
+                self.dialect.clone(),
+            );
 
             ValidationPass::run(
                 erased,
@@ -242,7 +247,6 @@ impl Default for SemanticAnalyzer {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
 
 #[cfg(feature = "sqlite")]
 fn parse_error_span(err: &syntaqlite_syntax::ParseError<'_>, source: &str) -> (usize, usize) {
@@ -461,7 +465,7 @@ impl<'a> ValidationPass<'a> {
 
     /// Extract source text from a `Name` node (`IdentName` or `Error`).
     /// Both node kinds store their span at field 0.
-    #[allow(clippy::unused_self)]
+    #[expect(clippy::unused_self)]
     fn name_text(&self, stmt: &AnyParsedStatement<'a>, node_id: Option<AnyNodeId>) -> &'a str {
         let Some(node_id) = node_id else {
             return "";
@@ -634,7 +638,7 @@ impl<'a> ValidationPass<'a> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     fn visit_query(
         &mut self,
         stmt: &AnyParsedStatement<'a>,
@@ -846,9 +850,7 @@ impl<'a> ValidationPass<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::catalog::{
-        AritySpec, CatalogLayer, FunctionCategory, FunctionCheckResult,
-    };
+    use super::super::catalog::{AritySpec, CatalogLayer, FunctionCategory, FunctionCheckResult};
     use super::super::diagnostics::{DiagnosticMessage, Help};
     use super::super::render::DiagnosticRenderer;
     use super::*;
@@ -1221,7 +1223,10 @@ mod tests {
             .iter()
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { name } if name == "conn_tbl"))
             .collect();
-        assert!(errs.is_empty(), "connection table should be visible: {errs:?}");
+        assert!(
+            errs.is_empty(),
+            "connection table should be visible: {errs:?}"
+        );
     }
 
     #[test]
@@ -1233,8 +1238,7 @@ mod tests {
             .insert_relation("t", Some(vec!["a".to_string()]));
         cat.layer_mut(CatalogLayer::Connection)
             .insert_relation("t", Some(vec!["b".to_string()]));
-        let model =
-            sqlite_analyzer().analyze("SELECT b FROM t", &cat, &strict());
+        let model = sqlite_analyzer().analyze("SELECT b FROM t", &cat, &strict());
         let col_errs: Vec<_> = model
             .diagnostics()
             .iter()

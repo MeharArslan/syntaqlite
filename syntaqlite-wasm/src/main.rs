@@ -9,7 +9,7 @@ use std::slice;
 use serde::Serialize;
 
 use syntaqlite::lsp::LspHost;
-use syntaqlite::{Formatter, FormatConfig, KeywordCase, ValidationConfig};
+use syntaqlite::{FormatConfig, Formatter, KeywordCase, ValidationConfig};
 
 thread_local! {
     static RESULT_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
@@ -18,7 +18,9 @@ thread_local! {
 }
 
 fn take_or_create_lsp_host() -> LspHost {
-    LSP_HOST.with(|cell| cell.borrow_mut().take()).unwrap_or_else(LspHost::new)
+    LSP_HOST
+        .with(|cell| cell.borrow_mut().take())
+        .unwrap_or_else(LspHost::new)
 }
 
 fn store_lsp_host(lsp: LspHost) {
@@ -112,7 +114,11 @@ fn free(ptr: u32, len: u32) {
 fn result_ptr() -> u32 {
     RESULT_BUF.with(|buf| {
         let buf = buf.borrow();
-        if buf.is_empty() { 0 } else { buf.as_ptr() as u32 }
+        if buf.is_empty() {
+            0
+        } else {
+            buf.as_ptr() as u32
+        }
     })
 }
 
@@ -158,7 +164,11 @@ pub extern "C" fn wasm_result_free() {
 fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len));
     let config = FormatConfig {
-        line_width: if line_width == 0 { 80 } else { line_width as usize },
+        line_width: if line_width == 0 {
+            80
+        } else {
+            line_width as usize
+        },
         keyword_case: match keyword_case {
             1 => KeywordCase::Upper,
             2 => KeywordCase::Lower,
@@ -415,12 +425,7 @@ pub extern "C" fn wasm_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn wasm_embedded_diagnostics(
-    lang: u32,
-    ptr: u32,
-    len: u32,
-    _version: u32,
-) -> i32 {
+pub extern "C" fn wasm_embedded_diagnostics(lang: u32, ptr: u32, len: u32, _version: u32) -> i32 {
     catch_unwind(
         || run_embedded_diagnostics(lang, ptr, len),
         "wasm_embedded_diagnostics panicked",

@@ -57,7 +57,7 @@ pub(crate) fn base_keyword_token_names() -> std::collections::HashSet<String> {
     // SAFETY: `aKeywordTable` and `nKeyword` are extern statics from compiled C
     // code that are always valid for reads. We read them once to extract keyword data.
     unsafe {
-        #[allow(clippy::cast_sign_loss)]
+        #[expect(clippy::cast_sign_loss)]
         let n = n_keyword_ptr.read() as usize;
         let arr = std::ptr::read(table_ptr);
         arr[..n]
@@ -180,7 +180,7 @@ pub(crate) fn run_mkkeyword(args: &[String]) -> ! {
         });
     }
 
-    #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+    #[expect(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
     let total = n_keywords + extra_cstrings.len() as c_int;
     let arg_count = c_args.argc;
     let arg_vec = c_args.argv();

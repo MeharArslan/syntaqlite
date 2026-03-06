@@ -210,7 +210,7 @@ impl From<TokenType> for crate::any::AnyTokenType {
 }
 
 impl crate::ast::GrammarTokenType for TokenType {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn from_token_type(raw: crate::any::AnyTokenType) -> Option<Self> {
         match raw.0 {
             1 => Some(TokenType::Abort),

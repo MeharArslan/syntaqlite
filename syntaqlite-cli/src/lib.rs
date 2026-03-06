@@ -91,4 +91,3 @@ pub fn run(name: &str, dialect: Option<syntaqlite::Dialect>) {
         std::process::exit(1);
     }
 }
-

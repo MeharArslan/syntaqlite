@@ -104,11 +104,7 @@ impl CatalogLayerContents {
 
     /// Insert a relation. `columns = None` means the table exists but its
     /// column list is not tracked (column refs against it are suppressed).
-    pub fn insert_relation(
-        &mut self,
-        name: impl Into<String>,
-        columns: Option<Vec<String>>,
-    ) {
+    pub fn insert_relation(&mut self, name: impl Into<String>, columns: Option<Vec<String>>) {
         let name = name.into();
         self.relations
             .insert(canonical_name(&name), RelationEntry { name, columns });
@@ -340,7 +336,12 @@ impl Catalog {
             };
             let root = stmt.root();
             let root_id: AnyNodeId = root.node_id().into();
-            catalog.accumulate_ddl(CatalogLayer::Database, stmt.erase(), root_id, dialect.clone());
+            catalog.accumulate_ddl(
+                CatalogLayer::Database,
+                stmt.erase(),
+                root_id,
+                dialect.clone(),
+            );
         }
         catalog
     }
@@ -460,11 +461,7 @@ impl Catalog {
                 };
                 let arity = extract_function_arity(stmt, &fields, args);
                 let layer = &mut self.layers[target.index()];
-                layer.insert_function_overload(
-                    name_val.clone(),
-                    FunctionCategory::Scalar,
-                    arity,
-                );
+                layer.insert_function_overload(name_val.clone(), FunctionCategory::Scalar, arity);
                 if is_table_returning(stmt, &fields, return_type, dialect.roles()) {
                     layer.insert_table_function(name_val, AritySpec::Any, Vec::new());
                 }

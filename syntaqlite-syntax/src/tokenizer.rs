@@ -209,7 +209,7 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
         unsafe {
             inner.raw.as_mut().reset(
                 c_source_ptr.as_ptr() as *const _,
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(clippy::cast_possible_truncation)]
                 {
                     source.len() as u32
                 },
@@ -264,7 +264,7 @@ impl<G: TypedGrammar> TypedTokenizer<G> {
         unsafe {
             inner.raw.as_mut().reset(
                 source.as_ptr(),
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(clippy::cast_possible_truncation)]
                 {
                     bytes.len() as u32
                 },

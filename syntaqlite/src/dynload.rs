@@ -33,8 +33,7 @@ pub fn load_dialect(path: &str, name: Option<&str>) -> Result<Dialect, String> {
     // SAFETY: We keep `lib` alive in an `Arc` below and pass it to
     // `from_raw_parts` so the grammar pointer lives as long as the Dialect.
     let lib = unsafe {
-        libloading::Library::new(path)
-            .map_err(|e| format!("failed to load {path:?}: {e}"))?
+        libloading::Library::new(path).map_err(|e| format!("failed to load {path:?}: {e}"))?
     };
 
     let symbol = symbol_name(name);

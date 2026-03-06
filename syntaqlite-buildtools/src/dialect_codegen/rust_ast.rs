@@ -333,7 +333,7 @@ pub(crate) fn generate_rust_tokens(tokens: &[(String, u32)], type_name: &str) ->
 
     let _ = writeln!(w, "impl crate::ast::GrammarTokenType for {type_name} {{");
     w.indent();
-    w.line("#[allow(clippy::too_many_lines)]");
+    w.line("#[expect(clippy::too_many_lines)]");
     w.open_block("fn from_token_type(raw: crate::any::AnyTokenType) -> Option<Self> {");
     w.open_block("match raw.0 {");
     for (name, value) in tokens {
@@ -413,7 +413,10 @@ impl AstModel<'_> {
             let name = node.name;
             let tag = self.tag_for(name);
             w.line("// SAFETY: TAG matches the value the C parser writes into the `tag` field.");
-            let _ = writeln!(w, "unsafe impl ArenaNode for {name} {{ const TAG: u32 = {tag}; }}");
+            let _ = writeln!(
+                w,
+                "unsafe impl ArenaNode for {name} {{ const TAG: u32 = {tag}; }}"
+            );
             w.newline();
         }
 
@@ -428,7 +431,7 @@ impl AstModel<'_> {
     /// - `crate_prefix`: `"syntaqlite_parser"` for the internal `SQLite` dialect,
     ///   `"syntaqlite"` for external dialect crates.
     /// - `ffi_path`: module path to the dialect FFI structs (`crate::ffi` for both cases).
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     pub(crate) fn generate_rust_ast(
         &self,
         paths: &RustAstPaths<'_>,
@@ -476,7 +479,10 @@ impl AstModel<'_> {
 
         // Abstract type enums (Expr, Stmt, etc.)
         for &(abs_name, members) in abstract_items {
-            let _ = writeln!(w, "/// Abstract `{abs_name}` — pattern-match to access the concrete type.");
+            let _ = writeln!(
+                w,
+                "/// Abstract `{abs_name}` — pattern-match to access the concrete type."
+            );
             w.line("#[derive(Debug, Clone, Copy)]");
             let _ = writeln!(w, "pub enum {abs_name}<'a> {{");
             w.indent();
@@ -497,7 +503,10 @@ impl AstModel<'_> {
             w.open_block("match self {");
             for member in members {
                 if node_names.contains(member.as_str()) || list_names.contains(member.as_str()) {
-                    let _ = writeln!(w, "{abs_name}::{member}(n) => {abs_name}Id(n.node_id().into()),");
+                    let _ = writeln!(
+                        w,
+                        "{abs_name}::{member}(n) => {abs_name}Id(n.node_id().into()),"
+                    );
                 }
             }
             w.close_block("}");
@@ -590,7 +599,10 @@ impl AstModel<'_> {
             let _ = writeln!(w, "impl<'a> {name}<'a> {{");
             w.indent();
             w.doc_comment("The typed node ID of this node.");
-            let _ = writeln!(w, "pub fn node_id(&self) -> {name}Id {{ {name}Id(self.id) }}");
+            let _ = writeln!(
+                w,
+                "pub fn node_id(&self) -> {name}Id {{ {name}Id(self.id) }}"
+            );
             for field in fields {
                 let fname = rust_field_name(&field.name);
                 let return_type =
@@ -611,7 +623,10 @@ impl AstModel<'_> {
                 "fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {",
             );
             w.indent();
-            let _ = writeln!(w, "let raw = stmt_result.resolve_as::<{ffi_path}::{name}>(id)?;");
+            let _ = writeln!(
+                w,
+                "let raw = stmt_result.resolve_as::<{ffi_path}::{name}>(id)?;"
+            );
             let _ = writeln!(w, "Some({name} {{ raw, stmt_result, id }})");
             w.close_block("}");
             w.close_block("}");
@@ -659,7 +674,10 @@ impl AstModel<'_> {
                 "Node<'a>".into()
             };
             let _ = writeln!(w, "/// Typed list of `{child_type}`.");
-            let _ = writeln!(w, "pub type {name}<'a> = TypedNodeList<'a, {grammar_type}, {element_type}>;");
+            let _ = writeln!(
+                w,
+                "pub type {name}<'a> = TypedNodeList<'a, {grammar_type}, {element_type}>;"
+            );
             w.newline();
 
             // XxxId newtype for this list alias
@@ -673,7 +691,10 @@ impl AstModel<'_> {
             w.newline();
             let _ = writeln!(w, "impl<'a> From<{name}<'a>> for {name}Id {{");
             w.indent();
-            let _ = writeln!(w, "fn from(n: {name}<'a>) -> Self {{ {name}Id(n.node_id().into()) }}");
+            let _ = writeln!(
+                w,
+                "fn from(n: {name}<'a>) -> Self {{ {name}Id(n.node_id().into()) }}"
+            );
             w.close_block("}");
             w.newline();
             let _ = writeln!(w, "impl From<{name}Id> for AnyNodeId {{");
@@ -724,7 +745,7 @@ impl AstModel<'_> {
         w.doc_comment("# Safety");
         w.doc_comment("`ptr` must be non-null, well-aligned, and valid for `'a`.");
         w.doc_comment("Its first `u32` must be a valid `NodeTag` discriminant.");
-        w.line("#[allow(clippy::too_many_lines, clippy::match_wildcard_for_single_variants)]");
+        w.line("#[expect(clippy::too_many_lines, clippy::match_wildcard_for_single_variants)]");
         w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Node<'a> {");
         w.indent();
         w.line("// SAFETY: caller guarantees ptr is valid for 'a with a valid tag.");
@@ -736,11 +757,17 @@ impl AstModel<'_> {
             match item {
                 NodeLikeRef::Node(node) => {
                     let name = node.name;
-                    let _ = writeln!(w, "NodeTag::{name} => Node::{name}({name} {{ raw: &*ptr.cast::<{ffi_path}::{name}>(), stmt_result, id }}),");
+                    let _ = writeln!(
+                        w,
+                        "NodeTag::{name} => Node::{name}({name} {{ raw: &*ptr.cast::<{ffi_path}::{name}>(), stmt_result, id }}),"
+                    );
                 }
                 NodeLikeRef::List(list) => {
                     let name = list.name;
-                    let _ = writeln!(w, "NodeTag::{name} => Node::{name}(TypedNodeList::from_result(stmt_result, id).expect(\"list tag invariant\")),");
+                    let _ = writeln!(
+                        w,
+                        "NodeTag::{name} => Node::{name}(TypedNodeList::from_result(stmt_result, id).expect(\"list tag invariant\")),"
+                    );
                 }
             }
         }
@@ -760,7 +787,7 @@ impl AstModel<'_> {
         w.doc_comment("Resolve a `NodeId` into a typed `Node`, or `None` if null/invalid.");
         w.lines(
             "
-        #[allow(clippy::cast_ptr_alignment)]
+        #[expect(clippy::cast_ptr_alignment)]
         pub(crate) fn resolve(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Node<'a>> {
             let (ptr, _tag) = stmt_result.node_ptr(id)?;
             // SAFETY: node_ptr returns a valid arena pointer aligned to u32;
@@ -775,7 +802,7 @@ impl AstModel<'_> {
         emit_rust_node_tag_accessor(&mut w, self.node_like_items(), open_for_extension);
 
         // node_id() on Node<'a>
-        w.line("#[allow(clippy::match_same_arms)]");
+        w.line("#[expect(clippy::match_same_arms)]");
         w.doc_comment("The typed node ID of this node.");
         w.open_block("pub fn node_id(&self) -> NodeId {");
         w.open_block("match self {");

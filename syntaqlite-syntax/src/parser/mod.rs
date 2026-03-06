@@ -215,7 +215,7 @@ impl<G: TypedGrammar> TypedParseSession<G> {
     /// # Panics
     ///
     /// Panics if called after the session is finished.
-    #[allow(clippy::should_implement_trait)]
+    #[expect(clippy::should_implement_trait)]
     pub fn next(&mut self) -> ParseOutcome<TypedParsedStatement<'_, G>, TypedParseError<'_, G>> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         let rc = unsafe {
@@ -471,7 +471,7 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
         // (tag, count, children[count]). The caller is responsible for
         // ensuring the id refers to a list node (enforced by codegen).
         // The arena guarantees alignment of all allocated nodes.
-        #[allow(clippy::cast_ptr_alignment)]
+        #[expect(clippy::cast_ptr_alignment)]
         Some(unsafe { &*ptr.cast::<RawNodeList>() })
     }
 
@@ -499,7 +499,7 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
         }
         // SAFETY: raw is valid; dump_node returns a malloc'd NUL-terminated
         // string (or null). We free it after copying.
-        #[allow(clippy::cast_possible_truncation, clippy::cast_ptr_alignment)]
+        #[expect(clippy::cast_possible_truncation, clippy::cast_ptr_alignment)]
         unsafe {
             let ptr = self.raw.as_ref().dump_node(id.0, indent as u32);
             if !ptr.is_null() {
@@ -568,7 +568,7 @@ impl<'a> TypedParsedStatement<'a, AnyGrammar> {
         if !self.grammar.is_list(tag) {
             return None;
         }
-        #[allow(clippy::redundant_closure_for_method_calls)]
+        #[expect(clippy::redundant_closure_for_method_calls)]
         self.resolve_list(id).map(|l| l.children())
     }
 
@@ -601,7 +601,7 @@ impl<'a> TypedParsedStatement<'a, AnyGrammar> {
 /// # Safety
 /// `ptr` must point to a valid arena node struct whose field at `meta.offset()`
 /// has the type indicated by `meta.kind()`, and must be valid for lifetime `'a`.
-#[allow(clippy::cast_ptr_alignment)]
+#[expect(clippy::cast_ptr_alignment)]
 unsafe fn extract_field_value<'a>(
     ptr: *const u8,
     meta: &crate::grammar::FieldMeta<'_>,
@@ -753,7 +753,7 @@ pub(crate) unsafe fn reset_parser(raw: *mut CParser, source_buf: &mut Vec<u8>, s
     let c_source_ptr = source_buf.as_ptr();
     // SAFETY: raw is valid (caller owns it); c_source_ptr points to
     // source_buf which is null-terminated.
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_possible_truncation)]
     unsafe {
         (*raw).reset(c_source_ptr.cast(), source.len() as u32);
     }

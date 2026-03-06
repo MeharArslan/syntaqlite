@@ -233,7 +233,7 @@ enum Token {
 
 // ── Tokenizer ────────────────────────────────────────────────────────────
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 fn tokenize(input: &str) -> Result<Vec<Token>, String> {
     let b = input.as_bytes();
     let (mut i, mut line, mut col) = (0, 1usize, 1usize);
@@ -720,7 +720,7 @@ impl Parser {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn parse_fmt(&mut self) -> Result<Fmt, String> {
         match self.peek().clone() {
             Token::Str(s) => {

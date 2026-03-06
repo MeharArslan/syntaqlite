@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use clap::ValueEnum;
 use syntaqlite::any::{AnyParser, ParseOutcome};
 use syntaqlite::{
-    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, Formatter, FormatConfig,
+    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, FormatConfig, Formatter,
     KeywordCase, SemanticAnalyzer, Severity, ValidationConfig,
 };
 use syntaqlite::{Dialect, FormatError};
@@ -61,8 +61,8 @@ fn require_dialect(dialect: Option<Dialect>) -> Result<Dialect, String> {
 
 pub(crate) fn dispatch(cli: Cli, dialect: Option<Dialect>) -> Result<(), String> {
     if let Some(path) = &cli.dialect_path {
-        let dyn_dialect =
-            syntaqlite::load_dialect(path, cli.dialect_name.as_deref()).unwrap_or_else(|e| {
+        let dyn_dialect = syntaqlite::load_dialect(path, cli.dialect_name.as_deref())
+            .unwrap_or_else(|e| {
                 eprintln!("error: {e}");
                 std::process::exit(1);
             });
@@ -78,9 +78,8 @@ fn dispatch_commands(command: Command, dialect: Option<Dialect>) -> Result<(), S
         Command::Validate { files, lang } => {
             require_dialect(dialect).and_then(|d| cmd_validate(d, files, lang))
         }
-        Command::Lsp => require_dialect(dialect).and_then(|d| {
-            syntaqlite::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))
-        }),
+        Command::Lsp => require_dialect(dialect)
+            .and_then(|d| syntaqlite::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))),
         Command::Fmt {
             files,
             line_width,
@@ -237,7 +236,11 @@ fn cmd_fmt(
     Ok(())
 }
 
-fn format_source(dialect: &Dialect, source: &str, config: &FormatConfig) -> Result<String, FormatError> {
+fn format_source(
+    dialect: &Dialect,
+    source: &str,
+    config: &FormatConfig,
+) -> Result<String, FormatError> {
     Formatter::with_dialect_config(dialect.clone(), config).format(source)
 }
 
@@ -282,12 +285,7 @@ fn cmd_validate(
     Ok(())
 }
 
-fn validate_source(
-    dialect: &Dialect,
-    source: &str,
-    file: &str,
-    config: &ValidationConfig,
-) -> bool {
+fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &ValidationConfig) -> bool {
     let catalog = Catalog::new(dialect.clone());
     let mut analyzer = SemanticAnalyzer::with_dialect(dialect.clone());
     let model = analyzer.analyze(source, &catalog, config);

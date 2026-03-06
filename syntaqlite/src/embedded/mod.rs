@@ -23,10 +23,10 @@ use std::ops::Range;
 use syntaqlite_syntax::any::TokenCategory;
 
 use crate::dialect::Dialect;
+use crate::semantic::ValidationConfig;
 use crate::semantic::analyzer::SemanticAnalyzer;
 use crate::semantic::catalog::Catalog;
 use crate::semantic::diagnostics::{Diagnostic, DiagnosticMessage};
-use crate::semantic::ValidationConfig;
 
 use offset_map::OffsetMap;
 

@@ -149,7 +149,7 @@ pub(crate) fn write_functions_catalog_file(
 /// # Errors
 ///
 /// Returns an error if JSON parsing fails or an unknown category/cflag is encountered.
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, String> {
     let file: FunctionsFile =
         serde_json::from_str(json_content).map_err(|e| format!("parsing functions.json: {e}"))?;
@@ -164,7 +164,12 @@ pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, S
     // Static data: arity arrays
     for func in &file.functions {
         let ident = arity_ident(&func.name);
-        let arities = func.arities.iter().map(|a| a.to_string()).collect::<Vec<_>>().join(", ");
+        let arities = func
+            .arities
+            .iter()
+            .map(|a| a.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
         let _ = writeln!(w, "static ARITIES_{ident}: &[i16] = &[{arities}];");
     }
     w.newline();
@@ -203,7 +208,10 @@ pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, S
             ));
         }
         let entries_str = entries.join(", ");
-        let _ = writeln!(w, "static AVAIL_{ident}: &[AvailabilityRule] = &[{entries_str}];");
+        let _ = writeln!(
+            w,
+            "static AVAIL_{ident}: &[AvailabilityRule] = &[{entries_str}];"
+        );
     }
     w.newline();
 
@@ -228,7 +236,10 @@ pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, S
         };
         let name_escaped = func.name.replace('\\', "\\\\").replace('"', "\\\"");
         w.open_block("FunctionEntry {");
-        let _ = writeln!(w, "info: FunctionInfo {{ name: \"{name_escaped}\", arities: ARITIES_{ident}, category: {cat} }},");
+        let _ = writeln!(
+            w,
+            "info: FunctionInfo {{ name: \"{name_escaped}\", arities: ARITIES_{ident}, category: {cat} }},"
+        );
         let _ = writeln!(w, "availability: AVAIL_{ident},");
         w.close_block("},");
     }
