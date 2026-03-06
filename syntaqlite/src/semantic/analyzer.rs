@@ -77,13 +77,17 @@ impl SemanticAnalyzer {
         for t in &model.tokens {
             let cat = self.dialect.classify_token(t.token_type.into(), t.flags);
             if cat != TokenCategory::Other {
-                out.push(SemanticToken { offset: t.offset, length: t.length, category: cat });
+                out.push(SemanticToken {
+                    offset: t.offset,
+                    length: t.length,
+                    category: cat,
+                });
             }
         }
         for c in &model.comments {
             out.push(SemanticToken {
-                offset:   c.offset,
-                length:   c.length,
+                offset: c.offset,
+                length: c.length,
                 category: TokenCategory::Comment,
             });
         }
@@ -93,14 +97,14 @@ impl SemanticAnalyzer {
 
     /// Expected tokens and semantic context at `offset` (for completion).
     pub(crate) fn completion_info(&self, model: &SemanticModel, offset: usize) -> CompletionInfo {
-        let source       = model.source();
-        let tokens       = &model.tokens;
-        let cursor       = offset.min(source.len());
+        let source = model.source();
+        let tokens = &model.tokens;
+        let cursor = offset.min(source.len());
         let (boundary, backtracked) = completion_boundary(source, tokens, cursor);
-        let start        = statement_token_start(tokens, boundary);
-        let stmt_tokens  = &tokens[start..boundary];
+        let start = statement_token_start(tokens, boundary);
+        let stmt_tokens = &tokens[start..boundary];
 
-        let parser       = TypedParser::new(syntaqlite_syntax::typed::grammar());
+        let parser = TypedParser::new(syntaqlite_syntax::typed::grammar());
         let mut cursor_p = parser.incremental_parse(source);
         let mut last_expected: Vec<TokenType> = cursor_p.expected_tokens().collect();
 
@@ -108,7 +112,7 @@ impl SemanticAnalyzer {
             let span = tok.offset..(tok.offset + tok.length);
             if cursor_p.feed_token(tok.token_type, span).is_some() {
                 return CompletionInfo {
-                    tokens:  last_expected,
+                    tokens: last_expected,
                     context: CompletionContext::from_parser(cursor_p.completion_context()),
                 };
             }
@@ -126,7 +130,10 @@ impl SemanticAnalyzer {
             }
         }
 
-        CompletionInfo { tokens: last_expected, context }
+        CompletionInfo {
+            tokens: last_expected,
+            context,
+        }
     }
 
     // ── Private ───────────────────────────────────────────────────────────────
@@ -142,22 +149,22 @@ impl SemanticAnalyzer {
         );
         let mut session = parser.parse(source);
 
-        let mut tokens:      Vec<StoredToken>  = Vec::new();
-        let mut comments:    Vec<StoredComment> = Vec::new();
-        let mut diagnostics: Vec<Diagnostic>   = Vec::new();
+        let mut tokens: Vec<StoredToken> = Vec::new();
+        let mut comments: Vec<StoredComment> = Vec::new();
+        let mut diagnostics: Vec<Diagnostic> = Vec::new();
 
         loop {
             let stmt = match session.next() {
-                ParseOutcome::Done    => break,
-                ParseOutcome::Ok(s)   => s,
-                ParseOutcome::Err(e)  => {
+                ParseOutcome::Done => break,
+                ParseOutcome::Ok(s) => s,
+                ParseOutcome::Err(e) => {
                     let (start, end) = parse_error_span(&e, source);
                     diagnostics.push(Diagnostic {
                         start_offset: start,
-                        end_offset:   end,
-                        message:      DiagnosticMessage::Other(e.message().to_owned()),
-                        severity:     Severity::Error,
-                        help:         None,
+                        end_offset: end,
+                        message: DiagnosticMessage::Other(e.message().to_owned()),
+                        severity: Severity::Error,
+                        help: None,
                     });
                     continue;
                 }
@@ -166,10 +173,10 @@ impl SemanticAnalyzer {
             // Collect token and comment positions for semantic highlighting.
             for tok in stmt.tokens() {
                 tokens.push(StoredToken {
-                    offset:     str_offset(source, tok.text()),
-                    length:     tok.text().len(),
+                    offset: str_offset(source, tok.text()),
+                    length: tok.text().len(),
                     token_type: tok.token_type(),
-                    flags:      tok.flags(),
+                    flags: tok.flags(),
                 });
             }
             for c in stmt.comments() {
@@ -180,25 +187,36 @@ impl SemanticAnalyzer {
             }
 
             // Semantic walk.
-            let root    = stmt.root();
+            let root = stmt.root();
             let root_id: AnyNodeId = root.node_id().into();
-            let erased  = stmt.erase();
+            let erased = stmt.erase();
 
-            self.catalog.accumulate_ddl::<A>(erased, root_id, self.dialect);
+            self.catalog
+                .accumulate_ddl::<A>(erased, root_id, self.dialect);
 
             if let Some(root_stmt) = A::Stmt::from_result(erased, root_id) {
-                let ctx = WalkContext { catalog: &mut self.catalog, config };
+                let ctx = WalkContext {
+                    catalog: &mut self.catalog,
+                    config,
+                };
                 diagnostics.extend(Walker::<A>::run(erased, root_stmt, ctx));
             }
         }
 
-        SemanticModel { source: source.to_owned(), tokens, comments, diagnostics }
+        SemanticModel {
+            source: source.to_owned(),
+            tokens,
+            comments,
+            diagnostics,
+        }
     }
 }
 
 #[cfg(feature = "sqlite")]
 impl Default for SemanticAnalyzer {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -218,7 +236,7 @@ fn parse_error_span(err: &syntaqlite_syntax::ParseError<'_>, source: &str) -> (u
             }
         }
         _ => {
-            let end   = source.len();
+            let end = source.len();
             let start = if end > 0 { end - 1 } else { 0 };
             (start, end)
         }
@@ -230,8 +248,7 @@ fn completion_boundary(
     tokens: &[StoredToken],
     cursor_offset: usize,
 ) -> (usize, bool) {
-    let mut boundary =
-        tokens.partition_point(|t| t.offset + t.length <= cursor_offset);
+    let mut boundary = tokens.partition_point(|t| t.offset + t.length <= cursor_offset);
 
     while boundary > 0 {
         let tok = &tokens[boundary - 1];
@@ -249,7 +266,7 @@ fn completion_boundary(
     {
         let prev = source.as_bytes()[cursor_offset - 1];
         if prev.is_ascii_alphanumeric() || prev == b'_' {
-            boundary   -= 1;
+            boundary -= 1;
             backtracked = true;
         }
     }
@@ -276,10 +293,10 @@ fn merge_expected_tokens(into: &mut Vec<TokenType>, extra: Vec<TokenType>) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::catalog::FunctionCheckResult;
     use super::super::diagnostics::{DiagnosticMessage, Help};
     use super::super::render::DiagnosticRenderer;
+    use super::*;
 
     fn sqlite_analyzer() -> SemanticAnalyzer {
         SemanticAnalyzer::new()
@@ -290,7 +307,10 @@ mod tests {
     }
 
     fn strict() -> ValidationConfig {
-        ValidationConfig { strict_schema: true, suggestion_threshold: 2 }
+        ValidationConfig {
+            strict_schema: true,
+            suggestion_threshold: 2,
+        }
     }
 
     fn lenient() -> ValidationConfig {
@@ -319,7 +339,10 @@ mod tests {
     fn catalog_add_function_and_check() {
         let mut cat = sqlite_catalog();
         cat.add_function("my_func", Some(2));
-        assert!(matches!(cat.check_function("my_func", 2), FunctionCheckResult::Ok));
+        assert!(matches!(
+            cat.check_function("my_func", 2),
+            FunctionCheckResult::Ok
+        ));
         assert!(matches!(
             cat.check_function("my_func", 1),
             FunctionCheckResult::WrongArity { .. }
@@ -330,16 +353,28 @@ mod tests {
     fn catalog_add_variadic_function() {
         let mut cat = sqlite_catalog();
         cat.add_function("variadic_fn", None);
-        assert!(matches!(cat.check_function("variadic_fn", 0), FunctionCheckResult::Ok));
-        assert!(matches!(cat.check_function("variadic_fn", 100), FunctionCheckResult::Ok));
+        assert!(matches!(
+            cat.check_function("variadic_fn", 0),
+            FunctionCheckResult::Ok
+        ));
+        assert!(matches!(
+            cat.check_function("variadic_fn", 100),
+            FunctionCheckResult::Ok
+        ));
     }
 
     #[test]
     fn catalog_builtin_functions_resolved() {
         let cat = sqlite_catalog();
         // SQLite has built-in functions like abs(), coalesce(), etc.
-        assert!(!matches!(cat.check_function("abs", 1), FunctionCheckResult::Unknown));
-        assert!(!matches!(cat.check_function("coalesce", 2), FunctionCheckResult::Unknown));
+        assert!(!matches!(
+            cat.check_function("abs", 1),
+            FunctionCheckResult::Unknown
+        ));
+        assert!(!matches!(
+            cat.check_function("coalesce", 2),
+            FunctionCheckResult::Unknown
+        ));
     }
 
     #[test]
@@ -368,7 +403,9 @@ mod tests {
         cat.add_table("users", &["id", "name"]);
 
         let model = az.analyze("SELECT id FROM users", &cat, &strict());
-        let diags: Vec<_> = model.diagnostics().iter()
+        let diags: Vec<_> = model
+            .diagnostics()
+            .iter()
             .filter(|d| matches!(d.message, DiagnosticMessage::UnknownTable { .. }))
             .collect();
         assert!(diags.is_empty(), "unexpected table error: {diags:?}");
@@ -387,7 +424,9 @@ mod tests {
         let mut az = sqlite_analyzer();
         let cat = sqlite_catalog();
         let model = az.analyze("PRAGMA journal_mode;", &cat, &strict());
-        let sem_errs: Vec<_> = model.diagnostics().iter()
+        let sem_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
             .filter(|d| !d.message.is_parse_error())
             .collect();
         assert!(sem_errs.is_empty());
@@ -425,13 +464,15 @@ mod tests {
         let mut cat = sqlite_catalog();
         cat.add_table("users", &["id"]);
         let model = az.analyze("SELECT * FROM usres", &cat, &strict()); // typo
-        let diag = model.diagnostics().iter()
-            .find(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { name } if name == "usres"));
+        let diag = model.diagnostics().iter().find(
+            |d| matches!(&d.message, DiagnosticMessage::UnknownTable { name } if name == "usres"),
+        );
         assert!(diag.is_some(), "expected unknown-table diagnostic");
         let diag = diag.unwrap();
         assert!(
             matches!(&diag.help, Some(Help::Suggestion(s)) if s == "users"),
-            "expected 'users' suggestion, got {:?}", diag.help
+            "expected 'users' suggestion, got {:?}",
+            diag.help
         );
     }
 
@@ -444,10 +485,15 @@ mod tests {
         let cat = sqlite_catalog();
         let src = "CREATE TABLE t (id INTEGER); SELECT id FROM t;";
         let model = az.analyze(src, &cat, &strict());
-        let unknown: Vec<_> = model.diagnostics().iter()
+        let unknown: Vec<_> = model
+            .diagnostics()
+            .iter()
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { .. }))
             .collect();
-        assert!(unknown.is_empty(), "DDL-defined table not visible: {unknown:?}");
+        assert!(
+            unknown.is_empty(),
+            "DDL-defined table not visible: {unknown:?}"
+        );
     }
 
     #[test]
@@ -458,7 +504,9 @@ mod tests {
         cat.add_table("users", &["id"]);
         let src = "CREATE VIEW vw AS SELECT id FROM users; SELECT id FROM vw;";
         let model = az.analyze(src, &cat, &strict());
-        let unknown: Vec<_> = model.diagnostics().iter()
+        let unknown: Vec<_> = model
+            .diagnostics()
+            .iter()
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { .. }))
             .collect();
         assert!(unknown.is_empty(), "VIEW not visible: {unknown:?}");
@@ -482,7 +530,9 @@ mod tests {
         let mut az = sqlite_analyzer();
         let cat = sqlite_catalog();
         let model = az.analyze("SELECT abs(-1)", &cat, &strict());
-        let errs: Vec<_> = model.diagnostics().iter()
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownFunction { .. }))
             .collect();
         assert!(errs.is_empty(), "abs() should be a known builtin: {errs:?}");
@@ -497,7 +547,9 @@ mod tests {
         cat.add_table("users", &["id"]);
         let src = "SELECT id FROM users; SELECT id FROM users;";
         let model = az.analyze(src, &cat, &strict());
-        let errs: Vec<_> = model.diagnostics().iter()
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { .. }))
             .collect();
         assert!(errs.is_empty());
@@ -509,14 +561,26 @@ mod tests {
         let cat = sqlite_catalog();
 
         // First pass: CREATE TABLE makes 't' visible.
-        az.analyze("CREATE TABLE t (id INTEGER); SELECT id FROM t;", &cat, &strict());
+        az.analyze(
+            "CREATE TABLE t (id INTEGER); SELECT id FROM t;",
+            &cat,
+            &strict(),
+        );
 
         // Second pass: 't' should NOT be visible — document layer was cleared.
         let model = az.analyze("SELECT id FROM t;", &cat, &strict());
-        let errs: Vec<_> = model.diagnostics().iter()
-            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { name } if name == "t"))
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(
+                |d| matches!(&d.message, DiagnosticMessage::UnknownTable { name } if name == "t"),
+            )
             .collect();
-        assert_eq!(errs.len(), 1, "document layer should be cleared between passes");
+        assert_eq!(
+            errs.len(),
+            1,
+            "document layer should be cleared between passes"
+        );
     }
 
     // ── DiagnosticRenderer ─────────────────────────────────────────────────────
@@ -531,11 +595,19 @@ mod tests {
 
         let renderer = DiagnosticRenderer::new(source, "test.sql");
         let mut out = Vec::new();
-        let has_errors = renderer.render_diagnostics(model.diagnostics(), &mut out).unwrap();
+        let has_errors = renderer
+            .render_diagnostics(model.diagnostics(), &mut out)
+            .unwrap();
         let text = String::from_utf8(out).unwrap();
         assert!(has_errors);
-        assert!(text.contains("error:"), "expected 'error:' in output:\n{text}");
-        assert!(text.contains("missing"), "expected table name in output:\n{text}");
+        assert!(
+            text.contains("error:"),
+            "expected 'error:' in output:\n{text}"
+        );
+        assert!(
+            text.contains("missing"),
+            "expected table name in output:\n{text}"
+        );
     }
 
     #[test]
@@ -548,9 +620,14 @@ mod tests {
 
         let renderer = DiagnosticRenderer::new(source, "test.sql");
         let mut out = Vec::new();
-        renderer.render_diagnostics(model.diagnostics(), &mut out).unwrap();
+        renderer
+            .render_diagnostics(model.diagnostics(), &mut out)
+            .unwrap();
         let text = String::from_utf8(out).unwrap();
-        assert!(text.contains("users"), "expected suggestion in output:\n{text}");
+        assert!(
+            text.contains("users"),
+            "expected suggestion in output:\n{text}"
+        );
     }
 
     // ── Fuzzy matching ─────────────────────────────────────────────────────────
@@ -572,7 +649,11 @@ mod tests {
     #[test]
     fn best_suggestion_finds_closest() {
         use super::super::fuzzy::best_suggestion;
-        let candidates = vec!["users".to_string(), "orders".to_string(), "products".to_string()];
+        let candidates = vec![
+            "users".to_string(),
+            "orders".to_string(),
+            "products".to_string(),
+        ];
         let s = best_suggestion("usres", &candidates, 2);
         assert_eq!(s.as_deref(), Some("users"));
     }

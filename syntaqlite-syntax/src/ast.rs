@@ -121,7 +121,6 @@ impl AnyNode<'_> {
     pub(crate) fn dump(&self, out: &mut String, indent: usize) {
         self.stmt_result.dump_node(self.id, out, indent);
     }
-
 }
 
 /// Typed read-only view over a list node in the arena.
@@ -158,7 +157,6 @@ impl<G: crate::grammar::TypedGrammar, T> TypedNodeList<'_, G, T> {
     pub fn is_empty(&self) -> bool {
         self.raw.children().is_empty()
     }
-
 }
 
 impl<'a, G: crate::grammar::TypedGrammar, T: GrammarNodeType<'a>> TypedNodeList<'a, G, T> {

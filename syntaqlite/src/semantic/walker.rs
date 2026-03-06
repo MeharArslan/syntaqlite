@@ -20,14 +20,14 @@ use super::fuzzy::best_suggestion;
 /// scopes can be pushed/popped in-place without rebuilding on each lookup.
 pub(crate) struct WalkContext<'a> {
     pub catalog: &'a mut Catalog,
-    pub config:  &'a ValidationConfig,
+    pub config: &'a ValidationConfig,
 }
 
 pub(crate) struct Walker<'a, A: AstTypes<'a>> {
-    stmt:        AnyParsedStatement<'a>,
-    ctx:         WalkContext<'a>,
+    stmt: AnyParsedStatement<'a>,
+    ctx: WalkContext<'a>,
     diagnostics: Vec<Diagnostic>,
-    _ast:        PhantomData<A>,
+    _ast: PhantomData<A>,
 }
 
 impl<'a, A: AstTypes<'a>> Walker<'a, A> {
@@ -37,7 +37,12 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
         root: A::Stmt,
         ctx: WalkContext<'a>,
     ) -> Vec<Diagnostic> {
-        let mut walker: Walker<'_, A> = Walker { stmt, ctx, diagnostics: Vec::new(), _ast: PhantomData };
+        let mut walker: Walker<'_, A> = Walker {
+            stmt,
+            ctx,
+            diagnostics: Vec::new(),
+            _ast: PhantomData,
+        };
         walker.walk_stmt(root);
         walker.diagnostics
     }
@@ -57,27 +62,33 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
     }
 
     fn walk_opt_select(&mut self, select: Option<A::Select>) {
-        if let Some(s) = select { self.walk_select(s); }
+        if let Some(s) = select {
+            self.walk_select(s);
+        }
     }
 
     fn walk_opt_table_source(&mut self, source: Option<A::TableSource>) {
-        if let Some(s) = source { self.walk_table_source(s); }
+        if let Some(s) = source {
+            self.walk_table_source(s);
+        }
     }
 
     fn walk_opt_expr(&mut self, expr: Option<A::Expr>) {
-        if let Some(e) = expr { self.walk_expr(e); }
+        if let Some(e) = expr {
+            self.walk_expr(e);
+        }
     }
 
     fn walk_stmt(&mut self, stmt: A::Stmt) {
         match stmt.kind() {
-            StmtKind::SelectStmt(s)        => self.walk_select_stmt(s),
-            StmtKind::CompoundSelect(c)    => self.walk_compound_select(c),
-            StmtKind::WithClause(w)        => self.walk_with_clause(w),
-            StmtKind::InsertStmt(i)        => self.walk_insert_stmt(i),
-            StmtKind::UpdateStmt(u)        => self.walk_update_stmt(u),
-            StmtKind::DeleteStmt(d)        => self.walk_delete_stmt(d),
-            StmtKind::CreateTableStmt(ct)  => self.walk_opt_select(ct.as_select()),
-            StmtKind::CreateViewStmt(cv)   => self.walk_opt_select(cv.select()),
+            StmtKind::SelectStmt(s) => self.walk_select_stmt(s),
+            StmtKind::CompoundSelect(c) => self.walk_compound_select(c),
+            StmtKind::WithClause(w) => self.walk_with_clause(w),
+            StmtKind::InsertStmt(i) => self.walk_insert_stmt(i),
+            StmtKind::UpdateStmt(u) => self.walk_update_stmt(u),
+            StmtKind::DeleteStmt(d) => self.walk_delete_stmt(d),
+            StmtKind::CreateTableStmt(ct) => self.walk_opt_select(ct.as_select()),
+            StmtKind::CreateViewStmt(cv) => self.walk_opt_select(cv.select()),
             StmtKind::CreateTriggerStmt(t) => self.walk_trigger_stmt(t),
             _ => {}
         }
@@ -85,27 +96,37 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
 
     fn walk_select(&mut self, select: A::Select) {
         match select.kind() {
-            SelectKind::SelectStmt(s)     => self.walk_select_stmt(s),
+            SelectKind::SelectStmt(s) => self.walk_select_stmt(s),
             SelectKind::CompoundSelect(c) => self.walk_compound_select(c),
-            SelectKind::WithClause(w)     => self.walk_with_clause(w),
-            SelectKind::ValuesClause(v)   => {
+            SelectKind::WithClause(w) => self.walk_with_clause(w),
+            SelectKind::ValuesClause(v) => {
                 if let Some(rows) = v.rows() {
-                    for row in rows.iter() { self.walk_expr_list(row); }
+                    for row in rows.iter() {
+                        self.walk_expr_list(row);
+                    }
                 }
             }
         }
     }
 
     fn walk_select_stmt(&mut self, s: A::SelectStmt) {
-        if let Some(from) = s.from_clause() { self.walk_table_source(from); }
+        if let Some(from) = s.from_clause() {
+            self.walk_table_source(from);
+        }
         if let Some(cols) = s.columns() {
-            for rc in cols.iter() { self.walk_opt_expr(rc.expr()); }
+            for rc in cols.iter() {
+                self.walk_opt_expr(rc.expr());
+            }
         }
         self.walk_opt_expr(s.where_clause());
-        if let Some(gb) = s.groupby() { self.walk_expr_list(gb); }
+        if let Some(gb) = s.groupby() {
+            self.walk_expr_list(gb);
+        }
         self.walk_opt_expr(s.having());
         if let Some(ob) = s.orderby() {
-            for term in ob.iter() { self.walk_opt_expr(term.expr()); }
+            for term in ob.iter() {
+                self.walk_opt_expr(term.expr());
+            }
         }
         if let Some(lim) = s.limit_clause() {
             self.walk_opt_expr(lim.limit());
@@ -114,8 +135,12 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
     }
 
     fn walk_compound_select(&mut self, c: A::CompoundSelect) {
-        if let Some(left) = c.left() { self.walk_select(left); }
-        if let Some(right) = c.right() { self.walk_select(right); }
+        if let Some(left) = c.left() {
+            self.walk_select(left);
+        }
+        if let Some(right) = c.right() {
+            self.walk_select(right);
+        }
     }
 
     fn walk_with_clause(&mut self, w: A::WithClause) {
@@ -136,21 +161,29 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
     }
 
     fn walk_insert_stmt(&mut self, i: A::InsertStmt) {
-        if let Some(t) = i.table() { self.check_and_add_table_ref(t); }
+        if let Some(t) = i.table() {
+            self.check_and_add_table_ref(t);
+        }
         self.walk_opt_select(i.source());
     }
 
     fn walk_update_stmt(&mut self, u: A::UpdateStmt) {
-        if let Some(t) = u.table() { self.check_and_add_table_ref(t); }
+        if let Some(t) = u.table() {
+            self.check_and_add_table_ref(t);
+        }
         self.walk_opt_table_source(u.from_clause());
         if let Some(set) = u.setlist() {
-            for clause in set.iter() { self.walk_opt_expr(clause.value()); }
+            for clause in set.iter() {
+                self.walk_opt_expr(clause.value());
+            }
         }
         self.walk_opt_expr(u.where_clause());
     }
 
     fn walk_delete_stmt(&mut self, d: A::DeleteStmt) {
-        if let Some(t) = d.table() { self.check_and_add_table_ref(t); }
+        if let Some(t) = d.table() {
+            self.check_and_add_table_ref(t);
+        }
         self.walk_opt_expr(d.where_clause());
     }
 
@@ -160,7 +193,9 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
             this.ctx.catalog.add_query_table("NEW", None);
             this.walk_opt_expr(t.when_expr());
             if let Some(body) = t.body() {
-                for stmt in body.iter() { this.walk_stmt(stmt); }
+                for stmt in body.iter() {
+                    this.walk_stmt(stmt);
+                }
             }
         });
     }
@@ -188,7 +223,9 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
 
     fn check_and_add_table_ref(&mut self, tr: A::TableRef) {
         let name = tr.table_name();
-        if name.is_empty() { return; }
+        if name.is_empty() {
+            return;
+        }
         let offset = self.str_offset(name);
 
         let is_known = self.ctx.catalog.resolve_relation(name)
@@ -200,24 +237,28 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
                 best_suggestion(name, &candidates, self.ctx.config.suggestion_threshold);
             self.diagnostics.push(Diagnostic {
                 start_offset: offset,
-                end_offset:   offset + name.len(),
-                message:      DiagnosticMessage::UnknownTable { name: name.to_string() },
-                severity:     self.ctx.config.severity(),
-                help:         suggestion.map(Help::Suggestion),
+                end_offset: offset + name.len(),
+                message: DiagnosticMessage::UnknownTable {
+                    name: name.to_string(),
+                },
+                severity: self.ctx.config.severity(),
+                help: suggestion.map(Help::Suggestion),
             });
         }
 
-        let alias      = name_str::<A>(tr.alias());
+        let alias = name_str::<A>(tr.alias());
         let scope_name = if alias.is_empty() { name } else { alias };
-        let columns    = self.ctx.catalog.columns_for_table_source(name);
+        let columns = self.ctx.catalog.columns_for_table_source(name);
         self.ctx.catalog.add_query_table(scope_name, columns);
     }
 
     fn check_column_ref(&mut self, cr: A::ColumnRef) {
         let column = cr.column();
-        if column.is_empty() { return; }
-        let table  = cr.table();
-        let table  = if table.is_empty() { None } else { Some(table) };
+        if column.is_empty() {
+            return;
+        }
+        let table = cr.table();
+        let table = if table.is_empty() { None } else { Some(table) };
         let offset = self.str_offset(column);
 
         match self.ctx.catalog.resolve_column(table, column) {
@@ -229,13 +270,13 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
                     best_suggestion(column, &candidates, self.ctx.config.suggestion_threshold);
                 self.diagnostics.push(Diagnostic {
                     start_offset: offset,
-                    end_offset:   offset + column.len(),
-                    message:      DiagnosticMessage::UnknownColumn {
+                    end_offset: offset + column.len(),
+                    message: DiagnosticMessage::UnknownColumn {
                         column: column.to_string(),
-                        table:  Some(tbl.to_string()),
+                        table: Some(tbl.to_string()),
                     },
-                    severity:     self.ctx.config.severity(),
-                    help:         suggestion.map(Help::Suggestion),
+                    severity: self.ctx.config.severity(),
+                    help: suggestion.map(Help::Suggestion),
                 });
             }
             ColumnResolution::NotFound => {
@@ -244,13 +285,13 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
                     best_suggestion(column, &candidates, self.ctx.config.suggestion_threshold);
                 self.diagnostics.push(Diagnostic {
                     start_offset: offset,
-                    end_offset:   offset + column.len(),
-                    message:      DiagnosticMessage::UnknownColumn {
+                    end_offset: offset + column.len(),
+                    message: DiagnosticMessage::UnknownColumn {
                         column: column.to_string(),
-                        table:  None,
+                        table: None,
                     },
-                    severity:     self.ctx.config.severity(),
-                    help:         suggestion.map(Help::Suggestion),
+                    severity: self.ctx.config.severity(),
+                    help: suggestion.map(Help::Suggestion),
                 });
             }
         }
@@ -263,7 +304,7 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
         filter: Option<A::Expr>,
     ) {
         if !name.is_empty() {
-            let offset    = self.str_offset(name);
+            let offset = self.str_offset(name);
             let arg_count = args.as_ref().map_or(0, TypedNodeList::len);
             match self.ctx.catalog.check_function(name, arg_count) {
                 FunctionCheckResult::Ok => {}
@@ -273,28 +314,32 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
                         best_suggestion(name, &candidates, self.ctx.config.suggestion_threshold);
                     self.diagnostics.push(Diagnostic {
                         start_offset: offset,
-                        end_offset:   offset + name.len(),
-                        message:      DiagnosticMessage::UnknownFunction { name: name.to_string() },
-                        severity:     self.ctx.config.severity(),
-                        help:         suggestion.map(Help::Suggestion),
+                        end_offset: offset + name.len(),
+                        message: DiagnosticMessage::UnknownFunction {
+                            name: name.to_string(),
+                        },
+                        severity: self.ctx.config.severity(),
+                        help: suggestion.map(Help::Suggestion),
                     });
                 }
                 FunctionCheckResult::WrongArity { expected } => {
                     self.diagnostics.push(Diagnostic {
                         start_offset: offset,
-                        end_offset:   offset + name.len(),
-                        message:      DiagnosticMessage::FunctionArity {
+                        end_offset: offset + name.len(),
+                        message: DiagnosticMessage::FunctionArity {
                             name: name.to_string(),
                             expected,
                             got: arg_count,
                         },
-                        severity:     self.ctx.config.severity(),
-                        help:         None,
+                        severity: self.ctx.config.severity(),
+                        help: None,
                     });
                 }
             }
         }
-        if let Some(args) = args { self.walk_expr_list(args); }
+        if let Some(args) = args {
+            self.walk_expr_list(args);
+        }
         self.walk_opt_expr(filter);
     }
 
@@ -351,19 +396,24 @@ impl<'a, A: AstTypes<'a>> Walker<'a, A> {
             ExprKind::ExistsExpr(exists) => {
                 self.with_scope(|this| this.walk_opt_select(exists.select()));
             }
-            ExprKind::CastExpr(cast)       => self.walk_opt_expr(cast.expr()),
-            ExprKind::CollateExpr(col)     => self.walk_opt_expr(col.expr()),
+            ExprKind::CastExpr(cast) => self.walk_opt_expr(cast.expr()),
+            ExprKind::CollateExpr(col) => self.walk_opt_expr(col.expr()),
             ExprKind::LikeExpr(like) => {
                 self.walk_opt_expr(like.operand());
                 self.walk_opt_expr(like.pattern());
                 self.walk_opt_expr(like.escape());
             }
-            ExprKind::Error(_) | ExprKind::Literal(_) | ExprKind::Variable(_) | ExprKind::RaiseExpr(_) => {}
+            ExprKind::Error(_)
+            | ExprKind::Literal(_)
+            | ExprKind::Variable(_)
+            | ExprKind::RaiseExpr(_) => {}
         }
     }
 
     fn walk_expr_list(&mut self, list: TypedNodeList<'a, A::Grammar, A::Expr>) {
-        for expr in list.iter() { self.walk_expr(expr); }
+        for expr in list.iter() {
+            self.walk_expr(expr);
+        }
     }
 }
 

@@ -41,9 +41,16 @@ mod tests {
     #[test]
     fn semantic_role_variants_exist() {
         let _ = SemanticRole::Transparent;
-        let _ = SemanticRole::DefineTable { name: 0, columns: None, select: None };
+        let _ = SemanticRole::DefineTable {
+            name: 0,
+            columns: None,
+            select: None,
+        };
         let _ = SemanticRole::DefineView { name: 0, select: 1 };
-        let _ = SemanticRole::DefineFunction { name: 0, args: None };
+        let _ = SemanticRole::DefineFunction {
+            name: 0,
+            args: None,
+        };
         let _ = SemanticRole::Import { module: 0 };
     }
 

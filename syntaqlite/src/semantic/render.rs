@@ -19,7 +19,7 @@ use super::diagnostics::{Diagnostic, Severity};
 /// ```
 pub struct DiagnosticRenderer<'a> {
     source: &'a str,
-    file:   &'a str,
+    file: &'a str,
 }
 
 impl<'a> DiagnosticRenderer<'a> {
@@ -30,17 +30,24 @@ impl<'a> DiagnosticRenderer<'a> {
 
     fn offset_to_line_col(&self, offset: usize) -> (usize, usize) {
         let mut line = 1usize;
-        let mut col  = 1usize;
+        let mut col = 1usize;
         for (i, ch) in self.source.char_indices() {
-            if i >= offset { break; }
-            if ch == '\n' { line += 1; col = 1; } else { col += 1; }
+            if i >= offset {
+                break;
+            }
+            if ch == '\n' {
+                line += 1;
+                col = 1;
+            } else {
+                col += 1;
+            }
         }
         (line, col)
     }
 
     fn source_line_at(&self, offset: usize) -> &str {
         let start = self.source[..offset].rfind('\n').map_or(0, |i| i + 1);
-        let end   = self.source[offset..]
+        let end = self.source[offset..]
             .find('\n')
             .map_or(self.source.len(), |i| offset + i);
         &self.source[start..end]
@@ -53,14 +60,14 @@ impl<'a> DiagnosticRenderer<'a> {
         out: &mut impl Write,
     ) -> io::Result<()> {
         let severity = match diag.severity {
-            Severity::Error   => "error",
+            Severity::Error => "error",
             Severity::Warning => "warning",
-            Severity::Info    => "info",
-            Severity::Hint    => "hint",
+            Severity::Info => "info",
+            Severity::Hint => "hint",
         };
-        let message      = diag.message.to_string();
-        let (line, col)  = self.offset_to_line_col(diag.start_offset);
-        let line_text    = self.source_line_at(diag.start_offset);
+        let message = diag.message.to_string();
+        let (line, col) = self.offset_to_line_col(diag.start_offset);
+        let line_text = self.source_line_at(diag.start_offset);
         let gutter_width = line.to_string().len();
 
         writeln!(out, "{severity}: {message}")?;
@@ -98,7 +105,9 @@ impl<'a> DiagnosticRenderer<'a> {
     ) -> io::Result<bool> {
         let mut has_errors = false;
         for d in diags {
-            if d.severity == Severity::Error { has_errors = true; }
+            if d.severity == Severity::Error {
+                has_errors = true;
+            }
             self.render_diagnostic(d, out)?;
         }
         Ok(has_errors)

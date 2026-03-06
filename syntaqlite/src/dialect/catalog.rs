@@ -6,8 +6,8 @@
 //! These types are used by the generated `functions_catalog.rs` and by
 //! dialect extensions to describe function availability.
 
-use syntaqlite_syntax::util::SqliteVersion;
 use std::mem::size_of;
+use syntaqlite_syntax::util::SqliteVersion;
 
 use super::Dialect;
 

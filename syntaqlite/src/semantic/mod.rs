@@ -40,7 +40,7 @@ pub struct ValidationConfig {
 impl Default for ValidationConfig {
     fn default() -> Self {
         ValidationConfig {
-            strict_schema:        false,
+            strict_schema: false,
             suggestion_threshold: 2,
         }
     }
@@ -49,6 +49,10 @@ impl Default for ValidationConfig {
 impl ValidationConfig {
     /// Returns the effective diagnostic severity for unresolved schema names.
     pub fn severity(&self) -> Severity {
-        if self.strict_schema { Severity::Error } else { Severity::Warning }
+        if self.strict_schema {
+            Severity::Error
+        } else {
+            Severity::Warning
+        }
     }
 }

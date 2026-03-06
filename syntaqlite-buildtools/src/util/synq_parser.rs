@@ -288,7 +288,10 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
 // ── Semantic annotation helpers ──────────────────────────────────────────
 
 fn get_param<'p>(params: &'p [(String, String)], key: &str) -> Option<&'p str> {
-    params.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str())
+    params
+        .iter()
+        .find(|(k, _)| k == key)
+        .map(|(_, v)| v.as_str())
 }
 
 fn require_param(
@@ -828,7 +831,11 @@ mod tests {
         );
         let ann = node_semantic(item).expect("expected semantic annotation");
         match ann.role {
-            SemanticRole::DefineTable { name, columns, select } => {
+            SemanticRole::DefineTable {
+                name,
+                columns,
+                select,
+            } => {
                 assert_eq!(name, "table_name");
                 assert_eq!(columns.as_deref(), Some("columns"));
                 assert_eq!(select.as_deref(), Some("as_select"));
@@ -883,7 +890,11 @@ mod tests {
         );
         let ann = node_semantic(item).expect("expected semantic annotation");
         match ann.role {
-            SemanticRole::DefineTable { name, columns, select } => {
+            SemanticRole::DefineTable {
+                name,
+                columns,
+                select,
+            } => {
                 assert_eq!(name, "table_name");
                 assert_eq!(columns.as_deref(), Some("columns"));
                 assert_eq!(select.as_deref(), Some("as_select"));
@@ -928,7 +939,12 @@ mod tests {
             }"#,
         );
         assert!(result.is_err());
-        assert!(result.unwrap_err().message.contains("unknown semantic role"));
+        assert!(
+            result
+                .unwrap_err()
+                .message
+                .contains("unknown semantic role")
+        );
     }
 
     #[test]

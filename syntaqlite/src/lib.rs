@@ -27,8 +27,8 @@ pub use fmt::formatter::Formatter;
 pub use fmt::{FormatConfig, FormatError, KeywordCase};
 #[cfg(feature = "validation")]
 pub use semantic::{
-    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, Help, Severity,
-    SemanticAnalyzer, SourceContext, ValidationConfig,
+    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, Help, SemanticAnalyzer, Severity,
+    SourceContext, ValidationConfig,
 };
 
 // Shared parser utility types used across both `any` and `typed` modules.

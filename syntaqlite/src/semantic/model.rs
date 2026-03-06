@@ -5,18 +5,18 @@
 
 use syntaqlite_syntax::{ParserTokenFlags, TokenType};
 
-use syntaqlite_syntax::any::TokenCategory;
 use super::diagnostics::Diagnostic;
+use syntaqlite_syntax::any::TokenCategory;
 
 // ── Stored per-statement positions ───────────────────────────────────────────
 
 /// A token position recorded during parsing.
 #[derive(Debug, Clone)]
 pub(crate) struct StoredToken {
-    pub(crate) offset:     usize,
-    pub(crate) length:     usize,
+    pub(crate) offset: usize,
+    pub(crate) length: usize,
     pub(crate) token_type: TokenType,
-    pub(crate) flags:      ParserTokenFlags,
+    pub(crate) flags: ParserTokenFlags,
 }
 
 /// A comment position recorded during parsing.
@@ -32,9 +32,9 @@ pub(crate) struct StoredComment {
 #[derive(Debug, Clone)]
 pub(crate) struct SemanticToken {
     /// Byte offset in the source text.
-    pub offset:   usize,
+    pub offset: usize,
     /// Length in bytes.
-    pub length:   usize,
+    pub length: usize,
     /// Token category for highlighting.
     pub category: TokenCategory,
 }
@@ -44,19 +44,19 @@ pub(crate) struct SemanticToken {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CompletionContext {
     /// Could not determine context.
-    Unknown    = 0,
+    Unknown = 0,
     /// Cursor is in an expression position (functions/values expected).
     Expression = 1,
     /// Cursor is in a table-reference position (table/view names expected).
-    TableRef   = 2,
+    TableRef = 2,
 }
 
 impl CompletionContext {
     pub(crate) fn from_parser(v: syntaqlite_syntax::CompletionContext) -> Self {
         match v {
             syntaqlite_syntax::CompletionContext::Expression => Self::Expression,
-            syntaqlite_syntax::CompletionContext::TableRef   => Self::TableRef,
-            syntaqlite_syntax::CompletionContext::Unknown    => Self::Unknown,
+            syntaqlite_syntax::CompletionContext::TableRef => Self::TableRef,
+            syntaqlite_syntax::CompletionContext::Unknown => Self::Unknown,
         }
     }
 }
@@ -65,7 +65,7 @@ impl CompletionContext {
 #[derive(Debug)]
 pub(crate) struct CompletionInfo {
     /// Terminal token types valid at the cursor.
-    pub tokens:  Vec<TokenType>,
+    pub tokens: Vec<TokenType>,
     /// Semantic context (expression vs table-ref).
     pub context: CompletionContext,
 }
@@ -78,9 +78,9 @@ pub(crate) struct CompletionInfo {
 /// (both parse errors and semantic issues). Produced by
 /// [`SemanticAnalyzer::analyze`](super::analyzer::SemanticAnalyzer::analyze).
 pub(crate) struct SemanticModel {
-    pub(crate) source:      String,
-    pub(crate) tokens:      Vec<StoredToken>,
-    pub(crate) comments:    Vec<StoredComment>,
+    pub(crate) source: String,
+    pub(crate) tokens: Vec<StoredToken>,
+    pub(crate) comments: Vec<StoredComment>,
     pub(crate) diagnostics: Vec<Diagnostic>,
 }
 

@@ -7,8 +7,8 @@
 //! node tag, one entry per node-like item (node or list) in the dialect's AST
 //! model. Nodes without a `semantic { ... }` annotation emit `Transparent`.
 
-use crate::util::rust_writer::RustWriter;
 use super::AstModel;
+use crate::util::rust_writer::RustWriter;
 
 use crate::util::synq_parser::{Field, SemanticRole as SynqRole};
 
@@ -17,14 +17,17 @@ fn field_index(fields: &[Field], field_name: &str) -> u8 {
     fields
         .iter()
         .position(|f| f.name == field_name)
-        .unwrap_or_else(|| panic!("field '{field_name}' not found in field list"))
-        as u8
+        .unwrap_or_else(|| panic!("field '{field_name}' not found in field list")) as u8
 }
 
 /// Emit a single `SemanticRole` variant expression for a node with a catalog role.
 fn emit_catalog_role(fields: &[Field], role: &SynqRole) -> String {
     match role {
-        SynqRole::DefineTable { name, columns, select } => {
+        SynqRole::DefineTable {
+            name,
+            columns,
+            select,
+        } => {
             let name_idx = field_index(fields, name);
             let columns_part = match columns {
                 Some(f) => format!("Some({})", field_index(fields, f)),
@@ -102,8 +105,8 @@ pub(crate) fn generate_rust_semantic_roles(model: &AstModel, prefix: &str) -> St
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::util::synq_parser::{parse_synq_file, Item};
     use crate::dialect_codegen::AstModel;
+    use crate::util::synq_parser::{Item, parse_synq_file};
 
     fn model_from(synq: &str) -> Vec<Item> {
         parse_synq_file(synq).expect("parse failed")
@@ -115,7 +118,10 @@ mod tests {
         let model = AstModel::new(&items);
         let out = generate_rust_semantic_roles(&model, "TEST");
         assert!(out.contains("SemanticRole::Transparent"), "got:\n{out}");
-        assert!(out.contains("// Foo"), "expected node name comment, got:\n{out}");
+        assert!(
+            out.contains("// Foo"),
+            "expected node name comment, got:\n{out}"
+        );
     }
 
     #[test]
@@ -133,10 +139,15 @@ mod tests {
         let out = generate_rust_semantic_roles(&model, "TEST");
         // table_name = field 0, columns = field 2, as_select = field 3
         assert!(
-            out.contains("SemanticRole::DefineTable { name: 0, columns: Some(2), select: Some(3) }"),
+            out.contains(
+                "SemanticRole::DefineTable { name: 0, columns: Some(2), select: Some(3) }"
+            ),
             "got:\n{out}"
         );
-        assert!(out.contains("// CreateTableStmt"), "expected node name comment, got:\n{out}");
+        assert!(
+            out.contains("// CreateTableStmt"),
+            "expected node name comment, got:\n{out}"
+        );
     }
 
     #[test]
