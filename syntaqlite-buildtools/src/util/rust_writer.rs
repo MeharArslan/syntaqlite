@@ -7,6 +7,8 @@
 //! Use `lines()` for multiline static blocks; use `line()` + `indent()`/`dedent()`
 //! for dynamic content in loops.
 
+use std::fmt;
+
 use super::text_writer::TextWriterCore;
 
 const RUST_FILE_HEADER: &str = "\
@@ -137,6 +139,13 @@ impl RustWriter {
             self.line(&format!("/// {text}"));
         }
         self
+    }
+}
+
+impl fmt::Write for RustWriter {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.core.write_fmt_str(s);
+        Ok(())
     }
 }
 
