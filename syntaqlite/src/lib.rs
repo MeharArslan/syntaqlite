@@ -26,7 +26,10 @@ pub use fmt::formatter::Formatter;
 #[cfg(feature = "fmt")]
 pub use fmt::{FormatConfig, FormatError, KeywordCase};
 #[cfg(feature = "validation")]
-pub use semantic::{Diagnostic, DiagnosticMessage, Help, Severity, ValidationConfig};
+pub use semantic::{
+    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, Help, Severity,
+    SemanticAnalyzer, SourceContext, ValidationConfig,
+};
 
 // Shared parser utility types used across both `any` and `typed` modules.
 pub use syntaqlite_syntax::any::MacroRegion;

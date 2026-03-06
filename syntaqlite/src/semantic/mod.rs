@@ -1,16 +1,31 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Semantic analysis active surface during refactor.
+//! Semantic analysis: catalog, walker, single-pass analyzer, and rendering.
 
+#[cfg(feature = "validation")]
+pub(crate) mod analyzer;
 #[cfg(feature = "validation")]
 pub(crate) mod catalog;
 pub(crate) mod diagnostics;
+#[cfg(feature = "validation")]
 pub(crate) mod fuzzy;
+#[cfg(feature = "validation")]
+pub(crate) mod model;
+#[cfg(feature = "validation")]
+pub(crate) mod render;
+#[cfg(feature = "validation")]
+pub(crate) mod walker;
 
+// ── Public re-exports ─────────────────────────────────────────────────────────
+
+#[cfg(feature = "validation")]
+pub use analyzer::SemanticAnalyzer;
 #[cfg(feature = "validation")]
 pub use catalog::Catalog;
 pub use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
+#[cfg(feature = "validation")]
+pub use render::{DiagnosticRenderer, SourceContext};
 
 /// Configuration for semantic validation.
 #[derive(Clone, Copy)]
@@ -25,7 +40,7 @@ pub struct ValidationConfig {
 impl Default for ValidationConfig {
     fn default() -> Self {
         ValidationConfig {
-            strict_schema: false,
+            strict_schema:        false,
             suggestion_threshold: 2,
         }
     }
@@ -34,10 +49,6 @@ impl Default for ValidationConfig {
 impl ValidationConfig {
     /// Returns the effective diagnostic severity for unresolved schema names.
     pub fn severity(&self) -> Severity {
-        if self.strict_schema {
-            Severity::Error
-        } else {
-            Severity::Warning
-        }
+        if self.strict_schema { Severity::Error } else { Severity::Warning }
     }
 }
