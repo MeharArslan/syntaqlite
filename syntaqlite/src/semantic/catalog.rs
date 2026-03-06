@@ -10,7 +10,9 @@ use std::collections::{HashMap, HashSet};
 use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, NodeFields};
 
 use crate::dialect::Dialect;
-use crate::dialect::{FunctionCategory as DialectFunctionCategory, SemanticRole, is_function_available};
+use crate::dialect::{
+    FunctionCategory as DialectFunctionCategory, SemanticRole, is_function_available,
+};
 
 // ── Core layer types ─────────────────────────────────────────────────────────
 

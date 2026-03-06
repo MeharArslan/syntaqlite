@@ -177,7 +177,6 @@ impl<G: TypedGrammar> TypedParser<G> {
     }
 }
 
-
 /// Cursor over statements parsed by a [`TypedParser`].
 ///
 /// Designed for multi-statement SQL input.

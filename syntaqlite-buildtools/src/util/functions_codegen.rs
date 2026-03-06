@@ -38,21 +38,28 @@ struct JsonAvailability {
 
 // ── Version encoding ────────────────────────────────────────────────
 
-fn encode_version(s: &str) -> Result<i32, String> {
+/// Convert a version string like `"3.38.5"` to a `SqliteVersion` variant
+/// name like `"SqliteVersion::V3_38"`. The patch component is ignored since
+/// `SqliteVersion` only tracks major.minor.
+fn encode_version(s: &str) -> Result<String, String> {
     let parts: Vec<&str> = s.split('.').collect();
-    if parts.len() != 3 {
-        return Err(format!("bad version string: {s}"));
+    if parts.len() < 2 {
+        return Err(format!(
+            "bad version string '{s}': expected at least major.minor"
+        ));
     }
-    let major: i32 = parts[0]
+    let major: u32 = parts[0]
         .parse()
         .map_err(|e| format!("bad major in version '{s}': {e}"))?;
-    let minor: i32 = parts[1]
+    let minor: u32 = parts[1]
         .parse()
         .map_err(|e| format!("bad minor in version '{s}': {e}"))?;
-    let patch: i32 = parts[2]
-        .parse()
-        .map_err(|e| format!("bad patch in version '{s}': {e}"))?;
-    Ok(major * 1_000_000 + minor * 1_000 + patch)
+    if major != 3 {
+        return Err(format!(
+            "unsupported major version {major} in '{s}': only SQLite v3 is supported"
+        ));
+    }
+    Ok(format!("SqliteVersion::V3_{minor}"))
 }
 
 // ── Cflag name → index mapping ──────────────────────────────────────
@@ -160,12 +167,12 @@ pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, S
     let _ = writeln!(out);
     let _ = writeln!(
         out,
-        "//! Static catalog of SQLite built-in functions with version/cflag availability."
+        "//! Static catalog of `SQLite` built-in functions with version/cflag availability."
     );
     let _ = writeln!(out);
     let _ = writeln!(
         out,
-        "use crate::dialect::{{AvailabilityRule, CflagPolarity, FunctionCategory, FunctionEntry, FunctionInfo}};"
+        "use crate::dialect::{{AvailabilityRule, CflagPolarity, FunctionCategory, FunctionEntry, FunctionInfo, SqliteVersion}};"
     );
     let _ = writeln!(out);
 
@@ -193,10 +200,10 @@ pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, S
             }
             let since = encode_version(&avail.since)?;
             let until = match &avail.until {
-                Some(v) => encode_version(v)?,
-                None => 0,
+                Some(v) => format!("Some({})", encode_version(v)?),
+                None => "None".to_string(),
             };
-            let (cflag_idx, polarity) = match &avail.cflag {
+            let (cflag_idx_str, polarity) = match &avail.cflag {
                 Some(name) => {
                     let idx = cflag_index(name).ok_or_else(|| {
                         format!("unknown cflag '{}' in function '{}'", name, func.name)
@@ -211,13 +218,13 @@ pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, S
                             ));
                         }
                     };
-                    (idx, pol)
+                    (format!("{idx}"), pol)
                 }
-                None => (u32::MAX, "CflagPolarity::Enable"),
+                None => ("u32::MAX".to_string(), "CflagPolarity::Enable"),
             };
             let _ = write!(
                 out,
-                "AvailabilityRule {{ since: {since}, until: {until}, cflag_index: {cflag_idx}, cflag_polarity: {polarity} }}"
+                "AvailabilityRule {{ since: {since}, until: {until}, cflag_index: {cflag_idx_str}, cflag_polarity: {polarity} }}"
             );
         }
         let _ = writeln!(out, "];");
@@ -227,12 +234,12 @@ pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, S
     // Main catalog array
     let _ = writeln!(
         out,
-        "/// All {count} SQLite built-in functions.",
+        "/// All {count} `SQLite` built-in functions.",
         count = file.functions.len()
     );
     let _ = writeln!(
         out,
-        "pub static SQLITE_FUNCTIONS: &[FunctionEntry<'static>] = &["
+        "pub(crate) static SQLITE_FUNCTIONS: &[FunctionEntry<'static>] = &["
     );
     for func in &file.functions {
         let ident = arity_ident(&func.name);

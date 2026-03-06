@@ -502,7 +502,9 @@ impl<'a> ValidationPass<'a> {
         name_idx: u8,
         alias_idx: u8,
     ) {
-        let FieldValue::Span(name) = fields[name_idx as usize] else { return };
+        let FieldValue::Span(name) = fields[name_idx as usize] else {
+            return;
+        };
         if name.is_empty() {
             return;
         }
@@ -582,7 +584,9 @@ impl<'a> ValidationPass<'a> {
     }
 
     fn visit_column_ref(&mut self, fields: &NodeFields<'a>, column_idx: u8, table_idx: u8) {
-        let FieldValue::Span(column) = fields[column_idx as usize] else { return };
+        let FieldValue::Span(column) = fields[column_idx as usize] else {
+            return;
+        };
         if column.is_empty() {
             return;
         }

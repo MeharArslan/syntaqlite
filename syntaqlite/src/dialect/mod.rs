@@ -3,10 +3,8 @@
 
 //! Dialect handle, semantic role types, and function catalog types.
 
-use std::mem::size_of;
-
 use syntaqlite_syntax::any::AnyGrammar;
-use syntaqlite_syntax::util::SqliteVersion;
+pub(crate) use syntaqlite_syntax::util::SqliteVersion;
 
 // ── Semantic role types ───────────────────────────────────────────────────────
 
@@ -183,26 +181,17 @@ pub(crate) struct FunctionInfo<'a> {
 }
 
 /// A version/cflag availability rule for a function.
-///
-/// `#[repr(C)]` with layout `i32+i32+u32+u8+3pad = 16 bytes` matches
-/// `SyntaqliteAvailabilityRule` exactly, so C extension data can be
-/// reinterpreted as `&[AvailabilityRule]` without copying.
-#[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct AvailabilityRule {
-    /// Minimum `SQLite` version (encoded: major*`1_000_000` + minor*`1_000` + patch).
-    pub since: i32,
-    /// Maximum `SQLite` version (exclusive). 0 means no upper bound.
-    pub until: i32,
+    /// Minimum `SQLite` version (inclusive).
+    pub since: SqliteVersion,
+    /// Maximum `SQLite` version (exclusive). `None` means no upper bound.
+    pub until: Option<SqliteVersion>,
     /// Cflag bit index, or `u32::MAX` if no cflag required.
     pub cflag_index: u32,
     /// Polarity of the cflag constraint.
     pub cflag_polarity: CflagPolarity,
 }
-
-const _: () = {
-    assert!(size_of::<AvailabilityRule>() == 16);
-};
 
 /// A function entry combining metadata with availability rules.
 #[derive(Debug, Clone, Copy)]
@@ -222,10 +211,12 @@ pub(crate) struct FunctionEntry<'a> {
 pub(crate) fn is_function_available(entry: &FunctionEntry<'_>, dialect: &Dialect) -> bool {
     let cflags = dialect.cflags();
     entry.availability.iter().any(|rule| {
-        if dialect.version() < SqliteVersion::from_int(rule.since) {
+        if dialect.version() < rule.since {
             return false;
         }
-        if rule.until != 0 && dialect.version() >= SqliteVersion::from_int(rule.until) {
+        if let Some(until) = rule.until
+            && dialect.version() >= until
+        {
             return false;
         }
         if rule.cflag_index != u32::MAX {
