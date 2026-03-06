@@ -878,7 +878,7 @@ impl<'a> Select<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for Select<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
         match node {
             Node::SelectStmt(n) => Some(Select::SelectStmt(n)),
@@ -933,7 +933,7 @@ impl<'a> InExprSource<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for InExprSource<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
         match node {
             Node::ExprList(n) => Some(InExprSource::ExprList(n)),
@@ -986,7 +986,7 @@ impl<'a> Name<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for Name<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
         match node {
             Node::IdentName(n) => Some(Name::IdentName(n)),
@@ -1073,7 +1073,7 @@ impl<'a> Expr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for Expr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
         match node {
             Node::BinaryExpr(n) => Some(Expr::BinaryExpr(n)),
@@ -1183,7 +1183,7 @@ impl<'a> Stmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for Stmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
         match node {
             Node::SelectStmt(n) => Some(Stmt::SelectStmt(n)),
@@ -1260,7 +1260,7 @@ impl<'a> TableSource<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for TableSource<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let node = Node::resolve(stmt_result, id)?;
         match node {
             Node::TableRef(n) => Some(TableSource::TableRef(n)),
@@ -1300,7 +1300,7 @@ impl TypedNodeId for TableSourceId {
 #[derive(Clone, Copy)]
 pub struct AggregateFunctionCall<'a> {
     raw: &'a super::ffi::AggregateFunctionCall,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -1312,13 +1312,11 @@ impl std::fmt::Debug for AggregateFunctionCall<'_> {
 
 impl std::fmt::Display for AggregateFunctionCall<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -1348,7 +1346,7 @@ impl<'a> AggregateFunctionCall<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for AggregateFunctionCall<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::AggregateFunctionCall>(id)?;
         Some(AggregateFunctionCall {
             raw,
@@ -1386,7 +1384,7 @@ impl TypedNodeId for AggregateFunctionCallId {
 #[derive(Clone, Copy)]
 pub struct OrderedSetFunctionCall<'a> {
     raw: &'a super::ffi::OrderedSetFunctionCall,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -1398,13 +1396,11 @@ impl std::fmt::Debug for OrderedSetFunctionCall<'_> {
 
 impl std::fmt::Display for OrderedSetFunctionCall<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -1434,7 +1430,7 @@ impl<'a> OrderedSetFunctionCall<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for OrderedSetFunctionCall<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::OrderedSetFunctionCall>(id)?;
         Some(OrderedSetFunctionCall {
             raw,
@@ -1472,7 +1468,7 @@ impl TypedNodeId for OrderedSetFunctionCallId {
 #[derive(Clone, Copy)]
 pub struct CastExpr<'a> {
     raw: &'a super::ffi::CastExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -1484,13 +1480,11 @@ impl std::fmt::Debug for CastExpr<'_> {
 
 impl std::fmt::Display for CastExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -1508,7 +1502,7 @@ impl<'a> CastExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CastExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CastExpr>(id)?;
         Some(CastExpr {
             raw,
@@ -1546,7 +1540,7 @@ impl TypedNodeId for CastExprId {
 #[derive(Clone, Copy)]
 pub struct ColumnRef<'a> {
     raw: &'a super::ffi::ColumnRef,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -1558,13 +1552,11 @@ impl std::fmt::Debug for ColumnRef<'_> {
 
 impl std::fmt::Display for ColumnRef<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -1585,7 +1577,7 @@ impl<'a> ColumnRef<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for ColumnRef<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ColumnRef>(id)?;
         Some(ColumnRef {
             raw,
@@ -1623,7 +1615,7 @@ impl TypedNodeId for ColumnRefId {
 #[derive(Clone, Copy)]
 pub struct CompoundSelect<'a> {
     raw: &'a super::ffi::CompoundSelect,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -1635,13 +1627,11 @@ impl std::fmt::Debug for CompoundSelect<'_> {
 
 impl std::fmt::Display for CompoundSelect<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -1662,7 +1652,7 @@ impl<'a> CompoundSelect<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CompoundSelect<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CompoundSelect>(id)?;
         Some(CompoundSelect {
             raw,
@@ -1700,7 +1690,7 @@ impl TypedNodeId for CompoundSelectId {
 #[derive(Clone, Copy)]
 pub struct SubqueryExpr<'a> {
     raw: &'a super::ffi::SubqueryExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -1712,13 +1702,11 @@ impl std::fmt::Debug for SubqueryExpr<'_> {
 
 impl std::fmt::Display for SubqueryExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -1733,7 +1721,7 @@ impl<'a> SubqueryExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for SubqueryExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::SubqueryExpr>(id)?;
         Some(SubqueryExpr {
             raw,
@@ -1771,7 +1759,7 @@ impl TypedNodeId for SubqueryExprId {
 #[derive(Clone, Copy)]
 pub struct ExistsExpr<'a> {
     raw: &'a super::ffi::ExistsExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -1783,13 +1771,11 @@ impl std::fmt::Debug for ExistsExpr<'_> {
 
 impl std::fmt::Display for ExistsExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -1804,7 +1790,7 @@ impl<'a> ExistsExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for ExistsExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ExistsExpr>(id)?;
         Some(ExistsExpr {
             raw,
@@ -1842,7 +1828,7 @@ impl TypedNodeId for ExistsExprId {
 #[derive(Clone, Copy)]
 pub struct InExpr<'a> {
     raw: &'a super::ffi::InExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -1854,13 +1840,11 @@ impl std::fmt::Debug for InExpr<'_> {
 
 impl std::fmt::Display for InExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -1881,7 +1865,7 @@ impl<'a> InExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for InExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::InExpr>(id)?;
         Some(InExpr {
             raw,
@@ -1919,7 +1903,7 @@ impl TypedNodeId for InExprId {
 #[derive(Clone, Copy)]
 pub struct IsExpr<'a> {
     raw: &'a super::ffi::IsExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -1931,13 +1915,11 @@ impl std::fmt::Debug for IsExpr<'_> {
 
 impl std::fmt::Display for IsExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -1958,7 +1940,7 @@ impl<'a> IsExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for IsExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::IsExpr>(id)?;
         Some(IsExpr {
             raw,
@@ -1996,7 +1978,7 @@ impl TypedNodeId for IsExprId {
 #[derive(Clone, Copy)]
 pub struct BetweenExpr<'a> {
     raw: &'a super::ffi::BetweenExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2008,13 +1990,11 @@ impl std::fmt::Debug for BetweenExpr<'_> {
 
 impl std::fmt::Display for BetweenExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2038,7 +2018,7 @@ impl<'a> BetweenExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for BetweenExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::BetweenExpr>(id)?;
         Some(BetweenExpr {
             raw,
@@ -2076,7 +2056,7 @@ impl TypedNodeId for BetweenExprId {
 #[derive(Clone, Copy)]
 pub struct LikeExpr<'a> {
     raw: &'a super::ffi::LikeExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2088,13 +2068,11 @@ impl std::fmt::Debug for LikeExpr<'_> {
 
 impl std::fmt::Display for LikeExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2118,7 +2096,7 @@ impl<'a> LikeExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for LikeExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::LikeExpr>(id)?;
         Some(LikeExpr {
             raw,
@@ -2156,7 +2134,7 @@ impl TypedNodeId for LikeExprId {
 #[derive(Clone, Copy)]
 pub struct CaseExpr<'a> {
     raw: &'a super::ffi::CaseExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2168,13 +2146,11 @@ impl std::fmt::Debug for CaseExpr<'_> {
 
 impl std::fmt::Display for CaseExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2195,7 +2171,7 @@ impl<'a> CaseExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CaseExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CaseExpr>(id)?;
         Some(CaseExpr {
             raw,
@@ -2233,7 +2209,7 @@ impl TypedNodeId for CaseExprId {
 #[derive(Clone, Copy)]
 pub struct CaseWhen<'a> {
     raw: &'a super::ffi::CaseWhen,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2245,13 +2221,11 @@ impl std::fmt::Debug for CaseWhen<'_> {
 
 impl std::fmt::Display for CaseWhen<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2269,7 +2243,7 @@ impl<'a> CaseWhen<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CaseWhen<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CaseWhen>(id)?;
         Some(CaseWhen {
             raw,
@@ -2307,7 +2281,7 @@ impl TypedNodeId for CaseWhenId {
 #[derive(Clone, Copy)]
 pub struct ForeignKeyClause<'a> {
     raw: &'a super::ffi::ForeignKeyClause,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2319,13 +2293,11 @@ impl std::fmt::Debug for ForeignKeyClause<'_> {
 
 impl std::fmt::Display for ForeignKeyClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2352,7 +2324,7 @@ impl<'a> ForeignKeyClause<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for ForeignKeyClause<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ForeignKeyClause>(id)?;
         Some(ForeignKeyClause {
             raw,
@@ -2390,7 +2362,7 @@ impl TypedNodeId for ForeignKeyClauseId {
 #[derive(Clone, Copy)]
 pub struct ColumnConstraint<'a> {
     raw: &'a super::ffi::ColumnConstraint,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2402,13 +2374,11 @@ impl std::fmt::Debug for ColumnConstraint<'_> {
 
 impl std::fmt::Display for ColumnConstraint<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2453,7 +2423,7 @@ impl<'a> ColumnConstraint<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for ColumnConstraint<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ColumnConstraint>(id)?;
         Some(ColumnConstraint {
             raw,
@@ -2491,7 +2461,7 @@ impl TypedNodeId for ColumnConstraintId {
 #[derive(Clone, Copy)]
 pub struct ColumnDef<'a> {
     raw: &'a super::ffi::ColumnDef,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2503,13 +2473,11 @@ impl std::fmt::Debug for ColumnDef<'_> {
 
 impl std::fmt::Display for ColumnDef<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2530,7 +2498,7 @@ impl<'a> ColumnDef<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for ColumnDef<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ColumnDef>(id)?;
         Some(ColumnDef {
             raw,
@@ -2568,7 +2536,7 @@ impl TypedNodeId for ColumnDefId {
 #[derive(Clone, Copy)]
 pub struct TableConstraint<'a> {
     raw: &'a super::ffi::TableConstraint,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2580,13 +2548,11 @@ impl std::fmt::Debug for TableConstraint<'_> {
 
 impl std::fmt::Display for TableConstraint<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2622,7 +2588,7 @@ impl<'a> TableConstraint<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for TableConstraint<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::TableConstraint>(id)?;
         Some(TableConstraint {
             raw,
@@ -2660,7 +2626,7 @@ impl TypedNodeId for TableConstraintId {
 #[derive(Clone, Copy)]
 pub struct CreateTableStmt<'a> {
     raw: &'a super::ffi::CreateTableStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2672,13 +2638,11 @@ impl std::fmt::Debug for CreateTableStmt<'_> {
 
 impl std::fmt::Display for CreateTableStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2714,7 +2678,7 @@ impl<'a> CreateTableStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CreateTableStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CreateTableStmt>(id)?;
         Some(CreateTableStmt {
             raw,
@@ -2752,7 +2716,7 @@ impl TypedNodeId for CreateTableStmtId {
 #[derive(Clone, Copy)]
 pub struct CteDefinition<'a> {
     raw: &'a super::ffi::CteDefinition,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2764,13 +2728,11 @@ impl std::fmt::Debug for CteDefinition<'_> {
 
 impl std::fmt::Display for CteDefinition<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2794,7 +2756,7 @@ impl<'a> CteDefinition<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CteDefinition<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CteDefinition>(id)?;
         Some(CteDefinition {
             raw,
@@ -2832,7 +2794,7 @@ impl TypedNodeId for CteDefinitionId {
 #[derive(Clone, Copy)]
 pub struct WithClause<'a> {
     raw: &'a super::ffi::WithClause,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2844,13 +2806,11 @@ impl std::fmt::Debug for WithClause<'_> {
 
 impl std::fmt::Display for WithClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2871,7 +2831,7 @@ impl<'a> WithClause<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for WithClause<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::WithClause>(id)?;
         Some(WithClause {
             raw,
@@ -2909,7 +2869,7 @@ impl TypedNodeId for WithClauseId {
 #[derive(Clone, Copy)]
 pub struct DeleteStmt<'a> {
     raw: &'a super::ffi::DeleteStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -2921,13 +2881,11 @@ impl std::fmt::Debug for DeleteStmt<'_> {
 
 impl std::fmt::Display for DeleteStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -2951,7 +2909,7 @@ impl<'a> DeleteStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for DeleteStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::DeleteStmt>(id)?;
         Some(DeleteStmt {
             raw,
@@ -2989,7 +2947,7 @@ impl TypedNodeId for DeleteStmtId {
 #[derive(Clone, Copy)]
 pub struct SetClause<'a> {
     raw: &'a super::ffi::SetClause,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3001,13 +2959,11 @@ impl std::fmt::Debug for SetClause<'_> {
 
 impl std::fmt::Display for SetClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3028,7 +2984,7 @@ impl<'a> SetClause<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for SetClause<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::SetClause>(id)?;
         Some(SetClause {
             raw,
@@ -3066,7 +3022,7 @@ impl TypedNodeId for SetClauseId {
 #[derive(Clone, Copy)]
 pub struct UpdateStmt<'a> {
     raw: &'a super::ffi::UpdateStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3078,13 +3034,11 @@ impl std::fmt::Debug for UpdateStmt<'_> {
 
 impl std::fmt::Display for UpdateStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3117,7 +3071,7 @@ impl<'a> UpdateStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for UpdateStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::UpdateStmt>(id)?;
         Some(UpdateStmt {
             raw,
@@ -3155,7 +3109,7 @@ impl TypedNodeId for UpdateStmtId {
 #[derive(Clone, Copy)]
 pub struct InsertStmt<'a> {
     raw: &'a super::ffi::InsertStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3167,13 +3121,11 @@ impl std::fmt::Debug for InsertStmt<'_> {
 
 impl std::fmt::Display for InsertStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3197,7 +3149,7 @@ impl<'a> InsertStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for InsertStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::InsertStmt>(id)?;
         Some(InsertStmt {
             raw,
@@ -3235,7 +3187,7 @@ impl TypedNodeId for InsertStmtId {
 #[derive(Clone, Copy)]
 pub struct BinaryExpr<'a> {
     raw: &'a super::ffi::BinaryExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3247,13 +3199,11 @@ impl std::fmt::Debug for BinaryExpr<'_> {
 
 impl std::fmt::Display for BinaryExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3274,7 +3224,7 @@ impl<'a> BinaryExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for BinaryExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::BinaryExpr>(id)?;
         Some(BinaryExpr {
             raw,
@@ -3312,7 +3262,7 @@ impl TypedNodeId for BinaryExprId {
 #[derive(Clone, Copy)]
 pub struct UnaryExpr<'a> {
     raw: &'a super::ffi::UnaryExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3324,13 +3274,11 @@ impl std::fmt::Debug for UnaryExpr<'_> {
 
 impl std::fmt::Display for UnaryExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3348,7 +3296,7 @@ impl<'a> UnaryExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for UnaryExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::UnaryExpr>(id)?;
         Some(UnaryExpr {
             raw,
@@ -3386,7 +3334,7 @@ impl TypedNodeId for UnaryExprId {
 #[derive(Clone, Copy)]
 pub struct Literal<'a> {
     raw: &'a super::ffi::Literal,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3398,13 +3346,11 @@ impl std::fmt::Debug for Literal<'_> {
 
 impl std::fmt::Display for Literal<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3422,7 +3368,7 @@ impl<'a> Literal<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for Literal<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::Literal>(id)?;
         Some(Literal {
             raw,
@@ -3460,7 +3406,7 @@ impl TypedNodeId for LiteralId {
 #[derive(Clone, Copy)]
 pub struct IdentName<'a> {
     raw: &'a super::ffi::IdentName,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3472,13 +3418,11 @@ impl std::fmt::Debug for IdentName<'_> {
 
 impl std::fmt::Display for IdentName<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3493,7 +3437,7 @@ impl<'a> IdentName<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for IdentName<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::IdentName>(id)?;
         Some(IdentName {
             raw,
@@ -3531,7 +3475,7 @@ impl TypedNodeId for IdentNameId {
 #[derive(Clone, Copy)]
 pub struct Error<'a> {
     raw: &'a super::ffi::Error,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3543,13 +3487,11 @@ impl std::fmt::Debug for Error<'_> {
 
 impl std::fmt::Display for Error<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3564,7 +3506,7 @@ impl<'a> Error<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for Error<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::Error>(id)?;
         Some(Error {
             raw,
@@ -3602,7 +3544,7 @@ impl TypedNodeId for ErrorId {
 #[derive(Clone, Copy)]
 pub struct FunctionCall<'a> {
     raw: &'a super::ffi::FunctionCall,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3614,13 +3556,11 @@ impl std::fmt::Debug for FunctionCall<'_> {
 
 impl std::fmt::Display for FunctionCall<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3647,7 +3587,7 @@ impl<'a> FunctionCall<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for FunctionCall<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::FunctionCall>(id)?;
         Some(FunctionCall {
             raw,
@@ -3685,7 +3625,7 @@ impl TypedNodeId for FunctionCallId {
 #[derive(Clone, Copy)]
 pub struct Variable<'a> {
     raw: &'a super::ffi::Variable,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3697,13 +3637,11 @@ impl std::fmt::Debug for Variable<'_> {
 
 impl std::fmt::Display for Variable<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3718,7 +3656,7 @@ impl<'a> Variable<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for Variable<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::Variable>(id)?;
         Some(Variable {
             raw,
@@ -3756,7 +3694,7 @@ impl TypedNodeId for VariableId {
 #[derive(Clone, Copy)]
 pub struct CollateExpr<'a> {
     raw: &'a super::ffi::CollateExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3768,13 +3706,11 @@ impl std::fmt::Debug for CollateExpr<'_> {
 
 impl std::fmt::Display for CollateExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3792,7 +3728,7 @@ impl<'a> CollateExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CollateExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CollateExpr>(id)?;
         Some(CollateExpr {
             raw,
@@ -3830,7 +3766,7 @@ impl TypedNodeId for CollateExprId {
 #[derive(Clone, Copy)]
 pub struct RaiseExpr<'a> {
     raw: &'a super::ffi::RaiseExpr,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3842,13 +3778,11 @@ impl std::fmt::Debug for RaiseExpr<'_> {
 
 impl std::fmt::Display for RaiseExpr<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3866,7 +3800,7 @@ impl<'a> RaiseExpr<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for RaiseExpr<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::RaiseExpr>(id)?;
         Some(RaiseExpr {
             raw,
@@ -3904,7 +3838,7 @@ impl TypedNodeId for RaiseExprId {
 #[derive(Clone, Copy)]
 pub struct QualifiedName<'a> {
     raw: &'a super::ffi::QualifiedName,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3916,13 +3850,11 @@ impl std::fmt::Debug for QualifiedName<'_> {
 
 impl std::fmt::Display for QualifiedName<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -3940,7 +3872,7 @@ impl<'a> QualifiedName<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for QualifiedName<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::QualifiedName>(id)?;
         Some(QualifiedName {
             raw,
@@ -3978,7 +3910,7 @@ impl TypedNodeId for QualifiedNameId {
 #[derive(Clone, Copy)]
 pub struct DropStmt<'a> {
     raw: &'a super::ffi::DropStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -3990,13 +3922,11 @@ impl std::fmt::Debug for DropStmt<'_> {
 
 impl std::fmt::Display for DropStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4017,7 +3947,7 @@ impl<'a> DropStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for DropStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::DropStmt>(id)?;
         Some(DropStmt {
             raw,
@@ -4055,7 +3985,7 @@ impl TypedNodeId for DropStmtId {
 #[derive(Clone, Copy)]
 pub struct AlterTableStmt<'a> {
     raw: &'a super::ffi::AlterTableStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4067,13 +3997,11 @@ impl std::fmt::Debug for AlterTableStmt<'_> {
 
 impl std::fmt::Display for AlterTableStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4097,7 +4025,7 @@ impl<'a> AlterTableStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for AlterTableStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::AlterTableStmt>(id)?;
         Some(AlterTableStmt {
             raw,
@@ -4135,7 +4063,7 @@ impl TypedNodeId for AlterTableStmtId {
 #[derive(Clone, Copy)]
 pub struct TransactionStmt<'a> {
     raw: &'a super::ffi::TransactionStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4147,13 +4075,11 @@ impl std::fmt::Debug for TransactionStmt<'_> {
 
 impl std::fmt::Display for TransactionStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4171,7 +4097,7 @@ impl<'a> TransactionStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for TransactionStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::TransactionStmt>(id)?;
         Some(TransactionStmt {
             raw,
@@ -4209,7 +4135,7 @@ impl TypedNodeId for TransactionStmtId {
 #[derive(Clone, Copy)]
 pub struct SavepointStmt<'a> {
     raw: &'a super::ffi::SavepointStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4221,13 +4147,11 @@ impl std::fmt::Debug for SavepointStmt<'_> {
 
 impl std::fmt::Display for SavepointStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4245,7 +4169,7 @@ impl<'a> SavepointStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for SavepointStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::SavepointStmt>(id)?;
         Some(SavepointStmt {
             raw,
@@ -4283,7 +4207,7 @@ impl TypedNodeId for SavepointStmtId {
 #[derive(Clone, Copy)]
 pub struct ResultColumn<'a> {
     raw: &'a super::ffi::ResultColumn,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4295,13 +4219,11 @@ impl std::fmt::Debug for ResultColumn<'_> {
 
 impl std::fmt::Display for ResultColumn<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4322,7 +4244,7 @@ impl<'a> ResultColumn<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for ResultColumn<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ResultColumn>(id)?;
         Some(ResultColumn {
             raw,
@@ -4360,7 +4282,7 @@ impl TypedNodeId for ResultColumnId {
 #[derive(Clone, Copy)]
 pub struct SelectStmt<'a> {
     raw: &'a super::ffi::SelectStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4372,13 +4294,11 @@ impl std::fmt::Debug for SelectStmt<'_> {
 
 impl std::fmt::Display for SelectStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4417,7 +4337,7 @@ impl<'a> SelectStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for SelectStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::SelectStmt>(id)?;
         Some(SelectStmt {
             raw,
@@ -4455,7 +4375,7 @@ impl TypedNodeId for SelectStmtId {
 #[derive(Clone, Copy)]
 pub struct OrderingTerm<'a> {
     raw: &'a super::ffi::OrderingTerm,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4467,13 +4387,11 @@ impl std::fmt::Debug for OrderingTerm<'_> {
 
 impl std::fmt::Display for OrderingTerm<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4494,7 +4412,7 @@ impl<'a> OrderingTerm<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for OrderingTerm<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::OrderingTerm>(id)?;
         Some(OrderingTerm {
             raw,
@@ -4532,7 +4450,7 @@ impl TypedNodeId for OrderingTermId {
 #[derive(Clone, Copy)]
 pub struct LimitClause<'a> {
     raw: &'a super::ffi::LimitClause,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4544,13 +4462,11 @@ impl std::fmt::Debug for LimitClause<'_> {
 
 impl std::fmt::Display for LimitClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4568,7 +4484,7 @@ impl<'a> LimitClause<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for LimitClause<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::LimitClause>(id)?;
         Some(LimitClause {
             raw,
@@ -4606,7 +4522,7 @@ impl TypedNodeId for LimitClauseId {
 #[derive(Clone, Copy)]
 pub struct TableRef<'a> {
     raw: &'a super::ffi::TableRef,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4618,13 +4534,11 @@ impl std::fmt::Debug for TableRef<'_> {
 
 impl std::fmt::Display for TableRef<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4645,7 +4559,7 @@ impl<'a> TableRef<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for TableRef<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::TableRef>(id)?;
         Some(TableRef {
             raw,
@@ -4683,7 +4597,7 @@ impl TypedNodeId for TableRefId {
 #[derive(Clone, Copy)]
 pub struct SubqueryTableSource<'a> {
     raw: &'a super::ffi::SubqueryTableSource,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4695,13 +4609,11 @@ impl std::fmt::Debug for SubqueryTableSource<'_> {
 
 impl std::fmt::Display for SubqueryTableSource<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4719,7 +4631,7 @@ impl<'a> SubqueryTableSource<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for SubqueryTableSource<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::SubqueryTableSource>(id)?;
         Some(SubqueryTableSource {
             raw,
@@ -4757,7 +4669,7 @@ impl TypedNodeId for SubqueryTableSourceId {
 #[derive(Clone, Copy)]
 pub struct JoinClause<'a> {
     raw: &'a super::ffi::JoinClause,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4769,13 +4681,11 @@ impl std::fmt::Debug for JoinClause<'_> {
 
 impl std::fmt::Display for JoinClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4802,7 +4712,7 @@ impl<'a> JoinClause<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for JoinClause<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::JoinClause>(id)?;
         Some(JoinClause {
             raw,
@@ -4840,7 +4750,7 @@ impl TypedNodeId for JoinClauseId {
 #[derive(Clone, Copy)]
 pub struct JoinPrefix<'a> {
     raw: &'a super::ffi::JoinPrefix,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4852,13 +4762,11 @@ impl std::fmt::Debug for JoinPrefix<'_> {
 
 impl std::fmt::Display for JoinPrefix<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4876,7 +4784,7 @@ impl<'a> JoinPrefix<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for JoinPrefix<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::JoinPrefix>(id)?;
         Some(JoinPrefix {
             raw,
@@ -4914,7 +4822,7 @@ impl TypedNodeId for JoinPrefixId {
 #[derive(Clone, Copy)]
 pub struct TriggerEvent<'a> {
     raw: &'a super::ffi::TriggerEvent,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -4926,13 +4834,11 @@ impl std::fmt::Debug for TriggerEvent<'_> {
 
 impl std::fmt::Display for TriggerEvent<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -4950,7 +4856,7 @@ impl<'a> TriggerEvent<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for TriggerEvent<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::TriggerEvent>(id)?;
         Some(TriggerEvent {
             raw,
@@ -4988,7 +4894,7 @@ impl TypedNodeId for TriggerEventId {
 #[derive(Clone, Copy)]
 pub struct CreateTriggerStmt<'a> {
     raw: &'a super::ffi::CreateTriggerStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5000,13 +4906,11 @@ impl std::fmt::Debug for CreateTriggerStmt<'_> {
 
 impl std::fmt::Display for CreateTriggerStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5045,7 +4949,7 @@ impl<'a> CreateTriggerStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CreateTriggerStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CreateTriggerStmt>(id)?;
         Some(CreateTriggerStmt {
             raw,
@@ -5083,7 +4987,7 @@ impl TypedNodeId for CreateTriggerStmtId {
 #[derive(Clone, Copy)]
 pub struct CreateVirtualTableStmt<'a> {
     raw: &'a super::ffi::CreateVirtualTableStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5095,13 +4999,11 @@ impl std::fmt::Debug for CreateVirtualTableStmt<'_> {
 
 impl std::fmt::Display for CreateVirtualTableStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5128,7 +5030,7 @@ impl<'a> CreateVirtualTableStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CreateVirtualTableStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CreateVirtualTableStmt>(id)?;
         Some(CreateVirtualTableStmt {
             raw,
@@ -5166,7 +5068,7 @@ impl TypedNodeId for CreateVirtualTableStmtId {
 #[derive(Clone, Copy)]
 pub struct PragmaStmt<'a> {
     raw: &'a super::ffi::PragmaStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5178,13 +5080,11 @@ impl std::fmt::Debug for PragmaStmt<'_> {
 
 impl std::fmt::Display for PragmaStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5208,7 +5108,7 @@ impl<'a> PragmaStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for PragmaStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::PragmaStmt>(id)?;
         Some(PragmaStmt {
             raw,
@@ -5246,7 +5146,7 @@ impl TypedNodeId for PragmaStmtId {
 #[derive(Clone, Copy)]
 pub struct AnalyzeOrReindexStmt<'a> {
     raw: &'a super::ffi::AnalyzeOrReindexStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5258,13 +5158,11 @@ impl std::fmt::Debug for AnalyzeOrReindexStmt<'_> {
 
 impl std::fmt::Display for AnalyzeOrReindexStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5285,7 +5183,7 @@ impl<'a> AnalyzeOrReindexStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for AnalyzeOrReindexStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::AnalyzeOrReindexStmt>(id)?;
         Some(AnalyzeOrReindexStmt {
             raw,
@@ -5323,7 +5221,7 @@ impl TypedNodeId for AnalyzeOrReindexStmtId {
 #[derive(Clone, Copy)]
 pub struct AttachStmt<'a> {
     raw: &'a super::ffi::AttachStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5335,13 +5233,11 @@ impl std::fmt::Debug for AttachStmt<'_> {
 
 impl std::fmt::Display for AttachStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5362,7 +5258,7 @@ impl<'a> AttachStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for AttachStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::AttachStmt>(id)?;
         Some(AttachStmt {
             raw,
@@ -5400,7 +5296,7 @@ impl TypedNodeId for AttachStmtId {
 #[derive(Clone, Copy)]
 pub struct DetachStmt<'a> {
     raw: &'a super::ffi::DetachStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5412,13 +5308,11 @@ impl std::fmt::Debug for DetachStmt<'_> {
 
 impl std::fmt::Display for DetachStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5433,7 +5327,7 @@ impl<'a> DetachStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for DetachStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::DetachStmt>(id)?;
         Some(DetachStmt {
             raw,
@@ -5471,7 +5365,7 @@ impl TypedNodeId for DetachStmtId {
 #[derive(Clone, Copy)]
 pub struct VacuumStmt<'a> {
     raw: &'a super::ffi::VacuumStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5483,13 +5377,11 @@ impl std::fmt::Debug for VacuumStmt<'_> {
 
 impl std::fmt::Display for VacuumStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5507,7 +5399,7 @@ impl<'a> VacuumStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for VacuumStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::VacuumStmt>(id)?;
         Some(VacuumStmt {
             raw,
@@ -5545,7 +5437,7 @@ impl TypedNodeId for VacuumStmtId {
 #[derive(Clone, Copy)]
 pub struct ExplainStmt<'a> {
     raw: &'a super::ffi::ExplainStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5557,13 +5449,11 @@ impl std::fmt::Debug for ExplainStmt<'_> {
 
 impl std::fmt::Display for ExplainStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5581,7 +5471,7 @@ impl<'a> ExplainStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for ExplainStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ExplainStmt>(id)?;
         Some(ExplainStmt {
             raw,
@@ -5619,7 +5509,7 @@ impl TypedNodeId for ExplainStmtId {
 #[derive(Clone, Copy)]
 pub struct CreateIndexStmt<'a> {
     raw: &'a super::ffi::CreateIndexStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5631,13 +5521,11 @@ impl std::fmt::Debug for CreateIndexStmt<'_> {
 
 impl std::fmt::Display for CreateIndexStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5670,7 +5558,7 @@ impl<'a> CreateIndexStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CreateIndexStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CreateIndexStmt>(id)?;
         Some(CreateIndexStmt {
             raw,
@@ -5708,7 +5596,7 @@ impl TypedNodeId for CreateIndexStmtId {
 #[derive(Clone, Copy)]
 pub struct CreateViewStmt<'a> {
     raw: &'a super::ffi::CreateViewStmt,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5720,13 +5608,11 @@ impl std::fmt::Debug for CreateViewStmt<'_> {
 
 impl std::fmt::Display for CreateViewStmt<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5756,7 +5642,7 @@ impl<'a> CreateViewStmt<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for CreateViewStmt<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::CreateViewStmt>(id)?;
         Some(CreateViewStmt {
             raw,
@@ -5794,7 +5680,7 @@ impl TypedNodeId for CreateViewStmtId {
 #[derive(Clone, Copy)]
 pub struct ValuesClause<'a> {
     raw: &'a super::ffi::ValuesClause,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5806,13 +5692,11 @@ impl std::fmt::Debug for ValuesClause<'_> {
 
 impl std::fmt::Display for ValuesClause<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5827,7 +5711,7 @@ impl<'a> ValuesClause<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for ValuesClause<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::ValuesClause>(id)?;
         Some(ValuesClause {
             raw,
@@ -5865,7 +5749,7 @@ impl TypedNodeId for ValuesClauseId {
 #[derive(Clone, Copy)]
 pub struct FrameBound<'a> {
     raw: &'a super::ffi::FrameBound,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5877,13 +5761,11 @@ impl std::fmt::Debug for FrameBound<'_> {
 
 impl std::fmt::Display for FrameBound<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5901,7 +5783,7 @@ impl<'a> FrameBound<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for FrameBound<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::FrameBound>(id)?;
         Some(FrameBound {
             raw,
@@ -5939,7 +5821,7 @@ impl TypedNodeId for FrameBoundId {
 #[derive(Clone, Copy)]
 pub struct FrameSpec<'a> {
     raw: &'a super::ffi::FrameSpec,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -5951,13 +5833,11 @@ impl std::fmt::Debug for FrameSpec<'_> {
 
 impl std::fmt::Display for FrameSpec<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -5981,7 +5861,7 @@ impl<'a> FrameSpec<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for FrameSpec<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::FrameSpec>(id)?;
         Some(FrameSpec {
             raw,
@@ -6019,7 +5899,7 @@ impl TypedNodeId for FrameSpecId {
 #[derive(Clone, Copy)]
 pub struct WindowDef<'a> {
     raw: &'a super::ffi::WindowDef,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -6031,13 +5911,11 @@ impl std::fmt::Debug for WindowDef<'_> {
 
 impl std::fmt::Display for WindowDef<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -6061,7 +5939,7 @@ impl<'a> WindowDef<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for WindowDef<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::WindowDef>(id)?;
         Some(WindowDef {
             raw,
@@ -6099,7 +5977,7 @@ impl TypedNodeId for WindowDefId {
 #[derive(Clone, Copy)]
 pub struct NamedWindowDef<'a> {
     raw: &'a super::ffi::NamedWindowDef,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -6111,13 +5989,11 @@ impl std::fmt::Debug for NamedWindowDef<'_> {
 
 impl std::fmt::Display for NamedWindowDef<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -6135,7 +6011,7 @@ impl<'a> NamedWindowDef<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for NamedWindowDef<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::NamedWindowDef>(id)?;
         Some(NamedWindowDef {
             raw,
@@ -6173,7 +6049,7 @@ impl TypedNodeId for NamedWindowDefId {
 #[derive(Clone, Copy)]
 pub struct FilterOver<'a> {
     raw: &'a super::ffi::FilterOver,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
 }
 
@@ -6185,13 +6061,11 @@ impl std::fmt::Debug for FilterOver<'_> {
 
 impl std::fmt::Display for FilterOver<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut buf = String::new();
         AnyNode {
             id: self.id,
             stmt_result: self.stmt_result,
         }
-        .dump(&mut buf, 0);
-        f.write_str(&buf)
+        .fmt(f)
     }
 }
 
@@ -6212,7 +6086,7 @@ impl<'a> FilterOver<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for FilterOver<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_as::<super::ffi::FilterOver>(id)?;
         Some(FilterOver {
             raw,
@@ -6720,7 +6594,7 @@ impl<'a> Node<'a> {
     #[expect(clippy::too_many_lines, clippy::match_wildcard_for_single_variants)]
     pub(crate) unsafe fn from_raw(
         ptr: *const u32,
-        stmt_result: AnyParsedStatement<'a>,
+        stmt_result: &'a AnyParsedStatement<'a>,
         id: AnyNodeId,
     ) -> Node<'a> {
         // SAFETY: caller guarantees ptr is valid for 'a with a valid tag.
@@ -7097,7 +6971,10 @@ impl<'a> Node<'a> {
 
     /// Resolve a `NodeId` into a typed `Node`, or `None` if null/invalid.
     #[expect(clippy::cast_ptr_alignment)]
-    pub(crate) fn resolve(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Node<'a>> {
+    pub(crate) fn resolve(
+        stmt_result: &'a AnyParsedStatement<'a>,
+        id: AnyNodeId,
+    ) -> Option<Node<'a>> {
         let (ptr, _tag) = stmt_result.node_ptr(id)?;
         // SAFETY: node_ptr returns a valid arena pointer aligned to u32;
         // ptr is valid for 'a and its first u32 is a valid NodeTag.
@@ -7187,7 +7064,6 @@ impl<'a> Node<'a> {
         }
     }
 
-    #[expect(clippy::match_same_arms)]
     /// The typed node ID of this node.
     pub fn node_id(&self) -> NodeId {
         match self {
@@ -7273,7 +7149,7 @@ impl<'a> Node<'a> {
 }
 
 impl<'a> GrammarNodeType<'a> for Node<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         Node::resolve(stmt_result, id)
     }
 }

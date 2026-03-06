@@ -15,7 +15,7 @@ pub(crate) enum Bool {
     True = 1,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct AggregateFunctionCall {
     pub(crate) tag: u32,
@@ -27,7 +27,7 @@ pub(crate) struct AggregateFunctionCall {
     pub(crate) over_clause: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct OrderedSetFunctionCall {
     pub(crate) tag: u32,
@@ -39,7 +39,7 @@ pub(crate) struct OrderedSetFunctionCall {
     pub(crate) over_clause: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct CastExpr {
     pub(crate) tag: u32,
@@ -47,7 +47,7 @@ pub(crate) struct CastExpr {
     pub(crate) type_name: SourceSpan,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct ColumnRef {
     pub(crate) tag: u32,
@@ -56,7 +56,7 @@ pub(crate) struct ColumnRef {
     pub(crate) schema: SourceSpan,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct CompoundSelect {
     pub(crate) tag: u32,
@@ -65,21 +65,21 @@ pub(crate) struct CompoundSelect {
     pub(crate) right: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct SubqueryExpr {
     pub(crate) tag: u32,
     pub(crate) select: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct ExistsExpr {
     pub(crate) tag: u32,
     pub(crate) select: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct InExpr {
     pub(crate) tag: u32,
@@ -88,7 +88,7 @@ pub(crate) struct InExpr {
     pub(crate) source: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct IsExpr {
     pub(crate) tag: u32,
@@ -97,7 +97,7 @@ pub(crate) struct IsExpr {
     pub(crate) right: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct BetweenExpr {
     pub(crate) tag: u32,
@@ -107,7 +107,7 @@ pub(crate) struct BetweenExpr {
     pub(crate) high: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct LikeExpr {
     pub(crate) tag: u32,
@@ -117,7 +117,7 @@ pub(crate) struct LikeExpr {
     pub(crate) escape: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct CaseExpr {
     pub(crate) tag: u32,
@@ -126,7 +126,7 @@ pub(crate) struct CaseExpr {
     pub(crate) whens: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct CaseWhen {
     pub(crate) tag: u32,
@@ -134,7 +134,7 @@ pub(crate) struct CaseWhen {
     pub(crate) then_expr: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct ForeignKeyClause {
     pub(crate) tag: u32,
@@ -145,7 +145,7 @@ pub(crate) struct ForeignKeyClause {
     pub(crate) is_deferred: Bool,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct ColumnConstraint {
     pub(crate) tag: u32,
@@ -162,7 +162,7 @@ pub(crate) struct ColumnConstraint {
     pub(crate) fk_clause: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct ColumnDef {
     pub(crate) tag: u32,
@@ -171,7 +171,7 @@ pub(crate) struct ColumnDef {
     pub(crate) constraints: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct TableConstraint {
     pub(crate) tag: u32,
@@ -185,7 +185,7 @@ pub(crate) struct TableConstraint {
     pub(crate) fk_clause: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct CreateTableStmt {
     pub(crate) tag: u32,
@@ -199,7 +199,7 @@ pub(crate) struct CreateTableStmt {
     pub(crate) as_select: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct CteDefinition {
     pub(crate) tag: u32,
@@ -209,7 +209,7 @@ pub(crate) struct CteDefinition {
     pub(crate) select: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct WithClause {
     pub(crate) tag: u32,
@@ -218,7 +218,7 @@ pub(crate) struct WithClause {
     pub(crate) select: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct DeleteStmt {
     pub(crate) tag: u32,
@@ -228,7 +228,7 @@ pub(crate) struct DeleteStmt {
     pub(crate) limit_clause: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct SetClause {
     pub(crate) tag: u32,
@@ -237,7 +237,7 @@ pub(crate) struct SetClause {
     pub(crate) value: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct UpdateStmt {
     pub(crate) tag: u32,
@@ -250,7 +250,7 @@ pub(crate) struct UpdateStmt {
     pub(crate) limit_clause: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct InsertStmt {
     pub(crate) tag: u32,
@@ -260,7 +260,7 @@ pub(crate) struct InsertStmt {
     pub(crate) source: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct BinaryExpr {
     pub(crate) tag: u32,
@@ -269,7 +269,7 @@ pub(crate) struct BinaryExpr {
     pub(crate) right: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct UnaryExpr {
     pub(crate) tag: u32,
@@ -277,7 +277,7 @@ pub(crate) struct UnaryExpr {
     pub(crate) operand: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct Literal {
     pub(crate) tag: u32,
@@ -285,21 +285,21 @@ pub(crate) struct Literal {
     pub(crate) source: SourceSpan,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct IdentName {
     pub(crate) tag: u32,
     pub(crate) source: SourceSpan,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct Error {
     pub(crate) tag: u32,
     pub(crate) source: SourceSpan,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct FunctionCall {
     pub(crate) tag: u32,
@@ -310,14 +310,14 @@ pub(crate) struct FunctionCall {
     pub(crate) over_clause: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct Variable {
     pub(crate) tag: u32,
     pub(crate) source: SourceSpan,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct CollateExpr {
     pub(crate) tag: u32,
@@ -325,7 +325,7 @@ pub(crate) struct CollateExpr {
     pub(crate) collation: SourceSpan,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct RaiseExpr {
     pub(crate) tag: u32,
@@ -333,7 +333,7 @@ pub(crate) struct RaiseExpr {
     pub(crate) error_message: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct QualifiedName {
     pub(crate) tag: u32,
@@ -341,7 +341,7 @@ pub(crate) struct QualifiedName {
     pub(crate) schema: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct DropStmt {
     pub(crate) tag: u32,
@@ -350,7 +350,7 @@ pub(crate) struct DropStmt {
     pub(crate) target: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct AlterTableStmt {
     pub(crate) tag: u32,
@@ -360,7 +360,7 @@ pub(crate) struct AlterTableStmt {
     pub(crate) old_name: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct TransactionStmt {
     pub(crate) tag: u32,
@@ -368,7 +368,7 @@ pub(crate) struct TransactionStmt {
     pub(crate) trans_type: super::ast::TransactionType,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct SavepointStmt {
     pub(crate) tag: u32,
@@ -376,7 +376,7 @@ pub(crate) struct SavepointStmt {
     pub(crate) savepoint_name: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct ResultColumn {
     pub(crate) tag: u32,
@@ -385,7 +385,7 @@ pub(crate) struct ResultColumn {
     pub(crate) expr: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct SelectStmt {
     pub(crate) tag: u32,
@@ -400,7 +400,7 @@ pub(crate) struct SelectStmt {
     pub(crate) window_clause: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct OrderingTerm {
     pub(crate) tag: u32,
@@ -409,7 +409,7 @@ pub(crate) struct OrderingTerm {
     pub(crate) nulls_order: super::ast::NullsOrder,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct LimitClause {
     pub(crate) tag: u32,
@@ -417,7 +417,7 @@ pub(crate) struct LimitClause {
     pub(crate) offset: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct TableRef {
     pub(crate) tag: u32,
@@ -426,7 +426,7 @@ pub(crate) struct TableRef {
     pub(crate) alias: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct SubqueryTableSource {
     pub(crate) tag: u32,
@@ -434,7 +434,7 @@ pub(crate) struct SubqueryTableSource {
     pub(crate) alias: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct JoinClause {
     pub(crate) tag: u32,
@@ -445,7 +445,7 @@ pub(crate) struct JoinClause {
     pub(crate) using_columns: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct JoinPrefix {
     pub(crate) tag: u32,
@@ -453,7 +453,7 @@ pub(crate) struct JoinPrefix {
     pub(crate) join_type: super::ast::JoinType,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct TriggerEvent {
     pub(crate) tag: u32,
@@ -461,7 +461,7 @@ pub(crate) struct TriggerEvent {
     pub(crate) columns: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct CreateTriggerStmt {
     pub(crate) tag: u32,
@@ -476,7 +476,7 @@ pub(crate) struct CreateTriggerStmt {
     pub(crate) body: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct CreateVirtualTableStmt {
     pub(crate) tag: u32,
@@ -487,7 +487,7 @@ pub(crate) struct CreateVirtualTableStmt {
     pub(crate) module_args: SourceSpan,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct PragmaStmt {
     pub(crate) tag: u32,
@@ -497,7 +497,7 @@ pub(crate) struct PragmaStmt {
     pub(crate) pragma_form: super::ast::PragmaForm,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct AnalyzeOrReindexStmt {
     pub(crate) tag: u32,
@@ -506,7 +506,7 @@ pub(crate) struct AnalyzeOrReindexStmt {
     pub(crate) kind: super::ast::AnalyzeOrReindexOp,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct AttachStmt {
     pub(crate) tag: u32,
@@ -515,14 +515,14 @@ pub(crate) struct AttachStmt {
     pub(crate) key: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct DetachStmt {
     pub(crate) tag: u32,
     pub(crate) db_name: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct VacuumStmt {
     pub(crate) tag: u32,
@@ -530,7 +530,7 @@ pub(crate) struct VacuumStmt {
     pub(crate) filename: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct ExplainStmt {
     pub(crate) tag: u32,
@@ -538,7 +538,7 @@ pub(crate) struct ExplainStmt {
     pub(crate) stmt: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct CreateIndexStmt {
     pub(crate) tag: u32,
@@ -551,7 +551,7 @@ pub(crate) struct CreateIndexStmt {
     pub(crate) where_clause: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct CreateViewStmt {
     pub(crate) tag: u32,
@@ -563,14 +563,14 @@ pub(crate) struct CreateViewStmt {
     pub(crate) select: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct ValuesClause {
     pub(crate) tag: u32,
     pub(crate) rows: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct FrameBound {
     pub(crate) tag: u32,
@@ -578,7 +578,7 @@ pub(crate) struct FrameBound {
     pub(crate) expr: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct FrameSpec {
     pub(crate) tag: u32,
@@ -588,7 +588,7 @@ pub(crate) struct FrameSpec {
     pub(crate) end_bound: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct WindowDef {
     pub(crate) tag: u32,
@@ -598,7 +598,7 @@ pub(crate) struct WindowDef {
     pub(crate) frame: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct NamedWindowDef {
     pub(crate) tag: u32,
@@ -606,7 +606,7 @@ pub(crate) struct NamedWindowDef {
     pub(crate) window_def: AnyNodeId,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 #[repr(C)]
 pub(crate) struct FilterOver {
     pub(crate) tag: u32,

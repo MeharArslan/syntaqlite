@@ -187,7 +187,7 @@ impl ParserTokenFlags {
 ///
 /// End users typically consume implementations rather than writing them.
 /// The trait links a grammar to its typed node and token enums.
-pub trait TypedGrammar: Copy + Into<AnyGrammar> {
+pub trait TypedGrammar: Clone + Into<AnyGrammar> {
     /// The top-level typed AST node enum for this grammar.
     type Node<'a>: crate::ast::GrammarNodeType<'a>;
     /// The grammar's typed node ID, wrapping an [`crate::ast::AnyNodeId`].
@@ -203,10 +203,17 @@ pub trait TypedGrammar: Copy + Into<AnyGrammar> {
 ///
 /// Use `AnyGrammar` when grammar selection/configuration is dynamic (plugins,
 /// LSP hosts, multi-grammar test harnesses). It carries version/cflag knobs
-/// and introspection metadata, while remaining cheap to copy.
-#[derive(Clone, Copy)]
+/// and introspection metadata, while remaining cheap to clone.
+///
+/// Built-in grammars hold `&'static` C data directly. Dynamically loaded
+/// grammars transmute library-memory pointers to `&'static` and keep the
+/// library alive via an [`Arc`]. Use [`AnyGrammar::load`] to create one.
+#[derive(Clone)]
 pub struct AnyGrammar {
     pub(crate) inner: ffi::CGrammar,
+    /// Keeps the shared library alive for dynamically-loaded grammars.
+    /// `None` for built-in (static) grammars.
+    _keep_alive: Option<std::sync::Arc<dyn Send + Sync>>,
 }
 
 // SAFETY: The grammar wraps an immutable reference to static C data.
@@ -225,7 +232,10 @@ impl AnyGrammar {
     /// C grammar tables (e.g. returned by a grammar's `extern "C"` grammar
     /// accessor such as `syntaqlite_sqlite_grammar()`).
     pub unsafe fn new(inner: ffi::CGrammar) -> Self {
-        AnyGrammar { inner }
+        AnyGrammar {
+            inner,
+            _keep_alive: None,
+        }
     }
 
     /// Load a grammar from a shared library (`.so` / `.dylib` / `.dll`).
@@ -234,29 +244,23 @@ impl AnyGrammar {
     /// is `None`) and calls it to obtain the grammar handle.
     ///
     /// # Library lifetime
-    /// Because [`AnyGrammar`] is `Copy` with no drop, the loaded library is
-    /// intentionally leaked so the grammar tables remain valid for the process
-    /// lifetime. Use [`syntaqlite::Dialect::load`] instead if you need the
-    /// library to be unloaded when the dialect is dropped.
-    ///
-    /// # TODO(lalitm)
-    /// Replace the leak with a proper keep-alive mechanism once `AnyGrammar`
-    /// gains lifetime tracking.
+    /// The loaded library is kept alive via an [`Arc`] stored inside the
+    /// returned `AnyGrammar`. Dropping the last clone of the grammar unloads
+    /// the library. Use [`syntaqlite::Dialect::load`] for dialect-level loading.
     #[cfg(feature = "dynload")]
     pub fn load(path: &str, name: Option<&str>) -> Result<Self, String> {
-        // SAFETY: We leak `lib` below to keep grammar tables alive for the
-        // process lifetime, since AnyGrammar has no drop or keep-alive.
+        // SAFETY: We keep `lib` alive in an `Arc` below so the grammar pointer
+        // lives as long as any clone of the returned AnyGrammar.
         let lib = unsafe {
-            libloading::Library::new(path)
-                .map_err(|e| format!("failed to load {path:?}: {e}"))?
+            libloading::Library::new(path).map_err(|e| format!("failed to load {path:?}: {e}"))?
         };
 
         let symbol = match name {
             Some(n) => format!("syntaqlite_{n}_grammar"),
             None => "syntaqlite_grammar".to_string(),
         };
-        // SAFETY: We call the function immediately and drop `func` before
-        // leaking `lib`, so there is no lifetime overlap issue.
+        // SAFETY: We call the function immediately and drop `func` before `lib`
+        // is moved into the Arc, so there is no lifetime overlap issue.
         let raw: ffi::CGrammar = unsafe {
             let func: libloading::Symbol<'_, unsafe extern "C" fn() -> ffi::CGrammar> = lib
                 .get(symbol.as_bytes())
@@ -264,14 +268,14 @@ impl AnyGrammar {
             func()
         };
 
-        // Leak the library so the grammar tables remain valid for the process
-        // lifetime. AnyGrammar is Copy with no drop, so there is no other way
-        // to safely extend the library's lifetime.
-        std::mem::forget(lib);
+        let keep_alive: std::sync::Arc<dyn Send + Sync> = std::sync::Arc::new(lib);
 
-        // SAFETY: `raw.template` points into the leaked library whose memory
-        // will never be freed.
-        Ok(unsafe { AnyGrammar::new(raw) })
+        // SAFETY: `raw.template` points into the shared library kept alive by
+        // `keep_alive`. Dropping the last AnyGrammar clone unloads the library.
+        Ok(AnyGrammar {
+            inner: raw,
+            _keep_alive: Some(keep_alive),
+        })
     }
 
     /// Pin this grammar handle to a target `SQLite` version.

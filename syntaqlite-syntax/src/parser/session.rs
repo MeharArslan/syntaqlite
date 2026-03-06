@@ -270,7 +270,7 @@ impl<'a> ParsedStatement<'a> {
     ///
     /// Panics only if parser/result invariants are violated (an `Ok` result
     /// without a C `result_root`).
-    pub fn root(&self) -> crate::sqlite::ast::Stmt<'a> {
+    pub fn root(&'a self) -> crate::sqlite::ast::Stmt<'a> {
         self.0
             .root()
             .expect("ParseSession::next returned Ok but result_root was null")
@@ -299,7 +299,7 @@ impl<'a> ParsedStatement<'a> {
     ///
     /// Use this when handing statement data to grammar-independent tooling.
     pub fn erase(&self) -> AnyParsedStatement<'a> {
-        self.0.erase()
+        self.0.clone().erase()
     }
 
     /// Dump the AST as indented text into `out`.
@@ -355,7 +355,7 @@ impl<'a> ParseError<'a> {
     /// Partial AST recovered from invalid input, if available.
     ///
     /// Mirrors C `syntaqlite_result_recovery_root` for `PARSE_ERROR`.
-    pub fn recovery_root(&self) -> Option<crate::sqlite::ast::Stmt<'a>> {
+    pub fn recovery_root(&'a self) -> Option<crate::sqlite::ast::Stmt<'a>> {
         self.0.recovery_root()
     }
 

@@ -336,12 +336,8 @@ impl Catalog {
             };
             let root = stmt.root();
             let root_id: AnyNodeId = root.node_id().into();
-            catalog.accumulate_ddl(
-                CatalogLayer::Database,
-                stmt.erase(),
-                root_id,
-                dialect.clone(),
-            );
+            let erased = stmt.erase();
+            catalog.accumulate_ddl(CatalogLayer::Database, &erased, root_id, dialect.clone());
         }
         catalog
     }
@@ -413,7 +409,7 @@ impl Catalog {
     pub(crate) fn accumulate_ddl(
         &mut self,
         target: CatalogLayer,
-        stmt: AnyParsedStatement<'_>,
+        stmt: &AnyParsedStatement<'_>,
         root: AnyNodeId,
         dialect: Dialect,
     ) {
@@ -676,7 +672,7 @@ impl Catalog {
 /// inference is impossible (e.g. `SELECT *`), which tells the catalog to
 /// accept any column reference conservatively.
 fn extract_columns<'a>(
-    stmt: AnyParsedStatement<'a>,
+    stmt: &AnyParsedStatement<'a>,
     fields: &NodeFields<'a>,
     columns_field: Option<u8>,
     select_field: Option<u8>,
@@ -707,7 +703,7 @@ fn extract_columns<'a>(
 
 /// Check whether a DDL function returns a table.
 fn is_table_returning<'a>(
-    stmt: AnyParsedStatement<'a>,
+    stmt: &AnyParsedStatement<'a>,
     fields: &NodeFields<'a>,
     return_type_field: Option<u8>,
     roles: &'static [SemanticRole],
@@ -736,7 +732,7 @@ fn is_table_returning<'a>(
 
 /// Extract argument count for a function DDL contribution.
 fn extract_function_arity<'a>(
-    stmt: AnyParsedStatement<'a>,
+    stmt: &AnyParsedStatement<'a>,
     fields: &NodeFields<'a>,
     args_field: Option<u8>,
 ) -> AritySpec {
@@ -756,7 +752,7 @@ fn extract_function_arity<'a>(
 }
 
 fn columns_from_column_list(
-    stmt: AnyParsedStatement<'_>,
+    stmt: &AnyParsedStatement<'_>,
     list_id: AnyNodeId,
     roles: &'static [SemanticRole],
     out: &mut Vec<String>,
@@ -811,7 +807,7 @@ fn columns_from_column_list(
 /// A `None` return causes the caller to register the table with unknown
 /// columns, conservatively accepting all column references.
 pub(super) fn columns_from_select(
-    stmt: AnyParsedStatement<'_>,
+    stmt: &AnyParsedStatement<'_>,
     select_id: AnyNodeId,
     roles: &[SemanticRole],
 ) -> Option<Vec<String>> {
@@ -872,7 +868,7 @@ pub(super) fn columns_from_select(
 
 /// Infer the output column name for a single result column node.
 fn infer_result_col_name<'a>(
-    stmt: AnyParsedStatement<'a>,
+    stmt: &AnyParsedStatement<'a>,
     child_fields: &NodeFields<'a>,
     alias_idx: u8,
     expr_idx: u8,

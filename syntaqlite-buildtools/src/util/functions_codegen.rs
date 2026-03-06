@@ -151,7 +151,6 @@ pub(crate) fn write_functions_catalog_file(
 /// # Errors
 ///
 /// Returns an error if JSON parsing fails or an unknown category/cflag is encountered.
-#[expect(clippy::too_many_lines)]
 pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, String> {
     let file: FunctionsFile =
         serde_json::from_str(json_content).map_err(|e| format!("parsing functions.json: {e}"))?;
@@ -169,7 +168,7 @@ pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, S
         let arities = func
             .arities
             .iter()
-            .map(|a| a.to_string())
+            .map(ToString::to_string)
             .collect::<Vec<_>>()
             .join(", ");
         let _ = writeln!(w, "static ARITIES_{ident}: &[i16] = &[{arities}];");

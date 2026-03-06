@@ -361,7 +361,7 @@ mod tests {
         let grammar: AnyGrammar = crate::sqlite::grammar::grammar().into();
         // SAFETY: parser pointer is valid for test scope; source is valid UTF-8.
         let result = unsafe { crate::parser::AnyParsedStatement::new(parser, source, grammar) };
-        Stmt::from_result(result, AnyNodeId(recovery_root))
+        Stmt::from_result(&result, AnyNodeId(recovery_root))
             .expect("recovery root should resolve to typed Stmt")
     }
 

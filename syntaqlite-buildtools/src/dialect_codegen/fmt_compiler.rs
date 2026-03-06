@@ -792,7 +792,7 @@ pub(crate) fn generate_rust_fmt_statics(
         "pub(crate) static {prefix}_FMT_ENUM_DISPLAY: &[u16] = &["
     ));
     for chunk in compiled.enum_display.chunks(16) {
-        let row: Vec<String> = chunk.iter().map(|v| v.to_string()).collect();
+        let row: Vec<String> = chunk.iter().map(ToString::to_string).collect();
         w.line(&format!("    {},", row.join(", ")));
     }
     w.line("];");

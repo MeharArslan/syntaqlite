@@ -6,14 +6,14 @@
 #[doc(inline)]
 pub use crate::cflags::SqliteFlag;
 
-/// Snapshot of C-parser compatibility flags for the SQLite grammar.
+/// Snapshot of C-parser compatibility flags for the `SQLite` grammar.
 ///
 /// This type mirrors the `SyntaqliteCflags` C struct (3 bytes, 22 meaningful
 /// bits, compact indices 0–21) and is used to configure the C parser at
 /// runtime. It covers only the grammar-level parser flags defined in
 /// `include/syntaqlite/cflags.h`.
 ///
-/// For the full set of SQLite compile-time flags — including non-parser flags
+/// For the full set of `SQLite` compile-time flags — including non-parser flags
 /// like `SQLITE_ENABLE_MATH_FUNCTIONS` — use `syntaqlite::util::SqliteFlags`.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct SqliteSyntaxFlags(pub(crate) ffi::CCflags);

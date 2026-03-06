@@ -256,7 +256,7 @@ fn emit_rust_node_structs(
     for node in model.nodes() {
         let name = node.name;
         let fields = node.fields;
-        w.line("#[derive(Debug, Clone, Copy)]");
+        w.line("#[derive(Debug, Clone)]");
         w.line("#[repr(C)]");
         let _ = writeln!(w, "{struct_visibility} struct {name} {{");
         w.indent();
@@ -518,7 +518,7 @@ impl AstModel<'_> {
             let _ = writeln!(w, "impl<'a> GrammarNodeType<'a> for {abs_name}<'a> {{");
             w.indent();
             w.line(
-                "fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {",
+                "fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {",
             );
             w.indent();
             w.line("let node = Node::resolve(stmt_result, id)?;");
@@ -570,7 +570,7 @@ impl AstModel<'_> {
             let _ = writeln!(w, "pub struct {name}<'a> {{");
             w.indent();
             let _ = writeln!(w, "raw: &'a {ffi_path}::{name},");
-            w.line("stmt_result: AnyParsedStatement<'a>,");
+            w.line("stmt_result: &'a AnyParsedStatement<'a>,");
             w.line("id: AnyNodeId,");
             w.close_block("}");
             w.newline();
@@ -584,13 +584,11 @@ impl AstModel<'_> {
             w.close_block("}");
             w.newline();
 
-            // Display impl — dump via NodeRef to avoid exposing AnyParsedStatement internals
+            // Display impl — delegate to AnyNode which exposes a public Display
             let _ = writeln!(w, "impl std::fmt::Display for {name}<'_> {{");
             w.indent();
             w.open_block("fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {");
-            w.line("let mut buf = String::new();");
-            w.line("AnyNode { id: self.id, stmt_result: self.stmt_result }.dump(&mut buf, 0);");
-            w.line("f.write_str(&buf)");
+            w.line("AnyNode { id: self.id, stmt_result: self.stmt_result }.fmt(f)");
             w.close_block("}");
             w.close_block("}");
             w.newline();
@@ -620,7 +618,7 @@ impl AstModel<'_> {
             let _ = writeln!(w, "impl<'a> GrammarNodeType<'a> for {name}<'a> {{");
             w.indent();
             w.line(
-                "fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {",
+                "fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {",
             );
             w.indent();
             let _ = writeln!(
@@ -746,7 +744,7 @@ impl AstModel<'_> {
         w.doc_comment("`ptr` must be non-null, well-aligned, and valid for `'a`.");
         w.doc_comment("Its first `u32` must be a valid `NodeTag` discriminant.");
         w.line("#[expect(clippy::too_many_lines, clippy::match_wildcard_for_single_variants)]");
-        w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Node<'a> {");
+        w.line("pub(crate) unsafe fn from_raw(ptr: *const u32, stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Node<'a> {");
         w.indent();
         w.line("// SAFETY: caller guarantees ptr is valid for 'a with a valid tag.");
         w.line("unsafe {");
@@ -788,7 +786,7 @@ impl AstModel<'_> {
         w.lines(
             "
         #[expect(clippy::cast_ptr_alignment)]
-        pub(crate) fn resolve(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Node<'a>> {
+        pub(crate) fn resolve(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Node<'a>> {
             let (ptr, _tag) = stmt_result.node_ptr(id)?;
             // SAFETY: node_ptr returns a valid arena pointer aligned to u32;
             // ptr is valid for 'a and its first u32 is a valid NodeTag.
@@ -802,7 +800,6 @@ impl AstModel<'_> {
         emit_rust_node_tag_accessor(&mut w, self.node_like_items(), open_for_extension);
 
         // node_id() on Node<'a>
-        w.line("#[expect(clippy::match_same_arms)]");
         w.doc_comment("The typed node ID of this node.");
         w.open_block("pub fn node_id(&self) -> NodeId {");
         w.open_block("match self {");
@@ -827,7 +824,7 @@ impl AstModel<'_> {
         w.lines(
             "
         impl<'a> GrammarNodeType<'a> for Node<'a> {
-            fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+            fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
                 Node::resolve(stmt_result, id)
             }
         }

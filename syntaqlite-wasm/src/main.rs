@@ -44,7 +44,7 @@ fn set_result_u32s(data: &[u32]) {
         let mut buf = buf.borrow_mut();
         buf.clear();
         // SAFETY: u32 has no invalid bit patterns; reinterpreting as bytes is safe.
-        let bytes = unsafe { slice::from_raw_parts(data.as_ptr() as *const u8, data.len() * 4) };
+        let bytes = unsafe { slice::from_raw_parts(data.as_ptr().cast::<u8>(), data.len() * 4) };
         buf.extend_from_slice(bytes);
     });
 }
@@ -64,12 +64,11 @@ fn decode_input(ptr: u32, len: u32) -> Result<String, String> {
 
 /// Runs `f`, catching any panic and writing `msg` to the result buffer on failure.
 fn catch_unwind<F: FnOnce() -> i32>(f: F, msg: &'static str) -> i32 {
-    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
-        Ok(result) => result,
-        Err(_) => {
-            set_result(msg);
-            -1
-        }
+    if let Ok(result) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)) {
+        result
+    } else {
+        set_result(msg);
+        -1
     }
 }
 
@@ -141,7 +140,7 @@ pub extern "C" fn wasm_alloc(len: u32) -> u32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_free(ptr: u32, len: u32) {
-    free(ptr, len)
+    free(ptr, len);
 }
 
 #[unsafe(no_mangle)]
@@ -156,7 +155,7 @@ pub extern "C" fn wasm_result_len() -> u32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_result_free() {
-    result_free()
+    result_free();
 }
 
 // ── Formatter ────────────────────────────────────────────────────────

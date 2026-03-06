@@ -13,7 +13,7 @@ use crate::parser::AnyParsedStatement;
 /// as [`TypedNodeList`].
 pub trait GrammarNodeType<'a>: Sized {
     /// Resolve `id` to `Self`, or `None` if null, invalid, or tag mismatch.
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self>;
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self>;
 }
 
 /// Trait for token enums that support typed <-> raw conversion.
@@ -100,11 +100,11 @@ impl AnyNodeId {
 #[derive(Clone, Copy)]
 pub struct AnyNode<'a> {
     pub(crate) id: AnyNodeId,
-    pub(crate) stmt_result: AnyParsedStatement<'a>,
+    pub(crate) stmt_result: &'a AnyParsedStatement<'a>,
 }
 
 impl<'a> GrammarNodeType<'a> for AnyNode<'a> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         stmt_result.node_ptr(id)?; // validate the node exists
         Some(AnyNode { id, stmt_result })
     }
@@ -116,23 +116,29 @@ impl std::fmt::Debug for AnyNode<'_> {
     }
 }
 
-impl AnyNode<'_> {
-    /// Dump as indented text into `out`.
-    pub(crate) fn dump(&self, out: &mut String, indent: usize) {
-        self.stmt_result.dump_node(self.id, out, indent);
+impl std::fmt::Display for AnyNode<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut buf = String::new();
+        self.stmt_result.dump_node(self.id, &mut buf, 0);
+        f.write_str(&buf)
     }
 }
 
 /// Typed read-only view over a list node in the arena.
 ///
 /// Used throughout generated AST APIs for child collections.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct TypedNodeList<'a, G: crate::grammar::TypedGrammar, T> {
     raw: &'a RawNodeList,
-    stmt_result: AnyParsedStatement<'a>,
+    stmt_result: &'a AnyParsedStatement<'a>,
     id: AnyNodeId,
     _phantom: PhantomData<fn() -> (G, T)>,
 }
+
+// Manual Copy impl: all fields are Copy regardless of G or T.
+// `derive(Copy)` would add a spurious `G: Copy` bound via PhantomData,
+// which would propagate to every generated list alias.
+impl<G: crate::grammar::TypedGrammar, T: Clone> Copy for TypedNodeList<'_, G, T> {}
 
 impl<G: crate::grammar::TypedGrammar, T> std::fmt::Debug for TypedNodeList<'_, G, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -271,7 +277,7 @@ impl std::fmt::Debug for NodeFields<'_> {
 
 /// Blanket [`GrammarNodeType`] impl for [`TypedNodeList`] — resolves the ID as a list node.
 impl<'a, G: crate::grammar::TypedGrammar, T> GrammarNodeType<'a> for TypedNodeList<'a, G, T> {
-    fn from_result(stmt_result: AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
+    fn from_result(stmt_result: &'a AnyParsedStatement<'a>, id: AnyNodeId) -> Option<Self> {
         let raw = stmt_result.resolve_list(id)?;
         Some(TypedNodeList {
             raw,

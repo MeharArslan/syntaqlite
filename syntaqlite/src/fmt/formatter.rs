@@ -98,27 +98,27 @@ impl Formatter {
                 }
             };
 
-            let erased = stmt.erase();
-            let stmt_source = erased.source();
-
             // Stage 1: Collect parser side-channels the interpreter needs.
             self.macro_regions.clear();
-            self.macro_regions.extend(erased.macro_regions());
 
             self.comment_entries.clear();
             self.comment_entries
-                .extend(erased.comments().map(|c| CommentEntry {
+                .extend(stmt.comments().map(|c| CommentEntry {
                     offset: c.offset(),
                     length: c.length(),
                     kind: c.kind(),
                 }));
 
             self.token_entries.clear();
-            self.token_entries
-                .extend(erased.tokens().map(|t| TokenEntry {
-                    offset: t.offset(),
-                    length: t.length(),
-                }));
+            self.token_entries.extend(stmt.tokens().map(|t| TokenEntry {
+                offset: t.offset(),
+                length: t.length(),
+            }));
+
+            let erased = stmt.erase();
+            let stmt_source = erased.source();
+
+            self.macro_regions.extend(erased.macro_regions());
 
             let root_id = erased.root_id();
             let semicolons = self.config.semicolons;

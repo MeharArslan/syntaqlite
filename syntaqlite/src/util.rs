@@ -6,7 +6,7 @@
 pub use syntaqlite_syntax::util::SqliteFlag;
 use syntaqlite_syntax::util::SqliteSyntaxFlags;
 
-/// Full set of SQLite compile-time compatibility flags.
+/// Full set of `SQLite` compile-time compatibility flags.
 ///
 /// Covers all 42 known flags using a 64-bit bitset indexed by [`SqliteFlag`]
 /// discriminants. Parser flags (indices 0–21) share the same bit positions as
@@ -14,7 +14,7 @@ use syntaqlite_syntax::util::SqliteSyntaxFlags;
 /// [`SqliteSyntaxFlags`] requires no translation table.
 ///
 /// Use this type with [`AnyDialect::with_cflags`](crate::AnyDialect::with_cflags)
-/// to filter function availability based on compile-time SQLite configuration.
+/// to filter function availability based on compile-time `SQLite` configuration.
 ///
 /// # Example
 /// ```rust,ignore

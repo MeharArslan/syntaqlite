@@ -215,7 +215,7 @@ impl SemanticAnalyzer {
 
             self.catalog.accumulate_ddl(
                 CatalogLayer::Document,
-                erased,
+                &erased,
                 root_id,
                 self.dialect.clone(),
             );
@@ -762,7 +762,7 @@ impl<'a> ValidationPass<'a> {
                 } else {
                     // No declared column list: infer names from SELECT result columns.
                     let inferred =
-                        cte_body_id.and_then(|id| columns_from_select(*stmt, id, self.roles));
+                        cte_body_id.and_then(|id| columns_from_select(stmt, id, self.roles));
                     self.catalog.add_query_table(cte_name, inferred);
                 }
             }

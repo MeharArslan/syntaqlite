@@ -7,8 +7,7 @@ use std::ops::Range;
 use std::ptr::NonNull;
 use std::rc::Rc;
 
-use crate::any::AnyNodeId;
-use crate::ast::{AnyNode, GrammarTokenType};
+use crate::ast::GrammarTokenType;
 use crate::grammar::{AnyGrammar, TypedGrammar};
 
 use super::{
@@ -84,7 +83,7 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
         // reset_parser. The first source_len bytes are the original source.
         let source = unsafe { std::str::from_utf8_unchecked(&inner.source_buf[..source_len]) };
         // SAFETY: inner.raw is valid (owned via ParserInner, not yet destroyed).
-        unsafe { TypedParsedStatement::new(inner.raw.as_ptr(), source, self.grammar) }
+        unsafe { TypedParsedStatement::new(inner.raw.as_ptr(), source, self.grammar.clone()) }
     }
 
     fn result_from_rc(
@@ -252,13 +251,6 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
         self.typed_stmt_result().erase()
     }
 
-    pub(crate) fn node_ref(&self, id: AnyNodeId) -> AnyNode<'_> {
-        AnyNode {
-            id,
-            stmt_result: self.stmt_result(),
-        }
-    }
-
     pub(crate) fn comments(&self) -> &[ffi::CComment] {
         // SAFETY: raw is valid (owned via ParserInner, valid for &self).
         unsafe { (*self.raw_ptr()).result_comments() }
@@ -381,11 +373,6 @@ impl IncrementalParseSession {
     #[expect(dead_code)]
     pub(crate) fn stmt_result(&self) -> AnyParsedStatement<'_> {
         self.0.stmt_result()
-    }
-
-    #[expect(dead_code)]
-    pub(crate) fn node_ref(&self, id: AnyNodeId) -> AnyNode<'_> {
-        self.0.node_ref(id)
     }
 
     #[expect(dead_code)]

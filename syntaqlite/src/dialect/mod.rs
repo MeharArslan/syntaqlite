@@ -332,7 +332,6 @@ unsafe impl Sync for AnyDialect {}
 
 impl AnyDialect {
     /// Construct from grammar + generated static tables (built-in dialects).
-    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         grammar: AnyGrammar,
         fmt_strings: &'static [&'static str],
@@ -369,8 +368,7 @@ impl AnyDialect {
         // SAFETY: We keep `lib` alive in an `Arc` below so the grammar pointer
         // lives as long as the Dialect.
         let lib = unsafe {
-            libloading::Library::new(path)
-                .map_err(|e| format!("failed to load {path:?}: {e}"))?
+            libloading::Library::new(path).map_err(|e| format!("failed to load {path:?}: {e}"))?
         };
 
         let symbol = match name {

@@ -62,7 +62,7 @@ pub struct LspHost {
 }
 
 impl LspHost {
-    /// Create a host for the built-in SQLite dialect.
+    /// Create a host for the built-in `SQLite` dialect.
     #[cfg(feature = "sqlite")]
     pub fn new() -> Self {
         let dialect = crate::sqlite::dialect::dialect();

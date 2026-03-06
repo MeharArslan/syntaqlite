@@ -72,12 +72,12 @@ impl TextWriterCore {
     /// indentation for the next non-empty chunk, matching `line()`'s behaviour.
     pub(crate) fn write_fmt_str(&mut self, s: &str) {
         let mut chunks = s.split('\n');
-        if let Some(first) = chunks.next() {
-            if !first.is_empty() {
-                self.write_indent();
-                self.buffer.push_str(first);
-                self.at_line_start = false;
-            }
+        if let Some(first) = chunks.next()
+            && !first.is_empty()
+        {
+            self.write_indent();
+            self.buffer.push_str(first);
+            self.at_line_start = false;
         }
         for chunk in chunks {
             self.newline();

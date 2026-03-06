@@ -11,7 +11,7 @@ use crate::sqlite::cflag_entries::CFLAG_ENTRIES;
 
 // ── Built-in function catalog ────────────────────────────────────────────────
 
-/// Returns all SQLite built-in functions available for the given dialect config.
+/// Returns all `SQLite` built-in functions available for the given dialect config.
 ///
 /// Filters the full catalog by version and cflags. A function is included
 /// if at least one of its availability rules matches the config.
@@ -25,7 +25,7 @@ pub(crate) fn available_functions(dialect: &Dialect) -> Vec<&'static FunctionInf
 
 // ── Cflag helpers ─────────────────────────────────────────────────────────────
 
-/// Parse a dotted SQLite version string (e.g. `"3.35.0"`) into a [`SqliteVersion`].
+/// Parse a dotted `SQLite` version string (e.g. `"3.35.0"`) into a [`SqliteVersion`].
 /// The string `"latest"` maps to [`SqliteVersion::Latest`].
 pub(crate) fn parse_sqlite_version(s: &str) -> Result<SqliteVersion, String> {
     let s = s.trim();

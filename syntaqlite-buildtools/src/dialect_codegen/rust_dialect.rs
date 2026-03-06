@@ -74,7 +74,7 @@ unsafe extern "C" {{
 ///
 /// Wraps a [`AnyGrammar`] and implements [`TypedGrammar`]. Obtain via [`grammar()`];
 /// configure with [`with_version`](Self::with_version) and [`with_cflags`](Self::with_cflags).
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct {grammar_struct} {{
     raw: AnyGrammar,
 }}

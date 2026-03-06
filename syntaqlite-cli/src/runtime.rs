@@ -61,11 +61,10 @@ fn require_dialect(dialect: Option<Dialect>) -> Result<Dialect, String> {
 
 pub(crate) fn dispatch(cli: Cli, dialect: Option<Dialect>) -> Result<(), String> {
     if let Some(path) = &cli.dialect_path {
-        let dyn_dialect = Dialect::load(path, cli.dialect_name.as_deref())
-            .unwrap_or_else(|e| {
-                eprintln!("error: {e}");
-                std::process::exit(1);
-            });
+        let dyn_dialect = Dialect::load(path, cli.dialect_name.as_deref()).unwrap_or_else(|e| {
+            eprintln!("error: {e}");
+            std::process::exit(1);
+        });
         dispatch_commands(cli.command, Some(dyn_dialect))
     } else {
         dispatch_commands(cli.command, dialect)
@@ -147,7 +146,7 @@ fn cmd_ast(dialect: Dialect, files: Vec<String>) -> Result<(), String> {
 }
 
 fn cmd_ast_source(dialect: &Dialect, source: &str, file: &str) -> Result<(), String> {
-    let parser = AnyParser::new(*dialect.deref());
+    let parser = AnyParser::new(dialect.deref().clone());
     let mut session = parser.parse(source);
     let mut out = String::new();
     let mut error_diags: Vec<Diagnostic> = Vec::new();

@@ -132,7 +132,7 @@ impl<G: TypedGrammar> TypedParser<G> {
         // copied into source_buf which will be owned by the session.
         unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
         TypedParseSession {
-            grammar: self.grammar,
+            grammar: self.grammar.clone(),
             inner: Some(inner),
             slot: Rc::clone(&self.inner),
             _marker: PhantomData,
@@ -173,7 +173,12 @@ impl<G: TypedGrammar> TypedParser<G> {
         unsafe { reset_parser(inner.raw.as_ptr(), &mut inner.source_buf, source) };
         let c_source_ptr =
             NonNull::new(inner.source_buf.as_mut_ptr()).expect("source_buf is non-empty");
-        TypedIncrementalParseSession::new(c_source_ptr, self.grammar, inner, Rc::clone(&self.inner))
+        TypedIncrementalParseSession::new(
+            c_source_ptr,
+            self.grammar.clone(),
+            inner,
+            Rc::clone(&self.inner),
+        )
     }
 }
 
@@ -240,7 +245,8 @@ impl<G: TypedGrammar> TypedParseSession<G> {
         // reset_parser. The first source_len bytes are the original source.
         let source = unsafe { std::str::from_utf8_unchecked(&inner.source_buf[..source_len]) };
         // SAFETY: inner.raw is valid (owned via ParserInner, not yet destroyed).
-        let result = unsafe { TypedParsedStatement::new(inner.raw.as_ptr(), source, self.grammar) };
+        let result =
+            unsafe { TypedParsedStatement::new(inner.raw.as_ptr(), source, self.grammar.clone()) };
         if rc == ffi::PARSE_OK {
             ParseOutcome::Ok(result)
         } else {
@@ -283,7 +289,7 @@ impl<G: TypedGrammar> TypedParseSession<G> {
         // reset_parser; inner.raw is valid (owned via ParserInner).
         let source = unsafe { std::str::from_utf8_unchecked(&inner.source_buf[..source_len]) };
         // SAFETY: inner.raw is valid for 'self; source is valid UTF-8 for 'self.
-        unsafe { AnyParsedStatement::new(inner.raw.as_ptr(), source, self.grammar) }
+        unsafe { AnyParsedStatement::new(inner.raw.as_ptr(), source, self.grammar.clone()) }
     }
 }
 
@@ -293,63 +299,46 @@ pub type AnyParser = TypedParser<AnyGrammar>;
 /// Session alias paired with [`AnyParser`].
 pub type AnyParseSession = TypedParseSession<AnyGrammar>;
 
-/// Parse result for one statement from a [`TypedParseSession`].
+/// Grammar-erased view of a parsed statement.
 ///
-/// Main hand-off point to:
-///
-/// - AST traversal (`root()`).
-/// - Token/comment-aware tooling (`tokens()`, `comments()`).
-/// - Grammar-agnostic pipelines (`erase()`).
-#[derive(Clone, Copy)]
-pub struct TypedParsedStatement<'a, G: TypedGrammar> {
+/// Cheap to borrow — holds a raw parser pointer, source reference, and grammar
+/// handle. Nodes and lists store `&'a AnyParsedStatement<'a>` rather than an
+/// owned copy, making them `Copy` and eliminating grammar-handle clones.
+#[derive(Clone)]
+pub struct AnyParsedStatement<'a> {
     pub(crate) raw: NonNull<CParser>,
     pub(crate) source: &'a str,
     pub(crate) grammar: AnyGrammar,
-    _marker: PhantomData<G>,
 }
 
-impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
+impl<'a> AnyParsedStatement<'a> {
     /// Construct from raw parts.
     ///
     /// # Safety
     /// `raw` must be a valid, non-null parser pointer that remains valid for `'a`.
     pub(crate) unsafe fn new(raw: *mut CParser, source: &'a str, grammar: AnyGrammar) -> Self {
-        TypedParsedStatement {
-            // SAFETY: caller guarantees raw is non-null (documented in Safety section above).
+        AnyParsedStatement {
+            // SAFETY: caller guarantees raw is non-null.
             raw: unsafe { NonNull::new_unchecked(raw) },
             source,
             grammar,
-            _marker: PhantomData,
         }
     }
 
-    /// Convert to the grammar-agnostic [`AnyParsedStatement`] view.
-    ///
-    /// Useful when handing results to generic infrastructure that does not know
-    /// the concrete grammar type.
-    pub fn erase(self) -> AnyParsedStatement<'a> {
-        TypedParsedStatement {
-            raw: self.raw,
-            source: self.source,
-            grammar: self.grammar,
-            _marker: PhantomData,
-        }
-    }
-
-    /// Typed AST root for this statement, if available.
-    pub fn root(&self) -> Option<G::Node<'a>> {
+    /// Root node ID for the current statement (`AnyNodeId::NULL` if absent).
+    pub fn root_id(&self) -> AnyNodeId {
         // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
-        let id = AnyNodeId(unsafe { self.raw.as_ref().result_root() });
-        if id.is_null() {
-            return None;
-        }
-        G::Node::from_result(self.erase(), id)
+        AnyNodeId(unsafe { self.raw.as_ref().result_root() })
     }
 
-    /// Dump the AST as indented text into `out`.
-    pub fn dump(&self, out: &mut String, indent: usize) {
-        let any = self.erase();
-        any.dump_node(any.root_id(), out, indent);
+    /// Macro expansion call-site spans recorded during parsing.
+    pub fn macro_regions(&self) -> impl Iterator<Item = MacroRegion> + use<'_> {
+        // SAFETY: self.raw is valid for 'a; the slice lives for the parser lifetime.
+        let raw: &[ffi::CMacroRegion] = unsafe { self.raw.as_ref().result_macros() };
+        raw.iter().map(|r| MacroRegion {
+            call_offset: r.call_offset,
+            call_length: r.call_length,
+        })
     }
 
     /// The source text bound to this result.
@@ -357,101 +346,53 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
         self.source
     }
 
-    /// Statement-local token stream for this parse result.
-    ///
-    /// Requires `collect_tokens: true` and skips unknown token ordinals for `G`.
-    pub fn tokens(&self) -> impl Iterator<Item = TypedParserToken<'a, G>> {
-        let source = self.source;
-        // SAFETY: self.raw is valid for 'a; the returned slice lives for 'a.
-        let raw: &'a [ffi::CParserToken] = unsafe { self.raw.as_ref().result_tokens() };
-        raw.iter().filter_map(move |t| {
-            let token_type = G::Token::from_token_type(AnyTokenType(t.type_))?;
-            let text = &source[t.offset as usize..(t.offset + t.length) as usize];
-            Some(TypedParserToken::new(
-                text,
-                token_type,
-                ParserTokenFlags::from_raw(t.flags),
-                t.offset,
-                t.length,
-            ))
-        })
-    }
-
-    /// Comments attached to this statement.
-    ///
-    /// Requires `collect_tokens: true` in [`ParserConfig`].
-    pub fn comments(&self) -> impl Iterator<Item = Comment<'a>> {
-        let source = self.source;
-        // SAFETY: self.raw is valid for 'a; the returned slice lives for 'a.
-        let raw: &'a [ffi::CComment] = unsafe { self.raw.as_ref().result_comments() };
-        raw.iter().map(move |c| {
-            let text = &source[c.offset as usize..(c.offset + c.length) as usize];
-            let kind = match c.kind {
-                ffi::CCommentKind::LineComment => CommentKind::Line,
-                ffi::CCommentKind::BlockComment => CommentKind::Block,
-            };
-            Comment::new(text, kind, c.offset, c.length)
-        })
-    }
-
-    // ── Result accessors (mirror syntaqlite_result_*) ──────────────────────
-
-    /// Human-readable error message, or `None`.
-    pub(crate) fn error_msg(&self) -> Option<&str> {
-        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
-        unsafe {
-            let ptr = self.raw.as_ref().result_error_msg();
-            if ptr.is_null() {
-                None
-            } else {
-                Some(CStr::from_ptr(ptr).to_str().unwrap_or("parse error"))
-            }
+    /// Extract reflective node data (`tag` + field values) for `id`.
+    pub fn extract_fields(
+        &self,
+        id: AnyNodeId,
+    ) -> Option<(AnyNodeTag, crate::ast::NodeFields<'a>)> {
+        let (ptr, tag) = self.node_ptr(id)?;
+        let mut fields = crate::ast::NodeFields::new();
+        for meta in self.grammar.field_meta(tag) {
+            // SAFETY: ptr is a valid arena node pointer valid for 'a;
+            // meta describes a field within that node's struct layout.
+            let val = unsafe { extract_field_value(ptr, &meta, self.source) };
+            fields.push(val);
         }
+        Some((tag, fields))
     }
 
-    /// Byte offset of the error token, or `None` if unknown.
-    pub(crate) fn error_offset(&self) -> Option<usize> {
-        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
-        let v = unsafe { self.raw.as_ref().result_error_offset() };
-        if v == 0xFFFF_FFFF {
-            None
-        } else {
-            Some(v as usize)
-        }
-    }
-
-    /// Byte length of the error token, or `None` if unknown.
-    pub(crate) fn error_length(&self) -> Option<usize> {
-        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
-        let v = unsafe { self.raw.as_ref().result_error_length() };
-        if v == 0 { None } else { Some(v as usize) }
-    }
-
-    /// Error classification for the current result.
-    pub(crate) fn error_kind(&self) -> ParseErrorKind {
-        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
-        let recovery_root = AnyNodeId(unsafe { self.raw.as_ref().result_recovery_root() });
-        if recovery_root.is_null() {
-            ParseErrorKind::Fatal
-        } else {
-            ParseErrorKind::Recovered
-        }
-    }
-
-    /// Typed recovery AST root for this statement, if available.
-    pub(crate) fn recovery_root(&self) -> Option<G::Node<'a>> {
-        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
-        let id = AnyNodeId(unsafe { self.raw.as_ref().result_recovery_root() });
-        if id.is_null() {
+    /// Return child node IDs if `id` is a list node.
+    pub fn list_children(&self, id: AnyNodeId) -> Option<&'a [AnyNodeId]> {
+        let (_, tag) = self.node_ptr(id)?;
+        if !self.grammar.is_list(tag) {
             return None;
         }
-        G::Node::from_result(self.erase(), id)
+        #[expect(clippy::redundant_closure_for_method_calls)]
+        self.resolve_list(id).map(|l| l.children())
     }
 
-    // ── Arena access ───────────────────────────────────────────────────────
+    /// Iterate direct child node IDs for the node at `id`.
+    pub fn child_node_ids(&self, id: AnyNodeId) -> impl Iterator<Item = AnyNodeId> + '_ {
+        let mut out = Vec::new();
+        if let Some((_, fields)) = self.extract_fields(id) {
+            for i in 0..fields.len() {
+                if let crate::ast::FieldValue::NodeId(child_id) = fields[i] {
+                    if child_id.is_null() {
+                        continue;
+                    }
+                    if let Some(children) = self.list_children(child_id) {
+                        out.extend(children.iter().copied().filter(|id| !id.is_null()));
+                    } else {
+                        out.push(child_id);
+                    }
+                }
+            }
+        }
+        out.into_iter()
+    }
 
     /// Resolve a `AnyNodeId` to a typed reference, validating the tag.
-    /// Returns `None` if null, invalid, or tag mismatch.
     pub(crate) fn resolve_as<T: ArenaNode>(&self, id: AnyNodeId) -> Option<&'a T> {
         let (ptr, tag) = self.node_ptr(id)?;
         if tag.0 != T::TAG {
@@ -464,13 +405,9 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
     }
 
     /// Resolve a `AnyNodeId` as a [`RawNodeList`] (for list nodes).
-    /// Returns `None` if null or invalid.
     pub(crate) fn resolve_list(&self, id: AnyNodeId) -> Option<&'a RawNodeList> {
         let (ptr, _) = self.node_ptr(id)?;
-        // SAFETY: ptr is valid for 'a. List nodes have RawNodeList layout
-        // (tag, count, children[count]). The caller is responsible for
-        // ensuring the id refers to a list node (enforced by codegen).
-        // The arena guarantees alignment of all allocated nodes.
+        // SAFETY: ptr is valid for 'a. List nodes have RawNodeList layout.
         #[expect(clippy::cast_ptr_alignment)]
         Some(unsafe { &*ptr.cast::<RawNodeList>() })
     }
@@ -497,9 +434,8 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
         unsafe extern "C" {
             fn free(ptr: *mut std::ffi::c_void);
         }
-        // SAFETY: raw is valid; dump_node returns a malloc'd NUL-terminated
-        // string (or null). We free it after copying.
-        #[expect(clippy::cast_possible_truncation, clippy::cast_ptr_alignment)]
+        // SAFETY: raw is valid; dump_node returns a malloc'd NUL-terminated string.
+        #[expect(clippy::cast_possible_truncation)]
         unsafe {
             let ptr = self.raw.as_ref().dump_node(id.0, indent as u32);
             if !ptr.is_null() {
@@ -510,89 +446,153 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
     }
 }
 
-/// Statement-result alias for grammar-independent pipelines.
-pub type AnyParsedStatement<'a> = TypedParsedStatement<'a, AnyGrammar>;
+/// Parse result for one statement from a [`TypedParseSession`].
+///
+/// Main hand-off point to:
+///
+/// - AST traversal (`root()`).
+/// - Token/comment-aware tooling (`tokens()`, `comments()`).
+/// - Grammar-agnostic pipelines (`erase()`).
+#[derive(Clone)]
+pub struct TypedParsedStatement<'a, G: TypedGrammar> {
+    pub(crate) any: AnyParsedStatement<'a>,
+    _marker: PhantomData<G>,
+}
 
-// ── AnyGrammar-specific statement result APIs ────────────────────────────────
-
-impl<'a> TypedParsedStatement<'a, AnyGrammar> {
-    /// Root node ID for the current statement (`AnyNodeId::NULL` if absent).
+impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
+    /// Construct from raw parts.
     ///
-    /// This is the untyped counterpart to [`TypedParsedStatement::root`], which
-    /// returns the grammar's typed node. Use when working in a grammar-agnostic
-    /// context, e.g. when passing to [`extract_fields`](Self::extract_fields).
-    pub fn root_id(&self) -> AnyNodeId {
-        // SAFETY: self.raw is a valid, non-null parser pointer for lifetime 'a.
-        AnyNodeId(unsafe { self.raw.as_ref().result_root() })
+    /// # Safety
+    /// `raw` must be a valid, non-null parser pointer that remains valid for `'a`.
+    pub(crate) unsafe fn new(raw: *mut CParser, source: &'a str, grammar: AnyGrammar) -> Self {
+        TypedParsedStatement {
+            any: AnyParsedStatement {
+                // SAFETY: caller guarantees raw is non-null.
+                raw: unsafe { NonNull::new_unchecked(raw) },
+                source,
+                grammar,
+            },
+            _marker: PhantomData,
+        }
     }
 
-    /// Macro expansion call-site spans recorded during parsing.
+    /// Convert to the grammar-agnostic [`AnyParsedStatement`] view.
+    pub fn erase(self) -> AnyParsedStatement<'a> {
+        self.any
+    }
+
+    /// Typed AST root for this statement, if available.
     ///
-    /// Each region describes a macro call site's byte range in the original
-    /// source. Empty if no macro expansions occurred.
-    pub fn macro_regions(&self) -> impl Iterator<Item = MacroRegion> + use<'_> {
-        // SAFETY: self.raw is valid for 'a; the slice lives for the parser lifetime.
-        let raw: &[ffi::CMacroRegion] = unsafe { self.raw.as_ref().result_macros() };
-        raw.iter().map(|r| MacroRegion {
-            call_offset: r.call_offset,
-            call_length: r.call_length,
+    /// Borrows `self` for `'a` so that returned nodes can hold `&'a AnyParsedStatement<'a>`
+    /// without cloning. Drop the returned node to release the borrow.
+    pub fn root(&'a self) -> Option<G::Node<'a>> {
+        // SAFETY: self.any.raw is a valid, non-null parser pointer for lifetime 'a.
+        let id = AnyNodeId(unsafe { self.any.raw.as_ref().result_root() });
+        if id.is_null() {
+            return None;
+        }
+        G::Node::from_result(&self.any, id)
+    }
+
+    /// Dump the AST as indented text into `out`.
+    pub fn dump(&self, out: &mut String, indent: usize) {
+        self.any.dump_node(self.any.root_id(), out, indent);
+    }
+
+    /// The source text bound to this result.
+    pub fn source(&self) -> &'a str {
+        self.any.source
+    }
+
+    /// Statement-local token stream for this parse result.
+    ///
+    /// Requires `collect_tokens: true` and skips unknown token ordinals for `G`.
+    pub fn tokens(&self) -> impl Iterator<Item = TypedParserToken<'a, G>> {
+        let source = self.any.source;
+        // SAFETY: self.any.raw is valid for 'a; the returned slice lives for 'a.
+        let raw: &'a [ffi::CParserToken] = unsafe { self.any.raw.as_ref().result_tokens() };
+        raw.iter().filter_map(move |t| {
+            let token_type = G::Token::from_token_type(AnyTokenType(t.type_))?;
+            let text = &source[t.offset as usize..(t.offset + t.length) as usize];
+            Some(TypedParserToken::new(
+                text,
+                token_type,
+                ParserTokenFlags::from_raw(t.flags),
+                t.offset,
+                t.length,
+            ))
         })
     }
 
-    /// Extract reflective node data (`tag` + field values) for `id`.
+    /// Comments attached to this statement.
     ///
-    /// Returns `Some((tag, fields))` where `tag` is the node type ordinal and
-    /// `fields` is an indexable collection of [`crate::ast::FieldValue`]s, or `None` if
-    /// `id` is null or invalid.
-    pub fn extract_fields(
-        &self,
-        id: AnyNodeId,
-    ) -> Option<(AnyNodeTag, crate::ast::NodeFields<'a>)> {
-        let (ptr, tag) = self.node_ptr(id)?;
-        let mut fields = crate::ast::NodeFields::new();
-        for meta in self.grammar.field_meta(tag) {
-            // SAFETY: ptr is a valid arena node pointer valid for 'a;
-            // meta describes a field within that node's struct layout.
-            let val = unsafe { extract_field_value(ptr, &meta, self.source) };
-            fields.push(val);
-        }
-        Some((tag, fields))
+    /// Requires `collect_tokens: true` in [`ParserConfig`].
+    pub fn comments(&self) -> impl Iterator<Item = Comment<'a>> {
+        let source = self.any.source;
+        // SAFETY: self.any.raw is valid for 'a; the returned slice lives for 'a.
+        let raw: &'a [ffi::CComment] = unsafe { self.any.raw.as_ref().result_comments() };
+        raw.iter().map(move |c| {
+            let text = &source[c.offset as usize..(c.offset + c.length) as usize];
+            let kind = match c.kind {
+                ffi::CCommentKind::LineComment => CommentKind::Line,
+                ffi::CCommentKind::BlockComment => CommentKind::Block,
+            };
+            Comment::new(text, kind, c.offset, c.length)
+        })
     }
 
-    /// Return child node IDs if `id` is a list node.
-    ///
-    /// Returns `Some(children)` if `id` refers to a list node, `None` if
-    /// `id` is null, invalid, or refers to a non-list node.
-    pub fn list_children(&self, id: AnyNodeId) -> Option<&'a [AnyNodeId]> {
-        let (_, tag) = self.node_ptr(id)?;
-        if !self.grammar.is_list(tag) {
-            return None;
-        }
-        #[expect(clippy::redundant_closure_for_method_calls)]
-        self.resolve_list(id).map(|l| l.children())
-    }
+    // ── Result accessors (mirror syntaqlite_result_*) ──────────────────────
 
-    /// Iterate direct child node IDs for the node at `id`.
-    ///
-    /// For regular nodes, yields each non-null `NodeId` field.
-    /// For fields that point to list nodes, yields the list's non-null children instead.
-    pub fn child_node_ids(&self, id: AnyNodeId) -> impl Iterator<Item = AnyNodeId> + '_ {
-        let mut out = Vec::new();
-        if let Some((_, fields)) = self.extract_fields(id) {
-            for i in 0..fields.len() {
-                if let crate::ast::FieldValue::NodeId(child_id) = fields[i] {
-                    if child_id.is_null() {
-                        continue;
-                    }
-                    if let Some(children) = self.list_children(child_id) {
-                        out.extend(children.iter().copied().filter(|id| !id.is_null()));
-                    } else {
-                        out.push(child_id);
-                    }
-                }
+    /// Human-readable error message, or `None`.
+    pub(crate) fn error_msg(&self) -> Option<&str> {
+        // SAFETY: self.any.raw is a valid, non-null parser pointer for lifetime 'a.
+        unsafe {
+            let ptr = self.any.raw.as_ref().result_error_msg();
+            if ptr.is_null() {
+                None
+            } else {
+                Some(CStr::from_ptr(ptr).to_str().unwrap_or("parse error"))
             }
         }
-        out.into_iter()
+    }
+
+    /// Byte offset of the error token, or `None` if unknown.
+    pub(crate) fn error_offset(&self) -> Option<usize> {
+        // SAFETY: self.any.raw is a valid, non-null parser pointer for lifetime 'a.
+        let v = unsafe { self.any.raw.as_ref().result_error_offset() };
+        if v == 0xFFFF_FFFF {
+            None
+        } else {
+            Some(v as usize)
+        }
+    }
+
+    /// Byte length of the error token, or `None` if unknown.
+    pub(crate) fn error_length(&self) -> Option<usize> {
+        // SAFETY: self.any.raw is a valid, non-null parser pointer for lifetime 'a.
+        let v = unsafe { self.any.raw.as_ref().result_error_length() };
+        if v == 0 { None } else { Some(v as usize) }
+    }
+
+    /// Error classification for the current result.
+    pub(crate) fn error_kind(&self) -> ParseErrorKind {
+        // SAFETY: self.any.raw is a valid, non-null parser pointer for lifetime 'a.
+        let recovery_root = AnyNodeId(unsafe { self.any.raw.as_ref().result_recovery_root() });
+        if recovery_root.is_null() {
+            ParseErrorKind::Fatal
+        } else {
+            ParseErrorKind::Recovered
+        }
+    }
+
+    /// Typed recovery AST root for this statement, if available.
+    pub(crate) fn recovery_root(&'a self) -> Option<G::Node<'a>> {
+        // SAFETY: self.any.raw is a valid, non-null parser pointer for lifetime 'a.
+        let id = AnyNodeId(unsafe { self.any.raw.as_ref().result_recovery_root() });
+        if id.is_null() {
+            return None;
+        }
+        G::Node::from_result(&self.any, id)
     }
 }
 
@@ -680,7 +680,7 @@ impl<'a, G: TypedGrammar> TypedParseError<'a, G> {
         self.0.error_length()
     }
     /// The partial recovery tree, if error recovery produced one.
-    pub fn recovery_root(&self) -> Option<G::Node<'a>> {
+    pub fn recovery_root(&'a self) -> Option<G::Node<'a>> {
         self.0.recovery_root()
     }
 

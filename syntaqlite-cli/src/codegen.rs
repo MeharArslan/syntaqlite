@@ -29,12 +29,12 @@ pub(crate) enum OutputType {
 
 /// Generate dialect C sources and Rust bindings for external dialects.
 ///
-/// Base SQLite grammar and node files are embedded in the binary.
+/// Base `SQLite` grammar and node files are embedded in the binary.
 /// When `--actions-dir` / `--nodes-dir` are provided, those extension
 /// files are merged with the base (same-name files replace the base).
 #[derive(clap::Parser)]
 pub(crate) struct DialectArgs {
-    /// TypedDialectEnv identifier (e.g. "mydialect").
+    /// `TypedDialectEnv` identifier (e.g. "mydialect").
     #[arg(long, required = true)]
     name: String,
 

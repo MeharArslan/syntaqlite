@@ -415,8 +415,7 @@ impl<'a> SourcePositionMap<'a> {
         let line_end = self.src[line_start..]
             .iter()
             .position(|&b| b == b'\n')
-            .map(|rel| line_start + rel)
-            .unwrap_or(len);
+            .map_or(len, |rel| line_start + rel);
 
         line_start + (pos.character as usize).min(line_end - line_start)
     }
