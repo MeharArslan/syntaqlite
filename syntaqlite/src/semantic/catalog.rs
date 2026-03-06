@@ -306,7 +306,7 @@ impl Catalog {
     /// }
     /// ```
     #[cfg(feature = "json")]
-    pub fn from_json(dialect: Dialect, s: &str) -> Result<Self, String> {
+    pub(crate) fn from_json(dialect: Dialect, s: &str) -> Result<Self, String> {
         #[derive(serde::Deserialize)]
         struct Root {
             #[serde(default)]

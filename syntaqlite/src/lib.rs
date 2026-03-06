@@ -20,7 +20,7 @@ pub(crate) mod semantic;
 pub(crate) mod sqlite;
 
 #[cfg(feature = "lsp")]
-pub(crate) mod lsp;
+pub mod lsp;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 

@@ -61,8 +61,7 @@ impl TokenCategoryExt for TokenCategory {
     }
 }
 
-// Public API starts here.
-pub(crate) use host::LspHost;
+pub use host::LspHost;
 pub(crate) use server::LspServer;
 
 // Re-export shared types from semantic layer.
@@ -72,29 +71,45 @@ pub(crate) use crate::semantic::model::{CompletionContext, CompletionInfo};
 
 /// A completion item returned by [`LspHost::completion_items`].
 #[derive(Debug, Clone)]
-pub(crate) struct CompletionEntry {
+pub struct CompletionEntry {
+    label: String,
+    kind: CompletionKind,
+}
+
+impl CompletionEntry {
+    pub(crate) fn new(label: String, kind: CompletionKind) -> Self {
+        CompletionEntry { label, kind }
+    }
+
     /// The label to display and insert.
-    pub(crate) label: String,
+    pub fn label(&self) -> &str {
+        &self.label
+    }
+
     /// What kind of thing is being completed.
-    pub(crate) kind: CompletionKind,
+    pub fn kind(&self) -> CompletionKind {
+        self.kind
+    }
 }
 
 /// The kind of a [`CompletionEntry`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum CompletionKind {
+pub enum CompletionKind {
+    /// A SQL keyword.
     Keyword,
+    /// A built-in or user-defined function.
     Function,
 }
 
 impl CompletionKind {
-    pub(crate) fn as_str(self) -> &'static str {
+    /// String representation for use in serialization or display.
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::Keyword => "keyword",
             Self::Function => "function",
         }
     }
 }
-// Public API ends here.
 
 mod host;
 mod server;

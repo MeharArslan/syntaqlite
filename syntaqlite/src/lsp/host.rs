@@ -53,7 +53,7 @@ fn ensure_model(doc: &mut Document, analyzer: &mut SemanticAnalyzer, user_catalo
 /// Stores documents by URI and lazily computes per-document analysis
 /// (diagnostics, semantic tokens, completions, formatting) on first access
 /// after each edit. Semantic validation delegates to [`SemanticAnalyzer`].
-pub(crate) struct LspHost {
+pub struct LspHost {
     dialect: Dialect,
     /// User-provided schema (tables, views, functions).
     user_catalog: Catalog,
@@ -64,7 +64,7 @@ pub(crate) struct LspHost {
 impl LspHost {
     /// Create a host for the built-in SQLite dialect.
     #[cfg(feature = "sqlite")]
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         let dialect = crate::sqlite::dialect::dialect();
         LspHost {
             dialect,
@@ -88,7 +88,7 @@ impl LspHost {
 
     /// Set the session context (user-provided schema and functions).
     /// Invalidates all cached analysis.
-    pub(crate) fn set_session_context(&mut self, ctx: Catalog) {
+    pub fn set_session_context(&mut self, ctx: Catalog) {
         self.user_catalog = ctx;
         for doc in self.documents.values_mut() {
             doc.model = None;
@@ -119,7 +119,7 @@ impl LspHost {
     }
 
     /// Update a document's content, invalidating cached analysis.
-    pub(crate) fn update_document(&mut self, uri: &str, version: i32, text: String) {
+    pub fn update_document(&mut self, uri: &str, version: i32, text: String) {
         if let Some(doc) = self.documents.get_mut(uri) {
             doc.version = version;
             doc.source = text;
@@ -176,7 +176,7 @@ impl LspHost {
     }
 
     /// Semantic tokens delta-encoded for LSP `textDocument/semanticTokens/full`.
-    pub(crate) fn semantic_tokens_encoded(
+    pub fn semantic_tokens_encoded(
         &mut self,
         uri: &str,
         range: Option<(usize, usize)>,
@@ -216,7 +216,7 @@ impl LspHost {
     }
 
     /// Completion items (keywords + functions) at a byte offset.
-    pub(crate) fn completion_items(&mut self, uri: &str, offset: usize) -> Vec<CompletionEntry> {
+    pub fn completion_items(&mut self, uri: &str, offset: usize) -> Vec<CompletionEntry> {
         use std::collections::HashSet;
 
         let info = self.completion_info_at_offset(uri, offset);
@@ -235,10 +235,7 @@ impl LspHost {
                 continue;
             }
             if seen.insert(entry.keyword.to_string()) {
-                items.push(CompletionEntry {
-                    label: entry.keyword.to_string(),
-                    kind: CompletionKind::Keyword,
-                });
+                items.push(CompletionEntry::new(entry.keyword.to_string(), CompletionKind::Keyword));
             }
         }
 
@@ -251,10 +248,7 @@ impl LspHost {
         if show_functions {
             for name in self.available_function_names() {
                 if seen.insert(name.clone()) {
-                    items.push(CompletionEntry {
-                        label: name,
-                        kind: CompletionKind::Function,
-                    });
+                    items.push(CompletionEntry::new(name, CompletionKind::Function));
                 }
             }
         }
@@ -284,7 +278,7 @@ impl LspHost {
 
     /// Parse + semantic diagnostics combined.
     #[cfg(feature = "validation")]
-    pub(crate) fn all_diagnostics(
+    pub fn all_diagnostics(
         &mut self,
         uri: &str,
         config: &ValidationConfig,
@@ -310,10 +304,35 @@ impl LspHost {
     // ── Schema helpers ────────────────────────────────────────────────────────
 
     /// All function names available given the current dialect and user catalog.
-    pub(crate) fn available_function_names(&self) -> Vec<String> {
+    pub fn available_function_names(&self) -> Vec<String> {
         let mut cat = Catalog::new(self.dialect);
         cat.database = self.user_catalog.database.clone();
         cat.all_function_names()
+    }
+
+    /// Parse a JSON schema blob and use it as the session context.
+    ///
+    /// Convenience wrapper over [`set_session_context`] that constructs a
+    /// [`Catalog`] using the host's dialect, avoiding the need for callers to
+    /// handle `Dialect` directly.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error string if `json` is not a valid schema JSON blob.
+    pub fn set_session_context_from_json(&mut self, json: &str) -> Result<(), String> {
+        let catalog = Catalog::from_json(self.dialect, json)?;
+        self.set_session_context(catalog);
+        Ok(())
+    }
+
+    /// Parse DDL statements and use the resulting schema as the session context.
+    ///
+    /// Convenience wrapper over [`set_session_context`] that constructs a
+    /// [`Catalog`] using the host's dialect and DDL source, avoiding the need
+    /// for callers to handle `Dialect` directly.
+    pub fn set_session_context_from_ddl(&mut self, ddl: &str) {
+        let catalog = Catalog::from_ddl(self.dialect, ddl);
+        self.set_session_context(catalog);
     }
 }
 

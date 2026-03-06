@@ -5,8 +5,8 @@ members = [
     "syntaqlite-syntax",
     "syntaqlite",
     "syntaqlite-buildtools",
+    "syntaqlite-wasm",
     # temporarily excluded until semantic refactor is complete:
-    # "syntaqlite-wasm",
     # "syntaqlite-cli",
     # "benches",
 ]
