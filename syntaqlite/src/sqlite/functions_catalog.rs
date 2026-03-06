@@ -5,9 +5,7 @@
 
 //! Static catalog of SQLite built-in functions with version/cflag availability.
 
-use crate::dialect::catalog::{
-    AvailabilityRule, CflagPolarity, FunctionCategory, FunctionEntry, FunctionInfo,
-};
+use crate::dialect::{AvailabilityRule, CflagPolarity, FunctionCategory, FunctionEntry, FunctionInfo};
 
 static ARITIES___: &[i16] = &[2];
 static ARITIES____: &[i16] = &[2];

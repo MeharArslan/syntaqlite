@@ -172,7 +172,7 @@ pub(crate) fn generate_rust_semantic_roles(model: &AstModel, prefix: &str) -> St
     w.file_header();
 
     w.lines(&format!(
-        "use crate::dialect::schema::{{RelationKind, SemanticRole}};\n\
+        "use crate::dialect::{{RelationKind, SemanticRole}};\n\
          \n\
          /// Semantic role table for the `{prefix}` dialect, indexed by node tag.\n\
          /// Tags are 1-based; index 0 is an unused sentinel.\n\

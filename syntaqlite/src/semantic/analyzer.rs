@@ -10,7 +10,7 @@ use syntaqlite_syntax::typed::TypedParser;
 use syntaqlite_syntax::{ParseOutcome, ParserConfig, TokenType};
 
 use crate::dialect::Dialect;
-use crate::dialect::schema::SemanticRole;
+use crate::dialect::SemanticRole;
 
 use super::ValidationConfig;
 use super::catalog::{Catalog, ColumnResolution, FunctionCheckResult, columns_from_select};
