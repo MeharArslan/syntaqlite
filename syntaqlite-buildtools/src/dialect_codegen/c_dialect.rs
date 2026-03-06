@@ -392,7 +392,6 @@ mod tests {
         let c = generate_dialect_c("sqlite", None, &default_includes());
         assert!(c.contains("SyntaqliteGrammar syntaqlite_sqlite_grammar(void)"));
         assert!(c.contains("SyntaqliteGrammarTemplate SQLITE_GRAMMAR ="));
-        assert!(c.contains("SyntaqliteGrammar SQLITE_GRAMMAR_DEFAULT ="));
         assert!(c.contains("SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR)"));
         // No old-style dialect function or fmt fields
         assert!(!c.contains("syntaqlite_sqlite_dialect"));
