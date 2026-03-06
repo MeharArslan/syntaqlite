@@ -13,7 +13,7 @@ use crate::dialect::Dialect;
 use crate::dialect::schema::SemanticRole;
 
 use super::ValidationConfig;
-use super::catalog::{Catalog, ColumnResolution, FunctionCheckResult};
+use super::catalog::{Catalog, ColumnResolution, FunctionCheckResult, columns_from_select};
 use super::diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
 use super::fuzzy::best_suggestion;
 use super::model::{
@@ -761,7 +761,11 @@ impl<'a> ValidationPass<'a> {
                     let cols = declared.iter().map(|s| s.to_string()).collect();
                     self.catalog.add_query_table(cte_name, Some(cols));
                 } else {
-                    self.catalog.add_query_table(cte_name, None);
+                    // No declared column list: infer names from SELECT result columns.
+                    let inferred = cte_body_id.and_then(|id| {
+                        columns_from_select(*stmt, id, self.roles)
+                    });
+                    self.catalog.add_query_table(cte_name, inferred);
                 }
             }
         }
@@ -1353,6 +1357,125 @@ mod tests {
             errs.is_empty(),
             "should skip count check for SELECT *: {errs:?}"
         );
+    }
+
+    // ── CTE column inference (no declared list) ───────────────────────────────
+
+    #[test]
+    fn cte_inferred_column_invalid_ref_is_error() {
+        // WITH cte AS (SELECT 1 AS x) — x is inferred, z is not; z should error
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(
+            "WITH cte AS (SELECT 1 AS x) SELECT z FROM cte",
+            &cat,
+            &strict(),
+        );
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { column, .. } if column == "z"))
+            .collect();
+        assert_eq!(errs.len(), 1, "expected UnknownColumn for 'z': {errs:?}");
+    }
+
+    #[test]
+    fn cte_inferred_column_valid_ref_no_error() {
+        // WITH cte AS (SELECT 1 AS x) — selecting x (the inferred column) is fine
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(
+            "WITH cte AS (SELECT 1 AS x) SELECT x FROM cte",
+            &cat,
+            &strict(),
+        );
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(errs.is_empty(), "unexpected UnknownColumn: {errs:?}");
+    }
+
+    #[test]
+    fn cte_star_body_with_no_column_list_accepts_all() {
+        // CTE body is SELECT * — inference skipped, all column refs accepted
+        let mut az = sqlite_analyzer();
+        let mut cat = sqlite_catalog();
+        cat.add_table("t", &["a", "b"]);
+        let model = az.analyze(
+            "WITH cte AS (SELECT * FROM t) SELECT anything FROM cte",
+            &cat,
+            &strict(),
+        );
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(errs.is_empty(), "star body should accept any col ref: {errs:?}");
+    }
+
+    // ── CREATE TABLE/VIEW AS SELECT column inference ──────────────────────────
+
+    #[test]
+    fn create_table_as_select_invalid_column_is_error() {
+        // CREATE TABLE t AS SELECT 1 AS x → x inferred; z should error
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let src = "CREATE TABLE t AS SELECT 1 AS x; SELECT z FROM t;";
+        let model = az.analyze(src, &cat, &strict());
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { column, .. } if column == "z"))
+            .collect();
+        assert_eq!(errs.len(), 1, "expected UnknownColumn for 'z': {errs:?}");
+    }
+
+    #[test]
+    fn create_table_as_select_valid_column_no_error() {
+        // CREATE TABLE t AS SELECT 1 AS x → selecting x is fine
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let src = "CREATE TABLE t AS SELECT 1 AS x; SELECT x FROM t;";
+        let model = az.analyze(src, &cat, &strict());
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(errs.is_empty(), "unexpected UnknownColumn: {errs:?}");
+    }
+
+    #[test]
+    fn create_view_as_select_invalid_column_is_error() {
+        // CREATE VIEW v AS SELECT 1 AS x → x inferred; z should error
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let src = "CREATE VIEW v AS SELECT 1 AS x; SELECT z FROM v;";
+        let model = az.analyze(src, &cat, &strict());
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { column, .. } if column == "z"))
+            .collect();
+        assert_eq!(errs.len(), 1, "expected UnknownColumn for 'z': {errs:?}");
+    }
+
+    #[test]
+    fn create_view_as_select_valid_column_no_error() {
+        // CREATE VIEW v AS SELECT 1 AS x → selecting x is fine
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let src = "CREATE VIEW v AS SELECT 1 AS x; SELECT x FROM v;";
+        let model = az.analyze(src, &cat, &strict());
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(errs.is_empty(), "unexpected UnknownColumn: {errs:?}");
     }
 
     #[test]

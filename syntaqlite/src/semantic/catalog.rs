@@ -11,6 +11,7 @@ use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, NodeFiel
 
 use crate::dialect::Dialect;
 use crate::dialect::catalog::{FunctionCategory as DialectFunctionCategory, is_function_available};
+use crate::dialect::schema::SemanticRole;
 
 // ── Core layer types ─────────────────────────────────────────────────────────
 
@@ -374,7 +375,7 @@ impl Catalog {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let cols = extract_columns(stmt, &fields, columns, select);
+                let cols = extract_columns(stmt, &fields, columns, select, dialect.roles());
                 self.document.insert_relation(name_val, cols);
             }
             SemanticRole::DefineView {
@@ -386,7 +387,7 @@ impl Catalog {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let cols = extract_columns(stmt, &fields, columns, Some(select));
+                let cols = extract_columns(stmt, &fields, columns, Some(select), dialect.roles());
                 self.document.insert_relation(name_val, cols);
             }
             SemanticRole::DefineFunction { name, args } => {
@@ -618,7 +619,7 @@ impl Catalog {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let cols = extract_columns(stmt, &fields, columns, select);
+                let cols = extract_columns(stmt, &fields, columns, select, dialect.roles());
                 self.database.insert_relation(name_val, cols);
             }
             SemanticRole::DefineView {
@@ -630,7 +631,7 @@ impl Catalog {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let cols = extract_columns(stmt, &fields, columns, Some(select));
+                let cols = extract_columns(stmt, &fields, columns, Some(select), dialect.roles());
                 self.database.insert_relation(name_val, cols);
             }
             SemanticRole::DefineFunction { name, args } => {
@@ -651,17 +652,19 @@ impl Catalog {
 // ── DDL extraction helpers ────────────────────────────────────────────────────
 
 /// Extract columns for a table/view DDL contribution.
-/// `columns_field` indexes an explicit column-list child.
-/// `select_field` is accepted but SELECT-based column inference is deferred to
-/// step 5 (when `result_column` role annotations are added); returns `None` for
-/// AS-SELECT-only definitions so that column refs against them are conservatively
-/// accepted.
+///
+/// Tries the explicit column list first; if absent, infers column names from
+/// the result columns of the AS-SELECT body. Returns `None` only when
+/// inference is impossible (e.g. `SELECT *`), which tells the catalog to
+/// accept any column reference conservatively.
 fn extract_columns<'a>(
     stmt: AnyParsedStatement<'a>,
     fields: &NodeFields<'a>,
     columns_field: Option<u8>,
-    _select_field: Option<u8>,
+    select_field: Option<u8>,
+    roles: &[SemanticRole],
 ) -> Option<Vec<String>> {
+    // Explicit column list takes priority.
     if let Some(col_idx) = columns_field
         && let FieldValue::NodeId(col_list_id) = fields[col_idx as usize]
         && !col_list_id.is_null()
@@ -672,6 +675,15 @@ fn extract_columns<'a>(
             return Some(columns);
         }
     }
+
+    // Fall back to inferring names from SELECT result columns.
+    if let Some(sel_idx) = select_field
+        && let FieldValue::NodeId(select_id) = fields[sel_idx as usize]
+        && !select_id.is_null()
+    {
+        return columns_from_select(stmt, select_id, roles);
+    }
+
     None
 }
 
@@ -736,6 +748,129 @@ fn columns_from_column_list(
             break; // only inspect the first non-null NodeId field per column-def
         }
     }
+}
+
+/// Infer column names from a SELECT statement's result column list.
+///
+/// Returns `Some(names)` if every result column has an inferable name:
+/// - An explicit alias is used as-is.
+/// - A bare `ColumnRef` with no alias uses the column name.
+///
+/// Returns `None` if any result column uses `*` (STAR) or has an expression
+/// that cannot be named (e.g. a literal or function call without an alias).
+/// A `None` return causes the caller to register the table with unknown
+/// columns, conservatively accepting all column references.
+pub(super) fn columns_from_select<'a>(
+    stmt: AnyParsedStatement<'a>,
+    select_id: AnyNodeId,
+    roles: &[SemanticRole],
+) -> Option<Vec<String>> {
+    let (select_tag, select_fields) = stmt.extract_fields(select_id)?;
+    let select_role = roles.get(u32::from(select_tag) as usize).copied()?;
+
+    let SemanticRole::Query {
+        columns: cols_idx, ..
+    } = select_role
+    else {
+        return None;
+    };
+
+    let FieldValue::NodeId(list_id) = select_fields[cols_idx as usize] else {
+        return None;
+    };
+    if list_id.is_null() {
+        return None;
+    }
+
+    let children = stmt.list_children(list_id)?;
+    let mut out = Vec::new();
+
+    for &child_id in children {
+        if child_id.is_null() {
+            continue;
+        }
+        let Some((child_tag, child_fields)) = stmt.extract_fields(child_id) else {
+            return None;
+        };
+        let child_role = roles
+            .get(u32::from(child_tag) as usize)
+            .copied()
+            .unwrap_or(SemanticRole::Transparent);
+
+        let SemanticRole::ResultColumn {
+            flags: flags_idx,
+            alias: alias_idx,
+            expr: expr_idx,
+        } = child_role
+        else {
+            continue;
+        };
+
+        // STAR flag (bit 0) → wildcard: can't enumerate columns.
+        if let FieldValue::Flags(f) = child_fields[flags_idx as usize] {
+            if f & 1 != 0 {
+                return None;
+            }
+        }
+
+        match infer_result_col_name(stmt, &child_fields, alias_idx, expr_idx, roles) {
+            Some(name) => out.push(name),
+            None => return None,
+        }
+    }
+
+    if out.is_empty() { None } else { Some(out) }
+}
+
+/// Infer the output column name for a single result column node.
+///
+/// Tries alias first; falls back to bare `ColumnRef` column name.
+/// Returns `None` if neither is available (e.g. `1 + 2` without an alias).
+fn infer_result_col_name<'a>(
+    stmt: AnyParsedStatement<'a>,
+    child_fields: &NodeFields<'a>,
+    alias_idx: u8,
+    expr_idx: u8,
+    roles: &[SemanticRole],
+) -> Option<String> {
+    // Try explicit alias.
+    if let FieldValue::NodeId(alias_id) = child_fields[alias_idx as usize] {
+        if !alias_id.is_null() {
+            if let Some((_, alias_fields)) = stmt.extract_fields(alias_id) {
+                for j in 0..alias_fields.len() {
+                    if let FieldValue::Span(s) = alias_fields[j] {
+                        if !s.is_empty() {
+                            return Some(s.to_ascii_lowercase());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Try bare ColumnRef (no alias).
+    if let FieldValue::NodeId(expr_id) = child_fields[expr_idx as usize] {
+        if !expr_id.is_null() {
+            if let Some((expr_tag, expr_fields)) = stmt.extract_fields(expr_id) {
+                let expr_role = roles
+                    .get(u32::from(expr_tag) as usize)
+                    .copied()
+                    .unwrap_or(SemanticRole::Transparent);
+                if let SemanticRole::ColumnRef {
+                    column: col_idx, ..
+                } = expr_role
+                {
+                    if let FieldValue::Span(col_span) = expr_fields[col_idx as usize] {
+                        if !col_span.is_empty() {
+                            return Some(col_span.to_ascii_lowercase());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }
 
 // ── Dialect layer builder ─────────────────────────────────────────────────────
