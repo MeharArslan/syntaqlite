@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Semantic analysis: catalog, walker, single-pass analyzer, and rendering.
+//! Semantic analysis: catalog, engine, single-pass analyzer, and rendering.
 
 #[cfg(feature = "validation")]
 pub(crate) mod analyzer;
@@ -16,8 +16,6 @@ pub(crate) mod fuzzy;
 pub(crate) mod model;
 #[cfg(feature = "validation")]
 pub(crate) mod render;
-#[cfg(feature = "validation")]
-pub(crate) mod walker;
 
 // ── Public re-exports ─────────────────────────────────────────────────────────
 

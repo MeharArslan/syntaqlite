@@ -27,7 +27,7 @@ use super::fuzzy::best_suggestion;
 /// Data-driven semantic engine for validating a single parsed statement.
 ///
 /// Reads the dialect's [`SemanticRole`] table and dispatches node visits to
-/// role-specific handlers. Replaces [`Walker`](super::walker::Walker).
+/// role-specific handlers.
 pub(crate) struct SemanticEngine<'a> {
     stmt: AnyParsedStatement<'a>,
     roles: &'static [SemanticRole],

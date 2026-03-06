@@ -828,6 +828,33 @@ non-exhaustive-safe.
 
 Codegen regenerated; `semantic_roles.rs` now has 13 non-Transparent entries. All 53 unit tests pass.
 
+### Steps 6+7 — ✅ Done (commit `861eb24`)
+
+All role handlers implemented in `SemanticEngine`:
+
+- `visit_source_ref`: validates table/function name against catalog, emits `UnknownTable` with
+  fuzzy suggestion, registers alias in query scope via `add_query_table`.
+- `visit_call`: counts args via `list_children`, checks via `check_function`, emits
+  `UnknownFunction` / `FunctionArity`, then recurses into children.
+- `visit_column_ref`: calls `resolve_column(table, column)`, emits `UnknownColumn` for
+  `TableFoundColumnMissing` and `NotFound` results.
+- `visit_scoped_source`: pushes scope, visits body, pops scope, registers alias in outer scope.
+- `visit_query`: visits FROM first (to populate scope with table bindings), then columns,
+  WHERE, GROUP BY, HAVING, ORDER BY, LIMIT in order.
+- `visit_cte_scope`: iterates CTE bindings; for recursive, pre-registers name; visits each body
+  in a fresh scope; registers name in outer scope after body; then visits the main body.
+- `visit_trigger_scope`: pushes scope, adds OLD/NEW pseudo-tables, visits when-expr and body.
+
+Key fix: list nodes (`ResultColumnList`, `ExprList`, `OrderByList`, etc.) are detected at the top
+of `visit` via `list_children`. If found, their children are visited directly rather than going
+through the empty `child_node_ids` path. This ensures nested expressions inside SELECT columns,
+ORDER BY, GROUP BY etc. are reachable.
+
+`Walker<A: AstTypes>` removed from `analyzer.rs`. `AstTypes` type parameter removed from
+`analyze_inner`. `SemanticEngine` is now the sole validation engine.
+
+All 53 unit tests pass.
+
 ---
 
 ## Open Questions
