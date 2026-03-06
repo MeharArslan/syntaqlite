@@ -122,9 +122,6 @@ pub(crate) struct RustCodegenArtifacts {
     pub ffi_rs: String,
     /// Rust AST node types (`ast.rs`).
     pub ast_rs: String,
-    /// Shared AST trait definitions. Only generated for the internal syntaqlite
-    /// crate; external dialect crates import from `syntaqlite::ast_traits`.
-    pub ast_traits_rs: Option<String>,
     /// Grammar module (`grammar.rs`).
     pub grammar_rs: Option<String>,
     /// Crate root module (`lib.rs`).
@@ -540,7 +537,6 @@ pub(crate) fn generate_codegen_artifacts(
             // ffi_path: dialect-specific FFI structs live in the sibling ffi module.
             ffi_path: "super::ffi",
             nodes_path: "crate::ast",
-            grammar_fn_path: "super::grammar::grammar",
             grammar_type: &grammar_type,
         };
         Some(RustCodegenArtifacts {
@@ -548,10 +544,8 @@ pub(crate) fn generate_codegen_artifacts(
             ffi_rs: ast_model.generate_rust_ffi_nodes(&rust_paths),
             ast_rs: ast_model.generate_rust_ast(
                 &rust_paths,
-                request.dialect.name(),
                 request.open_for_extension,
             ),
-            ast_traits_rs: Some(ast_model.generate_ast_traits()),
             grammar_rs: Some(generate_grammar_module(
                 &request.dialect.grammar_fn_name(),
                 &request.dialect.grammar_struct_type(),

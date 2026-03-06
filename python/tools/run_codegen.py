@@ -6,7 +6,7 @@
 
 Multi-stage bootstrap pipeline:
   Stage 1  (--extract): Extract C fragments from raw SQLite source.
-  Stage 1b (always):    Generate functions catalog and ast_traits Rust modules.
+  Stage 1b (always):    Generate functions catalog Rust module.
   Stage 2  (always):    Generate base syntaqlite crate C + Rust code.
 
 The bootstrap tool (syntaqlite-buildtools) has no dependency on any generated
@@ -106,20 +106,18 @@ def main() -> int:
 
     tools_bin = project_root / "target" / "release" / "syntaqlite-buildtools"
 
-    # Stage 1b: Generate functions catalog and ast_traits from synq files.
+    # Stage 1b: Generate functions catalog.
     # Output paths are hardcoded in the Rust binary.
     functions_json = vendored_dir / "data" / "functions.json"
     cflag_audit_json = vendored_dir / "data" / "version_cflags.json"
     cflag_versions_out = dialect_crate_dir / "src" / "cflags.rs"
 
-    log("Stage 1b: Generating functions catalog and ast_traits...")
+    log("Stage 1b: Generating functions catalog...")
     result = subprocess.run(
         [
             str(tools_bin),
             "codegen-sqlite-parser",
             "--functions-json", str(functions_json),
-            "--actions-dir", str(actions_dir),
-            "--nodes-dir", str(nodes_dir),
             "--cflag-audit-json", str(cflag_audit_json),
             "--cflag-versions-out", str(cflag_versions_out),
         ],
@@ -129,7 +127,7 @@ def main() -> int:
     if result.returncode != 0:
         if not args.verbose and result.stderr:
             sys.stderr.buffer.write(result.stderr)
-        print("Stage 1b codegen-sqlite-parser failed", file=sys.stderr)
+        print("Stage 1b: codegen-sqlite-parser failed", file=sys.stderr)
         return result.returncode
 
     # Stage 2: Generate base SQLite dialect C + Rust code.

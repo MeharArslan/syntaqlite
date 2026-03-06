@@ -10,7 +10,7 @@
 //!
 //! Subcommands:
 //!   codegen-sqlite          — regenerate the internal `SQLite` dialect (stage 2)
-//!   codegen-sqlite-parser   — regenerate `ast_traits`, `functions_catalog` (stage 1b)
+//!   codegen-sqlite-parser   — regenerate `functions_catalog` (stage 1b)
 //!   sqlite-extract          — extract C fragments from raw `SQLite` source (stage 1)
 //!   audit-cflags            — audit cflag versions across `SQLite` amalgamations
 //!   generate-functions-catalog — generate Rust functions catalog from functions.json
@@ -39,8 +39,8 @@ enum Command {
 
     /// Regenerate internal Rust artifacts for the `SQLite` parser crate (stage 1b).
     ///
-    /// Generates `ast_traits.rs`, `functions_catalog.rs`, and optionally
-    /// `cflag_versions.rs` from pre-existing inputs.
+    /// Generates `functions_catalog.rs` and optionally `cflag_versions.rs`
+    /// from pre-existing inputs.
     #[command(name = "codegen-sqlite-parser")]
     CodegenSqliteParser(CodegenSqliteParserArgs),
 
@@ -104,16 +104,6 @@ struct CodegenSqliteParserArgs {
     /// Path to the cflag audit JSON (optional; required if --cflag-versions-out is given).
     #[arg(long)]
     cflag_audit_json: Option<String>,
-
-    /// Directory containing .y grammar action files.
-    /// When provided together with --nodes-dir, generates `ast_traits.rs`.
-    #[arg(long)]
-    actions_dir: Option<String>,
-
-    /// Directory containing .synq node definitions.
-    /// When provided together with --actions-dir, generates `ast_traits.rs`.
-    #[arg(long)]
-    nodes_dir: Option<String>,
 
     /// Output path for the generated cflag versions table Rust file.
     /// Requires --cflag-audit-json.
@@ -208,8 +198,6 @@ fn main() {
         Command::CodegenSqliteParser(args) => commands::SqliteParserCodegen {
             functions_json: args.functions_json.clone(),
             cflag_audit_json: args.cflag_audit_json.clone(),
-            actions_dir: args.actions_dir.clone(),
-            nodes_dir: args.nodes_dir.clone(),
             cflag_versions_out: args.cflag_versions_out.clone(),
         }
         .run(),

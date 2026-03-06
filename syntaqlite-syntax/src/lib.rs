@@ -99,13 +99,6 @@ pub use sqlite::tokens::TokenType;
 #[doc(inline)]
 pub use tokenizer::{Token, Tokenizer};
 
-/// Shared AST traits used by generated grammar code.
-///
-/// Most applications will not import this module directly; it is mainly useful
-/// when writing generic helpers over generated AST types.
-#[doc(hidden)]
-pub mod ast_traits;
-
 /// Cross-cutting utilities for grammar configuration and compatibility.
 ///
 /// Reach for this module when you need to pin parser behavior to a target

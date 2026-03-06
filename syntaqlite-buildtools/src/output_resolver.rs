@@ -69,8 +69,6 @@ pub struct OutputLayout {
     pub ffi_rs: Option<String>,
     /// Rust AST node types (`ast.rs`).
     pub ast_rs: Option<String>,
-    /// Shared AST trait definitions. Only written for the internal `SQLite` crate.
-    pub ast_traits_rs: Option<String>,
     /// Grammar module (`grammar.rs`).
     pub grammar_rs: Option<String>,
     /// Crate root module (`lib.rs`).
@@ -188,7 +186,6 @@ impl OutputLayout {
             tokens_rs: Some(format!("{dc}/src/sqlite/tokens.rs")),
             ffi_rs: Some(format!("{dc}/src/sqlite/ffi.rs")),
             ast_rs: Some(format!("{dc}/src/sqlite/ast.rs")),
-            ast_traits_rs: Some(format!("{sc}/src/ast_traits.rs")),
             grammar_rs: Some(format!("{dc}/src/sqlite/grammar.rs")),
             lib_rs: None, // hand-maintained
             functions_catalog_rs: None,
@@ -267,7 +264,6 @@ impl OutputLayout {
             tokens_rs: Some("src/tokens.rs".to_string()),
             ffi_rs: Some("src/ffi.rs".to_string()),
             ast_rs: Some("src/ast.rs".to_string()),
-            ast_traits_rs: None,
             grammar_rs: None, // grammar accessor lives in lib.rs for external dialects
             lib_rs: Some("src/lib.rs".to_string()),
             functions_catalog_rs: None,
@@ -347,7 +343,6 @@ impl OutputLayout {
             tokens_rs: None,
             ffi_rs: None,
             ast_rs: None,
-            ast_traits_rs: None,
             grammar_rs: None,
             lib_rs: None,
             functions_catalog_rs: None,
@@ -417,9 +412,6 @@ impl OutputLayout {
             write(&self.tokens_rs, &rust.tokens_rs)?;
             write(&self.ffi_rs, &rust.ffi_rs)?;
             write(&self.ast_rs, &rust.ast_rs)?;
-            if let Some(ref content) = rust.ast_traits_rs {
-                write(&self.ast_traits_rs, content)?;
-            }
             if let Some(ref content) = rust.grammar_rs {
                 write(&self.grammar_rs, content)?;
             }

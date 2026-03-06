@@ -855,6 +855,41 @@ ORDER BY, GROUP BY etc. are reachable.
 
 All 53 unit tests pass.
 
+### Step 8 — ✅ Done (commit `26898de`)
+
+`walker.rs` deleted. `mod walker` removed from `semantic/mod.rs`. `Walker<A: AstTypes>` was the
+only caller of the `AstTypes` trait inside the `syntaqlite` crate.
+
+All 53 unit tests pass.
+
+### Step 9 — ✅ Done
+
+`AstTypes` trait and all generated `*Like` / `*View` / `*Kind` trait infrastructure removed:
+
+**`syntaqlite-syntax`:**
+- `src/ast_traits.rs` deleted (the generated trait file)
+- `pub mod ast_traits;` removed from `src/lib.rs`
+- All 33 `impl crate::ast_traits::*Like/View/AstTypes/NodeLike` blocks removed from `src/sqlite/ast.rs`
+- `pub struct SqliteAstMarker;` removed from `src/sqlite/ast.rs`
+
+**`syntaqlite-buildtools`:**
+- `generate_ast_traits()` function and its call site removed from `commands.rs`
+- `actions_dir` / `nodes_dir` fields removed from `SqliteParserCodegen` struct and CLI args
+- `ast_traits_rs: Option<String>` removed from `RustCodegenArtifacts` and `OutputLayout`
+- `emit_rust_value_enum_like_trait`, `emit_rust_flags_like_trait`, `emit_rust_value_enum_like_impl`,
+  `emit_rust_flags_like_impl` functions removed from `rust_ast.rs`
+- `generate_ast_traits()` method and its helpers (`resolve_kind_enum_list_type`,
+  `resolve_generic_element_type`, `trait_field_return_type`) removed from `rust_ast.rs`
+- Trait impl emission (`AstTypes`, `NodeLike`, `XxxLike`, `XxxView`) removed from
+  `generate_rust_ast()` in `rust_ast.rs`
+- `grammar_fn_path` field removed from `RustAstPaths`; `dialect_name` param removed from
+  `generate_rust_ast` signature
+
+**`python/tools/run_codegen.py`:**
+- `--actions-dir` and `--nodes-dir` args removed from stage 1b (`codegen-sqlite-parser`) invocation
+
+All 53 unit tests pass.
+
 ---
 
 ## Open Questions
