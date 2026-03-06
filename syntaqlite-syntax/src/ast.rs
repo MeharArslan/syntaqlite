@@ -282,71 +282,6 @@ impl<'a, G: crate::grammar::TypedGrammar, T> GrammarNodeType<'a> for TypedNodeLi
     }
 }
 
-/// A typed field value extracted from a node struct.
-#[allow(dead_code)]
-#[derive(Clone, Copy, Debug)]
-pub(crate) enum FieldVal<'a> {
-    /// Child node or list reference.
-    NodeId(AnyNodeId),
-    /// Source text slice with its byte offset in the original source.
-    Span(&'a str, u32),
-    /// Boolean flag.
-    Bool(bool),
-    /// Raw flags byte.
-    Flags(u8),
-    /// Enum ordinal.
-    Enum(u32),
-}
-
-/// Extracted fields of a node. Returned by [`AnyParsedStatement::extract_fields`].
-///
-/// Uses `MaybeUninit` internally so that construction is zero-cost — no need
-/// to initialize all 16 slots when most nodes only have 2–5 fields.
-#[allow(dead_code)]
-pub(crate) struct Fields<'a> {
-    buf: [std::mem::MaybeUninit<FieldVal<'a>>; 16],
-    len: usize,
-}
-
-#[allow(dead_code)]
-impl<'a> Fields<'a> {
-    #[inline]
-    pub(crate) fn new() -> Self {
-        Self {
-            buf: [const { std::mem::MaybeUninit::uninit() }; 16],
-            len: 0,
-        }
-    }
-
-    #[inline]
-    pub(crate) fn push(&mut self, val: FieldVal<'a>) {
-        self.buf[self.len] = std::mem::MaybeUninit::new(val);
-        self.len += 1;
-    }
-
-    pub(crate) fn len(&self) -> usize {
-        self.len
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
-        self.len == 0
-    }
-}
-
-impl Default for Fields<'_> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<'a> std::ops::Deref for Fields<'a> {
-    type Target = [FieldVal<'a>];
-    fn deref(&self) -> &[FieldVal<'a>] {
-        // SAFETY: buf[..len] slots were all written via `push`.
-        unsafe { std::slice::from_raw_parts(self.buf.as_ptr().cast(), self.len) }
-    }
-}
-
 /// Implemented by each `#[repr(C)]` arena node struct to declare its type tag.
 ///
 /// # Safety
@@ -355,17 +290,6 @@ impl<'a> std::ops::Deref for Fields<'a> {
 pub(crate) unsafe trait ArenaNode {
     const TAG: u32;
 }
-
-#[allow(dead_code)]
-pub(crate) const FIELD_NODE_ID: u8 = 0;
-#[allow(dead_code)]
-pub(crate) const FIELD_SPAN: u8 = 1;
-#[allow(dead_code)]
-pub(crate) const FIELD_BOOL: u8 = 2;
-#[allow(dead_code)]
-pub(crate) const FIELD_FLAGS: u8 = 3;
-#[allow(dead_code)]
-pub(crate) const FIELD_ENUM: u8 = 4;
 
 // ── ffi ───────────────────────────────────────────────────────────────────────
 
@@ -385,9 +309,9 @@ mod ffi {
         pub(crate) length: u16,
     }
 
+    #[allow(dead_code)]
     impl CSourceSpan {
         /// Returns `true` if the span covers zero bytes.
-        #[allow(dead_code)]
         pub(crate) fn is_empty(self) -> bool {
             self.length == 0
         }

@@ -768,9 +768,8 @@ impl<'a> ValidationPass<'a> {
                     self.catalog.add_query_table(cte_name, Some(cols));
                 } else {
                     // No declared column list: infer names from SELECT result columns.
-                    let inferred = cte_body_id.and_then(|id| {
-                        columns_from_select(*stmt, id, self.roles)
-                    });
+                    let inferred =
+                        cte_body_id.and_then(|id| columns_from_select(*stmt, id, self.roles));
                     self.catalog.add_query_table(cte_name, inferred);
                 }
             }
@@ -1130,7 +1129,12 @@ mod tests {
             .iter()
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
             .collect();
-        assert_eq!(errs.len(), 1, "unknown column should be flagged: {:?}", model.diagnostics());
+        assert_eq!(
+            errs.len(),
+            1,
+            "unknown column should be flagged: {:?}",
+            model.diagnostics()
+        );
     }
 
     // ── Analyzer: function validation ──────────────────────────────────────────
@@ -1452,7 +1456,10 @@ mod tests {
             .iter()
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
             .collect();
-        assert!(errs.is_empty(), "star body should accept any col ref: {errs:?}");
+        assert!(
+            errs.is_empty(),
+            "star body should accept any col ref: {errs:?}"
+        );
     }
 
     // ── CREATE TABLE/VIEW AS SELECT column inference ──────────────────────────

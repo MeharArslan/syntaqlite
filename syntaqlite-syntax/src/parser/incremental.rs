@@ -27,9 +27,7 @@ use super::{ParseError, ParsedStatement};
 pub struct TypedIncrementalParseSession<G: TypedGrammar> {
     /// Base pointer into the internal source buffer. `feed_token` uses this
     /// to compute the C-side token pointer from byte-offset spans.
-    #[allow(dead_code)]
     c_source_ptr: NonNull<u8>,
-    #[allow(dead_code)]
     grammar: AnyGrammar,
     /// Checked-out parser state. Returned to `slot` on drop.
     inner: Option<ParserInner>,
@@ -47,7 +45,6 @@ impl<G: TypedGrammar> Drop for TypedIncrementalParseSession<G> {
     }
 }
 
-#[allow(dead_code)]
 impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
     pub(crate) fn new(
         c_source_ptr: NonNull<u8>,
@@ -251,10 +248,12 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
         unsafe { (*self.raw_ptr()).end_macro() }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn stmt_result(&self) -> AnyParsedStatement<'_> {
         self.typed_stmt_result().erase()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn node_ref(&self, id: AnyNodeId) -> AnyNode<'_> {
         AnyNode {
             id,
@@ -262,16 +261,19 @@ impl<G: TypedGrammar> TypedIncrementalParseSession<G> {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn comments(&self) -> &[ffi::CComment] {
         // SAFETY: raw is valid (owned via ParserInner, valid for &self).
         unsafe { (*self.raw_ptr()).result_comments() }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn tokens(&self) -> &[ffi::CParserToken] {
         // SAFETY: raw is valid (owned via ParserInner, valid for &self).
         unsafe { (*self.raw_ptr()).result_tokens() }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn macro_regions(&self) -> &[ffi::CMacroRegion] {
         // SAFETY: raw is valid (owned via ParserInner, valid for &self).
         unsafe { (*self.raw_ptr()).result_macros() }
@@ -293,7 +295,6 @@ pub type AnyIncrementalParseSession = TypedIncrementalParseSession<AnyGrammar>;
 pub struct IncrementalParseSession(TypedIncrementalParseSession<crate::sqlite::grammar::Grammar>);
 
 #[cfg(feature = "sqlite")]
-#[allow(dead_code)]
 impl IncrementalParseSession {
     /// Feed one source token into the parser.
     ///
@@ -382,22 +383,27 @@ impl IncrementalParseSession {
         self.0.end_macro();
     }
 
+    #[allow(dead_code)]
     pub(crate) fn stmt_result(&self) -> AnyParsedStatement<'_> {
         self.0.stmt_result()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn node_ref(&self, id: AnyNodeId) -> AnyNode<'_> {
         self.0.node_ref(id)
     }
 
+    #[allow(dead_code)]
     pub(crate) fn comments(&self) -> &[ffi::CComment] {
         self.0.comments()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn tokens(&self) -> &[ffi::CParserToken] {
         self.0.tokens()
     }
 
+    #[allow(dead_code)]
     pub(crate) fn macro_regions(&self) -> &[ffi::CMacroRegion] {
         self.0.macro_regions()
     }

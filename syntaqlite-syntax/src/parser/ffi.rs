@@ -11,7 +11,7 @@ pub(crate) const PARSE_DONE: i32 = 0;
 /// Return code: statement parsed cleanly.
 pub(crate) const PARSE_OK: i32 = 1;
 /// Return code: statement has parse/runtime error.
-#[allow(dead_code)]
+#[allow(dead_code)] // used in `#[cfg(all(test, feature = "sqlite"))]`
 pub(crate) const PARSE_ERROR: i32 = -1;
 
 /// Mirrors C `SyntaqliteMemMethods`.
@@ -22,9 +22,9 @@ pub(crate) struct CMemMethods {
 }
 
 /// The kind of a comment.
+#[allow(dead_code)] // C FFI mirror — variants match the C enum values
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u8)]
-#[allow(dead_code)]
 pub(crate) enum CCommentKind {
     LineComment = 0,
     BlockComment = 1,
@@ -39,7 +39,7 @@ pub(crate) struct CComment {
     pub kind: CCommentKind,
 }
 
-#[allow(dead_code)]
+#[allow(dead_code)] // C FFI mirrors — not yet consumed on the Rust side
 pub(super) const TOKEN_FLAG_AS_ID: u32 = 1;
 #[allow(dead_code)]
 pub(super) const TOKEN_FLAG_AS_FUNCTION: u32 = 2;
@@ -411,9 +411,8 @@ mod tests {
             "SELECT",
             recovery_root,
         );
-        let select = match stmt {
-            Stmt::SelectStmt(select) => select,
-            _ => panic!("expected recovery root to be SelectStmt"),
+        let Stmt::SelectStmt(select) = stmt else {
+            panic!("expected recovery root to be SelectStmt")
         };
         let columns = select
             .columns()
@@ -447,9 +446,8 @@ mod tests {
             "SELECT 1 AS",
             recovery_root,
         );
-        let select = match stmt {
-            Stmt::SelectStmt(select) => select,
-            _ => panic!("expected recovery root to be SelectStmt"),
+        let Stmt::SelectStmt(select) = stmt else {
+            panic!("expected recovery root to be SelectStmt")
         };
         let columns = select
             .columns()
