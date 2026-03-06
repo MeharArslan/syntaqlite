@@ -42,7 +42,11 @@ pub(crate) static SQLITE_SEMANTIC_ROLES: &[SemanticRole] = &[
         columns: Some(5),
         select: Some(7),
     }, // CreateTableStmt
-    SemanticRole::CteBinding { name: 0, body: 3 }, // CteDefinition
+    SemanticRole::CteBinding {
+        name: 0,
+        columns: Some(2),
+        body: 3,
+    }, // CteDefinition
     SemanticRole::Transparent,               // CteList
     SemanticRole::CteScope {
         recursive: 0,

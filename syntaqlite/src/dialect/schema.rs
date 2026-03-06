@@ -100,6 +100,8 @@ pub(crate) enum SemanticRole {
     /// CTE definition: binds a name to a subquery body.
     CteBinding {
         name: FieldIdx,
+        /// Optional declared column list (rename/alias for body result columns).
+        columns: Option<FieldIdx>,
         body: FieldIdx,
     },
     /// WITH clause: sequential CTE scope wrapping a main query.

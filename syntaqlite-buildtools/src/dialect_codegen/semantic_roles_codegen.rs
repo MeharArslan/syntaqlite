@@ -126,9 +126,14 @@ fn emit_role(fields: &[Field], role: &SynqRole) -> String {
             fi(orderby),
             fi(limit_clause)
         ),
-        SynqRole::CteBinding { name, body } => format!(
-            "SemanticRole::CteBinding {{ name: {}, body: {} }}",
+        SynqRole::CteBinding {
+            name,
+            columns,
+            body,
+        } => format!(
+            "SemanticRole::CteBinding {{ name: {}, columns: {}, body: {} }}",
             fi(name),
+            opt(columns),
             fi(body)
         ),
         SynqRole::CteScope {

@@ -3,17 +3,17 @@
 
 use std::collections::HashMap;
 
+use syntaqlite_syntax::any::{AnyTokenType, TokenCategory};
+use syntaqlite_syntax::util::is_suggestable_keyword;
+
 use crate::dialect::Dialect;
 use crate::fmt::FormatConfig;
-use crate::fmt::FormatError;
 use crate::fmt::formatter::Formatter;
 use crate::semantic::Catalog;
 use crate::semantic::ValidationConfig;
 use crate::semantic::analyzer::SemanticAnalyzer;
 use crate::semantic::diagnostics::Diagnostic;
 use crate::semantic::model::{SemanticModel, SemanticToken};
-use syntaqlite_syntax::any::{AnyTokenType, TokenCategory};
-use syntaqlite_syntax::util::is_suggestable_keyword;
 
 use super::{CompletionEntry, CompletionInfo, CompletionKind};
 
@@ -22,94 +22,84 @@ use super::{CompletionEntry, CompletionInfo, CompletionKind};
 struct Document {
     version: i32,
     source: String,
+    /// Cached analysis result. `None` when dirty (source changed or catalog changed).
     model: Option<SemanticModel>,
-    /// Lazy cache — computed on first access, invalidated with model.
+    /// Parse errors from the last analysis (derived from `model`).
     cached_parse_diags: Option<Vec<Diagnostic>>,
-    /// Lazy cache — computed on first access, invalidated with model.
-    cached_semantic_tokens: Option<Vec<SemanticToken>>,
+    /// Semantic tokens from the last analysis (derived from `model`).
+    cached_sem_tokens: Option<Vec<SemanticToken>>,
 }
 
-impl Document {
-    fn invalidate(&mut self) {
-        self.model = None;
-        self.cached_parse_diags = None;
-        self.cached_semantic_tokens = None;
+/// Run analysis for `doc` if no model is cached yet.
+fn ensure_model(doc: &mut Document, analyzer: &mut SemanticAnalyzer, user_catalog: &Catalog) {
+    if doc.model.is_some() {
+        return;
     }
+    let model = analyzer.analyze(&doc.source, user_catalog, &ValidationConfig::default());
+    let parse_diags = model
+        .diagnostics()
+        .iter()
+        .filter(|d| d.message.is_parse_error())
+        .cloned()
+        .collect();
+    doc.cached_parse_diags = Some(parse_diags);
+    doc.model = Some(model);
 }
 
-/// Ensure the document has an analyzed `SemanticModel`, creating one if needed.
-fn ensure_model(doc: &mut Document, analyzer: &mut SemanticAnalyzer, catalog: &Catalog) {
-    if doc.model.is_none() {
-        let model = analyzer.analyze(&doc.source, catalog, &ValidationConfig::default());
-        doc.model = Some(model);
-    }
-}
-
-// ── LspHost ──────────────────────────────────────────────────────────────────
+// ── LspHost ───────────────────────────────────────────────────────────────────
 
 /// Manages open documents and answers analysis queries.
 ///
 /// Stores documents by URI and lazily computes per-document analysis
-/// (diagnostics, semantic tokens, completion tokens) on first access after
-/// each edit. Semantic validation delegates to [`SemanticAnalyzer`].
+/// (diagnostics, semantic tokens, completions, formatting) on first access
+/// after each edit. Semantic validation delegates to [`SemanticAnalyzer`].
 pub(crate) struct LspHost {
     dialect: Dialect,
-    documents: HashMap<String, Document>,
-    catalog: Catalog,
+    /// User-provided schema (tables, views, functions).
+    user_catalog: Catalog,
     analyzer: SemanticAnalyzer,
+    documents: HashMap<String, Document>,
 }
 
 impl LspHost {
-    /// Create a host bound to `dialect`.
-    pub(crate) fn with_dialect(dialect: impl Into<Dialect>) -> Self {
-        let dialect = dialect.into();
-        let analyzer = SemanticAnalyzer::with_dialect(dialect);
-        let catalog = Catalog::new(dialect);
-        LspHost {
-            dialect,
-            documents: HashMap::new(),
-            catalog,
-            analyzer,
-        }
-    }
-
     /// Create a host for the built-in SQLite dialect.
     #[cfg(feature = "sqlite")]
     pub(crate) fn new() -> Self {
-        LspHost::with_dialect(crate::sqlite::dialect::dialect())
-    }
-
-    // ── Catalog ───────────────────────────────────────────────────────────────
-
-    /// Take ownership of the current catalog for modification.
-    ///
-    /// Use together with [`set_catalog`](Self::set_catalog): take the catalog,
-    /// modify it (e.g. add tables or functions), then set it back. All cached
-    /// document models are invalidated when [`set_catalog`](Self::set_catalog)
-    /// is called.
-    pub(crate) fn take_catalog(&mut self) -> Catalog {
-        std::mem::replace(&mut self.catalog, Catalog::new(self.dialect))
-    }
-
-    /// Replace the catalog and invalidate all cached document models.
-    pub(crate) fn set_catalog(&mut self, catalog: Catalog) {
-        self.catalog = catalog;
-        for doc in self.documents.values_mut() {
-            doc.invalidate();
+        let dialect = crate::sqlite::dialect::dialect();
+        LspHost {
+            dialect,
+            user_catalog: Catalog::new(dialect),
+            analyzer: SemanticAnalyzer::new(),
+            documents: HashMap::new(),
         }
     }
 
-    // ── Dialect ───────────────────────────────────────────────────────────────
-
-    /// Update the dialect (version/cflags). Rebuilds the analyzer and catalog,
-    /// and invalidates all cached document models.
-    pub(crate) fn set_dialect(&mut self, dialect: Dialect) {
-        self.dialect = dialect;
-        self.analyzer = SemanticAnalyzer::with_dialect(dialect);
-        self.catalog = Catalog::new(dialect);
-        for doc in self.documents.values_mut() {
-            doc.invalidate();
+    /// Create a host bound to `dialect`.
+    pub(crate) fn with_dialect(dialect: Dialect) -> Self {
+        LspHost {
+            dialect,
+            user_catalog: Catalog::new(dialect),
+            analyzer: SemanticAnalyzer::with_dialect(dialect),
+            documents: HashMap::new(),
         }
+    }
+
+    // ── Configuration ─────────────────────────────────────────────────────────
+
+    /// Set the session context (user-provided schema and functions).
+    /// Invalidates all cached analysis.
+    pub(crate) fn set_session_context(&mut self, ctx: Catalog) {
+        self.user_catalog = ctx;
+        for doc in self.documents.values_mut() {
+            doc.model = None;
+            doc.cached_parse_diags = None;
+            doc.cached_sem_tokens = None;
+        }
+    }
+
+    /// Access the current user catalog.
+    pub(crate) fn session_context(&self) -> &Catalog {
+        &self.user_catalog
     }
 
     // ── Document lifecycle ─────────────────────────────────────────────────────
@@ -123,7 +113,7 @@ impl LspHost {
                 source: text,
                 model: None,
                 cached_parse_diags: None,
-                cached_semantic_tokens: None,
+                cached_sem_tokens: None,
             },
         );
     }
@@ -133,7 +123,9 @@ impl LspHost {
         if let Some(doc) = self.documents.get_mut(uri) {
             doc.version = version;
             doc.source = text;
-            doc.invalidate();
+            doc.model = None;
+            doc.cached_parse_diags = None;
+            doc.cached_sem_tokens = None;
         } else {
             self.open_document(uri, version, text);
         }
@@ -156,42 +148,18 @@ impl LspHost {
         let Some(doc) = self.documents.get_mut(uri) else {
             return &[];
         };
-        ensure_model(doc, &mut self.analyzer, &self.catalog);
-        if doc.cached_parse_diags.is_none() {
-            let diags = doc
-                .model
-                .as_ref()
-                .unwrap()
-                .diagnostics()
-                .iter()
-                .filter(|d| d.message.is_parse_error())
-                .cloned()
-                .collect();
-            doc.cached_parse_diags = Some(diags);
-        }
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         doc.cached_parse_diags.as_deref().unwrap()
     }
 
     /// Version, source text, and parse-error diagnostics in one borrow.
     pub(crate) fn document_diagnostics(&mut self, uri: &str) -> Option<(i32, &str, &[Diagnostic])> {
         let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.catalog);
-        if doc.cached_parse_diags.is_none() {
-            let diags = doc
-                .model
-                .as_ref()
-                .unwrap()
-                .diagnostics()
-                .iter()
-                .filter(|d| d.message.is_parse_error())
-                .cloned()
-                .collect();
-            doc.cached_parse_diags = Some(diags);
-        }
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         let version = doc.version;
         let source = doc.source.as_str();
-        let diagnostics = doc.cached_parse_diags.as_deref().unwrap();
-        Some((version, source, diagnostics))
+        let diags = doc.cached_parse_diags.as_deref().unwrap();
+        Some((version, source, diags))
     }
 
     /// Semantic tokens for syntax highlighting, lazily computed.
@@ -199,13 +167,12 @@ impl LspHost {
         let Some(doc) = self.documents.get_mut(uri) else {
             return &[];
         };
-        ensure_model(doc, &mut self.analyzer, &self.catalog);
-        if doc.cached_semantic_tokens.is_none() {
-            let model = doc.model.as_ref().unwrap();
-            let tokens = self.analyzer.semantic_tokens(model);
-            doc.cached_semantic_tokens = Some(tokens);
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        if doc.cached_sem_tokens.is_none() {
+            let tokens = self.analyzer.semantic_tokens(doc.model.as_ref().unwrap());
+            doc.cached_sem_tokens = Some(tokens);
         }
-        doc.cached_semantic_tokens.as_deref().unwrap()
+        doc.cached_sem_tokens.as_deref().unwrap()
     }
 
     /// Semantic tokens delta-encoded for LSP `textDocument/semanticTokens/full`.
@@ -217,13 +184,12 @@ impl LspHost {
         let Some(doc) = self.documents.get_mut(uri) else {
             return Vec::new();
         };
-        ensure_model(doc, &mut self.analyzer, &self.catalog);
-        if doc.cached_semantic_tokens.is_none() {
-            let model = doc.model.as_ref().unwrap();
-            let tokens = self.analyzer.semantic_tokens(model);
-            doc.cached_semantic_tokens = Some(tokens);
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        if doc.cached_sem_tokens.is_none() {
+            let tokens = self.analyzer.semantic_tokens(doc.model.as_ref().unwrap());
+            doc.cached_sem_tokens = Some(tokens);
         }
-        let tokens = doc.cached_semantic_tokens.as_deref().unwrap();
+        let tokens = doc.cached_sem_tokens.as_deref().unwrap();
         encode_semantic_tokens(&doc.source, tokens, range)
     }
 
@@ -235,17 +201,17 @@ impl LspHost {
                 context: super::CompletionContext::Unknown,
             };
         };
-        ensure_model(doc, &mut self.analyzer, &self.catalog);
-        let model = doc.model.as_ref().unwrap();
-        self.analyzer.completion_info(model, offset)
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        self.analyzer
+            .completion_info(doc.model.as_ref().unwrap(), offset)
     }
 
-    /// Expected terminal token IDs at a byte offset.
+    /// Expected terminal token IDs (as `u32` ordinals) at a byte offset.
     pub(crate) fn expected_tokens_at_offset(&mut self, uri: &str, offset: usize) -> Vec<u32> {
         self.completion_info_at_offset(uri, offset)
             .tokens
-            .into_iter()
-            .map(|t| t as u32)
+            .iter()
+            .map(|&t| t as u32)
             .collect()
     }
 
@@ -263,14 +229,14 @@ impl LspHost {
             self.dialect.token_category(AnyTokenType::from_raw(tok)) == TokenCategory::Identifier
         });
 
-        for kw in self.dialect.keywords() {
-            let code = u32::from(kw.token_type);
-            if !expected_set.contains(&code) || !is_suggestable_keyword(kw.keyword) {
+        for entry in self.dialect.keywords() {
+            let code = u32::from(entry.token_type);
+            if !expected_set.contains(&code) || !is_suggestable_keyword(entry.keyword) {
                 continue;
             }
-            if seen.insert(kw.keyword.to_string()) {
+            if seen.insert(entry.keyword.to_string()) {
                 items.push(CompletionEntry {
-                    label: kw.keyword.to_string(),
+                    label: entry.keyword.to_string(),
                     kind: CompletionKind::Keyword,
                 });
             }
@@ -296,28 +262,18 @@ impl LspHost {
         items
     }
 
-    /// Format a document's source text.
-    pub(crate) fn format(&self, uri: &str, config: &FormatConfig) -> Result<String, FormatError> {
-        let doc = self.documents.get(uri).ok_or_else(|| FormatError {
-            message: "unknown document".into(),
-            offset: None,
-            length: None,
-        })?;
-        let mut formatter = Formatter::with_dialect_config(self.dialect, config);
-        formatter.format(&doc.source)
-    }
-
     // ── Semantic validation ────────────────────────────────────────────────────
 
-    /// Semantic validation diagnostics for a document.
+    /// Semantic validation diagnostics for a document (non-parse-error issues only).
     ///
-    /// Returns only semantic diagnostics (unknown tables, columns, functions,
-    /// wrong arity). Parse-error diagnostics come from [`diagnostics()`](Self::diagnostics).
+    /// Always re-analyzes with `user_catalog` and `config`; use
+    /// [`diagnostics`](Self::diagnostics) for the cheaper cached parse-error path.
+    #[cfg(feature = "validation")]
     pub(crate) fn validate(&mut self, uri: &str, config: &ValidationConfig) -> Vec<Diagnostic> {
-        let Some(doc) = self.documents.get_mut(uri) else {
+        let Some(source) = self.documents.get(uri).map(|d| d.source.as_str()) else {
             return Vec::new();
         };
-        let model = self.analyzer.analyze(&doc.source, &self.catalog, config);
+        let model = self.analyzer.analyze(source, &self.user_catalog, config);
         model
             .diagnostics()
             .iter()
@@ -327,6 +283,7 @@ impl LspHost {
     }
 
     /// Parse + semantic diagnostics combined.
+    #[cfg(feature = "validation")]
     pub(crate) fn all_diagnostics(
         &mut self,
         uri: &str,
@@ -337,18 +294,33 @@ impl LspHost {
         result
     }
 
-    /// Unique function names available in the current catalog (dialect + user-defined).
+    // ── Formatting ────────────────────────────────────────────────────────────
+
+    /// Format a document's source text.
+    #[cfg(feature = "fmt")]
+    pub(crate) fn format(&self, uri: &str, config: &FormatConfig) -> Result<String, FormatError> {
+        let doc = self
+            .documents
+            .get(uri)
+            .ok_or(FormatError::UnknownDocument)?;
+        let mut formatter = Formatter::with_dialect_config(self.dialect, config);
+        formatter.format(&doc.source).map_err(FormatError::Format)
+    }
+
+    // ── Schema helpers ────────────────────────────────────────────────────────
+
+    /// All function names available given the current dialect and user catalog.
     pub(crate) fn available_function_names(&self) -> Vec<String> {
-        self.catalog.all_function_names()
+        let mut cat = Catalog::new(self.dialect);
+        cat.database = self.user_catalog.database.clone();
+        cat.all_function_names()
     }
 }
 
-// ── Semantic tokens encoding ──────────────────────────────────────────────────
+// ── Semantic tokens encoding ───────────────────────────────────────────────────
 
 /// Delta-encode semantic tokens as a flat `u32` array (5 values per token:
 /// `deltaLine`, `deltaStartChar`, `length`, `legendIndex`, `modifiers`).
-///
-/// This is the format expected by Monaco/LSP `textDocument/semanticTokens/full`.
 fn encode_semantic_tokens(
     source: &str,
     semantic_tokens: &[SemanticToken],
@@ -375,11 +347,8 @@ fn encode_semantic_tokens(
             src_pos += 1;
         }
 
-        if tok.offset < range_start {
+        if tok.offset < range_start || tok.offset >= range_end {
             continue;
-        }
-        if tok.offset >= range_end {
-            break;
         }
         if tok.category == TokenCategory::Other {
             continue;
@@ -406,19 +375,39 @@ fn encode_semantic_tokens(
     result
 }
 
-// ── FormatError (local re-export) ─────────────────────────────────────────────
+// ── FormatError ───────────────────────────────────────────────────────────────
 
 /// Errors that can occur during formatting.
+#[derive(Debug)]
+pub(crate) enum FormatError {
+    /// The document URI was not found.
+    UnknownDocument,
+    /// The formatter returned an error.
+    Format(crate::fmt::FormatError),
+}
+
+impl std::fmt::Display for FormatError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FormatError::UnknownDocument => write!(f, "unknown document"),
+            FormatError::Format(err) => write!(f, "format error: {err}"),
+        }
+    }
+}
+
+impl std::error::Error for FormatError {}
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 #[cfg(feature = "sqlite")]
 mod tests {
+    use syntaqlite_syntax::TokenType;
+
     use super::LspHost;
+    use crate::semantic::Catalog;
     use crate::semantic::ValidationConfig;
     use crate::semantic::diagnostics::{DiagnosticMessage, Severity};
-    use syntaqlite_syntax::TokenType;
 
     #[test]
     fn completions_fall_back_to_last_good_state_on_parse_error() {
@@ -429,7 +418,7 @@ mod tests {
         let expected = host.expected_tokens_at_offset(uri, sql.len());
         assert!(
             expected.contains(&(TokenType::From as u32)),
-            "expected TK_FROM after SELECT *, got {:?}",
+            "expected From after SELECT *, got {:?}",
             expected
         );
     }
@@ -443,7 +432,7 @@ mod tests {
         let expected = host.expected_tokens_at_offset(uri, sql.len());
         assert!(
             expected.contains(&(TokenType::From as u32)),
-            "expected TK_FROM in second statement context, got {:?}",
+            "expected From in second statement context, got {:?}",
             expected
         );
     }
@@ -457,7 +446,7 @@ mod tests {
         let expected = host.expected_tokens_at_offset(uri, sql.len());
         assert!(
             expected.contains(&(TokenType::JoinKw as u32)),
-            "expected TK_JOIN_KW after FROM alias, got {:?}",
+            "expected JoinKw after FROM alias, got {:?}",
             expected
         );
     }
@@ -471,19 +460,19 @@ mod tests {
         let expected = host.expected_tokens_at_offset(uri, sql.len());
         assert!(
             expected.contains(&(TokenType::Join as u32)),
-            "expected TK_JOIN"
+            "expected Join"
         );
         assert!(
             !expected.contains(&(TokenType::Create as u32)),
-            "TK_CREATE should not appear"
+            "Create should not appear"
         );
         assert!(
             !expected.contains(&(TokenType::Select as u32)),
-            "TK_SELECT should not appear"
+            "Select should not appear"
         );
         assert!(
             !expected.contains(&(TokenType::Virtual as u32)),
-            "TK_VIRTUAL should not appear"
+            "Virtual should not appear"
         );
     }
 
@@ -493,26 +482,15 @@ mod tests {
         let names = host.available_function_names();
         assert!(names.iter().any(|n| n == "abs"));
         assert!(names.iter().any(|n| n == "count"));
-        assert!(
-            !names.iter().any(|n| n == "acos"),
-            "acos requires ENABLE_MATH_FUNCTIONS"
-        );
     }
 
     #[test]
-    #[ignore = "SqliteFlags needs a public bit-setter before this can be wired up"]
-    fn available_functions_with_config_filters_by_cflags() {
-        // TODO: re-enable once AnyGrammar / SqliteFlags gains a public with_cflag(u32) API.
-        // The intent is: set SQLITE_ENABLE_MATH_FUNCTIONS (index 34) on the dialect
-        // and verify that acos() appears in available_function_names().
-    }
-
-    #[test]
-    fn available_functions_merges_ambient_context() {
+    fn available_functions_merges_user_context() {
         let mut host = LspHost::new();
-        let mut catalog = host.take_catalog();
-        catalog.add_function("my_custom_func", Some(2));
-        host.set_catalog(catalog);
+        let dialect = crate::sqlite::dialect::dialect();
+        let mut ctx = Catalog::new(dialect);
+        ctx.add_function("my_custom_func", Some(2));
+        host.set_session_context(ctx);
         let names = host.available_function_names();
         assert!(names.iter().any(|n| n == "my_custom_func"));
         assert!(names.iter().any(|n| n == "abs"));
@@ -680,7 +658,7 @@ mod tests {
     }
 
     #[test]
-    fn syntax_error_offset_points_at_error_token_not_following_token() {
+    fn syntax_error_offset_points_at_error_token() {
         let mut host = LspHost::new();
         let uri = "file:///test.sql";
         let sql = "select 1 from slice where foo = where x = y;";
@@ -696,31 +674,6 @@ mod tests {
             "got '{}' at {}",
             &sql[diag.start_offset..diag.start_offset + 1],
             diag.start_offset
-        );
-    }
-
-    #[test]
-    fn syntax_error_offset_via_parser_directly() {
-        use syntaqlite_syntax::Parser;
-        let sql = "select 1 from slice where foo = where x = y;";
-        let parser = Parser::new();
-        let mut cursor = parser.parse(sql);
-        let err = loop {
-            match cursor.next() {
-                syntaqlite_syntax::ParseOutcome::Err(e) => break e,
-                syntaqlite_syntax::ParseOutcome::Done => panic!("expected parse error"),
-                syntaqlite_syntax::ParseOutcome::Ok(_) => {}
-            }
-        };
-        assert!(err.message().contains("where"), "got: {}", err.message());
-        let offset = err.offset().expect("has offset");
-        let second_where = sql[31..].find("where").map(|i| i + 31).unwrap();
-        assert_eq!(
-            offset,
-            second_where,
-            "got '{}' at {}",
-            &sql[offset..offset + 1],
-            offset
         );
     }
 

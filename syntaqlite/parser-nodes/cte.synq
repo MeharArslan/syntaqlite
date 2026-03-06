@@ -6,7 +6,7 @@ node CteDefinition {
   columns: index ExprList
   select: index Select
 
-  semantic { cte_binding(name: cte_name, body: select) }
+  semantic { cte_binding(name: cte_name, columns: columns, body: select) }
 
   fmt {
     span(cte_name)

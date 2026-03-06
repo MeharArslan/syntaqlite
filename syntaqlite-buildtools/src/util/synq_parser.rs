@@ -98,6 +98,7 @@ pub(crate) enum SemanticRole {
     },
     CteBinding {
         name: String,
+        columns: Option<String>,
         body: String,
     },
     CteScope {
@@ -578,6 +579,7 @@ impl Parser {
             },
             "cte_binding" => SemanticRole::CteBinding {
                 name: require_param(&params, "name", node_name, "cte_binding")?,
+                columns: get_param(&params, "columns").map(str::to_string),
                 body: require_param(&params, "body", node_name, "cte_binding")?,
             },
             "cte_scope" => SemanticRole::CteScope {

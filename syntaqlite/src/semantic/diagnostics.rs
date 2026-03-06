@@ -54,6 +54,15 @@ pub enum DiagnosticMessage {
         /// Arity supplied by the call.
         got: usize,
     },
+    /// CTE declared column list count does not match the SELECT result column count.
+    CteColumnCountMismatch {
+        /// The CTE name.
+        name: String,
+        /// Number of names in the declared column list.
+        declared: usize,
+        /// Number of result columns in the CTE body.
+        actual: usize,
+    },
     /// Catch-all for parse errors and other unstructured messages.
     Other(String),
 }
@@ -87,6 +96,14 @@ impl std::fmt::Display for DiagnosticMessage {
                     expected_str.join(" or ")
                 )
             }
+            Self::CteColumnCountMismatch {
+                name,
+                declared,
+                actual,
+            } => write!(
+                f,
+                "table '{name}' has {actual} values for {declared} columns"
+            ),
             Self::Other(msg) => f.write_str(msg),
         }
     }
@@ -180,6 +197,18 @@ impl serde::Serialize for DiagnosticMessage {
                 let mut m = serializer.serialize_map(Some(2))?;
                 m.serialize_entry("kind", "unknown_function")?;
                 m.serialize_entry("name", name)?;
+                m.end()
+            }
+            Self::CteColumnCountMismatch {
+                name,
+                declared,
+                actual,
+            } => {
+                let mut m = serializer.serialize_map(Some(4))?;
+                m.serialize_entry("kind", "cte_column_count_mismatch")?;
+                m.serialize_entry("name", name)?;
+                m.serialize_entry("declared", declared)?;
+                m.serialize_entry("actual", actual)?;
                 m.end()
             }
             Self::FunctionArity {

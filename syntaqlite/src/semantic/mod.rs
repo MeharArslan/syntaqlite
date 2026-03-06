@@ -9,8 +9,6 @@ pub(crate) mod analyzer;
 pub(crate) mod catalog;
 pub(crate) mod diagnostics;
 #[cfg(feature = "validation")]
-pub(crate) mod engine;
-#[cfg(feature = "validation")]
 pub(crate) mod fuzzy;
 #[cfg(feature = "validation")]
 pub(crate) mod model;
