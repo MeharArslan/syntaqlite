@@ -6,8 +6,7 @@
 use std::collections::HashSet;
 
 use syntaqlite_syntax::any::AnyNodeId;
-use syntaqlite_syntax::ast_traits::AstTypes;
-use syntaqlite_syntax::typed::{GrammarNodeType, TypedParser};
+use syntaqlite_syntax::typed::TypedParser;
 use syntaqlite_syntax::{ParseOutcome, ParserConfig, TokenType};
 
 use crate::dialect::Dialect;
@@ -19,7 +18,6 @@ use super::engine::SemanticEngine;
 use super::model::{
     CompletionContext, CompletionInfo, SemanticModel, SemanticToken, StoredComment, StoredToken,
 };
-use super::walker::{WalkContext, Walker};
 
 /// Long-lived semantic analysis engine.
 ///
@@ -66,7 +64,7 @@ impl SemanticAnalyzer {
     ) -> SemanticModel {
         self.catalog.clear_document();
         self.catalog.database = user_catalog.database.clone();
-        self.analyze_inner::<syntaqlite_syntax::nodes::SqliteAstMarker>(source, config)
+        self.analyze_inner(source, config)
     }
 
     /// Semantic tokens for syntax highlighting, derived from a prior
@@ -138,7 +136,7 @@ impl SemanticAnalyzer {
     // ── Private ───────────────────────────────────────────────────────────────
 
     #[cfg(feature = "sqlite")]
-    fn analyze_inner<A: for<'a> AstTypes<'a>>(
+    fn analyze_inner(
         &mut self,
         source: &str,
         config: &ValidationConfig,
@@ -192,18 +190,6 @@ impl SemanticAnalyzer {
 
             self.catalog.accumulate_ddl(erased, root_id, self.dialect);
 
-            if let Some(root_stmt) = A::Stmt::from_result(erased, root_id) {
-                let ctx = WalkContext {
-                    catalog: &mut self.catalog,
-                    config,
-                };
-                diagnostics.extend(Walker::<A>::run(erased, root_stmt, ctx));
-            }
-
-            // SemanticEngine validation pass — runs alongside Walker<A> at
-            // Step 4 (all non-DDL nodes are Transparent so it produces no
-            // diagnostics yet). Expression/source/scope handlers added in
-            // Steps 5–6.
             let engine_diags =
                 SemanticEngine::run(erased, root_id, self.dialect, &mut self.catalog, config);
             diagnostics.extend(engine_diags);
