@@ -324,10 +324,7 @@ impl DatabaseCatalog {
     }
 
     #[cfg(feature = "sqlite")]
-    pub(crate) fn from_ddl_dialect<A: for<'a> AstTypes<'a>>(
-        dialect: Dialect,
-        source: &str,
-    ) -> Self {
+    pub(crate) fn from_ddl<A: for<'a> AstTypes<'a>>(dialect: Dialect, source: &str) -> Self {
         let parser = syntaqlite_syntax::Parser::new();
         let mut session = parser.parse(source);
         let mut doc = DocumentCatalog::new();
@@ -341,7 +338,7 @@ impl DatabaseCatalog {
             if let Some(root) = stmt.root() {
                 let root_id: AnyNodeId = root.node_id().into();
                 let any_result = stmt.erase();
-                doc.accumulate_dialect::<A>(any_result, root_id, dialect, None);
+                doc.accumulate::<A>(any_result, root_id, dialect, None);
             }
         }
 
@@ -349,11 +346,6 @@ impl DatabaseCatalog {
             relations: doc.relations,
             functions: doc.functions,
         }
-    }
-
-    #[cfg(feature = "sqlite")]
-    pub(crate) fn from_ddl(dialect: Dialect, source: &str) -> Self {
-        Self::from_ddl_dialect::<syntaqlite_syntax::nodes::SqliteAstMarker>(dialect, source)
     }
 
     #[cfg(feature = "json")]
@@ -462,7 +454,7 @@ impl DocumentCatalog {
         layer
     }
 
-    pub(crate) fn accumulate_dialect<'a, A: AstTypes<'a>>(
+    pub(crate) fn accumulate<'a, A: AstTypes<'a>>(
         &mut self,
         stmt_result: AnyParsedStatement<'a>,
         stmt_id: AnyNodeId,
@@ -508,10 +500,17 @@ impl DocumentCatalog {
                     && let FieldValue::NodeId(sel_id) = fields[sel_field_idx as usize]
                     && !sel_id.is_null()
                 {
-                    columns_from_select::<A>(stmt_result, sel_id, &self.known, database, &mut columns);
+                    columns_from_select::<A>(
+                        stmt_result,
+                        sel_id,
+                        &self.known,
+                        database,
+                        &mut columns,
+                    );
                 }
 
-                self.known.insert(name.to_ascii_lowercase(), columns.clone());
+                self.known
+                    .insert(name.to_ascii_lowercase(), columns.clone());
                 self.relations.push(RelationDef {
                     name,
                     columns,
@@ -533,22 +532,6 @@ impl DocumentCatalog {
             }
             SchemaKind::Import => {}
         }
-    }
-
-    #[cfg(feature = "sqlite")]
-    pub(crate) fn accumulate(
-        &mut self,
-        stmt_result: AnyParsedStatement<'_>,
-        stmt_id: AnyNodeId,
-        dialect: Dialect,
-        database: Option<&DatabaseCatalog>,
-    ) {
-        self.accumulate_dialect::<syntaqlite_syntax::nodes::SqliteAstMarker>(
-            stmt_result,
-            stmt_id,
-            dialect,
-            database,
-        );
     }
 }
 
@@ -597,8 +580,8 @@ impl CatalogStack<'_> {
 
 // -- DDL extraction helpers --------------------------------------------------
 
-fn columns_from_column_list(
-    stmt_result: AnyParsedStatement<'_>,
+fn columns_from_column_list<'a, A: AstTypes<'a>>(
+    stmt_result: AnyParsedStatement<'a>,
     list_id: AnyNodeId,
     dialect: Dialect,
     out: &mut Vec<ColumnDef>,
@@ -649,10 +632,9 @@ fn columns_from_column_list(
         let mut is_primary_key = false;
         let mut is_nullable = true;
         if let Some(constraints_id) = constraints_id.filter(|id| !id.is_null()) {
-            extract_column_constraints(
+            extract_column_constraints::<A>(
                 stmt_result,
                 constraints_id,
-                dialect,
                 &mut is_primary_key,
                 &mut is_nullable,
             );
@@ -667,31 +649,7 @@ fn columns_from_column_list(
     }
 }
 
-fn extract_column_constraints(
-    stmt_result: AnyParsedStatement<'_>,
-    list_id: AnyNodeId,
-    _dialect: Dialect,
-    is_primary_key: &mut bool,
-    is_nullable: &mut bool,
-) {
-    #[cfg(feature = "sqlite")]
-    {
-        extract_column_constraints_dialect::<syntaqlite_syntax::nodes::SqliteAstMarker>(
-            stmt_result,
-            list_id,
-            is_primary_key,
-            is_nullable,
-        );
-        return;
-    }
-
-    #[cfg(not(feature = "sqlite"))]
-    {
-        let _ = (stmt_result, list_id, is_primary_key, is_nullable);
-    }
-}
-
-fn extract_column_constraints_dialect<'a, A: AstTypes<'a>>(
+fn extract_column_constraints<'a, A: AstTypes<'a>>(
     stmt_result: AnyParsedStatement<'a>,
     list_id: AnyNodeId,
     is_primary_key: &mut bool,
@@ -724,37 +682,7 @@ fn extract_column_constraints_dialect<'a, A: AstTypes<'a>>(
 
 type KnownSchema = HashMap<String, Vec<ColumnDef>>;
 
-fn columns_from_select(
-    stmt_result: AnyParsedStatement<'_>,
-    select_id: AnyNodeId,
-    known: &KnownSchema,
-    database: Option<&DatabaseCatalog>,
-    out: &mut Vec<ColumnDef>,
-) {
-    #[cfg(feature = "sqlite")]
-    {
-        columns_from_select_dialect::<syntaqlite_syntax::nodes::SqliteAstMarker>(
-            stmt_result,
-            select_id,
-            known,
-            database,
-            out,
-        );
-        return;
-    }
-
-    #[cfg(not(feature = "sqlite"))]
-    {
-        let _ = (stmt_result, select_id, known, database, out);
-    }
-}
-
-struct FromSource {
-    qualifier: String,
-    columns: Vec<ColumnDef>,
-}
-
-fn columns_from_select_dialect<'a, A: AstTypes<'a>>(
+fn columns_from_select<'a, A: AstTypes<'a>>(
     stmt_result: AnyParsedStatement<'a>,
     select_id: AnyNodeId,
     known: &KnownSchema,
@@ -770,14 +698,14 @@ fn columns_from_select_dialect<'a, A: AstTypes<'a>>(
         SelectKind::CompoundSelect(cs) => {
             if let Some(left) = cs.left() {
                 let id: AnyNodeId = left.node_id().into();
-                return columns_from_select_dialect::<A>(stmt_result, id, known, database, out);
+                return columns_from_select::<A>(stmt_result, id, known, database, out);
             }
             return;
         }
         SelectKind::WithClause(wc) => {
             if let Some(s) = wc.select() {
                 let id: AnyNodeId = s.node_id().into();
-                return columns_from_select_dialect::<A>(stmt_result, id, known, database, out);
+                return columns_from_select::<A>(stmt_result, id, known, database, out);
             }
             return;
         }
@@ -788,7 +716,7 @@ fn columns_from_select_dialect<'a, A: AstTypes<'a>>(
         .from_clause()
         .map(|ts| {
             let id: AnyNodeId = ts.node_id().into();
-            collect_from_sources_dialect::<A>(stmt_result, id, known, database)
+            collect_from_sources::<A>(stmt_result, id, known, database)
         })
         .unwrap_or_default();
 
@@ -821,7 +749,12 @@ fn columns_from_select_dialect<'a, A: AstTypes<'a>>(
     }
 }
 
-fn collect_from_sources_dialect<'a, A: AstTypes<'a>>(
+struct FromSource {
+    qualifier: String,
+    columns: Vec<ColumnDef>,
+}
+
+fn collect_from_sources<'a, A: AstTypes<'a>>(
     stmt_result: AnyParsedStatement<'a>,
     source_id: AnyNodeId,
     known: &KnownSchema,
@@ -860,7 +793,7 @@ fn collect_from_sources_dialect<'a, A: AstTypes<'a>>(
             let mut columns = Vec::new();
             if let Some(select) = sq.select() {
                 let id: AnyNodeId = select.node_id().into();
-                columns_from_select_dialect::<A>(stmt_result, id, known, database, &mut columns);
+                columns_from_select::<A>(stmt_result, id, known, database, &mut columns);
             }
             out.push(FromSource {
                 qualifier: sq.alias().to_string(),
@@ -870,32 +803,17 @@ fn collect_from_sources_dialect<'a, A: AstTypes<'a>>(
         TableSourceKind::JoinClause(jc) => {
             if let Some(left) = jc.left() {
                 let id: AnyNodeId = left.node_id().into();
-                out.extend(collect_from_sources_dialect::<A>(
-                    stmt_result,
-                    id,
-                    known,
-                    database,
-                ));
+                out.extend(collect_from_sources::<A>(stmt_result, id, known, database));
             }
             if let Some(right) = jc.right() {
                 let id: AnyNodeId = right.node_id().into();
-                out.extend(collect_from_sources_dialect::<A>(
-                    stmt_result,
-                    id,
-                    known,
-                    database,
-                ));
+                out.extend(collect_from_sources::<A>(stmt_result, id, known, database));
             }
         }
         TableSourceKind::JoinPrefix(jp) => {
             if let Some(s) = jp.source() {
                 let id: AnyNodeId = s.node_id().into();
-                out.extend(collect_from_sources_dialect::<A>(
-                    stmt_result,
-                    id,
-                    known,
-                    database,
-                ));
+                out.extend(collect_from_sources::<A>(stmt_result, id, known, database));
             }
         }
         _ => {}

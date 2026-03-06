@@ -8,20 +8,20 @@
 
 use std::collections::HashSet;
 
+use syntaqlite_syntax::ParserTokenFlags;
+use syntaqlite_syntax::TokenType;
 use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement};
 use syntaqlite_syntax::ast_traits::AstTypes;
 use syntaqlite_syntax::typed::{GrammarNodeType, TypedParser};
-use syntaqlite_syntax::ParserTokenFlags;
-use syntaqlite_syntax::TokenType;
 
 use crate::dialect::{Dialect, TokenCategory};
 
+use super::ValidationConfig;
 use super::catalog::{CatalogStack, DatabaseCatalog, DocumentCatalog, StaticCatalog};
 use super::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
 use super::model::{SemanticModel, StoredComment, StoredParseError, StoredToken};
 use super::scope::ScopeStack;
 use super::walker::Walker;
-use super::ValidationConfig;
 
 /// Analysis engine. Long-lived, reuses scratch buffers internally.
 ///
@@ -82,9 +82,8 @@ impl<'d> SemanticAnalyzer<'d> {
             config,
         ));
 
-        #[cfg(feature = "sqlite")]
         self.doc_catalog
-            .accumulate(stmt_result, stmt_id, self.dialect, Some(catalog));
+            .accumulate::<A>(stmt_result, stmt_id, self.dialect, Some(catalog));
     }
 
     // -- Primary API -------------------------------------------------------
