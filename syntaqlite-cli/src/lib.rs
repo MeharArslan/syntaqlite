@@ -20,8 +20,8 @@ pub(crate) struct Cli {
     pub(crate) dialect_path: Option<String>,
 
     /// Dialect name for symbol lookup.
-    /// When omitted, the loader resolves `syntaqlite_dialect`.
-    /// With a name, it resolves `syntaqlite_<name>_dialect`.
+    /// When omitted, the loader resolves `syntaqlite_grammar`.
+    /// With a name, it resolves `syntaqlite_<name>_grammar`.
     #[cfg(feature = "builtin-sqlite")]
     #[arg(long, requires = "dialect_path")]
     pub(crate) dialect_name: Option<String>,
@@ -61,8 +61,8 @@ pub(crate) enum Command {
     Validate {
         /// SQL files or glob patterns (reads stdin if omitted)
         files: Vec<String>,
-        /// Host language for embedded SQL extraction
-        #[arg(long, value_enum)]
+        /// Host language for embedded SQL extraction (python, typescript)
+        #[arg(long)]
         lang: Option<runtime::HostLanguage>,
     },
     /// Start the language server (stdio)
@@ -79,7 +79,7 @@ pub(crate) enum Command {
 
 /// Run the CLI.
 #[cfg(feature = "builtin-sqlite")]
-pub fn run(name: &str, dialect: Option<syntaqlite_parser::DialectEnv<'_>>) {
+pub fn run(name: &str, dialect: Option<syntaqlite::Dialect>) {
     let cli =
         Cli::try_parse_from(std::iter::once(name.to_string()).chain(std::env::args().skip(1)))
             .unwrap_or_else(|e| e.exit());
@@ -92,23 +92,3 @@ pub fn run(name: &str, dialect: Option<syntaqlite_parser::DialectEnv<'_>>) {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[cfg(feature = "builtin-sqlite")]
-    use super::runtime::dialect_symbol_name;
-
-    #[test]
-    #[cfg(feature = "builtin-sqlite")]
-    fn picks_default_symbol_when_name_missing() {
-        assert_eq!(dialect_symbol_name(None), "syntaqlite_dialect");
-    }
-
-    #[test]
-    #[cfg(feature = "builtin-sqlite")]
-    fn uses_named_symbol_when_name_given() {
-        assert_eq!(
-            dialect_symbol_name(Some("sqlite")),
-            "syntaqlite_sqlite_dialect"
-        );
-    }
-}

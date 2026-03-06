@@ -10,6 +10,7 @@ default = ["sqlite", "fmt", "validation"]
 fmt = []                     # formatter (bytecode interpreter)
 validation = []              # semantic validation (schema checks, fuzzy suggestions)
 embedded = ["validation"]    # embedded SQL extraction from host languages (Python f-strings, etc.)
+dynload = ["dep:libloading"]             # dynamic dialect loading from .so/.dylib/.dll
 lsp = ["fmt", "validation", "sqlite", "dep:lsp-server", "dep:lsp-types", "dep:serde_json"]  # LSP analysis host + protocol server
 sqlite = ["syntaqlite-syntax/sqlite"]  # SQLite dialect (grammar, tokens, cflags, functions)
 json = ["dep:serde", "dep:serde_json", "syntaqlite-syntax/json"]   # JSON serialization for diagnostics and related types
@@ -34,6 +35,7 @@ syntaqlite-common = { path = "../syntaqlite-common" }
 syntaqlite-syntax = { path = "../syntaqlite-syntax", default-features = false }
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }
+libloading = { version = "0.8", optional = true }
 lsp-server = { version = "0.7", optional = true }
 lsp-types = { version = "0.97", optional = true }
 

@@ -220,7 +220,7 @@ pub struct Catalog {
 impl Catalog {
     /// Create a catalog for `dialect`. The dialect's built-in functions are
     /// loaded immediately and stored in the dialect layer.
-    pub(crate) fn new(dialect: Dialect) -> Self {
+    pub fn new(dialect: Dialect) -> Self {
         let mut cat = Catalog {
             dialect: CatalogLayer::default(),
             database: CatalogLayer::default(),
@@ -279,7 +279,7 @@ impl Catalog {
     #[cfg(feature = "sqlite")]
     pub(crate) fn from_ddl(dialect: Dialect, source: &str) -> Self {
         use syntaqlite_syntax::ParseOutcome;
-        let mut catalog = Catalog::new(dialect);
+        let mut catalog = Catalog::new(dialect.clone());
         let parser = syntaqlite_syntax::Parser::new();
         let mut session = parser.parse(source);
         loop {
@@ -290,7 +290,7 @@ impl Catalog {
             };
             let root = stmt.root();
             let root_id: AnyNodeId = root.node_id().into();
-            catalog.accumulate_ddl_into_database(stmt.erase(), root_id, dialect);
+            catalog.accumulate_ddl_into_database(stmt.erase(), root_id, dialect.clone());
         }
         catalog
     }

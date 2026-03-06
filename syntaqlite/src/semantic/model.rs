@@ -84,7 +84,7 @@ pub(crate) struct CompletionInfo {
 /// (both parse errors and semantic issues). Produced by
 /// [`SemanticAnalyzer::analyze`](super::analyzer::SemanticAnalyzer::analyze).
 #[allow(dead_code)]
-pub(crate) struct SemanticModel {
+pub struct SemanticModel {
     pub(crate) source: String,
     pub(crate) tokens: Vec<StoredToken>,
     pub(crate) comments: Vec<StoredComment>,
@@ -93,11 +93,13 @@ pub(crate) struct SemanticModel {
 
 #[allow(dead_code)]
 impl SemanticModel {
-    pub(crate) fn source(&self) -> &str {
+    /// The source text that was analyzed.
+    pub fn source(&self) -> &str {
         &self.source
     }
 
-    pub(crate) fn diagnostics(&self) -> &[Diagnostic] {
+    /// All diagnostics produced by the analysis pass (parse errors + semantic issues).
+    pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
     }
 }

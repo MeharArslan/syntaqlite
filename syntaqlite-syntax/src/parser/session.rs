@@ -301,6 +301,11 @@ impl<'a> ParsedStatement<'a> {
     pub fn erase(&self) -> AnyParsedStatement<'a> {
         self.0.erase()
     }
+
+    /// Dump the AST as indented text into `out`.
+    pub fn dump(&self, out: &mut String, indent: usize) {
+        self.0.dump(out, indent);
+    }
 }
 
 /// Parse error for one `SQLite` statement.

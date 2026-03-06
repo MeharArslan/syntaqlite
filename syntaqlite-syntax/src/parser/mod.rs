@@ -346,6 +346,12 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
         G::Node::from_result(self.erase(), id)
     }
 
+    /// Dump the AST as indented text into `out`.
+    pub fn dump(&self, out: &mut String, indent: usize) {
+        let any = self.erase();
+        any.dump_node(any.root_id(), out, indent);
+    }
+
     /// The source text bound to this result.
     pub fn source(&self) -> &'a str {
         self.source

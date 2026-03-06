@@ -23,6 +23,8 @@ pub use analyzer::SemanticAnalyzer;
 pub use catalog::Catalog;
 pub use diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
 #[cfg(feature = "validation")]
+pub use model::SemanticModel;
+#[cfg(feature = "validation")]
 pub use render::{DiagnosticRenderer, SourceContext};
 
 /// Configuration for semantic validation.

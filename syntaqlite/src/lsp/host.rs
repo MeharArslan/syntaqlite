@@ -67,9 +67,9 @@ impl LspHost {
     pub fn new() -> Self {
         let dialect = crate::sqlite::dialect::dialect();
         LspHost {
-            dialect,
-            user_catalog: Catalog::new(dialect),
+            user_catalog: Catalog::new(dialect.clone()),
             analyzer: SemanticAnalyzer::new(),
+            dialect,
             documents: HashMap::new(),
         }
     }
@@ -77,9 +77,9 @@ impl LspHost {
     /// Create a host bound to `dialect`.
     pub(crate) fn with_dialect(dialect: Dialect) -> Self {
         LspHost {
+            user_catalog: Catalog::new(dialect.clone()),
+            analyzer: SemanticAnalyzer::with_dialect(dialect.clone()),
             dialect,
-            user_catalog: Catalog::new(dialect),
-            analyzer: SemanticAnalyzer::with_dialect(dialect),
             documents: HashMap::new(),
         }
     }
@@ -297,15 +297,15 @@ impl LspHost {
             .documents
             .get(uri)
             .ok_or(FormatError::UnknownDocument)?;
-        let mut formatter = Formatter::with_dialect_config(self.dialect, config);
+        let mut formatter = Formatter::with_dialect_config(self.dialect.clone(), config);
         formatter.format(&doc.source).map_err(FormatError::Format)
     }
 
     // ── Schema helpers ────────────────────────────────────────────────────────
 
     /// All function names available given the current dialect and user catalog.
-    pub fn available_function_names(&self) -> Vec<String> {
-        let mut cat = Catalog::new(self.dialect);
+    pub(crate) fn available_function_names(&self) -> Vec<String> {
+        let mut cat = Catalog::new(self.dialect.clone());
         cat.database = self.user_catalog.database.clone();
         cat.all_function_names()
     }
@@ -319,8 +319,9 @@ impl LspHost {
     /// # Errors
     ///
     /// Returns an error string if `json` is not a valid schema JSON blob.
+    #[cfg(feature = "json")]
     pub fn set_session_context_from_json(&mut self, json: &str) -> Result<(), String> {
-        let catalog = Catalog::from_json(self.dialect, json)?;
+        let catalog = Catalog::from_json(self.dialect.clone(), json)?;
         self.set_session_context(catalog);
         Ok(())
     }
@@ -331,7 +332,7 @@ impl LspHost {
     /// [`Catalog`] using the host's dialect and DDL source, avoiding the need
     /// for callers to handle `Dialect` directly.
     pub fn set_session_context_from_ddl(&mut self, ddl: &str) {
-        let catalog = Catalog::from_ddl(self.dialect, ddl);
+        let catalog = Catalog::from_ddl(self.dialect.clone(), ddl);
         self.set_session_context(catalog);
     }
 }

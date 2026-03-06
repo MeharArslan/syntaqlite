@@ -3,21 +3,22 @@
 
 //! Dialect handle, semantic role types, and function catalog types.
 
+use std::sync::Arc;
+
 use syntaqlite_syntax::any::AnyGrammar;
 pub(crate) use syntaqlite_syntax::util::SqliteVersion;
 
 // ── Semantic role types ───────────────────────────────────────────────────────
 
 /// Index into a node's field array (0-based).
-pub(crate) type FieldIdx = u8;
+pub type FieldIdx = u8;
 
 /// The kind of relation a `SourceRef` binding introduces into scope.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum RelationKind {
-    /// Standard SQL table or view.
+pub enum RelationKind {
+    /// Standard SQL table.
     Table,
-    /// View — kept separate for catalog queries.
+    /// View — kept separate from `Table` for catalog queries.
     View,
     /// Perfetto interval-structured data.
     Interval,
@@ -32,22 +33,32 @@ pub(crate) enum RelationKind {
 /// Generated from `semantic { ... }` annotations in `.synq` files and stored
 /// in a static array indexed by node tag. `Transparent` means the engine
 /// recurses into children without special handling.
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum SemanticRole {
+pub enum SemanticRole {
     // ── Catalog roles ─────────────────────────────────────────────────────
+    /// CREATE TABLE statement: registers a table in the catalog.
     DefineTable {
+        /// Field index of the table name.
         name: FieldIdx,
+        /// Field index of the column-definition list, if present.
         columns: Option<FieldIdx>,
+        /// Field index of an AS-SELECT body, if present.
         select: Option<FieldIdx>,
     },
+    /// CREATE VIEW statement: registers a view in the catalog.
     DefineView {
+        /// Field index of the view name.
         name: FieldIdx,
+        /// Field index of the optional declared column list.
         columns: Option<FieldIdx>,
+        /// Field index of the SELECT body.
         select: FieldIdx,
     },
+    /// CREATE FUNCTION statement: registers a function in the catalog.
     DefineFunction {
+        /// Field index of the function name.
         name: FieldIdx,
+        /// Field index of the argument list, if present.
         args: Option<FieldIdx>,
         /// Optional field index of a return-type child node.
         /// The accumulator looks up that child's [`SemanticRole`] and dispatches
@@ -62,79 +73,114 @@ pub(crate) enum SemanticRole {
     /// dedicated return-type descriptor node can use this role regardless of
     /// how the surrounding syntax is structured.
     ReturnSpec {
+        /// Field index of the column list child, or `None` if scalar-returning.
         columns: Option<FieldIdx>,
     },
+    /// Module import statement: registers an imported module name.
     Import {
+        /// Field index of the module name.
         module: FieldIdx,
     },
 
     // ── Column-list items — used during define_table column extraction ─────
+    /// A single column definition within a CREATE TABLE column list.
     ColumnDef {
+        /// Field index of the column name.
         name: FieldIdx,
+        /// Field index of the type annotation, if present.
         type_: Option<FieldIdx>,
+        /// Field index of the constraint list, if present.
         constraints: Option<FieldIdx>,
     },
 
     // ── Result columns — used during SELECT column inference ───────────────
+    /// A single result column in a SELECT list.
     ResultColumn {
+        /// Field index of the flags bitfield (e.g. `STAR = 1`).
         flags: FieldIdx,
+        /// Field index of the alias, if present.
         alias: FieldIdx,
+        /// Field index of the value expression.
         expr: FieldIdx,
     },
 
     // ── Expressions ───────────────────────────────────────────────────────
     /// Function/aggregate/window call: validate name and arg count.
     Call {
+        /// Field index of the function name.
         name: FieldIdx,
+        /// Field index of the argument list.
         args: FieldIdx,
     },
     /// Column reference: validate column and optional table qualifier.
     ColumnRef {
+        /// Field index of the column name.
         column: FieldIdx,
+        /// Field index of the optional table qualifier.
         table: FieldIdx,
     },
 
     // ── Sources ───────────────────────────────────────────────────────────
     /// Table/view reference in FROM — adds binding to current scope.
     SourceRef {
+        /// The kind of relation being referenced.
         kind: RelationKind,
+        /// Field index of the relation name.
         name: FieldIdx,
+        /// Field index of the alias, if present.
         alias: FieldIdx,
     },
     /// Subquery in FROM — opens a fresh scope, then binds alias in outer scope.
     ScopedSource {
+        /// Field index of the subquery body.
         body: FieldIdx,
+        /// Field index of the alias.
         alias: FieldIdx,
     },
 
     // ── Scope structure ───────────────────────────────────────────────────
     /// SELECT statement: process `from` first, then validate `exprs`.
     Query {
+        /// Field index of the FROM clause.
         from: FieldIdx,
+        /// Field index of the result-column list.
         columns: FieldIdx,
+        /// Field index of the WHERE clause.
         where_clause: FieldIdx,
+        /// Field index of the GROUP BY clause.
         groupby: FieldIdx,
+        /// Field index of the HAVING clause.
         having: FieldIdx,
+        /// Field index of the ORDER BY clause.
         orderby: FieldIdx,
+        /// Field index of the LIMIT clause.
         limit_clause: FieldIdx,
     },
     /// CTE definition: binds a name to a subquery body.
     CteBinding {
+        /// Field index of the CTE name.
         name: FieldIdx,
         /// Optional declared column list (rename/alias for body result columns).
         columns: Option<FieldIdx>,
+        /// Field index of the SELECT body.
         body: FieldIdx,
     },
     /// WITH clause: sequential CTE scope wrapping a main query.
     CteScope {
+        /// Field index of the RECURSIVE flag.
         recursive: FieldIdx,
+        /// Field index of the CTE binding list.
         bindings: FieldIdx,
+        /// Field index of the main query body.
         body: FieldIdx,
     },
     /// CREATE TRIGGER: injects OLD/NEW into the trigger body scope.
     TriggerScope {
+        /// Field index of the target table.
         target: FieldIdx,
+        /// Field index of the WHEN expression.
         when: FieldIdx,
+        /// Field index of the trigger body.
         body: FieldIdx,
     },
 
@@ -246,8 +292,12 @@ pub(crate) fn is_function_available(entry: &FunctionEntry<'_>, dialect: &Dialect
 /// - the syntactic [`AnyGrammar`]
 /// - formatter bytecode tables
 /// - semantic role table (indexed by node tag)
-#[derive(Clone, Copy)]
-pub(crate) struct AnyDialect {
+///
+/// Built-in dialects hold `&'static` data directly. Dynamically loaded
+/// dialects use `from_raw_parts` which transmutes library-memory pointers to
+/// `&'static` and keeps the library alive via an [`Arc`].
+#[derive(Clone)]
+pub struct AnyDialect {
     grammar: AnyGrammar,
 
     // Formatter data — Rust-generated statics.
@@ -258,10 +308,14 @@ pub(crate) struct AnyDialect {
 
     // Semantic role table — generated from `semantic { ... }` annotations.
     roles: &'static [SemanticRole],
+
+    /// Keeps a dynamically loaded library alive as long as this dialect handle
+    /// (or any clone of it) is alive. `None` for built-in dialects.
+    _keep_alive: Option<Arc<dyn Send + Sync>>,
 }
 
 /// Default dialect handle name used throughout the crate.
-pub(crate) type Dialect = AnyDialect;
+pub type Dialect = AnyDialect;
 
 // SAFETY: wraps immutable static data (C grammar + Rust slices).
 unsafe impl Send for AnyDialect {}
@@ -269,7 +323,7 @@ unsafe impl Send for AnyDialect {}
 unsafe impl Sync for AnyDialect {}
 
 impl AnyDialect {
-    /// Construct from grammar + generated static tables.
+    /// Construct from grammar + generated static tables (built-in dialects).
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         grammar: AnyGrammar,
@@ -286,6 +340,47 @@ impl AnyDialect {
             fmt_ops,
             fmt_dispatch,
             roles,
+            _keep_alive: None,
+        }
+    }
+
+    /// Construct a dialect from dynamically loaded library data.
+    ///
+    /// Transmutes the provided slice references to `&'static`, which is safe
+    /// as long as the underlying data lives at least as long as `keep_alive`.
+    /// When the last clone of this `AnyDialect` is dropped, `keep_alive` is
+    /// dropped too, which unloads the library.
+    ///
+    /// # Safety
+    /// All data pointers (`fmt_strings`, `fmt_enum_display`, `fmt_ops`,
+    /// `fmt_dispatch`, `roles`) must point into memory owned by `keep_alive`
+    /// and remain valid for its entire lifetime.
+    pub unsafe fn from_raw_parts(
+        grammar: AnyGrammar,
+        fmt_strings: &[&str],
+        fmt_enum_display: &[u16],
+        fmt_ops: &[u8],
+        fmt_dispatch: &[u32],
+        roles: &[SemanticRole],
+        keep_alive: Arc<dyn Send + Sync>,
+    ) -> Self {
+        // SAFETY: caller guarantees the slices live as long as `keep_alive`.
+        AnyDialect {
+            grammar,
+            fmt_strings: unsafe {
+                std::mem::transmute::<&[&str], &'static [&'static str]>(fmt_strings)
+            },
+            fmt_enum_display: unsafe {
+                std::mem::transmute::<&[u16], &'static [u16]>(fmt_enum_display)
+            },
+            fmt_ops: unsafe { std::mem::transmute::<&[u8], &'static [u8]>(fmt_ops) },
+            fmt_dispatch: unsafe {
+                std::mem::transmute::<&[u32], &'static [u32]>(fmt_dispatch)
+            },
+            roles: unsafe {
+                std::mem::transmute::<&[SemanticRole], &'static [SemanticRole]>(roles)
+            },
+            _keep_alive: Some(keep_alive),
         }
     }
 
@@ -373,7 +468,7 @@ mod tests {
             &[],
             &[],
             &[],
-            &[],
+            &[], // _keep_alive: None (built-in)
         );
         let roles: &[SemanticRole] = d.roles();
         assert!(roles.is_empty());

@@ -3,6 +3,10 @@
 
 //! LSP protocol server — stdio JSON-RPC message loop.
 
+// `LspServer` is intentionally `pub` so it can be re-exported by `lsp/mod.rs`.
+// The `server` submodule is private; items here are only reachable via that re-export.
+#![allow(unreachable_pub)]
+
 use std::error::Error;
 use std::path::PathBuf;
 
@@ -32,11 +36,11 @@ use crate::semantic::diagnostics::Severity;
 /// Runs a JSON-RPC message loop on stdin/stdout, driving an [`LspHost`]
 /// for all analysis requests.  Exits cleanly when the client sends a
 /// `shutdown` request.
-pub(crate) struct LspServer;
+pub struct LspServer;
 
 impl LspServer {
     /// Start the LSP server bound to `dialect` and block until shutdown.
-    pub(crate) fn run(dialect: Dialect) -> Result<(), Box<dyn Error + Sync + Send>> {
+    pub fn run(dialect: Dialect) -> Result<(), Box<dyn Error + Sync + Send>> {
         let (connection, io_threads) = Connection::stdio();
 
         let server_capabilities = serde_json::to_value(ServerCapabilities {

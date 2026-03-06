@@ -35,22 +35,22 @@ pub struct SemanticAnalyzer {
 impl SemanticAnalyzer {
     /// Create an analyzer for the built-in `SQLite` dialect.
     #[cfg(feature = "sqlite")]
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self::with_dialect(crate::sqlite::dialect::dialect())
     }
 
     /// Create an analyzer bound to a specific dialect.
-    pub(crate) fn with_dialect(dialect: impl Into<Dialect>) -> Self {
+    pub fn with_dialect(dialect: impl Into<Dialect>) -> Self {
         let dialect = dialect.into();
         SemanticAnalyzer {
-            catalog: Catalog::new(dialect),
+            catalog: Catalog::new(dialect.clone()),
             dialect,
         }
     }
 
     /// Return the dialect this analyzer was constructed for.
     pub(crate) fn dialect(&self) -> Dialect {
-        self.dialect
+        self.dialect.clone()
     }
 
     /// Run a complete single-pass analysis: parse, collect tokens, walk AST.
@@ -59,7 +59,7 @@ impl SemanticAnalyzer {
     /// database layer is merged into the analyzer's catalog for this pass only.
     /// The document layer is cleared and rebuilt statement-by-statement so that
     /// DDL seen earlier in the file is visible to queries that follow it.
-    pub(crate) fn analyze(
+    pub fn analyze(
         &mut self,
         source: &str,
         user_catalog: &Catalog,
@@ -212,12 +212,12 @@ impl SemanticAnalyzer {
             let root_id: AnyNodeId = root.node_id().into();
             let erased = stmt.erase();
 
-            self.catalog.accumulate_ddl(erased, root_id, self.dialect);
+            self.catalog.accumulate_ddl(erased, root_id, self.dialect.clone());
 
             ValidationPass::run(
                 erased,
                 root_id,
-                self.dialect,
+                self.dialect.clone(),
                 &mut self.catalog,
                 config,
                 &mut diagnostics,

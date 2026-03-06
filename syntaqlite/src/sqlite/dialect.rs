@@ -32,5 +32,5 @@ static DIALECT: LazyLock<Dialect> = LazyLock::new(|| {
 
 /// Returns the `SQLite` dialect handle.
 pub(crate) fn dialect() -> Dialect {
-    *DIALECT
+    DIALECT.clone()
 }

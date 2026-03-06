@@ -4,9 +4,8 @@
 //! Embedded SQL extraction from host language sources.
 //!
 //! Extracts SQL fragments from host language files, replaces interpolation holes
-//! with placeholder identifiers, parses the SQL with `begin_macro`/`end_macro`
-//! wrapping each hole, runs validation, and maps diagnostic offsets back to
-//! host-file positions.
+//! with placeholder identifiers, runs validation via [`SemanticAnalyzer`], and
+//! maps diagnostic offsets back to host-file positions.
 //!
 //! Language-specific extractors live in submodules:
 //! - [`extract_python`] — Python f-string extraction
@@ -16,20 +15,18 @@ pub(crate) mod offset_map;
 mod python;
 mod typescript;
 
-pub(crate) use python::extract_python;
-pub(crate) use typescript::extract_typescript;
+pub use python::extract_python;
+pub use typescript::extract_typescript;
 
 use std::ops::Range;
 
-use crate::dialect::{DialectExt, TokenCategory};
-use crate::semantic::DatabaseCatalog;
+use syntaqlite_syntax::any::TokenCategory;
+
+use crate::dialect::Dialect;
+use crate::semantic::analyzer::SemanticAnalyzer;
+use crate::semantic::catalog::Catalog;
+use crate::semantic::diagnostics::{Diagnostic, DiagnosticMessage};
 use crate::semantic::ValidationConfig;
-use crate::semantic::catalog::{CatalogStack, DocumentCatalog, StaticCatalog};
-use crate::semantic::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
-use syntaqlite_parser::DialectEnv;
-use syntaqlite_parser::IncrementalParser;
-use syntaqlite_parser::ParseError;
-use syntaqlite_parser::Tokenizer;
 
 use offset_map::OffsetMap;
 
@@ -37,7 +34,7 @@ use offset_map::OffsetMap;
 
 /// A SQL fragment extracted from a host language source file.
 #[derive(Debug)]
-pub(crate) struct EmbeddedFragment {
+pub struct EmbeddedFragment {
     /// Byte range of the SQL content in the host file (excluding quotes).
     pub(crate) sql_range: Range<usize>,
     /// SQL text with holes replaced by placeholder identifiers.
@@ -48,7 +45,7 @@ pub(crate) struct EmbeddedFragment {
 
 /// An interpolation hole (e.g. `{expr}` in a Python f-string, `${expr}` in JS).
 #[derive(Debug)]
-pub(crate) struct Hole {
+pub struct Hole {
     /// Byte range of the hole expression in the host file.
     pub(crate) host_range: Range<usize>,
     /// Byte offset in `sql_text` where the placeholder sits.
@@ -131,38 +128,35 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 /// ```rust,no_run
 /// # use syntaqlite::embedded::{EmbeddedAnalyzer, extract_python};
 /// # let source = "";
-/// # let dialect = syntaqlite::dialect::sqlite();
-/// let catalog = syntaqlite::semantic::DatabaseCatalog::default();
+/// # let dialect = syntaqlite::sqlite_dialect();
 /// let fragments = extract_python(source);
-/// let diags = EmbeddedAnalyzer::new(dialect)
-///     .with_catalog(catalog)
-///     .validate(&fragments);
+/// let diags = EmbeddedAnalyzer::new(dialect).validate(&fragments);
 /// ```
-pub(crate) struct EmbeddedAnalyzer<'d> {
-    dialect: DialectEnv<'d>,
-    catalog: DatabaseCatalog,
+pub struct EmbeddedAnalyzer {
+    dialect: Dialect,
+    catalog: Catalog,
     config: ValidationConfig,
 }
 
-impl<'d> EmbeddedAnalyzer<'d> {
-    /// Create a new analyzer with an empty catalog and default
-    /// validation config.
-    pub(crate) fn new(dialect: DialectEnv<'d>) -> Self {
+impl EmbeddedAnalyzer {
+    /// Create a new analyzer with an empty catalog and default validation config.
+    pub fn new(dialect: Dialect) -> Self {
+        let catalog = Catalog::new(dialect.clone());
         Self {
             dialect,
-            catalog: DatabaseCatalog::default(),
+            catalog,
             config: ValidationConfig::default(),
         }
     }
 
     /// Attach a catalog context to enable relation/function validation.
-    pub(crate) fn with_catalog(mut self, catalog: DatabaseCatalog) -> Self {
+    pub fn with_catalog(mut self, catalog: Catalog) -> Self {
         self.catalog = catalog;
         self
     }
 
     /// Override the default validation config.
-    pub(crate) fn with_config(mut self, config: ValidationConfig) -> Self {
+    pub fn with_config(mut self, config: ValidationConfig) -> Self {
         self.config = config;
         self
     }
@@ -171,7 +165,7 @@ impl<'d> EmbeddedAnalyzer<'d> {
     ///
     /// Diagnostics whose spans fall entirely inside a hole placeholder are
     /// filtered out.
-    pub(crate) fn validate(&self, fragments: &[EmbeddedFragment]) -> Vec<Diagnostic> {
+    pub fn validate(&self, fragments: &[EmbeddedFragment]) -> Vec<Diagnostic> {
         let mut all_diags = Vec::new();
 
         for fragment in fragments {
@@ -182,8 +176,6 @@ impl<'d> EmbeddedAnalyzer<'d> {
                 if is_hole_diagnostic(&d, fragment) {
                     continue;
                 }
-                // Map offsets back to host positions; skip diagnostics that
-                // fall entirely inside a hole placeholder.
                 let Some(start) = offset_map.to_host(d.start_offset) else {
                     continue;
                 };
@@ -199,9 +191,6 @@ impl<'d> EmbeddedAnalyzer<'d> {
 
     /// Compute semantic tokens for a single embedded SQL fragment.
     ///
-    /// Uses the full parser (with `collect_tokens`) to get accurate flag-based
-    /// token classification (e.g. `datetime` → Function when used as a callee).
-    ///
     /// Returns `(sql_offset, length, category)` tuples with byte offsets into
     /// `fragment.sql_text`. The caller is responsible for mapping these through
     /// an [`OffsetMap`] to host-file positions.
@@ -209,68 +198,19 @@ impl<'d> EmbeddedAnalyzer<'d> {
         &self,
         fragment: &EmbeddedFragment,
     ) -> Vec<(usize, usize, TokenCategory)> {
-        let dialect = self.dialect;
-        let parser = IncrementalParser::new(dialect);
-        let tokenizer = Tokenizer::new(dialect);
-
-        // Tokenize the processed SQL text.
-        let tokens: Vec<(u32, usize, usize)> = {
-            let cursor = tokenizer.tokenize(&fragment.sql_text);
-            cursor
-                .map(|tok| {
-                    let offset = tok.text.as_ptr() as usize - fragment.sql_text.as_ptr() as usize;
-                    (tok.token_type, offset, tok.text.len())
-                })
-                .collect()
-        };
-
-        // Feed tokens to the parser with hole wrapping.
-        let mut cursor = parser.feed(&fragment.sql_text);
-
-        for &(token_type, offset, length) in &tokens {
-            let hole = fragment
-                .holes
-                .iter()
-                .find(|h| offset >= h.sql_offset && offset < h.sql_offset + h.placeholder.len());
-
-            if let Some(hole) = hole {
-                cursor.begin_macro(hole.host_range.clone());
-            }
-
-            // Ignore parse results — we only need the collected tokens.
-            let _ = cursor.feed_token(token_type, offset..offset + length);
-
-            if hole.is_some() {
-                cursor.end_macro();
-            }
-        }
-
-        let _ = cursor.finish();
-
-        let mut result = Vec::new();
-
-        // Classify non-whitespace, non-comment tokens using parser flags.
-        for tp in cursor.tokens() {
-            let cat = dialect.classify_token(tp.type_, tp.flags);
-            if cat == TokenCategory::Other {
-                continue;
-            }
-            result.push((tp.offset as usize, tp.length as usize, cat));
-        }
-
-        // Add comments as Comment tokens.
-        for c in cursor.comments() {
-            result.push((c.offset as usize, c.length as usize, TokenCategory::Comment));
-        }
-
-        result
+        let mut analyzer = SemanticAnalyzer::with_dialect(self.dialect.clone());
+        let model = analyzer.analyze(&fragment.sql_text, &self.catalog, &self.config);
+        analyzer
+            .semantic_tokens(&model)
+            .into_iter()
+            .map(|t| (t.offset, t.length, t.category))
+            .collect()
     }
 
     /// Produce LSP-encoded semantic tokens for a host-language source containing
     /// embedded SQL.
     ///
-    /// Gathers per-fragment semantic tokens, maps each token to its host-file
-    /// byte offset via [`OffsetMap`], and delta-encodes the result into the
+    /// Delta-encodes the result into the
     /// `[deltaLine, deltaStart, length, tokenType, modifiers]` 5-tuple format
     /// consumed by LSP `textDocument/semanticTokens` responses.
     pub(crate) fn semantic_tokens_encoded(
@@ -290,7 +230,6 @@ impl<'d> EmbeddedAnalyzer<'d> {
                 }
                 let legend_idx = cat as u32;
                 let Some(host_offset) = offset_map.to_host(sql_offset) else {
-                    // Inside a hole placeholder — not real SQL text.
                     continue;
                 };
                 let host_len = length.min(source.len().saturating_sub(host_offset));
@@ -340,99 +279,13 @@ impl<'d> EmbeddedAnalyzer<'d> {
         result
     }
 
-    /// Tokenize, parse (with hole wrapping), and validate a single fragment.
+    /// Parse and validate a single fragment.
     ///
     /// Returns diagnostics with SQL-text byte offsets (not yet mapped to host).
     fn validate_fragment(&self, fragment: &EmbeddedFragment) -> Vec<Diagnostic> {
-        let dialect = self.dialect;
-        let parser = IncrementalParser::new(dialect);
-        let tokenizer = Tokenizer::new(dialect);
-
-        // Tokenize the processed SQL text.
-        let tokens: Vec<(u32, usize, usize)> = {
-            let cursor = tokenizer.tokenize(&fragment.sql_text);
-            cursor
-                .map(|tok| {
-                    let offset = tok.text.as_ptr() as usize - fragment.sql_text.as_ptr() as usize;
-                    (tok.token_type, offset, tok.text.len())
-                })
-                .collect()
-        };
-
-        // Feed tokens to the low-level parser, collecting results.
-        let mut cursor = parser.feed(&fragment.sql_text);
-        let mut results: Vec<Result<syntaqlite_parser::NodeId, ParseError>> = Vec::new();
-
-        for &(token_type, offset, length) in &tokens {
-            let hole = fragment
-                .holes
-                .iter()
-                .find(|h| offset >= h.sql_offset && offset < h.sql_offset + h.placeholder.len());
-
-            if let Some(hole) = hole {
-                cursor.begin_macro(hole.host_range.clone());
-            }
-
-            match cursor.feed_token(token_type, offset..offset + length) {
-                Ok(Some(root)) => results.push(Ok(root)),
-                Ok(None) => {}
-                Err(e) => results.push(Err(e)),
-            }
-
-            if hole.is_some() {
-                cursor.end_macro();
-            }
-        }
-
-        match cursor.finish() {
-            Ok(Some(root)) => results.push(Ok(root)),
-            Ok(None) => {}
-            Err(e) => results.push(Err(e)),
-        }
-
-        let reader = cursor.reader();
-        let static_catalog = StaticCatalog::for_dialect(&dialect);
-        let db_catalog = self.catalog.clone();
-        let mut doc_catalog = DocumentCatalog::new();
-        let mut diags = Vec::new();
-
-        let mut stmt_ids = Vec::new();
-        for result in &results {
-            match result {
-                Ok(id) => stmt_ids.push(*id),
-                Err(err) => {
-                    if let Some(root) = err.root {
-                        stmt_ids.push(root);
-                    }
-                    let (start_offset, end_offset) =
-                        crate::semantic::analyzer::parse_error_span(err, &fragment.sql_text);
-                    diags.push(Diagnostic {
-                        start_offset,
-                        end_offset,
-                        message: DiagnosticMessage::Other(err.message.clone()),
-                        severity: Severity::Error,
-                        help: None,
-                    });
-                }
-            }
-        }
-
-        for &stmt_id in &stmt_ids {
-            let catalog_stack = CatalogStack {
-                static_: &static_catalog,
-                database: &db_catalog,
-                document: &doc_catalog,
-            };
-            let stmt_diags = crate::semantic::analyzer::validate_statement_dialect::<
-                syntaqlite_parser_sqlite::ast::SqliteAst,
-            >(reader, stmt_id, dialect, &catalog_stack, &self.config);
-            diags.extend(stmt_diags);
-
-            #[cfg(feature = "sqlite")]
-            doc_catalog.accumulate(reader, stmt_id, dialect, Some(&db_catalog));
-        }
-
-        diags
+        let mut analyzer = SemanticAnalyzer::with_dialect(self.dialect.clone());
+        let model = analyzer.analyze(&fragment.sql_text, &self.catalog, &self.config);
+        model.diagnostics().to_vec()
     }
 }
 
@@ -452,13 +305,14 @@ fn is_hole_diagnostic(diag: &Diagnostic, fragment: &EmbeddedFragment) -> bool {
 }
 
 #[cfg(test)]
+#[cfg(feature = "sqlite")]
 mod tests {
     use super::*;
     use crate::embedded::{python::extract_python, typescript::extract_typescript};
+    use crate::semantic::diagnostics::Severity;
 
-    fn analyzer() -> EmbeddedAnalyzer<'static> {
-        let dialect = crate::dialect::sqlite();
-        EmbeddedAnalyzer::new(dialect)
+    fn analyzer() -> EmbeddedAnalyzer {
+        EmbeddedAnalyzer::new(crate::sqlite::dialect::dialect())
     }
 
     // ── Python syntax error tests ────────────────────────────────────
@@ -652,8 +506,8 @@ mod tests {
         let source = r#"db.execute(f"INSERT INTO t (a) VALUES (datetime('now'))")"#;
         let fragments = extract_python(source);
         assert_eq!(fragments.len(), 1);
-        let tokens =
-            EmbeddedAnalyzer::new(crate::dialect::sqlite()).fragment_semantic_tokens(&fragments[0]);
+        let tokens = EmbeddedAnalyzer::new(crate::sqlite::dialect::dialect())
+            .fragment_semantic_tokens(&fragments[0]);
         let datetime_tokens: Vec<_> = tokens
             .iter()
             .filter(|(off, len, _)| &fragments[0].sql_text[*off..*off + *len] == "datetime")

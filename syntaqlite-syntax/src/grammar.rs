@@ -224,7 +224,7 @@ impl AnyGrammar {
     /// The `template` pointer inside `inner` must point to valid, `'static`
     /// C grammar tables (e.g. returned by a grammar's `extern "C"` grammar
     /// accessor such as `syntaqlite_sqlite_grammar()`).
-    pub(crate) unsafe fn new(inner: ffi::CGrammar) -> Self {
+    pub unsafe fn new(inner: ffi::CGrammar) -> Self {
         AnyGrammar { inner }
     }
 

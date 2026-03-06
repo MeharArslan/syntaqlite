@@ -5,13 +5,16 @@
 
 use std::fs;
 use std::io::{self, Read};
+use std::ops::Deref;
 use std::path::PathBuf;
 
 use clap::ValueEnum;
-use syntaqlite::Formatter;
-use syntaqlite::semantic::{SourceContext, ValidationConfig};
-use syntaqlite::{FormatConfig, KeywordCase};
-use syntaqlite_parser::{Dialect, DialectEnv, ParseError, Parser};
+use syntaqlite::any::{AnyParser, ParseOutcome};
+use syntaqlite::{
+    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, Formatter, FormatConfig,
+    KeywordCase, SemanticAnalyzer, Severity, ValidationConfig,
+};
+use syntaqlite::{Dialect, FormatError};
 
 use super::{Cli, Command};
 
@@ -49,57 +52,17 @@ fn expand_paths(patterns: &[String]) -> Result<Vec<PathBuf>, String> {
     Ok(out)
 }
 
-fn require_dialect(dialect: Option<DialectEnv<'_>>) -> Result<DialectEnv<'_>, String> {
+fn require_dialect(dialect: Option<Dialect>) -> Result<Dialect, String> {
     dialect.ok_or_else(|| {
         "this command requires a dialect; build with --features=builtin-sqlite or use --dialect"
             .to_string()
     })
 }
 
-const DEFAULT_DIALECT_SYMBOL: &str = "syntaqlite_dialect";
-
-pub(crate) fn dialect_symbol_name(name: Option<&str>) -> String {
-    match name {
-        Some(name) => format!("syntaqlite_{name}_dialect"),
-        None => DEFAULT_DIALECT_SYMBOL.to_string(),
-    }
-}
-
-/// Load a dialect symbol from an already-open shared library.
-///
-/// The returned `DialectEnv<'lib>` borrows from `lib` and must not outlive it.
-///
-/// # Safety
-/// `lib` must remain valid for the lifetime `'lib` of the returned dialect.
-unsafe fn dialect_from_library<'lib>(
-    lib: &'lib libloading::Library,
-    name: Option<&str>,
-) -> Result<DialectEnv<'lib>, String> {
-    let symbol_name = dialect_symbol_name(name);
-    let func: libloading::Symbol<unsafe extern "C" fn() -> *const core::ffi::c_void> = unsafe {
-        lib.get(symbol_name.as_bytes())
-            .map_err(|e| format!("symbol {symbol_name} not found in library: {e}"))?
-    };
-    let raw = unsafe { func() };
-    if raw.is_null() {
-        return Err(format!("{symbol_name} returned null"));
-    }
-    Ok(unsafe { DialectEnv::new(Dialect::from_raw(raw)) })
-}
-
-pub(crate) fn dispatch(cli: Cli, dialect: Option<DialectEnv<'_>>) -> Result<(), String> {
+pub(crate) fn dispatch(cli: Cli, dialect: Option<Dialect>) -> Result<(), String> {
     if let Some(path) = &cli.dialect_path {
-        // lib must be declared before dyn_dialect so Rust's reverse drop order
-        // ensures dyn_dialect is dropped before lib (which would unload the library).
-        let lib = unsafe {
-            libloading::Library::new(path).map_err(|e| format!("failed to load {path}: {e}"))
-        }
-        .unwrap_or_else(|e| {
-            eprintln!("error: {e}");
-            std::process::exit(1);
-        });
-        let dyn_dialect = unsafe { dialect_from_library(&lib, cli.dialect_name.as_deref()) }
-            .unwrap_or_else(|e| {
+        let dyn_dialect =
+            syntaqlite::load_dialect(path, cli.dialect_name.as_deref()).unwrap_or_else(|e| {
                 eprintln!("error: {e}");
                 std::process::exit(1);
             });
@@ -109,14 +72,14 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<DialectEnv<'_>>) -> Result<(), 
     }
 }
 
-fn dispatch_commands(command: Command, dialect: Option<DialectEnv<'_>>) -> Result<(), String> {
+fn dispatch_commands(command: Command, dialect: Option<Dialect>) -> Result<(), String> {
     match command {
         Command::Ast { files } => require_dialect(dialect).and_then(|d| cmd_ast(d, files)),
         Command::Validate { files, lang } => {
             require_dialect(dialect).and_then(|d| cmd_validate(d, files, lang))
         }
         Command::Lsp => require_dialect(dialect).and_then(|d| {
-            syntaqlite::lsp::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))
+            syntaqlite::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))
         }),
         Command::Fmt {
             files,
@@ -151,9 +114,6 @@ fn read_stdin() -> Result<String, String> {
 }
 
 /// Expand file patterns and dispatch to `on_stdin` (no files) or `on_file` (each file).
-///
-/// Handles glob expansion and reading each file. The `on_file` closure receives
-/// `(source, path, multi)` where `multi` is `true` when processing multiple files.
 fn process_files(
     files: Vec<String>,
     on_stdin: impl FnOnce(&str) -> Result<(), String>,
@@ -173,38 +133,65 @@ fn process_files(
     Ok(())
 }
 
-fn cmd_ast(dialect: DialectEnv<'_>, files: Vec<String>) -> Result<(), String> {
+fn cmd_ast(dialect: Dialect, files: Vec<String>) -> Result<(), String> {
     process_files(
         files,
-        |source| cmd_ast_source(dialect, source, "<stdin>"),
+        |source| cmd_ast_source(&dialect, source, "<stdin>"),
         |source, path, multi| {
             let file = path.display().to_string();
             if multi {
                 println!("==> {file} <==");
             }
-            cmd_ast_source(dialect, source, &file)
+            cmd_ast_source(&dialect, source, &file)
         },
     )
 }
 
-fn cmd_ast_source(dialect: DialectEnv<'_>, source: &str, file: &str) -> Result<(), String> {
-    let (buf, errors) = dump_ast_source(dialect, source);
-    print!("{buf}");
-    if errors.is_empty() {
+fn cmd_ast_source(dialect: &Dialect, source: &str, file: &str) -> Result<(), String> {
+    let parser = AnyParser::new(*dialect.deref());
+    let mut session = parser.parse(source);
+    let mut out = String::new();
+    let mut error_diags: Vec<Diagnostic> = Vec::new();
+    let mut count = 0;
+
+    loop {
+        match session.next() {
+            ParseOutcome::Ok(stmt) => {
+                if count > 0 {
+                    out.push_str("----\n");
+                }
+                stmt.dump(&mut out, 0);
+                count += 1;
+            }
+            ParseOutcome::Err(err) => {
+                let start = err.offset().unwrap_or(0);
+                let end = start + err.length().unwrap_or(0);
+                error_diags.push(Diagnostic {
+                    start_offset: start,
+                    end_offset: end,
+                    message: DiagnosticMessage::Other(err.message().to_string()),
+                    severity: Severity::Error,
+                    help: None,
+                });
+            }
+            ParseOutcome::Done => break,
+        }
+    }
+
+    print!("{out}");
+    if error_diags.is_empty() {
         Ok(())
     } else {
-        let ctx = SourceContext::new(source, file);
-        for e in &errors {
-            let start = e.offset.unwrap_or(0);
-            let end = start + e.length.unwrap_or(0);
-            ctx.render_diagnostic("error", &e.message, start, end, None);
-        }
-        Err(format!("{} syntax error(s)", errors.len()))
+        let n = error_diags.len();
+        DiagnosticRenderer::new(source, file)
+            .render_diagnostics(&error_diags, &mut io::stderr())
+            .ok();
+        Err(format!("{n} syntax error(s)"))
     }
 }
 
 fn cmd_fmt(
-    dialect: DialectEnv<'_>,
+    dialect: Dialect,
     files: Vec<String>,
     config: FormatConfig,
     in_place: bool,
@@ -216,12 +203,12 @@ fn cmd_fmt(
             if in_place {
                 return Err("--in-place requires file arguments".to_string());
             }
-            let out = format_source(dialect, source, config.clone()).map_err(|e| format!("{e}"))?;
+            let out = format_source(&dialect, source, &config).map_err(|e| format!("{e}"))?;
             print!("{out}");
             Ok(())
         },
         |source, path, multi| {
-            match format_source(dialect, source, config.clone()) {
+            match format_source(&dialect, source, &config) {
                 Ok(out) => {
                     if in_place {
                         if out != source {
@@ -250,40 +237,12 @@ fn cmd_fmt(
     Ok(())
 }
 
-fn dump_ast_source(dialect: DialectEnv<'_>, source: &str) -> (String, Vec<ParseError>) {
-    let parser = Parser::new(dialect);
-    let mut cursor = parser.parse(source);
-    let mut out = String::new();
-    let mut errors = Vec::new();
-    let mut count = 0;
-
-    while let Some(result) = cursor.next_statement() {
-        match result {
-            Ok(node) => {
-                if count > 0 {
-                    out.push_str("----\n");
-                }
-                node.dump(&mut out, 0);
-                count += 1;
-            }
-            Err(err) => errors.push(err),
-        }
-    }
-
-    (out, errors)
-}
-
-fn format_source(
-    dialect: DialectEnv<'_>,
-    source: &str,
-    config: FormatConfig,
-) -> Result<String, ParseError> {
-    let mut formatter = Formatter::with_config(dialect, &config);
-    formatter.format(source)
+fn format_source(dialect: &Dialect, source: &str, config: &FormatConfig) -> Result<String, FormatError> {
+    Formatter::with_dialect_config(dialect.clone(), config).format(source)
 }
 
 fn cmd_validate(
-    dialect: DialectEnv<'_>,
+    dialect: Dialect,
     files: Vec<String>,
     lang: Option<HostLanguage>,
 ) -> Result<(), String> {
@@ -292,8 +251,8 @@ fn cmd_validate(
 
     let validate = |source: &str, file: &str| -> bool {
         match lang {
-            Some(lang) => validate_embedded_source(dialect, source, file, &config, lang),
-            None => validate_source(dialect, source, file, &config),
+            Some(lang) => validate_embedded_source(&dialect, source, file, &config, lang),
+            None => validate_source(&dialect, source, file, &config),
         }
     };
 
@@ -324,19 +283,21 @@ fn cmd_validate(
 }
 
 fn validate_source(
-    dialect: DialectEnv<'_>,
+    dialect: &Dialect,
     source: &str,
     file: &str,
     config: &ValidationConfig,
 ) -> bool {
-    let catalog = syntaqlite::DatabaseCatalog::default();
-    let mut analyzer = syntaqlite::SemanticAnalyzer::with_dialect(dialect);
-    let diags = analyzer.diagnostics_with_config(source, &catalog, config);
-    SourceContext::new(source, file).render_diagnostics(&diags)
+    let catalog = Catalog::new(dialect.clone());
+    let mut analyzer = SemanticAnalyzer::with_dialect(dialect.clone());
+    let model = analyzer.analyze(source, &catalog, config);
+    DiagnosticRenderer::new(source, file)
+        .render_diagnostics(model.diagnostics(), &mut io::stderr())
+        .unwrap_or(false)
 }
 
 fn validate_embedded_source(
-    dialect: DialectEnv<'_>,
+    dialect: &Dialect,
     source: &str,
     file: &str,
     config: &ValidationConfig,
@@ -351,11 +312,13 @@ fn validate_embedded_source(
         return false;
     }
 
-    let catalog = syntaqlite::semantic::functions::FunctionCatalog::for_default_dialect(&dialect);
-    let diags = syntaqlite::embedded::EmbeddedAnalyzer::new(dialect)
+    let catalog = Catalog::new(dialect.clone());
+    let diags = syntaqlite::embedded::EmbeddedAnalyzer::new(dialect.clone())
         .with_catalog(catalog)
         .with_config(*config)
         .validate(&fragments);
 
-    SourceContext::new(source, file).render_diagnostics(&diags)
+    DiagnosticRenderer::new(source, file)
+        .render_diagnostics(&diags, &mut io::stderr())
+        .unwrap_or(false)
 }

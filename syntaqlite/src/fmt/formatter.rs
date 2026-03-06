@@ -49,7 +49,7 @@ impl Formatter {
     }
 
     /// Create a formatter bound to the given dialect with custom configuration.
-    pub(crate) fn with_dialect_config(dialect: Dialect, format_config: &FormatConfig) -> Self {
+    pub fn with_dialect_config(dialect: Dialect, format_config: &FormatConfig) -> Self {
         assert!(
             dialect.has_fmt_data(),
             "dialect has no formatter bytecode — ensure .synq definitions include fmt blocks",
@@ -157,7 +157,7 @@ impl Formatter {
 
             // Stage 2: Interpret bytecode for this AST into Doc fragments.
             let mut ctx = FmtCtx {
-                dialect: self.dialect,
+                dialect: self.dialect.clone(),
                 reader: erased,
                 comment_ctx,
                 macro_regions: std::mem::take(&mut self.macro_regions),

@@ -7,7 +7,7 @@
 
 // Temporarily disabled during refactor except for formatter dependency chain.
 #[cfg(feature = "fmt")]
-pub(crate) mod dialect;
+pub mod dialect;
 
 #[cfg(feature = "fmt")]
 pub(crate) mod fmt;
@@ -22,17 +22,34 @@ pub(crate) mod sqlite;
 #[cfg(feature = "lsp")]
 pub mod lsp;
 
+#[cfg(feature = "embedded")]
+pub mod embedded;
+
+#[cfg(feature = "dynload")]
+pub mod dynload;
+
 // ── Public API ────────────────────────────────────────────────────────────────
 
+#[cfg(feature = "fmt")]
+pub use dialect::{AnyDialect, Dialect};
 #[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
 #[cfg(feature = "fmt")]
 pub use fmt::{FormatConfig, FormatError, KeywordCase};
+#[cfg(feature = "lsp")]
+pub use lsp::LspServer;
+#[cfg(feature = "dynload")]
+pub use dynload::load_dialect;
 #[cfg(feature = "validation")]
 pub use semantic::{
-    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, Help, SemanticAnalyzer, Severity,
-    SourceContext, ValidationConfig,
+    Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, Help, SemanticAnalyzer,
+    SemanticModel, Severity, SourceContext, ValidationConfig,
 };
+/// Returns the built-in `SQLite` dialect handle.
+#[cfg(feature = "sqlite")]
+pub fn sqlite_dialect() -> Dialect {
+    sqlite::dialect::dialect()
+}
 
 // Shared parser utility types used across both `any` and `typed` modules.
 pub use syntaqlite_syntax::any::MacroRegion;
@@ -57,6 +74,7 @@ pub mod any {
         // Parser
         AnyParser,
         AnyParserToken,
+        ParseOutcome,
         // Tokenizer
         AnyToken,
         AnyTokenizer,

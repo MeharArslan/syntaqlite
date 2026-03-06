@@ -26,7 +26,7 @@ pub struct DiagnosticRenderer<'a> {
 #[allow(dead_code)]
 impl<'a> DiagnosticRenderer<'a> {
     /// Create a renderer bound to a source string and display file label.
-    pub(crate) fn new(source: &'a str, file: &'a str) -> Self {
+    pub fn new(source: &'a str, file: &'a str) -> Self {
         Self { source, file }
     }
 
@@ -56,7 +56,7 @@ impl<'a> DiagnosticRenderer<'a> {
     }
 
     /// Render a single diagnostic to `out`.
-    pub(crate) fn render_diagnostic(
+    pub fn render_diagnostic(
         &self,
         diag: &Diagnostic,
         out: &mut impl Write,
@@ -100,7 +100,7 @@ impl<'a> DiagnosticRenderer<'a> {
     }
 
     /// Render all diagnostics to `out`. Returns `true` if any had `Severity::Error`.
-    pub(crate) fn render_diagnostics(
+    pub fn render_diagnostics(
         &self,
         diags: &[Diagnostic],
         out: &mut impl Write,
