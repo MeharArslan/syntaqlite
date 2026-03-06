@@ -1,7 +1,7 @@
 // TODO: broken - needs migration to syntaqlite_syntax
 #![cfg(broken_needs_migration)]
 // Profiling harness — run with: samply record cargo run -p benches --release
-#![cfg_attr(test, allow(clippy::unwrap_used, clippy::similar_names))]
+#![cfg_attr(test, expect(clippy::unwrap_used, clippy::similar_names))]
 fn main() {
     let mut sql = String::with_capacity(60_000);
     for i in 0..500 {

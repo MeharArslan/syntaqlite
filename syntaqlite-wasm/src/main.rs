@@ -1,7 +1,7 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 #![allow(missing_docs)] // ABI exports don't need rustdoc
-#![cfg_attr(test, allow(clippy::unwrap_used, clippy::similar_names))]
+#![cfg_attr(test, expect(clippy::unwrap_used, clippy::similar_names))]
 
 use std::cell::RefCell;
 use std::slice;

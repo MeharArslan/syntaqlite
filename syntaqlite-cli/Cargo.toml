@@ -9,6 +9,10 @@ homepage = "https://github.com/LalitMaganti/syntaqlite"
 [lints]
 workspace = true
 
+[lints.rust]
+# bin crate; internal lib shim exists only to support integration tests
+missing_docs = "allow"
+
 [[bin]]
 name = "syntaqlite"
 path = "src/main.rs"
