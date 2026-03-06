@@ -134,6 +134,8 @@ pub(crate) struct RustCodegenArtifacts {
     pub functions_catalog_rs: Option<String>,
     /// Semantic role table (`semantic_roles.rs`).
     pub semantic_roles_rs: Option<String>,
+    /// Formatter statics (`fmt_statics.rs`).
+    pub fmt_statics_rs: Option<String>,
 }
 
 /// All generated C and Rust artifacts produced by the codegen pipeline.
@@ -565,6 +567,13 @@ pub(crate) fn generate_codegen_artifacts(
                 &ast_model,
                 &request.dialect.name().to_ascii_uppercase(),
             )),
+            fmt_statics_rs: Some(
+                dialect_codegen::fmt_compiler::generate_rust_fmt_statics(
+                    &ast_model,
+                    &request.dialect.name().to_ascii_uppercase(),
+                )
+                .map_err(|e| format!("fmt statics codegen: {e}"))?,
+            ),
         })
     } else {
         None
