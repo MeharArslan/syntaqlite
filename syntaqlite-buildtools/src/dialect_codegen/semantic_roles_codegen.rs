@@ -41,9 +41,14 @@ fn emit_role(fields: &[Field], role: &SynqRole) -> String {
             opt(columns),
             opt(select)
         ),
-        SynqRole::DefineView { name, select } => format!(
-            "SemanticRole::DefineView {{ name: {}, select: {} }}",
+        SynqRole::DefineView {
+            name,
+            columns,
+            select,
+        } => format!(
+            "SemanticRole::DefineView {{ name: {}, columns: {}, select: {} }}",
             fi(name),
+            opt(columns),
             fi(select)
         ),
         SynqRole::DefineFunction { name, args } => format!(
@@ -266,9 +271,28 @@ mod tests {
         );
         let model = AstModel::new(&items);
         let out = generate_rust_semantic_roles(&model, "TEST");
-        // view_name = 0, select = 2
+        // view_name = 0, select = 2, no columns
         assert!(
-            out.contains("SemanticRole::DefineView { name: 0, select: 2 }"),
+            out.contains("SemanticRole::DefineView { name: 0, columns: None, select: 2 }"),
+            "got:\n{out}"
+        );
+    }
+
+    #[test]
+    fn define_view_with_explicit_columns() {
+        let items = model_from(
+            r"node CreatePerfettoViewStmt {
+                view_name: inline SyntaqliteSourceSpan
+                schema: index PerfettoArgDefList
+                select: index Select
+                semantic { define_view(name: view_name, columns: schema, select: select) }
+            }",
+        );
+        let model = AstModel::new(&items);
+        let out = generate_rust_semantic_roles(&model, "TEST");
+        // view_name = 0, schema = 1, select = 2
+        assert!(
+            out.contains("SemanticRole::DefineView { name: 0, columns: Some(1), select: 2 }"),
             "got:\n{out}"
         );
     }

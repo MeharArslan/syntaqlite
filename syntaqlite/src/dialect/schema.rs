@@ -36,6 +36,7 @@ pub(crate) enum SemanticRole {
     },
     DefineView {
         name: FieldIdx,
+        columns: Option<FieldIdx>,
         select: FieldIdx,
     },
     DefineFunction {
@@ -130,7 +131,11 @@ mod tests {
             columns: None,
             select: None,
         };
-        let _ = SemanticRole::DefineView { name: 0, select: 1 };
+        let _ = SemanticRole::DefineView {
+            name: 0,
+            columns: None,
+            select: 1,
+        };
         let _ = SemanticRole::DefineFunction {
             name: 0,
             args: None,

@@ -95,7 +95,7 @@ node CreatePerfettoViewStmt {
   schema: index PerfettoArgDefList
   select: index Select
 
-  semantic { define_view(name: view_name, select: select) }
+  semantic { define_view(name: view_name, columns: schema, select: select) }
 
   fmt {
     group {

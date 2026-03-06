@@ -40,6 +40,7 @@ pub(crate) enum SemanticRole {
     },
     DefineView {
         name: String,
+        columns: Option<String>,
         select: String,
     },
     DefineFunction {
@@ -524,6 +525,7 @@ impl Parser {
             },
             "define_view" => SemanticRole::DefineView {
                 name: require_param(&params, "name", node_name, "define_view")?,
+                columns: get_param(&params, "columns").map(str::to_string),
                 select: require_param(&params, "select", node_name, "define_view")?,
             },
             "define_function" => SemanticRole::DefineFunction {

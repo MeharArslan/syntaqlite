@@ -114,7 +114,11 @@ pub(crate) static SQLITE_SEMANTIC_ROLES: &[SemanticRole] = &[
     SemanticRole::Transparent,               // VacuumStmt
     SemanticRole::Transparent,               // ExplainStmt
     SemanticRole::Transparent,               // CreateIndexStmt
-    SemanticRole::DefineView { name: 0, select: 5 }, // CreateViewStmt
+    SemanticRole::DefineView {
+        name: 0,
+        columns: None,
+        select: 5,
+    }, // CreateViewStmt
     SemanticRole::Transparent,               // ValuesRowList
     SemanticRole::Transparent,               // ValuesClause
     SemanticRole::Transparent,               // FrameBound

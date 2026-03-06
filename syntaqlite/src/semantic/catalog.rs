@@ -377,12 +377,16 @@ impl Catalog {
                 let cols = extract_columns(stmt, &fields, columns, select);
                 self.document.insert_relation(name_val, cols);
             }
-            SemanticRole::DefineView { name, select } => {
+            SemanticRole::DefineView {
+                name,
+                columns,
+                select,
+            } => {
                 let name_val = match fields[name as usize] {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let cols = extract_columns(stmt, &fields, None, Some(select));
+                let cols = extract_columns(stmt, &fields, columns, Some(select));
                 self.document.insert_relation(name_val, cols);
             }
             SemanticRole::DefineFunction { name, args } => {
@@ -617,12 +621,16 @@ impl Catalog {
                 let cols = extract_columns(stmt, &fields, columns, select);
                 self.database.insert_relation(name_val, cols);
             }
-            SemanticRole::DefineView { name, select } => {
+            SemanticRole::DefineView {
+                name,
+                columns,
+                select,
+            } => {
                 let name_val = match fields[name as usize] {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let cols = extract_columns(stmt, &fields, None, Some(select));
+                let cols = extract_columns(stmt, &fields, columns, Some(select));
                 self.database.insert_relation(name_val, cols);
             }
             SemanticRole::DefineFunction { name, args } => {
