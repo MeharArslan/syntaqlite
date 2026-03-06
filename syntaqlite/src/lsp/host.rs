@@ -305,9 +305,7 @@ impl LspHost {
 
     /// All function names available given the current dialect and user catalog.
     pub fn available_function_names(&self) -> Vec<String> {
-        let mut cat = Catalog::new(self.dialect.clone());
-        cat.database = self.user_catalog.database.clone();
-        cat.all_function_names()
+        self.user_catalog.all_function_names()
     }
 
     /// Parse a JSON schema blob and use it as the session context.
@@ -427,6 +425,7 @@ mod tests {
     use super::LspHost;
     use crate::semantic::Catalog;
     use crate::semantic::ValidationConfig;
+    use crate::semantic::catalog::{AritySpec, CatalogLayer, FunctionCategory};
     use crate::semantic::diagnostics::{DiagnosticMessage, Severity};
 
     #[test]
@@ -509,7 +508,8 @@ mod tests {
         let mut host = LspHost::new();
         let dialect = crate::sqlite::dialect::dialect();
         let mut ctx = Catalog::new(dialect);
-        ctx.add_function("my_custom_func", Some(2));
+        ctx.layer_mut(CatalogLayer::Database)
+            .insert_function_overload("my_custom_func", FunctionCategory::Scalar, AritySpec::Exact(2));
         host.set_session_context(ctx);
         let names = host.available_function_names();
         assert!(names.iter().any(|n| n == "my_custom_func"));

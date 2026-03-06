@@ -3,7 +3,7 @@
 
 //! Layered semantic catalog.
 //!
-//! Resolution order: query (innermost frame first) → document → database → dialect.
+//! Resolution order: query (innermost frame first) → document → connection → database → dialect.
 
 use std::collections::{HashMap, HashSet};
 
@@ -16,15 +16,17 @@ use crate::dialect::{
 
 // ── Core layer types ─────────────────────────────────────────────────────────
 
+/// The category of a catalog function.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum FunctionCategory {
+pub enum FunctionCategory {
     Scalar,
     Aggregate,
     Window,
 }
 
+/// Describes how many arguments a function overload accepts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum AritySpec {
+pub enum AritySpec {
     Exact(usize),
     AtLeast(usize),
     Any,
@@ -84,26 +86,31 @@ pub(crate) enum FunctionCheckResult {
     WrongArity { expected: Vec<usize> },
 }
 
-// ── CatalogLayer ─────────────────────────────────────────────────────────────
+// ── CatalogLayerContents ──────────────────────────────────────────────────────
 
+/// The data stored in a single catalog layer.
+///
+/// Callers obtain a mutable reference via [`Catalog::layer_mut`] and call
+/// `insert_*` methods to populate it.
 #[derive(Debug, Default, Clone)]
-pub(crate) struct CatalogLayer {
+pub struct CatalogLayerContents {
     relations: HashMap<String, RelationEntry>,
     functions: HashMap<String, FunctionSet>,
     table_functions: HashMap<String, TableFunctionSet>,
 }
 
 #[allow(dead_code)]
-impl CatalogLayer {
-    pub(crate) fn clear(&mut self) {
-        self.relations.clear();
-        self.functions.clear();
-        self.table_functions.clear();
+impl CatalogLayerContents {
+    /// Remove all entries from this layer.
+    fn clear(&mut self) {
+        self.relations = HashMap::default();
+        self.functions = HashMap::default();
+        self.table_functions = HashMap::default();
     }
 
     /// Insert a relation. `columns = None` means the table exists but its
     /// column list is not tracked (column refs against it are suppressed).
-    pub(crate) fn insert_relation(
+    pub fn insert_relation(
         &mut self,
         name: impl Into<String>,
         columns: Option<Vec<String>>,
@@ -113,7 +120,8 @@ impl CatalogLayer {
             .insert(canonical_name(&name), RelationEntry { name, columns });
     }
 
-    pub(crate) fn insert_function_overload(
+    /// Insert a single function overload.
+    pub fn insert_function_overload(
         &mut self,
         name: impl Into<String>,
         category: FunctionCategory,
@@ -130,6 +138,7 @@ impl CatalogLayer {
             });
     }
 
+    /// Insert multiple arities for a function (dialect codegen helper).
     pub(crate) fn insert_function_arities(
         &mut self,
         name: impl Into<String>,
@@ -155,7 +164,8 @@ impl CatalogLayer {
         }
     }
 
-    pub(crate) fn insert_table_function(
+    /// Insert a table-valued function.
+    pub fn insert_table_function(
         &mut self,
         name: impl Into<String>,
         arity: AritySpec,
@@ -194,83 +204,131 @@ impl CatalogLayer {
     }
 }
 
+// ── CatalogLayer enum ─────────────────────────────────────────────────────────
+
+/// Identifies a fixed layer in the [`Catalog`].
+///
+/// Use [`Catalog::layer`] / [`Catalog::layer_mut`] to access the corresponding
+/// [`CatalogLayerContents`] directly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CatalogLayer {
+    /// Dialect built-ins — populated at construction, never mutated.
+    Dialect,
+    /// Persistent user schema (cross-connection): tables, views, functions.
+    Database,
+    /// Connection-scoped schema (attached databases, session overrides).
+    Connection,
+    /// DDL accumulated from the current source document — cleared each pass.
+    Document,
+}
+
+impl CatalogLayer {
+    fn index(self) -> usize {
+        match self {
+            Self::Dialect => LAYER_DIALECT,
+            Self::Database => LAYER_DATABASE,
+            Self::Connection => LAYER_CONNECTION,
+            Self::Document => LAYER_DOCUMENT,
+        }
+    }
+}
+
+// ── Layer index constants ─────────────────────────────────────────────────────
+
+const LAYER_DIALECT: usize = 0;
+const LAYER_DATABASE: usize = 1;
+const LAYER_CONNECTION: usize = 2;
+const LAYER_DOCUMENT: usize = 3;
+/// Number of fixed layers that are always present.
+const FIXED_LAYER_COUNT: usize = 4;
+
 // ── Public Catalog ────────────────────────────────────────────────────────────
 
-/// Layered semantic catalog. Holds schema information in four named layers
-/// with fixed resolution priority: query → document → database → dialect.
+/// Layered semantic catalog.
 ///
-/// Callers build the database layer via [`add_table`](Self::add_table) /
-/// [`add_view`](Self::add_view) / [`add_function`](Self::add_function) etc.,
-/// then pass `&mut Catalog` to [`analyze`](crate::semantic::analyze).
+/// Layers are stored in a single `Vec` indexed by priority (lowest first):
+///
+/// ```text
+/// index 0  CatalogLayer::Dialect    — dialect built-ins (never mutated)
+/// index 1  CatalogLayer::Database   — persistent user schema
+/// index 2  CatalogLayer::Connection — connection-scoped schema
+/// index 3  CatalogLayer::Document   — DDL from the current source
+/// index 4+ query scopes             — pushed/popped during AST traversal
+/// ```
+///
+/// Resolution iterates layers from highest index to lowest, so the priority
+/// order is: innermost query scope → document → connection → database → dialect.
+///
+/// The `Vec` is never shorter than `FIXED_LAYER_COUNT`.
+///
+/// # Populating layers
+///
+/// Obtain a mutable reference to any fixed layer and call `insert_*` on it:
+///
+/// ```ignore
+/// catalog.layer_mut(CatalogLayer::Database)
+///        .insert_relation("users", Some(vec!["id".into(), "name".into()]));
+/// ```
 #[allow(dead_code)]
 pub struct Catalog {
-    /// Dialect built-ins — populated at construction, never mutated.
-    pub(crate) dialect: CatalogLayer,
-    /// User-provided schema — managed by the caller between analysis passes.
-    pub(crate) database: CatalogLayer,
-    /// DDL accumulated from the current source — cleared at the start of each
-    /// analysis pass and rebuilt statement-by-statement.
-    pub(crate) document: CatalogLayer,
-    /// Query-local scopes (CTEs, subquery aliases, table refs).
-    /// Pushed/popped by the walker during AST traversal.
-    query: Vec<CatalogLayer>,
+    layers: Vec<CatalogLayerContents>,
 }
 
 #[allow(dead_code)]
 impl Catalog {
     /// Create a catalog for `dialect`. The dialect's built-in functions are
-    /// loaded immediately and stored in the dialect layer.
+    /// loaded immediately into the dialect layer.
     pub fn new(dialect: Dialect) -> Self {
-        let mut cat = Catalog {
-            dialect: CatalogLayer::default(),
-            database: CatalogLayer::default(),
-            document: CatalogLayer::default(),
-            query: Vec::new(),
-        };
-        build_dialect_layer(&mut cat.dialect, &dialect);
-        cat
+        let mut layers = vec![CatalogLayerContents::default(); FIXED_LAYER_COUNT];
+        build_dialect_layer(&mut layers[LAYER_DIALECT], &dialect);
+        Self { layers }
     }
 
-    // ── Database layer — caller populates ────────────────────────────────────
+    // ── Direct layer access ───────────────────────────────────────────────────
 
-    /// Register a table in the database layer.
-    pub fn add_table(&mut self, name: &str, columns: &[&str]) {
-        let cols = columns.iter().map(|c| c.to_ascii_lowercase()).collect();
-        self.database.insert_relation(name, Some(cols));
+    /// Borrow a fixed layer immutably.
+    pub fn layer(&self, which: CatalogLayer) -> &CatalogLayerContents {
+        &self.layers[which.index()]
     }
 
-    /// Register a view in the database layer.
-    pub fn add_view(&mut self, name: &str, columns: &[&str]) {
-        let cols = columns.iter().map(|c| c.to_ascii_lowercase()).collect();
-        self.database.insert_relation(name, Some(cols));
+    /// Borrow a fixed layer mutably.
+    ///
+    /// Use the returned [`CatalogLayerContents`] to insert relations, functions,
+    /// or table-valued functions into the chosen layer.
+    pub fn layer_mut(&mut self, which: CatalogLayer) -> &mut CatalogLayerContents {
+        &mut self.layers[which.index()]
     }
 
-    /// Register a scalar/aggregate function in the database layer.
-    /// `args = None` means variadic (any number of arguments accepted).
-    pub fn add_function(&mut self, name: &str, args: Option<usize>) {
-        let arity = match args {
-            Some(n) => AritySpec::Exact(n),
-            None => AritySpec::Any,
-        };
-        self.database
-            .insert_function_overload(name, FunctionCategory::Scalar, arity);
+    // ── Lifecycle convenience methods ─────────────────────────────────────────
+
+    /// Switch to a new database.
+    ///
+    /// Clears the Database, Connection, and Document layers and discards all
+    /// query scopes. Use this when the connected database changes entirely.
+    pub fn new_database(&mut self) {
+        self.layers.truncate(FIXED_LAYER_COUNT);
+        for i in LAYER_DATABASE..FIXED_LAYER_COUNT {
+            self.layers[i].clear();
+        }
     }
 
-    /// Register a table-valued function in the database layer.
-    /// `output_columns` lists the columns the function exposes in a FROM clause.
-    /// Pass an empty slice when output columns are not statically known.
-    pub fn add_table_function(&mut self, name: &str, output_columns: &[&str]) {
-        let cols = output_columns
-            .iter()
-            .map(|c| c.to_ascii_lowercase())
-            .collect();
-        self.database
-            .insert_table_function(name, AritySpec::Any, cols);
+    /// Switch to a new connection on the same database.
+    ///
+    /// Resets the Connection and Document layers and discards all query scopes.
+    pub fn new_connection(&mut self) {
+        self.layers.truncate(FIXED_LAYER_COUNT);
+        for i in LAYER_CONNECTION..FIXED_LAYER_COUNT {
+            self.layers[i].clear();
+        }
     }
 
-    /// Clear the database layer. Call before repopulating after a schema change.
-    pub fn clear_database(&mut self) {
-        self.database.clear();
+    /// Start a new document analysis pass.
+    ///
+    /// Resets the Document layer and discards all query scopes.
+    /// Call this at the start of each analysis pass before accumulating DDL.
+    pub fn new_document(&mut self) {
+        self.layers.truncate(FIXED_LAYER_COUNT);
+        self.layers[LAYER_DOCUMENT].clear();
     }
 
     // ── Convenience constructors ──────────────────────────────────────────────
@@ -290,7 +348,7 @@ impl Catalog {
             };
             let root = stmt.root();
             let root_id: AnyNodeId = root.node_id().into();
-            catalog.accumulate_ddl_into_database(stmt.erase(), root_id, dialect.clone());
+            catalog.accumulate_ddl(CatalogLayer::Database, stmt.erase(), root_id, dialect.clone());
         }
         catalog
     }
@@ -332,32 +390,36 @@ impl Catalog {
             serde_json::from_str(s).map_err(|e| format!("invalid catalog JSON: {e}"))?;
 
         let mut catalog = Catalog::new(dialect);
+        let db = catalog.layer_mut(CatalogLayer::Database);
         for t in root.tables {
-            let cols: Vec<&str> = t.columns.iter().map(String::as_str).collect();
-            catalog.add_table(&t.name, &cols);
+            let cols = t.columns.iter().map(|c| c.to_ascii_lowercase()).collect();
+            db.insert_relation(t.name, Some(cols));
         }
         for v in root.views {
-            let cols: Vec<&str> = v.columns.iter().map(String::as_str).collect();
-            catalog.add_view(&v.name, &cols);
+            let cols = v.columns.iter().map(|c| c.to_ascii_lowercase()).collect();
+            db.insert_relation(v.name, Some(cols));
         }
         for f in root.functions {
-            catalog.add_function(&f.name, f.args);
+            let arity = match f.args {
+                Some(n) => AritySpec::Exact(n),
+                None => AritySpec::Any,
+            };
+            db.insert_function_overload(f.name, FunctionCategory::Scalar, arity);
         }
         Ok(catalog)
     }
 
-    // ── Document layer — managed by the analyzer ──────────────────────────────
-
-    /// Clear the document layer. Called at the start of each analysis pass.
-    pub(crate) fn clear_document(&mut self) {
-        self.document.clear();
-    }
+    // ── DDL accumulation ──────────────────────────────────────────────────────
 
     /// Extract DDL contributions from a parsed statement and insert them into
-    /// the document layer. Called statement-by-statement during the analysis
-    /// pass so that later statements can reference earlier DDL.
+    /// `target`. Temporary objects are always routed to the Connection layer.
+    ///
+    /// Called statement-by-statement during analysis so that later statements
+    /// can reference earlier DDL. Pass `CatalogLayer::Document` for inline DDL
+    /// and `CatalogLayer::Database` when pre-populating a schema.
     pub(crate) fn accumulate_ddl(
         &mut self,
+        target: CatalogLayer,
         stmt: AnyParsedStatement<'_>,
         root: AnyNodeId,
         dialect: Dialect,
@@ -381,7 +443,7 @@ impl Catalog {
                     _ => return,
                 };
                 let cols = extract_columns(stmt, &fields, columns, select, dialect.roles());
-                self.document.insert_relation(name_val, cols);
+                self.layers[target.index()].insert_relation(name_val, cols);
             }
             SemanticRole::DefineView {
                 name,
@@ -393,7 +455,7 @@ impl Catalog {
                     _ => return,
                 };
                 let cols = extract_columns(stmt, &fields, columns, Some(select), dialect.roles());
-                self.document.insert_relation(name_val, cols);
+                self.layers[target.index()].insert_relation(name_val, cols);
             }
             SemanticRole::DefineFunction {
                 name,
@@ -405,14 +467,14 @@ impl Catalog {
                     _ => return,
                 };
                 let arity = extract_function_arity(stmt, &fields, args);
-                self.document.insert_function_overload(
+                let layer = &mut self.layers[target.index()];
+                layer.insert_function_overload(
                     name_val.clone(),
                     FunctionCategory::Scalar,
                     arity,
                 );
                 if is_table_returning(stmt, &fields, return_type, dialect.roles()) {
-                    self.document
-                        .insert_table_function(name_val, AritySpec::Any, Vec::new());
+                    layer.insert_table_function(name_val, AritySpec::Any, Vec::new());
                 }
             }
             // Non-DDL roles are irrelevant to catalog accumulation.
@@ -420,28 +482,40 @@ impl Catalog {
         }
     }
 
-    // ── Query layer — managed by the walker ──────────────────────────────────
+    // ── Query scope management ────────────────────────────────────────────────
 
     /// Push a new empty scope frame. Called on subquery / CTE entry.
     pub(crate) fn push_query_scope(&mut self) {
-        self.query.push(CatalogLayer::default());
+        self.layers.push(CatalogLayerContents::default());
     }
 
     /// Pop the innermost scope frame. Called on subquery / CTE exit.
     pub(crate) fn pop_query_scope(&mut self) {
-        self.query.pop();
+        if self.layers.len() > FIXED_LAYER_COUNT {
+            self.layers.pop();
+        }
     }
 
     /// Register a table or alias in the current (innermost) query scope.
     /// `columns = None` means the table exists but its column list is unknown —
     /// column references against it are conservatively accepted.
     pub(crate) fn add_query_table(&mut self, name: &str, columns: Option<Vec<String>>) {
-        if let Some(frame) = self.query.last_mut() {
+        if let Some(frame) = self.layers[FIXED_LAYER_COUNT..].last_mut() {
             frame.insert_relation(name, columns);
         }
     }
 
-    // ── Resolution ───────────────────────────────────────────────────────────
+    // ── Schema sync (used by SemanticAnalyzer) ────────────────────────────────
+
+    /// Copy the Database and Connection layers from `src` into this catalog.
+    ///
+    /// Called at the start of each analysis pass to apply the user-provided schema.
+    pub(crate) fn copy_schema_layers_from(&mut self, src: &Catalog) {
+        self.layers[LAYER_DATABASE] = src.layers[LAYER_DATABASE].clone();
+        self.layers[LAYER_CONNECTION] = src.layers[LAYER_CONNECTION].clone();
+    }
+
+    // ── Resolution ────────────────────────────────────────────────────────────
 
     /// Returns `true` if `name` is a known relation in any layer.
     pub(crate) fn resolve_relation(&self, name: &str) -> bool {
@@ -505,7 +579,7 @@ impl Catalog {
         None // not found
     }
 
-    // ── Enumeration (for fuzzy suggestions) ──────────────────────────────────
+    // ── Enumeration (for fuzzy suggestions and completions) ───────────────────
 
     pub(crate) fn all_relation_names(&self) -> Vec<String> {
         let mut seen = HashSet::new();
@@ -562,12 +636,9 @@ impl Catalog {
     // ── Private helpers ───────────────────────────────────────────────────────
 
     /// Iterator over all layers in resolution priority order:
-    /// query (innermost first) → document → database → dialect.
-    fn all_layers_ordered(&self) -> impl Iterator<Item = &CatalogLayer> {
-        self.query
-            .iter()
-            .rev()
-            .chain([&self.document, &self.database, &self.dialect])
+    /// query (innermost first) → document → connection → database → dialect.
+    fn all_layers_ordered(&self) -> impl Iterator<Item = &CatalogLayerContents> {
+        self.layers.iter().rev()
     }
 
     fn resolve_qualified_column(&self, table: &str, column: &str) -> ColumnResolution {
@@ -603,73 +674,6 @@ impl Catalog {
             ColumnResolution::Found
         } else {
             ColumnResolution::NotFound
-        }
-    }
-
-    /// Like `accumulate_ddl` but writes into the database layer instead of the
-    /// document layer. Used by `from_ddl` to pre-populate user-provided schema.
-    #[cfg(feature = "sqlite")]
-    fn accumulate_ddl_into_database(
-        &mut self,
-        stmt: AnyParsedStatement<'_>,
-        root: AnyNodeId,
-        dialect: Dialect,
-    ) {
-        let Some((tag, fields)) = stmt.extract_fields(root) else {
-            return;
-        };
-        let idx = u32::from(tag) as usize;
-        let Some(&role) = dialect.roles().get(idx) else {
-            return;
-        };
-
-        match role {
-            SemanticRole::DefineTable {
-                name,
-                columns,
-                select,
-            } => {
-                let name_val = match fields[name as usize] {
-                    FieldValue::Span(s) if !s.is_empty() => s.to_string(),
-                    _ => return,
-                };
-                let cols = extract_columns(stmt, &fields, columns, select, dialect.roles());
-                self.database.insert_relation(name_val, cols);
-            }
-            SemanticRole::DefineView {
-                name,
-                columns,
-                select,
-            } => {
-                let name_val = match fields[name as usize] {
-                    FieldValue::Span(s) if !s.is_empty() => s.to_string(),
-                    _ => return,
-                };
-                let cols = extract_columns(stmt, &fields, columns, Some(select), dialect.roles());
-                self.database.insert_relation(name_val, cols);
-            }
-            SemanticRole::DefineFunction {
-                name,
-                args,
-                return_type,
-            } => {
-                let name_val = match fields[name as usize] {
-                    FieldValue::Span(s) if !s.is_empty() => s.to_string(),
-                    _ => return,
-                };
-                let arity = extract_function_arity(stmt, &fields, args);
-                self.database.insert_function_overload(
-                    name_val.clone(),
-                    FunctionCategory::Scalar,
-                    arity,
-                );
-                if is_table_returning(stmt, &fields, return_type, dialect.roles()) {
-                    self.database
-                        .insert_table_function(name_val, AritySpec::Any, Vec::new());
-                }
-            }
-            // Non-DDL roles are irrelevant to catalog accumulation.
-            _ => {}
         }
     }
 }
@@ -713,10 +717,6 @@ fn extract_columns<'a>(
 }
 
 /// Check whether a DDL function returns a table.
-///
-/// Navigates to the `return_type` child node, looks up its `SemanticRole` in
-/// `roles`, and dispatches on `ReturnSpec { columns }`. If `columns` holds
-/// a non-null `NodeId` at runtime, the function is table-returning.
 fn is_table_returning<'a>(
     stmt: AnyParsedStatement<'a>,
     fields: &NodeFields<'a>,
@@ -882,9 +882,6 @@ pub(super) fn columns_from_select(
 }
 
 /// Infer the output column name for a single result column node.
-///
-/// Tries alias first; falls back to bare `ColumnRef` column name.
-/// Returns `None` if neither is available (e.g. `1 + 2` without an alias).
 fn infer_result_col_name<'a>(
     stmt: AnyParsedStatement<'a>,
     child_fields: &NodeFields<'a>,
@@ -930,7 +927,7 @@ fn infer_result_col_name<'a>(
 
 // ── Dialect layer builder ─────────────────────────────────────────────────────
 
-fn build_dialect_layer(layer: &mut CatalogLayer, dialect: &Dialect) {
+fn build_dialect_layer(layer: &mut CatalogLayerContents, dialect: &Dialect) {
     #[cfg(feature = "sqlite")]
     for entry in crate::sqlite::functions_catalog::SQLITE_FUNCTIONS {
         if !is_function_available(entry, dialect) {

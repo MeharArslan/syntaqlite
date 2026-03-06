@@ -13,7 +13,9 @@ use crate::dialect::Dialect;
 use crate::dialect::SemanticRole;
 
 use super::ValidationConfig;
-use super::catalog::{Catalog, ColumnResolution, FunctionCheckResult, columns_from_select};
+use super::catalog::{
+    Catalog, CatalogLayer, ColumnResolution, FunctionCheckResult, columns_from_select,
+};
 use super::diagnostics::{Diagnostic, DiagnosticMessage, Help, Severity};
 use super::fuzzy::best_suggestion;
 use super::model::{
@@ -65,8 +67,8 @@ impl SemanticAnalyzer {
         user_catalog: &Catalog,
         config: &ValidationConfig,
     ) -> SemanticModel {
-        self.catalog.clear_document();
-        self.catalog.database = user_catalog.database.clone();
+        self.catalog.new_document();
+        self.catalog.copy_schema_layers_from(user_catalog);
         self.analyze_inner(source, config)
     }
 
@@ -212,7 +214,7 @@ impl SemanticAnalyzer {
             let root_id: AnyNodeId = root.node_id().into();
             let erased = stmt.erase();
 
-            self.catalog.accumulate_ddl(erased, root_id, self.dialect.clone());
+            self.catalog.accumulate_ddl(CatalogLayer::Document, erased, root_id, self.dialect.clone());
 
             ValidationPass::run(
                 erased,
@@ -851,7 +853,9 @@ impl<'a> ValidationPass<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::catalog::FunctionCheckResult;
+    use super::super::catalog::{
+        AritySpec, CatalogLayer, FunctionCategory, FunctionCheckResult,
+    };
     use super::super::diagnostics::{DiagnosticMessage, Help};
     use super::super::render::DiagnosticRenderer;
     use super::*;
@@ -880,7 +884,8 @@ mod tests {
     #[test]
     fn catalog_add_table_and_resolve() {
         let mut cat = sqlite_catalog();
-        cat.add_table("users", &["id", "name"]);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_relation("users", Some(vec!["id".to_string(), "name".to_string()]));
         assert!(cat.resolve_relation("users"));
         assert!(cat.resolve_relation("USERS")); // case-insensitive
         assert!(!cat.resolve_relation("orders"));
@@ -889,14 +894,16 @@ mod tests {
     #[test]
     fn catalog_add_view_and_resolve() {
         let mut cat = sqlite_catalog();
-        cat.add_view("active_users", &["id"]);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_relation("active_users", Some(vec!["id".to_string()]));
         assert!(cat.resolve_relation("active_users"));
     }
 
     #[test]
     fn catalog_add_function_and_check() {
         let mut cat = sqlite_catalog();
-        cat.add_function("my_func", Some(2));
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_function_overload("my_func", FunctionCategory::Scalar, AritySpec::Exact(2));
         assert!(matches!(
             cat.check_function("my_func", 2),
             FunctionCheckResult::Ok
@@ -910,7 +917,8 @@ mod tests {
     #[test]
     fn catalog_add_variadic_function() {
         let mut cat = sqlite_catalog();
-        cat.add_function("variadic_fn", None);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_function_overload("variadic_fn", FunctionCategory::Scalar, AritySpec::Any);
         assert!(matches!(
             cat.check_function("variadic_fn", 0),
             FunctionCheckResult::Ok
@@ -971,9 +979,10 @@ mod tests {
     #[test]
     fn catalog_clear_database() {
         let mut cat = sqlite_catalog();
-        cat.add_table("tmp", &["id"]);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_relation("tmp", Some(vec!["id".to_string()]));
         assert!(cat.resolve_relation("tmp"));
-        cat.clear_database();
+        cat.new_database();
         assert!(!cat.resolve_relation("tmp"));
     }
 
@@ -983,7 +992,8 @@ mod tests {
     fn analyze_select_from_known_table_no_errors() {
         let mut az = sqlite_analyzer();
         let mut cat = sqlite_catalog();
-        cat.add_table("users", &["id", "name"]);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_relation("users", Some(vec!["id".to_string(), "name".to_string()]));
 
         let model = az.analyze("SELECT id FROM users", &cat, &strict());
         let diags: Vec<_> = model
@@ -1045,7 +1055,8 @@ mod tests {
     fn analyze_fuzzy_suggestion_for_unknown_table() {
         let mut az = sqlite_analyzer();
         let mut cat = sqlite_catalog();
-        cat.add_table("users", &["id"]);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_relation("users", Some(vec!["id".to_string()]));
         let model = az.analyze("SELECT * FROM usres", &cat, &strict()); // typo
         let diag = model.diagnostics().iter().find(
             |d| matches!(&d.message, DiagnosticMessage::UnknownTable { name } if name == "usres"),
@@ -1082,7 +1093,8 @@ mod tests {
     fn analyze_create_view_then_select_no_error() {
         let mut az = sqlite_analyzer();
         let mut cat = sqlite_catalog();
-        cat.add_table("users", &["id"]);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_relation("users", Some(vec!["id".to_string()]));
         let src = "CREATE VIEW vw AS SELECT id FROM users; SELECT id FROM vw;";
         let model = az.analyze(src, &cat, &strict());
         let unknown: Vec<_> = model
@@ -1163,7 +1175,8 @@ mod tests {
     fn analyze_multiple_selects_independent() {
         let mut az = sqlite_analyzer();
         let mut cat = sqlite_catalog();
-        cat.add_table("users", &["id"]);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_relation("users", Some(vec!["id".to_string()]));
         let src = "SELECT id FROM users; SELECT id FROM users;";
         let model = az.analyze(src, &cat, &strict());
         let errs: Vec<_> = model
@@ -1202,6 +1215,82 @@ mod tests {
         );
     }
 
+    // ── Connection layer ───────────────────────────────────────────────────────
+
+    #[test]
+    fn catalog_connection_table_resolves() {
+        let mut cat = sqlite_catalog();
+        cat.layer_mut(CatalogLayer::Connection)
+            .insert_relation("conn_tbl", Some(vec!["id".to_string()]));
+        let model = sqlite_analyzer().analyze("SELECT id FROM conn_tbl", &cat, &strict());
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { name } if name == "conn_tbl"))
+            .collect();
+        assert!(errs.is_empty(), "connection table should be visible: {errs:?}");
+    }
+
+    #[test]
+    fn catalog_connection_shadows_database() {
+        // "t" in database has only column "a"; in connection has only "b".
+        // Querying "b" should succeed (connection takes priority, shadowing db entry).
+        let mut cat = sqlite_catalog();
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_relation("t", Some(vec!["a".to_string()]));
+        cat.layer_mut(CatalogLayer::Connection)
+            .insert_relation("t", Some(vec!["b".to_string()]));
+        let model =
+            sqlite_analyzer().analyze("SELECT b FROM t", &cat, &strict());
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "connection layer should shadow database layer: {col_errs:?}"
+        );
+    }
+
+    #[test]
+    fn catalog_document_shadows_connection() {
+        // "t" in connection has only "a"; document DDL creates "t" with only "b".
+        // Querying "b" should succeed.
+        let mut cat = sqlite_catalog();
+        cat.layer_mut(CatalogLayer::Connection)
+            .insert_relation("t", Some(vec!["a".to_string()]));
+        let model = sqlite_analyzer().analyze(
+            "CREATE TABLE t (b INTEGER); SELECT b FROM t",
+            &cat,
+            &strict(),
+        );
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "document layer should shadow connection layer: {col_errs:?}"
+        );
+    }
+
+    #[test]
+    fn catalog_clear_connection() {
+        let mut cat = sqlite_catalog();
+        cat.layer_mut(CatalogLayer::Connection)
+            .insert_relation("conn_tbl", Some(vec!["id".to_string()]));
+        cat.new_connection();
+        let model = sqlite_analyzer().analyze("SELECT id FROM conn_tbl", &cat, &strict());
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { name } if name == "conn_tbl"))
+            .collect();
+        assert_eq!(errs.len(), 1, "connection table should be gone after clear");
+    }
+
     // ── DiagnosticRenderer ─────────────────────────────────────────────────────
 
     #[test]
@@ -1234,7 +1323,8 @@ mod tests {
         let source = "SELECT * FROM usres";
         let mut az = sqlite_analyzer();
         let mut cat = sqlite_catalog();
-        cat.add_table("users", &["id"]);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_relation("users", Some(vec!["id".to_string()]));
         let model = az.analyze(source, &cat, &strict());
 
         let renderer = DiagnosticRenderer::new(source, "test.sql");
@@ -1379,7 +1469,8 @@ mod tests {
         // SELECT * in CTE body — count check should be skipped (no false error)
         let mut az = sqlite_analyzer();
         let mut cat = sqlite_catalog();
-        cat.add_table("t", &["a", "b"]);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_relation("t", Some(vec!["a".to_string(), "b".to_string()]));
         let model = az.analyze(
             "WITH cte(x, y) AS (SELECT * FROM t) SELECT x FROM cte",
             &cat,
@@ -1439,7 +1530,8 @@ mod tests {
         // CTE body is SELECT * — inference skipped, all column refs accepted
         let mut az = sqlite_analyzer();
         let mut cat = sqlite_catalog();
-        cat.add_table("t", &["a", "b"]);
+        cat.layer_mut(CatalogLayer::Database)
+            .insert_relation("t", Some(vec!["a".to_string(), "b".to_string()]));
         let model = az.analyze(
             "WITH cte AS (SELECT * FROM t) SELECT anything FROM cte",
             &cat,
