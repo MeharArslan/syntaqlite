@@ -193,21 +193,18 @@ def main() -> int:
     with open(wrapper_path, "w", encoding="utf-8") as f:
         f.write("""\
 #include "syntaqlite/grammar.h"
-#include "syntaqlite/parser.h"
 
-const SyntaqliteDialect* syntaqlite_sqlite_dialect(void);
+SyntaqliteGrammar syntaqlite_sqlite_grammar(void);
 
-const SyntaqliteDialect* syntaqlite_dialect(void) {
-    return syntaqlite_sqlite_dialect();
+static SyntaqliteGrammar g_sqlite_grammar;
+
+const SyntaqliteGrammar* syntaqlite_sqlite_dialect(void) {
+    g_sqlite_grammar = syntaqlite_sqlite_grammar();
+    return &g_sqlite_grammar;
 }
 
-SyntaqliteParser* syntaqlite_create_parser_with_grammar(
-    const SyntaqliteMemMethods* mem,
-    const SyntaqliteDialectEnv* env
-) {
-    (void)mem;
-    (void)env;
-    return 0;
+const SyntaqliteGrammar* syntaqlite_dialect(void) {
+    return syntaqlite_sqlite_dialect();
 }
 """)
 
@@ -218,14 +215,13 @@ SyntaqliteParser* syntaqlite_create_parser_with_grammar(
         "-fPIC",
         "-g",
         "-gseparate-dwarf=" + out_dialect_debug,
-        os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite", "csrc", "sqlite", "dialect.c"),
-        os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite", "csrc", "sqlite", "sqlite_parse.c"),
-        os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite", "csrc", "sqlite", "sqlite_tokenize.c"),
-        os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite", "csrc", "sqlite", "sqlite_keyword.c"),
+        os.path.join(ROOT_DIR, "syntaqlite-syntax", "csrc", "sqlite", "dialect.c"),
+        os.path.join(ROOT_DIR, "syntaqlite-syntax", "csrc", "sqlite", "sqlite_parse.c"),
+        os.path.join(ROOT_DIR, "syntaqlite-syntax", "csrc", "sqlite", "sqlite_tokenize.c"),
+        os.path.join(ROOT_DIR, "syntaqlite-syntax", "csrc", "sqlite", "sqlite_keyword.c"),
         wrapper_path,
-        "-I", os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite"),
-        "-I", os.path.join(ROOT_DIR, "syntaqlite-parser-sqlite", "include"),
-        "-I", os.path.join(ROOT_DIR, "syntaqlite-parser", "include"),
+        "-I", os.path.join(ROOT_DIR, "syntaqlite-syntax"),
+        "-I", os.path.join(ROOT_DIR, "syntaqlite-syntax", "include"),
         "-DSYNTAQLITE_OMIT_SQLITE_API",
         "-sWASM_BIGINT",
         "-sSIDE_MODULE=1",
@@ -297,7 +293,7 @@ SyntaqliteParser* syntaqlite_create_parser_with_grammar(
             "-g", "-gseparate-dwarf=" + out_perfetto_debug,
             os.path.join(perfetto_csrc_dir, "syntaqlite_perfetto.c"),
             "-I", perfetto_csrc_dir,
-            "-I", os.path.join(ROOT_DIR, "syntaqlite-parser", "include"),
+            "-I", os.path.join(ROOT_DIR, "syntaqlite-syntax", "include"),
             "-sWASM_BIGINT", "-sSIDE_MODULE=1", "--no-entry",
             "-o", out_perfetto,
         ],
