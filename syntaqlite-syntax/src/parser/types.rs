@@ -21,6 +21,7 @@ pub enum ParseOutcome<T, E> {
 
 impl<T, E> ParseOutcome<T, E> {
     /// Convert into `Result<Option<T>, E>` for `?`-friendly control flow.
+    #[allow(clippy::missing_errors_doc)]
     pub fn transpose(self) -> Result<Option<T>, E> {
         match self {
             ParseOutcome::Done => Ok(None),

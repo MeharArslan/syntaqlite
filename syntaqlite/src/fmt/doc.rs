@@ -164,6 +164,7 @@ impl<'a> DocArena<'a> {
     /// - `Group` probes whether content fits in flat mode
     /// - if it does not fit, rendering switches to break mode
     /// - `Line`/`SoftLine` choose space vs newline based on that mode
+    ///
     /// This avoids re-allocating the render stack, fits stack, and output
     /// string on every format call.
     pub(crate) fn render_into(

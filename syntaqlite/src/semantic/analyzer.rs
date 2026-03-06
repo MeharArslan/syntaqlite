@@ -25,11 +25,13 @@ use super::model::{
 /// Create once for a dialect and reuse across inputs. The dialect layer is
 /// built at construction and never changes. The database and document layers
 /// are reset on each [`analyze`](Self::analyze) call.
+#[allow(dead_code)]
 pub struct SemanticAnalyzer {
     dialect: Dialect,
     catalog: Catalog,
 }
 
+#[allow(dead_code)]
 impl SemanticAnalyzer {
     /// Create an analyzer for the built-in `SQLite` dialect.
     #[cfg(feature = "sqlite")]
@@ -97,6 +99,7 @@ impl SemanticAnalyzer {
 
     /// Expected tokens and semantic context at `offset` (for completion).
     #[cfg(feature = "sqlite")]
+    #[allow(clippy::unused_self)]
     pub(crate) fn completion_info(&self, model: &SemanticModel, offset: usize) -> CompletionInfo {
         let source = model.source();
         let tokens = &model.tokens;
@@ -245,11 +248,13 @@ impl Default for SemanticAnalyzer {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 #[cfg(feature = "sqlite")]
+#[allow(dead_code)]
 fn str_offset(source: &str, part: &str) -> usize {
     part.as_ptr() as usize - source.as_ptr() as usize
 }
 
 #[cfg(feature = "sqlite")]
+#[allow(dead_code)]
 fn parse_error_span(err: &syntaqlite_syntax::ParseError<'_>, source: &str) -> (usize, usize) {
     match (err.offset(), err.length()) {
         (Some(off), Some(len)) if len > 0 => (off, off + len),
@@ -269,6 +274,7 @@ fn parse_error_span(err: &syntaqlite_syntax::ParseError<'_>, source: &str) -> (u
 }
 
 #[cfg(feature = "sqlite")]
+#[allow(dead_code)]
 fn completion_boundary(
     source: &str,
     tokens: &[StoredToken],
@@ -300,6 +306,7 @@ fn completion_boundary(
 }
 
 #[cfg(feature = "sqlite")]
+#[allow(dead_code)]
 fn statement_token_start(tokens: &[StoredToken], boundary: usize) -> usize {
     tokens[..boundary]
         .iter()
@@ -308,6 +315,7 @@ fn statement_token_start(tokens: &[StoredToken], boundary: usize) -> usize {
 }
 
 #[cfg(feature = "sqlite")]
+#[allow(dead_code)]
 fn merge_expected_tokens(into: &mut Vec<TokenType>, extra: Vec<TokenType>) {
     let mut seen: HashSet<TokenType> = into.iter().copied().collect();
     for token in extra {
@@ -321,6 +329,7 @@ fn merge_expected_tokens(into: &mut Vec<TokenType>, extra: Vec<TokenType>) {
 
 /// Per-statement validation pass.  Reads the dialect's [`SemanticRole`] table
 /// and dispatches node visits to role-specific handlers.
+#[allow(dead_code)]
 struct ValidationPass<'a> {
     roles: &'static [SemanticRole],
     source_start: usize,
@@ -329,6 +338,7 @@ struct ValidationPass<'a> {
     diagnostics: &'a mut Vec<Diagnostic>,
 }
 
+#[allow(dead_code)]
 impl<'a> ValidationPass<'a> {
     fn run(
         stmt: AnyParsedStatement<'a>,
@@ -392,7 +402,7 @@ impl<'a> ValidationPass<'a> {
             | SemanticRole::CteBinding { .. } => self.visit_children(stmt, node_id),
 
             SemanticRole::Call { name, args } => {
-                self.visit_call(stmt, node_id, &fields, name, args)
+                self.visit_call(stmt, node_id, &fields, name, args);
             }
             SemanticRole::ColumnRef { column, table } => {
                 self.visit_column_ref(&fields, column, table);
@@ -466,6 +476,7 @@ impl<'a> ValidationPass<'a> {
 
     /// Extract source text from a `Name` node (`IdentName` or `Error`).
     /// Both node kinds store their span at field 0.
+    #[allow(clippy::unused_self)]
     fn name_text(&self, stmt: &AnyParsedStatement<'a>, node_id: Option<AnyNodeId>) -> &'a str {
         let Some(node_id) = node_id else {
             return "";
@@ -491,10 +502,7 @@ impl<'a> ValidationPass<'a> {
         name_idx: u8,
         alias_idx: u8,
     ) {
-        let name = match fields[name_idx as usize] {
-            FieldValue::Span(s) => s,
-            _ => return,
-        };
+        let FieldValue::Span(name) = fields[name_idx as usize] else { return };
         if name.is_empty() {
             return;
         }
@@ -531,42 +539,42 @@ impl<'a> ValidationPass<'a> {
         name_idx: u8,
         args_idx: u8,
     ) {
-        if let FieldValue::Span(name) = fields[name_idx as usize] {
-            if !name.is_empty() {
-                let offset = self.span_offset(name);
-                let args_id = Self::field_node_id(fields, args_idx);
-                let arg_count = args_id
-                    .and_then(|id| stmt.list_children(id))
-                    .map_or(0, |c| c.len());
-                match self.catalog.check_function(name, arg_count) {
-                    FunctionCheckResult::Ok => {}
-                    FunctionCheckResult::Unknown => {
-                        let candidates = self.catalog.all_function_names();
-                        let suggestion =
-                            best_suggestion(name, &candidates, self.config.suggestion_threshold);
-                        self.diagnostics.push(Diagnostic {
-                            start_offset: offset,
-                            end_offset: offset + name.len(),
-                            message: DiagnosticMessage::UnknownFunction {
-                                name: name.to_string(),
-                            },
-                            severity: self.config.severity(),
-                            help: suggestion.map(Help::Suggestion),
-                        });
-                    }
-                    FunctionCheckResult::WrongArity { expected } => {
-                        self.diagnostics.push(Diagnostic {
-                            start_offset: offset,
-                            end_offset: offset + name.len(),
-                            message: DiagnosticMessage::FunctionArity {
-                                name: name.to_string(),
-                                expected,
-                                got: arg_count,
-                            },
-                            severity: self.config.severity(),
-                            help: None,
-                        });
-                    }
+        if let FieldValue::Span(name) = fields[name_idx as usize]
+            && !name.is_empty()
+        {
+            let offset = self.span_offset(name);
+            let args_id = Self::field_node_id(fields, args_idx);
+            let arg_count = args_id
+                .and_then(|id| stmt.list_children(id))
+                .map_or(0, <[_]>::len);
+            match self.catalog.check_function(name, arg_count) {
+                FunctionCheckResult::Ok => {}
+                FunctionCheckResult::Unknown => {
+                    let candidates = self.catalog.all_function_names();
+                    let suggestion =
+                        best_suggestion(name, &candidates, self.config.suggestion_threshold);
+                    self.diagnostics.push(Diagnostic {
+                        start_offset: offset,
+                        end_offset: offset + name.len(),
+                        message: DiagnosticMessage::UnknownFunction {
+                            name: name.to_string(),
+                        },
+                        severity: self.config.severity(),
+                        help: suggestion.map(Help::Suggestion),
+                    });
+                }
+                FunctionCheckResult::WrongArity { expected } => {
+                    self.diagnostics.push(Diagnostic {
+                        start_offset: offset,
+                        end_offset: offset + name.len(),
+                        message: DiagnosticMessage::FunctionArity {
+                            name: name.to_string(),
+                            expected,
+                            got: arg_count,
+                        },
+                        severity: self.config.severity(),
+                        help: None,
+                    });
                 }
             }
         }
@@ -574,10 +582,7 @@ impl<'a> ValidationPass<'a> {
     }
 
     fn visit_column_ref(&mut self, fields: &NodeFields<'a>, column_idx: u8, table_idx: u8) {
-        let column = match fields[column_idx as usize] {
-            FieldValue::Span(s) => s,
-            _ => return,
-        };
+        let FieldValue::Span(column) = fields[column_idx as usize] else { return };
         if column.is_empty() {
             return;
         }
@@ -731,7 +736,7 @@ impl<'a> ValidationPass<'a> {
             if is_recursive && !cte_name.is_empty() {
                 let cols = declared_cols
                     .as_ref()
-                    .map(|v| v.iter().map(|s| s.to_string()).collect());
+                    .map(|v| v.iter().map(ToString::to_string).collect());
                 self.catalog.add_query_table(cte_name, cols);
             }
 
@@ -742,24 +747,24 @@ impl<'a> ValidationPass<'a> {
             if !cte_name.is_empty() {
                 if let Some(ref declared) = declared_cols {
                     // Count result columns; emit diagnostic on mismatch.
-                    if let Some(actual) = self.count_result_columns(stmt, cte_body_id) {
-                        if actual != declared.len() {
-                            let offset = self.span_offset(cte_name);
-                            self.diagnostics.push(Diagnostic {
-                                start_offset: offset,
-                                end_offset: offset + cte_name.len(),
-                                message: DiagnosticMessage::CteColumnCountMismatch {
-                                    name: cte_name.to_string(),
-                                    declared: declared.len(),
-                                    actual,
-                                },
-                                severity: Severity::Error,
-                                help: None,
-                            });
-                        }
+                    if let Some(actual) = self.count_result_columns(stmt, cte_body_id)
+                        && actual != declared.len()
+                    {
+                        let offset = self.span_offset(cte_name);
+                        self.diagnostics.push(Diagnostic {
+                            start_offset: offset,
+                            end_offset: offset + cte_name.len(),
+                            message: DiagnosticMessage::CteColumnCountMismatch {
+                                name: cte_name.to_string(),
+                                declared: declared.len(),
+                                actual,
+                            },
+                            severity: Severity::Error,
+                            help: None,
+                        });
                     }
                     // Register with declared column names regardless of count.
-                    let cols = declared.iter().map(|s| s.to_string()).collect();
+                    let cols = declared.iter().map(ToString::to_string).collect();
                     self.catalog.add_query_table(cte_name, Some(cols));
                 } else {
                     // No declared column list: infer names from SELECT result columns.
@@ -823,10 +828,10 @@ impl<'a> ValidationPass<'a> {
                 continue;
             };
             // STAR flag (bit 0) means wildcard — skip count check entirely.
-            if let FieldValue::Flags(f) = child_fields[flags_idx as usize] {
-                if f & 1 != 0 {
-                    return None;
-                }
+            if let FieldValue::Flags(f) = child_fields[flags_idx as usize]
+                && f & 1 != 0
+            {
+                return None;
             }
             count += 1;
         }

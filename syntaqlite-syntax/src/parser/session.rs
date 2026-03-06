@@ -130,6 +130,7 @@ impl ParseSession {
     /// - [`ParseOutcome::Done`]  -> `SYNTAQLITE_PARSE_DONE`
     /// - [`ParseOutcome::Ok`]    -> `SYNTAQLITE_PARSE_OK`
     /// - [`ParseOutcome::Err`]   -> `SYNTAQLITE_PARSE_ERROR`
+    #[allow(clippy::should_implement_trait)]
     pub fn next(&mut self) -> ParseOutcome<ParsedStatement<'_>, ParseError<'_>> {
         self.0.next().map(ParsedStatement).map_err(ParseError)
     }

@@ -5,6 +5,7 @@
 ///
 /// Uses `O(n)` space where `n = b.len()`. SQL identifiers are ASCII, so this
 /// uses byte-level comparison with ASCII lowercase conversion.
+#[allow(dead_code)]
 pub(crate) fn levenshtein_distance(a: &str, b: &str) -> usize {
     let a: Vec<u8> = a.bytes().map(|c| c.to_ascii_lowercase()).collect();
     let b: Vec<u8> = b.bytes().map(|c| c.to_ascii_lowercase()).collect();
@@ -37,6 +38,7 @@ pub(crate) fn levenshtein_distance(a: &str, b: &str) -> usize {
 /// Find the best matching candidate within a maximum Levenshtein distance.
 ///
 /// Returns the closest match, or `None` if no candidate is within `threshold`.
+#[allow(dead_code)]
 pub(crate) fn best_suggestion(
     name: &str,
     candidates: &[String],

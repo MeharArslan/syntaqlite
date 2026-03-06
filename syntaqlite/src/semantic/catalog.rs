@@ -34,12 +34,14 @@ pub(crate) struct FunctionOverload {
     pub arity: AritySpec,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct FunctionSet {
     name: String,
     overloads: Vec<FunctionOverload>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct RelationEntry {
     name: String,
@@ -48,6 +50,7 @@ struct RelationEntry {
     columns: Option<Vec<String>>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct TableFunctionSet {
     name: String,
@@ -58,6 +61,7 @@ struct TableFunctionSet {
 
 // ── Resolution result types ───────────────────────────────────────────────────
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum ColumnResolution {
     /// Column found (or table has unknown columns — conservatively accepted).
@@ -70,6 +74,7 @@ pub(crate) enum ColumnResolution {
     NotFound,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum FunctionCheckResult {
     Ok,
@@ -86,6 +91,7 @@ pub(crate) struct CatalogLayer {
     table_functions: HashMap<String, TableFunctionSet>,
 }
 
+#[allow(dead_code)]
 impl CatalogLayer {
     pub(crate) fn clear(&mut self) {
         self.relations.clear();
@@ -134,16 +140,14 @@ impl CatalogLayer {
             return;
         }
         for &a in arities {
-            let arity = if a == -1 {
-                AritySpec::Any
-            } else if a < -1 {
-                AritySpec::AtLeast(
+            let arity = match a.cmp(&-1) {
+                std::cmp::Ordering::Equal => AritySpec::Any,
+                std::cmp::Ordering::Less => AritySpec::AtLeast(
                     usize::try_from(-i32::from(a) - 1).expect("negative arity encodes minimum"),
-                )
-            } else {
-                AritySpec::Exact(
+                ),
+                std::cmp::Ordering::Greater => AritySpec::Exact(
                     usize::try_from(i32::from(a)).expect("fixed arity must be non-negative"),
-                )
+                ),
             };
             self.insert_function_overload(name.clone(), category, arity);
         }
@@ -196,6 +200,7 @@ impl CatalogLayer {
 /// Callers build the database layer via [`add_table`](Self::add_table) /
 /// [`add_view`](Self::add_view) / [`add_function`](Self::add_function) etc.,
 /// then pass `&mut Catalog` to [`analyze`](crate::semantic::analyze).
+#[allow(dead_code)]
 pub struct Catalog {
     /// Dialect built-ins — populated at construction, never mutated.
     pub(crate) dialect: CatalogLayer,
@@ -209,10 +214,11 @@ pub struct Catalog {
     query: Vec<CatalogLayer>,
 }
 
+#[allow(dead_code)]
 impl Catalog {
     /// Create a catalog for `dialect`. The dialect's built-in functions are
     /// loaded immediately and stored in the dialect layer.
-    pub fn new(dialect: Dialect) -> Self {
+    pub(crate) fn new(dialect: Dialect) -> Self {
         let mut cat = Catalog {
             dialect: CatalogLayer::default(),
             database: CatalogLayer::default(),
@@ -269,10 +275,10 @@ impl Catalog {
 
     /// Parse DDL statements from `source` and populate the database layer.
     #[cfg(feature = "sqlite")]
-    pub fn from_ddl(dialect: Dialect, source: &str) -> Self {
+    pub(crate) fn from_ddl(dialect: Dialect, source: &str) -> Self {
+        use syntaqlite_syntax::ParseOutcome;
         let mut catalog = Catalog::new(dialect);
         let parser = syntaqlite_syntax::Parser::new();
-        use syntaqlite_syntax::ParseOutcome;
         let mut session = parser.parse(source);
         loop {
             let stmt = match session.next() {
@@ -778,9 +784,8 @@ fn columns_from_column_list(
 
         // Use the ColumnDef role to find the name field precisely.
         let tag_idx = u32::from(child_tag) as usize;
-        let name_idx = match roles.get(tag_idx) {
-            Some(&SemanticRole::ColumnDef { name, .. }) => name,
-            _ => continue,
+        let Some(&SemanticRole::ColumnDef { name: name_idx, .. }) = roles.get(tag_idx) else {
+            continue;
         };
 
         let FieldValue::NodeId(name_id) = child_fields[name_idx as usize] else {
@@ -814,8 +819,8 @@ fn columns_from_column_list(
 /// that cannot be named (e.g. a literal or function call without an alias).
 /// A `None` return causes the caller to register the table with unknown
 /// columns, conservatively accepting all column references.
-pub(super) fn columns_from_select<'a>(
-    stmt: AnyParsedStatement<'a>,
+pub(super) fn columns_from_select(
+    stmt: AnyParsedStatement<'_>,
     select_id: AnyNodeId,
     roles: &[SemanticRole],
 ) -> Option<Vec<String>> {
@@ -843,9 +848,7 @@ pub(super) fn columns_from_select<'a>(
         if child_id.is_null() {
             continue;
         }
-        let Some((child_tag, child_fields)) = stmt.extract_fields(child_id) else {
-            return None;
-        };
+        let (child_tag, child_fields) = stmt.extract_fields(child_id)?;
         let child_role = roles
             .get(u32::from(child_tag) as usize)
             .copied()
@@ -861,10 +864,10 @@ pub(super) fn columns_from_select<'a>(
         };
 
         // STAR flag (bit 0) → wildcard: can't enumerate columns.
-        if let FieldValue::Flags(f) = child_fields[flags_idx as usize] {
-            if f & 1 != 0 {
-                return None;
-            }
+        if let FieldValue::Flags(f) = child_fields[flags_idx as usize]
+            && f & 1 != 0
+        {
+            return None;
         }
 
         match infer_result_col_name(stmt, &child_fields, alias_idx, expr_idx, roles) {
@@ -888,39 +891,35 @@ fn infer_result_col_name<'a>(
     roles: &[SemanticRole],
 ) -> Option<String> {
     // Try explicit alias.
-    if let FieldValue::NodeId(alias_id) = child_fields[alias_idx as usize] {
-        if !alias_id.is_null() {
-            if let Some((_, alias_fields)) = stmt.extract_fields(alias_id) {
-                for j in 0..alias_fields.len() {
-                    if let FieldValue::Span(s) = alias_fields[j] {
-                        if !s.is_empty() {
-                            return Some(s.to_ascii_lowercase());
-                        }
-                    }
-                }
+    if let FieldValue::NodeId(alias_id) = child_fields[alias_idx as usize]
+        && !alias_id.is_null()
+        && let Some((_, alias_fields)) = stmt.extract_fields(alias_id)
+    {
+        for j in 0..alias_fields.len() {
+            if let FieldValue::Span(s) = alias_fields[j]
+                && !s.is_empty()
+            {
+                return Some(s.to_ascii_lowercase());
             }
         }
     }
 
     // Try bare ColumnRef (no alias).
-    if let FieldValue::NodeId(expr_id) = child_fields[expr_idx as usize] {
-        if !expr_id.is_null() {
-            if let Some((expr_tag, expr_fields)) = stmt.extract_fields(expr_id) {
-                let expr_role = roles
-                    .get(u32::from(expr_tag) as usize)
-                    .copied()
-                    .unwrap_or(SemanticRole::Transparent);
-                if let SemanticRole::ColumnRef {
-                    column: col_idx, ..
-                } = expr_role
-                {
-                    if let FieldValue::Span(col_span) = expr_fields[col_idx as usize] {
-                        if !col_span.is_empty() {
-                            return Some(col_span.to_ascii_lowercase());
-                        }
-                    }
-                }
-            }
+    if let FieldValue::NodeId(expr_id) = child_fields[expr_idx as usize]
+        && !expr_id.is_null()
+        && let Some((expr_tag, expr_fields)) = stmt.extract_fields(expr_id)
+    {
+        let expr_role = roles
+            .get(u32::from(expr_tag) as usize)
+            .copied()
+            .unwrap_or(SemanticRole::Transparent);
+        if let SemanticRole::ColumnRef {
+            column: col_idx, ..
+        } = expr_role
+            && let FieldValue::Span(col_span) = expr_fields[col_idx as usize]
+            && !col_span.is_empty()
+        {
+            return Some(col_span.to_ascii_lowercase());
         }
     }
 
@@ -949,10 +948,11 @@ fn build_dialect_layer(layer: &mut CatalogLayer, dialect: &Dialect) {
 
 fn map_function_category(category: DialectFunctionCategory) -> FunctionCategory {
     match category {
-        DialectFunctionCategory::Scalar => FunctionCategory::Scalar,
+        DialectFunctionCategory::Scalar | DialectFunctionCategory::TableValued => {
+            FunctionCategory::Scalar // TableValued is unreachable via this path
+        }
         DialectFunctionCategory::Aggregate => FunctionCategory::Aggregate,
         DialectFunctionCategory::Window => FunctionCategory::Window,
-        DialectFunctionCategory::TableValued => FunctionCategory::Scalar, // unreachable via this path
     }
 }
 
@@ -962,6 +962,7 @@ fn canonical_name(name: &str) -> String {
     name.to_ascii_lowercase()
 }
 
+#[allow(dead_code)]
 fn overload_accepts(overload: FunctionOverload, arg_count: usize) -> bool {
     match overload.arity {
         AritySpec::Exact(n) => n == arg_count,
@@ -970,6 +971,7 @@ fn overload_accepts(overload: FunctionOverload, arg_count: usize) -> bool {
     }
 }
 
+#[allow(dead_code)]
 fn expected_fixed_arities(set: &FunctionSet) -> Vec<usize> {
     let mut arities: Vec<usize> = set
         .overloads
@@ -984,6 +986,7 @@ fn expected_fixed_arities(set: &FunctionSet) -> Vec<usize> {
     arities
 }
 
+#[allow(dead_code)]
 fn push_unique(seen: &mut HashSet<String>, out: &mut Vec<String>, name: &str) {
     let lower = canonical_name(name);
     if seen.insert(lower) {

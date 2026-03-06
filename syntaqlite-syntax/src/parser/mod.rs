@@ -219,6 +219,7 @@ impl<G: TypedGrammar> TypedParseSession<G> {
     ///
     /// Use [`ParseOutcome::transpose`] for `?`-friendly
     /// `Result<Option<_>, _>` control flow.
+    #[allow(clippy::missing_panics_doc, clippy::should_implement_trait)]
     pub fn next(&mut self) -> ParseOutcome<TypedParsedStatement<'_, G>, TypedParseError<'_, G>> {
         // SAFETY: raw is valid and exclusively borrowed via &mut self.
         let rc = unsafe {

@@ -14,6 +14,7 @@ use syntaqlite_syntax::util::SqliteVersion;
 pub(crate) type FieldIdx = u8;
 
 /// The kind of relation a `SourceRef` binding introduces into scope.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RelationKind {
     /// Standard SQL table or view.
@@ -33,6 +34,7 @@ pub(crate) enum RelationKind {
 /// Generated from `semantic { ... }` annotations in `.synq` files and stored
 /// in a static array indexed by node tag. `Transparent` means the engine
 /// recurses into children without special handling.
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SemanticRole {
     // ── Catalog roles ─────────────────────────────────────────────────────
@@ -57,7 +59,7 @@ pub(crate) enum SemanticRole {
     },
     /// Annotates a return-type descriptor node (e.g. `PerfettoReturnType`).
     ///
-    /// `columns` points to a column-list child; a non-null NodeId at runtime
+    /// `columns` points to a column-list child; a non-null `NodeId` at runtime
     /// means the enclosing function is table-returning. Any dialect with a
     /// dedicated return-type descriptor node can use this role regardless of
     /// how the surrounding syntax is structured.

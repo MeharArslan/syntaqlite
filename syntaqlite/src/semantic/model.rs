@@ -11,6 +11,7 @@ use syntaqlite_syntax::any::TokenCategory;
 // ── Stored per-statement positions ───────────────────────────────────────────
 
 /// A token position recorded during parsing.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct StoredToken {
     pub(crate) offset: usize,
@@ -20,6 +21,7 @@ pub(crate) struct StoredToken {
 }
 
 /// A comment position recorded during parsing.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct StoredComment {
     pub(crate) offset: usize,
@@ -29,6 +31,7 @@ pub(crate) struct StoredComment {
 // ── Output types ──────────────────────────────────────────────────────────────
 
 /// A semantic token for syntax highlighting.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) struct SemanticToken {
     /// Byte offset in the source text.
@@ -40,6 +43,7 @@ pub(crate) struct SemanticToken {
 }
 
 /// Semantic completion context derived from parser stack state.
+#[allow(dead_code)]
 #[repr(u32)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CompletionContext {
@@ -51,6 +55,7 @@ pub(crate) enum CompletionContext {
     TableRef = 2,
 }
 
+#[allow(dead_code)]
 impl CompletionContext {
     pub(crate) fn from_parser(v: syntaqlite_syntax::CompletionContext) -> Self {
         match v {
@@ -62,6 +67,7 @@ impl CompletionContext {
 }
 
 /// Expected tokens and semantic context at a cursor position.
+#[allow(dead_code)]
 #[derive(Debug)]
 pub(crate) struct CompletionInfo {
     /// Terminal token types valid at the cursor.
@@ -77,6 +83,7 @@ pub(crate) struct CompletionInfo {
 /// Owns the source text, stored token/comment positions, and all diagnostics
 /// (both parse errors and semantic issues). Produced by
 /// [`SemanticAnalyzer::analyze`](super::analyzer::SemanticAnalyzer::analyze).
+#[allow(dead_code)]
 pub(crate) struct SemanticModel {
     pub(crate) source: String,
     pub(crate) tokens: Vec<StoredToken>,
@@ -84,6 +91,7 @@ pub(crate) struct SemanticModel {
     pub(crate) diagnostics: Vec<Diagnostic>,
 }
 
+#[allow(dead_code)]
 impl SemanticModel {
     pub(crate) fn source(&self) -> &str {
         &self.source
