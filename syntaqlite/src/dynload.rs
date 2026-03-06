@@ -53,6 +53,8 @@ pub fn load_dialect(path: &str, name: Option<&str>) -> Result<Dialect, String> {
     let grammar = unsafe { AnyGrammar::new(raw) };
     let keep_alive: Arc<dyn Send + Sync> = Arc::new(lib);
 
+    // SAFETY: grammar was constructed from the loaded library's exported symbol;
+    // keep_alive ensures the library remains loaded for the lifetime of the Dialect.
     Ok(unsafe { Dialect::from_raw_parts(grammar, &[], &[], &[], &[], &[], keep_alive) })
 }
 

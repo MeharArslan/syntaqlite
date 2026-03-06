@@ -97,11 +97,6 @@ impl LspHost {
         }
     }
 
-    /// Access the current user catalog.
-    pub(crate) fn session_context(&self) -> &Catalog {
-        &self.user_catalog
-    }
-
     // ── Document lifecycle ─────────────────────────────────────────────────────
 
     /// Register a newly opened document.
@@ -162,19 +157,6 @@ impl LspHost {
         Some((version, source, diags))
     }
 
-    /// Semantic tokens for syntax highlighting, lazily computed.
-    pub(crate) fn semantic_tokens(&mut self, uri: &str) -> &[SemanticToken] {
-        let Some(doc) = self.documents.get_mut(uri) else {
-            return &[];
-        };
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
-        if doc.cached_sem_tokens.is_none() {
-            let tokens = self.analyzer.semantic_tokens(doc.model.as_ref().unwrap());
-            doc.cached_sem_tokens = Some(tokens);
-        }
-        doc.cached_sem_tokens.as_deref().unwrap()
-    }
-
     /// Semantic tokens delta-encoded for LSP `textDocument/semanticTokens/full`.
     pub fn semantic_tokens_encoded(
         &mut self,
@@ -204,15 +186,6 @@ impl LspHost {
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         self.analyzer
             .completion_info(doc.model.as_ref().unwrap(), offset)
-    }
-
-    /// Expected terminal token IDs (as `u32` ordinals) at a byte offset.
-    pub(crate) fn expected_tokens_at_offset(&mut self, uri: &str, offset: usize) -> Vec<u32> {
-        self.completion_info_at_offset(uri, offset)
-            .tokens
-            .iter()
-            .map(|&t| t as u32)
-            .collect()
     }
 
     /// Completion items (keywords + functions) at a byte offset.
@@ -416,6 +389,18 @@ impl std::fmt::Display for FormatError {
 impl std::error::Error for FormatError {}
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
+
+#[cfg(test)]
+impl LspHost {
+    /// Expected terminal token IDs (as `u32` ordinals) at a byte offset.
+    pub(crate) fn expected_tokens_at_offset(&mut self, uri: &str, offset: usize) -> Vec<u32> {
+        self.completion_info_at_offset(uri, offset)
+            .tokens
+            .iter()
+            .map(|&t| t as u32)
+            .collect()
+    }
+}
 
 #[cfg(test)]
 #[cfg(feature = "sqlite")]

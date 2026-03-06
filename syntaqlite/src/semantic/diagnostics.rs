@@ -114,15 +114,6 @@ impl DiagnosticMessage {
     pub fn is_parse_error(&self) -> bool {
         matches!(self, Self::Other(_))
     }
-
-    /// Write the structured JSON representation into `out`.
-    ///
-    /// This is the machine-readable detail object; callers also emit
-    /// `"message"` with the [`fmt::Display`](std::fmt::Display) string alongside it.
-    #[cfg(feature = "json")]
-    pub(crate) fn write_json(&self, out: &mut String) {
-        out.push_str(&serde_json::to_string(self).expect("DiagnosticMessage serialization failed"));
-    }
 }
 
 /// Structured help information attached to a diagnostic.
@@ -137,22 +128,6 @@ impl std::fmt::Display for Help {
         match self {
             Help::Suggestion(s) => write!(f, "did you mean '{s}'?"),
         }
-    }
-}
-
-impl Help {
-    /// Write the structured JSON representation into `out`.
-    #[cfg(feature = "json")]
-    pub(crate) fn write_json(&self, out: &mut String) {
-        out.push_str(&serde_json::to_string(self).expect("Help serialization failed"));
-    }
-}
-
-impl Diagnostic {
-    /// Write the full diagnostic as a JSON object into `out`.
-    #[cfg(feature = "json")]
-    pub(crate) fn write_json(&self, out: &mut String) {
-        out.push_str(&serde_json::to_string(self).expect("Diagnostic serialization failed"));
     }
 }
 

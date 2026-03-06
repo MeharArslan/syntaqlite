@@ -365,21 +365,22 @@ impl AnyDialect {
         keep_alive: Arc<dyn Send + Sync>,
     ) -> Self {
         // SAFETY: caller guarantees the slices live as long as `keep_alive`.
+        let (fmt_strings, fmt_enum_display, fmt_ops, fmt_dispatch, roles) = unsafe {
+            (
+                std::mem::transmute::<&[&str], &'static [&'static str]>(fmt_strings),
+                std::mem::transmute::<&[u16], &'static [u16]>(fmt_enum_display),
+                std::mem::transmute::<&[u8], &'static [u8]>(fmt_ops),
+                std::mem::transmute::<&[u32], &'static [u32]>(fmt_dispatch),
+                std::mem::transmute::<&[SemanticRole], &'static [SemanticRole]>(roles),
+            )
+        };
         AnyDialect {
             grammar,
-            fmt_strings: unsafe {
-                std::mem::transmute::<&[&str], &'static [&'static str]>(fmt_strings)
-            },
-            fmt_enum_display: unsafe {
-                std::mem::transmute::<&[u16], &'static [u16]>(fmt_enum_display)
-            },
-            fmt_ops: unsafe { std::mem::transmute::<&[u8], &'static [u8]>(fmt_ops) },
-            fmt_dispatch: unsafe {
-                std::mem::transmute::<&[u32], &'static [u32]>(fmt_dispatch)
-            },
-            roles: unsafe {
-                std::mem::transmute::<&[SemanticRole], &'static [SemanticRole]>(roles)
-            },
+            fmt_strings,
+            fmt_enum_display,
+            fmt_ops,
+            fmt_dispatch,
+            roles,
             _keep_alive: Some(keep_alive),
         }
     }
