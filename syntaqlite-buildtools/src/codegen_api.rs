@@ -15,6 +15,7 @@ use crate::dialect_codegen::rust_ast::{RustAstPaths, generate_rust_tokens};
 use crate::dialect_codegen::rust_dialect::{
     generate_cargo_toml, generate_grammar_module, generate_rust_build_rs, generate_rust_lib,
 };
+use crate::dialect_codegen::semantic_roles_codegen::generate_rust_semantic_roles;
 use crate::parser_tools::{
     keyword_hash, mkkeyword, parser_pipeline, sqlite_fragments, tokenizer_assembly,
 };
@@ -134,6 +135,8 @@ pub(crate) struct RustCodegenArtifacts {
     pub cargo_toml: String,
     /// Functions catalog (`functions_catalog.rs`).
     pub functions_catalog_rs: Option<String>,
+    /// Semantic role table (`semantic_roles.rs`).
+    pub semantic_roles_rs: Option<String>,
 }
 
 /// All generated C and Rust artifacts produced by the codegen pipeline.
@@ -567,6 +570,10 @@ pub(crate) fn generate_codegen_artifacts(
                 request.crate_name.unwrap_or_else(|| request.dialect.name()),
             ),
             functions_catalog_rs: None,
+            semantic_roles_rs: Some(generate_rust_semantic_roles(
+                &ast_model,
+                &request.dialect.name().to_ascii_uppercase(),
+            )),
         })
     } else {
         None

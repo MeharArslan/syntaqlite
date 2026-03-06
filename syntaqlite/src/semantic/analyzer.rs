@@ -378,7 +378,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires SQLITE_SEMANTIC_ROLES to be populated by run-codegen (step 3)"]
     fn catalog_from_ddl_populates_tables() {
         let dialect = crate::sqlite::dialect::dialect();
         let cat = Catalog::from_ddl(dialect, "CREATE TABLE users (id INTEGER, name TEXT);");
@@ -479,7 +478,6 @@ mod tests {
     // ── Analyzer: DDL accumulation ─────────────────────────────────────────────
 
     #[test]
-    #[ignore = "requires SQLITE_SEMANTIC_ROLES to be populated by run-codegen (step 3)"]
     fn analyze_create_table_then_select_no_error() {
         let mut az = sqlite_analyzer();
         let cat = sqlite_catalog();
@@ -497,7 +495,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "requires SQLITE_SEMANTIC_ROLES to be populated by run-codegen (step 3)"]
     fn analyze_create_view_then_select_no_error() {
         let mut az = sqlite_analyzer();
         let mut cat = sqlite_catalog();

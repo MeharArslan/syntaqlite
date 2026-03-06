@@ -77,6 +77,8 @@ pub struct OutputLayout {
     pub lib_rs: Option<String>,
     /// Functions catalog (`functions_catalog.rs`).
     pub functions_catalog_rs: Option<String>,
+    /// Semantic role table (`semantic_roles.rs`).
+    pub semantic_roles_rs: Option<String>,
 
     // ── Crate root ───────────────────────────────────────────────────────────
     /// Build script (`build.rs`).
@@ -190,6 +192,7 @@ impl OutputLayout {
             grammar_rs: Some(format!("{dc}/src/sqlite/grammar.rs")),
             lib_rs: None, // hand-maintained
             functions_catalog_rs: None,
+            semantic_roles_rs: Some("syntaqlite/src/sqlite/semantic_roles.rs".to_string()),
             // Crate root: hand-maintained for the internal crate
             build_rs: None,
             cargo_toml: None,
@@ -268,6 +271,7 @@ impl OutputLayout {
             grammar_rs: None, // grammar accessor lives in lib.rs for external dialects
             lib_rs: Some("src/lib.rs".to_string()),
             functions_catalog_rs: None,
+            semantic_roles_rs: None,
             build_rs: Some("build.rs".to_string()),
             cargo_toml: Some("Cargo.toml".to_string()),
         }
@@ -347,6 +351,7 @@ impl OutputLayout {
             grammar_rs: None,
             lib_rs: None,
             functions_catalog_rs: None,
+            semantic_roles_rs: None,
             build_rs: None,
             cargo_toml: None,
         }
@@ -421,6 +426,9 @@ impl OutputLayout {
             write(&self.lib_rs, &rust.lib_rs)?;
             if let Some(ref content) = rust.functions_catalog_rs {
                 write(&self.functions_catalog_rs, content)?;
+            }
+            if let Some(ref content) = rust.semantic_roles_rs {
+                write(&self.semantic_roles_rs, content)?;
             }
             write(&self.build_rs, &rust.build_rs)?;
             write(&self.cargo_toml, &rust.cargo_toml)?;

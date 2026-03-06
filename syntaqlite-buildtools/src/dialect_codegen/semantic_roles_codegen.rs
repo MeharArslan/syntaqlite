@@ -73,8 +73,12 @@ pub(crate) fn generate_rust_semantic_roles(model: &AstModel, prefix: &str) -> St
         "use crate::dialect::schema::SemanticRole;\n\
          \n\
          /// Semantic role table for the `{prefix}` dialect, indexed by node tag.\n\
+         /// Tags are 1-based; index 0 is an unused sentinel.\n\
          pub(crate) static {prefix}_SEMANTIC_ROLES: &[SemanticRole] = &["
     ));
+
+    // Index 0 is unused — node tags start at 1.
+    w.lines("    SemanticRole::Transparent, // (index 0 — unused sentinel)");
 
     for node_like in model.node_like_items() {
         use super::NodeLikeRef;
@@ -226,9 +230,12 @@ mod tests {
         );
         let model = AstModel::new(&items);
         let out = generate_rust_semantic_roles(&model, "TEST");
-        // Two entries: Foo (Transparent) and FooList (Transparent)
+        // Three entries: sentinel at index 0, Foo (Transparent), FooList (Transparent)
         let count = out.matches("SemanticRole::Transparent").count();
-        assert_eq!(count, 2, "expected 2 Transparent entries, got:\n{out}");
+        assert_eq!(
+            count, 3,
+            "expected 3 Transparent entries (1 sentinel + 2 nodes), got:\n{out}"
+        );
     }
 
     #[test]
