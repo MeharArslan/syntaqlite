@@ -894,12 +894,10 @@ All 53 unit tests pass.
 
 ## Open Questions
 
-**Virtual tables.** `CreateVirtualTableStmt` has no `session_schema` today. It creates a table in
-the catalog but the column schema is defined by the C extension module, not the SQL statement. The
-engine cannot infer columns. The right handling is probably `define_table(name: table_name)` with
-no `columns` or `select` — the table is known to exist but its columns are unknown. Subsequent
-`SELECT * FROM foo` (where `foo` is a virtual table) would treat `*` as unknown columns. This
-matches current behavior.
+**Virtual tables.** ✅ Done. `CreateVirtualTableStmt` now carries
+`semantic { define_table(name: table_name) }`. The table is registered in the catalog as
+known-to-exist with unknown columns; `SELECT * FROM fts` no longer triggers `UnknownTable` after
+a `CREATE VIRTUAL TABLE fts USING fts5(...)` in the same document.
 
 **`PerfettoArgDef` for function return types.** `CreatePerfettoFunctionStmt` has a `return_type`
 field that is either a scalar type or a `TABLE(col1 TYPE, col2 TYPE, ...)`. Table-returning
