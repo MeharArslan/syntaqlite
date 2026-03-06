@@ -748,6 +748,38 @@ Three `#[ignore]` tests in `analyzer.rs` (DDL accumulation) are now live and pas
 - `session_schema` parsing in the `.synq` parser is still present (needed until step 3 migrates
   all files)
 
+### Step 3 — ✅ Done (commit `0c8c150`)
+
+All `.synq` files migrated from `session_schema { ... }` to `semantic { define_* }` syntax:
+
+- `create_table.synq`: `session_schema { table(name: table_name, columns: columns, as_select: as_select) }`
+  → `semantic { define_table(name: table_name, columns: columns, select: as_select) }`
+- `utility_stmts.synq`: `session_schema { view(name: view_name, as_select: select) }`
+  → `semantic { define_view(name: view_name, select: select) }`
+- `perfetto.synq` (4 nodes): all `session_schema` blocks replaced with `semantic { define_* }`.
+  `CreatePerfettoTableStmt` bug fixed: `columns: schema` now included so the explicit
+  `PerfettoArgDefList` is captured rather than relying solely on AS SELECT inference.
+
+`PerfettoArgDef.arg_name` changed from `inline SyntaqliteSourceSpan` to `index Name` to match
+`ColumnDef.column_name`, giving `columns_from_column_list` a single NodeId-based code path for
+both dialects. The four `perfetto_arg_def_list_ne` parser action rules updated to wrap the name
+token with `synq_parse_ident_name(pCtx, synq_span(pCtx, N))`.
+
+`session_schema` parsing deleted from `synq_parser.rs`: `parse_legacy_schema` method removed,
+call site removed, associated tests removed. `semantic_roles_codegen.rs` legacy test removed.
+
+`accumulate_ddl` and `accumulate_ddl_into_database` are no longer generic:
+- `<A: AstTypes<'a>>` parameter removed from both functions
+- `extract_columns` simplified: explicit column-list path retained; SELECT-based inference
+  removed (deferred to step 5 when `result_column` role annotations are added). AS-SELECT-only
+  definitions register with `None` columns — column refs against them are conservatively accepted.
+- `columns_from_select`, `collect_from_sources`, `name_str`, `FromSource`, `expand_star`,
+  `lookup_columns` all deleted from `catalog.rs`
+- All `ast_traits` imports removed from `catalog.rs`
+
+Codegen re-run; `syntaqlite/src/sqlite/semantic_roles.rs` unchanged (field indices identical).
+101 unit tests pass.
+
 ---
 
 ## Open Questions
