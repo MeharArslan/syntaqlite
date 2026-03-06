@@ -14,8 +14,6 @@ use crate::grammar::{AnyGrammar, TypedGrammar};
 mod config;
 mod ffi;
 mod incremental;
-#[cfg(feature = "json")]
-pub(crate) mod json;
 #[cfg(feature = "sqlite")]
 mod session;
 mod types;

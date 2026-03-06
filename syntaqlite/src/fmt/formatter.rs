@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite_syntax::any::MacroRegion;
-use syntaqlite_syntax::{CommentKind, Parser, ParserConfig};
+use syntaqlite_syntax::{CommentKind, ParseOutcome, Parser, ParserConfig};
 
 use super::FormatConfig;
 use super::FormatError;
@@ -84,10 +84,11 @@ impl Formatter {
         let mut result = String::new();
         let mut stmt_num: usize = 0;
 
-        while let Some(stmt) = session.next() {
-            let stmt = match stmt {
-                Ok(stmt) => stmt,
-                Err(e) => {
+        loop {
+            let stmt = match session.next() {
+                ParseOutcome::Done => break,
+                ParseOutcome::Ok(stmt) => stmt,
+                ParseOutcome::Err(e) => {
                     return Err(FormatError {
                         message: e.message().to_owned(),
                         offset: e.offset(),
