@@ -12,9 +12,7 @@
 //!   codegen-sqlite          — regenerate the internal `SQLite` dialect (stage 2)
 //!   codegen-sqlite-parser   — regenerate `functions_catalog` (stage 1b)
 //!   sqlite-extract          — extract C fragments from raw `SQLite` source (stage 1)
-//!   audit-cflags            — audit cflag versions across `SQLite` amalgamations
-//!   generate-functions-catalog — generate Rust functions catalog from functions.json
-//!   extract-functions       — extract function catalog from `SQLite` amalgamations
+//!   update-data             — audit cflags and extract function catalog from amalgamations
 //!   analyze-versions        — analyze `SQLite` source version history
 
 use clap::{Parser, Subcommand};
@@ -48,17 +46,12 @@ enum Command {
     #[command(name = "sqlite-extract")]
     SqliteExtract(SqliteExtractArgs),
 
-    /// Audit which compile flags each `SQLite` amalgamation version references.
-    #[command(name = "audit-cflags")]
-    AuditCflags(AuditCflagsArgs),
-
-    /// Generate the Rust functions catalog module from functions.json.
-    #[command(name = "generate-functions-catalog")]
-    GenerateFunctionsCatalog(GenerateFunctionsCatalogArgs),
-
-    /// Extract built-in function catalog from pre-downloaded `SQLite` amalgamations.
-    #[command(name = "extract-functions")]
-    ExtractFunctions(ExtractFunctionsArgs),
+    /// Audit cflag availability and extract function catalog from amalgamations.
+    ///
+    /// Runs the cflag audit (version_cflags.json + cflags.rs) followed by
+    /// function extraction (functions.json) in one shot.
+    #[command(name = "update-data")]
+    UpdateData(UpdateDataArgs),
 
     /// Analyze multiple `SQLite` source versions to find fragment variants.
     #[command(name = "analyze-versions")]
@@ -134,46 +127,22 @@ struct SqliteExtractArgs {
     nodes_dir: String,
 }
 
-// ── audit-cflags ──────────────────────────────────────────────────────────────
+// ── update-data ───────────────────────────────────────────────────────────────
 
 #[derive(clap::Args)]
-struct AuditCflagsArgs {
+struct UpdateDataArgs {
     /// Directory containing amalgamations (e.g., sqlite-amalgamations/3.35.5/sqlite3.c).
     #[arg(long, required = true)]
     amalgamation_dir: String,
-    /// Output path for the audit JSON.
+    /// Output path for version_cflags.json.
     #[arg(long, required = true)]
-    output: String,
-    /// Output path for the generated Rust cflag versions table.
+    version_cflags_output: String,
+    /// Output path for the generated Rust cflag versions table (cflags.rs).
     #[arg(long, required = true)]
     rust_output: String,
-}
-
-// ── generate-functions-catalog ────────────────────────────────────────────────
-
-#[derive(clap::Args)]
-struct GenerateFunctionsCatalogArgs {
-    /// Path to functions.json (from extract-functions).
+    /// Output path for functions.json.
     #[arg(long, required = true)]
-    functions_json: String,
-    /// Output path for the generated Rust file.
-    #[arg(long, required = true)]
-    output: String,
-}
-
-// ── extract-functions ─────────────────────────────────────────────────────────
-
-#[derive(clap::Args)]
-struct ExtractFunctionsArgs {
-    /// Directory containing amalgamations (e.g., sqlite-amalgamations/3.35.5/sqlite3.c).
-    #[arg(long, required = true)]
-    amalgamation_dir: String,
-    /// Path to the cflag audit JSON (from audit-cflags).
-    #[arg(long, required = true)]
-    audit: String,
-    /// Output path for the function catalog JSON.
-    #[arg(long, required = true)]
-    output: String,
+    functions_output: String,
 }
 
 // ── analyze-versions ──────────────────────────────────────────────────────────
@@ -214,21 +183,11 @@ fn main() {
             nodes_dir: args.nodes_dir.clone(),
         }
         .run(),
-        Command::AuditCflags(args) => commands::AuditCflags {
+        Command::UpdateData(args) => commands::UpdateData {
             amalgamation_dir: args.amalgamation_dir.clone(),
-            output: args.output.clone(),
+            version_cflags_output: args.version_cflags_output.clone(),
             rust_output: args.rust_output.clone(),
-        }
-        .run(),
-        Command::GenerateFunctionsCatalog(args) => commands::GenerateFunctionsCatalog {
-            functions_json: args.functions_json.clone(),
-            output: args.output.clone(),
-        }
-        .run(),
-        Command::ExtractFunctions(args) => commands::ExtractFunctions {
-            amalgamation_dir: args.amalgamation_dir.clone(),
-            audit: args.audit.clone(),
-            output: args.output.clone(),
+            functions_output: args.functions_output.clone(),
         }
         .run(),
         Command::AnalyzeVersions(args) => commands::AnalyzeVersions {

@@ -151,10 +151,7 @@ impl SqliteParserCodegen {
                 .cflag_audit_json
                 .as_deref()
                 .ok_or("cflag_audit_json is required when cflag_entries_out is given")?;
-            crate::util::cflag_entries_codegen::write_cflag_entries_file(
-                audit_path,
-                entries_out,
-            )?;
+            crate::util::cflag_entries_codegen::write_cflag_entries_file(audit_path, entries_out)?;
         }
 
         Ok(())
@@ -263,89 +260,51 @@ impl SqliteExtract {
     }
 }
 
-// ── AuditCflags ───────────────────────────────────────────────────────────────
+// ── UpdateData ────────────────────────────────────────────────────────────────
 
-/// Audit which compile flags each `SQLite` amalgamation version references.
-pub struct AuditCflags {
+/// Audit cflag availability and extract the function catalog from amalgamations.
+///
+/// Runs both phases in sequence:
+///   1. Scan each amalgamation for cflag references → `version_cflags.json` + `cflags.rs`.
+///   2. Compile each amalgamation and query `PRAGMA function_list` → `functions.json`.
+pub struct UpdateData {
     /// Directory containing amalgamations.
     pub amalgamation_dir: String,
-    /// Output path for the audit JSON.
-    pub output: String,
-    /// Output path for the generated Rust cflag versions table.
+    /// Output path for the cflag audit JSON (`version_cflags.json`).
+    pub version_cflags_output: String,
+    /// Output path for the generated Rust cflag versions table (`cflags.rs`).
     pub rust_output: String,
+    /// Output path for the function catalog JSON (`functions.json`).
+    pub functions_output: String,
 }
 
-impl AuditCflags {
+impl UpdateData {
     /// Run the command.
     ///
     /// # Errors
     ///
-    /// Returns an error if amalgamation scanning or file writing fails.
+    /// Returns an error if amalgamation scanning, compilation, or file writing fails.
     pub fn run(&self) -> Result<(), String> {
         let amal_path = Path::new(&self.amalgamation_dir);
         if !amal_path.is_dir() {
             return Err(format!("{} is not a directory", self.amalgamation_dir));
         }
-        let availability =
-            crate::extract::functions::audit_version_cflags(amal_path, Path::new(&self.output))?;
+
+        eprintln!("Phase 1: Auditing cflags...");
+        let availability = crate::extract::functions::audit_version_cflags(
+            amal_path,
+            Path::new(&self.version_cflags_output),
+        )?;
         crate::extract::functions::write_cflag_versions_rs(
             &availability,
             Path::new(&self.rust_output),
-        )
-    }
-}
+        )?;
 
-// ── GenerateFunctionsCatalog ──────────────────────────────────────────────────
-
-/// Generate the Rust functions catalog module from functions.json.
-pub struct GenerateFunctionsCatalog {
-    /// Path to functions.json.
-    pub functions_json: String,
-    /// Output path for the generated Rust file.
-    pub output: String,
-}
-
-impl GenerateFunctionsCatalog {
-    /// Run the command.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the JSON cannot be read or the output cannot be written.
-    pub fn run(&self) -> Result<(), String> {
-        crate::util::functions_codegen::write_functions_catalog_file(
-            &self.functions_json,
-            &self.output,
-        )
-    }
-}
-
-// ── ExtractFunctions ──────────────────────────────────────────────────────────
-
-/// Extract built-in function catalog from pre-downloaded `SQLite` amalgamations.
-pub struct ExtractFunctions {
-    /// Directory containing amalgamations.
-    pub amalgamation_dir: String,
-    /// Path to the cflag audit JSON.
-    pub audit: String,
-    /// Output path for the function catalog JSON.
-    pub output: String,
-}
-
-impl ExtractFunctions {
-    /// Run the command.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if amalgamation scanning or file writing fails.
-    pub fn run(&self) -> Result<(), String> {
-        let amal_path = Path::new(&self.amalgamation_dir);
-        if !amal_path.is_dir() {
-            return Err(format!("{} is not a directory", self.amalgamation_dir));
-        }
+        eprintln!("Phase 2: Extracting function catalog...");
         crate::extract::functions::extract_function_catalog(
             amal_path,
-            Path::new(&self.audit),
-            Path::new(&self.output),
+            Path::new(&self.version_cflags_output),
+            Path::new(&self.functions_output),
         )
         .map(|_| ())
     }

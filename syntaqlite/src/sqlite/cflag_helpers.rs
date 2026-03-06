@@ -5,8 +5,8 @@
 
 use syntaqlite_syntax::util::SqliteVersion;
 
-use crate::dialect::{is_function_available, FunctionInfo};
 use crate::dialect::Dialect;
+use crate::dialect::{FunctionInfo, is_function_available};
 use crate::sqlite::cflag_entries::CFLAG_ENTRIES;
 
 // ── Built-in function catalog ────────────────────────────────────────────────
@@ -32,8 +32,7 @@ pub(crate) fn parse_sqlite_version(s: &str) -> Result<SqliteVersion, String> {
     if s.eq_ignore_ascii_case("latest") {
         return Ok(SqliteVersion::Latest);
     }
-    SqliteVersion::parse(s)
-        .ok_or_else(|| format!("unknown or unsupported SQLite version: '{s}'"))
+    SqliteVersion::parse(s).ok_or_else(|| format!("unknown or unsupported SQLite version: '{s}'"))
 }
 
 /// Look up a cflag by its full canonical name

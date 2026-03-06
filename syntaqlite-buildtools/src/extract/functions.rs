@@ -184,7 +184,7 @@ pub(crate) struct FunctionCatalog {
 pub(crate) struct CflagAvailabilityEntry {
     pub(crate) name: String,
     pub(crate) since: String,
-    pub(crate) category: String,
+    pub(crate) categories: Vec<String>,
 }
 
 /// Complete cflag availability data (cflag-centric format).
@@ -379,14 +379,11 @@ fn compute_cflag_availability(per_version: &BTreeMap<String, Vec<String>>) -> Cf
             })
             .map_or_else(|| "0".to_string(), |v| (*v).clone());
 
-        // Emit one entry per category so each group can filter independently.
-        for &cat in *categories {
-            entries.push(CflagAvailabilityEntry {
-                name: flag_name.to_string(),
-                since: since.clone(),
-                category: cat.to_string(),
-            });
-        }
+        entries.push(CflagAvailabilityEntry {
+            name: flag_name.to_string(),
+            since,
+            categories: categories.iter().map(|s| (*s).to_string()).collect(),
+        });
     }
 
     CflagAvailability { cflags: entries }

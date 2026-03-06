@@ -1,7 +1,10 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-#![allow(missing_docs)]
+#![expect(
+    missing_docs,
+    reason = "bin crate; internal lib shim exists only to support integration tests"
+)]
 #![cfg_attr(test, expect(clippy::unwrap_used, clippy::similar_names))]
 
 use clap::{Parser, Subcommand};

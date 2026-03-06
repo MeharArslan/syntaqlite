@@ -176,7 +176,7 @@ pub(crate) const SYNQ_CFLAG_TABLE: &[(&str, &str, u32, &[&str])] = &[
         "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
         "SYNQ_CFLAG_IDX_ENABLE_ORDERED_SET_AGGREGATES",
         20,
-        &["parser"], // adds WITHIN keyword for ordered-set aggregate syntax
+        &["parser", "functions"], // adds WITHIN keyword (parser) + ordered-set aggregate functions
     ),
     (
         "SQLITE_ENABLE_UPDATE_DELETE_LIMIT",

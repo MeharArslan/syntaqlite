@@ -103,8 +103,8 @@ mod tests {
     /// C compact SYNQ_CFLAG_IDX_* values, so no translation table is needed.
     #[test]
     fn cflag_index_invariant() {
-        for &(name, bit_index, _, category) in CFLAG_ENTRIES {
-            if category == "parser" {
+        for &(name, bit_index, _, categories) in CFLAG_ENTRIES {
+            if categories.contains(&"parser") {
                 assert!(
                     bit_index < 22,
                     "parser flag {name} has bit_index {bit_index}, expected < 22"
@@ -112,7 +112,7 @@ mod tests {
             } else {
                 assert!(
                     bit_index >= 22,
-                    "non-parser flag {name} (category={category}) has bit_index {bit_index}, expected >= 22"
+                    "non-parser flag {name} (categories={categories:?}) has bit_index {bit_index}, expected >= 22"
                 );
             }
         }

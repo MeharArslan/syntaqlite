@@ -20,77 +20,77 @@ pub enum SqliteFlag {
     /// `SQLITE_OMIT_CAST`
     OmitCast = 4,
     /// `SQLITE_OMIT_COMPILEOPTION_DIAGS`
-    OmitCompileoptionDiags = 22,
+    OmitCompileoptionDiags = 5,
     /// `SQLITE_OMIT_COMPOUND_SELECT`
-    OmitCompoundSelect = 5,
+    OmitCompoundSelect = 6,
     /// `SQLITE_OMIT_CTE`
-    OmitCte = 6,
+    OmitCte = 7,
     /// `SQLITE_OMIT_DATETIME_FUNCS`
-    OmitDatetimeFuncs = 23,
+    OmitDatetimeFuncs = 8,
     /// `SQLITE_OMIT_EXPLAIN`
-    OmitExplain = 7,
+    OmitExplain = 9,
     /// `SQLITE_OMIT_FLOATING_POINT`
-    OmitFloatingPoint = 24,
+    OmitFloatingPoint = 10,
     /// `SQLITE_OMIT_FOREIGN_KEY`
-    OmitForeignKey = 8,
+    OmitForeignKey = 11,
     /// `SQLITE_OMIT_GENERATED_COLUMNS`
-    OmitGeneratedColumns = 9,
+    OmitGeneratedColumns = 12,
     /// `SQLITE_OMIT_JSON`
-    OmitJson = 25,
+    OmitJson = 13,
     /// `SQLITE_OMIT_LOAD_EXTENSION`
-    OmitLoadExtension = 26,
+    OmitLoadExtension = 14,
     /// `SQLITE_OMIT_PRAGMA`
-    OmitPragma = 10,
+    OmitPragma = 15,
     /// `SQLITE_OMIT_REINDEX`
-    OmitReindex = 11,
+    OmitReindex = 16,
     /// `SQLITE_OMIT_RETURNING`
-    OmitReturning = 12,
+    OmitReturning = 17,
     /// `SQLITE_OMIT_SUBQUERY`
-    OmitSubquery = 13,
+    OmitSubquery = 18,
     /// `SQLITE_OMIT_TEMPDB`
-    OmitTempdb = 14,
+    OmitTempdb = 19,
     /// `SQLITE_OMIT_TRIGGER`
-    OmitTrigger = 15,
+    OmitTrigger = 20,
     /// `SQLITE_OMIT_VACUUM`
-    OmitVacuum = 16,
+    OmitVacuum = 21,
     /// `SQLITE_OMIT_VIEW`
-    OmitView = 17,
+    OmitView = 22,
     /// `SQLITE_OMIT_VIRTUALTABLE`
-    OmitVirtualtable = 18,
+    OmitVirtualtable = 23,
     /// `SQLITE_OMIT_WINDOWFUNC`
-    OmitWindowfunc = 19,
+    OmitWindowfunc = 24,
     /// `SQLITE_ENABLE_BYTECODE_VTAB`
-    EnableBytecodeVtab = 27,
+    EnableBytecodeVtab = 25,
     /// `SQLITE_ENABLE_CARRAY`
-    EnableCarray = 28,
+    EnableCarray = 26,
     /// `SQLITE_ENABLE_DBPAGE_VTAB`
-    EnableDbpageVtab = 29,
+    EnableDbpageVtab = 27,
     /// `SQLITE_ENABLE_DBSTAT_VTAB`
-    EnableDbstatVtab = 30,
+    EnableDbstatVtab = 28,
     /// `SQLITE_ENABLE_FTS3`
-    EnableFts3 = 31,
+    EnableFts3 = 29,
     /// `SQLITE_ENABLE_FTS4`
-    EnableFts4 = 32,
+    EnableFts4 = 30,
     /// `SQLITE_ENABLE_FTS5`
-    EnableFts5 = 33,
+    EnableFts5 = 31,
     /// `SQLITE_ENABLE_GEOPOLY`
-    EnableGeopoly = 34,
+    EnableGeopoly = 32,
     /// `SQLITE_ENABLE_JSON1`
-    EnableJson1 = 35,
+    EnableJson1 = 33,
     /// `SQLITE_ENABLE_MATH_FUNCTIONS`
-    EnableMathFunctions = 36,
+    EnableMathFunctions = 34,
     /// `SQLITE_ENABLE_OFFSET_SQL_FUNC`
-    EnableOffsetSqlFunc = 37,
+    EnableOffsetSqlFunc = 35,
     /// `SQLITE_ENABLE_ORDERED_SET_AGGREGATES`
-    EnableOrderedSetAggregates = 20,
+    EnableOrderedSetAggregates = 36,
     /// `SQLITE_ENABLE_PERCENTILE`
-    EnablePercentile = 38,
+    EnablePercentile = 37,
     /// `SQLITE_ENABLE_RTREE`
-    EnableRtree = 39,
+    EnableRtree = 38,
     /// `SQLITE_ENABLE_STMTVTAB`
-    EnableStmtvtab = 40,
+    EnableStmtvtab = 39,
     /// `SQLITE_ENABLE_UPDATE_DELETE_LIMIT`
-    EnableUpdateDeleteLimit = 21,
+    EnableUpdateDeleteLimit = 40,
     /// `SQLITE_SOUNDEX`
     Soundex = 41,
 }

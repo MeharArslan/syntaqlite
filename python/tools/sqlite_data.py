@@ -7,16 +7,15 @@
 Subcommands:
   download-sources       Download SQLite source files from the GitHub mirror.
   download-amalgamations Download SQLite amalgamation archives from sqlite.org.
-  extract-functions      Compile amalgamations and extract function catalog via
-                         PRAGMA function_list.
+  update-data            Download amalgamations, audit cflags, and extract the
+                         function catalog in one shot. This is the main command
+                         for keeping sqlite-vendored/data/ up to date.
 
 Usage:
-    python3 python/tools/sqlite_data.py download-sources [--output-dir DIR] [--versions V1 V2 ...]
-    python3 python/tools/sqlite_data.py download-amalgamations [--output-dir DIR] [--versions V1 V2 ...]
-    python3 python/tools/sqlite_data.py extract-functions --amalgamation-dir DIR [--output PATH]
     tools/sqlite-data download-sources
     tools/sqlite-data download-amalgamations
-    tools/sqlite-data extract-functions --amalgamation-dir sqlite-amalgamations
+    tools/sqlite-data update-data
+    tools/sqlite-data update-data --amalgamation-dir /path/to/amalgamations
 """
 
 from __future__ import annotations
@@ -97,7 +96,7 @@ VERSION_YEAR: dict[str, int] = {
 
 
 def version_int(ver: str) -> int:
-    """Convert version string to SQLite version integer (3.X.Y → 3XXYY00)."""
+    """Convert version string to SQLite version integer (3.X.Y -> 3XXYY00)."""
     parts = ver.split(".")
     major, minor, patch = int(parts[0]), int(parts[1]), int(parts[2])
     sub = int(parts[3]) if len(parts) > 3 else 0
@@ -224,71 +223,69 @@ def cmd_download_amalgamations(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
-# extract-functions (two-phase: audit cflags, then extract)
+# update-data: download + audit + extract in one shot
 # ---------------------------------------------------------------------------
 
 DATA_DIR: Path = PROJECT_ROOT / "syntaqlite-buildtools" / "sqlite-vendored" / "data"
+CFLAGS_RS: Path = PROJECT_ROOT / "syntaqlite-syntax" / "src" / "sqlite" / "cflags.rs"
 
 
-def _build_cli() -> tuple[int, Path]:
-    """Build the CLI with sqlite-extract feature. Returns (returncode, binary_path)."""
+def cmd_update_data(args: argparse.Namespace) -> int:
+    """Download amalgamations, audit cflags, and extract function catalog in one shot."""
+    amalgamation_dir = Path(args.amalgamation_dir)
+    versions = args.versions or AMALGAMATION_VERSIONS
+
+    # Step 1: Download amalgamations (skip if all versions already cached).
+    missing = [
+        v for v in versions
+        if not (amalgamation_dir / v / "sqlite3.c").exists()
+        or not (amalgamation_dir / v / "sqlite3.h").exists()
+    ]
+    if not missing:
+        print(f"Step 1: All {len(versions)} amalgamation(s) already cached, skipping download.")
+    else:
+        print(f"Step 1: Downloading {len(missing)} amalgamation(s) to {amalgamation_dir}/")
+        rc = cmd_download_amalgamations(argparse.Namespace(
+            output_dir=str(amalgamation_dir),
+            versions=missing,
+        ))
+        if rc != 0:
+            return rc
+
+    # Step 2: Build syntaqlite-buildtools.
+    print()
+    print("Step 2: Building syntaqlite-buildtools...")
     result = subprocess.run(
-        [
-            "cargo", "build", "--release",
-            "-p", "syntaqlite-cli",
-            "--no-default-features",
-            "--features", "sqlite-extract",
-        ],
+        ["cargo", "build", "--release", "-p", "syntaqlite-buildtools"],
         cwd=PROJECT_ROOT,
     )
-    return result.returncode, PROJECT_ROOT / "target" / "release" / "syntaqlite"
-
-
-def cmd_extract_functions(args: argparse.Namespace) -> int:
-    """Audit cflags then compile amalgamations and extract function catalog."""
-    amalgamation_dir = args.amalgamation_dir
-    audit_output = args.audit_output or str(DATA_DIR / "version_cflags.json")
-    functions_output = args.output or str(DATA_DIR / "functions.json")
-
-    if not Path(amalgamation_dir).is_dir():
-        print(f"Error: {amalgamation_dir} is not a directory", file=sys.stderr)
-        return 1
-
-    print("Building syntaqlite CLI with sqlite-extract feature...")
-    rc, cli_bin = _build_cli()
-    if rc != 0:
+    if result.returncode != 0:
         print("Build failed", file=sys.stderr)
-        return rc
-
-    # Phase 1: Audit cflags per version.
-    rust_output = str(
-        PROJECT_ROOT / "syntaqlite-syntax" / "src" / "sqlite" / "cflags.rs"
-    )
-    print()
-    print("Phase 1: Auditing cflags per version...")
-    result = subprocess.run([
-        str(cli_bin), "audit-cflags",
-        "--amalgamation-dir", amalgamation_dir,
-        "--output", audit_output,
-        "--rust-output", rust_output,
-    ])
-    if result.returncode != 0:
-        print("Cflag audit failed", file=sys.stderr)
         return result.returncode
 
-    # Phase 2: Extract function catalog.
+    cli_bin = PROJECT_ROOT / "target" / "release" / "syntaqlite-buildtools"
+    audit_output = str(DATA_DIR / "version_cflags.json")
+    functions_output = str(DATA_DIR / "functions.json")
+
+    # Step 3: Audit cflags and extract function catalog in one shot.
     print()
-    print("Phase 2: Extracting function catalog...")
+    print("Step 3: Updating sqlite data...")
     result = subprocess.run([
-        str(cli_bin), "extract-functions",
-        "--amalgamation-dir", amalgamation_dir,
-        "--audit", audit_output,
-        "--output", functions_output,
+        str(cli_bin), "update-data",
+        "--amalgamation-dir", str(amalgamation_dir),
+        "--version-cflags-output", audit_output,
+        "--rust-output", str(CFLAGS_RS),
+        "--functions-output", functions_output,
     ])
     if result.returncode != 0:
-        print("Function extraction failed", file=sys.stderr)
+        print("update-data failed", file=sys.stderr)
         return result.returncode
 
+    print()
+    print("Done. Updated files:")
+    print(f"  {audit_output}")
+    print(f"  {functions_output}")
+    print(f"  {CFLAGS_RS}")
     return 0
 
 
@@ -330,22 +327,18 @@ def main() -> int:
         help="Specific versions to download (default: built-in list)",
     )
 
-    # extract-functions (two-phase: audit + extract)
-    p_func = sub.add_parser(
-        "extract-functions",
-        help="Audit cflags and extract function catalog from amalgamations.",
+    # update-data: the main command -- download + audit + extract
+    p_update = sub.add_parser(
+        "update-data",
+        help="Download amalgamations, audit cflags, and extract function catalog.",
     )
-    p_func.add_argument(
-        "--amalgamation-dir", required=True,
-        help="Directory containing amalgamations (e.g., sqlite-amalgamations/)",
+    p_update.add_argument(
+        "--amalgamation-dir", default="sqlite-amalgamations",
+        help="Directory for amalgamations (default: sqlite-amalgamations)",
     )
-    p_func.add_argument(
-        "--audit-output", default=None,
-        help="Output path for version_cflags.json (default: sqlite-vendored/data/)",
-    )
-    p_func.add_argument(
-        "--output", default=None,
-        help="Output path for functions.json (default: sqlite-vendored/data/)",
+    p_update.add_argument(
+        "--versions", nargs="+", default=None,
+        help="Specific versions to process (default: built-in list)",
     )
 
     args = parser.parse_args()
@@ -354,8 +347,8 @@ def main() -> int:
         return cmd_download_sources(args)
     elif args.command == "download-amalgamations":
         return cmd_download_amalgamations(args)
-    elif args.command == "extract-functions":
-        return cmd_extract_functions(args)
+    elif args.command == "update-data":
+        return cmd_update_data(args)
     else:
         parser.print_help()
         return 1
