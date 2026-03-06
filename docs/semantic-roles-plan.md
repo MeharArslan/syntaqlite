@@ -709,6 +709,47 @@ The migration is staged so each step compiles and tests pass throughout.
 
 ---
 
+## Implementation Journal
+
+### Step 1 — ✅ Done (commit `65f734e`)
+
+`.synq` parser extended to accept `semantic { ... }` blocks. `session_schema { ... }` is parsed as
+a deprecated alias that maps to the same `SemanticRole` variants (`DefineTable`, `DefineView`,
+`DefineFunction`, `Import`). All existing `.synq` files continue to use `session_schema` syntax
+without change.
+
+`SemanticRole` enum defined in `syntaqlite/src/dialect/schema.rs` with catalog roles only.
+`AnyDialect` gains a `roles: &'static [SemanticRole]` field and `roles()` accessor.
+`SchemaContribution` struct deleted; `accumulate_ddl` in `catalog.rs` reads `SemanticRole::Define*`
+from `dialect.roles()`. The `Walker<A: AstTypes>` remains as the sole validation engine.
+
+### Step 2 — ✅ Done (commit `42e2c6c`)
+
+`generate_rust_semantic_roles()` wired into the `codegen-sqlite` stage 2 pipeline:
+
+- `RustCodegenArtifacts` gains `semantic_roles_rs: Option<String>`; generated in
+  `generate_codegen_artifacts` by calling `generate_rust_semantic_roles(&ast_model, "SQLITE")`
+- `OutputLayout` gains `semantic_roles_rs: Option<String>`; set to
+  `Some("syntaqlite/src/sqlite/semantic_roles.rs")` in `for_sqlite`, `None` elsewhere
+- `syntaqlite/src/sqlite/semantic_roles.rs` is now a real generated file (82 entries):
+  `CreateTableStmt` → `DefineTable { name: 0, columns: Some(5), select: Some(7) }`;
+  `CreateViewStmt` → `DefineView { name: 0, select: 5 }`; all others → `Transparent`
+- Array is 1-indexed (sentinel `Transparent` at index 0) to match the node-tag convention used by
+  `fmt_dispatch` in `AnyDialect`
+- `generated-files.txt` updated
+
+Three `#[ignore]` tests in `analyzer.rs` (DDL accumulation) are now live and passing. All 53
+`syntaqlite` unit tests pass.
+
+**What step 2 does NOT do** (per the plan, deferred to step 3):
+- `.synq` files are still on `session_schema` syntax; not migrated to `semantic { define_* }`
+- `accumulate_ddl` still carries an `<A: AstTypes<'a>>` generic parameter used only by the
+  `columns_from_select` SELECT-inference fallback
+- `session_schema` parsing in the `.synq` parser is still present (needed until step 3 migrates
+  all files)
+
+---
+
 ## Open Questions
 
 **Virtual tables.** `CreateVirtualTableStmt` has no `session_schema` today. It creates a table in
