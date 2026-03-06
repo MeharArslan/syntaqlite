@@ -6,6 +6,8 @@ node CteDefinition {
   columns: index ExprList
   select: index Select
 
+  semantic { cte_binding(name: cte_name, body: select) }
+
   fmt {
     span(cte_name)
     if_set(columns) { group { "(" child(columns) ")" } }
@@ -22,6 +24,8 @@ node WithClause {
   recursive: inline Bool
   ctes: index CteList
   select: index Select
+
+  semantic { cte_scope(recursive: recursive, bindings: ctes, body: select) }
 
   fmt {
     if_flag(recursive) { "WITH RECURSIVE " } else { "WITH " }

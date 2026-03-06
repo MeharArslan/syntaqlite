@@ -780,6 +780,54 @@ call site removed, associated tests removed. `semantic_roles_codegen.rs` legacy 
 Codegen re-run; `syntaqlite/src/sqlite/semantic_roles.rs` unchanged (field indices identical).
 101 unit tests pass.
 
+### Step 4 — ✅ Done
+
+`SemanticEngine` struct introduced in `syntaqlite/src/semantic/engine.rs`. It holds a reference to
+`AnyParsedStatement`, the `&'static [SemanticRole]` table, the `Catalog`, `ValidationConfig`, and
+a `Vec<Diagnostic>`. The `run` entry point calls `visit(root_id)`, which dispatches on
+`SemanticRole`:
+
+- `DefineTable / DefineView / DefineFunction / Import` — handled by the accumulation pass only;
+  validation pass is a no-op (returns without recursing).
+- All other roles → `visit_children`, recursing via `stmt.child_node_ids(node_id)`.
+
+`engine.rs` added to `semantic/mod.rs` under `#[cfg(feature = "validation")]`.
+`analyzer.rs` calls `SemanticEngine::run` after `Walker<A>::run` and extends `diagnostics` with the
+result. At this step the engine produces no new diagnostics — it runs in parallel with the Walker
+and agrees on all 53 unit tests.
+
+### Step 5 — ✅ Done
+
+Full semantic role vocabulary annotated in `.synq` files and emitted by codegen:
+
+- `aggregate.synq`: `AggregateFunctionCall`, `OrderedSetFunctionCall` → `semantic { call(name: func_name, args: args) }`
+- `column_ref.synq`: `ColumnRef` → `semantic { column_ref(column: column, table: table) }`
+- `create_table.synq`: `ColumnDef` → `semantic { column_def(name: column_name, type: type_name, constraints: constraints) }`
+- `cte.synq`: `CteDefinition` → `semantic { cte_binding(name: cte_name, body: select) }`,
+  `WithClause` → `semantic { cte_scope(recursive: recursive, bindings: ctes, body: select) }`
+- `functions.synq`: `FunctionCall` → `semantic { call(name: func_name, args: args) }`
+- `select.synq`: `ResultColumn` → `semantic { result_column(flags: flags, alias: alias, expr: expr) }`,
+  `SelectStmt` → `semantic { query(from: from_clause, columns: columns, where_clause: where_clause, groupby: groupby, having: having, orderby: orderby, limit_clause: limit_clause) }`
+- `table_source.synq`: `TableRef` → `semantic { source_ref(kind: table, name: table_name, alias: alias) }`,
+  `SubqueryTableSource` → `semantic { scoped_source(body: select, alias: alias) }`
+- `trigger.synq`: `CreateTriggerStmt` → `semantic { trigger_scope(target: table, when: when_expr, body: body) }`
+- `dialects/perfetto/nodes/perfetto.synq`: `PerfettoArgDef` → `semantic { column_def(name: arg_name, type: arg_type) }`
+
+`SemanticRole` enum extended with: `ColumnDef`, `ResultColumn`, `Call`, `ColumnRef`, `SourceRef`,
+`ScopedSource`, `Query`, `CteBinding`, `CteScope`, `TriggerScope`. `RelationKind` enum added
+(`Table`, `View`, `Interval`, `Tree`, `Graph`).
+
+`synq_parser.rs` extended to parse all new role names. `source_ref`'s `kind` param is a literal
+enum value (not a field name) — handled via `literal_keys: &["kind"]` in `parse_semantic_params`.
+`semantic_roles_codegen.rs` updated to emit all new variants, with `SourceRef` mapping the literal
+string to `RelationKind::*`.
+
+`engine.rs` match arm extended: all new variants fall through to `visit_children` as placeholder
+until Step 6 handlers are added. `catalog.rs` match arms use `_ => {}` wildcard to stay
+non-exhaustive-safe.
+
+Codegen regenerated; `semantic_roles.rs` now has 13 non-Transparent entries. All 53 unit tests pass.
+
 ---
 
 ## Open Questions

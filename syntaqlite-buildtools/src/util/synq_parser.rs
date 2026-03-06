@@ -27,11 +27,12 @@ pub(crate) fn parse_synq_file(input: &str) -> Result<Vec<Item>, SynqParseError> 
 
 /// A semantic role for a node.
 ///
-/// Catalog roles replace `session_schema { ... }`. Expression, source, and
-/// scope roles are added in later migration steps (see docs/semantic-roles-plan.md).
+/// Covers catalog, expression, source, and scope roles described in
+/// docs/semantic-roles-plan.md.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub(crate) enum SemanticRole {
+    // ── Catalog roles ─────────────────────────────────────────────────────
     DefineTable {
         name: String,
         columns: Option<String>,
@@ -47,6 +48,66 @@ pub(crate) enum SemanticRole {
     },
     Import {
         module: String,
+    },
+
+    // ── Column-list items ─────────────────────────────────────────────────
+    ColumnDef {
+        name: String,
+        type_name: Option<String>,
+        constraints: Option<String>,
+    },
+
+    // ── Result columns ────────────────────────────────────────────────────
+    ResultColumn {
+        flags: String,
+        alias: String,
+        expr: String,
+    },
+
+    // ── Expressions ───────────────────────────────────────────────────────
+    Call {
+        name: String,
+        args: String,
+    },
+    ColumnRef {
+        column: String,
+        table: String,
+    },
+
+    // ── Sources ───────────────────────────────────────────────────────────
+    SourceRef {
+        kind: String, // literal RelationKind value: "table", "view", etc.
+        name: String,
+        alias: String,
+    },
+    ScopedSource {
+        body: String,
+        alias: String,
+    },
+
+    // ── Scope structure ───────────────────────────────────────────────────
+    Query {
+        from: String,
+        columns: String,
+        where_clause: String,
+        groupby: String,
+        having: String,
+        orderby: String,
+        limit_clause: String,
+    },
+    CteBinding {
+        name: String,
+        body: String,
+    },
+    CteScope {
+        recursive: String,
+        bindings: String,
+        body: String,
+    },
+    TriggerScope {
+        target: String,
+        when: String,
+        body: String,
     },
 }
 
@@ -447,8 +508,15 @@ impl Parser {
         fields: &[Field],
     ) -> Result<SemanticAnnotation, String> {
         let role_name = self.ident()?;
-        let params = self.parse_semantic_params(node_name, fields)?;
+        // For source_ref, `kind` is a literal enum value (not a field name).
+        let literal_keys: &[&str] = if role_name == "source_ref" {
+            &["kind"]
+        } else {
+            &[]
+        };
+        let params = self.parse_semantic_params(node_name, fields, literal_keys)?;
         let role = match role_name.as_str() {
+            // ── Catalog roles ────────────────────────────────────────────
             "define_table" => SemanticRole::DefineTable {
                 name: require_param(&params, "name", node_name, "define_table")?,
                 columns: get_param(&params, "columns").map(str::to_string),
@@ -465,6 +533,61 @@ impl Parser {
             "import" => SemanticRole::Import {
                 module: require_param(&params, "module", node_name, "import")?,
             },
+            // ── Column-list items ─────────────────────────────────────────
+            "column_def" => SemanticRole::ColumnDef {
+                name: require_param(&params, "name", node_name, "column_def")?,
+                type_name: get_param(&params, "type").map(str::to_string),
+                constraints: get_param(&params, "constraints").map(str::to_string),
+            },
+            // ── Result columns ────────────────────────────────────────────
+            "result_column" => SemanticRole::ResultColumn {
+                flags: require_param(&params, "flags", node_name, "result_column")?,
+                alias: require_param(&params, "alias", node_name, "result_column")?,
+                expr: require_param(&params, "expr", node_name, "result_column")?,
+            },
+            // ── Expressions ───────────────────────────────────────────────
+            "call" => SemanticRole::Call {
+                name: require_param(&params, "name", node_name, "call")?,
+                args: require_param(&params, "args", node_name, "call")?,
+            },
+            "column_ref" => SemanticRole::ColumnRef {
+                column: require_param(&params, "column", node_name, "column_ref")?,
+                table: require_param(&params, "table", node_name, "column_ref")?,
+            },
+            // ── Sources ───────────────────────────────────────────────────
+            "source_ref" => SemanticRole::SourceRef {
+                kind: require_param(&params, "kind", node_name, "source_ref")?,
+                name: require_param(&params, "name", node_name, "source_ref")?,
+                alias: require_param(&params, "alias", node_name, "source_ref")?,
+            },
+            "scoped_source" => SemanticRole::ScopedSource {
+                body: require_param(&params, "body", node_name, "scoped_source")?,
+                alias: require_param(&params, "alias", node_name, "scoped_source")?,
+            },
+            // ── Scope structure ───────────────────────────────────────────
+            "query" => SemanticRole::Query {
+                from: require_param(&params, "from", node_name, "query")?,
+                columns: require_param(&params, "columns", node_name, "query")?,
+                where_clause: require_param(&params, "where_clause", node_name, "query")?,
+                groupby: require_param(&params, "groupby", node_name, "query")?,
+                having: require_param(&params, "having", node_name, "query")?,
+                orderby: require_param(&params, "orderby", node_name, "query")?,
+                limit_clause: require_param(&params, "limit_clause", node_name, "query")?,
+            },
+            "cte_binding" => SemanticRole::CteBinding {
+                name: require_param(&params, "name", node_name, "cte_binding")?,
+                body: require_param(&params, "body", node_name, "cte_binding")?,
+            },
+            "cte_scope" => SemanticRole::CteScope {
+                recursive: require_param(&params, "recursive", node_name, "cte_scope")?,
+                bindings: require_param(&params, "bindings", node_name, "cte_scope")?,
+                body: require_param(&params, "body", node_name, "cte_scope")?,
+            },
+            "trigger_scope" => SemanticRole::TriggerScope {
+                target: require_param(&params, "target", node_name, "trigger_scope")?,
+                when: require_param(&params, "when", node_name, "trigger_scope")?,
+                body: require_param(&params, "body", node_name, "trigger_scope")?,
+            },
             _ => {
                 return Err(format!(
                     "unknown semantic role '{role_name}' in node '{node_name}'"
@@ -474,12 +597,15 @@ impl Parser {
         Ok(SemanticAnnotation { role })
     }
 
-    /// Parse `(key: field, ...)` parameter list, validating each field name
-    /// against the node's declared fields.
+    /// Parse `(key: value, ...)` parameter list.
+    ///
+    /// Values listed in `literal_keys` are accepted as-is (any ident); all
+    /// other values are validated as field names declared in the node.
     fn parse_semantic_params(
         &mut self,
         node_name: &str,
         fields: &[Field],
+        literal_keys: &[&str],
     ) -> Result<Vec<(String, String)>, String> {
         self.expect(&Token::LParen)?;
         let mut params = Vec::new();
@@ -489,13 +615,13 @@ impl Parser {
             }
             let key = self.ident()?;
             self.expect(&Token::Colon)?;
-            let field = self.ident()?;
-            if !fields.iter().any(|f| f.name == field) {
+            let value = self.ident()?;
+            if !literal_keys.contains(&key.as_str()) && !fields.iter().any(|f| f.name == value) {
                 return Err(format!(
-                    "semantic annotation in '{node_name}' references unknown field '{field}'"
+                    "semantic annotation in '{node_name}' references unknown field '{value}'"
                 ));
             }
-            params.push((key, field));
+            params.push((key, value));
         }
         self.advance(); // consume RParen
         Ok(params)

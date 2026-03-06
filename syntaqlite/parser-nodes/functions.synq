@@ -7,6 +7,8 @@ node FunctionCall {
   filter_clause: index Expr
   over_clause: index WindowDef
 
+  semantic { call(name: func_name, args: args) }
+
   fmt {
     span(func_name)
     group {

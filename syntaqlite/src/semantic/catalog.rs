@@ -394,7 +394,8 @@ impl Catalog {
                 self.document
                     .insert_function_overload(name_val, FunctionCategory::Scalar, arity);
             }
-            SemanticRole::Import { .. } | SemanticRole::Transparent => {}
+            // Non-DDL roles are irrelevant to catalog accumulation.
+            _ => {}
         }
     }
 
@@ -633,7 +634,8 @@ impl Catalog {
                 self.database
                     .insert_function_overload(name_val, FunctionCategory::Scalar, arity);
             }
-            SemanticRole::Import { .. } | SemanticRole::Transparent => {}
+            // Non-DDL roles are irrelevant to catalog accumulation.
+            _ => {}
         }
     }
 }

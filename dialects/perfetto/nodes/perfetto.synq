@@ -3,6 +3,8 @@ node PerfettoArgDef {
   arg_type: inline SyntaqliteSourceSpan
   is_variadic: inline Bool
 
+  semantic { column_def(name: arg_name, type: arg_type) }
+
   fmt {
     child(arg_name) " " span(arg_type)
     if_flag(is_variadic) { "..." }

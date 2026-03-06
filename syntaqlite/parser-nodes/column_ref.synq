@@ -3,6 +3,8 @@ node ColumnRef {
   table: inline SyntaqliteSourceSpan
   schema: inline SyntaqliteSourceSpan
 
+  semantic { column_ref(column: column, table: table) }
+
   fmt {
     if_span(schema) { span(schema) "." }
     if_span(table) { span(table) "." }

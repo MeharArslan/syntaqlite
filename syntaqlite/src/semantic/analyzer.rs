@@ -15,6 +15,7 @@ use crate::dialect::Dialect;
 use super::ValidationConfig;
 use super::catalog::Catalog;
 use super::diagnostics::{Diagnostic, DiagnosticMessage, Severity};
+use super::engine::SemanticEngine;
 use super::model::{
     CompletionContext, CompletionInfo, SemanticModel, SemanticToken, StoredComment, StoredToken,
 };
@@ -198,6 +199,14 @@ impl SemanticAnalyzer {
                 };
                 diagnostics.extend(Walker::<A>::run(erased, root_stmt, ctx));
             }
+
+            // SemanticEngine validation pass — runs alongside Walker<A> at
+            // Step 4 (all non-DDL nodes are Transparent so it produces no
+            // diagnostics yet). Expression/source/scope handlers added in
+            // Steps 5–6.
+            let engine_diags =
+                SemanticEngine::run(erased, root_id, self.dialect, &mut self.catalog, config);
+            diagnostics.extend(engine_diags);
         }
 
         SemanticModel {

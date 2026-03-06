@@ -20,44 +20,128 @@ fn field_index(fields: &[Field], field_name: &str) -> u8 {
         .unwrap_or_else(|| panic!("field '{field_name}' not found in field list")) as u8
 }
 
-/// Emit a single `SemanticRole` variant expression for a node with a catalog role.
-fn emit_catalog_role(fields: &[Field], role: &SynqRole) -> String {
+/// Emit a single `SemanticRole` variant expression for an annotated node.
+fn emit_role(fields: &[Field], role: &SynqRole) -> String {
+    let fi = |name: &str| field_index(fields, name);
+    let opt = |name: &Option<String>| -> String {
+        match name {
+            Some(f) => format!("Some({})", fi(f)),
+            None => "None".into(),
+        }
+    };
     match role {
+        // ── Catalog roles ────────────────────────────────────────────────
         SynqRole::DefineTable {
             name,
             columns,
             select,
-        } => {
-            let name_idx = field_index(fields, name);
-            let columns_part = match columns {
-                Some(f) => format!("Some({})", field_index(fields, f)),
-                None => "None".into(),
-            };
-            let select_part = match select {
-                Some(f) => format!("Some({})", field_index(fields, f)),
-                None => "None".into(),
+        } => format!(
+            "SemanticRole::DefineTable {{ name: {}, columns: {}, select: {} }}",
+            fi(name),
+            opt(columns),
+            opt(select)
+        ),
+        SynqRole::DefineView { name, select } => format!(
+            "SemanticRole::DefineView {{ name: {}, select: {} }}",
+            fi(name),
+            fi(select)
+        ),
+        SynqRole::DefineFunction { name, args } => format!(
+            "SemanticRole::DefineFunction {{ name: {}, args: {} }}",
+            fi(name),
+            opt(args)
+        ),
+        SynqRole::Import { module } => format!("SemanticRole::Import {{ module: {} }}", fi(module)),
+        // ── Column-list items ─────────────────────────────────────────────
+        SynqRole::ColumnDef {
+            name,
+            type_name,
+            constraints,
+        } => format!(
+            "SemanticRole::ColumnDef {{ name: {}, type_: {}, constraints: {} }}",
+            fi(name),
+            opt(type_name),
+            opt(constraints)
+        ),
+        // ── Result columns ────────────────────────────────────────────────
+        SynqRole::ResultColumn { flags, alias, expr } => format!(
+            "SemanticRole::ResultColumn {{ flags: {}, alias: {}, expr: {} }}",
+            fi(flags),
+            fi(alias),
+            fi(expr)
+        ),
+        // ── Expressions ───────────────────────────────────────────────────
+        SynqRole::Call { name, args } => format!(
+            "SemanticRole::Call {{ name: {}, args: {} }}",
+            fi(name),
+            fi(args)
+        ),
+        SynqRole::ColumnRef { column, table } => format!(
+            "SemanticRole::ColumnRef {{ column: {}, table: {} }}",
+            fi(column),
+            fi(table)
+        ),
+        // ── Sources ───────────────────────────────────────────────────────
+        SynqRole::SourceRef { kind, name, alias } => {
+            let kind_variant = match kind.as_str() {
+                "table" => "RelationKind::Table",
+                "view" => "RelationKind::View",
+                "interval" => "RelationKind::Interval",
+                "tree" => "RelationKind::Tree",
+                "graph" => "RelationKind::Graph",
+                other => panic!("unknown RelationKind literal '{other}' in source_ref"),
             };
             format!(
-                "SemanticRole::DefineTable {{ name: {name_idx}, columns: {columns_part}, select: {select_part} }}"
+                "SemanticRole::SourceRef {{ kind: {kind_variant}, name: {}, alias: {} }}",
+                fi(name),
+                fi(alias)
             )
         }
-        SynqRole::DefineView { name, select } => {
-            let name_idx = field_index(fields, name);
-            let select_idx = field_index(fields, select);
-            format!("SemanticRole::DefineView {{ name: {name_idx}, select: {select_idx} }}")
-        }
-        SynqRole::DefineFunction { name, args } => {
-            let name_idx = field_index(fields, name);
-            let args_part = match args {
-                Some(f) => format!("Some({})", field_index(fields, f)),
-                None => "None".into(),
-            };
-            format!("SemanticRole::DefineFunction {{ name: {name_idx}, args: {args_part} }}")
-        }
-        SynqRole::Import { module } => {
-            let module_idx = field_index(fields, module);
-            format!("SemanticRole::Import {{ module: {module_idx} }}")
-        }
+        SynqRole::ScopedSource { body, alias } => format!(
+            "SemanticRole::ScopedSource {{ body: {}, alias: {} }}",
+            fi(body),
+            fi(alias)
+        ),
+        // ── Scope structure ───────────────────────────────────────────────
+        SynqRole::Query {
+            from,
+            columns,
+            where_clause,
+            groupby,
+            having,
+            orderby,
+            limit_clause,
+        } => format!(
+            "SemanticRole::Query {{ from: {}, columns: {}, where_clause: {}, groupby: {}, having: {}, orderby: {}, limit_clause: {} }}",
+            fi(from),
+            fi(columns),
+            fi(where_clause),
+            fi(groupby),
+            fi(having),
+            fi(orderby),
+            fi(limit_clause)
+        ),
+        SynqRole::CteBinding { name, body } => format!(
+            "SemanticRole::CteBinding {{ name: {}, body: {} }}",
+            fi(name),
+            fi(body)
+        ),
+        SynqRole::CteScope {
+            recursive,
+            bindings,
+            body,
+        } => format!(
+            "SemanticRole::CteScope {{ recursive: {}, bindings: {}, body: {} }}",
+            fi(recursive),
+            fi(bindings),
+            fi(body)
+        ),
+        SynqRole::TriggerScope { target, when, body } => format!(
+            "SemanticRole::TriggerScope {{ target: {}, when: {}, body: {} }}",
+            fi(target),
+            fi(when),
+            fi(body)
+        ),
     }
 }
 
@@ -70,7 +154,7 @@ pub(crate) fn generate_rust_semantic_roles(model: &AstModel, prefix: &str) -> St
     w.file_header();
 
     w.lines(&format!(
-        "use crate::dialect::schema::SemanticRole;\n\
+        "use crate::dialect::schema::{{RelationKind, SemanticRole}};\n\
          \n\
          /// Semantic role table for the `{prefix}` dialect, indexed by node tag.\n\
          /// Tags are 1-based; index 0 is an unused sentinel.\n\
@@ -94,7 +178,7 @@ pub(crate) fn generate_rust_semantic_roles(model: &AstModel, prefix: &str) -> St
                     NodeLikeRef::Node(n) => n.fields,
                     NodeLikeRef::List(_) => unreachable!("lists never have semantic annotations"),
                 };
-                emit_catalog_role(fields, role)
+                emit_role(fields, role)
             }
             None => "SemanticRole::Transparent".into(),
         };

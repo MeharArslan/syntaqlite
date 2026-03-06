@@ -8,6 +8,8 @@ node TableRef {
   schema: inline SyntaqliteSourceSpan
   alias: index Name
 
+  semantic { source_ref(kind: table, name: table_name, alias: alias) }
+
   fmt {
     if_span(schema) { span(schema) "." }
     span(table_name)
@@ -18,6 +20,8 @@ node TableRef {
 node SubqueryTableSource {
   select: index Select
   alias: index Name
+
+  semantic { scoped_source(body: select, alias: alias) }
 
   fmt {
     "(" child(select) ")"

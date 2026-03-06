@@ -35,6 +35,8 @@ node CreateTriggerStmt {
   when_expr: index Expr
   body: index TriggerCmdList
 
+  semantic { trigger_scope(target: table, when: when_expr, body: body) }
+
   fmt {
     "CREATE"
     if_flag(is_temp) { " TEMP" }

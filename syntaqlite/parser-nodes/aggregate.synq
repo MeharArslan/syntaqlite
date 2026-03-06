@@ -8,6 +8,8 @@ node AggregateFunctionCall {
   filter_clause: index Expr
   over_clause: index WindowDef
 
+  semantic { call(name: func_name, args: args) }
+
   fmt {
     span(func_name)
     group {
@@ -29,6 +31,8 @@ node OrderedSetFunctionCall {
   orderby_expr: index Expr
   filter_clause: index Expr
   over_clause: index WindowDef
+
+  semantic { call(name: func_name, args: args) }
 
   fmt {
     span(func_name)

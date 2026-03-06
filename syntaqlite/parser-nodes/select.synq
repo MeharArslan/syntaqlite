@@ -9,6 +9,8 @@ node ResultColumn {
   alias: index Name
   expr: index Expr
 
+  semantic { result_column(flags: flags, alias: alias, expr: expr) }
+
   fmt {
     if_flag(flags.star) {
       if_set(expr) { child(expr) ".*" } else { "*" }
@@ -31,6 +33,8 @@ node SelectStmt {
   orderby: index OrderByList
   limit_clause: index LimitClause
   window_clause: index NamedWindowDefList
+
+  semantic { query(from: from_clause, columns: columns, where_clause: where_clause, groupby: groupby, having: having, orderby: orderby, limit_clause: limit_clause) }
 
   fmt {
     group {

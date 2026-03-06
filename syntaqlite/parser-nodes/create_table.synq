@@ -102,6 +102,8 @@ node ColumnDef {
   type_name: inline SyntaqliteSourceSpan
   constraints: index ColumnConstraintList
 
+  semantic { column_def(name: column_name, type: type_name, constraints: constraints) }
+
   fmt {
     child(column_name)
     if_span(type_name) { " " span(type_name) }
