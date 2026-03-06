@@ -228,6 +228,52 @@ impl AnyGrammar {
         AnyGrammar { inner }
     }
 
+    /// Load a grammar from a shared library (`.so` / `.dylib` / `.dll`).
+    ///
+    /// Resolves `syntaqlite_<name>_grammar` (or `syntaqlite_grammar` when `name`
+    /// is `None`) and calls it to obtain the grammar handle.
+    ///
+    /// # Library lifetime
+    /// Because [`AnyGrammar`] is `Copy` with no drop, the loaded library is
+    /// intentionally leaked so the grammar tables remain valid for the process
+    /// lifetime. Use [`syntaqlite::Dialect::load`] instead if you need the
+    /// library to be unloaded when the dialect is dropped.
+    ///
+    /// # TODO(lalitm)
+    /// Replace the leak with a proper keep-alive mechanism once `AnyGrammar`
+    /// gains lifetime tracking.
+    #[cfg(feature = "dynload")]
+    pub fn load(path: &str, name: Option<&str>) -> Result<Self, String> {
+        // SAFETY: We leak `lib` below to keep grammar tables alive for the
+        // process lifetime, since AnyGrammar has no drop or keep-alive.
+        let lib = unsafe {
+            libloading::Library::new(path)
+                .map_err(|e| format!("failed to load {path:?}: {e}"))?
+        };
+
+        let symbol = match name {
+            Some(n) => format!("syntaqlite_{n}_grammar"),
+            None => "syntaqlite_grammar".to_string(),
+        };
+        // SAFETY: We call the function immediately and drop `func` before
+        // leaking `lib`, so there is no lifetime overlap issue.
+        let raw: ffi::CGrammar = unsafe {
+            let func: libloading::Symbol<'_, unsafe extern "C" fn() -> ffi::CGrammar> = lib
+                .get(symbol.as_bytes())
+                .map_err(|e| format!("symbol {symbol:?} not found in {path:?}: {e}"))?;
+            func()
+        };
+
+        // Leak the library so the grammar tables remain valid for the process
+        // lifetime. AnyGrammar is Copy with no drop, so there is no other way
+        // to safely extend the library's lifetime.
+        std::mem::forget(lib);
+
+        // SAFETY: `raw.template` points into the leaked library whose memory
+        // will never be freed.
+        Ok(unsafe { AnyGrammar::new(raw) })
+    }
+
     /// Pin this grammar handle to a target `SQLite` version.
     ///
     /// Useful when your product must emulate a specific engine release.

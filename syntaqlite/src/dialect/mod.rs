@@ -6,6 +6,9 @@
 use std::sync::Arc;
 
 use syntaqlite_syntax::any::AnyGrammar;
+
+#[cfg(feature = "dynload")]
+use libloading;
 pub(crate) use syntaqlite_syntax::util::SqliteVersion;
 
 // ── Semantic role types ───────────────────────────────────────────────────────
@@ -294,8 +297,8 @@ pub(crate) fn is_function_available(entry: &FunctionEntry<'_>, dialect: &Dialect
 /// - semantic role table (indexed by node tag)
 ///
 /// Built-in dialects hold `&'static` data directly. Dynamically loaded
-/// dialects use `from_raw_parts` which transmutes library-memory pointers to
-/// `&'static` and keeps the library alive via an [`Arc`].
+/// dialects transmute library-memory pointers to `&'static` and keep the
+/// library alive via an [`Arc`]. Use [`AnyDialect::load`] to create one.
 #[derive(Clone)]
 pub struct AnyDialect {
     grammar: AnyGrammar,
@@ -350,46 +353,60 @@ impl AnyDialect {
         }
     }
 
-    /// Construct a dialect from dynamically loaded library data.
+    /// Load a dialect from a shared library (`.so` / `.dylib` / `.dll`).
     ///
-    /// Transmutes the provided slice references to `&'static`, which is safe
-    /// as long as the underlying data lives at least as long as `keep_alive`.
-    /// When the last clone of this `AnyDialect` is dropped, `keep_alive` is
-    /// dropped too, which unloads the library.
+    /// Resolves `syntaqlite_<name>_grammar` (or `syntaqlite_grammar` when `name`
+    /// is `None`), calls it, and wraps the result in a [`Dialect`] that keeps
+    /// the library alive.
     ///
-    /// # Safety
-    /// All data pointers (`fmt_strings`, `fmt_enum_display`, `fmt_ops`,
-    /// `fmt_dispatch`, `roles`) must point into memory owned by `keep_alive`
-    /// and remain valid for its entire lifetime.
-    pub unsafe fn from_raw_parts(
-        grammar: AnyGrammar,
-        fmt_strings: &[&str],
-        fmt_enum_display: &[u16],
-        fmt_ops: &[u8],
-        fmt_dispatch: &[u32],
-        roles: &[SemanticRole],
-        keep_alive: Arc<dyn Send + Sync>,
-    ) -> Self {
-        // SAFETY: caller guarantees the slices live as long as `keep_alive`.
-        let (fmt_strings, fmt_enum_display, fmt_ops, fmt_dispatch, roles) = unsafe {
-            (
-                std::mem::transmute::<&[&str], &'static [&'static str]>(fmt_strings),
-                std::mem::transmute::<&[u16], &'static [u16]>(fmt_enum_display),
-                std::mem::transmute::<&[u8], &'static [u8]>(fmt_ops),
-                std::mem::transmute::<&[u32], &'static [u32]>(fmt_dispatch),
-                std::mem::transmute::<&[SemanticRole], &'static [SemanticRole]>(roles),
-            )
+    /// Dropping the last clone of the returned `Dialect` unloads the library.
+    ///
+    /// Dynamically loaded dialects supply only the parser grammar; no formatter
+    /// bytecode or semantic role tables are present. This means `fmt` and
+    /// semantic validation are unavailable for dynamic dialects.
+    #[cfg(feature = "dynload")]
+    pub fn load(path: &str, name: Option<&str>) -> Result<Self, String> {
+        // SAFETY: We keep `lib` alive in an `Arc` below so the grammar pointer
+        // lives as long as the Dialect.
+        let lib = unsafe {
+            libloading::Library::new(path)
+                .map_err(|e| format!("failed to load {path:?}: {e}"))?
         };
-        AnyDialect {
+
+        let symbol = match name {
+            Some(n) => format!("syntaqlite_{n}_grammar"),
+            None => "syntaqlite_grammar".to_string(),
+        };
+        // SAFETY: We call the function immediately and drop `func` before `lib`
+        // is moved into the Arc, so there is no lifetime overlap issue.
+        let raw: syntaqlite_syntax::typed::CGrammar = unsafe {
+            let func: libloading::Symbol<
+                '_,
+                unsafe extern "C" fn() -> syntaqlite_syntax::typed::CGrammar,
+            > = lib
+                .get(symbol.as_bytes())
+                .map_err(|e| format!("symbol {symbol:?} not found in {path:?}: {e}"))?;
+            func()
+        };
+
+        // SAFETY: `raw.template` points into the shared library kept alive by
+        // `keep_alive`. Dropping the last Dialect clone unloads the library.
+        let grammar = unsafe { AnyGrammar::new(raw) };
+        let keep_alive: Arc<dyn Send + Sync> = Arc::new(lib);
+
+        // TODO(lalitm): dynamic dialects should also load formatter bytecode
+        // and semantic role tables from the shared library so that `fmt` and
+        // validation work for external dialects.
+        Ok(AnyDialect {
             grammar,
-            fmt_strings,
-            fmt_enum_display,
-            fmt_ops,
-            fmt_dispatch,
-            roles,
+            fmt_strings: &[],
+            fmt_enum_display: &[],
+            fmt_ops: &[],
+            fmt_dispatch: &[],
+            roles: &[],
             ext_cflags: crate::util::SqliteFlags::default(),
             _keep_alive: Some(keep_alive),
-        }
+        })
     }
 
     /// Return a copy of this dialect with the given flags replacing the current

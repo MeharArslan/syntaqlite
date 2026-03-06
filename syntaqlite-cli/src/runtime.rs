@@ -61,7 +61,7 @@ fn require_dialect(dialect: Option<Dialect>) -> Result<Dialect, String> {
 
 pub(crate) fn dispatch(cli: Cli, dialect: Option<Dialect>) -> Result<(), String> {
     if let Some(path) = &cli.dialect_path {
-        let dyn_dialect = syntaqlite::load_dialect(path, cli.dialect_name.as_deref())
+        let dyn_dialect = Dialect::load(path, cli.dialect_name.as_deref())
             .unwrap_or_else(|e| {
                 eprintln!("error: {e}");
                 std::process::exit(1);

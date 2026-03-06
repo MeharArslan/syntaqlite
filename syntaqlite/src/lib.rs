@@ -25,15 +25,10 @@ pub mod lsp;
 #[cfg(feature = "embedded")]
 pub mod embedded;
 
-#[cfg(feature = "dynload")]
-pub mod dynload;
-
 // ── Public API ────────────────────────────────────────────────────────────────
 
 #[cfg(feature = "fmt")]
 pub use dialect::{AnyDialect, Dialect};
-#[cfg(feature = "dynload")]
-pub use dynload::load_dialect;
 #[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
 #[cfg(feature = "fmt")]
