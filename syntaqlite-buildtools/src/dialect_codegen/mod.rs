@@ -11,6 +11,7 @@ pub(crate) mod c_nodes_codegen;
 pub(crate) mod fmt_compiler;
 pub(crate) mod rust_ast;
 pub(crate) mod rust_dialect;
+pub(crate) mod semantic_roles_codegen;
 
 pub(super) fn c_type_name(name: &str) -> String {
     format!("Syntaqlite{name}")

@@ -9,11 +9,14 @@
 
 use syntaqlite_syntax::any::AnyGrammar;
 
+use crate::dialect::schema::SemanticRole;
+
 /// Type-erased semantic dialect handle: grammar + formatter + semantic data.
 ///
 /// This bundles:
 /// - the syntactic [`AnyGrammar`]
 /// - formatter bytecode tables
+/// - semantic role table (indexed by node tag)
 #[derive(Clone, Copy)]
 pub(crate) struct AnyDialect {
     grammar: AnyGrammar,
@@ -23,6 +26,9 @@ pub(crate) struct AnyDialect {
     fmt_enum_display: &'static [u16],
     fmt_ops: &'static [u8],
     fmt_dispatch: &'static [u32],
+
+    // Semantic role table — generated from `semantic { ... }` annotations.
+    roles: &'static [SemanticRole],
 }
 
 /// Default dialect handle name used throughout the crate.
@@ -42,6 +48,7 @@ impl AnyDialect {
         fmt_enum_display: &'static [u16],
         fmt_ops: &'static [u8],
         fmt_dispatch: &'static [u32],
+        roles: &'static [SemanticRole],
     ) -> Self {
         AnyDialect {
             grammar,
@@ -49,7 +56,13 @@ impl AnyDialect {
             fmt_enum_display,
             fmt_ops,
             fmt_dispatch,
+            roles,
         }
+    }
+
+    /// The semantic role table for this dialect, indexed by node tag.
+    pub(crate) fn roles(&self) -> &'static [SemanticRole] {
+        self.roles
     }
 
     // ── Formatter accessors ──────────────────────────────────────────────
@@ -116,5 +129,26 @@ impl std::ops::Deref for AnyDialect {
 impl std::ops::DerefMut for AnyDialect {
     fn deref_mut(&mut self) -> &mut AnyGrammar {
         &mut self.grammar
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::dialect::schema::SemanticRole;
+
+    #[test]
+    fn dialect_roles_returns_slice() {
+        // A dialect constructed with an empty roles slice should return it.
+        let d = AnyDialect::new(
+            syntaqlite_syntax::typed::grammar().into_raw(),
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+        );
+        let roles: &[SemanticRole] = d.roles();
+        assert!(roles.is_empty());
     }
 }
