@@ -357,7 +357,7 @@ mod tests {
         sql_c
     }
 
-    fn recovery_stmt<'a>(parser: *mut CParser, source: &'a str, recovery_root: u32) -> Stmt<'a> {
+    fn recovery_stmt(parser: *mut CParser, source: &str, recovery_root: u32) -> Stmt<'_> {
         let grammar: AnyGrammar = crate::sqlite::grammar::grammar().into();
         // SAFETY: parser pointer is valid for test scope; source is valid UTF-8.
         let result = unsafe { crate::parser::AnyParsedStatement::new(parser, source, grammar) };
@@ -406,7 +406,11 @@ mod tests {
         // SAFETY: result accessors are valid after non-DONE return.
         assert!(!unsafe { parser.result_error_msg().is_null() });
 
-        let stmt = recovery_stmt(parser as *mut CParser, "SELECT", recovery_root);
+        let stmt = recovery_stmt(
+            std::ptr::from_mut::<CParser>(parser),
+            "SELECT",
+            recovery_root,
+        );
         let select = match stmt {
             Stmt::SelectStmt(select) => select,
             _ => panic!("expected recovery root to be SelectStmt"),
@@ -438,7 +442,11 @@ mod tests {
         let recovery_root = unsafe { parser.result_recovery_root() };
         assert_ne!(recovery_root, NULL_NODE);
 
-        let stmt = recovery_stmt(parser as *mut CParser, "SELECT 1 AS", recovery_root);
+        let stmt = recovery_stmt(
+            std::ptr::from_mut::<CParser>(parser),
+            "SELECT 1 AS",
+            recovery_root,
+        );
         let select = match stmt {
             Stmt::SelectStmt(select) => select,
             _ => panic!("expected recovery root to be SelectStmt"),

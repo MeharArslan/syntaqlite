@@ -339,7 +339,7 @@ mod tests {
     use super::*;
     use crate::fmt::KeywordCase;
 
-    fn render_parts<'a>(arena: &mut DocArena<'a>, parts: &[DocId]) -> String {
+    fn render_parts(arena: &mut DocArena<'_>, parts: &[DocId]) -> String {
         let root = arena.cats(parts);
         arena.render(root, 80, KeywordCase::Preserve)
     }

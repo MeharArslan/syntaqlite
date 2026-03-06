@@ -22,14 +22,14 @@ perfetto_arg_def_list(A) ::= perfetto_arg_def_list_ne(X). { A = X; }
 perfetto_arg_def_list_ne(A) ::= ID(N) ID(T). {
     synq_mark_as_type(pCtx, T);
     uint32_t arg = synq_parse_perfetto_arg_def(pCtx,
-        synq_span(pCtx, N), synq_span(pCtx, T),
+        synq_parse_ident_name(pCtx, synq_span(pCtx, N)), synq_span(pCtx, T),
         SYNTAQLITE_BOOL_FALSE);
     A = synq_parse_perfetto_arg_def_list(pCtx, SYNTAQLITE_NULL_NODE, arg);
 }
 perfetto_arg_def_list_ne(A) ::= perfetto_arg_def_list_ne(L) COMMA ID(N) ID(T). {
     synq_mark_as_type(pCtx, T);
     uint32_t arg = synq_parse_perfetto_arg_def(pCtx,
-        synq_span(pCtx, N), synq_span(pCtx, T),
+        synq_parse_ident_name(pCtx, synq_span(pCtx, N)), synq_span(pCtx, T),
         SYNTAQLITE_BOOL_FALSE);
     A = synq_parse_perfetto_arg_def_list(pCtx, L, arg);
 }
@@ -37,14 +37,14 @@ perfetto_arg_def_list_ne(A) ::= perfetto_arg_def_list_ne(L) COMMA ID(N) ID(T). {
 perfetto_arg_def_list_ne(A) ::= ID(N) ID(T) DOT DOT DOT. {
     synq_mark_as_type(pCtx, T);
     uint32_t arg = synq_parse_perfetto_arg_def(pCtx,
-        synq_span(pCtx, N), synq_span(pCtx, T),
+        synq_parse_ident_name(pCtx, synq_span(pCtx, N)), synq_span(pCtx, T),
         SYNTAQLITE_BOOL_TRUE);
     A = synq_parse_perfetto_arg_def_list(pCtx, SYNTAQLITE_NULL_NODE, arg);
 }
 perfetto_arg_def_list_ne(A) ::= perfetto_arg_def_list_ne(L) COMMA ID(N) ID(T) DOT DOT DOT. {
     synq_mark_as_type(pCtx, T);
     uint32_t arg = synq_parse_perfetto_arg_def(pCtx,
-        synq_span(pCtx, N), synq_span(pCtx, T),
+        synq_parse_ident_name(pCtx, synq_span(pCtx, N)), synq_span(pCtx, T),
         SYNTAQLITE_BOOL_TRUE);
     A = synq_parse_perfetto_arg_def_list(pCtx, L, arg);
 }

@@ -59,7 +59,7 @@ pub enum ParseErrorKind {
 /// Primarily for library/framework code over generated grammars.
 ///
 /// - Use this when grammar type is known at compile time.
-/// - Use top-level [`Parser`] for typical SQLite SQL app code.
+/// - Use top-level [`Parser`] for typical `SQLite` SQL app code.
 pub struct TypedParser<G: TypedGrammar> {
     inner: Rc<RefCell<Option<ParserInner>>>,
     grammar: AnyGrammar,

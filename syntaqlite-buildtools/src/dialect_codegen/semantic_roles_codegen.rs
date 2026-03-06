@@ -131,13 +131,13 @@ mod tests {
     #[test]
     fn define_table_with_correct_field_indices() {
         let items = model_from(
-            r#"node CreateTableStmt {
+            r"node CreateTableStmt {
                 table_name: inline SyntaqliteSourceSpan
                 schema: inline SyntaqliteSourceSpan
                 columns: index ColumnDefList
                 as_select: index Select
                 semantic { define_table(name: table_name, columns: columns, select: as_select) }
-            }"#,
+            }",
         );
         let model = AstModel::new(&items);
         let out = generate_rust_semantic_roles(&model, "TEST");
@@ -157,10 +157,10 @@ mod tests {
     #[test]
     fn define_table_optional_fields_are_none_when_absent() {
         let items = model_from(
-            r#"node CreateTableStmt {
+            r"node CreateTableStmt {
                 table_name: inline SyntaqliteSourceSpan
                 semantic { define_table(name: table_name) }
-            }"#,
+            }",
         );
         let model = AstModel::new(&items);
         let out = generate_rust_semantic_roles(&model, "TEST");
@@ -173,12 +173,12 @@ mod tests {
     #[test]
     fn define_view_with_correct_field_indices() {
         let items = model_from(
-            r#"node CreateViewStmt {
+            r"node CreateViewStmt {
                 view_name: inline SyntaqliteSourceSpan
                 schema: inline SyntaqliteSourceSpan
                 select: index Select
                 semantic { define_view(name: view_name, select: select) }
-            }"#,
+            }",
         );
         let model = AstModel::new(&items);
         let out = generate_rust_semantic_roles(&model, "TEST");
@@ -192,11 +192,11 @@ mod tests {
     #[test]
     fn define_function_with_optional_args() {
         let items = model_from(
-            r#"node CreateFunctionStmt {
+            r"node CreateFunctionStmt {
                 func_name: inline SyntaqliteSourceSpan
                 args: index ArgList
                 semantic { define_function(name: func_name, args: args) }
-            }"#,
+            }",
         );
         let model = AstModel::new(&items);
         let out = generate_rust_semantic_roles(&model, "TEST");
@@ -209,10 +209,10 @@ mod tests {
     #[test]
     fn import_with_correct_field_index() {
         let items = model_from(
-            r#"node IncludeModuleStmt {
+            r"node IncludeModuleStmt {
                 module_name: inline SyntaqliteSourceSpan
                 semantic { import(module: module_name) }
-            }"#,
+            }",
         );
         let model = AstModel::new(&items);
         let out = generate_rust_semantic_roles(&model, "TEST");
@@ -225,8 +225,8 @@ mod tests {
     #[test]
     fn list_always_emits_transparent() {
         let items = model_from(
-            r#"node Foo { x: inline SyntaqliteSourceSpan }
-               list FooList { Foo }"#,
+            r"node Foo { x: inline SyntaqliteSourceSpan }
+               list FooList { Foo }",
         );
         let model = AstModel::new(&items);
         let out = generate_rust_semantic_roles(&model, "TEST");
@@ -245,22 +245,6 @@ mod tests {
         let out = generate_rust_semantic_roles(&model, "SQLITE");
         assert!(
             out.contains("SQLITE_SEMANTIC_ROLES: &[SemanticRole]"),
-            "got:\n{out}"
-        );
-    }
-
-    #[test]
-    fn session_schema_legacy_syntax_also_generates_role() {
-        let items = model_from(
-            r#"node CreateTableStmt {
-                table_name: inline SyntaqliteSourceSpan
-                session_schema { table(name: table_name) }
-            }"#,
-        );
-        let model = AstModel::new(&items);
-        let out = generate_rust_semantic_roles(&model, "TEST");
-        assert!(
-            out.contains("SemanticRole::DefineTable { name: 0, columns: None, select: None }"),
             "got:\n{out}"
         );
     }

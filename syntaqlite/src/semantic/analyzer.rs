@@ -121,12 +121,10 @@ impl SemanticAnalyzer {
 
         let context = CompletionContext::from_parser(cursor_p.completion_context());
 
-        if backtracked {
-            if let Some(extra) = tokens.get(boundary) {
-                let span = extra.offset..(extra.offset + extra.length);
-                if cursor_p.feed_token(extra.token_type, span).is_none() {
-                    merge_expected_tokens(&mut last_expected, cursor_p.expected_tokens().collect());
-                }
+        if backtracked && let Some(extra) = tokens.get(boundary) {
+            let span = extra.offset..(extra.offset + extra.length);
+            if cursor_p.feed_token(extra.token_type, span).is_none() {
+                merge_expected_tokens(&mut last_expected, cursor_p.expected_tokens().collect());
             }
         }
 
@@ -191,8 +189,7 @@ impl SemanticAnalyzer {
             let root_id: AnyNodeId = root.node_id().into();
             let erased = stmt.erase();
 
-            self.catalog
-                .accumulate_ddl::<A>(erased, root_id, self.dialect);
+            self.catalog.accumulate_ddl(erased, root_id, self.dialect);
 
             if let Some(root_stmt) = A::Stmt::from_result(erased, root_id) {
                 let ctx = WalkContext {

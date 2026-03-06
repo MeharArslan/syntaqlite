@@ -180,11 +180,11 @@ pub(crate) struct CodegenArtifacts {
 
 /// Parse `#define SYNTAQLITE_TK_NAME VALUE` lines from lemon's parse.h output.
 /// Returns structured `(name, value)` pairs where name is the short name (e.g. "ABORT").
-/// Normalize a raw SQLite token name for use as a Rust enum variant.
+/// Normalize a raw `SQLite` token name for use as a Rust enum variant.
 ///
-/// SQLite's grammar uses compound token names without underscores (e.g.
+/// `SQLite`'s grammar uses compound token names without underscores (e.g.
 /// `ISNULL`, `NOTNULL`). Inserting underscores here lets `pascal_case`
-/// produce proper PascalCase variants (`IsNull`, `NotNull`) downstream.
+/// produce proper `PascalCase` variants (`IsNull`, `NotNull`) downstream.
 fn normalize_token_name(name: &str) -> String {
     match name {
         "ISNULL" => "IS_NULL".to_string(),

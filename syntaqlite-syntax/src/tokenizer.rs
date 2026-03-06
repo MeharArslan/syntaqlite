@@ -125,7 +125,7 @@ impl<'a> Token<'a> {
 /// Useful for reusable tooling built against generated grammars.
 ///
 /// - Use this when grammar type is known at compile time.
-/// - Use [`Tokenizer`] for typical SQLite SQL app code.
+/// - Use [`Tokenizer`] for typical `SQLite` SQL app code.
 ///
 pub struct TypedTokenizer<G: TypedGrammar> {
     inner: Rc<RefCell<Option<TokenizerInner>>>,

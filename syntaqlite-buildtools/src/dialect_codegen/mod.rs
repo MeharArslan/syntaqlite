@@ -363,7 +363,7 @@ impl<'a> AstModel<'a> {
     }
 
     /// The name of the root/top-level AST node type.
-    pub(crate) fn root_node_name(&self) -> &str {
+    pub(crate) fn root_node_name(&self) -> &'static str {
         "Stmt"
     }
 

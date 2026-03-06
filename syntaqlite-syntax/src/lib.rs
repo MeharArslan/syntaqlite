@@ -109,7 +109,7 @@ pub mod ast_traits;
 /// Cross-cutting utilities for grammar configuration and compatibility.
 ///
 /// Reach for this module when you need to pin parser behavior to a target
-/// SQLite release or inspect feature-flag state.
+/// `SQLite` release or inspect feature-flag state.
 pub mod util;
 
 /// Type-erased variants of every parser and tokenizer type.

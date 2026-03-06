@@ -228,7 +228,7 @@ impl AnyGrammar {
         AnyGrammar { inner }
     }
 
-    /// Pin this grammar handle to a target SQLite version.
+    /// Pin this grammar handle to a target `SQLite` version.
     ///
     /// Useful when your product must emulate a specific engine release.
     #[must_use]
@@ -244,7 +244,7 @@ impl AnyGrammar {
         self
     }
 
-    /// Target SQLite version currently configured on this handle.
+    /// Target `SQLite` version currently configured on this handle.
     pub fn version(&self) -> SqliteVersion {
         SqliteVersion::from_int(self.inner.sqlite_version)
     }

@@ -23,10 +23,10 @@ impl SqliteFlags {
     // TODO(claude): add `set` and `clear` methods etc - match ffi.
 }
 
-/// SQLite compatibility target used to select grammar behavior.
+/// `SQLite` compatibility target used to select grammar behavior.
 ///
 /// Pin this when your application needs to parse according to a specific
-/// SQLite release. Patch versions are intentionally ignored.
+/// `SQLite` release. Patch versions are intentionally ignored.
 #[allow(missing_docs)]
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

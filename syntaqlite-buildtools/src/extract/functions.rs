@@ -544,7 +544,7 @@ fn version_string_to_int(s: &str) -> i32 {
     major * 1_000_000 + minor * 1_000 + patch
 }
 
-/// Format a SQLite version integer with underscore digit separators.
+/// Format a `SQLite` version integer with underscore digit separators.
 ///
 /// `3030001` → `"3_030_001"`, `0` → `"0"`.
 /// This avoids `clippy::unreadable_literal` in generated source files.

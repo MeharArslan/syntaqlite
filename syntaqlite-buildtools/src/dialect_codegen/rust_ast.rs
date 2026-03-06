@@ -715,9 +715,7 @@ impl AstModel<'_> {
             w.line("fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {");
             w.indent();
             w.line("let mut buf = String::new();");
-            w.line(&format!(
-                "AnyNode {{ id: self.id, stmt_result: self.stmt_result }}.dump(&mut buf, 0);"
-            ));
+            w.line("AnyNode { id: self.id, stmt_result: self.stmt_result }.dump(&mut buf, 0);");
             w.line("f.write_str(&buf)");
             w.dedent();
             w.line("}");
@@ -1178,7 +1176,7 @@ fn trait_field_return_type(
                     list.child_type,
                     node_names,
                     list_names,
-                    &abstract_names,
+                    abstract_names,
                     lists,
                 );
                 format!(

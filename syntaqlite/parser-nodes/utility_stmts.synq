@@ -105,7 +105,7 @@ node CreateViewStmt {
   column_names: index ExprList
   select: index Select
 
-  session_schema { view(name: view_name, as_select: select) }
+  semantic { define_view(name: view_name, select: select) }
 
   fmt {
     group {

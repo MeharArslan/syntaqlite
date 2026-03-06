@@ -8,13 +8,6 @@
 use std::collections::{HashMap, HashSet};
 
 use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, NodeFields};
-use syntaqlite_syntax::ast_traits::{
-    AstTypes, ColumnRefView, CompoundSelectView, ExprKind, ExprLike, IdentNameView, JoinClauseView,
-    JoinPrefixView, NameKind, NameLike, ResultColumnFlagsLike, ResultColumnView, SelectKind,
-    SelectLike, SelectStmtView, SubqueryTableSourceView, TableRefView, TableSourceKind,
-    TableSourceLike, WithClauseView,
-};
-use syntaqlite_syntax::typed::GrammarNodeType;
 
 use crate::dialect::Dialect;
 use crate::dialect::catalog::{FunctionCategory as DialectFunctionCategory, is_function_available};
@@ -277,7 +270,6 @@ impl Catalog {
     /// Parse DDL statements from `source` and populate the database layer.
     #[cfg(feature = "sqlite")]
     pub fn from_ddl(dialect: Dialect, source: &str) -> Self {
-        use syntaqlite_syntax::nodes::SqliteAstMarker;
         let mut catalog = Catalog::new(dialect);
         let parser = syntaqlite_syntax::Parser::new();
         use syntaqlite_syntax::ParseOutcome;
@@ -290,7 +282,7 @@ impl Catalog {
             };
             let root = stmt.root();
             let root_id: AnyNodeId = root.node_id().into();
-            catalog.accumulate_ddl_into_database::<SqliteAstMarker>(stmt.erase(), root_id, dialect);
+            catalog.accumulate_ddl_into_database(stmt.erase(), root_id, dialect);
         }
         catalog
     }
@@ -356,9 +348,9 @@ impl Catalog {
     /// Extract DDL contributions from a parsed statement and insert them into
     /// the document layer. Called statement-by-statement during the analysis
     /// pass so that later statements can reference earlier DDL.
-    pub(crate) fn accumulate_ddl<'a, A: AstTypes<'a>>(
+    pub(crate) fn accumulate_ddl(
         &mut self,
-        stmt: AnyParsedStatement<'a>,
+        stmt: AnyParsedStatement<'_>,
         root: AnyNodeId,
         dialect: Dialect,
     ) {
@@ -382,14 +374,7 @@ impl Catalog {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let cols = extract_columns::<A>(
-                    stmt,
-                    &fields,
-                    columns,
-                    select,
-                    &self.database,
-                    &self.document,
-                );
+                let cols = extract_columns(stmt, &fields, columns, select);
                 self.document.insert_relation(name_val, cols);
             }
             SemanticRole::DefineView { name, select } => {
@@ -397,14 +382,7 @@ impl Catalog {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let cols = extract_columns::<A>(
-                    stmt,
-                    &fields,
-                    None,
-                    Some(select),
-                    &self.database,
-                    &self.document,
-                );
+                let cols = extract_columns(stmt, &fields, None, Some(select));
                 self.document.insert_relation(name_val, cols);
             }
             SemanticRole::DefineFunction { name, args } => {
@@ -523,10 +501,10 @@ impl Catalog {
         let mut names = Vec::new();
         for layer in self.all_layers_ordered() {
             for rel in layer.relations.values() {
-                if table.is_none_or(|t| rel.name.eq_ignore_ascii_case(t)) {
-                    if let Some(cols) = &rel.columns {
-                        names.extend(cols.iter().map(|c| c.to_ascii_lowercase()));
-                    }
+                if table.is_none_or(|t| rel.name.eq_ignore_ascii_case(t))
+                    && let Some(cols) = &rel.columns
+                {
+                    names.extend(cols.iter().map(|c| c.to_ascii_lowercase()));
                 }
             }
         }
@@ -609,9 +587,9 @@ impl Catalog {
     /// Like `accumulate_ddl` but writes into the database layer instead of the
     /// document layer. Used by `from_ddl` to pre-populate user-provided schema.
     #[cfg(feature = "sqlite")]
-    fn accumulate_ddl_into_database<'a, A: AstTypes<'a>>(
+    fn accumulate_ddl_into_database(
         &mut self,
-        stmt: AnyParsedStatement<'a>,
+        stmt: AnyParsedStatement<'_>,
         root: AnyNodeId,
         dialect: Dialect,
     ) {
@@ -635,9 +613,7 @@ impl Catalog {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let empty = CatalogLayer::default();
-                let cols =
-                    extract_columns::<A>(stmt, &fields, columns, select, &self.database, &empty);
+                let cols = extract_columns(stmt, &fields, columns, select);
                 self.database.insert_relation(name_val, cols);
             }
             SemanticRole::DefineView { name, select } => {
@@ -645,9 +621,7 @@ impl Catalog {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
-                let empty = CatalogLayer::default();
-                let cols =
-                    extract_columns::<A>(stmt, &fields, None, Some(select), &self.database, &empty);
+                let cols = extract_columns(stmt, &fields, None, Some(select));
                 self.database.insert_relation(name_val, cols);
             }
             SemanticRole::DefineFunction { name, args } => {
@@ -667,17 +641,17 @@ impl Catalog {
 // ── DDL extraction helpers ────────────────────────────────────────────────────
 
 /// Extract columns for a table/view DDL contribution.
-/// `columns_field` indexes a column-list child; `select_field` indexes an AS SELECT child.
-/// Returns `None` when columns cannot be statically determined.
-fn extract_columns<'a, A: AstTypes<'a>>(
+/// `columns_field` indexes an explicit column-list child.
+/// `select_field` is accepted but SELECT-based column inference is deferred to
+/// step 5 (when `result_column` role annotations are added); returns `None` for
+/// AS-SELECT-only definitions so that column refs against them are conservatively
+/// accepted.
+fn extract_columns<'a>(
     stmt: AnyParsedStatement<'a>,
     fields: &NodeFields<'a>,
     columns_field: Option<u8>,
-    select_field: Option<u8>,
-    database: &CatalogLayer,
-    document: &CatalogLayer,
+    _select_field: Option<u8>,
 ) -> Option<Vec<String>> {
-    // Explicit column list takes priority.
     if let Some(col_idx) = columns_field
         && let FieldValue::NodeId(col_list_id) = fields[col_idx as usize]
         && !col_list_id.is_null()
@@ -688,23 +662,6 @@ fn extract_columns<'a, A: AstTypes<'a>>(
             return Some(columns);
         }
     }
-
-    // Fall back to SELECT inference.
-    if let Some(sel_idx) = select_field
-        && let FieldValue::NodeId(sel_id) = fields[sel_idx as usize]
-        && !sel_id.is_null()
-    {
-        if let Some(select) = A::Select::from_result(stmt, sel_id) {
-            let mut columns = Vec::new();
-            columns_from_select::<A>(stmt, select, database, document, &mut columns);
-            return if columns.is_empty() {
-                None
-            } else {
-                Some(columns)
-            };
-        }
-    }
-
     None
 }
 
@@ -729,8 +686,8 @@ fn extract_function_arity<'a>(
     AritySpec::Exact(children.len())
 }
 
-fn columns_from_column_list<'a>(
-    stmt: AnyParsedStatement<'a>,
+fn columns_from_column_list(
+    stmt: AnyParsedStatement<'_>,
     list_id: AnyNodeId,
     out: &mut Vec<String>,
 ) {
@@ -768,140 +725,6 @@ fn columns_from_column_list<'a>(
             }
             break; // only inspect the first non-null NodeId field per column-def
         }
-    }
-}
-
-fn columns_from_select<'a, A: AstTypes<'a>>(
-    stmt: AnyParsedStatement<'a>,
-    select: A::Select,
-    database: &CatalogLayer,
-    document: &CatalogLayer,
-    out: &mut Vec<String>,
-) {
-    let core_stmt = match select.kind() {
-        SelectKind::SelectStmt(s) => s,
-        SelectKind::CompoundSelect(cs) => {
-            if let Some(left) = cs.left() {
-                return columns_from_select::<A>(stmt, left, database, document, out);
-            }
-            return;
-        }
-        SelectKind::WithClause(wc) => {
-            if let Some(s) = wc.select() {
-                return columns_from_select::<A>(stmt, s, database, document, out);
-            }
-            return;
-        }
-        _ => return,
-    };
-
-    let from_sources = core_stmt
-        .from_clause()
-        .map(|ts| collect_from_sources::<A>(stmt, ts, database, document))
-        .unwrap_or_default();
-
-    let Some(cols) = core_stmt.columns() else {
-        return;
-    };
-    for rc in cols.iter() {
-        if rc.flags().star() {
-            let qualifier = name_str::<A>(rc.alias());
-            expand_star(&from_sources, qualifier, out);
-            continue;
-        }
-
-        let alias = name_str::<A>(rc.alias());
-        let name = if !alias.is_empty() {
-            alias.to_string()
-        } else if let Some(expr) = rc.expr() {
-            match expr.kind() {
-                ExprKind::ColumnRef(cr) => cr.column().to_ascii_lowercase(),
-                _ => continue,
-            }
-        } else {
-            continue;
-        };
-
-        if !name.is_empty() {
-            out.push(name);
-        }
-    }
-}
-
-struct FromSource {
-    qualifier: String,
-    columns: Vec<String>,
-}
-
-fn collect_from_sources<'a, A: AstTypes<'a>>(
-    stmt: AnyParsedStatement<'a>,
-    source: A::TableSource,
-    database: &CatalogLayer,
-    document: &CatalogLayer,
-) -> Vec<FromSource> {
-    let mut out = Vec::new();
-
-    match source.kind() {
-        TableSourceKind::TableRef(tr) => {
-            let name = tr.table_name();
-            let alias = name_str::<A>(tr.alias());
-            let qualifier = if alias.is_empty() { name } else { alias };
-            let columns = lookup_columns(name, document)
-                .or_else(|| lookup_columns(name, database))
-                .unwrap_or_default();
-            out.push(FromSource {
-                qualifier: qualifier.to_string(),
-                columns,
-            });
-        }
-        TableSourceKind::SubqueryTableSource(sq) => {
-            let mut columns = Vec::new();
-            if let Some(select) = sq.select() {
-                columns_from_select::<A>(stmt, select, database, document, &mut columns);
-            }
-            out.push(FromSource {
-                qualifier: name_str::<A>(sq.alias()).to_string(),
-                columns,
-            });
-        }
-        TableSourceKind::JoinClause(jc) => {
-            if let Some(left) = jc.left() {
-                out.extend(collect_from_sources::<A>(stmt, left, database, document));
-            }
-            if let Some(right) = jc.right() {
-                out.extend(collect_from_sources::<A>(stmt, right, database, document));
-            }
-        }
-        TableSourceKind::JoinPrefix(jp) => {
-            if let Some(s) = jp.source() {
-                out.extend(collect_from_sources::<A>(stmt, s, database, document));
-            }
-        }
-    }
-    out
-}
-
-/// Extract the source text from an optional `Name` node, returning `""` if absent or an error node.
-fn name_str<'a, A: AstTypes<'a>>(name: Option<A::Name>) -> &'a str {
-    match name {
-        Some(n) => match n.kind() {
-            NameKind::IdentName(ident) => ident.source(),
-            NameKind::Error(_) => "",
-        },
-        None => "",
-    }
-}
-
-fn lookup_columns(name: &str, layer: &CatalogLayer) -> Option<Vec<String>> {
-    layer.relation(name).and_then(|rel| rel.columns.clone())
-}
-
-fn expand_star(sources: &[FromSource], qualifier: &str, out: &mut Vec<String>) {
-    for src in sources {
-        if !qualifier.is_empty() && !src.qualifier.eq_ignore_ascii_case(qualifier) {
-            continue;
-        }
-        out.extend(src.columns.iter().cloned());
     }
 }
 

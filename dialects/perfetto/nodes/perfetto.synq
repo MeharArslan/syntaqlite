@@ -1,10 +1,10 @@
 node PerfettoArgDef {
-  arg_name: inline SyntaqliteSourceSpan
+  arg_name: index Name
   arg_type: inline SyntaqliteSourceSpan
   is_variadic: inline Bool
 
   fmt {
-    span(arg_name) " " span(arg_type)
+    child(arg_name) " " span(arg_type)
     if_flag(is_variadic) { "..." }
   }
 }
@@ -66,7 +66,7 @@ node CreatePerfettoTableStmt {
   schema: index PerfettoArgDefList
   select: index Select
 
-  session_schema { table(name: table_name, as_select: select) }
+  semantic { define_table(name: table_name, columns: schema, select: select) }
 
   fmt {
     group {
@@ -93,7 +93,7 @@ node CreatePerfettoViewStmt {
   schema: index PerfettoArgDefList
   select: index Select
 
-  session_schema { view(name: view_name, as_select: select) }
+  semantic { define_view(name: view_name, select: select) }
 
   fmt {
     group {
@@ -121,7 +121,7 @@ node CreatePerfettoFunctionStmt {
   return_type: index PerfettoReturnType
   select: index Select
 
-  session_schema { function(name: function_name, args: args) }
+  semantic { define_function(name: function_name, args: args) }
 
   fmt {
     group {
@@ -184,7 +184,7 @@ node CreatePerfettoMacroStmt {
 node IncludePerfettoModuleStmt {
   module_name: inline SyntaqliteSourceSpan
 
-  session_schema { import(name: module_name) }
+  semantic { import(module: module_name) }
 
   fmt {
     "INCLUDE PERFETTO MODULE " span(module_name)
