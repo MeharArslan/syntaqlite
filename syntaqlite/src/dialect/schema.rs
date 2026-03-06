@@ -42,6 +42,20 @@ pub(crate) enum SemanticRole {
     DefineFunction {
         name: FieldIdx,
         args: Option<FieldIdx>,
+        /// Optional field index of a return-type child node.
+        /// The accumulator looks up that child's [`SemanticRole`] and dispatches
+        /// on [`SemanticRole::FunctionReturn`] to determine if the function is
+        /// table-returning.
+        return_type: Option<FieldIdx>,
+    },
+    /// Annotates a return-type descriptor node (e.g. `PerfettoReturnType`).
+    ///
+    /// `columns` points to a column-list child; a non-null NodeId at runtime
+    /// means the enclosing function is table-returning. Any dialect with a
+    /// dedicated return-type descriptor node can use this role regardless of
+    /// how the surrounding syntax is structured.
+    ReturnSpec {
+        columns: Option<FieldIdx>,
     },
     Import {
         module: FieldIdx,
@@ -141,7 +155,9 @@ mod tests {
         let _ = SemanticRole::DefineFunction {
             name: 0,
             args: None,
+            return_type: None,
         };
+        let _ = SemanticRole::ReturnSpec { columns: None };
         let _ = SemanticRole::Import { module: 0 };
     }
 

@@ -240,6 +240,7 @@ pub(crate) fn generate_functions_catalog(json_content: &str) -> Result<String, S
             "scalar" => "FunctionCategory::Scalar",
             "aggregate" => "FunctionCategory::Aggregate",
             "window" => "FunctionCategory::Window",
+            "table_valued" => "FunctionCategory::TableValued",
             other => {
                 return Err(format!(
                     "unknown category '{other}' for function '{}'",

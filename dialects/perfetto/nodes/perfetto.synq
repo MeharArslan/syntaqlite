@@ -45,6 +45,8 @@ node PerfettoReturnType {
   scalar_type: inline SyntaqliteSourceSpan
   table_columns: index PerfettoArgDefList
 
+  semantic { return_spec(table_columns: table_columns) }
+
   fmt {
     switch(kind) {
       SCALAR { span(scalar_type) }
@@ -123,7 +125,7 @@ node CreatePerfettoFunctionStmt {
   return_type: index PerfettoReturnType
   select: index Select
 
-  semantic { define_function(name: function_name, args: args) }
+  semantic { define_function(name: function_name, args: args, return_type: return_type) }
 
   fmt {
     group {

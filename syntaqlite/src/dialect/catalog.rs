@@ -17,6 +17,8 @@ pub(crate) enum FunctionCategory {
     Scalar,
     Aggregate,
     Window,
+    /// Table-valued function — valid in FROM clauses.
+    TableValued,
 }
 
 /// Whether a cflag enables or omits the function.

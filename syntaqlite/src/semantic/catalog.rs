@@ -355,8 +355,6 @@ impl Catalog {
         root: AnyNodeId,
         dialect: Dialect,
     ) {
-        use crate::dialect::schema::SemanticRole;
-
         let Some((tag, fields)) = stmt.extract_fields(root) else {
             return;
         };
@@ -390,14 +388,25 @@ impl Catalog {
                 let cols = extract_columns(stmt, &fields, columns, Some(select), dialect.roles());
                 self.document.insert_relation(name_val, cols);
             }
-            SemanticRole::DefineFunction { name, args } => {
+            SemanticRole::DefineFunction {
+                name,
+                args,
+                return_type,
+            } => {
                 let name_val = match fields[name as usize] {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
                 let arity = extract_function_arity(stmt, &fields, args);
-                self.document
-                    .insert_function_overload(name_val, FunctionCategory::Scalar, arity);
+                self.document.insert_function_overload(
+                    name_val.clone(),
+                    FunctionCategory::Scalar,
+                    arity,
+                );
+                if is_table_returning(stmt, &fields, return_type, dialect.roles()) {
+                    self.document
+                        .insert_table_function(name_val, AritySpec::Any, Vec::new());
+                }
             }
             // Non-DDL roles are irrelevant to catalog accumulation.
             _ => {}
@@ -599,8 +608,6 @@ impl Catalog {
         root: AnyNodeId,
         dialect: Dialect,
     ) {
-        use crate::dialect::schema::SemanticRole;
-
         let Some((tag, fields)) = stmt.extract_fields(root) else {
             return;
         };
@@ -634,14 +641,25 @@ impl Catalog {
                 let cols = extract_columns(stmt, &fields, columns, Some(select), dialect.roles());
                 self.database.insert_relation(name_val, cols);
             }
-            SemanticRole::DefineFunction { name, args } => {
+            SemanticRole::DefineFunction {
+                name,
+                args,
+                return_type,
+            } => {
                 let name_val = match fields[name as usize] {
                     FieldValue::Span(s) if !s.is_empty() => s.to_string(),
                     _ => return,
                 };
                 let arity = extract_function_arity(stmt, &fields, args);
-                self.database
-                    .insert_function_overload(name_val, FunctionCategory::Scalar, arity);
+                self.database.insert_function_overload(
+                    name_val.clone(),
+                    FunctionCategory::Scalar,
+                    arity,
+                );
+                if is_table_returning(stmt, &fields, return_type, dialect.roles()) {
+                    self.database
+                        .insert_table_function(name_val, AritySpec::Any, Vec::new());
+                }
             }
             // Non-DDL roles are irrelevant to catalog accumulation.
             _ => {}
@@ -662,7 +680,7 @@ fn extract_columns<'a>(
     fields: &NodeFields<'a>,
     columns_field: Option<u8>,
     select_field: Option<u8>,
-    roles: &[SemanticRole],
+    roles: &'static [SemanticRole],
 ) -> Option<Vec<String>> {
     // Explicit column list takes priority.
     if let Some(col_idx) = columns_field
@@ -670,7 +688,7 @@ fn extract_columns<'a>(
         && !col_list_id.is_null()
     {
         let mut columns = Vec::new();
-        columns_from_column_list(stmt, col_list_id, &mut columns);
+        columns_from_column_list(stmt, col_list_id, roles, &mut columns);
         if !columns.is_empty() {
             return Some(columns);
         }
@@ -685,6 +703,39 @@ fn extract_columns<'a>(
     }
 
     None
+}
+
+/// Check whether a DDL function returns a table.
+///
+/// Navigates to the `return_type` child node, looks up its `SemanticRole` in
+/// `roles`, and dispatches on `ReturnSpec { columns }`. If `columns` holds
+/// a non-null `NodeId` at runtime, the function is table-returning.
+fn is_table_returning<'a>(
+    stmt: AnyParsedStatement<'a>,
+    fields: &NodeFields<'a>,
+    return_type_field: Option<u8>,
+    roles: &'static [SemanticRole],
+) -> bool {
+    let Some(rt_idx) = return_type_field else {
+        return false;
+    };
+    let FieldValue::NodeId(rt_id) = fields[rt_idx as usize] else {
+        return false;
+    };
+    if rt_id.is_null() {
+        return false;
+    }
+    let Some((rt_tag, rt_fields)) = stmt.extract_fields(rt_id) else {
+        return false;
+    };
+    let tag_idx = u32::from(rt_tag) as usize;
+    let Some(&SemanticRole::ReturnSpec { columns }) = roles.get(tag_idx) else {
+        return false;
+    };
+    let Some(cols_idx) = columns else {
+        return false;
+    };
+    matches!(rt_fields[cols_idx as usize], FieldValue::NodeId(id) if !id.is_null())
 }
 
 /// Extract argument count for a function DDL contribution.
@@ -711,6 +762,7 @@ fn extract_function_arity<'a>(
 fn columns_from_column_list(
     stmt: AnyParsedStatement<'_>,
     list_id: AnyNodeId,
+    roles: &'static [SemanticRole],
     out: &mut Vec<String>,
 ) {
     let Some(children) = stmt.list_children(list_id) else {
@@ -721,31 +773,34 @@ fn columns_from_column_list(
         if child_id.is_null() {
             continue;
         }
-        let Some((_tag, child_fields)) = stmt.extract_fields(child_id) else {
+        let Some((child_tag, child_fields)) = stmt.extract_fields(child_id) else {
             continue;
         };
 
-        // The first non-null NodeId field of a column-def node is the column name node.
-        // The first non-empty Span inside that name node is the identifier text.
-        'col: for i in 0..child_fields.len() {
-            let FieldValue::NodeId(name_id) = child_fields[i] else {
-                continue;
-            };
-            if name_id.is_null() {
-                continue;
-            }
-            let Some((_, name_fields)) = stmt.extract_fields(name_id) else {
+        // Use the ColumnDef role to find the name field precisely.
+        let tag_idx = u32::from(child_tag) as usize;
+        let name_idx = match roles.get(tag_idx) {
+            Some(&SemanticRole::ColumnDef { name, .. }) => name,
+            _ => continue,
+        };
+
+        let FieldValue::NodeId(name_id) = child_fields[name_idx as usize] else {
+            continue;
+        };
+        if name_id.is_null() {
+            continue;
+        }
+        let Some((_, name_fields)) = stmt.extract_fields(name_id) else {
+            continue;
+        };
+        // The first non-empty Span inside the name node is the identifier text.
+        for j in 0..name_fields.len() {
+            if let FieldValue::Span(s) = name_fields[j]
+                && !s.is_empty()
+            {
+                out.push(s.to_ascii_lowercase());
                 break;
-            };
-            for j in 0..name_fields.len() {
-                if let FieldValue::Span(s) = name_fields[j]
-                    && !s.is_empty()
-                {
-                    out.push(s.to_ascii_lowercase());
-                    break 'col;
-                }
             }
-            break; // only inspect the first non-null NodeId field per column-def
         }
     }
 }
@@ -878,7 +933,12 @@ fn infer_result_col_name<'a>(
 fn build_dialect_layer(layer: &mut CatalogLayer, dialect: &Dialect) {
     #[cfg(feature = "sqlite")]
     for entry in crate::sqlite::functions_catalog::SQLITE_FUNCTIONS {
-        if is_function_available(entry, dialect) {
+        if !is_function_available(entry, dialect) {
+            continue;
+        }
+        if entry.info.category == DialectFunctionCategory::TableValued {
+            layer.insert_table_function(entry.info.name.to_string(), AritySpec::Any, Vec::new());
+        } else {
             layer.insert_function_arities(
                 entry.info.name.to_string(),
                 map_function_category(entry.info.category),
@@ -893,6 +953,7 @@ fn map_function_category(category: DialectFunctionCategory) -> FunctionCategory 
         DialectFunctionCategory::Scalar => FunctionCategory::Scalar,
         DialectFunctionCategory::Aggregate => FunctionCategory::Aggregate,
         DialectFunctionCategory::Window => FunctionCategory::Window,
+        DialectFunctionCategory::TableValued => FunctionCategory::Scalar, // unreachable via this path
     }
 }
 

@@ -380,6 +380,7 @@ impl<'a> ValidationPass<'a> {
             SemanticRole::DefineTable { .. }
             | SemanticRole::DefineView { .. }
             | SemanticRole::DefineFunction { .. }
+            | SemanticRole::ReturnSpec { .. }
             | SemanticRole::Import { .. } => {}
 
             // Transparent: recurse into children without special handling.
@@ -1092,6 +1093,39 @@ mod tests {
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { .. }))
             .collect();
         assert!(unknown.is_empty(), "VIEW not visible: {unknown:?}");
+    }
+
+    // ── Analyzer: DDL column extraction (role-based) ───────────────────────────
+
+    #[test]
+    fn ddl_columns_visible_to_column_ref() {
+        // Verifies columns_from_column_list uses the ColumnDef role to extract
+        // names precisely, and those names are visible to column-ref validation.
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let src = "CREATE TABLE t (id INTEGER, name TEXT); SELECT id FROM t;";
+        let model = az.analyze(src, &cat, &strict());
+        assert!(
+            model.diagnostics().is_empty(),
+            "id is a known column of t: {:?}",
+            model.diagnostics()
+        );
+    }
+
+    #[test]
+    fn ddl_unknown_column_on_ddl_table_flagged() {
+        // Verifies that column names extracted from DDL are used for validation:
+        // a column not in the DDL definition is correctly flagged.
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let src = "CREATE TABLE t (id INTEGER); SELECT missing FROM t;";
+        let model = az.analyze(src, &cat, &strict());
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert_eq!(errs.len(), 1, "unknown column should be flagged: {:?}", model.diagnostics());
     }
 
     // ── Analyzer: function validation ──────────────────────────────────────────

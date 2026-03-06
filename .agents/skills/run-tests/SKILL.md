@@ -1,6 +1,6 @@
 ---
 name: run-tests
-description: Run tests to verify correctness after code changes. Use when the user asks to run tests, verify changes, or check that things still work. NOTE: The tools/ test-running scripts are currently broken — only run Rust unit tests.
+description: Run tests to verify correctness after code changes. Use when the user asks to run tests, verify changes, or check that things still work. NOTE: Only run Rust unit tests (tools/run-unit-tests). The diff/integration test scripts are currently broken.
 user_invocable: true
 ---
 
@@ -8,7 +8,7 @@ user_invocable: true
 
 Run tests to verify correctness after code changes.
 
-> **WARNING**: The `tools/` test-running scripts are currently broken (AST diff tests, fmt diff tests, Perfetto tests, amalgamation tests). Do NOT run them. Only run Rust unit tests. Other `tools/` scripts (e.g. `run-codegen`) are fine.
+> **WARNING**: The following diff/integration test scripts are currently broken — do NOT run them. `tools/run-unit-tests` is fine.
 
 ## Instructions
 

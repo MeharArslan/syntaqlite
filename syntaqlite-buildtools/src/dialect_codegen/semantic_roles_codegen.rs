@@ -51,11 +51,19 @@ fn emit_role(fields: &[Field], role: &SynqRole) -> String {
             opt(columns),
             fi(select)
         ),
-        SynqRole::DefineFunction { name, args } => format!(
-            "SemanticRole::DefineFunction {{ name: {}, args: {} }}",
+        SynqRole::DefineFunction {
+            name,
+            args,
+            return_type,
+        } => format!(
+            "SemanticRole::DefineFunction {{ name: {}, args: {}, return_type: {} }}",
             fi(name),
-            opt(args)
+            opt(args),
+            opt(return_type)
         ),
+        SynqRole::ReturnSpec { columns } => {
+            format!("SemanticRole::ReturnSpec {{ columns: {} }}", opt(columns))
+        }
         SynqRole::Import { module } => format!("SemanticRole::Import {{ module: {} }}", fi(module)),
         // ── Column-list items ─────────────────────────────────────────────
         SynqRole::ColumnDef {
@@ -314,7 +322,61 @@ mod tests {
         let model = AstModel::new(&items);
         let out = generate_rust_semantic_roles(&model, "TEST");
         assert!(
-            out.contains("SemanticRole::DefineFunction { name: 0, args: Some(1) }"),
+            out.contains(
+                "SemanticRole::DefineFunction { name: 0, args: Some(1), return_type: None }"
+            ),
+            "got:\n{out}"
+        );
+    }
+
+    #[test]
+    fn return_spec_with_table_columns() {
+        let items = model_from(
+            r"node ReturnType {
+                cols: index ColList
+                semantic { return_spec(table_columns: cols) }
+            }",
+        );
+        let model = AstModel::new(&items);
+        let out = generate_rust_semantic_roles(&model, "TEST");
+        assert!(
+            out.contains("SemanticRole::ReturnSpec { columns: Some(0) }"),
+            "got:\n{out}"
+        );
+    }
+
+    #[test]
+    fn return_spec_without_table_columns_is_none() {
+        let items = model_from(
+            r"node ReturnType {
+                scalar_type: inline SyntaqliteSourceSpan
+                semantic { return_spec() }
+            }",
+        );
+        let model = AstModel::new(&items);
+        let out = generate_rust_semantic_roles(&model, "TEST");
+        assert!(
+            out.contains("SemanticRole::ReturnSpec { columns: None }"),
+            "got:\n{out}"
+        );
+    }
+
+    #[test]
+    fn define_function_with_return_type() {
+        let items = model_from(
+            r"node CreateFunctionStmt {
+                func_name: inline SyntaqliteSourceSpan
+                return_type: index ReturnType
+                semantic { define_function(name: func_name, return_type: return_type) }
+            }",
+        );
+        let model = AstModel::new(&items);
+        let out = generate_rust_semantic_roles(&model, "TEST");
+        // func_name = field 0, return_type = field 1
+        assert!(
+            out.contains(
+                "SemanticRole::DefineFunction { name: 0, args: None, return_type: Some(1) }"
+            ),
             "got:\n{out}"
         );
     }

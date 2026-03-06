@@ -46,6 +46,10 @@ pub(crate) enum SemanticRole {
     DefineFunction {
         name: String,
         args: Option<String>,
+        return_type: Option<String>,
+    },
+    ReturnSpec {
+        columns: Option<String>,
     },
     Import {
         module: String,
@@ -532,6 +536,10 @@ impl Parser {
             "define_function" => SemanticRole::DefineFunction {
                 name: require_param(&params, "name", node_name, "define_function")?,
                 args: get_param(&params, "args").map(str::to_string),
+                return_type: get_param(&params, "return_type").map(str::to_string),
+            },
+            "return_spec" => SemanticRole::ReturnSpec {
+                columns: get_param(&params, "table_columns").map(str::to_string),
             },
             "import" => SemanticRole::Import {
                 module: require_param(&params, "module", node_name, "import")?,
