@@ -34,7 +34,7 @@ THIRD_PARTY_SRC_DIR: str = os.path.join(THIRD_PARTY_DIR, "src")
 
 SQLITE_VERSION: str = "3510200"  # 3.51.2
 SQLITE_YEAR: str = "2026"
-RUST_VERSION: str = "1.93.0"  # Latest stable
+RUST_VERSION: str = "1.94.0"  # Latest stable
 EMSCRIPTEN_VERSION: str = "4.0.8"  # Pre-built tarballs from Perfetto's GCS
 NODE_VERSION: str = "20.11.0"  # Pre-built from Chromium's storage (same as Perfetto)
 
@@ -84,30 +84,30 @@ BINARY_DEPS = [
               "5557943a174e3b67cdc389c10b0ceea2195f318c5c665dd77a427ed01a094557",
               "windows", "x64", "raw"),
     # Rust toolchain.
-    # SHA256 hashes from https://static.rust-lang.org/dist/channel-rust-1.93.0.toml
+    # SHA256 hashes from https://static.rust-lang.org/dist/channel-rust-1.94.0.toml
     BinaryDep("rust", RUST_VERSION,
-              f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-aarch64-apple-darwin.tar.gz",
-              "e33cf237cfff8af75581fedece9f3c348e976bb8246078786f1888c3b251d380",
+              f"https://static.rust-lang.org/dist/2026-03-05/rust-{RUST_VERSION}-aarch64-apple-darwin.tar.gz",
+              "94903e93a4334d42bb6d92377a39903349c07f3709c792864bcdf7959f3c8c7d",
               "darwin", "arm64", "tar.gz",
               f"rust-{RUST_VERSION}-aarch64-apple-darwin"),
     BinaryDep("rust", RUST_VERSION,
-              f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-apple-darwin.tar.gz",
-              "0297504189bdee029bacb61245cb131e3a2cc4bfd50c9e11281ea8957706e675",
+              f"https://static.rust-lang.org/dist/2026-03-05/rust-{RUST_VERSION}-x86_64-apple-darwin.tar.gz",
+              "ac5cfac1afdb70fe2b0983a3fd2e54e2f5d007fc98d5cda59976a9e339c63893",
               "darwin", "x64", "tar.gz",
               f"rust-{RUST_VERSION}-x86_64-apple-darwin"),
     BinaryDep("rust", RUST_VERSION,
-              f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-unknown-linux-gnu.tar.gz",
-              "ca55df589f7cd68eec883086c5ff63ece04a1820e6d23e514fbb412cc8bf77a4",
+              f"https://static.rust-lang.org/dist/2026-03-05/rust-{RUST_VERSION}-x86_64-unknown-linux-gnu.tar.gz",
+              "6d77b3f9396cc23aa4f3ae2822b1349c4b2cf746dee4228212b5bed94200f421",
               "linux", "x64", "tar.gz",
               f"rust-{RUST_VERSION}-x86_64-unknown-linux-gnu"),
     BinaryDep("rust", RUST_VERSION,
-              f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-aarch64-unknown-linux-gnu.tar.gz",
-              "091f981b95cbc6713ce6d6c23817286d4c10fd35fc76a990a3af430421751cfc",
+              f"https://static.rust-lang.org/dist/2026-03-05/rust-{RUST_VERSION}-aarch64-unknown-linux-gnu.tar.gz",
+              "bb205f17bbb1d9d914305ee33515c519e1d35eb693571691ec4da8401e5b4660",
               "linux", "arm64", "tar.gz",
               f"rust-{RUST_VERSION}-aarch64-unknown-linux-gnu"),
     BinaryDep("rust", RUST_VERSION,
-              f"https://static.rust-lang.org/dist/2026-01-22/rust-{RUST_VERSION}-x86_64-pc-windows-msvc.tar.gz",
-              "4d171c1a5a0e4b2450b6426be70faa9bf31848362262d4dc8e9b29072e268e43",
+              f"https://static.rust-lang.org/dist/2026-03-05/rust-{RUST_VERSION}-x86_64-pc-windows-msvc.tar.gz",
+              "bd6c2b719654a4e8320e6423cf01362972c893bc5f72f905d45847a537333fb9",
               "windows", "x64", "tar.gz",
               f"rust-{RUST_VERSION}-x86_64-pc-windows-msvc"),
 ]
@@ -117,8 +117,8 @@ BINARY_DEPS = [
 UI_DEPS = [
     # Rust std for wasm32-unknown-emscripten target.
     BinaryDep("rust-wasm32", RUST_VERSION,
-              f"https://static.rust-lang.org/dist/2026-01-22/rust-std-{RUST_VERSION}-wasm32-unknown-emscripten.tar.gz",
-              "3695cbe0527720c1104f327c356a6015756f15f0a63fdc2a00f78c316b0f7f8a",
+              f"https://static.rust-lang.org/dist/2026-03-05/rust-std-{RUST_VERSION}-wasm32-unknown-emscripten.tar.gz",
+              "2f9048f9254278249492b132ae2ac3b969aadafd659a1d2fe63a591dcb7651cc",
               "all", "all", "tar.gz",
               f"rust-std-{RUST_VERSION}-wasm32-unknown-emscripten"),
     # Node.js: pre-built from Chromium's storage (same as Perfetto).
