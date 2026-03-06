@@ -322,7 +322,7 @@ pub(crate) fn generate_parse_h(dialect: &str) -> String {
         "void Synq{pascal}ParseFree(void* parser, void (*freeProc)(void*));"
     ));
     w.line(&format!(
-        "void Synq{pascal}Parse(void* parser, uint32_t token_type, SynqParseToken minor,"
+        "void Synq{pascal}Parse(void* parser, int token_type, SynqParseToken minor,"
     ));
     w.line(&format!(
         "{}SynqParseCtx* pCtx);",

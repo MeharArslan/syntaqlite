@@ -91,7 +91,7 @@ typedef struct SyntaqliteGrammarTemplate {
   void (*parser_finalize)(void* parser);
   void (*parser_free)(void* parser, void (*freeProc)(void*));
   void (*parser_feed)(void* parser,
-                      uint32_t token_type,
+                      int token_type,
                       SynqParseToken minor,
                       SynqParseCtx* pCtx);
   void (*parser_trace)(FILE* trace_file, char* prompt);

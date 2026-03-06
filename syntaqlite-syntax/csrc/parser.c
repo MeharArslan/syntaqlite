@@ -125,7 +125,7 @@ static int feed_one_token(SyntaqliteParser* p,
                           uint32_t token_idx) {
   SynqParseToken minor = {
       .z = text, .n = len, .type = token_type, .token_idx = token_idx};
-  SYNQ_PARSER_FEED(p->grammar.tmpl, p->lemon, token_type, minor, &p->ctx);
+  SYNQ_PARSER_FEED(p->grammar.tmpl, p->lemon, (int)token_type, minor, &p->ctx);
   p->last_token_type = token_type;
 
   if (p->ctx.error) {

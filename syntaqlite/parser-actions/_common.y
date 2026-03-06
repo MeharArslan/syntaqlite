@@ -26,7 +26,7 @@
 #include "syntaqlite_dialect/ast_builder.h"
 #include "syntaqlite_dialect/dialect_macros.h"
 #include "syntaqlite/types.h"
-#include "csrc/sqlite/dialect_builder.h"
+#include "@DIALECT_BUILDER_H@"
 
 /* BEGIN GRAMMAR_TYPES */
 // Grammar-specific struct types for multi-valued grammar nonterminals.

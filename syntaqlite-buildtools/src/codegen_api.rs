@@ -476,10 +476,38 @@ pub(crate) fn generate_codegen_artifacts(
         dialect_codegen::AstModel::new(&all_items)
     };
 
+    // Substitute the dialect_builder.h include path placeholder.
+    // _common.y uses @DIALECT_BUILDER_H@ so the correct path (which varies
+    // by output layout) is injected here rather than being hardcoded in the
+    // grammar source.
+    let y_files_substituted: Vec<(String, String)>;
+    let y_files_for_parser = if request
+        .y_files
+        .iter()
+        .any(|(_, c)| c.contains("@DIALECT_BUILDER_H@"))
+    {
+        y_files_substituted = request
+            .y_files
+            .iter()
+            .map(|(name, content)| {
+                (
+                    name.clone(),
+                    content.replace(
+                        "@DIALECT_BUILDER_H@",
+                        request.dialect_c_includes.ast_builder_h,
+                    ),
+                )
+            })
+            .collect();
+        &y_files_substituted[..]
+    } else {
+        request.y_files
+    };
+
     let work_dir =
         tempfile::TempDir::new().map_err(|e| format!("Failed to create temp directory: {e}"))?;
     parser_pipeline::generate_parser_from_contents(
-        request.y_files,
+        y_files_for_parser,
         parser_name,
         work_dir.path().to_string_lossy().as_ref(),
         Some(request.dialect_c_includes.tokens_header),
