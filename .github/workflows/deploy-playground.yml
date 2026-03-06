@@ -24,7 +24,7 @@ jobs:
         run: python3 tools/install-build-deps --ui
 
       - name: Build WASM modules
-        run: python3 tools/build-web-playground
+        run: python3 tools/build-web-playground --hermetic
 
       - name: Build @syntaqlite/js
         working-directory: web/syntaqlite-js

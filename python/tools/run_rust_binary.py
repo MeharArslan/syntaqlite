@@ -42,9 +42,17 @@ def run_rust_binary(binary_name: str, args: list[str] | None = None, cwd: str | 
         set_sysroot = False
         args = [a for a in args if a != "--no-sysroot"]
 
+    # --hermetic: skip system binary lookup and use third_party toolchain only.
+    # Use this when the rustc version must exactly match pinned third_party deps
+    # (e.g. wasm32 sysroot built against a specific rustc release).
+    hermetic = False
+    if "--hermetic" in args:
+        hermetic = True
+        args = [a for a in args if a != "--hermetic"]
+
     # Prefer system binary if available (avoids third_party download requirement).
     system_binary = shutil.which(binary_name)
-    if system_binary:
+    if system_binary and not hermetic:
         if cwd or platform.system().lower() == "windows":
             sys.exit(subprocess.call([system_binary] + args, cwd=cwd))
         else:

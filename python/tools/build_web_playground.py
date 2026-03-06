@@ -61,6 +61,11 @@ def main() -> int:
         default="",
         help="extra target rustc flags appended for wasm32-unknown-emscripten",
     )
+    parser.add_argument(
+        "--hermetic",
+        action="store_true",
+        help="use third_party rustc/cargo instead of system binaries (for CI)",
+    )
     args = parser.parse_args()
 
     platform_dir = get_platform_dir()
@@ -132,9 +137,10 @@ def main() -> int:
     env["CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_RUSTFLAGS"] = target_rustflags.strip()
 
     cargo = os.path.join(ROOT_DIR, "tools", "cargo")
+    cargo_flags = ["--no-sysroot"] + (["--hermetic"] if args.hermetic else [])
     rc = subprocess.call(
         [
-            sys.executable, cargo, "--no-sysroot",
+            sys.executable, cargo, *cargo_flags,
             "build", "-p", "syntaqlite-wasm",
             "--target", "wasm32-unknown-emscripten", "--release",
         ],
@@ -258,7 +264,7 @@ const SyntaqliteGrammar* syntaqlite_dialect(void) {
 
     rc = subprocess.call(
         [
-            sys.executable, cargo, "--no-sysroot",
+            sys.executable, cargo, *cargo_flags,
             "run", "-p", "syntaqlite-cli", "--",
             "dialect", "--name", "perfetto",
             "--actions-dir", os.path.join(ROOT_DIR, "dialects", "perfetto", "actions"),
