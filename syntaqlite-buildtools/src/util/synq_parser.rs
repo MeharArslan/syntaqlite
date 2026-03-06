@@ -30,7 +30,6 @@ pub(crate) fn parse_synq_file(input: &str) -> Result<Vec<Item>, SynqParseError> 
 /// Covers catalog, expression, source, and scope roles described in
 /// docs/semantic-roles-plan.md.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub(crate) enum SemanticRole {
     // ── Catalog roles ─────────────────────────────────────────────────────
     DefineTable {
@@ -119,7 +118,6 @@ pub(crate) enum SemanticRole {
 
 /// A `semantic { ... }` annotation on a node.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub(crate) struct SemanticAnnotation {
     pub(crate) role: SemanticRole,
 }

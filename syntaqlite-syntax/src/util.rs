@@ -262,7 +262,7 @@ pub(crate) mod ffi {
         pub(super) bytes: [u8; 3],
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     impl CCflags {
         pub(crate) const fn new() -> Self {
             Self { bytes: [0; 3] }

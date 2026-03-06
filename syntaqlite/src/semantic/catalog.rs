@@ -38,14 +38,12 @@ pub(crate) struct FunctionOverload {
     pub arity: AritySpec,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct FunctionSet {
     name: String,
     overloads: Vec<FunctionOverload>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct RelationEntry {
     name: String,
@@ -54,7 +52,6 @@ struct RelationEntry {
     columns: Option<Vec<String>>,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct TableFunctionSet {
     name: String,
@@ -65,7 +62,6 @@ struct TableFunctionSet {
 
 // ── Resolution result types ───────────────────────────────────────────────────
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum ColumnResolution {
     /// Column found (or table has unknown columns — conservatively accepted).
@@ -78,7 +74,6 @@ pub(crate) enum ColumnResolution {
     NotFound,
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum FunctionCheckResult {
     Ok,
@@ -99,7 +94,6 @@ pub struct CatalogLayerContents {
     table_functions: HashMap<String, TableFunctionSet>,
 }
 
-#[allow(dead_code)]
 impl CatalogLayerContents {
     /// Remove all entries from this layer.
     fn clear(&mut self) {
@@ -269,12 +263,10 @@ const FIXED_LAYER_COUNT: usize = 4;
 /// catalog.layer_mut(CatalogLayer::Database)
 ///        .insert_relation("users", Some(vec!["id".into(), "name".into()]));
 /// ```
-#[allow(dead_code)]
 pub struct Catalog {
     layers: Vec<CatalogLayerContents>,
 }
 
-#[allow(dead_code)]
 impl Catalog {
     /// Create a catalog for `dialect`. The dialect's built-in functions are
     /// loaded immediately into the dialect layer.
@@ -961,7 +953,6 @@ fn canonical_name(name: &str) -> String {
     name.to_ascii_lowercase()
 }
 
-#[allow(dead_code)]
 fn overload_accepts(overload: FunctionOverload, arg_count: usize) -> bool {
     match overload.arity {
         AritySpec::Exact(n) => n == arg_count,
@@ -970,7 +961,6 @@ fn overload_accepts(overload: FunctionOverload, arg_count: usize) -> bool {
     }
 }
 
-#[allow(dead_code)]
 fn expected_fixed_arities(set: &FunctionSet) -> Vec<usize> {
     let mut arities: Vec<usize> = set
         .overloads
@@ -985,7 +975,6 @@ fn expected_fixed_arities(set: &FunctionSet) -> Vec<usize> {
     arities
 }
 
-#[allow(dead_code)]
 fn push_unique(seen: &mut HashSet<String>, out: &mut Vec<String>, name: &str) {
     let lower = canonical_name(name);
     if seen.insert(lower) {

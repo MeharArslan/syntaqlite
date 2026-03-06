@@ -27,13 +27,12 @@ use super::model::{
 /// Create once for a dialect and reuse across inputs. The dialect layer is
 /// built at construction and never changes. The database and document layers
 /// are reset on each [`analyze`](Self::analyze) call.
-#[allow(dead_code)]
 pub struct SemanticAnalyzer {
     dialect: Dialect,
     catalog: Catalog,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 impl SemanticAnalyzer {
     /// Create an analyzer for the built-in `SQLite` dialect.
     #[cfg(feature = "sqlite")]
@@ -246,7 +245,6 @@ impl Default for SemanticAnalyzer {
 
 
 #[cfg(feature = "sqlite")]
-#[allow(dead_code)]
 fn parse_error_span(err: &syntaqlite_syntax::ParseError<'_>, source: &str) -> (usize, usize) {
     match (err.offset(), err.length()) {
         (Some(off), Some(len)) if len > 0 => (off, off + len),
@@ -266,7 +264,6 @@ fn parse_error_span(err: &syntaqlite_syntax::ParseError<'_>, source: &str) -> (u
 }
 
 #[cfg(feature = "sqlite")]
-#[allow(dead_code)]
 fn completion_boundary(
     source: &str,
     tokens: &[StoredToken],
@@ -298,7 +295,6 @@ fn completion_boundary(
 }
 
 #[cfg(feature = "sqlite")]
-#[allow(dead_code)]
 fn statement_token_start(tokens: &[StoredToken], boundary: usize) -> usize {
     tokens[..boundary]
         .iter()
@@ -307,7 +303,6 @@ fn statement_token_start(tokens: &[StoredToken], boundary: usize) -> usize {
 }
 
 #[cfg(feature = "sqlite")]
-#[allow(dead_code)]
 fn merge_expected_tokens(into: &mut Vec<TokenType>, extra: Vec<TokenType>) {
     let mut seen: HashSet<TokenType> = into.iter().copied().collect();
     for token in extra {
@@ -321,7 +316,6 @@ fn merge_expected_tokens(into: &mut Vec<TokenType>, extra: Vec<TokenType>) {
 
 /// Per-statement validation pass.  Reads the dialect's [`SemanticRole`] table
 /// and dispatches node visits to role-specific handlers.
-#[allow(dead_code)]
 struct ValidationPass<'a> {
     roles: &'static [SemanticRole],
     source_start: usize,
@@ -330,7 +324,6 @@ struct ValidationPass<'a> {
     diagnostics: &'a mut Vec<Diagnostic>,
 }
 
-#[allow(dead_code)]
 impl<'a> ValidationPass<'a> {
     fn run(
         stmt: AnyParsedStatement<'a>,

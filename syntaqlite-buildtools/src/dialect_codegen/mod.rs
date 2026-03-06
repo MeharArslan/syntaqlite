@@ -53,9 +53,8 @@ pub(crate) struct FlagsRef<'a> {
 pub(crate) struct NodeRef<'a> {
     pub(crate) name: &'a str,
     pub(crate) fields: &'a [Field],
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(crate) fmt: Option<&'a [Fmt]>,
-    #[allow(dead_code)]
     pub(crate) semantic: Option<&'a SemanticAnnotation>,
 }
 
@@ -63,7 +62,7 @@ pub(crate) struct NodeRef<'a> {
 pub(crate) struct ListRef<'a> {
     pub(crate) name: &'a str,
     pub(crate) child_type: &'a str,
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(crate) fmt: Option<&'a [Fmt]>,
 }
 

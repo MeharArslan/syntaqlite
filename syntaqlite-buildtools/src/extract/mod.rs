@@ -300,7 +300,7 @@ pub(crate) const SYNQ_CFLAG_TABLE: &[(&str, &str, u32, &[&str])] = &[
 ];
 
 /// Look up the SYNQ cflag index for a `SQLITE_OMIT_*` or `SQLITE_ENABLE_*` flag.
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[must_use]
 pub(crate) fn synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> Option<u32> {
     SYNQ_CFLAG_TABLE
@@ -313,7 +313,6 @@ pub(crate) fn synq_cflag_for_sqlite_flag(sqlite_flag: &str) -> Option<u32> {
 ///
 /// Local indices are 0, 1, 2, … assigned by iterating `SYNQ_CFLAG_TABLE` in order
 /// and counting only entries whose categories slice contains `group`.
-#[allow(dead_code)]
 #[must_use]
 pub(crate) fn group_local_index(group: &str, sqlite_flag: &str) -> Option<u32> {
     let mut local = 0u32;
@@ -428,7 +427,7 @@ fn write_cflag_pinning(out: &mut String, entries: &[(&str, &str, u32)]) {
 /// # Panics
 ///
 /// Never in practice; panics only if the number of cflags exceeds `u32::MAX`.
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[must_use]
 pub(crate) fn generate_cflags_h(group: &str) -> String {
     use std::fmt::Write as _;

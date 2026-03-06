@@ -17,13 +17,11 @@ use super::diagnostics::{Diagnostic, Severity};
 ///   |               ^~~
 ///   = help: did you mean 'users'?
 /// ```
-#[allow(dead_code)]
 pub struct DiagnosticRenderer<'a> {
     source: &'a str,
     file: &'a str,
 }
 
-#[allow(dead_code)]
 impl<'a> DiagnosticRenderer<'a> {
     /// Create a renderer bound to a source string and display file label.
     pub fn new(source: &'a str, file: &'a str) -> Self {

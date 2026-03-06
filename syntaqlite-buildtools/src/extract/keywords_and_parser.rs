@@ -25,7 +25,7 @@ use crate::util::mkkeywordhash_parser;
 /// Each entry is (`flag_name`, polarity, description).
 /// - "omit": default = OFF. Turning ON removes syntax.
 /// - "enable": default = OFF. Turning ON adds syntax.
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub(crate) const PARSER_CFLAGS: &[(&str, &str, &str)] = &[
     // OMIT flags — each removes a SQL statement or clause from the grammar.
     ("SQLITE_OMIT_ALTERTABLE", "omit", "removes ALTER TABLE"),

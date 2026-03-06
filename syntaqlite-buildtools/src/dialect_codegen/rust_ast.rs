@@ -391,7 +391,7 @@ impl AstModel<'_> {
         w.line("#[derive(Debug, Clone, Copy, PartialEq, Eq)]");
         w.line("#[repr(u32)]");
         w.open_block("pub(crate) enum Bool {");
-        w.line("#[allow(dead_code)] // Populated from C FFI");
+        w.line("#[expect(dead_code)] // Populated from C FFI");
         w.line("False = 0,");
         w.line("True = 1,");
         w.close_block("}");

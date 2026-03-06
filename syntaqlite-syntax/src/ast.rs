@@ -309,7 +309,7 @@ mod ffi {
         pub(crate) length: u16,
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     impl CSourceSpan {
         /// Returns `true` if the span covers zero bytes.
         pub(crate) fn is_empty(self) -> bool {

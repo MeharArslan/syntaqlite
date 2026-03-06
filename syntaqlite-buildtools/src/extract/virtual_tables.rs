@@ -16,7 +16,7 @@
 /// Each entry is (`flag_name`, polarity, `compile_defines`).
 /// - OMIT flags: default = OFF. Turning ON removes virtual tables.
 /// - ENABLE flags: default = OFF. Turning ON adds virtual tables.
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub(crate) const VIRTUAL_TABLE_CFLAGS: &[(&str, &str, &[&str])] = &[
     // OMIT flags.
     //

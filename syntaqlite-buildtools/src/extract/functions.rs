@@ -433,7 +433,6 @@ pub(crate) fn generate_cflag_versions_rs(availability: &CflagAvailability) -> St
 /// Uses [`super::SYNQ_CFLAG_TABLE`] as the authoritative source for group membership
 /// (so multi-category flags are correctly included in all their groups), and looks up
 /// `since` version data from `availability`. Emits group-local indices (0, 1, 2, …).
-#[allow(dead_code)]
 pub(crate) fn generate_cflag_versions_rs_for_group(
     availability: &CflagAvailability,
     group: &str,
@@ -461,7 +460,7 @@ pub(crate) fn generate_cflag_versions_rs_for_group(
     out.push_str("///\n");
     out.push_str("/// `category` groups flags by feature area for UI presentation:\n");
     out.push_str("/// \"parser\", \"functions\", \"vtable\", \"extensions\".\n");
-    out.push_str("#[allow(dead_code)]\n");
+    out.push_str("#[expect(dead_code)]\n");
     out.push_str("pub(crate) const CFLAG_TABLE: &[(&str, u32, i32, &str)] = &[\n");
 
     let mut local_idx: u32 = 0;
@@ -511,7 +510,7 @@ pub(crate) fn write_cflag_versions_rs(
 /// # Errors
 ///
 /// Returns an error if creating the parent directory or writing the file fails.
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub(crate) fn write_cflag_versions_rs_for_group(
     availability: &CflagAvailability,
     group: &str,
@@ -548,7 +547,6 @@ fn version_string_to_int(s: &str) -> i32 {
 ///
 /// `3030001` → `"3_030_001"`, `0` → `"0"`.
 /// This avoids `clippy::unreadable_literal` in generated source files.
-#[allow(dead_code)]
 fn format_version_int(v: i32) -> String {
     if v == 0 {
         return "0".to_string();

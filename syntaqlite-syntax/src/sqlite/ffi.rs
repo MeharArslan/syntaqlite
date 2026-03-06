@@ -10,7 +10,7 @@ use crate::ast::{AnyNodeId, ArenaNode, SourceSpan};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub(crate) enum Bool {
-    #[allow(dead_code)] // Populated from C FFI
+    #[expect(dead_code)] // Populated from C FFI
     False = 0,
     True = 1,
 }
