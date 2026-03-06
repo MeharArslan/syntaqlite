@@ -3,7 +3,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use crate::util::synq_parser::{Field, Fmt, Item, SchemaAnnotation};
+use crate::util::synq_parser::{Field, Fmt, Item, SemanticAnnotation};
 
 pub(crate) mod c_dialect;
 pub(crate) mod c_meta_codegen;
@@ -55,7 +55,7 @@ pub(crate) struct NodeRef<'a> {
     #[allow(dead_code)]
     pub(crate) fmt: Option<&'a [Fmt]>,
     #[allow(dead_code)]
-    pub(crate) schema: Option<&'a SchemaAnnotation>,
+    pub(crate) semantic: Option<&'a SemanticAnnotation>,
 }
 
 #[derive(Clone, Copy)]
@@ -119,13 +119,13 @@ impl<'a> AstModel<'a> {
                     name,
                     fields,
                     fmt,
-                    schema,
+                    semantic,
                 } => {
                     let node = NodeRef {
                         name: name.as_str(),
                         fields: fields.as_slice(),
                         fmt: fmt.as_deref(),
-                        schema: schema.as_ref(),
+                        semantic: semantic.as_ref(),
                     };
                     node_names.insert(node.name);
                     nodes.push(node);
@@ -236,14 +236,14 @@ impl<'a> AstModel<'a> {
                     name,
                     fields,
                     fmt,
-                    schema,
+                    semantic,
                 } => {
                     let name_str = name.as_str();
                     let node = NodeRef {
                         name: name_str,
                         fields: fields.as_slice(),
                         fmt: fmt.as_deref(),
-                        schema: schema.as_ref(),
+                        semantic: semantic.as_ref(),
                     };
 
                     if let Some(base_fields) = base_node_fields.get(name_str) {

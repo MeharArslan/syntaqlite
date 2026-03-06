@@ -837,7 +837,7 @@ mod tests {
                 type_name: "SyntaqliteSourceSpan".into(),
             }],
             fmt: Some(vec![Fmt::Span("source".into())]),
-            schema: None,
+            semantic: None,
         }];
 
         let output = generate_rust_fmt_ops(&AstModel::new(&items)).unwrap();
@@ -863,7 +863,7 @@ mod tests {
                 then: vec![Fmt::Text("YES".into())],
                 els: Some(vec![Fmt::Text("NO".into())]),
             }]),
-            schema: None,
+            semantic: None,
         }];
 
         let output = generate_rust_fmt_ops(&AstModel::new(&items)).unwrap();
@@ -894,7 +894,7 @@ mod tests {
                     ],
                     default: None,
                 }]),
-                schema: None,
+                semantic: None,
             },
         ];
 
@@ -921,7 +921,7 @@ mod tests {
                     field: "op".into(),
                     mappings: vec![("PLUS".into(), "+".into()), ("MINUS".into(), "-".into())],
                 }]),
-                schema: None,
+                semantic: None,
             },
         ];
 
@@ -958,7 +958,7 @@ mod tests {
                 keyword: "FROM".into(),
                 field: "target".into(),
             }]),
-            schema: None,
+            semantic: None,
         }];
 
         let output = generate_rust_fmt_ops(&AstModel::new(&items)).unwrap();
@@ -979,7 +979,7 @@ mod tests {
                     type_name: "Expr".into(),
                 }],
                 fmt: Some(vec![Fmt::Child("x".into())]),
-                schema: None,
+                semantic: None,
             },
             Item::List {
                 name: "FooList".into(),

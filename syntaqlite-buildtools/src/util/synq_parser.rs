@@ -25,26 +25,36 @@ pub(crate) fn parse_synq_file(input: &str) -> Result<Vec<Item>, SynqParseError> 
 
 // ── AST ──────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum SchemaKind {
-    Table,
-    View,
-    Function,
-    Import,
-}
-
+/// A semantic role for a node.
+///
+/// Catalog roles replace `session_schema { ... }`. Expression, source, and
+/// scope roles are added in later migration steps (see docs/semantic-roles-plan.md).
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-pub(crate) struct SchemaParam {
-    pub(crate) key: String,
-    pub(crate) field: String,
+pub(crate) enum SemanticRole {
+    DefineTable {
+        name: String,
+        columns: Option<String>,
+        select: Option<String>,
+    },
+    DefineView {
+        name: String,
+        select: String,
+    },
+    DefineFunction {
+        name: String,
+        args: Option<String>,
+    },
+    Import {
+        module: String,
+    },
 }
 
+/// A `semantic { ... }` annotation on a node.
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-pub(crate) struct SchemaAnnotation {
-    pub(crate) kind: SchemaKind,
-    pub(crate) params: Vec<SchemaParam>,
+pub(crate) struct SemanticAnnotation {
+    pub(crate) role: SemanticRole,
 }
 
 #[derive(Debug)]
@@ -53,7 +63,7 @@ pub(crate) enum Item {
         name: String,
         fields: Vec<Field>,
         fmt: Option<Vec<Fmt>>,
-        schema: Option<SchemaAnnotation>,
+        semantic: Option<SemanticAnnotation>,
     },
     Enum {
         name: String,
@@ -275,6 +285,23 @@ fn tokenize(input: &str) -> Result<Vec<Token>, String> {
     Ok(tokens)
 }
 
+// ── Semantic annotation helpers ──────────────────────────────────────────
+
+fn get_param<'p>(params: &'p [(String, String)], key: &str) -> Option<&'p str> {
+    params.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str())
+}
+
+fn require_param(
+    params: &[(String, String)],
+    key: &str,
+    node_name: &str,
+    role: &str,
+) -> Result<String, String> {
+    get_param(params, key).map(str::to_string).ok_or_else(|| {
+        format!("semantic role '{role}' in node '{node_name}' requires '{key}' parameter")
+    })
+}
+
 // ── Parser ───────────────────────────────────────────────────────────────
 
 struct Parser {
@@ -366,7 +393,7 @@ impl Parser {
         self.expect(&Token::LBrace)?;
         let mut fields = Vec::new();
         let mut fmt = None;
-        let mut schema = None;
+        let mut semantic = None;
         loop {
             if self.at_tok(&Token::RBrace) {
                 self.advance();
@@ -377,10 +404,16 @@ impl Parser {
                 self.expect(&Token::LBrace)?;
                 fmt = Some(self.parse_fmt_seq()?);
                 self.expect(&Token::RBrace)?;
-            } else if self.at("session_schema") {
+            } else if self.at("semantic") {
                 self.advance();
                 self.expect(&Token::LBrace)?;
-                schema = Some(self.parse_schema(&name, &fields)?);
+                semantic = Some(self.parse_semantic(&name, &fields)?);
+                self.expect(&Token::RBrace)?;
+            } else if self.at("session_schema") {
+                // Deprecated alias for `semantic { define_* }`.
+                self.advance();
+                self.expect(&Token::LBrace)?;
+                semantic = Some(self.parse_legacy_schema(&name, &fields)?);
                 self.expect(&Token::RBrace)?;
             } else {
                 let name = self.ident()?;
@@ -406,27 +439,89 @@ impl Parser {
             name,
             fields,
             fmt,
-            schema,
+            semantic,
         })
     }
 
-    fn parse_schema(
+    /// Parse a `semantic { role(...) }` block (new syntax).
+    fn parse_semantic(
         &mut self,
         node_name: &str,
         fields: &[Field],
-    ) -> Result<SchemaAnnotation, String> {
-        let kind_str = self.ident()?;
-        let kind = match kind_str.as_str() {
-            "table" => SchemaKind::Table,
-            "view" => SchemaKind::View,
-            "function" => SchemaKind::Function,
-            "import" => SchemaKind::Import,
+    ) -> Result<SemanticAnnotation, String> {
+        let role_name = self.ident()?;
+        let params = self.parse_semantic_params(node_name, fields)?;
+        let role = match role_name.as_str() {
+            "define_table" => SemanticRole::DefineTable {
+                name: require_param(&params, "name", node_name, "define_table")?,
+                columns: get_param(&params, "columns").map(str::to_string),
+                select: get_param(&params, "select").map(str::to_string),
+            },
+            "define_view" => SemanticRole::DefineView {
+                name: require_param(&params, "name", node_name, "define_view")?,
+                select: require_param(&params, "select", node_name, "define_view")?,
+            },
+            "define_function" => SemanticRole::DefineFunction {
+                name: require_param(&params, "name", node_name, "define_function")?,
+                args: get_param(&params, "args").map(str::to_string),
+            },
+            "import" => SemanticRole::Import {
+                module: require_param(&params, "module", node_name, "import")?,
+            },
             _ => {
                 return Err(format!(
-                    "unknown schema kind '{kind_str}' in node '{node_name}'"
+                    "unknown semantic role '{role_name}' in node '{node_name}'"
                 ));
             }
         };
+        Ok(SemanticAnnotation { role })
+    }
+
+    /// Parse a deprecated `session_schema { kind(...) }` block, translating it
+    /// into the equivalent `SemanticAnnotation`.
+    fn parse_legacy_schema(
+        &mut self,
+        node_name: &str,
+        fields: &[Field],
+    ) -> Result<SemanticAnnotation, String> {
+        let kind_str = self.ident()?;
+        let params = self.parse_semantic_params(node_name, fields)?;
+        let role = match kind_str.as_str() {
+            "table" => SemanticRole::DefineTable {
+                name: require_param(&params, "name", node_name, "table")?,
+                columns: get_param(&params, "columns").map(str::to_string),
+                // Old key was `as_select`; new is `select`.
+                select: get_param(&params, "as_select").map(str::to_string),
+            },
+            "view" => SemanticRole::DefineView {
+                name: require_param(&params, "name", node_name, "view")?,
+                // Old key was `as_select`; new is `select`.
+                select: require_param(&params, "as_select", node_name, "view")?,
+            },
+            "function" => SemanticRole::DefineFunction {
+                name: require_param(&params, "name", node_name, "function")?,
+                args: get_param(&params, "args").map(str::to_string),
+            },
+            "import" => SemanticRole::Import {
+                // Old key was `name`; new is `module`.
+                module: require_param(&params, "name", node_name, "import")?,
+            },
+            _ => {
+                return Err(format!(
+                    "unknown session_schema kind '{kind_str}' in node '{node_name}'"
+                ));
+            }
+        };
+        Ok(SemanticAnnotation { role })
+    }
+
+    /// Parse `(key: field, ...)` parameter list, validating each field name
+    /// against the node's declared fields.
+    fn parse_semantic_params(
+        &mut self,
+        node_name: &str,
+        fields: &[Field],
+    ) -> Result<Vec<(String, String)>, String> {
         self.expect(&Token::LParen)?;
         let mut params = Vec::new();
         while !self.at_tok(&Token::RParen) {
@@ -436,16 +531,15 @@ impl Parser {
             let key = self.ident()?;
             self.expect(&Token::Colon)?;
             let field = self.ident()?;
-            // Validate that the referenced field exists.
             if !fields.iter().any(|f| f.name == field) {
                 return Err(format!(
-                    "schema annotation in '{node_name}' references unknown field '{field}'"
+                    "semantic annotation in '{node_name}' references unknown field '{field}'"
                 ));
             }
-            params.push(SchemaParam { key, field });
+            params.push((key, field));
         }
         self.advance(); // consume RParen
-        Ok(SchemaAnnotation { kind, params })
+        Ok(params)
     }
 
     fn parse_enum(&mut self) -> Result<Item, String> {
@@ -702,5 +796,148 @@ impl Parser {
             },
             other => Err(format!("unexpected in fmt: {other:?}")),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse_node(synq: &str) -> Item {
+        let items = parse_synq_file(synq).expect("parse failed");
+        assert_eq!(items.len(), 1);
+        items.into_iter().next().unwrap()
+    }
+
+    fn node_semantic(item: Item) -> Option<SemanticAnnotation> {
+        match item {
+            Item::Node { semantic, .. } => semantic,
+            _ => panic!("expected Node"),
+        }
+    }
+
+    #[test]
+    fn session_schema_table_parses_to_define_table() {
+        let item = parse_node(
+            r#"node CreateTableStmt {
+                table_name: inline SyntaqliteSourceSpan
+                columns: index ColumnDefList
+                as_select: index Select
+                session_schema { table(name: table_name, columns: columns, as_select: as_select) }
+            }"#,
+        );
+        let ann = node_semantic(item).expect("expected semantic annotation");
+        match ann.role {
+            SemanticRole::DefineTable { name, columns, select } => {
+                assert_eq!(name, "table_name");
+                assert_eq!(columns.as_deref(), Some("columns"));
+                assert_eq!(select.as_deref(), Some("as_select"));
+            }
+            other => panic!("expected DefineTable, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn session_schema_view_parses_to_define_view() {
+        let item = parse_node(
+            r#"node CreateViewStmt {
+                view_name: inline SyntaqliteSourceSpan
+                select: index Select
+                session_schema { view(name: view_name, as_select: select) }
+            }"#,
+        );
+        let ann = node_semantic(item).expect("expected semantic annotation");
+        match ann.role {
+            SemanticRole::DefineView { name, select } => {
+                assert_eq!(name, "view_name");
+                assert_eq!(select, "select");
+            }
+            other => panic!("expected DefineView, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn session_schema_import_parses_to_import() {
+        let item = parse_node(
+            r#"node IncludePerfettoModuleStmt {
+                module_name: inline SyntaqliteSourceSpan
+                session_schema { import(name: module_name) }
+            }"#,
+        );
+        let ann = node_semantic(item).expect("expected semantic annotation");
+        match ann.role {
+            SemanticRole::Import { module } => assert_eq!(module, "module_name"),
+            other => panic!("expected Import, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn semantic_define_table_parses() {
+        let item = parse_node(
+            r#"node CreateTableStmt {
+                table_name: inline SyntaqliteSourceSpan
+                columns: index ColumnDefList
+                as_select: index Select
+                semantic { define_table(name: table_name, columns: columns, select: as_select) }
+            }"#,
+        );
+        let ann = node_semantic(item).expect("expected semantic annotation");
+        match ann.role {
+            SemanticRole::DefineTable { name, columns, select } => {
+                assert_eq!(name, "table_name");
+                assert_eq!(columns.as_deref(), Some("columns"));
+                assert_eq!(select.as_deref(), Some("as_select"));
+            }
+            other => panic!("expected DefineTable, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn semantic_import_uses_module_key() {
+        let item = parse_node(
+            r#"node IncludePerfettoModuleStmt {
+                module_name: inline SyntaqliteSourceSpan
+                semantic { import(module: module_name) }
+            }"#,
+        );
+        let ann = node_semantic(item).expect("expected semantic annotation");
+        match ann.role {
+            SemanticRole::Import { module } => assert_eq!(module, "module_name"),
+            other => panic!("expected Import, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn semantic_unknown_field_is_error() {
+        let result = parse_synq_file(
+            r#"node Foo {
+                bar: inline SyntaqliteSourceSpan
+                semantic { define_table(name: nonexistent) }
+            }"#,
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("unknown field"));
+    }
+
+    #[test]
+    fn semantic_unknown_role_is_error() {
+        let result = parse_synq_file(
+            r#"node Foo {
+                bar: inline SyntaqliteSourceSpan
+                semantic { frobnicate(name: bar) }
+            }"#,
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("unknown semantic role"));
+    }
+
+    #[test]
+    fn node_without_semantic_has_none() {
+        let item = parse_node(
+            r#"node Foo {
+                bar: inline SyntaqliteSourceSpan
+            }"#,
+        );
+        assert!(node_semantic(item).is_none());
     }
 }
