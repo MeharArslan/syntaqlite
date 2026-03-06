@@ -102,7 +102,7 @@ BINARY_DEPS = [
               f"rust-{RUST_VERSION}-x86_64-unknown-linux-gnu"),
     BinaryDep("rust", RUST_VERSION,
               f"https://static.rust-lang.org/dist/2026-03-05/rust-{RUST_VERSION}-aarch64-unknown-linux-gnu.tar.gz",
-              "bb205f17bbb1d9d914305ee33515c519e1d35eb693571691ec4da8401e5b4660",
+              "a0dc5a65ab337421347533e5be11d3fab11f119683a0dbd257ef3fe968bd2d72",
               "linux", "arm64", "tar.gz",
               f"rust-{RUST_VERSION}-aarch64-unknown-linux-gnu"),
     BinaryDep("rust", RUST_VERSION,
