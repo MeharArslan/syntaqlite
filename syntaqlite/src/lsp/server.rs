@@ -298,17 +298,17 @@ impl DiagnosticPublisher {
         uri: &Uri,
     ) -> Result<(), Box<dyn Error + Sync + Send>> {
         let uri_str = uri.as_str();
-        let Some((version, source, diags)) = host.document_diagnostics(uri_str) else {
+        let Some((version, source, diags)) = host.document_all_diagnostics(uri_str) else {
             return Ok(());
         };
 
         // Collect all offsets and convert in a single O(n) pass.
         let mut offsets: Vec<usize> = Vec::with_capacity(diags.len() * 2);
-        for d in diags {
+        for d in &diags {
             offsets.push(d.start_offset);
             offsets.push(d.end_offset);
         }
-        let map = SourcePositionMap::new(source);
+        let map = SourcePositionMap::new(&source);
         let positions = map.offsets_to_positions(&offsets);
 
         let lsp_diags: Vec<lsp_types::Diagnostic> = diags

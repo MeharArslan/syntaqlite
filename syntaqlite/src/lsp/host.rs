@@ -157,19 +157,6 @@ impl LspHost {
             .expect("ensure_model sets cached_parse_diags")
     }
 
-    /// Version, source text, and parse-error diagnostics in one borrow.
-    pub(crate) fn document_diagnostics(&mut self, uri: &str) -> Option<(i32, &str, &[Diagnostic])> {
-        let doc = self.documents.get_mut(uri)?;
-        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
-        let version = doc.version;
-        let source = doc.source.as_str();
-        let diags = doc
-            .cached_parse_diags
-            .as_deref()
-            .expect("ensure_model sets cached_parse_diags");
-        Some((version, source, diags))
-    }
-
     /// Semantic tokens delta-encoded for LSP `textDocument/semanticTokens/full`.
     ///
     /// # Panics
@@ -255,6 +242,27 @@ impl LspHost {
     }
 
     // ── Semantic validation ────────────────────────────────────────────────────
+
+    /// Version, source text, and all diagnostics (parse + semantic) in one call.
+    ///
+    /// Reads from the cached model populated by [`ensure_model`] — no re-analysis.
+    #[cfg(feature = "lsp")]
+    pub(crate) fn document_all_diagnostics(
+        &mut self,
+        uri: &str,
+    ) -> Option<(i32, String, Vec<Diagnostic>)> {
+        let doc = self.documents.get_mut(uri)?;
+        ensure_model(doc, &mut self.analyzer, &self.user_catalog);
+        let version = doc.version;
+        let source = doc.source.clone();
+        let diags = doc
+            .model
+            .as_ref()
+            .expect("ensure_model sets model")
+            .diagnostics()
+            .to_vec();
+        Some((version, source, diags))
+    }
 
     /// Semantic validation diagnostics for a document (non-parse-error issues only).
     ///
@@ -616,7 +624,7 @@ mod tests {
         let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "SELECT ".to_string());
-        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        let diags = host.diagnostics(uri);
         assert!(!diags.is_empty());
         assert_eq!(diags[0].severity, Severity::Error);
     }
@@ -626,7 +634,7 @@ mod tests {
         let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "SELECT * FROM".to_string());
-        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        let diags = host.diagnostics(uri);
         assert!(!diags.is_empty());
     }
 
@@ -635,7 +643,7 @@ mod tests {
         let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "NOT VALID SQL;".to_string());
-        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        let diags = host.diagnostics(uri);
         assert!(!diags.is_empty());
     }
 
@@ -644,7 +652,7 @@ mod tests {
         let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "include ;\ninclude ;\nSELECT 1;".to_string());
-        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        let diags = host.diagnostics(uri);
         let errors: Vec<_> = diags
             .iter()
             .filter(|d| d.severity == Severity::Error)
@@ -657,7 +665,7 @@ mod tests {
         let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "NOT VALID;\nSELECT 1;".to_string());
-        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        let diags = host.diagnostics(uri);
         assert_eq!(diags.len(), 1, "got {}: {:?}", diags.len(), diags);
     }
 
@@ -666,7 +674,7 @@ mod tests {
         let mut host = LspHost::new();
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "SELECT 1;\nNOT VALID;".to_string());
-        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        let diags = host.diagnostics(uri);
         assert_eq!(diags.len(), 1, "got {}: {:?}", diags.len(), diags);
     }
 
@@ -702,7 +710,7 @@ mod tests {
         let uri = "file:///test.sql";
         let sql = "select 1 from slice where foo = where x = y;";
         host.open_document(uri, 1, sql.to_string());
-        let (_, _, diags) = host.document_diagnostics(uri).unwrap();
+        let diags = host.diagnostics(uri);
         assert!(!diags.is_empty());
         let diag = &diags[0];
         assert_eq!(diag.severity, Severity::Error);
