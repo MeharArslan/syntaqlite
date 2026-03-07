@@ -376,7 +376,6 @@ fn emit_newline(indent: i32, out: &mut String, pos: &mut usize) {
 #[inline]
 fn push_keyword(s: &str, case: KeywordCase, out: &mut String) {
     match case {
-        KeywordCase::Preserve => out.push_str(s),
         KeywordCase::Upper => {
             for &b in s.as_bytes() {
                 out.push(b.to_ascii_uppercase() as char);
@@ -464,7 +463,7 @@ mod tests {
     use super::*;
 
     const WIDTH: usize = 80;
-    const CASE: KeywordCase = KeywordCase::Preserve;
+    const CASE: KeywordCase = KeywordCase::Upper;
 
     #[test]
     fn arena_alloc_and_get() {

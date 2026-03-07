@@ -20,7 +20,6 @@ use super::{Cli, Command};
 
 #[derive(Clone, Copy, ValueEnum)]
 pub(crate) enum KeywordCasing {
-    Preserve,
     Upper,
     Lower,
 }
@@ -89,7 +88,6 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
             let config = FormatConfig {
                 line_width,
                 keyword_case: match keyword_case {
-                    KeywordCasing::Preserve => KeywordCase::Preserve,
                     KeywordCasing::Upper => KeywordCase::Upper,
                     KeywordCasing::Lower => KeywordCase::Lower,
                 },

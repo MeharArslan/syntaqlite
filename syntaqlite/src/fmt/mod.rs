@@ -22,10 +22,8 @@ mod interpret;
 /// Controls how SQL keywords are cased in formatted output.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum KeywordCase {
-    /// Keep keywords as they appeared in the source.
-    #[default]
-    Preserve,
     /// Convert keywords to UPPER CASE.
+    #[default]
     Upper,
     /// Convert keywords to lower case.
     Lower,
@@ -38,7 +36,7 @@ pub struct FormatConfig {
     pub line_width: usize,
     /// Number of spaces per indentation level. Default: 2.
     pub indent_width: usize,
-    /// How to case SQL keywords. Default: Preserve.
+    /// How to case SQL keywords. Default: Upper.
     pub keyword_case: KeywordCase,
     /// Append semicolons after each statement. Default: true.
     pub semicolons: bool,
@@ -68,7 +66,7 @@ impl Default for FormatConfig {
         FormatConfig {
             line_width: 80,
             indent_width: 2,
-            keyword_case: KeywordCase::Preserve,
+            keyword_case: KeywordCase::Upper,
             semicolons: true,
         }
     }

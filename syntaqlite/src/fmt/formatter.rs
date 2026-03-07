@@ -130,7 +130,6 @@ impl Formatter {
             reader: erased,
             comment_ctx,
             macro_regions: std::mem::take(&mut self.macro_regions),
-            keyword_case: self.config.keyword_case,
         };
         let interpreted = self.interpret_node(&ctx, root_id, &mut arena);
         self.parts.push(interpreted);
@@ -207,7 +206,7 @@ impl Formatter {
             let root_id = erased.root_id();
             let semicolons = self.config.semicolons;
             let has_comments = !self.comment_entries.is_empty();
-            let needs_token_ctx = has_comments || self.config.keyword_case == KeywordCase::Preserve;
+            let needs_token_ctx = has_comments;
 
             let comment_ctx = if needs_token_ctx {
                 // Move buffers into CommentCtx for this statement, then reclaim them after render.
@@ -244,7 +243,6 @@ impl Formatter {
                 reader: erased,
                 comment_ctx,
                 macro_regions: std::mem::take(&mut self.macro_regions),
-                keyword_case: self.config.keyword_case,
             };
             let interpreted = self.interpret_node(&ctx, root_id, &mut arena);
             self.parts.push(interpreted);
@@ -433,7 +431,7 @@ mod tests {
 
     fn render_parts(arena: &mut DocArena<'_>, parts: &[DocId]) -> String {
         let root = arena.cats(parts);
-        arena.render(root, 80, KeywordCase::Preserve)
+        arena.render(root, 80, KeywordCase::Upper)
     }
 
     #[test]

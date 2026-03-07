@@ -3,7 +3,6 @@
 
 use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, MacroRegion};
 
-use super::KeywordCase;
 use super::comment::{CommentCtx, DrainResult};
 use super::doc::{DocArena, DocId, NIL_DOC};
 use super::formatter::Formatter;
@@ -17,7 +16,6 @@ pub(crate) struct FmtCtx<'a> {
     /// Owned comment context — no lifetime needed since `CommentCtx` owns its data.
     pub comment_ctx: Option<CommentCtx>,
     pub macro_regions: Vec<MacroRegion>,
-    pub keyword_case: KeywordCase,
 }
 
 impl<'a> FmtCtx<'a> {
@@ -172,25 +170,6 @@ impl Formatter {
                 FmtOp::Keyword(sid) => {
                     let kw_text = ctx.dialect.fmt_string(sid);
 
-                    // Re-synchronise the token cursor past any stale tokens left
-                    // by conditionally-omitted keywords (e.g. `ASC` as the
-                    // implicit default sort order).  Must happen before both
-                    // `keyword_source_span` and `peek_keyword_tokens` so both
-                    // see the correct cursor position.
-                    if let Some(ref cctx) = ctx.comment_ctx {
-                        cctx.sync_cursor_to_keyword(kw_text, source);
-                    }
-
-                    // For Preserve mode, capture the source byte span before advancing
-                    // the token cursor so we can emit the original casing.
-                    let preserve_span = if ctx.keyword_case == KeywordCase::Preserve {
-                        ctx.comment_ctx
-                            .as_ref()
-                            .and_then(|c| c.keyword_source_span(kw_text))
-                    } else {
-                        None
-                    };
-
                     if let Some(ref cctx) = ctx.comment_ctx {
                         if let Some((tok_offset, word_count)) = cctx.peek_keyword_tokens(kw_text) {
                             let drain = cctx.drain_before(tok_offset, source, arena);
@@ -201,26 +180,8 @@ impl Formatter {
                             pending = NIL_DOC;
                         }
                     }
-                    if let Some((start, end)) = preserve_span {
-                        // Emit leading whitespace from the canonical keyword string (if any),
-                        // then the original-cased source text, then trailing whitespace.
-                        // This preserves formatting spaces like the trailing " " in "FROM ".
-                        let prefix = kw_text.len() - kw_text.trim_ascii_start().len();
-                        let suffix = kw_text.len() - kw_text.trim_ascii_end().len();
-                        if prefix > 0 {
-                            let pre = arena.text(&kw_text[..prefix]);
-                            running = arena.cat(running, pre);
-                        }
-                        let src_kw = arena.text(&source[start as usize..end as usize]);
-                        running = arena.cat(running, src_kw);
-                        if suffix > 0 {
-                            let suf = arena.text(&kw_text[kw_text.len() - suffix..]);
-                            running = arena.cat(running, suf);
-                        }
-                    } else {
-                        let kw = arena.keyword(kw_text);
-                        running = arena.cat(running, kw);
-                    }
+                    let kw = arena.keyword(kw_text);
+                    running = arena.cat(running, kw);
                 }
                 FmtOp::Span(idx) => {
                     // INVARIANT: Span ops only target Span fields.
