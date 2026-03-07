@@ -1,7 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite::nodes::Stmt;
+use syntaqlite::any::AnyNodeTag;
+use syntaqlite::nodes::{NodeTag, Stmt};
 use syntaqlite::typed::{TypedParser, grammar};
 use syntaqlite::util::{SqliteSyntaxFlag, SqliteSyntaxFlags};
 use syntaqlite::{ParseOutcome, Parser};
@@ -198,4 +199,41 @@ fn parse_update_with_order_by_limit() {
     };
     assert!(upd.orderby().is_some(), "should have ORDER BY");
     assert!(upd.limit_clause().is_some(), "should have LIMIT");
+}
+
+#[test]
+fn table_qualified_star_qualifier_in_expr_not_alias() {
+    // SELECT t.* — "t" is the table qualifier, NOT an alias.
+    // Regression: the parser used to swap the alias/expr arguments in
+    // synq_parse_result_column() for the `nm DOT STAR` rule.
+    let parser = Parser::new();
+    let mut session = parser.parse("SELECT t.*");
+    let ParseOutcome::Ok(stmt) = session.next() else {
+        panic!("expected Ok");
+    };
+
+    // Verify via the typed API that flags=STAR and alias=None.
+    let root = stmt.root(); // returns Stmt<'a> directly (not Option)
+    let Stmt::SelectStmt(select) = root else {
+        panic!("expected SelectStmt, got {root:?}");
+    };
+    let columns = select.columns().expect("expected result columns");
+    let col = columns.iter().next().expect("expected at least one result column");
+    assert!(col.flags().star(), "STAR flag should be set for t.*");
+    assert!(
+        col.alias().is_none(),
+        "'t' is a table qualifier, not an alias — alias should be None"
+    );
+    let rc_id = col.node_id().into_inner();
+
+    // Verify that "t" lives in the expr field as an IdentName child.
+    let any_stmt = stmt.erase(); // borrows &self, no move
+    let ident_tag = AnyNodeTag::from(NodeTag::IdentName);
+    let has_ident_child = any_stmt
+        .child_node_ids(rc_id)
+        .any(|id| any_stmt.extract_fields(id).map(|(tag, _)| tag) == Some(ident_tag));
+    assert!(
+        has_ident_child,
+        "expected IdentName child in ResultColumn expr field for t.*"
+    );
 }

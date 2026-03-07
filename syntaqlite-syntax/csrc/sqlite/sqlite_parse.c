@@ -3618,8 +3618,8 @@ static YYACTIONTYPE yy_reduce(
         break;
       case 18: /* selcollist ::= sclp scanpt nm DOT STAR */
 {
-    uint32_t alias = synq_parse_ident_name(pCtx, synq_span(pCtx, yymsp[-2].minor.yy0));
-    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.bits = {.star = 1}}, alias, SYNTAQLITE_NULL_NODE);
+    uint32_t expr = synq_parse_ident_name(pCtx, synq_span(pCtx, yymsp[-2].minor.yy0));
+    uint32_t col = synq_parse_result_column(pCtx, (SyntaqliteResultColumnFlags){.bits = {.star = 1}}, SYNTAQLITE_NULL_NODE, expr);
     yylhsminor.yy141 = synq_parse_result_column_list(pCtx, yymsp[-4].minor.yy141, col);
 }
   yymsp[-4].minor.yy141 = yylhsminor.yy141;

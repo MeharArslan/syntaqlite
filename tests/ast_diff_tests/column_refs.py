@@ -139,10 +139,10 @@ class ColumnRefBasic(TestSuite):
                 ResultColumnList [1 items]
                   ResultColumn
                     flags: STAR
-                    alias:
+                    alias: (none)
+                    expr:
                       IdentName
                         source: "t"
-                    expr: (none)
               from_clause: (none)
               where_clause: (none)
               groupby: (none)

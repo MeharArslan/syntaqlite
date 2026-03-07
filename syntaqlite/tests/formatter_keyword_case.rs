@@ -28,4 +28,3 @@ fn keyword_case_lower() {
         .expect("formatting should succeed for valid SQL");
     assert_eq!(out, "select 1;\n");
 }
-
