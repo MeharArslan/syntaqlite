@@ -221,7 +221,7 @@ pub(crate) fn generate_dialect_c(
     w.line("  return g;");
     w.line("}");
 
-    // Emit the bundled SyntaqliteDialect struct + single accessor.
+    // Emit the bundled SyntaqliteDialectTemplate struct + single accessor.
     // The struct layout must match CDialectTemplate in syntaqlite/src/dialect/mod.rs.
     if !includes.dialect_fmt_h.is_empty() || !includes.dialect_roles_h.is_empty() {
         let p = format!("{dialect}_fmt");
@@ -242,10 +242,10 @@ pub(crate) fn generate_dialect_c(
         w.line("    uint32_t fmt_dispatch_count;");
         w.line("    const uint8_t *roles_data;");
         w.line("    uint32_t roles_count;");
-        w.line("} SyntaqliteDialect;");
+        w.line("} SyntaqliteDialectTemplate;");
         w.newline();
         w.line(&format!(
-            "static const SyntaqliteDialect {upper}_DIALECT = {{"
+            "static const SyntaqliteDialectTemplate {upper}_DIALECT = {{"
         ));
         w.line(&format!(
             "    .grammar = SYNQ_GRAMMAR_DEFAULT(&{upper}_GRAMMAR),"
@@ -283,7 +283,7 @@ pub(crate) fn generate_dialect_c(
         w.line("};");
         w.newline();
         w.line(&format!(
-            "const SyntaqliteDialect *syntaqlite_{dialect}_dialect(void) {{"
+            "const SyntaqliteDialectTemplate *syntaqlite_{dialect}_dialect(void) {{"
         ));
         w.line(&format!("  return &{upper}_DIALECT;"));
         w.line("}");
@@ -296,7 +296,7 @@ pub(crate) fn generate_dialect_c(
 ///
 /// `dialect` is a short name like `"sqlite"` or `"perfetto"`.
 ///
-/// The generated header is minimal: it forward-declares `SyntaqliteDialect`
+/// The generated header is minimal: it forward-declares `SyntaqliteDialectTemplate`
 /// Generates the dialect public header declaring `syntaqlite_<dialect>_dialect()`.
 ///
 /// Callers create a parser via the runtime's `syntaqlite_parser_create_with_grammar()`
@@ -314,7 +314,7 @@ pub(crate) fn generate_dialect_h(dialect: &str) -> String {
     w.line("extern \"C\" {");
     w.line("#endif");
     w.newline();
-    w.line("typedef struct SyntaqliteDialect SyntaqliteDialect;");
+    w.line("typedef struct SyntaqliteDialectTemplate SyntaqliteDialectTemplate;");
     w.newline();
     w.line(&format!(
         "SyntaqliteGrammar syntaqlite_{dialect}_grammar(void);"
@@ -323,7 +323,7 @@ pub(crate) fn generate_dialect_h(dialect: &str) -> String {
         "SyntaqliteGrammar syntaqlite_{dialect}_grammar_with(int32_t sqlite_version, SyntaqliteCflags cflags);"
     ));
     w.line(&format!(
-        "const SyntaqliteDialect *syntaqlite_{dialect}_dialect(void);"
+        "const SyntaqliteDialectTemplate *syntaqlite_{dialect}_dialect(void);"
     ));
     w.newline();
     w.line("#ifdef __cplusplus");
@@ -477,7 +477,7 @@ mod tests {
         assert!(c.contains("SyntaqliteGrammarTemplate SQLITE_GRAMMAR ="));
         assert!(c.contains("SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR)"));
         // Bundled dialect struct and accessor
-        assert!(c.contains("SyntaqliteDialect"));
+        assert!(c.contains("SyntaqliteDialectTemplate"));
         assert!(c.contains("syntaqlite_sqlite_dialect"));
         assert!(!c.contains("fmt_strings"));
         assert!(!c.contains("function_extensions"));
@@ -489,7 +489,7 @@ mod tests {
         assert!(h.contains("SyntaqliteGrammar syntaqlite_sqlite_grammar(void);"));
         assert!(h.contains("syntaqlite/grammar.h"));
         // Dialect type and accessor are declared in the header
-        assert!(h.contains("SyntaqliteDialect"));
+        assert!(h.contains("SyntaqliteDialectTemplate"));
         assert!(h.contains("syntaqlite_sqlite_dialect"));
         // No convenience wrappers — those belong in the runtime headers
         assert!(

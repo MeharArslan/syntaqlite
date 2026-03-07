@@ -8,7 +8,6 @@ use std::slice;
 
 use serde::Serialize;
 
-use syntaqlite::any::AnyGrammar;
 use syntaqlite::lsp::LspHost;
 use syntaqlite::util::{SqliteFlag, SqliteFlags, SqliteVersion};
 use syntaqlite::{AnyDialect, FormatConfig, Formatter, KeywordCase, ValidationConfig};
@@ -17,22 +16,18 @@ thread_local! {
     static RESULT_BUF: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
     /// Global LspHost reused across wasm calls. Invalidated when session context changes.
     static LSP_HOST: RefCell<Option<LspHost>> = const { RefCell::new(None) };
-    /// Active dialect. `None` means use the built-in SQLite dialect.
+    /// Active dialect. Set via `wasm_set_dialect`; `None` until a dialect side module is loaded.
     static DIALECT: RefCell<Option<AnyDialect>> = const { RefCell::new(None) };
+    /// Raw pointer to the active `SyntaqliteDialectTemplate`, retained so version/cflag
+    /// overrides can rebuild the dialect without reloading the side module.
+    static DIALECT_PTR: Cell<u32> = const { Cell::new(0) };
     /// Active embedded language. `None` = raw SQL; `Some(n)` = embedded (0 = Python, 1 = TypeScript).
     static EMBEDDED_LANG: RefCell<Option<u32>> = const { RefCell::new(None) };
-    /// SQLite version selected via `wasm_set_sqlite_version`. Applied when the built-in SQLite
-    /// dialect is active.
+    /// SQLite version override applied on top of the loaded dialect.
     static SQLITE_VERSION: RefCell<SqliteVersion> = const { RefCell::new(SqliteVersion::Latest) };
-    /// Enabled compile-time flags for the built-in SQLite dialect.
+    /// Cflag overrides applied on top of the loaded dialect.
     static SQLITE_CFLAGS: RefCell<SqliteFlags> = RefCell::new(SqliteFlags::default());
-    /// `true` when the active dialect is the built-in SQLite one (sentinel pointer).
-    static USING_BUILTIN_SQLITE: Cell<bool> = const { Cell::new(false) };
 }
-
-/// Sentinel returned by [`syntaqlite_sqlite_dialect`] to mean "built-in `SQLite`".
-/// Any real WASM linear-memory pointer is always > 1.
-const BUILTIN_SQLITE_SENTINEL: u32 = 1;
 
 /// Sentinel passed to [`wasm_set_language_mode`] to select raw SQL mode.
 const LANG_SQL_SENTINEL: u32 = u32::MAX;
@@ -41,16 +36,19 @@ fn get_embedded_lang() -> Option<u32> {
     EMBEDDED_LANG.with(|cell| *cell.borrow())
 }
 
-fn get_dialect() -> AnyDialect {
-    DIALECT
-        .with(|cell| cell.borrow().clone())
-        .unwrap_or_else(|| syntaqlite::sqlite_dialect().into())
+fn get_dialect() -> Option<AnyDialect> {
+    DIALECT.with(|cell| cell.borrow().clone())
 }
 
-fn take_or_create_lsp_host() -> LspHost {
+fn take_or_create_lsp_host() -> Result<LspHost, String> {
     LSP_HOST
         .with(|cell| cell.borrow_mut().take())
-        .unwrap_or_else(|| LspHost::with_dialect(get_dialect()))
+        .map(Ok)
+        .unwrap_or_else(|| {
+            get_dialect()
+                .ok_or_else(|| "no dialect loaded: call wasm_set_dialect first".to_string())
+                .map(LspHost::with_dialect)
+        })
 }
 
 fn store_lsp_host(lsp: LspHost) {
@@ -61,15 +59,21 @@ fn invalidate_lsp_host() {
     LSP_HOST.with(|h| h.borrow_mut().take());
 }
 
-/// Rebuild the built-in SQLite dialect from the stored version and cflags, then store
-/// it as the active dialect and invalidate the LSP host so it picks up the new config.
-fn rebuild_sqlite_dialect() {
+/// Rebuild the active dialect from the stored template pointer, applying any
+/// version/cflag overrides. No-op when no side module is loaded yet.
+fn rebuild_dialect_from_ptr() {
+    let ptr = DIALECT_PTR.with(|c| c.get());
+    if ptr == 0 {
+        return;
+    }
     let version = SQLITE_VERSION.with(|v| *v.borrow());
     let cflags = SQLITE_CFLAGS.with(|c| *c.borrow());
-    let dialect: AnyDialect = syntaqlite::sqlite_dialect()
-        .with_version(version)
-        .with_cflags(cflags)
-        .into();
+    // SAFETY: ptr was validated in run_set_dialect when it was stored.
+    let dialect = unsafe {
+        AnyDialect::from_c_dialect_ptr(ptr as *const syntaqlite::dialect::ffi::CDialectTemplate)
+    }
+    .with_version(version)
+    .with_cflags(cflags);
     DIALECT.with(|cell| *cell.borrow_mut() = Some(dialect));
     invalidate_lsp_host();
 }
@@ -205,7 +209,10 @@ pub extern "C" fn wasm_result_free() {
 
 fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len));
-    let grammar = (*get_dialect()).clone();
+    let dialect = try_wasm!(
+        get_dialect().ok_or("no dialect loaded: call wasm_set_dialect first")
+    );
+    let grammar = (*dialect).clone();
     let parser =
         syntaqlite::any::AnyParser::with_config(grammar, &syntaqlite::ParserConfig::default());
     let mut session = parser.parse(&source);
@@ -252,7 +259,10 @@ fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u
         semicolons: semicolons != 0,
         ..Default::default()
     };
-    let mut formatter = Formatter::with_dialect_config(get_dialect(), &config);
+    let dialect = try_wasm!(
+        get_dialect().ok_or("no dialect loaded: call wasm_set_dialect first")
+    );
+    let mut formatter = Formatter::with_dialect_config(dialect, &config);
     let sql = try_wasm!(formatter.format(&source).map_err(|e| e.to_string()));
     set_result(&sql);
     0
@@ -273,7 +283,7 @@ pub extern "C" fn wasm_fmt(
 
 fn run_set_session_context(ptr: u32, len: u32) -> i32 {
     let input = try_wasm!(decode_input(ptr, len));
-    let mut lsp = take_or_create_lsp_host();
+    let mut lsp = try_wasm!(take_or_create_lsp_host());
     try_wasm!(lsp.set_session_context_from_json(&input));
     store_lsp_host(lsp);
     0
@@ -281,7 +291,7 @@ fn run_set_session_context(ptr: u32, len: u32) -> i32 {
 
 fn run_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len));
-    let mut lsp = take_or_create_lsp_host();
+    let mut lsp = try_wasm!(take_or_create_lsp_host());
     let result = lsp.set_session_context_from_ddl(&source);
     store_lsp_host(lsp);
     match result {
@@ -321,7 +331,7 @@ const WASM_DOC_URI: &str = "wasm://input";
 
 fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
-    let mut lsp = take_or_create_lsp_host();
+    let mut lsp = try_wasm!(take_or_create_lsp_host(), -1);
     lsp.update_document(WASM_DOC_URI, version as i32, source);
     let all_diags = lsp.all_diagnostics(WASM_DOC_URI, &ValidationConfig::default());
     let total_count = all_diags.len();
@@ -332,7 +342,7 @@ fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
 
 fn run_semantic_tokens(ptr: u32, len: u32, range_start: u32, range_end: u32, version: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
-    let mut lsp = take_or_create_lsp_host();
+    let mut lsp = try_wasm!(take_or_create_lsp_host(), -1);
     lsp.update_document(WASM_DOC_URI, version as i32, source);
     let range = if range_start == 0 && range_end == 0xFFFF_FFFF {
         None
@@ -354,7 +364,7 @@ struct CompletionItem {
 
 fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
-    let mut lsp = take_or_create_lsp_host();
+    let mut lsp = try_wasm!(take_or_create_lsp_host(), -1);
     lsp.update_document(WASM_DOC_URI, version as i32, source);
     let entries = lsp.completion_items(WASM_DOC_URI, offset as usize);
     let count = entries.len() as i32;
@@ -421,50 +431,13 @@ pub extern "C" fn wasm_completions(ptr: u32, len: u32, offset: u32, version: u32
 
 // ── Dialect switching ────────────────────────────────────────────────
 
-/// Returns a sentinel pointer meaning "use the built-in `SQLite` dialect".
-///
-/// The TypeScript `DialectManager` calls this via `syntaqlite_sqlite_dialect()`
-/// to select the built-in grammar without loading a separate WASM side module.
-#[unsafe(no_mangle)]
-pub extern "C" fn syntaqlite_sqlite_dialect() -> u32 {
-    BUILTIN_SQLITE_SENTINEL
-}
-
 fn run_set_dialect(ptr: u32) -> i32 {
     if ptr == 0 {
-        set_result("null grammar pointer");
+        set_result("null dialect pointer");
         return 1;
     }
-    let dialect = if ptr == BUILTIN_SQLITE_SENTINEL {
-        // Built-in SQLite: apply any stored version/cflag overrides set via
-        // wasm_set_sqlite_version / wasm_set_cflag.
-        USING_BUILTIN_SQLITE.with(|b| b.set(true));
-        let version = SQLITE_VERSION.with(|v| *v.borrow());
-        let cflags = SQLITE_CFLAGS.with(|c| *c.borrow());
-        syntaqlite::sqlite_dialect()
-            .with_version(version)
-            .with_cflags(cflags)
-            .into()
-    } else {
-        // External grammar side module: read the CGrammar struct from linear memory,
-        // extract version/cflags, and overlay them on the built-in SQLite dialect.
-        // TODO: support truly external (non-SQLite) grammars with their own formatter.
-        USING_BUILTIN_SQLITE.with(|b| b.set(false));
-        // SAFETY: ptr is a WASM linear-memory address returned by a grammar function
-        // in a side module loaded via Emscripten loadDynamicLibrary.
-        let raw: syntaqlite::typed::CGrammar =
-            unsafe { std::ptr::read(ptr as *const syntaqlite::typed::CGrammar) };
-        // SAFETY: raw was just read from a valid grammar pointer above.
-        let grammar: AnyGrammar = unsafe { AnyGrammar::new(raw) };
-        let version = grammar.version();
-        let cflags: SqliteFlags = grammar.cflags().into();
-        syntaqlite::sqlite_dialect()
-            .with_version(version)
-            .with_cflags(cflags)
-            .into()
-    };
-    DIALECT.with(|cell| *cell.borrow_mut() = Some(dialect));
-    invalidate_lsp_host();
+    DIALECT_PTR.with(|c| c.set(ptr));
+    rebuild_dialect_from_ptr();
     0
 }
 
@@ -475,75 +448,55 @@ pub extern "C" fn wasm_set_dialect(ptr: u32) -> i32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_clear_dialect() {
+    DIALECT_PTR.with(|c| c.set(0));
     DIALECT.with(|cell| *cell.borrow_mut() = None);
-    USING_BUILTIN_SQLITE.with(|b| b.set(false));
     invalidate_lsp_host();
 }
 
-// ── SQLite version / cflag runtime overrides ─────────────────────────
+// ── Version / cflag overrides ─────────────────────────────────────────
+//
+// These configure the active dialect with a target SQLite version or
+// compile-time flags. Stored state is re-applied whenever a dialect is
+// loaded (or reloaded) via `wasm_set_dialect`.
 
 fn run_set_sqlite_version(ptr: u32, len: u32) -> i32 {
     let s = try_wasm!(decode_input(ptr, len));
     let version = try_wasm!(SqliteVersion::parse_with_latest(&s));
     SQLITE_VERSION.with(|v| *v.borrow_mut() = version);
-    if USING_BUILTIN_SQLITE.with(|b| b.get()) {
-        rebuild_sqlite_dialect();
-    }
+    rebuild_dialect_from_ptr();
     0
 }
 
 fn run_set_cflag(ptr: u32, len: u32) -> i32 {
     let s = try_wasm!(decode_input(ptr, len));
-    let flag = try_wasm!(SqliteFlag::from_prefixed_name(&s));
+    let flag = try_wasm!(
+        SqliteFlag::from_name(&s).ok_or_else(|| format!("unknown cflag: {s}"))
+    );
     SQLITE_CFLAGS.with(|c| {
         let mut guard = c.borrow_mut();
         *guard = std::mem::take(&mut *guard).with(flag);
     });
-    if USING_BUILTIN_SQLITE.with(|b| b.get()) {
-        rebuild_sqlite_dialect();
-    }
+    rebuild_dialect_from_ptr();
     0
 }
 
 fn run_clear_cflag(ptr: u32, len: u32) -> i32 {
     let s = try_wasm!(decode_input(ptr, len));
-    let flag = try_wasm!(SqliteFlag::from_prefixed_name(&s));
+    let flag = try_wasm!(
+        SqliteFlag::from_name(&s).ok_or_else(|| format!("unknown cflag: {s}"))
+    );
     SQLITE_CFLAGS.with(|c| {
         let mut guard = c.borrow_mut();
         *guard = std::mem::take(&mut *guard).without(flag);
     });
-    if USING_BUILTIN_SQLITE.with(|b| b.get()) {
-        rebuild_sqlite_dialect();
-    }
+    rebuild_dialect_from_ptr();
     0
 }
 
 fn run_clear_all_cflags() -> i32 {
     SQLITE_CFLAGS.with(|c| *c.borrow_mut() = SqliteFlags::default());
-    if USING_BUILTIN_SQLITE.with(|b| b.get()) {
-        rebuild_sqlite_dialect();
-    }
+    rebuild_dialect_from_ptr();
     0
-}
-
-fn run_get_cflag_list() -> i32 {
-    #[derive(Serialize)]
-    struct CflagEntry {
-        name: &'static str,
-        #[serde(rename = "minVersion")]
-        min_version: i32,
-        category: &'static str,
-    }
-    let entries: Vec<CflagEntry> = syntaqlite::sqlite_cflag_entries()
-        .iter()
-        .map(|(name, _bit_idx, min_ver, cats)| CflagEntry {
-            name,
-            min_version: *min_ver,
-            category: cats.last().copied().unwrap_or("parser"),
-        })
-        .collect();
-    set_result(&serde_json::to_string(&entries).expect("cflag list serialization failed"));
-    entries.len() as i32
 }
 
 #[unsafe(no_mangle)]
@@ -569,11 +522,6 @@ pub extern "C" fn wasm_clear_all_cflags() -> i32 {
     catch_unwind(|| run_clear_all_cflags(), "wasm_clear_all_cflags panicked")
 }
 
-#[unsafe(no_mangle)]
-pub extern "C" fn wasm_get_cflag_list() -> i32 {
-    catch_unwind(|| run_get_cflag_list(), "wasm_get_cflag_list panicked")
-}
-
 // ── Embedded SQL WASM exports ────────────────────────────────────────
 //
 // lang encoding: 0 = Python, 1 = TypeScript/JavaScript
@@ -588,8 +536,10 @@ fn embedded_fragments(lang: u32, source: &str) -> Result<Vec<EmbeddedFragment>, 
     }
 }
 
-fn make_embedded_analyzer() -> EmbeddedAnalyzer {
-    EmbeddedAnalyzer::new(get_dialect())
+fn make_embedded_analyzer() -> Result<EmbeddedAnalyzer, String> {
+    let dialect = get_dialect()
+        .ok_or("no dialect loaded: call wasm_set_dialect first")?;
+    Ok(EmbeddedAnalyzer::new(dialect))
 }
 
 #[derive(Serialize)]
@@ -635,7 +585,7 @@ fn run_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
 fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
     let fragments = try_wasm!(embedded_fragments(lang, &source), -1);
-    let diags = make_embedded_analyzer().validate(&fragments);
+    let diags = try_wasm!(make_embedded_analyzer(), -1).validate(&fragments);
     let count = diags.len() as i32;
     set_result(&serde_json::to_string(&diags).expect("embedded diagnostic serialization failed"));
     count
@@ -644,7 +594,7 @@ fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32) -> i32 {
 fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
     let fragments = try_wasm!(embedded_fragments(lang, &source), -1);
-    let encoded = make_embedded_analyzer().semantic_tokens_encoded(&fragments, &source);
+    let encoded = try_wasm!(make_embedded_analyzer(), -1).semantic_tokens_encoded(&fragments, &source);
     let token_count = (encoded.len() / 5) as i32;
     set_result_u32s(&encoded);
     token_count

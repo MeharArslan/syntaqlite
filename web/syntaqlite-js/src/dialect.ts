@@ -12,9 +12,8 @@ export interface DialectPreset {
 }
 
 export const BUILTIN_PRESETS: DialectPreset[] = [
-  // Empty wasmUrl: the symbol is resolved directly from the runtime module
-  // via syntaqlite_sqlite_dialect() exported by syntaqlite-wasm.
-  {id: "sqlite", label: "SQLite", wasmUrl: "", symbol: "syntaqlite_sqlite_dialect"},
+  // SQLite is a side module; the runtime loads it via loadDynamicLibrary.
+  {id: "sqlite", label: "SQLite", wasmUrl: "syntaqlite-sqlite.wasm", symbol: "syntaqlite_sqlite_dialect"},
 ];
 
 export interface DialectManagerConfig {

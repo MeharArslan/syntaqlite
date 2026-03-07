@@ -137,7 +137,7 @@ pub trait TypedDialect: Into<AnyDialect> + Clone + 'static {}
 #[derive(Clone)]
 pub struct AnyDialect {
     grammar: AnyGrammar,
-    /// Pointer to the static `SyntaqliteDialect` C struct for this dialect.
+    /// Pointer to the static `SyntaqliteDialectTemplate` C struct for this dialect.
     /// For built-in dialects this points to a symbol in the binary; for
     /// dynamically loaded dialects the library is kept alive via `_keep_alive`.
     data: *const ffi::CDialectTemplate,
@@ -259,11 +259,28 @@ impl AnyDialect {
         self.grammar.cflags()
     }
 
+    /// Construct an [`AnyDialect`] from a pointer returned by a dialect's
+    /// `syntaqlite_<name>_dialect()` extern "C" function.
+    ///
+    /// **This is only intended for external dialect implementations and WASM side-module
+    /// loaders.** Normal application code should use [`crate::sqlite_dialect()`] or the
+    /// `dynload` feature's [`AnyDialect::load`] instead.
+    ///
+    /// # Safety
+    ///
+    /// `ptr` must point to a valid, fully-initialized [`ffi::CDialectTemplate`] that lives
+    /// at least as long as this `AnyDialect` (and all its clones). In practice this is
+    /// always a `'static` symbol embedded in a compiled dialect binary.
+    pub unsafe fn from_c_dialect_ptr(ptr: *const ffi::CDialectTemplate) -> Self {
+        // SAFETY: caller guarantees ptr points to a valid SyntaqliteDialectTemplate.
+        unsafe { Self::from_data(ptr) }
+    }
+
     /// Load a dialect from a shared library (`.so` / `.dylib` / `.dll`).
     ///
     /// Resolves the single `syntaqlite_<name>_dialect` symbol (or
     /// `syntaqlite_dialect` when `name` is `None`), which returns a pointer to
-    /// a `SyntaqliteDialect` struct bundling grammar + all data arrays.
+    /// a `SyntaqliteDialectTemplate` struct bundling grammar + all data arrays.
     /// Returns an error if the symbol is absent or the library cannot be opened.
     ///
     /// Dropping the last clone of the returned handle unloads the library.
@@ -369,23 +386,28 @@ mod tests {
 
 // ── ffi ───────────────────────────────────────────────────────────────────────
 
-pub(crate) mod ffi {
+/// C-ABI types for external dialect implementors.
+///
+/// External dialect crates and WASM side modules use the types here to hand a
+/// dialect template pointer to [`AnyDialect::from_c_dialect_ptr`]. No other
+/// callers should depend on these types.
+pub mod ffi {
     use syntaqlite_syntax::any::AnyGrammar;
 
     use crate::dialect::SemanticRole;
 
-    /// C-ABI mirror of the `SyntaqliteDialect` struct emitted by dialect codegen.
+    /// C-ABI mirror of the `SyntaqliteDialectTemplate` struct emitted by dialect codegen.
     ///
     /// Bundles the default grammar handle with all static formatter and semantic-role
     /// arrays. A single `syntaqlite_<name>_dialect()` extern "C" function returns a
     /// pointer to a static instance of this struct — analogous to how grammar codegen
     /// emits `syntaqlite_<name>_grammar()` returning `SyntaqliteGrammar`.
     ///
-    /// Field order and types must exactly match the C `SyntaqliteDialect` typedef
-    /// emitted in the generated `dialect.c`. All fields are private; use the
-    /// provided methods to access the data safely.
+    /// Field order and types must exactly match the C `SyntaqliteDialectTemplate` typedef
+    /// emitted in the generated `dialect.c`. All fields are private; this type is opaque
+    /// to external callers — only pass it by pointer to [`AnyDialect::from_c_dialect_ptr`].
     #[repr(C)]
-    pub(crate) struct CDialectTemplate {
+    pub struct CDialectTemplate {
         grammar: syntaqlite_syntax::typed::CGrammar,
         fmt_str_data: *const u8,
         fmt_str_offsets: *const u32,

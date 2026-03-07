@@ -85,9 +85,9 @@ typedef struct {
     uint32_t fmt_dispatch_count;
     const uint8_t *roles_data;
     uint32_t roles_count;
-} SyntaqliteDialect;
+} SyntaqliteDialectTemplate;
 
-static const SyntaqliteDialect SQLITE_DIALECT = {
+static const SyntaqliteDialectTemplate SQLITE_DIALECT = {
     .grammar = SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR),
     .fmt_str_data = sqlite_fmt_string_data,
     .fmt_str_offsets = sqlite_fmt_string_offsets,
@@ -102,6 +102,6 @@ static const SyntaqliteDialect SQLITE_DIALECT = {
     .roles_count = sqlite_roles_count,
 };
 
-const SyntaqliteDialect *syntaqlite_sqlite_dialect(void) {
+const SyntaqliteDialectTemplate *syntaqlite_sqlite_dialect(void) {
   return &SQLITE_DIALECT;
 }

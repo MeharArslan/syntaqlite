@@ -77,7 +77,7 @@ impl std::ops::DerefMut for Dialect {
 }
 
 static DIALECT: LazyLock<AnyDialect> = LazyLock::new(|| {
-    // SAFETY: syntaqlite_sqlite_dialect() returns a pointer to a valid static SyntaqliteDialect
+    // SAFETY: syntaqlite_sqlite_dialect() returns a pointer to a valid static SyntaqliteDialectTemplate
     // struct compiled into the binary. The data lives for the entire program lifetime.
     unsafe { AnyDialect::from_data(ffi::syntaqlite_sqlite_dialect()) }
 });
