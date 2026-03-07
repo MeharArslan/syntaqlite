@@ -47,7 +47,7 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
         if (isEmbedded && app.embeddedFragments.length > 0) {
           if (fragIdx >= 0 && fragIdx < app.embeddedFragments.length) {
             this.formatResult = app.runtime.runFmt(
-              app.embeddedFragments[fragIdx].sqlText,
+              app.embeddedFragments[fragIdx].sql,
               this.formatOptions,
             );
           } else {
@@ -56,7 +56,7 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
             let allOk = true;
             for (let i = 0; i < app.embeddedFragments.length; i++) {
               const r = app.runtime.runFmt(
-                app.embeddedFragments[i].sqlText,
+                app.embeddedFragments[i].sql,
                 this.formatOptions,
               );
               if (!r.ok) {

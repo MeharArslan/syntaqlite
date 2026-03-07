@@ -83,12 +83,12 @@ export class Engine {
   async load(): Promise<void> {
     const module = await loadRuntimeModule(this.config);
     this.module = module;
-    this.setDialectRaw = this.resolveRuntimeFn("wasm_set_dialect");
-    this.clearDialectRaw = this.resolveRuntimeFn("wasm_clear_dialect");
+    this.setDialectRaw = this.tryResolveRuntimeFn("wasm_set_dialect");
+    this.clearDialectRaw = this.tryResolveRuntimeFn("wasm_clear_dialect");
     this.allocRaw = this.resolveRuntimeFn("wasm_alloc");
     this.freeRaw = this.resolveRuntimeFn("wasm_free");
-    this.astRaw = this.resolveRuntimeFn("wasm_ast");
-    this.astJsonRaw = this.resolveRuntimeFn("wasm_ast_json");
+    this.astRaw = this.tryResolveRuntimeFn("wasm_ast");
+    this.astJsonRaw = this.tryResolveRuntimeFn("wasm_ast_json");
     this.fmtRaw = this.resolveRuntimeFn("wasm_fmt");
     this.diagnosticsRaw = this.tryResolveRuntimeFn("wasm_diagnostics");
     this.semanticTokensRaw = this.tryResolveRuntimeFn("wasm_semantic_tokens");
@@ -199,7 +199,8 @@ export class Engine {
   }
 
   setDialectPointer(ptr: number): void {
-    const status = this.setDialectRaw!(ptr >>> 0);
+    if (!this.setDialectRaw) throw new Error("dialect switching not supported by this runtime");
+    const status = this.setDialectRaw(ptr >>> 0);
     const detail = this.readAndClearResult();
     if (status !== 0) {
       throw new Error(detail || `wasm_set_dialect failed with status ${status}`);
@@ -207,17 +208,20 @@ export class Engine {
   }
 
   clearDialectPointer(): void {
-    this.clearDialectRaw!();
+    if (!this.clearDialectRaw) return;
+    this.clearDialectRaw();
     this.readAndClearResult();
   }
 
   runAst(sql: string): FormatResult {
+    if (!this.astRaw) return {ok: false, text: "AST dump not supported by this runtime"};
     const status = this.withInput(sql, (ptr, len) => this.astRaw!(ptr, len));
     const text = this.readAndClearResult();
     return {ok: status === 0, text};
   }
 
   runAstJson(sql: string): AstResult {
+    if (!this.astJsonRaw) return {ok: false, error: "AST JSON not supported by this runtime"};
     const status = this.withInput(sql, (ptr, len) => this.astJsonRaw!(ptr, len));
     const text = this.readAndClearResult();
     if (status !== 0) return {ok: false, error: text};

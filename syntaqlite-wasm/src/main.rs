@@ -233,27 +233,6 @@ pub extern "C" fn wasm_set_session_context_ddl(ptr: u32, len: u32) -> i32 {
     )
 }
 
-// ── Available functions ──────────────────────────────────────────────
-
-#[derive(Serialize)]
-struct AvailableFunction {
-    name: String,
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn wasm_get_available_functions() -> i32 {
-    let lsp = take_or_create_lsp_host();
-    let names = lsp.available_function_names();
-    let count = names.len() as i32;
-    let items: Vec<AvailableFunction> = names
-        .into_iter()
-        .map(|name| AvailableFunction { name })
-        .collect();
-    set_result(&serde_json::to_string(&items).expect("available functions serialization failed"));
-    store_lsp_host(lsp);
-    count
-}
-
 // ── Diagnostics / semantic tokens / completions ──────────────────────
 
 const WASM_DOC_URI: &str = "wasm://input";

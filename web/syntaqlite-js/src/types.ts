@@ -163,14 +163,15 @@ export interface DiagnosticsResult {
 export type EmbeddedLanguage = "python" | "typescript";
 
 export interface EmbeddedHole {
-  hostRange: [number, number];
-  sqlOffset: number;
+  start: number;
+  end: number;
   placeholder: string;
 }
 
 export interface EmbeddedFragment {
-  sqlRange: [number, number];
-  sqlText: string;
+  start: number;
+  end: number;
+  sql: string;
   holes: EmbeddedHole[];
 }
 

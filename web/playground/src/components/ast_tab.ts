@@ -37,12 +37,12 @@ export class AstTab implements m.ClassComponent<AstTabAttrs> {
 
         if (isEmbedded && app.embeddedFragments.length > 0) {
           if (fragIdx >= 0 && fragIdx < app.embeddedFragments.length) {
-            this.astResult = app.runtime.runAstJson(app.embeddedFragments[fragIdx].sqlText);
+            this.astResult = app.runtime.runAstJson(app.embeddedFragments[fragIdx].sql);
           } else {
             // Merge all fragments' ASTs.
             const allStatements: import("../types").AstJsonNode[] = [];
             for (const f of app.embeddedFragments) {
-              const r = app.runtime.runAstJson(f.sqlText);
+              const r = app.runtime.runAstJson(f.sql);
               if (r.ok) {
                 allStatements.push(...r.statements);
               }

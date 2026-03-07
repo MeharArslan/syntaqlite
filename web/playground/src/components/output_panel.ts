@@ -79,11 +79,11 @@ export class OutputPanel implements m.ClassComponent<OutputPanelAttrs> {
                 [
                   m("option", {value: "-1"}, `All (${fragments.length} fragments)`),
                   ...fragments.map((f, i) => {
-                    const preview = f.sqlText.slice(0, 40).replace(/\n/g, " ").trim();
+                    const preview = f.sql.slice(0, 40).replace(/\n/g, " ").trim();
                     return m(
                       "option",
                       {value: String(i)},
-                      `#${i + 1}: ${preview}${f.sqlText.length > 40 ? "\u2026" : ""}`,
+                      `#${i + 1}: ${preview}${f.sql.length > 40 ? "\u2026" : ""}`,
                     );
                   }),
                 ],
