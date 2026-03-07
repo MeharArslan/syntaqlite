@@ -23,7 +23,7 @@ thread_local! {
     static EMBEDDED_LANG: RefCell<Option<u32>> = const { RefCell::new(None) };
 }
 
-/// Sentinel returned by [`syntaqlite_sqlite_dialect`] to mean "built-in SQLite".
+/// Sentinel returned by [`syntaqlite_sqlite_dialect`] to mean "built-in `SQLite`".
 /// Any real WASM linear-memory pointer is always > 1.
 const BUILTIN_SQLITE_SENTINEL: u32 = 1;
 
@@ -358,7 +358,7 @@ pub extern "C" fn wasm_completions(ptr: u32, len: u32, offset: u32, version: u32
 
 // ── Dialect switching ────────────────────────────────────────────────
 
-/// Returns a sentinel pointer meaning "use the built-in SQLite dialect".
+/// Returns a sentinel pointer meaning "use the built-in `SQLite` dialect".
 ///
 /// The TypeScript `DialectManager` calls this via `syntaqlite_sqlite_dialect()`
 /// to select the built-in grammar without loading a separate WASM side module.

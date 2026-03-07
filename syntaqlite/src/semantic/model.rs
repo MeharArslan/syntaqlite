@@ -13,7 +13,7 @@ use super::diagnostics::Diagnostic;
 /// A token position recorded during parsing.
 ///
 /// `token_type` is grammar-agnostic (`AnyTokenType`) so that the semantic
-/// analyzer works with any dialect, not just the built-in SQLite grammar.
+/// analyzer works with any dialect, not just the built-in `SQLite` grammar.
 #[derive(Debug, Clone)]
 pub(crate) struct StoredToken {
     pub(crate) offset: usize,

@@ -298,7 +298,7 @@ fn completion_boundary(
 
 /// Find the index of the first token in the statement that contains `offset`.
 ///
-/// Uses `TokenType::Semi` — safe across all dialects because SQLite token
+/// Uses `TokenType::Semi` — safe across all dialects because `SQLite` token
 /// ordinals are stable and equal to `AnyTokenType` ordinals.
 fn statement_token_start(tokens: &[StoredToken], boundary: usize) -> usize {
     let semi = AnyTokenType::from(syntaqlite_syntax::TokenType::Semi);

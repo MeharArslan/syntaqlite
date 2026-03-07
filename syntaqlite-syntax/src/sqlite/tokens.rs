@@ -209,10 +209,10 @@ impl From<TokenType> for crate::any::AnyTokenType {
     }
 }
 
-/// Identity conversion: SQLite token ordinals equal `AnyTokenType` ordinals.
+/// Identity conversion: `SQLite` token ordinals equal `AnyTokenType` ordinals.
 ///
 /// Panics if `t` does not correspond to a valid `TokenType` discriminant.
-/// This is always safe when `t` originated from a SQLite grammar parse.
+/// This is always safe when `t` originated from a `SQLite` grammar parse.
 impl From<crate::any::AnyTokenType> for TokenType {
     fn from(t: crate::any::AnyTokenType) -> TokenType {
         use crate::ast::GrammarTokenType as _;

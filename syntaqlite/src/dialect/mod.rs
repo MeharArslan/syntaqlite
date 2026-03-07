@@ -299,7 +299,7 @@ pub(crate) fn is_function_available(entry: &FunctionEntry<'_>, dialect: &AnyDial
 ///
 /// Use [`AnyDialect`] (= `TypedDialect<AnyGrammar>`) when the grammar is
 /// selected at runtime, or [`TypedDialect<G>`] when the grammar type is known
-/// statically (e.g. the built-in SQLite grammar).
+/// statically (e.g. the built-in `SQLite` grammar).
 ///
 /// Convert to [`AnyDialect`] via [`From`] / `.into()`.
 #[derive(Clone)]
@@ -345,12 +345,12 @@ pub struct Dialect(pub(crate) AnyDialect);
 
 #[cfg(feature = "sqlite")]
 impl Dialect {
-    /// Returns the default SQLite dialect with no extra flags set.
+    /// Returns the default `SQLite` dialect with no extra flags set.
     pub fn new() -> Self {
         Dialect(crate::sqlite::dialect::dialect())
     }
 
-    /// Return a copy of this dialect targeting a specific SQLite version.
+    /// Return a copy of this dialect targeting a specific `SQLite` version.
     #[must_use]
     pub fn with_version(self, version: SqliteVersion) -> Self {
         Dialect(self.0.with_version(version))
@@ -367,7 +367,7 @@ impl Dialect {
         self.0.cflags()
     }
 
-    /// Target SQLite version configured on this dialect's grammar handle.
+    /// Target `SQLite` version configured on this dialect's grammar handle.
     pub fn version(&self) -> SqliteVersion {
         self.0.version()
     }
@@ -587,7 +587,7 @@ impl AnyDialect {
         self.ext_cflags
     }
 
-    /// Target SQLite version configured on this dialect's grammar handle.
+    /// Target `SQLite` version configured on this dialect's grammar handle.
     pub fn version(&self) -> SqliteVersion {
         self.grammar.version()
     }

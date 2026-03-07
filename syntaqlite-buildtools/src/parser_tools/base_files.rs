@@ -230,7 +230,7 @@ pub const fn base_synq_files() -> &'static [(&'static str, &'static str)] {
 ///
 /// Ordering guarantee: all base file slots come before all extension slots.
 /// This ensures that Lemon assigns token IDs to extension-specific terminals
-/// only after all base SQLite terminals have been numbered.
+/// only after all base `SQLite` terminals have been numbered.
 #[must_use]
 pub fn merge_file_sets(
     base: &[(&str, &str)],

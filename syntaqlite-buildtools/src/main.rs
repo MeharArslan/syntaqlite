@@ -48,7 +48,7 @@ enum Command {
 
     /// Audit cflag availability and extract function catalog from amalgamations.
     ///
-    /// Runs the cflag audit (version_cflags.json + cflags.rs) followed by
+    /// Runs the cflag audit (`version_cflags.json` + cflags.rs) followed by
     /// function extraction (functions.json) in one shot.
     #[command(name = "update-data")]
     UpdateData(UpdateDataArgs),
@@ -120,7 +120,7 @@ struct UpdateDataArgs {
     /// Directory containing amalgamations (e.g., sqlite-amalgamations/3.35.5/sqlite3.c).
     #[arg(long, required = true)]
     amalgamation_dir: String,
-    /// Output path for version_cflags.json.
+    /// Output path for `version_cflags.json`.
     #[arg(long, required = true)]
     version_cflags_output: String,
     /// Output path for functions.json.

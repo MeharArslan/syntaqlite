@@ -154,23 +154,6 @@ mod tests {
     }
 }
 
-// ── Built-in function catalog ────────────────────────────────────────────────
-
-/// Returns all `SQLite` built-in functions available for the given dialect config.
-///
-/// Filters the full catalog by version and cflags. A function is included
-/// if at least one of its availability rules matches the config.
-#[cfg(all(feature = "fmt", feature = "sqlite"))]
-pub(crate) fn available_functions(
-    dialect: &crate::dialect::AnyDialect,
-) -> Vec<&'static crate::dialect::FunctionInfo<'static>> {
-    crate::sqlite::functions_catalog::SQLITE_FUNCTIONS
-        .iter()
-        .filter(|entry| crate::dialect::is_function_available(entry, dialect))
-        .map(|entry| &entry.info)
-        .collect()
-}
-
 #[cfg(test)]
 #[cfg(feature = "sqlite")]
 mod cflag_tests {
