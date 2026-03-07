@@ -132,7 +132,12 @@ export class AstCanvasRenderer {
     if (availW <= 0 || availH <= 0) return;
     const scaleX = availW / this.treeWidth;
     const scaleY = availH / this.treeHeight;
-    this.transform.zoom = Math.min(scaleX, scaleY, 2.0);
+    const zoomFitTree = Math.min(scaleX, scaleY);
+    // Zoom so the root node occupies 10% of screen width
+    const root = this.tree[0];
+    const zoomRoot10pct = (0.1 * this.displayWidth) / root.w;
+    // Use whichever is less zoomed in (fit-to-page wins for big trees, root-10% wins for small ones)
+    this.transform.zoom = Math.min(zoomFitTree, zoomRoot10pct);
     this.transform.panX = (this.displayWidth - this.treeWidth * this.transform.zoom) / 2;
     this.transform.panY = pad;
   }
