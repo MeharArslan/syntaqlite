@@ -124,5 +124,4 @@ impl SqliteSyntaxFlag {
     pub fn from_name(s: &str) -> Option<Self> {
         Self::ALL.iter().copied().find(|f| f.name() == s)
     }
-
 }

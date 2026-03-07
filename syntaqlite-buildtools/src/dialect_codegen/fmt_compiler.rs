@@ -721,7 +721,6 @@ fn compile_named_fmt(
 
 // ── Rust static generation ──────────────────────────────────────────────────
 
-
 #[cfg(test)]
 mod tests {
     use std::fmt::Write as _;

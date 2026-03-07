@@ -247,4 +247,3 @@ pub(crate) fn write_syntax_flag_rs(output_path: &str) -> Result<(), String> {
     eprintln!("wrote {output_path}");
     Ok(())
 }
-

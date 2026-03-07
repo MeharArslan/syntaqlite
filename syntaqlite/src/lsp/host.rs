@@ -152,7 +152,9 @@ impl LspHost {
             return &[];
         };
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
-        doc.cached_parse_diags.as_deref().expect("ensure_model sets cached_parse_diags")
+        doc.cached_parse_diags
+            .as_deref()
+            .expect("ensure_model sets cached_parse_diags")
     }
 
     /// Version, source text, and parse-error diagnostics in one borrow.
@@ -161,7 +163,10 @@ impl LspHost {
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         let version = doc.version;
         let source = doc.source.as_str();
-        let diags = doc.cached_parse_diags.as_deref().expect("ensure_model sets cached_parse_diags");
+        let diags = doc
+            .cached_parse_diags
+            .as_deref()
+            .expect("ensure_model sets cached_parse_diags");
         Some((version, source, diags))
     }
 
@@ -180,10 +185,15 @@ impl LspHost {
         };
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         if doc.cached_sem_tokens.is_none() {
-            let tokens = self.analyzer.semantic_tokens(doc.model.as_ref().expect("ensure_model sets model"));
+            let tokens = self
+                .analyzer
+                .semantic_tokens(doc.model.as_ref().expect("ensure_model sets model"));
             doc.cached_sem_tokens = Some(tokens);
         }
-        let tokens = doc.cached_sem_tokens.as_deref().expect("cached_sem_tokens just populated");
+        let tokens = doc
+            .cached_sem_tokens
+            .as_deref()
+            .expect("cached_sem_tokens just populated");
         encode_semantic_tokens(&doc.source, tokens, range)
     }
 

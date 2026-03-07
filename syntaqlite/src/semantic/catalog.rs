@@ -334,10 +334,7 @@ impl Catalog {
     /// message for each statement that failed to parse. Partial results from
     /// successfully parsed statements are always accumulated.
     #[cfg(feature = "sqlite")]
-    pub(crate) fn from_ddl(
-        dialect: impl Into<AnyDialect>,
-        source: &str,
-    ) -> (Self, Vec<String>) {
+    pub(crate) fn from_ddl(dialect: impl Into<AnyDialect>, source: &str) -> (Self, Vec<String>) {
         use syntaqlite_syntax::ParseOutcome;
         let dialect = dialect.into();
         let mut catalog = Catalog::new(dialect.clone());

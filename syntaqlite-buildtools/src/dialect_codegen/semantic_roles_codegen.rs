@@ -42,7 +42,10 @@ fn field_index(fields: &[Field], field_name: &str) -> u8 {
 /// byte 0 is the discriminant (read from a Rust-constructed value of that
 /// variant), bytes 1–N are the payload fields explicitly, and all remaining
 /// bytes are zero (no undefined padding sneaking in).
-#[expect(clippy::too_many_lines, reason = "large match over all SemanticRole variants; not worth splitting")]
+#[expect(
+    clippy::too_many_lines,
+    reason = "large match over all SemanticRole variants; not worth splitting"
+)]
 fn role_to_bytes(fields: &[Field], synq_role: Option<&SynqRole>) -> [u8; ROLE_SIZE] {
     let fi = |name: &str| field_index(fields, name);
     let opt = |name: &Option<String>| name.as_ref().map_or(FIELD_ABSENT, |n| fi(n));

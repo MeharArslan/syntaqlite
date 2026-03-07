@@ -213,12 +213,8 @@ impl SemanticAnalyzer {
             let erased = stmt.erase();
             let root_id = erased.root_id();
 
-            self.catalog.accumulate_ddl(
-                CatalogLayer::Document,
-                &erased,
-                root_id,
-                &self.dialect,
-            );
+            self.catalog
+                .accumulate_ddl(CatalogLayer::Document, &erased, root_id, &self.dialect);
 
             ValidationPass::run(
                 &erased,

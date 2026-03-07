@@ -41,16 +41,14 @@ fn get_dialect() -> Option<AnyDialect> {
 }
 
 fn take_or_create_lsp_host() -> Result<LspHost, String> {
-    LSP_HOST
-        .with(|cell| cell.borrow_mut().take())
-        .map_or_else(
-            || {
-                get_dialect()
-                    .ok_or_else(|| "no dialect loaded: call wasm_set_dialect first".to_string())
-                    .map(LspHost::with_dialect)
-            },
-            Ok,
-        )
+    LSP_HOST.with(|cell| cell.borrow_mut().take()).map_or_else(
+        || {
+            get_dialect()
+                .ok_or_else(|| "no dialect loaded: call wasm_set_dialect first".to_string())
+                .map(LspHost::with_dialect)
+        },
+        Ok,
+    )
 }
 
 fn store_lsp_host(lsp: LspHost) {
@@ -155,7 +153,10 @@ fn free(ptr: u32, len: u32) {
     }
     // SAFETY: pointer/capacity pair must come from alloc(). len == cap since alloc
     // allocates exactly `len` bytes and we use it as both length and capacity here.
-    #[expect(clippy::same_length_and_capacity, reason = "intentional: capacity equals length for dealloc")]
+    #[expect(
+        clippy::same_length_and_capacity,
+        reason = "intentional: capacity equals length for dealloc"
+    )]
     unsafe {
         let _ = Vec::<u8>::from_raw_parts(ptr as *mut u8, len as usize, len as usize);
     }
@@ -213,9 +214,7 @@ pub extern "C" fn wasm_result_free() {
 
 fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len));
-    let dialect = try_wasm!(
-        get_dialect().ok_or("no dialect loaded: call wasm_set_dialect first")
-    );
+    let dialect = try_wasm!(get_dialect().ok_or("no dialect loaded: call wasm_set_dialect first"));
     let grammar = (*dialect).clone();
     let parser =
         syntaqlite::any::AnyParser::with_config(grammar, &syntaqlite::ParserConfig::default());
@@ -228,7 +227,9 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
                 let val = stmt
                     .erase()
                     .root_node()
-                    .map_or(serde_json::Value::Null, |n| serde_json::to_value(n).unwrap_or(serde_json::Value::Null));
+                    .map_or(serde_json::Value::Null, |n| {
+                        serde_json::to_value(n).unwrap_or(serde_json::Value::Null)
+                    });
                 nodes.push(val);
             }
             syntaqlite::any::ParseOutcome::Err(_) => {}
@@ -262,9 +263,7 @@ fn run_fmt(ptr: u32, len: u32, line_width: u32, keyword_case: u32, semicolons: u
         semicolons: semicolons != 0,
         ..Default::default()
     };
-    let dialect = try_wasm!(
-        get_dialect().ok_or("no dialect loaded: call wasm_set_dialect first")
-    );
+    let dialect = try_wasm!(get_dialect().ok_or("no dialect loaded: call wasm_set_dialect first"));
     let mut formatter = Formatter::with_dialect_config(dialect, &config);
     let sql = try_wasm!(formatter.format(&source).map_err(|e| e.to_string()));
     set_result(&sql);
@@ -472,9 +471,7 @@ fn run_set_sqlite_version(ptr: u32, len: u32) -> i32 {
 
 fn run_set_cflag(ptr: u32, len: u32) -> i32 {
     let s = try_wasm!(decode_input(ptr, len));
-    let flag = try_wasm!(
-        SqliteFlag::from_name(&s).ok_or_else(|| format!("unknown cflag: {s}"))
-    );
+    let flag = try_wasm!(SqliteFlag::from_name(&s).ok_or_else(|| format!("unknown cflag: {s}")));
     SQLITE_CFLAGS.with(|c| {
         let mut guard = c.borrow_mut();
         *guard = std::mem::take(&mut *guard).with(flag);
@@ -485,9 +482,7 @@ fn run_set_cflag(ptr: u32, len: u32) -> i32 {
 
 fn run_clear_cflag(ptr: u32, len: u32) -> i32 {
     let s = try_wasm!(decode_input(ptr, len));
-    let flag = try_wasm!(
-        SqliteFlag::from_name(&s).ok_or_else(|| format!("unknown cflag: {s}"))
-    );
+    let flag = try_wasm!(SqliteFlag::from_name(&s).ok_or_else(|| format!("unknown cflag: {s}")));
     SQLITE_CFLAGS.with(|c| {
         let mut guard = c.borrow_mut();
         *guard = std::mem::take(&mut *guard).without(flag);
@@ -540,8 +535,7 @@ fn embedded_fragments(lang: u32, source: &str) -> Result<Vec<EmbeddedFragment>, 
 }
 
 fn make_embedded_analyzer() -> Result<EmbeddedAnalyzer, String> {
-    let dialect = get_dialect()
-        .ok_or("no dialect loaded: call wasm_set_dialect first")?;
+    let dialect = get_dialect().ok_or("no dialect loaded: call wasm_set_dialect first")?;
     Ok(EmbeddedAnalyzer::new(dialect))
 }
 
@@ -597,7 +591,8 @@ fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32) -> i32 {
 fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
     let fragments = try_wasm!(embedded_fragments(lang, &source), -1);
-    let encoded = try_wasm!(make_embedded_analyzer(), -1).semantic_tokens_encoded(&fragments, &source);
+    let encoded =
+        try_wasm!(make_embedded_analyzer(), -1).semantic_tokens_encoded(&fragments, &source);
     let token_count = i32::try_from(encoded.len() / 5).expect("token count fits i32");
     set_result_u32s(&encoded);
     token_count
