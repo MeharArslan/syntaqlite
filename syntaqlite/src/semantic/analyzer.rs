@@ -652,6 +652,12 @@ impl<'a> ValidationPass<'a> {
         orderby: u8,
         limit_clause: u8,
     ) {
+        // Push a fresh scope so that tables registered by visit_source_ref
+        // (via add_query_table) are visible when we visit SELECT columns,
+        // WHERE, ORDER BY, etc.  Without this, add_query_table is a silent
+        // no-op when no query scope frame exists (e.g. at the top level),
+        // causing column refs against unknown tables to be spuriously flagged.
+        self.catalog.push_query_scope();
         self.visit_opt(stmt, Self::field_node_id(fields, from));
         for idx in [
             columns,
@@ -663,6 +669,7 @@ impl<'a> ValidationPass<'a> {
         ] {
             self.visit_opt(stmt, Self::field_node_id(fields, idx));
         }
+        self.catalog.pop_query_scope();
     }
 
     fn visit_cte_scope(
@@ -1650,6 +1657,110 @@ mod tests {
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
             .collect();
         assert!(errs.is_empty(), "unexpected UnknownColumn: {errs:?}");
+    }
+
+    // ── Bug regression: unknown table should not produce column errors ─────────
+
+    /// When `FROM unknown_table` is encountered, the table is flagged as unknown
+    /// but its columns CANNOT be validated — any column reference against an
+    /// unknown table must be accepted conservatively.
+    ///
+    /// Root cause investigated: `visit_query` never pushed a query scope, so
+    /// `add_query_table("users", None)` was a silent no-op (no frame to write
+    /// into). Column resolution then found zero tables with `None` columns →
+    /// `ColumnResolution::NotFound` → spurious UnknownColumn diagnostics.
+    #[test]
+    fn unknown_table_columns_not_flagged() {
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(
+            "SELECT id, name, email FROM users WHERE age >= 0 AND active = 1 ORDER BY name",
+            &cat,
+            &strict(),
+        );
+
+        // UnknownTable for "users" is expected and correct.
+        let table_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| {
+                matches!(&d.message, DiagnosticMessage::UnknownTable { name } if name == "users")
+            })
+            .collect();
+        assert_eq!(
+            table_errs.len(),
+            1,
+            "expected exactly one UnknownTable for 'users': {:#?}",
+            model.diagnostics()
+        );
+
+        // UnknownColumn must NOT appear — users is unknown so any column is ok.
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "unknown table means columns should be accepted conservatively, got: {col_errs:#?}"
+        );
+    }
+
+    /// Two unknown tables in the same query: neither should generate column errors.
+    #[test]
+    fn unknown_tables_join_columns_not_flagged() {
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(
+            "SELECT u.id, o.total FROM users u JOIN orders o ON u.id = o.user_id",
+            &cat,
+            &strict(),
+        );
+
+        // Two UnknownTable errors expected.
+        let table_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { .. }))
+            .collect();
+        assert_eq!(
+            table_errs.len(),
+            2,
+            "expected UnknownTable for both 'users' and 'orders': {:#?}",
+            model.diagnostics()
+        );
+
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "unknown tables should suppress all column errors, got: {col_errs:#?}"
+        );
+    }
+
+    /// Subquery alias from unknown inner table should be accepted conservatively.
+    #[test]
+    fn unknown_table_in_subquery_columns_not_flagged() {
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(
+            "SELECT sub.id FROM (SELECT id FROM users) AS sub",
+            &cat,
+            &strict(),
+        );
+
+        let col_errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_errs.is_empty(),
+            "subquery with unknown table should suppress column errors, got: {col_errs:#?}"
+        );
     }
 
     #[test]

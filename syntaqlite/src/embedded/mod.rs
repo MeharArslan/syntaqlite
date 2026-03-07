@@ -526,6 +526,58 @@ mod tests {
         );
     }
 
+    // ── Bug regression: Python f-string with unknown table (user's report) ─────
+
+    /// Exact scenario from the bug report: embedded Python f-string where
+    /// `users` is not in the catalog.  The table should get one UnknownTable
+    /// diagnostic, and the columns (id, name, email, age, name in ORDER BY)
+    /// should NOT produce any UnknownColumn diagnostics.
+    #[test]
+    fn python_unknown_table_no_spurious_column_errors() {
+        let source = concat!(
+            "import sqlite3\n",
+            "\n",
+            "def get_active_users(conn, min_age):\n",
+            "    cursor = conn.execute(\n",
+            "        f\"SELECT id, name, email FROM users",
+            " WHERE age >= {min_age} AND active = 1 ORDER BY name\"\n",
+            "    )\n",
+            "    return cursor.fetchall()\n",
+        );
+
+        let fragments = extract_python(source);
+        assert_eq!(
+            fragments.len(),
+            1,
+            "should extract exactly one SQL fragment"
+        );
+
+        let all = analyzer().validate(&fragments);
+
+        // UnknownTable for "users" is expected and correct.
+        let table_diags: Vec<_> = all
+            .iter()
+            .filter(|d| {
+                matches!(&d.message, DiagnosticMessage::UnknownTable { name } if name == "users")
+            })
+            .collect();
+        assert_eq!(
+            table_diags.len(),
+            1,
+            "expected exactly one UnknownTable for 'users': {all:#?}"
+        );
+
+        // Column refs against an unknown table must NOT be flagged.
+        let col_diags: Vec<_> = all
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(
+            col_diags.is_empty(),
+            "unknown table should suppress column errors, got: {col_diags:#?}"
+        );
+    }
+
     #[test]
     fn hole_diagnostics_filtered_out() {
         let source = r#"db.execute(f"SELECT {col} FROM {tbl}")"#;
