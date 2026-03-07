@@ -193,8 +193,21 @@ impl Formatter {
                         }
                     }
                     if let Some((start, end)) = preserve_span {
+                        // Emit leading whitespace from the canonical keyword string (if any),
+                        // then the original-cased source text, then trailing whitespace.
+                        // This preserves formatting spaces like the trailing " " in "FROM ".
+                        let prefix = kw_text.len() - kw_text.trim_ascii_start().len();
+                        let suffix = kw_text.len() - kw_text.trim_ascii_end().len();
+                        if prefix > 0 {
+                            let pre = arena.text(&kw_text[..prefix]);
+                            running = arena.cat(running, pre);
+                        }
                         let src_kw = arena.text(&source[start as usize..end as usize]);
                         running = arena.cat(running, src_kw);
+                        if suffix > 0 {
+                            let suf = arena.text(&kw_text[kw_text.len() - suffix..]);
+                            running = arena.cat(running, suf);
+                        }
                     } else {
                         let kw = arena.keyword(kw_text);
                         running = arena.cat(running, kw);
