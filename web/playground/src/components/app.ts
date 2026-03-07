@@ -15,6 +15,18 @@ export class AppComponent implements m.ClassComponent<Attrs> {
       app.runtime.statusError
         ? m("div.sq-error-banner", app.runtime.status)
         : undefined,
+      app.urlState.hadCustomDialect && !app.customDialectNoticeDismissed
+        ? m("div.sq-info-banner", [
+            m("span", "This link was shared from a session using a custom dialect. " +
+              "It is shown here with a built-in dialect — some syntax or functions may not be recognised."),
+            m("button.sq-info-banner__dismiss", {
+              onclick: () => {
+                app.customDialectNoticeDismissed = true;
+                m.redraw();
+              },
+            }, "\u2715"),
+          ])
+        : undefined,
       m(Workspace, {app}),
       m(DetailsPanel, {app}),
     ]);

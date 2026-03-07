@@ -94,6 +94,35 @@ body {
   font-weight: 500;
 }
 
+/* ── Info banner (custom dialect notice, etc.) ── */
+.sq-app:has(.sq-info-banner) {
+  grid-template-rows: var(--toolbar-h) auto 1fr auto;
+}
+
+.sq-info-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 25%, var(--line));
+  color: var(--ink);
+  font-size: 0.82rem;
+}
+
+.sq-info-banner span {
+  flex: 1;
+}
+
+.sq-info-banner__dismiss {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  font-size: 0.8rem;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+}
+
 /* ── Base form elements ── */
 button {
   border: 1px solid var(--accent);

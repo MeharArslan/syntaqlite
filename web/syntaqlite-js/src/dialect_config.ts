@@ -29,48 +29,40 @@ export function versionToInt(version: string): number {
   return major * 1_000_000 + minor * 1_000 + patch;
 }
 
+/**
+ * Manages compile-flag metadata and applies dialect config to the engine.
+ *
+ * Serializable state (version, enabled cflags) lives in PlaygroundState /
+ * UrlStateManager — this class holds only non-serializable engine metadata.
+ */
 export class DialectConfigManager {
-  version = "latest";
-  enabledCflags = new Set<string>();
   availableCflags: CflagEntry[] = [];
 
   loadAvailableCflags(engine: Engine): void {
     this.availableCflags = engine.getCflagList();
   }
 
-  /** Return only cflag entries whose minVersion <= selected version. */
-  get visibleCflagEntries(): CflagEntry[] {
-    const ver = versionToInt(this.version);
+  /** Return cflag entries whose minVersion <= the given version. */
+  visibleCflagEntries(version: string): CflagEntry[] {
+    const ver = versionToInt(version);
     return this.availableCflags.filter(
       (e) => e.minVersion === 0 || e.minVersion <= ver,
     );
   }
 
-  /** Return only cflag names whose minVersion <= selected version. */
-  get visibleCflags(): string[] {
-    return this.visibleCflagEntries.map((e) => e.name);
+  /** Return cflag names whose minVersion <= the given version. */
+  visibleCflags(version: string): string[] {
+    return this.visibleCflagEntries(version).map((e) => e.name);
   }
 
-  apply(engine: Engine): void {
-    engine.setSqliteVersion(this.version);
+  apply(engine: Engine, version: string, cflags: string[]): void {
+    engine.setSqliteVersion(version);
     engine.clearAllCflags();
-    // Only apply cflags that are still visible for the current version.
-    const visible = new Set(this.visibleCflags);
-    for (const suffix of this.enabledCflags) {
+    const visible = new Set(this.visibleCflags(version));
+    for (const suffix of cflags) {
       if (visible.has(suffix)) {
         engine.setCflag("SYNTAQLITE_CFLAG_" + suffix);
       }
     }
-  }
-
-  reset(engine: Engine): void {
-    this.version = "latest";
-    this.enabledCflags.clear();
-    this.apply(engine);
-  }
-
-  get configKey(): string {
-    const cflags = [...this.enabledCflags].sort().join(",");
-    return `${this.version}|${cflags}`;
   }
 }

@@ -3,7 +3,8 @@
 
 import m from "mithril";
 import type {App} from "../app/app";
-import type {AstResult, AstViewMode} from "../types";
+import type {AstResult} from "../types";
+import type {AstViewMode} from "../app/url_state";
 import {AstOutline} from "./ast_outline";
 import {AstGraph} from "./ast_tree/ast_tree";
 
@@ -20,16 +21,24 @@ export class AstTab implements m.ClassComponent<AstTabAttrs> {
   private lastSql: string | undefined = undefined;
   private lastDialectPtr: number | undefined = undefined;
   private lastConfigKey: string | undefined = undefined;
+  private initialized = false;
 
   view(vnode: m.Vnode<AstTabAttrs>) {
     const {app, sql, active} = vnode.attrs;
+
+    // On first render, restore the saved view mode from URL state.
+    if (!this.initialized) {
+      this.initialized = true;
+      this.astViewMode = app.urlState.current.astViewMode;
+    }
 
     if (active && app.runtime.ready && app.dialect.active) {
       const isEmbedded = app.languageMode !== "sql";
       const fragIdx = app.selectedFragmentIndex;
       const cacheKey = `${sql}:${app.languageMode}:${fragIdx}`;
       const dPtr = app.dialect.active.ptr;
-      const cfgKey = app.dialectConfig.configKey;
+      const {sqliteVersion, cflags} = app.urlState.current;
+      const cfgKey = `${sqliteVersion}|${cflags.join(",")}`;
       if (cacheKey !== this.lastSql || dPtr !== this.lastDialectPtr || cfgKey !== this.lastConfigKey) {
         this.lastSql = cacheKey;
         this.lastDialectPtr = dPtr;
@@ -72,6 +81,7 @@ export class AstTab implements m.ClassComponent<AstTabAttrs> {
               value: this.astViewMode,
               onchange: (e: Event) => {
                 this.astViewMode = (e.target as HTMLSelectElement).value as AstViewMode;
+                app.urlState.update({astViewMode: this.astViewMode});
               },
             },
             [m("option", {value: "outline"}, "Outline"), m("option", {value: "graph"}, "Graph")],

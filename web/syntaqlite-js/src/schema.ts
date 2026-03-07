@@ -41,39 +41,35 @@ export function parseSimple(rawText: string): SessionContextPayload {
 }
 
 /**
- * Manages user-defined schema context for validation.
+ * Applies user-defined schema context to the engine.
  *
- * Supports two formats:
- *   simple — one table per line: `table_name: col1, col2, col3`
- *   ddl    — `CREATE TABLE name (col1 TYPE, col2 TYPE, ...);`
+ * Serializable state (rawText, format) lives in PlaygroundState /
+ * UrlStateManager — this class holds only the computed feedback state
+ * (parseError, parsedTableCount) produced by applying the schema.
  */
 export class SchemaContextManager {
-  rawText = "";
-  format: SchemaFormat = "simple";
   parseError: string | undefined = undefined;
   /** Number of tables successfully loaded, or undefined when no schema is set. */
   parsedTableCount: number | undefined = undefined;
   private lastAppliedKey = "";
 
-  /** Stable key for change detection (like DialectConfigManager.configKey). */
-  get configKey(): string {
-    return `${this.format}:${this.rawText}`;
-  }
-
-  /** Apply the current schema to the engine. Returns true if changed.
-   *  Pass `force=true` to re-apply even if the schema text hasn't changed
-   *  (needed after dialect switches that reset the engine's LSP host). */
-  apply(engine: Engine, force = false): boolean {
-    const key = this.configKey;
+  /**
+   * Apply schema to the engine.
+   * Pass `force=true` to re-apply even when rawText/format haven't changed
+   * (needed after dialect switches that reset the engine's LSP host).
+   * Returns true if the schema was actually applied.
+   */
+  apply(engine: Engine, rawText: string, format: SchemaFormat, force = false): boolean {
+    const key = `${format}:${rawText}`;
     if (!force && key === this.lastAppliedKey) return false;
     this.lastAppliedKey = key;
 
-    if (this.rawText.trim() === "") {
+    if (rawText.trim() === "") {
       this.parseError = undefined;
       this.parsedTableCount = undefined;
       engine.clearSessionContext();
-    } else if (this.format === "ddl") {
-      const result = engine.setSessionContextDdl(this.rawText);
+    } else if (format === "ddl") {
+      const result = engine.setSessionContextDdl(rawText);
       if (result.ok) {
         this.parseError = undefined;
       } else {
@@ -81,18 +77,10 @@ export class SchemaContextManager {
       }
     } else {
       this.parseError = undefined;
-      const payload = parseSimple(this.rawText);
+      const payload = parseSimple(rawText);
       this.parsedTableCount = payload.tables.length;
       engine.setSessionContext(JSON.stringify(payload));
     }
     return true;
-  }
-
-  reset(engine: Engine): void {
-    this.rawText = "";
-    this.parseError = undefined;
-    this.parsedTableCount = undefined;
-    this.lastAppliedKey = "";
-    engine.clearSessionContext();
   }
 }

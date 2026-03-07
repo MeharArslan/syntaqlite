@@ -25,6 +25,7 @@ export class Header implements m.ClassComponent<Attrs> {
   view(vnode: m.Vnode<Attrs>) {
     const {app} = vnode.attrs;
     const activeId = app.dialect.activePresetId;
+    const {sqliteVersion, cflags} = app.urlState.current;
 
     return m("header.sq-toolbar", [
       m("div.sq-toolbar__left", [
@@ -80,14 +81,16 @@ export class Header implements m.ClassComponent<Attrs> {
                           m(
                             "select.sq-config-popover__select",
                             {
-                              value: app.dialectConfig.version,
+                              value: sqliteVersion,
                               onchange: (e: Event) => {
-                                app.dialectConfig.version = (e.target as HTMLSelectElement).value;
-                                const visible = new Set(app.dialectConfig.visibleCflags);
-                                for (const flag of app.dialectConfig.enabledCflags) {
-                                  if (!visible.has(flag)) app.dialectConfig.enabledCflags.delete(flag);
-                                }
-                                app.dialectConfig.apply(app.runtime);
+                                const newVersion = (e.target as HTMLSelectElement).value;
+                                // Drop any cflags no longer visible at the new version.
+                                const visible = new Set(
+                                  app.dialectConfig.visibleCflags(newVersion),
+                                );
+                                const newCflags = cflags.filter((f) => visible.has(f));
+                                app.urlState.update({sqliteVersion: newVersion, cflags: newCflags});
+                                app.dialectConfig.apply(app.runtime, newVersion, newCflags);
                                 m.redraw();
                               },
                             },
@@ -99,7 +102,7 @@ export class Header implements m.ClassComponent<Attrs> {
                           m(
                             "div.sq-config-popover__cflag-list",
                             (() => {
-                              const entries = app.dialectConfig.visibleCflagEntries;
+                              const entries = app.dialectConfig.visibleCflagEntries(sqliteVersion);
                               const groups: Record<string, string[]> = {};
                               for (const e of entries) {
                                 (groups[e.category] ??= []).push(e.name);
@@ -119,14 +122,17 @@ export class Header implements m.ClassComponent<Attrs> {
                                       ...items.map((suffix) =>
                                         m("label.sq-config-popover__cflag-item", [
                                           m("input[type=checkbox]", {
-                                            checked: app.dialectConfig.enabledCflags.has(suffix),
+                                            checked: cflags.includes(suffix),
                                             onchange: () => {
-                                              if (app.dialectConfig.enabledCflags.has(suffix)) {
-                                                app.dialectConfig.enabledCflags.delete(suffix);
-                                              } else {
-                                                app.dialectConfig.enabledCflags.add(suffix);
-                                              }
-                                              app.dialectConfig.apply(app.runtime);
+                                              const newCflags = cflags.includes(suffix)
+                                                ? cflags.filter((f) => f !== suffix)
+                                                : [...cflags, suffix].sort();
+                                              app.urlState.update({cflags: newCflags});
+                                              app.dialectConfig.apply(
+                                                app.runtime,
+                                                sqliteVersion,
+                                                newCflags,
+                                              );
                                               m.redraw();
                                             },
                                           }),
@@ -145,7 +151,8 @@ export class Header implements m.ClassComponent<Attrs> {
                             "button.sq-config-popover__reset-btn",
                             {
                               onclick: () => {
-                                app.dialectConfig.reset(app.runtime);
+                                app.urlState.update({sqliteVersion: "latest", cflags: []});
+                                app.dialectConfig.apply(app.runtime, "latest", []);
                                 m.redraw();
                               },
                             },
@@ -172,6 +179,9 @@ export class Header implements m.ClassComponent<Attrs> {
                   "button.sq-dialect-switcher__btn",
                   {
                     class: activeId === "custom" ? "sq-dialect-switcher__btn--active" : "",
+                    title: activeId === "custom"
+                      ? "Custom dialect active — not included in shared URLs"
+                      : undefined,
                     onclick: (e: Event) => {
                       e.stopPropagation();
                       this.customPopoverOpen = !this.customPopoverOpen;
@@ -354,5 +364,4 @@ export class Header implements m.ClassComponent<Attrs> {
   private closePopover() {
     this.customPopoverOpen = false;
   }
-
 }

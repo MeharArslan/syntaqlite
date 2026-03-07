@@ -11,12 +11,14 @@ import {
 import type {DiagnosticEntry, EmbeddedFragment, EmbeddedLanguage} from "@syntaqlite/js";
 import {ThemeManager} from "./theme_manager";
 import {WindowManager} from "./window_manager";
+import {UrlStateManager} from "./url_state";
 
 export interface Attrs {
   app: App;
 }
 
 export class App {
+  urlState: UrlStateManager;
   theme: ThemeManager;
   runtime: Engine;
   dialect: DialectManager;
@@ -24,6 +26,7 @@ export class App {
   schemaContext: SchemaContextManager;
   window: WindowManager;
   diagnostics: DiagnosticEntry[] = [];
+  customDialectNoticeDismissed = false;
   /** Set by the workspace to reveal a diagnostic in the editor. */
   revealDiagnostic: ((d: DiagnosticEntry) => void) | undefined = undefined;
 
@@ -35,8 +38,13 @@ export class App {
   selectedFragmentIndex = -1;
 
   constructor() {
+    // UrlStateManager is constructed first: it is the single source of truth
+    // for all serializable state. Other managers hold only non-serializable
+    // (computed / engine-derived) state.
+    this.urlState = new UrlStateManager();
+
     this.theme = new ThemeManager();
-    this.runtime = new Engine({ runtimeJsPath: "./syntaqlite-runtime.js" });
+    this.runtime = new Engine({runtimeJsPath: "./syntaqlite-runtime.js"});
     this.dialect = new DialectManager({
       presets: [
         {
@@ -56,6 +64,9 @@ export class App {
     });
     this.dialectConfig = new DialectConfigManager();
     this.schemaContext = new SchemaContextManager();
+
+    this.languageMode = this.urlState.current.languageMode;
+
     this.window = new WindowManager();
   }
 }

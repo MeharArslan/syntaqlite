@@ -189,8 +189,20 @@ async function main() {
 
   try {
     await app.runtime.load();
-    await app.dialect.loadDefault(app.runtime);
+
+    // Load the dialect specified by URL state (defaults to sqlite).
+    const {dialect, sqliteVersion, cflags, schema, schemaFormat} = app.urlState.current;
+    const presets = app.dialect.getPresets();
+    const presetToLoad = presets.find((p) => p.id === dialect) ?? presets[0];
+    await app.dialect.selectPreset(app.runtime, presetToLoad);
+
+    // Apply URL-specified SQLite version and compile flags.
     app.dialectConfig.loadAvailableCflags(app.runtime);
+    app.dialectConfig.apply(app.runtime, sqliteVersion, cflags);
+
+    // Apply URL-specified schema context (no-op if schema is empty).
+    app.schemaContext.apply(app.runtime, schema, schemaFormat);
+
     registerSemanticTokensProvider(app.runtime);
     registerCompletionProvider(app, app.runtime);
     registerCodeActionProvider(app);

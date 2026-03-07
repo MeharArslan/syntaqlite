@@ -4,6 +4,7 @@
 import m from "mithril";
 import type {App} from "../app/app";
 import type {ActiveTab} from "../types";
+import type {OutputTab} from "../app/url_state";
 import {renderValidationBadge, renderValidationTab, renderSchemaTab} from "./details_shared";
 import {AstTab} from "./ast_tab";
 import {FormatTab} from "./format_tab";
@@ -28,6 +29,7 @@ const MOBILE_TABS: {key: ActiveTab; label: string}[] = [
 
 export class OutputPanel implements m.ClassComponent<OutputPanelAttrs> {
   private activeTab: ActiveTab = "format";
+  private initialized = false;
 
   view(vnode: m.Vnode<OutputPanelAttrs>) {
     const {app, sql} = vnode.attrs;
@@ -35,6 +37,12 @@ export class OutputPanel implements m.ClassComponent<OutputPanelAttrs> {
     const tabs = mobile ? MOBILE_TABS : DESKTOP_TABS;
     const isEmbedded = app.languageMode !== "sql";
     const fragments = app.embeddedFragments;
+
+    // On first render, restore the saved tab from URL state.
+    if (!this.initialized) {
+      this.initialized = true;
+      this.activeTab = app.urlState.current.outputTab;
+    }
 
     // On first mobile render, default to validation tab.
     if (mobile && this.activeTab === "format") {
@@ -56,6 +64,11 @@ export class OutputPanel implements m.ClassComponent<OutputPanelAttrs> {
               class: this.activeTab === t.key ? "sq-tab-bar__tab--active" : "",
               onclick: () => {
                 this.activeTab = t.key;
+                // Only persist desktop tabs (format / ast) to the URL.
+                // Mobile-only tabs (validation, schema) are not shareable.
+                if (t.key === "format" || t.key === "ast") {
+                  app.urlState.update({outputTab: t.key as OutputTab});
+                }
               },
             },
             t.key === "validation"

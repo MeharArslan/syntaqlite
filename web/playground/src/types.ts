@@ -9,12 +9,12 @@ export type {
   AstListNode,
   AstRegularNode,
   AstJsonNode,
-  AstResultOk,
-  AstResultError,
-  AstResult,
   KeywordCase,
   FormatOptions,
   FormatResult,
+  AstResultOk,
+  AstResultError,
+  AstResult,
   DialectBinding,
   DiagnosticDetail,
   HelpDetail,
@@ -28,4 +28,3 @@ export type {
 
 export type Theme = "dark" | "light";
 export type ActiveTab = "format" | "ast" | "validation" | "schema";
-export type AstViewMode = "outline" | "graph";

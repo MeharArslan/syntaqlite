@@ -32,7 +32,8 @@ export class FormatTab implements m.ClassComponent<FormatTabAttrs> {
       const fragIdx = app.selectedFragmentIndex;
       const optKey = `${this.formatOptions.lineWidth}:${this.formatOptions.keywordCase}:${this.formatOptions.semicolons}:${app.languageMode}:${fragIdx}`;
       const dPtr = app.dialect.active.ptr;
-      const cfgKey = app.dialectConfig.configKey;
+      const {sqliteVersion, cflags} = app.urlState.current;
+      const cfgKey = `${sqliteVersion}|${cflags.join(",")}`;
       if (
         sql !== this.lastSql ||
         optKey !== this.lastOptionsKey ||

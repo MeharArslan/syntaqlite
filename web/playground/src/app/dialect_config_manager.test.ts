@@ -25,8 +25,7 @@ describe("DialectConfigManager", () => {
       {name: "A", minVersion: 3_046_000, category: "x"},
       {name: "B", minVersion: 3_030_000, category: "x"},
     ];
-    mgr.version = "3.35.0";
-    expect(mgr.visibleCflagEntries.map((e) => e.name)).toEqual(["B"]);
+    expect(mgr.visibleCflagEntries("3.35.0").map((e) => e.name)).toEqual(["B"]);
   });
 
   it("visibleCflagEntries includes minVersion=0 for all versions", () => {
@@ -35,14 +34,6 @@ describe("DialectConfigManager", () => {
       {name: "ALWAYS", minVersion: 0, category: "x"},
       {name: "NEW", minVersion: 3_046_000, category: "x"},
     ];
-    mgr.version = "3.24.0";
-    expect(mgr.visibleCflagEntries.map((e) => e.name)).toEqual(["ALWAYS"]);
-  });
-
-  it("configKey is deterministic with sorted cflags", () => {
-    const mgr = new DialectConfigManager();
-    mgr.version = "3.46.0";
-    mgr.enabledCflags = new Set(["Z", "A", "M"]);
-    expect(mgr.configKey).toBe("3.46.0|A,M,Z");
+    expect(mgr.visibleCflagEntries("3.24.0").map((e) => e.name)).toEqual(["ALWAYS"]);
   });
 });

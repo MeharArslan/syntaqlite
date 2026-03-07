@@ -3,6 +3,9 @@ import { defineConfig } from "vite";
 import checker from "vite-plugin-checker";
 
 export default defineConfig({
+  test: {
+    exclude: ["e2e/**", "node_modules/**"],
+  },
   base: "/syntaqlite/",
   plugins: [checker({ typescript: true })],
   resolve: {

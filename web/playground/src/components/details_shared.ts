@@ -2,9 +2,11 @@
 // Licensed under the Apache License, Version 2.0.
 
 import m from "mithril";
-import type {DiagnosticEntry, SchemaFormat, Engine} from "@syntaqlite/js";
+import type {DiagnosticEntry} from "@syntaqlite/js";
+import type {App} from "../app/app";
 import {Table} from "../widgets/table";
 import type {TableColumn} from "../widgets/table";
+import type {SchemaFormat} from "../app/url_state";
 
 export const SEVERITY_ICON: Record<DiagnosticEntry["severity"], string> = {
   error: "\u2715",
@@ -99,37 +101,32 @@ export function renderValidationTab(
   );
 }
 
-export function renderSchemaTab(app: {
-  schemaContext: {
-    format: SchemaFormat;
-    rawText: string;
-    parseError?: string;
-    parsedTableCount?: number;
-    apply: (engine: Engine, force?: boolean) => boolean;
-    configKey: string;
-  };
-  runtime: Engine;
-}): m.Children {
+export function renderSchemaTab(app: App): m.Children {
+  const {schema, schemaFormat} = app.urlState.current;
+
   return m("div.sq-details-panel__body", [
     m("div.sq-details-panel__options", [
       m("label", "Format"),
       m("select", {
-        value: app.schemaContext.format,
+        value: schemaFormat,
         onchange: (e: Event) => {
-          app.schemaContext.format = (e.target as HTMLSelectElement).value as SchemaFormat;
-          app.schemaContext.apply(app.runtime);
+          const newFormat = (e.target as HTMLSelectElement).value as SchemaFormat;
+          app.schemaContext.apply(app.runtime, schema, newFormat);
+          app.urlState.update({schemaFormat: newFormat});
         },
       }, FORMAT_OPTIONS.map((o) =>
         m("option", {value: o.value}, o.label),
       )),
     ]),
     m("textarea.sq-details-panel__textarea", {
-      placeholder: FORMAT_PLACEHOLDER[app.schemaContext.format],
+      placeholder: FORMAT_PLACEHOLDER[schemaFormat],
       rows: 3,
-      value: app.schemaContext.rawText,
+      value: schema,
       oninput: (e: Event) => {
-        app.schemaContext.rawText = (e.target as HTMLTextAreaElement).value;
-        app.schemaContext.apply(app.runtime);
+        const newText = (e.target as HTMLTextAreaElement).value;
+        app.schemaContext.apply(app.runtime, newText, schemaFormat);
+        // Debounced — urlState handles the 800ms delay internally.
+        app.urlState.update({schema: newText});
         m.redraw();
       },
     }),
@@ -138,6 +135,6 @@ export function renderSchemaTab(app: {
       : app.schemaContext.parsedTableCount !== undefined
         ? m("span.sq-details-panel__help",
             `${app.schemaContext.parsedTableCount} table(s) loaded`)
-        : m("span.sq-details-panel__help", FORMAT_HELP[app.schemaContext.format]),
+        : m("span.sq-details-panel__help", FORMAT_HELP[schemaFormat]),
   ]);
 }
