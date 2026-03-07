@@ -407,7 +407,7 @@ def _run(fix: bool, verbosity: int, run_all: bool, cargo: Callable[..., list[str
     # If diff tests are needed but no Rust/C changed, verify the CLI binary
     # already exists; if not, force a build.
     if need_diff_tests and not need_compilation:
-        cli_binary = os.path.join(ROOT_DIR, "target", "debug", "syntaqlite-cli")
+        cli_binary = os.path.join(ROOT_DIR, "target", "debug", "syntaqlite")
         if not os.path.exists(cli_binary):
             if verbosity >= 0:
                 print(f"{_YELLOW}==> CLI binary not found — forcing build{_RESET}")
@@ -560,18 +560,22 @@ def _run(fix: bool, verbosity: int, run_all: bool, cargo: Callable[..., list[str
     diff_lanes = []
     diff_skipped = []
 
-    for key, tool_name in (
-        ("run_ast",           "run-ast-diff-tests"),
-        ("run_fmt",           "run-fmt-diff-tests"),
-        ("run_amalg",         "run-amalg-tests"),
-        ("run_perfetto_fmt",  "run-perfetto-fmt-diff-tests"),
-        ("run_perfetto_val",  "run-perfetto-validation-diff-tests"),
-        ("run_grammar",       "run-grammar-checks"),
+    _integration = _tool("run-integration-tests")
+    for key, suite_name in (
+        ("run_ast",           "ast"),
+        ("run_fmt",           "fmt"),
+        ("run_amalg",         "amalg"),
+        ("run_perfetto_fmt",  "perfetto-fmt"),
+        ("run_perfetto_val",  "perfetto-val"),
+        ("run_grammar",       "grammar"),
     ):
         if flags[key]:
-            diff_lanes.append([(f"tools/{tool_name}", [_tool(tool_name)])])
+            diff_lanes.append([(
+                f"integration-tests/{suite_name}",
+                [_integration, "--suite", suite_name],
+            )])
         else:
-            diff_skipped.append(f"tools/{tool_name}")
+            diff_skipped.append(f"integration-tests/{suite_name}")
 
     # WASM playground: only relevant when any compilation is needed.
     run_wasm = need_compilation

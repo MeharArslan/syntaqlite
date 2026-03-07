@@ -1,0 +1,40 @@
+#!/usr/bin/env python3
+# Copyright 2025 The syntaqlite Authors. All rights reserved.
+# Licensed under the Apache License, Version 2.0.
+
+"""Unified integration test runner.
+
+Runs all syntaqlite integration test suites (or a selected subset).
+
+Usage:
+    tools/run-integration-tests               # run all suites
+    tools/run-integration-tests --suite ast   # run a single suite
+    tools/run-integration-tests --list        # list available suites
+
+Options:
+    --suite NAME      Suite to run (repeatable). Default: all suites.
+    --binary PATH     Path to syntaqlite CLI binary.
+    --filter PATTERN  Regex filter for test names (diff suites only).
+    --rebaseline      Rewrite failing expectations in-place (diff suites only).
+    --jobs N          Parallel jobs for diff test suites.
+    -v, --verbose     Increase output verbosity.
+    --list            List available suites and exit.
+
+Available suites:
+    ast               SQLite AST diff tests
+    fmt               SQLite formatter diff tests
+    perfetto-fmt      Perfetto dialect formatter diff tests
+    perfetto-val      Perfetto dialect validation diff tests
+    amalg             Amalgamation compilation + AST diff tests
+    grammar           Grammar token-ID ordering invariants
+"""
+
+import os
+import sys
+
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT_DIR)
+
+if __name__ == "__main__":
+    from python.syntaqlite.integration_tests.runner import main
+    sys.exit(main())
