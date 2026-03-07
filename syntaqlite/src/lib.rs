@@ -51,19 +51,6 @@ pub fn sqlite_dialect() -> Dialect {
     Dialect::new()
 }
 
-/// All known `SQLite` compile-time flag metadata.
-///
-/// Each entry is `(name, bit_index, min_version_int, categories)`:
-/// - `name`: canonical `SQLITE_*` flag name (e.g. `"SQLITE_OMIT_WINDOWFUNC"`)
-/// - `bit_index`: stable bit index in the cflag bitset
-/// - `min_version_int`: earliest observed `SQLite` version as `major * 1_000_000 +
-///   minor * 1_000 + patch`; `0` means available across all audited versions
-/// - `categories`: UI concerns this flag affects (e.g. `&["parser", "functions"]`)
-#[cfg(feature = "sqlite")]
-pub fn sqlite_cflag_entries() -> &'static [(&'static str, u32, i32, &'static [&'static str])] {
-    sqlite::cflag_entries::CFLAG_ENTRIES
-}
-
 pub mod util;
 
 // Shared parser utility types used across both `any` and `typed` modules.
