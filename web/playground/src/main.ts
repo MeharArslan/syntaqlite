@@ -63,7 +63,7 @@ const TOKEN_LEGEND: monaco.languages.SemanticTokensLegend = {
   tokenModifiers: [],
 };
 
-function registerSemanticTokensProvider(app: App, engine: Engine): void {
+function registerSemanticTokensProvider(engine: Engine): void {
   const provider: monaco.languages.DocumentRangeSemanticTokensProvider = {
     getLegend: () => TOKEN_LEGEND,
 
@@ -191,7 +191,7 @@ async function main() {
     await app.runtime.load();
     await app.dialect.loadDefault(app.runtime);
     app.dialectConfig.loadAvailableCflags(app.runtime);
-    registerSemanticTokensProvider(app, app.runtime);
+    registerSemanticTokensProvider(app.runtime);
     registerCompletionProvider(app, app.runtime);
     registerCodeActionProvider(app);
     app.runtime.updateStatus("Ready.");
