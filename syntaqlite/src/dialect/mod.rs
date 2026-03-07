@@ -281,7 +281,9 @@ impl AnyDialect {
     /// Resolves the single `syntaqlite_<name>_dialect` symbol (or
     /// `syntaqlite_dialect` when `name` is `None`), which returns a pointer to
     /// a `SyntaqliteDialectTemplate` struct bundling grammar + all data arrays.
-    /// Returns an error if the symbol is absent or the library cannot be opened.
+    ///
+    /// # Errors
+    /// Returns `Err` if the library cannot be opened or the dialect symbol is absent.
     ///
     /// Dropping the last clone of the returned handle unloads the library.
     #[cfg(feature = "dynload")]
@@ -445,7 +447,7 @@ pub mod ffi {
             // SAFETY: roles_data points to roles_count valid SemanticRole values in static storage.
             unsafe {
                 std::slice::from_raw_parts(
-                    self.roles_data as *const SemanticRole,
+                    self.roles_data.cast::<SemanticRole>(),
                     self.roles_count as usize,
                 )
             }

@@ -31,16 +31,18 @@ const ROLE_SIZE: usize = size_of::<SemanticRole>();
 
 /// Return the 0-based index of `field_name` in the node's field list.
 fn field_index(fields: &[Field], field_name: &str) -> u8 {
-    fields
+    let idx = fields
         .iter()
         .position(|f| f.name == field_name)
-        .unwrap_or_else(|| panic!("field '{field_name}' not found in field list")) as u8
+        .unwrap_or_else(|| panic!("field '{field_name}' not found in field list"));
+    u8::try_from(idx).expect("field index fits u8")
 }
 
 /// Construct the raw bytes for a `SemanticRole` in a deterministic way:
 /// byte 0 is the discriminant (read from a Rust-constructed value of that
 /// variant), bytes 1–N are the payload fields explicitly, and all remaining
 /// bytes are zero (no undefined padding sneaking in).
+#[expect(clippy::too_many_lines, reason = "large match over all SemanticRole variants; not worth splitting")]
 fn role_to_bytes(fields: &[Field], synq_role: Option<&SynqRole>) -> [u8; ROLE_SIZE] {
     let fi = |name: &str| field_index(fields, name);
     let opt = |name: &Option<String>| name.as_ref().map_or(FIELD_ABSENT, |n| fi(n));
@@ -49,7 +51,7 @@ fn role_to_bytes(fields: &[Field], synq_role: Option<&SynqRole>) -> [u8; ROLE_SI
     // With #[repr(C, u8)], byte 0 is always the discriminant tag.
     let disc = |role: SemanticRole| -> u8 {
         // SAFETY: #[repr(C, u8)] guarantees byte 0 is the discriminant.
-        unsafe { *(&role as *const SemanticRole as *const u8) }
+        unsafe { *(&raw const role).cast::<u8>() }
     };
 
     let mut bytes = [0u8; ROLE_SIZE];

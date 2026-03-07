@@ -73,9 +73,9 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<AnyDialect>) -> Result<(), Stri
 
 fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<(), String> {
     match command {
-        Command::Ast { files } => require_dialect(dialect).and_then(|d| cmd_ast(d, files)),
+        Command::Ast { files } => require_dialect(dialect).and_then(|d| cmd_ast(&d, &files)),
         Command::Validate { files, lang } => {
-            require_dialect(dialect).and_then(|d| cmd_validate(d, files, lang))
+            require_dialect(dialect).and_then(|d| cmd_validate(&d, &files, lang))
         }
         Command::Lsp => require_dialect(dialect)
             .and_then(|d| syntaqlite::LspServer::run(d).map_err(|e| format!("LSP error: {e}"))),
@@ -96,9 +96,9 @@ fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<()
                 semicolons,
                 ..Default::default()
             };
-            require_dialect(dialect).and_then(|d| cmd_fmt(d, files, config, in_place))
+            require_dialect(dialect).and_then(|d| cmd_fmt(&d, &files, &config, in_place))
         }
-        Command::Dialect(args) => crate::codegen::dispatch_dialect(args),
+        Command::Dialect(args) => crate::codegen::dispatch_dialect(&args),
         Command::DialectTool(cmd) => crate::codegen::dispatch_tool(cmd),
     }
 }
@@ -113,11 +113,11 @@ fn read_stdin() -> Result<String, String> {
 
 /// Expand file patterns and dispatch to `on_stdin` (no files) or `on_file` (each file).
 fn process_files(
-    files: Vec<String>,
+    files: &[String],
     on_stdin: impl FnOnce(&str) -> Result<(), String>,
     mut on_file: impl FnMut(&str, &PathBuf, bool) -> Result<(), String>,
 ) -> Result<(), String> {
-    let paths = expand_paths(&files)?;
+    let paths = expand_paths(files)?;
 
     if paths.is_empty() {
         return on_stdin(&read_stdin()?);
@@ -131,16 +131,16 @@ fn process_files(
     Ok(())
 }
 
-fn cmd_ast(dialect: AnyDialect, files: Vec<String>) -> Result<(), String> {
+fn cmd_ast(dialect: &AnyDialect, files: &[String]) -> Result<(), String> {
     process_files(
         files,
-        |source| cmd_ast_source(&dialect, source, "<stdin>"),
+        |source| cmd_ast_source(dialect, source, "<stdin>"),
         |source, path, multi| {
             let file = path.display().to_string();
             if multi {
                 println!("==> {file} <==");
             }
-            cmd_ast_source(&dialect, source, &file)
+            cmd_ast_source(dialect, source, &file)
         },
     )
 }
@@ -189,9 +189,9 @@ fn cmd_ast_source(dialect: &AnyDialect, source: &str, file: &str) -> Result<(), 
 }
 
 fn cmd_fmt(
-    dialect: AnyDialect,
-    files: Vec<String>,
-    config: FormatConfig,
+    dialect: &AnyDialect,
+    files: &[String],
+    config: &FormatConfig,
     in_place: bool,
 ) -> Result<(), String> {
     let mut errors = Vec::new();
@@ -201,12 +201,12 @@ fn cmd_fmt(
             if in_place {
                 return Err("--in-place requires file arguments".to_string());
             }
-            let out = format_source(&dialect, source, &config).map_err(|e| format!("{e}"))?;
+            let out = format_source(dialect, source, config).map_err(|e| format!("{e}"))?;
             print!("{out}");
             Ok(())
         },
         |source, path, multi| {
-            match format_source(&dialect, source, &config) {
+            match format_source(dialect, source, config) {
                 Ok(out) => {
                     if in_place {
                         if out != source {
@@ -244,8 +244,8 @@ fn format_source(
 }
 
 fn cmd_validate(
-    dialect: AnyDialect,
-    files: Vec<String>,
+    dialect: &AnyDialect,
+    files: &[String],
     lang: Option<HostLanguage>,
 ) -> Result<(), String> {
     let config = ValidationConfig::default();
@@ -253,8 +253,8 @@ fn cmd_validate(
 
     let validate = |source: &str, file: &str| -> bool {
         match lang {
-            Some(lang) => validate_embedded_source(&dialect, source, file, &config, lang),
-            None => validate_source(&dialect, source, file, &config),
+            Some(lang) => validate_embedded_source(dialect, source, file, &config, lang),
+            None => validate_source(dialect, source, file, &config),
         }
     };
 

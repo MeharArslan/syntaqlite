@@ -125,15 +125,4 @@ impl SqliteSyntaxFlag {
         Self::ALL.iter().copied().find(|f| f.name() == s)
     }
 
-    /// Look up a parser flag by its compact C index (0–21).
-    ///
-    /// Returns `None` if `idx` is out of range.
-    pub(crate) fn from_index(idx: u32) -> Option<Self> {
-        Self::ALL.get(idx as usize).copied()
-    }
-
-    /// All known parser flags in stable index order.
-    pub(crate) fn all() -> &'static [Self] {
-        Self::ALL
-    }
 }

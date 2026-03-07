@@ -217,13 +217,13 @@ impl SemanticAnalyzer {
                 CatalogLayer::Document,
                 &erased,
                 root_id,
-                self.dialect.clone(),
+                &self.dialect,
             );
 
             ValidationPass::run(
-                erased,
+                &erased,
                 root_id,
-                self.dialect.clone(),
+                &self.dialect,
                 &mut self.catalog,
                 config,
                 &mut diagnostics,
@@ -331,9 +331,9 @@ struct ValidationPass<'a> {
 
 impl<'a> ValidationPass<'a> {
     fn run(
-        stmt: AnyParsedStatement<'a>,
+        stmt: &AnyParsedStatement<'a>,
         root: AnyNodeId,
-        dialect: AnyDialect,
+        dialect: &AnyDialect,
         catalog: &'a mut Catalog,
         config: &'a ValidationConfig,
         diagnostics: &'a mut Vec<Diagnostic>,
@@ -347,7 +347,7 @@ impl<'a> ValidationPass<'a> {
             config,
             diagnostics,
         };
-        pass.visit(&stmt, root);
+        pass.visit(stmt, root);
     }
 
     // ── Core visitor ─────────────────────────────────────────────────────────
@@ -720,7 +720,9 @@ impl<'a> ValidationPass<'a> {
             let cte_body_id = Self::field_node_id(&cte_fields, cte_body_idx);
 
             // Extract declared column names (if a column list is present).
-            let declared_cols: Option<Vec<&'a str>> = if columns_field_idx != FIELD_ABSENT {
+            let declared_cols: Option<Vec<&'a str>> = if columns_field_idx == FIELD_ABSENT {
+                None
+            } else {
                 (|| -> Option<Vec<&'a str>> {
                     let list_id = Self::field_node_id(&cte_fields, columns_field_idx)?;
                     let children = stmt.list_children(list_id)?;
@@ -733,8 +735,6 @@ impl<'a> ValidationPass<'a> {
                         .collect();
                     if names.is_empty() { None } else { Some(names) }
                 })()
-            } else {
-                None
             };
 
             // For recursive CTEs, register the name before visiting the body.
@@ -953,14 +953,14 @@ mod tests {
     #[test]
     fn catalog_from_ddl_populates_tables() {
         let dialect = crate::sqlite::dialect::dialect();
-        let cat = Catalog::from_ddl(dialect, "CREATE TABLE users (id INTEGER, name TEXT);");
+        let cat = Catalog::from_ddl(dialect, "CREATE TABLE users (id INTEGER, name TEXT);").0;
         assert!(cat.resolve_relation("users"));
     }
 
     #[test]
     fn catalog_from_ddl_populates_virtual_tables() {
         let dialect = crate::sqlite::dialect::dialect();
-        let cat = Catalog::from_ddl(dialect, "CREATE VIRTUAL TABLE fts USING fts5(content);");
+        let cat = Catalog::from_ddl(dialect, "CREATE VIRTUAL TABLE fts USING fts5(content);").0;
         assert!(cat.resolve_relation("fts"));
     }
 

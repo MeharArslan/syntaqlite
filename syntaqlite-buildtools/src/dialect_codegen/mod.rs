@@ -362,6 +362,7 @@ impl<'a> AstModel<'a> {
     }
 
     /// The name of the root/top-level AST node type.
+    #[expect(clippy::unused_self, reason = "API consistency; may use self in future")]
     pub(crate) fn root_node_name(&self) -> &'static str {
         "Stmt"
     }

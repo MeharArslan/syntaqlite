@@ -3,6 +3,8 @@
 
 #![cfg_attr(test, expect(clippy::unwrap_used, clippy::similar_names))]
 
+//! `syntaqlite` command-line interface.
+
 fn main() {
     #[cfg(feature = "builtin-sqlite")]
     syntaqlite_cli::run("syntaqlite", Some(syntaqlite::sqlite_dialect().into()));

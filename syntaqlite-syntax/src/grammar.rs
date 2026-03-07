@@ -243,6 +243,9 @@ impl AnyGrammar {
     /// Resolves `syntaqlite_<name>_grammar` (or `syntaqlite_grammar` when `name`
     /// is `None`) and calls it to obtain the grammar handle.
     ///
+    /// # Errors
+    /// Returns `Err` if the library cannot be opened or the grammar symbol is absent.
+    ///
     /// # Library lifetime
     /// The loaded library is kept alive via an [`Arc`] stored inside the
     /// returned `AnyGrammar`. Dropping the last clone of the grammar unloads

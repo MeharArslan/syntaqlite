@@ -151,12 +151,14 @@ impl EmbeddedAnalyzer {
     }
 
     /// Attach a catalog context to enable relation/function validation.
+    #[must_use]
     pub fn with_catalog(mut self, catalog: Catalog) -> Self {
         self.catalog = catalog;
         self
     }
 
     /// Override the default validation config.
+    #[must_use]
     pub fn with_config(mut self, config: ValidationConfig) -> Self {
         self.config = config;
         self
@@ -214,6 +216,9 @@ impl EmbeddedAnalyzer {
     /// Delta-encodes the result into the
     /// `[deltaLine, deltaStart, length, tokenType, modifiers]` 5-tuple format
     /// consumed by LSP `textDocument/semanticTokens` responses.
+    ///
+    /// # Panics
+    /// Panics if a host token length does not fit in `u32` (practically impossible).
     pub fn semantic_tokens_encoded(
         &self,
         fragments: &[EmbeddedFragment],
@@ -270,7 +275,7 @@ impl EmbeddedAnalyzer {
             };
             result.push(delta_line);
             result.push(delta_start);
-            result.push(host_len as u32);
+            result.push(u32::try_from(host_len).expect("host token length fits u32"));
             result.push(legend_idx);
             result.push(0); // modifiers
             prev_line = cur_line;

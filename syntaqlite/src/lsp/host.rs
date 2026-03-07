@@ -61,6 +61,13 @@ pub struct LspHost {
     documents: HashMap<String, Document>,
 }
 
+#[cfg(feature = "sqlite")]
+impl Default for LspHost {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LspHost {
     /// Create a host for the built-in `SQLite` dialect.
     #[cfg(feature = "sqlite")]
@@ -145,7 +152,7 @@ impl LspHost {
             return &[];
         };
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
-        doc.cached_parse_diags.as_deref().unwrap()
+        doc.cached_parse_diags.as_deref().expect("ensure_model sets cached_parse_diags")
     }
 
     /// Version, source text, and parse-error diagnostics in one borrow.
@@ -154,11 +161,15 @@ impl LspHost {
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         let version = doc.version;
         let source = doc.source.as_str();
-        let diags = doc.cached_parse_diags.as_deref().unwrap();
+        let diags = doc.cached_parse_diags.as_deref().expect("ensure_model sets cached_parse_diags");
         Some((version, source, diags))
     }
 
     /// Semantic tokens delta-encoded for LSP `textDocument/semanticTokens/full`.
+    ///
+    /// # Panics
+    /// Panics if the internal model or token cache is in an inconsistent state
+    /// (this indicates a bug in `ensure_model`).
     pub fn semantic_tokens_encoded(
         &mut self,
         uri: &str,
@@ -169,10 +180,10 @@ impl LspHost {
         };
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         if doc.cached_sem_tokens.is_none() {
-            let tokens = self.analyzer.semantic_tokens(doc.model.as_ref().unwrap());
+            let tokens = self.analyzer.semantic_tokens(doc.model.as_ref().expect("ensure_model sets model"));
             doc.cached_sem_tokens = Some(tokens);
         }
-        let tokens = doc.cached_sem_tokens.as_deref().unwrap();
+        let tokens = doc.cached_sem_tokens.as_deref().expect("cached_sem_tokens just populated");
         encode_semantic_tokens(&doc.source, tokens, range)
     }
 
@@ -186,7 +197,7 @@ impl LspHost {
         };
         ensure_model(doc, &mut self.analyzer, &self.user_catalog);
         self.analyzer
-            .completion_info(doc.model.as_ref().unwrap(), offset)
+            .completion_info(doc.model.as_ref().expect("ensure_model sets model"), offset)
     }
 
     /// Completion items (keywords + functions) at a byte offset.
@@ -310,7 +321,7 @@ impl LspHost {
     /// parsed statements are still applied as the session context.
     #[cfg(feature = "sqlite")]
     pub fn set_session_context_from_ddl(&mut self, ddl: &str) -> Result<(), Vec<String>> {
-        let (catalog, errors) = Catalog::from_ddl_checked(self.dialect.clone(), ddl);
+        let (catalog, errors) = Catalog::from_ddl(self.dialect.clone(), ddl);
         self.set_session_context(catalog);
         if errors.is_empty() {
             Ok(())
@@ -367,7 +378,7 @@ fn encode_semantic_tokens(
 
         result.push(delta_line);
         result.push(delta_start);
-        result.push(tok.length as u32);
+        result.push(u32::try_from(tok.length).expect("token length fits u32"));
         result.push(legend_idx);
         result.push(0);
 

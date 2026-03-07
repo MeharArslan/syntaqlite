@@ -40,6 +40,9 @@ pub struct LspServer;
 
 impl LspServer {
     /// Start the LSP server bound to `dialect` and block until shutdown.
+    ///
+    /// # Errors
+    /// Returns `Err` if the LSP connection fails or an unrecoverable I/O error occurs.
     pub fn run(dialect: impl Into<AnyDialect>) -> Result<(), Box<dyn Error + Sync + Send>> {
         let dialect = dialect.into();
         let (connection, io_threads) = Connection::stdio();

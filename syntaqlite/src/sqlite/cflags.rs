@@ -257,11 +257,6 @@ impl SqliteFlag {
         Self::ALL
     }
 
-    /// Returns `true` if this flag affects the C parser grammar.
-    pub(crate) fn is_parser_flag(self) -> bool {
-        (self as u32) < 22
-    }
-
     /// The corresponding [`SqliteSyntaxFlag`], if this is a parser-level flag.
     pub(crate) fn as_syntax_flag(self) -> Option<SqliteSyntaxFlag> {
         match self {

@@ -463,6 +463,7 @@ fn detect_include_guard(content: &str) -> Option<String> {
 // Emit
 // ---------------------------------------------------------------------------
 
+#[expect(clippy::too_many_lines, reason = "large emit function; splitting would harm readability")]
 fn emit(files: &FileMap, mode: EmitMode) -> AmalgamateOutput {
     let (guard, header_filename) = match &mode {
         EmitMode::DialectOnly { dialect: d, .. } | EmitMode::Full(d) => (

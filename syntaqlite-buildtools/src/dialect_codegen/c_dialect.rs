@@ -101,6 +101,7 @@ pub(crate) fn generate_token_categories_header(
     w.finish()
 }
 
+#[expect(clippy::too_many_lines, reason = "large code generator; not worth splitting")]
 pub(crate) fn generate_dialect_c(
     dialect: &str,
     tokens: Option<&[(String, u32)]>,

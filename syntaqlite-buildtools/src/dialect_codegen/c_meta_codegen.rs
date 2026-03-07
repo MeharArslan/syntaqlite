@@ -68,10 +68,10 @@ impl AstModel<'_> {
         let mut str_data: Vec<u8> = Vec::new();
         let mut str_offsets: Vec<u32> = Vec::new();
         for s in &compiled.strings {
-            str_offsets.push(str_data.len() as u32);
+            str_offsets.push(u32::try_from(str_data.len()).expect("string table fits u32"));
             str_data.extend_from_slice(s.as_bytes());
         }
-        str_offsets.push(str_data.len() as u32); // sentinel: offsets[N] = total length
+        str_offsets.push(u32::try_from(str_data.len()).expect("string table fits u32")); // sentinel: offsets[N] = total length
         let str_count = compiled.strings.len();
 
         w.line(&format!("static const uint8_t {p}_string_data[] = {{"));

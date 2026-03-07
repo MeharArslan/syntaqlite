@@ -64,11 +64,11 @@ impl OffsetMap {
                 return None;
             }
             // Past this hole: accumulate the difference in lengths.
-            drift += seg.host_len as isize - seg.sql_len as isize;
+            drift += seg.host_len.cast_signed() - seg.sql_len.cast_signed();
         }
 
         // Apply base offset and accumulated drift.
-        Some(((sql_offset as isize) + (self.base_offset as isize) + drift) as usize)
+        Some((sql_offset.cast_signed() + self.base_offset.cast_signed() + drift).cast_unsigned())
     }
 }
 

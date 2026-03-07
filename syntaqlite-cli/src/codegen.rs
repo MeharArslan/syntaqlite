@@ -81,7 +81,7 @@ pub(crate) enum ToolCommand {
     },
 }
 
-pub(crate) fn dispatch_dialect(args: DialectArgs) -> Result<(), String> {
+pub(crate) fn dispatch_dialect(args: &DialectArgs) -> Result<(), String> {
     let name = &args.name;
     let actions_dir = args.actions_dir.as_deref();
     let nodes_dir = args.nodes_dir.as_deref();
@@ -91,7 +91,7 @@ pub(crate) fn dispatch_dialect(args: DialectArgs) -> Result<(), String> {
             .ok_or_else(|| format!("--output-dir is required for --output-type={type_name}"))
     };
 
-    match args.output_type {
+    match &args.output_type {
         OutputType::TypedDialectEnv => cmd_generate_dialect(
             name,
             actions_dir,

@@ -54,6 +54,9 @@ impl<'a> DiagnosticRenderer<'a> {
     }
 
     /// Render a single diagnostic to `out`.
+    ///
+    /// # Errors
+    /// Returns `Err` if writing to `out` fails.
     pub fn render_diagnostic(&self, diag: &Diagnostic, out: &mut impl Write) -> io::Result<()> {
         let severity = match diag.severity {
             Severity::Error => "error",
@@ -94,6 +97,9 @@ impl<'a> DiagnosticRenderer<'a> {
     }
 
     /// Render all diagnostics to `out`. Returns `true` if any had `Severity::Error`.
+    ///
+    /// # Errors
+    /// Returns `Err` if writing to `out` fails.
     pub fn render_diagnostics(
         &self,
         diags: &[Diagnostic],

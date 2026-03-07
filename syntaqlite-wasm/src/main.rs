@@ -43,12 +43,14 @@ fn get_dialect() -> Option<AnyDialect> {
 fn take_or_create_lsp_host() -> Result<LspHost, String> {
     LSP_HOST
         .with(|cell| cell.borrow_mut().take())
-        .map(Ok)
-        .unwrap_or_else(|| {
-            get_dialect()
-                .ok_or_else(|| "no dialect loaded: call wasm_set_dialect first".to_string())
-                .map(LspHost::with_dialect)
-        })
+        .map_or_else(
+            || {
+                get_dialect()
+                    .ok_or_else(|| "no dialect loaded: call wasm_set_dialect first".to_string())
+                    .map(LspHost::with_dialect)
+            },
+            Ok,
+        )
 }
 
 fn store_lsp_host(lsp: LspHost) {
@@ -62,7 +64,7 @@ fn invalidate_lsp_host() {
 /// Rebuild the active dialect from the stored template pointer, applying any
 /// version/cflag overrides. No-op when no side module is loaded yet.
 fn rebuild_dialect_from_ptr() {
-    let ptr = DIALECT_PTR.with(|c| c.get());
+    let ptr = DIALECT_PTR.with(Cell::get);
     if ptr == 0 {
         return;
     }
@@ -151,7 +153,9 @@ fn free(ptr: u32, len: u32) {
     if ptr == 0 || len == 0 {
         return;
     }
-    // SAFETY: pointer/capacity pair must come from alloc().
+    // SAFETY: pointer/capacity pair must come from alloc(). len == cap since alloc
+    // allocates exactly `len` bytes and we use it as both length and capacity here.
+    #[expect(clippy::same_length_and_capacity, reason = "intentional: capacity equals length for dealloc")]
     unsafe {
         let _ = Vec::<u8>::from_raw_parts(ptr as *mut u8, len as usize, len as usize);
     }
@@ -169,7 +173,7 @@ fn result_ptr() -> u32 {
 }
 
 fn result_len() -> u32 {
-    RESULT_BUF.with(|buf| buf.borrow().len() as u32)
+    RESULT_BUF.with(|buf| u32::try_from(buf.borrow().len()).expect("result length fits u32"))
 }
 
 fn result_free() {
@@ -224,14 +228,13 @@ fn run_ast_json(ptr: u32, len: u32) -> i32 {
                 let val = stmt
                     .erase()
                     .root_node()
-                    .map(|n| serde_json::to_value(&n).unwrap_or(serde_json::Value::Null))
-                    .unwrap_or(serde_json::Value::Null);
+                    .map_or(serde_json::Value::Null, |n| serde_json::to_value(n).unwrap_or(serde_json::Value::Null));
                 nodes.push(val);
             }
             syntaqlite::any::ParseOutcome::Err(_) => {}
         }
     }
-    let count = nodes.len() as i32;
+    let count = i32::try_from(nodes.len()).expect("node count fits i32");
     set_result(&serde_json::to_string(&nodes).expect("ast json serialization failed"));
     count
 }
@@ -332,25 +335,25 @@ const WASM_DOC_URI: &str = "wasm://input";
 fn run_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
     let mut lsp = try_wasm!(take_or_create_lsp_host(), -1);
-    lsp.update_document(WASM_DOC_URI, version as i32, source);
+    lsp.update_document(WASM_DOC_URI, version.cast_signed(), source);
     let all_diags = lsp.all_diagnostics(WASM_DOC_URI, &ValidationConfig::default());
     let total_count = all_diags.len();
     set_result(&serde_json::to_string(&all_diags).expect("diagnostic serialization failed"));
     store_lsp_host(lsp);
-    total_count as i32
+    i32::try_from(total_count).expect("diagnostic count fits i32")
 }
 
 fn run_semantic_tokens(ptr: u32, len: u32, range_start: u32, range_end: u32, version: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
     let mut lsp = try_wasm!(take_or_create_lsp_host(), -1);
-    lsp.update_document(WASM_DOC_URI, version as i32, source);
+    lsp.update_document(WASM_DOC_URI, version.cast_signed(), source);
     let range = if range_start == 0 && range_end == 0xFFFF_FFFF {
         None
     } else {
         Some((range_start as usize, range_end as usize))
     };
     let encoded = lsp.semantic_tokens_encoded(WASM_DOC_URI, range);
-    let token_count = (encoded.len() / 5) as i32;
+    let token_count = i32::try_from(encoded.len() / 5).expect("token count fits i32");
     set_result_u32s(&encoded);
     store_lsp_host(lsp);
     token_count
@@ -365,9 +368,9 @@ struct CompletionItem {
 fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
     let mut lsp = try_wasm!(take_or_create_lsp_host(), -1);
-    lsp.update_document(WASM_DOC_URI, version as i32, source);
+    lsp.update_document(WASM_DOC_URI, version.cast_signed(), source);
     let entries = lsp.completion_items(WASM_DOC_URI, offset as usize);
-    let count = entries.len() as i32;
+    let count = i32::try_from(entries.len()).expect("completion count fits i32");
     let items: Vec<CompletionItem> = entries
         .into_iter()
         .map(|e| CompletionItem {
@@ -519,7 +522,7 @@ pub extern "C" fn wasm_clear_cflag(ptr: u32, len: u32) -> i32 {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_clear_all_cflags() -> i32 {
-    catch_unwind(|| run_clear_all_cflags(), "wasm_clear_all_cflags panicked")
+    catch_unwind(run_clear_all_cflags, "wasm_clear_all_cflags panicked")
 }
 
 // ── Embedded SQL WASM exports ────────────────────────────────────────
@@ -560,7 +563,7 @@ struct WasmFragment {
 fn run_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
     let fragments = try_wasm!(embedded_fragments(lang, &source), -1);
-    let count = fragments.len() as i32;
+    let count = i32::try_from(fragments.len()).expect("fragment count fits i32");
     let items: Vec<WasmFragment> = fragments
         .iter()
         .map(|f| WasmFragment {
@@ -586,7 +589,7 @@ fn run_embedded_diagnostics(lang: u32, ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
     let fragments = try_wasm!(embedded_fragments(lang, &source), -1);
     let diags = try_wasm!(make_embedded_analyzer(), -1).validate(&fragments);
-    let count = diags.len() as i32;
+    let count = i32::try_from(diags.len()).expect("diag count fits i32");
     set_result(&serde_json::to_string(&diags).expect("embedded diagnostic serialization failed"));
     count
 }
@@ -595,7 +598,7 @@ fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len), -1);
     let fragments = try_wasm!(embedded_fragments(lang, &source), -1);
     let encoded = try_wasm!(make_embedded_analyzer(), -1).semantic_tokens_encoded(&fragments, &source);
-    let token_count = (encoded.len() / 5) as i32;
+    let token_count = i32::try_from(encoded.len() / 5).expect("token count fits i32");
     set_result_u32s(&encoded);
     token_count
 }

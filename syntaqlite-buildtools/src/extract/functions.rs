@@ -525,8 +525,8 @@ fn extract_version(
 ) -> Result<(FunctionSet, Vec<CflagEffect>), String> {
     // Compile and run baseline (all available ENABLE flags ON, no OMIT flags).
     let bl_defs = baseline_defines_for(available_flags);
-    let bl_refs: Vec<&str> = bl_defs.iter().map(String::as_str).collect();
-    let baseline = compile_and_run_probe(amalgamation_dir, build_dir, &bl_refs, "baseline")?;
+    let baseline_refs: Vec<&str> = bl_defs.iter().map(String::as_str).collect();
+    let baseline = compile_and_run_probe(amalgamation_dir, build_dir, &baseline_refs, "baseline")?;
 
     let baseline_names: BTreeSet<String> =
         baseline.functions.iter().map(|f| f.name.clone()).collect();
@@ -543,10 +543,10 @@ fn extract_version(
         }
 
         let test_defs = test_defines_for(flag_name, polarity, available_flags);
-        let test_refs: Vec<&str> = test_defs.iter().map(String::as_str).collect();
+        let probe_refs: Vec<&str> = test_defs.iter().map(String::as_str).collect();
         let label = format!("{version}_{flag_name}");
 
-        let test_set = compile_and_run_probe(amalgamation_dir, build_dir, &test_refs, &label)
+        let test_set = compile_and_run_probe(amalgamation_dir, build_dir, &probe_refs, &label)
             .map_err(|e| format!("{version}/{flag_name}: {e}"))?;
 
         let test_names: BTreeSet<String> =

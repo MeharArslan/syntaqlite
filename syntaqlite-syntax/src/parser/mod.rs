@@ -531,6 +531,9 @@ impl<'a, G: TypedGrammar> TypedParsedStatement<'a, G> {
     /// The JSON structure mirrors the text dump format: nodes become
     /// `{"type":"NodeName","field":value,...}` and lists become
     /// `{"type":"ListName","count":N,"children":[...]}`.
+    ///
+    /// # Errors
+    /// Returns `Err` if JSON serialization fails.
     #[cfg(feature = "serde-json")]
     pub fn dump_json(&self) -> Result<String, serde_json::Error> {
         serde_json::to_string(&self.any.root_node())

@@ -37,7 +37,7 @@ impl SqliteFlags {
     /// Internal helper for generated availability rules where no
     /// [`SqliteFlag`] variant is available at the call site.
     #[inline]
-    pub(crate) fn has_index(&self, idx: u32) -> bool {
+    pub(crate) fn has_index(self, idx: u32) -> bool {
         idx < 64 && (self.0 >> idx) & 1 != 0
     }
 
@@ -124,7 +124,7 @@ mod tests {
     #[test]
     fn c_parser_flags_round_trip_through_syntax_flags() {
         for &flag in SqliteFlag::all() {
-            if !flag.is_parser_flag() {
+            if !flag.as_syntax_flag().is_some() {
                 continue;
             }
             let bit_index = flag as u32;
@@ -143,7 +143,7 @@ mod tests {
     #[test]
     fn rust_only_flags_dropped_in_syntax_flags() {
         for &flag in SqliteFlag::all() {
-            if flag.is_parser_flag() {
+            if flag.as_syntax_flag().is_some() {
                 continue;
             }
             let bit_index = flag as u32;

@@ -91,7 +91,9 @@ impl SqliteVersion {
     ///
     /// The string `"latest"` (case-insensitive) maps to [`SqliteVersion::Latest`].
     /// All other inputs are forwarded to [`SqliteVersion::parse`].
-    /// Returns `Err` if the version is not recognised.
+    ///
+    /// # Errors
+    /// Returns `Err` if the version string is not recognised.
     pub fn parse_with_latest(s: &str) -> Result<Self, String> {
         let s = s.trim();
         if s.eq_ignore_ascii_case("latest") {

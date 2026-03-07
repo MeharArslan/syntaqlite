@@ -49,6 +49,10 @@ impl Formatter {
     }
 
     /// Create a formatter bound to the given dialect with custom configuration.
+    ///
+    /// # Panics
+    /// Panics if `dialect` has no formatter bytecode (i.e. the `.synq` definitions
+    /// do not include `fmt` blocks).
     pub fn with_dialect_config(
         dialect: impl Into<AnyDialect>,
         format_config: &FormatConfig,

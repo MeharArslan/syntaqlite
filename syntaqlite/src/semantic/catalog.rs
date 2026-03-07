@@ -334,7 +334,7 @@ impl Catalog {
     /// message for each statement that failed to parse. Partial results from
     /// successfully parsed statements are always accumulated.
     #[cfg(feature = "sqlite")]
-    pub(crate) fn from_ddl_checked(
+    pub(crate) fn from_ddl(
         dialect: impl Into<AnyDialect>,
         source: &str,
     ) -> (Self, Vec<String>) {
@@ -356,15 +356,9 @@ impl Catalog {
             let root = stmt.root();
             let root_id: AnyNodeId = root.node_id().into();
             let erased = stmt.erase();
-            catalog.accumulate_ddl(CatalogLayer::Database, &erased, root_id, dialect.clone());
+            catalog.accumulate_ddl(CatalogLayer::Database, &erased, root_id, &dialect);
         }
         (catalog, errors)
-    }
-
-    /// Parse DDL statements from `source` and populate the database layer.
-    #[cfg(feature = "sqlite")]
-    pub(crate) fn from_ddl(dialect: impl Into<AnyDialect>, source: &str) -> Self {
-        Self::from_ddl_checked(dialect, source).0
     }
 
     /// Parse a JSON schema description into the database layer.
@@ -379,7 +373,6 @@ impl Catalog {
     /// ```
     #[cfg(feature = "serde-json")]
     pub(crate) fn from_json(dialect: impl Into<AnyDialect>, s: &str) -> Result<Self, String> {
-        let dialect = dialect.into();
         #[derive(serde::Deserialize)]
         struct Root {
             #[serde(default)]
@@ -401,6 +394,7 @@ impl Catalog {
             args: Option<usize>,
         }
 
+        let dialect = dialect.into();
         let root: Root =
             serde_json::from_str(s).map_err(|e| format!("invalid catalog JSON: {e}"))?;
 
@@ -447,7 +441,7 @@ impl Catalog {
         target: CatalogLayer,
         stmt: &AnyParsedStatement<'_>,
         root: AnyNodeId,
-        dialect: AnyDialect,
+        dialect: &AnyDialect,
     ) {
         let Some((tag, fields)) = stmt.extract_fields(root) else {
             return;
@@ -916,11 +910,11 @@ pub(super) fn columns_from_select(
 
 /// Infer the output column name for a single result column node.
 ///
-/// Mirrors SQLite's `sqlite3ExprListSetName` / `sqlite3ExprListSetSpan` logic:
+/// Mirrors `SQLite`'s `sqlite3ExprListSetName` / `sqlite3ExprListSetSpan` logic:
 /// 1. Explicit alias → use alias text (already stripped of quotes by the grammar).
 /// 2. Bare `ColumnRef` with no alias → use the column-name span.
 /// 3. Any other expression with no alias → use the raw source text of the
-///    expression node (SQLite calls this `ENAME_SPAN`, stored by
+///    expression node (`SQLite` calls this `ENAME_SPAN`, stored by
 ///    `sqlite3ExprListSetSpan`). For `SELECT 1` this gives `"1"`;
 ///    for `SELECT 1+2` it gives `"1+2"`; etc.
 fn infer_result_col_name<'a>(
@@ -950,9 +944,7 @@ fn infer_result_col_name<'a>(
     if expr_id.is_null() {
         return None;
     }
-    let Some((expr_tag, expr_fields)) = stmt.extract_fields(expr_id) else {
-        return None;
-    };
+    let (expr_tag, expr_fields) = stmt.extract_fields(expr_id)?;
 
     // Try bare ColumnRef (no alias) → use column name.
     let expr_role = roles
@@ -973,7 +965,7 @@ fn infer_result_col_name<'a>(
     // Collect all Span values in the subtree; the byte range [min, max)
     // gives the source text of the expression, including any operators or
     // parentheses that sit between leaf spans.
-    expr_source_text(stmt, expr_id).map(|s| s.to_ascii_lowercase())
+    expr_source_text(stmt, expr_id).map(str::to_ascii_lowercase)
 }
 
 /// Extract the source text of an expression node by recursively collecting
