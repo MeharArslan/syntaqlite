@@ -8,6 +8,8 @@
 pub(crate) mod cflags;
 
 #[cfg(feature = "sqlite")]
+pub(crate) mod cflag_entries;
+#[cfg(feature = "sqlite")]
 pub(crate) mod dialect;
 #[cfg(feature = "sqlite")]
 pub(crate) mod fmt_statics;

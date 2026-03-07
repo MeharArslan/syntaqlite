@@ -3,14 +3,14 @@
 #![allow(missing_docs)] // ABI exports don't need rustdoc
 #![cfg_attr(test, expect(clippy::unwrap_used, clippy::similar_names))]
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::slice;
 
 use serde::Serialize;
 
 use syntaqlite::any::AnyGrammar;
 use syntaqlite::lsp::LspHost;
-use syntaqlite::util::SqliteFlags;
+use syntaqlite::util::{SqliteFlag, SqliteFlags, SqliteVersion};
 use syntaqlite::{AnyDialect, FormatConfig, Formatter, KeywordCase, ValidationConfig};
 
 thread_local! {
@@ -21,6 +21,13 @@ thread_local! {
     static DIALECT: RefCell<Option<AnyDialect>> = const { RefCell::new(None) };
     /// Active embedded language. `None` = raw SQL; `Some(n)` = embedded (0 = Python, 1 = TypeScript).
     static EMBEDDED_LANG: RefCell<Option<u32>> = const { RefCell::new(None) };
+    /// SQLite version selected via `wasm_set_sqlite_version`. Applied when the built-in SQLite
+    /// dialect is active.
+    static SQLITE_VERSION: RefCell<SqliteVersion> = const { RefCell::new(SqliteVersion::Latest) };
+    /// Enabled compile-time flags for the built-in SQLite dialect.
+    static SQLITE_CFLAGS: RefCell<SqliteFlags> = RefCell::new(SqliteFlags::default());
+    /// `true` when the active dialect is the built-in SQLite one (sentinel pointer).
+    static USING_BUILTIN_SQLITE: Cell<bool> = const { Cell::new(false) };
 }
 
 /// Sentinel returned by [`syntaqlite_sqlite_dialect`] to mean "built-in `SQLite`".
@@ -52,6 +59,19 @@ fn store_lsp_host(lsp: LspHost) {
 
 fn invalidate_lsp_host() {
     LSP_HOST.with(|h| h.borrow_mut().take());
+}
+
+/// Rebuild the built-in SQLite dialect from the stored version and cflags, then store
+/// it as the active dialect and invalidate the LSP host so it picks up the new config.
+fn rebuild_sqlite_dialect() {
+    let version = SQLITE_VERSION.with(|v| *v.borrow());
+    let cflags = SQLITE_CFLAGS.with(|c| *c.borrow());
+    let dialect: AnyDialect = syntaqlite::sqlite_dialect()
+        .with_version(version)
+        .with_cflags(cflags)
+        .into();
+    DIALECT.with(|cell| *cell.borrow_mut() = Some(dialect));
+    invalidate_lsp_host();
 }
 
 fn set_result(text: &str) {
@@ -373,14 +393,22 @@ fn run_set_dialect(ptr: u32) -> i32 {
         return 1;
     }
     let dialect = if ptr == BUILTIN_SQLITE_SENTINEL {
-        // Built-in SQLite: use the full dialect (formatter statics, semantic roles).
-        syntaqlite::sqlite_dialect().into()
+        // Built-in SQLite: apply any stored version/cflag overrides set via
+        // wasm_set_sqlite_version / wasm_set_cflag.
+        USING_BUILTIN_SQLITE.with(|b| b.set(true));
+        let version = SQLITE_VERSION.with(|v| *v.borrow());
+        let cflags = SQLITE_CFLAGS.with(|c| *c.borrow());
+        syntaqlite::sqlite_dialect()
+            .with_version(version)
+            .with_cflags(cflags)
+            .into()
     } else {
         // External grammar side module: read the CGrammar struct from linear memory,
         // extract version/cflags, and overlay them on the built-in SQLite dialect.
         // TODO: support truly external (non-SQLite) grammars with their own formatter.
         // SAFETY: ptr is a WASM linear-memory address returned by a grammar function
         // in a side module loaded via Emscripten loadDynamicLibrary.
+        USING_BUILTIN_SQLITE.with(|b| b.set(false));
         let raw: syntaqlite::typed::CGrammar =
             unsafe { std::ptr::read(ptr as *const syntaqlite::typed::CGrammar) };
         let grammar: AnyGrammar = unsafe { AnyGrammar::new(raw) };
@@ -404,7 +432,102 @@ pub extern "C" fn wasm_set_dialect(ptr: u32) -> i32 {
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_clear_dialect() {
     DIALECT.with(|cell| *cell.borrow_mut() = None);
+    USING_BUILTIN_SQLITE.with(|b| b.set(false));
     invalidate_lsp_host();
+}
+
+// ── SQLite version / cflag runtime overrides ─────────────────────────
+
+fn run_set_sqlite_version(ptr: u32, len: u32) -> i32 {
+    let s = try_wasm!(decode_input(ptr, len));
+    let version = try_wasm!(SqliteVersion::parse_with_latest(&s));
+    SQLITE_VERSION.with(|v| *v.borrow_mut() = version);
+    if USING_BUILTIN_SQLITE.with(|b| b.get()) {
+        rebuild_sqlite_dialect();
+    }
+    0
+}
+
+fn run_set_cflag(ptr: u32, len: u32) -> i32 {
+    let s = try_wasm!(decode_input(ptr, len));
+    let flag = try_wasm!(SqliteFlag::from_prefixed_name(&s));
+    SQLITE_CFLAGS.with(|c| {
+        let mut guard = c.borrow_mut();
+        *guard = std::mem::take(&mut *guard).with(flag);
+    });
+    if USING_BUILTIN_SQLITE.with(|b| b.get()) {
+        rebuild_sqlite_dialect();
+    }
+    0
+}
+
+fn run_clear_cflag(ptr: u32, len: u32) -> i32 {
+    let s = try_wasm!(decode_input(ptr, len));
+    let flag = try_wasm!(SqliteFlag::from_prefixed_name(&s));
+    SQLITE_CFLAGS.with(|c| {
+        let mut guard = c.borrow_mut();
+        *guard = std::mem::take(&mut *guard).without(flag);
+    });
+    if USING_BUILTIN_SQLITE.with(|b| b.get()) {
+        rebuild_sqlite_dialect();
+    }
+    0
+}
+
+fn run_clear_all_cflags() -> i32 {
+    SQLITE_CFLAGS.with(|c| *c.borrow_mut() = SqliteFlags::default());
+    if USING_BUILTIN_SQLITE.with(|b| b.get()) {
+        rebuild_sqlite_dialect();
+    }
+    0
+}
+
+fn run_get_cflag_list() -> i32 {
+    #[derive(Serialize)]
+    struct CflagEntry {
+        name: &'static str,
+        #[serde(rename = "minVersion")]
+        min_version: i32,
+        category: &'static str,
+    }
+    let entries: Vec<CflagEntry> = syntaqlite::sqlite_cflag_entries()
+        .iter()
+        .map(|(name, _bit_idx, min_ver, cats)| CflagEntry {
+            name,
+            min_version: *min_ver,
+            category: cats.last().copied().unwrap_or("parser"),
+        })
+        .collect();
+    set_result(&serde_json::to_string(&entries).expect("cflag list serialization failed"));
+    entries.len() as i32
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_set_sqlite_version(ptr: u32, len: u32) -> i32 {
+    catch_unwind(
+        || run_set_sqlite_version(ptr, len),
+        "wasm_set_sqlite_version panicked",
+    )
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_set_cflag(ptr: u32, len: u32) -> i32 {
+    catch_unwind(|| run_set_cflag(ptr, len), "wasm_set_cflag panicked")
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_clear_cflag(ptr: u32, len: u32) -> i32 {
+    catch_unwind(|| run_clear_cflag(ptr, len), "wasm_clear_cflag panicked")
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_clear_all_cflags() -> i32 {
+    catch_unwind(|| run_clear_all_cflags(), "wasm_clear_all_cflags panicked")
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_get_cflag_list() -> i32 {
+    catch_unwind(|| run_get_cflag_list(), "wasm_get_cflag_list panicked")
 }
 
 // ── Embedded SQL WASM exports ────────────────────────────────────────

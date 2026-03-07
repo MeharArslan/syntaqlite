@@ -13,7 +13,6 @@
 /// - `min_version_int`: earliest observed SQLite version as `major * 1_000_000 +
 ///   minor * 1_000 + patch`; `0` means not observed in the audited range.
 /// - `categories`: all concerns this flag affects (e.g. `&["parser", "functions"]`).
-#[expect(dead_code, reason = "used in tests and future callers")]
 pub(crate) const CFLAG_ENTRIES: &[(&str, u32, i32, &[&str])] = &[
     ("SQLITE_OMIT_ALTERTABLE", 0, 3030001, &["parser"]),
     ("SQLITE_OMIT_ANALYZE", 1, 3030001, &["parser"]),
