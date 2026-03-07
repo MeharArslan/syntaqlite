@@ -172,6 +172,15 @@ impl Formatter {
                 FmtOp::Keyword(sid) => {
                     let kw_text = ctx.dialect.fmt_string(sid);
 
+                    // Re-synchronise the token cursor past any stale tokens left
+                    // by conditionally-omitted keywords (e.g. `ASC` as the
+                    // implicit default sort order).  Must happen before both
+                    // `keyword_source_span` and `peek_keyword_tokens` so both
+                    // see the correct cursor position.
+                    if let Some(ref cctx) = ctx.comment_ctx {
+                        cctx.sync_cursor_to_keyword(kw_text, source);
+                    }
+
                     // For Preserve mode, capture the source byte span before advancing
                     // the token cursor so we can emit the original casing.
                     let preserve_span = if ctx.keyword_case == KeywordCase::Preserve {

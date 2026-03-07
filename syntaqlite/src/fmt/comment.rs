@@ -179,6 +179,38 @@ impl CommentCtx {
         Some((first_offset, word_count))
     }
 
+    /// Advance the token cursor past any tokens that do not match the first
+    /// word of `kw_text`.
+    ///
+    /// When the formatter conditionally skips a keyword that is present in
+    /// source (e.g. `ASC` as the implicit default sort order), the token
+    /// cursor is left pointing at that stale token.  Calling this method at
+    /// the start of every `Keyword` op re-synchronises the cursor so that
+    /// `keyword_source_span` and `peek_keyword_tokens` both operate on the
+    /// correct position.
+    ///
+    /// The cursor only ever moves forward.  Amortised across an entire
+    /// statement the total work is O(N tokens) because each token is visited
+    /// at most once.
+    pub(crate) fn sync_cursor_to_keyword(&self, kw_text: &str, source: &str) {
+        let Some(first_word) = kw_text.split_whitespace().next() else {
+            return;
+        };
+        let start = self.token_cursor.get();
+        let mut idx = start;
+        while idx < self.tokens.len() {
+            let tok = &self.tokens[idx];
+            let tok_text = &source[tok.offset as usize..(tok.offset + tok.length) as usize];
+            if tok_text.eq_ignore_ascii_case(first_word) {
+                break;
+            }
+            idx += 1;
+        }
+        if idx > start {
+            self.token_cursor.set(idx);
+        }
+    }
+
     /// Return the source byte range `(start, end)` covering the keyword's word tokens.
     ///
     /// Used for `Preserve` keyword case: the span `source[start..end]` contains the
