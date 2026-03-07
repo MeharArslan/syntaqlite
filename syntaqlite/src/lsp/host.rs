@@ -75,7 +75,7 @@ impl LspHost {
     }
 
     /// Create a host bound to `dialect`.
-    pub(crate) fn with_dialect(dialect: Dialect) -> Self {
+    pub fn with_dialect(dialect: Dialect) -> Self {
         LspHost {
             user_catalog: Catalog::new(dialect.clone()),
             analyzer: SemanticAnalyzer::with_dialect(dialect.clone()),

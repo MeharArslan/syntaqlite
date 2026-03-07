@@ -407,6 +407,13 @@ impl AnyDialect {
         })
     }
 
+    /// Return a copy of this dialect targeting a specific `SQLite` version.
+    #[must_use]
+    pub fn with_version(mut self, version: SqliteVersion) -> Self {
+        self.grammar = self.grammar.with_version(version);
+        self
+    }
+
     /// Return a copy of this dialect with the given flags replacing the current
     /// compile-time compatibility flags.
     ///

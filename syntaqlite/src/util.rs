@@ -4,6 +4,7 @@
 //! Cross-cutting utilities for grammar configuration and compatibility.
 
 pub use syntaqlite_syntax::util::SqliteFlag;
+pub use syntaqlite_syntax::util::SqliteVersion;
 use syntaqlite_syntax::util::SqliteSyntaxFlags;
 
 /// Full set of `SQLite` compile-time compatibility flags.
@@ -47,6 +48,13 @@ impl SqliteFlags {
     #[must_use]
     pub fn with(mut self, flag: SqliteFlag) -> Self {
         self.0 |= 1u64 << (flag as u32);
+        self
+    }
+
+    /// Return a copy of these flags with `flag` disabled.
+    #[must_use]
+    pub fn without(mut self, flag: SqliteFlag) -> Self {
+        self.0 &= !(1u64 << (flag as u32));
         self
     }
 }
