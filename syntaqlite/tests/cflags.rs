@@ -1,5 +1,3 @@
-// TODO: broken - needs migration to syntaqlite_syntax
-#![cfg(broken_needs_migration)]
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
@@ -25,7 +23,9 @@
 //! The saw_subquery tests verify the OMIT_SUBQUERY detection mechanism,
 //! which uses a parser flag rather than keyword suppression.
 
-use syntaqlite::TokenType;
+use syntaqlite::typed::{TypedParser, TypedTokenizer, grammar};
+use syntaqlite::util::{SqliteVersion, SqliteSyntaxFlag, SqliteSyntaxFlags};
+use syntaqlite::{ParseOutcome, TokenType};
 
 const fn tk(t: TokenType) -> u32 {
     t as u32
@@ -36,15 +36,15 @@ const fn tk(t: TokenType) -> u32 {
 // ---------------------------------------------------------------------------
 
 /// Tokenize SQL with cflags set (latest version).
-fn tokenize_with_cflags(sql: &str, cflag_indices: &[u32]) -> Vec<(u32, String)> {
-    let mut env = syntaqlite::dialect::sqlite();
-    for &idx in cflag_indices {
-        env = env.with_cflag(idx);
+fn tokenize_with_cflags(sql: &str, flags: &[SqliteSyntaxFlag]) -> Vec<(u32, String)> {
+    let mut syntax_flags = SqliteSyntaxFlags::default();
+    for &f in flags {
+        syntax_flags = syntax_flags.with(f);
     }
-    let tok = syntaqlite_parser::Tokenizer::new(env);
+    let tok = TypedTokenizer::new(grammar().with_cflags(syntax_flags));
     tok.tokenize(sql)
-        .filter(|raw| raw.token_type != tk(TokenType::SPACE))
-        .map(|raw| (raw.token_type, raw.text.to_string()))
+        .filter(|t| t.token_type() != TokenType::Space)
+        .map(|t| (t.token_type() as u32, t.text().to_string()))
         .collect()
 }
 
@@ -53,32 +53,32 @@ fn tokenize_default(sql: &str) -> Vec<(u32, String)> {
     tokenize_with_cflags(sql, &[])
 }
 
-/// Tokenize SQL with a specific version and cflag indices set.
+/// Tokenize SQL with a specific version and cflags set.
 fn tokenize_at_version_cflags(
     sql: &str,
-    version: i32,
-    cflag_indices: &[u32],
+    version: SqliteVersion,
+    flags: &[SqliteSyntaxFlag],
 ) -> Vec<(u32, String)> {
-    let mut env = syntaqlite::dialect::sqlite().with_version(version);
-    for &idx in cflag_indices {
-        env = env.with_cflag(idx);
+    let mut syntax_flags = SqliteSyntaxFlags::default();
+    for &f in flags {
+        syntax_flags = syntax_flags.with(f);
     }
-    let tok = syntaqlite_parser::Tokenizer::new(env);
+    let tok = TypedTokenizer::new(grammar().with_version(version).with_cflags(syntax_flags));
     tok.tokenize(sql)
-        .filter(|raw| raw.token_type != tk(TokenType::SPACE))
-        .map(|raw| (raw.token_type, raw.text.to_string()))
+        .filter(|t| t.token_type() != TokenType::Space)
+        .map(|t| (t.token_type() as u32, t.text().to_string()))
         .collect()
 }
 
 /// Parse SQL with cflags set (latest version) and return whether it succeeded.
-fn parses_ok_with_cflags(sql: &str, cflag_indices: &[u32]) -> bool {
-    let mut env = syntaqlite::dialect::sqlite();
-    for &idx in cflag_indices {
-        env = env.with_cflag(idx);
+fn parses_ok_with_cflags(sql: &str, flags: &[SqliteSyntaxFlag]) -> bool {
+    let mut syntax_flags = SqliteSyntaxFlags::default();
+    for &f in flags {
+        syntax_flags = syntax_flags.with(f);
     }
-    let parser = syntaqlite_parser::Parser::new(env);
-    let mut cursor = parser.parse(sql);
-    matches!(cursor.next_statement(), Some(Ok(_)))
+    let parser = TypedParser::new(grammar().with_cflags(syntax_flags));
+    let mut session = parser.parse(sql);
+    matches!(session.next(), ParseOutcome::Ok(_))
 }
 
 /// Parse SQL with default config (no cflags, latest version).
@@ -86,34 +86,10 @@ fn parses_ok_default(sql: &str) -> bool {
     parses_ok_with_cflags(sql, &[])
 }
 
-/// Helper to encode a SQLite version like 3.47.0 as the integer 3047000.
-const fn ver(major: i32, minor: i32, patch: i32) -> i32 {
-    major * 1_000_000 + minor * 1_000 + patch
+/// Helper to encode a SQLite version like 3.47.0 as a SqliteVersion enum.
+fn ver(major: u32, minor: u32, _patch: u32) -> SqliteVersion {
+    SqliteVersion::from_int((major as i32) * 1_000_000 + (minor as i32) * 1_000)
 }
-
-// ---------------------------------------------------------------------------
-// Cflag index constants
-// ---------------------------------------------------------------------------
-
-// OMIT flags:
-const CFLAG_OMIT_ATTACH: u32 = 2;
-const CFLAG_OMIT_AUTOINCREMENT: u32 = 3;
-const CFLAG_OMIT_CAST: u32 = 4;
-const CFLAG_OMIT_COMPOUND_SELECT: u32 = 6;
-const CFLAG_OMIT_CTE: u32 = 7;
-const CFLAG_OMIT_EXPLAIN: u32 = 9;
-const CFLAG_OMIT_FOREIGN_KEY: u32 = 11;
-const CFLAG_OMIT_GENERATED_COLUMNS: u32 = 12;
-const CFLAG_OMIT_PRAGMA: u32 = 15;
-const CFLAG_OMIT_REINDEX: u32 = 16;
-const CFLAG_OMIT_RETURNING: u32 = 17;
-const CFLAG_OMIT_TRIGGER: u32 = 20;
-const CFLAG_OMIT_VIEW: u32 = 22;
-const CFLAG_OMIT_VIRTUALTABLE: u32 = 23;
-const CFLAG_OMIT_WINDOWFUNC: u32 = 24;
-
-// ENABLE flags:
-const CFLAG_ENABLE_ORDERED_SET_AGGREGATES: u32 = 36;
 
 // ===========================================================================
 // ENABLE-polarity cflag tests
@@ -135,7 +111,7 @@ fn within_keyword_not_recognized_without_cflag() {
     let tokens = tokenize_with_cflags("WITHIN", &[]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::WITHIN),
+        tk(TokenType::Within),
         "WITHIN should not be a keyword without ENABLE_ORDERED_SET_AGGREGATES"
     );
 }
@@ -143,10 +119,10 @@ fn within_keyword_not_recognized_without_cflag() {
 #[test]
 fn within_keyword_recognized_with_cflag() {
     // With the ENABLE flag set, WITHIN should be recognized.
-    let tokens = tokenize_with_cflags("WITHIN", &[CFLAG_ENABLE_ORDERED_SET_AGGREGATES]);
+    let tokens = tokenize_with_cflags("WITHIN", &[SqliteSyntaxFlag::EnableOrderedSetAggregates]);
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::WITHIN),
+        tk(TokenType::Within),
         "WITHIN should be a keyword when ENABLE_ORDERED_SET_AGGREGATES is set"
     );
 }
@@ -157,11 +133,11 @@ fn within_keyword_not_recognized_before_3_47() {
     let tokens = tokenize_at_version_cflags(
         "WITHIN",
         ver(3, 46, 0),
-        &[CFLAG_ENABLE_ORDERED_SET_AGGREGATES],
+        &[SqliteSyntaxFlag::EnableOrderedSetAggregates],
     );
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::WITHIN),
+        tk(TokenType::Within),
         "WITHIN should not be a keyword before 3.47 even with cflag"
     );
 }
@@ -171,7 +147,7 @@ fn within_group_parses_with_cflag() {
     assert!(
         parses_ok_with_cflags(
             "SELECT percentile(0.5) WITHIN GROUP (ORDER BY salary) FROM t;",
-            &[CFLAG_ENABLE_ORDERED_SET_AGGREGATES],
+            &[SqliteSyntaxFlag::EnableOrderedSetAggregates],
         ),
         "WITHIN GROUP syntax should parse when cflag is set"
     );
@@ -202,10 +178,10 @@ fn within_group_fails_without_cflag() {
 
 #[test]
 fn omit_windowfunc_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("OVER", &[CFLAG_OMIT_WINDOWFUNC]);
+    let tokens = tokenize_with_cflags("OVER", &[SqliteSyntaxFlag::OmitWindowfunc]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::OVER),
+        tk(TokenType::Over),
         "OVER should fall back to ID with OMIT_WINDOWFUNC"
     );
 }
@@ -213,7 +189,10 @@ fn omit_windowfunc_keyword_falls_back_to_id() {
 #[test]
 fn omit_windowfunc_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("SELECT sum(x) OVER () FROM t;", &[CFLAG_OMIT_WINDOWFUNC],),
+        !parses_ok_with_cflags(
+            "SELECT sum(x) OVER () FROM t;",
+            &[SqliteSyntaxFlag::OmitWindowfunc],
+        ),
         "Window function syntax should fail with OMIT_WINDOWFUNC"
     );
 }
@@ -232,10 +211,10 @@ fn omit_windowfunc_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_cte_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("WITH", &[CFLAG_OMIT_CTE]);
+    let tokens = tokenize_with_cflags("WITH", &[SqliteSyntaxFlag::OmitCte]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::WITH),
+        tk(TokenType::With),
         "WITH should fall back to ID with OMIT_CTE"
     );
 }
@@ -243,7 +222,10 @@ fn omit_cte_keyword_falls_back_to_id() {
 #[test]
 fn omit_cte_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("WITH t AS (SELECT 1) SELECT * FROM t;", &[CFLAG_OMIT_CTE],),
+        !parses_ok_with_cflags(
+            "WITH t AS (SELECT 1) SELECT * FROM t;",
+            &[SqliteSyntaxFlag::OmitCte],
+        ),
         "CTE syntax should fail with OMIT_CTE"
     );
 }
@@ -262,10 +244,10 @@ fn omit_cte_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_returning_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("RETURNING", &[CFLAG_OMIT_RETURNING]);
+    let tokens = tokenize_with_cflags("RETURNING", &[SqliteSyntaxFlag::OmitReturning]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::RETURNING),
+        tk(TokenType::Returning),
         "RETURNING should fall back to ID with OMIT_RETURNING"
     );
 }
@@ -275,7 +257,7 @@ fn omit_returning_parse_fails() {
     assert!(
         !parses_ok_with_cflags(
             "INSERT INTO t VALUES(1) RETURNING *;",
-            &[CFLAG_OMIT_RETURNING],
+            &[SqliteSyntaxFlag::OmitReturning],
         ),
         "RETURNING syntax should fail with OMIT_RETURNING"
     );
@@ -295,10 +277,10 @@ fn omit_returning_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_compound_select_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("UNION", &[CFLAG_OMIT_COMPOUND_SELECT]);
+    let tokens = tokenize_with_cflags("UNION", &[SqliteSyntaxFlag::OmitCompoundSelect]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::UNION),
+        tk(TokenType::Union),
         "UNION should fall back to ID with OMIT_COMPOUND_SELECT"
     );
 }
@@ -306,7 +288,10 @@ fn omit_compound_select_keyword_falls_back_to_id() {
 #[test]
 fn omit_compound_select_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("SELECT 1 UNION SELECT 2;", &[CFLAG_OMIT_COMPOUND_SELECT],),
+        !parses_ok_with_cflags(
+            "SELECT 1 UNION SELECT 2;",
+            &[SqliteSyntaxFlag::OmitCompoundSelect],
+        ),
         "UNION syntax should fail with OMIT_COMPOUND_SELECT"
     );
 }
@@ -325,10 +310,10 @@ fn omit_compound_select_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_view_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("VIEW", &[CFLAG_OMIT_VIEW]);
+    let tokens = tokenize_with_cflags("VIEW", &[SqliteSyntaxFlag::OmitView]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::VIEW),
+        tk(TokenType::View),
         "VIEW should fall back to ID with OMIT_VIEW"
     );
 }
@@ -336,7 +321,7 @@ fn omit_view_keyword_falls_back_to_id() {
 #[test]
 fn omit_view_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("CREATE VIEW v AS SELECT 1;", &[CFLAG_OMIT_VIEW]),
+        !parses_ok_with_cflags("CREATE VIEW v AS SELECT 1;", &[SqliteSyntaxFlag::OmitView]),
         "CREATE VIEW syntax should fail with OMIT_VIEW"
     );
 }
@@ -356,10 +341,10 @@ fn omit_view_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_trigger_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("TRIGGER", &[CFLAG_OMIT_TRIGGER]);
+    let tokens = tokenize_with_cflags("TRIGGER", &[SqliteSyntaxFlag::OmitTrigger]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::TRIGGER),
+        tk(TokenType::Trigger),
         "TRIGGER should fall back to ID with OMIT_TRIGGER"
     );
 }
@@ -369,7 +354,7 @@ fn omit_trigger_parse_fails() {
     assert!(
         !parses_ok_with_cflags(
             "CREATE TRIGGER t AFTER INSERT ON x BEGIN SELECT 1; END;",
-            &[CFLAG_OMIT_TRIGGER],
+            &[SqliteSyntaxFlag::OmitTrigger],
         ),
         "CREATE TRIGGER syntax should fail with OMIT_TRIGGER"
     );
@@ -390,15 +375,15 @@ fn omit_trigger_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_foreign_key_keywords_fall_back_to_id() {
-    let cflags = &[CFLAG_OMIT_FOREIGN_KEY];
+    let cflags = &[SqliteSyntaxFlag::OmitForeignKey];
     for (sql, expected_tt, name) in [
-        ("FOREIGN", tk(TokenType::FOREIGN), "FOREIGN"),
-        ("REFERENCES", tk(TokenType::REFERENCES), "REFERENCES"),
-        ("CASCADE", tk(TokenType::CASCADE), "CASCADE"),
-        ("RESTRICT", tk(TokenType::RESTRICT), "RESTRICT"),
-        ("DEFERRABLE", tk(TokenType::DEFERRABLE), "DEFERRABLE"),
-        ("INITIALLY", tk(TokenType::INITIALLY), "INITIALLY"),
-        ("ACTION", tk(TokenType::ACTION), "ACTION"),
+        ("FOREIGN", tk(TokenType::Foreign), "FOREIGN"),
+        ("REFERENCES", tk(TokenType::References), "REFERENCES"),
+        ("CASCADE", tk(TokenType::Cascade), "CASCADE"),
+        ("RESTRICT", tk(TokenType::Restrict), "RESTRICT"),
+        ("DEFERRABLE", tk(TokenType::Deferrable), "DEFERRABLE"),
+        ("INITIALLY", tk(TokenType::Initially), "INITIALLY"),
+        ("ACTION", tk(TokenType::Action), "ACTION"),
     ] {
         let tokens = tokenize_with_cflags(sql, cflags);
         assert_ne!(
@@ -411,8 +396,8 @@ fn omit_foreign_key_keywords_fall_back_to_id() {
 #[test]
 fn omit_foreign_key_keywords_recognized_without_flag() {
     for (sql, expected_tt, name) in [
-        ("FOREIGN", tk(TokenType::FOREIGN), "FOREIGN"),
-        ("REFERENCES", tk(TokenType::REFERENCES), "REFERENCES"),
+        ("FOREIGN", tk(TokenType::Foreign), "FOREIGN"),
+        ("REFERENCES", tk(TokenType::References), "REFERENCES"),
     ] {
         let tokens = tokenize_default(sql);
         assert_eq!(
@@ -427,7 +412,7 @@ fn omit_foreign_key_parse_fails() {
     assert!(
         !parses_ok_with_cflags(
             "CREATE TABLE t(x INTEGER REFERENCES other(id));",
-            &[CFLAG_OMIT_FOREIGN_KEY],
+            &[SqliteSyntaxFlag::OmitForeignKey],
         ),
         "REFERENCES syntax should fail with OMIT_FOREIGN_KEY"
     );
@@ -447,10 +432,10 @@ fn omit_foreign_key_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_generated_columns_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("ALWAYS", &[CFLAG_OMIT_GENERATED_COLUMNS]);
+    let tokens = tokenize_with_cflags("ALWAYS", &[SqliteSyntaxFlag::OmitGeneratedColumns]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::ALWAYS),
+        tk(TokenType::Always),
         "ALWAYS should fall back to ID with OMIT_GENERATED_COLUMNS"
     );
 }
@@ -460,7 +445,7 @@ fn omit_generated_columns_keyword_recognized_without_flag() {
     let tokens = tokenize_default("ALWAYS");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::ALWAYS),
+        tk(TokenType::Always),
         "ALWAYS should be recognized without OMIT_GENERATED_COLUMNS"
     );
 }
@@ -471,10 +456,10 @@ fn omit_generated_columns_keyword_recognized_without_flag() {
 
 #[test]
 fn omit_explain_keywords_fall_back_to_id() {
-    let cflags = &[CFLAG_OMIT_EXPLAIN];
+    let cflags = &[SqliteSyntaxFlag::OmitExplain];
     for (sql, expected_tt, name) in [
-        ("EXPLAIN", tk(TokenType::EXPLAIN), "EXPLAIN"),
-        ("QUERY", tk(TokenType::QUERY), "QUERY"),
+        ("EXPLAIN", tk(TokenType::Explain), "EXPLAIN"),
+        ("QUERY", tk(TokenType::Query), "QUERY"),
     ] {
         let tokens = tokenize_with_cflags(sql, cflags);
         assert_ne!(
@@ -489,7 +474,7 @@ fn omit_explain_keywords_recognized_without_flag() {
     let tokens = tokenize_default("EXPLAIN");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::EXPLAIN),
+        tk(TokenType::Explain),
         "EXPLAIN should be recognized without OMIT_EXPLAIN"
     );
 }
@@ -497,7 +482,7 @@ fn omit_explain_keywords_recognized_without_flag() {
 #[test]
 fn omit_explain_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("EXPLAIN SELECT 1;", &[CFLAG_OMIT_EXPLAIN]),
+        !parses_ok_with_cflags("EXPLAIN SELECT 1;", &[SqliteSyntaxFlag::OmitExplain]),
         "EXPLAIN syntax should fail with OMIT_EXPLAIN"
     );
 }
@@ -513,7 +498,7 @@ fn omit_explain_parse_succeeds_without_flag() {
 #[test]
 fn omit_explain_query_plan_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("EXPLAIN QUERY PLAN SELECT 1;", &[CFLAG_OMIT_EXPLAIN]),
+        !parses_ok_with_cflags("EXPLAIN QUERY PLAN SELECT 1;", &[SqliteSyntaxFlag::OmitExplain]),
         "EXPLAIN QUERY PLAN should fail with OMIT_EXPLAIN"
     );
 }
@@ -532,11 +517,11 @@ fn omit_explain_query_plan_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_attach_keywords_fall_back_to_id() {
-    let cflags = &[CFLAG_OMIT_ATTACH];
+    let cflags = &[SqliteSyntaxFlag::OmitAttach];
     for (sql, expected_tt, name) in [
-        ("ATTACH", tk(TokenType::ATTACH), "ATTACH"),
-        ("DATABASE", tk(TokenType::DATABASE), "DATABASE"),
-        ("DETACH", tk(TokenType::DETACH), "DETACH"),
+        ("ATTACH", tk(TokenType::Attach), "ATTACH"),
+        ("DATABASE", tk(TokenType::Database), "DATABASE"),
+        ("DETACH", tk(TokenType::Detach), "DETACH"),
     ] {
         let tokens = tokenize_with_cflags(sql, cflags);
         assert_ne!(
@@ -549,9 +534,9 @@ fn omit_attach_keywords_fall_back_to_id() {
 #[test]
 fn omit_attach_keywords_recognized_without_flag() {
     for (sql, expected_tt, name) in [
-        ("ATTACH", tk(TokenType::ATTACH), "ATTACH"),
-        ("DETACH", tk(TokenType::DETACH), "DETACH"),
-        ("DATABASE", tk(TokenType::DATABASE), "DATABASE"),
+        ("ATTACH", tk(TokenType::Attach), "ATTACH"),
+        ("DETACH", tk(TokenType::Detach), "DETACH"),
+        ("DATABASE", tk(TokenType::Database), "DATABASE"),
     ] {
         let tokens = tokenize_default(sql);
         assert_eq!(
@@ -564,7 +549,10 @@ fn omit_attach_keywords_recognized_without_flag() {
 #[test]
 fn omit_attach_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("ATTACH DATABASE ':memory:' AS db2;", &[CFLAG_OMIT_ATTACH],),
+        !parses_ok_with_cflags(
+            "ATTACH DATABASE ':memory:' AS db2;",
+            &[SqliteSyntaxFlag::OmitAttach],
+        ),
         "ATTACH DATABASE syntax should fail with OMIT_ATTACH"
     );
 }
@@ -580,7 +568,7 @@ fn omit_attach_parse_succeeds_without_flag() {
 #[test]
 fn omit_detach_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("DETACH DATABASE db2;", &[CFLAG_OMIT_ATTACH]),
+        !parses_ok_with_cflags("DETACH DATABASE db2;", &[SqliteSyntaxFlag::OmitAttach]),
         "DETACH DATABASE syntax should fail with OMIT_ATTACH"
     );
 }
@@ -599,10 +587,10 @@ fn omit_detach_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_autoincrement_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("AUTOINCREMENT", &[CFLAG_OMIT_AUTOINCREMENT]);
+    let tokens = tokenize_with_cflags("AUTOINCREMENT", &[SqliteSyntaxFlag::OmitAutoincrement]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::AUTOINCR),
+        tk(TokenType::Autoincr),
         "AUTOINCREMENT should fall back to ID with OMIT_AUTOINCREMENT"
     );
 }
@@ -612,7 +600,7 @@ fn omit_autoincrement_keyword_recognized_without_flag() {
     let tokens = tokenize_default("AUTOINCREMENT");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::AUTOINCR),
+        tk(TokenType::Autoincr),
         "AUTOINCREMENT should be recognized without OMIT_AUTOINCREMENT"
     );
 }
@@ -622,7 +610,7 @@ fn omit_autoincrement_parse_fails() {
     assert!(
         !parses_ok_with_cflags(
             "CREATE TABLE t(id INTEGER PRIMARY KEY AUTOINCREMENT);",
-            &[CFLAG_OMIT_AUTOINCREMENT],
+            &[SqliteSyntaxFlag::OmitAutoincrement],
         ),
         "AUTOINCREMENT syntax should fail with OMIT_AUTOINCREMENT"
     );
@@ -642,10 +630,10 @@ fn omit_autoincrement_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_cast_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("CAST", &[CFLAG_OMIT_CAST]);
+    let tokens = tokenize_with_cflags("CAST", &[SqliteSyntaxFlag::OmitCast]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::CAST),
+        tk(TokenType::Cast),
         "CAST should fall back to ID with OMIT_CAST"
     );
 }
@@ -655,7 +643,7 @@ fn omit_cast_keyword_recognized_without_flag() {
     let tokens = tokenize_default("CAST");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::CAST),
+        tk(TokenType::Cast),
         "CAST should be recognized without OMIT_CAST"
     );
 }
@@ -663,7 +651,7 @@ fn omit_cast_keyword_recognized_without_flag() {
 #[test]
 fn omit_cast_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("SELECT CAST(1 AS TEXT);", &[CFLAG_OMIT_CAST],),
+        !parses_ok_with_cflags("SELECT CAST(1 AS TEXT);", &[SqliteSyntaxFlag::OmitCast],),
         "CAST syntax should fail with OMIT_CAST"
     );
 }
@@ -682,10 +670,10 @@ fn omit_cast_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_pragma_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("PRAGMA", &[CFLAG_OMIT_PRAGMA]);
+    let tokens = tokenize_with_cflags("PRAGMA", &[SqliteSyntaxFlag::OmitPragma]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::PRAGMA),
+        tk(TokenType::Pragma),
         "PRAGMA should fall back to ID with OMIT_PRAGMA"
     );
 }
@@ -695,7 +683,7 @@ fn omit_pragma_keyword_recognized_without_flag() {
     let tokens = tokenize_default("PRAGMA");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::PRAGMA),
+        tk(TokenType::Pragma),
         "PRAGMA should be recognized without OMIT_PRAGMA"
     );
 }
@@ -703,7 +691,7 @@ fn omit_pragma_keyword_recognized_without_flag() {
 #[test]
 fn omit_pragma_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("PRAGMA table_info('t');", &[CFLAG_OMIT_PRAGMA]),
+        !parses_ok_with_cflags("PRAGMA table_info('t');", &[SqliteSyntaxFlag::OmitPragma]),
         "PRAGMA syntax should fail with OMIT_PRAGMA"
     );
 }
@@ -722,10 +710,10 @@ fn omit_pragma_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_reindex_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("REINDEX", &[CFLAG_OMIT_REINDEX]);
+    let tokens = tokenize_with_cflags("REINDEX", &[SqliteSyntaxFlag::OmitReindex]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::REINDEX),
+        tk(TokenType::Reindex),
         "REINDEX should fall back to ID with OMIT_REINDEX"
     );
 }
@@ -735,7 +723,7 @@ fn omit_reindex_keyword_recognized_without_flag() {
     let tokens = tokenize_default("REINDEX");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::REINDEX),
+        tk(TokenType::Reindex),
         "REINDEX should be recognized without OMIT_REINDEX"
     );
 }
@@ -743,7 +731,7 @@ fn omit_reindex_keyword_recognized_without_flag() {
 #[test]
 fn omit_reindex_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("REINDEX;", &[CFLAG_OMIT_REINDEX]),
+        !parses_ok_with_cflags("REINDEX;", &[SqliteSyntaxFlag::OmitReindex]),
         "REINDEX syntax should fail with OMIT_REINDEX"
     );
 }
@@ -762,10 +750,10 @@ fn omit_reindex_parse_succeeds_without_flag() {
 
 #[test]
 fn omit_virtualtable_keyword_falls_back_to_id() {
-    let tokens = tokenize_with_cflags("VIRTUAL", &[CFLAG_OMIT_VIRTUALTABLE]);
+    let tokens = tokenize_with_cflags("VIRTUAL", &[SqliteSyntaxFlag::OmitVirtualtable]);
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::VIRTUAL),
+        tk(TokenType::Virtual),
         "VIRTUAL should fall back to ID with OMIT_VIRTUALTABLE"
     );
 }
@@ -775,7 +763,7 @@ fn omit_virtualtable_keyword_recognized_without_flag() {
     let tokens = tokenize_default("VIRTUAL");
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::VIRTUAL),
+        tk(TokenType::Virtual),
         "VIRTUAL should be recognized without OMIT_VIRTUALTABLE"
     );
 }
@@ -785,7 +773,7 @@ fn omit_virtualtable_parse_fails() {
     assert!(
         !parses_ok_with_cflags(
             "CREATE VIRTUAL TABLE t USING fts5(content);",
-            &[CFLAG_OMIT_VIRTUALTABLE],
+            &[SqliteSyntaxFlag::OmitVirtualtable],
         ),
         "CREATE VIRTUAL TABLE syntax should fail with OMIT_VIRTUALTABLE"
     );
@@ -809,15 +797,15 @@ fn omit_virtualtable_parse_succeeds_without_flag() {
 
 #[test]
 fn multiple_omit_flags_suppress_independently() {
-    let cflags = &[CFLAG_OMIT_EXPLAIN, CFLAG_OMIT_ATTACH];
+    let cflags = &[SqliteSyntaxFlag::OmitExplain, SqliteSyntaxFlag::OmitAttach];
 
     // EXPLAIN suppressed
     let tokens = tokenize_with_cflags("EXPLAIN", cflags);
-    assert_ne!(tokens[0].0, tk(TokenType::EXPLAIN));
+    assert_ne!(tokens[0].0, tk(TokenType::Explain));
 
     // ATTACH suppressed
     let tokens = tokenize_with_cflags("ATTACH", cflags);
-    assert_ne!(tokens[0].0, tk(TokenType::ATTACH));
+    assert_ne!(tokens[0].0, tk(TokenType::Attach));
 
     // SELECT still works (not gated by either flag)
     assert!(
@@ -829,18 +817,18 @@ fn multiple_omit_flags_suppress_independently() {
 #[test]
 fn omit_flag_does_not_affect_unrelated_keywords() {
     // OMIT_CAST should not affect PRAGMA
-    let tokens = tokenize_with_cflags("PRAGMA", &[CFLAG_OMIT_CAST]);
+    let tokens = tokenize_with_cflags("PRAGMA", &[SqliteSyntaxFlag::OmitCast]);
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::PRAGMA),
+        tk(TokenType::Pragma),
         "PRAGMA should not be affected by OMIT_CAST"
     );
 
     // OMIT_PRAGMA should not affect CAST
-    let tokens = tokenize_with_cflags("CAST", &[CFLAG_OMIT_PRAGMA]);
+    let tokens = tokenize_with_cflags("CAST", &[SqliteSyntaxFlag::OmitPragma]);
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::CAST),
+        tk(TokenType::Cast),
         "CAST should not be affected by OMIT_PRAGMA"
     );
 }
@@ -852,8 +840,6 @@ fn omit_flag_does_not_affect_unrelated_keywords() {
 // SQLITE_ENABLE_UPDATE_DELETE_LIMIT cflag. The grammar actions check
 // the cflag at parse time and raise a syntax error if it's not set.
 // ===========================================================================
-
-const CFLAG_ENABLE_UPDATE_DELETE_LIMIT: u32 = 40;
 
 #[test]
 fn delete_with_order_by_limit_fails_without_cflag() {
@@ -868,7 +854,7 @@ fn delete_with_order_by_limit_succeeds_with_cflag() {
     assert!(
         parses_ok_with_cflags(
             "DELETE FROM t ORDER BY id LIMIT 5;",
-            &[CFLAG_ENABLE_UPDATE_DELETE_LIMIT],
+            &[SqliteSyntaxFlag::EnableUpdateDeleteLimit],
         ),
         "DELETE with ORDER BY/LIMIT should parse when ENABLE_UPDATE_DELETE_LIMIT is set"
     );
@@ -887,7 +873,7 @@ fn update_with_limit_succeeds_with_cflag() {
     assert!(
         parses_ok_with_cflags(
             "UPDATE t SET a = 1 ORDER BY id LIMIT 3;",
-            &[CFLAG_ENABLE_UPDATE_DELETE_LIMIT],
+            &[SqliteSyntaxFlag::EnableUpdateDeleteLimit],
         ),
         "UPDATE with ORDER BY/LIMIT should parse when ENABLE_UPDATE_DELETE_LIMIT is set"
     );

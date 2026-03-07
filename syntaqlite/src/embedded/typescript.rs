@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn ts_simple_template_literal() {
-        let source = r#"const q = `SELECT * FROM users`;"#;
+        let source = r"const q = `SELECT * FROM users`;";
         let fragments = extract_typescript(source);
         assert_eq!(fragments.len(), 1);
         assert_eq!(fragments[0].holes.len(), 0);
@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn ts_template_with_holes() {
-        let source = r#"const q = `SELECT * FROM users WHERE id = ${userId}`;"#;
+        let source = r"const q = `SELECT * FROM users WHERE id = ${userId}`;";
         let fragments = extract_typescript(source);
         assert_eq!(fragments.len(), 1);
         assert_eq!(fragments[0].holes.len(), 1);
@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn ts_multiple_holes() {
-        let source = r#"const q = `SELECT ${cols} FROM ${table} WHERE ${col} = ${val}`;"#;
+        let source = r"const q = `SELECT ${cols} FROM ${table} WHERE ${col} = ${val}`;";
         let fragments = extract_typescript(source);
         assert_eq!(fragments.len(), 1);
         assert_eq!(fragments[0].holes.len(), 4);
@@ -227,7 +227,7 @@ mod tests {
 
     #[test]
     fn ts_skip_non_sql() {
-        let source = r#"const msg = `Hello ${name}, welcome!`;"#;
+        let source = r"const msg = `Hello ${name}, welcome!`;";
         let fragments = extract_typescript(source);
         assert_eq!(fragments.len(), 0);
     }
@@ -263,11 +263,11 @@ mod tests {
 
     #[test]
     fn ts_multiple_fragments() {
-        let source = r#"
+        let source = r"
 const q1 = `SELECT * FROM users`;
 const msg = `Hello world`;
 const q2 = `INSERT INTO logs (msg) VALUES (${m})`;
-"#;
+";
         let fragments = extract_typescript(source);
         assert_eq!(fragments.len(), 2);
     }
@@ -283,7 +283,7 @@ const q2 = `INSERT INTO logs (msg) VALUES (${m})`;
 
     #[test]
     fn ts_escaped_backtick() {
-        let source = r#"const q = `SELECT '\`' FROM users`;"#;
+        let source = r"const q = `SELECT '\`' FROM users`;";
         let fragments = extract_typescript(source);
         assert_eq!(fragments.len(), 1);
         assert_eq!(fragments[0].holes.len(), 0);

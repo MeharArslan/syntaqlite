@@ -1,220 +1,98 @@
-// TODO: broken - needs migration to syntaqlite_syntax
-#![cfg(broken_needs_migration)]
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-//! Tests that parser + cursor can be stored in the same struct.
+//! Tests that parser + session can be stored in the same struct.
 //!
 //! This is the key invariant of the Rc<RefCell> checkout pattern: `parse()`
 //! takes `&self`, so the parser can be moved into the same struct as the
-//! cursor it produced.
+//! session it produced.
 
-use syntaqlite::dialect::{
-    DialectIncrementalCursor, DialectIncrementalParser, DialectParser, DialectStatementCursor,
-    DialectTokenCursor, DialectTokenizer,
-};
-use syntaqlite::incremental::{IncrementalCursor, IncrementalParser};
-use syntaqlite::{Parser, StatementCursor, TokenCursor, Tokenizer};
-use syntaqlite_parser::{
-    IncrementalCursor as RawIncrementalCursor, IncrementalParser as RawIncrementalParser,
-    Parser as RawParser, StatementCursor as RawStatementCursor, TokenCursor as RawTokenCursor,
-    Tokenizer as RawTokenizer, TypedDialectEnv as TaggedDialect,
-};
-use syntaqlite_parser_sqlite::SqliteNodeFamily;
+use syntaqlite::{IncrementalParseSession, ParseOutcome, ParseSession, Parser, Tokenizer};
 
-fn raw_dialect() -> syntaqlite_parser::DialectEnv<'static> {
-    syntaqlite::dialect::sqlite()
-}
-
-fn typed_dialect() -> TaggedDialect<'static, SqliteNodeFamily> {
-    TaggedDialect::from_raw_dialect(raw_dialect())
-}
-
-// ── Raw layer ────────────────────────────────────────────────────────────
+// ── Parser + ParseSession coexistence ────────────────────────────────────
 
 #[test]
-fn raw_parser_and_cursor_coexist() {
-    struct S {
-        _parser: RawParser<'static>,
-        cursor: RawStatementCursor<'static>,
-    }
-
-    let parser = RawParser::new(raw_dialect());
-    let cursor = parser.parse("SELECT 1");
-    let mut s = S {
-        _parser: parser,
-        cursor,
-    };
-    assert!(s.cursor.next_statement().unwrap().is_ok());
-}
-
-#[test]
-fn raw_parser_reuse_after_cursor_drop() {
-    let parser = RawParser::new(raw_dialect());
-    {
-        let mut c = parser.parse("SELECT 1");
-        assert!(c.next_statement().unwrap().is_ok());
-    }
-    {
-        let mut c = parser.parse("SELECT 2");
-        assert!(c.next_statement().unwrap().is_ok());
-    }
-}
-
-#[test]
-fn raw_tokenizer_and_cursor_coexist() {
-    struct S<'a> {
-        _tokenizer: RawTokenizer<'static>,
-        cursor: RawTokenCursor<'a>,
-    }
-
-    let tokenizer = RawTokenizer::new(raw_dialect());
-    let cursor = tokenizer.tokenize("SELECT 1");
-    let mut s = S {
-        _tokenizer: tokenizer,
-        cursor,
-    };
-    assert!(s.cursor.next().is_some());
-}
-
-#[test]
-fn raw_tokenizer_reuse_after_cursor_drop() {
-    let tokenizer = RawTokenizer::new(raw_dialect());
-    {
-        let mut c = tokenizer.tokenize("SELECT 1");
-        assert!(c.next().is_some());
-    }
-    {
-        let mut c = tokenizer.tokenize("SELECT 2");
-        assert!(c.next().is_some());
-    }
-}
-
-#[test]
-fn raw_incremental_parser_and_cursor_coexist() {
-    struct S {
-        _parser: RawIncrementalParser<'static>,
-        cursor: RawIncrementalCursor<'static>,
-    }
-
-    let parser = RawIncrementalParser::new(raw_dialect());
-    let cursor = parser.feed("SELECT 1");
-    let mut s = S {
-        _parser: parser,
-        cursor,
-    };
-    assert!(s.cursor.finish().is_ok());
-}
-
-#[test]
-fn raw_incremental_reuse_after_cursor_drop() {
-    let parser = RawIncrementalParser::new(raw_dialect());
-    {
-        let mut c = parser.feed("SELECT 1");
-        assert!(c.finish().is_ok());
-    }
-    {
-        let mut c = parser.feed("SELECT 2");
-        assert!(c.finish().is_ok());
-    }
-}
-
-// ── Typed (dialect-generic) layer ────────────────────────────────────────
-
-#[test]
-fn dialect_parser_and_cursor_coexist() {
-    struct S {
-        _parser: DialectParser<'static, SqliteNodeFamily>,
-        cursor: DialectStatementCursor<'static, SqliteNodeFamily>,
-    }
-
-    let parser = DialectParser::from_dialect(typed_dialect());
-    let cursor = parser.parse("SELECT 1");
-    let mut s = S {
-        _parser: parser,
-        cursor,
-    };
-    assert!(s.cursor.next_statement().unwrap().is_ok());
-}
-
-#[test]
-fn dialect_tokenizer_and_cursor_coexist() {
-    struct S<'a> {
-        _tokenizer: DialectTokenizer<'static, SqliteNodeFamily>,
-        cursor: DialectTokenCursor<'a, SqliteNodeFamily>,
-    }
-
-    let tokenizer = DialectTokenizer::from_dialect(typed_dialect());
-    let cursor = tokenizer.tokenize("SELECT 1");
-    let mut s = S {
-        _tokenizer: tokenizer,
-        cursor,
-    };
-    assert!(s.cursor.next().is_some());
-}
-
-#[test]
-fn dialect_incremental_parser_and_cursor_coexist() {
-    struct S {
-        _parser: DialectIncrementalParser<'static, SqliteNodeFamily>,
-        cursor: DialectIncrementalCursor<'static, SqliteNodeFamily>,
-    }
-
-    let parser = DialectIncrementalParser::from_dialect(typed_dialect());
-    let cursor = parser.feed("SELECT 1");
-    let mut s = S {
-        _parser: parser,
-        cursor,
-    };
-    assert!(s.cursor.finish().is_ok());
-}
-
-// ── SQLite convenience layer ─────────────────────────────────────────────
-
-#[test]
-fn sqlite_parser_and_cursor_coexist() {
+fn parser_and_session_coexist() {
     struct S {
         _parser: Parser,
-        cursor: StatementCursor,
+        session: ParseSession,
     }
 
     let parser = Parser::new();
-    let cursor = parser.parse("SELECT 1");
+    let session = parser.parse("SELECT 1");
     let mut s = S {
         _parser: parser,
-        cursor,
+        session,
     };
-    assert!(s.cursor.next_statement().unwrap().is_ok());
+    assert!(matches!(s.session.next(), ParseOutcome::Ok(_)));
 }
 
 #[test]
-fn sqlite_tokenizer_and_cursor_coexist() {
-    struct S<'a> {
-        _tokenizer: Tokenizer,
-        cursor: TokenCursor<'a>,
+fn parser_reuse_after_session_drop() {
+    let parser = Parser::new();
+    {
+        let mut s = parser.parse("SELECT 1");
+        assert!(matches!(s.next(), ParseOutcome::Ok(_)));
     }
-
-    let tokenizer = Tokenizer::new();
-    let cursor = tokenizer.tokenize("SELECT 1");
-    let mut s = S {
-        _tokenizer: tokenizer,
-        cursor,
-    };
-    assert!(s.cursor.next().is_some());
+    {
+        let mut s = parser.parse("SELECT 2");
+        assert!(matches!(s.next(), ParseOutcome::Ok(_)));
+    }
 }
 
+// ── Parser + IncrementalParseSession coexistence ─────────────────────────
+
 #[test]
-fn sqlite_incremental_parser_and_cursor_coexist() {
+fn parser_and_incremental_session_coexist() {
+    use syntaqlite::TokenType;
+
     struct S {
-        _parser: IncrementalParser,
-        cursor: IncrementalCursor,
+        _parser: Parser,
+        session: IncrementalParseSession,
     }
 
-    let parser = IncrementalParser::new();
-    let cursor = parser.feed("SELECT 1");
+    let parser = Parser::new();
+    let session = parser.incremental_parse("SELECT 1");
     let mut s = S {
         _parser: parser,
-        cursor,
+        session,
     };
-    assert!(s.cursor.finish().is_ok());
+
+    s.session.feed_token(TokenType::Select, 0..6);
+    s.session.feed_token(TokenType::Integer, 7..8);
+    assert!(s.session.finish().is_some());
+}
+
+#[test]
+fn parser_incremental_reuse_after_session_drop() {
+    use syntaqlite::TokenType;
+
+    let parser = Parser::new();
+    {
+        let mut s = parser.incremental_parse("SELECT 1");
+        s.feed_token(TokenType::Select, 0..6);
+        s.feed_token(TokenType::Integer, 7..8);
+        assert!(s.finish().is_some());
+    }
+    {
+        let mut s = parser.incremental_parse("SELECT 2");
+        s.feed_token(TokenType::Select, 0..6);
+        s.feed_token(TokenType::Integer, 7..8);
+        assert!(s.finish().is_some());
+    }
+}
+
+// ── Tokenizer reuse ───────────────────────────────────────────────────────
+
+#[test]
+fn tokenizer_reuse_sequential() {
+    let tokenizer = Tokenizer::new();
+    {
+        let tokens: Vec<_> = tokenizer.tokenize("SELECT 1").collect();
+        assert!(!tokens.is_empty());
+    }
+    {
+        let tokens: Vec<_> = tokenizer.tokenize("SELECT 2").collect();
+        assert!(!tokens.is_empty());
+    }
 }

@@ -18,14 +18,14 @@
 
 /// Stable cflag registry: `(sqlite_flag_name, index, categories)`.
 ///
-/// - `sqlite_flag_name`: canonical SQLite flag name (e.g. `"SQLITE_OMIT_WINDOWFUNC"`).
+/// - `sqlite_flag_name`: canonical `SQLite` flag name (e.g. `"SQLITE_OMIT_WINDOWFUNC"`).
 /// - `index`: permanent bit-index in `SqliteFlags` / `SYNQ_CFLAG_IDX_*` C constant.
 ///   **Never reorder or reuse.**
 /// - `categories`: editorial knowledge of what this flag affects.
 ///   - `"parser"`:     affects keyword recognition or SQL syntax
 ///   - `"functions"`:  affects built-in SQL function availability
 ///   - `"vtable"`:     affects virtual table module availability
-///   - `"extensions"`: enables optional extension modules (FTS, RTree, etc.)
+///   - `"extensions"`: enables optional extension modules (FTS, `RTree`, etc.)
 ///
 /// `SYNQ_CFLAG_IDX_*` constant names are derived automatically via [`synq_const_name`];
 /// there is no need to store them here.

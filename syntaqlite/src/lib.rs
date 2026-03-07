@@ -52,6 +52,13 @@ pub mod util;
 pub use syntaqlite_syntax::any::MacroRegion;
 pub use syntaqlite_syntax::{CommentKind, ParserConfig, ParserTokenFlags};
 
+// SQLite parser, tokenizer, and token types re-exported for direct use.
+#[cfg(feature = "sqlite")]
+pub use syntaqlite_syntax::{
+    IncrementalParseSession, ParseError, ParseErrorKind, ParseOutcome, ParseSession,
+    ParsedStatement, Parser, ParserToken, Token, TokenType, Tokenizer,
+};
+
 /// Type-erased (grammar-agnostic) parser and tokenizer types.
 pub mod any {
     pub use syntaqlite_syntax::any::*;

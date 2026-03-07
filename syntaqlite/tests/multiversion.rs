@@ -1,5 +1,3 @@
-// TODO: broken - needs migration to syntaqlite_syntax
-#![cfg(broken_needs_migration)]
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
@@ -24,7 +22,9 @@
 //! - 3.24.0: `FILTER (WHERE ...)` → error near "("
 //! - 3.25.0: same query (with OVER) → success
 
-use syntaqlite::TokenType;
+use syntaqlite::typed::{TypedParser, TypedTokenizer, grammar};
+use syntaqlite::util::SqliteVersion;
+use syntaqlite::{ParseOutcome, TokenType};
 
 /// Shorthand: convert a TokenType variant to its raw u32 value.
 const fn tk(t: TokenType) -> u32 {
@@ -37,31 +37,29 @@ const fn tk(t: TokenType) -> u32 {
 
 /// Tokenize SQL with a specific SQLite version and return (token_type, text) pairs,
 /// filtering out whitespace.
-fn tokenize_at_version(sql: &str, version: i32) -> Vec<(u32, String)> {
-    let env = syntaqlite::dialect::sqlite().with_version(version);
-    let tok = syntaqlite_parser::Tokenizer::new(env);
+fn tokenize_at_version(sql: &str, version: SqliteVersion) -> Vec<(u32, String)> {
+    let tok = TypedTokenizer::new(grammar().with_version(version));
     tok.tokenize(sql)
-        .filter(|raw| raw.token_type != tk(TokenType::SPACE))
-        .map(|raw| (raw.token_type, raw.text.to_string()))
+        .filter(|t| t.token_type() != TokenType::Space)
+        .map(|t| (t.token_type() as u32, t.text().to_string()))
         .collect()
 }
 
 /// Tokenize SQL with latest version (default config).
 fn tokenize_latest(sql: &str) -> Vec<(u32, String)> {
-    tokenize_at_version(sql, i32::MAX)
+    tokenize_at_version(sql, SqliteVersion::Latest)
 }
 
 /// Parse SQL with a specific SQLite version and return whether it succeeded.
-fn parses_ok_at_version(sql: &str, version: i32) -> bool {
-    let env = syntaqlite::dialect::sqlite().with_version(version);
-    let parser = syntaqlite_parser::Parser::new(env);
-    let mut cursor = parser.parse(sql);
-    matches!(cursor.next_statement(), Some(Ok(_)))
+fn parses_ok_at_version(sql: &str, version: SqliteVersion) -> bool {
+    let parser = TypedParser::new(grammar().with_version(version));
+    let mut session = parser.parse(sql);
+    matches!(session.next(), ParseOutcome::Ok(_))
 }
 
-/// Helper to encode a SQLite version like 3.38.0 as the integer 3038000.
-const fn ver(major: i32, minor: i32, patch: i32) -> i32 {
-    major * 1_000_000 + minor * 1_000 + patch
+/// Helper to encode a SQLite version like 3.38.0 as a SqliteVersion enum.
+fn ver(major: u32, minor: u32, _patch: u32) -> SqliteVersion {
+    SqliteVersion::from_int((major as i32) * 1_000_000 + (minor as i32) * 1_000)
 }
 
 // ---------------------------------------------------------------------------
@@ -79,9 +77,9 @@ fn ptr_operator_tokenizes_as_ptr_on_latest() {
     assert_eq!(
         types,
         vec![
-            tk(TokenType::INTEGER),
-            tk(TokenType::PTR),
-            tk(TokenType::INTEGER)
+            tk(TokenType::Integer),
+            tk(TokenType::Ptr),
+            tk(TokenType::Integer)
         ]
     );
 }
@@ -95,10 +93,10 @@ fn ptr_operator_reclassified_to_minus_before_3_38() {
     assert_eq!(
         types,
         vec![
-            tk(TokenType::INTEGER),
-            tk(TokenType::MINUS),
-            tk(TokenType::GT),
-            tk(TokenType::INTEGER)
+            tk(TokenType::Integer),
+            tk(TokenType::Minus),
+            tk(TokenType::Gt),
+            tk(TokenType::Integer)
         ],
         "Before 3.38, '->' should split into MINUS + GT"
     );
@@ -113,9 +111,9 @@ fn ptr_operator_works_at_3_38() {
     assert_eq!(
         types,
         vec![
-            tk(TokenType::INTEGER),
-            tk(TokenType::PTR),
-            tk(TokenType::INTEGER)
+            tk(TokenType::Integer),
+            tk(TokenType::Ptr),
+            tk(TokenType::Integer)
         ]
     );
 }
@@ -128,10 +126,10 @@ fn double_ptr_reclassified_before_3_38() {
     assert_eq!(
         types,
         vec![
-            tk(TokenType::INTEGER),
-            tk(TokenType::MINUS),
-            tk(TokenType::RSHIFT),
-            tk(TokenType::INTEGER)
+            tk(TokenType::Integer),
+            tk(TokenType::Minus),
+            tk(TokenType::Rshift),
+            tk(TokenType::Integer)
         ],
         "Before 3.38, '->>' should split into MINUS + RSHIFT"
     );
@@ -167,7 +165,7 @@ fn ptr_reclassification_parse_succeeds_at_3_38() {
 fn digit_separator_tokenizes_as_qnumber_on_latest() {
     let tokens = tokenize_latest("1_000");
     let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
-    assert_eq!(types, vec![tk(TokenType::QNUMBER)]);
+    assert_eq!(types, vec![tk(TokenType::Qnumber)]);
     assert_eq!(tokens[0].1, "1_000");
 }
 
@@ -177,7 +175,7 @@ fn digit_separator_reclassified_to_integer_before_3_46() {
     let tokens = tokenize_at_version("1_000", ver(3, 45, 0));
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::INTEGER),
+        tk(TokenType::Integer),
         "Should be INTEGER, not QNUMBER"
     );
     assert_eq!(
@@ -192,7 +190,7 @@ fn digit_separator_float_reclassified_before_3_46() {
     let tokens = tokenize_at_version("1.5_0", ver(3, 45, 0));
     assert_eq!(
         tokens[0].0,
-        tk(TokenType::FLOAT),
+        tk(TokenType::Float),
         "Should be FLOAT, not QNUMBER"
     );
     assert_eq!(
@@ -204,7 +202,7 @@ fn digit_separator_float_reclassified_before_3_46() {
 #[test]
 fn digit_separator_works_at_3_46() {
     let tokens = tokenize_at_version("1_000", ver(3, 46, 0));
-    assert_eq!(tokens[0].0, tk(TokenType::QNUMBER));
+    assert_eq!(tokens[0].0, tk(TokenType::Qnumber));
     assert_eq!(tokens[0].1, "1_000");
 }
 
@@ -215,18 +213,23 @@ fn digit_separator_works_at_3_46() {
 #[test]
 fn basic_tokens_unaffected_by_version() {
     // These should tokenize identically regardless of version.
-    for version in [ver(3, 12, 0), ver(3, 37, 0), ver(3, 46, 0), i32::MAX] {
+    for version in [
+        ver(3, 12, 0),
+        ver(3, 37, 0),
+        ver(3, 46, 0),
+        SqliteVersion::Latest,
+    ] {
         let tokens = tokenize_at_version("SELECT 1 + 2", version);
         let types: Vec<_> = tokens.iter().map(|(tt, _)| *tt).collect();
         assert_eq!(
             types,
             vec![
-                tk(TokenType::SELECT),
-                tk(TokenType::INTEGER),
-                tk(TokenType::PLUS),
-                tk(TokenType::INTEGER)
+                tk(TokenType::Select),
+                tk(TokenType::Integer),
+                tk(TokenType::Plus),
+                tk(TokenType::Integer)
             ],
-            "Basic tokens should be stable at version {}",
+            "Basic tokens should be stable at version {:?}",
             version
         );
     }
@@ -260,7 +263,7 @@ fn returning_keyword_not_recognized_before_3_35() {
     let tokens = tokenize_at_version("RETURNING", ver(3, 34, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::RETURNING),
+        tk(TokenType::Returning),
         "RETURNING should not be a keyword before 3.35"
     );
 }
@@ -268,7 +271,7 @@ fn returning_keyword_not_recognized_before_3_35() {
 #[test]
 fn returning_keyword_recognized_at_3_35() {
     let tokens = tokenize_at_version("RETURNING", ver(3, 35, 0));
-    assert_eq!(tokens[0].0, tk(TokenType::RETURNING));
+    assert_eq!(tokens[0].0, tk(TokenType::Returning));
 }
 
 #[test]
@@ -276,7 +279,7 @@ fn materialized_keyword_not_recognized_before_3_35() {
     let tokens = tokenize_at_version("MATERIALIZED", ver(3, 34, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::MATERIALIZED),
+        tk(TokenType::Materialized),
         "MATERIALIZED should not be a keyword before 3.35"
     );
 }
@@ -287,7 +290,7 @@ fn window_keyword_not_recognized_before_3_25() {
     let tokens = tokenize_at_version("WINDOW", ver(3, 24, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::WINDOW),
+        tk(TokenType::Window),
         "WINDOW should not be a keyword before 3.25"
     );
 }
@@ -297,7 +300,7 @@ fn over_keyword_not_recognized_before_3_25() {
     let tokens = tokenize_at_version("OVER", ver(3, 24, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::OVER),
+        tk(TokenType::Over),
         "OVER should not be a keyword before 3.25"
     );
 }
@@ -308,7 +311,7 @@ fn do_keyword_not_recognized_before_3_24() {
     let tokens = tokenize_at_version("DO", ver(3, 23, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::DO),
+        tk(TokenType::Do),
         "DO should not be a keyword before 3.24"
     );
 }
@@ -319,7 +322,7 @@ fn filter_keyword_not_recognized_before_3_25() {
     let tokens = tokenize_at_version("FILTER", ver(3, 24, 0));
     assert_ne!(
         tokens[0].0,
-        tk(TokenType::FILTER),
+        tk(TokenType::Filter),
         "FILTER should not be a keyword before 3.25"
     );
 }

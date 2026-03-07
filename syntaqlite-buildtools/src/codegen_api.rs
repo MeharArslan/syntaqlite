@@ -173,7 +173,7 @@ pub(crate) struct CodegenArtifacts {
     /// Minimal runtime tokens header containing only the tokens needed by
     /// `token_wrapped.c` in the grammar-agnostic engine crate.
     pub runtime_tokens_h: String,
-    /// SQLite cflag index constants header (`cflags.h`).
+    /// `SQLite` cflag index constants header (`cflags.h`).
     pub cflags_h: String,
     /// Generated Rust sources, when `include_rust` was set.
     pub rust: Option<RustCodegenArtifacts>,

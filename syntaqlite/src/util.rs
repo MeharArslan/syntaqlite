@@ -4,8 +4,7 @@
 //! Cross-cutting utilities for grammar configuration and compatibility.
 
 pub use crate::sqlite::cflags::SqliteFlag;
-pub use syntaqlite_syntax::util::SqliteVersion;
-use syntaqlite_syntax::util::{SqliteSyntaxFlag, SqliteSyntaxFlags};
+pub use syntaqlite_syntax::util::{SqliteSyntaxFlag, SqliteSyntaxFlags, SqliteVersion};
 
 /// Full set of `SQLite` compile-time compatibility flags.
 ///
@@ -71,11 +70,10 @@ impl From<SqliteFlags> for SqliteSyntaxFlags {
     fn from(flags: SqliteFlags) -> Self {
         let mut s = SqliteSyntaxFlags::default();
         for &flag in SqliteFlag::all() {
-            if let Some(sf) = flag.as_syntax_flag() {
-                if flags.has(flag) {
+            if let Some(sf) = flag.as_syntax_flag()
+                && flags.has(flag) {
                     s = s.with(sf);
                 }
-            }
         }
         s
     }
@@ -117,7 +115,7 @@ mod tests {
         }
     }
 
-    /// Verify that parser flags survive round-trip through SqliteSyntaxFlags.
+    /// Verify that parser flags survive round-trip through `SqliteSyntaxFlags`.
     #[test]
     fn c_parser_flags_round_trip_through_syntax_flags() {
         for &flag in SqliteFlag::all() {
@@ -136,7 +134,7 @@ mod tests {
         }
     }
 
-    /// Verify that non-parser flags are dropped when converting to SqliteSyntaxFlags.
+    /// Verify that non-parser flags are dropped when converting to `SqliteSyntaxFlags`.
     #[test]
     fn rust_only_flags_dropped_in_syntax_flags() {
         for &flag in SqliteFlag::all() {

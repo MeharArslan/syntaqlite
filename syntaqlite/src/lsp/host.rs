@@ -421,8 +421,7 @@ mod tests {
         let expected = host.expected_tokens_at_offset(uri, sql.len());
         assert!(
             expected.contains(&(TokenType::From as u32)),
-            "expected From after SELECT *, got {:?}",
-            expected
+            "expected From after SELECT *, got {expected:?}"
         );
     }
 
@@ -435,8 +434,7 @@ mod tests {
         let expected = host.expected_tokens_at_offset(uri, sql.len());
         assert!(
             expected.contains(&(TokenType::From as u32)),
-            "expected From in second statement context, got {:?}",
-            expected
+            "expected From in second statement context, got {expected:?}"
         );
     }
 
@@ -449,8 +447,7 @@ mod tests {
         let expected = host.expected_tokens_at_offset(uri, sql.len());
         assert!(
             expected.contains(&(TokenType::JoinKw as u32)),
-            "expected JoinKw after FROM alias, got {:?}",
-            expected
+            "expected JoinKw after FROM alias, got {expected:?}"
         );
     }
 
@@ -555,7 +552,7 @@ mod tests {
                 .to_string(),
         );
         let diags = host.validate(uri, &ValidationConfig::default());
-        assert!(diags.is_empty(), "unexpected diagnostics: {:?}", diags);
+        assert!(diags.is_empty(), "unexpected diagnostics: {diags:?}");
     }
 
     #[test]
@@ -645,7 +642,7 @@ mod tests {
         let uri = "file:///test.sql";
         host.open_document(uri, 1, "SELECT ;\nSELECT 1;".to_string());
         let diags = host.validate(uri, &ValidationConfig::default());
-        assert_eq!(diags.len(), 0, "got: {:?}", diags);
+        assert_eq!(diags.len(), 0, "got: {diags:?}");
     }
 
     #[test]
@@ -662,7 +659,7 @@ mod tests {
             .iter()
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownTable { .. }))
             .collect();
-        assert_eq!(table_diags.len(), 1, "got: {:?}", diags);
+        assert_eq!(table_diags.len(), 1, "got: {diags:?}");
     }
 
     #[test]
@@ -680,7 +677,7 @@ mod tests {
             diag.start_offset,
             second_where,
             "got '{}' at {}",
-            &sql[diag.start_offset..diag.start_offset + 1],
+            &sql[diag.start_offset..=diag.start_offset],
             diag.start_offset
         );
     }
@@ -698,7 +695,7 @@ mod tests {
             .iter()
             .filter(|d| d.severity == Severity::Warning)
             .count();
-        assert_eq!(errors, 1, "got {}: {:?}", errors, all);
-        assert_eq!(warnings, 1, "got {}: {:?}", warnings, all);
+        assert_eq!(errors, 1, "got {errors}: {all:?}");
+        assert_eq!(warnings, 1, "got {warnings}: {all:?}");
     }
 }

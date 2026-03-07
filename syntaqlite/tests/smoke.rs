@@ -1,14 +1,13 @@
-// TODO: broken - needs migration to syntaqlite_syntax
-#![cfg(broken_needs_migration)]
-
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite::ast::Stmt;
-use syntaqlite_parser::Parser;
+use syntaqlite::nodes::Stmt;
+use syntaqlite::util::{SqliteSyntaxFlag, SqliteSyntaxFlags};
+use syntaqlite::typed::{TypedParser, grammar};
+use syntaqlite::{ParseOutcome, Parser};
 
-fn new_parser() -> Parser<'static> {
-    Parser::new(syntaqlite::dialect::sqlite())
+fn new_parser() -> Parser {
+    Parser::new()
 }
 
 #[test]
@@ -16,14 +15,11 @@ fn parse_select_1() {
     let parser = new_parser();
     let mut session = parser.parse("SELECT 1;");
 
-    let node = session.next_statement().unwrap().unwrap();
-    assert!(matches!(
-        node.as_typed::<Stmt>().unwrap(),
-        Stmt::SelectStmt(_)
-    ));
+    let ParseOutcome::Ok(stmt) = session.next() else { panic!("expected Ok") };
+    assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
 
     // No more statements.
-    assert!(session.next_statement().is_none());
+    assert!(matches!(session.next(), ParseOutcome::Done));
 }
 
 #[test]
@@ -31,19 +27,13 @@ fn parse_multiple_statements() {
     let parser = new_parser();
     let mut session = parser.parse("SELECT 1; SELECT 2;");
 
-    let node1 = session.next_statement().unwrap().unwrap();
-    assert!(matches!(
-        node1.as_typed::<Stmt>().unwrap(),
-        Stmt::SelectStmt(_)
-    ));
+    let ParseOutcome::Ok(stmt1) = session.next() else { panic!("expected Ok") };
+    assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
 
-    let node2 = session.next_statement().unwrap().unwrap();
-    assert!(matches!(
-        node2.as_typed::<Stmt>().unwrap(),
-        Stmt::SelectStmt(_)
-    ));
+    let ParseOutcome::Ok(stmt2) = session.next() else { panic!("expected Ok") };
+    assert!(matches!(stmt2.root(), Stmt::SelectStmt(_)));
 
-    assert!(session.next_statement().is_none());
+    assert!(matches!(session.next(), ParseOutcome::Done));
 }
 
 #[test]
@@ -51,8 +41,7 @@ fn parse_error() {
     let parser = new_parser();
     let mut session = parser.parse("SELECT");
 
-    let result = session.next_statement().unwrap();
-    assert!(result.is_err());
+    assert!(matches!(session.next(), ParseOutcome::Err(_)));
 }
 
 #[test]
@@ -62,12 +51,13 @@ fn parse_error_select_bare() {
     let parser = new_parser();
     let mut session = parser.parse("SELECT ");
 
-    let result = session.next_statement().unwrap();
-    let err = result.expect_err("expected parse error for bare SELECT");
+    let ParseOutcome::Err(err) = session.next() else {
+        panic!("expected parse error for bare SELECT");
+    };
     assert!(
-        !err.message.is_empty(),
+        !err.message().is_empty(),
         "error message should not be empty, got: {:?}",
-        err.message
+        err.message()
     );
 }
 
@@ -77,11 +67,8 @@ fn parse_error_has_message_and_offset() {
     let parser = new_parser();
     let mut session = parser.parse("NOT VALID SQL;");
 
-    let err = session
-        .next_statement()
-        .unwrap()
-        .expect_err("expected parse error");
-    assert!(!err.message.is_empty(), "error message should not be empty");
+    let ParseOutcome::Err(err) = session.next() else { panic!("expected parse error") };
+    assert!(!err.message().is_empty(), "error message should not be empty");
 }
 
 #[test]
@@ -91,29 +78,32 @@ fn parse_error_recovery() {
     let parser = new_parser();
     let mut session = parser.parse("NOT VALID SQL; SELECT 1;");
 
-    let first = session.next_statement().unwrap();
-    assert!(first.is_err(), "expected parse error for invalid SQL");
+    assert!(
+        matches!(session.next(), ParseOutcome::Err(_)),
+        "expected parse error for invalid SQL"
+    );
 
     // Recovery: cursor should continue and return the next valid statement.
-    let node = session.next_statement().unwrap().unwrap();
+    let ParseOutcome::Ok(stmt) = session.next() else {
+        panic!("expected SelectStmt after recovery");
+    };
     assert!(
-        matches!(node.as_typed::<Stmt>().unwrap(), Stmt::SelectStmt(_)),
+        matches!(stmt.root(), Stmt::SelectStmt(_)),
         "expected SelectStmt after recovery"
     );
 
-    assert!(session.next_statement().is_none());
+    assert!(matches!(session.next(), ParseOutcome::Done));
 }
 
 #[test]
 fn parse_error_recovery_at_eof() {
     // An unterminated statement (no trailing `;`) reports an error and then
-    // next_statement() returns None.
+    // next() returns Done.
     let parser = new_parser();
     let mut session = parser.parse("SELECT * FROM");
 
-    let result = session.next_statement().unwrap();
-    assert!(result.is_err());
-    assert!(session.next_statement().is_none());
+    assert!(matches!(session.next(), ParseOutcome::Err(_)));
+    assert!(matches!(session.next(), ParseOutcome::Done));
 }
 
 #[test]
@@ -123,21 +113,15 @@ fn parse_error_mid_batch() {
     let parser = new_parser();
     let mut session = parser.parse("SELECT 1; SELECT * FROM; SELECT 2;");
 
-    let node1 = session.next_statement().unwrap().unwrap();
-    assert!(matches!(
-        node1.as_typed::<Stmt>().unwrap(),
-        Stmt::SelectStmt(_)
-    ));
+    let ParseOutcome::Ok(stmt1) = session.next() else { panic!("expected Ok") };
+    assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
 
-    assert!(session.next_statement().unwrap().is_err());
+    assert!(matches!(session.next(), ParseOutcome::Err(_)));
 
-    let node3 = session.next_statement().unwrap().unwrap();
-    assert!(matches!(
-        node3.as_typed::<Stmt>().unwrap(),
-        Stmt::SelectStmt(_)
-    ));
+    let ParseOutcome::Ok(stmt3) = session.next() else { panic!("expected Ok") };
+    assert!(matches!(stmt3.root(), Stmt::SelectStmt(_)));
 
-    assert!(session.next_statement().is_none());
+    assert!(matches!(session.next(), ParseOutcome::Done));
 }
 
 #[test]
@@ -147,40 +131,32 @@ fn parser_reuse() {
     // First parse
     {
         let mut session = parser.parse("SELECT 1");
-        let node = session.next_statement().unwrap().unwrap();
-        assert!(matches!(
-            node.as_typed::<Stmt>().unwrap(),
-            Stmt::SelectStmt(_)
-        ));
+        let ParseOutcome::Ok(stmt) = session.next() else { panic!("expected Ok") };
+        assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
     }
 
     // Reuse with different input
     {
         let mut session = parser.parse("DELETE FROM t");
-        let node = session.next_statement().unwrap().unwrap();
-        assert!(matches!(
-            node.as_typed::<Stmt>().unwrap(),
-            Stmt::DeleteStmt(_)
-        ));
+        let ParseOutcome::Ok(stmt) = session.next() else { panic!("expected Ok") };
+        assert!(matches!(stmt.root(), Stmt::DeleteStmt(_)));
     }
 }
 
 // -- DELETE / UPDATE with ORDER BY and LIMIT --
 
-fn parser_with_update_delete_limit() -> Parser<'static> {
-    let env = syntaqlite::dialect::sqlite().with_cflag(40); // SQLITE_ENABLE_UPDATE_DELETE_LIMIT
-    Parser::new(env)
-}
-
 #[test]
 fn parse_delete_with_order_by_limit() {
-    let parser = parser_with_update_delete_limit();
-    let mut cursor = parser.parse("DELETE FROM t ORDER BY id LIMIT 5;");
+    let g = grammar().with_cflags(
+        SqliteSyntaxFlags::default().with(SqliteSyntaxFlag::EnableUpdateDeleteLimit),
+    );
+    let parser = TypedParser::new(g);
+    let mut session = parser.parse("DELETE FROM t ORDER BY id LIMIT 5;");
 
-    let node = cursor.next_statement().unwrap().unwrap();
-    let stmt = node.as_typed::<Stmt>().unwrap();
-    let Stmt::DeleteStmt(del) = stmt else {
-        panic!("expected DeleteStmt, got {stmt:?}");
+    let ParseOutcome::Ok(stmt) = session.next() else { panic!("expected Ok") };
+    let root = stmt.root().expect("expected root");
+    let Stmt::DeleteStmt(del) = root else {
+        panic!("expected DeleteStmt, got {root:?}");
     };
     assert!(del.orderby().is_some(), "should have ORDER BY");
     assert!(del.limit_clause().is_some(), "should have LIMIT");
@@ -188,13 +164,16 @@ fn parse_delete_with_order_by_limit() {
 
 #[test]
 fn parse_update_with_order_by_limit() {
-    let parser = parser_with_update_delete_limit();
-    let mut cursor = parser.parse("UPDATE t SET a = 1 ORDER BY id LIMIT 3;");
+    let g = grammar().with_cflags(
+        SqliteSyntaxFlags::default().with(SqliteSyntaxFlag::EnableUpdateDeleteLimit),
+    );
+    let parser = TypedParser::new(g);
+    let mut session = parser.parse("UPDATE t SET a = 1 ORDER BY id LIMIT 3;");
 
-    let node = cursor.next_statement().unwrap().unwrap();
-    let stmt = node.as_typed::<Stmt>().unwrap();
-    let Stmt::UpdateStmt(upd) = stmt else {
-        panic!("expected UpdateStmt, got {stmt:?}");
+    let ParseOutcome::Ok(stmt) = session.next() else { panic!("expected Ok") };
+    let root = stmt.root().expect("expected root");
+    let Stmt::UpdateStmt(upd) = root else {
+        panic!("expected UpdateStmt, got {root:?}");
     };
     assert!(upd.orderby().is_some(), "should have ORDER BY");
     assert!(upd.limit_clause().is_some(), "should have LIMIT");

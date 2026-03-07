@@ -1,5 +1,3 @@
-// TODO: broken - needs migration to syntaqlite_syntax
-#![cfg(broken_needs_migration)]
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
@@ -10,12 +8,8 @@
 
 use syntaqlite::embedded::{EmbeddedAnalyzer, extract_python, extract_typescript};
 
-fn dialect() -> syntaqlite_parser::DialectEnv<'static> {
-    syntaqlite::dialect::sqlite()
-}
-
-fn analyzer() -> EmbeddedAnalyzer<'static> {
-    EmbeddedAnalyzer::new(dialect())
+fn analyzer() -> EmbeddedAnalyzer {
+    EmbeddedAnalyzer::new(syntaqlite::sqlite_dialect())
 }
 
 // ── Extraction tests ────────────────────────────────────────────────────

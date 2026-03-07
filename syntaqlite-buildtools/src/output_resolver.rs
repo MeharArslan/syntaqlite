@@ -61,7 +61,7 @@ pub struct OutputLayout {
     pub tokens_h: CHeader,
     /// Runtime tokens header: minimal subset of tokens needed by `token_wrapped.c`.
     pub runtime_tokens_h: CHeader,
-    /// SQLite cflag index constants header (`cflags.h`).
+    /// `SQLite` cflag index constants header (`cflags.h`).
     pub cflags_h: CHeader,
 
     // ── Rust sources (src/) ─────────────────────────────────────────────────

@@ -37,7 +37,7 @@ const PROBE_OVERRIDES: &[(&str, Option<&[&str]>)] = &[
 
 /// Returns the compile defines for probing `flag_name`, or `None` to skip probing.
 fn probe_defines(flag_name: &str) -> Option<Vec<String>> {
-    if let Some(&(_, ref override_val)) = PROBE_OVERRIDES.iter().find(|(n, _)| *n == flag_name) {
+    if let Some((_, override_val)) = PROBE_OVERRIDES.iter().find(|(n, _)| *n == flag_name) {
         return override_val.map(|defs| defs.iter().map(|s| (*s).to_string()).collect());
     }
     Some(vec![format!("-D{flag_name}")])
@@ -52,7 +52,7 @@ fn flag_polarity(flag_name: &str) -> &'static str {
     }
 }
 
-/// Returns the (flag_name, polarity) pairs to probe for the given available flags.
+/// Returns the (`flag_name`, polarity) pairs to probe for the given available flags.
 ///
 /// Only flags in `CFLAG_REGISTRY` with `"functions"` in their categories are considered,
 /// minus any with `None` in `PROBE_OVERRIDES`.
@@ -446,11 +446,10 @@ fn baseline_defines_for(available: &BTreeSet<String>) -> Vec<String> {
         if !cats.contains(&"functions") || !available.contains(name) {
             continue;
         }
-        if flag_polarity(name) == "enable" {
-            if let Some(defs) = probe_defines(name) {
+        if flag_polarity(name) == "enable"
+            && let Some(defs) = probe_defines(name) {
                 defines.extend(defs);
             }
-        }
     }
     defines
 }
@@ -468,23 +467,20 @@ fn test_defines_for(flag_name: &str, polarity: &str, available: &BTreeSet<String
         }
         if polarity == "omit" {
             // OMIT test: all ENABLE flags in baseline, plus the OMIT flag itself.
-            if flag_polarity(name) == "enable" {
-                if let Some(defs) = probe_defines(name) {
+            if flag_polarity(name) == "enable"
+                && let Some(defs) = probe_defines(name) {
                     defines.extend(defs);
                 }
-            }
-            if name == flag_name {
-                if let Some(defs) = probe_defines(name) {
+            if name == flag_name
+                && let Some(defs) = probe_defines(name) {
                     defines.extend(defs);
                 }
-            }
         } else {
             // ENABLE test: baseline minus this flag.
-            if flag_polarity(name) == "enable" && name != flag_name {
-                if let Some(defs) = probe_defines(name) {
+            if flag_polarity(name) == "enable" && name != flag_name
+                && let Some(defs) = probe_defines(name) {
                     defines.extend(defs);
                 }
-            }
         }
     }
     defines

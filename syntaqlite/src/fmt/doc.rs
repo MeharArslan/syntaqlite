@@ -196,11 +196,13 @@ impl<'a> DocArena<'a> {
 
             match self.get(doc_id) {
                 Doc::Text(s) => {
+                    eprintln!("[DBG text] {:?} pos={}", s, pos);
                     out.push_str(s);
                     pos += s.len();
                 }
 
                 Doc::Keyword(s) => {
+                    eprintln!("[DBG kw] {:?} pos={}", s, pos);
                     push_keyword(s, keyword_case, out);
                     pos += s.len();
                 }

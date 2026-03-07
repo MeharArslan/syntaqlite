@@ -1,92 +1,79 @@
-// TODO: broken - needs migration to syntaqlite_syntax
-#![cfg(broken_needs_migration)]
-
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite::ast::{Node, NodeTag};
-use syntaqlite::dialect::sqlite as dialect;
-use syntaqlite_parser::{DialectNodeType, NodeId, Parser, StatementCursor};
+//! Tests for child node enumeration via `AnyParsedStatement::child_node_ids`.
+//!
+//! `child_node_ids` auto-expands list nodes: for a SelectStmt with a
+//! ResultColumnList, the list's elements are returned directly rather than
+//! the list node itself.
 
-fn new_parser() -> Parser<'static> {
-    Parser::new(dialect())
-}
+use syntaqlite::any::{AnyNodeId, AnyNodeTag, AnyParsedStatement};
+use syntaqlite::nodes::NodeTag;
+use syntaqlite::{ParseOutcome, Parser};
 
-/// Helper: resolve a NodeId to its Node variant and return its tag.
-fn node_tag(cursor: &StatementCursor, id: NodeId) -> NodeTag {
-    let node: Node =
-        DialectNodeType::from_arena(cursor.reader(), id).expect("should resolve to a Node");
-    node.tag()
+/// Resolve the node at `id` and return its grammar-level tag.
+fn node_tag(stmt: &AnyParsedStatement<'_>, id: AnyNodeId) -> AnyNodeTag {
+    stmt.extract_fields(id)
+        .expect("node id should resolve")
+        .0
 }
 
 #[test]
-fn select_children_include_result_column_list_and_table_ref() {
-    let dialect = dialect();
-    let parser = new_parser();
-    let mut cursor = parser.parse("SELECT a, b FROM t");
-    let stmt_id = cursor.next_statement().unwrap().unwrap().id();
+fn select_columns_and_table_ref_in_child_list() {
+    // `child_node_ids` expands lists: ResultColumnList becomes its elements.
+    // For "SELECT a, b FROM t", the SelectStmt children are:
+    //   [ResultColumn(a), ResultColumn(b), TableRef(t)]
+    let parser = Parser::new();
+    let mut session = parser.parse("SELECT a, b FROM t");
+    let ParseOutcome::Ok(stmt) = session.next() else {
+        panic!("expected Ok");
+    };
+    let any_stmt = stmt.erase();
+    let stmt_id = any_stmt.root_id();
 
-    let children = cursor.reader().child_node_ids(stmt_id, &dialect);
-    // SelectStmt("SELECT a, b FROM t") should have exactly 2 non-null children:
-    // a ResultColumnList and a TableRef.
-    assert_eq!(
-        children.len(),
-        2,
-        "SelectStmt should have 2 children (columns + from)"
+    let children: Vec<_> = any_stmt.child_node_ids(stmt_id).collect();
+    assert!(
+        !children.is_empty(),
+        "SelectStmt should have at least one child"
     );
 
-    let tags: Vec<_> = children.iter().map(|id| node_tag(&cursor, *id)).collect();
+    let tags: Vec<_> = children.iter().map(|id| node_tag(&any_stmt, *id)).collect();
+    let result_col_tag = AnyNodeTag::from(NodeTag::ResultColumn);
+    let table_ref_tag = AnyNodeTag::from(NodeTag::TableRef);
+
     assert!(
-        tags.contains(&NodeTag::ResultColumnList),
-        "children should include ResultColumnList, got: {tags:?}"
+        tags.contains(&result_col_tag),
+        "children should include ResultColumn(s), got: {tags:?}"
     );
     assert!(
-        tags.contains(&NodeTag::TableRef),
+        tags.contains(&table_ref_tag),
         "children should include TableRef, got: {tags:?}"
     );
+
+    // Exactly 2 result columns.
+    let col_count = tags.iter().filter(|&&t| t == result_col_tag).count();
+    assert_eq!(col_count, 2, "expected 2 result columns, got {col_count}");
 }
 
 #[test]
-fn null_id_returns_empty() {
-    let dialect = dialect();
-    let parser = new_parser();
-    let mut cursor = parser.parse("SELECT 1");
-    let _stmt_id = cursor.next_statement().unwrap().unwrap().id();
+fn result_columns_enumerated_for_select_a_b_c() {
+    // For "SELECT a, b, c FROM t", child_node_ids on SelectStmt expands the
+    // ResultColumnList and returns each ResultColumn separately.
+    let parser = Parser::new();
+    let mut session = parser.parse("SELECT a, b, c FROM t");
+    let ParseOutcome::Ok(stmt) = session.next() else {
+        panic!("expected Ok");
+    };
+    let any_stmt = stmt.erase();
+    let stmt_id = any_stmt.root_id();
 
-    assert!(
-        cursor
-            .reader()
-            .child_node_ids(NodeId::NULL, &dialect)
-            .is_empty()
-    );
-}
+    let children: Vec<_> = any_stmt.child_node_ids(stmt_id).collect();
+    let tags: Vec<_> = children.iter().map(|id| node_tag(&any_stmt, *id)).collect();
+    let result_col_tag = AnyNodeTag::from(NodeTag::ResultColumn);
 
-#[test]
-fn list_node_enumerates_its_elements() {
-    let dialect = dialect();
-    let parser = new_parser();
-    let mut cursor = parser.parse("SELECT a, b, c");
-    let stmt_id = cursor.next_statement().unwrap().unwrap().id();
-
-    // Find the ResultColumnList child of SelectStmt.
-    let children = cursor.reader().child_node_ids(stmt_id, &dialect);
-    let list_id = children
-        .iter()
-        .find(|id| node_tag(&cursor, **id) == NodeTag::ResultColumnList)
-        .expect("SelectStmt should have a ResultColumnList child");
-
-    // The list should contain exactly 3 ResultColumn children.
-    let list_children = cursor.reader().child_node_ids(*list_id, &dialect);
+    let col_count = tags.iter().filter(|&&t| t == result_col_tag).count();
     assert_eq!(
-        list_children.len(),
-        3,
-        "ResultColumnList for 'a, b, c' should have 3 children"
+        col_count, 3,
+        "ResultColumnList for 'a, b, c' should enumerate 3 ResultColumn children"
     );
-    for (i, child_id) in list_children.iter().enumerate() {
-        assert_eq!(
-            node_tag(&cursor, *child_id),
-            NodeTag::ResultColumn,
-            "list child {i} should be a ResultColumn"
-        );
-    }
 }

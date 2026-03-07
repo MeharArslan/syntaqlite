@@ -36,7 +36,7 @@ struct CflagEntry {
 
 // ── Version encoding ─────────────────────────────────────────────────────────
 
-/// Convert a version string like `"3.38.5"` to an integer using SQLite's encoding
+/// Convert a version string like `"3.38.5"` to an integer using `SQLite`'s encoding
 /// (`major * 1_000_000 + minor * 1_000 + patch`). `"0"` or unrecognised strings
 /// return `0`.
 fn version_string_to_int(s: &str) -> i32 {
@@ -59,7 +59,7 @@ fn version_string_to_int(s: &str) -> i32 {
 
 // ── Flag variant name ─────────────────────────────────────────────────────────
 
-/// Derive the Rust PascalCase variant name from a `SQLITE_*` flag name.
+/// Derive the Rust `PascalCase` variant name from a `SQLITE_*` flag name.
 ///
 /// Strips the `"SQLITE_"` prefix and applies `pascal_case`, e.g.
 /// `"SQLITE_OMIT_WINDOWFUNC"` → `"OmitWindowfunc"`.
