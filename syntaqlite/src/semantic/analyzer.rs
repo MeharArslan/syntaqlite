@@ -1602,65 +1602,183 @@ mod tests {
     }
 
     // ── CREATE TABLE/VIEW AS SELECT column inference ──────────────────────────
+    //
+    // Shared test helpers.
 
-    #[test]
-    fn create_table_as_select_invalid_column_is_error() {
-        // CREATE TABLE t AS SELECT 1 AS x → x inferred; z should error
+    /// Assert `src` produces exactly one `UnknownColumn` for `col`.
+    fn assert_unknown_col(src: &str, col: &str) {
         let mut az = sqlite_analyzer();
         let cat = sqlite_catalog();
-        let src = "CREATE TABLE t AS SELECT 1 AS x; SELECT z FROM t;";
         let model = az.analyze(src, &cat, &strict());
         let errs: Vec<_> = model
             .diagnostics()
             .iter()
-            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { column, .. } if column == "z"))
+            .filter(|d| {
+                matches!(&d.message, DiagnosticMessage::UnknownColumn { column, .. } if column == col)
+            })
             .collect();
-        assert_eq!(errs.len(), 1, "expected UnknownColumn for 'z': {errs:?}");
+        assert_eq!(
+            errs.len(),
+            1,
+            "expected exactly one UnknownColumn for '{col}': {errs:?}"
+        );
+    }
+
+    /// Assert `src` produces no `UnknownColumn` diagnostics.
+    fn assert_no_unknown_col(src: &str) {
+        let mut az = sqlite_analyzer();
+        let cat = sqlite_catalog();
+        let model = az.analyze(src, &cat, &strict());
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(errs.is_empty(), "unexpected UnknownColumn diagnostics: {errs:?}");
+    }
+
+    /// Like `assert_no_unknown_col` but pre-loads named relations into the
+    /// Database catalog layer before analysis.
+    fn assert_no_unknown_col_with_relations(src: &str, relations: &[(&str, &[&str])]) {
+        let mut az = sqlite_analyzer();
+        let mut cat = sqlite_catalog();
+        for (name, cols) in relations {
+            cat.layer_mut(CatalogLayer::Database).insert_relation(
+                *name,
+                Some(cols.iter().map(|c| c.to_string()).collect()),
+            );
+        }
+        let model = az.analyze(src, &cat, &strict());
+        let errs: Vec<_> = model
+            .diagnostics()
+            .iter()
+            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
+            .collect();
+        assert!(errs.is_empty(), "unexpected UnknownColumn diagnostics: {errs:?}");
+    }
+
+    // ── Aliased columns (existing behaviour, must not regress) ────────────────
+
+    #[test]
+    fn create_table_as_select_invalid_column_is_error() {
+        // SELECT 1 AS x → "x" inferred; "z" must error.
+        assert_unknown_col("CREATE TABLE t AS SELECT 1 AS x; SELECT z FROM t;", "z");
     }
 
     #[test]
     fn create_table_as_select_valid_column_no_error() {
-        // CREATE TABLE t AS SELECT 1 AS x → selecting x is fine
-        let mut az = sqlite_analyzer();
-        let cat = sqlite_catalog();
-        let src = "CREATE TABLE t AS SELECT 1 AS x; SELECT x FROM t;";
-        let model = az.analyze(src, &cat, &strict());
-        let errs: Vec<_> = model
-            .diagnostics()
-            .iter()
-            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
-            .collect();
-        assert!(errs.is_empty(), "unexpected UnknownColumn: {errs:?}");
+        // SELECT 1 AS x → "x" is the column; accessing it succeeds.
+        assert_no_unknown_col("CREATE TABLE t AS SELECT 1 AS x; SELECT x FROM t;");
     }
 
     #[test]
     fn create_view_as_select_invalid_column_is_error() {
-        // CREATE VIEW v AS SELECT 1 AS x → x inferred; z should error
-        let mut az = sqlite_analyzer();
-        let cat = sqlite_catalog();
-        let src = "CREATE VIEW v AS SELECT 1 AS x; SELECT z FROM v;";
-        let model = az.analyze(src, &cat, &strict());
-        let errs: Vec<_> = model
-            .diagnostics()
-            .iter()
-            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { column, .. } if column == "z"))
-            .collect();
-        assert_eq!(errs.len(), 1, "expected UnknownColumn for 'z': {errs:?}");
+        // CREATE VIEW — same alias rule as CREATE TABLE.
+        assert_unknown_col("CREATE VIEW v AS SELECT 1 AS x; SELECT z FROM v;", "z");
     }
 
     #[test]
     fn create_view_as_select_valid_column_no_error() {
-        // CREATE VIEW v AS SELECT 1 AS x → selecting x is fine
-        let mut az = sqlite_analyzer();
-        let cat = sqlite_catalog();
-        let src = "CREATE VIEW v AS SELECT 1 AS x; SELECT x FROM v;";
-        let model = az.analyze(src, &cat, &strict());
-        let errs: Vec<_> = model
-            .diagnostics()
-            .iter()
-            .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
-            .collect();
-        assert!(errs.is_empty(), "unexpected UnknownColumn: {errs:?}");
+        assert_no_unknown_col("CREATE VIEW v AS SELECT 1 AS x; SELECT x FROM v;");
+    }
+
+    // ── Unnamed expressions: ENAME_SPAN (SQLite sqlite3ExprListSetSpan) ───────
+    //
+    // When a result column has no alias, SQLite names it by the raw source text
+    // of the expression (sqlite3.c:113660, ENAME_SPAN).  Any other name must be
+    // rejected as an unknown column.
+
+    #[test]
+    fn create_table_as_select_unaliased_literal_flags_unknown_column() {
+        // SELECT 1 → column "1"; any other name must error.
+        assert_unknown_col(
+            "CREATE TABLE t AS SELECT 1; SELECT t.order_id FROM t;",
+            "order_id",
+        );
+    }
+
+    #[test]
+    fn create_view_as_select_unaliased_literal_flags_unknown_column() {
+        // CREATE VIEW — same ENAME_SPAN rule.
+        assert_unknown_col(
+            "CREATE VIEW v AS SELECT 1; SELECT v.order_id FROM v;",
+            "order_id",
+        );
+    }
+
+    #[test]
+    fn create_table_as_select_unaliased_null_flags_unknown_column() {
+        // SELECT NULL → column "null"; any other name must error.
+        assert_unknown_col(
+            "CREATE TABLE t AS SELECT NULL; SELECT t.order_id FROM t;",
+            "order_id",
+        );
+    }
+
+    #[test]
+    fn create_table_as_select_unaliased_binary_expr_flags_unknown_column() {
+        // SELECT 1+2 → column "1+2"; any other name must error.
+        assert_unknown_col(
+            "CREATE TABLE t AS SELECT 1+2; SELECT t.order_id FROM t;",
+            "order_id",
+        );
+    }
+
+    #[test]
+    fn create_table_as_select_unaliased_function_call_flags_unknown_column() {
+        // SELECT abs(1) → column "abs(1)"; any other name must error.
+        assert_unknown_col(
+            "CREATE TABLE t AS SELECT abs(1); SELECT t.order_id FROM t;",
+            "order_id",
+        );
+    }
+
+    // ── Multiple / mixed columns ───────────────────────────────────────────────
+
+    #[test]
+    fn create_table_as_select_multiple_unnamed_columns_flags_unknown_column() {
+        // SELECT 1, 2 → columns "1" and "2"; "order_id" matches neither.
+        assert_unknown_col(
+            "CREATE TABLE t AS SELECT 1, 2; SELECT t.order_id FROM t;",
+            "order_id",
+        );
+    }
+
+    #[test]
+    fn create_table_as_select_mixed_named_unnamed_named_col_valid() {
+        // SELECT 1, 2 AS y → columns "1" and "y"; accessing "y" succeeds.
+        assert_no_unknown_col("CREATE TABLE t AS SELECT 1, 2 AS y; SELECT t.y FROM t;");
+    }
+
+    #[test]
+    fn create_table_as_select_mixed_named_unnamed_wrong_col_errors() {
+        // SELECT 1, 2 AS y → "z" is in neither column; must error.
+        assert_unknown_col(
+            "CREATE TABLE t AS SELECT 1, 2 AS y; SELECT t.z FROM t;",
+            "z",
+        );
+    }
+
+    // ── Regressions / edge cases ──────────────────────────────────────────────
+
+    #[test]
+    fn create_table_as_select_star_still_accepts_any_column() {
+        // SELECT * → columns unknown (STAR); any ref must be accepted
+        // conservatively — must not regress after the span-fallback change.
+        assert_no_unknown_col_with_relations(
+            "CREATE TABLE t AS SELECT * FROM src; SELECT t.anything FROM t;",
+            &[("src", &["id"])],
+        );
+    }
+
+    #[test]
+    fn create_table_as_select_expression_span_does_not_break_alias_path() {
+        // The expression-span fallback must not shadow the alias path.
+        // SELECT 1 AS x → only "x" is valid; "z" must still error.
+        assert_unknown_col(
+            "CREATE TABLE t AS SELECT 1 AS x; SELECT t.z FROM t;",
+            "z",
+        );
     }
 
     // ── Bug regression: unknown table should not produce column errors ─────────

@@ -915,6 +915,14 @@ pub(super) fn columns_from_select(
 }
 
 /// Infer the output column name for a single result column node.
+///
+/// Mirrors SQLite's `sqlite3ExprListSetName` / `sqlite3ExprListSetSpan` logic:
+/// 1. Explicit alias → use alias text (already stripped of quotes by the grammar).
+/// 2. Bare `ColumnRef` with no alias → use the column-name span.
+/// 3. Any other expression with no alias → use the raw source text of the
+///    expression node (SQLite calls this `ENAME_SPAN`, stored by
+///    `sqlite3ExprListSetSpan`). For `SELECT 1` this gives `"1"`;
+///    for `SELECT 1+2` it gives `"1+2"`; etc.
 fn infer_result_col_name<'a>(
     stmt: &AnyParsedStatement<'a>,
     child_fields: &NodeFields<'a>,
@@ -936,26 +944,86 @@ fn infer_result_col_name<'a>(
         }
     }
 
-    // Try bare ColumnRef (no alias).
-    if let FieldValue::NodeId(expr_id) = child_fields[expr_idx as usize]
-        && !expr_id.is_null()
-        && let Some((expr_tag, expr_fields)) = stmt.extract_fields(expr_id)
+    let FieldValue::NodeId(expr_id) = child_fields[expr_idx as usize] else {
+        return None;
+    };
+    if expr_id.is_null() {
+        return None;
+    }
+    let Some((expr_tag, expr_fields)) = stmt.extract_fields(expr_id) else {
+        return None;
+    };
+
+    // Try bare ColumnRef (no alias) → use column name.
+    let expr_role = roles
+        .get(u32::from(expr_tag) as usize)
+        .copied()
+        .unwrap_or(SemanticRole::Transparent);
+    if let SemanticRole::ColumnRef {
+        column: col_idx, ..
+    } = expr_role
+        && let FieldValue::Span(col_span) = expr_fields[col_idx as usize]
+        && !col_span.is_empty()
     {
-        let expr_role = roles
-            .get(u32::from(expr_tag) as usize)
-            .copied()
-            .unwrap_or(SemanticRole::Transparent);
-        if let SemanticRole::ColumnRef {
-            column: col_idx, ..
-        } = expr_role
-            && let FieldValue::Span(col_span) = expr_fields[col_idx as usize]
-            && !col_span.is_empty()
-        {
-            return Some(col_span.to_ascii_lowercase());
-        }
+        return Some(col_span.to_ascii_lowercase());
     }
 
-    None
+    // Fallback: use the raw source text spanned by the expression node
+    // (SQLite's ENAME_SPAN — set by sqlite3ExprListSetSpan).
+    // Collect all Span values in the subtree; the byte range [min, max)
+    // gives the source text of the expression, including any operators or
+    // parentheses that sit between leaf spans.
+    expr_source_text(stmt, expr_id).map(|s| s.to_ascii_lowercase())
+}
+
+/// Extract the source text of an expression node by recursively collecting
+/// all `Span` field values in its subtree and taking the enclosing byte range.
+fn expr_source_text<'a>(stmt: &AnyParsedStatement<'a>, id: AnyNodeId) -> Option<&'a str> {
+    let source = stmt.source();
+    let base = source.as_ptr() as usize;
+    let mut min = usize::MAX;
+    let mut max = 0usize;
+    collect_spans(stmt, id, base, &mut min, &mut max);
+    if min < max { Some(&source[min..max]) } else { None }
+}
+
+/// Walk `id` and all its descendants, updating `[min, max)` with every `Span`.
+fn collect_spans(
+    stmt: &AnyParsedStatement<'_>,
+    id: AnyNodeId,
+    base: usize,
+    min: &mut usize,
+    max: &mut usize,
+) {
+    if id.is_null() {
+        return;
+    }
+    if let Some((_, fields)) = stmt.extract_fields(id) {
+        for i in 0..fields.len() {
+            match fields[i] {
+                FieldValue::Span(s) if !s.is_empty() => {
+                    let start = s.as_ptr() as usize - base;
+                    let end = start + s.len();
+                    if start < *min {
+                        *min = start;
+                    }
+                    if end > *max {
+                        *max = end;
+                    }
+                }
+                FieldValue::NodeId(child) if !child.is_null() => {
+                    collect_spans(stmt, child, base, min, max);
+                }
+                _ => {}
+            }
+        }
+    }
+    // Also descend into list children (e.g. ExprList inside a FunctionCall).
+    if let Some(children) = stmt.list_children(id) {
+        for &child in children {
+            collect_spans(stmt, child, base, min, max);
+        }
+    }
 }
 
 // ── Dialect layer builder ─────────────────────────────────────────────────────
