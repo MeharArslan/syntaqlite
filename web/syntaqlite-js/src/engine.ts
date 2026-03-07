@@ -237,9 +237,10 @@ export class Engine {
 
   runAstJson(sql: string): AstResult {
     if (!this.astJsonRaw) return {ok: false, error: "AST JSON not supported by this runtime"};
-    const status = this.withInput(sql, (ptr, len) => this.astJsonRaw!(ptr, len));
+    const count = this.withInput(sql, (ptr, len) => this.astJsonRaw!(ptr, len));
     const text = this.readAndClearResult();
-    if (status !== 0) return {ok: false, error: text};
+    if (count < 0) return {ok: false, error: text};
+    if (count === 0) return {ok: true, statements: []};
     try {
       return {ok: true, statements: JSON.parse(text, (_, v) => (v === null ? undefined : v))};
     } catch (e) {

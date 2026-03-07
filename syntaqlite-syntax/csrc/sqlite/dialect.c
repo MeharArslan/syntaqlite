@@ -87,7 +87,7 @@ struct SyntaqliteDialectTemplate {
     uint32_t roles_count;
 };
 
-static const SyntaqliteDialectTemplate SQLITE_DIALECT = {
+static const struct SyntaqliteDialectTemplate SQLITE_DIALECT = {
     .grammar = SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR),
     .fmt_str_data = sqlite_fmt_string_data,
     .fmt_str_offsets = sqlite_fmt_string_offsets,
@@ -102,6 +102,6 @@ static const SyntaqliteDialectTemplate SQLITE_DIALECT = {
     .roles_count = sqlite_roles_count,
 };
 
-const SyntaqliteDialectTemplate *syntaqlite_sqlite_dialect(void) {
+const struct SyntaqliteDialectTemplate *syntaqlite_sqlite_dialect(void) {
   return &SQLITE_DIALECT;
 }

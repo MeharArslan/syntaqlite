@@ -245,7 +245,7 @@ pub(crate) fn generate_dialect_c(
         w.line("};");
         w.newline();
         w.line(&format!(
-            "static const SyntaqliteDialectTemplate {upper}_DIALECT = {{"
+            "static const struct SyntaqliteDialectTemplate {upper}_DIALECT = {{"
         ));
         w.line(&format!(
             "    .grammar = SYNQ_GRAMMAR_DEFAULT(&{upper}_GRAMMAR),"
@@ -283,7 +283,7 @@ pub(crate) fn generate_dialect_c(
         w.line("};");
         w.newline();
         w.line(&format!(
-            "const SyntaqliteDialectTemplate *syntaqlite_{dialect}_dialect(void) {{"
+            "const struct SyntaqliteDialectTemplate *syntaqlite_{dialect}_dialect(void) {{"
         ));
         w.line(&format!("  return &{upper}_DIALECT;"));
         w.line("}");
