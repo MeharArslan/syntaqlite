@@ -302,9 +302,17 @@ impl LspHost {
     /// Convenience wrapper over [`set_session_context`] that constructs a
     /// [`Catalog`] using the host's dialect and DDL source, avoiding the need
     /// for callers to handle `Dialect` directly.
-    pub fn set_session_context_from_ddl(&mut self, ddl: &str) {
-        let catalog = Catalog::from_ddl(self.dialect.clone(), ddl);
+    ///
+    /// # Errors
+    ///
+    /// Returns the parse-error messages (one per failing statement) if the DDL
+    /// source contains any syntax errors. Partial results from successfully
+    /// parsed statements are still applied as the session context.
+    #[cfg(feature = "sqlite")]
+    pub fn set_session_context_from_ddl(&mut self, ddl: &str) -> Result<(), Vec<String>> {
+        let (catalog, errors) = Catalog::from_ddl_checked(self.dialect.clone(), ddl);
         self.set_session_context(catalog);
+        if errors.is_empty() { Ok(()) } else { Err(errors) }
     }
 }
 
@@ -698,5 +706,41 @@ mod tests {
             .count();
         assert_eq!(errors, 1, "got {errors}: {all:?}");
         assert_eq!(warnings, 1, "got {warnings}: {all:?}");
+    }
+
+    #[test]
+    fn set_session_context_from_ddl_returns_error_for_invalid_ddl() {
+        let mut host = LspHost::new();
+        let errors = host
+            .set_session_context_from_ddl("create table orders as;")
+            .expect_err("expected parse errors for invalid DDL, got Ok");
+        assert!(!errors.is_empty(), "expected at least one error message");
+        assert!(
+            errors.iter().any(|e| !e.is_empty()),
+            "expected non-empty error messages, got: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn set_session_context_from_ddl_returns_ok_for_valid_ddl() {
+        let mut host = LspHost::new();
+        let result = host.set_session_context_from_ddl("CREATE TABLE orders (id INTEGER, total REAL);");
+        assert!(result.is_ok(), "expected Ok for valid DDL, got: {result:?}");
+    }
+
+    #[test]
+    fn syntax_error_for_create_table_as_missing_select() {
+        let mut host = LspHost::new();
+        let uri = "file:///test.sql";
+        host.open_document(uri, 1, "create table orders as;".to_string());
+        let diags = host.all_diagnostics(uri, &ValidationConfig::default());
+        assert!(
+            !diags.is_empty(),
+            "expected syntax error for 'create table orders as;', got none"
+        );
+        assert!(
+            diags.iter().any(|d| d.severity == Severity::Error),
+            "expected an error-severity diagnostic, got: {diags:?}"
+        );
     }
 }

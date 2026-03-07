@@ -329,25 +329,42 @@ impl Catalog {
     // ── Convenience constructors ──────────────────────────────────────────────
 
     /// Parse DDL statements from `source` and populate the database layer.
+    ///
+    /// Returns `(catalog, errors)`. `errors` contains the human-readable
+    /// message for each statement that failed to parse. Partial results from
+    /// successfully parsed statements are always accumulated.
     #[cfg(feature = "sqlite")]
-    pub(crate) fn from_ddl(dialect: impl Into<AnyDialect>, source: &str) -> Self {
+    pub(crate) fn from_ddl_checked(
+        dialect: impl Into<AnyDialect>,
+        source: &str,
+    ) -> (Self, Vec<String>) {
         use syntaqlite_syntax::ParseOutcome;
         let dialect = dialect.into();
         let mut catalog = Catalog::new(dialect.clone());
+        let mut errors: Vec<String> = Vec::new();
         let parser = syntaqlite_syntax::Parser::new();
         let mut session = parser.parse(source);
         loop {
             let stmt = match session.next() {
                 ParseOutcome::Ok(stmt) => stmt,
                 ParseOutcome::Done => break,
-                ParseOutcome::Err(_) => continue,
+                ParseOutcome::Err(e) => {
+                    errors.push(e.message().to_string());
+                    continue;
+                }
             };
             let root = stmt.root();
             let root_id: AnyNodeId = root.node_id().into();
             let erased = stmt.erase();
             catalog.accumulate_ddl(CatalogLayer::Database, &erased, root_id, dialect.clone());
         }
-        catalog
+        (catalog, errors)
+    }
+
+    /// Parse DDL statements from `source` and populate the database layer.
+    #[cfg(feature = "sqlite")]
+    pub(crate) fn from_ddl(dialect: impl Into<AnyDialect>, source: &str) -> Self {
+        Self::from_ddl_checked(dialect, source).0
     }
 
     /// Parse a JSON schema description into the database layer.
