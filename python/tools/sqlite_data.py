@@ -227,7 +227,6 @@ def cmd_download_amalgamations(args: argparse.Namespace) -> int:
 # ---------------------------------------------------------------------------
 
 DATA_DIR: Path = PROJECT_ROOT / "syntaqlite-buildtools" / "sqlite-vendored" / "data"
-CFLAGS_RS: Path = PROJECT_ROOT / "syntaqlite-syntax" / "src" / "sqlite" / "cflags.rs"
 
 
 def cmd_update_data(args: argparse.Namespace) -> int:
@@ -274,7 +273,6 @@ def cmd_update_data(args: argparse.Namespace) -> int:
         str(cli_bin), "update-data",
         "--amalgamation-dir", str(amalgamation_dir),
         "--version-cflags-output", audit_output,
-        "--rust-output", str(CFLAGS_RS),
         "--functions-output", functions_output,
     ])
     if result.returncode != 0:
@@ -285,7 +283,6 @@ def cmd_update_data(args: argparse.Namespace) -> int:
     print("Done. Updated files:")
     print(f"  {audit_output}")
     print(f"  {functions_output}")
-    print(f"  {CFLAGS_RS}")
     return 0
 
 

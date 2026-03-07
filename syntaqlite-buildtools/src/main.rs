@@ -94,14 +94,9 @@ struct CodegenSqliteParserArgs {
     #[arg(long)]
     functions_json: Option<String>,
 
-    /// Path to the cflag audit JSON (optional; required if --cflag-versions-out is given).
+    /// Path to the cflag audit JSON (optional; required if --cflag-entries-out is given).
     #[arg(long)]
     cflag_audit_json: Option<String>,
-
-    /// Output path for the generated cflag versions table Rust file.
-    /// Requires --cflag-audit-json.
-    #[arg(long, requires = "cflag_audit_json")]
-    cflag_versions_out: Option<String>,
 
     /// Output path for the generated cflag entries Rust file (`cflag_entries.rs`).
     /// Requires --cflag-audit-json.
@@ -137,9 +132,6 @@ struct UpdateDataArgs {
     /// Output path for version_cflags.json.
     #[arg(long, required = true)]
     version_cflags_output: String,
-    /// Output path for the generated Rust cflag versions table (cflags.rs).
-    #[arg(long, required = true)]
-    rust_output: String,
     /// Output path for functions.json.
     #[arg(long, required = true)]
     functions_output: String,
@@ -172,7 +164,6 @@ fn main() {
         Command::CodegenSqliteParser(args) => commands::SqliteParserCodegen {
             functions_json: args.functions_json.clone(),
             cflag_audit_json: args.cflag_audit_json.clone(),
-            cflag_versions_out: args.cflag_versions_out.clone(),
             cflag_entries_out: args.cflag_entries_out.clone(),
         }
         .run(),
@@ -186,7 +177,6 @@ fn main() {
         Command::UpdateData(args) => commands::UpdateData {
             amalgamation_dir: args.amalgamation_dir.clone(),
             version_cflags_output: args.version_cflags_output.clone(),
-            rust_output: args.rust_output.clone(),
             functions_output: args.functions_output.clone(),
         }
         .run(),

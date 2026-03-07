@@ -114,11 +114,8 @@ impl SqliteCodegen {
 pub struct SqliteParserCodegen {
     /// Path to functions.json. When provided, generates `functions_catalog.rs`.
     pub functions_json: Option<String>,
-    /// Path to the cflag audit JSON. Required when `cflag_versions_out` is set.
+    /// Path to the cflag audit JSON. Required when `cflag_entries_out` is set.
     pub cflag_audit_json: Option<String>,
-    /// Output path for the generated cflag versions Rust file.
-    /// Requires `cflag_audit_json`.
-    pub cflag_versions_out: Option<String>,
     /// Output path for the generated cflag entries Rust file (`cflag_entries.rs`).
     /// Requires `cflag_audit_json`.
     pub cflag_entries_out: Option<String>,
@@ -138,14 +135,6 @@ impl SqliteParserCodegen {
             )?;
         }
 
-        if let Some(cflag_out) = &self.cflag_versions_out {
-            let audit_path = self
-                .cflag_audit_json
-                .as_deref()
-                .ok_or("cflag_audit_json is required when cflag_versions_out is given")?;
-            generate_cflag_versions(audit_path, cflag_out)?;
-        }
-
         if let Some(entries_out) = &self.cflag_entries_out {
             let audit_path = self
                 .cflag_audit_json
@@ -156,18 +145,6 @@ impl SqliteParserCodegen {
 
         Ok(())
     }
-}
-
-fn generate_cflag_versions(audit_json_path: &str, output_path: &str) -> Result<(), String> {
-    use crate::extract::functions::{CflagAvailability, write_cflag_versions_rs};
-
-    let audit_json = fs::read_to_string(audit_json_path)
-        .map_err(|e| format!("reading {audit_json_path}: {e}"))?;
-    let availability: CflagAvailability =
-        serde_json::from_str(&audit_json).map_err(|e| format!("parsing cflag audit JSON: {e}"))?;
-    write_cflag_versions_rs(&availability, Path::new(output_path))?;
-    eprintln!("wrote {output_path}");
-    Ok(())
 }
 
 // ── SqliteExtract ─────────────────────────────────────────────────────────────
@@ -265,15 +242,13 @@ impl SqliteExtract {
 /// Audit cflag availability and extract the function catalog from amalgamations.
 ///
 /// Runs both phases in sequence:
-///   1. Scan each amalgamation for cflag references → `version_cflags.json` + `cflags.rs`.
+///   1. Scan each amalgamation for cflag references → `version_cflags.json`.
 ///   2. Compile each amalgamation and query `PRAGMA function_list` → `functions.json`.
 pub struct UpdateData {
     /// Directory containing amalgamations.
     pub amalgamation_dir: String,
     /// Output path for the cflag audit JSON (`version_cflags.json`).
     pub version_cflags_output: String,
-    /// Output path for the generated Rust cflag versions table (`cflags.rs`).
-    pub rust_output: String,
     /// Output path for the function catalog JSON (`functions.json`).
     pub functions_output: String,
 }
@@ -291,13 +266,9 @@ impl UpdateData {
         }
 
         eprintln!("Phase 1: Auditing cflags...");
-        let availability = crate::extract::functions::audit_version_cflags(
+        crate::extract::functions::audit_version_cflags(
             amal_path,
             Path::new(&self.version_cflags_output),
-        )?;
-        crate::extract::functions::write_cflag_versions_rs(
-            &availability,
-            Path::new(&self.rust_output),
         )?;
 
         eprintln!("Phase 2: Extracting function catalog...");
