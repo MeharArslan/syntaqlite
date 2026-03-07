@@ -72,7 +72,7 @@ SyntaqliteGrammar syntaqlite_sqlite_grammar_with(int32_t sqlite_version, Syntaql
   return g;
 }
 
-typedef struct {
+struct SyntaqliteDialectTemplate {
     SyntaqliteGrammar grammar;
     const uint8_t *fmt_str_data;
     const uint32_t *fmt_str_offsets;
@@ -85,7 +85,7 @@ typedef struct {
     uint32_t fmt_dispatch_count;
     const uint8_t *roles_data;
     uint32_t roles_count;
-} SyntaqliteDialectTemplate;
+};
 
 static const SyntaqliteDialectTemplate SQLITE_DIALECT = {
     .grammar = SYNQ_GRAMMAR_DEFAULT(&SQLITE_GRAMMAR),

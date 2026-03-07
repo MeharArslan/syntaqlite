@@ -229,7 +229,7 @@ pub(crate) fn generate_dialect_c(
         let has_roles = !includes.dialect_roles_h.is_empty();
 
         w.newline();
-        w.line("typedef struct {");
+        w.line("struct SyntaqliteDialectTemplate {");
         w.line("    SyntaqliteGrammar grammar;");
         w.line("    const uint8_t *fmt_str_data;");
         w.line("    const uint32_t *fmt_str_offsets;");
@@ -242,7 +242,7 @@ pub(crate) fn generate_dialect_c(
         w.line("    uint32_t fmt_dispatch_count;");
         w.line("    const uint8_t *roles_data;");
         w.line("    uint32_t roles_count;");
-        w.line("} SyntaqliteDialectTemplate;");
+        w.line("};");
         w.newline();
         w.line(&format!(
             "static const SyntaqliteDialectTemplate {upper}_DIALECT = {{"
