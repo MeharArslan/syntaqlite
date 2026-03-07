@@ -25,16 +25,16 @@ static inline uint32_t synq_parse_aggregate_function_call(
     uint32_t filter_clause,
     uint32_t over_clause
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteAggregateFunctionCall){
-            .tag = SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL,
-            .func_name = func_name,
-            .flags = flags,
-            .args = args,
-            .orderby = orderby,
-            .filter_clause = filter_clause,
-            .over_clause = over_clause
-        }, (uint32_t)sizeof(SyntaqliteAggregateFunctionCall));
+    SyntaqliteAggregateFunctionCall _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_AGGREGATE_FUNCTION_CALL;
+    _node.func_name = func_name;
+    _node.flags = flags;
+    _node.args = args;
+    _node.orderby = orderby;
+    _node.filter_clause = filter_clause;
+    _node.over_clause = over_clause;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteAggregateFunctionCall));
 }
 
 static inline uint32_t synq_parse_ordered_set_function_call(
@@ -46,16 +46,16 @@ static inline uint32_t synq_parse_ordered_set_function_call(
     uint32_t filter_clause,
     uint32_t over_clause
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteOrderedSetFunctionCall){
-            .tag = SYNTAQLITE_NODE_ORDERED_SET_FUNCTION_CALL,
-            .func_name = func_name,
-            .flags = flags,
-            .args = args,
-            .orderby_expr = orderby_expr,
-            .filter_clause = filter_clause,
-            .over_clause = over_clause
-        }, (uint32_t)sizeof(SyntaqliteOrderedSetFunctionCall));
+    SyntaqliteOrderedSetFunctionCall _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_ORDERED_SET_FUNCTION_CALL;
+    _node.func_name = func_name;
+    _node.flags = flags;
+    _node.args = args;
+    _node.orderby_expr = orderby_expr;
+    _node.filter_clause = filter_clause;
+    _node.over_clause = over_clause;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteOrderedSetFunctionCall));
 }
 
 static inline uint32_t synq_parse_cast_expr(
@@ -63,12 +63,12 @@ static inline uint32_t synq_parse_cast_expr(
     uint32_t expr,
     SyntaqliteSourceSpan type_name
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteCastExpr){
-            .tag = SYNTAQLITE_NODE_CAST_EXPR,
-            .expr = expr,
-            .type_name = type_name
-        }, (uint32_t)sizeof(SyntaqliteCastExpr));
+    SyntaqliteCastExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_CAST_EXPR;
+    _node.expr = expr;
+    _node.type_name = type_name;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteCastExpr));
 }
 
 static inline uint32_t synq_parse_column_ref(
@@ -77,13 +77,13 @@ static inline uint32_t synq_parse_column_ref(
     SyntaqliteSourceSpan table,
     SyntaqliteSourceSpan schema
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteColumnRef){
-            .tag = SYNTAQLITE_NODE_COLUMN_REF,
-            .column = column,
-            .table = table,
-            .schema = schema
-        }, (uint32_t)sizeof(SyntaqliteColumnRef));
+    SyntaqliteColumnRef _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_COLUMN_REF;
+    _node.column = column;
+    _node.table = table;
+    _node.schema = schema;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteColumnRef));
 }
 
 static inline uint32_t synq_parse_compound_select(
@@ -92,35 +92,35 @@ static inline uint32_t synq_parse_compound_select(
     uint32_t left,
     uint32_t right
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteCompoundSelect){
-            .tag = SYNTAQLITE_NODE_COMPOUND_SELECT,
-            .op = op,
-            .left = left,
-            .right = right
-        }, (uint32_t)sizeof(SyntaqliteCompoundSelect));
+    SyntaqliteCompoundSelect _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_COMPOUND_SELECT;
+    _node.op = op;
+    _node.left = left;
+    _node.right = right;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteCompoundSelect));
 }
 
 static inline uint32_t synq_parse_subquery_expr(
     SynqParseCtx *ctx,
     uint32_t select
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteSubqueryExpr){
-            .tag = SYNTAQLITE_NODE_SUBQUERY_EXPR,
-            .select = select
-        }, (uint32_t)sizeof(SyntaqliteSubqueryExpr));
+    SyntaqliteSubqueryExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_SUBQUERY_EXPR;
+    _node.select = select;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteSubqueryExpr));
 }
 
 static inline uint32_t synq_parse_exists_expr(
     SynqParseCtx *ctx,
     uint32_t select
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteExistsExpr){
-            .tag = SYNTAQLITE_NODE_EXISTS_EXPR,
-            .select = select
-        }, (uint32_t)sizeof(SyntaqliteExistsExpr));
+    SyntaqliteExistsExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_EXISTS_EXPR;
+    _node.select = select;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteExistsExpr));
 }
 
 static inline uint32_t synq_parse_in_expr(
@@ -129,13 +129,13 @@ static inline uint32_t synq_parse_in_expr(
     uint32_t operand,
     uint32_t source
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteInExpr){
-            .tag = SYNTAQLITE_NODE_IN_EXPR,
-            .negated = negated,
-            .operand = operand,
-            .source = source
-        }, (uint32_t)sizeof(SyntaqliteInExpr));
+    SyntaqliteInExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_IN_EXPR;
+    _node.negated = negated;
+    _node.operand = operand;
+    _node.source = source;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteInExpr));
 }
 
 static inline uint32_t synq_parse_is_expr(
@@ -144,13 +144,13 @@ static inline uint32_t synq_parse_is_expr(
     uint32_t left,
     uint32_t right
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteIsExpr){
-            .tag = SYNTAQLITE_NODE_IS_EXPR,
-            .op = op,
-            .left = left,
-            .right = right
-        }, (uint32_t)sizeof(SyntaqliteIsExpr));
+    SyntaqliteIsExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_IS_EXPR;
+    _node.op = op;
+    _node.left = left;
+    _node.right = right;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteIsExpr));
 }
 
 static inline uint32_t synq_parse_between_expr(
@@ -160,14 +160,14 @@ static inline uint32_t synq_parse_between_expr(
     uint32_t low,
     uint32_t high
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteBetweenExpr){
-            .tag = SYNTAQLITE_NODE_BETWEEN_EXPR,
-            .negated = negated,
-            .operand = operand,
-            .low = low,
-            .high = high
-        }, (uint32_t)sizeof(SyntaqliteBetweenExpr));
+    SyntaqliteBetweenExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_BETWEEN_EXPR;
+    _node.negated = negated;
+    _node.operand = operand;
+    _node.low = low;
+    _node.high = high;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteBetweenExpr));
 }
 
 static inline uint32_t synq_parse_like_expr(
@@ -177,14 +177,14 @@ static inline uint32_t synq_parse_like_expr(
     uint32_t pattern,
     uint32_t escape
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteLikeExpr){
-            .tag = SYNTAQLITE_NODE_LIKE_EXPR,
-            .negated = negated,
-            .operand = operand,
-            .pattern = pattern,
-            .escape = escape
-        }, (uint32_t)sizeof(SyntaqliteLikeExpr));
+    SyntaqliteLikeExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_LIKE_EXPR;
+    _node.negated = negated;
+    _node.operand = operand;
+    _node.pattern = pattern;
+    _node.escape = escape;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteLikeExpr));
 }
 
 static inline uint32_t synq_parse_case_expr(
@@ -193,13 +193,13 @@ static inline uint32_t synq_parse_case_expr(
     uint32_t else_expr,
     uint32_t whens
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteCaseExpr){
-            .tag = SYNTAQLITE_NODE_CASE_EXPR,
-            .operand = operand,
-            .else_expr = else_expr,
-            .whens = whens
-        }, (uint32_t)sizeof(SyntaqliteCaseExpr));
+    SyntaqliteCaseExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_CASE_EXPR;
+    _node.operand = operand;
+    _node.else_expr = else_expr;
+    _node.whens = whens;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteCaseExpr));
 }
 
 static inline uint32_t synq_parse_case_when(
@@ -207,12 +207,12 @@ static inline uint32_t synq_parse_case_when(
     uint32_t when_expr,
     uint32_t then_expr
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteCaseWhen){
-            .tag = SYNTAQLITE_NODE_CASE_WHEN,
-            .when_expr = when_expr,
-            .then_expr = then_expr
-        }, (uint32_t)sizeof(SyntaqliteCaseWhen));
+    SyntaqliteCaseWhen _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_CASE_WHEN;
+    _node.when_expr = when_expr;
+    _node.then_expr = then_expr;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteCaseWhen));
 }
 
 static inline uint32_t synq_parse_foreign_key_clause(
@@ -223,15 +223,15 @@ static inline uint32_t synq_parse_foreign_key_clause(
     SyntaqliteForeignKeyAction on_update,
     SyntaqliteBool is_deferred
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteForeignKeyClause){
-            .tag = SYNTAQLITE_NODE_FOREIGN_KEY_CLAUSE,
-            .ref_table = ref_table,
-            .ref_columns = ref_columns,
-            .on_delete = on_delete,
-            .on_update = on_update,
-            .is_deferred = is_deferred
-        }, (uint32_t)sizeof(SyntaqliteForeignKeyClause));
+    SyntaqliteForeignKeyClause _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_FOREIGN_KEY_CLAUSE;
+    _node.ref_table = ref_table;
+    _node.ref_columns = ref_columns;
+    _node.on_delete = on_delete;
+    _node.on_update = on_update;
+    _node.is_deferred = is_deferred;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteForeignKeyClause));
 }
 
 static inline uint32_t synq_parse_column_constraint(
@@ -248,21 +248,21 @@ static inline uint32_t synq_parse_column_constraint(
     uint32_t generated_expr,
     uint32_t fk_clause
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteColumnConstraint){
-            .tag = SYNTAQLITE_NODE_COLUMN_CONSTRAINT,
-            .kind = kind,
-            .constraint_name = constraint_name,
-            .onconf = onconf,
-            .sort_order = sort_order,
-            .is_autoincrement = is_autoincrement,
-            .collation_name = collation_name,
-            .generated_storage = generated_storage,
-            .default_expr = default_expr,
-            .check_expr = check_expr,
-            .generated_expr = generated_expr,
-            .fk_clause = fk_clause
-        }, (uint32_t)sizeof(SyntaqliteColumnConstraint));
+    SyntaqliteColumnConstraint _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_COLUMN_CONSTRAINT;
+    _node.kind = kind;
+    _node.constraint_name = constraint_name;
+    _node.onconf = onconf;
+    _node.sort_order = sort_order;
+    _node.is_autoincrement = is_autoincrement;
+    _node.collation_name = collation_name;
+    _node.generated_storage = generated_storage;
+    _node.default_expr = default_expr;
+    _node.check_expr = check_expr;
+    _node.generated_expr = generated_expr;
+    _node.fk_clause = fk_clause;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteColumnConstraint));
 }
 
 static inline uint32_t synq_parse_column_def(
@@ -271,13 +271,13 @@ static inline uint32_t synq_parse_column_def(
     SyntaqliteSourceSpan type_name,
     uint32_t constraints
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteColumnDef){
-            .tag = SYNTAQLITE_NODE_COLUMN_DEF,
-            .column_name = column_name,
-            .type_name = type_name,
-            .constraints = constraints
-        }, (uint32_t)sizeof(SyntaqliteColumnDef));
+    SyntaqliteColumnDef _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_COLUMN_DEF;
+    _node.column_name = column_name;
+    _node.type_name = type_name;
+    _node.constraints = constraints;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteColumnDef));
 }
 
 static inline uint32_t synq_parse_table_constraint(
@@ -291,18 +291,18 @@ static inline uint32_t synq_parse_table_constraint(
     uint32_t check_expr,
     uint32_t fk_clause
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteTableConstraint){
-            .tag = SYNTAQLITE_NODE_TABLE_CONSTRAINT,
-            .kind = kind,
-            .constraint_name = constraint_name,
-            .onconf = onconf,
-            .is_autoincrement = is_autoincrement,
-            .pk_columns = pk_columns,
-            .fk_columns = fk_columns,
-            .check_expr = check_expr,
-            .fk_clause = fk_clause
-        }, (uint32_t)sizeof(SyntaqliteTableConstraint));
+    SyntaqliteTableConstraint _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_TABLE_CONSTRAINT;
+    _node.kind = kind;
+    _node.constraint_name = constraint_name;
+    _node.onconf = onconf;
+    _node.is_autoincrement = is_autoincrement;
+    _node.pk_columns = pk_columns;
+    _node.fk_columns = fk_columns;
+    _node.check_expr = check_expr;
+    _node.fk_clause = fk_clause;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteTableConstraint));
 }
 
 static inline uint32_t synq_parse_create_table_stmt(
@@ -316,18 +316,18 @@ static inline uint32_t synq_parse_create_table_stmt(
     uint32_t table_constraints,
     uint32_t as_select
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteCreateTableStmt){
-            .tag = SYNTAQLITE_NODE_CREATE_TABLE_STMT,
-            .table_name = table_name,
-            .schema = schema,
-            .is_temp = is_temp,
-            .if_not_exists = if_not_exists,
-            .flags = flags,
-            .columns = columns,
-            .table_constraints = table_constraints,
-            .as_select = as_select
-        }, (uint32_t)sizeof(SyntaqliteCreateTableStmt));
+    SyntaqliteCreateTableStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_CREATE_TABLE_STMT;
+    _node.table_name = table_name;
+    _node.schema = schema;
+    _node.is_temp = is_temp;
+    _node.if_not_exists = if_not_exists;
+    _node.flags = flags;
+    _node.columns = columns;
+    _node.table_constraints = table_constraints;
+    _node.as_select = as_select;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteCreateTableStmt));
 }
 
 static inline uint32_t synq_parse_cte_definition(
@@ -337,14 +337,14 @@ static inline uint32_t synq_parse_cte_definition(
     uint32_t columns,
     uint32_t select
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteCteDefinition){
-            .tag = SYNTAQLITE_NODE_CTE_DEFINITION,
-            .cte_name = cte_name,
-            .materialized = materialized,
-            .columns = columns,
-            .select = select
-        }, (uint32_t)sizeof(SyntaqliteCteDefinition));
+    SyntaqliteCteDefinition _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_CTE_DEFINITION;
+    _node.cte_name = cte_name;
+    _node.materialized = materialized;
+    _node.columns = columns;
+    _node.select = select;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteCteDefinition));
 }
 
 static inline uint32_t synq_parse_with_clause(
@@ -353,13 +353,13 @@ static inline uint32_t synq_parse_with_clause(
     uint32_t ctes,
     uint32_t select
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteWithClause){
-            .tag = SYNTAQLITE_NODE_WITH_CLAUSE,
-            .recursive = recursive,
-            .ctes = ctes,
-            .select = select
-        }, (uint32_t)sizeof(SyntaqliteWithClause));
+    SyntaqliteWithClause _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_WITH_CLAUSE;
+    _node.recursive = recursive;
+    _node.ctes = ctes;
+    _node.select = select;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteWithClause));
 }
 
 static inline uint32_t synq_parse_delete_stmt(
@@ -369,14 +369,14 @@ static inline uint32_t synq_parse_delete_stmt(
     uint32_t orderby,
     uint32_t limit_clause
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteDeleteStmt){
-            .tag = SYNTAQLITE_NODE_DELETE_STMT,
-            .table = table,
-            .where_clause = where_clause,
-            .orderby = orderby,
-            .limit_clause = limit_clause
-        }, (uint32_t)sizeof(SyntaqliteDeleteStmt));
+    SyntaqliteDeleteStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_DELETE_STMT;
+    _node.table = table;
+    _node.where_clause = where_clause;
+    _node.orderby = orderby;
+    _node.limit_clause = limit_clause;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteDeleteStmt));
 }
 
 static inline uint32_t synq_parse_set_clause(
@@ -385,13 +385,13 @@ static inline uint32_t synq_parse_set_clause(
     uint32_t columns,
     uint32_t value
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteSetClause){
-            .tag = SYNTAQLITE_NODE_SET_CLAUSE,
-            .column = column,
-            .columns = columns,
-            .value = value
-        }, (uint32_t)sizeof(SyntaqliteSetClause));
+    SyntaqliteSetClause _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_SET_CLAUSE;
+    _node.column = column;
+    _node.columns = columns;
+    _node.value = value;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteSetClause));
 }
 
 static inline uint32_t synq_parse_update_stmt(
@@ -404,17 +404,17 @@ static inline uint32_t synq_parse_update_stmt(
     uint32_t orderby,
     uint32_t limit_clause
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteUpdateStmt){
-            .tag = SYNTAQLITE_NODE_UPDATE_STMT,
-            .conflict_action = conflict_action,
-            .table = table,
-            .setlist = setlist,
-            .from_clause = from_clause,
-            .where_clause = where_clause,
-            .orderby = orderby,
-            .limit_clause = limit_clause
-        }, (uint32_t)sizeof(SyntaqliteUpdateStmt));
+    SyntaqliteUpdateStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_UPDATE_STMT;
+    _node.conflict_action = conflict_action;
+    _node.table = table;
+    _node.setlist = setlist;
+    _node.from_clause = from_clause;
+    _node.where_clause = where_clause;
+    _node.orderby = orderby;
+    _node.limit_clause = limit_clause;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteUpdateStmt));
 }
 
 static inline uint32_t synq_parse_insert_stmt(
@@ -424,14 +424,14 @@ static inline uint32_t synq_parse_insert_stmt(
     uint32_t columns,
     uint32_t source
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteInsertStmt){
-            .tag = SYNTAQLITE_NODE_INSERT_STMT,
-            .conflict_action = conflict_action,
-            .table = table,
-            .columns = columns,
-            .source = source
-        }, (uint32_t)sizeof(SyntaqliteInsertStmt));
+    SyntaqliteInsertStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_INSERT_STMT;
+    _node.conflict_action = conflict_action;
+    _node.table = table;
+    _node.columns = columns;
+    _node.source = source;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteInsertStmt));
 }
 
 static inline uint32_t synq_parse_binary_expr(
@@ -440,13 +440,13 @@ static inline uint32_t synq_parse_binary_expr(
     uint32_t left,
     uint32_t right
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteBinaryExpr){
-            .tag = SYNTAQLITE_NODE_BINARY_EXPR,
-            .op = op,
-            .left = left,
-            .right = right
-        }, (uint32_t)sizeof(SyntaqliteBinaryExpr));
+    SyntaqliteBinaryExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_BINARY_EXPR;
+    _node.op = op;
+    _node.left = left;
+    _node.right = right;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteBinaryExpr));
 }
 
 static inline uint32_t synq_parse_unary_expr(
@@ -454,12 +454,12 @@ static inline uint32_t synq_parse_unary_expr(
     SyntaqliteUnaryOp op,
     uint32_t operand
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteUnaryExpr){
-            .tag = SYNTAQLITE_NODE_UNARY_EXPR,
-            .op = op,
-            .operand = operand
-        }, (uint32_t)sizeof(SyntaqliteUnaryExpr));
+    SyntaqliteUnaryExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_UNARY_EXPR;
+    _node.op = op;
+    _node.operand = operand;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteUnaryExpr));
 }
 
 static inline uint32_t synq_parse_literal(
@@ -467,34 +467,34 @@ static inline uint32_t synq_parse_literal(
     SyntaqliteLiteralType literal_type,
     SyntaqliteSourceSpan source
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteLiteral){
-            .tag = SYNTAQLITE_NODE_LITERAL,
-            .literal_type = literal_type,
-            .source = source
-        }, (uint32_t)sizeof(SyntaqliteLiteral));
+    SyntaqliteLiteral _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_LITERAL;
+    _node.literal_type = literal_type;
+    _node.source = source;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteLiteral));
 }
 
 static inline uint32_t synq_parse_ident_name(
     SynqParseCtx *ctx,
     SyntaqliteSourceSpan source
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteIdentName){
-            .tag = SYNTAQLITE_NODE_IDENT_NAME,
-            .source = source
-        }, (uint32_t)sizeof(SyntaqliteIdentName));
+    SyntaqliteIdentName _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_IDENT_NAME;
+    _node.source = source;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteIdentName));
 }
 
 static inline uint32_t synq_parse_error(
     SynqParseCtx *ctx,
     SyntaqliteSourceSpan source
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteError){
-            .tag = SYNTAQLITE_NODE_ERROR,
-            .source = source
-        }, (uint32_t)sizeof(SyntaqliteError));
+    SyntaqliteError _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_ERROR;
+    _node.source = source;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteError));
 }
 
 static inline uint32_t synq_parse_function_call(
@@ -505,26 +505,26 @@ static inline uint32_t synq_parse_function_call(
     uint32_t filter_clause,
     uint32_t over_clause
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteFunctionCall){
-            .tag = SYNTAQLITE_NODE_FUNCTION_CALL,
-            .func_name = func_name,
-            .flags = flags,
-            .args = args,
-            .filter_clause = filter_clause,
-            .over_clause = over_clause
-        }, (uint32_t)sizeof(SyntaqliteFunctionCall));
+    SyntaqliteFunctionCall _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_FUNCTION_CALL;
+    _node.func_name = func_name;
+    _node.flags = flags;
+    _node.args = args;
+    _node.filter_clause = filter_clause;
+    _node.over_clause = over_clause;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteFunctionCall));
 }
 
 static inline uint32_t synq_parse_variable(
     SynqParseCtx *ctx,
     SyntaqliteSourceSpan source
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteVariable){
-            .tag = SYNTAQLITE_NODE_VARIABLE,
-            .source = source
-        }, (uint32_t)sizeof(SyntaqliteVariable));
+    SyntaqliteVariable _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_VARIABLE;
+    _node.source = source;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteVariable));
 }
 
 static inline uint32_t synq_parse_collate_expr(
@@ -532,12 +532,12 @@ static inline uint32_t synq_parse_collate_expr(
     uint32_t expr,
     SyntaqliteSourceSpan collation
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteCollateExpr){
-            .tag = SYNTAQLITE_NODE_COLLATE_EXPR,
-            .expr = expr,
-            .collation = collation
-        }, (uint32_t)sizeof(SyntaqliteCollateExpr));
+    SyntaqliteCollateExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_COLLATE_EXPR;
+    _node.expr = expr;
+    _node.collation = collation;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteCollateExpr));
 }
 
 static inline uint32_t synq_parse_raise_expr(
@@ -545,12 +545,12 @@ static inline uint32_t synq_parse_raise_expr(
     SyntaqliteRaiseType raise_type,
     uint32_t error_message
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteRaiseExpr){
-            .tag = SYNTAQLITE_NODE_RAISE_EXPR,
-            .raise_type = raise_type,
-            .error_message = error_message
-        }, (uint32_t)sizeof(SyntaqliteRaiseExpr));
+    SyntaqliteRaiseExpr _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_RAISE_EXPR;
+    _node.raise_type = raise_type;
+    _node.error_message = error_message;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteRaiseExpr));
 }
 
 static inline uint32_t synq_parse_qualified_name(
@@ -558,12 +558,12 @@ static inline uint32_t synq_parse_qualified_name(
     uint32_t object_name,
     uint32_t schema
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteQualifiedName){
-            .tag = SYNTAQLITE_NODE_QUALIFIED_NAME,
-            .object_name = object_name,
-            .schema = schema
-        }, (uint32_t)sizeof(SyntaqliteQualifiedName));
+    SyntaqliteQualifiedName _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_QUALIFIED_NAME;
+    _node.object_name = object_name;
+    _node.schema = schema;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteQualifiedName));
 }
 
 static inline uint32_t synq_parse_drop_stmt(
@@ -572,13 +572,13 @@ static inline uint32_t synq_parse_drop_stmt(
     SyntaqliteBool if_exists,
     uint32_t target
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteDropStmt){
-            .tag = SYNTAQLITE_NODE_DROP_STMT,
-            .object_type = object_type,
-            .if_exists = if_exists,
-            .target = target
-        }, (uint32_t)sizeof(SyntaqliteDropStmt));
+    SyntaqliteDropStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_DROP_STMT;
+    _node.object_type = object_type;
+    _node.if_exists = if_exists;
+    _node.target = target;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteDropStmt));
 }
 
 static inline uint32_t synq_parse_alter_table_stmt(
@@ -588,14 +588,14 @@ static inline uint32_t synq_parse_alter_table_stmt(
     uint32_t new_name,
     uint32_t old_name
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteAlterTableStmt){
-            .tag = SYNTAQLITE_NODE_ALTER_TABLE_STMT,
-            .op = op,
-            .target = target,
-            .new_name = new_name,
-            .old_name = old_name
-        }, (uint32_t)sizeof(SyntaqliteAlterTableStmt));
+    SyntaqliteAlterTableStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_ALTER_TABLE_STMT;
+    _node.op = op;
+    _node.target = target;
+    _node.new_name = new_name;
+    _node.old_name = old_name;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteAlterTableStmt));
 }
 
 static inline uint32_t synq_parse_transaction_stmt(
@@ -603,12 +603,12 @@ static inline uint32_t synq_parse_transaction_stmt(
     SyntaqliteTransactionOp op,
     SyntaqliteTransactionType trans_type
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteTransactionStmt){
-            .tag = SYNTAQLITE_NODE_TRANSACTION_STMT,
-            .op = op,
-            .trans_type = trans_type
-        }, (uint32_t)sizeof(SyntaqliteTransactionStmt));
+    SyntaqliteTransactionStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_TRANSACTION_STMT;
+    _node.op = op;
+    _node.trans_type = trans_type;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteTransactionStmt));
 }
 
 static inline uint32_t synq_parse_savepoint_stmt(
@@ -616,12 +616,12 @@ static inline uint32_t synq_parse_savepoint_stmt(
     SyntaqliteSavepointOp op,
     uint32_t savepoint_name
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteSavepointStmt){
-            .tag = SYNTAQLITE_NODE_SAVEPOINT_STMT,
-            .op = op,
-            .savepoint_name = savepoint_name
-        }, (uint32_t)sizeof(SyntaqliteSavepointStmt));
+    SyntaqliteSavepointStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_SAVEPOINT_STMT;
+    _node.op = op;
+    _node.savepoint_name = savepoint_name;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteSavepointStmt));
 }
 
 static inline uint32_t synq_parse_result_column(
@@ -630,13 +630,13 @@ static inline uint32_t synq_parse_result_column(
     uint32_t alias,
     uint32_t expr
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteResultColumn){
-            .tag = SYNTAQLITE_NODE_RESULT_COLUMN,
-            .flags = flags,
-            .alias = alias,
-            .expr = expr
-        }, (uint32_t)sizeof(SyntaqliteResultColumn));
+    SyntaqliteResultColumn _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_RESULT_COLUMN;
+    _node.flags = flags;
+    _node.alias = alias;
+    _node.expr = expr;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteResultColumn));
 }
 
 static inline uint32_t synq_parse_select_stmt(
@@ -651,19 +651,19 @@ static inline uint32_t synq_parse_select_stmt(
     uint32_t limit_clause,
     uint32_t window_clause
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteSelectStmt){
-            .tag = SYNTAQLITE_NODE_SELECT_STMT,
-            .flags = flags,
-            .columns = columns,
-            .from_clause = from_clause,
-            .where_clause = where_clause,
-            .groupby = groupby,
-            .having = having,
-            .orderby = orderby,
-            .limit_clause = limit_clause,
-            .window_clause = window_clause
-        }, (uint32_t)sizeof(SyntaqliteSelectStmt));
+    SyntaqliteSelectStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_SELECT_STMT;
+    _node.flags = flags;
+    _node.columns = columns;
+    _node.from_clause = from_clause;
+    _node.where_clause = where_clause;
+    _node.groupby = groupby;
+    _node.having = having;
+    _node.orderby = orderby;
+    _node.limit_clause = limit_clause;
+    _node.window_clause = window_clause;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteSelectStmt));
 }
 
 static inline uint32_t synq_parse_ordering_term(
@@ -672,13 +672,13 @@ static inline uint32_t synq_parse_ordering_term(
     SyntaqliteSortOrder sort_order,
     SyntaqliteNullsOrder nulls_order
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteOrderingTerm){
-            .tag = SYNTAQLITE_NODE_ORDERING_TERM,
-            .expr = expr,
-            .sort_order = sort_order,
-            .nulls_order = nulls_order
-        }, (uint32_t)sizeof(SyntaqliteOrderingTerm));
+    SyntaqliteOrderingTerm _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_ORDERING_TERM;
+    _node.expr = expr;
+    _node.sort_order = sort_order;
+    _node.nulls_order = nulls_order;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteOrderingTerm));
 }
 
 static inline uint32_t synq_parse_limit_clause(
@@ -686,12 +686,12 @@ static inline uint32_t synq_parse_limit_clause(
     uint32_t limit,
     uint32_t offset
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteLimitClause){
-            .tag = SYNTAQLITE_NODE_LIMIT_CLAUSE,
-            .limit = limit,
-            .offset = offset
-        }, (uint32_t)sizeof(SyntaqliteLimitClause));
+    SyntaqliteLimitClause _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_LIMIT_CLAUSE;
+    _node.limit = limit;
+    _node.offset = offset;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteLimitClause));
 }
 
 static inline uint32_t synq_parse_table_ref(
@@ -700,13 +700,13 @@ static inline uint32_t synq_parse_table_ref(
     SyntaqliteSourceSpan schema,
     uint32_t alias
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteTableRef){
-            .tag = SYNTAQLITE_NODE_TABLE_REF,
-            .table_name = table_name,
-            .schema = schema,
-            .alias = alias
-        }, (uint32_t)sizeof(SyntaqliteTableRef));
+    SyntaqliteTableRef _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_TABLE_REF;
+    _node.table_name = table_name;
+    _node.schema = schema;
+    _node.alias = alias;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteTableRef));
 }
 
 static inline uint32_t synq_parse_subquery_table_source(
@@ -714,12 +714,12 @@ static inline uint32_t synq_parse_subquery_table_source(
     uint32_t select,
     uint32_t alias
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteSubqueryTableSource){
-            .tag = SYNTAQLITE_NODE_SUBQUERY_TABLE_SOURCE,
-            .select = select,
-            .alias = alias
-        }, (uint32_t)sizeof(SyntaqliteSubqueryTableSource));
+    SyntaqliteSubqueryTableSource _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_SUBQUERY_TABLE_SOURCE;
+    _node.select = select;
+    _node.alias = alias;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteSubqueryTableSource));
 }
 
 static inline uint32_t synq_parse_join_clause(
@@ -730,15 +730,15 @@ static inline uint32_t synq_parse_join_clause(
     uint32_t on_expr,
     uint32_t using_columns
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteJoinClause){
-            .tag = SYNTAQLITE_NODE_JOIN_CLAUSE,
-            .join_type = join_type,
-            .left = left,
-            .right = right,
-            .on_expr = on_expr,
-            .using_columns = using_columns
-        }, (uint32_t)sizeof(SyntaqliteJoinClause));
+    SyntaqliteJoinClause _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_JOIN_CLAUSE;
+    _node.join_type = join_type;
+    _node.left = left;
+    _node.right = right;
+    _node.on_expr = on_expr;
+    _node.using_columns = using_columns;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteJoinClause));
 }
 
 static inline uint32_t synq_parse_join_prefix(
@@ -746,12 +746,12 @@ static inline uint32_t synq_parse_join_prefix(
     uint32_t source,
     SyntaqliteJoinType join_type
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteJoinPrefix){
-            .tag = SYNTAQLITE_NODE_JOIN_PREFIX,
-            .source = source,
-            .join_type = join_type
-        }, (uint32_t)sizeof(SyntaqliteJoinPrefix));
+    SyntaqliteJoinPrefix _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_JOIN_PREFIX;
+    _node.source = source;
+    _node.join_type = join_type;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteJoinPrefix));
 }
 
 static inline uint32_t synq_parse_trigger_event(
@@ -759,12 +759,12 @@ static inline uint32_t synq_parse_trigger_event(
     SyntaqliteTriggerEventType event_type,
     uint32_t columns
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteTriggerEvent){
-            .tag = SYNTAQLITE_NODE_TRIGGER_EVENT,
-            .event_type = event_type,
-            .columns = columns
-        }, (uint32_t)sizeof(SyntaqliteTriggerEvent));
+    SyntaqliteTriggerEvent _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_TRIGGER_EVENT;
+    _node.event_type = event_type;
+    _node.columns = columns;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteTriggerEvent));
 }
 
 static inline uint32_t synq_parse_create_trigger_stmt(
@@ -779,19 +779,19 @@ static inline uint32_t synq_parse_create_trigger_stmt(
     uint32_t when_expr,
     uint32_t body
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteCreateTriggerStmt){
-            .tag = SYNTAQLITE_NODE_CREATE_TRIGGER_STMT,
-            .trigger_name = trigger_name,
-            .schema = schema,
-            .is_temp = is_temp,
-            .if_not_exists = if_not_exists,
-            .timing = timing,
-            .event = event,
-            .table = table,
-            .when_expr = when_expr,
-            .body = body
-        }, (uint32_t)sizeof(SyntaqliteCreateTriggerStmt));
+    SyntaqliteCreateTriggerStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_CREATE_TRIGGER_STMT;
+    _node.trigger_name = trigger_name;
+    _node.schema = schema;
+    _node.is_temp = is_temp;
+    _node.if_not_exists = if_not_exists;
+    _node.timing = timing;
+    _node.event = event;
+    _node.table = table;
+    _node.when_expr = when_expr;
+    _node.body = body;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteCreateTriggerStmt));
 }
 
 static inline uint32_t synq_parse_create_virtual_table_stmt(
@@ -802,15 +802,15 @@ static inline uint32_t synq_parse_create_virtual_table_stmt(
     SyntaqliteBool if_not_exists,
     SyntaqliteSourceSpan module_args
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteCreateVirtualTableStmt){
-            .tag = SYNTAQLITE_NODE_CREATE_VIRTUAL_TABLE_STMT,
-            .table_name = table_name,
-            .schema = schema,
-            .module_name = module_name,
-            .if_not_exists = if_not_exists,
-            .module_args = module_args
-        }, (uint32_t)sizeof(SyntaqliteCreateVirtualTableStmt));
+    SyntaqliteCreateVirtualTableStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_CREATE_VIRTUAL_TABLE_STMT;
+    _node.table_name = table_name;
+    _node.schema = schema;
+    _node.module_name = module_name;
+    _node.if_not_exists = if_not_exists;
+    _node.module_args = module_args;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteCreateVirtualTableStmt));
 }
 
 static inline uint32_t synq_parse_pragma_stmt(
@@ -820,14 +820,14 @@ static inline uint32_t synq_parse_pragma_stmt(
     SyntaqliteSourceSpan value,
     SyntaqlitePragmaForm pragma_form
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqlitePragmaStmt){
-            .tag = SYNTAQLITE_NODE_PRAGMA_STMT,
-            .pragma_name = pragma_name,
-            .schema = schema,
-            .value = value,
-            .pragma_form = pragma_form
-        }, (uint32_t)sizeof(SyntaqlitePragmaStmt));
+    SyntaqlitePragmaStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_PRAGMA_STMT;
+    _node.pragma_name = pragma_name;
+    _node.schema = schema;
+    _node.value = value;
+    _node.pragma_form = pragma_form;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqlitePragmaStmt));
 }
 
 static inline uint32_t synq_parse_analyze_or_reindex_stmt(
@@ -836,13 +836,13 @@ static inline uint32_t synq_parse_analyze_or_reindex_stmt(
     SyntaqliteSourceSpan schema,
     SyntaqliteAnalyzeOrReindexOp kind
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteAnalyzeOrReindexStmt){
-            .tag = SYNTAQLITE_NODE_ANALYZE_OR_REINDEX_STMT,
-            .target_name = target_name,
-            .schema = schema,
-            .kind = kind
-        }, (uint32_t)sizeof(SyntaqliteAnalyzeOrReindexStmt));
+    SyntaqliteAnalyzeOrReindexStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_ANALYZE_OR_REINDEX_STMT;
+    _node.target_name = target_name;
+    _node.schema = schema;
+    _node.kind = kind;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteAnalyzeOrReindexStmt));
 }
 
 static inline uint32_t synq_parse_attach_stmt(
@@ -851,24 +851,24 @@ static inline uint32_t synq_parse_attach_stmt(
     uint32_t db_name,
     uint32_t key
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteAttachStmt){
-            .tag = SYNTAQLITE_NODE_ATTACH_STMT,
-            .filename = filename,
-            .db_name = db_name,
-            .key = key
-        }, (uint32_t)sizeof(SyntaqliteAttachStmt));
+    SyntaqliteAttachStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_ATTACH_STMT;
+    _node.filename = filename;
+    _node.db_name = db_name;
+    _node.key = key;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteAttachStmt));
 }
 
 static inline uint32_t synq_parse_detach_stmt(
     SynqParseCtx *ctx,
     uint32_t db_name
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteDetachStmt){
-            .tag = SYNTAQLITE_NODE_DETACH_STMT,
-            .db_name = db_name
-        }, (uint32_t)sizeof(SyntaqliteDetachStmt));
+    SyntaqliteDetachStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_DETACH_STMT;
+    _node.db_name = db_name;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteDetachStmt));
 }
 
 static inline uint32_t synq_parse_vacuum_stmt(
@@ -876,12 +876,12 @@ static inline uint32_t synq_parse_vacuum_stmt(
     SyntaqliteSourceSpan schema,
     uint32_t filename
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteVacuumStmt){
-            .tag = SYNTAQLITE_NODE_VACUUM_STMT,
-            .schema = schema,
-            .filename = filename
-        }, (uint32_t)sizeof(SyntaqliteVacuumStmt));
+    SyntaqliteVacuumStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_VACUUM_STMT;
+    _node.schema = schema;
+    _node.filename = filename;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteVacuumStmt));
 }
 
 static inline uint32_t synq_parse_explain_stmt(
@@ -889,12 +889,12 @@ static inline uint32_t synq_parse_explain_stmt(
     SyntaqliteExplainMode explain_mode,
     uint32_t stmt
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteExplainStmt){
-            .tag = SYNTAQLITE_NODE_EXPLAIN_STMT,
-            .explain_mode = explain_mode,
-            .stmt = stmt
-        }, (uint32_t)sizeof(SyntaqliteExplainStmt));
+    SyntaqliteExplainStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_EXPLAIN_STMT;
+    _node.explain_mode = explain_mode;
+    _node.stmt = stmt;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteExplainStmt));
 }
 
 static inline uint32_t synq_parse_create_index_stmt(
@@ -907,17 +907,17 @@ static inline uint32_t synq_parse_create_index_stmt(
     uint32_t columns,
     uint32_t where_clause
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteCreateIndexStmt){
-            .tag = SYNTAQLITE_NODE_CREATE_INDEX_STMT,
-            .index_name = index_name,
-            .schema = schema,
-            .table_name = table_name,
-            .is_unique = is_unique,
-            .if_not_exists = if_not_exists,
-            .columns = columns,
-            .where_clause = where_clause
-        }, (uint32_t)sizeof(SyntaqliteCreateIndexStmt));
+    SyntaqliteCreateIndexStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_CREATE_INDEX_STMT;
+    _node.index_name = index_name;
+    _node.schema = schema;
+    _node.table_name = table_name;
+    _node.is_unique = is_unique;
+    _node.if_not_exists = if_not_exists;
+    _node.columns = columns;
+    _node.where_clause = where_clause;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteCreateIndexStmt));
 }
 
 static inline uint32_t synq_parse_create_view_stmt(
@@ -929,27 +929,27 @@ static inline uint32_t synq_parse_create_view_stmt(
     uint32_t column_names,
     uint32_t select
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteCreateViewStmt){
-            .tag = SYNTAQLITE_NODE_CREATE_VIEW_STMT,
-            .view_name = view_name,
-            .schema = schema,
-            .is_temp = is_temp,
-            .if_not_exists = if_not_exists,
-            .column_names = column_names,
-            .select = select
-        }, (uint32_t)sizeof(SyntaqliteCreateViewStmt));
+    SyntaqliteCreateViewStmt _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_CREATE_VIEW_STMT;
+    _node.view_name = view_name;
+    _node.schema = schema;
+    _node.is_temp = is_temp;
+    _node.if_not_exists = if_not_exists;
+    _node.column_names = column_names;
+    _node.select = select;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteCreateViewStmt));
 }
 
 static inline uint32_t synq_parse_values_clause(
     SynqParseCtx *ctx,
     uint32_t rows
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteValuesClause){
-            .tag = SYNTAQLITE_NODE_VALUES_CLAUSE,
-            .rows = rows
-        }, (uint32_t)sizeof(SyntaqliteValuesClause));
+    SyntaqliteValuesClause _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_VALUES_CLAUSE;
+    _node.rows = rows;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteValuesClause));
 }
 
 static inline uint32_t synq_parse_frame_bound(
@@ -957,12 +957,12 @@ static inline uint32_t synq_parse_frame_bound(
     SyntaqliteFrameBoundType bound_type,
     uint32_t expr
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteFrameBound){
-            .tag = SYNTAQLITE_NODE_FRAME_BOUND,
-            .bound_type = bound_type,
-            .expr = expr
-        }, (uint32_t)sizeof(SyntaqliteFrameBound));
+    SyntaqliteFrameBound _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_FRAME_BOUND;
+    _node.bound_type = bound_type;
+    _node.expr = expr;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteFrameBound));
 }
 
 static inline uint32_t synq_parse_frame_spec(
@@ -972,14 +972,14 @@ static inline uint32_t synq_parse_frame_spec(
     uint32_t start_bound,
     uint32_t end_bound
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteFrameSpec){
-            .tag = SYNTAQLITE_NODE_FRAME_SPEC,
-            .frame_type = frame_type,
-            .exclude = exclude,
-            .start_bound = start_bound,
-            .end_bound = end_bound
-        }, (uint32_t)sizeof(SyntaqliteFrameSpec));
+    SyntaqliteFrameSpec _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_FRAME_SPEC;
+    _node.frame_type = frame_type;
+    _node.exclude = exclude;
+    _node.start_bound = start_bound;
+    _node.end_bound = end_bound;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteFrameSpec));
 }
 
 static inline uint32_t synq_parse_window_def(
@@ -989,14 +989,14 @@ static inline uint32_t synq_parse_window_def(
     uint32_t orderby,
     uint32_t frame
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteWindowDef){
-            .tag = SYNTAQLITE_NODE_WINDOW_DEF,
-            .base_window_name = base_window_name,
-            .partition_by = partition_by,
-            .orderby = orderby,
-            .frame = frame
-        }, (uint32_t)sizeof(SyntaqliteWindowDef));
+    SyntaqliteWindowDef _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_WINDOW_DEF;
+    _node.base_window_name = base_window_name;
+    _node.partition_by = partition_by;
+    _node.orderby = orderby;
+    _node.frame = frame;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteWindowDef));
 }
 
 static inline uint32_t synq_parse_named_window_def(
@@ -1004,12 +1004,12 @@ static inline uint32_t synq_parse_named_window_def(
     SyntaqliteSourceSpan window_name,
     uint32_t window_def
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteNamedWindowDef){
-            .tag = SYNTAQLITE_NODE_NAMED_WINDOW_DEF,
-            .window_name = window_name,
-            .window_def = window_def
-        }, (uint32_t)sizeof(SyntaqliteNamedWindowDef));
+    SyntaqliteNamedWindowDef _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_NAMED_WINDOW_DEF;
+    _node.window_name = window_name;
+    _node.window_def = window_def;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteNamedWindowDef));
 }
 
 static inline uint32_t synq_parse_filter_over(
@@ -1018,13 +1018,13 @@ static inline uint32_t synq_parse_filter_over(
     uint32_t over_def,
     SyntaqliteSourceSpan over_name
 ) {
-    return synq_parse_build(ctx,
-        &(SyntaqliteFilterOver){
-            .tag = SYNTAQLITE_NODE_FILTER_OVER,
-            .filter_expr = filter_expr,
-            .over_def = over_def,
-            .over_name = over_name
-        }, (uint32_t)sizeof(SyntaqliteFilterOver));
+    SyntaqliteFilterOver _node;
+    memset(&_node, 0, sizeof(_node));
+    _node.tag = SYNTAQLITE_NODE_FILTER_OVER;
+    _node.filter_expr = filter_expr;
+    _node.over_def = over_def;
+    _node.over_name = over_name;
+    return synq_parse_build(ctx, &_node, (uint32_t)sizeof(SyntaqliteFilterOver));
 }
 
 static inline uint32_t synq_parse_case_when_list(

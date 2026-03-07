@@ -652,17 +652,18 @@ static void dump_node_recursive(DumpBuf* b,
       }
       case SYNTAQLITE_FIELD_FLAGS: {
         uint8_t val = *field_ptr;
+        // Mask to defined bits only — upper bits may contain struct padding.
+        if (fm->display_count < 8)
+          val &= (uint8_t)((1u << fm->display_count) - 1);
         dump_indent(b, mem, indent + 1);
         dump_printf(b, mem, "%s: ", fm->name);
         if (val == 0) {
           dump_append(b, mem, "(none)", 6);
         } else {
           int first = 1;
-          for (int bit = 0; bit < 8; bit++) {
+          for (int bit = 0; bit < fm->display_count; bit++) {
             if (val & (1 << bit)) {
-              const char* flag_name = (bit < fm->display_count && fm->display)
-                                          ? fm->display[bit]
-                                          : "?";
+              const char* flag_name = fm->display ? fm->display[bit] : "?";
               if (flag_name[0] == '\0')
                 continue;
               if (!first)

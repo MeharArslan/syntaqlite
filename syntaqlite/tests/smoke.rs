@@ -237,3 +237,20 @@ fn table_qualified_star_qualifier_in_expr_not_alias() {
         "expected IdentName child in ResultColumn expr field for t.*"
     );
 }
+
+#[test]
+fn dump_star_column_flags() {
+    // SELECT * should produce a ResultColumn with flags: STAR only — no stray bits.
+    let parser = new_parser();
+    let mut session = parser.parse("SELECT * FROM t");
+    let ParseOutcome::Ok(stmt) = session.next() else {
+        panic!("expected Ok");
+    };
+    let mut out = String::new();
+    stmt.dump(&mut out, 0);
+    eprintln!("dump output:\n{out}");
+    assert!(
+        out.contains("flags: STAR\n") && !out.contains("flags: STAR ?"),
+        "expected 'flags: STAR' with no extra bits, got:\n{out}"
+    );
+}

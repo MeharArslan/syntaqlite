@@ -101,11 +101,12 @@ def _compile_perfetto_dialect(cli_binary: Path, work_dir: Path) -> Path:
     else:
         cc_cmd += ["-shared", "-fPIC"]
 
-    parser_sys = ROOT_DIR / "syntaqlite-parser"
+    parser_sys = ROOT_DIR / "syntaqlite-syntax"
     cc_cmd += [
         str(csrc_dir / "syntaqlite_perfetto.c"),
         str(parser_sys / "csrc" / "parser.c"),
         str(parser_sys / "csrc" / "token_wrapped.c"),
+        "-DSYNTAQLITE_OMIT_SQLITE_API",
         "-I",
         str(csrc_dir),
         "-I",
