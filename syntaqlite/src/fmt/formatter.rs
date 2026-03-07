@@ -1,8 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_syntax::any::MacroRegion;
-use syntaqlite_syntax::{CommentKind, ParseOutcome, Parser, ParserConfig};
+use syntaqlite_syntax::any::{AnyParser, MacroRegion};
+use syntaqlite_syntax::{CommentKind, ParseOutcome, ParserConfig};
 
 use super::FormatConfig;
 use super::FormatError;
@@ -15,7 +15,7 @@ use crate::dialect::Dialect;
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter {
     pub(super) dialect: Dialect,
-    pub(super) parser: Parser,
+    pub(super) parser: AnyParser,
     pub(super) config: FormatConfig,
     // Statement-scoped state cached on the formatter to avoid per-statement allocations.
     pub(super) arena: DocArena<'static>,
@@ -54,7 +54,12 @@ impl Formatter {
             dialect.has_fmt_data(),
             "dialect has no formatter bytecode — ensure .synq definitions include fmt blocks",
         );
-        let parser = Parser::with_config(&ParserConfig::default().with_collect_tokens(true));
+        let grammar: syntaqlite_syntax::any::AnyGrammar = syntaqlite_syntax::typed::grammar()
+            .with_version(dialect.version())
+            .with_cflags(dialect.syntax_cflags())
+            .into();
+        let parser =
+            AnyParser::with_config(grammar, &ParserConfig::default().with_collect_tokens(true));
         Formatter {
             dialect,
             parser,
