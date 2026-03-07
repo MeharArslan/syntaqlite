@@ -984,7 +984,11 @@ fn expr_source_text<'a>(stmt: &AnyParsedStatement<'a>, id: AnyNodeId) -> Option<
     let mut min = usize::MAX;
     let mut max = 0usize;
     collect_spans(stmt, id, base, &mut min, &mut max);
-    if min < max { Some(&source[min..max]) } else { None }
+    if min < max {
+        Some(&source[min..max])
+    } else {
+        None
+    }
 }
 
 /// Walk `id` and all its descendants, updating `[min, max)` with every `Span`.

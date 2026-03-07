@@ -450,7 +450,10 @@ impl<'a> AnyParsedStatement<'a> {
         if id.is_null() {
             return None;
         }
-        Some(crate::ast::AnyNode { id, stmt_result: self })
+        Some(crate::ast::AnyNode {
+            id,
+            stmt_result: self,
+        })
     }
 
     /// Dump an AST node tree as indented text into `out`.

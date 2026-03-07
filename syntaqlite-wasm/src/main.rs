@@ -206,14 +206,17 @@ pub extern "C" fn wasm_result_free() {
 fn run_ast_json(ptr: u32, len: u32) -> i32 {
     let source = try_wasm!(decode_input(ptr, len));
     let grammar = (*get_dialect()).clone();
-    let parser = syntaqlite::any::AnyParser::with_config(grammar, &syntaqlite::ParserConfig::default());
+    let parser =
+        syntaqlite::any::AnyParser::with_config(grammar, &syntaqlite::ParserConfig::default());
     let mut session = parser.parse(&source);
     let mut nodes: Vec<serde_json::Value> = Vec::new();
     loop {
         match session.next() {
             syntaqlite::any::ParseOutcome::Done => break,
             syntaqlite::any::ParseOutcome::Ok(stmt) => {
-                let val = stmt.erase().root_node()
+                let val = stmt
+                    .erase()
+                    .root_node()
                     .map(|n| serde_json::to_value(&n).unwrap_or(serde_json::Value::Null))
                     .unwrap_or(serde_json::Value::Null);
                 nodes.push(val);
@@ -372,7 +375,11 @@ fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
 /// `wasm_diagnostics`, `wasm_semantic_tokens`, and `wasm_extract` dispatch automatically.
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_set_language_mode(lang: u32) {
-    let embedded = if lang == LANG_SQL_SENTINEL { None } else { Some(lang) };
+    let embedded = if lang == LANG_SQL_SENTINEL {
+        None
+    } else {
+        Some(lang)
+    };
     EMBEDDED_LANG.with(|cell| *cell.borrow_mut() = embedded);
 }
 

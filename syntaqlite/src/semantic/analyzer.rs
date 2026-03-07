@@ -1634,7 +1634,10 @@ mod tests {
             .iter()
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
             .collect();
-        assert!(errs.is_empty(), "unexpected UnknownColumn diagnostics: {errs:?}");
+        assert!(
+            errs.is_empty(),
+            "unexpected UnknownColumn diagnostics: {errs:?}"
+        );
     }
 
     /// Like `assert_no_unknown_col` but pre-loads named relations into the
@@ -1643,10 +1646,8 @@ mod tests {
         let mut az = sqlite_analyzer();
         let mut cat = sqlite_catalog();
         for (name, cols) in relations {
-            cat.layer_mut(CatalogLayer::Database).insert_relation(
-                *name,
-                Some(cols.iter().map(|c| c.to_string()).collect()),
-            );
+            cat.layer_mut(CatalogLayer::Database)
+                .insert_relation(*name, Some(cols.iter().map(|c| c.to_string()).collect()));
         }
         let model = az.analyze(src, &cat, &strict());
         let errs: Vec<_> = model
@@ -1654,7 +1655,10 @@ mod tests {
             .iter()
             .filter(|d| matches!(&d.message, DiagnosticMessage::UnknownColumn { .. }))
             .collect();
-        assert!(errs.is_empty(), "unexpected UnknownColumn diagnostics: {errs:?}");
+        assert!(
+            errs.is_empty(),
+            "unexpected UnknownColumn diagnostics: {errs:?}"
+        );
     }
 
     // ── Aliased columns (existing behaviour, must not regress) ────────────────
@@ -1775,10 +1779,7 @@ mod tests {
     fn create_table_as_select_expression_span_does_not_break_alias_path() {
         // The expression-span fallback must not shadow the alias path.
         // SELECT 1 AS x → only "x" is valid; "z" must still error.
-        assert_unknown_col(
-            "CREATE TABLE t AS SELECT 1 AS x; SELECT t.z FROM t;",
-            "z",
-        );
+        assert_unknown_col("CREATE TABLE t AS SELECT 1 AS x; SELECT t.z FROM t;", "z");
     }
 
     // ── Bug regression: unknown table should not produce column errors ─────────
@@ -1883,6 +1884,36 @@ mod tests {
             col_errs.is_empty(),
             "subquery with unknown table should suppress column errors, got: {col_errs:#?}"
         );
+    }
+
+    // ── Cycle 2: quoted identifier dequoting ──────────────────────────────────
+
+    /// `CREATE TABLE t AS SELECT 1` gives column named `1` (raw source text).
+    /// Querying `SELECT t."1" FROM t` uses a double-quoted identifier `"1"` which
+    /// SQLite treats as a column reference to `1`.  The AST stores the span with
+    /// quotes included, so without grammar-level dequoting this produces a
+    /// spurious UnknownColumn error.  This test is RED until Cycle 2 fix.
+    #[test]
+    fn quoted_col_ref_resolves_against_expression_span_name() {
+        assert_no_unknown_col(r#"CREATE TABLE t AS SELECT 1; SELECT t."1" FROM t;"#);
+    }
+
+    /// Same as above but with backtick quoting (MySQL-compat dialect).
+    #[test]
+    fn backtick_col_ref_resolves_against_expression_span_name() {
+        assert_no_unknown_col("CREATE TABLE t AS SELECT 1; SELECT t.`1` FROM t;");
+    }
+
+    /// Same as above but with bracket quoting (SQL Server-compat dialect).
+    #[test]
+    fn bracket_col_ref_resolves_against_expression_span_name() {
+        assert_no_unknown_col("CREATE TABLE t AS SELECT 1; SELECT t.[1] FROM t;");
+    }
+
+    /// Alias path must still work — `"x"` should resolve as `x`.
+    #[test]
+    fn quoted_col_ref_resolves_aliased_column() {
+        assert_no_unknown_col(r#"CREATE TABLE t AS SELECT 1 AS x; SELECT t."x" FROM t;"#);
     }
 
     #[test]

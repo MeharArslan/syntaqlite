@@ -28,15 +28,15 @@ expr(A) ::= idj(B). {
 // Qualified column reference: table.column
 expr(A) ::= nm(B) DOT nm(C). {
     A = synq_parse_column_ref(pCtx,
-        synq_span(pCtx, C),
-        synq_span(pCtx, B),
+        synq_span_dequote(pCtx, C),
+        synq_span_dequote(pCtx, B),
         SYNQ_NO_SPAN);
 }
 
 // Fully qualified: schema.table.column
 expr(A) ::= nm(B) DOT nm(C) DOT nm(D). {
     A = synq_parse_column_ref(pCtx,
-        synq_span(pCtx, D),
-        synq_span(pCtx, C),
-        synq_span(pCtx, B));
+        synq_span_dequote(pCtx, D),
+        synq_span_dequote(pCtx, C),
+        synq_span_dequote(pCtx, B));
 }

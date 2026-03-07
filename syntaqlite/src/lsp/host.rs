@@ -312,7 +312,11 @@ impl LspHost {
     pub fn set_session_context_from_ddl(&mut self, ddl: &str) -> Result<(), Vec<String>> {
         let (catalog, errors) = Catalog::from_ddl_checked(self.dialect.clone(), ddl);
         self.set_session_context(catalog);
-        if errors.is_empty() { Ok(()) } else { Err(errors) }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 }
 
@@ -724,7 +728,8 @@ mod tests {
     #[test]
     fn set_session_context_from_ddl_returns_ok_for_valid_ddl() {
         let mut host = LspHost::new();
-        let result = host.set_session_context_from_ddl("CREATE TABLE orders (id INTEGER, total REAL);");
+        let result =
+            host.set_session_context_from_ddl("CREATE TABLE orders (id INTEGER, total REAL);");
         assert!(result.is_ok(), "expected Ok for valid DDL, got: {result:?}");
     }
 

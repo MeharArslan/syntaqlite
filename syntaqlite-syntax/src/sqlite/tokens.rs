@@ -209,19 +209,6 @@ impl From<TokenType> for crate::any::AnyTokenType {
     }
 }
 
-/// Identity conversion: `SQLite` token ordinals equal `AnyTokenType` ordinals.
-///
-/// Panics if `t` does not correspond to a valid `TokenType` discriminant.
-/// This is always safe when `t` originated from a `SQLite` grammar parse.
-impl From<crate::any::AnyTokenType> for TokenType {
-    fn from(t: crate::any::AnyTokenType) -> TokenType {
-        use crate::ast::GrammarTokenType as _;
-        TokenType::from_token_type(t)
-            .expect("AnyTokenType ordinal out of range for SQLite TokenType")
-    }
-}
-
-
 impl crate::ast::GrammarTokenType for TokenType {
     #[expect(clippy::too_many_lines)]
     fn from_token_type(raw: crate::any::AnyTokenType) -> Option<Self> {

@@ -177,6 +177,28 @@ static inline SyntaqliteSourceSpan synq_span(SynqParseCtx* ctx,
   };
 }
 
+// Like synq_span() but strips surrounding quote characters from quoted
+// identifiers, matching SQLite's tokenExpr() dequoting behavior.
+// Handles "...", `...`, and [...] forms.  For unquoted tokens, equivalent
+// to synq_span().
+static inline SyntaqliteSourceSpan synq_span_dequote(SynqParseCtx* ctx,
+                                                      SynqParseToken tok) {
+  if (tok.z == NULL)
+    return (SyntaqliteSourceSpan){0, 0};
+  if (tok.n >= 2) {
+    char open = tok.z[0];
+    char close = tok.z[tok.n - 1];
+    if ((open == '"' && close == '"') || (open == '`' && close == '`') ||
+        (open == '[' && close == ']')) {
+      uint32_t offset = (uint32_t)(tok.z + 1 - ctx->source);
+      return (SyntaqliteSourceSpan){.offset = offset,
+                                    .length = (uint16_t)(tok.n - 2)};
+    }
+  }
+  uint32_t offset = (uint32_t)(tok.z - ctx->source);
+  return (SyntaqliteSourceSpan){.offset = offset, .length = (uint16_t)tok.n};
+}
+
 #define SYNQ_NO_SPAN ((SyntaqliteSourceSpan){0, 0})
 
 // Mark a token as "used as identifier" (fallback from keyword).

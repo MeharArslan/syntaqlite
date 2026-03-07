@@ -3637,8 +3637,8 @@ static YYACTIONTYPE yy_reduce(
       case 20: /* expr ::= nm DOT nm */
 {
     yylhsminor.yy141 = synq_parse_column_ref(pCtx,
-        synq_span(pCtx, yymsp[0].minor.yy0),
-        synq_span(pCtx, yymsp[-2].minor.yy0),
+        synq_span_dequote(pCtx, yymsp[0].minor.yy0),
+        synq_span_dequote(pCtx, yymsp[-2].minor.yy0),
         SYNQ_NO_SPAN);
 }
   yymsp[-2].minor.yy141 = yylhsminor.yy141;
@@ -3646,9 +3646,9 @@ static YYACTIONTYPE yy_reduce(
       case 21: /* expr ::= nm DOT nm DOT nm */
 {
     yylhsminor.yy141 = synq_parse_column_ref(pCtx,
-        synq_span(pCtx, yymsp[0].minor.yy0),
-        synq_span(pCtx, yymsp[-2].minor.yy0),
-        synq_span(pCtx, yymsp[-4].minor.yy0));
+        synq_span_dequote(pCtx, yymsp[0].minor.yy0),
+        synq_span_dequote(pCtx, yymsp[-2].minor.yy0),
+        synq_span_dequote(pCtx, yymsp[-4].minor.yy0));
 }
   yymsp[-4].minor.yy141 = yylhsminor.yy141;
         break;
