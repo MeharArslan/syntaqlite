@@ -63,9 +63,9 @@ export class Engine {
   private setSessionContextRaw: WasmFn | undefined = undefined;
   private clearSessionContextRaw: WasmFn | undefined = undefined;
   private setSessionContextDdlRaw: WasmFn | undefined = undefined;
-  private embeddedExtractRaw: WasmFn | undefined = undefined;
-  private embeddedDiagnosticsRaw: WasmFn | undefined = undefined;
-  private embeddedSemanticTokensRaw: WasmFn | undefined = undefined;
+  private setLanguageModeRaw: WasmFn | undefined = undefined;
+  private extractRaw: WasmFn | undefined = undefined;
+  private currentLangMode: "sql" | EmbeddedLanguage = "sql";
 
   constructor(config: EngineConfig = {}) {
     this.config = config;
@@ -104,9 +104,8 @@ export class Engine {
     this.setSessionContextRaw = this.tryResolveRuntimeFn("wasm_set_session_context");
     this.clearSessionContextRaw = this.tryResolveRuntimeFn("wasm_clear_session_context");
     this.setSessionContextDdlRaw = this.tryResolveRuntimeFn("wasm_set_session_context_ddl");
-    this.embeddedExtractRaw = this.tryResolveRuntimeFn("wasm_embedded_extract");
-    this.embeddedDiagnosticsRaw = this.tryResolveRuntimeFn("wasm_embedded_diagnostics");
-    this.embeddedSemanticTokensRaw = this.tryResolveRuntimeFn("wasm_embedded_semantic_tokens");
+    this.setLanguageModeRaw = this.tryResolveRuntimeFn("wasm_set_language_mode");
+    this.extractRaw = this.tryResolveRuntimeFn("wasm_extract");
   }
 
   private resolveRuntimeFn(symbol: string): WasmFn {
@@ -304,69 +303,30 @@ export class Engine {
       return {ok: false, items: []};
     }
   }
-  private embeddedLangCode(lang: EmbeddedLanguage): number {
-    return lang === "python" ? 0 : 1;
+  /** Set the active language mode. Must be called before running diagnostics or semantic
+   *  tokens so the WASM can dispatch to the correct implementation automatically. */
+  setLanguageMode(lang: "sql" | EmbeddedLanguage): void {
+    this.currentLangMode = lang;
+    if (!this.setLanguageModeRaw) return;
+    const code = lang === "sql" ? 0xFFFFFFFF : (lang === "python" ? 0 : 1);
+    this.setLanguageModeRaw(code);
   }
 
-  runEmbeddedExtract(lang: EmbeddedLanguage, source: string): EmbeddedExtractResult {
-    if (!this.embeddedExtractRaw) return {ok: false, fragments: []};
+  /** Extract SQL fragments from `source`. Returns empty in SQL mode (O(1) fast path).
+   *  In embedded mode the WASM extractor runs based on the language set by setLanguageMode. */
+  runExtract(source: string): EmbeddedExtractResult {
+    if (this.currentLangMode === "sql") return {ok: true, fragments: []};
+    if (!this.extractRaw) return {ok: true, fragments: []};
     try {
-      const langCode = this.embeddedLangCode(lang);
-      const count = this.withInput(source, (ptr, len) =>
-        this.embeddedExtractRaw!(langCode, ptr, len),
-      );
+      const count = this.withInput(source, (ptr, len) => this.extractRaw!(ptr, len));
       const text = this.readAndClearResult();
       if (count < 0) return {ok: false, fragments: []};
       if (count === 0) return {ok: true, fragments: []};
       const fragments: EmbeddedFragment[] = JSON.parse(text);
       return {ok: true, fragments};
     } catch (e) {
-      console.warn("wasm_embedded_extract failed:", e);
+      console.warn("wasm_extract failed:", e);
       return {ok: false, fragments: []};
-    }
-  }
-
-  runEmbeddedDiagnostics(lang: EmbeddedLanguage, source: string, version = 1): DiagnosticsResult {
-    if (!this.embeddedDiagnosticsRaw) return {ok: false, diagnostics: []};
-    try {
-      const langCode = this.embeddedLangCode(lang);
-      const count = this.withInput(source, (ptr, len) =>
-        this.embeddedDiagnosticsRaw!(langCode, ptr, len, version),
-      );
-      const text = this.readAndClearResult();
-      if (count < 0) return {ok: false, diagnostics: []};
-      if (count === 0) return {ok: true, diagnostics: []};
-      const diagnostics: DiagnosticEntry[] = JSON.parse(text);
-      return {ok: true, diagnostics};
-    } catch (e) {
-      console.warn("wasm_embedded_diagnostics failed:", e);
-      return {ok: false, diagnostics: []};
-    }
-  }
-
-  runEmbeddedSemanticTokens(
-    lang: EmbeddedLanguage,
-    source: string,
-    version = 1,
-  ): Uint32Array | undefined {
-    if (!this.embeddedSemanticTokensRaw) return undefined;
-    try {
-      const langCode = this.embeddedLangCode(lang);
-      const count = this.withInput(source, (ptr, len) =>
-        this.embeddedSemanticTokensRaw!(langCode, ptr, len, version),
-      );
-      if (count <= 0) {
-        this.resultFreeRaw!();
-        return count === 0 ? new Uint32Array(0) : undefined;
-      }
-      const rptr = this.resultPtrRaw!();
-      const rlen = this.resultLenRaw!();
-      const bytes = this.heapU8().slice(rptr, rptr + rlen);
-      this.resultFreeRaw!();
-      return new Uint32Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 4);
-    } catch (e) {
-      console.warn("wasm_embedded_semantic_tokens failed:", e);
-      return undefined;
     }
   }
 

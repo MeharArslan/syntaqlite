@@ -8,7 +8,7 @@ import "monaco-editor/esm/vs/basic-languages/sql/sql.contribution";
 import "monaco-editor/esm/vs/basic-languages/python/python.contribution";
 import "monaco-editor/esm/vs/basic-languages/typescript/typescript.contribution";
 import {INPUT_MODEL_URI} from "./app/editor_models";
-import type {Engine, EmbeddedLanguage} from "@syntaqlite/js";
+import type {Engine} from "@syntaqlite/js";
 import {AppComponent} from "./components/app";
 import "./styles/main.css";
 
@@ -77,16 +77,9 @@ function registerSemanticTokensProvider(app: App, engine: Engine): void {
       }
       const source = model.getValue();
       const version = model.getVersionId();
-
-      if (app.languageMode !== "sql") {
-        const data = engine.runEmbeddedSemanticTokens(
-          app.languageMode as EmbeddedLanguage,
-          source,
-          version,
-        );
-        return {data: data ?? new Uint32Array(0)};
-      }
-
+      // engine.runSemanticTokens() dispatches to the correct implementation
+      // (SQL or embedded) based on the language mode set via engine.setLanguageMode().
+      // In embedded mode the WASM ignores the range and returns full-document tokens.
       const rangeStart = model.getOffsetAt(range.getStartPosition());
       const rangeEnd = model.getOffsetAt(range.getEndPosition());
       const data = engine.runSemanticTokens(source, rangeStart, rangeEnd, version);

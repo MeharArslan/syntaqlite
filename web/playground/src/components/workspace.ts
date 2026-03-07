@@ -4,7 +4,7 @@
 import m from "mithril";
 import * as monaco from "monaco-editor";
 import type {App, Attrs} from "../app/app";
-import type {Engine, EmbeddedLanguage} from "@syntaqlite/js";
+import type {Engine} from "@syntaqlite/js";
 import {getSqlPresetLibrary} from "./workspace/sql_presets";
 import {debounce} from "../base/debounce";
 import type {DiagnosticEntry} from "../types";
@@ -51,7 +51,6 @@ export class Workspace implements m.ClassComponent<Attrs> {
   private editor: monaco.editor.IStandaloneCodeEditor | undefined = undefined;
   private debouncedUpdate: (sql: string) => void;
   private debouncedDiagnostics: (engine: Engine, sql: string) => void;
-  private debouncedEmbeddedDiagnostics: (app: App, sql: string) => void;
   private presetSelectionByDialect = new Map<string, string>();
   private customSqlByDialect = new Map<string, string>();
   private appRef: App | undefined = undefined;
@@ -73,11 +72,6 @@ export class Workspace implements m.ClassComponent<Attrs> {
 
     this.debouncedDiagnostics = debounce(
       (engine: Engine, sql: string) => this.updateDiagnostics(engine, sql),
-      100,
-    );
-
-    this.debouncedEmbeddedDiagnostics = debounce(
-      (app: App, sql: string) => this.updateEmbeddedDiagnostics(app, sql),
       100,
     );
   }
@@ -109,7 +103,7 @@ export class Workspace implements m.ClassComponent<Attrs> {
           cfgKey !== this.lastDiagnosticConfigKey ||
           schemaKey !== this.lastSchemaKey)
       ) {
-        this.updateDiagnostics(app.runtime, this.sql);
+        this.updateDiagnostics(app.runtime, this.sql); // engine dispatches for current mode
         this.lastDiagnosticDialectPtr = dPtr;
         this.lastDiagnosticConfigKey = cfgKey;
         this.lastSchemaKey = schemaKey;
@@ -137,6 +131,7 @@ export class Workspace implements m.ClassComponent<Attrs> {
           app.embeddedFragments = [];
           app.selectedFragmentIndex = -1;
           app.diagnostics = [];
+          app.runtime.setLanguageMode(lang);
           if (this.editor) {
             const model = this.editor.getModel();
             if (model) monaco.editor.setModelMarkers(model, "syntaqlite", []);
@@ -164,11 +159,7 @@ export class Workspace implements m.ClassComponent<Attrs> {
             this.customSqlByDialect.set(presetLibrary.dialectId, s);
           }
           this.debouncedUpdate(s);
-          if (app.languageMode === "sql") {
-            this.debouncedDiagnostics(app.runtime, s);
-          } else {
-            this.debouncedEmbeddedDiagnostics(app, s);
-          }
+          this.debouncedDiagnostics(app.runtime, s);
         },
         onEditorCreated: (editor) => {
           this.editor = editor;
@@ -254,11 +245,7 @@ export class Workspace implements m.ClassComponent<Attrs> {
     } finally {
       this.applyingPreset = false;
     }
-    if (this.appRef && this.appRef.languageMode !== "sql") {
-      this.updateEmbeddedDiagnostics(this.appRef, sql);
-    } else {
-      this.updateDiagnostics(engine, sql);
-    }
+    this.updateDiagnostics(engine, sql);
     m.redraw();
   }
 
@@ -267,6 +254,16 @@ export class Workspace implements m.ClassComponent<Attrs> {
 
     const model = this.editor.getModel();
     if (!model) return;
+
+    // Update SQL fragments for the embedded-mode UI. engine.runExtract() is a
+    // fast no-op (O(1)) in SQL mode, so calling it unconditionally is safe.
+    if (this.appRef) {
+      const extractResult = engine.runExtract(sql);
+      this.appRef.embeddedFragments = extractResult.ok ? extractResult.fragments : [];
+    }
+
+    // engine.runDiagnostics() dispatches to the correct implementation (SQL or
+    // embedded) based on the language mode set via engine.setLanguageMode().
     const result = engine.runDiagnostics(sql, model.getVersionId());
     if (!result.ok) {
       monaco.editor.setModelMarkers(model, "syntaqlite", []);
@@ -287,52 +284,6 @@ export class Workspace implements m.ClassComponent<Attrs> {
     const markers: monaco.editor.IMarkerData[] = result.diagnostics.map((d) => {
       const start = offsetToLineCol(sql, d.startOffset);
       const end = offsetToLineCol(sql, d.endOffset);
-      return {
-        severity: SEVERITY_MAP[d.severity] ?? monaco.MarkerSeverity.Error,
-        message: d.help ? `${d.message}\nhelp: ${d.help}` : d.message,
-        startLineNumber: start.line,
-        startColumn: start.col,
-        endLineNumber: end.line,
-        endColumn: end.col,
-      };
-    });
-
-    monaco.editor.setModelMarkers(model, "syntaqlite", markers);
-  }
-
-  private updateEmbeddedDiagnostics(app: App, source: string): void {
-    if (!app.runtime.ready || !this.editor) return;
-
-    const model = this.editor.getModel();
-    if (!model) return;
-
-    const lang = app.languageMode as EmbeddedLanguage;
-
-    // Extract fragments.
-    const extractResult = app.runtime.runEmbeddedExtract(lang, source);
-    app.embeddedFragments = extractResult.ok ? extractResult.fragments : [];
-
-    // Run embedded diagnostics.
-    const version = model.getVersionId();
-    const result = app.runtime.runEmbeddedDiagnostics(lang, source, version);
-    if (!result.ok) {
-      monaco.editor.setModelMarkers(model, "syntaqlite", []);
-      app.diagnostics = [];
-      return;
-    }
-
-    for (const d of result.diagnostics) {
-      const pos = offsetToLineCol(source, d.startOffset);
-      d.line = pos.line;
-      d.col = pos.col;
-      d.stmtIndex = countStatements(source, d.startOffset);
-    }
-
-    app.diagnostics = result.diagnostics;
-
-    const markers: monaco.editor.IMarkerData[] = result.diagnostics.map((d) => {
-      const start = offsetToLineCol(source, d.startOffset);
-      const end = offsetToLineCol(source, d.endOffset);
       return {
         severity: SEVERITY_MAP[d.severity] ?? monaco.MarkerSeverity.Error,
         message: d.help ? `${d.message}\nhelp: ${d.help}` : d.message,

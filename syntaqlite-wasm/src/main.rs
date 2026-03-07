@@ -19,11 +19,20 @@ thread_local! {
     static LSP_HOST: RefCell<Option<LspHost>> = const { RefCell::new(None) };
     /// Active dialect. `None` means use the built-in SQLite dialect.
     static DIALECT: RefCell<Option<AnyDialect>> = const { RefCell::new(None) };
+    /// Active embedded language. `None` = raw SQL; `Some(n)` = embedded (0 = Python, 1 = TypeScript).
+    static EMBEDDED_LANG: RefCell<Option<u32>> = const { RefCell::new(None) };
 }
 
 /// Sentinel returned by [`syntaqlite_sqlite_dialect`] to mean "built-in SQLite".
 /// Any real WASM linear-memory pointer is always > 1.
 const BUILTIN_SQLITE_SENTINEL: u32 = 1;
+
+/// Sentinel passed to [`wasm_set_language_mode`] to select raw SQL mode.
+const LANG_SQL_SENTINEL: u32 = u32::MAX;
+
+fn get_embedded_lang() -> Option<u32> {
+    EMBEDDED_LANG.with(|cell| *cell.borrow())
+}
 
 fn get_dialect() -> AnyDialect {
     DIALECT
@@ -302,10 +311,22 @@ fn run_completions(ptr: u32, len: u32, offset: u32, version: u32) -> i32 {
     count
 }
 
+/// Set the active language mode. Pass `u32::MAX` for raw SQL mode, or a host-language
+/// code (0 = Python, 1 = TypeScript) for embedded-SQL mode. After this call,
+/// `wasm_diagnostics`, `wasm_semantic_tokens`, and `wasm_extract` dispatch automatically.
+#[unsafe(no_mangle)]
+pub extern "C" fn wasm_set_language_mode(lang: u32) {
+    let embedded = if lang == LANG_SQL_SENTINEL { None } else { Some(lang) };
+    EMBEDDED_LANG.with(|cell| *cell.borrow_mut() = embedded);
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn wasm_diagnostics(ptr: u32, len: u32, version: u32) -> i32 {
     catch_unwind(
-        || run_diagnostics(ptr, len, version),
+        || match get_embedded_lang() {
+            Some(lang) => run_embedded_diagnostics(lang, ptr, len),
+            None => run_diagnostics(ptr, len, version),
+        },
         "wasm_diagnostics panicked",
     )
 }
@@ -319,7 +340,10 @@ pub extern "C" fn wasm_semantic_tokens(
     version: u32,
 ) -> i32 {
     catch_unwind(
-        || run_semantic_tokens(ptr, len, range_start, range_end, version),
+        || match get_embedded_lang() {
+            Some(lang) => run_embedded_semantic_tokens(lang, ptr, len),
+            None => run_semantic_tokens(ptr, len, range_start, range_end, version),
+        },
         "wasm_semantic_tokens panicked",
     )
 }
@@ -459,32 +483,17 @@ fn run_embedded_semantic_tokens(lang: u32, ptr: u32, len: u32) -> i32 {
     token_count
 }
 
+/// Extract SQL fragments from the current source using the active language mode.
+/// Returns 0 with no result in SQL mode. In embedded mode, dispatches to the
+/// appropriate extractor based on the language set by `wasm_set_language_mode`.
 #[unsafe(no_mangle)]
-pub extern "C" fn wasm_embedded_extract(lang: u32, ptr: u32, len: u32) -> i32 {
+pub extern "C" fn wasm_extract(ptr: u32, len: u32) -> i32 {
     catch_unwind(
-        || run_embedded_extract(lang, ptr, len),
-        "wasm_embedded_extract panicked",
-    )
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn wasm_embedded_diagnostics(lang: u32, ptr: u32, len: u32, _version: u32) -> i32 {
-    catch_unwind(
-        || run_embedded_diagnostics(lang, ptr, len),
-        "wasm_embedded_diagnostics panicked",
-    )
-}
-
-#[unsafe(no_mangle)]
-pub extern "C" fn wasm_embedded_semantic_tokens(
-    lang: u32,
-    ptr: u32,
-    len: u32,
-    _version: u32,
-) -> i32 {
-    catch_unwind(
-        || run_embedded_semantic_tokens(lang, ptr, len),
-        "wasm_embedded_semantic_tokens panicked",
+        || match get_embedded_lang() {
+            Some(lang) => run_embedded_extract(lang, ptr, len),
+            None => 0,
+        },
+        "wasm_extract panicked",
     )
 }
 
