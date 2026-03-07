@@ -434,6 +434,16 @@ impl AnyDialect {
         self.ext_cflags
     }
 
+    /// Target SQLite version configured on this dialect's grammar handle.
+    pub fn version(&self) -> SqliteVersion {
+        self.grammar.version()
+    }
+
+    /// C-parser compile-time compatibility flags (parser flags, indices 0–21).
+    pub fn syntax_cflags(&self) -> syntaqlite_syntax::util::SqliteSyntaxFlags {
+        self.grammar.cflags()
+    }
+
     /// The semantic role table for this dialect, indexed by node tag.
     pub(crate) fn roles(&self) -> &'static [SemanticRole] {
         self.roles

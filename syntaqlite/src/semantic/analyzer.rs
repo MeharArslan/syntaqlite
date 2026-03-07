@@ -6,7 +6,7 @@
 use std::collections::HashSet;
 
 use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, NodeFields};
-use syntaqlite_syntax::typed::TypedParser;
+use syntaqlite_syntax::typed::{TypedGrammar, TypedParseError, TypedParser};
 use syntaqlite_syntax::{ParseOutcome, ParserConfig, TokenType};
 
 use crate::dialect::Dialect;
@@ -150,7 +150,11 @@ impl SemanticAnalyzer {
 
     #[cfg(feature = "sqlite")]
     fn analyze_inner(&mut self, source: &str, config: &ValidationConfig) -> SemanticModel {
-        let parser = syntaqlite_syntax::Parser::with_config(
+        let grammar = syntaqlite_syntax::typed::grammar()
+            .with_version(self.dialect.version())
+            .with_cflags(self.dialect.syntax_cflags());
+        let parser = TypedParser::with_config(
+            grammar,
             &ParserConfig::default().with_collect_tokens(true),
         );
         let mut session = parser.parse(source);
@@ -209,7 +213,9 @@ impl SemanticAnalyzer {
             }
 
             // Semantic walk.
-            let root = stmt.root();
+            let root = stmt
+                .root()
+                .expect("analyze_inner: ParseOutcome::Ok result has null root");
             let root_id: AnyNodeId = root.node_id().into();
             let erased = stmt.erase();
 
@@ -249,7 +255,10 @@ impl Default for SemanticAnalyzer {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 #[cfg(feature = "sqlite")]
-fn parse_error_span(err: &syntaqlite_syntax::ParseError<'_>, source: &str) -> (usize, usize) {
+fn parse_error_span<G: TypedGrammar>(
+    err: &TypedParseError<'_, G>,
+    source: &str,
+) -> (usize, usize) {
     match (err.offset(), err.length()) {
         (Some(off), Some(len)) if len > 0 => (off, off + len),
         (Some(off), _) => {
