@@ -31,49 +31,53 @@
 /// there is no need to store them here.
 pub(crate) const CFLAG_REGISTRY: &[(&str, u32, &[&str])] = &[
     // ── Parser flags (0–21, matching C compact SYNQ_CFLAG_IDX_* values) ────────
-    ("SQLITE_OMIT_ALTERTABLE",             0,  &["parser"]),
-    ("SQLITE_OMIT_ANALYZE",                1,  &["parser"]),
-    ("SQLITE_OMIT_ATTACH",                 2,  &["parser"]),
-    ("SQLITE_OMIT_AUTOINCREMENT",          3,  &["parser"]),
-    ("SQLITE_OMIT_CAST",                   4,  &["parser"]),
-    ("SQLITE_OMIT_COMPOUND_SELECT",        5,  &["parser"]),
-    ("SQLITE_OMIT_CTE",                    6,  &["parser"]),
-    ("SQLITE_OMIT_EXPLAIN",                7,  &["parser"]),
-    ("SQLITE_OMIT_FOREIGN_KEY",            8,  &["parser"]),
-    ("SQLITE_OMIT_GENERATED_COLUMNS",      9,  &["parser"]),
-    ("SQLITE_OMIT_PRAGMA",                 10, &["parser"]),
-    ("SQLITE_OMIT_REINDEX",                11, &["parser"]),
-    ("SQLITE_OMIT_RETURNING",              12, &["parser"]),
-    ("SQLITE_OMIT_SUBQUERY",               13, &["parser"]),
-    ("SQLITE_OMIT_TEMPDB",                 14, &["parser"]),
-    ("SQLITE_OMIT_TRIGGER",                15, &["parser"]),
-    ("SQLITE_OMIT_VACUUM",                 16, &["parser"]),
-    ("SQLITE_OMIT_VIEW",                   17, &["parser"]),
-    ("SQLITE_OMIT_VIRTUALTABLE",           18, &["parser", "vtable"]),
-    ("SQLITE_OMIT_WINDOWFUNC",             19, &["parser", "functions"]),
-    ("SQLITE_ENABLE_ORDERED_SET_AGGREGATES", 20, &["parser", "functions"]),
-    ("SQLITE_ENABLE_UPDATE_DELETE_LIMIT",  21, &["parser"]),
+    ("SQLITE_OMIT_ALTERTABLE", 0, &["parser"]),
+    ("SQLITE_OMIT_ANALYZE", 1, &["parser"]),
+    ("SQLITE_OMIT_ATTACH", 2, &["parser"]),
+    ("SQLITE_OMIT_AUTOINCREMENT", 3, &["parser"]),
+    ("SQLITE_OMIT_CAST", 4, &["parser"]),
+    ("SQLITE_OMIT_COMPOUND_SELECT", 5, &["parser"]),
+    ("SQLITE_OMIT_CTE", 6, &["parser"]),
+    ("SQLITE_OMIT_EXPLAIN", 7, &["parser"]),
+    ("SQLITE_OMIT_FOREIGN_KEY", 8, &["parser"]),
+    ("SQLITE_OMIT_GENERATED_COLUMNS", 9, &["parser"]),
+    ("SQLITE_OMIT_PRAGMA", 10, &["parser"]),
+    ("SQLITE_OMIT_REINDEX", 11, &["parser"]),
+    ("SQLITE_OMIT_RETURNING", 12, &["parser"]),
+    ("SQLITE_OMIT_SUBQUERY", 13, &["parser"]),
+    ("SQLITE_OMIT_TEMPDB", 14, &["parser"]),
+    ("SQLITE_OMIT_TRIGGER", 15, &["parser"]),
+    ("SQLITE_OMIT_VACUUM", 16, &["parser"]),
+    ("SQLITE_OMIT_VIEW", 17, &["parser"]),
+    ("SQLITE_OMIT_VIRTUALTABLE", 18, &["parser", "vtable"]),
+    ("SQLITE_OMIT_WINDOWFUNC", 19, &["parser", "functions"]),
+    (
+        "SQLITE_ENABLE_ORDERED_SET_AGGREGATES",
+        20,
+        &["parser", "functions"],
+    ),
+    ("SQLITE_ENABLE_UPDATE_DELETE_LIMIT", 21, &["parser"]),
     // ── Non-parser flags (22–41, append new flags after 41) ─────────────────────
-    ("SQLITE_OMIT_COMPILEOPTION_DIAGS",    22, &["functions"]),
-    ("SQLITE_OMIT_DATETIME_FUNCS",         23, &["functions"]),
-    ("SQLITE_OMIT_FLOATING_POINT",         24, &["functions"]),
-    ("SQLITE_OMIT_JSON",                   25, &["functions"]),
-    ("SQLITE_OMIT_LOAD_EXTENSION",         26, &["functions"]),
-    ("SQLITE_ENABLE_BYTECODE_VTAB",        27, &["vtable"]),
-    ("SQLITE_ENABLE_CARRAY",               28, &["vtable"]),
-    ("SQLITE_ENABLE_DBPAGE_VTAB",          29, &["vtable"]),
-    ("SQLITE_ENABLE_DBSTAT_VTAB",          30, &["vtable"]),
-    ("SQLITE_ENABLE_FTS3",                 31, &["extensions", "functions"]),
-    ("SQLITE_ENABLE_FTS4",                 32, &["extensions"]),
-    ("SQLITE_ENABLE_FTS5",                 33, &["extensions", "functions"]),
-    ("SQLITE_ENABLE_GEOPOLY",              34, &["extensions", "functions"]),
-    ("SQLITE_ENABLE_JSON1",                35, &["functions"]),
-    ("SQLITE_ENABLE_MATH_FUNCTIONS",       36, &["functions"]),
-    ("SQLITE_ENABLE_OFFSET_SQL_FUNC",      37, &["functions"]),
-    ("SQLITE_ENABLE_PERCENTILE",           38, &["functions"]),
-    ("SQLITE_ENABLE_RTREE",                39, &["extensions"]),
-    ("SQLITE_ENABLE_STMTVTAB",             40, &["vtable"]),
-    ("SQLITE_SOUNDEX",                     41, &["functions"]),
+    ("SQLITE_OMIT_COMPILEOPTION_DIAGS", 22, &["functions"]),
+    ("SQLITE_OMIT_DATETIME_FUNCS", 23, &["functions"]),
+    ("SQLITE_OMIT_FLOATING_POINT", 24, &["functions"]),
+    ("SQLITE_OMIT_JSON", 25, &["functions"]),
+    ("SQLITE_OMIT_LOAD_EXTENSION", 26, &["functions"]),
+    ("SQLITE_ENABLE_BYTECODE_VTAB", 27, &["vtable"]),
+    ("SQLITE_ENABLE_CARRAY", 28, &["vtable"]),
+    ("SQLITE_ENABLE_DBPAGE_VTAB", 29, &["vtable"]),
+    ("SQLITE_ENABLE_DBSTAT_VTAB", 30, &["vtable"]),
+    ("SQLITE_ENABLE_FTS3", 31, &["extensions", "functions"]),
+    ("SQLITE_ENABLE_FTS4", 32, &["extensions"]),
+    ("SQLITE_ENABLE_FTS5", 33, &["extensions", "functions"]),
+    ("SQLITE_ENABLE_GEOPOLY", 34, &["extensions", "functions"]),
+    ("SQLITE_ENABLE_JSON1", 35, &["functions"]),
+    ("SQLITE_ENABLE_MATH_FUNCTIONS", 36, &["functions"]),
+    ("SQLITE_ENABLE_OFFSET_SQL_FUNC", 37, &["functions"]),
+    ("SQLITE_ENABLE_PERCENTILE", 38, &["functions"]),
+    ("SQLITE_ENABLE_RTREE", 39, &["extensions"]),
+    ("SQLITE_ENABLE_STMTVTAB", 40, &["vtable"]),
+    ("SQLITE_SOUNDEX", 41, &["functions"]),
 ];
 
 /// Look up the stable index for a cflag by name.
@@ -104,8 +108,7 @@ mod tests {
         indices.sort_unstable();
         for (pos, &idx) in indices.iter().enumerate() {
             assert_eq!(
-                idx,
-                pos as u32,
+                idx, pos as u32,
                 "CFLAG_REGISTRY indices must be 0-based and contiguous; gap at position {pos}"
             );
         }
@@ -134,9 +137,6 @@ mod tests {
             synq_const_name("SQLITE_OMIT_ALTERTABLE"),
             "SYNQ_CFLAG_IDX_OMIT_ALTERTABLE"
         );
-        assert_eq!(
-            synq_const_name("SQLITE_SOUNDEX"),
-            "SYNQ_CFLAG_IDX_SOUNDEX"
-        );
+        assert_eq!(synq_const_name("SQLITE_SOUNDEX"), "SYNQ_CFLAG_IDX_SOUNDEX");
     }
 }

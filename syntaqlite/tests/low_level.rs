@@ -65,7 +65,10 @@ fn feed_tokens_multi_statement() {
     // Continue second statement.
     session.feed_token(TokenType::Integer, 17..18);
 
-    assert!(session.finish().is_some(), "second statement should complete");
+    assert!(
+        session.finish().is_some(),
+        "second statement should complete"
+    );
 }
 
 /// TK_SPACE should be silently ignored.
@@ -90,7 +93,7 @@ fn feed_token_skips_space() {
 #[test]
 fn feed_token_records_comment() {
     let source = "SELECT -- hello\n1";
-    let parser = Parser::new();
+    let parser = Parser::with_config(&ParserConfig::default().with_collect_tokens(true));
     let mut session = parser.incremental_parse(source);
 
     session.feed_token(TokenType::Select, 0..6);
@@ -171,12 +174,19 @@ fn macro_well_aligned_complete_expression() {
     assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
 }
 
-/// A macro whose expanded tokens end up in a node that also contains
-/// tokens from outside the macro region. The parser detects this straddle
-/// and returns an error.
+/// A macro whose expanded tokens straddle a node boundary: the schema part of
+/// `schema.table` comes from inside the macro but `table` is outside. This
+/// produces a `TableRef` with `schema` inside the macro and `table_name`
+/// outside — a genuine straddle that the parser must reject.
 #[test]
 fn macro_straddle_rejected_by_parser() {
-    let source = "SELECT 1 FROM foo!(x) y";
+    // source layout: "SELECT 1 FROM foo!(s).t"
+    //                 0      7 9    14     21 22
+    //  macro region: 14..21 covers "foo!(s)"
+    //  schema token: Id at 19..20 (the 's', inside macro)
+    //  dot:          Dot at 21..22 (outside macro)
+    //  table token:  Id at 22..23 (the 't', outside macro)
+    let source = "SELECT 1 FROM foo!(s).t";
     let parser = Parser::new();
     let mut session = parser.incremental_parse(source);
 
@@ -184,11 +194,13 @@ fn macro_straddle_rejected_by_parser() {
     session.feed_token(TokenType::Integer, 7..8);
     session.feed_token(TokenType::From, 9..13);
 
-    session.begin_macro(14..14 + 7);
-    session.feed_token(TokenType::Id, 19..20);
+    session.begin_macro(14..14 + 7); // foo!(s) = 7 chars
+    session.feed_token(TokenType::Id, 19..20); // schema 's', inside macro
     session.end_macro();
 
-    session.feed_token(TokenType::Id, 22..23);
+    session.feed_token(TokenType::Dot, 21..22);
+    session.feed_token(TokenType::Id, 22..23); // table name 't', outside macro
+
     let result = session.finish().expect("should return Some");
     let Err(err) = result else {
         panic!("expected straddle error but parse succeeded");
@@ -216,10 +228,14 @@ fn high_level_api_still_works() {
     let parser = Parser::new();
     let mut session = parser.parse("SELECT 1; SELECT 2");
 
-    let ParseOutcome::Ok(stmt1) = session.next() else { panic!("expected Ok") };
+    let ParseOutcome::Ok(stmt1) = session.next() else {
+        panic!("expected Ok")
+    };
     assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
 
-    let ParseOutcome::Ok(stmt2) = session.next() else { panic!("expected Ok") };
+    let ParseOutcome::Ok(stmt2) = session.next() else {
+        panic!("expected Ok")
+    };
     assert!(matches!(stmt2.root(), Stmt::SelectStmt(_)));
 
     assert!(matches!(session.next(), ParseOutcome::Done));

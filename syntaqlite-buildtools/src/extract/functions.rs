@@ -447,9 +447,10 @@ fn baseline_defines_for(available: &BTreeSet<String>) -> Vec<String> {
             continue;
         }
         if flag_polarity(name) == "enable"
-            && let Some(defs) = probe_defines(name) {
-                defines.extend(defs);
-            }
+            && let Some(defs) = probe_defines(name)
+        {
+            defines.extend(defs);
+        }
     }
     defines
 }
@@ -468,19 +469,23 @@ fn test_defines_for(flag_name: &str, polarity: &str, available: &BTreeSet<String
         if polarity == "omit" {
             // OMIT test: all ENABLE flags in baseline, plus the OMIT flag itself.
             if flag_polarity(name) == "enable"
-                && let Some(defs) = probe_defines(name) {
-                    defines.extend(defs);
-                }
+                && let Some(defs) = probe_defines(name)
+            {
+                defines.extend(defs);
+            }
             if name == flag_name
-                && let Some(defs) = probe_defines(name) {
-                    defines.extend(defs);
-                }
+                && let Some(defs) = probe_defines(name)
+            {
+                defines.extend(defs);
+            }
         } else {
             // ENABLE test: baseline minus this flag.
-            if flag_polarity(name) == "enable" && name != flag_name
-                && let Some(defs) = probe_defines(name) {
-                    defines.extend(defs);
-                }
+            if flag_polarity(name) == "enable"
+                && name != flag_name
+                && let Some(defs) = probe_defines(name)
+            {
+                defines.extend(defs);
+            }
         }
     }
     defines
@@ -541,9 +546,8 @@ fn extract_version(
         let test_refs: Vec<&str> = test_defs.iter().map(String::as_str).collect();
         let label = format!("{version}_{flag_name}");
 
-        let test_set =
-            compile_and_run_probe(amalgamation_dir, build_dir, &test_refs, &label)
-                .map_err(|e| format!("{version}/{flag_name}: {e}"))?;
+        let test_set = compile_and_run_probe(amalgamation_dir, build_dir, &test_refs, &label)
+            .map_err(|e| format!("{version}/{flag_name}: {e}"))?;
 
         let test_names: BTreeSet<String> =
             test_set.functions.iter().map(|f| f.name.clone()).collect();
@@ -804,7 +808,10 @@ mod tests {
             .collect();
 
         let defs = baseline_defines_for(&available);
-        assert!(defs.iter().any(|d| d.as_str() == "-DSQLITE_ENABLE_MATH_FUNCTIONS"));
+        assert!(
+            defs.iter()
+                .any(|d| d.as_str() == "-DSQLITE_ENABLE_MATH_FUNCTIONS")
+        );
         assert!(defs.iter().any(|d| d.as_str() == "-DSQLITE_SOUNDEX"));
         // FTS5 is not in available, should not appear.
         assert!(!defs.iter().any(|d| d.as_str() == "-DSQLITE_ENABLE_FTS5"));
@@ -821,7 +828,10 @@ mod tests {
 
         let defs = test_defines_for("SQLITE_OMIT_JSON", "omit", &available);
         assert!(defs.iter().any(|d| d.as_str() == "-DSQLITE_OMIT_JSON"));
-        assert!(defs.iter().any(|d| d.as_str() == "-DSQLITE_ENABLE_MATH_FUNCTIONS"));
+        assert!(
+            defs.iter()
+                .any(|d| d.as_str() == "-DSQLITE_ENABLE_MATH_FUNCTIONS")
+        );
     }
 
     #[test]
@@ -832,7 +842,11 @@ mod tests {
             .collect();
 
         let defs = test_defines_for("SQLITE_ENABLE_MATH_FUNCTIONS", "enable", &available);
-        assert!(!defs.iter().any(|d| d.as_str() == "-DSQLITE_ENABLE_MATH_FUNCTIONS"));
+        assert!(
+            !defs
+                .iter()
+                .any(|d| d.as_str() == "-DSQLITE_ENABLE_MATH_FUNCTIONS")
+        );
         assert!(defs.iter().any(|d| d.as_str() == "-DSQLITE_SOUNDEX"));
     }
 

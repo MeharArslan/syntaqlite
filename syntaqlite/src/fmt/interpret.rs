@@ -361,7 +361,6 @@ impl Formatter {
                     } else {
                         None
                     };
-
                     let return_action;
 
                     if macro_doc == Some(NIL_DOC) {

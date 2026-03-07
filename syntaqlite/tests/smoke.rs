@@ -2,8 +2,8 @@
 // Licensed under the Apache License, Version 2.0.
 
 use syntaqlite::nodes::Stmt;
-use syntaqlite::util::{SqliteSyntaxFlag, SqliteSyntaxFlags};
 use syntaqlite::typed::{TypedParser, grammar};
+use syntaqlite::util::{SqliteSyntaxFlag, SqliteSyntaxFlags};
 use syntaqlite::{ParseOutcome, Parser};
 
 fn new_parser() -> Parser {
@@ -15,7 +15,9 @@ fn parse_select_1() {
     let parser = new_parser();
     let mut session = parser.parse("SELECT 1;");
 
-    let ParseOutcome::Ok(stmt) = session.next() else { panic!("expected Ok") };
+    let ParseOutcome::Ok(stmt) = session.next() else {
+        panic!("expected Ok")
+    };
     assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
 
     // No more statements.
@@ -27,10 +29,14 @@ fn parse_multiple_statements() {
     let parser = new_parser();
     let mut session = parser.parse("SELECT 1; SELECT 2;");
 
-    let ParseOutcome::Ok(stmt1) = session.next() else { panic!("expected Ok") };
+    let ParseOutcome::Ok(stmt1) = session.next() else {
+        panic!("expected Ok")
+    };
     assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
 
-    let ParseOutcome::Ok(stmt2) = session.next() else { panic!("expected Ok") };
+    let ParseOutcome::Ok(stmt2) = session.next() else {
+        panic!("expected Ok")
+    };
     assert!(matches!(stmt2.root(), Stmt::SelectStmt(_)));
 
     assert!(matches!(session.next(), ParseOutcome::Done));
@@ -67,8 +73,13 @@ fn parse_error_has_message_and_offset() {
     let parser = new_parser();
     let mut session = parser.parse("NOT VALID SQL;");
 
-    let ParseOutcome::Err(err) = session.next() else { panic!("expected parse error") };
-    assert!(!err.message().is_empty(), "error message should not be empty");
+    let ParseOutcome::Err(err) = session.next() else {
+        panic!("expected parse error")
+    };
+    assert!(
+        !err.message().is_empty(),
+        "error message should not be empty"
+    );
 }
 
 #[test]
@@ -113,12 +124,16 @@ fn parse_error_mid_batch() {
     let parser = new_parser();
     let mut session = parser.parse("SELECT 1; SELECT * FROM; SELECT 2;");
 
-    let ParseOutcome::Ok(stmt1) = session.next() else { panic!("expected Ok") };
+    let ParseOutcome::Ok(stmt1) = session.next() else {
+        panic!("expected Ok")
+    };
     assert!(matches!(stmt1.root(), Stmt::SelectStmt(_)));
 
     assert!(matches!(session.next(), ParseOutcome::Err(_)));
 
-    let ParseOutcome::Ok(stmt3) = session.next() else { panic!("expected Ok") };
+    let ParseOutcome::Ok(stmt3) = session.next() else {
+        panic!("expected Ok")
+    };
     assert!(matches!(stmt3.root(), Stmt::SelectStmt(_)));
 
     assert!(matches!(session.next(), ParseOutcome::Done));
@@ -131,14 +146,18 @@ fn parser_reuse() {
     // First parse
     {
         let mut session = parser.parse("SELECT 1");
-        let ParseOutcome::Ok(stmt) = session.next() else { panic!("expected Ok") };
+        let ParseOutcome::Ok(stmt) = session.next() else {
+            panic!("expected Ok")
+        };
         assert!(matches!(stmt.root(), Stmt::SelectStmt(_)));
     }
 
     // Reuse with different input
     {
         let mut session = parser.parse("DELETE FROM t");
-        let ParseOutcome::Ok(stmt) = session.next() else { panic!("expected Ok") };
+        let ParseOutcome::Ok(stmt) = session.next() else {
+            panic!("expected Ok")
+        };
         assert!(matches!(stmt.root(), Stmt::DeleteStmt(_)));
     }
 }
@@ -147,13 +166,14 @@ fn parser_reuse() {
 
 #[test]
 fn parse_delete_with_order_by_limit() {
-    let g = grammar().with_cflags(
-        SqliteSyntaxFlags::default().with(SqliteSyntaxFlag::EnableUpdateDeleteLimit),
-    );
+    let g = grammar()
+        .with_cflags(SqliteSyntaxFlags::default().with(SqliteSyntaxFlag::EnableUpdateDeleteLimit));
     let parser = TypedParser::new(g);
     let mut session = parser.parse("DELETE FROM t ORDER BY id LIMIT 5;");
 
-    let ParseOutcome::Ok(stmt) = session.next() else { panic!("expected Ok") };
+    let ParseOutcome::Ok(stmt) = session.next() else {
+        panic!("expected Ok")
+    };
     let root = stmt.root().expect("expected root");
     let Stmt::DeleteStmt(del) = root else {
         panic!("expected DeleteStmt, got {root:?}");
@@ -164,13 +184,14 @@ fn parse_delete_with_order_by_limit() {
 
 #[test]
 fn parse_update_with_order_by_limit() {
-    let g = grammar().with_cflags(
-        SqliteSyntaxFlags::default().with(SqliteSyntaxFlag::EnableUpdateDeleteLimit),
-    );
+    let g = grammar()
+        .with_cflags(SqliteSyntaxFlags::default().with(SqliteSyntaxFlag::EnableUpdateDeleteLimit));
     let parser = TypedParser::new(g);
     let mut session = parser.parse("UPDATE t SET a = 1 ORDER BY id LIMIT 3;");
 
-    let ParseOutcome::Ok(stmt) = session.next() else { panic!("expected Ok") };
+    let ParseOutcome::Ok(stmt) = session.next() else {
+        panic!("expected Ok")
+    };
     let root = stmt.root().expect("expected root");
     let Stmt::UpdateStmt(upd) = root else {
         panic!("expected UpdateStmt, got {root:?}");

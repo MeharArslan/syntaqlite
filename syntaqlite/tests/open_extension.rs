@@ -49,7 +49,10 @@ fn pure_sqlite_stmts_are_known_variants() {
             Stmt::InsertStmt(_) => "InsertStmt",
             Stmt::UpdateStmt(_) => "UpdateStmt",
             Stmt::DeleteStmt(_) => "DeleteStmt",
-            other => panic!("unexpected stmt variant {:?} for: {sql}", std::mem::discriminant(&other)),
+            other => panic!(
+                "unexpected stmt variant {:?} for: {sql}",
+                std::mem::discriminant(&other)
+            ),
         };
         assert_eq!(name, *expected_name, "for sql: {sql}");
     }

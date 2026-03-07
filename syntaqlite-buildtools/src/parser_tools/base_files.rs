@@ -282,9 +282,15 @@ mod tests {
         let ext = vec![("shared.y".to_string(), "ext_content".to_string())];
         let merged = merge_file_sets(base, &ext);
         // Base file is unchanged; extension file is appended as a separate entry.
-        assert_eq!(merged[0], ("shared.y".to_string(), "base_content".to_string()));
+        assert_eq!(
+            merged[0],
+            ("shared.y".to_string(), "base_content".to_string())
+        );
         assert_eq!(merged[1], ("ztokens.y".to_string(), "sentinel".to_string()));
-        assert_eq!(merged[2], ("shared.y".to_string(), "ext_content".to_string()));
+        assert_eq!(
+            merged[2],
+            ("shared.y".to_string(), "ext_content".to_string())
+        );
     }
 
     #[test]

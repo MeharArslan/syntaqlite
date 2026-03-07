@@ -161,8 +161,12 @@ static int check_macro_straddle(SyntaqliteParser* p) {
   uint32_t macro_count = syntaqlite_vec_len(&p->macros);
   if (macro_count == 0)
     return 0;
-  if (!p->grammar.tmpl->range_meta)
-    return 0;
+  if (!p->grammar.tmpl->range_meta) {
+    snprintf(p->error_msg, sizeof(p->error_msg),
+             "internal error: grammar has no range_meta but macros were used");
+    p->had_error = 1;
+    return -1;
+  }
 
   uint32_t node_count = syntaqlite_vec_len(&p->ctx.ast.offsets);
   const SyntaqliteMacroRegion* macros = p->macros.data;

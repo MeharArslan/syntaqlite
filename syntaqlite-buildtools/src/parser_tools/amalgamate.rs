@@ -483,7 +483,11 @@ fn emit(files: &FileMap, mode: EmitMode) -> AmalgamateOutput {
     let _ = write!(header, "#ifndef {guard}\n#define {guard}\n\n");
 
     match &mode {
-        EmitMode::DialectOnly { dialect, runtime_header, .. } => {
+        EmitMode::DialectOnly {
+            dialect,
+            runtime_header,
+            ..
+        } => {
             if *dialect != "sqlite" {
                 header.push_str("#ifndef SYNTAQLITE_OMIT_SQLITE_API\n");
                 header.push_str("#define SYNTAQLITE_OMIT_SQLITE_API\n");

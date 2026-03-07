@@ -24,7 +24,7 @@
 //! which uses a parser flag rather than keyword suppression.
 
 use syntaqlite::typed::{TypedParser, TypedTokenizer, grammar};
-use syntaqlite::util::{SqliteVersion, SqliteSyntaxFlag, SqliteSyntaxFlags};
+use syntaqlite::util::{SqliteSyntaxFlag, SqliteSyntaxFlags, SqliteVersion};
 use syntaqlite::{ParseOutcome, TokenType};
 
 const fn tk(t: TokenType) -> u32 {
@@ -498,7 +498,10 @@ fn omit_explain_parse_succeeds_without_flag() {
 #[test]
 fn omit_explain_query_plan_parse_fails() {
     assert!(
-        !parses_ok_with_cflags("EXPLAIN QUERY PLAN SELECT 1;", &[SqliteSyntaxFlag::OmitExplain]),
+        !parses_ok_with_cflags(
+            "EXPLAIN QUERY PLAN SELECT 1;",
+            &[SqliteSyntaxFlag::OmitExplain]
+        ),
         "EXPLAIN QUERY PLAN should fail with OMIT_EXPLAIN"
     );
 }

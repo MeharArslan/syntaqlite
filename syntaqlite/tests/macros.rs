@@ -2,10 +2,16 @@
 // Licensed under the Apache License, Version 2.0.
 
 /// Integration tests: macro regions are emitted verbatim by the formatter.
-use syntaqlite::Parser;
+use syntaqlite::{Parser, ParserConfig};
 
 fn formatter() -> syntaqlite::Formatter {
     syntaqlite::Formatter::new()
+}
+
+/// Parser configured for use with `format_parsed`: tokens must be collected
+/// so the formatter can detect macro region boundaries.
+fn parser() -> Parser {
+    Parser::with_config(&ParserConfig::default().with_collect_tokens(true))
 }
 
 mod tk {
@@ -22,7 +28,7 @@ fn macro_call_emitted_verbatim() {
     let source = "SELECT foo!(1 + 2), 3";
     let mut fmt = formatter();
 
-    let parser = Parser::new();
+    let parser = parser();
     let mut cursor = parser.incremental_parse(source);
 
     cursor.feed_token(tk::SELECT, 0..6);
@@ -46,7 +52,7 @@ fn macro_multi_node_emitted_once() {
     let source = "SELECT macro!(a, b)";
     let mut fmt = formatter();
 
-    let parser = Parser::new();
+    let parser = parser();
     let mut cursor = parser.incremental_parse(source);
 
     cursor.feed_token(tk::SELECT, 0..6);
@@ -67,7 +73,7 @@ fn macro_multi_node_no_extra_separator() {
     let source = "SELECT foo!(a, b), c";
     let mut fmt = formatter();
 
-    let parser = Parser::new();
+    let parser = parser();
     let mut cursor = parser.incremental_parse(source);
 
     cursor.feed_token(tk::SELECT, 0..6);
@@ -91,7 +97,7 @@ fn no_macro_regions_formats_normally() {
     let source = "SELECT  1+2,  3";
     let mut fmt = formatter();
 
-    let parser = Parser::new();
+    let parser = parser();
     let mut cursor = parser.incremental_parse(source);
 
     cursor.feed_token(tk::SELECT, 0..6);

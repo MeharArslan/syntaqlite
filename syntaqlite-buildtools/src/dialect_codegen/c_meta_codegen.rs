@@ -215,6 +215,30 @@ impl AstModel<'_> {
             w.newline();
         }
 
+        for node in self.nodes() {
+            let name = node.name;
+            let span_fields: Vec<_> = node
+                .fields
+                .iter()
+                .filter(|f| f.storage == Storage::Inline && f.type_name == "SyntaqliteSourceSpan")
+                .collect();
+            if span_fields.is_empty() {
+                continue;
+            }
+            let sn = c_type_name(name);
+            let var = format!("range_meta_{}", pascal_to_snake(name));
+            w.line(&format!(
+                "static const SyntaqliteFieldRangeMeta {var}[] = {{"
+            ));
+            w.indent();
+            for field in &span_fields {
+                w.line(&format!("{{offsetof({sn}, {}), 1}},", field.name));
+            }
+            w.dedent();
+            w.line("};");
+            w.newline();
+        }
+
         w.section("Node Names");
         w.line("static const char* const ast_meta_node_names[] = {");
         w.indent();
@@ -226,10 +250,11 @@ impl AstModel<'_> {
         w.line("};");
         w.newline();
 
-        // Build field_meta, field_meta_counts, and list_tags arrays in a single pass.
+        // Build field_meta, field_meta_counts, list_tags, and range_meta arrays in a single pass.
         let mut field_meta_entries = vec!["NULL, /* Null */".to_string()];
         let mut field_count_entries = vec!["0, /* Null */".to_string()];
         let mut list_tag_entries = vec!["0, /* Null */".to_string()];
+        let mut range_meta_entries = vec!["{NULL, 0}, /* Null */".to_string()];
 
         for item in self.node_like_items() {
             match item {
@@ -245,11 +270,29 @@ impl AstModel<'_> {
                     }
                     field_count_entries.push(format!("{}, /* {} */", node.fields.len(), node.name));
                     list_tag_entries.push(format!("0, /* {} */", node.name));
+                    let span_count = node
+                        .fields
+                        .iter()
+                        .filter(|f| {
+                            f.storage == Storage::Inline && f.type_name == "SyntaqliteSourceSpan"
+                        })
+                        .count();
+                    if span_count > 0 {
+                        range_meta_entries.push(format!(
+                            "{{range_meta_{}, {}}}, /* {} */",
+                            pascal_to_snake(node.name),
+                            span_count,
+                            node.name
+                        ));
+                    } else {
+                        range_meta_entries.push(format!("{{NULL, 0}}, /* {} */", node.name));
+                    }
                 }
                 NodeLikeRef::List(list) => {
                     field_meta_entries.push(format!("NULL, /* {} */", list.name));
                     field_count_entries.push(format!("0, /* {} */", list.name));
                     list_tag_entries.push(format!("1, /* {} */", list.name));
+                    range_meta_entries.push(format!("{{NULL, 0}}, /* {} */", list.name));
                 }
             }
         }
@@ -277,6 +320,16 @@ impl AstModel<'_> {
         w.line("static const uint8_t ast_meta_list_tags[] = {");
         w.indent();
         for entry in &list_tag_entries {
+            w.line(entry);
+        }
+        w.dedent();
+        w.line("};");
+        w.newline();
+
+        w.section("Range Meta Dispatch");
+        w.line("static const SyntaqliteRangeMetaEntry ast_meta_range_meta[] = {");
+        w.indent();
+        for entry in &range_meta_entries {
             w.line(entry);
         }
         w.dedent();

@@ -13,9 +13,7 @@ use syntaqlite::{ParseOutcome, Parser};
 
 /// Resolve the node at `id` and return its grammar-level tag.
 fn node_tag(stmt: &AnyParsedStatement<'_>, id: AnyNodeId) -> AnyNodeTag {
-    stmt.extract_fields(id)
-        .expect("node id should resolve")
-        .0
+    stmt.extract_fields(id).expect("node id should resolve").0
 }
 
 #[test]

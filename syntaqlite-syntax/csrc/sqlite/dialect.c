@@ -28,6 +28,7 @@ static const SyntaqliteGrammarTemplate SQLITE_GRAMMAR = {
     .field_meta = ast_meta_field_meta,
     .field_meta_counts = ast_meta_field_meta_counts,
     .list_tags = ast_meta_list_tags,
+    .range_meta = ast_meta_range_meta,
 
     // Parser lifecycle
     .parser_alloc = SynqSqliteParseAlloc,

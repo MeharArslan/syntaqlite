@@ -665,6 +665,133 @@ static const SyntaqliteFieldMeta field_meta_filter_over[] = {
     {offsetof(SyntaqliteFilterOver, over_name), SYNTAQLITE_FIELD_SPAN, "over_name", NULL, 0},
 };
 
+static const SyntaqliteFieldRangeMeta range_meta_aggregate_function_call[] = {
+    {offsetof(SyntaqliteAggregateFunctionCall, func_name), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_ordered_set_function_call[] = {
+    {offsetof(SyntaqliteOrderedSetFunctionCall, func_name), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_cast_expr[] = {
+    {offsetof(SyntaqliteCastExpr, type_name), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_column_ref[] = {
+    {offsetof(SyntaqliteColumnRef, column), 1},
+    {offsetof(SyntaqliteColumnRef, table), 1},
+    {offsetof(SyntaqliteColumnRef, schema), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_foreign_key_clause[] = {
+    {offsetof(SyntaqliteForeignKeyClause, ref_table), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_column_constraint[] = {
+    {offsetof(SyntaqliteColumnConstraint, constraint_name), 1},
+    {offsetof(SyntaqliteColumnConstraint, collation_name), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_column_def[] = {
+    {offsetof(SyntaqliteColumnDef, type_name), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_table_constraint[] = {
+    {offsetof(SyntaqliteTableConstraint, constraint_name), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_create_table_stmt[] = {
+    {offsetof(SyntaqliteCreateTableStmt, table_name), 1},
+    {offsetof(SyntaqliteCreateTableStmt, schema), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_cte_definition[] = {
+    {offsetof(SyntaqliteCteDefinition, cte_name), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_set_clause[] = {
+    {offsetof(SyntaqliteSetClause, column), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_literal[] = {
+    {offsetof(SyntaqliteLiteral, source), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_ident_name[] = {
+    {offsetof(SyntaqliteIdentName, source), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_error[] = {
+    {offsetof(SyntaqliteError, source), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_function_call[] = {
+    {offsetof(SyntaqliteFunctionCall, func_name), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_variable[] = {
+    {offsetof(SyntaqliteVariable, source), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_collate_expr[] = {
+    {offsetof(SyntaqliteCollateExpr, collation), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_table_ref[] = {
+    {offsetof(SyntaqliteTableRef, table_name), 1},
+    {offsetof(SyntaqliteTableRef, schema), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_create_trigger_stmt[] = {
+    {offsetof(SyntaqliteCreateTriggerStmt, trigger_name), 1},
+    {offsetof(SyntaqliteCreateTriggerStmt, schema), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_create_virtual_table_stmt[] = {
+    {offsetof(SyntaqliteCreateVirtualTableStmt, table_name), 1},
+    {offsetof(SyntaqliteCreateVirtualTableStmt, schema), 1},
+    {offsetof(SyntaqliteCreateVirtualTableStmt, module_name), 1},
+    {offsetof(SyntaqliteCreateVirtualTableStmt, module_args), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_pragma_stmt[] = {
+    {offsetof(SyntaqlitePragmaStmt, pragma_name), 1},
+    {offsetof(SyntaqlitePragmaStmt, schema), 1},
+    {offsetof(SyntaqlitePragmaStmt, value), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_analyze_or_reindex_stmt[] = {
+    {offsetof(SyntaqliteAnalyzeOrReindexStmt, target_name), 1},
+    {offsetof(SyntaqliteAnalyzeOrReindexStmt, schema), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_vacuum_stmt[] = {
+    {offsetof(SyntaqliteVacuumStmt, schema), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_create_index_stmt[] = {
+    {offsetof(SyntaqliteCreateIndexStmt, index_name), 1},
+    {offsetof(SyntaqliteCreateIndexStmt, schema), 1},
+    {offsetof(SyntaqliteCreateIndexStmt, table_name), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_create_view_stmt[] = {
+    {offsetof(SyntaqliteCreateViewStmt, view_name), 1},
+    {offsetof(SyntaqliteCreateViewStmt, schema), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_window_def[] = {
+    {offsetof(SyntaqliteWindowDef, base_window_name), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_named_window_def[] = {
+    {offsetof(SyntaqliteNamedWindowDef, window_name), 1},
+};
+
+static const SyntaqliteFieldRangeMeta range_meta_filter_over[] = {
+    {offsetof(SyntaqliteFilterOver, over_name), 1},
+};
+
 // ============ Node Names ============
 
 static const char* const ast_meta_node_names[] = {
@@ -989,6 +1116,88 @@ static const uint8_t ast_meta_list_tags[] = {
     0, /* NamedWindowDef */
     1, /* NamedWindowDefList */
     0, /* FilterOver */
+};
+
+// ============ Range Meta Dispatch ============
+
+static const SyntaqliteRangeMetaEntry ast_meta_range_meta[] = {
+    {NULL, 0}, /* Null */
+    {range_meta_aggregate_function_call, 1}, /* AggregateFunctionCall */
+    {range_meta_ordered_set_function_call, 1}, /* OrderedSetFunctionCall */
+    {range_meta_cast_expr, 1}, /* CastExpr */
+    {range_meta_column_ref, 3}, /* ColumnRef */
+    {NULL, 0}, /* CompoundSelect */
+    {NULL, 0}, /* SubqueryExpr */
+    {NULL, 0}, /* ExistsExpr */
+    {NULL, 0}, /* InExpr */
+    {NULL, 0}, /* IsExpr */
+    {NULL, 0}, /* BetweenExpr */
+    {NULL, 0}, /* LikeExpr */
+    {NULL, 0}, /* CaseExpr */
+    {NULL, 0}, /* CaseWhen */
+    {NULL, 0}, /* CaseWhenList */
+    {range_meta_foreign_key_clause, 1}, /* ForeignKeyClause */
+    {range_meta_column_constraint, 2}, /* ColumnConstraint */
+    {NULL, 0}, /* ColumnConstraintList */
+    {range_meta_column_def, 1}, /* ColumnDef */
+    {NULL, 0}, /* ColumnDefList */
+    {range_meta_table_constraint, 1}, /* TableConstraint */
+    {NULL, 0}, /* TableConstraintList */
+    {range_meta_create_table_stmt, 2}, /* CreateTableStmt */
+    {range_meta_cte_definition, 1}, /* CteDefinition */
+    {NULL, 0}, /* CteList */
+    {NULL, 0}, /* WithClause */
+    {NULL, 0}, /* DeleteStmt */
+    {range_meta_set_clause, 1}, /* SetClause */
+    {NULL, 0}, /* SetClauseList */
+    {NULL, 0}, /* UpdateStmt */
+    {NULL, 0}, /* InsertStmt */
+    {NULL, 0}, /* BinaryExpr */
+    {NULL, 0}, /* UnaryExpr */
+    {range_meta_literal, 1}, /* Literal */
+    {range_meta_ident_name, 1}, /* IdentName */
+    {range_meta_error, 1}, /* Error */
+    {NULL, 0}, /* ExprList */
+    {range_meta_function_call, 1}, /* FunctionCall */
+    {range_meta_variable, 1}, /* Variable */
+    {range_meta_collate_expr, 1}, /* CollateExpr */
+    {NULL, 0}, /* RaiseExpr */
+    {NULL, 0}, /* QualifiedName */
+    {NULL, 0}, /* DropStmt */
+    {NULL, 0}, /* AlterTableStmt */
+    {NULL, 0}, /* TransactionStmt */
+    {NULL, 0}, /* SavepointStmt */
+    {NULL, 0}, /* ResultColumn */
+    {NULL, 0}, /* ResultColumnList */
+    {NULL, 0}, /* SelectStmt */
+    {NULL, 0}, /* OrderingTerm */
+    {NULL, 0}, /* OrderByList */
+    {NULL, 0}, /* LimitClause */
+    {range_meta_table_ref, 2}, /* TableRef */
+    {NULL, 0}, /* SubqueryTableSource */
+    {NULL, 0}, /* JoinClause */
+    {NULL, 0}, /* JoinPrefix */
+    {NULL, 0}, /* TriggerEvent */
+    {NULL, 0}, /* TriggerCmdList */
+    {range_meta_create_trigger_stmt, 2}, /* CreateTriggerStmt */
+    {range_meta_create_virtual_table_stmt, 4}, /* CreateVirtualTableStmt */
+    {range_meta_pragma_stmt, 3}, /* PragmaStmt */
+    {range_meta_analyze_or_reindex_stmt, 2}, /* AnalyzeOrReindexStmt */
+    {NULL, 0}, /* AttachStmt */
+    {NULL, 0}, /* DetachStmt */
+    {range_meta_vacuum_stmt, 1}, /* VacuumStmt */
+    {NULL, 0}, /* ExplainStmt */
+    {range_meta_create_index_stmt, 3}, /* CreateIndexStmt */
+    {range_meta_create_view_stmt, 2}, /* CreateViewStmt */
+    {NULL, 0}, /* ValuesRowList */
+    {NULL, 0}, /* ValuesClause */
+    {NULL, 0}, /* FrameBound */
+    {NULL, 0}, /* FrameSpec */
+    {range_meta_window_def, 1}, /* WindowDef */
+    {NULL, 0}, /* WindowDefList */
+    {range_meta_named_window_def, 1}, /* NamedWindowDef */
+    {NULL, 0}, /* NamedWindowDefList */
+    {range_meta_filter_over, 1}, /* FilterOver */
 };
 
 #endif  // SYNTAQLITE_DIALECT_META_H

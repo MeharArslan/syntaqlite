@@ -143,6 +143,7 @@ pub(crate) fn generate_dialect_c(
     w.line("    .field_meta = ast_meta_field_meta,");
     w.line("    .field_meta_counts = ast_meta_field_meta_counts,");
     w.line("    .list_tags = ast_meta_list_tags,");
+    w.line("    .range_meta = ast_meta_range_meta,");
     w.newline();
     let pascal = pascal_case(dialect);
     w.line("    // Parser lifecycle");

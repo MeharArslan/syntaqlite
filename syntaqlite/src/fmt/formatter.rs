@@ -75,6 +75,72 @@ impl Formatter {
         }
     }
 
+    /// Format a statement that was already parsed (e.g. via incremental API).
+    ///
+    /// Unlike [`format`], this skips re-parsing and uses the provided result
+    /// directly, including any macro regions recorded during incremental parsing.
+    ///
+    /// # Precondition
+    ///
+    /// The statement must have been parsed with `collect_tokens: true`
+    /// (via [`ParserConfig::with_collect_tokens`]). Macro verbatim output
+    /// requires the token stream to determine which nodes fall within macro
+    /// regions. If tokens were not collected and macro regions are present,
+    /// macro calls will be expanded rather than preserved verbatim.
+    pub fn format_parsed(
+        &mut self,
+        erased: syntaqlite_syntax::any::AnyParsedStatement<'_>,
+    ) -> String {
+        self.macro_regions.clear();
+        self.macro_regions.extend(erased.macro_regions());
+
+        // Build a token-position table so try_macro_verbatim can check whether
+        // a child node falls inside a macro region. No comments exist in this
+        // path, so CommentCtx is populated with tokens only.
+        self.token_entries.clear();
+        self.token_entries
+            .extend(erased.token_spans().map(|(offset, length)| TokenEntry { offset, length }));
+
+        let root_id = erased.root_id();
+        self.parts.clear();
+        let prev_arena = std::mem::replace(&mut self.arena, DocArena::new());
+        let mut arena = DocArena::recycle(prev_arena);
+
+        let comment_ctx = if self.token_entries.is_empty() {
+            None
+        } else {
+            Some(CommentCtx::new(vec![], std::mem::take(&mut self.token_entries)))
+        };
+
+        let ctx = FmtCtx {
+            dialect: self.dialect.clone(),
+            reader: erased,
+            comment_ctx,
+            macro_regions: std::mem::take(&mut self.macro_regions),
+            keyword_case: self.config.keyword_case,
+        };
+        let interpreted = self.interpret_node(&ctx, root_id, &mut arena);
+        self.parts.push(interpreted);
+        let doc = arena.cats(&self.parts);
+        let mut bufs = std::mem::take(&mut self.render_bufs);
+        bufs.clear();
+        arena.render_into(
+            doc,
+            self.config.line_width,
+            self.config.keyword_case,
+            &mut bufs,
+        );
+        let result = bufs.out.clone();
+        self.render_bufs = bufs;
+        self.macro_regions = ctx.macro_regions;
+        if let Some(cctx) = ctx.comment_ctx {
+            let (_, tokens) = cctx.into_parts();
+            self.token_entries = tokens;
+        }
+        self.arena = DocArena::recycle(arena);
+        result
+    }
+
     /// Format SQL source text. Handles multiple statements and preserves comments.
     ///
     /// Pipeline overview per statement:
@@ -302,6 +368,10 @@ fn drain_gap_comments<'a>(
 // ── Single-node formatting ──────────────────────────────────────────────
 
 /// Check if the next token falls within a macro region.
+///
+/// Requires `comment_ctx` to be populated on `ctx`. `format_parsed` satisfies
+/// this precondition by building a `CommentCtx` from the statement's collected
+/// tokens (which requires `collect_tokens: true` at parse time).
 pub(crate) fn try_macro_verbatim<'a>(
     ctx: &FmtCtx<'a>,
     regions: &[MacroRegion],

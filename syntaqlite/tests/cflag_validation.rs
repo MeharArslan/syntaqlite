@@ -30,9 +30,9 @@ fn analyze_default(sql: &str) -> Vec<syntaqlite::Diagnostic> {
 }
 
 fn has_unknown_function(diags: &[syntaqlite::Diagnostic], name: &str) -> bool {
-    diags.iter().any(|d| {
-        matches!(&d.message, DiagnosticMessage::UnknownFunction { name: n } if n == name)
-    })
+    diags
+        .iter()
+        .any(|d| matches!(&d.message, DiagnosticMessage::UnknownFunction { name: n } if n == name))
 }
 
 fn has_parse_error(diags: &[syntaqlite::Diagnostic]) -> bool {

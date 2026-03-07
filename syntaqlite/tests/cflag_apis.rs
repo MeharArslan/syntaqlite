@@ -13,7 +13,7 @@
 
 use syntaqlite::any::ParseOutcome;
 use syntaqlite::util::{SqliteFlag, SqliteFlags};
-use syntaqlite::{Formatter, FormatConfig, sqlite_dialect};
+use syntaqlite::{FormatConfig, Formatter, sqlite_dialect};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -87,7 +87,9 @@ pub(crate) fn generate_sqlite_flag_rs() -> String {
     out.push_str("/// A compile-time feature flag for the `SQLite` dialect.\n");
     out.push_str("///\n");
     out.push_str("/// Pass a variant to [`crate::util::SqliteFlags::has`],\n");
-    out.push_str("/// [`crate::util::SqliteFlags::with`], or [`crate::util::SqliteFlags::without`].\n");
+    out.push_str(
+        "/// [`crate::util::SqliteFlags::with`], or [`crate::util::SqliteFlags::without`].\n",
+    );
     out.push_str("///\n");
     out.push_str("/// Parser-level flags (discriminants 0–21) correspond 1-to-1 with\n");
     out.push_str("/// [`SqliteSyntaxFlag`] and the C compact `SYNQ_CFLAG_IDX_*` values.\n");

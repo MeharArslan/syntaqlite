@@ -10,4 +10,3 @@
 //! Note: some extensions (FTS3, FTS5, Geopoly) add *both* virtual tables and
 //! SQL functions. Those appear in `functions.rs` for the SQL function side and
 //! here for the virtual table side.
-

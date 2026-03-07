@@ -240,7 +240,10 @@ fn hole_as_trailing_clause() {
     cursor.end_macro();
 
     let result = cursor.finish();
-    eprintln!("trailing_clause: finish() returned is_some={}", result.is_some());
+    eprintln!(
+        "trailing_clause: finish() returned is_some={}",
+        result.is_some()
+    );
 }
 
 // ---------------------------------------------------------------------------

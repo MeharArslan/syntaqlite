@@ -346,6 +346,17 @@ impl<'a> AnyParsedStatement<'a> {
         self.source
     }
 
+    /// Raw token spans `(offset, length)` for all collected tokens.
+    ///
+    /// Returns an empty iterator if `collect_tokens` was not enabled.
+    /// Always non-empty when the result comes from [`TypedParser::incremental_parse`],
+    /// which unconditionally enables token collection.
+    pub fn token_spans(&self) -> impl Iterator<Item = (u32, u32)> + use<'_> {
+        // SAFETY: self.raw is valid for 'a; the returned slice lives for 'a.
+        let raw: &[ffi::CParserToken] = unsafe { self.raw.as_ref().result_tokens() };
+        raw.iter().map(|t| (t.offset, t.length))
+    }
+
     /// Extract reflective node data (`tag` + field values) for `id`.
     pub fn extract_fields(
         &self,
