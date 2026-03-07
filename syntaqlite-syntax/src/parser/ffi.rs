@@ -357,12 +357,16 @@ mod tests {
         sql_c
     }
 
-    fn recovery_stmt(parser: *mut CParser, source: &str, recovery_root: u32) -> Stmt<'_> {
+    fn with_recovery_stmt<F, R>(parser: *mut CParser, source: &str, recovery_root: u32, f: F) -> R
+    where
+        F: FnOnce(Stmt<'_>) -> R,
+    {
         let grammar: AnyGrammar = crate::sqlite::grammar::grammar().into();
         // SAFETY: parser pointer is valid for test scope; source is valid UTF-8.
         let result = unsafe { crate::parser::AnyParsedStatement::new(parser, source, grammar) };
-        Stmt::from_result(&result, AnyNodeId(recovery_root))
-            .expect("recovery root should resolve to typed Stmt")
+        let stmt = Stmt::from_result(&result, AnyNodeId(recovery_root))
+            .expect("recovery root should resolve to typed Stmt");
+        f(stmt)
     }
 
     #[test]
@@ -406,22 +410,24 @@ mod tests {
         // SAFETY: result accessors are valid after non-DONE return.
         assert!(!unsafe { parser.result_error_msg().is_null() });
 
-        let stmt = recovery_stmt(
+        with_recovery_stmt(
             std::ptr::from_mut::<CParser>(parser),
             "SELECT",
             recovery_root,
-        );
-        let Stmt::SelectStmt(select) = stmt else {
-            panic!("expected recovery root to be SelectStmt")
-        };
-        let columns = select
-            .columns()
-            .expect("recovery select should keep result columns");
-        assert_eq!(columns.len(), 1);
-        let col = columns.get(0).expect("first result column should exist");
-        assert!(
-            matches!(col.expr(), Some(Expr::Error(_))),
-            "expected recovered expr hole at result column expr"
+            |stmt| {
+                let Stmt::SelectStmt(select) = stmt else {
+                    panic!("expected recovery root to be SelectStmt")
+                };
+                let columns = select
+                    .columns()
+                    .expect("recovery select should keep result columns");
+                assert_eq!(columns.len(), 1);
+                let col = columns.get(0).expect("first result column should exist");
+                assert!(
+                    matches!(col.expr(), Some(Expr::Error(_))),
+                    "expected recovered expr hole at result column expr"
+                );
+            },
         );
     }
 
@@ -441,26 +447,28 @@ mod tests {
         let recovery_root = unsafe { parser.result_recovery_root() };
         assert_ne!(recovery_root, NULL_NODE);
 
-        let stmt = recovery_stmt(
+        with_recovery_stmt(
             std::ptr::from_mut::<CParser>(parser),
             "SELECT 1 AS",
             recovery_root,
-        );
-        let Stmt::SelectStmt(select) = stmt else {
-            panic!("expected recovery root to be SelectStmt")
-        };
-        let columns = select
-            .columns()
-            .expect("recovery select should keep result columns");
-        assert_eq!(columns.len(), 1);
-        let col = columns.get(0).expect("first result column should exist");
-        assert!(
-            matches!(col.alias(), Some(Name::Error(_))),
-            "expected recovered name hole at result column alias"
-        );
-        assert!(
-            matches!(col.expr(), Some(Expr::Literal(_))),
-            "expected original expression to remain intact"
+            |stmt| {
+                let Stmt::SelectStmt(select) = stmt else {
+                    panic!("expected recovery root to be SelectStmt")
+                };
+                let columns = select
+                    .columns()
+                    .expect("recovery select should keep result columns");
+                assert_eq!(columns.len(), 1);
+                let col = columns.get(0).expect("first result column should exist");
+                assert!(
+                    matches!(col.alias(), Some(Name::Error(_))),
+                    "expected recovered name hole at result column alias"
+                );
+                assert!(
+                    matches!(col.expr(), Some(Expr::Literal(_))),
+                    "expected original expression to remain intact"
+                );
+            },
         );
     }
 

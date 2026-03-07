@@ -14,7 +14,7 @@ use syntaqlite::{
     Catalog, Diagnostic, DiagnosticMessage, DiagnosticRenderer, FormatConfig, Formatter,
     KeywordCase, SemanticAnalyzer, Severity, ValidationConfig,
 };
-use syntaqlite::{Dialect, FormatError};
+use syntaqlite::{AnyDialect, FormatError};
 
 use super::{Cli, Command};
 
@@ -52,16 +52,16 @@ fn expand_paths(patterns: &[String]) -> Result<Vec<PathBuf>, String> {
     Ok(out)
 }
 
-fn require_dialect(dialect: Option<Dialect>) -> Result<Dialect, String> {
+fn require_dialect(dialect: Option<AnyDialect>) -> Result<AnyDialect, String> {
     dialect.ok_or_else(|| {
         "this command requires a dialect; build with --features=builtin-sqlite or use --dialect"
             .to_string()
     })
 }
 
-pub(crate) fn dispatch(cli: Cli, dialect: Option<Dialect>) -> Result<(), String> {
+pub(crate) fn dispatch(cli: Cli, dialect: Option<AnyDialect>) -> Result<(), String> {
     if let Some(path) = &cli.dialect_path {
-        let dyn_dialect = Dialect::load(path, cli.dialect_name.as_deref()).unwrap_or_else(|e| {
+        let dyn_dialect = AnyDialect::load(path, cli.dialect_name.as_deref()).unwrap_or_else(|e| {
             eprintln!("error: {e}");
             std::process::exit(1);
         });
@@ -71,7 +71,7 @@ pub(crate) fn dispatch(cli: Cli, dialect: Option<Dialect>) -> Result<(), String>
     }
 }
 
-fn dispatch_commands(command: Command, dialect: Option<Dialect>) -> Result<(), String> {
+fn dispatch_commands(command: Command, dialect: Option<AnyDialect>) -> Result<(), String> {
     match command {
         Command::Ast { files } => require_dialect(dialect).and_then(|d| cmd_ast(d, files)),
         Command::Validate { files, lang } => {
@@ -131,7 +131,7 @@ fn process_files(
     Ok(())
 }
 
-fn cmd_ast(dialect: Dialect, files: Vec<String>) -> Result<(), String> {
+fn cmd_ast(dialect: AnyDialect, files: Vec<String>) -> Result<(), String> {
     process_files(
         files,
         |source| cmd_ast_source(&dialect, source, "<stdin>"),
@@ -145,7 +145,7 @@ fn cmd_ast(dialect: Dialect, files: Vec<String>) -> Result<(), String> {
     )
 }
 
-fn cmd_ast_source(dialect: &Dialect, source: &str, file: &str) -> Result<(), String> {
+fn cmd_ast_source(dialect: &AnyDialect, source: &str, file: &str) -> Result<(), String> {
     let parser = AnyParser::new(dialect.deref().clone());
     let mut session = parser.parse(source);
     let mut out = String::new();
@@ -189,7 +189,7 @@ fn cmd_ast_source(dialect: &Dialect, source: &str, file: &str) -> Result<(), Str
 }
 
 fn cmd_fmt(
-    dialect: Dialect,
+    dialect: AnyDialect,
     files: Vec<String>,
     config: FormatConfig,
     in_place: bool,
@@ -236,7 +236,7 @@ fn cmd_fmt(
 }
 
 fn format_source(
-    dialect: &Dialect,
+    dialect: &AnyDialect,
     source: &str,
     config: &FormatConfig,
 ) -> Result<String, FormatError> {
@@ -244,7 +244,7 @@ fn format_source(
 }
 
 fn cmd_validate(
-    dialect: Dialect,
+    dialect: AnyDialect,
     files: Vec<String>,
     lang: Option<HostLanguage>,
 ) -> Result<(), String> {
@@ -284,7 +284,7 @@ fn cmd_validate(
     Ok(())
 }
 
-fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &ValidationConfig) -> bool {
+fn validate_source(dialect: &AnyDialect, source: &str, file: &str, config: &ValidationConfig) -> bool {
     let catalog = Catalog::new(dialect.clone());
     let mut analyzer = SemanticAnalyzer::with_dialect(dialect.clone());
     let model = analyzer.analyze(source, &catalog, config);
@@ -294,7 +294,7 @@ fn validate_source(dialect: &Dialect, source: &str, file: &str, config: &Validat
 }
 
 fn validate_embedded_source(
-    dialect: &Dialect,
+    dialect: &AnyDialect,
     source: &str,
     file: &str,
     config: &ValidationConfig,

@@ -7,12 +7,12 @@ use super::KeywordCase;
 use super::comment::{CommentCtx, DrainResult};
 use super::doc::{DocArena, DocId, NIL_DOC};
 use super::formatter::Formatter;
-use crate::dialect::Dialect;
+use crate::dialect::AnyDialect;
 use syntaqlite_common::fmt::bytecode::opcodes;
 
 /// Shared context threaded through the iterative formatting traversal.
 pub(crate) struct FmtCtx<'a> {
-    pub dialect: Dialect,
+    pub dialect: AnyDialect,
     pub reader: AnyParsedStatement<'a>,
     /// Owned comment context — no lifetime needed since `CommentCtx` owns its data.
     pub comment_ctx: Option<CommentCtx>,

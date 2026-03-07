@@ -5,11 +5,13 @@
 
 use std::collections::HashSet;
 
-use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, NodeFields};
-use syntaqlite_syntax::typed::{TypedGrammar, TypedParseError, TypedParser};
-use syntaqlite_syntax::{ParseOutcome, ParserConfig, TokenType};
+use syntaqlite_syntax::any::{
+    AnyNodeId, AnyParseError, AnyParser, AnyParsedStatement, AnyTokenType, FieldValue, NodeFields,
+    ParseOutcome,
+};
+use syntaqlite_syntax::ParserConfig;
 
-use crate::dialect::Dialect;
+use crate::dialect::AnyDialect;
 use crate::dialect::SemanticRole;
 
 use super::ValidationConfig;
@@ -28,7 +30,7 @@ use super::model::{
 /// built at construction and never changes. The database and document layers
 /// are reset on each [`analyze`](Self::analyze) call.
 pub struct SemanticAnalyzer {
-    dialect: Dialect,
+    dialect: AnyDialect,
     catalog: Catalog,
 }
 
@@ -41,7 +43,7 @@ impl SemanticAnalyzer {
     }
 
     /// Create an analyzer bound to a specific dialect.
-    pub fn with_dialect(dialect: impl Into<Dialect>) -> Self {
+    pub fn with_dialect(dialect: impl Into<AnyDialect>) -> Self {
         let dialect = dialect.into();
         SemanticAnalyzer {
             catalog: Catalog::new(dialect.clone()),
@@ -50,7 +52,7 @@ impl SemanticAnalyzer {
     }
 
     /// Return the dialect this analyzer was constructed for.
-    pub(crate) fn dialect(&self) -> Dialect {
+    pub(crate) fn dialect(&self) -> AnyDialect {
         self.dialect.clone()
     }
 
@@ -78,7 +80,7 @@ impl SemanticAnalyzer {
 
         let mut out = Vec::new();
         for t in &model.tokens {
-            let cat = self.dialect.classify_token(t.token_type.into(), t.flags);
+            let cat = self.dialect.classify_token(t.token_type, t.flags);
             if cat != TokenCategory::Other {
                 out.push(SemanticToken {
                     offset: t.offset,
@@ -99,8 +101,6 @@ impl SemanticAnalyzer {
     }
 
     /// Expected tokens and semantic context at `offset` (for completion).
-    #[cfg(feature = "sqlite")]
-    #[expect(clippy::unused_self)]
     pub(crate) fn completion_info(&self, model: &SemanticModel, offset: usize) -> CompletionInfo {
         let source = model.source();
         let tokens = &model.tokens;
@@ -109,12 +109,13 @@ impl SemanticAnalyzer {
         let start = statement_token_start(tokens, boundary);
         let stmt_tokens = &tokens[start..boundary];
 
-        let parser = TypedParser::new(syntaqlite_syntax::typed::grammar());
+        let grammar = (*self.dialect).clone();
+        let parser = AnyParser::with_config(grammar, &ParserConfig::default());
         let mut cursor_p = parser.incremental_parse(source);
         // Do not call expected_tokens() before feeding any tokens: the C parser
         // returns a garbage `total` count when no tokens have been fed yet,
         // which would trigger a multi-GiB allocation and SIGKILL.
-        let mut last_expected: Vec<TokenType> = Vec::new();
+        let mut last_expected: Vec<AnyTokenType> = Vec::new();
 
         for tok in stmt_tokens {
             let span = tok.offset..(tok.offset + tok.length);
@@ -135,7 +136,7 @@ impl SemanticAnalyzer {
             if cursor_p.feed_token(extra.token_type, span).is_none() {
                 merge_expected_tokens(
                     &mut last_expected,
-                    cursor_p.expected_tokens().collect::<Vec<TokenType>>(),
+                    cursor_p.expected_tokens().collect::<Vec<AnyTokenType>>(),
                 );
             }
         }
@@ -148,15 +149,10 @@ impl SemanticAnalyzer {
 
     // ── Private ───────────────────────────────────────────────────────────────
 
-    #[cfg(feature = "sqlite")]
     fn analyze_inner(&mut self, source: &str, config: &ValidationConfig) -> SemanticModel {
-        let grammar = syntaqlite_syntax::typed::grammar()
-            .with_version(self.dialect.version())
-            .with_cflags(self.dialect.syntax_cflags());
-        let parser = TypedParser::with_config(
-            grammar,
-            &ParserConfig::default().with_collect_tokens(true),
-        );
+        let grammar = (*self.dialect).clone();
+        let parser =
+            AnyParser::with_config(grammar, &ParserConfig::default().with_collect_tokens(true));
         let mut session = parser.parse(source);
 
         let mut tokens: Vec<StoredToken> = Vec::new();
@@ -212,12 +208,10 @@ impl SemanticAnalyzer {
                 });
             }
 
-            // Semantic walk.
-            let root = stmt
-                .root()
-                .expect("analyze_inner: ParseOutcome::Ok result has null root");
-            let root_id: AnyNodeId = root.node_id().into();
+            // Semantic walk — use root_id from the erased statement to avoid
+            // depending on grammar-typed node accessors.
             let erased = stmt.erase();
+            let root_id = erased.root_id();
 
             self.catalog.accumulate_ddl(
                 CatalogLayer::Document,
@@ -254,11 +248,7 @@ impl Default for SemanticAnalyzer {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-#[cfg(feature = "sqlite")]
-fn parse_error_span<G: TypedGrammar>(
-    err: &TypedParseError<'_, G>,
-    source: &str,
-) -> (usize, usize) {
+fn parse_error_span(err: &AnyParseError<'_>, source: &str) -> (usize, usize) {
     match (err.offset(), err.length()) {
         (Some(off), Some(len)) if len > 0 => (off, off + len),
         (Some(off), _) => {
@@ -276,7 +266,6 @@ fn parse_error_span<G: TypedGrammar>(
     }
 }
 
-#[cfg(feature = "sqlite")]
 fn completion_boundary(
     source: &str,
     tokens: &[StoredToken],
@@ -307,17 +296,20 @@ fn completion_boundary(
     (boundary, backtracked)
 }
 
-#[cfg(feature = "sqlite")]
+/// Find the index of the first token in the statement that contains `offset`.
+///
+/// Uses `TokenType::Semi` — safe across all dialects because SQLite token
+/// ordinals are stable and equal to `AnyTokenType` ordinals.
 fn statement_token_start(tokens: &[StoredToken], boundary: usize) -> usize {
+    let semi = AnyTokenType::from(syntaqlite_syntax::TokenType::Semi);
     tokens[..boundary]
         .iter()
-        .rposition(|t| t.token_type == TokenType::Semi)
+        .rposition(|t| t.token_type == semi)
         .map_or(0, |idx| idx + 1)
 }
 
-#[cfg(feature = "sqlite")]
-fn merge_expected_tokens(into: &mut Vec<TokenType>, extra: Vec<TokenType>) {
-    let mut seen: HashSet<TokenType> = into.iter().copied().collect();
+fn merge_expected_tokens(into: &mut Vec<AnyTokenType>, extra: Vec<AnyTokenType>) {
+    let mut seen: HashSet<AnyTokenType> = into.iter().copied().collect();
     for token in extra {
         if seen.insert(token) {
             into.push(token);
@@ -341,7 +333,7 @@ impl<'a> ValidationPass<'a> {
     fn run(
         stmt: AnyParsedStatement<'a>,
         root: AnyNodeId,
-        dialect: Dialect,
+        dialect: AnyDialect,
         catalog: &'a mut Catalog,
         config: &'a ValidationConfig,
         diagnostics: &'a mut Vec<Diagnostic>,

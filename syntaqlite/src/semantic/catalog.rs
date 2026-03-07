@@ -9,7 +9,7 @@ use std::collections::{HashMap, HashSet};
 
 use syntaqlite_syntax::any::{AnyNodeId, AnyParsedStatement, FieldValue, NodeFields};
 
-use crate::dialect::Dialect;
+use crate::dialect::AnyDialect;
 use crate::dialect::{
     FunctionCategory as DialectFunctionCategory, SemanticRole, is_function_available,
 };
@@ -266,7 +266,8 @@ pub struct Catalog {
 impl Catalog {
     /// Create a catalog for `dialect`. The dialect's built-in functions are
     /// loaded immediately into the dialect layer.
-    pub fn new(dialect: Dialect) -> Self {
+    pub fn new(dialect: impl Into<AnyDialect>) -> Self {
+        let dialect = dialect.into();
         let mut layers = vec![CatalogLayerContents::default(); FIXED_LAYER_COUNT];
         build_dialect_layer(&mut layers[LAYER_DIALECT], &dialect);
         Self { layers }
@@ -323,8 +324,9 @@ impl Catalog {
 
     /// Parse DDL statements from `source` and populate the database layer.
     #[cfg(feature = "sqlite")]
-    pub(crate) fn from_ddl(dialect: Dialect, source: &str) -> Self {
+    pub(crate) fn from_ddl(dialect: impl Into<AnyDialect>, source: &str) -> Self {
         use syntaqlite_syntax::ParseOutcome;
+        let dialect = dialect.into();
         let mut catalog = Catalog::new(dialect.clone());
         let parser = syntaqlite_syntax::Parser::new();
         let mut session = parser.parse(source);
@@ -353,7 +355,8 @@ impl Catalog {
     /// }
     /// ```
     #[cfg(feature = "json")]
-    pub(crate) fn from_json(dialect: Dialect, s: &str) -> Result<Self, String> {
+    pub(crate) fn from_json(dialect: impl Into<AnyDialect>, s: &str) -> Result<Self, String> {
+        let dialect = dialect.into();
         #[derive(serde::Deserialize)]
         struct Root {
             #[serde(default)]
@@ -411,7 +414,7 @@ impl Catalog {
         target: CatalogLayer,
         stmt: &AnyParsedStatement<'_>,
         root: AnyNodeId,
-        dialect: Dialect,
+        dialect: AnyDialect,
     ) {
         let Some((tag, fields)) = stmt.extract_fields(root) else {
             return;
@@ -912,7 +915,7 @@ fn infer_result_col_name<'a>(
 
 // ── Dialect layer builder ─────────────────────────────────────────────────────
 
-fn build_dialect_layer(layer: &mut CatalogLayerContents, dialect: &Dialect) {
+fn build_dialect_layer(layer: &mut CatalogLayerContents, dialect: &AnyDialect) {
     #[cfg(feature = "sqlite")]
     for entry in crate::sqlite::functions_catalog::SQLITE_FUNCTIONS {
         if !is_function_available(entry, dialect) {

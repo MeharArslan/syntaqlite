@@ -3,19 +3,22 @@
 
 //! Result types for a single semantic analysis pass.
 
-use syntaqlite_syntax::{ParserTokenFlags, TokenType};
+use syntaqlite_syntax::any::{AnyTokenType, TokenCategory};
+use syntaqlite_syntax::ParserTokenFlags;
 
 use super::diagnostics::Diagnostic;
-use syntaqlite_syntax::any::TokenCategory;
 
 // ── Stored per-statement positions ───────────────────────────────────────────
 
 /// A token position recorded during parsing.
+///
+/// `token_type` is grammar-agnostic (`AnyTokenType`) so that the semantic
+/// analyzer works with any dialect, not just the built-in SQLite grammar.
 #[derive(Debug, Clone)]
 pub(crate) struct StoredToken {
     pub(crate) offset: usize,
     pub(crate) length: usize,
-    pub(crate) token_type: TokenType,
+    pub(crate) token_type: AnyTokenType,
     pub(crate) flags: ParserTokenFlags,
 }
 
@@ -64,8 +67,8 @@ impl CompletionContext {
 /// Expected tokens and semantic context at a cursor position.
 #[derive(Debug)]
 pub(crate) struct CompletionInfo {
-    /// Terminal token types valid at the cursor.
-    pub tokens: Vec<TokenType>,
+    /// Terminal token types valid at the cursor (grammar-agnostic).
+    pub tokens: Vec<AnyTokenType>,
     /// Semantic context (expression vs table-ref).
     pub context: CompletionContext,
 }

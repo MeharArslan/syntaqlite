@@ -3,6 +3,7 @@
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
+// `SqliteSyntaxFlag` is always available — ordinals are stable across all dialects.
 #[doc(inline)]
 pub use crate::sqlite::cflags::SqliteSyntaxFlag;
 

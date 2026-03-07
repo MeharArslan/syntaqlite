@@ -28,7 +28,7 @@ pub mod embedded;
 // ── Public API ────────────────────────────────────────────────────────────────
 
 #[cfg(feature = "fmt")]
-pub use dialect::{AnyDialect, Dialect};
+pub use dialect::{AnyDialect, Dialect, TypedDialect};
 #[cfg(feature = "fmt")]
 pub use fmt::formatter::Formatter;
 #[cfg(feature = "fmt")]
@@ -41,9 +41,12 @@ pub use semantic::{
     SemanticModel, Severity, SourceContext, ValidationConfig,
 };
 /// Returns the built-in `SQLite` dialect handle.
+///
+/// Returns a [`Dialect`] (the SQLite-specific newtype). Call `.erase()` or
+/// `.into()` to obtain an [`AnyDialect`] when a type-erased handle is needed.
 #[cfg(feature = "sqlite")]
 pub fn sqlite_dialect() -> Dialect {
-    sqlite::dialect::dialect()
+    Dialect::new()
 }
 
 pub mod util;

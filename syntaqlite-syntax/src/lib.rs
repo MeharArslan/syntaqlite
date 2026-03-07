@@ -92,7 +92,7 @@ pub use parser::{
 pub use parser::{Comment, CommentKind, CompletionContext, ParserTokenFlags};
 
 // Top-level tokenizer types.
-#[cfg(feature = "sqlite")]
+// TokenType is always available — ordinals are stable across all dialects.
 #[doc(inline)]
 pub use sqlite::tokens::TokenType;
 #[cfg(feature = "sqlite")]
@@ -190,6 +190,11 @@ pub mod typed {
     /// work with the grammar directly — for example, to inspect its token and node
     /// metadata, or to construct a parser or tokenizer manually — you can obtain a
     /// handle with `grammar()`.
+    /// Top-level typed grammar handle type for the `SQLite` grammar.
+    ///
+    /// Useful when you need to name the type parameter in `TypedDialect<Grammar>`.
+    #[cfg(feature = "sqlite")]
+    pub use crate::sqlite::grammar::Grammar;
     #[cfg(feature = "sqlite")]
     pub use crate::sqlite::grammar::grammar;
 }
@@ -217,5 +222,5 @@ mod grammar;
 pub(crate) mod parser;
 pub(crate) mod tokenizer;
 
-#[cfg(feature = "sqlite")]
+// `sqlite` module is always present; individual sub-modules are gated inside it.
 pub(crate) mod sqlite;

@@ -1,8 +1,8 @@
 // Copyright 2025 The syntaqlite Authors. All rights reserved.
 // Licensed under the Apache License, Version 2.0.
 
-use syntaqlite_syntax::any::{AnyParser, MacroRegion};
-use syntaqlite_syntax::{CommentKind, ParseOutcome, ParserConfig};
+use syntaqlite_syntax::any::{AnyParser, MacroRegion, ParseOutcome};
+use syntaqlite_syntax::{CommentKind, ParserConfig};
 
 use super::FormatConfig;
 use super::FormatError;
@@ -10,11 +10,11 @@ use super::KeywordCase;
 use super::comment::{CommentCtx, CommentEntry, TokenEntry};
 use super::doc::{DocArena, DocId, NIL_DOC, RenderBuffers};
 use super::interpret::{FmtCtx, InterpretScratch};
-use crate::dialect::Dialect;
+use crate::dialect::AnyDialect;
 
 /// High-level SQL formatter. Created from a `Dialect`, reusable across inputs.
 pub struct Formatter {
-    pub(super) dialect: Dialect,
+    pub(super) dialect: AnyDialect,
     pub(super) parser: AnyParser,
     pub(super) config: FormatConfig,
     // Statement-scoped state cached on the formatter to avoid per-statement allocations.
@@ -49,15 +49,15 @@ impl Formatter {
     }
 
     /// Create a formatter bound to the given dialect with custom configuration.
-    pub fn with_dialect_config(dialect: Dialect, format_config: &FormatConfig) -> Self {
+    pub fn with_dialect_config(dialect: impl Into<AnyDialect>, format_config: &FormatConfig) -> Self {
+        let dialect = dialect.into();
         assert!(
             dialect.has_fmt_data(),
             "dialect has no formatter bytecode — ensure .synq definitions include fmt blocks",
         );
-        let grammar: syntaqlite_syntax::any::AnyGrammar = syntaqlite_syntax::typed::grammar()
-            .with_version(dialect.version())
-            .with_cflags(dialect.syntax_cflags())
-            .into();
+        // Use the grammar embedded in the dialect — do NOT hardcode the SQLite
+        // grammar here, as this method is called with external dialects too.
+        let grammar = (*dialect).clone();
         let parser =
             AnyParser::with_config(grammar, &ParserConfig::default().with_collect_tokens(true));
         Formatter {
@@ -331,6 +331,22 @@ pub(crate) fn try_macro_verbatim<'a>(
 mod tests {
     use super::*;
     use crate::fmt::KeywordCase;
+
+    /// Verify that `Formatter` stores an `AnyParser` derived from the dialect,
+    /// not a hardcoded SQLite `Parser`.
+    ///
+    /// This test FAILS TO COMPILE before the fix because `fmt.parser` is of
+    /// type `syntaqlite_syntax::Parser` (SQLite-only), not `AnyParser`.
+    /// After the fix, the field type changes to `AnyParser`.
+    #[test]
+    #[cfg(feature = "sqlite")]
+    fn formatter_parser_is_any_grammar_based() {
+        use syntaqlite_syntax::any::AnyParser;
+        let dialect = crate::sqlite::dialect::dialect();
+        let fmt = Formatter::with_dialect_config(dialect, &FormatConfig::default());
+        // Type assertion: fails to compile if fmt.parser is Parser, not AnyParser.
+        let _: &AnyParser = &fmt.parser;
+    }
 
     fn render_parts(arena: &mut DocArena<'_>, parts: &[DocId]) -> String {
         let root = arena.cats(parts);

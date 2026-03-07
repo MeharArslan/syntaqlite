@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use syntaqlite_syntax::any::{AnyTokenType, TokenCategory};
 use syntaqlite_syntax::util::is_suggestable_keyword;
 
-use crate::dialect::Dialect;
+use crate::dialect::AnyDialect;
 use crate::fmt::FormatConfig;
 use crate::fmt::formatter::Formatter;
 use crate::semantic::Catalog;
@@ -54,7 +54,7 @@ fn ensure_model(doc: &mut Document, analyzer: &mut SemanticAnalyzer, user_catalo
 /// (diagnostics, semantic tokens, completions, formatting) on first access
 /// after each edit. Semantic validation delegates to [`SemanticAnalyzer`].
 pub struct LspHost {
-    dialect: Dialect,
+    dialect: AnyDialect,
     /// User-provided schema (tables, views, functions).
     user_catalog: Catalog,
     analyzer: SemanticAnalyzer,
@@ -75,7 +75,8 @@ impl LspHost {
     }
 
     /// Create a host bound to `dialect`.
-    pub fn with_dialect(dialect: Dialect) -> Self {
+    pub fn with_dialect(dialect: impl Into<AnyDialect>) -> Self {
+        let dialect = dialect.into();
         LspHost {
             user_catalog: Catalog::new(dialect.clone()),
             analyzer: SemanticAnalyzer::with_dialect(dialect.clone()),
@@ -193,7 +194,7 @@ impl LspHost {
         use std::collections::HashSet;
 
         let info = self.completion_info_at_offset(uri, offset);
-        let expected_set: HashSet<u32> = info.tokens.iter().map(|&t| t as u32).collect();
+        let expected_set: HashSet<u32> = info.tokens.iter().map(|&t| u32::from(t)).collect();
 
         let mut seen: HashSet<String> = HashSet::new();
         let mut items: Vec<CompletionEntry> = Vec::new();
@@ -396,7 +397,7 @@ impl LspHost {
         self.completion_info_at_offset(uri, offset)
             .tokens
             .iter()
-            .map(|&t| t as u32)
+            .map(|&t| u32::from(t))
             .collect()
     }
 }

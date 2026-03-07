@@ -162,7 +162,7 @@ mod tests {
 /// if at least one of its availability rules matches the config.
 #[cfg(all(feature = "fmt", feature = "sqlite"))]
 pub(crate) fn available_functions(
-    dialect: &crate::dialect::Dialect,
+    dialect: &crate::dialect::AnyDialect,
 ) -> Vec<&'static crate::dialect::FunctionInfo<'static>> {
     crate::sqlite::functions_catalog::SQLITE_FUNCTIONS
         .iter()

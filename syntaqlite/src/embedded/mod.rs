@@ -22,7 +22,7 @@ use std::ops::Range;
 
 use syntaqlite_syntax::any::TokenCategory;
 
-use crate::dialect::Dialect;
+use crate::dialect::AnyDialect;
 use crate::semantic::ValidationConfig;
 use crate::semantic::analyzer::SemanticAnalyzer;
 use crate::semantic::catalog::Catalog;
@@ -133,14 +133,15 @@ fn skip_single_line_string(bytes: &[u8], pos: usize, end: usize) -> usize {
 /// let diags = EmbeddedAnalyzer::new(dialect).validate(&fragments);
 /// ```
 pub struct EmbeddedAnalyzer {
-    dialect: Dialect,
+    dialect: AnyDialect,
     catalog: Catalog,
     config: ValidationConfig,
 }
 
 impl EmbeddedAnalyzer {
     /// Create a new analyzer with an empty catalog and default validation config.
-    pub fn new(dialect: Dialect) -> Self {
+    pub fn new(dialect: impl Into<AnyDialect>) -> Self {
+        let dialect = dialect.into();
         let catalog = Catalog::new(dialect.clone());
         Self {
             dialect,

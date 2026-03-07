@@ -6,6 +6,7 @@
 use std::sync::Arc;
 
 use syntaqlite_syntax::any::AnyGrammar;
+use syntaqlite_syntax::typed::TypedGrammar;
 
 #[cfg(feature = "dynload")]
 use libloading;
@@ -257,7 +258,7 @@ pub(crate) struct FunctionEntry<'a> {
 /// - cflag constraint: for `Enable` polarity the cflag must be set; for
 ///   `Omit` polarity the cflag must be clear. Rules with `cflag_index ==
 ///   u32::MAX` have no cflag constraint.
-pub(crate) fn is_function_available(entry: &FunctionEntry<'_>, dialect: &Dialect) -> bool {
+pub(crate) fn is_function_available(entry: &FunctionEntry<'_>, dialect: &AnyDialect) -> bool {
     let cflags = dialect.cflags();
     entry.availability.iter().any(|rule| {
         if dialect.version() < rule.since {
@@ -289,19 +290,21 @@ pub(crate) fn is_function_available(entry: &FunctionEntry<'_>, dialect: &Dialect
 
 // ── Dialect handle ────────────────────────────────────────────────────────────
 
-/// Type-erased semantic dialect handle: grammar + formatter + semantic data.
+/// Grammar-parameterized semantic dialect handle: grammar + formatter + semantic data.
 ///
 /// This bundles:
-/// - the syntactic [`AnyGrammar`]
+/// - a typed grammar handle `G`
 /// - formatter bytecode tables
 /// - semantic role table (indexed by node tag)
 ///
-/// Built-in dialects hold `&'static` data directly. Dynamically loaded
-/// dialects transmute library-memory pointers to `&'static` and keep the
-/// library alive via an [`Arc`]. Use [`AnyDialect::load`] to create one.
+/// Use [`AnyDialect`] (= `TypedDialect<AnyGrammar>`) when the grammar is
+/// selected at runtime, or [`TypedDialect<G>`] when the grammar type is known
+/// statically (e.g. the built-in SQLite grammar).
+///
+/// Convert to [`AnyDialect`] via [`From`] / `.into()`.
 #[derive(Clone)]
-pub struct AnyDialect {
-    grammar: AnyGrammar,
+pub struct TypedDialect<G: TypedGrammar> {
+    grammar: G,
 
     // Formatter data — Rust-generated statics.
     fmt_strings: &'static [&'static str],
@@ -322,25 +325,113 @@ pub struct AnyDialect {
     _keep_alive: Option<Arc<dyn Send + Sync>>,
 }
 
-/// Default dialect handle name used throughout the crate.
-pub type Dialect = AnyDialect;
+/// Type-erased dialect handle (grammar erased to [`AnyGrammar`]).
+///
+/// Analogous to [`syntaqlite_syntax::any::AnyParser`] being
+/// `TypedParser<AnyGrammar>`. Most internal infrastructure works with
+/// `AnyDialect`; use [`TypedDialect<G>`] at construction time when the grammar
+/// type is known statically.
+pub type AnyDialect = TypedDialect<AnyGrammar>;
 
-// SAFETY: wraps immutable static data (C grammar + Rust slices).
-unsafe impl Send for AnyDialect {}
-// SAFETY: wraps immutable static data (C grammar + Rust slices).
-unsafe impl Sync for AnyDialect {}
+/// SQLite-specific dialect handle — a newtype around [`AnyDialect`].
+///
+/// Analogous to [`syntaqlite_syntax::Parser`] being a newtype around
+/// `TypedParser<Grammar>`. Use [`AnyDialect`] for infrastructure that must
+/// work with any dialect; obtain a `Dialect` via [`crate::sqlite_dialect()`]
+/// or `Dialect::new()`.
+#[cfg(feature = "sqlite")]
+#[derive(Clone)]
+pub struct Dialect(pub(crate) AnyDialect);
 
-impl AnyDialect {
-    /// Construct from grammar + generated static tables (built-in dialects).
-    pub(crate) fn new(
-        grammar: AnyGrammar,
+#[cfg(feature = "sqlite")]
+impl Dialect {
+    /// Returns the default SQLite dialect with no extra flags set.
+    pub fn new() -> Self {
+        Dialect(crate::sqlite::dialect::dialect())
+    }
+
+    /// Return a copy of this dialect targeting a specific SQLite version.
+    #[must_use]
+    pub fn with_version(self, version: SqliteVersion) -> Self {
+        Dialect(self.0.with_version(version))
+    }
+
+    /// Return a copy of this dialect with the given compile-time flags.
+    #[must_use]
+    pub fn with_cflags(self, flags: crate::util::SqliteFlags) -> Self {
+        Dialect(self.0.with_cflags(flags))
+    }
+
+    /// Active compile-time compatibility flags set on this dialect.
+    pub fn cflags(&self) -> crate::util::SqliteFlags {
+        self.0.cflags()
+    }
+
+    /// Target SQLite version configured on this dialect's grammar handle.
+    pub fn version(&self) -> SqliteVersion {
+        self.0.version()
+    }
+
+    /// C-parser compile-time compatibility flags (parser flags, indices 0–21).
+    pub fn syntax_cflags(&self) -> syntaqlite_syntax::util::SqliteSyntaxFlags {
+        self.0.syntax_cflags()
+    }
+
+    /// Erase into a type-erased [`AnyDialect`].
+    pub fn erase(self) -> AnyDialect {
+        self.0
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl Default for Dialect {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl From<Dialect> for AnyDialect {
+    fn from(d: Dialect) -> AnyDialect {
+        d.0
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl std::ops::Deref for Dialect {
+    type Target = AnyDialect;
+    fn deref(&self) -> &AnyDialect {
+        &self.0
+    }
+}
+
+#[cfg(feature = "sqlite")]
+impl std::ops::DerefMut for Dialect {
+    fn deref_mut(&mut self) -> &mut AnyDialect {
+        &mut self.0
+    }
+}
+
+// SAFETY: TypedDialect wraps immutable static data (C grammar + Rust slices).
+unsafe impl<G: TypedGrammar> Send for TypedDialect<G> {}
+// SAFETY: TypedDialect wraps immutable static data (C grammar + Rust slices).
+unsafe impl<G: TypedGrammar> Sync for TypedDialect<G> {}
+
+impl<G: TypedGrammar> TypedDialect<G> {
+    /// Construct from a typed grammar + generated static tables.
+    ///
+    /// External dialect authors build a `TypedDialect<G>` and convert to
+    /// [`AnyDialect`] via `.into()` to pass to `Formatter`, `SemanticAnalyzer`,
+    /// or `LspHost`.
+    pub fn new(
+        grammar: G,
         fmt_strings: &'static [&'static str],
         fmt_enum_display: &'static [u16],
         fmt_ops: &'static [u8],
         fmt_dispatch: &'static [u32],
         roles: &'static [SemanticRole],
     ) -> Self {
-        AnyDialect {
+        TypedDialect {
             grammar,
             fmt_strings,
             fmt_enum_display,
@@ -352,6 +443,68 @@ impl AnyDialect {
         }
     }
 
+    /// The typed grammar handle stored in this dialect.
+    pub fn grammar(&self) -> &G {
+        &self.grammar
+    }
+
+    /// The semantic role table for this dialect, indexed by node tag.
+    pub(crate) fn roles(&self) -> &'static [SemanticRole] {
+        self.roles
+    }
+
+    /// Whether this dialect has formatter data.
+    pub(crate) fn has_fmt_data(&self) -> bool {
+        !self.fmt_strings.is_empty()
+    }
+
+    /// Read the packed `fmt_dispatch` entry for a node tag.
+    pub(crate) fn fmt_dispatch(
+        &self,
+        tag: syntaqlite_syntax::any::AnyNodeTag,
+    ) -> Option<(&[u8], usize)> {
+        let idx = u32::from(tag) as usize;
+        if idx >= self.fmt_dispatch.len() {
+            return None;
+        }
+        let packed = self.fmt_dispatch[idx];
+        let offset = (packed >> 16) as u16;
+        let length = (packed & 0xFFFF) as u16;
+        if offset == 0xFFFF {
+            return None;
+        }
+        let byte_offset = offset as usize * 6;
+        let byte_len = length as usize * 6;
+        let slice = &self.fmt_ops[byte_offset..byte_offset + byte_len];
+        Some((slice, length as usize))
+    }
+
+    /// Look up a string from the fmt string table by index.
+    #[inline]
+    pub(crate) fn fmt_string(&self, idx: u16) -> &'static str {
+        let i = idx as usize;
+        assert!(
+            i < self.fmt_strings.len(),
+            "string index {} out of bounds (count={})",
+            i,
+            self.fmt_strings.len(),
+        );
+        self.fmt_strings[i]
+    }
+
+    /// Look up a value in the enum display table.
+    pub(crate) fn fmt_enum_display_val(&self, idx: usize) -> u16 {
+        assert!(
+            idx < self.fmt_enum_display.len(),
+            "enum_display index {idx} out of bounds",
+        );
+        self.fmt_enum_display[idx]
+    }
+}
+
+// ── AnyDialect (= TypedDialect<AnyGrammar>) ───────────────────────────────────
+
+impl AnyDialect {
     /// Load a dialect from a shared library (`.so` / `.dylib` / `.dll`).
     ///
     /// Resolves `syntaqlite_<name>_grammar` (or `syntaqlite_grammar` when `name`
@@ -395,7 +548,7 @@ impl AnyDialect {
         // TODO(lalitm): dynamic dialects should also load formatter bytecode
         // and semantic role tables from the shared library so that `fmt` and
         // validation work for external dialects.
-        Ok(AnyDialect {
+        Ok(TypedDialect {
             grammar,
             fmt_strings: &[],
             fmt_enum_display: &[],
@@ -443,64 +596,6 @@ impl AnyDialect {
     pub fn syntax_cflags(&self) -> syntaqlite_syntax::util::SqliteSyntaxFlags {
         self.grammar.cflags()
     }
-
-    /// The semantic role table for this dialect, indexed by node tag.
-    pub(crate) fn roles(&self) -> &'static [SemanticRole] {
-        self.roles
-    }
-
-    // ── Formatter accessors ──────────────────────────────────────────────
-
-    /// Read the packed `fmt_dispatch` entry for a node tag.
-    ///
-    /// Returns `Some((ops_slice, op_count))` or `None` if tag is out of range
-    /// or has no ops (sentinel `0xFFFF`).
-    pub(crate) fn fmt_dispatch(
-        &self,
-        tag: syntaqlite_syntax::any::AnyNodeTag,
-    ) -> Option<(&[u8], usize)> {
-        let idx = u32::from(tag) as usize;
-        if idx >= self.fmt_dispatch.len() {
-            return None;
-        }
-        let packed = self.fmt_dispatch[idx];
-        let offset = (packed >> 16) as u16;
-        let length = (packed & 0xFFFF) as u16;
-        if offset == 0xFFFF {
-            return None;
-        }
-        let byte_offset = offset as usize * 6;
-        let byte_len = length as usize * 6;
-        let slice = &self.fmt_ops[byte_offset..byte_offset + byte_len];
-        Some((slice, length as usize))
-    }
-
-    /// Look up a string from the fmt string table by index.
-    #[inline]
-    pub(crate) fn fmt_string(&self, idx: u16) -> &'static str {
-        let i = idx as usize;
-        assert!(
-            i < self.fmt_strings.len(),
-            "string index {} out of bounds (count={})",
-            i,
-            self.fmt_strings.len(),
-        );
-        self.fmt_strings[i]
-    }
-
-    /// Look up a value in the enum display table.
-    pub(crate) fn fmt_enum_display_val(&self, idx: usize) -> u16 {
-        assert!(
-            idx < self.fmt_enum_display.len(),
-            "enum_display index {idx} out of bounds",
-        );
-        self.fmt_enum_display[idx]
-    }
-
-    /// Whether this dialect has formatter data.
-    pub(crate) fn has_fmt_data(&self) -> bool {
-        !self.fmt_strings.is_empty()
-    }
 }
 
 impl std::ops::Deref for AnyDialect {
@@ -516,20 +611,43 @@ impl std::ops::DerefMut for AnyDialect {
     }
 }
 
+impl<G: TypedGrammar> TypedDialect<G> {
+    /// Erase the grammar type to produce an [`AnyDialect`].
+    ///
+    /// `From<TypedDialect<G>>` cannot be implemented for [`AnyDialect`] because
+    /// it conflicts with the core blanket `impl<T> From<T> for T` when
+    /// `G = AnyGrammar`. Use this method instead.
+    pub fn erase(self) -> AnyDialect {
+        AnyDialect {
+            grammar: self.grammar.into(),
+            fmt_strings: self.fmt_strings,
+            fmt_enum_display: self.fmt_enum_display,
+            fmt_ops: self.fmt_ops,
+            fmt_dispatch: self.fmt_dispatch,
+            roles: self.roles,
+            ext_cflags: self.ext_cflags,
+            _keep_alive: self._keep_alive,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
+    #[cfg(feature = "sqlite")]
     fn dialect_roles_returns_slice() {
-        let d = AnyDialect::new(
-            syntaqlite_syntax::typed::grammar().into_raw(),
+        // Build a typed dialect from the SQLite grammar, then erase to AnyDialect.
+        let typed = TypedDialect::new(
+            syntaqlite_syntax::typed::grammar(),
             &[],
             &[],
             &[],
             &[],
-            &[], // _keep_alive: None (built-in)
+            &[],
         );
+        let d: AnyDialect = typed.erase();
         let roles: &[SemanticRole] = d.roles();
         assert!(roles.is_empty());
     }
