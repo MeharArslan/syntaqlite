@@ -16,7 +16,7 @@ pub(crate) mod fmt;
 #[cfg(feature = "validation")]
 pub(crate) mod semantic;
 
-#[cfg(feature = "sqlite")]
+// `sqlite` module is always present; individual sub-modules are gated inside it.
 pub(crate) mod sqlite;
 
 #[cfg(feature = "lsp")]
