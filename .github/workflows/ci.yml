@@ -1,0 +1,166 @@
+# CI: run unit tests, integration tests, UI tests, and Playwright e2e tests on every PR and push to main.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Cache third_party
+        uses: actions/cache@v4
+        with:
+          path: third_party
+          key: third-party-${{ runner.os }}-${{ hashFiles('python/tools/install_build_deps.py') }}
+
+      - name: Install build dependencies
+        run: python3 tools/install-build-deps
+
+      - name: Cache Rust build artifacts
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: cargo-unit-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-unit-${{ runner.os }}-
+
+      - name: Run unit tests
+        run: tools/run-unit-tests
+
+  integration-tests:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Cache third_party
+        uses: actions/cache@v4
+        with:
+          path: third_party
+          key: third-party-${{ runner.os }}-${{ hashFiles('python/tools/install_build_deps.py') }}
+
+      - name: Install build dependencies
+        run: python3 tools/install-build-deps
+
+      - name: Cache Rust build artifacts
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: cargo-integ-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-integ-${{ runner.os }}-
+
+      - name: Build CLI
+        run: tools/cargo build -p syntaqlite-cli
+
+      - name: Run integration tests
+        run: tools/run-integration-tests
+
+  ui-tests:
+    name: UI tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache third_party (UI)
+        uses: actions/cache@v4
+        with:
+          path: third_party
+          key: third-party-ui-${{ runner.os }}-${{ hashFiles('python/tools/install_build_deps.py') }}
+
+      - name: Install build dependencies (Node.js + Emscripten, no Rust)
+        run: python3 tools/install-build-deps --no-rust --ui
+
+      - name: Install @syntaqlite/js dependencies
+        working-directory: web/syntaqlite-js
+        run: |
+          export PATH="$PWD/../../third_party/bin/linux-amd64/nodejs/bin:$PATH"
+          npm ci
+
+      - name: Build @syntaqlite/js
+        working-directory: web/syntaqlite-js
+        run: |
+          export PATH="$PWD/../../third_party/bin/linux-amd64/nodejs/bin:$PATH"
+          npm run build
+
+      - name: Install playground dependencies
+        working-directory: web/playground
+        run: |
+          export PATH="$PWD/../../third_party/bin/linux-amd64/nodejs/bin:$PATH"
+          npm ci
+
+      - name: Run UI tests
+        working-directory: web/playground
+        run: |
+          export PATH="$PWD/../../third_party/bin/linux-amd64/nodejs/bin:$PATH"
+          npm test
+
+  playwright-tests:
+    name: Playwright e2e tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache third_party (UI + Rust)
+        uses: actions/cache@v4
+        with:
+          path: third_party
+          key: third-party-ui-rust-${{ runner.os }}-${{ hashFiles('python/tools/install_build_deps.py') }}
+
+      - name: Install build dependencies (Rust + Node.js + Emscripten)
+        run: python3 tools/install-build-deps --ui
+
+      - name: Cache Rust build artifacts
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: cargo-playwright-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: cargo-playwright-${{ runner.os }}-
+
+      - name: Build WASM modules
+        run: python3 tools/build-web-playground --hermetic
+
+      - name: Build @syntaqlite/js
+        working-directory: web/syntaqlite-js
+        run: |
+          export PATH="$PWD/../../third_party/bin/linux-amd64/nodejs/bin:$PATH"
+          npm ci
+          npm run build
+
+      - name: Install playground dependencies
+        working-directory: web/playground
+        run: |
+          export PATH="$PWD/../../third_party/bin/linux-amd64/nodejs/bin:$PATH"
+          npm ci
+
+      - name: Install Playwright browsers
+        working-directory: web/playground
+        run: |
+          export PATH="$PWD/../../third_party/bin/linux-amd64/nodejs/bin:$PATH"
+          npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        working-directory: web/playground
+        run: |
+          export PATH="$PWD/../../third_party/bin/linux-amd64/nodejs/bin:$PATH"
+          npm run test:e2e:ci
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: web/playground/playwright-report/
+          retention-days: 30
