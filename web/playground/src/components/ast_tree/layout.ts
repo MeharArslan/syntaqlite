@@ -55,8 +55,8 @@ function computeSubtreeWidth(node: VisNode): number {
   return node._subtreeW;
 }
 
-function assignPositions(node: VisNode, left: number, depth: number) {
-  node.y = depth * (node.h + V_GAP);
+function assignPositions(node: VisNode, left: number, top: number) {
+  node.y = top;
   node.x = left + (node._subtreeW ?? node.w) / 2 - node.w / 2;
 
   if (!node.collapsed && node.children.length > 0) {
@@ -66,8 +66,9 @@ function assignPositions(node: VisNode, left: number, depth: number) {
       totalChildW += node.children[i]._subtreeW ?? node.children[i].w;
     }
     let childLeft = left + ((node._subtreeW ?? node.w) - totalChildW) / 2;
+    const childTop = top + node.h + V_GAP;
     for (const child of node.children) {
-      assignPositions(child, childLeft, depth + 1);
+      assignPositions(child, childLeft, childTop);
       childLeft += (child._subtreeW ?? child.w) + H_GAP;
     }
   }

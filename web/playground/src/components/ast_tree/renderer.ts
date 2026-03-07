@@ -135,9 +135,9 @@ export class AstCanvasRenderer {
     const zoomFitTree = Math.min(scaleX, scaleY);
     // Zoom so the root node occupies 10% of screen width
     const root = this.tree[0];
-    const zoomRoot10pct = (0.1 * this.displayWidth) / root.w;
-    // Use whichever is less zoomed in (fit-to-page wins for big trees, root-10% wins for small ones)
-    this.transform.zoom = Math.min(zoomFitTree, zoomRoot10pct);
+    const zoomRoot20pct = (0.2 * this.displayWidth) / root.w;
+    // root-10% wins on big graphs (fit zoom is tiny), fit wins on small graphs (fit zoom is large)
+    this.transform.zoom = Math.max(zoomFitTree, zoomRoot20pct);
     this.transform.panX = (this.displayWidth - this.treeWidth * this.transform.zoom) / 2;
     this.transform.panY = pad;
   }
@@ -261,7 +261,7 @@ export class AstCanvasRenderer {
       const node = this.hitTest(tx, ty);
       if (node !== this.hoverNode) {
         this.hoverNode = node;
-        this.canvas.style.cursor = node ? "pointer" : "grab";
+        this.canvas.style.cursor = node ? "pointer" : "move";
         this.render();
       }
     }
@@ -285,7 +285,7 @@ export class AstCanvasRenderer {
       }
     }
     this.dragging = false;
-    this.canvas.style.cursor = this.hoverNode ? "pointer" : "grab";
+    this.canvas.style.cursor = this.hoverNode ? "pointer" : "move";
   }
 
   private onMouseLeave() {
@@ -294,7 +294,26 @@ export class AstCanvasRenderer {
       this.hoverNode = undefined;
       this.render();
     }
-    this.canvas.style.cursor = "grab";
+    this.canvas.style.cursor = "move";
+  }
+
+  zoomIn() {
+    this.applyZoom(1.25);
+  }
+
+  zoomOut() {
+    this.applyZoom(1 / 1.25);
+  }
+
+  private applyZoom(factor: number) {
+    const cx = this.displayWidth / 2;
+    const cy = this.displayHeight / 2;
+    const oldZoom = this.transform.zoom;
+    const newZoom = Math.max(0.15, Math.min(4.0, oldZoom * factor));
+    this.transform.panX = cx - (cx - this.transform.panX) * (newZoom / oldZoom);
+    this.transform.panY = cy - (cy - this.transform.panY) * (newZoom / oldZoom);
+    this.transform.zoom = newZoom;
+    this.render();
   }
 
   private onWheel(e: WheelEvent) {
@@ -308,4 +327,5 @@ export class AstCanvasRenderer {
     this.transform.zoom = newZoom;
     this.render();
   }
+
 }

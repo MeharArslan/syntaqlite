@@ -38,16 +38,28 @@ export class AstGraph implements m.ClassComponent<AstGraphAttrs> {
   }
 
   view() {
-    return m("div.sq-ast-graph", [m("canvas")]);
+    return m("div.sq-ast-graph", [
+      m("canvas"),
+      m("div.sq-ast-graph-controls", [
+        m("button.sq-ast-graph-btn", {onclick: () => this.renderer?.zoomIn()}, "+"),
+        m("button.sq-ast-graph-btn", {onclick: () => this.renderer?.zoomOut()}, "−"),
+      ]),
+    ]);
   }
 
   private renderer: AstCanvasRenderer | undefined = undefined;
   private lastTheme: Theme | undefined = undefined;
+  private lastResult: AstResult | undefined = undefined;
+  private lastShowEmpty = false;
 
   private updateGraph(attrs: AstGraphAttrs) {
     if (!this.renderer) return;
     const {result, showEmpty} = attrs;
     if (!result || !result.ok || result.statements.length === 0) return;
+    // Only re-layout (and re-fit) when data actually changes, not on every Mithril redraw.
+    if (result === this.lastResult && showEmpty === this.lastShowEmpty) return;
+    this.lastResult = result;
+    this.lastShowEmpty = showEmpty;
     const roots = flattenAst(result.statements, showEmpty);
     this.renderer.update(roots);
   }
