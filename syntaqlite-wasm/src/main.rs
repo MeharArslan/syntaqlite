@@ -406,9 +406,9 @@ fn run_set_dialect(ptr: u32) -> i32 {
         // External grammar side module: read the CGrammar struct from linear memory,
         // extract version/cflags, and overlay them on the built-in SQLite dialect.
         // TODO: support truly external (non-SQLite) grammars with their own formatter.
+        USING_BUILTIN_SQLITE.with(|b| b.set(false));
         // SAFETY: ptr is a WASM linear-memory address returned by a grammar function
         // in a side module loaded via Emscripten loadDynamicLibrary.
-        USING_BUILTIN_SQLITE.with(|b| b.set(false));
         let raw: syntaqlite::typed::CGrammar =
             unsafe { std::ptr::read(ptr as *const syntaqlite::typed::CGrammar) };
         // SAFETY: raw was just read from a valid grammar pointer above.

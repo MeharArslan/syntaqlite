@@ -252,6 +252,17 @@ impl SqliteFlag {
         Self::ALL.iter().copied().find(|f| f.name() == s)
     }
 
+    /// Look up a flag by its full prefixed name
+    /// (e.g. `"SYNTAQLITE_CFLAG_SQLITE_OMIT_WINDOWFUNC"`).
+    ///
+    /// Returns `Err` if the prefix is missing or the flag name is unknown.
+    pub fn from_prefixed_name(s: &str) -> Result<Self, String> {
+        let flag_name = s
+            .strip_prefix("SYNTAQLITE_CFLAG_")
+            .ok_or_else(|| format!("cflag name must start with 'SYNTAQLITE_CFLAG_', got '{s}'"))?;
+        Self::from_name(flag_name).ok_or_else(|| format!("unknown cflag: '{s}'"))
+    }
+
     /// All known flags in stable index order.
     pub(crate) fn all() -> &'static [Self] {
         Self::ALL
