@@ -3,7 +3,7 @@
 
 //! Stage 1: Generate the `base_files_tables.rs` include file.
 //!
-//! Scans the parser-actions and parser-nodes directories and produces a Rust
+//! Scans the syntaqlite-syntax/parser-actions and syntaqlite-syntax/parser-nodes directories and produces a Rust
 //! source file containing `include_str!` entries for each `.y` and `.synq` file.
 
 use std::fmt::Write;
@@ -90,7 +90,7 @@ fn collect_sorted_files(dir: &Path, ext: &str) -> Result<Vec<String>, String> {
 /// Compute a relative path from `base` to `target`.
 ///
 /// Both paths must be absolute (canonicalized). Returns a string like
-/// `../syntaqlite/parser-actions`.
+/// `../syntaqlite-syntax/parser-actions`.
 fn relative_path(base: &Path, target: &Path) -> Result<String, String> {
     // Find the common prefix.
     let base_components: Vec<_> = base.components().collect();

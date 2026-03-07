@@ -56,12 +56,12 @@ The approach is **server-side**: the smarts live in the syntaqlite engine, not i
 Fine-grained error recovery so holes don't consume the rest of the statement:
 
 ```
-# syntaqlite/parser-actions/expressions.y
+# syntaqlite-syntax/parser-actions/expressions.y
 expr(A) ::= error. {
     A = synq_parse_error_node(pCtx, pCtx->error_offset, pCtx->error_length);
 }
 
-# syntaqlite/parser-actions/identifiers.y
+# syntaqlite-syntax/parser-actions/identifiers.y
 nm(A) ::= error. {
     A.z = NULL;
     A.n = 0;

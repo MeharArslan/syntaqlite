@@ -109,7 +109,7 @@ explicit grammar annotations. The latter puts the information where it belongs: 
 The `.synq` grammar files already have semantic annotations for DDL:
 
 ```synq
--- syntaqlite/parser-nodes/create_table.synq
+-- syntaqlite-syntax/parser-nodes/create_table.synq
 node CreateTableStmt {
   table_name: inline SyntaqliteSourceSpan
   columns: index ColumnDefList
@@ -118,7 +118,7 @@ node CreateTableStmt {
   session_schema { table(name: table_name, columns: columns, as_select: as_select) }
 }
 
--- syntaqlite/parser-nodes/utility_stmts.synq
+-- syntaqlite-syntax/parser-nodes/utility_stmts.synq
 node CreateViewStmt {
   view_name: inline SyntaqliteSourceSpan
   select: index Select

@@ -49,11 +49,10 @@ def main() -> int:
 
     project_root = Path(__file__).parent.parent.parent
     sqlite_src = project_root / "third_party" / "src" / "sqlite"
-    dialect_crate = project_root / "syntaqlite"
-    actions_dir = dialect_crate / "parser-actions"
-    nodes_dir = dialect_crate / "parser-nodes"
     dialect_crate_dir = project_root / "syntaqlite-syntax"
     shared_crate_dir = project_root / "syntaqlite-syntax"
+    actions_dir = dialect_crate_dir / "parser-actions"
+    nodes_dir = dialect_crate_dir / "parser-nodes"
     vendored_dir = project_root / "syntaqlite-buildtools" / "sqlite-vendored"
 
     do_extract = args.extract

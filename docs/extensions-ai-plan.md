@@ -187,7 +187,7 @@ my-dialect/
 
 Extension grammar files are merged with the base SQLite grammar:
 
-1. Concatenate base `.y` files (from `syntaqlite/parser-actions/`)
+1. Concatenate base `.y` files (from `syntaqlite-syntax/parser-actions/`)
 2. Append extension `.y` files after base grammar
 3. Extension `%token` declarations are placed after base rules to ensure base tokens get IDs first
 4. Run Lemon on the merged grammar → monolithic parser tables + reduce function
@@ -281,8 +281,8 @@ uint32_t synq_node_tag(SynqParseCtx* ctx, uint32_t node_id);
 # 1. Generate dialect crate
 syntaqlite codegen \
   --base-grammar third_party/sqlite/parse.y \
-  --base-actions syntaqlite/parser-actions/ \
-  --base-nodes syntaqlite/parser-nodes/ \
+  --base-actions syntaqlite-syntax/parser-actions/ \
+  --base-nodes syntaqlite-syntax/parser-nodes/ \
   --ext-actions my-dialect/actions/ \
   --ext-nodes my-dialect/nodes/ \
   --output-crate my-dialect-syntax/
